@@ -1,0 +1,14 @@
+[
+  { "file": "app/route-001/page.tsx", "expectedRule": "ROUTE-001" },
+  { "file": "app/route-002/page.tsx", "expectedRule": "ROUTE-002" },
+  { "file": "features/bad/pages/Page002.tsx", "expectedRule": "PAGE-002" },
+  { "file": "features/bad/pages/Page003.tsx", "expectedRule": "PAGE-003" },
+  { "file": "features/bad/pages/Page004.tsx", "expectedRule": "PAGE-004" },
+  { "file": "features/bad/pages/Page005.tsx", "expectedRule": "PAGE-005" },
+  { "file": "features/bad/pages/Page006.tsx", "expectedRule": "PAGE-006" },
+  { "file": "features/bad/components/Component002.tsx", "expectedRule": "COMPONENT-002" },
+  { "file": "features/bad/components/Component003.tsx", "expectedRule": "COMPONENT-003" },
+  { "file": "features/bad/workflows/Workflow001.tsx", "expectedRule": "WORKFLOW-001" },
+  { "file": "features/bad/services/Service002.tsx", "expectedRule": "SERVICE-002" },
+  { "file": "features/bad/domain/Domain001.ts", "expectedRule": "DOMAIN-001" }
+]
