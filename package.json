@@ -1,0 +1,40 @@
+{
+  "name": "construct-architecture",
+  "version": "1.0.0",
+  "description": "Opinionated, modifiable architecture enforcement for Next.js applications.",
+  "type": "module",
+  "bin": {
+    "construct": "./bin/construct.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "templates",
+    "docs",
+    "architecture.yml",
+    "eslint.config.mjs",
+    ".dependency-cruiser.cjs",
+    "AGENTS.md",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test",
+    "build": "tsc --noEmit",
+    "lint": "eslint .",
+    "validate": "node ./bin/construct.mjs validate",
+    "sync": "node ./bin/construct.mjs sync"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0",
+    "minimatch": "^10.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.5.1",
+    "eslint": "^10.10.0",
+    "typescript": "^5.8.3"
+  },
+  "license": "MIT"
+}
