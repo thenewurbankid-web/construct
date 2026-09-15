@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Construct Phase 1 Backlog</title>
+    <style>
+      :root {
+        --bg: #0f172a;
+        --panel: #111827;
+        --panel-2: #1f2937;
+        --text: #e5e7eb;
+        --muted: #a1a1aa;
+        --accent: #7dd3fc;
+        --accent-2: #34d399;
+        --warning: #fbbf24;
+        --danger: #f87171;
+        --stroke: #334155;
+        --card: #0b1220;
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: linear-gradient(135deg, #020817 0%, #0f172a 30%, #111827 100%);
+        color: var(--text);
+      }
+
+      .container {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 32px 20px 80px;
+      }
+
+      .header {
+        border: 1px solid var(--stroke);
+        background: rgba(15, 23, 42, 0.8);
+        border-radius: 18px;
+        padding: 28px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+      }
+
+      h1 {
+        margin: 0 0 10px;
+        font-size: 2.1rem;
+      }
+
+      .subtitle {
+        color: var(--muted);
+        margin: 0;
+        line-height: 1.6;
+      }
+
+      .summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+        margin-top: 24px;
+      }
+
+      .metric {
+        background: rgba(17, 24, 39, 0.9);
+        border: 1px solid var(--stroke);
+        border-radius: 14px;
+        padding: 18px;
+      }
+
+      .metric-label {
+        color: var(--muted);
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .metric-value {
+        font-size: 1.7rem;
+        font-weight: 700;
+        margin-top: 10px;
+        color: var(--accent);
+      }
+
+      .epic {
+        margin-top: 36px;
+        border: 1px solid var(--stroke);
+        background: rgba(11, 18, 32, 0.9);
+        border-radius: 18px;
+        overflow: hidden;
+      }
+
+      .epic-header {
+        background: linear-gradient(90deg, rgba(125,211,252,0.12), rgba(52,211,153,0.12));
+        border-bottom: 1px solid var(--stroke);
+        padding: 22px 24px;
+      }
+
+      .epic-header h2 {
+        margin: 0;
+        font-size: 1.35rem;
+      }
+
+      .epic-header p {
+        margin: 8px 0 0;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .tickets {
+        display: grid;
+        gap: 16px;
+        padding: 20px 18px 24px;
+      }
+
+      .ticket {
+        background: rgba(17, 24, 39, 0.95);
+        border: 1px solid var(--stroke);
+        border-left: 4px solid var(--accent-2);
+        border-radius: 12px;
+        padding: 18px 18px 14px;
+      }
+
+      .ticket-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 8px;
+      }
+
+      .ticket-title {
+        margin: 0;
+        font-size: 1.08rem;
+      }
+
+      .ticket-id {
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--accent);
+        background: rgba(125, 211, 252, 0.08);
+        border: 1px solid rgba(125, 211, 252, 0.25);
+        padding: 5px 8px;
+        border-radius: 999px;
+      }
+
+      .ticket p {
+        margin: 10px 0;
+        color: var(--text);
+        line-height: 1.5;
+      }
+
+      .ticket ul {
+        margin: 8px 0 0 18px;
+        padding: 0;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .badge {
+        display: inline-block;
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        border-radius: 999px;
+        padding: 5px 8px;
+        border: 1px solid var(--stroke);
+        color: var(--text);
+        margin-right: 8px;
+        background: rgba(148, 163, 184, 0.08);
+      }
+
+      .badge.primary { color: var(--accent); border-color: rgba(125,211,252,0.35); }
+      .badge.success { color: var(--accent-2); border-color: rgba(52,211,153,0.35); }
+      .badge.warning { color: var(--warning); border-color: rgba(251,191,36,0.35); }
+
+      @media (max-width: 720px) {
+        .ticket-header { flex-direction: column; align-items: flex-start; }
+        h1 { font-size: 1.8rem; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Construct — Phase 1 Backlog</h1>
+        <p class="subtitle">
+          A modular, independent, parallelizable roadmap for building the architecture framework in
+          small, testable units before composing them into a single product.
+        </p>
+
+        <div class="summary">
+          <div class="metric">
+            <div class="metric-label">Epics</div>
+            <div class="metric-value">7</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Total Tickets</div>
+            <div class="metric-value">24</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Primary Goal</div>
+            <div class="metric-value">Modular MVP</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="epic">
+        <div class="epic-header">
+          <h2>Epic 1 — Foundation & Runtime Bootstrapping</h2>
+          <p>
+            Establish the minimal runtime, command surface, and execution model so all other modules
+            can be developed independently and assembled later.
+          </p>
+        </div>
+        <div class="tickets">
+          <div class="ticket">
+            <div class="ticket-header">
+              <h3 class="ticket-title">CLI command registration and dispatch</h3>
+              <span class="ticket-id">C-01</span>
+            </div>
+            <span class="badge primary">Core</span>
+            <p>Implement a thin command registry that routes init, validate, sync, doctor, feature, and generate calls.</p>
+            <ul>
+              <li>Clean argument parsing</li>
+              <li>Meaningful help output</li>
+              <li>Stable exit codes</li>
+            </ul>
+          </div>
+
+          <div class="ticket">
+            <div class="ticket-header">
+              <h3 class="ticket-title">Project root and environment detection</h3>
+              <span class="ticket-id">C-02</span>
+            </div>
+            <span class="badge primary">Core</span>
+            <p>Detect the current project directory and derive the runtime context for config loading and validation.</p>
+            <ul>
+              <li>Resolve absolute root path</li>
+              <li>Support nested project contexts</li>
+              <li>Expose project metadata as a simple object</li>
+            </ul>
+          </div>
+
+          <div class="ticket">
+            <div class="ticket-header">
+              <h3 class="ticket-title">Doctor command and environment health checks</h3>
+              <span class="ticket-id">C-03</span>
+            </div>
+            <span class="badge success">Validation</span>
+            <p>Report local environment readiness and config presence in a developer-friendly format.</p>
+            <ul>
+              <li>Node and npm checks</li>
+              <li>Architecture config health</li>
+              <li>Actionable diagnostics</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="epic">
+        <div class="epic-header">
+          <h2>Epic 2 — Configuration & Policy System</h2>
+          <p>
+            Build the explicit policy layer that defines architecture defaults, rule severities, and
+            project overrides without tying the logic to CLI behavior.
+          </p>
+        </div>
+        <div class="tickets">
+          <div class="ticket">
+            <div class="ticket-header">
+              <h3 class="ticket-title">Default rule registry</h3>
+              <span class="ticket-id">P-01</span>
+            </div>
+            <span class="badge primary">Config</span>
+            <p>Create the canonical registry of default rules and metadata for each rule ID.</p>
+            <ul>
+              <li>Rule name</li>
+              <li>Default severity</li>
+              <li>Owner and rationale</li>
+            </ul>
+          </div>
+
+          <div class="ticket">
+            <div class="ticket-header">
+              <h3 class="ticket-title">Architecture config loader</h3>
+              <span class="ticket-id">P-02</span>
+            </div>
+            <span class="badge primary">Config</span>
+            <p>Load and normalize architecture.yml, merging defaults with project overrides.</p>
+            <ul>
+              <li>YAML parsing</li>
+              <li>Default fallback</li>
+              <li>Override validation</li>
+            </ul>
+          </div>
+
+          <div class="ticket">
+            <div class="ticket-header">
+              <h3 class="ticket-title">Rule severity and exception model</h3>
+              <span class="ticket-id">P-03</span>
+            </div>
+            <span class="badge warning">Policy</span>
+            <p>Support error, warning, and off severities as well as temporary exception scoping.</p>
+            <ul>
+              <li>Rule override resolution</li>
+              <li>Scoped path exceptions</li>
+              <li>Expiration handling</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="epic">
+        <div class="epic-header">
+          <h2>Epic 3 — Project Discovery & Layer Mapping</h2>
+          <p>
+            Discover files, ignore generated directories, and map code to layer ownership so validators
+            can reason over real project structure.
+          </p>
+        </div>
+        <div class="tickets">
+          <div class="ticket">
+            <div class="ticket-header">
+              <h3 class="ticket-title">File walker and ignore rules</h3>
+              <span class="ticket-id">D-01</span>
+            </div>
+            <span class="badge primary">Discovery</span>
+            <p>Scan the project tree and ignore folders that are not architecture-relevant.</p>
+            <ul>
+              <li>Ignore node_modules, .next, .git</li>
+              <li>Collect source files</li>
+              <li>Normalize paths</li>
+            </ul>
+          </div>
+
+          <div class="ticket">
+            <div class="ticket-header">
+              <h3 class="ticket-title">Feature root detection</h3>
+              <span class="ticket-id">D-02</span>
+            </div>
+            <span class="badge primary">Discovery</span>
+            <p>Identify where feature slices live and create a stable project model for validation.</p>
+            <ul>
+              <li>Resolve features root</li>
+              <li>Recognize feature names</li>
+              <li>Map related files to a feature</li>
+            </ul>
+          </div>
+
+          <div class="ticket">
+            <div class="ticket-header">
+              <h3 class="ticket-title">Layer detection from file path</h3>
+              <span class="ticket-id">D-03</span>
+            </div>
+            <span class="badge success">Discovery</span>
+            <p>Determine the architectural layer for each file using the repo structure and naming conventions.</p>
+            <ul>
+              <li>route, controller, page, component, workflow, service, domain</li>
+              <li>Stable layer mapping API</li>
+              <li>Support custom layer conventions later</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="epic">
+        <div class="epic-header">
+          <h2>Epic 4 — Validation Engine & Rule Execution</h2>
+          <p>
+            Turn the architecture policy into executable checks with a modular rule engine that can be
+            extended without rewriting the validator core.
+          </p>
+        </div>
+        <div class="tickets">
+          <div class="ticket">
+            <div class="ticket-header">
+              <h3 class="ticket-title">Rule engine core</h3>
+              <span class="ticket-id">V-01</span>
+            </div>
+            <span class="badge primary">Validation</span>
+            <p>Provide the central engine that runs rules against files and collects violations.</p>
+            <ul>
+              <li>Rule execution loop</li>
+              <li>Severity evaluation</li>
+              <li>Violation result structure</li>
+            </ul>
+          </div>
+
+          <div class="ticket">
+            <div class="ticket-header">
+              <h3 class="ticket-title">Route and page boundary rules</h3>
+              <span class="ticket-id">V-02</span>
+            </div>
+            <span class="badge success">Rules</span>
+            <p>Enforce route delegation and page presentation constraints.</p>
+            <ul>
+              <li>No page workflow imports</li>
+              <li>No page service imports</li>
+              <li>No page domain imports</li>
+              <li>No fetch in page</li>
+            </ul>
+          </div>
+
+          <div class="ticket">
+            <div class="ticket-header">
+              <h3 class="ticket-title">Component and workflow boundary rules</h3>
+              <span class="ticket-id">V-03</span>
+            </div>
+            <span class="badge success">Rules</span>
+            <p>Block application logic from presentation-only layers.</p>
+            <ul>
+              <li>Component cannot import controller/workflow/service/domain</li>
+              <li>Workflow cannot import React/UI</li>
+              <li>Service cannot import React/UI</li>
+            </ul>
+          </div>
+
+          <div class="ticket">
+            <div class="ticket-header">
+              <h3 class="ticket-title">Feature isolation and public API rules</h3>
+              <span class="ticket-id">V-04</span>
+            </div>
+            <span class="badge success">Rules</span>
+            <p>Enforce feature boundaries and public API usage across slices.</p>
+            <ul>
+              <li>No internal feature imports</li>
+              <li>Require feature index.ts public access</li>
+              <li>Flag architecture leaks</li>
+            </ul>
+          </div>
+
+          <div class="ticket">
+            <div class="ticket-header">
+              <h3 class="ticket-title">Domain purity and side effect rules</h3>
+              <span class="ticket-id">V-05</span>
+            </div>
+            <span class="badge warning">Rules</span>
+            <p>Protect pure domain logic from I/O and UI concerns.</p>
+            <ul>
+              <li>No fetch in domain</li>
+              <li>No browser globals</li>
+              <li>Service owns external effects</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="epic">
+        <div class="epic-header">
+          <h2>Epic 5 — Generation & Scaffolding</h2>
+          <p>
+            Create a modular generator framework that can generate features and layers while preserving
+            the default architecture contract.
+          </p>
+        </div>
+        <div class="tickets">
+          <div class="ticket">
+            <div class="ticket-header">
+              <h3 class="ticket-title">Feature generator</h3>
+              <span class="ticket-id">G-01</span>
+            </div>
+            <span class="badge primary">Generator</span>
+            <p>Create a feature directory scaffold with required layer folders and API entry points.</p>
+            <ul>
+              <li>controllers, workflows, pages, services</li>
+              <li>types.ts and index.ts</li>
+              <li>consistent naming and layout</li>
+            </ul>
+          </div>
+
+          <div class="ticket">
+            <div class="ticket-header">
+              <h3 class="ticket-title">Layer generator registry</h3>
+              <span class="ticket-id">G-02</span>
+            </div>
+            <span class="badge primary">Generator</span>
+            <p>Support generating individual architecture layers from a registry of templates.</p>
+            <ul>
+              <li>Page, component, workflow, service, domain, controller</li>
+              <li>Template selection by layer</li>
+              <li>Naming normalization</li>
+            </ul>
+          </div>
+
+          <div class="ticket">
+            <div class="ticket-header">
+              <h3 class="ticket-title">Template rendering and file writing</h3>
+              <span class="ticket-id">G-03</span>
+            </div>
+            <span class="badge primary">Generator</span>
+            <p>Render generated files and write them safely with consistent output conventions.</p>
+            <ul>
+              <li>Template engine abstraction</li>
+              <li>Safe directory creation</li>
+              <li>Deterministic file output</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="epic">
+        <div class="epic-header">
+          <h2>Epic 6 — Diagnostics, Reporting & CI Output</h2>
+          <p>
+            Make validation understandable to humans and reliable for automation, IDEs, and CI systems.
+          </p>
+        </div>
+        <div class="tickets">
+          <div class="ticket">
+            <div class="ticket-header">
+              <h3 class="ticket-title">Violation object model</h3>
+              <span class="ticket-id">R-01</span>
+            </div>
+            <span class="badge primary">Reporting</span>
+            <p>Define the standard structure for validation output across all rules and formats.</p>
+            <ul>
+              <li>Rule ID</li>
+              <li>Severity</li>
+              <li>File path</li>
+              <li>Line number</li>
+              <li>Message and rationale</li>
+            </ul>
+          </div>
+
+          <div class="ticket">
+            <div class="ticket-header">
+              <h3 class="ticket-title">Human-readable console formatter</h3>
+              <span class="ticket-id">R-02</span>
+            </div>
+            <span class="badge primary">Reporting</span>
+            <p>Format violations so devs can quickly understand what is wrong and where it is.</p>
+            <ul>
+              <li>Readable summaries</li>
+              <li>Suggested fix snippets</li>
+              <li>Readable warning vs error output</li>
+            </ul>
+          </div>
+
+          <div class="ticket">
+            <div class="ticket-header">
+              <h3 class="ticket-title">JSON output for automation</h3>
+              <span class="ticket-id">R-03</span>
+            </div>
+            <span class="badge success">CI</span>
+            <p>Provide a stable machine-readable output mode for CI, editors, and downstream tools.</p>
+            <ul>
+              <li>JSON contract</li>
+              <li>Consistent schema</li>
+              <li>CI-friendly exit codes</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="epic">
+        <div class="epic-header">
+          <h2>Epic 7 — Quality, Testing & Integration</h2>
+          <p>
+            Ensure every module is independently testable and that the whole framework composes cleanly
+            when assembled.
+          </p>
+        </div>
+        <div class="tickets">
+          <div class="ticket">
+            <div class="ticket-header">
+              <h3 class="ticket-title">Fixture-driven unit tests</h3>
+              <span class="ticket-id">Q-01</span>
+            </div>
+            <span class="badge success">Tests</span>
+            <p>Create reusable fixtures for valid and invalid architecture scenarios.</p>
+            <ul>
+              <li>Valid project fixture</li>
+              <li>Invalid page fixture</li>
+              <li>Invalid feature boundary fixture</li>
+            </ul>
+          </div>
+
+          <div class="ticket">
+            <div class="ticket-header">
+              <h3 class="ticket-title">Module-level test coverage</h3>
+              <span class="ticket-id">Q-02</span>
+            </div>
+            <span class="badge success">Tests</span>
+            <p>Each module owns its own tests to keep independent development safe and parallel.</p>
+            <ul>
+              <li>Config tests</li>
+              <li>Discovery tests</li>
+              <li>Rule tests</li>
+              <li>Generator tests</li>
+            </ul>
+          </div>
+
+          <div class="ticket">
+            <div class="ticket-header">
+              <h3 class="ticket-title">End-to-end validation flow</h3>
+              <span class="ticket-id">Q-03</span>
+            </div>
+            <span class="badge primary">Integration</span>
+            <p>Assemble the full stack and validate that command execution works as a single product.</p>
+            <ul>
+              <li>init → config → validate</li>
+              <li>generate → validate</li>
+              <li>reporting and pass/fail status</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="epic">
+        <div class="epic-header">
+          <h2>Epic 8 — Combination / Product Integration</h2>
+          <p>
+            This is the final integration epic that stitches the independent modules together into one
+            working framework and proves the system works as a whole.
+          </p>
+        </div>
+        <div class="tickets">
+          <div class="ticket">
+            <div class="ticket-header">
+              <h3 class="ticket-title">Compose the framework runtime</h3>
+              <span class="ticket-id">I-01</span>
+            </div>
+            <span class="badge primary">Integration</span>
+            <p>Wire together config, discovery, validation, reporting, and CLI into a single runtime pipeline.</p>
+            <ul>
+              <li>Stable API assembly</li>
+              <li>Shared contracts between modules</li>
+              <li>Minimal cross-module coupling</li>
+            </ul>
+          </div>
+
+          <div class="ticket">
+            <div class="ticket-header">
+              <h3 class="ticket-title">Construct init happy path</h3>
+              <span class="ticket-id">I-02</span>
+            </div>
+            <span class="badge success">Integration</span>
+            <p>Verify that a fresh project can be initialized and validated with the default architecture policy.</p>
+            <ul>
+              <li>architecture.yml created</li>
+              <li>AGENTS.md created</li>
+              <li>feature root generated</li>
+              <li>initial validation passes</li>
+            </ul>
+          </div>
+
+          <div class="ticket">
+            <div class="ticket-header">
+              <h3 class="ticket-title">Generated feature validation</h3>
+              <span class="ticket-id">I-03</span>
+            </div>
+            <span class="badge success">Integration</span>
+            <p>Ensure generated features pass validation immediately after creation.</p>
+            <ul>
+              <li>Generated templates follow architecture rules</li>
+              <li>Validation passes without extra edits</li>
+              <li>Violations are actionable when invalid</li>
+            </ul>
+          </div>
+
+          <div class="ticket">
+            <div class="ticket-header">
+              <h3 class="ticket-title">Release readiness and package validation</h3>
+              <span class="ticket-id">I-04</span>
+            </div>
+            <span class="badge warning">Release</span>
+            <p>Run the package through the end-to-end quality gate before declaring Phase 1 complete.</p>
+            <ul>
+              <li>Tests pass</li>
+              <li>CLI works from package entry</li>
+              <li>Validation output is stable</li>
+              <li>Docs align with behavior</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

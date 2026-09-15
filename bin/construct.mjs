@@ -4,7 +4,7 @@ import { EXIT_CODES, ConstructError } from '../src/diagnostics.mjs';
 
 const [cmd, ...args] = process.argv.slice(2);
 
-const USAGE = `Construct\n\nCommands:\n  construct init [dir]\n  construct feature create <name>\n  construct generate <layer> <name> --feature <feature>\n  construct sync\n  construct validate [--format json]\n  construct summarize [--feature <name>] [--format json|md|compact] [--since <ref>]\n  construct doctor`;
+const USAGE = `Construct\n\nCommands:\n  construct init [dir]\n  construct feature create <name>\n  construct generate <layer> <name> --feature <feature>\n  construct sync\n  construct validate [--format json]\n  construct summarize [--feature <name>] [--format json|md|compact|prose] [--since <ref>]\n  construct doctor`;
 
 try {
   if (cmd === 'init') await init(args);

@@ -57,7 +57,8 @@ export function generateLayer(root,layer,name,feature){
  const cap=name[0].toUpperCase()+name.slice(1);
  const dir=path.join(root,'features',feature,folderFor(layer));
  ensureDir(dir);
- const file=path.join(dir,layer==='hook'?`use${cap}.tsx`:`${cap}${layer==='page'?'Page':''}.tsx`);
+ const suffix=layer==='page'?'Page':layer==='controller'?'Controller':'';
+ const file=path.join(dir,layer==='hook'?`use${cap}.tsx`:`${cap}${suffix}.tsx`);
  const custom=findCustomTemplate(root,layer,config);
  const content=custom?renderCustomTemplate(custom,name):templates[layer](cap);
  write(file,content);

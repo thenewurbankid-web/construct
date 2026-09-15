@@ -31,6 +31,7 @@ test('generateLayer writes every layer into the right folder with expected namin
     assert.ok(fs.existsSync(file));
     if (layer === 'hook') assert.match(file, /useCheckout\.tsx$/);
     else if (layer === 'page') assert.match(file, /CheckoutPage\.tsx$/);
+    else if (layer === 'controller') assert.match(file, /CheckoutController\.tsx$/);
     else assert.match(file, /Checkout\.tsx$/);
   }
 });

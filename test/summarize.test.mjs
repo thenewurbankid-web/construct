@@ -4,7 +4,15 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { summarizeProject, summarizeCompact, summarizeSince } from '../src/summarize.mjs';
+import {
+  summarizeProject,
+  summarizeCompact,
+  summarizeProse,
+  describeExport,
+  extractDeclarationSource,
+  summarizeSince,
+} from '../src/summarize.mjs';
+import { extractExports } from '../src/parser.mjs';
 
 function tmpRoot() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'construct-summarize-'));
@@ -78,6 +86,86 @@ test('summarizeCompact renders one no-filler paragraph per feature including JSD
   assert.match(text, /Public API: initCheckout, useCheckoutStatus\./);
   assert.match(text, /Boots the checkout flow's state machine\./);
   assert.equal(text.split('\n\n').length, 1);
+});
+
+test('describeExport uses JSDoc verbatim when the file has exactly one export', () => {
+  const summary = {
+    path: 'features/x/workflows/InitCheckout.ts',
+    layer: 'workflow',
+    exports: ['initCheckout'],
+    imports: [],
+    jsdoc: "/** Boots the checkout flow's state machine. */",
+  };
+  assert.equal(describeExport(summary, 'initCheckout'), "`initCheckout` — Boots the checkout flow's state machine.");
+});
+
+test('describeExport falls back to a layer template (name + dependencies) when there is no JSDoc', () => {
+  const summary = {
+    path: 'features/x/hooks/useThing.ts',
+    layer: 'hook',
+    exports: ['useThing'],
+    imports: ['react', '../workflows/Thing', '../services/Thing'],
+    jsdoc: null,
+  };
+  const text = describeExport(summary, 'useThing');
+  assert.match(text, /`useThing` is a React hook/);
+  assert.match(text, /the "react" package/);
+  assert.match(text, /the Thing workflow/);
+  assert.match(text, /the Thing service/);
+});
+
+test('describeExport does not use the file JSDoc when there are multiple exports (ambiguous ownership)', () => {
+  const summary = {
+    path: 'features/x/services/Session.ts',
+    layer: 'service',
+    exports: ['startSession', 'endSession'],
+    imports: [],
+    jsdoc: '/** Session helpers. */',
+  };
+  const text = describeExport(summary, 'startSession');
+  assert.doesNotMatch(text, /Session helpers/);
+  assert.match(text, /`startSession` is a service function/);
+});
+
+test('summarizeProse prints the whole-feature stats plus each export\'s implementation translated to plain English', () => {
+  const root = tmpRoot();
+  seedCheckoutFeature(root);
+  const text = summarizeProse(root, { feature: 'checkout' });
+  assert.match(text, /The "checkout" feature is \d+ lines of code across \d+ layers?\./);
+  assert.match(text, /`initCheckout` \(features\/checkout\/workflows\/initCheckout\.ts\): Returns true\./);
+  assert.match(text, /`useCheckoutStatus` \(features\/checkout\/hooks\/useCheckoutStatus\.ts\): Returns the text 'idle'\./);
+  assert.match(text, /`Summary` \(features\/checkout\/components\/Summary\.tsx\): Renders `<div>` markup\./);
+  assert.match(text, /`initCheckout`.*and `useCheckoutStatus`.*are reachable, via its index\.ts\./);
+  // It's a translation, not a code dump or a comment echo — neither raw
+  // syntax nor the JSDoc text appear in the output.
+  assert.doesNotMatch(text, /export function|return true;|return 'idle'/);
+  assert.doesNotMatch(text, /Boots the checkout flow's state machine/);
+});
+
+test('extractDeclarationSource captures a function declaration up to its matching closing brace, no trailing semicolon needed', () => {
+  const source = `export function f(a, b) {\n  if (a) {\n    return b;\n  }\n  return a;\n}\nexport const after = 1;\n`;
+  const entry = extractExports(source).find((e) => e.name === 'f');
+  const code = extractDeclarationSource(source, entry.index);
+  assert.equal(code, `export function f(a, b) {\n  if (a) {\n    return b;\n  }\n  return a;\n}`);
+});
+
+test('extractDeclarationSource captures a const declaration up to its top-level semicolon, across nested braces/parens', () => {
+  const source = `export const machine = setup({}).createMachine({\n  id: 'x',\n  initial: 'idle',\n  states: { idle: {} },\n});\nexport function next() {}\n`;
+  const entry = extractExports(source).find((e) => e.name === 'machine');
+  const code = extractDeclarationSource(source, entry.index);
+  assert.equal(code, `export const machine = setup({}).createMachine({\n  id: 'x',\n  initial: 'idle',\n  states: { idle: {} },\n});`);
+});
+
+test('extractDeclarationSource does not get confused by a semicolon or brace inside a string literal', () => {
+  const source = `export const msg = "a; { not real }";\nexport const other = 2;\n`;
+  const entry = extractExports(source).find((e) => e.name === 'msg');
+  const code = extractDeclarationSource(source, entry.index);
+  assert.equal(code, `export const msg = "a; { not real }";`);
+});
+
+test('summarizeProse reports when there are no features', () => {
+  const root = tmpRoot();
+  assert.equal(summarizeProse(root), 'No features found.');
 });
 
 test('summarizeCompact reports when there are no features', () => {

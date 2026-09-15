@@ -11,7 +11,7 @@ import { validateArchitecture } from './architecture-enforcer.mjs';
 import { validateSeparationOfConcerns } from './soc-enforcer.mjs';
 import { validateReadability } from './readability-enforcer.mjs';
 import { syncPublicApi, checkPublicApiDrift } from './api-composer.mjs';
-import { summarizeProject, summarizeCompact, summarizeSince } from './summarize.mjs';
+import { summarizeProject, summarizeCompact, summarizeProse, summarizeSince } from './summarize.mjs';
 
 // Resolve the project root freshly per command: walks up from cwd to find an
 // existing architecture.yml (monorepo support), falling back to cwd itself
@@ -110,7 +110,9 @@ export async function summarize(args) {
     ? summarizeSince(root, args[si + 1], { format })
     : format === 'compact'
       ? summarizeCompact(root, { feature })
-      : summarizeProject(root, { feature, format });
+      : format === 'prose'
+        ? summarizeProse(root, { feature })
+        : summarizeProject(root, { feature, format });
   console.log(output);
 }
 
