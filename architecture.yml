@@ -1,0 +1,30 @@
+version: 1
+preset: strict-nextjs
+project:
+  framework: nextjs
+  language: typescript
+features:
+  root: features
+rules:
+  ROUTE-001: error
+  ROUTE-002: error
+  PAGE-001: error
+  PAGE-002: error
+  PAGE-003: error
+  PAGE-004: error
+  PAGE-005: error
+  PAGE-006: error
+  COMPONENT-001: error
+  COMPONENT-002: error
+  COMPONENT-003: error
+  WORKFLOW-001: error
+  SERVICE-001: error
+  SERVICE-002: error
+  DOMAIN-001: error
+  SLICE-001: error
+  SLICE-002: error
+  MODULE-001: error
+  PURE-001: warning
+  DRY-001: warning
+  SOC-001: error
+exceptions: []
