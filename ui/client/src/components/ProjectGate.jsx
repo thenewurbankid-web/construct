@@ -32,20 +32,22 @@ export function ProjectGate({ status, onStatusChange, children }) {
 
     return (
       <div className="page">
-        <h1>No Construct project here yet</h1>
-        <p className="hint">
-          The selected project directory —{' '}
-          <code>{status.projectDir}</code> — doesn&apos;t look like a Construct project: no{' '}
-          <code>architecture.yml</code> was found there or in any parent directory.
-        </p>
-        <p>
-          Pick a different, existing project in <Link to="/settings">Settings</Link>, or
-          initialize a new one right here:
-        </p>
-        <button onClick={handleInit} disabled={initializing}>
-          {initializing ? 'Initializing…' : 'Initialize Construct here'}
-        </button>
-        {error && <p className="status-error">{error}</p>}
+        <div className="gate-panel">
+          <h1>No Construct project here yet</h1>
+          <p className="hint">
+            The selected project directory —{' '}
+            <code>{status.projectDir}</code> — doesn&apos;t look like a Construct project: no{' '}
+            <code>architecture.yml</code> was found there or in any parent directory.
+          </p>
+          <p>
+            Pick a different, existing project in <Link to="/settings">Settings</Link>, or
+            initialize a new one right here:
+          </p>
+          <button onClick={handleInit} disabled={initializing}>
+            {initializing ? 'Initializing…' : 'Initialize Construct here'}
+          </button>
+          {error && <p className="status-error">{error}</p>}
+        </div>
       </div>
     );
   }

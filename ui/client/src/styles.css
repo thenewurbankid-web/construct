@@ -1,8 +1,27 @@
 :root {
-  --bg: #0f1115;
-  --panel: #171a21;
-  --border: #2a2e38;
-  --text: #e6e8ec;
+  /* -- Black/grey glassmorphism theme tokens (#44) --
+   * One place for the whole visual language: a near-black base with a
+   * faint radial highlight for depth, translucent grey "glass" panels
+   * that sit on top of it via backdrop-filter blur, and a subtle light
+   * border to read as an edge rather than a hard box. Every panel-ish
+   * surface across Dashboard/Settings/Wizard/Help/ProjectGate consumes
+   * these tokens (see .glass-panel and the classes built on it below)
+   * instead of hardcoding its own colors, so the whole UI stays visually
+   * consistent from one place. --tool/--llm/--error/--accent are kept
+   * from the original palette (decision: the accent blue and status
+   * colors already read fine against a darker glass backdrop and are
+   * used for meaning, not just decoration, so they didn't need to
+   * change — only the neutral background/panel/border/text tokens were
+   * redesigned for glassmorphism). */
+  --bg: #060709;
+  --bg-glow-1: rgba(90, 110, 150, 0.16);
+  --bg-glow-2: rgba(60, 70, 90, 0.14);
+  --panel-glass: rgba(210, 215, 225, 0.06);
+  --panel-glass-strong: rgba(210, 215, 225, 0.1);
+  --panel-blur: 20px;
+  --border: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.2);
+  --text: #eef0f4;
   --muted: #9aa1ac;
   --accent: #5b8cff;
   --tool: #3fae5a;
@@ -17,8 +36,13 @@
 
 body {
   margin: 0;
-  background: var(--bg);
   color: var(--text);
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(circle at 15% -10%, var(--bg-glow-1) 0%, transparent 45%),
+    radial-gradient(circle at 100% 10%, var(--bg-glow-2) 0%, transparent 50%);
+  background-attachment: fixed;
+  min-height: 100vh;
 }
 
 .app {
@@ -26,11 +50,27 @@ body {
   min-height: 100vh;
 }
 
+/* Shared glass surface — the one place the glassmorphism look is
+ * actually implemented. Every panel-like class below (.nav,
+ * .command-form, .chat, .settings-current, .wizard-start, .chat-input,
+ * .help-contents, .gate-panel) extends this rather than repeating the
+ * blur/border/background trio itself. */
+.glass-panel {
+  background: var(--panel-glass);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  backdrop-filter: blur(var(--panel-blur));
+  -webkit-backdrop-filter: blur(var(--panel-blur));
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+}
+
 .nav {
   width: 200px;
   flex-shrink: 0;
-  background: var(--panel);
+  background: var(--panel-glass-strong);
   border-right: 1px solid var(--border);
+  backdrop-filter: blur(var(--panel-blur));
+  -webkit-backdrop-filter: blur(var(--panel-blur));
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -83,9 +123,12 @@ body {
 }
 
 .command-form {
-  background: var(--panel);
+  background: var(--panel-glass);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 14px;
+  backdrop-filter: blur(var(--panel-blur));
+  -webkit-backdrop-filter: blur(var(--panel-blur));
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -110,12 +153,20 @@ body {
 
 .field input,
 .field select {
-  background: #0f1115;
+  background: rgba(0, 0, 0, 0.25);
   border: 1px solid var(--border);
   color: var(--text);
   border-radius: 6px;
   padding: 8px 10px;
   font-size: 0.9rem;
+}
+
+.field input:focus,
+.field select:focus,
+.chat-input input:focus {
+  outline: none;
+  border-color: var(--border-strong);
+  box-shadow: 0 0 0 3px rgba(91, 140, 255, 0.18);
 }
 
 .checkbox {
@@ -156,7 +207,7 @@ button:disabled {
 .command-output {
   white-space: pre-wrap;
   font-size: 0.82rem;
-  background: #0b0d11;
+  background: rgba(0, 0, 0, 0.3);
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 10px;
@@ -218,8 +269,13 @@ button:disabled {
 
 .settings-current {
   margin-top: 24px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
+  padding: 16px 18px;
+  background: var(--panel-glass);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  backdrop-filter: blur(var(--panel-blur));
+  -webkit-backdrop-filter: blur(var(--panel-blur));
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
 }
 
 .wizard-start {
@@ -227,6 +283,12 @@ button:disabled {
   align-items: flex-end;
   gap: 12px;
   margin-bottom: 16px;
+  padding: 14px 16px;
+  background: var(--panel-glass);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  backdrop-filter: blur(var(--panel-blur));
+  -webkit-backdrop-filter: blur(var(--panel-blur));
 }
 
 .chat {
@@ -236,9 +298,12 @@ button:disabled {
   min-height: 300px;
   max-height: 55vh;
   overflow-y: auto;
-  background: var(--panel);
+  background: var(--panel-glass);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 14px;
+  backdrop-filter: blur(var(--panel-blur));
+  -webkit-backdrop-filter: blur(var(--panel-blur));
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
   padding: 16px;
 }
 
@@ -251,7 +316,7 @@ button:disabled {
 }
 
 .chat-log {
-  background: #0b0d11;
+  background: rgba(0, 0, 0, 0.3);
   color: var(--muted);
   align-self: flex-start;
 }
@@ -289,7 +354,7 @@ button:disabled {
 
 .chat-input input {
   flex: 1;
-  background: #0f1115;
+  background: rgba(0, 0, 0, 0.25);
   border: 1px solid var(--border);
   color: var(--text);
   border-radius: 6px;
@@ -301,8 +366,27 @@ button:disabled {
   gap: 16px;
   flex-wrap: wrap;
   margin-bottom: 20px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border);
+  padding: 14px 16px;
+  background: var(--panel-glass);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  backdrop-filter: blur(var(--panel-blur));
+  -webkit-backdrop-filter: blur(var(--panel-blur));
+}
+
+/* ProjectGate (#44) — the one screen that previously had no panel
+ * wrapper at all, just bare text on the page background. Gets a glass
+ * card so it visually matches every other screen instead of looking
+ * unstyled next to them. */
+.gate-panel {
+  max-width: 640px;
+  padding: 24px 28px;
+  background: var(--panel-glass);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  backdrop-filter: blur(var(--panel-blur));
+  -webkit-backdrop-filter: blur(var(--panel-blur));
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
 }
 
 .help-contents a {
