@@ -1,0 +1,15 @@
+{
+  "name": "github-comment-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Standalone poller that watches GitHub issue comments for a '/claude' trigger and dispatches real Claude Code CLI runs, reporting the result back on the issue.",
+  "main": "index.mjs",
+  "scripts": {
+    "start": "node index.mjs",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
