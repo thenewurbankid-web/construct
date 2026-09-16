@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api.js';
+import { Button, GlassPanel } from './ui/index.js';
 
 /** Wraps a page that needs a valid Construct project (Dashboard, Wizard) and
  * blocks it behind a project-selection/init screen instead of letting it
@@ -32,7 +33,7 @@ export function ProjectGate({ status, onStatusChange, children }) {
 
     return (
       <div className="page">
-        <div className="gate-panel">
+        <GlassPanel className="gate-panel">
           <h1>No Construct project here yet</h1>
           <p className="hint">
             The selected project directory —{' '}
@@ -43,11 +44,11 @@ export function ProjectGate({ status, onStatusChange, children }) {
             Pick a different, existing project in <Link to="/settings">Settings</Link>, or
             initialize a new one right here:
           </p>
-          <button onClick={handleInit} disabled={initializing}>
+          <Button onClick={handleInit} disabled={initializing}>
             {initializing ? 'Initializing…' : 'Initialize Construct here'}
-          </button>
+          </Button>
           {error && <p className="status-error">{error}</p>}
-        </div>
+        </GlassPanel>
       </div>
     );
   }

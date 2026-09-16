@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api } from '../api.js';
 import { CommandResult } from '../components/CommandResult.jsx';
+import { Button, Field, GlassPanel, Input, Select } from '../components/ui/index.js';
 
 const LAYERS = ['domain', 'service', 'workflow', 'hook', 'component', 'page', 'controller'];
 
@@ -12,7 +13,7 @@ function LayerCheckboxes({ selected, onChange }) {
     <div className="layer-checkboxes">
       {LAYERS.map((layer) => (
         <label key={layer} className="checkbox">
-          <input type="checkbox" checked={selected.includes(layer)} onChange={() => toggle(layer)} />
+          <Input type="checkbox" checked={selected.includes(layer)} onChange={() => toggle(layer)} />
           {layer}
         </label>
       ))}
@@ -37,49 +38,44 @@ function CreateForm() {
   }
 
   return (
-    <form className="command-form" onSubmit={run}>
+    <GlassPanel as="form" className="command-form" onSubmit={run}>
       <h3>Create</h3>
-      <label className="field">
-        <span>What to scaffold</span>
-        <select value={kind} onChange={(e) => setKind(e.target.value)}>
+      <Field label="What to scaffold">
+        <Select value={kind} onChange={(e) => setKind(e.target.value)}>
           <option value="feature">A new feature (all 7 layer folders)</option>
           <option value="layer">A vertical slice (several layers of one logical unit)</option>
           <option value="single">A single layer file</option>
-        </select>
-      </label>
-      <label className="field">
-        <span>Name</span>
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. CpoAccess" required />
-      </label>
+        </Select>
+      </Field>
+      <Field label="Name">
+        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. CpoAccess" required />
+      </Field>
       {kind !== 'feature' && (
-        <label className="field">
-          <span>Feature</span>
-          <input value={feature} onChange={(e) => setFeature(e.target.value)} placeholder="e.g. cpo-v2" required />
-        </label>
+        <Field label="Feature">
+          <Input value={feature} onChange={(e) => setFeature(e.target.value)} placeholder="e.g. cpo-v2" required />
+        </Field>
       )}
       {kind === 'single' && (
-        <label className="field">
-          <span>Layer</span>
-          <select value={layer} onChange={(e) => setLayer(e.target.value)}>
+        <Field label="Layer">
+          <Select value={layer} onChange={(e) => setLayer(e.target.value)}>
             {LAYERS.map((l) => (
               <option key={l} value={l}>
                 {l}
               </option>
             ))}
-          </select>
-        </label>
+          </Select>
+        </Field>
       )}
       {kind === 'layer' && (
-        <label className="field">
-          <span>Layers (built in dependency order regardless of the order checked)</span>
+        <Field label="Layers (built in dependency order regardless of the order checked)">
           <LayerCheckboxes selected={layers} onChange={setLayers} />
-        </label>
+        </Field>
       )}
-      <button type="submit" disabled={busy}>
+      <Button type="submit" disabled={busy}>
         {busy ? 'Running…' : 'Run create'}
-      </button>
+      </Button>
       <CommandResult result={result} />
-    </form>
+    </GlassPanel>
   );
 }
 
@@ -102,64 +98,57 @@ function RefactorForm() {
   }
 
   return (
-    <form className="command-form" onSubmit={run}>
+    <GlassPanel as="form" className="command-form" onSubmit={run}>
       <h3>Refactor</h3>
       <p className="hint">Mechanical, LLM-free moves/renames — content and exported identifiers are never touched.</p>
-      <label className="field">
-        <span>Action</span>
-        <select value={action} onChange={(e) => setAction(e.target.value)}>
+      <Field label="Action">
+        <Select value={action} onChange={(e) => setAction(e.target.value)}>
           <option value="move">Move (change layer)</option>
           <option value="rename">Rename (same layer)</option>
-        </select>
-      </label>
-      <label className="field">
-        <span>Name</span>
-        <input value={name} onChange={(e) => setName(e.target.value)} required />
-      </label>
+        </Select>
+      </Field>
+      <Field label="Name">
+        <Input value={name} onChange={(e) => setName(e.target.value)} required />
+      </Field>
       {action === 'rename' && (
-        <label className="field">
-          <span>New name</span>
-          <input value={newName} onChange={(e) => setNewName(e.target.value)} required />
-        </label>
+        <Field label="New name">
+          <Input value={newName} onChange={(e) => setNewName(e.target.value)} required />
+        </Field>
       )}
-      <label className="field">
-        <span>Feature</span>
-        <input value={feature} onChange={(e) => setFeature(e.target.value)} required />
-      </label>
+      <Field label="Feature">
+        <Input value={feature} onChange={(e) => setFeature(e.target.value)} required />
+      </Field>
       {action === 'move' ? (
         <>
-          <label className="field">
-            <span>From layer</span>
-            <select value={from} onChange={(e) => setFrom(e.target.value)}>
+          <Field label="From layer">
+            <Select value={from} onChange={(e) => setFrom(e.target.value)}>
               {LAYERS.map((l) => (
                 <option key={l} value={l}>{l}</option>
               ))}
-            </select>
-          </label>
-          <label className="field">
-            <span>To layer</span>
-            <select value={to} onChange={(e) => setTo(e.target.value)}>
+            </Select>
+          </Field>
+          <Field label="To layer">
+            <Select value={to} onChange={(e) => setTo(e.target.value)}>
               {LAYERS.map((l) => (
                 <option key={l} value={l}>{l}</option>
               ))}
-            </select>
-          </label>
+            </Select>
+          </Field>
         </>
       ) : (
-        <label className="field">
-          <span>Layer</span>
-          <select value={layer} onChange={(e) => setLayer(e.target.value)}>
+        <Field label="Layer">
+          <Select value={layer} onChange={(e) => setLayer(e.target.value)}>
             {LAYERS.map((l) => (
               <option key={l} value={l}>{l}</option>
             ))}
-          </select>
-        </label>
+          </Select>
+        </Field>
       )}
-      <button type="submit" disabled={busy}>
+      <Button type="submit" disabled={busy}>
         {busy ? 'Running…' : 'Run refactor'}
-      </button>
+      </Button>
       <CommandResult result={result} />
-    </form>
+    </GlassPanel>
   );
 }
 
@@ -179,42 +168,38 @@ function ResearchForm() {
   }
 
   return (
-    <form className="command-form" onSubmit={run}>
+    <GlassPanel as="form" className="command-form" onSubmit={run}>
       <h3>Research</h3>
       <p className="hint">Read-only — never writes anything.</p>
-      <label className="field">
-        <span>Action</span>
-        <select value={action} onChange={(e) => setAction(e.target.value)}>
+      <Field label="Action">
+        <Select value={action} onChange={(e) => setAction(e.target.value)}>
           <option value="doctor">Doctor (environment/tooling check)</option>
           <option value="summarize">Summarize a feature</option>
-        </select>
-      </label>
+        </Select>
+      </Field>
       {action === 'summarize' && (
         <>
-          <label className="field">
-            <span>Feature (optional — omit for the whole project)</span>
-            <input value={feature} onChange={(e) => setFeature(e.target.value)} />
-          </label>
-          <label className="field">
-            <span>Format</span>
-            <select value={format} onChange={(e) => setFormat(e.target.value)}>
+          <Field label="Feature (optional — omit for the whole project)">
+            <Input value={feature} onChange={(e) => setFeature(e.target.value)} />
+          </Field>
+          <Field label="Format">
+            <Select value={format} onChange={(e) => setFormat(e.target.value)}>
               <option value="json">json</option>
               <option value="md">md</option>
               <option value="compact">compact</option>
               <option value="prose">prose</option>
-            </select>
-          </label>
-          <label className="field">
-            <span>Since (git ref, optional)</span>
-            <input value={since} onChange={(e) => setSince(e.target.value)} placeholder="e.g. main" />
-          </label>
+            </Select>
+          </Field>
+          <Field label="Since (git ref, optional)">
+            <Input value={since} onChange={(e) => setSince(e.target.value)} placeholder="e.g. main" />
+          </Field>
         </>
       )}
-      <button type="submit" disabled={busy}>
+      <Button type="submit" disabled={busy}>
         {busy ? 'Running…' : 'Run research'}
-      </button>
+      </Button>
       <CommandResult result={result} />
-    </form>
+    </GlassPanel>
   );
 }
 
@@ -248,59 +233,52 @@ function ImportForm() {
   }
 
   return (
-    <form className="command-form" onSubmit={run}>
+    <GlassPanel as="form" className="command-form" onSubmit={run}>
       <h3>Import (non-interactive)</h3>
       <p className="hint">
         For a single old file or an already-approved plan file. For the guided, chat-style
         whole-route wizard, use the <strong>Import Wizard</strong> page instead.
       </p>
-      <label className="field">
-        <span>Mode</span>
-        <select value={mode} onChange={(e) => setMode(e.target.value)}>
+      <Field label="Mode">
+        <Select value={mode} onChange={(e) => setMode(e.target.value)}>
           <option value="unit">Single unit (one old file)</option>
           <option value="plan">From an approved plan file</option>
-        </select>
-      </label>
+        </Select>
+      </Field>
       {mode === 'unit' ? (
         <>
-          <label className="field">
-            <span>Name</span>
-            <input value={name} onChange={(e) => setName(e.target.value)} required />
-          </label>
-          <label className="field">
-            <span>Feature</span>
-            <input value={feature} onChange={(e) => setFeature(e.target.value)} required />
-          </label>
-          <label className="field">
-            <span>Layers</span>
+          <Field label="Name">
+            <Input value={name} onChange={(e) => setName(e.target.value)} required />
+          </Field>
+          <Field label="Feature">
+            <Input value={feature} onChange={(e) => setFeature(e.target.value)} required />
+          </Field>
+          <Field label="Layers">
             <LayerCheckboxes selected={layers} onChange={setLayers} />
-          </label>
-          <label className="field">
-            <span>From (path to the old source file)</span>
-            <input value={from} onChange={(e) => setFrom(e.target.value)} required />
-          </label>
+          </Field>
+          <Field label="From (path to the old source file)">
+            <Input value={from} onChange={(e) => setFrom(e.target.value)} required />
+          </Field>
         </>
       ) : (
-        <label className="field">
-          <span>Plan file path</span>
-          <input value={planPath} onChange={(e) => setPlanPath(e.target.value)} placeholder="./plan.json" required />
-        </label>
+        <Field label="Plan file path">
+          <Input value={planPath} onChange={(e) => setPlanPath(e.target.value)} placeholder="./plan.json" required />
+        </Field>
       )}
       <label className="checkbox">
-        <input type="checkbox" checked={useLlm} onChange={(e) => setUseLlm(e.target.checked)} />
+        <Input type="checkbox" checked={useLlm} onChange={(e) => setUseLlm(e.target.checked)} />
         Have the LLM write the ported logic (otherwise: TODO(import) breadcrumbs only)
       </label>
       {useLlm && (
-        <label className="field">
-          <span>Provider</span>
-          <input value={llm} onChange={(e) => setLlm(e.target.value)} />
-        </label>
+        <Field label="Provider">
+          <Input value={llm} onChange={(e) => setLlm(e.target.value)} />
+        </Field>
       )}
-      <button type="submit" disabled={busy}>
+      <Button type="submit" disabled={busy}>
         {busy ? 'Running…' : 'Run import'}
-      </button>
+      </Button>
       <CommandResult result={result} />
-    </form>
+    </GlassPanel>
   );
 }
 

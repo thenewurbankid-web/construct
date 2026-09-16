@@ -104,6 +104,37 @@ darker glass backdrop). The shared `.glass-panel` class documents the
 background/border/blur recipe once; every panel-like surface across
 Dashboard/Settings/Wizard/Help/ProjectGate consumes the same tokens.
 
+## Reusable UI components
+
+`ui/client/src/components/ui/` holds the themed, reusable functional
+components every page builds its forms/panels out of, instead of each
+page hand-rolling its own `<button>`/`<select>`/`<div className="...">`
+markup:
+
+- **Button** — every button in the app (`variant="primary"`, the default;
+  `variant="ghost"` exists as a themed lower-emphasis option, not yet used
+  by any page).
+- **GlassPanel** — the `.glass-panel` surface as a component. Takes an
+  `as` prop for the rendered tag (`form`, `nav`, `div`, …) and a
+  `className` that's *appended* rather than replaced, since several call
+  sites still need their own layout class alongside the shared glass
+  treatment (e.g. `<GlassPanel as="form" className="command-form">` — the
+  exact class ui/e2e's Playwright suite locates the Create form by).
+- **Field** — the label/hint wrapper around a form control.
+- **Input** / **Select** — thin, themed passthroughs to real
+  `<input>`/`<select>` elements (deliberately trivial: Playwright's
+  `getByPlaceholder`, native `<select>` interaction, etc. all keep working
+  unchanged since the underlying DOM node is untouched).
+- **Badge** — the tool/llm/llm-none/error status label, generalized out of
+  what `AttributionBadge` used to hand-roll per `<span>` (also now used by
+  `AttributionBadge` itself, and by the prose in the Help page).
+
+Every one of these has a Storybook story (see above) rendered on the real
+theme. Refactoring existing pages onto them was a pure extraction — no
+class names Playwright/ui/e2e depends on changed, and the full e2e suite
+was re-run after the refactor to confirm no regression (see "What was
+verified" below).
+
 ## End-to-end tests (Playwright)
 
 `ui/e2e/` drives the real, rendered app in an actual browser (Chromium) —

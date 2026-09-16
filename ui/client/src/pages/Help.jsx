@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
+import { Badge, GlassPanel } from '../components/ui/index.js';
 
 // Groupings purely for presentation — the actual list of topics (and their
 // order) comes from the backend's /api/help, which re-exports the REPL's
@@ -256,13 +257,12 @@ function Attribution() {
       </p>
       <ul>
         <li>
-          <span className="attribution-label tool">tool</span> what Construct's own deterministic
-          code did — files created/moved/renamed, or a report generated. This is always present.
+          <Badge tone="tool">tool</Badge> what Construct's own deterministic code did — files
+          created/moved/renamed, or a report generated. This is always present.
         </li>
         <li>
-          <span className="attribution-label llm">llm</span> (orange) or{' '}
-          <span className="attribution-label llm-none">llm</span> (grey, "0 calls") — whether, and
-          how many times, an LLM was actually called for that action.
+          <Badge tone="llm">llm</Badge> (orange) or <Badge tone="llm-none">llm</Badge> (grey, "0
+          calls") — whether, and how many times, an LLM was actually called for that action.
         </li>
       </ul>
       <p>
@@ -375,12 +375,12 @@ export function Help() {
         this UI — in one place.
       </p>
 
-      <nav className="help-contents">
+      <GlassPanel as="nav" className="help-contents">
         <a href="#getting-started">Getting started</a>
         <a href="#attribution">Tool vs LLM attribution</a>
         <a href="#ui-guide">UI guide</a>
         <a href="#cli-reference">CLI reference</a>
-      </nav>
+      </GlassPanel>
 
       <section id="getting-started" className="help-section">
         <h2>Getting started</h2>

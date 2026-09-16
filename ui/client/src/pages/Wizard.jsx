@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { wizardSocketUrl } from '../api.js';
 import { AttributionBadge } from '../components/AttributionBadge.jsx';
+import { Button, Field, GlassPanel, Input } from '../components/ui/index.js';
 
 const ATTRIBUTION_RE = /^\[tool: (.*)\] \[llm: (.*)\]$/;
 
@@ -87,31 +88,30 @@ export function Wizard() {
       </p>
 
       {(status === 'idle' || status === 'done') && (
-        <div className="wizard-start">
-          <label className="field">
-            <span>Seed route (optional — a URL like /v2/home, or a route folder path)</span>
-            <input value={seedRoute} onChange={(e) => setSeedRoute(e.target.value)} placeholder="/v2/home" />
-          </label>
-          <button onClick={start}>Start wizard session</button>
-        </div>
+        <GlassPanel className="wizard-start">
+          <Field label="Seed route (optional — a URL like /v2/home, or a route folder path)">
+            <Input value={seedRoute} onChange={(e) => setSeedRoute(e.target.value)} placeholder="/v2/home" />
+          </Field>
+          <Button onClick={start}>Start wizard session</Button>
+        </GlassPanel>
       )}
 
-      <div className="chat">
+      <GlassPanel className="chat">
         {messages.map((m) => (
           <ChatMessage key={m.id} message={m} />
         ))}
         <div ref={bottomRef} />
-      </div>
+      </GlassPanel>
 
       {awaitingAnswer && (
         <form className="chat-input" onSubmit={sendAnswer}>
-          <input
+          <Input
             autoFocus
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Type your answer…"
           />
-          <button type="submit">Send</button>
+          <Button type="submit">Send</Button>
         </form>
       )}
 

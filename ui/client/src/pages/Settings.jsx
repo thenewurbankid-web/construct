@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
+import { Button, Field, GlassPanel, Input, Select } from '../components/ui/index.js';
 
 export function Settings({ onSettingsChange } = {}) {
   const [settings, setSettings] = useState(null);
@@ -40,45 +41,51 @@ export function Settings({ onSettingsChange } = {}) {
         wizard). Nothing is persisted to disk — restarting the backend resets to its defaults.
       </p>
 
-      <label className="field">
-        <span>Project directory</span>
-        <input
+      <Field
+        label="Project directory"
+        hint={
+          <>
+            Passed as <code>--dir</code> to every command (same as the CLI). Must be an existing
+            directory; it doesn&apos;t need <code>architecture.yml</code> yet if you plan to run{' '}
+            <code>init</code>-equivalent actions from here first.
+          </>
+        }
+      >
+        <Input
           type="text"
           value={projectDirInput}
           onChange={(e) => setProjectDirInput(e.target.value)}
           placeholder="/path/to/your/construct-project"
         />
-        <span className="field-hint">
-          Passed as <code>--dir</code> to every command (same as the CLI). Must be an existing
-          directory; it doesn&apos;t need <code>architecture.yml</code> yet if you plan to run{' '}
-          <code>init</code>-equivalent actions from here first.
-        </span>
-      </label>
+      </Field>
 
-      <label className="field">
-        <span>LLM provider</span>
-        <select value={llmProvider} onChange={(e) => setLlmProvider(e.target.value)}>
+      <Field
+        label="LLM provider"
+        hint={
+          <>
+            Construct only ever calls an LLM for import&apos;s optional fill step and the route
+            wizard&apos;s analysis step — everything else (create, refactor, research, and import&apos;s
+            scaffolding) stays fully deterministic regardless of this setting.
+          </>
+        }
+      >
+        <Select value={llmProvider} onChange={(e) => setLlmProvider(e.target.value)}>
           <option value="">— none (LLM steps stay off unless a command opts in) —</option>
           {settings.availableProviders.map((p) => (
             <option key={p} value={p}>
               {p}
             </option>
           ))}
-        </select>
-        <span className="field-hint">
-          Construct only ever calls an LLM for import&apos;s optional fill step and the route
-          wizard&apos;s analysis step — everything else (create, refactor, research, and import&apos;s
-          scaffolding) stays fully deterministic regardless of this setting.
-        </span>
-      </label>
+        </Select>
+      </Field>
 
-      <button onClick={save}>Save settings</button>
+      <Button onClick={save}>Save settings</Button>
 
       {status && (
         <p className={status.ok ? 'status-ok' : 'status-error'}>{status.message}</p>
       )}
 
-      <div className="settings-current">
+      <GlassPanel className="settings-current">
         <h2>Current resolution</h2>
         <p>
           <strong>Project directory:</strong> {settings.projectDir}
@@ -92,7 +99,7 @@ export function Settings({ onSettingsChange } = {}) {
         <p>
           <strong>LLM provider:</strong> {settings.llmProvider || <em>none</em>}
         </p>
-      </div>
+      </GlassPanel>
     </div>
   );
 }

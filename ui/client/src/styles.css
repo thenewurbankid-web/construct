@@ -122,13 +122,13 @@ body {
   }
 }
 
+/* .command-form (#46): now just the layout on top of the shared
+ * .glass-panel background/border/blur — GlassPanel's `className` prop is
+ * used as `<GlassPanel as="form" className="command-form">` in
+ * Dashboard.jsx, so this class only needs to carry what's specific to a
+ * command form (padding + vertical stack), not repeat the glass recipe
+ * a fourth time. */
 .command-form {
-  background: var(--panel-glass);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  backdrop-filter: blur(var(--panel-blur));
-  -webkit-backdrop-filter: blur(var(--panel-blur));
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -151,8 +151,12 @@ body {
   font-size: 0.78rem;
 }
 
-.field input,
-.field select {
+/* Input.jsx / Select.jsx (#46): styled by their own `.ui-input`/
+ * `.ui-select` classes rather than a `.field input, .field select`
+ * descendant selector, so they look right rendered standalone in a
+ * Storybook story too, not only nested inside a `.field` label. */
+.ui-input,
+.ui-select {
   background: rgba(0, 0, 0, 0.25);
   border: 1px solid var(--border);
   color: var(--text);
@@ -161,8 +165,8 @@ body {
   font-size: 0.9rem;
 }
 
-.field input:focus,
-.field select:focus,
+.ui-input:focus,
+.ui-select:focus,
 .chat-input input:focus {
   outline: none;
   border-color: var(--border-strong);
@@ -182,6 +186,9 @@ body {
   gap: 10px;
 }
 
+/* Kept as a fallback baseline for any <button> not yet migrated to
+ * Button.jsx (e.g. other in-flight work elsewhere in ui/client) — not
+ * removed, just no longer the only styling layer. */
 button {
   background: var(--accent);
   color: #fff;
@@ -196,6 +203,20 @@ button {
 button:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+/* Button.jsx (#46): every button on Dashboard/Settings/Wizard/
+ * ProjectGate now renders through that component rather than a bare
+ * <button>, carrying one of these two variants explicitly instead of
+ * relying only on the tag-selector fallback above. `ghost` (a
+ * lower-emphasis outline style) isn't wired into any page yet — it
+ * exists so Button actually demonstrates a real choice in its Storybook
+ * story, as themed CSS a future secondary action can reach for instead
+ * of a one-off style. */
+.ui-button--ghost {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
 }
 
 .command-result {
@@ -259,6 +280,13 @@ button:disabled {
   color: var(--muted);
 }
 
+/* New tone added for Badge.jsx (#46) — nothing used an error-toned
+ * attribution-label before Badge generalized the concept. */
+.attribution-label.error {
+  background: rgba(224, 90, 90, 0.15);
+  color: var(--error);
+}
+
 .status-ok {
   color: var(--tool);
 }
@@ -267,15 +295,13 @@ button:disabled {
   color: var(--error);
 }
 
+/* .settings-current / .wizard-start / .chat (#46): layout-only now —
+ * each is rendered as `<GlassPanel className="…">` in its page, so the
+ * background/border/blur/box-shadow trio lives once on .glass-panel
+ * instead of being repeated per class. */
 .settings-current {
   margin-top: 24px;
   padding: 16px 18px;
-  background: var(--panel-glass);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  backdrop-filter: blur(var(--panel-blur));
-  -webkit-backdrop-filter: blur(var(--panel-blur));
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
 }
 
 .wizard-start {
@@ -284,11 +310,6 @@ button:disabled {
   gap: 12px;
   margin-bottom: 16px;
   padding: 14px 16px;
-  background: var(--panel-glass);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  backdrop-filter: blur(var(--panel-blur));
-  -webkit-backdrop-filter: blur(var(--panel-blur));
 }
 
 .chat {
@@ -298,12 +319,6 @@ button:disabled {
   min-height: 300px;
   max-height: 55vh;
   overflow-y: auto;
-  background: var(--panel-glass);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  backdrop-filter: blur(var(--panel-blur));
-  -webkit-backdrop-filter: blur(var(--panel-blur));
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
   padding: 16px;
 }
 
@@ -361,32 +376,20 @@ button:disabled {
   padding: 10px 12px;
 }
 
+/* .help-contents / .gate-panel (#46): layout-only, rendered as
+ * <GlassPanel className="…"> in Help.jsx/ProjectGate.jsx respectively —
+ * see the .settings-current/.wizard-start/.chat comment above. */
 .help-contents {
   display: flex;
   gap: 16px;
   flex-wrap: wrap;
   margin-bottom: 20px;
   padding: 14px 16px;
-  background: var(--panel-glass);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  backdrop-filter: blur(var(--panel-blur));
-  -webkit-backdrop-filter: blur(var(--panel-blur));
 }
 
-/* ProjectGate (#44) — the one screen that previously had no panel
- * wrapper at all, just bare text on the page background. Gets a glass
- * card so it visually matches every other screen instead of looking
- * unstyled next to them. */
 .gate-panel {
   max-width: 640px;
   padding: 24px 28px;
-  background: var(--panel-glass);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  backdrop-filter: blur(var(--panel-blur));
-  -webkit-backdrop-filter: blur(var(--panel-blur));
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
 }
 
 .help-contents a {
