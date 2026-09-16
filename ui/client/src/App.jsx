@@ -4,6 +4,7 @@ import { Dashboard } from './pages/Dashboard.jsx';
 import { Settings } from './pages/Settings.jsx';
 import { Wizard } from './pages/Wizard.jsx';
 import { Help } from './pages/Help.jsx';
+import { PagesEditor } from './pages/PagesEditor.jsx';
 import { ProjectGate } from './components/ProjectGate.jsx';
 import { api } from './api.js';
 
@@ -35,6 +36,9 @@ export function App() {
         <NavLink to="/wizard" className={({ isActive }) => (isActive ? 'active' : '')}>
           Import Wizard
         </NavLink>
+        <NavLink to="/pages" className={({ isActive }) => (isActive ? 'active' : '')}>
+          Pages Editor
+        </NavLink>
         <NavLink to="/settings" className={({ isActive }) => (isActive ? 'active' : '')}>
           Settings
         </NavLink>
@@ -57,6 +61,14 @@ export function App() {
             element={
               <ProjectGate status={projectStatus} onStatusChange={setProjectStatus}>
                 <Wizard />
+              </ProjectGate>
+            }
+          />
+          <Route
+            path="/pages"
+            element={
+              <ProjectGate status={projectStatus} onStatusChange={setProjectStatus}>
+                <PagesEditor />
               </ProjectGate>
             }
           />

@@ -30,6 +30,24 @@ export const api = {
   // backend) — used by the Help page so its CLI reference can't drift from
   // what `construct` and `construct repl`'s `help` actually print.
   getHelp: () => fetch('/api/help').then((r) => r.json()),
+
+  // Pages editor (epic #48 — pages browser, JSX tree, snippet/props
+  // save-back, auto-map). Every one of these is scoped server-side to
+  // features/<feature>/pages/ (see ui/server/src/pagesEditor.mjs) — the
+  // client never needs to enforce that itself, only render what comes back.
+  getFeatures: () => fetch('/api/pages/features').then((r) => r.json()),
+  getPages: (feature) => fetch(`/api/pages?feature=${encodeURIComponent(feature)}`).then((r) => r.json()),
+  getPageTree: (feature, file) =>
+    fetch(`/api/pages/tree?feature=${encodeURIComponent(feature)}&file=${encodeURIComponent(file)}`).then((r) => r.json()),
+  getNodeSnippet: (feature, file, nodeId) =>
+    fetch(`/api/pages/node?feature=${encodeURIComponent(feature)}&file=${encodeURIComponent(file)}&nodeId=${encodeURIComponent(nodeId)}`).then((r) => r.json()),
+  saveNodeSnippet: (body) => postJson('/api/pages/node', body),
+  getNodeProps: (feature, file, nodeId) =>
+    fetch(`/api/pages/props?feature=${encodeURIComponent(feature)}&file=${encodeURIComponent(file)}&nodeId=${encodeURIComponent(nodeId)}`).then((r) => r.json()),
+  saveNodeProp: (body) => postJson('/api/pages/props', body),
+  getUnmappedProps: (feature, file, nodeId) =>
+    fetch(`/api/pages/unmapped?feature=${encodeURIComponent(feature)}&file=${encodeURIComponent(file)}&nodeId=${encodeURIComponent(nodeId)}`).then((r) => r.json()),
+  applyAutoMap: (body) => postJson('/api/pages/automap', body),
 };
 
 /** WebSocket URL for the import route wizard, relative to wherever the

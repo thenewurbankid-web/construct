@@ -441,3 +441,239 @@ button:disabled {
   padding: 1px 5px;
   font-size: 0.85em;
 }
+
+/* --- Pages Editor (epic #48) --- */
+
+.pages-browser {
+  /* background/border/blur come from .glass-panel (GlassPanel component) */
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.pages-file-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pages-file-list button {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  width: 100%;
+  text-align: left;
+}
+
+.pages-file-list li.active button {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.pages-editor-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.2fr;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .pages-editor-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tree-panel,
+.preview-panel,
+.inspector-panel {
+  /* background/border/blur come from .glass-panel (GlassPanel component) */
+  padding: 12px;
+  max-height: 70vh;
+  overflow: auto;
+}
+
+.tree-root {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.tree-root ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.tree-node {
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.tree-node:hover {
+  background: rgba(91, 140, 255, 0.1);
+}
+
+.tree-node.selected {
+  background: var(--accent);
+  color: #fff;
+}
+
+.tree-node.component .tree-node-tag {
+  color: var(--llm);
+}
+
+.tree-node.selected .tree-node-tag {
+  color: inherit;
+}
+
+.tree-node-props {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.tree-node.selected .tree-node-props {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.preview-canvas {
+  font-size: 0.8rem;
+}
+
+.preview-node {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px;
+  margin: 4px 0;
+  cursor: pointer;
+}
+
+.preview-node.component {
+  border-color: rgba(217, 140, 43, 0.5);
+}
+
+.preview-node.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.preview-node-label {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.preview-node.selected .preview-node-label {
+  color: var(--accent);
+}
+
+.preview-node-children {
+  padding-left: 10px;
+}
+
+.snippet-textarea {
+  width: 100%;
+  background: #0b0d11;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem;
+}
+
+.violation-list {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 0.82rem;
+}
+
+.props-inspector,
+.automap-panel {
+  margin-top: 16px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.prop-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+}
+
+.prop-row .prop-name {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  min-width: 90px;
+}
+
+.prop-row input[type='text'],
+.prop-row input[type='number'] {
+  flex: 1;
+  background: #0f1115;
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
+.automap-candidates {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0;
+}
+
+.propflow-panel {
+  /* background/border/blur come from .glass-panel (GlassPanel component) */
+  margin-top: 20px;
+  padding: 16px;
+}
+
+.propflow-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 10px 0;
+  font-size: 0.82rem;
+}
+
+.propflow-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.propflow-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.propflow-svg {
+  background: #0b0d11;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: auto;
+  max-width: 100%;
+}
+
+.propflow-box {
+  fill: #171a21;
+  stroke: var(--border);
+}
+
+.propflow-box.component {
+  stroke: var(--llm);
+}
+
+.propflow-box-label {
+  fill: var(--text);
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
