@@ -99,3 +99,13 @@ snapshot that rots. See #35 for the audit that established this.
    commit at the very end. This is about durability and reviewability, not
    just tidiness: uncommitted work is invisible to anyone but the current
    session and is lost if that session ends badly.
+9. **Never sit idle while a session is open and backlog work exists.**
+   Once whatever's actively in flight finishes (an agent completes, a
+   ticket closes), immediately pick up the next queued/Backlog item
+   rather than waiting for the human to explicitly say "go" each time.
+   "Queue it for when there's capacity" means capacity being free is
+   itself the go-ahead — it does not mean wait for a second, separate
+   instruction. The only things worth actually pausing for are genuine
+   human decisions this file can't resolve on its own (a security/safety
+   tradeoff, an ambiguous requirement, credentials only the human has) —
+   not idling by default "just in case."
