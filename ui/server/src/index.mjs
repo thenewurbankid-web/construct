@@ -6,6 +6,7 @@
 import express from 'express';
 import cors from 'cors';
 import http from 'node:http';
+import fs from 'node:fs';
 import { create, refactor, research, importCommand, init } from '../../../src/cli.mjs';
 import { findProjectRoot } from '../../../src/config.mjs';
 import { USAGE } from '../../../src/usage.mjs';
@@ -13,6 +14,21 @@ import { HELP_TOPICS, TOPIC_ORDER, getTopLevelHelpText } from '../../../src/repl
 import { getSettings, updateSettings } from './settings.mjs';
 import { runCapturing, withDir } from './commandRunner.mjs';
 import { attachWizardSocket } from './wizardSocket.mjs';
+import {
+  PagesEditorError,
+  listFeatures,
+  listPages,
+  resolvePageFile,
+  serializeTree,
+  getNodeSnippet,
+  patchNode,
+  getNodeProps,
+  buildAttributeSnippet,
+  findUnmappedProps,
+  applyAutoMap,
+  checkEnforcement,
+  hashOf,
+} from './pagesEditor.mjs';
 
 const app = express();
 app.use(cors());
@@ -155,6 +171,153 @@ app.post('/api/import', async (req, res) => {
   }
   if (llm) args.push('--llm', llm);
   respond(res, await runCapturing(() => importCommand(withDir(args))));
+});
+
+// ---------------------------------------------------------------------------
+// Pages editor (epic #48: #49 pages browser, #50 JSX tree, #52 snippet
+// save-back, #53 props inspector, #54 auto-map). All of this is read/write
+// only within features/<feature>/pages/ — see pagesEditor.mjs's
+// resolvePageFile for the #56 scope guard, applied on every route below,
+// and checkEnforcement for the #56 pre-save architecture-rule gate applied
+// on every route that writes.
+function currentRoot() {
+  const { projectDir } = getSettings();
+  const root = findProjectRoot(projectDir);
+  if (!root) throw new PagesEditorError('No Construct project found for the current project directory — set one in Settings first.', { status: 400 });
+  return root;
+}
+
+function handlePagesEditorError(res, e) {
+  if (e instanceof PagesEditorError) {
+    return res.status(e.status).json({ ok: false, error: e.message, violations: e.violations });
+  }
+  return res.status(500).json({ ok: false, error: e.message });
+}
+
+app.get('/api/pages/features', (req, res) => {
+  try {
+    res.json({ features: listFeatures(currentRoot()) });
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+app.get('/api/pages', (req, res) => {
+  try {
+    const { feature } = req.query;
+    if (!feature) return res.status(400).json({ ok: false, error: 'feature is required' });
+    res.json({ feature, files: listPages(currentRoot(), feature) });
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+app.get('/api/pages/tree', (req, res) => {
+  try {
+    const { feature, file } = req.query;
+    const root = currentRoot();
+    const { absPath } = resolvePageFile(root, feature, file);
+    res.json(serializeTree(fs.readFileSync(absPath, 'utf8')));
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+app.get('/api/pages/node', (req, res) => {
+  try {
+    const { feature, file, nodeId } = req.query;
+    const root = currentRoot();
+    const { absPath } = resolvePageFile(root, feature, file);
+    res.json(getNodeSnippet(fs.readFileSync(absPath, 'utf8'), nodeId));
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+// Shared by both the raw-snippet save (#52) and the props-form save (#53):
+// patch in memory, run #56's enforcement gate against the patched content,
+// write to disk only if it's clean, and always return the up-to-date tree +
+// hash so the client can refresh without a second round trip.
+function saveAndRespond(res, root, relPath, absPath, patched) {
+  const enforcement = checkEnforcement(root, relPath, patched);
+  if (!enforcement.ok) {
+    return res.status(422).json({ ok: false, error: 'Save blocked: violates architecture rules.', violations: enforcement.violations });
+  }
+  fs.writeFileSync(absPath, patched);
+  res.json({ ok: true, violations: enforcement.violations, ...serializeTree(patched) });
+}
+
+app.post('/api/pages/node', (req, res) => {
+  try {
+    const { feature, file, nodeId, snippet, contentHash } = req.body || {};
+    if (!nodeId || typeof snippet !== 'string') return res.status(400).json({ ok: false, error: 'nodeId and snippet are required' });
+    const root = currentRoot();
+    const { absPath, relPath } = resolvePageFile(root, feature, file);
+    const source = fs.readFileSync(absPath, 'utf8');
+    const patched = patchNode(source, nodeId, snippet, contentHash);
+    saveAndRespond(res, root, relPath, absPath, patched);
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+app.get('/api/pages/props', (req, res) => {
+  try {
+    const { feature, file, nodeId } = req.query;
+    const root = currentRoot();
+    const { absPath } = resolvePageFile(root, feature, file);
+    res.json(getNodeProps(fs.readFileSync(absPath, 'utf8'), nodeId));
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+app.post('/api/pages/props', (req, res) => {
+  try {
+    const { feature, file, nodeId, propName, kind, value, contentHash } = req.body || {};
+    if (!nodeId || !propName || !kind) return res.status(400).json({ ok: false, error: 'nodeId, propName, and kind are required' });
+    const root = currentRoot();
+    const { absPath, relPath } = resolvePageFile(root, feature, file);
+    const source = fs.readFileSync(absPath, 'utf8');
+    if (contentHash && hashOf(source) !== contentHash) {
+      return res.status(409).json({ ok: false, error: 'The file changed on disk since this was loaded — reload the tree and try again.' });
+    }
+    const attrSnippet = buildAttributeSnippet(source, nodeId, propName, kind, value);
+    const patched = patchNode(source, nodeId, attrSnippet, contentHash);
+    saveAndRespond(res, root, relPath, absPath, patched);
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+app.get('/api/pages/unmapped', (req, res) => {
+  try {
+    const { feature, file, nodeId } = req.query;
+    const root = currentRoot();
+    const { absPath } = resolvePageFile(root, feature, file);
+    res.json(findUnmappedProps(fs.readFileSync(absPath, 'utf8'), nodeId));
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+app.post('/api/pages/automap', (req, res) => {
+  try {
+    const { feature, file, nodeId, propNames, contentHash } = req.body || {};
+    if (!nodeId || !Array.isArray(propNames) || propNames.length === 0) {
+      return res.status(400).json({ ok: false, error: 'nodeId and a non-empty propNames[] are required' });
+    }
+    const root = currentRoot();
+    const { absPath, relPath } = resolvePageFile(root, feature, file);
+    const source = fs.readFileSync(absPath, 'utf8');
+    if (contentHash && hashOf(source) !== contentHash) {
+      return res.status(409).json({ ok: false, error: 'The file changed on disk since this was loaded — reload the tree and try again.' });
+    }
+    const patched = applyAutoMap(source, nodeId, propNames);
+    saveAndRespond(res, root, relPath, absPath, patched);
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
 });
 
 const port = Number(process.env.PORT) || 4000;

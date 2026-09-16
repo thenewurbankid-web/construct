@@ -7,12 +7,16 @@
   "main": "src/index.mjs",
   "scripts": {
     "start": "node src/index.mjs",
-    "dev": "node --watch src/index.mjs"
+    "dev": "node --watch src/index.mjs",
+    "test": "node --test src/"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
+    "@babel/parser": "^7.29.8",
+    "@babel/traverse": "^7.29.8",
+    "@babel/types": "^7.29.8",
     "cors": "^2.8.5",
     "express": "^4.19.2",
     "ws": "^8.18.0"
