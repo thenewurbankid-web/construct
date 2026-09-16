@@ -1,8 +1,8 @@
 # Construct
 
-**Opinionated architecture for AI-native Next.js applications.**
+**Opinionated architecture for AI-native React + TypeScript applications.**
 
-Construct makes architectural conventions executable. It ships strict defaults and lets each project modify policy through `architecture.yml`.
+Construct makes architectural conventions executable. It ships strict defaults and lets each project modify policy through `architecture.yml`. Next.js App Router (`project.framework: nextjs`, the default) and a client-routed react-spa target (`project.framework: react-spa`) are both first-class — see [Framework targets](#framework-targets).
 
 ## Vision
 
@@ -83,7 +83,13 @@ construct sync
 construct validate
 ```
 
-Construct does not replace Next.js, TypeScript, ESLint, dependency-cruiser, XState, Stately, or Playwright. It orchestrates architecture policy around them.
+Defaults to `project.framework: nextjs`. For a client-routed SPA instead, pass `--framework react-spa` (see [Framework targets](#framework-targets)):
+
+```bash
+construct init my-spa-app --framework react-spa
+```
+
+Construct does not replace your framework/router (Next.js App Router, or react-router for a react-spa target), TypeScript, ESLint, dependency-cruiser, XState, Stately, or Playwright. It orchestrates architecture policy around them.
 
 ## Default architecture
 
@@ -95,6 +101,31 @@ Workflow → Domain
 Service  → Domain
 Hook     → Workflow / Service / Domain
 ```
+
+This layer graph — and every rule in `rules:` — is identical regardless of `project.framework`. The one thing that differs per framework is what a **Route** physically is and how a **Controller** gets wired into it; see [Framework targets](#framework-targets).
+
+## Framework targets
+
+Construct's feature-internal architecture (everything from Controller down: Workflow/Service/Domain, Controller → Page → Component) never changes based on `project.framework` — only the **route layer** does, because that's the one place a real difference in how the two kinds of app actually route requests shows up.
+
+| | `nextjs` (default) | `react-spa` |
+|---|---|---|
+| Route layer pattern | `app/**/page.tsx` — one file per route folder (Next.js App Router file-system routing: route groups `(name)`, dynamic segments `[name]`) | `src/App.tsx` — one centralized react-router table for the whole app |
+| How a controller gets registered as a route | A physical `app/<route>/page.tsx` imports the controller and renders it as the page's default export | A `<Route path="..." element={<XController />} />` entry inside `src/App.tsx` |
+| `construct init [--framework ...]` scaffold | `app/page.tsx` | `src/main.tsx` (a real bootstrap: `BrowserRouter` + `createRoot`) + `src/App.tsx`, with the `core` feature's controller already registered as a route |
+| `construct import --route <url>` entry resolution | Walks `app/` for the folder owning `page.tsx`, matching route groups/dynamic segments (`src/route-resolver.mjs`) | Parses `src/App.tsx`'s `<Route>` table for the controller name registered at that URL, then locates it under `features/*/controllers/` |
+
+Everything else — every generator, every rule, the controller's own composition (it still imports and renders a same-named `Page` from the feature's `pages/` folder either way, since that's Construct's own convention, not Next.js's) — is identical between the two targets. Set it in `architecture.yml`:
+
+```yaml
+project:
+  framework: react-spa   # or nextjs (default)
+  language: typescript
+```
+
+`fixtures/architecture-valid-react-spa/` is a complete, real, checked-in worked example — `construct validate` passes against it with zero errors — showing the shape end to end: `architecture.yml`, `src/main.tsx` + `src/App.tsx`, and a full `widget` feature slice.
+
+`ui/client`'s actual Vite + react-router SPA (`ui/client/src/App.jsx`) is what this convention is modeled on, so an eventual migration of Construct's own UI onto Construct (see `CLAUDE.md`'s Dogfooding section) has a real target to land on — that migration itself is separate, future work, not part of this.
 
 ## Non-negotiable defaults
 
