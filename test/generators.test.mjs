@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createFeature, generateLayer } from '../src/generators.mjs';
+import { createFeature, generateLayer, generateVertical } from '../src/generators.mjs';
 import { validateArchitecture } from '../src/architecture-enforcer.mjs';
 import { ConstructError } from '../src/diagnostics.mjs';
 
@@ -11,7 +11,10 @@ function tmpProject() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'construct-generators-'));
 }
 
-const LAYERS = ['controller', 'workflow', 'hook', 'domain', 'service', 'page', 'component'];
+// Canonical dependency order: controller's template imports a same-named
+// page, so page must be generated first or IMPORT-001 (dangling import)
+// fires — every other layer's stub is self-contained.
+const LAYERS = ['domain', 'service', 'workflow', 'hook', 'component', 'page', 'controller'];
 
 test('createFeature scaffolds the full layer folder set plus types/index', () => {
   const dir = tmpProject();
@@ -21,6 +24,14 @@ test('createFeature scaffolds the full layer folder set plus types/index', () =>
   }
   assert.ok(fs.existsSync(path.join(base, 'types.ts')));
   assert.ok(fs.existsSync(path.join(base, 'index.ts')));
+});
+
+test('createFeature PascalCases a hyphenated feature name into a valid type identifier', () => {
+  const dir = tmpProject();
+  const base = createFeature(dir, 'cpo-v2');
+  const typesContent = fs.readFileSync(path.join(base, 'types.ts'), 'utf8');
+  assert.match(typesContent, /^export type CpoV2Id = string;$/m);
+  assert.doesNotMatch(typesContent, /-/);
 });
 
 test('generateLayer writes every layer into the right folder with expected naming', () => {
@@ -40,6 +51,43 @@ test('generateLayer throws on an unknown layer name', () => {
   const dir = tmpProject();
   createFeature(dir, 'checkout');
   assert.throws(() => generateLayer(dir, 'nope', 'Checkout', 'checkout'), /Unknown layer/);
+});
+
+// ---- generateVertical: one logical unit across several layers -------------
+
+test('generateVertical scaffolds every requested layer regardless of the order given', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  const files = generateVertical(dir, 'Checkout', 'checkout', ['controller', 'page', 'hook', 'domain']);
+  assert.equal(files.length, 4);
+  for (const f of files) assert.ok(fs.existsSync(f));
+  assert.match(files[0], /domain[/\\]Checkout\.tsx$/);
+  assert.match(files[1], /hooks[/\\]useCheckout\.tsx$/);
+  assert.match(files[2], /pages[/\\]CheckoutPage\.tsx$/);
+  assert.match(files[3], /controllers[/\\]CheckoutController\.tsx$/);
+});
+
+test('generateVertical throws on an unknown layer name before writing anything', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  assert.throws(() => generateVertical(dir, 'Checkout', 'checkout', ['domain', 'nope']), /Unknown layer/);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Checkout.tsx')), false);
+});
+
+test('generateVertical requesting a controller without its page fails fast with IMPORT-001', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  assert.throws(
+    () => generateVertical(dir, 'Checkout', 'checkout', ['domain', 'hook', 'controller']),
+    (err) => err.message.includes('IMPORT-001'),
+  );
+});
+
+test('generateVertical deduplicates a layer listed twice', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  const files = generateVertical(dir, 'Checkout', 'checkout', ['domain', 'domain']);
+  assert.equal(files.length, 1);
 });
 
 // ---- idempotent-clean composition: generated code passes the enforcer -----

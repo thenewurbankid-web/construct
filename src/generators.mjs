@@ -8,7 +8,15 @@ const templates={
  page:(n)=>`import type { ReactNode } from 'react';\n\nexport function ${n}Page(): ReactNode {\n  return <main>${n}</main>;\n}\n`,
  component:(n)=>`export function ${n}() {\n  return <div>${n}</div>;\n}\n`
 };
-const folderFor=(layer)=>layer==='hook'?'hooks':layer==='controller'?'controllers':layer==='workflow'?'workflows':layer==='domain'?'domain':layer==='service'?'services':layer==='page'?'pages':'components';
+export const folderFor=(layer)=>layer==='hook'?'hooks':layer==='controller'?'controllers':layer==='workflow'?'workflows':layer==='domain'?'domain':layer==='service'?'services':layer==='page'?'pages':'components';
+
+// Shared by generateLayer and refactor.mjs's move/rename: the filename base a
+// layer's naming convention expects for a given capitalized name — a hook
+// gets a `use` prefix, page/controller get a suffix, everything else is bare.
+export const layerFileBaseName=(layer,cap)=>{
+ const suffix=layer==='page'?'Page':layer==='controller'?'Controller':'';
+ return layer==='hook'?`use${cap}`:`${cap}${suffix}`;
+};
 
 // Epic 1.3 — per-layer template override hook. A project may supply a custom
 // template for a layer either via architecture.yml's `templates: { <layer>: <path> }`
@@ -41,11 +49,20 @@ function selfCheck(root,absFiles){
  );
 }
 
+// Feature names are conventionally kebab-case (e.g. "cpo-v2") but a type
+// identifier can't contain "-"/"_" — PascalCase across those word
+// boundaries the same way `cap` elsewhere assumes a single already-capped
+// word, so createFeature's own scaffolded types.ts is always valid TS.
+function pascalCase(name){
+ return name.replace(/(^|[-_]+)([a-zA-Z0-9])/g,(_,__,c)=>c.toUpperCase());
+}
+
 export function createFeature(root,name){
- const base=path.join(root,'features',name);
+ const config=loadConfig(root);
+ const base=path.join(root,config.features?.root||'features',name);
  for(const d of ['controllers','workflows','hooks','domain','services','pages','components'])ensureDir(path.join(base,d));
  const typesFile=path.join(base,'types.ts'), indexFile=path.join(base,'index.ts');
- write(typesFile,`export type ${name[0].toUpperCase()+name.slice(1)}Id = string;\n`);
+ write(typesFile,`export type ${pascalCase(name)}Id = string;\n`);
  write(indexFile,`// Public API for feature: ${name}\nexport type * from './types';\n`);
  selfCheck(root,[typesFile,indexFile]);
  return base;
@@ -55,13 +72,28 @@ export function generateLayer(root,layer,name,feature){
  if(!templates[layer])throw new Error(`Unknown layer: ${layer}`);
  const config=loadConfig(root);
  const cap=name[0].toUpperCase()+name.slice(1);
- const dir=path.join(root,'features',feature,folderFor(layer));
+ const dir=path.join(root,config.features?.root||'features',feature,folderFor(layer));
  ensureDir(dir);
- const suffix=layer==='page'?'Page':layer==='controller'?'Controller':'';
- const file=path.join(dir,layer==='hook'?`use${cap}.tsx`:`${cap}${suffix}.tsx`);
+ const file=path.join(dir,`${layerFileBaseName(layer,cap)}.tsx`);
  const custom=findCustomTemplate(root,layer,config);
  const content=custom?renderCustomTemplate(custom,name):templates[layer](cap);
  write(file,content);
  selfCheck(root,[file]);
  return file;
+}
+
+// Canonical dependency order for a vertical slice: controller's stub template
+// imports a same-named page, so page must exist first or IMPORT-001 (a
+// dangling relative import) fires — every other layer's stub is
+// self-contained. `construct generate layer <name> --layers ...` scaffolds
+// one logical unit across several layers in a single command, always in this
+// order regardless of the order the caller listed --layers in.
+export const LAYER_ORDER=['domain','service','workflow','hook','component','page','controller'];
+
+export function generateVertical(root,name,feature,layers){
+ const unique=[...new Set(layers)];
+ const unknown=unique.filter(l=>!templates[l]);
+ if(unknown.length)throw new Error(`Unknown layer: ${unknown[0]}`);
+ const ordered=LAYER_ORDER.filter(l=>unique.includes(l));
+ return ordered.map(layer=>generateLayer(root,layer,name,feature));
 }

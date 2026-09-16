@@ -62,6 +62,113 @@ test('a thrown ConstructError (bad generate usage) exits with USAGE_ERROR', () =
   assert.match(res.stderr, /Usage: construct generate/);
 });
 
+test('generate controller before its page fails fast with IMPORT-001 (not a silent success)', () => {
+  const dir = emptyProjectDir();
+  run(['feature', 'create', 'checkout'], dir);
+  const res = run(['generate', 'controller', 'Checkout', '--feature', 'checkout'], dir);
+  assert.equal(res.status, EXIT_CODES.INTERNAL_ERROR);
+  assert.match(res.stderr, /IMPORT-001/);
+});
+
+test('generate controller after its page succeeds', () => {
+  const dir = emptyProjectDir();
+  run(['feature', 'create', 'checkout'], dir);
+  run(['generate', 'page', 'Checkout', '--feature', 'checkout'], dir);
+  const res = run(['generate', 'controller', 'Checkout', '--feature', 'checkout'], dir);
+  assert.equal(res.status, EXIT_CODES.OK);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'controllers', 'CheckoutController.tsx')), true);
+});
+
+test('generate layer scaffolds every requested layer in one command, out of order and all', () => {
+  const dir = emptyProjectDir();
+  run(['feature', 'create', 'checkout'], dir);
+  const res = run(['generate', 'layer', 'Checkout', '--feature', 'checkout', '--layers', 'controller,page,hook,domain'], dir);
+  assert.equal(res.status, EXIT_CODES.OK);
+  for (const f of [
+    'domain/Checkout.tsx',
+    'hooks/useCheckout.tsx',
+    'pages/CheckoutPage.tsx',
+    'controllers/CheckoutController.tsx',
+  ]) {
+    assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', ...f.split('/'))), true, `missing ${f}`);
+  }
+  const validated = run(['validate'], dir);
+  assert.doesNotMatch(validated.stdout, /IMPORT-001/);
+});
+
+test('generate layer without --layers exits with USAGE_ERROR', () => {
+  const dir = emptyProjectDir();
+  run(['feature', 'create', 'checkout'], dir);
+  const res = run(['generate', 'layer', 'Checkout', '--feature', 'checkout'], dir);
+  assert.equal(res.status, EXIT_CODES.USAGE_ERROR);
+  assert.match(res.stderr, /Usage: construct generate layer/);
+});
+
+// ---- capability groups: create / refactor / research -----------------------
+
+test('create feature and create layer are equivalent to their flat commands', () => {
+  const dir = emptyProjectDir();
+  assert.equal(run(['create', 'feature', 'checkout'], dir).status, EXIT_CODES.OK);
+  const res = run(['create', 'layer', 'Foo', '--feature', 'checkout', '--layers', 'domain,hook'], dir);
+  assert.equal(res.status, EXIT_CODES.OK);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.tsx')), true);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'hooks', 'useFoo.tsx')), true);
+  assert.match(res.stdout, /\[tool: .*\] \[llm: 0 calls/);
+});
+
+test('create <layer> <name> falls through to plain generate', () => {
+  const dir = emptyProjectDir();
+  run(['create', 'feature', 'checkout'], dir);
+  const res = run(['create', 'domain', 'Foo', '--feature', 'checkout'], dir);
+  assert.equal(res.status, EXIT_CODES.OK);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.tsx')), true);
+});
+
+test('research summarize and research doctor delegate to the flat commands', () => {
+  const dir = emptyProjectDir();
+  run(['create', 'feature', 'checkout'], dir);
+  const doc = run(['research', 'doctor'], dir);
+  assert.equal(doc.status, EXIT_CODES.OK);
+  assert.match(doc.stdout, /Construct doctor/);
+  const sum = run(['research', 'summarize', '--feature', 'checkout', '--format', 'compact'], dir);
+  assert.equal(sum.status, EXIT_CODES.OK);
+  assert.match(sum.stdout, /Feature "checkout"/);
+  assert.match(doc.stdout, /\[tool: .*\] \[llm: 0 calls/);
+  assert.match(sum.stdout, /\[tool: .*\] \[llm: 0 calls/);
+});
+
+test('research without a known sub-verb exits with USAGE_ERROR', () => {
+  const res = run(['research', 'bogus'], emptyProjectDir());
+  assert.equal(res.status, EXIT_CODES.USAGE_ERROR);
+  assert.match(res.stderr, /Usage: construct research/);
+});
+
+test('refactor move relocates a file across layers and reports the result', () => {
+  const dir = emptyProjectDir();
+  run(['create', 'feature', 'checkout'], dir);
+  run(['create', 'domain', 'Foo', '--feature', 'checkout'], dir);
+  const res = run(['refactor', 'move', 'Foo', '--feature', 'checkout', '--from', 'domain', '--to', 'service'], dir);
+  assert.equal(res.status, EXIT_CODES.OK);
+  assert.match(res.stdout, /Moved features\/checkout\/domain\/Foo\.tsx -> features\/checkout\/services\/Foo\.tsx/);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'services', 'Foo.tsx')), true);
+  assert.match(res.stdout, /\[tool: .*\] \[llm: 0 calls/);
+});
+
+test('refactor rename renames within a layer and reports the result', () => {
+  const dir = emptyProjectDir();
+  run(['create', 'feature', 'checkout'], dir);
+  run(['create', 'hook', 'Foo', '--feature', 'checkout'], dir);
+  const res = run(['refactor', 'rename', 'Foo', 'Bar', '--feature', 'checkout', '--layer', 'hook'], dir);
+  assert.equal(res.status, EXIT_CODES.OK);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'hooks', 'useBar.tsx')), true);
+});
+
+test('refactor without a known sub-verb exits with USAGE_ERROR', () => {
+  const res = run(['refactor', 'bogus'], emptyProjectDir());
+  assert.equal(res.status, EXIT_CODES.USAGE_ERROR);
+  assert.match(res.stderr, /Usage: construct refactor/);
+});
+
 test('feature create then validate: generated feature has no forced feature-root violation', () => {
   const dir = emptyProjectDir();
   const created = run(['feature', 'create', 'checkout'], dir);
@@ -85,4 +192,120 @@ test('monorepo discovery: validate from a nested subdirectory uses the parent ar
   fs.mkdirSync(nested, { recursive: true });
   const res = run(['validate'], nested);
   assert.notEqual(res.status, EXIT_CODES.INTERNAL_ERROR);
+});
+
+// --dir: adopting Construct inside a subdirectory of an existing, unrelated
+// project — every command must be targetable at that subdirectory without
+// requiring the caller to cd into it first, and must never touch anything
+// outside it (see GitHub issue #22).
+function unrelatedProjectWithSubdir() {
+  const parent = emptyProjectDir();
+  fs.writeFileSync(path.join(parent, 'package.json'), '{"name":"unrelated-app"}\n');
+  fs.writeFileSync(path.join(parent, 'sibling.txt'), 'do not touch\n');
+  return parent;
+}
+
+test('init [dir] followed by doctor --dir from the parent finds architecture.yml without cd', () => {
+  const parent = unrelatedProjectWithSubdir();
+  const initRes = run(['init', 'construct-sub'], parent);
+  assert.equal(initRes.status, EXIT_CODES.OK);
+
+  const doctorRes = run(['doctor', '--dir', 'construct-sub'], parent);
+  assert.equal(doctorRes.status, EXIT_CODES.OK);
+  assert.match(doctorRes.stdout, /architecture\.yml: present/);
+});
+
+test('feature create and generate --dir scope all writes to the subdirectory, leaving the parent untouched', () => {
+  const parent = unrelatedProjectWithSubdir();
+  run(['init', 'construct-sub'], parent);
+  const before = fs.readdirSync(parent).sort();
+
+  const createRes = run(['feature', 'create', 'foo', '--dir', 'construct-sub'], parent);
+  assert.equal(createRes.status, EXIT_CODES.OK);
+  const generateRes = run(['generate', 'domain', 'Bar', '--feature', 'foo', '--dir', 'construct-sub'], parent);
+  assert.equal(generateRes.status, EXIT_CODES.OK);
+
+  assert.ok(fs.existsSync(path.join(parent, 'construct-sub', 'features', 'foo', 'domain', 'Bar.tsx')));
+  assert.equal(fs.readFileSync(path.join(parent, 'sibling.txt'), 'utf8'), 'do not touch\n');
+  assert.deepEqual(fs.readdirSync(parent).sort(), before);
+});
+
+test('validate and summarize --dir report only on the subdirectory, not the surrounding project', () => {
+  const parent = unrelatedProjectWithSubdir();
+  run(['init', 'construct-sub'], parent);
+  run(['feature', 'create', 'foo', '--dir', 'construct-sub'], parent);
+
+  const validateRes = run(['validate', '--dir', 'construct-sub'], parent);
+  assert.notEqual(validateRes.status, EXIT_CODES.INTERNAL_ERROR);
+
+  const summarizeRes = run(['summarize', '--feature', 'foo', '--format', 'compact', '--dir', 'construct-sub'], parent);
+  assert.equal(summarizeRes.status, EXIT_CODES.OK);
+  assert.match(summarizeRes.stdout, /Feature "foo"/);
+  assert.doesNotMatch(summarizeRes.stdout, /sibling/);
+});
+
+// ---- import ----------------------------------------------------------------
+
+test('import scaffolds layers and breadcrumbs them to the source file, with zero LLM calls', () => {
+  const dir = emptyProjectDir();
+  run(['create', 'feature', 'checkout'], dir);
+  const sourceFile = path.join(dir, 'OldFile.tsx');
+  fs.writeFileSync(sourceFile, 'export function old() { return true; }\n');
+
+  const res = run(['import', 'Foo', '--feature', 'checkout', '--layers', 'domain,hook', '--from', sourceFile], dir);
+  assert.equal(res.status, EXIT_CODES.OK);
+  assert.match(res.stdout, /\[tool: .*\] \[llm: 0 calls/);
+  assert.match(res.stdout, /features\/checkout\/domain\/Foo\.tsx/);
+  assert.match(res.stdout, /features\/checkout\/hooks\/useFoo\.tsx/);
+  assert.match(fs.readFileSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.tsx'), 'utf8'), /TODO\(import\)/);
+});
+
+test('import without --from exits with USAGE_ERROR', () => {
+  const dir = emptyProjectDir();
+  run(['create', 'feature', 'checkout'], dir);
+  const res = run(['import', 'Foo', '--feature', 'checkout', '--layers', 'domain'], dir);
+  assert.equal(res.status, EXIT_CODES.USAGE_ERROR);
+  assert.match(res.stderr, /Usage: construct import/);
+});
+
+test('import --plan batch-scaffolds every unit in one command', () => {
+  const dir = emptyProjectDir();
+  run(['create', 'feature', 'checkout'], dir);
+  const sourceFile = path.join(dir, 'OldFile.tsx');
+  fs.writeFileSync(sourceFile, 'export function old() { return true; }\n');
+  const planPath = path.join(dir, 'plan.json');
+  fs.writeFileSync(
+    planPath,
+    JSON.stringify({ feature: 'checkout', units: [{ name: 'Foo', layers: ['domain', 'hook'], from: sourceFile }] }),
+  );
+
+  const res = run(['import', '--plan', planPath], dir);
+  assert.equal(res.status, EXIT_CODES.OK);
+  assert.match(res.stdout, /Foo: scaffolded 2 file\(s\)/);
+  assert.match(res.stdout, /\[tool: .*\] \[llm: 0 calls/);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.tsx')), true);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'hooks', 'useFoo.tsx')), true);
+});
+
+test('import --plan with a malformed plan exits with USAGE_ERROR', () => {
+  const dir = emptyProjectDir();
+  run(['create', 'feature', 'checkout'], dir);
+  const planPath = path.join(dir, 'bad-plan.json');
+  fs.writeFileSync(planPath, JSON.stringify({ units: [] }));
+  const res = run(['import', '--plan', planPath], dir);
+  assert.equal(res.status, EXIT_CODES.USAGE_ERROR);
+});
+
+test('import --llm with an unsupported provider fails fast, without attempting any network/subprocess call', () => {
+  const dir = emptyProjectDir();
+  run(['create', 'feature', 'checkout'], dir);
+  const sourceFile = path.join(dir, 'OldFile.tsx');
+  fs.writeFileSync(sourceFile, 'export function old() { return true; }\n');
+  const res = run(
+    ['import', 'Foo', '--feature', 'checkout', '--layers', 'domain', '--from', sourceFile, '--llm', 'bogus-provider'],
+    dir,
+  );
+  assert.equal(res.status, EXIT_CODES.USAGE_ERROR);
+  assert.match(res.stderr, /Unknown --llm provider "bogus-provider"/);
+  assert.match(res.stderr, /claude/);
 });

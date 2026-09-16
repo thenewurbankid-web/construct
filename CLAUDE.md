@@ -1,0 +1,82 @@
+# Working on construct-final
+
+This file is instructions for whichever AI agent (Claude Code or otherwise)
+works on this repo — the Construct tool itself, not a project that uses it.
+(`AGENTS.md` and `architecture.yml` at this same root are leftover output
+from once running `construct init .` on this repo; they describe the
+contract Construct enforces on *target* projects, not this one — ignore
+them here.)
+
+## GitHub issue discipline (standing instruction)
+
+Repo: `thenewurbankid-web/construct`. This project tracks all real work as
+GitHub issues, kept in sync with what's actually true — not a point-in-time
+snapshot that rots. See #35 for the audit that established this.
+
+1. **Every unit of work gets an issue before or as you start it** — a new
+   capability, a bugfix, a non-trivial refactor. Before filing, search
+   existing issues for a match (`gh issue list --search "<keywords>"
+   --state all`, or the issues API if `gh` isn't available) — comment on
+   or reopen an existing issue instead of creating a duplicate if you find
+   one. If none exists, file it. If you discover mid-task that you're
+   touching an unfiled unit of work, file it before moving on to the next
+   distinct unit, not just at session end. Retroactive filing (documenting
+   work already merged, as a changelog entry rather than a request) is
+   fine when picking up mid-session work that predates this instruction —
+   see #26/#27/#28-#34 for the pattern: what shipped, which files/tests
+   back it, closed immediately with that evidence in the body or a
+   follow-up comment. Trivial changes with no independent behavior (typo
+   fixes, comment-only edits, formatting) don't need their own issue —
+   fold them into whichever issue/commit they're actually part of.
+2. **Comment before starting, and on every decision and every outcome —
+   strictly, not just for long or multi-session tasks.** This is the rule
+   most likely to be skipped under time pressure; don't skip it.
+   - **Before starting** any unit of work, post a comment on its issue
+     stating what you're about to do and the plan/approach — before
+     writing code, not after. A human watching the issue should be able to
+     tell you've started and what you intend, without waiting for a
+     result.
+   - **At every real decision point** during the work (a design choice, a
+     tradeoff, an unexpected finding that changes the plan), post a
+     comment when it happens, not folded into a later summary.
+   - **On every outcome** — pass, fail, blocked, or a bug found — post a
+     comment when that outcome occurs, even if the issue isn't closing
+     yet (e.g. "3 of 6 done, here's what's left" is its own comment, not
+     something to hold until everything is finished).
+   - It is fine for these to be several small comments rather than one
+     large one — the issue thread should let someone reconstruct exactly
+     what happened, in order, without reading the code or waiting for a
+     final wrap-up.
+3. **Issue state must reflect current reality.** Close an issue the moment
+   its work is verified done, and don't close something that isn't
+   actually done yet. "Verified done" means at minimum: `npm test` passes
+   in full (not just the tests you added for this change), plus whatever
+   manual verification the task's own bar calls for. Don't leave finished
+   work sitting open. If new work reopens or supersedes closed work, say
+   so in a comment on the old issue and link the new one, rather than
+   silently duplicating.
+4. **Granularity matches the existing convention**: a parent "epic" issue
+   for a multi-part feature (e.g. #28 for the web UI), with one atomic
+   sub-issue per independently-shippable module (e.g. #29-#34) — each
+   sub-issue closable on its own, each referencing the parent. Follow the
+   existing title conventions (`[Module N] ...`, `Epic X.Y — ...`) when
+   they fit; a flat single issue is fine for genuinely small, one-piece
+   work.
+5. **Keep the project board (Kanban) arranged to match reality** — issue
+   state (open/closed) plus its column should always represent what's
+   actually true, not what was true when the card was created. If you
+   can't reach the board via the API (e.g. a token without Projects
+   scope), say so explicitly rather than silently skipping it, and ask for
+   a token with Projects (v2) read/write permission, or ask the human to
+   move cards to match the issue states you just set.
+6. **Never write a GitHub token to a file in this repo or elsewhere on
+   disk.** Use it only inline in the shell command that needs it (env var
+   or direct substitution), for that command only. If a token has ever
+   been pasted in plaintext chat, treat it as compromised — it's fine to
+   keep using it for the rest of that session if the human explicitly
+   says to, but tell them to rotate it once the work is done.
+7. **One external write (issue create/comment/close/PATCH) per action** —
+   don't chain multiple GitHub API writes in a single shell command or
+   script; do them one at a time. Bulk write scripts have been observed
+   to get blocked by this environment's safety classifier; single, plain
+   `curl` invocations go through reliably.

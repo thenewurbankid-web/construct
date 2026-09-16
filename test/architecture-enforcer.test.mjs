@@ -132,6 +132,32 @@ test('expiredExceptionViolations is silent for a live exception', () => {
   assert.deepEqual(violations, []);
 });
 
+// architecture.yml is YAML: an UNQUOTED date-like scalar (`expires: 2020-01-01`)
+// is parsed by js-yaml's default schema into a real JS Date, not a string —
+// only a quoted value (`expires: "2020-01-01"`) yields a string. Both are
+// legitimate on-disk spellings of the same author intent and must both work.
+test('validateExceptionsShape, exceptionApplies, and expiredExceptionViolations all accept a Date object for "expires" (js-yaml auto-parses unquoted dates)', () => {
+  const expired = { rule: 'PAGE-004', path: 'features/legacy/**', expires: new Date('2000-01-01') };
+  const live = { rule: 'PAGE-004', path: 'features/legacy/**', expires: new Date('2999-01-01') };
+
+  assert.equal(validateExceptionsShape({ exceptions: [expired] }), true);
+
+  assert.equal(exceptionApplies({ exceptions: [live] }, 'PAGE-004', 'features/legacy/pages/X.tsx'), true);
+  assert.equal(exceptionApplies({ exceptions: [expired] }, 'PAGE-004', 'features/legacy/pages/X.tsx'), false);
+
+  const violations = expiredExceptionViolations({ exceptions: [expired] });
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].rule, 'EXCEPTION-EXPIRED');
+  assert.match(violations[0].message, /expired on 2000-01-01\./); // formatted as a plain date, not Date#toString()
+});
+
+test('validateExceptionsShape still rejects a genuinely invalid "expires" value', () => {
+  assert.throws(
+    () => validateExceptionsShape({ exceptions: [{ path: 'features/x/**', rule: 'PAGE-004', expires: new Date('not-a-date') }] }),
+    /valid ISO date/,
+  );
+});
+
 // ---- filesystem-backed integration tests --------------------------------
 
 test('validateArchitecture honors an exception scoping a violation away', () => {
@@ -170,6 +196,54 @@ test('validateArchitecture can be scoped to a subset of files via opts.files', (
   const scoped = validateArchitecture(dir, { files: ['features/x/pages/Bad.tsx'] });
   assert.equal(scoped.violations.length, 1);
   assert.equal(scoped.violations[0].rule, 'PAGE-004');
+});
+
+// ---- IMPORT-001: dangling relative imports --------------------------------
+
+test('validateArchitecture flags a relative import that resolves to nothing', () => {
+  const dir = tmpProject();
+  fs.mkdirSync(path.join(dir, 'features', 'x', 'controllers'), { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, 'features', 'x', 'controllers', 'XController.tsx'),
+    `import { XPage } from '../pages/XPage';\nexport function XController(){ return <XPage/>; }`,
+  );
+  const res = validateArchitecture(dir);
+  const v = res.violations.find((x) => x.rule === 'IMPORT-001');
+  assert.ok(v, 'expected an IMPORT-001 violation');
+  assert.equal(v.file, 'features/x/controllers/XController.tsx');
+  assert.match(v.message, /"\.\.\/pages\/XPage"/);
+});
+
+test('validateArchitecture does not flag a relative import once the target file exists', () => {
+  const dir = tmpProject();
+  fs.mkdirSync(path.join(dir, 'features', 'x', 'controllers'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'features', 'x', 'pages'), { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, 'features', 'x', 'controllers', 'XController.tsx'),
+    `import { XPage } from '../pages/XPage';\nexport function XController(){ return <XPage/>; }`,
+  );
+  fs.writeFileSync(path.join(dir, 'features', 'x', 'pages', 'XPage.tsx'), `export function XPage(){ return <div/>; }`);
+  const res = validateArchitecture(dir);
+  assert.equal(res.violations.some((v) => v.rule === 'IMPORT-001'), false);
+});
+
+test('validateArchitecture never flags an external/bare import specifier', () => {
+  const dir = tmpProject();
+  fs.mkdirSync(path.join(dir, 'features', 'x', 'domain'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'features', 'x', 'domain', 'D.ts'), `import { z } from 'zod';\nexport function f(){ return typeof z; }`);
+  const res = validateArchitecture(dir);
+  assert.equal(res.violations.some((v) => v.rule === 'IMPORT-001'), false);
+});
+
+test('validateArchitecture resolves a dangling import outside the project root the same way', () => {
+  const dir = tmpProject();
+  fs.mkdirSync(path.join(dir, 'features', 'x', 'controllers'), { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, 'features', 'x', 'controllers', 'XController.tsx'),
+    `import { Outside } from '../../../../elsewhere/Outside';\nexport function XController(){ return <Outside/>; }`,
+  );
+  const res = validateArchitecture(dir);
+  assert.equal(res.violations.some((v) => v.rule === 'IMPORT-001'), true);
 });
 
 // ---- fixtures -------------------------------------------------------------

@@ -45,6 +45,7 @@ export const DEFAULT_RULES = {
   'READ-001': { severity: 'error', name: 'Components/controllers are PascalCase; hooks are use-prefixed camelCase' },
   'READ-002': { severity: 'error', name: 'Files and functions stay under their length threshold' },
   'READ-003': { severity: 'warning', name: 'Public API exports document intent with JSDoc' },
+  'IMPORT-001': { severity: 'error', name: 'Relative imports must resolve to a file that exists' },
   'EXCEPTION-EXPIRED': { severity: 'warning', name: 'Time-boxed exceptions must be renewed or removed once they expire' },
 };
 

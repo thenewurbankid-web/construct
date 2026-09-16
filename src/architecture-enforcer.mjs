@@ -157,6 +157,21 @@ export function matchGlob(glob, file) {
   return new RegExp('^' + g + '$').test(file);
 }
 
+// architecture.yml is YAML: an unquoted date-like scalar (e.g. `expires:
+// 2020-01-01`) is parsed by js-yaml's default schema into a real JS `Date`,
+// not a string — quoting it (`expires: "2020-01-01"`) yields a string
+// instead. Both are legitimate on-disk representations of the same author
+// intent, so every place that reads `expires` accepts either.
+function isValidExpiry(value) {
+  if (value instanceof Date) return !Number.isNaN(value.getTime());
+  return typeof value === 'string' && !Number.isNaN(new Date(value).getTime());
+}
+
+function formatExpiry(value) {
+  if (!(value instanceof Date)) return value;
+  return Number.isNaN(value.getTime()) ? String(value) : value.toISOString().slice(0, 10);
+}
+
 /** Throws a ConstructError naming the exact malformed exception entry. */
 export function validateExceptionsShape(config) {
   (config.exceptions || []).forEach((e, i) => {
@@ -173,9 +188,9 @@ export function validateExceptionsShape(config) {
         { exitCode: EXIT_CODES.USAGE_ERROR },
       );
     }
-    if (e.expires !== undefined && (typeof e.expires !== 'string' || Number.isNaN(new Date(e.expires).getTime()))) {
+    if (e.expires !== undefined && !isValidExpiry(e.expires)) {
       throw new ConstructError(
-        `Invalid exception at architecture.yml exceptions[${i}] (path: "${e.path}"): "expires" is not a valid ISO date ("${e.expires}").`,
+        `Invalid exception at architecture.yml exceptions[${i}] (path: "${e.path}"): "expires" is not a valid ISO date ("${formatExpiry(e.expires)}").`,
         { exitCode: EXIT_CODES.USAGE_ERROR },
       );
     }
@@ -203,7 +218,7 @@ export function expiredExceptionViolations(config) {
       severity: 'warning',
       file: e.path,
       line: 1,
-      message: `Exception for ${(e.rule ? [e.rule] : e.rules || []).join(', ')} on "${e.path}" expired on ${e.expires}.`,
+      message: `Exception for ${(e.rule ? [e.rule] : e.rules || []).join(', ')} on "${e.path}" expired on ${formatExpiry(e.expires)}.`,
       why: 'Time-boxed exceptions must be renewed or removed once they expire; an expired exception no longer suppresses violations.',
       expected: ['renew the exception', 'remove the exception'],
       suggestedFix: `Update or delete the exception entry for "${e.path}" in architecture.yml.`,
@@ -251,13 +266,44 @@ function checkUnclassified(config, graph, r, out) {
   });
 }
 
-function resolveImportLayer(root, fromAbsFile, importPath, graph) {
-  if (!importPath.startsWith('.')) return null; // external/bare specifier
+/** Resolve a relative import specifier from `fromAbsFile` to an absolute file
+ * on disk, trying the bare path plus the usual extension/index fallbacks.
+ * Returns null for an external/bare specifier, or if nothing on disk matches
+ * any candidate — the caller decides what that means (unclassifiable vs.
+ * IMPORT-001's "this doesn't exist yet"). */
+export function resolveRelativeImport(fromAbsFile, importPath) {
+  if (!importPath.startsWith('.')) return null;
   const base = path.resolve(path.dirname(fromAbsFile), importPath);
   const candidates = [base, `${base}.ts`, `${base}.tsx`, `${base}.js`, `${base}.jsx`, path.join(base, 'index.ts'), path.join(base, 'index.tsx')];
-  const hit = candidates.find((c) => fs.existsSync(c) && fs.statSync(c).isFile());
+  return candidates.find((c) => fs.existsSync(c) && fs.statSync(c).isFile()) || null;
+}
+
+function resolveImportLayer(root, fromAbsFile, importPath, graph) {
+  const hit = resolveRelativeImport(fromAbsFile, importPath);
   if (!hit) return null;
   return classifyFile(rel(root, hit), graph);
+}
+
+// IMPORT-001 — a relative import that resolves to nothing is either a typo or
+// a reference to a file a later build step hasn't generated yet (e.g. a
+// controller's stub template imports a same-named page before that page has
+// been created). Checked regardless of whether the target sits inside or
+// outside the project root — a controller that wraps an externally-authored
+// file may legitimately reach far outside root via a long relative path.
+function checkDanglingImports(config, absFile, source, r, out) {
+  for (const importPath of extractImports(source)) {
+    if (!importPath.startsWith('.')) continue;
+    if (resolveRelativeImport(absFile, importPath)) continue;
+    pushViolation(config, out, {
+      rule: 'IMPORT-001',
+      file: r,
+      line: 1,
+      message: `Import "${importPath}" does not resolve to an existing file.`,
+      why: 'A relative import that resolves to nothing points at a typo, or at a file from a later step in the build order that has not been generated yet — this is how Construct enforces generation order.',
+      expected: ['a file that exists at the resolved path'],
+      suggestedFix: `Create the missing file (check the recommended layer order: domain -> service -> workflow -> hook -> component -> page -> controller), or fix the import path in "${r}".`,
+    });
+  }
 }
 
 // For layers outside the hardcoded rule set above (i.e. custom/project-defined
@@ -315,6 +361,7 @@ export function validateArchitecture(root, opts = {}) {
     for (const desc of detectLayerViolations(layer, source)) {
       pushViolation(config, out, { ...desc, file: r });
     }
+    checkDanglingImports(config, abs, source, r, out);
     if (!KNOWN_LAYERS.has(layer)) {
       checkGenericEdges(config, graph, root, abs, r, layer, out);
     }

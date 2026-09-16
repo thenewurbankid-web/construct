@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-import { init, feature, generate, sync, validate, summarize, doctor } from '../src/cli.mjs';
+import { init, feature, generate, sync, validate, summarize, doctor, create, refactor, research, importCommand, runImportRouteWizard } from '../src/cli.mjs';
+import { startRepl } from '../src/repl.mjs';
 import { EXIT_CODES, ConstructError } from '../src/diagnostics.mjs';
+import { USAGE } from '../src/usage.mjs';
 
 const [cmd, ...args] = process.argv.slice(2);
-
-const USAGE = `Construct\n\nCommands:\n  construct init [dir]\n  construct feature create <name>\n  construct generate <layer> <name> --feature <feature>\n  construct sync\n  construct validate [--format json]\n  construct summarize [--feature <name>] [--format json|md|compact|prose] [--since <ref>]\n  construct doctor`;
 
 try {
   if (cmd === 'init') await init(args);
@@ -14,7 +14,15 @@ try {
   else if (cmd === 'validate') await validate(args);
   else if (cmd === 'summarize') await summarize(args);
   else if (cmd === 'doctor') await doctor(args);
-  else {
+  else if (cmd === 'create') await create(args);
+  else if (cmd === 'refactor') await refactor(args);
+  else if (cmd === 'research') await research(args);
+  else if (cmd === 'import' && args[0] === '--route') await runImportRouteWizard(args[1]);
+  else if (cmd === 'import') await importCommand(args);
+  else if (cmd === 'repl') {
+    await startRepl();
+    process.exit(0);
+  } else {
     console.log(USAGE);
     process.exit(EXIT_CODES.USAGE_ERROR);
   }
