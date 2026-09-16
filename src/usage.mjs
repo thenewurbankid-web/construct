@@ -61,7 +61,7 @@ shell — not typed inside 'construct repl', which is already reading input.
 Each of the above has a flat equivalent (unchanged, still supported):
 
 Commands:
-  construct init [dir]
+  construct init [dir] [--framework nextjs|react-spa]
   construct feature create <name> [--dir <path>]
   construct generate <layer> <name> --feature <feature> [--dir <path>]
   construct generate layer <name> --feature <feature> --layers <l1,l2,...> [--dir <path>]

@@ -6,6 +6,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { EXIT_CODES } from '../src/diagnostics.mjs';
+import { loadLayerGraph } from '../src/architecture-graph.mjs';
+import { classifyFile } from '../src/architecture-enforcer.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const bin = path.join(here, '..', 'bin', 'construct.mjs');
@@ -204,6 +206,37 @@ function unrelatedProjectWithSubdir() {
   fs.writeFileSync(path.join(parent, 'sibling.txt'), 'do not touch\n');
   return parent;
 }
+
+test('init defaults to framework: nextjs and scaffolds app/page.tsx', () => {
+  const dir = emptyProjectDir();
+  const res = run(['init'], dir);
+  assert.equal(res.status, EXIT_CODES.OK);
+  assert.match(fs.readFileSync(path.join(dir, 'architecture.yml'), 'utf8'), /framework: nextjs/);
+  assert.ok(fs.existsSync(path.join(dir, 'app', 'page.tsx')));
+  assert.ok(!fs.existsSync(path.join(dir, 'src', 'App.tsx')));
+});
+
+test('init --framework react-spa scaffolds src/main.tsx + src/App.tsx with the core controller registered, not app/page.tsx', () => {
+  const dir = emptyProjectDir();
+  const res = run(['init', '--framework', 'react-spa'], dir);
+  assert.equal(res.status, EXIT_CODES.OK);
+  assert.match(fs.readFileSync(path.join(dir, 'architecture.yml'), 'utf8'), /framework: react-spa/);
+  assert.ok(!fs.existsSync(path.join(dir, 'app')));
+  assert.ok(fs.existsSync(path.join(dir, 'src', 'main.tsx')));
+  const appContent = fs.readFileSync(path.join(dir, 'src', 'App.tsx'), 'utf8');
+  assert.match(appContent, /<Route path="\/" element={<CoreController \/>} \/>/);
+  // The scaffolded route layer file matches #65's react-spa route pattern
+  // (src/App.tsx) and #66's route-resolver convention exactly.
+  const graph = loadLayerGraph(dir);
+  assert.equal(classifyFile('src/App.tsx', graph), 'route');
+});
+
+test('init --framework <bogus> exits with USAGE_ERROR and a clear message', () => {
+  const dir = emptyProjectDir();
+  const res = run(['init', '--framework', 'sveltekit'], dir);
+  assert.equal(res.status, EXIT_CODES.USAGE_ERROR);
+  assert.match(res.stderr, /Unknown project\.framework 'sveltekit'/);
+});
 
 test('init [dir] followed by doctor --dir from the parent finds architecture.yml without cd', () => {
   const parent = unrelatedProjectWithSubdir();

@@ -16,6 +16,42 @@ function tmpProject() {
 // fires — every other layer's stub is self-contained.
 const LAYERS = ['domain', 'service', 'workflow', 'hook', 'component', 'page', 'controller'];
 
+// ---- #67: controller template branches on project.framework -------------
+
+test('generateLayer writes the nextjs controller template by default (no architecture.yml)', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  generateLayer(dir, 'page', 'Checkout', 'checkout');
+  const file = generateLayer(dir, 'controller', 'Checkout', 'checkout');
+  const content = fs.readFileSync(file, 'utf8');
+  assert.match(content, /import \{ CheckoutPage \} from '\.\.\/pages\/CheckoutPage';/);
+  assert.match(content, /export function CheckoutController\(\) \{\s*\n\s*return <CheckoutPage \/>;/);
+  // No react-router-specific wiring comment for the nextjs (default) target.
+  assert.doesNotMatch(content, /react-router/);
+});
+
+test('generateLayer writes a react-spa controller documenting its real router-table wiring', () => {
+  const dir = tmpProject();
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), 'project:\n  framework: react-spa\n');
+  createFeature(dir, 'checkout');
+  generateLayer(dir, 'page', 'Checkout', 'checkout');
+  const file = generateLayer(dir, 'controller', 'Checkout', 'checkout');
+  const content = fs.readFileSync(file, 'utf8');
+  // Same functional composition (controller renders its same-named page) --
+  // that part was never actually Next.js-specific.
+  assert.match(content, /import \{ CheckoutPage \} from '\.\.\/pages\/CheckoutPage';/);
+  assert.match(content, /export function CheckoutController\(\) \{\s*\n\s*return <CheckoutPage \/>;/);
+  // But the real entry-point wiring mechanism is now documented explicitly
+  // instead of being an unstated nextjs assumption.
+  assert.match(content, /Registered directly as this route's element by react-router in\s*\n\/\/ src\/App\.tsx/);
+  assert.match(content, /<Route path="\/checkout" element={<CheckoutController \/>} \/>/);
+  // And it still passes Construct's own architecture rules (selfCheck ran
+  // inside generateLayer without throwing) -- this assertion just documents
+  // that expectation for a reader of this test.
+  const { ok } = validateArchitecture(dir, { files: [file] });
+  assert.ok(ok);
+});
+
 test('createFeature scaffolds the full layer folder set plus types/index', () => {
   const dir = tmpProject();
   const base = createFeature(dir, 'checkout');

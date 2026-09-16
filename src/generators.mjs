@@ -1,6 +1,20 @@
 import path from 'node:path'; import fs from 'node:fs'; import {ensureDir,write,rel} from './fs.mjs'; import {loadConfig} from './config.mjs'; import {validateArchitecture} from './architecture-enforcer.mjs'; import {ConstructError,EXIT_CODES} from './diagnostics.mjs';
+// The controller template's own composition (importing a same-named Page
+// from the feature's pages/ folder) is Construct's own feature-internal
+// convention, not Next.js's -- it works unchanged for either framework.
+// What genuinely differs per framework is which file wires the controller
+// into the app's actual router in the first place: for nextjs that's a
+// physical `app/<route>/page.tsx` (outside the feature entirely -- see
+// cli.mjs's init()); for react-spa (#65/#66) it's a `<Route path=...
+// element={<XController/>}/>` entry in the centralized src/App.tsx. The
+// react-spa template documents that real wiring explicitly instead of
+// leaving it an unstated nextjs assumption.
+const controllerTemplates={
+ nextjs:(n)=>`import { ${n}Page } from '../pages/${n}Page';\n\nexport function ${n}Controller() {\n  return <${n}Page />;\n}\n`,
+ 'react-spa':(n)=>`import { ${n}Page } from '../pages/${n}Page';\n\n// Registered directly as this route's element by react-router in\n// src/App.tsx (e.g. <Route path="/${n.toLowerCase()}" element={<${n}Controller />} />)\n// -- no per-route page.tsx wrapper file like the Next.js target uses.\nexport function ${n}Controller() {\n  return <${n}Page />;\n}\n`,
+};
 const templates={
- controller:(n)=>`import { ${n}Page } from '../pages/${n}Page';\n\nexport function ${n}Controller() {\n  return <${n}Page />;\n}\n`,
+ controller:(n,{framework='nextjs'}={})=>(controllerTemplates[framework]||controllerTemplates.nextjs)(n),
  workflow:(n)=>`import { setup } from 'xstate';\n\nexport const ${n}Workflow = setup({}).createMachine({\n  id: '${n.toLowerCase()}',\n  initial: 'idle',\n  states: { idle: {} }\n});\n`,
  hook:(n)=>`import { useCallback } from 'react';\n\nexport function use${n}() {\n  return { action: useCallback(() => {}, []) };\n}\n`,
  domain:(n)=>`export function ${n}() {\n  return true;\n}\n`,
@@ -76,7 +90,7 @@ export function generateLayer(root,layer,name,feature){
  ensureDir(dir);
  const file=path.join(dir,`${layerFileBaseName(layer,cap)}.tsx`);
  const custom=findCustomTemplate(root,layer,config);
- const content=custom?renderCustomTemplate(custom,name):templates[layer](cap);
+ const content=custom?renderCustomTemplate(custom,name):templates[layer](cap,{framework:config.project?.framework});
  write(file,content);
  selfCheck(root,[file]);
  return file;

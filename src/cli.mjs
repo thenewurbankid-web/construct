@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process';
 import { makeLineSource } from './line-source.mjs';
 import { createFeature, generateLayer, generateVertical } from './generators.mjs';
 import { write, ensureDir } from './fs.mjs';
-import { loadConfig, findProjectRoot, DEFAULT_RULES } from './config.mjs';
+import { loadConfig, findProjectRoot, DEFAULT_RULES, normalizeFramework } from './config.mjs';
 import { formatReport, exitCodeForViolations, ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { aggregateValidation } from './registry.mjs';
 import { validateArchitecture } from './architecture-enforcer.mjs';
@@ -47,16 +47,39 @@ const ENFORCER_MODULES = [
   { name: 'summarize', file: 'src/summarize.mjs' },
 ];
 
+// `construct init [dir] [--framework nextjs|react-spa]` — the entry-point
+// scaffold this writes is the one genuinely framework-specific part of
+// init: nextjs gets a physical app/page.tsx (Next.js's own file-system
+// routing); react-spa gets src/main.tsx (the real Vite/CRA-style bootstrap
+// entry) + src/App.tsx (the centralized react-router table #65/#66/#67
+// treat as that framework's "route" layer) with the core feature's
+// controller actually registered in it — not just a page.tsx clone. Framework
+// defaults to nextjs when --framework is omitted, so every existing caller
+// of `construct init` keeps getting exactly what it got before.
 export async function init(args) {
-  const dir = path.resolve(args[0] || '.');
+  const dir = path.resolve(args[0] && !args[0].startsWith('--') ? args[0] : '.');
+  const fi = args.indexOf('--framework');
+  const framework = normalizeFramework(fi >= 0 ? args[fi + 1] : undefined);
   ensureDir(dir);
-  const arch = `version: 1\npreset: strict-nextjs\n\nproject:\n  framework: nextjs\n  language: typescript\n\nfeatures:\n  root: features\n\nrules:\n${Object.entries(DEFAULT_RULES).map(([k, v]) => `  ${k}: ${v.severity}`).join('\n')}\n\nexceptions: []\n`;
+  const arch = `version: 1\npreset: strict-nextjs\n\nproject:\n  framework: ${framework}\n  language: typescript\n\nfeatures:\n  root: features\n\nrules:\n${Object.entries(DEFAULT_RULES).map(([k, v]) => `  ${k}: ${v.severity}`).join('\n')}\n\nexceptions: []\n`;
   write(path.join(dir, 'architecture.yml'), arch);
   write(path.join(dir, 'AGENTS.md'), `# Construct\n\nRead architecture.yml before changing code.\n\nDefault flow: Route → Controller → Workflow → Service → API; Controller → Page → Component.\n\nPages: no business logic, workflows, services, API calls, or fetch.\nComponents: presentation/local UI state only.\nFeatures: isolated; cross-feature access goes through index.ts.\nDomain: pure by default. Services: external effects.\n\nRun \`construct validate\` before finishing changes.\n`);
   createFeature(dir, 'core');
-  ensureDir(path.join(dir, 'app'));
-  write(path.join(dir, 'app', 'page.tsx'), `import { CoreController } from '../features/core/controllers/CoreController';\n\nexport default function Page() {\n  return <CoreController />;\n}\n`);
-  console.log(`Initialized Construct in ${dir}`);
+  if (framework === 'react-spa') {
+    ensureDir(path.join(dir, 'src'));
+    write(
+      path.join(dir, 'src', 'main.tsx'),
+      `import React from 'react';\nimport ReactDOM from 'react-dom/client';\nimport { BrowserRouter } from 'react-router-dom';\nimport { App } from './App';\n\nReactDOM.createRoot(document.getElementById('root')!).render(\n  <React.StrictMode>\n    <BrowserRouter>\n      <App />\n    </BrowserRouter>\n  </React.StrictMode>,\n);\n`,
+    );
+    write(
+      path.join(dir, 'src', 'App.tsx'),
+      `import { Routes, Route } from 'react-router-dom';\nimport { CoreController } from '../features/core/controllers/CoreController';\n\nexport function App() {\n  return (\n    <Routes>\n      <Route path="/" element={<CoreController />} />\n    </Routes>\n  );\n}\n`,
+    );
+  } else {
+    ensureDir(path.join(dir, 'app'));
+    write(path.join(dir, 'app', 'page.tsx'), `import { CoreController } from '../features/core/controllers/CoreController';\n\nexport default function Page() {\n  return <CoreController />;\n}\n`);
+  }
+  console.log(`Initialized Construct in ${dir} (framework: ${framework})`);
 }
 
 export async function feature(args) {
