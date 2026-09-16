@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   resolveUrlToFolder,
   findRouteEntryFile,
@@ -289,4 +290,23 @@ test('resolveRoute with framework: react-spa and a URL route but no root throws 
 test('resolveRoute with framework: react-spa throws a clear error for a URL with no matching <Route>', () => {
   const root = buildReactSpaFixtureProject();
   assert.throws(() => resolveRoute('/does-not-exist', { framework: 'react-spa', root }), ConstructError);
+});
+
+// #68: the same combining tool against the real, checked-in
+// fixtures/architecture-valid-react-spa project (not a synthetic in-memory
+// fixture) -- proof this resolves a route end to end in a project that also
+// passes `construct validate`, not just in isolation.
+test('resolveRoute with framework: react-spa resolves /dashboard against fixtures/architecture-valid-react-spa', () => {
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const root = path.join(repoRoot, 'fixtures', 'architecture-valid-react-spa');
+  const { folder, entryFile, files, component } = resolveRoute('/dashboard', { framework: 'react-spa', root });
+  assert.equal(component, 'WidgetController');
+  assert.equal(entryFile, path.join(root, 'features/widget/controllers/WidgetController.tsx'));
+  assert.equal(folder, path.dirname(entryFile));
+  const rel = (f) => path.relative(root, f).split(path.sep).join('/');
+  assert.deepEqual(files.map(rel).sort(), [
+    'features/widget/components/WidgetComponent.tsx',
+    'features/widget/controllers/WidgetController.tsx',
+    'features/widget/pages/WidgetPage.tsx',
+  ]);
 });

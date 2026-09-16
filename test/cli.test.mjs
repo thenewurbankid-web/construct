@@ -49,6 +49,17 @@ test('validate against a project with no architecture.yml/features runs cleanly 
   assert.ok(res.status === EXIT_CODES.OK || res.status === EXIT_CODES.VIOLATIONS);
 });
 
+// #68: the real fixtures/architecture-valid-react-spa project, run through
+// the actual `construct validate` binary end to end -- not just the
+// validateArchitecture()-level unit tests in architecture-enforcer.test.mjs.
+// This is the same invocation a real react-spa user would run.
+test('construct validate against fixtures/architecture-valid-react-spa exits OK with zero error-severity violations', () => {
+  const repoRoot = path.resolve(here, '..');
+  const res = run(['validate', '--dir', 'fixtures/architecture-valid-react-spa'], repoRoot);
+  assert.equal(res.status, EXIT_CODES.OK);
+  assert.doesNotMatch(res.stdout, /❌/);
+});
+
 test('validate --format json produces well-formed JSON through formatReport', () => {
   const dir = emptyProjectDir();
   const res = run(['validate', '--format', 'json'], dir);

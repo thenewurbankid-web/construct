@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ConstructError } from '../src/diagnostics.mjs';
-import { CANONICAL_LAYERS } from '../src/architecture-graph.mjs';
+import { CANONICAL_LAYERS, loadLayerGraph } from '../src/architecture-graph.mjs';
 import {
   classifyFile,
   detectLayerViolations,
@@ -252,6 +252,29 @@ test('architecture-valid fixture produces zero error-severity violations', () =>
   const res = validateArchitecture(path.join(REPO_ROOT, 'fixtures', 'architecture-valid'));
   const errors = res.violations.filter((v) => v.severity === 'error');
   assert.deepEqual(errors, []);
+});
+
+// #68 — a real, non-Next.js react-spa fixture (project.framework: react-spa,
+// route layer = src/App.tsx per #65/#66/#67's real convention, not a stub)
+// validated the same way the nextjs fixture above is: proof the whole
+// pipeline (framework option -> route layer classification -> controller
+// convention) actually works end to end, not just the individual unit
+// tests #65-#67 already added in isolation.
+test('architecture-valid-react-spa fixture produces zero error-severity violations', () => {
+  const root = path.join(REPO_ROOT, 'fixtures', 'architecture-valid-react-spa');
+  const res = validateArchitecture(root);
+  const errors = res.violations.filter((v) => v.severity === 'error');
+  assert.deepEqual(errors, []);
+});
+
+test('architecture-valid-react-spa fixture classifies src/App.tsx as the route layer and features/widget/controllers/WidgetController.tsx as the controller layer', () => {
+  const root = path.join(REPO_ROOT, 'fixtures', 'architecture-valid-react-spa');
+  const graph = loadLayerGraph(root);
+  assert.equal(graph.route.pattern, 'src/App.tsx');
+  assert.equal(classifyFile('src/App.tsx', graph), 'route');
+  assert.equal(classifyFile('features/widget/controllers/WidgetController.tsx', graph), 'controller');
+  // The nextjs-only route pattern must not accidentally also match this file.
+  assert.notEqual(classifyFile('src/App.tsx', CANONICAL_LAYERS), 'route');
 });
 
 test('architecture-invalid fixture reports exactly the expected rule per manifest entry', () => {
