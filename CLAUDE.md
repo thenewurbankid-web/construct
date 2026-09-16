@@ -43,6 +43,15 @@ snapshot that rots. See #35 for the audit that established this.
      comment when that outcome occurs, even if the issue isn't closing
      yet (e.g. "3 of 6 done, here's what's left" is its own comment, not
      something to hold until everything is finished).
+   - **This applies to delegated work too.** If you hand a unit of work to
+     a subagent, YOU (the delegator) are responsible for the before/during/
+     outcome comments actually happening on the right issue — either by
+     instructing the subagent explicitly to post them itself at each stage
+     (not just "report back at the end"), or by posting them yourself as
+     soon as you learn the subagent has started/decided/finished something.
+     "I'll comment once the agent's final report comes back" is exactly
+     the failure mode this rule exists to prevent — it looks, from the
+     issue, like nothing happened for the entire duration of the work.
    - It is fine for these to be several small comments rather than one
      large one — the issue thread should let someone reconstruct exactly
      what happened, in order, without reading the code or waiting for a
