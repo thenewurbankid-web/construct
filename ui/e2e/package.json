@@ -1,0 +1,16 @@
+{
+  "name": "construct-ui-e2e",
+  "version": "0.1.0",
+  "description": "Playwright end-to-end tests for the Construct web UI (ui/client + ui/server), run against the real dev servers in a real browser — not curl/API-level checks.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:smoke": "playwright test smoke.spec.js",
+    "install-browsers": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
+  }
+}
