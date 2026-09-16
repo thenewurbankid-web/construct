@@ -168,3 +168,22 @@ snapshot that rots. See #35 for the audit that established this.
       go unverified.
     This is retroactive: any already-closed UI issue that shipped without
     this gets caught up, not grandfathered in.
+12. **Every ticket's closing comment (or body, for a changelog-style
+    retroactive filing) documents how to actually use what it shipped —
+    not just that it shipped.** Specifically, before closing:
+    - **Setup/run/install**: the exact commands to install, run, and use
+      whatever the ticket delivered (e.g. `cd ui/client && npm install &&
+      npm run storybook`) — someone should be able to follow the issue
+      alone, with no other context, and get it running.
+    - **The API it exposes**: new/changed CLI commands, REST endpoints,
+      exported functions, or component props — whatever another piece of
+      work (human or agent) would need to call or build on top of this.
+    - **Exceptions**: known edge cases it doesn't handle, deliberate scope
+      cuts, things that look like bugs but are documented limitations —
+      said plainly, not left for someone to discover the hard way.
+    - **Future considerations/suggestions**: follow-up ideas, things worth
+      revisiting, or a natural next step — even a one-liner. If there
+      genuinely isn't one, say "none" rather than omitting the section.
+    This applies to every ticket, not just UI ones — a `src/`-only CLI
+    change still needs its usage/API/exceptions/next-steps stated, same
+    as a UI one needs its screenshot.
