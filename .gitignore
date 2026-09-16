@@ -1,6 +1,7 @@
 node_modules/
 dist/
 *.log
+.claude/
 ui/e2e/test-results/
 ui/e2e/playwright-report/
 

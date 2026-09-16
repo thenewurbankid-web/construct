@@ -4,6 +4,66 @@
 
 Construct makes architectural conventions executable. It ships strict defaults and lets each project modify policy through `architecture.yml`.
 
+## Vision
+
+Construct is a framework of **non-LLM lego blocks** — small, deterministic,
+code-driven pieces that compose together to build a web app, or refactor an
+existing one, according to constraints the project defines (`architecture.yml`).
+An LLM is one possible operator of these blocks, not a requirement baked into
+them: every block does its job the same way whether a human clicks it, a
+script calls it, or an agent invokes it.
+
+**Think cockpit, not autopilot.** The blocks are extended by a UI (`ui/`) so
+humans can observe what's happening and collaborate with whatever is doing the
+building — construct, browse, and correct, rather than hand the whole thing to
+a model and hope. The goal is enough blocks that you can build an app in a few
+clicks, or correct an LLM-generated one in a few clicks, instead of re-prompting
+and hoping the next generation is right. The same blocks are exposed to LLMs
+through an MCP server with **deterministic flows**, so automated development
+goes through the same repeatable machinery a human would use by hand — a team
+doing the same kind of work over and over shouldn't burn time and tokens
+reinventing it each time. The point of building this is to free LLM usage for
+actual innovation, not repetitive plumbing.
+
+**The mantra: an LLM understands an example better than an instruction.**
+Layers are structured so that one layer's real output becomes the next layer's
+concrete example, not an abstract spec to interpret from scratch. Each layer
+is mostly code-driven, and calls an LLM only where a deterministic block
+genuinely can't do the job (see `import --llm`, the route wizard's analysis
+step — the *only* two places in this whole tool that ever call one).
+
+**The hypothesis this project is testing**: if repetitive development work is
+broken down into small enough pieces, most of it needs no LLM at all — and
+wherever an LLM *is* still needed, its task is small, its guidance is a real
+example rather than an instruction, and the framework's own validation
+(`IMPORT-001`, the `PAGE-*`/`COMPONENT-*` rules, etc.) catches it immediately
+if it goes off the rails, instead of a wrong answer silently shipping.
+
+**Three tiers, one framework** — this is meant to be a genuinely new
+development experience, not just a different chat window:
+- **Beginner**: chat only (the guided import wizard, the UI's chat interface).
+- **Intermediate**: a no-code UI editor — dig into forms, visual trees, drag
+  interactions (the Dashboard, the pages/JSX editor, workflow visualization).
+- **Expert**: full code, same architecture, same rules, no ceiling.
+
+All three tiers operate on the same underlying blocks and produce the same
+kind of output, so moving between tiers — or watching PRs, features, and
+commits move through them — stays legible instead of being three unrelated
+tools bolted together.
+
+**Everything is feature-based** on purpose: business logic lives *in* the
+code's own architecture (the 7-layer feature structure), not scattered across
+prose instructions an LLM has to re-derive intent from every time — the
+architecture itself is the spec. The runtime summarizer (`construct
+summarize`) closes the loop by giving an AI (or a human) an on-the-fly,
+plain-English summary of what a feature's code actually does, so exploring an
+unfamiliar feature is cheap instead of a full read-through every time.
+
+Every new capability in this repo should be judged against this: does it add
+a deterministic block, make an existing one more atomic, make the *example*
+a layer hands the next one better, or extend the cockpit UI — or is it quietly
+routing around this and making the LLM do more work than it needs to?
+
 ## Install
 
 ```bash

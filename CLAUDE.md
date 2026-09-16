@@ -7,6 +7,23 @@ from once running `construct init .` on this repo; they describe the
 contract Construct enforces on *target* projects, not this one — ignore
 them here.)
 
+## Vision — read this before proposing or building anything new
+
+See the "Vision" section at the top of `README.md` in full; it is this
+project's actual charter, not marketing copy. Short version: Construct is a
+library of small, deterministic, non-LLM "lego blocks" that build/refactor a
+web app under user-defined constraints, extended by a UI (`ui/`) so a human
+can observe and collaborate — a cockpit, not an autopilot. The same blocks are
+exposed to LLMs (via `--llm` flags today, an MCP server with deterministic
+flows eventually) so automated work goes through the same repeatable
+machinery a human would use, instead of an LLM reinventing the same task with
+tokens every time. Mantra: an LLM understands an example better than an
+instruction — layers should hand the next layer a concrete example, not an
+abstract spec. Before adding a new capability, ask: does this add a
+deterministic block, make an existing one more atomic, improve the example a
+layer hands the next one, or extend the cockpit UI — or does it quietly make
+an LLM do work a block should be doing instead?
+
 ## GitHub issue discipline (standing instruction)
 
 Repo: `thenewurbankid-web/construct`. This project tracks all real work as
