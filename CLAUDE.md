@@ -24,6 +24,26 @@ deterministic block, make an existing one more atomic, improve the example a
 layer hands the next one, or extend the cockpit UI — or does it quietly make
 an LLM do work a block should be doing instead?
 
+## Dogfooding: Construct's own UI must be built using Construct
+
+`ui/` is not exempt from the architecture Construct enforces on everyone
+else — it should itself be organized as a real Construct feature (domain/
+service/workflow/hook/component/page/controller) and pass `construct
+validate`, not just be "a React app that happens to live in this repo."
+Dogfooding is how the framework actually gets proven, not an afterthought.
+
+This requires Construct itself to support **React + TypeScript as a
+first-class target more broadly, not only Next.js App Router specifically**
+— today's assumptions (a `page.tsx` entry file, `app/` routing, `route-
+resolver.mjs`'s Next.js-shaped URL resolution) don't fit `ui/client`'s Vite
+SPA or `ui/server`'s plain Express backend. Generalizing this (a `framework`
+option in `architecture.yml` beyond `nextjs`, an abstracted route/controller
+entry point that isn't hardcoded to Next.js conventions) is real, foundational
+work — track it as its own epic with atomic sub-issues, and don't force a
+premature, invasive Next.js rewrite of already-working, tested UI code just
+to satisfy this literally before that support exists. Once it does, migrate
+`ui/` onto Construct as a second, separate tracked epic.
+
 ## GitHub issue discipline (standing instruction)
 
 Repo: `thenewurbankid-web/construct`. This project tracks all real work as
