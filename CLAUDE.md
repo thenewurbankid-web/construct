@@ -112,12 +112,21 @@ snapshot that rots. See #35 for the audit that established this.
 10. **Default to parallel, independent work streams — don't serialize out
     of caution.** When multiple queued units of work exist, run them at
     the same time rather than one-at-a-time-to-be-safe, even if they touch
-    overlapping files. The mitigation for that overlap risk is NOT
-    avoiding parallelism — it's rule 8's frequent small commits/pushes and
-    rule 2's frequent comments: small, fast checkpoints make a conflict
-    visible and revertible almost immediately, instead of a huge
-    unreviewable pile discovered at the end. Concretely, when dispatching
-    parallel agents that may touch the same files: tell each one to `git
-    pull --rebase` before every push, and to stop and report rather than
-    force-resolve if a real conflict shows up — that's a moment for a
-    human/you decision, not a silent auto-merge.
+    overlapping files.
+    - **Prefer real isolation over a shared-tree mitigation when
+      available.** If the agent-dispatch tool supports it (e.g. the Agent
+      tool's `isolation: "worktree"`), launch parallel agents that touch
+      overlapping files in their own git worktree/branch instead of the
+      shared working directory — this removes the collision risk at the
+      filesystem level rather than just catching it quickly. Merge each
+      worktree branch back explicitly (review the diff, then merge/rebase
+      onto `main`) once its work is verified done.
+    - When worktree isolation isn't used (e.g. an agent already mid-task
+      in the shared tree before this was decided), fall back to rule 8's
+      frequent small commits/pushes and rule 2's frequent comments as the
+      mitigation: small, fast checkpoints make a conflict visible and
+      revertible almost immediately instead of a huge unreviewable pile
+      discovered at the end. Tell each such agent to `git pull --rebase`
+      before every push, and to stop and report rather than force-resolve
+      if a real conflict shows up — that's a moment for a human/you
+      decision, not a silent auto-merge.
