@@ -109,3 +109,15 @@ snapshot that rots. See #35 for the audit that established this.
    human decisions this file can't resolve on its own (a security/safety
    tradeoff, an ambiguous requirement, credentials only the human has) —
    not idling by default "just in case."
+10. **Default to parallel, independent work streams — don't serialize out
+    of caution.** When multiple queued units of work exist, run them at
+    the same time rather than one-at-a-time-to-be-safe, even if they touch
+    overlapping files. The mitigation for that overlap risk is NOT
+    avoiding parallelism — it's rule 8's frequent small commits/pushes and
+    rule 2's frequent comments: small, fast checkpoints make a conflict
+    visible and revertible almost immediately, instead of a huge
+    unreviewable pile discovered at the end. Concretely, when dispatching
+    parallel agents that may touch the same files: tell each one to `git
+    pull --rebase` before every push, and to stop and report rather than
+    force-resolve if a real conflict shows up — that's a moment for a
+    human/you decision, not a silent auto-merge.
