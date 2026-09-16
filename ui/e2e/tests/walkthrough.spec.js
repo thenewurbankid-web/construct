@@ -219,4 +219,54 @@ test.describe.serial('Construct UI walkthrough (issue #37)', () => {
     await cliSection.scrollIntoViewIfNeeded();
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'help.png'), fullPage: true });
   });
+
+  // Epic #48 (#49-#56): scaffold a page-layer file into the "billing"
+  // feature created in step 3, then drive the Pages Editor end to end —
+  // browse to it, open its JSX tree, select a node from the tree (#50/#51),
+  // and confirm the isolated snippet editor + props inspector render for
+  // that selection (#52/#53). Doesn't exercise the save round trip here
+  // (that's covered at the API level by ui/server/src/pagesEditor.test.mjs)
+  // — this is the one layer that proves the real, rendered browser flow
+  // actually wires those pieces together.
+  test('7. pages-editor.png — browse a feature, open a page, select a tree node', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('h1')).toHaveText('Dashboard');
+
+    const createForm = page.locator('.command-form', { has: page.getByRole('heading', { name: 'Create' }) });
+    await createForm.locator('select').first().selectOption('single');
+    await createForm.getByPlaceholder('e.g. CpoAccess').fill('Home');
+    await createForm.getByPlaceholder('e.g. cpo-v2').fill('billing');
+    await createForm.locator('select').nth(1).selectOption('page');
+    await createForm.getByRole('button', { name: 'Run create' }).click();
+    await expect(createForm.locator('.attribution-label.tool').first()).toBeVisible({ timeout: 10_000 });
+
+    await page.getByRole('link', { name: 'Pages Editor' }).click();
+    await expect(page.locator('h1')).toHaveText('Pages Editor');
+
+    await page.locator('.pages-browser select').selectOption('billing');
+    const openButton = page.getByRole('button', { name: 'HomePage.tsx' });
+    await expect(openButton).toBeVisible({ timeout: 10_000 });
+    await openButton.click();
+
+    await expect(page.locator('.tree-panel')).toBeVisible();
+    const firstNode = page.locator('.tree-node').first();
+    await expect(firstNode).toBeVisible({ timeout: 10_000 });
+    await firstNode.click();
+
+    // Selecting via the tree highlights the same node in the structural
+    // preview (#51, tree -> preview direction).
+    await expect(page.locator('.preview-node.selected')).toBeVisible();
+    await expect(page.locator('.snippet-editor')).toBeVisible();
+    await expect(page.locator('.props-inspector')).toBeVisible();
+
+    // And the reverse direction (#51, preview -> tree): clicking the
+    // preview box selects the same node in the tree.
+    await page.locator('.preview-node').first().click();
+    await expect(page.locator('.tree-node.selected')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Show diagram' }).click();
+    await expect(page.locator('.propflow-svg')).toBeVisible();
+
+    await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'pages-editor.png'), fullPage: true });
+  });
 });

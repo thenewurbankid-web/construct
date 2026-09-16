@@ -25,6 +25,7 @@ test('home page loads and shows Dashboard or the ProjectGate heading', async ({ 
   // Nav should render regardless of project state.
   await expect(page.getByRole('link', { name: 'Dashboard' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Import Wizard' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Pages Editor' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Settings' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Help' })).toBeVisible();
 
