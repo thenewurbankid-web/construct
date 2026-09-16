@@ -27,12 +27,15 @@ function findNode(roots, id) {
   return null;
 }
 
+// Maps a node's own id to its *parent's id* (or null for a root) — every
+// caller (PropFlowDiagram's `positions.get(parentId)` lookup) keys off the
+// string id, not the node object itself.
 function flattenParentOf(roots) {
   const parentOf = new Map();
-  const walk = (nodes, parent) => {
+  const walk = (nodes, parentId) => {
     for (const n of nodes) {
-      parentOf.set(n.id, parent);
-      walk(n.children, n);
+      parentOf.set(n.id, parentId);
+      walk(n.children, n.id);
     }
   };
   walk(roots, null);
