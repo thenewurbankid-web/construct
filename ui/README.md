@@ -64,6 +64,46 @@ address with `CONSTRUCT_UI_API=http://host:port npm run dev` if it runs
 somewhere else. The backend's own port is configurable via `PORT` (e.g.
 `PORT=4001 npm start`).
 
+## Storybook
+
+`ui/client` has Storybook configured (`ui/client/.storybook/main.js` +
+`preview.js`, framework `@storybook/react-vite`, reusing the same
+Vite/React setup as the real app) so components can be developed and
+visually reviewed in isolation, one story per component. `preview.js`
+imports the app's real `src/styles.css`, so every story renders against
+the actual black/grey glassmorphism theme tokens (see "Theme" below), not
+an unstyled default canvas.
+
+```bash
+cd ui/client
+npm run storybook          # dev server, default port 6006
+npm run build-storybook    # static build to ui/client/storybook-static/
+```
+
+Every component in `ui/client/src/components/ui/` (see "Theme and
+reusable components" below) has a co-located `<Name>.stories.jsx`. Kept
+deliberately minimal: only `@storybook/addon-docs` beyond the framework
+itself — the addons `storybook init` offers by default
+(`@storybook/addon-vitest`'s browser-mode Vitest+Playwright integration,
+`@storybook/addon-a11y`, `@chromatic-com/storybook`, `@storybook/addon-mcp`)
+were left out as unnecessary scope; this repo's real regression guard for
+the rendered app is the separate Playwright suite in `ui/e2e` (see below),
+and duplicating that stack behind a Storybook addon would add dependencies
+without adding coverage.
+
+## Theme
+
+`ui/client/src/styles.css`'s `:root` defines the whole visual language
+(black/grey glassmorphism) as CSS custom properties — a near-black `--bg`
+with two faint radial glow tokens, translucent
+`--panel-glass`/`--panel-glass-strong` fills with `--panel-blur` via
+`backdrop-filter`, `--border`/`--border-strong`, and `--text`/`--muted`
+(`--accent`/`--tool`/`--llm`/`--error` are unchanged from before — they
+carry meaning, not just decoration, and already read fine against the
+darker glass backdrop). The shared `.glass-panel` class documents the
+background/border/blur recipe once; every panel-like surface across
+Dashboard/Settings/Wizard/Help/ProjectGate consumes the same tokens.
+
 ## End-to-end tests (Playwright)
 
 `ui/e2e/` drives the real, rendered app in an actual browser (Chromium) —

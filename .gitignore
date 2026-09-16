@@ -3,3 +3,6 @@ dist/
 *.log
 ui/e2e/test-results/
 ui/e2e/playwright-report/
+
+*storybook.log
+storybook-static
