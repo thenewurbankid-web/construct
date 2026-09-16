@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { loadConfig, findProjectRoot, DEFAULT_RULES } from '../src/config.mjs';
+import { loadConfig, findProjectRoot, DEFAULT_RULES, DEFAULT_LAYERS, REACT_SPA_LAYERS, FRAMEWORKS, normalizeFramework, layersForFramework } from '../src/config.mjs';
 import { ConstructError, EXIT_CODES } from '../src/diagnostics.mjs';
 
 function tmpProject() {
@@ -17,6 +17,65 @@ test('loadConfig returns defaults when architecture.yml is absent', () => {
   assert.equal(config.preset, 'strict-nextjs');
   assert.deepEqual(config.rules, DEFAULT_RULES);
   assert.deepEqual(config.exceptions, []);
+  // No architecture.yml at all still normalizes to the nextjs default —
+  // full backward compatibility for every project that predates `framework`.
+  assert.equal(config.project.framework, 'nextjs');
+  assert.deepEqual(config.layers, DEFAULT_LAYERS);
+});
+
+test('loadConfig defaults project.framework to nextjs when architecture.yml has no project section', () => {
+  const dir = tmpProject();
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), 'rules: {}\n');
+  const config = loadConfig(dir);
+  assert.equal(config.project.framework, 'nextjs');
+  assert.deepEqual(config.layers, DEFAULT_LAYERS);
+});
+
+test('loadConfig reads and normalizes project.framework: react-spa', () => {
+  const dir = tmpProject();
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), 'project:\n  framework: react-spa\n');
+  const config = loadConfig(dir);
+  assert.equal(config.project.framework, 'react-spa');
+  assert.deepEqual(config.layers, REACT_SPA_LAYERS);
+  assert.equal(config.layers.route.pattern, 'src/App.tsx');
+  // Everything else in the layer graph is unchanged from the nextjs shape.
+  assert.deepEqual(config.layers.controller, DEFAULT_LAYERS.controller);
+});
+
+test('loadConfig throws a ConstructError with a clear message for an unknown framework', () => {
+  const dir = tmpProject();
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), 'project:\n  framework: sveltekit\n');
+  assert.throws(
+    () => loadConfig(dir),
+    (err) => {
+      assert.ok(err instanceof ConstructError);
+      assert.equal(err.exitCode, EXIT_CODES.USAGE_ERROR);
+      assert.match(err.message, /Unknown project\.framework 'sveltekit'/);
+      assert.match(err.message, /nextjs, react-spa/);
+      return true;
+    },
+  );
+});
+
+test('normalizeFramework defaults undefined/null to nextjs and validates against FRAMEWORKS', () => {
+  assert.equal(normalizeFramework(undefined), 'nextjs');
+  assert.equal(normalizeFramework(null), 'nextjs');
+  assert.equal(normalizeFramework('react-spa'), 'react-spa');
+  assert.deepEqual(FRAMEWORKS, ['nextjs', 'react-spa']);
+  assert.throws(() => normalizeFramework('remix'), ConstructError);
+});
+
+test('layersForFramework returns the react-spa route pattern with everything else identical to DEFAULT_LAYERS', () => {
+  const layers = layersForFramework('react-spa');
+  assert.equal(layers.route.pattern, 'src/App.tsx');
+  assert.deepEqual(layers.route.canImport, DEFAULT_LAYERS.route.canImport);
+  for (const layer of ['controller', 'workflow', 'hook', 'service', 'domain', 'page', 'component']) {
+    assert.deepEqual(layers[layer], DEFAULT_LAYERS[layer]);
+  }
+});
+
+test('layersForFramework falls back to DEFAULT_LAYERS for nextjs (and unrecognized input)', () => {
+  assert.deepEqual(layersForFramework('nextjs'), DEFAULT_LAYERS);
 });
 
 test('loadConfig merges a valid architecture.yml, overriding severities', () => {

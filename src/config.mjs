@@ -14,6 +14,53 @@ export const DEFAULT_LAYERS = {
   component: { pattern: 'features/*/components/**', canImport: ['component', 'types'] },
 };
 
+// Every layer graph below shares the same feature-internal shape
+// (controller/workflow/hook/service/domain/page/component all live under
+// `features/*/<folder>/**`, framework-agnostic) — the only thing that
+// actually differs per target framework is where the "route" layer's entry
+// points physically live and how they're structured. Next.js App Router
+// uses file-system routing (one `page.tsx` per route folder under `app/`);
+// a react-spa target has no such per-route file — routing is centralized in
+// one file (by convention `src/App.tsx`, mirroring `ui/client/src/App.jsx`'s
+// real shape: a single file with a react-router `<Routes>` table mapping
+// URL paths straight to controller elements) that this pattern must match
+// instead. Every field other than `route` is intentionally identical to
+// DEFAULT_LAYERS above.
+export const REACT_SPA_LAYERS = { ...DEFAULT_LAYERS, route: { pattern: 'src/App.tsx', canImport: ['controller'] } };
+
+// Recognized `project.framework` values in architecture.yml. `nextjs` stays
+// the default so every project that predates this option (or simply never
+// sets it) keeps behaving exactly as before.
+export const FRAMEWORKS = ['nextjs', 'react-spa'];
+const DEFAULT_FRAMEWORK = 'nextjs';
+
+const LAYERS_BY_FRAMEWORK = {
+  nextjs: DEFAULT_LAYERS,
+  'react-spa': REACT_SPA_LAYERS,
+};
+
+/**
+ * Validate and normalize a `project.framework` value from architecture.yml.
+ * Absent/undefined normalizes to the default ('nextjs') for full backward
+ * compatibility with every project written before this option existed.
+ */
+export function normalizeFramework(raw) {
+  if (raw === undefined || raw === null) return DEFAULT_FRAMEWORK;
+  if (typeof raw !== 'string' || !FRAMEWORKS.includes(raw)) {
+    throw usageError(
+      `Unknown project.framework '${raw}' in architecture.yml — expected one of: ${FRAMEWORKS.join(', ')}.`,
+    );
+  }
+  return raw;
+}
+
+/** The canonical base layer graph for a given (already-normalized) framework
+ * value — the shape #66/#67 and architecture-graph.mjs's loadLayerGraph
+ * branch on before applying any project-level `layers:` override. */
+export function layersForFramework(framework) {
+  return LAYERS_BY_FRAMEWORK[framework] || DEFAULT_LAYERS;
+}
+
 // Rule severities AND non-architecture thresholds (e.g. a future readability
 // rule like 'READ-002-max-loc') live in this same uniform map. A value is
 // either a bare severity string ('error' | 'warning' | 'off') or an object
@@ -142,6 +189,7 @@ export function loadConfig(root) {
     return {
       version: 1,
       preset: 'strict-nextjs',
+      project: { framework: DEFAULT_FRAMEWORK },
       features: { root: 'features' },
       layers: DEFAULT_LAYERS,
       rules: DEFAULT_RULES,
@@ -160,13 +208,15 @@ export function loadConfig(root) {
   }
 
   const rules = normalizeRules(c.rules, DEFAULT_RULES);
+  const framework = normalizeFramework(c.project?.framework);
 
   return {
     version: 1,
     preset: 'strict-nextjs',
     ...c,
+    project: { ...(c.project || {}), framework },
     features: { root: 'features', ...(c.features || {}) },
-    layers: DEFAULT_LAYERS,
+    layers: layersForFramework(framework),
     rules,
     exceptions: c.exceptions || [],
   };

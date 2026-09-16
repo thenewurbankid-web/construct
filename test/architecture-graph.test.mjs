@@ -86,3 +86,35 @@ test('loadLayerGraph throws a ConstructError on a malformed custom graph', () =>
     return true;
   });
 });
+
+test('loadLayerGraph picks the react-spa route pattern (src/App.tsx) when project.framework is react-spa', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-graph-'));
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), 'project:\n  framework: react-spa\n');
+  const graph = loadLayerGraph(dir);
+  assert.equal(graph.route.pattern, 'src/App.tsx');
+  assert.deepEqual(graph.route.canImport, CANONICAL_LAYERS.route.canImport);
+  // Every other layer is unaffected by the framework switch.
+  assert.deepEqual(graph.controller, CANONICAL_LAYERS.controller);
+});
+
+test('loadLayerGraph still honors a `layers:` override on top of the react-spa base', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-graph-'));
+  fs.writeFileSync(
+    dir + '/architecture.yml',
+    'project:\n  framework: react-spa\nlayers:\n  hook:\n    addCanImport: [page]\n',
+  );
+  const graph = loadLayerGraph(dir);
+  assert.equal(graph.route.pattern, 'src/App.tsx');
+  assert.ok(graph.hook.canImport.includes('page'));
+  assert.ok(graph.hook.canImport.includes('workflow'));
+});
+
+test('loadLayerGraph throws a clear ConstructError for an unknown project.framework', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-graph-'));
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), 'project:\n  framework: sveltekit\n');
+  assert.throws(() => loadLayerGraph(dir), (err) => {
+    assert.ok(err instanceof ConstructError);
+    assert.match(err.message, /Unknown project\.framework 'sveltekit'/);
+    return true;
+  });
+});

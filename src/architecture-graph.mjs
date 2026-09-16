@@ -6,7 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
-import { DEFAULT_LAYERS } from './config.mjs';
+import { DEFAULT_LAYERS, layersForFramework, normalizeFramework } from './config.mjs';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 
 // Names that are valid `canImport` targets but are not themselves layers with
@@ -97,9 +97,11 @@ export function validateGraph(layers) {
 }
 
 /**
- * Load the effective layer graph for a project: canonical defaults merged
- * with any `layers:` override in architecture.yml, validated for
- * correctness. Mirrors the way loadConfig() reads architecture.yml.
+ * Load the effective layer graph for a project: the base graph for its
+ * `project.framework` (nextjs by default — see config.mjs's
+ * layersForFramework) merged with any `layers:` override in
+ * architecture.yml, validated for correctness. Mirrors the way loadConfig()
+ * reads architecture.yml.
  */
 export function loadLayerGraph(root) {
   const file = path.join(root, 'architecture.yml');
@@ -107,7 +109,8 @@ export function loadLayerGraph(root) {
   let layers = DEFAULT_LAYERS;
   if (fs.existsSync(file)) {
     const c = yaml.load(fs.readFileSync(file, 'utf8')) || {};
-    if (c.layers) layers = mergeLayers(DEFAULT_LAYERS, c.layers);
+    const base = layersForFramework(normalizeFramework(c.project?.framework));
+    layers = c.layers ? mergeLayers(base, c.layers) : base;
   }
   validateGraph(layers);
   return layers;
