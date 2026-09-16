@@ -147,3 +147,24 @@ snapshot that rots. See #35 for the audit that established this.
       before every push, and to stop and report rather than force-resolve
       if a real conflict shows up — that's a moment for a human/you
       decision, not a silent auto-merge.
+11. **Every UI feature gets a real Playwright test, run for real, with a
+    real screenshot attached to its GitHub issue — mandatory, not optional,
+    no exceptions.** This applies to `ui/` work specifically (anything
+    with a rendered screen), not to `src/`/CLI-only work (that's covered
+    by `npm test`, not screenshots). Concretely, before closing any UI
+    issue:
+    - A Playwright test exists under `ui/e2e/` covering the feature's
+      actual user-visible behavior, not just an API-level check.
+    - It was actually run (headless is fine) — not just written.
+    - At least one real screenshot from that run is attached directly to
+      the issue as an inline image (see #37 for the pattern — commit
+      PNGs to a dedicated branch, e.g. `ui-screenshots`, and embed via
+      `raw.githubusercontent.com` links in the issue comment; never just
+      describe what a screenshot would show).
+    - If a UI change alters existing screens' appearance (e.g. a new
+      theme), old screenshots on old issues go stale — re-run and post
+      fresh ones wherever the change is significant enough that "what it
+      actually looks like now" is worth re-confirming, not just left to
+      go unverified.
+    This is retroactive: any already-closed UI issue that shipped without
+    this gets caught up, not grandfathered in.
