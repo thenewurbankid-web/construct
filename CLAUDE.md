@@ -80,3 +80,13 @@ snapshot that rots. See #35 for the audit that established this.
    script; do them one at a time. Bulk write scripts have been observed
    to get blocked by this environment's safety classifier; single, plain
    `curl` invocations go through reliably.
+8. **Commit and push at every milestone within a subtask, not just at the
+   end of a whole feature.** Don't let a long session accumulate a huge
+   pile of uncommitted work — when an atomic, independently-meaningful
+   chunk lands (a sub-issue's work, a fix, a verified passing test suite),
+   commit it and push, then keep going. Group commits by the same
+   atomic-unit boundaries this file already asks for in issue granularity
+   (rule 4) — one commit per independently-shippable piece, not one giant
+   commit at the very end. This is about durability and reviewability, not
+   just tidiness: uncommitted work is invisible to anyone but the current
+   session and is lost if that session ends badly.
