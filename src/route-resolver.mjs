@@ -11,6 +11,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
+import { walk } from './fs.mjs';
 
 const PAGE_FILENAMES = ['page.tsx', 'page.ts', 'page.jsx', 'page.js'];
 
@@ -196,10 +197,14 @@ export function traceRouteFiles(entryAbsFile, { aliases = [], excludes = DEFAULT
   return [...visited];
 }
 
-/** The combining tool: given either a route folder path or a URL (starting
- * with "/", requiring `appDir` to resolve), find its page entry file and
- * trace every file it depends on. Returns `{ folder, entryFile, files }`. */
-export function resolveRoute(routeArg, { appDir, excludes } = {}) {
+/** The combining tool for the Next.js App Router convention: given either a
+ * route folder path or a URL (starting with "/", requiring `appDir` to
+ * resolve), find its page entry file and trace every file it depends on.
+ * Returns `{ folder, entryFile, files }`. This is the resolveRoute()
+ * behavior every existing caller/test already relies on — kept as its own
+ * named function so `resolveRoute` can dispatch to it (the default, for
+ * back-compat) or to `resolveReactSpaRoute` per `opts.framework`. */
+function resolveNextjsRoute(routeArg, { appDir, excludes } = {}) {
   // A folder path can also start with "/" (any absolute path does), so
   // "is this actually a directory on disk" decides the form — not the
   // leading slash. Only once that's ruled out is routeArg treated as a URL.
@@ -222,4 +227,129 @@ export function resolveRoute(routeArg, { appDir, excludes } = {}) {
   const { aliases } = readPathAliases(folder);
   const files = traceRouteFiles(entryFile, { aliases, excludes });
   return { folder, entryFile, files };
+}
+
+// --- react-spa: a real, different, but equally concrete convention -------
+//
+// There's no per-route file in a client-routed SPA the way Next.js App
+// Router has one page.tsx per folder. Routing instead lives in one
+// centralized file — by convention `src/App.tsx` (see config.mjs's
+// REACT_SPA_LAYERS — this is literally the "route" layer's pattern), whose
+// shape mirrors what ui/client/src/App.jsx actually does today: a
+// react-router `<Routes>` table mapping a URL path straight to a controller
+// element, e.g. `<Route path="/dashboard" element={<DashboardController />} />`.
+// Resolving a URL route for this framework means: find that table, find the
+// controller name registered for the requested path, then locate that
+// controller's real file under `features/*/controllers/` — from there,
+// tracing its dependency graph is identical to the Next.js path (import
+// tracing was never Next.js-specific to begin with).
+
+const REACT_SPA_ROUTES_FILE_CANDIDATES = ['src/App.tsx', 'src/App.jsx'];
+
+/** Locate the centralized react-router table file for a react-spa project. */
+export function findReactSpaRoutesFile(root) {
+  for (const rel of REACT_SPA_ROUTES_FILE_CANDIDATES) {
+    const p = path.join(root, rel);
+    if (fs.existsSync(p)) return p;
+  }
+  throw new ConstructError(
+    `No react-spa routes file (${REACT_SPA_ROUTES_FILE_CANDIDATES.join(', ')}) found under ${root}`,
+    { exitCode: EXIT_CODES.USAGE_ERROR },
+  );
+}
+
+const ROUTE_TAG_RE = /<Route\b([^>]*?)\/?>/g;
+
+/** Parse `<Route path="..." element={<XController .../>} />` entries out of
+ * a react-spa routes file's source, in document order. Attribute order
+ * (`path` before/after `element`) doesn't matter; anything that isn't a
+ * recognizable `<Route path=... element={<Component ...>` tag is skipped
+ * rather than guessed at — same "reasonable first pass, not a full JSX
+ * parser" philosophy as the rest of this module. */
+export function parseReactSpaRoutes(source) {
+  const routes = [];
+  for (const m of source.matchAll(ROUTE_TAG_RE)) {
+    const attrs = m[1];
+    const pathMatch = attrs.match(/\bpath=(['"])(.*?)\1/);
+    const elementMatch = attrs.match(/\belement=\{\s*<\s*([A-Za-z_$][\w$]*)/);
+    if (pathMatch && elementMatch) {
+      routes.push({ path: pathMatch[2], component: elementMatch[1] });
+    }
+  }
+  return routes;
+}
+
+/** Find the one controller file named `componentName` under
+ * `<root>/<featuresRoot>/*\/controllers/`. Throws if none or more than one
+ * matches — same disambiguation stance as resolveUrlToFolder. */
+export function findControllerFile(root, componentName, featuresRoot = 'features') {
+  const base = path.join(root, featuresRoot);
+  const matches = walk(base).filter((p) => {
+    const parsed = path.parse(p);
+    return path.basename(path.dirname(p)) === 'controllers' && parsed.name === componentName;
+  });
+  if (matches.length === 0) {
+    throw new ConstructError(
+      `No controller file named "${componentName}" found under ${path.relative(root, base)}/*/controllers/`,
+      { exitCode: EXIT_CODES.USAGE_ERROR },
+    );
+  }
+  if (matches.length > 1) {
+    throw new ConstructError(
+      `"${componentName}" matched more than one controller file: ${matches.join(', ')}`,
+      { exitCode: EXIT_CODES.USAGE_ERROR },
+    );
+  }
+  return matches[0];
+}
+
+/** The react-spa equivalent of resolveNextjsRoute: given either an existing
+ * controller file path or a URL route (resolved through the project's
+ * routes file), find the controller entry file and trace everything it
+ * depends on. Returns the same `{ folder, entryFile, files }` shape as the
+ * Next.js path, plus `component` (the controller name the router actually
+ * registered for this route). */
+function resolveReactSpaRoute(routeArg, { root, routesFile, featuresRoot = 'features', excludes } = {}) {
+  const asFile = path.resolve(routeArg);
+  let entryFile;
+  let component;
+  if (fs.existsSync(asFile) && fs.statSync(asFile).isFile()) {
+    entryFile = asFile;
+  } else if (routeArg.startsWith('/')) {
+    if (!root) {
+      throw new ConstructError(
+        `"${routeArg}" isn't an existing file, so it's being treated as a URL route — but resolving that needs to know the project root (root) to find its routes file.`,
+        { exitCode: EXIT_CODES.USAGE_ERROR },
+      );
+    }
+    const resolvedRoutesFile = routesFile || findReactSpaRoutesFile(root);
+    const routes = parseReactSpaRoutes(fs.readFileSync(resolvedRoutesFile, 'utf8'));
+    const match = routes.find((r) => r.path === routeArg);
+    if (!match) {
+      throw new ConstructError(
+        `No <Route path="${routeArg}" ...> entry found in ${path.relative(root, resolvedRoutesFile)}`,
+        { exitCode: EXIT_CODES.USAGE_ERROR },
+      );
+    }
+    component = match.component;
+    entryFile = findControllerFile(root, component, featuresRoot);
+  } else {
+    throw new ConstructError(`Controller file not found: ${routeArg}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+  }
+  const folder = path.dirname(entryFile);
+  const { aliases } = readPathAliases(folder);
+  const files = traceRouteFiles(entryFile, { aliases, excludes });
+  return { folder, entryFile, files, component };
+}
+
+/** The combining tool: given either a route folder path or a URL (starting
+ * with "/", requiring `appDir` to resolve), find its page entry file and
+ * trace every file it depends on. Returns `{ folder, entryFile, files }`.
+ * Dispatches on `opts.framework` ('nextjs', the default, or 'react-spa') —
+ * see resolveNextjsRoute/resolveReactSpaRoute above for what each framework
+ * actually needs to resolve a route. */
+export function resolveRoute(routeArg, opts = {}) {
+  const { framework = 'nextjs' } = opts;
+  if (framework === 'react-spa') return resolveReactSpaRoute(routeArg, opts);
+  return resolveNextjsRoute(routeArg, opts);
 }

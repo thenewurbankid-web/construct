@@ -11,6 +11,9 @@ import {
   traceRouteFiles,
   resolveRoute,
   DEFAULT_TRACE_EXCLUDES,
+  findReactSpaRoutesFile,
+  parseReactSpaRoutes,
+  findControllerFile,
 } from '../src/route-resolver.mjs';
 import { ConstructError } from '../src/diagnostics.mjs';
 
@@ -170,4 +173,120 @@ test('resolveRoute with a URL route resolves through appDir', () => {
 
 test('resolveRoute with a URL route but no appDir throws a clear error', () => {
   assert.throws(() => resolveRoute('/v2/home', {}), ConstructError);
+});
+
+// --- react-spa: same combining tool, a genuinely different (not stubbed)
+// convention — a centralized src/App.tsx routes table (mirroring ui/client/
+// src/App.jsx's real shape) instead of one page.tsx per route folder. -----
+
+/** Mirrors ui/client/src/App.jsx's actual shape closely enough to exercise
+ * every rule: a centralized src/App.tsx with a react-router <Routes> table,
+ * a real controller (features/dashboard/controllers/DashboardController.tsx)
+ * that pulls in a page + a hook (@/-aliased) + a component, an excluded
+ * (ui-v2) import, and a sibling unrelated route that must never show up. */
+function buildReactSpaFixtureProject() {
+  const root = tmpProject();
+  write(root, 'tsconfig.json', JSON.stringify({ compilerOptions: { baseUrl: '.', paths: { '@/*': ['./src/*'] } } }));
+  write(
+    root,
+    'src/App.tsx',
+    [
+      "import { Routes, Route } from 'react-router-dom';",
+      "import { DashboardController } from '../features/dashboard/controllers/DashboardController';",
+      "import { SettingsController } from '../features/settings/controllers/SettingsController';",
+      'export function App() {',
+      '  return (',
+      '    <Routes>',
+      '      <Route path="/dashboard" element={<DashboardController />} />',
+      '      <Route path="/settings" element={<SettingsController />} />',
+      '    </Routes>',
+      '  );',
+      '}',
+      '',
+    ].join('\n'),
+  );
+  write(
+    root,
+    'features/dashboard/controllers/DashboardController.tsx',
+    [
+      "import { DashboardPage } from '../pages/DashboardPage';",
+      "import { useDashboardData } from '@/hooks/useDashboardData';",
+      "import { Badge } from '@/ui-v2/components/Badge';",
+      'export function DashboardController() { return null; }',
+      '',
+    ].join('\n'),
+  );
+  write(root, 'features/dashboard/pages/DashboardPage.tsx', "import { Widget } from '../components/Widget';\nexport function DashboardPage() { return null; }\n");
+  write(root, 'features/dashboard/components/Widget.tsx', 'export function Widget() { return null; }\n');
+  write(root, 'src/hooks/useDashboardData.ts', 'export function useDashboardData() { return {}; }\n');
+  write(root, 'src/ui-v2/components/Badge.tsx', 'export function Badge() { return null; }\n');
+  // an unrelated sibling route that must never show up in /dashboard's trace
+  write(root, 'features/settings/controllers/SettingsController.tsx', 'export function SettingsController() { return null; }\n');
+  return root;
+}
+
+test('findReactSpaRoutesFile finds src/App.tsx', () => {
+  const root = buildReactSpaFixtureProject();
+  assert.equal(findReactSpaRoutesFile(root), path.join(root, 'src/App.tsx'));
+});
+
+test('findReactSpaRoutesFile throws clearly when no routes file exists', () => {
+  const root = tmpProject();
+  assert.throws(() => findReactSpaRoutesFile(root), ConstructError);
+});
+
+test('parseReactSpaRoutes extracts the path -> controller table in document order', () => {
+  const root = buildReactSpaFixtureProject();
+  const routes = parseReactSpaRoutes(fs.readFileSync(path.join(root, 'src/App.tsx'), 'utf8'));
+  assert.deepEqual(routes, [
+    { path: '/dashboard', component: 'DashboardController' },
+    { path: '/settings', component: 'SettingsController' },
+  ]);
+});
+
+test('findControllerFile locates the one matching controller under features/*/controllers/', () => {
+  const root = buildReactSpaFixtureProject();
+  const found = findControllerFile(root, 'DashboardController');
+  assert.equal(found, path.join(root, 'features/dashboard/controllers/DashboardController.tsx'));
+});
+
+test('findControllerFile throws clearly when no controller matches', () => {
+  const root = buildReactSpaFixtureProject();
+  assert.throws(() => findControllerFile(root, 'GhostController'), ConstructError);
+});
+
+test('resolveRoute with framework: react-spa and a URL resolves through the routes table to the controller and traces its graph', () => {
+  const root = buildReactSpaFixtureProject();
+  const { folder, entryFile, files, component } = resolveRoute('/dashboard', { framework: 'react-spa', root });
+  assert.equal(component, 'DashboardController');
+  assert.equal(entryFile, path.join(root, 'features/dashboard/controllers/DashboardController.tsx'));
+  assert.equal(folder, path.dirname(entryFile));
+
+  const rel = (f) => path.relative(root, f).split(path.sep).join('/');
+  const relFiles = files.map(rel).sort();
+  assert.deepEqual(relFiles, [
+    'features/dashboard/components/Widget.tsx',
+    'features/dashboard/controllers/DashboardController.tsx',
+    'features/dashboard/pages/DashboardPage.tsx',
+    'src/hooks/useDashboardData.ts',
+  ]);
+  // Excluded by default (ui-v2), and the unrelated /settings route must never appear.
+  assert.ok(!relFiles.some((f) => f.includes('ui-v2') || f.includes('Settings')));
+});
+
+test('resolveRoute with framework: react-spa and a controller file path resolves directly, no routes file needed', () => {
+  const root = buildReactSpaFixtureProject();
+  const controllerFile = path.join(root, 'features/dashboard/controllers/DashboardController.tsx');
+  const { entryFile, component } = resolveRoute(controllerFile, { framework: 'react-spa' });
+  assert.equal(entryFile, controllerFile);
+  assert.equal(component, undefined); // only known when resolved via the routes table
+});
+
+test('resolveRoute with framework: react-spa and a URL route but no root throws a clear error', () => {
+  assert.throws(() => resolveRoute('/dashboard', { framework: 'react-spa' }), ConstructError);
+});
+
+test('resolveRoute with framework: react-spa throws a clear error for a URL with no matching <Route>', () => {
+  const root = buildReactSpaFixtureProject();
+  assert.throws(() => resolveRoute('/does-not-exist', { framework: 'react-spa', root }), ConstructError);
 });
