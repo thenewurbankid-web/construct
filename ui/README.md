@@ -2,10 +2,12 @@
 
 A local, click-through web UI over Construct's four capabilities
 (create / refactor / research / import), plus a chat-style interface for
-the `import --route` guided wizard. This is additive: nothing in `src/` or
-`bin/` behaves differently than before, and the core CLI/REPL/tests are
-untouched except for one new, thin, additive export in `src/cli.mjs`
-(`runImportRouteWizardEventDriven` — see the comment above it).
+the `import --route` guided wizard, and a visual pages/JSX editor. As of
+epic #64 (#70-74), `ui/client` is itself a real Construct feature project
+(`framework: nextjs`) — it passes `construct validate` the same way any
+other project built on Construct does. `ui/server` stays a plain Express
+process, untouched: nothing in `src/` or `bin/` behaves differently than
+before.
 
 ## Layout
 
@@ -15,10 +17,13 @@ ui/
             directly — no subprocess, no shelling out to the `construct`
             binary. Own package.json/node_modules, independent of the
             core project's dependencies.
-  client/   React frontend (Vite). Dashboard (create/refactor/research/
-            import forms), Settings (LLM provider + project directory),
-            the Import Wizard (chat), and Help (CLI + UI docs). Own
-            package.json/node_modules.
+  client/   Next.js (App Router, TypeScript) frontend, organized as real
+            Construct features under features/ (dashboard, settings,
+            wizard, help, pages-editor, project-gate) — each a
+            domain/service/workflow/hook/component/page/controller slice,
+            plus its own architecture.yml (framework: nextjs). Routes
+            live under app/ as thin files that import and render each
+            feature's controller. Own package.json/node_modules.
   e2e/      Playwright end-to-end tests that drive both of the above in a
             real browser (not curl, not just a build check). Own
             package.json/node_modules, kept separate from client/ since it
@@ -34,6 +39,20 @@ running `construct <command>` from a terminal, just invoked as a function
 call instead of a subprocess. The one exception is the import wizard: it's
 inherently a multi-turn conversation (a prompt, wait for an answer, another
 prompt, …), so it's exposed over a WebSocket instead of a single REST call.
+
+**Why Next.js's own API routes don't replace this backend** (decided on
+epic #64): Next.js API routes don't handle a long-lived WebSocket
+connection well without a custom server, which would reintroduce exactly
+the coupling between the frontend framework and the wizard's transport
+that keeping them separate avoids. So the split is: Next.js owns the
+frontend, Express keeps owning the wizard's real-time transport and every
+REST endpoint, called from the Next.js app exactly like it was called from
+the previous Vite app. `ui/client`'s service layer talks to `ui/server`
+directly over HTTP/WebSocket (`ui/client/lib/apiBase.ts`,
+`NEXT_PUBLIC_API_BASE`/`NEXT_PUBLIC_WS_BASE`, defaulting to
+`http://localhost:4000`) rather than through a Next.js rewrite proxy —
+`ui/server` already runs with `cors()` enabled for every origin, so no
+extra server-side configuration is needed for this.
 
 ## Install
 
@@ -52,25 +71,35 @@ cd ui/server
 npm start
 # or: npm run dev   (restarts on file changes)
 
-# Terminal 2 — frontend, default port 5173
+# Terminal 2 — frontend, default port 3000
 cd ui/client
 npm run dev
 ```
 
-Open http://localhost:5173. The Vite dev server proxies `/api/*` and
-`/ws/*` to `http://localhost:4000` (see `ui/client/vite.config.js`) — no
-CORS configuration needed in normal dev use. Override the backend's
-address with `CONSTRUCT_UI_API=http://host:port npm run dev` if it runs
-somewhere else. The backend's own port is configurable via `PORT` (e.g.
-`PORT=4001 npm start`).
+Open http://localhost:3000. The frontend talks to `http://localhost:4000`
+directly for every REST call and the wizard's WebSocket (see "Why a
+backend at all" above) — no dev-server proxy involved. Override the
+backend's address with `NEXT_PUBLIC_API_BASE=http://host:port` /
+`NEXT_PUBLIC_WS_BASE=ws://host:port` if it runs somewhere else (both must
+be set before `npm run dev`/`npm run build`, since they're read at build
+time via `process.env`). The backend's own port is configurable via `PORT`
+(e.g. `PORT=4001 npm start`).
+
+Production build/start:
+
+```bash
+cd ui/client
+npm run build
+npm start   # serves the production build, default port 3000
+```
 
 ## Storybook
 
 `ui/client` has Storybook configured (`ui/client/.storybook/main.js` +
-`preview.js`, framework `@storybook/react-vite`, reusing the same
-Vite/React setup as the real app) so components can be developed and
+`preview.js`, framework `@storybook/nextjs`, reusing the same Next.js/
+webpack setup as the real app) so components can be developed and
 visually reviewed in isolation, one story per component. `preview.js`
-imports the app's real `src/styles.css`, so every story renders against
+imports the app's real `app/globals.css`, so every story renders against
 the actual black/grey glassmorphism theme tokens (see "Theme" below), not
 an unstyled default canvas.
 
@@ -80,36 +109,40 @@ npm run storybook          # dev server, default port 6006
 npm run build-storybook    # static build to ui/client/storybook-static/
 ```
 
-Every component in `ui/client/src/components/ui/` (see "Theme and
-reusable components" below) has a co-located `<Name>.stories.jsx`. Kept
+Every component in `ui/client/components/ui/` (see "Theme and reusable
+components" below) has a co-located `<Name>.stories.jsx`. Kept
 deliberately minimal: only `@storybook/addon-docs` beyond the framework
-itself — the addons `storybook init` offers by default
-(`@storybook/addon-vitest`'s browser-mode Vitest+Playwright integration,
-`@storybook/addon-a11y`, `@chromatic-com/storybook`, `@storybook/addon-mcp`)
-were left out as unnecessary scope; this repo's real regression guard for
-the rendered app is the separate Playwright suite in `ui/e2e` (see below),
-and duplicating that stack behind a Storybook addon would add dependencies
-without adding coverage.
+itself — the default `storybook init` also offers
+`@storybook/addon-vitest`'s browser-mode Vitest+Playwright integration,
+`@storybook/addon-a11y`, `@chromatic-com/storybook`, and
+`@storybook/addon-mcp`; all four are left out as unnecessary scope — this
+repo's real regression guard for the rendered app is the separate
+Playwright suite in `ui/e2e` (see below), and duplicating that stack
+behind a Storybook addon would add dependencies without adding coverage.
 
 ## Theme
 
-`ui/client/src/styles.css`'s `:root` defines the whole visual language
+`ui/client/app/globals.css`'s `:root` defines the whole visual language
 (black/grey glassmorphism) as CSS custom properties — a near-black `--bg`
 with two faint radial glow tokens, translucent
 `--panel-glass`/`--panel-glass-strong` fills with `--panel-blur` via
 `backdrop-filter`, `--border`/`--border-strong`, and `--text`/`--muted`
-(`--accent`/`--tool`/`--llm`/`--error` are unchanged from before — they
-carry meaning, not just decoration, and already read fine against the
-darker glass backdrop). The shared `.glass-panel` class documents the
-background/border/blur recipe once; every panel-like surface across
-Dashboard/Settings/Wizard/Help/ProjectGate consumes the same tokens.
+(`--accent`/`--tool`/`--llm`/`--error` carry meaning, not just decoration).
+The shared `.glass-panel` class documents the background/border/blur
+recipe once; every panel-like surface across every feature consumes the
+same tokens.
 
 ## Reusable UI components
 
-`ui/client/src/components/ui/` holds the themed, reusable functional
-components every page builds its forms/panels out of, instead of each
+`ui/client/components/ui/` holds the themed, reusable functional
+components every feature builds its forms/panels out of, instead of each
 page hand-rolling its own `<button>`/`<select>`/`<div className="...">`
-markup:
+markup. These are deliberately still plain `.jsx` (not rewritten to
+`.tsx`) per #71's "reuse as-is" instruction — real prop types for the
+TypeScript feature code that consumes them come from hand-authored,
+colocated `.d.ts` files (`components/ui/index.d.ts`,
+`components/AttributionBadge.d.ts`, `components/CommandResult.d.ts`)
+rather than converting the implementations themselves:
 
 - **Button** — every button in the app (`variant="primary"`, the default;
   `variant="ghost"` exists as a themed lower-emphasis option, not yet used
@@ -117,7 +150,7 @@ markup:
 - **GlassPanel** — the `.glass-panel` surface as a component. Takes an
   `as` prop for the rendered tag (`form`, `nav`, `div`, …) and a
   `className` that's *appended* rather than replaced, since several call
-  sites still need their own layout class alongside the shared glass
+  sites still need their own layout-only class alongside the shared glass
   treatment (e.g. `<GlassPanel as="form" className="command-form">` — the
   exact class ui/e2e's Playwright suite locates the Create form by).
 - **Field** — the label/hint wrapper around a form control.
@@ -125,15 +158,56 @@ markup:
   `<input>`/`<select>` elements (deliberately trivial: Playwright's
   `getByPlaceholder`, native `<select>` interaction, etc. all keep working
   unchanged since the underlying DOM node is untouched).
-- **Badge** — the tool/llm/llm-none/error status label, generalized out of
-  what `AttributionBadge` used to hand-roll per `<span>` (also now used by
-  `AttributionBadge` itself, and by the prose in the Help page).
+- **Badge** — the tool/llm/llm-none/error status label.
 
-Every one of these has a Storybook story (see above) rendered on the real
-theme. Refactoring existing pages onto them was a pure extraction — no
-class names Playwright/ui/e2e depends on changed, and the full e2e suite
-was re-run after the refactor to confirm no regression (see "What was
-verified" below).
+`components/AttributionBadge.jsx` and `components/CommandResult.jsx` are
+similarly shared, non-feature presentation components (used by the
+dashboard, wizard, and help features) — not part of any one feature slice,
+same reasoning as `components/ui/`.
+
+Every one of the `components/ui/` primitives has a Storybook story (see
+above) rendered on the real theme. The full e2e suite was re-run after the
+Next.js migration to confirm no visual/behavioral regression (see "What
+was verified" below).
+
+## Construct feature layout (client)
+
+`ui/client`'s own `architecture.yml` sets `project.framework: nextjs` —
+the same target every other Construct project defaults to. Its features:
+
+- **project-gate** — blocks a route behind a project-init screen until the
+  selected directory resolves to a real Construct project. Not routed on
+  its own; `dashboard`/`wizard`/`pages-editor`'s controllers wrap their
+  content with `ProjectGateController` (imported from project-gate's
+  public API), a real, `SLICE-002`-checked cross-feature dependency.
+- **dashboard** — the four command forms (create/refactor/research/import).
+- **settings** — project directory + LLM provider form. Not gated (it's
+  how you fix an invalid project).
+- **wizard** — the import route wizard as a chat, over `ui/server`'s
+  `/ws/wizard`. Gated.
+- **help** — CLI reference (fetched live from `GET /api/help`) plus static
+  guides. Not gated.
+- **pages-editor** — epic #48's pages browser / JSX tree / structural
+  preview / snippet editor / props inspector / auto-map / prop-flow
+  diagram. Gated. (Not explicitly named in #71's body, but migrated on the
+  same footing as the other four — #73 requires its e2e scenario to keep
+  passing, and CLAUDE.md forbids breaking working, tested UI code.)
+
+Routes under `app/` are thin: each `app/<route>/page.tsx` imports its
+feature's controller directly from `features/<name>/controllers/` (not
+through the feature's barrel `index.ts` — `ROUTE-001` checks for a literal
+`controllers/` substring in the route file's own import path) and renders
+it. `app/page.tsx` (root) and `app/dashboard/page.tsx` both render
+`DashboardController`, matching "/ is the Dashboard" from before this
+migration while adding the canonical `/dashboard` route.
+
+Run `construct validate` from inside `ui/client` to check it yourself:
+
+```bash
+cd ui/client
+node ../../bin/construct.mjs validate
+# ✓ Construct validation passed
+```
 
 ## End-to-end tests (Playwright)
 
@@ -164,22 +238,23 @@ npm run test:smoke    # just the trivial "does the harness even work" smoke test
 
 You do **not** need to start `ui/server`/`ui/client` yourself first —
 `ui/e2e/playwright.config.js`'s `webServer` option starts `npm start` in
-`ui/server` and `npm run dev` in `ui/client` before the first test and
-stops them after the run (or reuses them if they're already running on
-:4000/:5173, e.g. during local debugging with `npm run test:headed`).
+`ui/server` and `npm run dev` in `ui/client` (Next.js, port 3000 — moved
+from Vite's 5173 in #73) before the first test and stops them after the
+run (or reuses them if they're already running on :4000/:3000, e.g. during
+local debugging with `npm run test:headed`).
 
 `tests/smoke.spec.js` is a minimal "did the harness even work" check
 (loads `/`, asserts the Dashboard or ProjectGate heading renders, no
 console/page errors). `tests/walkthrough.spec.js` is the fuller pass: it
 points the backend at a fresh empty temp directory, walks through the
 ProjectGate → init → Dashboard (create a feature, check the tool/LLM
-attribution badges render with a non-zero, visible computed style, not
-just present in the DOM) → Settings (LLM provider dropdown, project
-directory field) → Import Wizard (starts a session and answers several
-real questions, deliberately with a seed route that fails fast at local
-route-resolution so the pass never needs to shell out to the `claude`
-CLI) → Help (waits for `/api/help` to actually resolve and populate real
-content) flow, taking one screenshot per step into `ui/e2e/screenshots/`.
+attribution badges render with a non-zero, visible computed style) →
+Settings → Import Wizard (a scripted session that fails fast at local
+route-resolution, so it never needs to shell out to the `claude` CLI) →
+Help → Pages Editor flow, taking one screenshot per step into
+`ui/e2e/screenshots/`. `tests/pages-editor-editing.spec.js` covers the
+save/edit/enforcement round trips (#52-#56) the walkthrough stops short
+of. All 13 tests currently pass.
 
 Both dev servers' console/page errors are captured live during every test
 (`page.on('console', ...)`/`page.on('pageerror', ...)`) and printed at the
@@ -187,24 +262,20 @@ end of the run if any showed up, rather than being silently ignored.
 
 ## Using it
 
-1. **Pick your project once.** On load, the app fetches project status
-   (`GET /api/settings`) once at the top level (`App.jsx`) and every
-   Dashboard/Wizard route is gated on it: if the selected project directory
-   doesn't resolve to a Construct project (`valid: false` / `needsInit:
-   true`), those pages show a "No Construct project here yet" screen with an
-   **Initialize Construct here** button (calls `POST /api/init`, i.e. the
-   real `construct init`) instead of rendering their forms — see
-   `ui/client/src/components/ProjectGate.jsx`. Settings and Help stay
-   reachable either way, since Settings is how you fix it.
+1. **Pick your project once.** Each gated route (Dashboard, Wizard, Pages
+   Editor) fetches project status (`GET /api/settings`) independently on
+   mount via project-gate's `useProjectGate` hook: if the selected project
+   directory doesn't resolve to a Construct project (`valid: false` /
+   `needsInit: true`), it shows a "No Construct project here yet" screen
+   with an **Initialize Construct here** button (calls `POST /api/init`,
+   i.e. the real `construct init`) instead of rendering. Settings and Help
+   stay reachable either way, since Settings is how you fix it.
 2. **Settings** — set the LLM provider (sourced live from `src/llm.mjs`'s
    `PROVIDERS` map — currently just `claude`) and the project directory
    every command targets (passed as `--dir` to the underlying functions,
-   exactly like the CLI's `--dir`). Saving refreshes the app-wide project
-   status the gate above reads, so switching to (or initializing) a valid
-   project immediately unblocks Dashboard/Wizard without a reload. Nothing
-   is persisted to disk; restarting the backend resets to its defaults
-   (project directory defaults to wherever the backend process was started
-   from).
+   exactly like the CLI's `--dir`). Nothing is persisted to disk;
+   restarting the backend resets to its defaults (project directory
+   defaults to wherever the backend process was started from).
 3. **Dashboard** — forms for `create` (feature / vertical slice / single
    layer), `refactor` (move / rename), `research` (summarize / doctor), and
    a non-interactive `import` (single unit or an approved plan file). Each
@@ -219,18 +290,22 @@ end of the run if any showed up, rather than being silently ignored.
    call (route analysis) is shown as a distinct attribution bubble, same
    split as everywhere else. Only one wizard session may run at a time per
    backend process (see "Limitations" below).
-5. **Help** — documents both the CLI and this UI: a getting-started
+5. **Pages Editor** — epic #48: browse a feature's `pages/` layer, view a
+   page's JSX as a tree, select a node from either the tree or the
+   structural preview (bidirectional), edit its isolated snippet or props
+   and save straight back into the source file, auto-map unwired props,
+   and see the whole tree's prop flow as a colored diagram. Every save is
+   scoped to `pages/` and checked against the PAGE-*/COMPONENT-*
+   architecture rules before it lands — a rejected save (e.g. a `fetch()`
+   call added to a page) never touches disk.
+6. **Help** — documents both the CLI and this UI: a getting-started
    tutorial, an explanation of the tool/LLM attribution badges, a guide to
    every screen, and a full CLI reference. The CLI reference section is
-   fetched from `GET /api/help` (new, read-only), which returns text
-   imported directly from `src/usage.mjs` and `src/repl.mjs`'s
+   fetched from `GET /api/help` (read-only), which returns text imported
+   directly from `src/usage.mjs` and `src/repl.mjs`'s
    `HELP_TOPICS`/`TOPIC_ORDER`/`getTopLevelHelpText()` — the same strings
    `construct` and `construct repl`'s `help` actually print — rather than a
-   hand-copied duplicate that could drift from the real CLI. (`src/usage.mjs`
-   is a new, tiny module: the usage banner literally extracted out of
-   `bin/construct.mjs`'s top-level `USAGE` constant unchanged, so it can be
-   imported without also importing — and re-running — the bin script's own
-   argv-dispatch logic.)
+   hand-copied duplicate that could drift from the real CLI.
 
 ## Endpoints (for reference)
 
@@ -255,6 +330,11 @@ REST (`ui/server/src/index.mjs`), all `POST` except settings' `GET`:
 - `POST /api/refactor` — `{ action: 'move'|'rename', name, newName?, feature, from?, to?, layer? }`
 - `POST /api/research` — `{ action: 'summarize'|'doctor', feature?, format?, since? }`
 - `POST /api/import` — `{ mode: 'unit'|'plan', name?, feature?, layers?, from?, planPath?, llm? }`
+- `GET /api/pages/features`, `GET /api/pages`, `GET /api/pages/tree`,
+  `GET|POST /api/pages/node`, `GET|POST /api/pages/props`,
+  `GET /api/pages/unmapped`, `POST /api/pages/automap` — the pages-editor
+  endpoints (see `ui/server/src/pagesEditor.mjs`), each scoped
+  server-side to `features/<feature>/pages/`.
 
 Every command endpoint responds `{ ok, output: string[], attribution: {tool, llm} | null, error? }`.
 
@@ -264,47 +344,53 @@ client; `{ type: 'log'|'question'|'done', text?, kind? }` from the server.
 
 ## What was verified
 
-- `npm test` in the repo root: 245/245 passing, both before and after
-  these changes.
-- `ui/client`: `npm run build` (Vite production build) completes with no
-  errors; `npm run dev` starts cleanly and serves the app.
-- `ui/server`: starts cleanly; `POST /api/settings`, `POST /api/research`
-  (`doctor`), `POST /api/create` (feature + vertical slice), and
-  `POST /api/refactor` (move) were exercised end-to-end against a scratch
-  Construct project with `curl`, confirming both the HTTP response and the
-  actual files written/moved on disk, with correct tool/llm attribution.
-- The Import Wizard's WebSocket flow was driven end-to-end with a scripted
-  client through a full session — including a real call to the installed
-  `claude` CLI for the route-analysis step — against a scratch Next.js
-  route fixture, confirming files were scaffolded with TODO(import)
-  breadcrumbs and the attribution line correctly reported "1 call(s) to
-  analyze the route" alongside "0 calls to write the logic".
+- `npm test` in the repo root: 304/304 passing, both before and after the
+  Next.js migration (`ui/` isn't exercised by this suite; nothing in
+  `src/`/`bin/` changed).
+- `ui/client`: `npm run build` (Next.js production build) compiles,
+  type-checks, and statically generates all 6 routes with no errors;
+  `npm run dev` starts cleanly and serves the app on port 3000.
+  `node ../../bin/construct.mjs validate` reports zero errors and zero
+  warnings.
+- `ui/e2e`'s full Playwright suite (13 tests) passes against the migrated
+  stack — re-run after every structural change during the migration, not
+  just once at the end. Fresh screenshots captured for every scenario.
+- Storybook (`npx storybook build`) still builds successfully against all
+  7 existing component stories after switching its framework from
+  `@storybook/react-vite` to `@storybook/nextjs`.
 
 ## Known limitations / follow-ups
 
 - **No auth.** This is a local dev tool wrapping filesystem-mutating
   commands; it's assumed to run on localhost for one trusted user. Add
   auth before exposing it beyond that.
-- **Actual browser rendering** is now covered by `ui/e2e/` (Playwright,
-  see "End-to-end tests" above) — it drives a real Chromium instance
-  through the ProjectGate, Dashboard (including a real create action and
-  its attribution badges), Settings, Import Wizard, and Help screens, and
-  captures a screenshot of each. Earlier passes had only checked that the
-  dev server starts without errors and the production build has no
-  build/type errors, without ever loading a page.
 - **One wizard session at a time per backend process.** The event-driven
   wizard adapter (`runImportRouteWizardEventDriven` in `src/cli.mjs`)
   patches `console.log`/`warn`/`error` for the duration of a run, which is
   process-global — a second concurrent session would interleave the first
   one's captured output. The backend rejects a second `start` while one is
-  already active. Fine for a single local user; would need per-session log
-  capture (not global monkey-patching) to support real concurrency.
+  already active.
 - **Settings aren't persisted** — by design, to keep this additive and
   simple; restarting the backend resets the project directory/LLM provider
-  to their defaults. Would be easy to add a small JSON file if wanted.
+  to their defaults.
 - **The wizard's project directory is applied via `process.chdir()`** at
-  session start (it has no `--dir` flag of its own, unlike every other
-  command in `src/cli.mjs`), which is also process-global. Combined with
-  the one-session-at-a-time constraint above, this is safe today but worth
-  keeping in mind if this ever grows into a multi-project, multi-session
-  tool.
+  session start (it has no `--dir` flag of its own), which is also
+  process-global. Combined with the one-session-at-a-time constraint
+  above, this is safe today but worth keeping in mind if this ever grows
+  into a multi-project, multi-session tool.
+- **Each gated route fetches its own project status independently**
+  rather than sharing one app-wide store (the pre-migration Vite app had a
+  single top-level `App` component that fetched once and passed it down;
+  Next.js's App Router has no equivalent single top-level client
+  component across routes without introducing a context provider in
+  `layout.tsx`). Functionally equivalent, but means switching projects on
+  Settings and then navigating to an already-open Dashboard tab needs a
+  fresh navigation/reload to pick up the change, rather than updating in
+  place — a `layout.tsx`-level context provider would be the natural next
+  step if that matters in practice.
+- **DRY-001 warnings**: `construct validate` currently reports zero
+  warnings, but a handful of structurally-similar small workflow reducers
+  across features (e.g. dashboard's per-form visibility helpers) are
+  intentionally not further unified into one shared generic — each is a
+  one-line pure function and unifying them would trade a warning-severity
+  heuristic for a genuine abstraction few readers would want.
