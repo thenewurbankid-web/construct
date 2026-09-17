@@ -5,7 +5,7 @@ import { usePropFlow } from '../hooks/usePropFlow';
 import type { PagesEditorNode } from '../types';
 
 // #55 — colorful prop-flow diagram, driven by usePropFlow (the real
-// layout/edge computation lives in domain/PagesEditor.tsx's buildFlowEdges).
+// layout/edge computation lives in the domain layer's buildFlowEdges).
 export function PropFlowDiagram({ roots }: { roots: PagesEditorNode[] }) {
   const { visible, toggle, positions, edges, colorMap } = usePropFlow(roots);
   const maxX = Math.max(20, ...[...positions.values()].map((p) => p.x)) + 130;

@@ -2,8 +2,8 @@ import { AttributionBadge } from '@/components/AttributionBadge';
 import type { ChatMessageData } from '../types';
 
 // Presentation-only — `message.attribution` arrives already parsed (see
-// workflows/Wizard.tsx's pushMessage), so this never touches domain/regex
-// logic itself (COMPONENT-002/003).
+// the workflow layer's pushMessage helper), so this never touches the
+// domain layer's regex parsing itself (COMPONENT-002, COMPONENT-003).
 export function ChatMessage({ message }: { message: ChatMessageData }) {
   if (message.role === 'log') {
     if (message.attribution) {

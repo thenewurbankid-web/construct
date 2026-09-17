@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { propInputKind } from '../domain/PagesEditor';
-import { saveNodeProp } from '../services/PagesEditor';
+import { propInputKind } from '../domain/PropFormatting';
+import { saveNodeProp } from '../services/PropsApi';
 import type { PageTree, PropData, StatusMessage } from '../types';
 
 /** One prop's edit/save state (#53). */

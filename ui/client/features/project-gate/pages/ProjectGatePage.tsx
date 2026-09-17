@@ -11,8 +11,8 @@ type ProjectGatePageProps = {
 };
 
 // Presentation-only routing between the two possible states
-// (PAGE-002/003/004/005): no workflow/service/domain imports, no literal
-// fetch() call.
+// (PAGE-002, PAGE-003, PAGE-004, PAGE-005): no application-layer imports,
+// no literal network call.
 export function ProjectGatePage({ status, initializing, error, onInit, children }: ProjectGatePageProps): ReactNode {
   if (!status) return <p>Loading project status…</p>;
   if (!status.valid) {

@@ -1,41 +1,7 @@
-import type { PagesEditorNode, PropData } from '../types';
+import type { PagesEditorNode } from '../types';
+import { flattenParentOf } from './TreeNodes';
 
-// Pure (DOMAIN-001) — every helper below only ever reads/derives from the
-// parsed tree data it's given, never touches fetch/window/etc.
-
-export function findNode(roots: PagesEditorNode[], id: string): PagesEditorNode | null {
-  for (const r of roots) {
-    if (r.id === id) return r;
-    const hit = findNode(r.children, id);
-    if (hit) return hit;
-  }
-  return null;
-}
-
-/** Maps a node's own id to its *parent's id* (or null for a root). */
-export function flattenParentOf(roots: PagesEditorNode[]): Map<string, string | null> {
-  const parentOf = new Map<string, string | null>();
-  const walk = (nodes: PagesEditorNode[], parentId: string | null) => {
-    for (const n of nodes) {
-      parentOf.set(n.id, parentId);
-      walk(n.children, n.id);
-    }
-  };
-  walk(roots, null);
-  return parentOf;
-}
-
-export function propLabel(p: PropData): string {
-  if (p.kind === 'spread') return `{...${p.value}}`;
-  if (p.kind === 'boolean' && p.value === true) return p.name;
-  if (p.kind === 'string') return `${p.name}="${p.value}"`;
-  return `${p.name}={${p.value}}`;
-}
-
-export function propInputKind(p: PropData): 'string' | 'number' | 'boolean' | 'expression' {
-  if (p.kind === 'string' || p.kind === 'number' || p.kind === 'boolean') return p.kind;
-  return 'expression'; // identifier/expression both edited as raw code
-}
+// Pure (DOMAIN-001) — the prop-flow diagram's layout math.
 
 const PALETTE = ['#5b8cff', '#3fae5a', '#d98c2b', '#e05a5a', '#b25be0', '#2bc4d9', '#e0c62b', '#e05ba0'];
 

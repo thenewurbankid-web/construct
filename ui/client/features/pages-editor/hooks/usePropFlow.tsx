@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { buildFlowEdges } from '../domain/PagesEditor';
+import { buildFlowEdges } from '../domain/PropFlowLayout';
 import type { PagesEditorNode } from '../types';
 
 /** Derives the prop-flow diagram's layout/edges/legend from the tree (#55) —

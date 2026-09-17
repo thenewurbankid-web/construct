@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useReducer } from 'react';
-import { findNode, propLabel } from '../domain/PagesEditor';
-import { getFeatures, getPages, getPageTree } from '../services/PagesEditor';
+import { propLabel } from '../domain/PropFormatting';
+import { findNode } from '../domain/TreeNodes';
+import { getFeatures, getPages, getPageTree } from '../services/PagesBrowsing';
 import type { PageTree, PagesEditorNode } from '../types';
 import { initialPagesEditorState, pagesEditorReducer } from '../workflows/PagesEditor';
 

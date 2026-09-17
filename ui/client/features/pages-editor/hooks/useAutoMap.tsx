@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { applyAutoMap, getUnmappedProps } from '../services/PagesEditor';
+import { applyAutoMap, getUnmappedProps } from '../services/AutoMapApi';
 import type { PageTree, StatusMessage } from '../types';
 
 /** Auto-map unmapped child props onto the parent component (#54). */

@@ -1,4 +1,4 @@
-// Pure — no fetch/window/etc. (DOMAIN-001). The seven-layer names, and the
+// Pure — no external effects (DOMAIN-001). The seven-layer names, and the
 // one shared piece of logic every layer-picker form on this page needs
 // (toggling one entry in a selected-layers list) live here so CreateForm's
 // and ImportForm's checkbox groups aren't independently re-deriving the

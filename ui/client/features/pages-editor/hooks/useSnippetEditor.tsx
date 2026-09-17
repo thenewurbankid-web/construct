@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getNodeSnippet, saveNodeSnippet } from '../services/PagesEditor';
+import { getNodeSnippet, saveNodeSnippet } from '../services/SnippetApi';
 import type { PageTree, StatusMessage } from '../types';
 
 /** Isolated snippet edit + save-back-to-source for one node (#52). Called

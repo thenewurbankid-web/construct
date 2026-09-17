@@ -1,8 +1,8 @@
 import { Badge } from '@/components/ui';
 
-export function Attribution() {
+function TheTwoRows() {
   return (
-    <div>
+    <>
       <p>
         Every command&apos;s result — on the Dashboard, and as chat bubbles in the Import Wizard — ends
         with two labeled rows instead of one generic &quot;success&quot; message:
@@ -17,6 +17,13 @@ export function Attribution() {
           calls&quot;) — whether, and how many times, an LLM was actually called for that action.
         </li>
       </ul>
+    </>
+  );
+}
+
+function WhyThisSplitExists() {
+  return (
+    <>
       <p>
         <strong>Why this split exists:</strong> Construct&apos;s design is that almost everything —
         scaffolding features/layers/vertical slices, moving/renaming files, summarizing a feature,
@@ -45,6 +52,15 @@ export function Attribution() {
         than a single collapsed &quot;done&quot; toast that hides which parts of the result to trust blindly
         and which parts to double check.
       </p>
+    </>
+  );
+}
+
+export function Attribution() {
+  return (
+    <div>
+      <TheTwoRows />
+      <WhyThisSplitExists />
     </div>
   );
 }

@@ -74,42 +74,54 @@ function ScaffoldVerticalSlice() {
   );
 }
 
+function RunImportWizardIntro() {
+  return (
+    <p>
+      Use this when you&apos;re porting a whole route (page + its client component + hooks/
+      components it pulls in) out of an existing, non-Construct codebase. Go to the{' '}
+      <strong>Import Wizard</strong> page for this — the Dashboard&apos;s &quot;Import&quot; panel is for a
+      single already-known file or an already-approved plan file, not this guided flow.
+    </p>
+  );
+}
+
+function RunImportWizardSteps() {
+  return (
+    <ol>
+      <li>
+        Before starting: set the <strong>project directory</strong> on the{' '}
+        <strong>Settings</strong> page to the Construct project you&apos;re importing into (the
+        wizard has no <code>--dir</code> flag of its own — it uses whatever Settings has
+        configured, applied once when the session starts).
+      </li>
+      <li>
+        On the <strong>Import Wizard</strong> page, optionally type a seed route into &quot;Seed
+        route&quot; — e.g. <code>/v2/home</code> (a URL) or a path to the route&apos;s folder — then click{' '}
+        <strong>Start wizard session</strong>. You can also leave it blank and answer the first
+        question in chat instead.
+      </li>
+      <li>
+        The wizard asks its questions as chat bubbles, one at a time — answer each in the text
+        box at the bottom and press <strong>Send</strong>.
+      </li>
+      <li>
+        Progress log bubbles stream in as they happen, followed by an attribution bubble for the
+        one combined analysis LLM call, then the proposed plan as a table.
+      </li>
+      <li>
+        You&apos;re asked to approve the plan; approving builds it, runs <code>validate</code>{' '}
+        automatically, and tells you exactly what&apos;s left.
+      </li>
+    </ol>
+  );
+}
+
 function RunImportWizard() {
   return (
     <>
       <h3>3. Run the guided import wizard end-to-end for a real Next.js route</h3>
-      <p>
-        Use this when you&apos;re porting a whole route (page + its client component + hooks/
-        components it pulls in) out of an existing, non-Construct codebase. Go to the{' '}
-        <strong>Import Wizard</strong> page for this — the Dashboard&apos;s &quot;Import&quot; panel is for a
-        single already-known file or an already-approved plan file, not this guided flow.
-      </p>
-      <ol>
-        <li>
-          Before starting: set the <strong>project directory</strong> on the{' '}
-          <strong>Settings</strong> page to the Construct project you&apos;re importing into (the
-          wizard has no <code>--dir</code> flag of its own — it uses whatever Settings has
-          configured, applied once when the session starts).
-        </li>
-        <li>
-          On the <strong>Import Wizard</strong> page, optionally type a seed route into &quot;Seed
-          route&quot; — e.g. <code>/v2/home</code> (a URL) or a path to the route&apos;s folder — then click{' '}
-          <strong>Start wizard session</strong>. You can also leave it blank and answer the first
-          question in chat instead.
-        </li>
-        <li>
-          The wizard asks its questions as chat bubbles, one at a time — answer each in the text
-          box at the bottom and press <strong>Send</strong>.
-        </li>
-        <li>
-          Progress log bubbles stream in as they happen, followed by an attribution bubble for the
-          one combined analysis LLM call, then the proposed plan as a table.
-        </li>
-        <li>
-          You&apos;re asked to approve the plan; approving builds it, runs <code>validate</code>{' '}
-          automatically, and tells you exactly what&apos;s left.
-        </li>
-      </ol>
+      <RunImportWizardIntro />
+      <RunImportWizardSteps />
       <p className="hint">
         Equivalent CLI command (run directly from a terminal, not inside <code>construct repl</code>
         , since it manages its own input the same way this chat does):{' '}

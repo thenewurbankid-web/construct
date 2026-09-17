@@ -8,8 +8,19 @@ export type * from './types';
  * inspector, auto-map panel, and prop-flow diagram, behind the project
  * gate. */
 export * from './controllers/PagesEditorController';
+
+/** Finds and wires unmapped child props onto a parent component (#54). */
 export * from './hooks/useAutoMap';
+
+/** Backs the top-level pages browser/tree/selection state — used by
+ * PagesEditorController; exported for direct reuse/testing. */
 export * from './hooks/usePagesEditor';
+
+/** Derives the prop-flow diagram's layout/edges/legend from a parsed tree (#55). */
 export * from './hooks/usePropFlow';
+
+/** One prop's edit/save state, used by the PropRow component (#53). */
 export * from './hooks/usePropRow';
+
+/** One node's isolated snippet edit/save-back state (#52). */
 export * from './hooks/useSnippetEditor';

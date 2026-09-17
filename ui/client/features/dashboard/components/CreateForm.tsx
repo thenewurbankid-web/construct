@@ -25,8 +25,8 @@ type CreateFormProps = {
 };
 
 // Presentation-only (PAGE/COMPONENT rules): every field's value and change
-// handler comes in as props from the dashboard feature's hook — no fetch,
-// no workflow/service/domain import here.
+// handler comes in as props from the dashboard feature's hook — no network
+// calls, no application-layer imports here.
 export function CreateForm({ kind, setKind, name, setName, feature, setFeature, layer, setLayer, layers, toggleLayer, allLayers, visibility, result, busy, run }: CreateFormProps) {
   return (
     <GlassPanel as="form" className="command-form" onSubmit={run}>

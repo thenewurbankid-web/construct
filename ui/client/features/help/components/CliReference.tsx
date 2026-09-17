@@ -1,22 +1,7 @@
-import type { HelpViewState } from '../types';
+import type { HelpViewState, TopicSection } from '../types';
 import { CliTopic } from './CliTopic';
 
-// Presentation-only: every section list arrives pre-computed via props
-// (from the hook/workflow) — this component never imports domain/workflow
-// itself (COMPONENT-002/003).
-export function CliReference(view: HelpViewState) {
-  if (view.status === 'error') {
-    return (
-      <p className="status-error">
-        Could not load the live CLI reference from the backend ({view.message}). Start{' '}
-        <code>ui/server</code> and reload this page — the text below is generated from{' '}
-        <code>src/usage.mjs</code> and <code>src/repl.mjs</code>, not hand-copied, so it needs the
-        backend running to fetch it.
-      </p>
-    );
-  }
-  if (view.status === 'loading') return <p>Loading the CLI&apos;s own help text from the backend…</p>;
-
+function LoadedState(view: Extract<HelpViewState, { status: 'loaded' }>) {
   return (
     <div>
       <p className="hint">
@@ -50,12 +35,35 @@ export function CliReference(view: HelpViewState) {
       </p>
       {view.flat.map((t) => <CliTopic key={t.id} {...t} />)}
 
-      {view.rest.length > 0 && (
-        <>
-          <h3>Reference topics</h3>
-          {view.rest.map((t) => <CliTopic key={t.id} {...t} />)}
-        </>
-      )}
+      <ReferenceTopics topics={view.rest} />
     </div>
   );
+}
+
+function ReferenceTopics({ topics }: { topics: TopicSection[] }) {
+  if (topics.length === 0) return null;
+  return (
+    <>
+      <h3>Reference topics</h3>
+      {topics.map((t) => <CliTopic key={t.id} {...t} />)}
+    </>
+  );
+}
+
+// Presentation-only: every section list arrives pre-computed via props
+// (from the hook) — this component never imports the domain or workflow
+// layers itself (COMPONENT-002, COMPONENT-003).
+export function CliReference(view: HelpViewState) {
+  if (view.status === 'error') {
+    return (
+      <p className="status-error">
+        Could not load the live CLI reference from the backend ({view.message}). Start{' '}
+        <code>ui/server</code> and reload this page — the text below is generated from{' '}
+        <code>src/usage.mjs</code> and <code>src/repl.mjs</code>, not hand-copied, so it needs the
+        backend running to fetch it.
+      </p>
+    );
+  }
+  if (view.status === 'loading') return <p>Loading the CLI&apos;s own help text from the backend…</p>;
+  return <LoadedState {...view} />;
 }

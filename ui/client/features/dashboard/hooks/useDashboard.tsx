@@ -2,9 +2,15 @@
 
 import { useState, type FormEvent } from 'react';
 import { LAYERS, toggleLayer } from '../domain/Dashboard';
-import { createCommand, importCommand, refactorCommand, researchCommand } from '../services/Dashboard';
-import { createFormVisibility, importFormVisibility, refactorFormVisibility, researchFormVisibility } from '../workflows/Dashboard';
+import { createCommand } from '../services/CreateCommand';
+import { importCommand } from '../services/ImportCommand';
+import { refactorCommand } from '../services/RefactorCommand';
+import { researchCommand } from '../services/ResearchCommand';
 import type { CommandResult } from '../types';
+import { createFormVisibility } from '../workflows/CreateFormVisibility';
+import { importFormVisibility } from '../workflows/ImportFormVisibility';
+import { refactorFormVisibility } from '../workflows/RefactorFormVisibility';
+import { researchFormVisibility } from '../workflows/ResearchFormVisibility';
 
 function useCreateForm() {
   const [kind, setKind] = useState('feature');
