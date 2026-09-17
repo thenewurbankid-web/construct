@@ -10,6 +10,10 @@ export function refactorFormVisibility(action: string) {
   return { move: action === 'move', rename: action === 'rename' };
 }
 
+export function researchFormVisibility(action: string) {
+  return { summarize: action === 'summarize' };
+}
+
 export function importFormVisibility(mode: string) {
   return { unit: mode === 'unit', plan: mode === 'plan' };
 }

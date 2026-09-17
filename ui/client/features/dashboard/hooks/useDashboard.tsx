@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { LAYERS, toggleLayer } from '../domain/Dashboard';
 import { createCommand, importCommand, refactorCommand, researchCommand } from '../services/Dashboard';
-import { createFormVisibility, importFormVisibility, refactorFormVisibility } from '../workflows/Dashboard';
+import { createFormVisibility, importFormVisibility, refactorFormVisibility, researchFormVisibility } from '../workflows/Dashboard';
 import type { CommandResult } from '../types';
 
 function useCreateForm() {
@@ -25,7 +25,7 @@ function useCreateForm() {
   return {
     kind, setKind, name, setName, feature, setFeature, layer, setLayer, layers,
     toggleLayer: (l: string) => setLayers((prev) => toggleLayer(prev, l)),
-    result, busy, run, visibility: createFormVisibility(kind),
+    result, busy, run, visibility: createFormVisibility(kind), allLayers: LAYERS,
   };
 }
 
@@ -49,7 +49,7 @@ function useRefactorForm() {
 
   return {
     action, setAction, name, setName, newName, setNewName, feature, setFeature, from, setFrom, to, setTo,
-    layer, setLayer, result, busy, run, visibility: refactorFormVisibility(action),
+    layer, setLayer, result, busy, run, visibility: refactorFormVisibility(action), allLayers: LAYERS,
   };
 }
 
@@ -68,7 +68,10 @@ function useResearchForm() {
     setBusy(false);
   }
 
-  return { action, setAction, feature, setFeature, format, setFormat, since, setSince, result, busy, run };
+  return {
+    action, setAction, feature, setFeature, format, setFormat, since, setSince, result, busy, run,
+    visibility: researchFormVisibility(action),
+  };
 }
 
 function useImportForm() {
@@ -94,6 +97,7 @@ function useImportForm() {
     mode, setMode, name, setName, feature, setFeature, layers,
     toggleLayer: (l: string) => setLayers((prev) => toggleLayer(prev, l)),
     from, setFrom, planPath, setPlanPath, useLlm, setUseLlm, llm, setLlm, result, busy, run,
+    visibility: importFormVisibility(mode), allLayers: LAYERS,
   };
 }
 
