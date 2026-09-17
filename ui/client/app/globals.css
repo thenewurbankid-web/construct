@@ -658,25 +658,63 @@ button:disabled {
   display: inline-block;
 }
 
-.propflow-svg {
-  background: #0b0d11;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+/* #75 — pill/hierarchy layout replacing #55's node-box-to-node-box edges.
+ * `.propflow-hierarchy` is the positioning context: an absolutely-positioned
+ * SVG line layer underneath, plain absolutely-positioned node labels and
+ * `Badge`-rendered prop pills on top, all sharing the same coordinate
+ * space the domain layer's layoutPillHierarchy computed. */
+.propflow-hierarchy {
+  position: relative;
+  margin-top: 10px;
   overflow: auto;
   max-width: 100%;
 }
 
-.propflow-box {
-  fill: #171a21;
-  stroke: var(--border);
+.propflow-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: #0b0d11;
+  border: 1px solid var(--border);
+  border-radius: 6px;
 }
 
-.propflow-box.component {
-  stroke: var(--llm);
+.propflow-line {
+  pointer-events: none;
 }
 
-.propflow-box-label {
-  fill: var(--text);
+.propflow-node-group {
+  position: absolute;
+  inset: 0;
+}
+
+.propflow-node-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
   font-size: 11px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.propflow-node-label.component {
+  color: var(--llm);
+  font-weight: 600;
+}
+
+/* Pills reuse Badge's `.attribution-label` shape (rounded, small, bold
+ * uppercase text) for positioning/border only — per-prop-name background
+ * and text color come from the domain layer's palette via inline style
+ * (Badge's own tone vocabulary is a fixed 4-value semantic set that doesn't
+ * cover "one distinct color per arbitrary prop name"). */
+.propflow-pill {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border: 1px solid;
+  white-space: nowrap;
+}
+
+.propflow-pill-outgoing {
+  opacity: 0.9;
 }

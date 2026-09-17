@@ -194,7 +194,7 @@ test.describe.serial('Pages Editor save-back / props / auto-map / prop-flow / en
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'pages-editor-automap.png'), fullPage: true });
   });
 
-  test('4. pages-editor-propflow.png — the prop-flow diagram draws real colored edges for the drilled props (#55)', async ({ page }) => {
+  test('4. pages-editor-propflow.png — the prop-flow diagram shows parent/child prop pills joined by real lines, in a hierarchy (#75, revising #55)', async ({ page }) => {
     await openHomePage(page);
     await page.getByRole('button', { name: 'Show diagram' }).click();
 
@@ -203,10 +203,23 @@ test.describe.serial('Pages Editor save-back / props / auto-map / prop-flow / en
     // By now the tree carries real, distinct props at more than one level:
     // `className` (main -> h1, from test 1's snippet edit) and `count` /
     // `label` / `title` (main -> Counter, `title` from test 3's auto-map) —
-    // four differently-colored legend entries and edges, not the
-    // empty-diagram case a single flat element would produce.
+    // four differently-colored legend entries and pill-to-pill edges, not
+    // the empty-diagram case a single flat element would produce.
     await expect(page.locator('.propflow-legend-item')).toHaveCount(4);
     await expect(page.locator('.propflow-panel')).not.toContainText('No props flow between nodes in this tree');
+
+    // #75's actual revision: props render as pills (rounded Badge elements),
+    // not plain SVG boxes — one "outgoing" pill per distinct prop name
+    // `main` hands down (className, count, label, title) plus one "received"
+    // pill per prop each child (h1, Counter) actually has, laid out one
+    // tree level apart and joined by real <line> elements.
+    const pills = page.locator('.propflow-pill');
+    await expect(pills).toHaveCount(8); // 4 outgoing (main) + 4 received (h1: className; Counter: count/label/title)
+    await expect(page.locator('.propflow-pill-outgoing')).toHaveCount(4);
+    await expect(page.locator('.propflow-pill-received')).toHaveCount(4);
+    await expect(page.locator('.propflow-pill-received', { hasText: 'className' })).toBeVisible();
+    await expect(page.locator('.propflow-pill-received', { hasText: 'label' })).toBeVisible();
+
     const edgeCount = await svg.locator('line').count();
     expect(edgeCount).toBeGreaterThanOrEqual(4);
 

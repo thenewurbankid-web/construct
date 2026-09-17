@@ -14,6 +14,18 @@ const TONE_CLASS = {
   error: 'error',
 };
 
-export function Badge({ tone = 'llm-none', children }) {
-  return <span className={`attribution-label ${TONE_CLASS[tone] || tone}`}>{children}</span>;
+// `className`/`style` are additive (#75) — every existing caller only ever
+// passed `tone`+`children`, so this stays byte-identical for them (an empty
+// `className` and an `undefined` `style` are no-ops); it lets a caller that
+// needs a per-instance color (e.g. the prop-flow diagram's per-prop-name
+// pills, which can't be expressed by the fixed tool/llm/llm-none/error
+// vocabulary) still render through the same small-rounded-badge shape
+// instead of hand-rolling a near-duplicate element.
+export function Badge({ tone = 'llm-none', className = '', style, children }) {
+  const classes = ['attribution-label', TONE_CLASS[tone] || tone, className].filter(Boolean).join(' ');
+  return (
+    <span className={classes} style={style}>
+      {children}
+    </span>
+  );
 }

@@ -6,7 +6,7 @@
 // the Next.js/TypeScript feature code that imports them real prop types
 // instead of implicit `any`, without touching a single line of the actual
 // component implementations.
-import type { ComponentPropsWithoutRef, ElementType, ReactNode } from 'react';
+import type { ComponentPropsWithoutRef, CSSProperties, ElementType, ReactNode } from 'react';
 
 export declare function Button(props: ComponentPropsWithoutRef<'button'> & { variant?: 'primary' | 'ghost' }): ReactNode;
 
@@ -20,4 +20,9 @@ export declare function Input(props: ComponentPropsWithoutRef<'input'>): ReactNo
 
 export declare function Select(props: ComponentPropsWithoutRef<'select'>): ReactNode;
 
-export declare function Badge(props: { tone?: 'tool' | 'llm' | 'llm-none' | 'error'; children?: ReactNode }): ReactNode;
+export declare function Badge(props: {
+  tone?: 'tool' | 'llm' | 'llm-none' | 'error';
+  className?: string;
+  style?: CSSProperties;
+  children?: ReactNode;
+}): ReactNode;
