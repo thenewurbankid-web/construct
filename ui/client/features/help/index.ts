@@ -6,3 +6,4 @@ export type * from './types';
 /** Renders the getting-started guide, attribution explainer, UI guide, and
  * the live CLI reference. */
 export * from './controllers/HelpController';
+export * from './hooks/useHelp';

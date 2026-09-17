@@ -5,7 +5,7 @@
 // (Input, Select, or something bespoke like the layer checkbox group) —
 // Field only owns the label/hint chrome, not the control itself, so it
 // composes with any of the other ui/ components.
-export function Field({ label, hint, children }) {
+export function Field({ label, hint = null, children }) {
   return (
     <label className="field">
       <span>{label}</span>

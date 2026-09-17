@@ -6,3 +6,4 @@ export type * from './types';
 /** Renders the settings form (project directory + LLM provider) and the
  * current-resolution summary. */
 export * from './controllers/SettingsController';
+export * from './hooks/useSettings';

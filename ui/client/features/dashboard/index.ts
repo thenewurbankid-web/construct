@@ -6,3 +6,4 @@ export type * from './types';
 /** Renders the four command forms (create/refactor/research/import) behind
  * the project gate. */
 export * from './controllers/DashboardController';
+export * from './hooks/useDashboard';

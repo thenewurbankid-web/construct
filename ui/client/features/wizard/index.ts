@@ -6,3 +6,4 @@ export type * from './types';
 
 /** Renders the import route wizard as a chat, behind the project gate. */
 export * from './controllers/WizardController';
+export * from './hooks/useWizard';

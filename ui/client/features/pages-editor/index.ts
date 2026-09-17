@@ -8,3 +8,8 @@ export type * from './types';
  * inspector, auto-map panel, and prop-flow diagram, behind the project
  * gate. */
 export * from './controllers/PagesEditorController';
+export * from './hooks/useAutoMap';
+export * from './hooks/usePagesEditor';
+export * from './hooks/usePropFlow';
+export * from './hooks/usePropRow';
+export * from './hooks/useSnippetEditor';
