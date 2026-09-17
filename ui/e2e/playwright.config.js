@@ -7,10 +7,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // These tests exercise the real, rendered UI in a real browser — the gap
 // left by every prior verification pass (curl for the API, `npm run build`
 // for compile correctness, nobody ever loaded a page). They run against
-// the actual dev servers (ui/server on :4000, ui/client's Vite dev server
-// on :5173), started automatically below via Playwright's `webServer`
-// option, exactly as documented in ui/README.md's "Run (two terminals)"
-// section — just automated instead of two manual terminals.
+// the actual dev servers (ui/server on :4000, ui/client's Next.js dev
+// server on :3000 — moved from Vite's :5173 in #73), started automatically
+// below via Playwright's `webServer` option, exactly as documented in
+// ui/README.md's "Run (two terminals)" section — just automated instead of
+// two manual terminals.
 export default defineConfig({
   testDir: './tests',
   outputDir: './test-results',
@@ -20,7 +21,7 @@ export default defineConfig({
   timeout: 30_000,
   reporter: [['list']],
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://localhost:3000',
     trace: 'retain-on-failure',
   },
   projects: [
@@ -42,9 +43,9 @@ export default defineConfig({
     {
       command: 'npm run dev',
       cwd: path.resolve(__dirname, '../client'),
-      url: 'http://localhost:5173',
+      url: 'http://localhost:3000',
       reuseExistingServer: true,
-      timeout: 30_000,
+      timeout: 60_000,
       stdout: 'pipe',
       stderr: 'pipe',
     },
