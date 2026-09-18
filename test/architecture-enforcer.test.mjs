@@ -160,6 +160,18 @@ test('validateExceptionsShape still rejects a genuinely invalid "expires" value'
 
 // ---- filesystem-backed integration tests --------------------------------
 
+// #93 — ported from root test.mjs's one case (the only thing keeping the
+// now-deleted src/validator.mjs alive), exercising validateArchitecture
+// instead of validator.mjs's orphaned validateProject.
+test('forbidden page fetch is detected (PAGE-004) against a real project directory', () => {
+  const dir = tmpProject();
+  fs.mkdirSync(path.join(dir, 'features', 'x', 'pages'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), 'rules:\n  PAGE-004: error\n');
+  fs.writeFileSync(path.join(dir, 'features', 'x', 'pages', 'X.tsx'), 'export function X(){fetch("/");return <div/>}');
+  const res = validateArchitecture(dir);
+  assert.ok(res.violations.some((v) => v.rule === 'PAGE-004'));
+});
+
 test('validateArchitecture honors an exception scoping a violation away', () => {
   const dir = tmpProject();
   fs.mkdirSync(path.join(dir, 'features', 'legacy', 'pages'), { recursive: true });

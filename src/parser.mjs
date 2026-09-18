@@ -2,8 +2,7 @@
 //
 // Deliberate simplification: this is regex/heuristic extraction, not a real
 // AST parser (no typescript-estree/acorn dependency was added — package.json
-// is owned by another workstream while this module was built). It follows
-// the same style as the `imports` regex in src/validator.mjs. Known rough
+// is owned by another workstream while this module was built). Known rough
 // edges: decorators sitting between a JSDoc block and the declaration they
 // annotate break "immediately preceding" JSDoc association (a real AST
 // would attach the comment to the decorated node); `complexityEstimate` is a
@@ -43,9 +42,9 @@ export function projectSettings(root) {
   };
 }
 
-/** Classify a root-relative path into an architecture layer, or null if unclassified.
- * Mirrors the path-pattern approach in src/validator.mjs's layerOf() (reimplemented
- * locally, not imported, per module ownership boundaries). */
+/** Classify a root-relative path into an architecture layer, or null if
+ * unclassified. Implemented locally (not imported) per module ownership
+ * boundaries. */
 export function classifyLayer(relPath) {
   if (/^app\/.*page\.(tsx|ts|jsx|js)$/.test(relPath)) return 'route';
   const m = relPath.match(/^features\/[^/]+\/(controllers|workflows|hooks|domain|services|pages|components)\//);

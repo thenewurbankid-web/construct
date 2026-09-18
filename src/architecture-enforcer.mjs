@@ -16,8 +16,9 @@ const FILE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx']);
 const KNOWN_LAYERS = new Set(['route', 'controller', 'workflow', 'hook', 'service', 'domain', 'page', 'component']);
 const REACT_IMPORT_RE = /from\s*['"]react['"]|from\s*['"][^'"]*react\//;
 
-// Same import-extraction regex used by the pre-existing validator.mjs, kept
-// for consistency (no new parsing dependency).
+// Regex-based import extraction (no parsing dependency) — a deliberately
+// simple approach, kept for consistency with the rest of this module's
+// regex-based checks.
 export function extractImports(source) {
   return [...source.matchAll(/(?:import\s+(?:type\s+)?[\s\S]*?from\s*|import\s*\()(['"])(.*?)\1/g)].map((m) => m[2]);
 }
