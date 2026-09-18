@@ -20,6 +20,8 @@ export type CreateInput = {
   feature?: string;
   layer?: string;
   layers?: string[];
+  /** Opt in to an LLM-written implementation; the provider comes from Settings' createFill. */
+  useLlm?: boolean;
 };
 
 export type RefactorInput = {
@@ -47,4 +49,6 @@ export type ImportInput = {
   from?: string;
   planPath?: string;
   llm?: string;
+  /** Opt in to an LLM-written fill; the provider comes from Settings' importFill. */
+  useLlm?: boolean;
 };

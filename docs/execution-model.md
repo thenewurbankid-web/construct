@@ -62,7 +62,7 @@ needs to change to support it.
 | `construct research summarize / doctor` | Deterministic, read-only | No | No |
 | `construct import <name> ... --from <path> [--llm <provider>]` | Deterministic scaffold + `TODO(import)` breadcrumb, always | **Optional, execution-class.** One call *per generated file*, only if `--llm` given. Never reads the old source file at all unless `--llm` is given. | No |
 | `construct import --plan <path> [--llm <provider>]` | Deterministic, batched: runs the same per-unit scaffold (+ optional fill) once per unit in the plan | Same as above, applied uniformly across every unit | No — the plan itself was already human-approved *before* being handed to this command (see `import --route` below, which is how a plan is normally produced) |
-| `construct import --route <path>` (standalone wizard) | Deterministic scaffold once a plan is approved | **Always exactly one plan-analysis call** (whole-feature, hardcoded to `claude` — see "Known gap" below) up front. **Optionally** one execution-class fill call per generated file afterward, if the user opts in mid-wizard. | **Yes — hard gate.** Shows the proposed plan and explicitly asks "Approve this plan and build it now? [y/N]" before writing anything. |
+| `construct import --route <path>` (standalone wizard) | Deterministic scaffold once a plan is approved | **Always exactly one plan-analysis call** (whole-feature, provider = Settings' `planAnalysis` (default `claude`; `ollama` is rejected) — see "How Settings is consumed" below) up front. **Optionally** one execution-class fill call per generated file afterward, if the user opts in mid-wizard. | **Yes — hard gate.** Shows the proposed plan and explicitly asks "Approve this plan and build it now? [y/N]" before writing anything. |
 | `construct repl` | Interactive shell wrapping every command above | No calls of its own — whatever the dispatched command does | Whatever the dispatched command does |
 
 ## The UI layer (`ui/`)
@@ -84,24 +84,34 @@ UI-side copy), with `planAnalysis` hard-rejecting `ollama` in
 `updateSettings` itself. Settings only *configures which provider a future
 call would use* — it never makes a call by itself.
 
-## Known gap (as of this writing)
+## How Settings is consumed (#109) — and why LLM use is still opt-in per run
 
-`construct import --route`'s wizard (`src/cli.mjs`'s `importRouteWizard`,
-driven from the UI via `ui/server/src/wizardSocket.mjs`) hardcodes
-`llm: 'claude'` for both its plan-analysis call and its optional per-file
-fill — it does **not** currently read `ui/server/src/settings.mjs`'s
-`llmProviders.importFill`/`planAnalysis` capability settings at all
-(`wizardSocket.mjs` only applies the settings-configured `projectDir`
-before starting a session). For `planAnalysis` this happens to already
-match the #96 guardrail (`claude`, never a local model) by construction,
-so it's not a correctness bug — but it means changing `importFill` in
-Settings has no effect on the route wizard's own fill step, only on the
-non-interactive `construct import <name> ...` / `--plan` forms and (once
-wired) `create`/`generate`'s fill. Worth a follow-up issue if the wizard's
-fill step should also respect the configured `importFill` provider instead
-of always using `claude`.
+Settings selects a **provider only** (not a model — the `ollama` provider
+keeps its default model, `qwen2.5-coder:7b`, unless a caller passes
+`llmOptions`). Settings defaults every capability to the first provider
+(`claude`), so a setting alone must never cause a call. The rule is: **a
+run only calls an LLM if that run explicitly asked, and then the provider is
+whatever Settings says for that capability.**
 
-`ui/server`'s `/api/create` endpoint does not yet read `createFill` from
-Settings either — `construct create`/`generate`'s `--llm` flag (#101) is
-CLI-only today; wiring the Dashboard's Create form to it (reading
-`llmProviders.createFill` as a default, still overridable) is unstarted.
+| Where | Opt-in (per run) | Provider read from Settings |
+|---|---|---|
+| Dashboard **Create** form (layer / vertical slice) → `POST /api/create` | "Have the LLM write the implementation" checkbox (`useLlm: true`, default off; hidden for "a new feature") | `createFill` |
+| Dashboard **Import** form → `POST /api/import` | "Have the LLM write the ported logic" checkbox (`useLlm: true`); the old free-text Provider field is gone. A direct API caller may still send an explicit `llm: '<provider>'`, which wins. | `importFill` |
+| **Import Wizard** (`/ws/wizard` → `importRouteWizard`) | Plan analysis is inherent to the wizard; the per-file fill is opt-in mid-wizard ("should the LLM also write the ported logic?") | `planAnalysis` for the analysis call, `importFill` for the fill |
+
+`importRouteWizard(ask, seedRoute, { planAnalysis = 'claude', importFill = 'claude' })`
+takes the two providers as options (the plain CLI keeps the `claude`
+defaults); `planAnalysis: 'ollama'` is rejected inside the wizard as well as
+in `updateSettings`, before any call or write.
+
+## LLM output is validated before it is written (#144, #141)
+
+Every per-file fill (`import`, `create`, `generate`) goes through
+`src/llm-fill.mjs`: the prompt states the reply is captured from stdout and
+that the model has no file access; a reply that wraps exactly one fenced
+block in prose is unwrapped; the result must parse as TypeScript/JavaScript
+(`parseToAst`) and contain a declaration, import or export. A rejected
+reply gets **one** corrected retry; a provider call that throws is not
+retried. Whatever happens, an unfilled file keeps its scaffolded stub (plus
+the `TODO(import)` breadcrumb on the import path), the command reports it
+per file, other files continue, and the exit code is 3.

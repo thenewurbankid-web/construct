@@ -18,18 +18,19 @@ function useCreateForm() {
   const [feature, setFeature] = useState('');
   const [layer, setLayer] = useState<string>(LAYERS[0]);
   const [layers, setLayers] = useState<string[]>([]);
+  const [useLlm, setUseLlm] = useState(false);
   const [result, setResult] = useState<CommandResult | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function run(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
-    setResult(await createCommand({ kind: kind as never, name, feature, layer, layers }));
+    setResult(await createCommand({ kind: kind as never, name, feature, layer, layers, useLlm }));
     setBusy(false);
   }
 
   return {
-    kind, setKind, name, setName, feature, setFeature, layer, setLayer, layers,
+    kind, setKind, name, setName, feature, setFeature, layer, setLayer, layers, useLlm, setUseLlm,
     toggleLayer: (l: string) => setLayers((prev) => toggleLayer(prev, l)),
     result, busy, run, visibility: createFormVisibility(kind), allLayers: LAYERS,
   };
@@ -88,21 +89,20 @@ function useImportForm() {
   const [from, setFrom] = useState('');
   const [planPath, setPlanPath] = useState('');
   const [useLlm, setUseLlm] = useState(false);
-  const [llm, setLlm] = useState('claude');
   const [result, setResult] = useState<CommandResult | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function run(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
-    setResult(await importCommand({ mode: mode as never, name, feature, layers, from, planPath, llm: useLlm ? llm : undefined }));
+    setResult(await importCommand({ mode: mode as never, name, feature, layers, from, planPath, useLlm }));
     setBusy(false);
   }
 
   return {
     mode, setMode, name, setName, feature, setFeature, layers,
     toggleLayer: (l: string) => setLayers((prev) => toggleLayer(prev, l)),
-    from, setFrom, planPath, setPlanPath, useLlm, setUseLlm, llm, setLlm, result, busy, run,
+    from, setFrom, planPath, setPlanPath, useLlm, setUseLlm, result, busy, run,
     visibility: importFormVisibility(mode), allLayers: LAYERS,
   };
 }

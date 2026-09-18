@@ -18,7 +18,9 @@ type CreateFormProps = {
   layers: string[];
   toggleLayer: (l: string) => void;
   allLayers: readonly string[];
-  visibility: { feature: boolean; layer: boolean; layers: boolean };
+  useLlm: boolean;
+  setUseLlm: (v: boolean) => void;
+  visibility: { feature: boolean; layer: boolean; layers: boolean; llm: boolean };
   result: CommandResultType | null;
   busy: boolean;
   run: (e: FormEvent) => void;
@@ -27,7 +29,7 @@ type CreateFormProps = {
 // Presentation-only (PAGE/COMPONENT rules): every field's value and change
 // handler comes in as props from the dashboard feature's hook — no network
 // calls, no application-layer imports here.
-export function CreateForm({ kind, setKind, name, setName, feature, setFeature, layer, setLayer, layers, toggleLayer, allLayers, visibility, result, busy, run }: CreateFormProps) {
+export function CreateForm({ kind, setKind, name, setName, feature, setFeature, layer, setLayer, layers, toggleLayer, allLayers, useLlm, setUseLlm, visibility, result, busy, run }: CreateFormProps) {
   return (
     <GlassPanel as="form" className="command-form" onSubmit={run}>
       <h3>Create</h3>
@@ -59,6 +61,12 @@ export function CreateForm({ kind, setKind, name, setName, feature, setFeature, 
         <Field label="Layers (built in dependency order regardless of the order checked)">
           <LayerCheckboxes selected={layers} onToggle={toggleLayer} options={allLayers} />
         </Field>
+      )}
+      {visibility.llm && (
+        <label className="checkbox">
+          <Input type="checkbox" checked={useLlm} onChange={(e) => setUseLlm(e.target.checked)} />
+          Have the LLM write the implementation (provider set in Settings; otherwise: plain template stubs, no LLM call)
+        </label>
       )}
       <Button type="submit" disabled={busy}>
         {busy ? 'Running…' : 'Run create'}
