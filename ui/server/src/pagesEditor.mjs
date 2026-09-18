@@ -17,6 +17,7 @@ import crypto from 'node:crypto';
 import { parse } from '@babel/parser';
 import _traverse from '@babel/traverse';
 import * as t from '@babel/types';
+import ts from 'typescript';
 import { loadConfig } from '../../../src/config.mjs';
 import { loadLayerGraph } from '../../../src/architecture-graph.mjs';
 import { validateArchitecture } from '../../../src/architecture-enforcer.mjs';
@@ -440,34 +441,57 @@ function findComponentFunction(ast, tagName, isDefault) {
   return null;
 }
 
-/** Member names of a TS interface/type-literal alias declared in `ast`
- * under `typeName`, or `null` if it has an index signature (open — can't
- * enumerate) or isn't found. */
-function findTypeMembers(ast, typeName) {
-  for (const node of ast.program.body) {
-    let objectType = null;
-    if (t.isTSInterfaceDeclaration(node) && node.id.name === typeName) objectType = node.body;
-    else if (t.isTSTypeAliasDeclaration(node) && node.id.name === typeName && t.isTSTypeLiteral(node.typeAnnotation)) {
-      objectType = node.typeAnnotation;
+/**
+ * Member names of a TS interface/type-literal alias named `typeName`,
+ * declared anywhere in `source`, or `null` if it has an index signature
+ * (open — can't enumerate) or isn't found.
+ *
+ * Built on the TypeScript compiler API's own parser (`ts.createSourceFile`)
+ * rather than babel's TS AST support that the rest of this file otherwise
+ * uses — per this repo's "prefer an established library over hand-rolled
+ * logic" guidance, actual TS *type* syntax (interfaces/type aliases,
+ * inherited members, generics) is TypeScript's own domain, and `typescript`
+ * is already a project dependency (used the same way by src/prose.mjs) —
+ * reusing its canonical, always-in-sync-with-the-language parser here beats
+ * re-deriving the same TS-type-syntax node walk a second time by hand on
+ * top of babel's parallel (and narrower) TS AST support. babel stays the
+ * parser for everything else in this file (JS/JSX structure, destructuring)
+ * since that's plain syntax with no type-system dimension to it.
+ */
+function findTypeMembers(source, typeName) {
+  const sourceFile = ts.createSourceFile('child.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  let result = null;
+  const visit = (node) => {
+    if (result) return;
+    const isInterface = ts.isInterfaceDeclaration(node) && node.name.text === typeName;
+    const isTypeLiteralAlias =
+      ts.isTypeAliasDeclaration(node) && node.name.text === typeName && ts.isTypeLiteralNode(node.type);
+    if (isInterface || isTypeLiteralAlias) {
+      const members = isInterface ? node.members : node.type.members;
+      if (members.some((m) => ts.isIndexSignatureDeclaration(m))) {
+        result = { closed: false, names: new Set() };
+      } else {
+        const names = new Set();
+        for (const m of members) {
+          if (ts.isPropertySignature(m) && m.name && ts.isIdentifier(m.name)) names.add(m.name.text);
+        }
+        result = { closed: true, names };
+      }
+      return;
     }
-    if (!objectType) continue;
-    const members = objectType.body ?? objectType.members;
-    if (members.some((m) => t.isTSIndexSignature(m))) return { closed: false, names: new Set() };
-    const names = new Set();
-    for (const m of members) {
-      if (t.isTSPropertySignature(m) && t.isIdentifier(m.key)) names.add(m.key.name);
-    }
-    return { closed: true, names };
-  }
-  return null;
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return result;
 }
 
 /** The declared prop set for a component function's first parameter: an
  * object-destructuring pattern's own property names (the common case), or
  * — bonus, best-effort — a typed non-destructured `props: FooProps`
- * param's interface/type-literal members. Returns `null` (open/unknown,
- * don't filter) when neither shape is recognized. */
-function declaredNamesFromFunction(fn, ast) {
+ * param's interface/type-literal members (via the TS compiler API — see
+ * findTypeMembers above). Returns `null` (open/unknown, don't filter) when
+ * neither shape is recognized. */
+function declaredNamesFromFunction(fn, childSource) {
   const param = fn.params[0];
   if (!param) return { closed: true, names: new Set() };
   if (t.isObjectPattern(param)) {
@@ -480,7 +504,7 @@ function declaredNamesFromFunction(fn, ast) {
   if (t.isIdentifier(param) && param.typeAnnotation && t.isTSTypeAnnotation(param.typeAnnotation)) {
     const typeRef = param.typeAnnotation.typeAnnotation;
     if (t.isTSTypeReference(typeRef) && t.isIdentifier(typeRef.typeName)) {
-      const members = findTypeMembers(ast, typeRef.typeName.name);
+      const members = findTypeMembers(childSource, typeRef.typeName.name);
       if (members) return members;
     }
   }
@@ -512,9 +536,11 @@ export function resolveDeclaredPropNames(root, pageAbsPath, pageAst, tagName) {
   const childAbsPath = resolveImportSource(pageAbsPath, importSource, root);
   if (!childAbsPath) return null;
 
+  let childSource;
   let childAst;
   try {
-    childAst = parseSource(fs.readFileSync(childAbsPath, 'utf8'));
+    childSource = fs.readFileSync(childAbsPath, 'utf8');
+    childAst = parseSource(childSource);
   } catch {
     return null;
   }
@@ -522,7 +548,7 @@ export function resolveDeclaredPropNames(root, pageAbsPath, pageAst, tagName) {
   const fn = findComponentFunction(childAst, tagName, isDefault);
   if (!fn) return null;
 
-  return declaredNamesFromFunction(fn, childAst);
+  return declaredNamesFromFunction(fn, childSource);
 }
 
 /**
