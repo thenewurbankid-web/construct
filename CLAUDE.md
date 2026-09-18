@@ -262,3 +262,15 @@ user-visible behaviour, so demos, the Help Tutorials and `docs/` never drift.
 
 Only create demo tickets when asked — don't proactively file one per
 feature. Standard issue discipline (rules 1-2, 4, 12 above) still applies.
+
+## Project board (standing instruction)
+
+Work is tracked on the user-owned Projects v2 board (`docs/PROJECT_BOARD.md` is the reference). When you
+file an issue, set **Module**, **Sub-module** and **Kind** on its board card (Area is derived), set **Priority**
+on anything open that is not Standing, and link it to its parent epic with GitHub sub-issues plus a
+"Part of #N" line. Pull requests do not go on the board. Board maintenance is delegated to the
+`project-manager` agent (`.claude/agents/project-manager.md`): run it at the end of each work wave and
+whenever the board looks off; it also checks Module/Sub-module/Area consistency and watches the open-core
+boundary (Cockpit UI, MCP, predefined envelopes are proprietary; core packages are open). Deterministic
+hygiene (closed -> Done, reopened -> In progress, add missing issues, archive Done > 14 days, Area
+consistency) is automated by `.github/workflows/project-board-hygiene.yml` (needs the `PROJECT_TOKEN` secret).
