@@ -9,3 +9,6 @@ ui/e2e/playwright-report/
 *storybook.log
 storybook-static
 ui/e2e/test-results-settings-llm/
+
+# GitHub Pages guide site build output
+site/dist/
