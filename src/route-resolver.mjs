@@ -10,10 +10,9 @@
 // first pass.
 import fs from 'node:fs';
 import path from 'node:path';
-import { walk as walkAst } from 'estree-walker';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { walk } from './fs.mjs';
-import { parseToAst } from './parser.mjs';
+import { parseToAst, walkAst } from './ast/index.mjs';
 
 const PAGE_FILENAMES = ['page.tsx', 'page.ts', 'page.jsx', 'page.js'];
 

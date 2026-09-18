@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { walk } from './fs.mjs';
 import { makeViolation } from './diagnostics.mjs';
+import { matchGlob } from './glob.mjs';
 import { parseFile, extractExports, extractJsdoc, lineOf, EXT } from './parser.mjs';
 import { loadConfig, readRawRules } from './config.mjs';
 
@@ -27,15 +28,10 @@ function severityFor(config, ruleId) {
   return READABILITY_RULES[ruleId]?.severity || 'error';
 }
 
-function pathMatches(glob, file) {
-  const g = glob.replaceAll('**', '§').replaceAll('*', '[^/]*').replaceAll('§', '.*');
-  return new RegExp('^' + g + '$').test(file);
-}
-
 function isExempt(config, rule, file) {
   const now = Date.now();
   return (config.exceptions || []).some(
-    (e) => (e.rule ? [e.rule] : e.rules || []).includes(rule) && pathMatches(e.path, file) && (!e.expires || new Date(e.expires).getTime() >= now)
+    (e) => (e.rule ? [e.rule] : e.rules || []).includes(rule) && matchGlob(e.path, file) && (!e.expires || new Date(e.expires).getTime() >= now)
   );
 }
 

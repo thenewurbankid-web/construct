@@ -17,12 +17,13 @@ import crypto from 'node:crypto';
 import { parse } from '@babel/parser';
 import _traverse from '@babel/traverse';
 import * as t from '@babel/types';
-import ts from 'typescript';
+import { ts, parseTsSource } from '../../../src/ast/index.mjs';
 import { loadConfig } from '../../../src/config.mjs';
 import { loadLayerGraph } from '../../../src/architecture-graph.mjs';
 import { validateArchitecture } from '../../../src/architecture-enforcer.mjs';
 import { validateSeparationOfConcerns } from '../../../src/soc-enforcer.mjs';
 import { walk, rel } from '../../../src/fs.mjs';
+import { matchGlob } from '../../../src/glob.mjs';
 
 // @babel/traverse's default export shape differs between ESM interop modes;
 // this normalizes it the same way babel's own docs recommend.
@@ -97,8 +98,7 @@ export function resolvePageFile(root, feature, file) {
   const relFromRoot = rel(root, resolved);
   const pattern = graph.page?.pattern;
   if (pattern) {
-    const re = new RegExp('^' + pattern.replaceAll('**', '§').replaceAll('*', '[^/]*').replaceAll('§', '.*') + '$');
-    if (!re.test(relFromRoot)) {
+    if (!matchGlob(pattern, relFromRoot)) {
       throw new PagesEditorError(`"${relFromRoot}" is not classified as the "page" layer by this project's architecture.yml.`);
     }
   }
@@ -698,7 +698,7 @@ function findComponentFunction(ast, tagName, isDefault) {
  * since that's plain syntax with no type-system dimension to it.
  */
 function findTypeMembers(source, typeName) {
-  const sourceFile = ts.createSourceFile('child.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const sourceFile = parseTsSource(source, 'child.tsx');
   let result = null;
   const visit = (node) => {
     if (result) return;

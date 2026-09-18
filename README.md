@@ -305,3 +305,7 @@ Agents should read `architecture.yml`, make the smallest local change, and run v
 ## Tooling
 
 `tools/github-comment-bridge/` is a standalone, separately-run poller (own `package.json`, not part of the Construct CLI) that lets a human dispatch a real `claude` CLI run by posting a `/claude <instruction>` comment on a GitHub issue. See its own README for setup and the exact trigger syntax.
+
+## Reusable building blocks
+
+`docs/capabilities.md` inventories the deterministic "lego blocks" already in the codebase (with where they live, who uses them, and what to group next). All AST parsing/walking/extraction/generation lives in one package, `src/ast/` (entry `src/ast/index.mjs`, see its README): `import { extractImports, collectCalls } from './src/ast/index.mjs'`.

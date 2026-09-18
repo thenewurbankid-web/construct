@@ -16,8 +16,7 @@
 // kept region survive untouched.
 import fs from 'node:fs';
 import path from 'node:path';
-import { walk as walkAst } from 'estree-walker';
-import { parseToAst } from '../parser.mjs';
+import { parseToAst, walkAst } from '../ast/index.mjs';
 import { loadConfig } from './../config.mjs';
 import { write } from '../fs.mjs';
 import { selfCheck } from '../generators.mjs';
