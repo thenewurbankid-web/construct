@@ -52,8 +52,10 @@ function renderCustomTemplate(templatePath,name){
 // Re-validate freshly generated files against Epic 1.2's enforcer. A failure
 // here means Construct's own template produced non-conforming code — an
 // internal bug, not a user mistake — so it throws rather than returning a
-// normal violation report.
-function selfCheck(root,absFiles){
+// normal violation report. Exported so other generators (e.g. Ticket 7.2's
+// pageTransformer.mjs, ingesting an externally-authored JSX file) reuse the
+// same re-validate-after-write step instead of a second copy of it.
+export function selfCheck(root,absFiles){
  const files=absFiles.map(f=>rel(root,f));
  const {violations}=validateArchitecture(root,{files});
  const errors=violations.filter(v=>v.severity==='error');

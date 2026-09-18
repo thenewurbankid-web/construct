@@ -17,6 +17,7 @@ import { resolveRoute } from './route-resolver.mjs';
 import { DEFAULT_ENFORCERS } from './engine/defaultEnforcers.mjs';
 import { runPipeline } from './engine/pipeline.mjs';
 import { validateEnvelope } from './engine/envelope.mjs';
+import { ingestPage } from './engine/pageTransformer.mjs';
 
 // Resolve the project root freshly per command: walks up from cwd (or from
 // --dir, when given) to find an existing architecture.yml (monorepo
@@ -103,6 +104,16 @@ export async function generate(args) {
     throw new ConstructError('Usage: construct generate <layer> <name> --feature <feature>', { exitCode: EXIT_CODES.USAGE_ERROR });
   }
   const root = getRoot(args);
+  // Ticket 7.2 (#112): `construct create/generate page <name> --feature <f> --from
+  // <path>` ingests an externally-authored JSX file (e.g. a Subframe export) instead
+  // of scaffolding the usual stub template -- see src/engine/pageTransformer.mjs.
+  const fromI = args.indexOf('--from');
+  if (layer === 'page' && fromI >= 0 && args[fromI + 1]) {
+    const { pageFile, propsFile, slots } = ingestPage(root, name, args[fi + 1], args[fromI + 1]);
+    console.log(`Created ${path.relative(root, pageFile)}`);
+    console.log(`Created ${path.relative(root, propsFile)} (${slots.length} slot(s): ${slots.map((s) => s.name).join(', ') || 'none'})`);
+    return;
+  }
   console.log(`Created ${path.relative(root, generateLayer(root, layer, name, args[fi + 1]))}`);
 }
 

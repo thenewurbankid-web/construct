@@ -64,6 +64,11 @@ Commands:
   construct init [dir] [--framework nextjs|react-spa]
   construct feature create <name> [--dir <path>]
   construct generate <layer> <name> --feature <feature> [--dir <path>]
+  construct generate page <name> --feature <feature> --from <path> [--dir <path>]
+    (ingests an externally-authored JSX file — e.g. a Subframe export — as a
+    pristine, presentation-only page + an explicit <Name>PageProps.ts interface,
+    instead of scaffolding the usual stub template; 'construct create page ... --from
+    <path>' is the equivalent under the create/refactor/research/import grouping)
   construct generate layer <name> --feature <feature> --layers <l1,l2,...> [--dir <path>]
   construct sync [--dir <path>]
   construct validate [--format json] [--dir <path>]

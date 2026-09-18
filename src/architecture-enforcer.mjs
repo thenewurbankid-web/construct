@@ -181,6 +181,20 @@ export function detectLayerViolations(layer, source) {
       why: 'Pages cannot own application flow.',
       expected: ['controller', 'workflow'],
     });
+    // Ticket 7.2 (#112): a page can also reach for application state indirectly, by
+    // importing a custom hook (features/*/hooks/**) without ever calling
+    // useMachine/useActor/createMachine directly itself -- e.g. `import { useCart }
+    // from '../hooks/useCart'`. That's the same class of violation PAGE-006 already
+    // exists for (pages owning application flow instead of delegating to a
+    // controller/hook wiring), so it's reported under the same rule id rather than a
+    // new one (the epic's reconciliation notes explicitly reserve a new PAGE-005 for a
+    // different, already-taken meaning).
+    const hookImport = firstImportMatch(/hooks?\//);
+    if (hookImport) out.push({
+      rule: 'PAGE-006', line: lineOf(source, hookImport.index), message: 'Page imports a custom hook.',
+      why: 'Pages cannot own application flow — hooks are wired in by a controller, not imported directly by a page.',
+      expected: ['controller', 'workflow'],
+    });
   }
 
   if (layer === 'component') {
