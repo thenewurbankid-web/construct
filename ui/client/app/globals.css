@@ -851,3 +851,56 @@ button:disabled {
 .propflow-pill-outgoing {
   opacity: 0.9;
 }
+
+/* Ollama (Epic 6.1/#97, 6.3/#99) — status/install/model-management screen. */
+.ollama-status,
+.ollama-install,
+.ollama-models,
+.ollama-pull {
+  margin-top: 1rem;
+}
+
+.ollama-install-command {
+  overflow-x: auto;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.ollama-model-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ollama-model-table th,
+.ollama-model-table td {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+}
+
+.ollama-pull-progress {
+  font-weight: 600;
+}
+
+.ollama-model-picker-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.ollama-model-picker-option {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.4rem;
+}
+
+.ollama-model-picker-name {
+  font-weight: 600;
+  min-width: 3rem;
+}
