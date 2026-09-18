@@ -54,6 +54,31 @@ export function normalizeFramework(raw) {
   return raw;
 }
 
+// Ticket 7.5 — recognized `project.dataLayer.provider` values. Selects which
+// transport adapter the service generator instantiates as `baseQuery` in
+// `features/core/services/client.ts`: RTKQ's own `fetchBaseQuery` (the
+// default, so a project that never sets this keeps getting exactly what it
+// would have gotten before this option existed), a hand-rolled Axios
+// adapter, or a network-free mock adapter for tests/demos.
+export const DATA_LAYER_PROVIDERS = ['fetchBaseQuery', 'axios', 'mock'];
+const DEFAULT_DATA_LAYER_PROVIDER = 'fetchBaseQuery';
+
+/**
+ * Validate and normalize a `project.dataLayer.provider` value from
+ * architecture.yml. Absent/undefined normalizes to the default
+ * ('fetchBaseQuery'), mirroring normalizeFramework's backward-compatible
+ * shape above.
+ */
+export function normalizeDataLayerProvider(raw) {
+  if (raw === undefined || raw === null) return DEFAULT_DATA_LAYER_PROVIDER;
+  if (typeof raw !== 'string' || !DATA_LAYER_PROVIDERS.includes(raw)) {
+    throw usageError(
+      `Unknown project.dataLayer.provider '${raw}' in architecture.yml — expected one of: ${DATA_LAYER_PROVIDERS.join(', ')}.`,
+    );
+  }
+  return raw;
+}
+
 /** The canonical base layer graph for a given (already-normalized) framework
  * value — the shape #66/#67 and architecture-graph.mjs's loadLayerGraph
  * branch on before applying any project-level `layers:` override. */
@@ -231,7 +256,7 @@ export function loadConfig(root) {
     return {
       version: 1,
       preset: 'strict-nextjs',
-      project: { framework: DEFAULT_FRAMEWORK },
+      project: { framework: DEFAULT_FRAMEWORK, dataLayer: { provider: DEFAULT_DATA_LAYER_PROVIDER } },
       features: { root: 'features' },
       layers: DEFAULT_LAYERS,
       rules: DEFAULT_RULES,
@@ -251,12 +276,17 @@ export function loadConfig(root) {
 
   const rules = normalizeRules(c.rules, DEFAULT_RULES);
   const framework = normalizeFramework(c.project?.framework);
+  const dataLayerProvider = normalizeDataLayerProvider(c.project?.dataLayer?.provider);
 
   return {
     version: 1,
     preset: 'strict-nextjs',
     ...c,
-    project: { ...(c.project || {}), framework },
+    project: {
+      ...(c.project || {}),
+      framework,
+      dataLayer: { ...(c.project?.dataLayer || {}), provider: dataLayerProvider },
+    },
     features: { root: 'features', ...(c.features || {}) },
     layers: layersForFramework(framework),
     rules,

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { loadConfig, findProjectRoot, DEFAULT_RULES, DEFAULT_LAYERS, REACT_SPA_LAYERS, FRAMEWORKS, normalizeFramework, layersForFramework } from '../src/config.mjs';
+import { loadConfig, findProjectRoot, DEFAULT_RULES, DEFAULT_LAYERS, REACT_SPA_LAYERS, FRAMEWORKS, normalizeFramework, layersForFramework, DATA_LAYER_PROVIDERS, normalizeDataLayerProvider } from '../src/config.mjs';
 import { ConstructError, EXIT_CODES } from '../src/diagnostics.mjs';
 
 function tmpProject() {
@@ -63,6 +63,58 @@ test('normalizeFramework defaults undefined/null to nextjs and validates against
   assert.equal(normalizeFramework('react-spa'), 'react-spa');
   assert.deepEqual(FRAMEWORKS, ['nextjs', 'react-spa']);
   assert.throws(() => normalizeFramework('remix'), ConstructError);
+});
+
+// Ticket 7.5 — project.dataLayer.provider (mirrors the framework tests above).
+
+test('loadConfig defaults project.dataLayer.provider to fetchBaseQuery when unset', () => {
+  const dir = tmpProject();
+  const config = loadConfig(dir);
+  assert.equal(config.project.dataLayer.provider, 'fetchBaseQuery');
+});
+
+test('loadConfig defaults project.dataLayer.provider to fetchBaseQuery when architecture.yml is absent', () => {
+  const dir = tmpProject();
+  const config = loadConfig(dir);
+  assert.equal(config.project.dataLayer.provider, 'fetchBaseQuery');
+});
+
+test('loadConfig reads and normalizes project.dataLayer.provider: axios', () => {
+  const dir = tmpProject();
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), 'project:\n  dataLayer:\n    provider: axios\n');
+  const config = loadConfig(dir);
+  assert.equal(config.project.dataLayer.provider, 'axios');
+});
+
+test('loadConfig reads and normalizes project.dataLayer.provider: mock', () => {
+  const dir = tmpProject();
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), 'project:\n  dataLayer:\n    provider: mock\n');
+  const config = loadConfig(dir);
+  assert.equal(config.project.dataLayer.provider, 'mock');
+});
+
+test('loadConfig throws a ConstructError with a clear message for an unknown dataLayer.provider', () => {
+  const dir = tmpProject();
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), 'project:\n  dataLayer:\n    provider: graphql\n');
+  assert.throws(
+    () => loadConfig(dir),
+    (err) => {
+      assert.ok(err instanceof ConstructError);
+      assert.equal(err.exitCode, EXIT_CODES.USAGE_ERROR);
+      assert.match(err.message, /Unknown project\.dataLayer\.provider 'graphql'/);
+      assert.match(err.message, /fetchBaseQuery, axios, mock/);
+      return true;
+    },
+  );
+});
+
+test('normalizeDataLayerProvider defaults undefined/null to fetchBaseQuery and validates against DATA_LAYER_PROVIDERS', () => {
+  assert.equal(normalizeDataLayerProvider(undefined), 'fetchBaseQuery');
+  assert.equal(normalizeDataLayerProvider(null), 'fetchBaseQuery');
+  assert.equal(normalizeDataLayerProvider('axios'), 'axios');
+  assert.equal(normalizeDataLayerProvider('mock'), 'mock');
+  assert.deepEqual(DATA_LAYER_PROVIDERS, ['fetchBaseQuery', 'axios', 'mock']);
+  assert.throws(() => normalizeDataLayerProvider('graphql'), ConstructError);
 });
 
 test('layersForFramework returns the react-spa route pattern with everything else identical to DEFAULT_LAYERS', () => {
