@@ -8,7 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCREENSHOTS_DIR = path.resolve(__dirname, '../screenshots');
 fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
 
-const API_BASE = 'http://localhost:4000';
+const API_BASE = process.env.E2E_API_BASE || 'http://localhost:4000';
 
 /** Answers whatever question the wizard is currently blocked on (waits for
  * the chat's answer box to (re)appear — it's only in the DOM while

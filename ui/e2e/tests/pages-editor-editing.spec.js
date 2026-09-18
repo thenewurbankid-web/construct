@@ -8,7 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCREENSHOTS_DIR = path.resolve(__dirname, '../screenshots');
 fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
 
-const API_BASE = 'http://localhost:4000';
+const API_BASE = process.env.E2E_API_BASE || 'http://localhost:4000';
 
 // Retroactive coverage for #52/#53/#54/#55/#56 (CLAUDE.md rule 11): the
 // original walkthrough.spec.js#7 proves #50/#51 (tree parse + bidirectional

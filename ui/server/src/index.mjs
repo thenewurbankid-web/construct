@@ -36,6 +36,7 @@ import {
   moveNodeInSnippet,
   addChildInSnippet,
 } from './pagesEditor.mjs';
+import { listWorkflowFeatures, listWorkflowFiles, readWorkflowMachines, editWorkflowFile } from './workflowsViewer.mjs';
 
 // This server is a local dev tool, but it has real teeth: /api/import (and
 // friends) read an arbitrary path off disk and, with --llm, send that
@@ -457,6 +458,50 @@ app.post('/api/pages/snippet-add-child', (req, res) => {
     const { snippet, parentId } = req.body || {};
     if (typeof snippet !== 'string' || !parentId) return res.status(400).json({ ok: false, error: 'snippet and parentId are required' });
     res.json(addChildInSnippet(snippet, parentId));
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Workflows viewer (epic #57: #59 screen, #60 extraction). Read-only, scoped
+// to features/<feature>/workflows/ (see workflowsViewer.mjs's
+// resolveWorkflowFile). Machines are re-extracted from real source on every
+// request; nothing is stored.
+app.get('/api/workflows/features', (req, res) => {
+  try {
+    res.json({ features: listWorkflowFeatures(currentRoot()) });
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+app.get('/api/workflows', (req, res) => {
+  try {
+    const { feature } = req.query;
+    if (!feature) return res.status(400).json({ ok: false, error: 'feature is required' });
+    res.json({ feature, files: listWorkflowFiles(currentRoot(), feature) });
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+app.get('/api/workflows/machines', (req, res) => {
+  try {
+    const { feature, file } = req.query;
+    res.json(readWorkflowMachines(currentRoot(), feature, file));
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+// #61: POST body { feature, file, machine, op, ...opArgs, commit?, contentHash? }.
+// commit=false -> patched source for the diff preview (nothing written);
+// commit=true -> re-apply, hash check, enforcement gate, write.
+app.post('/api/workflows/edit', (req, res) => {
+  try {
+    const { feature, file, commit, contentHash, ...edit } = req.body || {};
+    res.json(editWorkflowFile(currentRoot(), feature, file, edit, { commit: !!commit, contentHash }));
   } catch (e) {
     handlePagesEditorError(res, e);
   }

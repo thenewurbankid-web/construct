@@ -409,6 +409,11 @@ button:disabled {
   align-self: flex-end;
 }
 
+.chat-answer-blank {
+  font-style: italic;
+  opacity: 0.85;
+}
+
 .chat-error {
   background: rgba(224, 90, 90, 0.15);
   color: var(--error);
@@ -1200,4 +1205,151 @@ button:disabled {
 .ollama-model-picker-name {
   font-weight: 600;
   min-width: 3rem;
+}
+
+/* Epic #57 / #59 — Workflows screen (XState machine diagrams, React Flow).
+ * Appended in its own block to keep merges with other agents' CSS edits
+ * trivial. */
+.wf-file-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.wf-machine {
+  margin-top: 16px;
+}
+
+.wf-machine h3 {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.wf-viewport {
+  height: 380px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #0b0d11;
+}
+
+.wf-state {
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--panel-glass-strong);
+  color: var(--text);
+  text-align: center;
+}
+
+.wf-state.initial {
+  border-color: var(--accent);
+}
+
+.wf-state.final {
+  border: 3px double var(--tool);
+}
+
+.wf-state.missing {
+  border-style: dashed;
+  border-color: var(--error);
+}
+
+.wf-state-name {
+  font-size: 12px;
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.wf-state-tags {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.wf-tag {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+
+.wf-tag.final {
+  color: var(--tool);
+}
+
+.wf-tag.missing {
+  color: var(--error);
+}
+
+.wf-internal {
+  margin-top: 3px;
+  font-size: 10px;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.wf-start-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.wf-handle {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.wf-viewport .react-flow__edge-textbg {
+  fill: #1a1d24;
+}
+
+.wf-viewport .react-flow__edge-text {
+  fill: var(--text);
+  font-size: 11px;
+}
+
+.wf-viewport .react-flow__edge-path {
+  stroke: var(--muted);
+}
+
+/* #61 — visual editing on the Workflows canvas. */
+.wf-viewport.editable .wf-handle {
+  opacity: 1;
+  pointer-events: all;
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+  border: 1px solid var(--border-strong);
+}
+
+.wf-edit-panel {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel-glass);
+}
+
+.wf-edit-panel h4 {
+  margin: 0 0 8px;
+}
+
+.wf-edit-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.wf-edit-row input,
+.wf-edit-row select {
+  min-width: 140px;
+}
+
+.wf-hint {
+  margin-top: 8px;
 }

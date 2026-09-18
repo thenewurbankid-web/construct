@@ -259,6 +259,41 @@ construct validate --dir tools/construct
 
 `--dir` resolves the same way `cd`-ing in would — walking upward from that path to find the nearest `architecture.yml` — and every command still only ever reads or writes inside that project; nothing outside it is touched.
 
+## Wrapping frozen, externally-authored UI (Subframe, Figma-to-code, ...)
+
+Some UI is not yours to edit: a design tool (Subframe, Figma-to-code, a shared design system) generates or syncs it, and the team treats it as fixed design output. Construct supports this as a first-class adoption path: **a controller wraps the frozen component** — imports it and forwards props — while all data-fetching, gating and state live in `hooks/`, `workflows/`, `services/` and `domain/`. The design output stays the single source of truth and is never forked.
+
+Declare the externally-authored files in `architecture.yml`. Globs are resolved relative to the project root and may reach *outside* it:
+
+```yaml
+frozen:
+  - ../../src/subframe-pages-v2/**
+  - ../../src/ui-v2/components/**
+```
+
+```tsx
+// features/cpo/controllers/CpoHomeController.tsx — the whole wrapper
+import CpoHome from '../../../../../src/subframe-pages-v2/Cpo/CpoHome';
+import { useCpoHome } from '../hooks/useCpoHome';
+
+export function CpoHomeController() {
+  const { title, items } = useCpoHome();
+  return <CpoHome title={title} items={items} />;
+}
+```
+
+What `frozen:` changes (and only when it is set — projects without it behave exactly as before):
+
+- **Read-only to Construct.** Every write path — `create`/`generate` (feature, layer, vertical), `import`, `refactor move`/`rename` (as source, destination, or an importing file that would be rewritten), and `pipeline` — refuses to touch a path matching a frozen glob, with an error naming the glob. Frozen globs are references only; nothing Construct writes is ever derived from one.
+- **Wrap, don't duplicate.** Three new rules (default `warning`; set `error` to gate CI) flag a layer file that re-authors markup already present in a frozen source: `PAGE-007` (pages), `COMPONENT-004` (components), `CONTROLLER-002` (controllers). Detection is deterministic and AST-based (no LLM), with three signals:
+  1. *same name* — the file exports a component with the same name as one exported by a frozen file, without importing it;
+  2. *same structure* — the file has at least `minDuplicateElements` (default 6) JSX elements and at least `similarity` (default 0.8) of its element tags are contained in one frozen file's JSX, without importing that file;
+  3. *not thin* — the file imports a frozen file but declares more than `maxOwnElements` (default 5) JSX elements of its own.
+  Tune per rule, e.g. `PAGE-007: { severity: error, similarity: 0.9 }`, or silence one file with a normal `exceptions:` entry.
+- **Frozen files inside the project root** are treated as externally authored and skipped by Construct's layer rules.
+
+Limits: the duplicate-markup check compares JSX element tags, not props/text/styling, and only looks at files under the frozen globs; a controller that re-authors frozen markup with different tags will not be caught. A frozen file *outside* the project root that imports a file you `refactor move` cannot be rewritten by Construct (and is never touched) — update it in its own repository. See `fixtures/frozen-presentation/` for a working example (a good wrapper project and a deliberately bad one).
+
 ## AI-agent workflow
 
 Agents should read `architecture.yml`, make the smallest local change, and run validation. JSON diagnostics expose rule ID, severity, file, line, message, rationale, expected boundary, and suggested fix.
@@ -270,3 +305,7 @@ Agents should read `architecture.yml`, make the smallest local change, and run v
 ## Tooling
 
 `tools/github-comment-bridge/` is a standalone, separately-run poller (own `package.json`, not part of the Construct CLI) that lets a human dispatch a real `claude` CLI run by posting a `/claude <instruction>` comment on a GitHub issue. See its own README for setup and the exact trigger syntax.
+
+## Reusable building blocks
+
+`docs/capabilities.md` inventories the deterministic "lego blocks" already in the codebase (with where they live, who uses them, and what to group next). All AST parsing/walking/extraction/generation lives in one package, `src/ast/` (entry `src/ast/index.mjs`, see its README): `import { extractImports, collectCalls } from './src/ast/index.mjs'`.

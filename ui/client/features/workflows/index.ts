@@ -1,0 +1,19 @@
+// Public API for feature: workflows
+
+/** Extracted-machine and browsing-state types for the Workflows screen
+ * (epic #57). */
+export type * from './types';
+
+/** Renders the Workflows screen — a feature's workflows/ layer files and
+ * each real XState machine as a diagram — behind the project gate. */
+export * from './controllers/WorkflowsController';
+
+/** Top-level feature -> file -> machines browsing state; used by
+ * WorkflowsController, exported for direct reuse/testing. */
+export * from './hooks/useWorkflows';
+
+/** React Flow nodes/edges derived from one extracted machine. */
+export * from './hooks/useMachineFlow';
+
+/** Visual edit flow (propose diff -> confirm save) used by useWorkflows (#61). */
+export * from './hooks/useWorkflowEditor';

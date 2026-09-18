@@ -1,0 +1,14 @@
+{
+  "name": "@construct/ast",
+  "version": "1.0.0",
+  "description": "Construct's reusable, deterministic AST package: parse, walk, extract, generate. In-repo (not published); dependencies resolve from the repo-root package.json.",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./index.mjs",
+    "./parse": "./parse.mjs",
+    "./walk": "./walk.mjs",
+    "./extract": "./extract.mjs",
+    "./ts": "./tsNodes.mjs"
+  }
+}

@@ -15,7 +15,7 @@
 // Every function here is total: an unrecognized node shape falls back to a
 // generic, still name-based description (the identifiers found in that
 // subtree) rather than ever reprinting raw code.
-import ts from 'typescript';
+import { ts, findNode, findAllNodes } from './ast/index.mjs';
 
 // The AST belongs to whichever snippet describeImplementation is currently
 // translating. Safe as module-level state: this module is synchronous and
@@ -24,27 +24,6 @@ import ts from 'typescript';
 let currentSourceFile = null;
 function text(node) {
   return node.getText(currentSourceFile).trim();
-}
-
-function findNode(root, predicate) {
-  let found = null;
-  const visit = (node) => {
-    if (found) return;
-    if (predicate(node)) { found = node; return; }
-    ts.forEachChild(node, visit);
-  };
-  visit(root);
-  return found;
-}
-
-function findAllNodes(root, predicate) {
-  const results = [];
-  const visit = (node) => {
-    if (predicate(node)) results.push(node);
-    ts.forEachChild(node, visit);
-  };
-  visit(root);
-  return results;
 }
 
 /** Fallback when no structural recognizer applies: name the identifiers
