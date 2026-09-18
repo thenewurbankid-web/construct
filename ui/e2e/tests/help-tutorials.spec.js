@@ -27,7 +27,7 @@ const EXPECTED_IMAGE_PATHS = [
   '/tutorials/listing-details/listing-details-1-ui-create-feature.png',
   '/tutorials/listing-details/listing-details-2-ui-create-listing-slice.png',
   '/tutorials/listing-details/listing-details-3-ui-browse-pages.png',
-  '/tutorials/listing-details/listing-details-4-ui-no-llm-field-on-create.png',
+  '/tutorials/listing-details/listing-details-4-ui-llm-option-on-create.png',
   '/tutorials/listing-details/listing-details-5-ui-research-openapi-service.png',
 ];
 

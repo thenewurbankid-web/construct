@@ -106,9 +106,9 @@ test.describe.serial('Demo #138/#139 -- construct import (UI)', () => {
   });
 
   // Issue #139's UI section: the same form, with the LLM checkbox turned
-  // on and provider "claude". This sandbox has no `claude` CLI installed,
-  // so the real, honest result is the backend's real error -- captured
-  // here as-is, not replaced with fabricated ported output.
+  // on. The provider comes from Settings (default claude, since #109) and
+  // the claude CLI is reachable in this environment, so the real result is
+  // a successful LLM fill -- captured as-is, never fabricated.
   test('#139 UI: Import form with LLM checkbox -- real attempt, real result', async ({ page }) => {
     await page.goto('/dashboard');
     const importForm = page.locator('.command-form', { has: page.getByRole('heading', { name: 'Import (non-interactive)' }) });
@@ -155,8 +155,8 @@ test('#138/#139 CLI transcripts (reproduced for this run)', () => {
     const domainFile = fs.readFileSync(path.join(cliProjectDir, 'features/pricing/domain/DiscountWidget.tsx'), 'utf8');
     expect(domainFile).toContain('TODO(import): port the relevant logic from');
 
-    // --llm claude: real command, real attempt -- expected to fail in this
-    // sandbox (no `claude` CLI on PATH), captured honestly either way.
+    // --llm claude: real command, real call -- succeeds when the claude CLI
+    // is on PATH; captured honestly either way.
     const withLlm = runCli([
       'import', 'DiscountBadge', '--feature', 'pricing', '--layers', 'domain',
       '--from', OLD_FILE, '--llm', 'claude', '--dir', cliProjectDir,
