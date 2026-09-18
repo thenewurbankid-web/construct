@@ -9,7 +9,7 @@ module; *group next* = worth extracting, filed as an issue; *leave* = fine where
 
 | # | Capability | Where it lives | Consumers | Det/LLM | Rec |
 |---|---|---|---|---|---|
-| 1 | **AST package**: parse, walk, extract, generate | `src/ast/` (entry `src/ast/index.mjs`; README there) | `src/parser.mjs`, `architecture-enforcer`, `route-resolver`, `prose`, `engine/{pageTransformer,controllerBinder,workflowGenerator}`, `ui/server/src/pagesEditor.mjs` | Det | **Packaged in #104** |
+| 1 | **AST package**: parse, walk, extract, generate | `src/ast/` (entry `src/ast/index.mjs`; README there) | `src/parser.mjs`, `architecture-enforcer`, `route-resolver`, `frozen-detector`, `prose`, `engine/{pageTransformer,controllerBinder,workflowGenerator,workflowExtractor}`, `ui/server/src/pagesEditor.mjs` | Det | **Packaged in #104** |
 | 2 | **Glob matching** (`**` / `*` to RegExp) | `src/glob.mjs` (`globToRegExp`, `matchGlob`) | architecture/readability/SoC enforcers (layer patterns, exceptions), pagesEditor | Det | **Packaged in #104** (replaced 5 inline copies) |
 | 3 | **Timing** (`startTimer`, `elapsedSeconds`, `formatDuration`) | `src/timing.mjs` | `cli.mjs`, `import.mjs`, `ui/server/src/commandRunner.mjs` | Det | Packaged already (3 pure functions, no deps) |
 | 4 | **LLM provider registry** (`PROVIDERS`, `callLlm`, `stripCodeFence`, Ollama defaults) | `src/llm.mjs` | `import.mjs`, `generators.mjs`, `ui/server/src/{settings,ollama}.mjs` | **LLM** (the one deliberate exception; opt-in via `--llm`) | Packaged already; keep isolated so everything else stays LLM-free |
