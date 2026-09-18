@@ -262,6 +262,59 @@ test('analyzeRoute does not warn for a realistically-sized multi-file feature', 
 // unit tests) — confirms import.mjs's async plumbing actually threads a
 // non-claude provider through correctly.
 
+// ---- timing (#166): non-negative, present, never asserted at an exact value ----
+
+test('importVertical returns a timings object with non-negative scaffold/per-file/total seconds', async () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  const sourceFile = path.join(dir, 'Old.tsx');
+  fs.writeFileSync(sourceFile, 'export function old() { return true; }\n');
+
+  const result = await importVertical(dir, 'Foo', 'checkout', ['domain', 'hook'], sourceFile);
+  assert.ok(result.timings, 'expected a timings object on the result');
+  assert.equal(typeof result.timings.scaffoldSeconds, 'number');
+  assert.ok(result.timings.scaffoldSeconds >= 0);
+  assert.equal(typeof result.timings.totalSeconds, 'number');
+  assert.ok(result.timings.totalSeconds >= 0);
+  assert.equal(result.timings.files.length, 2);
+  for (const f of result.timings.files) {
+    assert.equal(typeof f.llmSeconds, 'number');
+    assert.ok(f.llmSeconds >= 0);
+    assert.ok(result.files.includes(f.file));
+  }
+  // No llm option: nothing to distinguish an LLM-fill step from a trivial
+  // breadcrumb write, so each file's own llmSeconds is exactly 0 (not just
+  // "some small number") -- that's the documented no-llm contract.
+  assert.ok(result.timings.files.every((f) => f.llmSeconds === 0));
+});
+
+test('importVertical with { llm } reports a non-zero-shaped (still non-negative) llmSeconds per file', async () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  const sourceFile = path.join(dir, 'Old.tsx');
+  fs.writeFileSync(sourceFile, 'export function useOld() { return 42; }\n');
+
+  const { result } = await withFakeClaude(() => importVertical(dir, 'Foo', 'checkout', ['domain'], sourceFile, { llm: 'claude' }));
+  assert.equal(result.timings.files.length, 1);
+  assert.equal(typeof result.timings.files[0].llmSeconds, 'number');
+  assert.ok(result.timings.files[0].llmSeconds >= 0);
+});
+
+test('executeImportPlan/importPlan thread a timings object through every unit\'s result', async () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  const srcDir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-import-src-'));
+  const gate = path.join(srcDir, 'OldGate.ts');
+  fs.writeFileSync(gate, 'export function useGate() { return true; }\n');
+  const planPath = writePlan(dir, { feature: 'checkout', units: [{ name: 'CpoAccess', layers: ['domain', 'hook'], from: gate }] });
+
+  const { results } = await importPlan(dir, planPath);
+  assert.equal(results.length, 1);
+  assert.ok(results[0].timings);
+  assert.ok(results[0].timings.scaffoldSeconds >= 0);
+  assert.ok(results[0].timings.totalSeconds >= 0);
+});
+
 test('importVertical with { llm: "ollama" } calls the ollama provider (mocked HTTP) and writes its response', async () => {
   const dir = tmpProject();
   createFeature(dir, 'checkout');

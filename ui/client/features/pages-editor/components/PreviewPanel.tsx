@@ -56,7 +56,7 @@ export function PreviewPanel({ roots, selectedId, onSelect, titleFor }: PreviewP
     <GlassPanel className="preview-panel" ref={containerRef}>
       <h4>Live preview (structural mirror — see hint below)</h4>
       <p className="hint">
-        Each box is one element from the same parse #50 produced. Click a box or a tree node — both
+        Each box is one element from the same parse the tree view uses. Click a box or a tree node — both
         select the same underlying node.
       </p>
       <div className="preview-canvas">
