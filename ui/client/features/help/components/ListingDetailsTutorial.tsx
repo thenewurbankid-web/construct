@@ -83,17 +83,19 @@ function LlmAssistedStep() {
         <code>construct validate</code> cleanly.
       </p>
       <p className="hint">
-        This path is CLI-only today — the Dashboard&apos;s Create form has no LLM field at all,
-        unlike Import&apos;s LLM checkbox on the same screen:
+        In the Dashboard, the Create form has an opt-in checkbox for exactly this: &quot;Have the
+        LLM write the implementation&quot;. It is off by default, and when ticked it uses the
+        provider you chose for create-fill in Settings — so nothing calls a model unless you ask
+        it to, on that run:
       </p>
       <figure className="tutorial-figure">
         <img
           className="tutorial-screenshot"
-          src="/tutorials/listing-details/listing-details-4-ui-no-llm-field-on-create.png"
-          alt="Dashboard Create form with no LLM field, next to Import's LLM checkbox"
+          src="/tutorials/listing-details/listing-details-4-ui-llm-option-on-create.png"
+          alt="Dashboard Create form showing the opt-in LLM checkbox, unchecked by default"
           loading="lazy"
         />
-        <figcaption>Dashboard: Create has no LLM option (top-left) vs. Import&apos;s LLM checkbox (bottom-right).</figcaption>
+        <figcaption>Dashboard Create form: the opt-in LLM checkbox (off by default).</figcaption>
       </figure>
       <p className="hint">
         Equivalent CLI command:{' '}

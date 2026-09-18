@@ -45,7 +45,7 @@ test.describe.serial('Demo #146 -- guided route import: scan, plan, approval (UI
 
   test.beforeAll(async ({ request }) => {
     projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-demo-route-146-ui-'));
-    const settingsRes = await request.post(`${API_BASE}/api/settings`, { data: { projectDir } });
+    const settingsRes = await request.post(`${API_BASE}/api/settings`, { data: { projectDir, llmProviders: { importFill: 'ollama' } } }); // provider comes from Settings since #109
     expect(settingsRes.ok()).toBeTruthy();
     const initRes = await request.post(`${API_BASE}/api/init`);
     expect(initRes.ok()).toBeTruthy();
@@ -112,7 +112,7 @@ test.describe.serial('Demo #147 -- guided route import: scaffold + AI-written lo
   test.beforeAll(async ({ request }) => {
     expect(fs.existsSync(PLAN_FILE)).toBeTruthy();
     projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-demo-route-147-ui-'));
-    const settingsRes = await request.post(`${API_BASE}/api/settings`, { data: { projectDir } });
+    const settingsRes = await request.post(`${API_BASE}/api/settings`, { data: { projectDir, llmProviders: { importFill: 'ollama' } } }); // provider comes from Settings since #109
     expect(settingsRes.ok()).toBeTruthy();
     const initRes = await request.post(`${API_BASE}/api/init`);
     expect(initRes.ok()).toBeTruthy();
@@ -126,20 +126,19 @@ test.describe.serial('Demo #147 -- guided route import: scaffold + AI-written lo
     // 8 real per-file ollama (qwen2.5-coder:7b) calls -- genuinely slow
     // (the CLI run of the same plan took ~2 minutes end to end), well past
     // playwright.config.js's default 30s test timeout.
-    test.setTimeout(240_000);
+    test.setTimeout(660_000);
     await page.goto('/dashboard');
     await expect(page.locator('h1')).toHaveText('Dashboard');
     const importForm = page.locator('.command-form', { has: page.getByRole('heading', { name: 'Import (non-interactive)' }) });
 
     await importForm.getByLabel('Mode').selectOption('plan');
     await importForm.getByLabel('Plan file path').fill(PLAN_FILE);
-    await importForm.getByLabel(/Have the LLM write/).check();
-    await importForm.getByLabel('Provider').fill('ollama');
+    await importForm.getByLabel(/Have the LLM write the ported logic/).check();
 
     await importForm.getByRole('button', { name: 'Run import' }).click();
     // 8 real per-file ollama calls (qwen2.5-coder:7b) -- genuinely slow;
     // the CLI run of the same plan took ~2 minutes end to end.
-    await expect(importForm.locator('.command-result')).toBeVisible({ timeout: 180_000 });
+    await expect(importForm.locator('.command-result')).toBeVisible({ timeout: 600_000 });
     await expect(importForm.locator('.attribution-label.llm')).toBeVisible();
 
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'route-import-147-ui-1-scaffold-and-ollama-fill.png'), fullPage: true });

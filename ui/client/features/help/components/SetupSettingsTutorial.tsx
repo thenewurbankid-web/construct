@@ -103,7 +103,10 @@ function PerCapabilityProvider() {
         <code>importFill</code>, <code>createFill</code>, and <code>planAnalysis</code> — every
         option validated live against the CLI&apos;s own provider list, never a UI-side copy that
         could drift. <code>importFill</code>/<code>createFill</code> both accept a local model via{' '}
-        Ollama (e.g. <code>qwen2.5-coder:7b</code>):
+        Ollama (e.g. <code>qwen2.5-coder:7b</code>). These choices are used for real: a Dashboard
+        Create or Import run (or the Import Wizard&apos;s per-file fill) uses the provider set here, but
+        only when you tick the run&apos;s &quot;Have the LLM write…&quot; checkbox — nothing calls a model
+        by default.
       </p>
       <figure className="tutorial-figure">
         <img
