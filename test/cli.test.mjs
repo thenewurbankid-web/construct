@@ -353,3 +353,85 @@ test('import --llm with an unsupported provider fails fast, without attempting a
   assert.match(res.stderr, /Unknown --llm provider "bogus-provider"/);
   assert.match(res.stderr, /claude/);
 });
+
+// ---- timing (#164/#165/#166): per-step + total elapsed time, printed as
+// plain text alongside the existing tool/llm attribution -- these assert
+// presence/shape/non-negativity only (never an exact duration: timing is
+// inherently variable, so a flaky "took less than Xms" assertion is wrong).
+
+/** Pull every "(...s)"-shaped duration out of `text` and assert each parses
+ * to a non-negative finite number -- used instead of asserting one exact
+ * line so these tests stay robust to reasonable wording changes. */
+function assertNonNegativeDurations(text, { min = 1 } = {}) {
+  const matches = [...text.matchAll(/(\d+(?:\.\d+)?)s\)/g)];
+  assert.ok(matches.length >= min, `expected at least ${min} duration(s) in output, found ${matches.length}:\n${text}`);
+  for (const m of matches) {
+    const seconds = Number(m[1]);
+    assert.ok(Number.isFinite(seconds) && seconds >= 0, `duration "${m[0]}" did not parse to a non-negative number`);
+  }
+  return matches.map((m) => Number(m[1]));
+}
+
+test('create feature prints a non-negative timing duration', () => {
+  const dir = emptyProjectDir();
+  const res = run(['create', 'feature', 'checkout'], dir);
+  assert.equal(res.status, EXIT_CODES.OK);
+  assertNonNegativeDurations(res.stdout);
+});
+
+test('generate <layer> <name> (single-file op) prints a non-negative timing duration', () => {
+  const dir = emptyProjectDir();
+  run(['create', 'feature', 'checkout'], dir);
+  const res = run(['generate', 'domain', 'Foo', '--feature', 'checkout'], dir);
+  assert.equal(res.status, EXIT_CODES.OK);
+  assertNonNegativeDurations(res.stdout);
+});
+
+test('generate layer (vertical slice) prints a per-layer duration for every layer plus a non-negative Total line', () => {
+  const dir = emptyProjectDir();
+  run(['create', 'feature', 'checkout'], dir);
+  const res = run(['generate', 'layer', 'Checkout', '--feature', 'checkout', '--layers', 'domain,hook,page,controller'], dir);
+  assert.equal(res.status, EXIT_CODES.OK);
+  // One duration per created file plus the Total line itself.
+  // One "(...s)" duration per created layer (domain, hook, page, controller).
+  assertNonNegativeDurations(res.stdout, { min: 4 });
+  const totalMatch = res.stdout.match(/Total: (\d+(?:\.\d+)?)s/);
+  assert.ok(totalMatch, `expected a "Total: Xs" line, got:\n${res.stdout}`);
+  const total = Number(totalMatch[1]);
+  assert.ok(Number.isFinite(total) && total >= 0);
+});
+
+test('import <name> (single unit, no --llm) prints a non-negative scaffold duration and a Total line', () => {
+  const dir = emptyProjectDir();
+  run(['create', 'feature', 'checkout'], dir);
+  const sourceFile = path.join(dir, 'OldFile.tsx');
+  fs.writeFileSync(sourceFile, 'export function old() { return true; }\n');
+  const res = run(['import', 'Foo', '--feature', 'checkout', '--layers', 'domain,hook', '--from', sourceFile], dir);
+  assert.equal(res.status, EXIT_CODES.OK);
+  assertNonNegativeDurations(res.stdout);
+  assert.match(res.stdout, /Total: \d+(?:\.\d+)?s/);
+});
+
+test('import --plan (batch) prints a non-negative duration per unit and an overall Total line', () => {
+  const dir = emptyProjectDir();
+  run(['create', 'feature', 'checkout'], dir);
+  const sourceFile = path.join(dir, 'OldFile.tsx');
+  fs.writeFileSync(sourceFile, 'export function old() { return true; }\n');
+  const planPath = path.join(dir, 'plan.json');
+  fs.writeFileSync(
+    planPath,
+    JSON.stringify({
+      feature: 'checkout',
+      units: [
+        { name: 'Foo', layers: ['domain'], from: sourceFile },
+        { name: 'Bar', layers: ['service'], from: sourceFile },
+      ],
+    }),
+  );
+  const res = run(['import', '--plan', planPath], dir);
+  assert.equal(res.status, EXIT_CODES.OK);
+  assertNonNegativeDurations(res.stdout, { min: 2 });
+  const totalMatch = res.stdout.match(/Total: (\d+(?:\.\d+)?)s/);
+  assert.ok(totalMatch, `expected a "Total: Xs" line, got:\n${res.stdout}`);
+  assert.ok(Number(totalMatch[1]) >= 0);
+});
