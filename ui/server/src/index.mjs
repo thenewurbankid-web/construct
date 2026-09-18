@@ -7,6 +7,7 @@ import express from 'express';
 import cors from 'cors';
 import http from 'node:http';
 import fs from 'node:fs';
+import { Readable } from 'node:stream';
 import { create, refactor, research, importCommand, init } from '../../../src/cli.mjs';
 import { findProjectRoot } from '../../../src/config.mjs';
 import { USAGE } from '../../../src/usage.mjs';
@@ -14,6 +15,7 @@ import { HELP_TOPICS, TOPIC_ORDER, getTopLevelHelpText } from '../../../src/repl
 import { getSettings, updateSettings } from './settings.mjs';
 import { runCapturing, withDir } from './commandRunner.mjs';
 import { attachWizardSocket } from './wizardSocket.mjs';
+import { getOllamaStatus, listOllamaModels, startOllamaPull, removeOllamaModel } from './ollama.mjs';
 import {
   PagesEditorError,
   listFeatures,
@@ -35,8 +37,19 @@ import {
   addChildInSnippet,
 } from './pagesEditor.mjs';
 
+// This server is a local dev tool, but it has real teeth: /api/import (and
+// friends) read an arbitrary path off disk and, with --llm, send that
+// content to an external LLM provider — a fully open CORS policy would let
+// any web page a developer happens to have open in another tab drive that
+// from their own browser, with no consent step ("drive-by localhost").
+// Restricting to the actual client origin (configurable, since the client
+// dev server's port is the one thing that might legitimately change) closes
+// that off: the browser's CORS preflight rejects the cross-origin request
+// before it ever reaches a route handler.
+export const CLIENT_ORIGIN = process.env.UI_CLIENT_ORIGIN || 'http://localhost:3000';
+
 const app = express();
-app.use(cors());
+app.use(cors({ origin: CLIENT_ORIGIN }));
 app.use(express.json());
 
 function respond(res, result) {
@@ -176,6 +189,49 @@ app.post('/api/import', async (req, res) => {
   }
   if (llm) args.push('--llm', llm);
   respond(res, await runCapturing(() => importCommand(withDir(args))));
+});
+
+// ---------------------------------------------------------------------------
+// Ollama (Epic 6.1, #97) — detect/list/pull/remove models through Ollama's
+// own local HTTP API (see ollama.mjs). Read-only detection/listing never
+// throws a hard error to the client; a non-running daemon is a normal state
+// the UI renders (install guidance), not a 500.
+
+app.get('/api/ollama/status', async (req, res) => {
+  res.json(await getOllamaStatus());
+});
+
+app.get('/api/ollama/models', async (req, res) => {
+  try {
+    res.json({ models: await listOllamaModels() });
+  } catch (e) {
+    res.status(502).json({ ok: false, error: e.message });
+  }
+});
+
+// Streams Ollama's own newline-delimited JSON pull-progress events straight
+// through to the browser as they arrive (see startOllamaPull's comment) —
+// the client reads this response body incrementally rather than waiting for
+// it to finish, so a multi-GB pull shows live progress instead of a blocked
+// spinner.
+app.post('/api/ollama/pull', async (req, res) => {
+  const { name } = req.body || {};
+  if (!name) return res.status(400).json({ ok: false, error: 'name is required' });
+  try {
+    const upstream = await startOllamaPull(name);
+    res.setHeader('Content-Type', 'application/x-ndjson');
+    Readable.fromWeb(upstream.body).pipe(res);
+  } catch (e) {
+    res.status(502).json({ ok: false, error: e.message });
+  }
+});
+
+app.delete('/api/ollama/models/:name', async (req, res) => {
+  try {
+    res.json(await removeOllamaModel(req.params.name));
+  } catch (e) {
+    res.status(502).json({ ok: false, error: e.message });
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -401,7 +457,7 @@ app.post('/api/pages/snippet-add-child', (req, res) => {
 
 const port = Number(process.env.PORT) || 4000;
 const server = http.createServer(app);
-attachWizardSocket(server);
+attachWizardSocket(server, '/ws/wizard', CLIENT_ORIGIN);
 
 server.listen(port, () => {
   console.log(`Construct UI server listening on http://localhost:${port}`);

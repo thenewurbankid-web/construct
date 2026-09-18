@@ -5,7 +5,7 @@ import type { useSettings } from '../hooks/useSettings';
 
 type SettingsPageProps = ReturnType<typeof useSettings>;
 
-export function SettingsPage({ settings, projectDirInput, setProjectDirInput, llmProvider, setLlmProvider, status, save }: SettingsPageProps): ReactNode {
+export function SettingsPage({ settings, projectDirInput, setProjectDirInput, llmProviders, setLlmProvider, status, save }: SettingsPageProps): ReactNode {
   if (!settings) return <p>Loading settings…</p>;
 
   return (
@@ -19,9 +19,10 @@ export function SettingsPage({ settings, projectDirInput, setProjectDirInput, ll
       <SettingsForm
         projectDirInput={projectDirInput}
         setProjectDirInput={setProjectDirInput}
-        llmProvider={llmProvider}
+        llmProviders={llmProviders}
         setLlmProvider={setLlmProvider}
         availableProviders={settings.availableProviders}
+        availableProvidersByCapability={settings.availableProvidersByCapability}
         status={status}
         onSave={save}
       />
@@ -29,7 +30,7 @@ export function SettingsPage({ settings, projectDirInput, setProjectDirInput, ll
       <SettingsSummary
         projectDir={settings.projectDir}
         resolvedProjectRoot={settings.resolvedProjectRoot}
-        llmProvider={settings.llmProvider}
+        llmProviders={settings.llmProviders}
       />
     </div>
   );

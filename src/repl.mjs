@@ -16,27 +16,34 @@ const COMMANDS = {
 };
 
 export const HELP_TOPICS = {
-  create: `create — scaffold a feature, a layer, or a whole vertical slice (100% deterministic, no LLM)
+  create: `create — scaffold a feature, a layer, or a whole vertical slice (deciding what to create is always deterministic; filling one is opt-in)
 
   create feature <name> [--dir <path>]
       Scaffold a new feature: all 7 layer folders + types.ts + index.ts.
       Example: create feature cpo-v2
 
-  create layer <name> --feature <feature> --layers <l1,l2,...> [--dir <path>]
+  create layer <name> --feature <feature> --layers <l1,l2,...> [--llm <provider>] [--dir <path>]
       Scaffold one logical unit across several layers in a single command,
       always generated in dependency order (domain -> service -> workflow ->
       hook -> component -> page -> controller) regardless of the order you
       list --layers in.
       Example: create layer CpoAccess --feature cpo-v2 --layers domain,hook
 
-  create <layer> <name> --feature <feature> [--dir <path>]
+  create <layer> <name> --feature <feature> [--llm <provider>] [--dir <path>]
       Scaffold a single file in one layer. <layer> is one of: domain,
       service, workflow, hook, component, page, controller.
       Example: create domain CpoAccess --feature cpo-v2
 
-  Every create command only ever writes a short, self-contained stub —
-  filling in the real logic is a separate, deliberate step (by you, or by an
-  LLM you choose) — construct itself makes no LLM calls, here or anywhere.`,
+  Every create command only ever writes a short, self-contained stub by
+  default — filling in the real logic is a separate, deliberate step (by
+  you, or by an LLM you choose). Pass --llm <provider> (same providers as
+  "import", currently: claude, ollama) to have that provider write a real
+  implementation into each generated file instead — one call per file,
+  scoped strictly to that one file's own body. Which layers/files get
+  created is always decided deterministically either way; --llm only
+  changes what ends up inside them. "create feature" has nothing fillable
+  (just types.ts/index.ts boilerplate), so --llm has no effect there.
+      Example: create domain CpoAccess --feature cpo-v2 --llm claude`,
 
   refactor: `refactor — mechanical, LLM-free moves/renames within the architecture
 
@@ -96,12 +103,15 @@ export const HELP_TOPICS = {
   Add --llm <provider> to have import do that step for you instead: it calls
   the provider once per generated file (never once for the whole batch),
   each time with that file's own layer constraints and the old source, and
-  writes the returned code directly, replacing the TODO breadcrumb. This is
-  the one place construct ever calls an LLM, and only when you pass this
-  flag — everything else (locating files, scaffolding, --plan's batching)
-  stays exactly as deterministic either way.
+  writes the returned code directly, replacing the TODO breadcrumb. construct
+  only ever calls an LLM when you pass this flag (here, or the same flag on
+  "create"/"generate" — see "help create") — everything else (locating
+  files, scaffolding, --plan's batching, deciding what to create) stays
+  exactly as deterministic either way.
       Supported providers: claude (shells out to the "claude" CLI; must be
-      installed and authenticated on your machine)
+      installed and authenticated on your machine), ollama (calls a local
+      Ollama server's HTTP API; model configurable, defaults to
+      qwen2.5-coder:7b against http://localhost:11434)
       Example: import CpoAccess --feature cpo-v2 --layers domain,hook --from ../src/old/CpoGate.tsx --llm claude
       Example: import --plan plan.json --llm claude
 
@@ -140,8 +150,8 @@ export const HELP_TOPICS = {
       The flat form of "create feature". Scaffolds all 7 layer folders plus
       types.ts/index.ts for a new feature.`,
 
-  generate: `generate <layer> <name> --feature <feature> [--dir <path>]
-  generate layer <name> --feature <feature> --layers <l1,l2,...> [--dir <path>]
+  generate: `generate <layer> <name> --feature <feature> [--llm <provider>] [--dir <path>]
+  generate layer <name> --feature <feature> --layers <l1,l2,...> [--llm <provider>] [--dir <path>]
       The flat form of "create <layer>" / "create layer" — see "help create".`,
 
   sync: `sync [--dir <path>]
