@@ -8,7 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCREENSHOTS_DIR = path.resolve(__dirname, '../screenshots');
 fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
 
-const API_BASE = 'http://localhost:4000';
+const API_BASE = process.env.E2E_API_BASE || 'http://localhost:4000';
 
 // #77 follow-up to #54: auto-map's candidate list used to be filtered only
 // by "is this name already passed down", not by whether the child

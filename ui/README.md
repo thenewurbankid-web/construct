@@ -240,8 +240,33 @@ You do **not** need to start `ui/server`/`ui/client` yourself first —
 `ui/e2e/playwright.config.js`'s `webServer` option starts `npm start` in
 `ui/server` and `npm run dev` in `ui/client` (Next.js, port 3000 — moved
 from Vite's 5173 in #73) before the first test and stops them after the
-run (or reuses them if they're already running on :4000/:3000, e.g. during
-local debugging with `npm run test:headed`).
+run.
+
+### Ports and concurrent runs (#140)
+
+Several people/agents can share one machine, so the suite never attaches to
+servers it didn't start by default:
+
+| Env var | Default | Effect |
+|---|---|---|
+| `E2E_CLIENT_PORT` | `3000` | Port for `next dev` (Playwright `baseURL`) |
+| `E2E_SERVER_PORT` | `4000` | Port for `ui/server` (`PORT`); specs read it as `E2E_API_BASE` |
+| `E2E_REUSE_SERVERS` | off | Set `1` to reuse servers already running on those ports (local debugging only) |
+
+The config passes `UI_CLIENT_ORIGIN` (server CORS/WebSocket origin
+restriction) and `NEXT_PUBLIC_API_BASE`/`NEXT_PUBLIC_WS_BASE` (client to
+server) automatically, so a non-default pair just works:
+
+```bash
+E2E_CLIENT_PORT=3104 E2E_SERVER_PORT=4104 npx playwright test
+```
+
+If a port is already taken and `E2E_REUSE_SERVERS` isn't set, the run fails
+loudly instead of silently talking to someone else's server. Limitation: two
+suites in the *same checkout* share `ui/client/.next`, so a cold-start
+compile can race; use a different checkout/worktree per concurrent run.
+Don't write per-run copies of `playwright.config.js` any more — use the env
+vars.
 
 `tests/smoke.spec.js` is a minimal "did the harness even work" check
 (loads `/`, asserts the Dashboard or ProjectGate heading renders, no
