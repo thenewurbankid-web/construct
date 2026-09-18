@@ -28,6 +28,8 @@
     "sync": "node ./bin/construct.mjs sync"
   },
   "dependencies": {
+    "@typescript-eslint/typescript-estree": "^8.70.0",
+    "estree-walker": "^3.0.3",
     "js-yaml": "^4.1.0",
     "minimatch": "^10.0.1",
     "typescript": "^5.8.3"

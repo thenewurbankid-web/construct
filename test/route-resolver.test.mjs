@@ -245,6 +245,27 @@ test('parseReactSpaRoutes extracts the path -> controller table in document orde
   ]);
 });
 
+// Epic #76 / #91: parseReactSpaRoutes moved from a regex over each <Route> tag's raw
+// text to real JSX/AST parsing. Prove it handles things the old per-attribute regex
+// approach was fragile against: a comment mentioning a fake route, attribute order
+// (element before path), and a JSX attribute value containing a brace-like string that
+// would confuse a naive regex scan for the closing `}` of `element={...}`.
+test('parseReactSpaRoutes (#91): handles element-before-path attribute order, a decoy comment, and a brace-like string prop without misparsing', () => {
+  const source = [
+    "import { Routes, Route } from 'react-router-dom';",
+    "// <Route path=\"/fake\" element={<FakeController />} /> — not real JSX, just a comment",
+    'export function App() {',
+    '  return (',
+    '    <Routes>',
+    '      <Route element={<DashboardController label="{not a brace}" />} path="/dashboard" />',
+    '    </Routes>',
+    '  );',
+    '}',
+    '',
+  ].join('\n');
+  assert.deepEqual(parseReactSpaRoutes(source), [{ path: '/dashboard', component: 'DashboardController' }]);
+});
+
 test('findControllerFile locates the one matching controller under features/*/controllers/', () => {
   const root = buildReactSpaFixtureProject();
   const found = findControllerFile(root, 'DashboardController');

@@ -10,8 +10,10 @@
 // first pass.
 import fs from 'node:fs';
 import path from 'node:path';
+import { walk as walkAst } from 'estree-walker';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { walk } from './fs.mjs';
+import { parseToAst } from './parser.mjs';
 
 const PAGE_FILENAMES = ['page.tsx', 'page.ts', 'page.jsx', 'page.js'];
 
@@ -258,24 +260,43 @@ export function findReactSpaRoutesFile(root) {
   );
 }
 
-const ROUTE_TAG_RE = /<Route\b([^>]*?)\/?>/g;
+/** The tag name of a JSXElement's opening tag (e.g. `X` for `<X .../>`), or
+ * null for anything other than a plain identifier tag (a member-expression
+ * tag like `<Foo.Bar/>` isn't a route/component reference this resolves). */
+function jsxTagName(jsxElement) {
+  const name = jsxElement?.openingElement?.name;
+  return name?.type === 'JSXIdentifier' ? name.name : null;
+}
 
 /** Parse `<Route path="..." element={<XController .../>} />` entries out of
- * a react-spa routes file's source, in document order. Attribute order
- * (`path` before/after `element`) doesn't matter; anything that isn't a
- * recognizable `<Route path=... element={<Component ...>` tag is skipped
- * rather than guessed at — same "reasonable first pass, not a full JSX
- * parser" philosophy as the rest of this module. */
+ * a react-spa routes file's source, in document order — real JSX/AST parsing
+ * (via parseToAst from parser.mjs), not a regex over the tag's raw text.
+ * Attribute order (`path` before/after `element`) doesn't matter; a `<Route>`
+ * missing either attribute, or whose `element` isn't a single JSX element
+ * with a plain identifier tag, is skipped (same "a reasonable first pass"
+ * philosophy as the rest of this module — just backed by a real parser now,
+ * so it's not fooled by nested braces/quotes/comments the way the old
+ * regex-per-attribute approach could be). Traversal is via estree-walker (a
+ * well-established generic ESTree traversal library), not a hand-rolled recursive walk. */
 export function parseReactSpaRoutes(source) {
+  const ast = parseToAst(source);
   const routes = [];
-  for (const m of source.matchAll(ROUTE_TAG_RE)) {
-    const attrs = m[1];
-    const pathMatch = attrs.match(/\bpath=(['"])(.*?)\1/);
-    const elementMatch = attrs.match(/\belement=\{\s*<\s*([A-Za-z_$][\w$]*)/);
-    if (pathMatch && elementMatch) {
-      routes.push({ path: pathMatch[2], component: elementMatch[1] });
-    }
-  }
+  walkAst(ast, {
+    enter(node) {
+      if (node.type !== 'JSXElement' || jsxTagName(node) !== 'Route') return;
+      let routePath;
+      let component;
+      for (const attr of node.openingElement.attributes || []) {
+        if (attr.type !== 'JSXAttribute' || attr.name?.type !== 'JSXIdentifier') continue;
+        if (attr.name.name === 'path' && attr.value?.type === 'Literal' && typeof attr.value.value === 'string') {
+          routePath = attr.value.value;
+        } else if (attr.name.name === 'element' && attr.value?.type === 'JSXExpressionContainer') {
+          component = jsxTagName(attr.value.expression);
+        }
+      }
+      if (routePath && component) routes.push({ path: routePath, component });
+    },
+  });
   return routes;
 }
 

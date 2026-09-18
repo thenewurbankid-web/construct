@@ -61,7 +61,11 @@ export async function init(args) {
   const fi = args.indexOf('--framework');
   const framework = normalizeFramework(fi >= 0 ? args[fi + 1] : undefined);
   ensureDir(dir);
-  const arch = `version: 1\npreset: strict-nextjs\n\nproject:\n  framework: ${framework}\n  language: typescript\n\nfeatures:\n  root: features\n\nrules:\n${Object.entries(DEFAULT_RULES).map(([k, v]) => `  ${k}: ${v.severity}`).join('\n')}\n\nexceptions: []\n`;
+  // Only real severity-bearing rules get a scaffolded `<id>: <severity>` line — a
+  // numeric-override entry like READ-002-max-loc (see config.mjs's DEFAULT_RULES) has
+  // no severity to print and is left out entirely; the project inherits its default
+  // (200) until someone opts into an override themselves.
+  const arch = `version: 1\npreset: strict-nextjs\n\nproject:\n  framework: ${framework}\n  language: typescript\n\nfeatures:\n  root: features\n\nrules:\n${Object.entries(DEFAULT_RULES).filter(([, v]) => !v.numeric).map(([k, v]) => `  ${k}: ${v.severity}`).join('\n')}\n\nexceptions: []\n`;
   write(path.join(dir, 'architecture.yml'), arch);
   write(path.join(dir, 'AGENTS.md'), `# Construct\n\nRead architecture.yml before changing code.\n\nDefault flow: Route → Controller → Workflow → Service → API; Controller → Page → Component.\n\nPages: no business logic, workflows, services, API calls, or fetch.\nComponents: presentation/local UI state only.\nFeatures: isolated; cross-feature access goes through index.ts.\nDomain: pure by default. Services: external effects.\n\nRun \`construct validate\` before finishing changes.\n`);
   createFeature(dir, 'core');
