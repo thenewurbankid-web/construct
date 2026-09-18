@@ -299,7 +299,7 @@ export async function importCommand(args) {
   }
   const root = getRoot(args);
   const layers = args[li + 1].split(',').map((l) => l.trim()).filter(Boolean);
-  const { source, files, llmFilled } = importVertical(root, name, args[fi + 1], layers, args[fromI + 1], { llm });
+  const { source, files, llmFilled } = await importVertical(root, name, args[fi + 1], layers, args[fromI + 1], { llm });
   reportImport(root, [{ name, source, files }], llmFilled ? llm : undefined);
 }
 
@@ -309,7 +309,7 @@ async function importFromPlan(args, llm) {
     throw new ConstructError('Usage: construct import --plan <path> [--llm <provider>]', { exitCode: EXIT_CODES.USAGE_ERROR });
   }
   const root = getRoot(args);
-  const { feature, results } = importPlan(root, args[planI + 1], { llm });
+  const { feature, results } = await importPlan(root, args[planI + 1], { llm });
   reportImport(root, results, llm, feature);
 }
 
@@ -471,7 +471,7 @@ export async function importRouteWizard(ask, seedRoute) {
   );
   let plan;
   try {
-    plan = analyzeFiles([...tracedFiles.keys()], featureName, { llm: 'claude' });
+    plan = await analyzeFiles([...tracedFiles.keys()], featureName, { llm: 'claude' });
   } catch (e) {
     console.error(`Analysis failed: ${e.message}`);
     return;
@@ -486,7 +486,7 @@ export async function importRouteWizard(ask, seedRoute) {
     return;
   }
 
-  const { results } = executeImportPlan(root, plan, { llm: fillWithLlm ? 'claude' : undefined });
+  const { results } = await executeImportPlan(root, plan, { llm: fillWithLlm ? 'claude' : undefined });
   reportImport(root, results, fillWithLlm ? 'claude' : undefined, plan.feature, 1);
 
   console.log('');
