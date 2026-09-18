@@ -156,12 +156,25 @@ export function generateLayer(root,layer,name,feature){
 // order regardless of the order the caller listed --layers in.
 export const LAYER_ORDER=['domain','service','workflow','hook','component','page','controller'];
 
-export function generateVertical(root,name,feature,layers){
+// `onLayer` (optional, #165) is called once per layer immediately after it
+// finishes, with `{ layer, file, elapsedSeconds }` -- the only way to get
+// genuine per-layer scaffold timing for cli.mjs's `generate layer` console
+// output without duplicating this function's unknown-layer validation /
+// dependency-ordering elsewhere (which would risk writing some layers
+// before discovering a later one is invalid -- a real behavior change).
+// Omitting it is a no-op: every existing caller (import.mjs's
+// importVertical, every test) is unaffected.
+export function generateVertical(root,name,feature,layers,{onLayer}={}){
  const unique=[...new Set(layers)];
  const unknown=unique.filter(l=>!templates[l]);
  if(unknown.length)throw new Error(`Unknown layer: ${unknown[0]}`);
  const ordered=LAYER_ORDER.filter(l=>unique.includes(l));
- return ordered.map(layer=>generateLayer(root,layer,name,feature));
+ return ordered.map(layer=>{
+  const start=process.hrtime.bigint();
+  const file=generateLayer(root,layer,name,feature);
+  if(onLayer)onLayer({layer,file,elapsedSeconds:Number(process.hrtime.bigint()-start)/1e9});
+  return file;
+ });
 }
 
 // ---- optional LLM fill for a freshly-scaffolded file (#101/Epic 6.5) -----

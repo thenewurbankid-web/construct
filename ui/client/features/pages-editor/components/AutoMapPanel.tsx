@@ -17,12 +17,12 @@ export function AutoMapPanel({ feature, file, nodeId, contentHash, onSaved }: Au
   const { candidates, checked, find, toggle, apply, busy, status, childPropsResolved } = useAutoMap(feature, file, nodeId, contentHash, onSaved);
   return (
     <div className="automap-panel">
-      <h4>Auto-map unmapped props (#54)</h4>
+      <h4>Auto-map unmapped props</h4>
       <p className="hint">
         Compares this component&apos;s JSX attributes against the enclosing page&apos;s own props
         (destructured function params) and <code>useState</code> names — any of those not currently
         passed down as a same-named attribute is offered as a shorthand <code>{'{name}'}</code>{' '}
-        wire-up. (#77) When the child component&apos;s own file can be resolved from the page&apos;s
+        wire-up. When the child component&apos;s own file can be resolved from the page&apos;s
         import, candidates are additionally filtered to names the child actually declares.
       </p>
       <button type="button" onClick={find}>Find unmapped props</button>

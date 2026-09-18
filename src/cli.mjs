@@ -22,6 +22,7 @@ import { validateEnvelope } from './engine/envelope.mjs';
 import { ingestPage } from './engine/pageTransformer.mjs';
 import { generateWorkflow } from './engine/workflowGenerator.mjs';
 import { generateController } from './engine/controllerBinder.mjs';
+import { startTimer, elapsedSeconds, formatDuration } from './timing.mjs';
 
 // Resolve the project root freshly per command: walks up from cwd (or from
 // --dir, when given) to find an existing architecture.yml (monorepo
@@ -97,8 +98,9 @@ export async function feature(args) {
     throw new ConstructError('Usage: construct feature create <name>', { exitCode: EXIT_CODES.USAGE_ERROR });
   }
   const root = getRoot(args);
+  const t = startTimer();
   const p = createFeature(root, args[1]);
-  console.log(`Created feature ${args[1]} at ${path.relative(root, p)}`);
+  console.log(`Created feature ${args[1]} at ${path.relative(root, p)} (${formatDuration(elapsedSeconds(t))})`);
 }
 
 // Ticket 7.2/7.3/7.4/7.5's `--from`/`--bind`/`--openapi` paths below are all
@@ -127,9 +129,11 @@ export async function generate(args) {
   // of scaffolding the usual stub template -- see src/engine/pageTransformer.mjs.
   const fromI = args.indexOf('--from');
   if (layer === 'page' && fromI >= 0 && args[fromI + 1]) {
+    const t = startTimer();
     const { pageFile, propsFile, slots } = ingestPage(root, name, feature, args[fromI + 1]);
-    console.log(`Created ${path.relative(root, pageFile)}`);
-    console.log(`Created ${path.relative(root, propsFile)} (${slots.length} slot(s): ${slots.map((s) => s.name).join(', ') || 'none'})`);
+    const dt = formatDuration(elapsedSeconds(t));
+    console.log(`Created ${path.relative(root, pageFile)} (${dt})`);
+    console.log(`Created ${path.relative(root, propsFile)} (${dt}, ${slots.length} slot(s): ${slots.map((s) => s.name).join(', ') || 'none'})`);
     return;
   }
   // Ticket 7.3 (#113): `construct create/generate workflow <name> --feature <f>
@@ -147,8 +151,9 @@ export async function generate(args) {
     } catch (e) {
       throw new ConstructError(`Malformed workflow descriptor JSON at ${descriptorPath}: ${e.message}`, { exitCode: EXIT_CODES.USAGE_ERROR });
     }
+    const t = startTimer();
     const { file, events } = generateWorkflow(root, name, feature, descriptor);
-    console.log(`Created ${path.relative(root, file)} (${events.length} event(s): ${events.join(', ') || 'none'})`);
+    console.log(`Created ${path.relative(root, file)} (${formatDuration(elapsedSeconds(t))}, ${events.length} event(s): ${events.join(', ') || 'none'})`);
     return;
   }
   // Ticket 7.4 (#114): `construct create/generate controller <name> --feature <f>
@@ -172,8 +177,9 @@ export async function generate(args) {
         throw new ConstructError(`Malformed Context Envelope JSON at ${envelopePath}: ${e.message}`, { exitCode: EXIT_CODES.USAGE_ERROR });
       }
     }
+    const t = startTimer();
     const { file, bindings } = generateController(root, name, feature, { envelope });
-    console.log(`Created ${path.relative(root, file)}`);
+    console.log(`Created ${path.relative(root, file)} (${formatDuration(elapsedSeconds(t))})`);
     for (const b of bindings) {
       console.log(`  ${b.slot} -> ${b.handler ? `${b.handler} (${b.matchType})` : 'UNMATCHED (TODO stub written)'}`);
     }
@@ -185,19 +191,25 @@ export async function generate(args) {
   // template -- see src/service-generator.mjs.
   const oi = args.indexOf('--openapi');
   if (layer === 'service' && oi >= 0 && args[oi + 1]) {
+    const t = startTimer();
     const files = await generateServiceFromSpec(root, name, feature, args[oi + 1]);
-    for (const file of files) console.log(`Created ${path.relative(root, file)}`);
+    const dt = formatDuration(elapsedSeconds(t));
+    for (const file of files) console.log(`Created ${path.relative(root, file)} (${dt})`);
     return;
   }
   // Plain fallback: scaffold the usual template stub, optionally LLM-filled
   // (see this function's own doc comment above for the --llm contract).
   const llmI = args.indexOf('--llm');
   const llm = llmI >= 0 ? args[llmI + 1] : undefined;
+  const scaffoldStart = startTimer();
   const file = generateLayer(root, layer, name, feature);
+  const scaffoldSeconds = elapsedSeconds(scaffoldStart);
   if (llm) {
-    reportFill(root, await fillGeneratedFile(root, file, layer, { feature, name, llm }));
+    const llmStart = startTimer();
+    const outcome = await fillGeneratedFile(root, file, layer, { feature, name, llm });
+    reportFill(root, outcome, ` (scaffold ${formatDuration(scaffoldSeconds)}, llm ${formatDuration(elapsedSeconds(llmStart))})`);
   } else {
-    console.log(`Created ${path.relative(root, file)}`);
+    console.log(`Created ${path.relative(root, file)} (${formatDuration(scaffoldSeconds)})`);
   }
 }
 
@@ -206,14 +218,14 @@ export async function generate(args) {
 // the scaffolded stub was left as-is and the line says why. A rejected/failed
 // fill sets a non-zero exit code so scripts and the UI notice, but never
 // aborts the rest of a batch.
-function reportFill(root, { file, status, reason }) {
+function reportFill(root, { file, status, reason }, timingNote = '') {
   const rel = path.relative(root, file);
   if (status === 'filled') {
-    console.log(`Created + LLM-filled ${rel}`);
+    console.log(`Created + LLM-filled ${rel}${timingNote}`);
     return;
   }
   const what = status === 'rejected' ? "the model's output was rejected" : 'the LLM call failed';
-  console.log(`Created ${rel} (stub kept — ${what}: ${reason})`);
+  console.log(`Created ${rel} (stub kept — ${what}: ${reason})${timingNote}`);
   process.exitCode = EXIT_CODES.INTERNAL_ERROR;
 }
 
@@ -236,13 +248,26 @@ async function generateVerticalSlice(args) {
   const layers = args[li + 1].split(',').map((l) => l.trim()).filter(Boolean);
   const llmI = args.indexOf('--llm');
   const llm = llmI >= 0 ? args[llmI + 1] : undefined;
-  for (const file of generateVertical(root, name, feature, layers)) {
+  // Per-layer scaffold timing comes from generateVertical's own onLayer hook
+  // (so it reflects each layer's real write, not a guess) -- the LLM fill
+  // (if any) happens in this loop afterward, same as before, timed
+  // separately so its cost is never hidden inside the scaffold number.
+  const totalStart = startTimer();
+  const scaffoldSeconds = new Map();
+  const files = generateVertical(root, name, feature, layers, {
+    onLayer: ({ file, elapsedSeconds: dt }) => scaffoldSeconds.set(file, dt),
+  });
+  for (const file of files) {
+    const scaffoldDt = scaffoldSeconds.get(file) ?? 0;
     if (llm) {
-      reportFill(root, await fillGeneratedFile(root, file, layerFromGeneratedFile(file), { feature, name, llm }));
+      const llmStart = startTimer();
+      const outcome = await fillGeneratedFile(root, file, layerFromGeneratedFile(file), { feature, name, llm });
+      reportFill(root, outcome, ` (scaffold ${formatDuration(scaffoldDt)}, llm ${formatDuration(elapsedSeconds(llmStart))})`);
     } else {
-      console.log(`Created ${path.relative(root, file)}`);
+      console.log(`Created ${path.relative(root, file)} (${formatDuration(scaffoldDt)})`);
     }
   }
+  console.log(`Total: ${formatDuration(elapsedSeconds(totalStart))}`);
 }
 
 function featureNames(root, config) {
@@ -482,8 +507,8 @@ export async function importCommand(args) {
   }
   const root = getRoot(args);
   const layers = args[li + 1].split(',').map((l) => l.trim()).filter(Boolean);
-  const { source, files, fills } = await importVertical(root, name, args[fi + 1], layers, args[fromI + 1], { llm });
-  reportImport(root, [{ name, source, files, fills }], llm);
+  const { source, files, fills, timings } = await importVertical(root, name, args[fi + 1], layers, args[fromI + 1], { llm });
+  reportImport(root, [{ name, source, files, fills, timings }], llm);
 }
 
 async function importFromPlan(args, llm) {
@@ -497,20 +522,28 @@ async function importFromPlan(args, llm) {
 }
 
 // Shared reporting for both import forms — one clear tool/llm-attributed
-// summary either way, matching every other capability group.
-function reportImport(root, results, llm, feature, analysisCalls = 0) {
+// summary either way, matching every other capability group. `analysisSeconds`
+// (#166, route-wizard only) folds the one whole-route analysis LLM call into
+// the printed Total, same as every per-file LLM-fill call already is.
+function reportImport(root, results, llm, feature, analysisCalls = 0, analysisSeconds = 0) {
   let totalFiles = 0;
   const problems = [];
+  let totalSeconds = analysisSeconds;
   for (const r of results) {
     const unfilled = (r.fills || []).filter((f) => f.status !== 'filled');
-    console.log(`${r.name}: ${llm && !unfilled.length ? 'scaffolded + LLM-filled' : 'scaffolded'} ${r.files.length} file(s) from ${r.source}`);
+    const scaffoldNote = r.timings ? ` (scaffold ${formatDuration(r.timings.scaffoldSeconds)})` : '';
+    console.log(`${r.name}: ${llm && !unfilled.length ? 'scaffolded + LLM-filled' : 'scaffolded'} ${r.files.length} file(s) from ${r.source}${scaffoldNote}`);
     for (const file of r.files) {
       const miss = unfilled.find((f) => f.file === file);
-      console.log(`  ${path.relative(root, file)}${miss ? `  <- ${miss.status === 'rejected' ? "model output rejected" : 'LLM call failed'}, stub + TODO(import) kept` : ''}`);
+      const ft = r.timings?.files.find((f) => f.file === file);
+      const llmNote = llm && ft ? ` (llm ${formatDuration(ft.llmSeconds)})` : '';
+      console.log(`  ${path.relative(root, file)}${llmNote}${miss ? `  <- ${miss.status === 'rejected' ? "model output rejected" : 'LLM call failed'}, stub + TODO(import) kept` : ''}`);
     }
     problems.push(...unfilled);
     totalFiles += r.files.length;
+    if (r.timings) totalSeconds += r.timings.totalSeconds;
   }
+  console.log(`Total: ${formatDuration(totalSeconds)}`);
   if (problems.length) {
     console.log(`${problems.length} of ${totalFiles} file(s) were NOT filled by "${llm}" — the scaffolded stub and its TODO(import) breadcrumb were left in place:`);
     for (const p of problems) {
@@ -670,6 +703,7 @@ export async function importRouteWizard(ask, seedRoute) {
   );
 
   console.log(`Tracing ${routeArgs.join(', ')} ...`);
+  const traceStart = startTimer();
   const tracedFiles = new Map(); // absolute path -> true, deduped across routes
   const folders = [];
   try {
@@ -694,18 +728,21 @@ export async function importRouteWizard(ask, seedRoute) {
   }
 
   console.log(
-    `Found ${tracedFiles.size} file(s) across ${folders.length} route(s): ${folders.map((f) => path.relative(root, f)).join(', ')}`,
+    `Found ${tracedFiles.size} file(s) across ${folders.length} route(s) in ${formatDuration(elapsedSeconds(traceStart))}: ${folders.map((f) => path.relative(root, f)).join(', ')}`,
   );
   console.log(
     `Analyzing via "claude" — one LLM call for a single combined plan across all of them, nothing is written yet...`,
   );
   let plan;
+  const analysisStart = startTimer();
   try {
     plan = await analyzeFiles([...tracedFiles.keys()], featureName, { llm: 'claude' });
   } catch (e) {
     console.error(`Analysis failed: ${e.message}`);
     return;
   }
+  const analysisSeconds = elapsedSeconds(analysisStart);
+  console.log(`Analysis complete (llm ${formatDuration(analysisSeconds)}).`);
 
   console.log('');
   console.log(renderPlanTable(plan));
@@ -717,13 +754,15 @@ export async function importRouteWizard(ask, seedRoute) {
   }
 
   const { results } = await executeImportPlan(root, plan, { llm: fillWithLlm ? 'claude' : undefined });
-  reportImport(root, results, fillWithLlm ? 'claude' : undefined, plan.feature, 1);
+  reportImport(root, results, fillWithLlm ? 'claude' : undefined, plan.feature, 1, analysisSeconds);
 
   console.log('');
   console.log(`Running validate --feature ${plan.feature} ...`);
+  const validateStart = startTimer();
   const { violations } = aggregateValidation(root, DEFAULT_ENFORCERS);
   const scoped = violations.filter((v) => v.file.startsWith(`${featuresRoot}/${plan.feature}/`));
   console.log(formatReport(scoped, { format: 'text' }));
+  console.log(`Validated in ${formatDuration(elapsedSeconds(validateStart))}.`);
 
   const allFiles = results.flatMap((r) => r.files);
   const todoFiles = allFiles.filter((f) => fs.readFileSync(f, 'utf8').includes('TODO(import)'));

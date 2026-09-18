@@ -13,6 +13,7 @@ import { walk } from './fs.mjs';
 import { callLlm, stripCodeFence, PROVIDERS } from './llm.mjs';
 import { requestFileText } from './llm-fill.mjs';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
+import { startTimer, elapsedSeconds } from './timing.mjs';
 
 // LAYER_CONSTRAINTS and layerFromGeneratedFile now live in generators.mjs
 // (#101) — shared, single-source-of-truth versions, since generators.mjs's
@@ -65,6 +66,7 @@ function buildPortPrompt({ layer, relFile, stubContent, oldContent, oldRelPath }
  * call) — with no `llm` option this still resolves on the same tick's
  * microtask queue as before, no behavior change, just a Promise wrapper. */
 export async function importVertical(root, name, feature, layers, fromPath, { llm, llmOptions } = {}) {
+  const totalStart = startTimer();
   const fromAbs = path.resolve(fromPath);
   if (!fs.existsSync(fromAbs) || !fs.statSync(fromAbs).isFile()) {
     throw new ConstructError(`Source file not found: ${fromPath}`, { exitCode: EXIT_CODES.USAGE_ERROR });
@@ -75,14 +77,22 @@ export async function importVertical(root, name, feature, layers, fromPath, { ll
   if (llm && !PROVIDERS[llm]) {
     throw new ConstructError(`Unknown --llm provider "${llm}". Supported: ${Object.keys(PROVIDERS).join(', ')}`, { exitCode: EXIT_CODES.USAGE_ERROR });
   }
+  const scaffoldStart = startTimer();
   const files = generateVertical(root, name, feature, layers);
+  const scaffoldSeconds = elapsedSeconds(scaffoldStart);
   const oldContent = llm ? fs.readFileSync(fromAbs, 'utf8') : null;
   const fills = [];
 
+  // Per-file timing (#166): a breadcrumb write is trivial, but an LLM fill
+  // is exactly the step whose cost varies wildly and is worth seeing
+  // per-file, not just as one lump for the whole unit -- `llmSeconds` is 0
+  // for the no-`llm` breadcrumb path (nothing to distinguish it from).
+  const fileTimings = [];
   for (const file of files) {
     const stubContent = fs.readFileSync(file, 'utf8');
     if (!llm) {
       fs.writeFileSync(file, breadcrumb(fromAbs, file) + stubContent);
+      fileTimings.push({ file, llmSeconds: 0 });
       continue;
     }
     const layer = layerFromGeneratedFile(file);
@@ -93,19 +103,28 @@ export async function importVertical(root, name, feature, layers, fromPath, { ll
       oldContent,
       oldRelPath: path.relative(path.dirname(file), fromAbs).split(path.sep).join('/'),
     });
+    const fillStart = startTimer();
     const outcome = await requestFileText(llm, prompt, llmOptions);
+    const llmSeconds = elapsedSeconds(fillStart);
+    fileTimings.push({ file, llmSeconds });
     if (outcome.status === 'filled') {
       fs.writeFileSync(file, outcome.code + '\n');
       fills.push({ file, status: 'filled', attempts: outcome.attempts });
       continue;
     }
-    // The model's output was rejected (#144) — leave the scaffolded stub as a
-    // valid file, with the same breadcrumb the no-llm path writes, so the
-    // file is still discoverable and the human/LLM session knows what's left.
+    // The model's output was rejected (#144) or the call failed (#141) — leave
+    // the scaffolded stub as a valid file, with the same breadcrumb the no-llm
+    // path writes, so the file is still discoverable.
     fs.writeFileSync(file, breadcrumb(fromAbs, file) + stubContent);
     fills.push({ file, status: outcome.status, reason: outcome.reason, attempts: outcome.attempts });
   }
-  return { source: fromAbs, files, llmFilled: fills.some((f) => f.status === 'filled'), fills };
+  return {
+    source: fromAbs,
+    files,
+    llmFilled: fills.some((f) => f.status === 'filled'),
+    fills,
+    timings: { scaffoldSeconds, files: fileTimings, totalSeconds: elapsedSeconds(totalStart) },
+  };
 }
 
 /** Shape-check a plan object (from a file, or an LLM's analysis response) —

@@ -7,6 +7,10 @@ export type CommandResult = {
   ok: boolean;
   output?: string[];
   attribution?: { tool: string; llm: string } | null;
+  /** Whole-command wall-clock total, in seconds (#167) -- a floor
+   * guarantee independent of whatever per-step timing text the command
+   * itself already printed into `output` (see #165/#166). */
+  durationSeconds?: number;
   error?: string;
 };
 
