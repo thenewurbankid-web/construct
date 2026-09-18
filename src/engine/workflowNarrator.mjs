@@ -8,7 +8,7 @@
 // source every time, so it can never drift from the diagram.
 //
 // Output for a machine:
-//   { machine, summary, states: [{ name, path, kind, sentences[] }], text }
+//   { machine, summary, states: [{ name, path, label, kind, sentences[] }], text }
 // where kind is 'initial' | 'final' | 'compound' | 'normal'. Order is source
 // order (the extractor's order), so the same input always gives the same text.
 
@@ -155,7 +155,7 @@ export function narrateMachine(machine) {
     if (!s.final && s.type !== 'compound' && !own.length && !hasAncestorRules(machine, s)) {
       sentences.push(`There is no way out of ${stateLabel(s.path)} — the flow gets stuck there.`);
     }
-    return { name: s.name, path: s.path, kind, sentences };
+    return { name: s.name, path: s.path, label: s.path.split('.').map(humanize).join(' › '), kind, sentences };
   });
 
   const lines = [`${cap(humanize(title))}`, summary, ''];

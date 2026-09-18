@@ -2,6 +2,7 @@
 
 import { useEffect, useReducer } from 'react';
 import { useWorkflowEditor } from './useWorkflowEditor';
+import { useWorkflowNarrative } from './useWorkflowNarrative';
 import { getWorkflowFeatures, getWorkflowFiles, getWorkflowMachines } from '../services/WorkflowsApi';
 import { initialWorkflowsState, workflowsReducer } from '../workflows/Workflows';
 
@@ -42,5 +43,7 @@ export function useWorkflows() {
 
   const editor = useWorkflowEditor(state, dispatch);
 
-  return { ...state, setFeature, openFile, reload, ...editor };
+  const narrative = useWorkflowNarrative(state.feature, state.file, state.loaded);
+
+  return { ...state, narrative, setFeature, openFile, reload, ...editor };
 }
