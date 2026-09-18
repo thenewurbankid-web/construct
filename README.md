@@ -178,6 +178,7 @@ Three capabilities, each with its own namespace — a friendlier grouping over t
 construct create feature <name> [--dir <path>]
 construct create layer <name> --feature <feature> --layers <l1,l2,...> [--dir <path>]
 construct create <layer> <name> --feature <feature> [--dir <path>]
+construct create service <name> --feature <feature> --openapi <spec> [--dir <path>]
 
 # refactor — mechanical, LLM-free moves/renames within the architecture
 construct refactor move <name> --feature <feature> --from <layer> --to <layer> [--dir <path>]
@@ -202,6 +203,30 @@ construct validate [--dir <path>]
 construct validate --format json [--dir <path>]
 construct doctor [--dir <path>]
 ```
+
+## Service generator: OpenAPI -> RTK Query
+
+`construct create service <name> --feature <feature> --openapi <spec>` compiles a real OpenAPI 3.x spec straight into a working [Redux Toolkit Query](https://redux-toolkit.js.org/rtk-query/overview) `injectEndpoints` file — no LLM involved. [`@hey-api/openapi-ts`](https://heyapi.dev/) parses the spec (`$ref` resolution, `allOf`/`oneOf` composition, ...) into correctly-typed request/response TypeScript; Construct's own deterministic template turns that into RTKQ endpoints:
+
+```bash
+construct create service petStore --feature pet --openapi ./openapi/petstore.yaml
+```
+
+This writes:
+
+- `features/core/services/client.ts` — the shared `api` (RTKQ `createApi`) and `baseQuery`, re-exported from `features/core/index.ts` so other features can consume it through the public API (`SLICE-002`-clean).
+- `features/<feature>/services/<name>/{index.ts,types.gen.ts}` — hey-api's generated types for every operation.
+- `features/<feature>/services/<name>Api.ts` — the RTKQ `injectEndpoints` file, one `query`/`mutation` per operation (GET/HEAD -> query, everything else -> mutation), plus its generated `use<Op>Query`/`use<Op>Mutation` hooks.
+
+Which transport `client.ts` instantiates is controlled by `project.dataLayer.provider` in `architecture.yml` — `fetchBaseQuery` (the default), `axios`, or a network-free `mock` adapter for tests/demos:
+
+```yaml
+project:
+  dataLayer:
+    provider: axios   # or fetchBaseQuery (default), or mock
+```
+
+Switching providers only ever touches `client.ts` — every generated `services/*.ts` endpoint file calls the same provider-agnostic `buildRequest(method, urlTemplate, data)` helper regardless of which adapter is active. Every operation in the spec needs an explicit `operationId` (used to line up the RTKQ endpoint with the type hey-api generated for it) — a spec without one fails fast with a clear error rather than guessing a name that might not match.
 
 ## Build order is enforced, not a convention to remember
 

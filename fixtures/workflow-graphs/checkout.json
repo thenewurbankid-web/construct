@@ -1,0 +1,20 @@
+{
+  "id": "checkout",
+  "initial": "idle",
+  "context": {
+    "quantity": { "type": "number", "default": 1 },
+    "error": { "type": "string | null", "default": null }
+  },
+  "states": {
+    "idle": {
+      "on": { "SUBMIT": "submitting" }
+    },
+    "submitting": {
+      "on": {
+        "SUCCESS": { "target": "done" },
+        "FAILURE": { "target": "idle", "guard": "hasError" }
+      }
+    },
+    "done": { "type": "final" }
+  }
+}

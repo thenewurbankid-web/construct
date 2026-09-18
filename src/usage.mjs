@@ -64,11 +64,26 @@ Commands:
   construct init [dir] [--framework nextjs|react-spa]
   construct feature create <name> [--dir <path>]
   construct generate <layer> <name> --feature <feature> [--dir <path>]
+  construct generate page <name> --feature <feature> --from <path> [--dir <path>]
+    (ingests an externally-authored JSX file — e.g. a Subframe export — as a
+    pristine, presentation-only page + an explicit <Name>PageProps.ts interface,
+    instead of scaffolding the usual stub template; 'construct create page ... --from
+    <path>' is the equivalent under the create/refactor/research/import grouping)
+  construct generate workflow <name> --feature <feature> --from <path-to-json> [--dir <path>]
+    (compiles a JSON state-graph descriptor into a real XState v5 machine file
+    instead of the usual stub template; 'construct create workflow ... --from <path>'
+    is the equivalent under the create/refactor/research/import grouping)
+  construct generate controller <name> --feature <feature> --bind [--envelope <path>] [--dir <path>]
+    (auto-wires an already-generated hook into an already-generated pristine page's
+    Props interface via exact + fuzzy AST signature matching, instead of the usual
+    same-named-page-only stub template; 'construct create controller ... --bind' is
+    the equivalent under the create/refactor/research/import grouping)
   construct generate layer <name> --feature <feature> --layers <l1,l2,...> [--dir <path>]
   construct sync [--dir <path>]
   construct validate [--format json] [--dir <path>]
   construct summarize [--feature <name>] [--format json|md|compact|prose] [--since <ref>] [--dir <path>]
   construct doctor [--dir <path>]
+  construct pipeline run [--dir <path>]   (reads a Context Envelope as JSON on stdin, writes one to stdout)
 
 --dir <path> targets a Construct project nested in a subdirectory (e.g. one
 created with 'construct init <path>' inside a larger, unrelated project)

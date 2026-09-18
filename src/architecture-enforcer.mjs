@@ -102,6 +102,19 @@ function collectBareIdentifierUsages(ast, names) {
   return hits.sort((a, b) => a.index - b.index);
 }
 
+// Ticket 7.4's CONTROLLER-001 deterministic proxy for "business logic": any of these
+// node types appearing anywhere in a controller file's AST.
+const CONTROL_FLOW_TYPES = new Set(['IfStatement', 'ForStatement', 'ForInStatement', 'ForOfStatement', 'WhileStatement', 'DoWhileStatement', 'SwitchStatement', 'TryStatement']);
+
+/** Every control-flow node (see CONTROL_FLOW_TYPES) anywhere in `ast`, sorted by position. */
+function collectControlFlowNodes(ast) {
+  const hits = [];
+  walkForUsage(ast, (node) => {
+    if (CONTROL_FLOW_TYPES.has(node.type)) hits.push(node);
+  });
+  return hits.sort((a, b) => a.range[0] - b.range[0]);
+}
+
 function globToRegExp(glob) {
   const escaped = glob.replaceAll('**', ' ').replaceAll('*', '[^/]*').replaceAll(' ', '.*');
   return new RegExp('^' + escaped + '$');
@@ -181,6 +194,20 @@ export function detectLayerViolations(layer, source) {
       why: 'Pages cannot own application flow.',
       expected: ['controller', 'workflow'],
     });
+    // Ticket 7.2 (#112): a page can also reach for application state indirectly, by
+    // importing a custom hook (features/*/hooks/**) without ever calling
+    // useMachine/useActor/createMachine directly itself -- e.g. `import { useCart }
+    // from '../hooks/useCart'`. That's the same class of violation PAGE-006 already
+    // exists for (pages owning application flow instead of delegating to a
+    // controller/hook wiring), so it's reported under the same rule id rather than a
+    // new one (the epic's reconciliation notes explicitly reserve a new PAGE-005 for a
+    // different, already-taken meaning).
+    const hookImport = firstImportMatch(/hooks?\//);
+    if (hookImport) out.push({
+      rule: 'PAGE-006', line: lineOf(source, hookImport.index), message: 'Page imports a custom hook.',
+      why: 'Pages cannot own application flow — hooks are wired in by a controller, not imported directly by a page.',
+      expected: ['controller', 'workflow'],
+    });
   }
 
   if (layer === 'component') {
@@ -215,6 +242,27 @@ export function detectLayerViolations(layer, source) {
       message: 'Service imports React/UI.',
       why: 'Services own external effects, not rendering.',
       expected: ['api', 'domain', 'types'],
+    });
+  }
+
+  // Ticket 7.4 (#114) -- CONTROLLER-001: a controller composes/wires already-generated
+  // layers together and nothing else. Two independent, AST-based checks (same technique
+  // as every other rule above): a direct fetch() call (mirrors PAGE-004's detection), and
+  // any control-flow construct at all (if/for/while/do-while/switch/try) anywhere in the
+  // file, which is the deterministic proxy this codebase uses for "non-trivial business
+  // logic" -- a pure import+destructure+return-JSX composition never needs one.
+  if (layer === 'controller') {
+    const fetchCall = collectCalls(ast, new Set(['fetch']))[0];
+    if (fetchCall) out.push({
+      rule: 'CONTROLLER-001', line: lineOf(source, fetchCall.index), message: 'Controller calls fetch() directly.',
+      why: 'Controllers only compose and wire existing layers together — network calls belong in a service.',
+      expected: ['service'],
+    });
+    const controlFlow = collectControlFlowNodes(ast)[0];
+    if (controlFlow) out.push({
+      rule: 'CONTROLLER-001', line: lineOf(source, controlFlow.range[0]), message: 'Controller contains non-trivial business logic (control flow).',
+      why: 'Controllers only compose and wire existing layers together — conditional/loop/error-handling logic belongs in a hook, workflow, or domain function.',
+      expected: ['hook', 'workflow', 'domain'],
     });
   }
 

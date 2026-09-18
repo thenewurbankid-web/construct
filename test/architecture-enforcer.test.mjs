@@ -61,6 +61,17 @@ test('detectLayerViolations flags each page rule independently', () => {
   assert.deepEqual(detectLayerViolations('page', `export function P(){ useMachine(); }`).map((v) => v.rule), ['PAGE-006']);
 });
 
+// Ticket 7.2 (#112) regression: a page reaching for application state
+// *indirectly*, via importing a custom hook, must be flagged under PAGE-006
+// even when it never directly calls useMachine/useActor/createMachine
+// itself -- this was a real gap (import-only usage previously slipped
+// through) confirmed and closed as part of the epic's reconciliation notes.
+test('detectLayerViolations flags PAGE-006 for a page that imports a custom hook, even with no useMachine/useActor/createMachine call', () => {
+  const violations = detectLayerViolations('page', `import { useCart } from '../hooks/useCart';\nexport function P(){ const { items } = useCart(); return null; }`);
+  assert.deepEqual(violations.map((v) => v.rule), ['PAGE-006']);
+  assert.match(violations[0].message, /custom hook/);
+});
+
 test('detectLayerViolations splits component rules (controller vs workflow/service/domain)', () => {
   assert.deepEqual(detectLayerViolations('component', `import { C } from '../controllers/C';`).map((v) => v.rule), ['COMPONENT-002']);
   assert.deepEqual(detectLayerViolations('component', `import { S } from '../services/S';`).map((v) => v.rule), ['COMPONENT-003']);

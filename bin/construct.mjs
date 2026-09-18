@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { init, feature, generate, sync, validate, summarize, doctor, create, refactor, research, importCommand, runImportRouteWizard } from '../src/cli.mjs';
+import { init, feature, generate, sync, validate, summarize, doctor, create, refactor, research, importCommand, runImportRouteWizard, pipeline } from '../src/cli.mjs';
 import { startRepl } from '../src/repl.mjs';
 import { EXIT_CODES, ConstructError } from '../src/diagnostics.mjs';
 import { USAGE } from '../src/usage.mjs';
@@ -19,6 +19,7 @@ try {
   else if (cmd === 'research') await research(args);
   else if (cmd === 'import' && args[0] === '--route') await runImportRouteWizard(args[1]);
   else if (cmd === 'import') await importCommand(args);
+  else if (cmd === 'pipeline') await pipeline(args);
   else if (cmd === 'repl') {
     await startRepl();
     process.exit(0);
