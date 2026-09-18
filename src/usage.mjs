@@ -69,6 +69,10 @@ Commands:
     pristine, presentation-only page + an explicit <Name>PageProps.ts interface,
     instead of scaffolding the usual stub template; 'construct create page ... --from
     <path>' is the equivalent under the create/refactor/research/import grouping)
+  construct generate workflow <name> --feature <feature> --from <path-to-json> [--dir <path>]
+    (compiles a JSON state-graph descriptor into a real XState v5 machine file
+    instead of the usual stub template; 'construct create workflow ... --from <path>'
+    is the equivalent under the create/refactor/research/import grouping)
   construct generate layer <name> --feature <feature> --layers <l1,l2,...> [--dir <path>]
   construct sync [--dir <path>]
   construct validate [--format json] [--dir <path>]

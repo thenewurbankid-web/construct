@@ -18,6 +18,7 @@ import { DEFAULT_ENFORCERS } from './engine/defaultEnforcers.mjs';
 import { runPipeline } from './engine/pipeline.mjs';
 import { validateEnvelope } from './engine/envelope.mjs';
 import { ingestPage } from './engine/pageTransformer.mjs';
+import { generateWorkflow } from './engine/workflowGenerator.mjs';
 
 // Resolve the project root freshly per command: walks up from cwd (or from
 // --dir, when given) to find an existing architecture.yml (monorepo
@@ -112,6 +113,25 @@ export async function generate(args) {
     const { pageFile, propsFile, slots } = ingestPage(root, name, args[fi + 1], args[fromI + 1]);
     console.log(`Created ${path.relative(root, pageFile)}`);
     console.log(`Created ${path.relative(root, propsFile)} (${slots.length} slot(s): ${slots.map((s) => s.name).join(', ') || 'none'})`);
+    return;
+  }
+  // Ticket 7.3 (#113): `construct create/generate workflow <name> --feature <f>
+  // --from <path-to-json>` compiles a JSON state-graph descriptor into an XState v5
+  // machine file instead of scaffolding the usual stub template -- see
+  // src/engine/workflowGenerator.mjs. Mirrors the page ingestion --from convention.
+  if (layer === 'workflow' && fromI >= 0 && args[fromI + 1]) {
+    const descriptorPath = path.isAbsolute(args[fromI + 1]) ? args[fromI + 1] : path.resolve(args[fromI + 1]);
+    if (!fs.existsSync(descriptorPath)) {
+      throw new ConstructError(`Workflow descriptor not found: ${descriptorPath}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+    }
+    let descriptor;
+    try {
+      descriptor = JSON.parse(fs.readFileSync(descriptorPath, 'utf8'));
+    } catch (e) {
+      throw new ConstructError(`Malformed workflow descriptor JSON at ${descriptorPath}: ${e.message}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+    }
+    const { file, events } = generateWorkflow(root, name, args[fi + 1], descriptor);
+    console.log(`Created ${path.relative(root, file)} (${events.length} event(s): ${events.join(', ') || 'none'})`);
     return;
   }
   console.log(`Created ${path.relative(root, generateLayer(root, layer, name, args[fi + 1]))}`);
