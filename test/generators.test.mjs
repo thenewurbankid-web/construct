@@ -70,6 +70,28 @@ test('createFeature PascalCases a hyphenated feature name into a valid type iden
   assert.doesNotMatch(typesContent, /-/);
 });
 
+// #79 — pascalCase's boundary-replace only touches "-"/"_" boundaries; a
+// leading digit (or any other character outside [-_a-zA-Z0-9]) passed
+// straight through untouched and silently produced an invalid TS
+// identifier (e.g. "3d-viewer" -> "export type 3dViewerId"). Both must now
+// be rejected clearly, at scaffold time, before anything is written.
+test('createFeature rejects a feature name that would PascalCase into an identifier starting with a digit', () => {
+  const dir = tmpProject();
+  assert.throws(() => createFeature(dir, '3d-viewer'), (err) => {
+    assert.ok(err instanceof ConstructError);
+    assert.match(err.message, /3d-viewer/);
+    assert.match(err.message, /3dViewer/);
+    return true;
+  });
+  // Nothing should have been written for the rejected feature.
+  assert.equal(fs.existsSync(path.join(dir, 'features', '3d-viewer')), false);
+});
+
+test('createFeature rejects a feature name containing a character illegal in a TS identifier (e.g. a space)', () => {
+  const dir = tmpProject();
+  assert.throws(() => createFeature(dir, 'foo bar'), ConstructError);
+});
+
 test('generateLayer writes every layer into the right folder with expected naming', () => {
   const dir = tmpProject();
   createFeature(dir, 'checkout');
