@@ -105,6 +105,13 @@ yet — so 'construct generate layer' always builds requested layers in
 dependency order regardless of how you list them, and a refactor move/rename
 that leaves a naming mismatch in its new layer is reported right away.
 
+Externally-authored UI (a design tool's output): list its globs under 'frozen:'
+in architecture.yml (relative to the project root; may reach outside it). Every
+create/generate/import/refactor/pipeline write into a matching path is refused,
+and PAGE-007 / COMPONENT-004 / CONTROLLER-002 (warnings by default) flag pages,
+components and controllers that re-author markup already in a frozen source
+instead of a controller importing it and forwarding props. See the README.
+
 'construct refactor' never rewrites a file's own content or exported
 identifier — only its location/name and every other file's import of it.
 Whether the result is valid in its new layer (naming, purity, etc.) is

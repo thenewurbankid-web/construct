@@ -22,6 +22,8 @@ import { makeViolation, ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { walk, rel } from './fs.mjs';
 import { globToRegExp, matchGlob } from './glob.mjs';
 import { parseToAst, extractImports, staticImportEntries, lineOf, collectCalls, collectBareIdentifierUsages, collectControlFlowNodes } from './ast/index.mjs';
+import { matchFrozen } from './frozen.mjs';
+import { buildFrozenIndex, detectFrozenViolations, FROZEN_RULE_BY_LAYER } from './frozen-detector.mjs';
 
 export { extractImports };
 
@@ -386,8 +388,15 @@ export function validateArchitecture(root, opts = {}) {
     : walk(root).filter((p) => FILE_EXTENSIONS.has(path.extname(p)));
 
   const out = [];
+  // #23: only when `frozen:` is configured. The index (read-only parse of the
+  // frozen sources) is built lazily on the first page/component/controller.
+  const frozenGlobs = config.frozen || [];
+  let frozenIndex = null;
   for (const abs of files) {
     if (!FILE_EXTENSIONS.has(path.extname(abs)) || !fs.existsSync(abs)) continue;
+    // A frozen file that happens to live inside the project is externally
+    // authored: Construct's layer rules don't apply to it.
+    if (frozenGlobs.length && matchFrozen(root, abs, frozenGlobs)) continue;
     const r = rel(root, abs);
     const layer = classifyFile(r, graph);
     if (!layer) {
@@ -397,6 +406,13 @@ export function validateArchitecture(root, opts = {}) {
     const source = fs.readFileSync(abs, 'utf8');
     for (const desc of detectLayerViolations(layer, source)) {
       pushViolation(config, out, { ...desc, file: r });
+    }
+    if (frozenGlobs.length && FROZEN_RULE_BY_LAYER[layer]) {
+      frozenIndex ||= buildFrozenIndex(root, frozenGlobs);
+      const options = config.rules[FROZEN_RULE_BY_LAYER[layer]] || {};
+      for (const desc of detectFrozenViolations(layer, source, abs, frozenIndex, { resolveImport: resolveRelativeImport, options })) {
+        pushViolation(config, out, { ...desc, file: r });
+      }
     }
     checkDanglingImports(config, abs, source, r, out);
     if (!KNOWN_LAYERS.has(layer)) {
