@@ -68,7 +68,7 @@ export function renderHome({ guides, repoUrl, buildTime, basePath, siteUrl }) {
   const cards = guides
     .map(
       (g) => `<article class="card">
-  ${g.hero ? `<a class="card-media" href="${guideHref('', g)}" tabindex="-1" aria-hidden="true"><img src="${esc(g.heroLocal || g.hero)}" alt="" loading="lazy" decoding="async"></a>` : ''}
+  <a class="card-media${g.hero ? '' : ' ph'}" href="${guideHref('', g)}" tabindex="-1" aria-hidden="true">${g.hero ? `<img src="${esc(g.heroLocal || g.hero)}" alt="" loading="lazy" decoding="async">` : '<span>CLI + UI</span>'}</a>
   <div class="card-body">
     <h3><a href="${guideHref('', g)}">${esc(g.title)}</a></h3>
     <p>${esc(g.summary)}</p>

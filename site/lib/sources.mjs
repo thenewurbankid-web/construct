@@ -27,7 +27,11 @@ export function githubSource({ repo, token, fetchImpl = fetch }) {
     label: `github:${repo}`,
     getIssue: (n) => json(`/repos/${repo}/issues/${n}`),
     // Real sub-issues; a 404 (feature unavailable) is treated as "none linked".
-    subIssues: (n) => paged(`/repos/${repo}/issues/${n}/sub_issues`).catch(() => []),
+    subIssues: (n) =>
+      paged(`/repos/${repo}/issues/${n}/sub_issues`).catch((e) => {
+        if (/ 404 /.test(e.message)) return [];
+        throw e; // rate limits and server errors must fail the build, not silently drop guides
+      }),
     comments: (n) => paged(`/repos/${repo}/issues/${n}/comments`),
     async demoIssues() {
       const rows = await paged(`/repos/${repo}/issues?state=all`);

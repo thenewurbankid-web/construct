@@ -17,7 +17,7 @@ export function isPublishable(issue, comments = []) {
 }
 
 async function buildStory(source, issue, guideNumber, order, skipped) {
-  const comments = await source.comments(issue.number).catch(() => []);
+  const comments = await source.comments(issue.number);
   if (!isPublishable(issue, comments)) {
     skipped.push({ number: issue.number, reason: issue.state !== 'closed' ? 'not closed' : 'superseded or empty' });
     return null;
@@ -53,7 +53,7 @@ async function buildStory(source, issue, guideNumber, order, skipped) {
 
 async function buildGuide(source, epic, storyIssues, skipped) {
   const { markdown, benefit } = parseStoryBody(epic.body);
-  const intro = /^##\s+What this demonstrates\s*\n([\s\S]*?)(?=\n##\s|$)/im.exec(markdown);
+  const intro = /(?:^|\n)##\s+What this demonstrates\s*\n([\s\S]*?)(?=\n##\s|(?![\s\S]))/i.exec(markdown);
   const introMd = (intro ? intro[1] : markdown.split(/\n##\s/)[0]).trim();
   const stories = [];
   let order = 1;
@@ -84,7 +84,7 @@ export async function collectGuides(source, { epicNumber = 125 } = {}) {
   let guideIssues = await source.subIssues(epicNumber);
   let mode = 'sub-issues';
   let all = null;
-  const allDemos = async () => (all ??= await source.demoIssues().catch(() => []));
+  const allDemos = async () => (all ??= await source.demoIssues());
   if (!guideIssues.length) {
     // Fallback: guides are demo issues filed directly under the epic; stories group by "Part of #N".
     mode = 'part-of-fallback';
