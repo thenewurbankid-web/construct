@@ -1,0 +1,137 @@
+Happy path
+  Route: submitted → auto check → approved → refunded → closed
+  Given the flow starts in *submitted*
+  When "request refund" happens
+  Then the flow moves to *auto check*
+  And when it is low value
+  Then the flow moves to *approved*
+  And when `issueRefund` finishes successfully
+  Then the flow moves to *refunded*
+  And when "close" happens
+  Then the flow moves to *closed*
+  And the flow ends — *closed* is an end state
+  Note: in *approved* the flow can start that step over when `issueRefund` fails, so this part can repeat.
+
+Path 2
+  Route: submitted → auto check → manual review → approved → refunded → closed
+  Given the flow starts in *submitted*
+  When "request refund" happens
+  Then the flow moves to *auto check*
+  And when it is suspicious (the earlier conditions did not apply)
+  Then the flow moves to *manual review*
+  And when "approve" happens
+  Then the flow moves to *approved* and then runs `notifyCustomer`
+  And when `issueRefund` finishes successfully
+  Then the flow moves to *refunded*
+  And when "close" happens
+  Then the flow moves to *closed*
+  And the flow ends — *closed* is an end state
+  Note: in *approved* the flow can start that step over when `issueRefund` fails, so this part can repeat.
+  Note: from *manual review* the flow can go back to *submitted* when "need more info" happens, so this part can repeat.
+
+Path 3
+  Route: submitted → auto check → manual review → rejected
+  Given the flow starts in *submitted*
+  When "request refund" happens
+  Then the flow moves to *auto check*
+  And when it is suspicious (the earlier conditions did not apply)
+  Then the flow moves to *manual review*
+  And when "reject" happens
+  Then the flow moves to *rejected* and then runs `notifyCustomer`
+  And the flow ends — *rejected* is an end state
+  Note: from *manual review* the flow can go back to *submitted* when "need more info" happens, so this part can repeat.
+
+Path 4
+  Route: submitted → auto check → manual review → escalated → approved → refunded → closed
+  Given the flow starts in *submitted*
+  When "request refund" happens
+  Then the flow moves to *auto check*
+  And when it is suspicious (the earlier conditions did not apply)
+  Then the flow moves to *manual review*
+  And when 48 hours pass
+  Then the flow moves to *escalated*
+  And when "approve" happens
+  Then the flow moves to *approved*
+  And when `issueRefund` finishes successfully
+  Then the flow moves to *refunded*
+  And when "close" happens
+  Then the flow moves to *closed*
+  And the flow ends — *closed* is an end state
+  Note: in *approved* the flow can start that step over when `issueRefund` fails, so this part can repeat.
+  Note: from *manual review* the flow can go back to *submitted* when "need more info" happens, so this part can repeat.
+
+Path 5
+  Route: submitted → auto check → manual review → escalated → rejected
+  Given the flow starts in *submitted*
+  When "request refund" happens
+  Then the flow moves to *auto check*
+  And when it is suspicious (the earlier conditions did not apply)
+  Then the flow moves to *manual review*
+  And when 48 hours pass
+  Then the flow moves to *escalated*
+  And when "reject" happens
+  Then the flow moves to *rejected*
+  And the flow ends — *rejected* is an end state
+  Note: from *manual review* the flow can go back to *submitted* when "need more info" happens, so this part can repeat.
+
+Path 6
+  Route: submitted → auto check → manual review → approved → refunded → closed
+  Given the flow starts in *submitted*
+  When "request refund" happens
+  Then the flow moves to *auto check*
+  And when none of the conditions above apply
+  Then the flow moves to *manual review*
+  And when "approve" happens
+  Then the flow moves to *approved* and then runs `notifyCustomer`
+  And when `issueRefund` finishes successfully
+  Then the flow moves to *refunded*
+  And when "close" happens
+  Then the flow moves to *closed*
+  And the flow ends — *closed* is an end state
+  Note: in *approved* the flow can start that step over when `issueRefund` fails, so this part can repeat.
+  Note: from *manual review* the flow can go back to *submitted* when "need more info" happens, so this part can repeat.
+
+Path 7
+  Route: submitted → auto check → manual review → rejected
+  Given the flow starts in *submitted*
+  When "request refund" happens
+  Then the flow moves to *auto check*
+  And when none of the conditions above apply
+  Then the flow moves to *manual review*
+  And when "reject" happens
+  Then the flow moves to *rejected* and then runs `notifyCustomer`
+  And the flow ends — *rejected* is an end state
+  Note: from *manual review* the flow can go back to *submitted* when "need more info" happens, so this part can repeat.
+
+Path 8
+  Route: submitted → auto check → manual review → escalated → approved → refunded → closed
+  Given the flow starts in *submitted*
+  When "request refund" happens
+  Then the flow moves to *auto check*
+  And when none of the conditions above apply
+  Then the flow moves to *manual review*
+  And when 48 hours pass
+  Then the flow moves to *escalated*
+  And when "approve" happens
+  Then the flow moves to *approved*
+  And when `issueRefund` finishes successfully
+  Then the flow moves to *refunded*
+  And when "close" happens
+  Then the flow moves to *closed*
+  And the flow ends — *closed* is an end state
+  Note: in *approved* the flow can start that step over when `issueRefund` fails, so this part can repeat.
+  Note: from *manual review* the flow can go back to *submitted* when "need more info" happens, so this part can repeat.
+
+Path 9
+  Route: submitted → auto check → manual review → escalated → rejected
+  Given the flow starts in *submitted*
+  When "request refund" happens
+  Then the flow moves to *auto check*
+  And when none of the conditions above apply
+  Then the flow moves to *manual review*
+  And when 48 hours pass
+  Then the flow moves to *escalated*
+  And when "reject" happens
+  Then the flow moves to *rejected*
+  And the flow ends — *rejected* is an end state
+  Note: from *manual review* the flow can go back to *submitted* when "need more info" happens, so this part can repeat.

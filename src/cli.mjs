@@ -23,6 +23,8 @@ import { ingestPage } from './engine/pageTransformer.mjs';
 import { generateWorkflow } from './engine/workflowGenerator.mjs';
 import { generateController } from './engine/controllerBinder.mjs';
 import { startTimer, elapsedSeconds, formatDuration } from './timing.mjs';
+import { explainSource, renderExplained } from './engine/workflowExplain.mjs';
+import { listWorkflowSourceFiles, readWorkflowSource } from './engine/workflowSource.mjs';
 
 // Resolve the project root freshly per command: walks up from cwd (or from
 // --dir, when given) to find an existing architecture.yml (monorepo
@@ -418,12 +420,53 @@ export async function create(args) {
   }
 }
 
-/** `construct research summarize ...` | `construct research doctor ...`. */
+/** `construct research workflow <feature> [<file>] [--format prose|md|json|scenarios] [--dir <path>]`
+ * (epic #185). Read-only: explains the XState machines in a feature's
+ * workflows/ folder in plain English, with scenarios and health findings,
+ * derived from the source every time. Returns true when it printed only JSON. */
+export async function researchWorkflow(args) {
+  const t = startTimer();
+  const valueFlags = new Set(['--format', '--dir']);
+  const positional = [];
+  for (let i = 0; i < args.length; i += 1) {
+    if (valueFlags.has(args[i])) i += 1;
+    else if (!args[i].startsWith('--')) positional.push(args[i]);
+  }
+  const [feature, file] = positional;
+  const fi = args.indexOf('--format');
+  const format = fi >= 0 ? args[fi + 1] : 'prose';
+  if (!feature || positional.length > 2 || !['prose', 'md', 'json', 'scenarios'].includes(format)) {
+    throw new ConstructError('Usage: construct research workflow <feature> [<file>] [--format prose|md|json|scenarios] [--dir <path>]', { exitCode: EXIT_CODES.USAGE_ERROR });
+  }
+  const root = getRoot(args);
+  const files = file ? [file] : listWorkflowSourceFiles(root, feature);
+  const results = files.map((f) => ({ file: f, ...explainSource(readWorkflowSource(root, feature, f)) }));
+  const withMachines = results.filter((r) => r.machines.length || r.error);
+  if (format === 'json') {
+    console.log(JSON.stringify({ feature, files: withMachines }, null, 2));
+    return true;
+  }
+  if (!withMachines.length) {
+    console.log(`No XState machines found in features/${feature}/workflows/.`);
+  }
+  for (const r of withMachines) {
+    console.log(format === 'md' ? `# features/${feature}/workflows/${r.file}\n` : `== features/${feature}/workflows/${r.file} ==\n`);
+    if (r.error) console.log(`${r.error}\n`);
+    for (const m of r.machines) console.log(renderExplained(m, format));
+  }
+  const n = withMachines.reduce((sum, r) => sum + r.machines.length, 0);
+  console.log(`Explained ${n} machine(s) in ${withMachines.length} file(s) (${formatDuration(elapsedSeconds(t))})`);
+  return false;
+}
+
+/** `construct research summarize ...` | `construct research doctor ...` | `construct research workflow ...`. */
 export async function research(args) {
+  let jsonOnly = false;
   if (args[0] === 'summarize') await summarize(args.slice(1));
   else if (args[0] === 'doctor') await doctor(args.slice(1));
-  else throw new ConstructError('Usage: construct research summarize|doctor ...', { exitCode: EXIT_CODES.USAGE_ERROR });
-  printAttribution('produced the read-only report above', '0 calls');
+  else if (args[0] === 'workflow') jsonOnly = await researchWorkflow(args.slice(1));
+  else throw new ConstructError('Usage: construct research summarize|doctor|workflow ...', { exitCode: EXIT_CODES.USAGE_ERROR });
+  if (!jsonOnly) printAttribution('produced the read-only report above', '0 calls');
 }
 
 /** `construct refactor move <name> --feature <f> --from <layer> --to <layer>`

@@ -1,10 +1,12 @@
 import type { ReactNode } from 'react';
 import { MachineCanvas } from '../components/MachineCanvas';
+import { MachineNarrative } from '../components/MachineNarrative';
 import { WorkflowDiffPreview } from '../components/WorkflowDiffPreview';
 import { WorkflowsBrowser } from '../components/WorkflowsBrowser';
-import type { PendingWorkflowEdit, WorkflowEditRequest, WorkflowFileMachines, WorkflowsState } from '../types';
+import type { NarrativeView, PendingWorkflowEdit, WorkflowEditRequest, WorkflowFileMachines, WorkflowsState } from '../types';
 
 export type WorkflowsPageProps = WorkflowsState & {
+  narrative: NarrativeView | null;
   setFeature: (feature: string) => void;
   openFile: (file: string) => void;
   reload: () => void;
@@ -13,9 +15,9 @@ export type WorkflowsPageProps = WorkflowsState & {
   cancelEdit: () => void;
 };
 
-type LoadedFileProps = { loaded: WorkflowFileMachines; onEdit: (req: WorkflowEditRequest) => void; locked: boolean };
+type LoadedFileProps = { loaded: WorkflowFileMachines; narrative: NarrativeView | null; onEdit: (req: WorkflowEditRequest) => void; locked: boolean };
 
-function LoadedFile({ loaded, onEdit, locked }: LoadedFileProps): ReactNode {
+function LoadedFile({ loaded, narrative, onEdit, locked }: LoadedFileProps): ReactNode {
   if (loaded.error) {
     return (
       <p className="status-error" data-testid="wf-file-error">
@@ -29,7 +31,10 @@ function LoadedFile({ loaded, onEdit, locked }: LoadedFileProps): ReactNode {
   return (
     <>
       {loaded.machines.map((m, i) => (
-        <MachineCanvas key={`${m.id}:${i}`} machine={m} machineIndex={i} onEdit={onEdit} locked={locked} />
+        <div key={`${m.id}:${i}`}>
+          <MachineCanvas machine={m} machineIndex={i} onEdit={onEdit} locked={locked} />
+          {narrative?.machines[i] && <MachineNarrative narrative={narrative.machines[i]} />}
+        </div>
       ))}
     </>
   );
@@ -74,7 +79,7 @@ export function WorkflowsPage(props: WorkflowsPageProps): ReactNode {
           </div>
           {editError && <p className="status-error" data-testid="wf-edit-error">{editError}</p>}
           {pending && <PendingEdit pending={pending} busy={editBusy} onConfirm={confirmEdit} onCancel={cancelEdit} />}
-          <LoadedFile loaded={loaded} onEdit={proposeEdit} locked={!!pending || editBusy} />
+          <LoadedFile loaded={loaded} narrative={props.narrative} onEdit={proposeEdit} locked={!!pending || editBusy} />
         </div>
       )}
     </div>

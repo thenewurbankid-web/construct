@@ -1,0 +1,117 @@
+Root
+The "root" flow has 5 steps. It starts in *a* and can end in *a › a 2*.
+
+A
+  - This flow starts in *a*.
+  - *a* is made up of 2 smaller steps (*a › a 1* and *a › a 2*) and begins with *a › a 1*.
+  - Anywhere inside it, when "cancel" happens, the flow moves to *other*.
+  - When its sub-flow finishes, the flow moves to *b*.
+  - On leaving, it runs `cleanUp`.
+
+A › a 1
+  - When "next" happens, the flow moves to *a › a 2*.
+
+A › a 2
+  - *a › a 2* is an end state — the flow stops there.
+
+B
+  - While here, it starts `x`.
+  - When "ping" happens, the flow stays in *b* and runs `log`.
+  - After 1 second, the flow moves to *c*.
+  - Immediately, the flow moves to *c* — only if a custom condition holds.
+  - Otherwise, immediately, the flow moves to *a*.
+  - When `x` finishes successfully, the flow moves to *c*.
+  - If `x` fails, the flow moves to *c* — only if it is fatal.
+
+C
+  - When "back" happens, the flow moves to *other*.
+  - When "up" happens, the flow moves to *a* — only if it can retry.
+  - Otherwise, the flow moves to *b*.
+
+Other
+  - There is no way out of *other* — the flow gets stuck there.
+
+Scenarios
+  Path 1
+    Route: a › a 1 → a › a 2 → other
+    Given the flow starts in *a › a 1*
+    When "next" happens
+    Then the flow moves to *a › a 2*
+    And when "cancel" happens
+    Then the flow moves to *other*
+    And the flow gets stuck in *other*, with no way out
+
+  Path 2
+    Route: a › a 1 → a › a 2 → b → c → other
+    Given the flow starts in *a › a 1*
+    When "next" happens
+    Then the flow moves to *a › a 2*
+    And when its sub-flow finishes
+    Then the flow moves to *b*
+    And when 1 second passes
+    Then the flow moves to *c*
+    And when "back" happens
+    Then the flow moves to *other*
+    And the flow gets stuck in *other*, with no way out
+    Note: from *c* the flow can go back to *a › a 1* when "up" happens (only if it can retry), so this part can repeat.
+    Note: from *c* the flow can go back to *b* when "up" happens, so this part can repeat.
+    Note: from *b* the flow can go back to *a › a 1* when the flow moves on by itself, so this part can repeat.
+
+  Path 3
+    Route: a › a 1 → a › a 2 → b → c → other
+    Given the flow starts in *a › a 1*
+    When "next" happens
+    Then the flow moves to *a › a 2*
+    And when its sub-flow finishes
+    Then the flow moves to *b*
+    And when a custom condition holds
+    Then the flow moves to *c*
+    And when "back" happens
+    Then the flow moves to *other*
+    And the flow gets stuck in *other*, with no way out
+    Note: from *c* the flow can go back to *a › a 1* when "up" happens (only if it can retry), so this part can repeat.
+    Note: from *c* the flow can go back to *b* when "up" happens, so this part can repeat.
+    Note: from *b* the flow can go back to *a › a 1* when the flow moves on by itself, so this part can repeat.
+
+  Path 4
+    Route: a › a 1 → a › a 2 → b → c → other
+    Given the flow starts in *a › a 1*
+    When "next" happens
+    Then the flow moves to *a › a 2*
+    And when its sub-flow finishes
+    Then the flow moves to *b*
+    And when `x` finishes successfully
+    Then the flow moves to *c*
+    And when "back" happens
+    Then the flow moves to *other*
+    And the flow gets stuck in *other*, with no way out
+    Note: from *c* the flow can go back to *a › a 1* when "up" happens (only if it can retry), so this part can repeat.
+    Note: from *c* the flow can go back to *b* when "up" happens, so this part can repeat.
+    Note: from *b* the flow can go back to *a › a 1* when the flow moves on by itself, so this part can repeat.
+
+  Path 5
+    Route: a › a 1 → a › a 2 → b → c → other
+    Given the flow starts in *a › a 1*
+    When "next" happens
+    Then the flow moves to *a › a 2*
+    And when its sub-flow finishes
+    Then the flow moves to *b*
+    And when `x` fails — only if it is fatal
+    Then the flow moves to *c*
+    And when "back" happens
+    Then the flow moves to *other*
+    And the flow gets stuck in *other*, with no way out
+    Note: from *c* the flow can go back to *a › a 1* when "up" happens (only if it can retry), so this part can repeat.
+    Note: from *c* the flow can go back to *b* when "up" happens, so this part can repeat.
+    Note: from *b* the flow can go back to *a › a 1* when the flow moves on by itself, so this part can repeat.
+
+  Path 6
+    Route: a › a 1 → other
+    Given the flow starts in *a › a 1*
+    When "cancel" happens
+    Then the flow moves to *other*
+    And the flow gets stuck in *other*, with no way out
+
+Health
+  - [dead-end] *other* is a dead end: it is not an end state, yet nothing can move the flow out of it.
+  - [no-fallback] In *b*, a failure of its service only applies under a condition (it is fatal) and there is no fallback, so if none holds, nothing happens.

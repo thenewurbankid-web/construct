@@ -24,6 +24,7 @@ module; *group next* = worth extracting, filed as an issue; *leave* = fine where
 | 13 | **File walk / relative path / write** | `src/fs.mjs` (`walk`, `rel`, `write`, `ensureDir`) | most modules | Det | Leave (tiny) |
 | 14 | **Line source for interactive prompts** | `src/line-source.mjs` | `repl.mjs`, `cli.mjs` | Det | Leave |
 | 15 | **Import planning / route resolution** | `src/import.mjs`, `src/route-resolver.mjs` | CLI `import` | Det (LLM only on opt-in fill) | Leave; `route-resolver` already uses `src/ast` |
+| 16 | **Workflow narrator** (state machine to plain English, Given/When/Then scenarios, health findings; feeds WORKFLOW-002/003) | `src/engine/{workflowNarrator,workflowScenarios,workflowExplain,workflowSource}.mjs`; docs in `docs/workflow-narrator.md` | CLI `research workflow`, `ui/server/src/workflowsViewer.mjs` (`GET /api/workflows/narrative`), architecture-enforcer (WORKFLOW-002/003) | Det | Packaged (built on `workflowExtractor`, no LLM, nothing stored) |
 
 ## How to use this file
 

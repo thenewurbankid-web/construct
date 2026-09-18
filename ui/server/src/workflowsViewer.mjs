@@ -11,6 +11,7 @@ import { loadConfig } from '../../../src/config.mjs';
 import { walk, rel } from '../../../src/fs.mjs';
 import { extractMachines } from '../../../src/engine/workflowExtractor.mjs';
 import { editWorkflow } from '../../../src/engine/workflowEditor.mjs';
+import { explainSource } from '../../../src/engine/workflowExplain.mjs';
 import { PagesEditorError, listFeatures, checkEnforcement, hashOf } from './pagesEditor.mjs';
 
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs']);
@@ -69,6 +70,17 @@ export function readWorkflowMachines(root, feature, file) {
   const { absPath, relPath } = resolveWorkflowFile(root, feature, file);
   const { machines, error } = extractMachines(fs.readFileSync(absPath, 'utf8'));
   return { feature, file, path: relPath, machines, error, contentHash: hashOf(fs.readFileSync(absPath, 'utf8')) };
+}
+
+/** Epic #185 -- the machines of one workflow file explained in plain English
+ * (narrative, scenarios, health findings), derived fresh from the source on
+ * every request (src/engine/workflowExplain.mjs). Same scope guard as
+ * readWorkflowMachines; read-only, nothing stored. */
+export function readWorkflowNarrative(root, feature, file) {
+  const { absPath, relPath } = resolveWorkflowFile(root, feature, file);
+  const source = fs.readFileSync(absPath, 'utf8');
+  const { machines, error } = explainSource(source);
+  return { feature, file, path: relPath, machines, error, contentHash: hashOf(source) };
 }
 
 /** #61 -- one visual edit, applied as an exact source-range edit

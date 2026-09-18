@@ -15,5 +15,8 @@ export * from './hooks/useWorkflows';
 /** React Flow nodes/edges derived from one extracted machine. */
 export * from './hooks/useMachineFlow';
 
+/** Plain-English narrative/scenarios/health for the open file (epic #185). */
+export * from './hooks/useWorkflowNarrative';
+
 /** Visual edit flow (propose diff -> confirm save) used by useWorkflows (#61). */
 export * from './hooks/useWorkflowEditor';
