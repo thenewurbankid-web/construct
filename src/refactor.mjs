@@ -15,6 +15,7 @@ import { walk, rel } from './fs.mjs';
 import { resolveRelativeImport } from './architecture-enforcer.mjs';
 import { folderFor, layerFileBaseName } from './generators.mjs';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
+import { assertNotFrozen } from './frozen.mjs';
 
 const FILE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx']);
 // Matches the specifier in both `import ... from '...'` and
@@ -48,7 +49,9 @@ function bareSpecifier(fromDir, targetAbsPath) {
  * the target being findable. Returns the number of files updated. Never
  * touches anything else in a rewritten file — only the matched specifier. */
 function rewriteImportersOf(root, oldAbsPath, newAbsPath) {
-  let updated = 0;
+  // Two passes so a frozen importer (#23) refuses the whole move before ANY
+  // file has been rewritten -- never a half-applied refactor.
+  const pending = [];
   for (const abs of walk(root)) {
     if (!FILE_EXTENSIONS.has(path.extname(abs)) || abs === oldAbsPath) continue;
     const source = fs.readFileSync(abs, 'utf8');
@@ -60,12 +63,11 @@ function rewriteImportersOf(root, oldAbsPath, newAbsPath) {
       changed = true;
       return `from ${quote}${bareSpecifier(path.dirname(abs), newAbsPath)}${quote}`;
     });
-    if (changed) {
-      fs.writeFileSync(abs, rewritten);
-      updated++;
-    }
+    if (changed) pending.push([abs, rewritten]);
   }
-  return updated;
+  for (const [abs] of pending) assertNotFrozen(abs, 'rewrite an import inside');
+  for (const [abs, rewritten] of pending) fs.writeFileSync(abs, rewritten);
+  return pending.length;
 }
 
 /** After the moved file has already been renamed to `newAbsPath`, re-resolve
@@ -112,6 +114,8 @@ function relocate(root, feature, fromLayer, fromName, toLayer, toName) {
   // disk (resolution depends on the target actually being there) — the
   // rename itself must come after, or nothing would resolve to `oldAbs` any
   // more and every one of these would look like it was never importing it.
+  assertNotFrozen(oldAbs, 'move');
+  assertNotFrozen(newAbs, 'move into');
   const importersUpdated = rewriteImportersOf(root, oldAbs, newAbs);
 
   fs.mkdirSync(toDir, { recursive: true });
