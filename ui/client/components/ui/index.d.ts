@@ -6,12 +6,20 @@
 // the Next.js/TypeScript feature code that imports them real prop types
 // instead of implicit `any`, without touching a single line of the actual
 // component implementations.
-import type { ComponentPropsWithoutRef, CSSProperties, ElementType, ReactNode } from 'react';
+import type { ComponentPropsWithoutRef, ComponentPropsWithRef, CSSProperties, ElementType, ReactNode } from 'react';
 
 export declare function Button(props: ComponentPropsWithoutRef<'button'> & { variant?: 'primary' | 'ghost' }): ReactNode;
 
+// ComponentPropsWithRef (not WithoutRef) so callers can pass `ref` — #77
+// needs it for TreePanel.tsx/PreviewPanel.tsx to scroll their own
+// container into view. GlassPanel's actual .jsx implementation already
+// spreads `...rest` onto the rendered Tag, so `ref` already worked at
+// runtime (React 19 forwards a plain `ref` prop through a function
+// component's props without needing forwardRef); this only fixes the type
+// declaration to match, same "types only, don't touch the .jsx" rule this
+// file states above.
 export declare function GlassPanel<T extends ElementType = 'div'>(
-  props: { as?: T; className?: string; children?: ReactNode } & Omit<ComponentPropsWithoutRef<T>, 'as' | 'className' | 'children'>,
+  props: { as?: T; className?: string; children?: ReactNode } & Omit<ComponentPropsWithRef<T>, 'as' | 'className' | 'children'>,
 ): ReactNode;
 
 export declare function Field(props: { label: ReactNode; hint?: ReactNode; children?: ReactNode }): ReactNode;
