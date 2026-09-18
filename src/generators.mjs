@@ -101,10 +101,13 @@ export function selfCheck(root,absFiles){
 // "3dViewer" -- a syntactically invalid `export type 3dViewerId` in the
 // scaffolded types.ts. Reject that at scaffold time instead of writing it.
 const TS_IDENTIFIER_RE=/^[A-Za-z_$][A-Za-z0-9_$]*$/;
-function pascalCase(name){
+// `label` names what is being converted in the error message (default
+// "Feature", the original caller); the engine generators (#216) pass
+// "Workflow"/"Page"/"Controller"/"Service" so the message stays accurate.
+export function pascalCase(name,label='Feature'){
  const result=name.replace(/(^|[-_]+)([a-zA-Z0-9])/g,(_,__,c)=>c.toUpperCase());
  if(!TS_IDENTIFIER_RE.test(result)) throw new ConstructError(
-  `Feature name "${name}" can't be turned into a valid TypeScript identifier (got "${result}") — identifiers can't start with a digit and can only contain letters, digits, "_", and "$". Rename the feature.`,
+  `${label} name "${name}" can't be turned into a valid TypeScript identifier (got "${result}") — identifiers can't start with a digit and can only contain letters, digits, "_", and "$". Rename the ${label.toLowerCase()}.`,
   {exitCode:EXIT_CODES.USAGE_ERROR}
  );
  return result;

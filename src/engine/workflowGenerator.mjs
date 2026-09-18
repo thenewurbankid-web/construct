@@ -18,7 +18,7 @@ import path from 'node:path';
 import { ts, printNode as print } from '../ast/index.mjs';
 import { loadConfig } from './../config.mjs';
 import { write } from '../fs.mjs';
-import { selfCheck } from '../generators.mjs';
+import { selfCheck, pascalCase } from '../generators.mjs';
 import { ConstructError, EXIT_CODES } from '../diagnostics.mjs';
 
 const { factory } = ts;
@@ -253,7 +253,8 @@ export function compileWorkflow(descriptor, { name }) {
  * re-validates via generators.mjs's shared selfCheck. */
 export function generateWorkflow(root, name, feature, descriptor) {
   const config = loadConfig(root);
-  const cap = name[0].toUpperCase() + name.slice(1);
+  // #216: same identifier handling as the layer generators; throws before any write.
+  const cap = pascalCase(name, 'Workflow');
   const { source, events, contextFields } = compileWorkflow(descriptor, { name: cap });
 
   const dir = path.join(root, config.features?.root || 'features', feature, 'workflows');
