@@ -13,7 +13,7 @@ import path from 'node:path';
 import { loadConfig } from './config.mjs';
 import { walk, rel } from './fs.mjs';
 import { resolveRelativeImport } from './architecture-enforcer.mjs';
-import { folderFor, layerFileBaseName } from './generators.mjs';
+import { folderFor, layerFileBaseName, pascalCase } from './generators.mjs';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { assertNotFrozen } from './frozen.mjs';
 
@@ -91,8 +91,13 @@ function rewriteOwnImportsAfterMove(oldAbsPath, newAbsPath) {
 
 function relocate(root, feature, fromLayer, fromName, toLayer, toName) {
   const config = loadConfig(root);
-  const fromCap = fromName[0].toUpperCase() + fromName.slice(1);
-  const toCap = toName[0].toUpperCase() + toName.slice(1);
+  // #218: same PascalCase + validation as the generators, so a renamed file
+  // never gets an invalid identifier-derived name and a bad name throws
+  // before any file is touched.
+  // The source name may be a pre-existing file made before this validation
+  // existed (e.g. use3d.tsx), so only the DESTINATION name is validated.
+  const fromCap = fromName.replace(/(^|[-_]+)([a-zA-Z0-9])/g, (_, __, c) => c.toUpperCase());
+  const toCap = pascalCase(toName, 'New name');
   const fromDir = featureLayerDir(root, config, feature, fromLayer);
   const toDir = featureLayerDir(root, config, feature, toLayer);
   const fromBase = layerFileBaseName(fromLayer, fromCap);
