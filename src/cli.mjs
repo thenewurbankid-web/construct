@@ -627,7 +627,14 @@ function isYes(answer) {
  * way, the actual file list comes from tracing the real import graph
  * (route-resolver.mjs), never from "everything under a directory you point
  * at". */
-export async function importRouteWizard(ask, seedRoute) {
+export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude', importFill = 'claude' } = {}) {
+  // Whole-feature plan analysis is deliberately hosted-model-only (#96) — the
+  // same guardrail ui/server's Settings enforces, repeated here so a direct
+  // caller can't route it to a local model either.
+  if (planAnalysis === 'ollama') {
+    console.error('Plan analysis cannot use "ollama" — the whole-feature analysis call is hosted-model-only (see epic #96). Use "claude" for planAnalysis.');
+    return;
+  }
   const featureName = (await ask('Destination feature (Construct feature name): ')).trim();
   if (!featureName) {
     console.log('Cancelled — no feature name given.');
@@ -731,12 +738,12 @@ export async function importRouteWizard(ask, seedRoute) {
     `Found ${tracedFiles.size} file(s) across ${folders.length} route(s) in ${formatDuration(elapsedSeconds(traceStart))}: ${folders.map((f) => path.relative(root, f)).join(', ')}`,
   );
   console.log(
-    `Analyzing via "claude" — one LLM call for a single combined plan across all of them, nothing is written yet...`,
+    `Analyzing via "${planAnalysis}" — one LLM call for a single combined plan across all of them, nothing is written yet...`,
   );
   let plan;
   const analysisStart = startTimer();
   try {
-    plan = await analyzeFiles([...tracedFiles.keys()], featureName, { llm: 'claude' });
+    plan = await analyzeFiles([...tracedFiles.keys()], featureName, { llm: planAnalysis });
   } catch (e) {
     console.error(`Analysis failed: ${e.message}`);
     return;
@@ -753,8 +760,8 @@ export async function importRouteWizard(ask, seedRoute) {
     return;
   }
 
-  const { results } = await executeImportPlan(root, plan, { llm: fillWithLlm ? 'claude' : undefined });
-  reportImport(root, results, fillWithLlm ? 'claude' : undefined, plan.feature, 1, analysisSeconds);
+  const { results } = await executeImportPlan(root, plan, { llm: fillWithLlm ? importFill : undefined });
+  reportImport(root, results, fillWithLlm ? importFill : undefined, plan.feature, 1, analysisSeconds);
 
   console.log('');
   console.log(`Running validate --feature ${plan.feature} ...`);
@@ -836,7 +843,7 @@ function ensureWizardConsolePatched() {
   }
 }
 
-export function runImportRouteWizardEventDriven(onEvent, seedRoute) {
+export function runImportRouteWizardEventDriven(onEvent, seedRoute, providers) {
   ensureWizardConsolePatched();
   let pendingResolve = null;
 
@@ -859,7 +866,7 @@ export function runImportRouteWizardEventDriven(onEvent, seedRoute) {
   }
 
   const done = wizardLogStore
-    .run(onEvent, () => importRouteWizard(ask, seedRoute))
+    .run(onEvent, () => importRouteWizard(ask, seedRoute, providers))
     .catch((e) => {
       onEvent({ type: 'log', kind: 'error', text: `Error: ${e.message}` });
     })
