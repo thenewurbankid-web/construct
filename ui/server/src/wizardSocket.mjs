@@ -11,14 +11,17 @@
 //   server -> client: { type: 'log', kind?: 'warn'|'error', text }
 //                      { type: 'question', text }
 //                      { type: 'done' }
+//
+// #80 — runImportRouteWizardEventDriven's console-capture is now scoped
+// per-session via an AsyncLocalStorage context (src/cli.mjs), not a global
+// monkey-patch, so more than one wizard session can genuinely run at once
+// without cross-talk. The guard below is per-*connection* only (a single
+// WebSocket still can't double-start a session on itself) — different
+// connections no longer block each other the way the old single
+// process-wide `activeSession` variable did.
 import { WebSocketServer } from 'ws';
 import { runImportRouteWizardEventDriven } from '../../../src/cli.mjs';
 import { getSettings } from './settings.mjs';
-
-// The wizard's console-capturing adapter patches process-global console
-// methods for its duration, so only one session may run at a time across
-// this whole server — reasonable for a local, single-user tool.
-let activeSession = null;
 
 function send(ws, payload) {
   if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(payload));
@@ -28,6 +31,8 @@ export function attachWizardSocket(server, path = '/ws/wizard') {
   const wss = new WebSocketServer({ server, path });
 
   wss.on('connection', (ws) => {
+    let session = null;
+
     send(ws, {
       type: 'log',
       text: 'Connected to the import route wizard. Send {"type":"start"} to begin (optionally with a seedRoute).',
@@ -43,18 +48,22 @@ export function attachWizardSocket(server, path = '/ws/wizard') {
       }
 
       if (msg.type === 'start') {
-        if (activeSession) {
+        if (session) {
           send(ws, {
             type: 'log',
             kind: 'error',
-            text: 'A wizard session is already running on this server — finish it (or restart the server) before starting another.',
+            text: 'A wizard session is already running on this connection — finish it before starting another.',
           });
           return;
         }
         // importRouteWizard resolves its project root via process.cwd()
         // (same as every other Construct command run without --dir) — it
         // has no --dir flag of its own, so the settings-configured project
-        // directory is applied here, once, at session start.
+        // directory is applied here, once, at session start. This is
+        // process-wide (one settings store for the whole server), so
+        // concurrent sessions always share the same project root — that's
+        // expected (they're all working in the same Construct project),
+        // and unrelated to the per-session log-capture this fixes.
         const { projectDir } = getSettings();
         if (projectDir) {
           try {
@@ -64,19 +73,19 @@ export function attachWizardSocket(server, path = '/ws/wizard') {
             return;
           }
         }
-        activeSession = runImportRouteWizardEventDriven((event) => send(ws, event), msg.seedRoute || undefined);
-        activeSession.done.finally(() => {
-          activeSession = null;
+        session = runImportRouteWizardEventDriven((event) => send(ws, event), msg.seedRoute || undefined);
+        session.done.finally(() => {
+          session = null;
         });
         return;
       }
 
       if (msg.type === 'answer') {
-        if (!activeSession) {
+        if (!session) {
           send(ws, { type: 'log', kind: 'error', text: 'No wizard session is running — send {"type":"start"} first.' });
           return;
         }
-        activeSession.answer(typeof msg.text === 'string' ? msg.text : '');
+        session.answer(typeof msg.text === 'string' ? msg.text : '');
         return;
       }
 

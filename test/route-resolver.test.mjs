@@ -331,3 +331,64 @@ test('resolveRoute with framework: react-spa resolves /dashboard against fixture
     'features/widget/pages/WidgetPage.tsx',
   ]);
 });
+
+// #82 — a second, multi-route real fixture (fixtures/architecture-valid-
+// react-spa-multi-route): the single-route fixture above already exercised
+// every code path in isolation, but never proved resolveRoute actually
+// picks the *right* entry out of more than one <Route>, nor that it can
+// resolve a react-router dynamic-segment-styled path (":id"). This fixture
+// has 3 routes across 3 features (dashboard, settings, user).
+test('resolveRoute with framework: react-spa picks the right route out of several against fixtures/architecture-valid-react-spa-multi-route', () => {
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const root = path.join(repoRoot, 'fixtures', 'architecture-valid-react-spa-multi-route');
+  const rel = (f) => path.relative(root, f).split(path.sep).join('/');
+
+  const dashboard = resolveRoute('/dashboard', { framework: 'react-spa', root });
+  assert.equal(dashboard.component, 'DashboardController');
+  assert.equal(dashboard.entryFile, path.join(root, 'features/dashboard/controllers/DashboardController.tsx'));
+  assert.deepEqual(dashboard.files.map(rel).sort(), [
+    'features/dashboard/components/DashboardComponent.tsx',
+    'features/dashboard/controllers/DashboardController.tsx',
+    'features/dashboard/pages/DashboardPage.tsx',
+  ]);
+
+  const settings = resolveRoute('/settings', { framework: 'react-spa', root });
+  assert.equal(settings.component, 'SettingsController');
+  assert.equal(settings.entryFile, path.join(root, 'features/settings/controllers/SettingsController.tsx'));
+  assert.deepEqual(settings.files.map(rel).sort(), [
+    'features/settings/components/SettingsComponent.tsx',
+    'features/settings/controllers/SettingsController.tsx',
+    'features/settings/pages/SettingsPage.tsx',
+  ]);
+
+  // Neither trace leaks the other route's (or the third route's) files.
+  assert.ok(!dashboard.files.some((f) => rel(f).includes('settings') || rel(f).includes('/user/')));
+  assert.ok(!settings.files.some((f) => rel(f).includes('dashboard') || rel(f).includes('/user/')));
+});
+
+test('resolveRoute with framework: react-spa resolves a react-router dynamic-segment-styled route ("/users/:id") against fixtures/architecture-valid-react-spa-multi-route', () => {
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const root = path.join(repoRoot, 'fixtures', 'architecture-valid-react-spa-multi-route');
+  // route-resolver.mjs's react-spa URL matching is exact-string against the
+  // routes table (no live param substitution), so the dynamic route is
+  // resolved by its literal declared path, not a concrete URL like
+  // "/users/42" -- see parseReactSpaRoutes/resolveReactSpaRoute.
+  const { component, entryFile, files } = resolveRoute('/users/:id', { framework: 'react-spa', root });
+  assert.equal(component, 'UserController');
+  assert.equal(entryFile, path.join(root, 'features/user/controllers/UserController.tsx'));
+  const rel = (f) => path.relative(root, f).split(path.sep).join('/');
+  assert.deepEqual(files.map(rel).sort(), [
+    'features/user/components/UserComponent.tsx',
+    'features/user/controllers/UserController.tsx',
+    'features/user/pages/UserPage.tsx',
+  ]);
+});
+
+test('resolveRoute with framework: react-spa and a direct controller file path resolves fixtures/architecture-valid-react-spa-multi-route without the routes table', () => {
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const root = path.join(repoRoot, 'fixtures', 'architecture-valid-react-spa-multi-route');
+  const controllerFile = path.join(root, 'features/settings/controllers/SettingsController.tsx');
+  const { entryFile, component } = resolveRoute(controllerFile, { framework: 'react-spa' });
+  assert.equal(entryFile, controllerFile);
+  assert.equal(component, undefined);
+});

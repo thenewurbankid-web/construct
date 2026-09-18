@@ -16,8 +16,8 @@ const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const stripExt = (p) => p.replace(/\.(tsx|ts|jsx|js)$/, '');
 
 // ---------------------------------------------------------------------------
-// Config-driven severity/exceptions, mirroring validator.mjs's approach but
-// reimplemented independently and wired through the shared diagnostics contract.
+// Config-driven severity/exceptions, wired through the shared diagnostics
+// contract.
 // ---------------------------------------------------------------------------
 function severityFor(config, rule) {
   const entry = config.rules?.[rule];

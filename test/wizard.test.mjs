@@ -188,6 +188,86 @@ test('importRouteWizard loops to accept multiple routes into one combined plan',
   assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'pages', 'FooPage.tsx')), true);
 });
 
+// #78 — for a react-spa project (config.project.framework: react-spa), the
+// wizard must branch its prompts: no "Next.js app/ directory" question at
+// all (resolveRoute auto-locates the routes table by convention — #66), and
+// the "Route to import" prompt worded for a controller file, not a folder.
+test('importRouteWizard branches to react-spa wording and resolves via the routes table, never asking for an app/ directory', async () => {
+  const dir = tmpProject();
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), 'project:\n  framework: react-spa\n');
+  createFeature(dir, 'checkout');
+
+  // A minimal react-spa routing setup living in the project itself (mirrors
+  // ui/client's real shape): src/App.tsx's routes table, plus the
+  // controller file /dashboard resolves to.
+  fs.mkdirSync(path.join(dir, 'src'), { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, 'src/App.tsx'),
+    [
+      "import { Routes, Route } from 'react-router-dom';",
+      "import { DashboardController } from '../features/dashboard/controllers/DashboardController';",
+      'export function App() {',
+      '  return (<Routes><Route path="/dashboard" element={<DashboardController />} /></Routes>);',
+      '}',
+      '',
+    ].join('\n'),
+  );
+  fs.mkdirSync(path.join(dir, 'features/dashboard/controllers'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'features/dashboard/controllers/DashboardController.tsx'), 'export function DashboardController() { return null; }\n');
+
+  const prompts = [];
+  const answers = ['checkout', '/dashboard', '', 'n', 'y'];
+  const ask = async (p) => {
+    prompts.push(p);
+    return answers.shift() ?? '';
+  };
+
+  await inProject(dir, () =>
+    withFakeAnalysis({ feature: 'checkout', units: [{ name: 'Foo', layers: ['domain'], from: 'DashboardController.tsx' }] }, async (calls) => {
+      await importRouteWizard(ask);
+      assert.equal(calls.length, 1, 'one combined analysis call');
+      assert.match(calls[0], /DashboardController\.tsx/);
+    }),
+  );
+
+  assert.ok(
+    prompts.some((p) => p.includes('controller file path')),
+    `expected a react-spa-worded "Route to import" prompt, got: ${JSON.stringify(prompts)}`,
+  );
+  assert.ok(
+    !prompts.some((p) => p.includes('app/ directory')),
+    `must never ask the nextjs "app/ directory" question for a react-spa project, got: ${JSON.stringify(prompts)}`,
+  );
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.tsx')), true);
+});
+
+test('importRouteWizard resolves a react-spa route directly from an existing controller file path, still no app/ directory question', async () => {
+  const dir = tmpProject();
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), 'project:\n  framework: react-spa\n');
+  createFeature(dir, 'checkout');
+  fs.mkdirSync(path.join(dir, 'features/dashboard/controllers'), { recursive: true });
+  const controllerFile = path.join(dir, 'features/dashboard/controllers/DashboardController.tsx');
+  fs.writeFileSync(controllerFile, 'export function DashboardController() { return null; }\n');
+
+  const prompts = [];
+  const answers = ['checkout', '', 'n', 'n'];
+  const ask = async (p) => {
+    prompts.push(p);
+    return answers.shift() ?? '';
+  };
+
+  await inProject(dir, () =>
+    withFakeAnalysis({}, async (calls) => {
+      // Seeded directly with the controller file path — an already-resolved
+      // source, same as a nextjs route folder path today.
+      await importRouteWizard(ask, controllerFile);
+      assert.equal(calls.length, 1);
+    }),
+  );
+
+  assert.ok(!prompts.some((p) => p.includes('app/ directory')));
+});
+
 test('importRouteWizard reports an analysis failure without throwing', async () => {
   const dir = tmpProject();
   createFeature(dir, 'checkout');

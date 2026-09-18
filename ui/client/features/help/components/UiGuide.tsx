@@ -59,8 +59,9 @@ function WizardGuide() {
         A chat-style, guided version of <code>construct import --route</code>: seed it with a route
         (optional), start the session, and answer its questions as they arrive in the chat. Log
         lines stream in the instant they happen — not batched at the end — and its one analysis LLM
-        call is shown as its own attribution bubble, same tool/llm split as everywhere else. Only
-        one session may run at a time per backend process.
+        call is shown as its own attribution bubble, same tool/llm split as everywhere else. Each
+        browser tab (WebSocket connection) runs its own independent session — log capture is scoped
+        per session, so concurrent sessions never cross-talk.
       </p>
     </>
   );
