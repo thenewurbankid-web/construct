@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { makeLineSource } from './line-source.mjs';
 import { createFeature, generateLayer, generateVertical } from './generators.mjs';
+import { generateServiceFromSpec } from './service-generator.mjs';
 import { write, ensureDir } from './fs.mjs';
 import { loadConfig, findProjectRoot, DEFAULT_RULES, normalizeFramework } from './config.mjs';
 import { formatReport, exitCodeForViolations, ConstructError, EXIT_CODES } from './diagnostics.mjs';
@@ -95,13 +96,26 @@ export async function feature(args) {
   console.log(`Created feature ${args[1]} at ${path.relative(root, p)}`);
 }
 
+// `construct generate service <name> --feature <feature> --openapi <spec>`
+// (also reachable as `construct create service ...`, per the `create` group
+// below) is Ticket 7.5's zero-LLM path: an OpenAPI spec compiles straight
+// into a real RTKQ `injectEndpoints` file plus the shared, configurable
+// features/core/services/client.ts transport -- see service-generator.mjs.
+// Every other `<layer> <name> --feature <feature>` call keeps using the
+// plain stub templates in generators.mjs, unchanged.
 export async function generate(args) {
   if (args[0] === 'layer') return generateVerticalSlice(args);
   const layer = args[0], name = args[1], fi = args.indexOf('--feature');
   if (!layer || !name || fi < 0 || !args[fi + 1]) {
-    throw new ConstructError('Usage: construct generate <layer> <name> --feature <feature>', { exitCode: EXIT_CODES.USAGE_ERROR });
+    throw new ConstructError('Usage: construct generate <layer> <name> --feature <feature> [--openapi <spec>]', { exitCode: EXIT_CODES.USAGE_ERROR });
   }
   const root = getRoot(args);
+  const oi = args.indexOf('--openapi');
+  if (layer === 'service' && oi >= 0 && args[oi + 1]) {
+    const files = await generateServiceFromSpec(root, name, args[fi + 1], args[oi + 1]);
+    for (const file of files) console.log(`Created ${path.relative(root, file)}`);
+    return;
+  }
   console.log(`Created ${path.relative(root, generateLayer(root, layer, name, args[fi + 1]))}`);
 }
 
@@ -207,7 +221,8 @@ export function printAttribution(tool, llm) {
 }
 
 /** `construct create feature <name>` | `construct create layer <name> --layers ...`
- * | `construct create <layer> <name> --feature <feature>`. */
+ * | `construct create <layer> <name> --feature <feature>`
+ * | `construct create service <name> --feature <feature> --openapi <spec>` (Ticket 7.5). */
 export async function create(args) {
   if (args[0] === 'feature') await feature(['create', ...args.slice(1)]);
   else await generate(args);
