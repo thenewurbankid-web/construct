@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { walk } from './fs.mjs';
 import { makeViolation } from './diagnostics.mjs';
-import { matchGlob } from './glob.mjs';
+import { exceptionApplies } from './exceptions.mjs';
 import { parseFile, extractExports, extractJsdoc, lineOf, EXT } from './parser.mjs';
 import { loadConfig, readRawRules } from './config.mjs';
 
@@ -28,16 +28,9 @@ function severityFor(config, ruleId) {
   return READABILITY_RULES[ruleId]?.severity || 'error';
 }
 
-function isExempt(config, rule, file) {
-  const now = Date.now();
-  return (config.exceptions || []).some(
-    (e) => (e.rule ? [e.rule] : e.rules || []).includes(rule) && matchGlob(e.path, file) && (!e.expires || new Date(e.expires).getTime() >= now)
-  );
-}
-
 function pushViolation(config, out, { rule, file, line, message, why, expected, suggestedFix }) {
   const severity = severityFor(config, rule);
-  if (severity === 'off' || isExempt(config, rule, file)) return;
+  if (severity === 'off' || exceptionApplies(config, rule, file)) return;
   out.push(makeViolation({ rule, module: 'readability', severity, file, line, message, why, expected, suggestedFix }));
 }
 
