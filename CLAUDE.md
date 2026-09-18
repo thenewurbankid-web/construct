@@ -221,16 +221,15 @@ individually-closable subtasks, not a rigid taxonomy.
 
 Each subtask (and the parent's own summary) must be written as:
 
-1. **One continuous end-to-end narrative — never split into separate "CLI"
-   and "UI" sections.** Write it as a single numbered walkthrough a real
-   person would experience: run a command, see real output, switch to the
-   browser, see the result there, maybe back to the terminal — one flowing
-   story proving the CLI and UI are two faces of the same engine, not two
-   demos bolted together. Cover the feature's full real capability
-   breadth inside that one narrative (every command/flag/layer/option it
-   actually has, verified against current code — not a cherry-picked
-   minimal example, and not copied from a possibly-drifted old issue
-   description).
+1. **Separate, clearly labeled CLI and UI sections** — not interleaved
+   into one narrative. A "CLI" section covering that capability's
+   command-line usage (real commands + real output), and a "UI" section
+   covering the same capability's UI usage (real screenshots), as two
+   distinct parts of the same subtask. Each section covers the feature's
+   full real capability breadth on its own surface (every command/flag/
+   layer/option it actually has, verified against current code — not a
+   cherry-picked minimal example, and not copied from a possibly-drifted
+   old issue description).
 2. **Written for users and stakeholders, not engineers.** Plain language
    about what the feature does and how to use it; real commands/output/
    screenshots as evidence. Skip implementation internals (parsing
