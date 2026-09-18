@@ -71,6 +71,8 @@ test.describe('Pages Editor: visual composer read-only canvas (#120, epic #119)'
     // child prop wire (main hands `title` down to Card), so the canvas
     // below has to render an actual edge, not just isolated node boxes.
     await page.locator('.tree-panel').getByText('<main>', { exact: true }).click();
+    // F.4 (#123) made Code/Visual a real toggle — Code is the default view.
+    await page.getByRole('button', { name: 'Visual', exact: true }).click();
 
     const canvas = page.locator('.snippet-flow-canvas');
     await expect(canvas).toBeVisible();

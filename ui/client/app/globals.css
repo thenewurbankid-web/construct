@@ -852,6 +852,25 @@ button:disabled {
   opacity: 0.9;
 }
 
+/* Ticket F.4 (#123, epic #119) — the SnippetEditor Code/Visual toggle. */
+.snippet-view-toggle {
+  display: flex;
+  gap: 4px;
+  margin: 8px 0;
+}
+
+.snippet-view-toggle button {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.snippet-view-toggle button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
 /* Ticket F.1 (#120, epic #119) — React Flow (@xyflow/react) visual composer
  * canvas. `.jsx-flow-node` is the custom node box rendered by
  * JsxFlowNode.tsx; handle colors/positions come from inline style (per-prop

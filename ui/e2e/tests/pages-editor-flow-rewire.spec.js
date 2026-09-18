@@ -64,6 +64,8 @@ test.describe('Pages Editor: visual composer wire rewrite (#121, epic #119)', ()
     await page.getByRole('button', { name: 'HomePage.tsx' }).click();
     await expect(page.locator('.tree-panel')).toBeVisible();
     await page.locator('.tree-panel').getByText('<main>', { exact: true }).click();
+    // F.4 (#123) made Code/Visual a real toggle -- Code is the default view.
+    await page.getByRole('button', { name: 'Visual', exact: true }).click();
 
     await expect(page.locator('.jsx-flow-node')).toHaveCount(3, { timeout: 10_000 });
     await expect(page.locator('.react-flow__edge')).toHaveCount(1);
@@ -131,6 +133,8 @@ export default function HomePage({ title, other }: { title: string; other: strin
     await page.getByRole('button', { name: 'HomePage.tsx' }).click();
     await expect(page.locator('.tree-panel')).toBeVisible();
     await page.locator('.tree-panel').getByText('<main>', { exact: true }).click();
+    // F.4 (#123) made Code/Visual a real toggle -- Code is the default view.
+    await page.getByRole('button', { name: 'Visual', exact: true }).click();
     await expect(page.locator('.jsx-flow-node')).toHaveCount(3, { timeout: 10_000 });
     await page.locator('.snippet-flow-canvas').scrollIntoViewIfNeeded();
 

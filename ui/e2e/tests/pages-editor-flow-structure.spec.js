@@ -63,6 +63,11 @@ test.describe('Pages Editor: visual composer structural node editing (#122, epic
     await page.getByRole('button', { name: 'HomePage.tsx' }).click();
     await expect(page.locator('.tree-panel')).toBeVisible();
     await page.locator('.tree-panel').getByText('<main>', { exact: true }).click();
+    // F.4 (#123) made Code/Visual a real toggle -- Code is the default view.
+    // Only needs clicking once per test: SnippetEditor stays mounted across
+    // a tree re-selection (its `view` state isn't reset), so re-selecting
+    // <main> later in a test after a save keeps showing Visual.
+    await page.getByRole('button', { name: 'Visual', exact: true }).click();
     await expect(page.locator('.jsx-flow-node')).toHaveCount(3, { timeout: 10_000 });
     await page.locator('.snippet-flow-canvas').scrollIntoViewIfNeeded();
   }
