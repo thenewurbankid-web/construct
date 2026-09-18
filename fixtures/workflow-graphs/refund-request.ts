@@ -39,7 +39,7 @@ export const RefundRequestWorkflow = setup({
     refunded: {
       on: { CLOSE: 'closed' },
     },
-    rejected: { type: 'final' },
     closed: { type: 'final' },
+    rejected: { type: 'final' },
   },
 });

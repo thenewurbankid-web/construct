@@ -1,0 +1,27 @@
+Checkout
+The "checkout" flow has 3 steps. It starts in *idle* and can end in *done*.
+
+Idle
+  - This flow starts in *idle*.
+  - When "submit" happens, the flow moves to *submitting*.
+
+Submitting
+  - When "success" happens, the flow moves to *done*.
+  - When "failure" happens, the flow moves to *idle* — only if it has error.
+
+Done
+  - *done* is an end state — the flow stops there.
+
+Scenarios
+  Happy path
+    Route: idle → submitting → done
+    Given the flow starts in *idle*
+    When "submit" happens
+    Then the flow moves to *submitting*
+    And when "success" happens
+    Then the flow moves to *done*
+    And the flow ends — *done* is an end state
+    Note: from *submitting* the flow can go back to *idle* when "failure" happens (only if it has error), so this part can repeat.
+
+Health
+  - [no-fallback] In *submitting*, "failure" only applies under a condition (it has error) and there is no fallback, so if none holds, nothing happens.

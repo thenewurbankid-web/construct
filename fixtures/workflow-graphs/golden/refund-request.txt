@@ -1,5 +1,5 @@
 Refund request
-The "refund request" flow has 8 steps. It starts in *submitted* and can end in *rejected* or *closed*.
+The "refund request" flow has 8 steps. It starts in *submitted* and can end in *closed* or *rejected*.
 
 Submitted
   - This flow starts in *submitted*.
@@ -29,8 +29,8 @@ Approved
 Refunded
   - When "close" happens, the flow moves to *closed*.
 
-Rejected
-  - *rejected* is an end state — the flow stops there.
-
 Closed
   - *closed* is an end state — the flow stops there.
+
+Rejected
+  - *rejected* is an end state — the flow stops there.

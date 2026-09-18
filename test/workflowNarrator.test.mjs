@@ -55,7 +55,7 @@ test('golden: the generated checkout fixture', () => {
 test('golden: refund request (guards, delay, loop, invoke, two end states)', () => {
   const [n] = narrateAll(fs.readFileSync(fx('refund-request.ts'), 'utf8'));
   golden('refund-request.txt', n.text);
-  assert.match(n.summary, /can end in \*rejected\* or \*closed\*/);
+  assert.match(n.summary, /can end in \*closed\* or \*rejected\*/);
 });
 
 test('golden: nested / mixed machine', () => {
