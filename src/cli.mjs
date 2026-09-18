@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { makeLineSource } from './line-source.mjs';
-import { createFeature, generateLayer, generateVertical } from './generators.mjs';
+import { createFeature, generateLayer, generateVertical, layerFromGeneratedFile, fillGeneratedFile } from './generators.mjs';
 import { generateServiceFromSpec } from './service-generator.mjs';
 import { write, ensureDir } from './fs.mjs';
 import { loadConfig, findProjectRoot, DEFAULT_RULES, normalizeFramework } from './config.mjs';
@@ -101,26 +101,33 @@ export async function feature(args) {
   console.log(`Created feature ${args[1]} at ${path.relative(root, p)}`);
 }
 
-// `construct generate service <name> --feature <feature> --openapi <spec>`
-// (also reachable as `construct create service ...`, per the `create` group
-// below) is Ticket 7.5's zero-LLM path: an OpenAPI spec compiles straight
-// into a real RTKQ `injectEndpoints` file plus the shared, configurable
-// features/core/services/client.ts transport -- see service-generator.mjs.
-// Every other `<layer> <name> --feature <feature>` call keeps using the
-// plain stub templates in generators.mjs, unchanged.
+// Ticket 7.2/7.3/7.4/7.5's `--from`/`--bind`/`--openapi` paths below are all
+// zero-LLM: they compile a real input (JSX export, JSON state graph, an
+// already-generated Props interface, an OpenAPI spec) deterministically via
+// the src/engine/* modules or service-generator.mjs. `--llm <provider>`
+// (optional, mirrors `construct import`'s flag) only applies to the plain
+// fallback path at the bottom of this function: when given, it calls that
+// provider once to write a real implementation in place of the template
+// stub — scoped strictly to that one file's own body (generators.mjs's
+// fillGeneratedFile). Which layers/files get created is decided the exact
+// same deterministic way regardless of --llm; the flag only changes what
+// ends up *inside* a file generate() was already going to create via the
+// plain stub path. Omitting --llm leaves the scaffolded template stub
+// exactly as before this existed.
 export async function generate(args) {
   if (args[0] === 'layer') return generateVerticalSlice(args);
   const layer = args[0], name = args[1], fi = args.indexOf('--feature');
   if (!layer || !name || fi < 0 || !args[fi + 1]) {
-    throw new ConstructError('Usage: construct generate <layer> <name> --feature <feature> [--openapi <spec>]', { exitCode: EXIT_CODES.USAGE_ERROR });
+    throw new ConstructError('Usage: construct generate <layer> <name> --feature <feature> [--openapi <spec>] [--llm <provider>]', { exitCode: EXIT_CODES.USAGE_ERROR });
   }
   const root = getRoot(args);
+  const feature = args[fi + 1];
   // Ticket 7.2 (#112): `construct create/generate page <name> --feature <f> --from
   // <path>` ingests an externally-authored JSX file (e.g. a Subframe export) instead
   // of scaffolding the usual stub template -- see src/engine/pageTransformer.mjs.
   const fromI = args.indexOf('--from');
   if (layer === 'page' && fromI >= 0 && args[fromI + 1]) {
-    const { pageFile, propsFile, slots } = ingestPage(root, name, args[fi + 1], args[fromI + 1]);
+    const { pageFile, propsFile, slots } = ingestPage(root, name, feature, args[fromI + 1]);
     console.log(`Created ${path.relative(root, pageFile)}`);
     console.log(`Created ${path.relative(root, propsFile)} (${slots.length} slot(s): ${slots.map((s) => s.name).join(', ') || 'none'})`);
     return;
@@ -140,7 +147,7 @@ export async function generate(args) {
     } catch (e) {
       throw new ConstructError(`Malformed workflow descriptor JSON at ${descriptorPath}: ${e.message}`, { exitCode: EXIT_CODES.USAGE_ERROR });
     }
-    const { file, events } = generateWorkflow(root, name, args[fi + 1], descriptor);
+    const { file, events } = generateWorkflow(root, name, feature, descriptor);
     console.log(`Created ${path.relative(root, file)} (${events.length} event(s): ${events.join(', ') || 'none'})`);
     return;
   }
@@ -165,7 +172,7 @@ export async function generate(args) {
         throw new ConstructError(`Malformed Context Envelope JSON at ${envelopePath}: ${e.message}`, { exitCode: EXIT_CODES.USAGE_ERROR });
       }
     }
-    const { file, bindings } = generateController(root, name, args[fi + 1], { envelope });
+    const { file, bindings } = generateController(root, name, feature, { envelope });
     console.log(`Created ${path.relative(root, file)}`);
     for (const b of bindings) {
       console.log(`  ${b.slot} -> ${b.handler ? `${b.handler} (${b.matchType})` : 'UNMATCHED (TODO stub written)'}`);
@@ -178,29 +185,49 @@ export async function generate(args) {
   // template -- see src/service-generator.mjs.
   const oi = args.indexOf('--openapi');
   if (layer === 'service' && oi >= 0 && args[oi + 1]) {
-    const files = await generateServiceFromSpec(root, name, args[fi + 1], args[oi + 1]);
+    const files = await generateServiceFromSpec(root, name, feature, args[oi + 1]);
     for (const file of files) console.log(`Created ${path.relative(root, file)}`);
     return;
   }
-  console.log(`Created ${path.relative(root, generateLayer(root, layer, name, args[fi + 1]))}`);
+  // Plain fallback: scaffold the usual template stub, optionally LLM-filled
+  // (see this function's own doc comment above for the --llm contract).
+  const llmI = args.indexOf('--llm');
+  const llm = llmI >= 0 ? args[llmI + 1] : undefined;
+  const file = generateLayer(root, layer, name, feature);
+  if (llm) {
+    await fillGeneratedFile(root, file, layer, { feature, name, llm });
+    console.log(`Created + LLM-filled ${path.relative(root, file)}`);
+  } else {
+    console.log(`Created ${path.relative(root, file)}`);
+  }
 }
 
-// `construct generate layer <name> --feature <feature> --layers <l1,l2,...>`
-// scaffolds one logical unit across several layers in a single command,
-// always in dependency order (see generators.mjs's LAYER_ORDER) regardless of
-// the order --layers lists them in.
+// `construct generate layer <name> --feature <feature> --layers <l1,l2,...>
+// [--llm <provider>]` scaffolds one logical unit across several layers in a
+// single command, always in dependency order (see generators.mjs's
+// LAYER_ORDER) regardless of the order --layers lists them in. `--llm`
+// applies uniformly to every generated file in the unit, same as import's
+// per-file fill does across a whole plan.
 async function generateVerticalSlice(args) {
   const name = args[1], fi = args.indexOf('--feature'), li = args.indexOf('--layers');
   if (!name || fi < 0 || !args[fi + 1] || li < 0 || !args[li + 1]) {
     throw new ConstructError(
-      'Usage: construct generate layer <name> --feature <feature> --layers <layer1,layer2,...>',
+      'Usage: construct generate layer <name> --feature <feature> --layers <layer1,layer2,...> [--llm <provider>]',
       { exitCode: EXIT_CODES.USAGE_ERROR },
     );
   }
   const root = getRoot(args);
+  const feature = args[fi + 1];
   const layers = args[li + 1].split(',').map((l) => l.trim()).filter(Boolean);
-  for (const file of generateVertical(root, name, args[fi + 1], layers)) {
-    console.log(`Created ${path.relative(root, file)}`);
+  const llmI = args.indexOf('--llm');
+  const llm = llmI >= 0 ? args[llmI + 1] : undefined;
+  for (const file of generateVertical(root, name, feature, layers)) {
+    if (llm) {
+      await fillGeneratedFile(root, file, layerFromGeneratedFile(file), { feature, name, llm });
+      console.log(`Created + LLM-filled ${path.relative(root, file)}`);
+    } else {
+      console.log(`Created ${path.relative(root, file)}`);
+    }
   }
 }
 
@@ -326,13 +353,30 @@ export function printAttribution(tool, llm) {
   console.log(`[tool: ${tool}] [llm: ${llm}]`);
 }
 
-/** `construct create feature <name>` | `construct create layer <name> --layers ...`
- * | `construct create <layer> <name> --feature <feature>`
- * | `construct create service <name> --feature <feature> --openapi <spec>` (Ticket 7.5). */
+/** `construct create feature <name>` | `construct create layer <name> --layers ... [--llm <provider>]`
+ * | `construct create <layer> <name> --feature <feature> [--llm <provider>]`
+ * | `construct create service <name> --feature <feature> --openapi <spec>` (Ticket 7.5).
+ * `feature` creation has nothing fillable (just types.ts/index.ts
+ * boilerplate) so `--llm` only ever applies to the layer/single-layer
+ * forms, which `generate(args)` itself already handles (see its own doc
+ * comment) — this just reports whether that happened. */
 export async function create(args) {
-  if (args[0] === 'feature') await feature(['create', ...args.slice(1)]);
-  else await generate(args);
-  printAttribution('scaffolded the file(s) above from templates', '0 calls — filling in the logic is a separate step, by you or whichever LLM you choose');
+  if (args[0] === 'feature') {
+    await feature(['create', ...args.slice(1)]);
+    printAttribution('scaffolded the file(s) above from templates', '0 calls — filling in the logic is a separate step, by you or whichever LLM you choose');
+    return;
+  }
+  await generate(args);
+  const llmI = args.indexOf('--llm');
+  const llm = llmI >= 0 ? args[llmI + 1] : undefined;
+  if (llm) {
+    printAttribution(
+      'scaffolded the file(s) above from templates',
+      `call(s) via "${llm}" to write the real implementation into each generated file — review it before trusting it`,
+    );
+  } else {
+    printAttribution('scaffolded the file(s) above from templates', '0 calls — filling in the logic is a separate step, by you or whichever LLM you choose');
+  }
 }
 
 /** `construct research summarize ...` | `construct research doctor ...`. */
@@ -424,7 +468,7 @@ export async function importCommand(args) {
   }
   const root = getRoot(args);
   const layers = args[li + 1].split(',').map((l) => l.trim()).filter(Boolean);
-  const { source, files, llmFilled } = importVertical(root, name, args[fi + 1], layers, args[fromI + 1], { llm });
+  const { source, files, llmFilled } = await importVertical(root, name, args[fi + 1], layers, args[fromI + 1], { llm });
   reportImport(root, [{ name, source, files }], llmFilled ? llm : undefined);
 }
 
@@ -434,7 +478,7 @@ async function importFromPlan(args, llm) {
     throw new ConstructError('Usage: construct import --plan <path> [--llm <provider>]', { exitCode: EXIT_CODES.USAGE_ERROR });
   }
   const root = getRoot(args);
-  const { feature, results } = importPlan(root, args[planI + 1], { llm });
+  const { feature, results } = await importPlan(root, args[planI + 1], { llm });
   reportImport(root, results, llm, feature);
 }
 
@@ -626,7 +670,7 @@ export async function importRouteWizard(ask, seedRoute) {
   );
   let plan;
   try {
-    plan = analyzeFiles([...tracedFiles.keys()], featureName, { llm: 'claude' });
+    plan = await analyzeFiles([...tracedFiles.keys()], featureName, { llm: 'claude' });
   } catch (e) {
     console.error(`Analysis failed: ${e.message}`);
     return;
@@ -641,7 +685,7 @@ export async function importRouteWizard(ask, seedRoute) {
     return;
   }
 
-  const { results } = executeImportPlan(root, plan, { llm: fillWithLlm ? 'claude' : undefined });
+  const { results } = await executeImportPlan(root, plan, { llm: fillWithLlm ? 'claude' : undefined });
   reportImport(root, results, fillWithLlm ? 'claude' : undefined, plan.feature, 1);
 
   console.log('');

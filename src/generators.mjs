@@ -1,4 +1,4 @@
-import path from 'node:path'; import fs from 'node:fs'; import {ensureDir,write,rel} from './fs.mjs'; import {loadConfig} from './config.mjs'; import {validateArchitecture} from './architecture-enforcer.mjs'; import {ConstructError,EXIT_CODES} from './diagnostics.mjs';
+import path from 'node:path'; import fs from 'node:fs'; import {ensureDir,write,rel} from './fs.mjs'; import {loadConfig} from './config.mjs'; import {validateArchitecture} from './architecture-enforcer.mjs'; import {ConstructError,EXIT_CODES} from './diagnostics.mjs'; import {callLlm,stripCodeFence} from './llm.mjs';
 // The controller template's own composition (importing a same-named Page
 // from the feature's pages/ folder) is Construct's own feature-internal
 // convention, not Next.js's -- it works unchanged for either framework.
@@ -23,6 +23,30 @@ const templates={
  component:(n)=>`export function ${n}() {\n  return <div>${n}</div>;\n}\n`
 };
 export const folderFor=(layer)=>layer==='hook'?'hooks':layer==='controller'?'controllers':layer==='workflow'?'workflows':layer==='domain'?'domain':layer==='service'?'services':layer==='page'?'pages':'components';
+
+// Reverse of folderFor — which layer a generated file's own parent folder
+// name implies. Single source of truth shared by import.mjs's per-file
+// fill (porting) and this module's own fillGeneratedFile (scaffolding-from-
+// scratch, #101) so both ever call an LLM with exactly the same
+// layer-constraint text for a given file, never two copies that could
+// drift apart.
+export const FOLDER_TO_LAYER={controllers:'controller',workflows:'workflow',hooks:'hook',domain:'domain',services:'service',pages:'page',components:'component'};
+export const layerFromGeneratedFile=(file)=>FOLDER_TO_LAYER[path.basename(path.dirname(file))]||'component';
+
+// The rule each layer's generated file must keep obeying, whether a human,
+// import's fill, or this module's own create/generate fill writes its real
+// body — handed verbatim to whichever LLM does that writing, in its
+// prompt, so the constraint is an example the model sees rather than
+// something enforced only after the fact by construct validate.
+export const LAYER_CONSTRAINTS={
+ domain:'Pure function(s) only. Never write the words fetch, window, document, localStorage, sessionStorage, or navigator anywhere in the file, even in a comment. No React import.',
+ service:'Owns an external effect on behalf of the feature. Never import React or any react-related package.',
+ workflow:'A state machine (e.g. via xstate\'s setup/createMachine). Never import "react" or any package path containing "react/".',
+ hook:'A React hook — the exported function name must start with "use". May import anything.',
+ component:'Presentation-only, from props. Never write the substring "controllers/", "workflows/", "services/", or "domain/" anywhere in the file, even in a comment.',
+ page:'Presentation composition from props only. Never write "workflows/", "services/", or "domain/" anywhere in the file (even in a comment), never call fetch(), never use useMachine/useActor/createMachine.',
+ controller:'Composes hooks/domain/pages for a route. No import restrictions.',
+};
 
 // Shared by generateLayer and refactor.mjs's move/rename: the filename base a
 // layer's naming convention expects for a given capitalized name — a hook
@@ -138,4 +162,45 @@ export function generateVertical(root,name,feature,layers){
  if(unknown.length)throw new Error(`Unknown layer: ${unknown[0]}`);
  const ordered=LAYER_ORDER.filter(l=>unique.includes(l));
  return ordered.map(layer=>generateLayer(root,layer,name,feature));
+}
+
+// ---- optional LLM fill for a freshly-scaffolded file (#101/Epic 6.5) -----
+//
+// Mirrors import.mjs's per-file fill exactly in shape (one call per file,
+// layer constraint in the prompt, keep the stub's exported identifier
+// name, strip code fences from the response) but writes a real
+// implementation from scratch rather than porting one from an old source
+// file — there is no "old file" here, only the template stub itself and a
+// plain description of what it's for (feature + name + layer). Scoped
+// strictly to one already-generated file's own body: this function never
+// decides which layers/files exist — cli.mjs's generate()/create() call
+// generateLayer/generateVertical first, exactly as before, and only then
+// optionally call this once per resulting file.
+function buildScaffoldFillPrompt({layer,relFile,stubContent,name,feature}){
+ return [
+  'You are implementing one freshly-scaffolded file of a Construct-architecture project, from scratch (there is no prior/legacy source to port — write a real, working implementation).',
+  `Target file: ${relFile} (layer: "${layer}", feature: "${feature}").`,
+  `Layer constraint: ${LAYER_CONSTRAINTS[layer]||'none.'}`,
+  `Keep the exact exported identifier name(s) already present in the current stub below unchanged — replace only the body with a real, reasonable implementation appropriate for something named "${name}" at this layer. Do not invent unrelated behavior or additional exports.`,
+  '',
+  '=== CURRENT STUB (this is the file you are rewriting) ===',
+  stubContent,
+  '',
+  'Return ONLY the new, complete file content. No markdown code fences, no explanation, no commentary — just the raw file content that will be written as-is.',
+ ].join('\n');
+}
+
+/** Overwrite one already-generated file's stub content with `llm`'s real
+ * implementation. `root` is only used to build the file's prompt-relative
+ * path (for the same reason import.mjs's fill does — a clearer prompt, not
+ * a behavior difference); `file` must already exist (i.e. call this after
+ * generateLayer/generateVertical, never instead of it). `llmOptions` is
+ * passed straight through to callLlm — see llm.mjs's ollama provider for
+ * what it can carry (model/baseUrl). Returns `file` for convenient
+ * chaining/logging by the caller. */
+export async function fillGeneratedFile(root,file,layer,{feature,name,llm,llmOptions}={}){
+ const stubContent=fs.readFileSync(file,'utf8');
+ const prompt=buildScaffoldFillPrompt({layer,relFile:rel(root,file),stubContent,name,feature});
+ write(file,stripCodeFence(await callLlm(llm,prompt,llmOptions)));
+ return file;
 }

@@ -119,7 +119,7 @@ test.describe.serial('Construct UI walkthrough (issue #37)', () => {
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'dashboard-action-result.png'), fullPage: true });
   });
 
-  test('4. settings.png — LLM provider dropdown open, project directory field visible', async ({ page }) => {
+  test('4. settings.png — per-capability LLM provider dropdowns, project directory field visible', async ({ page }) => {
     await page.goto('/settings');
     await expect(page.locator('h1')).toHaveText('Settings');
 
@@ -127,10 +127,26 @@ test.describe.serial('Construct UI walkthrough (issue #37)', () => {
     await expect(projectDirInput).toBeVisible();
     await expect(projectDirInput).toHaveValue(tmpProjectDir);
 
-    const providerSelect = page.locator('select');
-    const optionTexts = await providerSelect.locator('option').allTextContents();
-    expect(optionTexts.length).toBeGreaterThan(1); // "none" + at least one real provider from src/llm.mjs's PROVIDERS
-    expect(optionTexts.some((t) => t.trim() === 'claude')).toBe(true);
+    // #100/Epic 6.4: one independently-configurable dropdown per LLM
+    // capability (importFill/createFill/planAnalysis), not one global
+    // provider select — each has a stable id so this test (and any other
+    // future one) can target a specific capability unambiguously.
+    const importFillSelect = page.locator('#llm-importFill');
+    const createFillSelect = page.locator('#llm-createFill');
+    const planAnalysisSelect = page.locator('#llm-planAnalysis');
+    await expect(importFillSelect).toBeVisible();
+    await expect(createFillSelect).toBeVisible();
+    await expect(planAnalysisSelect).toBeVisible();
+
+    const importFillOptions = await importFillSelect.locator('option').allTextContents();
+    expect(importFillOptions.length).toBeGreaterThan(1); // "none" + at least one real provider from src/llm.mjs's PROVIDERS
+    expect(importFillOptions.some((t) => t.trim() === 'claude')).toBe(true);
+
+    // The #96 hard guardrail, verified at the UI layer too: planAnalysis's
+    // own dropdown must never even offer 'ollama' as an option — not just
+    // ui/server/src/settings.mjs rejecting it server-side.
+    const planAnalysisOptions = await planAnalysisSelect.locator('option').allTextContents();
+    expect(planAnalysisOptions.some((t) => t.trim() === 'ollama')).toBe(false);
 
     // Click to open the native <select>. Note: Chromium's native option
     // popup is an OS-level overlay outside the page's render tree, so
@@ -140,7 +156,7 @@ test.describe.serial('Construct UI walkthrough (issue #37)', () => {
     // matches what a user does) and additionally assert the real option
     // list programmatically so "showing real options" is verified even
     // though the screenshot itself will show the closed control.
-    await providerSelect.click();
+    await importFillSelect.click();
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'settings.png'), fullPage: true });
     await page.keyboard.press('Escape');
   });

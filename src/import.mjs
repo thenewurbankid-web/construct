@@ -8,37 +8,23 @@
 // separate LLM session to fill in later, same as before this existed.
 import fs from 'node:fs';
 import path from 'node:path';
-import { generateVertical } from './generators.mjs';
+import { generateVertical, LAYER_ORDER, LAYER_CONSTRAINTS, layerFromGeneratedFile } from './generators.mjs';
 import { walk } from './fs.mjs';
 import { callLlm, stripCodeFence } from './llm.mjs';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 
-const FOLDER_TO_LAYER = {
-  controllers: 'controller', workflows: 'workflow', hooks: 'hook',
-  domain: 'domain', services: 'service', pages: 'page', components: 'component',
-};
-
-const KNOWN_LAYERS = new Set(Object.values(FOLDER_TO_LAYER));
+// LAYER_CONSTRAINTS and layerFromGeneratedFile now live in generators.mjs
+// (#101) — shared, single-source-of-truth versions, since generators.mjs's
+// own create/generate fill (fillGeneratedFile) needs exactly the same
+// layer-constraint text import's fill has always used. Behavior here is
+// unchanged; only where these two live moved.
+const KNOWN_LAYERS = new Set(LAYER_ORDER);
 const CODE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx']);
 // Test files carry no portable business logic and just waste analysis
 // context (or worse, tempt the LLM into proposing a unit "from" a test) —
 // a real route directory routinely has them sitting right next to the
 // source they cover (e.g. useCpoGate.ts + useCpoGate.test.ts).
 const TEST_FILE_RE = /\.(test|spec)\.[^./]+$/;
-
-const LAYER_CONSTRAINTS = {
-  domain: 'Pure function(s) only. Never write the words fetch, window, document, localStorage, sessionStorage, or navigator anywhere in the file, even in a comment. No React import.',
-  service: 'Owns an external effect on behalf of the feature. Never import React or any react-related package.',
-  workflow: 'A state machine (e.g. via xstate\'s setup/createMachine). Never import "react" or any package path containing "react/".',
-  hook: 'A React hook — the exported function name must start with "use". May import anything.',
-  component: 'Presentation-only, from props. Never write the substring "controllers/", "workflows/", "services/", or "domain/" anywhere in the file, even in a comment.',
-  page: 'Presentation composition from props only. Never write "workflows/", "services/", or "domain/" anywhere in the file (even in a comment), never call fetch(), never use useMachine/useActor/createMachine.',
-  controller: 'Composes hooks/domain/pages for a route. No import restrictions.',
-};
-
-function layerFromGeneratedFile(file) {
-  return FOLDER_TO_LAYER[path.basename(path.dirname(file))] || 'component';
-}
 
 function breadcrumb(fromAbsPath, intoAbsPath) {
   const relPath = path.relative(path.dirname(intoAbsPath), fromAbsPath).split(path.sep).join('/');
@@ -71,8 +57,12 @@ function buildPortPrompt({ layer, relFile, stubContent, oldContent, oldRelPath }
  * beyond confirming it exists. With `{ llm: '<provider>' }`: additionally
  * calls that provider once per generated file to write the ported logic
  * directly, replacing the stub. Either way, locating the source and
- * scaffolding the files themselves never involves an LLM call. */
-export function importVertical(root, name, feature, layers, fromPath, { llm } = {}) {
+ * scaffolding the files themselves never involves an LLM call.
+ *
+ * Async because `callLlm` is (providers like `ollama` make a real HTTP
+ * call) — with no `llm` option this still resolves on the same tick's
+ * microtask queue as before, no behavior change, just a Promise wrapper. */
+export async function importVertical(root, name, feature, layers, fromPath, { llm, llmOptions } = {}) {
   const fromAbs = path.resolve(fromPath);
   if (!fs.existsSync(fromAbs) || !fs.statSync(fromAbs).isFile()) {
     throw new ConstructError(`Source file not found: ${fromPath}`, { exitCode: EXIT_CODES.USAGE_ERROR });
@@ -94,7 +84,7 @@ export function importVertical(root, name, feature, layers, fromPath, { llm } = 
       oldContent,
       oldRelPath: path.relative(path.dirname(file), fromAbs).split(path.sep).join('/'),
     });
-    fs.writeFileSync(file, stripCodeFence(callLlm(llm, prompt)));
+    fs.writeFileSync(file, stripCodeFence(await callLlm(llm, prompt, llmOptions)));
   }
   return { source: fromAbs, files, llmFilled: !!llm };
 }
@@ -132,18 +122,22 @@ export function validatePlanShape(plan, sourceDescription) {
  * runs `importVertical` once per already-decided unit, in the order given.
  * `{ llm }` applies uniformly to every unit (writes ported logic instead of
  * a breadcrumb) if given. */
-export function executeImportPlan(root, plan, { llm } = {}) {
+export async function executeImportPlan(root, plan, { llm, llmOptions } = {}) {
   const { feature, units } = plan;
-  const results = units.map((unit) => ({
-    name: unit.name,
-    ...importVertical(root, unit.name, feature, unit.layers, unit.from, { llm }),
-  }));
+  const results = [];
+  // Sequential (not Promise.all) — deliberately mirrors the old synchronous
+  // for-loop's one-unit-at-a-time behavior/ordering, and avoids hammering a
+  // local Ollama instance (or any provider) with N concurrent requests for
+  // one plan.
+  for (const unit of units) {
+    results.push({ name: unit.name, ...(await importVertical(root, unit.name, feature, unit.layers, unit.from, { llm, llmOptions })) });
+  }
   return { feature, results };
 }
 
 /** Load a plan from a JSON file, validate its shape, and execute it.
  * Plan shape: `{ feature: string, units: [{ name, layers: string[], from }] }`. */
-export function importPlan(root, planPath, { llm } = {}) {
+export async function importPlan(root, planPath, { llm, llmOptions } = {}) {
   let plan;
   try {
     plan = JSON.parse(fs.readFileSync(path.resolve(planPath), 'utf8'));
@@ -151,7 +145,7 @@ export function importPlan(root, planPath, { llm } = {}) {
     throw new ConstructError(`Could not read/parse plan at ${planPath}: ${e.message}`, { exitCode: EXIT_CODES.USAGE_ERROR });
   }
   validatePlanShape(plan, planPath);
-  return executeImportPlan(root, plan, { llm });
+  return executeImportPlan(root, plan, { llm, llmOptions });
 }
 
 // ~125k tokens at a conservative 4 chars/token — comfortably fits a whole
@@ -206,7 +200,7 @@ function buildAnalysisPrompt(featureName, files) {
  * across directories (and the model's response) stay unambiguous; with
  * just one directory the label is the bare relative path, unchanged from
  * before this accepted more than one. */
-export function analyzeRoute(routeDirs, featureName, { llm = 'claude' } = {}) {
+export async function analyzeRoute(routeDirs, featureName, { llm = 'claude' } = {}) {
   const dirs = (Array.isArray(routeDirs) ? routeDirs : [routeDirs]).map((d) => path.resolve(d));
   for (const d of dirs) {
     if (!fs.existsSync(d) || !fs.statSync(d).isDirectory()) {
@@ -262,7 +256,7 @@ function labelFiles(absPaths) {
  * counterpart to analyzeRoute for callers (the route-tracing wizard) that
  * already know exactly which files matter, rather than "everything under
  * this directory." */
-export function analyzeFiles(absPaths, featureName, { llm = 'claude' } = {}) {
+export async function analyzeFiles(absPaths, featureName, { llm = 'claude' } = {}) {
   if (!absPaths.length) {
     throw new ConstructError('No files to analyze.', { exitCode: EXIT_CODES.USAGE_ERROR });
   }
@@ -273,7 +267,7 @@ export function analyzeFiles(absPaths, featureName, { llm = 'claude' } = {}) {
 /** Shared core: given a { label -> absolute path } map, build the prompt,
  * call the LLM, and validate the response into a plan whose every unit's
  * `from` is resolved back to a real absolute path. */
-function runAnalysis(fileMap, featureName, llm, sourceDescription) {
+async function runAnalysis(fileMap, featureName, llm, sourceDescription) {
   const files = [...fileMap.entries()].map(([relPath, abs]) => ({ relPath, content: fs.readFileSync(abs, 'utf8') }));
   const { prompt, omitted } = buildAnalysisPrompt(featureName, files);
   if (omitted.length) {
@@ -281,7 +275,7 @@ function runAnalysis(fileMap, featureName, llm, sourceDescription) {
       `Warning: ${omitted.length} file(s) were too long to fit in this analysis and were left out (or partially cut): ${omitted.join(', ')}. Consider running import --route again scoped to just those, or splitting the analysis.`,
     );
   }
-  const raw = callLlm(llm, prompt);
+  const raw = await callLlm(llm, prompt);
   let plan;
   try {
     plan = JSON.parse(stripCodeFence(raw));
