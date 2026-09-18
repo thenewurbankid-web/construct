@@ -211,21 +211,40 @@ snapshot that rots. See #35 for the audit that established this.
 ## Demos module (Module 8) — on-demand feature documentation (standing instruction)
 
 See #125 for the epic. A recurring workflow, not a one-time backlog sweep:
-when asked to create a demo ticket for a feature, file it as `[Demo]
-<Feature name>` referencing #125, and fill it with:
+when asked to create a demo for a feature, file a **parent ticket** as
+`[Demo] <Feature name>` referencing #125, then **one subtask sub-issue per
+distinct capability or logical section** of that feature (rule 4's usual
+parent-epic + atomic-sub-issue pattern) — never one flat mega-ticket trying
+to cover everything. Use judgment on the exact split (per capability or per
+section, whichever is cleanest for that feature); the point is real,
+individually-closable subtasks, not a rigid taxonomy.
 
-1. **Current capability** — what the feature actually does today, verified
-   against real current code/behavior, not copied from the original
-   issue's (possibly since-drifted) description.
-2. **User manual** — step-by-step usage for every surface the feature has:
-   exact CLI command/flags/example output where applicable, and the real
-   UI navigation path + workflow where applicable.
-3. **Screenshots** — real, Playwright-driven, never mockups or
-   descriptions. A dedicated spec under `ui/e2e/tests/demos/` (separate
-   from the regression e2e suite) walks the feature end-to-end, actually
-   run, screenshots committed to `ui-screenshots` under
-   `ui/e2e/screenshots/demos/` and embedded inline (same mechanism as
-   rule 11). CLI-only features use a real terminal transcript instead.
+Each subtask (and the parent's own summary) must be written as:
+
+1. **One continuous end-to-end narrative — never split into separate "CLI"
+   and "UI" sections.** Write it as a single numbered walkthrough a real
+   person would experience: run a command, see real output, switch to the
+   browser, see the result there, maybe back to the terminal — one flowing
+   story proving the CLI and UI are two faces of the same engine, not two
+   demos bolted together. Cover the feature's full real capability
+   breadth inside that one narrative (every command/flag/layer/option it
+   actually has, verified against current code — not a cherry-picked
+   minimal example, and not copied from a possibly-drifted old issue
+   description).
+2. **Written for users and stakeholders, not engineers.** Plain language
+   about what the feature does and how to use it; real commands/output/
+   screenshots as evidence. Skip implementation internals (parsing
+   details, internal function/module names, rule-engine mechanics) unless
+   a stakeholder would actually care — product-demo tone, not
+   engineering-design-doc tone.
+3. **Real evidence only.** Terminal output from an actual run, never
+   fabricated. Screenshots from an actual Playwright run
+   (`ui/e2e/tests/demos/`, a dedicated subdirectory, screenshots committed
+   to `ui-screenshots` under `ui/e2e/screenshots/demos/`, embedded inline
+   — same mechanism as rule 11) — but kept **frugal**: only at genuinely
+   meaningful state changes (a result appearing, a form succeeding), not
+   one per click/keystroke. A CLI-only capability with no UI surface uses
+   a real terminal transcript instead of screenshots.
 
 Only create demo tickets when asked — don't proactively file one per
-feature. Standard issue discipline (rules 1-2, 12 above) still applies.
+feature. Standard issue discipline (rules 1-2, 4, 12 above) still applies.
