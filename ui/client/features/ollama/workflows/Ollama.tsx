@@ -11,6 +11,10 @@ export type OllamaState = {
   pulling: boolean;
   pullProgress: PullProgress | null;
   pullError: string | null;
+  // Epic 6.3/#99 — the user's chosen "active" local model (persisted via
+  // services/OllamaModelSelection.tsx). Independent of `models`/pulling:
+  // a model can be selected before it's even installed.
+  selectedModel: string | null;
 };
 
 export type OllamaAction =
@@ -22,7 +26,8 @@ export type OllamaAction =
   | { type: 'PULL_PROGRESS'; progress: PullProgress }
   | { type: 'PULL_DONE' }
   | { type: 'PULL_ERROR'; message: string }
-  | { type: 'MODEL_REMOVED'; name: string };
+  | { type: 'MODEL_REMOVED'; name: string }
+  | { type: 'SELECT_MODEL'; tag: string };
 
 export const initialOllamaState: OllamaState = {
   status: null,
@@ -32,6 +37,7 @@ export const initialOllamaState: OllamaState = {
   pulling: false,
   pullProgress: null,
   pullError: null,
+  selectedModel: null,
 };
 
 export function ollamaReducer(state: OllamaState, action: OllamaAction): OllamaState {
@@ -54,6 +60,8 @@ export function ollamaReducer(state: OllamaState, action: OllamaAction): OllamaS
       return { ...state, pulling: false, pullError: action.message };
     case 'MODEL_REMOVED':
       return { ...state, models: state.models.filter((m) => m.name !== action.name) };
+    case 'SELECT_MODEL':
+      return { ...state, selectedModel: action.tag };
     default:
       return state;
   }

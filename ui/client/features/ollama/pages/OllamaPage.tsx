@@ -3,12 +3,14 @@ import { OllamaStatusPanel } from '../components/OllamaStatusPanel';
 import { InstallGuidance } from '../components/InstallGuidance';
 import { ModelList } from '../components/ModelList';
 import { PullForm } from '../components/PullForm';
+import { ModelPicker } from '../components/ModelPicker';
 import type { useOllama } from '../hooks/useOllama';
 
 type OllamaPageProps = ReturnType<typeof useOllama>;
 
 export function OllamaPage({
   status, models, loadError, pullName, setPullName, pulling, pullProgress, pullPercent, pullError, pull, remove, installCommand,
+  qwenTags, selectedModel, selectModel,
 }: OllamaPageProps): ReactNode {
   if (!status) return <p>Checking for Ollama…</p>;
 
@@ -26,6 +28,8 @@ export function OllamaPage({
 
       {!status.running && <InstallGuidance installCommand={installCommand} />}
 
+      <ModelPicker tags={qwenTags} selectedModel={selectedModel} onSelect={selectModel} />
+
       {status.running && (
         <>
           {loadError && <p className="status-error">{loadError}</p>}
@@ -38,6 +42,7 @@ export function OllamaPage({
             pullPercent={pullPercent}
             pullError={pullError}
             onPull={pull}
+            recommended={qwenTags.map((t) => ({ tag: t.tag, label: `${t.label} (${t.approxSize})${t.recommended ? ' — recommended' : ''}` }))}
           />
         </>
       )}
