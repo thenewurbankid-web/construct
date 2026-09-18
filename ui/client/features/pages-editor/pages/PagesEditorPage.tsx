@@ -18,11 +18,11 @@ export function PagesEditorPage(props: PagesEditorPageProps): ReactNode {
     <div className="page pages-editor-page">
       <h1>Pages Editor</h1>
       <p className="hint">
-        Browse a feature&apos;s pages/ layer (#49), view a page&apos;s JSX as a tree (#50), select a node from
-        either the tree or the structural preview (#51), edit its isolated snippet or props and save
-        straight back into the source file (#52/#53), auto-map unwired props (#54), and see the
-        whole tree&apos;s prop flow as a colored diagram (#55). Every save is scoped to pages/ and
-        checked against the existing PAGE-*/COMPONENT-* architecture rules before it lands (#56).
+        Browse a feature&apos;s pages/ layer, view a page&apos;s JSX as a tree, select a node from
+        either the tree or the structural preview, edit its isolated snippet or props and save
+        straight back into the source file, auto-map unwired props, and see the
+        whole tree&apos;s prop flow as a colored diagram. Every save is scoped to pages/ and
+        checked against the existing PAGE-*/COMPONENT-* architecture rules before it lands.
       </p>
 
       <PagesBrowser

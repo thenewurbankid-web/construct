@@ -4,6 +4,7 @@ type CommandResultData = {
   ok: boolean;
   output?: string[];
   attribution?: { tool: string; llm: string } | null;
+  durationSeconds?: number;
   error?: string;
 } | null;
 
