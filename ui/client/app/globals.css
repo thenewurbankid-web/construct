@@ -242,6 +242,15 @@ button:disabled {
   font-weight: 600;
 }
 
+/* Whole-command wall-clock total (#167) — a floor guarantee distinct from
+   whatever per-step timing text already appears inside .command-output. */
+.command-duration {
+  margin-top: 6px;
+  font-size: 0.78rem;
+  color: var(--muted, var(--text));
+  opacity: 0.75;
+}
+
 .attribution {
   margin-top: 8px;
   display: flex;
