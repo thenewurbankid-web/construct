@@ -20,6 +20,7 @@ import { loadConfig } from './config.mjs';
 import { loadLayerGraph, canImport } from './architecture-graph.mjs';
 import { makeViolation, ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { walk, rel } from './fs.mjs';
+import { globToRegExp, matchGlob } from './glob.mjs';
 import { parseToAst, extractImports, staticImportEntries, lineOf, collectCalls, collectBareIdentifierUsages, collectControlFlowNodes } from './ast/index.mjs';
 
 export { extractImports };
@@ -32,11 +33,6 @@ const KNOWN_LAYERS = new Set(['route', 'controller', 'workflow', 'hook', 'servic
  * of "the react package itself or something nested under a react/ path segment"). */
 function isReactSpecifier(specifier) {
   return specifier === 'react' || /(^|\/)react\//.test(specifier);
-}
-
-function globToRegExp(glob) {
-  const escaped = glob.replaceAll('**', ' ').replaceAll('*', '[^/]*').replaceAll(' ', '.*');
-  return new RegExp('^' + escaped + '$');
 }
 
 /** Classify a project-relative file path into a layer name, or null. */
@@ -196,11 +192,7 @@ export function detectLayerViolations(layer, source) {
 
 // ---- Exceptions ------------------------------------------------------
 
-/** Convert a Construct glob (`**`, `*`) into an anchored RegExp. */
-export function matchGlob(glob, file) {
-  const g = glob.replaceAll('**', ' ').replaceAll('*', '[^/]*').replaceAll(' ', '.*');
-  return new RegExp('^' + g + '$').test(file);
-}
+export { matchGlob };
 
 // architecture.yml is YAML: an unquoted date-like scalar (e.g. `expires:
 // 2020-01-01`) is parsed by js-yaml's default schema into a real JS `Date`,

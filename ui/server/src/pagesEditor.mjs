@@ -23,6 +23,7 @@ import { loadLayerGraph } from '../../../src/architecture-graph.mjs';
 import { validateArchitecture } from '../../../src/architecture-enforcer.mjs';
 import { validateSeparationOfConcerns } from '../../../src/soc-enforcer.mjs';
 import { walk, rel } from '../../../src/fs.mjs';
+import { matchGlob } from '../../../src/glob.mjs';
 
 // @babel/traverse's default export shape differs between ESM interop modes;
 // this normalizes it the same way babel's own docs recommend.
@@ -97,8 +98,7 @@ export function resolvePageFile(root, feature, file) {
   const relFromRoot = rel(root, resolved);
   const pattern = graph.page?.pattern;
   if (pattern) {
-    const re = new RegExp('^' + pattern.replaceAll('**', '§').replaceAll('*', '[^/]*').replaceAll('§', '.*') + '$');
-    if (!re.test(relFromRoot)) {
+    if (!matchGlob(pattern, relFromRoot)) {
       throw new PagesEditorError(`"${relFromRoot}" is not classified as the "page" layer by this project's architecture.yml.`);
     }
   }

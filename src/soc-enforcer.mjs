@@ -3,6 +3,7 @@
 // checks (MODULE-001, SOC-001, DRY-001). All violations are built through
 // makeViolation() from ./diagnostics.mjs with module: 'separation-of-concerns'.
 import fs from 'node:fs';
+import { matchGlob } from './glob.mjs';
 import path from 'node:path';
 import { loadConfig, DEFAULT_RULES } from './config.mjs';
 import { walk, rel } from './fs.mjs';
@@ -23,11 +24,6 @@ function severityFor(config, rule) {
   const entry = config.rules?.[rule];
   if (typeof entry === 'string') return entry;
   return entry?.severity ?? DEFAULT_RULES[rule]?.severity ?? 'error';
-}
-
-function matchGlob(glob, file) {
-  const g = glob.replaceAll('**', '§').replaceAll('*', '[^/]*').replaceAll('§', '.*');
-  return new RegExp('^' + g + '$').test(file);
 }
 
 function isExempt(config, rule, file) {
