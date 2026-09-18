@@ -16,6 +16,7 @@ import {
 import { validateArchitecture } from '../src/architecture-enforcer.mjs';
 import { createFeature } from '../src/generators.mjs';
 import { ConstructError } from '../src/diagnostics.mjs';
+import { parseToAst } from '../src/parser.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.join(here, '..');
@@ -226,6 +227,32 @@ test('generateServiceFromSpec creates the destination feature if it does not alr
   assert.ok(!fs.existsSync(path.join(dir, 'features', 'pet')));
   await generateServiceFromSpec(dir, 'petStore', 'pet', petstoreSpec);
   assert.ok(fs.existsSync(path.join(dir, 'features', 'pet', 'index.ts')));
+});
+
+test('generateServiceFromSpec: a hyphenated / underscored service name yields a valid `<name>Api` identifier (#216)', async () => {
+  // (An underscored name is already a valid identifier, so it is left as-is
+  // -- `pet_storeApi` -- exactly like every other already-valid name.)
+  for (const [name, ident] of [['pet-store', 'petStore'], ['pet_store', 'pet_store']]) {
+    const dir = tmpProject();
+    writeArchitectureYml(dir, '');
+    const files = await generateServiceFromSpec(dir, name, 'pet', petstoreSpec);
+    const endpoints = files.find((f) => f.endsWith(`${name}Api.ts`));
+    const source = fs.readFileSync(endpoints, 'utf8');
+    assert.ok(source.includes(`export const ${ident}Api = api.injectEndpoints(`));
+    assert.doesNotMatch(source, /pet-storeApi/);
+    assert.doesNotThrow(() => parseToAst(source, endpoints));
+  }
+});
+
+test('generateServiceFromSpec: a service name that cannot form an identifier is rejected before anything is written (#216)', async () => {
+  const dir = tmpProject();
+  writeArchitectureYml(dir, '');
+  await assert.rejects(() => generateServiceFromSpec(dir, '3d-store', 'pet', petstoreSpec), (err) => {
+    assert.ok(err instanceof ConstructError);
+    assert.match(err.message, /Service name "3d-store" can't be turned into a valid TypeScript identifier/);
+    return true;
+  });
+  assert.ok(!fs.existsSync(path.join(dir, 'features')));
 });
 
 // ---- SERVICE-002 regression (#115 acceptance criterion) -------------------
