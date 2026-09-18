@@ -32,8 +32,19 @@ import {
   hashOf,
 } from './pagesEditor.mjs';
 
+// This server is a local dev tool, but it has real teeth: /api/import (and
+// friends) read an arbitrary path off disk and, with --llm, send that
+// content to an external LLM provider — a fully open CORS policy would let
+// any web page a developer happens to have open in another tab drive that
+// from their own browser, with no consent step ("drive-by localhost").
+// Restricting to the actual client origin (configurable, since the client
+// dev server's port is the one thing that might legitimately change) closes
+// that off: the browser's CORS preflight rejects the cross-origin request
+// before it ever reaches a route handler.
+export const CLIENT_ORIGIN = process.env.UI_CLIENT_ORIGIN || 'http://localhost:3000';
+
 const app = express();
-app.use(cors());
+app.use(cors({ origin: CLIENT_ORIGIN }));
 app.use(express.json());
 
 function respond(res, result) {
@@ -371,7 +382,7 @@ app.post('/api/pages/automap', (req, res) => {
 
 const port = Number(process.env.PORT) || 4000;
 const server = http.createServer(app);
-attachWizardSocket(server);
+attachWizardSocket(server, '/ws/wizard', CLIENT_ORIGIN);
 
 server.listen(port, () => {
   console.log(`Construct UI server listening on http://localhost:${port}`);

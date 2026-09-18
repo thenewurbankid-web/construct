@@ -27,8 +27,22 @@ function send(ws, payload) {
   if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(payload));
 }
 
-export function attachWizardSocket(server, path = '/ws/wizard') {
-  const wss = new WebSocketServer({ server, path });
+// WebSocket handshakes aren't covered by Express's cors() middleware (that
+// only guards regular HTTP requests) and browsers don't block a cross-
+// origin `new WebSocket(...)` the way they block a cross-origin fetch --
+// the server has to check the Origin header itself, or any page a
+// developer has open can quietly drive this wizard (which can call an LLM)
+// from their own tab. `allowedOrigin` mirrors index.mjs's CLIENT_ORIGIN
+// check; omit it (leave undefined) only in a context that intentionally
+// wants no restriction, e.g. a future test harness -- never in production.
+export function attachWizardSocket(server, path = '/ws/wizard', allowedOrigin) {
+  const wss = new WebSocketServer({
+    server,
+    path,
+    verifyClient: allowedOrigin
+      ? (info) => info.origin === allowedOrigin
+      : undefined,
+  });
 
   wss.on('connection', (ws) => {
     let session = null;
