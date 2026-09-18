@@ -615,6 +615,19 @@ button:disabled {
   min-width: 90px;
 }
 
+/* #77 — labels a raw-code-edited row (identifier/expression/spread) so its
+ * text input isn't mistaken for a broken plain-string field. */
+.prop-kind-hint {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(217, 140, 43, 0.15);
+  color: var(--llm);
+  flex-shrink: 0;
+}
+
 .prop-row input[type='text'],
 .prop-row input[type='number'] {
   flex: 1;
@@ -635,6 +648,10 @@ button:disabled {
   /* background/border/blur come from .glass-panel (GlassPanel component) */
   margin-top: 20px;
   padding: 16px;
+}
+
+.propflow-show-values {
+  margin-top: 10px;
 }
 
 .propflow-legend {
