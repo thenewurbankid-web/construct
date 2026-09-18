@@ -13,11 +13,9 @@ fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
 // run it — never a mocked/hand-written stand-in for its output.
 const CLI_BIN = path.resolve(__dirname, '../../../../bin/construct.mjs');
 const OPENAPI_FIXTURE = path.resolve(__dirname, '../../../../fixtures/openapi-products/products.yaml');
-// Overridable so this spec can run against the standard ports (:4000, the
-// checked-in playwright.config.js) or dedicated ones (see
-// playwright.demo-listing-details.config.js's own comment for why this
-// sandbox sometimes needs the latter).
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4000';
+// Overridable so this spec can run against any E2E_SERVER_PORT (the config
+// exports the matching origin as E2E_API_BASE; see playwright.config.js, #140).
+const API_BASE = process.env.E2E_API_BASE || 'http://localhost:4000';
 
 /** Runs a real `construct` command against the shared scratch project and
  * logs the exact command + its real stdout, so the run's own console output

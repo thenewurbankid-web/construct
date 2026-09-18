@@ -8,7 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCREENSHOTS_DIR = path.resolve(__dirname, '../screenshots');
 fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
 
-const API_BASE = 'http://localhost:4102';
+const API_BASE = process.env.E2E_API_BASE || 'http://localhost:4000';
 
 // #167 -- the Dashboard's result panel and the Import Wizard's chat
 // transcript both show the per-step + total timing #165/#166 add to every
