@@ -229,6 +229,30 @@ export function hashOf(source) {
   return crypto.createHash('sha256').update(source).digest('hex');
 }
 
+/**
+ * Ticket F.1 (#120, epic #119) — parse a bare snippet's *own* text (not a
+ * whole page file) into the same node tree shape serializeTree produces, so
+ * the visual composer can derive its graph live from exactly the text
+ * currently sitting in the snippet editor, with zero persisted metadata: no
+ * `.flyde`-style side file, no cached JSON layout, just a fresh parse of
+ * whatever text is passed in. Reuses parsePageTree/serializeTree completely
+ * unchanged — a standalone JSX snippet (e.g. `<div><Foo/></div>`) is already
+ * valid module source on its own (babel parses it as an ExpressionStatement
+ * wrapping the JSXElement/JSXFragment), so no wrapping hack is needed.
+ * Parse failures are expected transiently while the user is mid-edit (an
+ * unclosed tag, etc.) — reported as `{roots: [], error}` rather than thrown,
+ * so the canvas can just keep showing its last-good graph instead of
+ * crashing on every keystroke.
+ */
+export function parseSnippetToTree(snippetSource) {
+  if (typeof snippetSource !== 'string' || !snippetSource.trim()) return { roots: [], error: null };
+  try {
+    return { ...serializeTree(snippetSource), error: null };
+  } catch (e) {
+    return { roots: [], error: e.message };
+  }
+}
+
 /** The exact source snippet for one node (#52's read side) plus its parent
  * chain's tag names for breadcrumb display. */
 export function getNodeSnippet(source, nodeId) {

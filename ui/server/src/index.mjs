@@ -28,6 +28,7 @@ import {
   applyAutoMap,
   checkEnforcement,
   hashOf,
+  parseSnippetToTree,
 } from './pagesEditor.mjs';
 
 const app = express();
@@ -319,6 +320,22 @@ app.post('/api/pages/automap', (req, res) => {
     }
     const patched = applyAutoMap(source, nodeId, propNames);
     saveAndRespond(res, root, relPath, absPath, patched);
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+// Ticket F.1 (#120, epic #119) — the visual composer's live parse. POST
+// (not GET) since a snippet's text can be long/contain query-unsafe
+// characters; no `feature`/`file`/disk access at all here — pure text in,
+// tree out, so the graph the client renders is always derived fresh from
+// whatever text is currently in the editor, never a cached/persisted
+// layout.
+app.post('/api/pages/snippet-tree', (req, res) => {
+  try {
+    const { snippet } = req.body || {};
+    if (typeof snippet !== 'string') return res.status(400).json({ ok: false, error: 'snippet is required' });
+    res.json(parseSnippetToTree(snippet));
   } catch (e) {
     handlePagesEditorError(res, e);
   }

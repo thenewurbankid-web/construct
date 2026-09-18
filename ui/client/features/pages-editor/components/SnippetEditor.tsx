@@ -5,6 +5,7 @@ import type { PageTree } from '../types';
 import { HighlightedSnippetEditor } from './HighlightedSnippetEditor';
 import { SnippetDiffPreview } from './SnippetDiffPreview';
 import { SaveStatus } from './SaveStatus';
+import { SnippetFlowCanvas } from './SnippetFlowCanvas';
 
 type SnippetEditorProps = {
   feature: string;
@@ -37,6 +38,11 @@ export function SnippetEditor({ feature, file, nodeId, contentHash, onSaved }: S
       )}
       {showDiff && <SnippetDiffPreview hunks={diffHunks} busy={busy} onConfirm={confirmSave} onCancel={cancelSave} />}
       {status && <SaveStatus status={status} />}
+      {/* Ticket F.1 (#120, epic #119) — read-only visual composer, always
+          shown below the code editor for now; F.4 (#123) turns this into a
+          Code/Visual toggle instead of both being visible at once. */}
+      <h5>Visual (#120)</h5>
+      <SnippetFlowCanvas snippet={snippet} />
     </div>
   );
 }

@@ -19,6 +19,7 @@ import {
   checkEnforcement,
   hashOf,
   PagesEditorError,
+  parseSnippetToTree,
 } from './pagesEditor.mjs';
 
 const SOURCE = `import React from 'react';
@@ -279,4 +280,26 @@ test('checkEnforcement allows a clean structural/prop edit through (#56)', () =>
   const okSource = SOURCE.replace('<h1>{title}</h1>', '<h1>{title} (v2)</h1>');
   const result = checkEnforcement(root, relPath, okSource);
   assert.equal(result.ok, true);
+});
+
+// Ticket F.1 (#120, epic #119) — parseSnippetToTree feeds the visual
+// composer's live graph. It must handle a bare snippet (no surrounding
+// file), not just a whole page.
+test('parseSnippetToTree parses a bare snippet (no surrounding file) into the same node tree shape (#120)', () => {
+  const { roots, error } = parseSnippetToTree('<Card>\n  <p>Count: {count}</p>\n</Card>');
+  assert.equal(error, null);
+  assert.equal(roots.length, 1);
+  assert.equal(roots[0].tag, 'Card');
+  assert.equal(roots[0].children[0].tag, 'p');
+});
+
+test('parseSnippetToTree reports a parse error without throwing, for a snippet mid-edit (#120)', () => {
+  const { roots, error } = parseSnippetToTree('<Card>\n  <p>unclosed');
+  assert.deepEqual(roots, []);
+  assert.ok(typeof error === 'string' && error.length > 0);
+});
+
+test('parseSnippetToTree returns an empty, error-free tree for empty/whitespace input (#120)', () => {
+  assert.deepEqual(parseSnippetToTree(''), { roots: [], error: null });
+  assert.deepEqual(parseSnippetToTree('   \n  '), { roots: [], error: null });
 });
