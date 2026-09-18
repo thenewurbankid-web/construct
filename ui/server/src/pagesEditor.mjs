@@ -368,6 +368,79 @@ export function buildAttributeSnippet(source, nodeId, propName, kind, value, ind
   return source.slice(node.start, insertAt) + (needsSpace ? ' ' : '') + propName + rendered + source.slice(insertAt, node.end);
 }
 
+/**
+ * Ticket F.2 (#121, epic #119) — remove one named attribute from a node's
+ * opening tag, returning that node's whole replacement text (same "whole
+ * node's new text" contract buildAttributeSnippet above already uses, so
+ * patchNode splices it back the same way). Mirrors buildAttributeSnippet's
+ * existing-attribute branch, but deletes instead of replacing — also
+ * consumes one immediately-preceding whitespace run so the removal doesn't
+ * leave a double space behind in the tag. Only for a named (non-spread)
+ * attribute that currently exists.
+ */
+export function removeAttributeSnippet(source, nodeId, propName) {
+  const { byId } = parsePageTree(source);
+  const node = byId.get(nodeId);
+  if (!node) throw new PagesEditorError(`No such node "${nodeId}" — the file may have changed; reload the tree.`, { status: 409 });
+  if (node.isFragment) throw new PagesEditorError('Fragments (<>...</>) have no props to edit.');
+  const opening = node.openingElementNode;
+  const existing = opening.attributes.find((a) => t.isJSXAttribute(a) && jsxNameToString(a.name) === propName);
+  if (!existing) throw new PagesEditorError(`Node "${nodeId}" has no "${propName}" attribute to remove.`);
+  let start = existing.start;
+  while (start > node.start && /\s/.test(source[start - 1])) start--;
+  return source.slice(node.start, start) + source.slice(existing.end, node.end);
+}
+
+/**
+ * Ticket F.2 (#121, epic #119) — the visual composer's wire-rewrite: moves
+ * an existing prop from one child to a different sibling under the same
+ * parent, expressed as an unambiguous source-text edit (remove the
+ * attribute from the old child, add the identical attribute — same kind
+ * and value — to the new one), reusing removeAttributeSnippet/
+ * buildAttributeSnippet/patchNode unchanged rather than a second splicing
+ * mechanism. Operates purely on the snippet's own text (never a file) so
+ * the result can be handed straight to the existing save-back-to-source +
+ * diff-preview flow. Never throws — an invalid drag (stale ids, a
+ * cross-parent target, a name collision on the target) comes back as
+ * `{ok: false, error}` so the canvas can show a clear inline message and
+ * leave the snippet untouched, per #119's "reject rather than write broken
+ * code" instruction.
+ */
+export function rewireWireInSnippet(snippetSource, { parentId, propName, fromChildId, toChildId }) {
+  let byId;
+  try {
+    byId = parsePageTree(snippetSource).byId;
+  } catch (e) {
+    return { ok: false, error: `Snippet does not parse: ${e.message}` };
+  }
+  const parent = byId.get(parentId);
+  const fromChild = byId.get(fromChildId);
+  const toChild = byId.get(toChildId);
+  if (!parent || !fromChild || !toChild) {
+    return { ok: false, error: "One of this wire's endpoints no longer exists — the snippet may have changed." };
+  }
+  if (fromChildId === toChildId) return { ok: false, error: 'Nothing to rewire — dropped back on the same node.' };
+  const isSibling = (id) => parent.children.some((c) => c.id === id);
+  if (!isSibling(fromChildId) || !isSibling(toChildId)) {
+    return { ok: false, error: 'A wire can only be rewired to a sibling under the same parent.' };
+  }
+  const prop = fromChild.props.find((p) => p.kind !== 'spread' && p.name === propName);
+  if (!prop) return { ok: false, error: `"${fromChildId}" no longer has a "${propName}" prop.` };
+  if (toChild.props.some((p) => p.kind !== 'spread' && p.name === propName)) {
+    return { ok: false, error: `"${toChildId}" already has its own "${propName}" prop — rewiring would overwrite it.` };
+  }
+
+  try {
+    const removed = removeAttributeSnippet(snippetSource, fromChildId, propName);
+    let patched = patchNode(snippetSource, fromChildId, removed);
+    const added = buildAttributeSnippet(patched, toChildId, propName, prop.kind, prop.value);
+    patched = patchNode(patched, toChildId, added);
+    return { ok: true, snippet: patched };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
 function renderAttrValue(kind, value) {
   if (kind === 'boolean' && value === true) return '';
   if (kind === 'boolean') return `={${value ? 'true' : 'false'}}`;

@@ -901,3 +901,16 @@ button:disabled {
   border: 1px solid;
   border-radius: 2px;
 }
+
+/* Ticket F.2 (#121, epic #119) — the always-present, invisible whole-node
+ * drop zone (JsxFlowNode's WILDCARD_RECEIVED_HANDLE) a rewired wire can
+ * land on even when the target doesn't already expose a same-named handle. */
+.jsx-flow-handle-wildcard {
+  background: transparent !important;
+  border: none !important;
+  opacity: 0;
+}
+
+.snippet-flow-wire-error {
+  margin-top: 8px;
+}

@@ -27,6 +27,16 @@ export function SnippetEditor({ feature, file, nodeId, contentHash, onSaved }: S
   const { snippet, setSnippet, busy, status, highlightedHtml, showDiff, diffHunks, hasChanges, requestSave, confirmSave, cancelSave } =
     useSnippetEditor(feature, file, nodeId, contentHash, onSaved);
 
+  // Ticket F.2 (#121, epic #119) — a visual-canvas edit (a rewired wire)
+  // updates the same `snippet` state a hand-typed edit would, then opens
+  // the same diff-preview-before-save flow (#81) instead of writing
+  // straight to disk — there is exactly one save path, regardless of which
+  // view produced the new text.
+  function handleVisualEdit(next: string) {
+    setSnippet(next);
+    requestSave();
+  }
+
   return (
     <div className="snippet-editor">
       <h4>Snippet ({nodeId}) — isolated to this node only</h4>
@@ -38,11 +48,11 @@ export function SnippetEditor({ feature, file, nodeId, contentHash, onSaved }: S
       )}
       {showDiff && <SnippetDiffPreview hunks={diffHunks} busy={busy} onConfirm={confirmSave} onCancel={cancelSave} />}
       {status && <SaveStatus status={status} />}
-      {/* Ticket F.1 (#120, epic #119) — read-only visual composer, always
+      {/* Ticket F.1 (#120)/F.2 (#121, epic #119) — visual composer, always
           shown below the code editor for now; F.4 (#123) turns this into a
           Code/Visual toggle instead of both being visible at once. */}
       <h5>Visual (#120)</h5>
-      <SnippetFlowCanvas snippet={snippet} />
+      <SnippetFlowCanvas snippet={snippet} onSnippetChange={handleVisualEdit} />
     </div>
   );
 }

@@ -10,9 +10,25 @@ import type { SnippetFlowNodeData } from '../hooks/useSnippetFlow';
 // Imports the node-data type from the hook layer, not domain directly
 // (COMPONENT-003 — a component may import a hook, never domain/services/
 // workflows itself; useSnippetFlow re-exports the type it hands back).
+// Ticket F.2 (#121, epic #119) follow-up — one additional, always-present
+// "drop zone" target handle (`in:*`) covering the whole node, so a wire can
+// be rewired onto a sibling that doesn't already expose a same-named handle
+// to aim at. Rendered first (so the visible named handles/label stack above
+// it) and fully transparent — real per-name handles stay individually
+// targetable too, for a node that happens to already have one.
+export const WILDCARD_RECEIVED_HANDLE = 'in:*';
+
 export function JsxFlowNode({ data, isConnectable }: NodeProps<JsxNodeType>) {
   return (
     <div className={`jsx-flow-node${data.isCustomComponent ? ' component' : ''}`} style={{ width: data.width }}>
+      <Handle
+        id={WILDCARD_RECEIVED_HANDLE}
+        type="target"
+        position={Position.Top}
+        isConnectable={isConnectable}
+        className="jsx-flow-handle-wildcard"
+        style={{ left: 0, top: 0, width: '100%', height: '100%', transform: 'none', borderRadius: 6 }}
+      />
       {data.received.map((p) => (
         <Handle
           key={p.id}

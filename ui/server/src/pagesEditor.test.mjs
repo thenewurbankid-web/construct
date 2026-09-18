@@ -20,6 +20,8 @@ import {
   hashOf,
   PagesEditorError,
   parseSnippetToTree,
+  removeAttributeSnippet,
+  rewireWireInSnippet,
 } from './pagesEditor.mjs';
 
 const SOURCE = `import React from 'react';
@@ -302,4 +304,72 @@ test('parseSnippetToTree reports a parse error without throwing, for a snippet m
 test('parseSnippetToTree returns an empty, error-free tree for empty/whitespace input (#120)', () => {
   assert.deepEqual(parseSnippetToTree(''), { roots: [], error: null });
   assert.deepEqual(parseSnippetToTree('   \n  '), { roots: [], error: null });
+});
+
+// Ticket F.2 (#121, epic #119) — removeAttributeSnippet + rewireWireInSnippet
+// back the visual composer's wire-rewrite (drag a connection's child-side
+// endpoint onto a different sibling).
+const WIRE_SNIPPET = '<main>\n  <Card title={title} />\n  <Aside />\n</main>';
+
+test('removeAttributeSnippet deletes a named attribute and the whitespace before it (#121)', () => {
+  const { byId } = parsePageTree(WIRE_SNIPPET);
+  const cardId = [...byId.values()].find((n) => n.tag === 'Card').id;
+  const replacement = removeAttributeSnippet(WIRE_SNIPPET, cardId, 'title');
+  assert.equal(replacement, '<Card />');
+});
+
+test('removeAttributeSnippet throws for an attribute that does not exist (#121)', () => {
+  const { byId } = parsePageTree(WIRE_SNIPPET);
+  const cardId = [...byId.values()].find((n) => n.tag === 'Card').id;
+  assert.throws(() => removeAttributeSnippet(WIRE_SNIPPET, cardId, 'nope'), PagesEditorError);
+});
+
+test('rewireWireInSnippet moves a prop from one child to its sibling (#121)', () => {
+  const { byId } = parsePageTree(WIRE_SNIPPET);
+  const mainId = [...byId.values()].find((n) => n.tag === 'main').id;
+  const cardId = [...byId.values()].find((n) => n.tag === 'Card').id;
+  const asideId = [...byId.values()].find((n) => n.tag === 'Aside').id;
+
+  const result = rewireWireInSnippet(WIRE_SNIPPET, { parentId: mainId, propName: 'title', fromChildId: cardId, toChildId: asideId });
+  assert.equal(result.ok, true);
+  assert.match(result.snippet, /<Card\s*\/>/);
+  // buildAttributeSnippet's existing self-closing-tag insertion logic (used
+  // unchanged here) doesn't add a space before `/>` when one already
+  // precedes the insertion point — same behavior applyAutoMap already
+  // relies on elsewhere, not new to this ticket.
+  assert.match(result.snippet, /<Aside title=\{title\}\/>/);
+
+  // The rewired snippet must still parse as a real, valid tree.
+  const reparsed = parsePageTree(result.snippet);
+  assert.equal(reparsed.roots.length, 1);
+});
+
+test('rewireWireInSnippet rejects a target that already has the same prop, and leaves the snippet unchanged (#121)', () => {
+  const source = '<main>\n  <Card title={title} />\n  <Aside title={other} />\n</main>';
+  const { byId } = parsePageTree(source);
+  const mainId = [...byId.values()].find((n) => n.tag === 'main').id;
+  const cardId = [...byId.values()].find((n) => n.tag === 'Card').id;
+  const asideId = [...byId.values()].find((n) => n.tag === 'Aside').id;
+
+  const result = rewireWireInSnippet(source, { parentId: mainId, propName: 'title', fromChildId: cardId, toChildId: asideId });
+  assert.equal(result.ok, false);
+  assert.match(result.error, /already has its own "title" prop/);
+});
+
+test('rewireWireInSnippet rejects a target that is not a sibling under the same parent (#121)', () => {
+  const source = '<main>\n  <Card title={title} />\n  <section><Aside /></section>\n</main>';
+  const { byId } = parsePageTree(source);
+  const mainId = [...byId.values()].find((n) => n.tag === 'main').id;
+  const cardId = [...byId.values()].find((n) => n.tag === 'Card').id;
+  const asideId = [...byId.values()].find((n) => n.tag === 'Aside').id;
+
+  const result = rewireWireInSnippet(source, { parentId: mainId, propName: 'title', fromChildId: cardId, toChildId: asideId });
+  assert.equal(result.ok, false);
+  assert.match(result.error, /sibling under the same parent/);
+});
+
+test('rewireWireInSnippet rejects stale node ids without throwing (#121)', () => {
+  const result = rewireWireInSnippet(WIRE_SNIPPET, { parentId: 'nX', propName: 'title', fromChildId: 'nY', toChildId: 'nZ' });
+  assert.equal(result.ok, false);
+  assert.ok(result.error.length > 0);
 });

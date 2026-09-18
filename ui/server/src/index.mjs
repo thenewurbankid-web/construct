@@ -29,6 +29,7 @@ import {
   checkEnforcement,
   hashOf,
   parseSnippetToTree,
+  rewireWireInSnippet,
 } from './pagesEditor.mjs';
 
 const app = express();
@@ -336,6 +337,23 @@ app.post('/api/pages/snippet-tree', (req, res) => {
     const { snippet } = req.body || {};
     if (typeof snippet !== 'string') return res.status(400).json({ ok: false, error: 'snippet is required' });
     res.json(parseSnippetToTree(snippet));
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+// Ticket F.2 (#121, epic #119) — the visual composer's wire-rewrite. Body
+// carries the snippet's own current text (not feature/file) plus the wire's
+// endpoints; the response is the new snippet text (or a rejection reason),
+// never a disk write — the client hands the result to the existing
+// save-back-to-source + diff-preview flow itself.
+app.post('/api/pages/snippet-rewire', (req, res) => {
+  try {
+    const { snippet, parentId, propName, fromChildId, toChildId } = req.body || {};
+    if (typeof snippet !== 'string' || !parentId || !propName || !fromChildId || !toChildId) {
+      return res.status(400).json({ ok: false, error: 'snippet, parentId, propName, fromChildId, and toChildId are required' });
+    }
+    res.json(rewireWireInSnippet(snippet, { parentId, propName, fromChildId, toChildId }));
   } catch (e) {
     handlePagesEditorError(res, e);
   }

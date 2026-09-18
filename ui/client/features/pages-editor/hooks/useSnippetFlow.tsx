@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildSnippetFlowGraph } from '../domain/SnippetFlowGraph';
-import { parseSnippetTree } from '../services/SnippetApi';
+import { parseSnippetTree, rewireSnippetWire } from '../services/SnippetFlowApi';
 import type { PagesEditorNode } from '../types';
 
 // Re-exported so components (e.g. JsxFlowNode) can type against the graph's
@@ -22,10 +22,19 @@ const PARSE_DEBOUNCE_MS = 250;
  * unsaved in-progress edits too. Called directly from SnippetFlowCanvas — a
  * component may import a hook; only the hook may reach into domain/services
  * (COMPONENT-003).
+ *
+ * Ticket F.2 (#121, epic #119) follow-up: also exposes `rewireWire`, called
+ * from the canvas's onReconnect handler when a wire's child-side endpoint is
+ * dragged onto a different sibling. On success the new snippet text is
+ * handed to `onSnippetChange` (wired to useSnippetEditor's `setSnippet` +
+ * `requestSave`, so it lands in the existing diff-preview-before-save flow
+ * rather than a second write path) — on rejection, `wireError` carries the
+ * inline message and the snippet is left untouched.
  */
-export function useSnippetFlow(snippet: string) {
+export function useSnippetFlow(snippet: string, onSnippetChange: (next: string) => void) {
   const [roots, setRoots] = useState<PagesEditorNode[]>([]);
   const [parseError, setParseError] = useState<string | null>(null);
+  const [wireError, setWireError] = useState<string | null>(null);
   const requestId = useRef(0);
 
   useEffect(() => {
@@ -42,5 +51,15 @@ export function useSnippetFlow(snippet: string) {
 
   const graph = useMemo(() => buildSnippetFlowGraph(roots), [roots]);
 
-  return { roots, nodes: graph.nodes, edges: graph.edges, parseError };
+  async function rewireWire(parentId: string, propName: string, fromChildId: string, toChildId: string) {
+    setWireError(null);
+    const result = await rewireSnippetWire({ snippet, parentId, propName, fromChildId, toChildId });
+    if (!result.ok || !result.snippet) {
+      setWireError(result.error || 'That rewire is not supported.');
+      return;
+    }
+    onSnippetChange(result.snippet);
+  }
+
+  return { roots, nodes: graph.nodes, edges: graph.edges, parseError, wireError, rewireWire };
 }
