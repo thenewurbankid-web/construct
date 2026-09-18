@@ -11,14 +11,18 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
+    "diff": "^9.0.0",
     "next": "^15.5.0",
+    "prismjs": "^1.30.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
     "@storybook/addon-docs": "^10.6.0",
     "@storybook/nextjs": "^10.6.0",
+    "@types/diff": "^7.0.2",
     "@types/node": "^20",
+    "@types/prismjs": "^1.26.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "storybook": "^10.6.0",

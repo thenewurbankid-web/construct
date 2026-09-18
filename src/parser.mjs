@@ -101,9 +101,9 @@ function collectDynamicImports(ast, out) {
 
 export const EXT = new Set(['.ts', '.tsx', '.js', '.jsx']);
 
-/** Classify a root-relative path into an architecture layer, or null if unclassified.
- * Mirrors the path-pattern approach in src/validator.mjs's layerOf() (reimplemented
- * locally, not imported, per module ownership boundaries). */
+/** Classify a root-relative path into an architecture layer, or null if
+ * unclassified. Implemented locally (not imported) per module ownership
+ * boundaries. */
 export function classifyLayer(relPath) {
   if (/^app\/.*page\.(tsx|ts|jsx|js)$/.test(relPath)) return 'route';
   const m = relPath.match(/^features\/[^/]+\/(controllers|workflows|hooks|domain|services|pages|components)\//);

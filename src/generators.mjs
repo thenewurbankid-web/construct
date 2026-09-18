@@ -69,16 +69,33 @@ export function selfCheck(root,absFiles){
 // identifier can't contain "-"/"_" — PascalCase across those word
 // boundaries the same way `cap` elsewhere assumes a single already-capped
 // word, so createFeature's own scaffolded types.ts is always valid TS.
+//
+// #24 handled the "-"/"_" boundaries themselves; #79 closed the gap that
+// left: any character the boundary-replace doesn't touch (a leading digit,
+// a space, anything outside [-_a-zA-Z0-9]) passed straight through into the
+// result untouched, so a feature name like "3d-viewer" silently produced
+// "3dViewer" -- a syntactically invalid `export type 3dViewerId` in the
+// scaffolded types.ts. Reject that at scaffold time instead of writing it.
+const TS_IDENTIFIER_RE=/^[A-Za-z_$][A-Za-z0-9_$]*$/;
 function pascalCase(name){
- return name.replace(/(^|[-_]+)([a-zA-Z0-9])/g,(_,__,c)=>c.toUpperCase());
+ const result=name.replace(/(^|[-_]+)([a-zA-Z0-9])/g,(_,__,c)=>c.toUpperCase());
+ if(!TS_IDENTIFIER_RE.test(result)) throw new ConstructError(
+  `Feature name "${name}" can't be turned into a valid TypeScript identifier (got "${result}") — identifiers can't start with a digit and can only contain letters, digits, "_", and "$". Rename the feature.`,
+  {exitCode:EXIT_CODES.USAGE_ERROR}
+ );
+ return result;
 }
 
 export function createFeature(root,name){
+ // Validate before any side effect: an illegal-identifier name (#79) must
+ // fail clearly with nothing written, not leave a half-scaffolded feature
+ // directory behind it.
+ const capName=pascalCase(name);
  const config=loadConfig(root);
  const base=path.join(root,config.features?.root||'features',name);
  for(const d of ['controllers','workflows','hooks','domain','services','pages','components'])ensureDir(path.join(base,d));
  const typesFile=path.join(base,'types.ts'), indexFile=path.join(base,'index.ts');
- write(typesFile,`export type ${pascalCase(name)}Id = string;\n`);
+ write(typesFile,`export type ${capName}Id = string;\n`);
  write(indexFile,`// Public API for feature: ${name}\nexport type * from './types';\n`);
  selfCheck(root,[typesFile,indexFile]);
  return base;

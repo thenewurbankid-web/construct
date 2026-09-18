@@ -22,5 +22,7 @@ export * from './hooks/usePropFlow';
 /** One prop's edit/save state, used by the PropRow component (#53). */
 export * from './hooks/usePropRow';
 
-/** One node's isolated snippet edit/save-back state (#52). */
+/** One node's isolated snippet edit/save-back state, including JSX syntax
+ * highlighting and a diff preview shown before a save is confirmed (#52,
+ * #81). */
 export * from './hooks/useSnippetEditor';

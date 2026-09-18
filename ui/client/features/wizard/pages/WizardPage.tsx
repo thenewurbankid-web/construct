@@ -12,8 +12,8 @@ export function WizardPage({ messages, status, awaitingAnswer, input, setInput, 
       <h1>Import Route Wizard</h1>
       <p className="hint">
         Guides a whole-feature import: traces a route&apos;s real import graph, proposes a plan with
-        one combined LLM call, and only writes anything once you approve it. Only one session may
-        run at a time on this backend.
+        one combined LLM call, and only writes anything once you approve it. Each browser tab runs
+        its own independent session.
       </p>
 
       {(status === 'idle' || status === 'done') && (
