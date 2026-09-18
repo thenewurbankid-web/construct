@@ -521,7 +521,11 @@ function reportImport(root, results, llm, feature, analysisCalls = 0) {
   const featureNote = feature ? ` --feature ${feature}` : '';
   const analysisNote = analysisCalls ? `${analysisCalls} call(s) to analyze the route + ` : '';
   if (llm) {
-    console.log(`Next: review the ported logic above (diff against the source), then run validate${featureNote}.`);
+    console.log(
+      problems.length
+        ? `Next: fill in the ${problems.length} TODO(import) marker(s) listed above (by hand, or re-run import for them), review the ${totalFiles - problems.length} ported file(s) against their source, then run validate${featureNote}.`
+        : `Next: review the ported logic above (diff against the source), then run validate${featureNote}.`,
+    );
     printAttribution(
       `scaffolded ${totalFiles} file(s) across ${results.length} logical unit(s)`,
       `${analysisNote}${totalFiles - problems.length} of ${totalFiles} file(s) written via "${llm}" (${problems.length} left as stub + TODO) — review it before trusting it`,
