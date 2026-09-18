@@ -580,6 +580,26 @@ button:disabled {
   font-size: 0.85em;
 }
 
+/* Tutorials section (#154-#157): real local screenshots (ui/client/public/
+ * tutorials/**), never hotlinked, embedded next to the step they illustrate. */
+.tutorial-figure {
+  margin: 12px 0 20px;
+}
+
+.tutorial-screenshot {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: block;
+}
+
+.tutorial-figure figcaption {
+  font-size: 0.85rem;
+  color: var(--muted, #9aa1ac);
+  margin-top: 6px;
+}
+
 /* --- Pages Editor (epic #48) --- */
 
 .pages-browser {
