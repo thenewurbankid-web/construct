@@ -68,8 +68,7 @@ function findCustomTemplate(root,layer,config){
  if(fs.existsSync(dir)){const entry=fs.readdirSync(dir).find(f=>f.replace(/\.[^./]+$/,'')===layer); if(entry)return path.join(dir,entry);}
  return null;
 }
-function renderCustomTemplate(templatePath,name){
- const cap=name[0].toUpperCase()+name.slice(1);
+function renderCustomTemplate(templatePath,name,cap){
  return fs.readFileSync(templatePath,'utf8').replaceAll('{{Name}}',cap).replaceAll('{{name}}',name).replaceAll('{{NAME}}',name.toUpperCase());
 }
 
@@ -136,11 +135,14 @@ export function createFeature(root,name){
 export function renderLayer(root,layer,name,feature){
  if(!templates[layer])throw new Error(`Unknown layer: ${layer}`);
  const config=loadConfig(root);
- const cap=name[0].toUpperCase()+name.slice(1);
+ // #218: same PascalCase + validation as createFeature/the engine generators,
+ // before anything is rendered or written, so "refund-request" is
+ // RefundRequest everywhere and an illegal name fails clearly with nothing on disk.
+ const cap=pascalCase(name,layer[0].toUpperCase()+layer.slice(1));
  const dir=path.join(root,config.features?.root||'features',feature,folderFor(layer));
  const file=path.join(dir,`${layerFileBaseName(layer,cap)}.tsx`);
  const custom=findCustomTemplate(root,layer,config);
- const content=custom?renderCustomTemplate(custom,name):templates[layer](cap,{framework:config.project?.framework});
+ const content=custom?renderCustomTemplate(custom,name,cap):templates[layer](cap,{framework:config.project?.framework});
  return {file,content};
 }
 

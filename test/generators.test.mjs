@@ -5,7 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { createFeature, generateLayer, generateVertical } from '../src/generators.mjs';
 import { validateArchitecture } from '../src/architecture-enforcer.mjs';
-import { ConstructError } from '../src/diagnostics.mjs';
+import { ConstructError, EXIT_CODES } from '../src/diagnostics.mjs';
+import { parseToAst } from '../src/ast/index.mjs';
 
 function tmpProject() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'construct-generators-'));
@@ -202,4 +203,78 @@ test('post-generation self-check throws a ConstructError when a custom template 
     assert.equal(err.violations[0].rule, 'DOMAIN-001');
     return true;
   });
+});
+
+// ---- #218: layer templates use pascalCase like createFeature/the engine generators
+
+const EXPECTED_218 = {
+  domain: ['domain/RefundRequest.tsx', /export function RefundRequest\(/],
+  service: ['services/RefundRequest.tsx', /export async function RefundRequest\(/],
+  workflow: ['workflows/RefundRequest.tsx', /export const RefundRequestWorkflow = /],
+  hook: ['hooks/useRefundRequest.tsx', /export function useRefundRequest\(/],
+  component: ['components/RefundRequest.tsx', /export function RefundRequest\(/],
+  page: ['pages/RefundRequestPage.tsx', /export function RefundRequestPage\(/],
+  controller: ['controllers/RefundRequestController.tsx', /export function RefundRequestController\(/],
+};
+
+for (const layer of LAYERS) {
+  test(`generateLayer ${layer}: hyphen / underscore / camel names give identical valid output (#218)`, () => {
+    const outputs = [];
+    for (const name of ['refund-request', 'refund_request', 'refundRequest']) {
+      const dir = tmpProject();
+      createFeature(dir, 'checkout');
+      if (layer === 'controller') generateLayer(dir, 'page', name, 'checkout');
+      const file = generateLayer(dir, layer, name, 'checkout');
+      const [relFile, re] = EXPECTED_218[layer];
+      assert.equal(path.relative(path.join(dir, 'features', 'checkout'), file), relFile);
+      const content = fs.readFileSync(file, 'utf8');
+      assert.doesNotThrow(() => parseToAst(content));
+      assert.match(content, re);
+      outputs.push(content);
+    }
+    assert.equal(outputs[0], outputs[1]);
+    assert.equal(outputs[0], outputs[2]);
+  });
+
+  test(`generateLayer ${layer}: a leading-digit name is rejected with nothing written (#218)`, () => {
+    const dir = tmpProject();
+    createFeature(dir, 'checkout');
+    const featureDir = path.join(dir, 'features', 'checkout');
+    const snapshot = () => fs.readdirSync(featureDir, { recursive: true }).sort();
+    const before = snapshot();
+    assert.throws(() => generateLayer(dir, layer, '3d-refund', 'checkout'), (err) => {
+      assert.ok(err instanceof ConstructError);
+      assert.equal(err.exitCode, EXIT_CODES.USAGE_ERROR);
+      assert.match(err.message, /name "3d-refund" can't be turned into a valid TypeScript identifier/);
+      return true;
+    });
+    assert.deepEqual(snapshot(), before);
+  });
+}
+
+test('generateVertical with a hyphenated name scaffolds every layer with valid identifiers and validates clean (#218)', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  const files = generateVertical(dir, 'refund-request', 'checkout', LAYERS);
+  assert.equal(files.length, LAYERS.length);
+  for (const f of files) assert.doesNotThrow(() => parseToAst(fs.readFileSync(f, 'utf8')));
+  assert.deepEqual(validateArchitecture(dir).violations.filter((v) => v.severity === 'error'), []);
+});
+
+test('generateVertical rejects an invalid name before writing any layer (#218)', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  const featureDir = path.join(dir, 'features', 'checkout');
+  const before = fs.readdirSync(featureDir, { recursive: true }).sort();
+  assert.throws(() => generateVertical(dir, '9lives', 'checkout', LAYERS), ConstructError);
+  assert.deepEqual(fs.readdirSync(featureDir, { recursive: true }).sort(), before);
+});
+
+test('custom template {{Name}} is PascalCased for a hyphenated name (#218)', () => {
+  const dir = tmpProject();
+  fs.mkdirSync(path.join(dir, 'templates'));
+  fs.writeFileSync(path.join(dir, 'templates', 'domain.txt'), 'export const {{Name}} = "{{name}}";\n');
+  createFeature(dir, 'checkout');
+  const file = generateLayer(dir, 'domain', 'refund-request', 'checkout');
+  assert.equal(fs.readFileSync(file, 'utf8'), 'export const RefundRequest = "refund-request";\n');
 });
