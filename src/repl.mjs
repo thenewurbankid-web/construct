@@ -64,11 +64,19 @@ export const HELP_TOPICS = {
   reported immediately afterward via "validate", not decided here. There's
   no persistent log: the one line each command prints IS the record.`,
 
-  research: `research — read-only: summarize a feature, or check environment/tooling
+  research: `research — read-only: summarize a feature, explain its workflows in English, or check environment/tooling
 
   research summarize [--feature <name>] [--format json|md|compact|prose] [--since <ref>] [--dir <path>]
       English or JSON/Markdown summary of a feature's structure and exports.
       Example: research summarize --feature cpo-v2 --format prose
+
+  research workflow <feature> [<file>] [--format prose|md|json|scenarios] [--dir <path>]
+      Explains the state machines in features/<feature>/workflows/ in plain
+      English: what each state does, every scenario from start to end
+      (happy path first), and health findings (unreachable states, dead
+      ends, missing fallbacks). Derived from the source every time — no LLM.
+      Formats: prose (default), md, json, scenarios (Given/When/Then only).
+      Example: research workflow checkout CheckoutWorkflow.ts --format scenarios
 
   research doctor [--dir <path>]
       Environment sanity check: node/npm versions, architecture.yml presence,
@@ -202,7 +210,7 @@ export function getTopLevelHelpText() {
 Capabilities:
   create   ...   scaffold a feature, a layer, or a whole vertical slice
   refactor ...   mechanical, LLM-free moves/renames within the architecture
-  research ...   read-only: summarize a feature, or check environment/tooling
+  research ...   read-only: summarize a feature, explain its workflows in English, or check environment/tooling
   import   ...   scaffold layers for an existing, non-Construct file + a breadcrumb to it
 
 Note: "construct import --route <path>" (the interactive, whole-feature
