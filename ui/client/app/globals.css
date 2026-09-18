@@ -1025,3 +1025,111 @@ button:disabled {
   font-weight: 600;
   min-width: 3rem;
 }
+
+/* Epic #57 / #59 — Workflows screen (XState machine diagrams, React Flow).
+ * Appended in its own block to keep merges with other agents' CSS edits
+ * trivial. */
+.wf-file-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.wf-machine {
+  margin-top: 16px;
+}
+
+.wf-machine h3 {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.wf-viewport {
+  height: 380px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #0b0d11;
+}
+
+.wf-state {
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--panel-glass-strong);
+  color: var(--text);
+  text-align: center;
+}
+
+.wf-state.initial {
+  border-color: var(--accent);
+}
+
+.wf-state.final {
+  border: 3px double var(--tool);
+}
+
+.wf-state.missing {
+  border-style: dashed;
+  border-color: var(--error);
+}
+
+.wf-state-name {
+  font-size: 12px;
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.wf-state-tags {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.wf-tag {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+
+.wf-tag.final {
+  color: var(--tool);
+}
+
+.wf-tag.missing {
+  color: var(--error);
+}
+
+.wf-internal {
+  margin-top: 3px;
+  font-size: 10px;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.wf-start-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.wf-handle {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.wf-viewport .react-flow__edge-textbg {
+  fill: #1a1d24;
+}
+
+.wf-viewport .react-flow__edge-text {
+  fill: var(--text);
+  font-size: 11px;
+}
+
+.wf-viewport .react-flow__edge-path {
+  stroke: var(--muted);
+}
