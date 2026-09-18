@@ -120,23 +120,29 @@ function jsxNameToString(nameNode) {
   return '?';
 }
 
+// #77 follow-up to #53 — every prop record also carries its 0-based
+// `index` (position in the opening tag's attribute list). Named props can
+// still be re-found by name alone, but a spread attribute (`{...rest}`)
+// has no name (`name: null`) — index is what lets a save request
+// unambiguously identify *which* spread to edit when a node has more than
+// one, or any at all (see buildAttributeSnippet's 'spread' branch below).
 function attrsOf(openingElement, source) {
-  return openingElement.attributes.map((attr) => {
+  return openingElement.attributes.map((attr, index) => {
     if (t.isJSXSpreadAttribute(attr)) {
-      return { kind: 'spread', name: null, value: source.slice(attr.argument.start, attr.argument.end) };
+      return { kind: 'spread', name: null, value: source.slice(attr.argument.start, attr.argument.end), index };
     }
     const name = jsxNameToString(attr.name);
-    if (attr.value == null) return { kind: 'boolean', name, value: true };
-    if (t.isStringLiteral(attr.value)) return { kind: 'string', name, value: attr.value.value };
+    if (attr.value == null) return { kind: 'boolean', name, value: true, index };
+    if (t.isStringLiteral(attr.value)) return { kind: 'string', name, value: attr.value.value, index };
     if (t.isJSXExpressionContainer(attr.value)) {
       const expr = attr.value.expression;
-      if (t.isStringLiteral(expr)) return { kind: 'string', name, value: expr.value };
-      if (t.isNumericLiteral(expr)) return { kind: 'number', name, value: expr.value };
-      if (t.isBooleanLiteral(expr)) return { kind: 'boolean', name, value: expr.value };
-      if (t.isIdentifier(expr)) return { kind: 'identifier', name, value: expr.name };
-      return { kind: 'expression', name, value: source.slice(expr.start, expr.end) };
+      if (t.isStringLiteral(expr)) return { kind: 'string', name, value: expr.value, index };
+      if (t.isNumericLiteral(expr)) return { kind: 'number', name, value: expr.value, index };
+      if (t.isBooleanLiteral(expr)) return { kind: 'boolean', name, value: expr.value, index };
+      if (t.isIdentifier(expr)) return { kind: 'identifier', name, value: expr.name, index };
+      return { kind: 'expression', name, value: source.slice(expr.start, expr.end), index };
     }
-    return { kind: 'expression', name, value: source.slice(attr.value.start, attr.value.end) };
+    return { kind: 'expression', name, value: source.slice(attr.value.start, attr.value.end), index };
   });
 }
 
@@ -294,15 +300,31 @@ export function getNodeProps(source, nodeId) {
  * doesn't exist yet) inside the node's opening tag, then delegating to the
  * same splice-based patchNode used by #52 so both go through one
  * mechanism (and one #56 enforcement gate).
+ *
+ * #77 follow-up to #53 — a `kind === 'spread'` edit is a different shape
+ * (`{...expr}`, no attribute name, no `=`) and has no name to look it up
+ * by, so it takes its own branch keyed on `index` (its position in the
+ * opening tag's attribute list, from attrsOf's `index` field) instead of
+ * going through renderAttrValue/name-lookup below. Only edits an
+ * *existing* spread — this doesn't support inserting a brand new one.
  */
-export function buildAttributeSnippet(source, nodeId, propName, kind, value) {
+export function buildAttributeSnippet(source, nodeId, propName, kind, value, index) {
   const { byId } = parsePageTree(source);
   const node = byId.get(nodeId);
   if (!node) throw new PagesEditorError(`No such node "${nodeId}" — the file may have changed; reload the tree.`, { status: 409 });
   if (node.isFragment) throw new PagesEditorError('Fragments (<>...</>) have no props to edit.');
 
-  const rendered = renderAttrValue(kind, value);
   const opening = node.openingElementNode;
+
+  if (kind === 'spread') {
+    const candidate = typeof index === 'number' ? opening.attributes[index] : undefined;
+    if (!candidate || !t.isJSXSpreadAttribute(candidate)) {
+      throw new PagesEditorError('That spread prop is no longer at this position — the file may have changed; reload the tree.', { status: 409 });
+    }
+    return source.slice(node.start, candidate.start) + `{...${value}}` + source.slice(candidate.end, node.end);
+  }
+
+  const rendered = renderAttrValue(kind, value);
   const existing = opening.attributes.find((a) => t.isJSXAttribute(a) && jsxNameToString(a.name) === propName);
 
   // Offsets below are relative to `node.start` (the whole element's start),

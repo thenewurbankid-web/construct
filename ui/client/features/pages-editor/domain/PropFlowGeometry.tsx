@@ -46,8 +46,13 @@ const heuristicMeasure: MeasureText = (label) => label.length * CHAR_W;
 
 export type GeometryOptions = { measureText?: MeasureText; showValues?: boolean };
 
+// #77: a spread prop's `name` is null (`{...rest}` has no attribute name)
+// — excluded here same as before (spread never flows into the prop-flow
+// diagram's name-based pill matching), and the filter's `kind !== 'spread'`
+// check doubles as the non-null guard TypeScript needs to narrow `name`
+// from `string | null` down to `string`.
 export function namedProps(node: PagesEditorNode): string[] {
-  return node.props.filter((p) => p.kind !== 'spread').map((p) => p.name);
+  return node.props.filter((p): p is PropData & { name: string } => p.kind !== 'spread' && p.name !== null).map((p) => p.name);
 }
 
 function dedupe(names: string[]): string[] {

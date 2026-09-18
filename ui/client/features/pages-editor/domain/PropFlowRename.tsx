@@ -28,15 +28,19 @@ export function findRenameLinks(roots: PagesEditorNode[]): RenameLink[] {
     // Which of this node's own received attribute names were supplied each
     // source identifier (usually one name per identifier, but nothing
     // stops the same identifier being passed under two attribute names).
+    // `p.kind !== 'identifier'` already rules out a spread (the only kind
+    // with a null `name`), but PropData isn't a discriminated union, so
+    // TypeScript still sees `name: string | null` here — the `p.name ===
+    // null` checks below are redundant at runtime but satisfy that.
     const receivedNamesByValue = new Map<string, string[]>();
     for (const p of node.props) {
-      if (p.kind !== 'identifier' || typeof p.value !== 'string') continue;
+      if (p.kind !== 'identifier' || typeof p.value !== 'string' || p.name === null) continue;
       if (!receivedNamesByValue.has(p.value)) receivedNamesByValue.set(p.value, []);
       receivedNamesByValue.get(p.value)!.push(p.name);
     }
     for (const child of node.children) {
       for (const p of child.props) {
-        if (p.kind !== 'identifier' || typeof p.value !== 'string') continue;
+        if (p.kind !== 'identifier' || typeof p.value !== 'string' || p.name === null) continue;
         const receivedNames = receivedNamesByValue.get(p.value);
         if (!receivedNames) continue;
         for (const receivedName of receivedNames) {

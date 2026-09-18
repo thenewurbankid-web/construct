@@ -128,6 +128,39 @@ test('getNodeProps + buildAttributeSnippet + patchNode round-trip a prop edit (#
   assert.match(patched, /<button onClick=\{[^}]*\} disabled>/);
 });
 
+test('getNodeProps includes an index on every prop, and a spread prop has name:null (#77 follow-up to #53)', () => {
+  const source = `function Row({ rest }) {\n  return <li className="row" {...rest} data-x="1" />;\n}\n`;
+  const { roots } = serializeTree(source);
+  const liId = roots[0].id;
+  const { props } = getNodeProps(source, liId);
+  assert.deepEqual(
+    props.map((p) => [p.kind, p.name, p.index]),
+    [
+      ['string', 'className', 0],
+      ['spread', null, 1],
+      ['string', 'data-x', 2],
+    ],
+  );
+});
+
+test('buildAttributeSnippet edits an existing spread prop by index, leaving its name-having siblings untouched (#77 follow-up to #53)', () => {
+  const source = `function Row({ rest, other }) {\n  return <li className="row" {...rest} data-x="1" />;\n}\n`;
+  const { roots, contentHash } = serializeTree(source);
+  const liId = roots[0].id;
+  const { props } = getNodeProps(source, liId);
+  const spread = props.find((p) => p.kind === 'spread');
+  assert.equal(spread.value, 'rest');
+
+  const snippet = buildAttributeSnippet(source, liId, null, 'spread', 'other', spread.index);
+  const patched = patchNode(source, liId, snippet, contentHash);
+  assert.match(patched, /<li className="row" \{\.\.\.other\} data-x="1" \/>/);
+});
+
+test('buildAttributeSnippet rejects a spread edit whose index no longer points at a spread attribute (#77 follow-up to #53)', () => {
+  const source = `function Row({ rest }) {\n  return <li className="row" {...rest} />;\n}\n`;
+  assert.throws(() => buildAttributeSnippet(source, 'n0', null, 'spread', 'other', 0), PagesEditorError); // index 0 is className, not the spread
+});
+
 test('findUnmappedProps flags parent scope names not passed to a child component (#54)', () => {
   const { roots } = serializeTree(SOURCE);
   const cardId = roots[0].children[1].id;
