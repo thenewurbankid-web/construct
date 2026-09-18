@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { makeLineSource } from './line-source.mjs';
 import { createFeature, generateLayer, generateVertical } from './generators.mjs';
 import { write, ensureDir } from './fs.mjs';
@@ -568,10 +569,37 @@ export async function runImportRouteWizard(routeArg) {
 // line source. The REPL/CLI/wizard tests exercise `importRouteWizard` and
 // `runImportRouteWizard` directly and are completely unaffected by this.
 //
-// Console patching is process-global, so only one call to this should be
-// in flight at a time (a caller — e.g. the UI server — should serialize
-// sessions); that's a constraint of the adapter, not of the wizard itself.
+// #80 — per-session log capture instead of a global monkey-patch. Directly
+// reassigning console.log/warn/error per call (the original shape of this
+// adapter) corrupts concurrent sessions, not just serializes them: a second
+// call's "original" is actually the first call's already-wrapped functions
+// (so session A's output leaks into session B's captured events too), and
+// whichever session's `finally` runs first restores the *real* original
+// console methods out from under the other session, which is still mid-run.
+// Node's AsyncLocalStorage instead keeps a per-session `onEvent` scoped to
+// the exact async call chain it was started in (correctly propagated across
+// every `await` inside that chain, including into functions the wizard
+// calls into) — console.log/warn/error are wrapped exactly ONCE, at module
+// load, and every wrapper always calls the real original *and*, only if a
+// store is active for the currently-executing async chain, forwards to it.
+const wizardLogStore = new AsyncLocalStorage();
+let wizardConsolePatched = false;
+
+function ensureWizardConsolePatched() {
+  if (wizardConsolePatched) return;
+  wizardConsolePatched = true;
+  for (const kind of ['log', 'warn', 'error']) {
+    const original = console[kind].bind(console);
+    console[kind] = (...parts) => {
+      original(...parts);
+      const onEvent = wizardLogStore.getStore();
+      if (onEvent) onEvent({ kind, type: 'log', text: parts.map((p) => (typeof p === 'string' ? p : String(p))).join(' ') });
+    };
+  }
+}
+
 export function runImportRouteWizardEventDriven(onEvent, seedRoute) {
+  ensureWizardConsolePatched();
   let pendingResolve = null;
 
   function ask(promptText) {
@@ -592,25 +620,12 @@ export function runImportRouteWizardEventDriven(onEvent, seedRoute) {
     return true;
   }
 
-  const original = { log: console.log, warn: console.warn, error: console.error };
-  function captured(kind, orig) {
-    return (...parts) => {
-      orig(...parts);
-      onEvent({ kind, type: 'log', text: parts.map((p) => (typeof p === 'string' ? p : String(p))).join(' ') });
-    };
-  }
-  console.log = captured('log', original.log);
-  console.warn = captured('warn', original.warn);
-  console.error = captured('error', original.error);
-
-  const done = importRouteWizard(ask, seedRoute)
+  const done = wizardLogStore
+    .run(onEvent, () => importRouteWizard(ask, seedRoute))
     .catch((e) => {
       onEvent({ type: 'log', kind: 'error', text: `Error: ${e.message}` });
     })
     .finally(() => {
-      console.log = original.log;
-      console.warn = original.warn;
-      console.error = original.error;
       onEvent({ type: 'done' });
     });
 
