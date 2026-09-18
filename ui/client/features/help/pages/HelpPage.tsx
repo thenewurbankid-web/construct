@@ -3,6 +3,9 @@ import { GlassPanel } from '@/components/ui';
 import { Attribution } from '../components/Attribution';
 import { CliReference } from '../components/CliReference';
 import { GettingStarted } from '../components/GettingStarted';
+import { ListingDetailsTutorial } from '../components/ListingDetailsTutorial';
+import { RouteImportTutorial } from '../components/RouteImportTutorial';
+import { SetupSettingsTutorial } from '../components/SetupSettingsTutorial';
 import { UiGuide } from '../components/UiGuide';
 import type { HelpViewState } from '../types';
 
@@ -19,6 +22,7 @@ export function HelpPage(view: HelpViewState): ReactNode {
         <a href="#getting-started">Getting started</a>
         <a href="#attribution">Tool vs LLM attribution</a>
         <a href="#ui-guide">UI guide</a>
+        <a href="#tutorials">Tutorials</a>
         <a href="#cli-reference">CLI reference</a>
       </GlassPanel>
 
@@ -35,6 +39,20 @@ export function HelpPage(view: HelpViewState): ReactNode {
       <section id="ui-guide" className="help-section">
         <h2>UI guide</h2>
         <UiGuide />
+      </section>
+
+      <section id="tutorials" className="help-section">
+        <h2>Tutorials</h2>
+        <p className="hint">
+          Full walkthroughs of Construct&apos;s three headline flows, with real screenshots from
+          an actual run of each.
+        </p>
+        <h3>Guided route import</h3>
+        <RouteImportTutorial />
+        <h3>New user setup and settings</h3>
+        <SetupSettingsTutorial />
+        <h3>Auto code generation and LLM-assisted implementation</h3>
+        <ListingDetailsTutorial />
       </section>
 
       <section id="cli-reference" className="help-section">
