@@ -13,7 +13,7 @@
 // literal shape otherwise.
 import fs from 'node:fs';
 import path from 'node:path';
-import ts from 'typescript';
+import { ts, parseTsSource as parseTs, findNode } from '../ast/index.mjs';
 import { loadConfig } from './../config.mjs';
 import { write } from '../fs.mjs';
 import { selfCheck } from '../generators.mjs';
@@ -22,21 +22,6 @@ import { ConstructError, EXIT_CODES } from '../diagnostics.mjs';
 
 function usageError(message) {
   return new ConstructError(message, { exitCode: EXIT_CODES.USAGE_ERROR });
-}
-
-function parseTs(source, fileName = 'file.tsx') {
-  return ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-}
-
-function findNode(root, predicate) {
-  let found = null;
-  const visit = (node) => {
-    if (found) return;
-    if (predicate(node)) { found = node; return; }
-    ts.forEachChild(node, visit);
-  };
-  visit(root);
-  return found;
 }
 
 // ---- PageProps interface introspection (#7.2's output) -------------------
