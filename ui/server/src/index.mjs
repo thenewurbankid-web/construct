@@ -295,7 +295,7 @@ app.get('/api/pages/unmapped', (req, res) => {
     const { feature, file, nodeId } = req.query;
     const root = currentRoot();
     const { absPath } = resolvePageFile(root, feature, file);
-    res.json(findUnmappedProps(fs.readFileSync(absPath, 'utf8'), nodeId));
+    res.json(findUnmappedProps(fs.readFileSync(absPath, 'utf8'), nodeId, root, absPath));
   } catch (e) {
     handlePagesEditorError(res, e);
   }

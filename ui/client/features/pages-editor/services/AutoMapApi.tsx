@@ -2,7 +2,7 @@ import { getJson, postJson } from '@/lib/http';
 import type { PageTree, SaveOutcome } from '../types';
 
 export const getUnmappedProps = (feature: string, file: string, nodeId: string) =>
-  getJson<{ candidates: string[] }>(
+  getJson<{ candidates: string[]; childPropsResolved: boolean }>(
     `/api/pages/unmapped?feature=${encodeURIComponent(feature)}&file=${encodeURIComponent(file)}&nodeId=${encodeURIComponent(nodeId)}`,
   );
 
