@@ -72,7 +72,8 @@ export function offlineSource(fixtures) {
         .map((p) => {
           const h = /^(#{1,6})\s+(.*)$/.exec(p.trim());
           const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
-          const img = /^!\[([^\]]*)\]\((\S+)\)$/.exec(p.trim());
+          if (/^---+$/.test(p.trim())) return '<hr>';
+          const img =/^!\[([^\]]*)\]\((\S+)\)$/.exec(p.trim());
           if (img) return `<p><img src="${img[2]}" alt="${img[1]}"></p>`;
           return h ? `<h${h[1].length}>${esc(h[2])}</h${h[1].length}>` : `<p>${esc(p.trim())}</p>`;
         })

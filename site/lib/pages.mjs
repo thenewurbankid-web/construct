@@ -11,7 +11,7 @@ function layout({ title, description, root, body, sidebar = '', active = '', rep
     ['', 'Guides', 'guides'],
     ['try-it.html', 'Try it', 'try'],
   ]
-    .map(([href, label, key]) => `<a href="${root}${href || './'}"${active === key ? ' aria-current="page"' : ''}>${label}</a>`)
+    .map(([href, label, key]) => `<a href="${href ? root + href : root || './'}"${active === key ? ' aria-current="page"' : ''}>${label}</a>`)
     .join('');
   const fullTitle = title === 'Construct User Guide' ? title : `${esc(title)} · Construct User Guide`;
   return `<!doctype html>
@@ -36,7 +36,7 @@ ${basePath ? `<base href="${esc(basePath)}">` : ''}
 <a class="skip" href="#main">Skip to content</a>
 <header class="topbar">
   <div class="topbar-inner">
-    <a class="brand" href="${root}./"><span class="brand-mark" aria-hidden="true">C</span><span>Construct</span><span class="brand-sub">User Guide</span></a>
+    <a class="brand" href="${root || './'}"><span class="brand-mark" aria-hidden="true">C</span><span>Construct</span><span class="brand-sub">User Guide</span></a>
     <nav aria-label="Primary">${nav}<a class="ext" href="${esc(repoUrl)}">GitHub</a></nav>
   </div>
 </header>
@@ -125,7 +125,7 @@ export function renderGuide({ guide, guides, repoUrl, buildTime, siteUrl }) {
 </section>`,
     )
     .join('\n');
-  const body = `<nav class="crumbs" aria-label="Breadcrumb"><a href="${root}./">Guides</a> <span aria-hidden="true">/</span> <span>${esc(guide.title)}</span></nav>
+  const body = `<nav class="crumbs" aria-label="Breadcrumb"><a href="${root}">Guides</a> <span aria-hidden="true">/</span> <span>${esc(guide.title)}</span></nav>
 <header class="guide-head">
   <h1>${esc(guide.title)}</h1>
   ${guide.introHtml ? `<div class="prose lede-block">${guide.introHtml}</div>` : `<p class="lede">${esc(guide.summary)}</p>`}

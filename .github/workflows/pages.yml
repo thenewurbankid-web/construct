@@ -1,0 +1,57 @@
+name: Pages user guide
+
+# Builds the user-guide site (site/build.mjs) from the [Demo] tickets and deploys it to GitHub Pages.
+# Live at https://thenewurbankid-web.github.io/construct/
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['site/**', '.github/workflows/pages.yml']
+  schedule:
+    - cron: '17 */6 * * *'
+  issues:
+    types: [edited, closed, reopened, labeled]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+  issues: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    # For issue events, only rebuild when the issue is a demo ticket. The title is
+    # compared in an expression and never interpolated into a shell command.
+    if: github.event_name != 'issues' || startsWith(github.event.issue.title, '[Demo')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - uses: actions/configure-pages@v6
+      - name: Test site generator
+        run: node --test site/test/site.test.mjs
+      - name: Build site
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node site/build.mjs --out site/dist
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
