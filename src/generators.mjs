@@ -76,8 +76,10 @@ function renderCustomTemplate(templatePath,name){
 // Re-validate freshly generated files against Epic 1.2's enforcer. A failure
 // here means Construct's own template produced non-conforming code — an
 // internal bug, not a user mistake — so it throws rather than returning a
-// normal violation report.
-function selfCheck(root,absFiles){
+// normal violation report. Exported so other generators (e.g. Ticket 7.2's
+// pageTransformer.mjs, ingesting an externally-authored JSX file) reuse the
+// same re-validate-after-write step instead of a second copy of it.
+export function selfCheck(root,absFiles){
  const files=absFiles.map(f=>rel(root,f));
  const {violations}=validateArchitecture(root,{files});
  const errors=violations.filter(v=>v.severity==='error');
@@ -91,31 +93,57 @@ function selfCheck(root,absFiles){
 // identifier can't contain "-"/"_" — PascalCase across those word
 // boundaries the same way `cap` elsewhere assumes a single already-capped
 // word, so createFeature's own scaffolded types.ts is always valid TS.
+//
+// #24 handled the "-"/"_" boundaries themselves; #79 closed the gap that
+// left: any character the boundary-replace doesn't touch (a leading digit,
+// a space, anything outside [-_a-zA-Z0-9]) passed straight through into the
+// result untouched, so a feature name like "3d-viewer" silently produced
+// "3dViewer" -- a syntactically invalid `export type 3dViewerId` in the
+// scaffolded types.ts. Reject that at scaffold time instead of writing it.
+const TS_IDENTIFIER_RE=/^[A-Za-z_$][A-Za-z0-9_$]*$/;
 function pascalCase(name){
- return name.replace(/(^|[-_]+)([a-zA-Z0-9])/g,(_,__,c)=>c.toUpperCase());
+ const result=name.replace(/(^|[-_]+)([a-zA-Z0-9])/g,(_,__,c)=>c.toUpperCase());
+ if(!TS_IDENTIFIER_RE.test(result)) throw new ConstructError(
+  `Feature name "${name}" can't be turned into a valid TypeScript identifier (got "${result}") — identifiers can't start with a digit and can only contain letters, digits, "_", and "$". Rename the feature.`,
+  {exitCode:EXIT_CODES.USAGE_ERROR}
+ );
+ return result;
 }
 
 export function createFeature(root,name){
+ // Validate before any side effect: an illegal-identifier name (#79) must
+ // fail clearly with nothing written, not leave a half-scaffolded feature
+ // directory behind it.
+ const capName=pascalCase(name);
  const config=loadConfig(root);
  const base=path.join(root,config.features?.root||'features',name);
  for(const d of ['controllers','workflows','hooks','domain','services','pages','components'])ensureDir(path.join(base,d));
  const typesFile=path.join(base,'types.ts'), indexFile=path.join(base,'index.ts');
- write(typesFile,`export type ${pascalCase(name)}Id = string;\n`);
+ write(typesFile,`export type ${capName}Id = string;\n`);
  write(indexFile,`// Public API for feature: ${name}\nexport type * from './types';\n`);
  selfCheck(root,[typesFile,indexFile]);
  return base;
 }
 
-export function generateLayer(root,layer,name,feature){
+// Pure: compute the {file, content} a layer's template would produce,
+// without touching disk. Shared by generateLayer (below, unchanged disk-
+// writing behavior) and the Ticket 7.1 pipeline runner (src/engine/pipeline.mjs),
+// which stages the same content into a transactionalWriter buffer instead of
+// writing it directly -- so template logic lives in exactly one place either way.
+export function renderLayer(root,layer,name,feature){
  if(!templates[layer])throw new Error(`Unknown layer: ${layer}`);
  const config=loadConfig(root);
  const cap=name[0].toUpperCase()+name.slice(1);
  const dir=path.join(root,config.features?.root||'features',feature,folderFor(layer));
- ensureDir(dir);
  const file=path.join(dir,`${layerFileBaseName(layer,cap)}.tsx`);
  const custom=findCustomTemplate(root,layer,config);
  const content=custom?renderCustomTemplate(custom,name):templates[layer](cap,{framework:config.project?.framework});
- write(file,content);
+ return {file,content};
+}
+
+export function generateLayer(root,layer,name,feature){
+ const {file,content}=renderLayer(root,layer,name,feature);
+ write(file,content); // write() ensures the parent dir exists
  selfCheck(root,[file]);
  return file;
 }

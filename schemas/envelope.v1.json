@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://construct.dev/schemas/envelope.v1.json",
+  "title": "Construct Context Envelope v1",
+  "description": "The state handed between `construct pipeline run` steps (and, more broadly, between any two Construct generator commands run with --json) so an LLM or script driving a multi-step build never has to re-derive what already exists -- it reads the envelope from the previous step's stdout and passes it straight to the next. See src/engine/envelope.mjs (createEnvelope/validateEnvelope) and src/engine/pipeline.mjs for the runtime shapes this describes; docs/README should point back here as the source of truth.",
+  "type": "object",
+  "required": ["version", "feature", "status", "layers"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 1,
+      "description": "Envelope schema version. Bump this file to v2 (envelope.v2.json) on any breaking shape change rather than mutating v1 in place."
+    },
+    "feature": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The Construct feature name (features/<feature>/...) this envelope tracks."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "committed", "aborted"],
+      "description": "'pending' on the way in (a request envelope); 'committed' or 'aborted' on the way out of a pipeline step, depending on whether construct validate passed on the buffered result."
+    },
+    "layers": {
+      "type": "object",
+      "description": "Map of layer name (domain/service/workflow/hook/page/component/controller/route) to the project-relative file paths that layer owns for this feature so far. Populated incrementally as pipeline steps commit.",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    },
+    "unboundSlots": {
+      "type": "array",
+      "description": "Interactive props/callbacks discovered on an ingested pristine page (Ticket 7.2) that have no wired handler yet -- consumed by the controller binder (Ticket 7.4) to know what it still needs to wire up.",
+      "items": {
+        "type": "object",
+        "required": ["name", "kind"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "description": "The prop name, e.g. onCategoryChange." },
+          "kind": { "type": "string", "enum": ["callback", "value"], "description": "'callback' for an event handler prop (onClick, onChange, ...), 'value' for a bound value prop (value, checked, ...)." },
+          "component": { "type": "string", "description": "The exported component name the slot was found on, e.g. CheckoutPage." }
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "description": "XState event types exposed by this feature's workflow (Ticket 7.3), for downstream consumers such as the controller binder (Ticket 7.4).",
+      "items": {
+        "type": "object",
+        "required": ["type"],
+        "additionalProperties": false,
+        "properties": {
+          "type": { "type": "string", "description": "The event's `type` discriminant, e.g. SUBMIT." },
+          "payload": {
+            "type": "object",
+            "description": "Map of payload field name to its TS type as a string, e.g. { \"value\": \"string\" }."
+          }
+        }
+      }
+    },
+    "diagnostics": {
+      "type": "array",
+      "description": "construct validate violations (diagnostics.mjs's makeViolation shape) produced by the last validation attempt on this envelope's buffered result. Empty when status is 'committed'.",
+      "items": { "type": "object" }
+    },
+    "steps": {
+      "type": "array",
+      "description": "Input-only: the generation steps for `construct pipeline run` to execute against this envelope in order (e.g. [{layer:'domain',name:'Total'},{layer:'service',name:'Total'}]). Always empty/absent on an envelope emitted as output -- a completed step's result is reflected in `layers` instead.",
+      "items": {
+        "type": "object",
+        "required": ["layer", "name"],
+        "additionalProperties": false,
+        "properties": {
+          "layer": { "type": "string", "description": "One of the architecture layers, e.g. domain/service/workflow/hook/page/component/controller." },
+          "name": { "type": "string", "description": "The unit's base name, e.g. \"Total\" for a TotalService/useTotal/etc." }
+        }
+      }
+    }
+  }
+}

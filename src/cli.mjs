@@ -2,20 +2,26 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { makeLineSource } from './line-source.mjs';
 import { createFeature, generateLayer, generateVertical, layerFromGeneratedFile, fillGeneratedFile } from './generators.mjs';
+import { generateServiceFromSpec } from './service-generator.mjs';
 import { write, ensureDir } from './fs.mjs';
 import { loadConfig, findProjectRoot, DEFAULT_RULES, normalizeFramework } from './config.mjs';
 import { formatReport, exitCodeForViolations, ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { aggregateValidation } from './registry.mjs';
 import { validateArchitecture } from './architecture-enforcer.mjs';
-import { validateSeparationOfConcerns } from './soc-enforcer.mjs';
-import { validateReadability } from './readability-enforcer.mjs';
-import { syncPublicApi, checkPublicApiDrift } from './api-composer.mjs';
+import { syncPublicApi } from './api-composer.mjs';
 import { summarizeProject, summarizeCompact, summarizeProse, summarizeSince } from './summarize.mjs';
 import { moveLayerFile, renameLayerFile } from './refactor.mjs';
 import { importVertical, importPlan, analyzeFiles, executeImportPlan } from './import.mjs';
 import { resolveRoute } from './route-resolver.mjs';
+import { DEFAULT_ENFORCERS } from './engine/defaultEnforcers.mjs';
+import { runPipeline } from './engine/pipeline.mjs';
+import { validateEnvelope } from './engine/envelope.mjs';
+import { ingestPage } from './engine/pageTransformer.mjs';
+import { generateWorkflow } from './engine/workflowGenerator.mjs';
+import { generateController } from './engine/controllerBinder.mjs';
 
 // Resolve the project root freshly per command: walks up from cwd (or from
 // --dir, when given) to find an existing architecture.yml (monorepo
@@ -61,7 +67,11 @@ export async function init(args) {
   const fi = args.indexOf('--framework');
   const framework = normalizeFramework(fi >= 0 ? args[fi + 1] : undefined);
   ensureDir(dir);
-  const arch = `version: 1\npreset: strict-nextjs\n\nproject:\n  framework: ${framework}\n  language: typescript\n\nfeatures:\n  root: features\n\nrules:\n${Object.entries(DEFAULT_RULES).map(([k, v]) => `  ${k}: ${v.severity}`).join('\n')}\n\nexceptions: []\n`;
+  // Only real severity-bearing rules get a scaffolded `<id>: <severity>` line — a
+  // numeric-override entry like READ-002-max-loc (see config.mjs's DEFAULT_RULES) has
+  // no severity to print and is left out entirely; the project inherits its default
+  // (200) until someone opts into an override themselves.
+  const arch = `version: 1\npreset: strict-nextjs\n\nproject:\n  framework: ${framework}\n  language: typescript\n\nfeatures:\n  root: features\n\nrules:\n${Object.entries(DEFAULT_RULES).filter(([, v]) => !v.numeric).map(([k, v]) => `  ${k}: ${v.severity}`).join('\n')}\n\nexceptions: []\n`;
   write(path.join(dir, 'architecture.yml'), arch);
   write(path.join(dir, 'AGENTS.md'), `# Construct\n\nRead architecture.yml before changing code.\n\nDefault flow: Route → Controller → Workflow → Service → API; Controller → Page → Component.\n\nPages: no business logic, workflows, services, API calls, or fetch.\nComponents: presentation/local UI state only.\nFeatures: isolated; cross-feature access goes through index.ts.\nDomain: pure by default. Services: external effects.\n\nRun \`construct validate\` before finishing changes.\n`);
   createFeature(dir, 'core');
@@ -91,22 +101,96 @@ export async function feature(args) {
   console.log(`Created feature ${args[1]} at ${path.relative(root, p)}`);
 }
 
-// `--llm <provider>` (optional, mirrors `construct import`'s flag): when
-// given, calls that provider once per generated file to write a real
-// implementation in place of the template stub — scoped strictly to that
-// one file's own body (generators.mjs's fillGeneratedFile). Which
-// layers/files get created is decided the exact same deterministic way
-// either way; the flag only changes what ends up *inside* the file(s)
-// generate() was already going to create. Omitting --llm leaves the
-// scaffolded template stub exactly as before this existed.
+// Ticket 7.2/7.3/7.4/7.5's `--from`/`--bind`/`--openapi` paths below are all
+// zero-LLM: they compile a real input (JSX export, JSON state graph, an
+// already-generated Props interface, an OpenAPI spec) deterministically via
+// the src/engine/* modules or service-generator.mjs. `--llm <provider>`
+// (optional, mirrors `construct import`'s flag) only applies to the plain
+// fallback path at the bottom of this function: when given, it calls that
+// provider once to write a real implementation in place of the template
+// stub — scoped strictly to that one file's own body (generators.mjs's
+// fillGeneratedFile). Which layers/files get created is decided the exact
+// same deterministic way regardless of --llm; the flag only changes what
+// ends up *inside* a file generate() was already going to create via the
+// plain stub path. Omitting --llm leaves the scaffolded template stub
+// exactly as before this existed.
 export async function generate(args) {
   if (args[0] === 'layer') return generateVerticalSlice(args);
   const layer = args[0], name = args[1], fi = args.indexOf('--feature');
   if (!layer || !name || fi < 0 || !args[fi + 1]) {
-    throw new ConstructError('Usage: construct generate <layer> <name> --feature <feature> [--llm <provider>]', { exitCode: EXIT_CODES.USAGE_ERROR });
+    throw new ConstructError('Usage: construct generate <layer> <name> --feature <feature> [--openapi <spec>] [--llm <provider>]', { exitCode: EXIT_CODES.USAGE_ERROR });
   }
   const root = getRoot(args);
   const feature = args[fi + 1];
+  // Ticket 7.2 (#112): `construct create/generate page <name> --feature <f> --from
+  // <path>` ingests an externally-authored JSX file (e.g. a Subframe export) instead
+  // of scaffolding the usual stub template -- see src/engine/pageTransformer.mjs.
+  const fromI = args.indexOf('--from');
+  if (layer === 'page' && fromI >= 0 && args[fromI + 1]) {
+    const { pageFile, propsFile, slots } = ingestPage(root, name, feature, args[fromI + 1]);
+    console.log(`Created ${path.relative(root, pageFile)}`);
+    console.log(`Created ${path.relative(root, propsFile)} (${slots.length} slot(s): ${slots.map((s) => s.name).join(', ') || 'none'})`);
+    return;
+  }
+  // Ticket 7.3 (#113): `construct create/generate workflow <name> --feature <f>
+  // --from <path-to-json>` compiles a JSON state-graph descriptor into an XState v5
+  // machine file instead of scaffolding the usual stub template -- see
+  // src/engine/workflowGenerator.mjs. Mirrors the page ingestion --from convention.
+  if (layer === 'workflow' && fromI >= 0 && args[fromI + 1]) {
+    const descriptorPath = path.isAbsolute(args[fromI + 1]) ? args[fromI + 1] : path.resolve(args[fromI + 1]);
+    if (!fs.existsSync(descriptorPath)) {
+      throw new ConstructError(`Workflow descriptor not found: ${descriptorPath}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+    }
+    let descriptor;
+    try {
+      descriptor = JSON.parse(fs.readFileSync(descriptorPath, 'utf8'));
+    } catch (e) {
+      throw new ConstructError(`Malformed workflow descriptor JSON at ${descriptorPath}: ${e.message}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+    }
+    const { file, events } = generateWorkflow(root, name, feature, descriptor);
+    console.log(`Created ${path.relative(root, file)} (${events.length} event(s): ${events.join(', ') || 'none'})`);
+    return;
+  }
+  // Ticket 7.4 (#114): `construct create/generate controller <name> --feature <f>
+  // --bind [--envelope <path>]` auto-wires an already-generated hook (7.3) into an
+  // already-generated pristine page's Props interface (7.2) via AST signature matching,
+  // instead of scaffolding the usual same-named-page-only stub template. Opt-in via
+  // --bind so the existing unconditional stub (and `generate layer ... --layers ...
+  // controller`, which relies on it needing no prerequisite files) is unchanged.
+  const bindI = args.indexOf('--bind');
+  if (layer === 'controller' && bindI >= 0) {
+    const envelopeI = args.indexOf('--envelope');
+    let envelope;
+    if (envelopeI >= 0 && args[envelopeI + 1]) {
+      const envelopePath = path.isAbsolute(args[envelopeI + 1]) ? args[envelopeI + 1] : path.resolve(args[envelopeI + 1]);
+      if (!fs.existsSync(envelopePath)) {
+        throw new ConstructError(`Context Envelope not found: ${envelopePath}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+      }
+      try {
+        envelope = JSON.parse(fs.readFileSync(envelopePath, 'utf8'));
+      } catch (e) {
+        throw new ConstructError(`Malformed Context Envelope JSON at ${envelopePath}: ${e.message}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+      }
+    }
+    const { file, bindings } = generateController(root, name, feature, { envelope });
+    console.log(`Created ${path.relative(root, file)}`);
+    for (const b of bindings) {
+      console.log(`  ${b.slot} -> ${b.handler ? `${b.handler} (${b.matchType})` : 'UNMATCHED (TODO stub written)'}`);
+    }
+    return;
+  }
+  // Ticket 7.5 (#115): `construct create/generate service <name> --feature <f>
+  // --openapi <spec>` compiles an OpenAPI spec into a real RTKQ injectEndpoints
+  // file plus the shared transport client, instead of scaffolding the usual stub
+  // template -- see src/service-generator.mjs.
+  const oi = args.indexOf('--openapi');
+  if (layer === 'service' && oi >= 0 && args[oi + 1]) {
+    const files = await generateServiceFromSpec(root, name, feature, args[oi + 1]);
+    for (const file of files) console.log(`Created ${path.relative(root, file)}`);
+    return;
+  }
+  // Plain fallback: scaffold the usual template stub, optionally LLM-filled
+  // (see this function's own doc comment above for the --llm contract).
   const llmI = args.indexOf('--llm');
   const llm = llmI >= 0 ? args[llmI + 1] : undefined;
   const file = generateLayer(root, layer, name, feature);
@@ -165,13 +249,6 @@ export async function sync(args) {
   console.log(`Synced ${Object.keys(c.rules).length} Construct rules, ${apiSynced} feature public API(s) updated.`);
 }
 
-const DEFAULT_ENFORCERS = [
-  { name: 'architecture', validate: validateArchitecture },
-  { name: 'separation-of-concerns', validate: validateSeparationOfConcerns },
-  { name: 'readability', validate: validateReadability },
-  { name: 'public-api-drift', validate: checkPublicApiDrift },
-];
-
 export async function validate(args) {
   const root = getRoot(args);
   const { violations, ok } = aggregateValidation(root, DEFAULT_ENFORCERS);
@@ -196,6 +273,53 @@ export async function summarize(args) {
         ? summarizeProse(root, { feature })
         : summarizeProject(root, { feature, format });
   console.log(output);
+}
+
+/** Read all of stdin to completion as a UTF-8 string — used by `construct
+ * pipeline run`, which (unlike every other command) takes its real input as
+ * a JSON payload over stdin rather than as CLI args. */
+function readStdin(stream) {
+  return new Promise((resolve, reject) => {
+    let data = '';
+    stream.setEncoding('utf8');
+    stream.on('data', (chunk) => { data += chunk; });
+    stream.on('end', () => resolve(data));
+    stream.on('error', reject);
+  });
+}
+
+/** `construct pipeline run [--dir <path>]` -- Ticket 7.1. Reads a Context
+ * Envelope (schemas/envelope.v1.json) as JSON off stdin, with an optional
+ * `steps: [{layer, name}, ...]` list of generator steps to run against
+ * `envelope.feature`. Every step's output is staged in one
+ * transactionalWriter transaction and committed atomically: if the buffered
+ * result fails `construct validate`'s own enforcer set, nothing under the
+ * project root is written and the process exits non-zero. Either way, the
+ * resulting envelope (status 'committed' or 'aborted', `layers`/
+ * `diagnostics` populated accordingly) is written to stdout as JSON --
+ * mirroring the same `JSON.stringify(..., null, 2)` shaping `validate
+ * --format json` and `summarize --format json` already use, not a second
+ * JSON convention. */
+export async function pipeline(args) {
+  if (args[0] !== 'run') {
+    throw new ConstructError('Usage: construct pipeline run < envelope.json', { exitCode: EXIT_CODES.USAGE_ERROR });
+  }
+  const root = getRoot(args);
+  const raw = await readStdin(process.stdin);
+  let input;
+  try {
+    input = JSON.parse(raw);
+  } catch (e) {
+    throw new ConstructError(`Malformed envelope JSON on stdin: ${e.message}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+  }
+  const { valid, errors } = validateEnvelope(input);
+  if (!valid) {
+    throw new ConstructError(`Invalid Context Envelope on stdin:\n  ${errors.join('\n  ')}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+  }
+
+  const output = runPipeline(root, input);
+  console.log(JSON.stringify(output, null, 2));
+  if (output.status === 'aborted') process.exitCode = exitCodeForViolations(output.diagnostics);
 }
 
 export async function doctor(args) {
@@ -230,7 +354,8 @@ export function printAttribution(tool, llm) {
 }
 
 /** `construct create feature <name>` | `construct create layer <name> --layers ... [--llm <provider>]`
- * | `construct create <layer> <name> --feature <feature> [--llm <provider>]`.
+ * | `construct create <layer> <name> --feature <feature> [--llm <provider>]`
+ * | `construct create service <name> --feature <feature> --openapi <spec>` (Ticket 7.5).
  * `feature` creation has nothing fillable (just types.ts/index.ts
  * boilerplate) so `--llm` only ever applies to the layer/single-layer
  * forms, which `generate(args)` itself already handles (see its own doc
@@ -426,12 +551,18 @@ function isYes(answer) {
  * the first route, so `construct import --route <path>` can still seed the
  * loop instead of asking for it as question one.
  *
- * A "route" is a real Next.js router route — a URL like `/v2/home` — or,
- * equivalently, the folder that owns its `page.tsx`. Either way, the actual
- * file list comes from tracing the real import graph (route-resolver.mjs),
- * never from "everything under a directory you point at": a URL route needs
- * to know where the app/ directory is, so that's asked for once, lazily,
- * and reused for every further route this session. */
+ * A "route" means something different per `config.project.framework`
+ * (resolveRoute in route-resolver.mjs is framework-ready — #66): for the
+ * default `nextjs`, a URL like `/v2/home` or, equivalently, the folder that
+ * owns its `page.tsx` — a URL route needs to know where the `app/`
+ * directory is, so that's asked for once, lazily, and reused for every
+ * further route this session. For `react-spa`, a URL like `/dashboard`
+ * (resolved through the project's centralized routes table) or an existing
+ * controller file path directly — no directory question at all, since the
+ * routes table is auto-located by convention from the project root. Either
+ * way, the actual file list comes from tracing the real import graph
+ * (route-resolver.mjs), never from "everything under a directory you point
+ * at". */
 export async function importRouteWizard(ask, seedRoute) {
   const featureName = (await ask('Destination feature (Construct feature name): ')).trim();
   if (!featureName) {
@@ -442,6 +573,7 @@ export async function importRouteWizard(ask, seedRoute) {
   const root = getRoot([]);
   const config = loadConfig(root);
   const featuresRoot = config.features?.root || 'features';
+  const framework = config.project?.framework || 'nextjs';
   const featureDir = path.join(root, featuresRoot, featureName);
   if (!fs.existsSync(featureDir)) {
     createFeature(root, featureName);
@@ -451,6 +583,18 @@ export async function importRouteWizard(ask, seedRoute) {
   function isExistingDir(p) {
     try {
       return fs.statSync(path.resolve(p)).isDirectory();
+    } catch {
+      return false;
+    }
+  }
+
+  // react-spa has no per-route entry file to point at directly the way a
+  // Next.js route folder does — the equivalent "already resolved, no
+  // further lookup needed" case is an existing *controller file* (mirrors
+  // resolveReactSpaRoute's own existing-file branch in route-resolver.mjs).
+  function isExistingFile(p) {
+    try {
+      return fs.statSync(path.resolve(p)).isFile();
     } catch {
       return false;
     }
@@ -475,7 +619,9 @@ export async function importRouteWizard(ask, seedRoute) {
   const routeArgs = seedRoute ? [seedRoute] : [];
   while (true) {
     const prompt = routeArgs.length === 0
-      ? 'Route to import (a URL like /v2/home, or a route folder path): '
+      ? (framework === 'react-spa'
+        ? 'Route to import (a URL like /dashboard, or a controller file path): '
+        : 'Route to import (a URL like /v2/home, or a route folder path): ')
       : `Another route to include (leave blank to finish — ${routeArgs.length} so far): `;
     const answer = (await ask(prompt)).trim();
     if (!answer) {
@@ -497,7 +643,16 @@ export async function importRouteWizard(ask, seedRoute) {
   const folders = [];
   try {
     for (const routeArg of routeArgs) {
-      const opts = isExistingDir(routeArg) ? {} : { appDir: await resolveAppDir() };
+      let opts;
+      if (framework === 'react-spa') {
+        // No app/-directory question for react-spa: resolveRoute already
+        // auto-locates the centralized routes table (src/App.tsx/.jsx) by
+        // convention from `root` (#66) — an existing controller file needs
+        // nothing further.
+        opts = isExistingFile(routeArg) ? { framework } : { framework, root, featuresRoot };
+      } else {
+        opts = isExistingDir(routeArg) ? {} : { appDir: await resolveAppDir() };
+      }
       const resolved = resolveRoute(routeArg, opts);
       folders.push(resolved.folder);
       for (const f of resolved.files) tracedFiles.set(f, true);
@@ -582,10 +737,37 @@ export async function runImportRouteWizard(routeArg) {
 // line source. The REPL/CLI/wizard tests exercise `importRouteWizard` and
 // `runImportRouteWizard` directly and are completely unaffected by this.
 //
-// Console patching is process-global, so only one call to this should be
-// in flight at a time (a caller — e.g. the UI server — should serialize
-// sessions); that's a constraint of the adapter, not of the wizard itself.
+// #80 — per-session log capture instead of a global monkey-patch. Directly
+// reassigning console.log/warn/error per call (the original shape of this
+// adapter) corrupts concurrent sessions, not just serializes them: a second
+// call's "original" is actually the first call's already-wrapped functions
+// (so session A's output leaks into session B's captured events too), and
+// whichever session's `finally` runs first restores the *real* original
+// console methods out from under the other session, which is still mid-run.
+// Node's AsyncLocalStorage instead keeps a per-session `onEvent` scoped to
+// the exact async call chain it was started in (correctly propagated across
+// every `await` inside that chain, including into functions the wizard
+// calls into) — console.log/warn/error are wrapped exactly ONCE, at module
+// load, and every wrapper always calls the real original *and*, only if a
+// store is active for the currently-executing async chain, forwards to it.
+const wizardLogStore = new AsyncLocalStorage();
+let wizardConsolePatched = false;
+
+function ensureWizardConsolePatched() {
+  if (wizardConsolePatched) return;
+  wizardConsolePatched = true;
+  for (const kind of ['log', 'warn', 'error']) {
+    const original = console[kind].bind(console);
+    console[kind] = (...parts) => {
+      original(...parts);
+      const onEvent = wizardLogStore.getStore();
+      if (onEvent) onEvent({ kind, type: 'log', text: parts.map((p) => (typeof p === 'string' ? p : String(p))).join(' ') });
+    };
+  }
+}
+
 export function runImportRouteWizardEventDriven(onEvent, seedRoute) {
+  ensureWizardConsolePatched();
   let pendingResolve = null;
 
   function ask(promptText) {
@@ -606,25 +788,12 @@ export function runImportRouteWizardEventDriven(onEvent, seedRoute) {
     return true;
   }
 
-  const original = { log: console.log, warn: console.warn, error: console.error };
-  function captured(kind, orig) {
-    return (...parts) => {
-      orig(...parts);
-      onEvent({ kind, type: 'log', text: parts.map((p) => (typeof p === 'string' ? p : String(p))).join(' ') });
-    };
-  }
-  console.log = captured('log', original.log);
-  console.warn = captured('warn', original.warn);
-  console.error = captured('error', original.error);
-
-  const done = importRouteWizard(ask, seedRoute)
+  const done = wizardLogStore
+    .run(onEvent, () => importRouteWizard(ask, seedRoute))
     .catch((e) => {
       onEvent({ type: 'log', kind: 'error', text: `Error: ${e.message}` });
     })
     .finally(() => {
-      console.log = original.log;
-      console.warn = original.warn;
-      console.error = original.error;
       onEvent({ type: 'done' });
     });
 

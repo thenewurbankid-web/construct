@@ -95,6 +95,19 @@ test.describe.serial('Pages Editor save-back / props / auto-map / prop-flow / en
     await page.locator('.tree-panel').getByText(tagText, { exact: true }).click();
   }
 
+  // #81 — "Save snippet" became a two-step preview-then-confirm flow:
+  // clicking "Preview & save" opens a diff panel (nothing written yet),
+  // and only "Confirm save" inside it actually fires the save-back call.
+  async function previewAndConfirmSave(page) {
+    await page.getByRole('button', { name: 'Preview & save' }).click();
+    await expect(page.locator('.snippet-diff-preview')).toBeVisible();
+    const [response] = await Promise.all([
+      page.waitForResponse((res) => res.url().includes('/api/pages/node') && res.request().method() === 'POST'),
+      page.getByRole('button', { name: 'Confirm save' }).click(),
+    ]);
+    return response;
+  }
+
   test('1. pages-editor-snippet-save.png — isolated snippet edit saves back into the real source file (#52)', async ({ page }) => {
     await openHomePage(page);
     await selectTreeNode(page, '<h1>');
@@ -111,10 +124,7 @@ test.describe.serial('Pages Editor save-back / props / auto-map / prop-flow / en
     // banner never survives a tree refresh), but that makes it a race to
     // assert on from outside. The POST response itself is the
     // deterministic signal.
-    const [response] = await Promise.all([
-      page.waitForResponse((res) => res.url().includes('/api/pages/node') && res.request().method() === 'POST'),
-      page.getByRole('button', { name: 'Save snippet' }).click(),
-    ]);
+    const response = await previewAndConfirmSave(page);
     expect(response.ok()).toBeTruthy();
     expect((await response.json()).ok).toBe(true);
 
@@ -240,10 +250,7 @@ test.describe.serial('Pages Editor save-back / props / auto-map / prop-flow / en
     const textarea = page.locator('.snippet-textarea');
     await expect(textarea).toHaveValue('<h1 className="headline">{title}</h1>');
     await textarea.fill('<h1 onClick={() => fetch("/api/x")} className="headline">{title}</h1>');
-    const [response] = await Promise.all([
-      page.waitForResponse((res) => res.url().includes('/api/pages/node') && res.request().method() === 'POST'),
-      page.getByRole('button', { name: 'Save snippet' }).click(),
-    ]);
+    const response = await previewAndConfirmSave(page);
     expect(response.status()).toBe(422);
     expect((await response.json()).ok).toBe(false);
 

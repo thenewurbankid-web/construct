@@ -1,0 +1,1 @@
+export type SettingsId = string;

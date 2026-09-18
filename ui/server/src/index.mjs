@@ -7,6 +7,7 @@ import express from 'express';
 import cors from 'cors';
 import http from 'node:http';
 import fs from 'node:fs';
+import { Readable } from 'node:stream';
 import { create, refactor, research, importCommand, init } from '../../../src/cli.mjs';
 import { findProjectRoot } from '../../../src/config.mjs';
 import { USAGE } from '../../../src/usage.mjs';
@@ -14,6 +15,7 @@ import { HELP_TOPICS, TOPIC_ORDER, getTopLevelHelpText } from '../../../src/repl
 import { getSettings, updateSettings } from './settings.mjs';
 import { runCapturing, withDir } from './commandRunner.mjs';
 import { attachWizardSocket } from './wizardSocket.mjs';
+import { getOllamaStatus, listOllamaModels, startOllamaPull, removeOllamaModel } from './ollama.mjs';
 import {
   PagesEditorError,
   listFeatures,
@@ -174,6 +176,49 @@ app.post('/api/import', async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// Ollama (Epic 6.1, #97) — detect/list/pull/remove models through Ollama's
+// own local HTTP API (see ollama.mjs). Read-only detection/listing never
+// throws a hard error to the client; a non-running daemon is a normal state
+// the UI renders (install guidance), not a 500.
+
+app.get('/api/ollama/status', async (req, res) => {
+  res.json(await getOllamaStatus());
+});
+
+app.get('/api/ollama/models', async (req, res) => {
+  try {
+    res.json({ models: await listOllamaModels() });
+  } catch (e) {
+    res.status(502).json({ ok: false, error: e.message });
+  }
+});
+
+// Streams Ollama's own newline-delimited JSON pull-progress events straight
+// through to the browser as they arrive (see startOllamaPull's comment) —
+// the client reads this response body incrementally rather than waiting for
+// it to finish, so a multi-GB pull shows live progress instead of a blocked
+// spinner.
+app.post('/api/ollama/pull', async (req, res) => {
+  const { name } = req.body || {};
+  if (!name) return res.status(400).json({ ok: false, error: 'name is required' });
+  try {
+    const upstream = await startOllamaPull(name);
+    res.setHeader('Content-Type', 'application/x-ndjson');
+    Readable.fromWeb(upstream.body).pipe(res);
+  } catch (e) {
+    res.status(502).json({ ok: false, error: e.message });
+  }
+});
+
+app.delete('/api/ollama/models/:name', async (req, res) => {
+  try {
+    res.json(await removeOllamaModel(req.params.name));
+  } catch (e) {
+    res.status(502).json({ ok: false, error: e.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Pages editor (epic #48: #49 pages browser, #50 JSX tree, #52 snippet
 // save-back, #53 props inspector, #54 auto-map). All of this is read/write
 // only within features/<feature>/pages/ — see pagesEditor.mjs's
@@ -274,15 +319,19 @@ app.get('/api/pages/props', (req, res) => {
 
 app.post('/api/pages/props', (req, res) => {
   try {
-    const { feature, file, nodeId, propName, kind, value, contentHash } = req.body || {};
-    if (!nodeId || !propName || !kind) return res.status(400).json({ ok: false, error: 'nodeId, propName, and kind are required' });
+    const { feature, file, nodeId, propName, kind, value, contentHash, index } = req.body || {};
+    // A spread prop has no name (it's `{...expr}`, not `name={expr}`) —
+    // identified by `index` instead (#77 follow-up to #53).
+    if (!nodeId || !kind || (kind !== 'spread' && !propName)) {
+      return res.status(400).json({ ok: false, error: 'nodeId, kind, and (for non-spread props) propName are required' });
+    }
     const root = currentRoot();
     const { absPath, relPath } = resolvePageFile(root, feature, file);
     const source = fs.readFileSync(absPath, 'utf8');
     if (contentHash && hashOf(source) !== contentHash) {
       return res.status(409).json({ ok: false, error: 'The file changed on disk since this was loaded — reload the tree and try again.' });
     }
-    const attrSnippet = buildAttributeSnippet(source, nodeId, propName, kind, value);
+    const attrSnippet = buildAttributeSnippet(source, nodeId, propName, kind, value, index);
     const patched = patchNode(source, nodeId, attrSnippet, contentHash);
     saveAndRespond(res, root, relPath, absPath, patched);
   } catch (e) {
@@ -295,7 +344,7 @@ app.get('/api/pages/unmapped', (req, res) => {
     const { feature, file, nodeId } = req.query;
     const root = currentRoot();
     const { absPath } = resolvePageFile(root, feature, file);
-    res.json(findUnmappedProps(fs.readFileSync(absPath, 'utf8'), nodeId));
+    res.json(findUnmappedProps(fs.readFileSync(absPath, 'utf8'), nodeId, root, absPath));
   } catch (e) {
     handlePagesEditorError(res, e);
   }

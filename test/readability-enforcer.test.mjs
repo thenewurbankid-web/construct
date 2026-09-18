@@ -94,6 +94,23 @@ test('READ-003: fixtures/readability-jsdoc flags only the undocumented public ex
   assert.ok(!jsdocViolations.some((x) => x.message.includes('stopDemo')));
 });
 
+// #19 / epic #76: a decorator sitting between a JSDoc block and the declaration it
+// documents used to break "immediately preceding" association under regex-based
+// parsing (extractJsdoc would return null), so READ-003 would wrongly flag a
+// decorated, JSDoc'd public export as undocumented. Now that parser.mjs's
+// extractJsdoc is AST-based (#88), readability-enforcer.mjs — which consumes it
+// unchanged — should associate the JSDoc correctly with no code changes of its own.
+test('READ-003: a JSDoc above a decorator on a public export is correctly associated (#19)', () => {
+  const root = tmpRoot();
+  writeFile(
+    root,
+    'features/demo/index.ts',
+    `/** The demo feature's widget component. */\n@Component({ selector: 'app-widget' })\nexport class Widget {}\n`
+  );
+  const { violations } = validateReadability(root);
+  assert.equal(violations.filter((v) => v.rule === 'READ-003').length, 0);
+});
+
 test('rule severity can be overridden to "off" via architecture.yml', () => {
   const root = tmpRoot();
   writeFile(root, 'features/demo/components/lowercase.tsx', `export function lowercase() {\n  return <div />;\n}\n`);

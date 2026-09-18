@@ -13,6 +13,7 @@ const LINKS = [
   { href: '/dashboard', label: 'Dashboard', activeOn: ['/', '/dashboard'] },
   { href: '/wizard', label: 'Import Wizard', activeOn: ['/wizard'] },
   { href: '/pages', label: 'Pages Editor', activeOn: ['/pages'] },
+  { href: '/ollama', label: 'Local Model', activeOn: ['/ollama'] },
   { href: '/settings', label: 'Settings', activeOn: ['/settings'] },
   { href: '/help', label: 'Help', activeOn: ['/help'] },
 ];

@@ -589,6 +589,122 @@ button:disabled {
   font-size: 0.82rem;
 }
 
+/* #81 — highlighted snippet editor: a transparent textarea laid directly
+ * over a syntax-highlighted <pre>, both sharing identical box metrics so
+ * neither ever drifts from the other. */
+.snippet-editor-code {
+  position: relative;
+  width: 100%;
+}
+
+.snippet-editor-code .snippet-highlight,
+.snippet-editor-code .snippet-textarea-overlay {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: auto;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.snippet-editor-code .snippet-highlight {
+  background: #0b0d11;
+  color: var(--text);
+  pointer-events: none;
+}
+
+.snippet-editor-code .snippet-textarea-overlay {
+  background: transparent;
+  border-color: transparent;
+  color: transparent;
+  caret-color: var(--text);
+  resize: none;
+}
+
+.snippet-editor-code .snippet-textarea-overlay::selection {
+  background: rgba(91, 140, 255, 0.35);
+}
+
+/* A minimal, self-contained token palette (rather than pulling in Prism's
+ * own separate theme CSS) so highlighted JSX matches this app's existing
+ * dark palette instead of a mismatched, separately-themed code block. */
+.token.keyword {
+  color: var(--accent);
+}
+
+.token.function {
+  color: #d98c2b;
+}
+
+.token.string,
+.token.attr-value {
+  color: #3fae5a;
+}
+
+.token.tag,
+.token.tag .token.tag,
+.token.attr-name {
+  color: #e0668c;
+}
+
+.token.punctuation,
+.token.attr-equals {
+  color: var(--muted);
+}
+
+.token.comment {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.snippet-diff-preview {
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  background: #0b0d11;
+}
+
+.snippet-diff {
+  max-height: 320px;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 8px 0;
+}
+
+.diff-line {
+  display: block;
+}
+
+.diff-added {
+  color: var(--tool);
+  background: rgba(63, 174, 90, 0.12);
+}
+
+.diff-removed {
+  color: var(--error);
+  background: rgba(224, 90, 90, 0.12);
+}
+
+.diff-context {
+  color: var(--muted);
+}
+
+.snippet-diff-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .violation-list {
   margin: 6px 0 0;
   padding-left: 18px;
@@ -615,6 +731,19 @@ button:disabled {
   min-width: 90px;
 }
 
+/* #77 — labels a raw-code-edited row (identifier/expression/spread) so its
+ * text input isn't mistaken for a broken plain-string field. */
+.prop-kind-hint {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(217, 140, 43, 0.15);
+  color: var(--llm);
+  flex-shrink: 0;
+}
+
 .prop-row input[type='text'],
 .prop-row input[type='number'] {
   flex: 1;
@@ -635,6 +764,10 @@ button:disabled {
   /* background/border/blur come from .glass-panel (GlassPanel component) */
   margin-top: 20px;
   padding: 16px;
+}
+
+.propflow-show-values {
+  margin-top: 10px;
 }
 
 .propflow-legend {
@@ -717,4 +850,57 @@ button:disabled {
 
 .propflow-pill-outgoing {
   opacity: 0.9;
+}
+
+/* Ollama (Epic 6.1/#97, 6.3/#99) — status/install/model-management screen. */
+.ollama-status,
+.ollama-install,
+.ollama-models,
+.ollama-pull {
+  margin-top: 1rem;
+}
+
+.ollama-install-command {
+  overflow-x: auto;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.ollama-model-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ollama-model-table th,
+.ollama-model-table td {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+}
+
+.ollama-pull-progress {
+  font-weight: 600;
+}
+
+.ollama-model-picker-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.ollama-model-picker-option {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.4rem;
+}
+
+.ollama-model-picker-name {
+  font-weight: 600;
+  min-width: 3rem;
 }

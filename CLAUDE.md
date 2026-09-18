@@ -207,3 +207,43 @@ snapshot that rots. See #35 for the audit that established this.
     This applies to every ticket, not just UI ones — a `src/`-only CLI
     change still needs its usage/API/exceptions/next-steps stated, same
     as a UI one needs its screenshot.
+
+## Demos module (Module 8) — on-demand feature documentation (standing instruction)
+
+See #125 for the epic. A recurring workflow, not a one-time backlog sweep:
+when asked to create a demo for a feature, file a **parent ticket** as
+`[Demo] <Feature name>` referencing #125, then **one subtask sub-issue per
+distinct capability or logical section** of that feature (rule 4's usual
+parent-epic + atomic-sub-issue pattern) — never one flat mega-ticket trying
+to cover everything. Use judgment on the exact split (per capability or per
+section, whichever is cleanest for that feature); the point is real,
+individually-closable subtasks, not a rigid taxonomy.
+
+Each subtask (and the parent's own summary) must be written as:
+
+1. **Separate, clearly labeled CLI and UI sections** — not interleaved
+   into one narrative. A "CLI" section covering that capability's
+   command-line usage (real commands + real output), and a "UI" section
+   covering the same capability's UI usage (real screenshots), as two
+   distinct parts of the same subtask. Each section covers the feature's
+   full real capability breadth on its own surface (every command/flag/
+   layer/option it actually has, verified against current code — not a
+   cherry-picked minimal example, and not copied from a possibly-drifted
+   old issue description).
+2. **Written for users and stakeholders, not engineers.** Plain language
+   about what the feature does and how to use it; real commands/output/
+   screenshots as evidence. Skip implementation internals (parsing
+   details, internal function/module names, rule-engine mechanics) unless
+   a stakeholder would actually care — product-demo tone, not
+   engineering-design-doc tone.
+3. **Real evidence only.** Terminal output from an actual run, never
+   fabricated. Screenshots from an actual Playwright run
+   (`ui/e2e/tests/demos/`, a dedicated subdirectory, screenshots committed
+   to `ui-screenshots` under `ui/e2e/screenshots/demos/`, embedded inline
+   — same mechanism as rule 11) — but kept **frugal**: only at genuinely
+   meaningful state changes (a result appearing, a form succeeding), not
+   one per click/keystroke. A CLI-only capability with no UI surface uses
+   a real terminal transcript instead of screenshots.
+
+Only create demo tickets when asked — don't proactively file one per
+feature. Standard issue discipline (rules 1-2, 4, 12 above) still applies.

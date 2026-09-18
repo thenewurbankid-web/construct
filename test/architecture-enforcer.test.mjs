@@ -61,6 +61,17 @@ test('detectLayerViolations flags each page rule independently', () => {
   assert.deepEqual(detectLayerViolations('page', `export function P(){ useMachine(); }`).map((v) => v.rule), ['PAGE-006']);
 });
 
+// Ticket 7.2 (#112) regression: a page reaching for application state
+// *indirectly*, via importing a custom hook, must be flagged under PAGE-006
+// even when it never directly calls useMachine/useActor/createMachine
+// itself -- this was a real gap (import-only usage previously slipped
+// through) confirmed and closed as part of the epic's reconciliation notes.
+test('detectLayerViolations flags PAGE-006 for a page that imports a custom hook, even with no useMachine/useActor/createMachine call', () => {
+  const violations = detectLayerViolations('page', `import { useCart } from '../hooks/useCart';\nexport function P(){ const { items } = useCart(); return null; }`);
+  assert.deepEqual(violations.map((v) => v.rule), ['PAGE-006']);
+  assert.match(violations[0].message, /custom hook/);
+});
+
 test('detectLayerViolations splits component rules (controller vs workflow/service/domain)', () => {
   assert.deepEqual(detectLayerViolations('component', `import { C } from '../controllers/C';`).map((v) => v.rule), ['COMPONENT-002']);
   assert.deepEqual(detectLayerViolations('component', `import { S } from '../services/S';`).map((v) => v.rule), ['COMPONENT-003']);
@@ -80,6 +91,53 @@ test('detectLayerViolations flags effects inside domain code', () => {
 test('detectLayerViolations returns nothing for clean code', () => {
   assert.deepEqual(detectLayerViolations('domain', `export function pure(x){ return x + 1; }`), []);
   assert.deepEqual(detectLayerViolations('component', `export function C(){ return <div/>; }`), []);
+});
+
+// #74 regression: a comment (or string/property name) mentioning a banned substring
+// must never trip a rule the way real code would — this was the actual false positive
+// hit during the ui/ Next.js migration, and is the reason detectLayerViolations moved
+// from whole-file text-pattern matching to real AST analysis (#89).
+test('detectLayerViolations (#74 regression): a comment mentioning banned substrings does not trip any rule', () => {
+  const domainSource = `
+// This domain module intentionally has no workflow/service/domain effects — see fetch()
+// usage in the services layer instead, and avoid window/document/localStorage here.
+export function pure(x) {
+  return x + 1;
+}
+`;
+  assert.deepEqual(detectLayerViolations('domain', domainSource), []);
+
+  const pageSource = `
+// Do not import workflows/ or services/ or domain/ here, and never call fetch() or
+// useMachine()/useActor()/createMachine() — this comment mentions all of them on purpose.
+export function Page() {
+  return null;
+}
+`;
+  assert.deepEqual(detectLayerViolations('page', pageSource), []);
+
+  const routeSource = `
+// fetch/useMachine/useActor/localStorage/sessionStorage are all mentioned right here.
+import { X } from '../../features/x/controllers/XController';
+export default function Page(){ return <X/>; }
+`;
+  assert.deepEqual(detectLayerViolations('route', routeSource), []);
+
+  const workflowSource = `
+// this workflow talks to react (the library) in this comment only, never imports it
+export function workflow() { return 1; }
+`;
+  assert.deepEqual(detectLayerViolations('workflow', workflowSource), []);
+
+  // A same-named object property/import binding isn't a "usage" of the global either.
+  const domainWithProperty = `
+import { fetch as fetchThing } from './local-fetch-helper';
+export function f() {
+  const obj = { fetch: 1 };
+  return obj.fetch + fetchThing();
+}
+`;
+  assert.deepEqual(detectLayerViolations('domain', domainWithProperty), []);
 });
 
 // ---- exception matching -------------------------------------------------
@@ -159,6 +217,18 @@ test('validateExceptionsShape still rejects a genuinely invalid "expires" value'
 });
 
 // ---- filesystem-backed integration tests --------------------------------
+
+// #93 — ported from root test.mjs's one case (the only thing keeping the
+// now-deleted src/validator.mjs alive), exercising validateArchitecture
+// instead of validator.mjs's orphaned validateProject.
+test('forbidden page fetch is detected (PAGE-004) against a real project directory', () => {
+  const dir = tmpProject();
+  fs.mkdirSync(path.join(dir, 'features', 'x', 'pages'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), 'rules:\n  PAGE-004: error\n');
+  fs.writeFileSync(path.join(dir, 'features', 'x', 'pages', 'X.tsx'), 'export function X(){fetch("/");return <div/>}');
+  const res = validateArchitecture(dir);
+  assert.ok(res.violations.some((v) => v.rule === 'PAGE-004'));
+});
 
 test('validateArchitecture honors an exception scoping a violation away', () => {
   const dir = tmpProject();
@@ -275,6 +345,29 @@ test('architecture-valid-react-spa fixture classifies src/App.tsx as the route l
   assert.equal(classifyFile('features/widget/controllers/WidgetController.tsx', graph), 'controller');
   // The nextjs-only route pattern must not accidentally also match this file.
   assert.notEqual(classifyFile('src/App.tsx', CANONICAL_LAYERS), 'route');
+});
+
+// #82 — a second react-spa fixture with more than one route (the fixture
+// above only ever had /dashboard), proving the same zero-error bar holds
+// with several routes/features sharing one project, not just a single one.
+test('architecture-valid-react-spa-multi-route fixture produces zero error-severity violations', () => {
+  const root = path.join(REPO_ROOT, 'fixtures', 'architecture-valid-react-spa-multi-route');
+  const res = validateArchitecture(root);
+  const errors = res.violations.filter((v) => v.severity === 'error');
+  assert.deepEqual(errors, []);
+});
+
+test('architecture-valid-react-spa-multi-route fixture classifies each of its 3 routed controllers correctly', () => {
+  const root = path.join(REPO_ROOT, 'fixtures', 'architecture-valid-react-spa-multi-route');
+  const graph = loadLayerGraph(root);
+  assert.equal(classifyFile('src/App.tsx', graph), 'route');
+  for (const file of [
+    'features/dashboard/controllers/DashboardController.tsx',
+    'features/settings/controllers/SettingsController.tsx',
+    'features/user/controllers/UserController.tsx',
+  ]) {
+    assert.equal(classifyFile(file, graph), 'controller');
+  }
 });
 
 test('architecture-invalid fixture reports exactly the expected rule per manifest entry', () => {

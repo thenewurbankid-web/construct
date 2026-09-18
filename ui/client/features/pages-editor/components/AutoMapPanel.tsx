@@ -14,20 +14,25 @@ type AutoMapPanelProps = {
 
 // #54 — auto-map unmapped child props onto the parent component.
 export function AutoMapPanel({ feature, file, nodeId, contentHash, onSaved }: AutoMapPanelProps) {
-  const { candidates, checked, find, toggle, apply, busy, status } = useAutoMap(feature, file, nodeId, contentHash, onSaved);
+  const { candidates, checked, find, toggle, apply, busy, status, childPropsResolved } = useAutoMap(feature, file, nodeId, contentHash, onSaved);
   return (
     <div className="automap-panel">
       <h4>Auto-map unmapped props (#54)</h4>
       <p className="hint">
-        Scope, as implemented: compares this component&apos;s JSX attributes against the enclosing page&apos;s
-        own props (destructured function params) and <code>useState</code> names — any of those not
-        currently passed down as a same-named attribute is offered as a shorthand{' '}
-        <code>{'{name}'}</code> wire-up. This is single-file/heuristic — it does not resolve the
-        child component&apos;s own declared prop types across files.
+        Compares this component&apos;s JSX attributes against the enclosing page&apos;s own props
+        (destructured function params) and <code>useState</code> names — any of those not currently
+        passed down as a same-named attribute is offered as a shorthand <code>{'{name}'}</code>{' '}
+        wire-up. (#77) When the child component&apos;s own file can be resolved from the page&apos;s
+        import, candidates are additionally filtered to names the child actually declares.
       </p>
       <button type="button" onClick={find}>Find unmapped props</button>
       {candidates && (
         <>
+          <p className="hint automap-resolution-status">
+            {childPropsResolved
+              ? 'Filtered to props the child component actually declares.'
+              : "Could not resolve the child component's own props across files — showing every in-scope name instead."}
+          </p>
           {candidates.length === 0 ? (
             <p className="hint">Nothing unmapped.</p>
           ) : (

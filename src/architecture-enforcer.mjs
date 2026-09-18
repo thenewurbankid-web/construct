@@ -5,21 +5,114 @@
 // must stay pure/thin, and honors scoped/time-boxed exceptions. All
 // violations are produced through diagnostics.mjs's makeViolation with
 // module: 'architecture'.
+//
+// Layer-violation detection (detectLayerViolations, below) is AST-based
+// (epic #76 / #89): it reads real import declarations and real call/
+// identifier usage from the parsed tree via parseToAst/extractImports
+// (src/parser.mjs), not regex/text-pattern matching over the whole file. A
+// comment or string literal that happens to contain a banned substring
+// (e.g. "workflow/service/domain" or "fetch()") is never part of the
+// executable AST, so it can no longer trip a rule the way real code would
+// (#74's false-positive class).
 import fs from 'node:fs';
 import path from 'node:path';
+import { walk as walkAst } from 'estree-walker';
 import { loadConfig } from './config.mjs';
 import { loadLayerGraph, canImport } from './architecture-graph.mjs';
 import { makeViolation, ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { walk, rel } from './fs.mjs';
+import { parseToAst, extractImports } from './parser.mjs';
+
+export { extractImports };
 
 const FILE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx']);
 const KNOWN_LAYERS = new Set(['route', 'controller', 'workflow', 'hook', 'service', 'domain', 'page', 'component']);
-const REACT_IMPORT_RE = /from\s*['"]react['"]|from\s*['"][^'"]*react\//;
 
-// Same import-extraction regex used by the pre-existing validator.mjs, kept
-// for consistency (no new parsing dependency).
-export function extractImports(source) {
-  return [...source.matchAll(/(?:import\s+(?:type\s+)?[\s\S]*?from\s*|import\s*\()(['"])(.*?)\1/g)].map((m) => m[2]);
+/** Does this import specifier refer to the "react" package or a "react/" subpath
+ * (e.g. "react-dom/client" is NOT matched — mirrors the old REACT_IMPORT_RE's intent
+ * of "the react package itself or something nested under a react/ path segment"). */
+function isReactSpecifier(specifier) {
+  return specifier === 'react' || /(^|\/)react\//.test(specifier);
+}
+
+/** Import specifiers from top-level `import ... from '...'` declarations only (not
+ * dynamic import()), with each entry's source position — layer-boundary imports in
+ * this codebase's conventions are always static, and a position is needed for
+ * per-rule line-number reporting (extractImports from parser.mjs returns just the
+ * specifier strings, with no position). */
+function staticImportEntries(ast) {
+  const entries = [];
+  for (const node of ast.body) {
+    if (node.type === 'ImportDeclaration') entries.push({ value: node.source.value, index: node.range[0] });
+  }
+  return entries;
+}
+
+// Node types/keys that don't represent a real "usage" of an identifier, so the walk
+// below (via estree-walker, a well-established generic ESTree traversal library — not
+// a hand-rolled recursive walk) skips into them: an import statement's bindings (a name
+// merely being imported isn't a use of it), a re-export's specifier list, and a
+// non-computed member/object/class-key name (`x.fetch` or `{ fetch: 1 }` isn't a
+// reference to the global `fetch`).
+const KEY_ONLY_TYPES = new Set(['Property', 'PropertyDefinition', 'MethodDefinition', 'TSPropertySignature', 'TSMethodSignature', 'TSAbstractMethodDefinition', 'TSAbstractPropertyDefinition']);
+
+function isNonUsagePosition(node, parent, key) {
+  if (node.type === 'ImportDeclaration' || node.type === 'ExportAllDeclaration') return true;
+  if (parent?.type === 'ExportNamedDeclaration' && (key === 'specifiers' || key === 'source')) return true;
+  if (parent?.type === 'MemberExpression' && key === 'property' && !parent.computed) return true;
+  if (parent && KEY_ONLY_TYPES.has(parent.type) && key === 'key' && !parent.computed) return true;
+  return false;
+}
+
+/** Shared estree-walker traversal for both collectors below: skips whole subtrees at
+ * non-usage positions (see isNonUsagePosition), visits everything else. */
+function walkForUsage(ast, visit) {
+  walkAst(ast, {
+    enter(node, parent, key) {
+      if (isNonUsagePosition(node, parent, key)) {
+        this.skip();
+        return;
+      }
+      visit(node);
+    },
+  });
+}
+
+/** Every real `name(...)` call (callee is a bare identifier in `names`), sorted by position. */
+function collectCalls(ast, names) {
+  const hits = [];
+  walkForUsage(ast, (node) => {
+    if (node.type === 'CallExpression' && node.callee.type === 'Identifier' && names.has(node.callee.name)) {
+      hits.push({ name: node.callee.name, index: node.callee.range[0] });
+    }
+  });
+  return hits.sort((a, b) => a.index - b.index);
+}
+
+/** Every real reference to a bare identifier in `names` — called or not — sorted by
+ * position; skips property/key positions per isNonUsagePosition, so `{ fetch: 1 }` or
+ * `obj.fetch` don't count, but `fetch(...)`, `window.x`, or a bare `localStorage` do. */
+function collectBareIdentifierUsages(ast, names) {
+  const hits = [];
+  walkForUsage(ast, (node) => {
+    if (node.type === 'Identifier' && names.has(node.name)) {
+      hits.push({ name: node.name, index: node.range[0] });
+    }
+  });
+  return hits.sort((a, b) => a.index - b.index);
+}
+
+// Ticket 7.4's CONTROLLER-001 deterministic proxy for "business logic": any of these
+// node types appearing anywhere in a controller file's AST.
+const CONTROL_FLOW_TYPES = new Set(['IfStatement', 'ForStatement', 'ForInStatement', 'ForOfStatement', 'WhileStatement', 'DoWhileStatement', 'SwitchStatement', 'TryStatement']);
+
+/** Every control-flow node (see CONTROL_FLOW_TYPES) anywhere in `ast`, sorted by position. */
+function collectControlFlowNodes(ast) {
+  const hits = [];
+  walkForUsage(ast, (node) => {
+    if (CONTROL_FLOW_TYPES.has(node.type)) hits.push(node);
+  });
+  return hits.sort((a, b) => a.range[0] - b.range[0]);
 }
 
 function globToRegExp(glob) {
@@ -52,7 +145,10 @@ function lineOf(source, index) {
  * source strings.
  */
 export function detectLayerViolations(layer, source) {
+  const ast = parseToAst(source);
   const importsList = extractImports(source);
+  const staticImports = staticImportEntries(ast);
+  const firstImportMatch = (re) => staticImports.find((e) => re.test(e.value));
   const out = [];
 
   if (layer === 'route') {
@@ -64,7 +160,7 @@ export function detectLayerViolations(layer, source) {
         expected: ['controller'],
       });
     }
-    if (/\b(fetch|useMachine|useActor|localStorage|sessionStorage)\b/.test(source)) {
+    if (collectBareIdentifierUsages(ast, new Set(['fetch', 'useMachine', 'useActor', 'localStorage', 'sessionStorage'])).length) {
       out.push({
         rule: 'ROUTE-002', line: 1,
         message: 'Route contains application logic or effects.',
@@ -78,47 +174,60 @@ export function detectLayerViolations(layer, source) {
     /** @type {[string, RegExp][]} */
     const forbiddenImports = [['PAGE-002', /workflows?\//], ['PAGE-003', /services?\//], ['PAGE-005', /domain\//]];
     for (const [rule, re] of forbiddenImports) {
-      const m = source.match(re);
-      if (m) out.push({
-        rule, line: lineOf(source, m.index),
+      const hit = firstImportMatch(re);
+      if (hit) out.push({
+        rule, line: lineOf(source, hit.index),
         message: 'Page imports a forbidden application layer.',
         why: 'Pages are presentation-only.',
         expected: ['component', 'types'],
       });
     }
-    /** @type {[string, RegExp, string][]} */
-    const forbiddenCalls = [
-      ['PAGE-004', /\bfetch\s*\(/, 'Page calls fetch().'],
-      ['PAGE-006', /\b(useMachine|useActor|createMachine)\b/, 'Page uses workflow/application state.'],
-    ];
-    for (const [rule, re, message] of forbiddenCalls) {
-      const m = source.match(re);
-      if (m) out.push({
-        rule, line: lineOf(source, m.index), message,
-        why: 'Pages cannot own application flow.',
-        expected: ['controller', 'workflow'],
-      });
-    }
+    const fetchCall = collectCalls(ast, new Set(['fetch']))[0];
+    if (fetchCall) out.push({
+      rule: 'PAGE-004', line: lineOf(source, fetchCall.index), message: 'Page calls fetch().',
+      why: 'Pages cannot own application flow.',
+      expected: ['controller', 'workflow'],
+    });
+    const stateUsage = collectBareIdentifierUsages(ast, new Set(['useMachine', 'useActor', 'createMachine']))[0];
+    if (stateUsage) out.push({
+      rule: 'PAGE-006', line: lineOf(source, stateUsage.index), message: 'Page uses workflow/application state.',
+      why: 'Pages cannot own application flow.',
+      expected: ['controller', 'workflow'],
+    });
+    // Ticket 7.2 (#112): a page can also reach for application state indirectly, by
+    // importing a custom hook (features/*/hooks/**) without ever calling
+    // useMachine/useActor/createMachine directly itself -- e.g. `import { useCart }
+    // from '../hooks/useCart'`. That's the same class of violation PAGE-006 already
+    // exists for (pages owning application flow instead of delegating to a
+    // controller/hook wiring), so it's reported under the same rule id rather than a
+    // new one (the epic's reconciliation notes explicitly reserve a new PAGE-005 for a
+    // different, already-taken meaning).
+    const hookImport = firstImportMatch(/hooks?\//);
+    if (hookImport) out.push({
+      rule: 'PAGE-006', line: lineOf(source, hookImport.index), message: 'Page imports a custom hook.',
+      why: 'Pages cannot own application flow — hooks are wired in by a controller, not imported directly by a page.',
+      expected: ['controller', 'workflow'],
+    });
   }
 
   if (layer === 'component') {
-    const mController = source.match(/controllers?\//);
-    if (mController) out.push({
-      rule: 'COMPONENT-002', line: lineOf(source, mController.index),
+    const controllerImport = firstImportMatch(/controllers?\//);
+    if (controllerImport) out.push({
+      rule: 'COMPONENT-002', line: lineOf(source, controllerImport.index),
       message: 'Component imports a controller.',
       why: 'Components are reusable presentation and must not depend on the composition layer.',
       expected: ['props', 'component'],
     });
-    const mApp = source.match(/(?:workflows?|services?|domain)\//);
-    if (mApp) out.push({
-      rule: 'COMPONENT-003', line: lineOf(source, mApp.index),
+    const appImport = firstImportMatch(/(?:workflows?|services?|domain)\//);
+    if (appImport) out.push({
+      rule: 'COMPONENT-003', line: lineOf(source, appImport.index),
       message: 'Component imports application logic.',
       why: 'Components are reusable presentation and local UI state only.',
       expected: ['props', 'component'],
     });
   }
 
-  if (layer === 'workflow' && REACT_IMPORT_RE.test(source)) {
+  if (layer === 'workflow' && staticImports.some((e) => isReactSpecifier(e.value))) {
     out.push({
       rule: 'WORKFLOW-001', line: 1,
       message: 'Workflow imports React/UI.',
@@ -127,7 +236,7 @@ export function detectLayerViolations(layer, source) {
     });
   }
 
-  if (layer === 'service' && REACT_IMPORT_RE.test(source)) {
+  if (layer === 'service' && staticImports.some((e) => isReactSpecifier(e.value))) {
     out.push({
       rule: 'SERVICE-002', line: 1,
       message: 'Service imports React/UI.',
@@ -136,10 +245,31 @@ export function detectLayerViolations(layer, source) {
     });
   }
 
+  // Ticket 7.4 (#114) -- CONTROLLER-001: a controller composes/wires already-generated
+  // layers together and nothing else. Two independent, AST-based checks (same technique
+  // as every other rule above): a direct fetch() call (mirrors PAGE-004's detection), and
+  // any control-flow construct at all (if/for/while/do-while/switch/try) anywhere in the
+  // file, which is the deterministic proxy this codebase uses for "non-trivial business
+  // logic" -- a pure import+destructure+return-JSX composition never needs one.
+  if (layer === 'controller') {
+    const fetchCall = collectCalls(ast, new Set(['fetch']))[0];
+    if (fetchCall) out.push({
+      rule: 'CONTROLLER-001', line: lineOf(source, fetchCall.index), message: 'Controller calls fetch() directly.',
+      why: 'Controllers only compose and wire existing layers together — network calls belong in a service.',
+      expected: ['service'],
+    });
+    const controlFlow = collectControlFlowNodes(ast)[0];
+    if (controlFlow) out.push({
+      rule: 'CONTROLLER-001', line: lineOf(source, controlFlow.range[0]), message: 'Controller contains non-trivial business logic (control flow).',
+      why: 'Controllers only compose and wire existing layers together — conditional/loop/error-handling logic belongs in a hook, workflow, or domain function.',
+      expected: ['hook', 'workflow', 'domain'],
+    });
+  }
+
   if (layer === 'domain') {
-    const m = source.match(/\b(fetch|window|document|localStorage|sessionStorage|navigator)\b/);
-    if (m) out.push({
-      rule: 'DOMAIN-001', line: lineOf(source, m.index),
+    const hit = collectBareIdentifierUsages(ast, new Set(['fetch', 'window', 'document', 'localStorage', 'sessionStorage', 'navigator']))[0];
+    if (hit) out.push({
+      rule: 'DOMAIN-001', line: lineOf(source, hit.index),
       message: 'Domain code uses an external effect.',
       why: 'Domain is pure by default.',
       expected: ['pure function'],

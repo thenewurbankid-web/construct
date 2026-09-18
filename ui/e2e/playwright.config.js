@@ -15,7 +15,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   testDir: './tests',
   outputDir: './test-results',
-  fullyParallel: false, // the backend serializes command execution and allows only one wizard session at a time
+  fullyParallel: false, // the backend serializes create/refactor/research/import command execution (commandRunner.mjs's queue) — unrelated to the wizard, whose sessions (#80) can now run concurrently and are exercised that way within a single test below
   workers: 1,
   retries: 0,
   timeout: 30_000,
