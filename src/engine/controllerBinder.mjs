@@ -16,7 +16,7 @@ import path from 'node:path';
 import { ts, parseTsSource as parseTs, findNode } from '../ast/index.mjs';
 import { loadConfig } from './../config.mjs';
 import { write } from '../fs.mjs';
-import { selfCheck } from '../generators.mjs';
+import { selfCheck, pascalCase } from '../generators.mjs';
 import { validateEnvelope } from './envelope.mjs';
 import { ConstructError, EXIT_CODES } from '../diagnostics.mjs';
 
@@ -148,7 +148,7 @@ export function matchSlotsToHandlers(slotNames, hookMemberNames) {
  * `layers.page`/`layers.hook` entries if one is given, else this repo's own
  * naming convention. */
 function resolveSourceFiles(root, name, feature, envelope) {
-  const cap = name[0].toUpperCase() + name.slice(1);
+  const cap = pascalCase(name, 'Controller');
   if (envelope) {
     const { valid, errors } = validateEnvelope(envelope);
     if (!valid) throw usageError(`Invalid Context Envelope: ${errors.join('; ')}`);
@@ -196,7 +196,7 @@ function jsxPropFor(slot, isFunctionType) {
  * @returns {{file: string, bindings: Array<{slot:string, handler:string|null, matchType:string}>}}
  */
 export function generateController(root, name, feature, opts = {}) {
-  const cap = name[0].toUpperCase() + name.slice(1);
+  const cap = pascalCase(name, 'Controller');
   const { pagePropsFile, hookFile, propsTypeName, hookName } = resolveSourceFiles(root, name, feature, opts.envelope);
 
   if (!fs.existsSync(pagePropsFile)) throw usageError(`PageProps file not found: ${pagePropsFile} (run \`construct create page ... --from\` first).`);

@@ -12,6 +12,7 @@ import {
   generateController,
 } from '../src/engine/controllerBinder.mjs';
 import { createFeature } from '../src/generators.mjs';
+import { parseToAst } from '../src/parser.mjs';
 import { createEnvelope } from '../src/engine/envelope.mjs';
 import { validateArchitecture, detectLayerViolations } from '../src/architecture-enforcer.mjs';
 import { ConstructError, EXIT_CODES } from '../src/diagnostics.mjs';
@@ -165,6 +166,40 @@ test('generateController resolves page/hook files from a Context Envelope\'s lay
   const { file, bindings } = generateController(dir, 'Checkout', 'checkout', { envelope });
   assert.equal(fs.existsSync(file), true);
   assert.ok(bindings.some((b) => b.slot === 'onCategoryChange' && b.handler === 'setCategory'));
+});
+
+test('generateController: hyphenated / underscored names resolve to the PascalCase page + hook and emit a valid controller (#216)', () => {
+  for (const name of ['checkout', 'checkout-flow', 'checkout_flow']) {
+    const dir = tmpProject();
+    const pascal = name === 'checkout' ? 'Checkout' : 'CheckoutFlow';
+    const pages = path.join(dir, 'features', 'checkout', 'pages');
+    const hooks = path.join(dir, 'features', 'checkout', 'hooks');
+    if (pascal !== 'Checkout') {
+      fs.renameSync(path.join(pages, 'CheckoutPageProps.ts'), path.join(pages, `${pascal}PageProps.ts`));
+      fs.renameSync(path.join(pages, 'CheckoutPage.tsx'), path.join(pages, `${pascal}Page.tsx`));
+      fs.renameSync(path.join(hooks, 'useCheckout.tsx'), path.join(hooks, `use${pascal}.tsx`));
+      for (const f of [path.join(pages, `${pascal}PageProps.ts`), path.join(hooks, `use${pascal}.tsx`)]) {
+        fs.writeFileSync(f, fs.readFileSync(f, 'utf8').replaceAll('Checkout', pascal));
+      }
+    }
+    const { file } = generateController(dir, name, 'checkout');
+    assert.equal(path.basename(file), `${pascal}Controller.tsx`);
+    const source = fs.readFileSync(file, 'utf8');
+    assert.match(source, new RegExp(`export function ${pascal}Controller\\(`));
+    assert.doesNotThrow(() => parseToAst(source, file));
+  }
+});
+
+test('generateController: a name that cannot form an identifier is rejected before any file is read or written (#216)', () => {
+  const dir = tmpProject();
+  const controllers = path.join(dir, 'features', 'checkout', 'controllers');
+  assert.throws(() => generateController(dir, '3d-checkout', 'checkout'), (err) => {
+    assert.ok(err instanceof ConstructError);
+    assert.equal(err.exitCode, EXIT_CODES.USAGE_ERROR);
+    assert.match(err.message, /Controller name "3d-checkout" can't be turned into a valid TypeScript identifier/);
+    return true;
+  });
+  assert.deepEqual(fs.readdirSync(controllers), []);
 });
 
 test('generateController throws a clear usage error when the PageProps file does not exist yet', () => {
