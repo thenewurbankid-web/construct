@@ -6,14 +6,17 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 // #109: Settings' per-capability provider is consumed by real run paths, and
-// LLM use stays opt-in PER RUN. Runs against real servers (dedicated ports
-// 3103/4103, see playwright.settings-llm.config.js) and a REAL local ollama
-// and claude CLI; nothing is mocked.
+// LLM use stays opt-in PER RUN. Runs against real servers (pick free ports
+// with E2E_CLIENT_PORT / E2E_SERVER_PORT, see ui/README.md) and a REAL local
+// ollama and claude CLI; nothing is mocked. Real LLM calls are slow (a cold
+// ollama 7b call alone can take ~2 min), hence the long per-test timeout.
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCREENSHOTS_DIR = path.resolve(__dirname, '../screenshots');
 fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
 const CLI_BIN = path.resolve(__dirname, '../../../bin/construct.mjs');
-const API = 'http://localhost:4103';
+const API = process.env.E2E_API_BASE || 'http://localhost:4000';
+
+test.describe.configure({ timeout: 240_000 });
 
 async function setProviders(request, llmProviders) {
   const res = await request.post(`${API}/api/settings`, { data: { llmProviders } });
