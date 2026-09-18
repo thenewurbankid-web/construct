@@ -5,8 +5,10 @@ posting a specially-formatted comment on a GitHub issue, and reports the
 result back on that same issue.
 
 This is **not** part of the Construct CLI, the `src/` architecture tooling, or
-the `ui/` app. It has its own `package.json` and zero shared dependencies —
-it only uses Node's built-in `fetch` and `child_process`.
+the `ui/` app. It has its own `package.json`, separate from the rest of the
+repo — its GitHub API calls go through `@octokit/rest` (the official SDK,
+#94), and it uses Node's built-in `child_process` for running the `claude`
+CLI itself.
 
 It runs as its own long-lived OS process, in its own terminal. It is not
 embedded in any particular Claude Code session, and it keeps working after
@@ -269,7 +271,7 @@ Verified directly, by hand, in this environment (not guessed from docs):
 tools/github-comment-bridge/
   index.mjs              entry point: wiring + poll loop + shutdown handling
   src/config.mjs         env var -> config, GITHUB_TOKEN required here
-  src/github.mjs         minimal GitHub REST client (fetch-based, no deps)
+  src/github.mjs         GitHub REST client, built on @octokit/rest
   src/trigger.mjs        the "/claude ..." first-line trigger parser
   src/jsonStore.mjs       tiny atomic JSON file read/write helper
   src/claudeRunner.mjs    prompt building + spawning the real `claude` CLI
