@@ -109,6 +109,39 @@ test('ingestPage writes a page + Props file that passes construct validate clean
   assert.deepEqual(violations.filter((v) => v.severity === 'error'), []);
 });
 
+test('ingestPage: hyphenated / underscored / camel names give identical valid identifiers and file names (#216)', () => {
+  const fixture = path.join(REPO_ROOT, 'fixtures', 'subframe-export', 'CheckoutExport.tsx');
+  const outputs = [];
+  for (const name of ['refund-request', 'refund_request', 'refundRequest']) {
+    const dir = tmpProject();
+    const { pageFile, propsFile } = ingestPage(dir, name, 'checkout', fixture);
+    assert.equal(path.basename(pageFile), 'RefundRequestPage.tsx');
+    assert.equal(path.basename(propsFile), 'RefundRequestPageProps.ts');
+    const page = fs.readFileSync(pageFile, 'utf8');
+    const props = fs.readFileSync(propsFile, 'utf8');
+    assert.doesNotThrow(() => parseToAst(page, pageFile));
+    assert.doesNotThrow(() => parseToAst(props, propsFile));
+    assert.match(page, /export function RefundRequestPage\(/);
+    assert.match(props, /export interface RefundRequestPageProps \{/);
+    outputs.push(page + props);
+  }
+  assert.equal(outputs[0], outputs[1]);
+  assert.equal(outputs[0], outputs[2]);
+});
+
+test('ingestPage: a name that cannot form an identifier is rejected with nothing written (#216)', () => {
+  const dir = tmpProject();
+  const pagesDir = path.join(dir, 'features', 'checkout', 'pages');
+  const before = fs.readdirSync(pagesDir);
+  assert.throws(() => ingestPage(dir, '3d-refund', 'checkout', path.join(REPO_ROOT, 'fixtures', 'subframe-export', 'CheckoutExport.tsx')), (err) => {
+    assert.ok(err instanceof ConstructError);
+    assert.equal(err.exitCode, EXIT_CODES.USAGE_ERROR);
+    assert.match(err.message, /Page name "3d-refund" can't be turned into a valid TypeScript identifier/);
+    return true;
+  });
+  assert.deepEqual(fs.readdirSync(pagesDir), before);
+});
+
 test('ingestPage throws a usage error for a missing source file', () => {
   const dir = tmpProject();
   assert.throws(() => ingestPage(dir, 'Checkout', 'checkout', path.join(dir, 'nope.tsx')), (err) => {

@@ -24,7 +24,7 @@ import yaml from 'js-yaml';
 import { createClient } from '@hey-api/openapi-ts';
 import { ensureDir, write, rel } from './fs.mjs';
 import { loadConfig } from './config.mjs';
-import { createFeature } from './generators.mjs';
+import { createFeature, pascalCase as identifierPascalCase } from './generators.mjs';
 import { validateArchitecture } from './architecture-enforcer.mjs';
 import { parseIndexExports } from './soc-enforcer.mjs';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
@@ -237,6 +237,10 @@ function sanitizeIdentifier(name) {
   return cleaned || '_op';
 }
 
+function lowerFirst(identifier) {
+  return identifier[0].toLowerCase() + identifier.slice(1);
+}
+
 function pascalCase(identifier) {
   return identifier[0].toUpperCase() + identifier.slice(1);
 }
@@ -312,6 +316,10 @@ export async function generateServiceFromSpec(root, name, feature, specPath) {
   if (!name || !feature || !specPath) {
     throw usageError('generateServiceFromSpec requires a name, a feature, and an OpenAPI spec path.');
   }
+  // #216: `name` is spliced into an identifier (`<name>Api`); a hyphenated or
+  // otherwise non-identifier name must become a valid one (or be rejected)
+  // before anything is written. Already-valid names are left untouched.
+  const apiIdent = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) ? name : lowerFirst(identifierPascalCase(name, 'Service'));
   const absSpecPath = path.isAbsolute(specPath) ? specPath : path.resolve(root, specPath);
   const ops = parseOperations(absSpecPath); // fail fast on a bad/empty spec before touching disk
 
@@ -343,7 +351,7 @@ export async function generateServiceFromSpec(root, name, feature, specPath) {
   const generatedTypes = extractGeneratedTypes(typesGenPath);
 
   const endpointsPath = path.join(servicesDir, `${name}Api.ts`);
-  write(endpointsPath, renderEndpoints(name, ops, generatedTypes, `./${name}/types.gen`));
+  write(endpointsPath, renderEndpoints(apiIdent, ops, generatedTypes, `./${name}/types.gen`));
 
   const written = [clientPath, path.join(generatedDir, 'index.ts'), typesGenPath, endpointsPath];
   selfCheck(root, written);

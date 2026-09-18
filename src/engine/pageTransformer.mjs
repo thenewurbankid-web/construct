@@ -19,7 +19,7 @@ import path from 'node:path';
 import { parseToAst, walkAst } from '../ast/index.mjs';
 import { loadConfig } from './../config.mjs';
 import { write } from '../fs.mjs';
-import { selfCheck } from '../generators.mjs';
+import { selfCheck, pascalCase } from '../generators.mjs';
 import { ConstructError, EXIT_CODES } from '../diagnostics.mjs';
 
 const CALLBACK_ATTR_RE = /^on[A-Z]/;
@@ -201,7 +201,7 @@ export function transformPristineSource(source, { feature, name }) {
  * re-validates both via generators.mjs's shared selfCheck. */
 export function ingestPage(root, name, feature, fromPath) {
   const config = loadConfig(root);
-  const cap = name[0].toUpperCase() + name.slice(1);
+  const cap = pascalCase(name, 'Page');
   const sourcePath = path.isAbsolute(fromPath) ? fromPath : path.resolve(fromPath);
   if (!fs.existsSync(sourcePath) || !fs.statSync(sourcePath).isFile()) {
     throw new ConstructError(`Source file not found: ${sourcePath}`, { exitCode: EXIT_CODES.USAGE_ERROR });

@@ -219,3 +219,42 @@ test('construct create workflow: a missing descriptor file is a usage error nami
   assert.equal(res.status, EXIT_CODES.USAGE_ERROR);
   assert.match(res.stderr, /Workflow descriptor not found/);
 });
+
+// ---- #216: identifier handling for the workflow name ---------------------
+
+function listFiles(dir) {
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir, { recursive: true }).map(String);
+}
+
+test('generateWorkflow: hyphenated, underscored and camel names give identical valid output (#216)', () => {
+  const sources = {};
+  for (const name of ['refund-request', 'refund_request', 'refundRequest', 'RefundRequest']) {
+    const dir = tmpProject();
+    const { file } = generateWorkflow(dir, name, 'checkout', CHECKOUT_DESCRIPTOR);
+    assert.equal(path.basename(file), 'RefundRequestWorkflow.tsx', name);
+    const source = fs.readFileSync(file, 'utf8');
+    assert.doesNotThrow(() => parseToAst(source, file), name);
+    assert.match(source, /export interface RefundRequestContext \{/);
+    assert.match(source, /export type RefundRequestEvent = /);
+    assert.match(source, /export const RefundRequestWorkflow = setup\(/);
+    assert.doesNotMatch(source, /Refund-request|Refund_request/);
+    sources[name] = source.replace(/id: '[^']*'/, "id: 'X'");
+  }
+  const [first, ...rest] = Object.values(sources);
+  for (const s of rest) assert.equal(s, first);
+});
+
+test('generateWorkflow: a name that cannot form an identifier is rejected before anything is written (#216)', () => {
+  const dir = tmpProject();
+  const before = listFiles(path.join(dir, 'features'));
+  for (const bad of ['3d-checkout', '9lives', 'has space']) {
+    assert.throws(() => generateWorkflow(dir, bad, 'checkout', CHECKOUT_DESCRIPTOR), (err) => {
+      assert.ok(err instanceof ConstructError);
+      assert.equal(err.exitCode, EXIT_CODES.USAGE_ERROR);
+      assert.match(err.message, /Workflow name ".*" can't be turned into a valid TypeScript identifier/);
+      return true;
+    });
+  }
+  assert.deepEqual(listFiles(path.join(dir, 'features')), before);
+});
