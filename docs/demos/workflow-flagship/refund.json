@@ -1,0 +1,36 @@
+{
+  "id": "refundRequest",
+  "initial": "requested",
+  "context": {
+    "amount": { "type": "number", "default": 0 },
+    "attempts": { "type": "number", "default": 0 }
+  },
+  "states": {
+    "requested": {
+      "on": { "SUBMIT": "reviewing" }
+    },
+    "reviewing": {
+      "on": {
+        "APPROVE": [
+          { "target": "paying", "guard": "isWithinLimit" },
+          { "target": "escalated" }
+        ],
+        "REJECT": "rejected"
+      }
+    },
+    "escalated": {
+      "on": { "APPROVE": "paying", "REJECT": "rejected" }
+    },
+    "paying": {
+      "on": {
+        "PAYMENT_SUCCEEDED": "refunded",
+        "PAYMENT_FAILED": [
+          { "target": "paying", "guard": "hasRetriesLeft" },
+          { "target": "rejected" }
+        ]
+      }
+    },
+    "refunded": { "type": "final" },
+    "rejected": { "type": "final" }
+  }
+}
