@@ -15,8 +15,57 @@ export function parsePartOf(body) {
  * markdown, and drop the "Part of #N" bookkeeping line. Returns the remaining
  * markdown plus the extracted pieces.
  */
+export function stripComments(md) {
+  return String(md || '').replace(/<!--[\s\S]*?-->/g, '');
+}
+
+const V1_MARKER = /^\s*(?:\*\*Who it is for:\*\*|>\s*\*\*As a\*\*)/m;
+const VERIFIED_V1 = /\*?Verified on\s+`?([^`\s@]+)`?\s*@\s*`?([0-9a-f]{7,40})`?\s*\(([^)]*)\)[^\n]*/i;
+const plain = (s) => String(s).replace(/[*_`]/g, '').replace(/\s+/g, ' ').trim();
+
+/**
+ * New "demo-curator" shape. Guides: Who it is for / The problem it solves / hero image /
+ * ### Contents table / ### Why this matters / Evidence / Verified-on. Stories: a
+ * "> As a .. I want .. so that .." sentence, "### Benefit", Verified-on. Everything after
+ * the first `---` is the older ticket text, returned as `legacy` (callers decide whether
+ * it carries real walkthrough content). Returns null when the new markers are absent.
+ */
+export function parseDemoBody(body) {
+  const md = stripComments(body).replace(/\r\n/g, '\n');
+  if (!V1_MARKER.test(md)) return null;
+  const cut = /^\s*---\s*$/m.exec(md);
+  const head = cut ? md.slice(0, cut.index) : md;
+  const legacy = cut ? md.slice(cut.index + cut[0].length) : '';
+  const out = { sentence: '', who: '', problem: '', hero: null, contents: {}, why: '', evidence: '', benefit: '', verified: null, verifiedDate: null, legacy: legacy.trim() };
+
+  const sentence = /^>\s*(.+)$/m.exec(head);
+  if (sentence) out.sentence = plain(sentence[1]);
+  out.who = (/\*\*Who it is for:\*\*\s*(.+)/.exec(head) || [])[1]?.trim() || '';
+  out.problem = (/\*\*The problem it solves:\*\*\s*(.+)/.exec(head) || [])[1]?.trim() || '';
+  out.hero = (/!\[[^\]]*\]\((https?:\/\/[^)\s]+)\)/.exec(head) || [])[1] || null;
+  for (const m of head.matchAll(/^\|\s*#(\d+)\s*\|([^|]*)\|([^|]*)\|([^|]*)\|/gm)) {
+    out.contents[m[1]] = { story: plain(m[2]), benefit: plain(m[3]), surface: plain(m[4]) };
+  }
+  const v = VERIFIED_V1.exec(head);
+  if (v) [out.verified, out.verifiedDate] = [v[2], v[3]];
+
+  const section = (name) => {
+    const re = new RegExp(`^###\\s+${name}\\s*\\n([\\s\\S]*?)(?=^###\\s|^\\*Verified|(?![\\s\\S]))`, 'im');
+    return (re.exec(head) || [])[1]?.trim() || '';
+  };
+  out.benefit = section('Benefit');
+  let why = section('Why this matters');
+  const ev = /^\*\*Evidence[^\n]*/im.exec(why);
+  if (ev) {
+    out.evidence = ev[0].trim();
+    why = why.replace(ev[0], '').trim();
+  }
+  out.why = why;
+  return out;
+}
+
 export function parseStoryBody(body) {
-  const lines = String(body || '').replace(/\r\n/g, '\n').split('\n');
+  const lines = stripComments(body).replace(/\r\n/g, '\n').split('\n');
   const kept = [];
   let benefit = '';
   let verified = null;

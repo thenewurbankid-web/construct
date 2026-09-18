@@ -59,7 +59,7 @@ const guideHref = (root, g) => `${root}guides/${g.slug}/`;
 
 function verifiedBadge(story, repoUrl) {
   return story.verified
-    ? `<span class="badge" title="Demo verified against this commit">verified on <a href="${esc(repoUrl)}/commit/${esc(story.verified)}"><code>${esc(story.verified.slice(0, 7))}</code></a></span>`
+    ? `<span class="badge" title="Demo verified against this commit">verified on <a href="${esc(repoUrl)}/commit/${esc(story.verified)}"><code>${esc(story.verified.slice(0, 7))}</code></a>${story.verifiedDate ? ` (${esc(story.verifiedDate)})` : ''}</span>`
     : '';
 }
 
@@ -109,7 +109,7 @@ export function renderGuide({ guide, guides, repoUrl, buildTime, siteUrl }) {
   <ol class="side-toc">${guide.stories.map((s) => `<li><a href="#${s.anchor}">${esc(s.title)}</a></li>`).join('')}</ol>
 </nav>`;
   const toc = guide.stories
-    .map((s) => `<li><a href="#${s.anchor}">${esc(s.title)}</a>${s.summary ? `<span>${esc(s.summary)}</span>` : ''}</li>`)
+    .map((s) => `<li><a href="#${s.anchor}">${esc(s.title)}</a>${s.summary && !s.summary.startsWith(s.title) ? `<span>${esc(s.summary)}</span>` : ''}${s.tocBlurb ? `<span class="toc-benefit">Benefit: ${esc(s.tocBlurb)}</span>` : ''}</li>`)
     .join('');
   const stories = guide.stories
     .map(
@@ -119,7 +119,8 @@ export function renderGuide({ guide, guides, repoUrl, buildTime, siteUrl }) {
     <h2 id="${s.anchor}-h"><a class="anchor" href="#${s.anchor}" aria-label="Link to this walkthrough">#</a>${esc(s.title)}</h2>
     <p class="meta">Updated ${fmtDate(s.updatedAt)} ${verifiedBadge(s, repoUrl)} <a href="${esc(s.url)}">View on GitHub</a></p>
   </header>
-  ${s.benefitHtml ? `<aside class="benefit"><p class="benefit-h">Why it matters</p>${s.benefitHtml}</aside>` : ''}
+  ${s.sentence ? `<blockquote class="user-story">${esc(s.sentence)}</blockquote>` : ''}
+  ${s.benefitHtml ? `<aside class="benefit"><p class="benefit-h">Benefit</p>${s.benefitHtml}</aside>` : ''}
   <div class="prose">${s.html}</div>
   ${s.referenceHtml ? `<details class="reference"><summary>Setup, API and known limitations</summary><div class="prose">${s.referenceHtml}</div></details>` : ''}
 </section>`,
@@ -129,8 +130,9 @@ export function renderGuide({ guide, guides, repoUrl, buildTime, siteUrl }) {
 <header class="guide-head">
   <h1>${esc(guide.title)}</h1>
   ${guide.introHtml ? `<div class="prose lede-block">${guide.introHtml}</div>` : `<p class="lede">${esc(guide.summary)}</p>`}
-  ${guide.benefitHtml ? `<aside class="benefit"><p class="benefit-h">Why it matters</p>${guide.benefitHtml}</aside>` : ''}
-  <p class="meta">Last updated ${fmtDate(guide.updatedAt)} · <a href="${esc(guide.url)}">View guide on GitHub</a></p>
+  ${guide.heroLocal ? `<figure class="guide-hero"><img src="${root}${esc(guide.heroLocal)}" alt="Screenshot from the ${esc(guide.title)} guide" decoding="async"></figure>` : ''}
+  ${guide.benefitHtml ? `<aside class="benefit"><p class="benefit-h">Why this matters</p>${guide.benefitHtml}</aside>` : ''}
+  <p class="meta">Last updated ${fmtDate(guide.updatedAt)} ${verifiedBadge(guide, repoUrl)} ·<a href="${esc(guide.url)}">View guide on GitHub</a></p>
 </header>
 <section aria-labelledby="in-guide"><h2 id="in-guide" class="toc-h">In this guide</h2><ol class="toc">${toc}</ol></section>
 ${stories}`;
