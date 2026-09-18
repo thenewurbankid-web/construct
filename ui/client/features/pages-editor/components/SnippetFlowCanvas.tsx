@@ -54,6 +54,7 @@ export function SnippetFlowCanvas({ snippet, onSnippetChange }: SnippetFlowCanva
           onReconnect={handleReconnect}
           fitView
           proOptions={{ hideAttribution: true }}
+          colorMode="dark"
         >
           <Background />
           <Controls showInteractive={false} />

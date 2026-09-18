@@ -26,23 +26,29 @@ export function HelpPage(view: HelpViewState): ReactNode {
         <a href="#cli-reference">CLI reference</a>
       </GlassPanel>
 
-      <section id="getting-started" className="help-section">
-        <h2>Getting started</h2>
+      {/* #162 — each top-level topic is now a native <details>, open by
+          default (so the page reads exactly as before on first load, and
+          the existing Playwright walkthrough test's `#getting-started`/
+          `#cli-reference` visibility assertions keep passing unchanged),
+          but individually collapsible so a reader can fold away whatever
+          they're not currently using instead of scrolling past it. */}
+      <details id="getting-started" className="help-section" open>
+        <summary><h2>Getting started</h2></summary>
         <GettingStarted />
-      </section>
+      </details>
 
-      <section id="attribution" className="help-section">
-        <h2>Tool vs LLM attribution</h2>
+      <details id="attribution" className="help-section" open>
+        <summary><h2>Tool vs LLM attribution</h2></summary>
         <Attribution />
-      </section>
+      </details>
 
-      <section id="ui-guide" className="help-section">
-        <h2>UI guide</h2>
+      <details id="ui-guide" className="help-section" open>
+        <summary><h2>UI guide</h2></summary>
         <UiGuide />
-      </section>
+      </details>
 
-      <section id="tutorials" className="help-section">
-        <h2>Tutorials</h2>
+      <details id="tutorials" className="help-section" open>
+        <summary><h2>Tutorials</h2></summary>
         <p className="hint">
           Full walkthroughs of Construct&apos;s three headline flows, with real screenshots from
           an actual run of each.
@@ -53,12 +59,12 @@ export function HelpPage(view: HelpViewState): ReactNode {
         <SetupSettingsTutorial />
         <h3>Auto code generation and LLM-assisted implementation</h3>
         <ListingDetailsTutorial />
-      </section>
+      </details>
 
-      <section id="cli-reference" className="help-section">
-        <h2>CLI reference</h2>
+      <details id="cli-reference" className="help-section" open>
+        <summary><h2>CLI reference</h2></summary>
         <CliReference {...view} />
-      </section>
+      </details>
     </div>
   );
 }
