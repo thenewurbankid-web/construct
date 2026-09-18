@@ -78,7 +78,7 @@ export function attachWizardSocket(server, path = '/ws/wizard', allowedOrigin) {
         // concurrent sessions always share the same project root — that's
         // expected (they're all working in the same Construct project),
         // and unrelated to the per-session log-capture this fixes.
-        const { projectDir } = getSettings();
+        const { projectDir, llmProviders } = getSettings();
         if (projectDir) {
           try {
             process.chdir(projectDir);
@@ -87,7 +87,10 @@ export function attachWizardSocket(server, path = '/ws/wizard', allowedOrigin) {
             return;
           }
         }
-        session = runImportRouteWizardEventDriven((event) => send(ws, event), msg.seedRoute || undefined);
+        session = runImportRouteWizardEventDriven((event) => send(ws, event), msg.seedRoute || undefined, {
+          planAnalysis: llmProviders.planAnalysis,
+          importFill: llmProviders.importFill,
+        });
         session.done.finally(() => {
           session = null;
         });

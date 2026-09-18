@@ -118,7 +118,6 @@ test.describe.serial('Demo #138/#139 -- construct import (UI)', () => {
     await importForm.locator('.layer-checkboxes .checkbox', { hasText: 'domain' }).locator('input[type="checkbox"]').check();
     await importForm.getByLabel('From (path to the old source file)').fill(OLD_FILE);
     await importForm.getByLabel(/Have the LLM write/).check();
-    await expect(importForm.getByLabel('Provider')).toHaveValue('claude');
 
     await importForm.getByRole('button', { name: 'Run import' }).click();
     // Either a real error (claude CLI not installed in this sandbox) or,

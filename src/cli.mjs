@@ -206,12 +206,27 @@ export async function generate(args) {
   const scaffoldSeconds = elapsedSeconds(scaffoldStart);
   if (llm) {
     const llmStart = startTimer();
-    await fillGeneratedFile(root, file, layer, { feature, name, llm });
-    const llmSeconds = elapsedSeconds(llmStart);
-    console.log(`Created + LLM-filled ${path.relative(root, file)} (scaffold ${formatDuration(scaffoldSeconds)}, llm ${formatDuration(llmSeconds)})`);
+    const outcome = await fillGeneratedFile(root, file, layer, { feature, name, llm });
+    reportFill(root, outcome, ` (scaffold ${formatDuration(scaffoldSeconds)}, llm ${formatDuration(elapsedSeconds(llmStart))})`);
   } else {
     console.log(`Created ${path.relative(root, file)} (${formatDuration(scaffoldSeconds)})`);
   }
+}
+
+// One line per generated file for a --llm fill (#144/#141): "Created +
+// LLM-filled" only when the model's output was actually written; otherwise
+// the scaffolded stub was left as-is and the line says why. A rejected/failed
+// fill sets a non-zero exit code so scripts and the UI notice, but never
+// aborts the rest of a batch.
+function reportFill(root, { file, status, reason }, timingNote = '') {
+  const rel = path.relative(root, file);
+  if (status === 'filled') {
+    console.log(`Created + LLM-filled ${rel}${timingNote}`);
+    return;
+  }
+  const what = status === 'rejected' ? "the model's output was rejected" : 'the LLM call failed';
+  console.log(`Created ${rel} (stub kept — ${what}: ${reason})${timingNote}`);
+  process.exitCode = EXIT_CODES.INTERNAL_ERROR;
 }
 
 // `construct generate layer <name> --feature <feature> --layers <l1,l2,...>
@@ -246,9 +261,8 @@ async function generateVerticalSlice(args) {
     const scaffoldDt = scaffoldSeconds.get(file) ?? 0;
     if (llm) {
       const llmStart = startTimer();
-      await fillGeneratedFile(root, file, layerFromGeneratedFile(file), { feature, name, llm });
-      const llmDt = elapsedSeconds(llmStart);
-      console.log(`Created + LLM-filled ${path.relative(root, file)} (scaffold ${formatDuration(scaffoldDt)}, llm ${formatDuration(llmDt)})`);
+      const outcome = await fillGeneratedFile(root, file, layerFromGeneratedFile(file), { feature, name, llm });
+      reportFill(root, outcome, ` (scaffold ${formatDuration(scaffoldDt)}, llm ${formatDuration(elapsedSeconds(llmStart))})`);
     } else {
       console.log(`Created ${path.relative(root, file)} (${formatDuration(scaffoldDt)})`);
     }
@@ -493,8 +507,8 @@ export async function importCommand(args) {
   }
   const root = getRoot(args);
   const layers = args[li + 1].split(',').map((l) => l.trim()).filter(Boolean);
-  const { source, files, llmFilled, timings } = await importVertical(root, name, args[fi + 1], layers, args[fromI + 1], { llm });
-  reportImport(root, [{ name, source, files, timings }], llmFilled ? llm : undefined);
+  const { source, files, fills, timings } = await importVertical(root, name, args[fi + 1], layers, args[fromI + 1], { llm });
+  reportImport(root, [{ name, source, files, fills, timings }], llm);
 }
 
 async function importFromPlan(args, llm) {
@@ -513,26 +527,41 @@ async function importFromPlan(args, llm) {
 // the printed Total, same as every per-file LLM-fill call already is.
 function reportImport(root, results, llm, feature, analysisCalls = 0, analysisSeconds = 0) {
   let totalFiles = 0;
+  const problems = [];
   let totalSeconds = analysisSeconds;
   for (const r of results) {
+    const unfilled = (r.fills || []).filter((f) => f.status !== 'filled');
     const scaffoldNote = r.timings ? ` (scaffold ${formatDuration(r.timings.scaffoldSeconds)})` : '';
-    console.log(`${r.name}: ${llm ? 'scaffolded + LLM-filled' : 'scaffolded'} ${r.files.length} file(s) from ${r.source}${scaffoldNote}`);
+    console.log(`${r.name}: ${llm && !unfilled.length ? 'scaffolded + LLM-filled' : 'scaffolded'} ${r.files.length} file(s) from ${r.source}${scaffoldNote}`);
     for (const file of r.files) {
+      const miss = unfilled.find((f) => f.file === file);
       const ft = r.timings?.files.find((f) => f.file === file);
       const llmNote = llm && ft ? ` (llm ${formatDuration(ft.llmSeconds)})` : '';
-      console.log(`  ${path.relative(root, file)}${llmNote}`);
+      console.log(`  ${path.relative(root, file)}${llmNote}${miss ? `  <- ${miss.status === 'rejected' ? "model output rejected" : 'LLM call failed'}, stub + TODO(import) kept` : ''}`);
     }
+    problems.push(...unfilled);
     totalFiles += r.files.length;
     if (r.timings) totalSeconds += r.timings.totalSeconds;
   }
   console.log(`Total: ${formatDuration(totalSeconds)}`);
+  if (problems.length) {
+    console.log(`${problems.length} of ${totalFiles} file(s) were NOT filled by "${llm}" — the scaffolded stub and its TODO(import) breadcrumb were left in place:`);
+    for (const p of problems) {
+      console.log(`  ${path.relative(root, p.file)}: ${p.status === 'rejected' ? "the model's output was rejected" : 'the LLM call failed'} after ${p.attempts} attempt(s) — ${p.reason}`);
+    }
+    process.exitCode = EXIT_CODES.INTERNAL_ERROR;
+  }
   const featureNote = feature ? ` --feature ${feature}` : '';
   const analysisNote = analysisCalls ? `${analysisCalls} call(s) to analyze the route + ` : '';
   if (llm) {
-    console.log(`Next: review the ported logic above (diff against the source), then run validate${featureNote}.`);
+    console.log(
+      problems.length
+        ? `Next: fill in the ${problems.length} TODO(import) marker(s) listed above (by hand, or re-run import for them), review the ${totalFiles - problems.length} ported file(s) against their source, then run validate${featureNote}.`
+        : `Next: review the ported logic above (diff against the source), then run validate${featureNote}.`,
+    );
     printAttribution(
       `scaffolded ${totalFiles} file(s) across ${results.length} logical unit(s)`,
-      `${analysisNote}${totalFiles} call(s) via "${llm}" to write the ported logic into each file — review it before trusting it`,
+      `${analysisNote}${totalFiles - problems.length} of ${totalFiles} file(s) written via "${llm}" (${problems.length} left as stub + TODO) — review it before trusting it`,
     );
   } else {
     console.log(`Next (needs judgment, not a tool): fill in each TODO(import) marker across ${results.length} logical unit(s), then run validate${featureNote}.`);
@@ -598,7 +627,14 @@ function isYes(answer) {
  * way, the actual file list comes from tracing the real import graph
  * (route-resolver.mjs), never from "everything under a directory you point
  * at". */
-export async function importRouteWizard(ask, seedRoute) {
+export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude', importFill = 'claude' } = {}) {
+  // Whole-feature plan analysis is deliberately hosted-model-only (#96) — the
+  // same guardrail ui/server's Settings enforces, repeated here so a direct
+  // caller can't route it to a local model either.
+  if (planAnalysis === 'ollama') {
+    console.error('Plan analysis cannot use "ollama" — the whole-feature analysis call is hosted-model-only (see epic #96). Use "claude" for planAnalysis.');
+    return;
+  }
   const featureName = (await ask('Destination feature (Construct feature name): ')).trim();
   if (!featureName) {
     console.log('Cancelled — no feature name given.');
@@ -702,12 +738,12 @@ export async function importRouteWizard(ask, seedRoute) {
     `Found ${tracedFiles.size} file(s) across ${folders.length} route(s) in ${formatDuration(elapsedSeconds(traceStart))}: ${folders.map((f) => path.relative(root, f)).join(', ')}`,
   );
   console.log(
-    `Analyzing via "claude" — one LLM call for a single combined plan across all of them, nothing is written yet...`,
+    `Analyzing via "${planAnalysis}" — one LLM call for a single combined plan across all of them, nothing is written yet...`,
   );
   let plan;
   const analysisStart = startTimer();
   try {
-    plan = await analyzeFiles([...tracedFiles.keys()], featureName, { llm: 'claude' });
+    plan = await analyzeFiles([...tracedFiles.keys()], featureName, { llm: planAnalysis });
   } catch (e) {
     console.error(`Analysis failed: ${e.message}`);
     return;
@@ -724,8 +760,8 @@ export async function importRouteWizard(ask, seedRoute) {
     return;
   }
 
-  const { results } = await executeImportPlan(root, plan, { llm: fillWithLlm ? 'claude' : undefined });
-  reportImport(root, results, fillWithLlm ? 'claude' : undefined, plan.feature, 1, analysisSeconds);
+  const { results } = await executeImportPlan(root, plan, { llm: fillWithLlm ? importFill : undefined });
+  reportImport(root, results, fillWithLlm ? importFill : undefined, plan.feature, 1, analysisSeconds);
 
   console.log('');
   console.log(`Running validate --feature ${plan.feature} ...`);
@@ -736,17 +772,17 @@ export async function importRouteWizard(ask, seedRoute) {
   console.log(`Validated in ${formatDuration(elapsedSeconds(validateStart))}.`);
 
   const allFiles = results.flatMap((r) => r.files);
+  const todoFiles = allFiles.filter((f) => fs.readFileSync(f, 'utf8').includes('TODO(import)'));
   if (fillWithLlm) {
-    console.log(`Review the ${allFiles.length} LLM-written file(s) above against their source before trusting them — that's what's left.`);
-  } else {
-    const todoFiles = allFiles.filter((f) => fs.readFileSync(f, 'utf8').includes('TODO(import)'));
-    console.log(
-      todoFiles.length
-        ? `${todoFiles.length} of ${allFiles.length} file(s) still have a TODO(import) marker to fill in — that's what's left before this feature is done:`
-        : 'No TODO(import) markers left — nothing further needed from this pass.',
-    );
-    for (const f of todoFiles) console.log(`  ${path.relative(root, f)}`);
+    console.log(`Review the ${allFiles.length - todoFiles.length} LLM-written file(s) above against their source before trusting them.`);
   }
+  if (fillWithLlm && !todoFiles.length) return;
+  console.log(
+    todoFiles.length
+      ? `${todoFiles.length} of ${allFiles.length} file(s) still have a TODO(import) marker to fill in — that's what's left before this feature is done:`
+      : 'No TODO(import) markers left — nothing further needed from this pass.',
+  );
+  for (const f of todoFiles) console.log(`  ${path.relative(root, f)}`);
 }
 
 export async function runImportRouteWizard(routeArg) {
@@ -807,7 +843,7 @@ function ensureWizardConsolePatched() {
   }
 }
 
-export function runImportRouteWizardEventDriven(onEvent, seedRoute) {
+export function runImportRouteWizardEventDriven(onEvent, seedRoute, providers) {
   ensureWizardConsolePatched();
   let pendingResolve = null;
 
@@ -830,7 +866,7 @@ export function runImportRouteWizardEventDriven(onEvent, seedRoute) {
   }
 
   const done = wizardLogStore
-    .run(onEvent, () => importRouteWizard(ask, seedRoute))
+    .run(onEvent, () => importRouteWizard(ask, seedRoute, providers))
     .catch((e) => {
       onEvent({ type: 'log', kind: 'error', text: `Error: ${e.message}` });
     })

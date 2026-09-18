@@ -1,4 +1,4 @@
-import path from 'node:path'; import fs from 'node:fs'; import {ensureDir,write,rel} from './fs.mjs'; import {loadConfig} from './config.mjs'; import {validateArchitecture} from './architecture-enforcer.mjs'; import {ConstructError,EXIT_CODES} from './diagnostics.mjs'; import {callLlm,stripCodeFence} from './llm.mjs';
+import path from 'node:path'; import fs from 'node:fs'; import {ensureDir,write,rel} from './fs.mjs'; import {loadConfig} from './config.mjs'; import {validateArchitecture} from './architecture-enforcer.mjs'; import {ConstructError,EXIT_CODES} from './diagnostics.mjs'; import {requestFileText} from './llm-fill.mjs';
 // The controller template's own composition (importing a same-named Page
 // from the feature's pages/ folder) is Construct's own feature-internal
 // convention, not Next.js's -- it works unchanged for either framework.
@@ -209,11 +209,16 @@ function buildScaffoldFillPrompt({layer,relFile,stubContent,name,feature}){
  * a behavior difference); `file` must already exist (i.e. call this after
  * generateLayer/generateVertical, never instead of it). `llmOptions` is
  * passed straight through to callLlm — see llm.mjs's ollama provider for
- * what it can carry (model/baseUrl). Returns `file` for convenient
- * chaining/logging by the caller. */
+ * what it can carry (model/baseUrl). Returns
+ * `{ file, status: 'filled'|'rejected'|'failed', reason?, attempts }` —
+ * see llm-fill.mjs; anything but 'filled' leaves the stub untouched. */
 export async function fillGeneratedFile(root,file,layer,{feature,name,llm,llmOptions}={}){
  const stubContent=fs.readFileSync(file,'utf8');
  const prompt=buildScaffoldFillPrompt({layer,relFile:rel(root,file),stubContent,name,feature});
- write(file,stripCodeFence(await callLlm(llm,prompt,llmOptions)));
- return file;
+ // Never write a response that isn't valid code (#144): on rejection or a
+ // failed provider call the scaffolded stub stays exactly as generated.
+ const outcome=await requestFileText(llm,prompt,llmOptions);
+ if(outcome.status==='filled') write(file,outcome.code);
+ const {code:_code,...rest}=outcome;
+ return {file,...rest};
 }

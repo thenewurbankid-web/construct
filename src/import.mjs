@@ -10,7 +10,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { generateVertical, LAYER_ORDER, LAYER_CONSTRAINTS, layerFromGeneratedFile } from './generators.mjs';
 import { walk } from './fs.mjs';
-import { callLlm, stripCodeFence } from './llm.mjs';
+import { callLlm, stripCodeFence, PROVIDERS } from './llm.mjs';
+import { requestFileText } from './llm-fill.mjs';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { startTimer, elapsedSeconds } from './timing.mjs';
 
@@ -50,6 +51,7 @@ function buildPortPrompt({ layer, relFile, stubContent, oldContent, oldRelPath }
     '',
     'Return ONLY the new, complete file content. No markdown code fences, no explanation, no commentary — just the raw file content that will be written as-is.',
   ].join('\n');
+  // (requestFileText in llm-fill.mjs appends the stdout-only/no-file-access contract.)
 }
 
 /** Scaffold `layers` for one logical unit (exactly like generateVertical).
@@ -69,10 +71,17 @@ export async function importVertical(root, name, feature, layers, fromPath, { ll
   if (!fs.existsSync(fromAbs) || !fs.statSync(fromAbs).isFile()) {
     throw new ConstructError(`Source file not found: ${fromPath}`, { exitCode: EXIT_CODES.USAGE_ERROR });
   }
+  // An unknown provider is a mistake in the command, not a per-file failure —
+  // reject it before scaffolding anything (callLlm would throw the same
+  // USAGE_ERROR, but only after files were already written).
+  if (llm && !PROVIDERS[llm]) {
+    throw new ConstructError(`Unknown --llm provider "${llm}". Supported: ${Object.keys(PROVIDERS).join(', ')}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+  }
   const scaffoldStart = startTimer();
   const files = generateVertical(root, name, feature, layers);
   const scaffoldSeconds = elapsedSeconds(scaffoldStart);
   const oldContent = llm ? fs.readFileSync(fromAbs, 'utf8') : null;
+  const fills = [];
 
   // Per-file timing (#166): a breadcrumb write is trivial, but an LLM fill
   // is exactly the step whose cost varies wildly and is worth seeing
@@ -95,13 +104,25 @@ export async function importVertical(root, name, feature, layers, fromPath, { ll
       oldRelPath: path.relative(path.dirname(file), fromAbs).split(path.sep).join('/'),
     });
     const fillStart = startTimer();
-    fs.writeFileSync(file, stripCodeFence(await callLlm(llm, prompt, llmOptions)));
-    fileTimings.push({ file, llmSeconds: elapsedSeconds(fillStart) });
+    const outcome = await requestFileText(llm, prompt, llmOptions);
+    const llmSeconds = elapsedSeconds(fillStart);
+    fileTimings.push({ file, llmSeconds });
+    if (outcome.status === 'filled') {
+      fs.writeFileSync(file, outcome.code + '\n');
+      fills.push({ file, status: 'filled', attempts: outcome.attempts });
+      continue;
+    }
+    // The model's output was rejected (#144) or the call failed (#141) — leave
+    // the scaffolded stub as a valid file, with the same breadcrumb the no-llm
+    // path writes, so the file is still discoverable.
+    fs.writeFileSync(file, breadcrumb(fromAbs, file) + stubContent);
+    fills.push({ file, status: outcome.status, reason: outcome.reason, attempts: outcome.attempts });
   }
   return {
     source: fromAbs,
     files,
-    llmFilled: !!llm,
+    llmFilled: fills.some((f) => f.status === 'filled'),
+    fills,
     timings: { scaffoldSeconds, files: fileTimings, totalSeconds: elapsedSeconds(totalStart) },
   };
 }

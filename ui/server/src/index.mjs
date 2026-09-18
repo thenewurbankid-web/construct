@@ -125,7 +125,7 @@ app.post('/api/init', async (req, res) => {
 
 // create feature <name> | create layer <name> --feature f --layers l1,l2 | create <layer> <name> --feature f
 app.post('/api/create', async (req, res) => {
-  const { kind, name, feature, layer, layers } = req.body || {};
+  const { kind, name, feature, layer, layers, useLlm } = req.body || {};
   let args;
   if (kind === 'feature') {
     if (!name) return res.status(400).json({ ok: false, error: 'name is required' });
@@ -139,6 +139,10 @@ app.post('/api/create', async (req, res) => {
   } else {
     return res.status(400).json({ ok: false, error: 'kind must be "feature", "layer", or "single"' });
   }
+  // LLM use is opt-in PER RUN (#109): Settings only says WHICH provider a
+  // capability uses; nothing is called unless the request itself asks
+  // (`useLlm: true`). A "feature" has no fillable body, so it never applies.
+  if (useLlm === true && kind !== 'feature') args.push('--llm', getSettings().llmProviders.createFill);
   respond(res, await runCapturing(() => create(withDir(args))));
 });
 
@@ -177,7 +181,7 @@ app.post('/api/research', async (req, res) => {
 
 // import <name> --feature f --layers l1,l2 --from path [--llm p] | import --plan path [--llm p]
 app.post('/api/import', async (req, res) => {
-  const { mode, name, feature, layers, from, llm, planPath } = req.body || {};
+  const { mode, name, feature, layers, from, llm, useLlm, planPath } = req.body || {};
   let args;
   if (mode === 'unit') {
     if (!name || !feature || !layers?.length || !from) return res.status(400).json({ ok: false, error: 'name, feature, a non-empty layers[], and from are required' });
@@ -188,7 +192,10 @@ app.post('/api/import', async (req, res) => {
   } else {
     return res.status(400).json({ ok: false, error: 'mode must be "unit" or "plan"' });
   }
-  if (llm) args.push('--llm', llm);
+  // An explicit `llm` provider name (direct API use) still wins; the UI sends
+  // `useLlm: true` instead and the provider comes from Settings.importFill.
+  const importLlm = llm || (useLlm === true ? getSettings().llmProviders.importFill : undefined);
+  if (importLlm) args.push('--llm', importLlm);
   respond(res, await runCapturing(() => importCommand(withDir(args))));
 });
 

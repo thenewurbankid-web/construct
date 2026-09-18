@@ -37,21 +37,14 @@ function UnitFields({ name, setName, feature, setFeature, layers, toggleLayer, a
   );
 }
 
-type LlmFieldsProps = { useLlm: boolean; setUseLlm: (v: boolean) => void; llm: string; setLlm: (v: string) => void };
+type LlmFieldsProps = { useLlm: boolean; setUseLlm: (v: boolean) => void };
 
-function LlmFields({ useLlm, setUseLlm, llm, setLlm }: LlmFieldsProps) {
+function LlmFields({ useLlm, setUseLlm }: LlmFieldsProps) {
   return (
-    <>
-      <label className="checkbox">
-        <Input type="checkbox" checked={useLlm} onChange={(e) => setUseLlm(e.target.checked)} />
-        Have the LLM write the ported logic (otherwise: TODO(import) breadcrumbs only)
-      </label>
-      {useLlm && (
-        <Field label="Provider">
-          <Input value={llm} onChange={(e) => setLlm(e.target.value)} />
-        </Field>
-      )}
-    </>
+    <label className="checkbox">
+      <Input type="checkbox" checked={useLlm} onChange={(e) => setUseLlm(e.target.checked)} />
+      Have the LLM write the ported logic (provider set in Settings; otherwise: TODO(import) breadcrumbs only)
+    </label>
   );
 }
 
