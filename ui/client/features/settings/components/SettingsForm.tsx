@@ -26,7 +26,7 @@ const CAPABILITY_ROWS: CapabilityRow[] = [
   {
     capability: 'planAnalysis',
     label: 'Import route wizard: plan analysis',
-    hint: 'The whole-feature analysis call in import --route. Deliberately never offered as a local model (epic #96) — always a hosted model.',
+    hint: 'The whole-feature analysis call in import --route. Deliberately never offered as a local model — always a hosted model.',
   },
 ];
 

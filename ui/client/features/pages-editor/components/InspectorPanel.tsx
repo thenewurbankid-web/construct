@@ -23,7 +23,7 @@ export function InspectorPanel({ feature, file, node, contentHash, onSaved }: In
     <GlassPanel className="inspector-panel">
       <SnippetEditor feature={feature} file={file} nodeId={node.id} contentHash={contentHash} onSaved={onSaved} />
       <div className="props-inspector">
-        <h4>Props (#53)</h4>
+        <h4>Props</h4>
         {node.isFragment ? (
           <p className="hint">Fragments have no props.</p>
         ) : props.length === 0 ? (
