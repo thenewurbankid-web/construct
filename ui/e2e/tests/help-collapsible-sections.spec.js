@@ -7,7 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCREENSHOTS_DIR = path.resolve(__dirname, '../screenshots');
 fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
 
-const API_BASE = 'http://localhost:4000';
+const API_BASE = process.env.E2E_API_BASE || 'http://localhost:4000';
 
 // #162 — the Help page dumped the entire CLI reference as one long,
 // always-expanded wall of text. Each CLI topic (CliTopic.tsx) is now a

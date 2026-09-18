@@ -12,7 +12,7 @@ fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
 // bin/construct.mjs, the real CLI entry point, run exactly as a user would
 // run it -- never a mocked/hand-written stand-in for its output.
 const CLI_BIN = path.resolve(__dirname, '../../../../bin/construct.mjs');
-const API_BASE = 'http://localhost:4000';
+const API_BASE = process.env.E2E_API_BASE || 'http://localhost:4000';
 
 /** Runs a real `construct` command and logs the exact command + its real
  * stdout, so the console output doubles as the "real terminal transcript"
