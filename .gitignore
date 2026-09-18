@@ -1,7 +1,8 @@
 node_modules/
 dist/
 *.log
-.claude/
+.claude/*
+!.claude/agents/
 .construct-test-tmp/
 ui/e2e/test-results/
 ui/e2e/playwright-report/
@@ -9,3 +10,6 @@ ui/e2e/playwright-report/
 *storybook.log
 storybook-static
 ui/e2e/test-results-settings-llm/
+
+# GitHub Pages guide site build output
+site/dist/

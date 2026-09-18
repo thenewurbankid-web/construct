@@ -1,0 +1,57 @@
+name: Project board hygiene
+
+# Deterministic (no LLM) board maintenance: adds missing issues, closed -> Done,
+# reopened -> In progress, archives Done items closed > 14 days ago.
+# Needs a repo secret PROJECT_TOKEN (a user token with Projects read/write + Issues read);
+# the default GITHUB_TOKEN cannot access user-owned Projects v2. See docs/PROJECT_BOARD.md.
+on:
+  issues:
+    types: [opened, closed, reopened]
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Report only, change nothing'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  issues: read
+
+concurrency:
+  group: project-board-hygiene
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+      DRY_RUN: ${{ inputs.dry_run }}
+    steps:
+      - name: Check for PROJECT_TOKEN
+        id: gate
+        run: |
+          if [ -z "$PROJECT_TOKEN" ]; then
+            echo "::notice::PROJECT_TOKEN secret is not set; skipping project-board sync (see docs/PROJECT_BOARD.md)."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.run == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.run == 'true'
+        with:
+          node-version: 22
+      - name: Sync board
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            node tools/project-board/sync.mjs --dry-run
+          else
+            node tools/project-board/sync.mjs
+          fi

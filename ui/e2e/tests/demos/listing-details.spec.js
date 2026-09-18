@@ -88,21 +88,21 @@ test.describe.serial('Demo #133 — Products listing & details (UI)', () => {
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'listing-details-3-ui-browse-pages.png'), fullPage: true });
   });
 
-  // #136 — the UI has no LLM-assisted create path today: the Create form
-  // (top-left) has no "--llm" field at all, unlike the Import form
-  // (bottom-right), which does. Real, current-code evidence for that gap,
-  // captured on the same Dashboard page in one screenshot.
-  test('#136 — the Dashboard Create form has no LLM option (contrast: Import form does)', async ({ page }) => {
+  // #136 — LLM-assisted create from the UI. Since #109 the Create form has an
+  // opt-in, per-run checkbox that uses the provider chosen in Settings; it
+  // stays OFF by default so nothing calls a model unless the user asks.
+  test('#136 — the Dashboard Create form has an opt-in LLM checkbox, off by default', async ({ page }) => {
     await page.goto('/dashboard');
     const createForm = page.locator('.command-form', { has: page.getByRole('heading', { name: 'Create' }) });
-    const importForm = page.locator('.command-form', { has: page.getByRole('heading', { name: 'Import (non-interactive)' }) });
     await expect(createForm).toBeVisible();
-    await expect(importForm).toBeVisible();
-    // Create's form: no element mentions an LLM/provider at all.
-    await expect(createForm.getByText(/llm/i)).toHaveCount(0);
-    // Import's form: the real LLM checkbox construct's import path exposes.
-    await expect(importForm.getByText('Have the LLM write the ported logic (otherwise: TODO(import) breadcrumbs only)')).toBeVisible();
-    await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'listing-details-4-ui-no-llm-field-on-create.png'), fullPage: true });
+    await createForm.locator('select').first().selectOption('layer'); // the checkbox applies to layer / vertical-slice creates
+    const llmBox = createForm.getByLabel(/Have the LLM write the implementation/);
+    await expect(llmBox).toBeVisible();
+    await expect(llmBox).not.toBeChecked();
+    await llmBox.check();
+    await expect(llmBox).toBeChecked();
+    await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'listing-details-4-ui-llm-option-on-create.png'), fullPage: true });
+    await llmBox.uncheck();
   });
 
   // #137 — the zero-LLM data layer: `construct create service` with
