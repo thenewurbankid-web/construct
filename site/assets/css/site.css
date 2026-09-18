@@ -145,3 +145,13 @@ h2 { font-size: 1.6rem; margin: 0 0 8px; }
   .shell { padding-top: 20px; }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .card { transition: none; } }
+
+.user-story { margin: 16px 0; padding: 12px 18px; border-left: 3px solid var(--accent); background: var(--panel-2); border-radius: 0 10px 10px 0; font-size: 1.05rem; }
+.toc .toc-benefit { color: var(--ok); }
+.guide-hero { margin: 20px 0; }
+.guide-hero img { width: 100%; height: auto; border: 1px solid var(--border); border-radius: 10px; display: block; }
+.benefit ul { margin: 4px 0; padding-left: 1.2em; }
+.prose code { overflow-wrap: anywhere; }
+.prose pre code { overflow-wrap: normal; }
+.benefit code, .toc code, .user-story code { overflow-wrap: anywhere; }
+.benefit { overflow-wrap: anywhere; }

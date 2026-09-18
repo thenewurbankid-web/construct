@@ -36,7 +36,7 @@ jobs:
           node-version: 22
       - uses: actions/configure-pages@v6
       - name: Test site generator
-        run: node --test site/test/site.test.mjs
+        run: node --test site/test/*.test.mjs
       - name: Build site
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
