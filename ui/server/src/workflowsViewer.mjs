@@ -10,7 +10,8 @@ import path from 'node:path';
 import { loadConfig } from '../../../src/config.mjs';
 import { walk, rel } from '../../../src/fs.mjs';
 import { extractMachines } from '../../../src/engine/workflowExtractor.mjs';
-import { PagesEditorError, listFeatures } from './pagesEditor.mjs';
+import { editWorkflow } from '../../../src/engine/workflowEditor.mjs';
+import { PagesEditorError, listFeatures, checkEnforcement, hashOf } from './pagesEditor.mjs';
 
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs']);
 const MAX_BYTES = 512 * 1024;
@@ -67,5 +68,29 @@ export function resolveWorkflowFile(root, feature, file) {
 export function readWorkflowMachines(root, feature, file) {
   const { absPath, relPath } = resolveWorkflowFile(root, feature, file);
   const { machines, error } = extractMachines(fs.readFileSync(absPath, 'utf8'));
-  return { feature, file, path: relPath, machines, error };
+  return { feature, file, path: relPath, machines, error, contentHash: hashOf(fs.readFileSync(absPath, 'utf8')) };
+}
+
+/** #61 -- one visual edit, applied as an exact source-range edit
+ * (src/engine/workflowEditor.mjs). `commit:false` returns the patched source
+ * for the client's diff preview without touching disk; `commit:true`
+ * re-applies the SAME request server-side (the client never sends file
+ * content), checks the contentHash still matches (no clobbering a concurrent
+ * edit), runs the same architecture/SoC enforcement gate the pages editor
+ * uses, and only then writes. Nothing besides the source file is stored. */
+export function editWorkflowFile(root, feature, file, req, { commit, contentHash }) {
+  const { absPath, relPath } = resolveWorkflowFile(root, feature, file);
+  const source = fs.readFileSync(absPath, 'utf8');
+  if (commit && contentHash !== hashOf(source)) {
+    throw new PagesEditorError('The file changed on disk since it was loaded; re-read it and redo the edit.', { status: 409 });
+  }
+  const result = editWorkflow(source, req);
+  if (!result.ok) throw new PagesEditorError(result.error, { status: 422 });
+  if (!commit) return { ok: true, before: source, after: result.source, contentHash: hashOf(source) };
+  const enforcement = checkEnforcement(root, relPath, result.source);
+  if (!enforcement.ok) {
+    throw new PagesEditorError('Save blocked: violates architecture rules.', { status: 422, violations: enforcement.violations });
+  }
+  fs.writeFileSync(absPath, result.source);
+  return { ok: true, violations: enforcement.violations, ...readWorkflowMachines(root, feature, file) };
 }

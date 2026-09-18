@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useReducer } from 'react';
+import { useWorkflowEditor } from './useWorkflowEditor';
 import { getWorkflowFeatures, getWorkflowFiles, getWorkflowMachines } from '../services/WorkflowsApi';
 import { initialWorkflowsState, workflowsReducer } from '../workflows/Workflows';
 
@@ -39,5 +40,7 @@ export function useWorkflows() {
     if (state.feature && state.file) loadFile(state.feature, state.file);
   }
 
-  return { ...state, setFeature, openFile, reload };
+  const editor = useWorkflowEditor(state, dispatch);
+
+  return { ...state, setFeature, openFile, reload, ...editor };
 }

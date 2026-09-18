@@ -35,8 +35,9 @@ export type TransitionEdge = {
   targetHandle: string;
   label: string;
   markerEnd: { type: 'arrowclosed' };
+  reconnectable: boolean;
   style?: Record<string, string | number>;
-  data: { event: string; guard?: string; kind: string };
+  data: { event: string; guard?: string; kind: string; from: string; editable: boolean };
 };
 
 /** Human label for one transition: `EVENT [guard]`, with a kind prefix for
@@ -136,13 +137,13 @@ export function buildMachineFlow(machine: WorkflowMachine): { nodes: StateNode[]
 
   const edges: TransitionEdge[] = [];
   if (machine.initial) {
-    edges.push({ id: 'start', source: START_NODE_ID, target: machine.initial, sourceHandle: 'out-r', targetHandle: 'in-l', label: '', markerEnd: ARROW, data: { event: '', kind: 'start' } });
+    edges.push({ id: 'start', source: START_NODE_ID, target: machine.initial, sourceHandle: 'out-r', targetHandle: 'in-l', label: '', markerEnd: ARROW, reconnectable: false, data: { event: '', kind: 'start', from: '', editable: false } });
   }
   for (const s of machine.states) {
     if (s.parent && s.initial) {
       edges.push({
         id: `init:${s.path}`, source: s.parent, target: s.path, sourceHandle: 'out-r', targetHandle: 'in-l', label: 'initial', markerEnd: ARROW,
-        style: { strokeDasharray: '4 3' }, data: { event: 'initial', kind: 'initial' },
+        style: { strokeDasharray: '4 3' }, reconnectable: false, data: { event: 'initial', kind: 'initial', from: s.parent, editable: false },
       });
     }
   }
@@ -160,7 +161,8 @@ export function buildMachineFlow(machine: WorkflowMachine): { nodes: StateNode[]
       label: transitionLabel(t),
       markerEnd: ARROW,
       style: t.unresolved ? { strokeDasharray: '2 4' } : undefined,
-      data: { event: t.event, guard: t.guard, kind: t.kind },
+      reconnectable: !!t.editable,
+      data: { event: t.event, guard: t.guard, kind: t.kind, from: t.from, editable: !!t.editable },
     });
   });
   return { nodes, edges };
