@@ -1353,3 +1353,80 @@ button:disabled {
 .wf-hint {
   margin-top: 8px;
 }
+
+/* Epic #185 — Workflow narrator panels (plain English / scenarios / health)
+ * under each machine diagram. Own block to keep merges trivial. */
+.wf-narrative {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.wf-nar-panel {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-glass);
+  backdrop-filter: blur(var(--panel-blur));
+  max-height: 520px;
+  overflow-y: auto;
+}
+
+.wf-nar-panel h4 {
+  margin: 0 0 8px;
+}
+
+.wf-nar-panel h5 {
+  margin: 12px 0 4px;
+  text-transform: capitalize;
+}
+
+.wf-nar-panel ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.wf-nar-panel li {
+  margin: 3px 0;
+  line-height: 1.45;
+}
+
+.wf-nar-summary {
+  margin: 0 0 4px;
+  color: var(--muted);
+}
+
+.wf-nar-state {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.wf-nar-panel code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--llm);
+}
+
+.wf-nar-scenario {
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.wf-nar-scenario.happy h5 {
+  color: var(--tool);
+}
+
+.wf-nar-gwt {
+  list-style: none;
+  padding-left: 0;
+}
+
+.wf-finding.warning {
+  color: var(--llm);
+}
+
+.wf-nar-ok {
+  color: var(--tool);
+}

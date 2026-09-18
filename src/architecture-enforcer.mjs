@@ -22,6 +22,8 @@ import { makeViolation, ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { walk, rel } from './fs.mjs';
 import { globToRegExp, matchGlob } from './glob.mjs';
 import { parseToAst, extractImports, staticImportEntries, lineOf, collectCalls, collectBareIdentifierUsages, collectControlFlowNodes } from './ast/index.mjs';
+import { extractMachines } from './engine/workflowExtractor.mjs';
+import { findHealthIssues } from './engine/workflowScenarios.mjs';
 import { matchFrozen } from './frozen.mjs';
 import { buildFrozenIndex, detectFrozenViolations, FROZEN_RULE_BY_LAYER } from './frozen-detector.mjs';
 
@@ -147,6 +149,35 @@ export function detectLayerViolations(layer, source) {
       why: 'Workflow logic must be UI-independent.',
       expected: ['service', 'domain', 'types'],
     });
+  }
+
+  // Epic #185 (#190): structural problems the workflow narrator already knows
+  // how to spot, surfaced as default WARNINGS -- a state nothing can ever reach
+  // (WORKFLOW-002) and a non-final state nothing can leave (WORKFLOW-003). Only
+  // machines the extractor can read are checked; anything it cannot analyze is
+  // skipped silently (the Workflows screen already says "can't visualize").
+  if (layer === 'workflow') {
+    for (const machine of extractMachines(source).machines) {
+      // Construct's own scaffold is a one-state machine with no transitions
+      // (`states: { idle: {} }`): a placeholder to be filled in, not a flow
+      // that traps anything -- so it is exempt from the guardrails.
+      if (machine.states.length <= 1 && machine.transitions.length === 0) continue;
+      const lineOfState = (statePath) => machine.states.find((st) => st.path === statePath)?.line ?? machine.line ?? 1;
+      for (const f of findHealthIssues(machine)) {
+        if (f.kind === 'unreachable') out.push({
+          rule: 'WORKFLOW-002', line: lineOfState(f.state),
+          message: f.message.replace(/\*/g, '"'),
+          why: 'A state with no path from the start is dead code: the flow can never be in it.',
+          expected: ['a transition into the state, or remove it'],
+        });
+        else if (f.kind === 'dead-end') out.push({
+          rule: 'WORKFLOW-003', line: lineOfState(f.state),
+          message: f.message.replace(/\*/g, '"'),
+          why: 'A non-final state with no way out traps the flow; either add a transition out or mark it final.',
+          expected: ['a transition out of the state, or type: "final"'],
+        });
+      }
+    }
   }
 
   if (layer === 'service' && staticImports.some((e) => isReactSpecifier(e.value))) {

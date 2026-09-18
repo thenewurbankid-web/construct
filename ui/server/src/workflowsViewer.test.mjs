@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { listWorkflowFeatures, listWorkflowFiles, resolveWorkflowFile, readWorkflowMachines, editWorkflowFile } from './workflowsViewer.mjs';
+import { listWorkflowFeatures, listWorkflowFiles, resolveWorkflowFile, readWorkflowMachines, readWorkflowNarrative, editWorkflowFile } from './workflowsViewer.mjs';
 import { PagesEditorError } from './pagesEditor.mjs';
 
 const MACHINE = `import { setup } from 'xstate';
@@ -68,6 +68,28 @@ test('edit preview does not write; commit writes only after hash check', () => {
   assert.ok(fs.readFileSync(file, 'utf8').includes('z: {}'));
   // nothing else was created next to the source (zero metadata)
   assert.deepEqual(fs.readdirSync(path.join(root, 'features/demo/workflows')).sort(), ['A.test.ts', 'A.ts', 'Broken.ts']);
+});
+
+// Epic #185 -- plain-English narrative for a workflow file.
+test('narrative: English, scenarios and findings derived fresh from source, same scope guard', () => {
+  const root = makeFixture();
+  const r = readWorkflowNarrative(root, 'demo', 'A.ts');
+  assert.equal(r.machines[0].summary, 'The "a" flow has 2 steps. It starts in *x* and can end in *y*.');
+  assert.deepEqual(r.machines[0].scenarios[0].events, ['GO']);
+  assert.deepEqual(r.machines[0].findings, []);
+  // fresh on every call: an edit on disk changes the English
+  fs.writeFileSync(path.join(root, 'features/demo/workflows/A.ts'), MACHINE.replace("y: { type: 'final' }", 'y: {}'));
+  const again = readWorkflowNarrative(root, 'demo', 'A.ts');
+  assert.match(again.machines[0].summary, /no end state/);
+  assert.equal(again.machines[0].findings.some((f) => f.kind === 'dead-end'), true);
+  assert.notEqual(again.contentHash, r.contentHash);
+  // unparseable file: error, no throw
+  assert.match(readWorkflowNarrative(root, 'demo', 'Broken.ts').error, /Could not parse/);
+  // scope guard applies
+  assert.throws(() => readWorkflowNarrative(root, 'demo', '../secret.ts'), PagesEditorError);
+  fs.symlinkSync(path.join(root, 'features/demo/secret.ts'), path.join(root, 'features/demo/workflows/link.ts'));
+  assert.throws(() => readWorkflowNarrative(root, 'demo', 'link.ts'), PagesEditorError);
+  assert.deepEqual(fs.readdirSync(path.join(root, 'features/demo/workflows')).sort(), ['A.test.ts', 'A.ts', 'Broken.ts', 'link.ts']);
 });
 
 test('unsupported edits are refused with 422 and the file is untouched', () => {

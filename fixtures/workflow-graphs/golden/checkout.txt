@@ -1,0 +1,13 @@
+Checkout
+The "checkout" flow has 3 steps. It starts in *idle* and can end in *done*.
+
+Idle
+  - This flow starts in *idle*.
+  - When "submit" happens, the flow moves to *submitting*.
+
+Submitting
+  - When "success" happens, the flow moves to *done*.
+  - When "failure" happens, the flow moves to *idle* — only if it has error.
+
+Done
+  - *done* is an end state — the flow stops there.

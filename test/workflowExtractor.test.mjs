@@ -89,6 +89,17 @@ test('graceful degradation: spread config, variable config, unparseable file', (
   assert.deepEqual(extractMachines('export const x = 1;').machines, []);
 });
 
+test('captures transition actions, entry/exit actions and invoke services (narrator inputs)', () => {
+  const m = extractMachines(`export const m = createMachine({ initial: 'a', states: {
+    a: { entry: ['x', { type: 'y' }], exit: 'z', invoke: { src: 'svc', onDone: 'b' }, on: { GO: { target: 'b', actions: ['one', 'two'] }, PLAIN: 'b' } },
+    b: {},
+  } });`).machines[0];
+  const a = m.states.find((s) => s.path === 'a');
+  assert.deepEqual([a.entry, a.exit, a.invokes], [['x', 'y'], ['z'], ['svc']]);
+  assert.deepEqual(m.transitions.find((t) => t.event === 'GO').actions, ['one', 'two']);
+  assert.deepEqual(m.transitions.find((t) => t.event === 'PLAIN').actions, []);
+});
+
 test('one bad machine does not hide the others in the same file', () => {
   const src = `export const good = createMachine({ initial: 'a', states: { a: {} } });
 export const bad = createMachine(dynamicConfig());`;

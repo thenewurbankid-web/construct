@@ -108,12 +108,12 @@ function AiWrittenLogicEvidence() {
         <img
           className="tutorial-screenshot"
           src="/tutorials/route-import/route-import-147-ui-1-scaffold-and-ollama-fill.png"
-          alt="Import form set to an approved plan file, provider ollama, real per-file AI writes"
+          alt="Import form set to an approved plan file, LLM checkbox ticked, real per-file AI writes via the Ollama provider chosen in Settings"
           loading="lazy"
         />
         <figcaption>
           Dashboard&apos;s &quot;From an approved plan file&quot; Import form: scaffold plus 8 real
-          per-file writes via a local Ollama model, with the tool/llm attribution split.
+          per-file writes via the local Ollama model chosen in Settings, with the tool/llm attribution split.
         </figcaption>
       </figure>
       <p className="hint">

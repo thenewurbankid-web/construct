@@ -245,6 +245,21 @@ Each subtask (and the parent's own summary) must be written as:
    one per click/keystroke. A CLI-only capability with no UI surface uses
    a real terminal transcript instead of screenshots.
 
+4. **Guide shape and benefit rule.** A demo topic is a "guide": a parent
+   landing-page ticket (who it's for, the problem, one hero screenshot, a
+   contents table, a 3-line "why this matters") with **one real GitHub
+   sub-issue per user story** ("As a … I want … so that …", linked via the
+   sub-issues API). Every sub-issue carries a **Benefit** block (who
+   benefits, what problem it removes, measurable evidence) and a "Verified
+   on <commit>" line; a demo without an evidenced benefit is not done.
+   Stale, superseded or duplicate demos are consolidated (closed as
+   "superseded by #N", never deleted). The full rules — freshness, clutter,
+   checklist — live in `docs/DEMOS.md`, the single source of truth.
+
+**Demo/doc upkeep is delegated to the `demo-curator` agent**
+(`.claude/agents/demo-curator.md`): run it after each work wave that changes
+user-visible behaviour, so demos, the Help Tutorials and `docs/` never drift.
+
 Only create demo tickets when asked — don't proactively file one per
 feature. Standard issue discipline (rules 1-2, 4, 12 above) still applies.
 

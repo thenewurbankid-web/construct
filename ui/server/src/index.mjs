@@ -36,7 +36,7 @@ import {
   moveNodeInSnippet,
   addChildInSnippet,
 } from './pagesEditor.mjs';
-import { listWorkflowFeatures, listWorkflowFiles, readWorkflowMachines, editWorkflowFile } from './workflowsViewer.mjs';
+import { listWorkflowFeatures, listWorkflowFiles, readWorkflowMachines, readWorkflowNarrative, editWorkflowFile } from './workflowsViewer.mjs';
 
 // This server is a local dev tool, but it has real teeth: /api/import (and
 // friends) read an arbitrary path off disk and, with --llm, send that
@@ -490,6 +490,17 @@ app.get('/api/workflows/machines', (req, res) => {
   try {
     const { feature, file } = req.query;
     res.json(readWorkflowMachines(currentRoot(), feature, file));
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+// Epic #185: the same file's machines explained in plain English + scenarios
+// + health findings, re-derived from the real source on every request.
+app.get('/api/workflows/narrative', (req, res) => {
+  try {
+    const { feature, file } = req.query;
+    res.json(readWorkflowNarrative(currentRoot(), feature, file));
   } catch (e) {
     handlePagesEditorError(res, e);
   }
