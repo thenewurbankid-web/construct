@@ -82,6 +82,53 @@ test('detectLayerViolations returns nothing for clean code', () => {
   assert.deepEqual(detectLayerViolations('component', `export function C(){ return <div/>; }`), []);
 });
 
+// #74 regression: a comment (or string/property name) mentioning a banned substring
+// must never trip a rule the way real code would — this was the actual false positive
+// hit during the ui/ Next.js migration, and is the reason detectLayerViolations moved
+// from whole-file text-pattern matching to real AST analysis (#89).
+test('detectLayerViolations (#74 regression): a comment mentioning banned substrings does not trip any rule', () => {
+  const domainSource = `
+// This domain module intentionally has no workflow/service/domain effects — see fetch()
+// usage in the services layer instead, and avoid window/document/localStorage here.
+export function pure(x) {
+  return x + 1;
+}
+`;
+  assert.deepEqual(detectLayerViolations('domain', domainSource), []);
+
+  const pageSource = `
+// Do not import workflows/ or services/ or domain/ here, and never call fetch() or
+// useMachine()/useActor()/createMachine() — this comment mentions all of them on purpose.
+export function Page() {
+  return null;
+}
+`;
+  assert.deepEqual(detectLayerViolations('page', pageSource), []);
+
+  const routeSource = `
+// fetch/useMachine/useActor/localStorage/sessionStorage are all mentioned right here.
+import { X } from '../../features/x/controllers/XController';
+export default function Page(){ return <X/>; }
+`;
+  assert.deepEqual(detectLayerViolations('route', routeSource), []);
+
+  const workflowSource = `
+// this workflow talks to react (the library) in this comment only, never imports it
+export function workflow() { return 1; }
+`;
+  assert.deepEqual(detectLayerViolations('workflow', workflowSource), []);
+
+  // A same-named object property/import binding isn't a "usage" of the global either.
+  const domainWithProperty = `
+import { fetch as fetchThing } from './local-fetch-helper';
+export function f() {
+  const obj = { fetch: 1 };
+  return obj.fetch + fetchThing();
+}
+`;
+  assert.deepEqual(detectLayerViolations('domain', domainWithProperty), []);
+});
+
 // ---- exception matching -------------------------------------------------
 
 test('matchGlob supports ** and * wildcards', () => {

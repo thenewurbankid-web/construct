@@ -5,21 +5,102 @@
 // must stay pure/thin, and honors scoped/time-boxed exceptions. All
 // violations are produced through diagnostics.mjs's makeViolation with
 // module: 'architecture'.
+//
+// Layer-violation detection (detectLayerViolations, below) is AST-based
+// (epic #76 / #89): it reads real import declarations and real call/
+// identifier usage from the parsed tree via parseToAst/extractImports
+// (src/parser.mjs), not regex/text-pattern matching over the whole file. A
+// comment or string literal that happens to contain a banned substring
+// (e.g. "workflow/service/domain" or "fetch()") is never part of the
+// executable AST, so it can no longer trip a rule the way real code would
+// (#74's false-positive class).
 import fs from 'node:fs';
 import path from 'node:path';
 import { loadConfig } from './config.mjs';
 import { loadLayerGraph, canImport } from './architecture-graph.mjs';
 import { makeViolation, ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { walk, rel } from './fs.mjs';
+import { parseToAst, extractImports } from './parser.mjs';
+
+export { extractImports };
 
 const FILE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx']);
 const KNOWN_LAYERS = new Set(['route', 'controller', 'workflow', 'hook', 'service', 'domain', 'page', 'component']);
-const REACT_IMPORT_RE = /from\s*['"]react['"]|from\s*['"][^'"]*react\//;
 
-// Same import-extraction regex used by the pre-existing validator.mjs, kept
-// for consistency (no new parsing dependency).
-export function extractImports(source) {
-  return [...source.matchAll(/(?:import\s+(?:type\s+)?[\s\S]*?from\s*|import\s*\()(['"])(.*?)\1/g)].map((m) => m[2]);
+/** Does this import specifier refer to the "react" package or a "react/" subpath
+ * (e.g. "react-dom/client" is NOT matched — mirrors the old REACT_IMPORT_RE's intent
+ * of "the react package itself or something nested under a react/ path segment"). */
+function isReactSpecifier(specifier) {
+  return specifier === 'react' || /(^|\/)react\//.test(specifier);
+}
+
+/** Import specifiers from top-level `import ... from '...'` declarations only (not
+ * dynamic import()), with each entry's source position — layer-boundary imports in
+ * this codebase's conventions are always static, and a position is needed for
+ * per-rule line-number reporting (extractImports from parser.mjs returns just the
+ * specifier strings, with no position). */
+function staticImportEntries(ast) {
+  const entries = [];
+  for (const node of ast.body) {
+    if (node.type === 'ImportDeclaration') entries.push({ value: node.source.value, index: node.range[0] });
+  }
+  return entries;
+}
+
+// Node types/keys that don't represent a real "usage" of an identifier, so the AST
+// walk below skips descending into them: an import statement's bindings (a name
+// merely being imported isn't a use of it), a re-export's specifier list, and a
+// non-computed member/object/class-key name (`x.fetch` or `{ fetch: 1 }` isn't a
+// reference to the global `fetch`).
+const KEY_ONLY_TYPES = new Set(['Property', 'PropertyDefinition', 'MethodDefinition', 'TSPropertySignature', 'TSMethodSignature', 'TSAbstractMethodDefinition', 'TSAbstractPropertyDefinition']);
+
+function shouldSkipKey(node, key) {
+  if (node.type === 'ImportDeclaration') return true;
+  if (node.type === 'ExportAllDeclaration') return true;
+  if (node.type === 'ExportNamedDeclaration' && (key === 'specifiers' || key === 'source')) return true;
+  if (node.type === 'MemberExpression' && key === 'property' && !node.computed) return true;
+  if (KEY_ONLY_TYPES.has(node.type) && key === 'key' && !node.computed) return true;
+  return false;
+}
+
+function walkForUsage(node, visit) {
+  if (!node || typeof node !== 'object') return;
+  if (Array.isArray(node)) {
+    for (const n of node) walkForUsage(n, visit);
+    return;
+  }
+  if (typeof node.type !== 'string') return;
+  visit(node);
+  for (const key of Object.keys(node)) {
+    if (key === 'parent' || key === 'range' || key === 'loc') continue;
+    if (shouldSkipKey(node, key)) continue;
+    const value = node[key];
+    if (value && typeof value === 'object') walkForUsage(value, visit);
+  }
+}
+
+/** Every real `name(...)` call (callee is a bare identifier in `names`), sorted by position. */
+function collectCalls(ast, names) {
+  const hits = [];
+  walkForUsage(ast, (node) => {
+    if (node.type === 'CallExpression' && node.callee.type === 'Identifier' && names.has(node.callee.name)) {
+      hits.push({ name: node.callee.name, index: node.callee.range[0] });
+    }
+  });
+  return hits.sort((a, b) => a.index - b.index);
+}
+
+/** Every real reference to a bare identifier in `names` — called or not — sorted by
+ * position; skips property/key positions per shouldSkipKey, so `{ fetch: 1 }` or
+ * `obj.fetch` don't count, but `fetch(...)`, `window.x`, or a bare `localStorage` do. */
+function collectBareIdentifierUsages(ast, names) {
+  const hits = [];
+  walkForUsage(ast, (node) => {
+    if (node.type === 'Identifier' && names.has(node.name)) {
+      hits.push({ name: node.name, index: node.range[0] });
+    }
+  });
+  return hits.sort((a, b) => a.index - b.index);
 }
 
 function globToRegExp(glob) {
@@ -52,7 +133,10 @@ function lineOf(source, index) {
  * source strings.
  */
 export function detectLayerViolations(layer, source) {
+  const ast = parseToAst(source);
   const importsList = extractImports(source);
+  const staticImports = staticImportEntries(ast);
+  const firstImportMatch = (re) => staticImports.find((e) => re.test(e.value));
   const out = [];
 
   if (layer === 'route') {
@@ -64,7 +148,7 @@ export function detectLayerViolations(layer, source) {
         expected: ['controller'],
       });
     }
-    if (/\b(fetch|useMachine|useActor|localStorage|sessionStorage)\b/.test(source)) {
+    if (collectBareIdentifierUsages(ast, new Set(['fetch', 'useMachine', 'useActor', 'localStorage', 'sessionStorage'])).length) {
       out.push({
         rule: 'ROUTE-002', line: 1,
         message: 'Route contains application logic or effects.',
@@ -78,47 +162,46 @@ export function detectLayerViolations(layer, source) {
     /** @type {[string, RegExp][]} */
     const forbiddenImports = [['PAGE-002', /workflows?\//], ['PAGE-003', /services?\//], ['PAGE-005', /domain\//]];
     for (const [rule, re] of forbiddenImports) {
-      const m = source.match(re);
-      if (m) out.push({
-        rule, line: lineOf(source, m.index),
+      const hit = firstImportMatch(re);
+      if (hit) out.push({
+        rule, line: lineOf(source, hit.index),
         message: 'Page imports a forbidden application layer.',
         why: 'Pages are presentation-only.',
         expected: ['component', 'types'],
       });
     }
-    /** @type {[string, RegExp, string][]} */
-    const forbiddenCalls = [
-      ['PAGE-004', /\bfetch\s*\(/, 'Page calls fetch().'],
-      ['PAGE-006', /\b(useMachine|useActor|createMachine)\b/, 'Page uses workflow/application state.'],
-    ];
-    for (const [rule, re, message] of forbiddenCalls) {
-      const m = source.match(re);
-      if (m) out.push({
-        rule, line: lineOf(source, m.index), message,
-        why: 'Pages cannot own application flow.',
-        expected: ['controller', 'workflow'],
-      });
-    }
+    const fetchCall = collectCalls(ast, new Set(['fetch']))[0];
+    if (fetchCall) out.push({
+      rule: 'PAGE-004', line: lineOf(source, fetchCall.index), message: 'Page calls fetch().',
+      why: 'Pages cannot own application flow.',
+      expected: ['controller', 'workflow'],
+    });
+    const stateUsage = collectBareIdentifierUsages(ast, new Set(['useMachine', 'useActor', 'createMachine']))[0];
+    if (stateUsage) out.push({
+      rule: 'PAGE-006', line: lineOf(source, stateUsage.index), message: 'Page uses workflow/application state.',
+      why: 'Pages cannot own application flow.',
+      expected: ['controller', 'workflow'],
+    });
   }
 
   if (layer === 'component') {
-    const mController = source.match(/controllers?\//);
-    if (mController) out.push({
-      rule: 'COMPONENT-002', line: lineOf(source, mController.index),
+    const controllerImport = firstImportMatch(/controllers?\//);
+    if (controllerImport) out.push({
+      rule: 'COMPONENT-002', line: lineOf(source, controllerImport.index),
       message: 'Component imports a controller.',
       why: 'Components are reusable presentation and must not depend on the composition layer.',
       expected: ['props', 'component'],
     });
-    const mApp = source.match(/(?:workflows?|services?|domain)\//);
-    if (mApp) out.push({
-      rule: 'COMPONENT-003', line: lineOf(source, mApp.index),
+    const appImport = firstImportMatch(/(?:workflows?|services?|domain)\//);
+    if (appImport) out.push({
+      rule: 'COMPONENT-003', line: lineOf(source, appImport.index),
       message: 'Component imports application logic.',
       why: 'Components are reusable presentation and local UI state only.',
       expected: ['props', 'component'],
     });
   }
 
-  if (layer === 'workflow' && REACT_IMPORT_RE.test(source)) {
+  if (layer === 'workflow' && staticImports.some((e) => isReactSpecifier(e.value))) {
     out.push({
       rule: 'WORKFLOW-001', line: 1,
       message: 'Workflow imports React/UI.',
@@ -127,7 +210,7 @@ export function detectLayerViolations(layer, source) {
     });
   }
 
-  if (layer === 'service' && REACT_IMPORT_RE.test(source)) {
+  if (layer === 'service' && staticImports.some((e) => isReactSpecifier(e.value))) {
     out.push({
       rule: 'SERVICE-002', line: 1,
       message: 'Service imports React/UI.',
@@ -137,9 +220,9 @@ export function detectLayerViolations(layer, source) {
   }
 
   if (layer === 'domain') {
-    const m = source.match(/\b(fetch|window|document|localStorage|sessionStorage|navigator)\b/);
-    if (m) out.push({
-      rule: 'DOMAIN-001', line: lineOf(source, m.index),
+    const hit = collectBareIdentifierUsages(ast, new Set(['fetch', 'window', 'document', 'localStorage', 'sessionStorage', 'navigator']))[0];
+    if (hit) out.push({
+      rule: 'DOMAIN-001', line: lineOf(source, hit.index),
       message: 'Domain code uses an external effect.',
       why: 'Domain is pure by default.',
       expected: ['pure function'],
