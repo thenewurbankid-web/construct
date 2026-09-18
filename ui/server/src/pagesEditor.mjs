@@ -229,6 +229,30 @@ export function hashOf(source) {
   return crypto.createHash('sha256').update(source).digest('hex');
 }
 
+/**
+ * Ticket F.1 (#120, epic #119) — parse a bare snippet's *own* text (not a
+ * whole page file) into the same node tree shape serializeTree produces, so
+ * the visual composer can derive its graph live from exactly the text
+ * currently sitting in the snippet editor, with zero persisted metadata: no
+ * `.flyde`-style side file, no cached JSON layout, just a fresh parse of
+ * whatever text is passed in. Reuses parsePageTree/serializeTree completely
+ * unchanged — a standalone JSX snippet (e.g. `<div><Foo/></div>`) is already
+ * valid module source on its own (babel parses it as an ExpressionStatement
+ * wrapping the JSXElement/JSXFragment), so no wrapping hack is needed.
+ * Parse failures are expected transiently while the user is mid-edit (an
+ * unclosed tag, etc.) — reported as `{roots: [], error}` rather than thrown,
+ * so the canvas can just keep showing its last-good graph instead of
+ * crashing on every keystroke.
+ */
+export function parseSnippetToTree(snippetSource) {
+  if (typeof snippetSource !== 'string' || !snippetSource.trim()) return { roots: [], error: null };
+  try {
+    return { ...serializeTree(snippetSource), error: null };
+  } catch (e) {
+    return { roots: [], error: e.message };
+  }
+}
+
 /** The exact source snippet for one node (#52's read side) plus its parent
  * chain's tag names for breadcrumb display. */
 export function getNodeSnippet(source, nodeId) {
@@ -342,6 +366,199 @@ export function buildAttributeSnippet(source, nodeId, propName, kind, value, ind
   const insertAt = opening.selfClosing ? opening.end - 2 : opening.end - 1;
   const needsSpace = !/\s$/.test(source.slice(insertAt - 1, insertAt));
   return source.slice(node.start, insertAt) + (needsSpace ? ' ' : '') + propName + rendered + source.slice(insertAt, node.end);
+}
+
+/**
+ * Ticket F.2 (#121, epic #119) — remove one named attribute from a node's
+ * opening tag, returning that node's whole replacement text (same "whole
+ * node's new text" contract buildAttributeSnippet above already uses, so
+ * patchNode splices it back the same way). Mirrors buildAttributeSnippet's
+ * existing-attribute branch, but deletes instead of replacing — also
+ * consumes one immediately-preceding whitespace run so the removal doesn't
+ * leave a double space behind in the tag. Only for a named (non-spread)
+ * attribute that currently exists.
+ */
+export function removeAttributeSnippet(source, nodeId, propName) {
+  const { byId } = parsePageTree(source);
+  const node = byId.get(nodeId);
+  if (!node) throw new PagesEditorError(`No such node "${nodeId}" — the file may have changed; reload the tree.`, { status: 409 });
+  if (node.isFragment) throw new PagesEditorError('Fragments (<>...</>) have no props to edit.');
+  const opening = node.openingElementNode;
+  const existing = opening.attributes.find((a) => t.isJSXAttribute(a) && jsxNameToString(a.name) === propName);
+  if (!existing) throw new PagesEditorError(`Node "${nodeId}" has no "${propName}" attribute to remove.`);
+  let start = existing.start;
+  while (start > node.start && /\s/.test(source[start - 1])) start--;
+  return source.slice(node.start, start) + source.slice(existing.end, node.end);
+}
+
+/**
+ * Ticket F.2 (#121, epic #119) — the visual composer's wire-rewrite: moves
+ * an existing prop from one child to a different sibling under the same
+ * parent, expressed as an unambiguous source-text edit (remove the
+ * attribute from the old child, add the identical attribute — same kind
+ * and value — to the new one), reusing removeAttributeSnippet/
+ * buildAttributeSnippet/patchNode unchanged rather than a second splicing
+ * mechanism. Operates purely on the snippet's own text (never a file) so
+ * the result can be handed straight to the existing save-back-to-source +
+ * diff-preview flow. Never throws — an invalid drag (stale ids, a
+ * cross-parent target, a name collision on the target) comes back as
+ * `{ok: false, error}` so the canvas can show a clear inline message and
+ * leave the snippet untouched, per #119's "reject rather than write broken
+ * code" instruction.
+ */
+export function rewireWireInSnippet(snippetSource, { parentId, propName, fromChildId, toChildId }) {
+  let byId;
+  try {
+    byId = parsePageTree(snippetSource).byId;
+  } catch (e) {
+    return { ok: false, error: `Snippet does not parse: ${e.message}` };
+  }
+  const parent = byId.get(parentId);
+  const fromChild = byId.get(fromChildId);
+  const toChild = byId.get(toChildId);
+  if (!parent || !fromChild || !toChild) {
+    return { ok: false, error: "One of this wire's endpoints no longer exists — the snippet may have changed." };
+  }
+  if (fromChildId === toChildId) return { ok: false, error: 'Nothing to rewire — dropped back on the same node.' };
+  const isSibling = (id) => parent.children.some((c) => c.id === id);
+  if (!isSibling(fromChildId) || !isSibling(toChildId)) {
+    return { ok: false, error: 'A wire can only be rewired to a sibling under the same parent.' };
+  }
+  const prop = fromChild.props.find((p) => p.kind !== 'spread' && p.name === propName);
+  if (!prop) return { ok: false, error: `"${fromChildId}" no longer has a "${propName}" prop.` };
+  if (toChild.props.some((p) => p.kind !== 'spread' && p.name === propName)) {
+    return { ok: false, error: `"${toChildId}" already has its own "${propName}" prop — rewiring would overwrite it.` };
+  }
+
+  try {
+    const removed = removeAttributeSnippet(snippetSource, fromChildId, propName);
+    let patched = patchNode(snippetSource, fromChildId, removed);
+    const added = buildAttributeSnippet(patched, toChildId, propName, prop.kind, prop.value);
+    patched = patchNode(patched, toChildId, added);
+    return { ok: true, snippet: patched };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+/** Finds `nodeId`'s direct parent record in an already-parsed tree, or
+ * `null` for a root (parsePageTree's own records don't carry a parent
+ * back-reference, so this is a small linear scan over already-visited
+ * nodes — shared by F.3's remove/move operations below). */
+function findParentRecord(byId, nodeId) {
+  for (const candidate of byId.values()) {
+    if (candidate.children.some((c) => c.id === nodeId)) return candidate;
+  }
+  return null;
+}
+
+/**
+ * Ticket F.3 (#122, epic #119) — remove a node (and its whole subtree) from
+ * the snippet, expressed as a plain text-range deletion plus a small
+ * whitespace cleanup (one run of leading indentation, one trailing newline)
+ * so it doesn't leave a blank line behind. Rejects removing the snippet's
+ * own single root — a snippet is always exactly one root element/fragment
+ * (the same invariant patchNode's own save-time validation enforces), so
+ * there is nothing left to save if the root itself were removed. Never
+ * throws — `{ok:false, error}` on any rejection.
+ */
+export function removeNodeInSnippet(snippetSource, nodeId) {
+  let roots, byId;
+  try {
+    ({ roots, byId } = parsePageTree(snippetSource));
+  } catch (e) {
+    return { ok: false, error: `Snippet does not parse: ${e.message}` };
+  }
+  const node = byId.get(nodeId);
+  if (!node) return { ok: false, error: `No such node "${nodeId}" — the snippet may have changed.` };
+  if (roots.some((r) => r.id === nodeId)) {
+    return { ok: false, error: "The snippet's own root element can't be removed — it would leave nothing to save." };
+  }
+  let start = node.start;
+  while (start > 0 && /[ \t]/.test(snippetSource[start - 1])) start--;
+  let end = node.end;
+  if (snippetSource.slice(end, end + 2) === '\r\n') end += 2;
+  else if (snippetSource[end] === '\n') end += 1;
+  const patched = snippetSource.slice(0, start) + snippetSource.slice(end);
+  try {
+    parseSource(patched);
+  } catch (e) {
+    return { ok: false, error: `Removing this node would leave invalid JSX: ${e.message}` };
+  }
+  return { ok: true, snippet: patched };
+}
+
+/**
+ * Ticket F.3 (#122, epic #119) — move a node one position up/down among its
+ * own siblings, expressed as swapping its text with the adjacent sibling's
+ * (whatever sits between the two — other text/elements — stays exactly
+ * where it is; only the two elements' own text spans trade places).
+ * Rejects a root (no siblings to move among) or a node already at the
+ * first/last position for the requested direction. Never throws.
+ */
+export function moveNodeInSnippet(snippetSource, nodeId, direction) {
+  if (direction !== 'up' && direction !== 'down') return { ok: false, error: `Unknown move direction "${direction}".` };
+  let byId;
+  try {
+    ({ byId } = parsePageTree(snippetSource));
+  } catch (e) {
+    return { ok: false, error: `Snippet does not parse: ${e.message}` };
+  }
+  const node = byId.get(nodeId);
+  if (!node) return { ok: false, error: `No such node "${nodeId}" — the snippet may have changed.` };
+  const parent = findParentRecord(byId, nodeId);
+  if (!parent) return { ok: false, error: "The snippet's own root element has no siblings to move among." };
+  const siblings = parent.children;
+  const idx = siblings.findIndex((c) => c.id === nodeId);
+  const otherIdx = direction === 'up' ? idx - 1 : idx + 1;
+  if (otherIdx < 0 || otherIdx >= siblings.length) {
+    return { ok: false, error: `Already at the ${direction === 'up' ? 'first' : 'last'} position among its siblings.` };
+  }
+  const [a, b] = direction === 'up' ? [siblings[otherIdx], node] : [node, siblings[otherIdx]];
+  const between = snippetSource.slice(a.end, b.start);
+  const patched =
+    snippetSource.slice(0, a.start) + snippetSource.slice(b.start, b.end) + between + snippetSource.slice(a.start, a.end) + snippetSource.slice(b.end);
+  try {
+    parseSource(patched);
+  } catch (e) {
+    return { ok: false, error: `Moving this node would leave invalid JSX: ${e.message}` };
+  }
+  return { ok: true, snippet: patched };
+}
+
+const NEW_CHILD_SNIPPET = '<div />';
+
+/**
+ * Ticket F.3 (#122, epic #119) — append a new (fixed, deliberately minimal
+ * — `<div />`) child right before a node's closing tag, reusing the
+ * start/end offsets parsePageTree already computed (no second AST walk).
+ * Only supported when the node already has an opening/closing tag pair or
+ * is a fragment (`<Tag>...</Tag>` / `<>...</>`) — a self-closing element
+ * (`<Tag />`) is rejected rather than the tool guessing how to split `/>`
+ * into an open/close pair on the caller's behalf. Never throws.
+ */
+export function addChildInSnippet(snippetSource, parentId) {
+  let byId;
+  try {
+    ({ byId } = parsePageTree(snippetSource));
+  } catch (e) {
+    return { ok: false, error: `Snippet does not parse: ${e.message}` };
+  }
+  const parent = byId.get(parentId);
+  if (!parent) return { ok: false, error: `No such node "${parentId}" — the snippet may have changed.` };
+  if (!parent.isFragment && parent.openingElementNode.selfClosing) {
+    return { ok: false, error: 'This element is self-closing (`<Tag />`) — convert it to an open/close pair before adding a child.' };
+  }
+  const closingLength = parent.isFragment ? 3 /* </> */ : parent.tag.length + 3; /* </Tag> */
+  const insertAt = parent.end - closingLength;
+  if (insertAt < parent.start) return { ok: false, error: 'Could not determine where to insert a new child.' };
+  const patched = snippetSource.slice(0, insertAt) + NEW_CHILD_SNIPPET + snippetSource.slice(insertAt);
+  try {
+    parseSource(patched);
+  } catch (e) {
+    return { ok: false, error: `Adding a child here would leave invalid JSX: ${e.message}` };
+  }
+  return { ok: true, snippet: patched };
 }
 
 function renderAttrValue(kind, value) {

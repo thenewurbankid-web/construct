@@ -19,6 +19,12 @@ import {
   checkEnforcement,
   hashOf,
   PagesEditorError,
+  parseSnippetToTree,
+  removeAttributeSnippet,
+  rewireWireInSnippet,
+  removeNodeInSnippet,
+  moveNodeInSnippet,
+  addChildInSnippet,
 } from './pagesEditor.mjs';
 
 const SOURCE = `import React from 'react';
@@ -279,4 +285,173 @@ test('checkEnforcement allows a clean structural/prop edit through (#56)', () =>
   const okSource = SOURCE.replace('<h1>{title}</h1>', '<h1>{title} (v2)</h1>');
   const result = checkEnforcement(root, relPath, okSource);
   assert.equal(result.ok, true);
+});
+
+// Ticket F.1 (#120, epic #119) — parseSnippetToTree feeds the visual
+// composer's live graph. It must handle a bare snippet (no surrounding
+// file), not just a whole page.
+test('parseSnippetToTree parses a bare snippet (no surrounding file) into the same node tree shape (#120)', () => {
+  const { roots, error } = parseSnippetToTree('<Card>\n  <p>Count: {count}</p>\n</Card>');
+  assert.equal(error, null);
+  assert.equal(roots.length, 1);
+  assert.equal(roots[0].tag, 'Card');
+  assert.equal(roots[0].children[0].tag, 'p');
+});
+
+test('parseSnippetToTree reports a parse error without throwing, for a snippet mid-edit (#120)', () => {
+  const { roots, error } = parseSnippetToTree('<Card>\n  <p>unclosed');
+  assert.deepEqual(roots, []);
+  assert.ok(typeof error === 'string' && error.length > 0);
+});
+
+test('parseSnippetToTree returns an empty, error-free tree for empty/whitespace input (#120)', () => {
+  assert.deepEqual(parseSnippetToTree(''), { roots: [], error: null });
+  assert.deepEqual(parseSnippetToTree('   \n  '), { roots: [], error: null });
+});
+
+// Ticket F.2 (#121, epic #119) — removeAttributeSnippet + rewireWireInSnippet
+// back the visual composer's wire-rewrite (drag a connection's child-side
+// endpoint onto a different sibling).
+const WIRE_SNIPPET = '<main>\n  <Card title={title} />\n  <Aside />\n</main>';
+
+test('removeAttributeSnippet deletes a named attribute and the whitespace before it (#121)', () => {
+  const { byId } = parsePageTree(WIRE_SNIPPET);
+  const cardId = [...byId.values()].find((n) => n.tag === 'Card').id;
+  const replacement = removeAttributeSnippet(WIRE_SNIPPET, cardId, 'title');
+  assert.equal(replacement, '<Card />');
+});
+
+test('removeAttributeSnippet throws for an attribute that does not exist (#121)', () => {
+  const { byId } = parsePageTree(WIRE_SNIPPET);
+  const cardId = [...byId.values()].find((n) => n.tag === 'Card').id;
+  assert.throws(() => removeAttributeSnippet(WIRE_SNIPPET, cardId, 'nope'), PagesEditorError);
+});
+
+test('rewireWireInSnippet moves a prop from one child to its sibling (#121)', () => {
+  const { byId } = parsePageTree(WIRE_SNIPPET);
+  const mainId = [...byId.values()].find((n) => n.tag === 'main').id;
+  const cardId = [...byId.values()].find((n) => n.tag === 'Card').id;
+  const asideId = [...byId.values()].find((n) => n.tag === 'Aside').id;
+
+  const result = rewireWireInSnippet(WIRE_SNIPPET, { parentId: mainId, propName: 'title', fromChildId: cardId, toChildId: asideId });
+  assert.equal(result.ok, true);
+  assert.match(result.snippet, /<Card\s*\/>/);
+  // buildAttributeSnippet's existing self-closing-tag insertion logic (used
+  // unchanged here) doesn't add a space before `/>` when one already
+  // precedes the insertion point — same behavior applyAutoMap already
+  // relies on elsewhere, not new to this ticket.
+  assert.match(result.snippet, /<Aside title=\{title\}\/>/);
+
+  // The rewired snippet must still parse as a real, valid tree.
+  const reparsed = parsePageTree(result.snippet);
+  assert.equal(reparsed.roots.length, 1);
+});
+
+test('rewireWireInSnippet rejects a target that already has the same prop, and leaves the snippet unchanged (#121)', () => {
+  const source = '<main>\n  <Card title={title} />\n  <Aside title={other} />\n</main>';
+  const { byId } = parsePageTree(source);
+  const mainId = [...byId.values()].find((n) => n.tag === 'main').id;
+  const cardId = [...byId.values()].find((n) => n.tag === 'Card').id;
+  const asideId = [...byId.values()].find((n) => n.tag === 'Aside').id;
+
+  const result = rewireWireInSnippet(source, { parentId: mainId, propName: 'title', fromChildId: cardId, toChildId: asideId });
+  assert.equal(result.ok, false);
+  assert.match(result.error, /already has its own "title" prop/);
+});
+
+test('rewireWireInSnippet rejects a target that is not a sibling under the same parent (#121)', () => {
+  const source = '<main>\n  <Card title={title} />\n  <section><Aside /></section>\n</main>';
+  const { byId } = parsePageTree(source);
+  const mainId = [...byId.values()].find((n) => n.tag === 'main').id;
+  const cardId = [...byId.values()].find((n) => n.tag === 'Card').id;
+  const asideId = [...byId.values()].find((n) => n.tag === 'Aside').id;
+
+  const result = rewireWireInSnippet(source, { parentId: mainId, propName: 'title', fromChildId: cardId, toChildId: asideId });
+  assert.equal(result.ok, false);
+  assert.match(result.error, /sibling under the same parent/);
+});
+
+test('rewireWireInSnippet rejects stale node ids without throwing (#121)', () => {
+  const result = rewireWireInSnippet(WIRE_SNIPPET, { parentId: 'nX', propName: 'title', fromChildId: 'nY', toChildId: 'nZ' });
+  assert.equal(result.ok, false);
+  assert.ok(result.error.length > 0);
+});
+
+// Ticket F.3 (#122, epic #119) — removeNodeInSnippet/moveNodeInSnippet/
+// addChildInSnippet back the visual composer's structural node edits.
+const STRUCT_SNIPPET = '<main>\n  <Card />\n  <Aside />\n</main>';
+
+test('removeNodeInSnippet deletes a node and its surrounding blank line (#122)', () => {
+  const { byId } = parsePageTree(STRUCT_SNIPPET);
+  const cardId = [...byId.values()].find((n) => n.tag === 'Card').id;
+  const result = removeNodeInSnippet(STRUCT_SNIPPET, cardId);
+  assert.equal(result.ok, true);
+  assert.equal(result.snippet, '<main>\n  <Aside />\n</main>');
+});
+
+test('removeNodeInSnippet rejects removing the snippet\'s own root (#122)', () => {
+  const { byId } = parsePageTree(STRUCT_SNIPPET);
+  const mainId = [...byId.values()].find((n) => n.tag === 'main').id;
+  const result = removeNodeInSnippet(STRUCT_SNIPPET, mainId);
+  assert.equal(result.ok, false);
+  assert.match(result.error, /own root element/);
+});
+
+test('moveNodeInSnippet swaps a node with its next sibling ("down") (#122)', () => {
+  const { byId } = parsePageTree(STRUCT_SNIPPET);
+  const cardId = [...byId.values()].find((n) => n.tag === 'Card').id;
+  const result = moveNodeInSnippet(STRUCT_SNIPPET, cardId, 'down');
+  assert.equal(result.ok, true);
+  assert.equal(result.snippet, '<main>\n  <Aside />\n  <Card />\n</main>');
+});
+
+test('moveNodeInSnippet swaps a node with its previous sibling ("up") (#122)', () => {
+  const { byId } = parsePageTree(STRUCT_SNIPPET);
+  const asideId = [...byId.values()].find((n) => n.tag === 'Aside').id;
+  const result = moveNodeInSnippet(STRUCT_SNIPPET, asideId, 'up');
+  assert.equal(result.ok, true);
+  assert.equal(result.snippet, '<main>\n  <Aside />\n  <Card />\n</main>');
+});
+
+test('moveNodeInSnippet rejects moving past the first/last sibling position (#122)', () => {
+  const { byId } = parsePageTree(STRUCT_SNIPPET);
+  const cardId = [...byId.values()].find((n) => n.tag === 'Card').id;
+  const asideId = [...byId.values()].find((n) => n.tag === 'Aside').id;
+  assert.equal(moveNodeInSnippet(STRUCT_SNIPPET, cardId, 'up').ok, false);
+  assert.equal(moveNodeInSnippet(STRUCT_SNIPPET, asideId, 'down').ok, false);
+});
+
+test('moveNodeInSnippet rejects moving the snippet\'s own root (no siblings) (#122)', () => {
+  const { byId } = parsePageTree(STRUCT_SNIPPET);
+  const mainId = [...byId.values()].find((n) => n.tag === 'main').id;
+  const result = moveNodeInSnippet(STRUCT_SNIPPET, mainId, 'up');
+  assert.equal(result.ok, false);
+  assert.match(result.error, /no siblings/);
+});
+
+test('addChildInSnippet appends a fixed <div /> before the closing tag (#122)', () => {
+  const { byId } = parsePageTree(STRUCT_SNIPPET);
+  const mainId = [...byId.values()].find((n) => n.tag === 'main').id;
+  const result = addChildInSnippet(STRUCT_SNIPPET, mainId);
+  assert.equal(result.ok, true);
+  assert.equal(result.snippet, '<main>\n  <Card />\n  <Aside />\n<div /></main>');
+  const reparsed = parsePageTree(result.snippet);
+  assert.equal(reparsed.roots[0].children.length, 3);
+});
+
+test('addChildInSnippet works on a fragment root (#122)', () => {
+  const source = '<>\n  <Card />\n</>';
+  const { byId } = parsePageTree(source);
+  const fragId = [...byId.values()].find((n) => n.isFragment).id;
+  const result = addChildInSnippet(source, fragId);
+  assert.equal(result.ok, true);
+  assert.equal(result.snippet, '<>\n  <Card />\n<div /></>');
+});
+
+test('addChildInSnippet rejects a self-closing element (#122)', () => {
+  const { byId } = parsePageTree(STRUCT_SNIPPET);
+  const cardId = [...byId.values()].find((n) => n.tag === 'Card').id;
+  const result = addChildInSnippet(STRUCT_SNIPPET, cardId);
+  assert.equal(result.ok, false);
+  assert.match(result.error, /self-closing/);
 });

@@ -852,6 +852,107 @@ button:disabled {
   opacity: 0.9;
 }
 
+/* Ticket F.4 (#123, epic #119) — the SnippetEditor Code/Visual toggle. */
+.snippet-view-toggle {
+  display: flex;
+  gap: 4px;
+  margin: 8px 0;
+}
+
+.snippet-view-toggle button {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.snippet-view-toggle button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* Ticket F.1 (#120, epic #119) — React Flow (@xyflow/react) visual composer
+ * canvas. `.jsx-flow-node` is the custom node box rendered by
+ * JsxFlowNode.tsx; handle colors/positions come from inline style (per-prop
+ * palette computed in the domain layer, same as .propflow-pill above). */
+.snippet-flow-canvas {
+  margin-top: 16px;
+}
+
+.snippet-flow-error {
+  margin-bottom: 8px;
+}
+
+.snippet-flow-viewport {
+  height: 420px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #0b0d11;
+}
+
+.jsx-flow-node {
+  min-height: 40px;
+  padding: 10px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.jsx-flow-node.component .jsx-flow-node-label {
+  color: var(--llm);
+  font-weight: 600;
+}
+
+.jsx-flow-node-label {
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.jsx-flow-handle {
+  width: 8px;
+  height: 8px;
+  border: 1px solid;
+  border-radius: 2px;
+}
+
+/* Ticket F.2 (#121, epic #119) — the always-present, invisible whole-node
+ * drop zone (JsxFlowNode's WILDCARD_RECEIVED_HANDLE) a rewired wire can
+ * land on even when the target doesn't already expose a same-named handle. */
+.jsx-flow-handle-wildcard {
+  background: transparent !important;
+  border: none !important;
+  opacity: 0;
+}
+
+.snippet-flow-wire-error {
+  margin-top: 8px;
+}
+
+/* Ticket F.3 (#122, epic #119) — per-node structural toolbar (remove/move/
+ * add-child) rendered on JsxFlowNode. Sits above the wildcard drop-zone
+ * handle in z-order (later in DOM = on top), so its buttons stay clickable. */
+.jsx-flow-node-toolbar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 4px;
+}
+
+.jsx-flow-node-toolbar button {
+  font-size: 10px;
+  line-height: 1;
+  padding: 2px 6px;
+  align-self: auto;
+}
+
 /* Ollama (Epic 6.1/#97, 6.3/#99) — status/install/model-management screen. */
 .ollama-status,
 .ollama-install,

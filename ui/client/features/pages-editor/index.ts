@@ -26,3 +26,7 @@ export * from './hooks/usePropRow';
  * highlighting and a diff preview shown before a save is confirmed (#52,
  * #81). */
 export * from './hooks/useSnippetEditor';
+
+/** Derives the visual composer's React Flow node/edge graph from a
+ * snippet's live-parsed source (#120, epic #119). */
+export * from './hooks/useSnippetFlow';
