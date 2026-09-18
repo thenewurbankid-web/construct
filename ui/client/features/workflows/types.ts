@@ -18,6 +18,8 @@ export type WorkflowTransition = {
   target: string | null;
   rawTarget?: string;
   guard?: string;
+  /** plain, unguarded, single-branch `on` entry: the only kind that can be edited visually */
+  editable?: boolean;
   targetless: boolean;
   unresolved: boolean;
 };
@@ -38,7 +40,24 @@ export type WorkflowFileMachines = {
   path: string;
   machines: WorkflowMachine[];
   error: string | null;
+  contentHash?: string;
 };
+
+export type DiffHunk = { value: string; added?: boolean; removed?: boolean };
+
+/** One visual edit (see src/engine/workflowEditor.mjs for the ops). */
+export type WorkflowEditRequest = {
+  machine: number;
+  op: 'addState' | 'removeState' | 'renameState' | 'addTransition' | 'removeTransition' | 'retargetTransition';
+  name?: string;
+  parent?: string;
+  path?: string;
+  from?: string;
+  event?: string;
+  target?: string;
+};
+
+export type PendingWorkflowEdit = { req: WorkflowEditRequest; hunks: DiffHunk[] };
 
 export type WorkflowsState = {
   features: string[];
@@ -48,4 +67,7 @@ export type WorkflowsState = {
   file: string;
   loaded: WorkflowFileMachines | null;
   error: string | null;
+  pending: PendingWorkflowEdit | null;
+  editBusy: boolean;
+  editError: string | null;
 };

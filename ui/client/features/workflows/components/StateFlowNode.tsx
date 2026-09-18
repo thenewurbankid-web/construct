@@ -18,8 +18,8 @@ export function StateFlowNode({ data }: NodeProps<StateNodeType>) {
   const cls = ['wf-state', data.final ? 'final' : '', data.initial ? 'initial' : '', data.kind === 'missing' ? 'missing' : ''].filter(Boolean).join(' ');
   return (
     <div className={cls} style={{ width: data.width }} data-testid={`wf-state-${data.path}`}>
-      <Handle id="in-l" type="target" position={Position.Left} isConnectable={false} className="wf-handle" />
-      <Handle id="in-b" type="target" position={Position.Bottom} isConnectable={false} className="wf-handle" style={{ left: '30%' }} />
+      <Handle id="in-l" type="target" position={Position.Left} className="wf-handle" />
+      <Handle id="in-b" type="target" position={Position.Bottom} className="wf-handle" style={{ left: '30%' }} />
       <div className="wf-state-name">{data.label}</div>
       <div className="wf-state-tags">
         {data.initial && <span className="wf-tag">initial</span>}
@@ -30,8 +30,8 @@ export function StateFlowNode({ data }: NodeProps<StateNodeType>) {
       {data.internal.map((line) => (
         <div key={line} className="wf-internal">{line}</div>
       ))}
-      <Handle id="out-r" type="source" position={Position.Right} isConnectable={false} className="wf-handle" />
-      <Handle id="out-b" type="source" position={Position.Bottom} isConnectable={false} className="wf-handle" style={{ left: '70%' }} />
+      <Handle id="out-r" type="source" position={Position.Right} className="wf-handle" />
+      <Handle id="out-b" type="source" position={Position.Bottom} className="wf-handle" style={{ left: '70%' }} />
     </div>
   );
 }

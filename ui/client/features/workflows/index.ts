@@ -14,3 +14,6 @@ export * from './hooks/useWorkflows';
 
 /** React Flow nodes/edges derived from one extracted machine. */
 export * from './hooks/useMachineFlow';
+
+/** Visual edit flow (propose diff -> confirm save) used by useWorkflows (#61). */
+export * from './hooks/useWorkflowEditor';

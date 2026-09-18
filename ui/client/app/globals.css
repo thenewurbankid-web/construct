@@ -1314,3 +1314,42 @@ button:disabled {
 .wf-viewport .react-flow__edge-path {
   stroke: var(--muted);
 }
+
+/* #61 — visual editing on the Workflows canvas. */
+.wf-viewport.editable .wf-handle {
+  opacity: 1;
+  pointer-events: all;
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+  border: 1px solid var(--border-strong);
+}
+
+.wf-edit-panel {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel-glass);
+}
+
+.wf-edit-panel h4 {
+  margin: 0 0 8px;
+}
+
+.wf-edit-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.wf-edit-row input,
+.wf-edit-row select {
+  min-width: 140px;
+}
+
+.wf-hint {
+  margin-top: 8px;
+}
