@@ -45,7 +45,8 @@ export function PropFlowDiagram({ roots }: { roots: PagesEditorNode[] }) {
                   stroke={e.color}
                   strokeWidth={2}
                   opacity={0.85}
-                  className="propflow-line"
+                  strokeDasharray={e.traced ? '4 2' : undefined}
+                  className={`propflow-line${e.traced ? ' propflow-line-traced' : ''}`}
                 />
               ))}
             </svg>
