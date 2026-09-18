@@ -9,9 +9,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCREENSHOTS_DIR = path.resolve(__dirname, '../screenshots');
 fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
 
-// Dedicated ports (playwright.workflows.config.js); override with
-// WORKFLOWS_API_BASE when using the standard config.
-const API_BASE = process.env.WORKFLOWS_API_BASE || 'http://localhost:4105';
+// Run with E2E_CLIENT_PORT/E2E_SERVER_PORT set (see ui/e2e/playwright.config.js).
+const API_BASE = process.env.E2E_API_BASE || 'http://localhost:4000';
 
 const CHECKOUT = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../../fixtures/workflow-graphs/checkout.json'), 'utf8'));
 

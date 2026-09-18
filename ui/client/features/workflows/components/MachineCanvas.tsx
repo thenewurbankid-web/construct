@@ -41,6 +41,7 @@ export function MachineCanvas({ machine }: { machine: WorkflowMachine }) {
               nodesConnectable={false}
               elementsSelectable={false}
               fitView
+          colorMode="dark"
               fitViewOptions={{ padding: 0.25 }}
               proOptions={{ hideAttribution: true }}
             >
