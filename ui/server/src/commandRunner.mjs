@@ -12,6 +12,7 @@
 // to keep concurrent requests from interleaving each other's captured
 // output. For a local, single-user dev tool this is a fine trade-off.
 import { EXIT_CODES, ConstructError } from '../../../src/diagnostics.mjs';
+import { startTimer, elapsedSeconds } from '../../../src/timing.mjs';
 import { getSettings } from './settings.mjs';
 
 const ATTRIBUTION_RE = /^\[tool: (.*)\] \[llm: (.*)\]$/;
@@ -42,13 +43,23 @@ const EXIT_CODE_TO_HTTP = {
 
 /** Run `fn` (an async call into one of the wrapped cli.mjs functions),
  * capturing every console line it (or anything it calls) prints, and
- * return `{ ok, output, attribution, error?, httpStatus }`. `attribution` is
- * `{ tool, llm }` parsed from the one `[tool: ...] [llm: ...]` line the
- * command printed, or null if none was found (shouldn't normally happen for
- * a successful create/refactor/research/import call, but callers should not
- * assume it's always present). */
+ * return `{ ok, output, attribution, durationSeconds, error?, httpStatus }`.
+ * `attribution` is `{ tool, llm }` parsed from the one `[tool: ...] [llm:
+ * ...]` line the command printed, or null if none was found (shouldn't
+ * normally happen for a successful create/refactor/research/import call,
+ * but callers should not assume it's always present).
+ *
+ * `durationSeconds` (#167) is this call's own wall-clock total -- a floor
+ * guarantee independent of whatever per-step timing text the command itself
+ * may already have printed into `output` (see #165/#166): some commands
+ * (research, refactor, a single non-slice create/generate) never print
+ * their own "Total:" line, so the UI still needs a real number from
+ * somewhere. Measured around the whole `fn()` call including a thrown
+ * error, so a mid-command failure still reports accurate elapsed time
+ * rather than losing it. */
 export async function runCapturing(fn) {
   return serialize(async () => {
+    const totalStart = startTimer();
     const lines = [];
     const original = { log: console.log, warn: console.warn, error: console.error };
     const capture = (orig) => (...parts) => {
@@ -81,6 +92,7 @@ export async function runCapturing(fn) {
       if (m) attribution = { tool: m[1], llm: m[2] };
       else output.push(line);
     }
+    const durationSeconds = elapsedSeconds(totalStart);
 
     if (caught) {
       const exitCode = caught instanceof ConstructError ? caught.exitCode : EXIT_CODES.INTERNAL_ERROR;
@@ -88,6 +100,7 @@ export async function runCapturing(fn) {
         ok: false,
         output,
         attribution,
+        durationSeconds,
         error: caught.message,
         httpStatus: EXIT_CODE_TO_HTTP[exitCode] ?? 500,
       };
@@ -96,6 +109,7 @@ export async function runCapturing(fn) {
       ok: true,
       output,
       attribution,
+      durationSeconds,
       httpStatus: EXIT_CODE_TO_HTTP[exitCodeSet ?? EXIT_CODES.OK] ?? 200,
     };
   });
