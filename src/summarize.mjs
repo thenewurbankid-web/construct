@@ -4,11 +4,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { summarizeFeature, projectSettings, extractExports } from './parser.mjs';
+import { summarizeFeature, extractExports } from './parser.mjs';
+import { loadConfig } from './config.mjs';
 import { describeImplementation } from './prose.mjs';
 
 function featureRootOf(root) {
-  return projectSettings(root).featureRoot;
+  return loadConfig(root).features.root;
 }
 
 function listFeatureNames(root, only) {

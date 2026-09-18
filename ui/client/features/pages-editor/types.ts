@@ -2,7 +2,11 @@ export type PagesEditorId = string;
 
 export type PropKind = 'string' | 'number' | 'boolean' | 'identifier' | 'expression' | 'spread';
 
-export type PropData = { name: string; kind: PropKind; value: unknown };
+// #77 follow-up to #53 — `name` is null for a spread prop (`{...rest}` has
+// no attribute name); `index` is its 0-based position in the opening tag's
+// attribute list, needed to identify *which* spread to edit server-side
+// since name-based lookup doesn't work for it (see PropsApi.tsx).
+export type PropData = { name: string | null; kind: PropKind; value: unknown; index: number };
 
 export type PagesEditorNode = {
   id: string;

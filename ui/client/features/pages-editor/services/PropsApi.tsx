@@ -6,5 +6,13 @@ export const getNodeProps = (feature: string, file: string, nodeId: string) =>
     `/api/pages/props?feature=${encodeURIComponent(feature)}&file=${encodeURIComponent(file)}&nodeId=${encodeURIComponent(nodeId)}`,
   );
 
-export const saveNodeProp = (body: { feature: string; file: string; nodeId: string; propName: string; kind: string; value: unknown; contentHash: string }) =>
-  postJson<SaveOutcome & PageTree>('/api/pages/props', body);
+export const saveNodeProp = (body: {
+  feature: string;
+  file: string;
+  nodeId: string;
+  propName: string | null;
+  kind: string;
+  value: unknown;
+  contentHash: string;
+  index?: number;
+}) => postJson<SaveOutcome & PageTree>('/api/pages/props', body);

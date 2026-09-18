@@ -1,46 +1,105 @@
-// Shared source-parsing engine (Epic 3.1).
+// Shared source-parsing engine (Epic 3.1; AST-based since Epic/#76 #88).
 //
-// Deliberate simplification: this is regex/heuristic extraction, not a real
-// AST parser (no typescript-estree/acorn dependency was added — package.json
-// is owned by another workstream while this module was built). Known rough
-// edges: decorators sitting between a JSDoc block and the declaration they
-// annotate break "immediately preceding" JSDoc association (a real AST
-// would attach the comment to the decorated node); `complexityEstimate` is a
-// token-count heuristic, not real cyclomatic complexity. See parser.test.mjs
-// for documented cases.
+// Export/import/JSDoc extraction is real AST parsing via
+// `@typescript-eslint/typescript-estree` (the npm package that provides
+// `typescript-estree`), not regex/text-pattern matching. This fixed the
+// documented decorator-before-JSDoc bug (#19): a decorator sitting between a
+// JSDoc block and the declaration it annotates no longer breaks association,
+// because `extractJsdoc` walks past leading decorators to find the true
+// start of the exported declaration, the same way a human reading the code
+// would. `complexityEstimate` remains a token-count heuristic, not real
+// cyclomatic complexity — that was never in scope for the AST migration.
 import fs from 'node:fs';
 import path from 'node:path';
-import yaml from 'js-yaml';
+import { parse } from '@typescript-eslint/typescript-estree';
+import { walk as walkAst } from 'estree-walker';
 import { walk, rel } from './fs.mjs';
+import { loadConfig } from './config.mjs';
 
-export const EXT = new Set(['.ts', '.tsx', '.js', '.jsx']);
+// Single-slot memoized parse: parseFile and the readability enforcer's
+// checkFeatureJsdoc both call extractImports/extractExports/extractJsdoc
+// back-to-back on the *same* source string, so caching the most recent
+// (source -> ast) pair avoids re-parsing the same file 2-3x per call site
+// without the complexity of a real LRU. Not safe to rely on across
+// different source strings interleaved by async code, but every call site
+// in this codebase is synchronous.
+let cachedSource;
+let cachedAst;
 
-function readArchitectureYaml(root) {
-  const file = path.join(root, 'architecture.yml');
-  if (!fs.existsSync(file)) return {};
+const PARSE_OPTIONS = { comment: true, loc: true, range: true, errorOnUnknownASTType: false };
+
+/** Parse `source` into a typescript-estree AST (with `comments`), trying JSX
+ * mode first (works for both .tsx and plain .ts/.js in the overwhelming
+ * common case) and falling back to non-JSX mode only if JSX parsing fails —
+ * these functions take `source` alone (no file path), so the extension
+ * isn't available to decide up front. Exported for reuse by other modules
+ * migrating off regex/text-pattern parsing (e.g. architecture-enforcer.mjs). */
+export function parseToAst(source) {
+  if (source === cachedSource) return cachedAst;
+  let ast;
   try {
-    const parsed = yaml.load(fs.readFileSync(file, 'utf8'));
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
-  } catch {
-    return {};
+    ast = parse(source, { ...PARSE_OPTIONS, jsx: true });
+  } catch (err) {
+    try {
+      ast = parse(source, { ...PARSE_OPTIONS, jsx: false });
+    } catch {
+      throw err; // surface the original (jsx-mode) error — usually the more informative one
+    }
+  }
+  cachedSource = source;
+  cachedAst = ast;
+  return ast;
+}
+
+/** Recursively collect every bound identifier name out of a destructuring
+ * pattern (Identifier, ObjectPattern, ArrayPattern, AssignmentPattern,
+ * RestElement), e.g. `const { a, b: renamed, ...rest } = x` -> ['a',
+ * 'renamed', 'rest']. Used by extractExports for `export const`/`let`/`var`
+ * so every declared binding is reported, not just the first identifier
+ * after the keyword (a real gap in the old regex-based version). */
+function collectPatternNames(node, out) {
+  if (!node) return;
+  switch (node.type) {
+    case 'Identifier':
+      out.push(node.name);
+      break;
+    case 'ObjectPattern':
+      for (const prop of node.properties) {
+        collectPatternNames(prop.type === 'RestElement' ? prop.argument : prop.value, out);
+      }
+      break;
+    case 'ArrayPattern':
+      for (const el of node.elements) collectPatternNames(el, out);
+      break;
+    case 'AssignmentPattern':
+      collectPatternNames(node.left, out);
+      break;
+    case 'RestElement':
+      collectPatternNames(node.argument, out);
+      break;
+    default:
+      break;
   }
 }
 
-/** Minimal, permissive read of the parts of architecture.yml this module needs (feature
- * root, exceptions, raw rule overrides/thresholds). Deliberately does NOT use src/config.mjs's
- * loadConfig(): that loader validates `rules` against its own DEFAULT_RULES table and throws
- * on unknown ids — which would reject READ-* keys until another module merges
- * READABILITY_RULES (see src/readability-enforcer.mjs) into config.mjs's table. This reader
- * is intentionally permissive (best-effort, never throws) and only used for the few fields
- * this module and the readability enforcer need. */
-export function projectSettings(root) {
-  const raw = readArchitectureYaml(root);
-  return {
-    featureRoot: raw.features?.root || 'features',
-    exceptions: raw.exceptions || [],
-    rules: raw.rules || {},
-  };
+/** Walk collecting every `import('...')` dynamic-import expression
+ * (ImportExpression nodes) reachable anywhere in the tree — unlike static
+ * ImportDeclarations, these aren't confined to the top level of
+ * Program.body. Only literal string sources are collected (an expression
+ * source, e.g. `import(path)`, isn't a specifier and was never matched by
+ * the old regex either). Uses estree-walker (a well-established generic
+ * ESTree traversal library) rather than a hand-rolled recursive walk. */
+function collectDynamicImports(ast, out) {
+  walkAst(ast, {
+    enter(node) {
+      if (node.type === 'ImportExpression' && node.source?.type === 'Literal' && typeof node.source.value === 'string') {
+        out.push({ index: node.range[0], value: node.source.value });
+      }
+    },
+  });
 }
+
+export const EXT = new Set(['.ts', '.tsx', '.js', '.jsx']);
 
 /** Classify a root-relative path into an architecture layer, or null if
  * unclassified. Implemented locally (not imported) per module ownership
@@ -52,44 +111,88 @@ export function classifyLayer(relPath) {
   return { controllers: 'controller', workflows: 'workflow', hooks: 'hook', domain: 'domain', services: 'service', pages: 'page', components: 'component' }[m[1]];
 }
 
-/** Module specifiers referenced by static or dynamic import, e.g. `import x from 'y'` or `import('y')`. */
+/** Module specifiers referenced by static or dynamic import, e.g. `import x from 'y'` or `import('y')`,
+ * in source-position order. AST-based: walks real ImportDeclaration nodes plus ImportExpression
+ * (dynamic `import(...)`) nodes anywhere in the tree, so a specifier-shaped string sitting inside a
+ * comment or a string literal is never mistaken for a real import (the #74 false-positive class). */
 export function extractImports(source) {
-  return [...source.matchAll(/(?:import\s+(?:type\s+)?[\s\S]*?from\s*|import\s*\()(['"])(.*?)\1/g)].map((m) => m[2]);
+  const ast = parseToAst(source);
+  const entries = [];
+  for (const node of ast.body) {
+    if (node.type === 'ImportDeclaration') entries.push({ index: node.range[0], value: node.source.value });
+  }
+  collectDynamicImports(ast, entries);
+  return entries.sort((a, b) => a.index - b.index).map((e) => e.value);
 }
 
 /** Exported identifiers with their source index, sorted by position. Handles named
- * function/class/const/let/var exports, `export default function|class <Name>`,
+ * function/class/const/let/var exports (including destructured/multi-declarator
+ * `export const a = 1, { b, c: renamed } = obj`), `export default function|class <Name>`,
  * `export default <identifier>;`, `export { a, b as c }` lists (alias wins), and
  * wildcard re-exports (`export * from '...'`, `export type * from '...'` — named
- * after their module specifier, since there's no local identifier to report). */
+ * after their module specifier, since there's no local identifier to report).
+ * AST-based: reads real ExportNamedDeclaration/ExportDefaultDeclaration/
+ * ExportAllDeclaration nodes instead of scanning raw text, so `index` always points at
+ * the true start of the export statement (the `export` keyword — decorators, if any,
+ * sit *before* it in source and are handled separately by extractJsdoc, not here). */
 export function extractExports(source) {
+  const ast = parseToAst(source);
   const results = [];
   const push = (name, index) => { if (name) results.push({ name, index }); };
 
-  for (const m of source.matchAll(/\bexport\s+default\s+(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)?/g)) push(m[1] || 'default', m.index);
-  for (const m of source.matchAll(/\bexport\s+default\s+class\s+([A-Za-z_$][\w$]*)?/g)) push(m[1] || 'default', m.index);
-  for (const m of source.matchAll(/\bexport\s+(?:async\s+)?function\s*\*?\s+([A-Za-z_$][\w$]*)/g)) push(m[1], m.index);
-  for (const m of source.matchAll(/\bexport\s+class\s+([A-Za-z_$][\w$]*)/g)) push(m[1], m.index);
-  for (const m of source.matchAll(/\bexport\s+(?:const|let|var)\s+([A-Za-z_$][\w$]*)/g)) push(m[1], m.index);
-  for (const m of source.matchAll(/\bexport\s+default\s+([A-Za-z_$][\w$]*)\s*;/g)) push(m[1], m.index);
-  for (const m of source.matchAll(/\bexport\s*\{([^}]*)\}/g)) {
-    for (const entry of m[1].split(',')) {
-      const parts = entry.trim().split(/\s+as\s+/);
-      const name = (parts[1] || parts[0] || '').trim();
-      if (name) push(name, m.index);
+  for (const node of ast.body) {
+    if (node.type === 'ExportNamedDeclaration') {
+      const decl = node.declaration;
+      if (decl) {
+        if (decl.type === 'VariableDeclaration') {
+          for (const declarator of decl.declarations) {
+            const names = [];
+            collectPatternNames(declarator.id, names);
+            for (const name of names) push(name, node.range[0]);
+          }
+        } else {
+          // FunctionDeclaration / ClassDeclaration / TSDeclareFunction, etc. — anything with an `id`.
+          push(decl.id?.name, node.range[0]);
+        }
+      } else if (node.specifiers?.length) {
+        for (const spec of node.specifiers) {
+          push(spec.exported?.name ?? spec.exported?.value, node.range[0]);
+        }
+      }
+    } else if (node.type === 'ExportDefaultDeclaration') {
+      const decl = node.declaration;
+      const name = decl.type === 'Identifier' ? decl.name : (decl.id?.name || 'default');
+      push(name, node.range[0]);
+    } else if (node.type === 'ExportAllDeclaration') {
+      push(node.exported?.name || node.source?.value, node.range[0]);
     }
-  }
-  for (const m of source.matchAll(/\bexport\s+(?:type\s+)?\*\s*(?:as\s+([A-Za-z_$][\w$]*)\s*)?from\s*(['"])(.*?)\2/g)) {
-    push(m[1] || m[3], m.index);
   }
   return results.sort((a, b) => a.index - b.index);
 }
 
-/** The `/** ... *\/` block immediately preceding `index` (only whitespace between), or null. */
+/** The `/** ... *\/` JSDoc block belonging to the export statement starting at `index`
+ * (as returned by extractExports), or null. AST-based: finds the block comment
+ * immediately preceding the declaration, walking back past any leading decorators
+ * (`@Component(...)`) sitting between the comment and the declaration they annotate —
+ * this is the fix for #19, where regex-based "immediately preceding" association broke
+ * on a decorator in between. Falls back to treating `index` itself as the boundary
+ * when it doesn't match a parsed top-level export node (defensive; every real call site
+ * passes an index from extractExports). */
 export function extractJsdoc(source, index) {
-  const before = source.slice(0, index);
-  const m = before.match(/\/\*\*[\s\S]*?\*\/\s*$/);
-  return m ? m[0].replace(/\s+$/, '') : null;
+  const ast = parseToAst(source);
+  const node = ast.body.find((n) => n.range && n.range[0] === index);
+  const decorators = node?.declaration?.decorators || node?.decorators || [];
+  const boundary = decorators.length ? Math.min(...decorators.map((d) => d.range[0])) : index;
+
+  let best = null;
+  for (const comment of ast.comments || []) {
+    if (comment.type !== 'Block' || !comment.value.startsWith('*')) continue;
+    if (comment.range[1] > boundary) continue;
+    if (!best || comment.range[1] > best.range[1]) best = comment;
+  }
+  if (!best) return null;
+  if (/\S/.test(source.slice(best.range[1], boundary))) return null;
+  return source.slice(best.range[0], best.range[1]);
 }
 
 /** Rough cyclomatic-complexity-flavored heuristic: count of if/for/while/switch/catch/&&/||
@@ -129,8 +232,8 @@ export function parseFile(root, filePath) {
 /** Aggregate parseFile over every file in `<featureRoot>/<featureName>/`.
  * publicApi is derived from index.ts's exports (empty array if there is no index.ts). */
 export function summarizeFeature(root, featureName) {
-  const { featureRoot } = projectSettings(root);
-  const dir = path.join(root, featureRoot, featureName);
+  const { features } = loadConfig(root);
+  const dir = path.join(root, features.root, featureName);
   const files = walk(dir).filter((p) => EXT.has(path.extname(p)));
   const summaries = files.map((f) => parseFile(root, f));
   const layers = {};
@@ -138,7 +241,7 @@ export function summarizeFeature(root, featureName) {
     const key = s.layer || 'unclassified';
     (layers[key] ||= []).push(s);
   }
-  const indexRel = `${featureRoot}/${featureName}/index.ts`;
+  const indexRel = `${features.root}/${featureName}/index.ts`;
   const indexSummary = summaries.find((s) => s.path === indexRel);
   const publicApi = indexSummary ? indexSummary.exports : [];
   const loc = summaries.reduce((sum, s) => sum + s.loc, 0);

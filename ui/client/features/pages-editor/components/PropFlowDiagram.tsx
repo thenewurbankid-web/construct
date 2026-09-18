@@ -13,7 +13,7 @@ import type { PagesEditorNode } from '../types';
 // flat box-to-box edge list. The layout/edge math lives in the domain
 // layer's buildPillFlow, called via usePropFlow.
 export function PropFlowDiagram({ roots }: { roots: PagesEditorNode[] }) {
-  const { visible, toggle, layouts, edges, colorMap } = usePropFlow(roots);
+  const { visible, toggle, showValues, toggleShowValues, layouts, edges, colorMap } = usePropFlow(roots);
   const all = [...layouts.values()];
   const maxX = Math.max(80, ...all.map((l) => l.x + l.width / 2)) + 24;
   const maxY = Math.max(60, ...all.map((l) => l.y)) + 90;
@@ -24,6 +24,13 @@ export function PropFlowDiagram({ roots }: { roots: PagesEditorNode[] }) {
       <button type="button" onClick={toggle}>{visible ? 'Hide diagram' : 'Show diagram'}</button>
       {visible && (
         <>
+          {/* #77 — off by default (always-on value display could get noisy
+              on a wide tree); pill width already accounts for whichever
+              text (name-only or name: value) is currently shown. */}
+          <label className="checkbox propflow-show-values">
+            <input type="checkbox" checked={showValues} onChange={toggleShowValues} />
+            Show prop values
+          </label>
           <div className="propflow-legend">
             {[...colorMap.entries()].map(([name, color]) => (
               <span key={name} className="propflow-legend-item">
@@ -45,7 +52,8 @@ export function PropFlowDiagram({ roots }: { roots: PagesEditorNode[] }) {
                   stroke={e.color}
                   strokeWidth={2}
                   opacity={0.85}
-                  className="propflow-line"
+                  strokeDasharray={e.traced ? '4 2' : undefined}
+                  className={`propflow-line${e.traced ? ' propflow-line-traced' : ''}`}
                 />
               ))}
             </svg>
@@ -69,7 +77,7 @@ export function PropFlowDiagram({ roots }: { roots: PagesEditorNode[] }) {
                       borderColor: colorMap.get(pill.name),
                     }}
                   >
-                    {pill.name}
+                    {pill.label}
                   </Badge>
                 ))}
                 {l.outgoing.map((pill) => (
@@ -84,7 +92,7 @@ export function PropFlowDiagram({ roots }: { roots: PagesEditorNode[] }) {
                       borderColor: colorMap.get(pill.name),
                     }}
                   >
-                    {pill.name}
+                    {pill.label}
                   </Badge>
                 ))}
               </div>

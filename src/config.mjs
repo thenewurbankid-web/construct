@@ -54,6 +54,31 @@ export function normalizeFramework(raw) {
   return raw;
 }
 
+// Ticket 7.5 — recognized `project.dataLayer.provider` values. Selects which
+// transport adapter the service generator instantiates as `baseQuery` in
+// `features/core/services/client.ts`: RTKQ's own `fetchBaseQuery` (the
+// default, so a project that never sets this keeps getting exactly what it
+// would have gotten before this option existed), a hand-rolled Axios
+// adapter, or a network-free mock adapter for tests/demos.
+export const DATA_LAYER_PROVIDERS = ['fetchBaseQuery', 'axios', 'mock'];
+const DEFAULT_DATA_LAYER_PROVIDER = 'fetchBaseQuery';
+
+/**
+ * Validate and normalize a `project.dataLayer.provider` value from
+ * architecture.yml. Absent/undefined normalizes to the default
+ * ('fetchBaseQuery'), mirroring normalizeFramework's backward-compatible
+ * shape above.
+ */
+export function normalizeDataLayerProvider(raw) {
+  if (raw === undefined || raw === null) return DEFAULT_DATA_LAYER_PROVIDER;
+  if (typeof raw !== 'string' || !DATA_LAYER_PROVIDERS.includes(raw)) {
+    throw usageError(
+      `Unknown project.dataLayer.provider '${raw}' in architecture.yml — expected one of: ${DATA_LAYER_PROVIDERS.join(', ')}.`,
+    );
+  }
+  return raw;
+}
+
 /** The canonical base layer graph for a given (already-normalized) framework
  * value — the shape #66/#67 and architecture-graph.mjs's loadLayerGraph
  * branch on before applying any project-level `layers:` override. */
@@ -79,6 +104,12 @@ export const DEFAULT_RULES = {
   'COMPONENT-002': { severity: 'error', name: 'Components cannot import controllers' },
   'COMPONENT-003': { severity: 'error', name: 'Components cannot import workflows/services/domain' },
   'WORKFLOW-001': { severity: 'error', name: 'Workflows cannot import React/UI' },
+  // Ticket 7.4 (#114) -- genuinely new, per the epic's reconciliation notes (no existing
+  // rule covers this): a controller's whole job is composing/wiring already-generated
+  // layers together (import a page, import a hook, pass matched handlers down) -- never
+  // a raw fetch() call or its own conditional/loop business logic, both of which belong
+  // one layer down (service/hook/workflow/domain).
+  'CONTROLLER-001': { severity: 'error', name: 'Controllers must compose (import + wire only) — no business logic or raw fetch()' },
   'SERVICE-001': { severity: 'error', name: 'Services own external effects' },
   'SERVICE-002': { severity: 'error', name: 'Services cannot import React/UI' },
   'DOMAIN-001': { severity: 'error', name: 'Domain is pure' },
@@ -92,6 +123,12 @@ export const DEFAULT_RULES = {
   'READ-001': { severity: 'error', name: 'Components/controllers are PascalCase; hooks are use-prefixed camelCase' },
   'READ-002': { severity: 'error', name: 'Files and functions stay under their length threshold' },
   'READ-003': { severity: 'warning', name: 'Public API exports document intent with JSDoc' },
+  // Not a rule with a severity — a numeric threshold override consumed directly by
+  // readability-enforcer.mjs (via readRawRules, not this merged/validated map).
+  // Registered here (numeric: true) purely so normalizeRules doesn't reject the key as
+  // unknown or demand a severity-string/options-object shape for it (see normalizeRules
+  // below, and readRawRules' doc comment for why the actual value bypasses validation).
+  'READ-002-max-loc': { name: "Override for READ-002's max-lines-per-file threshold", numeric: true },
   'IMPORT-001': { severity: 'error', name: 'Relative imports must resolve to a file that exists' },
   'EXCEPTION-EXPIRED': { severity: 'warning', name: 'Time-boxed exceptions must be renewed or removed once they expire' },
 };
@@ -150,12 +187,23 @@ export function normalizeRules(userRules, defaults = DEFAULT_RULES) {
     }
     const base = defaults[ruleId];
     let entry;
+    // A `numeric: true` default (e.g. 'READ-002-max-loc') is a threshold override, not a
+    // severity-bearing rule — a bare number is its valid shape, and it's exempt from the
+    // severity-string/options-object/VALID_SEVERITIES checks below entirely.
+    if (base.numeric && typeof value === 'number') {
+      merged[ruleId] = { ...base, value };
+      continue;
+    }
     if (typeof value === 'string') {
       entry = { ...base, severity: value };
     } else if (value && typeof value === 'object' && !Array.isArray(value)) {
       entry = { ...base, ...value };
     } else {
-      throw usageError(`Invalid configuration for rule '${ruleId}' in architecture.yml — expected a severity string or an options object.`);
+      throw usageError(
+        base.numeric
+          ? `Invalid configuration for '${ruleId}' in architecture.yml — expected a number.`
+          : `Invalid configuration for rule '${ruleId}' in architecture.yml — expected a severity string or an options object.`,
+      );
     }
     if (!VALID_SEVERITIES.has(entry.severity)) {
       throw usageError(
@@ -183,13 +231,32 @@ export function findProjectRoot(startDir) {
   }
 }
 
+/** Read the raw, unvalidated `rules` map from architecture.yml (or `{}` if the file is
+ * missing or malformed) — for a caller that needs an ad-hoc threshold value under a key
+ * that isn't a normalized rule id in DEFAULT_RULES (e.g. readability-enforcer.mjs's
+ * `READ-002-max-loc: <number>` override), without going through normalizeRules' strict
+ * id/severity-shape validation (which only accepts a severity string or an options
+ * object per key — not a bare number). Everything that *is* a real rule id should go
+ * through loadConfig()/normalizeRules instead; this exists specifically so that escape
+ * hatch doesn't force every non-rule config knob through the same strict shape. */
+export function readRawRules(root) {
+  const file = path.join(root, 'architecture.yml');
+  if (!fs.existsSync(file)) return {};
+  try {
+    const c = yaml.load(fs.readFileSync(file, 'utf8'));
+    return c && typeof c === 'object' && !Array.isArray(c) ? (c.rules || {}) : {};
+  } catch {
+    return {};
+  }
+}
+
 export function loadConfig(root) {
   const file = path.join(root, 'architecture.yml');
   if (!fs.existsSync(file)) {
     return {
       version: 1,
       preset: 'strict-nextjs',
-      project: { framework: DEFAULT_FRAMEWORK },
+      project: { framework: DEFAULT_FRAMEWORK, dataLayer: { provider: DEFAULT_DATA_LAYER_PROVIDER } },
       features: { root: 'features' },
       layers: DEFAULT_LAYERS,
       rules: DEFAULT_RULES,
@@ -209,12 +276,17 @@ export function loadConfig(root) {
 
   const rules = normalizeRules(c.rules, DEFAULT_RULES);
   const framework = normalizeFramework(c.project?.framework);
+  const dataLayerProvider = normalizeDataLayerProvider(c.project?.dataLayer?.provider);
 
   return {
     version: 1,
     preset: 'strict-nextjs',
     ...c,
-    project: { ...(c.project || {}), framework },
+    project: {
+      ...(c.project || {}),
+      framework,
+      dataLayer: { ...(c.project?.dataLayer || {}), provider: dataLayerProvider },
+    },
     features: { root: 'features', ...(c.features || {}) },
     layers: layersForFramework(framework),
     rules,

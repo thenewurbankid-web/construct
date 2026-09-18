@@ -10,12 +10,14 @@ export function useAutoMap(feature: string, file: string, nodeId: string, conten
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<StatusMessage | null>(null);
+  const [childPropsResolved, setChildPropsResolved] = useState(false);
 
   async function find() {
     setStatus(null);
     const result = await getUnmappedProps(feature, file, nodeId);
     setCandidates(result.candidates || []);
     setChecked(new Set(result.candidates || []));
+    setChildPropsResolved(Boolean(result.childPropsResolved));
   }
 
   function toggle(name: string) {
@@ -40,5 +42,5 @@ export function useAutoMap(feature: string, file: string, nodeId: string, conten
     }
   }
 
-  return { candidates, checked, find, toggle, apply, busy, status };
+  return { candidates, checked, find, toggle, apply, busy, status, childPropsResolved };
 }

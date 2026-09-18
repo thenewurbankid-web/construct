@@ -17,6 +17,7 @@ import crypto from 'node:crypto';
 import { parse } from '@babel/parser';
 import _traverse from '@babel/traverse';
 import * as t from '@babel/types';
+import ts from 'typescript';
 import { loadConfig } from '../../../src/config.mjs';
 import { loadLayerGraph } from '../../../src/architecture-graph.mjs';
 import { validateArchitecture } from '../../../src/architecture-enforcer.mjs';
@@ -119,23 +120,29 @@ function jsxNameToString(nameNode) {
   return '?';
 }
 
+// #77 follow-up to #53 — every prop record also carries its 0-based
+// `index` (position in the opening tag's attribute list). Named props can
+// still be re-found by name alone, but a spread attribute (`{...rest}`)
+// has no name (`name: null`) — index is what lets a save request
+// unambiguously identify *which* spread to edit when a node has more than
+// one, or any at all (see buildAttributeSnippet's 'spread' branch below).
 function attrsOf(openingElement, source) {
-  return openingElement.attributes.map((attr) => {
+  return openingElement.attributes.map((attr, index) => {
     if (t.isJSXSpreadAttribute(attr)) {
-      return { kind: 'spread', name: null, value: source.slice(attr.argument.start, attr.argument.end) };
+      return { kind: 'spread', name: null, value: source.slice(attr.argument.start, attr.argument.end), index };
     }
     const name = jsxNameToString(attr.name);
-    if (attr.value == null) return { kind: 'boolean', name, value: true };
-    if (t.isStringLiteral(attr.value)) return { kind: 'string', name, value: attr.value.value };
+    if (attr.value == null) return { kind: 'boolean', name, value: true, index };
+    if (t.isStringLiteral(attr.value)) return { kind: 'string', name, value: attr.value.value, index };
     if (t.isJSXExpressionContainer(attr.value)) {
       const expr = attr.value.expression;
-      if (t.isStringLiteral(expr)) return { kind: 'string', name, value: expr.value };
-      if (t.isNumericLiteral(expr)) return { kind: 'number', name, value: expr.value };
-      if (t.isBooleanLiteral(expr)) return { kind: 'boolean', name, value: expr.value };
-      if (t.isIdentifier(expr)) return { kind: 'identifier', name, value: expr.name };
-      return { kind: 'expression', name, value: source.slice(expr.start, expr.end) };
+      if (t.isStringLiteral(expr)) return { kind: 'string', name, value: expr.value, index };
+      if (t.isNumericLiteral(expr)) return { kind: 'number', name, value: expr.value, index };
+      if (t.isBooleanLiteral(expr)) return { kind: 'boolean', name, value: expr.value, index };
+      if (t.isIdentifier(expr)) return { kind: 'identifier', name, value: expr.name, index };
+      return { kind: 'expression', name, value: source.slice(expr.start, expr.end), index };
     }
-    return { kind: 'expression', name, value: source.slice(attr.value.start, attr.value.end) };
+    return { kind: 'expression', name, value: source.slice(attr.value.start, attr.value.end), index };
   });
 }
 
@@ -293,15 +300,31 @@ export function getNodeProps(source, nodeId) {
  * doesn't exist yet) inside the node's opening tag, then delegating to the
  * same splice-based patchNode used by #52 so both go through one
  * mechanism (and one #56 enforcement gate).
+ *
+ * #77 follow-up to #53 — a `kind === 'spread'` edit is a different shape
+ * (`{...expr}`, no attribute name, no `=`) and has no name to look it up
+ * by, so it takes its own branch keyed on `index` (its position in the
+ * opening tag's attribute list, from attrsOf's `index` field) instead of
+ * going through renderAttrValue/name-lookup below. Only edits an
+ * *existing* spread — this doesn't support inserting a brand new one.
  */
-export function buildAttributeSnippet(source, nodeId, propName, kind, value) {
+export function buildAttributeSnippet(source, nodeId, propName, kind, value, index) {
   const { byId } = parsePageTree(source);
   const node = byId.get(nodeId);
   if (!node) throw new PagesEditorError(`No such node "${nodeId}" — the file may have changed; reload the tree.`, { status: 409 });
   if (node.isFragment) throw new PagesEditorError('Fragments (<>...</>) have no props to edit.');
 
-  const rendered = renderAttrValue(kind, value);
   const opening = node.openingElementNode;
+
+  if (kind === 'spread') {
+    const candidate = typeof index === 'number' ? opening.attributes[index] : undefined;
+    if (!candidate || !t.isJSXSpreadAttribute(candidate)) {
+      throw new PagesEditorError('That spread prop is no longer at this position — the file may have changed; reload the tree.', { status: 409 });
+    }
+    return source.slice(node.start, candidate.start) + `{...${value}}` + source.slice(candidate.end, node.end);
+  }
+
+  const rendered = renderAttrValue(kind, value);
   const existing = opening.attributes.find((a) => t.isJSXAttribute(a) && jsxNameToString(a.name) === propName);
 
   // Offsets below are relative to `node.start` (the whole element's start),
@@ -371,21 +394,216 @@ function collectFromParams(params, names) {
   }
 }
 
+const COMPONENT_EXTENSIONS = ['.tsx', '.ts', '.jsx', '.js'];
+
+/** Resolve a relative import specifier (as written in a page file) to an
+ * absolute file path, trying the specifier as-is, each of
+ * COMPONENT_EXTENSIONS appended, and each extension under an `index.*`
+ * inside it (for `./components` importing `./components/index.tsx`).
+ * Returns null for bare/package specifiers (no cross-file resolution
+ * attempted for node_modules) or anything that resolves outside `root`. */
+function resolveImportSource(pageAbsPath, specifier, root) {
+  if (!specifier.startsWith('.')) return null;
+  const base = path.resolve(path.dirname(pageAbsPath), specifier);
+  const candidates = path.extname(base)
+    ? [base]
+    : [...COMPONENT_EXTENSIONS.map((ext) => base + ext), ...COMPONENT_EXTENSIONS.map((ext) => path.join(base, 'index' + ext))];
+  const rootResolved = path.resolve(root);
+  const rootWithSep = rootResolved.endsWith(path.sep) ? rootResolved : rootResolved + path.sep;
+  for (const candidate of candidates) {
+    if (!fs.existsSync(candidate) || !fs.statSync(candidate).isFile()) continue;
+    const resolved = path.resolve(candidate);
+    if (resolved === rootResolved || resolved.startsWith(rootWithSep)) return resolved;
+  }
+  return null;
+}
+
+/** Find the function node backing a component export: for a named import,
+ * a same-named FunctionDeclaration or `const Name = (...) => ...`
+ * (top-level or inside `export ...`); for a default import, the default
+ * export itself (function/arrow directly, or an identifier referencing a
+ * locally-declared one). */
+function findLocalFunction(body, name) {
+  for (const node of body) {
+    if (t.isFunctionDeclaration(node) && node.id?.name === name) return node;
+    if (t.isVariableDeclaration(node)) {
+      for (const d of node.declarations) {
+        if (t.isIdentifier(d.id) && d.id.name === name && (t.isArrowFunctionExpression(d.init) || t.isFunctionExpression(d.init))) {
+          return d.init;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function findComponentFunction(ast, tagName, isDefault) {
+  const body = ast.program.body;
+  if (isDefault) {
+    for (const node of body) {
+      if (!t.isExportDefaultDeclaration(node)) continue;
+      const decl = node.declaration;
+      if (t.isFunctionDeclaration(decl) || t.isArrowFunctionExpression(decl) || t.isFunctionExpression(decl)) return decl;
+      if (t.isIdentifier(decl)) return findLocalFunction(body, decl.name);
+    }
+    return null;
+  }
+  const direct = findLocalFunction(body, tagName);
+  if (direct) return direct;
+  // `export function Foo(...)` / `export const Foo = (...) => ...`: the
+  // exported declaration is a single statement, not a top-level one, so
+  // findLocalFunction (which iterates a statement list) is reused on a
+  // one-element list wrapping it.
+  for (const node of body) {
+    if (t.isExportNamedDeclaration(node) && node.declaration) {
+      const found = findLocalFunction([node.declaration], tagName);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+/**
+ * Member names of a TS interface/type-literal alias named `typeName`,
+ * declared anywhere in `source`, or `null` if it has an index signature
+ * (open — can't enumerate) or isn't found.
+ *
+ * Built on the TypeScript compiler API's own parser (`ts.createSourceFile`)
+ * rather than babel's TS AST support that the rest of this file otherwise
+ * uses — per this repo's "prefer an established library over hand-rolled
+ * logic" guidance, actual TS *type* syntax (interfaces/type aliases,
+ * inherited members, generics) is TypeScript's own domain, and `typescript`
+ * is already a project dependency (used the same way by src/prose.mjs) —
+ * reusing its canonical, always-in-sync-with-the-language parser here beats
+ * re-deriving the same TS-type-syntax node walk a second time by hand on
+ * top of babel's parallel (and narrower) TS AST support. babel stays the
+ * parser for everything else in this file (JS/JSX structure, destructuring)
+ * since that's plain syntax with no type-system dimension to it.
+ */
+function findTypeMembers(source, typeName) {
+  const sourceFile = ts.createSourceFile('child.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  let result = null;
+  const visit = (node) => {
+    if (result) return;
+    const isInterface = ts.isInterfaceDeclaration(node) && node.name.text === typeName;
+    const isTypeLiteralAlias =
+      ts.isTypeAliasDeclaration(node) && node.name.text === typeName && ts.isTypeLiteralNode(node.type);
+    if (isInterface || isTypeLiteralAlias) {
+      const members = isInterface ? node.members : node.type.members;
+      if (members.some((m) => ts.isIndexSignatureDeclaration(m))) {
+        result = { closed: false, names: new Set() };
+      } else {
+        const names = new Set();
+        for (const m of members) {
+          if (ts.isPropertySignature(m) && m.name && ts.isIdentifier(m.name)) names.add(m.name.text);
+        }
+        result = { closed: true, names };
+      }
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return result;
+}
+
+/** The declared prop set for a component function's first parameter: an
+ * object-destructuring pattern's own property names (the common case), or
+ * — bonus, best-effort — a typed non-destructured `props: FooProps`
+ * param's interface/type-literal members (via the TS compiler API — see
+ * findTypeMembers above). Returns `null` (open/unknown, don't filter) when
+ * neither shape is recognized. */
+function declaredNamesFromFunction(fn, childSource) {
+  const param = fn.params[0];
+  if (!param) return { closed: true, names: new Set() };
+  if (t.isObjectPattern(param)) {
+    const names = new Set();
+    for (const prop of param.properties) {
+      if (t.isObjectProperty(prop) && t.isIdentifier(prop.key)) names.add(prop.key.name);
+    }
+    return { closed: true, names };
+  }
+  if (t.isIdentifier(param) && param.typeAnnotation && t.isTSTypeAnnotation(param.typeAnnotation)) {
+    const typeRef = param.typeAnnotation.typeAnnotation;
+    if (t.isTSTypeReference(typeRef) && t.isIdentifier(typeRef.typeName)) {
+      const members = findTypeMembers(childSource, typeRef.typeName.name);
+      if (members) return members;
+    }
+  }
+  return null;
+}
+
+/**
+ * #77 follow-up to #54 — resolve the child component actually rendered by
+ * JSX tag `tagName` (via the page file's own import of it) and return its
+ * declared prop names, so findUnmappedProps can filter candidates to ones
+ * the child can actually use instead of every in-scope name. Returns null
+ * when the child can't be resolved (bare/package import, dynamic tag, no
+ * matching export) or its param shape isn't recognized — callers treat
+ * null as "unknown, don't filter" (today's permissive behavior).
+ */
+export function resolveDeclaredPropNames(root, pageAbsPath, pageAst, tagName) {
+  let importSource = null;
+  let isDefault = false;
+  for (const node of pageAst.program.body) {
+    if (!t.isImportDeclaration(node)) continue;
+    for (const spec of node.specifiers) {
+      if (spec.local.name !== tagName) continue;
+      importSource = node.source.value;
+      isDefault = t.isImportDefaultSpecifier(spec);
+    }
+  }
+  if (!importSource) return null;
+
+  const childAbsPath = resolveImportSource(pageAbsPath, importSource, root);
+  if (!childAbsPath) return null;
+
+  let childSource;
+  let childAst;
+  try {
+    childSource = fs.readFileSync(childAbsPath, 'utf8');
+    childAst = parseSource(childSource);
+  } catch {
+    return null;
+  }
+
+  const fn = findComponentFunction(childAst, tagName, isDefault);
+  if (!fn) return null;
+
+  return declaredNamesFromFunction(fn, childSource);
+}
+
 /**
  * #54 — for a selected custom-component node, find scope names (parent
  * page's own props/state) that are NOT currently passed down to it as a
  * same-named attribute, and propose the shorthand `{name}` wiring for each.
+ * #77 follow-up: when the child component's own declared props can be
+ * resolved across files (see resolveDeclaredPropNames above), candidates
+ * are further filtered to names the child actually declares — e.g. a
+ * state setter like `setCount` is no longer offered for a child that
+ * doesn't destructure a same-named prop. `root`/`pageAbsPath` are optional
+ * so in-memory single-string callers (existing tests) keep working; omit
+ * them to keep the old, fully permissive behavior.
  */
-export function findUnmappedProps(source, nodeId) {
+export function findUnmappedProps(source, nodeId, root, pageAbsPath) {
   const { byId, ast } = parsePageTree(source);
   const node = byId.get(nodeId);
   if (!node) throw new PagesEditorError(`No such node "${nodeId}" — the file may have changed; reload the tree.`, { status: 409 });
-  if (!node.isCustomComponent) return { nodeId, candidates: [] };
+  if (!node.isCustomComponent) return { nodeId, candidates: [], childPropsResolved: false };
 
   const scopeNames = collectComponentScopeNames(ast);
   const currentNames = new Set(node.props.filter((p) => p.kind !== 'spread').map((p) => p.name));
-  const candidates = scopeNames.filter((n) => !currentNames.has(n));
-  return { nodeId, candidates };
+  let candidates = scopeNames.filter((n) => !currentNames.has(n));
+
+  let childPropsResolved = false;
+  if (root && pageAbsPath) {
+    const declared = resolveDeclaredPropNames(root, pageAbsPath, ast, node.tag.split('.')[0]);
+    if (declared && declared.closed) {
+      candidates = candidates.filter((n) => declared.names.has(n));
+      childPropsResolved = true;
+    }
+  }
+  return { nodeId, candidates, childPropsResolved };
 }
 
 export function applyAutoMap(source, nodeId, propNames) {

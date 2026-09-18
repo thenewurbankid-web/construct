@@ -52,8 +52,10 @@ function renderCustomTemplate(templatePath,name){
 // Re-validate freshly generated files against Epic 1.2's enforcer. A failure
 // here means Construct's own template produced non-conforming code — an
 // internal bug, not a user mistake — so it throws rather than returning a
-// normal violation report.
-function selfCheck(root,absFiles){
+// normal violation report. Exported so other generators (e.g. Ticket 7.2's
+// pageTransformer.mjs, ingesting an externally-authored JSX file) reuse the
+// same re-validate-after-write step instead of a second copy of it.
+export function selfCheck(root,absFiles){
  const files=absFiles.map(f=>rel(root,f));
  const {violations}=validateArchitecture(root,{files});
  const errors=violations.filter(v=>v.severity==='error');
@@ -99,16 +101,25 @@ export function createFeature(root,name){
  return base;
 }
 
-export function generateLayer(root,layer,name,feature){
+// Pure: compute the {file, content} a layer's template would produce,
+// without touching disk. Shared by generateLayer (below, unchanged disk-
+// writing behavior) and the Ticket 7.1 pipeline runner (src/engine/pipeline.mjs),
+// which stages the same content into a transactionalWriter buffer instead of
+// writing it directly -- so template logic lives in exactly one place either way.
+export function renderLayer(root,layer,name,feature){
  if(!templates[layer])throw new Error(`Unknown layer: ${layer}`);
  const config=loadConfig(root);
  const cap=name[0].toUpperCase()+name.slice(1);
  const dir=path.join(root,config.features?.root||'features',feature,folderFor(layer));
- ensureDir(dir);
  const file=path.join(dir,`${layerFileBaseName(layer,cap)}.tsx`);
  const custom=findCustomTemplate(root,layer,config);
  const content=custom?renderCustomTemplate(custom,name):templates[layer](cap,{framework:config.project?.framework});
- write(file,content);
+ return {file,content};
+}
+
+export function generateLayer(root,layer,name,feature){
+ const {file,content}=renderLayer(root,layer,name,feature);
+ write(file,content); // write() ensures the parent dir exists
  selfCheck(root,[file]);
  return file;
 }

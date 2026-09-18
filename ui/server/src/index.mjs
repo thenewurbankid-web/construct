@@ -274,15 +274,19 @@ app.get('/api/pages/props', (req, res) => {
 
 app.post('/api/pages/props', (req, res) => {
   try {
-    const { feature, file, nodeId, propName, kind, value, contentHash } = req.body || {};
-    if (!nodeId || !propName || !kind) return res.status(400).json({ ok: false, error: 'nodeId, propName, and kind are required' });
+    const { feature, file, nodeId, propName, kind, value, contentHash, index } = req.body || {};
+    // A spread prop has no name (it's `{...expr}`, not `name={expr}`) —
+    // identified by `index` instead (#77 follow-up to #53).
+    if (!nodeId || !kind || (kind !== 'spread' && !propName)) {
+      return res.status(400).json({ ok: false, error: 'nodeId, kind, and (for non-spread props) propName are required' });
+    }
     const root = currentRoot();
     const { absPath, relPath } = resolvePageFile(root, feature, file);
     const source = fs.readFileSync(absPath, 'utf8');
     if (contentHash && hashOf(source) !== contentHash) {
       return res.status(409).json({ ok: false, error: 'The file changed on disk since this was loaded — reload the tree and try again.' });
     }
-    const attrSnippet = buildAttributeSnippet(source, nodeId, propName, kind, value);
+    const attrSnippet = buildAttributeSnippet(source, nodeId, propName, kind, value, index);
     const patched = patchNode(source, nodeId, attrSnippet, contentHash);
     saveAndRespond(res, root, relPath, absPath, patched);
   } catch (e) {
@@ -295,7 +299,7 @@ app.get('/api/pages/unmapped', (req, res) => {
     const { feature, file, nodeId } = req.query;
     const root = currentRoot();
     const { absPath } = resolvePageFile(root, feature, file);
-    res.json(findUnmappedProps(fs.readFileSync(absPath, 'utf8'), nodeId));
+    res.json(findUnmappedProps(fs.readFileSync(absPath, 'utf8'), nodeId, root, absPath));
   } catch (e) {
     handlePagesEditorError(res, e);
   }

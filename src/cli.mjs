@@ -5,18 +5,23 @@ import { spawnSync } from 'node:child_process';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { makeLineSource } from './line-source.mjs';
 import { createFeature, generateLayer, generateVertical } from './generators.mjs';
+import { generateServiceFromSpec } from './service-generator.mjs';
 import { write, ensureDir } from './fs.mjs';
 import { loadConfig, findProjectRoot, DEFAULT_RULES, normalizeFramework } from './config.mjs';
 import { formatReport, exitCodeForViolations, ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { aggregateValidation } from './registry.mjs';
 import { validateArchitecture } from './architecture-enforcer.mjs';
-import { validateSeparationOfConcerns } from './soc-enforcer.mjs';
-import { validateReadability } from './readability-enforcer.mjs';
-import { syncPublicApi, checkPublicApiDrift } from './api-composer.mjs';
+import { syncPublicApi } from './api-composer.mjs';
 import { summarizeProject, summarizeCompact, summarizeProse, summarizeSince } from './summarize.mjs';
 import { moveLayerFile, renameLayerFile } from './refactor.mjs';
 import { importVertical, importPlan, analyzeFiles, executeImportPlan } from './import.mjs';
 import { resolveRoute } from './route-resolver.mjs';
+import { DEFAULT_ENFORCERS } from './engine/defaultEnforcers.mjs';
+import { runPipeline } from './engine/pipeline.mjs';
+import { validateEnvelope } from './engine/envelope.mjs';
+import { ingestPage } from './engine/pageTransformer.mjs';
+import { generateWorkflow } from './engine/workflowGenerator.mjs';
+import { generateController } from './engine/controllerBinder.mjs';
 
 // Resolve the project root freshly per command: walks up from cwd (or from
 // --dir, when given) to find an existing architecture.yml (monorepo
@@ -62,7 +67,11 @@ export async function init(args) {
   const fi = args.indexOf('--framework');
   const framework = normalizeFramework(fi >= 0 ? args[fi + 1] : undefined);
   ensureDir(dir);
-  const arch = `version: 1\npreset: strict-nextjs\n\nproject:\n  framework: ${framework}\n  language: typescript\n\nfeatures:\n  root: features\n\nrules:\n${Object.entries(DEFAULT_RULES).map(([k, v]) => `  ${k}: ${v.severity}`).join('\n')}\n\nexceptions: []\n`;
+  // Only real severity-bearing rules get a scaffolded `<id>: <severity>` line — a
+  // numeric-override entry like READ-002-max-loc (see config.mjs's DEFAULT_RULES) has
+  // no severity to print and is left out entirely; the project inherits its default
+  // (200) until someone opts into an override themselves.
+  const arch = `version: 1\npreset: strict-nextjs\n\nproject:\n  framework: ${framework}\n  language: typescript\n\nfeatures:\n  root: features\n\nrules:\n${Object.entries(DEFAULT_RULES).filter(([, v]) => !v.numeric).map(([k, v]) => `  ${k}: ${v.severity}`).join('\n')}\n\nexceptions: []\n`;
   write(path.join(dir, 'architecture.yml'), arch);
   write(path.join(dir, 'AGENTS.md'), `# Construct\n\nRead architecture.yml before changing code.\n\nDefault flow: Route → Controller → Workflow → Service → API; Controller → Page → Component.\n\nPages: no business logic, workflows, services, API calls, or fetch.\nComponents: presentation/local UI state only.\nFeatures: isolated; cross-feature access goes through index.ts.\nDomain: pure by default. Services: external effects.\n\nRun \`construct validate\` before finishing changes.\n`);
   createFeature(dir, 'core');
@@ -92,13 +101,87 @@ export async function feature(args) {
   console.log(`Created feature ${args[1]} at ${path.relative(root, p)}`);
 }
 
+// `construct generate service <name> --feature <feature> --openapi <spec>`
+// (also reachable as `construct create service ...`, per the `create` group
+// below) is Ticket 7.5's zero-LLM path: an OpenAPI spec compiles straight
+// into a real RTKQ `injectEndpoints` file plus the shared, configurable
+// features/core/services/client.ts transport -- see service-generator.mjs.
+// Every other `<layer> <name> --feature <feature>` call keeps using the
+// plain stub templates in generators.mjs, unchanged.
 export async function generate(args) {
   if (args[0] === 'layer') return generateVerticalSlice(args);
   const layer = args[0], name = args[1], fi = args.indexOf('--feature');
   if (!layer || !name || fi < 0 || !args[fi + 1]) {
-    throw new ConstructError('Usage: construct generate <layer> <name> --feature <feature>', { exitCode: EXIT_CODES.USAGE_ERROR });
+    throw new ConstructError('Usage: construct generate <layer> <name> --feature <feature> [--openapi <spec>]', { exitCode: EXIT_CODES.USAGE_ERROR });
   }
   const root = getRoot(args);
+  // Ticket 7.2 (#112): `construct create/generate page <name> --feature <f> --from
+  // <path>` ingests an externally-authored JSX file (e.g. a Subframe export) instead
+  // of scaffolding the usual stub template -- see src/engine/pageTransformer.mjs.
+  const fromI = args.indexOf('--from');
+  if (layer === 'page' && fromI >= 0 && args[fromI + 1]) {
+    const { pageFile, propsFile, slots } = ingestPage(root, name, args[fi + 1], args[fromI + 1]);
+    console.log(`Created ${path.relative(root, pageFile)}`);
+    console.log(`Created ${path.relative(root, propsFile)} (${slots.length} slot(s): ${slots.map((s) => s.name).join(', ') || 'none'})`);
+    return;
+  }
+  // Ticket 7.3 (#113): `construct create/generate workflow <name> --feature <f>
+  // --from <path-to-json>` compiles a JSON state-graph descriptor into an XState v5
+  // machine file instead of scaffolding the usual stub template -- see
+  // src/engine/workflowGenerator.mjs. Mirrors the page ingestion --from convention.
+  if (layer === 'workflow' && fromI >= 0 && args[fromI + 1]) {
+    const descriptorPath = path.isAbsolute(args[fromI + 1]) ? args[fromI + 1] : path.resolve(args[fromI + 1]);
+    if (!fs.existsSync(descriptorPath)) {
+      throw new ConstructError(`Workflow descriptor not found: ${descriptorPath}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+    }
+    let descriptor;
+    try {
+      descriptor = JSON.parse(fs.readFileSync(descriptorPath, 'utf8'));
+    } catch (e) {
+      throw new ConstructError(`Malformed workflow descriptor JSON at ${descriptorPath}: ${e.message}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+    }
+    const { file, events } = generateWorkflow(root, name, args[fi + 1], descriptor);
+    console.log(`Created ${path.relative(root, file)} (${events.length} event(s): ${events.join(', ') || 'none'})`);
+    return;
+  }
+  // Ticket 7.4 (#114): `construct create/generate controller <name> --feature <f>
+  // --bind [--envelope <path>]` auto-wires an already-generated hook (7.3) into an
+  // already-generated pristine page's Props interface (7.2) via AST signature matching,
+  // instead of scaffolding the usual same-named-page-only stub template. Opt-in via
+  // --bind so the existing unconditional stub (and `generate layer ... --layers ...
+  // controller`, which relies on it needing no prerequisite files) is unchanged.
+  const bindI = args.indexOf('--bind');
+  if (layer === 'controller' && bindI >= 0) {
+    const envelopeI = args.indexOf('--envelope');
+    let envelope;
+    if (envelopeI >= 0 && args[envelopeI + 1]) {
+      const envelopePath = path.isAbsolute(args[envelopeI + 1]) ? args[envelopeI + 1] : path.resolve(args[envelopeI + 1]);
+      if (!fs.existsSync(envelopePath)) {
+        throw new ConstructError(`Context Envelope not found: ${envelopePath}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+      }
+      try {
+        envelope = JSON.parse(fs.readFileSync(envelopePath, 'utf8'));
+      } catch (e) {
+        throw new ConstructError(`Malformed Context Envelope JSON at ${envelopePath}: ${e.message}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+      }
+    }
+    const { file, bindings } = generateController(root, name, args[fi + 1], { envelope });
+    console.log(`Created ${path.relative(root, file)}`);
+    for (const b of bindings) {
+      console.log(`  ${b.slot} -> ${b.handler ? `${b.handler} (${b.matchType})` : 'UNMATCHED (TODO stub written)'}`);
+    }
+    return;
+  }
+  // Ticket 7.5 (#115): `construct create/generate service <name> --feature <f>
+  // --openapi <spec>` compiles an OpenAPI spec into a real RTKQ injectEndpoints
+  // file plus the shared transport client, instead of scaffolding the usual stub
+  // template -- see src/service-generator.mjs.
+  const oi = args.indexOf('--openapi');
+  if (layer === 'service' && oi >= 0 && args[oi + 1]) {
+    const files = await generateServiceFromSpec(root, name, args[fi + 1], args[oi + 1]);
+    for (const file of files) console.log(`Created ${path.relative(root, file)}`);
+    return;
+  }
   console.log(`Created ${path.relative(root, generateLayer(root, layer, name, args[fi + 1]))}`);
 }
 
@@ -139,13 +222,6 @@ export async function sync(args) {
   console.log(`Synced ${Object.keys(c.rules).length} Construct rules, ${apiSynced} feature public API(s) updated.`);
 }
 
-const DEFAULT_ENFORCERS = [
-  { name: 'architecture', validate: validateArchitecture },
-  { name: 'separation-of-concerns', validate: validateSeparationOfConcerns },
-  { name: 'readability', validate: validateReadability },
-  { name: 'public-api-drift', validate: checkPublicApiDrift },
-];
-
 export async function validate(args) {
   const root = getRoot(args);
   const { violations, ok } = aggregateValidation(root, DEFAULT_ENFORCERS);
@@ -170,6 +246,53 @@ export async function summarize(args) {
         ? summarizeProse(root, { feature })
         : summarizeProject(root, { feature, format });
   console.log(output);
+}
+
+/** Read all of stdin to completion as a UTF-8 string — used by `construct
+ * pipeline run`, which (unlike every other command) takes its real input as
+ * a JSON payload over stdin rather than as CLI args. */
+function readStdin(stream) {
+  return new Promise((resolve, reject) => {
+    let data = '';
+    stream.setEncoding('utf8');
+    stream.on('data', (chunk) => { data += chunk; });
+    stream.on('end', () => resolve(data));
+    stream.on('error', reject);
+  });
+}
+
+/** `construct pipeline run [--dir <path>]` -- Ticket 7.1. Reads a Context
+ * Envelope (schemas/envelope.v1.json) as JSON off stdin, with an optional
+ * `steps: [{layer, name}, ...]` list of generator steps to run against
+ * `envelope.feature`. Every step's output is staged in one
+ * transactionalWriter transaction and committed atomically: if the buffered
+ * result fails `construct validate`'s own enforcer set, nothing under the
+ * project root is written and the process exits non-zero. Either way, the
+ * resulting envelope (status 'committed' or 'aborted', `layers`/
+ * `diagnostics` populated accordingly) is written to stdout as JSON --
+ * mirroring the same `JSON.stringify(..., null, 2)` shaping `validate
+ * --format json` and `summarize --format json` already use, not a second
+ * JSON convention. */
+export async function pipeline(args) {
+  if (args[0] !== 'run') {
+    throw new ConstructError('Usage: construct pipeline run < envelope.json', { exitCode: EXIT_CODES.USAGE_ERROR });
+  }
+  const root = getRoot(args);
+  const raw = await readStdin(process.stdin);
+  let input;
+  try {
+    input = JSON.parse(raw);
+  } catch (e) {
+    throw new ConstructError(`Malformed envelope JSON on stdin: ${e.message}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+  }
+  const { valid, errors } = validateEnvelope(input);
+  if (!valid) {
+    throw new ConstructError(`Invalid Context Envelope on stdin:\n  ${errors.join('\n  ')}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+  }
+
+  const output = runPipeline(root, input);
+  console.log(JSON.stringify(output, null, 2));
+  if (output.status === 'aborted') process.exitCode = exitCodeForViolations(output.diagnostics);
 }
 
 export async function doctor(args) {
@@ -204,7 +327,8 @@ export function printAttribution(tool, llm) {
 }
 
 /** `construct create feature <name>` | `construct create layer <name> --layers ...`
- * | `construct create <layer> <name> --feature <feature>`. */
+ * | `construct create <layer> <name> --feature <feature>`
+ * | `construct create service <name> --feature <feature> --openapi <spec>` (Ticket 7.5). */
 export async function create(args) {
   if (args[0] === 'feature') await feature(['create', ...args.slice(1)]);
   else await generate(args);

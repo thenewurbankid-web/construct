@@ -3,7 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { walk } from './fs.mjs';
 import { makeViolation } from './diagnostics.mjs';
-import { parseFile, extractExports, extractJsdoc, lineOf, EXT, projectSettings } from './parser.mjs';
+import { parseFile, extractExports, extractJsdoc, lineOf, EXT } from './parser.mjs';
+import { loadConfig, readRawRules } from './config.mjs';
 
 // Shaped exactly like DEFAULT_RULES in src/config.mjs, exported for Module 4 (or whoever
 // owns config.mjs next) to merge into the shared rule table. Not written into config.mjs
@@ -120,8 +121,7 @@ function findLongFunctions(source, limit) {
   return results;
 }
 
-function checkLength(config, out, summary, source) {
-  const maxLoc = Number(config.rules?.['READ-002-max-loc']) || DEFAULT_MAX_LOC;
+function checkLength(config, out, summary, source, maxLoc) {
   if (summary.loc > maxLoc) {
     pushViolation(config, out, {
       rule: 'READ-002',
@@ -167,8 +167,13 @@ function checkFeatureJsdoc(config, out, root, featureRoot, featureName) {
 
 /** Run all readability checks over `<featureRoot>/*` and return `{violations}`. */
 export function validateReadability(root) {
-  const config = projectSettings(root);
-  const featureRoot = config.featureRoot;
+  const config = loadConfig(root);
+  const featureRoot = config.features.root;
+  // READ-002-max-loc is a threshold override, not a normalized rule id in
+  // config.mjs's DEFAULT_RULES table — read via readRawRules (unvalidated) rather
+  // than config.rules, since normalizeRules only accepts a severity string or an
+  // options object per key, not a bare number like `READ-002-max-loc: 10`.
+  const maxLoc = Number(readRawRules(root)['READ-002-max-loc']) || DEFAULT_MAX_LOC;
   const featuresDir = path.join(root, featureRoot);
   const out = [];
   if (!fs.existsSync(featuresDir)) return { violations: out };
@@ -180,7 +185,7 @@ export function validateReadability(root) {
       const summary = parseFile(root, file);
       const source = fs.readFileSync(file, 'utf8');
       checkNaming(config, out, summary);
-      checkLength(config, out, summary, source);
+      checkLength(config, out, summary, source, maxLoc);
     }
     checkFeatureJsdoc(config, out, root, featureRoot, featureName);
   }
