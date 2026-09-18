@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
+import { normalizeFrozen } from './frozen.mjs';
 
 export const DEFAULT_LAYERS = {
   route: { pattern: 'app/**/page.tsx', canImport: ['controller'] },
@@ -110,6 +111,12 @@ export const DEFAULT_RULES = {
   // a raw fetch() call or its own conditional/loop business logic, both of which belong
   // one layer down (service/hook/workflow/domain).
   'CONTROLLER-001': { severity: 'error', name: 'Controllers must compose (import + wire only) — no business logic or raw fetch()' },
+  // #23 -- only evaluated when architecture.yml declares `frozen:` globs; see
+  // frozen-detector.mjs for the exact (deterministic) heuristic and its option
+  // fields (minDuplicateElements / similarity / maxOwnElements).
+  'PAGE-007': { severity: 'warning', name: 'Pages wrap frozen (externally-authored) markup instead of reimplementing it' },
+  'COMPONENT-004': { severity: 'warning', name: 'Components wrap frozen (externally-authored) markup instead of reimplementing it' },
+  'CONTROLLER-002': { severity: 'warning', name: 'Controllers wrap frozen (externally-authored) markup instead of reimplementing it' },
   'SERVICE-001': { severity: 'error', name: 'Services own external effects' },
   'SERVICE-002': { severity: 'error', name: 'Services cannot import React/UI' },
   'DOMAIN-001': { severity: 'error', name: 'Domain is pure' },
@@ -261,6 +268,7 @@ export function loadConfig(root) {
       layers: DEFAULT_LAYERS,
       rules: DEFAULT_RULES,
       exceptions: [],
+      frozen: [],
     };
   }
 
@@ -291,5 +299,6 @@ export function loadConfig(root) {
     layers: layersForFramework(framework),
     rules,
     exceptions: c.exceptions || [],
+    frozen: normalizeFrozen(c.frozen),
   };
 }

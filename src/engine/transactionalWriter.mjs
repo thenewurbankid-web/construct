@@ -14,6 +14,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { write } from '../fs.mjs';
+import { assertNotFrozen } from '../frozen.mjs';
 import { validateArchitecture } from '../architecture-enforcer.mjs';
 
 // Mirrors src/fs.mjs's walk(): these never belong in a shadow copy used for
@@ -51,6 +52,8 @@ export function createTransaction(root) {
      * root-relative with posix separators. */
     writeFile(relPath, content) {
       const rel = path.isAbsolute(relPath) ? path.relative(root, relPath) : relPath;
+      // #23: refuse at staging time so a pipeline aborts before any commit.
+      assertNotFrozen(path.join(root, rel));
       buffer.set(toPosixRel(rel), content);
     },
 

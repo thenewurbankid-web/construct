@@ -1,0 +1,16 @@
+version: 1
+preset: strict-nextjs
+
+project:
+  framework: nextjs
+  language: typescript
+
+features:
+  root: features
+
+# Externally-authored presentation this project wraps but never edits. The
+# glob reaches OUTSIDE the project root; it is a read-only reference.
+frozen:
+  - ../design-system/screens/**
+
+exceptions: []
