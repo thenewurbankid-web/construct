@@ -20,7 +20,7 @@ export function PropFlowDiagram({ roots }: { roots: PagesEditorNode[] }) {
 
   return (
     <GlassPanel className="propflow-panel">
-      <h3>Prop-flow diagram (#75)</h3>
+      <h3>Prop-flow diagram</h3>
       <button type="button" onClick={toggle}>{visible ? 'Hide diagram' : 'Show diagram'}</button>
       {visible && (
         <>
