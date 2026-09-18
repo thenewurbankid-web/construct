@@ -15,8 +15,7 @@
 // as "(inline guard)") degrades to a per-machine `error` string instead of
 // throwing, so the UI can say "can't visualize this machine" for that one
 // machine and still render the rest of the file.
-import { walk as walkAst } from 'estree-walker';
-import { parseToAst } from '../parser.mjs';
+import { parseToAst, walkAst } from '../ast/index.mjs';
 
 class Unsupported extends Error {}
 

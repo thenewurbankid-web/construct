@@ -41,3 +41,7 @@ A design tool (Subframe, Figma-to-code, a shared design system) may own some mar
 ## Enforcement
 
 Construct combines project policy with static validation and dependency boundaries. The goal is not to create a second compiler; it is to make architectural intent executable and useful to AI agents.
+
+## Shared building blocks
+
+Construct's own implementation reuses small deterministic packages rather than re-implementing them: see `docs/capabilities.md` for the maintained inventory, and `src/ast/README.md` for the AST package (parse, walk, extract, generate) used by both the CLI and `ui/server`.

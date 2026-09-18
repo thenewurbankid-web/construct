@@ -15,7 +15,7 @@
 // const) stays a plain template string, matching src/generators.mjs's own
 // style for boilerplate that needs no real synthesis.
 import path from 'node:path';
-import ts from 'typescript';
+import { ts, printNode as print } from '../ast/index.mjs';
 import { loadConfig } from './../config.mjs';
 import { write } from '../fs.mjs';
 import { selfCheck } from '../generators.mjs';
@@ -23,13 +23,6 @@ import { ConstructError, EXIT_CODES } from '../diagnostics.mjs';
 
 const { factory } = ts;
 const IDENT_RE = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
-const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
-const DUMMY_SOURCE_FILE = ts.createSourceFile('workflow.ts', '', ts.ScriptTarget.Latest, false, ts.ScriptKind.TS);
-
-function print(node) {
-  return printer.printNode(ts.EmitHint.Unspecified, node, DUMMY_SOURCE_FILE);
-}
-
 function usageError(message) {
   return new ConstructError(message, { exitCode: EXIT_CODES.USAGE_ERROR });
 }

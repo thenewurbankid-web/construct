@@ -28,8 +28,7 @@
 //   PAGE-007: { severity: error, similarity: 0.9, maxOwnElements: 3 }
 import fs from 'node:fs';
 import path from 'node:path';
-import { walk as walkAst } from 'estree-walker';
-import { parseToAst } from './parser.mjs';
+import { parseToAst, walkAst } from './ast/index.mjs';
 import { listFrozenFiles } from './frozen.mjs';
 
 export const FROZEN_RULE_BY_LAYER = { page: 'PAGE-007', component: 'COMPONENT-004', controller: 'CONTROLLER-002' };
