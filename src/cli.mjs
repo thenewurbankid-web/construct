@@ -9,13 +9,14 @@ import { loadConfig, findProjectRoot, DEFAULT_RULES, normalizeFramework } from '
 import { formatReport, exitCodeForViolations, ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { aggregateValidation } from './registry.mjs';
 import { validateArchitecture } from './architecture-enforcer.mjs';
-import { validateSeparationOfConcerns } from './soc-enforcer.mjs';
-import { validateReadability } from './readability-enforcer.mjs';
-import { syncPublicApi, checkPublicApiDrift } from './api-composer.mjs';
+import { syncPublicApi } from './api-composer.mjs';
 import { summarizeProject, summarizeCompact, summarizeProse, summarizeSince } from './summarize.mjs';
 import { moveLayerFile, renameLayerFile } from './refactor.mjs';
 import { importVertical, importPlan, analyzeFiles, executeImportPlan } from './import.mjs';
 import { resolveRoute } from './route-resolver.mjs';
+import { DEFAULT_ENFORCERS } from './engine/defaultEnforcers.mjs';
+import { runPipeline } from './engine/pipeline.mjs';
+import { validateEnvelope } from './engine/envelope.mjs';
 
 // Resolve the project root freshly per command: walks up from cwd (or from
 // --dir, when given) to find an existing architecture.yml (monorepo
@@ -142,13 +143,6 @@ export async function sync(args) {
   console.log(`Synced ${Object.keys(c.rules).length} Construct rules, ${apiSynced} feature public API(s) updated.`);
 }
 
-const DEFAULT_ENFORCERS = [
-  { name: 'architecture', validate: validateArchitecture },
-  { name: 'separation-of-concerns', validate: validateSeparationOfConcerns },
-  { name: 'readability', validate: validateReadability },
-  { name: 'public-api-drift', validate: checkPublicApiDrift },
-];
-
 export async function validate(args) {
   const root = getRoot(args);
   const { violations, ok } = aggregateValidation(root, DEFAULT_ENFORCERS);
@@ -173,6 +167,53 @@ export async function summarize(args) {
         ? summarizeProse(root, { feature })
         : summarizeProject(root, { feature, format });
   console.log(output);
+}
+
+/** Read all of stdin to completion as a UTF-8 string — used by `construct
+ * pipeline run`, which (unlike every other command) takes its real input as
+ * a JSON payload over stdin rather than as CLI args. */
+function readStdin(stream) {
+  return new Promise((resolve, reject) => {
+    let data = '';
+    stream.setEncoding('utf8');
+    stream.on('data', (chunk) => { data += chunk; });
+    stream.on('end', () => resolve(data));
+    stream.on('error', reject);
+  });
+}
+
+/** `construct pipeline run [--dir <path>]` -- Ticket 7.1. Reads a Context
+ * Envelope (schemas/envelope.v1.json) as JSON off stdin, with an optional
+ * `steps: [{layer, name}, ...]` list of generator steps to run against
+ * `envelope.feature`. Every step's output is staged in one
+ * transactionalWriter transaction and committed atomically: if the buffered
+ * result fails `construct validate`'s own enforcer set, nothing under the
+ * project root is written and the process exits non-zero. Either way, the
+ * resulting envelope (status 'committed' or 'aborted', `layers`/
+ * `diagnostics` populated accordingly) is written to stdout as JSON --
+ * mirroring the same `JSON.stringify(..., null, 2)` shaping `validate
+ * --format json` and `summarize --format json` already use, not a second
+ * JSON convention. */
+export async function pipeline(args) {
+  if (args[0] !== 'run') {
+    throw new ConstructError('Usage: construct pipeline run < envelope.json', { exitCode: EXIT_CODES.USAGE_ERROR });
+  }
+  const root = getRoot(args);
+  const raw = await readStdin(process.stdin);
+  let input;
+  try {
+    input = JSON.parse(raw);
+  } catch (e) {
+    throw new ConstructError(`Malformed envelope JSON on stdin: ${e.message}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+  }
+  const { valid, errors } = validateEnvelope(input);
+  if (!valid) {
+    throw new ConstructError(`Invalid Context Envelope on stdin:\n  ${errors.join('\n  ')}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+  }
+
+  const output = runPipeline(root, input);
+  console.log(JSON.stringify(output, null, 2));
+  if (output.status === 'aborted') process.exitCode = exitCodeForViolations(output.diagnostics);
 }
 
 export async function doctor(args) {

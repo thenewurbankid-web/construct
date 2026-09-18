@@ -69,6 +69,7 @@ Commands:
   construct validate [--format json] [--dir <path>]
   construct summarize [--feature <name>] [--format json|md|compact|prose] [--since <ref>] [--dir <path>]
   construct doctor [--dir <path>]
+  construct pipeline run [--dir <path>]   (reads a Context Envelope as JSON on stdin, writes one to stdout)
 
 --dir <path> targets a Construct project nested in a subdirectory (e.g. one
 created with 'construct init <path>' inside a larger, unrelated project)

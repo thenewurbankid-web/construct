@@ -82,16 +82,25 @@ export function createFeature(root,name){
  return base;
 }
 
-export function generateLayer(root,layer,name,feature){
+// Pure: compute the {file, content} a layer's template would produce,
+// without touching disk. Shared by generateLayer (below, unchanged disk-
+// writing behavior) and the Ticket 7.1 pipeline runner (src/engine/pipeline.mjs),
+// which stages the same content into a transactionalWriter buffer instead of
+// writing it directly -- so template logic lives in exactly one place either way.
+export function renderLayer(root,layer,name,feature){
  if(!templates[layer])throw new Error(`Unknown layer: ${layer}`);
  const config=loadConfig(root);
  const cap=name[0].toUpperCase()+name.slice(1);
  const dir=path.join(root,config.features?.root||'features',feature,folderFor(layer));
- ensureDir(dir);
  const file=path.join(dir,`${layerFileBaseName(layer,cap)}.tsx`);
  const custom=findCustomTemplate(root,layer,config);
  const content=custom?renderCustomTemplate(custom,name):templates[layer](cap,{framework:config.project?.framework});
- write(file,content);
+ return {file,content};
+}
+
+export function generateLayer(root,layer,name,feature){
+ const {file,content}=renderLayer(root,layer,name,feature);
+ write(file,content); // write() ensures the parent dir exists
  selfCheck(root,[file]);
  return file;
 }
