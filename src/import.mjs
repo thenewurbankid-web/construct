@@ -10,7 +10,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { generateVertical, LAYER_ORDER, LAYER_CONSTRAINTS, layerFromGeneratedFile } from './generators.mjs';
 import { walk } from './fs.mjs';
-import { callLlm, stripCodeFence } from './llm.mjs';
+import { callLlm, stripCodeFence, PROVIDERS } from './llm.mjs';
+import { requestFileText } from './llm-fill.mjs';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 
 // LAYER_CONSTRAINTS and layerFromGeneratedFile now live in generators.mjs
@@ -49,6 +50,7 @@ function buildPortPrompt({ layer, relFile, stubContent, oldContent, oldRelPath }
     '',
     'Return ONLY the new, complete file content. No markdown code fences, no explanation, no commentary — just the raw file content that will be written as-is.',
   ].join('\n');
+  // (requestFileText in llm-fill.mjs appends the stdout-only/no-file-access contract.)
 }
 
 /** Scaffold `layers` for one logical unit (exactly like generateVertical).
@@ -67,8 +69,15 @@ export async function importVertical(root, name, feature, layers, fromPath, { ll
   if (!fs.existsSync(fromAbs) || !fs.statSync(fromAbs).isFile()) {
     throw new ConstructError(`Source file not found: ${fromPath}`, { exitCode: EXIT_CODES.USAGE_ERROR });
   }
+  // An unknown provider is a mistake in the command, not a per-file failure —
+  // reject it before scaffolding anything (callLlm would throw the same
+  // USAGE_ERROR, but only after files were already written).
+  if (llm && !PROVIDERS[llm]) {
+    throw new ConstructError(`Unknown --llm provider "${llm}". Supported: ${Object.keys(PROVIDERS).join(', ')}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+  }
   const files = generateVertical(root, name, feature, layers);
   const oldContent = llm ? fs.readFileSync(fromAbs, 'utf8') : null;
+  const fills = [];
 
   for (const file of files) {
     const stubContent = fs.readFileSync(file, 'utf8');
@@ -84,9 +93,19 @@ export async function importVertical(root, name, feature, layers, fromPath, { ll
       oldContent,
       oldRelPath: path.relative(path.dirname(file), fromAbs).split(path.sep).join('/'),
     });
-    fs.writeFileSync(file, stripCodeFence(await callLlm(llm, prompt, llmOptions)));
+    const outcome = await requestFileText(llm, prompt, llmOptions);
+    if (outcome.status === 'filled') {
+      fs.writeFileSync(file, outcome.code + '\n');
+      fills.push({ file, status: 'filled', attempts: outcome.attempts });
+      continue;
+    }
+    // The model's output was rejected (#144) — leave the scaffolded stub as a
+    // valid file, with the same breadcrumb the no-llm path writes, so the
+    // file is still discoverable and the human/LLM session knows what's left.
+    fs.writeFileSync(file, breadcrumb(fromAbs, file) + stubContent);
+    fills.push({ file, status: outcome.status, reason: outcome.reason, attempts: outcome.attempts });
   }
-  return { source: fromAbs, files, llmFilled: !!llm };
+  return { source: fromAbs, files, llmFilled: fills.some((f) => f.status === 'filled'), fills };
 }
 
 /** Shape-check a plan object (from a file, or an LLM's analysis response) —
