@@ -1,7 +1,8 @@
 node_modules/
 dist/
 *.log
-.claude/
+.claude/*
+!.claude/agents/
 .construct-test-tmp/
 ui/e2e/test-results/
 ui/e2e/playwright-report/
