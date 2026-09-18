@@ -1,8 +1,8 @@
 // Turn a data source into { guides: [{ ..., stories: [...] }] }.
 // Primary: real GitHub sub-issues of the Demos epic (guides) and of each guide (stories).
 // Fallback: `[Demo...]` issues grouped by their "Part of #N" body line.
-import { parsePartOf, parseStoryBody, firstParagraph, splitReference, shiftHeadings, addHeadingIds } from './story.mjs';
-import { cleanTitle, makeSlugger, slugify, isDemoTitle } from './text.mjs';
+import { parsePartOf, parseStoryBody, parseDemoBody, stripComments, firstParagraph, splitReference, shiftHeadings, addHeadingIds } from './story.mjs';
+import { cleanTitle, makeSlugger, slugify, isDemoTitle, plainSummary } from './text.mjs';
 import { sanitizeHtml } from './sanitize.mjs';
 import { firstMarkdownImage } from './images.mjs';
 
@@ -16,13 +16,48 @@ export function isPublishable(issue, comments = []) {
   return !closing.some((c) => SUPERSEDED.test((c.body || '').slice(0, 200)));
 }
 
-async function buildStory(source, issue, guideNumber, order, skipped) {
+const renderSafe = async (source, md) => (md ? sanitizeHtml(await source.render(md).catch(() => '')) : '');
+const hasEvidence = (md) => /```|!\[/.test(md || '');
+const BOILERPLATE = /^\s*(?:Parent\/tracking ticket|Part of\s+#\d+)/i;
+
+/** Drop leading bookkeeping paragraphs ("Part of #N ...", "Parent/tracking ticket ..."). */
+export function dropBoilerplate(md) {
+  const paras = String(md).split(/\n\s*\n/);
+  while (paras.length && BOILERPLATE.test(paras[0])) paras.shift();
+  return paras.join('\n\n').trim();
+}
+
+/** For new-shape stories whose body has no walkthrough, use the write-up comment that carries evidence. */
+function writeupFromComments(comments) {
+  const c = comments
+    .map((x) => stripComments(x.body || ''))
+    .filter((b) => b.length > 1500 && hasEvidence(b))
+    .sort((a, b) => b.length - a.length)[0];
+  return c || '';
+}
+
+async function buildStory(source, issue, guideNumber, order, skipped, contents = {}) {
   const comments = await source.comments(issue.number);
   if (!isPublishable(issue, comments)) {
     skipped.push({ number: issue.number, reason: issue.state !== 'closed' ? 'not closed' : 'superseded or empty' });
     return null;
   }
-  const { markdown, benefit, verified } = parseStoryBody(issue.body);
+  const v1 = parseDemoBody(issue.body);
+  let markdown, benefitMd, verified, verifiedDate = null, sentence = '', summary;
+  if (v1) {
+    markdown = dropBoilerplate(hasEvidence(v1.legacy) ? v1.legacy : writeupFromComments(comments));
+    benefitMd = v1.benefit;
+    verified = v1.verified;
+    verifiedDate = v1.verifiedDate;
+    sentence = v1.sentence;
+    summary = plainSummary(v1.sentence || contents[issue.number]?.story || '');
+  } else {
+    const p = parseStoryBody(issue.body);
+    markdown = p.markdown;
+    benefitMd = p.benefit;
+    verified = p.verified;
+    summary = firstParagraph(markdown);
+  }
   let html;
   try {
     html = await source.render(markdown);
@@ -30,7 +65,6 @@ async function buildStory(source, issue, guideNumber, order, skipped) {
     skipped.push({ number: issue.number, reason: `render failed: ${e.message}` });
     return null;
   }
-  const benefitHtml = benefit ? await source.render(benefit).catch(() => '') : '';
   const slug = `${issue.number}-${slugify(cleanTitle(issue.title))}`.slice(0, 70).replace(/-+$/, '');
   html = addHeadingIds(shiftHeadings(sanitizeHtml(html), 1), `s${issue.number}`, makeSlugger());
   const { main, reference } = splitReference(html);
@@ -43,37 +77,57 @@ async function buildStory(source, issue, guideNumber, order, skipped) {
     updatedAt: issue.updated_at,
     anchor: slug,
     verified,
-    benefitHtml: sanitizeHtml(benefitHtml),
-    summary: firstParagraph(markdown),
-    hero: firstMarkdownImage(issue.body),
+    verifiedDate,
+    sentence,
+    benefitHtml: await renderSafe(source, benefitMd),
+    summary,
+    tocBlurb: contents[issue.number]?.benefit || '',
+    hero: firstMarkdownImage(stripComments(issue.body)),
     html: main,
     referenceHtml: reference,
   };
 }
 
 async function buildGuide(source, epic, storyIssues, skipped) {
-  const { markdown, benefit } = parseStoryBody(epic.body);
-  const intro = /(?:^|\n)##\s+What this demonstrates\s*\n([\s\S]*?)(?=\n##\s|(?![\s\S]))/i.exec(markdown);
-  const introMd = (intro ? intro[1] : markdown.split(/\n##\s/)[0]).trim();
+  const v1 = parseDemoBody(epic.body);
+  let introMd, whyMd = '', evidenceMd = '', hero, verified = null, verifiedDate = null, summary, contents = {};
+  if (v1) {
+    introMd = [v1.who && `**Who it is for:** ${v1.who}`, v1.problem && `**The problem it solves:** ${v1.problem}`].filter(Boolean).join('\n\n');
+    whyMd = v1.why;
+    evidenceMd = v1.evidence;
+    hero = v1.hero;
+    verified = v1.verified;
+    verifiedDate = v1.verifiedDate;
+    contents = v1.contents;
+    summary = plainSummary(v1.why.split('\n').join(' '), 170) || plainSummary(v1.problem, 170);
+  } else {
+    // Old shape: only the plain "What this demonstrates" text, never ticket boilerplate.
+    const { markdown } = parseStoryBody(epic.body);
+    const intro = /(?:^|\n)##\s+What this demonstrates\s*\n([\s\S]*?)(?=\n##\s|(?![\s\S]))/i.exec(markdown);
+    introMd = dropBoilerplate((intro ? intro[1] : markdown.split(/\n##\s/)[0]).trim());
+    summary = firstParagraph(introMd);
+  }
   const stories = [];
   let order = 1;
   for (const s of storyIssues) {
-    const st = await buildStory(source, s, epic.number, order, skipped);
+    const st = await buildStory(source, s, epic.number, order, skipped, contents);
     if (st) {
       stories.push(st);
       order++;
     }
   }
-  const hero = stories.map((s) => s.hero).find(Boolean) || firstMarkdownImage(epic.body) || null;
+  hero = hero || stories.map((s) => s.hero).find(Boolean) || firstMarkdownImage(stripComments(epic.body)) || null;
   return {
     number: epic.number,
     title: cleanTitle(epic.title),
     slug: `${epic.number}-${slugify(cleanTitle(epic.title))}`.slice(0, 60).replace(/-+$/, ''),
     url: epic.html_url,
     updatedAt: [epic.updated_at, ...stories.map((s) => s.updatedAt)].sort().pop(),
-    summary: firstParagraph(introMd) || stories[0]?.summary || '',
-    introHtml: introMd ? sanitizeHtml(await source.render(introMd).catch(() => '')) : '',
-    benefitHtml: benefit ? sanitizeHtml(await source.render(benefit).catch(() => '')) : '',
+    summary: summary || stories[0]?.summary || '',
+    introHtml: await renderSafe(source, introMd),
+    benefitHtml: await renderSafe(source, [whyMd, evidenceMd].filter(Boolean).join('\n\n')),
+    verified,
+    verifiedDate,
     hero,
     stories,
   };

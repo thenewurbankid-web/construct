@@ -7,7 +7,7 @@ const EVENT_ATTR = /\s+on[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi;
 const JS_URL = /(\s(?:href|src|xlink:href|action|formaction)\s*=\s*)(["']?)\s*(?:javascript|vbscript|data:text\/html)[^"'>\s]*\2/gi;
 
 export function sanitizeHtml(html) {
-  let out = String(html);
+  let out = String(html).replace(/<!--[\s\S]*?-->/g, '');
   let prev;
   do {
     prev = out;

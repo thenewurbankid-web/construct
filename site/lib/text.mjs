@@ -34,7 +34,7 @@ export function esc(s) {
 /** "[Demo Epic] construct create -- x" -> "construct create -- x" (and tidy the dashes). */
 export function cleanTitle(title) {
   return String(title)
-    .replace(/^\s*\[Demo(?: Epic)?\]\s*/i, '')
+    .replace(/^\s*(?:\[Demo[^\]]*\]\s*)+/i, '')
     .replace(/\s+--\s+/g, ' — ')
     .trim();
 }
