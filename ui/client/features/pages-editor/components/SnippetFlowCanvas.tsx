@@ -52,7 +52,6 @@ export function SnippetFlowCanvas({ snippet, onSnippetChange }: SnippetFlowCanva
           nodesConnectable
           edgesReconnectable
           onReconnect={handleReconnect}
-          elementsSelectable={false}
           fitView
           proOptions={{ hideAttribution: true }}
         >

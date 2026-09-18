@@ -441,6 +441,126 @@ export function rewireWireInSnippet(snippetSource, { parentId, propName, fromChi
   }
 }
 
+/** Finds `nodeId`'s direct parent record in an already-parsed tree, or
+ * `null` for a root (parsePageTree's own records don't carry a parent
+ * back-reference, so this is a small linear scan over already-visited
+ * nodes — shared by F.3's remove/move operations below). */
+function findParentRecord(byId, nodeId) {
+  for (const candidate of byId.values()) {
+    if (candidate.children.some((c) => c.id === nodeId)) return candidate;
+  }
+  return null;
+}
+
+/**
+ * Ticket F.3 (#122, epic #119) — remove a node (and its whole subtree) from
+ * the snippet, expressed as a plain text-range deletion plus a small
+ * whitespace cleanup (one run of leading indentation, one trailing newline)
+ * so it doesn't leave a blank line behind. Rejects removing the snippet's
+ * own single root — a snippet is always exactly one root element/fragment
+ * (the same invariant patchNode's own save-time validation enforces), so
+ * there is nothing left to save if the root itself were removed. Never
+ * throws — `{ok:false, error}` on any rejection.
+ */
+export function removeNodeInSnippet(snippetSource, nodeId) {
+  let roots, byId;
+  try {
+    ({ roots, byId } = parsePageTree(snippetSource));
+  } catch (e) {
+    return { ok: false, error: `Snippet does not parse: ${e.message}` };
+  }
+  const node = byId.get(nodeId);
+  if (!node) return { ok: false, error: `No such node "${nodeId}" — the snippet may have changed.` };
+  if (roots.some((r) => r.id === nodeId)) {
+    return { ok: false, error: "The snippet's own root element can't be removed — it would leave nothing to save." };
+  }
+  let start = node.start;
+  while (start > 0 && /[ \t]/.test(snippetSource[start - 1])) start--;
+  let end = node.end;
+  if (snippetSource.slice(end, end + 2) === '\r\n') end += 2;
+  else if (snippetSource[end] === '\n') end += 1;
+  const patched = snippetSource.slice(0, start) + snippetSource.slice(end);
+  try {
+    parseSource(patched);
+  } catch (e) {
+    return { ok: false, error: `Removing this node would leave invalid JSX: ${e.message}` };
+  }
+  return { ok: true, snippet: patched };
+}
+
+/**
+ * Ticket F.3 (#122, epic #119) — move a node one position up/down among its
+ * own siblings, expressed as swapping its text with the adjacent sibling's
+ * (whatever sits between the two — other text/elements — stays exactly
+ * where it is; only the two elements' own text spans trade places).
+ * Rejects a root (no siblings to move among) or a node already at the
+ * first/last position for the requested direction. Never throws.
+ */
+export function moveNodeInSnippet(snippetSource, nodeId, direction) {
+  if (direction !== 'up' && direction !== 'down') return { ok: false, error: `Unknown move direction "${direction}".` };
+  let byId;
+  try {
+    ({ byId } = parsePageTree(snippetSource));
+  } catch (e) {
+    return { ok: false, error: `Snippet does not parse: ${e.message}` };
+  }
+  const node = byId.get(nodeId);
+  if (!node) return { ok: false, error: `No such node "${nodeId}" — the snippet may have changed.` };
+  const parent = findParentRecord(byId, nodeId);
+  if (!parent) return { ok: false, error: "The snippet's own root element has no siblings to move among." };
+  const siblings = parent.children;
+  const idx = siblings.findIndex((c) => c.id === nodeId);
+  const otherIdx = direction === 'up' ? idx - 1 : idx + 1;
+  if (otherIdx < 0 || otherIdx >= siblings.length) {
+    return { ok: false, error: `Already at the ${direction === 'up' ? 'first' : 'last'} position among its siblings.` };
+  }
+  const [a, b] = direction === 'up' ? [siblings[otherIdx], node] : [node, siblings[otherIdx]];
+  const between = snippetSource.slice(a.end, b.start);
+  const patched =
+    snippetSource.slice(0, a.start) + snippetSource.slice(b.start, b.end) + between + snippetSource.slice(a.start, a.end) + snippetSource.slice(b.end);
+  try {
+    parseSource(patched);
+  } catch (e) {
+    return { ok: false, error: `Moving this node would leave invalid JSX: ${e.message}` };
+  }
+  return { ok: true, snippet: patched };
+}
+
+const NEW_CHILD_SNIPPET = '<div />';
+
+/**
+ * Ticket F.3 (#122, epic #119) — append a new (fixed, deliberately minimal
+ * — `<div />`) child right before a node's closing tag, reusing the
+ * start/end offsets parsePageTree already computed (no second AST walk).
+ * Only supported when the node already has an opening/closing tag pair or
+ * is a fragment (`<Tag>...</Tag>` / `<>...</>`) — a self-closing element
+ * (`<Tag />`) is rejected rather than the tool guessing how to split `/>`
+ * into an open/close pair on the caller's behalf. Never throws.
+ */
+export function addChildInSnippet(snippetSource, parentId) {
+  let byId;
+  try {
+    ({ byId } = parsePageTree(snippetSource));
+  } catch (e) {
+    return { ok: false, error: `Snippet does not parse: ${e.message}` };
+  }
+  const parent = byId.get(parentId);
+  if (!parent) return { ok: false, error: `No such node "${parentId}" — the snippet may have changed.` };
+  if (!parent.isFragment && parent.openingElementNode.selfClosing) {
+    return { ok: false, error: 'This element is self-closing (`<Tag />`) — convert it to an open/close pair before adding a child.' };
+  }
+  const closingLength = parent.isFragment ? 3 /* </> */ : parent.tag.length + 3; /* </Tag> */
+  const insertAt = parent.end - closingLength;
+  if (insertAt < parent.start) return { ok: false, error: 'Could not determine where to insert a new child.' };
+  const patched = snippetSource.slice(0, insertAt) + NEW_CHILD_SNIPPET + snippetSource.slice(insertAt);
+  try {
+    parseSource(patched);
+  } catch (e) {
+    return { ok: false, error: `Adding a child here would leave invalid JSX: ${e.message}` };
+  }
+  return { ok: true, snippet: patched };
+}
+
 function renderAttrValue(kind, value) {
   if (kind === 'boolean' && value === true) return '';
   if (kind === 'boolean') return `={${value ? 'true' : 'false'}}`;

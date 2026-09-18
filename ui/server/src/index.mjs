@@ -30,6 +30,9 @@ import {
   hashOf,
   parseSnippetToTree,
   rewireWireInSnippet,
+  removeNodeInSnippet,
+  moveNodeInSnippet,
+  addChildInSnippet,
 } from './pagesEditor.mjs';
 
 const app = express();
@@ -354,6 +357,43 @@ app.post('/api/pages/snippet-rewire', (req, res) => {
       return res.status(400).json({ ok: false, error: 'snippet, parentId, propName, fromChildId, and toChildId are required' });
     }
     res.json(rewireWireInSnippet(snippet, { parentId, propName, fromChildId, toChildId }));
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+// Ticket F.3 (#122, epic #119) — the visual composer's structural node
+// edits. Same contract as snippet-rewire above: the snippet's own current
+// text in, a rewritten snippet (or a rejection reason) out, never a disk
+// write here — the client hands the result to the existing save-back-to-
+// source + diff-preview flow itself.
+app.post('/api/pages/snippet-remove-node', (req, res) => {
+  try {
+    const { snippet, nodeId } = req.body || {};
+    if (typeof snippet !== 'string' || !nodeId) return res.status(400).json({ ok: false, error: 'snippet and nodeId are required' });
+    res.json(removeNodeInSnippet(snippet, nodeId));
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+app.post('/api/pages/snippet-move-node', (req, res) => {
+  try {
+    const { snippet, nodeId, direction } = req.body || {};
+    if (typeof snippet !== 'string' || !nodeId || !direction) {
+      return res.status(400).json({ ok: false, error: 'snippet, nodeId, and direction are required' });
+    }
+    res.json(moveNodeInSnippet(snippet, nodeId, direction));
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+app.post('/api/pages/snippet-add-child', (req, res) => {
+  try {
+    const { snippet, parentId } = req.body || {};
+    if (typeof snippet !== 'string' || !parentId) return res.status(400).json({ ok: false, error: 'snippet and parentId are required' });
+    res.json(addChildInSnippet(snippet, parentId));
   } catch (e) {
     handlePagesEditorError(res, e);
   }

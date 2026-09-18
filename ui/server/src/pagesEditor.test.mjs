@@ -22,6 +22,9 @@ import {
   parseSnippetToTree,
   removeAttributeSnippet,
   rewireWireInSnippet,
+  removeNodeInSnippet,
+  moveNodeInSnippet,
+  addChildInSnippet,
 } from './pagesEditor.mjs';
 
 const SOURCE = `import React from 'react';
@@ -372,4 +375,83 @@ test('rewireWireInSnippet rejects stale node ids without throwing (#121)', () =>
   const result = rewireWireInSnippet(WIRE_SNIPPET, { parentId: 'nX', propName: 'title', fromChildId: 'nY', toChildId: 'nZ' });
   assert.equal(result.ok, false);
   assert.ok(result.error.length > 0);
+});
+
+// Ticket F.3 (#122, epic #119) — removeNodeInSnippet/moveNodeInSnippet/
+// addChildInSnippet back the visual composer's structural node edits.
+const STRUCT_SNIPPET = '<main>\n  <Card />\n  <Aside />\n</main>';
+
+test('removeNodeInSnippet deletes a node and its surrounding blank line (#122)', () => {
+  const { byId } = parsePageTree(STRUCT_SNIPPET);
+  const cardId = [...byId.values()].find((n) => n.tag === 'Card').id;
+  const result = removeNodeInSnippet(STRUCT_SNIPPET, cardId);
+  assert.equal(result.ok, true);
+  assert.equal(result.snippet, '<main>\n  <Aside />\n</main>');
+});
+
+test('removeNodeInSnippet rejects removing the snippet\'s own root (#122)', () => {
+  const { byId } = parsePageTree(STRUCT_SNIPPET);
+  const mainId = [...byId.values()].find((n) => n.tag === 'main').id;
+  const result = removeNodeInSnippet(STRUCT_SNIPPET, mainId);
+  assert.equal(result.ok, false);
+  assert.match(result.error, /own root element/);
+});
+
+test('moveNodeInSnippet swaps a node with its next sibling ("down") (#122)', () => {
+  const { byId } = parsePageTree(STRUCT_SNIPPET);
+  const cardId = [...byId.values()].find((n) => n.tag === 'Card').id;
+  const result = moveNodeInSnippet(STRUCT_SNIPPET, cardId, 'down');
+  assert.equal(result.ok, true);
+  assert.equal(result.snippet, '<main>\n  <Aside />\n  <Card />\n</main>');
+});
+
+test('moveNodeInSnippet swaps a node with its previous sibling ("up") (#122)', () => {
+  const { byId } = parsePageTree(STRUCT_SNIPPET);
+  const asideId = [...byId.values()].find((n) => n.tag === 'Aside').id;
+  const result = moveNodeInSnippet(STRUCT_SNIPPET, asideId, 'up');
+  assert.equal(result.ok, true);
+  assert.equal(result.snippet, '<main>\n  <Aside />\n  <Card />\n</main>');
+});
+
+test('moveNodeInSnippet rejects moving past the first/last sibling position (#122)', () => {
+  const { byId } = parsePageTree(STRUCT_SNIPPET);
+  const cardId = [...byId.values()].find((n) => n.tag === 'Card').id;
+  const asideId = [...byId.values()].find((n) => n.tag === 'Aside').id;
+  assert.equal(moveNodeInSnippet(STRUCT_SNIPPET, cardId, 'up').ok, false);
+  assert.equal(moveNodeInSnippet(STRUCT_SNIPPET, asideId, 'down').ok, false);
+});
+
+test('moveNodeInSnippet rejects moving the snippet\'s own root (no siblings) (#122)', () => {
+  const { byId } = parsePageTree(STRUCT_SNIPPET);
+  const mainId = [...byId.values()].find((n) => n.tag === 'main').id;
+  const result = moveNodeInSnippet(STRUCT_SNIPPET, mainId, 'up');
+  assert.equal(result.ok, false);
+  assert.match(result.error, /no siblings/);
+});
+
+test('addChildInSnippet appends a fixed <div /> before the closing tag (#122)', () => {
+  const { byId } = parsePageTree(STRUCT_SNIPPET);
+  const mainId = [...byId.values()].find((n) => n.tag === 'main').id;
+  const result = addChildInSnippet(STRUCT_SNIPPET, mainId);
+  assert.equal(result.ok, true);
+  assert.equal(result.snippet, '<main>\n  <Card />\n  <Aside />\n<div /></main>');
+  const reparsed = parsePageTree(result.snippet);
+  assert.equal(reparsed.roots[0].children.length, 3);
+});
+
+test('addChildInSnippet works on a fragment root (#122)', () => {
+  const source = '<>\n  <Card />\n</>';
+  const { byId } = parsePageTree(source);
+  const fragId = [...byId.values()].find((n) => n.isFragment).id;
+  const result = addChildInSnippet(source, fragId);
+  assert.equal(result.ok, true);
+  assert.equal(result.snippet, '<>\n  <Card />\n<div /></>');
+});
+
+test('addChildInSnippet rejects a self-closing element (#122)', () => {
+  const { byId } = parsePageTree(STRUCT_SNIPPET);
+  const cardId = [...byId.values()].find((n) => n.tag === 'Card').id;
+  const result = addChildInSnippet(STRUCT_SNIPPET, cardId);
+  assert.equal(result.ok, false);
+  assert.match(result.error, /self-closing/);
 });
