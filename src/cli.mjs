@@ -382,12 +382,18 @@ function isYes(answer) {
  * the first route, so `construct import --route <path>` can still seed the
  * loop instead of asking for it as question one.
  *
- * A "route" is a real Next.js router route — a URL like `/v2/home` — or,
- * equivalently, the folder that owns its `page.tsx`. Either way, the actual
- * file list comes from tracing the real import graph (route-resolver.mjs),
- * never from "everything under a directory you point at": a URL route needs
- * to know where the app/ directory is, so that's asked for once, lazily,
- * and reused for every further route this session. */
+ * A "route" means something different per `config.project.framework`
+ * (resolveRoute in route-resolver.mjs is framework-ready — #66): for the
+ * default `nextjs`, a URL like `/v2/home` or, equivalently, the folder that
+ * owns its `page.tsx` — a URL route needs to know where the `app/`
+ * directory is, so that's asked for once, lazily, and reused for every
+ * further route this session. For `react-spa`, a URL like `/dashboard`
+ * (resolved through the project's centralized routes table) or an existing
+ * controller file path directly — no directory question at all, since the
+ * routes table is auto-located by convention from the project root. Either
+ * way, the actual file list comes from tracing the real import graph
+ * (route-resolver.mjs), never from "everything under a directory you point
+ * at". */
 export async function importRouteWizard(ask, seedRoute) {
   const featureName = (await ask('Destination feature (Construct feature name): ')).trim();
   if (!featureName) {
@@ -398,6 +404,7 @@ export async function importRouteWizard(ask, seedRoute) {
   const root = getRoot([]);
   const config = loadConfig(root);
   const featuresRoot = config.features?.root || 'features';
+  const framework = config.project?.framework || 'nextjs';
   const featureDir = path.join(root, featuresRoot, featureName);
   if (!fs.existsSync(featureDir)) {
     createFeature(root, featureName);
@@ -407,6 +414,18 @@ export async function importRouteWizard(ask, seedRoute) {
   function isExistingDir(p) {
     try {
       return fs.statSync(path.resolve(p)).isDirectory();
+    } catch {
+      return false;
+    }
+  }
+
+  // react-spa has no per-route entry file to point at directly the way a
+  // Next.js route folder does — the equivalent "already resolved, no
+  // further lookup needed" case is an existing *controller file* (mirrors
+  // resolveReactSpaRoute's own existing-file branch in route-resolver.mjs).
+  function isExistingFile(p) {
+    try {
+      return fs.statSync(path.resolve(p)).isFile();
     } catch {
       return false;
     }
@@ -431,7 +450,9 @@ export async function importRouteWizard(ask, seedRoute) {
   const routeArgs = seedRoute ? [seedRoute] : [];
   while (true) {
     const prompt = routeArgs.length === 0
-      ? 'Route to import (a URL like /v2/home, or a route folder path): '
+      ? (framework === 'react-spa'
+        ? 'Route to import (a URL like /dashboard, or a controller file path): '
+        : 'Route to import (a URL like /v2/home, or a route folder path): ')
       : `Another route to include (leave blank to finish — ${routeArgs.length} so far): `;
     const answer = (await ask(prompt)).trim();
     if (!answer) {
@@ -453,7 +474,16 @@ export async function importRouteWizard(ask, seedRoute) {
   const folders = [];
   try {
     for (const routeArg of routeArgs) {
-      const opts = isExistingDir(routeArg) ? {} : { appDir: await resolveAppDir() };
+      let opts;
+      if (framework === 'react-spa') {
+        // No app/-directory question for react-spa: resolveRoute already
+        // auto-locates the centralized routes table (src/App.tsx/.jsx) by
+        // convention from `root` (#66) — an existing controller file needs
+        // nothing further.
+        opts = isExistingFile(routeArg) ? { framework } : { framework, root, featuresRoot };
+      } else {
+        opts = isExistingDir(routeArg) ? {} : { appDir: await resolveAppDir() };
+      }
       const resolved = resolveRoute(routeArg, opts);
       folders.push(resolved.folder);
       for (const f of resolved.files) tracedFiles.set(f, true);
