@@ -277,6 +277,29 @@ test('architecture-valid-react-spa fixture classifies src/App.tsx as the route l
   assert.notEqual(classifyFile('src/App.tsx', CANONICAL_LAYERS), 'route');
 });
 
+// #82 — a second react-spa fixture with more than one route (the fixture
+// above only ever had /dashboard), proving the same zero-error bar holds
+// with several routes/features sharing one project, not just a single one.
+test('architecture-valid-react-spa-multi-route fixture produces zero error-severity violations', () => {
+  const root = path.join(REPO_ROOT, 'fixtures', 'architecture-valid-react-spa-multi-route');
+  const res = validateArchitecture(root);
+  const errors = res.violations.filter((v) => v.severity === 'error');
+  assert.deepEqual(errors, []);
+});
+
+test('architecture-valid-react-spa-multi-route fixture classifies each of its 3 routed controllers correctly', () => {
+  const root = path.join(REPO_ROOT, 'fixtures', 'architecture-valid-react-spa-multi-route');
+  const graph = loadLayerGraph(root);
+  assert.equal(classifyFile('src/App.tsx', graph), 'route');
+  for (const file of [
+    'features/dashboard/controllers/DashboardController.tsx',
+    'features/settings/controllers/SettingsController.tsx',
+    'features/user/controllers/UserController.tsx',
+  ]) {
+    assert.equal(classifyFile(file, graph), 'controller');
+  }
+});
+
 test('architecture-invalid fixture reports exactly the expected rule per manifest entry', () => {
   const dir = path.join(REPO_ROOT, 'fixtures', 'architecture-invalid');
   const manifest = JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8'));

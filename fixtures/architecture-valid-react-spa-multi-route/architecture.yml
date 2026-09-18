@@ -1,0 +1,9 @@
+version: 1
+preset: strict-nextjs
+
+project:
+  framework: react-spa
+  language: typescript
+
+features:
+  root: features
