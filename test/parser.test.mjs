@@ -56,15 +56,28 @@ test('extractExports handles generics on function and class declarations', () =>
   assert.deepEqual(names, ['identity', 'Box']);
 });
 
-test('extractExports finds the class name for a decorated export; jsdoc association is a known limitation', () => {
-  // Known limitation of regex-based parsing: a decorator sitting between a JSDoc block and
-  // the declaration it documents breaks "immediately preceding" association, because the
-  // decorator line (not whitespace) sits between the comment and `export`. A real AST parser
-  // (e.g. typescript-estree) would correctly attach the leading comment to the decorated node.
+test('extractExports finds the class name for a decorated export, and extractJsdoc correctly associates the JSDoc above the decorator (#19, fixed by AST parsing)', () => {
+  // Previously (regex-based parsing): a decorator sitting between a JSDoc block and the
+  // declaration it documents broke "immediately preceding" association, because the decorator
+  // line (not whitespace) sat between the comment and `export`. AST-based parsing (#88) walks
+  // back past leading decorators to find the real declaration boundary, so this now resolves
+  // correctly — the same way a human reading the code would associate the comment.
   const source = `/** A component. */\n@Component({ selector: 'app-foo' })\nexport class Foo {}\n`;
   const exported = extractExports(source);
   assert.deepEqual(exported.map((e) => e.name), ['Foo']);
+  assert.equal(extractJsdoc(source, exported[0].index), '/** A component. */');
+});
+
+test('extractJsdoc does not associate a JSDoc block across an intervening non-JSDoc comment', () => {
+  const source = `/** doc */\n// TODO: revisit\nexport function f() {}\n`;
+  const exported = extractExports(source);
   assert.equal(extractJsdoc(source, exported[0].index), null);
+});
+
+test('extractExports reports every binding from a multi-declarator/destructured export const', () => {
+  const source = `export const a = 1, { b, c: renamedC } = obj, [d, ...rest] = arr;\n`;
+  const names = extractExports(source).map((e) => e.name);
+  assert.deepEqual(names, ['a', 'b', 'renamedC', 'd', 'rest']);
 });
 
 test('parseFile handles JSX content without crashing and reports imports/exports', () => {
