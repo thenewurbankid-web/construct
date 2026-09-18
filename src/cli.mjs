@@ -19,6 +19,7 @@ import { runPipeline } from './engine/pipeline.mjs';
 import { validateEnvelope } from './engine/envelope.mjs';
 import { ingestPage } from './engine/pageTransformer.mjs';
 import { generateWorkflow } from './engine/workflowGenerator.mjs';
+import { generateController } from './engine/controllerBinder.mjs';
 
 // Resolve the project root freshly per command: walks up from cwd (or from
 // --dir, when given) to find an existing architecture.yml (monorepo
@@ -132,6 +133,34 @@ export async function generate(args) {
     }
     const { file, events } = generateWorkflow(root, name, args[fi + 1], descriptor);
     console.log(`Created ${path.relative(root, file)} (${events.length} event(s): ${events.join(', ') || 'none'})`);
+    return;
+  }
+  // Ticket 7.4 (#114): `construct create/generate controller <name> --feature <f>
+  // --bind [--envelope <path>]` auto-wires an already-generated hook (7.3) into an
+  // already-generated pristine page's Props interface (7.2) via AST signature matching,
+  // instead of scaffolding the usual same-named-page-only stub template. Opt-in via
+  // --bind so the existing unconditional stub (and `generate layer ... --layers ...
+  // controller`, which relies on it needing no prerequisite files) is unchanged.
+  const bindI = args.indexOf('--bind');
+  if (layer === 'controller' && bindI >= 0) {
+    const envelopeI = args.indexOf('--envelope');
+    let envelope;
+    if (envelopeI >= 0 && args[envelopeI + 1]) {
+      const envelopePath = path.isAbsolute(args[envelopeI + 1]) ? args[envelopeI + 1] : path.resolve(args[envelopeI + 1]);
+      if (!fs.existsSync(envelopePath)) {
+        throw new ConstructError(`Context Envelope not found: ${envelopePath}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+      }
+      try {
+        envelope = JSON.parse(fs.readFileSync(envelopePath, 'utf8'));
+      } catch (e) {
+        throw new ConstructError(`Malformed Context Envelope JSON at ${envelopePath}: ${e.message}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+      }
+    }
+    const { file, bindings } = generateController(root, name, args[fi + 1], { envelope });
+    console.log(`Created ${path.relative(root, file)}`);
+    for (const b of bindings) {
+      console.log(`  ${b.slot} -> ${b.handler ? `${b.handler} (${b.matchType})` : 'UNMATCHED (TODO stub written)'}`);
+    }
     return;
   }
   console.log(`Created ${path.relative(root, generateLayer(root, layer, name, args[fi + 1]))}`);

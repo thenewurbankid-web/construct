@@ -73,6 +73,11 @@ Commands:
     (compiles a JSON state-graph descriptor into a real XState v5 machine file
     instead of the usual stub template; 'construct create workflow ... --from <path>'
     is the equivalent under the create/refactor/research/import grouping)
+  construct generate controller <name> --feature <feature> --bind [--envelope <path>] [--dir <path>]
+    (auto-wires an already-generated hook into an already-generated pristine page's
+    Props interface via exact + fuzzy AST signature matching, instead of the usual
+    same-named-page-only stub template; 'construct create controller ... --bind' is
+    the equivalent under the create/refactor/research/import grouping)
   construct generate layer <name> --feature <feature> --layers <l1,l2,...> [--dir <path>]
   construct sync [--dir <path>]
   construct validate [--format json] [--dir <path>]

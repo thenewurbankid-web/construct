@@ -79,6 +79,12 @@ export const DEFAULT_RULES = {
   'COMPONENT-002': { severity: 'error', name: 'Components cannot import controllers' },
   'COMPONENT-003': { severity: 'error', name: 'Components cannot import workflows/services/domain' },
   'WORKFLOW-001': { severity: 'error', name: 'Workflows cannot import React/UI' },
+  // Ticket 7.4 (#114) -- genuinely new, per the epic's reconciliation notes (no existing
+  // rule covers this): a controller's whole job is composing/wiring already-generated
+  // layers together (import a page, import a hook, pass matched handlers down) -- never
+  // a raw fetch() call or its own conditional/loop business logic, both of which belong
+  // one layer down (service/hook/workflow/domain).
+  'CONTROLLER-001': { severity: 'error', name: 'Controllers must compose (import + wire only) — no business logic or raw fetch()' },
   'SERVICE-001': { severity: 'error', name: 'Services own external effects' },
   'SERVICE-002': { severity: 'error', name: 'Services cannot import React/UI' },
   'DOMAIN-001': { severity: 'error', name: 'Domain is pure' },

@@ -102,6 +102,19 @@ function collectBareIdentifierUsages(ast, names) {
   return hits.sort((a, b) => a.index - b.index);
 }
 
+// Ticket 7.4's CONTROLLER-001 deterministic proxy for "business logic": any of these
+// node types appearing anywhere in a controller file's AST.
+const CONTROL_FLOW_TYPES = new Set(['IfStatement', 'ForStatement', 'ForInStatement', 'ForOfStatement', 'WhileStatement', 'DoWhileStatement', 'SwitchStatement', 'TryStatement']);
+
+/** Every control-flow node (see CONTROL_FLOW_TYPES) anywhere in `ast`, sorted by position. */
+function collectControlFlowNodes(ast) {
+  const hits = [];
+  walkForUsage(ast, (node) => {
+    if (CONTROL_FLOW_TYPES.has(node.type)) hits.push(node);
+  });
+  return hits.sort((a, b) => a.range[0] - b.range[0]);
+}
+
 function globToRegExp(glob) {
   const escaped = glob.replaceAll('**', ' ').replaceAll('*', '[^/]*').replaceAll(' ', '.*');
   return new RegExp('^' + escaped + '$');
@@ -229,6 +242,27 @@ export function detectLayerViolations(layer, source) {
       message: 'Service imports React/UI.',
       why: 'Services own external effects, not rendering.',
       expected: ['api', 'domain', 'types'],
+    });
+  }
+
+  // Ticket 7.4 (#114) -- CONTROLLER-001: a controller composes/wires already-generated
+  // layers together and nothing else. Two independent, AST-based checks (same technique
+  // as every other rule above): a direct fetch() call (mirrors PAGE-004's detection), and
+  // any control-flow construct at all (if/for/while/do-while/switch/try) anywhere in the
+  // file, which is the deterministic proxy this codebase uses for "non-trivial business
+  // logic" -- a pure import+destructure+return-JSX composition never needs one.
+  if (layer === 'controller') {
+    const fetchCall = collectCalls(ast, new Set(['fetch']))[0];
+    if (fetchCall) out.push({
+      rule: 'CONTROLLER-001', line: lineOf(source, fetchCall.index), message: 'Controller calls fetch() directly.',
+      why: 'Controllers only compose and wire existing layers together — network calls belong in a service.',
+      expected: ['service'],
+    });
+    const controlFlow = collectControlFlowNodes(ast)[0];
+    if (controlFlow) out.push({
+      rule: 'CONTROLLER-001', line: lineOf(source, controlFlow.range[0]), message: 'Controller contains non-trivial business logic (control flow).',
+      why: 'Controllers only compose and wire existing layers together — conditional/loop/error-handling logic belongs in a hook, workflow, or domain function.',
+      expected: ['hook', 'workflow', 'domain'],
     });
   }
 
