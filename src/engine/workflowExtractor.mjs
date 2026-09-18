@@ -68,6 +68,29 @@ function guardLabel(node) {
   return '(inline guard)';
 }
 
+/** Action names of an `actions`/`entry`/`exit` value: string | {type} | fn | array of those. */
+function actionNames(node) {
+  if (!node) return [];
+  if (node.type === 'ArrayExpression') return node.elements.flatMap((e) => actionNames(e));
+  const s = strOf(node);
+  if (s !== undefined) return [s];
+  if (node.type === 'ObjectExpression') return [strOf(propsOf(node, 'action').get('type')) || '(action)'];
+  if (node.type === 'CallExpression' && node.callee.type === 'Identifier') return [node.callee.name];
+  if (node.type === 'Identifier') return [node.name];
+  return ['(inline action)'];
+}
+
+/** Service names of an `invoke` value (string `src`, identifier, or inline). */
+function invokeSources(node) {
+  if (!node) return [];
+  const list = node.type === 'ArrayExpression' ? node.elements : [node];
+  return list.map((i) => {
+    if (!i || i.type !== 'ObjectExpression') return '(inline service)';
+    const src = propsOf(i, 'invoke').get('src');
+    return strOf(src) || (src && src.type === 'Identifier' ? src.name : '(inline service)');
+  });
+}
+
 /** Resolve an XState target string against the source state's position.
  * Returns the full dotted path id, or null when it can't be resolved. */
 function resolveTarget(target, fromPath, allPaths, machineId, idIndex) {
@@ -103,8 +126,9 @@ function transitionsOf(value, what) {
       targets = [{ target: ts, targetNode: tNode }];
     }
     const guard = guardLabel(p.get('guard'));
-    if (!targets) return [{ guard }];
-    return targets.map((t) => ({ ...t, guard }));
+    const actions = actionNames(p.get('actions'));
+    if (!targets) return [{ guard, actions }];
+    return targets.map((t) => ({ ...t, guard, actions }));
   }
   throw new Unsupported(`${what} is not a string, object, or array literal`);
 }
@@ -122,6 +146,9 @@ function collectStates(statesNode, parentPath, out, machineId, idIndex) {
       parent: parentPath || null,
       type: strOf(p.get('type')) || (p.has('states') ? 'compound' : 'atomic'),
       initial: false,
+      entry: actionNames(p.get('entry')),
+      exit: actionNames(p.get('exit')),
+      invokes: invokeSources(p.get('invoke')),
       line: node.loc?.start.line,
       _node: p,
       _prop: states.propNodes.get(name),
@@ -167,6 +194,7 @@ function extractMachine(call, exportName, keep = false) {
           target: resolved,
           rawTarget: t.target,
           guard: t.guard,
+          actions: t.actions || [],
           editable: kind === 'on' && value.type !== 'ArrayExpression' && t.target !== undefined && !t.guard,
           targetless: t.target === undefined,
           unresolved: t.target !== undefined && resolved === null,
