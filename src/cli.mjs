@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { makeLineSource } from './line-source.mjs';
-import { createFeature, generateLayer, generateVertical } from './generators.mjs';
+import { createFeature, generateLayer, generateVertical, layerFromGeneratedFile, fillGeneratedFile } from './generators.mjs';
 import { write, ensureDir } from './fs.mjs';
 import { loadConfig, findProjectRoot, DEFAULT_RULES, normalizeFramework } from './config.mjs';
 import { formatReport, exitCodeForViolations, ConstructError, EXIT_CODES } from './diagnostics.mjs';
@@ -91,32 +91,59 @@ export async function feature(args) {
   console.log(`Created feature ${args[1]} at ${path.relative(root, p)}`);
 }
 
+// `--llm <provider>` (optional, mirrors `construct import`'s flag): when
+// given, calls that provider once per generated file to write a real
+// implementation in place of the template stub — scoped strictly to that
+// one file's own body (generators.mjs's fillGeneratedFile). Which
+// layers/files get created is decided the exact same deterministic way
+// either way; the flag only changes what ends up *inside* the file(s)
+// generate() was already going to create. Omitting --llm leaves the
+// scaffolded template stub exactly as before this existed.
 export async function generate(args) {
   if (args[0] === 'layer') return generateVerticalSlice(args);
   const layer = args[0], name = args[1], fi = args.indexOf('--feature');
   if (!layer || !name || fi < 0 || !args[fi + 1]) {
-    throw new ConstructError('Usage: construct generate <layer> <name> --feature <feature>', { exitCode: EXIT_CODES.USAGE_ERROR });
+    throw new ConstructError('Usage: construct generate <layer> <name> --feature <feature> [--llm <provider>]', { exitCode: EXIT_CODES.USAGE_ERROR });
   }
   const root = getRoot(args);
-  console.log(`Created ${path.relative(root, generateLayer(root, layer, name, args[fi + 1]))}`);
+  const feature = args[fi + 1];
+  const llmI = args.indexOf('--llm');
+  const llm = llmI >= 0 ? args[llmI + 1] : undefined;
+  const file = generateLayer(root, layer, name, feature);
+  if (llm) {
+    await fillGeneratedFile(root, file, layer, { feature, name, llm });
+    console.log(`Created + LLM-filled ${path.relative(root, file)}`);
+  } else {
+    console.log(`Created ${path.relative(root, file)}`);
+  }
 }
 
-// `construct generate layer <name> --feature <feature> --layers <l1,l2,...>`
-// scaffolds one logical unit across several layers in a single command,
-// always in dependency order (see generators.mjs's LAYER_ORDER) regardless of
-// the order --layers lists them in.
+// `construct generate layer <name> --feature <feature> --layers <l1,l2,...>
+// [--llm <provider>]` scaffolds one logical unit across several layers in a
+// single command, always in dependency order (see generators.mjs's
+// LAYER_ORDER) regardless of the order --layers lists them in. `--llm`
+// applies uniformly to every generated file in the unit, same as import's
+// per-file fill does across a whole plan.
 async function generateVerticalSlice(args) {
   const name = args[1], fi = args.indexOf('--feature'), li = args.indexOf('--layers');
   if (!name || fi < 0 || !args[fi + 1] || li < 0 || !args[li + 1]) {
     throw new ConstructError(
-      'Usage: construct generate layer <name> --feature <feature> --layers <layer1,layer2,...>',
+      'Usage: construct generate layer <name> --feature <feature> --layers <layer1,layer2,...> [--llm <provider>]',
       { exitCode: EXIT_CODES.USAGE_ERROR },
     );
   }
   const root = getRoot(args);
+  const feature = args[fi + 1];
   const layers = args[li + 1].split(',').map((l) => l.trim()).filter(Boolean);
-  for (const file of generateVertical(root, name, args[fi + 1], layers)) {
-    console.log(`Created ${path.relative(root, file)}`);
+  const llmI = args.indexOf('--llm');
+  const llm = llmI >= 0 ? args[llmI + 1] : undefined;
+  for (const file of generateVertical(root, name, feature, layers)) {
+    if (llm) {
+      await fillGeneratedFile(root, file, layerFromGeneratedFile(file), { feature, name, llm });
+      console.log(`Created + LLM-filled ${path.relative(root, file)}`);
+    } else {
+      console.log(`Created ${path.relative(root, file)}`);
+    }
   }
 }
 
@@ -202,12 +229,29 @@ export function printAttribution(tool, llm) {
   console.log(`[tool: ${tool}] [llm: ${llm}]`);
 }
 
-/** `construct create feature <name>` | `construct create layer <name> --layers ...`
- * | `construct create <layer> <name> --feature <feature>`. */
+/** `construct create feature <name>` | `construct create layer <name> --layers ... [--llm <provider>]`
+ * | `construct create <layer> <name> --feature <feature> [--llm <provider>]`.
+ * `feature` creation has nothing fillable (just types.ts/index.ts
+ * boilerplate) so `--llm` only ever applies to the layer/single-layer
+ * forms, which `generate(args)` itself already handles (see its own doc
+ * comment) — this just reports whether that happened. */
 export async function create(args) {
-  if (args[0] === 'feature') await feature(['create', ...args.slice(1)]);
-  else await generate(args);
-  printAttribution('scaffolded the file(s) above from templates', '0 calls — filling in the logic is a separate step, by you or whichever LLM you choose');
+  if (args[0] === 'feature') {
+    await feature(['create', ...args.slice(1)]);
+    printAttribution('scaffolded the file(s) above from templates', '0 calls — filling in the logic is a separate step, by you or whichever LLM you choose');
+    return;
+  }
+  await generate(args);
+  const llmI = args.indexOf('--llm');
+  const llm = llmI >= 0 ? args[llmI + 1] : undefined;
+  if (llm) {
+    printAttribution(
+      'scaffolded the file(s) above from templates',
+      `call(s) via "${llm}" to write the real implementation into each generated file — review it before trusting it`,
+    );
+  } else {
+    printAttribution('scaffolded the file(s) above from templates', '0 calls — filling in the logic is a separate step, by you or whichever LLM you choose');
+  }
 }
 
 /** `construct research summarize ...` | `construct research doctor ...`. */

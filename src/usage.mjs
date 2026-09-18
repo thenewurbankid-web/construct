@@ -18,8 +18,8 @@ Four capabilities, one CLI:
   construct import ...    scaffold layers for an existing, non-Construct file + a breadcrumb to it
 
   construct create feature <name> [--dir <path>]
-  construct create layer <name> --feature <feature> --layers <l1,l2,...> [--dir <path>]
-  construct create <layer> <name> --feature <feature> [--dir <path>]
+  construct create layer <name> --feature <feature> --layers <l1,l2,...> [--llm <provider>] [--dir <path>]
+  construct create <layer> <name> --feature <feature> [--llm <provider>] [--dir <path>]
   construct refactor move <name> --feature <feature> --from <layer> --to <layer> [--dir <path>]
   construct refactor rename <name> <newName> --feature <feature> --layer <layer> [--dir <path>]
   construct research summarize [--feature <name>] [--format json|md|compact|prose] [--since <ref>] [--dir <path>]
@@ -36,12 +36,21 @@ whole-feature form: given a plan ({ feature, units: [{ name, layers, from },
 ...] }) produced by whichever LLM analyzed the old feature and approved by
 you, it runs the same step once per unit, in one command.
 
-Pass --llm <provider> (currently: claude) to have import do the writing for
-you instead: it calls that provider once per generated file — never once for
-the whole batch — with that file's layer constraints and the old source, and
-writes the result directly. This is the only place construct ever calls an
-LLM, and only with this flag present; locating files and scaffolding stay
-deterministic regardless. Review LLM-written output before trusting it.
+Pass --llm <provider> (currently: claude, ollama) to have import do the
+writing for you instead: it calls that provider once per generated file —
+never once for the whole batch — with that file's layer constraints and the
+old source, and writes the result directly. Review LLM-written output
+before trusting it.
+
+'construct create'/'construct generate' accept the same --llm <provider>
+flag: when given, that provider writes a real implementation into each
+generated file in place of the plain template stub — one call per file,
+that file's layer constraints included, same as import's fill above. Which
+layers/files get created is still always decided deterministically; --llm
+only changes what ends up inside the file(s) that were already going to be
+created. Omit --llm and every generated file is the exact same plain
+template stub as before. Locating files, scaffolding, and deciding feature
+shape never involve an LLM either way.
 
 'construct import --route <path>' is the guided, whole-feature form. <path>
 is a real router route — a URL like /v2/home, or the folder that owns its
@@ -63,8 +72,8 @@ Each of the above has a flat equivalent (unchanged, still supported):
 Commands:
   construct init [dir] [--framework nextjs|react-spa]
   construct feature create <name> [--dir <path>]
-  construct generate <layer> <name> --feature <feature> [--dir <path>]
-  construct generate layer <name> --feature <feature> --layers <l1,l2,...> [--dir <path>]
+  construct generate <layer> <name> --feature <feature> [--llm <provider>] [--dir <path>]
+  construct generate layer <name> --feature <feature> --layers <l1,l2,...> [--llm <provider>] [--dir <path>]
   construct sync [--dir <path>]
   construct validate [--format json] [--dir <path>]
   construct summarize [--feature <name>] [--format json|md|compact|prose] [--since <ref>] [--dir <path>]

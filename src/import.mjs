@@ -8,37 +8,23 @@
 // separate LLM session to fill in later, same as before this existed.
 import fs from 'node:fs';
 import path from 'node:path';
-import { generateVertical } from './generators.mjs';
+import { generateVertical, LAYER_ORDER, LAYER_CONSTRAINTS, layerFromGeneratedFile } from './generators.mjs';
 import { walk } from './fs.mjs';
 import { callLlm, stripCodeFence } from './llm.mjs';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 
-const FOLDER_TO_LAYER = {
-  controllers: 'controller', workflows: 'workflow', hooks: 'hook',
-  domain: 'domain', services: 'service', pages: 'page', components: 'component',
-};
-
-const KNOWN_LAYERS = new Set(Object.values(FOLDER_TO_LAYER));
+// LAYER_CONSTRAINTS and layerFromGeneratedFile now live in generators.mjs
+// (#101) — shared, single-source-of-truth versions, since generators.mjs's
+// own create/generate fill (fillGeneratedFile) needs exactly the same
+// layer-constraint text import's fill has always used. Behavior here is
+// unchanged; only where these two live moved.
+const KNOWN_LAYERS = new Set(LAYER_ORDER);
 const CODE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx']);
 // Test files carry no portable business logic and just waste analysis
 // context (or worse, tempt the LLM into proposing a unit "from" a test) —
 // a real route directory routinely has them sitting right next to the
 // source they cover (e.g. useCpoGate.ts + useCpoGate.test.ts).
 const TEST_FILE_RE = /\.(test|spec)\.[^./]+$/;
-
-const LAYER_CONSTRAINTS = {
-  domain: 'Pure function(s) only. Never write the words fetch, window, document, localStorage, sessionStorage, or navigator anywhere in the file, even in a comment. No React import.',
-  service: 'Owns an external effect on behalf of the feature. Never import React or any react-related package.',
-  workflow: 'A state machine (e.g. via xstate\'s setup/createMachine). Never import "react" or any package path containing "react/".',
-  hook: 'A React hook — the exported function name must start with "use". May import anything.',
-  component: 'Presentation-only, from props. Never write the substring "controllers/", "workflows/", "services/", or "domain/" anywhere in the file, even in a comment.',
-  page: 'Presentation composition from props only. Never write "workflows/", "services/", or "domain/" anywhere in the file (even in a comment), never call fetch(), never use useMachine/useActor/createMachine.',
-  controller: 'Composes hooks/domain/pages for a route. No import restrictions.',
-};
-
-function layerFromGeneratedFile(file) {
-  return FOLDER_TO_LAYER[path.basename(path.dirname(file))] || 'component';
-}
 
 function breadcrumb(fromAbsPath, intoAbsPath) {
   const relPath = path.relative(path.dirname(intoAbsPath), fromAbsPath).split(path.sep).join('/');
