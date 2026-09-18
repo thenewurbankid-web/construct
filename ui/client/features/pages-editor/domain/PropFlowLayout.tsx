@@ -1,7 +1,7 @@
 import type { PagesEditorNode } from '../types';
 import { findRenameLinks, buildRenameUnionFind } from './PropFlowRename';
 import { layoutPillHierarchy } from './PropFlowGeometry';
-import type { NodeLayout, PillPosition } from './PropFlowGeometry';
+import type { NodeLayout, PillPosition, GeometryOptions } from './PropFlowGeometry';
 
 // Pill height in px — must match PropFlowGeometry's own (unexported) copy,
 // used there for row-y placement and here for edge endpoint offsets. Kept
@@ -42,12 +42,15 @@ export type PillEdge = { x1: number; y1: number; x2: number; y2: number; color: 
  * (#77) one same-node connector edge per traced rename link, and colors
  * that group renamed pill names together instead of purely by literal
  * name. */
-export function buildPillFlow(roots: PagesEditorNode[]): {
+export function buildPillFlow(
+  roots: PagesEditorNode[],
+  options: GeometryOptions = {},
+): {
   layouts: Map<string, NodeLayout>;
   edges: PillEdge[];
   colorMap: Map<string, string>;
 } {
-  const layouts = layoutPillHierarchy(roots);
+  const layouts = layoutPillHierarchy(roots, options);
   const colorMap = new Map<string, string>();
   const edges: PillEdge[] = [];
 

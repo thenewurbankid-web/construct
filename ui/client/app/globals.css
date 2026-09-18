@@ -637,6 +637,10 @@ button:disabled {
   padding: 16px;
 }
 
+.propflow-show-values {
+  margin-top: 10px;
+}
+
 .propflow-legend {
   display: flex;
   flex-wrap: wrap;

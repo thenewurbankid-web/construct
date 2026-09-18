@@ -1,4 +1,4 @@
-import type { PagesEditorNode } from '../types';
+import type { PagesEditorNode, PropData } from '../types';
 
 // Pure (DOMAIN-001) — the prop-flow diagram's pill/hierarchy geometry math,
 // split out of PropFlowLayout.tsx (READ-002, ≤200 lines/file). Every node
@@ -8,6 +8,17 @@ import type { PagesEditorNode } from '../types';
 // reserves its own *received* pill row (its own named props, one level
 // below whichever node's outgoing row produced them) — see PropFlowLayout
 // for how those rows get connected into edges/colors.
+//
+// #77 follow-up to #75: pill width used to be a fixed `name.length *
+// CHAR_W` heuristic. Real text measurement (canvas `measureText`) is a DOM
+// API and domain code must stay pure, so callers may pass a `measureText`
+// function measuring a label's *raw* text width in px (this module still
+// owns padding/minimums on top of that) — the hook layer supplies a real
+// canvas-backed one; omitting it keeps this same character-count estimate
+// for non-browser callers (tests, SSR). Received pills can also show their
+// current value (`name: value`) instead of just `name` when `showValues`
+// is on — outgoing pills stay name-only since an outgoing pill is a union
+// of possibly-different values across multiple children, not one value.
 
 const LEVEL_H = 112;
 const GROUP_GAP = 26;
@@ -27,6 +38,14 @@ const PAD_Y = 20;
 const ROW_Y = { label: 0, received: 24, outgoing: 50 };
 const PILL_H = 22;
 
+/** Raw text width in px for `label` (no padding/minimum — those are this
+ * module's own concern, applied on top in pillWidth). */
+export type MeasureText = (label: string) => number;
+
+const heuristicMeasure: MeasureText = (label) => label.length * CHAR_W;
+
+export type GeometryOptions = { measureText?: MeasureText; showValues?: boolean };
+
 export function namedProps(node: PagesEditorNode): string[] {
   return node.props.filter((p) => p.kind !== 'spread').map((p) => p.name);
 }
@@ -35,25 +54,44 @@ function dedupe(names: string[]): string[] {
   return [...new Set(names)];
 }
 
-function pillWidth(name: string): number {
-  return Math.max(MIN_PILL_W, Math.round(name.length * CHAR_W) + PILL_PAD);
+function valueText(p: PropData): string {
+  if (p.kind === 'spread') return `...${String(p.value)}`;
+  return String(p.value);
 }
 
-function rowWidth(names: string[]): number {
-  if (names.length === 0) return 0;
-  return names.reduce((sum, n) => sum + pillWidth(n), 0) + PILL_GAP * (names.length - 1);
+/** Display text for one of `node`'s own received pills: just the name, or
+ * (showValues) `name: <its current value>` when that prop is still found
+ * on the node (it always is here — this only ever runs on a node's own
+ * received names). */
+function receivedLabel(node: PagesEditorNode, name: string, showValues: boolean): string {
+  if (!showValues) return name;
+  const prop = node.props.find((p) => p.kind !== 'spread' && p.name === name);
+  return prop ? `${name}: ${valueText(prop)}` : name;
+}
+
+type PillEntry = { name: string; label: string };
+
+function pillWidth(entry: PillEntry, measureText: MeasureText): number {
+  return Math.max(MIN_PILL_W, Math.round(measureText(entry.label)) + PILL_PAD);
+}
+
+function rowWidth(entries: PillEntry[], measureText: MeasureText): number {
+  if (entries.length === 0) return 0;
+  return entries.reduce((sum, e) => sum + pillWidth(e, measureText), 0) + PILL_GAP * (entries.length - 1);
 }
 
 function outgoingNames(node: PagesEditorNode): string[] {
   return dedupe(node.children.flatMap(namedProps));
 }
 
-function groupWidth(node: PagesEditorNode): number {
+function groupWidth(node: PagesEditorNode, measureText: MeasureText, showValues: boolean): number {
   const label = (node.isFragment ? '<>' : node.tag).length * CHAR_W + PILL_PAD;
-  return Math.max(label, rowWidth(dedupe(namedProps(node))), rowWidth(outgoingNames(node)), MIN_GROUP_W);
+  const receivedEntries = dedupe(namedProps(node)).map((n) => ({ name: n, label: receivedLabel(node, n, showValues) }));
+  const outgoingEntries = outgoingNames(node).map((n) => ({ name: n, label: n }));
+  return Math.max(label, rowWidth(receivedEntries, measureText), rowWidth(outgoingEntries, measureText), MIN_GROUP_W);
 }
 
-export type PillPosition = { name: string; x: number; y: number };
+export type PillPosition = { name: string; label: string; x: number; y: number };
 
 export type NodeLayout = {
   node: PagesEditorNode;
@@ -65,13 +103,13 @@ export type NodeLayout = {
   outgoing: PillPosition[]; // union of names its direct children receive (may be empty)
 };
 
-function layoutRow(names: string[], centerX: number, y: number): PillPosition[] {
-  const w = rowWidth(names);
+function layoutRow(entries: PillEntry[], centerX: number, y: number, measureText: MeasureText): PillPosition[] {
+  const w = rowWidth(entries, measureText);
   let x = centerX - w / 2;
   const result: PillPosition[] = [];
-  for (const name of names) {
-    const pw = pillWidth(name);
-    result.push({ name, x: x + pw / 2, y });
+  for (const entry of entries) {
+    const pw = pillWidth(entry, measureText);
+    result.push({ name: entry.name, label: entry.label, x: x + pw / 2, y });
     x += pw + PILL_GAP;
   }
   return result;
@@ -88,10 +126,10 @@ function layoutRow(names: string[], centerX: number, y: number): PillPosition[] 
  * reserved widths summed, whichever is bigger); top-down, place each node
  * centered within its reserved span, and center its children as a block
  * within that same span. */
-function subtreeWidths(roots: PagesEditorNode[]): Map<string, number> {
+function subtreeWidths(roots: PagesEditorNode[], measureText: MeasureText, showValues: boolean): Map<string, number> {
   const widths = new Map<string, number>();
   const compute = (node: PagesEditorNode): number => {
-    const own = groupWidth(node);
+    const own = groupWidth(node, measureText, showValues);
     const childrenWidth =
       node.children.length === 0
         ? 0
@@ -109,21 +147,25 @@ function subtreeWidths(roots: PagesEditorNode[]): Map<string, number> {
  * level of depth apart — each slot's reserved width comes from
  * subtreeWidths above, its actual pill content from groupWidth, instead of
  * #55's fixed node-box size. */
-export function layoutPillHierarchy(roots: PagesEditorNode[]): Map<string, NodeLayout> {
-  const widths = subtreeWidths(roots);
+export function layoutPillHierarchy(roots: PagesEditorNode[], options: GeometryOptions = {}): Map<string, NodeLayout> {
+  const measureText = options.measureText ?? heuristicMeasure;
+  const showValues = options.showValues ?? false;
+  const widths = subtreeWidths(roots, measureText, showValues);
   const layouts = new Map<string, NodeLayout>();
   const place = (node: PagesEditorNode, startX: number, depth: number): void => {
     const totalW = widths.get(node.id)!;
     const centerX = startX + totalW / 2;
     const y = depth * LEVEL_H + PAD_Y;
+    const receivedEntries = dedupe(namedProps(node)).map((n) => ({ name: n, label: receivedLabel(node, n, showValues) }));
+    const outgoingEntries = outgoingNames(node).map((n) => ({ name: n, label: n }));
     layouts.set(node.id, {
       node,
       x: centerX,
       y,
-      width: groupWidth(node),
+      width: groupWidth(node, measureText, showValues),
       label: node.isFragment ? '<>' : node.tag,
-      received: layoutRow(dedupe(namedProps(node)), centerX, y + ROW_Y.received),
-      outgoing: layoutRow(outgoingNames(node), centerX, y + ROW_Y.outgoing),
+      received: layoutRow(receivedEntries, centerX, y + ROW_Y.received, measureText),
+      outgoing: layoutRow(outgoingEntries, centerX, y + ROW_Y.outgoing, measureText),
     });
     if (node.children.length === 0) return;
     const childrenTotal =
