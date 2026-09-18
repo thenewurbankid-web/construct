@@ -207,3 +207,25 @@ snapshot that rots. See #35 for the audit that established this.
     This applies to every ticket, not just UI ones — a `src/`-only CLI
     change still needs its usage/API/exceptions/next-steps stated, same
     as a UI one needs its screenshot.
+
+## Demos module (Module 8) — on-demand feature documentation (standing instruction)
+
+See #125 for the epic. A recurring workflow, not a one-time backlog sweep:
+when asked to create a demo ticket for a feature, file it as `[Demo]
+<Feature name>` referencing #125, and fill it with:
+
+1. **Current capability** — what the feature actually does today, verified
+   against real current code/behavior, not copied from the original
+   issue's (possibly since-drifted) description.
+2. **User manual** — step-by-step usage for every surface the feature has:
+   exact CLI command/flags/example output where applicable, and the real
+   UI navigation path + workflow where applicable.
+3. **Screenshots** — real, Playwright-driven, never mockups or
+   descriptions. A dedicated spec under `ui/e2e/tests/demos/` (separate
+   from the regression e2e suite) walks the feature end-to-end, actually
+   run, screenshots committed to `ui-screenshots` under
+   `ui/e2e/screenshots/demos/` and embedded inline (same mechanism as
+   rule 11). CLI-only features use a real terminal transcript instead.
+
+Only create demo tickets when asked — don't proactively file one per
+feature. Standard issue discipline (rules 1-2, 12 above) still applies.
