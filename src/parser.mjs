@@ -11,9 +11,10 @@
 // cyclomatic complexity — that was never in scope for the AST migration.
 import fs from 'node:fs';
 import path from 'node:path';
-import yaml from 'js-yaml';
 import { parse } from '@typescript-eslint/typescript-estree';
+import { walk as walkAst } from 'estree-walker';
 import { walk, rel } from './fs.mjs';
+import { loadConfig } from './config.mjs';
 
 // Single-slot memoized parse: parseFile and the readability enforcer's
 // checkFeatureJsdoc both call extractImports/extractExports/extractJsdoc
@@ -81,57 +82,24 @@ function collectPatternNames(node, out) {
   }
 }
 
-/** Depth-first walk collecting every `import('...')` dynamic-import
- * expression (ImportExpression nodes) reachable anywhere in the tree —
- * unlike static ImportDeclarations, these aren't confined to the top level
- * of Program.body. Only literal string sources are collected (an
- * expression source, e.g. `import(path)`, isn't a specifier and was never
- * matched by the old regex either). */
-function collectDynamicImports(node, out) {
-  if (!node || typeof node !== 'object') return;
-  if (Array.isArray(node)) {
-    for (const n of node) collectDynamicImports(n, out);
-    return;
-  }
-  if (typeof node.type !== 'string') return;
-  if (node.type === 'ImportExpression' && node.source?.type === 'Literal' && typeof node.source.value === 'string') {
-    out.push({ index: node.range[0], value: node.source.value });
-  }
-  for (const key of Object.keys(node)) {
-    if (key === 'parent' || key === 'range' || key === 'loc') continue;
-    const value = node[key];
-    if (value && typeof value === 'object') collectDynamicImports(value, out);
-  }
+/** Walk collecting every `import('...')` dynamic-import expression
+ * (ImportExpression nodes) reachable anywhere in the tree — unlike static
+ * ImportDeclarations, these aren't confined to the top level of
+ * Program.body. Only literal string sources are collected (an expression
+ * source, e.g. `import(path)`, isn't a specifier and was never matched by
+ * the old regex either). Uses estree-walker (a well-established generic
+ * ESTree traversal library) rather than a hand-rolled recursive walk. */
+function collectDynamicImports(ast, out) {
+  walkAst(ast, {
+    enter(node) {
+      if (node.type === 'ImportExpression' && node.source?.type === 'Literal' && typeof node.source.value === 'string') {
+        out.push({ index: node.range[0], value: node.source.value });
+      }
+    },
+  });
 }
 
 export const EXT = new Set(['.ts', '.tsx', '.js', '.jsx']);
-
-function readArchitectureYaml(root) {
-  const file = path.join(root, 'architecture.yml');
-  if (!fs.existsSync(file)) return {};
-  try {
-    const parsed = yaml.load(fs.readFileSync(file, 'utf8'));
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-
-/** Minimal, permissive read of the parts of architecture.yml this module needs (feature
- * root, exceptions, raw rule overrides/thresholds). Deliberately does NOT use src/config.mjs's
- * loadConfig(): that loader validates `rules` against its own DEFAULT_RULES table and throws
- * on unknown ids — which would reject READ-* keys until another module merges
- * READABILITY_RULES (see src/readability-enforcer.mjs) into config.mjs's table. This reader
- * is intentionally permissive (best-effort, never throws) and only used for the few fields
- * this module and the readability enforcer need. */
-export function projectSettings(root) {
-  const raw = readArchitectureYaml(root);
-  return {
-    featureRoot: raw.features?.root || 'features',
-    exceptions: raw.exceptions || [],
-    rules: raw.rules || {},
-  };
-}
 
 /** Classify a root-relative path into an architecture layer, or null if unclassified.
  * Mirrors the path-pattern approach in src/validator.mjs's layerOf() (reimplemented
@@ -264,8 +232,8 @@ export function parseFile(root, filePath) {
 /** Aggregate parseFile over every file in `<featureRoot>/<featureName>/`.
  * publicApi is derived from index.ts's exports (empty array if there is no index.ts). */
 export function summarizeFeature(root, featureName) {
-  const { featureRoot } = projectSettings(root);
-  const dir = path.join(root, featureRoot, featureName);
+  const { features } = loadConfig(root);
+  const dir = path.join(root, features.root, featureName);
   const files = walk(dir).filter((p) => EXT.has(path.extname(p)));
   const summaries = files.map((f) => parseFile(root, f));
   const layers = {};
@@ -273,7 +241,7 @@ export function summarizeFeature(root, featureName) {
     const key = s.layer || 'unclassified';
     (layers[key] ||= []).push(s);
   }
-  const indexRel = `${featureRoot}/${featureName}/index.ts`;
+  const indexRel = `${features.root}/${featureName}/index.ts`;
   const indexSummary = summaries.find((s) => s.path === indexRel);
   const publicApi = indexSummary ? indexSummary.exports : [];
   const loc = summaries.reduce((sum, s) => sum + s.loc, 0);

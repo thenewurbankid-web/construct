@@ -10,6 +10,7 @@
 // first pass.
 import fs from 'node:fs';
 import path from 'node:path';
+import { walk as walkAst } from 'estree-walker';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { walk } from './fs.mjs';
 import { parseToAst } from './parser.mjs';
@@ -259,25 +260,6 @@ export function findReactSpaRoutesFile(root) {
   );
 }
 
-/** Depth-first walk over every node reachable from `node` (including arrays),
- * calling `visit` on each — used to find JSXElements anywhere in the tree
- * (inside a function body, a conditional, wherever), not just at a fixed
- * shape/depth. */
-function walkTree(node, visit) {
-  if (!node || typeof node !== 'object') return;
-  if (Array.isArray(node)) {
-    for (const n of node) walkTree(n, visit);
-    return;
-  }
-  if (typeof node.type !== 'string') return;
-  visit(node);
-  for (const key of Object.keys(node)) {
-    if (key === 'parent' || key === 'range' || key === 'loc') continue;
-    const value = node[key];
-    if (value && typeof value === 'object') walkTree(value, visit);
-  }
-}
-
 /** The tag name of a JSXElement's opening tag (e.g. `X` for `<X .../>`), or
  * null for anything other than a plain identifier tag (a member-expression
  * tag like `<Foo.Bar/>` isn't a route/component reference this resolves). */
@@ -294,23 +276,26 @@ function jsxTagName(jsxElement) {
  * with a plain identifier tag, is skipped (same "a reasonable first pass"
  * philosophy as the rest of this module — just backed by a real parser now,
  * so it's not fooled by nested braces/quotes/comments the way the old
- * regex-per-attribute approach could be). */
+ * regex-per-attribute approach could be). Traversal is via estree-walker (a
+ * well-established generic ESTree traversal library), not a hand-rolled recursive walk. */
 export function parseReactSpaRoutes(source) {
   const ast = parseToAst(source);
   const routes = [];
-  walkTree(ast, (node) => {
-    if (node.type !== 'JSXElement' || jsxTagName(node) !== 'Route') return;
-    let routePath;
-    let component;
-    for (const attr of node.openingElement.attributes || []) {
-      if (attr.type !== 'JSXAttribute' || attr.name?.type !== 'JSXIdentifier') continue;
-      if (attr.name.name === 'path' && attr.value?.type === 'Literal' && typeof attr.value.value === 'string') {
-        routePath = attr.value.value;
-      } else if (attr.name.name === 'element' && attr.value?.type === 'JSXExpressionContainer') {
-        component = jsxTagName(attr.value.expression);
+  walkAst(ast, {
+    enter(node) {
+      if (node.type !== 'JSXElement' || jsxTagName(node) !== 'Route') return;
+      let routePath;
+      let component;
+      for (const attr of node.openingElement.attributes || []) {
+        if (attr.type !== 'JSXAttribute' || attr.name?.type !== 'JSXIdentifier') continue;
+        if (attr.name.name === 'path' && attr.value?.type === 'Literal' && typeof attr.value.value === 'string') {
+          routePath = attr.value.value;
+        } else if (attr.name.name === 'element' && attr.value?.type === 'JSXExpressionContainer') {
+          component = jsxTagName(attr.value.expression);
+        }
       }
-    }
-    if (routePath && component) routes.push({ path: routePath, component });
+      if (routePath && component) routes.push({ path: routePath, component });
+    },
   });
   return routes;
 }

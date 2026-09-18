@@ -16,6 +16,7 @@
 // (#74's false-positive class).
 import fs from 'node:fs';
 import path from 'node:path';
+import { walk as walkAst } from 'estree-walker';
 import { loadConfig } from './config.mjs';
 import { loadLayerGraph, canImport } from './architecture-graph.mjs';
 import { makeViolation, ConstructError, EXIT_CODES } from './diagnostics.mjs';
@@ -47,36 +48,34 @@ function staticImportEntries(ast) {
   return entries;
 }
 
-// Node types/keys that don't represent a real "usage" of an identifier, so the AST
-// walk below skips descending into them: an import statement's bindings (a name
+// Node types/keys that don't represent a real "usage" of an identifier, so the walk
+// below (via estree-walker, a well-established generic ESTree traversal library — not
+// a hand-rolled recursive walk) skips into them: an import statement's bindings (a name
 // merely being imported isn't a use of it), a re-export's specifier list, and a
 // non-computed member/object/class-key name (`x.fetch` or `{ fetch: 1 }` isn't a
 // reference to the global `fetch`).
 const KEY_ONLY_TYPES = new Set(['Property', 'PropertyDefinition', 'MethodDefinition', 'TSPropertySignature', 'TSMethodSignature', 'TSAbstractMethodDefinition', 'TSAbstractPropertyDefinition']);
 
-function shouldSkipKey(node, key) {
-  if (node.type === 'ImportDeclaration') return true;
-  if (node.type === 'ExportAllDeclaration') return true;
-  if (node.type === 'ExportNamedDeclaration' && (key === 'specifiers' || key === 'source')) return true;
-  if (node.type === 'MemberExpression' && key === 'property' && !node.computed) return true;
-  if (KEY_ONLY_TYPES.has(node.type) && key === 'key' && !node.computed) return true;
+function isNonUsagePosition(node, parent, key) {
+  if (node.type === 'ImportDeclaration' || node.type === 'ExportAllDeclaration') return true;
+  if (parent?.type === 'ExportNamedDeclaration' && (key === 'specifiers' || key === 'source')) return true;
+  if (parent?.type === 'MemberExpression' && key === 'property' && !parent.computed) return true;
+  if (parent && KEY_ONLY_TYPES.has(parent.type) && key === 'key' && !parent.computed) return true;
   return false;
 }
 
-function walkForUsage(node, visit) {
-  if (!node || typeof node !== 'object') return;
-  if (Array.isArray(node)) {
-    for (const n of node) walkForUsage(n, visit);
-    return;
-  }
-  if (typeof node.type !== 'string') return;
-  visit(node);
-  for (const key of Object.keys(node)) {
-    if (key === 'parent' || key === 'range' || key === 'loc') continue;
-    if (shouldSkipKey(node, key)) continue;
-    const value = node[key];
-    if (value && typeof value === 'object') walkForUsage(value, visit);
-  }
+/** Shared estree-walker traversal for both collectors below: skips whole subtrees at
+ * non-usage positions (see isNonUsagePosition), visits everything else. */
+function walkForUsage(ast, visit) {
+  walkAst(ast, {
+    enter(node, parent, key) {
+      if (isNonUsagePosition(node, parent, key)) {
+        this.skip();
+        return;
+      }
+      visit(node);
+    },
+  });
 }
 
 /** Every real `name(...)` call (callee is a bare identifier in `names`), sorted by position. */
@@ -91,7 +90,7 @@ function collectCalls(ast, names) {
 }
 
 /** Every real reference to a bare identifier in `names` — called or not — sorted by
- * position; skips property/key positions per shouldSkipKey, so `{ fetch: 1 }` or
+ * position; skips property/key positions per isNonUsagePosition, so `{ fetch: 1 }` or
  * `obj.fetch` don't count, but `fetch(...)`, `window.x`, or a bare `localStorage` do. */
 function collectBareIdentifierUsages(ast, names) {
   const hits = [];

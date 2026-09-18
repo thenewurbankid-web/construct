@@ -92,6 +92,12 @@ export const DEFAULT_RULES = {
   'READ-001': { severity: 'error', name: 'Components/controllers are PascalCase; hooks are use-prefixed camelCase' },
   'READ-002': { severity: 'error', name: 'Files and functions stay under their length threshold' },
   'READ-003': { severity: 'warning', name: 'Public API exports document intent with JSDoc' },
+  // Not a rule with a severity — a numeric threshold override consumed directly by
+  // readability-enforcer.mjs (via readRawRules, not this merged/validated map).
+  // Registered here (numeric: true) purely so normalizeRules doesn't reject the key as
+  // unknown or demand a severity-string/options-object shape for it (see normalizeRules
+  // below, and readRawRules' doc comment for why the actual value bypasses validation).
+  'READ-002-max-loc': { name: "Override for READ-002's max-lines-per-file threshold", numeric: true },
   'IMPORT-001': { severity: 'error', name: 'Relative imports must resolve to a file that exists' },
   'EXCEPTION-EXPIRED': { severity: 'warning', name: 'Time-boxed exceptions must be renewed or removed once they expire' },
 };
@@ -150,12 +156,23 @@ export function normalizeRules(userRules, defaults = DEFAULT_RULES) {
     }
     const base = defaults[ruleId];
     let entry;
+    // A `numeric: true` default (e.g. 'READ-002-max-loc') is a threshold override, not a
+    // severity-bearing rule — a bare number is its valid shape, and it's exempt from the
+    // severity-string/options-object/VALID_SEVERITIES checks below entirely.
+    if (base.numeric && typeof value === 'number') {
+      merged[ruleId] = { ...base, value };
+      continue;
+    }
     if (typeof value === 'string') {
       entry = { ...base, severity: value };
     } else if (value && typeof value === 'object' && !Array.isArray(value)) {
       entry = { ...base, ...value };
     } else {
-      throw usageError(`Invalid configuration for rule '${ruleId}' in architecture.yml — expected a severity string or an options object.`);
+      throw usageError(
+        base.numeric
+          ? `Invalid configuration for '${ruleId}' in architecture.yml — expected a number.`
+          : `Invalid configuration for rule '${ruleId}' in architecture.yml — expected a severity string or an options object.`,
+      );
     }
     if (!VALID_SEVERITIES.has(entry.severity)) {
       throw usageError(
@@ -180,6 +197,25 @@ export function findProjectRoot(startDir) {
     const parent = path.dirname(dir);
     if (parent === dir) return null;
     dir = parent;
+  }
+}
+
+/** Read the raw, unvalidated `rules` map from architecture.yml (or `{}` if the file is
+ * missing or malformed) — for a caller that needs an ad-hoc threshold value under a key
+ * that isn't a normalized rule id in DEFAULT_RULES (e.g. readability-enforcer.mjs's
+ * `READ-002-max-loc: <number>` override), without going through normalizeRules' strict
+ * id/severity-shape validation (which only accepts a severity string or an options
+ * object per key — not a bare number). Everything that *is* a real rule id should go
+ * through loadConfig()/normalizeRules instead; this exists specifically so that escape
+ * hatch doesn't force every non-rule config knob through the same strict shape. */
+export function readRawRules(root) {
+  const file = path.join(root, 'architecture.yml');
+  if (!fs.existsSync(file)) return {};
+  try {
+    const c = yaml.load(fs.readFileSync(file, 'utf8'));
+    return c && typeof c === 'object' && !Array.isArray(c) ? (c.rules || {}) : {};
+  } catch {
+    return {};
   }
 }
 
