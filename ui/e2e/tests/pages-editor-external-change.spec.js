@@ -53,9 +53,15 @@ test.describe('Pages Editor: last external change as a diff (#224)', () => {
     // Simulate an agent editing the file behind the editor's back.
     fs.writeFileSync(pagePath, AFTER);
 
+    // The notice + diff live in the shell's Diff tab (#247); its badge flags the change.
+    const diffTab = page.getByRole('tab', { name: /^Diff/ });
+    await expect(diffTab.locator('.sh-badge')).toBeVisible({ timeout: 10_000 });
+    await diffTab.click();
     const notice = page.locator('.external-change-notice');
     await expect(notice).toBeVisible({ timeout: 10_000 });
     await expect(notice).toContainText('HomePage.tsx changed outside the editor');
+    // The Diff tab can open on the scaffold -> fixture change first; wait for the poll to show the agent's edit.
+    await expect(notice).toContainText('Edited by an agent', { timeout: 10_000 });
     await expect(notice.locator('.diff-view-removed')).toContainText('<h1>{title}</h1>');
     await expect(notice.locator('.diff-view-added').first()).toContainText('className="hero"');
     await expect(notice.locator('.diff-view-added').nth(1)).toContainText('Edited by an agent');
