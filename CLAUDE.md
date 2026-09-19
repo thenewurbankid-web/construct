@@ -167,6 +167,13 @@ snapshot that rots. See #35 for the audit that established this.
       before every push, and to stop and report rather than force-resolve
       if a real conflict shows up — that's a moment for a human/you
       decision, not a silent auto-merge.
+    - **Respect the machine (15 GB, no swap; OOM kills end sessions).** At
+      most **two** agents run heavy work at once; wrap every heavy command
+      (`npm test`, Playwright, `next dev`, `npm ci`) in `tools/dev/heavy.sh`,
+      which serializes them machine-wide, waits for free RAM and prunes stale
+      `/tmp/construct-*` test dirs. Use `--workers=1`, one dev server, start
+      Ollama only for tests that need it, and never leave background servers
+      running. `/tmp` is RAM-backed: clean up what you create.
 11. **Every UI feature gets a real Playwright test, run for real, with a
     real screenshot attached to its GitHub issue — mandatory, not optional,
     no exceptions.** This applies to `ui/` work specifically (anything
