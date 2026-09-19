@@ -35,13 +35,26 @@ function send(ws, payload) {
 // from their own tab. `allowedOrigin` mirrors index.mjs's CLIENT_ORIGIN
 // check; omit it (leave undefined) only in a context that intentionally
 // wants no restriction, e.g. a future test harness -- never in production.
-export function attachWizardSocket(server, path = '/ws/wizard', allowedOrigin) {
+//
+// #278: `auth` is the same object that gates `/api/*`. An upgrade with no
+// valid session is refused with 401 at the handshake, before a socket
+// exists -- a session gate that stopped at REST would leave the one route
+// that actually drives an LLM wide open. Omit it (or pass null) only where
+// there is deliberately no session to check, e.g. the origin-only tests
+// below; `auth.allows()` is a no-op when authentication is disabled, so
+// passing it always is safe.
+export function attachWizardSocket(server, path = '/ws/wizard', allowedOrigin, auth = null) {
   const wss = new WebSocketServer({
     server,
     path,
-    verifyClient: allowedOrigin
-      ? (info) => info.origin === allowedOrigin
-      : undefined,
+    verifyClient:
+      allowedOrigin || auth
+        ? (info, cb) => {
+            if (allowedOrigin && info.origin !== allowedOrigin) return cb(false, 401, 'Unauthorized origin');
+            if (auth && !auth.allows(info.req.headers)) return cb(false, 401, 'Authentication required');
+            return cb(true);
+          }
+        : undefined,
   });
 
   wss.on('connection', (ws) => {
