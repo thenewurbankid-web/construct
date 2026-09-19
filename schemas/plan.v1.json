@@ -1,0 +1,1489 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://construct.dev/schemas/plan.v1.json",
+  "title": "Construct Execution Plan v1",
+  "description": "The output of Research mode and the input to execution: an ORDERED list of steps, each one a reference to a real, named Construct flow (a create/import/refactor/research block that already exists) rather than free text -- a plan is executable because its steps name deterministic blocks, not because a model re-reads prose at run time. Each step also carries who performs it (deterministic | local-model | user, the Deterministic / Local model / You tags in docs/design/cockpit-layout.md section 4), what it is expected to touch (features and project-relative files, so the plan can be checked against reality afterwards), and which earlier steps it depends on. See src/plan.mjs (PLAN_FLOWS, validatePlan, planToCommand) for the runtime this describes; the per-flow argument contract lives in PLAN_FLOWS and is mirrored into this file's `allOf` branches, with test/plan.test.mjs asserting the two never drift. DELIBERATE OMISSIONS: no step `status` (queued/running/paused/failed/done is the process runtime's state, keyed by step.id, not the plan's) and no timestamp anywhere (the same research input must produce a byte-identical plan). src/import.mjs's own `{ feature, units }` import plan is a DIFFERENT, narrower artifact that this one CONTAINS, as the `plan` argument of an `import.plan` step -- it is not extended or replaced. Breaking changes go in plan.v2.json rather than mutating v1 in place.",
+  "type": "object",
+  "required": [
+    "version",
+    "ticket",
+    "steps"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 1,
+      "description": "Plan schema version. Bump this file to v2 (plan.v2.json) on any breaking shape change rather than mutating v1 in place."
+    },
+    "ticket": {
+      "$ref": "#/definitions/ticket"
+    },
+    "summary": {
+      "type": "string",
+      "description": "One plain-English paragraph describing what this plan does, for the review pane."
+    },
+    "constraints": {
+      "type": "object",
+      "description": "The project constraints the plan is held to, read from architecture.yml (framework, layers, rules) -- shown in the Research screen's left pane so a reviewer can see what the plan was written against. Free-form: architecture.yml is the authority for its own shape."
+    },
+    "impact": {
+      "type": "object",
+      "description": "The impact report the plan was derived from (the features and files a ticket touches). Its shape is the impact analysis contract, deliberately not redefined here; carried along so a plan can be re-reviewed against the analysis that produced it."
+    },
+    "provenance": {
+      "type": "object",
+      "description": "Who produced this plan. Deliberately clock-free -- determinism means re-planning the same ticket yields identical JSON.",
+      "additionalProperties": false,
+      "properties": {
+        "generator": {
+          "type": "string",
+          "description": "The block or command that produced the plan."
+        },
+        "model": {
+          "type": "string",
+          "description": "The planning model, when one was involved. Planning never routes to a local model."
+        },
+        "deterministic": {
+          "type": "boolean",
+          "description": "True when the whole plan was derived from the graph with no model judgement at all."
+        }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "description": "The ordered steps. Array order is a valid execution order: `dependsOn` may only reference EARLIER steps, which is also what makes a dependency cycle impossible to express.",
+      "items": {
+        "$ref": "#/definitions/step"
+      }
+    }
+  },
+  "definitions": {
+    "importPlan": {
+      "type": "object",
+      "description": "An import plan -- the pre-existing, narrower artifact from src/import.mjs, carried here unchanged as one step's argument rather than being replaced by this schema. Which old files map to which logical units and layers is judgement, made by whichever model analysed the old feature and approved by the owner; executing it runs the deterministic import block once per unit, in order. validatePlanShape() in src/import.mjs remains its authority at execution time, including its deliberate repair of a unit that lists `controller` without the `page` that controller composes.",
+      "required": [
+        "feature",
+        "units"
+      ],
+      "properties": {
+        "feature": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The destination Construct feature every unit is imported into."
+        },
+        "units": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "layers",
+              "from"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "description": "PascalCase base name for the unit."
+              },
+              "layers": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": "Which layers this unit needs."
+              },
+              "from": {
+                "type": "string",
+                "minLength": 1,
+                "description": "The single existing file this unit is ported from."
+              }
+            }
+          }
+        },
+        "layerAdjustments": {
+          "type": "array",
+          "description": "Set by validatePlanShape() when it repaired a unit's layer set. Output of executing the plan, not something a planner writes.",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "envelope": {
+      "type": "object",
+      "description": "A Context Envelope. Its shape is defined by schemas/envelope.v1.json and is not re-specified here; validatePlan() delegates to validateEnvelope() in src/engine/envelope.mjs so there is exactly one authority for it.",
+      "required": [
+        "version",
+        "feature",
+        "status",
+        "layers"
+      ]
+    },
+    "ticket": {
+      "type": "object",
+      "description": "The unit of work that was researched: free text the owner typed, a GitHub issue, or a file.",
+      "required": [
+        "source",
+        "title"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "enum": [
+            "text",
+            "github-issue",
+            "file"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ref": {
+          "type": "string",
+          "description": "Where it came from, when that is addressable -- an issue number/URL, or a path."
+        },
+        "body": {
+          "type": "string",
+          "description": "The full ticket text the plan was derived from."
+        }
+      }
+    },
+    "touches": {
+      "type": "object",
+      "description": "What a step is EXPECTED to affect, declared up front so the result can be checked against it afterwards. Required on every flow that writes; empty arrays are a legitimate, honest answer (e.g. a review step). File paths are project-relative -- an absolute path is rejected, because a plan has to stay portable and reproducible across machines.",
+      "additionalProperties": false,
+      "properties": {
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Construct feature names."
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "path",
+              "change"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Project-relative path, e.g. features/checkout/domain/Total.ts."
+              },
+              "change": {
+                "enum": [
+                  "create",
+                  "modify",
+                  "delete",
+                  "move",
+                  "read"
+                ],
+                "description": "How the step affects it. `read` is for the read-only flows, which still declare what they looked at."
+              },
+              "layer": {
+                "type": "string",
+                "description": "The architecture layer the file belongs to, when it has one."
+              },
+              "why": {
+                "type": "string",
+                "description": "Why this file is implicated, in plain language."
+              }
+            }
+          }
+        }
+      }
+    },
+    "step": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "flow",
+        "args",
+        "executor"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Stable, plan-unique id. The process runtime keys per-step run state off it, which is why run state is not stored here."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The one line a human reads when reviewing this step."
+        },
+        "flow": {
+          "enum": [
+            "project.init",
+            "create.feature",
+            "create.layer",
+            "create.unit",
+            "create.page.from",
+            "create.workflow.from",
+            "create.controller.bind",
+            "create.service.openapi",
+            "refactor.move",
+            "refactor.rename",
+            "import.unit",
+            "import.plan",
+            "import.route",
+            "summarize.unit",
+            "summarize.list",
+            "summarize.usage",
+            "research.summarize",
+            "research.workflow",
+            "research.doctor",
+            "validate",
+            "sync",
+            "pipeline.run",
+            "manual.task"
+          ],
+          "description": "The Construct flow this step invokes. Every value maps to a real command (or, for manual.task, to the one explicitly human step) -- see PLAN_FLOWS and planToCommand in src/plan.mjs."
+        },
+        "args": {
+          "type": "object",
+          "description": "The flow's arguments, named after its CLI flags minus the leading `--`, so a step maps mechanically onto a real command. The per-flow contract is the `allOf` branches below."
+        },
+        "executor": {
+          "enum": [
+            "deterministic",
+            "local-model",
+            "user"
+          ],
+          "description": "Who performs the step. `local-model` is only permitted on the flows that genuinely have an `--llm` path, so the plan shows exactly where a model is involved rather than merely claiming to; `user` covers both a human running a command and manual.task."
+        },
+        "dependsOn": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Ids of steps that must complete first. May only reference EARLIER steps in the array."
+        },
+        "touches": {
+          "$ref": "#/definitions/touches"
+        },
+        "estimateSeconds": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Rough expected duration, for the plan pane's estimate. Advisory only."
+        },
+        "rationale": {
+          "type": "string",
+          "description": "Why this step is in the plan, in plain language."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "project.init"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Directory to initialise; defaults to the current one."
+                  },
+                  "framework": {
+                    "type": "string",
+                    "minLength": 1,
+                    "enum": [
+                      "nextjs",
+                      "react-spa"
+                    ]
+                  }
+                },
+                "required": []
+              },
+              "executor": {
+                "enum": [
+                  "deterministic",
+                  "user"
+                ]
+              },
+              "touches": {
+                "$ref": "#/definitions/touches"
+              }
+            },
+            "required": [
+              "touches"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "create.feature"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              },
+              "executor": {
+                "enum": [
+                  "deterministic",
+                  "user"
+                ]
+              },
+              "touches": {
+                "$ref": "#/definitions/touches"
+              }
+            },
+            "required": [
+              "touches"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "create.layer"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "feature": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "layers": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "llm": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "LLM provider that writes the file bodies (claude, ollama). Only meaningful on a local-model step."
+                  },
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": [
+                  "name",
+                  "feature",
+                  "layers"
+                ]
+              },
+              "executor": {
+                "enum": [
+                  "deterministic",
+                  "local-model",
+                  "user"
+                ]
+              },
+              "touches": {
+                "$ref": "#/definitions/touches"
+              }
+            },
+            "required": [
+              "touches"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "create.unit"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "layer": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "feature": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "llm": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "LLM provider that writes the file bodies (claude, ollama). Only meaningful on a local-model step."
+                  },
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": [
+                  "layer",
+                  "name",
+                  "feature"
+                ]
+              },
+              "executor": {
+                "enum": [
+                  "deterministic",
+                  "local-model",
+                  "user"
+                ]
+              },
+              "touches": {
+                "$ref": "#/definitions/touches"
+              }
+            },
+            "required": [
+              "touches"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "create.page.from"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "feature": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "from": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Path to the authored JSX file. May live outside the project."
+                  },
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": [
+                  "name",
+                  "feature",
+                  "from"
+                ]
+              },
+              "executor": {
+                "enum": [
+                  "deterministic",
+                  "user"
+                ]
+              },
+              "touches": {
+                "$ref": "#/definitions/touches"
+              }
+            },
+            "required": [
+              "touches"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "create.workflow.from"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "feature": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "from": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Path to the state-graph JSON descriptor."
+                  },
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": [
+                  "name",
+                  "feature",
+                  "from"
+                ]
+              },
+              "executor": {
+                "enum": [
+                  "deterministic",
+                  "user"
+                ]
+              },
+              "touches": {
+                "$ref": "#/definitions/touches"
+              }
+            },
+            "required": [
+              "touches"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "create.controller.bind"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "feature": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "envelope": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Path to a Context Envelope to take the hook/slot inventory from."
+                  },
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": [
+                  "name",
+                  "feature"
+                ]
+              },
+              "executor": {
+                "enum": [
+                  "deterministic",
+                  "user"
+                ]
+              },
+              "touches": {
+                "$ref": "#/definitions/touches"
+              }
+            },
+            "required": [
+              "touches"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "create.service.openapi"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "feature": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "openapi": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Path or URL of the OpenAPI spec."
+                  },
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": [
+                  "name",
+                  "feature",
+                  "openapi"
+                ]
+              },
+              "executor": {
+                "enum": [
+                  "deterministic",
+                  "user"
+                ]
+              },
+              "touches": {
+                "$ref": "#/definitions/touches"
+              }
+            },
+            "required": [
+              "touches"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "refactor.move"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "feature": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "from": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Source LAYER name (not a path) for this flow."
+                  },
+                  "to": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Destination layer name."
+                  },
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": [
+                  "name",
+                  "feature",
+                  "from",
+                  "to"
+                ]
+              },
+              "executor": {
+                "enum": [
+                  "deterministic",
+                  "user"
+                ]
+              },
+              "touches": {
+                "$ref": "#/definitions/touches"
+              }
+            },
+            "required": [
+              "touches"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "refactor.rename"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "newName": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "feature": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "layer": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": [
+                  "name",
+                  "newName",
+                  "feature",
+                  "layer"
+                ]
+              },
+              "executor": {
+                "enum": [
+                  "deterministic",
+                  "user"
+                ]
+              },
+              "touches": {
+                "$ref": "#/definitions/touches"
+              }
+            },
+            "required": [
+              "touches"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "import.unit"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "feature": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "layers": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "from": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Path to the existing source file. May live outside the project."
+                  },
+                  "llm": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "LLM provider that writes the file bodies (claude, ollama). Only meaningful on a local-model step."
+                  },
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": [
+                  "name",
+                  "feature",
+                  "layers",
+                  "from"
+                ]
+              },
+              "executor": {
+                "enum": [
+                  "deterministic",
+                  "local-model",
+                  "user"
+                ]
+              },
+              "touches": {
+                "$ref": "#/definitions/touches"
+              }
+            },
+            "required": [
+              "touches"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "import.plan"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "plan": {
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/importPlan"
+                      }
+                    ],
+                    "description": "The import plan itself: { feature, units: [{ name, layers, from }] }. Validated structurally here and by validatePlanShape() in src/import.mjs at execution time."
+                  },
+                  "llm": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "LLM provider that writes the file bodies (claude, ollama). Only meaningful on a local-model step."
+                  },
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": [
+                  "plan"
+                ]
+              },
+              "executor": {
+                "enum": [
+                  "deterministic",
+                  "local-model",
+                  "user"
+                ]
+              },
+              "touches": {
+                "$ref": "#/definitions/touches"
+              }
+            },
+            "required": [
+              "touches"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "import.route"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "route": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "A URL like /v2/home, or the folder that owns its page.tsx."
+                  },
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": [
+                  "route"
+                ]
+              },
+              "executor": {
+                "enum": [
+                  "user"
+                ]
+              },
+              "touches": {
+                "$ref": "#/definitions/touches"
+              }
+            },
+            "required": [
+              "touches"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "summarize.unit"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "ref": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "A unit reference, normally `kind:id` (e.g. feature:checkout)."
+                  },
+                  "kind": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "detail": {
+                    "type": "string",
+                    "minLength": 1,
+                    "enum": [
+                      "brief",
+                      "standard",
+                      "full"
+                    ]
+                  },
+                  "include": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "format": {
+                    "type": "string",
+                    "minLength": 1,
+                    "enum": [
+                      "json",
+                      "markdown"
+                    ]
+                  },
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": [
+                  "ref"
+                ]
+              },
+              "executor": {
+                "enum": [
+                  "deterministic"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "summarize.list"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": []
+              },
+              "executor": {
+                "enum": [
+                  "deterministic"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "summarize.usage"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": []
+              },
+              "executor": {
+                "enum": [
+                  "deterministic"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "research.summarize"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "feature": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "format": {
+                    "type": "string",
+                    "minLength": 1,
+                    "enum": [
+                      "json",
+                      "md",
+                      "compact",
+                      "prose"
+                    ]
+                  },
+                  "since": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "A git ref; summarises only what changed since it."
+                  },
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": []
+              },
+              "executor": {
+                "enum": [
+                  "deterministic"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "research.workflow"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "feature": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "file": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "One workflow file; omitted means every workflow in the feature."
+                  },
+                  "format": {
+                    "type": "string",
+                    "minLength": 1,
+                    "enum": [
+                      "prose",
+                      "md",
+                      "json",
+                      "scenarios"
+                    ]
+                  },
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": [
+                  "feature"
+                ]
+              },
+              "executor": {
+                "enum": [
+                  "deterministic"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "research.doctor"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": []
+              },
+              "executor": {
+                "enum": [
+                  "deterministic"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "validate"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "format": {
+                    "type": "string",
+                    "minLength": 1,
+                    "enum": [
+                      "json",
+                      "text"
+                    ]
+                  },
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": []
+              },
+              "executor": {
+                "enum": [
+                  "deterministic"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "sync"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": []
+              },
+              "executor": {
+                "enum": [
+                  "deterministic"
+                ]
+              },
+              "touches": {
+                "$ref": "#/definitions/touches"
+              }
+            },
+            "required": [
+              "touches"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "pipeline.run"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "envelope": {
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/envelope"
+                      }
+                    ],
+                    "description": "A Context Envelope (schemas/envelope.v1.json), including its input-only `steps` list. Validated with validateEnvelope()."
+                  },
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": [
+                  "envelope"
+                ]
+              },
+              "executor": {
+                "enum": [
+                  "deterministic"
+                ]
+              },
+              "touches": {
+                "$ref": "#/definitions/touches"
+              }
+            },
+            "required": [
+              "touches"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "manual.task"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "instructions": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "What the person has to do, in plain language."
+                  }
+                },
+                "required": [
+                  "instructions"
+                ]
+              },
+              "executor": {
+                "enum": [
+                  "user"
+                ]
+              },
+              "touches": {
+                "$ref": "#/definitions/touches"
+              }
+            },
+            "required": [
+              "touches"
+            ]
+          }
+        }
+      ]
+    }
+  }
+}
