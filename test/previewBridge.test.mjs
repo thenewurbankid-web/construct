@@ -23,6 +23,21 @@ test('click on an annotated element posts its src to the parent and suppresses t
   assert.equal(prevented, 1);
 });
 
+test('hover outline is cleared when the pointer leaves the iframe (null relatedTarget), not on internal moves', () => {
+  const { win, listeners } = fakeWindow();
+  installPreviewBridge(win);
+  const a = el('a.tsx:1:1', { outline: '1px solid red' });
+  listeners.mouseover({ target: a });
+  assert.equal(a.style.outline, '2px solid #7c5cff');
+  listeners.mouseout({ target: a, relatedTarget: el('b.tsx:1:1') });
+  assert.equal(a.style.outline, '2px solid #7c5cff');
+  listeners.mouseout({ target: a, relatedTarget: null });
+  assert.equal(a.style.outline, '1px solid red');
+  listeners.mouseover({ target: a });
+  listeners.mouseleave({ target: a, relatedTarget: null });
+  assert.equal(a.style.outline, '1px solid red');
+});
+
 test('click on an unannotated element does nothing', () => {
   const { win, listeners, posted } = fakeWindow();
   installPreviewBridge(win);

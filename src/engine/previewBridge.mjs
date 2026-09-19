@@ -21,6 +21,15 @@ export function installPreviewBridge(win) {
     if (t && t !== hovered) { t.__cxOutline = t.style.outline; t.style.outline = '2px solid #7c5cff'; }
     hovered = t;
   }, true);
+  // Pointer left the document/iframe (mouseout/mouseleave with no relatedTarget):
+  // no mouseover follows, so clear the outline here or it sticks.
+  const clear = (e) => {
+    if (e.relatedTarget || !hovered) return;
+    hovered.style.outline = hovered.__cxOutline || '';
+    hovered = null;
+  };
+  win.document.addEventListener('mouseout', clear, true);
+  win.document.addEventListener('mouseleave', clear, true);
   win.document.addEventListener('click', (e) => {
     const t = find(e.target);
     if (!t) return;
