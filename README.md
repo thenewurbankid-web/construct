@@ -125,8 +125,6 @@ project:
 
 `fixtures/architecture-valid-react-spa/` is a complete, real, checked-in worked example — `construct validate` passes against it with zero errors — showing the shape end to end: `architecture.yml`, `src/main.tsx` + `src/App.tsx`, and a full `widget` feature slice.
 
-`ui/client`'s actual Vite + react-router SPA (`ui/client/src/App.jsx`) is what this convention is modeled on, so an eventual migration of Construct's own UI onto Construct (see `CLAUDE.md`'s Dogfooding section) has a real target to land on — that migration itself is separate, future work, not part of this.
-
 ## Non-negotiable defaults
 
 - Routes are thin and delegate.
