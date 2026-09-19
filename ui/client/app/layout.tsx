@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import { NavBar } from './NavBar';
-import { THEME_INIT_SCRIPT } from '@/features/shell';
+import { ShellController, THEME_INIT_SCRIPT } from '@/features/shell';
 import './tokens.css';
 import './shell.css';
 import './globals.css';
@@ -19,8 +18,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body className="app">
-        <NavBar />
-        <main className="main">{children}</main>
+        <ShellController>{children}</ShellController>
       </body>
     </html>
   );

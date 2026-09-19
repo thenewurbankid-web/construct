@@ -34,39 +34,7 @@ body {
   box-shadow: var(--glass-shadow);
 }
 
-.nav {
-  width: 200px;
-  flex-shrink: 0;
-  background: var(--panel-glass-strong);
-  border-right: 1px solid var(--border);
-  backdrop-filter: blur(var(--panel-blur));
-  -webkit-backdrop-filter: blur(var(--panel-blur));
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.nav-title {
-  font-weight: 700;
-  font-size: 1.2rem;
-  margin-bottom: 12px;
-}
-
-.nav a {
-  color: var(--muted);
-  text-decoration: none;
-  padding: 8px 10px;
-  border-radius: 6px;
-}
-
-.nav a.active {
-  background: var(--accent);
-  color: var(--accent-fg);
-}
-
 .main {
-  flex: 1;
   padding: 24px 32px;
   max-width: 1100px;
 }

@@ -9,3 +9,6 @@ export * from './controllers/OllamaController';
 /** Loads status/models and drives pull/remove — used by OllamaController;
  * exported for direct reuse/testing. */
 export * from './hooks/useOllama';
+
+/** Ollama status/model fetchers (used by the shell top-bar model pill). */
+export * from "./services/Ollama";
