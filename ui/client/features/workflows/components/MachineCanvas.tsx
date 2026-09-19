@@ -87,7 +87,7 @@ export function MachineCanvas({ machine, machineIndex, onEdit, locked }: Machine
               onPaneClick={() => setSelected(null)}
               colorMode="dark"
               fitView
-              fitViewOptions={{ padding: 0.25 }}
+              fitViewOptions={{ padding: 0.06 }}
               proOptions={{ hideAttribution: true }}
             >
               <Background />
