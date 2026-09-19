@@ -4,8 +4,8 @@ import type { ScopeView } from '../types';
 // one coloured curve per link. The only input is the view model, so a different renderer (xyflow, a
 // table) can replace this file without touching the mapper, hook or server.
 const ROW = 28;
-const WIDTH = 460;
-const COL_W = 150;
+const WIDTH = 330;
+const COL_W = 118;
 const PAD = 8;
 
 const rowY = (i: number) => PAD + i * ROW + ROW / 2;
