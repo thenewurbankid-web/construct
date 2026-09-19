@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "kind": "layer",
+  "id": "login/hook",
+  "ref": "layer:login/hook",
+  "name": "login/hook",
+  "path": "features/login",
+  "detail": "standard",
+  "summary": "Feature \"login\"'s hook layer: 1 file(s), 28 LOC. May import: workflow, service, domain, types.",
+  "sections": {
+    "rule": {
+      "pattern": "features/*/hooks/**",
+      "canImport": [
+        "workflow",
+        "service",
+        "domain",
+        "types"
+      ]
+    },
+    "files": [
+      {
+        "path": "features/login/hooks/useLogin.tsx",
+        "layer": "hook",
+        "loc": 28,
+        "purpose": "React hook exporting useLogin.",
+        "exports": [
+          "useLogin()"
+        ]
+      }
+    ],
+    "rules": {
+      "violations": [],
+      "exceptions": [],
+      "counts": {
+        "error": 0,
+        "warning": 0
+      }
+    }
+  },
+  "health": {
+    "status": "ok",
+    "findings": []
+  },
+  "links": {
+    "parent": "feature:login",
+    "children": [
+      "file:features/login/hooks/useLogin.tsx"
+    ]
+  },
+  "next": [
+    {
+      "ref": "file:features/login/hooks/useLogin.tsx",
+      "why": "Drill into this file",
+      "cli": "construct summarize file:features/login/hooks/useLogin.tsx"
+    }
+  ],
+  "budget": {
+    "maxTokens": 2000,
+    "estimatedTokens": 234,
+    "truncated": false
+  }
+}

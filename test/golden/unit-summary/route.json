@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "kind": "route",
+  "id": "/login",
+  "ref": "route:/login",
+  "name": "/login",
+  "path": "app/login/page.tsx",
+  "detail": "standard",
+  "summary": "Route /login is served by app/login/page.tsx and renders feature(s) login (7 feature file(s) reachable).",
+  "sections": {
+    "route": {
+      "url": "/login",
+      "entry": "app/login/page.tsx",
+      "router": "next-app"
+    },
+    "entryPurpose": "Route entry exporting Page.",
+    "features": [
+      "login"
+    ],
+    "chain": [
+      {
+        "depth": 1,
+        "path": "features/login/controllers/LoginController.tsx",
+        "layer": "controller",
+        "from": "app/login/page.tsx"
+      },
+      {
+        "depth": 2,
+        "path": "features/login/hooks/useLogin.tsx",
+        "layer": "hook",
+        "from": "features/login/controllers/LoginController.tsx"
+      },
+      {
+        "depth": 2,
+        "path": "features/login/pages/LoginPage.tsx",
+        "layer": "page",
+        "from": "features/login/controllers/LoginController.tsx"
+      },
+      {
+        "depth": 3,
+        "path": "features/login/services/Login.tsx",
+        "layer": "service",
+        "from": "features/login/hooks/useLogin.tsx"
+      },
+      {
+        "depth": 3,
+        "path": "features/login/workflows/Login.tsx",
+        "layer": "workflow",
+        "from": "features/login/hooks/useLogin.tsx"
+      },
+      {
+        "depth": 3,
+        "path": "features/login/components/Login.tsx",
+        "layer": "component",
+        "from": "features/login/pages/LoginPage.tsx"
+      },
+      {
+        "depth": 4,
+        "path": "features/login/domain/Login.tsx",
+        "layer": "domain",
+        "from": "features/login/workflows/Login.tsx"
+      }
+    ]
+  },
+  "health": {
+    "status": "ok",
+    "findings": []
+  },
+  "links": {
+    "children": [
+      "feature:login"
+    ],
+    "parent": "file:app/login/page.tsx"
+  },
+  "next": [
+    {
+      "ref": "feature:login",
+      "why": "Feature rendered by this route",
+      "cli": "construct summarize feature:login"
+    }
+  ],
+  "budget": {
+    "maxTokens": 2000,
+    "estimatedTokens": 389,
+    "truncated": false
+  }
+}
