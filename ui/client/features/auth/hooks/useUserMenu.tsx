@@ -13,6 +13,7 @@ export function useUserMenu() {
   const [open, setOpen] = useState(false);
 
   const toggle = useCallback(() => setOpen((v) => !v), []);
+  const close = useCallback(() => setOpen(false), []);
   const handleSignOut = useCallback(() => {
     setOpen(false);
     void signOut();
@@ -26,6 +27,7 @@ export function useUserMenu() {
     initial: initial(user),
     open,
     toggle,
+    close,
     handleSignOut,
   };
 }

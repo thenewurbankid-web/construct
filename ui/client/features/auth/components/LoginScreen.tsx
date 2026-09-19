@@ -34,7 +34,10 @@ export function LoginScreen({
   onRetry,
 }: LoginScreenProps) {
   return (
-    <div className="page page--screen auth-screen" data-testid="login-screen">
+    // <main> because the shell — which normally supplies the page's
+    // landmarks — has been replaced entirely; without it the document has
+    // none at all.
+    <main className="page page--screen auth-screen" data-testid="login-screen">
       <GlassPanel className="gate-panel">
         <h1>Sign in to the Cockpit</h1>
         {unreachable ? (
@@ -55,13 +58,11 @@ export function LoginScreen({
                     {signingIn ? 'Signing in…' : 'Sign in with GitHub'}
                   </Button>
                 )}
+                {/* Deliberately `ghost`: the test login must not read as an
+                    equally legitimate path next to the real one. An opacity
+                    nudge was invisible; the lower-emphasis variant is not. */}
                 {session?.testLogin && (
-                  <Button
-                    onClick={onSignInAsTestUser}
-                    disabled={signingIn}
-                    data-testid="login-test-user"
-                    className="auth-test-login"
-                  >
+                  <Button variant="ghost" onClick={onSignInAsTestUser} disabled={signingIn} data-testid="login-test-user">
                     {signingIn ? 'Signing in…' : `Sign in as ${session.testLoginUser} (test login)`}
                   </Button>
                 )}
@@ -79,10 +80,16 @@ export function LoginScreen({
                 under NODE_ENV=production and off loopback, and should not be set on a shared machine.
               </p>
             )}
-            {error && <p className="status-error">{error}</p>}
+            {/* role="alert" so a refused sign-in is announced, not silent —
+                the same idiom ProjectSwitcher already uses. */}
+            {error && (
+              <p className="status-error" role="alert">
+                {error}
+              </p>
+            )}
           </>
         )}
       </GlassPanel>
-    </div>
+    </main>
   );
 }

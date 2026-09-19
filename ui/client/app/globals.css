@@ -417,7 +417,6 @@ button:disabled {
   gap: var(--sp-3);
   margin-top: var(--sp-2);
 }
-.auth-test-login { opacity: 0.9; }
 .auth-test-note {
   border-left: 3px solid var(--warn);
   padding-left: var(--sp-3);

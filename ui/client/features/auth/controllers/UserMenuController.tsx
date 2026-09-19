@@ -8,7 +8,7 @@ import { UserMenuPage } from '../pages/UserMenuPage';
  * the shell knows a node goes there without knowing this feature exists.
  */
 export function UserMenuController() {
-  const { visible, user, label, initial, open, toggle, handleSignOut } = useUserMenu();
+  const { visible, user, label, initial, open, toggle, close, handleSignOut } = useUserMenu();
   return (
     <UserMenuPage
       visible={visible}
@@ -17,6 +17,7 @@ export function UserMenuController() {
       initial={initial}
       open={open}
       onToggle={toggle}
+      onClose={close}
       onSignOut={handleSignOut}
     />
   );

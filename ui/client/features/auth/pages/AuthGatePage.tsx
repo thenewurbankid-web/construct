@@ -37,9 +37,13 @@ export function AuthGatePage({
   // Cockpit the person is in fact signed in to.
   if (loading) {
     return (
-      <div className="page page--screen">
+      // `auth-screen` is not decoration here: this branch also replaces the
+      // whole Cockpit frame, and `.app` is a flex row, so without it the
+      // card jams into the top-left corner with its border clipped. This is
+      // the first frame of every page load on a gated server.
+      <main className="page page--screen auth-screen">
         <LoadingState label="Checking your session" hint="Asking the Cockpit server whether this machine is signed in." />
-      </div>
+      </main>
     );
   }
   if (blocked) {

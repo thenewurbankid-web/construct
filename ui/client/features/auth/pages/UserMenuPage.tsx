@@ -9,12 +9,15 @@ type UserMenuPageProps = {
   initial: string;
   open: boolean;
   onToggle: () => void;
+  onClose: () => void;
   onSignOut: () => void;
 };
 
 // Presentation-only (PAGE-002..006): renders the account chip, or nothing
 // at all on a server with no login gate.
-export function UserMenuPage({ visible, user, label, initial, open, onToggle, onSignOut }: UserMenuPageProps): ReactNode {
+export function UserMenuPage({ visible, user, label, initial, open, onToggle, onClose, onSignOut }: UserMenuPageProps): ReactNode {
   if (!visible || !user) return null;
-  return <UserMenu user={user} label={label} initial={initial} open={open} onToggle={onToggle} onSignOut={onSignOut} />;
+  return (
+    <UserMenu user={user} label={label} initial={initial} open={open} onToggle={onToggle} onClose={onClose} onSignOut={onSignOut} />
+  );
 }

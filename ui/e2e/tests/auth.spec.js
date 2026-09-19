@@ -130,8 +130,16 @@ test.describe('#278 GitHub login gate', () => {
 
     // The menu shows the login and offers Sign out.
     await account.click();
+    await expect(account).toHaveAttribute('aria-expanded', 'true');
     await expect(page.getByTestId('user-menu-login')).toHaveText(TEST_USER);
     await page.screenshot({ path: path.join(SHOTS, '278-3-account-menu.png') });
+
+    // Escape closes it and puts focus back on the trigger — the same
+    // keyboard contract the project switcher already honours.
+    await page.keyboard.press('Escape');
+    await expect(account).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.getByTestId('sign-out')).toHaveCount(0);
+    await expect(account).toBeFocused();
   });
 
   test('the session survives a reload, and signing out closes the gate again', async ({ page }) => {
