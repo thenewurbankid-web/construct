@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "kind": "page",
+  "id": "features/login/pages/LoginPage.tsx",
+  "ref": "page:features/login/pages/LoginPage.tsx",
+  "name": "LoginPage.tsx",
+  "path": "features/login/pages/LoginPage.tsx",
+  "detail": "standard",
+  "summary": "Page features/login/pages/LoginPage.tsx: Page (presentation) exporting LoginPage. 1 export(s), 24 LOC, imported by 1 file(s).",
+  "sections": {
+    "file": {
+      "path": "features/login/pages/LoginPage.tsx",
+      "layer": "page",
+      "loc": 24,
+      "purpose": "Page (presentation) exporting LoginPage."
+    },
+    "exports": [
+      {
+        "name": "LoginPage",
+        "kind": "function",
+        "signature": "LoginPage(props: LoginPageProps): ReactNode"
+      }
+    ],
+    "props": [
+      {
+        "type": "LoginPageProps",
+        "members": [
+          "username",
+          "setUsername",
+          "password",
+          "setPassword",
+          "onSubmit",
+          "error"
+        ]
+      }
+    ],
+    "dependencies": {
+      "imports": [
+        {
+          "path": "features/login/components/Login.tsx",
+          "layer": "component"
+        }
+      ],
+      "externalPackages": [
+        "react"
+      ],
+      "usedBy": [
+        "features/login/controllers/LoginController.tsx"
+      ]
+    },
+    "rules": {
+      "violations": [],
+      "exceptions": [],
+      "counts": {
+        "error": 0,
+        "warning": 0
+      }
+    },
+    "tests": {
+      "count": 0,
+      "files": []
+    }
+  },
+  "health": {
+    "status": "ok",
+    "findings": []
+  },
+  "links": {
+    "parent": "feature:login",
+    "children": [
+      "export:features/login/pages/LoginPage.tsx#LoginPage"
+    ]
+  },
+  "next": [
+    {
+      "ref": "file:features/login/controllers/LoginController.tsx",
+      "why": "A file that uses this one",
+      "cli": "construct summarize file:features/login/controllers/LoginController.tsx"
+    },
+    {
+      "ref": "file:features/login/components/Login.tsx",
+      "why": "A file this one depends on",
+      "cli": "construct summarize file:features/login/components/Login.tsx"
+    }
+  ],
+  "budget": {
+    "maxTokens": 2000,
+    "estimatedTokens": 392,
+    "truncated": false
+  }
+}

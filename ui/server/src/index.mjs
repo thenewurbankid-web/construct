@@ -38,6 +38,7 @@ import {
   moveNodeInSnippet,
   addChildInSnippet,
 } from './pagesEditor.mjs';
+import { unitsIndex, unitSummary, featuresIndex, featureSummary } from './unitsApi.mjs';
 import { readPageSource } from './pageSource.mjs';
 import { describePageChange, adoptOwnWrite, pageChangeTracker } from './pageChanges.mjs';
 import { listWorkflowFeatures, listWorkflowFiles, readWorkflowMachines, readWorkflowNarrative, editWorkflowFile } from './workflowsViewer.mjs';
@@ -585,6 +586,22 @@ app.post('/api/workflows/edit', (req, res) => {
     handlePagesEditorError(res, e);
   }
 });
+
+// ---------------------------------------------------------------------------
+// Unit summaries (deterministic, LLM-free; src/engine/unitSummary.mjs). Read-only, scoped to the
+// current project root. /api/features* are thin aliases of the feature-kind unit calls.
+function sendUnits(res, fn) {
+  try {
+    const { status, body } = fn(currentRoot());
+    res.status(status).json(body);
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+}
+app.get('/api/units', (req, res) => sendUnits(res, (root) => unitsIndex(root, req.query)));
+app.get('/api/units/summary', (req, res) => sendUnits(res, (root) => unitSummary(root, req.query)));
+app.get('/api/features', (req, res) => sendUnits(res, (root) => featuresIndex(root)));
+app.get('/api/features/:name/summary', (req, res) => sendUnits(res, (root) => featureSummary(root, req.params.name, req.query)));
 
 const port = Number(process.env.PORT) || 4000;
 const server = http.createServer(app);

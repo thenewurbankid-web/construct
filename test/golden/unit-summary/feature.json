@@ -1,0 +1,288 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "kind": "feature",
+  "id": "login",
+  "ref": "feature:login",
+  "name": "login",
+  "path": "features/login",
+  "detail": "standard",
+  "summary": "Feature \"login\": 9 files, 193 LOC, 7/7 layers; 1 workflow machine(s); 0 error(s), 0 warning(s); 0 test file(s).",
+  "sections": {
+    "layers": {
+      "present": [
+        "domain",
+        "service",
+        "workflow",
+        "hook",
+        "component",
+        "page",
+        "controller"
+      ],
+      "missing": [],
+      "fileCounts": {
+        "component": 1,
+        "controller": 1,
+        "domain": 1,
+        "hook": 1,
+        "page": 1,
+        "service": 1,
+        "unclassified": 2,
+        "workflow": 1
+      }
+    },
+    "files": {
+      "component": [
+        {
+          "path": "features/login/components/Login.tsx",
+          "layer": "component",
+          "loc": 40,
+          "purpose": "Presentation component exporting Login."
+        }
+      ],
+      "controller": [
+        {
+          "path": "features/login/controllers/LoginController.tsx",
+          "layer": "controller",
+          "loc": 20,
+          "purpose": "Controller (wires page to hook/workflow) exporting LoginController."
+        }
+      ],
+      "domain": [
+        {
+          "path": "features/login/domain/Login.tsx",
+          "layer": "domain",
+          "loc": 8,
+          "purpose": "Hardcoded demo credentials — pure, no I/O (domain must stay pure per architecture.yml's DOMAIN-001)."
+        }
+      ],
+      "hook": [
+        {
+          "path": "features/login/hooks/useLogin.tsx",
+          "layer": "hook",
+          "loc": 28,
+          "purpose": "React hook exporting useLogin."
+        }
+      ],
+      "page": [
+        {
+          "path": "features/login/pages/LoginPage.tsx",
+          "layer": "page",
+          "loc": 24,
+          "purpose": "Page (presentation) exporting LoginPage."
+        }
+      ],
+      "service": [
+        {
+          "path": "features/login/services/Login.tsx",
+          "layer": "service",
+          "loc": 17,
+          "purpose": "Session persistence is an external effect (browser storage), so it lives in a service, not domain or the workflow (per architecture.yml's..."
+        }
+      ],
+      "unclassified": [
+        {
+          "path": "features/login/index.ts",
+          "layer": null,
+          "loc": 11,
+          "purpose": "Public API for feature: login"
+        },
+        {
+          "path": "features/login/types.ts",
+          "layer": null,
+          "loc": 2,
+          "purpose": "Source file exporting LoginId."
+        }
+      ],
+      "workflow": [
+        {
+          "path": "features/login/workflows/Login.tsx",
+          "layer": "workflow",
+          "loc": 43,
+          "purpose": "The login flow's state machine."
+        }
+      ]
+    },
+    "contracts": {
+      "publicApi": [
+        "./types",
+        "./controllers/LoginController",
+        "./hooks/useLogin"
+      ],
+      "routes": [
+        {
+          "route": "/login",
+          "file": "app/login/page.tsx"
+        }
+      ],
+      "hooks": [
+        "useLogin()"
+      ],
+      "components": [
+        {
+          "file": "features/login/components/Login.tsx",
+          "props": [
+            {
+              "type": "LoginProps",
+              "members": [
+                "username",
+                "setUsername",
+                "password",
+                "setPassword",
+                "onSubmit",
+                "error"
+              ]
+            }
+          ]
+        },
+        {
+          "file": "features/login/pages/LoginPage.tsx",
+          "props": [
+            {
+              "type": "LoginPageProps",
+              "members": [
+                "username",
+                "setUsername",
+                "password",
+                "setPassword",
+                "onSubmit",
+                "error"
+              ]
+            }
+          ]
+        }
+      ],
+      "serviceEndpoints": []
+    },
+    "dataFlow": {
+      "layers": [
+        {
+          "from": "controller",
+          "to": "hook",
+          "imports": 1
+        },
+        {
+          "from": "controller",
+          "to": "page",
+          "imports": 1
+        },
+        {
+          "from": "hook",
+          "to": "service",
+          "imports": 1
+        },
+        {
+          "from": "hook",
+          "to": "workflow",
+          "imports": 1
+        },
+        {
+          "from": "page",
+          "to": "component",
+          "imports": 1
+        },
+        {
+          "from": "unclassified",
+          "to": "controller",
+          "imports": 1
+        },
+        {
+          "from": "unclassified",
+          "to": "hook",
+          "imports": 1
+        },
+        {
+          "from": "workflow",
+          "to": "domain",
+          "imports": 1
+        }
+      ]
+    },
+    "workflows": [
+      {
+        "file": "features/login/workflows/Login.tsx",
+        "machine": "login",
+        "summary": "The \"login\" flow has 3 steps. It starts in *idle* and can end in *success*.",
+        "states": 3,
+        "findings": []
+      }
+    ],
+    "dependencies": {
+      "usedBy": [
+        {
+          "name": "app/login",
+          "files": 1
+        }
+      ],
+      "usesFeatures": [],
+      "externalPackages": [
+        "@xstate/react",
+        "next",
+        "react",
+        "xstate"
+      ]
+    },
+    "rules": {
+      "violations": [],
+      "exceptions": [],
+      "counts": {
+        "error": 0,
+        "warning": 0
+      }
+    },
+    "tests": {
+      "count": 0,
+      "files": []
+    }
+  },
+  "health": {
+    "status": "ok",
+    "findings": [
+      {
+        "severity": "info",
+        "code": "no-tests",
+        "message": "No test files found for this feature."
+      },
+      {
+        "severity": "info",
+        "code": "unclassified-files",
+        "message": "2 file(s) are not in a recognized layer."
+      }
+    ],
+    "completeness": 1
+  },
+  "links": {
+    "parent": "project:.",
+    "children": [
+      "layer:login/domain",
+      "layer:login/service",
+      "layer:login/workflow",
+      "layer:login/hook",
+      "layer:login/component",
+      "layer:login/page",
+      "layer:login/controller"
+    ]
+  },
+  "next": [
+    {
+      "ref": "layer:login/domain",
+      "why": "Drill into the domain layer",
+      "cli": "construct summarize layer:login/domain"
+    },
+    {
+      "ref": "layer:login/service",
+      "why": "Drill into the service layer",
+      "cli": "construct summarize layer:login/service"
+    },
+    {
+      "ref": "layer:login/workflow",
+      "why": "Drill into the workflow layer",
+      "cli": "construct summarize layer:login/workflow"
+    }
+  ],
+  "budget": {
+    "maxTokens": 2000,
+    "estimatedTokens": 1022,
+    "truncated": false
+  }
+}

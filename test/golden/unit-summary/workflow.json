@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "kind": "workflow",
+  "id": "features/login/workflows/Login.tsx",
+  "ref": "workflow:features/login/workflows/Login.tsx",
+  "name": "Login.tsx",
+  "path": "features/login/workflows/Login.tsx",
+  "detail": "full",
+  "summary": "Workflow features/login/workflows/Login.tsx: The login flow's state machine. 1 export(s), 43 LOC, imported by 1 file(s).",
+  "sections": {
+    "file": {
+      "path": "features/login/workflows/Login.tsx",
+      "layer": "workflow",
+      "loc": 43,
+      "purpose": "The login flow's state machine."
+    },
+    "exports": [
+      {
+        "name": "LoginWorkflow",
+        "kind": "value"
+      }
+    ],
+    "workflows": [
+      {
+        "file": "features/login/workflows/Login.tsx",
+        "machine": "login",
+        "summary": "The \"login\" flow has 3 steps. It starts in *idle* and can end in *success*.",
+        "states": 3,
+        "findings": [],
+        "stateSentences": [
+          {
+            "state": "idle",
+            "kind": "initial",
+            "sentences": [
+              "This flow starts in *idle*.",
+              "When \"submit\" happens, the flow moves to *success* — only if it is valid.",
+              "Otherwise, the flow moves to *rejected*."
+            ]
+          },
+          {
+            "state": "rejected",
+            "kind": "normal",
+            "sentences": [
+              "On entering, it runs `assign`.",
+              "When \"submit\" happens, the flow moves to *success* — only if it is valid.",
+              "Otherwise, the flow loops back to *rejected*."
+            ]
+          },
+          {
+            "state": "success",
+            "kind": "final",
+            "sentences": [
+              "*success* is an end state — the flow stops there."
+            ]
+          }
+        ]
+      }
+    ],
+    "dependencies": {
+      "imports": [
+        {
+          "path": "features/login/domain/Login.tsx",
+          "layer": "domain"
+        }
+      ],
+      "externalPackages": [
+        "xstate"
+      ],
+      "usedBy": [
+        "features/login/hooks/useLogin.tsx"
+      ]
+    },
+    "rules": {
+      "violations": [],
+      "exceptions": [],
+      "counts": {
+        "error": 0,
+        "warning": 0
+      }
+    },
+    "tests": {
+      "count": 0,
+      "files": []
+    }
+  },
+  "health": {
+    "status": "ok",
+    "findings": []
+  },
+  "links": {
+    "parent": "feature:login",
+    "children": [
+      "export:features/login/workflows/Login.tsx#LoginWorkflow"
+    ]
+  },
+  "next": [
+    {
+      "ref": "file:features/login/hooks/useLogin.tsx",
+      "why": "A file that uses this one",
+      "cli": "construct summarize file:features/login/hooks/useLogin.tsx"
+    },
+    {
+      "ref": "file:features/login/domain/Login.tsx",
+      "why": "A file this one depends on",
+      "cli": "construct summarize file:features/login/domain/Login.tsx"
+    }
+  ],
+  "budget": {
+    "maxTokens": 8000,
+    "estimatedTokens": 514,
+    "truncated": false
+  }
+}
