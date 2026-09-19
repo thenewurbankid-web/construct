@@ -215,6 +215,36 @@ snapshot that rots. See #35 for the audit that established this.
     change still needs its usage/API/exceptions/next-steps stated, same
     as a UI one needs its screenshot.
 
+## Notifications (standing instruction)
+
+**Notify the owner when a request is finished, or when something needs their
+attention — in every session, without being asked.**
+
+- **When to notify**: a request the owner made is complete; a decision only
+  they can make is blocking progress; a security finding; an agent finished
+  something that needs their call. Anything that means *they would want to
+  know now*.
+- **When NOT to notify**: routine progress, an agent completing work you can
+  verify and merge yourself, or anything that can wait until they next read
+  the Notice Board (#224). A notification they did not need is annoying in a
+  way that accumulates.
+- **Look for a channel, and fail silently if there is none.** Use the
+  `PushNotification` tool where it exists. If no notification channel is
+  available, say nothing about it and carry on — never turn a missing channel
+  into an error, a retry loop, or a message to the owner about the channel.
+
+**A success result is not proof of delivery.** `PushNotification` returns
+"Mobile push requested" whether or not the session has a Remote Control
+binding to deliver over — on 2026-09-19 it reported success repeatedly while
+nothing reached the owner's phone, because this session was not started with
+`claude --remote-control`. So: send it, do not claim it arrived, and never
+ask the owner to go and check. If delivery genuinely matters, `ListAgents`
+shows whether this session is Remote-Control-connected.
+
+Notifying does not replace the Notice Board. Owner-attention items still go
+on #224 (see the memory note) — the notification is a nudge toward it, not a
+substitute for the written record.
+
 ## Demos module (Module 8) — on-demand feature documentation (standing instruction)
 
 See #125 for the epic. A recurring workflow, not a one-time backlog sweep:
