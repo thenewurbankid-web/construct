@@ -9,6 +9,7 @@
 // `normalizeGolden` blanks only that suffix -- whether an operation errors, and everything else, must match.
 import fs from 'node:fs';
 import path from 'node:path';
+import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
 
 export const SOURCES = {
   page: `import React from 'react';
@@ -166,7 +167,6 @@ import { Idx } from '../components/idx';
 import { Broken } from '../components/Broken';
 import { Missing } from '../components/Missing';
 import { Pkg } from 'some-package';
-import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
 
 export function Page({ title, count, open, onClick }) {
   const [busy, setBusy] = useState(false);

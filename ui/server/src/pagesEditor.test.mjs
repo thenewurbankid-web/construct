@@ -26,10 +26,10 @@ import {
   moveNodeInSnippet,
   addChildInSnippet,
 } from './pagesEditor.mjs';
+import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
 
 const SOURCE = `import React from 'react';
 import { Card } from '../components/Card.jsx';
-import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
 
 export function Home({ title, count }) {
   const [open, setOpen] = React.useState(false);

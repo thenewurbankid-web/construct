@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ConstructError } from '../src/diagnostics.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { CANONICAL_LAYERS, loadLayerGraph } from '../src/architecture-graph.mjs';
 import {
   classifyFile,
@@ -131,7 +132,6 @@ export function workflow() { return 1; }
   // A same-named object property/import binding isn't a "usage" of the global either.
   const domainWithProperty = `
 import { fetch as fetchThing } from './local-fetch-helper';
-import { makeTempDir } from '../test-utils/tmpdir.mjs';
 export function f() {
   const obj = { fetch: 1 };
   return obj.fetch + fetchThing();
