@@ -184,12 +184,15 @@ construct refactor rename <name> <newName> --feature <feature> --layer <layer> [
 
 # research — read-only: summarize a feature, or check environment/tooling
 construct research summarize [--feature <name>] [--format json|md|compact|prose] [--since <ref>] [--dir <path>]
+construct research impact <unit-ref>... [--files a,b] [--since <ref>] [--ticket <text>] [--depth N] [--format json|markdown] [--dir <path>]
 construct research doctor [--dir <path>]
 ```
 
 `construct research workflow <feature> [<file>] [--format prose|md|json|scenarios]` explains a feature's XState workflows in plain English (each state, every start-to-end scenario, health findings), derived from the real source every time with no LLM — see `docs/workflow-narrator.md`.
 
 `construct summarize <ref> [--detail brief|standard|full] [--format json|markdown]` (and `--list`, `--usage`) returns a deterministic, LLM-free summary of any project, feature, layer, file, hook, workflow, route, rule or package, sized for a bot or a teammate — see `docs/unit-summary.md`.
+
+`construct research impact <ref>... [--files a,b] [--since <ref>] [--ticket <text>] [--depth N] [--format json|markdown]` computes the blast radius of a change: which features and layers it touches, why each file is implicated, what is shared across features, and what your rules already say about those files. Every entry is marked `derived` (computed from the graph) or `inferred` (reached only from a seed that was guessed from ticket text or proposed by a model), so you can see exactly where judgement entered — see `docs/impact-analysis.md`.
 
 `construct refactor` never rewrites a file's own logic or exported identifier — only its location/name and every other file's import of it (including the moved file's own same-layer imports, re-resolved for its new home). Whether the result is *valid* in its new layer — naming convention, purity, everything else — is `construct validate`'s job, reported immediately after the move so a mismatch shows up right away. There's no persistent activity log: each command prints one clear, scannable line for what it did (`Created ...`, `Moved ... -> ...`), and that line **is** the record — a file that changed without one wasn't done by the tool.
 

@@ -33,6 +33,8 @@ module; *group next* = worth extracting, filed as an issue; *leave* = fine where
 | 22 | **Allowlisted directory browser** (directories only, realpath-checked against allowed roots) | `src/dir-browser.mjs` | `ui/server/src/dirBrowse.mjs` (folder picker in Settings and the project switcher) | Det | Packaged (security-sensitive: keep it the only path a UI server uses to list folders) |
 | 23 | **Project validation as data** and **bounded output buffer** (same enforcers as `construct validate`, returned as rows; last ~500 log lines) | `ui/server/src/validateApi.mjs` (`GET /api/validate`), `ui/server/src/logBuffer.mjs` | Cockpit drawer (Diagnostics, Logs) | Det | Leave in `ui/server` (thin glue over `src/registry.mjs`) |
 
+| 24 | **Impact analysis** (blast radius of a change: features/layers/files touched, why each is implicated, shared-component warnings, per-entry `derived`/`inferred` provenance) | `src/engine/impact.mjs`; `schemas/impact-report.v1.json`; docs in `docs/impact-analysis.md` | CLI `research impact`, Research mode (#229), PR health (#285, via `impactFromChangedFiles`) | Det | **Packaged** (assembles the layer graph, `units/facts.mjs`, the unit registry and the enforcers over a reverse import index; read-only, MCP-ready pure API) |
+
 ## How to use this file
 
 - Before writing a helper, check the table. If a block exists, import it; if it is nearly right, extend it
