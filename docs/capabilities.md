@@ -25,6 +25,7 @@ module; *group next* = worth extracting, filed as an issue; *leave* = fine where
 | 14 | **Line source for interactive prompts** | `src/line-source.mjs` | `repl.mjs`, `cli.mjs` | Det | Leave |
 | 15 | **Import planning / route resolution** | `src/import.mjs`, `src/route-resolver.mjs` | CLI `import` | Det (LLM only on opt-in fill) | Leave; `route-resolver` already uses `src/ast` |
 | 16 | **Workflow narrator** (state machine to plain English, Given/When/Then scenarios, health findings; feeds WORKFLOW-002/003) | `src/engine/{workflowNarrator,workflowScenarios,workflowExplain,workflowSource}.mjs`; docs in `docs/workflow-narrator.md` | CLI `research workflow`, `ui/server/src/workflowsViewer.mjs` (`GET /api/workflows/narrative`), architecture-enforcer (WORKFLOW-002/003) | Det | Packaged (built on `workflowExtractor`, no LLM, nothing stored) |
+| 17 | **Unit summaries** (structured, LLM-free summary of any project/feature/layer/file/hook/route/rule/package/etc. for bots and humans; pluggable per-kind registry, JSON Schema, token budgets) | `src/engine/unitSummary.mjs` + `src/engine/units/` (facts, machines, registry, kinds); `schemas/unit-summary.v1.json`; docs in `docs/unit-summary.md` | CLI `summarize <ref>` / `--list` / `--usage`, `ui/server/src/unitsApi.mjs` (`GET /api/units`, `/api/units/summary`, `/api/features*`) | Det | Packaged (composes AST, layer graph, enforcers, workflow narrator; MCP-ready pure API, no MCP server yet) |
 
 ## How to use this file
 

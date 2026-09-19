@@ -12,6 +12,7 @@ import { formatReport, exitCodeForViolations, ConstructError, EXIT_CODES } from 
 import { aggregateValidation } from './registry.mjs';
 import { validateArchitecture } from './architecture-enforcer.mjs';
 import { syncPublicApi } from './api-composer.mjs';
+import { summarizeUnit, listUnits, unitApiManifest, renderUnitMarkdown } from './engine/unitSummary.mjs';
 import { summarizeProject, summarizeCompact, summarizeProse, summarizeSince } from './summarize.mjs';
 import { moveLayerFile, renameLayerFile } from './refactor.mjs';
 import { importVertical, importPlan, analyzeFiles, executeImportPlan } from './import.mjs';
@@ -299,8 +300,32 @@ export async function validate(args) {
   if (!ok) process.exitCode = exitCodeForViolations(violations);
 }
 
+const UNIT_VALUE_FLAGS = new Set(['--dir', '--feature', '--format', '--since', '--kind', '--detail', '--include']);
+const flagValue = (args, name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };
+const positionalOf = (args) => args.find((a, i) => !a.startsWith('--') && !UNIT_VALUE_FLAGS.has(args[i - 1]));
+
+/** `construct summarize <unit-ref> [--kind K] [--detail brief|standard|full] [--include a,b] [--format json|markdown]`,
+ * `construct summarize --list [--kind K]`, `construct summarize --usage`. Deterministic unit summaries for bots and
+ * humans (src/engine/unitSummary.mjs); errors are structured JSON on stdout with a non-zero exit code. */
+function summarizeUnitCommand(args, root, ref) {
+  const format = flagValue(args, '--format') === 'markdown' || flagValue(args, '--format') === 'md' ? 'markdown' : 'json';
+  const kind = flagValue(args, '--kind');
+  let result;
+  if (args.includes('--usage')) result = { ok: true, manifest: unitApiManifest() };
+  else if (args.includes('--list')) result = listUnits(root, { kind });
+  else {
+    const include = flagValue(args, '--include');
+    result = summarizeUnit(root, ref, { detail: flagValue(args, '--detail') || 'standard', kind, ...(include ? { include: include.split(',').map((s) => s.trim()) } : {}) });
+  }
+  console.log(result.manifest ? JSON.stringify(result.manifest, null, 2) : format === 'markdown' ? renderUnitMarkdown(result) : JSON.stringify(result, null, 2));
+  if (!result.ok) process.exitCode = result.error.code === 'INTERNAL_ERROR' ? EXIT_CODES.INTERNAL_ERROR : EXIT_CODES.USAGE_ERROR;
+}
+
 export async function summarize(args) {
   const root = getRoot(args);
+  const ref = positionalOf(args);
+  const legacy = ['--feature', '--since'].some((f) => args.includes(f)) || ['compact', 'prose', 'md'].includes(flagValue(args, '--format'));
+  if (!legacy && (ref || ['--list', '--usage', '--kind', '--detail', '--include'].some((f) => args.includes(f)))) return summarizeUnitCommand(args, root, ref);
   const fi = args.indexOf('--feature');
   const feature = fi >= 0 ? args[fi + 1] : undefined;
   const ff = args.indexOf('--format');
