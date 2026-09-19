@@ -69,6 +69,49 @@ function installCleanup() {
   }
 }
 
+const ROOT_PREFIX = 'construct-tests-';
+
+/**
+ * Best-effort sweep of roots left behind by processes that are no longer alive.
+ *
+ * `process.on('exit')` covers every ending Node can observe, but not SIGKILL and
+ * not an OOM kill - and an OOM kill is exactly how this box loses test runs (see
+ * #254). Those leave a `construct-tests-<pid>-XXXXXX` root behind forever. Since
+ * the pid is in the name, a later run can tell whether the owner is still around
+ * and reclaim the directory if it is not.
+ *
+ * Deliberately conservative: if the pid is still alive, or we cannot tell, the
+ * directory is left alone. The worst case is that a stale root survives one more
+ * run, never that a live run's directory is deleted underneath it.
+ */
+function sweepDeadRoots(tmp) {
+  let entries;
+  try {
+    entries = fs.readdirSync(tmp, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    if (!entry.isDirectory() || !entry.name.startsWith(ROOT_PREFIX)) continue;
+    // construct-tests-<pid>-XXXXXX
+    const pid = Number.parseInt(entry.name.slice(ROOT_PREFIX.length).split('-')[0], 10);
+    if (!Number.isInteger(pid) || pid <= 0 || pid === process.pid) continue;
+    try {
+      // Signal 0 performs the existence/permission check without delivering it.
+      process.kill(pid, 0);
+      continue; // still running - not ours to remove
+    } catch (err) {
+      // EPERM means the pid exists but belongs to another user: leave it.
+      if (err.code !== 'ESRCH') continue;
+    }
+    try {
+      fs.rmSync(path.join(tmp, entry.name), { recursive: true, force: true });
+    } catch {
+      // Someone else may have won the race, or it is not ours to delete.
+    }
+  }
+}
+
 /**
  * The per-process root every temp directory lives under. Created lazily so a
  * test file that never asks for a temp directory never makes one.
@@ -76,9 +119,9 @@ function installCleanup() {
  */
 export function tempRoot() {
   if (!root) {
-    root = fs.realpathSync(
-      fs.mkdtempSync(path.join(os.tmpdir(), `construct-tests-${process.pid}-`)),
-    );
+    const tmp = fs.realpathSync(os.tmpdir());
+    sweepDeadRoots(tmp);
+    root = fs.realpathSync(fs.mkdtempSync(path.join(tmp, `${ROOT_PREFIX}${process.pid}-`)));
     installCleanup();
   }
   return root;

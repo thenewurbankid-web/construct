@@ -112,3 +112,34 @@ test('withTempDir removes its directory immediately, pass or throw', () => {
   }), /boom/);
   assert.equal(fs.existsSync(thrown), false);
 });
+
+// ---- roots left by a SIGKILL / OOM kill -----------------------------------
+//
+// process.on('exit') cannot run for SIGKILL or an OOM kill, and an OOM kill is
+// how this box actually loses test runs (#254). The pid embedded in the root's
+// name is what lets a later run reclaim it.
+
+test('a root whose owning process is gone is reclaimed by the next run', () => {
+  // A pid that is definitely dead: spawn a process and let it exit.
+  const dead = spawnSync(process.execPath, ['-e', ''], { encoding: 'utf8' });
+  const deadPid = dead.pid;
+  assert.ok(deadPid > 0);
+  assert.throws(() => process.kill(deadPid, 0), { code: 'ESRCH' },
+    'precondition: the pid must really be gone before this proves anything');
+
+  const tmp = fs.realpathSync(os.tmpdir());
+  const stale = fs.mkdtempSync(path.join(tmp, `construct-tests-${deadPid}-`));
+  fs.writeFileSync(path.join(stale, 'leaked.txt'), 'x'.repeat(1024));
+
+  // This process's own root must survive the sweep the child performs.
+  const mine = tempRoot();
+
+  const res = spawnSync(process.execPath, ['--input-type=module', '-e', `
+    const { makeTempDir } = await import(${JSON.stringify(HELPER_URL)});
+    makeTempDir('construct-sweeper-');
+  `], { encoding: 'utf8' });
+  assert.equal(res.status, 0, res.stderr);
+
+  assert.equal(fs.existsSync(stale), false, `stale root ${stale} was not reclaimed`);
+  assert.equal(fs.existsSync(mine), true, 'the sweep removed a LIVE process\'s root');
+});
