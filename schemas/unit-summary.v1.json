@@ -1,0 +1,114 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://construct.dev/schemas/unit-summary.v1.json",
+  "title": "Construct Unit Summary v1",
+  "description": "Deterministic, LLM-free structured summary of one unit (project, feature, layer, file, component, hook, service, domain, page, controller, workflow, export, route, package, rule, envelope, generator) as returned by summarizeUnit() in src/engine/unitSummary.mjs, `construct summarize <ref>` and GET /api/units/summary. Also describes the list, feature-index and error results. The common envelope is fixed; `sections` is a per-`kind` object (see docs/unit-summary.md). Breaking changes go in unit-summary.v2.json.",
+  "oneOf": [
+    { "$ref": "#/definitions/summary" },
+    { "$ref": "#/definitions/unitList" },
+    { "$ref": "#/definitions/featureList" },
+    { "$ref": "#/definitions/error" }
+  ],
+  "definitions": {
+    "detail": { "type": "string", "enum": ["brief", "standard", "full"] },
+    "finding": {
+      "type": "object",
+      "required": ["severity", "message"],
+      "properties": {
+        "severity": { "type": "string", "enum": ["error", "warning", "info"] },
+        "code": { "type": "string" },
+        "message": { "type": "string" }
+      }
+    },
+    "health": {
+      "type": "object",
+      "required": ["status", "findings"],
+      "properties": {
+        "status": { "type": "string", "enum": ["ok", "warnings", "issues"], "description": "issues = at least one error finding; warnings = at least one warning; ok otherwise (info findings do not change status)." },
+        "findings": { "type": "array", "items": { "$ref": "#/definitions/finding" } },
+        "completeness": { "type": "number", "minimum": 0, "maximum": 1, "description": "Features only: fraction of the core layers present." }
+      }
+    },
+    "next": {
+      "type": "object",
+      "required": ["ref", "why", "cli"],
+      "properties": { "ref": { "type": "string" }, "why": { "type": "string" }, "cli": { "type": "string" } }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["schemaVersion", "ok", "kind", "id", "ref", "name", "detail", "summary", "sections", "health", "links", "next", "budget"],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "ok": { "const": true },
+        "kind": { "type": "string", "minLength": 1, "description": "Unit kind discriminator: project, feature, layer, file, component, hook, service, domain, page, controller, workflow, export, route, package, rule, envelope, generator (registry-extensible)." },
+        "id": { "type": "string" },
+        "ref": { "type": "string", "description": "Always `kind:id`; pass it back to summarizeUnit to re-address the unit unambiguously." },
+        "name": { "type": "string" },
+        "path": { "type": "string", "description": "Project-relative path when the unit maps to one." },
+        "detail": { "$ref": "#/definitions/detail" },
+        "summary": { "type": "string", "description": "One plain-English paragraph." },
+        "sections": { "type": "object", "description": "Per-kind sections; keys depend on `kind`." },
+        "health": { "$ref": "#/definitions/health" },
+        "links": {
+          "type": "object",
+          "properties": { "parent": { "type": "string" }, "children": { "type": "array", "items": { "type": "string" } } }
+        },
+        "next": { "type": "array", "items": { "$ref": "#/definitions/next" } },
+        "budget": {
+          "type": "object",
+          "required": ["maxTokens", "estimatedTokens", "truncated"],
+          "properties": {
+            "maxTokens": { "type": "integer", "description": "brief 500, standard 2000, full 8000 (tokens ~= JSON chars / 4)." },
+            "estimatedTokens": { "type": "integer" },
+            "truncated": { "type": "boolean" },
+            "omitted": { "type": "object", "additionalProperties": { "type": "integer" }, "description": "sections path -> number of array items dropped to fit the budget." },
+            "exceeded": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "unitList": {
+      "type": "object",
+      "required": ["schemaVersion", "ok", "count", "units"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "ok": { "const": true },
+        "kind": { "type": "string" },
+        "kinds": { "type": "array", "items": { "type": "object", "required": ["kind", "description", "count"], "properties": { "kind": { "type": "string" }, "description": { "type": "string" }, "count": { "type": "integer" } } } },
+        "count": { "type": "integer" },
+        "units": { "type": "array", "items": { "type": "object", "required": ["kind", "id", "name", "ref"], "properties": { "kind": { "type": "string" }, "id": { "type": "string" }, "name": { "type": "string" }, "path": { "type": "string" }, "ref": { "type": "string" } } } }
+      }
+    },
+    "featureList": {
+      "type": "object",
+      "required": ["schemaVersion", "ok", "count", "features"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "ok": { "const": true },
+        "count": { "type": "integer" },
+        "features": { "type": "array", "items": { "type": "object", "required": ["name", "ref"], "properties": { "name": { "type": "string" }, "path": { "type": "string" }, "ref": { "type": "string" }, "summary": { "type": "string" }, "health": { "type": "string" }, "completeness": { "type": "number" } } } }
+      }
+    },
+    "error": {
+      "type": "object",
+      "required": ["schemaVersion", "ok", "error"],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "ok": { "const": false },
+        "error": {
+          "type": "object",
+          "required": ["code", "message"],
+          "properties": {
+            "code": { "type": "string", "enum": ["INVALID_ARGUMENT", "UNKNOWN_KIND", "ROOT_NOT_FOUND", "UNIT_NOT_FOUND", "UNIT_AMBIGUOUS", "INTERNAL_ERROR"] },
+            "message": { "type": "string" },
+            "candidates": { "type": "array", "items": { "type": "object", "required": ["kind", "id", "ref"], "properties": { "kind": { "type": "string" }, "id": { "type": "string" }, "ref": { "type": "string" } } }, "description": "UNIT_AMBIGUOUS: the units the reference matched. UNIT_NOT_FOUND: close suggestions." },
+            "hint": { "type": "string" },
+            "validKinds": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    }
+  }
+}

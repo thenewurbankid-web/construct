@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "kind": "export",
+  "id": "features/login/hooks/useLogin.tsx#useLogin",
+  "ref": "export:features/login/hooks/useLogin.tsx#useLogin",
+  "name": "useLogin",
+  "path": "features/login/hooks/useLogin.tsx",
+  "detail": "standard",
+  "summary": "function useLogin() exported from features/login/hooks/useLogin.tsx — Declares `router` as the app router. Runs the `LoginWorkflow` state machine, tracking its status as `state` and sending it events via `send`. Holds local state `username` (setter `setUsername`), starting at an empty string. Holds local s...",
+  "sections": {
+    "export": {
+      "name": "useLogin",
+      "kind": "function",
+      "signature": "useLogin()",
+      "file": "features/login/hooks/useLogin.tsx",
+      "layer": "hook",
+      "filePurpose": "React hook exporting useLogin."
+    },
+    "behavior": "Declares `router` as the app router. Runs the `LoginWorkflow` state machine, tracking its status as `state` and sending it events via `send`. Holds local state `username` (setter `setUsername`), starting at an empty string. Holds local s...",
+    "usedBy": [
+      "features/login/controllers/LoginController.tsx",
+      "features/login/index.ts"
+    ],
+    "tests": {
+      "files": []
+    }
+  },
+  "health": {
+    "status": "ok",
+    "findings": []
+  },
+  "links": {
+    "parent": "file:features/login/hooks/useLogin.tsx"
+  },
+  "next": [
+    {
+      "ref": "file:features/login/hooks/useLogin.tsx",
+      "why": "The file this export lives in",
+      "cli": "construct summarize file:features/login/hooks/useLogin.tsx"
+    }
+  ],
+  "budget": {
+    "maxTokens": 2000,
+    "estimatedTokens": 359,
+    "truncated": false
+  }
+}

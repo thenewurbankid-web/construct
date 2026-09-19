@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "kind": "rule",
+  "id": "PAGE-001",
+  "ref": "rule:PAGE-001",
+  "name": "PAGE-001",
+  "detail": "standard",
+  "summary": "Rule PAGE-001: Pages are presentation-only. Default severity error; 0 violation(s) in this project.",
+  "sections": {
+    "rule": {
+      "id": "PAGE-001",
+      "statement": "Pages are presentation-only",
+      "defaultSeverity": "error",
+      "configuredSeverity": "error"
+    },
+    "violations": {
+      "count": 0,
+      "items": []
+    },
+    "exceptions": []
+  },
+  "health": {
+    "status": "ok",
+    "findings": []
+  },
+  "links": {
+    "parent": "project:.",
+    "children": []
+  },
+  "next": [],
+  "budget": {
+    "maxTokens": 2000,
+    "estimatedTokens": 145,
+    "truncated": false
+  }
+}
