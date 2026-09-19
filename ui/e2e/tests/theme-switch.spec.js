@@ -69,7 +69,9 @@ test('a garbage stored value falls back to dark; blocked storage does not break 
 
 test('light theme keeps text readable: primary text and nav pill contrast >= 4.5', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('construct.theme', 'light'));
-  await page.goto('/help');
+  // /dashboard, not /help: Help's Browser pane now opens on its own Contents tab (#250),
+  // so the Screens list is not showing there; the top bar's active mode link is.
+  await page.goto('/dashboard');
   const ratio = await page.evaluate(() => {
     const lum = ([r, g, b]) => {
       const f = (c) => ((c /= 255) <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);

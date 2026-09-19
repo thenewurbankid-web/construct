@@ -37,6 +37,8 @@ for (const [name, width, height] of [['phone-390', 390, 844], ['tablet-768', 768
       // Browser: the screens list replaces the stage.
       await bar.getByRole('tab', { name: 'Browser' }).click();
       await expect(page.getByRole('complementary', { name: 'Browser' })).toBeVisible();
+      // Help's own Contents tab comes first; the shell's Screens tab follows.
+      await page.getByRole('complementary', { name: 'Browser' }).getByRole('tab', { name: 'Screens' }).click();
       await expect(page.getByRole('link', { name: 'Settings' }).first()).toBeVisible();
       await expect(page.getByRole('main')).toHaveCount(0);
       await noHorizontalScroll(page);
@@ -53,6 +55,7 @@ for (const [name, width, height] of [['phone-390', 390, 844], ['tablet-768', 768
       await page.goto('/help');
       const bar = page.getByRole('tablist', { name: 'Panes' });
       await bar.getByRole('tab', { name: 'Browser' }).click();
+      await page.getByRole('complementary', { name: 'Browser' }).getByRole('tab', { name: 'Screens' }).click();
       await page.getByRole('complementary', { name: 'Browser' }).getByRole('link', { name: 'Local Model' }).click();
       await expect(page).toHaveURL(/\/ollama$/);
       await expect(bar.getByRole('tab', { name: 'Stage' })).toHaveAttribute('aria-selected', 'true');
