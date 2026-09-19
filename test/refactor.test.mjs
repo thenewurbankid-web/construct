@@ -1,15 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { createFeature, generateLayer } from '../src/generators.mjs';
 import { moveLayerFile, renameLayerFile } from '../src/refactor.mjs';
 import { validateArchitecture } from '../src/architecture-enforcer.mjs';
 import { ConstructError, EXIT_CODES } from '../src/diagnostics.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 function tmpProject() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'construct-refactor-'));
+  return makeTempDir('construct-refactor-');
 }
 
 test('moveLayerFile relocates the file and updates another file that imports it', () => {

@@ -8,8 +8,8 @@
 // known prefix such as "Snippet does not parse: ") legitimately differs between parsers, so
 // `normalizeGolden` blanks only that suffix -- whether an operation errors, and everything else, must match.
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
+import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
 
 export const SOURCES = {
   page: `import React from 'react';
@@ -267,7 +267,7 @@ function exerciseSnippet(mod, snippet) {
 }
 
 function exerciseFs(mod) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-golden-'));
+  const root = makeTempDir('construct-golden-');
   try {
     fs.writeFileSync(path.join(root, 'architecture.yml'), 'version: 1\npreset: strict-nextjs\nfeatures:\n  root: features\n');
     fs.mkdirSync(path.join(root, 'features/demo/pages'), { recursive: true });

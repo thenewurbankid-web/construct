@@ -5,7 +5,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { extractCode, whyNotCode, requestFileText, OUTPUT_CONTRACT } from '../src/llm-fill.mjs';
 import { createFeature, generateLayer, fillGeneratedFile } from '../src/generators.mjs';
@@ -13,11 +12,12 @@ import { importVertical } from '../src/import.mjs';
 import { generate, importCommand } from '../src/cli.mjs';
 import { PROVIDERS } from '../src/llm.mjs';
 import { ConstructError } from '../src/diagnostics.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const CODE = 'export function Foo() { return 7; }';
 const PROSE = "I wasn't able to write directly to the file, so here is the content, please apply it manually:";
 
-const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'construct-llm-fill-'));
+const tmp = () => makeTempDir('construct-llm-fill-');
 
 /** `responses`: array consumed one per call (last repeats) or a function(callNo). Error entries are thrown. */
 async function withFake(responses, fn) {

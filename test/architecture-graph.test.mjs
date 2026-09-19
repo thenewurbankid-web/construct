@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { ConstructError } from '../src/diagnostics.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import {
   CANONICAL_LAYERS,
   mergeLayers,
@@ -63,13 +63,13 @@ test('validateGraph allows a same-layer self-edge without flagging a cycle', () 
 });
 
 test('loadLayerGraph returns the canonical graph when no architecture.yml exists', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-graph-'));
+  const dir = makeTempDir('construct-graph-');
   const graph = loadLayerGraph(dir);
   assert.deepEqual(graph.route.canImport, CANONICAL_LAYERS.route.canImport);
 });
 
 test('loadLayerGraph merges a project-level `layers:` override from architecture.yml', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-graph-'));
+  const dir = makeTempDir('construct-graph-');
   // hook -> page introduces no cycle (page only reaches component/types).
   fs.writeFileSync(path.join(dir, 'architecture.yml'), 'layers:\n  hook:\n    addCanImport: [page]\n');
   const graph = loadLayerGraph(dir);
@@ -78,7 +78,7 @@ test('loadLayerGraph merges a project-level `layers:` override from architecture
 });
 
 test('loadLayerGraph throws a ConstructError on a malformed custom graph', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-graph-'));
+  const dir = makeTempDir('construct-graph-');
   fs.writeFileSync(path.join(dir, 'architecture.yml'), 'layers:\n  page:\n    canImport: [ghost]\n');
   assert.throws(() => loadLayerGraph(dir), (err) => {
     assert.ok(err instanceof ConstructError);
@@ -88,7 +88,7 @@ test('loadLayerGraph throws a ConstructError on a malformed custom graph', () =>
 });
 
 test('loadLayerGraph picks the react-spa route pattern (src/App.tsx) when project.framework is react-spa', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-graph-'));
+  const dir = makeTempDir('construct-graph-');
   fs.writeFileSync(path.join(dir, 'architecture.yml'), 'project:\n  framework: react-spa\n');
   const graph = loadLayerGraph(dir);
   assert.equal(graph.route.pattern, 'src/App.tsx');
@@ -98,7 +98,7 @@ test('loadLayerGraph picks the react-spa route pattern (src/App.tsx) when projec
 });
 
 test('loadLayerGraph still honors a `layers:` override on top of the react-spa base', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-graph-'));
+  const dir = makeTempDir('construct-graph-');
   fs.writeFileSync(
     dir + '/architecture.yml',
     'project:\n  framework: react-spa\nlayers:\n  hook:\n    addCanImport: [page]\n',
@@ -110,7 +110,7 @@ test('loadLayerGraph still honors a `layers:` override on top of the react-spa b
 });
 
 test('loadLayerGraph throws a clear ConstructError for an unknown project.framework', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-graph-'));
+  const dir = makeTempDir('construct-graph-');
   fs.writeFileSync(path.join(dir, 'architecture.yml'), 'project:\n  framework: sveltekit\n');
   assert.throws(() => loadLayerGraph(dir), (err) => {
     assert.ok(err instanceof ConstructError);

@@ -3,12 +3,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEFAULT_RULES } from '../src/config.mjs';
 import { detectLayerViolations, validateArchitecture } from '../src/architecture-enforcer.mjs';
 import { compileWorkflow } from '../src/engine/workflowGenerator.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const fixtures = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'fixtures', 'workflow-graphs');
 const wf = (states) => `import { createMachine } from 'xstate';\nexport const m = createMachine({ initial: 'a', states: ${states} });\n`;
@@ -54,7 +54,7 @@ test('existing fixtures: generated checkout and refund request raise nothing; on
 });
 
 test('construct validate surfaces them as warnings (not errors); severity is configurable; projects without workflows unaffected', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-wf-guard-'));
+  const dir = makeTempDir('construct-wf-guard-');
   fs.writeFileSync(path.join(dir, 'architecture.yml'), 'version: 1\npreset: strict-nextjs\nfeatures:\n  root: features\n');
   fs.mkdirSync(path.join(dir, 'features/shop/workflows'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'features/plain/domain'), { recursive: true });

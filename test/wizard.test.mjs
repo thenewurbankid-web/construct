@@ -6,9 +6,10 @@ import path from 'node:path';
 import { importRouteWizard } from '../src/cli.mjs';
 import { createFeature } from '../src/generators.mjs';
 import { PROVIDERS } from '../src/llm.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 function tmpProject() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'construct-wizard-'));
+  return makeTempDir('construct-wizard-');
 }
 
 function scriptedAsk(answers) {
@@ -36,7 +37,7 @@ async function inProject(dir, fn) {
  * relative specifiers (e.g. './Old') the page.tsx re-exports/imports;
  * `extraFiles` is { filename: content } for those imported files. */
 function buildRouteFixture(imports, extraFiles) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-wizard-route-'));
+  const dir = makeTempDir('construct-wizard-route-');
   const importLines = imports.map((spec, i) => `import x${i} from "${spec}";`).join('\n');
   fs.writeFileSync(path.join(dir, 'page.tsx'), `${importLines}\nexport default function Page() { return null; }\n`);
   for (const [name, content] of Object.entries(extraFiles)) {
@@ -63,7 +64,7 @@ function withFakeAnalysis(planJson, fn) {
 
 test('importRouteWizard cancels cleanly when no feature name is given', async () => {
   const dir = tmpProject();
-  const routeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-wizard-route-'));
+  const routeDir = makeTempDir('construct-wizard-route-');
   fs.writeFileSync(path.join(routeDir, 'Old.ts'), 'export function old() { return true; }\n');
 
   await inProject(dir, () =>

@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -17,9 +16,10 @@ import {
   findControllerFile,
 } from '../src/route-resolver.mjs';
 import { ConstructError } from '../src/diagnostics.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 function tmpProject() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'construct-route-'));
+  return makeTempDir('construct-route-');
 }
 
 function write(root, relPath, content) {

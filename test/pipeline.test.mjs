@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -9,12 +8,13 @@ import { runPipeline } from '../src/engine/pipeline.mjs';
 import { createEnvelope } from '../src/engine/envelope.mjs';
 import { createFeature } from '../src/generators.mjs';
 import { EXIT_CODES } from '../src/diagnostics.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const bin = path.join(here, '..', 'bin', 'construct.mjs');
 
 function tmpProject() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-pipeline-test-'));
+  const dir = makeTempDir('construct-pipeline-test-');
   fs.writeFileSync(path.join(dir, 'architecture.yml'), 'version: 1\npreset: strict-nextjs\nproject:\n  framework: nextjs\nfeatures:\n  root: features\n');
   createFeature(dir, 'checkout');
   return dir;

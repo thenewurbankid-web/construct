@@ -1,15 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { createFeature, generateLayer, generateVertical, missingLayerPrerequisites, selfCheck } from '../src/generators.mjs';
 import { validateArchitecture } from '../src/architecture-enforcer.mjs';
 import { ConstructError, EXIT_CODES } from '../src/diagnostics.mjs';
 import { parseToAst } from '../src/ast/index.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 function tmpProject() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'construct-generators-'));
+  return makeTempDir('construct-generators-');
 }
 
 // Canonical dependency order: controller's template imports a same-named

@@ -1,17 +1,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { listWorkflowFeatures, listWorkflowFiles, resolveWorkflowFile, readWorkflowMachines, readWorkflowNarrative, editWorkflowFile } from './workflowsViewer.mjs';
 import { PagesEditorError } from './pagesEditor.mjs';
+import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
 
 const MACHINE = `import { setup } from 'xstate';
 export const A = setup({}).createMachine({ id: 'a', initial: 'x', states: { x: { on: { GO: 'y' } }, y: { type: 'final' } } });
 `;
 
 function makeFixture() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-workflows-'));
+  const root = makeTempDir('construct-workflows-');
   fs.writeFileSync(path.join(root, 'architecture.yml'), 'version: 1\npreset: strict-nextjs\nfeatures:\n  root: features\n');
   fs.mkdirSync(path.join(root, 'features/demo/workflows'), { recursive: true });
   fs.mkdirSync(path.join(root, 'features/empty/pages'), { recursive: true });

@@ -1,18 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { runImportRouteWizardEventDriven } from '../src/cli.mjs';
 import { createFeature } from '../src/generators.mjs';
 import { PROVIDERS } from '../src/llm.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 function tmpProject() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'construct-wizard-event-'));
+  return makeTempDir('construct-wizard-event-');
 }
 
 function buildRouteFixture(imports, extraFiles) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-wizard-event-route-'));
+  const dir = makeTempDir('construct-wizard-event-route-');
   const importLines = imports.map((spec, i) => `import x${i} from "${spec}";`).join('\n');
   fs.writeFileSync(path.join(dir, 'page.tsx'), `${importLines}\nexport default function Page() { return null; }\n`);
   for (const [name, content] of Object.entries(extraFiles)) {

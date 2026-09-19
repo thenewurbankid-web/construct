@@ -1,16 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { syncPublicApi, checkPublicApiDrift } from '../src/api-composer.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const fixturesRoot = path.join(__dirname, '..', 'fixtures');
 
 function tmpProject() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'construct-composer-'));
+  return makeTempDir('construct-composer-');
 }
 
 function writeFile(root, relPath, contents) {
