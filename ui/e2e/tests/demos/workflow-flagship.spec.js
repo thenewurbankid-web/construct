@@ -77,6 +77,8 @@ test.describe.serial('Flagship demo: refund flow on the Workflows screen', () =>
   test('a visual edit changes the source by a few lines, and the English and Health follow', async ({ page }) => {
     await open(page);
     const before = fs.readFileSync(file, 'utf8');
+    // #248: editing is the Edit tab of the Tools panel; the English is the Narrative tab.
+    await page.getByRole('tab', { name: 'Edit' }).click();
     await page.getByLabel('New state name').fill('onHold');
     await page.getByRole('button', { name: 'Add state' }).click();
     const diff = page.getByTestId('wf-diff-preview');
@@ -86,6 +88,7 @@ test.describe.serial('Flagship demo: refund flow on the Workflows screen', () =>
     await page.screenshot({ path: path.join(SHOTS, 'flagship-3-edit-diff-preview.png') });
     await diff.getByRole('button', { name: 'Confirm save' }).click();
     await expect(page.getByTestId('wf-state-onHold')).toBeVisible();
+    await page.getByRole('tab', { name: 'Narrative' }).click();
 
     // The real source diff (unified, as a code reviewer would see it).
     const beforeFile = path.join(projectDir, 'before.tsx');

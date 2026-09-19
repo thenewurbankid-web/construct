@@ -134,3 +134,6 @@ export type WorkflowsState = {
   editBusy: boolean;
   editError: string | null;
 };
+
+/** A plain transition arrow picked on the diagram (the Edit tab can remove it). */
+export type SelectedEdge = { from: string; event: string; label: string };

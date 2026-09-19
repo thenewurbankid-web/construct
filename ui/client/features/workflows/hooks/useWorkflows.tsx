@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useReducer } from 'react';
+import { useCanvasSelection } from './useCanvasSelection';
 import { useWorkflowEditor } from './useWorkflowEditor';
 import { useWorkflowNarrative } from './useWorkflowNarrative';
 import { getWorkflowFeatures, getWorkflowFiles, getWorkflowMachines } from '../services/WorkflowsApi';
@@ -45,5 +46,7 @@ export function useWorkflows() {
 
   const narrative = useWorkflowNarrative(state.feature, state.file, state.loaded);
 
-  return { ...state, narrative, setFeature, openFile, reload, ...editor };
+  const selection = useCanvasSelection(state.file);
+
+  return { ...state, narrative, setFeature, openFile, reload, ...editor, ...selection };
 }

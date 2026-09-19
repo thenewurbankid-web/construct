@@ -43,6 +43,8 @@ test.describe('Workflows screen: context, actions and guards (#223)', () => {
     await page.goto('/workflows');
     await page.getByRole('combobox').first().selectOption('shop');
     await page.getByRole('button', { name: 'CheckoutWorkflow.tsx' }).click();
+    // #248: Context & actions is a Tools tab.
+    await page.getByRole('tab', { name: 'Context & actions' }).click();
     await expect(page.getByTestId('wf-context-panel')).toBeVisible();
   }
 
@@ -69,7 +71,9 @@ test.describe('Workflows screen: context, actions and guards (#223)', () => {
     await confirm(page);
     await expect(panel.getByTestId('wf-context-coupon')).toBeVisible();
     expect(fs.readFileSync(file, 'utf8')).toContain('context: { quantity: 1, error: null, coupon: null }');
+    await page.getByRole('tab', { name: 'Narrative' }).click();
     await expect(page.getByTestId('wf-narrative-context')).toContainText('It remembers coupon (text that can be empty), starting as empty.');
+    await page.getByRole('tab', { name: 'Context & actions' }).click();
 
     // declare an action, attach it to entering `idle`
     await panel.getByLabel('New action name').fill('trackVisit');
@@ -81,7 +85,9 @@ test.describe('Workflows screen: context, actions and guards (#223)', () => {
     await panel.getByRole('button', { name: 'Attach action' }).click();
     await confirm(page);
     await expect(panel.getByTestId('wf-action-trackVisit')).toContainText('entry of idle');
+    await page.getByRole('tab', { name: 'Narrative' }).click();
     await expect(page.getByTestId('wf-narrative-state-idle')).toContainText('On entering, it runs trackVisit.');
+    await page.getByRole('tab', { name: 'Context & actions' }).click();
 
     // declare a guard and put it on SUBMIT
     await panel.getByLabel('New guard name').fill('isValid');

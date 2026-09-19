@@ -39,6 +39,8 @@ export type ShellTab = {
   title: string;
   badge?: number | string;
   disabled?: boolean;
+  /** Shown by default (before the user picks a tab) instead of the first enabled one. */
+  preferred?: boolean;
   render: () => ReactNode;
 };
 

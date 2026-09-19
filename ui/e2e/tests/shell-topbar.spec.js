@@ -49,6 +49,8 @@ test.describe('Cockpit top bar (#245)', () => {
     await expect(screens.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page');
     await screens.getByRole('link', { name: 'Workflows' }).click();
     await expect(page).toHaveURL(/\/workflows$/);
+    // #248: a screen with its own Browser tab shows it first; Screens is the sibling tab.
+    await page.getByRole('tab', { name: 'Screens' }).click();
     await expect(screens.getByRole('link', { name: 'Workflows' })).toHaveAttribute('aria-current', 'page');
     await screens.getByRole('link', { name: 'Help' }).click();
     await expect(page.locator('h1')).toHaveText('Help');
