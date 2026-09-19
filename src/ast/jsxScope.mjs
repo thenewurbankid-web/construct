@@ -179,3 +179,33 @@ export function declaredPropNames(childSource, tagName, isDefault) {
   if (!fn) return null;
   return declaredNamesFromFunction(fn, childSource);
 }
+
+/**
+ * Like `collectComponentScopeNames`, but keeps what each name *is*: `{name, kind}` with kind `'prop'`
+ * (a function parameter, destructured or plain), `'state'` (a `useState` value) or `'setter'` (its
+ * setter). Same traversal order and de-duplication (first declaration wins) as the names-only variant.
+ */
+export function collectScopeDeclarations(ast) {
+  const hits = [];
+  walkAst(ast, {
+    enter(node, parent) {
+      if (FUNCTION_TYPES.has(node.type) && !isMethodBody(node, parent)) {
+        const names = new Set();
+        namesFromParams(node.params, names);
+        hits.push({ at: node.range[0], decls: [...names].map((name) => ({ name, kind: 'prop' })) });
+      } else if (node.type === 'VariableDeclarator') {
+        const decls = useStateNames(node).map((name, i) => ({ name, kind: i === 0 ? 'state' : 'setter' }));
+        hits.push({ at: node.range[0], decls });
+      }
+    },
+  });
+  hits.sort((a, b) => a.at - b.at);
+  const seen = new Set();
+  const out = [];
+  for (const d of hits.flatMap((h) => h.decls)) {
+    if (seen.has(d.name)) continue;
+    seen.add(d.name);
+    out.push(d);
+  }
+  return out;
+}

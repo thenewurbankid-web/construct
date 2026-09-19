@@ -1,13 +1,14 @@
-name: Pages user guide
+name: Pages documentation
 
-# Builds the user-guide site (site/build.mjs) from the [Demo] tickets and deploys it to GitHub Pages.
+# Builds the documentation site (User Guide + Developer Docs, site/build.mjs) and deploys it to GitHub Pages.
+# Reused docs (README.md, docs/, src/ast/README.md) are rendered at build time; tutorials come from the published guide tickets.
 # Live at https://thenewurbankid-web.github.io/construct/
 
 on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['site/**', '.github/workflows/pages.yml']
+    paths: ['site/**', 'docs/**', 'README.md', 'src/**', 'schemas/**', 'package.json', '.github/workflows/pages.yml']
   schedule:
     - cron: '17 */6 * * *'
   issues:
@@ -35,6 +36,8 @@ jobs:
         with:
           node-version: 22
       - uses: actions/configure-pages@v6
+      - name: Install build dependencies
+        run: npm ci
       - name: Test site generator
         run: node --test site/test/*.test.mjs
       - name: Build site

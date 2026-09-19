@@ -19,6 +19,7 @@ import {
   spliceNode, setAttributeText, setSpreadText, removeAttributeText, removeNodeText, swapNodesText, addChildText,
   collectComponentScopeNames, findImportOfName, declaredPropNames,
 } from '../../../src/ast/index.mjs';
+import { buildScopeLinks, importOfTag } from '../../../src/engine/scopeLinks.mjs';
 import { loadConfig } from '../../../src/config.mjs';
 import { loadLayerGraph } from '../../../src/architecture-graph.mjs';
 import { validateArchitecture } from '../../../src/architecture-enforcer.mjs';
@@ -500,6 +501,30 @@ export function findUnmappedProps(source, nodeId, root, pageAbsPath) {
     }
   }
   return { nodeId, candidates, childPropsResolved };
+}
+
+/**
+ * Scope/binding link graph for one element (#223): thin glue over the core `buildScopeLinks` block --
+ * this only does the path-scoped cross-file lookup of the child component's source (bare/package
+ * imports and anything outside `root` resolve to null, leaving `childProps` unknown).
+ */
+export function getScopeLinks(source, nodeId, root, pageAbsPath) {
+  let childSource;
+  const { byId } = parsePageTree(source);
+  const node = byId.get(nodeId);
+  if (!node) throw noSuchNode(nodeId);
+  if (node.isCustomComponent && root && pageAbsPath) {
+    const imported = importOfTag(source, node.tag);
+    const childAbs = imported ? resolveImportSource(pageAbsPath, imported.source, root) : null;
+    if (childAbs) {
+      try {
+        childSource = fs.readFileSync(childAbs, 'utf8');
+      } catch {
+        childSource = undefined;
+      }
+    }
+  }
+  return buildScopeLinks(source, nodeId, { childSource });
 }
 
 export function applyAutoMap(source, nodeId, propNames) {

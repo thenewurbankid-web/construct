@@ -18,4 +18,4 @@ export {
   spliceNode, renderAttrValue, setAttributeText, setSpreadText, removeAttributeText,
   removeNodeText, swapNodesText, addChildText, NEW_CHILD_SNIPPET,
 } from './jsxEdit.mjs';
-export { collectComponentScopeNames, findImportOfName, findTypeMembers, declaredPropNames } from './jsxScope.mjs';
+export { collectComponentScopeNames, collectScopeDeclarations, findImportOfName, findTypeMembers, declaredPropNames } from './jsxScope.mjs';

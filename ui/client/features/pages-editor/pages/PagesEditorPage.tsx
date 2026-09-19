@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react';
+import { ExternalChangeNotice } from '../components/ExternalChangeNotice';
 import { InspectorPanel } from '../components/InspectorPanel';
 import { PagesBrowser } from '../components/PagesBrowser';
 import { PreviewPanel } from '../components/PreviewPanel';
 import { PropFlowDiagram } from '../components/PropFlowDiagram';
+import { SourcePanel } from '../components/SourcePanel';
 import { TreePanel } from '../components/TreePanel';
 import type { usePagesEditor } from '../hooks/usePagesEditor';
 
@@ -12,6 +14,7 @@ export function PagesEditorPage(props: PagesEditorPageProps): ReactNode {
   const {
     features, feature, setFeature, files, filesLoading, file, openFile, tree, error,
     selectedNodeId, selectNode, selectedNode, onTreeSaved, previewTitle,
+    externalChange, dismissExternalChange, reloadFromDisk,
   } = props;
 
   return (
@@ -37,6 +40,10 @@ export function PagesEditorPage(props: PagesEditorPageProps): ReactNode {
 
       {error && <p className="status-error">{error}</p>}
 
+      {tree && externalChange && (
+        <ExternalChangeNotice file={file} change={externalChange} onReload={reloadFromDisk} onDismiss={dismissExternalChange} />
+      )}
+
       {tree && (
         <>
           <div className="pages-editor-grid">
@@ -45,6 +52,7 @@ export function PagesEditorPage(props: PagesEditorPageProps): ReactNode {
             <InspectorPanel feature={feature} file={file} node={selectedNode} contentHash={tree.contentHash} onSaved={onTreeSaved} />
           </div>
           <PropFlowDiagram roots={tree.roots} />
+          <SourcePanel feature={feature} file={file} contentHash={tree.contentHash} />
         </>
       )}
     </div>
