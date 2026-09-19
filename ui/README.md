@@ -122,15 +122,16 @@ behind a Storybook addon would add dependencies without adding coverage.
 
 ## Theme
 
-`ui/client/app/globals.css`'s `:root` defines the whole visual language
-(black/grey glassmorphism) as CSS custom properties — a near-black `--bg`
-with two faint radial glow tokens, translucent
-`--panel-glass`/`--panel-glass-strong` fills with `--panel-blur` via
-`backdrop-filter`, `--border`/`--border-strong`, and `--text`/`--muted`
-(`--accent`/`--tool`/`--llm`/`--error` carry meaning, not just decoration).
-The shared `.glass-panel` class documents the background/border/blur
-recipe once; every panel-like surface across every feature consumes the
-same tokens.
+`ui/client/app/tokens.css` defines the whole visual language as CSS custom
+properties, mapped per theme on `<html data-theme="dark|light">`. Dark is the
+default (and also applies when no attribute is set); the light theme keeps the
+same hue family with deeper values so text stays readable on light surfaces.
+The top-bar switch (or "Toggle dark" in the command palette) changes theme and
+the choice is remembered in the browser. Components use the semantic tokens
+(`--surface-*`, `--text`, `--muted`, `--accent`, `--tool`, `--llm`, `--error`);
+older names such as `--bg`, `--border` and `--panel-glass` remain as aliases,
+and the shared `.glass-panel` class documents the background/border/blur recipe
+once. Token rules live in `docs/design/tokens.md`.
 
 ## Reusable UI components
 
@@ -287,6 +288,16 @@ end of the run if any showed up, rather than being silently ignored.
 
 ## Using it
 
+0. **The Cockpit frame.** Every screen sits in one shell: a **Browser** pane on
+   the left (a screen's own tabs first, then **Screens**, the list of every
+   screen), the **stage** in the middle, and a **Tools** panel on the right.
+   The top bar carries the project switcher, the Explore / Research / Build
+   modes, the search box (`Ctrl K`, or `Cmd K`, opens the command palette),
+   the local-model status and the light/dark switch. `Ctrl J` opens the bottom
+   drawer (Diagnostics from `construct validate`, Logs, Processes); `Ctrl B`
+   and `Ctrl Alt B` show or hide the Browser and Tools panes. Below 900 px
+   wide only one pane shows at a time, switched from a bottom bar. A guided
+   walkthrough with screenshots lives in `docs/demos/cockpit/`.
 1. **Pick your project once.** Each gated route (Dashboard, Wizard, Pages
    Editor) fetches project status (`GET /api/settings`) independently on
    mount via project-gate's `useProjectGate` hook: if the selected project
@@ -295,8 +306,9 @@ end of the run if any showed up, rather than being silently ignored.
    with an **Initialize Construct here** button (calls `POST /api/init`,
    i.e. the real `construct init`) instead of rendering. Settings and Help
    stay reachable either way, since Settings is how you fix it.
-2. **Settings** — set the LLM provider (sourced live from `src/llm.mjs`'s
-   `PROVIDERS` map — currently just `claude`) and the project directory
+2. **Settings** — set the LLM provider for each capability (import fill,
+   create fill, plan analysis; sourced live from `src/llm.mjs`'s `PROVIDERS`
+   map, and a local model is never allowed for plan analysis) and the project directory
    every command targets (passed as `--dir` to the underlying functions,
    exactly like the CLI's `--dir`). Nothing is persisted to disk;
    restarting the backend resets to its defaults (project directory
@@ -316,14 +328,21 @@ end of the run if any showed up, rather than being silently ignored.
    split as everywhere else. Only one wizard session may run at a time per
    backend process (see "Limitations" below).
 5. **Pages Editor** — epic #48: browse a feature's `pages/` layer, view a
-   page's JSX as a tree, select a node from either the tree or the
+   page's JSX as a tree, frame your running app and click an element to jump
+   to its code, see which values flow into a component (Scope tab), read the
+   whole file with type errors marked (Source tab), see what changed on disk
+   outside the editor (Diff tab), select a node from either the tree or the
    structural preview (bidirectional), edit its isolated snippet or props
    and save straight back into the source file, auto-map unwired props,
    and see the whole tree's prop flow as a colored diagram. Every save is
    scoped to `pages/` and checked against the PAGE-*/COMPONENT-*
    architecture rules before it lands — a rejected save (e.g. a `fetch()`
    call added to a page) never touches disk.
-6. **Help** — documents both the CLI and this UI: a getting-started
+6. **Workflows** — pick a workflow file to see its diagram; the Narrative tab
+   explains it in plain English with every scenario and a health check, and
+   the Edit and Context & actions tabs change it (each edit is previewed as a
+   diff, then written, and the English follows).
+7. **Help** — documents both the CLI and this UI: a getting-started
    tutorial, an explanation of the tool/LLM attribution badges, a guide to
    every screen, and a full CLI reference. The CLI reference section is
    fetched from `GET /api/help` (read-only), which returns text imported

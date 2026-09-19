@@ -8,7 +8,7 @@ function CreateFirstFeature() {
       <h3>1. Create your first feature</h3>
       <ol>
         <li>
-          Open the <strong>Dashboard</strong> and find the <strong>Create</strong> panel (top-left
+          Open the <strong>Dashboard</strong> (Browser pane, <strong>Screens</strong> tab, or press <code>Ctrl K</code> and type &quot;dashboard&quot;) and find the <strong>Create</strong> panel (top-left
           card).
         </li>
         <li>
