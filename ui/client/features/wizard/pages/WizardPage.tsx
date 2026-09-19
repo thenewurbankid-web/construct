@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ErrorState } from '@/features/states';
+import { ErrorState, LoadingState } from '@/features/states';
 import { ChatLog } from '../components/ChatLog';
 import { WizardAnswerForm } from '../components/WizardAnswerForm';
 import { WizardStartPanel } from '../components/WizardStartPanel';
@@ -19,6 +19,10 @@ export function WizardPage({ messages, status, awaitingAnswer, input, setInput, 
 
       {(status === 'idle' || status === 'done') && (
         <WizardStartPanel seedRoute={seedRoute} setSeedRoute={setSeedRoute} onStart={start} />
+      )}
+
+      {status === 'connecting' && messages.length === 0 && (
+        <LoadingState size="inline" label="Connecting to the wizard" hint="Opening a session with the backend." />
       )}
 
       <ChatLog messages={messages} />

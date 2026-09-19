@@ -314,3 +314,9 @@ kbd {
   .sh-mode { padding: 4px 8px; }
   .sh-popover { position: fixed; left: var(--sp-2); right: var(--sp-2); top: calc(var(--sh-top) + 4px); width: auto; }
 }
+
+/* Phone: the mode links do not fit next to brand + project + theme; every
+ * screen is still one tap away in the Browser pane (Screens tab). */
+@media (max-width: 520px) {
+  .sh-modes { display: none; }
+}
