@@ -400,6 +400,11 @@ button:disabled {
  * centres itself in the viewport instead of following the normal page flow
  * under a top bar that is not there. */
 .auth-screen {
+  /* `.app` is a flex *row*, and this screen replaces the whole Cockpit
+   * rather than sitting inside `.main`, so it has to claim the row itself
+   * — without `flex: 1` it is only as wide as the panel and the centring
+   * below has nothing to centre within. */
+  flex: 1 1 auto;
   min-height: 100vh;
   align-items: center;
   justify-content: center;
