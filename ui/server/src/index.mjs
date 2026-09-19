@@ -36,6 +36,7 @@ import {
   moveNodeInSnippet,
   addChildInSnippet,
 } from './pagesEditor.mjs';
+import { readPageSource } from './pageSource.mjs';
 import { listWorkflowFeatures, listWorkflowFiles, readWorkflowMachines, readWorkflowNarrative, editWorkflowFile } from './workflowsViewer.mjs';
 
 // This server is a local dev tool, but it has real teeth: /api/import (and
@@ -287,6 +288,17 @@ app.get('/api/pages/tree', (req, res) => {
     const root = currentRoot();
     const { absPath } = resolvePageFile(root, feature, file);
     res.json(serializeTree(fs.readFileSync(absPath, 'utf8')));
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+// Read-only source view: the whole page file + TypeScript/architecture
+// diagnostics (core src/engine/diagnostics.mjs), scoped by resolvePageFile.
+app.get('/api/pages/source', (req, res) => {
+  try {
+    const { feature, file } = req.query;
+    res.json(readPageSource(currentRoot(), feature, file));
   } catch (e) {
     handlePagesEditorError(res, e);
   }
