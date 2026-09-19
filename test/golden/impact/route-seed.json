@@ -1,0 +1,182 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "root": "example",
+  "request": {
+    "depth": 2,
+    "unbounded": false,
+    "limits": {
+      "maxFiles": 200,
+      "maxSeeds": 100
+    }
+  },
+  "summary": "Impact of route:/login: 1 feature(s) (login), 2 file(s) across 2 layer(s), depth 2; 0 warning(s); 0 rule error(s), 0 rule warning(s); every entry derived deterministically.",
+  "seeds": [
+    {
+      "index": 0,
+      "method": "user",
+      "provenance": "explicit",
+      "confidence": 1,
+      "ref": "/login",
+      "resolved": true,
+      "kind": "route",
+      "id": "/login",
+      "unitRef": "route:/login",
+      "files": 1
+    }
+  ],
+  "features": [
+    {
+      "name": "app",
+      "kind": "directory",
+      "path": "app",
+      "provenance": "derived",
+      "confidence": 1,
+      "files": 1,
+      "minDistance": 0,
+      "seeded": true,
+      "layers": [
+        {
+          "layer": "route",
+          "files": 1,
+          "minDistance": 0,
+          "canImport": [
+            "controller"
+          ]
+        }
+      ],
+      "why": "Contains a seed unit."
+    },
+    {
+      "name": "login",
+      "kind": "feature",
+      "path": "features/login",
+      "provenance": "derived",
+      "confidence": 1,
+      "files": 1,
+      "minDistance": 1,
+      "seeded": false,
+      "layers": [
+        {
+          "layer": "controller",
+          "files": 1,
+          "minDistance": 1,
+          "canImport": [
+            "workflow",
+            "hook",
+            "service",
+            "page",
+            "component",
+            "domain",
+            "types"
+          ]
+        }
+      ],
+      "why": "Reached in 1 hop(s): features/login/controllers/LoginController.tsx is imported by a changed file."
+    }
+  ],
+  "files": [
+    {
+      "path": "app/login/page.tsx",
+      "layer": "route",
+      "feature": null,
+      "scope": "app",
+      "scopeKind": "directory",
+      "distance": 0,
+      "direction": "seed",
+      "score": 1,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "Route entry exporting Page.",
+      "reasons": [
+        {
+          "code": "seed",
+          "message": "Part of the seed unit(s) route:/login."
+        }
+      ],
+      "derivedFrom": [
+        "route:/login"
+      ]
+    },
+    {
+      "path": "features/login/controllers/LoginController.tsx",
+      "layer": "controller",
+      "feature": "login",
+      "scope": "login",
+      "scopeKind": "feature",
+      "distance": 1,
+      "direction": "down",
+      "score": 0.3,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "Controller (wires page to hook/workflow) exporting LoginController.",
+      "reasons": [
+        {
+          "code": "dependency-of-seed",
+          "message": "Imported by app/login/page.tsx; read it to understand the change, it is not itself at risk.",
+          "from": "app/login/page.tsx"
+        }
+      ],
+      "derivedFrom": [
+        "route:/login"
+      ]
+    }
+  ],
+  "warnings": [],
+  "rules": {
+    "violations": [],
+    "exceptions": [],
+    "counts": {
+      "error": 0,
+      "warning": 0
+    },
+    "layerConstraints": [
+      {
+        "layer": "controller",
+        "canImport": [
+          "workflow",
+          "hook",
+          "service",
+          "page",
+          "component",
+          "domain",
+          "types"
+        ]
+      },
+      {
+        "layer": "route",
+        "canImport": [
+          "controller"
+        ]
+      }
+    ]
+  },
+  "stats": {
+    "seedsResolved": 1,
+    "seedsUnresolved": 0,
+    "filesConsidered": 34,
+    "filesImplicated": 2,
+    "derived": 2,
+    "inferred": 0,
+    "byDistance": {
+      "0": 1,
+      "1": 1
+    },
+    "layers": [
+      "controller",
+      "route"
+    ],
+    "beyondDepth": {
+      "files": 0,
+      "scopes": []
+    },
+    "truncated": false
+  },
+  "next": [
+    {
+      "ref": "feature:login",
+      "why": "Reached in 1 hop(s)",
+      "cli": "construct summarize feature:login --detail full"
+    }
+  ]
+}

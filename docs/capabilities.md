@@ -34,6 +34,8 @@ module; *group next* = worth extracting, filed as an issue; *leave* = fine where
 | 23 | **Project validation as data** and **bounded output buffer** (same enforcers as `construct validate`, returned as rows; last ~500 log lines) | `ui/server/src/validateApi.mjs` (`GET /api/validate`), `ui/server/src/logBuffer.mjs` | Cockpit drawer (Diagnostics, Logs) | Det | Leave in `ui/server` (thin glue over `src/registry.mjs`) |
 | 24 | **Execution plan contract** (ordered steps, each a reference to a real flow, with executor tag, expected touches and dependencies; flow registry covering the whole CLI surface; `validatePlan`, `planToCommand`, `planTouches`) | `src/plan.mjs`; `schemas/plan.v1.json` | Research mode (plan pane), the process runtime | Det | Packaged (pure JSON-in/JSON-out; contains, rather than replaces, `src/import.mjs`'s narrower import plan) |
 
+| 24 | **Impact analysis** (blast radius of a change: features/layers/files touched, why each is implicated, shared-component warnings, per-entry `derived`/`inferred` provenance) | `src/engine/impact.mjs`; `schemas/impact-report.v1.json`; docs in `docs/impact-analysis.md` | CLI `research impact`, Research mode (#229), PR health (#285, via `impactFromChangedFiles`) | Det | **Packaged** (assembles the layer graph, `units/facts.mjs`, the unit registry and the enforcers over a reverse import index; read-only, MCP-ready pure API) |
+
 ## How to use this file
 
 - Before writing a helper, check the table. If a block exists, import it; if it is nearly right, extend it

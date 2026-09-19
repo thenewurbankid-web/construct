@@ -1,0 +1,228 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "root": "example",
+  "request": {
+    "depth": 2,
+    "unbounded": false,
+    "limits": {
+      "maxFiles": 200,
+      "maxSeeds": 100
+    }
+  },
+  "summary": "Impact of domain:features/login/domain/Login.tsx: 1 feature(s) (login), 3 file(s) across 3 layer(s), depth 2; 1 warning(s); 0 rule error(s), 0 rule warning(s); every entry derived deterministically.",
+  "seeds": [
+    {
+      "index": 0,
+      "method": "user",
+      "provenance": "explicit",
+      "confidence": 1,
+      "ref": "features/login/domain/Login.tsx",
+      "resolved": true,
+      "kind": "domain",
+      "id": "features/login/domain/Login.tsx",
+      "unitRef": "domain:features/login/domain/Login.tsx",
+      "files": 1
+    }
+  ],
+  "features": [
+    {
+      "name": "login",
+      "kind": "feature",
+      "path": "features/login",
+      "provenance": "derived",
+      "confidence": 1,
+      "files": 3,
+      "minDistance": 0,
+      "seeded": true,
+      "layers": [
+        {
+          "layer": "domain",
+          "files": 1,
+          "minDistance": 0,
+          "canImport": [
+            "types"
+          ]
+        },
+        {
+          "layer": "workflow",
+          "files": 1,
+          "minDistance": 1,
+          "canImport": [
+            "service",
+            "domain",
+            "types"
+          ]
+        },
+        {
+          "layer": "hook",
+          "files": 1,
+          "minDistance": 2,
+          "canImport": [
+            "workflow",
+            "service",
+            "domain",
+            "types"
+          ]
+        }
+      ],
+      "beyondDepth": 2,
+      "why": "Contains a seed unit."
+    }
+  ],
+  "files": [
+    {
+      "path": "features/login/domain/Login.tsx",
+      "layer": "domain",
+      "feature": "login",
+      "scope": "login",
+      "scopeKind": "feature",
+      "distance": 0,
+      "direction": "seed",
+      "score": 1,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "Hardcoded demo credentials — pure, no I/O (domain must stay pure per architecture.yml's DOMAIN-001).",
+      "reasons": [
+        {
+          "code": "seed",
+          "message": "Part of the seed unit(s) domain:features/login/domain/Login.tsx."
+        }
+      ],
+      "derivedFrom": [
+        "domain:features/login/domain/Login.tsx"
+      ]
+    },
+    {
+      "path": "features/login/workflows/Login.tsx",
+      "layer": "workflow",
+      "feature": "login",
+      "scope": "login",
+      "scopeKind": "feature",
+      "distance": 1,
+      "direction": "up",
+      "score": 0.5,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "The login flow's state machine.",
+      "reasons": [
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/login/domain/Login.tsx.",
+          "from": "features/login/domain/Login.tsx"
+        }
+      ],
+      "derivedFrom": [
+        "domain:features/login/domain/Login.tsx"
+      ]
+    },
+    {
+      "path": "features/login/hooks/useLogin.tsx",
+      "layer": "hook",
+      "feature": "login",
+      "scope": "login",
+      "scopeKind": "feature",
+      "distance": 2,
+      "direction": "up",
+      "score": 0.33,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "React hook exporting useLogin.",
+      "reasons": [
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/login/workflows/Login.tsx (2 hops from a seed).",
+          "from": "features/login/workflows/Login.tsx"
+        }
+      ],
+      "derivedFrom": [
+        "domain:features/login/domain/Login.tsx"
+      ]
+    }
+  ],
+  "warnings": [
+    {
+      "code": "PUBLIC-API",
+      "severity": "warning",
+      "provenance": "derived",
+      "feature": "login",
+      "files": [
+        "features/login/hooks/useLogin.tsx"
+      ],
+      "message": "1 implicated file(s) are re-exported from features/login/index.ts: changing them changes feature \"login\"'s public API."
+    }
+  ],
+  "rules": {
+    "violations": [],
+    "exceptions": [],
+    "counts": {
+      "error": 0,
+      "warning": 0
+    },
+    "layerConstraints": [
+      {
+        "layer": "domain",
+        "canImport": [
+          "types"
+        ]
+      },
+      {
+        "layer": "hook",
+        "canImport": [
+          "workflow",
+          "service",
+          "domain",
+          "types"
+        ]
+      },
+      {
+        "layer": "workflow",
+        "canImport": [
+          "service",
+          "domain",
+          "types"
+        ]
+      }
+    ]
+  },
+  "stats": {
+    "seedsResolved": 1,
+    "seedsUnresolved": 0,
+    "filesConsidered": 34,
+    "filesImplicated": 3,
+    "derived": 3,
+    "inferred": 0,
+    "byDistance": {
+      "0": 1,
+      "1": 1,
+      "2": 1
+    },
+    "layers": [
+      "domain",
+      "hook",
+      "workflow"
+    ],
+    "beyondDepth": {
+      "files": 2,
+      "scopes": [
+        {
+          "name": "login",
+          "files": 2
+        }
+      ]
+    },
+    "truncated": false
+  },
+  "next": [
+    {
+      "ref": "feature:login",
+      "why": "Seeded feature — read it in full before changing it",
+      "cli": "construct summarize feature:login --detail full"
+    },
+    {
+      "ref": "file:features/login/workflows/Login.tsx",
+      "why": "A workflow state machine is implicated — check its scenarios",
+      "cli": "construct research workflow login"
+    }
+  ]
+}

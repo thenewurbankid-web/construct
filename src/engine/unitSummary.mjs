@@ -113,12 +113,22 @@ export function summarizeUnit(root, ref, opts = {}) {
   }
 }
 
+/** Resolve a reference against an *existing* facts context (units/facts.mjs `createContext`), so a caller
+ * resolving many refs pays for the project walk/parse once. Same result shape as `resolveUnit`. */
+export function resolveUnitIn(ctx, ref, { kind, registry = defaultUnitRegistry() } = {}) {
+  try {
+    const r = resolveIn(ctx, registry, ref, kind);
+    return r.ok ? { schemaVersion: SCHEMA_VERSION, ok: true, ...r.unit, ref: refOf(r.unit.kind, r.unit.id) } : r;
+  } catch (e) {
+    return fail('INTERNAL_ERROR', String(e?.message || e));
+  }
+}
+
 /** Resolve a reference to `{ok:true, unit:{kind,id}}` or a structured ambiguity/not-found error with candidates. */
-export function resolveUnit(root, ref, { kind, registry = defaultUnitRegistry() } = {}) {
+export function resolveUnit(root, ref, opts = {}) {
   try {
     if (typeof root !== 'string' || !fs.existsSync(root)) return fail('ROOT_NOT_FOUND', `Project root not found: ${root}`);
-    const r = resolveIn(createContext(path.resolve(root)), registry, ref, kind);
-    return r.ok ? { schemaVersion: SCHEMA_VERSION, ok: true, ...r.unit, ref: refOf(r.unit.kind, r.unit.id) } : r;
+    return resolveUnitIn(createContext(path.resolve(root)), ref, opts);
   } catch (e) {
     return fail('INTERNAL_ERROR', String(e?.message || e));
   }

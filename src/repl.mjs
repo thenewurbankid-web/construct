@@ -64,7 +64,7 @@ export const HELP_TOPICS = {
   reported immediately afterward via "validate", not decided here. There's
   no persistent log: the one line each command prints IS the record.`,
 
-  research: `research — read-only: summarize a feature, explain its workflows in English, or check environment/tooling
+  research: `research — read-only: summarize a feature, explain its workflows in English, compute a change's impact, or check environment/tooling
 
   research summarize [--feature <name>] [--format json|md|compact|prose] [--since <ref>] [--dir <path>]
       English or JSON/Markdown summary of a feature's structure and exports.
@@ -77,6 +77,19 @@ export const HELP_TOPICS = {
       ends, missing fallbacks). Derived from the source every time — no LLM.
       Formats: prose (default), md, json, scenarios (Given/When/Then only).
       Example: research workflow checkout CheckoutWorkflow.ts --format scenarios
+
+  research impact <unit-ref>... [--files a,b] [--since <ref>] [--ticket <text>]
+                  [--ticket-file <path>] [--depth N] [--max-files N]
+                  [--format json|markdown] [--dir <path>]
+      The blast radius of a change: which features and layers it touches,
+      why each file is implicated, which files are shared across features,
+      and what your rules already say about them. Deterministic and LLM-free.
+      Seeds are unit refs (feature:login, a file path, /login, rule:PAGE-003),
+      changed files (--files, --since <ref>) or a ticket in English (--ticket).
+      Every entry is marked "derived" (computed from the graph) or "inferred"
+      (reached only from a seed guessed from ticket text). Depth defaults to
+      2 importer hops; what lies past it is counted, not dropped.
+      Example: research impact feature:login --depth 3 --format markdown
 
   research doctor [--dir <path>]
       Environment sanity check: node/npm versions, architecture.yml presence,
@@ -212,7 +225,7 @@ export function getTopLevelHelpText() {
 Capabilities:
   create   ...   scaffold a feature, a layer, or a whole vertical slice
   refactor ...   mechanical, LLM-free moves/renames within the architecture
-  research ...   read-only: summarize a feature, explain its workflows in English, or check environment/tooling
+  research ...   read-only: summarize a feature, explain its workflows, compute a change's impact, or check environment/tooling
   import   ...   scaffold layers for an existing, non-Construct file + a breadcrumb to it
 
 Note: "construct import --route <path>" (the interactive, whole-feature

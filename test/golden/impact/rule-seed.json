@@ -1,0 +1,175 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "root": "architecture-invalid",
+  "request": {
+    "depth": 2,
+    "unbounded": false,
+    "limits": {
+      "maxFiles": 200,
+      "maxSeeds": 100
+    }
+  },
+  "summary": "Impact of rule:PAGE-003: 1 feature(s) (bad), 2 file(s) across 2 layer(s), depth 2; 0 warning(s); 1 rule error(s), 0 rule warning(s); every entry derived deterministically.",
+  "seeds": [
+    {
+      "index": 0,
+      "method": "user",
+      "provenance": "explicit",
+      "confidence": 1,
+      "ref": "rule:PAGE-003",
+      "resolved": true,
+      "kind": "rule",
+      "id": "PAGE-003",
+      "unitRef": "rule:PAGE-003",
+      "files": 1,
+      "note": "file(s) currently violating PAGE-003"
+    }
+  ],
+  "features": [
+    {
+      "name": "bad",
+      "kind": "feature",
+      "path": "features/bad",
+      "provenance": "derived",
+      "confidence": 1,
+      "files": 2,
+      "minDistance": 0,
+      "seeded": true,
+      "layers": [
+        {
+          "layer": "page",
+          "files": 1,
+          "minDistance": 0,
+          "canImport": [
+            "component",
+            "types"
+          ]
+        },
+        {
+          "layer": "service",
+          "files": 1,
+          "minDistance": 1,
+          "canImport": [
+            "domain",
+            "types"
+          ]
+        }
+      ],
+      "why": "Contains a seed unit."
+    }
+  ],
+  "files": [
+    {
+      "path": "features/bad/pages/Page003.tsx",
+      "layer": "page",
+      "feature": "bad",
+      "scope": "bad",
+      "scopeKind": "feature",
+      "distance": 0,
+      "direction": "seed",
+      "score": 1,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "Page (presentation) exporting Page003.",
+      "reasons": [
+        {
+          "code": "seed",
+          "message": "Part of the seed unit(s) rule:PAGE-003."
+        }
+      ],
+      "derivedFrom": [
+        "rule:PAGE-003"
+      ]
+    },
+    {
+      "path": "features/bad/services/FooService.tsx",
+      "layer": "service",
+      "feature": "bad",
+      "scope": "bad",
+      "scopeKind": "feature",
+      "distance": 1,
+      "direction": "down",
+      "score": 0.5,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "Service (external effects) exporting fetchFoo.",
+      "reasons": [
+        {
+          "code": "dependency-of-seed",
+          "message": "Imported by features/bad/pages/Page003.tsx; read it to understand the change, it is not itself at risk.",
+          "from": "features/bad/pages/Page003.tsx"
+        }
+      ],
+      "derivedFrom": [
+        "rule:PAGE-003"
+      ]
+    }
+  ],
+  "warnings": [],
+  "rules": {
+    "violations": [
+      {
+        "rule": "PAGE-003",
+        "severity": "error",
+        "file": "features/bad/pages/Page003.tsx",
+        "line": 1,
+        "message": "Page imports a forbidden application layer."
+      }
+    ],
+    "exceptions": [],
+    "counts": {
+      "error": 1,
+      "warning": 0
+    },
+    "layerConstraints": [
+      {
+        "layer": "page",
+        "canImport": [
+          "component",
+          "types"
+        ]
+      },
+      {
+        "layer": "service",
+        "canImport": [
+          "domain",
+          "types"
+        ]
+      }
+    ]
+  },
+  "stats": {
+    "seedsResolved": 1,
+    "seedsUnresolved": 0,
+    "filesConsidered": 16,
+    "filesImplicated": 2,
+    "derived": 2,
+    "inferred": 0,
+    "byDistance": {
+      "0": 1,
+      "1": 1
+    },
+    "layers": [
+      "page",
+      "service"
+    ],
+    "beyondDepth": {
+      "files": 0,
+      "scopes": []
+    },
+    "truncated": false
+  },
+  "next": [
+    {
+      "ref": "feature:bad",
+      "why": "Seeded feature — read it in full before changing it",
+      "cli": "construct summarize feature:bad --detail full"
+    },
+    {
+      "ref": "rule:PAGE-003",
+      "why": "The implicated files already violate a rule",
+      "cli": "construct validate"
+    }
+  ]
+}

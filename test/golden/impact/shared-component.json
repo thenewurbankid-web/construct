@@ -1,0 +1,383 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "root": "impact-shared",
+  "request": {
+    "depth": 2,
+    "unbounded": false,
+    "limits": {
+      "maxFiles": 200,
+      "maxSeeds": 100
+    }
+  },
+  "summary": "Impact of component:features/shared/components/CurrencyLabel.tsx: 4 feature(s) (shared, billing, checkout, reporting), 6 file(s) across 1 layer(s), depth 2; 4 warning(s); 0 rule error(s), 0 rule warning(s); every entry derived deterministically.",
+  "seeds": [
+    {
+      "index": 0,
+      "method": "user",
+      "provenance": "explicit",
+      "confidence": 1,
+      "ref": "features/shared/components/CurrencyLabel.tsx",
+      "resolved": true,
+      "kind": "component",
+      "id": "features/shared/components/CurrencyLabel.tsx",
+      "unitRef": "component:features/shared/components/CurrencyLabel.tsx",
+      "files": 1
+    }
+  ],
+  "features": [
+    {
+      "name": "shared",
+      "kind": "feature",
+      "path": "features/shared",
+      "provenance": "derived",
+      "confidence": 1,
+      "files": 3,
+      "minDistance": 0,
+      "seeded": true,
+      "layers": [
+        {
+          "layer": "component",
+          "files": 1,
+          "minDistance": 0,
+          "canImport": [
+            "component",
+            "types"
+          ]
+        },
+        {
+          "layer": "unclassified",
+          "files": 2,
+          "minDistance": 1,
+          "canImport": []
+        }
+      ],
+      "why": "Contains a seed unit."
+    },
+    {
+      "name": "billing",
+      "kind": "feature",
+      "path": "features/billing",
+      "provenance": "derived",
+      "confidence": 1,
+      "files": 1,
+      "minDistance": 2,
+      "seeded": false,
+      "layers": [
+        {
+          "layer": "component",
+          "files": 1,
+          "minDistance": 2,
+          "canImport": [
+            "component",
+            "types"
+          ]
+        }
+      ],
+      "beyondDepth": 1,
+      "why": "Reached in 2 hop(s): features/billing/components/BillingView.tsx imports a changed file."
+    },
+    {
+      "name": "checkout",
+      "kind": "feature",
+      "path": "features/checkout",
+      "provenance": "derived",
+      "confidence": 1,
+      "files": 1,
+      "minDistance": 2,
+      "seeded": false,
+      "layers": [
+        {
+          "layer": "component",
+          "files": 1,
+          "minDistance": 2,
+          "canImport": [
+            "component",
+            "types"
+          ]
+        }
+      ],
+      "beyondDepth": 1,
+      "why": "Reached in 2 hop(s): features/checkout/components/CheckoutView.tsx imports a changed file."
+    },
+    {
+      "name": "reporting",
+      "kind": "feature",
+      "path": "features/reporting",
+      "provenance": "derived",
+      "confidence": 1,
+      "files": 1,
+      "minDistance": 2,
+      "seeded": false,
+      "layers": [
+        {
+          "layer": "component",
+          "files": 1,
+          "minDistance": 2,
+          "canImport": [
+            "component",
+            "types"
+          ]
+        }
+      ],
+      "beyondDepth": 1,
+      "why": "Reached in 2 hop(s): features/reporting/components/ReportingView.tsx imports a changed file."
+    }
+  ],
+  "files": [
+    {
+      "path": "features/shared/components/CurrencyLabel.tsx",
+      "layer": "component",
+      "feature": "shared",
+      "scope": "shared",
+      "scopeKind": "feature",
+      "distance": 0,
+      "direction": "seed",
+      "score": 1,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "Renders an amount of money.",
+      "reasons": [
+        {
+          "code": "seed",
+          "message": "Part of the seed unit(s) component:features/shared/components/CurrencyLabel.tsx."
+        }
+      ],
+      "derivedFrom": [
+        "component:features/shared/components/CurrencyLabel.tsx"
+      ]
+    },
+    {
+      "path": "features/shared/index.ts",
+      "layer": null,
+      "feature": "shared",
+      "scope": "shared",
+      "scopeKind": "feature",
+      "distance": 1,
+      "direction": "up",
+      "score": 0.5,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "Public API for feature: shared",
+      "reasons": [
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/shared/components/CurrencyLabel.tsx.",
+          "from": "features/shared/components/CurrencyLabel.tsx"
+        }
+      ],
+      "derivedFrom": [
+        "component:features/shared/components/CurrencyLabel.tsx"
+      ]
+    },
+    {
+      "path": "features/shared/types.ts",
+      "layer": null,
+      "feature": "shared",
+      "scope": "shared",
+      "scopeKind": "feature",
+      "distance": 1,
+      "direction": "down",
+      "score": 0.5,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "Source file exporting Money.",
+      "reasons": [
+        {
+          "code": "dependency-of-seed",
+          "message": "Imported by features/shared/components/CurrencyLabel.tsx; read it to understand the change, it is not itself at risk.",
+          "from": "features/shared/components/CurrencyLabel.tsx"
+        }
+      ],
+      "derivedFrom": [
+        "component:features/shared/components/CurrencyLabel.tsx"
+      ]
+    },
+    {
+      "path": "features/billing/components/BillingView.tsx",
+      "layer": "component",
+      "feature": "billing",
+      "scope": "billing",
+      "scopeKind": "feature",
+      "distance": 2,
+      "direction": "up",
+      "score": 0.2,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "Presentation component exporting BillingView.",
+      "reasons": [
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/shared/index.ts (2 hops from a seed).",
+          "from": "features/shared/index.ts"
+        }
+      ],
+      "derivedFrom": [
+        "component:features/shared/components/CurrencyLabel.tsx"
+      ]
+    },
+    {
+      "path": "features/checkout/components/CheckoutView.tsx",
+      "layer": "component",
+      "feature": "checkout",
+      "scope": "checkout",
+      "scopeKind": "feature",
+      "distance": 2,
+      "direction": "up",
+      "score": 0.2,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "Presentation component exporting CheckoutView.",
+      "reasons": [
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/shared/index.ts (2 hops from a seed).",
+          "from": "features/shared/index.ts"
+        }
+      ],
+      "derivedFrom": [
+        "component:features/shared/components/CurrencyLabel.tsx"
+      ]
+    },
+    {
+      "path": "features/reporting/components/ReportingView.tsx",
+      "layer": "component",
+      "feature": "reporting",
+      "scope": "reporting",
+      "scopeKind": "feature",
+      "distance": 2,
+      "direction": "up",
+      "score": 0.2,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "Presentation component exporting ReportingView.",
+      "reasons": [
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/shared/index.ts (2 hops from a seed).",
+          "from": "features/shared/index.ts"
+        }
+      ],
+      "derivedFrom": [
+        "component:features/shared/components/CurrencyLabel.tsx"
+      ]
+    }
+  ],
+  "warnings": [
+    {
+      "code": "CROSS-FEATURE",
+      "severity": "warning",
+      "provenance": "derived",
+      "usedBy": [
+        "billing",
+        "checkout",
+        "reporting"
+      ],
+      "message": "The seeds live in 1 feature(s) (shared) but the impact reaches 3 more: billing, checkout, reporting."
+    },
+    {
+      "code": "PUBLIC-API",
+      "severity": "warning",
+      "provenance": "derived",
+      "feature": "shared",
+      "files": [
+        "features/shared/components/CurrencyLabel.tsx"
+      ],
+      "message": "1 implicated file(s) are re-exported from features/shared/index.ts: changing them changes feature \"shared\"'s public API."
+    },
+    {
+      "code": "SHARED-COMPONENT",
+      "severity": "warning",
+      "provenance": "derived",
+      "file": "features/shared/components/CurrencyLabel.tsx",
+      "layer": "component",
+      "usedBy": [
+        "billing",
+        "checkout",
+        "reporting"
+      ],
+      "message": "features/shared/components/CurrencyLabel.tsx is used by 3 other feature(s): billing, checkout, reporting. A change here is not feature-local."
+    },
+    {
+      "code": "SHARED-COMPONENT",
+      "severity": "warning",
+      "provenance": "derived",
+      "file": "features/shared/index.ts",
+      "layer": null,
+      "usedBy": [
+        "billing",
+        "checkout",
+        "reporting"
+      ],
+      "message": "features/shared/index.ts is used by 3 other feature(s): billing, checkout, reporting. A change here is not feature-local."
+    }
+  ],
+  "rules": {
+    "violations": [],
+    "exceptions": [],
+    "counts": {
+      "error": 0,
+      "warning": 0
+    },
+    "layerConstraints": [
+      {
+        "layer": "component",
+        "canImport": [
+          "component",
+          "types"
+        ]
+      }
+    ]
+  },
+  "stats": {
+    "seedsResolved": 1,
+    "seedsUnresolved": 0,
+    "filesConsidered": 33,
+    "filesImplicated": 6,
+    "derived": 6,
+    "inferred": 0,
+    "byDistance": {
+      "0": 1,
+      "1": 2,
+      "2": 3
+    },
+    "layers": [
+      "component"
+    ],
+    "beyondDepth": {
+      "files": 3,
+      "scopes": [
+        {
+          "name": "billing",
+          "files": 1
+        },
+        {
+          "name": "checkout",
+          "files": 1
+        },
+        {
+          "name": "reporting",
+          "files": 1
+        }
+      ]
+    },
+    "truncated": false
+  },
+  "next": [
+    {
+      "ref": "feature:shared",
+      "why": "Seeded feature — read it in full before changing it",
+      "cli": "construct summarize feature:shared --detail full"
+    },
+    {
+      "ref": "feature:billing",
+      "why": "Reached in 2 hop(s)",
+      "cli": "construct summarize feature:billing --detail full"
+    },
+    {
+      "ref": "feature:checkout",
+      "why": "Reached in 2 hop(s)",
+      "cli": "construct summarize feature:checkout --detail full"
+    }
+  ]
+}

@@ -1,0 +1,230 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://construct.dev/schemas/impact-report.v1.json",
+  "title": "Construct Impact Report v1",
+  "description": "Deterministic, LLM-free blast radius of a change, as returned by analyzeImpact()/impactFromChangedFiles()/impactFromTicketText() in src/engine/impact.mjs and `construct research impact`. Read-only: computing an impact report never writes anything. Every entry carries its own provenance — `derived` means it was computed from the import/layer graph starting at a seed the caller named explicitly (or a git diff), `inferred` means every path to it starts at a seed that was guessed from ticket text or proposed by a model. Breaking changes go in impact-report.v2.json.",
+  "oneOf": [
+    { "$ref": "#/definitions/report" },
+    { "$ref": "#/definitions/proposal" },
+    { "$ref": "#/definitions/error" }
+  ],
+  "definitions": {
+    "seedProvenance": { "type": "string", "enum": ["explicit", "inferred"], "description": "explicit = the caller named the unit, or it came from a git diff; inferred = guessed from ticket text, or proposed by a model." },
+    "entryProvenance": { "type": "string", "enum": ["derived", "inferred"], "description": "derived = reachable from at least one explicit seed, i.e. pure graph computation; inferred = every path to it starts at an inferred seed." },
+    "method": { "type": "string", "enum": ["user", "changed-files", "text-match", "model"] },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "candidateSeed": {
+      "type": "object",
+      "required": ["ref", "provenance", "method", "confidence"],
+      "properties": {
+        "ref": { "type": "string" },
+        "provenance": { "$ref": "#/definitions/seedProvenance" },
+        "method": { "$ref": "#/definitions/method" },
+        "confidence": { "$ref": "#/definitions/confidence" },
+        "matchKind": { "type": "string", "description": "How the text matched: path, basename, route, feature, rule, identifier." },
+        "why": { "type": "string" },
+        "evidence": { "type": "string", "description": "The exact substring of the ticket that produced this candidate." }
+      }
+    },
+    "seed": {
+      "type": "object",
+      "required": ["index", "ref", "method", "provenance", "confidence", "resolved"],
+      "properties": {
+        "index": { "type": "integer", "minimum": 0 },
+        "ref": { "type": "string", "description": "The reference as given by the caller." },
+        "method": { "$ref": "#/definitions/method" },
+        "provenance": { "$ref": "#/definitions/seedProvenance" },
+        "confidence": { "$ref": "#/definitions/confidence" },
+        "resolved": { "type": "boolean" },
+        "kind": { "type": "string", "description": "Resolved unit kind (feature, file, layer, route, rule, ...)." },
+        "id": { "type": "string" },
+        "unitRef": { "type": "string", "description": "Canonical `kind:id` of the resolved unit." },
+        "files": { "type": "integer", "minimum": 0, "description": "How many source files the seed unit consists of." },
+        "note": { "type": "string" },
+        "why": { "type": "string" },
+        "evidence": { "type": "string" },
+        "error": { "type": "object", "required": ["code", "message"], "properties": { "code": { "type": "string" }, "message": { "type": "string" } } }
+      }
+    },
+    "reason": {
+      "type": "object",
+      "required": ["code", "message"],
+      "description": "Why this file is implicated.",
+      "properties": {
+        "code": { "type": "string", "enum": ["seed", "imports-changed-file", "dependency-of-seed"] },
+        "message": { "type": "string" },
+        "from": { "type": "string", "description": "The file this one was reached from." }
+      }
+    },
+    "file": {
+      "type": "object",
+      "required": ["path", "feature", "scope", "scopeKind", "distance", "direction", "score", "provenance", "confidence", "reasons", "derivedFrom"],
+      "properties": {
+        "path": { "type": "string" },
+        "layer": { "type": ["string", "null"], "description": "The project layer graph's classification, or null (unclassified, or inside a frozen region)." },
+        "feature": { "type": ["string", "null"] },
+        "scope": { "type": "string", "description": "The feature, or (outside features/) the top-level directory." },
+        "scopeKind": { "type": "string", "enum": ["feature", "directory"] },
+        "distance": { "type": "integer", "minimum": 0, "description": "Hops from the nearest seed. 0 = part of a seed unit." },
+        "direction": { "type": "string", "enum": ["seed", "up", "down"], "description": "up = imports a changed file (blast radius); down = imported by a seed (context, never expanded)." },
+        "score": { "type": "number", "minimum": 0, "maximum": 1, "description": "Deterministic rank: 1/(1+distance), x0.6 across a scope boundary, x0.8 for a test file." },
+        "provenance": { "$ref": "#/definitions/entryProvenance" },
+        "confidence": { "$ref": "#/definitions/confidence" },
+        "purpose": { "type": "string" },
+        "reasons": { "type": "array", "items": { "$ref": "#/definitions/reason" } },
+        "derivedFrom": { "type": "array", "items": { "type": "string" }, "description": "The seed unit refs this entry was reached from." },
+        "test": { "type": "boolean" }
+      }
+    },
+    "feature": {
+      "type": "object",
+      "required": ["name", "kind", "path", "provenance", "confidence", "files", "minDistance", "seeded", "layers", "why"],
+      "properties": {
+        "name": { "type": "string" },
+        "kind": { "type": "string", "enum": ["feature", "directory"] },
+        "path": { "type": "string" },
+        "provenance": { "$ref": "#/definitions/entryProvenance" },
+        "confidence": { "$ref": "#/definitions/confidence" },
+        "files": { "type": "integer", "minimum": 1 },
+        "minDistance": { "type": "integer", "minimum": 0 },
+        "seeded": { "type": "boolean", "description": "True when this feature contains a seed unit." },
+        "layers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["layer", "files", "minDistance", "canImport"],
+            "properties": {
+              "layer": { "type": "string" },
+              "files": { "type": "integer", "minimum": 1 },
+              "minDistance": { "type": "integer", "minimum": 0 },
+              "canImport": { "type": "array", "items": { "type": "string" }, "description": "What the project's layer graph allows this layer to import." }
+            }
+          }
+        },
+        "beyondDepth": { "type": "integer", "minimum": 1, "description": "Files in this scope one hop past the depth limit: counted, not listed." },
+        "why": { "type": "string" }
+      }
+    },
+    "warning": {
+      "type": "object",
+      "required": ["code", "severity", "provenance", "message"],
+      "properties": {
+        "code": { "type": "string", "enum": ["SHARED-COMPONENT", "CROSS-FEATURE", "PUBLIC-API", "FROZEN-REGION", "TRUNCATED"] },
+        "severity": { "type": "string", "enum": ["error", "warning", "info"] },
+        "provenance": { "$ref": "#/definitions/entryProvenance" },
+        "message": { "type": "string" },
+        "file": { "type": "string" },
+        "layer": { "type": ["string", "null"] },
+        "feature": { "type": "string" },
+        "files": { "type": "array", "items": { "type": "string" } },
+        "usedBy": { "type": "array", "items": { "type": "string" }, "description": "The other features that consume this file (through public barrels as well as directly)." }
+      }
+    },
+    "next": {
+      "type": "object",
+      "required": ["ref", "why", "cli"],
+      "properties": { "ref": { "type": "string" }, "why": { "type": "string" }, "cli": { "type": "string" } }
+    },
+    "report": {
+      "type": "object",
+      "required": ["schemaVersion", "ok", "root", "request", "summary", "seeds", "features", "files", "warnings", "rules", "stats", "next"],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "ok": { "const": true },
+        "root": { "type": "string" },
+        "request": {
+          "type": "object",
+          "required": ["depth", "unbounded", "limits"],
+          "properties": {
+            "depth": { "type": ["integer", "null"], "minimum": 0, "description": "Transitive importer hops actually used; null when unbounded." },
+            "unbounded": { "type": "boolean" },
+            "limits": { "type": "object", "properties": { "maxFiles": { "type": "integer" }, "maxSeeds": { "type": "integer" } } }
+          }
+        },
+        "summary": { "type": "string", "description": "One plain-English line." },
+        "seeds": { "type": "array", "items": { "$ref": "#/definitions/seed" } },
+        "features": { "type": "array", "items": { "$ref": "#/definitions/feature" }, "description": "Touched features, plus (kind: directory) touched directories outside features/." },
+        "files": { "type": "array", "items": { "$ref": "#/definitions/file" }, "description": "Sorted by score, then distance, then path." },
+        "warnings": { "type": "array", "items": { "$ref": "#/definitions/warning" } },
+        "rules": {
+          "type": "object",
+          "required": ["violations", "exceptions", "counts", "layerConstraints"],
+          "description": "What the project's own rules already say about the implicated files (from the enforcers, not from this module).",
+          "properties": {
+            "violations": { "type": "array", "items": { "type": "object" } },
+            "exceptions": { "type": "array", "items": { "type": "object" } },
+            "counts": { "type": "object", "required": ["error", "warning"], "properties": { "error": { "type": "integer" }, "warning": { "type": "integer" } } },
+            "layerConstraints": {
+              "type": "array",
+              "items": { "type": "object", "required": ["layer", "canImport"], "properties": { "layer": { "type": "string" }, "canImport": { "type": "array", "items": { "type": "string" } } } }
+            }
+          }
+        },
+        "stats": {
+          "type": "object",
+          "required": ["seedsResolved", "seedsUnresolved", "filesConsidered", "filesImplicated", "derived", "inferred", "byDistance", "layers", "beyondDepth", "truncated"],
+          "properties": {
+            "seedsResolved": { "type": "integer" },
+            "seedsUnresolved": { "type": "integer" },
+            "filesConsidered": { "type": "integer" },
+            "filesImplicated": { "type": "integer" },
+            "derived": { "type": "integer" },
+            "inferred": { "type": "integer" },
+            "byDistance": { "type": "object", "additionalProperties": { "type": "integer" } },
+            "layers": { "type": "array", "items": { "type": "string" } },
+            "beyondDepth": {
+              "type": "object",
+              "required": ["files", "scopes"],
+              "description": "One hop past the depth limit: counted per scope so nothing is silently dropped.",
+              "properties": {
+                "files": { "type": "integer" },
+                "scopes": { "type": "array", "items": { "type": "object", "required": ["name", "files"], "properties": { "name": { "type": "string" }, "files": { "type": "integer" } } } }
+              }
+            },
+            "truncated": { "type": "boolean" }
+          }
+        },
+        "next": { "type": "array", "items": { "$ref": "#/definitions/next" } },
+        "proposal": {
+          "type": "object",
+          "description": "Present when the seeds came from ticket text (impactFromTicketText).",
+          "properties": { "method": { "$ref": "#/definitions/method" }, "note": { "type": "string" } }
+        }
+      }
+    },
+    "proposal": {
+      "type": "object",
+      "description": "Candidate seeds proposed from ticket text (proposeSeedsFromText). Heuristic, so every candidate is inferred.",
+      "required": ["schemaVersion", "ok", "method", "count", "seeds", "note"],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "ok": { "const": true },
+        "method": { "const": "text-match" },
+        "count": { "type": "integer", "minimum": 0 },
+        "seeds": { "type": "array", "items": { "$ref": "#/definitions/candidateSeed" } },
+        "note": { "type": "string" }
+      }
+    },
+    "error": {
+      "type": "object",
+      "required": ["schemaVersion", "ok", "error"],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "ok": { "const": false },
+        "error": {
+          "type": "object",
+          "required": ["code", "message"],
+          "properties": {
+            "code": { "type": "string", "enum": ["INVALID_ARGUMENT", "ROOT_NOT_FOUND", "NO_SEEDS_RESOLVED", "INTERNAL_ERROR"] },
+            "message": { "type": "string" },
+            "seeds": { "type": "array", "items": { "type": "object" } },
+            "proposal": { "type": "object" }
+          }
+        }
+      }
+    }
+  }
+}

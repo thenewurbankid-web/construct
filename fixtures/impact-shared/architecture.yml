@@ -1,0 +1,17 @@
+version: 1
+preset: strict-nextjs
+
+project:
+  framework: nextjs
+  language: typescript
+
+features:
+  root: features
+
+rules:
+  SLICE-002: error
+  DOMAIN-001: error
+  PURE-001: warning
+  DRY-001: warning
+
+exceptions: []
