@@ -9,7 +9,7 @@ module; *group next* = worth extracting, filed as an issue; *leave* = fine where
 
 | # | Capability | Where it lives | Consumers | Det/LLM | Rec |
 |---|---|---|---|---|---|
-| 1 | **AST package**: parse, walk, extract, generate | `src/ast/` (entry `src/ast/index.mjs`; README there) | `src/parser.mjs`, `architecture-enforcer`, `route-resolver`, `frozen-detector`, `prose`, `engine/{pageTransformer,controllerBinder,workflowGenerator,workflowExtractor}`, `ui/server/src/pagesEditor.mjs` | Det | **Packaged in #104** |
+| 1 | **AST package**: parse, walk, extract, generate | `src/ast/` (entry `src/ast/index.mjs`; README there) | `src/parser.mjs`, `architecture-enforcer`, `route-resolver`, `frozen-detector`, `prose`, `engine/{pageTransformer,controllerBinder,workflowGenerator,workflowExtractor}`, `ui/server/src/pagesEditor.mjs` | Det | **Packaged in #104** (JSX edit/analysis family added in #173) |
 | 2 | **Glob matching** (`**` / `*` to RegExp) | `src/glob.mjs` (`globToRegExp`, `matchGlob`) | architecture/readability/SoC enforcers (layer patterns, exceptions), pagesEditor | Det | **Packaged in #104** (replaced 5 inline copies) |
 | 3 | **Timing** (`startTimer`, `elapsedSeconds`, `formatDuration`) | `src/timing.mjs` | `cli.mjs`, `import.mjs`, `ui/server/src/commandRunner.mjs` | Det | Packaged already (3 pure functions, no deps) |
 | 4 | **LLM provider registry** (`PROVIDERS`, `callLlm`, `stripCodeFence`, Ollama defaults) | `src/llm.mjs` | `import.mjs`, `generators.mjs`, `ui/server/src/{settings,ollama}.mjs` | **LLM** (the one deliberate exception; opt-in via `--llm`) | Packaged already; keep isolated so everything else stays LLM-free |
@@ -20,7 +20,7 @@ module; *group next* = worth extracting, filed as an issue; *leave* = fine where
 | 9 | **Config loading + rule registry** (`loadConfig`, `DEFAULT_RULES`, `normalizeRules`, `layersForFramework`, `aggregateValidation`) | `src/config.mjs`, `src/registry.mjs`, `src/engine/defaultEnforcers.mjs` | CLI, all enforcers, ui/server | Det | Packaged already |
 | 10 | **Violation diagnostics** (`makeViolation`, `formatReport`, `ConstructError`, `EXIT_CODES`) | `src/diagnostics.mjs` | everything | Det | Packaged already |
 | 11 | **Prose descriptions of code** (TS AST to English) | `src/prose.mjs` | `summarize` | Det | Packaged already (uses `src/ast/tsNodes`) |
-| 12 | **Source edit / write-back primitives** (JSX tree, props, snippet patch, hash-guarded `patchNode`, auto-map, enforcement check) | `ui/server/src/pagesEditor.mjs` (Babel + TS compiler API) | ui/server routes, Pages Editor UI | Det | **Group next**: still on **Babel**, a third parser stack whose deps live only in `ui/server`; unify with typescript-estree behind `src/ast`, then move the edit ops into a shared package (see follow-up issue) |
+| 12 | **Source edit / write-back primitives** (JSX tree, props, snippet patch, auto-map, scope/prop analysis; hash-guarded `patchNode` + enforcement check stay in ui/server) | `src/ast/jsx*.mjs` (typescript-estree; pure edits) + `ui/server/src/pagesEditor.mjs` (glue) | ui/server routes, Pages Editor UI | Det | **Packaged in #173**: Babel removed from `ui/server`; parity proven by golden tests captured from the Babel implementation |
 | 13 | **File walk / relative path / write** | `src/fs.mjs` (`walk`, `rel`, `write`, `ensureDir`) | most modules | Det | Leave (tiny) |
 | 14 | **Line source for interactive prompts** | `src/line-source.mjs` | `repl.mjs`, `cli.mjs` | Det | Leave |
 | 15 | **Import planning / route resolution** | `src/import.mjs`, `src/route-resolver.mjs` | CLI `import` | Det (LLM only on opt-in fill) | Leave; `route-resolver` already uses `src/ast` |
@@ -35,5 +35,5 @@ module; *group next* = worth extracting, filed as an issue; *leave* = fine where
 
 ## Follow-ups
 
-See the issues referencing #104: Babel unification for `pagesEditor` (#173). Layer-classifier (#174) and
-exception-handling (#175) consolidation are done.
+Babel unification for `pagesEditor` (#173), layer-classifier (#174) and exception-handling (#175)
+consolidation are done.

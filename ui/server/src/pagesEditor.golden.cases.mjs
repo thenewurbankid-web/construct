@@ -43,7 +43,21 @@ line2">
 `,
   literals: `const X = () => (
   <A a={-1} b={1e3} c={0x10} d={1_000} e={null} f={/re/g} g={10n} h={true} i={"s"} j={'s'} k={\`t\`}
-     l={(1)} m={("s")} n={a.b} o={fn()} p={<B />} q=<C /> r="x" s={undefined} t={this} u={a ? b : c} v={[1]} w={{ a: 1 }} />
+     l={(1)} m={("s")} n={a.b} o={fn()} p={<B />} q=<C /> r="x" s={undefined} t={this} u={a ? b : c} v={[1]} w={{ a: 1 }} x={(a + b)} y={( c )} z={a as any} aa={a!} bb={("p" + "q")} cc={0} dd={false} {...(a || b)} {...rest as any} />
+);
+`,
+  ws: `export const W = () => (
+  <div
+    a = "1"
+    b
+    c ={ x }
+    d='>'
+  >
+    <Tag
+      e="1"
+    ></Tag>
+    <Self  f = {1}   />
+  </div>
 );
 `,
   crlf: 'export function P() {\r\n\treturn (\r\n\t\t<div>\r\n\t\t\t<a href="x">y</a>\r\n\t\t\t<b />\r\n\t\t</div>\r\n\t);\r\n}\r\n',
@@ -75,6 +89,7 @@ line" />
   </div>
 );
 `,
+  bareText: `export const T = () => (\n  <div title="x">\n    1 > 0 and } closes\n    <b a="1">a > b</b>\n    <i>}</i>\n  </div>\n);\n`,
   noJsx: `export const n = 1;\nexport function f(a) { return a; }\n`,
   invalid: `export const A = () => <div><span></div>;\n`,
   unclosed: `export const A = () => <div>\n`,
