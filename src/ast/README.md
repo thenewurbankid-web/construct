@@ -50,7 +50,7 @@ console.log(hit.name, 'on line', lineOf(source, hit.index));            // fetch
 
 (A comment or string containing `fetch(` is never reported — only real calls.)
 
-## JSX edit/analysis family (typescript-estree, #173)
+## JSX edit/analysis family (typescript-estree)
 
 The Pages Editor and the visual composer used to parse/edit JSX with Babel (a third parser stack). Those
 operations now live here, on typescript-estree, and `ui/server/src/pagesEditor.mjs` keeps only the glue
