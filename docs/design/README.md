@@ -19,8 +19,18 @@ Non-goals: MCP surfaces (future), marketing pages, product code.
 | [mocks/](mocks/) | Concept mocks as static HTML+CSS (`*.html`) and rendered PNGs (`png/`) |
 
 Concept mocks (1440x900, each in `png/<name>--dark.png` and `--light.png`):
-`cockpit-shell`, `pages-editor-in-shell`, `workflows-in-shell`,
-`research-mode`, `processes-drawer`, `command-palette`, `states-and-narrow`.
+
+- **Cockpit shell** (`build.mjs`): `cockpit-shell`, `pages-editor-in-shell`,
+  `workflows-in-shell`, `research-mode`, `processes-drawer`, `command-palette`,
+  `states-and-narrow`.
+- **QA test authoring** (`build-qa-tests.mjs`, styles in `qa-tests.css`):
+  `qa-tests-scenarios`, `qa-tests-clone`, `qa-tests-editor`,
+  `qa-tests-changes-code`, `qa-tests-new`, `qa-tests-run-failure`,
+  `qa-tests-states`.
+
+The shell chrome shared by every mock lives in `parts.mjs`; each initiative adds
+its own `build-*.mjs` (and its own stylesheet, if it needs one) rather than
+growing a single build script.
 
 ## How design tickets work
 
