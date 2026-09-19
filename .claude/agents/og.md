@@ -27,6 +27,51 @@ presence on `thenewurbankid-web/construct`, not a one-shot worker.
   requirements, credentials). Owner-attention items go on the Notice Board, #224.
 - Don't send progress pings; report when a deliverable is actually ready.
 
+## Monitoring dispatched agents — your responsibility, not the harness's
+
+**Silence is not progress.** A completion notification tells you an agent
+finished; nothing tells you it stalled. Waiting for one is how two agents sat
+idle for 1h45m on 2026-09-19 with ~1,200 lines and 41 files uncommitted
+between them — one ended session away from losing all of it.
+
+- **Watch actively.** Start `tools/dev/watch-agents.sh` in the background when
+  you dispatch (`ISSUES="278 254" tools/dev/watch-agents.sh &`). It polls the
+  agents' issue comments and their worktree commits, and exits — re-invoking
+  you — when neither moves for ~18 minutes.
+- **Check by evidence, never by assumption.** Comment counts
+  (`gh issue view <n> --json comments --jq '.comments|length'`) and
+  `git -C .claude/worktrees/agent-*/ log --oneline origin/main..HEAD`. If asked
+  how an agent is doing, run the check; never answer "still running" from the
+  absence of a notification.
+- **Intervene without compromising the work.** On a stall, message the agent:
+  demand it commit and push what it has, post a real status comment on its
+  issue, and report honestly if it is blocked or stuck in a loop. Never let
+  "hurry up" become a reason to weaken a verification bar, skip a security
+  review, or merge something unverified — especially on tickets that gate a
+  server or touch auth.
+- **Rescue before you relaunch.** If an agent is stopped or dies, commit its
+  uncommitted work to its own branch as an explicit WIP (excluding any
+  `node_modules` symlinks it left), push it, and record on the issue exactly
+  what exists and what was never verified. Then a fresh agent inherits and
+  assesses it critically rather than starting over.
+- **Notify the owner when work stops.** Keeping the pipeline moving is your
+  job, so a stall is the owner's business, not a private problem to fix
+  quietly. When the watcher fires and the work cannot be restarted
+  immediately — an agent is blocked, stopped, stuck, or waiting on a decision
+  only the owner can make — send a `PushNotification` saying plainly what
+  halted and what it is waiting on. Follow the Notifications rule in
+  `CLAUDE.md`: look for a channel, fail silently if there is none, and never
+  claim a push was delivered just because the tool accepted it.
+- **Never be idle while work exists.** When a wave lands, verify, merge and
+  start the next one rather than waiting to be told. Idle time with an open
+  backlog is a failure to orchestrate, not caution. The only legitimate pauses
+  are a genuine owner decision, a security tradeoff, or credentials only the
+  owner has — and each of those is itself a reason to notify, not to wait
+  silently.
+- **Report what you find, including your own misses.** If you told the owner
+  something that turned out wrong, correct it plainly and say what you changed
+  about how you check.
+
 ## Boundaries
 
 - Open core: the core packages are open source; the Cockpit UI, MCP surface and
