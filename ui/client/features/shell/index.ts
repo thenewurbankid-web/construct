@@ -35,6 +35,8 @@ export * from './hooks/useNarrowLayout';
 
 /** Roving-focus keyboard handling of the narrow bottom tab bar. */
 export * from './hooks/useNarrowTabBar';
+/** Opens a pane when a screen first registers tabs into it. */
+export * from './hooks/useRevealPanes';
 
 /** Pane sizes and collapse state, remembered per project. */
 export * from './hooks/useShellLayout';
