@@ -155,3 +155,76 @@ h2 { font-size: 1.6rem; margin: 0 0 8px; }
 .prose pre code { overflow-wrap: normal; }
 .benefit code, .toc code, .user-story code { overflow-wrap: anywhere; }
 .benefit { overflow-wrap: anywhere; }
+
+/* ---- Home hero backdrop (#282) --------------------------------------
+   A real Cockpit screenshot behind the top of the home page only, scoped
+   by the `is-home` body class the layout adds for `section === 'home'`.
+   Two layers so readability never depends on the screenshot's own pixels:
+   ::before is the image (blurred, faded, masked so it ends before the page
+   does) and ::after is a scrim built from --bg, which therefore adapts to
+   dark and light without a second image. */
+.is-home { position: relative; }
+.is-home::before,
+.is-home::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: min(86vh, 780px);
+  pointer-events: none;
+}
+.is-home::before {
+  z-index: -2;
+  background-image: image-set(
+    url("../img/cockpit-hero.webp") type("image/webp"),
+    url("../img/cockpit-hero.jpg") type("image/jpeg")
+  );
+  background-size: cover;
+  background-position: top center;
+  /* Oversized so the blur has pixels to bleed into instead of soft edges. */
+  transform: scale(1.05);
+  transform-origin: top center;
+  filter: blur(2px) saturate(0.85);
+  opacity: 0.55;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 42%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 42%, transparent 100%);
+}
+.is-home::after {
+  z-index: -1;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--bg) 58%, transparent) 0%,
+    color-mix(in srgb, var(--bg) 78%, transparent) 45%,
+    var(--bg) 100%
+  );
+}
+/* The screenshot is a dark UI, so on a light page it needs to sit back
+   further and the scrim needs to be heavier — otherwise the hero text
+   loses contrast against it. */
+@media (prefers-color-scheme: light) {
+  /* Swap in the Cockpit's own light theme rather than fading the dark
+     screenshot out — a dark UI behind a light page reads as grey noise
+     instead of a product shot, however low the opacity goes. */
+  .is-home::before {
+    background-image: image-set(
+      url("../img/cockpit-hero-light.webp") type("image/webp"),
+      url("../img/cockpit-hero-light.jpg") type("image/jpeg")
+    );
+    opacity: 0.6;
+  }
+  .is-home::after {
+    background: linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--bg) 70%, transparent) 0%,
+      color-mix(in srgb, var(--bg) 86%, transparent) 45%,
+      var(--bg) 100%
+    );
+  }
+}
+/* The backdrop is decoration; anyone who asked for less motion or who
+   prints the page gets the flat background instead. */
+@media (prefers-reduced-motion: reduce) {
+  .is-home::before { transform: none; }
+}
+@media print {
+  .is-home::before, .is-home::after { display: none; }
+}
