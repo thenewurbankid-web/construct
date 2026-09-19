@@ -11,9 +11,11 @@ type InspectorPanelProps = {
   node: PagesEditorNode | null;
   contentHash: string;
   onSaved: (tree: PageTree) => void;
+  /** Show the scope links inline (default). The shell shows them as their own Scope tab instead. */
+  withScope?: boolean;
 };
 
-export function InspectorPanel({ feature, file, node, contentHash, onSaved }: InspectorPanelProps) {
+export function InspectorPanel({ feature, file, node, contentHash, onSaved, withScope = true }: InspectorPanelProps) {
   if (!node) return <p className="hint">Select a tree node or preview element to inspect it.</p>;
   // #77 follow-up to #53 — spread props (`{...rest}`) now render as rows
   // too (previously filtered out entirely); keyed by `index` rather than
@@ -35,7 +37,7 @@ export function InspectorPanel({ feature, file, node, contentHash, onSaved }: In
           ))
         )}
       </div>
-      {!node.isFragment && <ScopePanel feature={feature} file={file} nodeId={node.id} contentHash={contentHash} />}
+      {withScope && !node.isFragment && <ScopePanel feature={feature} file={file} nodeId={node.id} contentHash={contentHash} />}
       {node.isCustomComponent && (
         <AutoMapPanel feature={feature} file={file} nodeId={node.id} contentHash={contentHash} onSaved={onSaved} />
       )}

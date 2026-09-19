@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useReducer } from 'react';
+import { useCallback, useEffect, useReducer } from 'react';
 import { propLabel } from '../domain/PropFormatting';
 import { findNode } from '../domain/TreeNodes';
 import { getFeatures, getPages, getPageTree } from '../services/PagesBrowsing';
@@ -19,7 +19,20 @@ function previewTitle(node: PagesEditorNode): string {
 export function usePagesEditor() {
   const [state, dispatch] = useReducer(pagesEditorReducer, initialPagesEditorState);
   useOpenPageRequests(dispatch);
-  const external = usePageChange(state.feature, state.file, Boolean(state.tree), () => openFile(state.file));
+  const { feature, file } = state;
+  // Handlers are memoised so tabs registered in the shell (which capture them) stay stable.
+  const openFile = useCallback(
+    (f: string) => {
+      dispatch({ type: 'OPEN_FILE', file: f });
+      getPageTree(feature, f).then((r) => {
+        if (r.error) dispatch({ type: 'TREE_ERROR', error: r.error });
+        else dispatch({ type: 'TREE_LOADED', tree: r });
+      });
+    },
+    [feature],
+  );
+  const reopen = useCallback(() => openFile(file), [openFile, file]);
+  const external = usePageChange(feature, file, Boolean(state.tree), reopen);
 
   useEffect(() => {
     getFeatures().then((r) => dispatch({ type: 'FEATURES_LOADED', features: r.features || [] }));
@@ -31,25 +44,9 @@ export function usePagesEditor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.feature]);
 
-  function setFeature(feature: string) {
-    dispatch({ type: 'SET_FEATURE', feature });
-  }
-
-  function openFile(file: string) {
-    dispatch({ type: 'OPEN_FILE', file });
-    getPageTree(state.feature, file).then((r) => {
-      if (r.error) dispatch({ type: 'TREE_ERROR', error: r.error });
-      else dispatch({ type: 'TREE_LOADED', tree: r });
-    });
-  }
-
-  function selectNode(nodeId: string) {
-    dispatch({ type: 'SELECT_NODE', nodeId });
-  }
-
-  function onTreeSaved(tree: PageTree) {
-    dispatch({ type: 'TREE_UPDATED', tree });
-  }
+  const setFeature = useCallback((f: string) => dispatch({ type: 'SET_FEATURE', feature: f }), []);
+  const selectNode = useCallback((nodeId: string) => dispatch({ type: 'SELECT_NODE', nodeId }), []);
+  const onTreeSaved = useCallback((tree: PageTree) => dispatch({ type: 'TREE_UPDATED', tree }), []);
   const livePreview = useLivePreview({ roots: state.tree?.roots ?? [], feature: state.feature, file: state.file, onSelectNode: selectNode });
   const selectedNode = state.tree && state.selectedNodeId ? findNode(state.tree.roots, state.selectedNodeId) : null;
 

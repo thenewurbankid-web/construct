@@ -30,6 +30,9 @@ export * from './hooks/usePaneResizer';
 /** Current local project and the switch action. */
 export * from './hooks/useProjectSwitcher';
 
+/** Opens a pane when a screen first registers tabs into it. */
+export * from './hooks/useRevealPanes';
+
 /** Pane sizes and collapse state, remembered per project. */
 export * from './hooks/useShellLayout';
 
