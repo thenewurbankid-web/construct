@@ -29,8 +29,15 @@
   background: var(--surface-1);
   border-bottom: 1px solid var(--border-subtle);
 }
+/* #273: every fixed-size control keeps its intrinsic width. Flexbox shrinks
+ * items by default, which used to squeeze the pills and pane toggles below
+ * their content width - the text then overflowed the 1px border (the Browser
+ * and Tools buttons appeared to touch) and the labels wrapped onto a second
+ * line inside a 24px pill. The command palette trigger is the single elastic
+ * item: it ellipsises by design, so it absorbs the whole deficit instead. */
+.sh-brand, .sh-modes, .sh-pill, .sh-icon-btn, .sh-project, .sh-project-btn { flex: none; }
 .sh-brand { font-weight: 700; font-size: var(--fs-lg); margin-right: var(--sp-2); }
-.sh-spacer { flex: 1; }
+.sh-spacer { flex: 1 1 0; min-width: 0; }
 
 .sh-modes { display: flex; gap: 2px; padding: 2px; background: var(--surface-0); border: 1px solid var(--border-subtle); border-radius: var(--r-md); }
 .sh-mode {
@@ -63,6 +70,9 @@
 }
 button.sh-pill { cursor: pointer; }
 button.sh-pill:hover { background: var(--surface-3); }
+.sh-pill { white-space: nowrap; }
+.sh-pill-icon { flex: none; fill: currentColor; opacity: 0.75; }
+.sh-pill-count { font-variant-numeric: tabular-nums; font-weight: 600; }
 .sh-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-faint); }
 .sh-pill--ready .sh-dot { background: var(--success); }
 .sh-pill--offline .sh-dot { background: var(--danger); }
@@ -84,6 +94,7 @@ button.sh-pill:hover { background: var(--surface-3); }
   line-height: 1;
   cursor: pointer;
 }
+.sh-icon-btn { white-space: nowrap; }
 .sh-icon-btn:hover { background: var(--surface-3); }
 .sh-toggle[aria-expanded='true'] { background: var(--accent-soft); border-color: var(--accent); }
 
@@ -301,6 +312,28 @@ kbd {
 .sh-root--narrow [hidden] { display: none !important; }
 .sh-root--narrow .sh-pane { position: static; width: 100%; height: auto; min-height: calc(100vh - var(--sh-top) - var(--sh-status) - 44px); border: 0; }
 .sh-root--narrow .main { padding: var(--sp-4); }
+
+/* #273: 1024-1280px is the band where the bar's fixed parts add up to more
+ * than the viewport (Playwright's Desktop Chrome, and most laptops, are
+ * exactly 1280x720). Collapse the two status pills to icon + count, the way
+ * the <=899px tier already collapses the model pill. The words stay in the
+ * DOM - clipped, not removed - so the accessible name, the aria-live
+ * announcement and the hover title all survive. The 8px `gap` on .sh-top is
+ * never consumed, because nothing shrinks any more. */
+@media (max-width: 1280px) {
+  .sh-pill-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .sh-pill { padding: 0 8px; }
+  .sh-mode { padding: 4px 10px; }
+  .sh-project-btn { max-width: 168px; }
+  .sh-palette-trigger { width: min(280px, 24vw); }
+}
 
 @media (max-width: 899px) {
   .sh-hints { display: none; }

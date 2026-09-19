@@ -9,7 +9,12 @@ const MODEL_TEXT: Record<ModelStatus, string> = {
 
 /** The 44px top bar: brand, project switcher slot, mode switch, status pills,
  * pane toggles and the theme switch slot. Modes are real links to existing
- * screens; the active one carries aria-current. */
+ * screens; the active one carries aria-current.
+ *
+ * #273: the status pills carry their label in a `.sh-pill-text` span so the
+ * <=1280px tier can visually hide the words (clip, not `display: none`) and
+ * leave an icon + count behind, without losing the accessible name, the
+ * aria-live announcement or the hover title. */
 export function TopBar({
   modes,
   activeModeId,
@@ -56,11 +61,23 @@ export function TopBar({
         type="button"
         className="sh-pill"
         data-testid="pill-processes"
+        title="Running processes - open the Processes drawer"
         onClick={onOpenProcesses}
       >
-        Processes: {runningProcesses}
+        <svg className="sh-pill-icon" viewBox="0 0 12 12" width="11" height="11" aria-hidden="true" focusable="false">
+          <rect x="0.5" y="6" width="2.5" height="5" rx="1.1" />
+          <rect x="4.75" y="3" width="2.5" height="8" rx="1.1" />
+          <rect x="9" y="1" width="2.5" height="10" rx="1.1" />
+        </svg>
+        <span className="sh-pill-text">Processes:</span>{' '}
+        <span className="sh-pill-count">{runningProcesses}</span>
       </button>
-      <span className={`sh-pill sh-pill--${modelStatus}`} aria-live="polite" data-testid="pill-model">
+      <span
+        className={`sh-pill sh-pill--${modelStatus}`}
+        aria-live="polite"
+        data-testid="pill-model"
+        title={MODEL_TEXT[modelStatus]}
+      >
         <span className="sh-dot" aria-hidden="true" />
         <span className="sh-pill-text">{MODEL_TEXT[modelStatus]}</span>
       </span>
