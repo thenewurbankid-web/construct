@@ -15,8 +15,9 @@ export function removeTab(tabs: ShellTab[], id: string): ShellTab[] {
 }
 
 /** The tab to show: the requested one if it exists and is enabled, else the
- * first enabled tab, else null. */
+ * first enabled tab a feature marked `preferred`, else the first enabled tab,
+ * else null. */
 export function resolveActiveTab(tabs: ShellTab[], activeId: string | null): ShellTab | null {
   const wanted = tabs.find((t) => t.id === activeId && !t.disabled);
-  return wanted ?? tabs.find((t) => !t.disabled) ?? null;
+  return wanted ?? tabs.find((t) => t.preferred && !t.disabled) ?? tabs.find((t) => !t.disabled) ?? null;
 }

@@ -6,13 +6,16 @@ import type { ShellRegion, ShellTab } from '../types';
 
 type Registry = Record<ShellRegion, ShellTab[]>;
 type SlotsApi = {
-  tabs: Registry;
   register: (region: ShellRegion, tab: ShellTab) => void;
   unregister: (region: ShellRegion, id: string) => void;
 };
 
 const EMPTY: Registry = { browser: [], tools: [], drawer: [] };
-const SlotsContext = createContext<SlotsApi | null>(null);
+// Two contexts on purpose: registering features only need the stable
+// register/unregister pair, so a registry update never re-renders them (that
+// would re-register their tab and loop). Only the shell reads the tab lists.
+const TabsContext = createContext<Registry>(EMPTY);
+const ApiContext = createContext<SlotsApi | null>(null);
 
 /** Holds tabs registered by features. Mounted once by the shell; features call
  * useRegisterShellTab (below) and never touch each other's panels. */
@@ -24,23 +27,26 @@ export function ShellTabsProvider({ children }: { children: ReactNode }) {
   const unregister = useCallback((region: ShellRegion, id: string) => {
     setTabs((t) => ({ ...t, [region]: removeTab(t[region], id) }));
   }, []);
-  const value = useMemo(() => ({ tabs, register, unregister }), [tabs, register, unregister]);
-  return createElement(SlotsContext.Provider, { value }, children);
+  const api = useMemo(() => ({ register, unregister }), [register, unregister]);
+  return createElement(ApiContext.Provider, { value: api }, createElement(TabsContext.Provider, { value: tabs }, children));
 }
 
 /** Tabs registered by features for one region (empty outside the provider). */
 export function useShellTabs(region: ShellRegion): ShellTab[] {
-  return useContext(SlotsContext)?.tabs[region] ?? EMPTY[region];
+  return useContext(TabsContext)[region];
 }
 
-/** Registers `tab` in `region` while the calling component is mounted. Pass a
- * memoised tab (its `render` runs inside the shell, not the caller). */
+/** Registers `tab` in `region` while the calling component is mounted. Calling
+ * it again with a changed tab replaces that tab in place (its position is kept),
+ * so a feature can pass a fresh tab object whenever its state changes. The
+ * tab's `render` runs inside the shell, not in the caller. */
 export function useRegisterShellTab(region: ShellRegion, tab: ShellTab): void {
-  const api = useContext(SlotsContext);
+  const api = useContext(ApiContext);
+  const { id } = tab;
   useEffect(() => {
-    if (!api) return;
-    api.register(region, tab);
-    return () => api.unregister(region, tab.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [region, tab, api?.register, api?.unregister]);
+    api?.register(region, tab);
+  }, [api, region, tab]);
+  useEffect(() => {
+    return () => api?.unregister(region, id);
+  }, [api, region, id]);
 }

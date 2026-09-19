@@ -29,6 +29,13 @@ test('resolveActiveTab: requested if enabled, else first enabled, else null', ()
   assert.equal(resolveActiveTab([], null), null);
 });
 
+test('resolveActiveTab: a preferred enabled tab wins over the first, but not over an explicit pick', () => {
+  const tabs = [tab('a'), tab('b', { preferred: true }), tab('c', { preferred: true, disabled: true })];
+  assert.equal(resolveActiveTab(tabs, null).id, 'b');
+  assert.equal(resolveActiveTab(tabs, 'a').id, 'a');
+  assert.equal(resolveActiveTab([tab('a'), tab('p', { preferred: true, disabled: true })], null).id, 'a');
+});
+
 test('nextTabId: roving focus wraps, skips disabled, Home/End, ignores other keys', () => {
   const tabs = [tab('a'), tab('b', { disabled: true }), tab('c')];
   assert.equal(nextTabId(tabs, 'a', 'ArrowRight'), 'c');

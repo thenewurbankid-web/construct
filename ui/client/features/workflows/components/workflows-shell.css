@@ -1,0 +1,255 @@
+/* Workflows inside the Cockpit shell (#248, mock: workflows-in-shell).
+ * Tokens only (app/tokens.css), so the diagram, its nodes, edges, labels and
+ * arrowheads follow the dark/light theme. Scoped to .wf-stage / .wf-browser /
+ * .sh-tabpanel so nothing here leaks into other screens. */
+
+/* ---- stage (middle pane) ---- */
+.main:has(.wf-stage) {
+  max-width: none;
+  padding: 0;
+}
+.wf-stage {
+  padding: var(--sp-3) var(--sp-4) var(--sp-4);
+}
+.wf-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 32px;
+  margin-bottom: var(--sp-2);
+}
+.wf-toolbar h1 {
+  margin: 0;
+  font-size: var(--fs-lg);
+}
+.wf-crumbs {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.wf-crumbs strong {
+  color: var(--text);
+  font-family: var(--mono);
+  font-weight: 600;
+}
+.wf-stage .wf-reload {
+  align-self: auto;
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: var(--fs-sm);
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+}
+.wf-stage .wf-reload:hover {
+  background: var(--surface-3);
+}
+.wf-empty {
+  max-width: 62ch;
+}
+.wf-stage .wf-machine {
+  margin-top: var(--sp-3);
+}
+.wf-stage .wf-machine h3 {
+  margin: 0 0 var(--sp-1);
+  font-size: var(--fs-md);
+  font-family: var(--mono);
+}
+.wf-stage .wf-machine-meta {
+  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-sm);
+}
+/* With several machines in one file the one the tabs act on gets an accent frame. */
+.wf-file:has(.wf-machine + .wf-machine) .wf-machine.active .wf-viewport {
+  border-color: var(--accent);
+}
+.wf-stage .wf-viewport {
+  height: clamp(380px, calc(100vh - var(--sh-top) - var(--sh-status) - var(--sh-drawer-h, 0px) - 190px), 900px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  background: var(--canvas);
+  overflow: hidden;
+}
+
+/* ---- diagram colours: every React Flow default is remapped to a token ---- */
+.wf-viewport .react-flow.react-flow {
+  --xy-background-color: var(--canvas);
+  --xy-background-pattern-color: var(--border-strong);
+  --xy-edge-stroke: var(--text-muted);
+  --xy-edge-stroke-selected: var(--accent);
+  --xy-edge-stroke-width: 1.5;
+  --xy-edge-label-color: var(--text);
+  --xy-edge-label-background-color: var(--surface-2);
+  --xy-handle-background-color: var(--accent);
+  --xy-handle-border-color: var(--surface-2);
+  --xy-connectionline-stroke: var(--accent);
+  --xy-controls-button-background-color: var(--surface-2);
+  --xy-controls-button-background-color-hover: var(--surface-3);
+  --xy-controls-button-color: var(--text);
+  --xy-controls-button-color-hover: var(--text);
+  --xy-controls-button-border-color: var(--border-strong);
+  --xy-controls-box-shadow: none;
+  --xy-node-background-color: var(--surface-2);
+  --xy-node-color: var(--text);
+  --xy-selection-background-color: var(--accent-soft);
+  --xy-selection-border: 1px dotted var(--accent);
+  background: var(--canvas);
+}
+.wf-viewport .react-flow__controls-button svg {
+  fill: currentColor;
+}
+.wf-viewport .react-flow__edge-textbg {
+  fill: var(--surface-2);
+  stroke: var(--border-subtle);
+  stroke-width: 1;
+}
+.wf-viewport .react-flow__edge-text {
+  fill: var(--text);
+  font-size: 11px;
+}
+.wf-viewport .react-flow__edge-path {
+  stroke: var(--text-muted);
+}
+.wf-viewport .react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--accent);
+}
+.wf-viewport .react-flow__arrowhead polyline,
+.wf-viewport .react-flow__arrowhead path {
+  stroke: var(--text-muted);
+  fill: var(--text-muted);
+}
+.wf-viewport .react-flow__node {
+  box-shadow: none;
+}
+.wf-state {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+.wf-state.initial {
+  border-color: var(--accent);
+}
+.wf-state.final {
+  border-color: var(--success);
+}
+.wf-state.missing {
+  border-color: var(--danger);
+}
+.wf-state-name {
+  font-family: var(--mono);
+}
+.wf-tag {
+  color: var(--accent);
+}
+.wf-tag.final {
+  color: var(--success);
+}
+.wf-tag.missing {
+  color: var(--danger);
+}
+.wf-internal {
+  color: var(--text-muted);
+  font-family: var(--mono);
+}
+.wf-start-dot {
+  background: var(--accent);
+}
+
+/* ---- Browser tab ---- */
+.wf-browser {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-1);
+}
+.wf-list-title {
+  margin: 0 0 var(--sp-1);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+  word-break: break-word;
+}
+.wf-file-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.wf-file-list button {
+  appearance: none;
+  align-self: auto;
+  width: 100%;
+  min-height: 28px;
+  padding: 4px 8px;
+  text-align: left;
+  font-size: var(--fs-md);
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  border-left: 2px solid transparent;
+  border-radius: var(--r-sm);
+  overflow-wrap: anywhere;
+}
+.wf-file-list button:hover {
+  background: var(--surface-3);
+}
+.wf-file-list li.active button {
+  background: var(--accent-soft);
+  border-left-color: var(--accent);
+  font-weight: 600;
+}
+.wf-machine-kind {
+  display: inline-block;
+  padding: 0 4px;
+  margin-right: 4px;
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--llm);
+  background: var(--llm-soft);
+  border-radius: var(--r-sm);
+}
+
+/* ---- Tools tabs (Narrative / Context & actions / Edit) ---- */
+.sh-tabpanel .wf-edit-panel {
+  margin: 0;
+  padding: var(--sp-1);
+  border: 0;
+  background: transparent;
+}
+.sh-tabpanel .wf-edit-row {
+  align-items: stretch;
+}
+.sh-tabpanel .wf-edit-row input,
+.sh-tabpanel .wf-edit-row select {
+  min-width: 0;
+  flex: 1 1 110px;
+}
+.sh-tabpanel .wf-context-table {
+  font-size: var(--fs-sm);
+}
+.sh-tabpanel .wf-narrative {
+  grid-template-columns: 1fr;
+  margin-top: 0;
+  gap: 0;
+}
+.sh-tabpanel .wf-nar-panel {
+  max-height: none;
+  padding: var(--sp-2) var(--sp-1);
+  background: transparent;
+  backdrop-filter: none;
+  border: 0;
+  border-bottom: 1px solid var(--border-subtle);
+  border-radius: 0;
+}
+.wf-tab-empty {
+  padding: var(--sp-2);
+}
