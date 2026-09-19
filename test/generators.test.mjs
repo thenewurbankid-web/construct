@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createFeature, generateLayer, generateVertical } from '../src/generators.mjs';
+import { createFeature, generateLayer, generateVertical, missingLayerPrerequisites, selfCheck } from '../src/generators.mjs';
 import { validateArchitecture } from '../src/architecture-enforcer.mjs';
 import { ConstructError, EXIT_CODES } from '../src/diagnostics.mjs';
 import { parseToAst } from '../src/ast/index.mjs';
@@ -133,12 +133,17 @@ test('generateVertical throws on an unknown layer name before writing anything',
   assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Checkout.tsx')), false);
 });
 
-test('generateVertical requesting a controller without its page fails fast with IMPORT-001', () => {
+// #275 superseded this test's original assertion: requesting a controller
+// without its page used to get as far as writing the controller and then fail
+// with a raw IMPORT-001 "template bug". It is now refused up front, by name,
+// with nothing written — see the #275 block at the bottom of this file for the
+// full message/exit-code/no-write assertions.
+test('generateVertical requesting a controller without its page fails fast, naming the missing page (#275)', () => {
   const dir = tmpProject();
   createFeature(dir, 'checkout');
   assert.throws(
     () => generateVertical(dir, 'Checkout', 'checkout', ['domain', 'hook', 'controller']),
-    (err) => err.message.includes('IMPORT-001'),
+    (err) => err.message.includes('a "controller" needs a "page" layer'),
   );
 });
 
@@ -277,4 +282,120 @@ test('custom template {{Name}} is PascalCased for a hyphenated name (#218)', () 
   createFeature(dir, 'checkout');
   const file = generateLayer(dir, 'domain', 'refund-request', 'checkout');
   assert.equal(fs.readFileSync(file, 'utf8'), 'export const RefundRequest = "refund-request";\n');
+});
+
+// ---- #275: a controller without its page is a layer-set error, not a
+// "template bug" ----------------------------------------------------------
+//
+// Before this, generateVertical happily wrote the controller (whose stub
+// imports '../pages/<Name>Page'), selfCheck re-validated it, IMPORT-001 fired,
+// and the user was told "Construct generated code that fails its own
+// architecture rules (template bug)" with an INTERNAL_ERROR exit code — for
+// what is entirely a problem with the layers they asked for.
+
+test('#275 generateVertical rejects controller-without-page with an actionable message and writes nothing', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  const featureDir = path.join(dir, 'features', 'checkout');
+  const before = fs.readdirSync(featureDir, { recursive: true }).sort();
+  assert.throws(() => generateVertical(dir, 'Products', 'checkout', ['domain', 'hook', 'controller']), (err) => {
+    assert.ok(err instanceof ConstructError);
+    // A user-input problem, not an internal one.
+    assert.equal(err.exitCode, EXIT_CODES.USAGE_ERROR);
+    assert.doesNotMatch(err.message, /template bug/);
+    assert.match(err.message, /a "controller" needs a "page" layer/);
+    // Says what to do about it, all three ways.
+    assert.match(err.message, /--layers domain,hook,page,controller/);
+    assert.match(err.message, /construct create page Products --feature checkout/);
+    assert.match(err.message, /drop "controller"/);
+    return true;
+  });
+  // Crucially: the half-written controller is not left behind either.
+  assert.deepEqual(fs.readdirSync(featureDir, { recursive: true }).sort(), before);
+});
+
+test('#275 generateLayer controller alone is rejected the same way, with nothing written', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  const featureDir = path.join(dir, 'features', 'checkout');
+  const before = fs.readdirSync(featureDir, { recursive: true }).sort();
+  assert.throws(() => generateLayer(dir, 'controller', 'Products', 'checkout'), (err) => {
+    assert.equal(err.exitCode, EXIT_CODES.USAGE_ERROR);
+    assert.doesNotMatch(err.message, /template bug/);
+    assert.match(err.message, /a "controller" needs a "page" layer/);
+    return true;
+  });
+  assert.deepEqual(fs.readdirSync(featureDir, { recursive: true }).sort(), before);
+});
+
+test('#275 a page already on disk satisfies the controller prerequisite (create page, then create controller)', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  generateLayer(dir, 'page', 'Products', 'checkout');
+  const file = generateLayer(dir, 'controller', 'Products', 'checkout');
+  assert.ok(fs.existsSync(file));
+  assert.deepEqual(validateArchitecture(dir).violations.filter((v) => v.severity === 'error'), []);
+});
+
+test('#275 a hand-written page with a non-.tsx extension also satisfies the prerequisite', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  fs.writeFileSync(
+    path.join(dir, 'features', 'checkout', 'pages', 'ProductsPage.ts'),
+    'export function ProductsPage() { return null; }\n',
+  );
+  assert.doesNotThrow(() => generateLayer(dir, 'controller', 'Products', 'checkout'));
+});
+
+test('#275 page+controller in one vertical still works, in dependency order', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  // Deliberately listed controller-first: LAYER_ORDER reorders it.
+  const files = generateVertical(dir, 'Products', 'checkout', ['controller', 'page']);
+  assert.deepEqual(files.map((f) => path.basename(f)), ['ProductsPage.tsx', 'ProductsController.tsx']);
+  assert.deepEqual(validateArchitecture(dir).violations.filter((v) => v.severity === 'error'), []);
+});
+
+test('#275 missingLayerPrerequisites reports the gap without writing anything', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  const featureDir = path.join(dir, 'features', 'checkout');
+  const before = fs.readdirSync(featureDir, { recursive: true }).sort();
+  assert.deepEqual(missingLayerPrerequisites(dir, 'Products', 'checkout', ['hook', 'controller']), [
+    { layer: 'controller', requires: 'page' },
+  ]);
+  assert.deepEqual(missingLayerPrerequisites(dir, 'Products', 'checkout', ['page', 'controller']), []);
+  assert.deepEqual(missingLayerPrerequisites(dir, 'Products', 'checkout', ['domain', 'hook']), []);
+  assert.deepEqual(fs.readdirSync(featureDir, { recursive: true }).sort(), before);
+});
+
+test('#275 selfCheck reports an all-IMPORT-001 failure as a layer-order problem, not a template bug', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  // Write a controller straight to disk, bypassing the prerequisite check, so
+  // selfCheck sees exactly what it used to see before this fix.
+  const file = path.join(dir, 'features', 'checkout', 'controllers', 'ProductsController.tsx');
+  fs.writeFileSync(file, "import { ProductsPage } from '../pages/ProductsPage';\n\nexport function ProductsController() {\n  return <ProductsPage />;\n}\n");
+  assert.throws(() => selfCheck(dir, [file]), (err) => {
+    assert.ok(err instanceof ConstructError);
+    assert.equal(err.exitCode, EXIT_CODES.USAGE_ERROR);
+    assert.doesNotMatch(err.message, /template bug/);
+    assert.match(err.message, /references a file that doesn't exist yet/);
+    assert.match(err.message, /domain -> service -> workflow -> hook -> component -> page -> controller/);
+    return true;
+  });
+});
+
+test('#275 selfCheck still calls a genuine rule violation a template bug (INTERNAL_ERROR)', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  // A domain file naming a banned effect word — nothing to do with build order.
+  const file = path.join(dir, 'features', 'checkout', 'domain', 'Products.tsx');
+  fs.writeFileSync(file, 'export function Products() {\n  return fetch("/api/products");\n}\n');
+  assert.throws(() => selfCheck(dir, [file]), (err) => {
+    assert.ok(err instanceof ConstructError);
+    assert.equal(err.exitCode, EXIT_CODES.INTERNAL_ERROR);
+    assert.match(err.message, /template bug/);
+    return true;
+  });
 });

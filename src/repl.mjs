@@ -185,9 +185,11 @@ export const HELP_TOPICS = {
   'import-001': `IMPORT-001 — why build order is enforced, not a convention
       Any relative import that doesn't resolve to a file on disk is a
       validation error, checked by both "validate" and at generate-time. A
-      controller's template already imports its same-named page, so
-      generating a controller before its page fails immediately with a clear
-      message. This is also why "create layer" always generates requested
+      controller's template already imports its same-named page, so a
+      controller is refused up front unless its page is either in the same
+      --layers list or already on disk — nothing is written, and the message
+      names the missing layer rather than reporting a dangling import after
+      the fact. This is also why "create layer" always generates requested
       layers in dependency order, regardless of how you list --layers.`,
 };
 

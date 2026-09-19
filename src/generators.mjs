@@ -82,8 +82,23 @@ export function selfCheck(root,absFiles){
  const files=absFiles.map(f=>rel(root,f));
  const {violations}=validateArchitecture(root,{files});
  const errors=violations.filter(v=>v.severity==='error');
- if(errors.length) throw new ConstructError(
-  `Construct generated code that fails its own architecture rules (template bug): ${errors.map(v=>`${v.rule} in ${v.file} — ${v.message}`).join('; ')}`,
+ if(!errors.length)return;
+ const detail=errors.map(v=>`${v.rule} in ${v.file} — ${v.message}`).join('; ');
+ // #275: a purely dangling-relative-import failure is NOT the template
+ // misbehaving — every template renders valid code on its own; IMPORT-001
+ // means the file this one composes hasn't been generated (an incomplete or
+ // out-of-order set of layers, which is the caller's input, not our bug).
+ // Calling that a "template bug" sent people looking in the wrong place and
+ // reported it as an internal error. Only claim a template bug when the
+ // generated set is otherwise a valid ordering; this stays as a backstop for
+ // any future cross-layer template import, not just controller -> page (which
+ // assertLayerPrerequisites below now catches before anything is written).
+ if(errors.every(v=>v.rule==='IMPORT-001')) throw new ConstructError(
+  `Generated ${files.join(', ')} references a file that doesn't exist yet — ${detail} That's an incomplete or out-of-order set of layers: generate the missing layer first (order: ${LAYER_ORDER.join(' -> ')}), then retry.`,
+  {violations:errors,exitCode:EXIT_CODES.USAGE_ERROR}
+ );
+ throw new ConstructError(
+  `Construct generated code that fails its own architecture rules (template bug): ${detail}`,
   {violations:errors,exitCode:EXIT_CODES.INTERNAL_ERROR}
  );
 }
@@ -132,22 +147,34 @@ export function createFeature(root,name){
 // writing behavior) and the Ticket 7.1 pipeline runner (src/engine/pipeline.mjs),
 // which stages the same content into a transactionalWriter buffer instead of
 // writing it directly -- so template logic lives in exactly one place either way.
-export function renderLayer(root,layer,name,feature){
- if(!templates[layer])throw new Error(`Unknown layer: ${layer}`);
- const config=loadConfig(root);
+// Pure: where a layer's file for `name` in `feature` would be written, without
+// rendering or writing anything. Shared by renderLayer and #275's
+// prerequisite check (which needs the path of a layer it is NOT generating).
+export function layerTargetFile(root,layer,name,feature,config=loadConfig(root)){
  // #218: same PascalCase + validation as createFeature/the engine generators,
  // before anything is rendered or written, so "refund-request" is
  // RefundRequest everywhere and an illegal name fails clearly with nothing on disk.
  const cap=pascalCase(name,layer[0].toUpperCase()+layer.slice(1));
  const dir=path.join(root,config.features?.root||'features',feature,folderFor(layer));
- const file=path.join(dir,`${layerFileBaseName(layer,cap)}.tsx`);
+ return path.join(dir,`${layerFileBaseName(layer,cap)}.tsx`);
+}
+
+export function renderLayer(root,layer,name,feature){
+ if(!templates[layer])throw new Error(`Unknown layer: ${layer}`);
+ const config=loadConfig(root);
+ const cap=pascalCase(name,layer[0].toUpperCase()+layer.slice(1));
+ const file=layerTargetFile(root,layer,name,feature,config);
  const custom=findCustomTemplate(root,layer,config);
  const content=custom?renderCustomTemplate(custom,name,cap):templates[layer](cap,{framework:config.project?.framework});
  return {file,content};
 }
 
 export function generateLayer(root,layer,name,feature){
+ // renderLayer first: it validates the layer name and the identifier (#218)
+ // with this layer's own label. Only then the #275 prerequisite check — still
+ // before any write, so an unbuildable request leaves nothing on disk.
  const {file,content}=renderLayer(root,layer,name,feature);
+ assertLayerPrerequisites(root,name,feature,[layer]);
  write(file,content); // write() ensures the parent dir exists
  selfCheck(root,[file]);
  return file;
@@ -161,6 +188,62 @@ export function generateLayer(root,layer,name,feature){
 // order regardless of the order the caller listed --layers in.
 export const LAYER_ORDER=['domain','service','workflow','hook','component','page','controller'];
 
+// #275 — which other layer(s) a layer's own stub template composes, and so
+// cannot be generated without. Exactly one exists today: the controller stub
+// imports `../pages/<Name>Page`, so a controller generated without its page
+// is a dangling import (IMPORT-001) the moment it is written. Declared as data
+// rather than hardcoded in one `if` so a future template that composes another
+// layer only has to add a line here.
+export const LAYER_PREREQUISITES={controller:['page']};
+
+// A prerequisite is satisfied by the file already existing on disk, not just by
+// being in the same layer set — `construct create controller X --feature f`
+// after the page was created in an earlier command is legitimate and must keep
+// working. Extension fallbacks mirror architecture-enforcer's
+// resolveRelativeImport, so this agrees with what IMPORT-001 would decide.
+const LAYER_FILE_EXTENSIONS=['.tsx','.ts','.jsx','.js'];
+function layerFileExists(root,layer,name,feature){
+ const base=layerTargetFile(root,layer,name,feature).replace(/\.tsx$/,'');
+ return LAYER_FILE_EXTENSIONS.some(ext=>{const p=base+ext; return fs.existsSync(p)&&fs.statSync(p).isFile();});
+}
+
+/** Which prerequisite layers are missing for `layers` — `[{layer, requires}]`,
+ * empty when the set is buildable. Pure/read-only: never writes. */
+export function missingLayerPrerequisites(root,name,feature,layers){
+ const requested=new Set(layers);
+ const missing=[];
+ for(const layer of requested){
+  for(const requires of LAYER_PREREQUISITES[layer]||[]){
+   if(requested.has(requires))continue;
+   if(layerFileExists(root,requires,name,feature))continue;
+   missing.push({layer,requires});
+  }
+ }
+ return missing;
+}
+
+/** Reject an unbuildable layer combination BEFORE anything is written, with a
+ * message that names the real problem and what to do about it — rather than
+ * letting the half-written result trip selfCheck's IMPORT-001 afterwards. */
+export function assertLayerPrerequisites(root,name,feature,layers){
+ const missing=missingLayerPrerequisites(root,name,feature,layers);
+ if(!missing.length)return;
+ const detail=missing.map(({layer,requires})=>{
+  const cap=pascalCase(name,layer[0].toUpperCase()+layer.slice(1));
+  const target=rel(root,layerTargetFile(root,requires,name,feature));
+  return `a "${layer}" needs a "${requires}" layer (the generated ${cap}${layer==='controller'?'Controller':''} imports ${target}, which doesn't exist)`;
+ }).join('; ');
+ const needed=[...new Set(missing.map(m=>m.requires))];
+ const dropped=[...new Set(missing.map(m=>m.layer))];
+ throw new ConstructError(
+  `Can't build layers [${[...new Set(layers)].join(', ')}] for "${name}" in feature "${feature}": ${detail}. `+
+  `Add ${needed.map(l=>`"${l}"`).join(' and ')} to the layers (e.g. --layers ${LAYER_ORDER.filter(l=>new Set([...layers,...needed]).has(l)).join(',')}), `+
+  `create ${needed.map(l=>`it first with \`construct create ${l} ${name} --feature ${feature}\``).join(' and ')}, `+
+  `or drop ${dropped.map(l=>`"${l}"`).join(' and ')}. Nothing was written.`,
+  {exitCode:EXIT_CODES.USAGE_ERROR}
+ );
+}
+
 // `onLayer` (optional, #165) is called once per layer immediately after it
 // finishes, with `{ layer, file, elapsedSeconds }` -- the only way to get
 // genuine per-layer scaffold timing for cli.mjs's `generate layer` console
@@ -173,6 +256,10 @@ export function generateVertical(root,name,feature,layers,{onLayer}={}){
  const unique=[...new Set(layers)];
  const unknown=unique.filter(l=>!templates[l]);
  if(unknown.length)throw new Error(`Unknown layer: ${unknown[0]}`);
+ // #275: reject an unbuildable combination (e.g. controller without page) for
+ // the whole set up front, so a bad request never writes some layers and then
+ // fails on a later one.
+ assertLayerPrerequisites(root,name,feature,unique);
  const ordered=LAYER_ORDER.filter(l=>unique.includes(l));
  return ordered.map(layer=>{
   const start=process.hrtime.bigint();
