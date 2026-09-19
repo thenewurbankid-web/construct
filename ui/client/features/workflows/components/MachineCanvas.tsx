@@ -1,14 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { ReactFlow, Background, Controls, type Connection, type NodeTypes } from '@xyflow/react';
+import { ReactFlow, Background, Controls, type Connection, type EdgeTypes, type NodeTypes } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useMachineFlow } from '../hooks/useMachineFlow';
 import type { WorkflowEditRequest, WorkflowMachine } from '../types';
+import { FlowEdge } from './FlowEdge';
 import { StateFlowNode } from './StateFlowNode';
 import { WorkflowEditPanel } from './WorkflowEditPanel';
 
 const NODE_TYPES: NodeTypes = { stateNode: StateFlowNode };
+const EDGE_TYPES: EdgeTypes = { flowEdge: FlowEdge };
 
 type MachineCanvasProps = {
   machine: WorkflowMachine;
@@ -69,6 +71,7 @@ export function MachineCanvas({ machine, machineIndex, onEdit, locked }: Machine
               nodes={nodes}
               edges={edges}
               nodeTypes={NODE_TYPES}
+              edgeTypes={EDGE_TYPES}
               nodesDraggable={false}
               nodesConnectable={canEdit}
               edgesReconnectable={canEdit}
@@ -84,7 +87,7 @@ export function MachineCanvas({ machine, machineIndex, onEdit, locked }: Machine
               onPaneClick={() => setSelected(null)}
               colorMode="dark"
               fitView
-              fitViewOptions={{ padding: 0.25 }}
+              fitViewOptions={{ padding: 0.06 }}
               proOptions={{ hideAttribution: true }}
             >
               <Background />

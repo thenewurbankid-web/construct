@@ -2,7 +2,7 @@ import { Handle, Position, type Node, type NodeProps } from '@xyflow/react';
 import type { StateNodeData } from '../hooks/useMachineFlow';
 
 // One XState state as a React Flow node. Left = incoming, right = outgoing
-// forward transitions, bottom = backward (loop-back) transitions. Initial
+// forward transitions; loop-backs use the opposite sides (out-l / in-r). Initial
 // is marked by the start dot + arrow (a separate `start` node), final by a
 // double border, compound by a badge.
 type StateNodeType = Node<StateNodeData, 'stateNode'>;
@@ -19,7 +19,7 @@ export function StateFlowNode({ data }: NodeProps<StateNodeType>) {
   return (
     <div className={cls} style={{ width: data.width }} data-testid={`wf-state-${data.path}`}>
       <Handle id="in-l" type="target" position={Position.Left} className="wf-handle" />
-      <Handle id="in-b" type="target" position={Position.Bottom} className="wf-handle" style={{ left: '30%' }} />
+      <Handle id="out-l" type="source" position={Position.Left} className="wf-handle" style={{ top: '90%' }} />
       <div className="wf-state-name">{data.label}</div>
       <div className="wf-state-tags">
         {data.initial && <span className="wf-tag">initial</span>}
@@ -31,7 +31,7 @@ export function StateFlowNode({ data }: NodeProps<StateNodeType>) {
         <div key={line} className="wf-internal">{line}</div>
       ))}
       <Handle id="out-r" type="source" position={Position.Right} className="wf-handle" />
-      <Handle id="out-b" type="source" position={Position.Bottom} className="wf-handle" style={{ left: '70%' }} />
+      <Handle id="in-r" type="target" position={Position.Right} className="wf-handle" style={{ top: '90%' }} />
     </div>
   );
 }
