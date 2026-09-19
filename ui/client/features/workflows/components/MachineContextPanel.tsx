@@ -146,7 +146,7 @@ export function MachineContextPanel({ machine, machineIndex, disabled, onEdit }:
         </button>
       </div>
       <div className="wf-edit-row">
-        <Select aria-label="Transition to guard" value={chosenTransition?.key ?? ''} onChange={(e) => setTransition(e.target.value)} disabled={disabled}>
+        <Select aria-label="Which transition gets the guard" value={chosenTransition?.key ?? ''} onChange={(e) => setTransition(e.target.value)} disabled={disabled}>
           {behavior.transitions.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
         </Select>
         <Select aria-label="Guard condition" value={guard} onChange={(e) => setGuard(e.target.value)} disabled={disabled}>

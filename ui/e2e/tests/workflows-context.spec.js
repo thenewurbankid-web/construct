@@ -87,7 +87,7 @@ test.describe('Workflows screen: context, actions and guards (#223)', () => {
     await panel.getByLabel('New guard name').fill('isValid');
     await panel.getByRole('button', { name: 'Declare guard' }).click();
     await confirm(page);
-    await panel.getByLabel('Transition to guard').selectOption({ label: 'idle --SUBMIT--> submitting' });
+    await panel.getByLabel('Which transition gets the guard').selectOption({ label: 'idle --SUBMIT--> submitting' });
     await panel.getByLabel('Guard condition').selectOption('isValid');
     await panel.getByRole('button', { name: 'Set guard' }).click();
     await confirm(page);
