@@ -28,3 +28,21 @@ export type StatusMessage = { ok: boolean; message: string; violations?: Violati
 /** One contiguous run of unchanged/added/removed lines from a before/after
  * diff (#81) — `added`/`removed` both falsy means unchanged context. */
 export type DiffHunk = { value: string; added?: boolean; removed?: boolean };
+
+/** One row of a rendered before/after diff (#224), pre-computed server-side. */
+export type DiffRow = {
+  kind: 'context' | 'added' | 'removed' | 'gap';
+  oldLine?: number;
+  newLine?: number;
+  text: string;
+  hidden?: number;
+};
+
+/** A page file last external (on-disk, non-editor) change (#224). */
+export type PageChange = {
+  at: number;
+  beforeHash: string;
+  afterHash: string;
+  stats: { added: number; removed: number };
+  rows: DiffRow[];
+};
