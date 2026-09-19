@@ -27,6 +27,7 @@ import {
   getNodeProps,
   buildAttributeSnippet,
   findUnmappedProps,
+  getScopeLinks,
   applyAutoMap,
   checkEnforcement,
   hashOf,
@@ -369,6 +370,19 @@ app.get('/api/pages/unmapped', (req, res) => {
     const root = currentRoot();
     const { absPath } = resolvePageFile(root, feature, file);
     res.json(findUnmappedProps(fs.readFileSync(absPath, 'utf8'), nodeId, root, absPath));
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+// #223: which page-scope names flow into which of this element's props (path-scoped to pages/;
+// cross-origin browser reads are refused by the global CORS policy above).
+app.get('/api/pages/scope-links', (req, res) => {
+  try {
+    const { feature, file, nodeId } = req.query;
+    const root = currentRoot();
+    const { absPath } = resolvePageFile(root, feature, file);
+    res.json(getScopeLinks(fs.readFileSync(absPath, 'utf8'), nodeId, root, absPath));
   } catch (e) {
     handlePagesEditorError(res, e);
   }
