@@ -136,6 +136,7 @@ export function serializeTree(source) {
     isCustomComponent: n.isCustomComponent,
     props: n.props,
     line: n.line,
+    column: n.column,
     children: n.children.map(strip),
   });
   return {

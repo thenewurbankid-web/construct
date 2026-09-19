@@ -5,6 +5,7 @@ import { propLabel } from '../domain/PropFormatting';
 import { findNode } from '../domain/TreeNodes';
 import { getFeatures, getPages, getPageTree } from '../services/PagesBrowsing';
 import type { PageTree, PagesEditorNode } from '../types';
+import { useLivePreview } from './useLivePreview';
 import { usePageChange } from './usePageChange';
 import { initialPagesEditorState, pagesEditorReducer } from '../workflows/PagesEditor';
 
@@ -48,8 +49,8 @@ export function usePagesEditor() {
   function onTreeSaved(tree: PageTree) {
     dispatch({ type: 'TREE_UPDATED', tree });
   }
-
+  const livePreview = useLivePreview({ roots: state.tree?.roots ?? [], feature: state.feature, file: state.file, onSelectNode: selectNode });
   const selectedNode = state.tree && state.selectedNodeId ? findNode(state.tree.roots, state.selectedNodeId) : null;
 
-  return { ...state, setFeature, openFile, selectNode, onTreeSaved, selectedNode, previewTitle, externalChange: external.change, dismissExternalChange: external.dismiss, reloadFromDisk: external.reload };
+  return { ...state, setFeature, openFile, selectNode, onTreeSaved, selectedNode, previewTitle, livePreview, externalChange: external.change, dismissExternalChange: external.dismiss, reloadFromDisk: external.reload };
 }
