@@ -97,28 +97,71 @@ test('collect: Part of #N fallback when nothing is linked', async () => {
   assert.deepEqual(guides.map((g) => [g.number, g.stories.map((s) => s.number)]), [[10, [11, 12]]]);
 });
 
-test('build renders pages, downloads images, rewrites paths', async () => {
+test('build renders the two-audience site, downloads images, rewrites paths', async () => {
   const out = fs.mkdtempSync(path.join(os.tmpdir(), 'site-test-'));
   const res = await build({ source: offlineSource(fixtures()), out, repo: 'o/r', buildTime: new Date('2026-09-18T00:00:00Z') });
   assert.equal(res.guides, 1);
   assert.equal(res.stories, 2);
   assert.equal(res.images, 1);
   assert.deepEqual(res.imageFailures, []);
-  const guidePath = fs.readdirSync(path.join(out, 'guides'))[0];
-  const guide = fs.readFileSync(path.join(out, 'guides', guidePath, 'index.html'), 'utf8');
+  const slug = fs.readdirSync(path.join(out, 'user-guide', 'tutorials')).find((d) => d !== 'index.html');
+  const guide = fs.readFileSync(path.join(out, 'user-guide', 'tutorials', slug, 'index.html'), 'utf8');
   assert.match(guide, /<h1>Guide A — things<\/h1>/);
   assert.match(guide, /id="11-story-one"/);
-  assert.match(guide, /href="https:\/\/github.com\/o\/r\/issues\/11"/);
-  assert.match(guide, /src="..\/..\/assets\/img\/[0-9a-f]{16}\.png"/);
+  assert.match(guide, /src="..\/..\/..\/assets\/img\/[0-9a-f]{16}\.png"/);
   assert.match(guide, /Setup, API and known limitations/);
   assert.doesNotMatch(guide, /raw\.githubusercontent/);
   assert.doesNotMatch(guide, /Old/);
+  assert.doesNotMatch(guide, /View on GitHub|Demos tickets/);
+  // old tutorial address redirects
+  assert.match(fs.readFileSync(path.join(out, 'guides', slug, 'index.html'), 'utf8'), /url=..\/..\/user-guide\/tutorials\//);
   const home = fs.readFileSync(path.join(out, 'index.html'), 'utf8');
+  assert.match(home, /href="user-guide\/"/);
+  assert.match(home, /href="developers\/"/);
   assert.match(home, /Guide A/);
-  assert.match(home, /Built <time datetime="2026-09-18T00:00:00.000Z">/);
+  assert.match(home, /Documentation built <time datetime="2026-09-18T00:00:00.000Z">/);
+  for (const p of ['user-guide/getting-started/', 'user-guide/concepts/', 'user-guide/how-to/create/', 'developers/architecture/', 'developers/cli-reference/', 'developers/rules-reference/', 'developers/execution-model/', 'developers/ast/', 'search/']) {
+    assert.ok(fs.existsSync(path.join(out, p, 'index.html')), p);
+  }
   assert.ok(fs.existsSync(path.join(out, '404.html')));
   assert.ok(fs.existsSync(path.join(out, 'assets/css/site.css')));
   fs.rmSync(out, { recursive: true });
+});
+
+test('generated and reused docs are current, and carry no tracker plumbing or dead links', async () => {
+  const out = fs.mkdtempSync(path.join(os.tmpdir(), 'site-test-'));
+  await build({ source: offlineSource(fixtures()), out, repo: 'o/r', buildTime: new Date('2026-09-18T00:00:00Z') });
+  const rules = fs.readFileSync(path.join(out, 'developers/rules-reference/index.html'), 'utf8');
+  assert.match(rules, /PAGE-003/); // straight from DEFAULT_RULES
+  const cli = fs.readFileSync(path.join(out, 'developers/cli-reference/index.html'), 'utf8');
+  assert.match(cli, /construct research workflow/);
+  const files = [];
+  const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).forEach((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : files.push(path.join(d, e.name))));
+  walk(out);
+  for (const f of files.filter((x) => x.endsWith('.html'))) {
+    const html = fs.readFileSync(f, 'utf8');
+    const text = html.replace(/<script[\s\S]*?<\/script>/g, '').replace(/&#\d+;/g, "'").replace(/<[^>]+>/g, ' ');
+    assert.doesNotMatch(text, /#\d{2,4}\b/, `ticket number leaked in ${path.relative(out, f)}`);
+    assert.doesNotMatch(text, /CLAUDE\.md|subagent|orchestrat/i, `internal wording in ${path.relative(out, f)}`);
+    for (const m of html.matchAll(/<(?:a|img|link)\b[^>]*?(?:href|src)="(?!https?:|mailto:|data:|\/)([^"#]+)/g)) {
+      if (m[1].includes('pagefind/')) continue; // produced by the search indexer, off in tests
+      let target = path.resolve(path.dirname(f), m[1]);
+      if (fs.existsSync(target) && fs.statSync(target).isDirectory()) target = path.join(target, 'index.html');
+      assert.ok(fs.existsSync(target), `dead link ${m[1]} in ${path.relative(out, f)}`);
+    }
+  }
+  fs.rmSync(out, { recursive: true });
+});
+
+test('markdown helpers: sections, includes, ticket stripping', async () => {
+  const { extractSection, relevel, stripTicketRefs, stripTicketRefsHtml } = await import('../lib/markdown.mjs');
+  const md = '# T\n\n## A\n\ntext\n\n```bash\n# not a heading\n```\n\n## B\n\nother\n';
+  const { markdown } = extractSection(md, 'A');
+  assert.match(markdown, /not a heading/);
+  assert.doesNotMatch(markdown, /other/);
+  assert.equal(relevel('## A\n\n### C\n', 3, true), '\n### C\n'.replace('\n### C', '\n#### C'));
+  assert.equal(stripTicketRefs('Title (#96, the epic) and more (Epic 6.4/#100) end. Tracked under issue #104.'), 'Title and more end.');
+  assert.doesNotMatch(stripTicketRefsHtml('<table><tr><th>#</th><th>Story</th></tr><tr><td>#128</td><td>x</td></tr></table>'), /#128/);
 });
 
 test('parseArgs', () => {
