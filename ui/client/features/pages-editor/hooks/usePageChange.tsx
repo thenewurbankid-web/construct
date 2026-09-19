@@ -30,7 +30,7 @@ export function usePageChange(feature: string, file: string, active: boolean, re
   }, [feature, file]);
 
   /** Re-open the file from disk and clear the notice. */
-  const reload = () => { dismiss(); reopen(); };
+  const reload = useCallback(() => { dismiss(); reopen(); }, [dismiss, reopen]);
 
   return { change, dismiss, reload };
 }

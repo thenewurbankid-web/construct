@@ -1540,3 +1540,28 @@ button:disabled {
 .live-preview-bar { display: flex; gap: 8px; margin-bottom: 8px; }
 .live-preview-bar input { flex: 1; }
 .live-preview-frame { width: 100%; height: 360px; border: 1px solid var(--border); border-radius: 6px; background: var(--preview-bg); }
+
+/* --- Pages Editor inside the shell (#247): Browser tree, stage, Tools tabs --- */
+.pe-stage { max-width: none; }
+.pe-browser { display: flex; flex-direction: column; gap: var(--sp-2); }
+.pe-browser .pages-browser,
+.pe-browser .tree-panel { margin: 0; padding: var(--sp-2); max-height: none; }
+.pe-browser .tree-panel { max-height: 45vh; }
+.pe-stage .live-preview-panel,
+.pe-stage .preview-panel { margin-top: 0; margin-bottom: var(--sp-3); }
+.pe-stage .preview-panel { max-height: 60vh; }
+.pe-changed {
+  margin: 0 0 var(--sp-3);
+  padding: 6px 10px;
+  border: 1px solid var(--warn);
+  background: var(--warn-soft);
+  border-radius: var(--r-md);
+  font-size: 0.85rem;
+}
+.sh-tabpanel .inspector-panel,
+.sh-tabpanel .source-panel { margin: 0; max-height: none; }
+.sh-tabpanel .prop-row { flex-wrap: wrap; }
+.sh-tabpanel .prop-row input[type='text'],
+.sh-tabpanel .prop-row input[type='number'] { min-width: 0; flex: 1 1 8rem; }
+.sh-tabpanel .scope-panel { margin-top: 0; border-top: 0; padding-top: 0; }
+.sh-tabpanel .external-change-notice { margin: 0; }

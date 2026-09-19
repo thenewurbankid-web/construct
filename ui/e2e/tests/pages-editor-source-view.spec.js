@@ -52,6 +52,8 @@ test.describe('Pages Editor: Monaco source view with diagnostics', () => {
     await page.getByRole('button', { name: 'HomePage.tsx' }).click();
     await expect(page.locator('.tree-panel')).toBeVisible();
 
+    // Source is a tab of the shell's Tools panel (#247).
+    await page.getByRole('tab', { name: 'Source' }).click();
     await page.getByRole('button', { name: 'View source' }).click();
     const monaco = page.locator('[data-source-editor="monaco"]');
     await expect(monaco).toBeVisible({ timeout: 30_000 });
