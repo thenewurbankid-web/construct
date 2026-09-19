@@ -9,9 +9,12 @@ export type SettingsState = {
   projectDirInput: string;
   llmProviders: LlmProviders;
   status: SaveStatus | null;
+  pickerOpen: boolean;
 };
 
 export type SettingsAction =
+  | { type: 'TOGGLE_PICKER' }
+  | { type: 'CHOOSE_DIR'; value: string }
   | { type: 'LOADED'; settings: Settings }
   | { type: 'SET_PROJECT_DIR'; value: string }
   | { type: 'SET_LLM_PROVIDER'; capability: LlmCapability; value: string }
@@ -23,10 +26,16 @@ export const initialSettingsState: SettingsState = {
   projectDirInput: '',
   llmProviders: { importFill: '', createFill: '', planAnalysis: '' },
   status: null,
+  pickerOpen: false,
 };
 
 export function settingsReducer(state: SettingsState, action: SettingsAction): SettingsState {
   switch (action.type) {
+    case 'TOGGLE_PICKER':
+      return { ...state, pickerOpen: !state.pickerOpen };
+    case 'CHOOSE_DIR':
+      // Picking a folder only fills the input; nothing changes server-side until Save.
+      return { ...state, projectDirInput: action.value, pickerOpen: false };
     case 'LOADED':
       return {
         ...state,

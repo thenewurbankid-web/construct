@@ -3,9 +3,9 @@ import { SettingsForm } from '../components/SettingsForm';
 import { SettingsSummary } from '../components/SettingsSummary';
 import type { useSettings } from '../hooks/useSettings';
 
-type SettingsPageProps = ReturnType<typeof useSettings>;
+type SettingsPageProps = ReturnType<typeof useSettings> & { picker?: ReactNode };
 
-export function SettingsPage({ settings, projectDirInput, setProjectDirInput, llmProviders, setLlmProvider, status, save }: SettingsPageProps): ReactNode {
+export function SettingsPage({ settings, projectDirInput, setProjectDirInput, llmProviders, setLlmProvider, status, save, pickerOpen, togglePicker, picker }: SettingsPageProps): ReactNode {
   if (!settings) return <p>Loading settings…</p>;
 
   return (
@@ -25,6 +25,9 @@ export function SettingsPage({ settings, projectDirInput, setProjectDirInput, ll
         availableProvidersByCapability={settings.availableProvidersByCapability}
         status={status}
         onSave={save}
+        pickerOpen={pickerOpen}
+        onTogglePicker={togglePicker}
+        picker={picker}
       />
 
       <SettingsSummary
