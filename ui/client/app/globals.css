@@ -1354,6 +1354,34 @@ button:disabled {
   margin-top: 8px;
 }
 
+/* Epic #223 — Context / Actions panel under the diagram. */
+.wf-context-table {
+  width: 100%;
+  margin-bottom: 8px;
+  border-collapse: collapse;
+}
+
+.wf-context-table th,
+.wf-context-table td {
+  padding: 4px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.wf-named-list {
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.wf-named-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+}
+
 /* Epic #185 — Workflow narrator panels (plain English / scenarios / health)
  * under each machine diagram. Own block to keep merges trivial. */
 .wf-narrative {

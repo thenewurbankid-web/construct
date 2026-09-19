@@ -23,6 +23,7 @@ export function toNarrativeView(n: WorkflowNarrative): NarrativeView {
     machines: n.machines.map((m) => ({
       ...m,
       summarySegments: parseInline(m.summary),
+      contextSegments: (m.context ?? []).map(parseInline),
       states: m.states.map((s) => ({ ...s, sentenceSegments: s.sentences.map(parseInline) })),
       scenarios: m.scenarios.map((sc) => ({ ...sc, lineSegments: sc.text.map(parseInline) })),
       findings: m.findings.map((f) => ({ ...f, messageSegments: parseInline(f.message) })),

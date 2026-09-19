@@ -23,6 +23,16 @@ export function MachineNarrative({ narrative }: { narrative: NarrativeMachineVie
       <section className="wf-nar-panel" data-testid="wf-narrative-english">
         <h4>In plain English</h4>
         <p className="wf-nar-summary" data-testid="wf-narrative-summary"><Inline segments={narrative.summarySegments} /></p>
+        {narrative.contextSegments.length > 0 && (
+          <div className="wf-nar-state-block" data-testid="wf-narrative-context">
+            <h5>What it remembers</h5>
+            <ul>
+              {narrative.contextSegments.map((segs, i) => (
+                <li key={i}><Inline segments={segs} /></li>
+              ))}
+            </ul>
+          </div>
+        )}
         {narrative.states.map((st) => (
           <div key={st.path} className={`wf-nar-state-block ${st.kind}`} data-testid={`wf-narrative-state-${st.path}`}>
             <h5>{st.label} <span className="wf-tag">{st.kind}</span></h5>
