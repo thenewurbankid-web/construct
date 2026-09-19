@@ -42,9 +42,13 @@ test.describe('Cockpit drawer and command palette (#249)', () => {
     await expect(tab.getByLabel(/Diagnostics$/)).toBeVisible({ timeout: 20_000 }); // badge appears once the run finishes
     const rows = drawer.getByTestId('diagnostic-row');
     await expect(rows.first()).toBeVisible();
-    await expect(rows.first()).toContainText('PAGE-006');
-    await expect(rows.first()).toContainText('features/demo/pages/DemoPage.tsx:1');
-    await expect(drawer.getByText(/1 error/)).toBeVisible();
+    const pageRow = rows.filter({ hasText: 'PAGE-006' });
+    await expect(pageRow).toContainText('features/demo/pages/DemoPage.tsx:1');
+    await expect(drawer.getByText(/\d+ errors?/).first()).toBeVisible();
+    // A non-page row expands to say why and how to fix it.
+    await rows.filter({ hasText: 'SLICE-001' }).click();
+    await expect(drawer.getByText('Why:')).toBeVisible();
+    await rows.filter({ hasText: 'SLICE-001' }).click();
     await expect(page.getByTestId('status-validate')).toContainText(/problem/);
     await page.screenshot({ path: path.join(SHOTS, 'shell-diagnostics-dark.png') });
 
@@ -53,7 +57,7 @@ test.describe('Cockpit drawer and command palette (#249)', () => {
     await page.screenshot({ path: path.join(SHOTS, 'shell-diagnostics-light.png') });
     await page.getByTestId('theme-toggle').click();
 
-    await rows.first().click();
+    await pageRow.click();
     await expect(page).toHaveURL(/\/pages\?feature=demo&file=DemoPage\.tsx/);
     await expect(page.getByText('DemoPage.tsx').first()).toBeVisible({ timeout: 15_000 });
   });
