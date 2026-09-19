@@ -186,8 +186,8 @@ h2 { font-size: 1.6rem; margin: 0 0 8px; }
   );
   background-size: cover;
   background-position: top center;
-  /* Just enough to soften, not enough to hide what the screen is. */
-  filter: blur(0.4px) saturate(0.95);
+  /* Softened, but never past the point where the screen is identifiable. */
+  filter: blur(1px) saturate(0.95);
   opacity: 0.85;
   /* The focal light: fully lit at the top, dissolving down and to the
      sides. This is what makes it read as lit rather than pasted on. */
