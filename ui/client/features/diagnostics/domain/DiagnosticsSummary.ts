@@ -18,7 +18,7 @@ export function tabBadge(state: DiagnosticsState): number | undefined {
 
 /** Short status-bar text. */
 export function statusText(state: DiagnosticsState): string {
-  if (state.status === 'running') return 'validate: running';
+  if (state.status === 'running') return 'validate: checking';
   if (state.status === 'error') return 'validate: could not run';
   if (state.status === 'idle') return 'validate: not run yet';
   return state.total === 0 ? 'validate: no problems' : `validate: ${state.total} ${state.total === 1 ? 'problem' : 'problems'}`;

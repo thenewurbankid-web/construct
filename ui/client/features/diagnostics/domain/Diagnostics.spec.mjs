@@ -43,7 +43,7 @@ test('badge and status text follow the run state', () => {
   assert.equal(tabBadge(ready), 1);
   assert.equal(statusText(ready), 'validate: 1 problem');
   assert.equal(statusText({ ...ready, total: 0 }), 'validate: no problems');
-  assert.equal(statusText(diagnosticsReducer(ready, { type: 'RUN' })), 'validate: running');
+  assert.equal(statusText(diagnosticsReducer(ready, { type: 'RUN' })), 'validate: checking');
   assert.equal(statusText(diagnosticsReducer(ready, { type: 'FAIL', error: 'x' })), 'validate: could not run');
 });
 
