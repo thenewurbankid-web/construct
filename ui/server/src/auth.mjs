@@ -202,9 +202,15 @@ export function resolveAuthConfig(env = process.env, { host = '127.0.0.1', port 
     throw new AuthConfigError(`CONSTRUCT_AUTH must be "required" or "off" (got "${mode}").`);
   }
 
+  const allowedLogins = parseAllowedLogins(env.CONSTRUCT_ALLOWED_LOGINS);
+
   const testUser = trimmed(env.CONSTRUCT_AUTH_TEST_USER);
   if (testUser) {
-    if (trimmed(env.NODE_ENV) === 'production') {
+    // Case-insensitive on purpose. Node treats NODE_ENV as an opaque string
+    // and deploy tooling is inconsistent about case, so a case-sensitive
+    // compare here would let `NODE_ENV=Production` ship the hatch to
+    // production — a narrow hole, but the one that matters most.
+    if (trimmed(env.NODE_ENV).toLowerCase() === 'production') {
       throw new AuthConfigError(
         'CONSTRUCT_AUTH_TEST_USER is set while NODE_ENV=production. That variable mints a session without GitHub and exists only for the e2e suite — refusing to start rather than run with a back door. Unset it.',
       );
@@ -212,6 +218,15 @@ export function resolveAuthConfig(env = process.env, { host = '127.0.0.1', port 
     if (!loopback) {
       throw new AuthConfigError(
         `CONSTRUCT_AUTH_TEST_USER is set while bound to ${host}, which is not loopback. The test login must never be reachable from another machine — refusing to start. Unset it, or bind to 127.0.0.1.`,
+      );
+    }
+    // One source of truth for "who may drive this Cockpit". Without this a
+    // server running real OAuth *and* a stale test user would mint sessions
+    // for a login the owner never allowed. Checked again at request time in
+    // handleTestLogin so the two login paths cannot drift apart later.
+    if (allowedLogins.length > 0 && !allowedLogins.includes(testUser.toLowerCase())) {
+      throw new AuthConfigError(
+        `CONSTRUCT_AUTH_TEST_USER is "${testUser}", which is not in CONSTRUCT_ALLOWED_LOGINS (${allowedLogins.join(', ')}). The test login must not be a second answer to who may use this Cockpit — add it to the allowlist, or unset it.`,
       );
     }
   }
@@ -233,7 +248,6 @@ export function resolveAuthConfig(env = process.env, { host = '127.0.0.1', port 
     );
   }
 
-  const allowedLogins = parseAllowedLogins(env.CONSTRUCT_ALLOWED_LOGINS);
   if (oauthConfigured && allowedLogins.length === 0) {
     throw new AuthConfigError(
       'GitHub OAuth is configured but CONSTRUCT_ALLOWED_LOGINS is empty. Without an allowlist, "login with GitHub" means every GitHub account on earth can drive this server. Set CONSTRUCT_ALLOWED_LOGINS to your own login.',
@@ -567,13 +581,20 @@ export function createAuth(config, deps = {}) {
    *      start (resolveAuthConfig).
    *   3. The server is bound to loopback — otherwise, likewise.
    *   4. The request carries the Cockpit's own Origin — so a page in
-   *      another tab cannot mint one in a developer's browser.
+   *      another tab cannot mint one in a developer's browser. Fail-closed:
+   *      a request with no Origin at all (plain curl) is refused too.
+   *   5. The configured login passes the same allowlist the OAuth callback
+   *      applies, when an allowlist exists. Also enforced at startup; kept
+   *      here so the two login paths cannot drift apart later.
    */
   function handleTestLogin(req, res) {
     if (!testLoginEnabled) return res.status(404).json({ ok: false, error: 'Not found' });
     const origin = req.get ? req.get('origin') : req.headers?.origin;
     if (origin !== config.clientOrigin) {
       return res.status(403).json({ ok: false, error: 'Refused: the test login only accepts requests from the Cockpit origin.' });
+    }
+    if (config.allowedLogins.length > 0 && !isAllowedLogin(config.testUser)) {
+      return res.status(403).json({ ok: false, error: 'Refused: the test login user is not in CONSTRUCT_ALLOWED_LOGINS.' });
     }
     const session = setSessionCookie(res, { login: config.testUser, name: `${config.testUser} (test login)`, avatarUrl: null });
     return res.json({ ok: true, user: { login: session.login, name: session.name, avatarUrl: session.avatarUrl } });

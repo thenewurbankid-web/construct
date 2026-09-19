@@ -158,6 +158,38 @@ test('the e2e test login is refused in production and off loopback — at startu
   );
 });
 
+test('the production refusal is case-insensitive — NODE_ENV=Production is still production', () => {
+  const env = { CONSTRUCT_AUTH: 'required', CONSTRUCT_AUTH_TEST_USER: 'e2e-user', CONSTRUCT_SESSION_SECRET: SECRET };
+  for (const value of ['production', 'Production', 'PRODUCTION', '  production  ']) {
+    assert.throws(
+      () => resolveAuthConfig({ ...env, NODE_ENV: value }, { host: '127.0.0.1' }),
+      (e) => e instanceof AuthConfigError && /NODE_ENV=production/.test(e.message),
+      `NODE_ENV=${JSON.stringify(value)} must refuse to start`,
+    );
+  }
+  // A non-production value is still fine.
+  assert.equal(resolveAuthConfig({ ...env, NODE_ENV: 'test' }, { host: '127.0.0.1' }).testUser, 'e2e-user');
+});
+
+test('the test login is not a second answer to who may use this Cockpit', () => {
+  // With a real allowlist in play, a test user who is not on it is refused
+  // at startup rather than silently minting sessions for an unlisted login.
+  assert.throws(
+    () => resolveAuthConfig({ ...OAUTH_ENV, CONSTRUCT_AUTH_TEST_USER: 'someone-else' }, { host: '127.0.0.1' }),
+    (e) => e instanceof AuthConfigError && /not in CONSTRUCT_ALLOWED_LOGINS/.test(e.message),
+  );
+  // On the allowlist (case-insensitively) it is allowed.
+  assert.equal(
+    resolveAuthConfig({ ...OAUTH_ENV, CONSTRUCT_AUTH_TEST_USER: 'Owner-Login' }, { host: '127.0.0.1' }).testUser,
+    'Owner-Login',
+  );
+  // No allowlist configured at all (the plain e2e posture) stays allowed.
+  assert.equal(
+    resolveAuthConfig({ CONSTRUCT_AUTH: 'required', CONSTRUCT_AUTH_TEST_USER: 'e2e-user', CONSTRUCT_SESSION_SECRET: SECRET }, { host: '127.0.0.1' }).testUser,
+    'e2e-user',
+  );
+});
+
 test('CONSTRUCT_AUTH=off is honoured on loopback only', () => {
   assert.equal(resolveAuthConfig({ ...OAUTH_ENV, CONSTRUCT_AUTH: 'off' }, { host: '127.0.0.1' }).required, false);
 });
@@ -385,6 +417,43 @@ test('the test login mints a real session — the gate stays armed either side o
     const forged = signValue({ login: 'e2e-user', exp: Date.now() + 60_000 }, 'x'.repeat(48));
     assert.equal((await fetch(`${base}/api/settings`, { headers: { cookie: `${SESSION_COOKIE}=${encodeURIComponent(forged)}` } })).status, 401);
   });
+});
+
+test('the test login re-checks the allowlist at request time, not only at startup', async () => {
+  // resolveAuthConfig refuses this combination outright, so the only way to
+  // reach the request-time check is to hand createAuth a config that drifted
+  // past it — which is exactly the future regression this guard exists for.
+  const auth = createAuth({
+    required: true,
+    oauthConfigured: false,
+    clientId: '',
+    clientSecret: '',
+    allowedLogins: ['owner-login'],
+    testUser: 'someone-else',
+    sessionSecret: SECRET,
+    ephemeralSecret: false,
+    sessionTtlMs: 60_000,
+    secureCookies: false,
+    loopback: true,
+    host: '127.0.0.1',
+    clientOrigin: 'http://localhost:3000',
+    callbackUrl: 'http://localhost:4000/auth/callback',
+  });
+  const app = express();
+  auth.mountRoutes(app);
+  app.use('/api', auth.requireSession);
+  app.get('/api/settings', (req, res) => res.json({ ok: true }));
+  const server = app.listen(0);
+  await new Promise((resolve) => server.once('listening', resolve));
+  try {
+    const base = `http://127.0.0.1:${server.address().port}`;
+    const res = await fetch(`${base}/auth/test-login`, { method: 'POST', headers: { origin: 'http://localhost:3000' } });
+    assert.equal(res.status, 403);
+    assert.match((await res.json()).error, /CONSTRUCT_ALLOWED_LOGINS/);
+    assert.equal(cookieHeader(res, SESSION_COOKIE), null);
+  } finally {
+    server.close();
+  }
 });
 
 test('/auth/session advertises the test login so the login screen can offer it', async () => {
