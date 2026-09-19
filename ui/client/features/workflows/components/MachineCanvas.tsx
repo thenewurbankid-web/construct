@@ -6,6 +6,7 @@ import '@xyflow/react/dist/style.css';
 import { useMachineFlow } from '../hooks/useMachineFlow';
 import type { WorkflowEditRequest, WorkflowMachine } from '../types';
 import { FlowEdge } from './FlowEdge';
+import { MachineContextPanel } from './MachineContextPanel';
 import { StateFlowNode } from './StateFlowNode';
 import { WorkflowEditPanel } from './WorkflowEditPanel';
 
@@ -107,6 +108,7 @@ export function MachineCanvas({ machine, machineIndex, onEdit, locked }: Machine
               onEdit(req);
             }}
           />
+          <MachineContextPanel machine={machine} machineIndex={machineIndex} disabled={!canEdit} onEdit={onEdit} />
         </>
       )}
     </section>

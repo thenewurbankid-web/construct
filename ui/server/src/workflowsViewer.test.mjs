@@ -70,6 +70,28 @@ test('edit preview does not write; commit writes only after hash check', () => {
   assert.deepEqual(fs.readdirSync(path.join(root, 'features/demo/workflows')).sort(), ['A.test.ts', 'A.ts', 'Broken.ts']);
 });
 
+// Epic #223 -- context / actions / guards go through the same hash-checked, enforcement-gated path.
+test('context + action edits: preview, hash guard, commit, read back and narrated', () => {
+  const root = makeFixture();
+  const file = path.join(root, 'features/demo/workflows/A.ts');
+  const commit = (req) => {
+    const p = editWorkflowFile(root, 'demo', 'A.ts', req, { commit: false });
+    return editWorkflowFile(root, 'demo', 'A.ts', req, { commit: true, contentHash: p.contentHash });
+  };
+  commit({ machine: 0, op: 'addContextField', name: 'count', initial: '0' });
+  commit({ machine: 0, op: 'declareAction', name: 'log' });
+  const saved = commit({ machine: 0, op: 'assignAction', name: 'log', where: 'entry', path: 'x' });
+  assert.deepEqual(saved.machines[0].context, [{ name: 'count', initial: '0' }]);
+  assert.deepEqual(saved.machines[0].declared.actions, ['log']);
+  assert.deepEqual(saved.machines[0].states[0].entry, ['log']);
+  assert.ok(fs.readFileSync(file, 'utf8').includes('entry: \'log\''));
+  const nar = readWorkflowNarrative(root, 'demo', 'A.ts');
+  assert.deepEqual(nar.machines[0].context, ['It remembers count, starting as 0.']);
+  const req = { machine: 0, op: 'addContextField', name: 'bad', initial: 'evil()' };
+  assert.throws(() => editWorkflowFile(root, 'demo', 'A.ts', req, { commit: false }), (e) => e.status === 422);
+  assert.throws(() => editWorkflowFile(root, 'demo', 'A.ts', { machine: 0, op: 'removeAction', name: 'log' }, { commit: false }), (e) => e.status === 422);
+});
+
 // Epic #185 -- plain-English narrative for a workflow file.
 test('narrative: English, scenarios and findings derived fresh from source, same scope guard', () => {
   const root = makeFixture();

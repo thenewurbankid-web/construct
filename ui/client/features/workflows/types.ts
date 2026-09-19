@@ -8,6 +8,8 @@ export type WorkflowState = {
   type: string;
   initial: boolean;
   final: boolean;
+  entry: string[];
+  exit: string[];
   line?: number;
 };
 
@@ -18,11 +20,14 @@ export type WorkflowTransition = {
   target: string | null;
   rawTarget?: string;
   guard?: string;
+  actions: string[];
   /** plain, unguarded, single-branch `on` entry: the only kind that can be edited visually */
   editable?: boolean;
   targetless: boolean;
   unresolved: boolean;
 };
+
+export type WorkflowContextField = { name: string; initial: string; type?: string };
 
 export type WorkflowMachine = {
   exportName: string | null;
@@ -31,6 +36,12 @@ export type WorkflowMachine = {
   initial: string | null;
   states: WorkflowState[];
   transitions: WorkflowTransition[];
+  /** epic #223: context fields (initial value as source text; type when the file declares one) */
+  context: WorkflowContextField[];
+  contextEditable: boolean;
+  /** created with setup({...}): named actions/guards can be declared */
+  hasSetup: boolean;
+  declared: { actions: string[]; guards: string[] };
   error: string | null;
 };
 
@@ -63,6 +74,7 @@ export type NarrativeFinding = { kind: string; severity: 'warning' | 'info'; sta
 export type NarrativeMachine = {
   machine: string;
   summary: string;
+  context?: string[];
   states: NarrativeState[];
   scenarios: NarrativeScenario[];
   truncated: boolean;
@@ -78,6 +90,7 @@ export type InlineSegment = { kind: 'text' | 'state' | 'code'; value: string };
 /** What the components render: the server narrative with sentences pre-split. */
 export type NarrativeMachineView = Omit<NarrativeMachine, 'states' | 'scenarios' | 'findings'> & {
   summarySegments: InlineSegment[];
+  contextSegments: InlineSegment[][];
   states: (NarrativeState & { sentenceSegments: InlineSegment[][] })[];
   scenarios: (NarrativeScenario & { lineSegments: InlineSegment[][] })[];
   findings: (NarrativeFinding & { messageSegments: InlineSegment[] })[];
@@ -90,13 +103,21 @@ export type DiffHunk = { value: string; added?: boolean; removed?: boolean };
 /** One visual edit (see src/engine/workflowEditor.mjs for the ops). */
 export type WorkflowEditRequest = {
   machine: number;
-  op: 'addState' | 'removeState' | 'renameState' | 'addTransition' | 'removeTransition' | 'retargetTransition';
+  op:
+    | 'addState' | 'removeState' | 'renameState' | 'addTransition' | 'removeTransition' | 'retargetTransition'
+    | 'addContextField' | 'setContextField' | 'removeContextField'
+    | 'declareAction' | 'declareGuard' | 'removeAction' | 'removeGuard' | 'assignAction' | 'unassignAction' | 'setGuard';
   name?: string;
   parent?: string;
   path?: string;
   from?: string;
   event?: string;
   target?: string;
+  /** epic #223: context fields, and where an action runs */
+  initial?: string;
+  type?: string;
+  where?: 'entry' | 'exit' | 'transition';
+  kind?: WorkflowTransition['kind'];
 };
 
 export type PendingWorkflowEdit = { req: WorkflowEditRequest; hunks: DiffHunk[] };
