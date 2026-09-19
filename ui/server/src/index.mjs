@@ -619,9 +619,21 @@ app.get('/api/logs', (req, res) => {
 });
 
 const port = Number(process.env.PORT) || 4000;
+// Bind loopback unless HOST says otherwise (#277). This server runs CLI
+// commands, browses the filesystem and writes source files, and has no
+// authentication yet — `listen(port)` alone binds 0.0.0.0, which on a host
+// with a public IP puts all of that on the internet. Exposing it is an
+// explicit opt-in, and the log states the interface it actually bound.
+const host = process.env.HOST || '127.0.0.1';
 const server = http.createServer(app);
 attachWizardSocket(server, '/ws/wizard', CLIENT_ORIGIN);
 
-server.listen(port, () => {
-  console.log(`Construct UI server listening on http://localhost:${port}`);
+server.listen(port, host, () => {
+  console.log(`Construct UI server listening on http://${host}:${port}`);
+  if (host !== '127.0.0.1' && host !== 'localhost') {
+    console.warn(
+      `WARNING: bound to ${host}, not loopback. This server has no authentication ` +
+      `and can run commands and write files — do not expose it to an untrusted network (#277).`,
+    );
+  }
 });
