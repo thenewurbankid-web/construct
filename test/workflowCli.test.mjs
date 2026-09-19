@@ -7,6 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { EXIT_CODES } from '../src/diagnostics.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const bin = path.join(here, '..', 'bin', 'construct.mjs');
@@ -14,7 +15,7 @@ const fixtures = path.join(here, '..', 'fixtures', 'workflow-graphs');
 const run = (args, cwd) => spawnSync('node', [bin, ...args], { encoding: 'utf8', cwd });
 
 function project() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-wf-'));
+  const dir = makeTempDir('construct-wf-');
   assert.equal(run(['create', 'feature', 'refunds'], dir).status, 0);
   const wf = path.join(dir, 'features', 'refunds', 'workflows');
   fs.mkdirSync(wf, { recursive: true });

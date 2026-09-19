@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import {
   parseFile,
   summarizeFeature,
@@ -15,7 +15,7 @@ import {
 } from '../src/parser.mjs';
 
 function tmpRoot() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'construct-parser-'));
+  return makeTempDir('construct-parser-');
 }
 
 function writeFile(root, relPath, content) {

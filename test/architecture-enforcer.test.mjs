@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ConstructError } from '../src/diagnostics.mjs';
@@ -19,7 +18,7 @@ import {
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 function tmpProject() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'construct-enforcer-'));
+  return makeTempDir('construct-enforcer-');
 }
 
 // ---- classifier (in-memory, path-string only) --------------------------
@@ -132,6 +131,7 @@ export function workflow() { return 1; }
   // A same-named object property/import binding isn't a "usage" of the global either.
   const domainWithProperty = `
 import { fetch as fetchThing } from './local-fetch-helper';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 export function f() {
   const obj = { fetch: 1 };
   return obj.fetch + fetchThing();

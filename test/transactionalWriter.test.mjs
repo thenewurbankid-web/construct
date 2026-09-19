@@ -5,9 +5,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { createTransaction } from '../src/engine/transactionalWriter.mjs';
 import { validateArchitecture } from '../src/architecture-enforcer.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 function tmpProject() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-txn-test-'));
+  const dir = makeTempDir('construct-txn-test-');
   fs.mkdirSync(path.join(dir, 'features', 'checkout', 'domain'), { recursive: true });
   return dir;
 }

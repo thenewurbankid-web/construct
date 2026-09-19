@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -10,6 +9,7 @@ import { createFeature } from '../src/generators.mjs';
 import { validateArchitecture } from '../src/architecture-enforcer.mjs';
 import { ConstructError, EXIT_CODES } from '../src/diagnostics.mjs';
 import { parseToAst } from '../src/parser.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(here, '..');
@@ -17,7 +17,7 @@ const bin = path.join(REPO_ROOT, 'bin', 'construct.mjs');
 const FIXTURE_SOURCE = fs.readFileSync(path.join(REPO_ROOT, 'fixtures', 'subframe-export', 'CheckoutExport.tsx'), 'utf8');
 
 function tmpProject() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-page-transformer-'));
+  const dir = makeTempDir('construct-page-transformer-');
   fs.writeFileSync(path.join(dir, 'architecture.yml'), 'version: 1\npreset: strict-nextjs\nproject:\n  framework: nextjs\nfeatures:\n  root: features\n');
   createFeature(dir, 'checkout');
   fs.mkdirSync(path.join(dir, 'features', 'checkout', 'components'), { recursive: true });

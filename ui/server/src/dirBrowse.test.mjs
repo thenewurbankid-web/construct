@@ -5,9 +5,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { handleBrowse } from './dirBrowse.mjs';
 import { getSettings, getBrowseRoots, updateSettings } from './settings.mjs';
+import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
 
 const CLIENT = 'http://localhost:3000';
-const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'dirbrowse-srv-')));
+const base = makeTempDir('dirbrowse-srv-');
 const root = path.join(base, 'root');
 fs.mkdirSync(path.join(root, 'proj'), { recursive: true });
 fs.mkdirSync(path.join(base, 'outside'));

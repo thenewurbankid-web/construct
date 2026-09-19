@@ -1,16 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateReadability, READABILITY_RULES } from '../src/readability-enforcer.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const fixturesRoot = path.join(here, '..', 'fixtures');
 
 function tmpRoot() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'construct-readability-'));
+  return makeTempDir('construct-readability-');
 }
 
 function writeFile(root, relPath, content) {

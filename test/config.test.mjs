@@ -5,9 +5,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { loadConfig, findProjectRoot, DEFAULT_RULES, DEFAULT_LAYERS, REACT_SPA_LAYERS, FRAMEWORKS, normalizeFramework, layersForFramework, DATA_LAYER_PROVIDERS, normalizeDataLayerProvider } from '../src/config.mjs';
 import { ConstructError, EXIT_CODES } from '../src/diagnostics.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 function tmpProject() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'construct-config-'));
+  return makeTempDir('construct-config-');
 }
 
 test('loadConfig returns defaults when architecture.yml is absent', () => {

@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import {
@@ -13,9 +12,10 @@ import {
   summarizeSince,
 } from '../src/summarize.mjs';
 import { extractExports } from '../src/parser.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 function tmpRoot() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'construct-summarize-'));
+  return makeTempDir('construct-summarize-');
 }
 
 function writeFile(root, relPath, content) {

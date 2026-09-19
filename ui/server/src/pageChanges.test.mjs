@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { describePageChange, adoptOwnWrite } from './pageChanges.mjs';
 import { createChangeTracker } from '../../../src/file-change-tracker.mjs';
+import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
 
 test('external write is reported with a diff; own write is not', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'page-changes-'));
+  const dir = makeTempDir('page-changes-');
   const abs = path.join(dir, 'P.tsx');
   const tracker = createChangeTracker();
   fs.writeFileSync(abs, 'a\nb\n');

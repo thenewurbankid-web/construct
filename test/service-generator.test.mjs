@@ -2,7 +2,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -17,13 +16,14 @@ import { validateArchitecture } from '../src/architecture-enforcer.mjs';
 import { createFeature } from '../src/generators.mjs';
 import { ConstructError } from '../src/diagnostics.mjs';
 import { parseToAst } from '../src/parser.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.join(here, '..');
 const petstoreSpec = path.join(repoRoot, 'fixtures', 'openapi-petstore', 'petstore.yaml');
 
 function tmpProject() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'construct-service-gen-'));
+  return makeTempDir('construct-service-gen-');
 }
 
 // A tmp dir *inside* the repo (gitignored via .construct-test-tmp/) so a real

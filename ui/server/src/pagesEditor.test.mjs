@@ -1,7 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import {
   listFeatures,
@@ -30,6 +29,7 @@ import {
 
 const SOURCE = `import React from 'react';
 import { Card } from '../components/Card.jsx';
+import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
 
 export function Home({ title, count }) {
   const [open, setOpen] = React.useState(false);
@@ -47,7 +47,7 @@ export function Home({ title, count }) {
 `;
 
 function makeFixture() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-pages-editor-'));
+  const root = makeTempDir('construct-pages-editor-');
   fs.writeFileSync(path.join(root, 'architecture.yml'), 'version: 1\npreset: strict-nextjs\nfeatures:\n  root: features\n');
   fs.mkdirSync(path.join(root, 'features/demo/pages'), { recursive: true });
   fs.mkdirSync(path.join(root, 'features/demo/components'), { recursive: true });

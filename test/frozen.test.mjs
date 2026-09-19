@@ -4,7 +4,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -18,6 +17,7 @@ import { createTransaction } from '../src/engine/transactionalWriter.mjs';
 import { runPipeline } from '../src/engine/pipeline.mjs';
 import { write } from '../src/fs.mjs';
 import { ConstructError } from '../src/diagnostics.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(here, '..', 'fixtures', 'frozen-presentation');
@@ -27,7 +27,7 @@ const FROZEN_RULES = ['PAGE-007', 'COMPONENT-004', 'CONTROLLER-002'];
 /** Copy the fixture (frozen source + both projects) into a temp dir so tests
  * can mutate architecture.yml / write files without touching the repo. */
 function tmpFixture() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-frozen-'));
+  const dir = makeTempDir('construct-frozen-');
   fs.cpSync(FIXTURE, dir, { recursive: true });
   return dir;
 }
