@@ -1,0 +1,131 @@
+// src/ast JSX family (#173): parse, tree, attribute/node edits, scope + prop analysis, on typescript-estree.
+// (The byte-for-byte parity with the former Babel implementation is proven by
+// ui/server/src/pagesEditor.golden.test.mjs; these are the package's own unit tests.)
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {
+  parseJsx, jsxParseError, checkJsxReplacement, parseJsxTree, jsxAttributes, jsxNameToString, findParentRecord,
+  setAttributeText, setSpreadText, removeAttributeText, removeNodeText, swapNodesText, addChildText, renderAttrValue, spliceNode,
+  collectComponentScopeNames, findImportOfName, declaredPropNames, findTypeMembers,
+} from '../src/ast/index.mjs';
+
+const PAGE = `import { Card } from './Card';
+export function Home({ title, ...rest }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="home" {...rest}>
+      <Card title={title} n={1} on flag={false} id={x} expr={a + b} />
+      {open && <p>hi</p>}
+    </div>
+  );
+}
+`;
+
+test('parseJsxTree numbers nodes in document order and nests via source ranges', () => {
+  const { roots, byId } = parseJsxTree(PAGE);
+  assert.deepEqual([...byId.keys()], ['n0', 'n1', 'n2']);
+  assert.equal(roots.length, 1);
+  assert.deepEqual(roots[0].children.map((c) => c.tag), ['Card', 'p']);
+  const card = byId.get('n1');
+  assert.equal(PAGE.slice(card.start, card.end).startsWith('<Card'), true);
+  assert.equal(card.isCustomComponent, true);
+  assert.equal(byId.get('n0').line, 5);
+  assert.equal(findParentRecord(byId, 'n2').id, 'n0');
+  assert.equal(findParentRecord(byId, 'n0'), null);
+});
+
+test('jsxAttributes classifies every attribute kind', () => {
+  const { byId } = parseJsxTree(PAGE);
+  const kinds = Object.fromEntries(byId.get('n1').props.map((p) => [p.name, [p.kind, p.value]]));
+  assert.deepEqual(kinds, {
+    title: ['identifier', 'title'], n: ['number', 1], on: ['boolean', true], flag: ['boolean', false], id: ['identifier', 'x'], expr: ['expression', 'a + b'],
+  });
+  assert.deepEqual(byId.get('n0').props.map((p) => [p.kind, p.name, p.index]), [['string', 'className', 0], ['spread', null, 1]]);
+});
+
+test('jsxNameToString handles identifier, member and namespaced names', () => {
+  const { byId } = parseJsxTree('<a><Foo.Bar /><svg:rect /></a>');
+  assert.deepEqual([...byId.values()].map((n) => n.tag), ['a', 'Foo.Bar', 'svg:rect']);
+  assert.equal(typeof jsxNameToString, 'function');
+  assert.equal(typeof jsxAttributes, 'function');
+});
+
+test('string attributes decode entities and keep quotes/newlines', () => {
+  const { byId } = parseJsxTree('<a t="x &amp; y &quot;z&quot;" u=\'it&apos;s\' />');
+  assert.deepEqual(byId.get('n0').props.map((p) => p.value), ['x & y "z"', "it's"]);
+});
+
+test('parseJsx is strict about syntax but tolerant of bare > and } in JSX text (offsets preserved)', () => {
+  assert.throws(() => parseJsx('<div><span></div>'));
+  assert.throws(() => parseJsx('<div a={} />'), /non-empty expression/);
+  const src = '<p a="1">1 > 0 } ok <b /></p>';
+  const { byId } = parseJsxTree(src);
+  assert.equal(src.slice(byId.get('n1').start, byId.get('n1').end), '<b />');
+  assert.equal(jsxParseError('<div>'), jsxParseError('<div>'));
+  assert.equal(jsxParseError('<div />'), null);
+});
+
+test('checkJsxReplacement: single element/fragment only', () => {
+  assert.deepEqual(checkJsxReplacement('<a />'), { ok: true });
+  assert.deepEqual(checkJsxReplacement('\n <><b /></>\n'), { ok: true });
+  assert.equal(checkJsxReplacement('<a /><b />').kind, 'parse');
+  assert.equal(checkJsxReplacement('1 + 1').kind, 'shape');
+  assert.equal(checkJsxReplacement('').kind, 'parse');
+});
+
+test('setAttributeText replaces in place or appends before the closing bracket', () => {
+  const src = '<a b="1"   c={2} />';
+  const node = parseJsxTree(src).byId.get('n0');
+  assert.equal(setAttributeText(src, node, 'b', 'string', 'x"y'), '<a b="x&quot;y"   c={2} />');
+  assert.equal(setAttributeText(src, node, 'z', 'boolean', true), '<a b="1"   c={2} z/>');
+  const open = '<a>t</a>';
+  assert.equal(setAttributeText(open, parseJsxTree(open).byId.get('n0'), 'k', 'number', '4'), '<a k={4}>t</a>');
+  assert.equal(renderAttrValue('identifier', 'v'), '={v}');
+});
+
+test('setSpreadText / removeAttributeText', () => {
+  const src = '<a {...s} b="1" />';
+  const node = parseJsxTree(src).byId.get('n0');
+  assert.equal(setSpreadText(src, node, 0, 'other'), '<a {...other} b="1" />');
+  assert.equal(setSpreadText(src, node, 1, 'other'), null);
+  assert.equal(removeAttributeText(src, node, 'b'), '<a {...s} />');
+  assert.equal(removeAttributeText(src, node, 'nope'), null);
+});
+
+test('removeNodeText / swapNodesText / addChildText / spliceNode', () => {
+  const src = '<ul>\n  <li a="1" />\n  <li b="2" />\n</ul>';
+  const { byId } = parseJsxTree(src);
+  assert.equal(removeNodeText(src, byId.get('n1')), '<ul>\n  <li b="2" />\n</ul>');
+  assert.equal(swapNodesText(src, byId.get('n1'), byId.get('n2')), '<ul>\n  <li b="2" />\n  <li a="1" />\n</ul>');
+  assert.deepEqual(addChildText(src, byId.get('n0')), { ok: true, source: '<ul>\n  <li a="1" />\n  <li b="2" />\n<div /></ul>' });
+  assert.equal(addChildText(src, byId.get('n1')).reason, 'self-closing');
+  assert.equal(spliceNode(src, byId.get('n2'), '<x />'), '<ul>\n  <li a="1" />\n  <x />\n</ul>');
+  const frag = '<>a</>';
+  assert.equal(addChildText(frag, parseJsxTree(frag).byId.get('n0')).source, '<>a<div /></>');
+});
+
+test('collectComponentScopeNames: params + useState bindings, not method params', () => {
+  const src = `function A({ a, b: c, ...r }, p) { const [x, setX] = React.useState(0); class K { m(no) {} } const o = { meth(no2) {}, f: (yes) => 1 }; }`;
+  assert.deepEqual(collectComponentScopeNames(parseJsx(src)), ['a', 'c', 'r', 'p', 'x', 'setX', 'yes']);
+});
+
+test('findImportOfName + declaredPropNames resolve a child component\'s declared props', () => {
+  const ast = parseJsx(`import Def, { Named } from './c';\nimport * as Ui from './ui';`);
+  assert.deepEqual(findImportOfName(ast, 'Named'), { source: './c', isDefault: false });
+  assert.deepEqual(findImportOfName(ast, 'Def'), { source: './c', isDefault: true });
+  assert.equal(findImportOfName(ast, 'Missing'), null);
+
+  const names = (src, tag, isDefault = false) => { const r = declaredPropNames(src, tag, isDefault); return r && { closed: r.closed, names: [...r.names] }; };
+  assert.deepEqual(names('export function Named({ a, b }) {}', 'Named'), { closed: true, names: ['a', 'b'] });
+  assert.deepEqual(names('export default ({ z }) => null', 'X', true), { closed: true, names: ['z'] });
+  assert.deepEqual(names('interface P { a: 1; b?: 2 }\nexport const N = (props: P) => null;', 'N'), { closed: true, names: ['a', 'b'] });
+  assert.equal(names('export function N(props) {}', 'N'), null);
+  assert.equal(names('export function N({ a } {', 'N'), null);
+  assert.equal(names('export const other = 1', 'N'), null);
+});
+
+test('findTypeMembers: closed interface, type literal, open index signature, missing', () => {
+  assert.deepEqual([...findTypeMembers('type T = { a: 1; b: 2 }', 'T').names], ['a', 'b']);
+  assert.equal(findTypeMembers('interface I { [k: string]: 1 }', 'I').closed, false);
+  assert.equal(findTypeMembers('interface I { a: 1 }', 'Nope'), null);
+});

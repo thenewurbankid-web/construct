@@ -4,7 +4,7 @@
 // Stacks (each used where it is the best fit):
 //   typescript-estree + estree-walker : parseToAst, walkAst, walkForUsage/collect*, extract*
 //   TypeScript compiler API           : parseTsSource, findNode, findAllNodes, printNode, ts (factory)
-// (ui/server/src/pagesEditor.mjs still uses Babel for JSX edit ops -- tracked follow-up, see README.)
+//   JSX family (typescript-estree)    : parseJsx, parseJsxTree, jsx* edit ops, jsx scope analysis (#173)
 export { parseToAst, parseTsSource } from './parse.mjs';
 export {
   walkAst, isNonUsagePosition, walkForUsage, collectCalls, collectBareIdentifierUsages,
@@ -12,3 +12,10 @@ export {
 } from './walk.mjs';
 export { extractImports, extractExports, extractJsdoc, staticImportEntries, lineOf } from './extract.mjs';
 export { ts, findNode, findAllNodes, printNode } from './tsNodes.mjs';
+export { parseJsx, jsxParseError, checkJsxReplacement } from './jsxParse.mjs';
+export { jsxNameToString, jsxAttributes, parseJsxTree, findParentRecord } from './jsxTree.mjs';
+export {
+  spliceNode, renderAttrValue, setAttributeText, setSpreadText, removeAttributeText,
+  removeNodeText, swapNodesText, addChildText, NEW_CHILD_SNIPPET,
+} from './jsxEdit.mjs';
+export { collectComponentScopeNames, findImportOfName, findTypeMembers, declaredPropNames } from './jsxScope.mjs';

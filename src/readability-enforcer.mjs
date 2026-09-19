@@ -3,8 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { walk } from './fs.mjs';
 import { makeViolation } from './diagnostics.mjs';
-import { matchGlob } from './glob.mjs';
-import { parseFile, extractExports, extractJsdoc, lineOf, EXT } from './parser.mjs';
+import { exceptionApplies } from './exceptions.mjs';
+import { parseFile, layerContextFor, extractExports, extractJsdoc, lineOf, EXT } from './parser.mjs';
 import { loadConfig, readRawRules } from './config.mjs';
 
 // Shaped exactly like DEFAULT_RULES in src/config.mjs, exported for Module 4 (or whoever
@@ -28,16 +28,9 @@ function severityFor(config, ruleId) {
   return READABILITY_RULES[ruleId]?.severity || 'error';
 }
 
-function isExempt(config, rule, file) {
-  const now = Date.now();
-  return (config.exceptions || []).some(
-    (e) => (e.rule ? [e.rule] : e.rules || []).includes(rule) && matchGlob(e.path, file) && (!e.expires || new Date(e.expires).getTime() >= now)
-  );
-}
-
 function pushViolation(config, out, { rule, file, line, message, why, expected, suggestedFix }) {
   const severity = severityFor(config, rule);
-  if (severity === 'off' || isExempt(config, rule, file)) return;
+  if (severity === 'off' || exceptionApplies(config, rule, file)) return;
   out.push(makeViolation({ rule, module: 'readability', severity, file, line, message, why, expected, suggestedFix }));
 }
 
@@ -172,13 +165,14 @@ export function validateReadability(root) {
   const maxLoc = Number(readRawRules(root)['READ-002-max-loc']) || DEFAULT_MAX_LOC;
   const featuresDir = path.join(root, featureRoot);
   const out = [];
+  const layerContext = layerContextFor(root);
   if (!fs.existsSync(featuresDir)) return { violations: out };
   const featureNames = fs.readdirSync(featuresDir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
   for (const featureName of featureNames) {
     const dir = path.join(featuresDir, featureName);
     const files = walk(dir).filter((p) => EXT.has(path.extname(p)));
     for (const file of files) {
-      const summary = parseFile(root, file);
+      const summary = parseFile(root, file, layerContext);
       const source = fs.readFileSync(file, 'utf8');
       checkNaming(config, out, summary);
       checkLength(config, out, summary, source, maxLoc);

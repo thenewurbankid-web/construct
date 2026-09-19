@@ -3,11 +3,11 @@
 // checks (MODULE-001, SOC-001, DRY-001). All violations are built through
 // makeViolation() from ./diagnostics.mjs with module: 'separation-of-concerns'.
 import fs from 'node:fs';
-import { matchGlob } from './glob.mjs';
 import path from 'node:path';
 import { loadConfig, DEFAULT_RULES } from './config.mjs';
 import { walk, rel } from './fs.mjs';
 import { makeViolation } from './diagnostics.mjs';
+import { exceptionApplies } from './exceptions.mjs';
 
 const ext = new Set(['.ts', '.tsx', '.js', '.jsx']);
 export const LAYER_FOLDERS = ['controllers', 'workflows', 'hooks', 'domain', 'services', 'pages', 'components'];
@@ -26,16 +26,9 @@ function severityFor(config, rule) {
   return entry?.severity ?? DEFAULT_RULES[rule]?.severity ?? 'error';
 }
 
-function isExempt(config, rule, file) {
-  const now = Date.now();
-  return (config.exceptions || []).some(
-    (e) => (e.rule ? [e.rule] : e.rules || []).includes(rule) && matchGlob(e.path, file) && (!e.expires || new Date(e.expires).getTime() >= now)
-  );
-}
-
 function pushViolation(config, out, opts) {
   const severity = severityFor(config, opts.rule);
-  if (severity === 'off' || isExempt(config, opts.rule, opts.file)) return;
+  if (severity === 'off' || exceptionApplies(config, opts.rule, opts.file)) return;
   out.push(makeViolation({ module: 'separation-of-concerns', severity, ...opts }));
 }
 

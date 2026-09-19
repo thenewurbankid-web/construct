@@ -50,8 +50,34 @@ console.log(hit.name, 'on line', lineOf(source, hit.index));            // fetch
 
 (A comment or string containing `fetch(` is never reported — only real calls.)
 
-## Not (yet) in the package
+## JSX edit/analysis family (typescript-estree, #173)
 
-`ui/server/src/pagesEditor.mjs` still parses/edits JSX with **Babel** (`@babel/parser`/`traverse`/`types`),
-a third stack whose dependencies live only in `ui/server`. Unifying it with typescript-estree is a tracked
-follow-up rather than part of this grouping.
+The Pages Editor and the visual composer used to parse/edit JSX with Babel (a third parser stack). Those
+operations now live here, on typescript-estree, and `ui/server/src/pagesEditor.mjs` keeps only the glue
+(HTTP error wording/statuses, the hash guard, the enforcement gate, path scoping, cross-file import lookup).
+`@babel/*` is gone from `ui/server`.
+
+| Module | Functions |
+|---|---|
+| `jsxParse.mjs` | `parseJsx(source)`, `jsxParseError(source)`, `checkJsxReplacement(snippet)` |
+| `jsxTree.mjs` | `parseJsxTree(source)` -> `{roots, byId, ast}` (ids `n0..` in document order), `jsxAttributes`, `jsxNameToString`, `findParentRecord` |
+| `jsxEdit.mjs` | offset-exact text edits: `setAttributeText`, `setSpreadText`, `removeAttributeText`, `removeNodeText`, `swapNodesText`, `addChildText`, `spliceNode`, `renderAttrValue` |
+| `jsxScope.mjs` | `collectComponentScopeNames(ast)`, `findImportOfName(ast, name)`, `declaredPropNames(childSource, tag, isDefault)`, `findTypeMembers(source, typeName)` |
+
+```js
+import { parseJsxTree, setAttributeText, jsxParseError } from './src/ast/index.mjs';
+const src = '<Card title="a" />';
+const { byId } = parseJsxTree(src);
+const next = setAttributeText(src, byId.get('n0'), 'title', 'string', 'b');   // '<Card title="b" />'
+console.log(next, jsxParseError(next));                                          // ... null
+```
+
+Every edit is a splice of the original text (bytes outside the edited range never change); callers re-parse
+the result with `jsxParseError`. Parity with the former Babel implementation is proven by
+`ui/server/src/pagesEditor.golden.test.mjs` (golden outputs captured from Babel before the migration).
+
+Known, deliberate differences from Babel: (1) the *text* of parser error details differs (the operation
+still fails in the same cases); (2) TypeScript's parser rejects a bare `>`/`}` in JSX text, so `parseJsx`
+blanks that one character (same length) in the copy it parses and retries -- offsets are unchanged;
+(3) `<a b={} />` is re-rejected explicitly (TS treats it as a checker error); (4) Babel's semantic early
+errors (`const a; const a;`, top-level `return`) and its acceptance of `<a.b-c />` are not replicated.
