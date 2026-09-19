@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Cockpit shell — Explore mode — Concept</title>
+<link rel="stylesheet" href="mock.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+<script>document.addEventListener('DOMContentLoaded',()=>{document.body.dataset.x=1});</script>
+</head><body>
+<div class="concept">Concept — not implemented <span>Cockpit shell — Explore mode</span></div>
+
+<div class="shell " style="grid-template-rows:44px 1fr 132px 24px">
+  
+<header class="topbar">
+  <div class="brand"><i></i>Construct</div>
+  <button class="chip-btn" aria-haspopup="listbox">storefront <span class="sub">main</span> ▾</button>
+  <div class="seg" role="radiogroup" aria-label="Mode"><button class="on" role="radio" aria-checked="true">Explore</button><button class="" role="radio" aria-checked="false">Research</button><button class="" role="radio" aria-checked="false">Build</button></div>
+  <button class="chip-btn palette-trigger"><span>Search files, features, or run a command…</span><kbd>Ctrl K</kbd></button>
+  
+  <span class="pill run"><span class="spin"></span>2 running</span>
+  <span class="pill ok"><span class="dot"></span>Local model ready</span>
+  <button class="icon-btn" aria-label="Theme">◐</button>
+  <button class="icon-btn" aria-label="Help">?</button>
+  <span class="avatar">SP</span>
+</header>
+  <div class="main">
+    <aside class="pane" aria-label="Browser">
+  <div class="pane-h"><span class="title">Browser</span><span class="spacer"></span><button class="icon-btn" aria-label="New">+</button><button class="icon-btn" aria-label="Collapse pane">«</button></div>
+  <div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Features</button><button role="tab" class="" aria-selected="false">Pages</button><button role="tab" class="" aria-selected="false">Workflows</button></div>
+  <div class="search">⌕ Filter <span class="spacer"></span><kbd>/</kbd></div>
+  <div class="scroll">
+  <div class="sect">Features · 4</div>
+  <div class="tree">
+    <div class="row"><span class="twisty">▾</span>auth<span class="meta">7 files</span></div>
+    <div class="row l1"><span class="twisty">▾</span>pages</div>
+    <div class="row l2 sel"><span class="layer page">page</span>login</div>
+    <div class="row l2"><span class="layer page">page</span>register</div>
+    <div class="row l1"><span class="twisty">▾</span>components</div>
+    <div class="row l2"><span class="layer component">component</span>LoginForm</div>
+    <div class="row l2"><span class="layer component">component</span>PasswordField</div>
+    <div class="row l1"><span class="twisty">▸</span>workflows<span class="meta">1</span></div>
+    <div class="row l1"><span class="twisty">▸</span>services · hooks · domain</div>
+    <div class="row"><span class="twisty">▸</span>cart<span class="meta">11 files</span></div>
+    <div class="row"><span class="twisty">▸</span>checkout<span class="meta">9 files</span></div>
+    <div class="row"><span class="twisty">▸</span>catalog<span class="meta">14 files</span></div>
+  </div></div></aside><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <section class="pane mid" aria-label="Preview">
+<div class="canvas-tb">
+  <span class="crumbs">auth › pages › <b>login</b></span><span class="spacer"></span>
+  <div class="seg"><button class="on">Desktop</button><button>Tablet</button><button>Phone</button></div>
+  <button class="btn sm" aria-pressed="true">⊕ Pick element</button>
+  <button class="icon-btn" aria-label="Reload">↻</button><span class="mono" style="color:var(--text-muted)">100%</span>
+</div><div class="stage">
+<div class="device" style="height:500px">
+  <div class="bar"><i></i><i></i><i></i>&nbsp;&nbsp;localhost:5173/login</div>
+  <div class="app-nav"><b>Storefront</b><span>Catalog</span><span>Cart (2)</span><span>Sign in</span></div>
+  <div class="login" id="lf">
+    <h2>Welcome back</h2><p>Sign in to continue checkout.</p>
+    <label>Email</label><div class="in">sam@example.com</div>
+    <label>Password</label><div class="in">••••••••••</div>
+    <div class="cta">Sign in</div>
+  </div>
+  <div class="sel-box" style="left:calc(50% - 170px - 4px);top:98px;width:348px;height:322px"></div><div class="sel-tag" style="left:calc(50% - 174px);top:78px">LoginForm · components/LoginForm.tsx:14</div>
+</div></div><div class="canvas-foot"><span class="dot" style="color:var(--success)"></span>Live · HMR connected<span class="spacer"></span>Alt+Click any element to jump to source</div></section><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <aside class="pane" aria-label="Tools">
+<div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Inspector</button><button role="tab" class="" aria-selected="false">Scope</button><button role="tab" class="" aria-selected="false">Source</button><button role="tab" class="" aria-selected="false">Diff <span class="badge ">1</span></button><button role="tab" class="" aria-selected="false">Flow</button></div>
+<div class="scroll">
+  <div class="section"><div class="el-head"><span class="layer component">component</span><span class="name">LoginForm</span><span class="spacer"></span><button class="btn sm">Open source</button></div>
+  <div class="path" style="margin-top:4px">features/auth/components/LoginForm.tsx:14</div></div>
+  <div class="section"><h4>Props <button class="btn sm">+ Add prop</button></h4>
+    <div class="prop"><span class="k">email</span><span class="field">email</span><span class="bind var">variable</span></div>
+    <div class="prop"><span class="k">onSubmit</span><span class="field">handleLogin</span><span class="bind var">variable</span></div>
+    <div class="prop"><span class="k">submitLabel</span><span class="field">"Sign in"</span><span class="bind lit">literal</span></div>
+    <div class="prop"><span class="k">disabled</span><span class="field">isPending</span><span class="bind var">variable</span></div>
+  </div>
+  <div class="section"><h4>Belongs to</h4>
+    <div class="row muted" style="padding:0">page · LoginPage &nbsp;→&nbsp; controller · authController</div></div>
+  <div class="section"><h4>Where it is used</h4><div class="row muted" style="padding:0">LoginPage.tsx:22 · RegisterPage.tsx:31</div></div>
+</div></aside>
+  </div>
+  <div class="drawer" aria-label="Drawer"><div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Diagnostics <span class="badge danger">3</span></button><button role="tab" class="" aria-selected="false">Logs</button><button role="tab" class="" aria-selected="false">Processes <span class="badge acc">2</span></button></div>
+<div class="body"><table><tr><th>Rule</th><th>Message</th><th>File</th></tr>
+<tr><td><span class="tag" style="background:var(--danger-soft);color:var(--danger)">error</span> PAGE-006</td><td>Page imports a hook; go through a controller</td><td class="mono">features/auth/pages/LoginPage.tsx:3</td></tr>
+<tr><td><span class="tag" style="background:var(--warn-soft);color:var(--warn)">warn</span> COMP-002</td><td>Component reads a service directly</td><td class="mono">features/cart/components/CartLine.tsx:9</td></tr></table></div></div>
+  
+<footer class="statusbar">
+  <span class="ok">● validate: 0 new violations</span><span>5 baseline</span><span>Saved · in sync with disk</span>
+  <span class="spacer"></span><span>qwen2.5-coder:7b</span><span><kbd>Ctrl J</kbd> drawer</span><span><kbd>?</kbd> shortcuts</span>
+</footer>
+</div>
+<script>(()=>{const t=document.documentElement.dataset.theme;document.body.parentElement.setAttribute('data-theme',t)})()</script>
+</body></html>

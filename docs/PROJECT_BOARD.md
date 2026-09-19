@@ -12,7 +12,7 @@ automated.
 | Status | Backlog, Ready, In progress, In review, Done | Workflow state. Closed issues are Done; a reopened issue goes back to In progress. |
 | Priority | P0, P1, P2 | Set on every open issue except Standing ones. |
 | Size | XS-XL | Optional. |
-| Module | Core CLI, Web UI, AI Toolkit, Pipeline & Generators, Demos & Docs, Infra & Process | Required on every item. |
+| Module | Core CLI, Web UI, AI Toolkit, Pipeline & Generators, Demos & Docs, Infra & Process, Design | Required on every item. |
 | Sub-module | see below | Required on every item. Unique option names; `Other` is shared. Use for filtering. |
 | Area | `<Module> › <Sub-module>` | Derived from Module + Sub-module. Use for the two-level grouped view. |
 | Kind | Epic, Feature, Bug, Demo, Standing, Chore | Required on every item. |
@@ -34,6 +34,7 @@ The list lives in code: `tools/project-board/taxonomy.mjs` (single source of tru
 - Pipeline & Generators: Envelope engine, Workflows (XState), Generators, Frozen presentation, Other
 - Demos & Docs: Guides, Tutorials, Screenshots, Style guide, Other
 - Infra & Process: CI & e2e, Security, Dependencies, Project board, Comment bridge, Other
+- Design (Module 9, proposed): Design system, Cockpit shell, Screens, Accessibility & review, Other. Needs the option added to the Module and Sub-module fields, the Area options, and `tools/project-board/taxonomy.mjs` (not yet done; see docs/design/README.md)
 
 Epics and structural containers normally get `Other`. To add a sub-module: add it to `taxonomy.mjs`, add the
 option to the Sub-module field and the matching `<Module> › <Sub-module>` option to the Area field (Project

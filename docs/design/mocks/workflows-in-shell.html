@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Workflows inside the shell — machine canvas, context and actions — Concept</title>
+<link rel="stylesheet" href="mock.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+<script>document.addEventListener('DOMContentLoaded',()=>{document.body.dataset.x=1});</script>
+</head><body>
+<div class="concept">Concept — not implemented <span>Workflows inside the shell — machine canvas, context and actions</span></div>
+
+<div class="shell " style="--rw:380px;grid-template-rows:44px 1fr 96px 24px">
+  
+<header class="topbar">
+  <div class="brand"><i></i>Construct</div>
+  <button class="chip-btn" aria-haspopup="listbox">storefront <span class="sub">main</span> ▾</button>
+  <div class="seg" role="radiogroup" aria-label="Mode"><button class="on" role="radio" aria-checked="true">Explore</button><button class="" role="radio" aria-checked="false">Research</button><button class="" role="radio" aria-checked="false">Build</button></div>
+  <button class="chip-btn palette-trigger"><span>Search files, features, or run a command…</span><kbd>Ctrl K</kbd></button>
+  
+  <span class="pill run"><span class="spin"></span>2 running</span>
+  <span class="pill ok"><span class="dot"></span>Local model ready</span>
+  <button class="icon-btn" aria-label="Theme">◐</button>
+  <button class="icon-btn" aria-label="Help">?</button>
+  <span class="avatar">SP</span>
+</header>
+  <div class="main">
+    <aside class="pane" aria-label="Browser">
+  <div class="pane-h"><span class="title">Browser</span><span class="spacer"></span><button class="icon-btn" aria-label="New">+</button><button class="icon-btn" aria-label="Collapse pane">«</button></div>
+  <div class="tabs" role="tablist"><button role="tab" class="" aria-selected="false">Features</button><button role="tab" class="" aria-selected="false">Pages</button><button role="tab" class="on" aria-selected="true">Workflows</button></div>
+  <div class="search">⌕ Filter <span class="spacer"></span><kbd>/</kbd></div>
+  <div class="scroll">
+  <div class="sect">Workflows · 3</div>
+  <div class="tree">
+    <div class="row"><span class="layer workflow">machine</span>authMachine<span class="meta">auth</span></div>
+    <div class="row sel"><span class="layer workflow">machine</span>cartMachine<span class="meta">cart</span></div>
+    <div class="row"><span class="layer workflow">machine</span>checkoutMachine<span class="meta">checkout</span></div>
+  </div></div></aside><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <section class="pane mid" aria-label="Preview"><div class="canvas-tb"><span class="crumbs">cart › workflows › <b>cartMachine</b></span><span class="spacer"></span><div class="seg"><button class="on">Diagram</button><button>Narrative</button></div><button class="btn sm">Edit transitions</button></div>
+   <div class="stage" style="background-image:radial-gradient(var(--border-subtle) 1px,transparent 1px);background-size:20px 20px">
+<svg viewBox="0 0 700 380" width="700" height="380" role="img" aria-label="cartMachine state diagram">
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--text-muted)"/></marker></defs>
+  <g><rect x="40" y="150" width="150" height="56" rx="10" fill="var(--surface-2)" stroke="var(--border-strong)" stroke-width="1.5"/><text x="115" y="183" text-anchor="middle" fill="var(--text)" font-family="var(--mono)" font-size="13">idle</text></g><g><rect x="230" y="150" width="150" height="56" rx="10" fill="var(--surface-2)" stroke="var(--border-strong)" stroke-width="1.5"/><text x="305" y="183" text-anchor="middle" fill="var(--text)" font-family="var(--mono)" font-size="13">loading</text></g><g><rect x="420" y="150" width="150" height="56" rx="10" fill="var(--surface-2)" stroke="var(--accent)" stroke-width="2.5"/><text x="495" y="183" text-anchor="middle" fill="var(--text)" font-family="var(--mono)" font-size="13">ready</text></g><g><rect x="420" y="290" width="150" height="56" rx="10" fill="var(--surface-2)" stroke="var(--border-strong)" stroke-width="1.5"/><text x="495" y="323" text-anchor="middle" fill="var(--text)" font-family="var(--mono)" font-size="13">checkingOut</text></g><g><rect x="230" y="290" width="150" height="56" rx="10" fill="var(--surface-2)" stroke="var(--border-strong)" stroke-width="1.5"/><text x="305" y="323" text-anchor="middle" fill="var(--text)" font-family="var(--mono)" font-size="13">failed</text></g>
+  <g stroke="var(--text-muted)" stroke-width="1.5" fill="none" marker-end="url(#a)">
+    <path d="M190 178H228"/><path d="M380 178H418"/><path d="M495 206V288"/><path d="M420 318H382"/><path d="M305 206V288" /></g>
+  <g fill="var(--text-muted)" font-size="11" font-family="var(--mono)"><text x="192" y="142">FETCH</text><text x="384" y="142">LOADED</text><text x="502" y="252">CHECKOUT</text><text x="384" y="346">ERROR</text><text x="312" y="252">ERROR</text></g>
+  <rect x="20" y="20" width="14" height="14" rx="7" fill="var(--accent)"/><path d="M34 27H40V150" stroke="var(--accent)" fill="none" stroke-width="1.5"/>
+</svg></div>
+   <div class="canvas-foot">5 states · 5 events · ready is selected<span class="spacer"></span>Drag from a handle to rewire an event</div></section><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <aside class="pane" aria-label="Tools"><div class="tabs" role="tablist"><button role="tab" class="" aria-selected="false">Inspector</button><button role="tab" class="" aria-selected="false">Scope</button><button role="tab" class="" aria-selected="false">Source</button><button role="tab" class="" aria-selected="false">Diff</button><button role="tab" class="on" aria-selected="true">Flow</button></div>
+  <div class="scroll">
+   <div class="section"><div class="el-head"><span class="layer workflow">state</span><span class="name">ready</span></div><div class="path" style="margin-top:4px">features/cart/workflows/cartMachine.ts:31</div></div>
+   <div class="section"><h4>What happens here</h4><div style="color:var(--text-muted)">The cart has loaded. The shopper can change quantities, or start checkout.</div></div>
+   <div class="section"><h4>Context</h4>
+    <div class="prop"><span class="k">items</span><span class="field">CartItem[]</span><span class="bind lit">array</span></div>
+    <div class="prop"><span class="k">total</span><span class="field">number</span><span class="bind lit">derived</span></div></div>
+   <div class="section"><h4>Actions</h4>
+    <div class="prop"><span class="k">entry</span><span class="field">recalculateTotal</span><span class="bind var">action</span></div>
+    <div class="prop"><span class="k">on CHECKOUT</span><span class="field">→ checkingOut</span><span class="bind var">guard: hasItems</span></div></div>
+  </div></aside>
+  </div>
+  <div class="drawer" aria-label="Drawer"><div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Diagnostics <span class="badge danger">0</span></button><button role="tab" class="" aria-selected="false">Logs</button><button role="tab" class="" aria-selected="false">Processes <span class="badge acc">0</span></button></div><div class="body"><div style="padding:14px 12px;color:var(--text-muted)">No diagnostics for this workflow.</div></div></div>
+  
+<footer class="statusbar">
+  <span class="ok">● validate: 0 new violations</span><span>5 baseline</span><span>Saved · in sync with disk</span>
+  <span class="spacer"></span><span>qwen2.5-coder:7b</span><span><kbd>Ctrl J</kbd> drawer</span><span><kbd>?</kbd> shortcuts</span>
+</footer>
+</div>
+<script>(()=>{const t=document.documentElement.dataset.theme;document.body.parentElement.setAttribute('data-theme',t)})()</script>
+</body></html>
