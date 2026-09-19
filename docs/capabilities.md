@@ -32,6 +32,7 @@ module; *group next* = worth extracting, filed as an issue; *leave* = fine where
 | 21 | **External-change tracking + text diff** (per-file "changed outside the editor" records; before/after rows with collapsed context) | `src/file-change-tracker.mjs`, `src/text-diff.mjs` (uses `diff`) | `ui/server/src/pageChanges.mjs` (Diff tab) | Det | Packaged (I/O-free; renderer-agnostic view model) |
 | 22 | **Allowlisted directory browser** (directories only, realpath-checked against allowed roots) | `src/dir-browser.mjs` | `ui/server/src/dirBrowse.mjs` (folder picker in Settings and the project switcher) | Det | Packaged (security-sensitive: keep it the only path a UI server uses to list folders) |
 | 23 | **Project validation as data** and **bounded output buffer** (same enforcers as `construct validate`, returned as rows; last ~500 log lines) | `ui/server/src/validateApi.mjs` (`GET /api/validate`), `ui/server/src/logBuffer.mjs` | Cockpit drawer (Diagnostics, Logs) | Det | Leave in `ui/server` (thin glue over `src/registry.mjs`) |
+| 24 | **Execution plan contract** (ordered steps, each a reference to a real flow, with executor tag, expected touches and dependencies; flow registry covering the whole CLI surface; `validatePlan`, `planToCommand`, `planTouches`) | `src/plan.mjs`; `schemas/plan.v1.json` | Research mode (plan pane), the process runtime | Det | Packaged (pure JSON-in/JSON-out; contains, rather than replaces, `src/import.mjs`'s narrower import plan) |
 
 ## How to use this file
 
