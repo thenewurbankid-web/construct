@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "kind": "service",
+  "id": "features/login/services/Login.tsx",
+  "ref": "service:features/login/services/Login.tsx",
+  "name": "Login.tsx",
+  "path": "features/login/services/Login.tsx",
+  "detail": "standard",
+  "summary": "Service features/login/services/Login.tsx: Session persistence is an external effect (browser storage), so it lives in a service, not domain or the workflow (per architecture.yml's... 3 export(s), 17 LOC, imported by 1 file(s).",
+  "sections": {
+    "file": {
+      "path": "features/login/services/Login.tsx",
+      "layer": "service",
+      "loc": 17,
+      "purpose": "Session persistence is an external effect (browser storage), so it lives in a service, not domain or the workflow (per architecture.yml's..."
+    },
+    "exports": [
+      {
+        "name": "startSession",
+        "kind": "function",
+        "signature": "startSession(username: string): void"
+      },
+      {
+        "name": "getSessionUser",
+        "kind": "function",
+        "signature": "getSessionUser(): string | null"
+      },
+      {
+        "name": "endSession",
+        "kind": "function",
+        "signature": "endSession(): void"
+      }
+    ],
+    "dependencies": {
+      "imports": [],
+      "externalPackages": [],
+      "usedBy": [
+        "features/login/hooks/useLogin.tsx"
+      ]
+    },
+    "rules": {
+      "violations": [],
+      "exceptions": [],
+      "counts": {
+        "error": 0,
+        "warning": 0
+      }
+    },
+    "tests": {
+      "count": 0,
+      "files": []
+    }
+  },
+  "health": {
+    "status": "ok",
+    "findings": []
+  },
+  "links": {
+    "parent": "feature:login",
+    "children": [
+      "export:features/login/services/Login.tsx#startSession",
+      "export:features/login/services/Login.tsx#getSessionUser",
+      "export:features/login/services/Login.tsx#endSession"
+    ]
+  },
+  "next": [
+    {
+      "ref": "file:features/login/hooks/useLogin.tsx",
+      "why": "A file that uses this one",
+      "cli": "construct summarize file:features/login/hooks/useLogin.tsx"
+    }
+  ],
+  "budget": {
+    "maxTokens": 2000,
+    "estimatedTokens": 415,
+    "truncated": false
+  }
+}

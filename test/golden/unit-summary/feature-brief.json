@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "kind": "feature",
+  "id": "login",
+  "ref": "feature:login",
+  "name": "login",
+  "path": "features/login",
+  "detail": "brief",
+  "summary": "Feature \"login\": 9 files, 193 LOC, 7/7 layers; 1 workflow machine(s); 0 error(s), 0 warning(s); 0 test file(s).",
+  "sections": {
+    "layers": {
+      "present": [
+        "domain",
+        "service",
+        "workflow",
+        "hook",
+        "component",
+        "page",
+        "controller"
+      ],
+      "missing": [],
+      "fileCounts": {
+        "component": 1,
+        "controller": 1,
+        "domain": 1,
+        "hook": 1,
+        "page": 1,
+        "service": 1,
+        "unclassified": 2,
+        "workflow": 1
+      }
+    },
+    "contracts": {
+      "publicApi": [
+        "./types",
+        "./controllers/LoginController",
+        "./hooks/useLogin"
+      ],
+      "routes": [
+        {
+          "route": "/login",
+          "file": "app/login/page.tsx"
+        }
+      ]
+    },
+    "dataFlow": {
+      "layers": [
+        "controller -> hook",
+        "controller -> page",
+        "hook -> service",
+        "hook -> workflow",
+        "page -> component",
+        "unclassified -> controller",
+        "unclassified -> hook",
+        "workflow -> domain"
+      ]
+    },
+    "workflows": [
+      {
+        "machine": "login",
+        "summary": "The \"login\" flow has 3 steps. It starts in *idle* and can end in *success*."
+      }
+    ],
+    "dependencies": {
+      "usedBy": 1,
+      "usesFeatures": [],
+      "externalPackages": 4
+    },
+    "rules": {
+      "errors": 0,
+      "warnings": 0,
+      "exceptions": 0
+    },
+    "tests": {
+      "count": 0
+    }
+  },
+  "health": {
+    "status": "ok",
+    "findings": [
+      {
+        "severity": "info",
+        "code": "no-tests",
+        "message": "No test files found for this feature."
+      },
+      {
+        "severity": "info",
+        "code": "unclassified-files",
+        "message": "2 file(s) are not in a recognized layer."
+      }
+    ],
+    "completeness": 1
+  },
+  "links": {
+    "parent": "project:.",
+    "children": [
+      "layer:login/domain",
+      "layer:login/service",
+      "layer:login/workflow"
+    ]
+  },
+  "next": [
+    {
+      "ref": "layer:login/domain",
+      "why": "Drill into the domain layer",
+      "cli": "construct summarize layer:login/domain"
+    },
+    {
+      "ref": "layer:login/service",
+      "why": "Drill into the service layer",
+      "cli": "construct summarize layer:login/service"
+    }
+  ],
+  "budget": {
+    "maxTokens": 500,
+    "estimatedTokens": 439,
+    "truncated": false
+  }
+}

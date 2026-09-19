@@ -1,0 +1,147 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "kind": "package",
+  "id": "features/login",
+  "ref": "package:features/login",
+  "name": "features/login",
+  "path": "features/login",
+  "detail": "standard",
+  "summary": "Package features/login: 9 file(s), 193 LOC. Public API for feature: login",
+  "sections": {
+    "entry": {
+      "path": "features/login/index.ts",
+      "exports": [
+        "./types",
+        "./controllers/LoginController",
+        "./hooks/useLogin"
+      ]
+    },
+    "files": [
+      {
+        "path": "features/login/components/Login.tsx",
+        "layer": "component",
+        "loc": 40,
+        "purpose": "Presentation component exporting Login."
+      },
+      {
+        "path": "features/login/controllers/LoginController.tsx",
+        "layer": "controller",
+        "loc": 20,
+        "purpose": "Controller (wires page to hook/workflow) exporting LoginController."
+      },
+      {
+        "path": "features/login/domain/Login.tsx",
+        "layer": "domain",
+        "loc": 8,
+        "purpose": "Hardcoded demo credentials — pure, no I/O (domain must stay pure per architecture.yml's DOMAIN-001)."
+      },
+      {
+        "path": "features/login/hooks/useLogin.tsx",
+        "layer": "hook",
+        "loc": 28,
+        "purpose": "React hook exporting useLogin."
+      },
+      {
+        "path": "features/login/index.ts",
+        "layer": null,
+        "loc": 11,
+        "purpose": "Public API for feature: login"
+      },
+      {
+        "path": "features/login/pages/LoginPage.tsx",
+        "layer": "page",
+        "loc": 24,
+        "purpose": "Page (presentation) exporting LoginPage."
+      },
+      {
+        "path": "features/login/services/Login.tsx",
+        "layer": "service",
+        "loc": 17,
+        "purpose": "Session persistence is an external effect (browser storage), so it lives in a service, not domain or the workflow (per architecture.yml's..."
+      },
+      {
+        "path": "features/login/types.ts",
+        "layer": null,
+        "loc": 2,
+        "purpose": "Source file exporting LoginId."
+      },
+      {
+        "path": "features/login/workflows/Login.tsx",
+        "layer": "workflow",
+        "loc": 43,
+        "purpose": "The login flow's state machine."
+      }
+    ],
+    "dependencies": {
+      "externalPackages": [
+        "@xstate/react",
+        "next",
+        "react",
+        "xstate"
+      ],
+      "usesInternal": [],
+      "usedBy": [
+        "app/login/page.tsx"
+      ]
+    },
+    "rules": {
+      "violations": [],
+      "exceptions": [],
+      "counts": {
+        "error": 0,
+        "warning": 0
+      }
+    },
+    "tests": {
+      "count": 0,
+      "files": []
+    }
+  },
+  "health": {
+    "status": "ok",
+    "findings": [
+      {
+        "severity": "info",
+        "code": "no-tests",
+        "message": "No test files found for this package."
+      }
+    ]
+  },
+  "links": {
+    "parent": "package:features",
+    "children": [
+      "file:features/login/components/Login.tsx",
+      "file:features/login/controllers/LoginController.tsx",
+      "file:features/login/domain/Login.tsx",
+      "file:features/login/hooks/useLogin.tsx",
+      "file:features/login/index.ts",
+      "file:features/login/pages/LoginPage.tsx",
+      "file:features/login/services/Login.tsx",
+      "file:features/login/types.ts",
+      "file:features/login/workflows/Login.tsx"
+    ]
+  },
+  "next": [
+    {
+      "ref": "file:features/login/components/Login.tsx",
+      "why": "Drill into this file",
+      "cli": "construct summarize file:features/login/components/Login.tsx"
+    },
+    {
+      "ref": "file:features/login/controllers/LoginController.tsx",
+      "why": "Drill into this file",
+      "cli": "construct summarize file:features/login/controllers/LoginController.tsx"
+    },
+    {
+      "ref": "file:features/login/domain/Login.tsx",
+      "why": "Drill into this file",
+      "cli": "construct summarize file:features/login/domain/Login.tsx"
+    }
+  ],
+  "budget": {
+    "maxTokens": 2000,
+    "estimatedTokens": 739,
+    "truncated": false
+  }
+}

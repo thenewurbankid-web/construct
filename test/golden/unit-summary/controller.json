@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "kind": "controller",
+  "id": "features/login/controllers/LoginController.tsx",
+  "ref": "controller:features/login/controllers/LoginController.tsx",
+  "name": "LoginController.tsx",
+  "path": "features/login/controllers/LoginController.tsx",
+  "detail": "standard",
+  "summary": "Controller features/login/controllers/LoginController.tsx: Controller (wires page to hook/workflow) exporting LoginController. 1 export(s), 20 LOC, imported by 2 file(s).",
+  "sections": {
+    "file": {
+      "path": "features/login/controllers/LoginController.tsx",
+      "layer": "controller",
+      "loc": 20,
+      "purpose": "Controller (wires page to hook/workflow) exporting LoginController."
+    },
+    "exports": [
+      {
+        "name": "LoginController",
+        "kind": "function",
+        "signature": "LoginController()"
+      }
+    ],
+    "dependencies": {
+      "imports": [
+        {
+          "path": "features/login/hooks/useLogin.tsx",
+          "layer": "hook"
+        },
+        {
+          "path": "features/login/pages/LoginPage.tsx",
+          "layer": "page"
+        }
+      ],
+      "externalPackages": [],
+      "usedBy": [
+        "app/login/page.tsx",
+        "features/login/index.ts"
+      ]
+    },
+    "rules": {
+      "violations": [],
+      "exceptions": [],
+      "counts": {
+        "error": 0,
+        "warning": 0
+      }
+    },
+    "tests": {
+      "count": 0,
+      "files": []
+    }
+  },
+  "health": {
+    "status": "ok",
+    "findings": []
+  },
+  "links": {
+    "parent": "feature:login",
+    "children": [
+      "export:features/login/controllers/LoginController.tsx#LoginController"
+    ]
+  },
+  "next": [
+    {
+      "ref": "file:app/login/page.tsx",
+      "why": "A file that uses this one",
+      "cli": "construct summarize file:app/login/page.tsx"
+    },
+    {
+      "ref": "file:features/login/index.ts",
+      "why": "A file that uses this one",
+      "cli": "construct summarize file:features/login/index.ts"
+    },
+    {
+      "ref": "file:features/login/hooks/useLogin.tsx",
+      "why": "A file this one depends on",
+      "cli": "construct summarize file:features/login/hooks/useLogin.tsx"
+    },
+    {
+      "ref": "file:features/login/pages/LoginPage.tsx",
+      "why": "A file this one depends on",
+      "cli": "construct summarize file:features/login/pages/LoginPage.tsx"
+    }
+  ],
+  "budget": {
+    "maxTokens": 2000,
+    "estimatedTokens": 465,
+    "truncated": false
+  }
+}

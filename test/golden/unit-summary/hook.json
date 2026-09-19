@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "kind": "hook",
+  "id": "features/login/hooks/useLogin.tsx",
+  "ref": "hook:features/login/hooks/useLogin.tsx",
+  "name": "useLogin.tsx",
+  "path": "features/login/hooks/useLogin.tsx",
+  "detail": "standard",
+  "summary": "Hook features/login/hooks/useLogin.tsx: React hook exporting useLogin. 1 export(s), 28 LOC, imported by 2 file(s).",
+  "sections": {
+    "file": {
+      "path": "features/login/hooks/useLogin.tsx",
+      "layer": "hook",
+      "loc": 28,
+      "purpose": "React hook exporting useLogin."
+    },
+    "exports": [
+      {
+        "name": "useLogin",
+        "kind": "function",
+        "signature": "useLogin()"
+      }
+    ],
+    "dependencies": {
+      "imports": [
+        {
+          "path": "features/login/services/Login.tsx",
+          "layer": "service"
+        },
+        {
+          "path": "features/login/workflows/Login.tsx",
+          "layer": "workflow"
+        }
+      ],
+      "externalPackages": [
+        "@xstate/react",
+        "next",
+        "react"
+      ],
+      "usedBy": [
+        "features/login/controllers/LoginController.tsx",
+        "features/login/index.ts"
+      ]
+    },
+    "rules": {
+      "violations": [],
+      "exceptions": [],
+      "counts": {
+        "error": 0,
+        "warning": 0
+      }
+    },
+    "tests": {
+      "count": 0,
+      "files": []
+    }
+  },
+  "health": {
+    "status": "ok",
+    "findings": []
+  },
+  "links": {
+    "parent": "feature:login",
+    "children": [
+      "export:features/login/hooks/useLogin.tsx#useLogin"
+    ]
+  },
+  "next": [
+    {
+      "ref": "file:features/login/controllers/LoginController.tsx",
+      "why": "A file that uses this one",
+      "cli": "construct summarize file:features/login/controllers/LoginController.tsx"
+    },
+    {
+      "ref": "file:features/login/index.ts",
+      "why": "A file that uses this one",
+      "cli": "construct summarize file:features/login/index.ts"
+    },
+    {
+      "ref": "file:features/login/services/Login.tsx",
+      "why": "A file this one depends on",
+      "cli": "construct summarize file:features/login/services/Login.tsx"
+    },
+    {
+      "ref": "file:features/login/workflows/Login.tsx",
+      "why": "A file this one depends on",
+      "cli": "construct summarize file:features/login/workflows/Login.tsx"
+    }
+  ],
+  "budget": {
+    "maxTokens": 2000,
+    "estimatedTokens": 444,
+    "truncated": false
+  }
+}

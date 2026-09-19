@@ -125,7 +125,9 @@ export function readPathAliases(startDir) {
 function parseAliases(configPath, configDir) {
   let json;
   try {
-    json = JSON.parse(stripJsonComments(fs.readFileSync(configPath, 'utf8')));
+    const raw = fs.readFileSync(configPath, 'utf8');
+    // Plain JSON first: the naive comment stripper corrupts globs like "**/*.ts" (they contain `/*`).
+    try { json = JSON.parse(raw); } catch { json = JSON.parse(stripJsonComments(raw)); }
   } catch {
     return { aliases: [], configDir };
   }

@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "kind": "rule",
+  "id": "PAGE-003",
+  "ref": "rule:PAGE-003",
+  "name": "PAGE-003",
+  "detail": "standard",
+  "summary": "Rule PAGE-003: Pages cannot import services. Default severity error; 1 violation(s) in this project.",
+  "sections": {
+    "rule": {
+      "id": "PAGE-003",
+      "statement": "Pages cannot import services",
+      "defaultSeverity": "error",
+      "configuredSeverity": "error",
+      "enforcedBy": "architecture"
+    },
+    "violations": {
+      "count": 1,
+      "items": [
+        {
+          "file": "features/bad/pages/Page003.tsx",
+          "line": 1,
+          "message": "Page imports a forbidden application layer.",
+          "severity": "error"
+        }
+      ]
+    },
+    "exceptions": []
+  },
+  "health": {
+    "status": "issues",
+    "findings": [
+      {
+        "severity": "error",
+        "code": "PAGE-003",
+        "message": "1 violation(s)."
+      }
+    ]
+  },
+  "links": {
+    "parent": "project:.",
+    "children": [
+      "file:features/bad/pages/Page003.tsx"
+    ]
+  },
+  "next": [
+    {
+      "ref": "file:features/bad/pages/Page003.tsx",
+      "why": "A file violating PAGE-003",
+      "cli": "construct summarize file:features/bad/pages/Page003.tsx"
+    }
+  ],
+  "budget": {
+    "maxTokens": 2000,
+    "estimatedTokens": 246,
+    "truncated": false
+  }
+}

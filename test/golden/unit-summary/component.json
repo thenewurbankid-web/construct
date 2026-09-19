@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "kind": "component",
+  "id": "features/login/components/Login.tsx",
+  "ref": "component:features/login/components/Login.tsx",
+  "name": "Login.tsx",
+  "path": "features/login/components/Login.tsx",
+  "detail": "standard",
+  "summary": "Component features/login/components/Login.tsx: Presentation component exporting Login. 1 export(s), 40 LOC, imported by 1 file(s).",
+  "sections": {
+    "file": {
+      "path": "features/login/components/Login.tsx",
+      "layer": "component",
+      "loc": 40,
+      "purpose": "Presentation component exporting Login."
+    },
+    "exports": [
+      {
+        "name": "Login",
+        "kind": "function",
+        "signature": "Login({ username, setUsername, password, setPassword, onSubmit, error }: LoginProps)"
+      }
+    ],
+    "props": [
+      {
+        "type": "LoginProps",
+        "members": [
+          "username",
+          "setUsername",
+          "password",
+          "setPassword",
+          "onSubmit",
+          "error"
+        ]
+      }
+    ],
+    "dependencies": {
+      "imports": [],
+      "externalPackages": [],
+      "usedBy": [
+        "features/login/pages/LoginPage.tsx"
+      ]
+    },
+    "rules": {
+      "violations": [],
+      "exceptions": [],
+      "counts": {
+        "error": 0,
+        "warning": 0
+      }
+    },
+    "tests": {
+      "count": 0,
+      "files": []
+    }
+  },
+  "health": {
+    "status": "ok",
+    "findings": []
+  },
+  "links": {
+    "parent": "feature:login",
+    "children": [
+      "export:features/login/components/Login.tsx#Login"
+    ]
+  },
+  "next": [
+    {
+      "ref": "file:features/login/pages/LoginPage.tsx",
+      "why": "A file that uses this one",
+      "cli": "construct summarize file:features/login/pages/LoginPage.tsx"
+    }
+  ],
+  "budget": {
+    "maxTokens": 2000,
+    "estimatedTokens": 338,
+    "truncated": false
+  }
+}
