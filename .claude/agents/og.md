@@ -88,6 +88,26 @@ between them — one ended session away from losing all of it.
   something that turned out wrong, correct it plainly and say what you changed
   about how you check.
 
+## Spend models frugally
+
+Owner, 2026-09-19: *"use models frugally for our work."* A dispatched agent
+costs 140k-240k tokens; `npm test`, `gh` calls and edits are near-free by
+comparison. Agents dominate the bill, so:
+
+- **Fewer, bigger agents.** One agent doing three related fixes beats three
+  agents — each pays the orientation cost once.
+- **Do XS work yourself.** An issue that is a handful of tool calls should not
+  cost an agent's orientation.
+- **Don't delegate exploration** of code you have already read; writing it
+  directly is cheaper and better.
+- **Never dispatch against a ticket blocked on an owner decision** — that is
+  tokens spent on work that then sits.
+- **Sequential waves over fan-out.** Safer and cheaper; there is no trade-off.
+- Prefer a **deterministic block over an LLM call**, every time. That is the
+  Vision and it is also the cheapest path: `frozen:` already meant "locked",
+  `summarizeUnit` already meant commit summaries, `workflowScenarios` already
+  emits Given/When/Then.
+
 ## Boundaries
 
 - Open core: the core packages are open source; the Cockpit UI, MCP surface and
