@@ -8,7 +8,7 @@
 // separate LLM session to fill in later, same as before this existed.
 import fs from 'node:fs';
 import path from 'node:path';
-import { generateVertical, LAYER_ORDER, LAYER_CONSTRAINTS, layerFromGeneratedFile } from './generators.mjs';
+import { generateVertical, LAYER_ORDER, LAYER_PREREQUISITES, LAYER_CONSTRAINTS, layerFromGeneratedFile } from './generators.mjs';
 import { walk } from './fs.mjs';
 import { callLlm, stripCodeFence, PROVIDERS } from './llm.mjs';
 import { requestFileText } from './llm-fill.mjs';
@@ -127,12 +127,56 @@ export async function importVertical(root, name, feature, layers, fromPath, { ll
   };
 }
 
+/** #275 — deterministically repair a plan's layer sets in place, and report
+ * what was repaired as `[{ unit, added: [...] }]`.
+ *
+ * A unit listing `controller` without `page` is unbuildable: the controller
+ * stub composes a same-named page (see generators.mjs's LAYER_PREREQUISITES),
+ * so the page has to be part of the same unit. Plans come from an LLM's
+ * analysis of old code and vary run to run — #146's route-import demo hit
+ * exactly this intermittently — and adding the missing page is the only
+ * correct repair, so this normalises rather than rejecting: no judgement is
+ * involved, the wizard prints the (already-normalised) plan for human
+ * approval before anything is written, and a plan file that happened to work
+ * because the page already existed on disk keeps working.
+ *
+ * The opposite choice is deliberate one level down: `generateVertical` REJECTS
+ * the same combination, because there the layer list is what a human explicitly
+ * typed as `--layers`, and silently adding a layer they didn't ask for would be
+ * worse than telling them. */
+export function normalizePlanLayers(plan) {
+  const adjustments = [];
+  for (const unit of plan?.units || []) {
+    if (!Array.isArray(unit?.layers)) continue;
+    const present = new Set(unit.layers);
+    const added = [];
+    for (const layer of unit.layers) {
+      for (const requires of LAYER_PREREQUISITES[layer] || []) {
+        if (present.has(requires)) continue;
+        present.add(requires);
+        added.push(requires);
+      }
+    }
+    if (!added.length) continue;
+    // Keep the canonical build order rather than appending — the plan is shown
+    // to a human, and generateVertical would reorder it anyway.
+    unit.layers = LAYER_ORDER.filter((l) => present.has(l)).concat(unit.layers.filter((l) => !LAYER_ORDER.includes(l)));
+    adjustments.push({ unit: unit.name, added });
+  }
+  return adjustments;
+}
+
 /** Shape-check a plan object (from a file, or an LLM's analysis response) —
  * shared by the file-based `importPlan` and the interactive route wizard, so
  * both reject the same malformed shapes with the same message. Never throws
  * on content it merely disagrees with (e.g. an unrecognized layer name) —
  * that's `construct validate`'s job once the plan is executed; this only
- * checks the plan is structurally usable at all. */
+ * checks the plan is structurally usable at all.
+ *
+ * It does, however, normalise an unbuildable layer set (see
+ * `normalizePlanLayers`) — repairing the plan before anything is written,
+ * rather than letting it fail mid-build. Returns the (possibly repaired)
+ * plan; `plan.layerAdjustments` is set when anything was repaired. */
 export function validatePlanShape(plan, sourceDescription) {
   const { feature, units } = plan || {};
   if (!feature || !Array.isArray(units) || !units.length) {
@@ -149,6 +193,15 @@ export function validatePlanShape(plan, sourceDescription) {
         { exitCode: EXIT_CODES.USAGE_ERROR },
       );
     }
+  }
+  const adjustments = normalizePlanLayers(plan);
+  if (adjustments.length) {
+    plan.layerAdjustments = adjustments;
+    console.warn(
+      `Note: ${adjustments
+        .map((a) => `unit "${a.unit}" needed ${a.added.map((l) => `"${l}"`).join(', ')} added to its layers`)
+        .join('; ')} — a controller composes a same-named page, so the page is part of the same unit. Added automatically; nothing is written yet.`,
+    );
   }
   return plan;
 }

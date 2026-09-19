@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createFeature } from '../src/generators.mjs';
-import { importVertical, importPlan, analyzeRoute } from '../src/import.mjs';
+import { importVertical, importPlan, analyzeRoute, validatePlanShape, normalizePlanLayers } from '../src/import.mjs';
 import { PROVIDERS } from '../src/llm.mjs';
 import { validateArchitecture } from '../src/architecture-enforcer.mjs';
 import { ConstructError } from '../src/diagnostics.mjs';
@@ -313,6 +313,131 @@ test('executeImportPlan/importPlan thread a timings object through every unit\'s
   assert.ok(results[0].timings);
   assert.ok(results[0].timings.scaffoldSeconds >= 0);
   assert.ok(results[0].timings.totalSeconds >= 0);
+});
+
+// ---- #275: a plan unit with a controller but no page ----------------------
+//
+// The LLM's analysis varies run to run and intermittently proposed
+// ["hook","controller"] with no page, which used to blow up mid-build with
+// "Construct generated code that fails its own architecture rules (template
+// bug): IMPORT-001 ... '../pages/XPage' does not resolve" — after some files
+// had already been written. A plan's layers are a proposal, not a typed
+// instruction, so they are deterministically repaired before anything runs.
+
+test('#275 validatePlanShape adds the missing page to a controller-only unit and reports it', () => {
+  const plan = {
+    feature: 'checkout',
+    units: [
+      { name: 'Products', layers: ['hook', 'controller'], from: 'old/Products.tsx' },
+      { name: 'Cart', layers: ['domain'], from: 'old/Cart.ts' },
+    ],
+  };
+  const warnings = [];
+  const originalWarn = console.warn;
+  console.warn = (m) => warnings.push(m);
+  try {
+    validatePlanShape(plan, 'test');
+  } finally {
+    console.warn = originalWarn;
+  }
+  // Repaired, and in canonical build order (page before controller).
+  assert.deepEqual(plan.units[0].layers, ['hook', 'page', 'controller']);
+  // Units that were already fine are untouched.
+  assert.deepEqual(plan.units[1].layers, ['domain']);
+  assert.deepEqual(plan.layerAdjustments, [{ unit: 'Products', added: ['page'] }]);
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /unit "Products" needed "page" added/);
+});
+
+test('#275 normalizePlanLayers is a no-op for a plan that is already buildable', () => {
+  const plan = {
+    feature: 'checkout',
+    units: [{ name: 'Products', layers: ['page', 'controller'], from: 'old/Products.tsx' }],
+  };
+  assert.deepEqual(normalizePlanLayers(plan), []);
+  assert.deepEqual(plan.units[0].layers, ['page', 'controller']);
+  assert.equal('layerAdjustments' in plan, false);
+});
+
+test('#275 importPlan builds a controller-only unit cleanly instead of failing with a "template bug"', async () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  const sourceFile = path.join(dir, 'Old.tsx');
+  fs.writeFileSync(sourceFile, 'export function old() { return true; }\n');
+  const planPath = path.join(dir, 'plan.json');
+  fs.writeFileSync(
+    planPath,
+    JSON.stringify({ feature: 'checkout', units: [{ name: 'Products', layers: ['hook', 'controller'], from: sourceFile }] }),
+  );
+
+  const originalWarn = console.warn;
+  console.warn = () => {};
+  let out;
+  try {
+    out = await importPlan(dir, planPath);
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  assert.deepEqual(out.results[0].files.map((f) => path.basename(f)), [
+    'useProducts.tsx',
+    'ProductsPage.tsx',
+    'ProductsController.tsx',
+  ]);
+  // The whole point: the result validates clean, no IMPORT-001 left behind.
+  assert.deepEqual(validateArchitecture(dir).violations.filter((v) => v.severity === 'error'), []);
+});
+
+test('#275 an LLM-proposed plan with a controller but no page is repaired before it is returned', async () => {
+  const dir = tmpProject();
+  const routeDir = path.join(dir, 'route');
+  fs.mkdirSync(routeDir, { recursive: true });
+  fs.writeFileSync(path.join(routeDir, 'Products.tsx'), 'export function Products() { return null; }\n');
+
+  const originalClaude = PROVIDERS.claude;
+  const originalWarn = console.warn;
+  console.warn = () => {};
+  PROVIDERS.claude = () =>
+    JSON.stringify({ feature: 'checkout', units: [{ name: 'Products', layers: ['hook', 'controller'], from: 'Products.tsx' }] });
+  let plan;
+  try {
+    plan = await analyzeRoute(routeDir, 'checkout');
+  } finally {
+    PROVIDERS.claude = originalClaude;
+    console.warn = originalWarn;
+  }
+  assert.deepEqual(plan.units[0].layers, ['hook', 'page', 'controller']);
+  assert.deepEqual(plan.layerAdjustments, [{ unit: 'Products', added: ['page'] }]);
+});
+
+test('#275 normalising a plan does not mask an unknown layer name in the same unit', async () => {
+  const dir = tmpProject();
+  const routeDir = path.join(dir, 'route');
+  fs.mkdirSync(routeDir, { recursive: true });
+  fs.writeFileSync(path.join(routeDir, 'Products.tsx'), 'export function Products() { return null; }\n');
+
+  const originalClaude = PROVIDERS.claude;
+  const originalWarn = console.warn;
+  console.warn = () => {};
+  PROVIDERS.claude = () =>
+    JSON.stringify({ feature: 'checkout', units: [{ name: 'Products', layers: ['controller', 'widget'], from: 'Products.tsx' }] });
+  try {
+    await assert.rejects(() => analyzeRoute(routeDir, 'checkout'), /proposed unknown layer\(s\) \["widget"\]/);
+  } finally {
+    PROVIDERS.claude = originalClaude;
+    console.warn = originalWarn;
+  }
+});
+
+test('#275 importVertical with an explicit controller-without-page --layers list is still refused', async () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  const sourceFile = path.join(dir, 'Old.tsx');
+  fs.writeFileSync(sourceFile, 'export function old() { return true; }\n');
+  await assert.rejects(
+    () => importVertical(dir, 'Products', 'checkout', ['hook', 'controller'], sourceFile),
+    /a "controller" needs a "page" layer/,
+  );
 });
 
 test('importVertical with { llm: "ollama" } calls the ollama provider (mocked HTTP) and writes its response', async () => {

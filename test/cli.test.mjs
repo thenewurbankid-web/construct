@@ -75,12 +75,27 @@ test('a thrown ConstructError (bad generate usage) exits with USAGE_ERROR', () =
   assert.match(res.stderr, /Usage: construct generate/);
 });
 
-test('generate controller before its page fails fast with IMPORT-001 (not a silent success)', () => {
+// #275: this used to exit INTERNAL_ERROR with a raw IMPORT-001 "template bug"
+// after the broken controller had already been written. It is now a plain
+// usage error, named and actionable, with nothing left on disk.
+test('generate controller before its page fails fast, naming the missing page and writing nothing (#275)', () => {
   const dir = emptyProjectDir();
   run(['feature', 'create', 'checkout'], dir);
   const res = run(['generate', 'controller', 'Checkout', '--feature', 'checkout'], dir);
-  assert.equal(res.status, EXIT_CODES.INTERNAL_ERROR);
-  assert.match(res.stderr, /IMPORT-001/);
+  assert.equal(res.status, EXIT_CODES.USAGE_ERROR);
+  assert.match(res.stderr, /a "controller" needs a "page" layer/);
+  assert.doesNotMatch(res.stderr, /template bug/);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'controllers', 'CheckoutController.tsx')), false);
+});
+
+test('generate layer with a controller but no page is refused before anything is written (#275)', () => {
+  const dir = emptyProjectDir();
+  run(['feature', 'create', 'checkout'], dir);
+  const res = run(['generate', 'layer', 'Checkout', '--feature', 'checkout', '--layers', 'domain,hook,controller'], dir);
+  assert.equal(res.status, EXIT_CODES.USAGE_ERROR);
+  assert.match(res.stderr, /a "controller" needs a "page" layer/);
+  assert.match(res.stderr, /--layers domain,hook,page,controller/);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Checkout.tsx')), false);
 });
 
 test('generate controller after its page succeeds', () => {
