@@ -7,7 +7,7 @@
 // the `min/vs` folder), otherwise from the library's default CDN.
 import Editor, { loader } from '@monaco-editor/react';
 import type { OnMount } from '@monaco-editor/react';
-import { useCallback, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { SourceEditorProps, SourceMarker } from '../types';
 
 const OWNER = 'construct-diagnostics';
@@ -35,17 +35,18 @@ export function MonacoSourceEditor({ value, markers, readOnly, onChange, label =
   const monacoRef = useRef<MonacoApi | null>(null);
   const editorRef = useRef<EditorApi | null>(null);
 
-  const applyMarkers = useCallback(() => {
+  const [ready, setReady] = useState(false);
+
+  // Re-applied whenever the markers, the text, or editor readiness changes.
+  useEffect(() => {
     const model = editorRef.current?.getModel();
-    if (monacoRef.current && model) monacoRef.current.editor.setModelMarkers(model, OWNER, toMonacoMarkers(monacoRef.current, markers));
-  }, [markers]);
+    if (ready && monacoRef.current && model) monacoRef.current.editor.setModelMarkers(model, OWNER, toMonacoMarkers(monacoRef.current, markers));
+  }, [ready, markers, value]);
 
   // If Monaco's runtime can't be fetched (offline, blocked CDN) fall back.
   useEffect(() => {
     loader.init().catch(() => onUnavailable?.());
   }, [onUnavailable]);
-
-  useEffect(applyMarkers, [applyMarkers, value]);
 
   return (
     <div className="source-editor-monaco" data-source-editor="monaco" aria-label={label}>
@@ -63,9 +64,9 @@ export function MonacoSourceEditor({ value, markers, readOnly, onChange, label =
           // in-browser TS worker, which can't resolve the project's modules.
           monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({ noSemanticValidation: true, noSyntaxValidation: true });
           monaco.languages.typescript.typescriptDefaults.setCompilerOptions({ jsx: monaco.languages.typescript.JsxEmit.Preserve, allowNonTsExtensions: true });
-          applyMarkers();
+          setReady(true);
         }}
-        options={{ readOnly, minimap: { enabled: false }, scrollBeyondLastLine: false, fontSize: 13, automaticLayout: true }}
+        options={{ readOnly, renderValidationDecorations: 'on', minimap: { enabled: false }, scrollBeyondLastLine: false, fontSize: 13, automaticLayout: true }}
       />
     </div>
   );
