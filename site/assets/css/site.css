@@ -159,17 +159,20 @@ h2 { font-size: 1.6rem; margin: 0 0 8px; }
 /* ---- Home hero backdrop (#282) --------------------------------------
    A real Cockpit screenshot behind the top of the home page only, scoped
    by the `is-home` body class the layout adds for `section === 'home'`.
-   Two layers so readability never depends on the screenshot's own pixels:
-   ::before is the image (blurred, faded, masked so it ends before the page
-   does) and ::after is a scrim built from --bg, which therefore adapts to
-   dark and light without a second image. */
+
+   The screenshot has to stay RECOGNISABLE as the Cockpit, so the blur is
+   only enough to stop text fighting text. Readability instead comes from
+   the shape of the light: a radial mask centred above the top edge, so
+   the image is brightest and sharpest at the top and falls away down and
+   outward, like a soft light source above the page. The scrim (::after)
+   then carries the fade into the page background. */
 .is-home { position: relative; }
 .is-home::before,
 .is-home::after {
   content: "";
   position: absolute;
   inset: 0 0 auto 0;
-  height: min(86vh, 780px);
+  height: min(92vh, 860px);
   pointer-events: none;
 }
 .is-home::before {
@@ -180,48 +183,52 @@ h2 { font-size: 1.6rem; margin: 0 0 8px; }
   );
   background-size: cover;
   background-position: top center;
-  /* Oversized so the blur has pixels to bleed into instead of soft edges. */
-  transform: scale(1.05);
-  transform-origin: top center;
-  filter: blur(2px) saturate(0.85);
-  opacity: 0.55;
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 42%, transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 0%, #000 42%, transparent 100%);
+  /* Just enough to soften, not enough to hide what the screen is. */
+  filter: blur(0.4px) saturate(0.95);
+  opacity: 0.85;
+  /* The focal light: fully lit at the top, dissolving down and to the
+     sides. This is what makes it read as lit rather than pasted on. */
+  -webkit-mask-image: radial-gradient(102% 86% at 50% -10%, #000 0%, #000 26%, rgba(0, 0, 0, 0.42) 58%, rgba(0, 0, 0, 0.12) 82%, transparent 100%);
+  mask-image: radial-gradient(102% 86% at 50% -10%, #000 0%, #000 26%, rgba(0, 0, 0, 0.42) 58%, rgba(0, 0, 0, 0.12) 82%, transparent 100%);
 }
 .is-home::after {
   z-index: -1;
-  background: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--bg) 58%, transparent) 0%,
-    color-mix(in srgb, var(--bg) 78%, transparent) 45%,
-    var(--bg) 100%
-  );
+  background:
+    /* the glow itself, tinted with the accent, strongest at top centre */
+    radial-gradient(85% 50% at 50% -8%, color-mix(in srgb, var(--accent) 14%, transparent) 0%, transparent 72%),
+    /* and the fade into the page */
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--bg) 18%, transparent) 0%,
+      color-mix(in srgb, var(--bg) 52%, transparent) 42%,
+      color-mix(in srgb, var(--bg) 88%, transparent) 78%,
+      var(--bg) 100%
+    );
 }
-/* The screenshot is a dark UI, so on a light page it needs to sit back
-   further and the scrim needs to be heavier — otherwise the hero text
-   loses contrast against it. */
+/* The screenshot is a dark UI, so light mode uses the Cockpit's own light
+   theme. Fading the dark one out instead reads as grey noise at any
+   opacity, because a dark UI has no light pixels to show through. */
 @media (prefers-color-scheme: light) {
-  /* Swap in the Cockpit's own light theme rather than fading the dark
-     screenshot out — a dark UI behind a light page reads as grey noise
-     instead of a product shot, however low the opacity goes. */
   .is-home::before {
     background-image: image-set(
       url("../img/cockpit-hero-light.webp") type("image/webp"),
       url("../img/cockpit-hero-light.jpg") type("image/jpeg")
     );
-    opacity: 0.6;
+    opacity: 0.9;
   }
   .is-home::after {
-    background: linear-gradient(
-      to bottom,
-      color-mix(in srgb, var(--bg) 70%, transparent) 0%,
-      color-mix(in srgb, var(--bg) 86%, transparent) 45%,
-      var(--bg) 100%
-    );
+    background:
+      radial-gradient(85% 50% at 50% -8%, color-mix(in srgb, var(--accent) 10%, transparent) 0%, transparent 72%),
+      linear-gradient(
+        to bottom,
+        color-mix(in srgb, var(--bg) 30%, transparent) 0%,
+        color-mix(in srgb, var(--bg) 58%, transparent) 42%,
+        color-mix(in srgb, var(--bg) 90%, transparent) 78%,
+        var(--bg) 100%
+      );
   }
 }
-/* The backdrop is decoration; anyone who asked for less motion or who
-   prints the page gets the flat background instead. */
+/* The backdrop is decoration; print and reduced-motion get it plain. */
 @media (prefers-reduced-motion: reduce) {
   .is-home::before { transform: none; }
 }
