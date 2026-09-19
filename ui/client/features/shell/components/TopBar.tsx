@@ -24,7 +24,7 @@ export function TopBar({
 }: TopBarProps) {
   return (
     <header className="sh-top" role="banner">
-      <span className="sh-brand">Construct</span>
+      <span className="sh-brand">Cockpit</span>
       {projectSwitcher}
       <nav aria-label="Modes" className="sh-modes">
         {modes.map((mode) => (

@@ -8,7 +8,7 @@ import './cockpit-drawer.css';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Construct',
+  title: 'Cockpit',
   description: 'Local, click-through web UI over Construct’s create/refactor/research/import capabilities.',
 };
 

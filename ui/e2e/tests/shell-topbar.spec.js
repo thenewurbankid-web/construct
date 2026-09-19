@@ -75,6 +75,15 @@ test.describe('Cockpit top bar (#245)', () => {
     await expect(page.getByText('No processes running')).toBeVisible();
   });
 
+  // #279 — the UI is the Cockpit; Construct is the framework/CLI underneath
+  // it. The brand drifted to 'Construct' and nothing asserted on it, so this
+  // pins the name in both the banner and the document title.
+  test('the brand names the Cockpit, not the framework', async ({ page }) => {
+    await page.goto('/help');
+    await expect(page.getByRole('banner').getByText('Cockpit', { exact: true })).toBeVisible();
+    await expect(page).toHaveTitle(/Cockpit/);
+  });
+
   test('theme switch lives in the top bar', async ({ page }) => {
     await page.goto('/help');
     await page.getByRole('banner').getByTestId('theme-toggle').click();
