@@ -214,7 +214,8 @@ kbd {
   appearance: none;
   align-self: auto;
   min-height: 32px;
-  padding: 0 var(--sp-3);
+  padding: 0 var(--sp-2);
+  white-space: nowrap;
   font-size: var(--fs-md);
   color: var(--text-muted);
   background: transparent;

@@ -47,3 +47,12 @@ export * from './hooks/usePagesEditorTabs';
 
 /** Live app preview URL + click-to-source selection (#223). */
 export * from './hooks/useLivePreview';
+
+/** Ask the Pages editor to open a page file (?feature=&file= or an in-page request). */
+export * from './services/OpenPageRequest';
+
+/** The open-page request shape and its URL query helpers. */
+export * from './domain/OpenPage';
+
+/** Applies open-page requests (URL or event) to the editor state. */
+export * from './hooks/useOpenPageRequests';

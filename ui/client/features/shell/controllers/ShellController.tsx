@@ -1,7 +1,9 @@
 'use client';
 
-import { useCallback, useMemo, type ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { DirectoryBrowserController } from '@/features/directory-browser';
+import { CommandPaletteController, CommandRegistryProvider, useOpenPalette } from '@/features/command-palette';
+import { DiagnosticsController, LogsController, statusText, tabBadge, useDiagnostics } from '@/features/diagnostics';
 import { PANE_LIMITS } from '../domain/LayoutDefaults';
 import { MODES } from '../domain/Modes';
 import { SCREENS } from '../domain/Screens';
@@ -15,6 +17,10 @@ import { useShellLayout } from '../hooks/useShellLayout';
 import { useShellRoute } from '../hooks/useShellRoute';
 import { ShellTabsProvider, useShellTabs } from '../hooks/useShellTabs';
 import { useShellShortcuts } from '../hooks/useShellShortcuts';
+import { useDrawerActions } from '../hooks/useDrawerActions';
+import { useShellCommands } from '../hooks/useShellCommands';
+import { useShellNavigation } from '../hooks/useShellNavigation';
+import { useTheme } from '../hooks/useTheme';
 import { EmptyPanel } from '../components/EmptyPanel';
 import { ProjectInfoPanel } from '../components/ProjectInfoPanel';
 import { ProjectSwitcher } from '../components/ProjectSwitcher';
@@ -31,8 +37,12 @@ function ShellFrame({ children }: { children: ReactNode }) {
   const narrow = useNarrowLayout(route.pathname);
   const { active, select } = useActiveTabs();
   useShellShortcuts(toggle);
+  const openPalette = useOpenPalette();
+  const diagnostics = useDiagnostics(project.known);
+  const theme = useTheme();
   const registered = { browser: useShellTabs('browser'), tools: useShellTabs('tools'), drawer: useShellTabs('drawer') };
 
+  const { navigate, openPage } = useShellNavigation(route.pathname);
   useRevealPanes(project.known, project.dir, { left: registered.browser.length > 0, right: registered.tools.length > 0 }, toggle);
 
   // Default tabs the shell itself provides; features add more via useRegisterShellTab.
@@ -47,8 +57,13 @@ function ShellFrame({ children }: { children: ReactNode }) {
         },
       ],
       drawer: [
-        { id: 'diagnostics', title: 'Diagnostics', render: () => <EmptyPanel title="No diagnostics yet" hint="Validation results will appear here in plain language." /> },
-        { id: 'logs', title: 'Logs', render: () => <EmptyPanel title="No logs yet" hint="Output from commands you run will collect here." /> },
+        {
+          id: 'diagnostics',
+          title: 'Diagnostics',
+          badge: tabBadge(diagnostics.state),
+          render: () => <DiagnosticsController diagnostics={diagnostics} onOpenPage={openPage} />,
+        },
+        { id: 'logs', title: 'Logs', render: () => <LogsController /> },
         {
           id: 'processes',
           title: 'Processes',
@@ -56,7 +71,7 @@ function ShellFrame({ children }: { children: ReactNode }) {
         },
       ],
     }),
-    [route.pathname, route.mode, project.dir, model],
+    [route.pathname, route.mode, project.dir, model, diagnostics, openPage],
   );
   const tabs = {
     // A screen's own tabs come first (they are what you came to use); the shell's defaults follow.
@@ -65,10 +80,15 @@ function ShellFrame({ children }: { children: ReactNode }) {
     drawer: [...defaults.drawer, ...registered.drawer],
   };
 
-  const openProcesses = useCallback(() => {
-    toggle('drawer', true);
-    select('drawer', 'processes');
-  }, [toggle, select]);
+  const { showDrawerTab } = useDrawerActions(toggle, select);
+  useShellCommands({
+    navigate,
+    togglePane: toggle,
+    toggleTheme: theme.toggle,
+    runValidate: diagnostics.run,
+    openProjectSwitcher: project.show,
+    showDrawerTab,
+  });
 
   const projectSwitcher = (
     <ProjectSwitcher
@@ -97,7 +117,10 @@ function ShellFrame({ children }: { children: ReactNode }) {
       themeToggle={<ThemeController />}
       modelStatus={model}
       runningProcesses={0}
-      onOpenProcesses={openProcesses}
+      onOpenProcesses={() => showDrawerTab('processes')}
+      onOpenPalette={openPalette}
+      validateStatus={statusText(diagnostics.state)}
+      onOpenDiagnostics={() => showDrawerTab('diagnostics')}
       shortcuts={SHORTCUTS}
       tabs={tabs}
       activeTabs={active}
@@ -112,8 +135,11 @@ function ShellFrame({ children }: { children: ReactNode }) {
  * status bar around every screen. Mount once, in the root layout. */
 export function ShellController({ children }: { children: ReactNode }) {
   return (
-    <ShellTabsProvider>
-      <ShellFrame>{children}</ShellFrame>
-    </ShellTabsProvider>
+    <CommandRegistryProvider>
+      <ShellTabsProvider>
+        <ShellFrame>{children}</ShellFrame>
+        <CommandPaletteController />
+      </ShellTabsProvider>
+    </CommandRegistryProvider>
   );
 }

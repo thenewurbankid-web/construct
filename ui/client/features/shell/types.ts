@@ -39,6 +39,8 @@ export type ShellTab = {
   title: string;
   badge?: number | string;
   disabled?: boolean;
+  /** Shown by default (before the user picks a tab) instead of the first enabled one. */
+  preferred?: boolean;
   render: () => ReactNode;
 };
 
@@ -131,12 +133,17 @@ export type TopBarProps = {
   layout: ShellLayoutState;
   onTogglePane: (pane: PaneId) => void;
   onOpenProcesses: () => void;
+  /** Opens the command palette (the search-style trigger in the middle of the bar). */
+  onOpenPalette: () => void;
 };
 
 export type StatusBarProps = {
   layout: ShellLayoutState;
   onTogglePane: (pane: PaneId) => void;
   shortcuts: ShortcutInfo[];
+  /** Short validate result, e.g. `validate: 3 problems`. */
+  validateStatus: string;
+  onOpenDiagnostics: () => void;
 };
 
 export type ScreensNavProps = { screens: ShellScreen[]; pathname: string };
@@ -161,6 +168,9 @@ export type ShellPageProps = NarrowProps & {
   modelStatus: ModelStatus;
   runningProcesses: number;
   onOpenProcesses: () => void;
+  onOpenPalette: () => void;
+  validateStatus: string;
+  onOpenDiagnostics: () => void;
   shortcuts: ShortcutInfo[];
   tabs: Record<ShellRegion, ShellTab[]>;
   activeTabs: Record<ShellRegion, string | null>;

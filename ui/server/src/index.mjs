@@ -38,6 +38,8 @@ import {
   moveNodeInSnippet,
   addChildInSnippet,
 } from './pagesEditor.mjs';
+import { handleValidate } from './validateApi.mjs';
+import { handleLogs } from './logBuffer.mjs';
 import { unitsIndex, unitSummary, featuresIndex, featureSummary } from './unitsApi.mjs';
 import { readPageSource } from './pageSource.mjs';
 import { describePageChange, adoptOwnWrite, pageChangeTracker } from './pageChanges.mjs';
@@ -602,6 +604,19 @@ app.get('/api/units', (req, res) => sendUnits(res, (root) => unitsIndex(root, re
 app.get('/api/units/summary', (req, res) => sendUnits(res, (root) => unitSummary(root, req.query)));
 app.get('/api/features', (req, res) => sendUnits(res, (root) => featuresIndex(root)));
 app.get('/api/features/:name/summary', (req, res) => sendUnits(res, (root) => featureSummary(root, req.params.name, req.query)));
+
+// Cockpit drawer: Diagnostics (construct validate for the current project) and
+// Logs (bounded in-memory ring of recent command/validate output). Both are
+// read-only and refuse a foreign browser origin.
+app.get('/api/validate', (req, res) => {
+  const { status, body } = handleValidate({ origin: req.get('origin'), clientOrigin: CLIENT_ORIGIN, projectDir: getSettings().projectDir });
+  res.status(status).json(body);
+});
+
+app.get('/api/logs', (req, res) => {
+  const { status, body } = handleLogs(req.query, { origin: req.get('origin'), clientOrigin: CLIENT_ORIGIN });
+  res.status(status).json(body);
+});
 
 const port = Number(process.env.PORT) || 4000;
 const server = http.createServer(app);

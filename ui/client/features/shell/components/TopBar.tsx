@@ -20,6 +20,7 @@ export function TopBar({
   layout,
   onTogglePane,
   onOpenProcesses,
+  onOpenPalette,
 }: TopBarProps) {
   return (
     <header className="sh-top" role="banner">
@@ -37,6 +38,19 @@ export function TopBar({
           </Link>
         ))}
       </nav>
+      <span className="sh-spacer" />
+      <button
+        type="button"
+        className="sh-palette-trigger"
+        data-testid="palette-trigger"
+        aria-haspopup="dialog"
+        aria-label="Open command palette"
+        title="Search screens and run commands (Ctrl K)"
+        onClick={onOpenPalette}
+      >
+        <span>Search screens or run a command...</span>
+        <kbd>Ctrl K</kbd>
+      </button>
       <span className="sh-spacer" />
       <button
         type="button"

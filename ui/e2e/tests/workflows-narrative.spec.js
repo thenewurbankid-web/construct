@@ -92,10 +92,14 @@ test.describe('Workflows screen: plain-English narrative, scenarios and health (
     await expect(page.getByTestId('wf-narrative-state-refunded')).toHaveCount(0);
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'workflows-narrative-before-edit.png'), fullPage: true });
 
+    // #248: editing is the Edit tab; the English is the Narrative tab.
+    await page.getByRole('tab', { name: 'Edit' }).click();
+
     await page.getByLabel('New state name').fill('refunded');
     await page.getByRole('button', { name: 'Add state' }).click();
     await page.getByRole('button', { name: 'Confirm save' }).click();
     await expect(page.getByTestId('wf-state-refunded')).toBeVisible();
+    await page.getByRole('tab', { name: 'Narrative' }).click();
 
     // the English now knows about the new state, and Health flags it
     const block = page.getByTestId('wf-narrative-state-refunded');
@@ -105,11 +109,13 @@ test.describe('Workflows screen: plain-English narrative, scenarios and health (
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'workflows-narrative-after-edit.png'), fullPage: true });
 
     // wire it up: done --RESET--> refunded; the English and Health follow
+    await page.getByRole('tab', { name: 'Edit' }).click();
     await page.getByLabel('Transition from').selectOption('done');
     await page.getByLabel('Event for new transitions').fill('REFUND');
     await page.getByLabel('Transition to').selectOption('refunded');
     await page.getByRole('button', { name: 'Add transition' }).click();
     await page.getByRole('button', { name: 'Confirm save' }).click();
+    await page.getByRole('tab', { name: 'Narrative' }).click();
     await expect(page.getByTestId('wf-narrative-state-done')).toContainText('When "refund" happens, the flow moves to refunded.');
     await expect(page.getByTestId('wf-finding-unreachable')).toHaveCount(0);
   });

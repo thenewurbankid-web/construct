@@ -14,6 +14,7 @@
 import { EXIT_CODES, ConstructError } from '../../../src/diagnostics.mjs';
 import { startTimer, elapsedSeconds } from '../../../src/timing.mjs';
 import { getSettings } from './settings.mjs';
+import { serverLog } from './logBuffer.mjs';
 
 const ATTRIBUTION_RE = /^\[tool: (.*)\] \[llm: (.*)\]$/;
 
@@ -84,6 +85,10 @@ export async function runCapturing(fn) {
     }
     const exitCodeSet = process.exitCode;
     process.exitCode = priorExitCode;
+
+    // Feed the cockpit Logs tab (bounded ring buffer; see logBuffer.mjs).
+    for (const line of lines) serverLog.record('command', 'info', line);
+    if (caught) serverLog.record('command', 'error', `failed: ${caught.message}`);
 
     const output = [];
     let attribution = null;

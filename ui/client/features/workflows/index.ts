@@ -20,3 +20,9 @@ export * from './hooks/useWorkflowNarrative';
 
 /** Visual edit flow (propose diff -> confirm save) used by useWorkflows (#61). */
 export * from './hooks/useWorkflowEditor';
+
+/** Which machine/arrow/event name the diagram and the tools tabs share. */
+export * from './hooks/useCanvasSelection';
+
+/** Refit the diagram when its box resizes (panes opening or dragged). */
+export * from './hooks/useFitOnResize';

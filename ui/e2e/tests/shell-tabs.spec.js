@@ -30,7 +30,7 @@ test.describe('Right-panel / drawer tab host (#245)', () => {
     await page.keyboard.press('Control+j');
     const drawer = page.getByRole('region', { name: 'Drawer' });
     const tabs = drawer.getByRole('tab');
-    await expect(tabs).toHaveText(['Diagnostics', 'Logs', 'Processes']);
+    await expect(tabs).toHaveText([/^Diagnostics/, 'Logs', 'Processes']) // #249: Diagnostics carries a count badge once validate has run;
     const diagnostics = drawer.getByRole('tab', { name: 'Diagnostics' });
     const logs = drawer.getByRole('tab', { name: 'Logs' });
     const processes = drawer.getByRole('tab', { name: 'Processes' });
@@ -43,7 +43,7 @@ test.describe('Right-panel / drawer tab host (#245)', () => {
     await page.keyboard.press('ArrowRight');
     await expect(logs).toBeFocused();
     await expect(logs).toHaveAttribute('aria-selected', 'true');
-    await expect(drawer.getByRole('tabpanel', { name: 'Logs' })).toContainText('No logs yet');
+    await expect(drawer.getByRole('tabpanel', { name: 'Logs' })).toContainText('Clear view') // #249: real Logs tab (lines may exist from the validate run);
     await page.keyboard.press('End');
     await expect(processes).toBeFocused();
     await expect(drawer.getByRole('tabpanel')).toContainText('No processes running');
@@ -53,7 +53,7 @@ test.describe('Right-panel / drawer tab host (#245)', () => {
     await expect(processes).toBeFocused(); // wraps back
     await page.keyboard.press('Home');
     await expect(diagnostics).toBeFocused();
-    await expect(drawer.getByRole('tabpanel')).toContainText('No diagnostics yet');
+    await expect(drawer.getByRole('tabpanel')).toContainText('Run validate') // #249: real Diagnostics tab;
     await page.screenshot({ path: path.join(SHOTS, 'shell-drawer-tabs.png') });
   });
 
