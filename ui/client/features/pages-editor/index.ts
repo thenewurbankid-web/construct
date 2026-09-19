@@ -42,5 +42,8 @@ export * from './hooks/useSnippetFlow';
  * editor-neutral markers (read-only source view). */
 export * from './hooks/usePageSource';
 
+/** Registers the pages editor's tree and Inspector / Scope / Source / Diff panels as shell tabs (#247). */
+export * from './hooks/usePagesEditorTabs';
+
 /** Live app preview URL + click-to-source selection (#223). */
 export * from './hooks/useLivePreview';

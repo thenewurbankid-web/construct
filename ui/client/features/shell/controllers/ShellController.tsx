@@ -9,6 +9,7 @@ import { SHORTCUTS } from '../domain/Shortcuts';
 import { useActiveTabs } from '../hooks/useActiveTabs';
 import { useModelStatus } from '../hooks/useModelStatus';
 import { useProjectSwitcher } from '../hooks/useProjectSwitcher';
+import { useRevealPanes } from '../hooks/useRevealPanes';
 import { useShellLayout } from '../hooks/useShellLayout';
 import { useShellRoute } from '../hooks/useShellRoute';
 import { ShellTabsProvider, useShellTabs } from '../hooks/useShellTabs';
@@ -29,6 +30,8 @@ function ShellFrame({ children }: { children: ReactNode }) {
   const { active, select } = useActiveTabs();
   useShellShortcuts(toggle);
   const registered = { browser: useShellTabs('browser'), tools: useShellTabs('tools'), drawer: useShellTabs('drawer') };
+
+  useRevealPanes(project.known, project.dir, { left: registered.browser.length > 0, right: registered.tools.length > 0 }, toggle);
 
   // Default tabs the shell itself provides; features add more via useRegisterShellTab.
   const defaults = useMemo<Record<ShellRegion, ShellTab[]>>(
@@ -54,8 +57,9 @@ function ShellFrame({ children }: { children: ReactNode }) {
     [route.pathname, route.mode, project.dir, model],
   );
   const tabs = {
-    browser: [...defaults.browser, ...registered.browser],
-    tools: [...defaults.tools, ...registered.tools],
+    // A screen's own tabs come first (they are what you came to use); the shell's defaults follow.
+    browser: [...registered.browser, ...defaults.browser],
+    tools: [...registered.tools, ...defaults.tools],
     drawer: [...defaults.drawer, ...registered.drawer],
   };
 

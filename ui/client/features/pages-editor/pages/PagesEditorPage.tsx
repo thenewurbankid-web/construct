@@ -1,57 +1,38 @@
 import type { ReactNode } from 'react';
-import { ExternalChangeNotice } from '../components/ExternalChangeNotice';
-import { InspectorPanel } from '../components/InspectorPanel';
 import { LivePreviewPanel } from '../components/LivePreviewPanel';
-import { PagesBrowser } from '../components/PagesBrowser';
 import { PreviewPanel } from '../components/PreviewPanel';
 import { PropFlowDiagram } from '../components/PropFlowDiagram';
-import { SourcePanel } from '../components/SourcePanel';
-import { TreePanel } from '../components/TreePanel';
 import type { usePagesEditor } from '../hooks/usePagesEditor';
 
 type PagesEditorPageProps = ReturnType<typeof usePagesEditor>;
 
+// The stage (middle pane) of the Pages Editor. The page/feature tree lives in
+// the shell's Browser pane and Inspector / Scope / Source / Diff in its Tools
+// tabs (see usePagesEditorTabs); this renders what you look at: the live app
+// preview, the structural mirror and the prop-flow diagram.
 export function PagesEditorPage(props: PagesEditorPageProps): ReactNode {
-  const {
-    features, feature, setFeature, files, filesLoading, file, openFile, tree, error,
-    selectedNodeId, selectNode, selectedNode, onTreeSaved, previewTitle,
-    externalChange, dismissExternalChange, reloadFromDisk, livePreview,
-  } = props;
+  const { tree, error, selectedNodeId, selectNode, previewTitle, externalChange, livePreview } = props;
 
   return (
-    <div className="page pages-editor-page">
+    <div className="page pages-editor-page pe-stage">
       <h1>Pages Editor</h1>
       <p className="hint">
-        Browse a feature&apos;s pages/ layer, view a page&apos;s JSX as a tree, select a node from
-        either the tree or the structural preview, edit its isolated snippet or props and save
-        straight back into the source file, auto-map unwired props, and see the
-        whole tree&apos;s prop flow as a colored diagram. Every save is scoped to pages/ and
-        checked against the existing PAGE-*/COMPONENT-* architecture rules before it lands.
+        Pick a page in the Browser, then click an element in a preview (or a node in the tree) to select it.
+        Edit it in the Tools panel; every save is checked against the architecture rules.
       </p>
-
-      <PagesBrowser
-        feature={feature}
-        onFeatureChange={setFeature}
-        features={features}
-        file={file}
-        onOpen={openFile}
-        files={files}
-        loading={filesLoading}
-      />
 
       {error && <p className="status-error">{error}</p>}
 
       {tree && externalChange && (
-        <ExternalChangeNotice file={file} change={externalChange} onReload={reloadFromDisk} onDismiss={dismissExternalChange} />
+        <p className="pe-changed" role="status">
+          Changed on disk outside the editor. Review it in the Diff tab.
+        </p>
       )}
+
+      {!tree && !error && <p className="hint pe-empty">Nothing open yet. Choose a feature and a page in the Browser to start.</p>}
 
       {tree && (
         <>
-          <div className="pages-editor-grid">
-            <TreePanel roots={tree.roots} selectedId={selectedNodeId} onSelect={selectNode} />
-            <PreviewPanel roots={tree.roots} selectedId={selectedNodeId} onSelect={selectNode} titleFor={previewTitle} />
-            <InspectorPanel feature={feature} file={file} node={selectedNode} contentHash={tree.contentHash} onSaved={onTreeSaved} />
-          </div>
           <LivePreviewPanel
             draft={livePreview.draft}
             onDraftChange={livePreview.setDraft}
@@ -61,8 +42,8 @@ export function PagesEditorPage(props: PagesEditorPageProps): ReactNode {
             onConnect={livePreview.connect}
             onDisconnect={livePreview.disconnect}
           />
+          <PreviewPanel roots={tree.roots} selectedId={selectedNodeId} onSelect={selectNode} titleFor={previewTitle} />
           <PropFlowDiagram roots={tree.roots} />
-          <SourcePanel feature={feature} file={file} contentHash={tree.contentHash} />
         </>
       )}
     </div>

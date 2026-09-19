@@ -67,6 +67,8 @@ test.describe.serial('Pages Editor scope links (#223)', () => {
     await expect(page.locator('.tree-panel')).toBeVisible();
 
     await page.locator('.tree-panel').getByText('<Card>', { exact: true }).click();
+    // Scope links are their own tab of the shell's Tools panel (#247), no longer inline under the inspector.
+    await page.getByRole('tab', { name: 'Scope' }).click();
     const panel = page.locator('.scope-panel');
     await expect(panel).toBeVisible();
 

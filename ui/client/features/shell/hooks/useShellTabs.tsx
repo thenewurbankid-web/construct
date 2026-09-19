@@ -37,10 +37,16 @@ export function useShellTabs(region: ShellRegion): ShellTab[] {
  * memoised tab (its `render` runs inside the shell, not the caller). */
 export function useRegisterShellTab(region: ShellRegion, tab: ShellTab): void {
   const api = useContext(SlotsContext);
+  // Re-registering the same id replaces the tab in place (keeps its position);
+  // it is only removed when the calling component unmounts or the id/region change.
+  const register = api?.register;
+  const unregister = api?.unregister;
   useEffect(() => {
-    if (!api) return;
-    api.register(region, tab);
-    return () => api.unregister(region, tab.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [region, tab, api?.register, api?.unregister]);
+    register?.(region, tab);
+  }, [region, tab, register]);
+  const id = tab.id;
+  useEffect(() => {
+    if (!unregister) return;
+    return () => unregister(region, id);
+  }, [region, id, unregister]);
 }
