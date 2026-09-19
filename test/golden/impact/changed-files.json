@@ -1,0 +1,343 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "root": "impact-shared",
+  "request": {
+    "depth": 2,
+    "unbounded": false,
+    "limits": {
+      "maxFiles": 200,
+      "maxSeeds": 100
+    }
+  },
+  "summary": "Impact of domain:features/billing/domain/billingRules.ts, domain:features/checkout/domain/checkoutRules.ts: 2 feature(s) (billing, checkout), 6 file(s) across 3 layer(s), depth 2; 0 warning(s); 0 rule error(s), 0 rule warning(s); every entry derived deterministically.",
+  "seeds": [
+    {
+      "index": 0,
+      "ref": "features/billing/domain/billingRules.ts",
+      "method": "changed-files",
+      "provenance": "explicit",
+      "confidence": 1,
+      "resolved": true,
+      "kind": "domain",
+      "id": "features/billing/domain/billingRules.ts",
+      "unitRef": "domain:features/billing/domain/billingRules.ts",
+      "files": 1
+    },
+    {
+      "index": 1,
+      "ref": "features/checkout/domain/checkoutRules.ts",
+      "method": "changed-files",
+      "provenance": "explicit",
+      "confidence": 1,
+      "resolved": true,
+      "kind": "domain",
+      "id": "features/checkout/domain/checkoutRules.ts",
+      "unitRef": "domain:features/checkout/domain/checkoutRules.ts",
+      "files": 1
+    }
+  ],
+  "features": [
+    {
+      "name": "billing",
+      "kind": "feature",
+      "path": "features/billing",
+      "provenance": "derived",
+      "confidence": 1,
+      "files": 3,
+      "minDistance": 0,
+      "seeded": true,
+      "layers": [
+        {
+          "layer": "domain",
+          "files": 1,
+          "minDistance": 0,
+          "canImport": [
+            "types"
+          ]
+        },
+        {
+          "layer": "service",
+          "files": 1,
+          "minDistance": 1,
+          "canImport": [
+            "domain",
+            "types"
+          ]
+        },
+        {
+          "layer": "workflow",
+          "files": 1,
+          "minDistance": 2,
+          "canImport": [
+            "service",
+            "domain",
+            "types"
+          ]
+        }
+      ],
+      "beyondDepth": 1,
+      "why": "Contains a seed unit."
+    },
+    {
+      "name": "checkout",
+      "kind": "feature",
+      "path": "features/checkout",
+      "provenance": "derived",
+      "confidence": 1,
+      "files": 3,
+      "minDistance": 0,
+      "seeded": true,
+      "layers": [
+        {
+          "layer": "domain",
+          "files": 1,
+          "minDistance": 0,
+          "canImport": [
+            "types"
+          ]
+        },
+        {
+          "layer": "service",
+          "files": 1,
+          "minDistance": 1,
+          "canImport": [
+            "domain",
+            "types"
+          ]
+        },
+        {
+          "layer": "workflow",
+          "files": 1,
+          "minDistance": 2,
+          "canImport": [
+            "service",
+            "domain",
+            "types"
+          ]
+        }
+      ],
+      "beyondDepth": 1,
+      "why": "Contains a seed unit."
+    }
+  ],
+  "files": [
+    {
+      "path": "features/billing/domain/billingRules.ts",
+      "layer": "domain",
+      "feature": "billing",
+      "scope": "billing",
+      "scopeKind": "feature",
+      "distance": 0,
+      "direction": "seed",
+      "score": 1,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "Pure billing rules: no I/O, no framework.",
+      "reasons": [
+        {
+          "code": "seed",
+          "message": "Part of the seed unit(s) domain:features/billing/domain/billingRules.ts."
+        }
+      ],
+      "derivedFrom": [
+        "domain:features/billing/domain/billingRules.ts"
+      ]
+    },
+    {
+      "path": "features/checkout/domain/checkoutRules.ts",
+      "layer": "domain",
+      "feature": "checkout",
+      "scope": "checkout",
+      "scopeKind": "feature",
+      "distance": 0,
+      "direction": "seed",
+      "score": 1,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "Pure checkout rules: no I/O, no framework.",
+      "reasons": [
+        {
+          "code": "seed",
+          "message": "Part of the seed unit(s) domain:features/checkout/domain/checkoutRules.ts."
+        }
+      ],
+      "derivedFrom": [
+        "domain:features/checkout/domain/checkoutRules.ts"
+      ]
+    },
+    {
+      "path": "features/billing/services/billingService.ts",
+      "layer": "service",
+      "feature": "billing",
+      "scope": "billing",
+      "scopeKind": "feature",
+      "distance": 1,
+      "direction": "up",
+      "score": 0.5,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "Service (external effects) exporting fetchBilling.",
+      "reasons": [
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/billing/domain/billingRules.ts.",
+          "from": "features/billing/domain/billingRules.ts"
+        }
+      ],
+      "derivedFrom": [
+        "domain:features/billing/domain/billingRules.ts"
+      ]
+    },
+    {
+      "path": "features/checkout/services/checkoutService.ts",
+      "layer": "service",
+      "feature": "checkout",
+      "scope": "checkout",
+      "scopeKind": "feature",
+      "distance": 1,
+      "direction": "up",
+      "score": 0.5,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "Service (external effects) exporting fetchCheckout.",
+      "reasons": [
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/checkout/domain/checkoutRules.ts.",
+          "from": "features/checkout/domain/checkoutRules.ts"
+        }
+      ],
+      "derivedFrom": [
+        "domain:features/checkout/domain/checkoutRules.ts"
+      ]
+    },
+    {
+      "path": "features/billing/workflows/BillingWorkflow.ts",
+      "layer": "workflow",
+      "feature": "billing",
+      "scope": "billing",
+      "scopeKind": "feature",
+      "distance": 2,
+      "direction": "up",
+      "score": 0.33,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "Workflow state machine exporting runBilling.",
+      "reasons": [
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/billing/services/billingService.ts (2 hops from a seed).",
+          "from": "features/billing/services/billingService.ts"
+        }
+      ],
+      "derivedFrom": [
+        "domain:features/billing/domain/billingRules.ts"
+      ]
+    },
+    {
+      "path": "features/checkout/workflows/CheckoutWorkflow.ts",
+      "layer": "workflow",
+      "feature": "checkout",
+      "scope": "checkout",
+      "scopeKind": "feature",
+      "distance": 2,
+      "direction": "up",
+      "score": 0.33,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "Workflow state machine exporting runCheckout.",
+      "reasons": [
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/checkout/services/checkoutService.ts (2 hops from a seed).",
+          "from": "features/checkout/services/checkoutService.ts"
+        }
+      ],
+      "derivedFrom": [
+        "domain:features/checkout/domain/checkoutRules.ts"
+      ]
+    }
+  ],
+  "warnings": [],
+  "rules": {
+    "violations": [],
+    "exceptions": [],
+    "counts": {
+      "error": 0,
+      "warning": 0
+    },
+    "layerConstraints": [
+      {
+        "layer": "domain",
+        "canImport": [
+          "types"
+        ]
+      },
+      {
+        "layer": "service",
+        "canImport": [
+          "domain",
+          "types"
+        ]
+      },
+      {
+        "layer": "workflow",
+        "canImport": [
+          "service",
+          "domain",
+          "types"
+        ]
+      }
+    ]
+  },
+  "stats": {
+    "seedsResolved": 2,
+    "seedsUnresolved": 0,
+    "filesConsidered": 33,
+    "filesImplicated": 6,
+    "derived": 6,
+    "inferred": 0,
+    "byDistance": {
+      "0": 2,
+      "1": 2,
+      "2": 2
+    },
+    "layers": [
+      "domain",
+      "service",
+      "workflow"
+    ],
+    "beyondDepth": {
+      "files": 2,
+      "scopes": [
+        {
+          "name": "billing",
+          "files": 1
+        },
+        {
+          "name": "checkout",
+          "files": 1
+        }
+      ]
+    },
+    "truncated": false
+  },
+  "next": [
+    {
+      "ref": "feature:billing",
+      "why": "Seeded feature — read it in full before changing it",
+      "cli": "construct summarize feature:billing --detail full"
+    },
+    {
+      "ref": "feature:checkout",
+      "why": "Seeded feature — read it in full before changing it",
+      "cli": "construct summarize feature:checkout --detail full"
+    },
+    {
+      "ref": "file:features/billing/workflows/BillingWorkflow.ts",
+      "why": "A workflow state machine is implicated — check its scenarios",
+      "cli": "construct research workflow billing"
+    }
+  ]
+}

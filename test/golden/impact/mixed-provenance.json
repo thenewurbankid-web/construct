@@ -1,0 +1,777 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "root": "impact-shared",
+  "request": {
+    "depth": 2,
+    "unbounded": false,
+    "limits": {
+      "maxFiles": 200,
+      "maxSeeds": 100
+    }
+  },
+  "summary": "Impact of domain:features/billing/domain/billingRules.ts, feature:checkout: 3 feature(s) (checkout, billing, shared), 14 file(s) across 8 layer(s), depth 2; 2 warning(s); 0 rule error(s), 0 rule warning(s); 11 entry/entries inferred rather than derived.",
+  "seeds": [
+    {
+      "index": 0,
+      "method": "user",
+      "provenance": "explicit",
+      "confidence": 1,
+      "ref": "features/billing/domain/billingRules.ts",
+      "resolved": true,
+      "kind": "domain",
+      "id": "features/billing/domain/billingRules.ts",
+      "unitRef": "domain:features/billing/domain/billingRules.ts",
+      "files": 1
+    },
+    {
+      "index": 1,
+      "ref": "feature:checkout",
+      "method": "model",
+      "provenance": "inferred",
+      "confidence": 0.4,
+      "why": "the ticket mentions checkout",
+      "resolved": true,
+      "kind": "feature",
+      "id": "checkout",
+      "unitRef": "feature:checkout",
+      "files": 9
+    }
+  ],
+  "features": [
+    {
+      "name": "checkout",
+      "kind": "feature",
+      "path": "features/checkout",
+      "provenance": "inferred",
+      "confidence": 0.4,
+      "files": 9,
+      "minDistance": 0,
+      "seeded": true,
+      "layers": [
+        {
+          "layer": "component",
+          "files": 1,
+          "minDistance": 0,
+          "canImport": [
+            "component",
+            "types"
+          ]
+        },
+        {
+          "layer": "controller",
+          "files": 1,
+          "minDistance": 0,
+          "canImport": [
+            "workflow",
+            "hook",
+            "service",
+            "page",
+            "component",
+            "domain",
+            "types"
+          ]
+        },
+        {
+          "layer": "domain",
+          "files": 1,
+          "minDistance": 0,
+          "canImport": [
+            "types"
+          ]
+        },
+        {
+          "layer": "hook",
+          "files": 1,
+          "minDistance": 0,
+          "canImport": [
+            "workflow",
+            "service",
+            "domain",
+            "types"
+          ]
+        },
+        {
+          "layer": "page",
+          "files": 1,
+          "minDistance": 0,
+          "canImport": [
+            "component",
+            "types"
+          ]
+        },
+        {
+          "layer": "service",
+          "files": 1,
+          "minDistance": 0,
+          "canImport": [
+            "domain",
+            "types"
+          ]
+        },
+        {
+          "layer": "unclassified",
+          "files": 2,
+          "minDistance": 0,
+          "canImport": []
+        },
+        {
+          "layer": "workflow",
+          "files": 1,
+          "minDistance": 0,
+          "canImport": [
+            "service",
+            "domain",
+            "types"
+          ]
+        }
+      ],
+      "why": "Contains a seed unit."
+    },
+    {
+      "name": "billing",
+      "kind": "feature",
+      "path": "features/billing",
+      "provenance": "derived",
+      "confidence": 1,
+      "files": 3,
+      "minDistance": 0,
+      "seeded": true,
+      "layers": [
+        {
+          "layer": "domain",
+          "files": 1,
+          "minDistance": 0,
+          "canImport": [
+            "types"
+          ]
+        },
+        {
+          "layer": "service",
+          "files": 1,
+          "minDistance": 1,
+          "canImport": [
+            "domain",
+            "types"
+          ]
+        },
+        {
+          "layer": "workflow",
+          "files": 1,
+          "minDistance": 2,
+          "canImport": [
+            "service",
+            "domain",
+            "types"
+          ]
+        }
+      ],
+      "beyondDepth": 1,
+      "why": "Contains a seed unit."
+    },
+    {
+      "name": "app",
+      "kind": "directory",
+      "path": "app",
+      "provenance": "inferred",
+      "confidence": 0.4,
+      "files": 1,
+      "minDistance": 1,
+      "seeded": false,
+      "layers": [
+        {
+          "layer": "route",
+          "files": 1,
+          "minDistance": 1,
+          "canImport": [
+            "controller"
+          ]
+        }
+      ],
+      "why": "Reached in 1 hop(s): app/checkout/page.tsx imports a changed file."
+    },
+    {
+      "name": "shared",
+      "kind": "feature",
+      "path": "features/shared",
+      "provenance": "inferred",
+      "confidence": 0.4,
+      "files": 1,
+      "minDistance": 1,
+      "seeded": false,
+      "layers": [
+        {
+          "layer": "unclassified",
+          "files": 1,
+          "minDistance": 1,
+          "canImport": []
+        }
+      ],
+      "why": "Reached in 1 hop(s): features/shared/index.ts is imported by a changed file."
+    }
+  ],
+  "files": [
+    {
+      "path": "features/billing/domain/billingRules.ts",
+      "layer": "domain",
+      "feature": "billing",
+      "scope": "billing",
+      "scopeKind": "feature",
+      "distance": 0,
+      "direction": "seed",
+      "score": 1,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "Pure billing rules: no I/O, no framework.",
+      "reasons": [
+        {
+          "code": "seed",
+          "message": "Part of the seed unit(s) domain:features/billing/domain/billingRules.ts."
+        }
+      ],
+      "derivedFrom": [
+        "domain:features/billing/domain/billingRules.ts"
+      ]
+    },
+    {
+      "path": "features/checkout/components/CheckoutView.tsx",
+      "layer": "component",
+      "feature": "checkout",
+      "scope": "checkout",
+      "scopeKind": "feature",
+      "distance": 0,
+      "direction": "seed",
+      "score": 1,
+      "provenance": "inferred",
+      "confidence": 0.4,
+      "purpose": "Presentation component exporting CheckoutView.",
+      "reasons": [
+        {
+          "code": "dependency-of-seed",
+          "message": "Imported by features/checkout/pages/CheckoutPage.tsx; read it to understand the change, it is not itself at risk.",
+          "from": "features/checkout/pages/CheckoutPage.tsx"
+        },
+        {
+          "code": "seed",
+          "message": "Part of the seed unit(s) feature:checkout."
+        }
+      ],
+      "derivedFrom": [
+        "feature:checkout"
+      ]
+    },
+    {
+      "path": "features/checkout/controllers/CheckoutController.tsx",
+      "layer": "controller",
+      "feature": "checkout",
+      "scope": "checkout",
+      "scopeKind": "feature",
+      "distance": 0,
+      "direction": "seed",
+      "score": 1,
+      "provenance": "inferred",
+      "confidence": 0.4,
+      "purpose": "Controller (wires page to hook/workflow) exporting CheckoutController.",
+      "reasons": [
+        {
+          "code": "dependency-of-seed",
+          "message": "Imported by features/checkout/index.ts; read it to understand the change, it is not itself at risk.",
+          "from": "features/checkout/index.ts"
+        },
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/checkout/hooks/useCheckout.ts.",
+          "from": "features/checkout/hooks/useCheckout.ts"
+        },
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/checkout/pages/CheckoutPage.tsx.",
+          "from": "features/checkout/pages/CheckoutPage.tsx"
+        },
+        {
+          "code": "seed",
+          "message": "Part of the seed unit(s) feature:checkout."
+        }
+      ],
+      "derivedFrom": [
+        "feature:checkout"
+      ]
+    },
+    {
+      "path": "features/checkout/domain/checkoutRules.ts",
+      "layer": "domain",
+      "feature": "checkout",
+      "scope": "checkout",
+      "scopeKind": "feature",
+      "distance": 0,
+      "direction": "seed",
+      "score": 1,
+      "provenance": "inferred",
+      "confidence": 0.4,
+      "purpose": "Pure checkout rules: no I/O, no framework.",
+      "reasons": [
+        {
+          "code": "dependency-of-seed",
+          "message": "Imported by features/checkout/services/checkoutService.ts; read it to understand the change, it is not itself at risk.",
+          "from": "features/checkout/services/checkoutService.ts"
+        },
+        {
+          "code": "seed",
+          "message": "Part of the seed unit(s) feature:checkout."
+        }
+      ],
+      "derivedFrom": [
+        "feature:checkout"
+      ]
+    },
+    {
+      "path": "features/checkout/hooks/useCheckout.ts",
+      "layer": "hook",
+      "feature": "checkout",
+      "scope": "checkout",
+      "scopeKind": "feature",
+      "distance": 0,
+      "direction": "seed",
+      "score": 1,
+      "provenance": "inferred",
+      "confidence": 0.4,
+      "purpose": "React hook exporting useCheckout.",
+      "reasons": [
+        {
+          "code": "dependency-of-seed",
+          "message": "Imported by features/checkout/controllers/CheckoutController.tsx; read it to understand the change, it is not itself at risk.",
+          "from": "features/checkout/controllers/CheckoutController.tsx"
+        },
+        {
+          "code": "dependency-of-seed",
+          "message": "Imported by features/checkout/index.ts; read it to understand the change, it is not itself at risk.",
+          "from": "features/checkout/index.ts"
+        },
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/checkout/workflows/CheckoutWorkflow.ts.",
+          "from": "features/checkout/workflows/CheckoutWorkflow.ts"
+        },
+        {
+          "code": "seed",
+          "message": "Part of the seed unit(s) feature:checkout."
+        }
+      ],
+      "derivedFrom": [
+        "feature:checkout"
+      ]
+    },
+    {
+      "path": "features/checkout/index.ts",
+      "layer": null,
+      "feature": "checkout",
+      "scope": "checkout",
+      "scopeKind": "feature",
+      "distance": 0,
+      "direction": "seed",
+      "score": 1,
+      "provenance": "inferred",
+      "confidence": 0.4,
+      "purpose": "Public API for feature: checkout",
+      "reasons": [
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/checkout/controllers/CheckoutController.tsx.",
+          "from": "features/checkout/controllers/CheckoutController.tsx"
+        },
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/checkout/hooks/useCheckout.ts.",
+          "from": "features/checkout/hooks/useCheckout.ts"
+        },
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/checkout/types.ts.",
+          "from": "features/checkout/types.ts"
+        },
+        {
+          "code": "seed",
+          "message": "Part of the seed unit(s) feature:checkout."
+        }
+      ],
+      "derivedFrom": [
+        "feature:checkout"
+      ]
+    },
+    {
+      "path": "features/checkout/pages/CheckoutPage.tsx",
+      "layer": "page",
+      "feature": "checkout",
+      "scope": "checkout",
+      "scopeKind": "feature",
+      "distance": 0,
+      "direction": "seed",
+      "score": 1,
+      "provenance": "inferred",
+      "confidence": 0.4,
+      "purpose": "Page (presentation) exporting CheckoutPage.",
+      "reasons": [
+        {
+          "code": "dependency-of-seed",
+          "message": "Imported by features/checkout/controllers/CheckoutController.tsx; read it to understand the change, it is not itself at risk.",
+          "from": "features/checkout/controllers/CheckoutController.tsx"
+        },
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/checkout/components/CheckoutView.tsx.",
+          "from": "features/checkout/components/CheckoutView.tsx"
+        },
+        {
+          "code": "seed",
+          "message": "Part of the seed unit(s) feature:checkout."
+        }
+      ],
+      "derivedFrom": [
+        "feature:checkout"
+      ]
+    },
+    {
+      "path": "features/checkout/services/checkoutService.ts",
+      "layer": "service",
+      "feature": "checkout",
+      "scope": "checkout",
+      "scopeKind": "feature",
+      "distance": 0,
+      "direction": "seed",
+      "score": 1,
+      "provenance": "inferred",
+      "confidence": 0.4,
+      "purpose": "Service (external effects) exporting fetchCheckout.",
+      "reasons": [
+        {
+          "code": "dependency-of-seed",
+          "message": "Imported by features/checkout/workflows/CheckoutWorkflow.ts; read it to understand the change, it is not itself at risk.",
+          "from": "features/checkout/workflows/CheckoutWorkflow.ts"
+        },
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/checkout/domain/checkoutRules.ts.",
+          "from": "features/checkout/domain/checkoutRules.ts"
+        },
+        {
+          "code": "seed",
+          "message": "Part of the seed unit(s) feature:checkout."
+        }
+      ],
+      "derivedFrom": [
+        "feature:checkout"
+      ]
+    },
+    {
+      "path": "features/checkout/types.ts",
+      "layer": null,
+      "feature": "checkout",
+      "scope": "checkout",
+      "scopeKind": "feature",
+      "distance": 0,
+      "direction": "seed",
+      "score": 1,
+      "provenance": "inferred",
+      "confidence": 0.4,
+      "purpose": "Source file exporting CheckoutState.",
+      "reasons": [
+        {
+          "code": "dependency-of-seed",
+          "message": "Imported by features/checkout/index.ts; read it to understand the change, it is not itself at risk.",
+          "from": "features/checkout/index.ts"
+        },
+        {
+          "code": "dependency-of-seed",
+          "message": "Imported by features/checkout/workflows/CheckoutWorkflow.ts; read it to understand the change, it is not itself at risk.",
+          "from": "features/checkout/workflows/CheckoutWorkflow.ts"
+        },
+        {
+          "code": "seed",
+          "message": "Part of the seed unit(s) feature:checkout."
+        }
+      ],
+      "derivedFrom": [
+        "feature:checkout"
+      ]
+    },
+    {
+      "path": "features/checkout/workflows/CheckoutWorkflow.ts",
+      "layer": "workflow",
+      "feature": "checkout",
+      "scope": "checkout",
+      "scopeKind": "feature",
+      "distance": 0,
+      "direction": "seed",
+      "score": 1,
+      "provenance": "inferred",
+      "confidence": 0.4,
+      "purpose": "Workflow state machine exporting runCheckout.",
+      "reasons": [
+        {
+          "code": "dependency-of-seed",
+          "message": "Imported by features/checkout/hooks/useCheckout.ts; read it to understand the change, it is not itself at risk.",
+          "from": "features/checkout/hooks/useCheckout.ts"
+        },
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/checkout/services/checkoutService.ts.",
+          "from": "features/checkout/services/checkoutService.ts"
+        },
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/checkout/types.ts.",
+          "from": "features/checkout/types.ts"
+        },
+        {
+          "code": "seed",
+          "message": "Part of the seed unit(s) feature:checkout."
+        }
+      ],
+      "derivedFrom": [
+        "feature:checkout"
+      ]
+    },
+    {
+      "path": "features/billing/services/billingService.ts",
+      "layer": "service",
+      "feature": "billing",
+      "scope": "billing",
+      "scopeKind": "feature",
+      "distance": 1,
+      "direction": "up",
+      "score": 0.5,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "Service (external effects) exporting fetchBilling.",
+      "reasons": [
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/billing/domain/billingRules.ts.",
+          "from": "features/billing/domain/billingRules.ts"
+        }
+      ],
+      "derivedFrom": [
+        "domain:features/billing/domain/billingRules.ts"
+      ]
+    },
+    {
+      "path": "features/billing/workflows/BillingWorkflow.ts",
+      "layer": "workflow",
+      "feature": "billing",
+      "scope": "billing",
+      "scopeKind": "feature",
+      "distance": 2,
+      "direction": "up",
+      "score": 0.33,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "Workflow state machine exporting runBilling.",
+      "reasons": [
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/billing/services/billingService.ts (2 hops from a seed).",
+          "from": "features/billing/services/billingService.ts"
+        }
+      ],
+      "derivedFrom": [
+        "domain:features/billing/domain/billingRules.ts"
+      ]
+    },
+    {
+      "path": "app/checkout/page.tsx",
+      "layer": "route",
+      "feature": null,
+      "scope": "app",
+      "scopeKind": "directory",
+      "distance": 1,
+      "direction": "up",
+      "score": 0.3,
+      "provenance": "inferred",
+      "confidence": 0.4,
+      "purpose": "Route entry exporting Page.",
+      "reasons": [
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/checkout/controllers/CheckoutController.tsx.",
+          "from": "features/checkout/controllers/CheckoutController.tsx"
+        }
+      ],
+      "derivedFrom": [
+        "feature:checkout"
+      ]
+    },
+    {
+      "path": "features/shared/index.ts",
+      "layer": null,
+      "feature": "shared",
+      "scope": "shared",
+      "scopeKind": "feature",
+      "distance": 1,
+      "direction": "down",
+      "score": 0.3,
+      "provenance": "inferred",
+      "confidence": 0.4,
+      "purpose": "Public API for feature: shared",
+      "reasons": [
+        {
+          "code": "dependency-of-seed",
+          "message": "Imported by features/checkout/components/CheckoutView.tsx; read it to understand the change, it is not itself at risk.",
+          "from": "features/checkout/components/CheckoutView.tsx"
+        }
+      ],
+      "derivedFrom": [
+        "feature:checkout"
+      ]
+    }
+  ],
+  "warnings": [
+    {
+      "code": "CROSS-FEATURE",
+      "severity": "warning",
+      "provenance": "derived",
+      "usedBy": [
+        "shared"
+      ],
+      "message": "The seeds live in 2 feature(s) (checkout, billing) but the impact reaches 1 more: shared."
+    },
+    {
+      "code": "PUBLIC-API",
+      "severity": "warning",
+      "provenance": "derived",
+      "feature": "checkout",
+      "files": [
+        "features/checkout/controllers/CheckoutController.tsx",
+        "features/checkout/hooks/useCheckout.ts",
+        "features/checkout/types.ts"
+      ],
+      "message": "3 implicated file(s) are re-exported from features/checkout/index.ts: changing them changes feature \"checkout\"'s public API."
+    }
+  ],
+  "rules": {
+    "violations": [],
+    "exceptions": [],
+    "counts": {
+      "error": 0,
+      "warning": 0
+    },
+    "layerConstraints": [
+      {
+        "layer": "component",
+        "canImport": [
+          "component",
+          "types"
+        ]
+      },
+      {
+        "layer": "controller",
+        "canImport": [
+          "workflow",
+          "hook",
+          "service",
+          "page",
+          "component",
+          "domain",
+          "types"
+        ]
+      },
+      {
+        "layer": "domain",
+        "canImport": [
+          "types"
+        ]
+      },
+      {
+        "layer": "hook",
+        "canImport": [
+          "workflow",
+          "service",
+          "domain",
+          "types"
+        ]
+      },
+      {
+        "layer": "page",
+        "canImport": [
+          "component",
+          "types"
+        ]
+      },
+      {
+        "layer": "route",
+        "canImport": [
+          "controller"
+        ]
+      },
+      {
+        "layer": "service",
+        "canImport": [
+          "domain",
+          "types"
+        ]
+      },
+      {
+        "layer": "workflow",
+        "canImport": [
+          "service",
+          "domain",
+          "types"
+        ]
+      }
+    ]
+  },
+  "stats": {
+    "seedsResolved": 2,
+    "seedsUnresolved": 0,
+    "filesConsidered": 33,
+    "filesImplicated": 14,
+    "derived": 3,
+    "inferred": 11,
+    "byDistance": {
+      "0": 10,
+      "1": 3,
+      "2": 1
+    },
+    "layers": [
+      "component",
+      "controller",
+      "domain",
+      "hook",
+      "page",
+      "route",
+      "service",
+      "workflow"
+    ],
+    "beyondDepth": {
+      "files": 1,
+      "scopes": [
+        {
+          "name": "billing",
+          "files": 1
+        }
+      ]
+    },
+    "truncated": false
+  },
+  "next": [
+    {
+      "ref": "feature:checkout",
+      "why": "Seeded feature — read it in full before changing it",
+      "cli": "construct summarize feature:checkout --detail full"
+    },
+    {
+      "ref": "feature:billing",
+      "why": "Seeded feature — read it in full before changing it",
+      "cli": "construct summarize feature:billing --detail full"
+    },
+    {
+      "ref": "feature:shared",
+      "why": "Reached in 1 hop(s)",
+      "cli": "construct summarize feature:shared --detail full"
+    },
+    {
+      "ref": "file:features/checkout/workflows/CheckoutWorkflow.ts",
+      "why": "A workflow state machine is implicated — check its scenarios",
+      "cli": "construct research workflow checkout"
+    }
+  ]
+}

@@ -35,7 +35,9 @@ import { matchFrozen } from '../frozen.mjs';
 export const SCHEMA_VERSION = 1;
 /** Default transitive depth on the importer (upstream) direction — see the module docs and #288. */
 export const DEFAULT_DEPTH = 2;
-export const DEFAULT_LIMITS = { maxFiles: 200, maxSeeds: 25 };
+/** maxSeeds is sized for a real PR diff (#285 passes one changed file per seed), not for hand-typed
+ * refs; a bigger diff than this declines loudly rather than producing a report nobody can read. */
+export const DEFAULT_LIMITS = { maxFiles: 200, maxSeeds: 100 };
 export const SEED_PROVENANCE = ['explicit', 'inferred'];
 export const ENTRY_PROVENANCE = ['derived', 'inferred'];
 export const SEED_METHODS = ['user', 'changed-files', 'text-match', 'model'];
@@ -350,7 +352,8 @@ export function analyzeImpact(root, request = {}, opts = {}) {
     const rules = violationsFor(ctx, (f) => included.has(f));
     const layersTouched = uniqSorted(fileRows.map((r) => r.layer).filter(Boolean));
 
-    const seedSummary = seedOut.filter((s) => s.resolved).map((s) => s.unitRef).join(', ');
+    const resolvedRefs = seedOut.filter((s) => s.resolved).map((s) => s.unitRef);
+    const seedSummary = resolvedRefs.slice(0, 3).join(', ') + (resolvedRefs.length > 3 ? ` and ${resolvedRefs.length - 3} more seed(s)` : '');
     const inferredRows = fileRows.filter((r) => r.provenance === 'inferred').length;
     const summary = `Impact of ${seedSummary || 'the given seed(s)'}: ${touchedFeatures.length} feature(s) (${touchedFeatures.join(', ') || 'none'}), `
       + `${fileRows.length} file(s) across ${layersTouched.length} layer(s), depth ${depth === Infinity ? 'unbounded' : depth}; `

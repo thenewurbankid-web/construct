@@ -14,7 +14,7 @@ Run 'construct repl' for an interactive shell with detailed built-in help
 Four capabilities, one CLI:
   construct create ...    scaffold a feature, a layer, or a whole vertical slice
   construct refactor ...  mechanical, LLM-free moves/renames within the architecture
-  construct research ...  read-only: summarize a feature, explain its workflows in English, or check environment/tooling
+  construct research ...  read-only: summarize a feature, explain its workflows in English, compute a change's impact, or check environment/tooling
   construct import ...    scaffold layers for an existing, non-Construct file + a breadcrumb to it
 
   construct create feature <name> [--dir <path>]
@@ -27,6 +27,8 @@ Four capabilities, one CLI:
   construct research summarize [--feature <name>] [--format json|md|compact|prose] [--since <ref>] [--dir <path>]
   construct research workflow <feature> [<file>] [--format prose|md|json|scenarios] [--dir <path>]
   construct research doctor [--dir <path>]
+  construct research impact <unit-ref>... [--files a,b] [--since <ref>] [--ticket <text>] [--ticket-file <path>] [--depth N] [--max-files N] [--format json|markdown] [--dir <path>]
+  construct research impact --usage   (deterministic blast radius: which features/layers/files a change touches, and why)
   construct import <name> --feature <feature> --layers <l1,l2,...> --from <path> [--llm <provider>] [--dir <path>]
   construct import --plan <path> [--llm <provider>] [--dir <path>]
   construct import --route <path>  (standalone interactive wizard, run directly — not inside repl)

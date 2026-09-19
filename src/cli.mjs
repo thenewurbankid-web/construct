@@ -13,6 +13,7 @@ import { aggregateValidation } from './registry.mjs';
 import { validateArchitecture } from './architecture-enforcer.mjs';
 import { syncPublicApi } from './api-composer.mjs';
 import { summarizeUnit, listUnits, unitApiManifest, renderUnitMarkdown } from './engine/unitSummary.mjs';
+import { analyzeImpact, proposeSeedsFromText, impactApiManifest, renderImpactMarkdown } from './engine/impact.mjs';
 import { summarizeProject, summarizeCompact, summarizeProse, summarizeSince } from './summarize.mjs';
 import { moveLayerFile, renameLayerFile } from './refactor.mjs';
 import { importVertical, importPlan, analyzeFiles, executeImportPlan } from './import.mjs';
@@ -484,13 +485,79 @@ export async function researchWorkflow(args) {
   return false;
 }
 
-/** `construct research summarize ...` | `construct research doctor ...` | `construct research workflow ...`. */
+/** `construct research impact <ref>... [--files a,b] [--since <git-ref>] [--ticket <text>]
+ * [--ticket-file <path>] [--depth N] [--max-files N] [--format json|markdown] [--dir <path>]`
+ * | `construct research impact --usage` (#288).
+ *
+ * Read-only blast radius: which features/layers/files a change touches, why each file is
+ * implicated, what is shared across features, and what the project's rules already say. Seeds
+ * given as refs or `--files`/`--since` are explicit, so every entry comes back `derived`; seeds
+ * proposed from `--ticket` text are heuristic, so everything they reach is marked `inferred`.
+ * Returns true when it printed only JSON. */
+export async function researchImpact(args) {
+  const root = getRoot(args);
+  const format = ['markdown', 'md'].includes(flagValue(args, '--format')) ? 'markdown' : 'json';
+  if (args.includes('--usage')) {
+    console.log(JSON.stringify(impactApiManifest(), null, 2));
+    return true;
+  }
+  const valueFlags = new Set(['--dir', '--format', '--depth', '--max-files', '--files', '--ticket', '--ticket-file', '--since', '--max-seeds']);
+  const refs = args.filter((a, i) => !a.startsWith('--') && !valueFlags.has(args[i - 1]));
+  const seeds = refs.map((ref) => ({ ref, method: 'user', provenance: 'explicit' }));
+  const filesFlag = flagValue(args, '--files');
+  if (filesFlag) for (const p of filesFlag.split(',').map((s) => s.trim()).filter(Boolean)) seeds.push({ path: p, method: 'changed-files', provenance: 'explicit' });
+  const since = flagValue(args, '--since');
+  if (since) {
+    let changed;
+    try {
+      changed = spawnSync('git', ['diff', '--name-only', since], { cwd: root, encoding: 'utf8' });
+    } catch (e) {
+      throw new ConstructError(`Could not diff against "${since}": ${String(e.message || e)}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+    }
+    if (changed.status !== 0) throw new ConstructError(`Could not diff against "${since}": ${String(changed.stderr || '').trim() || 'git failed'}. Is ${root} a git repository, and does that ref exist?`, { exitCode: EXIT_CODES.USAGE_ERROR });
+    for (const p of changed.stdout.split('\n').map((s) => s.trim()).filter(Boolean)) seeds.push({ path: p, method: 'changed-files', provenance: 'explicit' });
+  }
+  const ticketFile = flagValue(args, '--ticket-file');
+  const ticket = ticketFile ? fs.readFileSync(path.resolve(root, ticketFile), 'utf8') : flagValue(args, '--ticket');
+  if (ticket) {
+    const maxSeeds = flagValue(args, '--max-seeds');
+    const proposal = proposeSeedsFromText(root, ticket, maxSeeds ? { maxSeeds: Number(maxSeeds) } : {});
+    if (!proposal.ok) {
+      console.log(JSON.stringify(proposal, null, 2));
+      process.exitCode = EXIT_CODES.USAGE_ERROR;
+      return true;
+    }
+    seeds.push(...proposal.seeds);
+  }
+  if (!seeds.length) {
+    throw new ConstructError('Usage: construct research impact <unit-ref>... [--files a,b] [--since <git-ref>] [--ticket <text>] [--ticket-file <path>] [--depth N] [--max-files N] [--format json|markdown] [--dir <path>]', { exitCode: EXIT_CODES.USAGE_ERROR });
+  }
+  const depth = flagValue(args, '--depth');
+  const maxFiles = flagValue(args, '--max-files');
+  const maxSeedsLimit = flagValue(args, '--max-seeds');
+  const limits = {
+    ...(maxFiles !== undefined ? { maxFiles: Number(maxFiles) } : {}),
+    ...(maxSeedsLimit !== undefined ? { maxSeeds: Number(maxSeedsLimit) } : {}),
+  };
+  const result = analyzeImpact(root, {
+    seeds,
+    ...(depth !== undefined ? { depth: Number(depth) } : {}),
+    ...(Object.keys(limits).length ? { limits } : {}),
+  });
+  console.log(format === 'markdown' ? renderImpactMarkdown(result) : JSON.stringify(result, null, 2));
+  if (!result.ok) process.exitCode = result.error.code === 'INTERNAL_ERROR' ? EXIT_CODES.INTERNAL_ERROR : EXIT_CODES.USAGE_ERROR;
+  return format === 'json';
+}
+
+/** `construct research summarize ...` | `construct research doctor ...` | `construct research workflow ...`
+ * | `construct research impact ...`. */
 export async function research(args) {
   let jsonOnly = false;
   if (args[0] === 'summarize') await summarize(args.slice(1));
   else if (args[0] === 'doctor') await doctor(args.slice(1));
   else if (args[0] === 'workflow') jsonOnly = await researchWorkflow(args.slice(1));
-  else throw new ConstructError('Usage: construct research summarize|doctor|workflow ...', { exitCode: EXIT_CODES.USAGE_ERROR });
+  else if (args[0] === 'impact') jsonOnly = await researchImpact(args.slice(1));
+  else throw new ConstructError('Usage: construct research summarize|doctor|workflow|impact ...', { exitCode: EXIT_CODES.USAGE_ERROR });
   if (!jsonOnly) printAttribution('produced the read-only report above', '0 calls');
 }
 

@@ -1,0 +1,578 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "root": "example",
+  "request": {
+    "depth": 2,
+    "unbounded": false,
+    "limits": {
+      "maxFiles": 200,
+      "maxSeeds": 100
+    }
+  },
+  "summary": "Impact of feature:signup: 1 feature(s) (signup), 10 file(s) across 8 layer(s), depth 2; 1 warning(s); 0 rule error(s), 0 rule warning(s); every entry derived deterministically.",
+  "seeds": [
+    {
+      "index": 0,
+      "method": "user",
+      "provenance": "explicit",
+      "confidence": 1,
+      "ref": "feature:signup",
+      "resolved": true,
+      "kind": "feature",
+      "id": "signup",
+      "unitRef": "feature:signup",
+      "files": 9
+    }
+  ],
+  "features": [
+    {
+      "name": "signup",
+      "kind": "feature",
+      "path": "features/signup",
+      "provenance": "derived",
+      "confidence": 1,
+      "files": 9,
+      "minDistance": 0,
+      "seeded": true,
+      "layers": [
+        {
+          "layer": "component",
+          "files": 1,
+          "minDistance": 0,
+          "canImport": [
+            "component",
+            "types"
+          ]
+        },
+        {
+          "layer": "controller",
+          "files": 1,
+          "minDistance": 0,
+          "canImport": [
+            "workflow",
+            "hook",
+            "service",
+            "page",
+            "component",
+            "domain",
+            "types"
+          ]
+        },
+        {
+          "layer": "domain",
+          "files": 1,
+          "minDistance": 0,
+          "canImport": [
+            "types"
+          ]
+        },
+        {
+          "layer": "hook",
+          "files": 1,
+          "minDistance": 0,
+          "canImport": [
+            "workflow",
+            "service",
+            "domain",
+            "types"
+          ]
+        },
+        {
+          "layer": "page",
+          "files": 1,
+          "minDistance": 0,
+          "canImport": [
+            "component",
+            "types"
+          ]
+        },
+        {
+          "layer": "service",
+          "files": 1,
+          "minDistance": 0,
+          "canImport": [
+            "domain",
+            "types"
+          ]
+        },
+        {
+          "layer": "unclassified",
+          "files": 2,
+          "minDistance": 0,
+          "canImport": []
+        },
+        {
+          "layer": "workflow",
+          "files": 1,
+          "minDistance": 0,
+          "canImport": [
+            "service",
+            "domain",
+            "types"
+          ]
+        }
+      ],
+      "why": "Contains a seed unit."
+    },
+    {
+      "name": "app",
+      "kind": "directory",
+      "path": "app",
+      "provenance": "derived",
+      "confidence": 1,
+      "files": 1,
+      "minDistance": 1,
+      "seeded": false,
+      "layers": [
+        {
+          "layer": "route",
+          "files": 1,
+          "minDistance": 1,
+          "canImport": [
+            "controller"
+          ]
+        }
+      ],
+      "why": "Reached in 1 hop(s): app/signup/page.tsx imports a changed file."
+    }
+  ],
+  "files": [
+    {
+      "path": "features/signup/components/SignupForm.tsx",
+      "layer": "component",
+      "feature": "signup",
+      "scope": "signup",
+      "scopeKind": "feature",
+      "distance": 0,
+      "direction": "seed",
+      "score": 1,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "Presentation component exporting SignupForm.",
+      "reasons": [
+        {
+          "code": "dependency-of-seed",
+          "message": "Imported by features/signup/pages/SignupPage.tsx; read it to understand the change, it is not itself at risk.",
+          "from": "features/signup/pages/SignupPage.tsx"
+        },
+        {
+          "code": "seed",
+          "message": "Part of the seed unit(s) feature:signup."
+        }
+      ],
+      "derivedFrom": [
+        "feature:signup"
+      ]
+    },
+    {
+      "path": "features/signup/controllers/SignupController.tsx",
+      "layer": "controller",
+      "feature": "signup",
+      "scope": "signup",
+      "scopeKind": "feature",
+      "distance": 0,
+      "direction": "seed",
+      "score": 1,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "Controller (wires page to hook/workflow) exporting SignupController.",
+      "reasons": [
+        {
+          "code": "dependency-of-seed",
+          "message": "Imported by features/signup/index.ts; read it to understand the change, it is not itself at risk.",
+          "from": "features/signup/index.ts"
+        },
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/signup/hooks/useSignup.tsx.",
+          "from": "features/signup/hooks/useSignup.tsx"
+        },
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/signup/pages/SignupPage.tsx.",
+          "from": "features/signup/pages/SignupPage.tsx"
+        },
+        {
+          "code": "seed",
+          "message": "Part of the seed unit(s) feature:signup."
+        }
+      ],
+      "derivedFrom": [
+        "feature:signup"
+      ]
+    },
+    {
+      "path": "features/signup/domain/Signup.tsx",
+      "layer": "domain",
+      "feature": "signup",
+      "scope": "signup",
+      "scopeKind": "feature",
+      "distance": 0,
+      "direction": "seed",
+      "score": 1,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "Pure domain logic exporting isEmailValid, isPasswordValid, isUsernameValid.",
+      "reasons": [
+        {
+          "code": "dependency-of-seed",
+          "message": "Imported by features/signup/workflows/Signup.tsx; read it to understand the change, it is not itself at risk.",
+          "from": "features/signup/workflows/Signup.tsx"
+        },
+        {
+          "code": "seed",
+          "message": "Part of the seed unit(s) feature:signup."
+        }
+      ],
+      "derivedFrom": [
+        "feature:signup"
+      ]
+    },
+    {
+      "path": "features/signup/hooks/useSignup.tsx",
+      "layer": "hook",
+      "feature": "signup",
+      "scope": "signup",
+      "scopeKind": "feature",
+      "distance": 0,
+      "direction": "seed",
+      "score": 1,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "React hook exporting useSignup.",
+      "reasons": [
+        {
+          "code": "dependency-of-seed",
+          "message": "Imported by features/signup/controllers/SignupController.tsx; read it to understand the change, it is not itself at risk.",
+          "from": "features/signup/controllers/SignupController.tsx"
+        },
+        {
+          "code": "dependency-of-seed",
+          "message": "Imported by features/signup/index.ts; read it to understand the change, it is not itself at risk.",
+          "from": "features/signup/index.ts"
+        },
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/signup/services/Signup.tsx.",
+          "from": "features/signup/services/Signup.tsx"
+        },
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/signup/workflows/Signup.tsx.",
+          "from": "features/signup/workflows/Signup.tsx"
+        },
+        {
+          "code": "seed",
+          "message": "Part of the seed unit(s) feature:signup."
+        }
+      ],
+      "derivedFrom": [
+        "feature:signup"
+      ]
+    },
+    {
+      "path": "features/signup/index.ts",
+      "layer": null,
+      "feature": "signup",
+      "scope": "signup",
+      "scopeKind": "feature",
+      "distance": 0,
+      "direction": "seed",
+      "score": 1,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "Public API for feature: signup",
+      "reasons": [
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/signup/controllers/SignupController.tsx.",
+          "from": "features/signup/controllers/SignupController.tsx"
+        },
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/signup/hooks/useSignup.tsx.",
+          "from": "features/signup/hooks/useSignup.tsx"
+        },
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/signup/types.ts.",
+          "from": "features/signup/types.ts"
+        },
+        {
+          "code": "seed",
+          "message": "Part of the seed unit(s) feature:signup."
+        }
+      ],
+      "derivedFrom": [
+        "feature:signup"
+      ]
+    },
+    {
+      "path": "features/signup/pages/SignupPage.tsx",
+      "layer": "page",
+      "feature": "signup",
+      "scope": "signup",
+      "scopeKind": "feature",
+      "distance": 0,
+      "direction": "seed",
+      "score": 1,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "Page (presentation) exporting SignupPage.",
+      "reasons": [
+        {
+          "code": "dependency-of-seed",
+          "message": "Imported by features/signup/controllers/SignupController.tsx; read it to understand the change, it is not itself at risk.",
+          "from": "features/signup/controllers/SignupController.tsx"
+        },
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/signup/components/SignupForm.tsx.",
+          "from": "features/signup/components/SignupForm.tsx"
+        },
+        {
+          "code": "seed",
+          "message": "Part of the seed unit(s) feature:signup."
+        }
+      ],
+      "derivedFrom": [
+        "feature:signup"
+      ]
+    },
+    {
+      "path": "features/signup/services/Signup.tsx",
+      "layer": "service",
+      "feature": "signup",
+      "scope": "signup",
+      "scopeKind": "feature",
+      "distance": 0,
+      "direction": "seed",
+      "score": 1,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "Service (external effects) exporting registerUser, logSignupAttempt.",
+      "reasons": [
+        {
+          "code": "dependency-of-seed",
+          "message": "Imported by features/signup/hooks/useSignup.tsx; read it to understand the change, it is not itself at risk.",
+          "from": "features/signup/hooks/useSignup.tsx"
+        },
+        {
+          "code": "seed",
+          "message": "Part of the seed unit(s) feature:signup."
+        }
+      ],
+      "derivedFrom": [
+        "feature:signup"
+      ]
+    },
+    {
+      "path": "features/signup/types.ts",
+      "layer": null,
+      "feature": "signup",
+      "scope": "signup",
+      "scopeKind": "feature",
+      "distance": 0,
+      "direction": "seed",
+      "score": 1,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "Source file exporting SignupId.",
+      "reasons": [
+        {
+          "code": "dependency-of-seed",
+          "message": "Imported by features/signup/index.ts; read it to understand the change, it is not itself at risk.",
+          "from": "features/signup/index.ts"
+        },
+        {
+          "code": "seed",
+          "message": "Part of the seed unit(s) feature:signup."
+        }
+      ],
+      "derivedFrom": [
+        "feature:signup"
+      ]
+    },
+    {
+      "path": "features/signup/workflows/Signup.tsx",
+      "layer": "workflow",
+      "feature": "signup",
+      "scope": "signup",
+      "scopeKind": "feature",
+      "distance": 0,
+      "direction": "seed",
+      "score": 1,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "Workflow state machine exporting SignupWorkflow.",
+      "reasons": [
+        {
+          "code": "dependency-of-seed",
+          "message": "Imported by features/signup/hooks/useSignup.tsx; read it to understand the change, it is not itself at risk.",
+          "from": "features/signup/hooks/useSignup.tsx"
+        },
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/signup/domain/Signup.tsx.",
+          "from": "features/signup/domain/Signup.tsx"
+        },
+        {
+          "code": "seed",
+          "message": "Part of the seed unit(s) feature:signup."
+        }
+      ],
+      "derivedFrom": [
+        "feature:signup"
+      ]
+    },
+    {
+      "path": "app/signup/page.tsx",
+      "layer": "route",
+      "feature": null,
+      "scope": "app",
+      "scopeKind": "directory",
+      "distance": 1,
+      "direction": "up",
+      "score": 0.3,
+      "provenance": "derived",
+      "confidence": 1,
+      "purpose": "Route entry exporting Page.",
+      "reasons": [
+        {
+          "code": "imports-changed-file",
+          "message": "Imports features/signup/controllers/SignupController.tsx.",
+          "from": "features/signup/controllers/SignupController.tsx"
+        }
+      ],
+      "derivedFrom": [
+        "feature:signup"
+      ]
+    }
+  ],
+  "warnings": [
+    {
+      "code": "PUBLIC-API",
+      "severity": "warning",
+      "provenance": "derived",
+      "feature": "signup",
+      "files": [
+        "features/signup/controllers/SignupController.tsx",
+        "features/signup/hooks/useSignup.tsx",
+        "features/signup/types.ts"
+      ],
+      "message": "3 implicated file(s) are re-exported from features/signup/index.ts: changing them changes feature \"signup\"'s public API."
+    }
+  ],
+  "rules": {
+    "violations": [],
+    "exceptions": [],
+    "counts": {
+      "error": 0,
+      "warning": 0
+    },
+    "layerConstraints": [
+      {
+        "layer": "component",
+        "canImport": [
+          "component",
+          "types"
+        ]
+      },
+      {
+        "layer": "controller",
+        "canImport": [
+          "workflow",
+          "hook",
+          "service",
+          "page",
+          "component",
+          "domain",
+          "types"
+        ]
+      },
+      {
+        "layer": "domain",
+        "canImport": [
+          "types"
+        ]
+      },
+      {
+        "layer": "hook",
+        "canImport": [
+          "workflow",
+          "service",
+          "domain",
+          "types"
+        ]
+      },
+      {
+        "layer": "page",
+        "canImport": [
+          "component",
+          "types"
+        ]
+      },
+      {
+        "layer": "route",
+        "canImport": [
+          "controller"
+        ]
+      },
+      {
+        "layer": "service",
+        "canImport": [
+          "domain",
+          "types"
+        ]
+      },
+      {
+        "layer": "workflow",
+        "canImport": [
+          "service",
+          "domain",
+          "types"
+        ]
+      }
+    ]
+  },
+  "stats": {
+    "seedsResolved": 1,
+    "seedsUnresolved": 0,
+    "filesConsidered": 34,
+    "filesImplicated": 10,
+    "derived": 10,
+    "inferred": 0,
+    "byDistance": {
+      "0": 9,
+      "1": 1
+    },
+    "layers": [
+      "component",
+      "controller",
+      "domain",
+      "hook",
+      "page",
+      "route",
+      "service",
+      "workflow"
+    ],
+    "beyondDepth": {
+      "files": 0,
+      "scopes": []
+    },
+    "truncated": false
+  },
+  "next": [
+    {
+      "ref": "feature:signup",
+      "why": "Seeded feature — read it in full before changing it",
+      "cli": "construct summarize feature:signup --detail full"
+    },
+    {
+      "ref": "file:features/signup/workflows/Signup.tsx",
+      "why": "A workflow state machine is implicated — check its scenarios",
+      "cli": "construct research workflow signup"
+    }
+  ]
+}
