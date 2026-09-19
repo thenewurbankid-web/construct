@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useReducer, type Dispatch } from 'react';
+import { describeError } from '@/features/states';
 import { fetchOllamaStatus, fetchOllamaModels } from '../services/Ollama';
 import { pullOllamaModel, removeOllamaModel } from '../services/OllamaModelOps';
 import { loadSelectedModel, saveSelectedModel } from '../services/OllamaModelSelection';
@@ -12,7 +13,14 @@ import { QWEN_CODER_TAGS, recommendedQwenTag } from '../domain/QwenModels';
 // Extracted top-level (not a nested closure) so useOllama's own body stays
 // short (READ-002) — loads status, then models if the daemon is running.
 async function loadOllama(dispatch: Dispatch<OllamaAction>) {
-  const status = await fetchOllamaStatus();
+  dispatch({ type: 'STATUS_RETRY' });
+  let status;
+  try {
+    status = await fetchOllamaStatus();
+  } catch (e) {
+    dispatch({ type: 'STATUS_FAILED', message: describeError(e, 'the local model status').hint });
+    return;
+  }
   dispatch({ type: 'STATUS_LOADED', status });
   if (!status.running) return;
   const result = await fetchOllamaModels();
@@ -80,6 +88,7 @@ export function useOllama() {
 
   return {
     status: state.status,
+    statusError: state.statusError,
     loadError: state.loadError,
     pullName: state.pullName,
     setPullName,

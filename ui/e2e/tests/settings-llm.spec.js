@@ -39,8 +39,10 @@ async function fillSingleLayerCreate(page, name) {
 test.describe.serial('#109 Settings LLM providers are consumed, opt-in per run', () => {
   let projectDir;
   let routeDir;
+  let original; // the server's settings before this suite, restored afterwards so later specs (smoke, ...) don't inherit a deleted tmp dir
 
-  test.beforeAll(() => {
+  test.beforeAll(async ({ request }) => {
+    original = await (await request.get(`${API}/api/settings`)).json();
     projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-settings-llm-'));
     execFileSync('node', [CLI_BIN, 'init', projectDir]);
     execFileSync('node', [CLI_BIN, 'create', 'feature', 'pricing', '--dir', projectDir]);
@@ -49,7 +51,8 @@ test.describe.serial('#109 Settings LLM providers are consumed, opt-in per run',
     fs.writeFileSync(path.join(routeDir, 'discount.ts'), 'export function discountLabel(pct: number) {\n  return pct > 0 ? `${pct}% off` : "";\n}\n');
   });
 
-  test.afterAll(() => {
+  test.afterAll(async ({ request }) => {
+    await request.post(`${API}/api/settings`, { data: { projectDir: original.projectDir, llmProviders: original.llmProviders } });
     fs.rmSync(projectDir, { recursive: true, force: true });
     fs.rmSync(routeDir, { recursive: true, force: true });
   });

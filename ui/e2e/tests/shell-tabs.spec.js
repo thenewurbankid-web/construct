@@ -58,7 +58,8 @@ test.describe('Right-panel / drawer tab host (#245)', () => {
   });
 
   test('Browser pane: the Screens tab is provided through the same tab host', async ({ page }) => {
-    await page.goto('/help');
+    // /settings, not /help: Help registers its own "Contents" tab (#250), so /help has two tabs.
+    await page.goto('/settings');
     const browser = page.getByRole('complementary', { name: 'Browser' });
     await expect(browser.getByRole('tablist', { name: 'Browser' }).getByRole('tab')).toHaveText(['Screens']);
     await expect(browser.getByRole('tabpanel', { name: 'Screens' }).getByRole('link', { name: 'Settings' })).toBeVisible();

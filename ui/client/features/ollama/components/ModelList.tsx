@@ -1,4 +1,5 @@
 import { Button, GlassPanel } from '@/components/ui';
+import { EmptyState } from '@/features/states';
 
 type ModelListProps = {
   models: Array<{ name: string; sizeLabel: string; modified_at?: string }>;
@@ -12,7 +13,7 @@ export function ModelList({ models, onRemove }: ModelListProps) {
     <GlassPanel className="ollama-models">
       <h2>Installed models</h2>
       {models.length === 0 ? (
-        <p className="hint">No models pulled yet.</p>
+        <EmptyState size="inline" title="No models pulled yet" hint="Pick a recommended model below and pull it to run small steps locally." />
       ) : (
         <table className="ollama-model-table">
           <thead>

@@ -18,6 +18,9 @@ export function ShellPage(props: ShellPageProps): ReactNode {
       limits={props.limits}
       onResize={props.onResize}
       onTogglePane={props.onTogglePane}
+      narrow={props.narrow}
+      narrowPane={props.narrowPane}
+      onNarrowPane={props.onNarrowPane}
       top={
         <TopBar
           modes={props.modes}

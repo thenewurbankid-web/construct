@@ -1,6 +1,7 @@
 'use client';
 
 import { ProjectGateController } from '@/features/project-gate';
+import { useModelStatus } from '@/features/shell';
 import { useDashboard } from '../hooks/useDashboard';
 import { DashboardPage } from '../pages/DashboardPage';
 
@@ -9,9 +10,10 @@ import { DashboardPage } from '../pages/DashboardPage';
 // SLICE-002-checked cross-feature import through project-gate's public API.
 export function DashboardController() {
   const dashboard = useDashboard();
+  const model = useModelStatus();
   return (
     <ProjectGateController>
-      <DashboardPage {...dashboard} />
+      <DashboardPage {...dashboard} modelOffline={model === 'offline'} />
     </ProjectGateController>
   );
 }

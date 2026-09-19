@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { ShellController, THEME_INIT_SCRIPT } from '@/features/shell';
 import './tokens.css';
+import './screens.css';
 import './shell.css';
 import './cockpit-drawer.css';
 import './globals.css';

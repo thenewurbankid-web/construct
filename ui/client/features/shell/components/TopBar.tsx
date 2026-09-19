@@ -62,7 +62,7 @@ export function TopBar({
       </button>
       <span className={`sh-pill sh-pill--${modelStatus}`} aria-live="polite" data-testid="pill-model">
         <span className="sh-dot" aria-hidden="true" />
-        {MODEL_TEXT[modelStatus]}
+        <span className="sh-pill-text">{MODEL_TEXT[modelStatus]}</span>
       </span>
       <button
         type="button"

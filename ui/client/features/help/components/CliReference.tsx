@@ -1,3 +1,4 @@
+import { ErrorState, LoadingState } from '@/features/states';
 import type { HelpViewState, TopicSection } from '../types';
 import { CliTopic } from './CliTopic';
 
@@ -56,14 +57,13 @@ function ReferenceTopics({ topics }: { topics: TopicSection[] }) {
 export function CliReference(view: HelpViewState) {
   if (view.status === 'error') {
     return (
-      <p className="status-error">
-        Could not load the live CLI reference from the backend ({view.message}). Start{' '}
-        <code>ui/server</code> and reload this page — the text below is generated from{' '}
-        <code>src/usage.mjs</code> and <code>src/repl.mjs</code>, not hand-copied, so it needs the
-        backend running to fetch it.
-      </p>
+      <ErrorState
+        size="inline"
+        title="Could not load the live CLI reference"
+        hint={`The backend did not provide it (${view.message}). Start ui/server and reload this page: the reference is generated from the CLI's own source, so it needs the backend running.`}
+      />
     );
   }
-  if (view.status === 'loading') return <p>Loading the CLI&apos;s own help text from the backend…</p>;
+  if (view.status === 'loading') return <LoadingState size="inline" label="Loading the CLI reference" hint="Fetching the CLI's own help text from the backend." />;
   return <LoadedState {...view} />;
 }

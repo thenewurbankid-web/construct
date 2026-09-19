@@ -9,6 +9,7 @@ import { MODES } from '../domain/Modes';
 import { SCREENS } from '../domain/Screens';
 import { SHORTCUTS } from '../domain/Shortcuts';
 import { useActiveTabs } from '../hooks/useActiveTabs';
+import { useNarrowLayout } from '../hooks/useNarrowLayout';
 import { useModelStatus } from '../hooks/useModelStatus';
 import { useProjectSwitcher } from '../hooks/useProjectSwitcher';
 import { useRevealPanes } from '../hooks/useRevealPanes';
@@ -33,6 +34,7 @@ function ShellFrame({ children }: { children: ReactNode }) {
   const project = useProjectSwitcher();
   const model = useModelStatus();
   const { layout, resize, toggle } = useShellLayout(project.dir, project.known);
+  const narrow = useNarrowLayout(route.pathname);
   const { active, select } = useActiveTabs();
   useShellShortcuts(toggle);
   const openPalette = useOpenPalette();
@@ -106,6 +108,9 @@ function ShellFrame({ children }: { children: ReactNode }) {
       limits={PANE_LIMITS}
       onResize={resize}
       onTogglePane={toggle}
+      narrow={narrow.narrow}
+      narrowPane={narrow.pane}
+      onNarrowPane={narrow.setPane}
       modes={MODES}
       activeModeId={route.mode?.id ?? null}
       projectSwitcher={projectSwitcher}

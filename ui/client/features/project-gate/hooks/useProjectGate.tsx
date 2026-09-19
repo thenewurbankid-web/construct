@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useReducer } from 'react';
+import { describeError } from '@/features/states';
 import { fetchProjectStatus, initProject } from '../services/ProjectGate';
 import { initialProjectGateState, projectGateReducer } from '../workflows/ProjectGate';
 
@@ -14,7 +15,10 @@ export function useProjectGate() {
   const [state, dispatch] = useReducer(projectGateReducer, initialProjectGateState);
 
   const refresh = useCallback(() => {
-    fetchProjectStatus().then((status) => dispatch({ type: 'STATUS_LOADED', status }));
+    dispatch({ type: 'STATUS_RETRY' });
+    fetchProjectStatus()
+      .then((status) => dispatch({ type: 'STATUS_LOADED', status }))
+      .catch((e) => dispatch({ type: 'STATUS_FAILED', message: describeError(e, 'the project status').hint }));
   }, []);
 
   useEffect(() => {
@@ -31,5 +35,5 @@ export function useProjectGate() {
     }
   }, []);
 
-  return { status: state.status, initializing: state.initializing, error: state.error, handleInit };
+  return { status: state.status, initializing: state.initializing, error: state.error, loadError: state.loadError, refresh, handleInit };
 }

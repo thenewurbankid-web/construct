@@ -1,15 +1,16 @@
 import { test, expect } from '@playwright/test';
 
-// Epic 6.1 (#97). This sandbox has no local Ollama daemon running, so the
-// "not detected" / install-guidance state below is exercised against the
-// real backend (ui/server really calls http://localhost:11434 and really
-// gets a connection failure) — a genuine, not mocked, verification of that
-// path. The "running" / model-list / pull-progress states are exercised
+// Epic 6.1 (#97). The "not detected" / install-guidance state is exercised
+// with the status endpoint mocked as not-running (#250): a machine that DOES
+// have Ollama running would otherwise fail this spec for an environmental
+// reason. The "running" / model-list / pull-progress states are exercised
 // against a mocked Ollama HTTP response via Playwright route interception,
 // since a real multi-GB model pull isn't feasible in this environment — see
 // the #97 issue comment for this documented exception.
 
 test('Ollama not detected: shows install guidance, never auto-runs anything', async ({ page }) => {
+  await page.route('**/api/ollama/status', (route) =>
+    route.fulfill({ json: { running: false, host: 'http://localhost:11434' } }));
   await page.goto('/ollama');
   await expect(page.getByRole('heading', { name: 'Local model (Ollama)' })).toBeVisible();
   await expect(page.getByText('Not detected')).toBeVisible();
