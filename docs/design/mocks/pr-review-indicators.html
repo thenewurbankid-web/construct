@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>The five health indicators — what each one computes — Concept</title>
+<link rel="stylesheet" href="mock.css">
+<link rel="stylesheet" href="pr-review.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+<script>document.addEventListener('DOMContentLoaded',()=>{document.body.dataset.x=1});</script>
+</head><body>
+<div class="concept">Concept — not implemented <span>The five health indicators — what each one computes</span></div>
+
+<div class="pr-sheet">
+ <div class="muted-note">Five indicators, each computed from the two commits and the project’s own <span class="mono">architecture.yml</span> — none reads the pull request description, none calls a model. Shown for <span class="mono">#142 Add show-password toggle to login</span>.</div>
+ <div class="cols2" style="grid-template-columns:628px 1fr">
+  <div style="display:grid;gap:14px">
+   
+<div class="ind bad" style="padding:0">
+  <div class="hd" style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid var(--border-subtle)">
+    <span class="badge acc">1</span><b style="font-size:13px">Blast radius — declared vs actual</b><span class="spacer"></span><span class="tag det">Deterministic</span></div>
+  <div style="padding:10px 12px">
+    <div class="head"><b>The plan declared 1 feature. This pull request touches 3.</b> Decide whether checkout and core belong here — or update the plan.</div>
+    <table style="margin-top:8px"><tr><th>Feature</th><th>Declared in plan-142</th><th>Changed here</th></tr>
+     <tr><td class="mono">auth</td><td><span class="hb ok">yes</span></td><td>6 files</td></tr>
+     <tr><td class="mono">checkout</td><td><span class="hb none">no</span></td><td><span style="color:var(--danger)">3 files</span></td></tr>
+     <tr><td class="mono">core</td><td><span class="hb none">no</span></td><td><span style="color:var(--danger)">2 files</span></td></tr></table>
+    <div class="why" style="margin-top:8px;border-top:1px dashed var(--border-strong);padding-top:7px"><b style="color:var(--text-muted)">Where the number comes from:</b> the plan’s <span class="mono">touches</span> field against the impact report — both sides computed.</div></div></div>
+   
+<div class="ind warn" style="padding:0">
+  <div class="hd" style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid var(--border-subtle)">
+    <span class="badge acc">2</span><b style="font-size:13px">Changes the layer graph does not explain</b><span class="spacer"></span><span class="tag det">Deterministic</span></div>
+  <div style="padding:10px 12px">
+    <div class="head"><b>4 of 11 files</b> have no import path to anything the plan set out to change.</div>
+    <table style="margin-top:8px"><tr><th>File</th><th>Reached from a planned unit?</th></tr>
+     <tr><td class="mono">core/lib/format.ts</td><td><span class="hb warn">no path</span></td></tr>
+     <tr><td class="mono">core/lib/strings.ts</td><td><span class="hb warn">no path</span></td></tr>
+     <tr><td class="mono">checkout/domain/guestRules.ts</td><td><span class="hb warn">no path</span></td></tr>
+     <tr><td class="mono">checkout/hooks/useGuestCheckout.ts</td><td><span class="hb warn">no path</span></td></tr>
+     <tr><td class="mono">checkout/components/GuestForm.tsx</td><td><span class="hb ok">yes — explained, not flagged</span></td></tr></table>
+    <div class="why" style="margin-top:8px;border-top:1px dashed var(--border-strong);padding-top:7px"><b style="color:var(--text-muted)">Where the number comes from:</b> a transitive walk of the import graph that follows each feature’s public <span class="mono">index.ts</span> — counting direct importers would call the riskiest files “used by nobody”.</div></div></div>
+   <div class="ind none"><h5>Why these five</h5>
+    <div class="head">Each one answers a question a reviewer actually asks and a diff cannot: <i>is this bigger than we agreed? does anything here have no business changing? did we break our own rules? does this reach outside the feature? can the app still do what it could before?</i></div>
+    <div class="why">All five are assembled from blocks that already exist — the layer graph, the impact report, <span class="mono">construct validate</span>, the workflow narrator.</div></div>
+  </div>
+  <div style="display:grid;gap:14px">
+   
+<div class="ind bad" style="padding:0">
+  <div class="hd" style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid var(--border-subtle)">
+    <span class="badge acc">3</span><b style="font-size:13px">Rule regressions — clean on main, dirty here</b><span class="spacer"></span><span class="tag det">Deterministic</span></div>
+  <div style="padding:10px 12px">
+    <div class="head"><span class="mono">construct validate</span>: 1 error on <b>main</b>, 3 here. <b>2 are new</b>; pre-existing ones never count.</div>
+    <table style="margin-top:8px"><tr><th>Rule</th><th>main</th><th>This branch</th><th>Counted?</th></tr>
+     <tr><td class="mono">SLICE-002</td><td>0</td><td style="color:var(--danger)">1</td><td><span class="hb bad">new</span></td></tr>
+     <tr><td class="mono">READ-001</td><td>0</td><td style="color:var(--danger)">1</td><td><span class="hb bad">new</span></td></tr>
+     <tr><td class="mono">PAGE-006</td><td>1</td><td>1</td><td><span class="hb none">already there</span></td></tr></table>
+</div></div>
+   
+<div class="ind warn" style="padding:0">
+  <div class="hd" style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid var(--border-subtle)">
+    <span class="badge acc">4</span><b style="font-size:13px">Public surface — what leaves the feature</b><span class="spacer"></span><span class="tag det">Deterministic</span></div>
+  <div style="padding:10px 12px">
+    <div class="head"><b>1 export removed, 1 added</b> in <span class="mono">features/auth/index.ts</span>.</div>
+    <div class="code" style="margin-top:6px;border:1px solid var(--border-subtle);border-radius:var(--r-sm)">
+     <div class="ln del"><i>7</i><span>export type { PasswordFieldProps } from './components/PasswordField';</span></div>
+     <div class="ln add"><i>7</i><span>export { PasswordToggle } from './components/PasswordToggle';</span></div></div>
+    <div class="why" style="margin-top:8px">2 features consume auth’s API (checkout, cart); anything importing <span class="mono">PasswordFieldProps</span> stops compiling.</div>
+    <div class="why" style="margin-top:8px;border-top:1px dashed var(--border-strong);padding-top:7px"><b style="color:var(--text-muted)">Where the number comes from:</b> the <span class="mono">PUBLIC-API</span> warning: which implicated files are re-exported from the feature’s index.</div></div></div>
+   
+<div class="ind warn" style="padding:0">
+  <div class="hd" style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid var(--border-subtle)">
+    <span class="badge acc">5</span><b style="font-size:13px">What the flow now does — the one no diff can show</b><span class="spacer"></span><span class="tag det">Deterministic</span></div>
+  <div style="padding:10px 12px">
+    <div class="head"><span class="mono">authMachine</span>: <b>3 paths before, 2 after.</b> One route through the sign-in flow no longer exists.</div>
+    <div class="scen" style="margin-top:8px">
+     <div class="r same"><span class="k">unchanged</span><div><div class="path-steps">idle → submitting → signed in</div><div class="gwt">Happy path. The shopper submits and the credentials are accepted.</div></div></div>
+     <div class="r del"><span class="k">removed</span><div><div class="path-steps"><s>idle → submitting → rejected → submitting → signed in</s></div><div class="gwt">Given the flow starts in <b>idle</b>, when the shopper submits, then it goes to <b>submitting</b>; when the credentials are rejected, then it goes to <b>rejected</b>; when the shopper retries, then it goes back to <b>submitting</b>; and the flow ends in <b>signed in</b>.</div></div></div>
+     <div class="r same"><span class="k">unchanged</span><div><div class="path-steps">idle → submitting → rejected → locked out</div></div></div>
+    </div>
+    <div class="callout warn" style="margin:10px 0 0"><span>⚠</span><div class="grow"><b>In plain words</b><small>A rejected sign-in used to be retryable; now the only way out is <span class="mono">locked out</span>. Perhaps intended — but unmentioned, and invisible in a diff.</small></div></div>
+    <div class="why" style="margin-top:8px;border-top:1px dashed var(--border-strong);padding-top:7px"><b style="color:var(--text-muted)">Where the number comes from:</b> the narrator’s scenarios, enumerated on both commits and diffed — the same narrator the Workflows screen uses.</div></div></div>
+  </div>
+ </div>
+</div>
+<script>(()=>{const t=document.documentElement.dataset.theme;document.body.parentElement.setAttribute('data-theme',t)})()</script>
+</body></html>

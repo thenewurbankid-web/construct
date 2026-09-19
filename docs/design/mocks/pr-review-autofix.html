@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Auto review-and-fix — off by default, and obvious before it is on — Concept</title>
+<link rel="stylesheet" href="mock.css">
+<link rel="stylesheet" href="pr-review.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+<script>document.addEventListener('DOMContentLoaded',()=>{document.body.dataset.x=1});</script>
+</head><body>
+<div class="concept">Concept — not implemented <span>Auto review-and-fix — off by default, and obvious before it is on</span></div>
+
+<div class="pr-sheet">
+ <div class="cols2">
+  <div>
+   <h3>1 · Turning it on — every consequence stated before the switch</h3>
+   <div class="dlg" role="dialog" aria-labelledby="afx">
+    <div class="t" id="afx">Turn on Auto review-and-fix?</div>
+    <div class="b">
+     <div class="muted-note" style="padding-bottom:2px">This changes Construct from “looks at your pull requests” to “opens pull requests on this repository”. Exactly what that means:</div>
+     <div class="will"><span class="i yes">✓</span><div><span class="h">It opens a separate pull request</span><span>Construct creates a branch — <span class="mono">construct/fix-slice-002-142</span> — applies the fixes and opens one pull request per review run. Merge it, cherry-pick from it, or close it.</span></div></div>
+     <div class="will"><span class="i no">✗</span><div><span class="h">It never touches the pull request under review</span><span>No pushes to the author’s branch, no comments on their pull request. A wrong comment is noise they must refute; a wrong pull request is one they close.</span></div></div>
+     <div class="will"><span class="i no">✗</span><div><span class="h">It never changes what code does</span><span>Only what <span class="mono">construct refactor</span> does: move a file to its layer, rewrite an import, rename to a convention. Content and exported names are never edited. No model is involved.</span></div></div>
+     <div class="will"><span class="i key">◆</span><div><span class="h">It needs permission you have not given yet</span><span>Reviewing needs read access only; opening pull requests needs push access to <span class="mono">acme/storefront</span>. Signed in as sam-dev · scope <span class="mono">repo:read</span>.</span></div></div>
+     <div class="will"><span class="i ">—</span><div><span class="h">Nothing to fix means nothing happens</span><span>If every finding needs a decision, no branch and no pull request are created. It never opens an empty one.</span></div></div>
+    </div>
+    <div class="f"><span class="chkrow"><span class="chk on">✓</span>Ask me before opening each pull request</span><span class="spacer"></span>
+     <button class="btn">Cancel</button><button class="btn primary">Grant push access and turn on</button></div>
+   </div>
+  </div>
+  <div>
+   <h3>2 · What it produces — a pull request that explains itself</h3>
+   <div class="ghpr">
+    <div class="top"><span class="hb info">Pull request</span><b>Mechanical fixes for #142 (2 findings)</b><span class="spacer"></span><span class="mono" style="color:var(--text-muted)">construct/fix-slice-002-142 → main</span></div>
+    <div class="body">
+     <p>Opened by Construct. <b>This pull request does not modify #142.</b> Merge it, take one commit from it, or close it — #142 is untouched either way.</p>
+     <p>Every change below was applied by <span class="mono">construct refactor</span>, deterministically. <b>No language model was involved</b>, and no file content or exported name was edited.</p>
+     <h6>1 · SLICE-002 — Cross-feature imports use public index.ts</h6>
+     <p class="mono" style="color:var(--text-faint)">features/checkout/components/GuestForm.tsx:4</p>
+     <pre><span class="d">- import { PasswordField } from '../../auth/components/PasswordField';</span><span class="a">+ import { PasswordField } from '../../auth';</span></pre>
+     <p style="margin-top:6px">Features may only consume another feature through its public index API.</p>
+     <h6>2 · READ-001 — Components are PascalCase</h6>
+     <p class="mono" style="color:var(--text-faint)">features/auth/components/passwordToggle.tsx → PasswordToggle.tsx</p>
+     <pre>renamed 1 file · updated 3 imports · no other edits</pre>
+     <h6>Not fixed here — these need a decision</h6>
+     <p>auth’s public API changed (<span class="mono">PasswordFieldProps</span> removed) · <span class="mono">authMachine</span> drops the retry path · <span class="mono">PasswordField</span> is shared by 3 features. See the review on #142.</p>
+     <h6>Checked</h6>
+     <p><span class="mono">construct validate</span> after the fixes: <span style="color:var(--success)">0 new violations</span> · 1 pre-existing (<span class="mono">PAGE-006</span>) unchanged.</p>
+    </div>
+   </div>
+  </div>
+ </div>
+ <div class="cols3">
+  <div><h3>Where the toggle lives — off (default)</h3>
+   <div class="st-card"><div style="display:flex;align-items:center;gap:10px"><span class="tog"><span class="sw"></span><span class="st">Auto fix: Off</span></span></div>
+    <p>Reviewing is read-only. Construct analyses and displays; you act.</p>
+    <p class="mono" style="color:var(--text-faint)">Needs: read access only</p>
+    <div class="acts"><button class="btn sm">Turn on…</button></div></div></div>
+  <div><h3>On — with the standing reminder</h3>
+   <div class="st-card" style="border-color:var(--accent)"><div style="display:flex;align-items:center;gap:10px"><span class="tog on"><span class="sw"></span><span class="st">Auto fix: On</span></span><span class="hb info">asks first</span></div>
+    <p>Mechanical fixes are collected and offered as one separate pull request per review run.</p>
+    <p class="mono" style="color:var(--text-faint)">Needs: push access · granted 14:22</p>
+    <div class="acts"><button class="btn sm">Turn off</button><button class="btn sm">Review what it would open</button></div></div></div>
+  <div><h3>On, but nothing mechanical to fix</h3>
+   <div class="st-card"><div style="display:flex;align-items:center;gap:10px"><span class="tog on"><span class="sw"></span><span class="st">Auto fix: On</span></span><span class="hb none">no-op</span></div>
+    <p>#139 has 2 findings and both need a decision, so nothing was opened. Construct never creates an empty pull request.</p>
+    <p class="mono" style="color:var(--text-faint)">Last run 14:31 · 0 branches created</p></div></div>
+ </div>
+</div>
+<script>(()=>{const t=document.documentElement.dataset.theme;document.body.parentElement.setAttribute('data-theme',t)})()</script>
+</body></html>

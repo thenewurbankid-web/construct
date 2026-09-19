@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Pull requests — ranked by what Construct found — Concept</title>
+<link rel="stylesheet" href="mock.css">
+<link rel="stylesheet" href="pr-review.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+<script>document.addEventListener('DOMContentLoaded',()=>{document.body.dataset.x=1});</script>
+</head><body>
+<div class="concept">Concept — not implemented <span>Pull requests — ranked by what Construct found</span></div>
+
+<div class="shell" style="--lw:300px;--rw:384px;grid-template-rows:44px 1fr 150px 24px">
+  
+<header class="topbar">
+  <div class="brand"><i></i>Construct</div>
+  <button class="chip-btn" aria-haspopup="listbox">acme/storefront <span class="sub">main</span> ▾</button>
+  <div class="seg" role="radiogroup" aria-label="Mode"><button class="" role="radio" aria-checked="false">Explore</button><button class="" role="radio" aria-checked="false">Research</button><button class="" role="radio" aria-checked="false">Build</button><button class="on" role="radio" aria-checked="true">Review</button></div>
+  <button class="chip-btn palette-trigger"><span>Search pull requests, files or run a command…</span><kbd>Ctrl K</kbd></button>
+  <span class="pill run"><span class="spin"></span>1 running</span>
+  <span class="pill ok"><span class="dot"></span>GitHub · sam-dev</span>
+  <button class="icon-btn" aria-label="Theme">◐</button>
+  <button class="icon-btn" aria-label="Help">?</button>
+  <span class="avatar">SP</span>
+</header>
+  <div class="main">
+    <aside class="pane" aria-label="Browser">
+<div class="pane-h"><span class="title">Browser</span><span class="spacer"></span><button class="icon-btn" aria-label="Refresh">↻</button><button class="icon-btn" aria-label="Collapse pane">«</button></div>
+<div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Pull requests <span class="badge acc">5</span></button><button role="tab" class="" aria-selected="false">Branches</button><button role="tab" class="" aria-selected="false">Features</button></div>
+<div class="search">⌕ Filter pull requests <span class="spacer"></span><kbd>/</kbd></div>
+<div class="scroll">
+  <div class="sect">Show</div>
+  <div class="tree">
+    <div class="row sel">Open<span class="meta">5</span></div>
+    <div class="row">Drafts<span class="meta">1</span></div>
+    <div class="row">Opened by me<span class="meta">2</span></div>
+    <div class="row">Came from a plan<span class="meta">2</span></div>
+    <div class="row">From a fork<span class="meta">1</span></div>
+  </div>
+  <div class="sect">Local branches</div>
+  <div class="tree">
+    <div class="row muted">feat/guest-checkout<span class="meta">vs main</span></div>
+    <div class="row muted">fix/cart-total<span class="meta">vs main</span></div>
+  </div>
+  <div class="sect">Compared against</div>
+  <div class="tree"><div class="row muted">main<span class="meta mono">8528669</span></div></div>
+</div></aside><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <section class="pane mid" aria-label="Pull request"><div class="canvas-tb"><span class="crumbs">acme/storefront › <b>Pull requests</b></span><span class="spacer"></span>
+   <div class="seg" role="radiogroup" aria-label="Sort"><button class="on" role="radio" aria-checked="true">Riskiest first</button><button role="radio" aria-checked="false">Newest</button></div>
+   <button class="btn sm">↻ Re-analyse all</button></div>
+  <div class="stage-scroll">
+   <div class="muted-note" style="margin-bottom:10px">Every badge is computed from your <span class="mono">architecture.yml</span> and the two commits — not from the diff text, and not by a model. <span class="tag det">Deterministic</span></div>
+   <div class="pr-list">
+    <div class="hd"><span>Pull request</span><span class="spacer"></span><span>What Construct found</span></div>
+    
+<div class="pr-row sel">
+  <div style="display:flex;align-items:center;gap:10px"><span class="risk bad"></span><span class="num">#142</span></div>
+  <div><div class="ttl">Add show-password toggle to login</div><div class="sub">sam-dev · 11 files · <span class="mono">feat/show-toggle</span> · <span class="mono">plan-142</span></div></div>
+  <div class="hb-row"><span class="hb bad">Scope 1 → 3</span><span class="hb bad">2 rule regressions</span><span class="hb warn">Public API</span><span class="hb warn">Flow changed</span></div>
+</div>
+    
+<div class="pr-row ">
+  <div style="display:flex;align-items:center;gap:10px"><span class="risk bad"></span><span class="num">#139</span></div>
+  <div><div class="ttl">Guest checkout without an account</div><div class="sub">octo-ext (fork) · 23 files · <span class="mono">guest-checkout</span></div></div>
+  <div class="hb-row"><span class="hb none">No plan</span><span class="hb bad">1 rule regression</span><span class="hb warn">Shared component</span><span class="hb info">Flow: 1 path added</span></div>
+</div>
+    
+<div class="pr-row ">
+  <div style="display:flex;align-items:center;gap:10px"><span class="risk warn"></span><span class="num">#136</span></div>
+  <div><div class="ttl">Move price formatting into domain</div><div class="sub">priya · 6 files · <span class="mono">refactor/price</span> · <span class="mono">plan-136</span></div></div>
+  <div class="hb-row"><span class="hb ok">Scope as planned</span><span class="hb bad">Frozen region</span><span class="hb ok">No rule regressions</span></div>
+</div>
+    
+<div class="pr-row ">
+  <div style="display:flex;align-items:center;gap:10px"><span class="risk ok"></span><span class="num">#137</span></div>
+  <div><div class="ttl">Bump eslint 8 → 9</div><div class="sub">dependabot · 2 files · <span class="mono">deps/eslint-9</span></div></div>
+  <div class="hb-row"><span class="hb none">No plan</span><span class="hb ok">Nothing found</span></div>
+</div>
+    
+<div class="pr-row ">
+  <div style="display:flex;align-items:center;gap:10px"><span class="risk none"></span><span class="num">#131</span></div>
+  <div><div class="ttl">Catalog: infinite scroll <span class="hb xs none">Draft</span></div><div class="sub">sam-dev · 18 files · <span class="mono">feat/infinite-scroll</span></div></div>
+  <div class="hb-row"><span class="pill run" style="height:20px"><span class="spin"></span>Analysing…</span></div>
+</div>
+   </div>
+   <div class="muted-note" style="margin-top:10px">“Scope 1 → 3” means the plan declared one feature and the pull request touches three. Pull requests with no plan are not scored on scope — every other check still runs.</div>
+  </div></section><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <aside class="pane" aria-label="Tools"><div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">What the badges mean</button><button role="tab" class="" aria-selected="false">Settings</button></div>
+  <div class="scroll" style="padding:10px 12px">
+   <div class="ind"><h5><span class="hb bad">Scope 1 → 3</span><span class="spacer"></span><span class="tag det">Deterministic</span></h5><div class="head">The plan declared one feature; the pull request touches three.</div><div class="why">Plan <span class="mono">touches</span> vs the features in the impact report.</div></div>
+   <div class="ind"><h5><span class="hb bad">2 rule regressions</span><span class="spacer"></span><span class="tag det">Deterministic</span></h5><div class="head">Your rules pass on <span class="mono">main</span> and fail on this branch.</div><div class="why">Runs <span class="mono">construct validate</span> on both commits and subtracts. Violations that already existed are not counted.</div></div>
+   <div class="ind"><h5><span class="hb warn">Public API</span><span class="spacer"></span><span class="tag det">Deterministic</span></h5><div class="head">A feature’s public <span class="mono">index.ts</span> changed, so other features are affected.</div><div class="why">Impact warning <span class="mono">PUBLIC-API</span>.</div></div>
+   <div class="ind"><h5><span class="hb warn">Flow changed</span><span class="spacer"></span><span class="tag det">Deterministic</span></h5><div class="head">A workflow can now reach different outcomes than before.</div><div class="why">Workflow scenarios compared between the two commits.</div></div>
+   <div class="ind"><h5><span class="hb none">No plan</span><span class="spacer"></span><span class="tag det">Deterministic</span></h5><div class="head">Nothing was declared up front, so scope is not measured.</div><div class="why">Normal for hand-written and outside contributions. Not a problem, and not a warning.</div></div>
+  </div></aside>
+  </div>
+  <div class="drawer" aria-label="Drawer"><div class="tabs" role="tablist"><button role="tab" class="" aria-selected="false">Findings <span class="badge danger">5</span></button><button role="tab" class="" aria-selected="false">Rule check</button><button role="tab" class="on" aria-selected="true">Processes <span class="badge acc">1</span></button></div>
+  <div class="body"><table>
+   <tr><th>Process</th><th>Status</th><th>Progress</th><th></th></tr>
+   <tr><td>pr health · #131 (draft) · 18 files</td><td><span class="pill run" style="height:20px"><span class="spin"></span>Comparing workflow paths</span></td><td><div class="bar-track"><div class="bar-fill" style="width:64%"></div></div></td><td><button class="btn sm">Cancel</button></td></tr>
+   <tr><td>pr health · #142 · 11 files</td><td><span style="color:var(--success)">✓ Done in 1.4 s</span></td><td><div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--success)"></div></div></td><td></td></tr>
+  </table></div></div>
+  
+<footer class="statusbar">
+  <span class="ok">● Read-only — nothing is written to this pull request</span>
+  <span>Auto review-and-fix: Off</span>
+  <span class="spacer"></span><span>Deterministic · no model used</span>
+  <span><kbd>Ctrl J</kbd> drawer</span><span><kbd>?</kbd> shortcuts</span>
+</footer>
+</div>
+<script>(()=>{const t=document.documentElement.dataset.theme;document.body.parentElement.setAttribute('data-theme',t)})()</script>
+</body></html>

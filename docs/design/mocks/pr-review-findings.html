@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Findings — mechanical fixes and conversations, side by side but never blurred — Concept</title>
+<link rel="stylesheet" href="mock.css">
+<link rel="stylesheet" href="pr-review.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+<script>document.addEventListener('DOMContentLoaded',()=>{document.body.dataset.x=1});</script>
+</head><body>
+<div class="concept">Concept — not implemented <span>Findings — mechanical fixes and conversations, side by side but never blurred</span></div>
+
+<div class="shell" style="--lw:316px;--rw:460px;grid-template-rows:44px 1fr 96px 24px">
+  
+<header class="topbar">
+  <div class="brand"><i></i>Construct</div>
+  <button class="chip-btn" aria-haspopup="listbox">acme/storefront <span class="sub">main</span> ▾</button>
+  <div class="seg" role="radiogroup" aria-label="Mode"><button class="" role="radio" aria-checked="false">Explore</button><button class="" role="radio" aria-checked="false">Research</button><button class="" role="radio" aria-checked="false">Build</button><button class="on" role="radio" aria-checked="true">Review</button></div>
+  <button class="chip-btn palette-trigger"><span>Search pull requests, files or run a command…</span><kbd>Ctrl K</kbd></button>
+  <span class="pill run"><span class="spin"></span>1 running</span>
+  <span class="pill ok"><span class="dot"></span>GitHub · sam-dev</span>
+  <button class="icon-btn" aria-label="Theme">◐</button>
+  <button class="icon-btn" aria-label="Help">?</button>
+  <span class="avatar">SP</span>
+</header>
+  <div class="main">
+    <aside class="pane" aria-label="Browser">
+<div class="pane-h"><span class="title">Changed units</span><span class="spacer"></span><button class="icon-btn" aria-label="Expand all">⌄</button><button class="icon-btn" aria-label="Collapse pane">«</button></div>
+<div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">By feature</button><button role="tab" class="" aria-selected="false">By layer</button><button role="tab" class="" aria-selected="false">Files</button></div>
+<div class="search">⌕ Filter changed units <span class="spacer"></span><kbd>/</kbd></div>
+<div style="padding:2px 12px 6px" class="muted-note"><b>11 files · 3 features.</b> 5 findings, on 4 of them.</div>
+<div class="scroll"><div class="tree">
+
+  <div class="row"><span class="twisty">▾</span><b>auth</b>&nbsp;<span class="hb xs ok">in plan</span><span class="meta">6 files</span></div>
+  
+  <div class="row l1"><span class="twisty">▾</span><span class="layer component">component</span><span class="meta">3</span></div>
+  <div class="row l2 sel">PasswordField.tsx&nbsp;<span class="hb xs warn">shared</span><span class="meta mono">+38 −4</span></div><div class="row l2 ">passwordToggle.tsx&nbsp;<span class="hb xs bad">READ-001</span><span class="meta mono">+41</span></div><div class="row l2 ">LoginForm.tsx<span class="meta mono">+3 −1</span></div>
+  <div class="row l1"><span class="twisty">▾</span><span class="layer workflow">workflow</span><span class="meta">1</span></div>
+  <div class="row l2 ">authMachine.ts&nbsp;<span class="hb xs warn">flow</span><span class="meta mono">+2 −9</span></div>
+  <div class="row l1"><span class="twisty">▾</span><span class="layer ">feature api</span><span class="meta">1</span></div>
+  <div class="row l2 ">index.ts&nbsp;<span class="hb xs warn">public</span><span class="meta mono">+1 −1</span></div>
+  <div class="row l1"><span class="twisty">▾</span><span class="layer ">test</span><span class="meta">1</span></div>
+  <div class="row l2 ">login.spec.ts<span class="meta mono">+22</span></div>
+  <div class="row"><span class="twisty">▾</span><b>checkout</b>&nbsp;<span class="hb xs bad">not in plan</span><span class="meta">3 files</span></div>
+  
+  <div class="row l1"><span class="twisty">▾</span><span class="layer component">component</span><span class="meta">1</span></div>
+  <div class="row l2 ">GuestForm.tsx&nbsp;<span class="hb xs bad">SLICE-002</span><span class="meta mono">+17 −2</span></div>
+  <div class="row l1"><span class="twisty">▾</span><span class="layer ">hook</span><span class="meta">1</span></div>
+  <div class="row l2 ">useGuestCheckout.ts<span class="meta mono">+9 −3</span></div>
+  <div class="row l1"><span class="twisty">▾</span><span class="layer ">domain</span><span class="meta">1</span></div>
+  <div class="row l2 ">guestRules.ts&nbsp;<span class="hb xs warn">unexplained</span><span class="meta mono">+6</span></div>
+  <div class="row"><span class="twisty">▸</span><b>core</b>&nbsp;<span class="hb xs bad">not in plan</span><span class="meta">2 files</span></div>
+  
+</div></div></aside><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <section class="pane mid" aria-label="Pull request"><div class="canvas-tb"><span class="crumbs">#142 › findings › <b>SLICE-002</b></span><span class="spacer"></span>
+   <div class="seg" role="radiogroup" aria-label="View"><button role="radio" aria-checked="false">Summary</button><button class="on" role="radio" aria-checked="true">Diff</button><button role="radio" aria-checked="false">Files</button></div>
+   <button class="btn sm">Open on GitHub ↗</button></div>
+  <div class="stage-scroll">
+   <div class="card">
+    <div class="hd"><span class="mono" style="text-transform:none;letter-spacing:0">features/checkout/components/GuestForm.tsx</span><span class="spacer"></span><span class="hb ok"><i>✓</i>Can be fixed mechanically</span></div>
+    <div class="code">
+     <div class="ln"><i>1</i><span><span class="k1">import</span> { useState } <span class="k1">from</span> <span class="k3">'react'</span>;</span></div>
+     <div class="ln"><i>2</i><span><span class="k1">import</span> { Button } <span class="k1">from</span> <span class="k3">'../../../core/ui/Button'</span>;</span></div>
+     <div class="ln add"><i>4</i><span><span class="k1">import</span> { PasswordField } <span class="k1">from</span> <span class="k3">'../../auth/components/PasswordField'</span>;</span></div>
+     <div class="ln"><i>5</i><span></span></div>
+     <div class="ln"><i>6</i><span><span class="k1">export function</span> <span class="k2">GuestForm</span>({ onSubmit }: Props) {</span></div>
+    </div>
+   </div>
+   <div class="card" style="margin-top:12px">
+    <div class="hd"><span>What the rule says, and the fix Construct would make</span><span class="spacer"></span><span class="tag det">Deterministic</span></div>
+    <div style="padding:10px 14px">
+     <div><b>SLICE-002 — Cross-feature imports use public index.ts</b></div>
+     <div class="why" style="margin-top:4px">Features may only consume another feature through its public index API. Reaching into <span class="mono">auth/components/…</span> ties checkout to auth’s internal file layout, so moving a file inside auth silently breaks checkout.</div>
+     <div class="code" style="margin-top:10px;border:1px solid var(--border-subtle);border-radius:var(--r-sm)">
+      <div class="ln del"><i>4</i><span>- import { PasswordField } from '../../auth/components/PasswordField';</span></div>
+      <div class="ln add"><i>4</i><span>+ import { PasswordField } from '../../auth';</span></div></div>
+     <div class="muted-note" style="margin-top:8px">This change is <b>not applied</b>. Reviewing is read-only: Construct shows you the diff it would make, here and in a separate pull request if you turn Auto fix on. The same change <span class="mono">construct refactor</span> makes from the command line.</div>
+    </div>
+   </div>
+  </div></section><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <aside class="pane" aria-label="Tools">
+<div class="tabs" role="tablist"><button role="tab" class="" aria-selected="false">Health <span class="badge danger">5</span></button><button role="tab" class="on" aria-selected="true">Findings <span class="badge danger">5</span></button><button role="tab" class="" aria-selected="false">Flow <span class="badge acc">1</span></button></div>
+<div class="scroll">
+ <div class="grp-head"><span class="hb ok"><i>✓</i>Can be fixed mechanically</span><b>2</b><span class="spacer"></span></div>
+ <div class="grp-note"><span class="mono">construct refactor</span> makes these with no model involved.</div>
+ 
+<div class="finding sel"><span class="mk"><span style="color:var(--success)">✓</span></span>
+ <div><span class="rule">SLICE-002 · error</span><div class="msg">Cross-feature import reaches into “auth” internals.</div><div class="loc">features/checkout/components/GuestForm.tsx:4</div>
+ <div class="fix"><b>Fix:</b> import from <span class="mono">features/auth/index.ts</span> instead.</div></div></div>
+ 
+<div class="finding "><span class="mk"><span style="color:var(--success)">✓</span></span>
+ <div><span class="rule">READ-001 · error</span><div class="msg">Component file is not PascalCase.</div><div class="loc">features/auth/components/passwordToggle.tsx</div>
+ <div class="fix"><b>Fix:</b> rename to <span class="mono">PasswordToggle.tsx</span> (3 imports updated).</div></div></div>
+ <div class="grp-head" style="border-top:1px solid var(--border-strong);margin-top:6px"><span class="hb info"><i>◆</i>Needs a decision</span><b>3</b></div>
+ <div class="grp-note">No mechanical fix exists. These are a conversation with the author.</div>
+ 
+<div class="finding "><span class="mk"><span style="color:var(--accent)">◆</span></span>
+ <div><span class="rule">PUBLIC-API · warning</span><span class="loc inline">auth/index.ts:7</span><div class="msg">auth stops publishing <span class="mono">PasswordFieldProps</span>.</div>
+ <div class="ask"><b>Ask:</b> deliberate, or an oversight? 2 features import this API.</div></div></div>
+ 
+<div class="finding "><span class="mk"><span style="color:var(--accent)">◆</span></span>
+ <div><span class="rule">Flow change · warning</span><span class="loc inline">auth/workflows/authMachine.ts:44</span><div class="msg">A rejected sign-in can no longer be retried.</div>
+ <div class="ask"><b>Ask:</b> is dropping the retry path intended?</div></div></div>
+ 
+<div class="finding "><span class="mk"><span style="color:var(--accent)">◆</span></span>
+ <div><span class="rule">SHARED-COMPONENT · warning</span><span class="loc inline">auth/components/PasswordField.tsx</span><div class="msg"><span class="mono">PasswordField</span> is used by 3 features; the plan said auth only.</div>
+ <div class="ask"><b>Ask:</b> checked in Register and Guest checkout too?</div></div></div>
+</div>
+<div style="border-top:1px solid var(--border-strong);padding:8px 12px;background:var(--surface-2)">
+ <div style="display:flex;align-items:center;gap:10px"><span class="tog"><span class="sw"></span><span class="st">Auto fix: Off</span></span><span class="spacer"></span><button class="btn sm">Turn on…</button></div>
+ <div class="muted-note" style="margin-top:5px">Would open <b>1 separate pull request</b> with the 2 fixes — never this one.</div></div></aside>
+  </div>
+  <div class="drawer" aria-label="Drawer"><div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Findings <span class="badge danger">5</span></button><button role="tab" class="" aria-selected="false">Rule check</button><button role="tab" class="" aria-selected="false">Processes <span class="badge acc">1</span></button></div>
+  <div class="body" style="padding:8px 12px"><div class="callout info" style="margin:0"><span>ℹ</span><div class="grow"><b>2 of 5 findings can be fixed mechanically</b><small><span class="mono">SLICE-002</span> and <span class="mono">READ-001</span> — an import rewrite and a rename. The other 3 change what the code means, so Construct will not guess: they stay a conversation with the author.</small></div></div></div></div>
+  
+<footer class="statusbar">
+  <span class="ok">● Read-only — nothing is written to this pull request</span>
+  <span>Auto review-and-fix: Off</span>
+  <span class="spacer"></span><span>Deterministic · no model used</span>
+  <span><kbd>Ctrl J</kbd> drawer</span><span><kbd>?</kbd> shortcuts</span>
+</footer>
+</div>
+<script>(()=>{const t=document.documentElement.dataset.theme;document.body.parentElement.setAttribute('data-theme',t)})()</script>
+</body></html>

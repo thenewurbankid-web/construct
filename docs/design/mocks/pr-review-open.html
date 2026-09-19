@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Reviewing a pull request — grouped by feature and layer, with health indicators — Concept</title>
+<link rel="stylesheet" href="mock.css">
+<link rel="stylesheet" href="pr-review.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+<script>document.addEventListener('DOMContentLoaded',()=>{document.body.dataset.x=1});</script>
+</head><body>
+<div class="concept">Concept — not implemented <span>Reviewing a pull request — grouped by feature and layer, with health indicators</span></div>
+
+<div class="shell" style="--lw:316px;--rw:424px;grid-template-rows:44px 1fr 166px 24px">
+  
+<header class="topbar">
+  <div class="brand"><i></i>Construct</div>
+  <button class="chip-btn" aria-haspopup="listbox">acme/storefront <span class="sub">main</span> ▾</button>
+  <div class="seg" role="radiogroup" aria-label="Mode"><button class="" role="radio" aria-checked="false">Explore</button><button class="" role="radio" aria-checked="false">Research</button><button class="" role="radio" aria-checked="false">Build</button><button class="on" role="radio" aria-checked="true">Review</button></div>
+  <button class="chip-btn palette-trigger"><span>Search pull requests, files or run a command…</span><kbd>Ctrl K</kbd></button>
+  <span class="pill run"><span class="spin"></span>1 running</span>
+  <span class="pill ok"><span class="dot"></span>GitHub · sam-dev</span>
+  <button class="icon-btn" aria-label="Theme">◐</button>
+  <button class="icon-btn" aria-label="Help">?</button>
+  <span class="avatar">SP</span>
+</header>
+  <div class="main">
+    <aside class="pane" aria-label="Browser">
+<div class="pane-h"><span class="title">Changed units</span><span class="spacer"></span><button class="icon-btn" aria-label="Expand all">⌄</button><button class="icon-btn" aria-label="Collapse pane">«</button></div>
+<div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">By feature</button><button role="tab" class="" aria-selected="false">By layer</button><button role="tab" class="" aria-selected="false">Files</button></div>
+<div class="search">⌕ Filter changed units <span class="spacer"></span><kbd>/</kbd></div>
+<div style="padding:2px 12px 6px" class="muted-note"><b>11 files · 3 features · 6 layers</b></div>
+<div class="scroll"><div class="tree">
+
+  <div class="row"><span class="twisty">▾</span><b>auth</b>&nbsp;<span class="hb xs ok">in plan</span><span class="meta">6 files</span></div>
+  
+  <div class="row l1"><span class="twisty">▾</span><span class="layer component">component</span><span class="meta">3</span></div>
+  <div class="row l2 sel">PasswordField.tsx&nbsp;<span class="hb xs warn">shared</span><span class="meta mono">+38 −4</span></div><div class="row l2 ">passwordToggle.tsx&nbsp;<span class="hb xs bad">READ-001</span><span class="meta mono">+41</span></div><div class="row l2 ">LoginForm.tsx<span class="meta mono">+3 −1</span></div>
+  <div class="row l1"><span class="twisty">▾</span><span class="layer workflow">workflow</span><span class="meta">1</span></div>
+  <div class="row l2 ">authMachine.ts&nbsp;<span class="hb xs warn">flow</span><span class="meta mono">+2 −9</span></div>
+  <div class="row l1"><span class="twisty">▾</span><span class="layer ">feature api</span><span class="meta">1</span></div>
+  <div class="row l2 ">index.ts&nbsp;<span class="hb xs warn">public</span><span class="meta mono">+1 −1</span></div>
+  <div class="row l1"><span class="twisty">▾</span><span class="layer ">test</span><span class="meta">1</span></div>
+  <div class="row l2 ">login.spec.ts<span class="meta mono">+22</span></div>
+  <div class="row"><span class="twisty">▾</span><b>checkout</b>&nbsp;<span class="hb xs bad">not in plan</span><span class="meta">3 files</span></div>
+  
+  <div class="row l1"><span class="twisty">▾</span><span class="layer component">component</span><span class="meta">1</span></div>
+  <div class="row l2 ">GuestForm.tsx&nbsp;<span class="hb xs bad">SLICE-002</span><span class="meta mono">+17 −2</span></div>
+  <div class="row l1"><span class="twisty">▾</span><span class="layer ">hook</span><span class="meta">1</span></div>
+  <div class="row l2 ">useGuestCheckout.ts<span class="meta mono">+9 −3</span></div>
+  <div class="row l1"><span class="twisty">▾</span><span class="layer ">domain</span><span class="meta">1</span></div>
+  <div class="row l2 ">guestRules.ts&nbsp;<span class="hb xs warn">unexplained</span><span class="meta mono">+6</span></div>
+  <div class="row"><span class="twisty">▸</span><b>core</b>&nbsp;<span class="hb xs bad">not in plan</span><span class="meta">2 files</span></div>
+  
+</div></div></aside><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <section class="pane mid" aria-label="Pull request"><div class="canvas-tb"><span class="crumbs"><b>#142 Add show-password toggle to login</b></span><span class="spacer"></span>
+   <div class="seg" role="radiogroup" aria-label="View"><button class="on" role="radio" aria-checked="true">Summary</button><button role="radio" aria-checked="false">Diff</button><button role="radio" aria-checked="false">Files</button></div>
+   <button class="btn sm">Open on GitHub ↗</button></div>
+  <div class="stage-scroll">
+   
+<div class="hero">
+  <div style="text-align:center"><div class="big">1 → 3</div><div class="lbl">features</div></div>
+  <div class="txt"><b>The plan declared 1 feature; this pull request touches 3.</b><br>
+   <span style="color:var(--text-muted)">Plan <span class="mono">plan-142</span> declared <span class="mono">auth</span>. This branch also changes <span class="mono">checkout</span> and <span class="mono">core</span>.</span></div>
+  <span class="spacer"></span><span class="tag det">Deterministic</span><button class="btn sm">Compare with the plan</button>
+</div>
+   <div class="card" style="margin-top:12px">
+    <div class="hd"><span>What this pull request actually does</span><span class="spacer"></span><span style="text-transform:none;letter-spacing:0;font-weight:400">read from the code, not from the description</span><span class="tag det">Deterministic</span></div>
+    
+<div class="unit"><span class="layer component">component</span>
+ <div><div class="nm">PasswordField <span class="hb xs none">auth</span> <span class="hb xs warn">used by 3 features</span></div><div class="txt">Takes a new <b>showToggle</b> prop. When it is set, a button switches the password input between hidden and visible text.</div></div>
+ <span class="mono" style="color:var(--text-faint)">+38 −4</span></div>
+    
+<div class="unit"><span class="layer component">component</span>
+ <div><div class="nm">PasswordToggle <span class="hb xs none">auth</span> <span class="hb xs bad">READ-001</span></div><div class="txt">New. The eye button itself: presentation only, no state of its own.</div></div>
+ <span class="mono" style="color:var(--text-faint)">+41</span></div>
+    
+<div class="unit"><span class="layer workflow">workflow</span>
+ <div><div class="nm">authMachine <span class="hb xs none">auth</span> <span class="hb xs warn">flow changed</span></div><div class="txt">The sign-in flow. The <b>RETRY</b> event was removed from the <b>rejected</b> state.</div></div>
+ <span class="mono" style="color:var(--text-faint)">+2 −9</span></div>
+    
+<div class="unit"><span class="layer ">feature api</span>
+ <div><div class="nm">auth/index.ts <span class="hb xs none">auth</span> <span class="hb xs warn">public API</span></div><div class="txt">Stops publishing <b>PasswordFieldProps</b>; starts publishing <b>PasswordToggle</b>.</div></div>
+ <span class="mono" style="color:var(--text-faint)">+1 −1</span></div>
+    
+<div class="unit"><span class="layer component">component</span>
+ <div><div class="nm">GuestForm <span class="hb xs none">checkout</span> <span class="hb xs bad">SLICE-002</span></div><div class="txt">New. Imports <b>PasswordField</b> from inside auth instead of from the feature’s public index.</div></div>
+ <span class="mono" style="color:var(--text-faint)">+17 −2</span></div>
+    <div class="unit"><span class="layer">+6 more</span><div><div class="txt">1 hook, 1 domain file, 2 library files and 2 tests — nothing found in them.</div></div><span></span></div>
+   </div>
+  </div></section><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <aside class="pane" aria-label="Tools"><div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Health <span class="badge danger">5</span></button><button role="tab" class="" aria-selected="false">Findings <span class="badge danger">5</span></button><button role="tab" class="" aria-selected="false">Flow <span class="badge acc">1</span></button></div>
+   <div class="scroll" style="padding:10px 12px">
+<div class="ind bad"><h5>Blast radius<span class="spacer"></span><span class="tag det">Deterministic</span></h5><div class="head"><b>The plan declared 1 feature. This pull request touches 3.</b>
+<div class="bars"><span>declared</span><div class="t"><div class="f" style="width:33.33333333333333%"></div></div><span class="n">1</span>
+<span>touched</span><div class="t"><div class="f over" style="width:100%"></div></div><span class="n">3</span></div></div><div class="why"><span class="mono">auth</span> was planned. <span class="mono">checkout</span> and <span class="mono">core</span> were not — 5 files.</div></div>
+<div class="ind warn"><h5>Unexplained changes<span class="spacer"></span><span class="tag det">Deterministic</span></h5><div class="head"><b>4 of 11 files</b> have no import path to anything the plan touches.</div><div class="why">e.g. <span class="mono">core/lib/format.ts</span> — often a stray edit riding along.</div></div>
+<div class="ind bad"><h5>Rule regressions<span class="spacer"></span><span class="tag det">Deterministic</span></h5><div class="head">Your rules pass on <b>main</b> and fail here: <b>0 → 2 errors</b>.</div><div class="why">New: <span class="mono">SLICE-002</span> in checkout, <span class="mono">READ-001</span> in auth. An older <span class="mono">PAGE-006</span> is unchanged and not counted.</div></div>
+<div class="ind warn"><h5>Public surface<span class="spacer"></span><span class="tag det">Deterministic</span></h5><div class="head"><b>1 export removed</b>, 1 added in <span class="mono">features/auth/index.ts</span>.</div><div class="why"><span class="mono">PasswordFieldProps</span> is no longer public, and 2 features import auth’s public API. (<span class="mono">PUBLIC-API</span>)</div></div>
+<div class="ind warn"><h5>What the flow now does<span class="spacer"></span><span class="tag det">Deterministic</span></h5><div class="head"><span class="mono">authMachine</span>: <b>1 of 3 paths removed</b>, none added.</div><div class="why">“A rejected sign-in can no longer be retried — the flow now ends in locked out.” No diff view can tell you this.</div><div class="act"><button class="btn sm">Open Flow</button></div></div></div></aside>
+  </div>
+  <div class="drawer" aria-label="Drawer"><div class="tabs" role="tablist"><button role="tab" class="" aria-selected="false">Findings <span class="badge danger">5</span></button><button role="tab" class="on" aria-selected="true">Rule check</button><button role="tab" class="" aria-selected="false">Processes <span class="badge acc">1</span></button></div>
+<div class="body"><table>
+ <tr><th>Rule</th><th>What it means, in plain words</th><th>File</th><th>main</th><th>This branch</th></tr>
+ <tr><td><span class="tag" style="background:var(--danger-soft);color:var(--danger)">error</span> SLICE-002</td><td>Cross-feature import reaches into “auth” internals — go through the feature’s public index</td><td class="mono">features/checkout/components/GuestForm.tsx:4</td><td style="color:var(--text-faint)">0</td><td><span class="hb bad">1 new</span></td></tr>
+ <tr><td><span class="tag" style="background:var(--danger-soft);color:var(--danger)">error</span> READ-001</td><td>Component files are PascalCase</td><td class="mono">features/auth/components/passwordToggle.tsx</td><td style="color:var(--text-faint)">0</td><td><span class="hb bad">1 new</span></td></tr>
+ <tr><td><span class="tag" style="background:var(--warn-soft);color:var(--warn)">error</span> PAGE-006</td><td>Page imports a custom hook; go through a controller</td><td class="mono">features/auth/pages/LoginPage.tsx:3</td><td style="color:var(--text-faint)">1</td><td><span class="hb none">1 · already there</span></td></tr>
+</table></div></div>
+  
+<footer class="statusbar">
+  <span class="ok">● Read-only — nothing is written to this pull request</span>
+  <span>Auto review-and-fix: Off</span>
+  <span class="spacer"></span><span>Deterministic · no model used</span>
+  <span><kbd>Ctrl J</kbd> drawer</span><span><kbd>?</kbd> shortcuts</span>
+</footer>
+</div>
+<script>(()=>{const t=document.documentElement.dataset.theme;document.body.parentElement.setAttribute('data-theme',t)})()</script>
+</body></html>
