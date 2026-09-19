@@ -37,6 +37,7 @@ import {
   moveNodeInSnippet,
   addChildInSnippet,
 } from './pagesEditor.mjs';
+import { describePageChange, adoptOwnWrite, pageChangeTracker } from './pageChanges.mjs';
 import { listWorkflowFeatures, listWorkflowFiles, readWorkflowMachines, readWorkflowNarrative, editWorkflowFile } from './workflowsViewer.mjs';
 
 // This server is a local dev tool, but it has real teeth: /api/import (and
@@ -286,8 +287,10 @@ app.get('/api/pages/tree', (req, res) => {
   try {
     const { feature, file } = req.query;
     const root = currentRoot();
-    const { absPath } = resolvePageFile(root, feature, file);
-    res.json(serializeTree(fs.readFileSync(absPath, 'utf8')));
+    const { absPath, relPath } = resolvePageFile(root, feature, file);
+    const source = fs.readFileSync(absPath, 'utf8');
+    pageChangeTracker.observe(relPath, source); // #224 baseline: what the editor is showing
+    res.json(serializeTree(source));
   } catch (e) {
     handlePagesEditorError(res, e);
   }
@@ -314,8 +317,34 @@ function saveAndRespond(res, root, relPath, absPath, patched) {
     return res.status(422).json({ ok: false, error: 'Save blocked: violates architecture rules.', violations: enforcement.violations });
   }
   fs.writeFileSync(absPath, patched);
+  adoptOwnWrite(relPath, patched);
   res.json({ ok: true, violations: enforcement.violations, ...serializeTree(patched) });
 }
+
+// #224 — last external change to a page file, as a diff. The client polls
+// this; each poll observes the file, so a write from an agent/CLI/other
+// editor (anything that didn't go through saveAndRespond) shows up here.
+// Same resolvePageFile scope guard as every other route.
+app.get('/api/pages/changes', (req, res) => {
+  try {
+    const { feature, file } = req.query;
+    const { absPath, relPath } = resolvePageFile(currentRoot(), feature, file);
+    res.json({ ok: true, ...describePageChange(absPath, relPath) });
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+app.post('/api/pages/changes/dismiss', (req, res) => {
+  try {
+    const { feature, file } = req.body || {};
+    const { relPath } = resolvePageFile(currentRoot(), feature, file);
+    pageChangeTracker.dismiss(relPath);
+    res.json({ ok: true });
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
 
 app.post('/api/pages/node', (req, res) => {
   try {
