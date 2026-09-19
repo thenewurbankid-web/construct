@@ -2,7 +2,7 @@
 //
 // `parseJsxTree(source)` assigns ids `n0`, `n1`, ... in source (document) order; an id is only valid for
 // the exact source text it was computed from. Every record carries the element's `[start, end)` offsets
-// in `source`, its 1-based `line`, its props (see `jsxAttributes`) and its children.
+// in `source`, its 1-based `line` and `column`, its props (see `jsxAttributes`) and its children.
 import { walkAst } from './walk.mjs';
 import { parseJsx } from './jsxParse.mjs';
 
@@ -75,6 +75,7 @@ export function parseJsxTree(source) {
       start: node.range[0],
       end: node.range[1],
       line: node.loc?.start.line ?? null,
+      column: node.loc ? node.loc.start.column + 1 : null,
       children: [],
       openingElementNode: openingElement,
     };
