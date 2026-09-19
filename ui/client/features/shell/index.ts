@@ -30,6 +30,12 @@ export * from './hooks/usePaneResizer';
 /** Current local project and the switch action. */
 export * from './hooks/useProjectSwitcher';
 
+/** Narrow (< 900px) one-pane-at-a-time state. */
+export * from './hooks/useNarrowLayout';
+
+/** Roving-focus keyboard handling of the narrow bottom tab bar. */
+export * from './hooks/useNarrowTabBar';
+
 /** Pane sizes and collapse state, remembered per project. */
 export * from './hooks/useShellLayout';
 

@@ -12,9 +12,9 @@ import { ProjectGatePage } from '../pages/ProjectGatePage';
  * with it — the real, checked (SLICE-002) cross-feature dependency the
  * migration in #71 asked for. */
 export function ProjectGateController({ children }: { children: ReactNode }) {
-  const { status, initializing, error, handleInit } = useProjectGate();
+  const { status, initializing, error, loadError, refresh, handleInit } = useProjectGate();
   return (
-    <ProjectGatePage status={status} initializing={initializing} error={error} onInit={handleInit}>
+    <ProjectGatePage status={status} initializing={initializing} error={error} onInit={handleInit} loadError={loadError} onRetry={refresh}>
       {children}
     </ProjectGatePage>
   );

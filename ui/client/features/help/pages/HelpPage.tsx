@@ -9,9 +9,9 @@ import { SetupSettingsTutorial } from '../components/SetupSettingsTutorial';
 import { UiGuide } from '../components/UiGuide';
 import type { HelpViewState } from '../types';
 
-export function HelpPage(view: HelpViewState): ReactNode {
+export function HelpPage({ topics, ...view }: HelpViewState & { topics: Array<{ id: string; label: string }> }): ReactNode {
   return (
-    <div className="page help-page">
+    <div className="page page--screen help-page">
       <h1>Help</h1>
       <p className="hint">
         Everything about Construct — the CLI (pulled live from its own source, not hand-copied) and
@@ -19,11 +19,11 @@ export function HelpPage(view: HelpViewState): ReactNode {
       </p>
 
       <GlassPanel as="nav" className="help-contents">
-        <a href="#getting-started">Getting started</a>
-        <a href="#attribution">Tool vs LLM attribution</a>
-        <a href="#ui-guide">UI guide</a>
-        <a href="#tutorials">Tutorials</a>
-        <a href="#cli-reference">CLI reference</a>
+        {topics.map((t) => (
+          <a key={t.id} href={`#${t.id}`}>
+            {t.label}
+          </a>
+        ))}
       </GlassPanel>
 
       {/* #162 — each top-level topic is now a native <details>, open by
@@ -63,7 +63,7 @@ export function HelpPage(view: HelpViewState): ReactNode {
 
       <details id="cli-reference" className="help-section" open>
         <summary><h2>CLI reference</h2></summary>
-        <CliReference {...view} />
+        <CliReference {...(view as HelpViewState)} />
       </details>
     </div>
   );

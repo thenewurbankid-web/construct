@@ -7,6 +7,9 @@ export type OllamaState = {
   status: OllamaStatus | null;
   models: OllamaModel[];
   loadError: string | null;
+  // The status request itself failed (backend unreachable), distinct from
+  // 'Ollama not running', which is a successful answer.
+  statusError: string | null;
   pullName: string;
   pulling: boolean;
   pullProgress: PullProgress | null;
@@ -19,6 +22,8 @@ export type OllamaState = {
 
 export type OllamaAction =
   | { type: 'STATUS_LOADED'; status: OllamaStatus }
+  | { type: 'STATUS_FAILED'; message: string }
+  | { type: 'STATUS_RETRY' }
   | { type: 'MODELS_LOADED'; models: OllamaModel[] }
   | { type: 'LOAD_ERROR'; message: string }
   | { type: 'SET_PULL_NAME'; value: string }
@@ -33,6 +38,7 @@ export const initialOllamaState: OllamaState = {
   status: null,
   models: [],
   loadError: null,
+  statusError: null,
   pullName: '',
   pulling: false,
   pullProgress: null,
@@ -43,7 +49,11 @@ export const initialOllamaState: OllamaState = {
 export function ollamaReducer(state: OllamaState, action: OllamaAction): OllamaState {
   switch (action.type) {
     case 'STATUS_LOADED':
-      return { ...state, status: action.status, loadError: null };
+      return { ...state, status: action.status, loadError: null, statusError: null };
+    case 'STATUS_FAILED':
+      return { ...state, statusError: action.message };
+    case 'STATUS_RETRY':
+      return { ...state, statusError: null };
     case 'MODELS_LOADED':
       return { ...state, models: action.models, loadError: null };
     case 'LOAD_ERROR':

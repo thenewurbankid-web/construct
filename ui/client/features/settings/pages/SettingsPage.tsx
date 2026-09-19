@@ -1,15 +1,26 @@
 import type { ReactNode } from 'react';
+import { ErrorState, LoadingState } from '@/features/states';
 import { SettingsForm } from '../components/SettingsForm';
 import { SettingsSummary } from '../components/SettingsSummary';
 import type { useSettings } from '../hooks/useSettings';
 
 type SettingsPageProps = ReturnType<typeof useSettings> & { picker?: ReactNode };
 
-export function SettingsPage({ settings, projectDirInput, setProjectDirInput, llmProviders, setLlmProvider, status, save, pickerOpen, togglePicker, picker }: SettingsPageProps): ReactNode {
-  if (!settings) return <p>Loading settings…</p>;
+export function SettingsPage({ settings, loadError, reload, projectDirInput, setProjectDirInput, llmProviders, setLlmProvider, status, save, pickerOpen, togglePicker, picker }: SettingsPageProps): ReactNode {
+  if (!settings) {
+    return (
+      <div className="page page--screen">
+        {loadError ? (
+          <ErrorState title="Could not load settings" hint={loadError} onRetry={reload} />
+        ) : (
+          <LoadingState label="Loading settings" hint="Reading the backend's current settings." />
+        )}
+      </div>
+    );
+  }
 
   return (
-    <div className="page">
+    <div className="page page--screen">
       <h1>Settings</h1>
       <p className="hint">
         These settings apply to every command run from this UI (dashboard actions and the import

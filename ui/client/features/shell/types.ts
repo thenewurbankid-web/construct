@@ -67,7 +67,23 @@ export type ShortcutInfo = { keys: string; action: ShortcutAction; label: string
 
 // ---- Component props -----------------------------------------------------
 
-export type ShellLayoutProps = {
+/** The single pane showing in the narrow layout: Browser (left), stage (mid) or Tools (right). */
+export type NarrowPane = 'left' | 'mid' | 'right';
+
+export type NarrowTabBarProps = {
+  pane: NarrowPane;
+  onSelect: (pane: NarrowPane) => void;
+};
+
+/** Narrow-layout controls shared by the layout and the page that feeds it. */
+export type NarrowProps = {
+  /** Viewport below 900px: one pane at a time with a bottom tab bar. */
+  narrow?: boolean;
+  narrowPane?: NarrowPane;
+  onNarrowPane?: (pane: NarrowPane) => void;
+};
+
+export type ShellLayoutProps = NarrowProps & {
   layout: ShellLayoutState;
   limits: Record<PaneId, PaneLimit>;
   onResize: (pane: PaneId, size: number) => void;
@@ -132,7 +148,7 @@ export type ProjectInfoPanelProps = {
   shortcuts: ShortcutInfo[];
 };
 
-export type ShellPageProps = {
+export type ShellPageProps = NarrowProps & {
   children: ReactNode;
   layout: ShellLayoutState;
   limits: Record<PaneId, PaneLimit>;

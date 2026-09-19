@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { NarrowTabBar } from './NarrowTabBar';
 import { PaneResizer } from './PaneResizer';
 import type { ShellLayoutProps } from '../types';
 
@@ -6,7 +7,30 @@ import type { ShellLayoutProps } from '../types';
  * an optional bottom drawer and a status bar. Every region is a slot; panes are
  * resizable (drag or arrow keys) and collapsible. Presentation only: sizes and
  * limits come in as props. */
-export function ShellLayout({ layout, limits, onResize, onTogglePane, top, left, mid, right, drawer, status }: ShellLayoutProps) {
+export function ShellLayout({ layout, limits, onResize, onTogglePane, narrow = false, narrowPane = 'mid', onNarrowPane, top, left, mid, right, drawer, status }: ShellLayoutProps) {
+  if (narrow) {
+    // Narrow (< 900px): one pane at a time. Inactive panes stay mounted but hidden
+    // so a screen keeps its state (a wizard chat, a half-filled form) while you
+    // look at the Browser or Tools; the drawer is not shown at this size.
+    return (
+      <div className="sh-root sh-root--narrow" data-narrow="true">
+        {top}
+        <div className="sh-body">
+          <aside id="sh-pane-left" data-pane="left" tabIndex={-1} aria-label="Browser" className="sh-pane sh-left" hidden={narrowPane !== 'left'}>
+            {left}
+          </aside>
+          <div id="sh-mid" data-pane="mid" tabIndex={-1} className="sh-mid" hidden={narrowPane !== 'mid'}>
+            {mid}
+          </div>
+          <aside id="sh-pane-right" data-pane="right" tabIndex={-1} aria-label="Tools" className="sh-pane sh-right" hidden={narrowPane !== 'right'}>
+            {right}
+          </aside>
+        </div>
+        <NarrowTabBar pane={narrowPane} onSelect={(p) => onNarrowPane?.(p)} />
+        {status}
+      </div>
+    );
+  }
   const style = { '--sh-drawer-h': layout.drawer.open ? `${layout.drawer.size}px` : '0px' } as CSSProperties;
   return (
     <div className="sh-root" style={style}>

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { GlassPanel } from '@/components/ui';
+import { EmptyState } from '@/features/states';
 import type { ChatMessageData } from '../types';
 import { ChatMessage } from './ChatMessage';
 
@@ -17,6 +18,9 @@ export function ChatLog({ messages }: { messages: ChatMessageData[] }) {
 
   return (
     <GlassPanel className="chat">
+      {messages.length === 0 && (
+        <EmptyState size="inline" title="No session yet" hint="Start a wizard session above and the conversation will appear here." />
+      )}
       {messages.map((m) => (
         <ChatMessage key={m.id} message={m} />
       ))}

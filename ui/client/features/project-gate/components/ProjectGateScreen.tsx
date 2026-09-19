@@ -17,7 +17,7 @@ type ProjectGateScreenProps = {
  * button, and the first <code> element) keeps passing unchanged. */
 export function ProjectGateScreen({ status, initializing, error, onInit }: ProjectGateScreenProps) {
   return (
-    <div className="page">
+    <div className="page page--screen">
       <GlassPanel className="gate-panel">
         <h1>No Construct project here yet</h1>
         <p className="hint">

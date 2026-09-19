@@ -267,8 +267,50 @@ kbd {
 .sh-info-title { margin: var(--sp-4) 0 var(--sp-1); font-weight: 600; }
 .sh-shortcuts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; color: var(--text-muted); }
 
-/* Narrow screens: the frame stays usable; the full one-pane layout with a
- * bottom tab bar is a later slice (design step 9). */
-@media (max-width: 900px) {
+/* ---- narrow layout (< 900px, Design #250): one pane at a time, bottom tab bar.
+ * ShellLayout renders the narrow structure itself (matchMedia in
+ * useNarrowLayout); this block only styles it. Hidden panes use the `hidden`
+ * attribute, so keep it authoritative over the display rules below. ---- */
+.sh-pill-text { white-space: nowrap; }
+.sh-narrowbar {
+  position: sticky;
+  bottom: var(--sh-status);
+  z-index: 25;
+  flex-shrink: 0;
+  height: 44px;
+  background: var(--surface-1);
+  border-top: 1px solid var(--border-strong);
+}
+.sh-narrowlist { display: flex; height: 100%; }
+.sh-narrowtab {
+  appearance: none;
+  flex: 1;
+  min-height: 44px;
+  font: inherit;
+  font-size: var(--fs-md);
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  border-top: 2px solid transparent;
+  border-radius: 0;
+  cursor: pointer;
+}
+.sh-narrowtab:hover { color: var(--text); background: var(--surface-3); }
+.sh-narrowtab[aria-selected='true'] { color: var(--text); font-weight: 600; border-top-color: var(--accent); }
+.sh-root--narrow [hidden] { display: none !important; }
+.sh-root--narrow .sh-pane { position: static; width: 100%; height: auto; min-height: calc(100vh - var(--sh-top) - var(--sh-status) - 44px); border: 0; }
+.sh-root--narrow .main { padding: var(--sp-4); }
+
+@media (max-width: 899px) {
   .sh-hints { display: none; }
+  .sh-top { gap: var(--sp-2); padding: 0 var(--sp-2); }
+  .sh-brand { margin-right: 0; }
+  .sh-project-btn { max-width: 96px; }
+  /* Pane toggles and the processes pill are redundant here (the bottom tab bar
+   * switches panes; the drawer is not shown in one-pane mode). */
+  .sh-toggle, [data-testid='pill-processes'], [data-testid='toggle-drawer'] { display: none; }
+  /* The model pill keeps its dot and an accessible name, and drops the words. */
+  .sh-pill-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .sh-mode { padding: 4px 8px; }
+  .sh-popover { position: fixed; left: var(--sp-2); right: var(--sp-2); top: calc(var(--sh-top) + 4px); width: auto; }
 }
