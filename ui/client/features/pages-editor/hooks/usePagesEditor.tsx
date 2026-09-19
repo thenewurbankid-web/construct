@@ -5,6 +5,7 @@ import { propLabel } from '../domain/PropFormatting';
 import { findNode } from '../domain/TreeNodes';
 import { getFeatures, getPages, getPageTree } from '../services/PagesBrowsing';
 import type { PageTree, PagesEditorNode } from '../types';
+import { usePageChange } from './usePageChange';
 import { initialPagesEditorState, pagesEditorReducer } from '../workflows/PagesEditor';
 
 function previewTitle(node: PagesEditorNode): string {
@@ -15,6 +16,8 @@ function previewTitle(node: PagesEditorNode): string {
  * feature -> one file -> a parsed JSX tree -> a selected node. */
 export function usePagesEditor() {
   const [state, dispatch] = useReducer(pagesEditorReducer, initialPagesEditorState);
+
+  const external = usePageChange(state.feature, state.file, Boolean(state.tree), () => openFile(state.file));
 
   useEffect(() => {
     getFeatures().then((r) => dispatch({ type: 'FEATURES_LOADED', features: r.features || [] }));
@@ -48,5 +51,5 @@ export function usePagesEditor() {
 
   const selectedNode = state.tree && state.selectedNodeId ? findNode(state.tree.roots, state.selectedNodeId) : null;
 
-  return { ...state, setFeature, openFile, selectNode, onTreeSaved, selectedNode, previewTitle };
+  return { ...state, setFeature, openFile, selectNode, onTreeSaved, selectedNode, previewTitle, externalChange: external.change, dismissExternalChange: external.dismiss, reloadFromDisk: external.reload };
 }

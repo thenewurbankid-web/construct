@@ -1438,3 +1438,73 @@ button:disabled {
 .source-editor-textarea { width: 100%; font-family: ui-monospace, monospace; font-size: 0.8rem; }
 .source-editor-monaco { border-radius: 6px; overflow: hidden; margin-top: 0.5rem; }
 .source-diagnostics { margin-top: 0.5rem; }
+/* #223 scope/binding link panel */
+.scope-panel { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 10px; }
+.scope-graph { position: relative; max-width: 100%; }
+.scope-graph-svg { position: absolute; inset: 0; pointer-events: none; }
+.scope-source, .scope-target {
+  position: absolute; height: 22px; box-sizing: border-box; padding: 0 8px; line-height: 20px;
+  border: 1px solid var(--border); border-radius: 11px; font-size: 0.75rem; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.scope-source.unused { opacity: 0.55; border-style: dashed; }
+.scope-target.scope-status-unbound { border-style: dashed; border-color: #e05a5a; color: #e05a5a; }
+.scope-target.scope-status-undeclared { border-color: #d98c2b; color: #d98c2b; }
+.scope-target.scope-status-spread { border-style: dotted; opacity: 0.7; }
+.scope-flags { list-style: none; margin: 8px 0 0; padding: 0; font-size: 0.8rem; }
+.scope-flag-warn::before { content: '\26A0  '; color: #d98c2b; }
+.scope-flag-info { opacity: 0.75; }
+
+/* #224 — external-change notice + diff view */
+.external-change-notice {
+  border: 1px solid var(--warn, #d9a441);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin: 12px 0;
+}
+
+.diff-view {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 8px 0;
+  overflow-x: auto;
+}
+
+.diff-view-row {
+  display: flex;
+  white-space: pre;
+}
+
+.diff-view-num {
+  flex: 0 0 3ch;
+  text-align: right;
+  padding-right: 6px;
+  color: var(--muted);
+  user-select: none;
+}
+
+.diff-view-marker {
+  flex: 0 0 2ch;
+  user-select: none;
+}
+
+.diff-view-added {
+  color: var(--tool);
+  background: rgba(63, 174, 90, 0.12);
+}
+
+.diff-view-removed {
+  color: var(--error);
+  background: rgba(224, 90, 90, 0.12);
+}
+
+.diff-view-context {
+  color: var(--muted);
+}
+
+.diff-view-gap {
+  color: var(--muted);
+  font-style: italic;
+  padding: 2px 0;
+}

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { ExternalChangeNotice } from '../components/ExternalChangeNotice';
 import { InspectorPanel } from '../components/InspectorPanel';
 import { PagesBrowser } from '../components/PagesBrowser';
 import { PreviewPanel } from '../components/PreviewPanel';
@@ -13,6 +14,7 @@ export function PagesEditorPage(props: PagesEditorPageProps): ReactNode {
   const {
     features, feature, setFeature, files, filesLoading, file, openFile, tree, error,
     selectedNodeId, selectNode, selectedNode, onTreeSaved, previewTitle,
+    externalChange, dismissExternalChange, reloadFromDisk,
   } = props;
 
   return (
@@ -37,6 +39,10 @@ export function PagesEditorPage(props: PagesEditorPageProps): ReactNode {
       />
 
       {error && <p className="status-error">{error}</p>}
+
+      {tree && externalChange && (
+        <ExternalChangeNotice file={file} change={externalChange} onReload={reloadFromDisk} onDismiss={dismissExternalChange} />
+      )}
 
       {tree && (
         <>
