@@ -37,6 +37,7 @@ import {
   moveNodeInSnippet,
   addChildInSnippet,
 } from './pagesEditor.mjs';
+import { readPageSource } from './pageSource.mjs';
 import { describePageChange, adoptOwnWrite, pageChangeTracker } from './pageChanges.mjs';
 import { listWorkflowFeatures, listWorkflowFiles, readWorkflowMachines, readWorkflowNarrative, editWorkflowFile } from './workflowsViewer.mjs';
 
@@ -291,6 +292,17 @@ app.get('/api/pages/tree', (req, res) => {
     const source = fs.readFileSync(absPath, 'utf8');
     pageChangeTracker.observe(relPath, source); // #224 baseline: what the editor is showing
     res.json(serializeTree(source));
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+// Read-only source view: the whole page file + TypeScript/architecture
+// diagnostics (core src/engine/diagnostics.mjs), scoped by resolvePageFile.
+app.get('/api/pages/source', (req, res) => {
+  try {
+    const { feature, file } = req.query;
+    res.json(readPageSource(currentRoot(), feature, file));
   } catch (e) {
     handlePagesEditorError(res, e);
   }

@@ -37,3 +37,7 @@ export * from './hooks/useSnippetEditor';
 /** Derives the visual composer's React Flow node/edge graph from a
  * snippet's live-parsed source (#120, epic #119). */
 export * from './hooks/useSnippetFlow';
+
+/** Loads a page's full source and its TypeScript/architecture diagnostics as
+ * editor-neutral markers (read-only source view). */
+export * from './hooks/usePageSource';

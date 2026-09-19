@@ -1431,6 +1431,13 @@ button:disabled {
   color: var(--tool);
 }
 
+/* Pages Editor source view (Monaco adapter + textarea fallback) */
+.source-panel { margin-top: 1rem; }
+.source-panel-header { display: flex; align-items: center; gap: 0.75rem; }
+.source-panel-header h3 { margin: 0; }
+.source-editor-textarea { width: 100%; font-family: ui-monospace, monospace; font-size: 0.8rem; }
+.source-editor-monaco { border-radius: 6px; overflow: hidden; margin-top: 0.5rem; }
+.source-diagnostics { margin-top: 0.5rem; }
 /* #223 scope/binding link panel */
 .scope-panel { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 10px; }
 .scope-graph { position: relative; max-width: 100%; }
