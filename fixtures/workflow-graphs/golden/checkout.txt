@@ -1,6 +1,10 @@
 Checkout
 The "checkout" flow has 3 steps. It starts in *idle* and can end in *done*.
 
+What it remembers
+  - It remembers quantity (a number), starting as 1.
+  - It remembers error (text that can be empty), starting as empty.
+
 Idle
   - This flow starts in *idle*.
   - When "submit" happens, the flow moves to *submitting*.
