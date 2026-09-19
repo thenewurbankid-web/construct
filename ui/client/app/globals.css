@@ -1431,6 +1431,23 @@ button:disabled {
   color: var(--tool);
 }
 
+/* #223 scope/binding link panel */
+.scope-panel { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 10px; }
+.scope-graph { position: relative; max-width: 100%; }
+.scope-graph-svg { position: absolute; inset: 0; pointer-events: none; }
+.scope-source, .scope-target {
+  position: absolute; height: 22px; box-sizing: border-box; padding: 0 8px; line-height: 20px;
+  border: 1px solid var(--border); border-radius: 11px; font-size: 0.75rem; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.scope-source.unused { opacity: 0.55; border-style: dashed; }
+.scope-target.scope-status-unbound { border-style: dashed; border-color: #e05a5a; color: #e05a5a; }
+.scope-target.scope-status-undeclared { border-color: #d98c2b; color: #d98c2b; }
+.scope-target.scope-status-spread { border-style: dotted; opacity: 0.7; }
+.scope-flags { list-style: none; margin: 8px 0 0; padding: 0; font-size: 0.8rem; }
+.scope-flag-warn::before { content: '\26A0  '; color: #d98c2b; }
+.scope-flag-info { opacity: 0.75; }
+
 /* #224 — external-change notice + diff view */
 .external-change-notice {
   border: 1px solid var(--warn, #d9a441);

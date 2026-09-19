@@ -2,6 +2,7 @@ import { GlassPanel } from '@/components/ui';
 import type { PageTree, PagesEditorNode } from '../types';
 import { AutoMapPanel } from './AutoMapPanel';
 import { PropRow } from './PropRow';
+import { ScopePanel } from './ScopePanel';
 import { SnippetEditor } from './SnippetEditor';
 
 type InspectorPanelProps = {
@@ -34,6 +35,7 @@ export function InspectorPanel({ feature, file, node, contentHash, onSaved }: In
           ))
         )}
       </div>
+      {!node.isFragment && <ScopePanel feature={feature} file={file} nodeId={node.id} contentHash={contentHash} />}
       {node.isCustomComponent && (
         <AutoMapPanel feature={feature} file={file} nodeId={node.id} contentHash={contentHash} onSaved={onSaved} />
       )}

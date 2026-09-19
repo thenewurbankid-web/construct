@@ -25,6 +25,51 @@ export type SaveOutcome = { ok: boolean; error?: string; violations?: Violation[
 
 export type StatusMessage = { ok: boolean; message: string; violations?: Violation[] };
 
+// #223 scope/binding links: the server graph (core buildScopeLinks) and the view model derived from it.
+export type ScopeDeclKind = 'prop' | 'state' | 'setter';
+
+export type ScopeLinkGraph = {
+  nodeId: string;
+  tag: string;
+  isCustomComponent: boolean;
+  scope: { name: string; kind: ScopeDeclKind }[];
+  links: { prop: string; valueKind: 'literal' | 'identifier' | 'expression'; text: string; from: { name: string; kind: ScopeDeclKind }[] }[];
+  spreads: { text: string; from: { name: string; kind: ScopeDeclKind }[] }[];
+  childProps: { name: string; status: 'bound' | 'spread' | 'unbound' }[] | null;
+  undeclared: string[];
+  suggestions: string[];
+  unusedScope: string[];
+  childPropsResolved: boolean;
+};
+
+export type ScopeSourceItem = { name: string; kind: ScopeDeclKind; color: string; linked: boolean; unusedInPage: boolean };
+
+export type ScopeTargetStatus = 'bound' | 'literal' | 'unbound' | 'spread' | 'undeclared';
+
+export type ScopeTargetItem = {
+  prop: string;
+  status: ScopeTargetStatus;
+  /** How the value is written, e.g. `count + 1`, `"hi"`; empty for props nobody passes. */
+  text: string;
+  /** Colour of the first linked source, or null when the prop is not fed by a scope name. */
+  color: string | null;
+  /** True when the (closed) child declares this prop. */
+  declared: boolean;
+};
+
+export type ScopeEdge = { from: string; to: string; color: string };
+
+export type ScopeFlag = { level: 'warn' | 'info'; text: string };
+
+export type ScopeView = {
+  tag: string;
+  sources: ScopeSourceItem[];
+  targets: ScopeTargetItem[];
+  edges: ScopeEdge[];
+  flags: ScopeFlag[];
+  childPropsResolved: boolean;
+};
+
 /** One contiguous run of unchanged/added/removed lines from a before/after
  * diff (#81) — `added`/`removed` both falsy means unchanged context. */
 export type DiffHunk = { value: string; added?: boolean; removed?: boolean };

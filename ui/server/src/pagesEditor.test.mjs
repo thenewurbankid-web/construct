@@ -13,6 +13,7 @@ import {
   getNodeProps,
   buildAttributeSnippet,
   findUnmappedProps,
+  getScopeLinks,
   resolveDeclaredPropNames,
   parsePageTree,
   applyAutoMap,
@@ -175,6 +176,19 @@ test('findUnmappedProps flags parent scope names not passed to a child component
   // perfectly normal thing to drill down as a callback prop too (e.g.
   // `onToggle={setOpen}`); see #54's decision-point comment on the issue.
   assert.deepEqual([...candidates].sort(), ['count', 'open', 'setOpen', 'title']);
+});
+
+test('getScopeLinks resolves the child file across the import and reports links/unbound props (#223)', () => {
+  const root = makeFixture();
+  const { absPath } = resolvePageFile(root, 'demo', 'Home.jsx');
+  const { roots } = serializeTree(SOURCE);
+  const cardId = roots[0].children[1].id;
+  const g = getScopeLinks(SOURCE, cardId, root, absPath);
+  // Card declares only `children`, so it is a closed set with nothing bound.
+  assert.equal(g.childPropsResolved, true);
+  assert.deepEqual(g.childProps, [{ name: 'children', status: 'unbound' }]);
+  assert.deepEqual(g.scope.map((d) => d.name), ['title', 'count', 'open', 'setOpen']);
+  assert.throws(() => getScopeLinks(SOURCE, 'n999', root, absPath), PagesEditorError);
 });
 
 test('findUnmappedProps without root/pageAbsPath keeps the old permissive (unfiltered) behavior', () => {
