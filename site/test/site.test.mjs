@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { slugify, makeSlugger, cleanTitle, esc } from '../lib/text.mjs';
 import { sanitizeHtml } from '../lib/sanitize.mjs';
@@ -10,6 +9,7 @@ import { parseStoryBody, parsePartOf, splitReference, shiftHeadings } from '../l
 import { offlineSource } from '../lib/sources.mjs';
 import { collectGuides, isPublishable } from '../lib/collect.mjs';
 import { build, parseArgs } from '../build.mjs';
+import { makeTempDir } from '../../test-utils/tmpdir.mjs';
 
 const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
 const IMG = 'https://raw.githubusercontent.com/o/r/ui-screenshots/a.png';
@@ -98,7 +98,7 @@ test('collect: Part of #N fallback when nothing is linked', async () => {
 });
 
 test('build renders the two-audience site, downloads images, rewrites paths', async () => {
-  const out = fs.mkdtempSync(path.join(os.tmpdir(), 'site-test-'));
+  const out = makeTempDir('site-test-');
   const res = await build({ source: offlineSource(fixtures()), out, repo: 'o/r', buildTime: new Date('2026-09-18T00:00:00Z') });
   assert.equal(res.guides, 1);
   assert.equal(res.stories, 2);
@@ -129,7 +129,7 @@ test('build renders the two-audience site, downloads images, rewrites paths', as
 });
 
 test('generated and reused docs are current, and carry no tracker plumbing or dead links', async () => {
-  const out = fs.mkdtempSync(path.join(os.tmpdir(), 'site-test-'));
+  const out = makeTempDir('site-test-');
   await build({ source: offlineSource(fixtures()), out, repo: 'o/r', buildTime: new Date('2026-09-18T00:00:00Z') });
   const rules = fs.readFileSync(path.join(out, 'developers/rules-reference/index.html'), 'utf8');
   assert.match(rules, /PAGE-003/); // straight from DEFAULT_RULES

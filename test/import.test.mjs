@@ -1,16 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { createFeature } from '../src/generators.mjs';
 import { importVertical, importPlan, analyzeRoute, validatePlanShape, normalizePlanLayers } from '../src/import.mjs';
 import { PROVIDERS } from '../src/llm.mjs';
 import { validateArchitecture } from '../src/architecture-enforcer.mjs';
 import { ConstructError } from '../src/diagnostics.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 function tmpProject() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'construct-import-'));
+  return makeTempDir('construct-import-');
 }
 
 /** Swap in a fake provider for the duration of `fn`, restoring the real one
@@ -33,7 +33,7 @@ async function withFakeClaude(fn) {
 test('importVertical scaffolds every requested layer and prepends a breadcrumb to each', async () => {
   const dir = tmpProject();
   createFeature(dir, 'checkout');
-  const sourceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-import-src-'));
+  const sourceDir = makeTempDir('construct-import-src-');
   const sourceFile = path.join(sourceDir, 'OldGate.tsx');
   fs.writeFileSync(sourceFile, `export function useOldGate() { return true; }\n`);
 
@@ -86,7 +86,7 @@ function writePlan(dir, plan) {
 test('importPlan executes every unit in order and reports each result', async () => {
   const dir = tmpProject();
   createFeature(dir, 'checkout');
-  const srcDir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-import-src-'));
+  const srcDir = makeTempDir('construct-import-src-');
   const gate = path.join(srcDir, 'OldGate.ts');
   const greeting = path.join(srcDir, 'OldGreeting.ts');
   fs.writeFileSync(gate, 'export function useGate() { return true; }\n');
@@ -191,7 +191,7 @@ test('importVertical with { llm } threads through importPlan for every unit', as
 // ---- analyzeRoute: excludes test files from the analysis -------------------
 
 test('analyzeRoute excludes .test./.spec. files from the analysis prompt', async () => {
-  const routeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-import-route-'));
+  const routeDir = makeTempDir('construct-import-route-');
   fs.writeFileSync(path.join(routeDir, 'useCpoGate.ts'), 'export function useCpoGate() { return true; }\n');
   fs.writeFileSync(path.join(routeDir, 'useCpoGate.test.ts'), 'test("gate", () => {});\n');
   fs.writeFileSync(path.join(routeDir, 'Foo.spec.tsx'), 'test("foo", () => {});\n');
@@ -214,7 +214,7 @@ test('analyzeRoute excludes .test./.spec. files from the analysis prompt', async
 });
 
 test('analyzeRoute warns (does not silently drop) when a file is too large for the analysis budget', async () => {
-  const routeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-import-route-'));
+  const routeDir = makeTempDir('construct-import-route-');
   // Comfortably smaller real features (CPO v2's 15 files are ~189k chars
   // total) must fit with no warning at all — only something genuinely
   // over the budget should trigger one.
@@ -237,7 +237,7 @@ test('analyzeRoute warns (does not silently drop) when a file is too large for t
 });
 
 test('analyzeRoute does not warn for a realistically-sized multi-file feature', async () => {
-  const routeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-import-route-'));
+  const routeDir = makeTempDir('construct-import-route-');
   // A handful of ~5k-char files — nowhere near the 500k budget.
   for (let i = 0; i < 5; i++) {
     fs.writeFileSync(path.join(routeDir, `File${i}.ts`), `export function f${i}() { return "${'x'.repeat(5000)}"; }\n`);
@@ -303,7 +303,7 @@ test('importVertical with { llm } reports a non-zero-shaped (still non-negative)
 test('executeImportPlan/importPlan thread a timings object through every unit\'s result', async () => {
   const dir = tmpProject();
   createFeature(dir, 'checkout');
-  const srcDir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-import-src-'));
+  const srcDir = makeTempDir('construct-import-src-');
   const gate = path.join(srcDir, 'OldGate.ts');
   fs.writeFileSync(gate, 'export function useGate() { return true; }\n');
   const planPath = writePlan(dir, { feature: 'checkout', units: [{ name: 'CpoAccess', layers: ['domain', 'hook'], from: gate }] });

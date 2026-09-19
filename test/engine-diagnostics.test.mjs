@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { collectDiagnostics, typescriptDiagnostics } from '../src/engine/diagnostics.mjs';
 import { createFeature } from '../src/generators.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 function tmpProject() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-engine-diagnostics-'));
+  const dir = makeTempDir('construct-engine-diagnostics-');
   fs.writeFileSync(path.join(dir, 'architecture.yml'), 'version: 1\npreset: strict-nextjs\nproject:\n  framework: nextjs\nfeatures:\n  root: features\n');
   createFeature(dir, 'billing');
   return dir;

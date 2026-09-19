@@ -12,10 +12,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import Ajv from 'ajv'; // draft-07 validator (dev dependency, same as unitSummary.test.mjs)
 import {
   PLAN_VERSION,
@@ -367,7 +367,7 @@ test('planToCommand rejects an unknown flow instead of inventing a command', () 
 });
 
 test("a planToCommand argv really runs: create.feature scaffolds the feature it said it would", () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-plan-'));
+  const dir = makeTempDir('construct-plan-');
   const bin = path.join(REPO_ROOT, 'bin', 'construct.mjs');
   try {
     assert.equal(spawnSync('node', [bin, 'init', '.'], { cwd: dir, encoding: 'utf8' }).status, 0);

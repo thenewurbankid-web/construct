@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import ts from 'typescript';
 import { fileURLToPath } from 'node:url';
@@ -16,6 +15,7 @@ import { createFeature } from '../src/generators.mjs';
 import { validateArchitecture, detectLayerViolations } from '../src/architecture-enforcer.mjs';
 import { parseToAst } from '../src/parser.mjs';
 import { ConstructError, EXIT_CODES } from '../src/diagnostics.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(here, '..');
@@ -23,7 +23,7 @@ const bin = path.join(REPO_ROOT, 'bin', 'construct.mjs');
 const CHECKOUT_DESCRIPTOR = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'fixtures', 'workflow-graphs', 'checkout.json'), 'utf8'));
 
 function tmpProject() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-workflow-test-'));
+  const dir = makeTempDir('construct-workflow-test-');
   fs.writeFileSync(path.join(dir, 'architecture.yml'), 'version: 1\npreset: strict-nextjs\nproject:\n  framework: nextjs\nfeatures:\n  root: features\n');
   createFeature(dir, 'checkout');
   return dir;
@@ -35,7 +35,7 @@ function tmpProject() {
  * project that does) so only this generator's own output is being checked,
  * not a third-party library's types. */
 function tscCheck(tsxSource) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-workflow-tsc-'));
+  const dir = makeTempDir('construct-workflow-tsc-');
   const file = path.join(dir, 'Workflow.tsx');
   fs.writeFileSync(file, tsxSource);
   fs.writeFileSync(path.join(dir, 'xstate.d.ts'), `declare module 'xstate' {\n  export function setup(config: any): { createMachine(config: any): any };\n}\n`);

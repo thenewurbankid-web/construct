@@ -2,12 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { EXIT_CODES } from '../src/diagnostics.mjs';
 import { loadLayerGraph } from '../src/architecture-graph.mjs';
 import { classifyFile } from '../src/architecture-enforcer.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const bin = path.join(here, '..', 'bin', 'construct.mjs');
@@ -17,7 +17,7 @@ function run(args, cwd) {
 }
 
 function emptyProjectDir() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'construct-cli-'));
+  return makeTempDir('construct-cli-');
 }
 
 test('no command exits with USAGE_ERROR and prints usage', () => {

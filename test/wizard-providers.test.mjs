@@ -4,13 +4,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { importRouteWizard } from '../src/cli.mjs';
 import { createFeature } from '../src/generators.mjs';
 import { PROVIDERS } from '../src/llm.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
-const tmpProject = () => fs.mkdtempSync(path.join(os.tmpdir(), 'construct-wizard-prov-'));
+const tmpProject = () => makeTempDir('construct-wizard-prov-');
 const scriptedAsk = (answers) => {
   const queue = [...answers];
   return async () => queue.shift() ?? '';
@@ -27,7 +27,7 @@ async function inProject(dir, fn) {
 }
 
 function routeFixture() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-wizard-prov-route-'));
+  const dir = makeTempDir('construct-wizard-prov-route-');
   fs.writeFileSync(path.join(dir, 'page.tsx'), 'import x0 from "./Old";\nexport default function Page() { return null; }\n');
   fs.writeFileSync(path.join(dir, 'Old.ts'), 'export function old() { return true; }\n');
   return dir;

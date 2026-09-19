@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ConstructError } from '../src/diagnostics.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { CANONICAL_LAYERS, loadLayerGraph } from '../src/architecture-graph.mjs';
 import {
   classifyFile,
@@ -19,7 +19,7 @@ import {
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 function tmpProject() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'construct-enforcer-'));
+  return makeTempDir('construct-enforcer-');
 }
 
 // ---- classifier (in-memory, path-string only) --------------------------

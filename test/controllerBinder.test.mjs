@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -16,6 +15,7 @@ import { parseToAst } from '../src/parser.mjs';
 import { createEnvelope } from '../src/engine/envelope.mjs';
 import { validateArchitecture, detectLayerViolations } from '../src/architecture-enforcer.mjs';
 import { ConstructError, EXIT_CODES } from '../src/diagnostics.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(here, '..');
@@ -56,7 +56,7 @@ export function CheckoutPage({ onCategoryChange, onSubmit, value, onReset }: Che
 `;
 
 function tmpProject() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-controller-test-'));
+  const dir = makeTempDir('construct-controller-test-');
   fs.writeFileSync(path.join(dir, 'architecture.yml'), 'version: 1\npreset: strict-nextjs\nproject:\n  framework: nextjs\nfeatures:\n  root: features\n');
   createFeature(dir, 'checkout');
   fs.writeFileSync(path.join(dir, 'features', 'checkout', 'pages', 'CheckoutPageProps.ts'), PAGE_PROPS_SOURCE);

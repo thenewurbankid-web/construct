@@ -2,14 +2,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { classifyFile, classifyProjectFile } from '../src/architecture-graph.mjs';
 import { classifyFile as enforcerClassifyFile } from '../src/architecture-enforcer.mjs';
 import { classifyLayer, parseFile, summarizeFeature } from '../src/parser.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 function project(files, architectureYml) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-classify-'));
+  const root = makeTempDir('construct-classify-');
   if (architectureYml) fs.writeFileSync(path.join(root, 'architecture.yml'), architectureYml);
   for (const [rel, body] of Object.entries(files)) {
     const abs = path.join(root, rel);

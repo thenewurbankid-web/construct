@@ -2,15 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const bin = path.join(here, '..', 'bin', 'construct.mjs');
 
 function emptyProjectDir() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'construct-repl-'));
+  return makeTempDir('construct-repl-');
 }
 
 /** Feed a sequence of REPL lines via stdin and return the full transcript. */

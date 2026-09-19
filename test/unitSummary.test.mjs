@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -11,6 +10,7 @@ import {
   renderUnitMarkdown, TOKEN_BUDGETS, SCHEMA_VERSION,
 } from '../src/engine/unitSummary.mjs';
 import { createUnitRegistry, defaultUnitRegistry } from '../src/engine/units/registry.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const EXAMPLE = path.join(REPO, 'example');
@@ -139,8 +139,8 @@ test('errors are structured, never thrown: not found, ambiguous, invalid input, 
 });
 
 test('a symlink pointing outside the project root is not read', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-units-'));
-  const outside = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'construct-out-')), 'secret.ts');
+  const root = makeTempDir('construct-units-');
+  const outside = path.join(makeTempDir('construct-out-'), 'secret.ts');
   fs.writeFileSync(outside, 'export const SECRET_TOKEN = 1;\n');
   fs.mkdirSync(path.join(root, 'src'));
   fs.symlinkSync(outside, path.join(root, 'src', 'link.ts'));

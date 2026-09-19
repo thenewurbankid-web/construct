@@ -5,14 +5,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { createFeature, generateLayer, fillGeneratedFile, LAYER_CONSTRAINTS } from '../src/generators.mjs';
 import { create, generate } from '../src/cli.mjs';
 import { PROVIDERS } from '../src/llm.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 function tmpProject() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'construct-create-fill-'));
+  return makeTempDir('construct-create-fill-');
 }
 
 async function withFakeClaude(response, fn) {

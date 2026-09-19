@@ -1,13 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { readPageSource } from './pageSource.mjs';
 import { PagesEditorError, hashOf } from './pagesEditor.mjs';
+import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
 
 function makeProject(pageSource) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-page-source-'));
+  const root = makeTempDir('construct-page-source-');
   fs.writeFileSync(path.join(root, 'architecture.yml'), 'version: 1\npreset: strict-nextjs\nproject:\n  framework: nextjs\nfeatures:\n  root: features\n');
   fs.mkdirSync(path.join(root, 'features/billing/pages'), { recursive: true });
   fs.mkdirSync(path.join(root, 'features/billing/services'), { recursive: true });
