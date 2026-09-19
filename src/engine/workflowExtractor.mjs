@@ -16,6 +16,7 @@
 // throwing, so the UI can say "can't visualize this machine" for that one
 // machine and still render the rest of the file.
 import { parseToAst, walkAst } from '../ast/index.mjs';
+import { setupObjectOf, contextTypeInfo } from './workflowContext.mjs';
 
 class Unsupported extends Error {}
 
@@ -167,11 +168,39 @@ function collectStates(statesNode, parentPath, out, machineId, idIndex) {
   }
 }
 
-function extractMachine(call, exportName, keep = false) {
-  const machine = { exportName, id: exportName, line: call.loc?.start.line, initial: null, states: [], transitions: [], error: null };
+/** Context fields ({name, initial (source text), type}) and the names declared in
+ * setup({ actions, guards }); tolerant -- anything not a plain literal object is
+ * reported as `contextEditable: false` rather than failing the machine. */
+function contextAndDeclarations(call, cfg, keep, { source = '', ast = null } = {}) {
+  const setupObj = setupObjectOf(call);
+  const declaredNames = (key) => {
+    const p = setupObj && setupObj.properties.find((x) => x.type === 'Property' && !x.computed && (x.key.name ?? x.key.value) === key);
+    return p && p.value.type === 'ObjectExpression' ? p.value.properties.filter((x) => x.type === 'Property' && !x.computed).map((x) => x.key.name ?? String(x.key.value)) : [];
+  };
+  const info = ast && contextTypeInfo(ast, setupObj, source);
+  const typeOf = new Map((info?.members ?? []).map((m) => [m.name, m.typeText]));
+  const ctxNode = cfg.get('context');
+  let context = [];
+  let contextEditable = true;
+  if (ctxNode) {
+    if (ctxNode.type !== 'ObjectExpression' || ctxNode.properties.some((p) => p.type !== 'Property' || p.computed)) contextEditable = false;
+    else context = ctxNode.properties.map((p) => ({ name: p.key.name ?? String(p.key.value), initial: source.slice(p.value.range[0], p.value.range[1]), ...(typeOf.has(p.key.name ?? String(p.key.value)) ? { type: typeOf.get(p.key.name ?? String(p.key.value)) } : {}) }));
+  }
+  return {
+    context,
+    contextEditable,
+    hasSetup: !!setupObj,
+    declared: { actions: declaredNames('actions'), guards: declaredNames('guards') },
+    ...(keep ? { _setupObj: setupObj, _types: info } : {}),
+  };
+}
+
+function extractMachine(call, exportName, keep = false, env = {}) {
+  const machine = { exportName, id: exportName, line: call.loc?.start.line, initial: null, states: [], transitions: [], context: [], contextEditable: false, hasSetup: false, declared: { actions: [], guards: [] }, error: null };
   try {
     const cfg = propsOf(call.arguments[0], 'machine config');
     machine.hasExplicitId = !!strOf(cfg.get('id'));
+    Object.assign(machine, contextAndDeclarations(call, cfg, keep, env));
     machine.id = strOf(cfg.get('id')) || exportName || 'machine';
     const raw = [];
     const idIndex = new Map();
@@ -251,7 +280,7 @@ function analyze(source, keep) {
       if (!isMachineCall(node)) return;
       const exportName = parent?.type === 'VariableDeclarator' && parent.id.type === 'Identifier' ? parent.id.name : null;
       try {
-        machines.push(extractMachine(node, exportName, keep));
+        machines.push(extractMachine(node, exportName, keep, { source, ast }));
       } catch (e) {
         machines.push({ exportName, id: exportName || 'machine', line: node.loc?.start.line, initial: null, states: [], transitions: [], error: `Unexpected error: ${e.message}` });
       }

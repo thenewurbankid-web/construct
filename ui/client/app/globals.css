@@ -1354,6 +1354,34 @@ button:disabled {
   margin-top: 8px;
 }
 
+/* Epic #223 — Context / Actions panel under the diagram. */
+.wf-context-table {
+  width: 100%;
+  margin-bottom: 8px;
+  border-collapse: collapse;
+}
+
+.wf-context-table th,
+.wf-context-table td {
+  padding: 4px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.wf-named-list {
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.wf-named-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+}
+
 /* Epic #185 — Workflow narrator panels (plain English / scenarios / health)
  * under each machine diagram. Own block to keep merges trivial. */
 .wf-narrative {
@@ -1509,6 +1537,67 @@ button:disabled {
   padding: 2px 0;
 }
 
+/* #223 — folder picker (features/directory-browser). Layout + focus only. */
+.dir-picker {
+  margin: 12px 0 20px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.dir-picker__current,
+.dir-picker__actions,
+.dir-picker__row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.dir-picker__actions {
+  margin: 10px 0;
+}
+.dir-picker__list {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.dir-picker__row {
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+}
+.dir-picker__open {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+  padding: 2px 4px;
+  text-align: left;
+}
+.dir-picker__open:hover {
+  text-decoration: underline;
+}
+.dir-picker__open:focus-visible,
+.dir-picker__hidden input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.dir-picker__hidden {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.dir-badge {
+  font-size: 0.72rem;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  color: var(--muted);
+}
+.dir-badge--construct {
+  border-color: var(--accent);
+  color: var(--accent);
+}
 .live-preview-panel { padding: 12px; margin-top: 12px; }
 .live-preview-bar { display: flex; gap: 8px; margin-bottom: 8px; }
 .live-preview-bar input { flex: 1; }

@@ -112,6 +112,38 @@ function kindOf(machine, s) {
   return 'normal';
 }
 
+/** A context type in words: `number` -> "a number", `string | null` -> "text that can be empty". */
+export function typeText(type) {
+  const parts = String(type ?? '').split('|').map((t) => t.trim()).filter(Boolean);
+  const empty = parts.some((t) => t === 'null' || t === 'undefined');
+  const rest = parts.filter((t) => t !== 'null' && t !== 'undefined');
+  const words = { number: 'a number', string: 'text', boolean: 'a yes/no value' };
+  if (rest.length !== 1) return type ? `of type ${code(type)}` : '';
+  const base = words[rest[0]] ?? `of type ${code(rest[0])}`;
+  return empty ? `${base} that can be empty` : base;
+}
+
+/** An initial value in words: `1` -> "1", `null` -> "empty", `[]` -> "an empty list". */
+export function initialText(text) {
+  const t = String(text).trim();
+  if (t === 'null' || t === 'undefined') return 'empty';
+  if (t === '[]') return 'an empty list';
+  if (t === '{}') return 'an empty record';
+  if (t === 'true') return 'yes';
+  if (t === 'false') return 'no';
+  if (/^-?\d+(\.\d+)?$/.test(t)) return t;
+  if (/^(['"`]).*\1$/.test(t)) return t.length === 2 ? 'blank' : `"${t.slice(1, -1)}"`;
+  return code(t);
+}
+
+/** One sentence per context field: what the flow remembers and where it starts. */
+export function contextSentences(machine) {
+  return (machine.context ?? []).map((f) => {
+    const kind = f.type ? ` (${typeText(f.type)})` : '';
+    return `It remembers ${humanize(f.name)}${kind}, starting as ${initialText(f.initial)}.`;
+  });
+}
+
 export function machineTitle(machine) {
   return machine.id || machine.exportName || 'machine';
 }
@@ -121,7 +153,7 @@ export function narrateMachine(machine) {
   const title = machineTitle(machine);
   if (machine.error) {
     const summary = `The "${humanize(title)}" flow cannot be explained in plain English: ${machine.error}.`;
-    return { machine: title, summary, states: [], text: `${summary}\n` };
+    return { machine: title, summary, context: [], states: [], text: `${summary}\n` };
   }
   const states = machine.states;
   const finals = states.filter((s) => s.final);
@@ -158,13 +190,19 @@ export function narrateMachine(machine) {
     return { name: s.name, path: s.path, label: s.path.split('.').map(humanize).join(' › '), kind, sentences };
   });
 
+  const context = contextSentences(machine);
   const lines = [`${cap(humanize(title))}`, summary, ''];
+  if (context.length) {
+    lines.push('What it remembers');
+    for (const sentence of context) lines.push(`  - ${sentence}`);
+    lines.push('');
+  }
   for (const st of out) {
     lines.push(cap(st.path.split('.').map(humanize).join(' › ')));
     for (const sentence of st.sentences) lines.push(`  - ${sentence}`);
     lines.push('');
   }
-  return { machine: title, summary, states: out, text: `${lines.join('\n').trimEnd()}\n` };
+  return { machine: title, summary, context, states: out, text: `${lines.join('\n').trimEnd()}\n` };
 }
 
 function hasAncestorRules(machine, s) {
