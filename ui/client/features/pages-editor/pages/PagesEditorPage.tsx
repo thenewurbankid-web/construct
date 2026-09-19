@@ -3,6 +3,7 @@ import { InspectorPanel } from '../components/InspectorPanel';
 import { PagesBrowser } from '../components/PagesBrowser';
 import { PreviewPanel } from '../components/PreviewPanel';
 import { PropFlowDiagram } from '../components/PropFlowDiagram';
+import { SourcePanel } from '../components/SourcePanel';
 import { TreePanel } from '../components/TreePanel';
 import type { usePagesEditor } from '../hooks/usePagesEditor';
 
@@ -45,6 +46,7 @@ export function PagesEditorPage(props: PagesEditorPageProps): ReactNode {
             <InspectorPanel feature={feature} file={file} node={selectedNode} contentHash={tree.contentHash} onSaved={onTreeSaved} />
           </div>
           <PropFlowDiagram roots={tree.roots} />
+          <SourcePanel feature={feature} file={file} contentHash={tree.contentHash} />
         </>
       )}
     </div>
