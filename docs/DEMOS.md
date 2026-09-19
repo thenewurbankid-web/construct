@@ -84,7 +84,8 @@ engineering-design-doc tone. Spell out acronyms once.
 
 A demo is **stale** when the feature or UI it shows has changed since it was
 verified. Examples: the UI polish (#170) restyled every screen, so every
-earlier screenshot is stale; `--llm` on Create moved from CLI-only to an opt-in
+earlier screenshot is stale; the Cockpit shell (Browser / stage / Tools, top bar, drawer) replaced the sidebar and
+nav bar, so every screenshot and "click the link in the sidebar" step taken before it is stale too; `--llm` on Create moved from CLI-only to an opt-in
 checkbox in the UI (#109), so "the Create form has no LLM option" is stale.
 
 To refresh: re-verify against current `main`, re-run the commands and paste the

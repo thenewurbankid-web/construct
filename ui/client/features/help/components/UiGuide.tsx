@@ -1,3 +1,55 @@
+function ShellGuide() {
+  return (
+    <>
+      <h3>The Cockpit layout</h3>
+      <p>
+        Every screen sits in the same frame: the <strong>Browser</strong> on the left (find things), the{' '}
+        <strong>stage</strong> in the middle (the screen itself), and <strong>Tools</strong> on the right
+        (inspect, edit, check). A screen&apos;s own tabs come first in the Browser; <strong>Screens</strong> is
+        the list of every screen. The top bar has the project switcher, the{' '}
+        <strong>Explore / Research / Build</strong> modes, the search box, the local-model status and the
+        light/dark switch.
+      </p>
+      <ul>
+        <li>
+          <strong>Command palette</strong> — press <code>Ctrl K</code> (<code>Cmd K</code> on a Mac) to reach
+          any screen or action by typing a few letters.
+        </li>
+        <li>
+          <strong>Drawer</strong> — <code>Ctrl J</code> opens the bottom drawer: <em>Diagnostics</em> (what{' '}
+          <code>construct validate</code> found, with file and line), <em>Logs</em> and <em>Processes</em>.
+        </li>
+        <li>
+          <strong>Panes</strong> — <code>Ctrl B</code> shows or hides the Browser, <code>Ctrl Alt B</code> the
+          Tools panel; drag a divider or use the arrow keys on it to resize. On a narrow window one pane shows
+          at a time, switched from the bar at the bottom.
+        </li>
+      </ul>
+    </>
+  );
+}
+
+function PagesAndWorkflowsGuide() {
+  return (
+    <>
+      <h3>Pages Editor</h3>
+      <p>
+        Pick a feature and a page in the Browser to see its elements as a tree. Frame your running app in{' '}
+        <strong>Live app preview</strong> and click an element to jump to its code. In Tools: <em>Inspector</em>{' '}
+        (edit the selected element), <em>Scope</em> (how the page&apos;s values flow into a component),{' '}
+        <em>Source</em> (the whole file, with type errors marked) and <em>Diff</em> (what changed on disk
+        outside the editor). Every save is previewed and checked against your architecture rules first.
+      </p>
+      <h3>Workflows</h3>
+      <p>
+        Pick a workflow file to see its diagram. Tools: <em>Narrative</em> (the flow in plain English, every
+        start-to-end scenario, and a health check), <em>Context &amp; actions</em> and <em>Edit</em> (both
+        preview a diff before anything is written).
+      </p>
+    </>
+  );
+}
+
 function DashboardGuide() {
   return (
     <>
@@ -32,21 +84,22 @@ function SettingsGuide() {
     <>
       <h3>Settings</h3>
       <p>
-        Two settings, applied to every command run from this UI — nothing is persisted to disk, so
-        restarting the backend resets both to their defaults:
+        Applied to every command run from this UI — nothing is persisted to disk, so restarting the
+        backend resets them to their defaults:
       </p>
       <ul>
         <li>
-          <strong>Project directory</strong> — passed as <code>--dir</code> to every command,
-          exactly like the CLI&apos;s own <code>--dir</code> flag.
+          <strong>Project directory</strong> — the project every command works on, exactly like the CLI&apos;s{' '}
+          <code>--dir</code> flag. Type a path or use the folder browser; the project switcher in the top bar
+          changes it too.
         </li>
         <li>
-          <strong>LLM provider</strong> — sourced live from <code>src/llm.mjs</code>&apos;s{' '}
-          <code>PROVIDERS</code> map. Selecting &quot;none&quot; simply means LLM steps stay off unless a
-          specific command opts in.
+          <strong>LLM provider, per capability</strong> — one choice each for Import fill, Create/generate fill
+          and Plan analysis. &quot;none&quot; keeps that step off unless a command opts in; a local model is
+          offered for the two fill steps but never for Plan analysis.
         </li>
       </ul>
-      <p>The bottom of the page always shows the currently-resolved project root and LLM provider.</p>
+      <p>The bottom of the page always shows the currently-resolved project root and providers.</p>
     </>
   );
 }
@@ -70,7 +123,9 @@ function WizardGuide() {
 export function UiGuide() {
   return (
     <div>
+      <ShellGuide />
       <DashboardGuide />
+      <PagesAndWorkflowsGuide />
       <SettingsGuide />
       <WizardGuide />
     </div>
