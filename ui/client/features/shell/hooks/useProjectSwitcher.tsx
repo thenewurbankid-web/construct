@@ -21,6 +21,7 @@ export function useProjectSwitcher() {
   }, []);
 
   const toggle = useCallback(() => setOpen((o) => !o), []);
+  const show = useCallback(() => setOpen(true), []);
   const close = useCallback(() => setOpen(false), []);
 
   const choose = useCallback(async (next: string) => {
@@ -35,5 +36,5 @@ export function useProjectSwitcher() {
     window.location.reload();
   }, []);
 
-  return { dir, known, label: projectLabel(dir), open, toggle, close, choose, error };
+  return { dir, known, label: projectLabel(dir), open, toggle, show, close, choose, error };
 }

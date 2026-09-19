@@ -6,6 +6,7 @@ import { findNode } from '../domain/TreeNodes';
 import { getFeatures, getPages, getPageTree } from '../services/PagesBrowsing';
 import type { PageTree, PagesEditorNode } from '../types';
 import { useLivePreview } from './useLivePreview';
+import { useOpenPageRequests } from './useOpenPageRequests';
 import { usePageChange } from './usePageChange';
 import { initialPagesEditorState, pagesEditorReducer } from '../workflows/PagesEditor';
 
@@ -17,7 +18,7 @@ function previewTitle(node: PagesEditorNode): string {
  * feature -> one file -> a parsed JSX tree -> a selected node. */
 export function usePagesEditor() {
   const [state, dispatch] = useReducer(pagesEditorReducer, initialPagesEditorState);
-
+  useOpenPageRequests(dispatch);
   const { feature, file } = state;
   // Handlers are memoised so tabs registered in the shell (which capture them) stay stable.
   const openFile = useCallback(

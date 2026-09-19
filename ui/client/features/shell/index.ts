@@ -44,3 +44,12 @@ export * from './hooks/useShellShortcuts';
 
 /** Active tab resolution and tablist keyboard handling. */
 export * from './hooks/useTabHost';
+
+/** Registers the shell's own palette commands (go to a screen, mode, theme, panes, validate). */
+export * from './hooks/useShellCommands';
+
+/** Route and open-page-in-editor actions the shell offers its slots. */
+export * from './hooks/useShellNavigation';
+
+/** Opens the drawer on a given tab. */
+export * from './hooks/useDrawerActions';

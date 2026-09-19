@@ -1,0 +1,162 @@
+/* Cockpit drawer content (Diagnostics, Logs) and the command palette
+ * (Design #249, mocks: processes-drawer / command-palette). Feature-scoped
+ * prefixes: dg- (drawer content), cp- (palette), plus the top-bar trigger.
+ * Tokens only; text stays --text on soft fills so contrast holds in both themes. */
+
+/* ---- top-bar palette trigger ---- */
+.sh-palette-trigger {
+  appearance: none;
+  align-self: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  width: min(360px, 32vw);
+  min-height: 28px;
+  padding: 0 var(--sp-2) 0 var(--sp-3);
+  color: var(--text-muted);
+  background: var(--surface-0);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  font-size: var(--fs-md);
+  cursor: pointer;
+}
+.sh-palette-trigger:hover { background: var(--surface-3); color: var(--text); }
+.sh-palette-trigger span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sh-palette-trigger:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+@media (max-width: 900px) {
+  .sh-palette-trigger span { display: none; }
+  .sh-palette-trigger { width: auto; }
+}
+
+/* ---- drawer content ---- */
+.dg-root { display: flex; flex-direction: column; min-height: 100%; }
+.dg-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-1) var(--sp-3);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: var(--fs-sm);
+}
+.dg-headline { font-weight: 600; }
+.dg-meta { color: var(--text-muted); }
+.dg-btn {
+  appearance: none;
+  align-self: auto;
+  min-height: 24px;
+  padding: 0 var(--sp-2);
+  font-size: var(--fs-sm);
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+.dg-btn:hover:not(:disabled) { background: var(--surface-3); }
+.dg-btn:disabled { opacity: 0.5; cursor: default; }
+.dg-btn:focus-visible, .dg-row:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.dg-note { margin: 0; padding: var(--sp-1) var(--sp-3); color: var(--text); background: var(--warn-soft); border-bottom: 1px solid var(--warn); }
+.dg-empty { padding: var(--sp-4); }
+.dg-empty-title { margin: 0 0 4px; font-weight: 600; }
+
+.dg-list { list-style: none; margin: 0; padding: 0; }
+.dg-item { border-bottom: 1px solid var(--border-subtle); }
+.dg-row {
+  appearance: none;
+  align-self: auto;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 76px 92px minmax(0, 1fr) minmax(0, 1.3fr);
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-1) var(--sp-3);
+  min-height: 30px;
+  text-align: left;
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  font-size: var(--fs-md);
+  cursor: pointer;
+}
+.dg-row:hover { background: var(--hover); }
+.dg-sev {
+  justify-self: start;
+  padding: 0 6px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  color: var(--text);
+}
+.dg-sev--error { background: var(--danger-soft); border-color: var(--danger); }
+.dg-sev--warning { background: var(--warn-soft); border-color: var(--warn); }
+.dg-sev--info { background: var(--neutral-soft); }
+.dg-rule { font-family: var(--mono); font-size: var(--fs-sm); color: var(--text-muted); }
+.dg-msg { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dg-file { font-family: var(--mono); font-size: var(--fs-sm); color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
+.dg-row[data-page='true'] .dg-file { color: var(--accent); }
+.dg-detail { padding: var(--sp-1) var(--sp-3) var(--sp-2) calc(76px + 92px + var(--sp-3) * 3); color: var(--text-muted); font-size: var(--fs-sm); }
+.dg-detail p { margin: 2px 0; }
+.dg-detail strong { color: var(--text); }
+@media (max-width: 900px) {
+  .dg-row { grid-template-columns: 70px minmax(0, 1fr); }
+  .dg-rule, .dg-file { display: none; }
+  .dg-detail { padding-left: var(--sp-3); }
+}
+
+.dg-log { list-style: none; margin: 0; padding: var(--sp-1) 0; font-family: var(--mono); font-size: var(--fs-sm); }
+.dg-log-line { display: grid; grid-template-columns: 64px 84px minmax(0, 1fr); gap: var(--sp-2); padding: 1px var(--sp-3); }
+.dg-log-line:hover { background: var(--hover); }
+.dg-log-time { color: var(--text-faint); }
+.dg-log-src { color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dg-log-text { white-space: pre-wrap; word-break: break-word; }
+.dg-log-line--warn .dg-log-text { color: var(--warn); }
+.dg-log-line--error .dg-log-text { color: var(--danger); }
+
+/* ---- command palette ---- */
+.cp-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 14vh;
+  background: var(--sunken);
+  backdrop-filter: blur(2px);
+}
+.cp-dialog {
+  width: min(620px, 94vw);
+  max-height: 68vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.cp-search { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-3); border-bottom: 1px solid var(--border-subtle); }
+.cp-search-icon { color: var(--text-muted); font-family: var(--mono); }
+.cp-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  font-size: var(--fs-lg);
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  outline: none;
+  box-shadow: none;
+}
+.cp-search:focus-within { box-shadow: inset 0 -2px 0 var(--focus); }
+.cp-results { flex: 1; overflow: auto; padding: var(--sp-1) 0; }
+.cp-group { list-style: none; margin: 0; padding: 0; }
+.cp-group-title { padding: var(--sp-2) var(--sp-3) var(--sp-1); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); }
+.cp-option { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: 6px var(--sp-3); cursor: pointer; }
+.cp-option--active { background: var(--accent-soft); box-shadow: inset 2px 0 0 var(--accent); }
+.cp-empty { margin: 0; padding: var(--sp-4) var(--sp-3); color: var(--text-muted); }
+.cp-foot { display: flex; gap: var(--sp-4); padding: var(--sp-2) var(--sp-3); border-top: 1px solid var(--border-subtle); font-size: var(--fs-xs); color: var(--text-muted); }
