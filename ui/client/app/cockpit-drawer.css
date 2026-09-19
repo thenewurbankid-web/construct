@@ -24,9 +24,15 @@
 .sh-palette-trigger:hover { background: var(--surface-3); color: var(--text); }
 .sh-palette-trigger span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sh-palette-trigger:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+/* #273: the trigger is the top bar's single elastic item - it may shrink
+ * (its label ellipsises) so that nothing else in the bar has to. The shortcut
+ * hint keeps its own width and never wraps. */
+.sh-palette-trigger { flex: 0 1 auto; min-width: 104px; }
+.sh-palette-trigger kbd { flex: none; white-space: nowrap; }
 @media (max-width: 900px) {
   .sh-palette-trigger span { display: none; }
-  .sh-palette-trigger { width: auto; }
+  /* min-width belongs to the wide bar only - here the trigger is content-sized. */
+  .sh-palette-trigger { width: auto; min-width: 0; }
 }
 
 /* ---- drawer content ---- */
