@@ -274,3 +274,29 @@ whenever the board looks off; it also checks Module/Sub-module/Area consistency 
 boundary (Cockpit UI, MCP, predefined envelopes are proprietary; core packages are open). Deterministic
 hygiene (closed -> Done, reopened -> In progress, add missing issues, archive Done > 14 days, Area
 consistency) is automated by `.github/workflows/project-board-hygiene.yml` (needs the `PROJECT_TOKEN` secret).
+
+## Design module (Module 9) — product and UX design (standing instruction)
+
+The Cockpit is designed before it is built. Charter, principles, tokens, the
+3-pane cockpit layout and the concept mocks live in `docs/design/`
+(`docs/design/README.md` is the entry point). Design is delegated to the
+`designer` agent (`.claude/agents/designer.md`): invoke it BEFORE building any
+new Cockpit screen or a visible change to an existing one, for design reviews
+and accessibility audits, and when tokens change. The designer produces concept
+mocks and specs; it never edits `ui/client` product code.
+
+- **Ticket shape**: a `[Design] <initiative>` parent ticket (mocks embedded,
+  rationale, open questions) with one sub-issue per screen or shippable slice
+  (rule 4's parent-epic + atomic-sub-issue pattern, linked as real GitHub
+  sub-issues). Board Module: **Design**.
+- **Implementation tickets link back**: start the body with `Design: #N (mock:
+  <file>)`. UI implementation still needs the rule-11 Playwright test and
+  screenshot, and must keep the existing e2e specs named in the design ticket
+  green.
+- **Mocks are labelled** "Concept - not implemented" until the screen ships,
+  live in `docs/design/mocks/` (HTML+CSS, PNGs in `png/`), and use only the
+  tokens in `docs/design/tokens.md`.
+- **Open-core**: the Cockpit UI is proprietary-future; design work stays in
+  `docs/design/` and no open-core package depends on it.
+- Dev ideology applies to design: reusable, modular, testable, replaceable;
+  panes/tabs are slots behind small interfaces.

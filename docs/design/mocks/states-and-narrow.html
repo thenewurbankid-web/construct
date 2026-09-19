@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Empty, loading, error states and narrow-screen behaviour — Concept</title>
+<link rel="stylesheet" href="mock.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+<script>document.addEventListener('DOMContentLoaded',()=>{document.body.dataset.x=1});</script>
+</head><body>
+<div class="concept">Concept — not implemented <span>Empty, loading, error states and narrow-screen behaviour</span></div>
+
+<div class="sheet">
+ <div class="two"><h3>Empty — no project</h3><div class="state-card"><div class="ico">▣</div><h5>Open a project to start</h5><p>Pick a folder that contains an architecture.yml, or create a new project.</p><button class="btn primary">Open project…</button></div>
+  <h3>Empty — nothing selected</h3><div class="state-card"><div class="ico">⊕</div><h5>Select something to inspect</h5><p>Alt+Click an element in the preview, or choose a file in the Browser.</p></div></div>
+ <div class="two"><h3>Loading — preview starting</h3><div class="state-card"><span class="pill run"><span class="spin"></span>Starting preview server…</span><div class="skel"></div><div class="skel" style="width:60%"></div><p>Usually 3–5 s. The Browser and Source stay usable meanwhile.</p></div>
+  <h3>Loading — analysing</h3><div class="state-card"><span class="pill run"><span class="spin"></span>Scanning 41 files</span><div class="bar-track" style="width:200px"><div class="bar-fill" style="width:58%"></div></div><p>Deterministic — no model involved.</p></div></div>
+ <div class="two"><h3>Error — preview failed</h3><div class="state-card" style="border-color:var(--danger)"><div class="ico" style="color:var(--danger);background:var(--danger-soft)">!</div><h5>Preview could not start</h5><p>Port 5173 is already in use by another process.</p><div><button class="btn primary sm">Use port 5174</button> <button class="btn sm">Show logs</button></div></div>
+  <h3>Error — model offline</h3><div class="state-card" style="border-color:var(--warn)"><div class="ico" style="color:var(--warn);background:var(--warn-soft)">◌</div><h5>Local model is offline</h5><p>Deterministic steps still work. Model steps are paused.</p><button class="btn sm">Open Settings</button></div></div>
+ <div><h3>Narrow (phone, 390 px) — one pane at a time</h3><div class="narrow">
+  <div class="topbar" style="height:44px;flex:none"><div class="brand"><i></i>Construct</div><span class="spacer"></span><span class="pill run"><span class="spin"></span>2</span><button class="icon-btn" aria-label="Menu">≡</button></div>
+  <div class="canvas-tb"><span class="crumbs">auth › <b>login</b></span><span class="spacer"></span><button class="btn sm">⊕ Pick</button></div>
+  <div class="stage" style="padding:10px;flex:1"><div class="device" style="width:100%;height:100%;max-height:none"><div class="bar"><i></i><i></i><i></i></div><div class="login" style="width:88%;margin:22px auto;padding:16px"><h2>Welcome back</h2><label>Email</label><div class="in">sam@example.com</div><div class="cta">Sign in</div></div></div></div>
+  <div class="tabbar" role="tablist"><div>Browser</div><div class="on">Preview</div><div>Tools</div><div>Processes</div></div></div></div>
+</div>
+<script>(()=>{const t=document.documentElement.dataset.theme;document.body.parentElement.setAttribute('data-theme',t)})()</script>
+</body></html>
