@@ -14,6 +14,9 @@ export type PagesEditorNode = {
   isFragment: boolean;
   isCustomComponent: boolean;
   props: PropData[];
+  /** 1-based source position of the element's `<` (same values the core annotator writes into data-cx-src). */
+  line?: number;
+  column?: number;
   children: PagesEditorNode[];
 };
 
