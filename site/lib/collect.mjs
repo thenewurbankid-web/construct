@@ -24,6 +24,8 @@ const BOILERPLATE = /^\s*(?:Parent\/tracking ticket|Part of\s+#\d+)/i;
 export function dropBoilerplate(md) {
   const paras = String(md).split(/\n\s*\n/);
   while (paras.length && BOILERPLATE.test(paras[0])) paras.shift();
+  // A trailing standalone "Part of #N" line is issue bookkeeping too, not reader content.
+  while (paras.length && /^\s*Part of\s+#\d+\.?\s*$/i.test(paras[paras.length - 1])) paras.pop();
   return paras.join('\n\n').trim();
 }
 

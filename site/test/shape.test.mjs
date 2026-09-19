@@ -6,7 +6,7 @@ import { cleanTitle } from '../lib/text.mjs';
 import { parseDemoBody, stripComments } from '../lib/story.mjs';
 import { sanitizeHtml } from '../lib/sanitize.mjs';
 import { offlineSource } from '../lib/sources.mjs';
-import { collectGuides } from '../lib/collect.mjs';
+import { collectGuides, dropBoilerplate } from '../lib/collect.mjs';
 
 const real = JSON.parse(fs.readFileSync(new URL('./fixtures/real-bodies.json', import.meta.url), 'utf8'));
 const withDefaults = (i, extra = {}) => ({ state: 'closed', html_url: `https://github.com/o/r/issues/${i.number}`, updated_at: '2026-09-18T00:00:00Z', ...i, ...extra });
@@ -92,4 +92,10 @@ test('collect: old-shape guide still works and drops Parent/tracking boilerplate
   assert.equal(guides[0].title, 'Old guide');
   assert.match(guides[0].summary, /plain old summary/);
   assert.doesNotMatch(JSON.stringify(guides), /Parent\/tracking/);
+});
+
+test('dropBoilerplate removes leading and trailing "Part of #N" bookkeeping, keeps the rest', () => {
+  const md = 'Part of #125.\n\n**As a** dev **I want** x.\n\n### Benefit\n- ok\n\nPart of #263.';
+  assert.equal(dropBoilerplate(md), '**As a** dev **I want** x.\n\n### Benefit\n- ok');
+  assert.equal(dropBoilerplate('Text mentioning Part of #5 inline stays.'), 'Text mentioning Part of #5 inline stays.');
 });
