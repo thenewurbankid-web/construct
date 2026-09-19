@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import { AuthGateController, AuthSessionProvider } from '@/features/auth';
 import { ShellController, THEME_INIT_SCRIPT } from '@/features/shell';
 import './tokens.css';
 import './screens.css';
@@ -20,7 +21,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body className="app">
-        <ShellController>{children}</ShellController>
+        {/* #278: the session is resolved above the shell, so a logged-out
+            browser gets a login screen instead of a Cockpit frame whose
+            every request would 401. The real enforcement is server-side
+            (ui/server/src/auth.mjs); this is the usable half of it. */}
+        <AuthSessionProvider>
+          <AuthGateController>
+            <ShellController>{children}</ShellController>
+          </AuthGateController>
+        </AuthSessionProvider>
       </body>
     </html>
   );

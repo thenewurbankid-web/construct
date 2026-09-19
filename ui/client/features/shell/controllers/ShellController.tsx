@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, type ReactNode } from 'react';
+import { UserMenuController } from '@/features/auth';
 import { DirectoryBrowserController } from '@/features/directory-browser';
 import { CommandPaletteController, CommandRegistryProvider, useOpenPalette } from '@/features/command-palette';
 import { DiagnosticsController, LogsController, statusText, tabBadge, useDiagnostics } from '@/features/diagnostics';
@@ -115,6 +116,7 @@ function ShellFrame({ children }: { children: ReactNode }) {
       activeModeId={route.mode?.id ?? null}
       projectSwitcher={projectSwitcher}
       themeToggle={<ThemeController />}
+      userMenu={<UserMenuController />}
       modelStatus={model}
       runningProcesses={0}
       onOpenProcesses={() => showDrawerTab('processes')}

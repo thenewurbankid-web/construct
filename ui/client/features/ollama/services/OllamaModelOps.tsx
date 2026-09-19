@@ -6,7 +6,7 @@ import type { PullProgress } from '../types';
 // read-only fetches.
 
 export const removeOllamaModel = (name: string) =>
-  fetch(`${API_BASE}/api/ollama/models/${encodeURIComponent(name)}`, { method: 'DELETE' }).then((r) => r.json());
+  fetch(`${API_BASE}/api/ollama/models/${encodeURIComponent(name)}`, { method: 'DELETE', credentials: 'include' }).then((r) => r.json());
 
 /** Streams `/api/ollama/pull`'s newline-delimited JSON progress events,
  * calling `onProgress` once per parsed line as it arrives — a real pull can
@@ -15,6 +15,7 @@ export const removeOllamaModel = (name: string) =>
 export async function pullOllamaModel(name: string, onProgress: (p: PullProgress) => void): Promise<void> {
   const res = await fetch(`${API_BASE}/api/ollama/pull`, {
     method: 'POST',
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name }),
   });

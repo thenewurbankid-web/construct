@@ -395,6 +395,30 @@ button:disabled {
   padding: 24px 28px;
 }
 
+/* ---- login screen (#278): the whole screen when there is no session ----
+ * It replaces the Cockpit frame rather than sitting inside it, so it
+ * centres itself in the viewport instead of following the normal page flow
+ * under a top bar that is not there. */
+.auth-screen {
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+  max-width: none;
+  padding: var(--sp-6);
+}
+.auth-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  margin-top: var(--sp-2);
+}
+.auth-test-login { opacity: 0.9; }
+.auth-test-note {
+  border-left: 3px solid var(--warn);
+  padding-left: var(--sp-3);
+  color: var(--text-muted);
+}
+
 .help-contents a {
   color: var(--accent);
   text-decoration: none;

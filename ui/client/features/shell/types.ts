@@ -128,6 +128,10 @@ export type TopBarProps = {
   activeModeId: string | null;
   projectSwitcher: ReactNode;
   themeToggle: ReactNode;
+  /** The signed-in account slot (#278). A slot, not a dependency: the shell
+   * knows a node goes here, not that the auth feature exists. Renders
+   * nothing on a server with no login gate. */
+  userMenu?: ReactNode;
   modelStatus: ModelStatus;
   runningProcesses: number;
   layout: ShellLayoutState;
@@ -165,6 +169,8 @@ export type ShellPageProps = NarrowProps & {
   activeModeId: string | null;
   projectSwitcher: ReactNode;
   themeToggle: ReactNode;
+  /** The signed-in account slot (#278) — see TopBarProps. */
+  userMenu?: ReactNode;
   modelStatus: ModelStatus;
   runningProcesses: number;
   onOpenProcesses: () => void;
