@@ -15,7 +15,7 @@ module; *group next* = worth extracting, filed as an issue; *leave* = fine where
 | 4 | **LLM provider registry** (`PROVIDERS`, `callLlm`, `stripCodeFence`, Ollama defaults) | `src/llm.mjs` | `import.mjs`, `generators.mjs`, `ui/server/src/{settings,ollama}.mjs` | **LLM** (the one deliberate exception; opt-in via `--llm`) | Packaged already; keep isolated so everything else stays LLM-free |
 | 5 | **Transactional writer + context envelope + pipeline** (buffer writes, validate a shadow copy, commit atomically) | `src/engine/{transactionalWriter,envelope,pipeline}.mjs` | `generators.mjs`, `cli.mjs`, the generators in `src/engine/` | Det | Packaged already (`createTransaction`, `createEnvelope/validateEnvelope`, `runPipeline`) |
 | 6 | **Zero-LLM generators** (workflow from a state descriptor, controller binding, page transformer) | `src/engine/{workflowGenerator,controllerBinder,pageTransformer}.mjs` | `cli.mjs`, `generators.mjs` | Det | Packaged (now sit on `src/ast`) |
-| 7 | **Layer classification + layer graph** (`classifyLayer`, `classifyFile`, `loadLayerGraph`, `canImport`, `mergeLayers`, `validateGraph`) | `src/parser.mjs` (`classifyLayer`, hardcoded next/spa path shapes), `src/architecture-enforcer.mjs` (`classifyFile`), `src/architecture-graph.mjs` | enforcers, `parser.parseFile`, `pagesEditor` (graph only) | Det | **Group next**: two classifiers exist (hardcoded regex in `parser.mjs` vs graph-driven `classifyFile`); consolidate onto the graph (see follow-up issue) |
+| 7 | **Layer classification + layer graph** (`classifyFile`, `classifyProjectFile`, `loadLayerGraph`, `canImport`, `mergeLayers`, `validateGraph`) | `src/architecture-graph.mjs` (one classifier; `architecture-enforcer.mjs` re-exports `classifyFile`; `parser.classifyLayer` is a thin default-graph shim) | enforcers, `parser.parseFile`/`summarizeFeature`, readability, `pagesEditor` (graph only) | Det | **Packaged in #174**: single graph-driven classifier honoring custom layer patterns and `frozen:` regions |
 | 8 | **Exceptions (scoped, time-boxed)** | `src/exceptions.mjs` (`validateExceptionsShape`, `exceptionApplies`, `expiredExceptionViolations`) | the three enforcers (architecture re-exports the names for back-compat) | Det | **Packaged in #175** (replaced 3 near-identical `isExempt` copies) |
 | 9 | **Config loading + rule registry** (`loadConfig`, `DEFAULT_RULES`, `normalizeRules`, `layersForFramework`, `aggregateValidation`) | `src/config.mjs`, `src/registry.mjs`, `src/engine/defaultEnforcers.mjs` | CLI, all enforcers, ui/server | Det | Packaged already |
 | 10 | **Violation diagnostics** (`makeViolation`, `formatReport`, `ConstructError`, `EXIT_CODES`) | `src/diagnostics.mjs` | everything | Det | Packaged already |
@@ -35,5 +35,5 @@ module; *group next* = worth extracting, filed as an issue; *leave* = fine where
 
 ## Follow-ups
 
-See the issues referencing #104: Babel unification for `pagesEditor`, layer-classifier consolidation, and
-exception-handling consolidation.
+See the issues referencing #104: Babel unification for `pagesEditor` (#173). Layer-classifier (#174) and
+exception-handling (#175) consolidation are done.

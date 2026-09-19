@@ -4,7 +4,7 @@ import path from 'node:path';
 import { walk } from './fs.mjs';
 import { makeViolation } from './diagnostics.mjs';
 import { exceptionApplies } from './exceptions.mjs';
-import { parseFile, extractExports, extractJsdoc, lineOf, EXT } from './parser.mjs';
+import { parseFile, layerContextFor, extractExports, extractJsdoc, lineOf, EXT } from './parser.mjs';
 import { loadConfig, readRawRules } from './config.mjs';
 
 // Shaped exactly like DEFAULT_RULES in src/config.mjs, exported for Module 4 (or whoever
@@ -165,13 +165,14 @@ export function validateReadability(root) {
   const maxLoc = Number(readRawRules(root)['READ-002-max-loc']) || DEFAULT_MAX_LOC;
   const featuresDir = path.join(root, featureRoot);
   const out = [];
+  const layerContext = layerContextFor(root);
   if (!fs.existsSync(featuresDir)) return { violations: out };
   const featureNames = fs.readdirSync(featuresDir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
   for (const featureName of featureNames) {
     const dir = path.join(featuresDir, featureName);
     const files = walk(dir).filter((p) => EXT.has(path.extname(p)));
     for (const file of files) {
-      const summary = parseFile(root, file);
+      const summary = parseFile(root, file, layerContext);
       const source = fs.readFileSync(file, 'utf8');
       checkNaming(config, out, summary);
       checkLength(config, out, summary, source, maxLoc);

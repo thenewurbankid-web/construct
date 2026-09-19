@@ -17,7 +17,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { loadConfig } from './config.mjs';
-import { loadLayerGraph, canImport } from './architecture-graph.mjs';
+import { loadLayerGraph, canImport, classifyFile } from './architecture-graph.mjs';
 import { makeViolation, ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { walk, rel } from './fs.mjs';
 import { globToRegExp, matchGlob } from './glob.mjs';
@@ -40,13 +40,8 @@ function isReactSpecifier(specifier) {
   return specifier === 'react' || /(^|\/)react\//.test(specifier);
 }
 
-/** Classify a project-relative file path into a layer name, or null. */
-export function classifyFile(relPath, graph) {
-  for (const [layer, def] of Object.entries(graph)) {
-    if (def.pattern && globToRegExp(def.pattern).test(relPath)) return layer;
-  }
-  return null;
-}
+// Single layer classifier lives in architecture-graph.mjs (#174); re-exported for callers.
+export { classifyFile };
 
 /** Folder token (e.g. "controllers") a layer's pattern lives under, if any. */
 function layerFolder(def) {

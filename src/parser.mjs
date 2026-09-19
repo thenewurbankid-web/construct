@@ -12,7 +12,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { walk, rel } from './fs.mjs';
-import { loadConfig } from './config.mjs';
+import { loadConfig, DEFAULT_LAYERS } from './config.mjs';
+import { loadLayerGraph, classifyFile, classifyProjectFile } from './architecture-graph.mjs';
+import { readFrozenGlobs } from './frozen.mjs';
 import { parseToAst, extractImports, extractExports, extractJsdoc, lineOf } from './ast/index.mjs';
 
 // Parsing/extraction now live in the shared AST package (src/ast). Re-exported here so existing
@@ -21,14 +23,12 @@ export { parseToAst, extractImports, extractExports, extractJsdoc, lineOf };
 
 export const EXT = new Set(['.ts', '.tsx', '.js', '.jsx']);
 
-/** Classify a root-relative path into an architecture layer, or null if
- * unclassified. Implemented locally (not imported) per module ownership
- * boundaries. */
-export function classifyLayer(relPath) {
-  if (/^app\/.*page\.(tsx|ts|jsx|js)$/.test(relPath)) return 'route';
-  const m = relPath.match(/^features\/[^/]+\/(controllers|workflows|hooks|domain|services|pages|components)\//);
-  if (!m) return null;
-  return { controllers: 'controller', workflows: 'workflow', hooks: 'hook', domain: 'domain', services: 'service', pages: 'page', components: 'component' }[m[1]];
+/** Compatibility shim (#174): classify a root-relative path against the DEFAULT (Next.js) layer
+ * graph. The one real classifier is `classifyFile` / `classifyProjectFile` in
+ * architecture-graph.mjs, which honors a project's configured layer patterns and `frozen:`
+ * regions; prefer those. */
+export function classifyLayer(relPath, graph = DEFAULT_LAYERS) {
+  return classifyFile(relPath, graph);
 }
 
 /** Rough cyclomatic-complexity-flavored heuristic: count of if/for/while/switch/catch/&&/||
@@ -45,12 +45,19 @@ export function estimateComplexity(source) {
 
 /** @typedef {{path:string, layer:string|null, exports:string[], imports:string[], jsdoc:string|null, loc:number, complexityEstimate:number}} Summary */
 
-/** Parse a single file into a structured Summary. `filePath` may be absolute or root-relative. */
-export function parseFile(root, filePath) {
+/** Load the project's layer graph + frozen globs once, to pass as `parseFile`'s `context` when parsing many files. */
+export function layerContextFor(root) {
+  return { graph: loadLayerGraph(root), frozenGlobs: readFrozenGlobs(root) };
+}
+
+/** Parse a single file into a structured Summary. `filePath` may be absolute or root-relative.
+ * The layer comes from the project's layer graph (configured patterns, frozen files unclassified);
+ * pass `context` (see layerContextFor) to avoid reloading it per file. */
+export function parseFile(root, filePath, context) {
   const abs = path.isAbsolute(filePath) ? filePath : path.join(root, filePath);
   const relPath = rel(root, abs);
   const source = fs.readFileSync(abs, 'utf8');
-  const layer = classifyLayer(relPath);
+  const layer = classifyProjectFile(root, abs, context);
   const importsList = extractImports(source);
   const exportEntries = extractExports(source);
   const seen = new Set();
@@ -67,7 +74,8 @@ export function summarizeFeature(root, featureName) {
   const { features } = loadConfig(root);
   const dir = path.join(root, features.root, featureName);
   const files = walk(dir).filter((p) => EXT.has(path.extname(p)));
-  const summaries = files.map((f) => parseFile(root, f));
+  const context = layerContextFor(root);
+  const summaries = files.map((f) => parseFile(root, f, context));
   const layers = {};
   for (const s of summaries) {
     const key = s.layer || 'unclassified';

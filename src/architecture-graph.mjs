@@ -8,6 +8,9 @@ import path from 'node:path';
 import yaml from 'js-yaml';
 import { DEFAULT_LAYERS, layersForFramework, normalizeFramework } from './config.mjs';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
+import { globToRegExp } from './glob.mjs';
+import { matchFrozen, readFrozenGlobs } from './frozen.mjs';
+import { rel } from './fs.mjs';
 
 // Names that are valid `canImport` targets but are not themselves layers with
 // files to classify (e.g. a feature's types.ts). Never subject to cycle
@@ -120,4 +123,31 @@ export function loadLayerGraph(root) {
 export function canImport(layers, from, to) {
   if (from === to) return true;
   return !!(layers[from] && layers[from].canImport && layers[from].canImport.includes(to));
+}
+
+/**
+ * THE layer classifier (#174): the first layer in `graph` whose `pattern` glob matches the
+ * project-relative path, or null. Driven entirely by the (framework + `layers:` override) graph,
+ * so a custom pattern classifies files the same way everywhere -- the enforcers, `parseFile`
+ * summaries, the readability checks.
+ */
+export function classifyFile(relPath, graph) {
+  for (const [layer, def] of Object.entries(graph)) {
+    if (def.pattern && globToRegExp(def.pattern).test(relPath)) return layer;
+  }
+  return null;
+}
+
+/**
+ * Classify a file of the project at `root` the way the enforcers see it: through the project's
+ * layer graph, and a file inside a configured `frozen:` region is externally authored, so it is
+ * never classified (null). Pass `{ graph, frozenGlobs }` when classifying many files so the
+ * graph/config are loaded once; otherwise they are loaded from `root`.
+ */
+export function classifyProjectFile(root, filePath, { graph, frozenGlobs } = {}) {
+  const abs = path.isAbsolute(filePath) ? filePath : path.join(root, filePath);
+  const g = graph || loadLayerGraph(root);
+  const frozen = frozenGlobs || readFrozenGlobs(root);
+  if (frozen.length && matchFrozen(root, abs, frozen)) return null;
+  return classifyFile(rel(root, abs), g);
 }
