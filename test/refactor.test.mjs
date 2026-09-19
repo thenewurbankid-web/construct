@@ -6,7 +6,7 @@ import path from 'node:path';
 import { createFeature, generateLayer } from '../src/generators.mjs';
 import { moveLayerFile, renameLayerFile } from '../src/refactor.mjs';
 import { validateArchitecture } from '../src/architecture-enforcer.mjs';
-import { ConstructError } from '../src/diagnostics.mjs';
+import { ConstructError, EXIT_CODES } from '../src/diagnostics.mjs';
 
 function tmpProject() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'construct-refactor-'));
@@ -88,4 +88,19 @@ test('renameLayerFile applies the target layer naming convention (hook keeps its
   generateLayer(dir, 'hook', 'Foo', 'checkout');
   const result = renameLayerFile(dir, 'checkout', 'Foo', 'Bar', 'hook');
   assert.equal(result.to, 'features/checkout/hooks/useBar.tsx');
+});
+
+test('renameLayerFile with hyphenated names maps to PascalCase files and rejects an invalid new name before touching anything (#218)', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  generateLayer(dir, 'hook', 'refund-request', 'checkout');
+  const result = renameLayerFile(dir, 'checkout', 'refund-request', 'refund_status', 'hook');
+  assert.equal(result.from, 'features/checkout/hooks/useRefundRequest.tsx');
+  assert.equal(result.to, 'features/checkout/hooks/useRefundStatus.tsx');
+  assert.throws(() => renameLayerFile(dir, 'checkout', 'refund_status', '3d-status', 'hook'), (err) => {
+    assert.ok(err instanceof ConstructError);
+    assert.equal(err.exitCode, EXIT_CODES.USAGE_ERROR);
+    return true;
+  });
+  assert.ok(fs.existsSync(path.join(dir, 'features', 'checkout', 'hooks', 'useRefundStatus.tsx')));
 });
