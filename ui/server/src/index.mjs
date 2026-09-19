@@ -12,7 +12,8 @@ import { create, refactor, research, importCommand, init } from '../../../src/cl
 import { findProjectRoot } from '../../../src/config.mjs';
 import { USAGE } from '../../../src/usage.mjs';
 import { HELP_TOPICS, TOPIC_ORDER, getTopLevelHelpText } from '../../../src/repl.mjs';
-import { getSettings, updateSettings } from './settings.mjs';
+import { getSettings, updateSettings, getBrowseRoots } from './settings.mjs';
+import { handleBrowse } from './dirBrowse.mjs';
 import { runCapturing, withDir } from './commandRunner.mjs';
 import { attachWizardSocket } from './wizardSocket.mjs';
 import { getOllamaStatus, listOllamaModels, startOllamaPull, removeOllamaModel } from './ollama.mjs';
@@ -110,6 +111,18 @@ app.post('/api/settings', (req, res) => {
   } catch (e) {
     res.status(400).json({ ok: false, error: e.message });
   }
+});
+
+// #223: allowlisted, directories-only folder browser for the project picker.
+// All logic/security lives in src/dir-browser.mjs (+ ./dirBrowse.mjs adapter);
+// roots come from settings (default: home + current project's parent).
+app.get('/api/fs/browse', (req, res) => {
+  const { status, body } = handleBrowse(req.query, {
+    origin: req.get('origin'),
+    clientOrigin: CLIENT_ORIGIN,
+    roots: getBrowseRoots(),
+  });
+  res.status(status).json(body);
 });
 
 // Initializes a Construct project (architecture.yml + AGENTS.md + a `core`
