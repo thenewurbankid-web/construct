@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { ExternalChangeNotice } from '../components/ExternalChangeNotice';
 import { InspectorPanel } from '../components/InspectorPanel';
+import { LivePreviewPanel } from '../components/LivePreviewPanel';
 import { PagesBrowser } from '../components/PagesBrowser';
 import { PreviewPanel } from '../components/PreviewPanel';
 import { PropFlowDiagram } from '../components/PropFlowDiagram';
@@ -14,7 +15,7 @@ export function PagesEditorPage(props: PagesEditorPageProps): ReactNode {
   const {
     features, feature, setFeature, files, filesLoading, file, openFile, tree, error,
     selectedNodeId, selectNode, selectedNode, onTreeSaved, previewTitle,
-    externalChange, dismissExternalChange, reloadFromDisk,
+    externalChange, dismissExternalChange, reloadFromDisk, livePreview,
   } = props;
 
   return (
@@ -51,6 +52,15 @@ export function PagesEditorPage(props: PagesEditorPageProps): ReactNode {
             <PreviewPanel roots={tree.roots} selectedId={selectedNodeId} onSelect={selectNode} titleFor={previewTitle} />
             <InspectorPanel feature={feature} file={file} node={selectedNode} contentHash={tree.contentHash} onSaved={onTreeSaved} />
           </div>
+          <LivePreviewPanel
+            draft={livePreview.draft}
+            onDraftChange={livePreview.setDraft}
+            url={livePreview.url}
+            message={livePreview.message}
+            frameRef={livePreview.frameRef}
+            onConnect={livePreview.connect}
+            onDisconnect={livePreview.disconnect}
+          />
           <PropFlowDiagram roots={tree.roots} />
           <SourcePanel feature={feature} file={file} contentHash={tree.contentHash} />
         </>

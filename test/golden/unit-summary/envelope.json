@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "kind": "envelope",
+  "id": "v1",
+  "ref": "envelope:v1",
+  "name": "Context Envelope v1",
+  "path": "schemas/envelope.v1.json",
+  "detail": "standard",
+  "summary": "Context Envelope v1: the JSON state handed between construct pipeline steps (version, feature, status, layers, unboundSlots, events, diagnostics, steps). The state handed between `construct pipeline run` steps (and, more broadly, between any two Construct generator commands run with --json) so",
+  "sections": {
+    "schema": "schemas/envelope.v1.json",
+    "version": 1,
+    "fields": [
+      {
+        "name": "version",
+        "required": true,
+        "type": "const 1",
+        "description": "Envelope schema version."
+      },
+      {
+        "name": "feature",
+        "required": true,
+        "type": "string",
+        "description": "The Construct feature name (features/<feature>/...) this envelope tracks."
+      },
+      {
+        "name": "status",
+        "required": true,
+        "type": "string",
+        "description": "'pending' on the way in (a request envelope); 'committed' or 'aborted' on the way out of a pipeline step, depending on whether construct val",
+        "enum": [
+          "pending",
+          "committed",
+          "aborted"
+        ]
+      },
+      {
+        "name": "layers",
+        "required": true,
+        "type": "object",
+        "description": "Map of layer name (domain/service/workflow/hook/page/component/controller/route) to the project-relative file paths that layer owns for this"
+      },
+      {
+        "name": "unboundSlots",
+        "required": false,
+        "type": "array",
+        "description": "Interactive props/callbacks discovered on an ingested pristine page (Ticket 7.2) that have no wired handler yet -- consumed by the controlle"
+      },
+      {
+        "name": "events",
+        "required": false,
+        "type": "array",
+        "description": "XState event types exposed by this feature's workflow (Ticket 7.3), for downstream consumers such as the controller binder (Ticket 7.4)."
+      },
+      {
+        "name": "diagnostics",
+        "required": false,
+        "type": "array",
+        "description": "construct validate violations (diagnostics.mjs's makeViolation shape) produced by the last validation attempt on this envelope's buffered re"
+      },
+      {
+        "name": "steps",
+        "required": false,
+        "type": "array",
+        "description": "Input-only: the generation steps for `construct pipeline run` to execute against this envelope in order (e.g."
+      }
+    ],
+    "producers": [
+      "src/engine/envelope.mjs (createEnvelope, validateEnvelope)",
+      "src/engine/pipeline.mjs (runPipeline)"
+    ],
+    "cli": "construct pipeline run < envelope.json"
+  },
+  "health": {
+    "status": "ok",
+    "findings": []
+  },
+  "links": {
+    "children": [
+      "generator:pipeline"
+    ]
+  },
+  "next": [
+    {
+      "ref": "generator:pipeline",
+      "why": "The pipeline that consumes envelopes",
+      "cli": "construct summarize generator:pipeline"
+    }
+  ],
+  "budget": {
+    "maxTokens": 2000,
+    "estimatedTokens": 618,
+    "truncated": false
+  }
+}

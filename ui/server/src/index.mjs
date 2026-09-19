@@ -12,7 +12,8 @@ import { create, refactor, research, importCommand, init } from '../../../src/cl
 import { findProjectRoot } from '../../../src/config.mjs';
 import { USAGE } from '../../../src/usage.mjs';
 import { HELP_TOPICS, TOPIC_ORDER, getTopLevelHelpText } from '../../../src/repl.mjs';
-import { getSettings, updateSettings } from './settings.mjs';
+import { getSettings, updateSettings, getBrowseRoots } from './settings.mjs';
+import { handleBrowse } from './dirBrowse.mjs';
 import { runCapturing, withDir } from './commandRunner.mjs';
 import { attachWizardSocket } from './wizardSocket.mjs';
 import { getOllamaStatus, listOllamaModels, startOllamaPull, removeOllamaModel } from './ollama.mjs';
@@ -37,6 +38,7 @@ import {
   moveNodeInSnippet,
   addChildInSnippet,
 } from './pagesEditor.mjs';
+import { unitsIndex, unitSummary, featuresIndex, featureSummary } from './unitsApi.mjs';
 import { readPageSource } from './pageSource.mjs';
 import { describePageChange, adoptOwnWrite, pageChangeTracker } from './pageChanges.mjs';
 import { listWorkflowFeatures, listWorkflowFiles, readWorkflowMachines, readWorkflowNarrative, editWorkflowFile } from './workflowsViewer.mjs';
@@ -110,6 +112,18 @@ app.post('/api/settings', (req, res) => {
   } catch (e) {
     res.status(400).json({ ok: false, error: e.message });
   }
+});
+
+// #223: allowlisted, directories-only folder browser for the project picker.
+// All logic/security lives in src/dir-browser.mjs (+ ./dirBrowse.mjs adapter);
+// roots come from settings (default: home + current project's parent).
+app.get('/api/fs/browse', (req, res) => {
+  const { status, body } = handleBrowse(req.query, {
+    origin: req.get('origin'),
+    clientOrigin: CLIENT_ORIGIN,
+    roots: getBrowseRoots(),
+  });
+  res.status(status).json(body);
 });
 
 // Initializes a Construct project (architecture.yml + AGENTS.md + a `core`
@@ -572,6 +586,22 @@ app.post('/api/workflows/edit', (req, res) => {
     handlePagesEditorError(res, e);
   }
 });
+
+// ---------------------------------------------------------------------------
+// Unit summaries (deterministic, LLM-free; src/engine/unitSummary.mjs). Read-only, scoped to the
+// current project root. /api/features* are thin aliases of the feature-kind unit calls.
+function sendUnits(res, fn) {
+  try {
+    const { status, body } = fn(currentRoot());
+    res.status(status).json(body);
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+}
+app.get('/api/units', (req, res) => sendUnits(res, (root) => unitsIndex(root, req.query)));
+app.get('/api/units/summary', (req, res) => sendUnits(res, (root) => unitSummary(root, req.query)));
+app.get('/api/features', (req, res) => sendUnits(res, (root) => featuresIndex(root)));
+app.get('/api/features/:name/summary', (req, res) => sendUnits(res, (root) => featureSummary(root, req.params.name, req.query)));
 
 const port = Number(process.env.PORT) || 4000;
 const server = http.createServer(app);

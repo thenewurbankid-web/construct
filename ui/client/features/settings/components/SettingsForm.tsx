@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { Button, Field, Input, Select } from '@/components/ui';
 import type { LlmCapability, LlmProviders, SaveStatus } from '../types';
 
@@ -39,6 +40,10 @@ type SettingsFormProps = {
   availableProvidersByCapability: Record<LlmCapability, string[]>;
   status: SaveStatus | null;
   onSave: () => void;
+  pickerOpen: boolean;
+  onTogglePicker: () => void;
+  /** Folder-picker element supplied by the controller (another feature). */
+  picker?: ReactNode;
 };
 
 export function SettingsForm({
@@ -49,6 +54,9 @@ export function SettingsForm({
   availableProvidersByCapability,
   status,
   onSave,
+  pickerOpen,
+  onTogglePicker,
+  picker,
 }: SettingsFormProps) {
   return (
     <>
@@ -69,6 +77,10 @@ export function SettingsForm({
           placeholder="/path/to/your/construct-project"
         />
       </Field>
+      <Button type="button" variant="ghost" onClick={onTogglePicker} aria-expanded={pickerOpen}>
+        {pickerOpen ? 'Close folder browser' : 'Browse folders…'}
+      </Button>
+      {pickerOpen && picker}
 
       {CAPABILITY_ROWS.map(({ capability, label, hint }) => (
         <Field key={capability} label={label} hint={hint}>

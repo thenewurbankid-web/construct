@@ -15,6 +15,7 @@
 // UI-side copy), so the settings screen's dropdowns can never drift from
 // what the core CLI actually supports.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { PROVIDERS } from '../../../src/llm.mjs';
 
@@ -33,6 +34,9 @@ const state = {
   // screen lets a user point this at any Construct project (or a
   // not-yet-`construct init`'ed directory) without restarting the server.
   projectDir: process.cwd(),
+  // #223 directory picker allowlist. null = use the default (home dir + the
+  // current project dir's parent, computed live so it follows projectDir).
+  browseRoots: null,
   llmProviders: {
     importFill: defaultProvider,
     createFill: defaultProvider,
@@ -47,9 +51,17 @@ function availableProvidersFor(capability) {
     : all;
 }
 
+/** Roots the directory picker may browse (#223): explicit setting, else the
+ * user's home dir plus the current project's parent directory. */
+export function getBrowseRoots() {
+  if (state.browseRoots) return [...state.browseRoots];
+  return [os.homedir(), path.dirname(state.projectDir)];
+}
+
 export function getSettings() {
   return {
     projectDir: state.projectDir,
+    browseRoots: getBrowseRoots(),
     llmProviders: { ...state.llmProviders },
     // Kept for exact backward compatibility with any existing reader of
     // the old single-provider shape (e.g. project-gate's status display) —
@@ -79,7 +91,18 @@ function applyCapabilityProvider(capability, value) {
   state.llmProviders[capability] = value;
 }
 
-export function updateSettings({ projectDir, llmProviders, llmProvider } = {}) {
+export function updateSettings({ projectDir, llmProviders, llmProvider, browseRoots } = {}) {
+  if (browseRoots !== undefined && browseRoots !== null) {
+    // [] or null resets to the default; otherwise every entry must be an existing directory.
+    if (!Array.isArray(browseRoots) || browseRoots.some((r) => typeof r !== 'string' || !r || r.includes('\0'))) {
+      throw new Error('browseRoots must be an array of directory paths.');
+    }
+    const resolved = browseRoots.map((r) => path.resolve(r));
+    for (const r of resolved) {
+      if (!fs.existsSync(r) || !fs.statSync(r).isDirectory()) throw new Error(`Not a directory: ${r}`);
+    }
+    state.browseRoots = resolved.length ? resolved : null;
+  }
   if (llmProviders !== undefined && llmProviders !== null) {
     for (const capability of CAPABILITIES) {
       applyCapabilityProvider(capability, llmProviders[capability]);

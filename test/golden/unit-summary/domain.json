@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "kind": "domain",
+  "id": "features/login/domain/Login.tsx",
+  "ref": "domain:features/login/domain/Login.tsx",
+  "name": "Login.tsx",
+  "path": "features/login/domain/Login.tsx",
+  "detail": "standard",
+  "summary": "Domain features/login/domain/Login.tsx: Hardcoded demo credentials — pure, no I/O (domain must stay pure per architecture.yml's DOMAIN-001). 1 export(s), 8 LOC, imported by 1 file(s).",
+  "sections": {
+    "file": {
+      "path": "features/login/domain/Login.tsx",
+      "layer": "domain",
+      "loc": 8,
+      "purpose": "Hardcoded demo credentials — pure, no I/O (domain must stay pure per architecture.yml's DOMAIN-001)."
+    },
+    "exports": [
+      {
+        "name": "isValidCredentials",
+        "kind": "function",
+        "signature": "isValidCredentials(username: string, password: string): boolean"
+      }
+    ],
+    "dependencies": {
+      "imports": [],
+      "externalPackages": [],
+      "usedBy": [
+        "features/login/workflows/Login.tsx"
+      ]
+    },
+    "rules": {
+      "violations": [],
+      "exceptions": [],
+      "counts": {
+        "error": 0,
+        "warning": 0
+      }
+    },
+    "tests": {
+      "count": 0,
+      "files": []
+    }
+  },
+  "health": {
+    "status": "ok",
+    "findings": []
+  },
+  "links": {
+    "parent": "feature:login",
+    "children": [
+      "export:features/login/domain/Login.tsx#isValidCredentials"
+    ]
+  },
+  "next": [
+    {
+      "ref": "file:features/login/workflows/Login.tsx",
+      "why": "A file that uses this one",
+      "cli": "construct summarize file:features/login/workflows/Login.tsx"
+    }
+  ],
+  "budget": {
+    "maxTokens": 2000,
+    "estimatedTokens": 332,
+    "truncated": false
+  }
+}

@@ -41,3 +41,6 @@ export * from './hooks/useSnippetFlow';
 /** Loads a page's full source and its TypeScript/architecture diagnostics as
  * editor-neutral markers (read-only source view). */
 export * from './hooks/usePageSource';
+
+/** Live app preview URL + click-to-source selection (#223). */
+export * from './hooks/useLivePreview';

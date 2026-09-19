@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "kind": "project",
+  "id": ".",
+  "ref": "project:.",
+  "name": "example",
+  "path": ".",
+  "detail": "standard",
+  "summary": "Project example (nextjs): 3 feature(s); 0 error(s), 0 warning(s).",
+  "sections": {
+    "framework": "nextjs",
+    "featuresRoot": "features",
+    "features": [
+      {
+        "feature": "core",
+        "files": 9,
+        "layers": "7/7",
+        "health": "warnings",
+        "errors": 0,
+        "warnings": 0
+      },
+      {
+        "feature": "login",
+        "files": 9,
+        "layers": "7/7",
+        "health": "ok",
+        "errors": 0,
+        "warnings": 0
+      },
+      {
+        "feature": "signup",
+        "files": 9,
+        "layers": "7/7",
+        "health": "ok",
+        "errors": 0,
+        "warnings": 0
+      }
+    ],
+    "layerGraph": {
+      "route": [
+        "controller"
+      ],
+      "controller": [
+        "workflow",
+        "hook",
+        "service",
+        "page",
+        "component",
+        "domain",
+        "types"
+      ],
+      "workflow": [
+        "service",
+        "domain",
+        "types"
+      ],
+      "hook": [
+        "workflow",
+        "service",
+        "domain",
+        "types"
+      ],
+      "service": [
+        "domain",
+        "types"
+      ],
+      "domain": [
+        "types"
+      ],
+      "page": [
+        "component",
+        "types"
+      ],
+      "component": [
+        "component",
+        "types"
+      ]
+    },
+    "rules": {},
+    "exceptions": 0,
+    "frozen": []
+  },
+  "health": {
+    "status": "ok",
+    "findings": []
+  },
+  "links": {
+    "children": [
+      "feature:core",
+      "feature:login",
+      "feature:signup"
+    ]
+  },
+  "next": [
+    {
+      "ref": "feature:core",
+      "why": "Drill into this feature",
+      "cli": "construct summarize feature:core"
+    },
+    {
+      "ref": "feature:login",
+      "why": "Drill into this feature",
+      "cli": "construct summarize feature:login"
+    },
+    {
+      "ref": "feature:signup",
+      "why": "Drill into this feature",
+      "cli": "construct summarize feature:signup"
+    }
+  ],
+  "budget": {
+    "maxTokens": 2000,
+    "estimatedTokens": 340,
+    "truncated": false
+  }
+}

@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "kind": "file",
+  "id": "features/login/index.ts",
+  "ref": "file:features/login/index.ts",
+  "name": "index.ts",
+  "path": "features/login/index.ts",
+  "detail": "standard",
+  "summary": "File features/login/index.ts: Public API for feature: login 3 export(s), 11 LOC, imported by 0 file(s).",
+  "sections": {
+    "file": {
+      "path": "features/login/index.ts",
+      "layer": null,
+      "loc": 11,
+      "purpose": "Public API for feature: login"
+    },
+    "exports": [
+      {
+        "name": "./types",
+        "kind": "reexport"
+      },
+      {
+        "name": "./controllers/LoginController",
+        "kind": "reexport"
+      },
+      {
+        "name": "./hooks/useLogin",
+        "kind": "reexport"
+      }
+    ],
+    "dependencies": {
+      "imports": [
+        {
+          "path": "features/login/controllers/LoginController.tsx",
+          "layer": "controller"
+        },
+        {
+          "path": "features/login/hooks/useLogin.tsx",
+          "layer": "hook"
+        },
+        {
+          "path": "features/login/types.ts",
+          "layer": null
+        }
+      ],
+      "externalPackages": [],
+      "usedBy": []
+    },
+    "rules": {
+      "violations": [],
+      "exceptions": [],
+      "counts": {
+        "error": 0,
+        "warning": 0
+      }
+    },
+    "tests": {
+      "count": 0,
+      "files": []
+    }
+  },
+  "health": {
+    "status": "ok",
+    "findings": []
+  },
+  "links": {
+    "parent": "feature:login",
+    "children": [
+      "export:features/login/index.ts#./types",
+      "export:features/login/index.ts#./controllers/LoginController",
+      "export:features/login/index.ts#./hooks/useLogin"
+    ]
+  },
+  "next": [
+    {
+      "ref": "file:features/login/controllers/LoginController.tsx",
+      "why": "A file this one depends on",
+      "cli": "construct summarize file:features/login/controllers/LoginController.tsx"
+    },
+    {
+      "ref": "file:features/login/hooks/useLogin.tsx",
+      "why": "A file this one depends on",
+      "cli": "construct summarize file:features/login/hooks/useLogin.tsx"
+    }
+  ],
+  "budget": {
+    "maxTokens": 2000,
+    "estimatedTokens": 393,
+    "truncated": false
+  }
+}
