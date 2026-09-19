@@ -146,6 +146,10 @@ export async function collectGuides(source, { epicNumber = 125 } = {}) {
   }
   const guides = [];
   for (const g of guideIssues) {
+    if (!isDemoTitle(g.title)) {
+      skipped.push({ number: g.number, reason: 'not a demo guide' });
+      continue;
+    }
     if (g.state !== 'closed') {
       skipped.push({ number: g.number, reason: 'guide not closed' });
       continue;

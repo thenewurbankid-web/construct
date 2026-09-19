@@ -3,15 +3,13 @@
 This is the real, current inventory of every `construct` command/capability
 and how it actually executes today: deterministic code, an LLM call (and
 which one), or a human approval gate — re-derived directly from the code as
-of Epic 6 (#96, the "AI Toolkit" epic) landing, not copied from that epic's
-issue body verbatim. Re-verify this against `src/cli.mjs`'s command dispatch
+of the AI Toolkit work landing. Re-verify this against `src/cli.mjs`'s command dispatch
 whenever a new capability is added; a stale version of this table is worse
 than none.
 
-## The governing principle (#96)
+## The governing principle
 
-Construct's own charter (see the README's "Vision" section and this repo's
-`CLAUDE.md`) is that Construct is a library of small, deterministic,
+Construct is a library of small, deterministic,
 non-LLM building blocks. The **only** place an LLM is ever involved is where
 a human explicitly opts in with `--llm <provider>` (CLI) or a Settings
 capability (UI) — and even then, in one of exactly two shapes:
@@ -74,7 +72,7 @@ core CLI functions in-process (`src/cli.mjs`'s `create`/`refactor`/
 that happens because of a UI action is one of the calls listed in the table
 above, just triggered through a form instead of a terminal.
 
-`ui/server/src/settings.mjs` (Epic 6.4/#100) is the one place the UI adds
+`ui/server/src/settings.mjs` is the one place the UI adds
 real logic on top of this: a per-capability provider map,
 ```
 llmProviders: { importFill: 'claude' | 'ollama', createFill: 'claude' | 'ollama', planAnalysis: 'claude' }
@@ -84,7 +82,7 @@ UI-side copy), with `planAnalysis` hard-rejecting `ollama` in
 `updateSettings` itself. Settings only *configures which provider a future
 call would use* — it never makes a call by itself.
 
-## How Settings is consumed (#109) — and why LLM use is still opt-in per run
+## How Settings is consumed — and why LLM use is still opt-in per run
 
 Settings selects a **provider only** (not a model — the `ollama` provider
 keeps its default model, `qwen2.5-coder:7b`, unless a caller passes
@@ -104,7 +102,7 @@ takes the two providers as options (the plain CLI keeps the `claude`
 defaults); `planAnalysis: 'ollama'` is rejected inside the wizard as well as
 in `updateSettings`, before any call or write.
 
-## LLM output is validated before it is written (#144, #141)
+## LLM output is validated before it is written
 
 Every per-file fill (`import`, `create`, `generate`) goes through
 `src/llm-fill.mjs`: the prompt states the reply is captured from stdout and

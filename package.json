@@ -41,6 +41,8 @@
     "@types/node": "^26.5.1",
     "@types/react": "^19.3.0",
     "eslint": "^10.10.0",
+    "marked": "^18.0.13",
+    "pagefind": "^1.5.2",
     "react": "^19.3.0",
     "react-redux": "^9.3.0"
   },
