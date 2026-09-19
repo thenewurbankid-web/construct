@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { materializeLegacyShop, writeLegacyShopPlan } from '../support/legacyShop.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCREENSHOTS_DIR = path.resolve(__dirname, '../../screenshots/demos');
@@ -15,7 +16,7 @@ const API_BASE = process.env.E2E_API_BASE || 'http://localhost:4000';
 // component doing a real fetch/render, and the [id] details route pair.
 // Reused here (not regenerated) so the UI run traces the exact same real
 // files the CLI transcripts reference.
-const LEGACY_APP_DIR = '/tmp/construct-legacy-shop/app';
+const { appDir: LEGACY_APP_DIR } = materializeLegacyShop();
 // A real plan.json, produced earlier in this session by calling the same
 // route-resolver.mjs + import.mjs functions the wizard calls internally
 // (resolveRoute -> traceRouteFiles -> analyzeFiles, one real "claude" call)
@@ -24,7 +25,7 @@ const LEGACY_APP_DIR = '/tmp/construct-legacy-shop/app';
 // #147's UI section exercise the Dashboard's "from an approved plan file"
 // Import mode for real, the same way a human would after hand-reviewing an
 // AI-proposed plan.
-const PLAN_FILE = '/tmp/construct-demo-route-147-plan.json';
+const PLAN_FILE = writeLegacyShopPlan(LEGACY_APP_DIR);
 
 async function answerNextQuestion(page, text) {
   const input = page.locator('.chat-input input');
