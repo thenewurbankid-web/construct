@@ -8,7 +8,6 @@ import { SCREENS } from '../domain/Screens';
 import { SHORTCUTS } from '../domain/Shortcuts';
 import { useActiveTabs } from '../hooks/useActiveTabs';
 import { useModelStatus } from '../hooks/useModelStatus';
-import { PaneRevealProvider } from '../hooks/useRevealPane';
 import { useProjectSwitcher } from '../hooks/useProjectSwitcher';
 import { useRevealPanes } from '../hooks/useRevealPanes';
 import { useShellLayout } from '../hooks/useShellLayout';
@@ -21,7 +20,7 @@ import { ProjectSwitcher } from '../components/ProjectSwitcher';
 import { ScreensNav } from '../components/ScreensNav';
 import { ShellPage } from '../pages/ShellPage';
 import { ThemeController } from './ThemeController';
-import type { PaneId, ShellRegion, ShellTab } from '../types';
+import type { ShellRegion, ShellTab } from '../types';
 
 function ShellFrame({ children }: { children: ReactNode }) {
   const route = useShellRoute();
@@ -69,8 +68,6 @@ function ShellFrame({ children }: { children: ReactNode }) {
     select('drawer', 'processes');
   }, [toggle, select]);
 
-  const reveal = useCallback((pane: PaneId) => toggle(pane, true), [toggle]);
-
   const projectSwitcher = (
     <ProjectSwitcher
       label={project.label}
@@ -84,7 +81,6 @@ function ShellFrame({ children }: { children: ReactNode }) {
   );
 
   return (
-    <PaneRevealProvider reveal={reveal}>
     <ShellPage
       layout={layout}
       limits={PANE_LIMITS}
@@ -104,7 +100,6 @@ function ShellFrame({ children }: { children: ReactNode }) {
     >
       {children}
     </ShellPage>
-    </PaneRevealProvider>
   );
 }
 

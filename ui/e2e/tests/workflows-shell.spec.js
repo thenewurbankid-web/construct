@@ -53,12 +53,12 @@ test.describe('Workflows in the shell (#248)', () => {
 
   const box = async (loc) => (await loc.boundingBox()) ?? { x: 0, y: 0, width: 0, height: 0 };
 
-  test('layout: Browser list | diagram stage | Tools tabs, opened when a file loads', async ({ page }) => {
+  test('layout: Browser list | diagram stage | Tools tabs, tabs enable when a file loads', async ({ page }) => {
     await page.goto('/workflows');
-    // Before a file is open: the Browser tab is Workflows, the Tools panel is closed.
+    // Before a file is open: the Browser tab is Workflows, and the workflow tabs are disabled.
     await expect(page.getByRole('tab', { name: 'Workflows' })).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByTestId('wf-empty')).toBeVisible();
-    await expect(page.getByRole('tablist', { name: 'Tools' })).toHaveCount(0);
+    await expect(page.getByRole('tab', { name: 'Edit' })).toBeDisabled();
 
     await open(page, 'RefundWorkflow.tsx');
     const browser = page.getByRole('complementary', { name: 'Browser' });
@@ -74,7 +74,7 @@ test.describe('Workflows in the shell (#248)', () => {
     // The diagram is inside the stage; the tabs are in the Tools panel.
     await expect(page.getByTestId('wf-stage').getByTestId('wf-machine')).toHaveCount(1);
     const tabs = tools.getByRole('tab');
-    await expect(tabs).toHaveText(['Project', 'Narrative', 'Context & actions', 'Edit']);
+    await expect(tabs).toHaveText(['Narrative', 'Context & actions', 'Edit', 'Project']);
     // Narrative is the default tab once a file is open.
     await expect(tools.getByRole('tab', { name: 'Narrative' })).toHaveAttribute('aria-selected', 'true');
     await expect(tools.getByTestId('wf-narrative-summary')).toContainText('refund request');

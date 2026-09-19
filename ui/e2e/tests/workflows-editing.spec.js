@@ -44,6 +44,8 @@ test.describe('Workflows screen: visual editing saved back to source (#61)', () 
     await page.getByRole('combobox').first().selectOption('shop');
     await page.getByRole('button', { name: 'CheckoutWorkflow.tsx' }).click();
     await expect(page.getByTestId('wf-state-idle')).toBeVisible();
+    // #248: the edit form is the Edit tab of the Tools panel.
+    await page.getByRole('tab', { name: 'Edit' }).click();
   }
 
   test('add a state: diff preview, then Confirm writes it to the real file', async ({ page }) => {

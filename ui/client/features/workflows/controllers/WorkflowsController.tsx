@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
 import { ProjectGateController } from '@/features/project-gate';
-import { useRegisterShellTab, useRevealPane } from '@/features/shell';
+import { useRegisterShellTab } from '@/features/shell';
 import '../components/workflows-shell.css';
 import { useWorkflows } from '../hooks/useWorkflows';
 import { WorkflowsPage } from '../pages/WorkflowsPage';
@@ -18,13 +17,6 @@ export function WorkflowsController() {
   useRegisterShellTab('tools', tabs.narrative);
   useRegisterShellTab('tools', tabs.context);
   useRegisterShellTab('tools', tabs.edit);
-
-  // Once a file is open its tabs are useful: open the Tools panel.
-  const reveal = useRevealPane();
-  const fileOpen = !!workflows.loaded;
-  useEffect(() => {
-    if (fileOpen) reveal('right');
-  }, [fileOpen, workflows.file, reveal]);
 
   return (
     <ProjectGateController>

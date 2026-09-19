@@ -18,9 +18,6 @@ export * from './hooks/useTheme';
 /** Let a feature add a tab to the Browser / Tools / Drawer regions (slot registry). */
 export * from './hooks/useShellTabs';
 
-/** Open a collapsed pane from a feature (Tools panel etc.). */
-export * from './hooks/useRevealPane';
-
 /** Which tab is selected per region. */
 export * from './hooks/useActiveTabs';
 
