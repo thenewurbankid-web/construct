@@ -1,0 +1,145 @@
+/* Design tokens (Design module #244, docs/design/tokens.md).
+ *
+ * Two layers: SEMANTIC tokens (below) are what components use; they are
+ * mapped per theme on <html data-theme="dark|light">. Dark is the default
+ * (owner decision) and also applies when no attribute is set, so a missing
+ * or blocked theme script never leaves the page unstyled.
+ *
+ * Colour source of truth = the Cockpit's existing palette (accent #5b8cff,
+ * tool/success #3fae5a, llm #d98c2b, error #e05a5a on a near-black base),
+ * NOT the concept mocks' colours. The light theme keeps the same hue family
+ * (deeper values so text reaches WCAG AA on light surfaces).
+ *
+ * Legacy names (--bg, --border, --muted, --tool, --error, --panel-glass...)
+ * are aliases so nothing that still uses them changes. Contrast is checked
+ * by features/shell/domain/Tokens.spec.mjs (parses this file). */
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --surface-0: #060709;
+  --surface-1: #101216;
+  --surface-2: #171a20;
+  --surface-3: #21262e;
+  --canvas: #0b0d11;
+  --sunken: rgba(0, 0, 0, 0.3);
+  --code-bg: #0b0d11;
+  --hover: rgba(255, 255, 255, 0.04);
+  --border-subtle: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.24);
+  --text: #eef0f4;
+  --text-muted: #9aa1ac;
+  --text-faint: #8a92a0;
+  --accent: #5b8cff;
+  --accent-soft: rgba(91, 140, 255, 0.16);
+  --accent-fg: #060709;
+  --success: #3fae5a;
+  --success-soft: rgba(63, 174, 90, 0.15);
+  --warn: #d98c2b;
+  --warn-soft: rgba(217, 140, 43, 0.18);
+  --danger: #e8686a;
+  --danger-soft: rgba(224, 90, 90, 0.15);
+  --llm: #d98c2b;
+  --llm-soft: rgba(217, 140, 43, 0.18);
+  --neutral-soft: rgba(154, 161, 172, 0.15);
+  --focus: #9dbbff;
+  --add-bg: rgba(63, 174, 90, 0.14);
+  --del-bg: rgba(224, 90, 90, 0.14);
+  --syn-fn: #d98c2b;
+  --syn-str: #3fae5a;
+  --syn-attr: #e0668c;
+  --selection: rgba(91, 140, 255, 0.35);
+  --shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  --bg-glow-1: rgba(90, 110, 150, 0.16);
+  --bg-glow-2: rgba(60, 70, 90, 0.14);
+  --panel-glass: rgba(210, 215, 225, 0.06);
+  --panel-glass-strong: rgba(210, 215, 225, 0.1);
+  --panel-blur: 20px;
+  --preview-bg: #fff;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --surface-0: #eef0f4;
+  --surface-1: #f8f9fb;
+  --surface-2: #ffffff;
+  --surface-3: #e6eaf1;
+  --canvas: #dfe3ea;
+  --sunken: rgba(20, 30, 50, 0.05);
+  --code-bg: #f1f3f8;
+  --hover: rgba(20, 30, 50, 0.05);
+  --border-subtle: rgba(20, 30, 50, 0.14);
+  --border-strong: rgba(20, 30, 50, 0.3);
+  --text: #171b24;
+  --text-muted: #4b5567;
+  --text-faint: #5b6577;
+  --accent: #1f56d6;
+  --accent-soft: rgba(31, 86, 214, 0.1);
+  --accent-fg: #ffffff;
+  --success: #14763a;
+  --success-soft: rgba(20, 118, 58, 0.12);
+  --warn: #8f5500;
+  --warn-soft: rgba(143, 85, 0, 0.12);
+  --danger: #c5312f;
+  --danger-soft: rgba(197, 49, 47, 0.1);
+  --llm: #8f5500;
+  --llm-soft: rgba(143, 85, 0, 0.12);
+  --neutral-soft: rgba(75, 85, 103, 0.12);
+  --focus: #1f56d6;
+  --add-bg: rgba(20, 118, 58, 0.14);
+  --del-bg: rgba(197, 49, 47, 0.12);
+  --syn-fn: #8f5500;
+  --syn-str: #14763a;
+  --syn-attr: #b0295f;
+  --selection: rgba(31, 86, 214, 0.25);
+  --shadow: 0 12px 40px rgba(20, 30, 50, 0.18);
+  --glass-shadow: 0 4px 16px rgba(20, 30, 50, 0.1);
+  --bg-glow-1: rgba(31, 86, 214, 0.05);
+  --bg-glow-2: rgba(31, 86, 214, 0.03);
+  --panel-glass: rgba(255, 255, 255, 0.7);
+  --panel-glass-strong: rgba(255, 255, 255, 0.9);
+  --panel-blur: 12px;
+  --preview-bg: #fff;
+}
+
+/* Legacy aliases (kept so existing rules resolve in both themes) + scales. */
+:root {
+  --bg: var(--surface-0);
+  --border: var(--border-subtle);
+  --muted: var(--text-muted);
+  --tool: var(--success);
+  --error: var(--danger);
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-md: 13px;
+  --fs-lg: 15px;
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: var(--font);
+}
+
+/* Visible focus on every control (2px, --focus). */
+:where(a, button, input, select, textarea, summary, [tabindex], [role='tab'], [role='separator']):focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
