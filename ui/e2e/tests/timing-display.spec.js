@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { materializeLegacyShop } from './support/legacyShop.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCREENSHOTS_DIR = path.resolve(__dirname, '../screenshots');
@@ -68,8 +69,7 @@ test.describe('Demo/verification #167 -- timing breakdown shows in the UI', () =
     const initRes = await request.post(`${API_BASE}/api/init`);
     expect(initRes.ok()).toBeTruthy();
 
-    const LEGACY_APP_DIR = '/tmp/construct-legacy-shop/app';
-    test.skip(!fs.existsSync(LEGACY_APP_DIR), `fixture ${LEGACY_APP_DIR} not present in this environment`);
+    const { appDir: LEGACY_APP_DIR } = materializeLegacyShop();
 
     async function answerNextQuestion(text) {
       const input = page.locator('.chat-input input');
