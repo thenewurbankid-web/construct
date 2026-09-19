@@ -1,7 +1,7 @@
 import type { StatusBarProps } from '../types';
 
 /** The 24px bottom status bar: drawer toggle and the shortcut hints. */
-export function StatusBar({ layout, onTogglePane, shortcuts }: StatusBarProps) {
+export function StatusBar({ layout, onTogglePane, shortcuts, validateStatus, onOpenDiagnostics }: StatusBarProps) {
   return (
     <footer className="sh-status" role="contentinfo">
       <button
@@ -13,6 +13,9 @@ export function StatusBar({ layout, onTogglePane, shortcuts }: StatusBarProps) {
         onClick={() => onTogglePane('drawer')}
       >
         Drawer
+      </button>
+      <button type="button" className="sh-status-btn" data-testid="status-validate" onClick={onOpenDiagnostics} title="Open Diagnostics">
+        {validateStatus}
       </button>
       <span className="sh-spacer" />
       <span className="sh-hints">

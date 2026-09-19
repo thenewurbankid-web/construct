@@ -115,12 +115,17 @@ export type TopBarProps = {
   layout: ShellLayoutState;
   onTogglePane: (pane: PaneId) => void;
   onOpenProcesses: () => void;
+  /** Opens the command palette (the search-style trigger in the middle of the bar). */
+  onOpenPalette: () => void;
 };
 
 export type StatusBarProps = {
   layout: ShellLayoutState;
   onTogglePane: (pane: PaneId) => void;
   shortcuts: ShortcutInfo[];
+  /** Short validate result, e.g. `validate: 3 problems`. */
+  validateStatus: string;
+  onOpenDiagnostics: () => void;
 };
 
 export type ScreensNavProps = { screens: ShellScreen[]; pathname: string };
@@ -145,6 +150,9 @@ export type ShellPageProps = {
   modelStatus: ModelStatus;
   runningProcesses: number;
   onOpenProcesses: () => void;
+  onOpenPalette: () => void;
+  validateStatus: string;
+  onOpenDiagnostics: () => void;
   shortcuts: ShortcutInfo[];
   tabs: Record<ShellRegion, ShellTab[]>;
   activeTabs: Record<ShellRegion, string | null>;

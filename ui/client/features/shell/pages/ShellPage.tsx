@@ -29,13 +29,14 @@ export function ShellPage(props: ShellPageProps): ReactNode {
           layout={props.layout}
           onTogglePane={props.onTogglePane}
           onOpenProcesses={props.onOpenProcesses}
+          onOpenPalette={props.onOpenPalette}
         />
       }
       left={host('browser', 'Browser')}
       mid={<main className="main">{props.children}</main>}
       right={host('tools', 'Tools')}
       drawer={host('drawer', 'Drawer')}
-      status={<StatusBar layout={props.layout} onTogglePane={props.onTogglePane} shortcuts={props.shortcuts} />}
+      status={<StatusBar layout={props.layout} onTogglePane={props.onTogglePane} shortcuts={props.shortcuts} validateStatus={props.validateStatus} onOpenDiagnostics={props.onOpenDiagnostics} />}
     />
   );
 }
