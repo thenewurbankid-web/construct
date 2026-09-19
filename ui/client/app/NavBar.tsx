@@ -8,6 +8,7 @@
 // for readability.
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { ThemeController } from '@/features/shell';
 
 const LINKS = [
   { href: '/dashboard', label: 'Dashboard', activeOn: ['/', '/dashboard'] },
@@ -29,6 +30,7 @@ export function NavBar() {
           {link.label}
         </Link>
       ))}
+      <div className="nav-theme"><ThemeController /></div>
     </nav>
   );
 }

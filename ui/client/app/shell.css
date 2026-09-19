@@ -1,0 +1,20 @@
+/* Cockpit shell primitives (Design #244/#245). Tokens only; no raw colours. */
+.sh-icon-btn {
+  appearance: none;
+  align-self: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  font-size: var(--fs-lg);
+  line-height: 1;
+  cursor: pointer;
+}
+.sh-icon-btn:hover { background: var(--surface-3); }
+.nav-theme { margin-top: auto; }

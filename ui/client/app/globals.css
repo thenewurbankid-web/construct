@@ -1,34 +1,4 @@
-:root {
-  /* -- Black/grey glassmorphism theme tokens (#44) --
-   * One place for the whole visual language: a near-black base with a
-   * faint radial highlight for depth, translucent grey "glass" panels
-   * that sit on top of it via backdrop-filter blur, and a subtle light
-   * border to read as an edge rather than a hard box. Every panel-ish
-   * surface across Dashboard/Settings/Wizard/Help/ProjectGate consumes
-   * these tokens (see .glass-panel and the classes built on it below)
-   * instead of hardcoding its own colors, so the whole UI stays visually
-   * consistent from one place. --tool/--llm/--error/--accent are kept
-   * from the original palette (decision: the accent blue and status
-   * colors already read fine against a darker glass backdrop and are
-   * used for meaning, not just decoration, so they didn't need to
-   * change — only the neutral background/panel/border/text tokens were
-   * redesigned for glassmorphism). */
-  --bg: #060709;
-  --bg-glow-1: rgba(90, 110, 150, 0.16);
-  --bg-glow-2: rgba(60, 70, 90, 0.14);
-  --panel-glass: rgba(210, 215, 225, 0.06);
-  --panel-glass-strong: rgba(210, 215, 225, 0.1);
-  --panel-blur: 20px;
-  --border: rgba(255, 255, 255, 0.12);
-  --border-strong: rgba(255, 255, 255, 0.2);
-  --text: #eef0f4;
-  --muted: #9aa1ac;
-  --accent: #5b8cff;
-  --tool: #3fae5a;
-  --llm: #d98c2b;
-  --error: #e05a5a;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-}
+/* Tokens live in tokens.css (Design #244); legacy names are aliased there. */
 
 * {
   box-sizing: border-box;
@@ -61,7 +31,7 @@ body {
   border-radius: 14px;
   backdrop-filter: blur(var(--panel-blur));
   -webkit-backdrop-filter: blur(var(--panel-blur));
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--glass-shadow);
 }
 
 .nav {
@@ -92,7 +62,7 @@ body {
 
 .nav a.active {
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-fg);
 }
 
 .main {
@@ -163,7 +133,7 @@ body {
  * Storybook story too, not only nested inside a `.field` label. */
 .ui-input,
 .ui-select {
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--sunken);
   border: 1px solid var(--border);
   color: var(--text);
   border-radius: 6px;
@@ -188,7 +158,7 @@ body {
 }
 
 .ui-select option {
-  background: #14161b;
+  background: var(--surface-2);
   color: var(--text);
 }
 
@@ -197,7 +167,7 @@ body {
 .chat-input input:focus {
   outline: none;
   border-color: var(--border-strong);
-  box-shadow: 0 0 0 3px rgba(91, 140, 255, 0.18);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .checkbox {
@@ -242,7 +212,7 @@ input[type='checkbox']:focus-visible {
  * removed, just no longer the only styling layer. */
 button {
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-fg);
   border: none;
   border-radius: 6px;
   padding: 9px 14px;
@@ -279,7 +249,7 @@ button:disabled {
 .command-output {
   white-space: pre-wrap;
   font-size: 0.82rem;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--sunken);
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 10px;
@@ -326,24 +296,24 @@ button:disabled {
 }
 
 .attribution-label.tool {
-  background: rgba(63, 174, 90, 0.15);
+  background: var(--success-soft);
   color: var(--tool);
 }
 
 .attribution-label.llm {
-  background: rgba(217, 140, 43, 0.18);
+  background: var(--llm-soft);
   color: var(--llm);
 }
 
 .attribution-label.llm-none {
-  background: rgba(154, 161, 172, 0.15);
+  background: var(--neutral-soft);
   color: var(--muted);
 }
 
 /* New tone added for Badge.jsx (#46) — nothing used an error-toned
  * attribution-label before Badge generalized the concept. */
 .attribution-label.error {
-  background: rgba(224, 90, 90, 0.15);
+  background: var(--danger-soft);
   color: var(--error);
 }
 
@@ -391,13 +361,13 @@ button:disabled {
 }
 
 .chat-log {
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--sunken);
   color: var(--muted);
   align-self: flex-start;
 }
 
 .chat-question {
-  background: rgba(91, 140, 255, 0.15);
+  background: var(--accent-soft);
   color: var(--text);
   align-self: flex-start;
   font-weight: 600;
@@ -405,7 +375,7 @@ button:disabled {
 
 .chat-answer {
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-fg);
   align-self: flex-end;
 }
 
@@ -415,7 +385,7 @@ button:disabled {
 }
 
 .chat-error {
-  background: rgba(224, 90, 90, 0.15);
+  background: var(--danger-soft);
   color: var(--error);
   align-self: flex-start;
 }
@@ -434,7 +404,7 @@ button:disabled {
 
 .chat-input input {
   flex: 1;
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--sunken);
   border: 1px solid var(--border);
   color: var(--text);
   border-radius: 6px;
@@ -534,7 +504,7 @@ button:disabled {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 4px 12px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--hover);
 }
 
 .help-topic summary {
@@ -565,7 +535,7 @@ button:disabled {
 }
 
 .help-topic[open] {
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--hover);
 }
 
 .help-topic .help-pre {
@@ -580,7 +550,7 @@ button:disabled {
   max-height: none;
   font-size: 0.8rem;
   line-height: 1.65;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--sunken);
   border-left: 3px solid var(--border-strong);
   border-top-color: transparent;
   border-right-color: transparent;
@@ -588,7 +558,7 @@ button:disabled {
 }
 
 .help-page code {
-  background: rgba(154, 161, 172, 0.15);
+  background: var(--neutral-soft);
   border-radius: 4px;
   padding: 1px 5px;
   font-size: 0.85em;
@@ -610,7 +580,7 @@ button:disabled {
 
 .tutorial-figure figcaption {
   font-size: 0.85rem;
-  color: var(--muted, #9aa1ac);
+  color: var(--muted);
   margin-top: 6px;
 }
 
@@ -687,12 +657,12 @@ button:disabled {
 }
 
 .tree-node:hover {
-  background: rgba(91, 140, 255, 0.1);
+  background: var(--accent-soft);
 }
 
 .tree-node.selected {
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-fg);
 }
 
 .tree-node.component .tree-node-tag {
@@ -709,7 +679,7 @@ button:disabled {
 }
 
 .tree-node.selected .tree-node-props {
-  color: rgba(255, 255, 255, 0.8);
+  color: color-mix(in srgb, var(--accent-fg) 80%, transparent);
 }
 
 .preview-canvas {
@@ -725,7 +695,7 @@ button:disabled {
 }
 
 .preview-node.component {
-  border-color: rgba(217, 140, 43, 0.5);
+  border-color: var(--warn);
 }
 
 .preview-node.selected {
@@ -749,7 +719,7 @@ button:disabled {
 
 .snippet-textarea {
   width: 100%;
-  background: #0b0d11;
+  background: var(--code-bg);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -795,7 +765,7 @@ button:disabled {
 }
 
 .snippet-editor-code .snippet-highlight {
-  background: #0b0d11;
+  background: var(--code-bg);
   color: var(--text);
   pointer-events: none;
 }
@@ -809,7 +779,7 @@ button:disabled {
 }
 
 .snippet-editor-code .snippet-textarea-overlay::selection {
-  background: rgba(91, 140, 255, 0.35);
+  background: var(--selection);
 }
 
 /* A minimal, self-contained token palette (rather than pulling in Prism's
@@ -820,18 +790,18 @@ button:disabled {
 }
 
 .token.function {
-  color: #d98c2b;
+  color: var(--syn-fn);
 }
 
 .token.string,
 .token.attr-value {
-  color: #3fae5a;
+  color: var(--syn-str);
 }
 
 .token.tag,
 .token.tag .token.tag,
 .token.attr-name {
-  color: #e0668c;
+  color: var(--syn-attr);
 }
 
 .token.punctuation,
@@ -849,7 +819,7 @@ button:disabled {
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 10px;
-  background: #0b0d11;
+  background: var(--code-bg);
 }
 
 .snippet-diff {
@@ -869,12 +839,12 @@ button:disabled {
 
 .diff-added {
   color: var(--tool);
-  background: rgba(63, 174, 90, 0.12);
+  background: var(--success-soft);
 }
 
 .diff-removed {
   color: var(--error);
-  background: rgba(224, 90, 90, 0.12);
+  background: var(--danger-soft);
 }
 
 .diff-context {
@@ -920,7 +890,7 @@ button:disabled {
   letter-spacing: 0.03em;
   padding: 1px 5px;
   border-radius: 3px;
-  background: rgba(217, 140, 43, 0.15);
+  background: var(--llm-soft);
   color: var(--llm);
   flex-shrink: 0;
 }
@@ -928,7 +898,7 @@ button:disabled {
 .prop-row input[type='text'],
 .prop-row input[type='number'] {
   flex: 1;
-  background: #0f1115;
+  background: var(--code-bg);
   border: 1px solid var(--border);
   color: var(--text);
   border-radius: 6px;
@@ -988,7 +958,7 @@ button:disabled {
   position: absolute;
   top: 0;
   left: 0;
-  background: #0b0d11;
+  background: var(--code-bg);
   border: 1px solid var(--border);
   border-radius: 6px;
 }
@@ -1049,7 +1019,7 @@ button:disabled {
 .snippet-view-toggle button.active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--accent-fg);
 }
 
 /* Ticket F.1 (#120, epic #119) — React Flow (@xyflow/react) visual composer
@@ -1068,7 +1038,7 @@ button:disabled {
   height: 420px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: #0b0d11;
+  background: var(--code-bg);
   overflow: hidden;
 }
 
@@ -1081,7 +1051,7 @@ button:disabled {
  * `.dark` variable set; these overrides nudge it further to match the
  * app's existing glass/border palette instead of xyflow's stock dark grey. */
 .react-flow__controls-button {
-  background: rgba(20, 22, 27, 0.92);
+  background: var(--surface-2);
   border-bottom-color: var(--border);
 }
 
@@ -1096,7 +1066,7 @@ button:disabled {
   padding: 10px 6px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--hover);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1166,7 +1136,7 @@ button:disabled {
   overflow-x: auto;
   padding: 0.75rem 1rem;
   border-radius: 0.5rem;
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--sunken);
 }
 
 .ollama-model-table {
@@ -1178,7 +1148,7 @@ button:disabled {
 .ollama-model-table td {
   text-align: left;
   padding: 0.4rem 0.6rem;
-  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+  border-bottom: 1px solid var(--border);
 }
 
 .ollama-pull-progress {
@@ -1230,7 +1200,7 @@ button:disabled {
   height: 380px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: #0b0d11;
+  background: var(--code-bg);
 }
 
 .wf-state {
@@ -1303,7 +1273,7 @@ button:disabled {
 }
 
 .wf-viewport .react-flow__edge-textbg {
-  fill: #1a1d24;
+  fill: var(--surface-2);
 }
 
 .wf-viewport .react-flow__edge-text {
@@ -1476,16 +1446,16 @@ button:disabled {
   overflow: hidden; text-overflow: ellipsis;
 }
 .scope-source.unused { opacity: 0.55; border-style: dashed; }
-.scope-target.scope-status-unbound { border-style: dashed; border-color: #e05a5a; color: #e05a5a; }
-.scope-target.scope-status-undeclared { border-color: #d98c2b; color: #d98c2b; }
+.scope-target.scope-status-unbound { border-style: dashed; border-color: var(--danger); color: var(--danger); }
+.scope-target.scope-status-undeclared { border-color: var(--warn); color: var(--warn); }
 .scope-target.scope-status-spread { border-style: dotted; opacity: 0.7; }
 .scope-flags { list-style: none; margin: 8px 0 0; padding: 0; font-size: 0.8rem; }
-.scope-flag-warn::before { content: '\26A0  '; color: #d98c2b; }
+.scope-flag-warn::before { content: '\26A0  '; color: var(--warn); }
 .scope-flag-info { opacity: 0.75; }
 
 /* #224 — external-change notice + diff view */
 .external-change-notice {
-  border: 1px solid var(--warn, #d9a441);
+  border: 1px solid var(--warn);
   border-radius: 6px;
   padding: 10px 12px;
   margin: 12px 0;
@@ -1519,12 +1489,12 @@ button:disabled {
 
 .diff-view-added {
   color: var(--tool);
-  background: rgba(63, 174, 90, 0.12);
+  background: var(--success-soft);
 }
 
 .diff-view-removed {
   color: var(--error);
-  background: rgba(224, 90, 90, 0.12);
+  background: var(--danger-soft);
 }
 
 .diff-view-context {
@@ -1601,4 +1571,4 @@ button:disabled {
 .live-preview-panel { padding: 12px; margin-top: 12px; }
 .live-preview-bar { display: flex; gap: 8px; margin-bottom: 8px; }
 .live-preview-bar input { flex: 1; }
-.live-preview-frame { width: 100%; height: 360px; border: 1px solid var(--border, #444); border-radius: 6px; background: #fff; }
+.live-preview-frame { width: 100%; height: 360px; border: 1px solid var(--border); border-radius: 6px; background: var(--preview-bg); }
