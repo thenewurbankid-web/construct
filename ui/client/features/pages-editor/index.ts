@@ -12,6 +12,9 @@ export * from './controllers/PagesEditorController';
 /** Finds and wires unmapped child props onto a parent component (#54). */
 export * from './hooks/useAutoMap';
 
+/** Polls for a page file's last external (on-disk) change and exposes it as a diff (#224). */
+export * from './hooks/usePageChange';
+
 /** Backs the top-level pages browser/tree/selection state — used by
  * PagesEditorController; exported for direct reuse/testing. */
 export * from './hooks/usePagesEditor';
