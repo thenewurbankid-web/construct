@@ -133,3 +133,10 @@ a { color: var(--accent); text-decoration: underline; }
 .sind.bad { color: var(--danger); } .sind.bad .dt2 { background: var(--danger); } .sind.busy { color: var(--accent); } .sind.busy .dt2 { background: var(--accent); } .sind.off { color: var(--text-muted); }
 .irow { display: grid; grid-template-columns: 190px 420px 1fr; align-items: center; gap: 12px; padding: 7px 12px; border: 1px solid var(--border-subtle); border-radius: var(--r-md); background: var(--surface-1); }
 .irow .in { font-weight: 600; } .irow .inote { color: var(--text-muted); }
+
+.fflow { display: flex; flex-direction: column; align-items: center; gap: 0; width: 100%; }
+.frow { display: flex; gap: 14px; justify-content: center; }
+.fnode { min-width: 190px; padding: 8px 12px; border: 1px solid var(--border-strong); border-radius: var(--r-md); background: var(--surface-2); }
+.fnode.warn { border-color: var(--warn); } .fnode.miss { border-style: dashed; background: transparent; color: var(--text-muted); }
+.fnh { display: flex; align-items: center; gap: 8px; } .fns { color: var(--text-muted); font-size: 12px; margin-top: 2px; }
+.farr { color: var(--text-muted); font: 12px var(--mono); padding: 4px 0; text-align: center; }

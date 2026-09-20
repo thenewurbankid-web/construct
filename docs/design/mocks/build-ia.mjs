@@ -528,6 +528,49 @@ const storyModes = `
 Object.assign(pocOut, { 'ia-story-modes': storyModes });
 Object.assign(pocTitles, { 'ia-story-modes': 'Story: three modes, and AI proposes the pattern once' });
 
+/* ================================================= Features: a feature as a hierarchy (routes nested under it, then layers) */
+const miss = (layer) => `<div class="row l2 muted" style="opacity:.85"><span class="layer" style="border:1px dashed var(--border-strong);background:transparent">${layer}</span><span>missing</span><span class="nbs"><a>Add</a></span></div>`;
+const ftLeft = `${treeHead('Features', [['Notes', ['3', '']], ['Features']], 'Features')}
+  <div class="scroll"><div class="sect" style="display:flex;justify-content:space-between"><span>construct/ &middot; 4 features</span><span class="nb">root</span></div><div class="tree">
+   <div class="row"><span class="twisty">&#9656;</span>auth</div>
+   <div class="row"><span class="twisty">&#9662;</span><b>refunds</b><span class="nbs">${dot('find', '1 violation')}</span></div>
+   <div class="row l1 sel"><span class="twisty">&#9662;</span>Routes<span class="meta">1</span></div>
+   <div class="row l2"><span class="layer route" style="background:var(--surface-3)">route</span>/orders/[id]/refund<span class="meta">Next app router</span></div>
+   <div class="row l1"><span class="twisty">&#9662;</span>Layers<span class="meta">6 of 7</span></div>
+   <div class="row l2"><span class="twisty">&#9656;</span>${L('page')}page<span class="meta">1 file</span></div>
+   <div class="row l2"><span class="twisty">&#9656;</span>${L('component')}component<span class="meta">4 files</span></div>
+   <div class="row l2"><span class="twisty">&#9656;</span><span class="layer">hook</span>hook<span class="meta">1 file</span></div>
+   <div class="row l2"><span class="twisty">&#9662;</span>${L('workflow')}workflow<span class="meta">1 file ${dot('find', '1 violation')}</span></div>
+   <div class="row l3" style="padding-left:78px">refundMachine.ts</div>
+   <div class="row l2"><span class="twisty">&#9656;</span><span class="layer">service</span>service<span class="meta">2 files</span></div>
+   <div class="row l2"><span class="twisty">&#9656;</span><span class="layer">domain</span>domain<span class="meta">2 files</span></div>
+   ${miss('controller')}
+   <div class="row"><span class="twisty">&#9656;</span>cart</div><div class="row"><span class="twisty">&#9656;</span>ui-kit</div>
+   <div class="sect" style="margin-top:8px">Legacy, outside construct/</div>
+   <div class="row muted"><span class="twisty">&#9656;</span>src/<span class="meta">38 files, not managed</span></div>
+  </div></div>`;
+const fnode = (l, t, sub, o = '') => `<div class="fnode ${o}"><div class="fnh">${L(l)}<b>${t}</b></div><div class="fns">${sub}</div></div>`;
+const farr = (t = '&darr;') => `<div class="farr">${t}</div>`;
+const ftMid = editorBar('Features &rsaquo; construct &rsaquo; <b>refunds</b>', [['refunds', true, true], ['story.md']], '<span class="seg" role="radiogroup" aria-label="View"><button role="radio" aria-checked="false">Tree</button><button class="on" role="radio" aria-checked="true">Flow</button></span>').replace(devpill, '').replace(/<button class="tg" aria-pressed="true" title="Click an element[^]*?<\/button>/, '') + `
+  <div class="stage" style="flex:1;padding:18px;place-items:start center;overflow:hidden"><div class="fflow">
+   <div class="farr" style="margin:0">Arrows point the way imports go</div>
+   <div class="frow">${fnode('route', '/orders/[id]/refund', 'Next app router', '')}</div>${farr()}
+   <div class="frow">${fnode('page', 'RefundPage', '1 file')}</div>${farr()}
+   <div class="frow">${fnode('component', 'RefundForm, AmountField', '4 files')}${fnode('hook', 'useRefundForm', '1 file')}<div class="fnode miss"><div class="fnh"><span class="layer" style="border:1px dashed var(--border-strong);background:transparent">controller</span><b>missing</b></div><div class="fns">pages usually go through one</div></div></div>${farr()}
+   <div class="frow">${fnode('workflow', 'refundMachine', '1 file &middot; 1 violation', 'warn')}${fnode('service', 'refundService', '2 files')}</div>${farr()}
+   <div class="frow">${fnode('domain', 'refundRules', '2 files')}</div>
+  </div></div>`;
+const ftRight = `<div class="pane-h"><span class="title">Inspect</span></div>${tabs([['Summary'], ['Impact'], ['Story'], ['Plan']], 'Summary')}<div class="scroll">
+  <div class="section"><div class="el-head"><span class="name">refunds</span><span class="layer">feature</span><span class="spacer"></span><button class="icon-btn">&#8943;</button></div><div class="path">construct/refunds</div></div>
+  <details class="dt" open><summary>What it is <span class="c">Deterministic</span></summary><div>Lets a customer request a refund from a delivered order. One route reaches it. Six of the seven parts exist.</div></details>
+  <details class="dt" open><summary>Routes <span class="c">1</span></summary><div class="mono">/orders/[id]/refund <span style="color:var(--text-muted)">Next app router</span></div></details>
+  <details class="dt" open><summary>Layers <span class="c">6 of 7</span></summary><div>Missing: controller <a>Add the missing layer files</a></div></details>
+  <details class="dt"><summary>Violations <span class="c warn">1</span></summary></details>
+  <details class="dt"><summary>Another feature: ui-kit <span class="c">no route</span></summary><div class="callout info" style="margin:6px 0"><span>i</span><div class="grow"><b>Not mapped to a route yet</b><small>That is fine for a shared kit, or a feature you imported first. <a>Map to a route</a></small></div></div></details></div>`;
+const featureTree = frame({ screen: 'Features', lw: 340, rw: 380, left: ftLeft, mid: ftMid, right: ftRight, bot: bottom('Processes', runProcs(), 104, { p: '1', a: '0' }), botH: 104 });
+Object.assign(pocOut, { 'ia-feature-structure': featureTree });
+Object.assign(pocTitles, { 'ia-feature-structure': 'Features: a feature as a hierarchy, routes nested under it, then layers, drawn from the import graph' });
+
 const out = { 'ia-features': features, 'ia-account-menu': menuMock, 'ia-slot-matrix': matrix, 'ia-notes-states': drafts, 'ia-no-project': noProj, 'ia-git': git, 'ia-git-connect': gitConnect, 'ia-narrow': narrow };
 const titles = { 'ia-features': 'Features screen: notes, impact, plan, processes', 'ia-account-menu': 'Account menu: settings, local model, theme, help, sign out', 'ia-slot-matrix': 'Five screens, four slots', 'ia-notes-states': 'Notes: durable states', 'ia-no-project': 'No project: where the Open a project prompt sits', 'ia-git': 'Git screen: PRs and review inside the shell', 'ia-git-connect': 'Git with no remote: where Connect remote and Clone sit', 'ia-narrow': 'Narrow (390 px): one panel at a time' };
 Object.assign(out, pocOut); Object.assign(titles, pocTitles);
