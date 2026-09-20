@@ -158,8 +158,11 @@ body {
 .ui-checkbox,
 input[type='checkbox'] {
   accent-color: var(--accent);
-  width: 15px;
-  height: 15px;
+  /* 24px: WCAG 2.2 target size (axe `target-size`), and the design system's own "small control" height. */
+  width: 24px;
+  height: 24px;
+  /* In a flex row the default flex-shrink squeezed it to 13px wide, below the target size. */
+  flex: none;
   cursor: pointer;
 }
 
@@ -354,7 +357,10 @@ button:disabled {
 
 .chat-error {
   background: var(--danger-soft);
-  color: var(--error);
+  /* `--error` on the soft tint was 4.45:1 in the light theme (needs 4.5, axe `color-contrast`). Body text
+     colour is ~16:1, and the danger colour stays as the edge so the message still reads as an error. */
+  color: var(--text);
+  border-left: 3px solid var(--error);
   align-self: flex-start;
 }
 
@@ -1643,7 +1649,7 @@ button:disabled {
 
 .git-settings { margin-top: var(--sp-6); border-top: 1px solid var(--border-subtle); padding-top: var(--sp-4); }
 .git-settings__check { display: flex; align-items: center; gap: var(--sp-2); }
-.git-settings__check input[type='checkbox'] { width: auto; }
+.git-settings__check input[type='checkbox'] { width: 24px; height: 24px; flex: none; } /* was width:auto = 13px, below the 24px target size */
 .git-settings__pair { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
 .git-settings__pair input { flex: 1 1 10rem; min-width: 0; }
 .git-settings__warn {

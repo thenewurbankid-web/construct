@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { runAxe, isBlocking, format } from './support/axe.js';
+import { gotoCockpit } from './support/cockpit.js';
 
 // Design #261 -- axe accessibility pass over every Cockpit screen, both themes,
 // wide (1280) and narrow (390), plus the drawer and command palette open.
@@ -121,7 +122,6 @@ test.describe.serial('screens with real project content', () => {
   const API = process.env.E2E_API_BASE || 'http://localhost:4000';
   const PAGE_SRC = `import React, { useState } from 'react';
 import { useThing } from '../hooks/useThing';
-import { gotoCockpit } from './support/cockpit.js';
 
 export default function LoginPage({ title }: { title: string }) {
   const [email, setEmail] = useState('');
@@ -206,7 +206,9 @@ test.describe('keyboard-only flow', () => {
       if (info) seen.push(info);
     }
     expect(seen.length).toBeGreaterThan(10);
-    expect(seen.filter((s) => !s.visible).map((s) => s.name)).toEqual([]);
+    // NEXTJS-PORTAL is the Next dev-mode overlay (the "N" indicator): it takes focus in `next dev` only and
+    // does not exist in a production build, so it is not a Cockpit control and is not held to the focus-ring rule.
+    expect(seen.filter((s) => !s.visible && s.name !== 'NEXTJS-PORTAL').map((s) => s.name)).toEqual([]);
     // Top bar controls come before pane content in tab order.
     expect(seen[0].top).toBeLessThan(60);
 
