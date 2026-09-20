@@ -8,10 +8,10 @@ export function ConstraintsList({ constraints: c }: ConstraintsProps) {
       {c ? (
         <div data-testid="plan-constraints">
           <p className="pl-hint">{c.summary}</p>
-          <ul className="pl-list">
+          <ul className="pl-rules" aria-label="Rules">
             {c.rules.map((r) => (
-              <li key={r.id} data-testid="plan-rule">
-                <code>{r.id}</code> <span className="pl-hint">{r.severity}</span>
+              <li key={r.id} className={`pl-rule pl-rule--${r.severity}`} data-testid="plan-rule" title={r.severity}>
+                {r.id}
               </li>
             ))}
           </ul>

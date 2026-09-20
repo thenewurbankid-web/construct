@@ -30,6 +30,7 @@ export function usePlanValidation(state: ScreenState, dispatch: Dispatch<ScreenA
   }, [plan, planKey, hasSteps, dispatch]);
 
   const stale = state.validatedFor !== planKey;
-  const canRun = hasSteps && !stale && !!state.validation?.valid && state.runStatus !== 'loading';
+  // Once started, Run stays off until the plan is edited again, so one press never starts two processes.
+  const canRun = hasSteps && !stale && !!state.validation?.valid && state.runStatus !== 'loading' && !state.startedId;
   return { plan, stale, canRun };
 }

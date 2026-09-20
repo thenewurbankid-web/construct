@@ -7,7 +7,7 @@ import { deriveTouches } from './StepTouches.ts';
 
 export const newStep = (flow: FlowInfo, steps: PlanStep[], counter: number): { step: PlanStep; nextId: number } => {
   const { id, nextId } = nextStepId(steps, counter);
-  const step: PlanStep = { id, title: flow.summary.replace(/\.$/, '').slice(0, 80), flow: flow.id, args: {}, executor: flow.executors[0] ?? 'deterministic' };
+  const step: PlanStep = { id, title: flow.summary.split(/ \(|\. /)[0].replace(/\.$/, '').slice(0, 80), flow: flow.id, args: {}, executor: flow.executors[0] ?? 'deterministic' };
   const touches = deriveTouches(flow, {});
   if (touches) step.touches = touches;
   return { step, nextId };

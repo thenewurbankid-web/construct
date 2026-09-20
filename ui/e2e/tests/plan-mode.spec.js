@@ -69,7 +69,9 @@ test.describe.serial('Plan mode (#289, #332)', () => {
     await expect(page.getByTestId('plan-proposal').filter({ hasText: 'feature:billing' })).toHaveCount(1);
     // A proposal is not used until it is confirmed.
     await expect(page.getByTestId('plan-analyse')).toBeDisabled();
-    await page.getByTestId('plan-proposal').filter({ hasText: 'feature:billing' }).getByTestId('plan-proposal-confirm').check();
+    const confirm = page.getByTestId('plan-proposal').filter({ hasText: 'feature:billing' }).getByTestId('plan-proposal-confirm');
+    await confirm.click();
+    await expect(confirm).toBeChecked();
     await page.getByTestId('plan-pick-checkout').click();
     await page.getByTestId('plan-analyse').click();
 
@@ -114,16 +116,16 @@ test.describe.serial('Plan mode (#289, #332)', () => {
     await expect(page.getByTestId('plan-run')).toBeEnabled();
 
     // Reorder: move the new step to the top; the numbers follow.
-    await step(page, last).getByTestId('plan-step-up').click();
-    if (suggested > 1) await step(page, last - 1).getByTestId('plan-step-up').click();
-    await expect(step(page, 0)).toHaveAttribute('data-flow', suggested > 1 ? 'create.feature' : 'create.feature');
+    for (let i = last; i > 0; i -= 1) await step(page, i).getByTestId('plan-step-up').click();
+    await expect(step(page, 0)).toHaveAttribute('data-flow', 'create.feature');
     await expect(step(page, 0).getByTestId('plan-step-n')).toHaveText('1');
 
     // Re-tag a read-only step to "Local model": that flow has no model path, and the validator says so, next to it.
-    const readOnly = page.getByTestId('plan-step').filter({ hasNot: page.locator('[data-flow="create.feature"]') }).first();
+    const readOnly = page.locator('[data-testid="plan-step"]:not([data-flow="create.feature"])').first();
     await readOnly.getByTestId('plan-tag-local-model').click();
     await expect(readOnly.getByTestId('plan-step-errors')).toContainText('cannot be executed by "local-model"');
     await expect(page.getByTestId('plan-run')).toBeDisabled();
+    await readOnly.getByTestId('plan-step-errors').scrollIntoViewIfNeeded();
     await page.screenshot({ path: path.join(SHOTS, '332-plan-invalid.png') });
     await readOnly.getByTestId('plan-tag-deterministic').click();
     await expect(readOnly.getByTestId('plan-step-errors')).toHaveCount(0);
@@ -163,7 +165,7 @@ test.describe.serial('Plan mode (#289, #332)', () => {
     await page.getByTestId('plan-add').click();
     await step(page, 1).getByTestId('plan-arg-name').fill('Wishlist');
     await step(page, 0).getByTestId('plan-arg-kind').fill('feature');
-    await expect(step(page, 0).getByTestId('plan-step-command')).toHaveText('construct summarize list --kind feature');
+    await expect(step(page, 0).getByTestId('plan-step-command')).toHaveText('construct summarize --list --kind feature');
     await expect(page.getByTestId('plan-run')).toBeEnabled();
     await page.getByTestId('plan-run').click();
 
@@ -185,5 +187,13 @@ test.describe.serial('Plan mode (#289, #332)', () => {
     expect(res.body.errors.some((e) => e.code === 'COCKPIT_ARG_PATH')).toBe(true);
     const listed = await (await request.get(`${API}/api/processes`)).json();
     expect(listed.processes.filter((p) => p.title === 'x')).toHaveLength(0);
+  });
+
+  test('on a phone the screen is one pane at a time with no sideways scroll', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 800 });
+    await gotoCockpit(page, '/plan');
+    await expect(page.getByTestId('plan-stage')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.screenshot({ path: path.join(SHOTS, '289-plan-narrow.png') });
   });
 });
