@@ -44,3 +44,11 @@ Each file's header records the `machine-hash` and `scenario-hash`, so a clone ca
 ## Safety
 
 Only `features/<feature>/tests/generated/` is ever written; symlinked directories or files are refused; a file without the `@construct-generated` marker is never overwritten; `--prune` removes only marker-bearing orphans. Names are escaped in literals and comments, and file names are built from `[a-z0-9-]` only.
+
+## Cloning a locked test (#300, #301)
+
+The Cockpit's **Tests** screen (`/tests`, Explore) lists a feature's scenarios with their coverage, the locked generated tests and yours. Trying to edit a generated test opens a dialog that explains why and clones it. Core: `cloneGeneratedTest(root, { feature, source, name })` in `src/engine/testClone.mjs` (JSON in, JSON out).
+
+- The copy lands at `features/<feature>/tests/<name>.spec.ts` (never under `generated/`); `name` must match `^[a-z0-9][a-z0-9-]*$`; an existing file is never overwritten (`{ ok: false, code: 'exists', suggested }`).
+- The clone is four header lines (`// @construct-clone v1 ...`, `// cloned from: <generated path> (scenario "<slug>")`, the copied `machine-hash` / `scenario-hash`, a note) then the source byte for byte, so its lineage survives for the stale-clone warning (#306).
+- Server: `GET /api/tests/:feature`, `GET /api/tests/:feature/source`, `POST /api/tests/:feature/clone`, `POST /api/tests/:feature/generate`, all behind the session; the client sends only a feature name, a file name and a clone name.
