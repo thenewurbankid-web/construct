@@ -82,8 +82,9 @@ export function probeApp(origin, { timeoutMs = PROBE_MS } = {}) {
  * `name` (optional) is only COMPARED with what is on disk; `area` says which directory it belongs in.
  * -> { ok, testsDir, specs:[{ name, area, rel, text }] } | { ok:false, error }
  */
-export function resolveSpecs(root, feature, { name, area } = {}) {
-  const at = locate(root, feature);
+export function resolveSpecs(root, feature, opts = {}) {
+  const { name, area } = /** @type {any} */ (opts);
+  const at = /** @type {any} */ (locate(root, feature));
   if (!at.ok) return fail(at.code === 'no-feature' ? 'NO_FEATURE' : 'BAD_TARGET', at.error);
   const list = (dir, re, areaName, marker) => {
     let names = [];
@@ -261,13 +262,14 @@ export function reclaimRunsOf(pid, { tmp = os.tmpdir() } = {}) {
 
 /**
  * Run a feature's tests (all of them, or the one `name`/`area` names) against the app at `baseUrl`.
- * @param {string} root the project root
- * @param {string} feature
- * @param {{name?:string, area?:'generated'|'yours', baseUrl?:string, signal?:AbortSignal, timeoutMs?:number, onProgress?:(line:string)=>void, probe?:Function, tmp?:string, repo?:string}} [opts]
- * @returns {Promise<{ok:true, feature:string, baseUrl:string, durationMs:number, counts:object, tests:object[]} | {ok:false, error:{code:string,message:string}}>}
- * Never rejects. Nothing is written inside the project.
+ *
+ * Options: `name`, `area` ('generated'|'yours'), `baseUrl`, `signal` (AbortSignal), `timeoutMs`, `onProgress(line)`, and the
+ * test seams `probe`, `tmp`, `repo`.
+ * Resolves (never rejects) to `{ok:true, feature, baseUrl, durationMs, counts, tests}` or `{ok:false, error:{code, message}}`.
+ * Nothing is written inside the project.
  */
-export async function runFeatureTests(root, feature, { name, area, baseUrl, signal, timeoutMs = RUN_TIMEOUT_MS, onProgress, probe = probeApp, tmp = os.tmpdir(), repo = REPO } = {}) {
+export async function runFeatureTests(root, feature, opts = {}) {
+  const { name, area, baseUrl, signal, timeoutMs = RUN_TIMEOUT_MS, onProgress, probe = probeApp, tmp = os.tmpdir(), repo = REPO } = /** @type {any} */ (opts);
   const say = (line) => { try { onProgress?.(line); } catch { /* a listener must not stop the run */ } };
   if (signal?.aborted) return fail('CANCELLED', 'The run was cancelled before it started.');
   const address = parseBaseUrl(baseUrl ?? process.env.CONSTRUCT_TEST_BASE_URL);
