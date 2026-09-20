@@ -1,8 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useReducer } from 'react';
-import { connectRemote, readRemote } from '../services/CloneApi';
-import { initialRemoteState, remoteReducer } from '../workflows/Clone';
+import { connectRemote, readRemote } from '../services/RemoteApi';
+import { initialRemoteState, remoteReducer } from '../workflows/Remote';
 
 /** "Connect a remote": read whether the open project has an `origin`, and add one when it has none. */
 export function useRemote() {

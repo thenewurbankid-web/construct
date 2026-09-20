@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { listClones } from '../services/CloneApi';
+import { listClones } from '../services/CloneReadApi';
 import type { CloneJob } from '../types';
 
 const POLL_MS = 2000;

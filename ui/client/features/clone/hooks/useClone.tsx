@@ -1,8 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
-import { isLiveJob } from '../domain/CloneWording';
-import { cancelClone, readClone, startClone } from '../services/CloneApi';
+import { isLiveJob } from '../domain/CloneJobView';
+import { readClone } from '../services/CloneReadApi';
+import { cancelClone, startClone } from '../services/CloneStartApi';
 import { cloneReducer, initialCloneState } from '../workflows/Clone';
 
 const POLL_MS = 700;

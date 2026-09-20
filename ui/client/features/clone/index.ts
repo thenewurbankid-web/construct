@@ -13,8 +13,26 @@ export * from './controllers/ConnectRemoteController';
 /** Recent clones, for the Processes drawer. */
 export * from './controllers/CloneJobsController';
 
-/** The words: URL hints, the folder name a URL gets, a job as the screen shows it. */
-export * from './domain/CloneWording';
+/** URL hints and the folder name an address will get. */
+export * from './domain/CloneUrl';
 
-/** The form's and the remote's state machines. */
+/** Progress numbers in words: the percentage in git's text, sizes at a glance. */
+export * from './domain/CloneProgress';
+
+/** A clone job as the screen shows it. */
+export * from './domain/CloneJobView';
+
+/** The clone form's state machine. */
 export * from './workflows/Clone';
+
+/** The remote form's state machine. */
+export * from './workflows/Remote';
+
+/** Starts a clone, follows it until it ends, cancels it; hands the finished folder to the caller. */
+export * from './hooks/useClone';
+
+/** Reads the open project's remote and adds an `origin` when it has none. */
+export * from './hooks/useRemote';
+
+/** Recent clone jobs, refreshed while the Processes drawer shows them. */
+export * from './hooks/useCloneJobs';

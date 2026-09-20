@@ -1,6 +1,7 @@
 'use client';
 
-import { buildJobView, suggestFolderName, urlProblem } from '../domain/CloneWording';
+import { buildJobView } from '../domain/CloneJobView';
+import { suggestFolderName, urlProblem } from '../domain/CloneUrl';
 import { useClone } from '../hooks/useClone';
 import { ClonePage } from '../pages/ClonePage';
 

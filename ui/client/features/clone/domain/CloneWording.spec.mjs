@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildJobView, formatBytes, percentOf, suggestFolderName, urlProblem } from './CloneWording.ts';
+import { buildJobView } from './CloneJobView.ts';
+import { formatBytes, percentOf } from './CloneProgress.ts';
+import { suggestFolderName, urlProblem } from './CloneUrl.ts';
 
 test('the folder name comes from the repository in the URL', () => {
   assert.equal(suggestFolderName('https://github.com/octocat/Hello-World'), 'Hello-World');

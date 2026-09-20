@@ -1,6 +1,6 @@
 'use client';
 
-import { buildJobView } from '../domain/CloneWording';
+import { buildJobView } from '../domain/CloneJobView';
 import { useCloneJobs } from '../hooks/useCloneJobs';
 import { CloneJobsPage } from '../pages/ClonePage';
 

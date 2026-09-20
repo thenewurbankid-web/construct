@@ -1,6 +1,6 @@
 'use client';
 
-import { urlProblem } from '../domain/CloneWording';
+import { urlProblem } from '../domain/CloneUrl';
 import { useRemote } from '../hooks/useRemote';
 import { ConnectRemotePage } from '../pages/ClonePage';
 
