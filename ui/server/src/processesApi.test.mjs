@@ -188,6 +188,7 @@ test('the list and detail carry the machine\'s own controls; pause, resume, canc
     const list = await (await call('GET', '/api/processes', authed)).json();
     assert.equal(list.processes.length, 1);
     assert.deepEqual(list.processes[0].controls, ['START', 'CANCEL']);
+    assert.equal(typeof list.processes[0].version, 'number', 'summaries carry a growing version so a client keeps the newest');
 
     service.engine().start('p1');
     await until(() => g.isWaiting('feature'), 'the first step to be in flight');

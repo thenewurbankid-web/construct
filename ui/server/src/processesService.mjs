@@ -32,13 +32,20 @@ export const CONTROL_EVENTS = Object.freeze({
  * that repaints on every change does not need to ship all of them each time. */
 export const LOG_TAIL = 500;
 
+/** `processSummary()` plus a version that only ever grows (the record's log sequence, which every state
+ * change advances). Responses and socket frames can reach a client out of order; the version lets it keep
+ * the newest instead of whichever arrived last. */
+export function versionedSummary(record) {
+  return { ...processSummary(record), version: record.logSeq };
+}
+
 /** A process as the drawer's detail view shows it: the summary (with the
  * machine's own `controls`), every step, the artifacts as read-only records
  * and the tail of the log. The plan itself and the raw record stay home. */
 export function processView(record) {
   const dropped = Math.max(0, record.log.length - LOG_TAIL);
   return {
-    summary: processSummary(record),
+    summary: versionedSummary(record),
     steps: record.steps.map((s) => ({
       id: s.id,
       title: s.title,
@@ -125,8 +132,8 @@ export function createProcessesService({ getProjectDir, stateDir = resolveStateD
     list() {
       const entry = open();
       if (!entry) return { projectRoot: null, processes: [], problems: [] };
-      const { processes, problems } = entry.store.list();
-      return { projectRoot: entry.root, processes, problems: problems.map((p) => ({ id: p.id, reason: p.reason })) };
+      const { processes: records, problems } = entry.store.all();
+      return { projectRoot: entry.root, processes: records.map(versionedSummary), problems: problems.map((p) => ({ id: p.id, reason: p.reason })) };
     },
 
     /** -> { status, body } */

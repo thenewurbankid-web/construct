@@ -23,11 +23,21 @@ function withId(order: string[], id: string): string[] {
   return order.includes(id) ? order : [id, ...order];
 }
 
+/** An update older than what is already shown is dropped: a control's response and the socket's
+ * frame for the same change can arrive in either order. */
+function isStale(state: ProcessesState, incoming: ProcessSummary): boolean {
+  const have = state.details[incoming.id];
+  return !!have && (have.summary.version ?? 0) > (incoming.version ?? 0);
+}
+
 export function processesReducer(state: ProcessesState, action: ProcessesAction): ProcessesState {
   switch (action.type) {
     case 'LISTED': {
       const details = { ...state.details };
-      for (const s of action.summaries) details[s.id] = details[s.id] ? { ...details[s.id], summary: s } : stub(s);
+      for (const s of action.summaries) {
+        if (isStale(state, s)) continue;
+        details[s.id] = details[s.id] ? { ...details[s.id], summary: s } : stub(s);
+      }
       const order = action.summaries.map((s) => s.id);
       const selectedId = state.selectedId && order.includes(state.selectedId) ? state.selectedId : (order[0] ?? null);
       return { ...state, loaded: true, error: null, order, details, selectedId };
@@ -36,11 +46,13 @@ export function processesReducer(state: ProcessesState, action: ProcessesAction)
       return { ...state, loaded: true, error: action.error };
     case 'UPDATE': {
       const id = action.detail.summary.id;
+      if (isStale(state, action.detail.summary)) return state;
       return {
         ...state,
         details: { ...state.details, [id]: action.detail },
         order: withId(state.order, id),
-        selectedId: state.selectedId ?? id,
+        // A process that appears while you watch is the one you want to see.
+        selectedId: state.order.includes(id) ? (state.selectedId ?? id) : id,
       };
     }
     case 'SELECT':

@@ -15,6 +15,8 @@ export type ControlVerb = 'pause' | 'resume' | 'cancel' | 'retry';
 export type ProcessSummary = {
   id: string;
   title: string;
+  /** Only ever grows; the newest version of a process wins, whatever order updates arrive in. */
+  version: number;
   state: TopState;
   stateDetail: string;
   pendingControl: 'pause' | 'cancel' | null;

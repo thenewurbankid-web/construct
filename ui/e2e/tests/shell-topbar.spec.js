@@ -66,13 +66,30 @@ test.describe('Cockpit top bar (#245)', () => {
     await expect(page.getByTestId('pill-model')).toHaveText('Local model ready');
   });
 
-  test('Processes pill (0 until the Processes epic) opens the drawer on its Processes tab', async ({ page }) => {
+  // #292 — was "Processes pill (0 until the Processes epic)": the count is now the real
+  // number of running processes. With nothing running it is still 0 and the drawer says
+  // so; with one running (served here as the API would) it reads 1. The full drawer is
+  // driven against a real engine in processes-drawer.spec.js.
+  test('Processes pill shows the real running count and opens the drawer on its Processes tab', async ({ page }) => {
     await page.goto('/help');
     await expect(page.getByTestId('pill-processes')).toHaveText('Processes: 0');
     await page.getByTestId('pill-processes').click();
     await expect(page.getByRole('region', { name: 'Drawer' })).toBeVisible();
     await expect(page.getByRole('tab', { name: 'Processes' })).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByText('No processes running')).toBeVisible();
+  });
+
+  test('Processes pill counts running processes only (a paused one is not running)', async ({ page }) => {
+    const summary = (id, state) => ({
+      id, title: `Plan ${id}`, projectRoot: '/x', state, stateDetail: state, pendingControl: null, currentStepId: null,
+      progress: { done: 0, failed: 0, total: 1 }, modelSteps: 0, plannedModelSteps: 0, artifacts: 0, pendingApproval: 0,
+      createdAt: '2026-09-20T10:00:00.000Z', startedAt: null, finishedAt: null, terminal: false, controls: [], error: null,
+    });
+    await page.route('**/api/processes', (route) => route.fulfill({
+      json: { ok: true, projectRoot: '/x', problems: [], processes: [summary('a', 'running'), summary('b', 'paused'), summary('c', 'running')] },
+    }));
+    await page.goto('/help');
+    await expect(page.getByTestId('pill-processes')).toHaveText('Processes: 2');
   });
 
   // #279 — the UI is the Cockpit; Construct is the framework/CLI underneath
