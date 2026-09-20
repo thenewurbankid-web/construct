@@ -24,7 +24,10 @@ export default [
   // `example/` is a separate Next.js project with its own eslint config and dependencies
   // (eslint-config-next) that the root install does not have; ESLint 10 tries to load it and
   // aborts the whole run ("Cannot find package 'eslint-config-next'"). It is linted from its own directory.
-  { ignores: ['example/**', '**/node_modules/**', '**/dist/**', 'ui/e2e/test-results/**', 'ui/e2e/playwright-report/**'] },
+  // `.claude/**`: agent worktrees live INSIDE the checkout, each carrying its own eslint.config.mjs; without this
+  // ESLint descends into them and aborts ("empty config", missing packages), so `npm run lint` only passed in a
+  // clean worktree and failed in the real checkout.
+  { ignores: ['.claude/**', 'example/**', '**/node_modules/**', '**/dist/**', 'ui/e2e/test-results/**', 'ui/e2e/playwright-report/**'] },
 
   // Scope (#335): the places where makeTempDir applies. Deliberately NOT covered:
   //  - src/engine/*.mjs (gitTrees, transactionalWriter, processEngine) manage their own directory
