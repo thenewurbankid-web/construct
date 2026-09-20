@@ -226,3 +226,41 @@ test('MODULE-001: threshold is configurable via architecture.yml (nested rules.M
   const r = validateSeparationOfConcerns(d);
   assert.equal(r.violations.filter((v) => v.rule === 'MODULE-001').length, 0);
 });
+
+// ---------------------------------------------------------------------------
+// #326 — countPrimaryExports reads the AST: generics' commas and comments do not count
+// ---------------------------------------------------------------------------
+test('countPrimaryExports (#326): a comma inside a generic annotation is not a second declarator', () => {
+  const src = [
+    `export const MODE_LABELS: Record<CommitMode, string> = { a: 'x' };`,
+    `export const M: Map<string, Map<number, boolean>> = new Map();`,
+    `export const P: Partial<Record<A, B>> = {};`,
+  ].join('\n');
+  assert.deepEqual(countPrimaryExports(src).map((e) => e.name), ['MODE_LABELS', 'M', 'P']);
+});
+
+test('countPrimaryExports (#326): a real comma-separated declarator list still counts each binding', () => {
+  assert.deepEqual(countPrimaryExports(`export const a: Record<K, V> = {}, b = 2;`).map((e) => e.name), ['a', 'b']);
+});
+
+test('countPrimaryExports (#326): the word export inside a line or block comment is not an export', () => {
+  const src = [
+    `// export const fake = 1;`,
+    `/* export function alsoFake() {}`,
+    `   export { nope } */`,
+    `/** Example: export default class Ghost {} */`,
+    `const s = "export const inString = 1";`,
+    `export const real = 1;`,
+  ].join('\n');
+  assert.deepEqual(countPrimaryExports(src).map((e) => e.name), ['real']);
+});
+
+test('countPrimaryExports (#326): a genuine second export is still caught, with its line', () => {
+  const r = countPrimaryExports(`// export const ghost = 0;\nexport const one: Record<A, B> = {};\nexport function two() {}\n`);
+  assert.deepEqual(r, [{ name: 'one', line: 2 }, { name: 'two', line: 3 }]);
+});
+
+test('countPrimaryExports (#326): three real exports with generics and commented examples stay at three', () => {
+  const src = `// e.g. export const x = 1; Record<A, B>\nexport const A1: Record<K, V> = {};\nexport const A2: Map<K, V> = new Map();\nexport function A3() {}\n`;
+  assert.equal(countPrimaryExports(src).length, 3);
+});
