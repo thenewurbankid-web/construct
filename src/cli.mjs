@@ -14,6 +14,7 @@ import { validateArchitecture } from './architecture-enforcer.mjs';
 import { syncPublicApi } from './api-composer.mjs';
 import { summarizeUnit, listUnits, unitApiManifest, renderUnitMarkdown } from './engine/unitSummary.mjs';
 import { analyzeImpact, proposeSeedsFromText, impactApiManifest, renderImpactMarkdown } from './engine/impact.mjs';
+import { loadTemplateDir, TemplateError } from './engine/planTemplate.mjs';
 import { prHealth, renderPrHealthMarkdown, prHealthApiManifest } from './engine/prHealth.mjs';
 import { summarizeProject, summarizeCompact, summarizeProse, summarizeSince } from './summarize.mjs';
 import { moveLayerFile, renameLayerFile } from './refactor.mjs';
@@ -609,6 +610,46 @@ export async function review(args) {
   console.log(format === 'markdown' ? renderPrHealthMarkdown(result) : JSON.stringify(result, null, 2));
   if (!result.ok) process.exitCode = result.error.code === 'INTERNAL_ERROR' ? EXIT_CODES.INTERNAL_ERROR : EXIT_CODES.USAGE_ERROR;
   return format === 'json';
+}
+
+/** `construct template list|show|instantiate` (#333). Read-only, JSON in/out, no LLM.
+ *
+ *   construct template list --templates <dir>
+ *   construct template show <name> --templates <dir>
+ *   construct template instantiate <name> --templates <dir> [--param key=value]... [--params-json '{"k":"v"}']
+ *
+ * A template is a named, reusable, parameterised plan; `instantiate` prints an ordinary plan.v1 (feed it
+ * to the runner or `construct review --plan`). The mechanism is open; the CURATED templates are not in
+ * this repo: point `--templates <dir>` (or CONSTRUCT_TEMPLATES_DIR) at wherever they live. There is no
+ * default directory, and nothing here runs a plan. */
+export async function template(args) {
+  const usage = 'Usage: construct template list|show <name>|instantiate <name> [--param key=value]... [--params-json <json>] --templates <dir> (or CONSTRUCT_TEMPLATES_DIR)';
+  const valueFlags = new Set(['--templates', '--param', '--params-json']);
+  const positional = args.filter((a, i) => !a.startsWith('--') && !valueFlags.has(args[i - 1]));
+  const [verb, name] = positional;
+  if (!['list', 'show', 'instantiate'].includes(verb) || (verb !== 'list' && !name)) throw new ConstructError(usage, { exitCode: EXIT_CODES.USAGE_ERROR });
+  const dir = flagValue(args, '--templates') ?? process.env.CONSTRUCT_TEMPLATES_DIR;
+  if (!dir) throw new ConstructError(`No template directory configured. The curated flows are not bundled with the open core: pass --templates <dir> or set CONSTRUCT_TEMPLATES_DIR. ${usage}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+  const params = {};
+  try {
+    const json = flagValue(args, '--params-json');
+    if (json !== undefined) Object.assign(params, JSON.parse(json));
+    args.forEach((a, i) => {
+      if (a !== '--param') return;
+      const kv = args[i + 1] ?? '';
+      const eq = kv.indexOf('=');
+      if (eq <= 0) throw new TemplateError('PARAM_INVALID', `--param expects key=value, got ${JSON.stringify(kv)}.`);
+      params[kv.slice(0, eq)] = kv.slice(eq + 1);
+    });
+    const registry = loadTemplateDir(path.resolve(dir));
+    if (verb === 'list') console.log(JSON.stringify({ ok: true, templates: registry.list() }, null, 2));
+    else if (verb === 'show') console.log(JSON.stringify({ ok: true, template: registry.get(name) }, null, 2));
+    else console.log(JSON.stringify(registry.instantiate(name, params), null, 2));
+  } catch (e) {
+    if (!(e instanceof TemplateError) && !(e instanceof SyntaxError)) throw e;
+    console.log(JSON.stringify({ ok: false, error: { code: e.code || 'PARAMS_JSON_INVALID', message: e.message, errors: e.errors } }, null, 2));
+    process.exitCode = EXIT_CODES.USAGE_ERROR;
+  }
 }
 
 /** `construct research summarize ...` | `construct research doctor ...` | `construct research workflow ...`
