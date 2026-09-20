@@ -25,8 +25,9 @@ test.describe('Cockpit top bar (#245)', () => {
     await expect(modes.getByRole('link', { name: 'Explore' })).toHaveAttribute('aria-current', 'page');
     await expect(modes.getByRole('link', { name: 'Plan' })).not.toHaveAttribute('aria-current', 'page');
 
+    // #289: Plan leads to the Plan screen; the Dashboard (the old research form) is still a screen in the Browser pane.
     await modes.getByRole('link', { name: 'Plan' }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page).toHaveURL(/\/plan$/);
     await expect(modes.getByRole('link', { name: 'Plan' })).toHaveAttribute('aria-current', 'page');
 
     await modes.getByRole('link', { name: 'Build' }).click();
