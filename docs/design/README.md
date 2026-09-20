@@ -20,7 +20,10 @@ Non-goals: MCP surfaces (future), marketing pages, product code.
 
 Concept mocks (1440x900, each in `png/<name>--dark.png` and `--light.png`):
 `cockpit-shell`, `pages-editor-in-shell`, `workflows-in-shell`,
-`research-mode`, `processes-drawer`, `command-palette`, `states-and-narrow`.
+`plan-mode`, `processes-drawer`, `command-palette`, `states-and-narrow`.
+(`plan-mode` was `research-mode` until the owner renamed the middle mode in
+#243; the modes are **Explore / Plan / Build** and the brand in the top bar is
+**Cockpit**. The CLI's `construct research …` is deliberately unchanged.)
 
 PR review in the Cockpit (#308, explores #285), built by
 `node docs/design/mocks/build-pr-review.mjs` with its own stylesheet
