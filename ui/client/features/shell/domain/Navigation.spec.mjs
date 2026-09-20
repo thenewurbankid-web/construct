@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { addTab, removeTab, resolveActiveTab } from './TabRegistry.ts';
+import { addTab, badgeText, removeTab, resolveActiveTab } from './TabRegistry.ts';
 import { nextTabId } from './TabKeys.ts';
 import { MODES, modeForPath } from './Modes.ts';
 import { SCREENS, isScreenActive } from './Screens.ts';
@@ -81,4 +81,16 @@ test('shortcutAction maps Ctrl B / Ctrl Alt B / Ctrl J / F6 and nothing else', (
   assert.equal(shortcutAction(k('b')), null);
   assert.equal(shortcutAction(k('j', { ctrlKey: true, shiftKey: true })), null);
   assert.equal(shortcutAction(k('j', { ctrlKey: true, altKey: true })), null);
+});
+
+// #252: the tab a background job feeds must be the same width whatever it finds,
+// or finishing shoves every tab after it sideways.
+test('badgeText caps a count so the badge never changes width', () => {
+  assert.equal(badgeText(0), '0');
+  assert.equal(badgeText(7), '7');
+  assert.equal(badgeText(99), '99');
+  assert.equal(badgeText(100), '99+');
+  assert.equal(badgeText(7412), '99+');
+  assert.ok(badgeText(7412).length <= 3, 'never wider than the three characters .sh-badge reserves');
+  assert.equal(badgeText('new'), 'new', 'a feature may still label its own badge');
 });

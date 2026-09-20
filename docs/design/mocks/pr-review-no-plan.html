@@ -10,9 +10,9 @@
 <div class="shell" style="--lw:316px;--rw:424px;grid-template-rows:44px 1fr 132px 24px">
   
 <header class="topbar">
-  <div class="brand"><i></i>Construct</div>
+  <div class="brand"><i></i>Cockpit</div>
   <button class="chip-btn" aria-haspopup="listbox">acme/storefront <span class="sub">main</span> ▾</button>
-  <div class="seg" role="radiogroup" aria-label="Mode"><button class="" role="radio" aria-checked="false">Explore</button><button class="" role="radio" aria-checked="false">Research</button><button class="" role="radio" aria-checked="false">Build</button><button class="on" role="radio" aria-checked="true">Review</button></div>
+  <div class="seg" role="radiogroup" aria-label="Mode"><button class="" role="radio" aria-checked="false">Explore</button><button class="" role="radio" aria-checked="false">Plan</button><button class="" role="radio" aria-checked="false">Build</button><button class="on" role="radio" aria-checked="true">Review</button></div>
   <button class="chip-btn palette-trigger"><span>Search pull requests, files or run a command…</span><kbd>Ctrl K</kbd></button>
   <span class="pill run"><span class="spin"></span>1 running</span>
   <span class="pill ok"><span class="dot"></span>GitHub · sam-dev</span>
@@ -85,7 +85,7 @@
    <div class="scroll" style="padding:10px 12px">
     <div class="ind none"><h5>Blast radius · declared vs actual<span class="spacer"></span><span class="tag" style="background:var(--surface-3);color:var(--text-muted)">Not measured</span></h5>
      <div class="head">No plan is linked, so there is nothing to compare against.</div>
-     <div class="why">This indicator is the only one that needs a plan. It appears automatically for pull requests created from Research mode.</div>
+     <div class="why">This indicator is the only one that needs a plan. It appears automatically for pull requests created from Plan mode.</div>
      <div class="act"><button class="btn sm">Link a plan…</button></div></div>
     <div class="ind bad"><h5>Rule regressions<span class="spacer"></span><span class="tag det">Deterministic</span></h5><div class="head">Your rules pass on <b>main</b> and fail here: <b>0 → 1 error</b>.</div><div class="why">New: <span class="mono">DOMAIN-001</span> — <span class="mono">guestRules.ts</span> calls <span class="mono">fetch</span>. Domain code must stay pure; that call belongs in a service.</div></div>
     <div class="ind warn"><h5>Unexplained changes<span class="spacer"></span><span class="tag det">Deterministic</span></h5><div class="head"><b>1 of 23 files</b> has no import path to the rest of the change.</div><div class="why"><span class="mono">core/lib/money.ts</span> — likely an unrelated fix riding along.</div></div>

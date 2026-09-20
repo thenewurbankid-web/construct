@@ -25,9 +25,9 @@ const prPage = (title, body) =>
  *  (If parts.topbar gains "Review", this local copy goes away.) */
 const topbar4 = (mode = 'Review', procs = '1 running') => `
 <header class="topbar">
-  <div class="brand"><i></i>Construct</div>
+  <div class="brand"><i></i>Cockpit</div>
   <button class="chip-btn" aria-haspopup="listbox">acme/storefront <span class="sub">main</span> ▾</button>
-  <div class="seg" role="radiogroup" aria-label="Mode">${['Explore', 'Research', 'Build', 'Review'].map((m) => `<button class="${m === mode ? 'on' : ''}" role="radio" aria-checked="${m === mode}">${m}</button>`).join('')}</div>
+  <div class="seg" role="radiogroup" aria-label="Mode">${['Explore', 'Plan', 'Build', 'Review'].map((m) => `<button class="${m === mode ? 'on' : ''}" role="radio" aria-checked="${m === mode}">${m}</button>`).join('')}</div>
   <button class="chip-btn palette-trigger"><span>Search pull requests, files or run a command…</span><kbd>Ctrl K</kbd></button>
   <span class="pill run"><span class="spin"></span>${procs}</span>
   <span class="pill ok"><span class="dot"></span>GitHub · sam-dev</span>
@@ -410,7 +410,7 @@ writeFileSync(join(here, 'pr-review-no-plan.html'), prPage('No plan linked — t
    <div class="scroll" style="padding:10px 12px">
     <div class="ind none"><h5>Blast radius · declared vs actual<span class="spacer"></span><span class="tag" style="background:var(--surface-3);color:var(--text-muted)">Not measured</span></h5>
      <div class="head">No plan is linked, so there is nothing to compare against.</div>
-     <div class="why">This indicator is the only one that needs a plan. It appears automatically for pull requests created from Research mode.</div>
+     <div class="why">This indicator is the only one that needs a plan. It appears automatically for pull requests created from Plan mode.</div>
      <div class="act"><button class="btn sm">Link a plan…</button></div></div>
     ${ind('bad', 'Rule regressions', 'Your rules pass on <b>main</b> and fail here: <b>0 → 1 error</b>.',
     'New: <span class="mono">DOMAIN-001</span> — <span class="mono">guestRules.ts</span> calls <span class="mono">fetch</span>. Domain code must stay pure; that call belongs in a service.')}
@@ -531,7 +531,7 @@ writeFileSync(join(here, 'pr-review-states.html'), prPage('Pull request review �
   <div>
    <h3>Narrow (390 px) — one pane at a time</h3>
    <div class="phone">
-    <div class="topbar" style="height:44px;flex:none"><div class="brand"><i></i>Construct</div><span class="spacer"></span><span class="pill ok" style="height:22px"><span class="dot"></span>Read-only</span><button class="icon-btn" aria-label="Menu">≡</button></div>
+    <div class="topbar" style="height:44px;flex:none"><div class="brand"><i></i>Cockpit</div><span class="spacer"></span><span class="pill ok" style="height:22px"><span class="dot"></span>Read-only</span><button class="icon-btn" aria-label="Menu">≡</button></div>
     <div class="canvas-tb" style="height:auto;padding:8px 10px;display:block">
      <div class="crumbs"><b>#142</b> Add show-password toggle</div>
      <div class="hb-row wrap" style="margin-top:6px">${hb('bad', 'Scope 1 → 3')}${hb('bad', '2 rule regressions')}${hb('warn', 'Public API')}${hb('warn', 'Flow changed')}</div>

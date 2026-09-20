@@ -14,7 +14,7 @@ a production, multi-feature tool needs:
 
 | Need | Addition |
 |---|---|
-| Many features, not one editor | Top bar: project switcher, **mode switch (Explore / Research / Build)**, command palette, global process + model status |
+| Many features, not one editor | Top bar: project switcher, **mode switch (Explore / Plan / Build)**, command palette, global process + model status |
 | Right panel does too many things at once | **Contextual tabs**: Inspector / Scope / Source / Diff (badge) / Flow; only relevant tabs enabled |
 | Long-running work is invisible | **Bottom drawer**: Diagnostics / Logs / Processes, plus a top-bar "2 running" pill |
 | Fixed pane widths | **Resizable + collapsible panes** (drag or arrow keys, Ctrl+B / Ctrl+Alt+B collapse), sizes remembered per project |
@@ -27,25 +27,36 @@ Shell anatomy (all sizes are defaults):
 
 ```
 +--------------------------------------------------------------------------+
-| top bar 44: brand | project switcher | Explore Research Build | Ctrl K ... |
-+----------+------------------------------------------+-------------------+
+| top bar 44: brand | project switcher | Explore Plan Build | Ctrl K ...   |
++----------+-------------------------------------------+-------------------+
 | Browser  |  canvas toolbar (crumbs, viewport, pick)  | tabs: Inspector.. |
-| 264      |  Preview / diagram / research impact      | 360               |
+| 264      |  Preview / diagram / impact table         | 360               |
 | tabs:    |  (the "stage")                            | contextual panel  |
-| Features |                                          |                   |
-| Pages    |                                          |                   |
-| Workflows|                                          |                   |
-+----------+------------------------------------------+-------------------+
+| Features |                                           |                   |
+| Pages    |                                           |                   |
+| Workflows|                                           |                   |
++----------+-------------------------------------------+-------------------+
 | drawer (collapsible, 96-290): Diagnostics | Logs | Processes             |
 +--------------------------------------------------------------------------+
 | status bar 24: validate result, sync state, model, shortcuts             |
 +--------------------------------------------------------------------------+
 ```
 
+The brand in the top bar reads **Cockpit** (shipped in #279): Construct is the
+framework and the CLI, the Cockpit is the UI on top of it.
+
 Modes change what the three panes hold, not the frame:
 **Explore** = browser / preview / inspector tabs (today's Pages Editor and Workflows);
-**Research** = request / impact / plan; **Build** = browser / preview / diff,
+**Plan** = request / impact / proposed steps; **Build** = browser / preview / diff,
 with the drawer on Processes.
+
+Each mode is named after what you leave with, not what you do there — you go to
+**Plan** to come away with a plan. The work that happens inside it is still
+*research*: the deterministic `construct research` blocks (summarize, impact,
+workflow, doctor) are what fill the middle and right panes, they keep their
+names in the CLI and in the Processes drawer, and "Research this ticket…" stays
+the name of the palette command that starts one. **"Plan" is the mode; research
+is the activity.**
 
 Breakpoints: >= 1280 all three panes; 900-1279 right pane becomes an overlay
 tab strip on the canvas; < 900 one pane at a time with a bottom tab bar
@@ -87,7 +98,7 @@ Every screen: what changed versus today, and why.
 - **Why**: same frame as Pages; narrative for stakeholders one click from the
   diagram; editing is in context ("Edit transitions"), not a permanent toolbar.
 
-### 4. `research-mode` (roadmap: research -> plan -> execute)
+### 4. `plan-mode` (roadmap: research -> plan -> execute)
 - **Today**: a Research form on the Dashboard.
 - **Change**: left = the ticket and constraints (from `architecture.yml`);
   middle = **impact** (features and files touched, with layer and why, computed
@@ -96,6 +107,10 @@ Every screen: what changed versus today, and why.
   "Run plan in Build mode".
 - **Why**: makes the product flow visible and reviewable before anything runs,
   and shows exactly where a model is involved (Vision: blocks first).
+- **Naming**: the mode button says **Plan** (owner, #243). The blocks behind it
+  are still `construct research summarize | workflow | doctor | impact`,
+  unchanged — the CLI is not renamed and the Processes drawer still shows
+  `research · issue #142` as the process name.
 
 ### 5. `processes-drawer` (roadmap: Processes section)
 - **Change**: drawer opens to Processes: the running plan's steps with status
@@ -107,8 +122,9 @@ Every screen: what changed versus today, and why.
 
 ### 6. `command-palette`
 - **Change**: Ctrl K palette searches files/components/pages and runs commands
-  (Research this ticket, switch mode, toggle drawer). Footer states every
-  command is a Construct block, the same as the CLI.
+  ("Research this ticket…", which says on the row that it opens Plan mode;
+  switch mode; toggle drawer). Footer states every command is a Construct
+  block, the same as the CLI.
 - **Why**: keyboard-first navigation; replaces the old nav and scales as
   features grow.
 
@@ -140,7 +156,12 @@ Existing routes stay valid until the last step.
 | 10 | **Migrate remaining screens** (Dashboard, Import Wizard, Settings, Local model, Help) into the shell as modes/pages; retire `NavBar` and `.glass-panel` on shell surfaces | L | `dashboard-card-sizing`, `wizard-*`, `settings-llm`, `ollama*`, `help-*`, `walkthrough`, `demos/*` |
 | 11 | **Accessibility pass**: axe scan per screen and theme in Playwright, focus ring, landmarks, tab semantics, reduced motion | S | whole suite |
 | 12 | **Processes UI**: process store + drawer tab + top-bar pill (depends on the Processes backend epic) | L | new specs; none existing |
-| 13 | **Research mode screen** (request / impact / plan; depends on the research-mode epic) | L | Dashboard research flow specs in `demos/` |
+| 13 | **Plan mode screen** (request / impact / plan; depends on the research epic #229) | L | Dashboard research flow specs in `demos/` |
+
+The mode label itself is not a step of its own: the top bar's mode list lives in
+`ui/client/features/shell` and `ui/e2e/tests/shell-topbar.spec.js` asserts
+`['Explore', 'Research', 'Build']`, so whichever slice next touches the top bar
+changes both to `Plan` at the same time.
 
 Order rationale: 1-2 are invisible foundations; 3-6 move existing features
 without changing behaviour; 7-9 add shell capabilities; 10 completes the
@@ -148,10 +169,19 @@ migration; 11 hardens; 12-13 wait on backend epics and can be built against the
 mocks in parallel by another stream once 2-4 exist. Each UI step also needs its
 own Playwright spec plus screenshot on its issue (CLAUDE.md rule 11).
 
-## Open questions for the owner
-- Mode names (Explore / Research / Build) and whether Explore should be
-  called "Inspect".
-- Is the project switcher local folders only, or also remote repos later?
-- Should the drawer default open or closed on first run (mocks show open with
-  content; empty state is closed)?
-- Layout persistence scope: per project or global.
+## Decided by the owner (#243, 2026-09-19)
+
+All four questions this doc used to leave open are answered.
+
+| Question | Decision |
+|---|---|
+| Mode names | **Explore / Plan / Build.** The middle mode was called "Research"; it is now **Plan**. Explore keeps its name (not "Inspect"). The rename is **UI only** — `construct research …` is untouched, with no alias and no deprecation. |
+| Project switcher | **Remote repositories too**, not local folders only — design for it now rather than retrofitting (follows from "open project from GitHub", #277). |
+| Drawer on first run | **Closed.** Keeps the first screen calm and gives the stage full height; the status bar still surfaces validate results and advertises `Ctrl J`. Mocks show it open because they show it in use. |
+| Layout persistence | **Per project**, confirming what this doc already specified. |
+
+Still open, and small enough to settle when the screens are built:
+- Whether the Plan-mode stage keeps a Diagram / Table toggle over the impact
+  result, or stays a table only.
+- Whether Review (see the `pr-review-*` mocks) becomes a fourth mode button or
+  a screen inside Explore.

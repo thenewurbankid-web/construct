@@ -117,9 +117,9 @@ writeFileSync(join(here, 'workflows-in-shell.html'), page('Workflows inside the 
   rw: 380,
 })));
 
-// 4 — research mode
-writeFileSync(join(here, 'research-mode.html'), page('Research mode — request, impact, plan', shell({
-  mode: 'Research',
+// 4 — plan mode
+writeFileSync(join(here, 'plan-mode.html'), page('Plan mode — from a ticket to an ordered plan', shell({
+  mode: 'Plan',
   procs: '1 running',
   left: `<div class="pane-h"><span class="title">Request</span></div>
   <div class="scroll"><div class="section"><h4>Ticket</h4>
@@ -187,7 +187,8 @@ writeFileSync(join(here, 'command-palette.html'), page('Command palette (Ctrl K)
    <div class="item on"><span class="layer component">component</span>PasswordField<span class="r mono">auth/components</span></div>
    <div class="item"><span class="layer">service</span>passwordPolicyApi<span class="r mono">auth/services</span></div>
    <div class="grp">Commands</div>
-   <div class="item">Research this ticket…<span class="r"><kbd>Ctrl</kbd> <kbd>R</kbd></span></div>
+   <div class="item">Research this ticket…<span class="r"><span style="color:var(--text-faint);margin-right:10px">opens Plan mode</span><kbd>Ctrl</kbd> <kbd>R</kbd></span></div>
+   <div class="item">Switch to Plan mode<span class="r"><kbd>Ctrl</kbd> <kbd>2</kbd></span></div>
    <div class="item">Switch to Build mode<span class="r"><kbd>Ctrl</kbd> <kbd>3</kbd></span></div>
    <div class="item">Toggle drawer: Processes<span class="r"><kbd>Ctrl</kbd> <kbd>J</kbd></span></div>
    <div class="foot"><span><kbd>↑</kbd> <kbd>↓</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>Esc</kbd> close</span><span class="spacer"></span><span>Every command runs a Construct block — same as the CLI</span></div>
@@ -204,7 +205,7 @@ writeFileSync(join(here, 'states-and-narrow.html'), page('Empty, loading, error 
  <div class="two"><h3>Error — preview failed</h3><div class="state-card" style="border-color:var(--danger)"><div class="ico" style="color:var(--danger);background:var(--danger-soft)">!</div><h5>Preview could not start</h5><p>Port 5173 is already in use by another process.</p><div><button class="btn primary sm">Use port 5174</button> <button class="btn sm">Show logs</button></div></div>
   <h3>Error — model offline</h3><div class="state-card" style="border-color:var(--warn)"><div class="ico" style="color:var(--warn);background:var(--warn-soft)">◌</div><h5>Local model is offline</h5><p>Deterministic steps still work. Model steps are paused.</p><button class="btn sm">Open Settings</button></div></div>
  <div><h3>Narrow (phone, 390 px) — one pane at a time</h3><div class="narrow">
-  <div class="topbar" style="height:44px;flex:none"><div class="brand"><i></i>Construct</div><span class="spacer"></span><span class="pill run"><span class="spin"></span>2</span><button class="icon-btn" aria-label="Menu">≡</button></div>
+  <div class="topbar" style="height:44px;flex:none"><div class="brand"><i></i>Cockpit</div><span class="spacer"></span><span class="pill run"><span class="spin"></span>2</span><button class="icon-btn" aria-label="Menu">≡</button></div>
   <div class="canvas-tb"><span class="crumbs">auth › <b>login</b></span><span class="spacer"></span><button class="btn sm">⊕ Pick</button></div>
   <div class="stage" style="padding:10px;flex:1"><div class="device" style="width:100%;height:100%;max-height:none"><div class="bar"><i></i><i></i><i></i></div><div class="login" style="width:88%;margin:22px auto;padding:16px"><h2>Welcome back</h2><label>Email</label><div class="in">sam@example.com</div><div class="cta">Sign in</div></div></div></div>
   <div class="tabbar" role="tablist"><div>Browser</div><div class="on">Preview</div><div>Tools</div><div>Processes</div></div></div></div>

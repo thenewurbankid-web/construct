@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>QA · editing a cloned test without writing code — Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="qa-tests.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+</head><body>
+<div class="concept">Concept — not implemented <span>QA · editing a cloned test without writing code</span></div>
+
+<div class="shell " style="--lw:292px;--rw:380px;grid-template-rows:44px 1fr 96px 24px">
+  
+<header class="topbar">
+  <div class="brand"><i></i>Construct</div>
+  <button class="chip-btn" aria-haspopup="listbox">storefront <span class="sub">main</span> ▾</button>
+  <div class="seg" role="radiogroup" aria-label="Mode"><button class="on" role="radio" aria-checked="true">Explore</button><button class="" role="radio" aria-checked="false">Research</button><button class="" role="radio" aria-checked="false">Build</button></div>
+  <button class="chip-btn palette-trigger"><span>Search files, features, or run a command…</span><kbd>Ctrl K</kbd></button>
+  
+  <span class="pill run"><span class="spin"></span>2 running</span>
+  <span class="pill ok"><span class="dot"></span>Local model ready</span>
+  <button class="icon-btn" aria-label="Theme">◐</button>
+  <button class="icon-btn" aria-label="Help">?</button>
+  <span class="avatar">SP</span>
+</header>
+  <div class="main">
+    <aside class="pane" aria-label="Browser">
+  <div class="pane-h"><span class="title">Browser</span><span class="spacer"></span><button class="icon-btn" aria-label="New test">+</button><button class="icon-btn" aria-label="Collapse pane">«</button></div>
+  <div class="tabs" role="tablist"><button role="tab" class="" aria-selected="false">Features</button><button role="tab" class="" aria-selected="false">Pages</button><button role="tab" class="" aria-selected="false">Flows</button><button role="tab" class="on" aria-selected="true">Tests</button></div>
+  <div class="search">⌕ Filter <span class="spacer"></span><kbd>/</kbd></div>
+  <div class="scroll">
+    <div class="sect">refunds · tests</div>
+    <div class="tree">
+      <div class="row"><span class="twisty">▾</span>Generated<span class="chip lock" style="margin-left:6px">Locked</span><span class="meta">9</span></div>
+      <div class="row l1 "><span class="mark pass">✓</span><span class="lbl">Happy path</span><span class="meta">#1</span></div><div class="row l1 "><span class="mark pass">✓</span><span class="lbl">Path 2</span><span class="meta">#2</span></div><div class="row l1 "><span class="mark pass">✓</span><span class="lbl">Path 3</span><span class="meta">#3</span></div><div class="row l1 "><span class="mark pass">✓</span><span class="lbl">Path 4</span><span class="meta">#4</span></div><div class="row l1 "><span class="mark pass">✓</span><span class="lbl">Path 5</span><span class="meta">#5</span></div>
+      <div class="row l1"><span class="mark skip">·</span><span style="color:var(--text-faint)">4 more…</span></div>
+      <div class="row" style="margin-top:6px"><span class="twisty">▾</span>Yours<span class="meta">2</span></div>
+      <div class="row l1 sel"><span class="mark fail">✗</span><span class="lbl">Refund over £50 → manual review</span><span class="meta">clone</span></div>
+      <div class="row l1 "><span class="mark skip">○</span><span class="lbl">Reviewer can ask for more info</span><span class="meta">yours</span></div>
+    </div>
+    <div class="sect" style="margin-top:10px">Other features</div>
+    <div class="tree">
+      <div class="row"><span class="twisty">▸</span>checkout<span class="meta">6 tests</span></div>
+      <div class="row"><span class="twisty">▸</span>auth<span class="meta">4 tests</span></div>
+    </div>
+  </div></aside><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <section class="pane mid" aria-label="Preview">
+<div class="canvas-tb"><span class="crumbs">refunds › tests › <b>Refund over £50 goes to manual review</b></span><span class="spacer"></span><div class="seg"><button class="on">Steps</button><button class="">Code</button></div><button class="btn sm">Run</button><button class="btn primary sm">Review (3)</button></div>
+   <div class="stage" style="padding:16px 20px;align-items:stretch">
+<div class="doc">
+  
+  <div class="doc-h">
+    <div style="flex:1;min-width:0"><h2>Refund over £50 goes to manual review</h2><div class="sub">features/refunds/tests/refund-over-50.spec.ts · cloned from Happy path (generated) · flow unchanged since</div></div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><span class="chip mine">✎ Yours · clone of #1</span><span class="chip">3 unsaved changes</span></div>
+  </div>
+  <div class="doc-body">
+    
+  <div class="step ">
+    <span class="grip">⠿</span>
+    <span class="kw given">GIVEN</span>
+    <span class="txt"><span class="step-main">Open <em>/refunds/new</em></span></span>
+    <span style="display:flex;align-items:center;gap:8px"><span class="bind-sel">page.goto</span><span class="icon-btn" aria-label="Step menu">⋯</span></span>
+  </div>
+    
+  <div class="step edited">
+    <span class="grip">⠿</span>
+    <span class="kw and">AND</span>
+    <span class="txt"><span class="step-main">Type <em>120</em> into “Amount”</span><span class="note">Added by you — makes the refund too big to auto-approve</span></span>
+    <span style="display:flex;align-items:center;gap:8px"><span class="bind-sel">[data-testid="amount"]</span><span class="icon-btn" aria-label="Step menu">⋯</span></span>
+  </div>
+    
+  <div class="step ">
+    <span class="grip">⠿</span>
+    <span class="kw when">WHEN</span>
+    <span class="txt"><span class="step-main">“request refund” happens</span><span class="note">Event REQUEST_REFUND from the flow</span></span>
+    <span style="display:flex;align-items:center;gap:8px"><span class="bind-sel">[data-testid="request-refund"]</span><span class="icon-btn" aria-label="Step menu">⋯</span></span>
+  </div>
+    
+  <div class="step ">
+    <span class="grip">⠿</span>
+    <span class="kw then">THEN</span>
+    <span class="txt"><span class="step-main">the flow moves to <em>auto check</em></span></span>
+    <span style="display:flex;align-items:center;gap:8px"><span class="bind-sel">[data-flow-state="autoCheck"]</span><span class="icon-btn" aria-label="Step menu">⋯</span></span>
+  </div>
+    
+  <div class="step edited">
+    <span class="grip">⠿</span>
+    <span class="kw and">AND</span>
+    <span class="txt"><span class="step-main">when it is <em>not</em> low value</span><span class="note">Changed by you — was “when it is low value”</span></span>
+    <span style="display:flex;align-items:center;gap:8px"><span class="bind-sel">branch</span><span class="icon-btn" aria-label="Step menu">⋯</span></span>
+  </div>
+    
+  <div class="step ">
+    <span class="grip">⠿</span>
+    <span class="kw then">THEN</span>
+    <span class="txt"><span class="step-main">the flow moves to <em>manual review</em></span></span>
+    <span style="display:flex;align-items:center;gap:8px"><span class="bind-sel">[data-flow-state="manualReview"]</span><span class="icon-btn" aria-label="Step menu">⋯</span></span>
+  </div>
+    
+  <div class="step sel">
+    <span class="grip">⠿</span>
+    <span class="kw check">CHECK</span>
+    <span class="txt"><span class="step-main">the page shows “A reviewer will check this refund”</span><span class="note">Added by you</span></span>
+    <span style="display:flex;align-items:center;gap:8px"><span class="bind-sel">text is visible</span><span class="icon-btn" aria-label="Step menu">⋯</span></span>
+  </div>
+    
+  <div class="step removed">
+    <span class="grip">⠿</span>
+    <span class="kw and">AND</span>
+    <span class="txt"><span class="step-main">when “close” happens</span><span class="note">Removed by you — this test stops at manual review</span></span>
+    <span style="display:flex;align-items:center;gap:8px"><span class="bind-sel">[data-testid="close"]</span><span class="icon-btn" aria-label="Step menu">⋯</span></span>
+  </div>
+  </div>
+  <div class="doc-f"><button class="btn sm">+ Add step</button><button class="btn sm">+ Add check</button><span class="spacer"></span><span>Drag ⠿ to reorder · nothing is written until you review the changes</span></div>
+</div></div>
+   <div class="canvas-foot"><span class="dot" style="color:var(--accent)"></span>Step 7 selected — edit it on the right<span class="spacer"></span>Nothing on disk has changed yet</div></section><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <aside class="pane" aria-label="Tools"><div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Step</button><button role="tab" class="" aria-selected="false">Test</button><button role="tab" class="" aria-selected="false">Code</button><button role="tab" class="" aria-selected="false">Changes <span class="badge acc">3</span></button><button role="tab" class="" aria-selected="false">Runs</button></div>
+   <div class="scroll">
+    <div class="section"><div class="el-head"><span class="kw check" style="padding:2px 8px">CHECK</span><span class="name" style="font-size:14px">Step 7</span><span class="spacer"></span><button class="icon-btn" aria-label="Move up">↑</button><button class="icon-btn" aria-label="Move down">↓</button><button class="btn sm">Remove</button></div></div>
+    <div class="section">
+      <div class="frow"><label>What to check</label><div class="ctl sel-ctl">Text is visible</div></div>
+      <div class="frow"><label>Text</label><div class="ctl area">A reviewer will check this refund</div></div>
+      <div class="frow"><label>Match</label><div class="ctl sel-ctl">Contains (ignore case)</div></div>
+      <div class="frow"><label>Where</label><div class="ctl sel-ctl">Anywhere on the page</div></div>
+      <div class="frow"><label>Wait up to</label><div class="ctl sel-ctl">5 seconds</div></div>
+    </div>
+    <div class="section"><h4>What this becomes <span class="tag det">Deterministic</span></h4>
+      <div class="becomes">await expect(
+  page.getByText('A reviewer will check this refund')
+).toBeVisible({ timeout: 5000 });</div>
+      <small style="color:var(--text-muted);display:block;margin-top:6px">Written by a Construct block from the choices above. No model is involved, and you never have to read this.</small>
+    </div>
+    <div class="section"><h4>Other step types</h4>
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="chip">Go to</span><span class="chip">Click</span><span class="chip">Type</span><span class="chip">Flow event</span><span class="chip">Flow state</span><span class="chip">Check</span><span class="chip">Wait</span></div></div>
+   </div></aside>
+  </div>
+  <div class="drawer" aria-label="Drawer"><div class="tabs" role="tablist"><button role="tab" class="" aria-selected="false">Diagnostics <span class="badge danger">0</span></button><button role="tab" class="" aria-selected="false">Logs</button><button role="tab" class="on" aria-selected="true">Processes <span class="badge acc">1</span></button></div><div class="body"><table>
+  <tr><th>Process</th><th>Kind</th><th>Status</th><th>Result</th><th></th></tr>
+  <tr><td>test · refunds · Generated (9)</td><td><span class="tag det">Deterministic</span></td><td><span style="color:var(--success)">✓ Finished</span></td><td>9 passed · 11.4 s · 3 min ago</td><td><button class="btn sm">Open report</button></td></tr>
+  </table></div></div>
+  
+<footer class="statusbar">
+  <span class="ok">● validate: 0 new violations</span><span>5 baseline</span><span>Saved · in sync with disk</span>
+  <span class="spacer"></span><span>qwen2.5-coder:7b</span><span><kbd>Ctrl J</kbd> drawer</span><span><kbd>?</kbd> shortcuts</span>
+</footer>
+</div>
+</body></html>

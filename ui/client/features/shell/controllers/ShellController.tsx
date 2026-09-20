@@ -4,7 +4,7 @@ import { useMemo, type ReactNode } from 'react';
 import { UserMenuController } from '@/features/auth';
 import { DirectoryBrowserController } from '@/features/directory-browser';
 import { CommandPaletteController, CommandRegistryProvider, useOpenPalette } from '@/features/command-palette';
-import { DiagnosticsController, LogsController, statusText, tabBadge, useDiagnostics } from '@/features/diagnostics';
+import { DiagnosticsController, LogsController, statusText, statusTextChars, tabBadge, useDiagnostics } from '@/features/diagnostics';
 import { PANE_LIMITS } from '../domain/LayoutDefaults';
 import { MODES } from '../domain/Modes';
 import { SCREENS } from '../domain/Screens';
@@ -29,6 +29,9 @@ import { ScreensNav } from '../components/ScreensNav';
 import { ShellPage } from '../pages/ShellPage';
 import { ThemeController } from './ThemeController';
 import type { ShellRegion, ShellTab } from '../types';
+
+// Fixed for the lifetime of the app: how much room the validate readout reserves (#252).
+const STATUS_CHARS = statusTextChars();
 
 function ShellFrame({ children }: { children: ReactNode }) {
   const route = useShellRoute();
@@ -122,6 +125,7 @@ function ShellFrame({ children }: { children: ReactNode }) {
       onOpenProcesses={() => showDrawerTab('processes')}
       onOpenPalette={openPalette}
       validateStatus={statusText(diagnostics.state)}
+      validateStatusChars={STATUS_CHARS}
       onOpenDiagnostics={() => showDrawerTab('diagnostics')}
       shortcuts={SHORTCUTS}
       tabs={tabs}

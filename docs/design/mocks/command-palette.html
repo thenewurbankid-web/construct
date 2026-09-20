@@ -9,9 +9,9 @@
 <div class="shell dim" style="grid-template-rows:44px 1fr 132px 24px">
   
 <header class="topbar">
-  <div class="brand"><i></i>Construct</div>
+  <div class="brand"><i></i>Cockpit</div>
   <button class="chip-btn" aria-haspopup="listbox">storefront <span class="sub">main</span> ▾</button>
-  <div class="seg" role="radiogroup" aria-label="Mode"><button class="on" role="radio" aria-checked="true">Explore</button><button class="" role="radio" aria-checked="false">Research</button><button class="" role="radio" aria-checked="false">Build</button></div>
+  <div class="seg" role="radiogroup" aria-label="Mode"><button class="on" role="radio" aria-checked="true">Explore</button><button class="" role="radio" aria-checked="false">Plan</button><button class="" role="radio" aria-checked="false">Build</button></div>
   <button class="chip-btn palette-trigger"><span>Search files, features, or run a command…</span><kbd>Ctrl K</kbd></button>
   
   <span class="pill run"><span class="spin"></span>2 running</span>
@@ -90,7 +90,8 @@
    <div class="item on"><span class="layer component">component</span>PasswordField<span class="r mono">auth/components</span></div>
    <div class="item"><span class="layer">service</span>passwordPolicyApi<span class="r mono">auth/services</span></div>
    <div class="grp">Commands</div>
-   <div class="item">Research this ticket…<span class="r"><kbd>Ctrl</kbd> <kbd>R</kbd></span></div>
+   <div class="item">Research this ticket…<span class="r"><span style="color:var(--text-faint);margin-right:10px">opens Plan mode</span><kbd>Ctrl</kbd> <kbd>R</kbd></span></div>
+   <div class="item">Switch to Plan mode<span class="r"><kbd>Ctrl</kbd> <kbd>2</kbd></span></div>
    <div class="item">Switch to Build mode<span class="r"><kbd>Ctrl</kbd> <kbd>3</kbd></span></div>
    <div class="item">Toggle drawer: Processes<span class="r"><kbd>Ctrl</kbd> <kbd>J</kbd></span></div>
    <div class="foot"><span><kbd>↑</kbd> <kbd>↓</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>Esc</kbd> close</span><span class="spacer"></span><span>Every command runs a Construct block — same as the CLI</span></div>
