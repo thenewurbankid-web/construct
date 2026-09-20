@@ -107,6 +107,10 @@ test.describe('#278 GitHub login gate', () => {
     // #328: the Flow view's read-only endpoints are gated too.
     expect(await apiStatus(page, '/api/flow/billing')).toBe(401);
     expect(await apiStatus(page, '/api/nav/file?feature=billing&path=src/App.tsx')).toBe(401);
+    // #312/#313: Review mode's list, its analysis request and one change are gated too.
+    expect(await apiStatus(page, '/api/review/branches')).toBe(401);
+    expect(await apiStatus(page, '/api/review/change?base=main&head=main')).toBe(401);
+    expect(await page.evaluate(([api]) => fetch(`${api}/api/review/analyze`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ base: 'main', heads: ['x'] }) }).then((r) => r.status), [API])).toBe(401);
 
     // The one deliberate exception, so a liveness probe still works.
     expect(await apiStatus(page, '/api/health')).toBe(200);
@@ -155,6 +159,8 @@ test.describe('#278 GitHub login gate', () => {
     // #341: signed in, both approval endpoints pass the gate and reach the store, which has no such process (404, not 401).
     expect(await apiStatus(page, '/api/processes/proc_x/review')).toBe(404);
     expect(await decideStatus(page, 'proc_x')).toBe(404);
+    // Signed in, Review is reachable (this server's project may not be a repository: a 400 is fine, a 401 is not).
+    expect(await apiStatus(page, '/api/review/branches')).not.toBe(401);
 
     await page.screenshot({ path: path.join(SHOTS, '278-2-signed-in-cockpit.png'), fullPage: true });
 

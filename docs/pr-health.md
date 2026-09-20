@@ -66,6 +66,21 @@ byte-identical afterwards. Uncommitted local changes are never part of a compari
 - `SLICE-002` is classified mechanical but no refactor command performs it yet (`fix.available:false`).
 - A run killed with SIGKILL cannot clean up; the next run removes its own `construct-prhealth-<pid>-` debris.
 
+## In the Cockpit (Review mode, #312 / #313)
+
+Review is the fourth top-level mode (`Explore / Plan / Build / Review`; `Plan` is only the new label of the old
+Research button). `/review` lists the current project's **local branches** compared against a base (default
+`main`), each with the badges this engine computed; `/review?base=main&head=<branch>` reviews one change:
+changed units grouped by feature then layer (Browser), what each unit now does from `summarizeUnit` on the head
+commit (stage), and the five indicators (Tools). No plan means "not measured", shown as a neutral card.
+
+Server (`ui/server/src/review*.mjs`, all behind the session gate): `GET /api/review/branches?base=`,
+`POST /api/review/analyze {base, heads[]}`, `GET /api/review/change?base=&head=`. Branch names come from the
+client and are accepted only if they are exactly a branch listed by `git for-each-ref refs/heads` of the current
+project (never a path or repository from the client; a leading `-` is refused). The engine runs in a forked child
+process per job, one at a time, so a slow analysis never blocks a request. The list source is an adapter
+(`reviewRefs.mjs`); a GitHub pull request source is a later ticket.
+
 ## Next
 
 The Cockpit slices (#312, #313, #315, #317, #318) render this JSON; reading a real GitHub PR (#278) only
