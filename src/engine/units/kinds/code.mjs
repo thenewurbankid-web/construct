@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileEntry, testsFor, violationsFor, healthFrom, isTestFile, SOURCE_EXT } from '../facts.mjs';
 import { machinesOf } from '../machines.mjs';
+import { discoverRoutes, frameworkOf } from '../route-adapters.mjs';
 import { featureNames, refOf } from './feature.mjs';
 import { extractExports } from '../../../ast/index.mjs';
 import { extractDeclarationSource } from '../../../summarize.mjs';
@@ -179,6 +180,12 @@ function findRoute(ctx, url) {
       return { url, entry: path.relative(ctx.root, entry).split(path.sep).join('/'), router: 'next-app' };
     } catch { /* try next */ }
   }
+  // react-spa: the adapter knows which controller(s) this route renders (#334), so a route's chain
+  // starts from those, not from every controller the route table imports.
+  if (frameworkOf(ctx) === 'react-spa') {
+    const hit = discoverRoutes(ctx).find((r) => r.route === url);
+    if (hit) return { url, entry: hit.file, router: 'react-spa', controllers: hit.entries.map((e) => e.file) };
+  }
   try {
     const src = fs.readFileSync(findReactSpaRoutesFile(ctx.root), 'utf8');
     const hit = parseReactSpaRoutes(src).find((r) => r.path === url);
@@ -190,7 +197,7 @@ function findRoute(ctx, url) {
 export const routeKind = {
   kind: 'route',
   description: 'A URL route (e.g. /login): entry file, the controller/feature it renders, and the import chain behind it.',
-  list: (ctx) => ctx.sourceFiles().map((p) => p.match(/^(?:src\/)?app\/(.*?)\/?page\.[jt]sx?$/)).filter(Boolean).map((m) => ({ id: '/' + m[1].split('/').filter((s) => !/^\(.*\)$/.test(s)).join('/'), name: '/' + m[1] })),
+  list: (ctx) => (frameworkOf(ctx) === 'react-spa' ? [...new Set(discoverRoutes(ctx).map((r) => r.route))].map((id) => ({ id, name: id })) : ctx.sourceFiles().map((p) => p.match(/^(?:src\/)?app\/(.*?)\/?page\.[jt]sx?$/)).filter(Boolean).map((m) => ({ id: '/' + m[1].split('/').filter((s) => !/^\(.*\)$/.test(s)).join('/'), name: '/' + m[1] }))),
   resolve: (ctx, ref) => (ref.startsWith('/') && findRoute(ctx, ref) ? [{ kind: 'route', id: ref, tier: 1 }] : []),
   summarize: (ctx, id, detail) => {
     const d = LEVEL[detail];
@@ -199,7 +206,12 @@ export const routeKind = {
     const chain = [];
     const seen = new Set([r.entry]);
     let frontier = [r.entry];
-    for (let depth = 0; depth < 4 && frontier.length; depth++) {
+    if (r.controllers) {
+      for (const c of r.controllers) { seen.add(c); chain.push({ depth: 1, path: c, layer: ctx.layerOf(c), from: r.entry }); }
+      frontier = r.controllers;
+    }
+    const startDepth = r.controllers ? 1 : 0;
+    for (let depth = startDepth; depth < 4 && frontier.length; depth++) {
       const next = [];
       for (const p of frontier) for (const t of ctx.facts(p).resolvedImports) {
         if (seen.has(t) || !t.startsWith(ctx.featuresRoot() + '/')) continue;

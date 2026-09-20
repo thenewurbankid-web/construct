@@ -2,6 +2,7 @@
 import path from 'node:path';
 import { fileEntry, testsFor, violationsFor, healthFrom } from '../facts.mjs';
 import { machinesOf } from '../machines.mjs';
+import { featureRoutes } from '../route-adapters.mjs';
 
 export const CORE_LAYERS = ['domain', 'service', 'workflow', 'hook', 'component', 'page', 'controller'];
 const isTest = (p) => /\.(test|spec)\./.test(p);
@@ -38,16 +39,15 @@ function featureData(ctx, name, files = featureFiles(ctx, name)) {
   const dataFlow = [...edges].map(([k, n]) => ({ from: k.split('>')[0], to: k.split('>')[1], imports: n })).sort((a, b) => a.from.localeCompare(b.from) || a.to.localeCompare(b.to));
   // dependencies in: other source files importing into this feature
   const inbound = new Map();
-  const routes = [];
   for (const p of ctx.sourceFiles()) {
     if (inFeature(p) || isTest(p)) continue;
     const f = ctx.facts(p);
     if (!f.resolvedImports.some(inFeature)) continue;
     const owner = p.startsWith(ctx.featuresRoot() + '/') ? `${ctx.featuresRoot()}/${p.split('/')[1]}` : p.split('/').slice(0, p.split('/').length > 2 ? 2 : 1).join('/');
     inbound.set(owner, (inbound.get(owner) || 0) + 1);
-    const m = p.match(/(?:^|\/)app\/(.*?)\/?page\.[jt]sx?$/);
-    if (m) routes.push({ route: '/' + m[1].split('/').filter((s) => !/^\(.*\)$/.test(s)).join('/'), file: p });
   }
+  // route discovery is a per-framework adapter (#334); a framework without one reports no routes
+  const routes = featureRoutes(ctx, name);
   const outFeatures = new Map();
   const external = new Set();
   for (const f of facts) {
