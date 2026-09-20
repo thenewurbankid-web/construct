@@ -21,9 +21,9 @@ export const tabs = (items, on) =>
 
 export const topbar = (mode, procs = '2 running', extra = '') => `
 <header class="topbar">
-  <div class="brand"><i></i>Construct</div>
+  <div class="brand"><i></i>Cockpit</div>
   <button class="chip-btn" aria-haspopup="listbox">storefront <span class="sub">main</span> ▾</button>
-  <div class="seg" role="radiogroup" aria-label="Mode">${['Explore', 'Research', 'Build'].map((m) => `<button class="${m === mode ? 'on' : ''}" role="radio" aria-checked="${m === mode}">${m}</button>`).join('')}</div>
+  <div class="seg" role="radiogroup" aria-label="Mode">${['Explore', 'Plan', 'Build'].map((m) => `<button class="${m === mode ? 'on' : ''}" role="radio" aria-checked="${m === mode}">${m}</button>`).join('')}</div>
   <button class="chip-btn palette-trigger"><span>Search files, features, or run a command…</span><kbd>Ctrl K</kbd></button>
   ${extra}
   <span class="pill run"><span class="spin"></span>${procs}</span>
