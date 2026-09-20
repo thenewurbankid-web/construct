@@ -190,7 +190,9 @@ test.describe.serial('Tests tab states (#306)', () => {
 
     await page.getByRole('button', { name: 'Open the test for Happy path' }).click();
     await expect(page.getByTestId('detail-last-run')).toContainText('has not run yet');
-    await expect(page.getByTestId('detail-last-run')).toContainText('not available yet');
+    // #305: running from the Cockpit exists now, so a never-run test offers to run instead of saying it is not available
+    await expect(page.getByTestId('detail-run')).toBeEnabled();
+    await expect(page.getByTestId('detail-last-run')).not.toContainText('not available yet');
 
     await page.getByTestId('failure-kinds').locator('summary').click();
     const convention = page.getByTestId('kind-convention');

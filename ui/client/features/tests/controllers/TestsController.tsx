@@ -4,6 +4,7 @@ import { ProjectGateController } from '@/features/project-gate';
 import { useRegisterShellTab } from '@/features/shell';
 import '../components/tests.css';
 import { useStepEditor } from '../hooks/useStepEditor';
+import { useTestRuns } from '../hooks/useTestRuns';
 import { useTests } from '../hooks/useTests';
 import { TestsPage } from '../pages/TestsPage';
 import { testsShellTabs } from '../pages/TestsShellTabs';
@@ -15,7 +16,8 @@ export function TestsController() {
   const t = useTests();
   const { state } = t;
   const ed = useStepEditor(state.feature);
-  const tabs = testsShellTabs({ ...t, feature: state.feature, selected: state.selected, code: state.code, comparison: t.comparison, cloneTag: t.cloneTag, onFeature: t.pickFeature, onSelect: t.select, onClone: t.openClone, onEditStep: t.editStep, onShowCode: () => t.showCode(), onHideCode: t.hideCode, onEditSteps: ed.open });
+  const runs = useTestRuns(state.feature, state.load.status === 'ready', t.select);
+  const tabs = testsShellTabs({ ...t, feature: state.feature, selected: state.selected, code: state.code, comparison: t.comparison, run: runs.forTest(t.test), cloneTag: t.cloneTag, onFeature: t.pickFeature, onSelect: t.select, onClone: t.openClone, onEditStep: t.editStep, onShowCode: () => t.showCode(), onHideCode: t.hideCode, onEditSteps: ed.open });
   useRegisterShellTab('browser', tabs.browser);
   useRegisterShellTab('tools', tabs.tools);
 
@@ -39,6 +41,8 @@ export function TestsController() {
         onDialogCancel={t.closeDialog}
         onDialogShowCode={t.showCodeFromDialog}
         onDismissNotice={t.dismissNotice}
+        run={runs.panel}
+        resultOf={runs.resultOf}
         editor={{ state: ed.state, view: ed.view, onClose: ed.close, onSelect: ed.select, onPatch: ed.patch, onAdd: ed.add, onRemove: ed.remove, onRestore: ed.restore, onMove: ed.move, onDiscard: ed.discard, onReview: ed.review, onBack: ed.back, onConfirm: ed.confirm, onReload: ed.reopen }}
       />
     </ProjectGateController>

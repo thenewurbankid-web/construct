@@ -81,8 +81,10 @@ function runGit(cwd, args) {
  * @param {(ctx: any) => Promise<any>} [options.executeStep] defaults to the real bot runner (#291)
  * @param {{executeStep: Function}} [options.reviewExecutor] #351: runs `review.analyze` steps (read-only, no
  *   worktree, no branch, never any artifact); every other flow still goes to the bot runner
+ * @param {{executeStep: Function}} [options.testRunExecutor] #305: runs `test.run` steps the same way (read-only, forked
+ *   worker, never any artifact)
  */
-export function createProcessesService({ getProjectDir, stateDir = resolveStateDir(), executeStep = null, reviewExecutor = null } = {}) {
+export function createProcessesService({ getProjectDir, stateDir = resolveStateDir(), executeStep = null, reviewExecutor = null, testRunExecutor = null } = {}) {
   /** project root -> { store, engine, root } */
   const projects = new Map();
   const listeners = new Set();
@@ -99,7 +101,8 @@ export function createProcessesService({ getProjectDir, stateDir = resolveStateD
     if (executor) return { executeStep: executor };
     runner ||= createBotRunner({ stateDir });
     const bot = runner.executeStep;
-    return { executeStep: reviewExecutor ? composeExecutors({ bot, review: reviewExecutor.executeStep }) : bot, maxConcurrent: runner.maxConcurrent };
+    const routed = reviewExecutor || testRunExecutor;
+    return { executeStep: routed ? composeExecutors({ bot, review: reviewExecutor?.executeStep ?? bot, testRun: testRunExecutor?.executeStep ?? null }) : bot, maxConcurrent: runner.maxConcurrent };
   };
 
   function open() {

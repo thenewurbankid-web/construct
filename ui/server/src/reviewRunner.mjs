@@ -22,7 +22,7 @@ const children = new Set();
 process.on('exit', () => { for (const c of children) c.kill('SIGKILL'); });
 
 /** Stop a child: SIGTERM, wait `graceMs` for it to clean up and exit, then SIGKILL; then reclaim its debris. */
-function terminate(child, root, graceMs) {
+function terminate(child, root, graceMs, reclaim) {
   return new Promise((resolve) => {
     let done = false;
     const end = () => {
@@ -30,7 +30,7 @@ function terminate(child, root, graceMs) {
       done = true;
       clearTimeout(killer);
       children.delete(child);
-      try { reclaimTreesOf(child.pid, root); } catch { /* best effort: the caller verifies */ }
+      try { reclaim(child.pid, root); } catch { /* best effort: the caller verifies */ }
       resolve();
     };
     if (child.exitCode !== null || child.signalCode !== null) return end();
@@ -43,11 +43,13 @@ function terminate(child, root, graceMs) {
 /**
  * Default runner: one child process per job. Resolves to the worker's result object; never rejects.
  * @param {object} job `{root, baseSha, headSha, expected?}` (validated by the caller)
- * @param {{timeoutMs?:number, signal?:AbortSignal, worker?:string, graceMs?:number, onProgress?:(m:object)=>void}} [opts]
+ * @param {{timeoutMs?:number, signal?:AbortSignal, worker?:string, graceMs?:number, onProgress?:(m:object)=>void, reclaim?:(pid:number, root:string)=>void, what?:string}} [opts]
+ *   `reclaim` removes what a SIGKILLed child left behind (default: the review worker's temporary checkouts; #305
+ *   passes its own for a test run). `what` is the noun in the messages.
  */
-export function forkRunner(job, { timeoutMs = JOB_TIMEOUT_MS, signal, worker = WORKER, graceMs = CANCEL_GRACE_MS, onProgress } = {}) {
+export function forkRunner(job, { timeoutMs = JOB_TIMEOUT_MS, signal, worker = WORKER, graceMs = CANCEL_GRACE_MS, onProgress, reclaim = reclaimTreesOf, what = 'analysis' } = {}) {
   return new Promise((resolve) => {
-    if (signal?.aborted) return resolve({ ok: false, error: { code: 'CANCELLED', message: 'The analysis was cancelled before it started.' } });
+    if (signal?.aborted) return resolve({ ok: false, error: { code: 'CANCELLED', message: `The ${what} was cancelled before it started.` } });
     const child = fork(worker, [], { execArgv: [], stdio: ['ignore', 'ignore', 'inherit', 'ipc'] });
     children.add(child);
     let settled = false;
@@ -57,17 +59,17 @@ export function forkRunner(job, { timeoutMs = JOB_TIMEOUT_MS, signal, worker = W
       clearTimeout(timer);
       signal?.removeEventListener('abort', onAbort);
       // A finished worker has already removed its checkouts; a failed or stopped one may not have.
-      terminate(child, job.root, result?.ok ? 0 : graceMs).then(() => resolve(result));
+      terminate(child, job.root, result?.ok ? 0 : graceMs, reclaim).then(() => resolve(result));
     };
-    const onAbort = () => finish({ ok: false, error: { code: 'CANCELLED', message: 'The analysis was cancelled.' } });
-    const timer = setTimeout(() => finish({ ok: false, error: { code: 'TIMEOUT', message: `The analysis took longer than ${Math.round(timeoutMs / 1000)} seconds and was stopped.` } }), timeoutMs);
+    const onAbort = () => finish({ ok: false, error: { code: 'CANCELLED', message: `The ${what} was cancelled.` } });
+    const timer = setTimeout(() => finish({ ok: false, error: { code: 'TIMEOUT', message: `The ${what} took longer than ${Math.round(timeoutMs / 1000)} seconds and was stopped.` } }), timeoutMs);
     signal?.addEventListener('abort', onAbort, { once: true });
     child.on('message', (m) => {
       if (m && typeof m === 'object' && m.progress) { try { onProgress?.(m); } catch { /* a listener must not stop the job */ } return; }
       finish(m);
     });
     child.once('error', (e) => finish({ ok: false, error: { code: 'WORKER_FAILED', message: String(e.message || e) } }));
-    child.once('exit', (code) => finish({ ok: false, error: { code: 'WORKER_FAILED', message: `The analysis process stopped unexpectedly (exit ${code}).` } }));
+    child.once('exit', (code) => finish({ ok: false, error: { code: 'WORKER_FAILED', message: `The ${what} process stopped unexpectedly (exit ${code}).` } }));
     child.send(job);
   });
 }

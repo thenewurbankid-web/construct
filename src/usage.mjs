@@ -31,6 +31,9 @@ Four capabilities, one CLI:
   construct research impact --usage   (deterministic blast radius: which features/layers/files a change touches, and why)
   construct review <base> <head> [--plan <file>] [--features a,b] [--no-merge-base] [--format json|markdown] [--dir <path>]
   construct review --usage   (read-only PR health between two git refs: scope, unexplained changes, rule regressions, public surface, flow diff; findings split mechanical vs conversation)
+  construct test run <feature> [--name <file> --area generated|yours] [--base-url <url>] [--format json|text] [--dir <path>]
+    (runs the feature's Playwright tests against the project's own running app (default http://localhost:3000, this machine
+    only) and says per failure whether the test harness or the app is at fault; read-only, no LLM; exit 1 on any failure)
   construct template list|show <name>|instantiate <name> [--param key=value]... [--params-json <json>] --templates <dir>
   construct template ...   (named, reusable, parameterised plans: instantiate prints a concrete plan.v1; curated templates load from --templates <dir> or CONSTRUCT_TEMPLATES_DIR, none are bundled)
   construct import <name> --feature <feature> --layers <l1,l2,...> --from <path> [--llm <provider>] [--dir <path>]

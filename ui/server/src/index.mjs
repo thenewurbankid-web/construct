@@ -29,6 +29,7 @@ import { createTestsRouter } from './testsApi.mjs';
 import { createReviewJobs } from './reviewJobs.mjs';
 import { createReviewExecutor, createAnalyses } from './reviewAnalyses.mjs';
 import { createPlanSource } from './reviewPlans.mjs';
+import { createTestRunExecutor, createTestRuns, createTestRunJobs } from './testRuns.mjs';
 import { refuseUnknownUpgrades } from './wsUpgrade.mjs';
 import { getOllamaStatus, listOllamaModels, startOllamaPull, removeOllamaModel } from './ollama.mjs';
 import {
@@ -812,7 +813,9 @@ app.get('/api/logs', (req, res) => {
 // #351: `review.analyze` steps (a Review-mode analysis) run in the read-only review executor, never in the
 // bot runner: no worktree, no bot branch, no artifacts, so they can never reach the approval gate.
 export const reviewExecutor = createReviewExecutor();
-export const processesService = createProcessesService({ getProjectDir: () => getSettings().projectDir, reviewExecutor });
+// #305: `test.run` steps (a Tests-tab run) run the same way: a forked worker, no bot branch, no artifacts.
+export const testRunExecutor = createTestRunExecutor();
+export const processesService = createProcessesService({ getProjectDir: () => getSettings().projectDir, reviewExecutor, testRunExecutor });
 app.use('/api/processes', createProcessesRouter(processesService));
 
 // #289/#332: Plan mode. Below the gate like every other `/api` route. The plan comes from the browser, so
@@ -844,8 +847,11 @@ app.use('/api/review', createReviewRouter({
 // #300/#301: the Tests tab. Registered below the gate like every other `/api` route. The client sends a
 // feature name, a generated file NAME and a clone name only; all three are validated and every path is derived
 // on the server (testsApi.mjs / src/engine/testClone.mjs). The clone and generate POSTs are mutating.
+// #305: a run is a Process too; the routes below start, read and cancel it by feature name.
+export const testRunJobs = createTestRunJobs({ runs: createTestRuns({ service: processesService, results: testRunExecutor.results }) });
 app.use('/api/tests', createTestsRouter({
   clientOrigin: CLIENT_ORIGIN,
+  runs: testRunJobs,
   getRoot: () => {
     const root = findProjectRoot(getSettings().projectDir);
     return root ? { ok: true, root } : { ok: false, error: 'No Construct project found for the current project directory. Pick a project first.' };

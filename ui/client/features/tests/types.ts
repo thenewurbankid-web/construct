@@ -17,6 +17,7 @@ export type TestLineage = {
 
 import type { Freshness } from './domain/FreshnessShapes.ts';
 export type * from './domain/FreshnessShapes.ts';
+export type * from './domain/RunShapes.ts';
 
 export type GeneratedTest = { name: string; path: string; lineage: TestLineage; area: 'generated'; locked: true };
 export type YourTest = { name: string; path: string; lineage: TestLineage | null; clonedFrom: { file: string; scenario: string } | null; kind: 'clone' | 'authored'; area: 'yours'; locked: false; freshness?: Freshness };

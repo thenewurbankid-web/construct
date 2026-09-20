@@ -1,5 +1,6 @@
-import type { CodeView, FreshnessModel, GeneratedTest, InlinePart, YourTest } from '../types';
+import type { CodeView, FreshnessModel, GeneratedTest, InlinePart, TestRunProps, YourTest } from '../types';
 import { CloneFreshness } from './CloneFreshness';
+import { RunFailure } from './RunFailure';
 
 const Inline = ({ parts }: { parts: InlinePart[] }) => (
   <>
@@ -13,6 +14,8 @@ type TestDetailProps = {
   steps: InlinePart[][];
   code: CodeView;
   comparison: { model: FreshnessModel; dismissed: boolean; dismiss: () => unknown };
+  /** Running this one test (#305): its latest outcome, whether a run is live, and what to do about it. */
+  run: TestRunProps;
   onClone: (file: string) => void;
   onEditStep: (file: string, step: number) => void;
   onShowCode: () => void;
@@ -22,7 +25,7 @@ type TestDetailProps = {
 
 /** Tools pane, Test tab: one test. A generated test is read-only, says so in words, and every way of changing it
  * (Clone to edit, or Edit on a step) opens the clone dialog instead of failing. */
-export function TestDetail({ test, title, steps, code, comparison, onClone, onEditStep, onShowCode, onHideCode, onEditSteps }: TestDetailProps) {
+export function TestDetail({ test, title, steps, code, comparison, run, onClone, onEditStep, onShowCode, onHideCode, onEditSteps }: TestDetailProps) {
   if (!test) return <p className="hint ts-pad" data-testid="test-empty">Select a test in the Browser, or a covered scenario, to see what it does.</p>;
   const locked = test.area === 'generated';
   const clonedFrom = test.area === 'yours' ? test.clonedFrom : null;
@@ -72,7 +75,18 @@ export function TestDetail({ test, title, steps, code, comparison, onClone, onEd
       )}
       <div>
         <h4 className="ts-h">Last run</h4>
-        <p className="hint" data-testid="detail-last-run">This test has not run yet. Running tests from here is not available yet; run it with Playwright for now.</p>
+        {run.view ? (
+          <p data-testid="detail-last-run" data-status={run.view.mark.status}>
+            <span className={`ts-result-mark ts-result--${run.view.mark.tone}`}><span aria-hidden="true">{run.view.mark.symbol} </span>{run.view.mark.word}</span>
+            <span className="hint"> · {run.view.detail}</span>
+          </p>
+        ) : (
+          <p className="hint" data-testid="detail-last-run">This test has not run yet.</p>
+        )}
+        <div className="ts-actions">
+          <button type="button" className="ts-btn" data-testid="detail-run" disabled={run.busy} onClick={run.onRun}>{run.busy ? 'A run is in progress' : 'Run this test'}</button>
+        </div>
+        {run.view?.outcome.failure && <RunFailure outcome={run.view.outcome} copied={run.copied} onCopy={run.onCopy} prefix="detail-" />}
       </div>
       {locked && <p className="ts-readonly" data-testid="detail-readonly-footer">Read-only: this test is rewritten whenever the flow changes.</p>}
     </div>

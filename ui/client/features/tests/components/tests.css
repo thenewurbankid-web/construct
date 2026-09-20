@@ -162,3 +162,26 @@
 .ts-kinds-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); margin-top: var(--sp-2); }
 @media (max-width: 720px) { .ts-kinds-grid { grid-template-columns: minmax(0, 1fr); } }
 .ts-banner .ts-chip--stale { color: var(--text); background: transparent; border-color: var(--warn); }
+
+/* running the tests (#305): the word AND the symbol carry the result; colour only reinforces it */
+.ts-run { margin: 0 0 var(--sp-3); }
+.ts-run-bar { display: flex; align-items: flex-end; gap: var(--sp-3); flex-wrap: wrap; }
+.ts-run-addr { display: flex; flex-direction: column; gap: var(--sp-1); flex: 1; min-width: 12rem; max-width: 26rem; }
+.ts-run-live { display: flex; align-items: center; gap: var(--sp-2); margin: var(--sp-2) 0; font-weight: 600; }
+.ts-run-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: ts-pulse 1.2s ease-in-out infinite; }
+@keyframes ts-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .ts-run-dot { animation: none; } }
+.ts-results { list-style: none; margin: var(--sp-2) 0; padding: 0; border: 1px solid var(--border-subtle); border-radius: 6px; overflow: hidden; }
+.ts-result { display: grid; grid-template-columns: 7rem minmax(0, 1fr) auto; gap: var(--sp-3); align-items: center; padding: var(--sp-1) var(--sp-3); border-bottom: 1px solid var(--border-subtle); }
+.ts-result:last-child { border-bottom: 0; }
+.ts-result-mark { font-weight: 600; white-space: nowrap; }
+.ts-result--ok .ts-result-mark, .ts-result-mark.ts-result--ok { color: var(--success); }
+.ts-result--error .ts-result-mark, .ts-result-mark.ts-result--error { color: var(--danger); }
+.ts-result--muted .ts-result-mark, .ts-result-mark.ts-result--muted { color: var(--text-muted); }
+.ts-result-title { text-align: left; }
+.ts-fail { margin-top: var(--sp-3); }
+.ts-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--sp-1) var(--sp-3); margin: var(--sp-2) 0; }
+.ts-facts dt { color: var(--text-muted); }
+.ts-facts dd { margin: 0; overflow-wrap: anywhere; user-select: text; }
+.ts-fail .ts-pre { user-select: text; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 16rem; overflow: auto; }
+@media (max-width: 640px) { .ts-result { grid-template-columns: 6rem minmax(0, 1fr); } .ts-result > :last-child { grid-column: 2; } }

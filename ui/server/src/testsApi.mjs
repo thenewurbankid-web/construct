@@ -10,6 +10,9 @@
 //   GET  /:feature/steps?name=              one of YOUR tests as a step document (#302), with the hash to echo back
 //   POST /:feature/steps/preview {name, baseHash, steps}            validate + render an edit; returns the diff, writes nothing
 //   POST /:feature/steps {name, baseHash, resultSha, steps}         write the previewed edit (needs the hash AND the reviewed sha)
+//   GET  /:feature/runs                     the feature's live run, the latest result per test and the newest problem (#305, read-only)
+//   POST /:feature/run {name?, area?, baseUrl?}     run the feature's tests (or one) against the app, as a Process (#305)
+//   POST /:feature/run/cancel               cancel the feature's live run with the machine's own CANCEL (#305)
 //
 // Security, in one place (the client supplies ONLY a feature name, a file NAME and a clone name):
 //   - the feature is compared against the REAL feature list of the current project (listUnits); it never
@@ -22,7 +25,11 @@
 //     directly under tests/, never generated/) and step FIELDS. Every field is validated against an allowlist in
 //     src/engine/testSteps.mjs and rendered through escaped template slots; the write needs the content hash the
 //     user opened and the sha of the diff they reviewed, and is an atomic O_EXCL temp + rename;
-//   - both POSTs are mutating: they sit behind the session gate, need a JSON body and, when the browser sends
+//   - running (#305): the client sends only the feature, optionally a file NAME + area (compared with the real files on
+//     disk by src/engine/testRunner.mjs resolveSpecs) and an app address (an http(s) origin on this machine only). No
+//     client string is a path, a glob or an argument; the run is a forked worker with an argv-array spawn and a throwaway
+//     config outside the project, capped in time and size; cancel is addressed by the validated feature, never a pid;
+//   - the POSTs are mutating: they sit behind the session gate, need a JSON body and, when the browser sends
 //     an Origin, that Origin must be the Cockpit's own.
 import express from 'express';
 import { listUnits } from '../../../src/engine/unitSummary.mjs';
@@ -31,6 +38,7 @@ import { compareClone, listFeatureTestsFresh } from '../../../src/engine/testFre
 import { generateFeatureTests } from '../../../src/engine/testGenerator.mjs';
 import { applyStepEdit, previewStepEdit, readStepDocument } from '../../../src/engine/testSteps.mjs';
 import { environmentState } from './testsEnv.mjs';
+import { DEFAULT_BASE_URL, parseBaseUrl, resolveSpecs } from '../../../src/engine/testRunner.mjs';
 import { ConstructError } from '../../../src/diagnostics.mjs';
 
 const NAME = /^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/;
@@ -47,8 +55,13 @@ function checkFeature(root, feature) {
 
 const fromCore = (r) => (r.ok ? { status: 200, body: r } : { status: STATUS[r.code] ?? 400, body: r });
 
-/** @param {{getRoot: () => {ok:true, root:string} | {ok:false, error:string}, clientOrigin?: string}} deps */
-export function createTestsRouter({ getRoot, clientOrigin }) {
+const RUN_STATUS = { NO_FEATURE: 404, NO_TESTS: 404, NOT_FOUND: 404, BAD_TARGET: 400, TOO_MANY: 400, BAD_BASE_URL: 400 };
+
+/**
+ * @param {{getRoot: () => {ok:true, root:string} | {ok:false, error:string}, clientOrigin?: string, runs?: ReturnType<typeof import('./testRuns.mjs').createTestRunJobs>}} deps
+ *   `runs` (#305) is optional so the read/clone/edit routes can be mounted without a process runtime.
+ */
+export function createTestsRouter({ getRoot, clientOrigin, runs = null }) {
   const router = express.Router();
   router.use((req, res, next) => {
     if (req.method === 'POST') {
@@ -100,6 +113,35 @@ export function createTestsRouter({ getRoot, clientOrigin }) {
   router.post('/:feature/steps', handle((root, req) => {
     const b = body(req);
     return fromCore(applyStepEdit(root, { feature: req.params.feature, name: b.name, baseHash: b.baseHash, resultSha: b.resultSha, steps: b.steps }));
+  }));
+
+  // ---- #305: running the tests ----------------------------------------------------------------------------------
+  const runView = (root, feature) => ({ ok: true, live: runs.live(root, feature), ...runs.last(root, feature), problem: runs.problem(root, feature), defaultBaseUrl: parseBaseUrl(process.env.CONSTRUCT_TEST_BASE_URL).ok ? parseBaseUrl(process.env.CONSTRUCT_TEST_BASE_URL).origin : DEFAULT_BASE_URL });
+  const notEnabled = () => ({ status: 404, body: { ok: false, error: 'Running tests is not available in this server.' } });
+
+  router.get('/:feature/runs', handle((root, req) => (runs ? { status: 200, body: runView(root, req.params.feature) } : notEnabled())));
+
+  router.post('/:feature/run', handle((root, req) => {
+    if (!runs) return notEnabled();
+    const b = body(req);
+    const one = (v) => (v === undefined || v === null || v === '' ? undefined : v);
+    const address = parseBaseUrl(one(b.baseUrl) ?? process.env.CONSTRUCT_TEST_BASE_URL);
+    if (!address.ok) return { status: 400, body: { ok: false, code: address.error.code, error: address.error.message } };
+    // the file name and area are only COMPARED with the files on disk; what runs is what the listing found
+    const found = resolveSpecs(root, req.params.feature, { name: one(b.name), area: one(b.area) });
+    if (!found.ok) return { status: RUN_STATUS[found.error.code] ?? 400, body: { ok: false, code: found.error.code, error: found.error.message } };
+    const target = found.specs.length === 1 && one(b.name) !== undefined ? { name: found.specs[0].name, area: found.specs[0].area } : null;
+    const started = runs.enqueue(root, req.params.feature, target, address.origin);
+    if (started.started) return { status: 202, body: runView(root, req.params.feature) };
+    if (started.live) return { status: 409, body: { ...runView(root, req.params.feature), ok: false, code: 'RUN_IN_PROGRESS', error: 'This feature already has a run in progress. Wait for it to finish or cancel it.' } };
+    return { status: 500, body: { ok: false, code: 'START_FAILED', error: String(started.error || 'The run could not be started.') } };
+  }));
+
+  router.post('/:feature/run/cancel', handle((root, req) => {
+    if (!runs) return notEnabled();
+    const outcome = runs.cancel(root, req.params.feature);
+    if (!outcome) return { status: 404, body: { ok: false, code: 'NOT_RUNNING', error: 'No test run of this feature is in progress.' } };
+    return outcome.status === 200 ? { status: 200, body: { ok: true, cancelled: true } } : { status: outcome.status, body: outcome.body };
   }));
 
   router.post('/:feature/generate', handle((root, req) => {

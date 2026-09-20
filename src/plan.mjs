@@ -355,6 +355,19 @@ export const PLAN_FLOWS = Object.freeze({
       dir: DIR_ARG,
     },
   },
+  'test.run': {
+    cli: ['test', 'run'],
+    summary: 'Run a feature\'s Playwright tests (all of them, or one) against the project\'s own running app and say what each result means: a convention failure (the test harness could not find an element the flow binds to; not a product bug) or an app failure (the flow reached another state; a bug worth reporting). Read-only: it writes nothing in the project and produces no artifacts, so it never needs approval. Zero-LLM.',
+    writes: false,
+    executors: ['deterministic'],
+    args: {
+      feature: { type: 'string', required: true, positional: 0, description: 'The feature whose tests are run.' },
+      name: { type: 'string', flag: '--name', description: 'Run only this test file (with area). Omit to run every test of the feature.' },
+      area: { type: 'string', flag: '--area', enum: ['generated', 'yours'], description: 'Which directory the named test is in: generated (locked) or yours (clones and authored tests).' },
+      'base-url': { type: 'string', flag: '--base-url', description: 'Where the project\'s app is running, for example http://localhost:3000. Only an address on this machine is accepted.' },
+      dir: DIR_ARG,
+    },
+  },
   sync: {
     cli: ['sync'],
     summary: 'Regenerate the derived rule config and each feature\'s public API barrel from architecture.yml.',
@@ -600,6 +613,14 @@ function validateStep(step, index, seenIds, push) {
           push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.plan.${key}`, `"${key}" of the expected scope must be a list of non-empty strings.`);
         }
       }
+    }
+    if (step.flow === 'test.run') {
+      const a = step.args;
+      if (typeof a.feature === 'string' && !/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(a.feature)) push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.feature`, 'A feature name uses letters, digits, "_" and "-" only.');
+      if (typeof a.name === 'string' && !/^[A-Za-z0-9][A-Za-z0-9._-]{0,120}\.spec\.ts$/.test(a.name)) push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.name`, 'A test is named by its file name, like happy-path.spec.ts (no folders).');
+      if ('name' in a && !('area' in a)) push(PLAN_ERROR_CODES.STEP_ARG_MISSING, `${at}.args.area`, 'Naming one test needs "area" too: generated or yours.');
+      if ('area' in a && !('name' in a)) push(PLAN_ERROR_CODES.STEP_ARG_MISSING, `${at}.args.name`, '"area" only makes sense with the name of the test it is about.');
+      if (typeof a['base-url'] === 'string' && !/^https?:\/\/[^\s/?#]+\/?$/.test(a['base-url'])) push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.base-url`, 'The address of the app is where it runs, like http://localhost:3000 (no page, no query).');
     }
     if (step.flow === 'pipeline.run' && isPlainObject(step.args.envelope)) {
       const { valid, errors } = validateEnvelope(step.args.envelope);

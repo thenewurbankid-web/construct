@@ -99,9 +99,15 @@ export function createReviewExecutor({ run = forkRunner, results = createResults
   return { executeStep, results };
 }
 
-/** Route a step by its flow. Only `review.analyze` avoids the bot runner. */
-export function composeExecutors({ bot, review }) {
-  return (ctx) => (ctx.step.flow === ANALYSIS_FLOW ? review(ctx) : bot(ctx));
+/** Route a step by its flow. Only the read-only flows avoid the bot runner: `review.analyze` (#351) and `test.run`
+ * (#305). A `test.run` step with no test executor is refused rather than handed to the bot runner, which would give
+ * it a branch and a worktree it has no use for. */
+export function composeExecutors({ bot, review, testRun = null }) {
+  return (ctx) => {
+    if (ctx.step.flow === ANALYSIS_FLOW) return review(ctx);
+    if (ctx.step.flow === 'test.run') return testRun ? testRun(ctx) : Promise.resolve({ ok: false, llm: null, artifacts: [], error: 'Running tests is not available in this server.' });
+    return bot(ctx);
+  };
 }
 
 /**

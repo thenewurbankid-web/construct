@@ -4,8 +4,9 @@ import { FailureKinds } from '../components/FailureKinds';
 import { TestsBanners } from '../components/TestsBanners';
 import { EmptyTests } from '../components/EmptyTests';
 import { NoFlow } from '../components/NoFlow';
+import { RunPanel } from '../components/RunPanel';
 import { StepEditorPage, type StepEditorPageProps } from './StepEditorPage';
-import type { CloneDialogView, FailureKind, GenerateState, StaleOverview, TestsLoad, TestSelection } from '../types';
+import type { CloneDialogView, FailureKind, GenerateState, ResultMark, RunPanelProps, StaleOverview, TestsLoad, TestSelection } from '../types';
 
 export type TestsPageProps = {
   feature: string;
@@ -25,6 +26,8 @@ export type TestsPageProps = {
   onDialogCancel: () => void;
   onDialogShowCode: () => void;
   onDismissNotice: () => void;
+  run: RunPanelProps;
+  resultOf: (file: string) => ResultMark;
   editor: StepEditorPageProps;
 };
 
@@ -53,7 +56,8 @@ export function TestsPage(p: TestsPageProps) {
       {data && data.coverage.length > 0 && (
         <>
           <p className="ts-lede">Every way this flow can run, worked out from the flow itself. No one wrote these by hand. Each can become a test.</p>
-          <CoverageTable rows={data.coverage} selectedFile={p.selected?.area === 'generated' ? p.selected.name : null} generating={p.generate.status === 'running'} onOpen={p.onOpen} onGenerate={p.onGenerate} />
+          {data.generated.length + data.yours.length > 0 && <RunPanel {...p.run} />}
+          <CoverageTable rows={data.coverage} selectedFile={p.selected?.area === 'generated' ? p.selected.name : null} generating={p.generate.status === 'running'} resultOf={p.resultOf} onOpen={p.onOpen} onGenerate={p.onGenerate} />
           <p className="ts-foot" data-testid="coverage-summary">{p.summary}. Your own tests sit beside these and are never overwritten.</p>
           <FailureKinds kinds={p.failureKinds} />
         </>
