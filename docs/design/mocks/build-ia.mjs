@@ -1,4 +1,4 @@
-// Concept mocks for the five-screen information architecture (Features / Pages / Components / PRs / Tests).
+// Concept mocks for the five-screen information architecture (Features / Pages / Components / Git / Tests).
 // Usage: node docs/design/mocks/build-ia.mjs && node docs/design/mocks/render.mjs ia-
 // Content is illustrative storefront data (same as the other mocks), not repo output.
 // Vocabulary (owner decision): the title + free text describing a change is a "Note"; steps stay "Plan".
@@ -17,12 +17,12 @@ const page = (title, body) => `<!doctype html>
 ${body}
 </body></html>`;
 
-const SCREENS = ['Features', 'Pages', 'Components', 'PRs', 'Tests'];
+const SCREENS = ['Features', 'Pages', 'Components', 'Git', 'Tests'];
 const topbar = ({ screen, menuOpen = false, off = false, procs = '2 running', project = true }) => `
 <header class="topbar" role="banner">
   <div class="brand"><i></i>Cockpit</div>
   ${project ? '<button class="chip-btn" aria-haspopup="listbox">storefront <span class="sub">main</span> &#9662;</button>' : '<button class="chip-btn" aria-haspopup="listbox">No project &#9662;</button>'}
-  <nav class="snav ${off ? 'off' : ''}" aria-label="Screens">${SCREENS.map((s) => `<a class="${s === screen ? 'on' : ''}" ${s === screen ? 'aria-current="page"' : ''}>${s}${s === 'PRs' && !off ? ' <span class="badge">3</span>' : ''}</a>`).join('')}</nav>
+  <nav class="snav ${off ? 'off' : ''}" aria-label="Screens">${SCREENS.map((s) => `<a class="${s === screen ? 'on' : ''}" ${s === screen ? 'aria-current="page"' : ''}>${s}${s === 'Git' && !off ? ' <span class="badge">3</span>' : ''}</a>`).join('')}</nav>
   <button class="chip-btn palette-trigger"><span>Search or run a command...</span><kbd>Ctrl K</kbd></button>
   <span class="pill run"><span class="spin"></span>${procs}</span>
   <button class="acct ${menuOpen ? 'open' : ''}" aria-haspopup="true" aria-expanded="${menuOpen}"><span class="avatar">SP</span>shashank-p &#9662;</button>
@@ -33,7 +33,7 @@ const menuInner = `
   <div class="mgrp">Preferences</div>
   <div class="mi on"><span class="g">&#9881;</span>Settings<span class="r">Git, commits, model choice</span></div>
   <div class="mi"><span class="g">&#9673;</span>Local model<span class="r"><span class="pill ok" style="height:20px;padding:0 8px"><span class="dot"></span>Ready</span></span></div>
-  <div class="mi"><span class="g">&#9680;</span>Theme<span class="r"><span class="seg"><button class="on">Dark</button><button>Light</button><button>System</button></span></span></div>
+  <div class="mi"><span class="g">&#9680;</span>Theme<span class="r"><span class="seg"><button>Dark</button><button>Light</button><button class="on">System</button></span></span></div>
   <div class="msep"></div>
   <div class="mi"><span class="g">?</span>Help and shortcuts<span class="r"><kbd>?</kbd></span></div>
   <div class="msep"></div>
@@ -124,10 +124,10 @@ const matrix = `
 <tr><td>Features</td><td>${cell(['<b>Tabs</b>Notes | Features', 'Saved notes, feature tree with summaries'])}</td><td>${cell(['Your note and its impact table', 'Feature summary and its flow', 'Create / Refactor / Import forms'])}</td><td>${cell(['<b>Verbs</b>Note | Impact | Plan', 'Plan steps tagged Deterministic / Local model / You'])}</td><td>Processes, Approvals, Diagnostics, Logs</td></tr>
 <tr><td>Pages</td><td>${cell(['<b>Tabs</b>Pages | Flow', 'Route tree, flow tree'])}</td><td>Live preview, click to select</td><td>${cell(['<b>Verbs</b>Inspector | Scope | Source | Diff'])}</td><td>same bottom panel</td></tr>
 <tr><td>Components</td><td>${cell(['<b>Tabs</b>Components | Workflows', 'Component tree, state machines'])}</td><td>${cell(['Component in isolation', 'or workflow diagram / narrative'])}</td><td>${cell(['<b>Verbs</b>Inspector | Used by | Source | Diff | Flow'])}</td><td>same bottom panel</td></tr>
-<tr><td>PRs</td><td>${cell(['<b>Tabs</b>Open PRs | Branches', 'Changed-file tree'])}</td><td>Change view, blast radius</td><td>${cell(['<b>Verbs</b>Findings | Detail | Plan match', 'Review lives here'])}</td><td>Analysis process, Approvals for auto-fix</td></tr>
+<tr><td>Git</td><td>${cell(['<b>Tabs</b>Changes | Branches | PRs | Commits', 'Changed-file tree, branch and PR lists'])}</td><td>${cell(['Change view, blast radius', 'Connect / clone a remote (empty state)'])}</td><td>${cell(['<b>Verbs</b>Findings | Detail | Plan match | Commit (auto-commit, branch, dirty tree)', 'Review lives here, inside Git'])}</td><td>Analysis process, Approvals for auto-fix</td></tr>
 <tr><td>Tests</td><td>${cell(['<b>Tabs</b>Tests | Coverage', 'Scenario and test list'])}</td><td>Test steps document, run result</td><td>${cell(['<b>Verbs</b>Edit step | Record | Freshness'])}</td><td>Test runs as processes</td></tr>
 </table>
-<p class="note">Not screens: Settings, Local model, Help, account and sign-out (top-right profile menu); the project switcher (top bar); the command palette (Ctrl K). The bottom panel is identical on every screen, so a running process or a waiting approval is never more than one keypress away (Ctrl J).</p>`;
+<p class="note">Git holds source control (changes, branches, commits), pull requests and Review. Not screens: Settings, Local model, Help, account and sign-out (top-right profile menu); the project switcher (top bar); the command palette (Ctrl K). The bottom panel is identical on every screen, so a running process or a waiting approval is never more than one keypress away (Ctrl J).</p>`;
 
 /* ------------------------------------------------ 4 Notes states */
 const dcard = (h, ind, body, extra = '') => `<div class="card"><b>${h}</b><div>${ind}</div><p>${body}</p>${extra}</div>`;
@@ -151,33 +151,43 @@ const drafts = `
 const noProj = frame({
   screen: 'Features', off: true, project: false, procs: '0 running',
   left: `<div class="pane-h"><span class="title">Features</span></div><div class="scroll" style="padding:14px;color:var(--text-muted)">Nothing to browse until a project is open.</div>`,
-  mid: `<div class="stage">${stateCard('&#9635;', 'Open a project to start', 'Pick a folder that contains an architecture.yml, or open a repository from GitHub.', '<button class="btn primary">Open a project...</button>')}<div class="slotlab" style="left:16px;top:12px">Being built separately (workspace-scoped): only its position is shown here</div></div>`,
+  mid: `<div class="stage">${stateCard('&#9635;', 'Open a project to start', 'Pick a folder that contains an architecture.yml, or open a repository from GitHub.', '<div><button class="btn primary">Open a project...</button> <button class="btn">Clone a repository...</button></div>')}<div class="slotlab" style="left:16px;top:12px">Prompt and clone are built separately (workspace-scoped, #330 slice A): only their position is shown here</div></div>`,
   right: `<div class="pane-h"><span class="title">Inspect</span></div><div class="scroll" style="padding:14px;color:var(--text-muted)">Select something to inspect.</div>`,
   bot: bottom('Processes', '<div style="padding:14px;color:var(--text-muted)">No processes yet. Running and finished processes for a project appear here, on every screen.</div>', 110, { p: '0', a: '0' }), botH: 110,
 });
 
-/* ------------------------------------------------ 6 PRs */
-const prs = frame({
-  screen: 'PRs',
-  left: `<div class="pane-h"><span class="title">PRs</span><span class="spacer"></span><button class="icon-btn">&laquo;</button></div>${tabs([['Open PRs', ['3', 'acc']], ['Branches']], 'Open PRs')}<div class="scroll"><div class="tree" style="padding-top:8px">
+/* ------------------------------------------------ 6 Git (PRs + Review inside) */
+const gitLeft = (tab) => `<div class="pane-h"><span class="title">Git</span><span class="spacer"></span><button class="btn sm" aria-label="Connect remote">Connect remote</button><button class="icon-btn">&laquo;</button></div>${tabs([['Changes', ['11', '']], ['Branches'], ['PRs', ['3', 'acc']], ['Commits']], tab)}<div class="scroll"><div class="tree" style="padding-top:8px">
    <div class="dr sel"><span class="n">#341 Refund a delivered order</span><span class="st stale">2 findings</span><span class="s">shashank-p &middot; 11 files &middot; matches plan</span></div>
    <div class="dr"><span class="n">#338 Guest checkout</span><span class="st run">Clean</span><span class="s">4 files</span></div>
    <div class="dr"><span class="n">#335 Fix cart rounding</span><span class="st draft">No plan</span><span class="s">2 files</span></div></div>
-   <div class="sect">Changed files &middot; 11</div><div class="tree"><div class="row">${L('workflow')}refundMachine.ts<span class="meta">+64</span></div><div class="row sel">${L('component')}RefundForm.tsx<span class="meta">+38 -2</span></div><div class="row">${L('component')}AmountField.tsx<span class="meta">+3</span></div></div></div>`,
-  mid: `<div class="canvas-tb"><span class="crumbs">PRs &rsaquo; #341 &rsaquo; <b>RefundForm.tsx</b></span><span class="spacer"></span><span class="tag det">Deterministic checks</span></div>
+   <div class="sect">Changed files &middot; 11</div><div class="tree"><div class="row">${L('workflow')}refundMachine.ts<span class="meta">+64</span></div><div class="row sel">${L('component')}RefundForm.tsx<span class="meta">+38 -2</span></div><div class="row">${L('component')}AmountField.tsx<span class="meta">+3</span></div></div></div>`;
+const git = frame({
+  screen: 'Git', lw: 356,
+  left: gitLeft('PRs'),
+  mid: `<div class="canvas-tb"><span class="crumbs">Git &rsaquo; PRs &rsaquo; #341 &rsaquo; <b>RefundForm.tsx</b></span><span class="spacer"></span><span class="tag det">Deterministic checks</span></div>
    <div class="scroll"><div class="code">${[['12', ' import { useRefundForm } from "../hooks/useRefundForm";', ''], ['13', '+import { orderService } from "@/features/orders/services/orderService";', 'add'], ['14', ' export function RefundForm() {', ''], ['15', '+  const orders = orderService.list();', 'add'], ['16', '   return <AmountField />;', '']].map((l) => `<div class="ln ${l[2]}"><i>${l[0]}</i><span>${l[1].replace(/</g, '&lt;')}</span></div>`).join('')}</div>
    <div class="callout warn"><span>&#9888;</span><div class="grow"><b>A component imports a service</b><small>Components go through a hook. Rule COMPONENT-002, deterministic.</small></div><button class="btn sm">Show in findings</button></div></div>`,
-  right: `<div class="pane-h"><span class="title">Review</span></div>${tabs([['Findings', ['2', '']], ['Detail'], ['Plan match']], 'Findings')}<div class="scroll">
+  right: `<div class="pane-h"><span class="title">Review and commit</span></div>${tabs([['Findings', ['2', '']], ['Detail'], ['Plan match'], ['Commit']], 'Findings')}<div class="scroll">
    <div class="step"><span class="no">!</span><div><b>Component imports a service</b><small>RefundForm.tsx:13 &middot; COMPONENT-002</small></div><span class="tag det">Deterministic</span></div>
    <div class="step"><span class="no">!</span><div><b>Touches shared AmountField (used by 5 features)</b><small>not in the plan</small></div><span class="tag det">Deterministic</span></div>
    <div style="padding:12px"><button class="btn">Propose a fix</button> <span class="tag llm">Local model - diff shown first</span></div></div>`,
-  bot: bottom('Approvals', `<table><tr><th>Waiting for you</th><th>Proposed by</th><th></th></tr><tr><td><b>Fix: route RefundForm through useRefundForm</b> &middot; 1 file, +4 -2</td><td><span class="tag llm">Local model</span></td><td><button class="btn sm primary">Review diff</button> <button class="btn sm">Dismiss</button></td></tr></table>`, 110, { p: '1', a: '1' }), botH: 110,
+  bot: bottom('Approvals', `<table><tr><th>Waiting for you</th><th>Proposed by</th><th></th></tr><tr><td><b>Fix: route RefundForm through useRefundForm</b> &middot; 1 file, +4 -2</td><td><span class="tag llm">Local model</span></td><td><button class="btn sm primary">Review diff</button> <button class="btn sm">Dismiss</button></td></tr></table>`, 134, { p: '1', a: '1' }), botH: 134,
+});
+
+/* Git with no remote: where "Connect remote" (clone and connect, #330 slice A) sits */
+const gitConnect = frame({
+  screen: 'Git', lw: 356,
+  left: `<div class="pane-h"><span class="title">Git</span><span class="spacer"></span><button class="btn sm primary" aria-label="Connect remote">Connect remote</button></div>${tabs([['Changes', ['3', '']], ['Branches'], ['PRs'], ['Commits']], 'Changes')}<div class="scroll"><div class="sect">Changed files &middot; 3</div><div class="tree"><div class="row">${L('page')}checkout/page.tsx<span class="meta">+4 -1</span></div><div class="row">${L('component')}CartTotals.tsx<span class="meta">+12</span></div><div class="row">${L('workflow')}cartMachine.ts<span class="meta">+2</span></div></div></div>`,
+  mid: `<div class="stage">${stateCard('&#8644;', 'This project has no remote yet', 'Connect a GitHub repository to see pull requests, branches and reviews here. Cloning always goes into your single workspace root.', '<div><button class="btn primary">Connect remote...</button> <button class="btn">Clone a repository...</button></div>')}<div class="slotlab" style="left:16px;top:12px">Being built as #330 slice A: only its position is shown here</div></div>`,
+  right: `<div class="pane-h"><span class="title">Review</span></div><div class="scroll" style="padding:14px;color:var(--text-muted)">Findings appear here once a pull request is selected. Local changes can still be reviewed against the plan.</div>`,
+  bot: bottom('Processes', '<div style="padding:14px;color:var(--text-muted)">No processes yet. Running and finished processes for a project appear here, on every screen.</div>', 110, { p: '0', a: '0' }), botH: 110,
 });
 
 /* ------------------------------------------------ 7 Narrow */
 const phone = (title, tab, body, extra = '') => `<div><h3 style="margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted)">${title}</h3><div class="narrow" style="position:relative;height:780px">
  <div class="topbar" style="height:44px;flex:none"><div class="brand"><i></i>Cockpit</div><span class="spacer"></span><span class="pill run"><span class="spin"></span>2</span><span class="avatar" aria-label="Account">SP</span></div>
- <nav class="snav" aria-label="Screens" style="height:38px;overflow:hidden;border-bottom:1px solid var(--border-subtle);flex:none;margin:0;padding:0 4px">${['Features', 'Pages', 'Comp.', 'PRs', 'Tests'].map((s, i) => `<a class="${i === 0 ? 'on' : ''}" style="padding:0 9px;font-size:12px">${s}</a>`).join('')}</nav>
+ <nav class="snav" aria-label="Screens" style="height:38px;overflow:hidden;border-bottom:1px solid var(--border-subtle);flex:none;margin:0;padding:0 4px">${['Features', 'Pages', 'Comp.', 'Git', 'Tests'].map((s, i) => `<a class="${i === 0 ? 'on' : ''}" style="padding:0 9px;font-size:12px">${s}</a>`).join('')}</nav>
  <div style="flex:1;overflow:hidden;position:relative">${body}${extra}</div>
  <div class="tabbar" role="tablist">${['Browse', 'Stage', 'Inspect', 'Run'].map((t) => `<div class="${t === tab ? 'on' : ''}" role="tab">${t}${t === 'Run' ? ' <span class="badge acc">2</span>' : ''}</div>`).join('')}</div></div></div>`;
 const narrow = `<div class="sheet3" style="grid-template-columns:repeat(3,390px);justify-content:space-between">
@@ -187,7 +197,7 @@ const narrow = `<div class="sheet3" style="grid-template-columns:repeat(3,390px)
  ${phone('Account menu (sheet)', 'Stage', `<div style="padding:14px;color:var(--text-muted)">Stage content is dimmed behind the sheet.</div>`, `<div class="menu" style="top:auto;bottom:0;left:0;right:0;width:auto;border-radius:var(--r-lg) var(--r-lg) 0 0">${menuInner}</div>`)}
 </div>`;
 
-const out = { 'ia-features': features, 'ia-account-menu': menuMock, 'ia-slot-matrix': matrix, 'ia-notes-states': drafts, 'ia-no-project': noProj, 'ia-prs': prs, 'ia-narrow': narrow };
-const titles = { 'ia-features': 'Features screen: notes, impact, plan, processes', 'ia-account-menu': 'Account menu: settings, local model, theme, help, sign out', 'ia-slot-matrix': 'Five screens, four slots', 'ia-notes-states': 'Notes: durable states', 'ia-no-project': 'No project: where the Open a project prompt sits', 'ia-prs': 'PRs screen: review inside the shell', 'ia-narrow': 'Narrow (390 px): one panel at a time' };
+const out = { 'ia-features': features, 'ia-account-menu': menuMock, 'ia-slot-matrix': matrix, 'ia-notes-states': drafts, 'ia-no-project': noProj, 'ia-git': git, 'ia-git-connect': gitConnect, 'ia-narrow': narrow };
+const titles = { 'ia-features': 'Features screen: notes, impact, plan, processes', 'ia-account-menu': 'Account menu: settings, local model, theme, help, sign out', 'ia-slot-matrix': 'Five screens, four slots', 'ia-notes-states': 'Notes: durable states', 'ia-no-project': 'No project: where the Open a project prompt sits', 'ia-git': 'Git screen: PRs and review inside the shell', 'ia-git-connect': 'Git with no remote: where Connect remote and Clone sit', 'ia-narrow': 'Narrow (390 px): one panel at a time' };
 for (const [k, v] of Object.entries(out)) writeFileSync(join(here, `${k}.html`), page(titles[k], v));
 console.log('ia mocks written');

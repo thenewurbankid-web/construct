@@ -6,7 +6,7 @@ Review **modes** of `cockpit-layout.md` (see "Reversal" below). Owner brief: 202
 
 ## 1. The shape
 
-Primary screens (top navigation, `<nav aria-label="Screens">`): **Features, Pages, Components, PRs, Tests**.
+Primary screens (top navigation, `<nav aria-label="Screens">`): **Features, Pages, Components, Git, Tests**.
 Every screen fills the same four slots; a slot is a registered list of tabs (id, title, badge, render), so a
 screen is a set of slot fillers, not a hand-built layout (`ia-slot-matrix`).
 
@@ -28,7 +28,7 @@ Logs. Its tab badges and the top-bar pill mirror the counts, so approvals are ne
 ## 2. Profile menu (`ia-account-menu`)
 
 GitHub avatar + login from `/auth/session`, a disclosure (not `role=menu`, per `popovers.md` and today's
-`UserMenu`). Items: **Settings** (opens `/settings` in the stage: git, auto-commit, model choice), **Local model**
+`UserMenu`). Items: **Settings** (opens `/settings` in the stage: project directory, model choice; git and auto-commit settings live on the Git screen), **Local model**
 (status chip, opens `/ollama` in the stage: install guidance, pull, picker), **Theme** (Dark / Light / System),
 **Help and shortcuts** (`/help`, `?`), **Sign out** ("Ends this session only"). No new behaviour: it re-homes
 `ScreensNav`'s Settings / Local Model / Help entries and `ThemeToggle`. At 390px it is a bottom sheet
@@ -55,12 +55,12 @@ Routes/URLs stay; only navigation and labels change first.
 | Browser pane / flow tree (`flow-browser`) | Pages: left **Flow** tab (route -> controller -> hook...); Features: feature tree | Deterministic, from imports |
 | Workflows `/workflows` (machines, narrative, edit) | Components: left **Workflows** tab, center diagram / narrative, right Flow tab | Open question 1 |
 | Tests `/tests` (list, detail, step editor, clone, coverage, record) | Tests: left list / Coverage, center steps + result, right Edit step / Record / Freshness; runs in bottom Processes | `TestsController` unchanged |
-| Review `/review` (list, change, findings, plan match, auto-fix) | **PRs**: left Open PRs / Branches + changed files, center change view, right Findings / Detail / Plan match; fix proposals in bottom Approvals | Review stops being a mode |
+| Review `/review` (list, change, findings, plan match, auto-fix, PR health, `BranchList`) | **Git**: left Changes / Branches / **PRs** / Commits, center change view + blast radius, right Findings / Detail / Plan match; fix proposals in bottom Approvals | Review stops being a mode; it is a verb inside Git (`ia-git`) |
+| Git settings (`AutoCommitSettings`), commit-on-save, dirty-tree prompt (`git-session`), commit indicator | **Git**: right **Commit** tab (auto-commit on save, dirty-tree choice); stage prompt for a dirty tree; the status-bar commit indicator links to Git > Commits | Owner decision: git settings belong to Git, not the profile menu |
+| Clone / connect a git repo (#330 slice A, being built) | **Git** stage "Connect remote" / "Clone a repository" when the project has no remote (`ia-git-connect`), and the no-project prompt (`ia-no-project`). Clones always land in the single workspace root | Only its position is designed here |
 | Summarize (`/api/units/summary`, `/api/features/:name/summary`) | Features: center feature summary; one-line summary in the Inspector of Pages / Components | |
-| Validate / rules (`/api/validate`, `DiagnosticsList`) | Bottom panel Diagnostics tab + status bar; rule ids inline in Inspector and PR findings | |
+| Validate / rules (`/api/validate`, `DiagnosticsList`) | Bottom panel Diagnostics tab + status bar; rule ids inline in Inspector and Git findings | |
 | Logs (`LogsList`, `/api/logs`) | Bottom panel Logs tab | |
-| Git settings (`AutoCommitSettings`) | Profile menu > Settings | |
-| Commit indicator, dirty-tree prompt (`git-session`) | Status bar and stage prompt (unchanged, contextual) | Not a screen concern |
 | Local model `/ollama` | Profile menu > Local model | Status stays visible in the status bar |
 | Settings `/settings` | Profile menu > Settings | |
 | Help `/help` (tutorials, CLI reference) | Profile menu > Help and shortcuts; also palette | |
@@ -80,7 +80,7 @@ Routes/URLs stay; only navigation and labels change first.
 | Explore | The default state of every screen: browse left, inspect right. Not a place, so no button |
 | Plan | Features: right **Plan** tab (Note -> Impact -> Plan) |
 | Build / Run | The **Run plan** button; work shows in the bottom Processes and Approvals tabs |
-| Review | The **PRs** screen |
+| Review | A verb inside the **Git** screen (Findings / Detail / Plan match beside the PR) |
 
 This reverses the owner's choice of modes. The reasons to confirm it: the five screens already name what you
 are working on (nouns), so a second axis of verbs on top made every screen live under two labels; verbs read
@@ -91,7 +91,7 @@ better as tabs inside the noun. Nothing is lost: each mode's content has a slot 
 The workspace-scoped "Open a project" prompt is being built separately. The frame shows only its position:
 center stage of the Features screen, screen nav dimmed (not removable: it keeps the shell stable), left and
 right panels say why they are empty, bottom panel and profile menu stay usable (you can still sign out,
-change theme or fix the model with no project).
+change theme or fix the model with no project). "Clone a repository" (#330 slice A, being built) sits beside "Open a project" here and as "Connect remote" on the Git screen when a project has no remote (`ia-git-connect`); clones land in the single workspace root.
 
 ## 5. Notes: durable drafts (`ia-features`, `ia-notes-states`)
 
@@ -159,12 +159,12 @@ is edited in the same slice with a stated reason. Sizes: XS <0.5d, S ~1d, M 2-3d
 | # | Slice (implementation ticket, "Design: #N") | Size | Specs it touches (edit) | Must stay green |
 |---|---|---|---|---|
 | 1 | **Profile menu**: extend `UserMenu` with Settings / Local model / Theme / Help; keep old nav entries too (both work) | S | `auth.spec.js`, `popover-dismiss.spec.js`, `theme-switch.spec.js` (add a menu path) | `settings-llm`, `ollama*`, `help-*`, `form-controls-theming` |
-| 2 | **Screen nav replaces mode nav**: labels Features / Pages / Components / PRs / Tests, routes `/`, `/pages`, `/workflows`?, `/review`, `/tests` (Components target: see open question 1); `Modes.ts` -> `Screens` set; `activeOn` mapping | M | `shell-topbar.spec.js` (asserts the 4 mode labels), `shell-tabs.spec.js`, `plan-mode.spec.js`, `review-mode.spec.js`, `smoke`, `walkthrough`, `narrow-layout`, `demos/*` (navigation clicks) | `shell-layout`, `shell-topbar-density`, `a11y` |
+| 2 | **Screen nav replaces mode nav**: labels Features / Pages / Components / Git / Tests, routes `/`, `/pages`, `/workflows`?, `/review`, `/tests` (Components target: see open question 1); `Modes.ts` -> `Screens` set; `activeOn` mapping | M | `shell-topbar.spec.js` (asserts the 4 mode labels), `shell-tabs.spec.js`, `plan-mode.spec.js`, `review-mode.spec.js`, `smoke`, `walkthrough`, `narrow-layout`, `demos/*` (navigation clicks) | `shell-layout`, `shell-topbar-density`, `a11y` |
 | 3 | **Retire `ScreensNav`; move Settings/Local Model/Help/Theme/Sign out only to the profile menu** (Dashboard forms re-homed to Features) | S | `auth.spec.js`, `settings-llm`, `ollama.spec.js`, `ollama-model-picker`, `help-tutorials`, `help-collapsible-sections`, `dashboard-card-sizing`, `demos/setup-settings` | `smoke`, `walkthrough` |
 | 4 | **Bottom panel = Run on every screen**: rename slot, add Approvals tab (from `ArtifactReview`), processes pill unchanged | M | `shell-drawer-palette`, `processes-drawer`, `processes-approval`, `review-processes` (label/role only) | `timing-display`, `pages-editor-external-change` |
 | 5 | **Features screen**: left Notes / Features tabs, note in the stage, Plan as right tab, Run to bottom; `/plan` and `/dashboard` redirect or alias | L | `plan-mode.spec.js`, `demos/*` (research flow), `dashboard-card-sizing` | `processes-*`, `shell-*` |
 | 6 | **Durable Notes**: `notesStore` + `/api/notes` + autosave + stale rule + Notes list (back end and UI) | M | new `notes.spec.js`, `plan-mode.spec.js` (reload keeps the note) | `plan-mode` |
-| 7 | **PRs screen**: rename Review screen, re-slot Findings / Detail / Plan match, fixes to Approvals | M | `review-mode`, `review-findings`, `review-tree-keyboard`, `review-processes` | `processes-approval` |
+| 7 | **Git screen**: Changes / Branches / PRs / Commits left, re-slot Review (Findings / Detail / Plan match) right, Commit tab (git settings, commit-on-save), fixes to Approvals, Connect remote empty state | M | `review-mode`, `review-findings`, `review-tree-keyboard`, `review-processes`, `commit-on-save` (git settings move to the Commit tab) | `processes-approval` |
 | 8 | **Pages / Components / Tests re-slot + Workflows tab**: verify each fills the four slots via the tab registry (mostly done); add Project tab | M | `pages-editor-shell`, `pages-editor-layout`, `workflows-shell`, `workflows-layout`, `tests-tab`, `tests-states` | all `pages-editor-*`, `workflows*`, `tests-*` |
 | 9 | **Keyboard and narrow pass**: F6 order incl. top bar and bottom, Alt 1-5, bottom bar Browse / Stage / Inspect / Run, axe per screen and theme | S | `narrow-layout`, `shell-layout`, `a11y`, `theme-switch` | whole suite |
 
@@ -179,7 +179,7 @@ Each UI slice also needs its own Playwright spec and screenshot on its issue (CL
    If you meant Workflows as its own sixth screen, promoting it is one registry entry plus a nav label (the
    390px nav is the only pressure). Recommendation: keep it inside Components.
 2. **Confirm the reversal of the modes** (Explore / Plan / Build / Review become verbs inside screens, Review =
-   the PRs screen). Recommendation: yes.
+   a verb inside the Git screen). Recommendation: yes.
 3. **Is the Dashboard retired?** Recommendation: yes; `/` lands on Features, Create / Refactor / Import become
    actions in its stage, and the dashboard cards go.
 4. **Notes retention**: keep forever with manual delete, or expire? Recommendation: keep, never auto-delete
