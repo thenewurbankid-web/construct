@@ -25,7 +25,9 @@ function pick(listing, name, label) {
 /** The compact, list-sized view of a finished report (the badges). */
 export function slimReport(result) {
   const r = result.report;
+  const scope = r.indicators.find((i) => i.id === 'blast-radius');
   return {
+    scope: scope?.measured ? { declared: scope.evidence.declared.features.length, touched: scope.evidence.touched.features.length } : null,
     summary: r.summary,
     files: r.change.counts.files,
     features: r.change.features,

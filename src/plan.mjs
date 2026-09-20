@@ -36,7 +36,7 @@ import { validateEnvelope } from './engine/envelope.mjs';
 export const PLAN_VERSION = 1;
 
 /** Who actually performs a step. Mirrors the Deterministic / Local model /
- * You tags in docs/design/cockpit-layout.md §4 `research-mode`. */
+ * You tags in docs/design/cockpit-layout.md §4 `plan-mode`. */
 export const PLAN_EXECUTORS = Object.freeze(['deterministic', 'local-model', 'user']);
 
 /** How a step is expected to change a file it touches. `read` is for the

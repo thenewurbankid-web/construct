@@ -47,12 +47,13 @@ test('nextTabId: roving focus wraps, skips disabled, Home/End, ignores other key
   assert.equal(nextTabId([], 'a', 'ArrowRight'), null);
 });
 
-test('modes keep the owner names and map paths', () => {
-  assert.deepEqual(MODES.map((m) => m.label), ['Explore', 'Research', 'Build']);
+test('modes keep the owner names (Plan is the old Research route) and map paths', () => {
+  assert.deepEqual(MODES.map((m) => m.label), ['Explore', 'Plan', 'Build', 'Review']);
   assert.equal(modeForPath('/pages').id, 'explore');
   assert.equal(modeForPath('/workflows').id, 'explore');
-  assert.equal(modeForPath('/').id, 'research');
+  assert.equal(modeForPath('/').id, 'plan');
   assert.equal(modeForPath('/wizard').id, 'build');
+  assert.equal(modeForPath('/review').id, 'review');
   assert.equal(modeForPath('/settings'), null);
 });
 

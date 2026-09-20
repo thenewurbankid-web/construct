@@ -1,12 +1,15 @@
-// Pure (DOMAIN-001): the top-bar modes (names kept per owner decision:
-// Explore / Research / Build). Each routes to an existing screen for now;
-// Research/Build screens arrive with the research-mode and Processes epics.
+// Pure (DOMAIN-001): the top-bar modes, Explore / Plan / Build / Review (owner decision, #285). Each
+// routes to a screen. "Plan" is only the label on the button (the rename of Research, #243): the route it
+// leads to, the `construct research` CLI verb and `[Research]` ticket titles are all unchanged. The
+// mode's design lives in docs/design/cockpit-layout.md section 4 (`plan-mode`); Review (#312) is a
+// fourth mode that fills all three panes (docs/design/mocks/pr-review-*.html).
 import type { ShellMode } from '../types.ts';
 
 export const MODES: ShellMode[] = [
   { id: 'explore', label: 'Explore', href: '/pages', activeOn: ['/pages', '/workflows'] },
-  { id: 'research', label: 'Research', href: '/dashboard', activeOn: ['/', '/dashboard'] },
+  { id: 'plan', label: 'Plan', href: '/dashboard', activeOn: ['/', '/dashboard'] },
   { id: 'build', label: 'Build', href: '/wizard', activeOn: ['/wizard'] },
+  { id: 'review', label: 'Review', href: '/review', activeOn: ['/review'] },
 ];
 
 /** The mode whose screens include `pathname`, or null (Settings, Help, Local model...). */

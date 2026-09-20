@@ -5,8 +5,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // Design #245 — top bar: project switcher (local projects only, reuses the
-// settings project dir and the shared folder picker), Explore / Research /
-// Build modes routing to existing screens, real status pills, and the theme
+// settings project dir and the shared folder picker), Explore / Plan /
+// Build / Review modes (Plan is the old Research button, #285; Review is the fourth mode, #312) routing to screens, real status pills, and the theme
 // switch. The old sidebar links live on in the Browser pane's "Screens" tab.
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SHOTS = path.resolve(__dirname, '../screenshots');
@@ -18,20 +18,24 @@ test.describe('Cockpit top bar (#245)', () => {
     const modes = page.getByRole('navigation', { name: 'Modes' });
     await page.goto('/settings');
     await expect(modes.getByRole('link', { name: 'Explore' })).not.toHaveAttribute('aria-current', 'page');
-    await expect(modes.getByRole('link')).toHaveText(['Explore', 'Research', 'Build']);
+    await expect(modes.getByRole('link')).toHaveText(['Explore', 'Plan', 'Build', 'Review']);
 
     await modes.getByRole('link', { name: 'Explore' }).click();
     await expect(page).toHaveURL(/\/pages$/);
     await expect(modes.getByRole('link', { name: 'Explore' })).toHaveAttribute('aria-current', 'page');
-    await expect(modes.getByRole('link', { name: 'Research' })).not.toHaveAttribute('aria-current', 'page');
+    await expect(modes.getByRole('link', { name: 'Plan' })).not.toHaveAttribute('aria-current', 'page');
 
-    await modes.getByRole('link', { name: 'Research' }).click();
+    await modes.getByRole('link', { name: 'Plan' }).click();
     await expect(page).toHaveURL(/\/dashboard$/);
-    await expect(modes.getByRole('link', { name: 'Research' })).toHaveAttribute('aria-current', 'page');
+    await expect(modes.getByRole('link', { name: 'Plan' })).toHaveAttribute('aria-current', 'page');
 
     await modes.getByRole('link', { name: 'Build' }).click();
     await expect(page).toHaveURL(/\/wizard$/);
     await expect(modes.getByRole('link', { name: 'Build' })).toHaveAttribute('aria-current', 'page');
+
+    await modes.getByRole('link', { name: 'Review' }).click();
+    await expect(page).toHaveURL(/\/review$/);
+    await expect(modes.getByRole('link', { name: 'Review' })).toHaveAttribute('aria-current', 'page');
   });
 
   test('every old sidebar screen is still one click away in the Browser pane', async ({ page }) => {
