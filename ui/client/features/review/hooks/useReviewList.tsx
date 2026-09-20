@@ -36,7 +36,7 @@ export function useReviewList(baseFromRoute: string | null) {
         asked.current = key;
         await requestAnalysis(r.data.base, heads);
       }
-      const settling = r.data.branches.some((b) => isLive(b.analysis.state));
+      const settling = heads.length > 0 || r.data.branches.some((b) => isLive(b.analysis.state));
       if (!cancelled && settling) timer = setTimeout(read, POLL_MS);
     }
     read();
