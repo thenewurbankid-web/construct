@@ -158,7 +158,7 @@ export function cloneGeneratedTest(root, { feature, source, name } = {}) {
   if (srcText === null) return refuse('not-generated', `"${source}" is not a generated test of "${feature}".`);
   if (!srcText.startsWith(`${GENERATED_MARKER}\n`)) return refuse('not-generated', `"${source}" is not a generated test (it has no generator marker).`);
 
-  const base = name === undefined || name === null ? `${source.replace(/\.spec\.ts$/, '')}-clone` : name;
+  const base = name === undefined ? `${source.replace(/\.spec\.ts$/, '')}-clone` : name;
   if (typeof base !== 'string' || base.length > MAX_NAME || !CLONE_NAME_RE.test(base)) {
     return refuse('bad-name', `A test name may use lowercase letters, digits and "-" only (start with a letter or digit, at most ${MAX_NAME} characters).`);
   }
