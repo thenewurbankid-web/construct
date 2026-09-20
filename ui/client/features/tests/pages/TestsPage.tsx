@@ -1,6 +1,7 @@
 import { CloneDialog } from '../components/CloneDialog';
 import { CoverageTable } from '../components/CoverageTable';
 import { TestsBanners } from '../components/TestsBanners';
+import { StepEditorPage, type StepEditorPageProps } from './StepEditorPage';
 import type { CloneDialogView, GenerateState, TestsLoad, TestSelection } from '../types';
 
 export type TestsPageProps = {
@@ -18,12 +19,14 @@ export type TestsPageProps = {
   onDialogCancel: () => void;
   onDialogShowCode: () => void;
   onDismissNotice: () => void;
+  editor: StepEditorPageProps;
 };
 
 // Presentation-only: the stage of the Tests screen. Every state (no feature, loading, error, lock not declared,
 // no scenarios, the coverage table, a generate refusal) is drawn here; the work is in the hook.
 export function TestsPage(p: TestsPageProps) {
   const data = p.load.status === 'ready' ? p.load.data : null;
+  if (p.editor.state.status !== 'idle') return <div className="ts-stage" data-testid="tests-stage"><StepEditorPage {...p.editor} /></div>;
   return (
     <div className="ts-stage" data-testid="tests-stage">
       <div className="ts-toolbar">

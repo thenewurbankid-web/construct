@@ -27,6 +27,7 @@ import { humanize } from './workflowNarrator.mjs';
 import { listWorkflowSourceFiles, readWorkflowSource } from './workflowSource.mjs';
 import { assignTestIds, kebab } from './testAttributes.mjs';
 import { createContext } from './units/facts.mjs';
+import { lit, comment, HELPERS, startUrlLine, machineLine, testBlockLines } from './testSpecRender.mjs';
 import { featureRoutes } from './units/route-adapters.mjs';
 
 /** First line of every generated file: the ONLY thing that makes a file overwritable by this generator. */
@@ -39,12 +40,8 @@ const LONG_WAIT_MS = 10_000;
 const usage = (message) => new ConstructError(message, { exitCode: EXIT_CODES.USAGE_ERROR });
 const sha = (s) => crypto.createHash('sha256').update(s).digest('hex');
 
-// ---- escaping ---------------------------------------------------------------------------------
-
-/** A JS/TS string literal for arbitrary text: JSON-escaped, plus the two line separators JSON leaves raw. */
-export const lit = (s) => JSON.stringify(String(s)).replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
-/** Text for a `//` comment: control characters and every JS line terminator become spaces. */
-export const comment = (s) => String(s).replace(/[\u0000-\u001f\u007f\u0085\u2028\u2029]/g, ' ');
+// ---- escaping: `lit` and `comment` live with the shared renderer (testSpecRender.mjs, #302) ------
+export { lit, comment };
 
 // ---- scenario naming (#307) -------------------------------------------------------------------
 
@@ -132,33 +129,17 @@ export function beatsOf(machine, scenario, testIds, ambiguous) {
 
 // ---- spec rendering ---------------------------------------------------------------------------
 
-const HELPERS = `const harness = (selector: string, why: string) =>
-  new Error(
-    \`Test harness problem, not a bug in the page: the test harness expected \${selector}. \` +
-      \`\${why} Construct binds workflow events to elements by convention (data-testid = the event name in kebab-case; \` +
-      \`data-flow / data-flow-state on the element that shows the machine's state). \` +
-      \`Add the attribute (or scaffold the page with \\\`construct create page --from\\\`); do not file a product bug for this.\`,
-  );
-
-async function required(page: Page, selector: string, why: string) {
-  const el = page.locator(selector).first();
-  try {
-    await el.waitFor({ state: 'attached', timeout: 5_000 });
-  } catch {
-    throw harness(selector, why);
+/** The steps of a spec's test body: what the step editor (testSteps.mjs) reads back and renders through the same block. */
+export function stepsOf({ fixme, start, beats }) {
+  const steps = fixme.map((text) => ({ kind: 'fixme', text }));
+  steps.push({ kind: 'goto' }, { kind: 'state', state: start });
+  for (const b of beats) {
+    const timeout = b.wait ? b.wait + 5000 : undefined;
+    if (b.action) steps.push({ kind: 'event', event: b.action.event, testId: b.action.testId ?? kebab(b.action.event), note: b.note }, { kind: 'state', state: b.settle, timeout });
+    else steps.push({ kind: 'state', state: b.settle, timeout, note: b.note });
   }
-  return el;
+  return steps;
 }
-
-async function trigger(page: Page, testId: string, event: string) {
-  const el = await required(page, \`[data-testid="\${testId}"]\`, \`It is what the workflow event \${event} binds to.\`);
-  await el.click();
-}
-
-async function expectFlowState(page: Page, machine: string, state: string, timeout = 5_000) {
-  const el = await required(page, \`[data-flow="\${machine}"][data-flow-state]\`, \`It shows the state of the \${machine} workflow.\`);
-  await expect(el).toHaveAttribute('data-flow-state', state, { timeout });
-}`;
 
 /** The full text of one generated spec. `info` = { feature, machine, machineKey, machineFile, scenario, slug, startUrl, urlNote, testIds, beats, start, mHash, sHash }. */
 export function renderSpec(info) {
@@ -183,23 +164,12 @@ export function renderSpec(info) {
   L.push('');
   if (url) L.push(`// ${url}`);
   else if (urlNote) L.push(`// ${comment(urlNote)}`);
-  L.push(`const START_URL: string | null = ${url ? 'null' : lit(startUrl)};`);
-  L.push(`const MACHINE = ${lit(machineKey)};`);
+  L.push(startUrlLine(url ? null : startUrl));
+  L.push(machineLine(machineKey));
   L.push('');
   L.push(HELPERS);
   L.push('');
-  L.push(`test(${lit(`${feature} / ${machine.id} / ${scenario.title}`)}, async ({ page }) => {`);
-  for (const f of fixme) L.push(`  test.fixme(true, ${lit(f)});`);
-  L.push('  if (START_URL === null) return;');
-  L.push('  await page.goto(START_URL);');
-  L.push(`  await expectFlowState(page, MACHINE, ${lit(start)});`);
-  for (const b of beats) {
-    L.push(`  // ${comment(b.note)}`);
-    if (b.action) L.push(`  await trigger(page, ${lit(b.action.testId ?? kebab(b.action.event))}, ${lit(b.action.event)});`);
-    const timeout = b.wait ? `, ${b.wait + 5000}` : '';
-    L.push(`  await expectFlowState(page, MACHINE, ${lit(b.settle)}${timeout});`);
-  }
-  L.push('});');
+  L.push(...testBlockLines(`${feature} / ${machine.id} / ${scenario.title}`, stepsOf({ fixme, start, beats })));
   return `${L.join('\n')}\n`;
 }
 
@@ -228,8 +198,8 @@ export function assertLockDeclared(root, genDir) {
 }
 
 /** Plan every spec for a feature. Returns { files: [{ name, relPath, content, ...meta }], skipped, truncated, genRel }. Writes nothing. */
-export function planFeatureTests(root, feature, { max } = {}) {
-  const { genRel, genDir } = projectPaths(root, feature);
+/** A feature's usable machines with their keys and event -> data-testid maps (#302: the editor's allowlist comes from here too). */
+export function featureMachines(root, feature) {
   const sources = listWorkflowSourceFiles(root, feature);
   const found = [];
   const skipped = [];
@@ -242,6 +212,12 @@ export function planFeatureTests(root, feature, { max } = {}) {
     }
   }
   const { keys, testIds } = assignTestIds(found.map((f) => f.machine));
+  return { found, skipped, keys, testIds };
+}
+
+export function planFeatureTests(root, feature, { max } = {}) {
+  const { genRel, genDir } = projectPaths(root, feature);
+  const { found, skipped, keys, testIds } = featureMachines(root, feature);
 
   // routes: the start URL comes from the route map, never from the scenario
   let routes = [];

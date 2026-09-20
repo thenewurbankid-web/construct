@@ -18,6 +18,7 @@ export type TestsShellTabsInput = {
   onEditStep: (file: string, step: number) => void;
   onShowCode: () => void;
   onHideCode: () => void;
+  onEditSteps: (file: string) => void;
 };
 
 // Presentation-only: the Tests screen's pieces as shell tabs (Browser: Tests, Tools: Test), registered into the
@@ -35,7 +36,7 @@ export function testsShellTabs(i: TestsShellTabsInput): { browser: ShellTab; too
       id: 'test',
       title: 'Test',
       preferred: true,
-      render: () => <TestDetail test={i.test} title={i.title} steps={i.steps} code={i.code} onClone={i.onClone} onEditStep={i.onEditStep} onShowCode={i.onShowCode} onHideCode={i.onHideCode} />,
+      render: () => <TestDetail test={i.test} title={i.title} steps={i.steps} code={i.code} onClone={i.onClone} onEditStep={i.onEditStep} onShowCode={i.onShowCode} onHideCode={i.onHideCode} onEditSteps={i.onEditSteps} />,
     },
   };
 }

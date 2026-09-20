@@ -99,3 +99,82 @@ export type TestsAction =
   | { type: 'GENERATE_DONE'; written: number }
   | { type: 'GENERATE_FAILED'; message: string }
   | { type: 'DISMISS_NOTICE' };
+
+// ---- the step document (#302): one of YOUR tests as GIVEN / AND / WHEN / THEN / CHECK rows, and its editor state.
+// Shapes of ui/server /api/tests/:feature/steps (src/engine/testSteps.mjs); the server re-validates every field on write.
+
+/** What a step IS (the fields that reach the test file). `note` is the comment above it. */
+export type StepFields =
+  | { kind: 'fixme'; text: string }
+  | { kind: 'goto'; url: string | null }
+  | { kind: 'state'; state: string; timeout?: number; note?: string }
+  | { kind: 'event'; event: string; testId: string; note?: string }
+  | { kind: 'check-text'; text: string; timeout: number; note?: string };
+export type StepKind = StepFields['kind'];
+/** A step as the server describes it: its fields, its keyword, its sentence and the selector it binds to. */
+export type StepRow = StepFields & { keyword: string; sentence: string; binding: string };
+export type MachineInfo = { key: string; id: string; initial: string | null; events: { event: string; testId: string; label: string }[]; states: string[] };
+export type StepDocBase = { name: string; path: string; hash: string; kind: 'clone' | 'authored'; lineage: TestLineage | null };
+export type StepDocResult =
+  | ({ ok: true; editable: true; title: string; steps: StepRow[]; machine: MachineInfo } & StepDocBase)
+  | ({ ok: true; editable: false; reason: string } & StepDocBase)
+  | { ok: false; error: string; code?: string };
+export type DiffRow = { kind: 'context' | 'added' | 'removed' | 'gap'; oldLine?: number; newLine?: number; text: string; hidden?: number };
+export type StepPreviewResult =
+  | { ok: true; changed: boolean; baseHash: string; resultSha: string; diff: { rows: DiffRow[]; stats: { added: number; removed: number } } }
+  | { ok: false; error: string; code?: string };
+export type StepSaveResult = { ok: true; hash: string } | { ok: false; error: string; code?: string };
+
+/** One row being edited. `origin` is the row's index in the file as opened (null = added now); `removed` rows stay visible until saved. */
+export type DraftStep = { key: number; origin: number | null; removed: boolean; step: StepFields };
+export type StepChange = 'added' | 'removed' | 'changed' | null;
+
+export type StepReview =
+  | { status: 'none' }
+  | { status: 'loading' }
+  | { status: 'ready'; resultSha: string; changed: boolean; rows: DiffRow[]; added: number; removed: number }
+  | { status: 'saving' }
+  | { status: 'error'; message: string; stale: boolean };
+
+export type StepEditorState =
+  | { status: 'idle' }
+  | { status: 'loading'; name: string }
+  | { status: 'error'; message: string }
+  | { status: 'readonly'; name: string; path: string; reason: string }
+  | { status: 'editing'; name: string; path: string; hash: string; title: string; machine: MachineInfo; original: StepFields[]; draft: DraftStep[]; selected: number | null; nextKey: number; review: StepReview; announce: string; notice: string | null };
+
+export type StepEditorAction =
+  | { type: 'OPEN'; name: string }
+  | { type: 'LOADED'; doc: StepDocResult; notice?: string | null }
+  | { type: 'CLOSE' }
+  | { type: 'SELECT'; key: number }
+  | { type: 'PATCH'; key: number; patch: Partial<StepFields> }
+  | { type: 'ADD'; kind: 'event' | 'state' | 'check-text' }
+  | { type: 'REMOVE'; key: number }
+  | { type: 'RESTORE'; key: number }
+  | { type: 'MOVE'; key: number; dir: -1 | 1 }
+  | { type: 'DISCARD' }
+  | { type: 'REVIEW_START' }
+  | { type: 'REVIEW_READY'; resultSha: string; changed: boolean; rows: DiffRow[]; added: number; removed: number }
+  | { type: 'REVIEW_FAILED'; message: string; stale: boolean }
+  | { type: 'REVIEW_BACK' }
+  | { type: 'SAVE_START' };
+
+/** One row of the step document as drawn: words, selector, code preview and what it can do. */
+export type StepRowView = {
+  key: number;
+  /** 1-based position among the rows that stay; null for a removed row. */
+  n: number | null;
+  keyword: string;
+  sentence: string;
+  binding: string;
+  code: string;
+  note: string;
+  change: StepChange;
+  changeLabel: string;
+  removed: boolean;
+  step: StepFields;
+  canEdit: boolean;
+  canUp: boolean;
+  canDown: boolean;
+};

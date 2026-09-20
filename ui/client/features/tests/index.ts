@@ -6,6 +6,12 @@ export type * from './types';
 /** The Tests screen: scenario coverage, generated (locked) and your tests, and clone-to-edit. */
 export * from './controllers/TestsController';
 
+/** The step editor: open one of your tests as steps, edit, review the diff, save. */
+export * from './hooks/useStepEditor';
+
+/** The step editor's two server round trips: review the diff, then save exactly it. */
+export * from './hooks/useStepReview';
+
 /** The Tests screen's state and I/O: listing, selection, clone dialog, generate. */
 export * from './hooks/useTests';
 
