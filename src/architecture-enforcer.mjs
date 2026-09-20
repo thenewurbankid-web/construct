@@ -26,6 +26,7 @@ import { extractMachines } from './engine/workflowExtractor.mjs';
 import { findHealthIssues } from './engine/workflowScenarios.mjs';
 import { exceptionApplies, validateExceptionsShape, expiredExceptionViolations } from './exceptions.mjs';
 import { matchFrozen } from './frozen.mjs';
+import { isNonLayerPath } from './nonLayer.mjs';
 import { buildFrozenIndex, detectFrozenViolations, FROZEN_RULE_BY_LAYER } from './frozen-detector.mjs';
 
 export { extractImports };
@@ -351,12 +352,15 @@ export function validateArchitecture(root, opts = {}) {
   // #23: only when `frozen:` is configured. The index (read-only parse of the
   // frozen sources) is built lazily on the first page/component/controller.
   const frozenGlobs = config.frozen || [];
+  const nonLayerGlobs = config.nonLayer || [];
   let frozenIndex = null;
   for (const abs of files) {
     if (!FILE_EXTENSIONS.has(path.extname(abs)) || !fs.existsSync(abs)) continue;
     // A frozen file that happens to live inside the project is externally
     // authored: Construct's layer rules don't apply to it.
     if (frozenGlobs.length && matchFrozen(root, abs, frozenGlobs)) continue;
+    // #348: declared non-layer paths (e.g. features/*/tests/**) sit outside the layer graph.
+    if (nonLayerGlobs.length && isNonLayerPath(root, abs, nonLayerGlobs)) continue;
     const r = rel(root, abs);
     const layer = classifyFile(r, graph);
     if (!layer) {
