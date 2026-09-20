@@ -35,6 +35,7 @@ module; *group next* = worth extracting, filed as an issue; *leave* = fine where
 | 24 | **Execution plan contract** (ordered steps, each a reference to a real flow, with executor tag, expected touches and dependencies; flow registry covering the whole CLI surface; `validatePlan`, `planToCommand`, `planTouches`) | `src/plan.mjs`; `schemas/plan.v1.json` | Research mode (plan pane), the process runtime | Det | Packaged (pure JSON-in/JSON-out; contains, rather than replaces, `src/import.mjs`'s narrower import plan) |
 
 | 24 | **Impact analysis** (blast radius of a change: features/layers/files touched, why each is implicated, shared-component warnings, per-entry `derived`/`inferred` provenance) | `src/engine/impact.mjs`; `schemas/impact-report.v1.json`; docs in `docs/impact-analysis.md` | CLI `research impact`, Research mode (#229), PR health (#285, via `impactFromChangedFiles`) | Det | **Packaged** (assembles the layer graph, `units/facts.mjs`, the unit registry and the enforcers over a reverse import index; read-only, MCP-ready pure API) |
+| 25 | **Deterministic commit messages** (branch-scoped serial `<prefix>-<session>-<serial>`, impact counts consumed from row 24, prose from the unit summarizer, session branch naming, dirty-tree honesty) | `src/engine/commitMessage.mjs`; docs in `docs/commit-on-save.md` | Cockpit commit-on-save (#283, via `ui/server/src/autoCommit.mjs`) | Det | **Packaged** (pure, read-only, never shells out and never calls a model — a structural test asserts its import graph cannot reach `src/llm.mjs`) |
 
 ## How to use this file
 
