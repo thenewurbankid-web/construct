@@ -15,11 +15,12 @@ type TestDetailProps = {
   onEditStep: (file: string, step: number) => void;
   onShowCode: () => void;
   onHideCode: () => void;
+  onEditSteps: (file: string) => void;
 };
 
 /** Tools pane, Test tab: one test. A generated test is read-only, says so in words, and every way of changing it
  * (Clone to edit, or Edit on a step) opens the clone dialog instead of failing. */
-export function TestDetail({ test, title, steps, code, onClone, onEditStep, onShowCode, onHideCode }: TestDetailProps) {
+export function TestDetail({ test, title, steps, code, onClone, onEditStep, onShowCode, onHideCode, onEditSteps }: TestDetailProps) {
   if (!test) return <p className="hint ts-pad" data-testid="test-empty">Select a test in the Browser, or a covered scenario, to see what it does.</p>;
   const locked = test.area === 'generated';
   const clonedFrom = test.area === 'yours' ? test.clonedFrom : null;
@@ -41,6 +42,7 @@ export function TestDetail({ test, title, steps, code, onClone, onEditStep, onSh
         </p>
       )}
       <div className="ts-actions">
+        {!locked && <button type="button" className="ts-btn ts-btn--primary" data-testid="detail-edit-steps" onClick={() => onEditSteps(test.name)}>Edit steps</button>}
         {locked && <button type="button" className="ts-btn ts-btn--primary" data-testid="detail-clone" onClick={() => onClone(test.name)}>Clone to edit</button>}
         {code.status === 'ready' ? (
           <button type="button" className="ts-btn" data-testid="detail-hide-code" onClick={onHideCode}>Hide code</button>
