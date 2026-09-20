@@ -58,7 +58,7 @@ export function parseLineage(text) {
 }
 
 /** Read one regular, non-symlink file no bigger than MAX_BYTES; null when it is anything else. */
-function readRegular(abs) {
+export function readRegular(abs) {
   try {
     const st = fs.lstatSync(abs);
     if (st.isSymbolicLink() || !st.isFile() || st.size > MAX_BYTES) return null;
@@ -68,7 +68,7 @@ function readRegular(abs) {
   }
 }
 
-function locate(root, feature) {
+export function locate(root, feature) {
   let p;
   try { p = projectPaths(root, feature); } catch (e) { return refuse('no-feature', e.message); }
   const testsRel = p.genRel.replace(/\/generated$/, '');
