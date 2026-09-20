@@ -29,6 +29,8 @@ Four capabilities, one CLI:
   construct research doctor [--dir <path>]
   construct research impact <unit-ref>... [--files a,b] [--since <ref>] [--ticket <text>] [--ticket-file <path>] [--depth N] [--max-files N] [--format json|markdown] [--dir <path>]
   construct research impact --usage   (deterministic blast radius: which features/layers/files a change touches, and why)
+  construct review <base> <head> [--plan <file>] [--features a,b] [--no-merge-base] [--format json|markdown] [--dir <path>]
+  construct review --usage   (read-only PR health between two git refs: scope, unexplained changes, rule regressions, public surface, flow diff; findings split mechanical vs conversation)
   construct import <name> --feature <feature> --layers <l1,l2,...> --from <path> [--llm <provider>] [--dir <path>]
   construct import --plan <path> [--llm <provider>] [--dir <path>]
   construct import --route <path>  (standalone interactive wizard, run directly — not inside repl)
