@@ -77,12 +77,12 @@ test.describe.serial('Review mode (#312, #313)', () => {
     fs.rmSync(repo, { recursive: true, force: true });
   });
 
-  test('Review is the fourth mode; Plan is the old Research button and leads to the same screen', async ({ page }) => {
+  test('Review is the fourth mode; Plan is the old Research button and now leads to the Plan screen', async ({ page }) => {
     await gotoCockpit(page, '/review');
     const modes = page.getByRole('navigation', { name: 'Modes' });
     await expect(modes.getByRole('link')).toHaveText(['Explore', 'Plan', 'Build', 'Review']);
     await expect(modes.getByRole('link', { name: 'Review' })).toHaveAttribute('aria-current', 'page');
-    await expect(modes.getByRole('link', { name: 'Plan' })).toHaveAttribute('href', '/dashboard');
+    await expect(modes.getByRole('link', { name: 'Plan' })).toHaveAttribute('href', '/plan');
   });
 
   test('the list shows every local branch with the badges the engine computed, riskiest first', async ({ page }) => {
