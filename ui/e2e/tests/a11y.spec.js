@@ -82,7 +82,7 @@ for (const theme of THEMES) {
       // Tools, drawer...) and scan, so hidden tab panels are covered too.
       for (const route of ['/pages', '/workflows', '/dashboard']) {
         test(`${route} all panes and tabs`, async ({ page }) => {
-          await page.goto(route);
+          await gotoCockpit(page, route);
           await expect(page.locator('h1, h2').first()).toBeVisible();
           if (vp === 'wide') {
             await page.keyboard.press('Control+j');
@@ -100,13 +100,13 @@ for (const theme of THEMES) {
       });
       test('drawer open', async ({ page }) => {
         test.skip(vp === 'narrow', 'the drawer is not shown at narrow widths by design (ShellLayout)');
-        await page.goto('/help');
+        await gotoCockpit(page, '/help');
         await page.keyboard.press('Control+j');
         await expect(page.getByRole('region', { name: 'Drawer' })).toBeVisible();
         await check(page, `drawer ${theme} ${vp}`);
       });
       test('command palette open', async ({ page }) => {
-        await page.goto('/help');
+        await gotoCockpit(page, '/help');
         await page.keyboard.press('Control+k');
         await expect(page.getByRole('dialog')).toBeVisible();
         await check(page, `palette ${theme} ${vp}`);
@@ -121,6 +121,7 @@ test.describe.serial('screens with real project content', () => {
   const API = process.env.E2E_API_BASE || 'http://localhost:4000';
   const PAGE_SRC = `import React, { useState } from 'react';
 import { useThing } from '../hooks/useThing';
+import { gotoCockpit } from './support/cockpit.js';
 
 export default function LoginPage({ title }: { title: string }) {
   const [email, setEmail] = useState('');
@@ -169,7 +170,7 @@ export default function LoginPage({ title }: { title: string }) {
         await expect(page.locator('h1, h2').first()).toBeVisible();
         await page.waitForTimeout(800);
         await check(page, `workflows+project ${theme} ${vp}`);
-        await page.goto('/dashboard');
+        await gotoCockpit(page, '/dashboard');
         await expect(page.locator('h1, h2').first()).toBeVisible();
         await check(page, `dashboard+project ${theme} ${vp}`);
         if (vp === 'wide') {
@@ -186,7 +187,7 @@ export default function LoginPage({ title }: { title: string }) {
 test.describe('keyboard-only flow', () => {
   test.use({ viewport: VIEWPORTS.wide });
   test('Tab reaches the top bar then panes with a visible focus ring; palette and drawer open by shortcut; F6 cycles panes', async ({ page }) => {
-    await page.goto('/help');
+    await gotoCockpit(page, '/help');
     await expect(page.locator('h1')).toBeVisible();
     const seen = [];
     for (let i = 0; i < 40; i++) {

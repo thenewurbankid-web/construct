@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { gotoCockpit } from './support/cockpit.js';
 
 // Design #249 -- bottom drawer (real Diagnostics from `construct validate`,
 // Logs, Processes placeholder) and the Ctrl K command palette.
@@ -35,7 +36,7 @@ test.describe('Cockpit drawer and command palette (#249)', () => {
   });
 
   test('Diagnostics lists real validate results in plain language with a count badge; a page row opens the Pages editor', async ({ page }) => {
-    await page.goto('/help');
+    await gotoCockpit(page, '/help');
     await page.keyboard.press('Control+j');
     const drawer = page.getByRole('region', { name: 'Drawer' });
     const tab = drawer.getByRole('tab', { name: /Diagnostics/ });
@@ -63,7 +64,7 @@ test.describe('Cockpit drawer and command palette (#249)', () => {
   });
 
   test('Logs shows recent output (the validate run) and Processes stays the designed empty state', async ({ page }) => {
-    await page.goto('/help');
+    await gotoCockpit(page, '/help');
     await page.keyboard.press('Control+j');
     const drawer = page.getByRole('region', { name: 'Drawer' });
     await drawer.getByRole('tab', { name: 'Logs' }).click();
@@ -75,7 +76,7 @@ test.describe('Cockpit drawer and command palette (#249)', () => {
   });
 
   test('Ctrl K opens an accessible palette: combobox focus, filtering, trapped Tab, Esc restores focus', async ({ page }) => {
-    await page.goto('/help');
+    await gotoCockpit(page, '/help');
     const trigger = page.getByTestId('palette-trigger');
     await trigger.focus();
     await page.keyboard.press('Control+k');
@@ -143,7 +144,7 @@ test.describe('Cockpit drawer and command palette (#249)', () => {
   });
 
   test('the palette also opens with Meta+K and closes on a click outside', async ({ page }) => {
-    await page.goto('/help');
+    await gotoCockpit(page, '/help');
     await page.keyboard.press('Meta+k');
     const dialog = page.getByRole('dialog', { name: 'Command palette' });
     await expect(dialog).toBeVisible();

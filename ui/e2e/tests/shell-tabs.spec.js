@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { gotoCockpit } from './support/cockpit.js';
 
 // Design #245 — the tab host: every region (Browser / Tools / Drawer) renders
 // its registered tabs (id, title, badge, render) as an ARIA tablist with
@@ -26,7 +27,7 @@ test.describe('Right-panel / drawer tab host (#245)', () => {
   });
 
   test('Drawer: arrow keys / Home / End move between tabs (roving tabindex) and change the panel', async ({ page }) => {
-    await page.goto('/help');
+    await gotoCockpit(page, '/help');
     await page.keyboard.press('Control+j');
     const drawer = page.getByRole('region', { name: 'Drawer' });
     const tabs = drawer.getByRole('tab');
@@ -66,7 +67,7 @@ test.describe('Right-panel / drawer tab host (#245)', () => {
   });
 
   test('a clicked tab becomes selected; focus ring is visible on keyboard focus', async ({ page }) => {
-    await page.goto('/help');
+    await gotoCockpit(page, '/help');
     await page.keyboard.press('Control+j');
     const drawer = page.getByRole('region', { name: 'Drawer' });
     await drawer.getByRole('tab', { name: 'Logs' }).click();

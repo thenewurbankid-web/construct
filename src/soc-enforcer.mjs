@@ -8,6 +8,7 @@ import { loadConfig, DEFAULT_RULES } from './config.mjs';
 import { walk, rel } from './fs.mjs';
 import { makeViolation } from './diagnostics.mjs';
 import { exceptionApplies } from './exceptions.mjs';
+import { parseToAst } from './ast/index.mjs';
 
 const ext = new Set(['.ts', '.tsx', '.js', '.jsx']);
 export const LAYER_FOLDERS = ['controllers', 'workflows', 'hooks', 'domain', 'services', 'pages', 'components'];
@@ -153,57 +154,60 @@ function checkCrossFeatureImports(config, out, root, featuresRoot, relFile, src)
 // ---------------------------------------------------------------------------
 // Epic 2.2 — Module Cohesion Enforcer
 // ---------------------------------------------------------------------------
-function splitTopLevelCommas(s) {
-  const parts = [];
-  let depth = 0;
-  let cur = '';
-  for (const ch of s) {
-    if ('([{'.includes(ch)) depth++;
-    if (')]}'.includes(ch)) depth--;
-    if (ch === ',' && depth === 0) {
-      parts.push(cur);
-      cur = '';
-    } else cur += ch;
-  }
-  if (cur.trim()) parts.push(cur);
-  return parts;
+/** Names bound by a declaration pattern (`const { a, b: c } = x`, `const [d] = y`). */
+function patternNames(node, out) {
+  if (!node) return;
+  if (node.type === 'Identifier') out.push(node.name);
+  else if (node.type === 'ObjectPattern') node.properties.forEach((p) => patternNames(p.type === 'RestElement' ? p.argument : p.value, out));
+  else if (node.type === 'ArrayPattern') node.elements.forEach((e) => patternNames(e, out));
+  else if (node.type === 'AssignmentPattern') patternNames(node.left, out);
+  else if (node.type === 'RestElement') patternNames(node.argument, out);
 }
 
 /**
  * countPrimaryExports(source) -> [{name, line}]
- * Regex-based top-level exported function/class/const/let/var counter.
- * Re-exports (`export * from`, `export {..} from`) never count — they
- * aggregate an API, they don't declare a new responsibility in this file.
+ * Top-level exported function/class/const/let/var/default/`export { }` counter,
+ * in source order. Reads the real AST (src/ast), so a comma inside a generic
+ * (`Record<A, B>`) is not a second declarator and an `export` written inside a
+ * comment or string is not an export (#326).
+ * Re-exports (`export * from`, `export {..} from`) never count — they aggregate
+ * an API, they don't declare a new responsibility in this file. Type-only
+ * declarations (`export type/interface/enum`, `export type { }`) and ambient
+ * `export declare` are not counted either, as before. A file that does not parse
+ * yields no exports (a syntax error is reported elsewhere, not as a cohesion error).
  */
 export function countPrimaryExports(source) {
-  const src = source.replace(/export\s+(type\s+)?(\*(?:\s+as\s+[A-Za-z_$][\w$]*)?|\{[^}]*\})\s*from\s*(['"])[^'"]*\3\s*;?/g, '');
-  const lineAt = (idx) => src.slice(0, idx).split('\n').length;
+  let ast;
+  try {
+    ast = parseToAst(source);
+  } catch {
+    return [];
+  }
   const results = [];
-
-  for (const m of src.matchAll(/export\s+default\s+(?:async\s+)?(function\*?|class)\s*([A-Za-z_$][\w$]*)?/g)) {
-    results.push({ name: m[2] || 'default', line: lineAt(m.index) });
-  }
-  for (const m of src.matchAll(/export\s+default\s+(?!(?:async\s+)?(?:function|class)\b)([^\n;]+);?/g)) {
-    results.push({ name: 'default', line: lineAt(m.index) });
-  }
-  for (const m of src.matchAll(/export\s+(?:async\s+)?(function\*?|class)\s+([A-Za-z_$][\w$]*)/g)) {
-    results.push({ name: m[2], line: lineAt(m.index) });
-  }
-  for (const m of src.matchAll(/export\s+(const|let|var)\s+([^;\n]+)/g)) {
-    const line = lineAt(m.index);
-    for (const part of splitTopLevelCommas(m[2])) {
-      const nm = part.trim().match(/^([A-Za-z_$][\w$]*)/);
-      if (nm) results.push({ name: nm[1], line });
-    }
-  }
-  for (const m of src.matchAll(/export\s*\{([^}]*)\}(?!\s*from)/g)) {
-    const line = lineAt(m.index);
-    for (const item of m[1].split(',')) {
-      const token = item.trim();
-      if (!token) continue;
-      const asMatch = token.match(/as\s+([A-Za-z_$][\w$]*)\s*$/);
-      const name = asMatch ? asMatch[1] : token.split(/\s+/)[0];
-      if (name) results.push({ name, line });
+  for (const node of ast.body) {
+    const line = node.loc.start.line;
+    if (node.type === 'ExportDefaultDeclaration') {
+      const d = node.declaration;
+      const named = (d.type === 'FunctionDeclaration' || d.type === 'ClassDeclaration') && d.id;
+      results.push({ name: named ? d.id.name : 'default', line });
+    } else if (node.type === 'ExportNamedDeclaration') {
+      if (node.exportKind === 'type' || node.source) continue;
+      const d = node.declaration;
+      if (d) {
+        if (d.declare) continue;
+        if (d.type === 'VariableDeclaration') {
+          const names = [];
+          d.declarations.forEach((x) => patternNames(x.id, names));
+          names.forEach((name) => results.push({ name, line }));
+        } else if ((d.type === 'FunctionDeclaration' || d.type === 'TSDeclareFunction' || d.type === 'ClassDeclaration') && d.id) {
+          results.push({ name: d.id.name, line });
+        }
+      } else {
+        for (const spec of node.specifiers) {
+          const name = spec.exported?.name ?? spec.exported?.value;
+          if (name) results.push({ name, line });
+        }
+      }
     }
   }
   return results;
