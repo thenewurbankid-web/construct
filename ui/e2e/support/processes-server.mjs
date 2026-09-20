@@ -74,7 +74,49 @@ app.post('/__test/create', (req, res) => {
   res.json({ ok: true, id: record.id });
 });
 
-app.post('/__test/release', (req, res) => {
+// #341: a FINISHED process whose bot left three files on its branch, so the approval UI can be driven
+// against the real gate (src/engine/approvalGate.mjs). The project directory becomes a real git repo
+// with a committed base; the bot branch is built the way the runner builds it (a worktree + a commit).
+//   approve-N.txt   declared by the plan   -> applicable, the test approves it
+//   reject-N.txt    declared by the plan   -> applicable, the test rejects it
+//   sneaky-N.txt    NOT declared by the plan -> the gate refuses it (OUTSIDE_TOUCHES)
+const { recordArtifact } = await import('../../../src/engine/processModel.mjs');
+const { botBranch } = await import('../../../src/engine/botRunner.mjs');
+const { spawnSync } = await import('node:child_process');
+let seeds = 0;
+const vcs = (cwd, ...args) => spawnSync('git', ['-c', 'user.name=e2e', '-c', 'user.email=e2e@example.invalid', '-c', 'commit.gpgsign=false', ...args], { cwd, encoding: 'utf8' });
+
+app.post('/__test/seed-review', (req, res) => {
+  const root = processesService.currentRoot();
+  seeds += 1;
+  const n = seeds;
+  if (!fs.existsSync(path.join(root, '.git'))) vcs(root, 'init', '-q', '-b', 'main');
+  const base = { [`approve-${n}.txt`]: 'alpha\nbeta\n', [`reject-${n}.txt`]: 'one\ntwo\n' };
+  for (const [p, c] of Object.entries(base)) fs.writeFileSync(path.join(root, p), c);
+  vcs(root, 'add', '-A');
+  vcs(root, 'commit', '-q', '-m', `base ${n}`);
+  const bot = { [`approve-${n}.txt`]: 'alpha\nbeta\ngamma\n', [`reject-${n}.txt`]: 'one\ntwo\nthree\n', [`sneaky-${n}.txt`]: 'not in the plan\n' };
+  const id = `review-${n}`;
+  const wt = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'construct-e2e-wt-')), 'wt');
+  vcs(root, 'worktree', 'add', '-q', '-b', botBranch(id), wt, 'HEAD');
+  const changes = [];
+  for (const [p, c] of Object.entries(bot)) {
+    fs.writeFileSync(path.join(wt, p), c);
+    changes.push({ path: p, change: p in base ? 'modify' : 'create', before: p in base ? base[p] : null, after: c });
+  }
+  vcs(wt, 'add', '-A');
+  vcs(wt, 'commit', '-q', '-m', 'bot: step');
+  vcs(root, 'worktree', 'remove', '--force', wt);
+  const declared = changes.filter((c) => !c.path.startsWith('sneaky')).map((c) => ({ path: c.path, change: c.change }));
+  const plan = { version: 1, ticket: { source: 'text', title: String(req.body?.title || 'Update the notes') }, steps: [{ id: 'edit', title: 'Edit the notes', flow: 'create.unit', args: { layer: 'domain', name: 'Notes', feature: 'notes' }, executor: 'deterministic', touches: { features: [], files: declared } }] };
+  let rec = createProcess(plan, { id, projectRoot: root, title: plan.ticket.title });
+  for (const c of changes) rec = recordArtifact(rec, { ...c, stepId: 'edit' });
+  rec = { ...rec, state: 'done', steps: rec.steps.map((s) => ({ ...s, status: 'done' })) };
+  processesService.store().save(rec);
+  res.json({ ok: true, id, root, n });
+});
+
+app.post('/__test/release',(req, res) => {
   const key = `${req.body?.id}:${req.body?.step}`;
   const release = gates.get(key);
   if (!release) return res.status(404).json({ ok: false, error: `nothing waiting on ${key}` });

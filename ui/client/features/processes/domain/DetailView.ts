@@ -25,7 +25,7 @@ export function artifactRow(a: ProcessArtifact): ArtifactRow {
     path: a.path,
     change: a.change,
     hash: hash ? hash.slice(0, 10) : 'no hash',
-    // Read-only: approving is a later, separate gate. This never offers to apply.
+    // This list never applies anything; approving happens in the gate's review (ArtifactReview).
     approval: a.approved === null ? 'Awaiting approval' : a.approved ? 'Approved' : 'Rejected',
   };
 }
@@ -52,6 +52,8 @@ export function buildDetailView(detail: ProcessDetail): DetailView {
     log: detail.log.map((e) => ({ key: e.seq, time: clock(e.at), provenance: e.provenance, meaning: PROVENANCE_MEANING[e.provenance], text: e.message })),
     logHidden: detail.logHidden,
     artifacts: detail.artifacts.map(artifactRow),
+    // Mirrors the gate's own rule (never race a running bot); the gate still refuses if this is wrong.
+    canReview: detail.artifacts.length > 0 && s.state !== 'running' && s.state !== 'queued',
     error: errorText(s.error),
   };
 }

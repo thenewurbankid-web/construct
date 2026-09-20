@@ -92,13 +92,86 @@ export type DetailView = {
   log: LogRow[];
   logHidden: number;
   artifacts: ArtifactRow[];
+  /** The gate reviews a process only when it is not running or queued. */
+  canReview: boolean;
   error: string | null;
+};
+
+// ---- #341: the approval gate's review and the person's decisions. ----
+
+export type GateRefusal = { code: string; message: string };
+export type GateVerdict = { decision: 'approved' | 'rejected'; by?: string; at?: string; applied?: boolean; diffSha256?: string | null };
+
+/** One artifact as the core gate (src/engine/approvalGate.mjs) reviews it. `diffSha256` is what a decision echoes back. */
+export type ReviewArtifact = {
+  path: string;
+  change: 'create' | 'modify' | 'delete';
+  stepId: string | null;
+  diff: string | null;
+  diffSha256: string | null;
+  refusals: GateRefusal[];
+  applicable: boolean;
+  verdict: GateVerdict | null;
+  llm: { provider?: string; calls?: number } | null;
+};
+
+export type Review = {
+  processId: string;
+  state: string;
+  artifacts: ReviewArtifact[];
+  unrecordedBranchChanges: string[];
+  resolved: boolean;
+};
+
+export type ReviewState = { status: 'loading' } | { status: 'ready'; review: Review } | { status: 'error'; message: string };
+
+export type Violation = { rule?: string; file?: string; message?: string; severity?: string };
+/** What `decide` reports after applying: new violations are shown, never auto-reverted. */
+export type Validation = { ran: boolean; ok?: boolean; error?: string; newViolations: Violation[]; autoReverted?: boolean };
+
+export type DecideResult =
+  | { ok: true; validation: Validation | null }
+  | { ok: false; error: string; refusals: GateRefusal[] };
+
+/** The last thing that went wrong when a person decided on one file, shown beside it. */
+export type DecisionNote = { error: string; refusals: GateRefusal[] } | null;
+
+export type DiffLine = { key: number; kind: 'add' | 'del' | 'hunk' | 'meta' | 'ctx'; text: string };
+export type ReviewRow = {
+  path: string;
+  change: string;
+  diffLines: DiffLine[];
+  diffSha256: string | null;
+  refusals: GateRefusal[];
+  canApprove: boolean;
+  canReject: boolean;
+  /** Why Approve is off, when it is. */
+  approveOffReason: string | null;
+  verdict: string | null;
+  model: string | null;
+  note: DecisionNote;
+  busy: boolean;
+};
+export type ReviewView = {
+  processId: string;
+  rows: ReviewRow[];
+  /** Files on the bot's branch that no artifact records: shown, never applied. */
+  unrecorded: string[];
+  validationText: string | null;
+  validationViolations: string[];
+  validationOk: boolean;
+  resolved: boolean;
 };
 
 export type ProcessesViewProps = {
   rows: ListRow[];
   detail: DetailView | null;
   diffs: Record<string, DiffResult>;
+  review: ReviewView | null;
+  reviewLoading: boolean;
+  reviewError: string | null;
+  onReview: (id: string) => void;
+  onDecide: (id: string, path: string, verdict: 'approve' | 'reject', diffSha256: string | null) => void;
   busy: boolean;
   notice: string | null;
   error: string | null;
@@ -120,10 +193,21 @@ export type ProcessesState = {
   /** The last refusal or failure of a control, shown next to the buttons. */
   notice: string | null;
   diffs: Record<string, DiffResult>;
+  /** The gate's review per process id. */
+  reviews: Record<string, ReviewState>;
+  /** Per `${id}\n${path}`: why the last decision on that file did not go through. */
+  notes: Record<string, DecisionNote>;
+  /** The check the last approval ran, per process id. */
+  validations: Record<string, Validation | null>;
+  /** `${id}\n${path}` of the decision in flight, if any. */
+  deciding: string | null;
   live: boolean;
 };
 
 export type ProcessesAction =
+  | { type: 'REVIEW'; id: string; result: ReviewState }
+  | { type: 'DECIDING'; key: string | null }
+  | { type: 'DECIDED'; id: string; key: string; note: DecisionNote; validation: Validation | null }
   | { type: 'LISTED'; summaries: ProcessSummary[] }
   | { type: 'LIST_FAILED'; error: string }
   | { type: 'UPDATE'; detail: ProcessDetail }

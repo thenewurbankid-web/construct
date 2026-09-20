@@ -5,7 +5,7 @@ import { ProcessSteps } from '../components/ProcessSteps';
 import type { ProcessesViewProps } from '../types';
 
 // Presentation-only: every value and handler comes from the controller.
-export function ProcessesPage({ rows, detail, diffs, busy, notice, error, live, onSelect, onControl, onShowDiff }: ProcessesViewProps) {
+export function ProcessesPage({ rows, detail, diffs, review, reviewLoading, reviewError, onReview, onDecide, busy, notice, error, live, onSelect, onControl, onShowDiff }: ProcessesViewProps) {
   if (error && rows.length === 0) {
     return (
       <div className="dg-empty" role="alert" data-testid="processes-error">
@@ -48,7 +48,18 @@ export function ProcessesPage({ rows, detail, diffs, busy, notice, error, live, 
             {notice && <p className="dg-note" role="alert" data-testid="process-notice">{notice}</p>}
             {detail.error && <p className="dg-note" role="alert">{detail.error}</p>}
             <ProcessSteps steps={detail.steps} />
-            <ProcessArtifacts rows={detail.artifacts} diffs={diffs} processId={detail.id} onShowDiff={(path) => onShowDiff(detail.id, path)} />
+            <ProcessArtifacts
+              rows={detail.artifacts}
+              diffs={diffs}
+              processId={detail.id}
+              canReview={detail.canReview}
+              review={review}
+              reviewLoading={reviewLoading}
+              reviewError={reviewError}
+              onShowDiff={(path) => onShowDiff(detail.id, path)}
+              onReview={() => onReview(detail.id)}
+              onDecide={(path, verdict, sha) => onDecide(detail.id, path, verdict, sha)}
+            />
           </section>
           <section className="pr-logpane" aria-label="Process log pane">
             <ProcessLog rows={detail.log} hidden={detail.logHidden} />
