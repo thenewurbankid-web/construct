@@ -74,7 +74,7 @@ export function scenarioSlug(machine, scenario) {
 
 // ---- lineage hashes ---------------------------------------------------------------------------
 
-const stripLines = ({ line, ...rest }) => rest; // eslint-disable-line no-unused-vars
+const stripLines = ({ line, ...rest }) => rest;  
 export const machineHash = (m) => sha(JSON.stringify({ id: m.id, initial: m.initial, states: m.states.map(stripLines), transitions: m.transitions.map(stripLines) }));
 export const scenarioHash = (sc) => sha(JSON.stringify({ steps: sc.steps, end: sc.end }));
 

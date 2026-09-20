@@ -194,7 +194,7 @@ export async function pollOnce({ github, sessionStore, stateStore, runClaudeFn, 
   for (const comment of newComments) {
     const trigger = parseTrigger(comment.body);
     if (!trigger) continue;
-    // eslint-disable-next-line no-await-in-loop -- triggers are handled sequentially by design
+     
     await handleTrigger({ comment, trigger, github, sessionStore, config, runClaudeFn, buildPromptFn, log });
   }
 
