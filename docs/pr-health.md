@@ -81,6 +81,23 @@ project (never a path or repository from the client; a leading `-` is refused). 
 process per job, one at a time, so a slow analysis never blocks a request. The list source is an adapter
 (`reviewRefs.mjs`); a GitHub pull request source is a later ticket.
 
+### Findings, scope and states (#315, #316, #318)
+
+- **Findings tab** (Tools) lists every finding in two groups that are never blurred: *Can be fixed
+  mechanically* (the engine's `resolution: mechanical`, with the exact `fix.via` command; `fix.available:false`
+  reads "No automated fix yet") and *Needs a decision* (`conversation`; never a fix of any kind). Selecting one
+  shows it on the stage. The command is **shown, never run**: nothing in Review applies a fix (auto-fix is #317).
+  The drawer's Findings tab says how many are mechanical.
+- **Blast radius**: pick a saved plan (the plans of the project's processes) from "Compare with a plan"; the
+  plan's `planTouches` is passed to the engine as `expected`. With none, scope is a calm grey "Not measured" and
+  every other indicator is unchanged. `GET /api/review/plans` lists the choices; `plan=<id>` on `POST
+  /api/review/analyze` and `GET /api/review/change` selects one. The id is compared with the store's own listing
+  and refused (404, `BAD_PLAN`) otherwise; it is never used to build a path.
+- **States**: an error says what happened and what to do next (`code` from the server: `NOT_A_GIT_REPO`,
+  `BAD_REF`, `BAD_PLAN`, `TIMEOUT`, `GIT_FAILED`, ...); a repository with no commit or no other branch says so;
+  a change over 200 files shows the engine's `degraded` banner (which checks still ran) instead of an error;
+  at 390 px one pane shows at a time with the bottom tab bar.
+
 ## Next
 
 The Cockpit slices (#312, #313, #315, #317, #318) render this JSON; reading a real GitHub PR (#278) only

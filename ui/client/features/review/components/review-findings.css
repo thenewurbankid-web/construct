@@ -1,0 +1,57 @@
+/* Review mode: findings (#315), blast radius (#316) and states (#318). Design: docs/design/mocks/
+ * pr-review-findings.html, pr-review-no-plan.html, pr-review-states.html. Prefix rv-. Tokens only. */
+
+/* findings: two groups, never blurred. Shape + text + heading carry the meaning; colour reinforces. */
+.rv-group { margin: var(--sp-2) 0 0; font-size: var(--fs-sm); display: flex; align-items: center; gap: var(--sp-1); }
+.rv-group--mechanical { color: var(--success); }
+.rv-group--conversation { color: var(--accent); }
+.rv-findings-list { list-style: none; margin: var(--sp-1) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
+.rv-finding { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--sp-2); width: 100%; padding: var(--sp-2); text-align: left; font: inherit; color: var(--text); background: var(--surface-2); border: 1px solid var(--border-subtle); border-radius: 6px; cursor: pointer; }
+.rv-finding:hover { background: var(--hover); }
+.rv-finding[aria-current='true'] { border-color: var(--accent); box-shadow: inset 2px 0 0 var(--accent); }
+.rv-finding:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.rv-finding-mark { font-weight: 700; }
+.rv-finding-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rv-finding-meta { color: var(--text-muted); font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.rv-finding-title { overflow-wrap: anywhere; }
+.rv-fix { margin-top: var(--sp-1); padding: var(--sp-1) var(--sp-2); border: 1px dashed var(--border-strong); border-radius: 4px; font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.rv-fix-none { color: var(--text-muted); }
+.rv-detail { margin: 0 0 var(--sp-3); padding: var(--sp-3); border: 1px solid var(--border-subtle); border-radius: 6px; background: var(--surface-2); }
+.rv-detail--mechanical { border-left: 3px solid var(--success); }
+.rv-detail--conversation { border-left: 3px solid var(--accent); }
+.rv-detail-head { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.rv-detail-title { margin: var(--sp-2) 0; font-size: var(--fs-lg); overflow-wrap: anywhere; }
+.rv-fixbox { margin-top: var(--sp-2); padding: var(--sp-2) var(--sp-3); border: 1px dashed var(--border-strong); border-radius: 6px; }
+.rv-fixbox-h { margin: 0 0 var(--sp-1); font-weight: 600; }
+.rv-cmd { margin: var(--sp-1) 0; padding: var(--sp-2); background: var(--surface-1); border: 1px solid var(--border-subtle); border-radius: 4px; overflow-x: auto; max-width: 100%; }
+.rv-drawer-split { margin: 0; padding-left: var(--sp-4); list-style: none; }
+
+/* blast radius: a hero strip; the no-plan state is neutral and calm, never red */
+.rv-scope { margin: 0 0 var(--sp-3); padding: var(--sp-3); border: 1px solid var(--border-subtle); border-radius: 6px; background: var(--surface-2); display: flex; flex-direction: column; gap: var(--sp-2); }
+.rv-scope--neutral { border-left: 3px solid var(--border-strong); }
+.rv-scope--ok { border-left: 3px solid var(--success); }
+.rv-scope--info { border-left: 3px solid var(--accent); }
+.rv-scope--danger { border-left: 3px solid var(--danger); }
+.rv-scope-head { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.rv-scope-title { margin: 0; font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+.rv-scope p { margin: 0; }
+.rv-scope-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+.rv-scope-table th, .rv-scope-table td { text-align: left; padding: var(--sp-1) var(--sp-2); border-top: 1px solid var(--border-subtle); overflow-wrap: anywhere; }
+.rv-scope-table thead th { border-top: 0; color: var(--text-muted); font-weight: 600; }
+.rv-scope-more summary { cursor: pointer; }
+.rv-scope-more summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.rv-scope-more ul { margin: var(--sp-1) 0 0; padding-left: var(--sp-4); overflow-wrap: anywhere; }
+.rv-plan { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.rv-plan select { min-width: 0; max-width: 100%; }
+.rv-plan-label { font-size: var(--fs-sm); color: var(--text-muted); }
+
+/* states */
+.rv-failure { text-align: left; }
+.rv-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-top: var(--sp-2); }
+.rv-actions .dg-btn { min-height: 32px; }
+.rv-progress { margin: 0 0 var(--sp-3); }
+.rv-steps { margin: var(--sp-1) 0; padding-left: var(--sp-4); color: var(--text-muted); }
+.rv-degraded { margin: 0 0 var(--sp-3); padding: var(--sp-3); border: 1px solid var(--warn); border-radius: 6px; background: var(--warn-soft); }
+.rv-degraded p { margin: 0; }
+.rv-degraded-h { font-weight: 600; }
+.rv-stage code, .rv-side code { overflow-wrap: anywhere; }

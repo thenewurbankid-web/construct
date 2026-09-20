@@ -47,7 +47,7 @@ export function createReviewJobs({ run = forkRunner } = {}) {
   const queue = [];
   let busy = false;
 
-  const keyOf = ({ root, baseSha, headSha }) => `${root}\0${baseSha}\0${headSha}`;
+  const keyOf = ({ root, baseSha, headSha, planKey }) => `${root}\0${baseSha}\0${headSha}\0${planKey ?? ''}`;
 
   function pump() {
     if (busy) return;

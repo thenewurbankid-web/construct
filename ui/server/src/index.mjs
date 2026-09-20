@@ -27,6 +27,7 @@ import { attachProcessesSocket } from './processesSocket.mjs';
 import { createReviewRouter } from './reviewApi.mjs';
 import { createTestsRouter } from './testsApi.mjs';
 import { createReviewJobs } from './reviewJobs.mjs';
+import { createPlanSource } from './reviewPlans.mjs';
 import { refuseUnknownUpgrades } from './wsUpgrade.mjs';
 import { getOllamaStatus, listOllamaModels, startOllamaPull, removeOllamaModel } from './ollama.mjs';
 import {
@@ -826,6 +827,8 @@ app.use('/api/plan', createPlanRouter(planService));
 export const reviewJobs = createReviewJobs();
 app.use('/api/review', createReviewRouter({
   jobs: reviewJobs,
+  // #316: the saved plans of the current project are the plans of its processes (the store lists them).
+  plans: createPlanSource({ records: () => processesService.store()?.all().processes }),
   getRoot: () => {
     const root = findProjectRoot(getSettings().projectDir);
     return root ? { ok: true, root } : { ok: false, error: 'No Construct project found for the current project directory. Pick a project first.' };

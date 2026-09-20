@@ -4,6 +4,8 @@ import { useRegisterShellTab } from '@/features/shell';
 import { GLOSSARY } from '../domain/BadgeGlossary';
 import { badgesOf, pendingText } from '../domain/Badges';
 import { orderExplanation, rankBranches } from '../domain/Ranking';
+import { describeFailure } from '../domain/FailureView';
+import { useFailureActions } from '../hooks/useFailureActions';
 import { useReviewList } from '../hooks/useReviewList';
 import { useReviewRoute } from '../hooks/useReviewRoute';
 import { ReviewListPage } from '../pages/ReviewListPage';
@@ -32,6 +34,7 @@ export function ReviewListController() {
   const { state } = list;
   const data = state.data;
   const base = list.base;
+  const onFailureAction = useFailureActions({ retry: list.reload, list: list.reload });
 
   const tabs = listShellTabs(
     data && base
@@ -45,7 +48,9 @@ export function ReviewListController() {
   return (
     <ReviewListPage
       loaded={state.loaded}
-      error={state.error}
+      failure={state.error ? describeFailure(state.errorCode, state.error) : null}
+      noBranches={!!data && !data.base}
+      onFailureAction={onFailureAction}
       list={
         data && base
           ? {

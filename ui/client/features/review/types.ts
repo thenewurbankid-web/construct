@@ -64,6 +64,24 @@ export type Finding = {
   title: string;
   message: string;
   files?: string[];
+  line?: number;
+  rule?: string;
+  layer?: string | null;
+  constraint?: { layer: string; canImport: string[] | null } | null;
+  why?: string;
+  suggestedFix?: string;
+  /** Present on mechanical findings: the Construct command that resolves it, and whether it exists yet. */
+  fix?: { via: string; available: boolean; why?: string };
+};
+
+/** The evidence the blast-radius indicator carries (declared vs touched, both directions). */
+export type BlastEvidence = {
+  declared: { features: string[]; files: string[] } | null;
+  touched: { features: string[]; directories?: string[] };
+  extraFeatures?: string[];
+  unreachedFeatures?: string[];
+  extraFiles?: { items: string[]; total: number };
+  missingFiles?: { items: string[]; total: number };
 };
 
 /** One indicator of the full report: the computed sentence, where the number comes from, its findings. */
@@ -75,6 +93,7 @@ export type FullIndicator = {
   headline: string;
   reason?: string;
   source: string;
+  evidence?: unknown;
   findings: Finding[];
 };
 
@@ -95,11 +114,16 @@ export type ChangeResponse = {
   state: ChangeState;
   base: { name: string; sha: string };
   head: { name: string; sha: string; subject: string; author: string; date: string };
+  /** The saved plan this change was compared with (#316), or null: no plan is the normal case. */
+  plan?: { id: string; title: string } | null;
   report?: ChangeReport;
   units?: UnitSummary[];
   unitsOmitted?: number;
   error?: { code: string; message: string };
 };
+
+/** A saved plan the change can be compared with (the processes' plans, from /api/review/plans). */
+export type PlanChoice = { id: string; title: string; state: string; features: string[]; files: number };
 
 // ---- view models ---------------------------------------------------------------
 
@@ -164,29 +188,5 @@ export type ChangeTreeProps = {
 };
 export type UnitSummariesProps = { rows: UnitRow[]; more: UnitsView['more']; selectedPath: string | null; onSelect: (path: string) => void };
 
-// ---- state machine -------------------------------------------------------------
-
-export type ListState = {
-  loaded: boolean;
-  error: string | null;
-  data: BranchList | null;
-  order: ListOrder;
-};
-export type ListAction =
-  | { type: 'LOADED'; data: BranchList }
-  | { type: 'FAILED'; error: string }
-  | { type: 'ORDER'; order: ListOrder };
-
-export type ChangeViewState = {
-  status: 'loading' | 'waiting' | 'ready' | 'failed';
-  data: ChangeResponse | null;
-  error: string | null;
-  selectedPath: string | null;
-  grouping: 'feature' | 'layer' | 'files';
-};
-export type ChangeAction =
-  | { type: 'RESET' }
-  | { type: 'RESPONSE'; data: ChangeResponse }
-  | { type: 'FAILED'; error: string }
-  | { type: 'SELECT'; path: string | null }
-  | { type: 'GROUPING'; grouping: ChangeViewState['grouping'] };
+export type * from './domain/FindingsTypes.ts';
+export type * from './domain/WorkflowTypes.ts';

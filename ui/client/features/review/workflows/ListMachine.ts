@@ -1,14 +1,14 @@
 // Pure (WORKFLOW-001): what the Review branch list knows, and how each event changes it.
 import type { ListAction, ListState } from '../types.ts';
 
-export const initialList: ListState = { loaded: false, error: null, data: null, order: 'risk' };
+export const initialList: ListState = { loaded: false, error: null, errorCode: null, data: null, order: 'risk' };
 
 export function listReducer(state: ListState, action: ListAction): ListState {
   switch (action.type) {
     case 'LOADED':
-      return { ...state, loaded: true, error: null, data: action.data };
+      return { ...state, loaded: true, error: null, errorCode: null, data: action.data };
     case 'FAILED':
-      return { ...state, loaded: true, error: action.error };
+      return { ...state, loaded: true, error: action.error, errorCode: action.code ?? null };
     case 'ORDER':
       return { ...state, order: action.order };
     default:

@@ -29,8 +29,8 @@ export function summarizeChangedUnits(root, headSha, files) {
 }
 
 /** The whole job. `baseSha`/`headSha` are commit ids the parent took from its validated branch list. */
-export function analyse({ root, baseSha, headSha }, deps = { prHealth, summarizeChangedUnits }) {
-  const report = deps.prHealth(root, { base: baseSha, head: headSha });
+export function analyse({ root, baseSha, headSha, expected }, deps = { prHealth, summarizeChangedUnits }) {
+  const report = deps.prHealth(root, { base: baseSha, head: headSha, ...(expected ? { expected } : {}) });
   if (!report.ok) return { ok: false, error: report.error };
   const summaries = deps.summarizeChangedUnits(root, headSha, report.change.files);
   return { ok: true, report, units: summaries.units, unitsOmitted: summaries.omitted, ...(summaries.error ? { unitsError: summaries.error } : {}), worker: { pid: process.pid } };

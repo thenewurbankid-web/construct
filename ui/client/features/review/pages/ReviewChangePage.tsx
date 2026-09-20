@@ -1,5 +1,8 @@
+import { BlastRadius } from '../components/BlastRadius';
+import { FailureNotice } from '../components/FailureNotice';
+import { FindingDetail } from '../components/FindingDetail';
 import { UnitSummaries } from '../components/UnitSummaries';
-import type { UnitSummariesProps } from '../types';
+import type { BlastRadiusProps, FailureAction, FailureView, FindingDetailView, UnitSummariesProps } from '../types';
 
 export type ReviewChangePageProps = {
   status: 'loading' | 'waiting' | 'ready' | 'failed';
@@ -7,15 +10,18 @@ export type ReviewChangePageProps = {
   base: string;
   subject: string | null;
   headline: string | null;
-  error: string | null;
+  failure: FailureView | null;
   degraded: string | null;
+  scope: BlastRadiusProps | null;
+  finding: FindingDetailView | null;
   units: UnitSummariesProps | null;
   onBack: () => void;
-  onRetry: () => void;
+  onFailureAction: (a: FailureAction) => void;
+  onCloseFinding: () => void;
 };
 
 // Presentation-only: every value and handler comes from the controller.
-export function ReviewChangePage({ status, head, base, subject, headline, error, degraded, units, onBack, onRetry }: ReviewChangePageProps) {
+export function ReviewChangePage({ status, head, base, subject, headline, failure, degraded, scope, finding, units, onBack, onFailureAction, onCloseFinding }: ReviewChangePageProps) {
   return (
     <div className="rv-stage" data-testid="review-change">
       <header className="rv-toolbar">
@@ -25,22 +31,30 @@ export function ReviewChangePage({ status, head, base, subject, headline, error,
         </h1>
       </header>
       {subject && <p className="rv-lede" data-testid="review-subject">{subject}</p>}
-      {status === 'failed' && (
-        <div className="dg-empty" role="alert" data-testid="review-change-error">
-          <p className="dg-empty-title">This change could not be analysed</p>
-          <p className="hint">{error}</p>
-          <button type="button" className="dg-btn" onClick={onRetry}>Try again</button>
-        </div>
-      )}
+      {status === 'failed' && failure && <FailureNotice failure={failure} testId="review-change-error" onAction={onFailureAction} />}
       {(status === 'loading' || status === 'waiting') && (
-        <p className="rv-lede" role="status" data-testid="review-waiting">
-          Analysing this change: reading both commits, checking your rules and comparing workflow paths. Deterministic steps, no model involved.
-        </p>
+        <div className="rv-progress" role="status" data-testid="review-waiting">
+          <p className="rv-lede">Analysing this change. The branch list and the changed units stay usable; the results fill in as they arrive.</p>
+          <ol className="rv-steps" aria-label="What is being computed">
+            <li>Reading the changed files from both commits</li>
+            <li>Placing each file in its feature and layer</li>
+            <li>Checking your rules on the base and on the head</li>
+            <li>Comparing workflow paths</li>
+          </ol>
+          <p className="rv-hint">Deterministic steps, no model involved. Nothing is written to your repository.</p>
+        </div>
       )}
       {status === 'ready' && (
         <>
           {headline && <p className="rv-summary" data-testid="review-headline">{headline}</p>}
-          {degraded && <p className="dg-note" role="status" data-testid="review-degraded">{degraded}</p>}
+          {degraded && (
+            <div className="rv-degraded" role="status" data-testid="review-degraded">
+              <p className="rv-degraded-h">This is a large change, so it is summarised by feature</p>
+              <p>{degraded}</p>
+            </div>
+          )}
+          {scope && <BlastRadius {...scope} />}
+          {finding && <FindingDetail detail={finding} onClose={onCloseFinding} />}
           {units && <UnitSummaries {...units} />}
         </>
       )}

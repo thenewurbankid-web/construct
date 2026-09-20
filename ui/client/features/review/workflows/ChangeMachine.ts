@@ -2,7 +2,7 @@
 // event changes it: waiting while the analysis runs, ready when it is done, failed with the engine's message.
 import type { ChangeAction, ChangeViewState } from '../types.ts';
 
-export const initialChange: ChangeViewState = { status: 'loading', data: null, error: null, selectedPath: null, grouping: 'feature' };
+export const initialChange: ChangeViewState = { status: 'loading', data: null, error: null, errorCode: null, selectedPath: null, selectedFindingId: null, grouping: 'feature' };
 
 export function changeReducer(state: ChangeViewState, action: ChangeAction): ChangeViewState {
   switch (action.type) {
@@ -10,14 +10,16 @@ export function changeReducer(state: ChangeViewState, action: ChangeAction): Cha
       return { ...initialChange, grouping: state.grouping };
     case 'RESPONSE': {
       const d = action.data;
-      if (d.state === 'done') return { ...state, status: 'ready', data: d, error: null };
-      if (d.state === 'error') return { ...state, status: 'failed', data: d, error: d.error?.message ?? 'The analysis failed.' };
-      return { ...state, status: 'waiting', data: d, error: null };
+      if (d.state === 'done') return { ...state, status: 'ready', data: d, error: null, errorCode: null };
+      if (d.state === 'error') return { ...state, status: 'failed', data: d, error: d.error?.message ?? 'The analysis failed.', errorCode: d.error?.code ?? null };
+      return { ...state, status: 'waiting', data: d, error: null, errorCode: null };
     }
     case 'FAILED':
-      return { ...state, status: 'failed', error: action.error };
+      return { ...state, status: 'failed', error: action.error, errorCode: action.code ?? null };
     case 'SELECT':
       return { ...state, selectedPath: action.path };
+    case 'SELECT_FINDING':
+      return { ...state, selectedFindingId: action.id };
     case 'GROUPING':
       return { ...state, grouping: action.grouping };
     default:

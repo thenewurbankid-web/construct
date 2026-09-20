@@ -13,6 +13,7 @@ import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
 import { SESSION_COOKIE, createAuth, resolveAuthConfig, signValue } from './auth.mjs';
 import { createReviewRouter } from './reviewApi.mjs';
 import { createReviewJobs } from './reviewJobs.mjs';
+import { createPlanSource } from './reviewPlans.mjs';
 import { listLocalBranches, resolveListed, defaultBase } from './reviewRefs.mjs';
 import { app as realApp, auth as realAuth } from './index.mjs';
 
@@ -61,14 +62,21 @@ const snapshot = (dir) => ({
   stash: run(dir, ['stash', 'list']),
 });
 
-async function withStack({ authOn = true, repo = makeRepo(), runner } = {}, fn) {
+// Two saved plans as the process store would hold them (a process stores its plan verbatim).
+const planRecord = (id, title, touches) => ({ id, title, state: 'succeeded', plan: { steps: [{ id: 's1', touches }] } });
+const RECORDS = [
+  planRecord('proc-billing', 'Billing only', { features: ['billing'], files: [{ path: 'features/billing/domain/billingRules.ts', change: 'modify' }] }),
+  planRecord('proc-all', 'Billing and checkout', { features: ['billing', 'checkout'], files: [] }),
+];
+
+async function withStack({ authOn = true, repo = makeRepo(), runner, records = RECORDS } = {}, fn) {
   const jobs = createReviewJobs(runner ? { run: runner } : {});
   const auth = createAuth(resolveAuthConfig(authOn ? ENV : {}, { host: '127.0.0.1', clientOrigin: ORIGIN }));
   const app = express();
   app.use(express.json());
   auth.mountRoutes(app);
   app.use('/api', auth.requireSession);
-  app.use('/api/review', createReviewRouter({ jobs, getRoot: () => (repo ? { ok: true, root: repo } : { ok: false, error: 'No Construct project found for the current project directory. Pick a project first.' }) }));
+  app.use('/api/review', createReviewRouter({ jobs, plans: createPlanSource({ records: () => records }), getRoot: () => (repo ? { ok: true, root: repo } : { ok: false, error: 'No Construct project found for the current project directory. Pick a project first.' }) }));
   const server = http.createServer(app);
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const port = server.address().port;
@@ -103,6 +111,7 @@ test('every /api/review route is refused with 401 when there is no session', asy
       ['GET', '/api/review/branches'],
       ['GET', '/api/review/change?base=main&head=change'],
       ['POST', '/api/review/analyze', { base: 'main', heads: ['change'] }],
+      ['GET', '/api/review/plans'],
     ]) {
       const res = await call(method, p, { body, headers: { cookie: '' } });
       assert.equal(res.status, 401, `${method} ${p} must need a session`);
@@ -303,5 +312,72 @@ test('review is read-only: the working tree, branches, stash and worktree list a
     assert.deepEqual(snapshot(repo), before);
     assert.deepEqual(fs.readdirSync(repo).sort(), files);
     assert.equal(fs.readFileSync(path.join(repo, 'scratch-uncommitted.txt'), 'utf8'), 'not committed\n');
+  });
+});
+
+// --- #316: a plan as the expected scope --------------------------------------
+
+test('GET /plans lists the saved plans of the project (id, title, what they declare) and nothing else', async () => {
+  await withStack({}, async ({ json }) => {
+    const r = await json('GET', '/api/review/plans');
+    assert.equal(r.status, 200);
+    assert.deepEqual(r.body.plans.map((p) => p.id), ['proc-billing', 'proc-all']);
+    assert.deepEqual(r.body.plans[1], { id: 'proc-all', title: 'Billing and checkout', state: 'succeeded', features: ['billing', 'checkout'], files: 0 });
+    assert.equal(JSON.stringify(r.body).includes('steps'), false, 'the plan body itself is not shipped');
+  });
+});
+
+const BAD_PLANS = ['../../etc/passwd', '--upload-pack=x', '-x', 'nope', 'PROC-BILLING', 'proc-billing/../proc-all', '/etc/passwd', 'proc-billing\n'];
+
+test('a plan id that is not exactly a saved plan is refused with 404 on analyze and change, and starts no work', async () => {
+  const started = [];
+  await withStack({ runner: async (job) => { started.push(job); return { ok: false, error: { code: 'X', message: 'x' } }; } }, async ({ json }) => {
+    for (const bad of BAD_PLANS) {
+      const a = await json('POST', '/api/review/analyze', { body: { base: 'main', heads: ['change'], plan: bad } });
+      assert.equal(a.status, 404, `analyze plan=${JSON.stringify(bad)}`);
+      const c = await json('GET', `/api/review/change?base=main&head=change&plan=${encodeURIComponent(bad)}`);
+      assert.equal(c.status, 404, `change plan=${JSON.stringify(bad)}`);
+    }
+    const notString = await json('POST', '/api/review/analyze', { body: { base: 'main', heads: ['change'], plan: { id: 'proc-all' } } });
+    assert.equal(notString.status, 400);
+    assert.equal(started.length, 0, 'a refused plan starts nothing');
+  });
+});
+
+test('a `-` branch is still refused when a plan is supplied', async () => {
+  await withStack({}, async ({ json }) => {
+    const r = await json('POST', '/api/review/analyze', { body: { base: 'main', heads: ['-x'], plan: 'proc-all' } });
+    assert.equal(r.status, 400);
+  });
+});
+
+test('a chosen plan becomes the engine\'s expected scope, read from the store, and is compared both ways', async () => {
+  const seen = [];
+  await withStack({}, async ({ json, repo }) => {
+    const before = snapshot(repo);
+    const q = await json('POST', '/api/review/analyze', { body: { base: 'main', heads: ['change'], plan: 'proc-billing' } });
+    assert.equal(q.status, 202);
+    const done = await until(async () => {
+      const r = await json('GET', '/api/review/change?base=main&head=change&plan=proc-billing');
+      return r.body.state === 'done' ? r.body : null;
+    }, 'the analysis of `change` against a plan');
+    seen.push(done);
+    assert.deepEqual(done.plan, { id: 'proc-billing', title: 'Billing only' });
+    const scope = done.report.indicators.find((i) => i.id === 'blast-radius');
+    assert.equal(scope.measured, true);
+    assert.deepEqual(scope.evidence.declared.features, ['billing']);
+    assert.deepEqual(scope.evidence.extraFeatures, ['checkout'], 'checkout changed but the plan did not declare it');
+    // The same commits with no plan are a separate, still-unmeasured result (the cache key includes the plan).
+    const bare = await json('GET', '/api/review/change?base=main&head=change');
+    assert.equal(bare.body.state, 'none');
+    assert.equal(bare.body.plan, null);
+    assert.deepEqual(snapshot(repo), before, 'nothing in the repository changed');
+  });
+  assert.equal(seen.length, 1);
+});
+
+test('no project means no plans, as a plain 400', async () => {
+  await withStack({ repo: null }, async ({ json }) => {
+    assert.equal((await json('GET', '/api/review/plans')).status, 400);
   });
 });
