@@ -25,6 +25,7 @@ import { validateEnvelope } from './engine/envelope.mjs';
 import { ingestPage } from './engine/pageTransformer.mjs';
 import { generateWorkflow } from './engine/workflowGenerator.mjs';
 import { generateController } from './engine/controllerBinder.mjs';
+import { generateFeatureTests } from './engine/testGenerator.mjs';
 import { startTimer, elapsedSeconds, formatDuration } from './timing.mjs';
 import { explainSource, renderExplained } from './engine/workflowExplain.mjs';
 import { listWorkflowSourceFiles, readWorkflowSource } from './engine/workflowSource.mjs';
@@ -121,7 +122,29 @@ export async function feature(args) {
 // ends up *inside* a file generate() was already going to create via the
 // plain stub path. Omitting --llm leaves the scaffolded template stub
 // exactly as before this existed.
+// #348: `construct generate tests <feature> [--dry-run] [--prune]` writes one LOCKED Playwright spec per
+// workflow scenario into features/<feature>/tests/generated/ (see engine/testGenerator.mjs).
+function generateTests(args) {
+  const feature = args[1];
+  if (!feature || feature.startsWith('--')) {
+    throw new ConstructError('Usage: construct generate tests <feature> [--dry-run] [--prune] [--dir <path>]', { exitCode: EXIT_CODES.USAGE_ERROR });
+  }
+  const root = getRoot(args);
+  const t = startTimer();
+  const r = generateFeatureTests(root, feature, { dryRun: args.includes('--dry-run'), prune: args.includes('--prune') });
+  const dry = args.includes('--dry-run') ? ' (dry run, nothing written)' : '';
+  for (const f of r.written) console.log(`Wrote ${f}${dry}`);
+  for (const f of r.unchanged) console.log(`Unchanged ${f}`);
+  for (const f of r.pruned) console.log(`Pruned ${f}${dry}`);
+  for (const f of r.orphans.filter((o) => !r.pruned.includes(o))) console.log(`Orphan ${f} (no scenario produces it any more; --prune removes it)`);
+  for (const sk of r.skipped) console.log(`Skipped machine "${sk.machine}" in ${sk.file}: ${sk.reason}`);
+  if (r.truncated) console.log('Note: a machine has more scenarios than the enumeration limit; only the first were generated.');
+  const todo = r.files.filter((f) => f.needs.length).length;
+  console.log(`${r.files.length} spec(s) for feature "${feature}" (${r.written.length} written, ${r.unchanged.length} unchanged; ${todo} pending a fixture), start URL ${r.route ?? 'TODO (no route reaches this feature)'} (${formatDuration(elapsedSeconds(t))})`);
+}
+
 export async function generate(args) {
+  if (args[0] === 'tests') return generateTests(args);
   if (args[0] === 'layer') return generateVerticalSlice(args);
   const layer = args[0], name = args[1], fi = args.indexOf('--feature');
   if (!layer || !name || fi < 0 || !args[fi + 1]) {

@@ -15,7 +15,7 @@ const list = (items) => (items.length <= 1 ? items.join('') : `${items.slice(0, 
 const plain = (path) => path.split('.').map(humanize).join(' › ');
 
 /** Graph helpers over one extracted machine. */
-function graphOf(machine) {
+export function graphOf(machine) {
   const byPath = new Map(machine.states.map((s) => [s.path, s]));
   const parentOf = (p) => byPath.get(p)?.parent ?? null;
   /** Enter a state: a compound state starts in its initial child (recursively). */

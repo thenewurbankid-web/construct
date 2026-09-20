@@ -3,6 +3,7 @@ import path from 'node:path';
 import yaml from 'js-yaml';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { normalizeFrozen } from './frozen.mjs';
+import { normalizeNonLayer } from './nonLayer.mjs';
 
 export const DEFAULT_LAYERS = {
   route: { pattern: 'app/**/page.tsx', canImport: ['controller'] },
@@ -272,6 +273,7 @@ export function loadConfig(root) {
       rules: DEFAULT_RULES,
       exceptions: [],
       frozen: [],
+      nonLayer: [],
     };
   }
 
@@ -303,5 +305,6 @@ export function loadConfig(root) {
     rules,
     exceptions: c.exceptions || [],
     frozen: normalizeFrozen(c.frozen),
+    nonLayer: normalizeNonLayer(c.nonLayer),
   };
 }

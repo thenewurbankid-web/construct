@@ -40,7 +40,7 @@ export function extractPropsInterfaceMembers(source, typeName) {
   const members = ts.isInterfaceDeclaration(decl) ? decl.members : decl.type.members;
   return members
     .filter((m) => ts.isPropertySignature(m) && m.name && ts.isIdentifier(m.name))
-    .map((m) => ({ name: m.name.text, isFunctionType: !!m.type && ts.isFunctionTypeNode(m.type) }));
+    .map((m) => ({ name: m.name.text, isFunctionType: !!m.type && ts.isFunctionTypeNode(m.type), ...(m.questionToken ? { optional: true } : {}) }));
 }
 
 // ---- hook return-signature introspection ----------------------------------
@@ -206,7 +206,9 @@ export function generateController(root, name, feature, opts = {}) {
 
   const propsMembers = extractPropsInterfaceMembers(fs.readFileSync(pagePropsFile, 'utf8'), propsTypeName);
   const hookMembers = extractHookSignature(fs.readFileSync(hookFile, 'utf8'), hookName);
-  const bindings = matchSlotsToHandlers(propsMembers.map((m) => m.name), hookMembers);
+  // #348: an OPTIONAL slot (e.g. flowState, rendered as data-flow-state) nothing matches is left unwired, not stubbed.
+  const optionalSlots = new Set(propsMembers.filter((m) => m.optional).map((m) => m.name));
+  const bindings = matchSlotsToHandlers(propsMembers.map((m) => m.name), hookMembers).filter((b) => b.handler || !optionalSlots.has(b.slot));
   const functionTypeBySlot = new Map(propsMembers.map((m) => [m.name, m.isFunctionType]));
 
   const usedHandlers = [...new Set(bindings.filter((b) => b.handler).map((b) => b.handler))];

@@ -6,6 +6,7 @@ import { makeViolation } from './diagnostics.mjs';
 import { exceptionApplies } from './exceptions.mjs';
 import { parseFile, layerContextFor, extractExports, extractJsdoc, lineOf, EXT } from './parser.mjs';
 import { loadConfig, readRawRules } from './config.mjs';
+import { isNonLayerPath } from './nonLayer.mjs';
 
 // Shaped exactly like DEFAULT_RULES in src/config.mjs, exported for Module 4 (or whoever
 // owns config.mjs next) to merge into the shared rule table. Not written into config.mjs
@@ -170,7 +171,7 @@ export function validateReadability(root) {
   const featureNames = fs.readdirSync(featuresDir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
   for (const featureName of featureNames) {
     const dir = path.join(featuresDir, featureName);
-    const files = walk(dir).filter((p) => EXT.has(path.extname(p)));
+    const files = walk(dir).filter((p) => EXT.has(path.extname(p)) && !isNonLayerPath(root, p, config.nonLayer)); // #348
     for (const file of files) {
       const summary = parseFile(root, file, layerContext);
       const source = fs.readFileSync(file, 'utf8');

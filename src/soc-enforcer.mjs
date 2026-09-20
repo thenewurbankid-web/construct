@@ -9,6 +9,7 @@ import { walk, rel } from './fs.mjs';
 import { makeViolation } from './diagnostics.mjs';
 import { exceptionApplies } from './exceptions.mjs';
 import { parseToAst } from './ast/index.mjs';
+import { isNonLayerPath } from './nonLayer.mjs';
 
 const ext = new Set(['.ts', '.tsx', '.js', '.jsx']);
 export const LAYER_FOLDERS = ['controllers', 'workflows', 'hooks', 'domain', 'services', 'pages', 'components'];
@@ -236,7 +237,7 @@ function checkModuleCohesion(config, out, relFile, src) {
 
 function checkOwnership(config, out, root, featuresRoot, featureName) {
   const featureDir = path.join(root, featuresRoot, featureName);
-  for (const p of walk(featureDir).filter((p) => ext.has(path.extname(p)))) {
+  for (const p of walk(featureDir).filter((p) => ext.has(path.extname(p)) && !isNonLayerPath(root, p, config.nonLayer))) {
     const relToFeature = rel(featureDir, p);
     const segments = relToFeature.split('/');
     const top = segments[0];
@@ -363,7 +364,8 @@ export function validateSeparationOfConcerns(root) {
 
   const featureFiles = walk(root)
     .filter((p) => ext.has(path.extname(p)))
-    .filter((p) => rel(root, p).startsWith(featuresRoot + '/'));
+    .filter((p) => rel(root, p).startsWith(featuresRoot + '/'))
+    .filter((p) => !isNonLayerPath(root, p, config.nonLayer)); // #348: declared non-layer paths (tests) sit outside the graph
 
   for (const p of featureFiles) {
     const r = rel(root, p);

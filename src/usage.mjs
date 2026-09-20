@@ -95,6 +95,9 @@ Commands:
     same-named-page-only stub template; 'construct create controller ... --bind' is
     the equivalent under the create/refactor/research/import grouping)
   construct generate layer <name> --feature <feature> --layers <l1,l2,...> [--llm <provider>] [--dir <path>]
+  construct generate tests <feature> [--dry-run] [--prune] [--dir <path>]
+    (one LOCKED Playwright spec per workflow scenario into features/<feature>/tests/generated/;
+    needs frozen: + nonLayer: globs for tests in architecture.yml; deterministic, no LLM)
   construct sync [--dir <path>]
   construct validate [--format json] [--dir <path>]
   construct summarize [--feature <name>] [--format json|md|compact|prose] [--since <ref>] [--dir <path>]
