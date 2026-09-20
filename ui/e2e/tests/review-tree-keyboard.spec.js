@@ -61,8 +61,7 @@ test.describe.serial('Review: the changed-units tree by keyboard (#351)', () => 
     const tree = page.getByRole('tree', { name: 'Changed units by feature' });
 
     // Tab from the grouping buttons lands on the tree's single tab stop, with a visible focus ring.
-    await page.getByTestId('review-group-files').focus();
-    await page.getByTestId('review-group-feature').focus();
+    await page.getByTestId('review-group-files').focus(); // the last control before the tree
     await page.keyboard.press('Tab');
     const first = tree.locator('[role="treeitem"]').first();
     await expect(first).toBeFocused();
@@ -109,7 +108,9 @@ test.describe.serial('Review: the changed-units tree by keyboard (#351)', () => 
     expect(rows).toBeGreaterThan(5);
 
     // Down to a file and Enter selects it: aria-selected, and the unit list on the stage follows.
-    await page.keyboard.press('ArrowDown'); // layer
+    await page.keyboard.press('ArrowDown'); // the layer folded earlier
+    await expect(page.locator(':focus')).toHaveAttribute('aria-expanded', 'false');
+    await page.keyboard.press('ArrowRight'); // unfold it
     await page.keyboard.press('ArrowDown'); // its first file
     await expect(page.locator(':focus')).toHaveAttribute('data-testid', 'review-file');
     const name = (await focused(page)).text;

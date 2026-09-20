@@ -40,7 +40,7 @@
 .rv-badge { display: inline-block; font-size: var(--fs-sm); font-weight: 600; padding: 0 var(--sp-2); border-radius: 999px; border: 1px solid var(--border-subtle); white-space: nowrap; }
 .rv-badge--danger { color: var(--danger); background: var(--danger-soft); border-color: var(--danger); }
 .rv-badge--warn { color: var(--warn); background: var(--warn-soft); border-color: var(--warn); }
-.rv-badge--info { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+.rv-badge--info { color: var(--text); background: var(--accent-soft); border-color: var(--accent); }
 .rv-badge--ok { color: var(--success); background: var(--success-soft); border-color: var(--success); }
 .rv-badge--neutral { color: var(--text-muted); background: var(--neutral-soft); }
 

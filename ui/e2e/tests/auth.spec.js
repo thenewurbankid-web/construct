@@ -114,6 +114,7 @@ test.describe('#278 GitHub login gate', () => {
     expect(await apiStatus(page, '/api/review/plans')).toBe(401);
     expect(await apiStatus(page, '/api/review/change?base=main&head=main&plan=proc_x')).toBe(401);
     expect(await page.evaluate(([api]) => fetch(`${api}/api/review/analyze`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ base: 'main', heads: ['x'] }) }).then((r) => r.status), [API])).toBe(401);
+    expect(await page.evaluate(([api]) => fetch(`${api}/api/review/cancel`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ base: 'main', head: 'x' }) }).then((r) => r.status), [API])).toBe(401);
 
     // #289/#332: Plan mode's context, proposals, impact, validation and Run are gated too (Run is a mutating POST).
     expect(await apiStatus(page, '/api/plan/context')).toBe(401);
@@ -181,6 +182,8 @@ test.describe('#278 GitHub login gate', () => {
     // Signed in, Review is reachable (this server's project may not be a repository: a 400 is fine, a 401 is not).
     expect(await apiStatus(page, '/api/review/branches')).not.toBe(401);
     expect(await apiStatus(page, '/api/review/plans')).not.toBe(401);
+    // #351: cancel passes the gate too; an unlisted branch is refused (400/404), never a success and never started work.
+    expect(await page.evaluate(([api]) => fetch(`${api}/api/review/cancel`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ base: 'main', head: 'nope' }) }).then((r) => r.status), [API])).toBeGreaterThanOrEqual(400);
 
     // Signed in, Plan mode's read endpoint passes the gate.
     expect(await apiStatus(page, '/api/plan/context')).not.toBe(401);
