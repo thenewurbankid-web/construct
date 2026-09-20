@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { waitForCockpitReady } from './support/cockpit.js';
 
 // #252 -- the shell fires one `construct validate` as soon as the project
 // resolves, and on a busy machine its result lands seconds later, while the
@@ -121,6 +122,7 @@ test.describe('A background validate must not disturb what you are doing (#252)'
     const release = await holdValidate(page);
     await page.goto('/help');
     await checking(page);
+    await waitForCockpitReady(page);
     await page.keyboard.press('Control+j');
     const drawer = page.getByRole('region', { name: 'Drawer' });
     await expect(drawer).toBeVisible();
@@ -159,6 +161,7 @@ test.describe('A background validate must not disturb what you are doing (#252)'
     const release = await holdValidate(page, [THREE, result([v('SLICE-001', 'error', 'features/demo/hooks/useThing.tsx')])]);
     await page.goto('/help');
     await checking(page);
+    await waitForCockpitReady(page);
     await page.keyboard.press('Control+j');
     const drawer = page.getByRole('region', { name: 'Drawer' });
     await expect(drawer).toBeVisible();
@@ -213,6 +216,7 @@ test.describe('A background validate must not disturb what you are doing (#252)'
     const release = await holdValidate(page);
     await page.goto('/help');
     await checking(page);
+    await waitForCockpitReady(page);
 
     await page.keyboard.press('Control+b'); // the user collapses the Browser pane
     await expect(page.locator('#sh-pane-left')).toHaveCount(0);

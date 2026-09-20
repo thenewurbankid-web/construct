@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { gotoCockpit } from './support/cockpit.js';
 
 // Design #245 — the Cockpit shell frame: Browser (left) | stage | Tools (right),
 // bottom drawer, status bar. Panes resize by mouse and keyboard, collapse, and
@@ -108,7 +109,7 @@ test.describe('Cockpit shell layout (#245)', () => {
   });
 
   test('Ctrl+B collapses and restores the Browser pane; F6 moves focus between panes', async ({ page }) => {
-    await page.goto('/help');
+    await gotoCockpit(page, '/help');
     await page.keyboard.press('Control+b');
     await expect(page.getByRole('complementary', { name: 'Browser' })).toHaveCount(0);
     await page.keyboard.press('Control+b');
