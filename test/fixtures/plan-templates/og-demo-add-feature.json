@@ -1,0 +1,30 @@
+{
+  "templateVersion": 1,
+  "name": "demo.add-feature",
+  "description": "TEST FIXTURE ONLY (not part of any curated set): create a feature and one layer for it.",
+  "parameters": {
+    "feature": { "type": "identifier", "description": "Feature name.", "example": "checkout" },
+    "layer": { "type": "enum", "values": ["domain", "service", "hook"], "default": "service", "description": "Layer to scaffold.", "example": "service" }
+  },
+  "ticket": { "source": "text", "title": "Add feature {{feature}}" },
+  "summary": "Create {{feature}} and a {{layer}} layer.",
+  "steps": [
+    {
+      "id": "create-feature",
+      "title": "Create the {{feature}} feature",
+      "flow": "create.feature",
+      "args": { "name": "{{feature}}" },
+      "executor": "deterministic",
+      "touches": { "features": ["{{feature}}"] }
+    },
+    {
+      "id": "create-layer",
+      "title": "Scaffold {{layer}} for {{feature}}",
+      "flow": "create.unit",
+      "args": { "layer": "{{layer}}", "name": "{{feature}}", "feature": "{{feature}}" },
+      "executor": "deterministic",
+      "dependsOn": ["create-feature"],
+      "touches": { "features": ["{{feature}}"] }
+    }
+  ]
+}
