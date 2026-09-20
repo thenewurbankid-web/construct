@@ -39,6 +39,20 @@ async function apiStatus(page, route) {
   );
 }
 
+/** #341: POST one decision exactly as the Cockpit does (credentialed JSON). The body deliberately carries a
+ * forged `by`, which the server must never read. */
+async function decideStatus(page, id) {
+  return page.evaluate(
+    ([api, id]) => fetch(`${api}/api/processes/${id}/decide`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: 'a.ts', verdict: 'reject', by: 'forger' }),
+    }).then((r) => r.status),
+    [API, id],
+  );
+}
+
 /** Attempt the wizard WebSocket upgrade from the page and report whether it
  * opened. A refused upgrade surfaces to a browser as an error/close, never
  * as an open. */
@@ -87,6 +101,9 @@ test.describe('#278 GitHub login gate', () => {
     expect(await apiStatus(page, '/api/processes/proc_x')).toBe(401);
     expect(await page.evaluate(([api]) => fetch(`${api}/api/processes/proc_x/cancel`, { method: 'POST', credentials: 'include' }).then((r) => r.status), [API])).toBe(401);
     expect(await wsOpens(page, '/ws/processes')).toBe(false);
+    // #341: the approval gate's two endpoints. Review is a GET; decide is a mutating POST. Both are refused.
+    expect(await apiStatus(page, '/api/processes/proc_x/review')).toBe(401);
+    expect(await decideStatus(page, 'proc_x')).toBe(401);
 
     // The one deliberate exception, so a liveness probe still works.
     expect(await apiStatus(page, '/api/health')).toBe(200);
@@ -132,6 +149,9 @@ test.describe('#278 GitHub login gate', () => {
     expect(await wsOpens(page)).toBe(true);
     expect(await apiStatus(page, '/api/processes')).toBe(200);
     expect(await wsOpens(page, '/ws/processes')).toBe(true);
+    // #341: signed in, both approval endpoints pass the gate and reach the store, which has no such process (404, not 401).
+    expect(await apiStatus(page, '/api/processes/proc_x/review')).toBe(404);
+    expect(await decideStatus(page, 'proc_x')).toBe(404);
 
     await page.screenshot({ path: path.join(SHOTS, '278-2-signed-in-cockpit.png'), fullPage: true });
 

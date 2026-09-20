@@ -2,6 +2,8 @@
 // only reads these; which controls exist comes from `summary.controls`, the
 // state machine's own answer, never from anything decided here.
 
+import type { DecisionNote, ReviewState, ReviewView, Validation } from './domain/ReviewTypes';
+export type * from './domain/ReviewTypes';
 export type StepExecutor = 'deterministic' | 'local-model' | 'user';
 export type StepStatus = 'pending' | 'running' | 'awaiting-user' | 'done' | 'failed' | 'skipped';
 export type Provenance = 'ok' | 'llm' | 'warn';
@@ -92,6 +94,8 @@ export type DetailView = {
   log: LogRow[];
   logHidden: number;
   artifacts: ArtifactRow[];
+  /** The gate reviews a process only when it is not running or queued. */
+  canReview: boolean;
   error: string | null;
 };
 
@@ -99,6 +103,11 @@ export type ProcessesViewProps = {
   rows: ListRow[];
   detail: DetailView | null;
   diffs: Record<string, DiffResult>;
+  review: ReviewView | null;
+  reviewLoading: boolean;
+  reviewError: string | null;
+  onReview: (id: string) => void;
+  onDecide: (id: string, path: string, verdict: 'approve' | 'reject', diffSha256: string | null) => void;
   busy: boolean;
   notice: string | null;
   error: string | null;
@@ -120,10 +129,21 @@ export type ProcessesState = {
   /** The last refusal or failure of a control, shown next to the buttons. */
   notice: string | null;
   diffs: Record<string, DiffResult>;
+  /** The gate's review per process id. */
+  reviews: Record<string, ReviewState>;
+  /** Per `${id}\n${path}`: why the last decision on that file did not go through. */
+  notes: Record<string, DecisionNote>;
+  /** The check the last approval ran, per process id. */
+  validations: Record<string, Validation | null>;
+  /** `${id}\n${path}` of the decision in flight, if any. */
+  deciding: string | null;
   live: boolean;
 };
 
 export type ProcessesAction =
+  | { type: 'REVIEW'; id: string; result: ReviewState }
+  | { type: 'DECIDING'; key: string | null }
+  | { type: 'DECIDED'; id: string; key: string; note: DecisionNote; validation: Validation | null }
   | { type: 'LISTED'; summaries: ProcessSummary[] }
   | { type: 'LIST_FAILED'; error: string }
   | { type: 'UPDATE'; detail: ProcessDetail }

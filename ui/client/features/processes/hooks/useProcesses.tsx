@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useReducer } from 'react';
 import { fetchProcess } from '../services/ProcessesApi';
 import { fetchDiff, sendControl } from '../services/ProcessActionsApi';
+import { useReview } from './useReview';
 import { initialProcesses, processesReducer, summariesOf } from '../workflows/Processes';
 import { runningCount } from '../domain/ProcessCounts';
 import { useProcessesLive } from './useProcessesLive';
@@ -43,5 +44,7 @@ export function useProcesses(projectDir: string | null) {
     dispatch({ type: 'DIFF', key, result: { status: 'ready', diff, reason } });
   }, []);
 
-  return { state, select, control, loadDiff, running: runningCount(summariesOf(state)) };
+  const { loadReview, decide } = useReview(dispatch);
+
+  return { state, select, control, loadDiff, loadReview, decide, running: runningCount(summariesOf(state)) };
 }

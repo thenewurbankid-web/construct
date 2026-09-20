@@ -65,6 +65,27 @@
 .pr-diff { flex-basis: 100%; margin: 0; padding: var(--sp-2); max-height: 160px; overflow: auto; background: var(--surface-2); border: 1px solid var(--border-subtle); font-family: var(--mono); font-size: var(--fs-sm); }
 .pr-diff-none { flex-basis: 100%; margin: 0; }
 
+/* #341: the approval gate's review. */
+.pr-art-headline { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.pr-review-hint { margin: 0 0 var(--sp-2); }
+.pr-rev { padding: var(--sp-2) 0; border-top: 1px solid var(--border-subtle); }
+.pr-rev:first-child { border-top: 0; }
+.pr-rev-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.pr-rev-actions { margin-left: auto; display: inline-flex; gap: var(--sp-1); }
+.pr-rev-verdict { margin-left: auto; color: var(--success); font-size: var(--fs-sm); font-weight: 600; }
+.pr-rev-refused { margin-top: var(--sp-1); padding: var(--sp-2); border: 1px solid var(--danger); border-left-width: 4px; border-radius: 3px; background: var(--danger-soft); color: var(--text); font-size: var(--fs-sm); }
+.pr-rev-refused strong { color: var(--error); }
+.pr-rev-refused ul { margin: var(--sp-1) 0 0; padding-left: var(--sp-3); }
+.pr-diff--review { display: block; margin-top: var(--sp-1); max-height: 220px; white-space: pre; }
+.pr-dl { display: block; }
+.pr-dl--add { background: var(--success-soft); color: var(--success); }
+.pr-dl--del { background: var(--danger-soft); color: var(--error); }
+.pr-dl--hunk { color: var(--accent); }
+.pr-dl--meta { color: var(--text-faint); }
+.pr-rev-validation { margin-top: var(--sp-2); }
+.pr-rev-validation p { margin: 0; }
+.pr-rev-validation--warn { border-left: 3px solid var(--warn); }
+
 .pr-logscroll { flex: 1; min-height: 0; overflow: auto; }
 .pr-log { list-style: none; margin: 0; padding: var(--sp-1) 0; font-family: var(--mono); font-size: var(--fs-sm); }
 .pr-log-line { display: grid; grid-template-columns: 64px 42px minmax(0, 1fr); gap: var(--sp-2); padding: 1px var(--sp-3); }

@@ -10,6 +10,10 @@ export const initialProcesses: ProcessesState = {
   busyId: null,
   notice: null,
   diffs: {},
+  reviews: {},
+  notes: {},
+  validations: {},
+  deciding: null,
   live: false,
 };
 
@@ -63,6 +67,18 @@ export function processesReducer(state: ProcessesState, action: ProcessesAction)
       return { ...state, busyId: null, notice: action.notice };
     case 'DIFF':
       return { ...state, diffs: { ...state.diffs, [action.key]: action.result } };
+    case 'REVIEW':
+      return { ...state, reviews: { ...state.reviews, [action.id]: action.result } };
+    case 'DECIDING':
+      return { ...state, deciding: action.key };
+    case 'DECIDED':
+      return {
+        ...state,
+        deciding: null,
+        notes: { ...state.notes, [action.key]: action.note },
+        // Keep the last check when a later decision applied nothing (a reject, a refusal).
+        validations: action.validation ? { ...state.validations, [action.id]: action.validation } : state.validations,
+      };
     case 'LIVE':
       return { ...state, live: action.live };
     default:
