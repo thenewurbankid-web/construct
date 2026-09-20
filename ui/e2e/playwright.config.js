@@ -33,6 +33,12 @@ process.env.E2E_STATE_DIR = STATE_DIR;
 // two manual terminals.
 export default defineConfig({
   testDir: './tests',
+  // Two specs need a server of their own (a fake step executor, and a seed route that only that harness
+  // exposes) and assert a clean process store, so under THIS config they fail by construction. They run under
+  // their own configs, which the full-suite recipe in ui/README.md lists:
+  //   npx playwright test -c playwright.processes.config.js
+  //   npx playwright test -c playwright.processes-approval.config.js
+  testIgnore: [/processes-drawer\.spec\.js/, /processes-approval\.spec\.js/],
   outputDir: './test-results',
   fullyParallel: false, // the backend serializes create/refactor/research/import command execution (commandRunner.mjs's queue) — unrelated to the wizard, whose sessions (#80) can now run concurrently and are exercised that way within a single test below
   workers: 1,

@@ -184,6 +184,24 @@ cd ui/e2e
 E2E_CLIENT_PORT=3051 E2E_SERVER_PORT=4051 npx playwright test -c playwright.auth.config.js
 ```
 
+### Running the whole e2e suite
+
+The default config runs almost everything; three specs need a server or a login of their own and run under their
+own configs. Run all four for the full picture. Wrap heavy runs in `tools/dev/heavy.sh` (this box is 15 GB with no
+swap), keep `--workers=1`, and use distinct ports so parallel runs never share a server.
+
+```bash
+cd ui/e2e
+export WATCHPACK_POLLING=true CHOKIDAR_USEPOLLING=1   # fs.inotify.max_user_instances can be as low as 128
+../../tools/dev/heavy.sh npx playwright test --workers=1                                # the default config
+../../tools/dev/heavy.sh npx playwright test -c playwright.auth.config.js               # login gate, and the account chip half of popover-dismiss
+../../tools/dev/heavy.sh npx playwright test -c playwright.processes.config.js          # Processes drawer (fake step executor)
+../../tools/dev/heavy.sh npx playwright test -c playwright.processes-approval.config.js # approve/reject (seeds a finished process)
+```
+
+`a11y.spec.js` and `tests-tab.spec.js` import `@axe-core/playwright`, a declared devDependency: run `npm install` in
+`ui/e2e` once before running them, or they fail at import.
+
 ### Deploying client and server apart
 
 The session cookie is `SameSite=Lax`, so it travels between `:3000` and
