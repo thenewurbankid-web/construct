@@ -1,5 +1,6 @@
 'use client';
 
+import { badgeText } from '../domain/TabRegistry';
 import { useTabHost } from '../hooks/useTabHost';
 import type { TabHostProps } from '../types';
 
@@ -32,11 +33,17 @@ export function TabHost({ label, tabs, activeId, onSelect, empty }: TabHostProps
               onKeyDown={(e) => onKeyDown(e, tab.id)}
             >
               {tab.title}
-              {tab.badge !== undefined && (
-                <span className="sh-badge" aria-label={`${tab.badge} ${tab.title}`}>
-                  {tab.badge}
-                </span>
-              )}
+              {/* A declared badge keeps its room whether or not it has a value
+                  yet, so background work landing cannot shove the tabs after
+                  this one sideways (#252). */}
+              {tab.badge !== undefined &&
+                (tab.badge === null ? (
+                  <span className="sh-badge sh-badge--reserved" aria-hidden="true" />
+                ) : (
+                  <span className="sh-badge" aria-label={`${badgeText(tab.badge)} ${tab.title}`}>
+                    {badgeText(tab.badge)}
+                  </span>
+                ))}
             </button>
           );
         })}
