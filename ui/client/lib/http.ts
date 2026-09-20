@@ -4,9 +4,16 @@ import { API_BASE } from './apiBase';
 // outside features/) — every feature's service/ layer that talks to
 // ui/server's REST endpoints uses this instead of each hand-rolling the
 // same fetch/JSON-parse/`{}`-on-failure boilerplate.
+// #278: `credentials: 'include'` on every call. The session cookie is set
+// by ui/server on :4000 and the Cockpit is served from :3000 — a different
+// origin — so without this the browser sends no cookie and every request
+// from a signed-in user comes back 401. It belongs here, once, rather than
+// in each feature's service/ layer: a feature that forgot it would look
+// logged out for no discoverable reason.
 export async function postJson<T = unknown>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
@@ -18,6 +25,6 @@ export async function postJson<T = unknown>(path: string, body: unknown): Promis
 }
 
 export async function getJson<T = unknown>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`);
+  const res = await fetch(`${API_BASE}${path}`, { credentials: 'include' });
   return res.json() as Promise<T>;
 }

@@ -6,11 +6,11 @@ import type { ProjectStatus } from '../types';
  * `init()` runs `construct init` against whichever project directory is
  * currently selected. */
 export async function fetchProjectStatus(): Promise<ProjectStatus> {
-  const res = await fetch(`${API_BASE}/api/settings`);
+  const res = await fetch(`${API_BASE}/api/settings`, { credentials: 'include' });
   return res.json();
 }
 
 export async function initProject(): Promise<ProjectStatus & { error?: string }> {
-  const res = await fetch(`${API_BASE}/api/init`, { method: 'POST' });
+  const res = await fetch(`${API_BASE}/api/init`, { method: 'POST', credentials: 'include' });
   return res.json();
 }

@@ -35,7 +35,7 @@
  * and Tools buttons appeared to touch) and the labels wrapped onto a second
  * line inside a 24px pill. The command palette trigger is the single elastic
  * item: it ellipsises by design, so it absorbs the whole deficit instead. */
-.sh-brand, .sh-modes, .sh-pill, .sh-icon-btn, .sh-project, .sh-project-btn { flex: none; }
+.sh-brand, .sh-modes, .sh-pill, .sh-icon-btn, .sh-project, .sh-project-btn, .sh-user { flex: none; }
 .sh-brand { font-weight: 700; font-size: var(--fs-lg); margin-right: var(--sp-2); }
 .sh-spacer { flex: 1 1 0; min-width: 0; }
 
@@ -353,4 +353,86 @@ kbd {
  * screen is still one tap away in the Browser pane (Screens tab). */
 @media (max-width: 520px) {
   .sh-modes { display: none; }
+}
+
+/* ---- signed-in account (#278) ---------------------------------------- *
+ * Sits last in the top bar, after the theme toggle. Present only when the
+ * server actually has a login gate — on an unauthenticated loopback run
+ * UserMenuController renders nothing, so the bar looks exactly as before. */
+.sh-user { position: relative; }
+.sh-user-trigger {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 28px;
+  max-width: 160px;
+  padding: 0 var(--sp-2) 0 3px;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  font-size: var(--fs-md);
+  line-height: 1;
+  cursor: pointer;
+}
+.sh-user-trigger:hover { background: var(--surface-3); }
+.sh-user-trigger[aria-expanded='true'] { background: var(--accent-soft); border-color: var(--accent); }
+.sh-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  flex: none;
+  object-fit: cover;
+  background: var(--surface-3);
+}
+.sh-avatar--initial {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+.sh-user-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sh-user-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 180px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow);
+}
+.sh-user-login {
+  margin: 0;
+  padding: 0 var(--sp-2);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.sh-user-item {
+  appearance: none;
+  text-align: left;
+  padding: var(--sp-2);
+  background: transparent;
+  color: var(--text);
+  border: 0;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-md);
+  cursor: pointer;
+}
+.sh-user-item:hover { background: var(--surface-3); }
+
+/* The name is the first thing worth dropping when the bar gets tight
+ * (#273's tier); the avatar alone still carries the accessible name. */
+@media (max-width: 1280px) {
+  .sh-user-name { display: none; }
+  .sh-user-trigger { padding: 0 3px; }
 }

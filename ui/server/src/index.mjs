@@ -7,7 +7,10 @@ import express from 'express';
 import cors from 'cors';
 import http from 'node:http';
 import fs from 'node:fs';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { Readable } from 'node:stream';
+import { AuthConfigError, createAuth, isLoopbackHost, resolveAuthConfig } from './auth.mjs';
 import { create, refactor, research, importCommand, init } from '../../../src/cli.mjs';
 import { findProjectRoot } from '../../../src/config.mjs';
 import { USAGE } from '../../../src/usage.mjs';
@@ -56,17 +59,64 @@ import { listWorkflowFeatures, listWorkflowFiles, readWorkflowMachines, readWork
 // before it ever reaches a route handler.
 export const CLIENT_ORIGIN = process.env.UI_CLIENT_ORIGIN || 'http://localhost:3000';
 
+const port = Number(process.env.PORT) || 4000;
+// Bind loopback unless HOST says otherwise (#277). This server runs CLI
+// commands, browses the filesystem and writes source files, and
+// `listen(port)` alone binds 0.0.0.0, which on a host with a public IP puts
+// all of that on the internet. Exposing it is an explicit opt-in — and as
+// of #278 it is refused outright unless a GitHub login is configured.
+const host = process.env.HOST || '127.0.0.1';
+
+// Whether a GitHub session is required, and how one is obtained, is
+// resolved once, here, from the environment (see auth.mjs for the rules).
+// A configuration the server must not run with — exposed without a way to
+// log in, the e2e test login left on in production, OAuth configured with
+// an empty allowlist — throws, and the process exits rather than starting
+// in an unsafe state.
+let auth;
+try {
+  auth = createAuth(resolveAuthConfig(process.env, { host, port, clientOrigin: CLIENT_ORIGIN }));
+} catch (e) {
+  if (e instanceof AuthConfigError && isEntrypoint()) {
+    console.error(`\nConstruct UI server refused to start:\n\n  ${e.message}\n`);
+    process.exit(1);
+  }
+  throw e;
+}
+
 const app = express();
-app.use(cors({ origin: CLIENT_ORIGIN }));
+// `credentials: true` is required for the session cookie to survive the
+// cross-origin hop from the Next.js client (:3000) to this server (:4000).
+// It is exactly why `origin` must stay a single, specific origin rather
+// than `*` — a credentialed wildcard is both rejected by browsers and the
+// thing that would make a drive-by page able to mint or use a session.
+app.use(cors({ origin: CLIENT_ORIGIN, credentials: true }));
 app.use(express.json());
 
 function respond(res, result) {
   res.status(result.httpStatus).json(result);
 }
 
+// Public on purpose: returns `{ok:true}` and nothing else. Playwright's
+// `webServer` block and any liveness probe poll it before a session can
+// exist. It is registered *above* the gate below, so it is the only
+// unauthenticated `/api` route by construction rather than by a path
+// comparison something could be smuggled past.
 app.get('/api/health', (req, res) => {
   res.json({ ok: true });
 });
+
+// Log in / out. Deliberately outside `/api`, and therefore outside the
+// gate — you cannot log in through a door that requires being logged in.
+auth.mountRoutes(app);
+
+// ---------------------------------------------------------------------------
+// THE GATE (#278). Every route below this line requires a valid, signed
+// GitHub session when authentication is enabled; `/api/*` answers 401
+// without one. Add new routes BELOW this middleware — a route registered
+// above it is public, and this API runs CLI commands and writes files.
+// ---------------------------------------------------------------------------
+app.use('/api', auth.requireSession);
 
 // Read-only. Returns the CLI's *real* help/usage text, imported directly
 // from the same source modules bin/construct.mjs and the REPL use (see
@@ -618,22 +668,44 @@ app.get('/api/logs', (req, res) => {
   res.status(status).json(body);
 });
 
-const port = Number(process.env.PORT) || 4000;
-// Bind loopback unless HOST says otherwise (#277). This server runs CLI
-// commands, browses the filesystem and writes source files, and has no
-// authentication yet — `listen(port)` alone binds 0.0.0.0, which on a host
-// with a public IP puts all of that on the internet. Exposing it is an
-// explicit opt-in, and the log states the interface it actually bound.
-const host = process.env.HOST || '127.0.0.1';
-const server = http.createServer(app);
-attachWizardSocket(server, '/ws/wizard', CLIENT_ORIGIN);
-
-server.listen(port, host, () => {
-  console.log(`Construct UI server listening on http://${host}:${port}`);
-  if (host !== '127.0.0.1' && host !== 'localhost') {
-    console.warn(
-      `WARNING: bound to ${host}, not loopback. This server has no authentication ` +
-      `and can run commands and write files — do not expose it to an untrusted network (#277).`,
-    );
+/** True when this file is the process entry point (`npm start`), false when
+ * it is imported — by a test, or by anything else that wants the app
+ * without a listener. */
+function isEntrypoint() {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  try {
+    return import.meta.url === pathToFileURL(path.resolve(entry)).href;
+  } catch {
+    return false;
   }
-});
+}
+
+/** The Express app and the resolved auth surface, exported so tests can
+ * exercise the real route table (and the real gate) without a listener. */
+export { app, auth };
+
+/** Build the HTTP server with the wizard WebSocket attached. The socket
+ * gets the same `auth` object the REST gate uses, so it can never be the
+ * more permissive of the two. */
+export function createUiServer() {
+  const server = http.createServer(app);
+  attachWizardSocket(server, '/ws/wizard', CLIENT_ORIGIN, auth);
+  return server;
+}
+
+export function start() {
+  const server = createUiServer();
+  server.listen(port, host, () => {
+    console.log(`Construct UI server listening on http://${host}:${port}`);
+    for (const line of auth.describeStartup()) {
+      (line.level === 'warn' ? console.warn : console.log)(line.level === 'warn' ? `WARNING: ${line.text}` : line.text);
+    }
+    if (!isLoopbackHost(host)) {
+      console.warn(`Bound to ${host}, not loopback — this server is reachable from other machines (#277).`);
+    }
+  });
+  return server;
+}
+
+if (isEntrypoint()) start();
