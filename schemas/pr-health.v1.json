@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://construct.dev/schemas/pr-health.v1.json",
+  "title": "Construct PR Health v1",
+  "description": "Deterministic, LLM-free review indicators for the change between two git refs, as returned by prHealth() in src/engine/prHealth.mjs and `construct review`. Read-only: computing it never writes to the repository, working tree, index, branches or stash. Every indicator is `deterministic:true`; every problem is a finding classified `mechanical` (a Construct block can resolve it with no model) or `conversation` (a human must decide) and the two are never merged. Breaking changes go in pr-health.v2.json.",
+  "oneOf": [
+    { "$ref": "#/definitions/report" },
+    { "$ref": "#/definitions/error" }
+  ],
+  "definitions": {
+    "resolution": { "type": "string", "enum": ["mechanical", "conversation"], "description": "mechanical = auto-resolvable by a Construct block (e.g. `construct refactor`), conversation = needs a human. Never blurred." },
+    "status": { "type": "string", "enum": ["clear", "info", "attention", "not-measured"], "description": "clear = positive result; info = worth knowing, not a problem; attention = a reviewer should look; not-measured = the indicator could not be computed for this input (neutral, never alarming)." },
+    "finding": {
+      "type": "object",
+      "required": ["id", "indicator", "resolution", "severity", "title", "message"],
+      "properties": {
+        "id": { "type": "string", "description": "Stable across runs on the same input." },
+        "indicator": { "type": "string", "enum": ["blast-radius", "unexplained", "rule-regressions", "public-surface", "flow-diff"] },
+        "resolution": { "$ref": "#/definitions/resolution" },
+        "severity": { "type": "string", "enum": ["error", "warning", "info"] },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "files": { "type": "array", "items": { "type": "string" } },
+        "rule": { "type": "string", "description": "Rule findings: the rule id (e.g. SLICE-002)." },
+        "line": { "type": "integer" },
+        "layer": { "type": ["string", "null"] },
+        "feature": { "type": ["string", "null"] },
+        "constraint": {
+          "type": ["object", "null"],
+          "description": "Rule findings: what the project's layer graph allows the violating file's layer to import (from the `rule:<ID>` impact seed).",
+          "properties": { "layer": { "type": "string" }, "canImport": { "type": ["array", "null"], "items": { "type": "string" } } }
+        },
+        "why": { "type": "string" },
+        "suggestedFix": { "type": "string" },
+        "fix": {
+          "type": "object",
+          "description": "Present only on mechanical findings: which block resolves it.",
+          "required": ["via", "available", "why"],
+          "properties": { "via": { "type": "string" }, "available": { "type": "boolean", "description": "false = mechanical in kind, but no command performs it yet." }, "why": { "type": "string" } }
+        }
+      }
+    },
+    "indicator": {
+      "type": "object",
+      "required": ["id", "title", "deterministic", "measured", "status", "headline", "source", "evidence", "findings"],
+      "properties": {
+        "id": { "type": "string", "enum": ["blast-radius", "unexplained", "rule-regressions", "public-surface", "flow-diff"] },
+        "title": { "type": "string" },
+        "deterministic": { "const": true },
+        "measured": { "type": "boolean", "description": "false only when the input did not allow the indicator (no plan, too large, nothing to compare). Then `reason` says why, neutrally." },
+        "status": { "$ref": "#/definitions/status" },
+        "headline": { "type": "string", "description": "The computed sentence a card shows." },
+        "reason": { "type": "string" },
+        "source": { "type": "string", "description": "\"Where the number comes from\": which existing block produced it." },
+        "evidence": { "type": "object", "description": "Indicator-specific facts behind the headline; see prHealth.mjs." },
+        "findings": { "type": "array", "items": { "$ref": "#/definitions/finding" } }
+      }
+    },
+    "report": {
+      "type": "object",
+      "required": ["schemaVersion", "ok", "kind", "root", "request", "summary", "change", "indicators", "findings", "counts", "degraded", "impact"],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "ok": { "const": true },
+        "kind": { "const": "pr-health" },
+        "root": { "type": "string" },
+        "request": {
+          "type": "object",
+          "required": ["base", "head", "baseSha", "headSha", "compareSha", "comparedFrom", "expected"],
+          "properties": {
+            "base": { "type": "string" },
+            "head": { "type": "string" },
+            "baseSha": { "type": "string" },
+            "headSha": { "type": "string" },
+            "compareSha": { "type": "string", "description": "The commit the head is compared with: the merge base by default, so a base that moved on is not read as removed work." },
+            "comparedFrom": { "type": "string" },
+            "expected": { "type": "string", "enum": ["none", "plan", "touches", "features"] }
+          }
+        },
+        "summary": { "type": "string" },
+        "change": {
+          "type": "object",
+          "required": ["files", "features", "counts"],
+          "properties": {
+            "files": { "type": "array", "items": { "type": "object", "required": ["path", "status", "feature", "layer", "scope"], "properties": { "path": { "type": "string" }, "status": { "type": "string" }, "feature": { "type": ["string", "null"] }, "layer": { "type": ["string", "null"] }, "scope": { "type": "string" } } } },
+            "features": { "type": "array", "items": { "type": "object", "required": ["name", "files"], "properties": { "name": { "type": "string" }, "files": { "type": "integer" } } } },
+            "counts": { "type": "object", "required": ["files", "added", "modified", "deleted"], "properties": { "files": { "type": "integer" }, "added": { "type": "integer" }, "modified": { "type": "integer" }, "deleted": { "type": "integer" } } }
+          }
+        },
+        "indicators": { "type": "array", "items": { "$ref": "#/definitions/indicator" } },
+        "findings": { "type": "array", "items": { "$ref": "#/definitions/finding" } },
+        "counts": { "type": "object", "required": ["mechanical", "conversation"], "properties": { "mechanical": { "type": "integer" }, "conversation": { "type": "integer" } } },
+        "degraded": {
+          "type": ["object", "null"],
+          "description": "Set when the change was too large for per-file analysis (TRUNCATED) or impact analysis could not run; the report is then a feature-level summary rather than a failure.",
+          "properties": { "truncated": { "type": "boolean" }, "level": { "const": "feature" }, "impactError": { "type": "string" }, "message": { "type": "string" } }
+        },
+        "impact": {
+          "type": ["object", "null"],
+          "description": "A digest of the impact analysis this report was built from (the same function Research mode uses).",
+          "properties": { "summary": { "type": "string" }, "warnings": { "type": "array", "items": { "type": "object" } }, "stats": { "type": "object" } }
+        }
+      }
+    },
+    "error": {
+      "type": "object",
+      "required": ["schemaVersion", "ok", "error"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "ok": { "const": false },
+        "error": { "type": "object", "required": ["code", "message"], "properties": { "code": { "type": "string", "enum": ["INVALID_ARGUMENT", "ROOT_NOT_FOUND", "NOT_A_GIT_REPO", "REF_NOT_FOUND", "GIT_FAILED", "CHECKOUT_FAILED", "PROJECT_NOT_AT_HEAD", "INTERNAL_ERROR"] }, "message": { "type": "string" } } }
+      }
+    }
+  }
+}
