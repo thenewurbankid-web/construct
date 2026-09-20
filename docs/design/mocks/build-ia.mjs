@@ -367,9 +367,13 @@ const storyLeft = `${treeHead('Features', [['Notes', ['3', '']], ['Features']], 
    <div class="row l1">&#9776; architecture notes</div></div></div>`;
 const storyMid = editorBar('Features &rsaquo; orders &rsaquo; <b>story.md</b>', [['Story: orders', true, true], ['refundMachine.ts']], '') .replace(devpill, '').replace(/<button class="tg" aria-pressed="true" title="Click an element[^]*?<\/button>/, '') + `
   <div style="overflow:hidden;flex:1;padding:14px 18px;display:flex;flex-direction:column;gap:10px">
-   <div class="srcbar"><span class="lab">Linked ticket</span><span class="field" style="flex:1">https://github.com/acme/storefront/issues/142</span><button class="btn sm">Refresh</button></div>
-   <div class="saveind"><span class="saveind ok">&#10003; Snapshot fetched 2026-09-20 12:02</span> &middot; public page &middot; 1 redirect &middot; 38 KB &middot; <a>Paste text instead</a></div>
-   <div class="notebox" style="margin:0"><div class="t">Refund a delivered order <span class="spacer"></span><span class="st draft">Snapshot</span></div>
+   <div class="fm"><div class="fmh">Front matter <span class="tag human">You own this</span> <span class="spacer"></span><span class="saveind">hand-editable, versioned, shareable</span></div><pre>---
+sources:
+  - url: https://acme.atlassian.net/browse/STORE-142
+    parse: { title: { xpath: "//h1[@data-testid='issue.title']" }, description: 'div.description', acceptance: 'ul.acceptance &gt; li', status: 'span.status' }
+---</pre></div>
+   <div class="saveind"><span class="saveind ok">&#10003; Snapshot updated 12:02, saved automatically</span> <span class="via">via: your browser</span> &middot; <a>Refresh</a> &middot; <a>view diff</a></div>
+   <div class="notebox" style="margin:0"><div class="t">Refund a delivered order <span class="spacer"></span><span class="st draft">Tool-owned block</span></div>
     <div class="b">As a customer I want to request a refund from the order page so that I do not need to contact support. Refunds are allowed within 30 days of delivery.</div>
     <div style="border-top:1px solid var(--border-subtle);padding:6px 0">
      ${acRow('S1', 'Refund button shows only on delivered orders', '<span class="nb test">matched</span>')}
@@ -377,7 +381,7 @@ const storyMid = editorBar('Features &rsaquo; orders &rsaquo; <b>story.md</b>', 
      ${acRow('S3', 'Partial refunds are allowed', '<span class="nb find">missing</span>')}
      ${acRow('S4', 'Customer confirms before the refund is sent', '<span class="nb test">matched</span>')}
      ${acRow('S5', 'An audit entry is written', '<span class="nb find">missing</span>')}</div>
-    <div class="f"><span class="saveind">Stored in <span class="mono">features/orders/story.md</span></span><span class="spacer"></span><label class="saveind"><span class="cb on" style="width:14px;height:14px;border:2px solid var(--accent);background:var(--accent);border-radius:3px;display:inline-block"></span> Keep out of git</label></div></div>
+    <div class="f"><span class="saveind">features/orders/story.md &middot; only the block between the markers is rewritten</span><span class="spacer"></span><label class="saveind"><span class="cb on" style="width:14px;height:14px;border:2px solid var(--accent);background:var(--accent);border-radius:3px;display:inline-block"></span> Keep out of git</label></div></div>
   </div>`;
 const cmpList = (h, tag, items, extra = '') => `<details class="dt" open><summary>${h} <span class="c ${tag}">${items.length}</span></summary>${items.join('')}${extra}</details>`;
 const cmpItem = (t, sub, chip = '') => `<div class="nx" style="padding:6px 0;border:0"><div class="nxh"><div class="grow"><b>${t}</b><small>${sub}</small></div>${chip}</div></div>`;
@@ -437,31 +441,92 @@ const clipPanel = `
    <div class="clf"><button class="tg" aria-pressed="false">&#10003; Key</button><button class="tg" aria-pressed="false">&#10003; Title</button><button class="tg" aria-pressed="false">&#10003; Status</button><button class="tg" aria-pressed="false">&#10003; Description</button><button class="tg" aria-pressed="true">Acceptance criteria</button></div>
    <div class="card" style="margin:10px 0 0"><b>Preview (plain text)</b>
      <div class="kv"><span>Key</span><span>STORE-142</span><span>Title</span><span>Refund a delivered order</span><span>Status</span><span>In Progress</span><span>Acceptance</span><span>5 lines found</span></div></div>
-   <div class="card" style="margin:10px 0 0"><b>Template</b><span class="mono">acme.atlassian.net &nbsp;/browse/*</span><p>Saves selectors only (data, never code). The next ticket on this site is read automatically.</p><div><button class="btn primary sm">Save template</button> <button class="btn sm">Copy clip</button></div></div>
-   <div class="sect" style="padding:12px 0 4px">Saved templates &middot; 3</div>
-   <div class="tpl"><span>acme.atlassian.net /browse/*</span><span class="nb test">matches this page</span></div>
-   <div class="tpl"><span>github.com /acme/*/issues/*</span></div>
-   <div class="tpl"><span>tracker.example.org /t/*</span><span class="nb find">did not match: re-pick</span></div>
-   <div style="padding-top:8px"><button class="btn sm">Export JSON</button> <button class="btn sm">Import JSON</button></div>
+   <div class="card" style="margin:10px 0 0"><b>Selectors for features/orders/story.md</b><span class="mono" style="white-space:pre-wrap">title: { xpath: "//h1[@data-testid='issue.title']" }\ndescription: div.description\nacceptance: ul.acceptance &gt; li\nstatus: span.status</span><span class="saveind">Emitted the most stable form (data-testid or id first, no positions). Title matches 1 &middot; preview: Refund a delivered order. Acceptance matches 5 (a list).</span><p>Picking proposes these selectors as a diff in story.md (data, never code). Nothing is saved until you approve it in the Cockpit.</p><div><button class="btn primary sm">Send proposal to Cockpit</button> <button class="btn sm">Test on this page</button></div></div>
+   <div class="sect" style="padding:12px 0 4px">Other stories that name this host &middot; 3</div>
+   <div class="tpl"><span>orders: acme.atlassian.net/browse/STORE-142</span><span class="nb test">this page</span></div>
+   <div class="tpl"><span>cart: acme.atlassian.net/browse/STORE-77</span></div>
+   <div class="tpl"><span>checkout: acme.atlassian.net/browse/STORE-9</span><span class="nb find">selector did not match</span></div>
+   <div style="padding-top:8px"><button class="btn sm">Copy selectors</button></div>
   </div></div>`;
 const clipperMock = `<div class="clipwrap">${jiraPage}${clipPanel}</div>`;
 
-const clipPaste = `
-<div class="hh">Paste clip: the safe way to bring in a ticket from behind a login<small>You are logged in in your own browser. The clipper reads the page there and copies plain data. Nothing is sent to the Cockpit, and no cookie or password ever leaves your browser.</small></div>
+const clipBridge = `
+<div class="hh">One call, the right route: your own browser reads a login-only ticket when the Cockpit needs it<small>The screen calls StoryApi.fetch(url). Public pages are read by the server; login-only pages by the userscript in your browser. No cookie, password or token ever reaches the Cockpit server.</small></div>
 <div class="sheet3">
- <div><h3>In the Story tab</h3>
-  ${pst('Paste clip', 'Paste what the clipper copied.', '<div class="code" style="border:1px solid var(--border-subtle);border-radius:var(--r-sm);padding:6px 8px;white-space:pre-wrap">{ "key": "STORE-142", "title": "Refund a delivered order", "acceptance": ["Refund button...", "..."], "url": "https://acme.atlassian.net/browse/STORE-142" }</div><div><button class="btn primary sm">Use this clip</button> <button class="btn sm">Cancel</button></div>')}
-  ${pst('Shown as plain text', 'Key, title, status, description and 5 acceptance lines (S1 to S5). Text is escaped, never rendered as HTML, and no link in it is opened or fetched.', '<div><span class="tag det">Deterministic</span> 2.1 KB</div>')}</div>
- <div><h3>When it does not work</h3>
-  ${pst('Template did not match', 'The site changed its layout, so the saved selectors found nothing for Acceptance criteria.', '<div><button class="btn primary sm">Re-pick this field</button> <button class="btn sm">Paste text instead</button></div>', 'style="border-color:var(--warn)"')}
-  ${pst('Clip is too large', 'Clips over 64 KB are refused. Nothing was saved.', '', 'style="border-color:var(--danger)"')}
-  ${pst('Not a clip', 'That text is not clipper data. It was not saved.', '<div><button class="btn sm">Paste as plain story text</button></div>', 'style="border-color:var(--danger)"')}</div>
- <div><h3>Later: one-time delivery (v1.5)</h3>
-  ${pst('Send to Cockpit', 'Instead of copy and paste, the userscript can send the clip to one endpoint.', '<div><span class="mono">Clip token: 4F7K-9Q2M &middot; valid 5 min &middot; one use</span></div><div><button class="btn sm">Create clip token</button></div>')}
-  ${pst('What the token can do', 'Only POST one clip to <span class="mono">/api/story/clip</span> for this feature. It cannot read anything, and dies on first use or after 5 minutes.', '')}</div>
+ <div><h3>Strategy is picked per link</h3>
+  ${pst('StoryApi.fetch(url)', 'One call from the screen; the strategy is chosen automatically and every screen looks the same either way, with a small "via" label.', '<div class="kv" style="grid-template-columns:110px 1fr"><span>Public page</span><span>server, guarded fetch <span class="nb test">default</span></span><span>Login-only</span><span>your browser, userscript <span class="nb test">recommended</span></span><span>Server browser</span><span>later, owner decision <span class="nb find">not for v1</span></span></div>')}
+  ${pst('Login-only flow', 'Each time the story is needed: 1) the page asks the userscript (handshake code, the URL and the parse selectors read from story.md, same page only); 2) your browser reads the ticket with your own login and returns only the picked fields; 3) the Cockpit compares a fingerprint and, only if it changed, saves through its own signed-in call, as untrusted text.', '')}
+  ${pst('Optional, later: server browser', 'A headless browser on the server with a stored login per host. Costs: the server would hold a live Jira or GitHub session at rest (a credential; if leaked it can read everything that login can); SSO and MFA cannot be completed headlessly, so it needs an interactive remote-login window; Chromium is heavy; remote page scripts would run on the server (sandbox and SSRF concerns); scraping terms may forbid it. Not recommended for v1. The strategy slot, a per-host opt-in and the indicator (via: server browser) are reserved.', '<div><span class="tag llm">owner decision</span></div>', 'style="border-color:var(--warn)"')}</div>
+ <div><h3>Two approvals, both revocable</h3>
+  ${pst('In the Cockpit: this story wants to read a page', 'A story.md can name any URL, including one that arrived in a cloned repository. The first use of each host and URL asks you.', '<div><button class="btn primary sm">Allow once</button> <button class="btn sm">Always for this host</button> <button class="btn sm danger">Deny</button></div>', 'style="border-color:var(--warn)"')}
+  ${pst('In the userscript: allow this Cockpit', '<b>cockpit.example.org</b> wants to read tickets from <b>acme.atlassian.net</b> using your login in this browser. It only gets the fields the story.md selectors pick, never the whole page.', '<div><button class="btn primary sm">Allow this Cockpit</button> <button class="btn sm">Not now</button></div>', 'style="border-color:var(--accent)"')}
+  ${pst('Approved hosts', 'acme.atlassian.net for cockpit.example.org &middot; approved 2026-09-20', '<div><button class="btn sm danger">Revoke</button></div>')}
+  ${pst('Activity log (userscript menu)', '12:02 read STORE-142 (5 fields, 2.1 KB) &middot; 12:31 read STORE-142 &middot; 12:32 refused: host not approved (tracker.example.org)', '<div><span class="mono">10 reads per minute at most</span></div>')}</div>
+ <div><h3>Limits and what bounds the risk</h3>
+  ${pst('Threat: a script injected into the Cockpit page', 'It could ask the userscript for tickets. That is bounded: only hosts you approved for this Cockpit origin, only URLs a story.md names and you consented to, only the picked fields returned, selectors validated as data, rate-limited, and every read is in the activity log.', '')}
+  ${pst('Needs, honestly', 'A userscript manager (Tampermonkey or Violentmonkey) and the Cockpit tab open. Without them the last snapshot is used, and the indicator says so. Public GitHub issues need no clipper.', '')}
+  ${pst('Last resort', 'Manual paste stays available when nothing else works.', '<div><button class="btn sm">Paste text instead</button></div>')}</div>
 </div>`;
-Object.assign(pocOut, { 'ia-clipper': clipperMock, 'ia-clip-paste': clipPaste });
-Object.assign(pocTitles, { 'ia-clipper': 'Clipper: click to pick ticket fields on a page you are logged in to', 'ia-clip-paste': 'Clipper: paste clip, failure states, one-time token' });
+
+const ind = (cls, text, title) => `<span class="sind ${cls}" title="${title}"><span class="dt2"></span>${text}</span>`;
+const via = (t) => `<span class="via">via: ${t}</span>`;
+const indRow = (name, chip, note) => `<div class="irow"><span class="in">${name}</span><span>${chip}</span><span class="inote">${note}</span></div>`;
+const storyIndicators = `
+<div class="hh">Story indicators: one quiet mark on the feature, the same for every strategy<small>Shown on the feature row and the Story tab header. Text plus a dot, never colour alone, plus a small "via" label. Checked every time the story is needed (single-flight, debounced; never per keystroke or per render).</small></div>
+<div style="padding:14px 24px;display:grid;gap:6px;max-width:1240px">
+ ${indRow('In sync', ind('ok', '3/5 matched', 'Acceptance 3 of 5 matched') + via('your browser'), 'Fingerprint equals the saved sourceHash, so nothing was rewritten.')}
+ ${indRow('Ticket changed upstream', ind('warn', 'ticket changed, snapshot updated', 'story.md snapshot was rewritten') + '<a>view diff</a>' + via('server'), 'The tool block was rewritten and shows up as a normal commit and diff. Your own text was not touched.')}
+ ${indRow('Story stale vs code', ind('warn', 'may be out of date', 'The generated summary changed since it was reviewed') + '<a>mark reviewed</a>', 'The code moved since you last reviewed.')}
+ ${indRow('Checking', ind('busy', 'checking ticket', 'One check at a time') + via('your browser'), 'Single request, short debounce. The last snapshot stays visible.')}
+ ${indRow('Offline or clipper off', ind('off', 'using snapshot from 12:02', 'No userscript answered') + '<a>Install clipper</a>', 'Says so instead of pretending. Falls back to the saved snapshot. Paste text is the last resort.')}
+ ${indRow('Host not approved', ind('warn', 'approve host', 'Allow this Cockpit to read tickets from acme.atlassian.net'), 'One-time approval in the userscript; nothing is read before it.')}
+ ${indRow('Template did not match', ind('bad', 're-pick', 'The site changed its layout'), 'Open the ticket and click the field again. The last snapshot stays.')}
+ ${indRow('Snapshot edited by hand', ind('warn', 'snapshot edited, refresh paused', 'The tool-owned block differs from its fingerprint') + '<a>keep mine</a> <a>use the ticket</a>', 'Conflict rule: hand edits inside the tool block are never overwritten silently.')}
+ ${indRow('No story yet', '<a>Add a story</a>', 'The only trace. Indicator, compare, @story coverage and Generate-from-story do not exist until a story.md does. Adding it shows as a normal diff.')}
+ ${indRow('Direct content (no link)', ind('ok', 'story vs code: 3/5', 'Compared with the code only') + via('written here'), 'Nothing is fetched, so there is no upstream or freshness check; only story against code.')}
+ ${indRow('Login-only, no pattern yet', ind('warn', 'pick fields', 'No selectors yet') + '<a>Pick fields</a> <a>AI proposes a pattern</a>', 'Login-only pages are always read with an explicit pattern, fields only. Nothing is read until there is one.')}
+ ${indRow('AI unavailable', ind('off', 'using snapshot from 12:02', 'The configured model did not answer'), 'Nothing invented: the saved snapshot is used and the model state is named.')}
+ ${indRow('Server browser (later)', ind('ok', '3/5 matched', 'Acceptance 3 of 5 matched') + via('server browser'), 'Only if the owner enables it per host. Same states, same indicator.')}
+</div>`;
+Object.assign(pocOut, { 'ia-clip-bridge': clipBridge, 'ia-story-indicators': storyIndicators });
+Object.assign(pocTitles, { 'ia-clip-bridge': 'One call, the right route: server, your browser (userscript), later a server browser', 'ia-story-indicators': 'Story indicators on the feature: states' });
+Object.assign(pocOut, { 'ia-clipper': clipperMock });
+Object.assign(pocTitles, { 'ia-clipper': 'Clipper: click to pick ticket fields; the selectors are written into story.md as a diff' });
+
+const storyConsent = `
+<div class="hh">Consent: a story file is not a permission<small>A story.md that arrives in a cloned or foreign repository can name any URL. Nothing is read from your browser until you say so, per host and per URL.</small></div>
+<div class="sheet3">
+ <div><h3>First use of a host and URL</h3>
+  ${pst('This story wants to read a page', '<b>features/orders/story.md</b> wants to read <span class="mono">https://acme.atlassian.net/browse/STORE-142</span> from <b>acme.atlassian.net</b> using your browser login. Only the fields it names (title, description, acceptance, status) will come back.', '<div><button class="btn primary sm">Allow once</button> <button class="btn sm">Always for this host</button> <button class="btn sm danger">Deny</button></div>', 'style="border-color:var(--accent)"')}
+  ${pst('Came from a cloned repository', 'This story.md was not written here (it arrived with the clone of acme/storefront). Review the URL and the selectors before you allow anything.', '<div><button class="btn sm">Show story.md front matter</button></div>', 'style="border-color:var(--warn)"')}</div>
+ <div><h3>Selectors are data, and are checked</h3>
+  ${pst('Rejected selector', '<span class="mono">acceptance: javascript:alert(1)</span> is not a valid selector, so the story was not read. Selectors are limited to 200 characters and to plain query-selector syntax.', '<div><button class="btn sm">Edit story.md</button></div>', 'style="border-color:var(--danger)"')}
+  ${pst('Rejected XPath', '<span class=\"mono\">//*[document(\'http://x\')]</span> is not allowed: only plain node-set paths are evaluated, no functions that reach outside the page.', '', 'style=\"border-color:var(--danger)\"')}
+  ${pst('Denied', 'Reading acme.atlassian.net is denied for this story. The last snapshot is used.', '<div><button class="btn sm">Change</button></div>')}</div>
+ <div><h3>Nothing leaves without you</h3>
+  ${pst('Fetched snapshot is never pushed', 'A refreshed snapshot is saved to the file and shows as an ordinary diff or commit on this machine. It is never pushed automatically.', '')}
+  ${pst('Approved (host, URL) pairs', 'acme.atlassian.net &middot; always &middot; 2026-09-20<br>acme.atlassian.net/browse/STORE-9 &middot; once (expired)', '<div><button class="btn sm danger">Revoke all</button></div>')}</div>
+</div>`;
+Object.assign(pocOut, { 'ia-story-consent': storyConsent });
+Object.assign(pocTitles, { 'ia-story-consent': 'Story consent: a story file names a URL, you decide whether it is read' });
+
+const fmBlock = (t) => `<pre class="mono" style="margin:0;background:var(--surface-3);padding:6px 8px;border-radius:4px;white-space:pre-wrap">${t}</pre>`;
+const storyModes = `
+<div class="hh">Three ways a story.md can be filled, all valid<small>A story only does anything when a story.md exists for the feature. Without one there is a single quiet "Add a story" action.</small></div>
+<div class="sheet3">
+ <div><h3>Modes</h3>
+  ${pst('a. Link + parse pattern (mechanical)', 'Fetch and read with selectors you wrote or picked. Zero model calls, checked on every use.', fmBlock('sources:\n  - url: https://acme.atlassian.net/browse/STORE-142\n    parse: { title: h1.title, acceptance: ul.ac > li }') + '<div><span class="tag det">Deterministic</span></div>')}
+  ${pst('b. Direct content', 'You write or paste the story. No link, nothing fetched, no freshness check; the indicator compares only story vs code.', fmBlock('# Refund a delivered order\n## Acceptance\n- S1 Refund button only on delivered orders'))}
+  ${pst('c. Link without a pattern (public pages only)', 'Only for pages the server can fetch itself (public, guarded). The page text is fetched and your configured AI (local model by default) extracts the fields. Safer route below.', fmBlock('sources:\n  - url: https://acme.atlassian.net/browse/STORE-142') + '<div><span class="tag llm">Local model</span></div>')}</div>
+ <div><h3>Preferred: AI proposes the pattern once</h3>
+  ${pst('Propose selectors', 'The model looks at a stripped copy of the page once and suggests selectors. You review them as a diff in the front matter. After that every refresh is mechanical, with zero model calls.', '<div>' + gen({ mode: 'ai', label: 'Propose selectors' }) + '</div><div class="disc" style="margin-left:0"><b>Before it runs</b> Sends the page text only (scripts, styles and attributes stripped, at most 64 KB, about 5 KB here) to qwen2.5-coder:7b. <b>1 model call.</b> Result is a diff to story.md.</div>')}
+  ${pst('Result: a diff you approve', 'parse: { title: h1.title, description: div.desc, acceptance: ul.ac &gt; li }', '<div><button class="btn primary sm">Approve diff</button> <button class="btn sm">Discard</button></div>')}</div>
+ <div><h3>If AI extracts every time (opt-in)</h3>
+  ${pst('What is sent, and verified', 'Each use sends the sanitised page text (size cap, count of model calls shown) and needs the AI toggle and consent. Then a mechanical check: every extracted field must be quoted text found in the fetched page text. Anything not found is rejected or flagged, so extraction cannot invent content. The result is a reviewable diff to the tool-owned block.', '<div><span class="tag det">Verified mechanically</span></div>')}
+  ${pst('Login-only pages: always a pattern', 'A login-only page is never read as a whole and the AI never sees it. Use <b>Pick fields</b> (click to pick), or <b>AI proposes a pattern</b> from a structure-only skeleton: the tag, id, class and data-testid tree with text cut to 40 characters, no attribute values, links, form values or scripts, at most 32 KB. You see the exact skeleton before it is sent. Preferred over sending candidate text, which contains real ticket text.', '<div><button class=\"btn sm\">Pick fields</button> <button class=\"btn sm\">Show the skeleton that would be sent</button></div>', 'style=\"border-color:var(--warn)\"')}
+</div>`;
+Object.assign(pocOut, { 'ia-story-modes': storyModes });
+Object.assign(pocTitles, { 'ia-story-modes': 'Story: three modes, and AI proposes the pattern once' });
 
 const out = { 'ia-features': features, 'ia-account-menu': menuMock, 'ia-slot-matrix': matrix, 'ia-notes-states': drafts, 'ia-no-project': noProj, 'ia-git': git, 'ia-git-connect': gitConnect, 'ia-narrow': narrow };
 const titles = { 'ia-features': 'Features screen: notes, impact, plan, processes', 'ia-account-menu': 'Account menu: settings, local model, theme, help, sign out', 'ia-slot-matrix': 'Five screens, four slots', 'ia-notes-states': 'Notes: durable states', 'ia-no-project': 'No project: where the Open a project prompt sits', 'ia-git': 'Git screen: PRs and review inside the shell', 'ia-git-connect': 'Git with no remote: where Connect remote and Clone sit', 'ia-narrow': 'Narrow (390 px): one panel at a time' };

@@ -390,111 +390,187 @@ follow.
 4. **AI provider in Generate.** Recommendation: the configured local model only; Claude needs a separate explicit
    opt-in in Settings, and the choice is remembered per browser, per action kind.
 
-## 9. Story: a feature-level story.md, linked or pasted (mocks `ia-story`, `ia-story-states`, `ia-clipper`, `ia-clip-paste`)
+## 9. Story: a feature-level story.md (mocks `ia-story`, `ia-story-states`, `ia-story-modes`, `ia-story-indicators`, `ia-story-consent`, `ia-clip-bridge`, `ia-clipper`)
 
-**Idea.** A feature can carry a **story**: the ticket that asked for it, kept next to the feature, compared
-mechanically with what the code, scenarios and tests actually do. No new folder and no new layer: one file,
-`features/<name>/story.md`, with layer notes as `## headings` inside it. (Declaring it under `nonLayer:
-features/*/story.md` follows the #348 precedent if `validate` objects to a `.md` at the feature root; verify first.)
-The Story is the "why", the Note is a draft of a change, the Plan is the "how"; they link but stay separate.
+**Idea.** A feature can carry a **story**: the ticket that asked for it, kept next to the feature and compared
+mechanically with what the code, scenarios and tests do. No new folder and no new layer: one file,
+`features/<name>/story.md`, with layer notes as `## headings` inside it. If `validate` objects to a `.md` at the
+feature root, declare `nonLayer: features/*/story.md` (#348 precedent); verify before building. The Story is the
+"why", the Note is a draft of a change, the Plan is the "how"; they link but stay separate.
 
-### 9.1 File shape
+### 9.1 Activation and the three modes
+
+**Activation.** Everything story-dependent (indicator, compare, `@story` coverage, Generate-from-story) exists **only
+when a `story.md` exists for the feature**. Without one there is a single quiet **Add a story** action, which
+creates `story.md` from a template as a normal diff. Three modes, all valid (`ia-story-modes`):
+
+| Mode | File has | What runs | Model calls |
+|---|---|---|---|
+| a. Link + parse pattern | `url` + `parse` selectors | fetch, apply selectors, fingerprint | 0 |
+| b. Direct content | the story text, no `url` | nothing fetched; indicator compares story vs code only (no freshness check) | 0 |
+| c. Link without a pattern (**public pages the server can fetch itself only**) | `url` only | page text fetched, the configured AI extracts fields | see 9.6 |
+
+### 9.2 File shape: user-owned vs tool-owned
 
 ```
 ---
-sources: [https://github.com/acme/storefront/issues/142]
-fetchedAt: 2026-09-20T12:02:00Z
-sourceHash: <sha256 of the normalised snapshot text>
+sources:                                   # USER-OWNED: you write it, or the picker proposes it as a diff
+  - url: https://acme.atlassian.net/browse/STORE-142
+    parse: { title: { xpath: "//h1[@data-testid='issue.title']" },     # {css} | {xpath}; a plain string is CSS
+             description: 'div.description', acceptance: 'ul.acceptance > li',
+             status: { css: 'span.status' } }                                 # optionally a url pattern
 ---
-# Refund a delivered order            <- snapshot text (title, description)
-...
-## Acceptance
+<!-- construct:tool-begin fetchedAt=2026-09-20T12:02:00Z sourceHash=<sha256 of picked fields> blockHash=<sha256 of this block> -->
+# Refund a delivered order                 # TOOL-OWNED snapshot (title, description, status)
 - S1 Refund button shows only on delivered orders
-- S2 Refund allowed within 30 days of delivery
+<!-- construct:tool-end -->
+
+## Acceptance notes                        # USER-OWNED: your edits, layer notes as ## headings
 ```
-Acceptance ids `S1..Sn` are assigned once and never renumbered (a removed line leaves a gap). The **snapshot** is kept
-so the story is reviewable offline and in a diff. **Refresh** fetches again and shows ticket vs snapshot as a diff
-(`ia-story-states`); nothing changes until the user accepts.
+The **template lives in the file** (selectors are user text: hand-editable, versioned, shareable with the team).
+Acceptance ids `S1..Sn` are assigned once and never renumbered. **Auto-save only ever rewrites the block between the
+markers**, never user text.
 
-### 9.2 Compare (mechanical first)
+### 9.3 One call: `StoryApi.fetch(url)` and a strategy per link
 
-Deterministic: acceptance ids and keywords against generated scenarios, routes, machine states and tests. Three lists
-(`ia-story`): **Missing from the code**, **In the code, not in the story**, **Matched**. Tests may carry `@story S2`
-so the Tests screen can show acceptance-criteria coverage. Each row can offer the inline **Generate** control
-(section 8.6): e.g. "Add scenario" or "Generate test" (Mechanical by default). **AI compare** is optional behind the
-Mechanical | AI toggle; it may only *cite* acceptance lines and code units, and every citation is verified
-mechanically (the cited text or unit must exist) before anything is shown. **Drift:** a hash of the generated
-summary is stored; when it changes the panel shows "Summary may be out of date" with **Mark reviewed**.
+The screen makes one client-side call, `StoryApi.fetch(url)`, backed by `POST /api/story/fetch`; the service picks a
+strategy automatically and every screen and indicator looks the same either way, plus a small "via" label
+(`ia-clip-bridge`, `ia-story-indicators`):
+1. **Public page -> server**: SSRF-guarded fetch and HTML parse (9.6). Default.
+2. **Login-only page -> your browser (userscript bridge)**, recommended (9.7).
+3. **Server-side headless browser with a stored login profile per host: optional, later, owner decision, not
+   recommended for v1.** Honest costs: the server would hold live Jira or GitHub session cookies at rest (a credential;
+   the blast radius is everything that login can read); SSO and MFA cannot be completed headlessly, so it needs an
+   interactive remote-login window; Chromium is heavy; remote page scripts would execute on the server (sandbox and
+   SSRF concerns); scraping terms may forbid it. The strategy slot, a per-host opt-in and the indicator
+   (`via: server browser`) are reserved; nothing is built.
 
-### 9.3 Getting the ticket in: three routes
+### 9.4 Freshness, auto-save and git
 
-1. **Paste the text** (always works).
-2. **Link a public page** (v1, server-side fetch, plain HTML, parsed in code): public GitHub issues work this way.
-   No Jira or GitHub API connection (deferred by the owner).
-3. **Clip it from your own browser** (section 9.5) for pages behind a login.
+- **Checked every time the story is needed** (not a time threshold): each use does a cheap fetch, computes a
+  **fingerprint** (hash of the picked fields, plus etag / updated-at when the source offers it) and compares it with
+  `sourceHash`. The file is **rewritten only if it changed**. It is **single-flight with a short debounce**: "every
+  time it is needed", never per keystroke or per render.
+- **Auto-saves** one `story.md` per feature; there is no manual save.
+- **Git position (reasoned):** `story.md` is the tool's own record, so the tool block auto-saves and does **not** go
+  through the per-artifact Approvals tab (that gate is for changes to product code and model output). Every rewrite is
+  still an ordinary file change, so it follows the existing commit modes (auto-commit on by default; dirty-tree asks),
+  appears as a normal diff/commit, and is announced in the indicator: "ticket changed, snapshot updated, view diff".
+  A refreshed snapshot is **never pushed** automatically.
+- **Offline or connector missing:** use the snapshot and say so ("using snapshot from 12:02").
+- **Conflict:** if the tool block was edited by hand (its hash differs from `blockHash`), refresh pauses and asks:
+  keep mine / use the ticket. Hand edits are never overwritten silently.
 
-Honest limit: Jira Cloud and private GitHub issues need a login, so the server cannot read them without credentials
-or an API. For those the link is stored as a reference and the user pastes or clips.
+### 9.5 Compare (mechanical first)
 
-### 9.4 Security spec: server-side fetch of a user-supplied URL (SSRF)
+Acceptance ids and keywords against scenarios, routes, machine states and tests, as three lists: **Missing from the
+code**, **In the code, not in the story**, **Matched**. Tests may carry `@story S2`, so the Tests screen shows
+acceptance coverage. Rows can offer the inline Generate control (8.6). AI compare is optional behind the Mechanical |
+AI toggle; it may only cite acceptance lines and code units, and every citation is verified mechanically before it is
+shown. A hash of the generated summary drives "may be out of date / mark reviewed".
 
-The hosted server (`run-hosted.sh`) is internet-facing, so this endpoint is a classic SSRF surface. Rules, all
-enforced in code and covered by tests:
-- **https only**; **host allowlist**: `github.com` by default; Atlassian hosts only if configured in Settings.
-- **Resolve DNS first, then connect to that address**; refuse private, loopback, link-local and cloud-metadata
-  addresses (IPv4 and IPv6, including `169.254.169.254`); re-check after redirects (no rebinding).
-- **Redirects capped** (3), and **every hop re-validated** against the same rules.
-- **Size cap** (1 MB) and **time cap** (10 s); abort and save nothing when exceeded.
-- **No cookies, no `Authorization`, no forwarded headers**; fixed `User-Agent`; `GET` only.
-- **No JavaScript executed** in v1 (plain fetch and HTML parse). A headless browser is only justified if a public
-  page cannot be read otherwise, and would be a separate decision.
-- The parsed result is untrusted text: escaped, control characters stripped, never rendered as HTML, no link inside
-  it followed.
-- **Privacy on disk:** a snapshot of a private ticket must not be published by accident. When the repository is public
-  or the ticket looks private, warn and offer **Keep out of git**, which stores the story in the per-user state
-  directory (with Notes) instead of the project. Committing is then an explicit choice.
+### 9.6 Security
 
-### 9.5 The Clipper: click-to-parse for tickets behind a login (`ia-clipper`, `ia-clip-paste`)
+**Server fetch of a user-supplied URL (SSRF)**, the hosted server is internet-facing: https only; host allowlist
+(`github.com`; Atlassian only if configured); resolve DNS first and refuse private, loopback, link-local and metadata
+addresses (v4 and v6, including 169.254.169.254), re-checked after redirects; at most 3 redirects, each hop
+re-validated; 1 MB and 10 s caps; no cookies, no `Authorization`, `GET` only; **no JavaScript executed**; the result is
+untrusted text (escaped, control characters stripped, never rendered as HTML, no link followed).
 
-"Think like Greasemonkey." The user is already logged in in **their own browser**; the clipper runs there.
-- **Form:** a **userscript** (`construct-clipper.user.js`, Tampermonkey/Violentmonkey). Bookmarklets are blocked by
-  the CSP of GitHub and Jira, so a userscript is the reliable route; a tiny browser extension can follow.
-- **Behaviour:** on a ticket page the user clicks elements to pick fields: key, title, description, acceptance
-  criteria, status. Picked elements are outlined and labelled (`ia-clipper`).
-- **Templates:** picking saves a **template** (host + URL pattern -> selectors) in userscript storage, so the next
-  ticket on that site extracts automatically. Templates export and import as JSON. **Templates are data (selectors),
-  never code.** When a site changes its layout: "Template did not match: re-pick" (`ia-clip-paste`).
-- **Output:** structured story JSON `{ key, title, status, description, acceptance[], url }`. **Deterministic, no AI
-  in the clipper.**
-- **Delivery v1:** the userscript copies the JSON to the clipboard; the user pastes it into **Paste clip** in the Story
-  tab. **There is no network path from a third-party page to the Cockpit.** No credential or cookie leaves the browser.
-- **Delivery v1.5 (later):** one-time, short-lived, single-purpose **clip token** so the userscript can POST to a
-  single endpoint. Spec, so it is safe when built: the token is created in the Cockpit for one feature, lives 5
-  minutes, works once, and can only `POST /api/story/clip` (no read access). The endpoint checks the token (bound to
-  the feature and session), requires `Content-Type: application/json`, caps size at 64 KB, and sets CORS to allow only
-  that call with the exact ticket-site origin the user named when creating the token (never `*`, no credentials mode);
-  a custom header makes it a non-simple request so a plain cross-site form cannot forge it (CSRF); it does not use
-  the session cookie at all.
-- **The Cockpit treats every clip as untrusted text:** 64 KB cap, escaped, never rendered as HTML, control
-  characters stripped, no URL inside is fetched or followed.
+**A story file is not a permission.** A `story.md` that arrives in a cloned or foreign repository can name any URL and
+so make the user's browser read a logged-in page. Therefore the **first use of any (host, url) from a file needs an
+explicit in-Cockpit consent** (`ia-story-consent`): "This story wants to read <url> from <host> using your browser
+login: allow once / always for this host / deny", with an extra warning when the file did not originate here.
+Approvals are listed and revocable. **Selectors are data**: length cap (200), plain query-selector syntax only, no
+`javascript:` or script pseudo-forms, rejected with an explanation otherwise.
 
-### 9.6 What needs the owner
+**AI extraction (mode c)**, honest and safer:
+- **Preferred: AI proposes the parse pattern once.** The model sees a stripped copy of the page text once (scripts,
+  styles and attributes removed, 64 KB cap), proposes selectors, and the user reviews them as a **diff in the front
+  matter**. After approval every refresh is mechanical with **zero model calls**.
+- **If the user chooses extraction on every use**, the control (8.6) shows exactly what is sent (sanitised text, size,
+  number of model calls) and requires the AI toggle and consent. A **mechanical verification** step then requires
+  every extracted field to be **quoted text found in the fetched page text**; anything not present is rejected or
+  flagged, so extraction cannot invent content. The result is a reviewable diff to the tool-owned block.
+- **The AI never sees a whole logged-in page.** There is **no whole-page mode through the userscript bridge**:
+  login-only pages are always read with an explicit parse pattern, fields only. For a login-only page with no
+  pattern the UI offers **Pick fields** (click to pick) or **AI proposes a pattern**. For the latter the bridge sends
+  back only a **structure-only skeleton** (tag, `id`, `class`, `data-testid` tree; text truncated to 40 characters; no
+  attribute values, `href`, form values or scripts; at most 32 KB), and the user sees the exact skeleton before it is
+  sent. Chosen over a "candidate-text outline" because that would carry real ticket text to the model; a skeleton is
+  enough to propose selectors. The proposal comes back as a diff to the front matter (see above).
 
-- **Hosting `construct-clipper.user.js`**: served by the Cockpit (`/clipper.user.js`) so it always matches the
-  server, or published from a repository or the site. A Tampermonkey install link needs a stable URL.
-- **An update channel** for the userscript (`@updateURL`/`@downloadURL`) and who signs off releases.
-- Whether **Atlassian hosts** are ever allowlisted for public pages (rare; most Jira is private).
-- A tiny **browser extension** later (store accounts, review time).
+### 9.6b Selectors: CSS and XPath
 
-### 9.7 Slices (sizes and specs)
+`parse` values are data: a plain string is CSS; `{css: "..."}` and `{xpath: "..."}` are explicit. **Validation (both):**
+length cap 200; CSS evaluated only through `querySelectorAll`; XPath only through `document.evaluate` (in the browser)
+or an XPath 1.0 engine over a parsed HTML tree (on the server), as a **node-set path only**: no `document()`,
+`id()`-style functions that reach outside the tree, no `javascript:` or script forms, no attribute value used as a URL;
+anything else is rejected with a plain explanation (`ia-story-consent`). **Multiple matches:** for single-value fields
+(title, status, description) **more than one match is an error** ("matches 3, make it more specific", shown in the
+picker with the count and a preview); zero matches is the "did not match: re-pick" state; the list field
+(`acceptance`) takes **all matches in document order**. **The picker** emits the most stable form: `data-testid` or `id`
+first, then a short CSS path or XPath, never positional indexes (`nth-child`, `[3]`), and shows the match count and a
+text preview before proposing the diff.
+- **Server-side XPath (public pages):** parse the HTML, then evaluate XPath 1.0. Candidate stack, licences checked on
+  the npm registry on 2026-09-20: `parse5` (MIT) or `linkedom` (ISC) for the HTML tree, `xpath` (MIT) for evaluation,
+  `css-select` (BSD-2-Clause) for CSS; `jsdom` (MIT) is a heavier fallback. Needs a small spike to confirm the
+  `xpath` package works over the chosen DOM; nothing is installed by this design.
+- **In the userscript:** native `document.evaluate` and `querySelectorAll`, no libraries.
+
+### 9.7 The userscript bridge and the picker (`ia-clip-bridge`, `ia-clipper`)
+
+"Think like Greasemonkey." The user is logged in in **their own browser**. One userscript (Tampermonkey or
+Violentmonkey, `construct-clipper.user.js`; bookmarklets are blocked by GitHub and Jira CSP; a tiny extension can follow)
+does two things:
+- **Bridge.** It also `@match`es the Cockpit origin. The Cockpit page sends a request (`window.postMessage` or a
+  `CustomEvent` with a handshake nonce; the script checks `event.source === window` and the nonce) containing the URL
+  and the `parse` selectors read from `story.md`. The script uses `GM_xmlhttpRequest` (with the user's own cookies) to
+  fetch that page, applies the selectors, and posts back **only the picked fields** as structured JSON. The Cockpit
+  saves them through its own authenticated call (session cookie, foreign-Origin refusal, size caps), as untrusted text.
+  **No credential, cookie or token ever reaches the server; no cross-site POST or clip token is needed.**
+- **Picker.** On a ticket page the user clicks elements to pick key, title, description, acceptance criteria, status
+  (outlined and labelled), showing the match count and a preview. It **proposes selectors as a diff to `story.md`**, which the user approves in the Cockpit;
+  selectors can also be typed by hand. Deterministic, no AI.
+
+**Bounds** (this lets a web page make the user's browser read logged-in pages, so it is deliberately narrow): the
+script serves only a host **the user approved once for this Cockpit origin** ("Allow this Cockpit to read tickets from
+acme.atlassian.net", revocable) **and** a URL the Cockpit has already consented to (9.6); returns only the picked
+fields, never the page; rate-limits (10 reads per minute); never returns page text beyond the picked fields (and, on request, the structure-only skeleton above); is configured for one Cockpit origin and validates it; keeps a
+user-visible **activity log** in the userscript menu. **Threat: XSS in the Cockpit page.** It could ask the script for
+tickets; per-host approval, per-URL consent, fields-only responses, rate limit and the log bound the damage to
+already-approved tickets, and no credential is exposed.
+
+**Honest limits.** Needs a userscript manager installed and the Cockpit tab open. Otherwise the last snapshot is used
+and the indicator says so. Public GitHub issues need no clipper. Manual paste remains only as a last resort.
+
+### 9.8 Indicator states (`ia-story-indicators`)
+
+One quiet mark on the feature (tree row and Story tab header), text plus a dot, plus a "via: server / your browser"
+label, identical whichever strategy served it: **In sync (3/5 matched)**, **Ticket changed upstream, snapshot updated
+(view diff)**, **Story stale vs code (mark reviewed)**, **Checking**, **Using snapshot from 12:02** (offline, clipper off
+or AI unavailable), **Approve host**, **Template did not match: re-pick**, **Snapshot edited by hand: refresh paused**,
+**No story yet: Add a story**, **Direct content (story vs code only)**, **Login-only, no pattern yet (Pick fields / AI proposes a pattern)**, and (later)
+the server-browser variant.
+
+### 9.9 What needs the owner
+
+- **Hosting `construct-clipper.user.js`**: served by the Cockpit (always matches the server) or published from a repo or
+  the site (a stable install URL); an **update channel** (`@updateURL`/`@downloadURL`) and who signs off releases.
+- Whether Atlassian hosts are ever allowlisted for server fetch (rare; most Jira is private).
+- Whether the optional server-browser strategy is ever wanted (9.3): a security and cost decision.
+- A tiny browser extension later (store accounts and review).
+
+### 9.10 Slices (revised; sizes and specs)
 
 | # | Slice | Size | Specs touched / new |
 |---|---|---|---|
-| 15 | **story.md format + mechanical compare block** (parse, ids S1..Sn, three lists, drift hash, `@story` tag reader); a deterministic block beside `testGenerator` | M | unit tests; new `story-compare.spec.js` later with the tab; `nonLayer` check |
-| 16 | **Safe URL fetch** for public pages (all of 9.4) with tests for each refusal | M | server tests; new `story-fetch.spec.js` |
-| 17 | **Story tab** in Features: link field, snapshot, refresh diff, three-list Compare, Keep out of git, states (`ia-story`, `ia-story-states`) | M | `plan-mode`, `shell-tabs`; new `story-tab.spec.js` |
-| 18 | **Clipper userscript + template JSON + Paste clip** (v1: clipboard delivery) | M | new `story-clip.spec.js` (Paste clip); userscript tested against a fixture page |
-| 19 | **Clip token endpoint** (v1.5), only after 18 ships | S | new server tests |
-| 20 | **AI compare** with mechanically verified citations, and `@story` coverage on the Tests screen | S | `tests-tab`, `tests-states` |
+| 15 (#383) | **story.md format and mechanical block**: parse, tool block writer (markers, `sourceHash`, `blockHash`), ids S1..Sn, three-list compare, drift hash, `@story` reader | M | unit tests; `nonLayer` check |
+| 16 (#384) | **`StoryApi.fetch` + `POST /api/story/fetch`**: strategy selection, public-page strategy (all SSRF rules), consent store per (host, url), selector validation | M | server tests per refusal; new `story-fetch.spec.js` |
+| 17 (#385) | **Story tab and indicators**: Add a story, front matter view, auto-save with commit-mode behaviour, every-use freshness (single-flight), all states of `ia-story-indicators`, Keep out of git | L | `plan-mode`, `shell-tabs`, `commit-on-save`; new `story-tab.spec.js` |
+| 18 (#386) | **Userscript bridge + picker** (nonce handshake, per-host approval, fields-only, rate limit, activity log, selectors written to story.md as a diff) | L | new `story-bridge.spec.js` against a fixture ticket page |
+| 19 (#387) | **AI proposes the pattern once (from the skeleton for login-only pages); verified per-use extraction for public pages (mode c)**; CSS and XPath support and validation | M | new `story-ai-extract.spec.js` |
+| 20 (#388) | **AI compare with verified citations, `@story` coverage on the Tests screen** | S | `tests-tab`, `tests-states` |
 
-Order: 15, then 16 and 18 in parallel, then 17 (needs 15 and one of 16/18), then 20; 19 later.
+The clip-token endpoint of the first draft is dropped: the bridge needs no token. Order: 15, then 16 and 18 in
+parallel, then 17, then 19 and 20.

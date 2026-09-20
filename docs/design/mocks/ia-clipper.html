@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>Clipper: click to pick ticket fields on a page you are logged in to - Concept</title>
+<html lang="en"><head><meta charset="utf-8"><title>Clipper: click to pick ticket fields; the selectors are written into story.md as a diff - Concept</title>
 <link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="ia.css">
 <script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
 </head><body>
-<div class="concept">Concept - not implemented <span>Clipper: click to pick ticket fields on a page you are logged in to</span></div>
+<div class="concept">Concept - not implemented <span>Clipper: click to pick ticket fields; the selectors are written into story.md as a diff</span></div>
 <div class="clipwrap">
 <div class="jp">
   <div class="jbar"><i></i><i></i><i></i>&nbsp;&nbsp;acme.atlassian.net/browse/STORE-142 <span style="margin-left:auto;color:#667085">(a page you are logged in to)</span></div>
@@ -30,11 +30,14 @@
    <div class="clf"><button class="tg" aria-pressed="false">&#10003; Key</button><button class="tg" aria-pressed="false">&#10003; Title</button><button class="tg" aria-pressed="false">&#10003; Status</button><button class="tg" aria-pressed="false">&#10003; Description</button><button class="tg" aria-pressed="true">Acceptance criteria</button></div>
    <div class="card" style="margin:10px 0 0"><b>Preview (plain text)</b>
      <div class="kv"><span>Key</span><span>STORE-142</span><span>Title</span><span>Refund a delivered order</span><span>Status</span><span>In Progress</span><span>Acceptance</span><span>5 lines found</span></div></div>
-   <div class="card" style="margin:10px 0 0"><b>Template</b><span class="mono">acme.atlassian.net &nbsp;/browse/*</span><p>Saves selectors only (data, never code). The next ticket on this site is read automatically.</p><div><button class="btn primary sm">Save template</button> <button class="btn sm">Copy clip</button></div></div>
-   <div class="sect" style="padding:12px 0 4px">Saved templates &middot; 3</div>
-   <div class="tpl"><span>acme.atlassian.net /browse/*</span><span class="nb test">matches this page</span></div>
-   <div class="tpl"><span>github.com /acme/*/issues/*</span></div>
-   <div class="tpl"><span>tracker.example.org /t/*</span><span class="nb find">did not match: re-pick</span></div>
-   <div style="padding-top:8px"><button class="btn sm">Export JSON</button> <button class="btn sm">Import JSON</button></div>
+   <div class="card" style="margin:10px 0 0"><b>Selectors for features/orders/story.md</b><span class="mono" style="white-space:pre-wrap">title: { xpath: "//h1[@data-testid='issue.title']" }
+description: div.description
+acceptance: ul.acceptance &gt; li
+status: span.status</span><span class="saveind">Emitted the most stable form (data-testid or id first, no positions). Title matches 1 &middot; preview: Refund a delivered order. Acceptance matches 5 (a list).</span><p>Picking proposes these selectors as a diff in story.md (data, never code). Nothing is saved until you approve it in the Cockpit.</p><div><button class="btn primary sm">Send proposal to Cockpit</button> <button class="btn sm">Test on this page</button></div></div>
+   <div class="sect" style="padding:12px 0 4px">Other stories that name this host &middot; 3</div>
+   <div class="tpl"><span>orders: acme.atlassian.net/browse/STORE-142</span><span class="nb test">this page</span></div>
+   <div class="tpl"><span>cart: acme.atlassian.net/browse/STORE-77</span></div>
+   <div class="tpl"><span>checkout: acme.atlassian.net/browse/STORE-9</span><span class="nb find">selector did not match</span></div>
+   <div style="padding-top:8px"><button class="btn sm">Copy selectors</button></div>
   </div></div></div>
 </body></html>

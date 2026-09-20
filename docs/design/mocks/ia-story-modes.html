@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Story: three modes, and AI proposes the pattern once - Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="ia.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+</head><body>
+<div class="concept">Concept - not implemented <span>Story: three modes, and AI proposes the pattern once</span></div>
+
+<div class="hh">Three ways a story.md can be filled, all valid<small>A story only does anything when a story.md exists for the feature. Without one there is a single quiet "Add a story" action.</small></div>
+<div class="sheet3">
+ <div><h3>Modes</h3>
+  <div class="card" ><b>a. Link + parse pattern (mechanical)</b><p>Fetch and read with selectors you wrote or picked. Zero model calls, checked on every use.</p><pre class="mono" style="margin:0;background:var(--surface-3);padding:6px 8px;border-radius:4px;white-space:pre-wrap">sources:
+  - url: https://acme.atlassian.net/browse/STORE-142
+    parse: { title: h1.title, acceptance: ul.ac > li }</pre><div><span class="tag det">Deterministic</span></div></div>
+  <div class="card" ><b>b. Direct content</b><p>You write or paste the story. No link, nothing fetched, no freshness check; the indicator compares only story vs code.</p><pre class="mono" style="margin:0;background:var(--surface-3);padding:6px 8px;border-radius:4px;white-space:pre-wrap"># Refund a delivered order
+## Acceptance
+- S1 Refund button only on delivered orders</pre></div>
+  <div class="card" ><b>c. Link without a pattern (public pages only)</b><p>Only for pages the server can fetch itself (public, guarded). The page text is fetched and your configured AI (local model by default) extracts the fields. Safer route below.</p><pre class="mono" style="margin:0;background:var(--surface-3);padding:6px 8px;border-radius:4px;white-space:pre-wrap">sources:
+  - url: https://acme.atlassian.net/browse/STORE-142</pre><div><span class="tag llm">Local model</span></div></div></div>
+ <div><h3>Preferred: AI proposes the pattern once</h3>
+  <div class="card" ><b>Propose selectors</b><p>The model looks at a stripped copy of the page once and suggests selectors. You review them as a diff in the front matter. After that every refresh is mechanical, with zero model calls.</p><div><span class="gen " role="group" aria-label="Propose selectors">
+   <span class="mode" role="radiogroup" aria-label="How"><button role="radio" aria-checked="false" class="" >Mechanical</button><button role="radio" aria-checked="true" class="on ai" >AI</button></span>
+   <button class="go" >Generate</button></span></div><div class="disc" style="margin-left:0"><b>Before it runs</b> Sends the page text only (scripts, styles and attributes stripped, at most 64 KB, about 5 KB here) to qwen2.5-coder:7b. <b>1 model call.</b> Result is a diff to story.md.</div></div>
+  <div class="card" ><b>Result: a diff you approve</b><p>parse: { title: h1.title, description: div.desc, acceptance: ul.ac &gt; li }</p><div><button class="btn primary sm">Approve diff</button> <button class="btn sm">Discard</button></div></div></div>
+ <div><h3>If AI extracts every time (opt-in)</h3>
+  <div class="card" ><b>What is sent, and verified</b><p>Each use sends the sanitised page text (size cap, count of model calls shown) and needs the AI toggle and consent. Then a mechanical check: every extracted field must be quoted text found in the fetched page text. Anything not found is rejected or flagged, so extraction cannot invent content. The result is a reviewable diff to the tool-owned block.</p><div><span class="tag det">Verified mechanically</span></div></div>
+  <div class="card" style="border-color:var(--warn)"><b>Login-only pages: always a pattern</b><p>A login-only page is never read as a whole and the AI never sees it. Use <b>Pick fields</b> (click to pick), or <b>AI proposes a pattern</b> from a structure-only skeleton: the tag, id, class and data-testid tree with text cut to 40 characters, no attribute values, links, form values or scripts, at most 32 KB. You see the exact skeleton before it is sent. Preferred over sending candidate text, which contains real ticket text.</p><div><button class="btn sm">Pick fields</button> <button class="btn sm">Show the skeleton that would be sent</button></div></div>
+</div>
+</body></html>

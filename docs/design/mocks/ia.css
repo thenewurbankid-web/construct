@@ -121,3 +121,15 @@ a { color: var(--accent); text-decoration: underline; }
 .clf { display: flex; flex-wrap: wrap; gap: 6px; } .kv { display: grid; grid-template-columns: 90px 1fr; gap: 4px 8px; font-size: 12px; } .kv span:nth-child(odd) { color: var(--text-faint); }
 .tpl { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--border-subtle); border-radius: var(--r-sm); background: var(--surface-2); margin-bottom: 5px; font: 12px var(--mono); justify-content: space-between; }
 .jbody p { max-width: 600px; } .jside { top: 20px; }
+
+.fm { border: 1px solid var(--border-subtle); border-radius: var(--r-md); background: var(--surface-1); }
+.fm .fmh { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid var(--border-subtle); font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted); }
+.fm pre { margin: 0; padding: 8px 10px; font: 12px/1.5 var(--mono); white-space: pre-wrap; color: var(--text); }
+.via { font: 11px var(--mono); color: var(--text-faint); border: 1px solid var(--border-subtle); border-radius: 3px; padding: 0 5px; margin-left: 4px; }
+
+.sind { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border: 1px solid var(--border-strong); border-radius: 11px; background: var(--surface-2); font-size: 12px; white-space: nowrap; }
+.sind .dt2 { width: 8px; height: 8px; border-radius: 50%; background: var(--text-faint); }
+.sind.ok { color: var(--success); } .sind.ok .dt2 { background: var(--success); } .sind.warn { color: var(--warn); } .sind.warn .dt2 { background: var(--warn); }
+.sind.bad { color: var(--danger); } .sind.bad .dt2 { background: var(--danger); } .sind.busy { color: var(--accent); } .sind.busy .dt2 { background: var(--accent); } .sind.off { color: var(--text-muted); }
+.irow { display: grid; grid-template-columns: 190px 420px 1fr; align-items: center; gap: 12px; padding: 7px 12px; border: 1px solid var(--border-subtle); border-radius: var(--r-md); background: var(--surface-1); }
+.irow .in { font-weight: 600; } .irow .inote { color: var(--text-muted); }
