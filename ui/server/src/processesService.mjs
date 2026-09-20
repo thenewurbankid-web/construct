@@ -18,6 +18,7 @@ import { openProcessStore, resolveStateDir } from '../../../src/engine/processSt
 import { processSummary } from '../../../src/engine/processModel.mjs';
 import { createProcessEngine } from '../../../src/engine/processEngine.mjs';
 import { createBotRunner, botBranch } from '../../../src/engine/botRunner.mjs';
+import { createApprovalGate, GATE_CODES } from '../../../src/engine/approvalGate.mjs';
 
 /** The UI verbs and the machine event each one sends. The client may only
  * name a verb; whether it is legal now is decided by the machine. */
@@ -108,7 +109,10 @@ export function createProcessesService({ getProjectDir, stateDir = resolveStateD
       // pause it so it can be resumed. Once per project per server start.
       store.adoptInterrupted();
       const engine = createProcessEngine({ store, ...engineOptions(), onChange: emit });
-      entry = { store, engine, root };
+      // The approval gate (#337) is the only writer of a bot's output into the tree; the service
+      // only hands it what the router derived (see decide() below).
+      const gate = createApprovalGate({ store, runner });
+      entry = { store, engine, root, gate };
       projects.set(root, entry);
     }
     return entry;
@@ -162,6 +166,40 @@ export function createProcessesService({ getProjectDir, stateDir = resolveStateD
       const result = entry.engine[verb](record.id);
       if (!result.accepted) return { status: 409, body: { ok: false, error: result.error?.message || 'Refused.', controls } };
       return { status: 200, body: { ok: true, process: processView(entry.store.load(record.id)) } };
+    },
+
+    /** #341 — the gate's read-only review of one process: per artifact the exact diff, its sha256, the
+     * refusals and whether it is `applicable`. -> { status, body } */
+    review(id) {
+      const entry = open();
+      const record = entry && find(entry, id);
+      if (!record) return { status: 404, body: { ok: false, error: 'No such process.' } };
+      const review = entry.gate.review(record.id);
+      if (!review.ok) return { status: 409, body: { ok: false, error: review.error.message, code: review.error.code } };
+      return { status: 200, body: review };
+    },
+
+    /** #341 — ONE decision on ONE artifact. `by` is an argument the ROUTER derives from the signed session;
+     * nothing in the request body can reach it. `diffSha256` is passed through exactly as the client echoed
+     * it; it is never computed or defaulted here, so the gate compares it with the diff it re-derives.
+     * -> { status, body } */
+    decide(id, { by, path, verdict, diffSha256 }) {
+      const entry = open();
+      const record = entry && find(entry, id);
+      if (!record) return { status: 404, body: { ok: false, error: 'No such process.' } };
+      const decision = { path, verdict };
+      if (diffSha256 !== undefined) decision.diffSha256 = diffSha256;
+      const result = entry.gate.decide(record.id, { by, decisions: [decision] });
+      if (!result.ok) {
+        const status = result.error.code === GATE_CODES.PROCESS_NOT_FOUND ? 404 : result.error.code === GATE_CODES.PROCESS_ACTIVE ? 409 : 400;
+        return { status, body: { ok: false, error: result.error.message, code: result.error.code } };
+      }
+      // The gate saves the record directly, not through the engine, so tell the socket.
+      const fresh = entry.store.load(record.id);
+      if (fresh) emit(fresh);
+      const outcome = result.results[0];
+      const body = { ok: true, ...result, decided: outcome.decided, refusals: outcome.refusals };
+      return { status: outcome.decided ? 200 : 409, body: outcome.decided ? body : { ...body, ok: false, error: outcome.refusals[0]?.message || 'Refused.' } };
     },
 
     /** The unified diff of one recorded artifact, read from the bot's branch.
