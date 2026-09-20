@@ -3,13 +3,7 @@
 // their git history is unit-testable on its own.
 import type { CommitMode } from '../types';
 
-// The alias is not decoration. Our own MODULE-001 check splits a declarator list on commas, so an
-// exported const annotated with a two-parameter generic is counted as two exports (and the check
-// reads comments too, so even writing the pattern out in prose here would add another). Filed
-// separately; the alias keeps this file's count honest in the meantime.
-type ModeLabels = Record<CommitMode, string>;
-
-export const MODE_LABELS: ModeLabels = {
+export const MODE_LABELS: Record<CommitMode, string> = {
   coalesce: 'Group rapid saves',
   'every-save': 'Every save',
   manual: 'Only when I click Commit',
