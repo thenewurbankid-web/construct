@@ -18,7 +18,7 @@ export function NavigatorPanel({ feature, file, contentHash }: NavigatorPanelPro
     <GlassPanel className="navigator-panel" data-testid="navigator-panel">
       <div className="navigator-header">
         <h3>Navigate</h3>
-        <span className="hint">Ctrl+click a link to open it here. Alt+Left goes back, Alt+Right forward.</span>
+        <span className="hint">Click a link to open it here. Alt+Left goes back, Alt+Right forward.</span>
       </div>
       {nav.loading && <p className="hint">Reading references...</p>}
       {nav.error && <p className="status-error">{nav.error}</p>}

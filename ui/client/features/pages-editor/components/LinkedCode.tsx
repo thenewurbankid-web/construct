@@ -51,7 +51,7 @@ export function LinkedCode({ source, references, onFollow, label }: LinkedCodePr
           <div>
             <strong>{hover.ref.name}</strong> is {hover.ref.relation.description}.
           </div>
-          <div className="ref-tip-key">Ctrl+click or Enter to open here. Alt+Left comes back.</div>
+          <div className="ref-tip-key">Click or press Enter to open here. Alt+Left comes back.</div>
         </div>
       )}
     </>

@@ -139,15 +139,19 @@ test.describe.serial('Pages Editor click to navigate (#321)', () => {
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'pages-editor-navigate-links.png') });
   });
 
-  test('a plain click does not navigate; Ctrl-click opens the reference in the Cockpit', async ({ page }) => {
+  // #346: a resolved reference has a pointer cursor and an underline before any modifier, so a plain
+  // click must open it ("looks clickable but does nothing" is a defect). Ctrl/Cmd-click and Enter still work.
+  test('a plain click opens the reference in the Cockpit; Ctrl-click does too', async ({ page }) => {
     await openHome(page);
     await link(page, 'PriceCard').last().click();
-    await expect(page.getByTestId('trail-current')).toHaveText('HomePage');
-
-    await link(page, 'PriceCard').last().click({ modifiers: ['Control'] });
     await expect(page.getByTestId('trail-current')).toHaveText('PriceCard');
     await expect(page.getByTestId('navigator-file')).toHaveText('features/catalog/components/PriceCard.tsx'); // through the barrel
     await expect(page.getByTestId('linked-code')).toContainText('export function PriceCard');
+
+    await page.keyboard.press('Alt+ArrowLeft');
+    await expect(page.getByTestId('trail-current')).toHaveText('HomePage');
+    await link(page, 'PriceCard').last().click({ modifiers: ['Control'] });
+    await expect(page.getByTestId('trail-current')).toHaveText('PriceCard');
   });
 
   test('three hops build the trail; Alt+Left / Alt+Right and the crumbs walk it; a new hop from the middle drops the forward steps', async ({ page }) => {

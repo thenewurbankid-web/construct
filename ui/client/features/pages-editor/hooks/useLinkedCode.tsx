@@ -36,10 +36,12 @@ export function useLinkedCode(source: string, references: NavReference[], onFoll
 
   const onLinkClick = useCallback(
     (e: MouseEvent<HTMLElement>, ref: NavReference) => {
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-        onFollow(ref);
-      }
+      // A resolved link already shows an underline and a pointer before any modifier, so a plain primary
+      // click opens it (#346). This is a read-only rendering, so there is no caret placement to preserve;
+      // Ctrl/Cmd-click and Enter keep working. Other buttons are left alone.
+      if (e.button !== 0) return;
+      e.preventDefault();
+      onFollow(ref);
     },
     [onFollow],
   );
