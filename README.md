@@ -1,8 +1,135 @@
 # Construct
 
-**Opinionated architecture for AI-native React + TypeScript applications.**
+![version](https://img.shields.io/badge/version-0.8.0%20baseline-blue) ![license](https://img.shields.io/badge/license-MIT-green) ![node](https://img.shields.io/badge/node-%3E%3D20-brightgreen)
 
-Construct makes architectural conventions executable. It ships strict defaults and lets each project modify policy through `architecture.yml`. Next.js App Router (`project.framework: nextjs`, the default) and a client-routed react-spa target (`project.framework: react-spa`) are both first-class — see [Framework targets](#framework-targets).
+**AI guesses. Construct computes.**
+
+Asking a model to build or refactor your app costs tokens every time, and a
+wrong answer can slip in silently. Construct is the other half: small,
+deterministic blocks that do the same job the same way, every time, under
+rules you write down.
+
+- **Blocks, not guesses.** Create, move, rename, validate, summarize and review code with commands that need no model. Same input, same result, zero tokens.
+- **Your rules, enforced.** One file, `architecture.yml`, says where things live. `construct validate` tells you, with the reason and the fix, when code breaks a rule.
+- **A cockpit, not an autopilot.** A web Cockpit lets you browse, preview, plan, review and correct, with a person always in the loop.
+
+Status: version 0.8.0 is the planned baseline. How versions are numbered is in
+[docs/VERSIONING.md](docs/VERSIONING.md). What changed is in [CHANGELOG.md](CHANGELOG.md).
+
+## Quickstart (about 60 seconds)
+
+You need Node 20 or newer.
+
+```bash
+git clone https://github.com/thenewurbankid-web/construct.git
+cd construct && npm install && npm link      # puts `construct` on your PATH
+
+construct init my-app                        # a new project with the rules already in place
+cd my-app && npm install
+construct validate                           # checks the code against architecture.yml
+```
+
+A fresh project passes. `construct validate` exits 0 and may print warnings,
+each with a reason and a fix. Now open the Cockpit on that project (two
+terminals):
+
+```bash
+cd construct/ui/server && npm install && npm start     # backend, port 4000
+cd construct/ui/client && npm install && npm run dev   # frontend, port 3000
+```
+
+Open http://localhost:3000 and pick your project. On your own machine it needs
+no login and listens only on localhost. For a shared server, see
+[Run the Cockpit](#run-the-cockpit).
+
+## What you can do
+
+Three surfaces over the same blocks. Each is listed on its own.
+
+### CLI
+
+| Command | What it does |
+|---|---|
+| `construct init` | Start a project, or adopt Construct in a subfolder of an existing one |
+| `construct validate` | Check code against your rules, with the reason and the fix (`--format json` for scripts) |
+| `construct create ...` | Scaffold a feature, a layer, or a service from an OpenAPI spec |
+| `construct refactor ...` | Move or rename a file, and update every import of it |
+| `construct research ...` | Read-only: summarize, explain workflows in plain English, compute the impact of a change, run a doctor check |
+| `construct summarize` | A plain summary of any feature, file, route or rule |
+| `construct review <base> <head>` | Pull request health between two git refs, without a model |
+| `construct import ...` | Bring an old file or a whole route into the architecture |
+| `construct template ...` | Named, reusable plans |
+
+Run `construct` with no arguments for the full list and every flag.
+
+### Cockpit (web UI)
+
+| Area | What it does |
+|---|---|
+| Browse and preview | Pages, components and features, with a live preview of your app and click to jump to the code |
+| Edit | Pages editor, workflow editor (states and transitions, saved as a small source diff), Monaco source view |
+| Plan and run | Turn a ticket into a checked plan, then run it as a process you can watch, pause and approve |
+| Review | Pull requests grouped by feature and layer, with findings split into mechanical fixes and conversations |
+| Tests | Generated Playwright tests per scenario, clone one to edit it in plain steps |
+| Save | Commit from the Cockpit with a message that counts the impact |
+
+### Core (the library)
+
+| Block | What it does |
+|---|---|
+| Rule engine | Layer, boundary, purity, readability and workflow rules, all set in `architecture.yml` |
+| Generators | Deterministic scaffolds for every layer, plus OpenAPI to RTK Query services |
+| Impact and summaries | The blast radius of a change, with each entry marked derived or inferred |
+| Plans and processes | A plan schema, a process runtime with logs and artifacts, and an approval gate |
+| PR health engine | The indicators behind `construct review` |
+| Frameworks | Next.js App Router and a client-routed React SPA, with the same rules on both |
+
+A model is optional. `--llm <provider>` on `import` and `create` fills a file
+using Claude or a local Ollama model, one small call per file, and only when
+you ask.
+
+## Run the Cockpit
+
+**Locally.** Use the two commands in the Quickstart. Everything is served from
+your machine and only you can reach it.
+
+**Hosted, for a team.** Any non-local address requires GitHub login, and only
+the GitHub accounts you list are let in. You need a GitHub OAuth app and
+these settings, given as environment variables (never committed):
+
+```bash
+PUBLIC_HOST=<your ip or domain> \
+CONSTRUCT_GITHUB_CLIENT_ID=<oauth app id> \
+CONSTRUCT_GITHUB_CLIENT_SECRET=<oauth app secret> \
+CONSTRUCT_ALLOWED_LOGINS=<comma-separated github logins> \
+tools/dev/run-hosted.sh
+```
+
+The script prints the callback URL to register on your OAuth app. Details,
+every option and the security notes are in [ui/README.md](ui/README.md). A
+setting that confines the hosted Cockpit to one workspace folder is in review
+and is not part of this baseline.
+
+## Docs
+
+- Documentation site: https://thenewurbankid-web.github.io/construct/ (the latest docs; each release will also keep its own version of the docs, see [docs/VERSIONING.md](docs/VERSIONING.md))
+- [docs/](docs/): architecture, execution model, impact analysis, PR health, unit summaries, workflow narrator, design
+- [ui/README.md](ui/README.md): the Cockpit, its login and its tests
+- The Cockpit's Help page has short tutorials
+
+## Contributing
+
+Read [CLAUDE.md](CLAUDE.md) first. It sets the working rules: an issue for each
+unit of work, comments before and after, a real test for every change, a
+Playwright test and screenshot for every UI change, and the deterministic-first
+principle from the Vision below. Run `npm test` before you open a pull request.
+
+## Open core
+
+The core library and CLI are open source (MIT). The Cockpit UI (it lives in
+`ui/` for now), the MCP server (planned) and the curated predefined envelopes
+are proprietary, not part of the open packages. The open packages never depend
+on them.
 
 ## Vision
 
@@ -63,33 +190,6 @@ Every new capability in this repo should be judged against this: does it add
 a deterministic block, make an existing one more atomic, make the *example*
 a layer hands the next one better, or extend the cockpit UI — or is it quietly
 routing around this and making the LLM do more work than it needs to?
-
-## Install
-
-```bash
-npm install
-npm link
-```
-
-Or publish the package and install it globally/project-local with npm.
-
-## Initialize a project
-
-```bash
-construct init my-app
-cd my-app
-npm install
-construct sync
-construct validate
-```
-
-Defaults to `project.framework: nextjs`. For a client-routed SPA instead, pass `--framework react-spa` (see [Framework targets](#framework-targets)):
-
-```bash
-construct init my-spa-app --framework react-spa
-```
-
-Construct does not replace your framework/router (Next.js App Router, or react-router for a react-spa target), TypeScript, ESLint, dependency-cruiser, XState, Stately, or Playwright. It orchestrates architecture policy around them.
 
 ## Default architecture
 
@@ -193,6 +293,8 @@ construct research doctor [--dir <path>]
 `construct summarize <ref> [--detail brief|standard|full] [--format json|markdown]` (and `--list`, `--usage`) returns a deterministic, LLM-free summary of any project, feature, layer, file, hook, workflow, route, rule or package, sized for a bot or a teammate — see `docs/unit-summary.md`.
 
 `construct research impact <ref>... [--files a,b] [--since <ref>] [--ticket <text>] [--depth N] [--format json|markdown]` computes the blast radius of a change: which features and layers it touches, why each file is implicated, what is shared across features, and what your rules already say about those files. Every entry is marked `derived` (computed from the graph) or `inferred` (reached only from a seed that was guessed from ticket text or proposed by a model), so you can see exactly where judgement entered — see `docs/impact-analysis.md`.
+
+`construct review <base> <head> [--plan <file>] [--features a,b] [--format json|markdown]` reports pull request health between two git refs with no model: what changed by feature and layer, changes nobody explained, rule regressions, public-surface changes and the flow diff, with findings split into mechanical fixes and conversations — see `docs/pr-health.md`. `construct template list|show|instantiate` prints named, reusable plans from a folder you point at with `--templates <dir>`; none are bundled.
 
 `construct refactor` never rewrites a file's own logic or exported identifier — only its location/name and every other file's import of it (including the moved file's own same-layer imports, re-resolved for its new home). Whether the result is *valid* in its new layer — naming convention, purity, everything else — is `construct validate`'s job, reported immediately after the move so a mismatch shows up right away. There's no persistent activity log: each command prints one clear, scannable line for what it did (`Created ...`, `Moved ... -> ...`), and that line **is** the record — a file that changed without one wasn't done by the tool.
 
