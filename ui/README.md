@@ -193,6 +193,65 @@ API, `Lax` will drop the cookie on both `fetch` and the WebSocket — put
 both behind one origin, or change the cookie policy deliberately rather
 than discovering it as a bug.
 
+## Commit on save (#283)
+
+Every save in the Cockpit makes a real git commit, on a branch the session
+creates, with a message Construct builds itself — impact counts from
+`analyzeImpact` (#288), prose from `summarizeUnit`. No model is involved,
+so a commit costs no tokens, is byte-identical for the same tree, and works
+with the network and the provider both down.
+
+**Full reference: [`docs/commit-on-save.md`](../docs/commit-on-save.md).**
+The deterministic half is core (`src/engine/commitMessage.mjs`, open
+source); the trigger and the UI are here (`ui/server/src/autoCommit.mjs`,
+`ui/client/features/git-session/`).
+
+```
+CON-a3f7-0007: checkout: update ProductsPage and CheckoutController
+
+2 features, 5 layers, 7 files
+  checkout: page, controller, hook
+  billing:  domain, service
+...
+Construct-Session: a3f7
+Construct-Serial: 7
+```
+
+- `<prefix>` is yours (may be empty); the session id and the serial are
+  ours. The serial is monotonic **within the branch**, read from that
+  branch's own commit subjects — no counter file, so parallel sessions have
+  nothing to race on.
+- The branch is `<prefix>/<slug>-<id><suffix>` (e.g.
+  `cockpit/billing-invoice-a3f7`), created on the **first save** and never
+  renamed afterwards.
+- Three modes, all switchable in Settings: `coalesce` (default, 30s
+  window), `every-save`, `manual`. Auto-commit is on by default and the off
+  switch is real.
+- A dirty working tree at session start is **asked** about — carry or
+  stash — with the changed files grouped by feature and layer. Carried
+  files are committed but never counted in the impact block.
+- Nothing is pushed, only the files the Cockpit wrote are staged
+  (`git add -- <paths>`, never `-A`), and a commit that cannot be made
+  never fails the save.
+
+Configure it on the Settings screen, or over REST:
+
+| Route | Purpose |
+|---|---|
+| `GET /api/git/session` | config, repo/branch, pending saves, window countdown, the dirty-tree question, recent commits |
+| `POST /api/git/config` | `{enabled, mode, coalesceMs, messagePrefix, branchPrefix, branchSuffix}` |
+| `POST /api/git/dirty-answer` | `{answer: 'carry'\|'stash', remember}` |
+| `POST /api/git/commit` | commit what is pending now |
+| `POST /api/git/plan` | `{plan, planTitle}` — name the branch after the work |
+
+Pages-editor saves and committed workflow edits also return an
+`autoCommit` block alongside their usual response.
+
+**Git plumbing** is `ui/server/src/git.mjs` — `execFile` with argument
+arrays, never a shell string, commit message on stdin. It is deliberately
+narrow so #296 can replace its body with `simple-git` or `isomorphic-git`
+without anything else moving.
+
 ## Storybook
 
 `ui/client` has Storybook configured (`ui/client/.storybook/main.js` +

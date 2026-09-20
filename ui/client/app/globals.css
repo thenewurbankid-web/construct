@@ -1593,3 +1593,63 @@ button:disabled {
 .sh-tabpanel .prop-row input[type='number'] { min-width: 0; flex: 1 1 8rem; }
 .sh-tabpanel .scope-panel { margin-top: 0; border-top: 0; padding-top: 0; }
 .sh-tabpanel .external-change-notice { margin: 0; }
+
+/* ---------------------------------------------------------------------------
+   Commit on save (#283) — the indicator every edit screen carries, the
+   dirty-tree prompt, and the Settings controls. Tokens only (docs/design/
+   tokens.md): no hard-coded colours, so both themes follow automatically.
+   --------------------------------------------------------------------------- */
+.git-indicator {
+  margin: 0 0 var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-subtle);
+  background: var(--sunken);
+  border-radius: var(--r-md);
+  font-size: var(--fs-md);
+}
+.git-indicator[data-state='asking'] { border-color: var(--warn); background: var(--warn-soft); }
+.git-indicator[data-state='pending'] { border-color: var(--accent); background: var(--accent-soft); }
+.git-indicator__row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.git-indicator__text { color: var(--text); }
+.git-indicator__commit {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--sp-1) var(--sp-3);
+  margin: var(--sp-2) 0 0;
+  font-size: var(--fs-sm);
+}
+.git-indicator__commit dt { color: var(--text-faint); }
+.git-indicator__commit dd { margin: 0; color: var(--text-muted); overflow-wrap: anywhere; }
+
+.git-dirty {
+  margin: 0 0 var(--sp-3);
+  padding: var(--sp-3);
+  border: 1px solid var(--warn);
+  background: var(--warn-soft);
+  border-radius: var(--r-lg);
+}
+.git-dirty h2 { margin: 0 0 var(--sp-2); font-size: var(--fs-lg); }
+.git-dirty__question { margin: 0 0 var(--sp-2); color: var(--text); }
+.git-dirty__groups { margin: 0 0 var(--sp-2); padding-left: var(--sp-5); color: var(--text-muted); font-size: var(--fs-sm); }
+.git-dirty__files { margin: 0 0 var(--sp-2); font-size: var(--fs-sm); color: var(--text-muted); }
+.git-dirty__files ul { margin: var(--sp-1) 0 0; padding-left: var(--sp-5); }
+.git-dirty__remember { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-sm); margin-bottom: var(--sp-2); }
+.git-dirty__actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+
+.git-settings { margin-top: var(--sp-6); border-top: 1px solid var(--border-subtle); padding-top: var(--sp-4); }
+.git-settings__check { display: flex; align-items: center; gap: var(--sp-2); }
+.git-settings__check input[type='checkbox'] { width: auto; }
+.git-settings__pair { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+.git-settings__pair input { flex: 1 1 10rem; min-width: 0; }
+.git-settings__warn {
+  padding: 6px 10px;
+  border: 1px solid var(--warn);
+  background: var(--warn-soft);
+  border-radius: var(--r-md);
+  font-size: var(--fs-sm);
+}

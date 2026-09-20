@@ -4,9 +4,13 @@ import { SettingsForm } from '../components/SettingsForm';
 import { SettingsSummary } from '../components/SettingsSummary';
 import type { useSettings } from '../hooks/useSettings';
 
-type SettingsPageProps = ReturnType<typeof useSettings> & { picker?: ReactNode };
+type SettingsPageProps = ReturnType<typeof useSettings> & {
+  picker?: ReactNode;
+  /** Commit-on-save controls (#283), supplied by the controller as a slot. */
+  gitSession?: ReactNode;
+};
 
-export function SettingsPage({ settings, loadError, reload, projectDirInput, setProjectDirInput, llmProviders, setLlmProvider, status, save, pickerOpen, togglePicker, picker }: SettingsPageProps): ReactNode {
+export function SettingsPage({ settings, loadError, reload, projectDirInput, setProjectDirInput, llmProviders, setLlmProvider, status, save, pickerOpen, togglePicker, picker, gitSession }: SettingsPageProps): ReactNode {
   if (!settings) {
     return (
       <div className="page page--screen">
@@ -40,6 +44,8 @@ export function SettingsPage({ settings, loadError, reload, projectDirInput, set
         onTogglePicker={togglePicker}
         picker={picker}
       />
+
+      {gitSession}
 
       <SettingsSummary
         projectDir={settings.projectDir}
