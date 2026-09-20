@@ -1,0 +1,61 @@
+/* Popover / menu concept mocks (#297). Tokens from docs/design/tokens.md only. */
+.pop-anchor { position: relative; display: inline-flex; }
+.chip-btn[aria-expanded="true"] { background: var(--accent-soft); border-color: var(--accent); }
+.acct { display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0 10px 0 3px; border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; cursor: pointer; max-width: 160px; }
+.acct[aria-expanded="true"] { background: var(--accent-soft); border-color: var(--accent); }
+.acct .av { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: var(--accent-fg); display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+.chip-btn, .acct { white-space: nowrap; }
+.focus-ring { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* the one surface, shared by both variants */
+.popover { position: absolute; top: calc(100% + 6px); z-index: 50; background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--r-lg); box-shadow: var(--shadow); padding: 12px; color: var(--text); }
+.popover.start { left: 0; } .popover.end { right: 0; }
+.popover.panel { width: 520px; }
+.popover.disc { width: 240px; padding: 8px; }
+.popover h6 { margin: 0 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--text-faint); }
+.popover .hint { margin: 0 0 10px; color: var(--text-muted); }
+.pi { display: flex; align-items: center; gap: 8px; min-height: 28px; padding: 0 8px; border-radius: var(--r-sm); white-space: nowrap; background: transparent; border: 0; width: 100%; text-align: left; cursor: pointer; }
+.pi.hl { background: var(--surface-3); }
+.pi .r { margin-left: auto; color: var(--text-faint); font-size: 11px; }
+.pi.danger { color: var(--danger); }
+.plain { padding: 4px 8px 8px; color: var(--text-muted); border-bottom: 1px solid var(--border-subtle); margin-bottom: 4px; }
+.plain b { display: block; color: var(--text); font-weight: 600; }
+.crumb { display: flex; gap: 6px; align-items: center; padding: 0 8px; height: 28px; background: var(--surface-1); border: 1px solid var(--border-subtle); border-radius: var(--r-md); font: 12px var(--mono); margin-bottom: 8px; color: var(--text-muted); }
+.crumb b { color: var(--text); font-weight: 600; }
+.foot-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-subtle); }
+.badge-num { position: absolute; width: 18px; height: 18px; border-radius: 9px; background: var(--accent); color: var(--accent-fg); font: 700 11px var(--mono); display: grid; place-items: center; z-index: 60; }
+
+/* spec cards */
+.spec { position: absolute; background: var(--surface-1); border: 1px solid var(--border-subtle); border-radius: var(--r-lg); padding: 14px 16px; }
+.spec h3 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted); }
+.spec ol, .spec ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.spec li::marker { color: var(--accent); font-weight: 700; }
+.spec code, .cap code { font: 12px var(--mono); background: var(--surface-3); padding: 0 4px; border-radius: 3px; }
+.spec .no { color: var(--danger); font-weight: 600; }
+.cap { color: var(--text-muted); margin: 0 0 8px; }
+.cap b { color: var(--text); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 18px 24px; height: calc(900px - 22px); grid-template-rows: 1fr 1fr; }
+.cell { display: flex; flex-direction: column; min-height: 0; }
+.cell > .frame { position: relative; flex: 1; background: var(--surface-1); border: 1px solid var(--border-subtle); border-radius: var(--r-lg); padding: 20px; display: flex; }
+.cell .popover { position: static; width: 100%; align-self: flex-start; }
+.cell .popover.disc { width: 300px; }
+.skel { height: 12px; border-radius: 6px; background: var(--surface-3); }
+.skel-row { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 8px; }
+.skel-row .skel:first-child { width: 16px; height: 16px; border-radius: 4px; }
+.err { display: flex; gap: 10px; padding: 10px 12px; border-radius: var(--r-md); border: 1px solid var(--danger); background: var(--danger-soft); margin-bottom: 10px; }
+.err b { color: var(--danger); }
+.err small { display: block; color: var(--text-muted); }
+.empty { text-align: center; padding: 14px 10px; display: grid; gap: 8px; justify-items: center; }
+.empty .ico { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--surface-3); color: var(--text-muted); font-size: 16px; }
+.empty p { margin: 0; color: var(--text-muted); max-width: 340px; }
+.aria { margin-top: 8px; padding: 8px 10px; background: var(--surface-0); border: 1px solid var(--border-subtle); border-radius: var(--r-md); font: 11.5px/1.5 var(--mono); color: var(--text-muted); white-space: pre; }
+.strip { position: relative; background: var(--surface-0); border: 1px dashed var(--border-strong); border-radius: 0; }
+.strip .tb { display: flex; align-items: center; gap: 10px; padding: 0 12px; height: 44px; background: var(--surface-1); border-bottom: 1px solid var(--border-subtle); }
+.strip .body { position: absolute; inset: 44px 0 0 0; padding: 12px; color: var(--text-faint); }
+.edge-label { position: absolute; top: -18px; font: 11px var(--mono); color: var(--text-faint); }
+.sheet-pop { position: absolute; left: 8px; right: 8px; top: 48px; z-index: 50; background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--r-lg); box-shadow: var(--shadow); padding: 12px; overflow: hidden; }
+.phone { width: 390px; height: 420px; border: 1px solid var(--border-strong); border-radius: 22px; overflow: hidden; position: relative; background: var(--surface-1); box-shadow: var(--shadow); }
+.phone .tb { display: flex; align-items: center; gap: 8px; padding: 0 8px; height: 44px; border-bottom: 1px solid var(--border-subtle); }
+.phone .tabbar { position: absolute; bottom: 0; left: 0; right: 0; height: 52px; display: flex; border-top: 1px solid var(--border-subtle); background: var(--surface-1); }
+.phone .tabbar div { flex: 1; display: grid; place-items: center; color: var(--text-muted); font-size: 11px; }
+.dim-note { position: absolute; z-index: 1; font: 11px var(--mono); color: var(--warn); }

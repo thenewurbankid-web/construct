@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Popover - states and the true menu — Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="popover.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+<script>document.addEventListener('DOMContentLoaded',()=>{document.body.dataset.x=1});</script>
+</head><body>
+<div class="concept">Concept — not implemented <span>Popover - states and the true menu</span></div>
+
+<div class="grid2">
+  <div class="cell"><p class="cap"><b>Loading</b> (panel): the surface opens at once and says what is happening; never a bare spinner.</p><div class="frame"><div class="popover panel" role="dialog" aria-label="Switch project" aria-busy="true">
+  <p class="hint" role="status">Looking for projects on this computer…</p>
+  <div class="skel-row"><span class="skel"></span><span class="skel" style="width:70%"></span></div><div class="skel-row"><span class="skel"></span><span class="skel" style="width:55%"></span></div><div class="skel-row"><span class="skel"></span><span class="skel" style="width:62%"></span></div>
+  <div class="foot-actions"><button class="btn focus-ring">Cancel</button><button class="btn primary" aria-disabled="true" style="opacity:.6">Use this folder</button></div></div></div><div class="aria">aria-busy="true" on the dialog; hint is role="status"
+focus: first enabled control (Cancel)</div></div>
+  <div class="cell"><p class="cap"><b>Empty</b>: no recent projects. One clear next action, focused first.</p><div class="frame"><div class="popover panel" role="dialog" aria-label="Switch project">
+  <div class="empty"><div class="ico">▤</div><b>No recent projects</b><p>Cockpit has not opened a project on this computer yet. Choose the folder that holds your app.</p><button class="btn primary focus-ring">Choose a folder…</button></div></div></div><div class="aria">focus lands on "Choose a folder…"
+Escape still closes; focus returns to the trigger</div></div>
+  <div class="cell"><p class="cap"><b>Error</b>: says what failed and that nothing changed; offers a way out.</p><div class="frame"><div class="popover panel" role="dialog" aria-label="Switch project">
+  <div class="err" role="alert"><span aria-hidden="true">⚠</span><div><b>Cannot read this folder</b><small>Permission denied: ~/Desktop/repos/private. Nothing was changed.</small></div></div>
+  <div class="crumb">~ / Desktop / repos / <b>private</b></div>
+  <div class="foot-actions"><button class="btn focus-ring">Try again</button><button class="btn">Choose another folder</button></div></div></div><div class="aria">role="alert" announces once; focus goes to "Try again"
+plain-language message: no stack trace, no bare error code</div></div>
+  <div class="cell"><p class="cap"><b>True menu</b> (5 actions, roving focus): valid only because all of this is built.</p><div class="frame"><div class="popover disc" style="width:260px">
+  <div role="menu" aria-label="Process actions: dev server">
+    <button class="pi hl focus-ring" role="menuitem" tabindex="0">Pause<span class="r">P</span></button>
+    <button class="pi" role="menuitem" tabindex="-1">Resume<span class="r">R</span></button>
+    <button class="pi" role="menuitem" tabindex="-1">View log<span class="r">L</span></button>
+    <button class="pi" role="menuitem" tabindex="-1">Copy command<span class="r">C</span></button>
+    <div role="separator" style="height:1px;background:var(--border-subtle);margin:4px 0"></div>
+    <button class="pi danger" role="menuitem" tabindex="-1">Cancel process<span class="r">Del</span></button>
+  </div></div></div><div class="aria">role="menu" > role="menuitem" · one tab stop (tabindex=-1 on the rest)
+ArrowUp/Down move · Home/End jump · type a letter to jump · Enter runs
+Escape closes and returns focus · Tab closes and moves on (never traps)</div></div>
+</div>
+<script>(()=>{const t=document.documentElement.dataset.theme;document.body.parentElement.setAttribute('data-theme',t)})()</script>
+</body></html>

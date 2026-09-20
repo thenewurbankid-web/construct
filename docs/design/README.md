@@ -15,6 +15,7 @@ Non-goals: MCP surfaces (future), marketing pages, product code.
 |---|---|
 | [principles.md](principles.md) | The bar every screen is held to (calm, dense, keyboard-first, WCAG AA, dark+light, plain language, progressive disclosure) plus a review checklist |
 | [tokens.md](tokens.md) | Audit of today's CSS variables and the proposed consolidated token set |
+| [popovers.md](popovers.md) | The one dismissable popover/menu primitive: disclosure vs menu, dismissal contract, placement, states (#297) |
 | [cockpit-layout.md](cockpit-layout.md) | The 3-pane Cockpit shell, per-screen rationale, and the ordered implementation plan |
 | [mocks/](mocks/) | Concept mocks as static HTML+CSS (`*.html`) and rendered PNGs (`png/`) |
 
