@@ -7,6 +7,8 @@ import { pathToFileURL } from 'node:url';
 const C = (name) => `site/content/${name}`;
 
 /** Reused repository docs are wrapped in a one-line include so the same machinery handles them all. */
+const E = (name) => C(`user/examples/${name}.md`);
+
 export const USER_GROUPS = [
   {
     group: 'Start here',
@@ -14,6 +16,30 @@ export const USER_GROUPS = [
       { path: 'user-guide/getting-started/', title: 'Getting started', description: 'Install Construct, create a project and your first feature in five minutes.', file: C('user/getting-started.md') },
       { path: 'user-guide/concepts/', title: 'Core concepts', description: 'Features, layers, rules and policy in plain language.', file: C('user/concepts.md') },
       { path: 'user-guide/cockpit/', title: 'Using the Cockpit UI', description: 'The browser front end: what each screen does and how to start it.', file: C('user/cockpit.md') },
+    ],
+  },
+  {
+    group: 'Examples: CLI',
+    pages: [
+      { path: 'user-guide/examples/cli-scaffold-and-validate/', title: 'Scaffold, then catch a rule break', description: 'A fetch() in a page: the exact commands and the exact output.', file: E('cli-scaffold-and-validate') },
+      { path: 'user-guide/examples/cli-impact-and-review/', title: 'Blast radius and branch review', description: 'What a change touches, and what a branch means, without a model.', file: E('cli-impact-and-review') },
+      { path: 'user-guide/examples/cli-flows-and-tests/', title: 'Every route through a flow, tested', description: 'Explain a state machine and generate one locked test per route.', file: E('cli-flows-and-tests') },
+    ],
+  },
+  {
+    group: 'Examples: Cockpit',
+    pages: [
+      { path: 'user-guide/examples/cockpit-plan-and-run/', title: 'Plan, run in a branch, approve per file', description: 'From a ticket to a reviewed plan to changes you approve one file at a time.', file: E('cockpit-plan-and-run') },
+      { path: 'user-guide/examples/cockpit-review/', title: 'Review a branch by what it means', description: 'Five deterministic indicators, mechanical fixes apart from decisions.', file: E('cockpit-review') },
+      { path: 'user-guide/examples/cockpit-tests/', title: 'Tests: coverage, clone, step editor', description: 'Locked generated tests, cloning, and editing a test as steps.', file: E('cockpit-tests') },
+      { path: 'user-guide/examples/cockpit-sign-in-and-commits/', title: 'Sign-in allowlist and commit on save', description: 'GitHub login for named accounts only; every save becomes a commit.', file: E('cockpit-sign-in-and-commits') },
+    ],
+  },
+  {
+    group: 'Examples: Core',
+    pages: [
+      { path: 'user-guide/examples/core-plans-and-impact/', title: 'Plans and impact as an API', description: 'Validate a plan and compute a blast radius from JavaScript.', file: E('core-plans-and-impact') },
+      { path: 'user-guide/examples/core-review-tests-commits/', title: 'Review, tests and commit messages as an API', description: 'The functions the CLI and the Cockpit both call.', file: E('core-review-tests-commits') },
     ],
   },
   {
@@ -68,7 +94,7 @@ export const DEV_GROUPS = [
 
 export const USER_INDEX = { path: 'user-guide/', title: 'User Guide', description: 'Everything you need to use Construct from the command line or the Cockpit UI.', file: C('user/index.md') };
 export const DEV_INDEX = { path: 'developers/', title: 'Developer Docs', description: 'Architecture, references and extension points for people building on or contributing to Construct.', file: C('developers/index.md') };
-export const TUTORIALS_INDEX = { path: 'user-guide/tutorials/', title: 'Tutorials', description: 'Step-by-step guides with real command output and screenshots.' };
+export const EXAMPLES_INDEX = { path: 'user-guide/examples/', title: 'Examples', description: 'Each one: the problem, the exact command or screen, the exact result. CLI, Cockpit and core are kept apart.', file: C('user/examples-index.md') };
 
 /** Markdown for the pages derived from code. Imports the real modules, so they are exact by construction. */
 export async function generatedMarkdown(kind, repoRoot) {

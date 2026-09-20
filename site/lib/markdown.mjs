@@ -146,6 +146,9 @@ export function renderMarkdown(md, ctx) {
     return `<h${lvl} id="${id}">${inner}<a class="anchor" href="#${id}" aria-label="Link to this section">#</a></h${lvl}>`;
   });
 
+  // Site images: ![alt](@img/name.webp) points at site/assets/img/name.webp.
+  html = html.replace(/<img src="@img\/([^"]+)"/g, (_, f) => `<img src="${root}assets/img/${f}" loading="lazy" decoding="async"`);
+
   const ids = new Set(headings.map((h) => h.id));
   const srcDir = path.posix.dirname(source || '.');
   const blob = (p, dir) => `${repoUrl}/${dir ? 'tree' : 'blob'}/${branch}/${p}`;
