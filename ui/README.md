@@ -93,6 +93,106 @@ npm run build
 npm start   # serves the production build, default port 3000
 ```
 
+## Authentication (GitHub login) — #278
+
+`ui/server` runs Construct CLI commands, browses the filesystem and reads
+and writes source files under a **client-settable** project directory.
+Unauthenticated plus reachable from another machine equals remote code
+execution, so the server is deliberately hard to get into that state:
+
+- **Default (nothing configured)**: binds `127.0.0.1`, no login required,
+  exactly as before. A loud `Authentication is OFF` banner at startup.
+  This is the local-development posture; a cookie does not defend against
+  "an attacker already on your machine, as you".
+- **`HOST` set to anything non-loopback**: the process **refuses to start**
+  unless a GitHub login is configured. Exposure without authentication is
+  unreachable rather than merely warned about.
+- **OAuth configured**: login required, always, loopback or not.
+
+### Setting up GitHub login
+
+1. Register an OAuth app at <https://github.com/settings/developers> →
+   *New OAuth App*. Set **Authorization callback URL** to
+   `http://localhost:4000/auth/callback` (or your real host/port — it must
+   match `CONSTRUCT_OAUTH_CALLBACK_URL` exactly).
+2. Generate a session secret: `openssl rand -hex 32`.
+3. Start the server with the environment set. Never commit these; never
+   write them into the repo.
+
+```bash
+cd ui/server
+CONSTRUCT_GITHUB_CLIENT_ID=Iv1.xxxxxxxxxxxx \
+CONSTRUCT_GITHUB_CLIENT_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx \
+CONSTRUCT_ALLOWED_LOGINS=your-github-login \
+CONSTRUCT_SESSION_SECRET=$(openssl rand -hex 32) \
+npm start
+```
+
+| Variable | Meaning |
+|---|---|
+| `CONSTRUCT_GITHUB_CLIENT_ID` / `_SECRET` | the OAuth app. Setting one without the other refuses to start. |
+| `CONSTRUCT_ALLOWED_LOGINS` | comma- or space-separated GitHub logins, case-insensitive. **Required** whenever OAuth is configured — without it, "login with GitHub" would mean every GitHub account on earth. Anyone else authenticates with GitHub successfully and is still refused with `403`. |
+| `CONSTRUCT_SESSION_SECRET` | signs the session cookie, ≥16 chars. If unset, a random one is generated per process, so every restart signs everyone out. |
+| `CONSTRUCT_SESSION_TTL_HOURS` | session lifetime, default `8`. Rolling: re-issued once past half its life. |
+| `CONSTRUCT_OAUTH_CALLBACK_URL` | defaults to `http://localhost:<PORT>/auth/callback`. Must match the OAuth app exactly. |
+| `CONSTRUCT_AUTH` | `required` forces the gate on with no OAuth app; `off` disables it, and is honoured **only** on loopback. |
+| `CONSTRUCT_AUTH_TEST_USER` | the e2e escape hatch — see below. |
+
+### Endpoints
+
+`/auth/*` sits outside `/api`, and therefore outside the gate: you cannot
+log in through a door that requires being logged in.
+
+| Route | Purpose |
+|---|---|
+| `GET /auth/session` | public. `{authRequired, authenticated, user, githubConfigured, loginPath, testLogin, testLoginUser}` |
+| `GET /auth/login` | sets a signed, single-use, 10-minute state cookie and redirects to GitHub |
+| `GET /auth/callback` | checks state, exchanges the code, identifies the user, applies the allowlist, sets the session cookie |
+| `POST /auth/logout` | clears the session |
+| `POST /auth/test-login` | only when `CONSTRUCT_AUTH_TEST_USER` is set; otherwise `404` |
+
+Everything under `/api/*` answers `401` without a session, and the
+`/ws/wizard` upgrade is refused at the handshake. The single exception is
+`GET /api/health`, which returns `{ok:true}` and nothing else so liveness
+probes and Playwright's `webServer` block work before a session exists.
+It is registered *above* the middleware, so it is the only public `/api`
+route by construction. **Add new routes below the gate comment in
+`index.mjs`.**
+
+### The e2e test login
+
+The end-to-end suite cannot do a real OAuth round trip, so
+`CONSTRUCT_AUTH_TEST_USER=<login>` enables `POST /auth/test-login`, which
+mints an **ordinary signed session cookie** for that login. It is a login,
+not a bypass: it does not touch `requireSession`, and there is no code path
+where "an env var is set" substitutes for "this request carries a valid
+signed session". Four independent things must hold:
+
+1. the variable is set (otherwise the route `404`s);
+2. `NODE_ENV` is not `production` (case-insensitively) — otherwise the
+   process **refuses to start**;
+3. the server is bound to loopback — otherwise, likewise;
+4. the request carries the Cockpit's own `Origin` (fail-closed: no
+   `Origin` at all is also refused), and the login passes the allowlist if
+   one is configured.
+
+It is used only by `ui/e2e/playwright.auth.config.js`, so the rest of the
+suite keeps running in the ordinary unauthenticated-loopback posture:
+
+```bash
+cd ui/e2e
+E2E_CLIENT_PORT=3051 E2E_SERVER_PORT=4051 npx playwright test -c playwright.auth.config.js
+```
+
+### Deploying client and server apart
+
+The session cookie is `SameSite=Lax`, so it travels between `:3000` and
+`:4000` only because they are the same *site* (`localhost`; ports do not
+count). If you ever serve the Cockpit from a different domain than the
+API, `Lax` will drop the cookie on both `fetch` and the WebSocket — put
+both behind one origin, or change the cookie policy deliberately rather
+than discovering it as a bug.
+
 ## Storybook
 
 `ui/client` has Storybook configured (`ui/client/.storybook/main.js` +
