@@ -28,6 +28,8 @@ export function LinkedCode({ source, references, onFollow, label }: LinkedCodePr
                 className="ref-link"
                 data-ref={seg.ref.name}
                 data-target={seg.ref.target ?? undefined}
+                // A press must not move focus: focusing scrolls the page and the click then lands elsewhere.
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={(e) => onLinkClick(e, seg.ref as NavReference)}
                 onKeyDown={(e) => onLinkKeyDown(e, seg.ref as NavReference)}
                 onMouseEnter={(e) => showTip(seg.ref as NavReference, e.currentTarget)}
