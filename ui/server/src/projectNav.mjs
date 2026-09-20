@@ -107,7 +107,7 @@ function relationOf(root, graph, fromRel, toRel) {
   const crossFeature = Boolean(fromFeature && toFeature && fromFeature !== toFeature);
   const layers = `${fromLayer || 'file'} -> ${toLayer || 'file'}`;
   const label = crossFeature ? `${fromFeature} -> ${toFeature}` : layers;
-  const description = `${toLayer || 'file'}${toFeature ? ` in the ${toFeature} feature` : ''}`;
+  const description = `a ${toLayer || 'file'}${toFeature ? ` in the ${toFeature} feature` : ''}`;
   return { label, layers, fromLayer, toLayer, fromFeature, toFeature, crossFeature, description };
 }
 

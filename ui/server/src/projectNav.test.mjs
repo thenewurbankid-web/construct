@@ -64,6 +64,7 @@ test('relations are labelled by layer, and by feature across features', () => {
   const { root } = makeProject();
   const view = viewPage(root, 'catalog', 'HomePage.tsx');
   assert.equal(refOf(view, 'PriceCard', 'import').relation.label, 'page -> component');
+  assert.equal(refOf(view, 'PriceCard', 'import').relation.description, 'a component in the catalog feature');
   const login = refOf(view, 'Login', 'import');
   assert.equal(login.target, 'features/auth/components/Login.tsx');
   assert.equal(login.relation.label, 'catalog -> auth');
