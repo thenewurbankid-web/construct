@@ -609,9 +609,10 @@ What the shipped copy shows, screen by screen (read from the components and scre
   choice reads "A new feature (all 7 layer folders)" and a label "Layers (built in dependency order regardless of the
   order checked)". The Import card carries a redirect paragraph ("For the guided, chat-style whole-route wizard, use
   the Import Wizard page instead").
-- **Settings**: three model-provider rows, each with a 30 to 45 word hint that quotes CLI flags ("construct import
-  --llm <provider>") and an epic number ("epic #96"); a line "Nothing is persisted to disk"; and, below the form, a
-  "Current resolution" panel that repeats the same five values.
+- **Settings**: three model-provider rows, each with a 30 to 45 word hint that explains which other screen's checkbox uses it
+  ("Used when you tick “Have the LLM write the ported logic” on the Dashboard Import form ..."); a line "Nothing is
+  persisted to disk"; and, below the form, a "Current resolution" panel (`SettingsSummary`) that repeats the form's values.
+  (The older committed screenshot also quoted CLI flags and an epic number; the current source no longer does.)
 - **Help**: 2,461 words; the contents appear three times (left "Contents" tab, a link row under the title, and the
   section headings), and the right "Project" panel repeats the four keyboard shortcuts that the status bar shows too.
 - **Right "Project" panel**: "Mode: None (a utility screen)" (internal wording), plus the shortcuts list.
@@ -629,7 +630,7 @@ label. Others are "with the IA" (slices 2 to 8) or "needs code".
 |---|---|---|---|---|---|
 | 1 | Show one primary action per empty state (Open a project / Start a note / Add the first test) and nothing else | every empty state | High | S | yes (copy) |
 | 2 | Remove the Settings "Current resolution" panel (repeats the form); keep as a collapsed "Show resolved paths" | Settings | High | XS | yes |
-| 3 | Shorten the three Settings model hints to one plain sentence each; drop CLI flags and "epic #96"; label them "Which model fills in files" | Settings | High | XS | yes (copy) |
+| 3 | Shorten the three Settings model hints to one plain sentence each; say what it does in plain words and drop the cross-references to other screens; label them "Which model fills in files" | Settings | High | XS | yes (copy) |
 | 4 | Dashboard: show Create first and open; put Refactor, Research, Import under one "More actions" disclosure, collapsed | Dashboard | High | S | yes |
 | 5 | Dashboard copy: replace the CLI-named lede with one line; "A new feature (all 7 layer folders)" -> "A new feature"; move the "Layers (built in dependency order...)" sentence to a tooltip; rename the Import card "Import an existing file" and turn its redirect into a link | Dashboard | Med | XS | yes (copy) |
 | 6 | Help: remove the duplicate link row under the title (the Contents tab is the same list); collapse every section except "Getting started" by default | Help | High | XS | yes (uses existing collapsible sections) |
