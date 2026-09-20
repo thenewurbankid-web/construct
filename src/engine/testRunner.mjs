@@ -39,7 +39,6 @@ const YOURS_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,120}\.spec\.ts$/;
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 const fail = (code, message, extra = {}) => ({ ok: false, error: { code, message, ...extra } });
-// eslint-disable-next-line no-control-regex
 const ANSI = /\u001b\[[0-9;?]*[ -/]*[@-~]/g;
 const clean = (s) => String(s ?? '').replace(ANSI, '').replace(/\r/g, '');
 const clip = (s, n = MAX_MESSAGE) => (s.length > n ? `${s.slice(0, n)}\n... (${s.length - n} more characters not shown)` : s);
