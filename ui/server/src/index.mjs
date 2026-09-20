@@ -47,6 +47,10 @@ import { unitsIndex, unitSummary, featuresIndex, featureSummary } from './unitsA
 import { readPageSource } from './pageSource.mjs';
 import { describePageChange, adoptOwnWrite, pageChangeTracker } from './pageChanges.mjs';
 import { listWorkflowFeatures, listWorkflowFiles, readWorkflowMachines, readWorkflowNarrative, editWorkflowFile } from './workflowsViewer.mjs';
+import {
+  AutoCommitError, answerDirtyPrompt, flushSession, getSessionStatus,
+  recordSave, setSessionPlan, updateCommitConfig,
+} from './autoCommit.mjs';
 
 // This server is a local dev tool, but it has real teeth: /api/import (and
 // friends) read an arbitrary path off disk and, with --llm, send that
@@ -394,9 +398,22 @@ function saveAndRespond(res, root, relPath, absPath, patched) {
   if (!enforcement.ok) {
     return res.status(422).json({ ok: false, error: 'Save blocked: violates architecture rules.', violations: enforcement.violations });
   }
+  const isNew = !fs.existsSync(absPath);
   fs.writeFileSync(absPath, patched);
   adoptOwnWrite(relPath, patched);
-  res.json({ ok: true, violations: enforcement.violations, ...serializeTree(patched) });
+  res.json({ ok: true, violations: enforcement.violations, autoCommit: afterSave(root, relPath, isNew), ...serializeTree(patched) });
+}
+
+// #283 — every save in the Cockpit goes through here on its way to git. Deliberately best-effort:
+// a commit that cannot be made (not a git repo, a mid-rebase tree, a git binary that is not there)
+// must never turn a successful save into a failed request. The save already happened; the worst
+// case is history that is quieter than the user expected, and the response says so.
+function afterSave(root, relPath, isNew = false) {
+  try {
+    return recordSave(root, relPath, { kind: isNew ? 'add' : 'update' });
+  } catch (e) {
+    return { committed: false, status: 'error', error: e.message };
+  }
 }
 
 // #224 — last external change to a page file, as a diff. The client polls
@@ -633,9 +650,71 @@ app.get('/api/workflows/narrative', (req, res) => {
 app.post('/api/workflows/edit', (req, res) => {
   try {
     const { feature, file, commit, contentHash, ...edit } = req.body || {};
-    res.json(editWorkflowFile(currentRoot(), feature, file, edit, { commit: !!commit, contentHash }));
+    const root = currentRoot();
+    const result = editWorkflowFile(root, feature, file, edit, { commit: !!commit, contentHash });
+    res.json(result.savedPath ? { ...result, autoCommit: afterSave(root, result.savedPath) } : result);
   } catch (e) {
     handlePagesEditorError(res, e);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Commit-on-save (#283). The deterministic message assembly lives in core
+// (src/engine/commitMessage.mjs); these routes are the policy surface the
+// Cockpit drives: what mode we are in, what the session branch is, and the
+// one question the feature is allowed to ask the user (a dirty tree at
+// session start). Read ui/server/src/autoCommit.mjs for the rules.
+function handleAutoCommitError(res, e) {
+  if (e instanceof AutoCommitError) return res.status(e.status).json({ ok: false, error: e.message });
+  return handlePagesEditorError(res, e);
+}
+
+app.get('/api/git/session', (req, res) => {
+  try {
+    res.json(getSessionStatus(currentRoot()));
+  } catch (e) {
+    handleAutoCommitError(res, e);
+  }
+});
+
+app.post('/api/git/config', (req, res) => {
+  try {
+    res.json({ ok: true, config: updateCommitConfig(req.body || {}) });
+  } catch (e) {
+    handleAutoCommitError(res, e);
+  }
+});
+
+// The answer to "you had uncommitted changes when this session started — carry them onto the
+// session branch, or stash them?". `remember` keeps the answer for this project so a user who
+// always answers the same way is not asked forever (#283).
+app.post('/api/git/dirty-answer', (req, res) => {
+  try {
+    const { answer, remember } = req.body || {};
+    res.json({ ok: true, result: answerDirtyPrompt(currentRoot(), { answer, remember: !!remember }) });
+  } catch (e) {
+    handleAutoCommitError(res, e);
+  }
+});
+
+// Commit whatever is pending right now: the Commit button in `manual` mode, and the "don't wait
+// for the coalescing window" action in `coalesce`.
+app.post('/api/git/commit', (req, res) => {
+  try {
+    res.json({ ok: true, result: flushSession(currentRoot()) });
+  } catch (e) {
+    handleAutoCommitError(res, e);
+  }
+});
+
+// Optional: tell the session which plan/ticket it is working from, so the branch is named after
+// the work and the commit body can say what was planned versus not (#286's planTouches).
+app.post('/api/git/plan', (req, res) => {
+  try {
+    const { plan, planTitle } = req.body || {};
+    res.json({ ok: true, ...setSessionPlan(currentRoot(), { plan: plan || null, planTitle: planTitle || '' }) });
+  } catch (e) {
+    handleAutoCommitError(res, e);
   }
 });
 

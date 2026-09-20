@@ -104,5 +104,7 @@ export function editWorkflowFile(root, feature, file, req, { commit, contentHash
     throw new PagesEditorError('Save blocked: violates architecture rules.', { status: 422, violations: enforcement.violations });
   }
   fs.writeFileSync(absPath, result.source);
-  return { ok: true, violations: enforcement.violations, ...readWorkflowMachines(root, feature, file) };
+  // `savedPath` tells the route which file to hand to commit-on-save (#283); the viewer itself
+  // stays free of any git knowledge.
+  return { ok: true, savedPath: relPath, violations: enforcement.violations, ...readWorkflowMachines(root, feature, file) };
 }
