@@ -23,6 +23,9 @@ Concept mocks (1440x900, each in `png/<name>--dark.png` and `--light.png`):
 - **Cockpit shell** (`build.mjs`): `cockpit-shell`, `pages-editor-in-shell`,
   `workflows-in-shell`, `research-mode`, `processes-drawer`, `command-palette`,
   `states-and-narrow`.
+- **PR review** (`build-pr-review.mjs`, styles in `pr-review.css`):
+  `pr-review-list`, `pr-review-open`, `pr-review-findings`, `pr-review-autofix`,
+  `pr-review-indicators`, `pr-review-no-plan`, `pr-review-states`.
 - **QA test authoring** (`build-qa-tests.mjs`, styles in `qa-tests.css`):
   `qa-tests-scenarios`, `qa-tests-clone`, `qa-tests-editor`,
   `qa-tests-changes-code`, `qa-tests-new`, `qa-tests-run-failure`,
