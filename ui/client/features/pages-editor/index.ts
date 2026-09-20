@@ -56,3 +56,12 @@ export * from './domain/OpenPage';
 
 /** Applies open-page requests (URL or event) to the editor state. */
 export * from './hooks/useOpenPageRequests';
+
+/** Click-to-navigate: the open page references, the trail of files followed (#321). */
+export * from './hooks/useReferenceTrail';
+
+/** Link behaviour for the read-only code view: only resolved references are links (#321). */
+export * from './hooks/useLinkedCode';
+
+/** Alt+Left / Alt+Right along the navigation trail (#321). */
+export * from './hooks/useTrailShortcuts';

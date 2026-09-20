@@ -8,6 +8,7 @@ import './shell.css';
 import './cockpit-drawer.css';
 import './processes.css';
 import './globals.css';
+import './navigation.css';
 
 export const metadata: Metadata = {
   title: 'Cockpit',

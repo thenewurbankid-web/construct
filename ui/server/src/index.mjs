@@ -49,6 +49,7 @@ import { handleValidate } from './validateApi.mjs';
 import { handleLogs } from './logBuffer.mjs';
 import { unitsIndex, unitSummary, featuresIndex, featureSummary } from './unitsApi.mjs';
 import { readPageSource } from './pageSource.mjs';
+import { viewPage, openReference } from './projectNav.mjs';
 import { describePageChange, adoptOwnWrite, pageChangeTracker } from './pageChanges.mjs';
 import { listWorkflowFeatures, listWorkflowFiles, readWorkflowMachines, readWorkflowNarrative, editWorkflowFile } from './workflowsViewer.mjs';
 import {
@@ -511,6 +512,27 @@ app.get('/api/pages/scope-links', (req, res) => {
     const root = currentRoot();
     const { absPath } = resolvePageFile(root, feature, file);
     res.json(getScopeLinks(fs.readFileSync(absPath, 'utf8'), nodeId, root, absPath));
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+// #321 click-to-navigate. Both routes sit below the session gate. They return only project-root-relative
+// paths and never take a path to read from the client: the first view is a page (the editor's own pages/
+// guard), every later hop is a reference in a file, resolved server-side (see projectNav.mjs).
+app.get('/api/nav/page', (req, res) => {
+  try {
+    const { feature, file } = req.query;
+    res.json(viewPage(currentRoot(), feature, file));
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+app.post('/api/nav/open', (req, res) => {
+  try {
+    const { from, ref, start } = req.body || {};
+    res.json(openReference(currentRoot(), from, ref, start));
   } catch (e) {
     handlePagesEditorError(res, e);
   }

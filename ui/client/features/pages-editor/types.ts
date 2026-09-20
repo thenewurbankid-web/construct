@@ -135,3 +135,51 @@ export type PageChange = {
   stats: { added: number; removed: number };
   rows: DiffRow[];
 };
+
+/** How two files relate, labelled by layer (`page -> component`) and, across features, by feature (#321). */
+export type NavRelation = {
+  label: string;
+  layers: string;
+  fromLayer: string | null;
+  toLayer: string | null;
+  fromFeature: string | null;
+  toFeature: string | null;
+  crossFeature: boolean;
+  description: string;
+};
+
+/** One reference in a file as the server resolved it when the file was drawn. `target` is a
+ * project-root-relative path, or null when it does not lead to a file inside the project (#321). */
+export type NavReference = {
+  name: string;
+  kind: 'import' | 'jsx' | 'dynamic';
+  start: number;
+  end: number;
+  line: number;
+  column: number;
+  target: string | null;
+  reason: string | null;
+  relation?: NavRelation;
+};
+
+/** A file the navigator shows: its source and every reference in it, already resolved (#321). */
+export type NavView = {
+  ok?: boolean;
+  error?: string;
+  path: string;
+  source: string;
+  references: NavReference[];
+  name?: string;
+  relation?: NavRelation;
+};
+
+/** One hop in the trail: what was clicked, how it relates to the hop before, and what it shows. */
+export type TrailStep = { name: string; relation: NavRelation | null; view: NavView };
+
+export type Trail = { steps: TrailStep[]; index: number };
+
+/** A run of source text; `ref` is set only for a reference that RESOLVED to a project file. */
+export type CodeSegment = { text: string; ref?: NavReference };
+
+/** What the trail draws: a step, or a fold standing in for the hidden middle steps. */
+export type TrailItem = { kind: 'step'; index: number; step: TrailStep } | { kind: 'fold'; hidden: number[] };

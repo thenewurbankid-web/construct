@@ -1,0 +1,51 @@
+/* Click to navigate (#321): links in code, hover label, breadcrumb trail. Tokens only (docs/design/tokens.md). */
+.pe-stage .navigator-panel { margin-top: 0; margin-bottom: var(--sp-3); }
+.navigator-header { display: flex; align-items: baseline; gap: var(--sp-3); flex-wrap: wrap; }
+.navigator-header h3 { margin: 0; }
+.navigator-file { margin: var(--sp-2) 0; color: var(--text-muted); font: 12px var(--mono); }
+.linked-code {
+  margin: 0; padding: var(--sp-2) var(--sp-3); max-height: 50vh; overflow: auto;
+  background: var(--code-bg); border: 1px solid var(--border-subtle); border-radius: var(--r-md);
+  font: 12.5px/1.55 var(--mono); color: var(--text); white-space: pre; tab-size: 2;
+}
+.ref-link {
+  display: inline; margin: 0; padding: 0; border: 0; background: none; font: inherit; color: var(--accent);
+  cursor: pointer; text-decoration: underline dotted; text-decoration-thickness: 1px; text-underline-offset: 3px;
+}
+.ref-link:hover, .linked-code.modifier-held .ref-link {
+  text-decoration-style: solid; background: var(--accent-soft); border-radius: 2px;
+}
+.ref-link:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; border-radius: 2px; }
+.ref-tip {
+  position: fixed; z-index: 30; width: 300px; padding: 10px 12px; background: var(--surface-2);
+  border: 1px solid var(--border-strong); border-radius: var(--r-md); box-shadow: var(--shadow);
+  font-size: 12px; line-height: 1.45; color: var(--text-muted); pointer-events: none;
+}
+.ref-tip strong { color: var(--text); }
+.ref-tip-rel { margin-bottom: 4px; color: var(--text); font: 600 12px var(--mono); }
+.ref-tip-key { margin-top: 6px; color: var(--text-faint); font-size: 11px; }
+.ref-trail {
+  display: flex; align-items: center; gap: 4px; min-height: 36px; padding: 0 var(--sp-2); margin-top: var(--sp-2);
+  background: var(--surface-1); border: 1px solid var(--border-subtle); border-radius: var(--r-md);
+}
+.ref-trail-nav { width: 26px; height: 26px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text); border-radius: var(--r-sm); cursor: pointer; }
+.ref-trail-nav[disabled] { color: var(--text-faint); border-color: var(--border-subtle); background: transparent; cursor: default; }
+.ref-trail-list { display: flex; align-items: center; gap: 4px; margin: 0; padding: 0; list-style: none; flex-wrap: wrap; }
+.ref-trail-item, .ref-trail-fold { display: flex; align-items: center; gap: 4px; position: relative; }
+.ref-crumb {
+  height: 26px; padding: 0 8px; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--accent);
+  font: 12px var(--mono); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; display: inline-flex; align-items: center;
+}
+.ref-crumb.current { color: var(--text); font-weight: 700; text-decoration: none; background: var(--surface-3); cursor: default; }
+.ref-crumb.ahead { color: var(--text-faint); text-decoration: none; border: 1px dashed var(--border-strong); }
+.ref-crumb:focus-visible, .ref-trail-nav:focus-visible, .ref-trail-menu button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.ref-hop { color: var(--text-faint); font: 10px var(--mono); white-space: nowrap; }
+.ref-trail-menu {
+  position: absolute; top: 100%; left: 0; z-index: 20; margin: 2px 0 0; padding: 4px; list-style: none;
+  background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--r-md); box-shadow: var(--shadow);
+}
+.ref-trail-menu button { display: block; width: 100%; text-align: left; padding: 4px 8px; border: 0; background: transparent; color: var(--text); font: 12px var(--mono); cursor: pointer; }
+.ref-trail-menu button:hover { background: var(--hover); }
+.navigator-unlinked { margin-top: var(--sp-2); font-size: 0.85rem; }
+.navigator-unlinked h4 { margin: 0 0 4px; }
+.navigator-unlinked ul { margin: 0; padding-left: 1.2rem; }

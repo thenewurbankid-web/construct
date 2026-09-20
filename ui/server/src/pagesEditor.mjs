@@ -37,7 +37,7 @@ export class PagesEditorError extends Error {
   }
 }
 
-function featuresRootOf(root) {
+export function featuresRootOf(root) {
   return loadConfig(root).features?.root || 'features';
 }
 
