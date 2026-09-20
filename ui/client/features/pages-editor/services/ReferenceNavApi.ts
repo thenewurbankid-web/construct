@@ -6,4 +6,8 @@ import type { NavView } from '../types';
 export const getNavPage = (feature: string, file: string) =>
   getJson<NavView>(`/api/nav/page?feature=${encodeURIComponent(feature)}&file=${encodeURIComponent(file)}`);
 
-export const openNavReference = (from: string, ref: string, start: number) => postJson<NavView>('/api/nav/open', { from, ref, start });
+// #328: a row of the Flow view. The server only opens a path that is one of the files that feature's flow draws.
+export const getNavFile = (feature: string, file: string) =>
+  getJson<NavView>(`/api/nav/file?feature=${encodeURIComponent(feature)}&path=${encodeURIComponent(file)}`);
+
+export const openNavReference =(from: string, ref: string, start: number) => postJson<NavView>('/api/nav/open', { from, ref, start });

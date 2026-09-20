@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { useRegisterShellTab, type ShellTab } from '@/features/shell';
 import { DiffTab } from '../components/DiffTab';
 import { InspectorPanel } from '../components/InspectorPanel';
-import { PagesBrowserTab } from '../components/PagesBrowserTab';
+import { PagesBrowserController } from '../controllers/PagesBrowserController';
 import { ScopeTab } from '../components/ScopeTab';
 import { SourcePanel } from '../components/SourcePanel';
 import type { usePagesEditor } from './usePagesEditor';
@@ -25,7 +25,7 @@ export function usePagesEditorTabs(e: Editor): void {
       id: 'pages',
       title: 'Pages',
       render: () => (
-        <PagesBrowserTab
+        <PagesBrowserController
           feature={feature}
           onFeatureChange={setFeature}
           features={features}

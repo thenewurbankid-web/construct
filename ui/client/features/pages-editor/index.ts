@@ -63,5 +63,11 @@ export * from './hooks/useReferenceTrail';
 /** Link behaviour for the read-only code view: only resolved references are links (#321). */
 export * from './hooks/useLinkedCode';
 
+/** The Browser pane: the Files | Flow switch and whichever view is chosen (#328). */
+export * from './controllers/PagesBrowserController';
+
+/** A file opened from a Flow row, shown on the same reference trail as Navigate (#328). */
+export * from './controllers/FlowFilePeekController';
+
 /** Alt+Left / Alt+Right along the navigation trail (#321). */
 export * from './hooks/useTrailShortcuts';

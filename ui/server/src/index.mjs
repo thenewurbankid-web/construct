@@ -49,7 +49,8 @@ import { handleValidate } from './validateApi.mjs';
 import { handleLogs } from './logBuffer.mjs';
 import { unitsIndex, unitSummary, featuresIndex, featureSummary } from './unitsApi.mjs';
 import { readPageSource } from './pageSource.mjs';
-import { viewPage, openReference } from './projectNav.mjs';
+import { viewPage, openReference, viewProjectFile } from './projectNav.mjs';
+import { featureFlow, flowFilePaths } from './flowApi.mjs';
 import { describePageChange, adoptOwnWrite, pageChangeTracker } from './pageChanges.mjs';
 import { listWorkflowFeatures, listWorkflowFiles, readWorkflowMachines, readWorkflowNarrative, editWorkflowFile } from './workflowsViewer.mjs';
 import {
@@ -529,6 +530,21 @@ app.get('/api/nav/page', (req, res) => {
   }
 });
 
+// #328: open a row of the Flow view. The client names a feature and a path; the path is accepted only if
+// it is one of the files that feature's flow (computed here) draws, then read through the same guard.
+app.get('/api/nav/file', (req, res) => {
+  try {
+    const { feature, path: rel } = req.query;
+    const root = currentRoot();
+    const { files, refusal } = flowFilePaths(root, feature);
+    if (refusal) return res.status(refusal.status).json(refusal.body);
+    if (typeof rel !== 'string' || !files.has(rel)) return res.status(404).json({ ok: false, error: "That file is not part of this feature's flow." });
+    res.json(viewProjectFile(root, rel));
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
 app.post('/api/nav/open', (req, res) => {
   try {
     const { from, ref, start } = req.body || {};
@@ -759,6 +775,17 @@ app.get('/api/units', (req, res) => sendUnits(res, (root) => unitsIndex(root, re
 app.get('/api/units/summary', (req, res) => sendUnits(res, (root) => unitSummary(root, req.query)));
 app.get('/api/features', (req, res) => sendUnits(res, (root) => featuresIndex(root)));
 app.get('/api/features/:name/summary', (req, res) => sendUnits(res, (root) => featureSummary(root, req.params.name, req.query)));
+
+// #328: the Browser pane's Flow view. Read-only; the feature name is validated against the current
+// project's real feature list (flowApi.mjs) and never becomes a path.
+app.get('/api/flow/:feature', (req, res) => {
+  try {
+    const { status, body } = featureFlow(currentRoot(), req.params.feature);
+    res.status(status).json(body);
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
 
 // Cockpit drawer: Diagnostics (construct validate for the current project) and
 // Logs (bounded in-memory ring of recent command/validate output). Both are
