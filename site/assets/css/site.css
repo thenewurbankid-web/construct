@@ -169,7 +169,8 @@ h2 { font-size: 1.6rem; margin: 0 0 8px; }
    then carries the fade into the page background. */
 .is-home { position: relative; }
 .is-home::before,
-.is-home::after {
+.is-home::after,
+.hero-slides {
   content: "";
   position: absolute;
   /* Start below the sticky nav (.topbar-inner is 56px + 1px border), so the
@@ -178,7 +179,8 @@ h2 { font-size: 1.6rem; margin: 0 0 8px; }
   height: min(92vh, 860px);
   pointer-events: none;
 }
-.is-home::before {
+.is-home::before,
+.hero-slides {
   z-index: -2;
   background-image: image-set(
     url("../img/cockpit-hero.webp") type("image/webp"),
@@ -194,6 +196,36 @@ h2 { font-size: 1.6rem; margin: 0 0 8px; }
   -webkit-mask-image: radial-gradient(102% 86% at 50% -10%, #000 0%, #000 26%, rgba(0, 0, 0, 0.42) 58%, rgba(0, 0, 0, 0.12) 82%, transparent 100%);
   mask-image: radial-gradient(102% 86% at 50% -10%, #000 0%, #000 26%, rgba(0, 0, 0, 0.42) 58%, rgba(0, 0, 0, 0.12) 82%, transparent 100%);
 }
+/* Dark theme: the backdrop is a slideshow of real Cockpit screens (six
+   spans inside .hero-slides). Each slide fades in over the previous one
+   (which stays fully opaque until the new one is opaque, so there is never a
+   dip to the page background) and z-index is animated so the incoming slide
+   is always on top, including on the wrap from the last slide to the first.
+   Pure CSS: 6 slides x 6s = 36s cycle, no script. Light theme keeps the
+   single light still on ::before, because only that screen exists in light. */
+.hero-slides { background-image: none; overflow: hidden; }
+.hero-slides span {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: top center;
+  opacity: 0; z-index: 1;
+  animation: hero-slide 36s linear infinite both;
+  animation-delay: calc(var(--i) * 6s - 1.44s);
+}
+.hero-slides span:nth-child(1) { --i: 0; background-image: url("../img/cockpit-hero.webp"); }
+.hero-slides span:nth-child(2) { --i: 1; background-image: url("../img/cockpit-plan-impact.webp"); }
+.hero-slides span:nth-child(3) { --i: 2; background-image: url("../img/cockpit-plan-run.webp"); }
+.hero-slides span:nth-child(4) { --i: 3; background-image: url("../img/cockpit-review-change.webp"); }
+.hero-slides span:nth-child(5) { --i: 4; background-image: url("../img/cockpit-tests-coverage.webp"); }
+.hero-slides span:nth-child(6) { --i: 5; background-image: url("../img/cockpit-tests-steps.webp"); }
+@keyframes hero-slide {
+  0%      { opacity: 0; z-index: 2; }
+  4%      { opacity: 1; z-index: 2; }
+  4.01%   { opacity: 1; z-index: 1; }
+  20.67%  { opacity: 1; z-index: 1; }
+  20.68%  { opacity: 0; z-index: 1; }
+  100%    { opacity: 0; z-index: 1; }
+}
+.is-home::before { display: none; }
 .is-home::after {
   z-index: -1;
   background:
@@ -212,6 +244,8 @@ h2 { font-size: 1.6rem; margin: 0 0 8px; }
    theme. Fading the dark one out instead reads as grey noise at any
    opacity, because a dark UI has no light pixels to show through. */
 @media (prefers-color-scheme: light) {
+  .hero-slides { display: none; }
+  .is-home::before { display: block; }
   .is-home::before {
     background-image: image-set(
       url("../img/cockpit-hero-light.webp") type("image/webp"),
@@ -234,7 +268,9 @@ h2 { font-size: 1.6rem; margin: 0 0 8px; }
 /* The backdrop is decoration; print and reduced-motion get it plain. */
 @media (prefers-reduced-motion: reduce) {
   .is-home::before { transform: none; }
+  .hero-slides span { animation: none; }
+  .hero-slides span:first-child { opacity: 1; }
 }
 @media print {
-  .is-home::before, .is-home::after { display: none; }
+  .is-home::before, .is-home::after, .hero-slides { display: none; }
 }

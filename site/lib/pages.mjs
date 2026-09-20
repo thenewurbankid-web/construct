@@ -63,7 +63,7 @@ ${page.basePath ? `<base href="${esc(page.basePath)}">` : ''}
 <link rel="stylesheet" href="${root}assets/css/site.css">
 <link rel="stylesheet" href="${root}assets/css/docs.css">
 </head>
-<body${section === 'home' ? ' class="is-home"' : ''}>
+<body${section === 'home' ? ' class="is-home"' : ''}>${section === 'home' ? '\n<div class="hero-slides" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>' : ''}
 <a class="skip" href="#main">Skip to content</a>
 <header class="topbar">
   <div class="topbar-inner">
