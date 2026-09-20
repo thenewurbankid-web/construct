@@ -249,6 +249,7 @@
             "research.doctor",
             "validate",
             "review.analyze",
+            "test.run",
             "sync",
             "pipeline.run",
             "manual.task"
@@ -1399,6 +1400,65 @@
                 "required": [
                   "base",
                   "head"
+                ]
+              },
+              "executor": {
+                "enum": [
+                  "deterministic"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "test.run"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "feature": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The feature whose tests are run."
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Run only this test file (with area). Omit to run every test of the feature."
+                  },
+                  "area": {
+                    "type": "string",
+                    "minLength": 1,
+                    "enum": [
+                      "generated",
+                      "yours"
+                    ],
+                    "description": "Which directory the named test is in: generated (locked) or yours (clones and authored tests)."
+                  },
+                  "base-url": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Where the project's app is running, for example http://localhost:3000. Only an address on this machine is accepted."
+                  },
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": [
+                  "feature"
                 ]
               },
               "executor": {

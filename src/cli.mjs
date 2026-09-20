@@ -27,6 +27,7 @@ import { ingestPage } from './engine/pageTransformer.mjs';
 import { generateWorkflow } from './engine/workflowGenerator.mjs';
 import { generateController } from './engine/controllerBinder.mjs';
 import { generateFeatureTests } from './engine/testGenerator.mjs';
+import { runFeatureTests, renderRunText } from './engine/testRunner.mjs';
 import { startTimer, elapsedSeconds, formatDuration } from './timing.mjs';
 import { explainSource, renderExplained } from './engine/workflowExplain.mjs';
 import { listWorkflowSourceFiles, readWorkflowSource } from './engine/workflowSource.mjs';
@@ -609,6 +610,30 @@ export async function review(args) {
   const result = prHealth(root, { base: refs[0], head: refs[1], expected, mergeBase: !args.includes('--no-merge-base') });
   console.log(format === 'markdown' ? renderPrHealthMarkdown(result) : JSON.stringify(result, null, 2));
   if (!result.ok) process.exitCode = result.error.code === 'INTERNAL_ERROR' ? EXIT_CODES.INTERNAL_ERROR : EXIT_CODES.USAGE_ERROR;
+  return format === 'json';
+}
+
+/** `construct test run <feature> [--name <file> --area generated|yours] [--base-url <url>] [--format json|text] [--dir <path>]`
+ * (#305). Runs a feature's Playwright tests against the project's own running app and says, for each failure, whether
+ * the harness or the app is at fault. Read-only, deterministic, no LLM. Exit code 1 when any test failed. */
+export async function testCommand(args) {
+  const usage = 'Usage: construct test run <feature> [--name <file> --area generated|yours] [--base-url <url>] [--format json|text] [--dir <path>]';
+  if (args[0] !== 'run') throw new ConstructError(usage, { exitCode: EXIT_CODES.USAGE_ERROR });
+  const rest = args.slice(1);
+  const valueFlags = new Set(['--dir', '--name', '--area', '--base-url', '--format']);
+  const feature = rest.find((a, i) => !a.startsWith('--') && !valueFlags.has(rest[i - 1]));
+  if (!feature) throw new ConstructError(usage, { exitCode: EXIT_CODES.USAGE_ERROR });
+  const format = flagValue(rest, '--format') === 'json' ? 'json' : 'text';
+  const abort = new AbortController();
+  const onSignal = () => abort.abort();
+  process.once('SIGINT', onSignal);
+  process.once('SIGTERM', onSignal);
+  const result = await runFeatureTests(getRoot(rest), feature, { name: flagValue(rest, '--name'), area: flagValue(rest, '--area'), baseUrl: flagValue(rest, '--base-url'), signal: abort.signal, onProgress: format === 'text' ? (l) => console.error(l) : undefined });
+  process.off('SIGINT', onSignal);
+  process.off('SIGTERM', onSignal);
+  console.log(format === 'json' ? JSON.stringify(result, null, 2) : renderRunText(result));
+  if (!result.ok) process.exitCode = EXIT_CODES.USAGE_ERROR;
+  else if (result.counts.failed > 0) process.exitCode = EXIT_CODES.VIOLATIONS;
   return format === 'json';
 }
 

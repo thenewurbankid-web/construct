@@ -165,6 +165,10 @@ const EVERY_FLOW_STEPS = [
     args: { base: 'main', head: 'feat/checkout', plan: { features: ['checkout'], files: ['features/checkout/index.ts'] } }, dependsOn: ['s-validate'],
   },
   {
+    id: 's-test-run', title: 'Run the checkout tests against the running app', flow: 'test.run', executor: 'deterministic',
+    args: { feature: 'checkout', name: 'happy-path.spec.ts', area: 'yours', 'base-url': 'http://localhost:3000' }, dependsOn: ['s-validate'],
+  },
+  {
     id: 's-sync', title: 'Regenerate the rule config and public API barrels', flow: 'sync', executor: 'deterministic',
     args: {}, dependsOn: ['s-controller'],
     touches: { features: ['checkout'], files: [{ path: '.dependency-cruiser.cjs', change: 'modify' }] },
@@ -350,6 +354,7 @@ test('planToCommand reproduces the documented CLI usage line for each command sh
   assert.deepEqual(cmd('research.doctor'), ['research', 'doctor']);
   assert.deepEqual(cmd('validate'), ['validate', '--format', 'json']);
   assert.deepEqual(cmd('review.analyze'), ['review', 'main', 'feat/checkout', '--plan', '{{plan}}']);
+  assert.deepEqual(cmd('test.run'), ['test', 'run', 'checkout', '--name', 'happy-path.spec.ts', '--area', 'yours', '--base-url', 'http://localhost:3000']);
   assert.deepEqual(cmd('sync'), ['sync']);
   assert.deepEqual(cmd('pipeline.run'), ['pipeline', 'run']);
 });
@@ -680,4 +685,27 @@ test('review.analyze: base and head are required, the optional scope is checked,
   assert.equal(validatePlan(mk({ base: 'a', head: 'b', plan: { features: ['billing'], files: ['a.ts'] } })).valid, true);
   assert.equal(ajvValidate(mk({ base: 'a', head: 'b', plan: { features: ['billing'] } })), true);
   assert.equal(ajvValidate(mk({ base: 'a', head: 'b', plan: { features: 'billing' } })), false, 'the schema agrees with the validator');
+});
+
+// #305 -- test.run: run a feature's Playwright tests against the project's own app; read-only like review.analyze
+test('test.run is read-only and deterministic by registry, needs no touches and can never claim a model', () => {
+  const flow = PLAN_FLOWS['test.run'];
+  assert.equal(flow.writes, false);
+  assert.deepEqual(flow.executors, ['deterministic']);
+  const mk = (args, executor = 'deterministic') => createPlan(TICKET, [{ id: 't', title: 'Run', flow: 'test.run', executor, args }]);
+  assert.equal(validatePlan(mk({ feature: 'refunds' })).valid, true, 'no touches are required');
+  assert.ok(codes(mk({ feature: 'refunds' }, 'local-model')).includes('STEP_EXECUTOR_NOT_ALLOWED'));
+  assert.equal(ajvValidate(mk({ feature: 'refunds', area: 'generated', name: 'a--b.spec.ts' })), true);
+});
+
+test('test.run: the feature is required, one test needs name AND area, and nothing path-like or remote-looking is accepted', () => {
+  const mk = (args) => createPlan(TICKET, [{ id: 't', title: 'Run', flow: 'test.run', executor: 'deterministic', args }]);
+  assert.ok(codes(mk({})).includes('STEP_ARG_MISSING'));
+  assert.ok(codes(mk({ feature: '../x' })).includes('STEP_ARG_TYPE'));
+  assert.ok(codes(mk({ feature: 'a', name: '../../etc/passwd', area: 'yours' })).includes('STEP_ARG_TYPE'));
+  assert.ok(codes(mk({ feature: 'a', name: 'x.spec.ts' })).includes('STEP_ARG_MISSING'));
+  assert.ok(codes(mk({ feature: 'a', area: 'yours' })).includes('STEP_ARG_MISSING'));
+  assert.ok(codes(mk({ feature: 'a', name: 'x.spec.ts', area: 'other' })).includes('STEP_ARG_ENUM'));
+  assert.ok(codes(mk({ feature: 'a', 'base-url': 'http://localhost:3000/admin?x=1' })).includes('STEP_ARG_TYPE'));
+  assert.equal(validatePlan(mk({ feature: 'a', 'base-url': 'http://127.0.0.1:5173' })).valid, true);
 });
