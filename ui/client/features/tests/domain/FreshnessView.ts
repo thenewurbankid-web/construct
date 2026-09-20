@@ -19,6 +19,5 @@ export function freshnessModel(view: ComparisonView): FreshnessModel {
     caveat: gone ? null : !d.comparable ? 'The steps could not be compared line by line; open the code to see the current flow.' : d.changes.length === 0 ? 'The steps read the same; a condition on the route changed. Open the code to compare.' : null,
     changes: d.changes.map((c) => ({ kind: c.kind, word: WORD[c.kind], text: c.text })),
     next: d.next,
-    canEdit: !gone,
   };
 }

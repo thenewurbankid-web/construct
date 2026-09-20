@@ -8,7 +8,7 @@ import { FAILURE_KINDS } from './FailureKinds.ts';
 const clone = (state, stale) => ({ name: `${state}.spec.ts`, kind: 'clone', area: 'yours', freshness: { state, stale, summary: '', changes: 0 } });
 
 test('the tag says out of date in words; only a stale clone gets it', () => {
-  assert.equal(cloneTag(clone('scenario-changed', true)), 'clone · out of date');
+  assert.equal(cloneTag(clone('scenario-changed', true)), 'out of date');
   assert.equal(cloneTag(clone('machine-changed', false)), 'clone');
   assert.equal(cloneTag({ kind: 'authored', area: 'yours' }), 'yours');
 });
@@ -28,10 +28,8 @@ test('banner model: stale with the diff, removed without Edit steps, machine-cha
   const changed = freshnessModel(ready({ state: 'scenario-changed', from: { scenario: 'Happy path' }, changes: [{ kind: 'added', text: 'A new step' }] }));
   assert.equal(changed.kind, 'stale');
   assert.equal(changed.title, 'Possibly out of date');
-  assert.equal(changed.canEdit, true);
   assert.deepEqual(changed.changes.map((c) => c.word), ['New']);
   const gone = freshnessModel(ready({ state: 'scenario-removed' }));
-  assert.equal(gone.canEdit, false);
   assert.equal(gone.caveat, null);
   assert.equal(freshnessModel(ready({ state: 'machine-changed' })).kind, 'note');
   assert.equal(freshnessModel(ready({ state: 'current' })).kind, 'none');

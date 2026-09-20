@@ -43,7 +43,7 @@ export function TestDetail({ test, title, steps, code, comparison, onClone, onEd
           {clonedFrom ? <>Cloned from <span className="ts-mono">{clonedFrom.file.split('/').pop()}</span>. Nothing regenerates this file.</> : 'Written by you. Nothing regenerates this file.'}
         </p>
       )}
-      {!locked && <CloneFreshness model={comparison.model} dismissed={comparison.dismissed} onDismiss={comparison.dismiss} onEditSteps={() => onEditSteps(test.name)} />}
+      {!locked && <CloneFreshness model={comparison.model} dismissed={comparison.dismissed} onDismiss={comparison.dismiss} />}
       <div className="ts-actions">
         {!locked && <button type="button" className="ts-btn ts-btn--primary" data-testid="detail-edit-steps" onClick={() => onEditSteps(test.name)}>Edit steps</button>}
         {locked && <button type="button" className="ts-btn ts-btn--primary" data-testid="detail-clone" onClick={() => onClone(test.name)}>Clone to edit</button>}

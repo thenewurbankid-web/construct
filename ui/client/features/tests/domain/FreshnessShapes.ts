@@ -14,7 +14,7 @@ export type FreshnessModel =
   | { kind: 'loading' }
   | { kind: 'error'; message: string }
   | { kind: 'note'; text: string }
-  | { kind: 'stale'; title: string; from: string | null; summary: string; caveat: string | null; changes: { kind: FlowChange['kind']; word: string; text: string }[]; next: string | null; canEdit: boolean };
+  | { kind: 'stale'; title: string; from: string | null; summary: string; caveat: string | null; changes: { kind: FlowChange['kind']; word: string; text: string }[]; next: string | null };
 export type StaleOverview = { names: string[]; summary: string };
 export type ComparisonView = { status: 'none' } | { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; data: Comparison };
 

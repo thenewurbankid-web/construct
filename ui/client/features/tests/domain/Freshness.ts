@@ -3,7 +3,7 @@
 import type { StaleOverview, TestsListing, YourTest } from '../types.ts';
 
 /** The tag beside a clone in the tree: a word, never only a colour. */
-export const cloneTag = (y: YourTest): string => (y.kind !== 'clone' ? 'yours' : y.freshness?.stale ? 'clone · out of date' : 'clone');
+export const cloneTag = (y: YourTest): string => (y.kind !== 'clone' ? 'yours' : y.freshness?.stale ? 'out of date' : 'clone');
 
 /** Clones whose flow changed under them, and the sentence that says so; null when none. */
 export function staleOverview(data: TestsListing | null): StaleOverview | null {
