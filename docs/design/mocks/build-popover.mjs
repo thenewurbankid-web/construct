@@ -71,7 +71,7 @@ writeFileSync(join(here, 'popover-disclosure.html'), page('Popover - disclosure 
          aria-label="Signed in as Sam P."
 surface  id="sh-user-menu"   (plain group, no role="menu")
          login line = text · Sign out = &lt;button&gt;
-Tab order: trigger -> Sign out -> next top-bar control</div>`, 'left:24px;top:330px')),
+Tab order: trigger -> Sign out -> next top-bar control</div>`, 'left:24px;top:330px') + card('Focus ring on a closed trigger (2px --focus, offset 2px)', `<div style="display:flex;gap:24px;align-items:center;padding:6px 4px"><button class="chip-btn focus-ring" aria-haspopup="dialog" aria-expanded="false">storefront <span class="sub">main</span> ▾</button><button class="acct focus-ring" aria-haspopup="true" aria-expanded="false" aria-label="Signed in as Sam P."><span class="av" aria-hidden="true">S</span>Sam P.</button><span style="color:var(--text-muted)">Same ring on the open-state item above (Sign out).</span></div>`, 'left:24px;top:520px')),
   right: rightStub, drawer: drawerStub, drawerH: 96,
 }), { project: projectBtn(false, false), acct: acctBtn(true, false, discBody) })));
 
