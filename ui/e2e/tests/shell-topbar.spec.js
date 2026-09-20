@@ -47,6 +47,7 @@ test.describe('Cockpit top bar (#245)', () => {
       'Import Wizard',
       'Pages Editor',
       'Workflows',
+      'Tests',
       'Local Model',
       'Settings',
       'Help',

@@ -25,6 +25,7 @@ import { createPlanService } from './planService.mjs';
 import { createPlanRouter } from './planApi.mjs';
 import { attachProcessesSocket } from './processesSocket.mjs';
 import { createReviewRouter } from './reviewApi.mjs';
+import { createTestsRouter } from './testsApi.mjs';
 import { createReviewJobs } from './reviewJobs.mjs';
 import { refuseUnknownUpgrades } from './wsUpgrade.mjs';
 import { getOllamaStatus, listOllamaModels, startOllamaPull, removeOllamaModel } from './ollama.mjs';
@@ -825,6 +826,17 @@ app.use('/api/plan', createPlanRouter(planService));
 export const reviewJobs = createReviewJobs();
 app.use('/api/review', createReviewRouter({
   jobs: reviewJobs,
+  getRoot: () => {
+    const root = findProjectRoot(getSettings().projectDir);
+    return root ? { ok: true, root } : { ok: false, error: 'No Construct project found for the current project directory. Pick a project first.' };
+  },
+}));
+
+// #300/#301: the Tests tab. Registered below the gate like every other `/api` route. The client sends a
+// feature name, a generated file NAME and a clone name only; all three are validated and every path is derived
+// on the server (testsApi.mjs / src/engine/testClone.mjs). The clone and generate POSTs are mutating.
+app.use('/api/tests', createTestsRouter({
+  clientOrigin: CLIENT_ORIGIN,
   getRoot: () => {
     const root = findProjectRoot(getSettings().projectDir);
     return root ? { ok: true, root } : { ok: false, error: 'No Construct project found for the current project directory. Pick a project first.' };

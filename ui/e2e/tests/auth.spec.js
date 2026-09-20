@@ -117,6 +117,12 @@ test.describe('#278 GitHub login gate', () => {
     for (const route of ['propose', 'impact', 'validate', 'run']) {
       expect(await page.evaluate(([api, r]) => fetch(`${api}/api/plan/${r}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: 'x', seeds: ['feature:x'], plan: {} }) }).then((res) => res.status), [API, route])).toBe(401);
     }
+    // #300/#301: the Tests tab's list and source reads, and its two mutating POSTs (clone, generate), are gated too.
+    expect(await apiStatus(page, '/api/tests/billing')).toBe(401);
+    expect(await apiStatus(page, '/api/tests/billing/source?area=generated&name=a--b.spec.ts')).toBe(401);
+    const postStatus = (route, body) => page.evaluate(([api, route, body]) => fetch(`${api}${route}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.status), [API, route, body]);
+    expect(await postStatus('/api/tests/billing/clone', { source: 'a--b.spec.ts', name: 'x' })).toBe(401);
+    expect(await postStatus('/api/tests/billing/generate', {})).toBe(401);
 
     // The one deliberate exception, so a liveness probe still works.
     expect(await apiStatus(page, '/api/health')).toBe(200);

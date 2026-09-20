@@ -51,6 +51,7 @@ test('modes keep the owner names (Plan is the old Research route) and map paths'
   assert.deepEqual(MODES.map((m) => m.label), ['Explore', 'Plan', 'Build', 'Review']);
   assert.equal(modeForPath('/pages').id, 'explore');
   assert.equal(modeForPath('/workflows').id, 'explore');
+  assert.equal(modeForPath('/tests').id, 'explore');
   assert.equal(modeForPath('/').id, 'plan');
   assert.equal(modeForPath('/plan').id, 'plan');
   assert.equal(MODES.find((m) => m.id === 'plan').href, '/plan');
@@ -60,7 +61,7 @@ test('modes keep the owner names (Plan is the old Research route) and map paths'
 });
 
 test('screens list every existing route with the old nav labels', () => {
-  assert.deepEqual(SCREENS.map((s) => s.label), ['Dashboard', 'Import Wizard', 'Pages Editor', 'Workflows', 'Local Model', 'Settings', 'Help']);
+  assert.deepEqual(SCREENS.map((s) => s.label), ['Dashboard', 'Import Wizard', 'Pages Editor', 'Workflows', 'Tests', 'Local Model', 'Settings', 'Help']);
   assert.equal(isScreenActive(SCREENS[0], '/'), true);
   assert.equal(isScreenActive(SCREENS[0], '/help'), false);
 });
