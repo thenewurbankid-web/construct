@@ -22,6 +22,8 @@ import { attachWizardSocket } from './wizardSocket.mjs';
 import { createProcessesService } from './processesService.mjs';
 import { createProcessesRouter } from './processesApi.mjs';
 import { attachProcessesSocket } from './processesSocket.mjs';
+import { createReviewRouter } from './reviewApi.mjs';
+import { createReviewJobs } from './reviewJobs.mjs';
 import { refuseUnknownUpgrades } from './wsUpgrade.mjs';
 import { getOllamaStatus, listOllamaModels, startOllamaPull, removeOllamaModel } from './ollama.mjs';
 import {
@@ -804,6 +806,19 @@ app.get('/api/logs', (req, res) => {
 // `/api` route; the WebSocket (createUiServer) takes the same `auth`.
 export const processesService = createProcessesService({ getProjectDir: () => getSettings().projectDir });
 app.use('/api/processes', createProcessesRouter(processesService));
+
+// #312/#313: Review mode (read-only). Registered below the gate like every other `/api` route. The
+// repository is always the current project's -- the client sends branch names only, and each is
+// checked against `git for-each-ref` of that repository (reviewRefs.mjs). The synchronous PR-health
+// engine runs in a child process per job (reviewJobs.mjs), never on this request thread.
+export const reviewJobs = createReviewJobs();
+app.use('/api/review', createReviewRouter({
+  jobs: reviewJobs,
+  getRoot: () => {
+    const root = findProjectRoot(getSettings().projectDir);
+    return root ? { ok: true, root } : { ok: false, error: 'No Construct project found for the current project directory. Pick a project first.' };
+  },
+}));
 
 /** True when this file is the process entry point (`npm start`), false when
  * it is imported — by a test, or by anything else that wants the app
