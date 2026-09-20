@@ -20,7 +20,7 @@ build MCP work.
 - The in-product Help page and Tutorials: `ui/client/features/help` and
   `ui/client/public/tutorials/*`.
 - The `ui-screenshots` branch (`ui/e2e/screenshots/**`).
-- The coming GitHub Pages guide.
+- The GitHub Pages site (`site/`): authored example pages under `site/content/user/examples/`, split into CLI, Cockpit and Core, problem first, no user stories (DEMOS.md section 9).
 You do not own product code. If a demo exposes a product bug, file a normal
 issue for it and say so in the report; do not fix it here.
 
@@ -34,8 +34,10 @@ issue for it and say so in the report; do not fix it here.
    text, and update the line.
 3. **Clutter**: duplicates and superseded tickets, stale claims ("not
    reachable", pre-timing output), unreferenced screenshots, epics not shaped
-   as guide + user-story sub-issues, sub-issues not linked as real GitHub
-   sub-issues.
+   as guide + sub-issues, sub-issues not linked as real GitHub sub-issues.
+   Internal user-story bodies are fine but never go on the site. On the
+   site, keep pages few and current, keep CLI / Cockpit / Core apart, and
+   run `node --test site/test/*.test.mjs` after any change.
 4. **Benefit**: every sub-issue has a Benefit block with measurable evidence;
    add or flag the ones that do not.
 5. **Report** using the format below.

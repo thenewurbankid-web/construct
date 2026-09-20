@@ -13,7 +13,10 @@ is not done.
 ## 1. Guide shape
 
 Every demo topic is a **guide**: one parent ticket plus one real GitHub
-sub-issue per user story.
+sub-issue per capability. **User stories are internal.** A sub-issue may open
+with "As a ... I want ... so that ..." to keep its intent clear for the team,
+but the documentation site never renders it (owner decision, 2026-09-20, #290);
+the site is written as problem, exact command or screen, exact result (section 9).
 
 ### The parent ("guide") ticket is a landing page
 
@@ -27,11 +30,11 @@ Title: `[Demo Guide] <what the reader can do>`. Body, in this order:
 5. **Why this matters** - exactly three lines.
 6. **Verified on** - see section 5.
 
-### Each user story is a sub-issue
+### Each capability is a sub-issue
 
-- One story per sub-issue, titled `[Demo] As a <role> I want <goal>` (short form
-  is fine as long as the role and goal are visible).
-- Body opens with the full story: **As a** ... **I want** ... **so that** ...
+- One capability per sub-issue, titled `[Demo] <what the reader can do>`; the
+  "As a ... I want ..." form is still fine when it reads well.
+- Body may open with the story: **As a** ... **I want** ... **so that** ...
 - Link it as a real GitHub sub-issue, not just a mention:
   `POST /repos/{owner}/{repo}/issues/{parent}/sub_issues` with the child's
   numeric `id` (the `id` field, not the issue number). Linked sub-issues then
@@ -47,10 +50,10 @@ Title: `[Demo Guide] <what the reader can do>`. Body, in this order:
 Numbered steps are `1.`, `2.`, ... with the exact command or click on each,
 so a reader can follow along with no other context.
 
-## 2. Separate CLI and UI sections
+## 2. Separate CLI, UI and Core sections
 
 Each sub-issue has a clearly labeled **CLI** section and a clearly labeled
-**UI** section. They are independent: neither relies on the other, and
+**UI** section, plus a **Core** (API) section where the capability has one. They are independent: neither relies on the other, and
 neither is interleaved with the other. Each covers the full real breadth of
 that surface (every command, flag, option that exists today), verified against
 current code, not copied from an old ticket.
@@ -129,11 +132,39 @@ what was observed and be honest that it is qualitative.
 
 ## 8. Checklist before closing any demo
 
-- [ ] Story is `As a / I want / so that`, and is a real linked sub-issue
-- [ ] CLI and UI sections, separate; missing surface stated plainly
+- [ ] Capability is one real linked sub-issue (an internal story is optional and never published)
+- [ ] CLI, UI (and Core) sections, separate; missing surface stated plainly
 - [ ] Numbered steps, "what you'll see", plain language
 - [ ] Real output and real screenshots only, frugal, on `ui-screenshots`
 - [ ] Benefit block with evidence
 - [ ] "Verified on" line matches current `main`
 - [ ] No stale claims, no duplicate of another demo
 - [ ] Closing comment has Setup/run, API, Exceptions, Future considerations (CLAUDE.md rule 12)
+
+## 9. The documentation site
+
+The GitHub Pages site (`site/`) is **authored, not generated from tickets**.
+Its examples live in `site/content/user/examples/` and are built by
+`node site/build.mjs --out site/dist --no-search`, which needs no network and
+no token. Rules:
+
+- **Shape of an example**: it opens with `**Problem.**`, then the exact
+  command or screen, then the exact result, then a "What you can rely on"
+  table, then `Checked against commit <sha> on <date>.` No user stories, no
+  ticket numbers, no internal wording (the site test fails on these).
+- **Three surfaces, never mixed**: `cli-*` pages hold only terminal
+  transcripts, `cockpit-*` pages hold only screenshots and UI text, `core-*`
+  pages hold only the exported functions (JSON in, JSON out). The page file
+  name prefix and the nav group must match (`site/test/site.test.mjs`).
+- **Pitch**: the home page names the problem first (an LLM re-deriving the
+  same task with tokens each run, versus repeatable deterministic blocks; a
+  cockpit, not an autopilot).
+- **Small and current**: prune rather than accumulate. A new capability
+  either updates an existing example or replaces one; a page describing
+  something not on `main` is wrong. Screenshots come from real Playwright
+  runs (reuse those on `ui-screenshots`) and live in `site/assets/img/` as
+  webp; refresh them when the screen changes. The home backdrop
+  (`cockpit-hero.*`, `cockpit-hero-light.*`) is re-shot from the current
+  Cockpit whenever the top bar or modes change.
+- **Freshness**: bump the "Checked against" line only after re-running the
+  commands and re-reading the screenshots against current `main`.

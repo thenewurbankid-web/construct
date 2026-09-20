@@ -258,11 +258,12 @@ individually-closable subtasks, not a rigid taxonomy.
 
 Each subtask (and the parent's own summary) must be written as:
 
-1. **Separate, clearly labeled CLI and UI sections** — not interleaved
-   into one narrative. A "CLI" section covering that capability's
-   command-line usage (real commands + real output), and a "UI" section
-   covering the same capability's UI usage (real screenshots), as two
-   distinct parts of the same subtask. Each section covers the feature's
+1. **Separate, clearly labeled CLI and UI sections** (and a Core/API
+   section where the capability has one) — not interleaved into one
+   narrative. A "CLI" section covering that capability's command-line usage
+   (real commands + real output), and a "UI" section covering the same
+   capability's UI usage (real screenshots), as distinct parts of the same
+   subtask. Each section covers the feature's
    full real capability breadth on its own surface (every command/flag/
    layer/option it actually has, verified against current code — not a
    cherry-picked minimal example, and not copied from a possibly-drifted
@@ -284,14 +285,26 @@ Each subtask (and the parent's own summary) must be written as:
 
 4. **Guide shape and benefit rule.** A demo topic is a "guide": a parent
    landing-page ticket (who it's for, the problem, one hero screenshot, a
-   contents table, a 3-line "why this matters") with **one real GitHub
-   sub-issue per user story** ("As a … I want … so that …", linked via the
-   sub-issues API). Every sub-issue carries a **Benefit** block (who
-   benefits, what problem it removes, measurable evidence) and a "Verified
-   on <commit>" line; a demo without an evidenced benefit is not done.
-   Stale, superseded or duplicate demos are consolidated (closed as
-   "superseded by #N", never deleted). The full rules — freshness, clutter,
-   checklist — live in `docs/DEMOS.md`, the single source of truth.
+   contents table, a 3-line "why this matters") with one real GitHub
+   sub-issue per capability, linked via the sub-issues API. A sub-issue's
+   body may keep its internal "As a ... I want ... so that ..." story, but
+   **user stories are never rendered on the documentation site** (owner
+   decision, 2026-09-20, #290). Every sub-issue carries a **Benefit** block
+   (who benefits, what problem it removes, measurable evidence) and a
+   "Verified on <commit>" line; a demo without an evidenced benefit is not
+   done. Stale, superseded or duplicate demos are consolidated (closed as
+   "superseded by #N", never deleted). The full rules live in
+   `docs/DEMOS.md`, the single source of truth.
+5. **The documentation site is authored, not generated from tickets.**
+   `site/content/user/examples/` holds the examples: each opens with the
+   **problem**, then the exact command or screen, then the exact result
+   (real output, real screenshots), and ends with a "Checked against
+   commit" line. CLI, Cockpit and Core examples are separate pages, never
+   interleaved (rule 1 applies to the whole site, with Core = the exported
+   functions, JSON in and out). The pitch names the problem first: an LLM
+   redoing the same task with tokens each time versus repeatable
+   deterministic blocks, a cockpit rather than an autopilot. Keep the
+   number of pages small and current; prune rather than accumulate.
 
 **Demo/doc upkeep is delegated to the `demo-curator` agent**
 (`.claude/agents/demo-curator.md`): run it after each work wave that changes
