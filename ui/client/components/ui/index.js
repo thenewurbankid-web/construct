@@ -7,3 +7,4 @@ export { Field } from './Field.jsx';
 export { Input } from './Input.jsx';
 export { Select } from './Select.jsx';
 export { Badge } from './Badge.jsx';
+export { Logo } from './Logo.jsx';

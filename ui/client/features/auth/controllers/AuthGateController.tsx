@@ -2,6 +2,8 @@
 
 import type { ReactNode } from 'react';
 import { blocksCockpit, canSignIn } from '../domain/Session';
+import { LOGIN_PHRASES } from '../domain/Typewriter';
+import { useTypewriter } from '../hooks/useTypewriter';
 import { useAuthSession } from '../hooks/useAuthSession';
 import { AuthGatePage } from '../pages/AuthGatePage';
 
@@ -18,8 +20,11 @@ import { AuthGatePage } from '../pages/AuthGatePage';
  */
 export function AuthGateController({ children }: { children: ReactNode }) {
   const { session, loading, unreachable, signingIn, error, refresh, signInWithGithub, signInAsTestUser } = useAuthSession();
+  const { text: tagline, animated: taglineAnimated } = useTypewriter(LOGIN_PHRASES);
   return (
     <AuthGatePage
+      tagline={tagline}
+      taglineAnimated={taglineAnimated}
       session={session}
       loading={loading}
       unreachable={unreachable}

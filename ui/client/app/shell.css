@@ -36,7 +36,8 @@
  * line inside a 24px pill. The command palette trigger is the single elastic
  * item: it ellipsises by design, so it absorbs the whole deficit instead. */
 .sh-brand, .sh-modes, .sh-pill, .sh-icon-btn, .sh-project, .sh-project-btn, .sh-user { flex: none; }
-.sh-brand { font-weight: 700; font-size: var(--fs-lg); margin-right: var(--sp-2); }
+.sh-brand { display: inline-flex; align-items: center; gap: var(--sp-2); font-weight: 600; font-size: var(--fs-md, 0.95rem); letter-spacing: 0.22em; text-transform: uppercase; margin-right: var(--sp-2); }
+.sh-brand svg { flex: none; }
 .sh-spacer { flex: 1 1 0; min-width: 0; }
 
 .sh-modes { display: flex; gap: 2px; padding: 2px; background: var(--surface-0); border: 1px solid var(--border-subtle); border-radius: var(--r-md); }

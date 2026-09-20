@@ -14,6 +14,8 @@ type AuthGatePageProps = {
   onSignInWithGithub: () => void;
   onSignInAsTestUser: () => void;
   onRetry: () => void;
+  tagline: string;
+  taglineAnimated: boolean;
   children: ReactNode;
 };
 
@@ -31,6 +33,8 @@ export function AuthGatePage({
   onSignInWithGithub,
   onSignInAsTestUser,
   onRetry,
+  tagline,
+  taglineAnimated,
   children,
 }: AuthGatePageProps): ReactNode {
   // "Still asking" is its own state, not a flash of the login screen over a
@@ -49,6 +53,8 @@ export function AuthGatePage({
   if (blocked) {
     return (
       <LoginScreen
+        tagline={tagline}
+        taglineAnimated={taglineAnimated}
         session={session}
         unreachable={unreachable}
         signingIn={signingIn}
