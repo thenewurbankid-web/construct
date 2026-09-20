@@ -80,6 +80,7 @@ test('every /api/tests route is refused with 401 when there is no session', asyn
     for (const [method, p, body] of [
       ['GET', '/api/tests/jobs'],
       ['GET', `/api/tests/jobs/source?area=generated&name=${src}`],
+      ['GET', '/api/tests/jobs/compare?name=x.spec.ts'],
       ['POST', '/api/tests/jobs/clone', { source: src, name: 'x' }],
       ['POST', '/api/tests/jobs/generate', {}],
     ]) {
@@ -231,5 +232,48 @@ test('generate: writes locked tests; without the lock declared it refuses and pr
 test('no project directory: a plain 400', async () => {
   await withStack({ dir: null }, async ({ json }) => {
     assert.equal((await json('GET', '/api/tests/jobs')).status, 400);
+  });
+});
+
+// --- #306: a clone's freshness ------------------------------------------------
+
+const REVIEWED = MACHINE.replace("finishJob: 'done'", "finishJob: 'review'").replace('    failed:', "    review: { on: { APPROVE_JOB: 'done' } },\n    failed:");
+
+test('compare: a clone whose flow changed is stale with the plain-language diff; the listing carries the same verdict', async () => {
+  await withStack({}, async ({ dir, json }) => {
+    const other = fs.readdirSync(gen(dir)).find((n) => /ends-done/.test(n));
+    assert.equal((await json('POST', '/api/tests/jobs/clone', { body: { source: other, name: 'mine' } })).status, 200);
+    assert.equal((await json('GET', '/api/tests/jobs')).body.yours[0].freshness.state, 'current');
+    fs.writeFileSync(path.join(dir, 'features', 'jobs', 'workflows', 'Simple.ts'), REVIEWED);
+    generateFeatureTests(dir, 'jobs', { prune: true });
+    const cloneText = fs.readFileSync(path.join(tests(dir), 'mine.spec.ts'), 'utf8');
+    const listing = (await json('GET', '/api/tests/jobs')).body;
+    assert.equal(listing.yours[0].freshness.stale, true);
+    assert.deepEqual(listing.coverage.find((c) => c.cloned.length).staleClones, ['mine.spec.ts']);
+    assert.ok(listing.generated.every((g) => !('freshness' in g)), 'a locked generated test is never flagged');
+    const r = await json('GET', '/api/tests/jobs/compare?name=mine.spec.ts');
+    assert.equal(r.status, 200);
+    assert.equal(r.body.state, 'scenario-changed');
+    assert.match(r.body.changes.map((c) => c.text).join('\n'), /"approve job" happens/);
+    assert.equal(fs.readFileSync(path.join(tests(dir), 'mine.spec.ts'), 'utf8'), cloneText, 'reading never rewrites the clone');
+  });
+});
+
+test('compare: hostile names, a symlink, a non-clone and an unknown feature are refused; nothing is written', async () => {
+  await withStack({}, async ({ dir, json }) => {
+    fs.mkdirSync(tests(dir), { recursive: true });
+    fs.writeFileSync(path.join(tests(dir), 'authored.spec.ts'), '// mine\n');
+    fs.symlinkSync(path.join(dir, 'architecture.yml'), path.join(tests(dir), 'link.spec.ts'));
+    const before = fs.readdirSync(tests(dir)).sort();
+    for (const name of ['..', '..%2Farchitecture.yml', '%2Fetc%2Fpasswd', 'a%00.spec.ts', 'a%0A.spec.ts', 'UP.spec.ts', 'x']) {
+      const r = await json('GET', `/api/tests/jobs/compare?name=${name}`);
+      assert.equal(r.status, 400, `${name} -> ${r.status}`);
+    }
+    assert.equal((await json('GET', '/api/tests/jobs/compare')).status, 400);
+    assert.equal((await json('GET', '/api/tests/jobs/compare?name=link.spec.ts')).status, 404);
+    assert.equal((await json('GET', '/api/tests/jobs/compare?name=authored.spec.ts')).status, 422);
+    assert.equal((await json('GET', '/api/tests/jobs/compare?name=nope.spec.ts')).status, 404);
+    assert.equal((await json('GET', '/api/tests/nosuch/compare?name=x.spec.ts')).status, 404);
+    assert.deepEqual(fs.readdirSync(tests(dir)).sort(), before);
   });
 });

@@ -4,6 +4,7 @@
 // Mount AFTER `app.use('/api', auth.requireSession)` (index.mjs does). Endpoints:
 //   GET  /:feature                          generated (locked) and yours, plus a coverage row per scenario
 //   GET  /:feature/source?area=&name=       read-only text of one listed test ("Just show me the code")
+//   GET  /:feature/compare?name=            one of YOUR clones against the flow as it is now: stale or not, and what changed (#306, read-only)
 //   POST /:feature/clone {source, name?}    copy ONE generated test to features/<f>/tests/<name>.spec.ts
 //   POST /:feature/generate                 construct generate tests <feature> (the #348 generator)
 //   GET  /:feature/steps?name=              one of YOUR tests as a step document (#302), with the hash to echo back
@@ -25,13 +26,15 @@
 //     an Origin, that Origin must be the Cockpit's own.
 import express from 'express';
 import { listUnits } from '../../../src/engine/unitSummary.mjs';
-import { cloneGeneratedTest, listFeatureTests, readFeatureTest } from '../../../src/engine/testClone.mjs';
+import { cloneGeneratedTest, readFeatureTest } from '../../../src/engine/testClone.mjs';
+import { compareClone, listFeatureTestsFresh } from '../../../src/engine/testFreshness.mjs';
 import { generateFeatureTests } from '../../../src/engine/testGenerator.mjs';
 import { applyStepEdit, previewStepEdit, readStepDocument } from '../../../src/engine/testSteps.mjs';
+import { environmentState } from './testsEnv.mjs';
 import { ConstructError } from '../../../src/diagnostics.mjs';
 
 const NAME = /^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/;
-const STATUS = { 'no-feature': 404, 'not-generated': 404, 'not-found': 404, exists: 409, locked: 403, stale: 409, 'not-reviewed': 409, 'no-change': 409, invalid: 422, 'not-editable': 422, unrenderable: 422 };
+const STATUS = { 'no-feature': 404, 'not-generated': 404, 'not-found': 404, 'not-a-clone': 422, 'bad-name': 400, exists: 409, locked: 403, stale: 409, 'not-reviewed': 409, 'no-change': 409, invalid: 422, 'not-editable': 422, unrenderable: 422 };
 const refuse = (status, error, extra = {}) => ({ status, body: { ok: false, error, ...extra } });
 
 /** The current project's real feature, or a refusal. Only ever COMPARES the client's string. */
@@ -70,12 +73,17 @@ export function createTestsRouter({ getRoot, clientOrigin }) {
   };
   const body = (req) => (req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {});
 
-  router.get('/:feature', handle((root, req) => fromCore(listFeatureTests(root, req.params.feature))));
+  router.get('/:feature', handle((root, req) => {
+    const r = listFeatureTestsFresh(root, req.params.feature);
+    return fromCore(r.ok ? { ...r, environment: environmentState() } : r);
+  }));
 
   router.get('/:feature/source', handle((root, req) => {
     const one = (v) => (typeof v === 'string' ? v : '');
     return fromCore(readFeatureTest(root, req.params.feature, { area: one(req.query.area), name: one(req.query.name) }));
   }));
+
+  router.get('/:feature/compare', handle((root, req) => fromCore(compareClone(root, req.params.feature, { name: typeof req.query.name === 'string' ? req.query.name : undefined }))));
 
   router.post('/:feature/clone', handle((root, req) => {
     const b = body(req);

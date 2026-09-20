@@ -46,6 +46,7 @@ export function CoverageTable({ rows, selectedFile, generating, onOpen, onGenera
                 <span className="ts-testcell">
                   {r.generated ? <span className="ts-chip ts-chip--locked" data-testid="chip-locked">Locked</span> : <span className="ts-chip ts-chip--none" data-testid="chip-none">None</span>}
                   {r.cloned.length > 0 && <span className="ts-chip ts-chip--yours" data-testid="chip-cloned">{r.cloned.length === 1 ? 'Cloned' : `Cloned x${r.cloned.length}`}</span>}
+                  {(r.staleClones?.length ?? 0) > 0 && <span className="ts-chip ts-chip--stale" data-testid="chip-clone-stale" title="A clone of this scenario was made from a flow that has since changed. Open the clone to see what changed.">Clone out of date</span>}
                   {r.outOfDate && <span className="ts-chip ts-chip--stale" title="The flow changed since this test was generated. Generate again to refresh it.">Out of date</span>}
                   {!r.generated && <button type="button" className="ts-btn" data-testid="coverage-generate" disabled={generating} onClick={onGenerate} title="Generates every missing test for this feature">{generating ? 'Generating...' : 'Generate'}</button>}
                 </span>

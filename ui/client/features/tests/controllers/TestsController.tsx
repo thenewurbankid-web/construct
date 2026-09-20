@@ -15,7 +15,7 @@ export function TestsController() {
   const t = useTests();
   const { state } = t;
   const ed = useStepEditor(state.feature);
-  const tabs = testsShellTabs({ ...t, feature: state.feature, selected: state.selected, code: state.code, onFeature: t.pickFeature, onSelect: t.select, onClone: t.openClone, onEditStep: t.editStep, onShowCode: () => t.showCode(), onHideCode: t.hideCode, onEditSteps: ed.open });
+  const tabs = testsShellTabs({ ...t, feature: state.feature, selected: state.selected, code: state.code, comparison: t.comparison, cloneTag: t.cloneTag, onFeature: t.pickFeature, onSelect: t.select, onClone: t.openClone, onEditStep: t.editStep, onShowCode: () => t.showCode(), onHideCode: t.hideCode, onEditSteps: ed.open });
   useRegisterShellTab('browser', tabs.browser);
   useRegisterShellTab('tools', tabs.tools);
 
@@ -29,7 +29,10 @@ export function TestsController() {
         dialog={t.dialogView}
         generate={state.generate}
         notice={state.notice}
+        stale={t.stale}
+        failureKinds={t.failureKinds}
         onOpen={(file) => t.select({ area: 'generated', name: file })}
+        onOpenClone={(name) => t.select({ area: 'yours', name })}
         onGenerate={t.generate}
         onDialogName={t.editName}
         onDialogCreate={t.submitClone}

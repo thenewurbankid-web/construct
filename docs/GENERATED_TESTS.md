@@ -64,3 +64,20 @@ No second source of truth: the spec file *is* the document. `src/engine/testStep
 - **Write discipline.** The client sends a feature name, a file name (`^[a-z0-9][a-z0-9-]*\.spec\.ts$`, an existing non-symlink file directly under `features/<f>/tests/`, never `generated/`), the content hash it opened and the step fields. A write also needs the hash of the reviewed diff; a stale file is refused; the file is replaced atomically (`O_EXCL` temp file, then rename).
 - **API** (behind the session; the two POSTs also refuse a foreign Origin): `GET /api/tests/:feature/steps?name=` -> `{ editable, hash, title, steps[], machine }` or `{ editable: false, reason }`; `POST /api/tests/:feature/steps/preview { name, baseHash, steps }` -> `{ changed, resultSha, diff }`; `POST /api/tests/:feature/steps { name, baseHash, resultSha, steps }` -> `{ hash }`. Core: `readStepDocument`, `previewStepEdit`, `applyStepEdit`, `parseSpec`, `renderDoc` in `src/engine/testSteps.mjs`.
 - **Step vocabulary** is what round-trips today: Go to (edit the URL), Flow event, Flow state, Check "text is visible". Type, Click and Wait are not offered yet (no template can round-trip them); free-form code editing is #303, authoring from scratch #304, recording #319.
+
+## When the flow a clone came from changes (#306)
+
+A clone records where it came from (`machine-hash`, `scenario-hash`, copied from the generated file). `src/engine/testFreshness.mjs` compares those hashes with what the generator would write **today** (the same `planFeatureTests` plan; nothing is computed twice). No LLM, read-only: **a clone is never rewritten; QA decides.**
+
+| State | Meaning | Flagged? |
+|---|---|---|
+| `current` | both hashes match | no |
+| `machine-changed` | the machine changed elsewhere, this scenario's steps are identical | quiet note only |
+| `scenario-changed` | the route this test walks changed | **stale**, with the step diff |
+| `scenario-removed` | the scenario it came from no longer exists | **stale** |
+| `unknown` | no usable lineage (hand-edited header) | no claim |
+
+The diff compares flow steps (an event happening, the flow reaching a state), read by the step parser, and says in words which step is new, gone or changed ("A new step is in the flow (step 6): the flow moves to audit."). Checks, notes, the address and fixmes QA added are never reported. Limit: the clone is compared as it is now, so a flow step QA changed on purpose also shows as a difference. `outOfDate` on a coverage row is a different question (a **locked generated** file behind the machine; `construct generate tests` refreshes it).
+
+- **API** (read-only, behind the session): `GET /api/tests/:feature` clones carry `freshness {state, stale, summary, changes}`, coverage rows `staleClones[]`, the listing `environment.browsers`; `GET /api/tests/:feature/compare?name=<clone>.spec.ts` -> `{ state, stale, summary, next, comparable, changes[{kind, at, text}], from, now }`. Core: `assessClone`, `diffFlow`, `compareClone`, `listFeatureTestsFresh`.
+- **Cockpit**: a banner on the clone (with "It is still fine", which hides it for this visit only), an "Out of date" tag in the tree and coverage table, and the other states: empty (Generate N tests), no flow, browsers not installed (`npx playwright install chromium`), and the two failure kinds side by side. Running tests as processes (#305) and authoring from scratch (#304) are shown as not available yet.

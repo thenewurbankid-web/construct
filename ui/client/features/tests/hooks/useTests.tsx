@@ -1,9 +1,12 @@
 'use client';
 
 import { useCallback } from 'react';
+import { FAILURE_KINDS } from '../domain/FailureKinds';
+import { cloneTag, staleOverview } from '../domain/Freshness';
 import { cloneDialogView, selectedTest, summaryOf } from '../domain/TestsView';
 import { generateTests } from '../services/TestsWrites';
 import { useCloneActions } from './useCloneActions';
+import { useCloneComparison } from './useCloneComparison';
 import { useTestCode } from './useTestCode';
 import { useTestsListing } from './useTestsListing';
 
@@ -13,6 +16,8 @@ export function useTests() {
   const { state, dispatch, data, features, reload, pickFeature, select } = useTestsListing();
   const { feature } = state;
   const code = useTestCode(feature, state.selected, dispatch);
+  const shown = selectedTest(data, state.selected);
+  const comparison = useCloneComparison(feature, state.selected, shown.test?.area === 'yours' ? shown.test : null);
   const clone = useCloneActions({ feature, data, dialog: state.dialog, dispatch, reload, showCode: code.showCode });
 
   const generate = useCallback(async () => {
@@ -27,7 +32,11 @@ export function useTests() {
   return {
     state,
     features,
-    ...selectedTest(data, state.selected),
+    ...shown,
+    comparison,
+    stale: staleOverview(data),
+    failureKinds: FAILURE_KINDS,
+    cloneTag,
     data,
     summary: summaryOf(data),
     dialogView: state.dialog ? cloneDialogView(feature, state.dialog) : null,

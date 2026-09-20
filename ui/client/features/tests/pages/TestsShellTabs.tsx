@@ -1,7 +1,7 @@
 import type { ShellTab } from '@/features/shell';
 import { TestDetail } from '../components/TestDetail';
 import { TestsBrowser } from '../components/TestsBrowser';
-import type { CodeView, GeneratedTest, InlinePart, TestSelection, TestsListing, YourTest } from '../types';
+import type { CodeView, FreshnessModel, GeneratedTest, InlinePart, TestSelection, TestsListing, YourTest } from '../types';
 
 export type TestsShellTabsInput = {
   features: string[] | null;
@@ -12,6 +12,8 @@ export type TestsShellTabsInput = {
   title: string;
   steps: InlinePart[][];
   code: CodeView;
+  comparison: { model: FreshnessModel; dismissed: boolean; dismiss: () => unknown };
+  cloneTag: (y: YourTest) => string;
   onFeature: (feature: string) => void;
   onSelect: (selection: TestSelection) => void;
   onClone: (file: string) => void;
@@ -30,13 +32,13 @@ export function testsShellTabs(i: TestsShellTabsInput): { browser: ShellTab; too
       title: 'Tests',
       preferred: true,
       badge: i.data ? i.data.generated.length + i.data.yours.length : null,
-      render: () => <TestsBrowser features={i.features} feature={i.feature} onFeature={i.onFeature} data={i.data} selected={i.selected} onSelect={i.onSelect} />,
+      render: () => <TestsBrowser features={i.features} feature={i.feature} onFeature={i.onFeature} data={i.data} selected={i.selected} tagOf={i.cloneTag} onSelect={i.onSelect} />,
     },
     tools: {
       id: 'test',
       title: 'Test',
       preferred: true,
-      render: () => <TestDetail test={i.test} title={i.title} steps={i.steps} code={i.code} onClone={i.onClone} onEditStep={i.onEditStep} onShowCode={i.onShowCode} onHideCode={i.onHideCode} onEditSteps={i.onEditSteps} />,
+      render: () => <TestDetail test={i.test} title={i.title} steps={i.steps} code={i.code} comparison={i.comparison} onClone={i.onClone} onEditStep={i.onEditStep} onShowCode={i.onShowCode} onHideCode={i.onHideCode} onEditSteps={i.onEditSteps} />,
     },
   };
 }

@@ -1,4 +1,5 @@
-import type { CodeView, GeneratedTest, InlinePart, YourTest } from '../types';
+import type { CodeView, FreshnessModel, GeneratedTest, InlinePart, YourTest } from '../types';
+import { CloneFreshness } from './CloneFreshness';
 
 const Inline = ({ parts }: { parts: InlinePart[] }) => (
   <>
@@ -11,6 +12,7 @@ type TestDetailProps = {
   title: string;
   steps: InlinePart[][];
   code: CodeView;
+  comparison: { model: FreshnessModel; dismissed: boolean; dismiss: () => unknown };
   onClone: (file: string) => void;
   onEditStep: (file: string, step: number) => void;
   onShowCode: () => void;
@@ -20,7 +22,7 @@ type TestDetailProps = {
 
 /** Tools pane, Test tab: one test. A generated test is read-only, says so in words, and every way of changing it
  * (Clone to edit, or Edit on a step) opens the clone dialog instead of failing. */
-export function TestDetail({ test, title, steps, code, onClone, onEditStep, onShowCode, onHideCode, onEditSteps }: TestDetailProps) {
+export function TestDetail({ test, title, steps, code, comparison, onClone, onEditStep, onShowCode, onHideCode, onEditSteps }: TestDetailProps) {
   if (!test) return <p className="hint ts-pad" data-testid="test-empty">Select a test in the Browser, or a covered scenario, to see what it does.</p>;
   const locked = test.area === 'generated';
   const clonedFrom = test.area === 'yours' ? test.clonedFrom : null;
@@ -41,6 +43,7 @@ export function TestDetail({ test, title, steps, code, onClone, onEditStep, onSh
           {clonedFrom ? <>Cloned from <span className="ts-mono">{clonedFrom.file.split('/').pop()}</span>. Nothing regenerates this file.</> : 'Written by you. Nothing regenerates this file.'}
         </p>
       )}
+      {!locked && <CloneFreshness model={comparison.model} dismissed={comparison.dismissed} onDismiss={comparison.dismiss} />}
       <div className="ts-actions">
         {!locked && <button type="button" className="ts-btn ts-btn--primary" data-testid="detail-edit-steps" onClick={() => onEditSteps(test.name)}>Edit steps</button>}
         {locked && <button type="button" className="ts-btn ts-btn--primary" data-testid="detail-clone" onClick={() => onClone(test.name)}>Clone to edit</button>}
@@ -69,7 +72,7 @@ export function TestDetail({ test, title, steps, code, onClone, onEditStep, onSh
       )}
       <div>
         <h4 className="ts-h">Last run</h4>
-        <p className="hint" data-testid="detail-last-run">Not run yet.</p>
+        <p className="hint" data-testid="detail-last-run">This test has not run yet. Running tests from here is not available yet; run it with Playwright for now.</p>
       </div>
       {locked && <p className="ts-readonly" data-testid="detail-readonly-footer">Read-only: this test is rewritten whenever the flow changes.</p>}
     </div>
