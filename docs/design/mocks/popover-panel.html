@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Popover - panel variant (project switcher) — Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="popover.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+<script>document.addEventListener('DOMContentLoaded',()=>{document.body.dataset.x=1});</script>
+</head><body>
+<div class="concept">Concept — not implemented <span>Popover - panel variant (project switcher)</span></div>
+
+<div class="shell " style="grid-template-rows:44px 1fr 96px 24px">
+  
+<header class="topbar">
+  <div class="brand"><i></i>Cockpit</div>
+  <div class="pop-anchor"><button class="chip-btn " aria-haspopup="dialog" aria-expanded="true" aria-controls="sh-project-popover">storefront <span class="sub">main</span> ▾</button>
+<div id="sh-project-popover" role="dialog" aria-label="Switch project" class="popover panel start">
+  <p class="hint">Pick a local folder to work on. Everything in Cockpit then uses that project.</p>
+  <div class="crumb">~ / Desktop / repos / <b>storefront</b></div>
+  <button class="pi focus-ring">▸ &nbsp;<b>..</b><span class="r">up one folder</span></button>
+  <button class="pi">▸ &nbsp;checkout-service<span class="r">git repo</span></button>
+  <button class="pi hl">▸ &nbsp;storefront<span class="r">git repo · architecture.yml</span></button>
+  <button class="pi">▸ &nbsp;design-tokens<span class="r">folder</span></button>
+  <div class="foot-actions"><button class="btn">Cancel</button><button class="btn primary">Use this folder</button></div>
+</div></div>
+  <div class="seg" role="radiogroup" aria-label="Mode"><button class="on" role="radio" aria-checked="true">Explore</button><button class="" role="radio" aria-checked="false">Plan</button><button class="" role="radio" aria-checked="false">Build</button><button class="" role="radio" aria-checked="false">Review</button></div>
+  <button class="chip-btn palette-trigger"><span>Search files, features, or run a command…</span><kbd>Ctrl K</kbd></button>
+  
+  <span class="pill run"><span class="spin"></span>2 running</span>
+  <span class="pill ok"><span class="dot"></span>Local model ready</span>
+  <button class="icon-btn" aria-label="Theme">◐</button>
+  <button class="icon-btn" aria-label="Help">?</button>
+  <div class="pop-anchor"><button class="acct " aria-haspopup="true" aria-expanded="false" aria-controls="sh-user-menu" aria-label="Signed in as Sam P."><span class="av" aria-hidden="true">S</span>Sam P.</button></div>
+</header>
+  <div class="main">
+    <aside class="pane" aria-label="Browser">
+  <div class="pane-h"><span class="title">Browser</span><span class="spacer"></span><button class="icon-btn" aria-label="New">+</button><button class="icon-btn" aria-label="Collapse pane">«</button></div>
+  <div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Features</button><button role="tab" class="" aria-selected="false">Pages</button><button role="tab" class="" aria-selected="false">Workflows</button></div>
+  <div class="search">⌕ Filter <span class="spacer"></span><kbd>/</kbd></div>
+  <div class="scroll">
+  <div class="sect">Features · 4</div>
+  <div class="tree">
+    <div class="row"><span class="twisty">▾</span>auth<span class="meta">7 files</span></div>
+    <div class="row l1"><span class="twisty">▾</span>pages</div>
+    <div class="row l2 sel"><span class="layer page">page</span>login</div>
+    <div class="row l2"><span class="layer page">page</span>register</div>
+    <div class="row l1"><span class="twisty">▾</span>components</div>
+    <div class="row l2"><span class="layer component">component</span>LoginForm</div>
+    <div class="row l2"><span class="layer component">component</span>PasswordField</div>
+    <div class="row l1"><span class="twisty">▸</span>workflows<span class="meta">1</span></div>
+    <div class="row l1"><span class="twisty">▸</span>services · hooks · domain</div>
+    <div class="row"><span class="twisty">▸</span>cart<span class="meta">11 files</span></div>
+    <div class="row"><span class="twisty">▸</span>checkout<span class="meta">9 files</span></div>
+    <div class="row"><span class="twisty">▸</span>catalog<span class="meta">14 files</span></div>
+  </div></div></aside><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <section class="pane mid" aria-label="Preview"><div style="position:relative;flex:1"><div class="spec" style="left:24px;top:270px"><h3>Panel: open, focus in, Escape out</h3><ol style="width:720px">
+    <li><b>Open</b>: Enter, Space or click on the trigger. Focus moves to the first control inside (here the ".." row); it never stays on the trigger.</li>
+    <li><b>Tab / Shift+Tab</b> walk the panel in visual order and <b>leave it at either end</b>: focus goes on to the next page control and the panel closes (focus-out).</li>
+    <li><b>Escape</b> closes and puts focus back on the trigger.</li>
+    <li><b>Click outside</b> closes; focus stays where the click landed.</li>
+    <li>The page behind stays live and undimmed. <span class="no">This is not a focus trap</span> and there is no scrim. Modals (the command palette) trap; popovers never do.</li>
+  </ol></div><div class="spec" style="left:24px;top:500px"><h3>Trigger and surface ARIA</h3><div class="aria" style="margin:0">trigger  aria-haspopup="dialog"
+         aria-expanded="true|false"
+         aria-controls="sh-project-popover"
+surface  role="dialog" aria-label="Switch project"
+         (no aria-modal: it does not block the page)</div></div></div></section><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <aside class="pane" aria-label="Tools"><div class="sect">Inspector</div><div class="row muted">Nothing selected</div></aside>
+  </div>
+  <div class="drawer" aria-label="Drawer"><div class="tabs" role="tablist"><button role="tab" class="on">Diagnostics</button><button role="tab">Logs</button><button role="tab">Processes</button></div><div class="body"></div></div>
+  
+<footer class="statusbar">
+  <span class="ok">● validate: 0 new violations</span><span>5 baseline</span><span>Saved · in sync with disk</span>
+  <span class="spacer"></span><span>qwen2.5-coder:7b</span><span><kbd>Ctrl J</kbd> drawer</span><span><kbd>?</kbd> shortcuts</span>
+</footer>
+</div>
+<script>(()=>{const t=document.documentElement.dataset.theme;document.body.parentElement.setAttribute('data-theme',t)})()</script>
+</body></html>

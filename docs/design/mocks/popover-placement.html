@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Popover - placement, collision, narrow — Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="popover.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+<script>document.addEventListener('DOMContentLoaded',()=>{document.body.dataset.x=1});</script>
+</head><body>
+<div class="concept">Concept — not implemented <span>Popover - placement, collision, narrow</span></div>
+
+<div style="padding:34px 24px 0;position:relative">
+  <div class="strip" style="width:1280px;height:210px">
+    <span class="edge-label" style="left:0">1280px viewport</span>
+    <div class="tb"><div class="brand"><i></i>Cockpit</div><div class="pop-anchor"><button class="chip-btn " aria-haspopup="dialog" aria-expanded="false" aria-controls="sh-project-popover">storefront <span class="sub">main</span> ▾</button></div><span class="spacer"></span><span class="pill ok"><span class="dot"></span>Local model ready</span><div class="pop-anchor"><button class="acct " aria-haspopup="true" aria-expanded="true" aria-controls="sh-user-menu" aria-label="Signed in as Sam P."><span class="av" aria-hidden="true">S</span>Sam P.</button><div id="sh-user-menu" class="popover disc end"><div class="plain"><b>Sam P.</b>sam-p · signed in with GitHub</div><button class="pi danger">Sign out</button></div></div></div>
+    <div class="body" style="padding-right:320px">The account chip sits at the right edge, so its popover is <b style="color:var(--text)">end-aligned</b> (right edge = trigger right edge) and never crosses the viewport. The project switcher is <b style="color:var(--text)">start-aligned</b>; its 520px fits. Rule: prefer start, flip to end if it would overflow, then cap the width at viewport - 16px. Opens below the bar only, never upward; height capped at 70vh and scrolls inside.</div>
+  </div>
+  <div style="display:flex;gap:24px;margin-top:40px;align-items:flex-start">
+    <div style="position:relative">
+      <span class="edge-label" style="left:0">899px and narrower: full-width sheet under the bar, both variants</span>
+      <div class="strip" style="width:899px;height:440px">
+        <div class="tb"><div class="brand"><i></i>Cockpit</div><button class="chip-btn" aria-haspopup="dialog" aria-expanded="true" aria-controls="sh-project-popover">storefront ▾</button><span class="spacer"></span><span class="pill ok"><span class="dot"></span>Local model ready</span><span class="acct"><span class="av">S</span>Sam P.</span></div>
+        <div class="sheet-pop" id="sh-project-popover" role="dialog" aria-label="Switch project"><h6 style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-faint)">Switch project</h6><p class="hint" style="margin:0 0 8px;color:var(--text-muted)">Pick a local folder to work on.</p>
+  <div class="crumb">~ / Desktop / repos / <b>storefront</b></div>
+  <button class="pi focus-ring">▸ &nbsp;..</button><button class="pi">▸ &nbsp;checkout-service</button><button class="pi hl">▸ &nbsp;storefront</button>
+  <div class="foot-actions"><button class="btn">Cancel</button><button class="btn primary">Use this folder</button></div></div>
+        <div style="position:absolute;left:0;right:0;bottom:0;height:96px;padding:16px 20px;color:var(--text-muted)"><b style="color:var(--text)">Sheet rules</b> · left/right 8px, top = bar height + 4px · max-height = 100dvh - bar - 8px, scrolls inside · no scrim (still not a modal) · Escape and outside tap close · same surface tokens as desktop.</div>
+      </div>
+    </div>
+    <div>
+      <p class="cap" style="margin:0 0 8px">390px phone</p>
+      <div class="phone">
+        <div class="tb"><div class="brand"><i></i></div><span class="chip-btn" style="max-width:112px">storefront ▾</span><span class="spacer"></span><span class="acct" style="padding:0 3px"><span class="av">S</span></span></div>
+        <div class="sheet-pop"><div class="plain"><b>Sam P.</b>sam-p · signed in with GitHub</div><button class="pi danger focus-ring" style="min-height:44px">Sign out</button></div>
+        <div class="tabbar"><div>Browser</div><div>Preview</div><div>Tools</div></div>
+      </div>
+      <p class="cap" style="margin:8px 0 0;max-width:390px">On a phone the account chip shows only its avatar; the sheet gives targets 44px tall.</p>
+    </div>
+  </div>
+</div>
+<script>(()=>{const t=document.documentElement.dataset.theme;document.body.parentElement.setAttribute('data-theme',t)})()</script>
+</body></html>

@@ -91,3 +91,21 @@ Scales (new, replacing the ad hoc values):
 Dogfooding note: tokens are plain CSS variables (no runtime dependency), so
 they are replaceable and testable (a Playwright test can assert computed
 colours and run an axe contrast scan per theme).
+
+## 4. Proposed stacking scale (`--z-*`), from #297
+
+Today the shell uses eight hand-picked literals (2, 5, 20, 25, 30, 40, 50, 100
+across `shell.css`, `navigation.css`, `cockpit-drawer.css`). Proposal: five named
+layers, theme-independent, so a new surface picks a layer instead of a number.
+
+| Token | Value | Replaces | Used by |
+|---|---|---|---|
+| `--z-raised` | 5 | 2, 5 | sticky tab lists, pane resizers |
+| `--z-drawer` | 20 | 20 | bottom drawer |
+| `--z-topbar` | 30 | 25, 30 | top bar, status bar, narrow tab bar |
+| `--z-popover` | 50 | 20 (flow-nav list), 30 (flow-nav card), 40, 50 | every popover, menu and sheet (see `popovers.md`) |
+| `--z-modal` | 100 | 100 | command palette scrim and dialog |
+
+Rule: popovers open inside the top bar's stacking context, so they beat the
+drawer (20) but a modal always beats a popover. Proposal only: `globals.css` is
+not changed by this document; the implementation slice is #298.
