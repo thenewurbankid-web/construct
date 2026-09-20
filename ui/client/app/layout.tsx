@@ -9,6 +9,7 @@ import './cockpit-drawer.css';
 import './processes.css';
 import './globals.css';
 import './navigation.css';
+import './flow-browser.css';
 
 export const metadata: Metadata = {
   title: 'Cockpit',

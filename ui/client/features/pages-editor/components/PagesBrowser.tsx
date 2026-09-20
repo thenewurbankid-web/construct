@@ -8,10 +8,12 @@ type PagesBrowserProps = {
   onOpen: (file: string) => void;
   files: string[];
   loading: boolean;
+  /** False in the Flow view, which shows the feature picker without the pages list. */
+  showPages?: boolean;
 };
 
 // #49 — pages browser. Presentation-only.
-export function PagesBrowser({ feature, onFeatureChange, features, file, onOpen, files, loading }: PagesBrowserProps) {
+export function PagesBrowser({ feature, onFeatureChange, features, file, onOpen, files, loading, showPages = true }: PagesBrowserProps) {
   return (
     <GlassPanel className="pages-browser">
       <label className="field">
@@ -23,7 +25,7 @@ export function PagesBrowser({ feature, onFeatureChange, features, file, onOpen,
           ))}
         </Select>
       </label>
-      {feature && (
+      {feature && showPages && (
         <div>
           <h4>pages/ in &quot;{feature}&quot;</h4>
           {loading ? (

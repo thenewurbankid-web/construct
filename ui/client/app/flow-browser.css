@@ -1,0 +1,45 @@
+/* Flow view in the Browser pane (#328). Tokens only (docs/design/tokens.md). Relations are told in words
+   AND by a left edge, never by colour alone. */
+.flow-switch { display: inline-flex; align-self: flex-start; padding: 2px; gap: 2px; background: var(--surface-1); border: 1px solid var(--border-subtle); border-radius: var(--r-md); }
+.flow-switch button { padding: 4px 14px; border: 0; background: transparent; color: var(--text-muted); font: inherit; font-size: 12px; border-radius: var(--r-sm); cursor: pointer; }
+.flow-switch button.on { background: var(--accent-soft); color: var(--text); font-weight: 600; }
+.flow-switch button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+.flow-view { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+.flow-prov { display: flex; align-items: center; gap: var(--sp-2); color: var(--text-muted); font-size: 12px; }
+.flow-det { padding: 1px 6px; border-radius: var(--r-sm); background: var(--success-soft); color: var(--success); font-size: 11px; font-weight: 600; }
+.flow-hint { margin: 0; }
+.flow-sect { margin-top: var(--sp-2); color: var(--text-faint); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+.flow-tree { display: flex; flex-direction: column; min-width: 0; }
+.flow-row {
+  display: flex; align-items: center; gap: 6px; min-height: 26px; padding-right: var(--sp-2);
+  border-left: 3px solid transparent; font-size: 12.5px; color: var(--text); cursor: pointer; min-width: 0;
+}
+.flow-row:hover { background: var(--hover); }
+.flow-row:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.flow-row.flow-branch { cursor: default; color: var(--text-muted); font-size: 11.5px; text-transform: none; }
+.flow-row.flow-branch:hover { background: transparent; }
+.flow-row.flow-lone { cursor: default; }
+.flow-row.sel { background: var(--accent-soft); border-left-color: var(--accent); }
+.flow-row.rel-uses { border-left-color: var(--success); background: var(--success-soft); }
+.flow-row.rel-usedBy { border-left-color: var(--accent); background: var(--accent-soft); }
+.flow-row.shared .flow-name { color: var(--text-faint); font-style: italic; }
+.flow-twisty { width: 16px; height: 16px; flex: none; padding: 0; border: 0; background: none; color: var(--text-muted); font-size: 11px; cursor: pointer; line-height: 1; }
+.flow-layer { flex: none; padding: 0 6px; border-radius: var(--r-sm); background: var(--surface-3); color: var(--text-muted); font: 10.5px var(--mono); }
+.flow-layer.layer-controller { background: var(--warn-soft); color: var(--warn); }
+.flow-layer.layer-route { color: var(--text); }
+.flow-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.flow-meta, .flow-feat, .flow-above { flex: none; color: var(--text-faint); font-size: 11px; }
+.flow-feat { padding: 0 6px; border-radius: var(--r-sm); background: var(--neutral-soft); color: var(--text-muted); }
+.flow-above { margin-left: auto; font-style: italic; }
+.flow-rtag { flex: none; margin-left: auto; padding: 0 6px; border-radius: var(--r-sm); font-size: 10.5px; font-weight: 600; }
+.flow-rtag.uses { background: var(--success-soft); color: var(--success); }
+.flow-rtag.usedBy { background: var(--accent-soft); color: var(--accent); }
+.flow-tip { max-width: 320px; }
+
+.flow-note { display: flex; gap: var(--sp-2); align-items: flex-start; margin-top: var(--sp-2); padding: var(--sp-2); border: 1px solid var(--border-subtle); border-left: 3px solid var(--accent); border-radius: var(--r-sm); background: var(--surface-1); color: var(--text-muted); font-size: 12px; }
+.flow-note-i { flex: none; width: 16px; height: 16px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font: italic 700 11px/16px serif; text-align: center; }
+
+.flow-peek { margin-top: var(--sp-3); padding-top: var(--sp-2); border-top: 1px solid var(--border-subtle); min-width: 0; }
+.flow-peek .linked-code { max-height: 40vh; }

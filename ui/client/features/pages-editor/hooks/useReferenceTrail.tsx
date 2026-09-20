@@ -7,14 +7,17 @@ import { canBack, canForward } from '../domain/TrailAvailability';
 import { foldTrail } from '../domain/TrailFold';
 import { currentStep } from '../domain/TrailSteps';
 import { getNavPage, openNavReference } from '../services/ReferenceNavApi';
-import type { NavReference } from '../types';
+import type { NavReference, NavView } from '../types';
 import { initialReferenceNavigation, referenceNavigationReducer } from '../workflows/ReferenceNavigation';
 import type { ReferenceNavigationAction } from '../workflows/ReferenceNavigation';
 import { useTrailShortcuts } from './useTrailShortcuts';
 
+/** Reads the first view of a trail: a page of the editor (the default), or a file the Flow view drew (#328). */
+export type RootLoader = (feature: string, file: string) => Promise<NavView>;
+
 /** Reads the open page's references from the server: a fresh trail for a new file, and only the first
  * step replaced when the same file is re-read after a save (the hops already taken stay). */
-function useOpenPage(feature: string, file: string, contentHash: string, dispatch: Dispatch<ReferenceNavigationAction>): void {
+function useOpenPage(feature: string, file: string, contentHash: string, dispatch: Dispatch<ReferenceNavigationAction>, loadRoot: RootLoader): void {
   const openKey = useRef('');
   useEffect(() => {
     if (!feature || !file) {
@@ -27,7 +30,7 @@ function useOpenPage(feature: string, file: string, contentHash: string, dispatc
     openKey.current = key;
     let cancelled = false;
     if (!sameFile) dispatch({ type: 'LOADING' });
-    getNavPage(feature, file)
+    loadRoot(feature, file)
       .then((view) => {
         if (cancelled) return;
         if (typeof view.source !== 'string') dispatch({ type: 'LOAD_FAILED', error: view.error || 'Could not read this page.' });
@@ -39,7 +42,7 @@ function useOpenPage(feature: string, file: string, contentHash: string, dispatc
     return () => {
       cancelled = true;
     };
-  }, [feature, file, contentHash, dispatch]);
+  }, [feature, file, contentHash, dispatch, loadRoot]);
 }
 
 /**
@@ -48,9 +51,9 @@ function useOpenPage(feature: string, file: string, contentHash: string, dispatc
  * resolved by the server once per file render, so every reference this hands out either has a target or
  * is never offered as a link.
  */
-export function useReferenceTrail(feature: string, file: string, contentHash: string) {
+export function useReferenceTrail(feature: string, file: string, contentHash: string, loadRoot: RootLoader = getNavPage) {
   const [state, dispatch] = useReducer(referenceNavigationReducer, initialReferenceNavigation);
-  useOpenPage(feature, file, contentHash, dispatch);
+  useOpenPage(feature, file, contentHash, dispatch, loadRoot);
   const { trail } = state;
   const step = currentStep(trail);
 
