@@ -22,6 +22,12 @@ Concept mocks (1440x900, each in `png/<name>--dark.png` and `--light.png`):
 `cockpit-shell`, `pages-editor-in-shell`, `workflows-in-shell`,
 `research-mode`, `processes-drawer`, `command-palette`, `states-and-narrow`.
 
+PR review in the Cockpit (#308, explores #285), built by
+`node docs/design/mocks/build-pr-review.mjs` with its own stylesheet
+(`pr-review.css`): `pr-review-list`, `pr-review-open`, `pr-review-indicators`,
+`pr-review-findings`, `pr-review-no-plan`, `pr-review-autofix`,
+`pr-review-states`.
+
 ## How design tickets work
 
 1. **Parent ticket per initiative**: `[Design] <initiative>` (Module: Design;
