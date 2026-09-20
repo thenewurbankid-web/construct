@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Features: a feature as a hierarchy, routes nested under it, then layers, drawn from the import graph - Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="ia.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+</head><body>
+<div class="concept">Concept - not implemented <span>Features: a feature as a hierarchy, routes nested under it, then layers, drawn from the import graph</span></div>
+
+<div class="shell" style="--lw:340px;--rw:380px;grid-template-rows:44px 1fr 104px 24px;position:relative">
+  
+<header class="topbar" role="banner">
+  <div class="brand"><i></i>Cockpit</div>
+  <button class="chip-btn" aria-haspopup="listbox">storefront <span class="sub">main</span> &#9662;</button>
+  <nav class="snav " aria-label="Screens"><a class="on" aria-current="page">Features</a><a class="" >Pages</a><a class="" >Components</a><a class="" >Git <span class="badge">3</span></a><a class="" >Tests</a></nav>
+  <button class="chip-btn palette-trigger"><span>Search or run a command...</span><kbd>Ctrl K</kbd></button>
+  <span class="pill run"><span class="spin"></span>2 running</span>
+  <button class="acct " aria-haspopup="true" aria-expanded="false"><span class="avatar">SP</span>shashank-p &#9662;</button>
+</header>
+  <div class="ia-main">
+    <aside class="pane" aria-label="Left panel: Browse"><div class="pane-h"><span class="title">Features</span><span class="spacer"></span><button class="icon-btn" aria-label="New">+</button><button class="icon-btn" aria-label="Collapse">&laquo;</button></div><div class="tabs" role="tablist"><button role="tab" class="" aria-selected="false">Notes <span class="badge ">3</span></button><button role="tab" class="on" aria-selected="true">Features</button></div><div class="search">&#8981; Go to file, node or route <span class="spacer"></span><kbd>Ctrl P</kbd></div>
+  <div class="scroll"><div class="sect" style="display:flex;justify-content:space-between"><span>construct/ &middot; 4 features</span><span class="nb">root</span></div><div class="tree">
+   <div class="row"><span class="twisty">&#9656;</span>auth</div>
+   <div class="row"><span class="twisty">&#9662;</span><b>refunds</b><span class="nbs"><span class="nd find" title="1 violation" aria-label="1 violation"></span></span></div>
+   <div class="row l1 sel"><span class="twisty">&#9662;</span>Routes<span class="meta">1</span></div>
+   <div class="row l2"><span class="layer route" style="background:var(--surface-3)">route</span>/orders/[id]/refund<span class="meta">Next app router</span></div>
+   <div class="row l1"><span class="twisty">&#9662;</span>Layers<span class="meta">6 of 7</span></div>
+   <div class="row l2"><span class="twisty">&#9656;</span><span class="layer page">page</span>page<span class="meta">1 file</span></div>
+   <div class="row l2"><span class="twisty">&#9656;</span><span class="layer component">component</span>component<span class="meta">4 files</span></div>
+   <div class="row l2"><span class="twisty">&#9656;</span><span class="layer">hook</span>hook<span class="meta">1 file</span></div>
+   <div class="row l2"><span class="twisty">&#9662;</span><span class="layer workflow">workflow</span>workflow<span class="meta">1 file <span class="nd find" title="1 violation" aria-label="1 violation"></span></span></div>
+   <div class="row l3" style="padding-left:78px">refundMachine.ts</div>
+   <div class="row l2"><span class="twisty">&#9656;</span><span class="layer">service</span>service<span class="meta">2 files</span></div>
+   <div class="row l2"><span class="twisty">&#9656;</span><span class="layer">domain</span>domain<span class="meta">2 files</span></div>
+   <div class="row l2 muted" style="opacity:.85"><span class="layer" style="border:1px dashed var(--border-strong);background:transparent">controller</span><span>missing</span><span class="nbs"><a>Add</a></span></div>
+   <div class="row"><span class="twisty">&#9656;</span>cart</div><div class="row"><span class="twisty">&#9656;</span>ui-kit</div>
+   <div class="sect" style="margin-top:8px">Legacy, outside construct/</div>
+   <div class="row muted"><span class="twisty">&#9656;</span>src/<span class="meta">38 files, not managed</span></div>
+  </div></div></aside><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <section class="pane mid" aria-label="Center stage"><div class="etabs" role="tablist"><button role="tab" class="on" aria-selected="true">&#9679; refunds</button><button role="tab" class="" aria-selected="false">story.md <span class="x">&times;</span></button></div><div class="canvas-tb"><span class="crumbs">Features &rsaquo; construct &rsaquo; <b>refunds</b></span><span class="spacer"></span><span class="seg" role="radiogroup" aria-label="View"><button role="radio" aria-checked="false">Tree</button><button class="on" role="radio" aria-checked="true">Flow</button></span></div>
+  <div class="stage" style="flex:1;padding:18px;place-items:start center;overflow:hidden"><div class="fflow">
+   <div class="farr" style="margin:0">Arrows point the way imports go</div>
+   <div class="frow"><div class="fnode "><div class="fnh"><span class="layer route">route</span><b>/orders/[id]/refund</b></div><div class="fns">Next app router</div></div></div><div class="farr">&darr;</div>
+   <div class="frow"><div class="fnode "><div class="fnh"><span class="layer page">page</span><b>RefundPage</b></div><div class="fns">1 file</div></div></div><div class="farr">&darr;</div>
+   <div class="frow"><div class="fnode "><div class="fnh"><span class="layer component">component</span><b>RefundForm, AmountField</b></div><div class="fns">4 files</div></div><div class="fnode "><div class="fnh"><span class="layer hook">hook</span><b>useRefundForm</b></div><div class="fns">1 file</div></div><div class="fnode miss"><div class="fnh"><span class="layer" style="border:1px dashed var(--border-strong);background:transparent">controller</span><b>missing</b></div><div class="fns">pages usually go through one</div></div></div><div class="farr">&darr;</div>
+   <div class="frow"><div class="fnode warn"><div class="fnh"><span class="layer workflow">workflow</span><b>refundMachine</b></div><div class="fns">1 file &middot; 1 violation</div></div><div class="fnode "><div class="fnh"><span class="layer service">service</span><b>refundService</b></div><div class="fns">2 files</div></div></div><div class="farr">&darr;</div>
+   <div class="frow"><div class="fnode "><div class="fnh"><span class="layer domain">domain</span><b>refundRules</b></div><div class="fns">2 files</div></div></div>
+  </div></div></section><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <aside class="pane" aria-label="Right panel: Inspect"><div class="pane-h"><span class="title">Inspect</span></div><div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Summary</button><button role="tab" class="" aria-selected="false">Impact</button><button role="tab" class="" aria-selected="false">Story</button><button role="tab" class="" aria-selected="false">Plan</button></div><div class="scroll">
+  <div class="section"><div class="el-head"><span class="name">refunds</span><span class="layer">feature</span><span class="spacer"></span><button class="icon-btn">&#8943;</button></div><div class="path">construct/refunds</div></div>
+  <details class="dt" open><summary>What it is <span class="c">Deterministic</span></summary><div>Lets a customer request a refund from a delivered order. One route reaches it. Six of the seven parts exist.</div></details>
+  <details class="dt" open><summary>Routes <span class="c">1</span></summary><div class="mono">/orders/[id]/refund <span style="color:var(--text-muted)">Next app router</span></div></details>
+  <details class="dt" open><summary>Layers <span class="c">6 of 7</span></summary><div>Missing: controller <a>Add the missing layer files</a></div></details>
+  <details class="dt"><summary>Violations <span class="c warn">1</span></summary></details>
+  <details class="dt"><summary>Another feature: ui-kit <span class="c">no route</span></summary><div class="callout info" style="margin:6px 0"><span>i</span><div class="grow"><b>Not mapped to a route yet</b><small>That is fine for a shared kit, or a feature you imported first. <a>Map to a route</a></small></div></div></details></div></aside>
+  </div>
+  
+<div class="drawer" aria-label="Bottom panel: Run" style="height:104px">
+  <div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Processes <span class="badge acc">1</span></button><button role="tab" class="" aria-selected="false">Approvals <span class="badge ">0</span></button><button role="tab" class="" aria-selected="false">Diagnostics <span class="badge danger">3</span></button><button role="tab" class="" aria-selected="false">Logs</button></div>
+  <div class="body"><table><tr><th>Process</th><th>Project</th><th>Status</th><th></th></tr>
+ <tr><td><b>dev server &middot; storefront</b> <span class="tag det">Deterministic</span></td><td>storefront (inside the workspace)</td><td>running on :5173 &middot; 14 min</td><td><button class="btn sm">Restart</button> <button class="btn sm danger">Stop</button></td></tr></table></div>
+</div>
+  <footer class="statusbar"><span class="ok">&#9679; validate: 0 new violations</span><span>Notes saved on this machine</span><span class="spacer"></span><span>qwen2.5-coder:7b</span><span><kbd>F6</kbd> next panel</span><span><kbd>Ctrl J</kbd> bottom panel</span></footer>
+  
+</div>
+</body></html>
