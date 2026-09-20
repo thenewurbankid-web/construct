@@ -122,6 +122,11 @@ export const PROCESS_GUARDS = Object.freeze({
 
 const STATE_INDEX = buildStateIndex();
 
+/** Every state path the machine has, parents and children alike — the closed
+ * set a persisted `state` field may hold, and the enum schemas/process.v1.json
+ * mirrors. */
+export const PROCESS_STATE_PATHS = Object.freeze([...STATE_INDEX.keys()]);
+
 function buildStateIndex() {
   const byPath = new Map();
   const walk = (states, parentPath) => {

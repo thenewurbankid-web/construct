@@ -74,6 +74,10 @@ const defaultNow = () => new Date().toISOString();
  *
  * Returns `{ argv, stdin, manual, cleanup() }`. Call `cleanup()` when the
  * step is over; it removes whatever temp files were written.
+ *
+ * @param {object} step a plan step
+ * @param {object} [options]
+ * @param {string} [options.tmpDir] write the materialised files here instead of a fresh temp dir
  */
 export function materializeCommand(step, { tmpDir } = {}) {
   const command = planToCommand(step);
@@ -103,17 +107,19 @@ export function materializeCommand(step, { tmpDir } = {}) {
 /**
  * Create an engine over one process store.
  *
- * @param {object} options
- * @param {object} options.store           an `openProcessStore()` result; every state change is persisted
- * @param {Function} options.executeStep   `async ({ process, step, status, command, transaction, projectRoot, log, signal }) => { ok, llm, artifacts?, error? }`
+ * @typedef {(shadowRoot: string) => { violations: any[], ok: boolean }} ValidateFn
+ *
+ * @param {object} [options]
+ * @param {any} [options.store]            an `openProcessStore()` result; every state change is persisted
+ * @param {(context: any) => Promise<any>} [options.executeStep] `async ({ process, step, status, command, transaction, projectRoot, log, signal }) => { ok, llm, artifacts?, error? }`
  *                                         — #291 supplies this. `llm` is required in the result:
  *                                         `null` for "no model was involved", `{ provider, calls }` otherwise.
  * @param {number} [options.maxConcurrent] processes running at once. Default 1.
- * @param {Function} [options.onChange]    called with every persisted process record — the seam #292's
+ * @param {(record: any) => void} [options.onChange] called with every persisted process record — the seam #292's
  *                                         WebSocket streams from, so the engine needs no socket of its own.
- * @param {Function} [options.validate]    passed to `transaction.commit()`; defaults to the writer's own
+ * @param {ValidateFn} [options.validate] passed to `transaction.commit()`; defaults to the writer's own
  *                                         `validateArchitecture`.
- * @param {Function} [options.now]         clock, injected for deterministic tests.
+ * @param {() => string} [options.now]    clock, injected for deterministic tests.
  */
 export function createProcessEngine({ store, executeStep, maxConcurrent = 1, onChange = null, validate, now = defaultNow } = {}) {
   if (!store) throw new TypeError('createProcessEngine() needs a store (see openProcessStore()).');

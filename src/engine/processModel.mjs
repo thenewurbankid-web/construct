@@ -23,6 +23,7 @@ import crypto from 'node:crypto';
 import { validatePlan } from '../plan.mjs';
 import {
   PROCESS_STATES,
+  PROCESS_STATE_PATHS,
   transition,
   initialProcessState,
   topLevelState,
@@ -125,6 +126,13 @@ function hashOf(content) {
  * Throws TypeError on an invalid plan — a process must never be created
  * around a plan that cannot execute. Validate with `validatePlan()` and show
  * the errors before getting here.
+ *
+ * @param {object} plan a valid plan.v1 object
+ * @param {object} [options]
+ * @param {string} [options.id]
+ * @param {string} [options.projectRoot]
+ * @param {() => string} [options.now]
+ * @param {string} [options.title]
  */
 export function createProcess(plan, { id = createProcessId(), projectRoot, now = defaultNow, title } = {}) {
   const { valid, errors } = validatePlan(plan);
@@ -348,6 +356,15 @@ export function startStep(process, stepId, { now = defaultNow } = {}) {
   return { ...next, currentStepId: stepId };
 }
 
+/**
+ * @param {object} process
+ * @param {string} stepId
+ * @param {string} status
+ * @param {object} options
+ * @param {{provider?: string, calls?: number} | null} [options.llm]
+ * @param {string | null} [options.error]
+ * @param {() => string} [options.now]
+ */
 function finishStep(process, stepId, status, { llm, error = null, now = defaultNow }) {
   const step = stepStatus(process, stepId);
   if (!step) throw new TypeError(`No step "${stepId}" in process ${process.id}.`);
@@ -370,13 +387,28 @@ function finishStep(process, stepId, status, { llm, error = null, now = defaultN
 }
 
 /** Finish a step successfully. `llm` is required: `null` for a deterministic
- * step, `{ provider, calls }` when a model wrote something. */
+ * step, `{ provider, calls }` when a model wrote something.
+ *
+ * @param {object} process
+ * @param {string} stepId
+ * @param {object} [options]
+ * @param {{provider?: string, calls?: number} | null} [options.llm]
+ * @param {() => string} [options.now]
+ */
 export function completeStep(process, stepId, { llm, now = defaultNow } = {}) {
   return finishStep(process, stepId, 'done', { llm, now });
 }
 
 /** Finish a step as failed. `llm` is required for the same reason — a step
- * that failed *after* calling a model still called a model. */
+ * that failed *after* calling a model still called a model.
+ *
+ * @param {object} process
+ * @param {string} stepId
+ * @param {object} [options]
+ * @param {{provider?: string, calls?: number} | null} [options.llm]
+ * @param {unknown} [options.error]
+ * @param {() => string} [options.now]
+ */
 export function failStep(process, stepId, { llm, error, now = defaultNow } = {}) {
   return finishStep(process, stepId, 'failed', { llm, error: error ? String(error) : 'failed', now });
 }
@@ -515,8 +547,12 @@ export function validateProcess(process) {
   }
   if ('id' in process && !isNonEmptyString(process.id)) push(PROCESS_ERROR_CODES.PROCESS_FIELD_TYPE, 'id', '"id" must be a non-empty string.');
   if ('projectRoot' in process && !isNonEmptyString(process.projectRoot)) push(PROCESS_ERROR_CODES.PROCESS_FIELD_TYPE, 'projectRoot', '"projectRoot" must be a non-empty string.');
-  if ('state' in process && !PROCESS_STATES.includes(topLevelState(process.state))) {
-    push(PROCESS_ERROR_CODES.PROCESS_STATE_INVALID, 'state', `"state" must resolve to one of: ${PROCESS_STATES.join(', ')} (got ${JSON.stringify(process.state)}).`);
+  if ('state' in process && !PROCESS_STATE_PATHS.includes(process.state)) {
+    push(
+      PROCESS_ERROR_CODES.PROCESS_STATE_INVALID,
+      'state',
+      `"state" must be one of the machine's state paths: ${PROCESS_STATE_PATHS.join(', ')} (got ${JSON.stringify(process.state)}). Top-level states are ${PROCESS_STATES.join(', ')}.`,
+    );
   }
   if (process.pendingControl != null && !PENDING_CONTROLS.includes(process.pendingControl)) {
     push(PROCESS_ERROR_CODES.PENDING_CONTROL_INVALID, 'pendingControl', `"pendingControl" must be null or one of: ${PENDING_CONTROLS.join(', ')}.`);
