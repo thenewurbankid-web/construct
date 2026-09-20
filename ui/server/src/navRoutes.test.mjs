@@ -38,3 +38,19 @@ test('the nav routes are registered after the session gate in index.mjs', () => 
   assert.ok(gate > 0);
   for (const route of ["'/api/nav/page'", "'/api/nav/open'"]) assert.ok(src.indexOf(route) > gate, `${route} must come after the gate`);
 });
+
+test('unauthenticated /api/flow/:feature and /api/nav/file are refused with 401 (#328)', async () => {
+  await withServer(async (base) => {
+    for (const url of ['/api/flow/billing', '/api/flow/..%2Fx', '/api/nav/file?feature=billing&path=src/App.tsx']) {
+      const res = await fetch(`${base}${url}`);
+      assert.equal(res.status, 401, url);
+      assert.equal((await res.json()).code, 'auth_required');
+    }
+  });
+});
+
+test('the flow routes are registered after the session gate in index.mjs (#328)', () => {
+  const src = fs.readFileSync(new URL('./index.mjs', import.meta.url), 'utf8');
+  const gate = src.indexOf("app.use('/api', auth.requireSession)");
+  for (const route of ["'/api/flow/:feature'", "'/api/nav/file'"]) assert.ok(src.indexOf(route) > gate, `${route} must come after the gate`);
+});

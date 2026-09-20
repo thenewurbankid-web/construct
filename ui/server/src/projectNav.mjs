@@ -153,6 +153,14 @@ export function viewPage(root, feature, file) {
   return buildView(root, real);
 }
 
+/** A file the flow view drew (#328). The caller has already checked `rel` against that flow's own file
+ * list; the shared root-relative guard (no "..", no absolute, real path inside the root) runs again here. */
+export function viewProjectFile(root, rel) {
+  const real = resolveProjectFile(root, rel);
+  if (!real) throw new PagesEditorError('That file is not a readable source file inside the project.', { status: 400 });
+  return buildView(root, real);
+}
+
 /**
  * Follow one reference: `from` (root-relative path of the file being viewed) and `ref` (the name of a
  * reference in it, plus optionally its character offset `start` when the name occurs many times). The
