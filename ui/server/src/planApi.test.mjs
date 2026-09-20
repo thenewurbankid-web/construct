@@ -4,7 +4,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
@@ -13,6 +12,7 @@ import { createPlanRouter } from './planApi.mjs';
 import { createPlanService, PATH_ARGS, unsafePathReason, checkPlan } from './planService.mjs';
 import { createProcessesService } from './processesService.mjs';
 import { PLAN_FLOWS } from '../../../src/plan.mjs';
+import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
 import { app as realApp, auth as realAuth } from './index.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -23,7 +23,7 @@ const ENV = { CONSTRUCT_AUTH: 'required', CONSTRUCT_AUTH_TEST_USER: 'e2e-user', 
 const cookie = () => `${SESSION_COOKIE}=${encodeURIComponent(signValue({ login: 'e2e-user', exp: Date.now() + 60_000 }, SECRET))}`;
 
 const makeProject = () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'og289-plan-'));
+  const dir = makeTempDir('og289-plan-');
   fs.cpSync(SHARED, dir, { recursive: true });
   return dir;
 };
@@ -120,7 +120,7 @@ test('an invalid or hostile plan is refused with the named error, and NOTHING is
 
 test('a symlink that leaves the project is refused', async () => {
   const root = makeProject();
-  const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'og289-outside-'));
+  const outside = makeTempDir('og289-outside-');
   fs.writeFileSync(path.join(outside, 'secret.tsx'), 'x');
   fs.symlinkSync(outside, path.join(root, 'linked'));
   assert.match(unsafePathReason(root, 'linked/secret.tsx'), /symbolic link/);
@@ -234,7 +234,7 @@ test('every path-looking argument of every whitelisted flow is covered by the pa
 
 test('runPlan through the real processes service creates a process and starts it (fake executor)', async () => {
   const root = makeProject();
-  const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'og289-state-'));
+  const stateDir = makeTempDir('og289-state-');
   const processes = createProcessesService({ getProjectDir: () => root, stateDir, executeStep: async () => ({ ok: true, llm: null }) });
   const service = createPlanService({ getRoot: () => root, startPlan: (p) => processes.startPlan(p) });
   const bad = service.run({ plan: plan([]) });
