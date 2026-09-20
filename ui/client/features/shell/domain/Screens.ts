@@ -7,6 +7,7 @@ export const SCREENS: ShellScreen[] = [
   { href: '/wizard', label: 'Import Wizard', activeOn: ['/wizard'] },
   { href: '/pages', label: 'Pages Editor', activeOn: ['/pages'] },
   { href: '/workflows', label: 'Workflows', activeOn: ['/workflows'] },
+  { href: '/tests', label: 'Tests', activeOn: ['/tests'] },
   { href: '/ollama', label: 'Local Model', activeOn: ['/ollama'] },
   { href: '/settings', label: 'Settings', activeOn: ['/settings'] },
   { href: '/help', label: 'Help', activeOn: ['/help'] },

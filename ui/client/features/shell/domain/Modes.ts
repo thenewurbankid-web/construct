@@ -6,7 +6,7 @@
 import type { ShellMode } from '../types.ts';
 
 export const MODES: ShellMode[] = [
-  { id: 'explore', label: 'Explore', href: '/pages', activeOn: ['/pages', '/workflows'] },
+  { id: 'explore', label: 'Explore', href: '/pages', activeOn: ['/pages', '/workflows', '/tests'] },
   { id: 'plan', label: 'Plan', href: '/dashboard', activeOn: ['/', '/dashboard'] },
   { id: 'build', label: 'Build', href: '/wizard', activeOn: ['/wizard'] },
   { id: 'review', label: 'Review', href: '/review', activeOn: ['/review'] },
