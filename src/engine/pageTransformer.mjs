@@ -21,6 +21,9 @@ import { loadConfig } from './../config.mjs';
 import { write } from '../fs.mjs';
 import { selfCheck, pascalCase } from '../generators.mjs';
 import { ConstructError, EXIT_CODES } from '../diagnostics.mjs';
+import { extractMachines } from './workflowExtractor.mjs';
+import { listWorkflowSourceFiles, readWorkflowSource } from './workflowSource.mjs';
+import { assignTestIds, slotTestId, eventTestId } from './testAttributes.mjs';
 
 const CALLBACK_ATTR_RE = /^on[A-Z]/;
 const VALUE_ATTR_NAMES = new Set(['value', 'checked', 'defaultValue', 'defaultChecked']);
@@ -99,16 +102,42 @@ function collectInteractiveAttrs(jsxNode) {
   return hits.sort((a, b) => a.range[0] - b.range[0]);
 }
 
+const hasAttr = (opening, attrName) => opening.attributes.some((a) => a.type === 'JSXAttribute' && a.name?.type === 'JSXIdentifier' && a.name.name === attrName);
+
+/** #348: where to add `data-testid="<event>"` -- on the FIRST element carrying each `on<Event>` callback
+ * (a testid must be unique on a page), never overwriting an existing one. `idFor(slot, base)` may scope the id. */
+function testIdInserts(jsxNode, idFor) {
+  const inserts = [];
+  const taken = new Set();
+  walkAst(jsxNode, {
+    enter(node) {
+      if (node.type !== 'JSXOpeningElement' || hasAttr(node, 'data-testid')) return;
+      for (const a of node.attributes) {
+        if (a.type !== 'JSXAttribute' || a.name?.type !== 'JSXIdentifier' || classifyAttrName(a.name.name) !== 'callback') continue;
+        const base = slotTestId(a.name.name);
+        const id = base && idFor(a.name.name, base);
+        if (!id || taken.has(id)) continue;
+        taken.add(id);
+        inserts.push({ at: node.name.range[1], text: ` data-testid="${id}"`, testId: id });
+        break; // one testid per element
+      }
+    },
+  });
+  return inserts;
+}
+
 /** Rewire `text` (the source slice for `[sliceStart, sliceEnd)`) so every
  * catalogued attribute's value becomes the JSX-attribute shorthand
  * `name={name}` referencing the new prop of the same name -- applied from
  * the last attribute backwards so earlier offsets stay valid. */
-function rewireAttrs(text, sliceStart, attrs) {
+function rewireAttrs(text, sliceStart, attrs, inserts = []) {
+  const edits = [
+    ...attrs.map((a) => ({ start: a.range[0], end: a.range[1], text: `${a.name}={${a.name}}` })),
+    ...inserts.map((i) => ({ start: i.at, end: i.at, text: i.text })),
+  ];
   let out = text;
-  for (const attr of [...attrs].sort((a, b) => b.range[0] - a.range[0])) {
-    const start = attr.range[0] - sliceStart;
-    const end = attr.range[1] - sliceStart;
-    out = out.slice(0, start) + `${attr.name}={${attr.name}}` + out.slice(end);
+  for (const e of edits.sort((a, b) => b.start - a.start || b.end - a.end)) {
+    out = out.slice(0, e.start - sliceStart) + e.text + out.slice(e.end - sliceStart);
   }
   return out;
 }
@@ -144,7 +173,7 @@ function retainedImportLines(ast, source, keptBodyText) {
  *   capitalized (the layer's conventional PascalCase base name).
  * @returns {{pageSource: string, propsSource: string, slots: Array<{name:string, kind:'callback'|'value'}>}}
  */
-export function transformPristineSource(source, { feature, name }) {
+export function transformPristineSource(source, { feature, name, flow = null }) {
   const ast = parseToAst(source);
   const funcNode = findComponentFunction(ast);
   if (!funcNode) {
@@ -163,9 +192,16 @@ export function transformPristineSource(source, { feature, name }) {
   for (const a of attrs) if (!seen.has(a.name)) seen.set(a.name, a.kind);
   const slots = [...seen.entries()].map(([slotName, kind]) => ({ name: slotName, kind }));
 
+  // #348: test attributes. `flow` (only when the feature has a workflow) = { machineKey, eventIds: Map(kebab -> testid) }.
+  const inserts = testIdInserts(rendered.jsxNode, (slot, base) => flow?.eventIds.get(base) ?? base);
+  const root = rendered.jsxNode;
+  if (flow && root?.type === 'JSXElement' && !hasAttr(root.openingElement, 'data-flow-state')) {
+    inserts.push({ at: root.openingElement.name.range[1], text: ` data-flow="${flow.machineKey}" data-flow-state={flowState}` });
+    if (!seen.has('flowState')) { seen.set('flowState', 'flowState'); slots.push({ name: 'flowState', kind: 'value', optional: true }); }
+  }
   const sliceStart = rendered.wholeRange[0];
   const sliceEnd = rendered.wholeRange[1];
-  const rewiredSlice = rewireAttrs(source.slice(sliceStart, sliceEnd), sliceStart, attrs);
+  const rewiredSlice = rewireAttrs(source.slice(sliceStart, sliceEnd), sliceStart, attrs, inserts);
   const bodyText = rendered.concise ? `return (\n    ${rewiredSlice}\n  );` : rewiredSlice;
 
   const propsTypeName = `${name}PageProps`;
@@ -187,12 +223,28 @@ export function transformPristineSource(source, { feature, name }) {
     `// presentation file -- every prop below is an interactive slot the pristine`,
     `// ${name}Page component found and externalized. Wire these from a controller.`,
     `export interface ${propsTypeName} {`,
-    ...slots.map((s) => `  ${s.name}: ${slotType(s.name, s.kind)};`),
+    ...slots.map((s) => (s.optional ? `  ${s.name}?: string;` : `  ${s.name}: ${slotType(s.name, s.kind)};`)),
     `}`,
     '',
   ].join('\n');
 
-  return { pageSource, propsSource, slots };
+  return { pageSource, propsSource, slots, testIds: inserts.filter((i) => i.testId).map((i) => i.testId) };
+}
+
+/** #348: the feature's first workflow machine key and its event -> data-testid map (scoped on collisions), or
+ * null when the feature has no readable workflow. Deterministic: sorted files, source order. */
+export function featureFlow(root, feature) {
+  const machines = [];
+  try {
+    for (const file of listWorkflowSourceFiles(root, feature)) {
+      machines.push(...extractMachines(readWorkflowSource(root, feature, file)).machines.filter((m) => !m.error && m.initial));
+    }
+  } catch { return null; }
+  if (!machines.length) return null;
+  const { keys, testIds } = assignTestIds(machines);
+  const eventIds = new Map();
+  testIds.forEach((ids) => { for (const [event, id] of ids) if (!eventIds.has(eventTestId(event))) eventIds.set(eventTestId(event), id); });
+  return { machineKey: keys[0], eventIds };
 }
 
 /** Ingest `fromPath` (an externally-authored JSX/TSX file) as feature
@@ -207,7 +259,7 @@ export function ingestPage(root, name, feature, fromPath) {
     throw new ConstructError(`Source file not found: ${sourcePath}`, { exitCode: EXIT_CODES.USAGE_ERROR });
   }
   const source = fs.readFileSync(sourcePath, 'utf8');
-  const { pageSource, propsSource, slots } = transformPristineSource(source, { feature, name: cap });
+  const { pageSource, propsSource, slots, testIds } = transformPristineSource(source, { feature, name: cap, flow: featureFlow(root, feature) });
 
   const dir = path.join(root, config.features?.root || 'features', feature, 'pages');
   const pageFile = path.join(dir, `${cap}Page.tsx`);
@@ -216,5 +268,5 @@ export function ingestPage(root, name, feature, fromPath) {
   write(propsFile, propsSource);
   selfCheck(root, [pageFile, propsFile]);
 
-  return { pageFile, propsFile, slots };
+  return { pageFile, propsFile, slots, testIds };
 }
