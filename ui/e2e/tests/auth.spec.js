@@ -110,6 +110,9 @@ test.describe('#278 GitHub login gate', () => {
     // #312/#313: Review mode's list, its analysis request and one change are gated too.
     expect(await apiStatus(page, '/api/review/branches')).toBe(401);
     expect(await apiStatus(page, '/api/review/change?base=main&head=main')).toBe(401);
+    // #316: the saved-plans list (the expected scope) and a change compared with a plan are gated too.
+    expect(await apiStatus(page, '/api/review/plans')).toBe(401);
+    expect(await apiStatus(page, '/api/review/change?base=main&head=main&plan=proc_x')).toBe(401);
     expect(await page.evaluate(([api]) => fetch(`${api}/api/review/analyze`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ base: 'main', heads: ['x'] }) }).then((r) => r.status), [API])).toBe(401);
 
     // #289/#332: Plan mode's context, proposals, impact, validation and Run are gated too (Run is a mutating POST).
@@ -167,6 +170,7 @@ test.describe('#278 GitHub login gate', () => {
     expect(await decideStatus(page, 'proc_x')).toBe(404);
     // Signed in, Review is reachable (this server's project may not be a repository: a 400 is fine, a 401 is not).
     expect(await apiStatus(page, '/api/review/branches')).not.toBe(401);
+    expect(await apiStatus(page, '/api/review/plans')).not.toBe(401);
 
     // Signed in, Plan mode's read endpoint passes the gate.
     expect(await apiStatus(page, '/api/plan/context')).not.toBe(401);

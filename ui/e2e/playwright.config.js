@@ -18,6 +18,10 @@ const SERVER_ORIGIN = `http://localhost:${SERVER_PORT}`;
 const REUSE = process.env.E2E_REUSE_SERVERS === '1';
 // Read by the specs (API_BASE) — set here so Playwright's workers inherit it.
 process.env.E2E_API_BASE = SERVER_ORIGIN;
+// The server's process-record directory. A spec that needs a saved plan (Review mode's expected scope,
+// #316) seeds a process record here, through the same store the server reads.
+const STATE_DIR = process.env.E2E_STATE_DIR || fs.mkdtempSync(path.join(os.tmpdir(), 'construct-e2e-state-'));
+process.env.E2E_STATE_DIR = STATE_DIR;
 
 // These tests exercise the real, rendered UI in a real browser — the gap
 // left by every prior verification pass (curl for the API, `npm run build`
@@ -57,7 +61,7 @@ export default defineConfig({
       // ui/server restricts CORS + WebSocket origin to UI_CLIENT_ORIGIN.
       // #292: process records live in a per-user state dir; a fresh one keeps the
       // ordinary suite from ever seeing a real process of the developer's own.
-      env: { PORT: String(SERVER_PORT), UI_CLIENT_ORIGIN: CLIENT_ORIGIN, CONSTRUCT_STATE_DIR: fs.mkdtempSync(path.join(os.tmpdir(), 'construct-e2e-state-')) },
+      env: { PORT: String(SERVER_PORT), UI_CLIENT_ORIGIN: CLIENT_ORIGIN, CONSTRUCT_STATE_DIR: STATE_DIR },
     },
     {
       command: `npx next dev -p ${CLIENT_PORT}`,
