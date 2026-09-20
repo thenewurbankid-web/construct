@@ -295,8 +295,8 @@ writeFileSync(join(here, 'qa-tests-new.html'), page('QA · writing a brand-new t
       ${docHead('Untitled test', '<span class="chip mine">✎ Yours · new</span>', 'features/refunds/tests/ · not saved yet')}
       <div style="padding:10px 14px;border-bottom:1px solid var(--border-subtle);display:flex;gap:8px;align-items:center">
         <span style="color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em">Start from</span>
-        <span class="chip">A flow scenario</span><span class="chip">A page</span><span class="chip mine">Blank ✓</span>
-        <span class="spacer"></span><span style="color:var(--text-faint);font-size:11px">Starting from a scenario copies its steps for you</span>
+        <span class="chip">A flow scenario</span><span class="chip">Record what I do</span><span class="chip">A page</span><span class="chip mine">Blank ✓</span>
+        <span class="spacer"></span><span style="color:var(--text-faint);font-size:11px">A scenario copies its steps; recording writes them as you click</span>
       </div>
       <div class="doc-body">
         ${step({ kw: 'GIVEN', txt: 'Open <em>/refunds/42</em>', bind: 'page.goto' })}
@@ -432,3 +432,321 @@ writeFileSync(join(here, 'qa-tests-states.html'), page('QA tests · empty, loadi
 </div>`));
 
 console.log('qa test mocks written');
+
+/* ===========================================================================
+   Click and record (#284, owner 2026-09-20). Recording is the INPUT; the step
+   document is the OUTPUT — the same rows the editor screens already show, so
+   clone / lock / edit / review-diff / run-as-a-process all work unchanged. */
+
+const refundApp = ({ hi = '', banner = false } = {}) => `
+<div class="device" style="width:100%;height:100%;max-height:none">
+  <div class="bar"><i></i><i></i><i></i>&nbsp;&nbsp;localhost:5173/refunds/new <span style="margin-left:auto;color:#7a8497">recording</span></div>
+  <div class="app-nav"><b>Storefront</b><span>Orders</span><span>Refunds</span><span>Account</span></div>
+  <div class="refund">
+    <h2>Request a refund</h2><p>Order #4471 · placed 12 March</p>
+    ${banner ? '<div class="banner">A reviewer will check this refund</div>' : ''}
+    <label>Amount</label><div class="in">120</div>
+    <label>Reason</label><div class="in">Item arrived damaged</div>
+    <div class="cta">Request refund</div>
+    <div class="ghost">Save as draft</div>
+  </div>
+  ${hi}
+</div>`;
+
+const capRow = (kw, txt, note, cls = '') => `
+  <div class="cap ${cls}"><span class="kw ${kw.toLowerCase()}">${kw}</span>
+    <span class="txt">${txt}${note ? `<span class="note">${note}</span>` : ''}</span></div>`;
+
+const recTabs = (on, changes = '3') => tabs([['Recording'], ['Step'], ['Code'], ['Changes', [changes, 'acc']], ['Runs']], on);
+
+const recProcs = (h) => `${drawerBar('Processes', ['0', '', '2'])}<div class="body"><table>
+  <tr><th>Process</th><th>Kind</th><th>Status</th><th>Detail</th><th></th></tr>
+  <tr><td>recorder · chromium</td><td><span class="tag det">Deterministic</span></td><td><span class="pill run" style="height:20px"><span class="spin"></span>${h}</span></td><td>capturing into “Untitled recording”</td><td><button class="btn sm">Pause</button> <button class="btn sm danger">Stop</button></td></tr>
+  <tr><td>preview · storefront</td><td><span class="tag det">Deterministic</span></td><td><span class="pill run" style="height:20px"><span class="spin"></span>Running</span></td><td>localhost:5173 · up 41 min</td><td><button class="btn sm">Stop</button></td></tr></table></div>`;
+
+const whatIsCaptured = `
+  <div class="section"><h4>What gets captured</h4>
+    <div style="color:var(--text-muted);line-height:1.7">Clicks · typing · moving between pages · the checks you pick<br>
+    <span style="color:var(--text-faint)">Not captured: hovering, scrolling, how fast you clicked.</span></div></div>`;
+
+/* --- A. starting a recording ------------------------------------------- */
+
+const blankDoc = `
+<div class="doc">
+  ${docHead('Untitled test', '<span class="chip mine">Yours · new</span>', 'features/refunds/tests/ · not saved yet')}
+  <div style="padding:10px 14px;border-bottom:1px solid var(--border-subtle);display:flex;gap:8px;align-items:center">
+    <span style="color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em">Start from</span>
+    <span class="chip">A flow scenario</span><span class="chip mine">Record what I do ✓</span><span class="chip">A page</span><span class="chip">Blank</span>
+  </div>
+  <div class="doc-body"><div class="step" style="grid-template-columns:18px 1fr;color:var(--text-faint)"><span class="grip">+</span><span class="txt">No steps yet — recording will write them here as you click</span></div></div>
+  <div class="doc-f"><button class="btn sm">+ Add step</button><span class="spacer"></span><span>Nothing is written until you review the changes</span></div>
+</div>`;
+
+writeFileSync(join(here, 'qa-tests-record-start.html'), page('QA · starting a recording', shell({
+  procs: '1 running',
+  left: testsTree('new'),
+  mid: `${midTb('refunds › tests › <b>Untitled test</b>', seg(['Steps', 'Code'], 'Steps'), '<button class="btn primary sm">Record</button>')}
+   <div class="stage" style="padding:16px 20px;align-items:stretch">${blankDoc}</div>
+   <div class="canvas-foot"><span class="dot" style="color:var(--text-faint)"></span>Empty test<span class="spacer"></span>Recording is one of three ways to get steps</div>`,
+  right: `${recTabs('Recording', '0')}
+   <div class="scroll">
+    <div class="section"><h4>Record what you do</h4>
+      <div style="color:var(--text-muted);line-height:1.7">A real browser opens on your running app. Everything you click is written down as a step you can read — not as code.</div></div>
+    ${whatIsCaptured}
+    <div class="section"><h4>Then what</h4>
+      <div style="color:var(--text-muted);line-height:1.7">The steps land in this document, exactly like generated or hand-written ones: editable, reorderable, reviewed as a diff before anything is written.</div></div>
+   </div>`,
+  drawer: idleProcs(1),
+  drawerH: 96,
+  lw: 292,
+  rw: 380,
+  dim: true,
+  overlay: `<div class="scrim" style="padding-top:120px"><div class="dialog" role="dialog" aria-label="Record a test">
+   <div class="head"><div><h3>Record a test</h3>
+     <div style="color:var(--text-muted);margin-top:4px;line-height:1.5">A real browser opens against your running app. Everything you click becomes a step in plain language — you never see code.</div></div></div>
+   <div class="cont">
+     <div class="frow"><label>Record into</label><div class="ctl sel-ctl">A new test in <b style="margin-left:4px">refunds</b></div></div>
+     <div class="frow"><label>Start at</label><div class="ctl sel-ctl mono">/refunds/new</div></div>
+     <div class="frow"><label>Browser</label><div class="ctl sel-ctl">Chromium — the same one your tests run in</div></div>
+     <div style="display:flex;gap:8px;align-items:center"><span class="pill ok"><span class="dot"></span>Preview running · localhost:5173</span><span style="color:var(--text-faint)">no need to start anything</span></div>
+     <div class="frow"><label>What gets captured</label>
+       <div style="color:var(--text-muted);line-height:1.7">Clicks · typing · moving between pages · the checks you pick<br>
+       <span style="color:var(--text-faint)">Not captured: hovering, scrolling, how fast you clicked.</span></div></div>
+   </div>
+   <div class="foot"><button class="btn primary">Open browser and record</button><button class="btn">Cancel</button><span class="spacer"></span><span style="color:var(--text-faint)">You can pause at any time</span></div>
+  </div></div>`,
+})));
+
+/* --- B. recording: the split view --------------------------------------- */
+
+const hiSubmit = `
+  <div class="sel-box" style="left:60px;right:60px;top:316px;height:34px"></div>
+  <div class="sel-tag" style="left:56px;top:296px">button · data-testid="request-refund"</div>`;
+
+writeFileSync(join(here, 'qa-tests-record.html'), page('QA · recording: the app on one side, readable steps on the other', shell({
+  procs: '2 running',
+  left: testsTree('new'),
+  mid: `<div class="canvas-tb"><span class="crumbs">refunds › tests › <b>Untitled recording</b></span>
+     <span class="rec"><span class="bulb"></span>Recording 00:42</span><span class="spacer"></span>
+     ${seg(['Record actions', 'Check this'], 'Record actions')}
+     <button class="btn sm">Pause</button><button class="btn primary sm">Finish</button></div>
+   <div class="split">
+     <div class="appcol">${refundApp({ hi: hiSubmit })}</div>
+     <div class="capcol">
+       <div class="caph">Steps so far<span class="spacer"></span><span class="chip ok">3 bound by convention</span></div>
+       <div class="capbody">
+         ${capRow('GIVEN', 'Open <em>/refunds/new</em>', 'page.goto')}
+         ${capRow('AND', 'Type <em>120</em> into “Amount”', '[data-testid="amount"]')}
+         ${capRow('AND', 'Type <em>Item arrived damaged</em> into “Reason”', '[data-testid="reason"]')}
+         ${capRow('WHEN', '“request refund” happens', 'REQUEST_REFUND · [data-testid="request-refund"]', 'now')}
+       </div>
+       <div class="capf"><button class="btn sm">Undo last</button><span class="spacer"></span>4 steps</div>
+     </div>
+   </div>
+   <div class="canvas-foot"><span class="dot" style="color:var(--danger)"></span>Click in the browser window — steps appear beside it as you go<span class="spacer"></span>Esc pauses</div>`,
+  right: `${recTabs('Recording', '4')}
+   <div class="scroll">
+    <div class="section"><h4>Mode</h4>
+      <div class="picks col">
+        <div class="pick on"><b><span class="radio"></span>Record actions</b><small>Clicking and typing become steps.</small></div>
+        <div class="pick"><b><span class="radio"></span>Check this</b><small>Pick anything on the page and say what must be true about it.</small></div>
+      </div></div>
+    <div class="section"><h4>Just captured <span class="tag det">Deterministic</span></h4>
+      <div class="prop"><span class="k">element</span><span class="field">button “Request refund”</span></div>
+      <div class="prop"><span class="k">test id</span><span class="field mono">request-refund</span><span class="bind var">found</span></div>
+      <div class="prop"><span class="k">event</span><span class="field mono">REQUEST_REFUND</span><span class="bind var">matched</span></div>
+      <small style="color:var(--text-muted);display:block;margin-top:6px">The test id matches an event in <b>refundRequest</b>, so this is recorded as the flow event rather than “a click on a button”.</small>
+    </div>
+    <div class="section"><h4>How the steps are bound</h4>
+      <div class="prop"><span class="k">matched</span><span class="field">3 · expected id</span><span class="bind var">ideal</span></div>
+      <div class="prop"><span class="k">other id</span><span class="field">0 · different id</span><span class="bind lit">fine</span></div>
+      <div class="prop"><span class="k">no id</span><span class="field">0 · none</span><span class="bind lit">—</span></div>
+    </div>
+    ${whatIsCaptured}
+   </div>`,
+  drawer: recProcs('Recording'),
+  drawerH: 146,
+  lw: 264,
+  rw: 360,
+})));
+
+/* --- C. "check this" mode ----------------------------------------------- */
+
+const hiBanner = `
+  <div class="sel-box check-box" style="left:56px;right:56px;top:192px;height:34px"></div>
+  <div class="sel-tag check-tag" style="left:52px;top:172px">text · “A reviewer will check this refund”</div>
+  <div class="pop" style="left:52px;top:250px;width:330px">
+    <div style="font-weight:600;margin-bottom:6px">What should be true here?</div>
+    <div class="picks col" style="gap:6px">
+      <div class="pick on" style="padding:7px 9px"><b><span class="radio"></span>This text is visible</b></div>
+      <div class="pick" style="padding:7px 9px"><b><span class="radio"></span>This element exists</b></div>
+      <div class="pick" style="padding:7px 9px"><b><span class="radio"></span>The page address is /refunds/42</b></div>
+    </div>
+    <div class="frow" style="margin:8px 0 6px"><label>Text</label><div class="ctl area" style="min-height:34px">A reviewer will check this refund</div></div>
+    <div style="display:flex;gap:6px"><button class="btn primary sm">Add this check</button><button class="btn sm">Cancel</button></div>
+  </div>`;
+
+writeFileSync(join(here, 'qa-tests-record-check.html'), page('QA · “check this”: recording what must be TRUE, not only what you did', shell({
+  procs: '2 running',
+  left: testsTree('new'),
+  mid: `<div class="canvas-tb"><span class="crumbs">refunds › tests › <b>Untitled recording</b></span>
+     <span class="rec"><span class="bulb"></span>Recording 01:20</span><span class="spacer"></span>
+     ${seg(['Record actions', 'Check this'], 'Check this')}
+     <button class="btn sm">Pause</button><button class="btn primary sm">Finish</button></div>
+   <div class="split">
+     <div class="appcol">${refundApp({ hi: hiBanner, banner: true })}</div>
+     <div class="capcol">
+       <div class="caph">Steps so far<span class="spacer"></span><span class="chip">6 steps</span></div>
+       <div class="capbody">
+         ${capRow('AND', 'Type <em>120</em> into “Amount”', '[data-testid="amount"]')}
+         ${capRow('WHEN', '“request refund” happens', 'REQUEST_REFUND')}
+         ${capRow('THEN', 'the flow moves to <em>manual review</em>', '[data-flow-state="manualReview"]')}
+         ${capRow('CHECK', 'the page shows “A reviewer will check this refund”', 'text is visible · being added', 'check-row')}
+       </div>
+       <div class="capf"><button class="btn sm">Undo last</button><span class="spacer"></span>1 check so far</div>
+     </div>
+   </div>
+   <div class="canvas-foot"><span class="dot" style="color:var(--llm)"></span>Check mode — clicking picks something to assert instead of pressing it<span class="spacer"></span>Switch back to keep clicking</div>`,
+  right: `${recTabs('Recording', '6')}
+   <div class="callout info" style="align-items:flex-start"><span>i</span><div class="grow"><b>A recording knows what you did, not what you meant to prove</b><small>Without checks, a recorded test only repeats clicks and can pass while the page is broken. Pick the things a reviewer would look at.</small></div></div>
+   <div class="scroll">
+    <div class="section"><h4>Mode</h4>
+      <div class="picks col">
+        <div class="pick"><b><span class="radio"></span>Record actions</b><small>Clicking and typing become steps.</small></div>
+        <div class="pick on"><b><span class="radio"></span>Check this</b><small>Clicking picks an element; you say what must be true about it.</small></div>
+      </div></div>
+    <div class="section"><h4>This check <span class="tag det">Deterministic</span></h4>
+      <div class="frow"><label>What to check</label><div class="ctl sel-ctl">Text is visible</div></div>
+      <div class="frow"><label>Text</label><div class="ctl area">A reviewer will check this refund</div></div>
+      <div class="becomes">await expect(
+  page.getByText('A reviewer will check this refund')
+).toBeVisible();</div>
+    </div>
+    <div class="section"><h4>Checks so far</h4>
+      <div style="color:var(--text-muted);line-height:1.7">1 check you picked, plus the flow-state checks Construct adds for you.</div></div>
+   </div>`,
+  drawer: recProcs('Recording'),
+  drawerH: 146,
+  lw: 264,
+  rw: 360,
+})));
+console.log('record mocks A-C written');
+
+/* --- D. selector reconciliation: the element has no test id -------------- */
+
+const hiDraft = `
+  <div class="sel-box warn-box" style="left:26px;right:26px;top:310px;height:30px"></div>
+  <div class="sel-tag warn-tag" style="left:22px;top:290px">button “Save as draft” · no data-testid</div>`;
+
+const recCapListD = `
+  ${capRow('WHEN', '“request refund” happens', 'REQUEST_REFUND · [data-testid="request-refund"]')}
+  ${capRow('AND', 'Click “Add a note”', '[data-testid="refund-note-toggle"] · not an event in the flow, recorded as a plain click')}
+  ${capRow('AND', 'Click “Save as draft”', 'no test id — waiting for your decision', 'warn-row')}`;
+
+writeFileSync(join(here, 'qa-tests-record-selector.html'), page('QA · the element has no test id: the choice is made out loud', shell({
+  procs: '2 running',
+  left: testsTree('new'),
+  mid: `<div class="canvas-tb"><span class="crumbs">refunds › tests › <b>Untitled recording</b></span>
+     <span class="rec"><span class="bulb"></span>Paused 02:05</span><span class="spacer"></span>
+     ${seg(['Record actions', 'Check this'], 'Record actions')}
+     <button class="btn sm">Resume</button><button class="btn primary sm">Finish</button></div>
+   <div class="split">
+     <div class="appcol">${refundApp({ hi: hiDraft })}</div>
+     <div class="capcol">
+       <div class="caph">Steps so far<span class="spacer"></span><span class="chip warn">1 needs a decision</span></div>
+       <div class="capbody">${recCapListD}</div>
+       <div class="capf"><button class="btn sm">Undo last</button><span class="spacer"></span>7 steps</div>
+     </div>
+   </div>
+   <div class="canvas-foot"><span class="dot" style="color:var(--warn)"></span>Paused — nothing is recorded for this click until you choose<span class="spacer"></span>Recording resumes after</div>`,
+  right: `${recTabs('Recording', '7')}
+   <div class="scroll">
+    <div class="section"><h4>How the steps are bound</h4>
+      <div class="prop"><span class="k">matched</span><span class="field">5 · expected id</span><span class="bind var">ideal</span></div>
+      <div class="prop"><span class="k">other id</span><span class="field">1 · different id</span><span class="bind lit">fine</span></div>
+      <div class="prop"><span class="k">no id</span><span class="field">1 · no id</span><span class="bind var" style="background:var(--warn-soft);color:var(--warn)">now</span></div>
+      <small style="color:var(--text-muted);display:block;margin-top:8px">Every step says how it finds its element. A recording never hides that.</small>
+    </div>
+    <div class="section"><h4>Why this happens</h4>
+      <div style="color:var(--text-muted);line-height:1.7">Construct puts a <span class="mono">data-testid</span> on the elements it generates. Anything written by hand may not have one, and a test that guesses is a test that breaks next month.</div></div>
+   </div>`,
+  drawer: recProcs('Paused'),
+  drawerH: 146,
+  lw: 264,
+  rw: 360,
+  dim: true,
+  overlay: `<div class="scrim" style="padding-top:96px"><div class="dialog" role="dialog" aria-label="This element has no test id" style="width:640px">
+   <div class="head"><div><span class="chip warn">No test id</span>
+     <h3 style="margin-top:8px">How should this step find “Save as draft”?</h3>
+     <div style="color:var(--text-muted);margin-top:4px;line-height:1.55">Steps normally find their element by <span class="mono">data-testid</span>. This button, in <span class="mono">features/refunds/components/RefundForm.tsx</span>, was written by hand and has none.</div></div></div>
+   <div class="cont">
+    <div class="picks col">
+      <div class="pick on"><b><span class="radio"></span>Give the button a test id <span class="chip ok" style="margin-left:6px">Recommended</span></b>
+        <small><b>You approve the diff before anything is written</b> — the same review as any other change. It adds <span class="mono">data-testid="save-as-draft"</span> to one product file, and the step is stable for good.</small>
+        <div class="becomes" style="margin-top:6px">- &lt;button className="ghost"&gt;Save as draft&lt;/button&gt;
++ &lt;button className="ghost" data-testid="save-as-draft"&gt;Save as draft&lt;/button&gt;</div></div>
+      <div class="pick"><b><span class="radio"></span>Find it by what it looks like <span class="chip warn" style="margin-left:6px">Brittle</span></b>
+        <small><b>Breaks the moment the wording or the role changes.</b> Uses <span class="mono">getByRole('button', { name: 'Save as draft' })</span>: it works today, and the step keeps a visible warning — as does every run that uses it — until someone gives the button a test id.</small></div>
+      <div class="pick"><b><span class="radio"></span>Skip this click</b>
+        <small>Nothing is recorded for it. Recording carries on from the next thing you do.</small></div>
+    </div>
+   </div>
+   <div class="foot"><button class="btn primary">Use this and carry on</button><button class="btn">Ask me at the end instead</button><span class="spacer"></span><span style="color:var(--text-faint)">Whatever you pick is shown again before anything is written</span></div>
+  </div></div>`,
+})));
+
+/* --- E. finishing: review before anything is written --------------------- */
+
+const recordedDoc = `
+<div class="doc">
+  ${docHead('Save a draft, then request the refund',
+    '<span class="chip mine">Yours · recorded</span><span class="chip warn">1 brittle step</span>',
+    'features/refunds/tests/save-draft-then-request.spec.ts · captured 2 min ago · not written yet')}
+  <div class="doc-body">
+    ${step({ kw: 'GIVEN', txt: 'Open <em>/refunds/new</em>', bind: 'page.goto' })}
+    ${step({ kw: 'AND', txt: 'Type <em>120</em> into “Amount”', bind: '[data-testid="amount"]' })}
+    ${step({ kw: 'AND', txt: 'Type <em>Item arrived damaged</em> into “Reason”', bind: '[data-testid="reason"]' })}
+    ${step({ kw: 'AND', txt: 'Click “Save as draft”', note: 'Needs a test id — you chose to add one to the button', bind: 'data-testid to add', cls: 'edited' })}
+    ${step({ kw: 'AND', txt: 'Click “Add a note”', note: 'A different test id — recorded as a plain click, not a flow event', bind: '[data-testid="refund-note-toggle"]' })}
+    ${step({ kw: 'WHEN', txt: '“request refund” happens', note: 'Matched the flow event REQUEST_REFUND', bind: '[data-testid="request-refund"]' })}
+    ${step({ kw: 'THEN', txt: 'the flow moves to <em>manual review</em>', bind: '[data-flow-state="manualReview"]' })}
+    ${step({ kw: 'CHECK', txt: 'the page shows “A reviewer will check this refund”', note: 'Added by you in check mode', bind: 'text is visible' })}
+  </div>
+  <div class="doc-f"><button class="btn sm">+ Add step</button><button class="btn sm">Record more</button><span class="spacer"></span><span>8 steps · edit any of them before writing</span></div>
+</div>`;
+
+writeFileSync(join(here, 'qa-tests-record-review.html'), page('QA · finishing a recording: two kinds of write, both reviewed', shell({
+  procs: '1 running',
+  left: testsTree('new'),
+  mid: `${midTb('refunds › tests › <b>Save a draft, then request the refund</b>', seg(['Steps', 'Code'], 'Steps'), '<span class="chip">Finished</span><button class="btn primary sm">Review (2)</button>')}
+   <div class="stage" style="padding:14px 20px;align-items:stretch">${recordedDoc}</div>
+   <div class="canvas-foot"><span class="dot" style="color:var(--accent)"></span>Recorded steps are ordinary steps — reorder, edit or delete any of them<span class="spacer"></span>Nothing on disk has changed yet</div>`,
+  right: `${tabs([['Step'], ['Test'], ['Code'], ['Changes', ['2', 'acc']], ['Runs']], 'Changes')}
+   <div class="callout info" style="align-items:flex-start"><span>i</span><div class="grow"><b>Nothing is written yet</b><small>A recording produces two different kinds of change. They are approved separately.</small></div></div>
+   <div class="scroll">
+    <div class="section"><h4>1 · The test <span class="chip mine">yours to keep</span></h4>
+      <div class="path">features/refunds/tests/save-draft-then-request.spec.ts</div>
+      <div style="color:var(--text-muted);margin-top:6px">New file · 8 steps · 1 check</div>
+      <div style="margin-top:8px"><button class="btn primary sm">Write the test</button></div></div>
+    <div class="section"><h4>2 · Your app <span class="chip warn">changes product code</span></h4>
+      <div class="path">features/refunds/components/RefundForm.tsx</div>
+      <div class="becomes" style="margin-top:6px">- &lt;button className="ghost"&gt;Save as draft&lt;/button&gt;
++ &lt;button className="ghost" data-testid="save-as-draft"&gt;Save as draft&lt;/button&gt;</div>
+      <small style="color:var(--text-muted);display:block;margin-top:6px">One attribute, no behaviour change. Refuse it and the step falls back to a brittle locator — the test still runs, and says so.</small>
+      <div style="display:flex;gap:8px;margin-top:8px"><button class="btn sm">Approve this change</button><button class="btn sm">Open in Pages</button></div></div>
+    <div class="section"><h4>Health of this recording</h4>
+      <div class="prop"><span class="k">matched</span><span class="field">5 steps · expected test id</span><span class="bind var">ideal</span></div>
+      <div class="prop"><span class="k">other id</span><span class="field">1 step · different test id</span><span class="bind lit">fine</span></div>
+      <div class="prop"><span class="k">brittle</span><span class="field">0 · once you approve #2</span><span class="bind lit">none</span></div>
+    </div>
+    <div style="padding:12px;display:flex;gap:8px"><button class="btn primary">Apply both</button><button class="btn">Discard recording</button></div>
+   </div>`,
+  drawer: `${drawerBar('Processes', ['0', '', '1'])}<div class="body"><table>
+    <tr><th>Process</th><th>Kind</th><th>Status</th><th>Detail</th><th></th></tr>
+    <tr><td>recorder · chromium</td><td><span class="tag det">Deterministic</span></td><td><span style="color:var(--success)">✓ Finished</span></td><td>8 steps captured · 2 min 11 s</td><td><button class="btn sm">Record more</button></td></tr>
+    <tr><td>preview · storefront</td><td><span class="tag det">Deterministic</span></td><td><span class="pill run" style="height:20px"><span class="spin"></span>Running</span></td><td>localhost:5173 · up 44 min</td><td><button class="btn sm">Stop</button></td></tr></table></div>`,
+  drawerH: 146,
+  lw: 264,
+  rw: 400,
+})));
+console.log('record mocks D-E written');

@@ -29,7 +29,9 @@ Concept mocks (1440x900, each in `png/<name>--dark.png` and `--light.png`):
 - **QA test authoring** (`build-qa-tests.mjs`, styles in `qa-tests.css`):
   `qa-tests-scenarios`, `qa-tests-clone`, `qa-tests-editor`,
   `qa-tests-changes-code`, `qa-tests-new`, `qa-tests-run-failure`,
-  `qa-tests-states`.
+  `qa-tests-states`, plus the click-and-record screens `qa-tests-record-start`,
+  `qa-tests-record`, `qa-tests-record-check`, `qa-tests-record-selector`,
+  `qa-tests-record-review`.
 
 The shell chrome shared by every mock lives in `parts.mjs`; each initiative adds
 its own `build-*.mjs` (and its own stylesheet, if it needs one) rather than

@@ -63,7 +63,7 @@
 .arts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .art { border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--surface-2); padding: 6px; text-align: center; font-size: 11px; color: var(--text-muted); }
 .art b { display: block; color: var(--text); font-size: 12px; }
-.pop { position: absolute; background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--r-md); box-shadow: var(--shadow); width: 300px; padding: 10px 12px; z-index: 5; }
+.pop { color: var(--text); font: 13px/1.4 var(--font); position: absolute; background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--r-md); box-shadow: var(--shadow); width: 300px; padding: 10px 12px; z-index: 5; }
 .pop:before { content: ""; position: absolute; top: -6px; left: 28px; width: 10px; height: 10px; background: var(--surface-2); border-left: 1px solid var(--border-strong); border-top: 1px solid var(--border-strong); transform: rotate(45deg); }
 
 /* row/label clipping: names never spill past the pane, truncation looks deliberate */
@@ -80,3 +80,42 @@
 /* states sheet: columns must not be widened by long monospace strings */
 .sheet > * { min-width: 0; }
 .state-card p, .state-card .mono { overflow-wrap: anywhere; }
+
+/* ---------------------------------------------------------------------------
+   Click-and-record (qa-tests-record*.html): split stage, capture list,
+   selector reconciliation. Tokens only. */
+.split { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 336px; }
+.split > .appcol { min-width: 0; background: var(--canvas); padding: 14px; display: flex; position: relative; }
+.split > .capcol { min-width: 0; border-left: 1px solid var(--border-subtle); background: var(--surface-1); display: flex; flex-direction: column; }
+.capcol .caph { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px; border-bottom: 1px solid var(--border-subtle); flex: none; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted); font-weight: 600; }
+.capcol .capbody { flex: 1; min-height: 0; overflow: hidden; }
+.capcol .capf { border-top: 1px solid var(--border-subtle); padding: 8px 10px; display: flex; gap: 6px; align-items: center; color: var(--text-muted); font-size: 12px; flex: none; }
+.cap { display: grid; grid-template-columns: 58px 1fr; gap: 8px; align-items: start; padding: 7px 10px; border-bottom: 1px solid var(--border-subtle); }
+.cap:last-child { border-bottom: 0; }
+.cap .txt { min-width: 0; }
+.cap .txt em { font-style: normal; font-weight: 600; }
+.cap .note { display: block; color: var(--text-faint); font: 11px var(--mono); margin-top: 2px; overflow-wrap: anywhere; }
+.cap.now { background: var(--accent-soft); box-shadow: inset 2px 0 0 var(--accent); }
+.cap.warn-row { background: var(--warn-soft); box-shadow: inset 2px 0 0 var(--warn); }
+.cap.check-row { background: var(--llm-soft); box-shadow: inset 2px 0 0 var(--llm); }
+.rec { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 13px; border: 1px solid var(--danger); background: var(--danger-soft); color: var(--danger); font-weight: 600; white-space: nowrap; }
+.rec .bulb { width: 9px; height: 9px; border-radius: 50%; background: var(--danger); display: inline-block; }
+.chip.warn { border-color: var(--warn); background: var(--warn-soft); color: var(--warn); }
+.chip.ok { border-color: var(--success); background: var(--success-soft); color: var(--success); }
+.sel-tag.warn-tag { background: var(--warn); color: #101318; }
+.sel-box.warn-box { outline-color: var(--warn); }
+.sel-box.check-box { outline-color: var(--llm); outline-style: dashed; }
+.sel-tag.check-tag { background: var(--llm); color: #101318; }
+.picks.col { grid-template-columns: 1fr; }
+.pick .radio { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--border-strong); display: inline-block; vertical-align: -2px; margin-right: 7px; }
+.pick.on .radio { border-color: var(--accent); background: radial-gradient(var(--accent) 0 42%, transparent 44%); }
+.refund { width: 320px; margin: 26px auto; padding: 20px; border: 1px solid #e0e4ec; border-radius: 12px; }
+.refund h2 { margin: 0 0 4px; font-size: 19px; }
+.refund p { margin: 0 0 14px; color: #667085; font-size: 13px; }
+.refund label { display: block; font-size: 12px; font-weight: 600; margin: 10px 0 4px; }
+.refund .in { height: 32px; border: 1px solid #ccd2dd; border-radius: 8px; padding: 7px 10px; color: #333; font-size: 13px; }
+.refund .cta { margin-top: 16px; height: 34px; border-radius: 8px; background: #2450d8; color: #fff; display: grid; place-items: center; font-weight: 600; font-size: 13px; }
+.refund .ghost { margin-top: 8px; height: 30px; border-radius: 8px; border: 1px solid #ccd2dd; color: #35406b; display: grid; place-items: center; font-size: 13px; }
+.refund .banner { margin: 0 0 12px; padding: 9px 11px; border-radius: 8px; background: #eef3ff; border: 1px solid #c8d8ff; color: #1c3a86; font-size: 12px; }
+.caph .chip { text-transform: none; letter-spacing: 0; font-weight: 600; }
+.prop .field { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
