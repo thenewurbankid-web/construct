@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Live preview: needs the dev server (states) - Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="ia.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+</head><body>
+<div class="concept">Concept - not implemented <span>Live preview: needs the dev server (states)</span></div>
+
+<div class="hh">The live preview needs the target app's dev server<small>Tree, impact, findings, Notes, plan, source and diff work from the files alone. Only the rendered canvas, click-to-source and live reload need the server.</small></div>
+<div class="sheet3">
+ <div><h3>Before it runs</h3>
+  <div class="card" ><b>Dev server not running</b><p>Start it to see /login. It runs inside your workspace, for this project only.</p><div><button class="btn primary sm">Start dev server</button> <button class="btn sm">Use a URL instead</button></div></div>
+  <div class="card" ><b>Starting</b><p><span class="saveind busy"><span class="spin"></span> npm run dev, Process #14</span> Watch it in the bottom panel. Usually 3 to 5 s.</p><div><button class="btn sm">Open in Processes</button></div></div>
+  <div class="card" style="border-color:var(--danger)"><b>Outside the workspace</b><p>This project is not inside the workspace root, so the Cockpit will not start a server for it.</p><div><button class="btn sm">Open a project in the workspace</button></div></div></div>
+ <div><h3>When it goes wrong</h3>
+  <div class="card" style="border-color:var(--danger)"><b>Server stopped</b><p>Port 5173 is in use by another process.</p><div><button class="btn primary sm">Use port 5174</button> <button class="btn sm">Show log</button></div></div>
+  <div class="card" style="border-color:var(--warn)"><b>Click-to-source is off</b><p>Your app does not load the Cockpit preview plugin. Tree, impact and source still work.</p><div><span class="mono" style="background:var(--surface-3);padding:2px 6px;border-radius:4px">plugins: [constructPreview(), react()]</span></div><div><button class="btn sm">Copy line</button></div></div>
+  <div class="card" style="border-color:var(--danger)"><b>App error in the preview</b><p>The app threw: Cannot read properties of undefined (reading email).</p><div><button class="btn sm">Show in source</button></div></div></div>
+ <div><h3>Running, and what needs it</h3>
+  <div class="card" ><b>Running</b><p><span class="saveind ok">&#10003; :5173 running &middot; live reload on</span></p><div><button class="btn sm">Restart</button> <button class="btn sm danger">Stop</button></div></div>
+  <div class="card" ><b>Needs the server</b><p>Rendered canvas, Alt+Click and Pick, live reload, isolated component view, state switching.</p></div>
+  <div class="card" ><b>Works without it</b><p>File tree, impact, findings, Notes, plan, diff, tests list, Generate.</p></div></div>
+</div>
+</body></html>
