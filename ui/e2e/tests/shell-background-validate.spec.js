@@ -135,6 +135,7 @@ test.describe('A background validate must not disturb what you are doing (#252)'
     const diagnostics = drawer.getByRole('tab', { name: /Diagnostics/ });
     await expect(diagnostics).toHaveText('Diagnostics');
     await expect(diagnostics.getByLabel(/Diagnostics$/)).toHaveCount(0);
+    await page.screenshot({ path: path.join(SHOTS, '252-1-validate-in-flight.png') });
 
     release();
     await expect(page.getByTestId('status-validate')).toContainText('3 problems', { timeout: 20_000 });
@@ -148,7 +149,7 @@ test.describe('A background validate must not disturb what you are doing (#252)'
     expect(movements(before, await controls(page))).toEqual([]);
     expect(await logs.boundingBox()).toEqual(logsBox);
 
-    await page.screenshot({ path: path.join(SHOTS, '252-validate-landed-nothing-moved.png') });
+    await page.screenshot({ path: path.join(SHOTS, '252-2-validate-landed.png') });
   });
 
   // Half the jump came from tabBadge() blanking while a run is in flight, even
