@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { LivePreviewPanel } from '../components/LivePreviewPanel';
+import { NavigatorPanel } from '../components/NavigatorPanel';
 import { PreviewPanel } from '../components/PreviewPanel';
 import { PropFlowDiagram } from '../components/PropFlowDiagram';
 import type { usePagesEditor } from '../hooks/usePagesEditor';
@@ -48,6 +49,7 @@ export function PagesEditorPage(props: PagesEditorPageProps): ReactNode {
             onDisconnect={livePreview.disconnect}
           />
           <PreviewPanel roots={tree.roots} selectedId={selectedNodeId} onSelect={selectNode} titleFor={previewTitle} />
+          <NavigatorPanel feature={props.feature} file={props.file} contentHash={tree.contentHash} />
           <PropFlowDiagram roots={tree.roots} />
         </>
       )}
