@@ -2,37 +2,23 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { slugify, makeSlugger, cleanTitle, esc } from '../lib/text.mjs';
+import { slugify, makeSlugger, esc } from '../lib/text.mjs';
 import { sanitizeHtml } from '../lib/sanitize.mjs';
-import { extractImageUrls, rewriteImages, localImageName, firstMarkdownImage } from '../lib/images.mjs';
-import { parseStoryBody, parsePartOf, splitReference, shiftHeadings } from '../lib/story.mjs';
-import { offlineSource } from '../lib/sources.mjs';
-import { collectGuides, isPublishable } from '../lib/collect.mjs';
 import { build, parseArgs } from '../build.mjs';
+import { USER_GROUPS } from '../lib/structure.mjs';
 import { makeTempDir } from '../../test-utils/tmpdir.mjs';
 
-const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
-const IMG = 'https://raw.githubusercontent.com/o/r/ui-screenshots/a.png';
-const issue = (number, title, over = {}) => ({
-  number, title, state: 'closed', html_url: `https://github.com/o/r/issues/${number}`,
-  updated_at: '2026-09-01T00:00:00Z', body: `Part of #125\n\n## What this does\n\nA long enough body to be publishable here.\n\n![shot](${IMG})\n\n---\n\n**Setup / run**\nnpm i`, ...over,
-});
-const fixtures = (extra = {}) => ({
-  issues: {},
-  sub_issues: {
-    125: [issue(10, '[Demo Epic] Guide A -- things', { body: 'Part of #125\n\n## What this demonstrates\n\nGuide A intro paragraph.' })],
-    10: [issue(11, '[Demo] Story one'), issue(12, '[Demo] Story two'), issue(13, '[Demo] Old', { body: 'Part of #10\n\nThis one was replaced but has a long body text.' })],
-  },
-  comments: { 13: [{ body: 'Superseded by #12' }] },
-  images: { [IMG]: PNG },
-  ...extra,
-});
+const BUILD_TIME = new Date('2026-09-20T00:00:00Z');
+const walk = (d, files = []) => {
+  for (const e of fs.readdirSync(d, { withFileTypes: true })) (e.isDirectory() ? walk(path.join(d, e.name), files) : files.push(path.join(d, e.name)));
+  return files;
+};
+const exampleGroups = () => USER_GROUPS.filter((g) => g.group.startsWith('Examples: '));
 
-test('slugify / slugger dedupe / cleanTitle / esc', () => {
+test('slugify / slugger dedupe / esc', () => {
   assert.equal(slugify('Hello, `World`!'), 'hello-world');
   const s = makeSlugger();
   assert.deepEqual([s('A b'), s('A b'), s('A b')], ['a-b', 'a-b-2', 'a-b-3']);
-  assert.equal(cleanTitle('[Demo Epic] x -- y'), 'x — y');
   assert.equal(esc('<a href="x">&'), '&lt;a href=&quot;x&quot;&gt;&amp;');
 });
 
@@ -42,85 +28,64 @@ test('sanitizer strips scripts, handlers and javascript: urls', () => {
   assert.match(out, /<p>a<\/p>/);
 });
 
-test('image extraction and rewrite', () => {
-  const html = `<p><a href="${IMG}"><img src="${IMG}" alt="x &amp; y" style="max-width: 100%;"></a><img src="rel.png"></p>`;
-  assert.deepEqual(extractImageUrls(html), [IMG]);
-  const out = rewriteImages(html, { [IMG]: 'assets/img/h.png' }, { prefix: '../../' });
-  assert.match(out, /<img src="..\/..\/assets\/img\/h.png" alt="x &amp; y" loading="lazy"/);
-  assert.match(out, /href="..\/..\/assets\/img\/h.png"/);
-  assert.doesNotMatch(out, /raw\.githubusercontent/);
-  assert.equal(firstMarkdownImage(`x ![a](${IMG}) y`), IMG);
-  assert.match(localImageName(IMG, Buffer.from('abc')), /^[0-9a-f]{16}\.png$/);
+test('structure: examples are split into CLI, Cockpit and Core, and each page states its surface', () => {
+  assert.deepEqual(exampleGroups().map((g) => g.group), ['Examples: CLI', 'Examples: Cockpit', 'Examples: Core']);
+  for (const g of exampleGroups()) {
+    const surface = g.group.replace('Examples: ', '').toLowerCase();
+    for (const p of g.pages) {
+      assert.match(p.path, new RegExp(`^user-guide/examples/${surface}-`), `${p.path} is filed under the wrong surface`);
+      assert.ok(fs.existsSync(new URL(`../../${p.file}`, import.meta.url)), `${p.file} exists`);
+    }
+  }
 });
 
-test('story body: Part of, benefit, verified, reference split', () => {
-  assert.equal(parsePartOf('Part of #127 (x)'), 127);
-  const p = parseStoryBody('Part of #1\n\nIntro\n\n## Benefit\n\nSaves time.\n\n## Steps\n\n1. go\n\nverified on abc1234 today');
-  assert.equal(p.benefit, 'Saves time.');
-  assert.equal(p.verified, 'abc1234');
-  assert.doesNotMatch(p.markdown, /Part of|Benefit|verified/);
-  assert.match(p.markdown, /## Steps/);
-  const s = splitReference('<p>a</p><hr><p><strong>Setup / run</strong></p>');
-  assert.equal(s.main, '<p>a</p>');
-  assert.match(s.reference, /Setup/);
-  assert.equal(shiftHeadings('<h2>x</h2><h6>y</h6>'), '<h3>x</h3><h6>y</h6>');
+test('example pages: no user stories, the problem comes first, surfaces are never interleaved', () => {
+  for (const g of exampleGroups()) {
+    const surface = g.group.replace('Examples: ', '');
+    for (const p of g.pages) {
+      const md = fs.readFileSync(new URL(`../../${p.file}`, import.meta.url), 'utf8');
+      assert.doesNotMatch(md, /\bAs an? [\w -]+ I want\b/i, `user story in ${p.file}`);
+      assert.match(md, /^\*\*Problem\.\*\*/, `${p.file} does not open with the problem`);
+      assert.match(md, /Checked against commit `[0-9a-f]{7}` on \d{4}-\d{2}-\d{2}/, `${p.file} has no checked-against line`);
+      if (surface === 'CLI') assert.doesNotMatch(md, /!\[[^\]]*\]\(@img/, `${p.file}: screenshots do not belong on a CLI page`);
+      if (surface === 'Core') assert.doesNotMatch(md, /!\[[^\]]*\]\(@img/, `${p.file}: screenshots do not belong on a core page`);
+      if (surface === 'Cockpit') assert.doesNotMatch(md, /^```bash\n(?:construct|node) /m, `${p.file}: a bare CLI transcript does not belong on a Cockpit page`);
+    }
+  }
 });
 
-test('isPublishable skips open, empty and superseded', () => {
-  const long = 'x'.repeat(60);
-  assert.equal(isPublishable({ state: 'open', body: long }), false);
-  assert.equal(isPublishable({ state: 'closed', body: 'short' }), false);
-  assert.equal(isPublishable({ state: 'closed', body: long }, [{ body: 'Superseded by #9' }]), false);
-  assert.equal(isPublishable({ state: 'closed', body: long }, [{ body: 'Verified done' }]), true);
+test('every image an example page uses exists in site/assets/img', () => {
+  for (const g of exampleGroups()) {
+    for (const p of g.pages) {
+      const md = fs.readFileSync(new URL(`../../${p.file}`, import.meta.url), 'utf8');
+      for (const m of md.matchAll(/\(@img\/([^)]+)\)/g)) assert.ok(fs.existsSync(new URL(`../assets/img/${m[1]}`, import.meta.url)), `${m[1]} referenced by ${p.file}`);
+    }
+  }
 });
 
-test('collect: sub-issue traversal, skipping superseded', async () => {
-  const { guides, skipped, mode } = await collectGuides(offlineSource(fixtures()));
-  assert.equal(mode, 'sub-issues');
-  assert.equal(guides.length, 1);
-  assert.deepEqual(guides[0].stories.map((s) => s.number), [11, 12]);
-  assert.deepEqual(skipped.map((s) => s.number), [13]);
-  assert.equal(guides[0].title, 'Guide A — things');
-  assert.equal(guides[0].hero, IMG);
-  assert.match(guides[0].stories[0].referenceHtml, /Setup/);
-});
-
-test('collect: Part of #N fallback when nothing is linked', async () => {
-  const issues = {
-    10: issue(10, '[Demo Epic] Guide A', { body: 'Part of #125\n\nGuide intro that is long enough to publish.' }),
-    11: issue(11, '[Demo] Story one', { body: `Part of #10\n\nA long enough body to be publishable here, honestly.` }),
-    12: issue(12, '[Demo] Story two', { body: `Part of #10\n\nAnother long enough body to be publishable here.` }),
-    20: issue(20, '[Demo] Elsewhere', { body: `Part of #99\n\nBelongs to some other guide entirely, long body.` }),
-  };
-  const { guides, mode } = await collectGuides(offlineSource({ issues }));
-  assert.equal(mode, 'part-of-fallback');
-  assert.deepEqual(guides.map((g) => [g.number, g.stories.map((s) => s.number)]), [[10, [11, 12]]]);
-});
-
-test('build renders the two-audience site, downloads images, rewrites paths', async () => {
+test('build renders the site offline: home pitch, examples, references, no ticket-derived tutorials', async () => {
   const out = makeTempDir('site-test-');
-  const res = await build({ source: offlineSource(fixtures()), out, repo: 'o/r', buildTime: new Date('2026-09-18T00:00:00Z') });
-  assert.equal(res.guides, 1);
-  assert.equal(res.stories, 2);
-  assert.equal(res.images, 1);
-  assert.deepEqual(res.imageFailures, []);
-  const slug = fs.readdirSync(path.join(out, 'user-guide', 'tutorials')).find((d) => d !== 'index.html');
-  const guide = fs.readFileSync(path.join(out, 'user-guide', 'tutorials', slug, 'index.html'), 'utf8');
-  assert.match(guide, /<h1>Guide A — things<\/h1>/);
-  assert.match(guide, /id="11-story-one"/);
-  assert.match(guide, /src="..\/..\/..\/assets\/img\/[0-9a-f]{16}\.png"/);
-  assert.match(guide, /Setup, API and known limitations/);
-  assert.doesNotMatch(guide, /raw\.githubusercontent/);
-  assert.doesNotMatch(guide, /Old/);
-  assert.doesNotMatch(guide, /View on GitHub|Demos tickets/);
-  // old tutorial address redirects
-  assert.match(fs.readFileSync(path.join(out, 'guides', slug, 'index.html'), 'utf8'), /url=..\/..\/user-guide\/tutorials\//);
+  const res = await build({ out, repo: 'o/r', buildTime: BUILD_TIME });
+  assert.equal(res.examples, 9);
   const home = fs.readFileSync(path.join(out, 'index.html'), 'utf8');
-  assert.match(home, /href="user-guide\/"/);
-  assert.match(home, /href="developers\/"/);
-  assert.match(home, /Guide A/);
-  assert.match(home, /Documentation built <time datetime="2026-09-18T00:00:00.000Z">/);
-  for (const p of ['user-guide/getting-started/', 'user-guide/concepts/', 'user-guide/how-to/create/', 'developers/architecture/', 'developers/cli-reference/', 'developers/rules-reference/', 'developers/execution-model/', 'developers/ast/', 'search/']) {
+  assert.match(home, /Stop paying an AI to redo the same work/);
+  assert.match(home, /cockpit, not an autopilot/);
+  assert.match(home, /href="user-guide\/examples\/cli-scaffold-and-validate\/"/);
+  assert.match(home, /href="user-guide\/examples\/cockpit-plan-and-run\/"/);
+  assert.match(home, /href="user-guide\/examples\/core-plans-and-impact\/"/);
+  assert.match(home, /Documentation built <time datetime="2026-09-20T00:00:00.000Z">/);
+  assert.doesNotMatch(home, /walkthrough|user stor/i);
+  for (const g of exampleGroups()) for (const p of g.pages) assert.ok(fs.existsSync(path.join(out, p.path, 'index.html')), p.path);
+  const idx = fs.readFileSync(path.join(out, 'user-guide/examples/index.html'), 'utf8');
+  for (const label of ['CLI', 'Cockpit', 'Core']) assert.match(idx, new RegExp(`<h2>${label}</h2>`));
+  // A Cockpit page carries real screenshots, copied and linked relative to its own depth.
+  const plan = fs.readFileSync(path.join(out, 'user-guide/examples/cockpit-plan-and-run/index.html'), 'utf8');
+  assert.match(plan, /src="\.\.\/\.\.\/\.\.\/assets\/img\/cockpit-plan-impact\.webp"/);
+  assert.ok(fs.existsSync(path.join(out, 'assets/img/cockpit-plan-impact.webp')));
+  // The old tutorial address redirects to the examples.
+  assert.match(fs.readFileSync(path.join(out, 'user-guide/tutorials/index.html'), 'utf8'), /url=..\/examples\//);
+  assert.ok(!fs.existsSync(path.join(out, 'guides')));
+  for (const p of ['user-guide/getting-started/', 'user-guide/concepts/', 'user-guide/cockpit/', 'user-guide/how-to/create/', 'developers/architecture/', 'developers/cli-reference/', 'developers/rules-reference/', 'developers/execution-model/', 'developers/ast/', 'search/']) {
     assert.ok(fs.existsSync(path.join(out, p, 'index.html')), p);
   }
   assert.ok(fs.existsSync(path.join(out, '404.html')));
@@ -130,15 +95,13 @@ test('build renders the two-audience site, downloads images, rewrites paths', as
 
 test('generated and reused docs are current, and carry no tracker plumbing or dead links', async () => {
   const out = makeTempDir('site-test-');
-  await build({ source: offlineSource(fixtures()), out, repo: 'o/r', buildTime: new Date('2026-09-18T00:00:00Z') });
+  await build({ out, repo: 'o/r', buildTime: BUILD_TIME });
   const rules = fs.readFileSync(path.join(out, 'developers/rules-reference/index.html'), 'utf8');
   assert.match(rules, /PAGE-003/); // straight from DEFAULT_RULES
   const cli = fs.readFileSync(path.join(out, 'developers/cli-reference/index.html'), 'utf8');
   assert.match(cli, /construct research workflow/);
-  const files = [];
-  const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).forEach((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : files.push(path.join(d, e.name))));
-  walk(out);
-  for (const f of files.filter((x) => x.endsWith('.html'))) {
+  assert.match(cli, /construct review/);
+  for (const f of walk(out).filter((x) => x.endsWith('.html'))) {
     const html = fs.readFileSync(f, 'utf8');
     const text = html.replace(/<script[\s\S]*?<\/script>/g, '').replace(/&#\d+;/g, "'").replace(/<[^>]+>/g, ' ');
     assert.doesNotMatch(text, /#\d{2,4}\b/, `ticket number leaked in ${path.relative(out, f)}`);

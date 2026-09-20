@@ -22,7 +22,7 @@
 h2:hover > .anchor, h3:hover > .anchor, h4:hover > .anchor, .anchor:focus { opacity: 1; text-decoration: none; }
 .story h2 .anchor { position: absolute; left: -1.1em; margin: 0; }
 
-.audiences { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin: 0 0 48px; }
+.audiences { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin: 0 0 48px; }
 .audience { display: block; background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 24px; color: var(--text); transition: border-color .15s, transform .15s; }
 .audience:hover { border-color: var(--accent); transform: translateY(-2px); text-decoration: none; }
 .audience h2 { margin: 8px 0; font-size: 1.4rem; }

@@ -74,4 +74,4 @@ Open <http://localhost:3000>. The **Settings** page tells the UI which project d
 
 - [Core concepts](@user-guide/concepts/) explains features, layers and rules in plain language.
 - The [how-to guides](@user-guide/how-to/) cover each task: creating, refactoring, importing, tuning rules.
-- The [tutorials](@user-guide/tutorials/) show real command output and screenshots.
+- The [examples](@user-guide/examples/) show a problem, the exact command or screen, and the exact result, separately for the CLI, the Cockpit and the core API.

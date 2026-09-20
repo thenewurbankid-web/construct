@@ -30,28 +30,3 @@ export function esc(s) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
-
-/** "[Demo Epic] construct create -- x" -> "construct create -- x" (and tidy the dashes). */
-export function cleanTitle(title) {
-  return String(title)
-    .replace(/^\s*(?:\[Demo[^\]]*\]\s*)+/i, '')
-    .replace(/\s+--\s+/g, ' — ')
-    .trim();
-}
-
-export function isDemoTitle(title) {
-  return /^\s*\[Demo/i.test(title || '');
-}
-
-/** Strip markdown to a one-line plain-text summary. */
-export function plainSummary(md, max = 220) {
-  const text = String(md)
-    .replace(/```[\s\S]*?```/g, ' ')
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
-    .replace(/[`*_>#]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-  if (text.length <= max) return text;
-  return text.slice(0, max).replace(/\s+\S*$/, '') + '…';
-}

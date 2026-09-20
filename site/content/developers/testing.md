@@ -45,7 +45,7 @@ node --test site/test/*.test.mjs
 node site/build.mjs --out site/dist
 ```
 
-The site is generated from the repository's own docs plus the published tutorials, so a broken include or link fails the build.
+The site is generated from the repository's own docs plus authored example pages, so a broken include or link fails the build. The build needs no network and no token.
 
 ## Writing tests
 

@@ -101,61 +101,56 @@ export function docBody({ title, lede, html }) {
   return `<h1>${esc(title)}</h1>${lede ? `<p class="lede">${esc(lede)}</p>` : ''}<div class="prose">${html}</div>`;
 }
 
-const cardGrid = (cards) => `<div class="cards">${cards.join('\n')}</div>`;
+const EXAMPLE_CARDS = [
+  ['CLI', 'user-guide/examples/cli-scaffold-and-validate/', 'Scaffold, then catch a rule break', 'A fetch() in a page. Exact commands, exact output, exit code and timing.'],
+  ['CLI', 'user-guide/examples/cli-impact-and-review/', 'Blast radius and branch review', 'What a change touches, and what a branch means. Same input, same hash, no model.'],
+  ['Cockpit', 'user-guide/examples/cockpit-plan-and-run/', 'Plan, run in a branch, approve per file', 'A bot works in its own worktree. You approve each file on the exact diff.'],
+  ['Cockpit', 'user-guide/examples/cockpit-review/', 'Review a branch by what it means', 'Five indicators from your own rules. Mechanical fixes apart from decisions.'],
+  ['Core', 'user-guide/examples/core-plans-and-impact/', 'Plans and impact as an API', 'JSON in, JSON out. The functions the CLI and the Cockpit both call.'],
+];
 
-export function guideCard(g, root) {
-  const href = `${root}user-guide/tutorials/${g.slug}/`;
-  return `<article class="card">
-  <a class="card-media${g.heroLocal ? '' : ' ph'}" href="${href}" tabindex="-1" aria-hidden="true">${g.heroLocal ? `<img src="${root}${esc(g.heroLocal)}" alt="" loading="lazy" decoding="async">` : '<span>CLI + UI</span>'}</a>
-  <div class="card-body">
-    <h3><a href="${href}">${esc(g.title)}</a></h3>
-    <p>${esc(g.summary)}</p>
-    <p class="meta">${g.stories.length} ${g.stories.length === 1 ? 'walkthrough' : 'walkthroughs'}</p>
-  </div>
-</article>`;
-}
-
-export function homeBody({ guides }) {
-  const root = '';
+export function homeBody() {
+  const cards = EXAMPLE_CARDS.map(
+    ([tag, href, title, text]) => `<article class="card"><div class="card-body"><p class="eyebrow">${esc(tag)}</p><h3><a href="${href}">${esc(title)}</a></h3><p>${esc(text)}</p></div></article>`,
+  ).join('\n');
   return `<section class="hero">
   <p class="eyebrow">Documentation</p>
-  <h1>Build and refactor React apps with deterministic blocks, not guesswork.</h1>
-  <p class="lede">Construct is a set of small, code-driven commands that scaffold, move, import and validate a React + TypeScript app against rules your project defines. Use them from the command line or a browser Cockpit. An AI model is only involved where you explicitly ask for one.</p>
+  <h1>Stop paying an AI to redo the same work, differently, every time.</h1>
+  <p class="lede">Today, building an app with an AI model means the model re-derives the same task with tokens on every run: where a file goes, what a change touches, whether it broke a rule. The answer differs each time, costs money each time, and you find out afterwards. Construct turns that repeatable work into small, deterministic blocks with no model in them. You run the block, or an agent does, and the result is the same every time. A Cockpit lets you watch and steer it. It is a cockpit, not an autopilot.</p>
 </section>
-<section class="audiences" aria-label="Choose your path">
-  <a class="audience" href="user-guide/">
-    <span class="audience-tag">User Guide</span>
-    <h2>I want to use Construct</h2>
-    <p>Install it, create your first project and features, keep your code inside your own rules, and bring an existing app across. Task-based how-tos and step-by-step tutorials with real output and screenshots.</p>
-    <span class="audience-go">Start with the User Guide</span>
-  </a>
-  <a class="audience" href="developers/">
-    <span class="audience-tag">Developer Docs</span>
-    <h2>I want to build on or contribute to Construct</h2>
-    <p>The architecture and rule engine, the execution model, the Context Envelope pipeline, the AST package, CLI and rule references, and how to extend and test it.</p>
-    <span class="audience-go">Open the Developer Docs</span>
-  </a>
-</section>
-<section aria-labelledby="what-h" class="home-what">
-  <h2 id="what-h">What Construct does</h2>
+<section aria-labelledby="proof-h" class="home-what">
+  <h2 id="proof-h">Problem, command, result</h2>
+<pre><code>$ construct validate
+❌ PAGE-004 [architecture]
+  features/billing/pages/InvoicePage.tsx:7
+  Page calls fetch().
+  Why: Pages cannot own application flow.
+  Fix: Move the responsibility to controller or workflow.
+
+$ construct research impact features/shared/components/CurrencyLabel.tsx --dir fixtures/impact-shared --format json | sha256sum
+23ffcf296120b0fc81ae9a488315189cdad748ccda74dfdc876e37fb9cb3493a  -
+$ (run it again)
+23ffcf296120b0fc81ae9a488315189cdad748ccda74dfdc876e37fb9cb3493a  -</code></pre>
   <ul class="pillars">
-    <li><strong>Create in the right place.</strong> One command scaffolds a feature or a slice across layers, in dependency order.</li>
-    <li><strong>Rules you can read and change.</strong> Conventions live in <code>architecture.yml</code>; <code>construct validate</code> explains every violation and how to fix it.</li>
-    <li><strong>Same blocks for people and scripts.</strong> The CLI and the Cockpit run the same code, and every command says whether a model was involved.</li>
+    <li><strong>Deterministic blocks.</strong> Scaffold, validate, refactor, measure impact, review a branch, generate tests. Every command ends by saying how many model calls it made. Usually zero.</li>
+    <li><strong>A model only where you ask for one.</strong> Its task is small, its guidance is a real example, and your own rules check its output before it ships.</li>
+    <li><strong>Watch and steer.</strong> Plans you can read, bots that work in their own branch, changes you approve one file at a time.</li>
   </ul>
-<pre><code>construct init my-app
-construct create layer Invoice --feature billing --layers domain,hook,page,controller
-construct validate</code></pre>
 </section>
-${
-  guides.length
-    ? `<section aria-labelledby="tut-h"><h2 id="tut-h">Tutorials</h2>
-  <p class="section-note">Real command output and Cockpit screenshots, one guide per goal.</p>
-  ${cardGrid(guides.map((g) => guideCard(g, root)))}
-  <p class="section-note"><a href="user-guide/tutorials/">All tutorials</a></p>
-</section>`
-    : ''
-}`;
+<section aria-label="Choose your path">
+  <h2>Three surfaces, kept apart</h2>
+  <p class="section-note">The same blocks are reachable three ways. Each is documented on its own, never mixed.</p>
+  <div class="audiences">
+    <a class="audience" href="user-guide/examples/cli-scaffold-and-validate/"><span class="audience-tag">CLI</span><h2>Commands</h2><p>Real commands and real output, for scripts, CI and the terminal.</p><span class="audience-go">CLI examples</span></a>
+    <a class="audience" href="user-guide/examples/cockpit-plan-and-run/"><span class="audience-tag">Cockpit</span><h2>The browser UI</h2><p>Explore, Plan, Build and Review, with real screenshots.</p><span class="audience-go">Cockpit examples</span></a>
+    <a class="audience" href="user-guide/examples/core-plans-and-impact/"><span class="audience-tag">Core</span><h2>The API</h2><p>Plain JavaScript functions, JSON in and out, open source.</p><span class="audience-go">Core examples</span></a>
+  </div>
+</section>
+<section aria-labelledby="ex-h"><h2 id="ex-h">Examples</h2>
+  <p class="section-note">Each one names the problem, then shows the exact command or screen and exactly what came back.</p>
+  <div class="cards">${cards}</div>
+  <p class="section-note"><a href="user-guide/examples/">All examples</a> · <a href="user-guide/getting-started/">Getting started</a> · <a href="developers/">Developer Docs</a></p>
+</section>`;
 }
 
 /** A section landing page: intro + a card list of its pages. */
@@ -168,48 +163,6 @@ export function sectionBody({ title, lede, html, groups, root }) {
     )
     .join('');
   return `<h1>${esc(title)}</h1><p class="lede">${esc(lede)}</p><div class="prose">${html || ''}</div>${list}`;
-}
-
-export function tutorialsIndexBody({ guides, root }) {
-  return `<h1>Tutorials</h1>
-<p class="lede">Step-by-step guides that show each capability from the command line and from the Cockpit, with real output and screenshots.</p>
-${guides.length ? cardGrid(guides.map((g) => guideCard(g, root))) : '<p>No tutorials are published yet.</p>'}`;
-}
-
-function verifiedBadge(story, repoUrl) {
-  return story.verified
-    ? `<span class="badge" title="Checked against this commit of Construct">checked against <a href="${esc(repoUrl)}/commit/${esc(story.verified)}"><code>${esc(story.verified.slice(0, 7))}</code></a>${story.verifiedDate ? ` (${esc(story.verifiedDate)})` : ''}</span>`
-    : '';
-}
-
-export function guideBody({ guide, repoUrl, root }) {
-  const toc = guide.stories
-    .map((s) => `<li><a href="#${s.anchor}">${esc(s.title)}</a>${s.summary && !s.summary.startsWith(s.title) ? `<span>${esc(s.summary)}</span>` : ''}${s.tocBlurb ? `<span class="toc-benefit">Benefit: ${esc(s.tocBlurb)}</span>` : ''}</li>`)
-    .join('');
-  const stories = guide.stories
-    .map(
-      (s) => `<section class="story" id="${s.anchor}" aria-labelledby="${s.anchor}-h">
-  <header class="story-head">
-    <p class="story-num">Walkthrough ${s.order}</p>
-    <h2 id="${s.anchor}-h"><a class="anchor" href="#${s.anchor}" aria-label="Link to this walkthrough">#</a>${esc(s.title)}</h2>
-    <p class="meta">Updated ${fmtDate(s.updatedAt)} ${verifiedBadge(s, repoUrl)}</p>
-  </header>
-  ${s.sentence ? `<blockquote class="user-story">${esc(s.sentence)}</blockquote>` : ''}
-  ${s.benefitHtml ? `<aside class="benefit"><p class="benefit-h">Benefit</p>${s.benefitHtml}</aside>` : ''}
-  <div class="prose">${s.html}</div>
-  ${s.referenceHtml ? `<details class="reference"><summary>Setup, API and known limitations</summary><div class="prose">${s.referenceHtml}</div></details>` : ''}
-</section>`,
-    )
-    .join('\n');
-  return `<header class="guide-head">
-  <h1>${esc(guide.title)}</h1>
-  ${guide.introHtml ? `<div class="prose lede-block">${guide.introHtml}</div>` : `<p class="lede">${esc(guide.summary)}</p>`}
-  ${guide.heroLocal ? `<figure class="guide-hero"><img src="${root}${esc(guide.heroLocal)}" alt="Screenshot from the ${esc(guide.title)} tutorial" decoding="async"></figure>` : ''}
-  ${guide.benefitHtml ? `<aside class="benefit"><p class="benefit-h">Why this matters</p>${guide.benefitHtml}</aside>` : ''}
-  <p class="meta">Last updated ${fmtDate(guide.updatedAt)} ${verifiedBadge(guide, repoUrl)}</p>
-</header>
-<section aria-labelledby="in-guide"><h2 id="in-guide" class="toc-h">In this tutorial</h2><ol class="toc">${toc}</ol></section>
-${stories}`;
 }
 
 export function searchBody({ root }) {

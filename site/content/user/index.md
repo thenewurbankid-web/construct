@@ -6,7 +6,8 @@ Construct helps you build and refactor a React + TypeScript app inside rules you
 - **Validate** your code against rules you can read and change, and get a fix suggestion for every violation.
 - **Refactor** by moving or renaming files while every import is updated for you.
 - **Import** an existing page or route into the architecture, with a plan you approve first.
-- **Understand** a feature or a state machine in plain English.
+- **Understand** a feature or a state machine in plain English, and see what a change touches before you make it.
+- **Review** a branch by what it means, and generate a locked test for every route through a workflow.
 - **Choose** whether an AI model is involved at all. By default none is.
 
 ## Read in this order
@@ -14,7 +15,7 @@ Construct helps you build and refactor a React + TypeScript app inside rules you
 1. [Getting started](@user-guide/getting-started/): install, first project, first feature.
 2. [Core concepts](@user-guide/concepts/): the few ideas everything else builds on.
 3. [How-to guides](@user-guide/how-to/): pick the task you have.
-4. [Tutorials](@user-guide/tutorials/): worked examples with real output and screenshots.
+4. [Examples](@user-guide/examples/): the problem, the exact command or screen, the exact result. CLI, Cockpit and core are kept apart.
 
 Prefer to click? [Using the Cockpit UI](@user-guide/cockpit/) covers the browser front end.
 
