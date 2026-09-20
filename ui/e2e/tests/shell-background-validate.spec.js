@@ -129,6 +129,12 @@ test.describe('A background validate must not disturb what you are doing (#252)'
 
     const before = await controls(page);
     const logsBox = await logs.boundingBox();
+    // The room is reserved, but nothing is announced or shown yet: the slot is
+    // aria-hidden and empty until there is a count, so the tab still reads just
+    // "Diagnostics" and #249's badge locator finds nothing.
+    const diagnostics = drawer.getByRole('tab', { name: /Diagnostics/ });
+    await expect(diagnostics).toHaveText('Diagnostics');
+    await expect(diagnostics.getByLabel(/Diagnostics$/)).toHaveCount(0);
 
     release();
     await expect(page.getByTestId('status-validate')).toContainText('3 problems', { timeout: 20_000 });
@@ -136,7 +142,9 @@ test.describe('A background validate must not disturb what you are doing (#252)'
     await page.waitForTimeout(300); // let any late layout settle rather than sampling mid-frame
 
     // The result really did land and really is shown -- otherwise "nothing moved" is worthless.
-    await expect(drawer.getByRole('tab', { name: /Diagnostics/ })).toContainText('3');
+    // The count and its label are #249's contract, kept by the reserved slot.
+    await expect(diagnostics).toContainText('3');
+    await expect(diagnostics.getByLabel(/Diagnostics$/)).toBeVisible();
     expect(movements(before, await controls(page))).toEqual([]);
     expect(await logs.boundingBox()).toEqual(logsBox);
 
