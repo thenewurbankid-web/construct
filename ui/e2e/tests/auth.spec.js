@@ -126,6 +126,10 @@ test.describe('#278 GitHub login gate', () => {
     const postStatus = (route, body) => page.evaluate(([api, route, body]) => fetch(`${api}${route}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.status), [API, route, body]);
     expect(await postStatus('/api/tests/billing/clone', { source: 'a--b.spec.ts', name: 'x' })).toBe(401);
     expect(await postStatus('/api/tests/billing/generate', {})).toBe(401);
+    // #302: the step document read and its two mutating POSTs (preview an edit, write it) are gated too.
+    expect(await apiStatus(page, '/api/tests/billing/steps?name=mine.spec.ts')).toBe(401);
+    expect(await postStatus('/api/tests/billing/steps/preview', { name: 'mine.spec.ts', baseHash: 'x', steps: [] })).toBe(401);
+    expect(await postStatus('/api/tests/billing/steps', { name: 'mine.spec.ts', baseHash: 'x', resultSha: 'x', steps: [] })).toBe(401);
 
     // The one deliberate exception, so a liveness probe still works.
     expect(await apiStatus(page, '/api/health')).toBe(200);
