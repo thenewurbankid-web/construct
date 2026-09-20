@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Flow view — selecting a row tags what it uses and what uses it — Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="flow-nav.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+</head><body>
+<div class="concept">Concept — not implemented <span>Flow view — selecting a row tags what it uses and what uses it</span></div>
+
+<div class="shell " style="--lw:460px;grid-template-rows:44px 1fr 96px 24px">
+  
+<header class="topbar">
+  <div class="brand"><i></i>Cockpit</div>
+  <button class="chip-btn" aria-haspopup="listbox">storefront <span class="sub">main</span> ▾</button>
+  <div class="seg" role="radiogroup" aria-label="Mode"><button class="on" role="radio" aria-checked="true">Explore</button><button class="" role="radio" aria-checked="false">Plan</button><button class="" role="radio" aria-checked="false">Build</button></div>
+  <button class="chip-btn palette-trigger"><span>Search files, features, or run a command…</span><kbd>Ctrl K</kbd></button>
+  
+  <span class="pill run"><span class="spin"></span>2 running</span>
+  <span class="pill ok"><span class="dot"></span>Local model ready</span>
+  <button class="icon-btn" aria-label="Theme">◐</button>
+  <button class="icon-btn" aria-label="Help">?</button>
+  <span class="avatar">SP</span>
+</header>
+  <div class="main">
+    <aside class="pane" aria-label="Browser">
+  <div class="pane-h"><span class="title">Browser</span><span class="spacer"></span><button class="icon-btn" aria-label="Collapse pane">«</button></div>
+  <div class="seg wide" role="radiogroup" aria-label="Browser view"><button role="radio" aria-checked="false">Files</button><button class="on" role="radio" aria-checked="true">Flow</button></div>
+  <div class="prov"><span class="tag det">Deterministic</span>Computed from imports. Nothing is moved.</div>
+  <div class="search">⌕ Filter routes, features, files <span class="spacer"></span><kbd>/</kbd></div>
+  <div class="scroll" style="position:relative">
+    <div class="tree">
+      <div class="row frow"><span class="twisty">▾</span><span class="layer route">route</span><span class="nm" style="font-weight:600">/refunds/new</span><span class="meta">2 features</span></div>
+      <div class="fan">
+        
+    <div class="row l1 frow rel-usedby"><span class="twisty">▾</span><span class="layer controller">controller</span><span class="nm">refundController</span><span class="feat">refunds</span><span class="rtag usedby">uses selection</span></div>
+    <div class="row l2 branch"><span class="twisty">▾</span>Behaviour path</div>
+    <div class="row frow l3   rel-usedby " ><span class="twisty">▾</span><span class="layer hook">hook</span><span class="nm">useRefundForm</span><span class="rtag usedby">uses selection</span></div>
+    <div class="row frow l4  sel  " aria-selected="true"><span class="twisty">▾</span><span class="layer workflow">workflow</span><span class="nm">refundMachine</span></div>
+    <div class="row frow l5   rel-uses " ><span class="twisty">▾</span><span class="layer service">service</span><span class="nm">refundService</span><span class="rtag uses">selection uses this</span></div>
+    <div class="row frow l6   rel-uses " ><span class="layer domain">domain</span><span class="nm">refundRules</span><span class="rtag uses">selection uses this</span></div>
+    <div class="row frow l4 shared   " ><span class="layer domain">domain</span><span class="nm">refundRules</span><span class="above">↑ shown above</span></div>
+    <div class="row l2 branch"><span class="twisty">▾</span>Render path</div>
+    <div class="row frow l3    " ><span class="twisty">▾</span><span class="layer page">page</span><span class="nm">RefundPage</span></div>
+    <div class="row frow l4    " ><span class="twisty">▾</span><span class="layer component">component</span><span class="nm">RefundForm</span></div>
+    <div class="row frow l5    hov" ><span class="layer component">component</span><span class="nm">AmountField</span></div>
+    <div class="row frow l4    " ><span class="layer component">component</span><span class="nm">ReasonPicker</span></div>
+        
+    <div class="row l1 frow"><span class="twisty">▸</span><span class="layer controller">controller</span><span class="nm">orderSummaryController</span><span class="feat">orders</span></div>
+      </div>
+      <div class="row frow" style="margin-top:4px"><span class="twisty">▸</span><span class="layer route">route</span><span class="nm">/orders/[id]</span><span class="meta">1 feature</span></div>
+      <div class="row frow"><span class="twisty">▸</span><span class="layer route">route</span><span class="nm">/</span><span class="meta">1 feature</span></div>
+    </div>
+    
+  <div class="sect" style="padding-top:12px">Not entered from any route · 1</div>
+  <div class="tree">
+    <div class="row frow"><span class="twisty">▸</span><span class="nm">ui-kit</span><span class="meta">6 files</span></div>
+    <div class="note"><span class="i">i</span><span><b>No route reaches this feature.</b> That is fine for a shared library: it is used by other features, not entered from a URL.</span></div>
+  </div>
+    <div class="tip" style="left:120px;top:322px" role="tooltip"><div class="rel">component<span class="arr">→</span>component</div>
+  <b style="color:var(--text)">RefundForm</b> shows one <b style="color:var(--text)">AmountField</b> for the refund amount. It is not tied to the selected workflow.
+  <div class="k">features/refunds/components/AmountField.tsx · Ctrl+click to open</div></div>
+  </div></aside><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <section class="pane mid" aria-label="Preview"><div class="canvas-tb"><span class="crumbs">Route <b>/refunds/new</b> › refundMachine</span><span class="spacer"></span><div class="seg"><button class="on">Desktop</button><button>Tablet</button><button>Phone</button></div></div><div class="ed" style="margin-top:12px"><div class="fname">features/refunds/workflows/refundMachine.ts</div><div class="code"><div class="ln"><i>1</i><span><span class="k1">import</span> { <span class="k2">refundService</span> } <span class="k1">from</span> <span class="k3">'../services/refundService'</span>;</span></div><div class="ln"><i>2</i><span><span class="k1">import</span> { <span class="k2">canRefund</span> } <span class="k1">from</span> <span class="k3">'../domain/refundRules'</span>;</span></div><div class="ln"><i>3</i><span></span></div><div class="ln"><i>4</i><span><span class="k1">export const</span> <span class="k2">refundMachine</span> = createMachine({</span></div><div class="ln"><i>5</i><span>  id: <span class="k3">'refund'</span>, initial: <span class="k3">'editing'</span>,</span></div><div class="ln"><i>6</i><span>  states: { editing: {…}, submitting: {…}, done: {…} },</span></div><div class="ln"><i>7</i><span>});</span></div></div></div></section><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <aside class="pane" aria-label="Tools"><div class="tabs" role="tablist"><button role="tab" class="" aria-selected="false">Inspector</button><button role="tab" class="" aria-selected="false">Scope</button><button role="tab" class="" aria-selected="false">Source</button><button role="tab" class="on" aria-selected="true">Flow</button></div><div class="scroll">
+   <div class="section"><div class="el-head"><span class="layer workflow">workflow</span><span class="name">refundMachine</span></div><div class="path" style="margin-top:4px">features/refunds/workflows/refundMachine.ts</div></div>
+   <div class="section"><h4>Selection uses this · 2</h4>
+     <div class="kv" style="margin-bottom:4px"><span class="tag det">workflow → service</span>refundService</div>
+     <div class="kv"><span class="tag det">service → domain</span>refundRules</div></div>
+   <div class="section"><h4>Uses selection · 2</h4>
+     <div class="kv" style="margin-bottom:4px"><span class="tag human">hook → workflow</span>useRefundForm</div>
+     <div class="kv"><span class="tag human">controller → hook</span>refundController</div></div>
+   <div class="section"><h4>Entered from</h4><div style="color:var(--text-muted)"><span class="mono">/refunds/new</span></div></div></div></aside>
+  </div>
+  <div class="drawer" aria-label="Drawer"><div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Diagnostics <span class="badge danger">0</span></button><button role="tab" class="" aria-selected="false">Logs</button><button role="tab" class="" aria-selected="false">Processes <span class="badge acc">0</span></button></div><div class="body"><div class="logline" style="padding-top:8px"><time>14:20:02</time><span class="lv-ok">ok</span>flow: 3 routes, 4 features, 22 files traced from imports (types.ts and index.ts left out)</div></div></div>
+  
+<footer class="statusbar">
+  <span class="ok">● validate: 0 new violations</span><span>5 baseline</span><span>Saved · in sync with disk</span>
+  <span class="spacer"></span><span>qwen2.5-coder:7b</span><span><kbd>Ctrl J</kbd> drawer</span><span><kbd>?</kbd> shortcuts</span>
+</footer>
+</div>
+</body></html>

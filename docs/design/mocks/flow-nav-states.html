@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Flow view and links — empty, loading, error and narrow — Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="flow-nav.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+</head><body>
+<div class="concept">Concept — not implemented <span>Flow view and links — empty, loading, error and narrow</span></div>
+
+<div class="sheet" style="grid-template-columns:1fr 1fr 1fr 400px">
+  <div class="two"><h3>Empty — no routes for this framework</h3><div class="state-card"><div class="ico">⇢</div><h5>No routes to show yet</h5><p>Construct cannot read routes for this kind of project yet, so it lists each feature and its controllers instead. Nothing is guessed.</p><span class="tag human" style="margin-top:6px">Features shown flat</span></div>
+   <h3>Loading</h3><div class="state-card" style="align-items:stretch;justify-content:flex-start;padding:12px 0" aria-busy="true"><div class="skelrow" style="padding-left:14px"><div class="skel" style="width:70%"></div></div><div class="skelrow" style="padding-left:30px"><div class="skel" style="width:55%"></div></div><div class="skelrow" style="padding-left:46px"><div class="skel" style="width:62%"></div></div><div class="skelrow" style="padding-left:14px"><div class="skel" style="width:48%"></div></div></div></div>
+  <div class="two"><h3>Error — flow could not be built</h3><div class="state-card"><div class="ico">!</div><h5>Could not trace imports</h5><p>A file has a syntax error, so its imports cannot be read. The Files view still works.</p><div style="display:flex;gap:8px;margin-top:6px"><button class="btn sm primary">Try again</button><button class="btn sm">Show in Diagnostics</button></div></div>
+   <h3>No route reaches this feature (a note)</h3><div class="state-card" style="align-items:stretch;text-align:left;justify-content:center"><div class="row frow"><span class="twisty">▸</span><span class="nm">ui-kit</span><span class="meta">6 files</span></div><div class="note" style="margin-left:14px"><span class="i">i</span><span><b>No route reaches this feature.</b> Fine for a shared library.</span></div></div></div>
+  <div class="two"><h3>Links — states of a reference</h3>
+   <div class="state-card" style="height:auto;align-items:flex-start;text-align:left;gap:10px;padding:14px">
+     <div class="kv"><span class="mono ref">PriceCard</span><span>resolved, at rest</span></div>
+     <div class="kv"><span class="mono ref hot">PriceCard</span><span>hover, or Ctrl held</span></div>
+     <div class="kv"><span class="mono plain">Tooltip</span><span>unresolved: plain text</span></div>
+     <div class="kv"><span class="mono ref" style="outline:2px solid var(--focus);outline-offset:2px">PriceCard</span><span>keyboard focus (Enter opens)</span></div>
+    <p style="margin:0;color:var(--text-muted);max-width:none">Checked when the file is drawn, never on click, and re-checked when the file changes on disk.</p></div>
+   <h3>Trail, long</h3><div class="state-card" style="height:auto;padding:0;overflow:hidden"><div class="trail" role="navigation" aria-label="Navigation trail">
+  <button class="nav" aria-label="Back (Alt+Left)" >‹</button><button class="nav" aria-label="Forward (Alt+Right)" disabled>›</button>
+  <button class="crumb " >HomePage</button><span class="hop">›</span><button class="crumb " >…</button><span class="hop">›</span><button class="crumb cur" aria-current="page">Badge</button>
+  <span class="spacer"></span></div><p style="padding:8px 12px;max-width:none">No motion on open. Focus moves to the editor and the trail announces "Badge, step 3 of 3".</p></div></div>
+  <div><h3>Narrow</h3><div class="narrow"><div class="pane-h"><span class="title">Cockpit</span><span class="spacer"></span><div class="seg"><button>Files</button><button class="on">Flow</button></div></div>
+   <div class="scroll" style="flex:1"><div class="tree" style="padding-top:8px">
+    <div class="row frow"><span class="twisty">▾</span><span class="layer route">route</span><span class="nm" style="font-weight:600">/refunds/new</span></div>
+    <div class="fan">
+     <div class="row l1 frow"><span class="twisty">▾</span><span class="layer controller">controller</span><span class="nm">refundController</span></div>
+     <div class="row l2 frow"><span class="twisty">▸</span><span class="branch" style="height:auto">Behaviour · 4</span></div>
+     <div class="row l2 frow"><span class="twisty">▸</span><span class="branch" style="height:auto">Render · 4</span></div>
+     <div class="row l1 frow"><span class="twisty">▸</span><span class="layer controller">controller</span><span class="nm">orderSummaryController</span></div></div>
+    <div class="note" style="margin-left:14px"><span class="i">i</span><span>ui-kit: no route reaches this feature.</span></div></div></div>
+   <div class="trail" style="border-top:1px solid var(--border-subtle);border-bottom:0"><button class="nav" aria-label="Back">‹</button><button class="nav" disabled aria-label="Forward">›</button><button class="crumb">…</button><button class="crumb cur" aria-current="page">Badge</button></div>
+   <div class="tabbar"><div>Browse</div><div class="on">Flow</div><div>Source</div><div>Drawer</div></div></div></div>
+</div>
+</body></html>

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Pages editor — the trail after three hops, and after going back — Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="flow-nav.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+</head><body>
+<div class="concept">Concept — not implemented <span>Pages editor — the trail after three hops, and after going back</span></div>
+
+<div class="shell " style="grid-template-rows:44px 1fr 88px 24px">
+  
+<header class="topbar">
+  <div class="brand"><i></i>Cockpit</div>
+  <button class="chip-btn" aria-haspopup="listbox">storefront <span class="sub">main</span> ▾</button>
+  <div class="seg" role="radiogroup" aria-label="Mode"><button class="on" role="radio" aria-checked="true">Explore</button><button class="" role="radio" aria-checked="false">Plan</button><button class="" role="radio" aria-checked="false">Build</button></div>
+  <button class="chip-btn palette-trigger"><span>Search files, features, or run a command…</span><kbd>Ctrl K</kbd></button>
+  
+  <span class="pill run"><span class="spin"></span>2 running</span>
+  <span class="pill ok"><span class="dot"></span>Local model ready</span>
+  <button class="icon-btn" aria-label="Theme">◐</button>
+  <button class="icon-btn" aria-label="Help">?</button>
+  <span class="avatar">SP</span>
+</header>
+  <div class="main">
+    <aside class="pane" aria-label="Browser"><div class="pane-h"><span class="title">Browser</span></div><div class="tabs" role="tablist"><button role="tab" class="" aria-selected="false">Features</button><button role="tab" class="on" aria-selected="true">Pages</button><button role="tab" class="" aria-selected="false">Workflows</button></div><div class="scroll"><div class="sect">Pages · 6</div><div class="tree"><div class="row sel"><span class="layer page">page</span>/</div><div class="row"><span class="layer page">page</span>/login</div></div></div></aside><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <section class="pane mid" aria-label="Preview"><div class="stack">
+    <div class="tcard" style="margin-top:12px"><div class="cap">A · After three hops (you are on Badge)</div><div class="trail" role="navigation" aria-label="Navigation trail">
+  <button class="nav" aria-label="Back (Alt+Left)" >‹</button><button class="nav" aria-label="Forward (Alt+Right)" disabled>›</button>
+  <button class="crumb " >HomePage</button><span class="hop">page → component</span><button class="crumb " >PriceCard</button><span class="hop">component → component</span><button class="crumb cur" aria-current="page">Badge</button>
+  <span class="spacer"></span><span class="kv"><kbd>Alt ←</kbd><kbd>Alt →</kbd></span></div><div class="fname">features/catalog/components/Badge.tsx</div><div class="code"><div class="ln "><i>1</i><span><span class="k1">export function</span> <span class="k2">Badge</span>({ tone, children }: Props) {</span></div><div class="ln "><i>2</i><span>  <span class="k1">return</span> &lt;<span class="k2">span</span> className={tone}&gt;{children}&lt;/<span class="k2">span</span>&gt;;</span></div><div class="ln "><i>3</i><span>}</span></div></div></div>
+    <div class="tcard"><div class="cap">B · After Alt+Left (Badge stays as a forward step)</div><div class="trail" role="navigation" aria-label="Navigation trail">
+  <button class="nav" aria-label="Back (Alt+Left)" >‹</button><button class="nav" aria-label="Forward (Alt+Right)" >›</button>
+  <button class="crumb " >HomePage</button><span class="hop">page → component</span><button class="crumb cur" aria-current="page">PriceCard</button><span class="hop">component → component</span><button class="crumb fwd" >Badge</button>
+  <span class="spacer"></span><span class="kv"><kbd>Alt ←</kbd><kbd>Alt →</kbd></span></div><div class="fname">features/catalog/components/PriceCard.tsx</div><div class="code"><div class="ln "><i>1</i><span><span class="k1">import</span> { <span class="ref">Badge</span> } <span class="k1">from</span> <span class="k3">'./Badge'</span>;</span></div><div class="ln "><i>2</i><span><span class="k1">export function</span> <span class="k2">PriceCard</span>({ product }: Props) {</span></div><div class="ln "><i>3</i><span>  <span class="k1">return</span> &lt;<span class="k2">article</span>&gt;&lt;<span class="ref">Badge</span> tone=<span class="k3">"sale"</span> /&gt;{product.price}&lt;/<span class="k2">article</span>&gt;;</span></div></div></div>
+   </div></section><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <aside class="pane" aria-label="Tools"><div class="tabs" role="tablist"><button role="tab" class="" aria-selected="false">Inspector</button><button role="tab" class="" aria-selected="false">Scope</button><button role="tab" class="on" aria-selected="true">Source</button><button role="tab" class="" aria-selected="false">Flow</button></div><div class="scroll">
+   <div class="section"><h4>How the trail works</h4>
+    <div style="color:var(--text-muted);line-height:1.5">It records the path you took, not where files sit in folders. Each earlier step is a button. Going back keeps the later steps so Alt+Right returns; opening a new reference from here drops them.</div></div>
+   <div class="section"><h4>Label on each hop</h4>
+    <div class="kv" style="margin-bottom:4px"><span class="tag det">page → component</span>HomePage uses PriceCard</div>
+    <div class="kv"><span class="tag det">component → component</span>PriceCard uses Badge</div></div>
+   <div class="section"><h4>Long trails</h4><div style="color:var(--text-muted)">Past six steps the middle folds into "…" (a menu). First and last two stay visible.</div></div></div></aside>
+  </div>
+  <div class="drawer" aria-label="Drawer"><div class="tabs" role="tablist"><button role="tab" class="" aria-selected="false">Diagnostics <span class="badge danger">0</span></button><button role="tab" class="on" aria-selected="true">Logs</button><button role="tab" class="" aria-selected="false">Processes <span class="badge acc">0</span></button></div><div class="body" style="padding-top:6px"><div class="logline"><time>14:31:40</time><span>nav: HomePage → PriceCard → Badge (3 steps)</span></div></div></div>
+  
+<footer class="statusbar">
+  <span class="ok">● validate: 0 new violations</span><span>5 baseline</span><span>Saved · in sync with disk</span>
+  <span class="spacer"></span><span>qwen2.5-coder:7b</span><span><kbd>Ctrl J</kbd> drawer</span><span><kbd>?</kbd> shortcuts</span>
+</footer>
+</div>
+</body></html>

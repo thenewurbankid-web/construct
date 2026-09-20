@@ -32,6 +32,11 @@ Concept mocks (1440x900, each in `png/<name>--dark.png` and `--light.png`):
   `qa-tests-record`, `qa-tests-record-check`, `qa-tests-record-selector`,
   `qa-tests-record-review`.
 
+- **Flow tree and click to navigate** (`build-flow-nav.mjs`, styles in `flow-nav.css`;
+  #328 and #321): `flow-nav-browser`, `flow-nav-selection`, `flow-nav-links`,
+  `flow-nav-trail`, `flow-nav-states`. `render.mjs` takes an optional name
+  prefix: `node docs/design/mocks/render.mjs flow-nav`.
+
 `plan-mode` was `research-mode` until the owner renamed the middle mode in #243:
 the modes are **Explore / Plan / Build** and the brand in the top bar is
 **Cockpit**. The CLI's `construct research …` is deliberately unchanged — "Plan"
