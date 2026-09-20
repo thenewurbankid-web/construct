@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>QA · “check this”: recording what must be TRUE, not only what you did — Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="qa-tests.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+</head><body>
+<div class="concept">Concept — not implemented <span>QA · “check this”: recording what must be TRUE, not only what you did</span></div>
+
+<div class="shell " style="--lw:264px;--rw:360px;grid-template-rows:44px 1fr 146px 24px">
+  
+<header class="topbar">
+  <div class="brand"><i></i>Construct</div>
+  <button class="chip-btn" aria-haspopup="listbox">storefront <span class="sub">main</span> ▾</button>
+  <div class="seg" role="radiogroup" aria-label="Mode"><button class="on" role="radio" aria-checked="true">Explore</button><button class="" role="radio" aria-checked="false">Research</button><button class="" role="radio" aria-checked="false">Build</button></div>
+  <button class="chip-btn palette-trigger"><span>Search files, features, or run a command…</span><kbd>Ctrl K</kbd></button>
+  
+  <span class="pill run"><span class="spin"></span>2 running</span>
+  <span class="pill ok"><span class="dot"></span>Local model ready</span>
+  <button class="icon-btn" aria-label="Theme">◐</button>
+  <button class="icon-btn" aria-label="Help">?</button>
+  <span class="avatar">SP</span>
+</header>
+  <div class="main">
+    <aside class="pane" aria-label="Browser">
+  <div class="pane-h"><span class="title">Browser</span><span class="spacer"></span><button class="icon-btn" aria-label="New test">+</button><button class="icon-btn" aria-label="Collapse pane">«</button></div>
+  <div class="tabs" role="tablist"><button role="tab" class="" aria-selected="false">Features</button><button role="tab" class="" aria-selected="false">Pages</button><button role="tab" class="" aria-selected="false">Flows</button><button role="tab" class="on" aria-selected="true">Tests</button></div>
+  <div class="search">⌕ Filter <span class="spacer"></span><kbd>/</kbd></div>
+  <div class="scroll">
+    <div class="sect">refunds · tests</div>
+    <div class="tree">
+      <div class="row"><span class="twisty">▾</span>Generated<span class="chip lock" style="margin-left:6px">Locked</span><span class="meta">9</span></div>
+      <div class="row l1 "><span class="mark pass">✓</span><span class="lbl">Happy path</span><span class="meta">#1</span></div><div class="row l1 "><span class="mark pass">✓</span><span class="lbl">Path 2</span><span class="meta">#2</span></div><div class="row l1 "><span class="mark pass">✓</span><span class="lbl">Path 3</span><span class="meta">#3</span></div><div class="row l1 "><span class="mark pass">✓</span><span class="lbl">Path 4</span><span class="meta">#4</span></div><div class="row l1 "><span class="mark pass">✓</span><span class="lbl">Path 5</span><span class="meta">#5</span></div>
+      <div class="row l1"><span class="mark skip">·</span><span style="color:var(--text-faint)">4 more…</span></div>
+      <div class="row" style="margin-top:6px"><span class="twisty">▾</span>Yours<span class="meta">2</span></div>
+      <div class="row l1 "><span class="mark fail">✗</span><span class="lbl">Refund over £50 → manual review</span><span class="meta">clone</span></div>
+      <div class="row l1 sel"><span class="mark skip">○</span><span class="lbl">Untitled test</span><span class="meta">new</span></div>
+    </div>
+    <div class="sect" style="margin-top:10px">Other features</div>
+    <div class="tree">
+      <div class="row"><span class="twisty">▸</span>checkout<span class="meta">6 tests</span></div>
+      <div class="row"><span class="twisty">▸</span>auth<span class="meta">4 tests</span></div>
+    </div>
+  </div></aside><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <section class="pane mid" aria-label="Preview"><div class="canvas-tb"><span class="crumbs">refunds › tests › <b>Untitled recording</b></span>
+     <span class="rec"><span class="bulb"></span>Recording 01:20</span><span class="spacer"></span>
+     <div class="seg"><button class="">Record actions</button><button class="on">Check this</button></div>
+     <button class="btn sm">Pause</button><button class="btn primary sm">Finish</button></div>
+   <div class="split">
+     <div class="appcol">
+<div class="device" style="width:100%;height:100%;max-height:none">
+  <div class="bar"><i></i><i></i><i></i>&nbsp;&nbsp;localhost:5173/refunds/new <span style="margin-left:auto;color:#7a8497">recording</span></div>
+  <div class="app-nav"><b>Storefront</b><span>Orders</span><span>Refunds</span><span>Account</span></div>
+  <div class="refund">
+    <h2>Request a refund</h2><p>Order #4471 · placed 12 March</p>
+    <div class="banner">A reviewer will check this refund</div>
+    <label>Amount</label><div class="in">120</div>
+    <label>Reason</label><div class="in">Item arrived damaged</div>
+    <div class="cta">Request refund</div>
+    <div class="ghost">Save as draft</div>
+  </div>
+  
+  <div class="sel-box check-box" style="left:56px;right:56px;top:192px;height:34px"></div>
+  <div class="sel-tag check-tag" style="left:52px;top:172px">text · “A reviewer will check this refund”</div>
+  <div class="pop" style="left:52px;top:250px;width:330px">
+    <div style="font-weight:600;margin-bottom:6px">What should be true here?</div>
+    <div class="picks col" style="gap:6px">
+      <div class="pick on" style="padding:7px 9px"><b><span class="radio"></span>This text is visible</b></div>
+      <div class="pick" style="padding:7px 9px"><b><span class="radio"></span>This element exists</b></div>
+      <div class="pick" style="padding:7px 9px"><b><span class="radio"></span>The page address is /refunds/42</b></div>
+    </div>
+    <div class="frow" style="margin:8px 0 6px"><label>Text</label><div class="ctl area" style="min-height:34px">A reviewer will check this refund</div></div>
+    <div style="display:flex;gap:6px"><button class="btn primary sm">Add this check</button><button class="btn sm">Cancel</button></div>
+  </div>
+</div></div>
+     <div class="capcol">
+       <div class="caph">Steps so far<span class="spacer"></span><span class="chip">6 steps</span></div>
+       <div class="capbody">
+         
+  <div class="cap "><span class="kw and">AND</span>
+    <span class="txt">Type <em>120</em> into “Amount”<span class="note">[data-testid="amount"]</span></span></div>
+         
+  <div class="cap "><span class="kw when">WHEN</span>
+    <span class="txt">“request refund” happens<span class="note">REQUEST_REFUND</span></span></div>
+         
+  <div class="cap "><span class="kw then">THEN</span>
+    <span class="txt">the flow moves to <em>manual review</em><span class="note">[data-flow-state="manualReview"]</span></span></div>
+         
+  <div class="cap check-row"><span class="kw check">CHECK</span>
+    <span class="txt">the page shows “A reviewer will check this refund”<span class="note">text is visible · being added</span></span></div>
+       </div>
+       <div class="capf"><button class="btn sm">Undo last</button><span class="spacer"></span>1 check so far</div>
+     </div>
+   </div>
+   <div class="canvas-foot"><span class="dot" style="color:var(--llm)"></span>Check mode — clicking picks something to assert instead of pressing it<span class="spacer"></span>Switch back to keep clicking</div></section><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <aside class="pane" aria-label="Tools"><div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Recording</button><button role="tab" class="" aria-selected="false">Step</button><button role="tab" class="" aria-selected="false">Code</button><button role="tab" class="" aria-selected="false">Changes <span class="badge acc">6</span></button><button role="tab" class="" aria-selected="false">Runs</button></div>
+   <div class="callout info" style="align-items:flex-start"><span>i</span><div class="grow"><b>A recording knows what you did, not what you meant to prove</b><small>Without checks, a recorded test only repeats clicks and can pass while the page is broken. Pick the things a reviewer would look at.</small></div></div>
+   <div class="scroll">
+    <div class="section"><h4>Mode</h4>
+      <div class="picks col">
+        <div class="pick"><b><span class="radio"></span>Record actions</b><small>Clicking and typing become steps.</small></div>
+        <div class="pick on"><b><span class="radio"></span>Check this</b><small>Clicking picks an element; you say what must be true about it.</small></div>
+      </div></div>
+    <div class="section"><h4>This check <span class="tag det">Deterministic</span></h4>
+      <div class="frow"><label>What to check</label><div class="ctl sel-ctl">Text is visible</div></div>
+      <div class="frow"><label>Text</label><div class="ctl area">A reviewer will check this refund</div></div>
+      <div class="becomes">await expect(
+  page.getByText('A reviewer will check this refund')
+).toBeVisible();</div>
+    </div>
+    <div class="section"><h4>Checks so far</h4>
+      <div style="color:var(--text-muted);line-height:1.7">1 check you picked, plus the flow-state checks Construct adds for you.</div></div>
+   </div></aside>
+  </div>
+  <div class="drawer" aria-label="Drawer"><div class="tabs" role="tablist"><button role="tab" class="" aria-selected="false">Diagnostics <span class="badge danger">0</span></button><button role="tab" class="" aria-selected="false">Logs</button><button role="tab" class="on" aria-selected="true">Processes <span class="badge acc">2</span></button></div><div class="body"><table>
+  <tr><th>Process</th><th>Kind</th><th>Status</th><th>Detail</th><th></th></tr>
+  <tr><td>recorder · chromium</td><td><span class="tag det">Deterministic</span></td><td><span class="pill run" style="height:20px"><span class="spin"></span>Recording</span></td><td>capturing into “Untitled recording”</td><td><button class="btn sm">Pause</button> <button class="btn sm danger">Stop</button></td></tr>
+  <tr><td>preview · storefront</td><td><span class="tag det">Deterministic</span></td><td><span class="pill run" style="height:20px"><span class="spin"></span>Running</span></td><td>localhost:5173 · up 41 min</td><td><button class="btn sm">Stop</button></td></tr></table></div></div>
+  
+<footer class="statusbar">
+  <span class="ok">● validate: 0 new violations</span><span>5 baseline</span><span>Saved · in sync with disk</span>
+  <span class="spacer"></span><span>qwen2.5-coder:7b</span><span><kbd>Ctrl J</kbd> drawer</span><span><kbd>?</kbd> shortcuts</span>
+</footer>
+</div>
+</body></html>
