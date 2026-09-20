@@ -55,3 +55,28 @@ test('the flow routes are registered after the session gate in index.mjs (#328)'
   const gate = src.indexOf("app.use('/api', auth.requireSession)");
   for (const route of ["'/api/flow/:feature'", "'/api/nav/file'"]) assert.ok(src.indexOf(route) > gate, `${route} must come after the gate`);
 });
+
+test('#365: the workspace routes answer 401 without a session, before the boundary is consulted', async () => {
+  await withServer(async (base) => {
+    const post = (url, body) => fetch(`${base}${url}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    for (const res of [
+      await fetch(`${base}/api/fs/browse?path=..`),
+      await fetch(`${base}/api/fs/browse?path=/etc`),
+      await post('/api/settings', { projectDir: '/etc' }),
+      await post('/api/settings', { projectDir: '../..' }),
+      await post('/api/settings', { closeProject: true }),
+      await post('/api/import', { mode: 'plan', planPath: '/etc/passwd' }),
+      await post('/api/init', {}),
+    ]) {
+      assert.equal(res.status, 401);
+      assert.equal((await res.json()).code, 'auth_required');
+    }
+  });
+});
+
+test('#365: the requireProject guard is mounted after the session gate, so a signed-out caller never learns whether a project is open', () => {
+  const src = fs.readFileSync(new URL('./index.mjs', import.meta.url), 'utf8');
+  const gate = src.indexOf("app.use('/api', auth.requireSession)");
+  const guard = src.indexOf('requireProject(');
+  assert.ok(gate > 0 && guard > gate);
+});

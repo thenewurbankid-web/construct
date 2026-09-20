@@ -65,6 +65,17 @@ test('listFeatures / listPages find the fixture feature and page', () => {
   assert.deepEqual(listPages(root, 'demo'), ['Home.jsx']);
 });
 
+test('#365: resolvePageFile refuses a symlinked page whose real path is outside the project (e.g. from a cloned repo)', () => {
+  const root = makeFixture();
+  const outside = makeTempDir('construct-pages-outside-');
+  fs.writeFileSync(path.join(outside, 'secret.jsx'), 'export const secret = <p>SECRET</p>;\n');
+  fs.symlinkSync(path.join(outside, 'secret.jsx'), path.join(root, 'features', 'demo', 'pages', 'Evil.jsx'));
+  assert.throws(() => resolvePageFile(root, 'demo', 'Evil.jsx'), (e) => e instanceof PagesEditorError && /outside the project/.test(e.message));
+  // A symlink that stays inside the project is still fine.
+  fs.symlinkSync(path.join(root, 'features', 'demo', 'pages', 'Home.jsx'), path.join(root, 'features', 'demo', 'pages', 'Alias.jsx'));
+  assert.equal(resolvePageFile(root, 'demo', 'Alias.jsx').relPath.endsWith('Alias.jsx'), true);
+});
+
 test('resolvePageFile rejects path traversal out of pages/', () => {
   const root = makeFixture();
   const { relPath } = resolvePageFile(root, 'demo', 'Home.jsx');

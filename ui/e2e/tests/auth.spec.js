@@ -39,6 +39,14 @@ async function apiStatus(page, route) {
   );
 }
 
+/** #365: POST a JSON body exactly as the Cockpit does (credentialed) and report the status. */
+async function postJsonStatus(page, route, body) {
+  return page.evaluate(
+    ([api, route, body]) => fetch(`${api}${route}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.status),
+    [API, route, body],
+  );
+}
+
 /** #341: POST one decision exactly as the Cockpit does (credentialed JSON). The body deliberately carries a
  * forged `by`, which the server must never read. */
 async function decideStatus(page, id) {
@@ -94,6 +102,13 @@ test.describe('#278 GitHub login gate', () => {
     // the assertion that makes this a security test rather than a layout one.
     expect(await apiStatus(page, '/api/settings')).toBe(401);
     expect(await apiStatus(page, '/api/fs/browse?path=/')).toBe(401);
+    // #365: the workspace routes are gated too: choosing / closing a project, and the folder browser, need a session
+    // BEFORE the workspace boundary is even consulted (401, not the 403 an outside path gets when signed in).
+    expect(await apiStatus(page, '/api/fs/browse?path=..')).toBe(401);
+    expect(await postJsonStatus(page, '/api/settings', { projectDir: '/etc' })).toBe(401);
+    expect(await postJsonStatus(page, '/api/settings', { projectDir: '../..' })).toBe(401);
+    expect(await postJsonStatus(page, '/api/settings', { closeProject: true })).toBe(401);
+    expect(await postJsonStatus(page, '/api/import', { mode: 'plan', planPath: '/etc/passwd' })).toBe(401);
     expect(await apiStatus(page, '/api/validate')).toBe(401);
     expect(await apiStatus(page, '/api/logs')).toBe(401);
     // #292: the Processes API and its live socket are gated too.
@@ -173,6 +188,15 @@ test.describe('#278 GitHub login gate', () => {
     // The same calls that were 401 a moment ago now succeed, with the same
     // cookie jar and the same credentialed fetch.
     expect(await apiStatus(page, '/api/settings')).toBe(200);
+    // #365: signed in, the workspace boundary is what answers: 403 for a path outside it, 409 NO_PROJECT for a
+    // project route once the project is closed. (Validate needs a project, so close it first.)
+    expect(await postJsonStatus(page, '/api/settings', { projectDir: '/etc' })).toBe(403);
+    expect(await postJsonStatus(page, '/api/settings', { projectDir: '../..' })).toBe(403);
+    expect(await apiStatus(page, '/api/fs/browse?path=..')).toBe(403);
+    expect(await postJsonStatus(page, '/api/import', { mode: 'plan', planPath: '/etc/passwd' })).toBe(403);
+    expect(await postJsonStatus(page, '/api/settings', { closeProject: true })).toBe(200);
+    expect(await apiStatus(page, '/api/validate')).toBe(409);
+    expect(await postJsonStatus(page, '/api/settings', { projectDir: process.env.E2E_DEFAULT_PROJECT })).toBe(200);
     expect(await apiStatus(page, '/api/validate')).toBe(200);
     expect(await wsOpens(page)).toBe(true);
     expect(await apiStatus(page, '/api/processes')).toBe(200);
