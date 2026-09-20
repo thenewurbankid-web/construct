@@ -21,6 +21,8 @@ import { runCapturing, withDir } from './commandRunner.mjs';
 import { attachWizardSocket } from './wizardSocket.mjs';
 import { createProcessesService } from './processesService.mjs';
 import { createProcessesRouter } from './processesApi.mjs';
+import { createPlanService } from './planService.mjs';
+import { createPlanRouter } from './planApi.mjs';
 import { attachProcessesSocket } from './processesSocket.mjs';
 import { createReviewRouter } from './reviewApi.mjs';
 import { createReviewJobs } from './reviewJobs.mjs';
@@ -806,6 +808,15 @@ app.get('/api/logs', (req, res) => {
 // `/api` route; the WebSocket (createUiServer) takes the same `auth`.
 export const processesService = createProcessesService({ getProjectDir: () => getSettings().projectDir });
 app.use('/api/processes', createProcessesRouter(processesService));
+
+// #289/#332: Plan mode. Below the gate like every other `/api` route. The plan comes from the browser, so
+// planService re-validates it (validatePlan + the Cockpit's path/argument checks) and only then starts a
+// process through the same service the Processes drawer reads. The project is always the current one.
+export const planService = createPlanService({
+  getRoot: () => findProjectRoot(getSettings().projectDir),
+  startPlan: (plan) => processesService.startPlan(plan),
+});
+app.use('/api/plan', createPlanRouter(planService));
 
 // #312/#313: Review mode (read-only). Registered below the gate like every other `/api` route. The
 // repository is always the current project's -- the client sends branch names only, and each is
