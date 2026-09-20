@@ -73,12 +73,12 @@ test.beforeAll(async ({ request }) => {
   const dir = path.join(base, LONG_PROJECT);
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'architecture.yml'), 'version: 1\n');
-  const res = await request.post(`${API}/api/settings`, { data: { browseRoots: [base], projectDir: dir } });
+  const res = await request.post(`${API}/api/settings`, { data: { projectDir: dir } });
   expect(res.ok()).toBeTruthy();
 });
 
 test.afterAll(async ({ request }) => {
-  await request.post(`${API}/api/settings`, { data: { browseRoots: [], projectDir: originalProjectDir } });
+  await request.post(`${API}/api/settings`, { data: { projectDir: originalProjectDir } });
   fs.rmSync(base, { recursive: true, force: true });
 });
 

@@ -144,7 +144,7 @@ export default function LoginPage({ title }: { title: string }) {
   test.beforeAll(async ({ request }) => {
     original = (await (await request.get(`${API}/api/settings`)).json()).projectDir;
     dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'construct-a11y-')));
-    await request.post(`${API}/api/settings`, { data: { browseRoots: [dir], projectDir: dir } });
+    await request.post(`${API}/api/settings`, { data: { projectDir: dir } });
     await request.post(`${API}/api/init`);
     await request.post(`${API}/api/create`, { data: { kind: 'single', name: 'Login', feature: 'auth', layer: 'page' } });
     fs.mkdirSync(path.join(dir, 'features/auth/hooks'), { recursive: true });
@@ -153,7 +153,7 @@ export default function LoginPage({ title }: { title: string }) {
   });
 
   test.afterAll(async ({ request }) => {
-    await request.post(`${API}/api/settings`, { data: { browseRoots: [], projectDir: original } });
+    await request.post(`${API}/api/settings`, { data: { projectDir: original } });
     fs.rmSync(dir, { recursive: true, force: true });
   });
 

@@ -17,6 +17,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import base from './playwright.config.js';
+import { workspaceEnv } from './support/workspace.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CLIENT_PORT = Number(process.env.E2E_CLIENT_PORT) || 3000;
@@ -47,6 +48,8 @@ export default {
         CONSTRUCT_AUTH_TEST_USER: 'e2e-owner',
         CONSTRUCT_SESSION_SECRET: 'e2e-session-secret-not-a-real-one-0123456789',
         NODE_ENV: 'test',
+        CONSTRUCT_STATE_DIR: process.env.E2E_STATE_DIR,
+        ...workspaceEnv(),
       },
     },
     {

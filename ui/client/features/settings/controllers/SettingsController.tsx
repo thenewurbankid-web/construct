@@ -12,7 +12,7 @@ import { SettingsPage } from '../pages/SettingsPage';
 export function SettingsController() {
   const settings = useSettings();
   const picker = settings.pickerOpen ? (
-    <DirectoryBrowserController onSelect={settings.chooseDirectory} initialPath={settings.settings?.projectDir} />
+    <DirectoryBrowserController onSelect={settings.chooseDirectory} initialPath={settings.settings?.projectDir ?? undefined} />
   ) : null;
   // Commit-on-save's controls (#283) are another feature's controller, composed here as a second
   // slot for the same reason the picker is: settings stays unaware of how git is configured.

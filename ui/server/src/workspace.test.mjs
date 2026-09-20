@@ -2,6 +2,7 @@ import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
+import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
 import path from 'node:path';
 import {
   contain, containOrNull, isInside, relativeToWorkspace, resolveWorkspaceRoot, WorkspaceError, MAX_PATH_LENGTH,
@@ -13,7 +14,7 @@ let outside; // a sibling directory of the workspace, and of a decoy that shares
 let evil; // `<tmp>/ws-evil`: shares the string prefix of the workspace
 
 before(() => {
-  tmp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'construct-ws-')));
+  tmp = makeTempDir('construct-ws-');
   ws = path.join(tmp, 'ws');
   outside = path.join(tmp, 'outside');
   evil = path.join(tmp, 'ws-evil');

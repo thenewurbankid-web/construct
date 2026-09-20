@@ -14,7 +14,7 @@ export type LlmProviders = Record<LlmCapability, string>;
  * ui/server/src/settings.mjs) — nothing here is persisted to disk;
  * restarting the backend resets it to its defaults. */
 export type Settings = {
-  projectDir: string;
+  projectDir: string | null;
   llmProviders: LlmProviders;
   availableProviders: string[];
   availableProvidersByCapability: Record<LlmCapability, string[]>;

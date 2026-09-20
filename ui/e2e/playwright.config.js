@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { workspaceEnv } from './support/workspace.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -38,7 +39,7 @@ export default defineConfig({
   // their own configs, which the full-suite recipe in ui/README.md lists:
   //   npx playwright test -c playwright.processes.config.js
   //   npx playwright test -c playwright.processes-approval.config.js
-  testIgnore: [/processes-drawer\.spec\.js/, /processes-approval\.spec\.js/],
+  testIgnore: [/processes-drawer\.spec\.js/, /processes-approval\.spec\.js/, /workspace\.spec\.js/, /directory-picker\.spec\.js/],
   outputDir: './test-results',
   fullyParallel: false, // the backend serializes create/refactor/research/import command execution (commandRunner.mjs's queue) — unrelated to the wizard, whose sessions (#80) can now run concurrently and are exercised that way within a single test below
   workers: 1,
@@ -67,7 +68,7 @@ export default defineConfig({
       // ui/server restricts CORS + WebSocket origin to UI_CLIENT_ORIGIN.
       // #292: process records live in a per-user state dir; a fresh one keeps the
       // ordinary suite from ever seeing a real process of the developer's own.
-      env: { PORT: String(SERVER_PORT), UI_CLIENT_ORIGIN: CLIENT_ORIGIN, CONSTRUCT_STATE_DIR: STATE_DIR },
+      env: { PORT: String(SERVER_PORT), UI_CLIENT_ORIGIN: CLIENT_ORIGIN, CONSTRUCT_STATE_DIR: STATE_DIR, ...workspaceEnv() },
     },
     {
       command: `npx next dev -p ${CLIENT_PORT}`,

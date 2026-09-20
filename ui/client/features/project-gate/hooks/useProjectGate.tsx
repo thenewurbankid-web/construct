@@ -1,11 +1,20 @@
 'use client';
 
-import { useCallback, useEffect, useReducer } from 'react';
+import { useCallback, useEffect, useReducer, type Dispatch } from 'react';
 import { describeError } from '@/features/states';
-import { fetchProjectStatus, initProject } from '../services/ProjectGate';
-import { initialProjectGateState, projectGateReducer } from '../workflows/ProjectGate';
+import { fetchProjectStatus, initProject, openProject } from '../services/ProjectGate';
+import { initialProjectGateState, projectGateReducer, type ProjectGateAction } from '../workflows/ProjectGate';
 
-/** Fetches project status once on mount and exposes the init-here action —
+/** #365: open a folder from the workspace. On success the page reloads, so every screen (and the top-bar
+ * switcher and per-project layout memory) re-reads the new project, exactly as the top-bar switcher does. */
+async function openFolder(dispatch: Dispatch<ProjectGateAction>, dir: string) {
+  dispatch({ type: 'OPEN_START' });
+  const result = await openProject(dir);
+  if (result.ok) window.location.reload();
+  else dispatch({ type: 'OPEN_ERROR', error: result.error });
+}
+
+/** Fetches project status once on mount and exposes the init-here and open-a-project actions —
  * every gated route (Dashboard, Wizard, Pages Editor) mounts its own
  * ProjectGateController, so each fetches independently rather than sharing
  * one app-wide store; simpler than a cross-route context provider, and
@@ -35,5 +44,7 @@ export function useProjectGate() {
     }
   }, []);
 
-  return { status: state.status, initializing: state.initializing, error: state.error, loadError: state.loadError, refresh, handleInit };
+  const handleOpen = useCallback((dir: string) => openFolder(dispatch, dir), []);
+
+  return { ...state, refresh, handleInit, handleOpen };
 }

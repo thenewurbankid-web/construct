@@ -44,8 +44,15 @@ export type DirectoryPickerProps = {
 };
 
 /** UI-ready listing (see domain/DirectoryListing.tsx). */
+/** One step of the workspace-relative breadcrumb ("Workspace" then each folder below it). */
+export type DirCrumb = { label: string; path: string };
+
 export type DirListingView = {
   path: string;
+  /** The browsable root (the workspace); null if the server did not report one. */
+  root: string | null;
+  /** Breadcrumb from the root down to `path`, so the UI can show workspace-relative locations. */
+  crumbs: DirCrumb[];
   parent: string | null;
   entries: DirEntryView[];
   total: number;

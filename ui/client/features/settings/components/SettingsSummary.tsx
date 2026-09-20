@@ -2,7 +2,7 @@ import { GlassPanel } from '@/components/ui';
 import type { LlmProviders } from '../types';
 
 type SettingsSummaryProps = {
-  projectDir: string;
+  projectDir: string | null;
   resolvedProjectRoot: string | null;
   llmProviders: LlmProviders;
 };
@@ -19,7 +19,7 @@ export function SettingsSummary({ projectDir, resolvedProjectRoot, llmProviders 
     <GlassPanel className="settings-current">
       <h2>Current resolution</h2>
       <p>
-        <strong>Project directory:</strong> {projectDir}
+        <strong>Project directory:</strong> {projectDir ?? "No project open"}
       </p>
       <p>
         <strong>Resolved Construct project root:</strong>{' '}

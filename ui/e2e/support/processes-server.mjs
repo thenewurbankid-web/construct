@@ -18,7 +18,10 @@ import path from 'node:path';
 const projectDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'construct-e2e-proc-project-')));
 const stateDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'construct-e2e-proc-state-')));
 process.env.CONSTRUCT_STATE_DIR = stateDir;
-process.chdir(projectDir); // settings default the project directory to cwd
+process.chdir(projectDir);
+// #365: the server no longer opens its working directory. The harness names this project explicitly (the config
+// sets CONSTRUCT_WORKSPACE_ROOT to the tmp dir, so it is inside the workspace and contained like any other).
+process.env.CONSTRUCT_E2E_PROJECT_DIR = projectDir;
 
 const { app, start, processesService } = await import('../../server/src/index.mjs');
 const { createProcess } = await import('../../../src/engine/processModel.mjs');

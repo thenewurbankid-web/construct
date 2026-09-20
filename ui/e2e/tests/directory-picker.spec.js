@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -16,8 +15,10 @@ test.describe.serial('#223 directory picker', () => {
   let root;
 
   test.beforeAll(async ({ request }) => {
-    base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'construct-picker-')));
-    root = path.join(base, 'projects');
+    // #365: the picker's only root is the server's workspace (playwright.workspace.config.js), so the fixture
+    // lives directly in it and `off-limits` is a sibling of the workspace, outside it.
+    base = process.env.E2E_WORKSPACE_SANDBOX;
+    root = process.env.E2E_WORKSPACE_ROOT;
     fs.mkdirSync(path.join(root, 'shop-app'), { recursive: true });
     fs.writeFileSync(path.join(root, 'shop-app', 'architecture.yml'), 'version: 1\n');
     fs.mkdirSync(path.join(root, 'web-ui'));
@@ -27,13 +28,14 @@ test.describe.serial('#223 directory picker', () => {
     fs.writeFileSync(path.join(root, 'passwords.txt'), 'hunter2');
     fs.mkdirSync(path.join(base, 'off-limits'));
     fs.symlinkSync(path.join(base, 'off-limits'), path.join(root, 'sneaky-link'));
-    const res = await request.post(`${API}/api/settings`, { data: { browseRoots: [root], projectDir: root } });
+    const res = await request.post(`${API}/api/settings`, { data: { projectDir: root } });
     expect(res.ok()).toBeTruthy();
   });
 
   test.afterAll(async ({ request }) => {
-    await request.post(`${API}/api/settings`, { data: { browseRoots: [] } });
-    fs.rmSync(base, { recursive: true, force: true });
+    await request.post(`${API}/api/settings`, { data: { closeProject: true } });
+    for (const name of fs.readdirSync(root)) fs.rmSync(path.join(root, name), { recursive: true, force: true });
+    fs.rmSync(path.join(base, 'off-limits'), { recursive: true, force: true });
   });
 
   test('browse, keyboard-navigate, mark projects, hide hidden/escape/files, choose a folder', async ({ page }) => {
