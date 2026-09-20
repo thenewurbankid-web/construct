@@ -2,6 +2,7 @@
 
 import { ProjectGateController } from '@/features/project-gate';
 import '../components/review.css';
+import '../components/review-findings.css';
 import { useReviewRoute } from '../hooks/useReviewRoute';
 import { ReviewChangeController } from './ReviewChangeController';
 import { ReviewListController } from './ReviewListController';

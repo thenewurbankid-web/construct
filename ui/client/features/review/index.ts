@@ -20,3 +20,9 @@ export * from './hooks/useReviewChange';
 
 /** Which change the URL names, and the actions that move between the list and a change. */
 export * from './hooks/useReviewRoute';
+
+/** The saved plans a change can be compared with (the plans of the project processes). */
+export * from './hooks/useReviewPlans';
+
+/** What each next action of a failure notice does (retry, back, review without a plan, Settings). */
+export * from './hooks/useFailureActions';

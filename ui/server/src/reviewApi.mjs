@@ -13,22 +13,22 @@ import { expectedOf } from './reviewPlans.mjs';
 
 export const MAX_HEADS = 100;
 
-const refuse = (status, error) => ({ ok: false, status, body: { ok: false, error } });
+const refuse = (status, error, code) => ({ ok: false, status, body: { ok: false, error, ...(code ? { code } : {}) } });
 
 /** One client-supplied ref -> the listed branch, or a refusal. */
 function pick(listing, name, label) {
   if (typeof name !== 'string' || name === '') return refuse(400, `${label} must be the name of a branch.`);
-  if (name.startsWith('-')) return refuse(400, `${label} "${name}" is not a valid branch: names cannot start with "-".`);
+  if (name.startsWith('-')) return refuse(400, `${label} "${name}" is not a valid branch: names cannot start with "-".`, 'BAD_REF');
   const b = localBranches.resolve(listing.branches, name);
-  return b ? { ok: true, branch: b } : refuse(404, `${label} "${name}" is not a branch of this project.`);
+  return b ? { ok: true, branch: b } : refuse(404, `${label} "${name}" is not a branch of this project.`, 'BAD_REF');
 }
 
 /** One client-supplied plan id -> the listed plan, no plan (absent), or a refusal. Never a path. */
 function pickPlan(plans, id) {
   if (id === undefined || id === null || id === '') return { ok: true, plan: null };
-  if (typeof id !== 'string') return refuse(400, 'plan must be the id of a saved plan.');
+  if (typeof id !== 'string') return refuse(400, 'plan must be the id of a saved plan.', 'BAD_PLAN');
   const plan = plans.resolve(id);
-  return plan ? { ok: true, plan } : refuse(404, 'plan is not a saved plan of this project.');
+  return plan ? { ok: true, plan } : refuse(404, 'plan is not a saved plan of this project.', 'BAD_PLAN');
 }
 
 /** The compact, list-sized view of a finished report (the badges). */
@@ -58,9 +58,9 @@ export function createReviewRouter({ getRoot, jobs, plans = { list: () => [], re
   /** The project's branches, or an already-shaped refusal. */
   function load() {
     const root = getRoot();
-    if (!root.ok) return refuse(400, root.error);
+    if (!root.ok) return refuse(400, root.error, 'NO_PROJECT');
     const listing = localBranches.list(root.root);
-    if (!listing.ok) return refuse(400, listing.message);
+    if (!listing.ok) return refuse(400, listing.message, listing.code);
     return { ok: true, listing };
   }
 

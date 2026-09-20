@@ -24,7 +24,7 @@ export function useReviewList(baseFromRoute: string | null) {
     async function read() {
       const r = await fetchBranches(base ?? undefined);
       if (cancelled) return;
-      if (!r.ok) return dispatch({ type: 'FAILED', error: r.error });
+      if (!r.ok) return dispatch({ type: 'FAILED', error: r.error, code: r.code });
       dispatch({ type: 'LOADED', data: r.data });
       const heads = r.data.branches.filter((b) => b.analysis.state === 'none').map((b) => b.name);
       const key = `${r.data.base}|${r.data.branches.map((b) => b.sha).join(',')}`;
