@@ -90,7 +90,7 @@ function listDir(dir, pattern) {
  * -> { ok, feature, lock:{declared,message}, generated[], yours[], coverage[], scenarios, skipped, truncated }
  * coverage row: { n, id (file-name slug), title, branch, route, generated, file, locked, cloned:[names], lastResult:'none' }
  */
-export function listFeatureTests(root, feature) {
+export function listFeatureTests(root, feature, { plan: given } = {}) {
   const at = locate(root, feature);
   if (!at.ok) return at;
   let lock = { declared: true, message: null };
@@ -105,7 +105,7 @@ export function listFeatureTests(root, feature) {
 
   let plan = null;
   let coverageError = null;
-  try { plan = planFeatureTests(root, feature); } catch (e) { coverageError = e.message; }
+  try { plan = given ?? planFeatureTests(root, feature); } catch (e) { coverageError = e.message; }
   const onDisk = new Map(generated.map((g) => [g.name, g]));
   const inFlowOrder = [...(plan?.files ?? [])].sort((a, b) => a.seq - b.seq); // enumeration order: the happy path first
   const coverage = inFlowOrder.map((f, i) => {
@@ -113,7 +113,8 @@ export function listFeatureTests(root, feature) {
     return {
       n: i + 1, id: f.name.replace(/\.spec\.ts$/, ''), machine: f.machine, title: f.title, branch: f.branch, route: f.scenarioRoute, text: f.text, needs: f.needs,
       generated: !!disk, file: disk ? disk.name : null, locked: !!disk,
-      // out of date: the file on disk was written from a different source revision than the machine has now
+      // out of date (a LOCKED generated file): the file on disk was written from a different source revision than the machine
+      // has now; `construct generate tests` refreshes it. Not about clones: a clone is never refreshed (testFreshness.mjs, #306).
       outOfDate: !!disk && (disk.lineage.scenarioHash !== `sha256:${f.sHash}` || disk.lineage.machineHash !== `sha256:${f.mHash}`),
       cloned: yours.filter((y) => y.clonedFrom?.file.endsWith(`/${f.name}`)).map((y) => y.name),
       lastResult: 'none',
