@@ -1,0 +1,213 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://construct.dev/schemas/process.v1.json",
+  "title": "Construct Process v1",
+  "description": "A running plan, and the contract the Cockpit's Processes section renders. A process is an execution plan (schemas/plan.v1.json) plus everything the plan deliberately refuses to carry: which step is running, each step's status keyed by the plan step's `id`, a log whose every entry states whether a model was involved, and the files the process changed, collected for approval before anything is accepted. See src/engine/processMachine.mjs (the lifecycle, a real XState v5 config), src/engine/processModel.mjs (this record and its validator), src/engine/processStore.mjs (persistence) and src/engine/processEngine.mjs (the driver). test/processSchema.test.mjs asserts this file and the code never drift: every enum here is read out of the file and compared to the exported constant. DELIBERATE OMISSIONS: no step `status` is ever written back into the embedded plan (plan.v1.json rejects one, so re-planning the same ticket still produces byte-identical JSON), and nothing here is derived -- progress, model-step counts and available controls are computed by processSummary()/allowedEvents() rather than stored, so there is one source of truth. Breaking changes go in process.v2.json rather than mutating v1 in place.",
+  "type": "object",
+  "required": [
+    "version",
+    "id",
+    "projectRoot",
+    "plan",
+    "state",
+    "createdAt",
+    "steps",
+    "log",
+    "artifacts"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 1,
+      "description": "Process schema version. Bump this file to v2 on any breaking shape change rather than mutating v1 in place."
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable identifier for this run. Random by design: a process is an event in time, not a derivation of the plan, and two runs of the same plan are two processes."
+    },
+    "projectRoot": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Absolute path of the project this process runs against. Recorded inside the file as well as encoded in its directory name, so a state directory is readable by a human looking for which project a record belongs to."
+    },
+    "title": {
+      "type": "string",
+      "description": "What a list row shows. Defaults to the plan's ticket title."
+    },
+    "plan": {
+      "type": "object",
+      "description": "The execution plan being run, stored verbatim (schemas/plan.v1.json), so a process file read a week later still knows exactly what it was running even if the plan that produced it is gone."
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "running",
+        "running.active",
+        "running.stopping",
+        "paused",
+        "failed",
+        "done",
+        "cancelled"
+      ],
+      "description": "The lifecycle state, as a resolved XState path. `running` is a compound state: `running.active` is executing steps, `running.stopping` means a pause or cancel has been asked for and the process is waiting for the step in flight to reach a yield point -- control is cooperative, since a step cannot be torn down mid-syscall. A UI showing six states takes the part before the dot; `done` and `cancelled` are final, while `failed` still accepts a retry."
+    },
+    "pendingControl": {
+      "type": ["string", "null"],
+      "enum": ["pause", "cancel", null],
+      "description": "A control the user asked for that has not taken effect yet. Set while the process is in `running.stopping`; it is what the guard on the YIELDED transition reads to decide whether the process settles into `paused` or `cancelled`."
+    },
+    "currentStepId": {
+      "type": ["string", "null"],
+      "description": "The plan step id currently in flight, or awaiting the user."
+    },
+    "createdAt": {
+      "type": "string",
+      "description": "ISO 8601 timestamp: when the process was created (not when it started)."
+    },
+    "startedAt": {
+      "type": ["string", "null"],
+      "description": "ISO 8601 timestamp of the START event, or null while queued."
+    },
+    "finishedAt": {
+      "type": ["string", "null"],
+      "description": "ISO 8601 timestamp of reaching done, failed or cancelled, or null."
+    },
+    "error": {
+      "type": ["string", "null"],
+      "description": "A process-level failure -- the runtime itself stopping this process, as opposed to a step failing, which is recorded on the step."
+    },
+    "owner": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["pid", "since"],
+          "additionalProperties": false,
+          "properties": {
+            "pid": { "type": "integer", "description": "The OS process driving this one." },
+            "since": { "type": "string", "description": "ISO 8601 timestamp of when it took ownership." }
+          }
+        },
+        { "type": "null" }
+      ],
+      "description": "Which OS process is driving this one, set whenever a `running` record is saved and cleared as soon as it stops. How a record left marked `running` by a killed server is recognised as not actually running: adoptInterrupted() moves such a record to `paused`, which is honest (it is not running) and offers the right affordance (resume)."
+    },
+    "steps": {
+      "type": "array",
+      "description": "One entry per plan step, in plan order, keyed by the plan step's `id`. Run state lives here and never inside the plan.",
+      "items": { "$ref": "#/definitions/stepStatus" }
+    },
+    "log": {
+      "type": "array",
+      "description": "What happened, oldest first. Bounded: the oldest entries are dropped past MAX_LOG_ENTRIES and counted in `logDropped`, so a long-running process cannot grow its state file without bound.",
+      "items": { "$ref": "#/definitions/logEntry" }
+    },
+    "logSeq": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "The highest sequence number issued. Keeps increasing across dropped entries, so a streaming client can rely on never seeing the log go backwards."
+    },
+    "logDropped": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "How many entries were dropped from the front of the log. Stated rather than hidden, so the log never pretends to be complete."
+    },
+    "artifacts": {
+      "type": "array",
+      "description": "The files this process changed, one entry per file, collected so the Diff tab can hold them for approval before anything is accepted. Only files that were actually written appear: a step whose changes failed validation wrote nothing and produces no artifact.",
+      "items": { "$ref": "#/definitions/artifact" }
+    }
+  },
+  "definitions": {
+    "stepStatus": {
+      "type": "object",
+      "required": ["id", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "description": "The plan step's id. This is the whole of the link between a plan and its run state." },
+        "title": { "type": "string" },
+        "flow": { "type": "string", "description": "The plan flow this step runs, copied for display so a list does not have to index back into the plan." },
+        "executor": { "type": "string", "enum": ["deterministic", "local-model", "user"] },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "running", "awaiting-user", "done", "failed", "skipped"],
+          "description": "`awaiting-user` is a `user`-executor step that has been reached: the process pauses and waits for the person, which is why a real `paused` state is needed rather than a boolean. `skipped` is a step that will never run, because the process was cancelled or something it depends on did not finish -- a step list must not leave such a step `pending` forever."
+        },
+        "attempts": { "type": "integer", "minimum": 0, "description": "How many times this step has been started, including retries." },
+        "startedAt": { "type": ["string", "null"] },
+        "finishedAt": { "type": ["string", "null"] },
+        "durationMs": { "type": ["integer", "null"] },
+        "error": { "type": ["string", "null"], "description": "Why the step failed, or why it was skipped." },
+        "llm": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "provider": { "type": ["string", "null"], "description": "Which provider was used, e.g. ollama." },
+                "calls": { "type": "integer", "minimum": 0 }
+              }
+            },
+            { "type": "null" }
+          ],
+          "description": "Whether a model was involved in this step. `null` means no model, and it is a recorded fact rather than an absent field: finishing a step without stating this is refused by the code, so \"where did a model touch my project?\" stays answerable for every step, including one that failed after calling a model."
+        }
+      }
+    },
+    "logEntry": {
+      "type": "object",
+      "required": ["seq", "at", "provenance", "message"],
+      "additionalProperties": false,
+      "properties": {
+        "seq": { "type": "integer", "minimum": 1, "description": "Monotonic sequence number, never reused." },
+        "at": { "type": "string", "description": "ISO 8601 timestamp." },
+        "provenance": {
+          "type": "string",
+          "enum": ["ok", "llm", "warn"],
+          "description": "The three badges docs/design/cockpit-layout.md section 5 names, and a closed set on purpose. `ok`: a deterministic block did this and it succeeded, with no model. `llm`: a model was involved, whatever the outcome -- keyed to involvement rather than success, so filtering to this one value always answers where a model touched the project. `warn`: something wants a human's attention, including a step failing. There is deliberately no separate `error` provenance: a failure is authoritatively `steps[].status === 'failed'` with `steps[].error`, not a log badge."
+        },
+        "message": { "type": "string" },
+        "stepId": { "type": ["string", "null"], "description": "Which plan step produced this line, or null for a process-level line." },
+        "detail": { "description": "Optional structured payload, e.g. the violations that stopped a commit. Free-form on purpose." }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "required": ["path", "change"],
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "not": { "pattern": "^([A-Za-z]:[\\\\/]|/)" },
+          "description": "Project-relative path, the same rule the plan's `touches` follows, so a process record stays portable across machines."
+        },
+        "change": { "type": "string", "enum": ["create", "modify", "delete"], "description": "A subset of the plan's touch changes: `read` and `move` are not artifacts, because nothing was written." },
+        "stepId": { "type": ["string", "null"] },
+        "at": { "type": "string" },
+        "approved": {
+          "type": ["boolean", "null"],
+          "description": "The human verdict: null means collected but not yet decided. Starting at null is the point -- model output is collected, never accepted by default. Approving or rejecting without naming paths only touches artifacts still at null, so a bulk action cannot overturn a decision already made on one file."
+        },
+        "before": { "$ref": "#/definitions/blob" },
+        "after": { "$ref": "#/definitions/blob" }
+      }
+    },
+    "blob": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["bytes", "sha256"],
+          "additionalProperties": false,
+          "properties": {
+            "bytes": { "type": "integer", "minimum": 0 },
+            "sha256": { "type": ["string", "null"], "description": "sha256 of the content, or null when there was none (a created or deleted file)." }
+          }
+        },
+        { "type": "null" }
+      ],
+      "description": "Size and hash of one side of the change, recorded when the caller supplied the content, so a Diff tab has something to check against without re-reading a tree that may have moved on."
+    }
+  }
+}
