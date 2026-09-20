@@ -121,6 +121,27 @@ folder**, and it starts with **no project open**.
 - `browseRoots` is no longer a setting (`POST /api/settings { browseRoots }` is `400 BROWSE_ROOTS_FIXED`); the picker's
   only root is the workspace. `POST /api/settings { closeProject: true }` closes the project.
 
+### Clone a public repository (#330 slice A)
+
+From **Open a project** paste an address such as `https://github.com/octocat/Hello-World`; the repository is copied into
+the workspace as a new folder and opened, with `origin` set to that address. The clone is a cancellable job, listed in
+the Processes drawer under **Clones**. Settings has **Connect a remote** for a project that is a repository but has no
+`origin` (it only ever adds one; it never overwrites, and never pushes).
+
+| Setting | Meaning |
+| --- | --- |
+| `CONSTRUCT_CLONE_HOSTS` | Comma-separated hosts a clone or remote may name. Default `github.com`; add `gitlab.com,bitbucket.org` to allow them. Only plain hostnames are read. |
+| `CONSTRUCT_CLONE_MAX_MB` | Size cap; a clone larger than this is stopped and removed. Default 500. |
+| `CONSTRUCT_CLONE_TIMEOUT_SEC` | Time cap; a longer clone is stopped and removed. Default 300. |
+
+REST (below the session gate, foreign-Origin refused): `POST /api/clone {url, name?, depth?}` -> `202 {job}`;
+`GET /api/clone`, `GET /api/clone/:id`, `POST /api/clone/:id/cancel`; `GET|POST /api/git/remote {url}`. Only `https://<allowed host>/<owner>/<repo>`
+is accepted (no userinfo, port, query or other scheme); the host must resolve to public addresses only; git runs with
+protocols locked to https, no credential helper or prompt, no hooks, no redirects, no submodules and a scrubbed
+environment, one clone at a time. Private repositories are not supported yet (slice B).
+Tests only: `CONSTRUCT_E2E_CLONE_LOCAL_ROOT` lets a `file://` URL under one directory be cloned; the server refuses to
+start with it on a non-loopback host.
+
 Hosted example (see `tools/dev/run-hosted.sh`):
 
 ```bash
@@ -247,6 +268,7 @@ export WATCHPACK_POLLING=true CHOKIDAR_USEPOLLING=1   # fs.inotify.max_user_inst
 ../../tools/dev/heavy.sh npx playwright test -c playwright.processes-approval.config.js # approve/reject (seeds a finished process)
 ../../tools/dev/heavy.sh npx playwright test -c playwright.workspace.config.js          # workspace boundary + "Open a project" (#365)
 ../../tools/dev/heavy.sh npx playwright test -c playwright.directory-picker.config.js   # folder picker inside a narrow workspace
+../../tools/dev/heavy.sh npx playwright test -c playwright.clone.config.js              # clone a repository, connect a remote (#330)
 ```
 
 `a11y.spec.js` and `tests-tab.spec.js` import `@axe-core/playwright`, a declared devDependency: run `npm install` in
