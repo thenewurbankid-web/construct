@@ -1,10 +1,12 @@
 **Problem.** A change that looks local is not. Someone edits a shared component and three other features break. A pull request shows a pile of changed lines, not what they mean. Asking a model "what does this touch?" costs tokens and gives a different answer each time.
 
-**What Construct does about it.** It already knows which feature and layer every file belongs to and who imports whom. `research impact` computes the blast radius from that graph, and `review` compares two git refs against your own rules. Both are read-only, offline and repeatable.
+It already knows which feature and part every file belongs to and who imports whom. `research impact` computes the what it touches from that graph, and `review` compares two git refs against your own rules. Both are read-only, offline and repeatable.
 
 This page is CLI only. The Review screen is in the [Cockpit examples](@user-guide/examples/cockpit-review/).
 
-## 1. What does changing this file touch?
+## Do this
+
+### 1. What does changing this file touch?
 
 The repository ships a small fixture with a shared component used by three features:
 
@@ -34,9 +36,9 @@ $ construct research impact features/shared/components/CurrencyLabel.tsx --dir f
 23ffcf296120b0fc81ae9a488315189cdad748ccda74dfdc876e37fb9cb3493a  -
 ```
 
-Other ways to seed the same report: a git range (`--since main`), a list of files (`--files a,b`), or a ticket written in English (`--ticket "..."`). Anything guessed from ticket text is marked `inferred`; anything reached from a unit you named is `derived`.
+Other ways to seed the same report: a git range (`--since main`), a list of files (`--files a,b`), or the change described in English (`--ticket "..."`). Anything guessed from ticket text is marked `inferred`; anything reached from a unit you named is `derived`.
 
-## 2. What does this branch actually change?
+### 2. What does this branch actually change?
 
 On a branch where a page gained a `fetch()` call:
 
@@ -76,13 +78,17 @@ Rule regressions counts only violations that are new on the head branch: the 6 t
 
 Nothing is written. Refs are validated, git runs from temporary detached checkouts that are removed afterwards, and your working tree, index and branches are unchanged after the run.
 
-## 3. What you can rely on
+## You get
 
 | You get | Evidence above |
 |---|---|
-| A blast radius without asking a model | `every entry derived deterministically` |
+| A what it touches without asking a model | `every entry derived the same way every time` |
 | The same answer every time | identical `sha256` on two runs |
 | Review that knows your rules | `1 new rule violation ... (6 already there, not counted)` |
 | No side effects | read-only by construction |
 
-Checked against commit `081150b` on 2026-09-20.
+## Why it matters
+
+You know what a change reaches, and what a branch means, before you approve it, and the answer is the same every time.
+
+Checked against commit `081150b` on 2026-09-20 (wording revised for plain language on the same day).

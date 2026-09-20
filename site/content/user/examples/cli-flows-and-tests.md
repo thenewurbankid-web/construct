@@ -1,10 +1,12 @@
 **Problem.** A workflow (a state machine) is the part of an app nobody can read at a glance, and its tests are either missing or written once by hand and never updated when the flow changes. "Does it cover every path?" is answered by hope.
 
-**What Construct does about it.** It reads the state machine from the code, enumerates every route through it, explains each in plain English, and writes one locked Playwright test per route. Change the flow, regenerate, and the tests follow. No model is involved.
+It reads the state machine from the code, enumerates every route through it, explains each in plain English, and writes one locked Playwright test per route. Change the flow, regenerate, and the tests follow. No model is involved.
 
 This page is CLI only. The Tests screen, cloning and the step editor are in the [Cockpit examples](@user-guide/examples/cockpit-tests/).
 
-## 1. Every route through a flow, in English
+## Do this
+
+### 1. Every route through a flow, in English
 
 ```bash
 construct research workflow login --format scenarios
@@ -34,9 +36,9 @@ Explained 1 machine(s) in 1 file(s) (0.03s)
 [tool: produced the read-only report above] [llm: 0 calls]
 ```
 
-## 2. One locked test per route
+### 2. One locked test per route
 
-Generated tests live in a region only the generator may write, outside the layer graph. Declare both once in `architecture.yml`:
+Generated tests live in a region only the generator may write, outside the normal parts. Declare both once in `architecture.yml`:
 
 ```yaml
 frozen:
@@ -69,7 +71,7 @@ Each file starts with the scenario in the same Given/When/Then words as step 1, 
 
 Options: `--dry-run` shows what would be written, `--prune` removes generated files for routes that no longer exist. Only `features/<feature>/tests/generated/` is ever written, and a file without the generated marker is never overwritten.
 
-## 3. What you can rely on
+## You get
 
 | You get | Evidence above |
 |---|---|
@@ -78,4 +80,8 @@ Options: `--dry-run` shows what would be written, `--prune` removes generated fi
 | Your own edits are safe | generated tests are locked; clone one to change it |
 | No model | `[llm: 0 calls]` |
 
-Checked against commit `081150b` on 2026-09-20.
+## Why it matters
+
+Every route through a flow is explained and tested, and the tests follow the flow when it changes.
+
+Checked against commit `081150b` on 2026-09-20 (wording revised for plain language on the same day).

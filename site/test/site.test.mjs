@@ -69,7 +69,11 @@ test('build renders the site offline: home pitch, examples, references, no ticke
   assert.equal(res.examples, 9);
   const home = fs.readFileSync(path.join(out, 'index.html'), 'utf8');
   assert.match(home, /AI guesses\. Construct computes\./);
-  assert.match(home, /cockpit and not an autopilot/);
+  assert.match(home, /Try it in 60 seconds/);
+  assert.match(home, /See it work in the Cockpit/);
+  assert.equal((home.match(/class="btn primary"/g) || []).length, 1, 'one primary call to action');
+  assert.match(home, /small tools that give the same answer every time/);
+  assert.doesNotMatch(home, /\blayer\b|envelope|worktree|blast radius/i);
   assert.match(home, /href="user-guide\/examples\/cli-scaffold-and-validate\/"/);
   assert.match(home, /href="user-guide\/examples\/cockpit-plan-and-run\/"/);
   assert.match(home, /href="user-guide\/examples\/core-plans-and-impact\/"/);
@@ -125,6 +129,28 @@ test('markdown helpers: sections, includes, ticket stripping', async () => {
   assert.equal(relevel('## A\n\n### C\n', 3, true), '\n### C\n'.replace('\n### C', '\n#### C'));
   assert.equal(stripTicketRefs('Title (#96, the epic) and more (Epic 6.4/#100) end. Tracked under issue #104.'), 'Title and more end.');
   assert.doesNotMatch(stripTicketRefsHtml('<table><tr><th>#</th><th>Story</th></tr><tr><td>#128</td><td>x</td></tr></table>'), /#128/);
+});
+
+test('friendliness: three-item nav, one Examples group, where-am-I line, quickstart first, plain words', async () => {
+  const out = makeTempDir('site-test-');
+  await build({ out, repo: 'o/r', buildTime: BUILD_TIME });
+  const gs = fs.readFileSync(path.join(out, 'user-guide/getting-started/index.html'), 'utf8');
+  assert.match(gs, /<nav class="primary"[^>]*>(?:<a [^>]*>[^<]+<\/a>){3}<\/nav>/);
+  for (const label of ['Home', 'Guide', 'For developers']) assert.match(gs, new RegExp(`>${label}</a>`));
+  assert.ok(gs.indexOf('Try it in 60 seconds') < gs.indexOf('What just happened'), 'quickstart comes before the explanation');
+  assert.equal((gs.match(/<p class="side-h">Examples<\/p>/g) || []).length, 1, 'one Examples group in the side menu');
+  assert.doesNotMatch(gs, /side-h">Examples: /);
+  assert.match(gs, /<p class="kicker">Start<\/p>/);
+  const plan = fs.readFileSync(path.join(out, 'user-guide/examples/cockpit-plan-and-run/index.html'), 'utf8');
+  assert.match(plan, /<p class="kicker">Examples<\/p>/);
+  assert.match(plan, /aria-current="page"/);
+  for (const g of exampleGroups()) for (const p of g.pages) {
+    const html = fs.readFileSync(path.join(out, p.path, 'index.html'), 'utf8');
+    for (const h of ['Do this', 'You get', 'Why it matters']) assert.match(html, new RegExp(`<h2 id="[^"]*">${h}<`), `${p.path} lacks "${h}"`);
+  }
+  const prose = plan.replace(/<script[\s\S]*?<\/script>/g, '').replace(/<[^>]+>/g, ' ');
+  assert.doesNotMatch(prose, /\bworktree\b|blast radius|envelope/i);
+  fs.rmSync(out, { recursive: true });
 });
 
 test('parseArgs', () => {

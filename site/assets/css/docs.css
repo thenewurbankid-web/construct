@@ -75,3 +75,10 @@ h2:hover > .anchor, h3:hover > .anchor, h4:hover > .anchor, .anchor:focus { opac
   .pager { flex-direction: column; }
   .pager .next { margin-left: 0; text-align: left; }
 }
+
+/* Friendliness pass: where-am-I line, current-page marker, surface labels. */
+.kicker { margin: 0 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.sidebar a[aria-current="page"] { font-weight: 700; }
+.sidebar a[aria-current="page"]::before { content: "\25B8\00a0"; }
+.side-tag { display: inline-block; margin-right: 6px; padding: 0 5px; border: 1px solid var(--border); border-radius: 4px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; }
+.cta-link { align-self: center; font-weight: 600; }

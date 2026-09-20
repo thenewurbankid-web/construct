@@ -1,22 +1,20 @@
-Construct helps you build and refactor a React + TypeScript app inside rules your project defines. You give it small commands (or click the same actions in the Cockpit UI) and it does the mechanical work: it creates files in the right place, moves and renames them safely, brings existing code across, and tells you plainly when something breaks a rule.
+Construct does the mechanical work of a React and TypeScript app inside rules your project defines. Run a small command, or click the same action in the Cockpit, and it creates files in the right place, moves them safely, and tells you plainly when something breaks a rule.
 
 ## What you can do
 
-- **Create** a feature, a single layer file or a multi-layer slice in one command, with imports that resolve.
-- **Validate** your code against rules you can read and change, and get a fix suggestion for every violation.
-- **Refactor** by moving or renaming files while every import is updated for you.
-- **Import** an existing page or route into the architecture, with a plan you approve first.
-- **Understand** a feature or a state machine in plain English, and see what a change touches before you make it.
+- **Create** a feature, one file or a whole slice in one command, with imports that resolve.
+- **Check** your code against rules you can read and change, with a fix suggestion for every violation.
+- **Move and rename** files while every import is updated.
+- **Import** an existing page, with a plan you approve first.
+- **Understand** a feature in plain English, and see what a change touches before you make it.
 - **Review** a branch by what it means, and generate a locked test for every route through a workflow.
 - **Choose** whether an AI model is involved at all. By default none is.
 
 ## Read in this order
 
-1. [Getting started](@user-guide/getting-started/): install, first project, first feature.
-2. [Core concepts](@user-guide/concepts/): the few ideas everything else builds on.
+1. [Getting started](@user-guide/getting-started/): a working project in 60 seconds.
+2. [The five ideas](@user-guide/concepts/) behind everything.
 3. [How-to guides](@user-guide/how-to/): pick the task you have.
-4. [Examples](@user-guide/examples/): the problem, the exact command or screen, the exact result. CLI, Cockpit and core are kept apart.
+4. [Examples](@user-guide/examples/): the problem, the exact command or screen, the exact result.
 
-Prefer to click? [Using the Cockpit UI](@user-guide/cockpit/) covers the browser front end.
-
-Looking to change Construct itself rather than use it? See the [Developer Docs](@developers/).
+Prefer to click? [Using the Cockpit](@user-guide/cockpit/). Want to change Construct itself? See [For developers](@developers/).
