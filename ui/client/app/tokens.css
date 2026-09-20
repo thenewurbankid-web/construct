@@ -13,6 +13,16 @@
  * Legacy names (--bg, --border, --muted, --tool, --error, --panel-glass...)
  * are aliases so nothing that still uses them changes. Contrast is checked
  * by features/shell/domain/Tokens.spec.mjs (parses this file). */
+/* Stacking scale (#298, docs/design/tokens.md section 4): theme-independent.
+ * A surface picks a layer instead of a number; a modal always beats a popover. */
+:root {
+  --z-raised: 5;
+  --z-drawer: 20;
+  --z-topbar: 30;
+  --z-popover: 50;
+  --z-modal: 100;
+}
+
 :root,
 :root[data-theme='dark'] {
   color-scheme: dark;

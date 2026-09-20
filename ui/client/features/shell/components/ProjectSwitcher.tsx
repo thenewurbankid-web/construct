@@ -1,20 +1,20 @@
 'use client';
 
-import type { KeyboardEvent } from 'react';
+import { useRef } from 'react';
+import { useDismissable } from '@/lib/useDismissable';
 import type { ProjectSwitcherProps } from '../types';
 
 /** Top-bar project switcher: shows the current local project and opens a
- * popover with the shared folder picker (supplied as a slot). Esc closes it. */
+ * popover with the shared folder picker (supplied as a slot). Dismissal (Escape with
+ * focus return, outside click, Tab out) is the shared useDismissable contract. */
 export function ProjectSwitcher({ label, dir, open, onToggle, onClose, picker, error }: ProjectSwitcherProps) {
-  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Escape') {
-      e.stopPropagation();
-      onClose();
-    }
-  };
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const surfaceRef = useRef<HTMLDivElement>(null);
+  useDismissable({ open, onClose, triggerRef, surfaceRef, id: 'project-switcher' });
   return (
-    <div className="sh-project" onKeyDown={onKeyDown}>
+    <div className="sh-project">
       <button
+        ref={triggerRef}
         type="button"
         className="sh-project-btn"
         aria-haspopup="dialog"
@@ -28,7 +28,7 @@ export function ProjectSwitcher({ label, dir, open, onToggle, onClose, picker, e
         <span aria-hidden="true"> ▾</span>
       </button>
       {open && (
-        <div id="sh-project-popover" role="dialog" aria-label="Switch project" className="sh-popover">
+        <div ref={surfaceRef} id="sh-project-popover" role="dialog" aria-label="Switch project" className="sh-popover">
           <p className="hint">Pick a local folder to work on. Everything in Construct then uses that project.</p>
           {error && (
             <p className="status-error" role="alert">

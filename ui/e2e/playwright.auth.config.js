@@ -26,7 +26,7 @@ const SERVER_ORIGIN = `http://localhost:${SERVER_PORT}`;
 
 export default {
   ...base,
-  testMatch: /auth\.spec\.js/,
+  testMatch: /(auth|popover-dismiss)\.spec\.js/,
   timeout: 60_000,
   webServer: [
     {
