@@ -8,6 +8,9 @@ export type ProjectGateState = {
   initializing: boolean;
   error: string | null;
   loadError: string | null;
+  /** #365: opening a folder as the project (the "Open a project" screen). */
+  opening: boolean;
+  openError: string | null;
 };
 
 export type ProjectGateAction =
@@ -16,13 +19,17 @@ export type ProjectGateAction =
   | { type: 'STATUS_RETRY' }
   | { type: 'INIT_START' }
   | { type: 'INIT_SUCCESS'; status: ProjectStatus }
-  | { type: 'INIT_ERROR'; error: string };
+  | { type: 'INIT_ERROR'; error: string }
+  | { type: 'OPEN_START' }
+  | { type: 'OPEN_ERROR'; error: string };
 
 export const initialProjectGateState: ProjectGateState = {
   status: null,
   initializing: false,
   error: null,
   loadError: null,
+  opening: false,
+  openError: null,
 };
 
 export function projectGateReducer(state: ProjectGateState, action: ProjectGateAction): ProjectGateState {
@@ -39,6 +46,10 @@ export function projectGateReducer(state: ProjectGateState, action: ProjectGateA
       return { ...state, initializing: false, status: action.status };
     case 'INIT_ERROR':
       return { ...state, initializing: false, error: action.error };
+    case 'OPEN_START':
+      return { ...state, opening: true, openError: null };
+    case 'OPEN_ERROR':
+      return { ...state, opening: false, openError: action.error };
     default:
       return state;
   }

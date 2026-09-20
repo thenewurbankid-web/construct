@@ -13,7 +13,8 @@
 // output. For a local, single-user dev tool this is a fine trade-off.
 import { EXIT_CODES, ConstructError } from '../../../src/diagnostics.mjs';
 import { startTimer, elapsedSeconds } from '../../../src/timing.mjs';
-import { getSettings } from './settings.mjs';
+import { getProjectDir } from './settings.mjs';
+import { WorkspaceError } from './workspace.mjs';
 import { serverLog } from './logBuffer.mjs';
 
 const ATTRIBUTION_RE = /^\[tool: (.*)\] \[llm: (.*)\]$/;
@@ -32,8 +33,11 @@ function serialize(fn) {
  * refactor/research/importCommand resolves its root via `getRoot(args)`,
  * which looks for `--dir` anywhere in the array. */
 export function withDir(args) {
-  const { projectDir } = getSettings();
-  return projectDir ? [...args, '--dir', projectDir] : args;
+  const projectDir = getProjectDir();
+  // #365: with no project open there is nothing to run against. Never omit `--dir` (the CLI would then use the
+  // server's own working directory).
+  if (!projectDir) throw new WorkspaceError(409, 'NO_PROJECT', 'No project is open. Open a project from the workspace first.');
+  return [...args, '--dir', projectDir];
 }
 
 const EXIT_CODE_TO_HTTP = {

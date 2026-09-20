@@ -574,3 +574,235 @@ the server-browser variant.
 
 The clip-token endpoint of the first draft is dropped: the bridge needs no token. Order: 15, then 16 and 18 in
 parallel, then 17, then 19 and 20.
+
+## 10. Declutter audit of the shipped Cockpit, and the first five minutes
+
+**How the counts were obtained (honest).** The live build on `http://localhost:3000` was up but its backend did not
+answer (it showed only the "Sign in to the Cockpit ... server did not answer" card), so I could not walk the screens.
+The committed e2e screenshots partly pre-date the shell (dashboard, settings, wizard show the old sidebar), and the
+current shell is visible in only a few. So the numbers below are **counted from the shipped source**
+(`ui/client/features/*/components` and `pages`, 2026-09-20): controls that *can* be on screen, not always at once. Treat
+them as a ranking of where the clutter lives, not as a measured screen count. A measured pass on a running build
+belongs in the "Declutter quick wins" issue as its first step.
+
+| Feature (screens) | Buttons | Fields | Help paragraphs | Hint props | Badge / pill / chip refs | Prose words in JSX |
+|---|---|---|---|---|---|---|
+| Help | 0 | 0 | 49 | 26 | 8 | 2461 |
+| Pages editor | 26 | 10 | 35 | 28 | 34 | 386 |
+| Tests | 33 | 4 | 53 | 23 | 30 | 656 |
+| Review | 11 | 2 | 56 | 13 | 42 | 377 |
+| Workflows | 18 | 0 | 27 | 24 | 1 | 341 |
+| Plan | 11 | 7 | 26 | 3 | 19 | 217 |
+| Settings | 0 | 0 | 5 | 5 | 0 | 88 |
+| Dashboard | 0 | 0 | 4 | 4 | 0 | 114 |
+| Git session | 4 (in shell) | 1 | 7 | 9 | 3 | 136 |
+| Local model | 0 | 1 | 9 | 9 | 13 | 103 |
+| Shell (top bar, status) | 10 | 0 | 6 | 2 | 24 | 28 |
+
+(Dashboard and Settings forms are built from shared `Field` components, so their fields do not appear as literal
+`<input>` in these files. From the shipped copy and the older committed screenshot: Dashboard has 4 forms with 2, 5, 1 and
+5 fields plus 7 layer checkboxes; Settings has 1 directory field and 3 provider selects.)
+
+What the shipped copy shows, screen by screen (read from the components and screenshots):
+- **Dashboard**: four equal cards (Create, Refactor, Research, Import) under a lede that explains them by their CLI
+  names ("Click-through equivalents of the CLI's create/refactor/research/import commands..."). The Create form's first
+  choice reads "A new feature (all 7 layer folders)" and a label "Layers (built in dependency order regardless of the
+  order checked)". The Import card carries a redirect paragraph ("For the guided, chat-style whole-route wizard, use
+  the Import Wizard page instead").
+- **Settings**: three model-provider rows, each with a 30 to 45 word hint that explains which other screen's checkbox uses it
+  ("Used when you tick “Have the LLM write the ported logic” on the Dashboard Import form ..."); a line "Nothing is
+  persisted to disk"; and, below the form, a "Current resolution" panel (`SettingsSummary`) that repeats the form's values.
+  (The older committed screenshot also quoted CLI flags and an epic number; the current source no longer does.)
+- **Help**: 2,461 words; the contents appear three times (left "Contents" tab, a link row under the title, and the
+  section headings), and the right "Project" panel repeats the four keyboard shortcuts that the status bar shows too.
+- **Right "Project" panel**: "Mode: None (a utility screen)" (internal wording), plus the shortcuts list.
+- **Top bar**: brand, project switcher, 4 modes, palette, processes pill, model dot, Browser, Tools, theme = 11
+  controls before any screen content; status bar adds four shortcut hints.
+- **Import Wizard**: CLI-style prompts ("... [y/N]:", "Path to your Next.js app/ directory ... [app]:").
+- **Plan**: "Suggest units from the ticket text", provenance words `derived` and `inferred`.
+
+### 10.1 Top 15 cuts, ranked (impact x effort)
+
+Quick win (QW) = shippable now, without the IA rework: copy, defaults, collapsed-by-default, removing a redundant
+label. Others are "with the IA" (slices 2 to 8) or "needs code".
+
+| # | Cut | Where | Impact | Effort | QW |
+|---|---|---|---|---|---|
+| 1 | Show one primary action per empty state (Open a project / Start a note / Add the first test) and nothing else | every empty state | High | S | yes (copy) |
+| 2 | Remove the Settings "Current resolution" panel (repeats the form); keep as a collapsed "Show resolved paths" | Settings | High | XS | yes |
+| 3 | Shorten the three Settings model hints to one plain sentence each; say what it does in plain words and drop the cross-references to other screens; label them "Which model fills in files" | Settings | High | XS | yes (copy) |
+| 4 | Dashboard: show Create first and open; put Refactor, Research, Import under one "More actions" disclosure, collapsed | Dashboard | High | S | yes |
+| 5 | Dashboard copy: replace the CLI-named lede with one line; "A new feature (all 7 layer folders)" -> "A new feature"; move the "Layers (built in dependency order...)" sentence to a tooltip; rename the Import card "Import an existing file" and turn its redirect into a link | Dashboard | Med | XS | yes (copy) |
+| 6 | Help: remove the duplicate link row under the title (the Contents tab is the same list); collapse every section except "Getting started" by default | Help | High | XS | yes (uses existing collapsible sections) |
+| 7 | Right "Project" panel: delete "Mode: None (a utility screen)"; show the shortcuts in only one place (status bar as `? Shortcuts`, or the panel) | shell | Med | XS | yes |
+| 8 | Status bar: replace four shortcut hints by one "? Shortcuts" | shell | Med | XS | yes |
+| 9 | Consistent verbs on buttons: a button says what it does ("Create feature", not "Run create"; "Check impact", not "Analyse impact"); one word for starting work | Dashboard, Plan | Med | S | yes (copy; specs assert "Run create") |
+| 10 | Plain words: "Suggest units from the ticket text" -> "Find related parts"; `derived` / `inferred` -> "Computed" / "Guess"; "blast radius" -> "what it touches" in visible text | Plan, Review, Help | Med | S | yes (copy) |
+| 11 | Wizard prompts as plain questions: "Where are your app's routes? (default: app)"; Yes / No instead of `[y/N]` (copy first; buttons are code) | Wizard | Med | S | copy yes, buttons no |
+| 12 | Review: one health badge per row; collapse the five indicator cards to the worst one plus "Show all"; legend behind "?" | Review | High | M | no (with IA slice 7) |
+| 13 | Tests: show row actions on hover or selection only (33 buttons in the source) | Tests | High | M | no (with slice 8) |
+| 14 | Merge Browser and Tools top-bar toggles into two icon buttons with tooltips (labels only on hover) | shell | Med | S | needs spec edit (`shell-topbar`, `shell-layout`) |
+| 15 | Pages editor: collapse Scope, Source and Diff summaries to one line each; badges only on the selected node | Pages | High | L | no (IA slice 8, section 8) |
+
+### 10.2 The "Declutter quick wins" issue (ship now)
+Items 1 to 11 (copy, defaults, collapsed-by-default, redundant labels). Size **M** overall (many XS edits). Step one is
+a measured pass on a running build (count visible controls per screen) so the result can be compared. Specs that
+assert text being changed must be updated with a stated reason: `settings-llm` ("per-file fill", "Import
+(non-interactive)"), `demos/create`, `settings-llm`, `plan-mode`, `walkthrough`, `timing-display`,
+`demos/listing-details` (button label "Run create"), `walkthrough` and `wizard-concurrent` (`[y/N]` prompts),
+`demos/import`, `demos/route-import` ("Import (non-interactive)"), `help-tutorials`, `help-collapsible-sections`,
+`shell-topbar`, `dashboard-card-sizing`, `a11y`. Contrast, focus and target-size rules are unchanged.
+
+### 10.3 First five minutes (the natural path, no decision until it is needed)
+
+1. **No project.** One screen, one sentence, one button: "Open a project" (and, secondary, "Clone a repository").
+   The top bar shows only the brand, the profile menu and a dimmed screen list; the panels say why they are empty. The
+   model, themes and settings are not mentioned. *Decisions: zero.*
+2. **After opening a project.** The Features screen opens on the project's features in the left panel, the first one
+   selected, and the centre shows what it is in one sentence and its routes and layers (section 12). No forms. If the
+   project has no features yet, the one action is "Add your first feature" (a name field and a Create button; layers
+   are chosen for you). The bottom panel is closed. *Decisions: pick a feature, or name one.*
+3. **First plan.** A "Describe a change" box is one click away on the same screen (a Note). Typing saves it
+   automatically. "Check what it touches" appears once there is text; the plan list appears after that, with
+   Mechanical already chosen on every step. The single primary button is "Run plan"; the bottom panel opens by itself
+   the first time something runs and shows the one thing to do next ("Review 4 files"). *Decisions: write the
+   sentence; press Run; approve files.* Model choice, provider and settings are never asked before they are needed.
+
+## 11. Website friendliness pass (`site/`)
+
+Read from `site/lib/pages.mjs` (home, top nav), `site/lib/structure.mjs` (groups), `site/content/user/index.md`,
+`getting-started.md` and `examples/cockpit-plan-and-run.md`, 2026-09-20. Word counts: user guide 2,919 words over 13
+pages (getting-started 452, concepts 635, cockpit 536, index 263).
+
+**What is there now.** Home: the headline "AI guesses. Construct computes.", a lede, a terminal transcript with a
+`sha256sum` proof, three pillars, "Three surfaces, kept apart" (CLI, Cockpit, Core), five example cards, and a footer
+row of three links: about 12 places to click and no single primary action. Top bar: Home, User Guide, Developer Docs,
+plus the side menu (Start here, Examples: CLI, Examples: Cockpit, Examples: Core, how-to guides). Getting started opens
+with "Construct runs from a checkout of its repository and needs Node.js 20 or newer" and needs five sections before the
+first result. Examples open with "Problem." and are good. Measured on `site/content/user`: "layer" appears 11 times in the index,
+Getting started and Concepts; "worktree" or "blast radius" 7 times in four example pages; **no** issue numbers and **no**
+"envelope" in user-facing pages today (the rule below is a guard, not a fix).
+
+### 11.1 Concrete edits
+
+| # | Edit | Why |
+|---|---|---|
+| 1 | **One primary call to action on the home page**: "Try it in 60 seconds" (links to the quickstart). Secondary text link: "See it work" (the Cockpit example). Remove the other buttons from the hero | one decision for a new visitor |
+| 2 | **60-second quickstart at the very top of Getting started**: three commands and the first result, before any explanation (see 11.2) | first result before reading |
+| 3 | **Top nav: three items, no jargon**: Home, Guide, For developers (was Home, User Guide, Developer Docs). The side menu shows "Start", "Examples" (one group, with CLI / Cockpit / Core as small labels), "How-to". Drop "Examples: CLI" and "Examples: Cockpit" as separate groups | fewer nav items, clear where you are |
+| 4 | **Where am I**: keep the breadcrumb, add the group name as a small line above every page title ("Examples") and highlight the current page in the side menu with weight and a marker, not colour alone | orientation |
+| 5 | **Shorter pages**: each page opens with the one-sentence problem, then a screen or command, then the result, then "Next". Move anything longer than about 250 words below a "More detail" disclosure or to the developer docs. Concepts (635 words) becomes "The five ideas" with one sentence each and a link | shorter |
+| 6 | **Plain words** across the site: "layer" -> "part" on first use, then the real names (page, component...) as labels; "envelope" -> "the rules for one task"; "worktree" -> "its own copy of the repository"; "blast radius" -> "what it touches"; "deterministic block" -> "a small tool that always gives the same answer"; keep issue and epic numbers out of body copy (none there today; keep them in the developer docs) | jargon |
+| 7 | **Consistent example structure**: Problem (2 lines) / Do this (one command or screenshot) / You get (exact output) / Why it matters (1 line) / Checked against commit. Exactly the existing convention, applied to every example, with the same heading names | consistency |
+| 8 | **Screens named as the product names them**: use Features, Pages, Components, Git, Tests once the IA ships; until then say "the Cockpit's top bar" not "modes" for pages that will change | stays true |
+| 9 | Contrast, focus ring, skip link and reduced-motion rules stay as they are; the home hero animation (`hero-slides`) must respect `prefers-reduced-motion` | a11y |
+
+### 11.2 Before / after: the home page
+
+**Before** (`site/lib/pages.mjs`):
+> AI guesses. Construct computes.
+> Small, deterministic blocks that build and refactor your app under your rules. Same input, same result, zero tokens.
+> You steer from the Cockpit, a cockpit and not an autopilot.
+> Problem, command, result [terminal transcript with a `sha256sum` proof] ... Deterministic blocks. A model only where
+> you ask for one. Watch and steer. Three surfaces, kept apart ... Examples [5 cards] ... All examples · Getting
+> started · Developer Docs
+
+**After**:
+> **Build and change your app without guessing.**
+> Construct does the mechanical work of a React and TypeScript project (create, move, check, review) with small
+> tools that give the same answer every time, and tells you every time an AI model was used. Usually none.
+> **[ Try it in 60 seconds ]**  *See it work in the Cockpit*
+>
+> **What you get** (three short lines, no cards):
+> - Files created in the right place, and a clear message when something breaks a rule.
+> - Changes you can read before anything runs, and approve one file at a time.
+> - An AI model only when you ask for one, and you see what it was given.
+>
+> **Pick how you like to work:** Commands · The Cockpit (browser) · For developers
+
+Effect: one primary action, 1 hero sentence + 1 supporting sentence, 3 lines, 3 choices (from about 12 click targets).
+
+### 11.3 Before / after: the top of Getting started
+
+**Before:** "Construct runs from a checkout of its repository and needs **Node.js 20 or newer**. This page takes you from
+nothing to a validated project with your first feature in about five minutes." then "1. Install" with four commands.
+
+**After (new first block, before any explanation):**
+> **Try it in 60 seconds** (needs Node.js 20 or newer)
+> ```
+> git clone https://github.com/thenewurbankid-web/construct.git && cd construct && npm install && npm link
+> construct init my-app && cd my-app && construct create feature billing
+> construct validate
+> ```
+> **You should see:** the files it created, "0 AI calls", and a passing check. That is the whole idea: it did the
+> work, and told you nothing was guessed. **Next:** open the browser Cockpit, or read what just happened.
+
+### 11.4 Before / after: one example page (Plan, run, approve)
+
+**Before** (`cockpit-plan-and-run.md`): opens "**Problem.** You hand a ticket to an AI agent ... **What the Cockpit does
+about it.** The Plan screen turns a ticket into a plan ... Running the plan hands each step to a bot that works in its
+own git branch and worktree ... This page shows the Cockpit only; ... The top bar has four modes ...".
+
+**After:**
+> **Problem.** An AI agent edits your files directly, and you only find out what it touched afterwards.
+> **Do this.** Describe the change in your own words. The Cockpit shows what it will touch, then lists the steps, each
+> marked *Tool*, *Local model* or *You*. Press **Run plan**.
+> **You get.** The work happens in its own copy of the repository. When it finishes you see every changed file with the
+> exact difference, and approve or reject each one. Nothing reaches your project until you do.
+> **Why it matters.** You review a small, exact change instead of untangling a surprise. *Checked against commit ...*
+> Screenshots follow, three of them, each with one caption.
+
+(The terms "ticket" and "worktree" in the before text become "the change" and "its own copy"; "Note" and the Features /
+Git screen names replace "Plan mode" and "four modes" when the IA ships.)
+
+### 11.5 Issue for the demo-curator
+"Website friendliness pass": edits 1 to 9, the two rewrites above applied to the home page and to
+`cockpit-plan-and-run.md`, then the same structure applied to the other eight examples. Size **M**. Nothing about the
+build system changes (`site/lib/pages.mjs` and content files only); the site tests in `site/test` must stay green;
+example screenshots are retaken only where the UI changed.
+
+## 12. Features screen: a feature as one legible hierarchy (`ia-feature-structure`)
+
+Owner: the primary Features screen shows, for a feature, its **routes nested under it** and **all its layers**, as a
+hierarchy drawn from the real import graph, uncluttered.
+
+**The tree reads: Feature > Routes (n) > each route, then Feature > Layers (n of 7) > each layer > its files.**
+- **Routes** (nested under the feature): every route that renders it, with the router kind ("Next app router", "React
+  SPA"). A feature can fan out to many routes, and a route can use several features (the route then appears under each).
+  A feature with **no route** shows the calm info note "Not mapped to a route yet: that is fine for a shared kit, or a
+  feature you imported first" with a **Map to a route** action, because users import a feature first and map routes
+  later. (Same wording as `NOTE_NO_ROUTE` in `src/engine/units/flow.mjs`.)
+- **Layers** (present and missing): domain, service, workflow, hook, controller, page, component. Present layers show a
+  file count and expand to files; **missing layers are drawn dashed** with an **Add** action (mechanical, `construct
+  create layer`), so the gap is visible without a red alert. Violations are one quiet dot on the layer, listed in the
+  right panel, not repeated in the tree.
+- **One visual, two views, one toggle**: **Tree** (the list above) and **Flow** (a diagram of the same graph). The Flow
+  diagram draws **arrows in import direction** (route -> page -> component/hook -> workflow/service -> domain), not a
+  fixed layer order; a missing layer appears as a dashed node with a one-line reason ("pages usually go through one").
+  This is the flow view of #328 (`buildFlow`), reused, not a new analysis.
+- **Right panel**: Summary (a one-sentence description, Deterministic), Routes, Layers (with "Add the missing layer
+  files" as an inline Generate action), Violations, and the Story tab (section 9).
+- **Uncluttered**: a feature row shows at most one dot; counts sit in the meta column; only the selected feature is
+  expanded; the Flow diagram shows one feature at a time.
+
+**Projects whose features root is not `features/`.** The owner's real app keeps legacy code untouched and puts
+Construct-managed features in a new top-level folder (`architecture.yml` `features.root: construct`). The tree's top
+row names the root (`construct/ · 4 features`), and files outside it appear in a separate quiet group **"Legacy,
+outside construct/ (38 files, not managed)"**, greyed, with no violations counted against them. The Import wizard's
+default destination becomes the configured root, and its first message names it.
+
+**What exists today vs what is new**
+
+| Need | Today | New block needed |
+|---|---|---|
+| Routes that use a feature, the router kind | `featureRoutes` / `discoverRoutes` with adapters `nextjs` and `react-spa` (`src/engine/units/route-adapters.mjs`); `sections.flow` in the feature summary | No adapter for a plain Express backend (owner listed "Express"): a candidate adapter |
+| Layer files and the import graph | `buildFlow(ctx, feature)`, `buildImportGraph`; `listUnits` for features and files | none for present layers |
+| Missing-layer detection | `validate` reports missing files; the seven layer names are configuration | A small "layers present / missing" summary per feature (candidate deterministic block) |
+| Configurable features root | `features.root` is read by `src/config.mjs` (default `features`) | Not verified that the Cockpit, the wizard and the tree honour a non-default root everywhere; needs a check |
+| "Not managed" legacy files | none found | A block that lists source files outside the root (candidate) |
+| Violations per layer | validate output with file paths | grouping by layer for the pin (UI only) |
+| Feature with no route note | `NOTE_NO_ROUTE` (info) | UI wording and the "Map to a route" action |
+
+Sub-issue: **Feature structure view** (Features screen tree + Flow, missing layers, legacy group, non-default root), size
+**L**; specs touched: `flow-browser`, `shell-tabs`, `plan-mode`; new `feature-structure.spec.js`. It sits with slice 5
+(Features screen) and reuses #328.

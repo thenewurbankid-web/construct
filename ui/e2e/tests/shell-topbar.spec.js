@@ -126,12 +126,12 @@ test.describe('Cockpit top bar (#245)', () => {
       fs.mkdirSync(path.join(root, 'shop-app'), { recursive: true });
       fs.writeFileSync(path.join(root, 'shop-app', 'architecture.yml'), 'version: 1\n');
       fs.mkdirSync(path.join(root, 'notes'));
-      const res = await request.post(`${API}/api/settings`, { data: { browseRoots: [root], projectDir: root } });
+      const res = await request.post(`${API}/api/settings`, { data: { projectDir: root } });
       expect(res.ok()).toBeTruthy();
     });
 
     test.afterAll(async ({ request }) => {
-      await request.post(`${API}/api/settings`, { data: { browseRoots: [], projectDir: original } });
+      await request.post(`${API}/api/settings`, { data: { projectDir: original } });
       fs.rmSync(base, { recursive: true, force: true });
     });
 

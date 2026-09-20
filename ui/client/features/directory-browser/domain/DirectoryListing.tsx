@@ -1,3 +1,4 @@
+import { crumbsFor } from './Crumbs';
 import type { DirBadge, DirEntryView, DirListingView, RawDirEntry, RawDirListing } from '../types';
 
 /** Pure mapper: which human-readable marker badges a directory earns.
@@ -21,6 +22,8 @@ export function toEntryView(entry: RawDirEntry): DirEntryView {
 export function toListingView(raw: RawDirListing): DirListingView {
   return {
     path: raw.path,
+    root: raw.roots?.[0] ?? null,
+    crumbs: crumbsFor(raw.roots?.[0] ?? null, raw.path),
     parent: raw.parent,
     entries: raw.entries.map(toEntryView),
     total: raw.total,

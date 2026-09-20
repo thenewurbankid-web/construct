@@ -133,6 +133,8 @@ export type ProjectSwitcherProps = {
   /** Folder picker supplied by the controller (another feature). */
   picker: ReactNode;
   error?: string | null;
+  /** #365: closes the open project (the Cockpit then shows "Open a project"). */
+  onCloseProject?: () => void;
 };
 
 export type TopBarProps = {

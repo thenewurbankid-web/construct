@@ -93,10 +93,58 @@ npm run build
 npm start   # serves the production build, default port 3000
 ```
 
+## Workspace: one folder, no project at start — #365
+
+The Cockpit server can only ever open, browse, read, write or run commands in **one workspace
+folder**, and it starts with **no project open**.
+
+| Setting | Meaning |
+| --- | --- |
+| `CONSTRUCT_WORKSPACE_ROOT` | Absolute path of the workspace. Default `$HOME/workspace`. Created if missing, resolved with `realpath` once at startup. Relative paths and `/` are refused (the server does not start). |
+| `CONSTRUCT_STATE_DIR` | Where process records, bot worktrees and the remembered "last project" live. Server-owned, outside the workspace, never client-addressable. |
+
+- **No project at start.** `GET /api/settings` returns `projectDir: null, noProject: true`. The Cockpit shows one
+  **Open a project** screen on every project screen, with a folder picker that starts at (and cannot leave) the
+  workspace, workspace-relative breadcrumbs and a hint (`git clone <url> <workspace>/my-project`). The project that
+  was open last is offered as **Reopen <name>**; it is never opened automatically. **Close project** and the switcher
+  are in the top bar. Layout memory stays per project.
+- **Every path is contained by realpath**: a project choice (`POST /api/settings`), the folder browser
+  (`GET /api/fs/browse`), and the files `POST /api/import` reads (`from`, `planPath`). `..`, absolute paths elsewhere,
+  symlinks that lead out, dangling symlinks, sibling prefixes (`/ws-evil` vs `/ws`), NUL bytes and over-long paths are
+  refused (`403 OUTSIDE_WORKSPACE`, `400 BAD_PATH`, `404 NOT_FOUND`). A relative path means workspace-relative, never
+  the server's working directory. The open project is re-verified on every request, so a folder later replaced by a
+  symlink out of the workspace stops being served (`409 NO_PROJECT`).
+- **`409 { code: 'NO_PROJECT' }`** is what every project route (pages, workflows, units, flow, nav, validate, git,
+  processes, plan, review, tests, create/refactor/research/import/init) answers with no project open. If the only
+  `architecture.yml` is *above* the workspace it is not used: `409 PROJECT_ROOT_OUTSIDE_WORKSPACE` (`init` still works
+  and creates a project inside the workspace).
+- `browseRoots` is no longer a setting (`POST /api/settings { browseRoots }` is `400 BROWSE_ROOTS_FIXED`); the picker's
+  only root is the workspace. `POST /api/settings { closeProject: true }` closes the project.
+
+Hosted example (see `tools/dev/run-hosted.sh`):
+
+```bash
+mkdir -p /srv/construct/workspace
+CONSTRUCT_WORKSPACE_ROOT=/srv/construct/workspace PUBLIC_HOST=cockpit.example.com \
+  CONSTRUCT_GITHUB_CLIENT_ID=... CONSTRUCT_GITHUB_CLIENT_SECRET=... CONSTRUCT_ALLOWED_LOGINS=you \
+  tools/dev/run-hosted.sh
+git clone https://github.com/you/shop /srv/construct/workspace/shop   # then pick "shop" in the Cockpit
+```
+
+**Test harness only:** `CONSTRUCT_E2E_PROJECT_DIR` preloads a project. It goes through the same containment as any client
+choice and the server **refuses to start** with it on a non-loopback host. The ordinary e2e configs set the workspace to
+the OS temp dir (their fixtures are `mkdtemp` directories) and preload one initialised project;
+`playwright.workspace.config.js` runs a narrow workspace with nothing preloaded and attacks the boundary
+(`tests/workspace.spec.js`); `playwright.directory-picker.config.js` runs the picker spec against the same harness.
+
+Known limits: files *inside* a project are guarded by each route's own project-relative checks (a symlink inside a
+project that points out of the workspace is followed by the CLI commands that generate into it); a project whose git
+top level is above the workspace (a workspace nested in another repository) is the operator's set-up choice.
+
 ## Authentication (GitHub login) — #278
 
 `ui/server` runs Construct CLI commands, browses the filesystem and reads
-and writes source files under a **client-settable** project directory.
+and writes source files under the project directory the user opens (confined to the workspace above, #365).
 Unauthenticated plus reachable from another machine equals remote code
 execution, so the server is deliberately hard to get into that state:
 
@@ -197,6 +245,8 @@ export WATCHPACK_POLLING=true CHOKIDAR_USEPOLLING=1   # fs.inotify.max_user_inst
 ../../tools/dev/heavy.sh npx playwright test -c playwright.auth.config.js               # login gate, and the account chip half of popover-dismiss
 ../../tools/dev/heavy.sh npx playwright test -c playwright.processes.config.js          # Processes drawer (fake step executor)
 ../../tools/dev/heavy.sh npx playwright test -c playwright.processes-approval.config.js # approve/reject (seeds a finished process)
+../../tools/dev/heavy.sh npx playwright test -c playwright.workspace.config.js          # workspace boundary + "Open a project" (#365)
+../../tools/dev/heavy.sh npx playwright test -c playwright.directory-picker.config.js   # folder picker inside a narrow workspace
 ```
 
 `a11y.spec.js` and `tests-tab.spec.js` import `@axe-core/playwright`, a declared devDependency: run `npm install` in
@@ -534,9 +584,10 @@ REST (`ui/server/src/index.mjs`), all `POST` except settings' `GET`:
 
 - `GET /api/help` — `{ usage, topLevelHelp, topics: string[], helpTopics: Record<string,string> }`,
   all sourced live from `src/usage.mjs` and `src/repl.mjs` (read-only, no side effects)
-- `GET|POST /api/settings` — `{ projectDir?, llmProvider? }` in (POST only; GET takes
-  nothing); both return `{ projectDir, llmProvider, availableProviders,
-  resolvedProjectRoot, valid, needsInit }`. `resolvedProjectRoot` is
+- `GET|POST /api/settings` — `{ projectDir?, closeProject?, llmProvider? }` in (POST only; GET takes
+  nothing); both return `{ projectDir (null until one is opened, #365), noProject, workspaceRoot, lastProject,
+  llmProvider, availableProviders, resolvedProjectRoot, valid, needsInit }`. `projectDir` must be inside the workspace
+  (see "Workspace" above). `resolvedProjectRoot` is
   `findProjectRoot(projectDir)` (src/config.mjs) — the exact upward search
   `getRoot` in src/cli.mjs uses to resolve every command's root, so `valid`
   here means exactly what it means when a command actually runs (a

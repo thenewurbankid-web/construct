@@ -40,7 +40,7 @@ Concept mocks (1440x900, each in `png/<name>--dark.png` and `--light.png`):
   prefix: `node docs/design/mocks/render.mjs flow-nav`.
 
 - **Five-screen IA** (`build-ia.mjs`, styles in `ia.css`): `ia-features`, `ia-account-menu`,
-  `ia-slot-matrix`, `ia-notes-states`, `ia-no-project`, `ia-git`, `ia-git-connect`, `ia-narrow`, and the POC-parity set `ia-pages`, `ia-pages-next`, `ia-pages-change`, `ia-components`, `ia-generate-states`, `ia-preview-states`, `ia-side-preview`, and the Story set `ia-story`, `ia-story-states`, `ia-story-modes`, `ia-story-indicators`, `ia-story-consent`, `ia-clip-bridge`, `ia-clipper`. Spec: `ia-five-screens.md`.
+  `ia-slot-matrix`, `ia-notes-states`, `ia-no-project`, `ia-git`, `ia-git-connect`, `ia-narrow`, and the POC-parity set `ia-pages`, `ia-pages-next`, `ia-pages-change`, `ia-components`, `ia-generate-states`, `ia-preview-states`, `ia-side-preview`, and the Story set `ia-story`, `ia-story-states`, `ia-story-modes`, `ia-story-indicators`, `ia-story-consent`, `ia-clip-bridge`, `ia-clipper`, and `ia-feature-structure` (a feature as a hierarchy). Spec: `ia-five-screens.md`.
 
 `plan-mode` was `research-mode` until the owner renamed the middle mode in #243:
 the modes are **Explore / Plan / Build** and the brand in the top bar is

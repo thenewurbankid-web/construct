@@ -9,6 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import base from './playwright.config.js';
+import { workspaceEnv } from './support/workspace.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SERVER_PORT = Number(process.env.E2E_SERVER_PORT) || 4000;
@@ -27,7 +28,7 @@ export default {
       command: 'node ../e2e/support/review-server.mjs',
       cwd: path.resolve(__dirname, '../server'),
       reuseExistingServer: false,
-      env: { PORT: String(SERVER_PORT), UI_CLIENT_ORIGIN: CLIENT_ORIGIN, OG351_MARKER: MARKER },
+      env: { PORT: String(SERVER_PORT), UI_CLIENT_ORIGIN: CLIENT_ORIGIN, OG351_MARKER: MARKER, ...workspaceEnv({ preload: false }) },
     },
     { ...base.webServer[1], reuseExistingServer: false },
   ],

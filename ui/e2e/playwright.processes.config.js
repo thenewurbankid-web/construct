@@ -10,6 +10,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import base from './playwright.config.js';
+import { workspaceEnv } from './support/workspace.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SERVER_PORT = Number(process.env.E2E_SERVER_PORT) || 4000;
@@ -17,6 +18,7 @@ const CLIENT_ORIGIN = `http://localhost:${Number(process.env.E2E_CLIENT_PORT) ||
 
 export default {
   ...base,
+  testIgnore: [], // the base config ignores this spec (it needs this harness); an inherited ignore would hide it here too
   testMatch: /processes-drawer\.spec\.js/,
   timeout: 60_000,
   webServer: [
@@ -25,7 +27,7 @@ export default {
       command: 'node ../e2e/support/processes-server.mjs',
       cwd: path.resolve(__dirname, '../server'),
       reuseExistingServer: false,
-      env: { PORT: String(SERVER_PORT), UI_CLIENT_ORIGIN: CLIENT_ORIGIN },
+      env: { PORT: String(SERVER_PORT), UI_CLIENT_ORIGIN: CLIENT_ORIGIN, ...workspaceEnv({ preload: false }) },
     },
     { ...base.webServer[1], reuseExistingServer: false },
   ],

@@ -44,6 +44,12 @@ Open-core note: items about the Cockpit UI, an MCP server and predefined envelop
 packages (enforcers, AST, generators) are open. The project-manager agent watches that boundary as a
 Module/Sub-module concern when triaging. There is deliberately no Edition field yet (optional follow-up).
 
+### Milestone (not a board field)
+
+Releases are tracked with GitHub milestones (`v0.8.0`, `v0.9.0`, `v0.10.0`, `v1.0.0`), set on the issue, not on the
+board. The board has no Milestone field and its schema is intentionally unchanged. Show milestones as a column in a
+table view (the built-in Milestone column) or filter with `milestone:v0.9.0`. See `docs/VERSIONING.md`.
+
 ## Views
 
 All seven were created through the GitHub API (REST `POST /users/{user}/projectsV2/{n}/views` accepts

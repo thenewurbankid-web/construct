@@ -1,5 +1,6 @@
 // #289 / #332 — Plan mode API. Security first: the plan comes from the browser, so every refusal is proven
 // to start NOTHING; then behaviour on a real fixture project.
+import '../../../test-utils/workspaceRoot.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';

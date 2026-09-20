@@ -1,6 +1,7 @@
 // #312/#313 -- the Review API. Security first (every route behind the session gate; a client-supplied
 // ref is refused unless it is exactly a branch of THIS project; nothing is ever read from a client path),
 // then behaviour, then the read-only guarantee measured on a real throwaway repository.
+import '../../../test-utils/workspaceRoot.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';

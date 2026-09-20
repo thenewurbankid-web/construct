@@ -105,6 +105,7 @@ function ShellFrame({ children }: { children: ReactNode }) {
       onToggle={project.toggle}
       onClose={project.close}
       error={project.error}
+      onCloseProject={project.closeProject}
       picker={<DirectoryBrowserController onSelect={project.choose} initialPath={project.dir ?? undefined} />}
     />
   );

@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { DirectoryBrowserController } from '@/features/directory-browser';
 import { useProjectGate } from '../hooks/useProjectGate';
 import { ProjectGatePage } from '../pages/ProjectGatePage';
 
@@ -10,11 +11,25 @@ import { ProjectGatePage } from '../pages/ProjectGatePage';
  * architecture.yml above it. Every gated feature's own controller imports
  * this one from project-gate's public API (index.ts) and wraps its content
  * with it — the real, checked (SLICE-002) cross-feature dependency the
- * migration in #71 asked for. */
+ * migration in #71 asked for.
+ *
+ * #365: with no project open it shows the "Open a project" screen; the folder picker is another feature's
+ * controller (directory-browser), composed here as a slot, scoped by the server to the workspace. */
 export function ProjectGateController({ children }: { children: ReactNode }) {
-  const { status, initializing, error, loadError, refresh, handleInit } = useProjectGate();
+  const { status, initializing, error, loadError, opening, openError, refresh, handleInit, handleOpen } = useProjectGate();
   return (
-    <ProjectGatePage status={status} initializing={initializing} error={error} onInit={handleInit} loadError={loadError} onRetry={refresh}>
+    <ProjectGatePage
+      status={status}
+      initializing={initializing}
+      error={error}
+      onInit={handleInit}
+      loadError={loadError}
+      onRetry={refresh}
+      opening={opening}
+      openError={openError}
+      onOpen={handleOpen}
+      picker={<DirectoryBrowserController onSelect={handleOpen} />}
+    >
       {children}
     </ProjectGatePage>
   );

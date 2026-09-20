@@ -13,7 +13,7 @@
 // shell. The one place a path from a client matters (the artifact diff) is
 // matched against the paths recorded on the process, the same way.
 import { spawnSync } from 'node:child_process';
-import { findProjectRoot } from '../../../src/config.mjs';
+import { containedProjectRoot } from './projectGuard.mjs';
 import { openProcessStore, resolveStateDir } from '../../../src/engine/processStore.mjs';
 import { processSummary, createProcess } from '../../../src/engine/processModel.mjs';
 import { createProcessEngine } from '../../../src/engine/processEngine.mjs';
@@ -107,7 +107,7 @@ export function createProcessesService({ getProjectDir, stateDir = resolveStateD
 
   function open() {
     const dir = getProjectDir();
-    const root = dir ? findProjectRoot(dir) || dir : null;
+    const root = dir ? containedProjectRoot(dir) || dir : null;
     if (!root) return null;
     let entry = projects.get(root);
     if (!entry) {

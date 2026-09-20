@@ -34,6 +34,26 @@ export function DirectoryPicker({
       {!listing && !error && <p className="hint">Loading folders…</p>}
       {listing && (
         <>
+          {listing.crumbs.length > 0 && (
+            <nav className="dir-picker__crumbs" aria-label="Location in the workspace" data-testid="dir-picker-crumbs">
+              <ol>
+                {listing.crumbs.map((crumb, i) => {
+                  const last = i === listing.crumbs.length - 1;
+                  return (
+                    <li key={crumb.path}>
+                      {last ? (
+                        <span aria-current="page">{crumb.label}</span>
+                      ) : (
+                        <button type="button" className="dir-picker__crumb" onClick={() => onNavigate(crumb.path)} disabled={loading}>
+                          {crumb.label}
+                        </button>
+                      )}
+                    </li>
+                  );
+                })}
+              </ol>
+            </nav>
+          )}
           <div className="dir-picker__current">
             <code data-testid="dir-picker-path">{listing.path}</code>
             <Badges badges={listing.currentBadges} />
