@@ -12,7 +12,7 @@ export function PlanPage({ contextError, impact }: PlanPageProps) {
     <div className="pl-stage" data-testid="plan-stage">
       <h1 className="pl-h1">Plan</h1>
       <p className="pl-lede">
-        From a ticket to a plan you can review before anything runs. The impact is worked out from your code and your rules, <span className="pl-det">DETERMINISTIC</span> and without a model; the plan shows exactly where a model would be used.
+        From a note to a plan you can review before anything runs. The impact is worked out from your code and your rules, <span className="pl-det">DETERMINISTIC</span> and without a model; the plan shows exactly where a model would be used.
       </p>
       {contextError && (
         <div className="dg-empty" role="alert" data-testid="plan-context-error">

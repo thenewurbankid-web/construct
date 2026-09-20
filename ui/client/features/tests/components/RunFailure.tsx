@@ -13,7 +13,7 @@ const where = (step: { n: number; sentence: string } | null) => (step ? `Step ${
 
 /** One failed test, explained. The two kinds are told apart in words (never colour alone): a CONVENTION failure is the
  * test harness's problem, in the generator's own sentence, and is not offered as a bug report; an APP failure says what
- * was expected and what the flow reached, and is. Everything shown is selectable text, so it can be pasted into a ticket. */
+ * was expected and what the flow reached, and is. Everything shown is selectable text, so it can be pasted into a note. */
 export function RunFailure({ outcome, copied, onCopy, prefix = '' }: RunFailureProps) {
   const f = outcome.failure;
   const [manual, setManual] = useState(false);
@@ -50,7 +50,7 @@ export function RunFailure({ outcome, copied, onCopy, prefix = '' }: RunFailureP
         {f.bugReport && (
           <div className="ts-actions">
             <button type="button" className="ts-btn ts-btn--primary" data-testid={`${prefix}copy-bug-report`} onClick={async () => { if (!(await onCopy(key, f.bugReport as string))) setManual(true); }}>Copy as bug report</button>
-            {copied === key && <span className="hint" role="status" data-testid={`${prefix}copied`}>Copied. Paste it into your ticket.</span>}
+            {copied === key && <span className="hint" role="status" data-testid={`${prefix}copied`}>Copied. Paste it into your notes.</span>}
           </div>
         )}
         {f.bugReport && (manual || copied === key) && <pre className="ts-pre" data-testid={`${prefix}bug-report-text`} tabIndex={0} aria-label="Bug report, as text">{f.bugReport}</pre>}

@@ -7,7 +7,7 @@ export function ProposalList({ proposals, accepted, onToggleAccept }: Pick<UnitP
     <ul className="pl-list" aria-label="Suggested units" data-testid="plan-proposals">
       {proposals.length === 0 && (
         <li className="pl-hint" data-testid="plan-proposals-none">
-          Nothing in the ticket matched a unit in this project. Pick the units yourself above.
+          Nothing in your note matched a unit in this project. Pick the units yourself above.
         </li>
       )}
       {proposals.map((s) => (

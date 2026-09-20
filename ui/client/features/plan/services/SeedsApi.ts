@@ -8,7 +8,7 @@ export const proposeSeeds = async (text: string): Promise<ApiResult<Proposal[]>>
   try {
     const body = await postJson<{ ok?: boolean; seeds?: Proposal[]; error?: string }>('/api/plan/propose', { text });
     if (body.ok && body.seeds) return { ok: true, data: body.seeds };
-    return { ok: false, error: body.error ?? 'The ticket text could not be read.' };
+    return { ok: false, error: body.error ?? 'The Notes text could not be read.' };
   } catch {
     return { ok: false, error: UNREACHABLE };
   }

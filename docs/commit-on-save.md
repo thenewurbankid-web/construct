@@ -49,7 +49,7 @@ a save touched files it never opened.)
 
 | Part | Whose | Notes |
 |---|---|---|
-| `CON` | yours | any ticket key, your initials, or empty |
+| `CON` | yours | any reference (for example a ticket key), your initials, or empty |
 | `a3f7` | ours | a short random hash made when the session branch is created — **not** a timestamp, because parallel agents start within the same second |
 | `0007` | ours | monotonic **within the branch**, derived from that branch's own commit subjects |
 
@@ -63,7 +63,7 @@ not restart the numbering.
 **first save**, not when the Cockpit opens, so browsing leaves no empty branches behind — and by then
 we know what was touched, so the name can describe the work. The slug, first match wins:
 
-1. the plan or ticket title (`planTouches`, #286);
+1. the plan or note title (`planTouches`, #286);
 2. the feature and unit first touched;
 3. the feature alone, when one save touched several units;
 4. the date, only if nothing above can be determined.

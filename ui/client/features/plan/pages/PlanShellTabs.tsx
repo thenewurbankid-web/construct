@@ -7,7 +7,7 @@ import type { PlanPaneProps, TicketPaneProps } from '../types';
 // registers these into the shell's slot registry while the screen is mounted.
 export function planShellTabs(ticket: TicketPaneProps, plan: PlanPaneProps): { browser: ShellTab; tools: ShellTab } {
   return {
-    browser: { id: 'plan-ticket', title: 'Ticket', preferred: true, render: () => <TicketPane {...ticket} /> },
+    browser: { id: 'plan-ticket', title: 'Notes', preferred: true, render: () => <TicketPane {...ticket} /> },
     tools: { id: 'plan-plan', title: 'Plan', preferred: true, badge: plan.count, render: () => <PlanPane {...plan} /> },
   };
 }

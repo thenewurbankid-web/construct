@@ -39,7 +39,7 @@ The package version fields are not changed by this entry.
 - Workflows: render real XState machines, edit states, transitions, context, actions and guards, plain-English panels ([#172], [#178], [#241]).
 - Project gate with an allowlisted directory browser ([#239]).
 - Processes drawer with list, detail, controls and live logs; approve or reject a bot's artifacts ([#343], [#347]).
-- Plan mode: ticket, impact, plan review and edit, run ([#355]).
+- Plan mode: note, impact, plan review and edit, run ([#355]).
 - Review mode: pull requests by feature and layer, findings, blast radius, cancellable analyses, keyboard navigation ([#350], [#357], [#363]).
 - Files and Flow switch in the Browser pane ([#349]).
 - Tests tab: scenario coverage, clone to edit a locked test, step document and edit panel, empty and stale states ([#356], [#361], [#364]).

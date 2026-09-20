@@ -9,7 +9,7 @@ export const FAILURE_KINDS: FailureKind[] = [
     tone: 'warn',
     what: 'The test could not find the element the flow says it should click. Construct binds each workflow event to an element by convention (data-testid = the event name in kebab-case), and nothing on the page has it.',
     example: 'Missing [data-testid="request-refund"]. It is what the workflow event REQUEST_REFUND binds to.',
-    action: 'Not a product bug: the page was never exercised. Do not raise a ticket against the app. Add the attribute, then run again.',
+    action: 'Not a product bug: the page was never exercised. Do not raise a bug against the app. Add the attribute, then run again.',
   },
   {
     id: 'app',

@@ -8,7 +8,7 @@ This page shows the Cockpit only. The same tools are available from the [command
 
 ### 1. Describe the change, see what it touches
 
-You can press **Suggest units from the ticket text**. That is a plain text match, no model, and every suggestion is shown as a guess (`inferred`, with a confidence) for you to confirm or untick. The rules your project enforces are listed beside the text, so the limits are visible while you plan.
+You can press **Suggest units from the note text**. That is a plain text match, no model, and every suggestion is shown as a guess (`inferred`, with a confidence) for you to confirm or untick. The rules your project enforces are listed beside the text, so the limits are visible while you plan.
 
 **Analyse impact** then shows what the change reaches: features, files, and warnings such as "the seeds live in 2 features but the impact reaches 1 more". Each row is marked `derived` (worked out from your code) or `inferred` (reached only through a guess).
 
