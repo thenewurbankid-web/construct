@@ -58,3 +58,6 @@ export * from './hooks/useShellNavigation';
 
 /** Opens the drawer on a given tab. */
 export * from './hooks/useDrawerActions';
+
+/** Lets a screen open the drawer's Processes tab (Plan mode does after starting a process). */
+export * from './hooks/useShellDrawer';

@@ -20,6 +20,7 @@ import { useShellRoute } from '../hooks/useShellRoute';
 import { ShellTabsProvider, useShellTabs } from '../hooks/useShellTabs';
 import { useShellShortcuts } from '../hooks/useShellShortcuts';
 import { useDrawerActions } from '../hooks/useDrawerActions';
+import { ShellDrawerContext } from '../hooks/useShellDrawer';
 import { useShellCommands } from '../hooks/useShellCommands';
 import { useShellNavigation } from '../hooks/useShellNavigation';
 import { useTheme } from '../hooks/useTheme';
@@ -86,6 +87,7 @@ function ShellFrame({ children }: { children: ReactNode }) {
   };
 
   const { showDrawerTab } = useDrawerActions(toggle, select);
+  const drawerApi = useMemo(() => ({ openProcesses: () => showDrawerTab('processes') }), [showDrawerTab]);
   useShellCommands({
     navigate,
     togglePane: toggle,
@@ -133,7 +135,7 @@ function ShellFrame({ children }: { children: ReactNode }) {
       activeTabs={active}
       onSelectTab={select}
     >
-      {children}
+      <ShellDrawerContext.Provider value={drawerApi}>{children}</ShellDrawerContext.Provider>
     </ShellPage>
   );
 }

@@ -52,6 +52,8 @@ test('modes keep the owner names (Plan is the old Research route) and map paths'
   assert.equal(modeForPath('/pages').id, 'explore');
   assert.equal(modeForPath('/workflows').id, 'explore');
   assert.equal(modeForPath('/').id, 'plan');
+  assert.equal(modeForPath('/plan').id, 'plan');
+  assert.equal(MODES.find((m) => m.id === 'plan').href, '/plan');
   assert.equal(modeForPath('/wizard').id, 'build');
   assert.equal(modeForPath('/review').id, 'review');
   assert.equal(modeForPath('/settings'), null);

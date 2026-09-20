@@ -15,7 +15,7 @@
 import { spawnSync } from 'node:child_process';
 import { findProjectRoot } from '../../../src/config.mjs';
 import { openProcessStore, resolveStateDir } from '../../../src/engine/processStore.mjs';
-import { processSummary } from '../../../src/engine/processModel.mjs';
+import { processSummary, createProcess } from '../../../src/engine/processModel.mjs';
 import { createProcessEngine } from '../../../src/engine/processEngine.mjs';
 import { createBotRunner, botBranch } from '../../../src/engine/botRunner.mjs';
 import { createApprovalGate, GATE_CODES } from '../../../src/engine/approvalGate.mjs';
@@ -134,6 +134,23 @@ export function createProcessesService({ getProjectDir, stateDir = resolveStateD
     store: () => open()?.store ?? null,
     /** Does `record` belong to the project the Cockpit is looking at? */
     isCurrent(record) { return open()?.root === record.projectRoot; },
+
+    /** #289 — create a process from a plan the caller has ALREADY validated (planService.run) and start it.
+     * The project is the service's own; createProcess() validates the plan once more and throws on a bad one. */
+    startPlan(plan) {
+      const entry = open();
+      if (!entry) return { ok: false, status: 409, error: 'No Construct project is open.' };
+      let record;
+      try {
+        record = entry.store.save(createProcess(plan, { projectRoot: entry.root }));
+      } catch (e) {
+        return { ok: false, status: 400, error: String(e?.message || e) };
+      }
+      emit(record);
+      const started = entry.engine.start(record.id);
+      if (!started.accepted) return { ok: false, status: 409, error: started.error?.message || 'The process could not be started.' };
+      return { ok: true, processId: record.id };
+    },
 
     list() {
       const entry = open();
