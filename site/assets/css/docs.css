@@ -82,3 +82,21 @@ h2:hover > .anchor, h3:hover > .anchor, h4:hover > .anchor, .anchor:focus { opac
 .sidebar a[aria-current="page"]::before { content: "\25B8\00a0"; }
 .side-tag { display: inline-block; margin-right: 6px; padding: 0 5px; border: 1px solid var(--border); border-radius: 4px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; }
 .cta-link { align-self: center; font-weight: 600; }
+/* ---- documentation version switcher and banner (issue #397) ---- */
+.ver-switch { position: relative; }
+.ver-switch summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-width: 116px; justify-content: space-between; box-sizing: border-box; padding: 5px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); color: var(--text); font-size: 13.5px; }
+.ver-switch summary::-webkit-details-marker { display: none; }
+.ver-switch summary::after { content: ""; width: 6px; height: 6px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg) translateY(-2px); }
+.ver-switch[open] summary::after { transform: rotate(225deg); }
+.ver-switch summary:hover { background: var(--panel-2); }
+.ver-switch summary:focus-visible, .ver-switch a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ver-label { color: var(--muted); }
+.ver-switch ul { position: absolute; right: 0; top: calc(100% + 6px); z-index: 60; margin: 0; padding: 4px; list-style: none; min-width: 190px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); }
+.ver-switch li a { display: flex; justify-content: space-between; gap: 12px; padding: 7px 10px; border-radius: 6px; color: var(--text); font-size: 14px; }
+.ver-switch li a:hover { background: var(--panel-2); text-decoration: none; }
+.ver-switch li a[aria-current="true"] { background: var(--panel-2); font-weight: 600; }
+.ver-tag { color: var(--muted); font-size: 12px; font-weight: 400; }
+.ver-banner { background: var(--panel-2); border-bottom: 1px solid var(--border); }
+.ver-banner p { max-width: 1180px; margin: 0 auto; padding: 9px 16px; font-size: 14px; color: var(--text); }
+.ver-banner a { color: var(--accent); font-weight: 600; }
+@media (max-width: 640px) { .ver-switch summary { min-width: 0; } .ver-label { display: none; } }

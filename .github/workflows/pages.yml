@@ -8,6 +8,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+    tags: ['v*.*.*'] # a release publishes its /X.Y/ docs (path filters do not apply to tags)
     paths: ['site/**', 'docs/**', 'README.md', 'src/**', 'schemas/**', 'package.json', '.github/workflows/pages.yml']
   schedule:
     - cron: '17 */6 * * *'
@@ -32,6 +33,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # every v*.*.* tag is built into its own /X.Y/ path
+      - run: git fetch --tags --force
       - uses: actions/setup-node@v7
         with:
           node-version: 22
@@ -40,11 +44,12 @@ jobs:
         run: npm ci
       - name: Test site generator
         run: node --test site/test/*.test.mjs
-      - name: Build site
+      # One artifact holds every version (Pages replaces the whole site on each deploy):
+      # / = newest release (main while no tag exists), /X.Y/ = each release, /next/ = this checkout.
+      - name: Build all documentation versions
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-        run: node site/build.mjs --out site/dist
+        run: node site/build-all.mjs --out site/dist
       - uses: actions/upload-pages-artifact@v5
         with:
           path: site/dist

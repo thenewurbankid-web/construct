@@ -1,5 +1,6 @@
 // Page templates: pure functions from data to HTML strings. No I/O.
 import { esc } from './text.mjs';
+import { versionSwitcher, versionBanner, currentVersion } from './versions.mjs';
 
 const FAVICON =
   "data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2048%2048%22%3E%3Cstyle%3E:root%7B--i:%230d0f12%7D%40media%20%28prefers-color-scheme:dark%29%7B:root%7B--i:%23f2f4f7%7D%7D%3C/style%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20gradientUnits=%22userSpaceOnUse%22%20x1=%224%22%20y1=%224%22%20x2=%2244%22%20y2=%2244%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%238fb0ff%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%234b63f5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%224%22%20y=%2210%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22var%28--i%29%22/%3E%3Crect%20x=%2216%22%20y=%2227%22%20width=%2228%22%20height=%2211%22%20rx=%225.5%22%20fill=%22none%22%20stroke=%22url%28%23g%29%22%20stroke-width=%222.8%22/%3E%3C/svg%3E";
@@ -16,7 +17,11 @@ const SITE_NAME = 'Line';
  * page: { path, title, description, section: 'home'|'user'|'dev'|'none', body, nav?, headings?, sourceUrl?, canonical?, ogImage?, crumbs? }
  * nav: [{ group, items: [{ title, path }] }] for the sidebar
  */
-export function layout(page, { repoUrl, buildTime }) {
+export function layout(page, { repoUrl, buildTime, versions, basePath, version }) {
+  const verList = versions && versions.length ? versions : null;
+  const verCurrent = verList ? currentVersion(verList, { basePath, version }) : null;
+  const switcher = verList ? versionSwitcher({ versions: verList, current: verCurrent, pagePath: page.path === '404.html' ? '' : page.path }) : '';
+  const banner = verList ? versionBanner({ versions: verList, current: verCurrent }) : '';
   const root = page.root ?? rootFor(page.path);
   const { section = 'none' } = page;
   const fullTitle = page.fullTitle ? esc(page.fullTitle) : page.path === '' ? `${SITE_NAME} documentation` : `${esc(page.title)} · ${SECTION_LABEL[section] || SITE_NAME}`;
@@ -80,11 +85,13 @@ ${page.basePath ? `<base href="${esc(page.basePath)}">` : ''}
     <a class="brand" href="${root}"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
     <nav class="primary" aria-label="Primary">${top}</nav>
     <div class="topbar-tools">
+      ${switcher}
       <a class="search-link" href="${root}search/">Search</a>
       <a class="ext" href="${esc(repoUrl)}">GitHub</a>
     </div>
   </div>
 </header>
+${banner}
 <div class="${shellClass}">
 ${sidebar}
 <main id="main" tabindex="-1">

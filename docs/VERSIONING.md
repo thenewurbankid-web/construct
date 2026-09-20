@@ -38,6 +38,23 @@ The documentation website is versioned together with the app.
 - The site shows a version switcher, and non-latest pages show a banner: "You are reading docs for v0.8 - see latest".
 - GitHub Pages replaces the whole site on each deploy, so `.github/workflows/pages.yml` builds every tag plus `main`
   into one artifact. `site/build.mjs` takes `--base-path` and `--version`. (Implementation: issue #397.)
+- With no release tag yet, `main` is built as both the site root and `/next/`, shown as "next", with no switcher.
+
+Commands (all offline; run from the repo root after `npm ci`):
+
+```
+# Every version into one directory: / = newest tag, /X.Y/ per minor, /next/ = HEAD (what pages.yml runs)
+node site/build-all.mjs --out site/dist [--repo owner/name] [--no-search] [--next-ref main]
+
+# One version by hand (this is what build-all runs for each ref, using that ref's own site/build.mjs)
+node site/build.mjs --out /tmp/docs-0.8 --base-path /construct/0.8/ --version 0.8 --versions-file versions.json
+```
+
+`versions.json` is `{"versions":[{"id":"0.8","label":"v0.8","base":"/construct/0.8/","latest":false}, ...]}`; the
+list comes from `planBuilds()` in `site/lib/versions.mjs` (newest `vX.Y.Z` tag per minor, then `next`). Only refs
+that contain #397 can be published, so the first release is the first version with docs. The switcher links to the
+same page in each version (a page that does not exist there falls to the 404 page); the banner links to the latest
+home. Tests: `node --test site/test/*.test.mjs`.
 - Each example page has a "checked against" line that records a commit. The release procedure must re-verify each
   example and re-stamp that line to the release commit before tagging.
 - Caveat: tutorials are currently rendered from published guide tickets at build time, so a rebuild of an old tag

@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 // Build the Construct documentation site (User Guide + Developer Docs).
 //   node site/build.mjs [--out site/dist] [--repo owner/name] [--no-search]
+//                       [--base-path /name/X.Y/] [--version X.Y|next] [--versions-file versions.json]
+// --base-path is where THIS build is served (canonical URLs, sitemap, 404); --versions-file lists every
+// published version for the header switcher and banner (site/lib/versions.mjs, site/build-all.mjs).
 // Every page is authored under site/content or reused from the repository (README.md, docs/*.md,
 // src/ast/README.md) and rendered at build time, so the build needs no network and no token.
 // The CLI reference and the rule reference are generated from the code itself.
@@ -9,6 +12,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { layout, docBody, homeBody, sectionBody, searchBody, notFoundBody, redirectPage, rootFor } from './lib/pages.mjs';
+import { normalizeBase } from './lib/versions.mjs';
 import { renderMarkdown } from './lib/markdown.mjs';
 import { USER_GROUPS, DEV_GROUPS, USER_INDEX, DEV_INDEX, EXAMPLES_INDEX, generatedMarkdown } from './lib/structure.mjs';
 
@@ -28,11 +32,12 @@ export function parseArgs(argv) {
 
 const stripLeadingH1 = (md) => md.replace(/^\s*#\s+[^\n]*\n+/, '');
 
-export async function build({ out, repo, buildTime = new Date(), basePath, search = false, repoRoot = REPO_ROOT }) {
+export async function build({ out, repo, buildTime = new Date(), basePath, version, versions, search = false, repoRoot = REPO_ROOT }) {
   const repoUrl = `https://github.com/${repo}`;
   const [owner, name] = repo.split('/');
-  const siteUrl = `https://${owner}.github.io/${name}/`;
-  basePath ??= `/${name}/`;
+  basePath = normalizeBase(basePath ?? `/${name}/`);
+  const siteUrl = `https://${owner}.github.io${basePath}`;
+  const chrome = { repoUrl, buildTime, versions, basePath, version };
   fs.rmSync(out, { recursive: true, force: true });
   fs.mkdirSync(out, { recursive: true });
 
@@ -100,7 +105,7 @@ export async function build({ out, repo, buildTime = new Date(), basePath, searc
           ...neighbours(nav, def.path),
           ...extra,
         },
-        { repoUrl, buildTime },
+        chrome,
       ),
     );
   };
@@ -143,9 +148,9 @@ export async function build({ out, repo, buildTime = new Date(), basePath, searc
   }
 
   // ---- home, search, 404, redirects ------------------------------------
-  write('index.html', layout({ path: '', title: 'Construct', description: 'Documentation for Construct: build and refactor React + TypeScript apps with deterministic blocks. A User Guide for people using it and Developer Docs for people building on it.', section: 'home', body: homeBody(), crumbs: false, canonical: siteUrl }, { repoUrl, buildTime }));
-  write('search/index.html', layout({ path: 'search/', title: 'Search', description: 'Search the Construct documentation.', section: 'none', body: searchBody({ root: '../' }), canonical: siteUrl + 'search/' }, { repoUrl, buildTime }));
-  write('404.html', layout({ path: '404.html', root: '', fullTitle: 'Page not found · Construct', description: 'Page not found.', section: 'none', body: notFoundBody({ basePath }), crumbs: false, basePath }, { repoUrl, buildTime }));
+  write('index.html', layout({ path: '', title: 'Construct', description: 'Documentation for Construct: build and refactor React + TypeScript apps with deterministic blocks. A User Guide for people using it and Developer Docs for people building on it.', section: 'home', body: homeBody(), crumbs: false, canonical: siteUrl }, chrome));
+  write('search/index.html', layout({ path: 'search/', title: 'Search', description: 'Search the Construct documentation.', section: 'none', body: searchBody({ root: '../' }), canonical: siteUrl + 'search/' }, chrome));
+  write('404.html', layout({ path: '404.html', root: '', fullTitle: 'Page not found · Construct', description: 'Page not found.', section: 'none', body: notFoundBody({ basePath }), crumbs: false, basePath }, chrome));
   write('try-it.html', redirectPage({ to: 'user-guide/getting-started/', title: 'Getting started' }));
   fs.cpSync(path.join(HERE, 'assets'), path.join(out, 'assets'), { recursive: true });
   write('.nojekyll', '');
@@ -172,7 +177,8 @@ if (isMain) {
   const opts = parseArgs(process.argv.slice(2));
   const repo = opts.repo || process.env.GITHUB_REPOSITORY || DEFAULT_REPO;
   const out = path.resolve(opts.out || path.join(HERE, 'dist'));
-  const result = await build({ out, repo, search: !opts['no-search'] });
+  const versions = opts['versions-file'] ? JSON.parse(fs.readFileSync(opts['versions-file'], 'utf8')).versions : undefined;
+  const result = await build({ out, repo, basePath: opts['base-path'], version: opts.version, versions, search: !opts['no-search'] });
   console.log(`Built ${out}`);
   console.log(`  pages: ${result.pages}  examples: ${result.examples}  search: ${result.searchIndexed ? 'indexed' : 'off'}`);
 }
