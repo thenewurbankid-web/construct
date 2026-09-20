@@ -4,14 +4,17 @@ import { PreviewPanel } from '../components/PreviewPanel';
 import { PropFlowDiagram } from '../components/PropFlowDiagram';
 import type { usePagesEditor } from '../hooks/usePagesEditor';
 
-type PagesEditorPageProps = ReturnType<typeof usePagesEditor>;
+type PagesEditorPageProps = ReturnType<typeof usePagesEditor> & {
+  /** Commit-on-save indicator + dirty-tree prompt, supplied by the controller (another feature). */
+  gitSession?: ReactNode;
+};
 
 // The stage (middle pane) of the Pages Editor. The page/feature tree lives in
 // the shell's Browser pane and Inspector / Scope / Source / Diff in its Tools
 // tabs (see usePagesEditorTabs); this renders what you look at: the live app
 // preview, the structural mirror and the prop-flow diagram.
 export function PagesEditorPage(props: PagesEditorPageProps): ReactNode {
-  const { tree, error, selectedNodeId, selectNode, previewTitle, externalChange, livePreview } = props;
+  const { tree, error, selectedNodeId, selectNode, previewTitle, externalChange, livePreview, gitSession } = props;
 
   return (
     <div className="page pages-editor-page pe-stage">
@@ -20,6 +23,8 @@ export function PagesEditorPage(props: PagesEditorPageProps): ReactNode {
         Pick a page in the Browser, then click an element in a preview (or a node in the tree) to select it.
         Edit it in the Tools panel; every save is checked against the architecture rules.
       </p>
+
+      {gitSession}
 
       {error && <p className="status-error">{error}</p>}
 
