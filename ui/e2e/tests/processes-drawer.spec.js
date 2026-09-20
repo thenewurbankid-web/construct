@@ -40,6 +40,15 @@ const stateOf = (page) => page.getByTestId('process-state');
 const buttonNames = async (page) => page.getByRole('group', { name: 'Process controls' }).getByRole('button').allTextContents();
 
 test.describe.serial('Processes drawer (#292)', () => {
+  // The drawer opens 220px tall by default, which is tight for three columns; a person would drag
+  // it taller, so the layout the shell remembers per project is set that way before each visit.
+  test.beforeEach(async ({ page, request }) => {
+    const { projectDir } = await (await request.get(`${API}/api/settings`)).json();
+    await page.addInitScript(([key]) => {
+      localStorage.setItem(key, JSON.stringify({ left: { size: 200, open: true }, right: { size: 360, open: false }, drawer: { size: 380, open: false } }));
+    }, [`construct.shell.layout:${projectDir}`]);
+  });
+
   test('with nothing running the pill says 0 and the drawer says so', async ({ page }) => {
     await page.goto('/help');
     await expect(page.getByTestId('pill-processes')).toHaveText('Processes: 0');
@@ -140,7 +149,7 @@ test.describe.serial('Processes drawer (#292)', () => {
     await expect(stateOf(page)).toHaveText('Done');
   });
 
-  test('a refused control is shown as the server refused it, not hidden', async ({ page, request }) => {
+  test('the server refuses a control the machine does not allow (409), and says why', async ({ page, request }) => {
     await page.goto('/help');
     await openProcesses(page);
     // The list is newest first; ask the server to cancel something already cancelled.

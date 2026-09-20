@@ -50,7 +50,7 @@ export function ProcessesPage({ rows, detail, diffs, busy, notice, error, live, 
             <ProcessSteps steps={detail.steps} />
             <ProcessArtifacts rows={detail.artifacts} diffs={diffs} processId={detail.id} onShowDiff={(path) => onShowDiff(detail.id, path)} />
           </section>
-          <section className="pr-logpane" aria-label="Log">
+          <section className="pr-logpane" aria-label="Process log pane">
             <ProcessLog rows={detail.log} hidden={detail.logHidden} />
           </section>
         </>

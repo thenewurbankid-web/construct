@@ -1,11 +1,17 @@
 /* Processes drawer tab (#292). Design: docs/design/cockpit-layout.md section 5, mock processes-drawer.html.
  * Prefix pr-. Tokens only (see tokens.css); the drawer chrome itself is cockpit-drawer.css. */
-.pr-root { display: grid; grid-template-columns: 240px minmax(0, 1fr) minmax(0, 0.9fr); min-height: 100%; }
-.pr-side { border-right: 1px solid var(--border-subtle); min-width: 0; }
-.pr-main { min-width: 0; padding-bottom: var(--sp-2); }
-.pr-logpane { border-left: 1px solid var(--border-subtle); min-width: 0; overflow: auto; }
+/* The drawer pane scrolls as a whole; here each column scrolls on its own so the log can follow
+ * new lines without dragging the steps out of view. 42px is the tab strip, 2 * sp-2 the panel padding. */
+.pr-root {
+  display: grid; grid-template-columns: 240px minmax(0, 1fr) minmax(0, 0.9fr);
+  height: calc(var(--sh-drawer-h, 260px) - 42px - 2 * var(--sp-2)); min-height: 120px;
+}
+.pr-side, .pr-main, .pr-logpane { min-width: 0; min-height: 0; overflow: auto; }
+.pr-side { border-right: 1px solid var(--border-subtle); }
+.pr-logpane { border-left: 1px solid var(--border-subtle); display: flex; flex-direction: column; }
 @media (max-width: 900px) {
-  .pr-root { grid-template-columns: minmax(0, 1fr); }
+  .pr-root { grid-template-columns: minmax(0, 1fr); height: auto; }
+  .pr-side, .pr-main, .pr-logpane { overflow: visible; }
   .pr-side, .pr-logpane { border: 0; border-bottom: 1px solid var(--border-subtle); }
 }
 
@@ -59,12 +65,13 @@
 .pr-diff { flex-basis: 100%; margin: 0; padding: var(--sp-2); max-height: 160px; overflow: auto; background: var(--surface-2); border: 1px solid var(--border-subtle); font-family: var(--mono); font-size: var(--fs-sm); }
 .pr-diff-none { flex-basis: 100%; margin: 0; }
 
+.pr-logscroll { flex: 1; min-height: 0; overflow: auto; }
 .pr-log { list-style: none; margin: 0; padding: var(--sp-1) 0; font-family: var(--mono); font-size: var(--fs-sm); }
 .pr-log-line { display: grid; grid-template-columns: 64px 42px minmax(0, 1fr); gap: var(--sp-2); padding: 1px var(--sp-3); }
 .pr-log-time { color: var(--text-faint); }
 .pr-log-text { white-space: pre-wrap; word-break: break-word; }
 .pr-log-hidden { padding: 1px var(--sp-3); color: var(--text-faint); }
-.pr-prov { text-align: center; border-radius: 3px; border: 1px solid var(--border-subtle); }
+.pr-prov { align-self: start; line-height: 1.35; text-align: center; border-radius: 3px; border: 1px solid var(--border-subtle); }
 .pr-prov--ok { color: var(--success); background: var(--success-soft); border-color: var(--success); }
 .pr-prov--llm { color: var(--llm); background: var(--llm-soft); border-color: var(--llm); }
 .pr-prov--warn { color: var(--warn); background: var(--warn-soft); border-color: var(--warn); }
