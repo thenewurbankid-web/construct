@@ -1,5 +1,6 @@
 'use client';
 
+import { CloneJobsController } from '@/features/clone';
 import { buildDetailView } from '../domain/DetailView';
 import { buildListRows } from '../domain/ListRows';
 import { buildReviewView } from '../domain/ReviewView';
@@ -35,6 +36,7 @@ export function ProcessesController({ api }: { api: ProcessesApi }) {
       onSelect={select}
       onControl={control}
       onShowDiff={loadDiff}
+      clones={<CloneJobsController />}
     />
   );
 }

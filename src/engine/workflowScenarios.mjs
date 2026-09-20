@@ -98,6 +98,43 @@ function thenLine(t, leaf) {
   return `the flow moves to ${stateLabel(leaf)}${actions}`;
 }
 
+// ---- scenario naming (#307) -------------------------------------------------------------------
+// A scenario is named after what distinguishes it from its siblings: the DECISION steps it takes (steps that
+// leave a state with more than one way out) and where it ends. Pure wording over the extracted machine.
+
+/** Does this step leave a state where a sibling transition of the same event is guarded (so "no guard" means "otherwise")? */
+export const guardedSiblings = (machine, step) => machine.transitions.some((t) => t.from === step.from && t.kind === step.kind && t.guard && (step.kind === 'always' || t.event === step.event.replace(/^after:/, '')));
+
+/** "172800000" -> "2 d"; a delay that is not a plain number of ms is left as its name. */
+function duration(raw) {
+  const ms = Number(raw);
+  if (!Number.isFinite(ms) || ms <= 0) return humanize(raw);
+  for (const [unit, size] of [['d', 86_400_000], ['h', 3_600_000], ['min', 60_000], ['s', 1_000]]) if (ms % size === 0) return `${ms / size} ${unit}`;
+  return `${ms} ms`;
+}
+
+/** The decision steps of a scenario in words, joined with ' · ' (what distinguishes it from its siblings). */
+export function branchOf(machine, scenario) {
+  const g = graphOf(machine);
+  const words = scenario.steps.filter((s) => g.outgoing(s.from).length > 1).map((step) => {
+    switch (step.kind) {
+      case 'on': return step.guard ? `${humanize(step.event)} ${humanize(step.guard)}` : guardedSiblings(machine, step) ? 'otherwise' : humanize(step.event);
+      case 'always': return step.guard ? humanize(step.guard) : 'otherwise';
+      case 'after': return `after ${duration(step.event.replace(/^after:/, ''))}`;
+      case 'invoke': return step.event === 'invoke.onError' ? 'the service fails' : 'the service succeeds';
+      default: return humanize(step.event);
+    }
+  });
+  return words.length ? words.join(' · ') : 'the only path';
+}
+
+/** A readable, distinguishing title: the branch in words, then where the flow ends. "Happy path" is decided by the caller. */
+function titleOf(branch, scenario) {
+  const said = branch.split(' · ').join(', then ');
+  const where = plain(scenario.end.state).toLowerCase();
+  return `${said[0].toUpperCase()}${said.slice(1)} (${scenario.end.outcome === 'final' ? 'ends in' : 'gets stuck in'} ${where})`;
+}
+
 /**
  * Enumerate scenarios. Returns { scenarios, loops, truncated, total }.
  * Deterministic: depth-first, nearest state's transitions first, source order.
@@ -146,7 +183,7 @@ export function enumerateScenarios(machine, { max = DEFAULT_MAX_SCENARIOS } = {}
 
   const scenarios = ordered.map((sc, i) => {
     const happy = i === 0 && happyIdx >= 0;
-    const title = happy ? 'Happy path' : `Path ${i + 1}`;
+    const title = happy ? 'Happy path' : `Path ${i + 1}`; // provisional: renamed below once every scenario exists
     const text = [`Given the flow starts in ${stateLabel(start)}`];
     sc.steps.forEach((st, n) => {
       text.push(`${n === 0 ? 'When' : 'And when'} ${whenLine(machine, st.t)}`);
@@ -163,6 +200,7 @@ export function enumerateScenarios(machine, { max = DEFAULT_MAX_SCENARIOS } = {}
     return {
       id: i + 1,
       title,
+      branch: null,
       happy,
       route: [start, ...sc.steps.map((s) => s.to)].map(plain).join(' → '),
       events: sc.steps.map((s) => eventKey(s.t)),
@@ -171,6 +209,17 @@ export function enumerateScenarios(machine, { max = DEFAULT_MAX_SCENARIOS } = {}
       text: [...text, ...notes],
     };
   });
+  // #307: name each scenario after what distinguishes it. `branch` comes from the block, so no consumer has to
+  // re-derive it; titles are kept unique so two rows can never read the same.
+  const seenTitles = new Map();
+  for (const sc of scenarios) {
+    sc.branch = branchOf(machine, sc);
+    if (sc.happy) continue;
+    const base = titleOf(sc.branch, sc);
+    const n = (seenTitles.get(base) ?? 0) + 1;
+    seenTitles.set(base, n);
+    sc.title = n === 1 ? base : `${base} [route ${n}]`;
+  }
   const loopsOut = loops.map((l) => ({ from: l.from, to: l.to, event: eventKey(l.transition), guard: l.transition.guard ?? null }));
   return { scenarios, loops: loopsOut, truncated, total: scenarios.length };
 }

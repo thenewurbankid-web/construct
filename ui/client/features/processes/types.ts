@@ -2,6 +2,7 @@
 // only reads these; which controls exist comes from `summary.controls`, the
 // state machine's own answer, never from anything decided here.
 
+import type { ReactNode } from 'react';
 import type { DecisionNote, ReviewState, ReviewView, Validation } from './domain/ReviewTypes';
 export type * from './domain/ReviewTypes';
 export type StepExecutor = 'deterministic' | 'local-model' | 'user';
@@ -115,6 +116,8 @@ export type ProcessesViewProps = {
   onSelect: (id: string) => void;
   onControl: (id: string, verb: ControlVerb) => void;
   onShowDiff: (id: string, path: string) => void;
+  /** #330: recent repository clones (another feature's controller), shown above the process list. */
+  clones?: ReactNode;
 };
 
 export type ProcessesState = {

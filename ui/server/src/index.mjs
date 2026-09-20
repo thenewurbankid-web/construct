@@ -27,6 +27,9 @@ import { createPlanRouter } from './planApi.mjs';
 import { attachProcessesSocket } from './processesSocket.mjs';
 import { createReviewRouter } from './reviewApi.mjs';
 import { createTestsRouter } from './testsApi.mjs';
+import { createCloneJobs, DEFAULT_MAX_BYTES, DEFAULT_TIMEOUT_MS } from './cloneJobs.mjs';
+import { createCloneRouter, createRemoteRouter } from './cloneApi.mjs';
+import { resolveCloneHosts } from './gitUrl.mjs';
 import { createReviewJobs } from './reviewJobs.mjs';
 import { createReviewExecutor, createAnalyses } from './reviewAnalyses.mjs';
 import { createPlanSource } from './reviewPlans.mjs';
@@ -111,6 +114,17 @@ if (process.env.CONSTRUCT_E2E_PROJECT_DIR) {
     throw new Error('CONSTRUCT_E2E_PROJECT_DIR is a test-harness setting and is refused when the server is exposed beyond loopback.');
   }
   preloadProject(process.env.CONSTRUCT_E2E_PROJECT_DIR);
+}
+
+// #330 harness-only: a local bare repository may be cloned from a file:// URL under this directory. Same guard
+// as CONSTRUCT_E2E_PROJECT_DIR: refused outright when the server is exposed beyond loopback, so the production
+// clone path stays https-only.
+let cloneLocalRoot = null;
+if (process.env.CONSTRUCT_E2E_CLONE_LOCAL_ROOT) {
+  if (!isLoopbackHost(host)) {
+    throw new Error('CONSTRUCT_E2E_CLONE_LOCAL_ROOT is a test-harness setting and is refused when the server is exposed beyond loopback.');
+  }
+  cloneLocalRoot = path.resolve(process.env.CONSTRUCT_E2E_CLONE_LOCAL_ROOT);
 }
 
 const app = express();
@@ -898,6 +912,27 @@ export const testRunJobs = createTestRunJobs({ runs: createTestRuns({ service: p
 app.use('/api/tests', createTestsRouter({
   clientOrigin: CLIENT_ORIGIN,
   runs: testRunJobs,
+  getRoot: () => {
+    const root = containedProjectRoot(getProjectDir());
+    return root ? { ok: true, root } : { ok: false, error: 'No Construct project found for the current project directory. Pick a project first.' };
+  },
+}));
+
+// #330: clone a PUBLIC repository into the workspace (https, allowlisted host, cancellable job) and connect a
+// local project to a remote. Below the gate like every other `/api` route. The client sends a URL (and optionally
+// a folder name) only; everything else is built and checked on the server (cloneJobs.mjs, gitUrl.mjs).
+const cloneHosts = resolveCloneHosts(process.env);
+export const cloneJobs = createCloneJobs({
+  getRoot: workspaceRoot,
+  hosts: cloneHosts,
+  localRoot: cloneLocalRoot,
+  maxBytes: Number(process.env.CONSTRUCT_CLONE_MAX_MB) > 0 ? Number(process.env.CONSTRUCT_CLONE_MAX_MB) * 1024 * 1024 : DEFAULT_MAX_BYTES,
+  timeoutMs: Number(process.env.CONSTRUCT_CLONE_TIMEOUT_SEC) > 0 ? Number(process.env.CONSTRUCT_CLONE_TIMEOUT_SEC) * 1000 : DEFAULT_TIMEOUT_MS,
+});
+app.use('/api/clone', createCloneRouter({ jobs: cloneJobs, clientOrigin: CLIENT_ORIGIN }));
+app.use('/api/git/remote', createRemoteRouter({
+  clientOrigin: CLIENT_ORIGIN,
+  hosts: cloneHosts,
   getRoot: () => {
     const root = containedProjectRoot(getProjectDir());
     return root ? { ok: true, root } : { ok: false, error: 'No Construct project found for the current project directory. Pick a project first.' };

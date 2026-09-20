@@ -32,7 +32,7 @@ Other
   - There is no way out of *other* — the flow gets stuck there.
 
 Scenarios
-  Path 1
+  Next, then cancel (gets stuck in other)
     Route: a › a 1 → a › a 2 → other
     Given the flow starts in *a › a 1*
     When "next" happens
@@ -41,7 +41,7 @@ Scenarios
     Then the flow moves to *other*
     And the flow gets stuck in *other*, with no way out
 
-  Path 2
+  Next, then on done, then after 1 s, then back (gets stuck in other)
     Route: a › a 1 → a › a 2 → b → c → other
     Given the flow starts in *a › a 1*
     When "next" happens
@@ -57,7 +57,7 @@ Scenarios
     Note: from *c* the flow can go back to *b* when "up" happens, so this part can repeat.
     Note: from *b* the flow can go back to *a › a 1* when the flow moves on by itself, so this part can repeat.
 
-  Path 3
+  Next, then on done, then (inline guard), then back (gets stuck in other)
     Route: a › a 1 → a › a 2 → b → c → other
     Given the flow starts in *a › a 1*
     When "next" happens
@@ -73,7 +73,7 @@ Scenarios
     Note: from *c* the flow can go back to *b* when "up" happens, so this part can repeat.
     Note: from *b* the flow can go back to *a › a 1* when the flow moves on by itself, so this part can repeat.
 
-  Path 4
+  Next, then on done, then the service succeeds, then back (gets stuck in other)
     Route: a › a 1 → a › a 2 → b → c → other
     Given the flow starts in *a › a 1*
     When "next" happens
@@ -89,7 +89,7 @@ Scenarios
     Note: from *c* the flow can go back to *b* when "up" happens, so this part can repeat.
     Note: from *b* the flow can go back to *a › a 1* when the flow moves on by itself, so this part can repeat.
 
-  Path 5
+  Next, then on done, then the service fails, then back (gets stuck in other)
     Route: a › a 1 → a › a 2 → b → c → other
     Given the flow starts in *a › a 1*
     When "next" happens
@@ -105,7 +105,7 @@ Scenarios
     Note: from *c* the flow can go back to *b* when "up" happens, so this part can repeat.
     Note: from *b* the flow can go back to *a › a 1* when the flow moves on by itself, so this part can repeat.
 
-  Path 6
+  Cancel (gets stuck in other)
     Route: a › a 1 → other
     Given the flow starts in *a › a 1*
     When "cancel" happens

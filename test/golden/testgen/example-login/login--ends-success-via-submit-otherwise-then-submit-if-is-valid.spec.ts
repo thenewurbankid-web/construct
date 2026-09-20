@@ -3,7 +3,7 @@
 // To change it: clone it to features/login/tests/ (one level up), where nothing regenerates it.
 // feature: "login"
 // machine: "login" ("workflows/Login.tsx"), key "login"
-// scenario: "ends-success-via-submit-otherwise-then-submit-if-is-valid" - "Path 2"
+// scenario: "ends-success-via-submit-otherwise-then-submit-if-is-valid" - "Otherwise, then submit is valid (ends in success)"
 // route: idle → rejected → success
 // machine-hash: sha256:56ae9c5ebfe692bf1f2b2f6bc5c96d3ab0dca54164c1d3f1ea04dea92485b019
 // scenario-hash: sha256:687b1dca09255e6986a640c208840971e747c355fd67e87bc026e2a5d3127e12
@@ -49,7 +49,7 @@ async function expectFlowState(page: Page, machine: string, state: string, timeo
   await expect(el).toHaveAttribute('data-flow-state', state, { timeout });
 }
 
-test("login / login / Path 2", async ({ page }) => {
+test("login / login / Otherwise, then submit is valid (ends in success)", async ({ page }) => {
   test.fixme(true, "needs a fixture where none of the earlier guarded branches apply");
   test.fixme(true, "needs a fixture where the guard \"isValid\" holds");
   if (START_URL === null) return;

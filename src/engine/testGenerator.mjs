@@ -22,7 +22,8 @@ import { matchFrozen } from '../frozen.mjs';
 import { isNonLayerPath, GENERATED_TESTS_GLOB, TESTS_GLOB } from '../nonLayer.mjs';
 import { ConstructError, EXIT_CODES } from '../diagnostics.mjs';
 import { extractMachines } from './workflowExtractor.mjs';
-import { enumerateScenarios, graphOf } from './workflowScenarios.mjs';
+import { enumerateScenarios, graphOf, branchOf, guardedSiblings } from './workflowScenarios.mjs';
+export { branchOf };
 import { humanize } from './workflowNarrator.mjs';
 import { listWorkflowSourceFiles, readWorkflowSource } from './workflowSource.mjs';
 import { assignTestIds, kebab } from './testAttributes.mjs';
@@ -45,8 +46,6 @@ export { lit, comment };
 
 // ---- scenario naming (#307) -------------------------------------------------------------------
 
-const guardedSiblings = (machine, step) => machine.transitions.some((t) => t.from === step.from && t.kind === step.kind && t.guard && (step.kind === 'always' || t.event === step.event.replace(/^after:/, '')));
-
 function stepLabel(machine, step) {
   switch (step.kind) {
     case 'on': return step.guard ? `${kebab(step.event)}-if-${kebab(step.guard)}` : guardedSiblings(machine, step) ? `${kebab(step.event)}-otherwise` : kebab(step.event);
@@ -67,29 +66,6 @@ export function scenarioSlug(machine, scenario) {
   const full = `ends-${kebab(scenario.end.state) || 'end'}${decisions.length ? `-via-${decisions.join('-then-')}` : ''}`.replace(/-{2,}/g, '-');
   if (full.length <= MAX_SLUG) return full;
   return `${full.slice(0, MAX_SLUG - 9).replace(/-+$/, '')}-${sha(full).slice(0, 8)}`;
-}
-
-/** "172800000" -> "48 h"; a delay that is not a plain number of ms is left as its name. */
-function duration(raw) {
-  const ms = Number(raw);
-  if (!Number.isFinite(ms) || ms <= 0) return humanize(raw);
-  for (const [unit, size] of [['d', 86_400_000], ['h', 3_600_000], ['min', 60_000], ['s', 1_000]]) if (ms % size === 0) return `${ms / size} ${unit}`;
-  return `${ms} ms`;
-}
-
-/** The decision steps of a scenario in words, joined with ' · ' (what distinguishes it from its siblings), for the coverage view (#300). */
-export function branchOf(machine, scenario) {
-  const g = graphOf(machine);
-  const words = scenario.steps.filter((s) => g.outgoing(s.from).length > 1).map((step) => {
-    switch (step.kind) {
-      case 'on': return step.guard ? `${humanize(step.event)} ${humanize(step.guard)}` : guardedSiblings(machine, step) ? 'otherwise' : humanize(step.event);
-      case 'always': return step.guard ? humanize(step.guard) : 'otherwise';
-      case 'after': return `after ${duration(step.event.replace(/^after:/, ''))}`;
-      case 'invoke': return step.event === 'invoke.onError' ? 'the service fails' : 'the service succeeds';
-      default: return humanize(step.event);
-    }
-  });
-  return words.length ? words.join(' · ') : 'the only path';
 }
 
 // ---- lineage hashes ---------------------------------------------------------------------------

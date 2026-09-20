@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { CloneController } from '@/features/clone';
 import { DirectoryBrowserController } from '@/features/directory-browser';
 import { useProjectGate } from '../hooks/useProjectGate';
 import { ProjectGatePage } from '../pages/ProjectGatePage';
@@ -29,6 +30,7 @@ export function ProjectGateController({ children }: { children: ReactNode }) {
       openError={openError}
       onOpen={handleOpen}
       picker={<DirectoryBrowserController onSelect={handleOpen} />}
+      clone={<CloneController onCloned={handleOpen} />}
     >
       {children}
     </ProjectGatePage>

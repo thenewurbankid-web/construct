@@ -105,3 +105,42 @@ test('unsupported machine: graceful everywhere, deterministic output', () => {
   assert.deepEqual(explainSource(good), explainSource(good));
   assert.equal(explainSource('export const x = ').error.startsWith('Could not parse'), true);
 });
+
+// #307 -- a scenario is named after what distinguishes it, and says which branch it took.
+test('#307: scenario titles are distinguishing, unique, and carry the branch (no "Path N")', () => {
+  const [e] = explainSource(fs.readFileSync(fx('refund-request.ts'), 'utf8')).machines;
+  const titles = e.scenarios.map((s) => s.title);
+  assert.equal(new Set(titles).size, titles.length, 'no two rows read the same');
+  assert.ok(titles.every((t) => !/^Path \d+$/.test(t)));
+  assert.equal(titles[0], 'Happy path', 'the happy path keeps its name');
+  assert.deepEqual(e.scenarios.map((s) => s.branch), [
+    'is low value · the service succeeds',
+    'is suspicious · approve · the service succeeds',
+    'is suspicious · reject',
+    'is suspicious · after 2 d · approve · the service succeeds',
+    'is suspicious · after 2 d · reject',
+    'otherwise · approve · the service succeeds',
+    'otherwise · reject',
+    'otherwise · after 2 d · approve · the service succeeds',
+    'otherwise · after 2 d · reject',
+  ]);
+  // The four pairs that share route and events are told apart by the branch, exactly as the issue asks.
+  for (const [a, b] of [[1, 5], [2, 6], [3, 7], [4, 8]]) {
+    assert.equal(e.scenarios[a].route, e.scenarios[b].route);
+    assert.deepEqual(e.scenarios[a].events, e.scenarios[b].events);
+    assert.notEqual(e.scenarios[a].branch, e.scenarios[b].branch);
+    assert.notEqual(e.scenarios[a].title, e.scenarios[b].title);
+  }
+  assert.equal(e.scenarios[2].title, 'Is suspicious, then reject (ends in rejected)');
+  assert.equal(e.scenarios[6].title, 'Otherwise, then reject (ends in rejected)');
+});
+
+test('#307: a machine with one route says "the only path"; a stuck route says where it is stuck; titles never collide', () => {
+  const one = enumerateScenarios(machineOf(wrap(`{ a: { on: { GO: 'b' } }, b: { type: 'final' } }`))).scenarios;
+  assert.equal(one[0].title, 'Happy path');
+  assert.equal(one[0].branch, 'the only path');
+  const stuck = enumerateScenarios(machineOf(wrap(`{ a: { on: { GO: 'b' } }, b: {} }`))).scenarios;
+  assert.equal(stuck[0].title, 'The only path (gets stuck in b)');
+  const twins = enumerateScenarios(machineOf(wrap(`{ a: { on: { GO: [{ target: 'b', guard: 'isX' }, { target: 'b', guard: 'isX' }] } }, b: {} }`))).scenarios;
+  assert.equal(new Set(twins.map((s) => s.title)).size, twins.length);
+});

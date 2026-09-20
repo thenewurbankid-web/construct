@@ -5,7 +5,16 @@ import { ProcessSteps } from '../components/ProcessSteps';
 import type { ProcessesViewProps } from '../types';
 
 // Presentation-only: every value and handler comes from the controller.
-export function ProcessesPage({ rows, detail, diffs, review, reviewLoading, reviewError, onReview, onDecide, busy, notice, error, live, onSelect, onControl, onShowDiff }: ProcessesViewProps) {
+export function ProcessesPage({ clones, ...props }: ProcessesViewProps) {
+  return (
+    <>
+      {clones}
+      <ProcessesBody {...props} />
+    </>
+  );
+}
+
+function ProcessesBody({ rows, detail, diffs, review, reviewLoading, reviewError, onReview, onDecide, busy, notice, error, live, onSelect, onControl, onShowDiff }: ProcessesViewProps) {
   if (error && rows.length === 0) {
     return (
       <div className="dg-empty" role="alert" data-testid="processes-error">

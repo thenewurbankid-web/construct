@@ -60,7 +60,7 @@ _submitted → auto check → approved → refunded → closed_
 - And the flow ends — *closed* is an end state
 - Note: in *approved* the flow can start that step over when `issueRefund` fails, so this part can repeat.
 
-#### Path 2
+#### Is suspicious, then approve, then the service succeeds (ends in closed)
 _submitted → auto check → manual review → approved → refunded → closed_
 - Given the flow starts in *submitted*
 - When "request refund" happens
@@ -77,7 +77,7 @@ _submitted → auto check → manual review → approved → refunded → closed
 - Note: in *approved* the flow can start that step over when `issueRefund` fails, so this part can repeat.
 - Note: from *manual review* the flow can go back to *submitted* when "need more info" happens, so this part can repeat.
 
-#### Path 3
+#### Is suspicious, then reject (ends in rejected)
 _submitted → auto check → manual review → rejected_
 - Given the flow starts in *submitted*
 - When "request refund" happens
@@ -89,7 +89,7 @@ _submitted → auto check → manual review → rejected_
 - And the flow ends — *rejected* is an end state
 - Note: from *manual review* the flow can go back to *submitted* when "need more info" happens, so this part can repeat.
 
-#### Path 4
+#### Is suspicious, then after 2 d, then approve, then the service succeeds (ends in closed)
 _submitted → auto check → manual review → escalated → approved → refunded → closed_
 - Given the flow starts in *submitted*
 - When "request refund" happens
@@ -108,7 +108,7 @@ _submitted → auto check → manual review → escalated → approved → refun
 - Note: in *approved* the flow can start that step over when `issueRefund` fails, so this part can repeat.
 - Note: from *manual review* the flow can go back to *submitted* when "need more info" happens, so this part can repeat.
 
-#### Path 5
+#### Is suspicious, then after 2 d, then reject (ends in rejected)
 _submitted → auto check → manual review → escalated → rejected_
 - Given the flow starts in *submitted*
 - When "request refund" happens
@@ -122,7 +122,7 @@ _submitted → auto check → manual review → escalated → rejected_
 - And the flow ends — *rejected* is an end state
 - Note: from *manual review* the flow can go back to *submitted* when "need more info" happens, so this part can repeat.
 
-#### Path 6
+#### Otherwise, then approve, then the service succeeds (ends in closed)
 _submitted → auto check → manual review → approved → refunded → closed_
 - Given the flow starts in *submitted*
 - When "request refund" happens
@@ -139,7 +139,7 @@ _submitted → auto check → manual review → approved → refunded → closed
 - Note: in *approved* the flow can start that step over when `issueRefund` fails, so this part can repeat.
 - Note: from *manual review* the flow can go back to *submitted* when "need more info" happens, so this part can repeat.
 
-#### Path 7
+#### Otherwise, then reject (ends in rejected)
 _submitted → auto check → manual review → rejected_
 - Given the flow starts in *submitted*
 - When "request refund" happens
@@ -151,7 +151,7 @@ _submitted → auto check → manual review → rejected_
 - And the flow ends — *rejected* is an end state
 - Note: from *manual review* the flow can go back to *submitted* when "need more info" happens, so this part can repeat.
 
-#### Path 8
+#### Otherwise, then after 2 d, then approve, then the service succeeds (ends in closed)
 _submitted → auto check → manual review → escalated → approved → refunded → closed_
 - Given the flow starts in *submitted*
 - When "request refund" happens
@@ -170,7 +170,7 @@ _submitted → auto check → manual review → escalated → approved → refun
 - Note: in *approved* the flow can start that step over when `issueRefund` fails, so this part can repeat.
 - Note: from *manual review* the flow can go back to *submitted* when "need more info" happens, so this part can repeat.
 
-#### Path 9
+#### Otherwise, then after 2 d, then reject (ends in rejected)
 _submitted → auto check → manual review → escalated → rejected_
 - Given the flow starts in *submitted*
 - When "request refund" happens

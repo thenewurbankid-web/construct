@@ -22,7 +22,7 @@ Happy path
   Then the flow moves to *success*
   And the flow ends — *success* is an end state
 
-Path 2
+Otherwise, then submit is valid (ends in success)
   Route: idle → rejected → success
   Given the flow starts in *idle*
   When "submit" happens, when none of the conditions above apply
@@ -75,7 +75,7 @@ Options: `--dry-run` shows what would be written, `--prune` removes generated fi
 
 | You get | Evidence above |
 |---|---|
-| Every path through the flow, listed | `Happy path`, `Path 2` |
+| Every path through the flow, listed | `Happy path`, `Otherwise, then submit is valid (ends in success)` |
 | Tests that follow the flow | regenerate after a change; untouched routes stay `Unchanged` |
 | Your own edits are safe | generated tests are locked; clone one to change it |
 | No model | `[llm: 0 calls]` |
