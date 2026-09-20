@@ -5,6 +5,9 @@
 #   CONSTRUCT_ALLOWED_LOGINS=you tools/dev/run-hosted.sh
 # Ports: client 3000, server 4000. Set SCHEME=https if a TLS proxy fronts both.
 set -euo pipefail
+# Optional: CONSTRUCT_ENV_FILE=/path/outside/the/repo (chmod 600) holding the same
+# variables as `KEY=value` lines, so no secret ever appears on a command line.
+if [ -n "${CONSTRUCT_ENV_FILE:-}" ]; then set -a; . "$CONSTRUCT_ENV_FILE"; set +a; fi
 : "${PUBLIC_HOST:?set PUBLIC_HOST (ip or domain)}"
 : "${CONSTRUCT_GITHUB_CLIENT_ID:?set CONSTRUCT_GITHUB_CLIENT_ID}"
 : "${CONSTRUCT_GITHUB_CLIENT_SECRET:?set CONSTRUCT_GITHUB_CLIENT_SECRET}"
