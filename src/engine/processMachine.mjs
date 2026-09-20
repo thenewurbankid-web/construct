@@ -28,7 +28,7 @@ import { enumerateScenarios, findHealthIssues } from './workflowScenarios.mjs';
 
 /** The lifecycle's top-level states — what a UI shows as "the state of this
  * process". `running` is compound; see RUNNING_SUBSTATES. */
-export const PROCESS_STATES = Object.freeze(['queued', 'running', 'paused', 'done', 'failed', 'cancelled']);
+export const PROCESS_STATES = Object.freeze(['queued', 'running', 'paused', 'failed', 'done', 'cancelled']);
 
 /** Inside `running`: `active` is executing steps; `stopping` means a pause or
  * cancel has been asked for and the machine is waiting for the step in flight

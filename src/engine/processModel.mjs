@@ -269,13 +269,21 @@ export function pendingApproval(process) {
   return process.artifacts.filter((a) => a.approved === null);
 }
 
-/** Set the approval verdict on some or all artifacts (`paths` omitted = all
- * pending ones). Returns a new process. */
+/**
+ * Set the approval verdict on artifacts. `paths` omitted means "every
+ * artifact still awaiting a verdict" — deliberately NOT "every artifact":
+ * an Approve-all or Reject-all button must not quietly overturn a decision
+ * the user already made on a specific file. Naming a path always wins, so an
+ * explicit change of mind is still possible.
+ */
 export function setApproval(process, approved, paths = null) {
   const targets = paths === null ? null : new Set(paths);
   return {
     ...process,
-    artifacts: process.artifacts.map((a) => (targets === null || targets.has(a.path) ? { ...a, approved } : a)),
+    artifacts: process.artifacts.map((a) => {
+      const selected = targets === null ? a.approved === null : targets.has(a.path);
+      return selected ? { ...a, approved } : a;
+    }),
   };
 }
 
