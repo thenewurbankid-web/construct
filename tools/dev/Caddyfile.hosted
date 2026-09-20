@@ -1,0 +1,13 @@
+# HTTPS front for the hosted Cockpit (#278). One origin: /api, /auth, /ws go to the
+# server (:4000), everything else to the client (:3000). Caddy gets and renews a
+# free Let's Encrypt certificate for {$PUBLIC_HOST} by itself (needs ports 80 + 443).
+{$PUBLIC_HOST} {
+	encode gzip
+	@backend path /api/* /auth/* /ws/*
+	handle @backend {
+		reverse_proxy 127.0.0.1:4000
+	}
+	handle {
+		reverse_proxy 127.0.0.1:3000
+	}
+}

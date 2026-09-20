@@ -13,11 +13,14 @@ if [ -n "${CONSTRUCT_ENV_FILE:-}" ]; then set -a; . "$CONSTRUCT_ENV_FILE"; set +
 : "${CONSTRUCT_GITHUB_CLIENT_SECRET:?set CONSTRUCT_GITHUB_CLIENT_SECRET}"
 : "${CONSTRUCT_ALLOWED_LOGINS:?set CONSTRUCT_ALLOWED_LOGINS (comma-separated GitHub logins)}"
 SCHEME="${SCHEME:-http}"; WS=$([ "$SCHEME" = https ] && echo wss || echo ws)
+# BEHIND_PROXY=1: a reverse proxy (tools/dev/Caddyfile.hosted) serves one https origin
+# on 443; the browser then talks to that origin only, never to :3000 / :4000 directly.
+if [ "${BEHIND_PROXY:-}" = 1 ]; then ORIGIN="$SCHEME://$PUBLIC_HOST"; API="$ORIGIN"; else ORIGIN="$SCHEME://$PUBLIC_HOST:3000"; API="$SCHEME://$PUBLIC_HOST:4000"; fi
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 export CONSTRUCT_SESSION_SECRET="${CONSTRUCT_SESSION_SECRET:-$(openssl rand -hex 32)}"
-export CONSTRUCT_OAUTH_CALLBACK_URL="${CONSTRUCT_OAUTH_CALLBACK_URL:-$SCHEME://$PUBLIC_HOST:4000/auth/callback}"
+export CONSTRUCT_OAUTH_CALLBACK_URL="${CONSTRUCT_OAUTH_CALLBACK_URL:-$API/auth/callback}"
 echo "Callback URL to register on the OAuth app: $CONSTRUCT_OAUTH_CALLBACK_URL"
-(cd "$ROOT/ui/client" && NEXT_PUBLIC_API_BASE="$SCHEME://$PUBLIC_HOST:4000" NEXT_PUBLIC_WS_BASE="$WS://$PUBLIC_HOST:4000" npm run build)
+(cd "$ROOT/ui/client" && NEXT_PUBLIC_API_BASE="$API" NEXT_PUBLIC_WS_BASE="$WS://${API#*://}" npm run build)
 (cd "$ROOT/ui/client" && npm start) &
 trap 'kill 0' EXIT
-cd "$ROOT/ui/server" && HOST=0.0.0.0 UI_CLIENT_ORIGIN="$SCHEME://$PUBLIC_HOST:3000" npm start
+cd "$ROOT/ui/server" && HOST=0.0.0.0 UI_CLIENT_ORIGIN="$ORIGIN" npm start
