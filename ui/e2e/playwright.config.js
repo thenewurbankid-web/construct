@@ -1,4 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -53,7 +55,9 @@ export default defineConfig({
       stdout: 'pipe',
       stderr: 'pipe',
       // ui/server restricts CORS + WebSocket origin to UI_CLIENT_ORIGIN.
-      env: { PORT: String(SERVER_PORT), UI_CLIENT_ORIGIN: CLIENT_ORIGIN },
+      // #292: process records live in a per-user state dir; a fresh one keeps the
+      // ordinary suite from ever seeing a real process of the developer's own.
+      env: { PORT: String(SERVER_PORT), UI_CLIENT_ORIGIN: CLIENT_ORIGIN, CONSTRUCT_STATE_DIR: fs.mkdtempSync(path.join(os.tmpdir(), 'construct-e2e-state-')) },
     },
     {
       command: `npx next dev -p ${CLIENT_PORT}`,

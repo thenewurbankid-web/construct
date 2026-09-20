@@ -42,11 +42,11 @@ async function apiStatus(page, route) {
 /** Attempt the wizard WebSocket upgrade from the page and report whether it
  * opened. A refused upgrade surfaces to a browser as an error/close, never
  * as an open. */
-async function wsOpens(page) {
+async function wsOpens(page, wsPath = '/ws/wizard') {
   return page.evaluate(
-    ([api]) =>
+    ([api, wsPath]) =>
       new Promise((resolve) => {
-        const ws = new WebSocket(`${api.replace(/^http/, 'ws')}/ws/wizard`);
+        const ws = new WebSocket(`${api.replace(/^http/, 'ws')}${wsPath}`);
         const done = (value) => {
           try {
             ws.close();
@@ -60,7 +60,7 @@ async function wsOpens(page) {
         ws.onclose = () => done(false);
         setTimeout(() => done(false), 5000);
       }),
-    [API],
+    [API, wsPath],
   );
 }
 
@@ -82,6 +82,11 @@ test.describe('#278 GitHub login gate', () => {
     expect(await apiStatus(page, '/api/fs/browse?path=/')).toBe(401);
     expect(await apiStatus(page, '/api/validate')).toBe(401);
     expect(await apiStatus(page, '/api/logs')).toBe(401);
+    // #292: the Processes API and its live socket are gated too.
+    expect(await apiStatus(page, '/api/processes')).toBe(401);
+    expect(await apiStatus(page, '/api/processes/proc_x')).toBe(401);
+    expect(await page.evaluate(([api]) => fetch(`${api}/api/processes/proc_x/cancel`, { method: 'POST', credentials: 'include' }).then((r) => r.status), [API])).toBe(401);
+    expect(await wsOpens(page, '/ws/processes')).toBe(false);
 
     // The one deliberate exception, so a liveness probe still works.
     expect(await apiStatus(page, '/api/health')).toBe(200);
@@ -125,6 +130,8 @@ test.describe('#278 GitHub login gate', () => {
     expect(await apiStatus(page, '/api/settings')).toBe(200);
     expect(await apiStatus(page, '/api/validate')).toBe(200);
     expect(await wsOpens(page)).toBe(true);
+    expect(await apiStatus(page, '/api/processes')).toBe(200);
+    expect(await wsOpens(page, '/ws/processes')).toBe(true);
 
     await page.screenshot({ path: path.join(SHOTS, '278-2-signed-in-cockpit.png'), fullPage: true });
 

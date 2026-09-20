@@ -6,6 +6,7 @@ import './tokens.css';
 import './screens.css';
 import './shell.css';
 import './cockpit-drawer.css';
+import './processes.css';
 import './globals.css';
 
 export const metadata: Metadata = {

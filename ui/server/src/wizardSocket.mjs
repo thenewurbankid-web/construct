@@ -22,6 +22,7 @@
 import { WebSocketServer } from 'ws';
 import { runImportRouteWizardEventDriven } from '../../../src/cli.mjs';
 import { getSettings } from './settings.mjs';
+import { routeUpgrade } from './wsUpgrade.mjs';
 
 function send(ws, payload) {
   if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(payload));
@@ -45,8 +46,7 @@ function send(ws, payload) {
 // passing it always is safe.
 export function attachWizardSocket(server, path = '/ws/wizard', allowedOrigin, auth = null) {
   const wss = new WebSocketServer({
-    server,
-    path,
+    noServer: true,
     verifyClient:
       allowedOrigin || auth
         ? (info, cb) => {
@@ -56,6 +56,8 @@ export function attachWizardSocket(server, path = '/ws/wizard', allowedOrigin, a
           }
         : undefined,
   });
+
+  routeUpgrade(server, wss, path);
 
   wss.on('connection', (ws) => {
     let session = null;

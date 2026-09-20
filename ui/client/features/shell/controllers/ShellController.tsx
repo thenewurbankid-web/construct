@@ -3,6 +3,7 @@
 import { useMemo, type ReactNode } from 'react';
 import { UserMenuController } from '@/features/auth';
 import { DirectoryBrowserController } from '@/features/directory-browser';
+import { ProcessesController, useProcesses } from '@/features/processes';
 import { CommandPaletteController, CommandRegistryProvider, useOpenPalette } from '@/features/command-palette';
 import { DiagnosticsController, LogsController, statusText, statusTextChars, tabBadge, useDiagnostics } from '@/features/diagnostics';
 import { PANE_LIMITS } from '../domain/LayoutDefaults';
@@ -22,7 +23,6 @@ import { useDrawerActions } from '../hooks/useDrawerActions';
 import { useShellCommands } from '../hooks/useShellCommands';
 import { useShellNavigation } from '../hooks/useShellNavigation';
 import { useTheme } from '../hooks/useTheme';
-import { EmptyPanel } from '../components/EmptyPanel';
 import { ProjectInfoPanel } from '../components/ProjectInfoPanel';
 import { ProjectSwitcher } from '../components/ProjectSwitcher';
 import { ScreensNav } from '../components/ScreensNav';
@@ -43,6 +43,7 @@ function ShellFrame({ children }: { children: ReactNode }) {
   useShellShortcuts(toggle);
   const openPalette = useOpenPalette();
   const diagnostics = useDiagnostics(project.known);
+  const processes = useProcesses(project.known ? project.dir : null);
   const theme = useTheme();
   const registered = { browser: useShellTabs('browser'), tools: useShellTabs('tools'), drawer: useShellTabs('drawer') };
 
@@ -71,11 +72,11 @@ function ShellFrame({ children }: { children: ReactNode }) {
         {
           id: 'processes',
           title: 'Processes',
-          render: () => <EmptyPanel title="No processes running" hint="Long-running work will show here with progress, pause and cancel." />,
+          render: () => <ProcessesController api={processes} />,
         },
       ],
     }),
-    [route.pathname, route.mode, project.dir, model, diagnostics, openPage],
+    [route.pathname, route.mode, project.dir, model, diagnostics, openPage, processes],
   );
   const tabs = {
     // A screen's own tabs come first (they are what you came to use); the shell's defaults follow.
@@ -121,7 +122,7 @@ function ShellFrame({ children }: { children: ReactNode }) {
       themeToggle={<ThemeController />}
       userMenu={<UserMenuController />}
       modelStatus={model}
-      runningProcesses={0}
+      runningProcesses={processes.running}
       onOpenProcesses={() => showDrawerTab('processes')}
       onOpenPalette={openPalette}
       validateStatus={statusText(diagnostics.state)}
