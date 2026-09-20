@@ -44,11 +44,10 @@ test.describe.serial('Plan mode (#289, #332)', () => {
   });
 
   test('Plan leads to the Plan screen, whose left pane shows the note and the constraints from architecture.yml', async ({ page }) => {
-    await gotoCockpit(page, '/settings');
-    const modes = page.getByRole('navigation', { name: 'Modes' });
-    await modes.getByRole('link', { name: 'Plan' }).click();
-    await expect(page).toHaveURL(/\/plan$/);
-    await expect(modes.getByRole('link', { name: 'Plan' })).toHaveAttribute('aria-current', 'page');
+    await gotoCockpit(page, '/plan');
+    // #369: the plan lives on the Features screen (Plan is no longer a mode).
+    const nav = page.getByRole('navigation', { name: 'Screens', exact: true });
+    await expect(nav.getByRole('link', { name: 'Features' })).toHaveAttribute('aria-current', 'page');
     await expect(page.getByTestId('plan-ticket')).toBeVisible();
     // #366: the user-visible word is Notes, never "ticket".
     await expect(page.getByTestId('plan-ticket')).toContainText('Notes');

@@ -1,7 +1,7 @@
 // Pure (DOMAIN-001): the commands the shell itself puts in the palette, as
 // data. The hook that registers them maps each `action` to a real handler, so
 // this list is testable without React.
-import type { ShellMode, ShellScreen, ShortcutInfo } from '../types.ts';
+import type { PrimaryScreen, ShellScreen, ShortcutInfo } from '../types.ts';
 
 export type ShellCommandAction =
   | { type: 'navigate'; href: string }
@@ -22,23 +22,29 @@ export type ShellCommandSpec = {
 
 const hintFor = (shortcuts: ShortcutInfo[], action: ShortcutInfo['action']) => shortcuts.find((s) => s.action === action)?.keys;
 
-export function shellCommandSpecs(screens: ShellScreen[], modes: ShellMode[], shortcuts: ShortcutInfo[]): ShellCommandSpec[] {
+/** `primary` are the five top-bar screens ("Go to Git"); `others` are the remaining routes (Settings, Local Model,
+ * Help, the Import Wizard...), so every screen stays reachable from the palette. A route a primary screen already
+ * owns is listed once. */
+export function shellCommandSpecs(primary: PrimaryScreen[], others: ShellScreen[], shortcuts: ShortcutInfo[]): ShellCommandSpec[] {
   const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const owned = new Set(primary.map((p) => p.href));
   return [
-    ...screens.map<ShellCommandSpec>((s) => ({
-      id: `go.${slug(s.label)}`,
-      title: `Go to ${s.label}`,
-      keywords: ['open', 'screen', 'page', 'navigate'],
+    ...primary.map<ShellCommandSpec>((p) => ({
+      id: `screen.${p.id}`,
+      title: `Go to ${p.label}`,
+      keywords: ['open', 'screen', 'navigate', ...(p.id === 'git' ? ['review', 'branches', 'pull request'] : []), ...(p.id === 'features' ? ['plan', 'notes', 'dashboard'] : [])],
       group: 'Go to',
-      action: { type: 'navigate', href: s.href },
+      action: { type: 'navigate', href: p.href },
     })),
-    ...modes.map<ShellCommandSpec>((m) => ({
-      id: `mode.${m.id}`,
-      title: `Switch to ${m.label} mode`,
-      keywords: ['mode', 'workspace'],
-      group: 'Mode',
-      action: { type: 'navigate', href: m.href },
-    })),
+    ...others
+      .filter((s) => !owned.has(s.href))
+      .map<ShellCommandSpec>((s) => ({
+        id: `go.${slug(s.label)}`,
+        title: `Go to ${s.label}`,
+        keywords: ['open', 'screen', 'page', 'navigate'],
+        group: 'Go to',
+        action: { type: 'navigate', href: s.href },
+      })),
     { id: 'view.toggle-theme', title: 'Toggle dark / light theme', keywords: ['theme', 'colour', 'color', 'appearance', 'dark', 'light'], group: 'View', action: { type: 'toggle-theme' } },
     { id: 'view.toggle-browser', title: 'Show or hide the Browser pane', keywords: ['left', 'sidebar', 'panel'], group: 'View', hint: hintFor(shortcuts, 'toggle-left'), action: { type: 'toggle-pane', pane: 'left' } },
     { id: 'view.toggle-tools', title: 'Show or hide the Tools panel', keywords: ['right', 'inspector', 'panel'], group: 'View', hint: hintFor(shortcuts, 'toggle-right'), action: { type: 'toggle-pane', pane: 'right' } },

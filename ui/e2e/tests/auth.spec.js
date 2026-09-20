@@ -95,7 +95,7 @@ test.describe('#278 GitHub login gate', () => {
     await expect(login).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Sign in to the Cockpit' })).toBeVisible();
     await expect(page.getByRole('banner')).toHaveCount(0);
-    await expect(page.getByRole('navigation', { name: 'Modes' })).toHaveCount(0);
+    await expect(page.getByRole('navigation', { name: 'Screens', exact: true })).toHaveCount(0);
     await expect(page.getByTestId('user-menu')).toHaveCount(0);
 
     // ...and the server refuses regardless of what the UI renders. This is
@@ -187,7 +187,7 @@ test.describe('#278 GitHub login gate', () => {
     // The Cockpit frame is back.
     await expect(page.getByTestId('login-screen')).toHaveCount(0);
     await expect(page.getByRole('banner')).toBeVisible();
-    await expect(page.getByRole('navigation', { name: 'Modes' })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Screens', exact: true })).toBeVisible();
 
     // The account is in the top bar. The server names the test login's
     // session "<login> (test login)" on purpose, so a Cockpit running with

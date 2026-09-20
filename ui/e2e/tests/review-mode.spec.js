@@ -77,12 +77,17 @@ test.describe.serial('Review mode (#312, #313)', () => {
     fs.rmSync(repo, { recursive: true, force: true });
   });
 
-  test('Review is the fourth mode; Plan is the old Research button and now leads to the Plan screen', async ({ page }) => {
+  test('Review is a verb inside the Git screen: Git is the current screen, and Features leads to the plan side (#369)', async ({ page }) => {
     await gotoCockpit(page, '/review');
-    const modes = page.getByRole('navigation', { name: 'Modes' });
-    await expect(modes.getByRole('link')).toHaveText(['Explore', 'Plan', 'Build', 'Review']);
-    await expect(modes.getByRole('link', { name: 'Review' })).toHaveAttribute('aria-current', 'page');
-    await expect(modes.getByRole('link', { name: 'Plan' })).toHaveAttribute('href', '/plan');
+    const nav = page.getByRole('navigation', { name: 'Screens', exact: true });
+    await expect(nav.getByRole('link', { name: /^Git/ })).toHaveAttribute('aria-current', 'page');
+    await expect(nav.getByRole('link', { name: 'Features' })).toHaveAttribute('href', '/');
+    await expect(nav.getByRole('link', { name: 'Features' })).not.toHaveAttribute('aria-current', 'page');
+    await expect(page.getByRole('navigation', { name: 'Modes' })).toHaveCount(0);
+    // The Git entry carries the number of branches waiting for review (this repository has two).
+    await expect(page.getByTestId('screen-git-badge')).toContainText('2');
+    await expect(nav.getByRole('link', { name: /^Git/ })).toContainText('branches under review');
+    await page.screenshot({ path: path.join(SHOTS, '369-git-badge.png'), clip: { x: 0, y: 0, width: 1280, height: 90 } });
   });
 
   test('the list shows every local branch with the badges the engine computed, riskiest first', async ({ page }) => {

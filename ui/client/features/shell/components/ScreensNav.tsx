@@ -4,7 +4,7 @@ import type { ScreensNavProps } from '../types';
 /** The Browser pane's "Screens" tab: every existing screen (the old sidebar nav). */
 export function ScreensNav({ screens, pathname }: ScreensNavProps) {
   return (
-    <nav aria-label="Screens" className="sh-screens">
+    <nav aria-label="All screens" className="sh-screens">
       {screens.map((screen) => {
         const active = screen.activeOn.includes(pathname);
         return (

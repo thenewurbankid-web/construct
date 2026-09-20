@@ -23,8 +23,9 @@ export function ShellPage(props: ShellPageProps): ReactNode {
       onNarrowPane={props.onNarrowPane}
       top={
         <TopBar
-          modes={props.modes}
-          activeModeId={props.activeModeId}
+          screens={props.screens}
+          activeScreenId={props.activeScreenId}
+          screenBadges={props.screenBadges}
           projectSwitcher={props.projectSwitcher}
           userMenu={props.userMenu}
           modelStatus={props.modelStatus}

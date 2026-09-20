@@ -6,43 +6,63 @@ import { fileURLToPath } from 'node:url';
 import { setTheme } from './support/cockpit.js';
 
 // Design #245 — top bar: project switcher (local projects only, reuses the
-// settings project dir and the shared folder picker), Explore / Plan /
-// Build / Review modes (Plan is the old Research button, #285; Review is the fourth mode, #312) routing to screens, real status pills, and the theme
-// switch. The old sidebar links live on in the Browser pane's "Screens" tab.
+// settings project dir and the shared folder picker), the five screens (Features / Pages / Components / Git /
+// Tests, #369; they replaced the Explore / Plan / Build / Review modes), real status pills, and the profile menu (#368). The old sidebar links live on in the Browser pane's "Screens" tab.
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SHOTS = path.resolve(__dirname, '../screenshots');
 fs.mkdirSync(SHOTS, { recursive: true });
 const API = process.env.E2E_API_BASE || 'http://localhost:4000';
 
 test.describe('Cockpit top bar (#245)', () => {
-  test('modes route to existing screens and mark the current one', async ({ page }) => {
-    const modes = page.getByRole('navigation', { name: 'Modes' });
+  test('the five screens route to existing routes and mark the current one (#369)', async ({ page }) => {
+    const nav = page.getByRole('navigation', { name: 'Screens', exact: true });
     await page.goto('/settings');
-    await expect(modes.getByRole('link', { name: 'Explore' })).not.toHaveAttribute('aria-current', 'page');
-    await expect(modes.getByRole('link')).toHaveText(['Explore', 'Plan', 'Build', 'Review']);
+    // Order is fixed; a badge may follow a name (Git), so match on the start of each link's text.
+    await expect(nav.getByRole('link')).toHaveCount(5);
+    for (const [i, label] of ['Features', 'Pages', 'Components', 'Git', 'Tests'].entries()) await expect(nav.getByRole('link').nth(i)).toHaveText(new RegExp(`^${label}`));
+    // The old modes are gone, and on a utility page (Settings) no screen is current.
+    await expect(page.getByRole('navigation', { name: 'Modes' })).toHaveCount(0);
+    await expect(nav.locator('[aria-current="page"]')).toHaveCount(0);
 
-    await modes.getByRole('link', { name: 'Explore' }).click();
-    await expect(page).toHaveURL(/\/pages$/);
-    await expect(modes.getByRole('link', { name: 'Explore' })).toHaveAttribute('aria-current', 'page');
-    await expect(modes.getByRole('link', { name: 'Plan' })).not.toHaveAttribute('aria-current', 'page');
+    const go = async (label, url) => {
+      await nav.getByRole('link', { name: label }).click();
+      await expect(page).toHaveURL(url);
+      await expect(nav.locator('[aria-current="page"]')).toHaveCount(1);
+      await expect(nav.getByRole('link', { name: label })).toHaveAttribute('aria-current', 'page');
+    };
+    await go('Pages', /\/pages$/);
+    await go('Components', /\/workflows$/);
+    await go('Git', /\/review$/);
+    await go('Tests', /\/tests$/);
+    await go('Features', /\/$/);
 
-    // #289: Plan leads to the Plan screen; the Dashboard (the old research form) is still a screen in the Browser pane.
-    await modes.getByRole('link', { name: 'Plan' }).click();
-    await expect(page).toHaveURL(/\/plan$/);
-    await expect(modes.getByRole('link', { name: 'Plan' })).toHaveAttribute('aria-current', 'page');
+    // Every route the retired modes and the Dashboard covered belongs to Features.
+    for (const route of ['/plan', '/dashboard', '/wizard']) {
+      await page.goto(route);
+      await expect(nav.getByRole('link', { name: 'Features' })).toHaveAttribute('aria-current', 'page');
+    }
+    await page.goto('/pages');
+    await page.screenshot({ path: path.join(SHOTS, '369-screen-nav.png'), clip: { x: 0, y: 0, width: 1280, height: 90 } });
+  });
 
-    await modes.getByRole('link', { name: 'Build' }).click();
-    await expect(page).toHaveURL(/\/wizard$/);
-    await expect(modes.getByRole('link', { name: 'Build' })).toHaveAttribute('aria-current', 'page');
-
-    await modes.getByRole('link', { name: 'Review' }).click();
-    await expect(page).toHaveURL(/\/review$/);
-    await expect(modes.getByRole('link', { name: 'Review' })).toHaveAttribute('aria-current', 'page');
+  test('at 390 px the five screens sit on their own row, all reachable, with no sideways scroll (#369)', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 800 });
+    await page.goto('/pages');
+    const nav = page.getByRole('navigation', { name: 'Screens', exact: true });
+    await expect(nav.getByRole('link')).toHaveCount(5);
+    for (const link of await nav.getByRole('link').all()) await expect(link).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    // The nav is the second row of the bar, under brand and project.
+    const [navBox, projectBox] = [await nav.boundingBox(), await page.getByTestId('project-switcher').boundingBox()];
+    expect(navBox.y).toBeGreaterThan(projectBox.y + projectBox.height - 1);
+    await nav.getByRole('link', { name: 'Tests' }).click();
+    await expect(page).toHaveURL(/\/tests$/);
+    await page.screenshot({ path: path.join(SHOTS, '369-screen-nav-narrow.png') });
   });
 
   test('every old sidebar screen is still one click away in the Browser pane', async ({ page }) => {
     await page.goto('/dashboard');
-    const screens = page.getByRole('navigation', { name: 'Screens' });
+    const screens = page.getByRole('navigation', { name: 'All screens' });
     await expect(screens.getByRole('link')).toHaveText([
       'Dashboard',
       'Import Wizard',

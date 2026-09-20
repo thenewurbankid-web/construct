@@ -4,7 +4,7 @@ const MODEL_LABEL = { checking: 'Checking...', ready: 'Ready', offline: 'Offline
 
 /** Default "Project" tab of the Tools panel: where you are working, in plain
  * language, plus the keyboard shortcuts. Features add their own tabs beside it. */
-export function ProjectInfoPanel({ dir, modeLabel, modelStatus, shortcuts }: ProjectInfoPanelProps) {
+export function ProjectInfoPanel({ dir, screenLabel, modelStatus, shortcuts }: ProjectInfoPanelProps) {
   return (
     <div className="sh-info">
       <dl>
@@ -12,8 +12,8 @@ export function ProjectInfoPanel({ dir, modeLabel, modelStatus, shortcuts }: Pro
         <dd data-testid="info-project-dir">
           <code>{dir ?? 'None selected'}</code>
         </dd>
-        <dt>Mode</dt>
-        <dd>{modeLabel ?? 'None (a utility screen)'}</dd>
+        <dt>Screen</dt>
+        <dd>{screenLabel ?? 'None (Settings, Local model or Help)'}</dd>
         <dt>Local model</dt>
         <dd>{MODEL_LABEL[modelStatus]}</dd>
       </dl>

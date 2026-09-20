@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { useRegisterCommands, type Command } from '@/features/command-palette';
-import { MODES } from '../domain/Modes';
+import { PRIMARY_SCREENS } from '../domain/PrimaryScreens';
 import { SCREENS } from '../domain/Screens';
 import { SHORTCUTS } from '../domain/Shortcuts';
 import { shellCommandSpecs, type ShellCommandAction } from '../domain/ShellCommands';
@@ -35,12 +35,12 @@ function runAction(action: ShellCommandAction, h: Handlers): void {
   }
 }
 
-/** Registers the shell's own commands (go to a screen, switch mode, toggle
+/** Registers the shell's own commands (go to a screen, toggle
  * theme/panes/drawer, run validate, open the project switcher) into the palette. */
 export function useShellCommands({ navigate, togglePane, toggleTheme, runValidate, openProjectSwitcher, showDrawerTab }: Handlers): void {
   const commands = useMemo<Command[]>(() => {
     const handlers: Handlers = { navigate, togglePane, toggleTheme, runValidate, openProjectSwitcher, showDrawerTab };
-    return shellCommandSpecs(SCREENS, MODES, SHORTCUTS).map(({ action, ...rest }) => ({ ...rest, run: () => runAction(action, handlers) }));
+    return shellCommandSpecs(PRIMARY_SCREENS, SCREENS, SHORTCUTS).map(({ action, ...rest }) => ({ ...rest, run: () => runAction(action, handlers) }));
   }, [navigate, togglePane, toggleTheme, runValidate, openProjectSwitcher, showDrawerTab]);
   useRegisterCommands(commands);
 }

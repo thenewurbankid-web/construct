@@ -66,8 +66,8 @@ export type TabHostProps = {
 
 // ---- Navigation ----------------------------------------------------------
 
-/** A mode changes what the panes hold; today each routes to an existing screen. */
-export type ShellMode = { id: string; label: string; href: string; activeOn: string[] };
+/** One of the five top-bar screens (Features, Pages, Components, Git, Tests); `activeOn` lists the existing routes it owns. */
+export type PrimaryScreen = { id: string; label: string; href: string; activeOn: string[] };
 
 export type ShellScreen = { href: string; label: string; activeOn: string[] };
 
@@ -143,8 +143,10 @@ export type ProjectSwitcherProps = {
 };
 
 export type TopBarProps = {
-  modes: ShellMode[];
-  activeModeId: string | null;
+  screens: PrimaryScreen[];
+  activeScreenId: string | null;
+  /** Little counts beside a screen's name, by screen id (Git: the branches under review). Absent or 0 shows none. */
+  screenBadges?: Record<string, number>;
   projectSwitcher: ReactNode;
   /** The signed-in account slot (#278). A slot, not a dependency: the shell
    * knows a node goes here, not that the auth feature exists. Renders
@@ -176,7 +178,7 @@ export type ScreensNavProps = { screens: ShellScreen[]; pathname: string };
 
 export type ProjectInfoPanelProps = {
   dir: string | null;
-  modeLabel: string | null;
+  screenLabel: string | null;
   modelStatus: ModelStatus;
   shortcuts: ShortcutInfo[];
 };
@@ -187,8 +189,10 @@ export type ShellPageProps = NarrowProps & {
   limits: Record<PaneId, PaneLimit>;
   onResize: (pane: PaneId, size: number) => void;
   onTogglePane: (pane: PaneId) => void;
-  modes: ShellMode[];
-  activeModeId: string | null;
+  screens: PrimaryScreen[];
+  activeScreenId: string | null;
+  /** Little counts beside a screen's name, by screen id (Git: the branches under review). Absent or 0 shows none. */
+  screenBadges?: Record<string, number>;
   projectSwitcher: ReactNode;
   /** The signed-in account slot (#278) — see TopBarProps. */
   userMenu?: ReactNode;

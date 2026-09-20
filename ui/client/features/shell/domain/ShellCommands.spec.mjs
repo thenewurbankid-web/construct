@@ -2,10 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { shellCommandSpecs } from './ShellCommands.ts';
 import { SCREENS } from './Screens.ts';
-import { MODES } from './Modes.ts';
+import { PRIMARY_SCREENS } from './PrimaryScreens.ts';
 import { SHORTCUTS } from './Shortcuts.ts';
 
-const specs = shellCommandSpecs(SCREENS, MODES, SHORTCUTS);
+const specs = shellCommandSpecs(PRIMARY_SCREENS, SCREENS, SHORTCUTS);
 
 test('ids are unique and every spec has a title and group', () => {
   assert.equal(new Set(specs.map((s) => s.id)).size, specs.length);
@@ -14,11 +14,12 @@ test('ids are unique and every spec has a title and group', () => {
   }
 });
 
-test('there is a go-to command for every screen and a switch command for every mode', () => {
+test('every screen and every top-bar screen has a Go to command, and there is no mode command', () => {
   for (const screen of SCREENS) {
     assert.ok(specs.some((s) => s.action.type === 'navigate' && s.action.href === screen.href && s.group === 'Go to'), screen.label);
   }
-  for (const mode of MODES) assert.ok(specs.some((s) => s.id === `mode.${mode.id}`), mode.label);
+  for (const screen of PRIMARY_SCREENS) assert.ok(specs.some((s) => s.id === `screen.${screen.id}` && s.title === `Go to ${screen.label}`), screen.label);
+  assert.ok(!specs.some((s) => s.group === 'Mode' || s.id.startsWith('mode.')));
 });
 
 test('the required actions exist: theme, panes, drawer, validate, project switcher', () => {
