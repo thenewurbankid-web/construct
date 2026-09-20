@@ -417,6 +417,51 @@ button:disabled {
   max-width: none;
   padding: var(--sp-6);
 }
+/* ---- login hero (owner request 2026-09-20): full-screen slideshow + typed tagline ---- */
+.auth-screen { position: relative; flex-direction: column; gap: var(--sp-5); overflow: hidden; isolation: isolate; }
+.login-backdrop { position: fixed; inset: 0; z-index: -1; background: #0b0d10; }
+.login-backdrop__slide {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: top center;
+  filter: blur(2px) saturate(0.9);
+  opacity: 0; z-index: 1;
+  animation: login-slide 42s linear infinite both;
+}
+.login-backdrop__slide:nth-child(1) { animation-delay: -1.6s; }
+.login-backdrop__slide:nth-child(2) { animation-delay: 5.4s; }
+.login-backdrop__slide:nth-child(3) { animation-delay: 12.4s; }
+.login-backdrop__slide:nth-child(4) { animation-delay: 19.4s; }
+.login-backdrop__slide:nth-child(5) { animation-delay: 26.4s; }
+.login-backdrop__slide:nth-child(6) { animation-delay: 33.4s; }
+/* 6 slides x 7s. The incoming slide fades in on top while the outgoing one stays opaque, so there is never a dip. */
+@keyframes login-slide {
+  0%      { opacity: 0; z-index: 2; }
+  4%      { opacity: 1; z-index: 2; }
+  4.01%   { opacity: 1; z-index: 1; }
+  19.5%   { opacity: 1; z-index: 1; }
+  19.51%  { opacity: 0; z-index: 1; }
+  100%    { opacity: 0; z-index: 1; }
+}
+.login-backdrop__scrim {
+  position: absolute; inset: 0; z-index: 3;
+  background:
+    radial-gradient(70% 55% at 50% 45%, color-mix(in srgb, #0b0d10 40%, transparent) 0%, color-mix(in srgb, #0b0d10 78%, transparent) 100%);
+}
+.login-tagline {
+  margin: 0; min-height: 2.2rem; text-align: center;
+  font-size: 1.35rem; font-weight: 500; color: #e6e9ee;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.6);
+}
+.login-tagline__caret {
+  display: inline-block; width: 2px; height: 1.1em; margin-left: 3px; vertical-align: -0.15em;
+  background: #e6e9ee; animation: login-caret 1s steps(1) infinite;
+}
+@keyframes login-caret { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .login-backdrop__slide { animation: none; }
+  .login-backdrop__slide:first-child { opacity: 1; }
+  .login-tagline__caret { animation: none; }
+}
 .auth-actions {
   display: flex;
   flex-wrap: wrap;

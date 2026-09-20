@@ -2,6 +2,7 @@
 
 import { Button, GlassPanel } from '@/components/ui';
 import type { AuthSession } from '../types';
+import { LoginBackdrop } from './LoginBackdrop';
 
 type LoginScreenProps = {
   session: AuthSession | null;
@@ -13,6 +14,10 @@ type LoginScreenProps = {
   onSignInWithGithub: () => void;
   onSignInAsTestUser: () => void;
   onRetry: () => void;
+  /** The typed, changing tagline shown above the card. */
+  tagline: string;
+  /** False under reduced motion: no caret. */
+  taglineAnimated: boolean;
 };
 
 /**
@@ -32,12 +37,19 @@ export function LoginScreen({
   onSignInWithGithub,
   onSignInAsTestUser,
   onRetry,
+  tagline,
+  taglineAnimated,
 }: LoginScreenProps) {
   return (
     // <main> because the shell — which normally supplies the page's
     // landmarks — has been replaced entirely; without it the document has
     // none at all.
     <main className="page page--screen auth-screen" data-testid="login-screen">
+      <LoginBackdrop />
+      <p className="login-tagline" data-testid="login-tagline" aria-hidden="true">
+        <span>{tagline}</span>
+        {taglineAnimated && <span className="login-tagline__caret" />}
+      </p>
       <GlassPanel className="gate-panel">
         <h1>Sign in to the Cockpit</h1>
         {unreachable ? (
