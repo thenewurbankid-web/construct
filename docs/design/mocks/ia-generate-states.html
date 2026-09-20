@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Inline Generate: Mechanical | AI, states and rules - Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="ia.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+</head><body>
+<div class="concept">Concept - not implemented <span>Inline Generate: Mechanical | AI, states and rules</span></div>
+
+<div class="hh">The inline Generate control: one contract, every place a step can be produced<small>Mechanical (a deterministic block, zero model calls) is the default and says so. AI is opt-in per action, and output only ever lands as a reviewable diff.</small></div>
+<div class="sheet3">
+ <div><h3>States</h3>
+  <div class="card"><b>Idle, mechanical (default)</b><p>Add the missing layer files</p><div><span class="gen " role="group" aria-label="Generate">
+   <span class="mode" role="radiogroup" aria-label="How"><button role="radio" aria-checked="true" class="on det" >Mechanical</button><button role="radio" aria-checked="false" class="" >AI</button></span>
+   <button class="go" >Generate</button></span></div><span class="tag det">Deterministic &middot; 0 model calls</span></div>
+  <div class="card"><b>AI chosen: says what it will send</b><p>Fill their bodies</p><div><span class="gen " role="group" aria-label="Generate">
+   <span class="mode" role="radiogroup" aria-label="How"><button role="radio" aria-checked="false" class="" >Mechanical</button><button role="radio" aria-checked="true" class="on ai" >AI</button></span>
+   <button class="go" >Generate</button></span></div><div class="disc"><b>Before it runs</b> Sends 3 files (4.1 KB) to qwen2.5-coder:7b, on this machine. 3 model calls. Result is a diff you approve.</div></div>
+  <div class="card"><b>Running, with cancel</b><p>Fill their bodies</p><div><span class="gen " role="group" aria-label="Generate">
+   <span class="mode" role="radiogroup" aria-label="How"><button role="radio" aria-checked="false" class="" >Mechanical</button><button role="radio" aria-checked="true" class="on ai" >AI</button></span>
+   <button class="go" >Cancel</button></span></div><span class="saveind busy"><span class="spin"></span> File 2 of 3 &middot; Process #15</span></div></div>
+ <div><h3>Results and refusals</h3>
+  <div class="card"><b>Result</b><p>A diff, never a silent write</p><div><span class="tag llm">Local model</span> 3 files ready</div><div><button class="btn sm primary">Review diff</button> <button class="btn sm">Discard</button></div><p>Lands in Approvals, approved per file.</p></div>
+  <div class="card"><b>Refused: model offline</b><p>AI is off, nothing ran</p><div><span class="gen " role="group" aria-label="Generate">
+   <span class="mode" role="radiogroup" aria-label="How"><button role="radio" aria-checked="false" class="" >Mechanical</button><button role="radio" aria-checked="true" class="on ai" >AI</button></span>
+   <button class="go" >Generate</button></span></div><div class="callout warn" style="margin:0"><span>&#9888;</span><div class="grow"><b>Local model is offline</b><small>Nothing was sent.</small></div></div><div><button class="btn sm">Use Mechanical instead</button> <button class="btn sm">Open Local model</button></div></div>
+  <div class="card"><b>Disabled, with the reason</b><p>Extract to component</p><div><span class="gen dis" role="group" aria-label="Generate">
+   <span class="mode" role="radiogroup" aria-label="How"><button role="radio" aria-checked="true" class="on det" disabled>Mechanical</button><button role="radio" aria-checked="false" class="" disabled>AI</button></span>
+   <button class="go" disabled>Generate</button></span></div><span class="saveind">Select part of the page first</span></div></div>
+ <div><h3>Rules of the contract</h3>
+  <div class="card"><b>No block yet</b><p>Where no deterministic block exists</p><div><span class="gen " role="group" aria-label="Generate">
+   <span class="mode" role="radiogroup" aria-label="How"><button role="radio" aria-checked="true" class="on ai" disabled>AI only</button></span>
+   <button class="go" >Generate</button></span></div><span class="saveind">Flagged "no block yet": counted as a request for a mechanical block, never a silent model fallback.</span></div>
+  <div class="card"><b>Remembered</b><p>The Mechanical / AI choice is stored per user and per action kind (for example "fill a layer"), in the browser's local settings. It defaults to Mechanical when there is no choice, and to Mechanical again if the model is offline.</p></div>
+  <div class="card"><b>Slot contract</b><p>Props in: action id, label, mechanical block (or none), AI allowed, what would be sent, target. Events out: run, cancel, choose-mode. Result is an artifact handed to Approvals; the chip never writes files.</p></div></div>
+</div>
+</body></html>

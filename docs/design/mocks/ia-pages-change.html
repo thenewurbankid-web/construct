@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Pages: change a selection with impact preview and per-file approval - Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="ia.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+</head><body>
+<div class="concept">Concept - not implemented <span>Pages: change a selection with impact preview and per-file approval</span></div>
+
+<div class="shell" style="--lw:300px;--rw:400px;grid-template-rows:44px 1fr 110px 24px;position:relative">
+  
+<header class="topbar" role="banner">
+  <div class="brand"><i></i>Cockpit</div>
+  <button class="chip-btn" aria-haspopup="listbox">storefront <span class="sub">main</span> &#9662;</button>
+  <nav class="snav " aria-label="Screens"><a class="" >Features</a><a class="on" aria-current="page">Pages</a><a class="" >Components</a><a class="" >Git <span class="badge">3</span></a><a class="" >Tests</a></nav>
+  <button class="chip-btn palette-trigger"><span>Search or run a command...</span><kbd>Ctrl K</kbd></button>
+  <span class="pill run"><span class="spin"></span>2 running</span>
+  <button class="acct " aria-haspopup="true" aria-expanded="false"><span class="avatar">SP</span>shashank-p &#9662;</button>
+</header>
+  <div class="ia-main">
+    <aside class="pane" aria-label="Left panel: Browse"><div class="pane-h"><span class="title">Pages</span><span class="spacer"></span><button class="icon-btn" aria-label="New">+</button><button class="icon-btn" aria-label="Collapse">&laquo;</button></div><div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Tree</button><button role="tab" class="" aria-selected="false">Pages</button><button role="tab" class="" aria-selected="false">Flow</button></div><div class="search">&#8981; Go to file, node or route <span class="spacer"></span><kbd>Ctrl P</kbd></div>
+  <div class="scroll"><div class="sect">/login</div><div class="tree">
+   <div class="row l0 "><span class="twisty">&#9662;</span><span class="layer page">page</span><span>LoginPage</span><span class="nbs"></span></div>
+   <div class="row l1 "><span class="layer component">component</span><span>AppNav</span><span class="nbs"></span></div>
+   <div class="row l1 sel"><span class="twisty">&#9662;</span><span class="layer component">component</span><span>LoginForm</span><span class="nbs"><span class="nb imp">3 feat</span><span class="nb find">2</span><span class="nb test">2</span></span></div>
+   <div class="row l2 "><span class="layer component">component</span><span>EmailField</span><span class="nbs"><span class="nd git" title="edited" aria-label="edited"></span></span></div>
+   <div class="row l2 "><span class="layer component">component</span><span>PasswordField</span><span class="nbs"></span></div>
+   <div class="row l2 "><span class="layer component">component</span><span>SubmitButton</span><span class="nbs"></span></div>
+   <div class="row l1 "><span class="layer component">component</span><span>AuthFooter</span><span class="nbs"><span class="nd git" title="new" aria-label="new"></span></span></div>
+  </div></div></aside><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <section class="pane mid" aria-label="Center stage"><div class="etabs" role="tablist"><button role="tab" class="on" aria-selected="true">&#9679; Preview /login</button><button role="tab" class="" aria-selected="false">LoginForm.tsx <span class="x">&times;</span></button></div><div class="canvas-tb"><span class="crumbs">Pages &rsaquo; /login &rsaquo; <b>LoginForm</b></span><span class="devpill"><span class="dot"></span>:5173 running</span><span class="spacer"></span><button class="tg" aria-haspopup="true">Overlays &middot; 1 on &#9662;</button><button class="tg" aria-pressed="true" title="Click an element without holding Alt">&#8853; Pick</button></div><div class="stage" style="flex:1;padding:14px;place-items:start center">
+<div class="device" style="height:500px;width:640px">
+  <div class="bar"><i></i><i></i><i></i>&nbsp;&nbsp;localhost:5173/login</div>
+  <div class="app-nav"><b>Storefront</b><span>Catalog</span><span>Cart (2)</span><span>Sign in</span></div>
+  <div class="login" id="lf"><h2>Welcome back</h2><p>Sign in to continue checkout.</p><label>Email</label><div class="in">sam@example.com</div><label>Password</label><div class="in">&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;</div><div class="cta">Sign in</div></div>
+  <div class="sel-box" style="left:calc(50% - 174px);top:98px;width:348px;height:322px"></div><div class="sel-tag" style="left:calc(50% - 174px);top:78px">LoginForm</div>
+  <div class="ghost" style="left:12px;top:36px;width:616px;height:34px"></div><div class="ghost-tag" style="left:16px;top:38px;left:300px">will change: AppNav import</div>
+</div><div class="ovcard" style="left:calc(50% - 174px);top:432px;width:348px;border-color:var(--warn)"><b>Preview of the change</b><span>Dashed boxes will change. Nothing is written until you approve.</span></div></div><div class="canvas-foot"><span>Desktop 1280</span><span>Alt+Click opens source</span><span class="spacer"></span><span>Live: reloads when a file changes</span></div></section><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <aside class="pane" aria-label="Right panel: Inspect"><div class="pane-h"><span class="title">Change</span></div><div class="tabs" role="tablist"><button role="tab" class="" aria-selected="false">Inspector</button><button role="tab" class="" aria-selected="false">Scope</button><button role="tab" class="" aria-selected="false">Source</button><button role="tab" class="on" aria-selected="true">Change <span class="badge acc">4</span></button><button role="tab" class="" aria-selected="false">Diff</button></div><div class="scroll">
+   <div class="verbs"><button class="tg" aria-pressed="true">Move</button><button class="tg" aria-pressed="false">Rename</button><button class="tg" aria-pressed="false">Extract</button><button class="tg" aria-pressed="false">Wrap in...</button><button class="tg" aria-pressed="false">Delete</button></div>
+   <div class="ask"><b>Move</b> LoginForm to <span class="field" style="display:inline-flex;width:160px">features/account</span></div>
+   <div class="nx"><div class="nxh"><span class="no">1</span><div class="grow"><b>Move the file, rewrite 3 imports</b><small>construct refactor move</small></div><span class="gen " role="group" aria-label="Generate">
+   <span class="mode" role="radiogroup" aria-label="How"><button role="radio" aria-checked="true" class="on det" >Mechanical</button><button role="radio" aria-checked="false" class="" >AI</button></span>
+   <button class="go" >Generate</button></span></div></div>
+   <div class="nx"><div class="nxh"><span class="no">2</span><div class="grow"><b>Update the folder description</b><small>a sentence for the new folder</small></div><span class="gen " role="group" aria-label="Generate">
+   <span class="mode" role="radiogroup" aria-label="How"><button role="radio" aria-checked="false" class="" >Mechanical</button><button role="radio" aria-checked="true" class="on ai" >AI</button></span>
+   <button class="go" >Generate</button></span></div></div>
+   <div class="sect" style="padding-top:10px">Approve per file &middot; 4 of 5</div>
+   <div class="art"><span class="cb on">&#10003;</span><span>LoginForm.tsx</span><span style="color:var(--text-muted)">moved</span></div><div class="art"><span class="cb on">&#10003;</span><span>LoginPage.tsx</span><span style="color:var(--text-muted)">+1 -1</span></div><div class="art"><span class="cb on">&#10003;</span><span>CheckoutPage.tsx</span><span style="color:var(--text-muted)">+1 -1</span></div><div class="art"><span class="cb on">&#10003;</span><span>LoginForm.test.ts</span><span style="color:var(--text-muted)">+1 -1</span></div><div class="art"><span class="cb "></span><span>README.md (AI)</span><span style="color:var(--text-muted)">+3</span></div>
+   <div style="padding:10px 12px"><button class="btn primary">Approve 4 of 5</button> <button class="btn">Discard</button></div></div></aside>
+  </div>
+  
+<div class="drawer" aria-label="Bottom panel: Run" style="height:110px">
+  <div class="tabs" role="tablist"><button role="tab" class="" aria-selected="false">Processes <span class="badge acc">1</span></button><button role="tab" class="on" aria-selected="true">Approvals <span class="badge ">1</span></button><button role="tab" class="" aria-selected="false">Diagnostics <span class="badge danger">3</span></button><button role="tab" class="" aria-selected="false">Logs</button></div>
+  <div class="body"><table><tr><th>Waiting for you</th><th>From</th><th></th></tr><tr><td><b>Move LoginForm to features/account</b> &middot; 5 files, 4 selected</td><td><span class="tag det">Mechanical</span> <span class="tag llm">Local model</span></td><td><button class="btn sm primary">Review diff</button></td></tr></table></div>
+</div>
+  <footer class="statusbar"><span class="ok">&#9679; validate: 0 new violations</span><span>Notes saved on this machine</span><span class="spacer"></span><span>qwen2.5-coder:7b</span><span><kbd>F6</kbd> next panel</span><span><kbd>Ctrl J</kbd> bottom panel</span></footer>
+  
+</div>
+</body></html>

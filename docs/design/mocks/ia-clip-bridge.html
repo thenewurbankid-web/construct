@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>One call, the right route: server, your browser (userscript), later a server browser - Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="ia.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+</head><body>
+<div class="concept">Concept - not implemented <span>One call, the right route: server, your browser (userscript), later a server browser</span></div>
+
+<div class="hh">One call, the right route: your own browser reads a login-only ticket when the Cockpit needs it<small>The screen calls StoryApi.fetch(url). Public pages are read by the server; login-only pages by the userscript in your browser. No cookie, password or token ever reaches the Cockpit server.</small></div>
+<div class="sheet3">
+ <div><h3>Strategy is picked per link</h3>
+  <div class="card" ><b>StoryApi.fetch(url)</b><p>One call from the screen; the strategy is chosen automatically and every screen looks the same either way, with a small "via" label.</p><div class="kv" style="grid-template-columns:110px 1fr"><span>Public page</span><span>server, guarded fetch <span class="nb test">default</span></span><span>Login-only</span><span>your browser, userscript <span class="nb test">recommended</span></span><span>Server browser</span><span>later, owner decision <span class="nb find">not for v1</span></span></div></div>
+  <div class="card" ><b>Login-only flow</b><p>Each time the story is needed: 1) the page asks the userscript (handshake code, the URL and the parse selectors read from story.md, same page only); 2) your browser reads the ticket with your own login and returns only the picked fields; 3) the Cockpit compares a fingerprint and, only if it changed, saves through its own signed-in call, as untrusted text.</p></div>
+  <div class="card" style="border-color:var(--warn)"><b>Optional, later: server browser</b><p>A headless browser on the server with a stored login per host. Costs: the server would hold a live Jira or GitHub session at rest (a credential; if leaked it can read everything that login can); SSO and MFA cannot be completed headlessly, so it needs an interactive remote-login window; Chromium is heavy; remote page scripts would run on the server (sandbox and SSRF concerns); scraping terms may forbid it. Not recommended for v1. The strategy slot, a per-host opt-in and the indicator (via: server browser) are reserved.</p><div><span class="tag llm">owner decision</span></div></div></div>
+ <div><h3>Two approvals, both revocable</h3>
+  <div class="card" style="border-color:var(--warn)"><b>In the Cockpit: this story wants to read a page</b><p>A story.md can name any URL, including one that arrived in a cloned repository. The first use of each host and URL asks you.</p><div><button class="btn primary sm">Allow once</button> <button class="btn sm">Always for this host</button> <button class="btn sm danger">Deny</button></div></div>
+  <div class="card" style="border-color:var(--accent)"><b>In the userscript: allow this Cockpit</b><p><b>cockpit.example.org</b> wants to read tickets from <b>acme.atlassian.net</b> using your login in this browser. It only gets the fields the story.md selectors pick, never the whole page.</p><div><button class="btn primary sm">Allow this Cockpit</button> <button class="btn sm">Not now</button></div></div>
+  <div class="card" ><b>Approved hosts</b><p>acme.atlassian.net for cockpit.example.org &middot; approved 2026-09-20</p><div><button class="btn sm danger">Revoke</button></div></div>
+  <div class="card" ><b>Activity log (userscript menu)</b><p>12:02 read STORE-142 (5 fields, 2.1 KB) &middot; 12:31 read STORE-142 &middot; 12:32 refused: host not approved (tracker.example.org)</p><div><span class="mono">10 reads per minute at most</span></div></div></div>
+ <div><h3>Limits and what bounds the risk</h3>
+  <div class="card" ><b>Threat: a script injected into the Cockpit page</b><p>It could ask the userscript for tickets. That is bounded: only hosts you approved for this Cockpit origin, only URLs a story.md names and you consented to, only the picked fields returned, selectors validated as data, rate-limited, and every read is in the activity log.</p></div>
+  <div class="card" ><b>Needs, honestly</b><p>A userscript manager (Tampermonkey or Violentmonkey) and the Cockpit tab open. Without them the last snapshot is used, and the indicator says so. Public GitHub issues need no clipper.</p></div>
+  <div class="card" ><b>Last resort</b><p>Manual paste stays available when nothing else works.</p><div><button class="btn sm">Paste text instead</button></div></div></div>
+</div>
+</body></html>

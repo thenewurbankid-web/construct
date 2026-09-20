@@ -197,7 +197,339 @@ const narrow = `<div class="sheet3" style="grid-template-columns:repeat(3,390px)
  ${phone('Account menu (sheet)', 'Stage', `<div style="padding:14px;color:var(--text-muted)">Stage content is dimmed behind the sheet.</div>`, `<div class="menu" style="top:auto;bottom:0;left:0;right:0;width:auto;border-radius:var(--r-lg) var(--r-lg) 0 0">${menuInner}</div>`)}
 </div>`;
 
+const runProcs = () => `<table><tr><th>Process</th><th>Project</th><th>Status</th><th></th></tr>
+ <tr><td><b>dev server &middot; storefront</b> <span class="tag det">Deterministic</span></td><td>storefront (inside the workspace)</td><td>running on :5173 &middot; 14 min</td><td><button class="btn sm">Restart</button> <button class="btn sm danger">Stop</button></td></tr></table>`;
+
+/* ================================================= POC parity (preview-first Pages / Components), quiet IDE feel */
+// Density rule: at rest the tree shows at most ONE dot per row; badges, impact, tests, findings and Notes
+// appear on the SELECTED row and in the right panel (collapsed sections). Overlays sit in one menu.
+const nb = (k, t) => `<span class="nb ${k}">${t}</span>`;
+const dot = (k, t) => `<span class="nd ${k}" title="${t}" aria-label="${t}"></span>`;
+const trow = (lvl, layer, name, tail = '', o = {}) => `<div class="row l${lvl} ${o.sel ? 'sel' : ''}">${o.tw ? `<span class="twisty">${o.tw}</span>` : ''}${L(layer)}<span>${name}</span><span class="nbs">${tail}</span></div>`;
+const etabs = (items) => `<div class="etabs" role="tablist">${items.map(([n, on, pin]) => `<button role="tab" class="${on ? 'on' : ''}" aria-selected="${!!on}">${pin ? '&#9679; ' : ''}${n}${pin ? '' : ' <span class="x">&times;</span>'}</button>`).join('')}</div>`;
+const treeHead = (title, tabsArr, on) => `<div class="pane-h"><span class="title">${title}</span><span class="spacer"></span><button class="icon-btn" aria-label="New">+</button><button class="icon-btn" aria-label="Collapse">&laquo;</button></div>${tabs(tabsArr, on)}<div class="search">&#8981; Go to file, node or route <span class="spacer"></span><kbd>Ctrl P</kbd></div>`;
+const pagesTree = (sel = 'LoginForm', extraPage = false) => `${treeHead('Pages', [['Tree'], ['Pages'], ['Flow']], 'Tree')}
+  <div class="scroll"><div class="sect">${extraPage ? '/account/profile' : '/login'}</div><div class="tree">
+   ${extraPage
+     ? `${trow(0, 'page', 'ProfilePage', nb('git', 'new'), { tw: '&#9662;', sel: true })}${trow(1, 'component', 'AppNav')}${trow(1, 'component', 'Section', '', {})}`
+     : `${trow(0, 'page', 'LoginPage', '', { tw: '&#9662;' })}
+   ${trow(1, 'component', 'AppNav')}
+   ${trow(1, 'component', 'LoginForm', sel === 'LoginForm' ? nb('imp', '3 feat') + nb('find', '2') + nb('test', '2') : dot('find', '2 findings'), { tw: '&#9662;', sel: sel === 'LoginForm' })}
+   ${trow(2, 'component', 'EmailField', dot('git', 'edited'))}
+   ${trow(2, 'component', 'PasswordField')}
+   ${trow(2, 'component', 'SubmitButton')}
+   ${trow(1, 'component', 'AuthFooter', dot('git', 'new'))}`}
+  </div></div>`;
+const loginDevice = ({ sel = true, pins = '', ghosts = '', h = 440, w = 640 }) => `
+<div class="device" style="height:${h}px;width:${w}px">
+  <div class="bar"><i></i><i></i><i></i>&nbsp;&nbsp;localhost:5173/login</div>
+  <div class="app-nav"><b>Storefront</b><span>Catalog</span><span>Cart (2)</span><span>Sign in</span></div>
+  <div class="login" id="lf"><h2>Welcome back</h2><p>Sign in to continue checkout.</p><label>Email</label><div class="in">sam@example.com</div><label>Password</label><div class="in">&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;</div><div class="cta">Sign in</div></div>
+  ${sel ? `<div class="sel-box" style="left:calc(50% - 174px);top:98px;width:348px;height:322px"></div><div class="sel-tag" style="left:calc(50% - 174px);top:78px">LoginForm</div>` : ''}
+  ${pins}${ghosts}
+</div>`;
+const profileDevice = `<div class="device" style="height:400px;width:640px"><div class="bar"><i></i><i></i><i></i>&nbsp;&nbsp;localhost:5173/account/profile</div><div class="app-nav"><b>Storefront</b><span>Catalog</span><span>Cart (2)</span></div><div style="padding:34px 40px;color:#667085"><h2 style="margin:0 0 6px;color:#1a1d24">Profile</h2><p>New page. Nothing here yet.</p></div><div class="sel-box" style="left:16px;top:112px;width:608px;height:150px"></div><div class="sel-tag" style="left:16px;top:92px">ProfilePage</div></div>`;
+const devpill = `<span class="devpill"><span class="dot"></span>:5173 running</span>`;
+const ovMenu = (n = 2) => `<button class="tg" aria-haspopup="true">Overlays &middot; ${n} on &#9662;</button>`;
+const editorBar = (crumb, tabsHtml, right = '') => `${etabs(tabsHtml)}<div class="canvas-tb"><span class="crumbs">${crumb}</span>${devpill}<span class="spacer"></span>${right}<button class="tg" aria-pressed="true" title="Click an element without holding Alt">&#8853; Pick</button></div>`;
+const foot = `<div class="canvas-foot"><span>Desktop 1280</span><span>Alt+Click opens source</span><span class="spacer"></span><span>Live: reloads when a file changes</span></div>`;
+
+// The reusable inline action: GenerateChip. Mechanical is the default; AI is opt-in per action.
+const gen = (o = {}) => {
+  const ai = o.mode === 'ai'; const only = o.only; const dis = o.disabled;
+  return `<span class="gen ${dis ? 'dis' : ''}" role="group" aria-label="${o.label || 'Generate'}">
+   <span class="mode" role="radiogroup" aria-label="How">${only ? `<button role="radio" aria-checked="true" class="on ai" disabled>AI only</button>` : `<button role="radio" aria-checked="${!ai}" class="${!ai ? 'on det' : ''}" ${dis ? 'disabled' : ''}>Mechanical</button><button role="radio" aria-checked="${ai}" class="${ai ? 'on ai' : ''}" ${dis ? 'disabled' : ''}>AI</button>`}</span>
+   <button class="go" ${dis ? 'disabled' : ''}>${o.running ? 'Cancel' : 'Generate'}</button></span>`;
+};
+const nextRow = (n, what, sub, chip, extra = '', flag = '') => `<div class="nx"><div class="nxh"><span class="no">${n}</span><div class="grow"><b>${what}</b><small>${sub}</small></div>${chip}</div>${flag ? `<div class="nxf">${flag}</div>` : ''}${extra}</div>`;
+
+/* --- 1 Pages: preview first, quiet ------------------------------------------------- */
+const inspectorQuiet = `
+  <div class="section"><div class="el-head"><span class="name">LoginForm</span>${L('component')}<span class="spacer"></span><button class="icon-btn" aria-label="More">&#8943;</button></div><div class="path">features/auth/components/LoginForm.tsx:14</div></div>
+  <details class="dt" open><summary>Props and bindings <span class="c">3</span></summary>
+   <div class="prop"><span class="k">email</span><span class="field">email</span><span class="bind var">state</span></div>
+   <div class="prop"><span class="k">onSubmit</span><span class="field">handleLogin</span><span class="bind var">handler</span></div>
+   <div class="prop"><span class="k">disabled</span><span class="field">false</span><span class="bind lit">literal</span></div></details>
+  <details class="dt"><summary>Impact <span class="c">3 features</span></summary></details>
+  <details class="dt"><summary>Findings <span class="c warn">2</span></summary></details>
+  <details class="dt"><summary>Tests <span class="c">2 pass</span></summary></details>
+  <details class="dt"><summary>Notes <span class="c">1</span></summary></details>`;
+const pagesMock = frame({ screen: 'Pages', lw: 300, rw: 360,
+  left: pagesTree(),
+  mid: editorBar('Pages &rsaquo; /login &rsaquo; <b>LoginForm</b>', [['Preview /login', true, true], ['LoginForm.tsx'], ['loginMachine.ts']], ovMenu(2)) +
+    `<div class="stage" style="flex:1;padding:14px;place-items:start center">${loginDevice({ h: 500, pins: '<span class="pin find" style="left:calc(50% + 156px);top:88px" aria-label="2 findings">2</span>' })}<div class="ovcard" style="left:calc(50% - 174px);top:432px;flex-direction:row;align-items:center;width:348px"><b>LoginForm</b><span>Change touches 3 features</span><span style="display:flex;gap:6px"><button class="btn sm">Change...</button><button class="btn sm">Open source</button></span></div></div>` + foot,
+  right: `<div class="pane-h"><span class="title">Inspect</span></div>${tabs([['Inspector'], ['Scope'], ['Source'], ['Change'], ['Diff']], 'Inspector')}<div class="scroll">${inspectorQuiet}</div>`,
+  bot: bottom('Processes', runProcs(), 104, { p: '1', a: '0' }), botH: 104 });
+
+/* --- 2 Pages: headline for Generate: a freshly created page ------------------------- */
+const nextSteps = `
+  <div class="section"><div class="el-head"><span class="name">ProfilePage</span>${L('page')}<span class="spacer"></span><button class="icon-btn" aria-label="More">&#8943;</button></div><div class="path">features/account/pages/ProfilePage.tsx (just created)</div></div>
+  <div class="sect" style="padding-top:10px">Suggested next steps <span class="tag det" style="margin-left:6px">Mechanical by default</span></div>
+  ${nextRow(1, 'Add the missing layer files', 'hook, service, domain stubs for account', gen({}), '<div class="nxl"><a>Preview diff</a> &middot; 3 files &middot; 0 model calls</div>')}
+  ${nextRow(2, 'Fill their bodies', 'write real code into those stubs', gen({ mode: 'ai' }),
+    `<div class="disc"><b>Before it runs</b> Sends 3 stub files and their layer rules (4.1 KB) to <b>qwen2.5-coder:7b</b> on this machine. <b>3 model calls</b>, one per file. Result arrives as a diff you approve file by file. <a>Change model</a></div>`)}
+  ${nextRow(3, 'Auto-map props', 'wire 3 parent variables to child props', gen({}), '<div class="nxl"><a>Preview diff</a> &middot; 1 file</div>')}
+  ${nextRow(4, 'Add test ids', 'data-testid from the flow events', gen({}), '', 'block exists; not offered as a command yet')}
+  ${nextRow(5, 'Extract to component', 'select part of the page, name it', gen({ only: true }), '', 'no block yet: AI only (logged as a request for one)')}
+  ${nextRow(6, 'Generate tests for this route', 'scenarios from the account flow', gen({}), '<div class="nxl"><a>Preview diff</a> &middot; 2 tests</div>')}`;
+const nextMock = frame({ screen: 'Pages', lw: 250, rw: 480,
+  left: pagesTree('', true),
+  mid: editorBar('Pages &rsaquo; /account/profile &rsaquo; <b>ProfilePage</b>', [['Preview /account/profile', true, true], ['ProfilePage.tsx']], ovMenu(0)) +
+    `<div class="stage" style="flex:1;padding:14px;place-items:start center">${profileDevice}</div>` + foot,
+  right: `<div class="pane-h"><span class="title">Next</span></div>${tabs([['Next steps', ['6', 'acc']], ['Inspector'], ['Source'], ['Diff']], 'Next steps')}<div class="scroll">${nextSteps}</div>`,
+  bot: bottom('Processes', runProcs(), 104, { p: '1', a: '0' }), botH: 104 });
+
+/* --- 3 Pages: change a selection --------------------------------------------------- */
+const changeMock = frame({ screen: 'Pages', lw: 300, rw: 400,
+  left: pagesTree(),
+  mid: editorBar('Pages &rsaquo; /login &rsaquo; <b>LoginForm</b>', [['Preview /login', true, true], ['LoginForm.tsx']], ovMenu(1)) +
+    `<div class="stage" style="flex:1;padding:14px;place-items:start center">${loginDevice({ h: 500, ghosts: '<div class="ghost" style="left:12px;top:36px;width:616px;height:34px"></div><div class="ghost-tag" style="left:16px;top:38px;left:300px">will change: AppNav import</div>' })}<div class="ovcard" style="left:calc(50% - 174px);top:432px;width:348px;border-color:var(--warn)"><b>Preview of the change</b><span>Dashed boxes will change. Nothing is written until you approve.</span></div></div>` + foot,
+  right: `<div class="pane-h"><span class="title">Change</span></div>${tabs([['Inspector'], ['Scope'], ['Source'], ['Change', ['4', 'acc']], ['Diff']], 'Change')}<div class="scroll">
+   <div class="verbs">${['Move', 'Rename', 'Extract', 'Wrap in...', 'Delete'].map((v, i) => `<button class="tg" aria-pressed="${i === 0}">${v}</button>`).join('')}</div>
+   <div class="ask"><b>Move</b> LoginForm to <span class="field" style="display:inline-flex;width:160px">features/account</span></div>
+   ${nextRow(1, 'Move the file, rewrite 3 imports', 'construct refactor move', gen({}))}
+   ${nextRow(2, 'Update the folder description', 'a sentence for the new folder', gen({ mode: 'ai' }))}
+   <div class="sect" style="padding-top:10px">Approve per file &middot; 4 of 5</div>
+   ${[['LoginForm.tsx', 'moved', 1], ['LoginPage.tsx', '+1 -1', 1], ['CheckoutPage.tsx', '+1 -1', 1], ['LoginForm.test.ts', '+1 -1', 1], ['README.md (AI)', '+3', 0]].map((a) => `<div class="art"><span class="cb ${a[2] ? 'on' : ''}">${a[2] ? '&#10003;' : ''}</span><span>${a[0]}</span><span style="color:var(--text-muted)">${a[1]}</span></div>`).join('')}
+   <div style="padding:10px 12px"><button class="btn primary">Approve 4 of 5</button> <button class="btn">Discard</button></div></div>`,
+  bot: bottom('Approvals', `<table><tr><th>Waiting for you</th><th>From</th><th></th></tr><tr><td><b>Move LoginForm to features/account</b> &middot; 5 files, 4 selected</td><td><span class="tag det">Mechanical</span> <span class="tag llm">Local model</span></td><td><button class="btn sm primary">Review diff</button></td></tr></table>`, 110, { p: '1', a: '1' }), botH: 110 });
+
+/* --- 4 Components ------------------------------------------------------------------ */
+const compMock = frame({ screen: 'Components', lw: 300, rw: 410,
+  left: `${treeHead('Components', [['Components'], ['Workflows']], 'Components')}<div class="scroll"><div class="sect">auth</div><div class="tree">
+   ${trow(1, 'component', 'LoginForm', nb('imp', '3 feat') + nb('find', '2') + nb('test', '2'), { sel: true })}${trow(1, 'component', 'PasswordField')}${trow(1, 'component', 'AuthFooter', dot('git', 'new'))}${trow(1, 'workflow', 'loginMachine')}</div><div class="sect">ui-kit</div><div class="tree">${trow(1, 'component', 'AmountField')}${trow(1, 'component', 'SubmitButton')}${trow(1, 'component', 'Modal')}</div></div>`,
+  mid: editorBar('Components &rsaquo; auth &rsaquo; <b>LoginForm</b>', [['Preview LoginForm', true, true], ['LoginForm.tsx']], ovMenu(1)) +
+    `<div class="canvas-tb" style="height:32px"><span style="color:var(--text-faint);font-size:11px">State</span><span class="seg" role="radiogroup" aria-label="State"><button class="on" role="radio" aria-checked="true">idle</button><button role="radio" aria-checked="false">submitting</button><button role="radio" aria-checked="false">error</button></span><span class="tag det">from loginMachine</span><span class="spacer"></span><button class="tg" aria-pressed="false">Mobile 390</button></div>
+   <div class="stage" style="flex:1;place-items:start center;padding:16px"><div class="device" style="height:320px;width:480px"><div class="bar"><i></i><i></i><i></i>&nbsp;&nbsp;LoginForm, on its own</div><div class="login" style="margin:14px auto"><h2>Welcome back</h2><label>Email</label><div class="in">sam@example.com</div><label>Password</label><div class="in">&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;</div><div class="cta">Sign in</div></div></div>
+   <div class="mach"><div class="mh">Flow &middot; loginMachine</div><div><span class="st2 cur">idle</span><span class="arr">SUBMIT &rarr;</span><span class="st2">submitting</span><span class="arr">FAIL &rarr;</span><span class="st2">error</span></div></div></div>` + `<div class="canvas-foot"><span>Same live app, this component only</span><span class="spacer"></span><span>Live</span></div>`,
+  right: `<div class="pane-h"><span class="title">Inspect</span></div>${tabs([['Inspector'], ['Used by', ['2', '']], ['Source'], ['Change'], ['Diff']], 'Inspector')}<div class="scroll">
+   <div class="section"><div class="el-head"><span class="name">LoginForm</span>${L('component')}<span class="spacer"></span><button class="icon-btn" aria-label="More">&#8943;</button></div><div class="path">features/auth/components/LoginForm.tsx:14</div></div>
+   <details class="dt" open><summary>Props <span class="c">3</span></summary><div class="prop"><span class="k">email</span><span class="field">string</span><span class="bind lit">required</span></div><div class="prop"><span class="k">onSubmit</span><span class="field">() =&gt; void</span><span class="bind lit">required</span></div><div class="prop"><span class="k">disabled</span><span class="field">boolean</span><span class="bind lit">= false</span></div><div style="margin-top:6px"><button class="btn sm">+ Add prop</button></div></details>
+   <details class="dt"><summary>Used by <span class="c">2 pages</span></summary></details><details class="dt"><summary>Tests <span class="c">2 pass</span></summary></details><details class="dt"><summary>Findings <span class="c warn">2</span></summary></details></div>`,
+  bot: bottom('Processes', runProcs(), 110, { p: '1', a: '0' }), botH: 110 });
+
+/* --- 5 Generate states ------------------------------------------------------------- */
+const sc = (h, p, body) => `<div class="card"><b>${h}</b><p>${p}</p>${body}</div>`;
+const genStates = `
+<div class="hh">The inline Generate control: one contract, every place a step can be produced<small>Mechanical (a deterministic block, zero model calls) is the default and says so. AI is opt-in per action, and output only ever lands as a reviewable diff.</small></div>
+<div class="sheet3">
+ <div><h3>States</h3>
+  ${sc('Idle, mechanical (default)', 'Add the missing layer files', `<div>${gen({})}</div><span class="tag det">Deterministic &middot; 0 model calls</span>`)}
+  ${sc('AI chosen: says what it will send', 'Fill their bodies', `<div>${gen({ mode: 'ai' })}</div><div class="disc"><b>Before it runs</b> Sends 3 files (4.1 KB) to qwen2.5-coder:7b, on this machine. 3 model calls. Result is a diff you approve.</div>`)}
+  ${sc('Running, with cancel', 'Fill their bodies', `<div>${gen({ mode: 'ai', running: true })}</div><span class="saveind busy"><span class="spin"></span> File 2 of 3 &middot; Process #15</span>`)}</div>
+ <div><h3>Results and refusals</h3>
+  ${sc('Result', 'A diff, never a silent write', `<div><span class="tag llm">Local model</span> 3 files ready</div><div><button class="btn sm primary">Review diff</button> <button class="btn sm">Discard</button></div><p>Lands in Approvals, approved per file.</p>`)}
+  ${sc('Refused: model offline', 'AI is off, nothing ran', `<div>${gen({ mode: 'ai' })}</div><div class="callout warn" style="margin:0"><span>&#9888;</span><div class="grow"><b>Local model is offline</b><small>Nothing was sent.</small></div></div><div><button class="btn sm">Use Mechanical instead</button> <button class="btn sm">Open Local model</button></div>`)}
+  ${sc('Disabled, with the reason', 'Extract to component', `<div>${gen({ disabled: true })}</div><span class="saveind">Select part of the page first</span>`)}</div>
+ <div><h3>Rules of the contract</h3>
+  ${sc('No block yet', 'Where no deterministic block exists', `<div>${gen({ only: true })}</div><span class="saveind">Flagged "no block yet": counted as a request for a mechanical block, never a silent model fallback.</span>`)}
+  <div class="card"><b>Remembered</b><p>The Mechanical / AI choice is stored per user and per action kind (for example "fill a layer"), in the browser's local settings. It defaults to Mechanical when there is no choice, and to Mechanical again if the model is offline.</p></div>
+  <div class="card"><b>Slot contract</b><p>Props in: action id, label, mechanical block (or none), AI allowed, what would be sent, target. Events out: run, cancel, choose-mode. Result is an artifact handed to Approvals; the chip never writes files.</p></div></div>
+</div>`;
+
+/* --- 6 Live preview states --------------------------------------------------------- */
+const pst = (h, p, extra = '', c = '') => `<div class="card" ${c}><b>${h}</b><p>${p}</p>${extra}</div>`;
+const previewStates = `
+<div class="hh">The live preview needs the target app's dev server<small>Tree, impact, findings, Notes, plan, source and diff work from the files alone. Only the rendered canvas, click-to-source and live reload need the server.</small></div>
+<div class="sheet3">
+ <div><h3>Before it runs</h3>
+  ${pst('Dev server not running', 'Start it to see /login. It runs inside your workspace, for this project only.', '<div><button class="btn primary sm">Start dev server</button> <button class="btn sm">Use a URL instead</button></div>')}
+  ${pst('Starting', '<span class="saveind busy"><span class="spin"></span> npm run dev, Process #14</span> Watch it in the bottom panel. Usually 3 to 5 s.', '<div><button class="btn sm">Open in Processes</button></div>')}
+  ${pst('Outside the workspace', 'This project is not inside the workspace root, so the Cockpit will not start a server for it.', '<div><button class="btn sm">Open a project in the workspace</button></div>', 'style="border-color:var(--danger)"')}</div>
+ <div><h3>When it goes wrong</h3>
+  ${pst('Server stopped', 'Port 5173 is in use by another process.', '<div><button class="btn primary sm">Use port 5174</button> <button class="btn sm">Show log</button></div>', 'style="border-color:var(--danger)"')}
+  ${pst('Click-to-source is off', 'Your app does not load the Cockpit preview plugin. Tree, impact and source still work.', '<div><span class="mono" style="background:var(--surface-3);padding:2px 6px;border-radius:4px">plugins: [constructPreview(), react()]</span></div><div><button class="btn sm">Copy line</button></div>', 'style="border-color:var(--warn)"')}
+  ${pst('App error in the preview', 'The app threw: Cannot read properties of undefined (reading email).', '<div><button class="btn sm">Show in source</button></div>', 'style="border-color:var(--danger)"')}</div>
+ <div><h3>Running, and what needs it</h3>
+  ${pst('Running', '<span class="saveind ok">&#10003; :5173 running &middot; live reload on</span>', '<div><button class="btn sm">Restart</button> <button class="btn sm danger">Stop</button></div>')}
+  ${pst('Needs the server', 'Rendered canvas, Alt+Click and Pick, live reload, isolated component view, state switching.', '')}
+  ${pst('Works without it', 'File tree, impact, findings, Notes, plan, diff, tests list, Generate.', '')}</div>
+</div>`;
+
+/* --- 7 Side preview on Tests ------------------------------------------------------- */
+const sideMock = frame({ screen: 'Tests', lw: 300, rw: 340,
+  left: `<div class="pane-h"><span class="title">Tests</span></div>${tabs([['Tests', ['6', 'acc']], ['Coverage']], 'Tests')}<div class="scroll"><div class="tree" style="padding-top:8px"><div class="row sel">${L('page')}login happy path<span class="meta">passed</span></div><div class="row">${L('page')}wrong password<span class="meta">passed</span></div><div class="row">${L('page')}guest checkout<span class="meta">failed</span></div></div></div>`,
+  mid: `<div class="etabs"><button class="on" aria-selected="true">login happy path</button></div><div class="canvas-tb"><span class="crumbs">Tests &rsaquo; <b>login happy path</b></span><span class="spacer"></span><button class="tg" aria-pressed="true">Preview beside</button></div><div class="half"><div style="padding:14px;border-right:1px solid var(--border-subtle)"><div class="sect" style="padding-left:0">Step 2 of 4</div><div class="card"><b>Type the email</b><p>Fill "Email" with sam@example.com</p></div><div class="card"><b>Type the password</b><p>Fill "Password"</p></div></div><div class="stage" style="padding:12px;place-items:start center;background:var(--canvas)">${loginDevice({ h: 360, w: 350, sel: false })}</div></div>`,
+  right: `<div class="pane-h"><span class="title">Inspect</span></div>${tabs([['Edit step'], ['Record'], ['Freshness']], 'Edit step')}<div class="scroll" style="padding:14px;color:var(--text-muted)">The preview beside the steps is the same live app. Pick an element there to fill a step's target.</div>`,
+  bot: bottom('Processes', runProcs(), 110, { p: '1', a: '0' }), botH: 110 });
+
+const pocOut = { 'ia-pages': pagesMock, 'ia-pages-next': nextMock, 'ia-pages-change': changeMock, 'ia-components': compMock, 'ia-generate-states': genStates, 'ia-preview-states': previewStates, 'ia-side-preview': sideMock };
+const pocTitles = { 'ia-pages': 'Pages: live preview first, quiet until you select', 'ia-pages-next': 'Pages: a new page selected, with suggested next steps and the inline Generate control', 'ia-pages-change': 'Pages: change a selection with impact preview and per-file approval', 'ia-components': 'Components: one component on its own, with flow states', 'ia-generate-states': 'Inline Generate: Mechanical | AI, states and rules', 'ia-preview-states': 'Live preview: needs the dev server (states)', 'ia-side-preview': 'Tests: the live preview as a side view' };
+
+/* ================================================= Story: feature-level story.md (link or paste) */
+const acRow = (id, text, st) => `<div class="ac"><span class="acid">${id}</span><span class="grow">${text}</span>${st}</div>`;
+const storyLeft = `${treeHead('Features', [['Notes', ['3', '']], ['Features']], 'Features')}
+  <div class="scroll"><div class="tree" style="padding-top:8px">
+   <div class="row"><span class="twisty">&#9656;</span>auth</div><div class="row"><span class="twisty">&#9656;</span>cart</div><div class="row"><span class="twisty">&#9656;</span>checkout</div>
+   <div class="row"><span class="twisty">&#9662;</span>orders<span class="nbs">${nb('imp', 'story')}</span></div>
+   <div class="row l1"><span class="twisty">&#9656;</span>pages &middot; components &middot; workflows</div>
+   <div class="row l1 sel">&#9776; story.md<span class="nbs">${dot('find', '2 to review')}</span></div>
+   <div class="row l1">&#9776; architecture notes</div></div></div>`;
+const storyMid = editorBar('Features &rsaquo; orders &rsaquo; <b>story.md</b>', [['Story: orders', true, true], ['refundMachine.ts']], '') .replace(devpill, '').replace(/<button class="tg" aria-pressed="true" title="Click an element[^]*?<\/button>/, '') + `
+  <div style="overflow:hidden;flex:1;padding:14px 18px;display:flex;flex-direction:column;gap:10px">
+   <div class="fm"><div class="fmh">Front matter <span class="tag human">You own this</span> <span class="spacer"></span><span class="saveind">hand-editable, versioned, shareable</span></div><pre>---
+sources:
+  - url: https://acme.atlassian.net/browse/STORE-142
+    parse: { title: { xpath: "//h1[@data-testid='issue.title']" }, description: 'div.description', acceptance: 'ul.acceptance &gt; li', status: 'span.status' }
+---</pre></div>
+   <div class="saveind"><span class="saveind ok">&#10003; Snapshot updated 12:02, saved automatically</span> <span class="via">via: your browser</span> &middot; <a>Refresh</a> &middot; <a>view diff</a></div>
+   <div class="notebox" style="margin:0"><div class="t">Refund a delivered order <span class="spacer"></span><span class="st draft">Tool-owned block</span></div>
+    <div class="b">As a customer I want to request a refund from the order page so that I do not need to contact support. Refunds are allowed within 30 days of delivery.</div>
+    <div style="border-top:1px solid var(--border-subtle);padding:6px 0">
+     ${acRow('S1', 'Refund button shows only on delivered orders', '<span class="nb test">matched</span>')}
+     ${acRow('S2', 'Refund allowed within 30 days of delivery', '<span class="nb test">matched</span>')}
+     ${acRow('S3', 'Partial refunds are allowed', '<span class="nb find">missing</span>')}
+     ${acRow('S4', 'Customer confirms before the refund is sent', '<span class="nb test">matched</span>')}
+     ${acRow('S5', 'An audit entry is written', '<span class="nb find">missing</span>')}</div>
+    <div class="f"><span class="saveind">features/orders/story.md &middot; only the block between the markers is rewritten</span><span class="spacer"></span><label class="saveind"><span class="cb on" style="width:14px;height:14px;border:2px solid var(--accent);background:var(--accent);border-radius:3px;display:inline-block"></span> Keep out of git</label></div></div>
+  </div>`;
+const cmpList = (h, tag, items, extra = '') => `<details class="dt" open><summary>${h} <span class="c ${tag}">${items.length}</span></summary>${items.join('')}${extra}</details>`;
+const cmpItem = (t, sub, chip = '') => `<div class="nx" style="padding:6px 0;border:0"><div class="nxh"><div class="grow"><b>${t}</b><small>${sub}</small></div>${chip}</div></div>`;
+const storyRight = `<div class="pane-h"><span class="title">Compare</span><span class="spacer"></span><span class="tag det">Mechanical compare</span></div>${tabs([['Compare', ['2', '']], ['Sources'], ['History']], 'Compare')}<div class="scroll">
+  <div class="callout warn" style="margin:10px 12px 0"><span>&#9888;</span><div class="grow"><b>Summary may be out of date</b><small>The generated summary changed since you last reviewed.</small></div><button class="btn sm">Mark reviewed</button></div>
+  ${cmpList('Missing from the code', 'warn', [cmpItem('S3 Partial refunds are allowed', 'no scenario, route or test mentions it', gen({ label: 'Add scenario' })), cmpItem('S5 An audit entry is written', 'no test carries @story S5', gen({ label: 'Generate test' }))])}
+  ${cmpList('In the code, not in the story', '', [cmpItem('state manualReview', 'refundMachine has it; no acceptance line does', '<button class="btn sm">Add to story</button>')])}
+  ${cmpList('Matched', '', [cmpItem('S1, S2, S4', '3 lines matched to scenarios and tests (@story S1, S2, S4)', '')])}
+  <div style="padding:10px 12px;color:var(--text-muted);font-size:12px">Compare is deterministic: ids and keywords against scenarios, routes, states and tests. Switch a row to AI for a fuzzier match; citations are checked mechanically before they are shown.</div></div>`;
+const storyMock = frame({ screen: 'Features', lw: 280, rw: 400, left: storyLeft, mid: storyMid, right: storyRight, bot: bottom('Processes', runProcs(), 104, { p: '1', a: '0' }), botH: 104 });
+
+const storyStates = `
+<div class="hh">Story: link or paste, snapshot kept, never a login you did not give<small>The Cockpit fetches a public page's HTML and reads it; there is no Jira or GitHub API connection. Pages that need a login cannot be fetched, so paste the text instead.</small></div>
+<div class="sheet3">
+ <div><h3>Getting the ticket</h3>
+  ${pst('Link a ticket', 'Paste a GitHub issue URL. It is fetched once, read, and saved as a snapshot you can review offline.', '<div><span class="field" style="display:inline-flex;width:100%">https://github.com/acme/storefront/issues/142</span></div><div><button class="btn primary sm">Fetch</button> <button class="btn sm">Paste text instead</button></div>')}
+  ${pst('Fetching', '<span class="saveind busy"><span class="spin"></span> Fetching github.com, no login sent</span>', '<div><button class="btn sm">Cancel</button></div>')}
+  ${pst('This page needs a login', 'Jira Cloud and private GitHub issues cannot be read without credentials or an API, and this version has neither. The link is saved as a reference.', '<div><button class="btn primary sm">Paste the text instead</button></div>', 'style="border-color:var(--warn)"')}</div>
+ <div><h3>Refused, and why</h3>
+  ${pst('Host not allowed', 'Only https pages on github.com are fetched. Add an Atlassian host in Settings if your team uses one.', '<div><button class="btn sm">Open Settings</button></div>', 'style="border-color:var(--danger)"')}
+  ${pst('Blocked for safety', 'That address points at a private or local network. The Cockpit never fetches those.', '', 'style="border-color:var(--danger)"')}
+  ${pst('Too big or too slow', 'The page is larger than 1 MB or took longer than 10 s. Nothing was saved.', '<div><button class="btn sm">Paste text instead</button></div>', 'style="border-color:var(--danger)"')}</div>
+ <div><h3>Keeping it current and private</h3>
+  ${pst('Refresh: ticket vs snapshot', 'The ticket changed since 12:02.', '<div class="code" style="border:1px solid var(--border-subtle);border-radius:var(--r-sm)"><div class="ln"><i>4</i><span>Refunds allowed within 30 days</span></div><div class="ln del"><i>5</i><span>- Partial refunds are not allowed</span></div><div class="ln add"><i>5</i><span>+ Partial refunds are allowed</span></div></div><div><button class="btn primary sm">Accept changes</button> <button class="btn sm">Keep my snapshot</button></div>')}
+  ${pst('Private ticket, public repo', 'This ticket looks private and the repository is public. Committing the snapshot would publish it.', '<div><button class="btn primary sm">Keep out of git</button> <button class="btn sm">Commit anyway</button></div>', 'style="border-color:var(--warn)"')}
+  ${pst('Kept out of git', 'Stored in your per-user state folder (with Notes), not in the project. It is not shared with teammates.', '')}</div>
+</div>`;
+Object.assign(pocOut, { 'ia-story': storyMock, 'ia-story-states': storyStates });
+Object.assign(pocTitles, { 'ia-story': 'Features: a feature story linked to a ticket, compared with the code', 'ia-story-states': 'Story: fetch states, refusals, refresh and privacy' });
+
+/* ================================================= Clipper: click-to-parse userscript for tickets behind a login */
+const ol = (label, style, cls = '') => `<div class="olx ${cls}" style="${style}"><span class="oll">${label}</span></div>`;
+const jiraPage = `
+<div class="jp">
+  <div class="jbar"><i></i><i></i><i></i>&nbsp;&nbsp;acme.atlassian.net/browse/STORE-142 <span style="margin-left:auto;color:#667085">(a page you are logged in to)</span></div>
+  <div class="jnav"><b>Jira</b><span>Your work</span><span>Projects</span><span>Boards</span></div>
+  <div class="jbody">
+   <div class="jcrumb">Projects / Storefront / <span style="position:relative">STORE-142</span></div>
+   <h2>Refund a delivered order</h2>
+   <div class="jmeta"><span class="jstat">In Progress</span> <span>Assignee: Sam</span></div>
+   <h4>Description</h4>
+   <p>As a customer I want to request a refund from the order page so that I do not need to contact support.</p>
+   <h4>Acceptance criteria</h4>
+   <ul><li>Refund button shows only on delivered orders</li><li>Refund allowed within 30 days of delivery</li><li>Partial refunds are allowed</li><li>Customer confirms before the refund is sent</li><li>An audit entry is written</li></ul>
+   <div class="jside">Details<br>Priority: High<br>Sprint: 14</div>
+   ${ol('Key', 'left:154px;top:14px;width:80px;height:22px', 'done')}
+   ${ol('Title', 'left:26px;top:42px;width:330px;height:34px', 'done')}
+   ${ol('Status', 'left:26px;top:80px;width:98px;height:26px', 'done')}
+   ${ol('Description', 'left:26px;top:150px;width:604px;height:48px', 'done')}
+   ${ol('Acceptance criteria: click the list', 'left:26px;top:238px;width:420px;height:118px', 'cur')}
+  </div>
+</div>`;
+const clipPanel = `
+<div class="clp"><div class="clh"><b>Construct Clipper</b> <span class="tag det">Deterministic</span><span class="spacer"></span><span style="color:var(--text-muted);font-size:12px">userscript</span></div>
+  <div class="clb">
+   <div class="sect" style="padding:0 0 6px">Pick a field, then click it on the page</div>
+   <div class="clf"><button class="tg" aria-pressed="false">&#10003; Key</button><button class="tg" aria-pressed="false">&#10003; Title</button><button class="tg" aria-pressed="false">&#10003; Status</button><button class="tg" aria-pressed="false">&#10003; Description</button><button class="tg" aria-pressed="true">Acceptance criteria</button></div>
+   <div class="card" style="margin:10px 0 0"><b>Preview (plain text)</b>
+     <div class="kv"><span>Key</span><span>STORE-142</span><span>Title</span><span>Refund a delivered order</span><span>Status</span><span>In Progress</span><span>Acceptance</span><span>5 lines found</span></div></div>
+   <div class="card" style="margin:10px 0 0"><b>Selectors for features/orders/story.md</b><span class="mono" style="white-space:pre-wrap">title: { xpath: "//h1[@data-testid='issue.title']" }\ndescription: div.description\nacceptance: ul.acceptance &gt; li\nstatus: span.status</span><span class="saveind">Emitted the most stable form (data-testid or id first, no positions). Title matches 1 &middot; preview: Refund a delivered order. Acceptance matches 5 (a list).</span><p>Picking proposes these selectors as a diff in story.md (data, never code). Nothing is saved until you approve it in the Cockpit.</p><div><button class="btn primary sm">Send proposal to Cockpit</button> <button class="btn sm">Test on this page</button></div></div>
+   <div class="sect" style="padding:12px 0 4px">Other stories that name this host &middot; 3</div>
+   <div class="tpl"><span>orders: acme.atlassian.net/browse/STORE-142</span><span class="nb test">this page</span></div>
+   <div class="tpl"><span>cart: acme.atlassian.net/browse/STORE-77</span></div>
+   <div class="tpl"><span>checkout: acme.atlassian.net/browse/STORE-9</span><span class="nb find">selector did not match</span></div>
+   <div style="padding-top:8px"><button class="btn sm">Copy selectors</button></div>
+  </div></div>`;
+const clipperMock = `<div class="clipwrap">${jiraPage}${clipPanel}</div>`;
+
+const clipBridge = `
+<div class="hh">One call, the right route: your own browser reads a login-only ticket when the Cockpit needs it<small>The screen calls StoryApi.fetch(url). Public pages are read by the server; login-only pages by the userscript in your browser. No cookie, password or token ever reaches the Cockpit server.</small></div>
+<div class="sheet3">
+ <div><h3>Strategy is picked per link</h3>
+  ${pst('StoryApi.fetch(url)', 'One call from the screen; the strategy is chosen automatically and every screen looks the same either way, with a small "via" label.', '<div class="kv" style="grid-template-columns:110px 1fr"><span>Public page</span><span>server, guarded fetch <span class="nb test">default</span></span><span>Login-only</span><span>your browser, userscript <span class="nb test">recommended</span></span><span>Server browser</span><span>later, owner decision <span class="nb find">not for v1</span></span></div>')}
+  ${pst('Login-only flow', 'Each time the story is needed: 1) the page asks the userscript (handshake code, the URL and the parse selectors read from story.md, same page only); 2) your browser reads the ticket with your own login and returns only the picked fields; 3) the Cockpit compares a fingerprint and, only if it changed, saves through its own signed-in call, as untrusted text.', '')}
+  ${pst('Optional, later: server browser', 'A headless browser on the server with a stored login per host. Costs: the server would hold a live Jira or GitHub session at rest (a credential; if leaked it can read everything that login can); SSO and MFA cannot be completed headlessly, so it needs an interactive remote-login window; Chromium is heavy; remote page scripts would run on the server (sandbox and SSRF concerns); scraping terms may forbid it. Not recommended for v1. The strategy slot, a per-host opt-in and the indicator (via: server browser) are reserved.', '<div><span class="tag llm">owner decision</span></div>', 'style="border-color:var(--warn)"')}</div>
+ <div><h3>Two approvals, both revocable</h3>
+  ${pst('In the Cockpit: this story wants to read a page', 'A story.md can name any URL, including one that arrived in a cloned repository. The first use of each host and URL asks you.', '<div><button class="btn primary sm">Allow once</button> <button class="btn sm">Always for this host</button> <button class="btn sm danger">Deny</button></div>', 'style="border-color:var(--warn)"')}
+  ${pst('In the userscript: allow this Cockpit', '<b>cockpit.example.org</b> wants to read tickets from <b>acme.atlassian.net</b> using your login in this browser. It only gets the fields the story.md selectors pick, never the whole page.', '<div><button class="btn primary sm">Allow this Cockpit</button> <button class="btn sm">Not now</button></div>', 'style="border-color:var(--accent)"')}
+  ${pst('Approved hosts', 'acme.atlassian.net for cockpit.example.org &middot; approved 2026-09-20', '<div><button class="btn sm danger">Revoke</button></div>')}
+  ${pst('Activity log (userscript menu)', '12:02 read STORE-142 (5 fields, 2.1 KB) &middot; 12:31 read STORE-142 &middot; 12:32 refused: host not approved (tracker.example.org)', '<div><span class="mono">10 reads per minute at most</span></div>')}</div>
+ <div><h3>Limits and what bounds the risk</h3>
+  ${pst('Threat: a script injected into the Cockpit page', 'It could ask the userscript for tickets. That is bounded: only hosts you approved for this Cockpit origin, only URLs a story.md names and you consented to, only the picked fields returned, selectors validated as data, rate-limited, and every read is in the activity log.', '')}
+  ${pst('Needs, honestly', 'A userscript manager (Tampermonkey or Violentmonkey) and the Cockpit tab open. Without them the last snapshot is used, and the indicator says so. Public GitHub issues need no clipper.', '')}
+  ${pst('Last resort', 'Manual paste stays available when nothing else works.', '<div><button class="btn sm">Paste text instead</button></div>')}</div>
+</div>`;
+
+const ind = (cls, text, title) => `<span class="sind ${cls}" title="${title}"><span class="dt2"></span>${text}</span>`;
+const via = (t) => `<span class="via">via: ${t}</span>`;
+const indRow = (name, chip, note) => `<div class="irow"><span class="in">${name}</span><span>${chip}</span><span class="inote">${note}</span></div>`;
+const storyIndicators = `
+<div class="hh">Story indicators: one quiet mark on the feature, the same for every strategy<small>Shown on the feature row and the Story tab header. Text plus a dot, never colour alone, plus a small "via" label. Checked every time the story is needed (single-flight, debounced; never per keystroke or per render).</small></div>
+<div style="padding:14px 24px;display:grid;gap:6px;max-width:1240px">
+ ${indRow('In sync', ind('ok', '3/5 matched', 'Acceptance 3 of 5 matched') + via('your browser'), 'Fingerprint equals the saved sourceHash, so nothing was rewritten.')}
+ ${indRow('Ticket changed upstream', ind('warn', 'ticket changed, snapshot updated', 'story.md snapshot was rewritten') + '<a>view diff</a>' + via('server'), 'The tool block was rewritten and shows up as a normal commit and diff. Your own text was not touched.')}
+ ${indRow('Story stale vs code', ind('warn', 'may be out of date', 'The generated summary changed since it was reviewed') + '<a>mark reviewed</a>', 'The code moved since you last reviewed.')}
+ ${indRow('Checking', ind('busy', 'checking ticket', 'One check at a time') + via('your browser'), 'Single request, short debounce. The last snapshot stays visible.')}
+ ${indRow('Offline or clipper off', ind('off', 'using snapshot from 12:02', 'No userscript answered') + '<a>Install clipper</a>', 'Says so instead of pretending. Falls back to the saved snapshot. Paste text is the last resort.')}
+ ${indRow('Host not approved', ind('warn', 'approve host', 'Allow this Cockpit to read tickets from acme.atlassian.net'), 'One-time approval in the userscript; nothing is read before it.')}
+ ${indRow('Template did not match', ind('bad', 're-pick', 'The site changed its layout'), 'Open the ticket and click the field again. The last snapshot stays.')}
+ ${indRow('Snapshot edited by hand', ind('warn', 'snapshot edited, refresh paused', 'The tool-owned block differs from its fingerprint') + '<a>keep mine</a> <a>use the ticket</a>', 'Conflict rule: hand edits inside the tool block are never overwritten silently.')}
+ ${indRow('No story yet', '<a>Add a story</a>', 'The only trace. Indicator, compare, @story coverage and Generate-from-story do not exist until a story.md does. Adding it shows as a normal diff.')}
+ ${indRow('Direct content (no link)', ind('ok', 'story vs code: 3/5', 'Compared with the code only') + via('written here'), 'Nothing is fetched, so there is no upstream or freshness check; only story against code.')}
+ ${indRow('Login-only, no pattern yet', ind('warn', 'pick fields', 'No selectors yet') + '<a>Pick fields</a> <a>AI proposes a pattern</a>', 'Login-only pages are always read with an explicit pattern, fields only. Nothing is read until there is one.')}
+ ${indRow('AI unavailable', ind('off', 'using snapshot from 12:02', 'The configured model did not answer'), 'Nothing invented: the saved snapshot is used and the model state is named.')}
+ ${indRow('Server browser (later)', ind('ok', '3/5 matched', 'Acceptance 3 of 5 matched') + via('server browser'), 'Only if the owner enables it per host. Same states, same indicator.')}
+</div>`;
+Object.assign(pocOut, { 'ia-clip-bridge': clipBridge, 'ia-story-indicators': storyIndicators });
+Object.assign(pocTitles, { 'ia-clip-bridge': 'One call, the right route: server, your browser (userscript), later a server browser', 'ia-story-indicators': 'Story indicators on the feature: states' });
+Object.assign(pocOut, { 'ia-clipper': clipperMock });
+Object.assign(pocTitles, { 'ia-clipper': 'Clipper: click to pick ticket fields; the selectors are written into story.md as a diff' });
+
+const storyConsent = `
+<div class="hh">Consent: a story file is not a permission<small>A story.md that arrives in a cloned or foreign repository can name any URL. Nothing is read from your browser until you say so, per host and per URL.</small></div>
+<div class="sheet3">
+ <div><h3>First use of a host and URL</h3>
+  ${pst('This story wants to read a page', '<b>features/orders/story.md</b> wants to read <span class="mono">https://acme.atlassian.net/browse/STORE-142</span> from <b>acme.atlassian.net</b> using your browser login. Only the fields it names (title, description, acceptance, status) will come back.', '<div><button class="btn primary sm">Allow once</button> <button class="btn sm">Always for this host</button> <button class="btn sm danger">Deny</button></div>', 'style="border-color:var(--accent)"')}
+  ${pst('Came from a cloned repository', 'This story.md was not written here (it arrived with the clone of acme/storefront). Review the URL and the selectors before you allow anything.', '<div><button class="btn sm">Show story.md front matter</button></div>', 'style="border-color:var(--warn)"')}</div>
+ <div><h3>Selectors are data, and are checked</h3>
+  ${pst('Rejected selector', '<span class="mono">acceptance: javascript:alert(1)</span> is not a valid selector, so the story was not read. Selectors are limited to 200 characters and to plain query-selector syntax.', '<div><button class="btn sm">Edit story.md</button></div>', 'style="border-color:var(--danger)"')}
+  ${pst('Rejected XPath', '<span class=\"mono\">//*[document(\'http://x\')]</span> is not allowed: only plain node-set paths are evaluated, no functions that reach outside the page.', '', 'style=\"border-color:var(--danger)\"')}
+  ${pst('Denied', 'Reading acme.atlassian.net is denied for this story. The last snapshot is used.', '<div><button class="btn sm">Change</button></div>')}</div>
+ <div><h3>Nothing leaves without you</h3>
+  ${pst('Fetched snapshot is never pushed', 'A refreshed snapshot is saved to the file and shows as an ordinary diff or commit on this machine. It is never pushed automatically.', '')}
+  ${pst('Approved (host, URL) pairs', 'acme.atlassian.net &middot; always &middot; 2026-09-20<br>acme.atlassian.net/browse/STORE-9 &middot; once (expired)', '<div><button class="btn sm danger">Revoke all</button></div>')}</div>
+</div>`;
+Object.assign(pocOut, { 'ia-story-consent': storyConsent });
+Object.assign(pocTitles, { 'ia-story-consent': 'Story consent: a story file names a URL, you decide whether it is read' });
+
+const fmBlock = (t) => `<pre class="mono" style="margin:0;background:var(--surface-3);padding:6px 8px;border-radius:4px;white-space:pre-wrap">${t}</pre>`;
+const storyModes = `
+<div class="hh">Three ways a story.md can be filled, all valid<small>A story only does anything when a story.md exists for the feature. Without one there is a single quiet "Add a story" action.</small></div>
+<div class="sheet3">
+ <div><h3>Modes</h3>
+  ${pst('a. Link + parse pattern (mechanical)', 'Fetch and read with selectors you wrote or picked. Zero model calls, checked on every use.', fmBlock('sources:\n  - url: https://acme.atlassian.net/browse/STORE-142\n    parse: { title: h1.title, acceptance: ul.ac > li }') + '<div><span class="tag det">Deterministic</span></div>')}
+  ${pst('b. Direct content', 'You write or paste the story. No link, nothing fetched, no freshness check; the indicator compares only story vs code.', fmBlock('# Refund a delivered order\n## Acceptance\n- S1 Refund button only on delivered orders'))}
+  ${pst('c. Link without a pattern (public pages only)', 'Only for pages the server can fetch itself (public, guarded). The page text is fetched and your configured AI (local model by default) extracts the fields. Safer route below.', fmBlock('sources:\n  - url: https://acme.atlassian.net/browse/STORE-142') + '<div><span class="tag llm">Local model</span></div>')}</div>
+ <div><h3>Preferred: AI proposes the pattern once</h3>
+  ${pst('Propose selectors', 'The model looks at a stripped copy of the page once and suggests selectors. You review them as a diff in the front matter. After that every refresh is mechanical, with zero model calls.', '<div>' + gen({ mode: 'ai', label: 'Propose selectors' }) + '</div><div class="disc" style="margin-left:0"><b>Before it runs</b> Sends the page text only (scripts, styles and attributes stripped, at most 64 KB, about 5 KB here) to qwen2.5-coder:7b. <b>1 model call.</b> Result is a diff to story.md.</div>')}
+  ${pst('Result: a diff you approve', 'parse: { title: h1.title, description: div.desc, acceptance: ul.ac &gt; li }', '<div><button class="btn primary sm">Approve diff</button> <button class="btn sm">Discard</button></div>')}</div>
+ <div><h3>If AI extracts every time (opt-in)</h3>
+  ${pst('What is sent, and verified', 'Each use sends the sanitised page text (size cap, count of model calls shown) and needs the AI toggle and consent. Then a mechanical check: every extracted field must be quoted text found in the fetched page text. Anything not found is rejected or flagged, so extraction cannot invent content. The result is a reviewable diff to the tool-owned block.', '<div><span class="tag det">Verified mechanically</span></div>')}
+  ${pst('Login-only pages: always a pattern', 'A login-only page is never read as a whole and the AI never sees it. Use <b>Pick fields</b> (click to pick), or <b>AI proposes a pattern</b> from a structure-only skeleton: the tag, id, class and data-testid tree with text cut to 40 characters, no attribute values, links, form values or scripts, at most 32 KB. You see the exact skeleton before it is sent. Preferred over sending candidate text, which contains real ticket text.', '<div><button class=\"btn sm\">Pick fields</button> <button class=\"btn sm\">Show the skeleton that would be sent</button></div>', 'style=\"border-color:var(--warn)\"')}
+</div>`;
+Object.assign(pocOut, { 'ia-story-modes': storyModes });
+Object.assign(pocTitles, { 'ia-story-modes': 'Story: three modes, and AI proposes the pattern once' });
+
 const out = { 'ia-features': features, 'ia-account-menu': menuMock, 'ia-slot-matrix': matrix, 'ia-notes-states': drafts, 'ia-no-project': noProj, 'ia-git': git, 'ia-git-connect': gitConnect, 'ia-narrow': narrow };
 const titles = { 'ia-features': 'Features screen: notes, impact, plan, processes', 'ia-account-menu': 'Account menu: settings, local model, theme, help, sign out', 'ia-slot-matrix': 'Five screens, four slots', 'ia-notes-states': 'Notes: durable states', 'ia-no-project': 'No project: where the Open a project prompt sits', 'ia-git': 'Git screen: PRs and review inside the shell', 'ia-git-connect': 'Git with no remote: where Connect remote and Clone sit', 'ia-narrow': 'Narrow (390 px): one panel at a time' };
+Object.assign(out, pocOut); Object.assign(titles, pocTitles);
 for (const [k, v] of Object.entries(out)) writeFileSync(join(here, `${k}.html`), page(titles[k], v));
 console.log('ia mocks written');

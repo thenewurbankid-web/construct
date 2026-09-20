@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Tests: the live preview as a side view - Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="ia.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+</head><body>
+<div class="concept">Concept - not implemented <span>Tests: the live preview as a side view</span></div>
+
+<div class="shell" style="--lw:300px;--rw:340px;grid-template-rows:44px 1fr 110px 24px;position:relative">
+  
+<header class="topbar" role="banner">
+  <div class="brand"><i></i>Cockpit</div>
+  <button class="chip-btn" aria-haspopup="listbox">storefront <span class="sub">main</span> &#9662;</button>
+  <nav class="snav " aria-label="Screens"><a class="" >Features</a><a class="" >Pages</a><a class="" >Components</a><a class="" >Git <span class="badge">3</span></a><a class="on" aria-current="page">Tests</a></nav>
+  <button class="chip-btn palette-trigger"><span>Search or run a command...</span><kbd>Ctrl K</kbd></button>
+  <span class="pill run"><span class="spin"></span>2 running</span>
+  <button class="acct " aria-haspopup="true" aria-expanded="false"><span class="avatar">SP</span>shashank-p &#9662;</button>
+</header>
+  <div class="ia-main">
+    <aside class="pane" aria-label="Left panel: Browse"><div class="pane-h"><span class="title">Tests</span></div><div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Tests <span class="badge acc">6</span></button><button role="tab" class="" aria-selected="false">Coverage</button></div><div class="scroll"><div class="tree" style="padding-top:8px"><div class="row sel"><span class="layer page">page</span>login happy path<span class="meta">passed</span></div><div class="row"><span class="layer page">page</span>wrong password<span class="meta">passed</span></div><div class="row"><span class="layer page">page</span>guest checkout<span class="meta">failed</span></div></div></div></aside><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <section class="pane mid" aria-label="Center stage"><div class="etabs"><button class="on" aria-selected="true">login happy path</button></div><div class="canvas-tb"><span class="crumbs">Tests &rsaquo; <b>login happy path</b></span><span class="spacer"></span><button class="tg" aria-pressed="true">Preview beside</button></div><div class="half"><div style="padding:14px;border-right:1px solid var(--border-subtle)"><div class="sect" style="padding-left:0">Step 2 of 4</div><div class="card"><b>Type the email</b><p>Fill "Email" with sam@example.com</p></div><div class="card"><b>Type the password</b><p>Fill "Password"</p></div></div><div class="stage" style="padding:12px;place-items:start center;background:var(--canvas)">
+<div class="device" style="height:360px;width:350px">
+  <div class="bar"><i></i><i></i><i></i>&nbsp;&nbsp;localhost:5173/login</div>
+  <div class="app-nav"><b>Storefront</b><span>Catalog</span><span>Cart (2)</span><span>Sign in</span></div>
+  <div class="login" id="lf"><h2>Welcome back</h2><p>Sign in to continue checkout.</p><label>Email</label><div class="in">sam@example.com</div><label>Password</label><div class="in">&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;</div><div class="cta">Sign in</div></div>
+  
+  
+</div></div></div></section><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <aside class="pane" aria-label="Right panel: Inspect"><div class="pane-h"><span class="title">Inspect</span></div><div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Edit step</button><button role="tab" class="" aria-selected="false">Record</button><button role="tab" class="" aria-selected="false">Freshness</button></div><div class="scroll" style="padding:14px;color:var(--text-muted)">The preview beside the steps is the same live app. Pick an element there to fill a step's target.</div></aside>
+  </div>
+  
+<div class="drawer" aria-label="Bottom panel: Run" style="height:110px">
+  <div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Processes <span class="badge acc">1</span></button><button role="tab" class="" aria-selected="false">Approvals <span class="badge ">0</span></button><button role="tab" class="" aria-selected="false">Diagnostics <span class="badge danger">3</span></button><button role="tab" class="" aria-selected="false">Logs</button></div>
+  <div class="body"><table><tr><th>Process</th><th>Project</th><th>Status</th><th></th></tr>
+ <tr><td><b>dev server &middot; storefront</b> <span class="tag det">Deterministic</span></td><td>storefront (inside the workspace)</td><td>running on :5173 &middot; 14 min</td><td><button class="btn sm">Restart</button> <button class="btn sm danger">Stop</button></td></tr></table></div>
+</div>
+  <footer class="statusbar"><span class="ok">&#9679; validate: 0 new violations</span><span>Notes saved on this machine</span><span class="spacer"></span><span>qwen2.5-coder:7b</span><span><kbd>F6</kbd> next panel</span><span><kbd>Ctrl J</kbd> bottom panel</span></footer>
+  
+</div>
+</body></html>

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Clipper: click to pick ticket fields; the selectors are written into story.md as a diff - Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="ia.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+</head><body>
+<div class="concept">Concept - not implemented <span>Clipper: click to pick ticket fields; the selectors are written into story.md as a diff</span></div>
+<div class="clipwrap">
+<div class="jp">
+  <div class="jbar"><i></i><i></i><i></i>&nbsp;&nbsp;acme.atlassian.net/browse/STORE-142 <span style="margin-left:auto;color:#667085">(a page you are logged in to)</span></div>
+  <div class="jnav"><b>Jira</b><span>Your work</span><span>Projects</span><span>Boards</span></div>
+  <div class="jbody">
+   <div class="jcrumb">Projects / Storefront / <span style="position:relative">STORE-142</span></div>
+   <h2>Refund a delivered order</h2>
+   <div class="jmeta"><span class="jstat">In Progress</span> <span>Assignee: Sam</span></div>
+   <h4>Description</h4>
+   <p>As a customer I want to request a refund from the order page so that I do not need to contact support.</p>
+   <h4>Acceptance criteria</h4>
+   <ul><li>Refund button shows only on delivered orders</li><li>Refund allowed within 30 days of delivery</li><li>Partial refunds are allowed</li><li>Customer confirms before the refund is sent</li><li>An audit entry is written</li></ul>
+   <div class="jside">Details<br>Priority: High<br>Sprint: 14</div>
+   <div class="olx done" style="left:154px;top:14px;width:80px;height:22px"><span class="oll">Key</span></div>
+   <div class="olx done" style="left:26px;top:42px;width:330px;height:34px"><span class="oll">Title</span></div>
+   <div class="olx done" style="left:26px;top:80px;width:98px;height:26px"><span class="oll">Status</span></div>
+   <div class="olx done" style="left:26px;top:150px;width:604px;height:48px"><span class="oll">Description</span></div>
+   <div class="olx cur" style="left:26px;top:238px;width:420px;height:118px"><span class="oll">Acceptance criteria: click the list</span></div>
+  </div>
+</div>
+<div class="clp"><div class="clh"><b>Construct Clipper</b> <span class="tag det">Deterministic</span><span class="spacer"></span><span style="color:var(--text-muted);font-size:12px">userscript</span></div>
+  <div class="clb">
+   <div class="sect" style="padding:0 0 6px">Pick a field, then click it on the page</div>
+   <div class="clf"><button class="tg" aria-pressed="false">&#10003; Key</button><button class="tg" aria-pressed="false">&#10003; Title</button><button class="tg" aria-pressed="false">&#10003; Status</button><button class="tg" aria-pressed="false">&#10003; Description</button><button class="tg" aria-pressed="true">Acceptance criteria</button></div>
+   <div class="card" style="margin:10px 0 0"><b>Preview (plain text)</b>
+     <div class="kv"><span>Key</span><span>STORE-142</span><span>Title</span><span>Refund a delivered order</span><span>Status</span><span>In Progress</span><span>Acceptance</span><span>5 lines found</span></div></div>
+   <div class="card" style="margin:10px 0 0"><b>Selectors for features/orders/story.md</b><span class="mono" style="white-space:pre-wrap">title: { xpath: "//h1[@data-testid='issue.title']" }
+description: div.description
+acceptance: ul.acceptance &gt; li
+status: span.status</span><span class="saveind">Emitted the most stable form (data-testid or id first, no positions). Title matches 1 &middot; preview: Refund a delivered order. Acceptance matches 5 (a list).</span><p>Picking proposes these selectors as a diff in story.md (data, never code). Nothing is saved until you approve it in the Cockpit.</p><div><button class="btn primary sm">Send proposal to Cockpit</button> <button class="btn sm">Test on this page</button></div></div>
+   <div class="sect" style="padding:12px 0 4px">Other stories that name this host &middot; 3</div>
+   <div class="tpl"><span>orders: acme.atlassian.net/browse/STORE-142</span><span class="nb test">this page</span></div>
+   <div class="tpl"><span>cart: acme.atlassian.net/browse/STORE-77</span></div>
+   <div class="tpl"><span>checkout: acme.atlassian.net/browse/STORE-9</span><span class="nb find">selector did not match</span></div>
+   <div style="padding-top:8px"><button class="btn sm">Copy selectors</button></div>
+  </div></div></div>
+</body></html>

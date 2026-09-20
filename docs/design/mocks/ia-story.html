@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Features: a feature story linked to a ticket, compared with the code - Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="ia.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+</head><body>
+<div class="concept">Concept - not implemented <span>Features: a feature story linked to a ticket, compared with the code</span></div>
+
+<div class="shell" style="--lw:280px;--rw:400px;grid-template-rows:44px 1fr 104px 24px;position:relative">
+  
+<header class="topbar" role="banner">
+  <div class="brand"><i></i>Cockpit</div>
+  <button class="chip-btn" aria-haspopup="listbox">storefront <span class="sub">main</span> &#9662;</button>
+  <nav class="snav " aria-label="Screens"><a class="on" aria-current="page">Features</a><a class="" >Pages</a><a class="" >Components</a><a class="" >Git <span class="badge">3</span></a><a class="" >Tests</a></nav>
+  <button class="chip-btn palette-trigger"><span>Search or run a command...</span><kbd>Ctrl K</kbd></button>
+  <span class="pill run"><span class="spin"></span>2 running</span>
+  <button class="acct " aria-haspopup="true" aria-expanded="false"><span class="avatar">SP</span>shashank-p &#9662;</button>
+</header>
+  <div class="ia-main">
+    <aside class="pane" aria-label="Left panel: Browse"><div class="pane-h"><span class="title">Features</span><span class="spacer"></span><button class="icon-btn" aria-label="New">+</button><button class="icon-btn" aria-label="Collapse">&laquo;</button></div><div class="tabs" role="tablist"><button role="tab" class="" aria-selected="false">Notes <span class="badge ">3</span></button><button role="tab" class="on" aria-selected="true">Features</button></div><div class="search">&#8981; Go to file, node or route <span class="spacer"></span><kbd>Ctrl P</kbd></div>
+  <div class="scroll"><div class="tree" style="padding-top:8px">
+   <div class="row"><span class="twisty">&#9656;</span>auth</div><div class="row"><span class="twisty">&#9656;</span>cart</div><div class="row"><span class="twisty">&#9656;</span>checkout</div>
+   <div class="row"><span class="twisty">&#9662;</span>orders<span class="nbs"><span class="nb imp">story</span></span></div>
+   <div class="row l1"><span class="twisty">&#9656;</span>pages &middot; components &middot; workflows</div>
+   <div class="row l1 sel">&#9776; story.md<span class="nbs"><span class="nd find" title="2 to review" aria-label="2 to review"></span></span></div>
+   <div class="row l1">&#9776; architecture notes</div></div></div></aside><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <section class="pane mid" aria-label="Center stage"><div class="etabs" role="tablist"><button role="tab" class="on" aria-selected="true">&#9679; Story: orders</button><button role="tab" class="" aria-selected="false">refundMachine.ts <span class="x">&times;</span></button></div><div class="canvas-tb"><span class="crumbs">Features &rsaquo; orders &rsaquo; <b>story.md</b></span><span class="spacer"></span></div>
+  <div style="overflow:hidden;flex:1;padding:14px 18px;display:flex;flex-direction:column;gap:10px">
+   <div class="fm"><div class="fmh">Front matter <span class="tag human">You own this</span> <span class="spacer"></span><span class="saveind">hand-editable, versioned, shareable</span></div><pre>---
+sources:
+  - url: https://acme.atlassian.net/browse/STORE-142
+    parse: { title: { xpath: "//h1[@data-testid='issue.title']" }, description: 'div.description', acceptance: 'ul.acceptance &gt; li', status: 'span.status' }
+---</pre></div>
+   <div class="saveind"><span class="saveind ok">&#10003; Snapshot updated 12:02, saved automatically</span> <span class="via">via: your browser</span> &middot; <a>Refresh</a> &middot; <a>view diff</a></div>
+   <div class="notebox" style="margin:0"><div class="t">Refund a delivered order <span class="spacer"></span><span class="st draft">Tool-owned block</span></div>
+    <div class="b">As a customer I want to request a refund from the order page so that I do not need to contact support. Refunds are allowed within 30 days of delivery.</div>
+    <div style="border-top:1px solid var(--border-subtle);padding:6px 0">
+     <div class="ac"><span class="acid">S1</span><span class="grow">Refund button shows only on delivered orders</span><span class="nb test">matched</span></div>
+     <div class="ac"><span class="acid">S2</span><span class="grow">Refund allowed within 30 days of delivery</span><span class="nb test">matched</span></div>
+     <div class="ac"><span class="acid">S3</span><span class="grow">Partial refunds are allowed</span><span class="nb find">missing</span></div>
+     <div class="ac"><span class="acid">S4</span><span class="grow">Customer confirms before the refund is sent</span><span class="nb test">matched</span></div>
+     <div class="ac"><span class="acid">S5</span><span class="grow">An audit entry is written</span><span class="nb find">missing</span></div></div>
+    <div class="f"><span class="saveind">features/orders/story.md &middot; only the block between the markers is rewritten</span><span class="spacer"></span><label class="saveind"><span class="cb on" style="width:14px;height:14px;border:2px solid var(--accent);background:var(--accent);border-radius:3px;display:inline-block"></span> Keep out of git</label></div></div>
+  </div></section><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <aside class="pane" aria-label="Right panel: Inspect"><div class="pane-h"><span class="title">Compare</span><span class="spacer"></span><span class="tag det">Mechanical compare</span></div><div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Compare <span class="badge ">2</span></button><button role="tab" class="" aria-selected="false">Sources</button><button role="tab" class="" aria-selected="false">History</button></div><div class="scroll">
+  <div class="callout warn" style="margin:10px 12px 0"><span>&#9888;</span><div class="grow"><b>Summary may be out of date</b><small>The generated summary changed since you last reviewed.</small></div><button class="btn sm">Mark reviewed</button></div>
+  <details class="dt" open><summary>Missing from the code <span class="c warn">2</span></summary><div class="nx" style="padding:6px 0;border:0"><div class="nxh"><div class="grow"><b>S3 Partial refunds are allowed</b><small>no scenario, route or test mentions it</small></div><span class="gen " role="group" aria-label="Add scenario">
+   <span class="mode" role="radiogroup" aria-label="How"><button role="radio" aria-checked="true" class="on det" >Mechanical</button><button role="radio" aria-checked="false" class="" >AI</button></span>
+   <button class="go" >Generate</button></span></div></div><div class="nx" style="padding:6px 0;border:0"><div class="nxh"><div class="grow"><b>S5 An audit entry is written</b><small>no test carries @story S5</small></div><span class="gen " role="group" aria-label="Generate test">
+   <span class="mode" role="radiogroup" aria-label="How"><button role="radio" aria-checked="true" class="on det" >Mechanical</button><button role="radio" aria-checked="false" class="" >AI</button></span>
+   <button class="go" >Generate</button></span></div></div></details>
+  <details class="dt" open><summary>In the code, not in the story <span class="c ">1</span></summary><div class="nx" style="padding:6px 0;border:0"><div class="nxh"><div class="grow"><b>state manualReview</b><small>refundMachine has it; no acceptance line does</small></div><button class="btn sm">Add to story</button></div></div></details>
+  <details class="dt" open><summary>Matched <span class="c ">1</span></summary><div class="nx" style="padding:6px 0;border:0"><div class="nxh"><div class="grow"><b>S1, S2, S4</b><small>3 lines matched to scenarios and tests (@story S1, S2, S4)</small></div></div></div></details>
+  <div style="padding:10px 12px;color:var(--text-muted);font-size:12px">Compare is deterministic: ids and keywords against scenarios, routes, states and tests. Switch a row to AI for a fuzzier match; citations are checked mechanically before they are shown.</div></div></aside>
+  </div>
+  
+<div class="drawer" aria-label="Bottom panel: Run" style="height:104px">
+  <div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Processes <span class="badge acc">1</span></button><button role="tab" class="" aria-selected="false">Approvals <span class="badge ">0</span></button><button role="tab" class="" aria-selected="false">Diagnostics <span class="badge danger">3</span></button><button role="tab" class="" aria-selected="false">Logs</button></div>
+  <div class="body"><table><tr><th>Process</th><th>Project</th><th>Status</th><th></th></tr>
+ <tr><td><b>dev server &middot; storefront</b> <span class="tag det">Deterministic</span></td><td>storefront (inside the workspace)</td><td>running on :5173 &middot; 14 min</td><td><button class="btn sm">Restart</button> <button class="btn sm danger">Stop</button></td></tr></table></div>
+</div>
+  <footer class="statusbar"><span class="ok">&#9679; validate: 0 new violations</span><span>Notes saved on this machine</span><span class="spacer"></span><span>qwen2.5-coder:7b</span><span><kbd>F6</kbd> next panel</span><span><kbd>Ctrl J</kbd> bottom panel</span></footer>
+  
+</div>
+</body></html>

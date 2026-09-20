@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Story: fetch states, refusals, refresh and privacy - Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="ia.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+</head><body>
+<div class="concept">Concept - not implemented <span>Story: fetch states, refusals, refresh and privacy</span></div>
+
+<div class="hh">Story: link or paste, snapshot kept, never a login you did not give<small>The Cockpit fetches a public page's HTML and reads it; there is no Jira or GitHub API connection. Pages that need a login cannot be fetched, so paste the text instead.</small></div>
+<div class="sheet3">
+ <div><h3>Getting the ticket</h3>
+  <div class="card" ><b>Link a ticket</b><p>Paste a GitHub issue URL. It is fetched once, read, and saved as a snapshot you can review offline.</p><div><span class="field" style="display:inline-flex;width:100%">https://github.com/acme/storefront/issues/142</span></div><div><button class="btn primary sm">Fetch</button> <button class="btn sm">Paste text instead</button></div></div>
+  <div class="card" ><b>Fetching</b><p><span class="saveind busy"><span class="spin"></span> Fetching github.com, no login sent</span></p><div><button class="btn sm">Cancel</button></div></div>
+  <div class="card" style="border-color:var(--warn)"><b>This page needs a login</b><p>Jira Cloud and private GitHub issues cannot be read without credentials or an API, and this version has neither. The link is saved as a reference.</p><div><button class="btn primary sm">Paste the text instead</button></div></div></div>
+ <div><h3>Refused, and why</h3>
+  <div class="card" style="border-color:var(--danger)"><b>Host not allowed</b><p>Only https pages on github.com are fetched. Add an Atlassian host in Settings if your team uses one.</p><div><button class="btn sm">Open Settings</button></div></div>
+  <div class="card" style="border-color:var(--danger)"><b>Blocked for safety</b><p>That address points at a private or local network. The Cockpit never fetches those.</p></div>
+  <div class="card" style="border-color:var(--danger)"><b>Too big or too slow</b><p>The page is larger than 1 MB or took longer than 10 s. Nothing was saved.</p><div><button class="btn sm">Paste text instead</button></div></div></div>
+ <div><h3>Keeping it current and private</h3>
+  <div class="card" ><b>Refresh: ticket vs snapshot</b><p>The ticket changed since 12:02.</p><div class="code" style="border:1px solid var(--border-subtle);border-radius:var(--r-sm)"><div class="ln"><i>4</i><span>Refunds allowed within 30 days</span></div><div class="ln del"><i>5</i><span>- Partial refunds are not allowed</span></div><div class="ln add"><i>5</i><span>+ Partial refunds are allowed</span></div></div><div><button class="btn primary sm">Accept changes</button> <button class="btn sm">Keep my snapshot</button></div></div>
+  <div class="card" style="border-color:var(--warn)"><b>Private ticket, public repo</b><p>This ticket looks private and the repository is public. Committing the snapshot would publish it.</p><div><button class="btn primary sm">Keep out of git</button> <button class="btn sm">Commit anyway</button></div></div>
+  <div class="card" ><b>Kept out of git</b><p>Stored in your per-user state folder (with Notes), not in the project. It is not shared with teammates.</p></div></div>
+</div>
+</body></html>

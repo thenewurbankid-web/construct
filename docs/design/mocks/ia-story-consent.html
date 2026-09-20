@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Story consent: a story file names a URL, you decide whether it is read - Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="ia.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+</head><body>
+<div class="concept">Concept - not implemented <span>Story consent: a story file names a URL, you decide whether it is read</span></div>
+
+<div class="hh">Consent: a story file is not a permission<small>A story.md that arrives in a cloned or foreign repository can name any URL. Nothing is read from your browser until you say so, per host and per URL.</small></div>
+<div class="sheet3">
+ <div><h3>First use of a host and URL</h3>
+  <div class="card" style="border-color:var(--accent)"><b>This story wants to read a page</b><p><b>features/orders/story.md</b> wants to read <span class="mono">https://acme.atlassian.net/browse/STORE-142</span> from <b>acme.atlassian.net</b> using your browser login. Only the fields it names (title, description, acceptance, status) will come back.</p><div><button class="btn primary sm">Allow once</button> <button class="btn sm">Always for this host</button> <button class="btn sm danger">Deny</button></div></div>
+  <div class="card" style="border-color:var(--warn)"><b>Came from a cloned repository</b><p>This story.md was not written here (it arrived with the clone of acme/storefront). Review the URL and the selectors before you allow anything.</p><div><button class="btn sm">Show story.md front matter</button></div></div></div>
+ <div><h3>Selectors are data, and are checked</h3>
+  <div class="card" style="border-color:var(--danger)"><b>Rejected selector</b><p><span class="mono">acceptance: javascript:alert(1)</span> is not a valid selector, so the story was not read. Selectors are limited to 200 characters and to plain query-selector syntax.</p><div><button class="btn sm">Edit story.md</button></div></div>
+  <div class="card" style="border-color:var(--danger)"><b>Rejected XPath</b><p><span class="mono">//*[document('http://x')]</span> is not allowed: only plain node-set paths are evaluated, no functions that reach outside the page.</p></div>
+  <div class="card" ><b>Denied</b><p>Reading acme.atlassian.net is denied for this story. The last snapshot is used.</p><div><button class="btn sm">Change</button></div></div></div>
+ <div><h3>Nothing leaves without you</h3>
+  <div class="card" ><b>Fetched snapshot is never pushed</b><p>A refreshed snapshot is saved to the file and shows as an ordinary diff or commit on this machine. It is never pushed automatically.</p></div>
+  <div class="card" ><b>Approved (host, URL) pairs</b><p>acme.atlassian.net &middot; always &middot; 2026-09-20<br>acme.atlassian.net/browse/STORE-9 &middot; once (expired)</p><div><button class="btn sm danger">Revoke all</button></div></div></div>
+</div>
+</body></html>
