@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Account menu: settings, local model, theme, help, sign out - Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="ia.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+</head><body>
+<div class="concept">Concept - not implemented <span>Account menu: settings, local model, theme, help, sign out</span></div>
+
+<div class="shell" style="grid-template-rows:44px 1fr 134px 24px;position:relative">
+  
+<header class="topbar" role="banner">
+  <div class="brand"><i></i>Cockpit</div>
+  <button class="chip-btn" aria-haspopup="listbox">storefront <span class="sub">main</span> &#9662;</button>
+  <nav class="snav " aria-label="Screens"><a class="" >Features</a><a class="on" aria-current="page">Pages</a><a class="" >Components</a><a class="" >PRs <span class="badge">3</span></a><a class="" >Tests</a></nav>
+  <button class="chip-btn palette-trigger"><span>Search or run a command...</span><kbd>Ctrl K</kbd></button>
+  <span class="pill run"><span class="spin"></span>2 running</span>
+  <button class="acct open" aria-haspopup="true" aria-expanded="true"><span class="avatar">SP</span>shashank-p &#9662;</button>
+</header>
+  <div class="ia-main">
+    <aside class="pane" aria-label="Left panel: Browse">
+  <div class="pane-h"><span class="title">Pages</span><span class="spacer"></span><button class="icon-btn">&laquo;</button></div>
+  <div class="search">&#8981; Filter routes <span class="spacer"></span><kbd>/</kbd></div>
+  <div class="scroll"><div class="sect">Pages &middot; 6</div><div class="tree"><div class="row "><span class="layer page">page</span>/<span class="meta">catalog</span></div><div class="row sel"><span class="layer page">page</span>/login<span class="meta">auth</span></div><div class="row "><span class="layer page">page</span>/register<span class="meta">auth</span></div><div class="row "><span class="layer page">page</span>/cart<span class="meta">cart</span></div><div class="row "><span class="layer page">page</span>/checkout<span class="meta">checkout</span></div><div class="row "><span class="layer page">page</span>/products/[id]<span class="meta">catalog</span></div></div></div></aside><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <section class="pane mid" aria-label="Center stage">
+  <div class="canvas-tb"><span class="crumbs">Pages &rsaquo; <b>/login</b></span><span class="spacer"></span><button class="btn sm">&#8853; Pick</button></div>
+  <div class="stage"><div class="device" style="height:400px"><div class="bar"><i></i><i></i><i></i>&nbsp;&nbsp;localhost:5173/login</div><div class="app-nav"><b>Storefront</b><span>Catalog</span><span>Cart (2)</span></div><div class="login"><h2>Welcome back</h2><p>Sign in to continue.</p><label>Email</label><div class="in">sam@example.com</div><div class="cta">Sign in</div></div></div></div></section><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <aside class="pane" aria-label="Right panel: Inspect"><div class="pane-h"><span class="title">Inspect</span></div><div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Inspector</button><button role="tab" class="" aria-selected="false">Scope</button><button role="tab" class="" aria-selected="false">Source</button><button role="tab" class="" aria-selected="false">Diff</button></div><div class="section"><div class="el-head"><span class="name">LoginForm</span><span class="layer component">component</span></div><div class="path">features/auth/components/LoginForm.tsx:14</div></div></aside>
+  </div>
+  
+<div class="drawer" aria-label="Bottom panel: Run" style="height:134px">
+  <div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Processes <span class="badge acc">2</span></button><button role="tab" class="" aria-selected="false">Approvals <span class="badge ">1</span></button><button role="tab" class="" aria-selected="false">Diagnostics <span class="badge danger">3</span></button><button role="tab" class="" aria-selected="false">Logs</button></div>
+  <div class="body">
+<table><tr><th>Process</th><th>Project</th><th>Step</th><th>Progress</th><th>Who</th><th></th></tr>
+<tr><td><b>plan &middot; refund a delivered order</b></td><td>storefront</td><td>3 of 5 &middot; propose refundMachine</td><td><div class="bar-track"><div class="bar-fill" style="width:60%"></div></div></td><td><span class="tag llm">Local model</span></td><td><button class="btn sm">Pause</button> <button class="btn sm danger">Cancel</button></td></tr>
+<tr><td>research &middot; issue #142</td><td>storefront</td><td>Done &middot; 2 min ago</td><td>Finished</td><td><span class="tag det">Deterministic</span></td><td><button class="btn sm primary">Review 4 files</button></td></tr>
+</table></div>
+</div>
+  <footer class="statusbar"><span class="ok">&#9679; validate: 0 new violations</span><span>Notes saved on this machine</span><span class="spacer"></span><span>qwen2.5-coder:7b</span><span><kbd>F6</kbd> next panel</span><span><kbd>Ctrl J</kbd> bottom panel</span></footer>
+  <div class="menu" role="group" aria-label="Account">
+  <div class="who"><span class="avatar">SP</span><div><b>shashank-p</b><small>Signed in with GitHub</small></div></div>
+  <div class="mgrp">Preferences</div>
+  <div class="mi on"><span class="g">&#9881;</span>Settings<span class="r">Git, commits, model choice</span></div>
+  <div class="mi"><span class="g">&#9673;</span>Local model<span class="r"><span class="pill ok" style="height:20px;padding:0 8px"><span class="dot"></span>Ready</span></span></div>
+  <div class="mi"><span class="g">&#9680;</span>Theme<span class="r"><span class="seg"><button class="on">Dark</button><button>Light</button><button>System</button></span></span></div>
+  <div class="msep"></div>
+  <div class="mi"><span class="g">?</span>Help and shortcuts<span class="r"><kbd>?</kbd></span></div>
+  <div class="msep"></div>
+  <div class="mi"><span class="g">&#8677;</span>Sign out<span class="r">Ends this session only</span></div></div>
+</div>
+</body></html>

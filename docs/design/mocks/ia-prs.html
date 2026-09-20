@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>PRs screen: review inside the shell - Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="ia.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+</head><body>
+<div class="concept">Concept - not implemented <span>PRs screen: review inside the shell</span></div>
+
+<div class="shell" style="grid-template-rows:44px 1fr 110px 24px;position:relative">
+  
+<header class="topbar" role="banner">
+  <div class="brand"><i></i>Cockpit</div>
+  <button class="chip-btn" aria-haspopup="listbox">storefront <span class="sub">main</span> &#9662;</button>
+  <nav class="snav " aria-label="Screens"><a class="" >Features</a><a class="" >Pages</a><a class="" >Components</a><a class="on" aria-current="page">PRs <span class="badge">3</span></a><a class="" >Tests</a></nav>
+  <button class="chip-btn palette-trigger"><span>Search or run a command...</span><kbd>Ctrl K</kbd></button>
+  <span class="pill run"><span class="spin"></span>2 running</span>
+  <button class="acct " aria-haspopup="true" aria-expanded="false"><span class="avatar">SP</span>shashank-p &#9662;</button>
+</header>
+  <div class="ia-main">
+    <aside class="pane" aria-label="Left panel: Browse"><div class="pane-h"><span class="title">PRs</span><span class="spacer"></span><button class="icon-btn">&laquo;</button></div><div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Open PRs <span class="badge acc">3</span></button><button role="tab" class="" aria-selected="false">Branches</button></div><div class="scroll"><div class="tree" style="padding-top:8px">
+   <div class="dr sel"><span class="n">#341 Refund a delivered order</span><span class="st stale">2 findings</span><span class="s">shashank-p &middot; 11 files &middot; matches plan</span></div>
+   <div class="dr"><span class="n">#338 Guest checkout</span><span class="st run">Clean</span><span class="s">4 files</span></div>
+   <div class="dr"><span class="n">#335 Fix cart rounding</span><span class="st draft">No plan</span><span class="s">2 files</span></div></div>
+   <div class="sect">Changed files &middot; 11</div><div class="tree"><div class="row"><span class="layer workflow">workflow</span>refundMachine.ts<span class="meta">+64</span></div><div class="row sel"><span class="layer component">component</span>RefundForm.tsx<span class="meta">+38 -2</span></div><div class="row"><span class="layer component">component</span>AmountField.tsx<span class="meta">+3</span></div></div></div></aside><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <section class="pane mid" aria-label="Center stage"><div class="canvas-tb"><span class="crumbs">PRs &rsaquo; #341 &rsaquo; <b>RefundForm.tsx</b></span><span class="spacer"></span><span class="tag det">Deterministic checks</span></div>
+   <div class="scroll"><div class="code"><div class="ln "><i>12</i><span> import { useRefundForm } from "../hooks/useRefundForm";</span></div><div class="ln add"><i>13</i><span>+import { orderService } from "@/features/orders/services/orderService";</span></div><div class="ln "><i>14</i><span> export function RefundForm() {</span></div><div class="ln add"><i>15</i><span>+  const orders = orderService.list();</span></div><div class="ln "><i>16</i><span>   return &lt;AmountField />;</span></div></div>
+   <div class="callout warn"><span>&#9888;</span><div class="grow"><b>A component imports a service</b><small>Components go through a hook. Rule COMPONENT-002, deterministic.</small></div><button class="btn sm">Show in findings</button></div></div></section><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <aside class="pane" aria-label="Right panel: Inspect"><div class="pane-h"><span class="title">Review</span></div><div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Findings <span class="badge ">2</span></button><button role="tab" class="" aria-selected="false">Detail</button><button role="tab" class="" aria-selected="false">Plan match</button></div><div class="scroll">
+   <div class="step"><span class="no">!</span><div><b>Component imports a service</b><small>RefundForm.tsx:13 &middot; COMPONENT-002</small></div><span class="tag det">Deterministic</span></div>
+   <div class="step"><span class="no">!</span><div><b>Touches shared AmountField (used by 5 features)</b><small>not in the plan</small></div><span class="tag det">Deterministic</span></div>
+   <div style="padding:12px"><button class="btn">Propose a fix</button> <span class="tag llm">Local model - diff shown first</span></div></div></aside>
+  </div>
+  
+<div class="drawer" aria-label="Bottom panel: Run" style="height:110px">
+  <div class="tabs" role="tablist"><button role="tab" class="" aria-selected="false">Processes <span class="badge acc">1</span></button><button role="tab" class="on" aria-selected="true">Approvals <span class="badge ">1</span></button><button role="tab" class="" aria-selected="false">Diagnostics <span class="badge danger">3</span></button><button role="tab" class="" aria-selected="false">Logs</button></div>
+  <div class="body"><table><tr><th>Waiting for you</th><th>Proposed by</th><th></th></tr><tr><td><b>Fix: route RefundForm through useRefundForm</b> &middot; 1 file, +4 -2</td><td><span class="tag llm">Local model</span></td><td><button class="btn sm primary">Review diff</button> <button class="btn sm">Dismiss</button></td></tr></table></div>
+</div>
+  <footer class="statusbar"><span class="ok">&#9679; validate: 0 new violations</span><span>Notes saved on this machine</span><span class="spacer"></span><span>qwen2.5-coder:7b</span><span><kbd>F6</kbd> next panel</span><span><kbd>Ctrl J</kbd> bottom panel</span></footer>
+  
+</div>
+</body></html>

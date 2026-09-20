@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>No project: where the Open a project prompt sits - Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="ia.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+</head><body>
+<div class="concept">Concept - not implemented <span>No project: where the Open a project prompt sits</span></div>
+
+<div class="shell" style="grid-template-rows:44px 1fr 110px 24px;position:relative">
+  
+<header class="topbar" role="banner">
+  <div class="brand"><i></i>Cockpit</div>
+  <button class="chip-btn" aria-haspopup="listbox">No project &#9662;</button>
+  <nav class="snav off" aria-label="Screens"><a class="on" aria-current="page">Features</a><a class="" >Pages</a><a class="" >Components</a><a class="" >PRs</a><a class="" >Tests</a></nav>
+  <button class="chip-btn palette-trigger"><span>Search or run a command...</span><kbd>Ctrl K</kbd></button>
+  <span class="pill run"><span class="spin"></span>0 running</span>
+  <button class="acct " aria-haspopup="true" aria-expanded="false"><span class="avatar">SP</span>shashank-p &#9662;</button>
+</header>
+  <div class="ia-main">
+    <aside class="pane" aria-label="Left panel: Browse"><div class="pane-h"><span class="title">Features</span></div><div class="scroll" style="padding:14px;color:var(--text-muted)">Nothing to browse until a project is open.</div></aside><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <section class="pane mid" aria-label="Center stage"><div class="stage"><div class="state-card"><div class="ico">&#9635;</div><h5>Open a project to start</h5><p>Pick a folder that contains an architecture.yml, or open a repository from GitHub.</p><button class="btn primary">Open a project...</button></div><div class="slotlab" style="left:16px;top:12px">Being built separately (workspace-scoped): only its position is shown here</div></div></section><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <aside class="pane" aria-label="Right panel: Inspect"><div class="pane-h"><span class="title">Inspect</span></div><div class="scroll" style="padding:14px;color:var(--text-muted)">Select something to inspect.</div></aside>
+  </div>
+  
+<div class="drawer" aria-label="Bottom panel: Run" style="height:110px">
+  <div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Processes <span class="badge acc">0</span></button><button role="tab" class="" aria-selected="false">Approvals <span class="badge ">0</span></button><button role="tab" class="" aria-selected="false">Diagnostics <span class="badge danger">3</span></button><button role="tab" class="" aria-selected="false">Logs</button></div>
+  <div class="body"><div style="padding:14px;color:var(--text-muted)">No processes yet. Running and finished processes for a project appear here, on every screen.</div></div>
+</div>
+  <footer class="statusbar"><span class="ok">&#9679; validate: 0 new violations</span><span>Notes saved on this machine</span><span class="spacer"></span><span>qwen2.5-coder:7b</span><span><kbd>F6</kbd> next panel</span><span><kbd>Ctrl J</kbd> bottom panel</span></footer>
+  
+</div>
+</body></html>

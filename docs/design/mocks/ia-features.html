@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Features screen: notes, impact, plan, processes - Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="ia.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+</head><body>
+<div class="concept">Concept - not implemented <span>Features screen: notes, impact, plan, processes</span></div>
+
+<div class="shell" style="grid-template-rows:44px 1fr 150px 24px;position:relative">
+  
+<header class="topbar" role="banner">
+  <div class="brand"><i></i>Cockpit</div>
+  <button class="chip-btn" aria-haspopup="listbox">storefront <span class="sub">main</span> &#9662;</button>
+  <nav class="snav " aria-label="Screens"><a class="on" aria-current="page">Features</a><a class="" >Pages</a><a class="" >Components</a><a class="" >PRs <span class="badge">3</span></a><a class="" >Tests</a></nav>
+  <button class="chip-btn palette-trigger"><span>Search or run a command...</span><kbd>Ctrl K</kbd></button>
+  <span class="pill run"><span class="spin"></span>2 running</span>
+  <button class="acct " aria-haspopup="true" aria-expanded="false"><span class="avatar">SP</span>shashank-p &#9662;</button>
+</header>
+  <div class="ia-main">
+    <aside class="pane" aria-label="Left panel: Browse">
+  <div class="pane-h"><span class="title">Features</span><span class="spacer"></span><button class="icon-btn" aria-label="New note">+</button><button class="icon-btn" aria-label="Collapse">&laquo;</button></div>
+  <div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Notes <span class="badge acc">3</span></button><button role="tab" class="" aria-selected="false">Features</button></div>
+  <div class="search">&#8981; Filter notes <span class="spacer"></span><kbd>/</kbd></div>
+  <div class="scroll"><div class="sect">Notes &middot; 3</div><div class="tree" style="padding:0 6px">
+    <div class="dr sel"><span class="n">Refund a delivered order</span><span class="st draft">Draft</span><span class="s">Saved 12:41 &middot; edited 2 min ago</span></div>
+    <div class="dr"><span class="n">Guest checkout</span><span class="st ready">Plan ready</span><span class="s">5 steps &middot; yesterday</span></div>
+    <div class="dr"><span class="n">Split cart totals</span><span class="st run">Ran</span><span class="s">Process #12 &middot; 3 days ago</span></div>
+  </div>
+  <div class="sect" style="margin-top:8px">Features &middot; 4</div><div class="tree">
+    <div class="row"><span class="twisty">&#9656;</span>auth<span class="meta">7 files</span></div>
+    <div class="row"><span class="twisty">&#9656;</span>cart<span class="meta">11 files</span></div>
+    <div class="row"><span class="twisty">&#9656;</span>checkout<span class="meta">9 files</span></div>
+    <div class="row"><span class="twisty">&#9656;</span>orders<span class="meta">6 files</span></div>
+  </div></div></aside><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <section class="pane mid" aria-label="Center stage">
+  <div class="canvas-tb"><span class="crumbs">Features &rsaquo; Notes &rsaquo; <b>Refund a delivered order</b></span><span class="spacer"></span><span class="saveind ok">&#10003; Saved on this machine &middot; 12:41</span></div>
+  <div style="overflow:hidden;flex:1">
+  <div class="notebox"><div class="t">Refund a delivered order<span class="spacer"></span><span class="st draft">Draft</span></div>
+    <div class="b">Customers should be able to request a refund from the order page within 30 days of delivery. Partial refunds allowed. Needs a confirmation step and an audit entry.</div>
+    <div class="f"><span class="saveind">Autosaves as you type &middot; stays on this machine, never sent to a model</span><span class="spacer"></span><button class="btn sm">Research this note</button></div></div>
+  <div class="sect" style="padding:16px 18px 6px">Impact <span class="tag det" style="margin-left:8px">Deterministic</span></div>
+  <div style="margin:0 18px;background:var(--surface-1);border:1px solid var(--border-subtle);border-radius:var(--r-lg)"><table><tr><th>Where</th><th>Layer</th><th>Why</th><th>How known</th></tr>
+  <tr><td><b>orders</b></td><td><span class="layer feature">feature</span></td><td>starts here</td><td><span class="tag det">Deterministic</span></td></tr><tr><td><b>checkout</b></td><td><span class="layer feature">feature</span></td><td>imports orderService</td><td><span class="tag det">Deterministic</span></td></tr><tr><td><b>ui-kit</b></td><td><span class="layer component">component</span></td><td>AmountField used by 5 features</td><td><span class="tag det">Deterministic</span></td></tr></table></div></div></section><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <aside class="pane" aria-label="Right panel: Inspect">
+  <div class="pane-h"><span class="title">Plan</span><span class="spacer"></span><span class="tag llm">1 model step</span></div>
+  <div class="tabs" role="tablist"><button role="tab" class="" aria-selected="false">Note</button><button role="tab" class="" aria-selected="false">Impact</button><button role="tab" class="on" aria-selected="true">Plan <span class="badge acc">5</span></button></div>
+  <div class="scroll">
+    <div class="step"><span class="no">1</span><div><b>Summarize the orders feature</b><small>construct research summarize</small></div><span class="tag det">Deterministic</span></div><div class="step"><span class="no">2</span><div><b>Trace refund paths in checkout</b><small>construct research workflow</small></div><span class="tag det">Deterministic</span></div><div class="step"><span class="no">3</span><div><b>Propose refundMachine states</b><small>local model (qwen2.5-coder:7b)</small></div><span class="tag llm">Local model</span></div><div class="step"><span class="no">4</span><div><b>Add refundService and hook</b><small>construct create service, hook</small></div><span class="tag det">Deterministic</span></div><div class="step"><span class="no">5</span><div><b>You approve the diff</b><small>nothing applied without you</small></div><span class="tag human">You</span></div>
+    <div style="padding:12px;display:flex;gap:8px"><button class="btn primary">Run plan</button><button class="btn">Edit steps</button></div>
+  </div></aside>
+  </div>
+  
+<div class="drawer" aria-label="Bottom panel: Run" style="height:150px">
+  <div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Processes <span class="badge acc">2</span></button><button role="tab" class="" aria-selected="false">Approvals <span class="badge ">1</span></button><button role="tab" class="" aria-selected="false">Diagnostics <span class="badge danger">3</span></button><button role="tab" class="" aria-selected="false">Logs</button></div>
+  <div class="body">
+<table><tr><th>Process</th><th>Project</th><th>Step</th><th>Progress</th><th>Who</th><th></th></tr>
+<tr><td><b>plan &middot; refund a delivered order</b></td><td>storefront</td><td>3 of 5 &middot; propose refundMachine</td><td><div class="bar-track"><div class="bar-fill" style="width:60%"></div></div></td><td><span class="tag llm">Local model</span></td><td><button class="btn sm">Pause</button> <button class="btn sm danger">Cancel</button></td></tr>
+<tr><td>research &middot; issue #142</td><td>storefront</td><td>Done &middot; 2 min ago</td><td>Finished</td><td><span class="tag det">Deterministic</span></td><td><button class="btn sm primary">Review 4 files</button></td></tr>
+</table></div>
+</div>
+  <footer class="statusbar"><span class="ok">&#9679; validate: 0 new violations</span><span>Notes saved on this machine</span><span class="spacer"></span><span>qwen2.5-coder:7b</span><span><kbd>F6</kbd> next panel</span><span><kbd>Ctrl J</kbd> bottom panel</span></footer>
+  
+</div>
+</body></html>
