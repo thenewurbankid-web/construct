@@ -26,3 +26,9 @@ export * from './hooks/useReviewPlans';
 
 /** What each next action of a failure notice does (retry, back, review without a plan, Settings). */
 export * from './hooks/useFailureActions';
+
+/** Cancel an analysis (the same control as the Processes drawer's). */
+export * from './hooks/useAnalysisCancel';
+
+/** The changed-units tree's keyboard state: open parents and the one tab stop (#351). */
+export * from './hooks/useTreeNavigation';

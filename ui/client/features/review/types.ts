@@ -27,10 +27,11 @@ export type AnalysisDone = {
   indicators: IndicatorSlim[];
   degraded: { truncated: boolean; message?: string } | null;
 };
+/** `processId` is the analysis's Process (#351): it is in the Processes drawer, where it can be paused or cancelled. */
 export type Analysis =
-  | { state: 'none' | 'queued' | 'running' }
-  | { state: 'error'; error: { code: string; message: string } }
-  | AnalysisDone;
+  | { state: 'none' | 'queued' | 'running' | 'paused' | 'cancelled'; processId?: string }
+  | { state: 'error'; error: { code: string; message: string }; processId?: string }
+  | (AnalysisDone & { processId?: string });
 
 export type BranchRow = {
   name: string;
@@ -109,7 +110,7 @@ export type ChangeReport = {
 
 export type UnitSummary = { path: string; summary: string | null; purpose?: string | null; exports?: string[] };
 
-export type ChangeState = 'none' | 'queued' | 'running' | 'done' | 'error';
+export type ChangeState = 'none' | 'queued' | 'running' | 'paused' | 'cancelled' | 'done' | 'error';
 export type ChangeResponse = {
   state: ChangeState;
   base: { name: string; sha: string };
@@ -120,6 +121,8 @@ export type ChangeResponse = {
   units?: UnitSummary[];
   unitsOmitted?: number;
   error?: { code: string; message: string };
+  /** The analysis's Process (#351), so the screen can point at the Processes drawer. */
+  processId?: string;
 };
 
 /** A saved plan the change can be compared with (the processes' plans, from /api/review/plans). */
@@ -164,6 +167,8 @@ export type BranchRowView = {
   /** Badges once analysed; null while the analysis is queued or running. */
   badges: Badge[] | null;
   pending: string | null;
+  /** Set when the analysis was cancelled (from the Processes drawer or here): the row says so, and does not restart by itself. */
+  stopped: string | null;
   error: string | null;
 };
 export type BranchListProps = {
@@ -176,17 +181,8 @@ export type BranchListProps = {
   onReload: () => void;
 };
 export type ReviewSourcesProps = { sourceLabel: string; base: string; baseSha: string | null; refs: string[]; count: number; onBase: (name: string) => void };
-export type ChangeTreeProps = {
-  grouping: 'feature' | 'layer' | 'files';
-  onGrouping: (g: 'feature' | 'layer' | 'files') => void;
-  totals: string;
-  byFeature: FeatureGroup[];
-  byLayer: LayerView[];
-  flat: TreeFile[];
-  selectedPath: string | null;
-  onSelect: (path: string) => void;
-};
 export type UnitSummariesProps = { rows: UnitRow[]; more: UnitsView['more']; selectedPath: string | null; onSelect: (path: string) => void };
 
 export type * from './domain/FindingsTypes.ts';
 export type * from './domain/WorkflowTypes.ts';
+export type * from './domain/TreeTypes.ts';

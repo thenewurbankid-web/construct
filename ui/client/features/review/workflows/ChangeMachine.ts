@@ -12,6 +12,9 @@ export function changeReducer(state: ChangeViewState, action: ChangeAction): Cha
       const d = action.data;
       if (d.state === 'done') return { ...state, status: 'ready', data: d, error: null, errorCode: null };
       if (d.state === 'error') return { ...state, status: 'failed', data: d, error: d.error?.message ?? 'The analysis failed.', errorCode: d.error?.code ?? null };
+      // A cancelled analysis (from the Processes drawer or from here) is a stop the person asked for, not a failure:
+      // it says so and offers to run it again; it never restarts by itself.
+      if (d.state === 'cancelled') return { ...state, status: 'failed', data: d, error: 'The analysis was cancelled.', errorCode: 'CANCELLED' };
       return { ...state, status: 'waiting', data: d, error: null, errorCode: null };
     }
     case 'FAILED':

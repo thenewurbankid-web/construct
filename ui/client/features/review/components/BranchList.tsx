@@ -47,6 +47,7 @@ export function BranchList({ base, rows, order, explanation, onOrder, onOpen, on
                 <span className="rv-badges">
                   {r.badges?.map((b) => <HealthBadge key={b.id} text={b.text} tone={b.tone} />)}
                   {r.pending && <span className="rv-pending" role="status" data-testid="review-analysing">{r.pending}</span>}
+                  {r.stopped && <span className="rv-stopped" data-testid="review-cancelled" title="This analysis was cancelled. Re-analyse all runs it again.">{r.stopped}</span>}
                   {r.error && <span className="rv-badge rv-badge--warn" title={r.error}>Analysis failed</span>}
                 </span>
               </button>
