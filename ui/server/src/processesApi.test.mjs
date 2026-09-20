@@ -2,6 +2,7 @@
 // route sits behind the session gate, the socket takes the same `auth`, an id
 // is looked up and never used as a path), then the behaviour (the machine, not
 // the UI, decides which control is legal).
+import '../../../test-utils/workspaceRoot.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';

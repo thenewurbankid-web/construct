@@ -12,6 +12,11 @@ export async function fetchProjectDir(): Promise<string | null> {
 
 /** Points the whole UI at another local project (POST /api/settings; only
  * projectDir is sent, other settings are left alone). Returns an error message or null. */
+export async function closeProjectDir(): Promise<string | null> {
+  const result = await postJson<{ error?: string }>('/api/settings', { closeProject: true });
+  return result.error ?? null;
+}
+
 export async function switchProjectDir(projectDir: string): Promise<string | null> {
   const result = await postJson<{ error?: string }>('/api/settings', { projectDir });
   return result.error ?? null;

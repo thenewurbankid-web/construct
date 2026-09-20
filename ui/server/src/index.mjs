@@ -12,10 +12,11 @@ import { pathToFileURL } from 'node:url';
 import { Readable } from 'node:stream';
 import { AuthConfigError, createAuth, isLoopbackHost, resolveAuthConfig } from './auth.mjs';
 import { create, refactor, research, importCommand, init } from '../../../src/cli.mjs';
-import { findProjectRoot } from '../../../src/config.mjs';
+import { containedProjectRoot, requireProject } from './projectGuard.mjs';
+import { WorkspaceError, containInWorkspace, contain, workspaceRoot } from './workspace.mjs';
 import { USAGE } from '../../../src/usage.mjs';
 import { HELP_TOPICS, TOPIC_ORDER, getTopLevelHelpText } from '../../../src/repl.mjs';
-import { getSettings, updateSettings, getBrowseRoots } from './settings.mjs';
+import { getSettings, updateSettings, getBrowseRoots, getProjectDir, preloadProject } from './settings.mjs';
 import { handleBrowse } from './dirBrowse.mjs';
 import { runCapturing, withDir } from './commandRunner.mjs';
 import { attachWizardSocket } from './wizardSocket.mjs';
@@ -102,6 +103,16 @@ try {
   throw e;
 }
 
+// #365 harness-only preload. The Cockpit starts with NO project open. An e2e config (and only an e2e config)
+// may name one through CONSTRUCT_E2E_PROJECT_DIR; it goes through the same workspace containment as a client's
+// choice, and the server refuses to start with it on a non-loopback host, so it can never be a production bypass.
+if (process.env.CONSTRUCT_E2E_PROJECT_DIR) {
+  if (!isLoopbackHost(host)) {
+    throw new Error('CONSTRUCT_E2E_PROJECT_DIR is a test-harness setting and is refused when the server is exposed beyond loopback.');
+  }
+  preloadProject(process.env.CONSTRUCT_E2E_PROJECT_DIR);
+}
+
 const app = express();
 // `credentials: true` is required for the session cookie to survive the
 // cross-origin hop from the Next.js client (:3000) to this server (:4000).
@@ -162,12 +173,22 @@ app.get('/api/help', (req, res) => {
 // monorepo support), but an arbitrary directory with no architecture.yml
 // anywhere above it does not, and must be `init`-ed first.
 function projectStatusFor(projectDir) {
-  const resolvedProjectRoot = findProjectRoot(projectDir);
+  // #365: no project open is its own state (the client shows "Open a project"), and a project root found by
+  // climbing OUT of the workspace does not count.
+  if (projectDir === null) return { resolvedProjectRoot: null, valid: false, needsInit: false, noProject: true };
+  const resolvedProjectRoot = containedProjectRoot(projectDir);
   return {
     resolvedProjectRoot,
     valid: resolvedProjectRoot !== null,
     needsInit: resolvedProjectRoot === null,
+    noProject: false,
   };
+}
+
+/** A WorkspaceError is the client's mistake (400/403/404, with a stable `code`); anything else is a plain 400. */
+function settingsErrorBody(e) {
+  const known = e instanceof WorkspaceError;
+  return { status: known ? e.status : 400, body: { ok: false, error: e.message, ...(known ? { code: e.code } : {}) } };
 }
 
 app.get('/api/settings', (req, res) => {
@@ -180,13 +201,15 @@ app.post('/api/settings', (req, res) => {
     const settings = updateSettings(req.body || {});
     res.json({ ...settings, ...projectStatusFor(settings.projectDir) });
   } catch (e) {
-    res.status(400).json({ ok: false, error: e.message });
+    const { status, body } = settingsErrorBody(e);
+    res.status(status).json(body);
   }
 });
 
-// #223: allowlisted, directories-only folder browser for the project picker.
-// All logic/security lives in src/dir-browser.mjs (+ ./dirBrowse.mjs adapter);
-// roots come from settings (default: home + current project's parent).
+// #223 + #365: allowlisted, directories-only folder browser for the project picker. The ONLY root is the
+// workspace (never $HOME, never a client-set list); a relative `path` is workspace-relative; anything that
+// resolves outside it by realpath is refused. All listing logic lives in src/dir-browser.mjs
+// (+ ./dirBrowse.mjs adapter).
 app.get('/api/fs/browse', (req, res) => {
   const { status, body } = handleBrowse(req.query, {
     origin: req.get('origin'),
@@ -196,6 +219,21 @@ app.get('/api/fs/browse', (req, res) => {
   res.status(status).json(body);
 });
 
+// #365: every route below that works on a project answers 409 {code:'NO_PROJECT'} when none is open (never a
+// crash, never a fallback to process.cwd()), and refuses a project whose architecture.yml lives outside the
+// workspace. Mounted once, here, so no individual route can forget it. `init` creates a project, so it only
+// needs a folder to be open.
+app.use('/api/init', requireProject({ allowEscapingRoot: true }));
+app.use(
+  [
+    '/api/create', '/api/refactor', '/api/research', '/api/import',
+    '/api/pages', '/api/workflows', '/api/units', '/api/features', '/api/flow', '/api/nav', '/api/validate',
+    '/api/git/session', '/api/git/dirty-answer', '/api/git/commit', '/api/git/plan',
+    '/api/processes', '/api/plan', '/api/review', '/api/tests',
+  ],
+  requireProject(),
+);
+
 // Initializes a Construct project (architecture.yml + AGENTS.md + a `core`
 // feature) at the *currently selected* project directory — the same
 // `init` function `construct init` runs, called in-process like every
@@ -204,7 +242,7 @@ app.get('/api/fs/browse', (req, res) => {
 // user other than a dead end: pick a directory in Settings, then either
 // select an existing project or press "Initialize Construct here".
 app.post('/api/init', async (req, res) => {
-  const { projectDir } = getSettings();
+  const projectDir = getProjectDir();
   const result = await runCapturing(() => init([projectDir]));
   const settings = getSettings();
   res.status(result.httpStatus).json({ ...result, ...settings, ...projectStatusFor(settings.projectDir) });
@@ -270,14 +308,22 @@ app.post('/api/research', async (req, res) => {
 app.post('/api/import', async (req, res) => {
   const { mode, name, feature, layers, from, llm, useLlm, planPath } = req.body || {};
   let args;
-  if (mode === 'unit') {
-    if (!name || !feature || !layers?.length || !from) return res.status(400).json({ ok: false, error: 'name, feature, a non-empty layers[], and from are required' });
-    args = [name, '--feature', feature, '--layers', layers.join(','), '--from', from];
-  } else if (mode === 'plan') {
-    if (!planPath) return res.status(400).json({ ok: false, error: 'planPath is required' });
-    args = ['--plan', planPath];
-  } else {
-    return res.status(400).json({ ok: false, error: 'mode must be "unit" or "plan"' });
+  // #365: `from` and `planPath` are files the server will READ (and, with --llm, send to a provider). They must
+  // resolve, by realpath, inside the workspace; a relative one is relative to the open project, not to the server.
+  const containRead = (value) => contain(workspaceRoot(), value, { base: getProjectDir() });
+  try {
+    if (mode === 'unit') {
+      if (!name || !feature || !layers?.length || !from) return res.status(400).json({ ok: false, error: 'name, feature, a non-empty layers[], and from are required' });
+      args = [name, '--feature', feature, '--layers', layers.join(','), '--from', containRead(from)];
+    } else if (mode === 'plan') {
+      if (!planPath) return res.status(400).json({ ok: false, error: 'planPath is required' });
+      args = ['--plan', containRead(planPath)];
+    } else {
+      return res.status(400).json({ ok: false, error: 'mode must be "unit" or "plan"' });
+    }
+  } catch (e) {
+    const { status, body } = settingsErrorBody(e);
+    return res.status(status).json(body);
   }
   // An explicit `llm` provider name (direct API use) still wins; the UI sends
   // `useLlm: true` instead and the provider comes from Settings.importFill.
@@ -338,7 +384,7 @@ app.delete('/api/ollama/models/:name', async (req, res) => {
 // on every route that writes.
 function currentRoot() {
   const { projectDir } = getSettings();
-  const root = findProjectRoot(projectDir);
+  const root = containedProjectRoot(projectDir);
   if (!root) throw new PagesEditorError('No Construct project found for the current project directory — set one in Settings first.', { status: 400 });
   return root;
 }
@@ -799,7 +845,7 @@ app.get('/api/flow/:feature', (req, res) => {
 // Logs (bounded in-memory ring of recent command/validate output). Both are
 // read-only and refuse a foreign browser origin.
 app.get('/api/validate', (req, res) => {
-  const { status, body } = handleValidate({ origin: req.get('origin'), clientOrigin: CLIENT_ORIGIN, projectDir: getSettings().projectDir });
+  const { status, body } = handleValidate({ origin: req.get('origin'), clientOrigin: CLIENT_ORIGIN, projectDir: getProjectDir(), findRoot: containedProjectRoot });
   res.status(status).json(body);
 });
 
@@ -815,14 +861,14 @@ app.get('/api/logs', (req, res) => {
 export const reviewExecutor = createReviewExecutor();
 // #305: `test.run` steps (a Tests-tab run) run the same way: a forked worker, no bot branch, no artifacts.
 export const testRunExecutor = createTestRunExecutor();
-export const processesService = createProcessesService({ getProjectDir: () => getSettings().projectDir, reviewExecutor, testRunExecutor });
+export const processesService = createProcessesService({ getProjectDir, reviewExecutor, testRunExecutor });
 app.use('/api/processes', createProcessesRouter(processesService));
 
 // #289/#332: Plan mode. Below the gate like every other `/api` route. The plan comes from the browser, so
 // planService re-validates it (validatePlan + the Cockpit's path/argument checks) and only then starts a
 // process through the same service the Processes drawer reads. The project is always the current one.
 export const planService = createPlanService({
-  getRoot: () => findProjectRoot(getSettings().projectDir),
+  getRoot: () => containedProjectRoot(getProjectDir()),
   startPlan: (plan) => processesService.startPlan(plan),
 });
 app.use('/api/plan', createPlanRouter(planService));
@@ -839,7 +885,7 @@ app.use('/api/review', createReviewRouter({
   // #316: the saved plans of the current project are the plans of its processes (the store lists them).
   plans: createPlanSource({ records: () => processesService.store()?.all().processes }),
   getRoot: () => {
-    const root = findProjectRoot(getSettings().projectDir);
+    const root = containedProjectRoot(getProjectDir());
     return root ? { ok: true, root } : { ok: false, error: 'No Construct project found for the current project directory. Pick a project first.' };
   },
 }));
@@ -853,7 +899,7 @@ app.use('/api/tests', createTestsRouter({
   clientOrigin: CLIENT_ORIGIN,
   runs: testRunJobs,
   getRoot: () => {
-    const root = findProjectRoot(getSettings().projectDir);
+    const root = containedProjectRoot(getProjectDir());
     return root ? { ok: true, root } : { ok: false, error: 'No Construct project found for the current project directory. Pick a project first.' };
   },
 }));
@@ -887,9 +933,11 @@ export function createUiServer() {
 }
 
 export function start() {
+  const root = workspaceRoot(); // creates the workspace if missing; throws (and the process exits) if it cannot
   const server = createUiServer();
   server.listen(port, host, () => {
     console.log(`Construct UI server listening on http://${host}:${port}`);
+    console.log(`Workspace: ${root} (the only place projects can be opened; set CONSTRUCT_WORKSPACE_ROOT to change it). No project is open until one is chosen.`);
     for (const line of auth.describeStartup()) {
       (line.level === 'warn' ? console.warn : console.log)(line.level === 'warn' ? `WARNING: ${line.text}` : line.text);
     }

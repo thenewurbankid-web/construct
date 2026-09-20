@@ -26,6 +26,7 @@ import { validateArchitecture } from '../../../src/architecture-enforcer.mjs';
 import { validateSeparationOfConcerns } from '../../../src/soc-enforcer.mjs';
 import { walk, rel } from '../../../src/fs.mjs';
 import { matchGlob } from '../../../src/glob.mjs';
+import { isInside } from './workspace.mjs';
 
 const JSX_EXTENSIONS = new Set(['.jsx', '.tsx', '.js', '.ts']);
 
@@ -88,6 +89,11 @@ export function resolvePageFile(root, feature, file) {
   }
   if (!fs.existsSync(resolved) || !fs.statSync(resolved).isFile()) {
     throw new PagesEditorError(`No such page file: features/${feature}/pages/${file}`, { status: 404 });
+  }
+  // #365: a symlink inside pages/ (say, from a cloned repository) must not lead out of the project, and so out of
+  // the workspace: the REAL path has to stay inside the project root, for reads and for the write-back alike.
+  if (!realInside(root, resolved)) {
+    throw new PagesEditorError(`"${file}" resolves outside the project.`);
   }
   // Belt-and-suspenders: also confirm the layer graph actually classifies
   // this path as the `page` layer (catches a project-level architecture.yml
@@ -422,6 +428,15 @@ export { collectComponentScopeNames };
 
 const COMPONENT_EXTENSIONS = ['.tsx', '.ts', '.jsx', '.js'];
 
+/** #365: true when `file`'s REAL path (symlinks followed) is inside `root`'s real path. False on any error. */
+function realInside(root, file) {
+  try {
+    return isInside(fs.realpathSync.native(root), fs.realpathSync.native(file));
+  } catch {
+    return false;
+  }
+}
+
 /** Resolve a relative import specifier (as written in a page file) to an
  * absolute file path, trying the specifier as-is, each of
  * COMPONENT_EXTENSIONS appended, and each extension under an `index.*`
@@ -439,7 +454,8 @@ function resolveImportSource(pageAbsPath, specifier, root) {
   for (const candidate of candidates) {
     if (!fs.existsSync(candidate) || !fs.statSync(candidate).isFile()) continue;
     const resolved = path.resolve(candidate);
-    if (resolved === rootResolved || resolved.startsWith(rootWithSep)) return resolved;
+    // #365: judged on the REAL path too, so a symlinked component cannot lead out of the project (and so the workspace).
+    if ((resolved === rootResolved || resolved.startsWith(rootWithSep)) && realInside(rootResolved, resolved)) return resolved;
   }
   return null;
 }

@@ -1,6 +1,7 @@
 // #302 -- the step document's endpoints (GET/POST /api/tests/:feature/steps[/preview]). Security first: session
 // gate, foreign Origin, hostile names, generated/ and symlinks, stale and unreviewed writes, hostile field values
 // (refused, or written escaped and PARSED to prove it), and a file that does not round-trip. Then behaviour.
+import '../../../test-utils/workspaceRoot.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';

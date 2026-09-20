@@ -20,6 +20,10 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 export CONSTRUCT_SESSION_SECRET="${CONSTRUCT_SESSION_SECRET:-$(openssl rand -hex 32)}"
 export CONSTRUCT_OAUTH_CALLBACK_URL="${CONSTRUCT_OAUTH_CALLBACK_URL:-$API/auth/callback}"
 echo "Callback URL to register on the OAuth app: $CONSTRUCT_OAUTH_CALLBACK_URL"
+# #365: the server opens projects only from ONE workspace folder and starts with no project open.
+export CONSTRUCT_WORKSPACE_ROOT="${CONSTRUCT_WORKSPACE_ROOT:-$HOME/workspace}"
+mkdir -p "$CONSTRUCT_WORKSPACE_ROOT"
+echo "Workspace (put projects here, e.g. git clone into it): $CONSTRUCT_WORKSPACE_ROOT"
 (cd "$ROOT/ui/client" && NEXT_PUBLIC_API_BASE="$API" NEXT_PUBLIC_WS_BASE="$WS://${API#*://}" npm run build)
 (cd "$ROOT/ui/client" && npm start) &
 trap 'kill 0' EXIT

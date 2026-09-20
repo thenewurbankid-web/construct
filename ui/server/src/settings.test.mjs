@@ -2,10 +2,14 @@
 // module-level (not reset between tests), so every test here re-sets the
 // fields it cares about (and restores projectDir) rather than assuming a
 // fresh module each time; Node's test runner loads this module once.
+import '../../../test-utils/workspaceRoot.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import os from 'node:os';
-import { getSettings, updateSettings } from './settings.mjs';
+import fs from 'node:fs';
+import path from 'node:path';
+import { getSettings, updateSettings, getProjectDir, preloadProject } from './settings.mjs';
+import { WorkspaceError, workspaceRoot } from './workspace.mjs';
+import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
 import { PROVIDERS } from '../../../src/llm.mjs';
 
 test('getSettings returns a per-capability llmProviders map defaulting every capability to the same provider', () => {
@@ -67,11 +71,81 @@ test('updateSettings accepts ollama for importFill and createFill (only planAnal
   updateSettings({ llmProviders: { importFill: 'claude', createFill: 'claude' } });
 });
 
-test('updateSettings still validates/applies projectDir exactly as before', () => {
-  const dir = os.tmpdir();
-  const result = updateSettings({ projectDir: dir });
-  assert.equal(result.projectDir, dir);
-  assert.throws(() => updateSettings({ projectDir: '/definitely/not/a/real/path/xyz' }), /Not a directory/);
+test('#365: the server starts with NO project open (never process.cwd()), and no project is offered to reopen yet', () => {
+  const s = getSettings();
+  assert.equal(s.projectDir, null);
+  assert.notEqual(s.projectDir, process.cwd());
+  assert.equal(s.projectRelative, null);
+  assert.equal(s.lastProject, null);
+  assert.equal(s.workspaceRoot, workspaceRoot());
+});
+
+test('#365: updateSettings applies a projectDir inside the workspace and refuses everything else, leaving state unchanged', () => {
+  const dir = makeTempDir('settings-ws-');
+  const inside = path.join(dir, 'proj');
+  fs.mkdirSync(inside);
+  const result = updateSettings({ projectDir: inside });
+  assert.equal(result.projectDir, inside);
+  assert.equal(result.projectRelative, path.relative(workspaceRoot(), inside));
+  for (const bad of ['/definitely/not/a/real/path/xyz', '/', '/etc', path.join(workspaceRoot(), '..'), `${inside}\0`, path.join(inside, 'nope')]) {
+    assert.throws(() => updateSettings({ projectDir: bad }), (e) => e instanceof WorkspaceError, bad);
+    assert.equal(getSettings().projectDir, inside, `unchanged after refusing ${JSON.stringify(bad)}`);
+  }
+  fs.symlinkSync('/etc', path.join(dir, 'escape'));
+  assert.throws(() => updateSettings({ projectDir: path.join(dir, 'escape') }), (e) => e.code === 'OUTSIDE_WORKSPACE');
+  assert.equal(getSettings().projectDir, inside);
+});
+
+test('#365: a bad provider in the same request does not switch the project', () => {
+  const before = getSettings().projectDir;
+  const other = makeTempDir('settings-ws-other-');
+  assert.throws(() => updateSettings({ projectDir: other, llmProviders: { importFill: 'gpt-nope' } }), /Unknown LLM provider/);
+  assert.equal(getSettings().projectDir, before);
+});
+
+test('#365: closeProject closes it, and the closed project is offered as lastProject (never auto-loaded)', () => {
+  const dir = makeTempDir('settings-ws-close-');
+  updateSettings({ projectDir: dir });
+  const closed = updateSettings({ closeProject: true });
+  assert.equal(closed.projectDir, null);
+  assert.equal(closed.lastProject, dir);
+  assert.equal(getSettings().projectDir, null, 'still closed on the next read');
+  const reopened = updateSettings({ projectDir: closed.lastProject });
+  assert.equal(reopened.projectDir, dir);
+  assert.equal(reopened.lastProject, null, 'the open project is not offered as "reopen"');
+});
+
+test('#365: a project replaced by a symlink out of the workspace stops being served on the next read (TOCTOU per use)', () => {
+  const dir = makeTempDir('settings-ws-swap-');
+  const proj = path.join(dir, 'proj');
+  fs.mkdirSync(proj);
+  updateSettings({ projectDir: proj });
+  assert.equal(getSettings().projectDir, proj);
+  fs.rmSync(proj, { recursive: true });
+  fs.symlinkSync('/etc', proj);
+  assert.equal(getProjectDir(), null);
+  assert.equal(getSettings().projectDir, null);
+});
+
+test('#365: a last-project file that points outside the workspace is never offered (fresh process reads it)', async () => {
+  const state = makeTempDir('settings-ws-state-');
+  fs.writeFileSync(path.join(state, 'last-project.json'), JSON.stringify({ projectDir: '/etc' }));
+  const script = `import('${new URL('./settings.mjs', import.meta.url).href}').then((m) => console.log(JSON.stringify(m.getSettings().lastProject)))`;
+  const { execFileSync } = await import('node:child_process');
+  const out = execFileSync(process.execPath, ['-e', script], { env: { ...process.env, CONSTRUCT_STATE_DIR: state }, encoding: 'utf8' });
+  assert.equal(out.trim(), 'null');
+});
+
+test('#365: browseRoots can no longer be set by a client', () => {
+  assert.throws(() => updateSettings({ browseRoots: ['/'] }), (e) => e.code === 'BROWSE_ROOTS_FIXED');
+});
+
+test('#365: preloadProject (harness) is contained exactly like a client choice', () => {
+  assert.throws(() => preloadProject('/etc'), (e) => e instanceof WorkspaceError);
+  const dir = makeTempDir('settings-ws-preload-');
+  preloadProject(dir);
+  assert.equal(getSettings().projectDir, dir);
+  updateSettings({ closeProject: true });
 });
 
 test('updateSettings back-compat: a bare legacy { llmProvider } body sets importFill only, never planAnalysis/createFill', () => {

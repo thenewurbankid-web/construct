@@ -107,12 +107,12 @@ test.describe('A background validate must not disturb what you are doing (#252)'
     write('architecture.yml', fs.readFileSync(path.resolve(__dirname, '../../client/architecture.yml'), 'utf8'));
     write('features/demo/hooks/useThing.tsx', 'export function useThing() { return 1; }\n');
     write('features/demo/pages/DemoPage.tsx', "import { useThing } from '../hooks/useThing';\n\nexport function DemoPage() {\n  useThing();\n  return <main><h1>Demo</h1></main>;\n}\n");
-    const res = await request.post(`${API}/api/settings`, { data: { browseRoots: [base], projectDir: base } });
+    const res = await request.post(`${API}/api/settings`, { data: { projectDir: base } });
     expect(res.ok()).toBeTruthy();
   });
 
   test.afterAll(async ({ request }) => {
-    await request.post(`${API}/api/settings`, { data: { browseRoots: [], projectDir: original } });
+    await request.post(`${API}/api/settings`, { data: { projectDir: original } });
     fs.rmSync(base, { recursive: true, force: true });
   });
 

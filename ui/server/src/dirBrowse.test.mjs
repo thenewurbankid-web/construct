@@ -1,3 +1,4 @@
+import '../../../test-utils/workspaceRoot.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -36,17 +37,3 @@ test('traversal and out-of-root paths are 403; array/garbage params are 400', ()
   assert.equal(handleBrowse({ path: 'x\0y' }, ctx).status, 400);
 });
 
-test('browseRoots setting: default is home + project parent; custom roots validated and resettable', () => {
-  const before = getSettings();
-  try {
-    assert.deepEqual(getBrowseRoots(), [os.homedir(), path.dirname(before.projectDir)]);
-    updateSettings({ browseRoots: [root] });
-    assert.deepEqual(getSettings().browseRoots, [root]);
-    assert.throws(() => updateSettings({ browseRoots: [path.join(base, 'nope')] }), /Not a directory/);
-    assert.throws(() => updateSettings({ browseRoots: 'x' }), /array/);
-    assert.deepEqual(getSettings().browseRoots, [root], 'failed update leaves setting unchanged');
-  } finally {
-    updateSettings({ browseRoots: [] });
-  }
-  assert.deepEqual(getBrowseRoots(), [os.homedir(), path.dirname(before.projectDir)]);
-});

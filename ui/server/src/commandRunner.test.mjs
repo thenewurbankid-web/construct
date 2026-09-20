@@ -3,6 +3,7 @@
 // whatever per-step timing text the wrapped command itself already printed
 // into `output` (see #165/#166). These assert presence/shape/non-negativity
 // only, never an exact value (timing is inherently variable).
+import '../../../test-utils/workspaceRoot.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { runCapturing } from './commandRunner.mjs';

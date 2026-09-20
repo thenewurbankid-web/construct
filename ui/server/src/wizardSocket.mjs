@@ -21,7 +21,7 @@
 // process-wide `activeSession` variable did.
 import { WebSocketServer } from 'ws';
 import { runImportRouteWizardEventDriven } from '../../../src/cli.mjs';
-import { getSettings } from './settings.mjs';
+import { getSettings, getProjectDir } from './settings.mjs';
 import { routeUpgrade } from './wsUpgrade.mjs';
 
 function send(ws, payload) {
@@ -93,14 +93,18 @@ export function attachWizardSocket(server, path = '/ws/wizard', allowedOrigin, a
         // concurrent sessions always share the same project root — that's
         // expected (they're all working in the same Construct project),
         // and unrelated to the per-session log-capture this fixes.
-        const { projectDir, llmProviders } = getSettings();
-        if (projectDir) {
-          try {
-            process.chdir(projectDir);
-          } catch (e) {
-            send(ws, { type: 'log', kind: 'error', text: `Could not switch to project directory "${projectDir}": ${e.message}` });
-            return;
-          }
+        // #365: no project open means no wizard. Never run against the server's own working directory.
+        const projectDir = getProjectDir();
+        const { llmProviders } = getSettings();
+        if (!projectDir) {
+          send(ws, { type: 'log', kind: 'error', code: 'NO_PROJECT', text: 'No project is open. Open a project from the workspace first.' });
+          return;
+        }
+        try {
+          process.chdir(projectDir);
+        } catch (e) {
+          send(ws, { type: 'log', kind: 'error', text: `Could not switch to project directory "${projectDir}": ${e.message}` });
+          return;
         }
         session = runImportRouteWizardEventDriven((event) => send(ws, event), msg.seedRoute || undefined, {
           planAnalysis: llmProviders.planAnalysis,

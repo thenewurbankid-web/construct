@@ -49,7 +49,7 @@ export function settingsReducer(state: SettingsState, action: SettingsAction): S
         ...state,
         settings: action.settings,
         loadError: null,
-        projectDirInput: action.settings.projectDir,
+        projectDirInput: action.settings.projectDir ?? "",
         llmProviders: action.settings.llmProviders,
       };
     case 'SET_PROJECT_DIR':

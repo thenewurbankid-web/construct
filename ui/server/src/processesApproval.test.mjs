@@ -2,6 +2,7 @@
 // session gate, `by` is derived from the server-side session and can never be supplied by the
 // request, `diffSha256` is echoed and never computed, there is no approve-all, and every refusal the
 // core gate (#337) makes reaches the client with its reason and cannot be overridden.
+import '../../../test-utils/workspaceRoot.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
