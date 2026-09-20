@@ -66,7 +66,9 @@ export function processView(record) {
 }
 
 function runGit(cwd, args) {
-  const res = spawnSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 });
+  // --literal-pathspecs: the artifact path reaches git after `--`, and it must be a path, never a
+  // pathspec pattern (`:(glob)`, `:(top)`), exactly as the approval gate (#337) does.
+  const res = spawnSync('git', ['--literal-pathspecs', ...args], { cwd, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 });
   return { ok: res.status === 0, out: res.stdout ?? '', err: (res.stderr || res.error?.message || '').trim() };
 }
 
