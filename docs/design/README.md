@@ -19,8 +19,23 @@ Non-goals: MCP surfaces (future), marketing pages, product code.
 | [mocks/](mocks/) | Concept mocks as static HTML+CSS (`*.html`) and rendered PNGs (`png/`) |
 
 Concept mocks (1440x900, each in `png/<name>--dark.png` and `--light.png`):
-`cockpit-shell`, `pages-editor-in-shell`, `workflows-in-shell`,
-`research-mode`, `processes-drawer`, `command-palette`, `states-and-narrow`.
+
+- **Cockpit shell** (`build.mjs`): `cockpit-shell`, `pages-editor-in-shell`,
+  `workflows-in-shell`, `research-mode`, `processes-drawer`, `command-palette`,
+  `states-and-narrow`.
+- **PR review** (`build-pr-review.mjs`, styles in `pr-review.css`):
+  `pr-review-list`, `pr-review-open`, `pr-review-findings`, `pr-review-autofix`,
+  `pr-review-indicators`, `pr-review-no-plan`, `pr-review-states`.
+- **QA test authoring** (`build-qa-tests.mjs`, styles in `qa-tests.css`):
+  `qa-tests-scenarios`, `qa-tests-clone`, `qa-tests-editor`,
+  `qa-tests-changes-code`, `qa-tests-new`, `qa-tests-run-failure`,
+  `qa-tests-states`, plus the click-and-record screens `qa-tests-record-start`,
+  `qa-tests-record`, `qa-tests-record-check`, `qa-tests-record-selector`,
+  `qa-tests-record-review`.
+
+The shell chrome shared by every mock lives in `parts.mjs`; each initiative adds
+its own `build-*.mjs` (and its own stylesheet, if it needs one) rather than
+growing a single build script.
 
 PR review in the Cockpit (#308, explores #285), built by
 `node docs/design/mocks/build-pr-review.mjs` with its own stylesheet
