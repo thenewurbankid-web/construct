@@ -122,6 +122,13 @@ test.describe('#278 GitHub login gate', () => {
     // #328: the Flow view's read-only endpoints are gated too.
     expect(await apiStatus(page, '/api/flow/billing')).toBe(401);
     expect(await apiStatus(page, '/api/nav/file?feature=billing&path=src/App.tsx')).toBe(401);
+    // #330: cloning a repository, its jobs and connecting a remote are gated too (the POSTs are the dangerous part).
+    expect(await apiStatus(page, '/api/clone')).toBe(401);
+    expect(await apiStatus(page, '/api/clone/abc')).toBe(401);
+    expect(await postJsonStatus(page, '/api/clone', { url: 'https://github.com/octocat/Hello-World' })).toBe(401);
+    expect(await postJsonStatus(page, '/api/clone/abc/cancel', {})).toBe(401);
+    expect(await apiStatus(page, '/api/git/remote')).toBe(401);
+    expect(await postJsonStatus(page, '/api/git/remote', { url: 'https://github.com/octocat/Hello-World' })).toBe(401);
     // #312/#313: Review mode's list, its analysis request and one change are gated too.
     expect(await apiStatus(page, '/api/review/branches')).toBe(401);
     expect(await apiStatus(page, '/api/review/change?base=main&head=main')).toBe(401);
