@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, GlassPanel } from '@/components/ui';
+import { Button, GlassPanel, Logo } from '@/components/ui';
 import type { AuthSession } from '../types';
 import { LoginBackdrop } from './LoginBackdrop';
 
@@ -46,6 +46,10 @@ export function LoginScreen({
     // none at all.
     <main className="page page--screen auth-screen" data-testid="login-screen">
       <LoginBackdrop />
+      <div className="login-brand" data-testid="login-brand">
+        <Logo mark="cockpit" size={36} />
+        <span>Cockpit</span>
+      </div>
       <p className="login-tagline" data-testid="login-tagline" aria-hidden="true">
         <span>{tagline}</span>
         {taglineAnimated && <span className="login-tagline__caret" />}

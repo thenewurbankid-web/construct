@@ -34,3 +34,5 @@ export declare function Badge(props: {
   style?: CSSProperties;
   children?: ReactNode;
 }): ReactNode;
+
+export declare function Logo(props: { mark?: 'line' | 'construct' | 'cockpit' | 'cli'; size?: number; className?: string }): ReactNode;

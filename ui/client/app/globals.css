@@ -438,8 +438,8 @@ button:disabled {
   0%      { opacity: 0; z-index: 2; }
   4%      { opacity: 1; z-index: 2; }
   4.01%   { opacity: 1; z-index: 1; }
-  19.5%   { opacity: 1; z-index: 1; }
-  19.51%  { opacity: 0; z-index: 1; }
+  21.5%   { opacity: 1; z-index: 1; }
+  21.51%  { opacity: 0; z-index: 1; }
   100%    { opacity: 0; z-index: 1; }
 }
 .login-backdrop__scrim {
@@ -447,6 +447,7 @@ button:disabled {
   background:
     radial-gradient(70% 55% at 50% 45%, color-mix(in srgb, #0b0d10 40%, transparent) 0%, color-mix(in srgb, #0b0d10 78%, transparent) 100%);
 }
+.login-brand { display: inline-flex; align-items: center; gap: var(--sp-3); color: #e6e9ee; font-weight: 600; letter-spacing: 0.34em; text-transform: uppercase; font-size: 1.05rem; text-shadow: 0 1px 12px rgba(0, 0, 0, 0.6); }
 .login-tagline {
   margin: 0; min-height: 2.2rem; text-align: center;
   font-size: 1.35rem; font-weight: 500; color: #e6e9ee;

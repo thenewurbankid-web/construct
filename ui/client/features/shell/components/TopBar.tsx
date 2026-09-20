@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Logo } from '@/components/ui';
 import type { ModelStatus, TopBarProps } from '../types';
 
 const MODEL_TEXT: Record<ModelStatus, string> = {
@@ -30,7 +31,10 @@ export function TopBar({
 }: TopBarProps) {
   return (
     <header className="sh-top" role="banner">
-      <span className="sh-brand">Cockpit</span>
+      <span className="sh-brand">
+        <Logo mark="cockpit" size={22} />
+        <span>Cockpit</span>
+      </span>
       {projectSwitcher}
       <nav aria-label="Modes" className="sh-modes">
         {modes.map((mode) => (
