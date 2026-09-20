@@ -43,6 +43,8 @@ test('listFeatureTests: coverage rows say generated / cloned / last result, with
   const r = listFeatureTests(dir, 'jobs');
   assert.equal(r.ok, true);
   assert.equal(r.lock.declared, true);
+  assert.equal(r.coverage[0].title, 'Happy path', 'rows are in flow order, the happy path first');
+  assert.deepEqual(r.coverage.map((c) => c.n), r.coverage.map((_, i) => i + 1));
   assert.equal(r.generated.length, r.scenarios);
   assert.ok(r.scenarios >= 2);
   for (const row of r.coverage) {

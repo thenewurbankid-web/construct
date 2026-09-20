@@ -107,7 +107,8 @@ export function listFeatureTests(root, feature) {
   let coverageError = null;
   try { plan = planFeatureTests(root, feature); } catch (e) { coverageError = e.message; }
   const onDisk = new Map(generated.map((g) => [g.name, g]));
-  const coverage = (plan?.files ?? []).map((f, i) => {
+  const inFlowOrder = [...(plan?.files ?? [])].sort((a, b) => a.seq - b.seq); // enumeration order: the happy path first
+  const coverage = inFlowOrder.map((f, i) => {
     const disk = onDisk.get(f.name);
     return {
       n: i + 1, id: f.name.replace(/\.spec\.ts$/, ''), machine: f.machine, title: f.title, branch: f.branch, route: f.scenarioRoute, text: f.text, needs: f.needs,
@@ -118,6 +119,8 @@ export function listFeatureTests(root, feature) {
       lastResult: 'none',
     };
   });
+  const rank = new Map(coverage.map((c) => [c.file, c.n]));
+  generated.sort((a, b) => (rank.get(a.name) ?? Infinity) - (rank.get(b.name) ?? Infinity) || (a.name < b.name ? -1 : 1)); // flow order, happy path first
   return { ok: true, feature, lock, generated, yours, coverage, scenarios: coverage.length, skipped: plan?.skipped ?? [], truncated: !!plan?.truncated, coverageError };
 }
 

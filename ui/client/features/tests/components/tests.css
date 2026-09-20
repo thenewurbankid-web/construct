@@ -28,14 +28,14 @@
 /* coverage table */
 .ts-tablewrap { border: 1px solid var(--border-subtle); border-radius: 6px; overflow: hidden; }
 .ts-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-.ts-table th { text-align: left; font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); padding: var(--sp-2) var(--sp-3); background: var(--surface-1); border-bottom: 1px solid var(--border-subtle); }
+.ts-table th { text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); padding: var(--sp-2) var(--sp-3); background: var(--surface-1); border-bottom: 1px solid var(--border-subtle); }
 .ts-table td { padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--border-subtle); vertical-align: middle; min-width: 0; }
 .ts-table tr:last-child td { border-bottom: 0; }
 .ts-table tbody tr[data-selected='true'] td { background: var(--accent-soft); }
 .ts-col-n { width: 2.5rem; }
 .ts-col-branch { width: 22%; }
-.ts-col-test { width: 30%; }
-.ts-col-last { width: 6.5rem; }
+.ts-col-test { width: 28%; }
+.ts-col-last { width: 5.5rem; }
 .ts-cell-title { font-weight: 600; }
 .ts-cell-clip { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
 .ts-cell-sub { color: var(--text-muted); font-size: var(--fs-sm); }

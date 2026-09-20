@@ -1,8 +1,15 @@
-import type { CodeView, CoverageRow, GeneratedTest, YourTest } from '../types';
+import type { CodeView, GeneratedTest, InlinePart, YourTest } from '../types';
+
+const Inline = ({ parts }: { parts: InlinePart[] }) => (
+  <>
+    {parts.map((p, i) => (p.kind === 'em' ? <em key={i}>{p.text}</em> : p.kind === 'code' ? <code key={i}>{p.text}</code> : <span key={i}>{p.text}</span>))}
+  </>
+);
 
 type TestDetailProps = {
   test: GeneratedTest | YourTest | null;
-  row: CoverageRow | null;
+  title: string;
+  steps: InlinePart[][];
   code: CodeView;
   onClone: (file: string) => void;
   onEditStep: (file: string, step: number) => void;
@@ -12,10 +19,9 @@ type TestDetailProps = {
 
 /** Tools pane, Test tab: one test. A generated test is read-only, says so in words, and every way of changing it
  * (Clone to edit, or Edit on a step) opens the clone dialog instead of failing. */
-export function TestDetail({ test, row, code, onClone, onEditStep, onShowCode, onHideCode }: TestDetailProps) {
+export function TestDetail({ test, title, steps, code, onClone, onEditStep, onShowCode, onHideCode }: TestDetailProps) {
   if (!test) return <p className="hint ts-pad" data-testid="test-empty">Select a test in the Browser, or a covered scenario, to see what it does.</p>;
   const locked = test.area === 'generated';
-  const title = test.area === 'generated' ? (row?.title ?? test.name) : test.name.replace(/\.spec\.ts$/, '');
   const clonedFrom = test.area === 'yours' ? test.clonedFrom : null;
   return (
     <div className="ts-detail" data-testid="test-detail">
@@ -44,13 +50,13 @@ export function TestDetail({ test, row, code, onClone, onEditStep, onShowCode, o
       </div>
       {code.status === 'error' && <p className="ts-err" role="alert">{code.message}</p>}
       {code.status === 'ready' && <pre className="ts-pre" data-testid="detail-code" aria-label={`Code of ${code.path}, read-only`} tabIndex={0}>{code.text}</pre>}
-      {locked && row && row.text.length > 0 && (
+      {locked && steps.length > 0 && (
         <div>
           <h4 className="ts-h">What it does</h4>
           <ol className="ts-steps" data-testid="detail-steps">
-            {row.text.map((line, i) => (
-              <li key={`${i}-${line}`} className="ts-step">
-                <span className="ts-step-text">{line}</span>
+            {steps.map((parts, i) => (
+              <li key={i} className="ts-step">
+                <span className="ts-step-text"><Inline parts={parts} /></span>
                 {locked && (
                   <button type="button" className="ts-step-edit" data-testid="step-edit" aria-label={`Edit step ${i + 1}`} onClick={() => onEditStep(test.name, i + 1)}>Edit</button>
                 )}

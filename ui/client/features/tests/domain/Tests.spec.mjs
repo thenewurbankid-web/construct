@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { slugify, clonePath, defaultCloneName } from './TestNames.ts';
 import { cloneDialogFor, editStepReason, LOCK_REASON } from './CloneDialog.ts';
 import { cloneDialogView, selectedTest, summaryOf } from './TestsView.ts';
+import { inlineParts } from './InlineText.ts';
 import { initialTests, testsReducer } from '../workflows/TestsMachine.ts';
 
 const lineage = { title: 'Happy path', machineHash: 'sha256:8f3c2a1deadbeef', scenarioHash: 'sha256:1' };
@@ -53,8 +54,9 @@ test('an empty name leaves nothing to create', () => {
 test('selectedTest finds the test and its scenario; a clone shows the scenario it came from', () => {
   assert.equal(selectedTest(data, { area: 'generated', name: 'refund--happy-path.spec.ts' }).row.title, 'Happy path');
   assert.equal(selectedTest(data, { area: 'yours', name: 'mine.spec.ts' }).row.title, 'Happy path');
-  assert.deepEqual(selectedTest(data, { area: 'yours', name: 'gone.spec.ts' }), { test: null, row: null });
-  assert.deepEqual(selectedTest(null, null), { test: null, row: null });
+  assert.deepEqual(selectedTest(data, { area: 'yours', name: 'gone.spec.ts' }), { test: null, row: null, title: '', steps: [] });
+  assert.deepEqual(selectedTest(null, null), { test: null, row: null, title: '', steps: [] });
+  assert.equal(selectedTest(data, { area: 'generated', name: 'refund--happy-path.spec.ts' }).steps.length, 3);
   assert.equal(summaryOf(data), '2 scenarios · 1 with a generated test · 1 of your own');
 });
 
@@ -76,4 +78,12 @@ test('the machine: pick, load, select, clone dialog lifecycle, a taken name sugg
   assert.deepEqual(s.selected, { area: 'yours', name: 'other.spec.ts' });
   assert.match(s.notice, /nothing regenerates it/);
   assert.equal(testsReducer(s, { type: 'PICK_FEATURE', feature: 'x' }).selected, null);
+});
+
+test('inlineParts turns *state* and `name` markup into parts', () => {
+  assert.deepEqual(inlineParts('the flow moves to *approved* when `issueRefund` finishes'), [
+    { kind: 'text', text: 'the flow moves to ' }, { kind: 'em', text: 'approved' }, { kind: 'text', text: ' when ' }, { kind: 'code', text: 'issueRefund' }, { kind: 'text', text: ' finishes' },
+  ]);
+  assert.deepEqual(inlineParts('plain'), [{ kind: 'text', text: 'plain' }]);
+  assert.deepEqual(inlineParts(''), []);
 });

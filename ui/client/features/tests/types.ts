@@ -49,6 +49,9 @@ export type TestsListing = {
   coverageError: string | null;
 };
 
+/** One piece of a scenario sentence: plain text, an emphasised state name, or a code name. */
+export type InlinePart = { kind: 'text' | 'em' | 'code'; text: string };
+
 export type TestArea = 'generated' | 'yours';
 export type TestSelection = { area: TestArea; name: string };
 

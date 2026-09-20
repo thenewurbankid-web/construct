@@ -1,7 +1,7 @@
 import type { ShellTab } from '@/features/shell';
 import { TestDetail } from '../components/TestDetail';
 import { TestsBrowser } from '../components/TestsBrowser';
-import type { CodeView, CoverageRow, GeneratedTest, TestSelection, TestsListing, YourTest } from '../types';
+import type { CodeView, GeneratedTest, InlinePart, TestSelection, TestsListing, YourTest } from '../types';
 
 export type TestsShellTabsInput = {
   features: string[] | null;
@@ -9,7 +9,8 @@ export type TestsShellTabsInput = {
   data: TestsListing | null;
   selected: TestSelection | null;
   test: GeneratedTest | YourTest | null;
-  row: CoverageRow | null;
+  title: string;
+  steps: InlinePart[][];
   code: CodeView;
   onFeature: (feature: string) => void;
   onSelect: (selection: TestSelection) => void;
@@ -34,7 +35,7 @@ export function testsShellTabs(i: TestsShellTabsInput): { browser: ShellTab; too
       id: 'test',
       title: 'Test',
       preferred: true,
-      render: () => <TestDetail test={i.test} row={i.row} code={i.code} onClone={i.onClone} onEditStep={i.onEditStep} onShowCode={i.onShowCode} onHideCode={i.onHideCode} />,
+      render: () => <TestDetail test={i.test} title={i.title} steps={i.steps} code={i.code} onClone={i.onClone} onEditStep={i.onEditStep} onShowCode={i.onShowCode} onHideCode={i.onHideCode} />,
     },
   };
 }

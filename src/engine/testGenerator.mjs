@@ -72,6 +72,14 @@ export function scenarioSlug(machine, scenario) {
   return `${full.slice(0, MAX_SLUG - 9).replace(/-+$/, '')}-${sha(full).slice(0, 8)}`;
 }
 
+/** "172800000" -> "48 h"; a delay that is not a plain number of ms is left as its name. */
+function duration(raw) {
+  const ms = Number(raw);
+  if (!Number.isFinite(ms) || ms <= 0) return humanize(raw);
+  for (const [unit, size] of [['d', 86_400_000], ['h', 3_600_000], ['min', 60_000], ['s', 1_000]]) if (ms % size === 0) return `${ms / size} ${unit}`;
+  return `${ms} ms`;
+}
+
 /** The decision steps of a scenario in words, joined with ' · ' (what distinguishes it from its siblings), for the coverage view (#300). */
 export function branchOf(machine, scenario) {
   const g = graphOf(machine);
@@ -79,7 +87,7 @@ export function branchOf(machine, scenario) {
     switch (step.kind) {
       case 'on': return step.guard ? `${humanize(step.event)} ${humanize(step.guard)}` : guardedSiblings(machine, step) ? 'otherwise' : humanize(step.event);
       case 'always': return step.guard ? humanize(step.guard) : 'otherwise';
-      case 'after': return `after ${humanize(step.event.replace(/^after:/, ''))} ms`;
+      case 'after': return `after ${duration(step.event.replace(/^after:/, ''))}`;
       case 'invoke': return step.event === 'invoke.onError' ? 'the service fails' : 'the service succeeds';
       default: return humanize(step.event);
     }
@@ -263,7 +271,7 @@ export function planFeatureTests(root, feature, { max } = {}) {
       const startState = sc.steps[0]?.from ?? sc.end.state;
       const beats = beatsOf(machine, sc, ids, ambiguous);
       const content = renderSpec({ feature, machine, machineKey: key, machineFile: file, scenario: sc, slug, startUrl: route ? route.route : null, urlNote, beats, start: startState, mHash: machineHash(machine), sHash: scenarioHash(sc) });
-      files.push({ name, relPath: `${genRel}/${name}`, content, machine: machine.id, machineKey: key, scenario: sc.title, slug, title: sc.title, happy: !!sc.happy, branch: branchOf(machine, sc), scenarioRoute: sc.route, text: sc.text, mHash: machineHash(machine), sHash: scenarioHash(sc), needs: [...new Set(beats.flatMap((b) => b.needs))], startUrl: route ? route.route : null });
+      files.push({ seq: files.length, name, relPath: `${genRel}/${name}`, content, machine: machine.id, machineKey: key, scenario: sc.title, slug, title: sc.title, happy: !!sc.happy, branch: branchOf(machine, sc), scenarioRoute: sc.route, text: sc.text, mHash: machineHash(machine), sHash: scenarioHash(sc), needs: [...new Set(beats.flatMap((b) => b.needs))], startUrl: route ? route.route : null });
     }
   });
   files.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));

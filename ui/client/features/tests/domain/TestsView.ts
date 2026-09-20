@@ -1,7 +1,8 @@
 // Pure (DOMAIN-001): everything the Tests screen draws that is DERIVED from its state and the server's listing,
 // so components and pages stay presentation-only.
-import type { CloneDialog, CloneDialogView, CoverageRow, GeneratedTest, TestSelection, TestsListing, YourTest } from '../types.ts';
+import type { CloneDialog, CloneDialogView, CoverageRow, GeneratedTest, InlinePart, TestSelection, TestsListing, YourTest } from '../types.ts';
 import { coverageSummary, rowForFile } from './Coverage.ts';
+import { inlineParts } from './InlineText.ts';
 import { clonePath, slugify } from './TestNames.ts';
 
 /** First 7 characters of a `sha256:<hex>` hash, for the human-readable lineage note. */
@@ -14,12 +15,17 @@ export function cloneDialogView(feature: string, d: CloneDialog): CloneDialogVie
 }
 
 /** The selected test and the scenario it covers (a clone shows the scenario it was cloned from). */
-export function selectedTest(data: TestsListing | null, sel: TestSelection | null): { test: GeneratedTest | YourTest | null; row: CoverageRow | null } {
-  if (!data || !sel) return { test: null, row: null };
+type Selected = { test: GeneratedTest | YourTest | null; row: CoverageRow | null; title: string; steps: InlinePart[][] };
+const NONE: Selected = { test: null, row: null, title: '', steps: [] };
+
+export function selectedTest(data: TestsListing | null, sel: TestSelection | null): Selected {
+  if (!data || !sel) return NONE;
   const test = (sel.area === 'generated' ? data.generated : data.yours).find((t) => t.name === sel.name) ?? null;
-  if (!test) return { test: null, row: null };
+  if (!test) return NONE;
   const file = test.area === 'generated' ? test.name : test.clonedFrom?.file.split('/').pop() ?? '';
-  return { test, row: rowForFile(data.coverage, file) };
+  const row = rowForFile(data.coverage, file);
+  const title = test.area === 'generated' ? (row?.title ?? test.name) : test.name.replace(/\.spec\.ts$/, '');
+  return { test, row, title, steps: (row?.text ?? []).map(inlineParts) };
 }
 
 export const summaryOf = (data: TestsListing | null): string => (data ? coverageSummary(data) : '');
