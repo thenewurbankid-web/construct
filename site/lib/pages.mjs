@@ -114,9 +114,8 @@ export function homeBody() {
     ([tag, href, title, text]) => `<article class="card"><div class="card-body"><p class="eyebrow">${esc(tag)}</p><h3><a href="${href}">${esc(title)}</a></h3><p>${esc(text)}</p></div></article>`,
   ).join('\n');
   return `<section class="hero">
-  <p class="eyebrow">Documentation</p>
-  <h1>Stop paying an AI to redo the same work, differently, every time.</h1>
-  <p class="lede">Today, building an app with an AI model means the model re-derives the same task with tokens on every run: where a file goes, what a change touches, whether it broke a rule. The answer differs each time, costs money each time, and you find out afterwards. Construct turns that repeatable work into small, deterministic blocks with no model in them. You run the block, or an agent does, and the result is the same every time. A Cockpit lets you watch and steer it. It is a cockpit, not an autopilot.</p>
+  <h1>AI guesses. Construct computes.</h1>
+  <p class="lede">Small, deterministic blocks that build and refactor your app under your rules. Same input, same result, zero tokens. You steer from the Cockpit, a cockpit and not an autopilot.</p>
 </section>
 <section aria-labelledby="proof-h" class="home-what">
   <h2 id="proof-h">Problem, command, result</h2>

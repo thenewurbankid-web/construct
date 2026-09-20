@@ -68,8 +68,8 @@ test('build renders the site offline: home pitch, examples, references, no ticke
   const res = await build({ out, repo: 'o/r', buildTime: BUILD_TIME });
   assert.equal(res.examples, 9);
   const home = fs.readFileSync(path.join(out, 'index.html'), 'utf8');
-  assert.match(home, /Stop paying an AI to redo the same work/);
-  assert.match(home, /cockpit, not an autopilot/);
+  assert.match(home, /AI guesses\. Construct computes\./);
+  assert.match(home, /cockpit and not an autopilot/);
   assert.match(home, /href="user-guide\/examples\/cli-scaffold-and-validate\/"/);
   assert.match(home, /href="user-guide\/examples\/cockpit-plan-and-run\/"/);
   assert.match(home, /href="user-guide\/examples\/core-plans-and-impact\/"/);
