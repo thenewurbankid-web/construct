@@ -1,5 +1,4 @@
-import { formatMs, outcomeView } from '../domain/Runs';
-import type { CodeView, FreshnessModel, GeneratedTest, InlinePart, RunOutcome, YourTest } from '../types';
+import type { CodeView, FreshnessModel, GeneratedTest, InlinePart, TestRunProps, YourTest } from '../types';
 import { CloneFreshness } from './CloneFreshness';
 import { RunFailure } from './RunFailure';
 
@@ -16,7 +15,7 @@ type TestDetailProps = {
   code: CodeView;
   comparison: { model: FreshnessModel; dismissed: boolean; dismiss: () => unknown };
   /** Running this one test (#305): its latest outcome, whether a run is live, and what to do about it. */
-  run: { outcome: RunOutcome | null; busy: boolean; copied: string | null; onRun: () => void; onCopy: (key: string, text: string) => Promise<boolean> };
+  run: TestRunProps;
   onClone: (file: string) => void;
   onEditStep: (file: string, step: number) => void;
   onShowCode: () => void;
@@ -76,10 +75,10 @@ export function TestDetail({ test, title, steps, code, comparison, run, onClone,
       )}
       <div>
         <h4 className="ts-h">Last run</h4>
-        {run.outcome ? (
-          <p data-testid="detail-last-run" data-status={run.outcome.status}>
-            <span className={`ts-result-mark ts-result--${outcomeView(run.outcome.status).tone}`}><span aria-hidden="true">{outcomeView(run.outcome.status).symbol} </span>{outcomeView(run.outcome.status).word}</span>
-            {run.outcome.status === 'not-run' ? (run.outcome.reason ? <span className="hint"> · needs {run.outcome.reason}</span> : null) : <span className="hint"> · {formatMs(run.outcome.durationMs)}</span>}
+        {run.view ? (
+          <p data-testid="detail-last-run" data-status={run.view.mark.status}>
+            <span className={`ts-result-mark ts-result--${run.view.mark.tone}`}><span aria-hidden="true">{run.view.mark.symbol} </span>{run.view.mark.word}</span>
+            <span className="hint"> · {run.view.detail}</span>
           </p>
         ) : (
           <p className="hint" data-testid="detail-last-run">This test has not run yet.</p>
@@ -87,7 +86,7 @@ export function TestDetail({ test, title, steps, code, comparison, run, onClone,
         <div className="ts-actions">
           <button type="button" className="ts-btn" data-testid="detail-run" disabled={run.busy} onClick={run.onRun}>{run.busy ? 'A run is in progress' : 'Run this test'}</button>
         </div>
-        {run.outcome?.failure && <RunFailure outcome={run.outcome} copied={run.copied} onCopy={run.onCopy} prefix="detail-" />}
+        {run.view?.outcome.failure && <RunFailure outcome={run.view.outcome} copied={run.copied} onCopy={run.onCopy} prefix="detail-" />}
       </div>
       {locked && <p className="ts-readonly" data-testid="detail-readonly-footer">Read-only: this test is rewritten whenever the flow changes.</p>}
     </div>

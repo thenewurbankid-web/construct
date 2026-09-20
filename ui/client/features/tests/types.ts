@@ -17,6 +17,7 @@ export type TestLineage = {
 
 import type { Freshness } from './domain/FreshnessShapes.ts';
 export type * from './domain/FreshnessShapes.ts';
+export type * from './domain/RunShapes.ts';
 
 export type GeneratedTest = { name: string; path: string; lineage: TestLineage; area: 'generated'; locked: true };
 export type YourTest = { name: string; path: string; lineage: TestLineage | null; clonedFrom: { file: string; scenario: string } | null; kind: 'clone' | 'authored'; area: 'yours'; locked: false; freshness?: Freshness };
@@ -186,30 +187,3 @@ export type StepRowView = {
   canUp: boolean;
   canDown: boolean;
 };
-
-// ---- running the tests (#305): shapes of /api/tests/:feature/runs. Every word of a failure comes from core
-// (src/engine/testRunner.mjs); the Cockpit only draws it.
-
-export type RunStep = { n: number; sentence: string };
-export type RunFailure =
-  | { kind: 'convention'; title: string; message: string; selector: string; event: string | null; why: string; step: RunStep | null; page: string | null; fix: string }
-  | { kind: 'app'; title: string; message: string; expected: string; reached: string; summary: string; step: RunStep | null; page: string | null; bugReport?: string }
-  | { kind: 'other'; title: string; message: string; step: null };
-export type RunStatus = 'passed' | 'failed' | 'not-run';
-export type RunOutcome = { file: string; area: TestArea; title: string; status: RunStatus; durationMs: number; reason?: string | null; failure?: RunFailure };
-export type RunTarget = { name: string; area: TestArea } | null;
-export type RunLive = { state: 'queued' | 'running' | 'paused'; processId: string; target: RunTarget };
-export type RunProblem = { state: 'error' | 'cancelled'; code: string; message: string; target: RunTarget };
-export type RunCounts = { total: number; passed: number; failed: number; notRun: number };
-export type RunSnapshot = {
-  ok: true;
-  live: RunLive | null;
-  tests: RunOutcome[];
-  lastRun: { baseUrl: string; durationMs: number; counts: RunCounts; target: RunTarget; processId: string } | null;
-  problem: RunProblem | null;
-  defaultBaseUrl: string;
-};
-export type RunReply = { ok: true; snap: RunSnapshot } | { ok: false; error: string; code?: string; snap?: RunSnapshot };
-
-/** The words for one outcome, kept as data so the symbol and the word always travel together. */
-export type OutcomeView = { symbol: string; word: string; tone: 'ok' | 'error' | 'muted' };

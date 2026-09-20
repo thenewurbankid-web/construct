@@ -1,19 +1,18 @@
-import { outcomeView } from '../domain/Runs';
-import type { CoverageRow, RunOutcome } from '../types';
+import type { CoverageRow, ResultMark } from '../types';
 
 type CoverageTableProps = {
   rows: CoverageRow[];
   selectedFile: string | null;
   generating: boolean;
-  /** The latest run's outcome for a generated test file, or null when it has not run (#305). */
-  outcomeOf?: (file: string) => RunOutcome | null;
+  /** The latest run's result for a generated test file (#305): a symbol and a word, or "Not run". */
+  resultOf?: (file: string) => ResultMark;
   onOpen: (file: string) => void;
   onGenerate: () => void;
 };
 
 /** Every scenario the flow can take, the branch that tells it apart, and whether a test covers it. A covered
  * scenario opens its (locked) test; an uncovered one offers Generate. Last result comes from the latest run (#305). */
-export function CoverageTable({ rows, selectedFile, generating, outcomeOf, onOpen, onGenerate }: CoverageTableProps) {
+export function CoverageTable({ rows, selectedFile, generating, resultOf, onOpen, onGenerate }: CoverageTableProps) {
   return (
     <div className="ts-tablewrap">
       <table className="ts-table" data-testid="coverage-table">
@@ -54,7 +53,7 @@ export function CoverageTable({ rows, selectedFile, generating, outcomeOf, onOpe
                   {!r.generated && <button type="button" className="ts-btn" data-testid="coverage-generate" disabled={generating} onClick={onGenerate} title="Generates every missing test for this feature">{generating ? 'Generating...' : 'Generate'}</button>}
                 </span>
               </td>
-              <td className="ts-col-last"><LastResult outcome={r.file && outcomeOf ? outcomeOf(r.file) : null} /></td>
+              <td className="ts-col-last"><LastResult mark={r.file && resultOf ? resultOf(r.file) : null} /></td>
             </tr>
           ))}
         </tbody>
@@ -64,8 +63,7 @@ export function CoverageTable({ rows, selectedFile, generating, outcomeOf, onOpe
 }
 
 /** The last result of one scenario's generated test: a symbol AND a word, or "Not run" when nothing has run it. */
-function LastResult({ outcome }: { outcome: RunOutcome | null }) {
-  if (!outcome) return <span className="ts-cell-sub" data-testid="last-result" data-status="none">Not run</span>;
-  const v = outcomeView(outcome.status);
-  return <span className={`ts-result-mark ts-result--${v.tone}`} data-testid="last-result" data-status={outcome.status}><span aria-hidden="true">{v.symbol} </span>{v.word}</span>;
+function LastResult({ mark }: { mark: ResultMark | null }) {
+  if (!mark || mark.status === 'none') return <span className="ts-cell-sub" data-testid="last-result" data-status="none">Not run</span>;
+  return <span className={`ts-result-mark ts-result--${mark.tone}`} data-testid="last-result" data-status={mark.status}><span aria-hidden="true">{mark.symbol} </span>{mark.word}</span>;
 }

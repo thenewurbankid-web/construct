@@ -1,7 +1,7 @@
 import type { ShellTab } from '@/features/shell';
 import { TestDetail } from '../components/TestDetail';
 import { TestsBrowser } from '../components/TestsBrowser';
-import type { CodeView, FreshnessModel, GeneratedTest, InlinePart, RunOutcome, TestSelection, TestsListing, YourTest } from '../types';
+import type { CodeView, FreshnessModel, GeneratedTest, InlinePart, TestRunProps, TestSelection, TestsListing, YourTest } from '../types';
 
 export type TestsShellTabsInput = {
   features: string[] | null;
@@ -13,7 +13,7 @@ export type TestsShellTabsInput = {
   steps: InlinePart[][];
   code: CodeView;
   comparison: { model: FreshnessModel; dismissed: boolean; dismiss: () => unknown };
-  run: { outcome: RunOutcome | null; busy: boolean; copied: string | null; onRun: () => void; onCopy: (key: string, text: string) => Promise<boolean> };
+  run: TestRunProps;
   cloneTag: (y: YourTest) => string;
   onFeature: (feature: string) => void;
   onSelect: (selection: TestSelection) => void;
