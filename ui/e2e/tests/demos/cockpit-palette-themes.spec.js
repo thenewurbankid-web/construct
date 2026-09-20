@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { noDevBadge, shot, makeProject, cleanup } from './cockpit-fixture.mjs';
+import { setTheme } from '../support/cockpit.js';
 
 // Cockpit guide, stories 6-7: find anything with the command palette; work in
 // light or dark and on a small screen.
@@ -31,10 +32,10 @@ test.describe.serial('Cockpit demo: command palette, themes, small screens', () 
     await page.keyboard.press('Control+j');
     const drawer = page.getByRole('region', { name: 'Drawer' });
     await expect(drawer.getByTestId('diagnostic-row').first()).toBeVisible({ timeout: 30_000 });
-    await page.getByTestId('theme-toggle').click();
+    await setTheme(page, 'light');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
     await page.screenshot({ path: shot('cockpit-8-diagnostics-light.png') });
-    await page.getByTestId('theme-toggle').click();
+    await setTheme(page, 'dark');
   });
 
   test('7b. on a phone-sized screen one pane shows at a time, switched from a bottom bar', async ({ page }) => {

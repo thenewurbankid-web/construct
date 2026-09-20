@@ -369,6 +369,10 @@ kbd {
   .sh-pill-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .sh-mode { padding: 4px 8px; }
   .sh-popover { position: fixed; left: var(--sp-2); right: var(--sp-2); top: calc(var(--sh-top) + 4px); width: auto; }
+  /* The top bar's stacking context must clear the bottom tab bar, or the sheet below slides under it. */
+  .sh-top { z-index: var(--z-popover); }
+  /* The profile menu is a bottom sheet on a phone (docs/design/ia-five-screens.md, ia-narrow). */
+  .sh-popover--account { top: auto; bottom: 0; left: 0; right: 0; width: auto; min-width: 0; max-width: none; max-height: 80vh; border-radius: var(--r-lg) var(--r-lg) 0 0; padding-bottom: var(--sp-4); }
 }
 
 /* Phone: the mode links do not fit next to brand + project + theme; every
@@ -418,12 +422,23 @@ kbd {
   font-weight: 700;
 }
 .sh-user-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sh-user-login {
-  margin: 0;
-  padding: 0 var(--sp-2);
-  color: var(--text-muted);
-  font-size: var(--fs-sm);
-}
+.sh-user-head { padding: var(--sp-1) var(--sp-2) var(--sp-2); border-bottom: 1px solid var(--border); margin-bottom: var(--sp-1); }
+.sh-user-login { margin: 0; color: var(--text); font-size: var(--fs-md); font-weight: 600; }
+.sh-user-sub { margin: 2px 0 0; color: var(--text-muted); font-size: var(--fs-sm); }
+.sh-user-section { margin: var(--sp-1) 0 0; padding: 0 var(--sp-2); color: var(--text-muted); font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: 0.06em; }
+.sh-user-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); min-height: 32px; text-decoration: none; }
+.sh-user-row[aria-current='page'] { background: var(--accent-soft); }
+.sh-user-hint { color: var(--text-muted); font-size: var(--fs-sm); }
+.sh-user-chip { display: inline-flex; align-items: center; gap: var(--sp-1); color: var(--text-muted); font-size: var(--fs-sm); }
+.sh-user-chip--ready .sh-dot { background: var(--success); }
+.sh-user-chip--offline .sh-dot { background: var(--danger); }
+.sh-user-theme { margin: 0; padding: var(--sp-1) var(--sp-2); border: 0; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); min-height: 32px; }
+.sh-user-theme legend { float: left; padding: 0; margin: 0; color: var(--text); font-size: var(--fs-md); }
+.sh-seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--r-sm); overflow: hidden; margin-left: auto; }
+.sh-seg-opt { position: relative; display: inline-flex; padding: 3px var(--sp-2); color: var(--text-muted); font-size: var(--fs-sm); cursor: pointer; }
+.sh-seg-opt input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.sh-seg-opt--on { background: var(--accent); color: var(--accent-fg); font-weight: 700; }
+.sh-seg-opt:focus-within { outline: 2px solid var(--focus); outline-offset: -2px; }
 .sh-user-item {
   appearance: none;
   text-align: left;

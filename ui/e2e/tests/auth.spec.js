@@ -231,6 +231,14 @@ test.describe('#278 GitHub login gate', () => {
     await account.click();
     await expect(account).toHaveAttribute('aria-expanded', 'true');
     await expect(page.getByTestId('user-menu-login')).toHaveText(TEST_USER);
+    // #368: the same menu carries the preference rows, and says which account this is.
+    const menu = page.locator('#sh-user-menu');
+    await expect(menu).toContainText('Signed in with GitHub');
+    await expect(menu.getByTestId('profile-settings')).toHaveAttribute('href', '/settings');
+    await expect(menu.getByTestId('profile-local-model')).toHaveAttribute('href', '/ollama');
+    await expect(menu.getByTestId('profile-help')).toHaveAttribute('href', '/help');
+    await expect(menu.getByRole('group', { name: 'Theme' })).toBeVisible();
+    await expect(menu.getByTestId('sign-out')).toBeVisible();
     await page.screenshot({ path: path.join(SHOTS, '278-3-account-menu.png') });
 
     // Escape closes it and puts focus back on the trigger — the same

@@ -5,10 +5,8 @@ export type ShellId = string;
 /** The two supported colour themes. Dark is the default (owner decision). */
 export type Theme = 'dark' | 'light';
 
-export type ThemeToggleProps = {
-  theme: Theme;
-  onToggle: () => void;
-};
+/** What the person chose in the profile menu: a fixed theme, or follow the operating system (#368). */
+export type ThemePreference = Theme | 'system';
 
 // ---- Panes and layout (Design #245, docs/design/cockpit-layout.md) --------
 
@@ -74,6 +72,13 @@ export type ShellMode = { id: string; label: string; href: string; activeOn: str
 export type ShellScreen = { href: string; label: string; activeOn: string[] };
 
 export type ModelStatus = 'checking' | 'ready' | 'offline';
+
+export type ProfileMenuItemsProps = {
+  pathname: string;
+  modelStatus: ModelStatus;
+  preference: ThemePreference;
+  onPreference: (preference: ThemePreference) => void;
+};
 
 export type ShortcutAction = 'toggle-left' | 'toggle-right' | 'toggle-drawer' | 'cycle-pane';
 
@@ -141,7 +146,6 @@ export type TopBarProps = {
   modes: ShellMode[];
   activeModeId: string | null;
   projectSwitcher: ReactNode;
-  themeToggle: ReactNode;
   /** The signed-in account slot (#278). A slot, not a dependency: the shell
    * knows a node goes here, not that the auth feature exists. Renders
    * nothing on a server with no login gate. */
@@ -186,7 +190,6 @@ export type ShellPageProps = NarrowProps & {
   modes: ShellMode[];
   activeModeId: string | null;
   projectSwitcher: ReactNode;
-  themeToggle: ReactNode;
   /** The signed-in account slot (#278) — see TopBarProps. */
   userMenu?: ReactNode;
   modelStatus: ModelStatus;

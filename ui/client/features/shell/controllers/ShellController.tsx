@@ -25,10 +25,10 @@ import { useShellCommands } from '../hooks/useShellCommands';
 import { useShellNavigation } from '../hooks/useShellNavigation';
 import { useTheme } from '../hooks/useTheme';
 import { ProjectInfoPanel } from '../components/ProjectInfoPanel';
+import { ProfileMenuItems } from '../components/ProfileMenuItems';
 import { ProjectSwitcher } from '../components/ProjectSwitcher';
 import { ScreensNav } from '../components/ScreensNav';
 import { ShellPage } from '../pages/ShellPage';
-import { ThemeController } from './ThemeController';
 import type { ShellRegion, ShellTab } from '../types';
 
 // Fixed for the lifetime of the app: how much room the validate readout reserves (#252).
@@ -122,8 +122,11 @@ function ShellFrame({ children }: { children: ReactNode }) {
       modes={MODES}
       activeModeId={route.mode?.id ?? null}
       projectSwitcher={projectSwitcher}
-      themeToggle={<ThemeController />}
-      userMenu={<UserMenuController />}
+      userMenu={
+        <UserMenuController>
+          <ProfileMenuItems pathname={route.pathname} modelStatus={model} preference={theme.preference} onPreference={theme.setPreference} />
+        </UserMenuController>
+      }
       modelStatus={model}
       runningProcesses={processes.running}
       onOpenProcesses={() => showDrawerTab('processes')}

@@ -26,7 +26,6 @@ export function ShellPage(props: ShellPageProps): ReactNode {
           modes={props.modes}
           activeModeId={props.activeModeId}
           projectSwitcher={props.projectSwitcher}
-          themeToggle={props.themeToggle}
           userMenu={props.userMenu}
           modelStatus={props.modelStatus}
           runningProcesses={props.runningProcesses}

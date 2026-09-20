@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { setTheme } from './support/cockpit.js';
 
 // Design #245 — top bar: project switcher (local projects only, reuses the
 // settings project dir and the shared folder picker), Explore / Plan /
@@ -107,9 +108,10 @@ test.describe('Cockpit top bar (#245)', () => {
     await expect(page).toHaveTitle(/Cockpit/);
   });
 
-  test('theme switch lives in the top bar', async ({ page }) => {
+  test('the theme is chosen from the profile menu in the top bar (#368)', async ({ page }) => {
     await page.goto('/help');
-    await page.getByRole('banner').getByTestId('theme-toggle').click();
+    await expect(page.getByRole('banner').getByTestId('theme-toggle')).toHaveCount(0);
+    await setTheme(page, 'light');
     expect(await page.evaluate(() => document.documentElement.getAttribute('data-theme'))).toBe('light');
     await page.screenshot({ path: path.join(SHOTS, 'shell-topbar-light.png'), clip: { x: 0, y: 0, width: 1280, height: 90 } });
   });

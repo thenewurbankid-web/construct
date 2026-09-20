@@ -2,30 +2,44 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { parseTheme, toggleTheme } from '../domain/Theme';
-import { applyTheme, loadTheme, saveTheme } from '../services/ThemeStorage';
-import type { Theme } from '../types';
+import { applyTheme, loadThemePreference, resolvePreference, saveThemePreference } from '../services/ThemeStorage';
+import type { Theme, ThemePreference } from '../types';
 
-/** Current theme + toggle. The initial value is 'dark' for SSR/hydration
- * parity; the real stored value is read right after mount (the inline init
- * script in the document head has already applied it, so there is no flash).
- * <html data-theme> is the source of truth, so several callers (the top-bar
- * switch and the command palette) stay in sync: each observes the attribute. */
+/** Current theme, the person's preference (Dark / Light / System) and the actions to change it. The initial
+ * values are 'dark' for SSR/hydration parity; the stored preference is read right after mount (the inline
+ * init script in the document head has already applied it, so there is no flash). <html data-theme> is the
+ * resolved source of truth. While the preference is "system", a change of the operating system's own
+ * setting is followed live. */
 export function useTheme() {
   const [theme, setTheme] = useState<Theme>('dark');
+  const [preference, setPreferenceState] = useState<ThemePreference>('dark');
 
   useEffect(() => {
-    setTheme(loadTheme());
+    setPreferenceState(loadThemePreference());
+    setTheme(parseTheme(document.documentElement.getAttribute('data-theme')));
     const observer = new MutationObserver(() => setTheme(parseTheme(document.documentElement.getAttribute('data-theme'))));
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     return () => observer.disconnect();
   }, []);
 
-  const toggle = useCallback(() => {
-    const next = toggleTheme(parseTheme(document.documentElement.getAttribute('data-theme')));
-    applyTheme(next);
-    saveTheme(next);
-    setTheme(next);
+  const setPreference = useCallback((next: ThemePreference) => {
+    applyTheme(resolvePreference(next));
+    saveThemePreference(next);
+    setPreferenceState(next);
   }, []);
 
-  return { theme, toggle };
+  useEffect(() => {
+    if (preference !== 'system') return undefined;
+    const query = window.matchMedia('(prefers-color-scheme: light)');
+    const follow = () => applyTheme(resolvePreference('system'));
+    query.addEventListener('change', follow);
+    return () => query.removeEventListener('change', follow);
+  }, [preference]);
+
+  /** The palette's "Toggle dark / light theme": flips what is painted and pins it as an explicit choice. */
+  const toggle = useCallback(() => {
+    setPreference(toggleTheme(parseTheme(document.documentElement.getAttribute('data-theme'))));
+  }, [setPreference]);
+
+  return { theme, preference, setPreference, toggle };
 }

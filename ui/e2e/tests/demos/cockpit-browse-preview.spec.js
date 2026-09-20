@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { noDevBadge, shot, makeProject, cleanup, startPreviewServer, PROFILE_PAGE } from './cockpit-fixture.mjs';
+import { setTheme } from '../support/cockpit.js';
 
 // Cockpit guide, stories 1-4: find a page, click-to-source, see what an agent
 // changed on disk, understand how props flow. Real UI, real files.
@@ -44,10 +45,10 @@ test.describe.serial('Cockpit demo: browse, preview, diff and prop flow', () => 
     await expect(page.getByRole('complementary', { name: 'Tools' })).toBeVisible();
     await loadPreview(page);
     await page.screenshot({ path: shot('cockpit-1-hero-dark.png') });
-    await page.getByTestId('theme-toggle').click();
+    await setTheme(page, 'light');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
     await page.screenshot({ path: shot('cockpit-hero-light.png') });
-    await page.getByTestId('theme-toggle').click();
+    await setTheme(page, 'dark');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   });
 

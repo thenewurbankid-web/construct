@@ -20,7 +20,6 @@ export function TopBar({
   modes,
   activeModeId,
   projectSwitcher,
-  themeToggle,
   userMenu,
   modelStatus,
   runningProcesses,
@@ -110,7 +109,6 @@ export function TopBar({
       >
         <span aria-hidden="true">Tools</span>
       </button>
-      {themeToggle}
       {userMenu}
     </header>
   );
