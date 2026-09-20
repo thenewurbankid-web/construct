@@ -14,6 +14,7 @@ import { validateArchitecture } from './architecture-enforcer.mjs';
 import { syncPublicApi } from './api-composer.mjs';
 import { summarizeUnit, listUnits, unitApiManifest, renderUnitMarkdown } from './engine/unitSummary.mjs';
 import { analyzeImpact, proposeSeedsFromText, impactApiManifest, renderImpactMarkdown } from './engine/impact.mjs';
+import { prHealth, renderPrHealthMarkdown, prHealthApiManifest } from './engine/prHealth.mjs';
 import { summarizeProject, summarizeCompact, summarizeProse, summarizeSince } from './summarize.mjs';
 import { moveLayerFile, renameLayerFile } from './refactor.mjs';
 import { importVertical, importPlan, analyzeFiles, executeImportPlan } from './import.mjs';
@@ -545,6 +546,44 @@ export async function researchImpact(args) {
     ...(Object.keys(limits).length ? { limits } : {}),
   });
   console.log(format === 'markdown' ? renderImpactMarkdown(result) : JSON.stringify(result, null, 2));
+  if (!result.ok) process.exitCode = result.error.code === 'INTERNAL_ERROR' ? EXIT_CODES.INTERNAL_ERROR : EXIT_CODES.USAGE_ERROR;
+  return format === 'json';
+}
+
+/** `construct review <base> <head> [--plan <file>] [--features a,b] [--no-merge-base] [--format json|markdown]
+ * [--dir <path>]` | `construct review --usage` (#314/#316, epic #285).
+ *
+ * Read-only PR health: the deterministic indicators for the change from <base> to <head> (any two
+ * refs; local branches need no GitHub login): declared-vs-actual scope (only with --plan/--features),
+ * unexplained changes, rule regressions, public surface, and a flow diff. Findings are split into
+ * mechanical (a Construct block can fix them) and conversation (a human decides). No LLM, and the
+ * working tree, index and branches are never touched. Returns true when it printed only JSON. */
+export async function review(args) {
+  if (args.includes('--usage')) {
+    console.log(JSON.stringify(prHealthApiManifest(), null, 2));
+    return true;
+  }
+  const valueFlags = new Set(['--dir', '--format', '--plan', '--features']);
+  const refs = args.filter((a, i) => !a.startsWith('--') && !valueFlags.has(args[i - 1]));
+  if (refs.length !== 2) {
+    throw new ConstructError('Usage: construct review <base> <head> [--plan <file>] [--features a,b] [--no-merge-base] [--format json|markdown] [--dir <path>]', { exitCode: EXIT_CODES.USAGE_ERROR });
+  }
+  const root = getRoot(args);
+  const format = ['markdown', 'md'].includes(flagValue(args, '--format')) ? 'markdown' : 'json';
+  let expected = null;
+  const planFile = flagValue(args, '--plan');
+  const featuresFlag = flagValue(args, '--features');
+  if (planFile) {
+    try {
+      expected = JSON.parse(fs.readFileSync(path.resolve(root, planFile), 'utf8'));
+    } catch (e) {
+      throw new ConstructError(`Could not read the plan "${planFile}": ${String(e.message || e)}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+    }
+  } else if (featuresFlag) {
+    expected = featuresFlag.split(',').map((s) => s.trim()).filter(Boolean);
+  }
+  const result = prHealth(root, { base: refs[0], head: refs[1], expected, mergeBase: !args.includes('--no-merge-base') });
+  console.log(format === 'markdown' ? renderPrHealthMarkdown(result) : JSON.stringify(result, null, 2));
   if (!result.ok) process.exitCode = result.error.code === 'INTERNAL_ERROR' ? EXIT_CODES.INTERNAL_ERROR : EXIT_CODES.USAGE_ERROR;
   return format === 'json';
 }
