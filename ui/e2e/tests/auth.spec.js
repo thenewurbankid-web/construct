@@ -128,6 +128,11 @@ test.describe('#278 GitHub login gate', () => {
     const postStatus = (route, body) => page.evaluate(([api, route, body]) => fetch(`${api}${route}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.status), [API, route, body]);
     expect(await postStatus('/api/tests/billing/clone', { source: 'a--b.spec.ts', name: 'x' })).toBe(401);
     expect(await postStatus('/api/tests/billing/generate', {})).toBe(401);
+    // #305: running the tests: the read of the latest results and the two mutating POSTs (start a run, cancel it) are gated too.
+    expect(await apiStatus(page, '/api/tests/billing/runs')).toBe(401);
+    expect(await postStatus('/api/tests/billing/run', {})).toBe(401);
+    expect(await postStatus('/api/tests/billing/run', { name: 'a--b.spec.ts', area: 'generated', baseUrl: 'http://localhost:3000' })).toBe(401);
+    expect(await postStatus('/api/tests/billing/run/cancel', {})).toBe(401);
     // #302: the step document read and its two mutating POSTs (preview an edit, write it) are gated too.
     expect(await apiStatus(page, '/api/tests/billing/steps?name=mine.spec.ts')).toBe(401);
     expect(await postStatus('/api/tests/billing/steps/preview', { name: 'mine.spec.ts', baseHash: 'x', steps: [] })).toBe(401);

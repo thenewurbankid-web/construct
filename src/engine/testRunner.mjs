@@ -155,12 +155,20 @@ function stepOf(specText, pick) {
   return i < 0 ? null : { n: i + 1, sentence: steps[i].sentence };
 }
 
+/** Playwright appends a code frame and a stack (with the machine's own paths) to every message; the sentence a person
+ * needs is what comes before them. */
+function trimTrace(text) {
+  const lines = text.split('\n');
+  const at = lines.findIndex((l) => /^\s*(?:>\s*)?\d+ \|/.test(l) || /^\s+at\s+\S/.test(l));
+  return (at < 0 ? lines : lines.slice(0, at)).join('\n').trim();
+}
+
 /**
  * One failure message -> { kind, ... }. Convention failures keep the generator's own sentence; nothing is paraphrased
  * into "element not found".
  */
 export function classifyFailure(rawMessage, { specText = '', origin = '' } = {}) {
-  const message = clip(clean(rawMessage).replace(/^\s*Error: /, '').trim());
+  const message = clip(trimTrace(clean(rawMessage).replace(/^\s*Error: /, '')));
   const h = HARNESS.exec(message);
   if (h) {
     const selector = h[1];
@@ -324,6 +332,8 @@ export async function runFeatureTests(root, feature, { name, area, baseUrl, sign
         return done(fail(missing ? 'BROWSERS_MISSING' : 'RUN_FAILED', missing ? 'Playwright cannot find its browser. Install it once with: npx playwright install chromium' : `Playwright stopped without a report (exit ${code}). ${clip(text, 800)}`));
       }
       const tests = readReport(report, { specs: found.specs, origin: address.origin });
+      // an APP failure carries the text of its bug report, so the CLI, the Cockpit and a plan all offer the same words
+      for (const t of tests) if (t.failure?.kind === 'app') t.failure.bugReport = bugReportText({ feature, baseUrl: address.origin, test: t });
       if (!tests.length) return done(fail('RUN_FAILED', `Playwright ran but reported no tests. ${clip(clean(output).trim(), 800)}`));
       return done({ ok: true, feature, baseUrl: address.origin, durationMs: Date.now() - started, counts: countOf(tests), tests });
     });

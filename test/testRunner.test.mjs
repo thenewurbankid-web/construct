@@ -125,6 +125,14 @@ test('an app failure says what was expected and what was reached; anything else 
   assert.match(text, /Actual: it reached "working"/);
 });
 
+test('the code frame and stack Playwright appends are left out: no machine paths reach the screen', () => {
+  const noisy = `Error: ${HARNESS_TEXT}\n\n  22 |\n  23 | const harness = (selector: string, why: string) =>\n> 24 |   new Error(\n     |   ^\n    at harness (/tmp/x/features/jobs/tests/generated/a.spec.ts:24:3)`;
+  const f = classifyFailure(noisy, {});
+  assert.equal(f.kind, 'convention');
+  assert.doesNotMatch(f.message, /\/tmp\/x|at harness|22 \|/);
+  assert.match(f.message, /do not file a product bug for this\.$/);
+});
+
 test('messages are capped', () => {
   const f = classifyFailure('x'.repeat(50_000), {});
   assert.ok(f.message.length < 3_200);
@@ -149,6 +157,21 @@ test('Playwright\'s report becomes pass / fail / not-run tests with the failure 
   assert.match(text, /1 passed, 1 failed, 1 not run/);
   assert.match(text, /HARNESS PROBLEM, NOT A PRODUCT BUG/);
   assert.match(text, /Needs: a fixture where the guard/);
+});
+
+test('a run carries the bug-report text on an app failure and only there', async () => {
+  const dir = project();
+  const { specs } = resolveSpecs(dir, 'jobs');
+  const gen = specs.find((s) => s.area === 'generated');
+  const report = oneSpec(specs, `generated/${gen.name}`, [
+    { title: 'Reached the wrong state', status: 'unexpected', result: 'failed', error: 'Expected string: "done"\nReceived string: "working"' },
+    { title: 'Missing id', status: 'unexpected', result: 'failed', error: HARNESS_TEXT },
+  ]);
+  fakePlaywright(dir, { report });
+  const r = await runFeatureTests(dir, 'jobs', { tmp: makeTempDir('construct-testrun-tmp-'), probe: async () => true });
+  assert.equal(r.ok, true);
+  assert.match(r.tests[0].failure.bugReport, /Actual: it reached "working"/);
+  assert.equal(r.tests[1].failure.bugReport, undefined);
 });
 
 test('the run refuses cleanly, before anything starts: bad address, no Playwright, app not answering', async () => {

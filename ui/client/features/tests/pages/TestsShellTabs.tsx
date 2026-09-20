@@ -1,7 +1,7 @@
 import type { ShellTab } from '@/features/shell';
 import { TestDetail } from '../components/TestDetail';
 import { TestsBrowser } from '../components/TestsBrowser';
-import type { CodeView, FreshnessModel, GeneratedTest, InlinePart, TestSelection, TestsListing, YourTest } from '../types';
+import type { CodeView, FreshnessModel, GeneratedTest, InlinePart, RunOutcome, TestSelection, TestsListing, YourTest } from '../types';
 
 export type TestsShellTabsInput = {
   features: string[] | null;
@@ -13,6 +13,7 @@ export type TestsShellTabsInput = {
   steps: InlinePart[][];
   code: CodeView;
   comparison: { model: FreshnessModel; dismissed: boolean; dismiss: () => unknown };
+  run: { outcome: RunOutcome | null; busy: boolean; copied: string | null; onRun: () => void; onCopy: (key: string, text: string) => Promise<boolean> };
   cloneTag: (y: YourTest) => string;
   onFeature: (feature: string) => void;
   onSelect: (selection: TestSelection) => void;
@@ -38,7 +39,7 @@ export function testsShellTabs(i: TestsShellTabsInput): { browser: ShellTab; too
       id: 'test',
       title: 'Test',
       preferred: true,
-      render: () => <TestDetail test={i.test} title={i.title} steps={i.steps} code={i.code} comparison={i.comparison} onClone={i.onClone} onEditStep={i.onEditStep} onShowCode={i.onShowCode} onHideCode={i.onHideCode} onEditSteps={i.onEditSteps} />,
+      render: () => <TestDetail test={i.test} title={i.title} steps={i.steps} code={i.code} comparison={i.comparison} run={i.run} onClone={i.onClone} onEditStep={i.onEditStep} onShowCode={i.onShowCode} onHideCode={i.onHideCode} onEditSteps={i.onEditSteps} />,
     },
   };
 }

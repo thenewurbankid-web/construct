@@ -42,7 +42,7 @@ export function testRunPlan({ feature, name, area, origin }) {
   const one = name && area ? { name, area } : null;
   return {
     version: 1,
-    ticket: { source: 'text', title: `Run the ${one ? one.name : 'tests'} of ${feature}` },
+    ticket: { source: 'text', title: one ? `Run ${one.name} of ${feature}` : `Run every test of ${feature}` },
     steps: [{
       id: TEST_RUN_STEP,
       title: one ? `Run ${one.name} (${one.area}) of ${feature} against ${origin}` : `Run every test of ${feature} against ${origin}`,

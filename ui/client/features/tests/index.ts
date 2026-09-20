@@ -26,3 +26,6 @@ export * from './hooks/useCloneActions';
 
 /** What changed under the selected clone: the flow it was cloned from vs the flow now (#306). */
 export * from './hooks/useCloneComparison';
+
+/** Running the feature's tests as a process (#305): live run, latest results, cancel, copy as bug report. */
+export * from './hooks/useTestRuns';
