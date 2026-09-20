@@ -38,7 +38,7 @@ export function FlowRowItem({ row, selected, collapsed, relation, onSelect, onTo
 
   if (row.kind === 'branch') {
     return (
-      <div role="treeitem" aria-level={row.depth + 1} aria-expanded={!collapsed} className="flow-row flow-branch" style={{ paddingLeft: `calc(var(--sp-2) + ${row.depth} * 14px)` }} data-testid="flow-row" data-kind="branch">
+      <div role="treeitem" aria-level={row.depth + 1} aria-expanded={!collapsed} className="flow-row flow-branch" style={{ paddingLeft: `calc(var(--sp-2) + ${row.depth} * 10px)` }} data-testid="flow-row" data-kind="branch">
         <button type="button" className="flow-twisty" aria-label={`${collapsed ? 'Expand' : 'Collapse'} ${row.label}`} onClick={() => onToggle(row.id)}>
           {collapsed ? '▸' : '▾'}
         </button>
@@ -57,7 +57,7 @@ export function FlowRowItem({ row, selected, collapsed, relation, onSelect, onTo
       aria-selected={selected}
       aria-expanded={row.hasChildren ? !collapsed : undefined}
       className={cls}
-      style={{ paddingLeft: `calc(var(--sp-2) + ${row.depth} * 14px)` }}
+      style={{ paddingLeft: `calc(var(--sp-2) + ${row.depth} * 10px)` }}
       data-testid="flow-row"
       data-kind={row.kind}
       data-file={row.file ?? undefined}

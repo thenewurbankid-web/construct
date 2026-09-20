@@ -104,6 +104,9 @@ test.describe('#278 GitHub login gate', () => {
     // #341: the approval gate's two endpoints. Review is a GET; decide is a mutating POST. Both are refused.
     expect(await apiStatus(page, '/api/processes/proc_x/review')).toBe(401);
     expect(await decideStatus(page, 'proc_x')).toBe(401);
+    // #328: the Flow view's read-only endpoints are gated too.
+    expect(await apiStatus(page, '/api/flow/billing')).toBe(401);
+    expect(await apiStatus(page, '/api/nav/file?feature=billing&path=src/App.tsx')).toBe(401);
 
     // The one deliberate exception, so a liveness probe still works.
     expect(await apiStatus(page, '/api/health')).toBe(200);
