@@ -303,6 +303,23 @@ function normalizeBody(body) {
     .replace(/\s+/g, '');
 }
 
+// #338: a body only counts as business LOGIC if it decides or computes something. A thin wiring
+// function (`const {a,b} = useX(); return <Page a={build(a)} />`) has the same shape as every other
+// one, and identifier erasure makes all of them collide; it has no rule to keep single-sourced.
+// Identifiers stay erased on purpose: a copy-pasted function with renamed variables is exactly
+// what DRY-001 exists to catch. Heuristic on the comment/string-stripped text: a control-flow
+// keyword, a ternary, a logical operator, or a spaced arithmetic/comparison operator. Anything
+// else is pure wiring and is skipped.
+const LOGIC_RE = /\b(?:if|else|for|while|do|switch|case|try|catch|throw)\b|\?(?![.:])|&&|\|\||\?\?|\s(?:[+\-*%]|[<>]=?|[!=]==?)\s/;
+
+function hasLogic(body) {
+  const stripped = body
+    .replace(/\/\/.*$/gm, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/["'`][^"'`]*["'`]/g, 'STR');
+  return LOGIC_RE.test(stripped);
+}
+
 function checkDuplication(config, out, root, featuresRoot, files) {
   const bodies = [];
   for (const p of files) {
@@ -313,6 +330,7 @@ function checkDuplication(config, out, root, featuresRoot, files) {
     for (const block of extractFunctionBlocks(src)) {
       const norm = normalizeBody(block.text);
       if (norm.length < MIN_BODY_LEN) continue;
+      if (!hasLogic(block.text)) continue;
       bodies.push({ feature, file: rp, line: block.line, norm });
     }
   }

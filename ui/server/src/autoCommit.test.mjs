@@ -13,7 +13,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
+import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import {
@@ -30,7 +30,7 @@ function run(cwd, args) {
 
 /** A real Construct-shaped project in a real git repo with one commit on `main`. */
 function makeRepo() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-autocommit-'));
+  const root = makeTempDir('construct-autocommit-');
   ROOTS.push(root);
   fs.writeFileSync(path.join(root, 'architecture.yml'), 'features:\n  root: features\n');
   const write = (rel, body) => {
@@ -86,7 +86,7 @@ test('a bad config value is refused rather than quietly ignored', () => {
 });
 
 test('a directory that is not a git repo degrades instead of failing the save', () => {
-  const plain = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-nogit-'));
+  const plain = makeTempDir('construct-nogit-');
   ROOTS.push(plain);
   assert.deepEqual(recordSave(plain, 'a.ts'), { committed: false, status: 'not-a-repo' });
 });
