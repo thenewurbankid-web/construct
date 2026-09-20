@@ -104,7 +104,7 @@ function filesOfUnit(ctx, kind, id) {
 
 /** Forward (what each file imports) and reverse (who imports each file) indexes over project source,
  * both restricted to files that actually exist in the tree. Deterministic: sorted everywhere. */
-function buildImportGraph(ctx) {
+export function buildImportGraph(ctx) {
   const files = ctx.sourceFiles();
   const known = new Set(files);
   const deps = new Map();
@@ -139,7 +139,7 @@ function consumerFeatures(ctx, graph, file, ownScope) {
 }
 
 /** Which vertical slice a file belongs to: its feature, or (outside `features/`) its top-level dir. */
-function scopeOf(ctx, relPath) {
+export function scopeOf(ctx, relPath) {
   const fr = ctx.featuresRoot() + '/';
   if (relPath.startsWith(fr)) {
     const name = relPath.slice(fr.length).split('/')[0];

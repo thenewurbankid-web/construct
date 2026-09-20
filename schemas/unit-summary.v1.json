@@ -48,7 +48,7 @@
         "path": { "type": "string", "description": "Project-relative path when the unit maps to one." },
         "detail": { "$ref": "#/definitions/detail" },
         "summary": { "type": "string", "description": "One plain-English paragraph." },
-        "sections": { "type": "object", "description": "Per-kind sections; keys depend on `kind`." },
+        "sections": { "type": "object", "description": "Per-kind sections; keys depend on `kind`. Feature summaries carry `flow` (see #/definitions/flow)." },
         "health": { "$ref": "#/definitions/health" },
         "links": {
           "type": "object",
@@ -88,6 +88,71 @@
         "ok": { "const": true },
         "count": { "type": "integer" },
         "features": { "type": "array", "items": { "type": "object", "required": ["name", "ref"], "properties": { "name": { "type": "string" }, "path": { "type": "string" }, "ref": { "type": "string" }, "summary": { "type": "string" }, "health": { "type": "string" }, "completeness": { "type": "number" } } } }
+      }
+    },
+    "flowNode": {
+      "type": "object",
+      "required": ["file", "layer"],
+      "additionalProperties": false,
+      "description": "One file in a flow tree. `feature` is present only when the file belongs to a different feature than the one summarized (e.g. a shared component). `shownAbove` marks a file already drawn earlier in the same route tree (it has no children there). types.ts and index.ts never appear.",
+      "properties": {
+        "file": { "type": "string" },
+        "layer": { "type": "string" },
+        "feature": { "type": "string" },
+        "purpose": { "type": "string", "description": "detail=full only." },
+        "shownAbove": { "const": true },
+        "children": { "type": "array", "items": { "$ref": "#/definitions/flowNode" }, "description": "What this file imports, in the file's own import order." }
+      }
+    },
+    "flowController": {
+      "type": "object",
+      "required": ["file"],
+      "additionalProperties": false,
+      "description": "A controller under a route: `layer` plus the branches (each present only when non-empty). A controller reached by several routes repeats under each route.",
+      "properties": {
+        "file": { "type": "string" },
+        "layer": { "const": "controller" },
+        "behaviour": { "type": "array", "items": { "$ref": "#/definitions/flowNode" }, "description": "hook, workflow, service, domain." },
+        "render": { "type": "array", "items": { "$ref": "#/definitions/flowNode" }, "description": "page, component." },
+        "other": { "type": "array", "items": { "$ref": "#/definitions/flowNode" }, "description": "Imports in any other layer." }
+      }
+    },
+    "flow": {
+      "type": "object",
+      "required": ["framework", "routeAdapter", "routes", "notes"],
+      "additionalProperties": false,
+      "description": "Feature `sections.flow` (#328; detail standard and full, omitted at brief, whose ~500-token budget has no headroom: use contracts.routes there). Routes are the roots; a route rendering controllers from several features is a fan-out (`fanOut`), its features ordered by the route file's import order. Drawn from the real import graph. `routes` is empty, with a `no-route-adapter` note, for a framework without a route adapter (never a guess); a feature no route reaches gets an info-level `no-route` note.",
+      "properties": {
+        "framework": { "type": "string" },
+        "routeAdapter": { "type": "boolean", "description": "False when the project's framework has no route adapter." },
+        "routes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["route", "file", "fanOut", "features"],
+            "additionalProperties": false,
+            "properties": {
+              "route": { "type": "string" },
+              "file": { "type": "string", "description": "The route file: a Next.js page.tsx, or the react-spa route table." },
+              "fanOut": { "type": "boolean" },
+              "features": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["feature", "self", "ref", "controllers"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "feature": { "type": "string" },
+                    "self": { "type": "boolean", "description": "True for the summarized feature." },
+                    "ref": { "type": "string" },
+                    "controllers": { "type": "array", "items": { "$ref": "#/definitions/flowController" } }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "notes": { "type": "array", "items": { "$ref": "#/definitions/finding" }, "description": "Info-level notes: no-route, no-route-adapter." }
       }
     },
     "error": {

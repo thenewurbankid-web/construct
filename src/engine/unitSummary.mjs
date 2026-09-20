@@ -10,6 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createContext } from './units/facts.mjs';
 import { defaultUnitRegistry } from './units/registry.mjs';
+import { renderFlowMarkdown } from './units/flow.mjs';
 
 export const SCHEMA_VERSION = 1;
 export const DETAILS = ['brief', 'standard', 'full'];
@@ -103,7 +104,13 @@ export function summarizeUnit(root, ref, opts = {}) {
       next: (s.next || []).slice(0, detail === 'brief' ? 2 : 6),
     };
     const clean = finalize(out);
+    // The flow tree (#328) is additive: it is set aside while the pre-existing sections are trimmed, so
+    // adding it never squeezes out content that used to fit. It can push a summary past the budget
+    // (`budget.exceeded`); use --detail brief or --include to shrink it.
+    const flow = clean.sections.flow;
+    if (flow) delete clean.sections.flow;
     const { omitted } = fitToBudget(clean, maxTokens - 60); // headroom for the budget block itself
+    if (flow) clean.sections.flow = flow;
     clean.budget = { maxTokens, estimatedTokens: 0, truncated: Object.keys(omitted).length > 0, ...(Object.keys(omitted).length ? { omitted } : {}) };
     clean.budget.estimatedTokens = estimateTokens(JSON.stringify(clean));
     if (clean.budget.estimatedTokens > maxTokens) clean.budget.exceeded = true;
@@ -227,7 +234,7 @@ export function renderUnitMarkdown(result) {
   if (result.features) return `# Features\n\n${result.features.map((f) => `- \`${f.ref}\` [${f.health}] ${f.summary || ''}`).join('\n')}\n`;
   const lines = [`# ${result.kind}: ${result.name}`, '', result.summary, '', `Health: **${result.health.status}**${result.health.completeness !== undefined ? ` (completeness ${result.health.completeness})` : ''}`, ''];
   for (const f of result.health.findings || []) lines.push(`- ${f.severity}: ${f.message}`);
-  for (const [k, v] of Object.entries(result.sections)) lines.push('', `## ${k}`, '', md(v).trimEnd());
+  for (const [k, v] of Object.entries(result.sections)) lines.push('', `## ${k}`, '', k === 'flow' && v?.routes ? renderFlowMarkdown(v) : md(v).trimEnd());
   if (result.next?.length) lines.push('', '## Next', '', ...result.next.map((n) => `- \`${n.cli}\` — ${n.why}`));
   lines.push('', `_schemaVersion ${result.schemaVersion}, ~${result.budget.estimatedTokens}/${result.budget.maxTokens} tokens${result.budget.truncated ? ', truncated' : ''}_`);
   return lines.join('\n') + '\n';

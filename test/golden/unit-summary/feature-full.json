@@ -325,6 +325,71 @@
     "tests": {
       "count": 0,
       "files": []
+    },
+    "flow": {
+      "framework": "nextjs",
+      "routeAdapter": true,
+      "routes": [
+        {
+          "route": "/login",
+          "file": "app/login/page.tsx",
+          "fanOut": false,
+          "features": [
+            {
+              "feature": "login",
+              "self": true,
+              "ref": "feature:login",
+              "controllers": [
+                {
+                  "file": "features/login/controllers/LoginController.tsx",
+                  "layer": "controller",
+                  "behaviour": [
+                    {
+                      "file": "features/login/hooks/useLogin.tsx",
+                      "layer": "hook",
+                      "purpose": "React hook exporting useLogin.",
+                      "children": [
+                        {
+                          "file": "features/login/workflows/Login.tsx",
+                          "layer": "workflow",
+                          "purpose": "The login flow's state machine.",
+                          "children": [
+                            {
+                              "file": "features/login/domain/Login.tsx",
+                              "layer": "domain",
+                              "purpose": "Hardcoded demo credentials — pure, no I/O (domain must stay pure per architecture.yml's DOMAIN-001)."
+                            }
+                          ]
+                        },
+                        {
+                          "file": "features/login/services/Login.tsx",
+                          "layer": "service",
+                          "purpose": "Session persistence is an external effect (browser storage), so it lives in a service, not domain or the workflow (per architecture.yml's..."
+                        }
+                      ]
+                    }
+                  ],
+                  "render": [
+                    {
+                      "file": "features/login/pages/LoginPage.tsx",
+                      "layer": "page",
+                      "purpose": "Page (presentation) exporting LoginPage.",
+                      "children": [
+                        {
+                          "file": "features/login/components/Login.tsx",
+                          "layer": "component",
+                          "purpose": "Presentation component exporting Login."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "notes": []
     }
   },
   "health": {
@@ -374,7 +439,7 @@
   ],
   "budget": {
     "maxTokens": 8000,
-    "estimatedTokens": 1464,
+    "estimatedTokens": 1762,
     "truncated": false
   }
 }

@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileEntry, testsFor, violationsFor, healthFrom } from '../facts.mjs';
 import { machinesOf } from '../machines.mjs';
 import { featureRoutes } from '../route-adapters.mjs';
+import { buildFlow } from '../flow.mjs';
 
 export const CORE_LAYERS = ['domain', 'service', 'workflow', 'hook', 'component', 'page', 'controller'];
 const isTest = (p) => /\.(test|spec)\./.test(p);
@@ -78,6 +79,7 @@ function buildFeature(ctx, name, detail) {
   const rules = violationsFor(ctx, (f) => f.startsWith(D.dir + '/'));
   const loc = D.facts.reduce((s, f) => s + f.loc, 0);
 
+  const flow = buildFlow(ctx, name, { detail });
   const layerCounts = Object.fromEntries(Object.entries(D.byLayer).map(([l, fs]) => [l, fs.length]).sort());
   const sections = {
     layers: { present, missing, fileCounts: layerCounts },
@@ -100,11 +102,14 @@ function buildFeature(ctx, name, detail) {
     },
     rules: d === 0 ? { errors: rules.counts.error, warnings: rules.counts.warning, exceptions: rules.exceptions.length } : d === 1 ? { ...rules, violations: rules.violations.slice(0, 10) } : rules,
     tests: d === 0 ? { count: tests.length } : { count: tests.length, files: tests },
+    // brief is sized to ~500 tokens with no headroom, so it carries no flow tree (routes are in contracts.routes)
+    ...(d >= 1 ? { flow } : {}),
   };
   const findings = [];
   for (const l of missing) findings.push({ severity: 'info', code: 'missing-layer', message: `No ${l} layer yet.` });
   if (!D.publicApi.length) findings.push({ severity: 'warning', code: 'no-public-api', message: 'index.ts exports nothing (or is missing).' });
   if (!tests.length) findings.push({ severity: 'info', code: 'no-tests', message: 'No test files found for this feature.' });
+  for (const n of flow.notes.filter((x) => x.code === 'no-route')) findings.push(n);
   if (D.byLayer.unclassified) findings.push({ severity: 'info', code: 'unclassified-files', message: `${D.byLayer.unclassified.length} file(s) are not in a recognized layer.` });
   for (const v of rules.violations.slice(0, 5)) findings.push({ severity: v.severity === 'error' ? 'error' : 'warning', code: v.rule, message: `${v.file}: ${v.message}` });
   for (const m of machines) for (const f of m.findings.filter((x) => x.severity === 'warning')) findings.push({ severity: 'warning', code: 'workflow', message: `${m.machine}: ${f.message}` });
