@@ -186,6 +186,7 @@ test.describe.serial('Tests tab states (#306)', () => {
     const browsers = page.getByTestId('state-browsers');
     await expect(browsers).toContainText('Browsers are not installed');
     await expect(browsers.getByTestId('browsers-command')).toHaveText('npx playwright install chromium');
+    await browsers.screenshot({ path: path.join(SHOTS, '306-browsers-missing--dark.png') });
 
     await page.getByRole('button', { name: 'Open the test for Happy path' }).click();
     await expect(page.getByTestId('detail-last-run')).toContainText('has not run yet');
@@ -201,8 +202,8 @@ test.describe.serial('Tests tab states (#306)', () => {
     const [a, b] = [await convention.boundingBox(), await app.boundingBox()];
     expect(Math.abs(a.y - b.y), 'side by side, on one row').toBeLessThan(4);
     expect(b.x).toBeGreaterThan(a.x + a.width - 1);
-    await convention.scrollIntoViewIfNeeded();
-    await page.screenshot({ path: path.join(SHOTS, '306-failure-kinds-browsers--dark.png') });
+    await page.setViewportSize({ width: 1440, height: 1200 });
+    await page.getByTestId('failure-kinds').screenshot({ path: path.join(SHOTS, '306-failure-kinds--dark.png') });
     expect((await runAxe(page)).filter(isBlocking), format(await runAxe(page))).toEqual([]);
   });
 
