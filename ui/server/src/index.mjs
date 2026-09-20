@@ -19,6 +19,10 @@ import { getSettings, updateSettings, getBrowseRoots } from './settings.mjs';
 import { handleBrowse } from './dirBrowse.mjs';
 import { runCapturing, withDir } from './commandRunner.mjs';
 import { attachWizardSocket } from './wizardSocket.mjs';
+import { createProcessesService } from './processesService.mjs';
+import { createProcessesRouter } from './processesApi.mjs';
+import { attachProcessesSocket } from './processesSocket.mjs';
+import { refuseUnknownUpgrades } from './wsUpgrade.mjs';
 import { getOllamaStatus, listOllamaModels, startOllamaPull, removeOllamaModel } from './ollama.mjs';
 import {
   PagesEditorError,
@@ -747,6 +751,11 @@ app.get('/api/logs', (req, res) => {
   res.status(status).json(body);
 });
 
+// #292: the Processes drawer. Registered below the gate like every other
+// `/api` route; the WebSocket (createUiServer) takes the same `auth`.
+export const processesService = createProcessesService({ getProjectDir: () => getSettings().projectDir });
+app.use('/api/processes', createProcessesRouter(processesService));
+
 /** True when this file is the process entry point (`npm start`), false when
  * it is imported — by a test, or by anything else that wants the app
  * without a listener. */
@@ -770,6 +779,8 @@ export { app, auth };
 export function createUiServer() {
   const server = http.createServer(app);
   attachWizardSocket(server, '/ws/wizard', CLIENT_ORIGIN, auth);
+  attachProcessesSocket(server, processesService, '/ws/processes', CLIENT_ORIGIN, auth);
+  refuseUnknownUpgrades(server, ['/ws/wizard', '/ws/processes']);
   return server;
 }
 
