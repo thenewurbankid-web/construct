@@ -1,20 +1,8 @@
 // Pure (DOMAIN-001): the approval gate's review in display form. The one rule that matters lives
 // here as data: Approve is on only when the gate says `applicable`, and a refusal has no override.
-import type { DecisionNote, DiffLine, Review, ReviewArtifact, ReviewRow, ReviewState, ReviewView, Validation } from '../types.ts';
-
-/** Classify a unified diff line for colouring. Presentation only: the text itself is untouched. */
-export function diffLines(diff: string | null): DiffLine[] {
-  if (!diff) return [];
-  const lines = diff.replace(/\n$/, '').split('\n');
-  return lines.map((text, key) => {
-    let kind: DiffLine['kind'] = 'ctx';
-    if (text.startsWith('@@')) kind = 'hunk';
-    else if (/^(diff --git|index |--- |\+\+\+ |new file|deleted file|similarity|old mode|new mode)/.test(text)) kind = 'meta';
-    else if (text.startsWith('+')) kind = 'add';
-    else if (text.startsWith('-')) kind = 'del';
-    return { key, kind, text };
-  });
-}
+import type { DecisionNote, Review, ReviewArtifact, ReviewRow, ReviewState, ReviewView, Validation } from './ReviewTypes.ts';
+import { diffLines } from './DiffLines.ts';
+import { validationText } from './ValidationText.ts';
 
 export function verdictText(a: ReviewArtifact): string | null {
   if (!a.verdict) return null;
@@ -42,17 +30,6 @@ export function reviewRow(a: ReviewArtifact, note: DecisionNote, busy: boolean):
     model: a.llm ? `Written by a ${a.llm.provider ?? 'local'} model` : null,
     note,
     busy,
-  };
-}
-
-export function validationText(v: Validation | null): { text: string | null; violations: string[]; ok: boolean } {
-  if (!v) return { text: null, violations: [], ok: true };
-  if (!v.ran) return { text: `The architecture check could not run after applying: ${v.error ?? 'unknown reason'}. Nothing was reverted.`, violations: [], ok: false };
-  if (v.newViolations.length === 0) return { text: 'Checked after applying: no new architecture violations.', violations: [], ok: true };
-  return {
-    text: `Checked after applying: ${v.newViolations.length} new architecture violation(s). Nothing was reverted; fix them or undo the change yourself.`,
-    violations: v.newViolations.map((x) => `${x.rule ?? 'rule'} ${x.file ?? ''}: ${x.message ?? ''}`.trim()),
-    ok: false,
   };
 }
 

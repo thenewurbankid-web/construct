@@ -11,3 +11,6 @@ export * from './hooks/useProcesses';
 
 /** Keeps the list current: initial read plus the socket, reconnecting when it drops. */
 export * from './hooks/useProcessesLive';
+
+/** The approval gate's review and per-file decisions (#341). */
+export * from './hooks/useReview';

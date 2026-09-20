@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useReducer } from 'react';
 import { fetchProcess } from '../services/ProcessesApi';
 import { fetchDiff, sendControl } from '../services/ProcessActionsApi';
-import { fetchReview, sendDecision } from '../services/ReviewApi';
+import { useReview } from './useReview';
 import { initialProcesses, processesReducer, summariesOf } from '../workflows/Processes';
 import { runningCount } from '../domain/ProcessCounts';
 import { useProcessesLive } from './useProcessesLive';
@@ -44,27 +44,7 @@ export function useProcesses(projectDir: string | null) {
     dispatch({ type: 'DIFF', key, result: { status: 'ready', diff, reason } });
   }, []);
 
-  const loadReview = useCallback(async (id: string) => {
-    dispatch({ type: 'REVIEW', id, result: { status: 'loading' } });
-    const res = await fetchReview(id);
-    dispatch({ type: 'REVIEW', id, result: res.ok ? { status: 'ready', review: res.review } : { status: 'error', message: res.error } });
-  }, []);
-
-  /** One decision on one file. The hash is the one the review showed; who decided is the server's business. */
-  const decide = useCallback(async (id: string, path: string, verdict: 'approve' | 'reject', diffSha256: string | null) => {
-    const key = `${id}\n${path}`;
-    dispatch({ type: 'DECIDING', key });
-    const result = await sendDecision(id, path, verdict, diffSha256);
-    dispatch({
-      type: 'DECIDED',
-      id,
-      key,
-      note: result.ok ? null : { error: result.error, refusals: result.refusals },
-      validation: result.ok ? result.validation : null,
-    });
-    // Whatever happened, show the gate's current word: the verdict just recorded, or the fresh diff after a stale refusal.
-    await loadReview(id);
-  }, [loadReview]);
+  const { loadReview, decide } = useReview(dispatch);
 
   return { state, select, control, loadDiff, loadReview, decide, running: runningCount(summariesOf(state)) };
 }
