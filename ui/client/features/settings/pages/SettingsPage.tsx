@@ -8,9 +8,11 @@ type SettingsPageProps = ReturnType<typeof useSettings> & {
   picker?: ReactNode;
   /** Commit-on-save controls (#283), supplied by the controller as a slot. */
   gitSession?: ReactNode;
+  /** #330: connect the open project to a remote (another feature's controller). */
+  remote?: ReactNode;
 };
 
-export function SettingsPage({ settings, loadError, reload, projectDirInput, setProjectDirInput, llmProviders, setLlmProvider, status, save, pickerOpen, togglePicker, picker, gitSession }: SettingsPageProps): ReactNode {
+export function SettingsPage({ settings, loadError, reload, projectDirInput, setProjectDirInput, llmProviders, setLlmProvider, status, save, pickerOpen, togglePicker, picker, gitSession, remote }: SettingsPageProps): ReactNode {
   if (!settings) {
     return (
       <div className="page page--screen">
@@ -46,6 +48,7 @@ export function SettingsPage({ settings, loadError, reload, projectDirInput, set
       />
 
       {gitSession}
+      {remote}
 
       <SettingsSummary
         projectDir={settings.projectDir}

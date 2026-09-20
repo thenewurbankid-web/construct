@@ -1751,3 +1751,82 @@ button:disabled {
   border-radius: var(--r-md);
   font-size: var(--fs-sm);
 }
+
+/* #330 — clone a repository (features/clone): the form on the Open-a-project screen, Settings' "Connect a remote"
+   and the Processes drawer's list of clones. Tokens only. */
+.clone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3, 12px);
+  border-top: 1px solid var(--border-strong);
+  padding-top: var(--sp-3, 12px);
+  margin-top: var(--sp-3, 12px);
+}
+.clone__heading {
+  font-size: 1.05rem;
+  margin: 0;
+}
+.clone__form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.clone__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.clone code {
+  overflow-wrap: anywhere;
+}
+.clone__job,
+.clone-jobs__item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+}
+.clone__job--bad {
+  border-color: var(--danger, #d64545);
+}
+.clone__job-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.clone__state {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.clone__bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-3, rgba(127, 127, 127, 0.25));
+  overflow: hidden;
+}
+.clone__bar-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+.clone__progress {
+  margin: 0;
+}
+.clone-jobs {
+  padding: 8px 12px 0;
+}
+.clone-jobs__title {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+}
+.clone-jobs__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

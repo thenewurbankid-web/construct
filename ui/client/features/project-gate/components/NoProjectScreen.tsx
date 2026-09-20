@@ -13,13 +13,15 @@ type NoProjectScreenProps = {
   onOpen: (dir: string) => void;
   /** The workspace-scoped folder picker (another feature's controller, composed by the controller). */
   picker: ReactNode;
+  /** The clone-a-repository form (another feature's controller, composed by the controller). */
+  clone?: ReactNode;
 };
 
 const nameOf = (dir: string) => dir.split(/[\\/]+/).filter(Boolean).pop() ?? dir;
 
 /** Presentation-only "Open a project" screen (#365): the Cockpit starts with nothing open and never loads the
  * directory it was launched from. One prompt, one picker, scoped to the workspace. */
-export function NoProjectScreen({ workspaceRoot, lastProject, opening, error, onOpen, picker }: NoProjectScreenProps) {
+export function NoProjectScreen({ workspaceRoot, lastProject, opening, error, onOpen, picker, clone }: NoProjectScreenProps) {
   return (
     <div className="page page--screen">
       <GlassPanel className="gate-panel no-project" data-testid="no-project">
@@ -42,6 +44,7 @@ export function NoProjectScreen({ workspaceRoot, lastProject, opening, error, on
           </p>
         )}
         {picker}
+        {clone}
         <p className="hint no-project__hint">
           Don&apos;t see your project? Put it in the workspace first
           {workspaceRoot ? (

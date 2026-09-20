@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
-import { spawnSync } from 'node:child_process';
+import { spawn as realSpawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
@@ -248,4 +248,25 @@ test('dirBytes counts files and never follows a symlink', () => {
   fs.symlinkSync(dir, path.join(d, 'loop'));
   assert.ok(dirBytes(d) >= 1000 && dirBytes(d) < 100000);
   assert.ok(dirBytes(d, 10) > 10, 'stops early once past the limit');
+});
+
+test('cancel really kills the whole process group of a real, hung child (grandchildren included)', async () => {
+  const { dir, ws } = sandbox();
+  const pidFile = path.join(dir, 'grandchild.pid');
+  // Stands in for `git`: makes the destination, starts a grandchild (like git-remote-https), then hangs.
+  const hung = (cmd, args, opts) => realSpawn('sh', ['-c', `mkdir -p "$1" && echo partial > "$1/x" && (sleep 60 & echo $! > "$2"; wait)`, 'sh', args[args.length - 1], pidFile], opts);
+  const jobs = createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: hung });
+  const r = await jobs.start({ url: 'https://github.com/o/hung' });
+  for (let i = 0; i < 100 && !fs.existsSync(pidFile); i += 1) await new Promise((res) => setTimeout(res, 20));
+  const grandchild = Number(fs.readFileSync(pidFile, 'utf8'));
+  assert.ok(grandchild > 1);
+  assert.equal(jobs.cancel(r.job.id).status, 200);
+  await r.done;
+  assert.equal(jobs.get(r.job.id).state, 'cancelled');
+  assert.equal(fs.existsSync(path.join(ws, 'hung')), false, 'partial directory removed');
+  let alive = true;
+  for (let i = 0; i < 50 && alive; i += 1) {
+    try { process.kill(grandchild, 0); await new Promise((res) => setTimeout(res, 50)); } catch { alive = false; }
+  }
+  assert.equal(alive, false, 'the grandchild process was killed with the group');
 });
