@@ -60,6 +60,8 @@ import graph. A file used twice in one route is drawn once and marked `shownAbov
 several routes repeats under each. `types.ts` and `index.ts` are left out. A feature no route reaches gets an
 info note ("No route reaches this feature"), also listed in `health.findings`. The flow is set aside while
 other sections are trimmed to the budget, so it can push a summary past it (`budget.exceeded`); brief omits it.
+The Cockpit draws it in the Browser pane's Files | Flow switch (`GET /api/flow/:feature`, read-only, the name is
+checked against the project's real feature list; #328).
 
 Errors are structured, never thrown or console-only: `{ schemaVersion, ok:false, error:{ code, message,
 candidates?, hint? } }` with `code` in `INVALID_ARGUMENT, UNKNOWN_KIND, ROOT_NOT_FOUND, UNIT_NOT_FOUND,
