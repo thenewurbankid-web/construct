@@ -35,6 +35,21 @@ const insideSurface = (page, surface) =>
 
 const FOCUSABLE = 'button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
+// The project switcher's body is the folder picker, which lists directories asynchronously: for the first
+// moments (seconds, on a large project) the panel says "Loading folders..." and has NO controls, while focus
+// sits on the dialog itself. A test that picks "the last control" before then indexes an empty list. Wait for
+// at least one enabled control to exist.
+async function controlsReady(page, surface) {
+  await expect
+    .poll(() =>
+      page.evaluate(
+        ([id, sel]) => [...(document.getElementById(id)?.querySelectorAll(sel) ?? [])].filter((e) => !e.disabled).length,
+        [surface, FOCUSABLE],
+      ),
+    )
+    .toBeGreaterThan(0);
+}
+
 for (const key of Object.keys(POPOVERS)) {
   const p = POPOVERS[key];
   test.describe(`popover contract: ${p.name}`, () => {
@@ -99,6 +114,7 @@ for (const key of Object.keys(POPOVERS)) {
     test('Tab past the last control closes it and moves on (no trap)', async ({ page }) => {
       await trigger.click();
       await expect.poll(() => insideSurface(page, p.surface)).toBe(true);
+      await controlsReady(page, p.surface);
       await page.evaluate(([id, sel]) => {
         const els = [...document.getElementById(id).querySelectorAll(sel)].filter((e) => !e.disabled);
         els[els.length - 1].focus();
@@ -114,6 +130,7 @@ for (const key of Object.keys(POPOVERS)) {
     test('Shift+Tab before the first control closes it', async ({ page }) => {
       await trigger.click();
       await expect.poll(() => insideSurface(page, p.surface)).toBe(true);
+      await controlsReady(page, p.surface);
       await page.evaluate(([id, sel]) => {
         const els = [...document.getElementById(id).querySelectorAll(sel)].filter((e) => !e.disabled);
         els[0].focus();
