@@ -13,7 +13,7 @@ import base from './playwright.config.js';
 
 // The runner and each worker evaluate this file; the environment carries the one directory between them.
 if (!process.env.E2E_WORKSPACE_SANDBOX || !fs.existsSync(process.env.E2E_WORKSPACE_SANDBOX)) {
-  process.env.E2E_WORKSPACE_SANDBOX = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'construct-e2e-ws-')));
+  process.env.E2E_WORKSPACE_SANDBOX = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-workspace-')));
 }
 const SANDBOX = process.env.E2E_WORKSPACE_SANDBOX;
 const WORKSPACE = path.join(SANDBOX, 'workspace');

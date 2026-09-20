@@ -18,6 +18,7 @@ const CLIENT_ORIGIN = `http://localhost:${Number(process.env.E2E_CLIENT_PORT) ||
 
 export default {
   ...base,
+  testIgnore: [], // the base config ignores this spec (it needs this harness); an inherited ignore would hide it here too
   testMatch: /processes-drawer\.spec\.js/,
   timeout: 60_000,
   webServer: [

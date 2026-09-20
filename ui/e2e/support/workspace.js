@@ -19,12 +19,20 @@ const BIN = path.resolve(HERE, '../../../bin/construct.mjs');
 /** The OS temp dir as a real path: the workspace root the ordinary configs use. */
 export const tmpWorkspaceRoot = () => fs.realpathSync(os.tmpdir());
 
-/** A freshly `construct init`-ed project inside the tmp workspace, created once per Playwright run (the
+/** NOTE: deliberately NOT named `construct-*`: tools/dev/heavy.sh prunes `/tmp/construct-*` directories older than
+ * 30 minutes, and a full run is longer than that, so the preloaded project would be deleted mid-run.
+ * A freshly `construct init`-ed project inside the tmp workspace, created once per Playwright run (the
  * config is evaluated in the runner and again in each worker, so the path is shared through the environment). */
 export function defaultProject() {
   if (process.env.E2E_DEFAULT_PROJECT && fs.existsSync(process.env.E2E_DEFAULT_PROJECT)) return process.env.E2E_DEFAULT_PROJECT;
-  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'construct-e2e-default-project-')));
+  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-default-project-')));
   execFileSync(process.execPath, [BIN, 'init', dir], { stdio: 'ignore' });
+  // The project the suite used to open was a git checkout, and the commit indicator renders differently in a
+  // folder that is not one (a second role=status), so the preloaded project is a repository with one commit.
+  const git = (...args) => execFileSync('git', ['-c', 'user.name=e2e', '-c', 'user.email=e2e@example.invalid', ...args], { cwd: dir, stdio: 'ignore' });
+  git('init', '-q');
+  git('add', '-A');
+  git('commit', '-q', '-m', 'init');
   process.env.E2E_DEFAULT_PROJECT = dir;
   return dir;
 }
