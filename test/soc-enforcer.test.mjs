@@ -215,6 +215,32 @@ test('DRY-001: similar functions within the SAME feature are not flagged', () =>
   assert.equal(r.violations.filter((v) => v.rule === 'DRY-001').length, 0);
 });
 
+// #338: thin wiring controllers share a shape (hook call + page render) and used to collide once
+// every identifier was erased. They carry no business rule, so they are not logic.
+const thinController = (name, hook, page) =>
+  `export function ${name}() {\n  const { items, status, error, reload, select } = ${hook}();\n  return <${page} items={items} status={status} error={error} onReload={reload} onSelect={select} view={buildView(items)} />;\n}\n`;
+
+test('DRY-001 (#338): two thin controllers with different hooks/pages are NOT flagged', () => {
+  const d = tmpProject();
+  scaffoldFeature(d, 'alpha');
+  scaffoldFeature(d, 'beta');
+  writeFile(d, 'features/alpha/controllers/CommitIndicatorController.tsx', thinController('CommitIndicatorController', 'useCommitStatus', 'CommitIndicatorPage'));
+  writeFile(d, 'features/beta/controllers/LogsController.tsx', thinController('LogsController', 'useLogs', 'LogsPage'));
+  const r = validateSeparationOfConcerns(d);
+  assert.equal(r.violations.filter((v) => v.rule === 'DRY-001').length, 0);
+});
+
+test('DRY-001 (#338): a copy-pasted function with renamed identifiers is STILL flagged, in a controller too', () => {
+  const d = tmpProject();
+  scaffoldFeature(d, 'alpha');
+  scaffoldFeature(d, 'beta');
+  const body = `export function pickVisible(rows, mode) {\n  const out = [];\n  for (const row of rows) {\n    if (mode === 'all' || row.pinned) out.push(row);\n  }\n  return out.length > 0 ? out : rows;\n}\n`;
+  writeFile(d, 'features/alpha/controllers/ListController.tsx', body);
+  writeFile(d, 'features/beta/controllers/GridController.tsx', body.replace(/rows/g, 'cells').replace(/row/g, 'cell').replace(/out/g, 'kept'));
+  const r = validateSeparationOfConcerns(d);
+  assert.equal(r.violations.filter((v) => v.rule === 'DRY-001').length, 1);
+});
+
 // ---------------------------------------------------------------------------
 // MODULE-001 threshold is configurable via architecture.yml
 // ---------------------------------------------------------------------------
