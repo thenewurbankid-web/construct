@@ -146,3 +146,18 @@
 .ts-diff-n { color: var(--text-muted); text-align: right; padding-right: var(--sp-2); }
 .ts-diff-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (max-width: 900px) { .ts-editor-grid { grid-template-columns: minmax(0, 1fr); } .ts-srow-binding { display: none; } }
+
+/* States and stale clones (#306). Design: docs/design/mocks/qa-tests-states.html. Tokens only. */
+.ts-state { margin: 0 0 var(--sp-3); padding: var(--sp-4); border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-1); max-width: 40rem; display: flex; flex-direction: column; gap: var(--sp-2); }
+.ts-state-h { margin: 0; font-size: var(--fs-lg); }
+.ts-state p { margin: 0; }
+.ts-changes { list-style: none; margin: 0 0 var(--sp-2); padding: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
+.ts-change { padding: var(--sp-1) var(--sp-2); border-radius: 4px; border-left: 3px solid var(--border-strong); background: var(--surface-1); overflow-wrap: anywhere; }
+.ts-change--added { border-left-color: var(--success); background: var(--success-soft); }
+.ts-change--removed { border-left-color: var(--danger); background: var(--danger-soft); }
+.ts-change--changed { border-left-color: var(--warn); background: var(--warn-soft); }
+.ts-kinds { margin: var(--sp-3) 0 0; }
+.ts-kinds > summary { cursor: pointer; font-weight: 600; min-height: 24px; }
+.ts-kinds > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.ts-kinds-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); margin-top: var(--sp-2); }
+@media (max-width: 720px) { .ts-kinds-grid { grid-template-columns: minmax(0, 1fr); } }

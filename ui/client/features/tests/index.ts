@@ -23,3 +23,6 @@ export * from './hooks/useTestCode';
 
 /** The clone dialog's open / edit / submit / show-code actions. */
 export * from './hooks/useCloneActions';
+
+/** What changed under the selected clone: the flow it was cloned from vs the flow now (#306). */
+export * from './hooks/useCloneComparison';

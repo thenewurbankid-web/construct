@@ -15,8 +15,11 @@ export type TestLineage = {
   clonedFrom: { file: string; scenario: string } | null;
 };
 
+import type { Freshness } from './domain/FreshnessShapes.ts';
+export type * from './domain/FreshnessShapes.ts';
+
 export type GeneratedTest = { name: string; path: string; lineage: TestLineage; area: 'generated'; locked: true };
-export type YourTest = { name: string; path: string; lineage: TestLineage | null; clonedFrom: { file: string; scenario: string } | null; kind: 'clone' | 'authored'; area: 'yours'; locked: false };
+export type YourTest = { name: string; path: string; lineage: TestLineage | null; clonedFrom: { file: string; scenario: string } | null; kind: 'clone' | 'authored'; area: 'yours'; locked: false; freshness?: Freshness };
 
 /** One scenario of the feature's flow and whether a test covers it. `lastResult` is always 'none' until tests run as processes (#305). */
 export type CoverageRow = {
@@ -33,8 +36,11 @@ export type CoverageRow = {
   locked: boolean;
   outOfDate: boolean;
   cloned: string[];
+  /** Clones of this scenario whose flow has changed under them (#306). */
+  staleClones?: string[];
   lastResult: 'none';
 };
+
 
 export type TestsListing = {
   ok: true;
@@ -47,6 +53,8 @@ export type TestsListing = {
   skipped: { file: string; machine: string; reason: string }[];
   truncated: boolean;
   coverageError: string | null;
+  /** Can Playwright launch here? `missing` means `npx playwright install chromium` has not been run on this machine. */
+  environment?: { browsers: 'installed' | 'missing' };
 };
 
 /** One piece of a scenario sentence: plain text, an emphasised state name, or a code name. */

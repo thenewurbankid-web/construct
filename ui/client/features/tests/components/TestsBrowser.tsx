@@ -1,6 +1,6 @@
 import { useRef, type KeyboardEvent } from 'react';
 import { Select } from '@/components/ui';
-import type { TestsListing, TestSelection } from '../types';
+import type { TestsListing, TestSelection, YourTest } from '../types';
 
 type TestsBrowserProps = {
   features: string[] | null;
@@ -8,11 +8,12 @@ type TestsBrowserProps = {
   onFeature: (feature: string) => void;
   data: TestsListing | null;
   selected: TestSelection | null;
+  tagOf: (y: YourTest) => string;
   onSelect: (selection: TestSelection) => void;
 };
 
 /** Browser pane, Tests tab: the feature's tests in two groups, Generated (Locked) and Yours. Up/Down move between rows. */
-export function TestsBrowser({ features, feature, onFeature, data, selected, onSelect }: TestsBrowserProps) {
+export function TestsBrowser({ features, feature, onFeature, data, selected, tagOf, onSelect }: TestsBrowserProps) {
   const tree = useRef<HTMLDivElement>(null);
   const move = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
@@ -64,7 +65,7 @@ export function TestsBrowser({ features, feature, onFeature, data, selected, onS
                 <li key={y.name}>
                   <button type="button" data-tree-row data-testid="tree-yours" className="ts-leaf" aria-current={isSel('yours', y.name) ? 'true' : undefined} onClick={() => onSelect({ area: 'yours', name: y.name })} title={y.path}>
                     <span className="ts-leaf-name">{y.name.replace(/\.spec\.ts$/, '')}</span>
-                    <span className="ts-leaf-tag">{y.kind === 'clone' ? 'clone' : 'yours'}</span>
+                    <span className="ts-leaf-tag">{tagOf(y)}</span>
                   </button>
                 </li>
               ))}

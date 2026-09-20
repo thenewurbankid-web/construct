@@ -30,6 +30,7 @@ import { cloneGeneratedTest, readFeatureTest } from '../../../src/engine/testClo
 import { compareClone, listFeatureTestsFresh } from '../../../src/engine/testFreshness.mjs';
 import { generateFeatureTests } from '../../../src/engine/testGenerator.mjs';
 import { applyStepEdit, previewStepEdit, readStepDocument } from '../../../src/engine/testSteps.mjs';
+import { environmentState } from './testsEnv.mjs';
 import { ConstructError } from '../../../src/diagnostics.mjs';
 
 const NAME = /^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/;
@@ -72,7 +73,10 @@ export function createTestsRouter({ getRoot, clientOrigin }) {
   };
   const body = (req) => (req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {});
 
-  router.get('/:feature', handle((root, req) => fromCore(listFeatureTestsFresh(root, req.params.feature))));
+  router.get('/:feature', handle((root, req) => {
+    const r = listFeatureTestsFresh(root, req.params.feature);
+    return fromCore(r.ok ? { ...r, environment: environmentState() } : r);
+  }));
 
   router.get('/:feature/source', handle((root, req) => {
     const one = (v) => (typeof v === 'string' ? v : '');
