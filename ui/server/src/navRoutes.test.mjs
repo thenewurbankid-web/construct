@@ -1,5 +1,6 @@
 // The real route table + the real session gate: the navigation routes must answer 401 without a
 // session (they read project files on a machine that runs commands) and sit below the gate.
+import '../../../test-utils/workspaceRoot.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

@@ -1,6 +1,7 @@
 // #300/#301 -- the Tests API. Security first (every route behind the session gate; only a real feature of THIS
 // project; hostile names refused; a symlinked tests/ refused with nothing written outside; never overwrite;
 // a clone lands only under features/<f>/tests/ and never under generated/), then behaviour.
+import '../../../test-utils/workspaceRoot.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
