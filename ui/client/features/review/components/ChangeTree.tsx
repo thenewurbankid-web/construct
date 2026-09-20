@@ -11,7 +11,7 @@ function FileButton({ file, selected, onSelect, showLayer }: { file: TreeFile; s
     <button type="button" className="rv-file" data-testid="review-file" data-path={file.path} aria-current={selected ? 'true' : undefined} title={file.path} onClick={() => onSelect(file.path)}>
       <span className="rv-file-name">{file.name}</span>
       {showLayer && <span className="rv-chip">{file.layer ?? 'other'}</span>}
-      <span className={`rv-status rv-status--${file.status}`}>{file.statusLabel}</span>
+      {file.status !== 'M' && <span className={`rv-status rv-status--${file.status}`}>{file.statusLabel}</span>}
     </button>
   );
 }
