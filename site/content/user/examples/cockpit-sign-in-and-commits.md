@@ -1,10 +1,12 @@
 **Problem.** A tool that runs commands, browses folders and writes source files is remote code execution the moment it is reachable from another machine without a login. And a tool that edits your code silently leaves you with one big uncommitted diff and no history of what happened.
 
-**What the Cockpit does about it.** It refuses to be exposed without a login, lets only the GitHub accounts you name in, and turns every save into a real git commit with a message Construct writes itself.
+It refuses to be exposed without a login, lets only the GitHub accounts you name in, and turns every save into a real git commit with a message Construct writes itself.
 
 This page describes the Cockpit only. There is no login or commit-on-save in the CLI: the CLI runs as you, in your shell, and you commit as you always did.
 
-## 1. Sign in with GitHub, allowlist only
+## Do this
+
+### 1. Sign in with GitHub, allowlist only
 
 Out of the box the server binds to `127.0.0.1` and prints a loud `Authentication is OFF` banner: fine for your own machine. Two rules keep it from being exposed by accident:
 
@@ -24,7 +26,7 @@ npm start
 
 Limits worth knowing: the session cookie is same-site, so serve the Cockpit and its API from one origin.
 
-## 2. Every save is a commit
+### 2. Every save is a commit
 
 Save in the Cockpit and it writes a real git commit, on a branch it creates for the session (for example `cockpit/billing-invoice-layer-a3f7`), with a message built from the change itself: how many features, layers and files it touched, what each file now does, and any wider impact or warnings. No model is involved, so the message costs nothing and works offline.
 
@@ -48,7 +50,7 @@ Construct-Summary: deterministic (construct summarize + impact); no LLM
 
 (Illustrative of the format, shortened; the exact layout is specified in the project's commit-on-save doc.) The serial in the subject counts up within the branch, so parallel sessions never collide. Saves inside 30 seconds become one commit by default; you can choose one commit per save, or manual commits. Only the files the Cockpit wrote are staged, a dirty tree at the start is something you are asked about (carry it in, or stash it), and nothing is ever pushed. A commit problem never blocks a save.
 
-## What you can rely on
+## You get
 
 | You get | How |
 |---|---|
@@ -57,4 +59,8 @@ Construct-Summary: deterministic (construct summarize + impact); no LLM
 | History you can read | one commit per save (or window), message written by Construct |
 | No model in the message | `Construct-Summary: ... no LLM` trailer |
 
-Checked against commit `081150b` on 2026-09-20 (behaviour taken from the running code and its documentation; the sign-in screen needs a real OAuth app, so it is described, not pictured).
+## Why it matters
+
+Only people you named can reach it, and every save is a commit you can read and undo.
+
+Checked against commit `081150b` on 2026-09-20 (wording revised for plain language on the same day; behaviour taken from the running code and its documentation; the sign-in screen needs a real OAuth app, so it is described, not pictured).

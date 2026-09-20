@@ -1,57 +1,30 @@
-Construct is a set of small commands that each do one mechanical job on a React + TypeScript app: create files in the right place, move them, check them against your rules. This page explains the handful of ideas behind them.
+Construct is a set of small commands that each do one mechanical job on a React and TypeScript app. Five ideas explain all of them.
 
-## Blocks, not magic
+**1. Small tools, same answer every time.** Every command gives the same result for the same input and tells you what it did. Where an AI model helps (writing the body of a function, proposing how to split an old page), you must ask with `--llm`, and the command reports how many model calls it made. See [Using an AI model, optionally](@user-guide/how-to/use-an-llm/).
 
-Every command is deterministic: the same input gives the same result, and it tells you what it did. There is no hidden step where a model decides what to build. Where an AI model is useful (writing the body of a function, proposing how to split an old page into features), you have to ask for it explicitly with `--llm`, and the command reports how many AI calls it made. See [Using an AI model, optionally](@user-guide/how-to/use-an-llm/).
+**2. A feature is a folder that owns one part of your app.** Its logic, state, screens and network calls live under `features/`. Other features reach it only through its `index.ts`, so parts of your app do not tangle.
 
-## Features
+**3. Inside a feature, every file has one job.** Each file is one of eight parts, and the allowed direction of dependencies is fixed, so you always know where code belongs.
 
-A **feature** is a folder under `features/` that owns one part of your app: its logic, state, screens and network calls. Other features can only use it through its `index.ts`, which is its public API. This keeps the parts of your app from tangling together.
-
-## Layers
-
-Inside a feature, every file belongs to one **layer**, and each layer has one job:
-
-| Layer | Its job |
+| Part | Its job |
 |---|---|
-| **Route** | The entry point for a URL. It hands off to a controller and does nothing else. |
-| **Controller** | Connects the app's behaviour to what is shown on screen. |
-| **Workflow** | The flow and state of a task, written as an XState state machine. |
-| **Hook** | React-aware logic, only where React context is really needed. |
-| **Domain** | Pure business rules. No network, storage or screen access. |
-| **Service** | Talks to the outside world: APIs, SDKs, anything with side effects. |
+| **Route** | The entry point for a URL. It hands off to a controller. |
+| **Controller** | Connects the app's behaviour to what is shown. |
+| **Workflow** | The flow and state of a task, as a state machine. |
+| **Hook** | React-aware logic, only where React needs it. |
+| **Domain** | Pure business rules. No network, storage or screen. |
+| **Service** | Talks to the outside world: APIs and anything with side effects. |
 | **Page** | Turns props into markup. No logic. |
 | **Component** | Reusable pieces of markup. |
 
-The allowed direction of dependencies is fixed, so you always know where code should live:
+**4. Rules you can read and change.** The conventions are rules with ids such as `PAGE-003` ("pages cannot import services"). `construct validate` reports each violation with the file and line, why the rule exists and how to fix it. Your `architecture.yml` sets each rule to `error`, `warning` or `off`, and can grant time-limited exceptions with a reason and an owner. See [Tune the rules](@user-guide/how-to/tune-rules/) and the [rule reference](@developers/rules-reference/).
 
-```text
-Route -> Controller -> Workflow -> Service -> API
-              +-----> Page -> Component
+**5. Every action leaves a record.** Each command ends with a line such as `[tool: scaffolded the file(s) above from templates] [llm: 0 calls]`. That line is the record of what happened and whether a model was involved.
 
-Workflow -> Domain
-Service  -> Domain
-Hook     -> Workflow / Service / Domain
-```
+## More detail
 
-## Rules and `architecture.yml`
+**Order is enforced.** Files import each other, so they are created in dependency order (`domain`, `service`, `workflow`, `hook`, `component`, `page`, `controller`), and rule `IMPORT-001` fails validation if a relative import points at a file that does not exist.
 
-The conventions above are not advice; they are **rules** with ids such as `PAGE-003` ("pages cannot import services"). `construct validate` checks your code against them and reports each violation with the file and line, why the rule exists, what was expected and how to fix it.
+**Two targets.** Next.js App Router (the default) and client-routed single-page apps (`react-spa`). Only the route part differs. Set it with `project.framework` in `architecture.yml` or `construct init --framework`.
 
-Your project's `architecture.yml` is the policy. Every rule is `error` (validation fails), `warning` (reported only) or `off`. You can also grant time-limited **exceptions** for specific paths, with a reason, an owner and an expiry date. See [Tune the rules](@user-guide/how-to/tune-rules/). The full list of rules is in the [rule reference](@developers/rules-reference/).
-
-## Order is enforced
-
-Files import each other, so they have to be created in dependency order. Construct does that for you (`domain`, then `service`, `workflow`, `hook`, `component`, `page`, `controller`), and a rule (`IMPORT-001`) fails validation if any relative import points at a file that does not exist. You cannot end up with a silently broken import.
-
-## Two targets
-
-Construct supports Next.js App Router (the default) and client-routed single-page apps (`react-spa`). Only the route layer differs; everything else is identical. Set it with `project.framework` in `architecture.yml` or `construct init --framework`.
-
-## Two ways to drive it
-
-The **command line** is the complete interface. The **Cockpit UI** is a browser front end over the same commands, for when you would rather click than type, or want to watch what is happening. It adds no logic of its own and makes no AI calls of its own.
-
-## Every action leaves a record
-
-Each command ends with a line such as `[tool: scaffolded the file(s) above from templates] [llm: 0 calls]`. There is no separate log to find: the line is the record of what happened and whether a model was involved.
+**Two ways to drive it.** The command line is the complete interface. The Cockpit is a browser front end over the same commands, for when you would rather click than type, or want to watch. It adds no logic and makes no model calls of its own.
