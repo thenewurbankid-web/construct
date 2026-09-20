@@ -51,6 +51,16 @@ hook signatures, component props, service endpoints), `dataFlow` (page -> hook -
 `workflows` (each machine in plain English + health findings), `dependencies` (used by / uses / packages),
 `rules` (violations and exceptions scoped to the feature), `tests`.
 
+`flow` (standard and full; #328, #334) shows how a URL reaches the feature: routes are the roots (discovered per
+`project.framework`: `nextjs` reads `app/**/page.tsx`, `react-spa` reads the route table in the route layer
+file, `<Route>` trees and `createBrowserRouter` objects; a framework with no adapter shows no routes), a route
+that renders several features is a fan-out (ordered by the route file's imports), and under each controller a
+`behaviour` branch (hook, workflow, service, domain) and a `render` branch (page, component) follow the real
+import graph. A file used twice in one route is drawn once and marked `shownAbove`; a controller reached by
+several routes repeats under each. `types.ts` and `index.ts` are left out. A feature no route reaches gets an
+info note ("No route reaches this feature"), also listed in `health.findings`. The flow is set aside while
+other sections are trimmed to the budget, so it can push a summary past it (`budget.exceeded`); brief omits it.
+
 Errors are structured, never thrown or console-only: `{ schemaVersion, ok:false, error:{ code, message,
 candidates?, hint? } }` with `code` in `INVALID_ARGUMENT, UNKNOWN_KIND, ROOT_NOT_FOUND, UNIT_NOT_FOUND,
 UNIT_AMBIGUOUS, INTERNAL_ERROR`.

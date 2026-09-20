@@ -233,6 +233,65 @@
     "tests": {
       "count": 0,
       "files": []
+    },
+    "flow": {
+      "framework": "nextjs",
+      "routeAdapter": true,
+      "routes": [
+        {
+          "route": "/login",
+          "file": "app/login/page.tsx",
+          "fanOut": false,
+          "features": [
+            {
+              "feature": "login",
+              "self": true,
+              "ref": "feature:login",
+              "controllers": [
+                {
+                  "file": "features/login/controllers/LoginController.tsx",
+                  "layer": "controller",
+                  "behaviour": [
+                    {
+                      "file": "features/login/hooks/useLogin.tsx",
+                      "layer": "hook",
+                      "children": [
+                        {
+                          "file": "features/login/workflows/Login.tsx",
+                          "layer": "workflow",
+                          "children": [
+                            {
+                              "file": "features/login/domain/Login.tsx",
+                              "layer": "domain"
+                            }
+                          ]
+                        },
+                        {
+                          "file": "features/login/services/Login.tsx",
+                          "layer": "service"
+                        }
+                      ]
+                    }
+                  ],
+                  "render": [
+                    {
+                      "file": "features/login/pages/LoginPage.tsx",
+                      "layer": "page",
+                      "children": [
+                        {
+                          "file": "features/login/components/Login.tsx",
+                          "layer": "component"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "notes": []
     }
   },
   "health": {
@@ -282,7 +341,7 @@
   ],
   "budget": {
     "maxTokens": 2000,
-    "estimatedTokens": 1022,
+    "estimatedTokens": 1206,
     "truncated": false
   }
 }
