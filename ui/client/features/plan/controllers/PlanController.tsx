@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { ProjectGateController } from '@/features/project-gate';
 import { useRegisterShellTab, useShellDrawer } from '@/features/shell';
 import '../components/plan.css';
@@ -10,7 +11,7 @@ import { usePlanScreen } from '../hooks/usePlanScreen';
 import { PlanPage } from '../pages/PlanPage';
 import { planShellTabs } from '../pages/PlanShellTabs';
 
-function PlanScreen() {
+function PlanScreen({ stageActions }: { stageActions?: ReactNode }) {
   const drawer = useShellDrawer();
   const s = usePlanScreen(drawer.openProcesses);
   const { state } = s;
@@ -22,14 +23,15 @@ function PlanScreen() {
   useRegisterShellTab('browser', tabs.browser);
   useRegisterShellTab('tools', tabs.tools);
   const view = state.impact ? buildImpactView(state.impact, state.impactSeeds) : null;
-  return <PlanPage contextError={state.contextError} impact={{ status: state.impactStatus, error: state.impactError, view }} />;
+  return <PlanPage contextError={state.contextError} impact={{ status: state.impactStatus, error: state.impactError, view }} stageActions={stageActions} />;
 }
 
-/** The Plan mode screen (`/plan`): ticket, impact, plan. Nothing here calls a model, and nothing runs until you press Run plan. */
-export function PlanController() {
+/** The Features screen (`/`, also `/plan`): notes, impact, plan, and the stage actions the route composes in. Nothing here
+ * calls a model, and nothing runs until you press Run plan. */
+export function PlanController({ stageActions }: { stageActions?: ReactNode } = {}) {
   return (
     <ProjectGateController>
-      <PlanScreen />
+      <PlanScreen stageActions={stageActions} />
     </ProjectGateController>
   );
 }

@@ -92,10 +92,10 @@ test('a garbage stored value falls back to dark; blocked storage does not break 
   expect(errors).toEqual([]);
 });
 
-test('light theme keeps text readable: primary text and nav pill contrast >= 4.5', async ({ page }) => {
+test('light theme keeps text readable: primary text and the current screen link contrast >= 4.5', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('construct.theme', 'light'));
-  // /dashboard, not /help: Help's Browser pane now opens on its own Contents tab (#250),
-  // so the Screens list is not showing there; the top bar's active mode link is.
+  // The top bar's current screen link (#369: weight + underline on the bar's own surface, so the background that
+  // matters is the nearest opaque ancestor, not the link's own transparent one).
   await page.goto('/dashboard');
   const ratio = await page.evaluate(() => {
     const lum = ([r, g, b]) => {
@@ -105,7 +105,9 @@ test('light theme keeps text readable: primary text and nav pill contrast >= 4.5
     const rgb = (s) => s.match(/\d+/g).slice(0, 3).map(Number);
     const active = document.querySelector('.nav a.active, [aria-current="page"]');
     const cs = getComputedStyle(active);
-    const [a, b] = [lum(rgb(cs.color)), lum(rgb(cs.backgroundColor))].sort((x, y) => y - x);
+    let bg = active;
+    while (bg && /rgba\(.*,\s*0\)|transparent/.test(getComputedStyle(bg).backgroundColor)) bg = bg.parentElement;
+    const [a, b] = [lum(rgb(cs.color)), lum(rgb(getComputedStyle(bg ?? document.body).backgroundColor))].sort((x, y) => y - x);
     return (a + 0.05) / (b + 0.05);
   });
   expect(ratio).toBeGreaterThanOrEqual(4.5);

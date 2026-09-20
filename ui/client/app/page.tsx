@@ -1,8 +1,9 @@
-import { DashboardController } from '@/features/dashboard/controllers/DashboardController';
+import { StageActionsController } from '@/features/dashboard';
+import { PlanController } from '@/features/plan/controllers/PlanController';
 
-// Root route — carries the same ProjectGate check (inside
-// DashboardController) before rendering Dashboard, matching today's
-// behavior of "/" being the Dashboard. Also reachable at /dashboard.
+// Root route: the Features screen (#370). The Dashboard is retired as a landing, so `/` is the notes + impact + plan
+// screen with the Dashboard's Create / Refactor / Research / Import forms as its stage actions. The project gate is
+// PlanController's. `/dashboard` still serves the old page for existing links and is no longer in the navigation.
 export default function Page() {
-  return <DashboardController />;
+  return <PlanController stageActions={<StageActionsController />} />;
 }

@@ -174,7 +174,6 @@ export type StatusBarProps = {
   onOpenDiagnostics: () => void;
 };
 
-export type ScreensNavProps = { screens: ShellScreen[]; pathname: string };
 
 export type ProjectInfoPanelProps = {
   dir: string | null;

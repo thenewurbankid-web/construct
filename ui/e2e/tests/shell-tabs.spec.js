@@ -58,12 +58,14 @@ test.describe('Right-panel / drawer tab host (#245)', () => {
     await page.screenshot({ path: path.join(SHOTS, 'shell-drawer-tabs.png') });
   });
 
-  test('Browser pane: the Screens tab is provided through the same tab host', async ({ page }) => {
-    // /settings, not /help: Help registers its own "Contents" tab (#250), so /help has two tabs.
+  test('Browser pane: a screen with no tab of its own shows a designed empty state, not an empty tablist (#370)', async ({ page }) => {
+    // /settings registers no Browser tab, and the shell no longer supplies a "Screens" tab: the top bar and the
+    // profile menu are the navigation.
     await page.goto('/settings');
     const browser = page.getByRole('complementary', { name: 'Browser' });
-    await expect(browser.getByRole('tablist', { name: 'Browser' }).getByRole('tab')).toHaveText(['Screens']);
-    await expect(browser.getByRole('tabpanel', { name: 'Screens' }).getByRole('link', { name: 'Settings' })).toBeVisible();
+    await expect(browser.getByRole('tablist')).toHaveCount(0);
+    await expect(browser).toContainText('Nothing to browse on this screen');
+    await expect(browser.getByRole('link')).toHaveCount(0);
   });
 
   test('a clicked tab becomes selected; focus ring is visible on keyboard focus', async ({ page }) => {

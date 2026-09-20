@@ -72,10 +72,11 @@ test('the palette offers Go to <screen> for the five screens once, and keeps the
   assert.ok(!titles.some((t) => /\bmode\b/i.test(t)), 'the modes are gone from the palette');
 });
 
-test('screens list every existing route with the old nav labels', () => {
-  assert.deepEqual(SCREENS.map((s) => s.label), ['Dashboard', 'Import Wizard', 'Pages Editor', 'Workflows', 'Tests', 'Local Model', 'Settings', 'Help']);
-  assert.equal(isScreenActive(SCREENS[0], '/'), true);
-  assert.equal(isScreenActive(SCREENS[0], '/help'), false);
+test('the palette-only screens are the Import Wizard, Settings, Local Model and Help plus the routes a primary screen also owns', () => {
+  assert.deepEqual(SCREENS.map((s) => s.label), ['Import Wizard', 'Pages Editor', 'Workflows', 'Tests', 'Local Model', 'Settings', 'Help']);
+  assert.equal(isScreenActive(SCREENS.find((s) => s.label === 'Settings'), '/settings'), true);
+  assert.equal(isScreenActive(SCREENS.find((s) => s.label === 'Settings'), '/help'), false);
+  assert.ok(!SCREENS.some((s) => s.label === 'Dashboard'), 'the Dashboard is retired');
 });
 
 test('projectLabel: last segment, separators tolerated, empty -> No project', () => {

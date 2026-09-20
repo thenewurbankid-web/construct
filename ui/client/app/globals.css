@@ -48,6 +48,19 @@ body {
   font-size: 0.9rem;
 }
 
+/* Features stage actions (#370): the retired Dashboard's four forms, opened one at a time in the stage.
+ * Tokens only; the forms themselves keep their own .command-form look. */
+.sa { margin: var(--sp-3) 0; }
+.sa-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); }
+.sa-label { color: var(--text-muted); font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: 0.06em; }
+.sa-buttons { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.sa-btn { appearance: none; min-height: 28px; padding: 0 var(--sp-3); color: var(--text); background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--r-md); font: inherit; cursor: pointer; }
+.sa-btn:hover { background: var(--surface-3); }
+.sa-btn[aria-expanded='true'] { background: var(--accent-soft); border-color: var(--accent); font-weight: 600; }
+.sa-panel { margin-top: var(--sp-3); max-width: 720px; }
+.sa-panel:focus { outline: none; }
+.sa-panel:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
 /* #163 — with the default `align-items: stretch`, every card in a grid row
  * gets forced to the height of the tallest card in that row (Refactor and
  * Import, both with more fields than Create/Research's default view),

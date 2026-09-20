@@ -12,8 +12,11 @@ const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 export function TabHost({ label, tabs, activeId, onSelect, empty }: TabHostProps) {
   const { active, listRef, onKeyDown } = useTabHost(tabs, activeId, onSelect);
   const prefix = `sh-${slug(label)}`;
+  // No tab at all (a screen with nothing to browse): just the designed empty state, not an empty tablist.
+  const hasTabs = tabs.length > 0;
   return (
     <div className="sh-tabhost" data-testid={`tabhost-${slug(label)}`}>
+      {hasTabs && (
       <div role="tablist" aria-label={label} className="sh-tablist" ref={listRef}>
         {tabs.map((tab) => {
           const selected = active?.id === tab.id;
@@ -48,9 +51,11 @@ export function TabHost({ label, tabs, activeId, onSelect, empty }: TabHostProps
           );
         })}
       </div>
+      )}
       <div
-        role="tabpanel"
+        role={hasTabs ? 'tabpanel' : 'region'}
         id={`${prefix}-panel`}
+        aria-label={hasTabs ? undefined : label}
         aria-labelledby={active ? `${prefix}-tab-${active.id}` : undefined}
         tabIndex={0}
         className="sh-tabpanel"

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { EmptyPanel } from '../components/EmptyPanel';
 import { ShellLayout } from '../components/ShellLayout';
 import { StatusBar } from '../components/StatusBar';
 import { TabHost } from '../components/TabHost';
@@ -10,7 +11,13 @@ import type { ShellPageProps, ShellRegion } from '../types';
 export function ShellPage(props: ShellPageProps): ReactNode {
   const { tabs, activeTabs, onSelectTab } = props;
   const host = (region: ShellRegion, label: string) => (
-    <TabHost label={label} tabs={tabs[region]} activeId={activeTabs[region]} onSelect={(id) => onSelectTab(region, id)} />
+    <TabHost
+      label={label}
+      tabs={tabs[region]}
+      activeId={activeTabs[region]}
+      onSelect={(id) => onSelectTab(region, id)}
+      empty={region === 'browser' ? <EmptyPanel title="Nothing to browse on this screen" hint="Choose Features, Pages, Components, Git or Tests in the top bar; Settings, Local model and Help are in the profile menu." /> : undefined}
+    />
   );
   return (
     <ShellLayout

@@ -66,7 +66,7 @@ test.describe('Workflows screen: real XState machines as diagrams (#59, #60, epi
 
   test('nav entry -> feature -> file renders states, guarded edges, initial + final', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('link', { name: 'Workflows' }).click();
+    await page.getByRole('navigation', { name: 'Screens' }).getByRole('link', { name: 'Components' }).click();
     await expect(page.getByRole('heading', { name: 'Workflows' })).toBeVisible();
 
     await page.getByRole('combobox').selectOption('shop');

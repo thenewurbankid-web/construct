@@ -79,14 +79,17 @@ test.describe.serial('Construct UI walkthrough (issue #37)', () => {
     await page.goto('/');
     await expect(page.locator('h1')).toHaveText('No Construct project here yet');
     await page.getByRole('button', { name: 'Initialize Construct here' }).click();
-    await expect(page.locator('h1')).toHaveText('Dashboard', { timeout: 15_000 });
+    await expect(page.locator('h1')).toHaveText('Features', { timeout: 15_000 });
+    // #370: the Dashboard's forms are stage actions of Features; Create opens its form in the stage.
+    await page.getByTestId('stage-action-create').click();
     await expect(page.getByRole('heading', { name: 'Create' })).toBeVisible();
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'dashboard-after-init.png'), fullPage: true });
   });
 
   test('3. dashboard-action-result.png — Create a feature and check attribution badges render visibly', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('h1')).toHaveText('Dashboard');
+    await expect(page.locator('h1')).toHaveText('Features');
+    await page.getByTestId('stage-action-create').click();
 
     const createForm = page.locator('.command-form', { has: page.getByRole('heading', { name: 'Create' }) });
     await createForm.getByPlaceholder('e.g. CpoAccess').fill('billing');
@@ -246,7 +249,8 @@ test.describe.serial('Construct UI walkthrough (issue #37)', () => {
   // actually wires those pieces together.
   test('7. pages-editor.png — browse a feature, open a page, select a tree node', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('h1')).toHaveText('Dashboard');
+    await expect(page.locator('h1')).toHaveText('Features');
+    await page.getByTestId('stage-action-create').click();
 
     const createForm = page.locator('.command-form', { has: page.getByRole('heading', { name: 'Create' }) });
     await createForm.locator('select').first().selectOption('single');
@@ -256,7 +260,7 @@ test.describe.serial('Construct UI walkthrough (issue #37)', () => {
     await createForm.getByRole('button', { name: 'Run create' }).click();
     await expect(createForm.locator('.attribution-label.tool').first()).toBeVisible({ timeout: 10_000 });
 
-    await page.getByRole('link', { name: 'Pages Editor' }).click();
+    await page.getByRole('navigation', { name: 'Screens' }).getByRole('link', { name: 'Pages' }).click();
     await expect(page.locator('h1')).toHaveText('Pages Editor');
 
     await page.locator('.pages-browser select').selectOption('billing');

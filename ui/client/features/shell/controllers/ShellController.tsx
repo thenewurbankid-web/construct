@@ -8,7 +8,6 @@ import { CommandPaletteController, CommandRegistryProvider, useOpenPalette } fro
 import { DiagnosticsController, LogsController, statusText, statusTextChars, tabBadge, useDiagnostics } from '@/features/diagnostics';
 import { PANE_LIMITS } from '../domain/LayoutDefaults';
 import { PRIMARY_SCREENS } from '../domain/PrimaryScreens';
-import { SCREENS } from '../domain/Screens';
 import { SHORTCUTS } from '../domain/Shortcuts';
 import { useActiveTabs } from '../hooks/useActiveTabs';
 import { useNarrowLayout } from '../hooks/useNarrowLayout';
@@ -28,7 +27,6 @@ import { useTheme } from '../hooks/useTheme';
 import { ProjectInfoPanel } from '../components/ProjectInfoPanel';
 import { ProfileMenuItems } from '../components/ProfileMenuItems';
 import { ProjectSwitcher } from '../components/ProjectSwitcher';
-import { ScreensNav } from '../components/ScreensNav';
 import { ShellPage } from '../pages/ShellPage';
 import type { ShellRegion, ShellTab } from '../types';
 
@@ -56,7 +54,7 @@ function ShellFrame({ children }: { children: ReactNode }) {
   // Default tabs the shell itself provides; features add more via useRegisterShellTab.
   const defaults = useMemo<Record<ShellRegion, ShellTab[]>>(
     () => ({
-      browser: [{ id: 'screens', title: 'Screens', render: () => <ScreensNav screens={SCREENS} pathname={route.pathname} /> }],
+      browser: [],
       tools: [
         {
           id: 'project',

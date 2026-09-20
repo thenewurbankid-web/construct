@@ -8,8 +8,8 @@ function CreateFirstFeature() {
       <h3>1. Create your first feature</h3>
       <ol>
         <li>
-          Open the <strong>Dashboard</strong> (Browser pane, <strong>Screens</strong> tab, or press <code>Ctrl K</code> and type &quot;dashboard&quot;) and find the <strong>Create</strong> panel (top-left
-          card).
+          Open <strong>Features</strong> (the first entry in the top bar) and choose <strong>Create</strong> in the
+          stage actions row; its form opens in the stage.
         </li>
         <li>
           Leave &quot;What to scaffold&quot; on <em>A new feature (all 7 layer folders)</em>.

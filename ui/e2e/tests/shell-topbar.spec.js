@@ -7,7 +7,7 @@ import { setTheme } from './support/cockpit.js';
 
 // Design #245 — top bar: project switcher (local projects only, reuses the
 // settings project dir and the shared folder picker), the five screens (Features / Pages / Components / Git /
-// Tests, #369; they replaced the Explore / Plan / Build / Review modes), real status pills, and the profile menu (#368). The old sidebar links live on in the Browser pane's "Screens" tab.
+// Tests, #369; they replaced the Explore / Plan / Build / Review modes), real status pills, and the profile menu (#368).
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SHOTS = path.resolve(__dirname, '../screenshots');
 fs.mkdirSync(SHOTS, { recursive: true });
@@ -60,27 +60,35 @@ test.describe('Cockpit top bar (#245)', () => {
     await page.screenshot({ path: path.join(SHOTS, '369-screen-nav-narrow.png') });
   });
 
-  test('every old sidebar screen is still one click away in the Browser pane', async ({ page }) => {
-    await page.goto('/dashboard');
-    const screens = page.getByRole('navigation', { name: 'All screens' });
-    await expect(screens.getByRole('link')).toHaveText([
-      'Dashboard',
-      'Import Wizard',
-      'Pages Editor',
-      'Workflows',
-      'Tests',
-      'Local Model',
-      'Settings',
-      'Help',
-    ]);
-    await expect(screens.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page');
-    await screens.getByRole('link', { name: 'Workflows' }).click();
+  test('every former Screens-tab target is still reachable: top bar, profile menu or palette (#370)', async ({ page }) => {
+    await page.goto('/settings');
+    // The Browser pane's Screens tab is gone; nothing in the pane lists screens any more.
+    await expect(page.getByRole('navigation', { name: 'All screens' })).toHaveCount(0);
+    await expect(page.getByRole('tab', { name: 'Screens' })).toHaveCount(0);
+
+    // Dashboard, Import Wizard, Pages Editor, Workflows, Tests, Local Model, Settings, Help:
+    // - the five primary screens are in the top bar (Dashboard became Features, Pages Editor Pages, Workflows Components);
+    // - Settings, Local Model and Help are in the profile menu;
+    // - the Import Wizard and everything else stay one palette command away.
+    const nav = page.getByRole('navigation', { name: 'Screens', exact: true });
+    await nav.getByRole('link', { name: 'Components' }).click();
     await expect(page).toHaveURL(/\/workflows$/);
-    // #248: a screen with its own Browser tab shows it first; Screens is the sibling tab.
-    await page.getByRole('tab', { name: 'Screens' }).click();
-    await expect(screens.getByRole('link', { name: 'Workflows' })).toHaveAttribute('aria-current', 'page');
-    await screens.getByRole('link', { name: 'Help' }).click();
+    await page.getByTestId('user-menu-trigger').click();
+    await page.getByTestId('profile-help').click();
     await expect(page.locator('h1')).toHaveText('Help');
+    await page.getByTestId('user-menu-trigger').click();
+    await page.getByTestId('profile-local-model').click();
+    await expect(page).toHaveURL(/\/ollama$/);
+    await page.getByTestId('user-menu-trigger').click();
+    await page.getByTestId('profile-settings').click();
+    await expect(page).toHaveURL(/\/settings$/);
+
+    await page.keyboard.press('Control+k');
+    const dialog = page.getByRole('dialog', { name: 'Command palette' });
+    await dialog.getByRole('combobox').fill('go to import wizard');
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/wizard$/);
+    await expect(nav.getByRole('link', { name: 'Features' })).toHaveAttribute('aria-current', 'page');
   });
 
   test('model pill shows the real Ollama state (offline / ready)', async ({ page }) => {

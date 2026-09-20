@@ -138,7 +138,7 @@ test.describe.serial('#365 workspace boundary', () => {
     await page.goto('/');
     const picker = page.getByRole('region', { name: 'Choose a project folder' });
     await picker.getByRole('button', { name: 'Select shop' }).click();
-    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Features', level: 1 })).toBeVisible();
     await expect(page.getByTestId('project-switcher')).toContainText('shop');
     await page.screenshot({ path: path.join(SHOTS, '365-2-project-open.png'), fullPage: true });
 
@@ -151,7 +151,7 @@ test.describe.serial('#365 workspace boundary', () => {
     await expect(reopen).toHaveText('Reopen shop');
     await page.screenshot({ path: path.join(SHOTS, '365-3-closed-reopen-offered.png'), fullPage: true });
     await reopen.click();
-    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Features', level: 1 })).toBeVisible();
     await expect(page.getByTestId('project-switcher')).toContainText('shop');
   });
 

@@ -60,8 +60,8 @@ test.describe.serial('Demo #149 (UI) -- project-gate: not-a-project -> initializ
     await page.goto('/');
     await page.getByRole('button', { name: 'Initialize Construct here' }).click();
     // The gate re-fetches status after a successful init and swaps to the
-    // wrapped route's real content (Dashboard, at "/").
-    await expect(page.locator('h1')).toHaveText('Dashboard', { timeout: 15_000 });
+    // wrapped route's real content (the Features screen, at "/").
+    await expect(page.locator('h1')).toHaveText('Features', { timeout: 15_000 });
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '149-2-gate-initialized-dashboard.png'), fullPage: true });
 
     // Real evidence the UI's init did exactly what `construct init` does on
