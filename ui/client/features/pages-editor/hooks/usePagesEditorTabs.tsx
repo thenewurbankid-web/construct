@@ -80,7 +80,9 @@ export function usePagesEditorTabs(e: Editor): void {
     () => ({
       id: 'diff',
       title: 'Diff',
-      badge: externalChange ? 1 : undefined,
+      // Declared always, valued only when a change lands: an external edit showing
+      // up must not widen this tab and shove the tablist around (#252).
+      badge: externalChange ? 1 : null,
       disabled: !tree,
       render: () => <DiffTab file={file} change={externalChange} onReload={reloadFromDisk} onDismiss={dismissExternalChange} />,
     }),

@@ -37,7 +37,19 @@ export type ShellRegion = 'browser' | 'tools' | 'drawer';
 export type ShellTab = {
   id: string;
   title: string;
-  badge?: number | string;
+  /**
+   * The little count next to the title. Three states, deliberately:
+   * `undefined` -- this tab never has one; `null` -- it has one whose value is
+   * not known yet; a value -- show it.
+   *
+   * `null` exists because of #252. A tab fed by background work (Diagnostics by
+   * `construct validate`, Diff by a file changing on disk) has no badge until
+   * that work lands, and a badge appearing widens the tab and shoves every tab
+   * after it sideways -- out from under a pointer already reaching for one.
+   * Declaring the badge up front reserves its room, so the value can arrive
+   * whenever it likes without moving anything.
+   */
+  badge?: number | string | null;
   disabled?: boolean;
   /** Shown by default (before the user picks a tab) instead of the first enabled one. */
   preferred?: boolean;
@@ -147,6 +159,10 @@ export type StatusBarProps = {
   shortcuts: ShortcutInfo[];
   /** Short validate result, e.g. `validate: 3 problems`. */
   validateStatus: string;
+  /** How many characters the longest text that readout can show takes. The
+   * button reserves that much from the start, so a background result landing
+   * cannot resize its own hit area (#252). */
+  validateStatusChars?: number;
   onOpenDiagnostics: () => void;
 };
 
@@ -176,6 +192,8 @@ export type ShellPageProps = NarrowProps & {
   onOpenProcesses: () => void;
   onOpenPalette: () => void;
   validateStatus: string;
+  /** See StatusBarProps. */
+  validateStatusChars?: number;
   onOpenDiagnostics: () => void;
   shortcuts: ShortcutInfo[];
   tabs: Record<ShellRegion, ShellTab[]>;

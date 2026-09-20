@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { pageTarget, severityCounts, sortViolations } from './Violations.ts';
-import { headline, statusText, tabBadge } from './DiagnosticsSummary.ts';
+import { headline, statusText, statusTexts, tabBadge } from './DiagnosticsSummary.ts';
 import { buildDiagnosticsView, severityLabel } from './DiagnosticsView.ts';
 import { buildLogRows } from './LogView.ts';
 import { mergeEntries, lastId } from './LogEntries.ts';
@@ -38,7 +38,7 @@ test('headline and labels are plain language', () => {
 });
 
 test('badge and status text follow the run state', () => {
-  assert.equal(tabBadge(initialDiagnostics), undefined);
+  assert.equal(tabBadge(initialDiagnostics), null);
   const ready = diagnosticsReducer(initialDiagnostics, { type: 'RESULT', violations: [v('error')], total: 1, truncated: false, durationMs: 5 });
   assert.equal(tabBadge(ready), 1);
   assert.equal(statusText(ready), 'validate: 1 problem');
@@ -111,4 +111,35 @@ test('buildLogRows formats the time as HH:MM:SS', () => {
   const at = new Date(2026, 0, 2, 3, 4, 5).getTime();
   const [row] = buildLogRows([{ id: 7, at, source: 'validate', level: 'warn', text: 't' }]);
   assert.deepEqual(row, { id: 7, time: '03:04:05', source: 'validate', level: 'warn', text: 't' });
+});
+
+// #252: a background validate finishing must not move the shell's controls.
+test('the badge reserves its slot before the first result, and keeps the last count while re-running', () => {
+  // null, not undefined: "there is a badge here, value unknown". TabHost reserves
+  // its room, so the first result cannot shove the tabs beside it sideways.
+  assert.equal(tabBadge(initialDiagnostics), null);
+  assert.equal(tabBadge(diagnosticsReducer(initialDiagnostics, { type: 'RUN' })), null, 'the very first run still has nothing to show');
+
+  const ready = diagnosticsReducer(initialDiagnostics, { type: 'RESULT', violations: [v('error'), v('warning')], total: 2, truncated: false, durationMs: 5 });
+  assert.equal(tabBadge(ready), 2);
+  // The reducer keeps the previous result visible while re-running; the badge
+  // now agrees with it instead of blanking and bouncing the tabs left and back.
+  assert.equal(tabBadge(diagnosticsReducer(ready, { type: 'RUN' })), 2);
+  assert.equal(tabBadge(diagnosticsReducer(ready, { type: 'FAIL', error: 'boom' })), 2);
+  // 0 is a result, not an absence.
+  assert.equal(tabBadge(diagnosticsReducer(ready, { type: 'RESULT', violations: [], total: 0, truncated: false, durationMs: 4 })), 0);
+});
+
+test('statusTexts covers every text statusText produces, for the status bar to size itself against', () => {
+  const texts = statusTexts();
+  const produced = [
+    statusText(initialDiagnostics),
+    statusText(diagnosticsReducer(initialDiagnostics, { type: 'RUN' })),
+    statusText(diagnosticsReducer(initialDiagnostics, { type: 'FAIL', error: 'x' })),
+    statusText(diagnosticsReducer(initialDiagnostics, { type: 'RESULT', violations: [], total: 0, truncated: false, durationMs: 1 })),
+    statusText(diagnosticsReducer(initialDiagnostics, { type: 'RESULT', violations: [v('error')], total: 1, truncated: false, durationMs: 1 })),
+  ];
+  for (const text of produced) assert.ok(texts.includes(text), `statusTexts is missing ${text}`);
+  assert.equal(new Set(texts).size, texts.length, 'no duplicates to render invisibly');
+  assert.ok(texts.some((t) => /\d{3} problems/.test(t)), 'sized for a 3-digit count');
 });
