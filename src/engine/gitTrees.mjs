@@ -137,6 +137,37 @@ function sweepDeadRoots(tmp, repo) {
   }
 }
 
+/**
+ * #351 -- remove exactly what ONE other process left behind: its `construct-prhealth-<pid>-*` directory
+ * and the `git worktree` registrations under it. Used by whoever stopped that process (a cancelled
+ * analysis whose worker had to be killed before its own cleanup could run). Surgical: only that pid's
+ * directory is touched, and `worktree prune` runs only if a registration under it is still listed.
+ * Refuses our own pid and a pid that is still alive. Returns what it removed, for the caller to verify.
+ */
+export function reclaimTreesOf(pid, cwd) {
+  const removed = [];
+  if (!Number.isInteger(pid) || pid <= 0 || pid === process.pid) return removed;
+  try { process.kill(pid, 0); return removed; } catch (x) { if (x.code !== 'ESRCH') return removed; }
+  const info = repoInfo(cwd);
+  const tmp = fs.realpathSync(os.tmpdir());
+  let entries = [];
+  try { entries = fs.readdirSync(tmp, { withFileTypes: true }); } catch { /* nothing to reclaim */ }
+  for (const e of entries) {
+    if (!e.isDirectory() || !e.name.startsWith(`${ROOT_PREFIX}${pid}-`)) continue;
+    const dir = path.join(tmp, e.name);
+    const registered = () => info.ok && git(info.top, ['worktree', 'list', '--porcelain']).stdout.split('\n').some((l) => l.startsWith(`worktree ${dir}`));
+    if (info.ok && registered()) {
+      for (const l of git(info.top, ['worktree', 'list', '--porcelain']).stdout.split('\n')) {
+        if (l.startsWith(`worktree ${dir}`)) git(info.top, ['worktree', 'remove', '--force', l.slice('worktree '.length)]);
+      }
+    }
+    try { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 3 }); } catch { /* best effort */ }
+    if (registered()) git(info.top, ['worktree', 'prune']);
+    removed.push(dir);
+  }
+  return removed;
+}
+
 function tempRoot(repo) {
   if (!root) {
     const tmp = fs.realpathSync(os.tmpdir());

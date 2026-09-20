@@ -19,6 +19,7 @@ import { processSummary, createProcess } from '../../../src/engine/processModel.
 import { createProcessEngine } from '../../../src/engine/processEngine.mjs';
 import { createBotRunner, botBranch } from '../../../src/engine/botRunner.mjs';
 import { createApprovalGate, GATE_CODES } from '../../../src/engine/approvalGate.mjs';
+import { composeExecutors } from './reviewAnalyses.mjs';
 
 /** The UI verbs and the machine event each one sends. The client may only
  * name a verb; whether it is legal now is decided by the machine. */
@@ -78,8 +79,10 @@ function runGit(cwd, args) {
  * @param {() => string} options.getProjectDir the project directory the Cockpit is pointed at right now
  * @param {string} [options.stateDir]
  * @param {(ctx: any) => Promise<any>} [options.executeStep] defaults to the real bot runner (#291)
+ * @param {{executeStep: Function}} [options.reviewExecutor] #351: runs `review.analyze` steps (read-only, no
+ *   worktree, no branch, never any artifact); every other flow still goes to the bot runner
  */
-export function createProcessesService({ getProjectDir, stateDir = resolveStateDir(), executeStep = null } = {}) {
+export function createProcessesService({ getProjectDir, stateDir = resolveStateDir(), executeStep = null, reviewExecutor = null } = {}) {
   /** project root -> { store, engine, root } */
   const projects = new Map();
   const listeners = new Set();
@@ -95,7 +98,8 @@ export function createProcessesService({ getProjectDir, stateDir = resolveStateD
   const engineOptions = () => {
     if (executor) return { executeStep: executor };
     runner ||= createBotRunner({ stateDir });
-    return { executeStep: runner.executeStep, maxConcurrent: runner.maxConcurrent };
+    const bot = runner.executeStep;
+    return { executeStep: reviewExecutor ? composeExecutors({ bot, review: reviewExecutor.executeStep }) : bot, maxConcurrent: runner.maxConcurrent };
   };
 
   function open() {
