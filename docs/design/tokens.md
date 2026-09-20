@@ -109,3 +109,7 @@ layers, theme-independent, so a new surface picks a layer instead of a number.
 Rule: popovers open inside the top bar's stacking context, so they beat the
 drawer (20) but a modal always beats a popover. Proposal only: `globals.css` is
 not changed by this document; the implementation slice is #298.
+
+Implemented in #298: the tokens live in `ui/client/app/tokens.css` and replace the literals in
+`shell.css`, `navigation.css` and `cockpit-drawer.css`. Two overlay backdrops outside the scale remain
+(`.ts-backdrop`, 60, tests clone dialog; `.jsx-flow-node-toolbar`, 1, local) and are not popovers.
