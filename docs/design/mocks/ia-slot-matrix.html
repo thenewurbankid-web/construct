@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Five screens, four slots - Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="ia.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+</head><body>
+<div class="concept">Concept - not implemented <span>Five screens, four slots</span></div>
+
+<div class="hh">Every screen fills the same four slots<small>Left = browse, Center = the thing itself, Right = inspect and act (verbs are tabs), Bottom = run and approve. A slot is a registered tab list, not a hard-wired panel.</small></div>
+<table class="mx"><tr><th></th><th>Left panel (browse)</th><th>Center stage</th><th>Right panel (verb tabs)</th><th>Bottom panel (run)</th></tr>
+<tr><td>Features</td><td><span><b>Tabs</b>Notes | Features</span><span>Saved notes, feature tree with summaries</span></td><td><span>Your note and its impact table</span><span>Feature summary and its flow</span><span>Create / Refactor / Import forms</span></td><td><span><b>Verbs</b>Note | Impact | Plan</span><span>Plan steps tagged Deterministic / Local model / You</span></td><td>Processes, Approvals, Diagnostics, Logs</td></tr>
+<tr><td>Pages</td><td><span><b>Tabs</b>Pages | Flow</span><span>Route tree, flow tree</span></td><td>Live preview, click to select</td><td><span><b>Verbs</b>Inspector | Scope | Source | Diff</span></td><td>same bottom panel</td></tr>
+<tr><td>Components</td><td><span><b>Tabs</b>Components | Workflows</span><span>Component tree, state machines</span></td><td><span>Component in isolation</span><span>or workflow diagram / narrative</span></td><td><span><b>Verbs</b>Inspector | Used by | Source | Diff | Flow</span></td><td>same bottom panel</td></tr>
+<tr><td>Git</td><td><span><b>Tabs</b>Changes | Branches | PRs | Commits</span><span>Changed-file tree, branch and PR lists</span></td><td><span>Change view, blast radius</span><span>Connect / clone a remote (empty state)</span></td><td><span><b>Verbs</b>Findings | Detail | Plan match | Commit (auto-commit, branch, dirty tree)</span><span>Review lives here, inside Git</span></td><td>Analysis process, Approvals for auto-fix</td></tr>
+<tr><td>Tests</td><td><span><b>Tabs</b>Tests | Coverage</span><span>Scenario and test list</span></td><td>Test steps document, run result</td><td><span><b>Verbs</b>Edit step | Record | Freshness</span></td><td>Test runs as processes</td></tr>
+</table>
+<p class="note">Git holds source control (changes, branches, commits), pull requests and Review. Not screens: Settings, Local model, Help, account and sign-out (top-right profile menu); the project switcher (top bar); the command palette (Ctrl K). The bottom panel is identical on every screen, so a running process or a waiting approval is never more than one keypress away (Ctrl J).</p>
+</body></html>

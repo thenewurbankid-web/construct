@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Notes: durable states - Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="ia.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+</head><body>
+<div class="concept">Concept - not implemented <span>Notes: durable states</span></div>
+
+<div class="hh">Notes: durable, per project, on this machine<small>Autosaved on the server into the per-user state directory. Never committed, never sent to a model unless you press a model step.</small></div>
+<div class="sheet3">
+ <div><h3>While you type</h3>
+  <div class="card"><b>Saving</b><div><span class="saveind busy"><span class="spin"></span> Saving...</span></div><p>Fires 800 ms after you stop typing. The text is never blocked.</p></div>
+  <div class="card"><b>Saved</b><div><span class="saveind ok">&#10003; Saved on this machine &middot; 12:41</span></div><p>Reload the page or restart the Cockpit and the note is still there.</p></div>
+  <div class="card"><b>Empty</b><div><span class="saveind">No notes yet</span></div><p>Describe a change you want. It saves as you go.</p><div><button class="btn primary sm">New note</button></div></div></div>
+ <div><h3>When something is wrong</h3>
+  <div class="card"><b>Changed somewhere else</b><div><span class="saveind warn">&#9888; This note changed in another tab</span></div><p>Two tabs edited the same note. Nothing is overwritten. Choose which copy wins.</p><div><button class="btn sm primary">Keep mine</button> <button class="btn sm">Load theirs</button> <button class="btn sm">Compare</button></div></div>
+  <div class="card"><b>Could not save</b><div><span class="saveind bad">&#10005; Not saved &middot; disk full</span></div><p>Your text stays in the page. Free some space and press Retry. Do not close the tab yet.</p><div><button class="btn sm primary">Retry</button></div></div></div>
+ <div><h3>Life of a note</h3>
+  <div class="card"><b>Draft</b><div><span class="st draft">Draft</span></div><p>Editable. Autosaved. Listed under Features, Notes.</p></div>
+  <div class="card"><b>Plan ready</b><div><span class="st ready">Plan ready</span></div><p>Steps proposed and tagged. Still editable; editing the text marks the plan Out of date.</p></div>
+  <div class="card"><b>Ran</b><div><span class="st run">Ran</span> Process #12</div><p>Pressing Run copies the note and plan into a process record. The note becomes read-only history; duplicate it to iterate.</p></div></div>
+</div>
+</body></html>

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Narrow (390 px): one panel at a time - Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="ia.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+</head><body>
+<div class="concept">Concept - not implemented <span>Narrow (390 px): one panel at a time</span></div>
+<div class="sheet3" style="grid-template-columns:repeat(3,390px);justify-content:space-between">
+ <div><h3 style="margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted)">Browse: notes</h3><div class="narrow" style="position:relative;height:780px">
+ <div class="topbar" style="height:44px;flex:none"><div class="brand"><i></i>Cockpit</div><span class="spacer"></span><span class="pill run"><span class="spin"></span>2</span><span class="avatar" aria-label="Account">SP</span></div>
+ <nav class="snav" aria-label="Screens" style="height:38px;overflow:hidden;border-bottom:1px solid var(--border-subtle);flex:none;margin:0;padding:0 4px"><a class="on" style="padding:0 9px;font-size:12px">Features</a><a class="" style="padding:0 9px;font-size:12px">Pages</a><a class="" style="padding:0 9px;font-size:12px">Comp.</a><a class="" style="padding:0 9px;font-size:12px">Git</a><a class="" style="padding:0 9px;font-size:12px">Tests</a></nav>
+ <div style="flex:1;overflow:hidden;position:relative"><div class="sect">Notes &middot; 3</div><div class="tree" style="padding:0 6px">
+   <div class="dr sel"><span class="n">Refund a delivered order</span><span class="st draft">Draft</span><span class="s">Saved 12:41</span></div><div class="dr"><span class="n">Guest checkout</span><span class="st ready">Plan ready</span><span class="s">5 steps</span></div><div class="dr"><span class="n">Split cart totals</span><span class="st run">Ran</span><span class="s">Process #12</span></div></div></div>
+ <div class="tabbar" role="tablist"><div class="on" role="tab">Browse</div><div class="" role="tab">Stage</div><div class="" role="tab">Inspect</div><div class="" role="tab">Run <span class="badge acc">2</span></div></div></div></div>
+ <div><h3 style="margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted)">Run: processes and approvals</h3><div class="narrow" style="position:relative;height:780px">
+ <div class="topbar" style="height:44px;flex:none"><div class="brand"><i></i>Cockpit</div><span class="spacer"></span><span class="pill run"><span class="spin"></span>2</span><span class="avatar" aria-label="Account">SP</span></div>
+ <nav class="snav" aria-label="Screens" style="height:38px;overflow:hidden;border-bottom:1px solid var(--border-subtle);flex:none;margin:0;padding:0 4px"><a class="on" style="padding:0 9px;font-size:12px">Features</a><a class="" style="padding:0 9px;font-size:12px">Pages</a><a class="" style="padding:0 9px;font-size:12px">Comp.</a><a class="" style="padding:0 9px;font-size:12px">Git</a><a class="" style="padding:0 9px;font-size:12px">Tests</a></nav>
+ <div style="flex:1;overflow:hidden;position:relative"><div style="padding:10px;display:grid;gap:10px"><div class="card"><b>plan &middot; refund a delivered order</b><div class="bar-track" style="width:100%"><div class="bar-fill" style="width:60%"></div></div><span class="saveind">Step 3 of 5 &middot; <span class="tag llm">Local model</span></span><div><button class="btn sm">Pause</button> <button class="btn sm danger">Cancel</button></div></div><div class="card"><b>1 approval waiting</b><p>Fix: route RefundForm through useRefundForm</p><button class="btn sm primary">Review diff</button></div></div></div>
+ <div class="tabbar" role="tablist"><div class="" role="tab">Browse</div><div class="" role="tab">Stage</div><div class="" role="tab">Inspect</div><div class="on" role="tab">Run <span class="badge acc">2</span></div></div></div></div>
+ <div><h3 style="margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted)">Account menu (sheet)</h3><div class="narrow" style="position:relative;height:780px">
+ <div class="topbar" style="height:44px;flex:none"><div class="brand"><i></i>Cockpit</div><span class="spacer"></span><span class="pill run"><span class="spin"></span>2</span><span class="avatar" aria-label="Account">SP</span></div>
+ <nav class="snav" aria-label="Screens" style="height:38px;overflow:hidden;border-bottom:1px solid var(--border-subtle);flex:none;margin:0;padding:0 4px"><a class="on" style="padding:0 9px;font-size:12px">Features</a><a class="" style="padding:0 9px;font-size:12px">Pages</a><a class="" style="padding:0 9px;font-size:12px">Comp.</a><a class="" style="padding:0 9px;font-size:12px">Git</a><a class="" style="padding:0 9px;font-size:12px">Tests</a></nav>
+ <div style="flex:1;overflow:hidden;position:relative"><div style="padding:14px;color:var(--text-muted)">Stage content is dimmed behind the sheet.</div><div class="menu" style="top:auto;bottom:0;left:0;right:0;width:auto;border-radius:var(--r-lg) var(--r-lg) 0 0">
+  <div class="who"><span class="avatar">SP</span><div><b>shashank-p</b><small>Signed in with GitHub</small></div></div>
+  <div class="mgrp">Preferences</div>
+  <div class="mi on"><span class="g">&#9881;</span>Settings<span class="r">Git, commits, model choice</span></div>
+  <div class="mi"><span class="g">&#9673;</span>Local model<span class="r"><span class="pill ok" style="height:20px;padding:0 8px"><span class="dot"></span>Ready</span></span></div>
+  <div class="mi"><span class="g">&#9680;</span>Theme<span class="r"><span class="seg"><button>Dark</button><button>Light</button><button class="on">System</button></span></span></div>
+  <div class="msep"></div>
+  <div class="mi"><span class="g">?</span>Help and shortcuts<span class="r"><kbd>?</kbd></span></div>
+  <div class="msep"></div>
+  <div class="mi"><span class="g">&#8677;</span>Sign out<span class="r">Ends this session only</span></div></div></div>
+ <div class="tabbar" role="tablist"><div class="" role="tab">Browse</div><div class="on" role="tab">Stage</div><div class="" role="tab">Inspect</div><div class="" role="tab">Run <span class="badge acc">2</span></div></div></div></div>
+</div>
+</body></html>
