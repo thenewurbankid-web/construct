@@ -27,6 +27,7 @@ import { attachProcessesSocket } from './processesSocket.mjs';
 import { createReviewRouter } from './reviewApi.mjs';
 import { createTestsRouter } from './testsApi.mjs';
 import { createReviewJobs } from './reviewJobs.mjs';
+import { createReviewExecutor, createAnalyses } from './reviewAnalyses.mjs';
 import { createPlanSource } from './reviewPlans.mjs';
 import { refuseUnknownUpgrades } from './wsUpgrade.mjs';
 import { getOllamaStatus, listOllamaModels, startOllamaPull, removeOllamaModel } from './ollama.mjs';
@@ -808,7 +809,10 @@ app.get('/api/logs', (req, res) => {
 
 // #292: the Processes drawer. Registered below the gate like every other
 // `/api` route; the WebSocket (createUiServer) takes the same `auth`.
-export const processesService = createProcessesService({ getProjectDir: () => getSettings().projectDir });
+// #351: `review.analyze` steps (a Review-mode analysis) run in the read-only review executor, never in the
+// bot runner: no worktree, no bot branch, no artifacts, so they can never reach the approval gate.
+export const reviewExecutor = createReviewExecutor();
+export const processesService = createProcessesService({ getProjectDir: () => getSettings().projectDir, reviewExecutor });
 app.use('/api/processes', createProcessesRouter(processesService));
 
 // #289/#332: Plan mode. Below the gate like every other `/api` route. The plan comes from the browser, so
@@ -823,10 +827,12 @@ app.use('/api/plan', createPlanRouter(planService));
 // #312/#313: Review mode (read-only). Registered below the gate like every other `/api` route. The
 // repository is always the current project's -- the client sends branch names only, and each is
 // checked against `git for-each-ref` of that repository (reviewRefs.mjs). The synchronous PR-health
-// engine runs in a child process per job (reviewJobs.mjs), never on this request thread.
-export const reviewJobs = createReviewJobs();
+// engine runs in a child process per job (reviewRunner.mjs), never on this request thread, and each job is a
+// Process (#351) in the Processes drawer.
+export const reviewJobs = createReviewJobs({ analyses: createAnalyses({ service: processesService, results: reviewExecutor.results }) });
 app.use('/api/review', createReviewRouter({
   jobs: reviewJobs,
+  clientOrigin: CLIENT_ORIGIN,
   // #316: the saved plans of the current project are the plans of its processes (the store lists them).
   plans: createPlanSource({ records: () => processesService.store()?.all().processes }),
   getRoot: () => {

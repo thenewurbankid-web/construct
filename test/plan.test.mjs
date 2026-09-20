@@ -161,6 +161,10 @@ const EVERY_FLOW_STEPS = [
     args: { format: 'json' }, dependsOn: ['s-controller'],
   },
   {
+    id: 's-review', title: 'Review the change against main', flow: 'review.analyze', executor: 'deterministic',
+    args: { base: 'main', head: 'feat/checkout', plan: { features: ['checkout'], files: ['features/checkout/index.ts'] } }, dependsOn: ['s-validate'],
+  },
+  {
     id: 's-sync', title: 'Regenerate the rule config and public API barrels', flow: 'sync', executor: 'deterministic',
     args: {}, dependsOn: ['s-controller'],
     touches: { features: ['checkout'], files: [{ path: '.dependency-cruiser.cjs', change: 'modify' }] },
@@ -345,6 +349,7 @@ test('planToCommand reproduces the documented CLI usage line for each command sh
   assert.deepEqual(cmd('research.workflow'), ['research', 'workflow', 'checkout', 'CheckoutWorkflow.ts', '--format', 'prose']);
   assert.deepEqual(cmd('research.doctor'), ['research', 'doctor']);
   assert.deepEqual(cmd('validate'), ['validate', '--format', 'json']);
+  assert.deepEqual(cmd('review.analyze'), ['review', 'main', 'feat/checkout', '--plan', '{{plan}}']);
   assert.deepEqual(cmd('sync'), ['sync']);
   assert.deepEqual(cmd('pipeline.run'), ['pipeline', 'run']);
 });
@@ -649,4 +654,30 @@ test('planTouches rolls the per-step expectations up, deduplicated, with the ste
 test('planTouches tolerates a plan that is still being assembled', () => {
   assert.deepEqual(planTouches(undefined), { features: [], files: [] });
   assert.deepEqual(planTouches({ steps: [{ id: 'a' }] }), { features: [], files: [] });
+});
+
+// ---------------------------------------------------------------------------
+// #351 -- review.analyze: a read-only flow, so an analysis is the same block a human or a plan would use
+// ---------------------------------------------------------------------------
+
+test('review.analyze is read-only and deterministic by registry, so it needs no touches and can never claim a model', () => {
+  const flow = PLAN_FLOWS['review.analyze'];
+  assert.equal(flow.writes, false);
+  assert.deepEqual(flow.executors, ['deterministic']);
+  const plan = createPlan(TICKET, [{ id: 'r', title: 'Review', flow: 'review.analyze', executor: 'deterministic', args: { base: 'main', head: 'x' } }]);
+  assert.equal(validatePlan(plan).valid, true, 'no touches are required');
+  plan.steps[0].executor = 'local-model';
+  assert.ok(codes(plan).includes('STEP_EXECUTOR_NOT_ALLOWED'));
+});
+
+test('review.analyze: base and head are required, the optional scope is checked, and old plans are unaffected', () => {
+  const mk = (args) => createPlan(TICKET, [{ id: 'r', title: 'Review', flow: 'review.analyze', executor: 'deterministic', args }]);
+  assert.ok(codes(mk({ head: 'x' })).includes('STEP_ARG_MISSING'));
+  assert.ok(codes(mk({ base: 'main' })).includes('STEP_ARG_MISSING'));
+  assert.ok(codes(mk({ base: 'a', head: 'b', plan: { features: 'billing' } })).includes('STEP_ARG_TYPE'));
+  assert.ok(codes(mk({ base: 'a', head: 'b', plan: { files: [''] } })).includes('STEP_ARG_TYPE'));
+  assert.ok(codes(mk({ base: 'a', head: 'b', plan: { extra: [] } })).includes('STEP_ARG_TYPE'));
+  assert.equal(validatePlan(mk({ base: 'a', head: 'b', plan: { features: ['billing'], files: ['a.ts'] } })).valid, true);
+  assert.equal(ajvValidate(mk({ base: 'a', head: 'b', plan: { features: ['billing'] } })), true);
+  assert.equal(ajvValidate(mk({ base: 'a', head: 'b', plan: { features: 'billing' } })), false, 'the schema agrees with the validator');
 });

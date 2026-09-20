@@ -23,16 +23,6 @@ export async function fetchBranches(base?: string): Promise<{ ok: true; data: Br
   }
 }
 
-/** Ask the server to analyse these branches against `base` (idempotent; the work happens off the request thread). */
-export async function requestAnalysis(base: string, heads: string[], plan?: string | null): Promise<boolean> {
-  try {
-    const body = await postJson<{ ok?: boolean }>('/api/review/analyze', { base, heads, ...(plan ? { plan } : {}) });
-    return !!body.ok;
-  } catch {
-    return false;
-  }
-}
-
 /** One change: its state, and the full report once the analysis is done. `plan` is a saved plan's id. */
 export async function fetchChange(base: string, head: string, plan?: string | null): Promise<{ ok: true; data: ChangeResponse } | ApiFailure> {
   try {

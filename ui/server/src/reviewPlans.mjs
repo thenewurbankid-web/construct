@@ -6,6 +6,7 @@
 // shell. What travels on to the engine is the plan's own declared `touches` (planTouches), read from the
 // stored record -- never anything the client sent. Read-only: nothing here writes to the store.
 import { planTouches } from '../../../src/plan.mjs';
+import { isAnalysisPlan } from './reviewAnalyses.mjs';
 
 const pathOf = (f) => (typeof f === 'string' ? f : f?.path);
 
@@ -24,7 +25,7 @@ export function createPlanSource({ records }) {
   const all = () => {
     let list;
     try { list = records() ?? []; } catch { list = []; }
-    return list.filter((r) => r && typeof r.id === 'string' && r.plan).map(choiceOf);
+    return list.filter((r) => r && typeof r.id === 'string' && r.plan && !isAnalysisPlan(r.plan)).map(choiceOf);
   };
   return {
     /** Every plan the picker may offer: `{id, title, state, features, files}`. */

@@ -248,6 +248,7 @@
             "research.workflow",
             "research.doctor",
             "validate",
+            "review.analyze",
             "sync",
             "pipeline.run",
             "manual.task"
@@ -1361,6 +1362,60 @@
             ],
             "properties": {
               "flow": {
+                "const": "review.analyze"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "base": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The base commit (or ref) the change is compared against."
+                  },
+                  "head": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The head commit (or ref) of the change under review."
+                  },
+                  "plan": {
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/expectedScope"
+                      }
+                    ],
+                    "description": "The scope the change is expected to stay inside: { features, files }. Optional; without it the scope indicator is not measured."
+                  },
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": [
+                  "base",
+                  "head"
+                ]
+              },
+              "executor": {
+                "enum": [
+                  "deterministic"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
                 "const": "sync"
               }
             }
@@ -1484,6 +1539,27 @@
           }
         }
       ]
+    },
+    "expectedScope": {
+      "type": "object",
+      "description": "The scope a change is expected to stay inside, as review.analyze compares it: the features and the project-relative files a plan declared. The same shape planTouches() returns.",
+      "additionalProperties": false,
+      "properties": {
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
     }
   }
 }

@@ -17,6 +17,8 @@ export function describeFailure(code: string | null | undefined, message: string
       return { title: 'That branch is not in this project', what: detail || 'The branch you asked for does not exist here (it may have been deleted or renamed).', next: 'Go back to the list and pick one of the branches shown.', actions: ['list', 'retry'] };
     case 'BAD_PLAN':
       return { title: 'That plan is not saved in this project', what: detail || 'The plan you picked is not one of this project\'s saved plans (it may have been removed).', next: 'Review without a plan, or pick one of the saved plans.', actions: ['no-plan', 'list'] };
+    case 'CANCELLED':
+      return { title: 'The analysis was cancelled', what: 'It was stopped before it finished, from here or from the Processes drawer. Nothing was changed in your repository, and its temporary checkouts were removed.', next: 'Run it again when you want the result.', actions: ['retry', 'list'] };
     case 'TIMEOUT':
       return { title: 'The analysis took too long and was stopped', what: `${detail || 'The analysis ran past its time limit and was stopped.'} Nothing was changed in your repository.`, next: 'Try again. If it keeps happening, review a smaller change or compare against a nearer base branch.', actions: RETRY_BACK };
     case 'GIT_FAILED':

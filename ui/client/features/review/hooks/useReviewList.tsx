@@ -1,7 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import { fetchBranches, requestAnalysis } from '../services/ReviewApi';
+import { fetchBranches } from '../services/ReviewApi';
+import { requestAnalysis } from '../services/AnalysisApi';
+import { headsToStart, isLive } from '../domain/AnalysisStart';
 import { initialList, listIsSettling, listReducer } from '../workflows/ListMachine';
 import type { ListOrder } from '../types';
 
@@ -17,6 +19,7 @@ export function useReviewList(baseFromRoute: string | null) {
   const [base, setBase] = useState<string | null>(baseFromRoute);
   const [tick, setTick] = useState(0);
   const asked = useRef<string>('');
+  const forced = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -26,13 +29,14 @@ export function useReviewList(baseFromRoute: string | null) {
       if (cancelled) return;
       if (!r.ok) return dispatch({ type: 'FAILED', error: r.error, code: r.code });
       dispatch({ type: 'LOADED', data: r.data });
-      const heads = r.data.branches.filter((b) => b.analysis.state === 'none').map((b) => b.name);
+      const heads = headsToStart(r.data.branches, forced.current);
+      forced.current = false;
       const key = `${r.data.base}|${r.data.branches.map((b) => b.sha).join(',')}`;
       if (r.data.base && heads.length && asked.current !== key) {
         asked.current = key;
         await requestAnalysis(r.data.base, heads);
       }
-      const settling = r.data.branches.some((b) => b.analysis.state === 'none' || b.analysis.state === 'queued' || b.analysis.state === 'running');
+      const settling = heads.length > 0 || r.data.branches.some((b) => isLive(b.analysis.state));
       if (!cancelled && settling) timer = setTimeout(read, POLL_MS);
     }
     read();
@@ -43,10 +47,7 @@ export function useReviewList(baseFromRoute: string | null) {
   }, [base, tick]);
 
   const setOrder = useCallback((order: ListOrder) => dispatch({ type: 'ORDER', order }), []);
-  const reanalyse = useCallback(() => {
-    asked.current = '';
-    setTick((t) => t + 1);
-  }, []);
+  const reanalyse = useCallback(() => { asked.current = ''; forced.current = true; setTick((t) => t + 1); }, []);
 
   return { state, base: base ?? state.data?.base ?? null, setBase, setOrder, reload: reanalyse, settling: listIsSettling(state) };
 }

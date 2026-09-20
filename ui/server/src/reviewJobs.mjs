@@ -1,94 +1,54 @@
-// #312/#313 -- the analysis queue behind Review mode.
+// #312/#313/#351 -- the analyses behind Review mode, keyed by what they analyse.
 //
-// The PR-health engine is synchronous and can take seconds, so it NEVER runs on the server's request
-// thread: each job is one forked child process (reviewWorker.mjs). Jobs run one at a time (the box is
-// small and each job checks out two trees), are keyed by (root, base commit, head commit) so asking
-// twice is free and a moved branch is a new key, and finished results are kept in a bounded cache.
-// A child that exceeds the timeout is killed, and so is every child when the server stops.
-import { fork } from 'node:child_process';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const HERE = path.dirname(fileURLToPath(import.meta.url));
-const WORKER = path.join(HERE, 'reviewWorker.mjs');
-export const JOB_TIMEOUT_MS = 180_000;
-const MAX_CACHED = 100;
-
-const children = new Set();
-process.on('exit', () => { for (const c of children) c.kill('SIGKILL'); });
-
-/** Default runner: one child process per job. Resolves to the worker's result object; never rejects. */
-export function forkRunner(job, { timeoutMs = JOB_TIMEOUT_MS } = {}) {
-  return new Promise((resolve) => {
-    const child = fork(WORKER, [], { execArgv: [], stdio: ['ignore', 'ignore', 'inherit', 'ipc'] });
-    children.add(child);
-    let settled = false;
-    const finish = (result) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      children.delete(child);
-      if (!child.killed) child.kill('SIGKILL');
-      resolve(result);
-    };
-    const timer = setTimeout(() => finish({ ok: false, error: { code: 'TIMEOUT', message: `The analysis took longer than ${Math.round(timeoutMs / 1000)} seconds and was stopped.` } }), timeoutMs);
-    child.once('message', (m) => finish(m));
-    child.once('error', (e) => finish({ ok: false, error: { code: 'WORKER_FAILED', message: String(e.message || e) } }));
-    child.once('exit', (code) => finish({ ok: false, error: { code: 'WORKER_FAILED', message: `The analysis process stopped unexpectedly (exit ${code}).` } }));
-    child.send(job);
-  });
-}
+// Each analysis is a Process (reviewAnalyses.mjs): it is in the Processes drawer, queued behind the
+// engine's own slot, and cancellable with the machine's own controls. This file only remembers WHICH
+// process analyses WHICH comparison, so asking twice is free and a moved branch (a new commit id) is a new
+// analysis. The state of a job is never copied here: it is read from the process record each time.
+//
+// The key is (project root, base commit, head commit, plan). A finished, running or queued analysis is
+// served as it is; a failed, cancelled or vanished one is started again on the next ask.
 
 /**
- * @param {{run?: (job:object)=>Promise<object>}} [opts] `run` is the test seam; the default forks a child.
+ * @param {{analyses: {start:Function, stateOf:Function, cancel:Function}}} deps see createAnalyses()
  */
-export function createReviewJobs({ run = forkRunner } = {}) {
-  const entries = new Map(); // key -> {state:'queued'|'running'|'done'|'error', result?, error?}
-  const queue = [];
-  let busy = false;
-
+export function createReviewJobs({ analyses }) {
+  const known = new Map(); // key -> processId
   const keyOf = ({ root, baseSha, headSha, planKey }) => `${root}\0${baseSha}\0${headSha}\0${planKey ?? ''}`;
+  const MAX_KEYS = 500;
+  const LIVE = new Set(['queued', 'running', 'paused']);
 
-  function pump() {
-    if (busy) return;
-    const next = queue.shift();
-    if (!next) return;
-    busy = true;
-    const entry = entries.get(next.key);
-    entry.state = 'running';
-    Promise.resolve()
-      .then(() => run(next.job))
-      .catch((e) => ({ ok: false, error: { code: 'WORKER_FAILED', message: String(e?.message || e) } }))
-      .then((result) => {
-        if (result?.ok) Object.assign(entry, { state: 'done', result });
-        else Object.assign(entry, { state: 'error', error: result?.error ?? { code: 'WORKER_FAILED', message: 'The analysis produced no result.' } });
-        trim();
-      })
-      .finally(() => { busy = false; pump(); });
-  }
-
-  function trim() {
-    for (const [k, v] of entries) {
-      if (entries.size <= MAX_CACHED) break;
-      if (v.state === 'done' || v.state === 'error') entries.delete(k);
-    }
-  }
+  const stateOfKey = (key) => {
+    const id = known.get(key);
+    return id ? analyses.stateOf(id) : { state: 'none' };
+  };
 
   return {
-    /** Queue a job unless one for the same commits is already known. Returns the entry. */
+    /** Start the analysis unless one for the same comparison is live or finished. Returns its state. */
     enqueue(job) {
       const key = keyOf(job);
-      const known = entries.get(key);
-      if (known && known.state !== 'error') return known;
-      const entry = { state: 'queued' };
-      entries.set(key, entry);
-      queue.push({ key, job });
-      pump();
-      return entry;
+      const current = stateOfKey(key);
+      if (current.state !== 'none' && current.state !== 'error' && current.state !== 'cancelled') return current;
+      const started = analyses.start(job);
+      if (!started.ok) return { state: 'error', error: { code: 'START_FAILED', message: started.error } };
+      known.delete(key);
+      known.set(key, started.processId);
+      while (known.size > MAX_KEYS) known.delete(known.keys().next().value);
+      return analyses.stateOf(started.processId);
     },
-    /** The current entry, or `{state:'none'}`. */
-    get: (job) => entries.get(keyOf(job)) ?? { state: 'none' },
-    /** For tests and status: how many jobs are waiting or running. */
-    pending: () => queue.length + (busy ? 1 : 0),
+    /** The current state (`{state, processId?, result?, error?}`), or `{state:'none'}`. */
+    get: (job) => stateOfKey(keyOf(job)),
+    /** Cancel the live analysis of this comparison with the machine's own CANCEL. -> {status, body} | null when none is live. */
+    cancel(job) {
+      const key = keyOf(job);
+      const current = stateOfKey(key);
+      if (!LIVE.has(current.state)) return null;
+      return analyses.cancel(current.processId);
+    },
+    /** How many analyses are waiting or running (tests and status). */
+    pending() {
+      let n = 0;
+      for (const key of known.keys()) if (LIVE.has(stateOfKey(key).state)) n += 1;
+      return n;
+    },
   };
 }

@@ -16,12 +16,13 @@ export type ReviewChangePageProps = {
   finding: FindingDetailView | null;
   units: UnitSummariesProps | null;
   onBack: () => void;
+  onCancel: () => void;
   onFailureAction: (a: FailureAction) => void;
   onCloseFinding: () => void;
 };
 
 // Presentation-only: every value and handler comes from the controller.
-export function ReviewChangePage({ status, head, base, subject, headline, failure, degraded, scope, finding, units, onBack, onFailureAction, onCloseFinding }: ReviewChangePageProps) {
+export function ReviewChangePage({ status, head, base, subject, headline, failure, degraded, scope, finding, units, onBack, onCancel, onFailureAction, onCloseFinding }: ReviewChangePageProps) {
   return (
     <div className="rv-stage" data-testid="review-change">
       <header className="rv-toolbar">
@@ -42,6 +43,8 @@ export function ReviewChangePage({ status, head, base, subject, headline, failur
             <li>Comparing workflow paths</li>
           </ol>
           <p className="rv-hint">Deterministic steps, no model involved. Nothing is written to your repository.</p>
+          <p className="rv-hint">This runs as a process: it is listed in the Processes drawer, where it can be paused or cancelled.</p>
+          <button type="button" className="dg-btn" data-testid="review-cancel" onClick={onCancel}>Cancel this analysis</button>
         </div>
       )}
       {status === 'ready' && (

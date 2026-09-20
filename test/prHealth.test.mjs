@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync, spawn } from 'node:child_process';
 import Ajv from 'ajv';
 import { prHealth, renderPrHealthMarkdown, MECHANICAL_RULES } from '../src/engine/prHealth.mjs';
-import { withTrees, liveTreeCount } from '../src/engine/gitTrees.mjs';
+import { withTrees, liveTreeCount, reclaimTreesOf } from '../src/engine/gitTrees.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -317,6 +317,29 @@ test('cleanup when the process dies mid-run: process.exit and SIGTERM both remov
     assert.equal(fs.existsSync(path.dirname(dir)), false, `${mode}: the per-process root is gone`);
     assert.deepEqual(snapshot(REPO_DIR), before, `${mode}: the repo is unchanged`);
   }
+});
+
+test("#351 reclaimTreesOf removes exactly a killed process's checkouts and registrations, and refuses a live pid or our own", async () => {
+  const sha = run(REPO_DIR, ['rev-parse', 'change']).trim();
+  const before = snapshot(REPO_DIR);
+  const script = path.join(makeTempDir('prhealth-child-'), 'child.mjs');
+  fs.writeFileSync(script, childProgram('term')); // blocks synchronously: a SIGTERM handler could not run, so it is SIGKILLed
+  const child = spawn(process.execPath, [script, sha, REPO_DIR], { stdio: ['ignore', 'pipe', 'inherit'] });
+  let out = '';
+  const dir = await new Promise((resolve) => { child.stdout.on('data', (d) => { out += d; const m = out.match(/ready (.+)\n/); if (m) resolve(m[1]); }); });
+  assert.deepEqual(reclaimTreesOf(child.pid, REPO_DIR), [], "a live process's checkouts are never touched");
+  assert.equal(fs.existsSync(dir), true);
+  assert.deepEqual(reclaimTreesOf(process.pid, REPO_DIR), [], 'never our own');
+  child.kill('SIGKILL');
+  await new Promise((resolve) => child.on('exit', resolve));
+  assert.equal(fs.existsSync(dir), true, 'SIGKILL left the debris this function exists for');
+  assert.notDeepEqual(snapshot(REPO_DIR), before, 'and the repository still has the worktree registered');
+  const removed = reclaimTreesOf(child.pid, REPO_DIR);
+  assert.equal(removed.length, 1);
+  assert.equal(fs.existsSync(dir), false);
+  assert.equal(fs.existsSync(path.dirname(dir)), false);
+  assert.deepEqual(snapshot(REPO_DIR), before, 'the repository is byte-identical again');
+  assert.deepEqual(reclaimTreesOf(child.pid, REPO_DIR), [], 'idempotent');
 });
 
 test('a change bigger than the impact cap degrades to a feature-level summary instead of failing', () => {

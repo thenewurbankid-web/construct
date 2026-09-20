@@ -35,5 +35,6 @@ export function badgesOf(analysis: AnalysisDone): Badge[] {
 export function pendingText(state: BranchRow['analysis']['state']): string | null {
   if (state === 'queued') return 'Queued';
   if (state === 'running' || state === 'none') return 'Analysing…';
+  if (state === 'paused') return 'Paused';
   return null;
 }

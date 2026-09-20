@@ -337,6 +337,24 @@ export const PLAN_FLOWS = Object.freeze({
     executors: ['deterministic'],
     args: { format: { type: 'string', flag: '--format', enum: ['json', 'text'] }, dir: DIR_ARG },
   },
+  'review.analyze': {
+    cli: ['review'],
+    summary: 'PR health of one change: what it touched, what broke, what the public surface lost (schemas/pr-health.v1.json). Read-only: it reads two commits through temporary checkouts, writes nothing and produces no artifacts, so it never needs approval. Zero-LLM.',
+    writes: false,
+    executors: ['deterministic'],
+    args: {
+      base: { type: 'string', required: true, positional: 0, description: 'The base commit (or ref) the change is compared against.' },
+      head: { type: 'string', required: true, positional: 1, description: 'The head commit (or ref) of the change under review.' },
+      plan: {
+        type: 'object',
+        flag: '--plan',
+        materialize: 'file',
+        schemaRef: '#/definitions/expectedScope',
+        description: 'The scope the change is expected to stay inside: { features, files }. Optional; without it the scope indicator is not measured.',
+      },
+      dir: DIR_ARG,
+    },
+  },
   sync: {
     cli: ['sync'],
     summary: 'Regenerate the derived rule config and each feature\'s public API barrel from architecture.yml.',
@@ -571,6 +589,17 @@ function validateStep(step, index, seenIds, push) {
     }
     if (step.flow === 'import.plan' && isPlainObject(step.args.plan)) {
       validateImportPlanArg(step.args.plan, `${at}.args.plan`, push);
+    }
+    if (step.flow === 'review.analyze' && isPlainObject(step.args.plan)) {
+      const scope = step.args.plan;
+      for (const key of Object.keys(scope)) {
+        if (key !== 'features' && key !== 'files') push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.plan.${key}`, `Unknown key "${key}" in the expected scope; it is { features, files }.`);
+      }
+      for (const key of ['features', 'files']) {
+        if (key in scope && !(Array.isArray(scope[key]) && scope[key].every(isNonEmptyString))) {
+          push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.plan.${key}`, `"${key}" of the expected scope must be a list of non-empty strings.`);
+        }
+      }
     }
     if (step.flow === 'pipeline.run' && isPlainObject(step.args.envelope)) {
       const { valid, errors } = validateEnvelope(step.args.envelope);

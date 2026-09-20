@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { runAxe, isBlocking, format } from './support/axe.js';
 import { gotoCockpit } from './support/cockpit.js';
+import { makeReviewRepo } from './support/reviewRepo.js';
 
 // Design #261 -- axe accessibility pass over every Cockpit screen, both themes,
 // wide (1280) and narrow (390), plus the drawer and command palette open.
@@ -179,6 +180,50 @@ export default function LoginPage({ title }: { title: string }) {
           await expect(drawer.getByTestId('diagnostic-row').first()).toBeVisible({ timeout: 30_000 });
           await check(page, `diagnostics rows ${theme}`);
         }
+      });
+    }
+  }
+});
+
+// #351 -- Review mode with a real repository: the branch list, one change, the changed-units tree open,
+// folded and focused, and every pane and tab of the change screen.
+test.describe.serial('review screens with a real repository', () => {
+  const API = process.env.E2E_API_BASE || 'http://localhost:4000';
+  let ctx;
+  let original;
+
+  test.beforeAll(async ({ request }) => {
+    original = (await (await request.get(`${API}/api/settings`)).json()).projectDir;
+    ctx = makeReviewRepo('og351-a11y-');
+    await request.post(`${API}/api/settings`, { data: { projectDir: ctx.repo } });
+  });
+
+  test.afterAll(async ({ request }) => {
+    if (original) await request.post(`${API}/api/settings`, { data: { projectDir: original } });
+    fs.rmSync(ctx.repo, { recursive: true, force: true });
+  });
+
+  for (const theme of THEMES) {
+    for (const [vp, size] of Object.entries(VIEWPORTS)) {
+      test(`${theme} ${vp}: review list, one change, the tree open/folded/focused, every pane`, async ({ page }) => {
+        await page.setViewportSize(size);
+        await page.addInitScript((t) => localStorage.setItem('construct.theme', t), theme);
+        await gotoCockpit(page, '/review');
+        await expect(page.getByTestId('review-row').first()).toBeVisible({ timeout: 30_000 });
+        await expect(page.getByTestId('review-analysing')).toHaveCount(0, { timeout: 90_000 });
+        await check(page, `review list ${theme} ${vp}`);
+        await gotoCockpit(page, '/review?base=main&head=feat%2Fbilling-totals');
+        await expect(page.getByTestId('review-headline')).toBeVisible({ timeout: 90_000 });
+        await check(page, `review change ${theme} ${vp}`);
+        if (vp === 'wide') {
+          const tree = page.getByRole('tree', { name: 'Changed units by feature' });
+          await tree.getByRole('treeitem').first().focus();
+          await check(page, `review tree focused ${theme}`);
+          await page.keyboard.press('ArrowLeft');
+          await expect(tree.getByRole('treeitem').first()).toHaveAttribute('aria-expanded', 'false');
+          await check(page, `review tree folded ${theme}`);
+        }
+        expect(await scanAllTabs(page, `review change ${theme} ${vp}`)).toBeGreaterThan(0);
       });
     }
   }

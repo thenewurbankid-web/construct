@@ -23,6 +23,7 @@ function rowView(b: BranchRow): BranchRowView {
     current: b.current,
     badges: a.state === 'done' ? badgesOf(a) : null,
     pending: pendingText(a.state),
+    stopped: a.state === 'cancelled' ? 'Cancelled' : null,
     error: a.state === 'error' ? a.error.message : null,
   };
 }

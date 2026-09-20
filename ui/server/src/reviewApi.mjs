@@ -2,7 +2,8 @@
 //
 // Mount AFTER `app.use('/api', auth.requireSession)` (index.mjs does). Endpoints:
 //   GET  /branches?base=<branch>       the list source's branches with each one's cached badges
-//   POST /analyze {base, heads:[...]}  queue analyses (a POST, so a cross-site GET can never start work)
+//   POST /analyze {base, heads:[...]}  start analyses, each one a Process (#351) visible in the Processes drawer
+//   POST /cancel {base, head, plan?}   cancel that comparison's live analysis with the machine's own CANCEL
 //   GET  /change?base=&head=           one change: state, and the full report once it is done
 //
 // Every ref is checked against the branch list of the CURRENT PROJECT (see reviewRefs.mjs) and only the
@@ -47,13 +48,23 @@ export function slimReport(result) {
   };
 }
 
-const rowState = (entry) => (entry.state === 'done' ? { state: 'done', ...slimReport(entry.result) } : entry.state === 'error' ? { state: 'error', error: entry.error } : { state: entry.state });
+const withProcess = (entry, view) => (entry.processId ? { ...view, processId: entry.processId } : view);
+const rowState = (entry) => withProcess(entry, entry.state === 'done' ? { state: 'done', ...slimReport(entry.result) } : entry.state === 'error' ? { state: 'error', error: entry.error } : { state: entry.state });
 
 /**
- * @param {{getRoot: () => {ok:true, root:string} | {ok:false, error:string}, jobs: {enqueue:Function, get:Function}}} deps
+ * @param {{getRoot: () => {ok:true, root:string} | {ok:false, error:string}, jobs: {enqueue:Function, get:Function, cancel:Function}, clientOrigin?: string}} deps
  */
-export function createReviewRouter({ getRoot, jobs, plans = { list: () => [], resolve: () => null } }) {
+export function createReviewRouter({ getRoot, jobs, plans = { list: () => [], resolve: () => null }, clientOrigin = null }) {
   const router = express.Router();
+
+  // Starting and cancelling work are mutating POSTs: a browser request from any other origin is refused
+  // (the session cookie is SameSite=Lax and the global CORS policy already blocks it; this is the explicit
+  // check, the same one /api/validate and /api/logs make).
+  router.use((req, res, next) => {
+    const origin = req.get('origin');
+    if (req.method === 'POST' && clientOrigin && origin && origin !== clientOrigin) return res.status(403).json({ ok: false, error: 'Cross-origin requests are not allowed.' });
+    return next();
+  });
 
   /** The project's branches, or an already-shaped refusal. */
   function load() {
@@ -66,6 +77,8 @@ export function createReviewRouter({ getRoot, jobs, plans = { list: () => [], re
 
   const jobFor = (listing, base, head, plan = null) => ({
     root: listing.top, baseSha: base.sha, headSha: head.sha,
+    // Names are only for the process's title in the drawer; the sha is what is read.
+    baseName: base.name, headName: head.name,
     // The plan's declared touches come from the store record, never from the request. `planKey` keeps a
     // comparison with a plan apart from the same two commits without one.
     ...(plan ? { expected: expectedOf(plan), planKey: `${plan.id}:${JSON.stringify(expectedOf(plan))}` } : {}),
@@ -116,6 +129,23 @@ export function createReviewRouter({ getRoot, jobs, plans = { list: () => [], re
     return res.status(202).json({ ok: true, queued: picked.filter((h) => h.name !== b.branch.name).map((h) => h.name) });
   });
 
+  // #351: cancel is the machine's own CANCEL on the process that analyses exactly this comparison. Refs are
+  // validated like every other route; nothing is cancelled that this comparison did not start.
+  router.post('/cancel', (req, res) => {
+    const l = load();
+    if (!l.ok) return res.status(l.status).json(l.body);
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const b = pick(l.listing, body.base, 'base');
+    if (!b.ok) return res.status(b.status).json(b.body);
+    const h = pick(l.listing, body.head, 'head');
+    if (!h.ok) return res.status(h.status).json(h.body);
+    const pl = pickPlan(plans, body.plan);
+    if (!pl.ok) return res.status(pl.status).json(pl.body);
+    const outcome = jobs.cancel(jobFor(l.listing, b.branch, h.branch, pl.plan));
+    if (!outcome) return res.status(404).json({ ok: false, error: 'No analysis of that change is running.', code: 'NOT_RUNNING' });
+    return res.status(outcome.status).json(outcome.status === 200 ? { ok: true, cancelled: true } : outcome.body);
+  });
+
   router.get('/change', (req, res) => {
     const l = load();
     if (!l.ok) return res.status(l.status).json(l.body);
@@ -131,10 +161,10 @@ export function createReviewRouter({ getRoot, jobs, plans = { list: () => [], re
     const base = { name: b.branch.name, sha: b.branch.sha };
     if (entry.state === 'done') {
       const { report, units, unitsOmitted, unitsError } = entry.result;
-      return res.json({ ok: true, state: 'done', base, head, plan, report, units, unitsOmitted, ...(unitsError ? { unitsError } : {}) });
+      return res.json({ ok: true, state: 'done', base, head, plan, report, units, unitsOmitted, ...(unitsError ? { unitsError } : {}), ...(entry.processId ? { processId: entry.processId } : {}) });
     }
-    if (entry.state === 'error') return res.json({ ok: true, state: 'error', base, head, plan, error: entry.error });
-    return res.json({ ok: true, state: entry.state, base, head, plan });
+    if (entry.state === 'error') return res.json({ ok: true, state: 'error', base, head, plan, error: entry.error, ...(entry.processId ? { processId: entry.processId } : {}) });
+    return res.json({ ok: true, state: entry.state, base, head, plan, ...(entry.processId ? { processId: entry.processId } : {}) });
   });
 
   router.use((req, res) => res.status(404).json({ ok: false, error: 'Not found.' }));

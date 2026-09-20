@@ -12,7 +12,11 @@ import express from 'express';
 import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
 import { SESSION_COOKIE, createAuth, resolveAuthConfig, signValue } from './auth.mjs';
 import { createReviewRouter } from './reviewApi.mjs';
+import os from 'node:os';
 import { createReviewJobs } from './reviewJobs.mjs';
+import { createReviewExecutor, createAnalyses, composeExecutors, createResults, isAnalysisPlan } from './reviewAnalyses.mjs';
+import { createProcessesService } from './processesService.mjs';
+import { forkRunner } from './reviewRunner.mjs';
 import { createPlanSource } from './reviewPlans.mjs';
 import { listLocalBranches, resolveListed, defaultBase } from './reviewRefs.mjs';
 import { app as realApp, auth as realAuth } from './index.mjs';
@@ -69,14 +73,24 @@ const RECORDS = [
   planRecord('proc-all', 'Billing and checkout', { features: ['billing', 'checkout'], files: [] }),
 ];
 
-async function withStack({ authOn = true, repo = makeRepo(), runner, records = RECORDS } = {}, fn) {
-  const jobs = createReviewJobs(runner ? { run: runner } : {});
+async function withStack({ authOn = true, repo = makeRepo(), runner, records = RECORDS, runOptions } = {}, fn) {
+  // The real wiring of index.mjs, with a private state directory: every analysis is a Process in a real
+  // store, driven by the real engine, executed by the read-only review executor (never the bot runner).
+  const results = createResults();
+  const reviewExecutor = createReviewExecutor({ ...(runner ? { run: runner } : {}), ...(runOptions ? { runOptions } : {}), results });
+  const botRefused = async () => ({ ok: false, llm: null, error: 'a bot step must not run in this test' });
+  const service = createProcessesService({
+    getProjectDir: () => repo,
+    stateDir: makeTempDir('og351-state-'),
+    executeStep: composeExecutors({ bot: botRefused, review: reviewExecutor.executeStep }),
+  });
+  const jobs = createReviewJobs({ analyses: createAnalyses({ service, results }) });
   const auth = createAuth(resolveAuthConfig(authOn ? ENV : {}, { host: '127.0.0.1', clientOrigin: ORIGIN }));
   const app = express();
   app.use(express.json());
   auth.mountRoutes(app);
   app.use('/api', auth.requireSession);
-  app.use('/api/review', createReviewRouter({ jobs, plans: createPlanSource({ records: () => records }), getRoot: () => (repo ? { ok: true, root: repo } : { ok: false, error: 'No Construct project found for the current project directory. Pick a project first.' }) }));
+  app.use('/api/review', createReviewRouter({ jobs, clientOrigin: ORIGIN, plans: createPlanSource({ records: () => records }), getRoot: () => (repo ? { ok: true, root: repo } : { ok: false, error: 'No Construct project found for the current project directory. Pick a project first.' }) }));
   const server = http.createServer(app);
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const port = server.address().port;
@@ -87,7 +101,7 @@ async function withStack({ authOn = true, repo = makeRepo(), runner, records = R
   });
   const json = async (method, p, opts) => { const r = await call(method, p, opts); return { status: r.status, body: await r.json() }; };
   try {
-    await fn({ repo, jobs, call, json, port });
+    await fn({ repo, jobs, call, json, port, service });
   } finally {
     server.close();
     server.closeAllConnections?.();
@@ -111,6 +125,7 @@ test('every /api/review route is refused with 401 when there is no session', asy
       ['GET', '/api/review/branches'],
       ['GET', '/api/review/change?base=main&head=change'],
       ['POST', '/api/review/analyze', { base: 'main', heads: ['change'] }],
+      ['POST', '/api/review/cancel', { base: 'main', head: 'change' }],
       ['GET', '/api/review/plans'],
     ]) {
       const res = await call(method, p, { body, headers: { cookie: '' } });
@@ -259,7 +274,6 @@ test('analysis runs in a child process (not on the request thread) and returns t
 });
 
 test('the engine runs in a different process from the server', async () => {
-  const { forkRunner } = await import('./reviewJobs.mjs');
   const repo = makeRepo();
   const listing = listLocalBranches(repo);
   const sha = (n) => listing.branches.find((b) => b.name === n).sha;
@@ -380,4 +394,159 @@ test('no project means no plans, as a plain 400', async () => {
   await withStack({ repo: null }, async ({ json }) => {
     assert.equal((await json('GET', '/api/review/plans')).status, 400);
   });
+});
+
+// --- #351: an analysis is a Process, cancellable, read-only, never an approval ------------------------
+
+const SLOW_WORKER = path.join(path.dirname(fileURLToPath(import.meta.url)), 'reviewWorker.slow.fixture.mjs');
+const analysisProcesses = (service) => service.store().all().processes.filter((p) => isAnalysisPlan(p.plan));
+const botRefs = (repo) => run(repo, ['for-each-ref', '--format=%(refname)', 'refs/heads/construct/']);
+const ourTrees = (pid) => fs.readdirSync(os.tmpdir()).filter((n) => n.startsWith(`construct-prhealth-${pid}-`));
+
+test('an analysis is a process: it is in the store and the drawer summary, with the machine\'s own controls', async () => {
+  let release;
+  const gate = new Promise((r) => { release = r; });
+  const runner = async () => { await gate; return { ok: false, error: { code: 'STUB', message: 'stub' } }; };
+  await withStack({ runner }, async ({ json, service, jobs }) => {
+    await json('POST', '/api/review/analyze', { body: { base: 'main', heads: ['change'] } });
+    await until(() => analysisProcesses(service).length === 1 && jobs.pending() === 1, 'the process');
+    const [record] = analysisProcesses(service);
+    assert.equal(record.plan.steps.length, 1);
+    assert.equal(record.plan.steps[0].flow, 'review.analyze');
+    assert.equal(record.plan.steps[0].executor, 'deterministic');
+    assert.match(record.plan.steps[0].args.head, /^[0-9a-f]{40}$/, 'the plan carries commit ids, not the client\'s branch string');
+    const listed = service.list().processes.find((p) => p.id === record.id);
+    assert.ok(listed, 'it is listed for the Processes drawer');
+    assert.ok(listed.controls.includes('CANCEL'), 'the machine offers Cancel');
+    const row = (await json('GET', '/api/review/branches')).body.branches.find((b) => b.name === 'change').analysis;
+    assert.equal(row.processId, record.id, 'the row knows its process, so the UI can point at the drawer');
+    release();
+    await until(() => jobs.pending() === 0, 'the analysis to finish');
+  });
+});
+
+test('analysis processes are not offered as plans to compare against', () => {
+  const analysis = { id: 'proc-a', title: 'Review x', plan: { steps: [{ id: 'analyse', flow: 'review.analyze', touches: { features: ['billing'], files: [] } }] } };
+  const source = createPlanSource({ records: () => [...RECORDS, analysis] });
+  assert.deepEqual(source.list().map((p) => p.id), ['proc-billing', 'proc-all']);
+  assert.equal(source.resolve('proc-a'), null);
+});
+
+test('a finished analysis ends with ZERO artifacts, needs no approval, and leaves every part of the repository byte-identical', async () => {
+  await withStack({}, async ({ json, jobs, repo, service }) => {
+    write(repo, 'scratch-uncommitted.txt', 'not committed\n');
+    const before = snapshot(repo);
+    await json('POST', '/api/review/analyze', { body: { base: 'main', heads: ['change'] } });
+    await until(() => jobs.pending() === 0 && analysisProcesses(service).length === 1, 'the analysis');
+    const [record] = analysisProcesses(service);
+    const detail = service.detail(record.id).body.process;
+    assert.equal(detail.summary.state, 'done');
+    assert.deepEqual(detail.artifacts, [], 'an analysis produces no artifacts');
+    assert.equal(detail.summary.artifacts, 0);
+    assert.equal(detail.summary.pendingApproval, 0, 'nothing for the approval gate to review');
+    assert.equal(botRefs(repo), '', 'no bot branch was created (the bot runner is never involved)');
+    assert.deepEqual(snapshot(repo), before, 'status, refs, stash and worktree list are byte-identical');
+    const gate = service.review(record.id);
+    assert.deepEqual(gate.body.artifacts ?? [], [], 'the approval gate has nothing to review for it');
+    const decided = service.decide(record.id, { by: 'tester', path: 'README.md', verdict: 'approve', diffSha256: 'f'.repeat(64) });
+    assert.notEqual(decided.status, 200, 'there is no file an approval could apply');
+    assert.deepEqual(snapshot(repo), before, 'and trying changes nothing');
+  });
+});
+
+test('cancel mid-analysis: the process is cancelled with the machine\'s own control, the worker is gone and its checkouts are cleaned up', async () => {
+  const marker = path.join(makeTempDir('og351-marker-'), 'worker.json');
+  process.env.OG351_MARKER = marker;
+  try {
+    await withStack({ runOptions: { worker: SLOW_WORKER, graceMs: 300 } }, async ({ json, jobs, repo, service }) => {
+      write(repo, 'scratch-uncommitted.txt', 'not committed\n');
+      const before = snapshot(repo);
+      await json('POST', '/api/review/analyze', { body: { base: 'main', heads: ['change'] } });
+      const worker = await until(() => (fs.existsSync(marker) ? JSON.parse(fs.readFileSync(marker, 'utf8')) : null), 'the worker to hold its checkouts');
+      // Precondition of the proof: the debris this test is about really exists right now.
+      assert.ok(ourTrees(worker.pid).length > 0, 'a temporary directory exists');
+      assert.ok(run(repo, ['worktree', 'list', '--porcelain']).includes(`construct-prhealth-${worker.pid}-`), 'git has the temporary worktrees registered');
+      const row = (await json('GET', '/api/review/branches')).body.branches.find((b) => b.name === 'change').analysis;
+      assert.equal(row.state, 'running');
+
+      const res = await json('POST', '/api/review/cancel', { body: { base: 'main', head: 'change' } });
+      assert.equal(res.status, 200);
+      const after = await until(async () => {
+        const r = await json('GET', '/api/review/change?base=main&head=change');
+        return r.body.state === 'cancelled' ? r.body : null;
+      }, 'the analysis to be cancelled');
+      assert.equal(after.state, 'cancelled');
+
+      const [record] = analysisProcesses(service);
+      assert.equal(service.detail(record.id).body.process.summary.state, 'cancelled');
+      assert.deepEqual(record.artifacts, []);
+      assert.throws(() => process.kill(worker.pid, 0), (e) => e.code === 'ESRCH', 'the worker process is gone');
+      assert.deepEqual(ourTrees(worker.pid), [], 'its temporary directory is removed');
+      assert.equal(run(repo, ['worktree', 'list', '--porcelain']).includes('construct-prhealth-'), false, 'no worktree registration is left');
+      assert.equal(botRefs(repo), '');
+      assert.deepEqual(snapshot(repo), before, 'status, refs, stash and worktree list are byte-identical after a cancel');
+      assert.equal(jobs.pending(), 0);
+      // Asking again starts a fresh analysis (a cancelled one is not served from memory).
+      fs.rmSync(marker, { force: true });
+      await json('POST', '/api/review/analyze', { body: { base: 'main', heads: ['change'] } });
+      await until(() => fs.existsSync(marker), 'a second run');
+      await json('POST', '/api/review/cancel', { body: { base: 'main', head: 'change' } });
+      await until(async () => (await json('GET', '/api/review/change?base=main&head=change')).body.state === 'cancelled', 'the second cancel');
+      assert.deepEqual(snapshot(repo), before);
+    });
+  } finally {
+    delete process.env.OG351_MARKER;
+  }
+});
+
+test('cancel is refused for anything that is not exactly a live analysis, and starts and cancels nothing else', async () => {
+  let started = 0;
+  await withStack({ runner: async () => { started += 1; return { ok: false, error: { code: 'X', message: 'x' } }; } }, async ({ json, call }) => {
+    for (const [label, ref] of BAD_REFS) {
+      const r = await json('POST', '/api/review/cancel', { body: { base: 'main', head: ref } });
+      assert.ok([400, 404].includes(r.status), `${label} as head: got ${r.status}`);
+      const b = await json('POST', '/api/review/cancel', { body: { base: ref, head: 'change' } });
+      assert.ok([400, 404].includes(b.status), `${label} as base: got ${b.status}`);
+    }
+    const noPlan = await json('POST', '/api/review/cancel', { body: { base: 'main', head: 'change', plan: 'nope' } });
+    assert.equal(noPlan.status, 404);
+    const idle = await json('POST', '/api/review/cancel', { body: { base: 'main', head: 'change' } });
+    assert.equal(idle.status, 404, 'nothing is running: an unknown analysis is a 404, not a success');
+    assert.equal(idle.body.code, 'NOT_RUNNING');
+    const foreign = await call('POST', '/api/review/cancel', { body: { base: 'main', head: 'change' }, headers: { origin: 'http://evil.example' } });
+    assert.equal(foreign.status, 403, 'a foreign Origin cannot cancel');
+    const foreignStart = await call('POST', '/api/review/analyze', { body: { base: 'main', heads: ['change'] }, headers: { origin: 'http://evil.example' } });
+    assert.equal(foreignStart.status, 403, 'a foreign Origin cannot start');
+    assert.equal(started, 0, 'no refusal started anything');
+  });
+});
+
+test('a process id from the client is never how cancel is addressed: the comparison is, and it is looked up', async () => {
+  const untilAborted = (job, { signal }) => new Promise((resolve) => signal.addEventListener('abort', () => resolve({ ok: false, error: { code: 'CANCELLED', message: 'cancelled' } })));
+  await withStack({ runner: untilAborted }, async ({ json, service, jobs }) => {
+    await json('POST', '/api/review/analyze', { body: { base: 'main', heads: ['change'] } });
+    await until(() => analysisProcesses(service).length === 1, 'the process');
+    const [record] = analysisProcesses(service);
+    // Naming a process id in the body changes nothing: only the (validated) comparison selects what is cancelled.
+    const r = await json('POST', '/api/review/cancel', { body: { base: 'main', head: 'docs', processId: record.id } });
+    assert.equal(r.status, 404);
+    assert.equal(jobs.pending(), 1, 'the analysis of `change` is still running');
+    const drawer = service.control('proc_unknown', 'cancel');
+    assert.equal(drawer.status, 404, 'the drawer\'s cancel of an unknown process id is a 404');
+    await json('POST', '/api/review/cancel', { body: { base: 'main', head: 'change' } });
+    await until(() => jobs.pending() === 0, 'the cancel to settle');
+  });
+});
+
+test('a step that is not a valid analysis is refused before anything is read (a plan is an input too)', async () => {
+  const calls = [];
+  const exec = createReviewExecutor({ run: async (job) => { calls.push(job); return { ok: false, error: { code: 'X', message: 'x' } }; } });
+  const repo = makeRepo();
+  const ctx = (args) => ({ process: { id: 'p', projectRoot: repo }, step: { id: 'analyse', flow: 'review.analyze', args }, signal: new AbortController().signal, log: () => {} });
+  for (const args of [{ base: '--output=x', head: 'a'.repeat(40) }, { base: 'main', head: 'change' }, { base: 'a'.repeat(40), head: '../x' }, { base: 1, head: 2 }, {}]) {
+    const r = await exec.executeStep(ctx(args));
+    assert.equal(r.ok, false);
+    assert.deepEqual(r.artifacts, []);
+  }
+  assert.equal(calls.length, 0, 'nothing was spawned for a step that names refs instead of commit ids');
 });

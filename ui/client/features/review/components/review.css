@@ -34,12 +34,13 @@
 .rv-row-meta { color: var(--text-muted); font-size: var(--fs-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rv-badges { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--sp-1); max-width: 24rem; }
 .rv-pending { color: var(--accent); font-size: var(--fs-sm); }
+.rv-stopped { color: var(--text-muted); font-size: var(--fs-sm); }
 
 /* badges: the text carries the meaning, the colour only reinforces it */
 .rv-badge { display: inline-block; font-size: var(--fs-sm); font-weight: 600; padding: 0 var(--sp-2); border-radius: 999px; border: 1px solid var(--border-subtle); white-space: nowrap; }
 .rv-badge--danger { color: var(--danger); background: var(--danger-soft); border-color: var(--danger); }
 .rv-badge--warn { color: var(--warn); background: var(--warn-soft); border-color: var(--warn); }
-.rv-badge--info { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+.rv-badge--info { color: var(--text); background: var(--accent-soft); border-color: var(--accent); }
 .rv-badge--ok { color: var(--success); background: var(--success-soft); border-color: var(--success); }
 .rv-badge--neutral { color: var(--text-muted); background: var(--neutral-soft); }
 
@@ -56,9 +57,17 @@
 .rv-layer { margin: 2px 0; display: flex; justify-content: space-between; gap: var(--sp-2); }
 .rv-chip { display: inline-block; font-size: 0.72rem; padding: 0 var(--sp-2); border-radius: 4px; border: 1px solid var(--border-subtle); color: var(--text-muted); white-space: nowrap; }
 .rv-file { display: flex; align-items: center; gap: var(--sp-2); width: 100%; padding: 2px var(--sp-2); background: transparent; color: var(--text); border: 0; border-radius: 4px; text-align: left; font: inherit; cursor: pointer; }
+.rv-node--file { list-style: none; }
 .rv-file:hover { background: var(--hover); }
-.rv-file[aria-current='true'] { background: var(--accent-soft); box-shadow: inset 2px 0 0 var(--accent); }
-.rv-file:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+li[aria-current='true'] > .rv-file { background: var(--accent-soft); box-shadow: inset 2px 0 0 var(--accent); }
+/* #351: the tree is an ARIA tree with one tab stop; the focus ring is drawn on the ROW, not around the whole subtree. */
+.rv-node { list-style: none; }
+.rv-node:focus { outline: none; }
+.rv-node:focus-visible > .rv-node-row { outline: 2px solid var(--focus); outline-offset: -2px; }
+.rv-node-row { display: flex; align-items: center; gap: var(--sp-2); cursor: pointer; border-radius: 4px; }
+.rv-node-row.rv-feature, .rv-node-row.rv-layer { justify-content: flex-start; }
+.rv-node-row.rv-feature .rv-count, .rv-node-row.rv-layer .rv-count { margin-left: auto; }
+.rv-caret { width: 1em; color: var(--text-muted); flex: none; }
 .rv-file-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rv-status { font-size: 0.72rem; color: var(--text-muted); white-space: nowrap; }
 .rv-status--A { color: var(--success); }

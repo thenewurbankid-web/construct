@@ -18,4 +18,4 @@ export function listReducer(state: ListState, action: ListAction): ListState {
 
 /** True while any row is still being analysed (the list keeps polling until this is false). */
 export const listIsSettling = (state: ListState): boolean =>
-  !!state.data?.branches.some((b) => b.analysis.state === 'none' || b.analysis.state === 'queued' || b.analysis.state === 'running');
+  !!state.data?.branches.some((b) => b.analysis.state === 'none' || b.analysis.state === 'queued' || b.analysis.state === 'running' || b.analysis.state === 'paused');
