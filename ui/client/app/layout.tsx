@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { AuthGateController, AuthSessionProvider } from '@/features/auth';
+import { ReviewOverlayController } from '@/features/design-review';
 import { ShellController, THEME_INIT_SCRIPT } from '@/features/shell';
 import './tokens.css';
 import './screens.css';
@@ -33,6 +34,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <ShellController>{children}</ShellController>
           </AuthGateController>
         </AuthSessionProvider>
+        {/* #454: dev-only design-review overlay (threadmark-react). Renders nothing, and
+            never imports the package, unless NEXT_PUBLIC_REVIEW_OVERLAY=1 is set. */}
+        <ReviewOverlayController />
       </body>
     </html>
   );
