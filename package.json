@@ -37,6 +37,7 @@
     "ipaddr.js": "2.5.0",
     "js-yaml": "^4.3.2",
     "minimatch": "^10.0.1",
+    "react-docgen": "^8.0.4",
     "typescript": "^5.8.3"
   },
   "devDependencies": {

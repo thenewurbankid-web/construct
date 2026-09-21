@@ -18,3 +18,17 @@ export function parseOpenPage(search: string): OpenPageTarget | null {
   const file = params.get('file');
   return feature && file ? { feature, file } : null;
 }
+
+/** The query string after setting (or, with null, clearing) the open page; other params are kept. */
+export function withOpenPage(search: string, target: OpenPageTarget | null): string {
+  const params = new URLSearchParams(search);
+  if (target) {
+    params.set('feature', target.feature);
+    params.set('file', target.file);
+  } else {
+    params.delete('feature');
+    params.delete('file');
+  }
+  const text = params.toString();
+  return text ? `?${text}` : '';
+}

@@ -163,6 +163,17 @@ test.describe('#278 GitHub login gate', () => {
     expect(await postStatus('/api/tests/billing/steps/preview', { name: 'mine.spec.ts', baseHash: 'x', steps: [] })).toBe(401);
     expect(await postStatus('/api/tests/billing/steps', { name: 'mine.spec.ts', baseHash: 'x', resultSha: 'x', steps: [] })).toBe(401);
 
+    // #431/#434: the Components screen's list, its props reader, its file read and its ONE write (a mutating POST), and the
+    // Pages screen's list of all pages, are gated too.
+    expect(await apiStatus(page, '/api/components')).toBe(401);
+    expect(await apiStatus(page, '/api/components/describe?path=features%2Fbilling%2Fcomponents%2FBillingView.tsx')).toBe(401);
+    expect(await apiStatus(page, '/api/components/source?path=features%2Fbilling%2Fcomponents%2FBillingView.tsx')).toBe(401);
+    expect(await apiStatus(page, '/api/components/source?path=..%2F..%2Fetc%2Fpasswd')).toBe(401);
+    expect(await postJsonStatus(page, '/api/components/save', { path: 'features/billing/components/BillingView.tsx', content: 'x', commit: true, contentHash: 'x' })).toBe(401);
+    expect(await apiStatus(page, '/api/pages/all')).toBe(401);
+    expect(await apiStatus(page, '/api/features')).toBe(401);
+    expect(await apiStatus(page, '/api/features/billing/summary')).toBe(401);
+
     // The one deliberate exception, so a liveness probe still works.
     expect(await apiStatus(page, '/api/health')).toBe(200);
 

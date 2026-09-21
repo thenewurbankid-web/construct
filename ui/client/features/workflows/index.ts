@@ -26,3 +26,7 @@ export * from './hooks/useCanvasSelection';
 
 /** Refit the diagram when its box resizes (panes opening or dragged). */
 export * from './hooks/useFitOnResize';
+
+/** The before/after diff and its Confirm / Cancel step, reused wherever a whole-file edit is reviewed before it is written (#431). */
+export * from './components/WorkflowDiffPreview';
+export * from './domain/SourceDiff';

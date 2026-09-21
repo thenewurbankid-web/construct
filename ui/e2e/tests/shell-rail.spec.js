@@ -37,7 +37,7 @@ test.describe('screens rail (#429)', () => {
 
   test('clicking a screen navigates and moves the current marker', async ({ page }) => {
     await gotoCockpit(page, '/');
-    for (const [label, url] of [['Pages', /\/pages$/], ['Components', /\/workflows$/], ['Git', /\/review$/], ['Tests', /\/tests$/], ['Features', /\/$/]]) {
+    for (const [label, url] of [['Pages', /\/pages$/], ['Components', /\/components$/], ['Git', /\/review$/], ['Tests', /\/tests$/], ['Features', /\/$/]]) {
       await nav(page).getByRole('link', { name: label }).click();
       await expect(page).toHaveURL(url);
       await expect(nav(page).getByRole('link', { name: label })).toHaveAttribute('aria-current', 'page');
@@ -65,7 +65,7 @@ test.describe('screens rail (#429)', () => {
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');
-    await expect(page).toHaveURL(/\/workflows$/);
+    await expect(page).toHaveURL(/\/components$/);
   });
 
   test('collapses to icons only, keeps names for screen readers and tooltips, and remembers the choice', async ({ page }) => {

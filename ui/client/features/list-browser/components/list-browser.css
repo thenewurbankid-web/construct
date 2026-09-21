@@ -1,0 +1,12 @@
+/* Browser-pane list (#431). Prefix lb-. Tokens only (docs/design/tokens.md). */
+.lb { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-2); min-width: 0; }
+.lb-filter { width: 100%; box-sizing: border-box; background: var(--surface-1); color: var(--text); border: 1px solid var(--border-subtle); border-radius: 6px; padding: var(--sp-1) var(--sp-2); font: inherit; }
+.lb-filter:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.lb-count { margin: 0; font-size: var(--fs-sm); color: var(--text-muted); }
+.lb-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.lb-row { display: flex; flex-direction: column; gap: 0; min-width: 0; padding: var(--sp-1) var(--sp-2); border-radius: 6px; border: 1px solid transparent; border-left: 3px solid transparent; cursor: pointer; color: var(--text); }
+.lb-row:hover { background: var(--hover); }
+.lb-row:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.lb-row[aria-selected='true'] { background: var(--accent-soft); border-left-color: var(--accent); font-weight: 600; }
+.lb-label { overflow-wrap: anywhere; }
+.lb-detail { font-size: var(--fs-sm); color: var(--text-muted); font-weight: 400; overflow-wrap: anywhere; }

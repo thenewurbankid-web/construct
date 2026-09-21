@@ -10,7 +10,7 @@ import { makeReviewRepo } from './support/reviewRepo.js';
 // wide (1280) and narrow (390), plus the drawer and command palette open.
 // Serious/critical violations FAIL; moderate/minor are collected and written to
 // $A11Y_REPORT (if set) so they can be tracked.
-const SCREENS = ['/dashboard', '/wizard', '/pages', '/workflows', '/tests', '/ollama', '/settings', '/help', '/states'];
+const SCREENS = ['/dashboard', '/wizard', '/pages', '/components', '/workflows', '/tests', '/ollama', '/settings', '/help', '/states'];
 const VIEWPORTS = { wide: { width: 1280, height: 800 }, narrow: { width: 390, height: 800 } };
 const THEMES = ['dark', 'light'];
 const lesser = [];

@@ -16,7 +16,7 @@ type Editor = ReturnType<typeof usePagesEditor>;
  * Each tab is memoised on the data it shows so the registry only updates when that changes. */
 export function usePagesEditorTabs(e: Editor): void {
   const { features, feature, files, filesLoading, file, tree, selectedNodeId, selectedNode, externalChange } = e;
-  const { setFeature, openFile, selectNode, onTreeSaved, reloadFromDisk, dismissExternalChange } = e;
+  const { setFeature, openFile, selectNode, onTreeSaved, reloadFromDisk, dismissExternalChange, allPages, openPageOf, showAllPages } = e;
   const roots = tree?.roots ?? null;
   const hash = tree?.contentHash ?? '';
 
@@ -36,10 +36,13 @@ export function usePagesEditorTabs(e: Editor): void {
           roots={roots}
           selectedId={selectedNodeId}
           onSelect={selectNode}
+          allPages={allPages}
+          onOpenPage={openPageOf}
+          onShowAllPages={showAllPages}
         />
       ),
     }),
-    [feature, setFeature, features, file, openFile, files, filesLoading, roots, selectedNodeId, selectNode],
+    [feature, setFeature, features, file, openFile, files, filesLoading, roots, selectedNodeId, selectNode, allPages, openPageOf, showAllPages],
   );
 
   const inspectorTab = useMemo<ShellTab>(

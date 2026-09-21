@@ -59,6 +59,9 @@ export * from './hooks/useDrawerActions';
 /** Lets a screen open the drawer's Processes tab (Plan mode does after starting a process). */
 export * from './hooks/useShellDrawer';
 
+/** Lets a Browser-pane list bring the stage into view after a selection (narrow one-pane layout). */
+export * from './hooks/useShellStage';
+
 /** How many branches await review, for the badge beside the fourth screen in the top bar. */
 export * from './hooks/useGitBranchCount';
 

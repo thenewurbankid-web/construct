@@ -71,3 +71,9 @@ export * from './controllers/FlowFilePeekController';
 
 /** Alt+Left / Alt+Right along the navigation trail (#321). */
 export * from './hooks/useTrailShortcuts';
+
+/** The source editor adapter (Monaco, with a textarea fallback), reused by the Components screen for plain-file editing (#431). */
+export * from './components/SourceEditor';
+
+/** Diagnostics -> editor-neutral markers, and the one-line problem summary. */
+export * from './domain/SourceMarkers';

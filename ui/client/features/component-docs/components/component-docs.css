@@ -1,0 +1,23 @@
+/* Components screen stage (#431). Prefix cd-. Tokens only (docs/design/tokens.md). */
+.main:has(.cd-stage) { max-width: none; padding: 0; }
+.cd-stage { padding: var(--sp-3) var(--sp-4) var(--sp-4); min-width: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
+.cd-h1 { margin: 0; font-size: var(--fs-lg); }
+.cd-h2 { margin: 0; font-size: var(--fs-md, 1.1rem); overflow-wrap: anywhere; }
+.cd-h3 { margin: 0; font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+.cd-hint { color: var(--text-muted); font-size: var(--fs-sm); }
+.cd-mono { font-family: var(--font-mono, ui-monospace, monospace); overflow-wrap: anywhere; }
+.cd-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.cd-doc, .cd-source { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; padding: var(--sp-3); border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-2); }
+.cd-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: var(--sp-2); margin: 0; }
+.cd-meta dt { font-size: var(--fs-sm); color: var(--text-muted); }
+.cd-meta dd { margin: 0; overflow-wrap: anywhere; }
+.cd-meta a { color: var(--accent); }
+.cd-desc { margin: 0; }
+.cd-comp { display: flex; flex-direction: column; gap: var(--sp-1); }
+.cd-table-wrap { overflow-x: auto; }
+.cd-table { width: 100%; border-collapse: collapse; }
+.cd-table th, .cd-table td { text-align: left; padding: var(--sp-1) var(--sp-2); border-bottom: 1px solid var(--border-subtle); vertical-align: top; overflow-wrap: anywhere; }
+.cd-table thead th { font-size: var(--fs-sm); color: var(--text-muted); font-weight: 600; border-bottom-color: var(--border-strong); }
+.cd-none { margin: 0; padding: var(--sp-2) var(--sp-3); border: 1px dashed var(--border-strong); border-radius: 6px; }
+.cd-source-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-1) var(--sp-3); }
+.cd-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }

@@ -20,6 +20,7 @@ import { useShellTabs } from '../hooks/useShellTabs';
 import { useShellShortcuts } from '../hooks/useShellShortcuts';
 import { useDrawerActions } from '../hooks/useDrawerActions';
 import { ShellDrawerContext } from '../hooks/useShellDrawer';
+import { ShellStageContext } from '../hooks/useShellStage';
 import { useShellCommands } from '../hooks/useShellCommands';
 import { useShellNavigation } from '../hooks/useShellNavigation';
 import type { useTheme } from '../hooks/useTheme';
@@ -88,6 +89,8 @@ export function ShellFrame({ children, route, project, model, theme, userMenu }:
 
   const { showDrawerTab } = useDrawerActions(toggle, select);
   const drawerApi = useMemo(() => ({ openProcesses: () => showDrawerTab('processes') }), [showDrawerTab]);
+  const { setPane } = narrow;
+  const stageApi = useMemo(() => ({ showStage: () => setPane('mid') }), [setPane]);
   useShellCommands({
     navigate,
     togglePane: toggle,
@@ -138,7 +141,9 @@ export function ShellFrame({ children, route, project, model, theme, userMenu }:
       activeTabs={active}
       onSelectTab={select}
     >
-      <ShellDrawerContext.Provider value={drawerApi}>{children}</ShellDrawerContext.Provider>
+      <ShellDrawerContext.Provider value={drawerApi}>
+        <ShellStageContext.Provider value={stageApi}>{children}</ShellStageContext.Provider>
+      </ShellDrawerContext.Provider>
     </ShellPage>
   );
 }

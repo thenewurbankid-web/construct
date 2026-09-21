@@ -42,6 +42,7 @@ import {
   PagesEditorError,
   listFeatures,
   listPages,
+  listAllPages,
   resolvePageFile,
   serializeTree,
   getNodeSnippet,
@@ -60,6 +61,7 @@ import {
   addChildInSnippet,
 } from './pagesEditor.mjs';
 import { handleValidate } from './validateApi.mjs';
+import { createComponentsRouter } from './componentsApi.mjs';
 import { handleLogs } from './logBuffer.mjs';
 import { unitsIndex, unitSummary, featuresIndex, featureSummary } from './unitsApi.mjs';
 import { readPageSource } from './pageSource.mjs';
@@ -443,6 +445,16 @@ app.get('/api/pages', (req, res) => {
     const { feature } = req.query;
     if (!feature) return res.status(400).json({ ok: false, error: 'feature is required' });
     res.json({ feature, files: listPages(currentRoot(), feature) });
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+// #431: every page of the project for the Pages screen's Browser list (read-only).
+app.get('/api/pages/all', (req, res) => {
+  try {
+    const pages = listAllPages(currentRoot());
+    res.json({ ok: true, count: pages.length, pages });
   } catch (e) {
     handlePagesEditorError(res, e);
   }
@@ -918,6 +930,18 @@ app.use('/api/review', createReviewRouter({
   clientOrigin: CLIENT_ORIGIN,
   // #316: the saved plans of the current project are the plans of its processes (the store lists them).
   plans: createPlanSource({ records: () => processesService.store()?.all().processes }),
+  getRoot: () => {
+    const root = containedProjectRoot(getProjectDir());
+    return root ? { ok: true, root } : { ok: false, error: 'No Construct project found for the current project directory. Pick a project first.' };
+  },
+}));
+
+// #431/#434: the Components screen (list, props from react-docgen, plain-file source and its one write path).
+// Registered below the gate like every other `/api` route; the client names a component by a path that must be in the
+// real list for this project (componentsApi.mjs).
+app.use('/api/components', createComponentsRouter({
+  clientOrigin: CLIENT_ORIGIN,
+  afterSave,
   getRoot: () => {
     const root = containedProjectRoot(getProjectDir());
     return root ? { ok: true, root } : { ok: false, error: 'No Construct project found for the current project directory. Pick a project first.' };

@@ -50,9 +50,10 @@ test('nextTabId: roving focus wraps, skips disabled, Home/End, ignores other key
 
 test('the five primary screens are Features, Pages, Components, Git, Tests, and every existing route belongs to one or to the profile menu', () => {
   assert.deepEqual(PRIMARY_SCREENS.map((s) => s.label), ['Features', 'Pages', 'Components', 'Git', 'Tests']);
-  assert.deepEqual(PRIMARY_SCREENS.map((s) => s.href), ['/', '/pages', '/workflows', '/review', '/tests']);
+  assert.deepEqual(PRIMARY_SCREENS.map((s) => s.href), ['/', '/pages', '/components', '/review', '/tests']);
   for (const p of ['/', '/plan', '/dashboard', '/wizard']) assert.equal(primaryScreenForPath(p).id, 'features', p);
   assert.equal(primaryScreenForPath('/pages').id, 'pages');
+  assert.equal(primaryScreenForPath('/components').id, 'components');
   assert.equal(primaryScreenForPath('/workflows').id, 'components');
   assert.equal(primaryScreenForPath('/review').id, 'git');
   assert.equal(primaryScreenForPath('/tests').id, 'tests');

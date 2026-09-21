@@ -48,3 +48,10 @@ export async function setTheme(page, theme) {
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('user-menu-trigger')).toHaveAttribute('aria-expanded', 'false');
 }
+
+// #431 - the Features screen's Browser opens on its Features list; the note, its constraints and the picker are on the
+// Notes tab beside it. Goes to `url` and opens that tab.
+export async function gotoNotes(page, url = '/plan') {
+  await gotoCockpit(page, url);
+  await page.getByRole('complementary', { name: 'Browser' }).getByRole('tab', { name: 'Notes' }).click();
+}
