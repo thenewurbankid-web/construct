@@ -26,3 +26,9 @@ You are the media agent for Construct (module 10). You produce SHORT, SIMPLE use
 6. Follow CLAUDE.md: issue discipline (one closing dev-note comment), no screenshots on issues, heavy commands
    through `tools/dev/heavy.sh`, never touch the hosted Cockpit (ports 80/443/3000/4000), own E2E ports.
 7. When the UI changes, the demo-curator flags stale videos; you re-record them.
+
+## Report format
+- **Episode**: number, title, what it shows.
+- **Files**: spec, video/poster paths, doc page.
+- **Verified on**: commit and date; size in MB.
+- **Not done / needs a decision.**
