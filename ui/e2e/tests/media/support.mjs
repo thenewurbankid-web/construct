@@ -44,10 +44,30 @@ export async function card(page, title, subtitle = '', ms = 5000) {
     el.id = 'media-card';
     el.style.cssText = 'position:fixed;inset:0;z-index:2147483647;display:flex;flex-direction:column;align-items:center;justify-content:center;'
       + 'gap:18px;background:#0d0f12;color:#f2f4f7;font-family:system-ui,sans-serif;text-align:center';
-    el.innerHTML = `<div style="width:120px;height:120px;color:#f2f4f7">${svg.replace('<svg ', '<svg width="120" height="120" ')}</div>`
+    // The same motion as the Cockpit's animated Line mark (ui/client/app/brand.css): the outline pill is traced by a
+    // travelling dash, the filled pill breathes. Faster here (3 s) so it reads within a short card.
+    const style = '<style>@keyframes m-trace{to{stroke-dashoffset:-69}}@keyframes m-breathe{0%,100%{opacity:.86}50%{opacity:1}}'
+      + '#media-card rect[fill="none"]{stroke-dasharray:55 14;animation:m-trace 3s linear infinite}'
+      + '#media-card rect:first-of-type{animation:m-breathe 3s ease-in-out infinite}</style>';
+    el.innerHTML = style + `<div style="width:160px;height:160px;color:#f2f4f7">${svg.replace('<svg ', '<svg width="160" height="160" ')}</div>`
       + `<div style="font-size:52px;font-weight:700">${title}</div><div style="font-size:26px;color:#b7bfcc;max-width:900px">${subtitle}</div>`;
     document.body.appendChild(el);
   }, [LINE_SVG, title, subtitle]);
   await pause(page, ms);
   await page.evaluate(() => document.getElementById('media-card')?.remove());
+}
+
+/** Save the recording as the current `<slug>.webm` and keep every take: the previous current file moves to
+ * `history/<slug>-<UTC time>.webm` first, and the new take is also stored there. History is kept until deleted by hand. */
+export function saveRecording(fsMod, dir, slug, tmpPath) {
+  const stamp = (d) => d.toISOString().replace(/[:.]/g, '-').slice(0, 19) + 'Z';
+  const history = path.join(dir, 'history');
+  fsMod.mkdirSync(history, { recursive: true });
+  const current = path.join(dir, `${slug}.webm`);
+  if (fsMod.existsSync(current)) {
+    const prev = path.join(history, `${slug}-${stamp(fsMod.statSync(current).mtime)}.webm`);
+    if (!fsMod.existsSync(prev)) fsMod.copyFileSync(current, prev);
+  }
+  fsMod.copyFileSync(tmpPath, current);
+  fsMod.copyFileSync(tmpPath, path.join(history, `${slug}-${stamp(new Date())}.webm`));
 }

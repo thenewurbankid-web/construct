@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { caption, clearCaption, card, pause } from './support.mjs';
+import { caption, clearCaption, card, pause, saveRecording } from './support.mjs';
 
 // Episode 1: "From a ticket to a story" (docs/MEDIA.md, #444). A real run of the real Cockpit, real clicks only.
 // The captions below ARE the script. The example is the sample shop's product listing (the `catalog` feature).
@@ -100,6 +100,8 @@ test('episode 1: from a ticket to a story', async ({ page }) => {
 
   const video = page.video();
   await page.close();
-  await video.saveAs(path.join(OUT, `${SLUG}.webm`));
+  const tmp = path.join(WS, '..', `${SLUG}.take.webm`);
+  await video.saveAs(tmp);
+  saveRecording(fs, OUT, SLUG, tmp);
   void clearCaption;
 });
