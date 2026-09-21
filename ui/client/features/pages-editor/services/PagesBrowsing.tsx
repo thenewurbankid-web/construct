@@ -9,3 +9,6 @@ export const getPages = (feature: string) => getJson<{ files: string[] }>(`/api/
 
 export const getPageTree = (feature: string, file: string) =>
   getJson<PageTree & { error?: string }>(`/api/pages/tree?feature=${encodeURIComponent(feature)}&file=${encodeURIComponent(file)}`);
+
+/** Every page of the project (all features), for the Browser's list on the Pages screen (#431). */
+export const getAllPages = () => getJson<{ ok: boolean; pages?: { feature: string; file: string }[]; error?: string }>('/api/pages/all');

@@ -1,0 +1,13 @@
+/* Features screen details (#431). Prefix fc-. Tokens only (docs/design/tokens.md). */
+.fc-details { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; margin: 0 0 var(--sp-3); padding: var(--sp-3); border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-2); }
+.fc-h2 { margin: 0; font-size: var(--fs-md, 1.1rem); overflow-wrap: anywhere; }
+.fc-h3 { margin: var(--sp-2) 0 0; font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+.fc-h4 { margin: var(--sp-1) 0 0; font-size: var(--fs-sm); }
+.fc-summary { margin: 0; }
+.fc-hint { color: var(--text-muted); font-size: var(--fs-sm); }
+.fc-mono { font-family: var(--font-mono, ui-monospace, monospace); overflow-wrap: anywhere; }
+.fc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.fc-list li { overflow-wrap: anywhere; }
+.fc-findings { margin: 0; padding: var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-5, 1.5rem); border: 1px solid var(--warn); border-left-width: 3px; border-radius: 6px; background: var(--warn-soft); }
+.fc-details a { color: var(--accent); }
+.fc-link { font-weight: 600; }

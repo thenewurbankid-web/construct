@@ -65,8 +65,9 @@ test.describe('Workflows screen: real XState machines as diagrams (#59, #60, epi
   });
 
   test('nav entry -> feature -> file renders states, guarded edges, initial + final', async ({ page }) => {
-    await page.goto('/');
-    await page.getByRole('navigation', { name: 'Screens' }).getByRole('link', { name: 'Components' }).click();
+    // The workflow viewer is the Components screen's sibling route (the rail's Components entry lists components, #431).
+    await page.goto('/workflows');
+    await expect(page.getByRole('navigation', { name: 'Screens' }).getByRole('link', { name: 'Components' })).toHaveAttribute('aria-current', 'page');
     await expect(page.getByRole('heading', { name: 'Workflows' })).toBeVisible();
 
     await page.getByRole('combobox').selectOption('shop');

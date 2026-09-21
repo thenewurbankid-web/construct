@@ -3,14 +3,14 @@
 // Review modes: screens are the nouns you work on, and the old verbs live on as tabs and actions inside a
 // screen (Explore is the default state of every screen, Plan a Features tab, Build the Run plan button and
 // the bottom panel, Review a verb inside Git). Routes did not move: `activeOn` says which existing path
-// belongs to which screen, so every route is covered and Settings / Local model / Help (reached from the
+// belongs to which screen (Components owns /components and the workflow viewer at /workflows), so every route is covered and Settings / Local model / Help (reached from the
 // profile menu) belong to none.
 import type { PrimaryScreen } from '../types.ts';
 
 export const PRIMARY_SCREENS: PrimaryScreen[] = [
   { id: 'features', label: 'Features', href: '/', activeOn: ['/', '/plan', '/dashboard', '/wizard'] },
   { id: 'pages', label: 'Pages', href: '/pages', activeOn: ['/pages'] },
-  { id: 'components', label: 'Components', href: '/workflows', activeOn: ['/workflows'] },
+  { id: 'components', label: 'Components', href: '/components', activeOn: ['/components', '/workflows'] },
   { id: 'git', label: 'Git', href: '/review', activeOn: ['/review'] },
   { id: 'tests', label: 'Tests', href: '/tests', activeOn: ['/tests'] },
 ];

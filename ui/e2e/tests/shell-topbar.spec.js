@@ -31,7 +31,7 @@ test.describe('Cockpit top bar (#245)', () => {
       await expect(nav.getByRole('link', { name: label })).toHaveAttribute('aria-current', 'page');
     };
     await go('Pages', /\/pages$/);
-    await go('Components', /\/workflows$/);
+    await go('Components', /\/components$/);
     await go('Git', /\/review$/);
     await go('Tests', /\/tests$/);
     await go('Features', /\/$/);
@@ -69,7 +69,7 @@ test.describe('Cockpit top bar (#245)', () => {
     // - the Import Wizard and everything else stay one palette command away.
     const nav = page.getByRole('navigation', { name: 'Screens', exact: true });
     await nav.getByRole('link', { name: 'Components' }).click();
-    await expect(page).toHaveURL(/\/workflows$/);
+    await expect(page).toHaveURL(/\/components$/);
     await page.getByTestId('user-menu-trigger').click();
     await page.getByTestId('profile-help').click();
     await expect(page.locator('h1')).toHaveText('Help');
