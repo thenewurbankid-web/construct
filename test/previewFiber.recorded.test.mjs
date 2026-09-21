@@ -73,6 +73,43 @@ for (const fileName of files) {
     }
   });
 
+  // Exact expectations for the two recordings that are checked in. Both clicked
+  // the `[data-testid="cta"]` button, which in BOTH fixtures is written inside
+  // the page/App component and passed to <Card> as children — so the DOM parent
+  // is Card while the source position is in the file that wrote the JSX.
+  const EXPECTED = {
+    // test-utils/preview-fixtures/vite-app/src/App.tsx line 10 is the <button>,
+    // line 9 is <Card ...>, and main.tsx line 7 is <App />. A bundled dev build
+    // with a real source map resolves all three exactly.
+    'react19-dev-esbuild.json': {
+      ok: true, tier: 'stack', confidence: 'mapped', file: 'src/App.tsx', line: 10, column: 9,
+      componentName: 'Card',
+      ancestors: [['Card', 'src/App.tsx', 9], ['App', 'src/main.tsx', 7]],
+    },
+    // Next serves its dev modules as `webpack-internal:///(app-pages-browser)/./app/page.tsx`,
+    // so the FILE is exact without any map — but 27:102 is a position in the
+    // transformed module (the source has 18 lines), so no line is reported.
+    'next-dev.json': {
+      ok: true, tier: 'stack', confidence: 'file-only', file: 'app/page.tsx', line: null, column: null,
+      componentName: 'Card', reason: 'unmapped-position',
+    },
+  };
+
+  const expected = EXPECTED[fileName];
+  if (expected) {
+    test(`recorded ${label}: resolves to the source position the fixture actually has`, () => {
+      const select = record.messages.find((m) => m.type === 'construct:preview:select');
+      const resolved = resolveFiberSelection(select, { projectRoot: record.capturedFrom?.projectRoot || '/project', sourceMaps: record.sourceMaps || {} });
+      for (const [key, value] of Object.entries(expected)) {
+        if (key === 'ancestors') continue;
+        assert.deepEqual(resolved[key], value, key);
+      }
+      if (expected.ancestors) {
+        assert.deepEqual(resolved.ancestors.map((a) => [a.componentName, a.file, a.line]), expected.ancestors);
+      }
+    });
+  }
+
   test(`recorded ${label}: resolving is deterministic`, () => {
     const select = record.messages.find((m) => m.type === 'construct:preview:select');
     const context = { projectRoot: record.capturedFrom?.projectRoot || '/project', sourceMaps: record.sourceMaps || {} };

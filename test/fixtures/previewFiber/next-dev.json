@@ -1,0 +1,269 @@
+{
+  "capturedFrom": {
+    "what": "a real dev build, recorded by test-utils/preview-fixtures/capture.mjs",
+    "url": "http://127.0.0.1:3851/",
+    "selector": "[data-testid=\"cta\"]",
+    "projectRoot": "/project",
+    "when": "2026-09-21",
+    "reactVersion": null,
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
+    "note": "Next.js 15.5.25 dev server (next dev, defaults), React 19 from ui/client/node_modules"
+  },
+  "installed": true,
+  "hydrated": true,
+  "messages": [
+    {
+      "type": "construct:preview:hello",
+      "nonce": "capture-nonce",
+      "protocol": "construct-preview/1",
+      "capabilities": {
+        "pick": true,
+        "hover": true,
+        "highlight": true
+      }
+    },
+    {
+      "type": "construct:preview:select",
+      "nonce": "capture-nonce",
+      "protocol": "construct-preview/1",
+      "selection": {
+        "id": 1,
+        "protocol": "construct-preview/1",
+        "tag": "button",
+        "componentName": "Card",
+        "annotation": null,
+        "debugSource": null,
+        "stack": "Error: react-stack-top-frame\n    at exports.jsxDEV (webpack-internal:///(app-pages-browser)/../../home/developer/Desktop/repos/construct/ui/client/node_modules/next/dist/compiled/react/cjs/react-jsx-dev-runtime.development.js:321:13)\n    at Page (webpack-internal:///(app-pages-browser)/./app/page.tsx:27:102)\n    at Object.react_stack_bottom_frame (webpack-internal:///(app-pages-browser)/../../home/developer/Desktop/repos/construct/ui/client/node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:23584:20)\n    at renderWithHooksAgain (webpack-internal:///(app-pages-browser)/../../home/developer/Desktop/repos/construct/ui/client/node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:6893:20)\n    at renderWithHooks (webpack-internal:///(app-pages-browser)/../../home/developer/Desktop/repos/construct/ui/client/node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:6805:22)\n    at updateFunctionComponent (webpack-internal:///(app-pages-browser)/../../home/developer/Desktop/repos/construct/ui/client/node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:9247:19)\n    at beginWork (webpack-internal:///(app-pages-browser)/../../home/developer/Desktop/repos/construct/ui/client/node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:10858:18)\n    at runWithFiberInDEV (webpack-internal:///(app-pages-browser)/../../home/developer/Desktop/repos/construct/ui/client/node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:872:30)\n    at performUnitOfWork (webpack-internal:///(app-pages-browser)/../../home/developer/Desktop/repos/construct/ui/client/node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:15727:22)\n    at workLoopConcurrentByScheduler (webpack-internal:///(app-pages-browser)/../../home/developer/Desktop/repos/construct/ui/client/node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:15721:9)\n    at renderRootConcurrent (webpack-internal:///(app-pages-browser)/../../home/developer/Desktop/repos/construct/ui/client/node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:15696:15)\n    at performWorkOnRoot (webpack-internal:///(app-pages-browser)/../../home/developer/Desktop/repos/construct/ui/client/node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14990:13)\n    at performWorkOnRootViaSchedulerTask (webpack-internal:///(app-pages-browser)/../../home/developer/Desktop/repos/construct/ui/client/node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16816:7)\n    at MessagePort.performWorkUntilDeadline (webpack-internal:///(app-pages-browser)/../../home/developer/Desktop/repos/construct/ui/client/node_modules/next/dist/compiled/scheduler/cjs/scheduler.development.js:45:48)",
+        "ancestors": [
+          {
+            "componentName": "Card",
+            "debugSource": null,
+            "stack": null
+          },
+          {
+            "componentName": "Page",
+            "debugSource": null,
+            "stack": null
+          },
+          {
+            "componentName": "ClientPageRoot",
+            "debugSource": null,
+            "stack": null
+          },
+          {
+            "componentName": "SegmentViewNode",
+            "debugSource": null,
+            "stack": null
+          },
+          {
+            "componentName": "InnerLayoutRouter",
+            "debugSource": null,
+            "stack": null
+          },
+          {
+            "componentName": "RedirectErrorBoundary",
+            "debugSource": null,
+            "stack": null
+          },
+          {
+            "componentName": "RedirectBoundary",
+            "debugSource": null,
+            "stack": null
+          },
+          {
+            "componentName": "HTTPAccessFallbackErrorBoundary",
+            "debugSource": null,
+            "stack": null
+          },
+          {
+            "componentName": "HTTPAccessFallbackBoundary",
+            "debugSource": null,
+            "stack": null
+          },
+          {
+            "componentName": "LoadingBoundary",
+            "debugSource": null,
+            "stack": null
+          },
+          {
+            "componentName": "ErrorBoundary",
+            "debugSource": null,
+            "stack": null
+          },
+          {
+            "componentName": "InnerScrollAndFocusHandler",
+            "debugSource": null,
+            "stack": null
+          },
+          {
+            "componentName": "ScrollAndFocusHandler",
+            "debugSource": null,
+            "stack": null
+          },
+          {
+            "componentName": "RenderFromTemplateContext",
+            "debugSource": null,
+            "stack": null
+          },
+          {
+            "componentName": "SegmentStateProvider",
+            "debugSource": null,
+            "stack": null
+          },
+          {
+            "componentName": "OuterLayoutRouter",
+            "debugSource": null,
+            "stack": null
+          },
+          {
+            "componentName": "SegmentViewNode",
+            "debugSource": null,
+            "stack": null
+          },
+          {
+            "componentName": "__next_root_layout_boundary__",
+            "debugSource": null,
+            "stack": null
+          },
+          {
+            "componentName": "RedirectErrorBoundary",
+            "debugSource": null,
+            "stack": null
+          },
+          {
+            "componentName": "RedirectBoundary",
+            "debugSource": null,
+            "stack": null
+          },
+          {
+            "componentName": "HTTPAccessFallbackErrorBoundary",
+            "debugSource": null,
+            "stack": null
+          },
+          {
+            "componentName": "HTTPAccessFallbackBoundary",
+            "debugSource": null,
+            "stack": null
+          },
+          {
+            "componentName": "DevRootHTTPAccessFallbackBoundary",
+            "debugSource": null,
+            "stack": null
+          },
+          {
+            "componentName": "AppDevOverlayErrorBoundary",
+            "debugSource": null,
+            "stack": null
+          },
+          {
+            "componentName": "HotReload",
+            "debugSource": null,
+            "stack": null
+          },
+          {
+            "componentName": "Router",
+            "debugSource": null,
+            "stack": null
+          },
+          {
+            "componentName": "ErrorBoundaryHandler",
+            "debugSource": null,
+            "stack": null
+          },
+          {
+            "componentName": "ErrorBoundary",
+            "debugSource": null,
+            "stack": null
+          },
+          {
+            "componentName": "RootErrorBoundary",
+            "debugSource": null,
+            "stack": null
+          },
+          {
+            "componentName": "AppRouter",
+            "debugSource": null,
+            "stack": null
+          },
+          {
+            "componentName": "ServerRoot",
+            "debugSource": null,
+            "stack": null
+          },
+          {
+            "componentName": "Root",
+            "debugSource": null,
+            "stack": null
+          }
+        ],
+        "props": [
+          {
+            "name": "data-testid",
+            "type": "string",
+            "value": "cta"
+          },
+          {
+            "name": "onClick",
+            "type": "function",
+            "value": null
+          }
+        ],
+        "domPath": [
+          {
+            "tag": "html",
+            "index": 0
+          },
+          {
+            "tag": "body",
+            "index": 1
+          },
+          {
+            "tag": "main",
+            "index": 1
+          },
+          {
+            "tag": "section",
+            "index": 1
+          },
+          {
+            "tag": "div",
+            "index": 1
+          },
+          {
+            "tag": "button",
+            "index": 0
+          }
+        ],
+        "react": {
+          "version": null,
+          "hasDebugSource": false,
+          "hasDebugStack": true
+        },
+        "truncated": [
+          "ancestor-stacks"
+        ]
+      }
+    }
+  ],
+  "stackFrames": [
+    "Error: react-stack-top-frame",
+    "at exports.jsxDEV (webpack-internal:///(app-pages-browser)/../../home/developer/Desktop/repos/construct/ui/client/node_modules/next/dist/compiled/react/cjs/react-jsx-dev-runtime.development.js:321:13)",
+    "at Page (webpack-internal:///(app-pages-browser)/./app/page.tsx:27:102)",
+    "at Object.react_stack_bottom_frame (webpack-internal:///(app-pages-browser)/../../home/developer/Desktop/repos/construct/ui/client/node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:23584:20)",
+    "at renderWithHooksAgain (webpack-internal:///(app-pages-browser)/../../home/developer/Desktop/repos/construct/ui/client/node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:6893:20)",
+    "at renderWithHooks (webpack-internal:///(app-pages-browser)/../../home/developer/Desktop/repos/construct/ui/client/node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:6805:22)",
+    "at updateFunctionComponent (webpack-internal:///(app-pages-browser)/../../home/developer/Desktop/repos/construct/ui/client/node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:9247:19)",
+    "at beginWork (webpack-internal:///(app-pages-browser)/../../home/developer/Desktop/repos/construct/ui/client/node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:10858:18)",
+    "at runWithFiberInDEV (webpack-internal:///(app-pages-browser)/../../home/developer/Desktop/repos/construct/ui/client/node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:872:30)",
+    "at performUnitOfWork (webpack-internal:///(app-pages-browser)/../../home/developer/Desktop/repos/construct/ui/client/node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:15727:22)",
+    "at workLoopConcurrentByScheduler (webpack-internal:///(app-pages-browser)/../../home/developer/Desktop/repos/construct/ui/client/node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:15721:9)",
+    "at renderRootConcurrent (webpack-internal:///(app-pages-browser)/../../home/developer/Desktop/repos/construct/ui/client/node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:15696:15)",
+    "at performWorkOnRoot (webpack-internal:///(app-pages-browser)/../../home/developer/Desktop/repos/construct/ui/client/node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:14990:13)",
+    "at performWorkOnRootViaSchedulerTask (webpack-internal:///(app-pages-browser)/../../home/developer/Desktop/repos/construct/ui/client/node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:16816:7)",
+    "at MessagePort.performWorkUntilDeadline (webpack-internal:///(app-pages-browser)/../../home/developer/Desktop/repos/construct/ui/client/node_modules/next/dist/compiled/scheduler/cjs/scheduler.development.js:45:48)"
+  ],
+  "sourceMaps": {},
+  "sourceMapNotes": {},
+  "sourceMapTrimmed": {},
+  "pageErrors": []
+}
