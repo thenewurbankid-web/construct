@@ -77,3 +77,12 @@ export * from './components/SourceEditor';
 
 /** Diagnostics -> editor-neutral markers, and the one-line problem summary. */
 export * from './domain/SourceMarkers';
+
+/** The live preview's device size (Fit / 390 / 768 / 1280 / Fluid), remembered per project. */
+export * from './hooks/usePreviewSize';
+
+/** The live preview frame's real measured size, live. */
+export * from './hooks/usePreviewMeasure';
+
+/** Showing the previewed app full screen: the shell's focus mode, Ctrl+Alt+F in, Esc out. */
+export * from './hooks/useFullScreenPreview';

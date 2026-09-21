@@ -1,3 +1,8 @@
+/** What the live preview panel is handed to draw, and what it knows about the
+ * preview address (#456). Declared in domain/, re-exported here so the panel and
+ * its parts take it as props without reaching into another layer. */
+export type * from './domain/LivePreviewView';
+
 export type PagesEditorId = string;
 
 export type PropKind = 'string' | 'number' | 'boolean' | 'identifier' | 'expression' | 'spread';

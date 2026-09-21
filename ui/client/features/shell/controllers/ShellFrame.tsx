@@ -20,6 +20,8 @@ import { useShellTabs } from '../hooks/useShellTabs';
 import { useShellShortcuts } from '../hooks/useShellShortcuts';
 import { useDrawerActions } from '../hooks/useDrawerActions';
 import { ShellDrawerContext } from '../hooks/useShellDrawer';
+import { ShellFocusContext } from '../hooks/useShellFocus';
+import { useFocusMode } from '../hooks/useFocusMode';
 import { ShellStageContext } from '../hooks/useShellStage';
 import { useShellCommands } from '../hooks/useShellCommands';
 import { useShellNavigation } from '../hooks/useShellNavigation';
@@ -39,6 +41,8 @@ type FrameProps = { children: ReactNode; route: Route; project: Project; model: 
 /** The full shell, shown only while a project is open. */
 export function ShellFrame({ children, route, project, model, theme, userMenu }: FrameProps) {
   const { collapsed: railCollapsed, toggle: toggleRail } = useRailCollapsed();
+  // Focus mode (#456): the Pages Editor's live preview asks the chrome to stand down.
+  const focus = useFocusMode();
   const { layout, resize, toggle } = useShellLayout(project.dir, project.known);
   const narrow = useNarrowLayout(route.pathname);
   const { active, select } = useActiveTabs();
@@ -122,6 +126,7 @@ export function ShellFrame({ children, route, project, model, theme, userMenu }:
       narrow={narrow.narrow}
       narrowPane={narrow.pane}
       onNarrowPane={narrow.setPane}
+      focus={focus.focused}
       screens={PRIMARY_SCREENS}
       activeScreenId={route.screen?.id ?? null}
       screenBadges={{ git: gitBranches }}
@@ -142,7 +147,9 @@ export function ShellFrame({ children, route, project, model, theme, userMenu }:
       onSelectTab={select}
     >
       <ShellDrawerContext.Provider value={drawerApi}>
-        <ShellStageContext.Provider value={stageApi}>{children}</ShellStageContext.Provider>
+        <ShellStageContext.Provider value={stageApi}>
+          <ShellFocusContext.Provider value={focus}>{children}</ShellFocusContext.Provider>
+        </ShellStageContext.Provider>
       </ShellDrawerContext.Provider>
     </ShellPage>
   );
