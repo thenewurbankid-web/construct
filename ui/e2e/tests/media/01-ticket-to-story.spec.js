@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { caption, clearCaption, card, pause, saveRecording, startTimeline, writeTimeline } from './support.mjs';
+import { caption, clearCaption, card, pause, saveRecording, startTimeline, writeTimeline, installCursor } from './support.mjs';
 import { startMockOllama } from './mockOllama.mjs';
 
 // Episode 1 (v2): one continuous example, a wishlist for the sample shop, from sign-in to a running app (docs/MEDIA.md).
@@ -77,6 +77,7 @@ test('episode 1: one example, end to end', async ({ page }) => {
   const model = await startMockOllama();
   const app = spawn('npx', ['next', 'dev', '-p', String(APP_PORT)], { cwd: shop, stdio: 'ignore', detached: true });
   try {
+    await installCursor(page);
     await page.goto('/');
     await expect(page.getByTestId('login-test-user')).toBeVisible();
     await card(page, CAPTIONS.introTitle, CAPTIONS.introSub);

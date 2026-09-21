@@ -119,3 +119,7 @@ $UV pip install --python $V/bin/python --reinstall-package torch --reinstall-pac
 
 Kokoro setup (default voice): `mkdir -p ~/.cache/construct-media && cd ~/.cache/construct-media && npm init -y && npm i kokoro-js`
 (`CONSTRUCT_MEDIA_CACHE` moves the folder). The clone helper is `tools/media/clone_voice.py`, run with the venv's Python.
+
+## Visible pointer
+
+Recordings draw a highlighted pointer (ring that follows the mouse and pulses on click): `installCursor(page)` before `goto`, and `glide(page, locator)` to travel to an element before clicking it. Episode 1 has it from the next re-record.

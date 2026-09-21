@@ -87,3 +87,46 @@ export function saveRecording(fsMod, dir, slug, tmpPath) {
   fsMod.copyFileSync(tmpPath, current);
   fsMod.copyFileSync(tmpPath, path.join(history, `${slug}-${stamp(new Date())}.webm`));
 }
+
+/**
+ * Show the pointer in the recording: Playwright's video has no cursor, so draw one in the page. A soft highlight ring
+ * follows the mouse and pulses on every click. Call once per page before `goto` (it survives navigations).
+ * `glide` moves the pointer to an element in a few steps first, so viewers see where a click is about to land.
+ */
+export async function installCursor(page) {
+  await page.addInitScript(() => {
+    const boot = () => {
+      if (document.getElementById('media-cursor')) return;
+      const style = document.createElement('style');
+      style.textContent = '#media-cursor{position:fixed;left:0;top:0;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;'
+        + 'border:3px solid #6c97ff;background:rgba(108,151,255,.22);box-shadow:0 0 0 4px rgba(108,151,255,.18),0 2px 10px rgba(0,0,0,.35);'
+        + 'z-index:2147483647;pointer-events:none;transition:transform .12s ease,background .12s ease}'
+        + '#media-cursor.down{transform:scale(.72);background:rgba(108,151,255,.5)}'
+        + '.media-ripple{position:fixed;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;border:3px solid #6c97ff;'
+        + 'z-index:2147483646;pointer-events:none;animation:media-ripple .6s ease-out forwards}'
+        + '@keyframes media-ripple{to{transform:scale(2.6);opacity:0}}';
+      document.head.appendChild(style);
+      const dot = document.createElement('div');
+      dot.id = 'media-cursor';
+      dot.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(dot);
+      const place = (e) => { dot.style.left = e.clientX + 'px'; dot.style.top = e.clientY + 'px'; };
+      addEventListener('mousemove', place, true);
+      addEventListener('mousedown', (e) => {
+        place(e); dot.classList.add('down');
+        const r = document.createElement('div'); r.className = 'media-ripple'; r.style.left = e.clientX + 'px'; r.style.top = e.clientY + 'px';
+        document.body.appendChild(r); setTimeout(() => r.remove(), 700);
+      }, true);
+      addEventListener('mouseup', () => dot.classList.remove('down'), true);
+    };
+    if (document.body) boot(); else addEventListener('DOMContentLoaded', boot);
+  });
+}
+
+/** Move the pointer to the centre of `locator` in a few steps, so the viewer sees it travel before the click. */
+export async function glide(page, locator, steps = 18) {
+  const box = await locator.boundingBox();
+  if (!box) return;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps });
+  await page.waitForTimeout(250);
+}
