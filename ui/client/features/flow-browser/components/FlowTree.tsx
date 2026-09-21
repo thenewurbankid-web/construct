@@ -1,6 +1,7 @@
 'use client';
 
 
+import { createPortal } from 'react-dom';
 import type { FlowHover, FlowRow, Relation } from '../types';
 import { FlowRowItem } from './FlowRowItem';
 
@@ -38,12 +39,13 @@ export function FlowTree({ rows, selectedId, collapsed, relations, hover, onSele
           />
         ))}
       </div>
-      {hover && (
+      {hover && createPortal(
         <div className="ref-tip flow-tip" role="tooltip" data-testid="flow-tip" style={{ left: hover.x, top: hover.y }}>
           <div className="ref-tip-rel" data-testid="flow-tip-relation">{hover.hint.relation}</div>
           <div>{hover.hint.sentence}</div>
           {hover.hint.path && <div className="ref-tip-key" data-testid="flow-tip-path">{hover.hint.path}{hover.row.file ? ' · Ctrl+click to open' : ''}</div>}
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

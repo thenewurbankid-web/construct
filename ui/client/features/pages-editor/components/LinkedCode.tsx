@@ -1,5 +1,6 @@
 'use client';
 
+import { createPortal } from 'react-dom';
 import { useLinkedCode } from '../hooks/useLinkedCode';
 import type { NavReference } from '../types';
 
@@ -45,14 +46,18 @@ export function LinkedCode({ source, references, onFollow, label }: LinkedCodePr
           )}
         </code>
       </pre>
-      {hover && hover.ref.relation && (
+      {/* Portalled to body: the tip is position:fixed in viewport coordinates, but inside a backdrop-filter
+          panel the containing block is the panel, so it stretched the scroll area and the page scrolled
+          back and forth under the pointer (click never "stable"). */}
+      {hover && hover.ref.relation && createPortal(
         <div className="ref-tip" role="tooltip" data-testid="ref-tip" style={{ left: hover.x, top: hover.y }}>
           <div className="ref-tip-rel">{hover.ref.relation.label}</div>
           <div>
             <strong>{hover.ref.name}</strong> is {hover.ref.relation.description}.
           </div>
           <div className="ref-tip-key">Click or press Enter to open here. Alt+Left comes back.</div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );
