@@ -150,7 +150,7 @@ export function renderMarkdown(md, ctx) {
   html = html.replace(/<img src="@img\/([^"]+)"/g, (_, f) => `<img src="${root}assets/img/${f}" loading="lazy" decoding="async"`);
 
   // Site videos: ![alt](@video/name) points at site/assets/video/name.webm, with name.png as its poster.
-  html = html.replace(/<img src="@video\/([^"]+)"(?: alt="([^"]*)")?[^>]*>/g, (_, f, alt = '') => `<video controls preload="metadata" width="1280" height="720" poster="${root}assets/video/${f}.png" aria-label="${alt}"><source src="${root}assets/video/${f}.webm" type="video/webm"><a href="${root}assets/video/${f}.webm">Download the video</a></video>`);
+  html = html.replace(/(?:<p>)?<img src="@video\/([^"]+)"(?: alt="([^"]*)")?[^>]*>(?:<\/p>)?/g, (_, f, alt = '') => `<figure class="video"><video controls preload="metadata" width="1280" height="720" poster="${root}assets/video/${f}.png" aria-label="${alt}"><source src="${root}assets/video/${f}.webm" type="video/webm"><a href="@assets/video/${f}.webm" download>Download the video</a></video><figcaption><a href="@assets/video/${f}.webm" download>Download the video (.webm)</a></figcaption></figure>`);
 
   const ids = new Set(headings.map((h) => h.id));
   const srcDir = path.posix.dirname(source || '.');

@@ -127,6 +127,8 @@ h2 { font-size: 1.6rem; margin: 0 0 8px; }
 .prose pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; overflow-x: auto; font-size: 13.5px; line-height: 1.55; }
 .prose pre code { background: none; border: 0; padding: 0; font-size: inherit; }
 .prose img { max-width: 100%; height: auto; border: 1px solid var(--border); border-radius: 10px; display: block; margin: 16px 0; background: var(--code-bg); }
+.prose figure.video { margin: 0; }
+.prose figure.video figcaption { font-size: 0.85rem; color: var(--muted, #6b7280); margin: -8px 0 16px; }
 .prose video { max-width: 100%; height: auto; aspect-ratio: 16 / 9; border: 1px solid var(--border); border-radius: 10px; display: block; margin: 16px 0; background: #0d0f12; }
 .prose a:has(> img) { display: block; }
 .prose blockquote { margin: 16px 0; padding: 4px 16px; border-left: 3px solid var(--border); color: var(--muted); }

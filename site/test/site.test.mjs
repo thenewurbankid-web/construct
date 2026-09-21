@@ -179,3 +179,14 @@ test('friendliness: three-item nav, product side menu, where-am-I line, quicksta
 test('parseArgs', () => {
   assert.deepEqual(parseArgs(['--out', 'x', '--repo', 'a/b']), { out: 'x', repo: 'a/b' });
 });
+
+test('video pages offer a download and the published site leaves out video history', async () => {
+  const out = makeTempDir('site-test-');
+  await build({ out, repo: 'o/r', buildTime: BUILD_TIME });
+  const page = fs.readFileSync(path.join(out, 'user-guide/videos/ticket-to-story/index.html'), 'utf8');
+  assert.match(page, /<video controls/);
+  assert.match(page, /<figcaption><a href="[^"]*01-ticket-to-story\.webm" download>Download the video/);
+  assert.ok(fs.existsSync(path.join(out, 'assets/video/01-ticket-to-story.webm')));
+  assert.ok(!fs.existsSync(path.join(out, 'assets/video/history')), 'earlier takes stay in the repo, not on the site');
+  fs.rmSync(out, { recursive: true });
+});
