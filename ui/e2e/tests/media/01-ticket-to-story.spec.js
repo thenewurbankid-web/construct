@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { caption, clearCaption, card, pause, saveRecording } from './support.mjs';
+import { caption, clearCaption, card, pause, saveRecording, startTimeline, writeTimeline } from './support.mjs';
 import { startMockOllama } from './mockOllama.mjs';
 
 // Episode 1 (v2): one continuous example, a wishlist for the sample shop, from sign-in to a running app (docs/MEDIA.md).
@@ -67,6 +67,7 @@ const stepAt = (page, i) => page.getByTestId('plan-step').nth(i);
 test('episode 1: one example, end to end', async ({ page }) => {
   test.setTimeout(900_000);
   fs.mkdirSync(OUT, { recursive: true });
+  startTimeline();
   // The sample project the gate offers as "Try the sample shop": a copy of the shop in the (otherwise empty) workspace.
   const shop = path.join(WS, 'shop');
   fs.cpSync(SAMPLE, shop, { recursive: true, filter: (s) => !/[\\/](node_modules|\.next)([\\/]|$)/.test(s) });
@@ -245,7 +246,7 @@ test('episode 1: one example, end to end', async ({ page }) => {
     await page.close();
     const tmp = path.join(WS, '..', `${SLUG}.take.webm`);
     await video.saveAs(tmp);
-    if (process.env.MEDIA_DRY !== '1') saveRecording(fs, OUT, SLUG, tmp);
+    if (process.env.MEDIA_DRY !== '1') { saveRecording(fs, OUT, SLUG, tmp); writeTimeline(fs, OUT, SLUG); }
     void clearCaption;
   } finally {
     try { process.kill(-app.pid, 'SIGKILL'); } catch { /* already gone */ }

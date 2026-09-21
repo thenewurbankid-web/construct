@@ -15,8 +15,23 @@ export const readingMs = (text) => Math.round(Math.max(3000, text.length * 70) *
 
 const CAPTION_ID = 'media-caption';
 
+// The caption timeline: every caption and card, with seconds from the start of the recording (for the voice-over,
+// tools/media/voiceover.mjs). Measured on the wall clock from startTimeline(); nothing on screen changes.
+let T0 = Date.now();
+let TIMELINE = [];
+const stamp = (text) => TIMELINE.push({ text, start: Math.round((Date.now() - T0)) / 1000 });
+
+/** Call first thing in a test: the recording starts when the page is created, a moment before. */
+export function startTimeline() { T0 = Date.now(); TIMELINE = []; }
+
+/** Write the timeline as `<slug>.captions.json` ([{ text, start }]) into `dir`. */
+export function writeTimeline(fsMod, dir, slug) {
+  fsMod.writeFileSync(path.join(dir, `${slug}.captions.json`), JSON.stringify(TIMELINE, null, 2) + '\n');
+}
+
 /** Show `text` as a high-contrast caption bar at the bottom of the page until replaced or cleared. */
 export async function caption(page, text) {
+  stamp(text);
   await page.evaluate(([id, text]) => {
     let el = document.getElementById(id);
     if (!el) {
@@ -38,6 +53,7 @@ export const clearCaption = (page) => page.evaluate((id) => document.getElementB
 
 /** A full-screen brand card (the Line mark, a title and a subtitle) shown for `ms`, then removed. */
 export async function card(page, title, subtitle = '', ms = 5000) {
+  stamp(subtitle ? `${title}. ${subtitle}` : title);
   await clearCaption(page);
   await page.evaluate(([svg, title, subtitle]) => {
     const el = document.createElement('div');
