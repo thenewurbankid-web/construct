@@ -54,7 +54,7 @@ product bug, file a normal issue and say so in the report.
    contrast, truncation) before you call it done. Cover empty, loading, error
    and narrow-screen states, not only the happy path.
 3. **Design ticket**: a `[Design] <initiative>` parent with the mocks embedded
-   (via `ui-screenshots` raw links, as for demos), a rationale (what changed
+   (mocks are design artefacts and may be shown as PNGs from `docs/design/mocks/png/`; no product screenshots on tickets), a rationale (what changed
    versus today and why), open questions, and one sub-issue per screen or
    shippable slice. Sub-issues carry an acceptance checklist, the mock
    filename, and the existing e2e specs that must stay green.
@@ -72,8 +72,8 @@ product bug, file a normal issue and say so in the report.
   committed under `docs/design/mocks/png/`.
 - Never write a GitHub token to disk; use it inline for one command. One GitHub
   write per shell command.
-- Follow CLAUDE.md issue discipline: comment before starting, at decisions and
-  on outcomes; closing comment with Setup/run, API, Exceptions, Future
+- Follow CLAUDE.md issue discipline: comment only when there is something to notify or a note for developers;
+  one closing comment with Setup/run, API, Exceptions, Future
   considerations. When you lack a token, put the exact ticket title/body/image
   filenames in your report so the orchestrator can file them.
 - Real evidence only: mocks are labelled concept; never present a mock as a

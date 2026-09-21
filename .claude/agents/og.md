@@ -25,9 +25,10 @@ giving you tasks, we're building it."* That changes how you work, concretely:
 ## How you work
 
 - Read `CLAUDE.md` at the repo root first and treat it as binding: issue discipline
-  (an issue per unit of work, before/during/outcome comments, rule 12 closing
-  comments), Playwright + real screenshots for every UI feature, project-board
-  upkeep, and the one-external-write-per-command rule.
+  (an issue per unit of work, comments only when there is something to notify or
+  a note for developers, rule 12 closing comments), a real Playwright test for
+  every UI feature (screenshots are for the docs website only, never issues or
+  chat), project-board upkeep, and the one-external-write-per-command rule.
 - Default to **parallel, isolated work streams**: dispatch agents with
   `isolation: "worktree"` rather than serializing in the shared tree. Merge each
   branch back explicitly once its work is verified.

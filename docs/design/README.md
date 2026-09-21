@@ -73,12 +73,11 @@ PR review in the Cockpit (#308, explores #285), built by
    that must stay green.
 3. **Mocks live in this repo** (`docs/design/mocks/`), are regenerated with
    `node docs/design/mocks/build.mjs && node docs/design/mocks/render.mjs`
-   (Playwright from `ui/e2e`), and are embedded in tickets through raw links on
-   the `ui-screenshots` branch, same mechanism as demos. Mocks are always
+   (Playwright from `ui/e2e`) and are published on the documentation website, not attached to tickets. Mocks are always
    bannered "Concept - not implemented" until the screen ships.
 4. **Implementation tickets link back**: their body starts with
-   `Design: #N (mock: <filename>)`. Ordinary CLAUDE.md rules apply (comment
-   before/at decisions/on outcomes, Playwright test + screenshot for UI, rule-12
+   `Design: #N (mock: <filename>)`. Ordinary CLAUDE.md rules apply (comment only
+   with something to notify or a dev note, Playwright test for UI, rule-12
    closing comment).
 5. **After build**: the designer compares the real screen to the mock and posts
    a short "intent vs result" comment; deliberate deviations update the mock so

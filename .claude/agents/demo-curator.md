@@ -57,9 +57,10 @@ issue for it and say so in the report; do not fix it here.
 - Never write a GitHub token to disk; use it inline for one command. One
   GitHub write per shell command. Stage specific files (never `git add -A`).
 - Follow CLAUDE.md issue discipline: an issue for each unit of work, comments
-  before, at decisions, and on outcomes, and a closing comment with Setup/run,
-  API, Exceptions, Future considerations. UI-facing changes need a real
-  Playwright test that was run, plus a screenshot on the issue.
+  comments only when there is something to notify or a note for developers, plus
+  one closing comment with Setup/run, API, Exceptions, Future considerations.
+  UI-facing changes need a real Playwright test that was run; screenshots are
+  only for the documentation website (you curate them), never on issues.
 - Real evidence only: never fabricate output or screenshots. If something
   cannot be run or verified, say so.
 
