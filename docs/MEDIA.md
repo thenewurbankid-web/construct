@@ -34,3 +34,18 @@ Only episode 1 is built for now.
 - Output: `site/assets/video/<nn>-<slug>.webm` (+ `.mp4`, `.jpg` poster), and a page
   `site/content/user/videos/<slug>.md` with a native `<video controls poster>` and the storyboard as text.
 - Run: `tools/dev/heavy.sh npx playwright test -c playwright.media.config.js --workers=1`.
+
+## Adding audio (music, voice-over)
+
+Recordings are silent. To add sound, record or pick a track and mix it in; the video is copied untouched:
+
+```
+tools/media/add-audio.sh site/assets/video/01-ticket-to-story.webm \
+  --track music.mp3 --track voice.wav@4 --volume 0.35 --fade 2
+```
+
+`--track FILE@SECONDS` starts a track at that second (repeat for several); `--volume` and `--fade` apply to all
+tracks; output is `<video>.audio.webm` next to the input (or `--out`), never overwriting the original. Needs
+ffmpeg on the PATH (or `FFMPEG=/path/to/ffmpeg`). Use only music you have the right to publish. Use the
+`.audio.webm` in the site page's `@video/` reference when you are happy with it. Pace: `MEDIA_PACE=1.5` (default)
+scales every scripted pause; captions hold for their reading time.

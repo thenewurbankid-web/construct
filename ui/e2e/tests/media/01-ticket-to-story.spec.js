@@ -62,8 +62,8 @@ test('episode 1: from a ticket to a story', async ({ page }) => {
   // 4. The ticket, written in the Notes tab.
   await page.getByRole('complementary', { name: 'Browser' }).getByRole('tab', { name: 'Notes' }).click();
   await caption(page, CAPTIONS.ticket);
-  await page.getByTestId('plan-ticket-title').pressSequentially(TICKET_TITLE, { delay: 60 });
-  await page.getByTestId('plan-ticket-body').pressSequentially(TICKET_BODY, { delay: 40 });
+  await page.getByTestId('plan-ticket-title').pressSequentially(TICKET_TITLE, { delay: 90 });
+  await page.getByTestId('plan-ticket-body').pressSequentially(TICKET_BODY, { delay: 60 });
   await pause(page, 1500);
 
   // 5. Which parts does it touch? A proposal, confirmed by the person.
@@ -96,7 +96,7 @@ test('episode 1: from a ticket to a story', async ({ page }) => {
   await caption(page, CAPTIONS.pages);
   await pause(page, 4500);
 
-  await card(page, CAPTIONS.outroTitle, CAPTIONS.outroSub);
+  await card(page, CAPTIONS.outroTitle, CAPTIONS.outroSub, 6000);
 
   const video = page.video();
   await page.close();

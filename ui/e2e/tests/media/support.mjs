@@ -7,7 +7,11 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const LINE_SVG = fs.readFileSync(path.resolve(HERE, '../../../../docs/brand/line.svg'), 'utf8');
 
 /** The one place pacing happens, so a re-record gives the same video. */
-export const pause = (page, ms) => page.waitForTimeout(ms);
+const PACE = Number(process.env.MEDIA_PACE) || 1.5;
+export const pause = (page, ms) => page.waitForTimeout(Math.round(ms * PACE));
+
+/** Reading time for a caption: enough for a person to read it once, unhurried (about 14 characters a second, at least 3 s). */
+export const readingMs = (text) => Math.max(3000, Math.round(text.length * 70));
 
 const CAPTION_ID = 'media-caption';
 
@@ -26,12 +30,14 @@ export async function caption(page, text) {
     }
     el.textContent = text;
   }, [CAPTION_ID, text]);
+  // Hold on the caption before the next action, so every scene registers before the screen changes.
+  await page.waitForTimeout(readingMs(text));
 }
 
 export const clearCaption = (page) => page.evaluate((id) => document.getElementById(id)?.remove(), CAPTION_ID);
 
 /** A full-screen brand card (the Line mark, a title and a subtitle) shown for `ms`, then removed. */
-export async function card(page, title, subtitle = '', ms = 3000) {
+export async function card(page, title, subtitle = '', ms = 5000) {
   await clearCaption(page);
   await page.evaluate(([svg, title, subtitle]) => {
     const el = document.createElement('div');
