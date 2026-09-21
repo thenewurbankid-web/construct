@@ -77,6 +77,9 @@ export function validateEnvelope(envelope) {
       }
     }
   }
+  if (envelope.ext !== undefined && (!envelope.ext || typeof envelope.ext !== 'object' || Array.isArray(envelope.ext))) {
+    fail(errors, '"ext" must be an object (free-form, ignored by validators).');
+  }
   if (envelope.unboundSlots !== undefined) {
     if (!Array.isArray(envelope.unboundSlots)) {
       fail(errors, '"unboundSlots" must be an array.');
