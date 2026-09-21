@@ -38,7 +38,7 @@ export function FeatureDetails({ name, view, loading, error, onRetry }: Props) {
             <ul className="fc-list">
               {l.files.map((f) => (
                 <li key={f.path} data-testid="fc-file">
-                  {f.href ? <Link href={f.href} className="fc-mono">{f.path}</Link> : <span className="fc-mono">{f.path}</span>}
+                  {f.href ? <Link href={f.href} className="fc-mono fc-file-link">{f.path}</Link> : <span className="fc-mono">{f.path}</span>}
                   <span className="fc-hint"> {f.purpose}</span>
                 </li>
               ))}

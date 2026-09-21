@@ -16,9 +16,9 @@ test.describe.serial('Pages screen: browse in the left pane, open in the stage (
   let project;
   let restore;
 
-  test.beforeAll(async ({ request }) => {
+  test.beforeAll(async () => {
     project = makeBrowseProject('og431-pages-');
-    restore = await openProject(request, API, project.repo);
+    restore = await openProject(API, project.repo);
   });
   test.afterAll(async () => {
     await restore?.();

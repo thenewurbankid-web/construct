@@ -31,9 +31,9 @@ test.describe.serial('Components screen: browse in the left pane, document and e
   let project;
   let restore;
 
-  test.beforeAll(async ({ request }) => {
+  test.beforeAll(async () => {
     project = makeBrowseProject('og431-components-');
-    restore = await openProject(request, API, project.repo);
+    restore = await openProject(API, project.repo);
   });
   test.afterAll(async () => {
     await restore?.();

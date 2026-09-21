@@ -65,11 +65,13 @@ export function makeBrowseProject(prefix = 'og431-') {
   return { repo, git, read: (rel) => fs.readFileSync(path.join(repo, rel), 'utf8'), remove: () => fs.rmSync(repo, { recursive: true, force: true }) };
 }
 
-/** Opens `repo` as the Cockpit's project (through the same API a person's choice takes) and returns a restore function. */
-export async function openProject(request, apiBase, repo) {
-  const original = (await (await request.get(`${apiBase}/api/settings`)).json()).projectDir;
-  await request.post(`${apiBase}/api/settings`, { data: { projectDir: repo } });
+/** Opens `repo` as the Cockpit's project (through the same API a person's choice takes) and returns a restore function.
+ * Plain fetch, not Playwright's `request` fixture: a beforeAll fixture cannot be reused from afterAll. */
+export async function openProject(apiBase, repo) {
+  const post = (projectDir) => fetch(`${apiBase}/api/settings`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ projectDir }) });
+  const original = (await (await fetch(`${apiBase}/api/settings`)).json()).projectDir;
+  await post(repo);
   return async () => {
-    if (original) await request.post(`${apiBase}/api/settings`, { data: { projectDir: original } });
+    if (original) await post(original);
   };
 }
