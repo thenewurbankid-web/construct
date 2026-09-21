@@ -1,0 +1,9 @@
+{
+  "name": "construct-preview-fixture-vite",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Tiny Vite + React app used to exercise live preview v2 (#443). Nothing from Construct is installed in it — in particular NOT constructPreview(), which is the point of v2. Vite is not installed in this repo, so this fixture is not run here yet (see ../README.md).",
+  "scripts": { "dev": "vite" },
+  "dependencies": { "react": "^19.1.0", "react-dom": "^19.1.0" },
+  "devDependencies": { "@vitejs/plugin-react": "^4.3.0", "vite": "^5.4.0" }
+}
