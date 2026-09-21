@@ -18,6 +18,10 @@ if [ "$BROWSER" = "--browser" ] || [ "$BROWSER" = "--full" ]; then
   for c in auth workspace processes processes-approval review-processes; do
     res "e2e $c" "$(cd ui/e2e && "$H" npx playwright test -c playwright.$c.config.js --workers=1 2>&1 | grep -E "passed|failed" | tail -1)"
   done
-  if [ "$BROWSER" = "--full" ]; then res "e2e default" "$(cd ui/e2e && "$H" npx playwright test --workers=1 2>&1 | grep -E "passed|failed" | tr '\n' ' ')"; fi
+  if [ "$BROWSER" = "--full" ]; then
+    J="$(mktemp /tmp/verify-e2e-XXXX.json)"
+    (cd ui/e2e && PLAYWRIGHT_JSON_OUTPUT_NAME="$J" "$H" npx playwright test --workers=1 --reporter=json >/dev/null 2>&1)
+    res "e2e default" "$(node -e 'const r=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));const s=r.stats;const bad=[];(function w(n){(n.specs||[]).forEach(sp=>sp.tests.forEach(t=>{if(t.status==="unexpected")bad.push(sp.file+": "+sp.title.slice(0,60))}));(n.suites||[]).forEach(w)})({suites:r.suites});console.log(s.expected+" passed, "+s.unexpected+" failed, "+s.skipped+" skipped"+(bad.length?"\n    "+bad.join("\n    "):""))' "$J" 2>/dev/null || echo "no result (see $J)")"
+  fi
 fi
 echo "(merged locally, not pushed; details: $OUT)"
