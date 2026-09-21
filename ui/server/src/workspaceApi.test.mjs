@@ -70,6 +70,30 @@ test('routes that do not need a project still work with none open', async () => 
   assert.equal((await json('GET', '/api/fs/browse')).status, 200);
 });
 
+test('#423 /api/health: ok first, then git/node/workspace/state-dir states with thresholds, and no path leaves the server', async () => {
+  const res = await json('GET', '/api/health');
+  assert.equal(res.status, 200);
+  const h = await res.json();
+  assert.equal(Object.keys(h)[0], 'ok');
+  assert.equal(h.ok, true);
+  assert.equal(typeof h.degraded, 'boolean');
+  assert.equal(h.node, process.version);
+  assert.equal(h.git.ok, true);
+  assert.match(h.git.version, /^\d+\.\d+\.\d+$/);
+  assert.equal(h.git.minimum, '2.37.0');
+  assert.equal(h.git.cloneEnabled, true);
+  assert.equal(h.workspace.writable, true);
+  assert.equal(typeof h.workspace.freeBytes, 'number');
+  assert.equal(typeof h.workspace.low, 'boolean');
+  assert.equal(h.stateDir.writable, true);
+  assert.equal(typeof h.stateDir.freeBytes, 'number');
+  assert.equal(typeof h.thresholds.minFreeBytes, 'number');
+  assert.ok(Array.isArray(h.warnings));
+  const text = JSON.stringify(h);
+  assert.equal(text.includes(ws), false, 'the workspace path is not in the public document');
+  assert.equal(text.includes(process.env.CONSTRUCT_STATE_DIR), false, 'the state dir path is not in the public document');
+});
+
 test('settings: a project outside the workspace is refused with 403/404 and a code, and nothing opens', async () => {
   for (const projectDir of ['/', '/etc', outside, path.join(ws, '..'), path.join(ws, 'escape'), 'escape', '../x', 'x\0y']) {
     const r = await json('POST', '/api/settings', { projectDir });

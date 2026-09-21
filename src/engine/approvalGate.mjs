@@ -80,7 +80,7 @@ const GIT_TIMEOUT_MS = 10 * 60 * 1000;
 
 function git(cwd, args, { input } = {}) {
   const res = spawnSync('git', ['--literal-pathspecs', ...IDENTITY, ...args], { cwd, input, maxBuffer: 256 * 1024 * 1024, timeout: GIT_TIMEOUT_MS, killSignal: 'SIGKILL' });
-  const err = res.error?.code === 'ETIMEDOUT'
+  const err = /** @type {any} */ (res.error)?.code === 'ETIMEDOUT'
     ? `git ${args[0]} did not finish within ${Math.round(GIT_TIMEOUT_MS / 1000)} seconds and was stopped.`
     : (res.stderr?.toString() || res.error?.message || '').trim();
   return { ok: res.status === 0, out: res.stdout ?? Buffer.alloc(0), err };

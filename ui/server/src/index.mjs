@@ -28,6 +28,8 @@ import { attachProcessesSocket } from './processesSocket.mjs';
 import { createReviewRouter } from './reviewApi.mjs';
 import { createTestsRouter } from './testsApi.mjs';
 import { createCloneJobs, DEFAULT_MAX_BYTES, DEFAULT_TIMEOUT_MS } from './cloneJobs.mjs';
+import { createHealth } from './health.mjs';
+import { resolveStateDir } from '../../../src/engine/processStore.mjs';
 import { createCloneRouter, createRemoteRouter } from './cloneApi.mjs';
 import { resolveCloneHosts } from './gitUrl.mjs';
 import { createReviewJobs } from './reviewJobs.mjs';
@@ -140,13 +142,22 @@ function respond(res, result) {
   res.status(result.httpStatus).json(result);
 }
 
-// Public on purpose: returns `{ok:true}` and nothing else. Playwright's
-// `webServer` block and any liveness probe poll it before a session can
-// exist. It is registered *above* the gate below, so it is the only
-// unauthenticated `/api` route by construction rather than by a path
-// comparison something could be smuggled past.
+// Public on purpose. Playwright's `webServer` block and any liveness probe
+// poll it before a session can exist. It is registered *above* the gate
+// below, so it is the only unauthenticated `/api` route by construction
+// rather than by a path comparison something could be smuggled past.
+// `ok: true` first, always (= "the server answers"); the rest (#423) is
+// states only — writability and free space of the workspace and the state
+// directory, node and git versions, whether clone is enabled — never a path
+// and never a secret (health.mjs). `cloneJobs` is defined further down; the
+// closure runs per request, long after this module has finished loading.
+export const health = createHealth({
+  getWorkspaceRoot: workspaceRoot,
+  getStateDir: () => resolveStateDir(),
+  gitStatus: () => cloneJobs.gitStatus(),
+});
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true });
+  res.json(health.snapshot());
 });
 
 // Log in / out. Deliberately outside `/api`, and therefore outside the
@@ -978,7 +989,7 @@ export function start() {
   server.listen(port, host, () => {
     console.log(`Construct UI server listening on http://${host}:${port}`);
     console.log(`Workspace: ${root} (the only place projects can be opened; set CONSTRUCT_WORKSPACE_ROOT to change it). No project is open until one is chosen.`);
-    for (const line of auth.describeStartup()) {
+    for (const line of [...auth.describeStartup(), ...health.describeStartup()]) {
       (line.level === 'warn' ? console.warn : console.log)(line.level === 'warn' ? `WARNING: ${line.text}` : line.text);
     }
     if (!isLoopbackHost(host)) {

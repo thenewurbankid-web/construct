@@ -13,7 +13,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { createProcess, appendLog, startStep } from '../src/engine/processModel.mjs';
-import { openProcessStore, resolveStateDir, processDir, projectKey } from '../src/engine/processStore.mjs';
+import { openProcessStore, resolveStateDir, processDir, projectKey, atomicWriteJson } from '../src/engine/processStore.mjs';
 
 function clock(start = Date.UTC(2026, 8, 20, 10, 0, 0)) {
   let t = start;
@@ -119,6 +119,26 @@ test('a save is atomic: no temp files are left behind', () => {
   store.save(createProcess(PLAN, { id: 'p1', projectRoot, now }));
   store.save({ ...store.load('p1'), state: 'running.active' });
   assert.deepEqual(fs.readdirSync(store.dir), ['p1.json']);
+});
+
+test('#423 a full disk: the temp file is removed, the old record is intact, and the error says "No space left"', () => {
+  const { store } = setup();
+  const file = path.join(store.dir, 'p9.json');
+  atomicWriteJson(file, { v: 1 });
+  const enospc = () => { throw Object.assign(new Error('ENOSPC: no space left on device, write'), { code: 'ENOSPC' }); };
+  const failing = { ...fs, writeSync: enospc };
+  assert.throws(() => atomicWriteJson(file, { v: 2 }, { fsImpl: failing }), (e) => {
+    assert.match(e.message, /^No space left on device while saving p9\.json \(ENOSPC\)/);
+    assert.match(e.message, /previous version of the record is intact/);
+    assert.equal(e.code, 'ENOSPC');
+    return true;
+  });
+  assert.deepEqual(fs.readdirSync(store.dir).filter((n) => n.startsWith('p9')), ['p9.json'], 'no p9.json.tmp-* left behind');
+  assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), { v: 1 });
+  // Any other failure is passed through unchanged, with the same cleanup.
+  const eacces = { ...fs, renameSync: () => { throw Object.assign(new Error('EACCES'), { code: 'EACCES' }); } };
+  assert.throws(() => atomicWriteJson(file, { v: 3 }, { fsImpl: eacces }), /EACCES/);
+  assert.deepEqual(fs.readdirSync(store.dir).filter((n) => n.startsWith('p9')), ['p9.json']);
 });
 
 test('remove() deletes a record and says whether there was one', () => {

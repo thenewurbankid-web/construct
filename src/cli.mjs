@@ -542,7 +542,7 @@ export async function researchImpact(args) {
     } catch (e) {
       throw new ConstructError(`Could not diff against "${since}": ${String(e.message || e)}`, { exitCode: EXIT_CODES.USAGE_ERROR });
     }
-    if (changed.error?.code === 'ETIMEDOUT') throw new ConstructError(`Could not diff against "${since}": git did not finish within 600 seconds and was stopped.`, { exitCode: EXIT_CODES.INTERNAL_ERROR });
+    if (/** @type {any} */ (changed.error)?.code === 'ETIMEDOUT') throw new ConstructError(`Could not diff against "${since}": git did not finish within 600 seconds and was stopped.`, { exitCode: EXIT_CODES.INTERNAL_ERROR });
     if (changed.status !== 0) throw new ConstructError(`Could not diff against "${since}": ${String(changed.stderr || changed.error?.message || '').trim() || 'git failed'}. Is ${root} a git repository, and does that ref exist?`, { exitCode: EXIT_CODES.USAGE_ERROR });
     for (const p of changed.stdout.split('\n').map((s) => s.trim()).filter(Boolean)) seeds.push({ path: p, method: 'changed-files', provenance: 'explicit' });
   }

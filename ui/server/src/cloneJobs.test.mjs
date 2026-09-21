@@ -271,6 +271,37 @@ test('cancel really kills the whole process group of a real, hung child (grandch
   assert.equal(alive, false, 'the grandchild process was killed with the group');
 });
 
+// ---- #423: clone refuses a git that would silently ignore the DNS pin (http.curloptResolve needs git >= 2.37.0).
+
+test('git older than 2.37.0: GIT_TOO_OLD (503), git is never started; missing git: GIT_MISSING', async () => {
+  const { ws } = sandbox();
+  const old = fakeSpawn();
+  const jobs = createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: old.spawn, gitCheck: () => ({ ok: true, major: 2, minor: 36, patch: 6, version: '2.36.6' }) });
+  const r = await jobs.start({ url: 'https://github.com/o/r' });
+  assert.equal(r.ok, false);
+  assert.equal(r.status, 503);
+  assert.equal(r.code, 'GIT_TOO_OLD');
+  assert.match(r.error, /git 2\.36\.6 is installed, but cloning needs 2\.37\.0 or newer/);
+  assert.match(r.error, /http\.curloptResolve/);
+  assert.equal(old.calls.length, 0);
+  assert.deepEqual(fs.readdirSync(ws), [], 'no marker, no directory');
+  assert.deepEqual(jobs.gitStatus(), { ok: true, version: '2.36.6', minimum: '2.37.0', cloneEnabled: false, code: 'GIT_TOO_OLD', reason: jobs.gitStatus().reason });
+
+  const none = fakeSpawn();
+  const noGit = createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: none.spawn, gitCheck: () => ({ ok: false, error: 'git could not be started (ENOENT). Is git installed and on PATH?' }) });
+  const m = await noGit.start({ url: 'https://github.com/o/r' });
+  assert.equal(m.status, 503);
+  assert.equal(m.code, 'GIT_MISSING');
+  assert.match(m.error, /Cloning is unavailable: git could not be started \(ENOENT\)/);
+  assert.equal(none.calls.length, 0);
+  assert.equal(noGit.gitStatus().cloneEnabled, false);
+
+  // Input errors still come first: a bad URL is 400, not 503, whatever the git.
+  assert.equal((await noGit.start({ url: 'ssh://git@github.com/o/r' })).status, 400);
+  // The machine's real git (>= 2.37.0 here) enables clone.
+  assert.equal(createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: fakeSpawn().spawn }).gitStatus().cloneEnabled, true);
+});
+
 // ---- #422: a clone never outlives the server; a crashed server's partial clone is recovered.
 
 /** A pid that certainly refers to no live process: a child that has already exited. */

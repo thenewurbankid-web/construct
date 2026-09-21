@@ -76,7 +76,7 @@ export const PROVIDERS = {
       timeout,
       killSignal: 'SIGKILL',
     });
-    if (res.error?.code === 'ETIMEDOUT') throw timedOut('claude', timeout);
+    if (/** @type {any} */ (res.error)?.code === 'ETIMEDOUT') throw timedOut('claude', timeout);
     if (res.error) {
       throw new ConstructError(
         `Could not run the "claude" CLI (${res.error.message}). Is it installed and on your PATH?`,

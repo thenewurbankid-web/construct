@@ -63,11 +63,36 @@ export function processDir(projectRoot, { stateDir = resolveStateDir() } = {}) {
   return path.join(stateDir, 'processes', projectKey(projectRoot));
 }
 
-function atomicWriteJson(file, value) {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
+/** A disk-full error, said plainly. Anything else is returned as it came. */
+function describeWriteError(e, file) {
+  if (e?.code !== 'ENOSPC' && e?.code !== 'EDQUOT') return e;
+  const err = /** @type {NodeJS.ErrnoException} */ (new Error(`No space left on device while saving ${path.basename(file)} (${e.code}): the state directory ${path.dirname(file)} is full. Free some space and try again; the previous version of the record is intact.`));
+  err.code = e.code;
+  err.cause = e;
+  return err;
+}
+
+/**
+ * Write `value` as JSON to `file` atomically: a temp file in the same directory, flushed to disk (`fsync`), then
+ * `rename()`. On ANY failure the temp file is removed and the old file is untouched; a disk-full error (`ENOSPC`,
+ * `EDQUOT`) is rethrown with a message that says so (#423). `fsImpl` is a test seam.
+ */
+export function atomicWriteJson(file, value, { fsImpl = fs } = {}) {
   const tmp = `${file}.tmp-${process.pid}-${Date.now()}`;
-  fs.writeFileSync(tmp, `${JSON.stringify(value, null, 2)}\n`);
-  fs.renameSync(tmp, file);
+  let fd = null;
+  try {
+    fsImpl.mkdirSync(path.dirname(file), { recursive: true });
+    fd = fsImpl.openSync(tmp, 'w');
+    fsImpl.writeSync(fd, `${JSON.stringify(value, null, 2)}\n`);
+    fsImpl.fsyncSync(fd);
+    fsImpl.closeSync(fd);
+    fd = null;
+    fsImpl.renameSync(tmp, file);
+  } catch (e) {
+    if (fd !== null) { try { fsImpl.closeSync(fd); } catch { /* already closed */ } }
+    try { fsImpl.rmSync(tmp, { force: true }); } catch { /* never created, or gone */ }
+    throw describeWriteError(e, file);
+  }
 }
 
 /** A process record that could not be used, with the reason — returned rather

@@ -42,7 +42,7 @@ export const GIT_TIMEOUT_MS = 10 * 60 * 1000;
 export function git(cwd, args, { config = [], maxBuffer = 256 * 1024 * 1024, timeout = GIT_TIMEOUT_MS } = {}) {
   const argv = ['--literal-pathspecs', '--no-optional-locks', ...config.flatMap((c) => ['-c', c]), ...args];
   const r = spawnSync('git', argv, { cwd, encoding: 'utf8', shell: false, env: gitEnv(), maxBuffer, timeout, killSignal: 'SIGKILL' });
-  if (r.error?.code === 'ETIMEDOUT') return { status: -1, stdout: '', stderr: `git ${args[0]} did not finish within ${Math.round(timeout / 1000)} seconds and was stopped.` };
+  if (/** @type {any} */ (r.error)?.code === 'ETIMEDOUT') return { status: -1, stdout: '', stderr: `git ${args[0]} did not finish within ${Math.round(timeout / 1000)} seconds and was stopped.` };
   if (r.error) return { status: -1, stdout: '', stderr: String(r.error.message || r.error) };
   return { status: r.status, stdout: r.stdout || '', stderr: r.stderr || '' };
 }

@@ -24,6 +24,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { CloneInputError, DEFAULT_CLONE_HOSTS, isPublicAddress, parseCloneUrl, validateSlug } from './gitUrl.mjs';
 import { WorkspaceError, contain } from './workspace.mjs';
+import { MIN_GIT_FOR_CURLOPT_RESOLVE, formatVersion, gitVersion, supportsCurloptResolve } from '../../../src/engine/gitVersion.mjs';
 
 export const DEFAULT_MAX_BYTES = 500 * 1024 * 1024;
 export const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
@@ -167,6 +168,7 @@ function isOurGit(pid, dest) {
  *   localRoot?: string|null,                     TEST HARNESS ONLY: also allow file:// URLs under this directory
  *   lookup?: (host:string) => Promise<{address:string}[]>,
  *   spawn?: typeof nodeSpawn,
+ *   gitCheck?: () => ReturnType<typeof gitVersion>,   #423: which git is installed (default: ask `git --version` once)
  *   maxBytes?: number, timeoutMs?: number, sizePollMs?: number,
  * }} deps
  */
@@ -176,12 +178,32 @@ export function createCloneJobs({
   localRoot = null,
   lookup = (h) => dns.lookup(h, { all: true, verbatim: true }),
   spawn = nodeSpawn,
+  gitCheck = gitVersion,
   maxBytes = DEFAULT_MAX_BYTES,
   timeoutMs = DEFAULT_TIMEOUT_MS,
   sizePollMs = SIZE_POLL_MS,
 } = {}) {
   const jobs = new Map(); // id -> record
   const reserved = new Set(); // slugs of live jobs
+
+  /**
+   * #423: whether clone may run on this machine's git. Below 2.37.0 git silently ignores `http.curloptResolve`,
+   * the pin that keeps git on the addresses that were just checked to be public, so the anti-rebinding half of the
+   * SSRF defence would be off without a word. Refused rather than degraded: a clone with half its defence is not
+   * one we want to run. -> {ok, version, minimum, cloneEnabled, reason?, code?}
+   */
+  function gitStatus() {
+    const minimum = formatVersion(MIN_GIT_FOR_CURLOPT_RESOLVE);
+    const g = gitCheck();
+    if (!g.ok) return { ok: false, version: null, minimum, cloneEnabled: false, code: 'GIT_MISSING', reason: g.error };
+    if (!supportsCurloptResolve(g)) {
+      return {
+        ok: true, version: g.version, minimum, cloneEnabled: false, code: 'GIT_TOO_OLD',
+        reason: `git ${g.version} is installed, but cloning needs ${minimum} or newer: older versions silently ignore the http.curloptResolve setting that pins the host to the addresses that were checked, so the protection against DNS rebinding would be off.`,
+      };
+    }
+    return { ok: true, version: g.version, minimum, cloneEnabled: true };
+  }
 
   const view = (j) => ({
     id: j.id,
@@ -375,6 +397,8 @@ export function createCloneJobs({
         if (e instanceof CloneInputError) return { ok: false, status: e.status, code: e.code, error: e.message };
         throw e;
       }
+      const git = gitStatus();
+      if (!git.cloneEnabled) return { ok: false, status: 503, code: git.code, error: git.ok ? `Cloning is disabled: ${git.reason}` : `Cloning is unavailable: ${git.reason}` };
       if ([...jobs.values()].some((j) => isLive(j.state))) {
         return { ok: false, status: 409, code: 'BUSY', error: 'Another clone is already running. Wait for it to finish or cancel it.' };
       }
@@ -450,6 +474,7 @@ export function createCloneJobs({
       }
       return out;
     },
+    gitStatus,
     list: () => [...jobs.values()].sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1)).map(view),
     get(id) {
       const j = typeof id === 'string' ? jobs.get(id) : undefined;
