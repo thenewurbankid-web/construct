@@ -1685,6 +1685,13 @@ button:disabled {
   flex-wrap: wrap;
   gap: 8px;
 }
+.no-project__sample {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+}
 .no-project__hint code {
   overflow-wrap: anywhere;
 }

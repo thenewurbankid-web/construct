@@ -108,6 +108,8 @@ export type ShellLayoutProps = NarrowProps & {
   onResize: (pane: PaneId, size: number) => void;
   onTogglePane: (pane: PaneId) => void;
   top: ReactNode;
+  /** The screens rail (vertical left in the wide layout, a bar above the pane tabs when narrow). */
+  rail: ReactNode;
   left: ReactNode;
   mid: ReactNode;
   right: ReactNode;
@@ -142,11 +144,22 @@ export type ProjectSwitcherProps = {
   onCloseProject?: () => void;
 };
 
-export type TopBarProps = {
+export type ActivityBarProps = {
   screens: PrimaryScreen[];
   activeScreenId: string | null;
   /** Little counts beside a screen's name, by screen id (Git: the branches under review). Absent or 0 shows none. */
   screenBadges?: Record<string, number>;
+  /** Icons only (vertical rail). Remembered per person by the controller. */
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
+  /** Vertical on the left of the frame; horizontal above the pane tabs in the narrow layout. */
+  orientation: 'vertical' | 'horizontal';
+};
+
+/** Minimal top bar shown while no project is open: brand and the profile menu only. */
+export type GateTopBarProps = { userMenu?: ReactNode };
+
+export type TopBarProps = {
   projectSwitcher: ReactNode;
   /** The signed-in account slot (#278). A slot, not a dependency: the shell
    * knows a node goes here, not that the auth feature exists. Renders
@@ -192,6 +205,8 @@ export type ShellPageProps = NarrowProps & {
   activeScreenId: string | null;
   /** Little counts beside a screen's name, by screen id (Git: the branches under review). Absent or 0 shows none. */
   screenBadges?: Record<string, number>;
+  railCollapsed: boolean;
+  onToggleRail: () => void;
   projectSwitcher: ReactNode;
   /** The signed-in account slot (#278) — see TopBarProps. */
   userMenu?: ReactNode;
@@ -208,3 +223,13 @@ export type ShellPageProps = NarrowProps & {
   activeTabs: Record<ShellRegion, string | null>;
   onSelectTab: (region: ShellRegion, id: string) => void;
 };
+
+export type ShellMode =
+  /** Project state not known yet: neutral frame, no flash of the wrong one. */
+  | 'loading'
+  /** No project open, route needs one: the full-screen gate. */
+  | 'gate'
+  /** No project open, route is a profile-menu page: it renders alone under the minimal top bar. */
+  | 'page'
+  /** A project is open: the full shell. */
+  | 'full';

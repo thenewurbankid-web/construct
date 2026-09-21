@@ -15,13 +15,16 @@ type NoProjectScreenProps = {
   picker: ReactNode;
   /** The clone-a-repository form (another feature's controller, composed by the controller). */
   clone?: ReactNode;
+  /** The workspace's `shop` sample folder, when there is one: offered as a one-click open (same open path as the picker). */
+  samplePath?: string | null;
+  sampleLoading?: boolean;
 };
 
 const nameOf = (dir: string) => dir.split(/[\\/]+/).filter(Boolean).pop() ?? dir;
 
 /** Presentation-only "Open a project" screen (#365): the Cockpit starts with nothing open and never loads the
  * directory it was launched from. One prompt, one picker, scoped to the workspace. */
-export function NoProjectScreen({ workspaceRoot, lastProject, opening, error, onOpen, picker, clone }: NoProjectScreenProps) {
+export function NoProjectScreen({ workspaceRoot, lastProject, opening, error, onOpen, picker, clone, samplePath = null, sampleLoading = false }: NoProjectScreenProps) {
   return (
     <div className="page page--screen">
       <GlassPanel className="gate-panel no-project" data-testid="no-project">
@@ -42,6 +45,21 @@ export function NoProjectScreen({ workspaceRoot, lastProject, opening, error, on
           <p className="status-error" role="alert">
             {error}
           </p>
+        )}
+        {samplePath ? (
+          <div className="no-project__sample" data-testid="sample-shop">
+            <Button type="button" onClick={() => onOpen(samplePath)} disabled={opening} data-testid="open-sample-shop">
+              Try the sample shop
+            </Button>
+            <span className="hint">A small demo app already in your workspace. Opens like any other project.</span>
+          </div>
+        ) : (
+          !sampleLoading && (
+            <p className="hint no-project__sample" data-testid="sample-hint">
+              Want something to try? Clone or create a folder named <code>shop</code> in the workspace and a
+              &ldquo;Try the sample shop&rdquo; button appears here.
+            </p>
+          )
         )}
         {picker}
         {clone}

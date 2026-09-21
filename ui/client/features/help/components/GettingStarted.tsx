@@ -8,7 +8,7 @@ function CreateFirstFeature() {
       <h3>1. Create your first feature</h3>
       <ol>
         <li>
-          Open <strong>Features</strong> (the first entry in the top bar) and choose <strong>Create</strong> in the
+          Open <strong>Features</strong> (the first entry in the left menu) and choose <strong>Create</strong> in the
           stage actions row; its form opens in the stage.
         </li>
         <li>

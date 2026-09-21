@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { ActivityBar } from '../components/ActivityBar';
 import { EmptyPanel } from '../components/EmptyPanel';
 import { ShellLayout } from '../components/ShellLayout';
 import { StatusBar } from '../components/StatusBar';
@@ -16,7 +17,7 @@ export function ShellPage(props: ShellPageProps): ReactNode {
       tabs={tabs[region]}
       activeId={activeTabs[region]}
       onSelect={(id) => onSelectTab(region, id)}
-      empty={region === 'browser' ? <EmptyPanel title="Nothing to browse on this screen" hint="Choose Features, Pages, Components, Git or Tests in the top bar; Settings, Local model and Help are in the profile menu." /> : undefined}
+      empty={region === 'browser' ? <EmptyPanel title="Nothing to browse on this screen" hint="Choose Features, Pages, Components, Git or Tests in the menu on the left; Settings, Local model and Help are in the profile menu." /> : undefined}
     />
   );
   return (
@@ -28,11 +29,18 @@ export function ShellPage(props: ShellPageProps): ReactNode {
       narrow={props.narrow}
       narrowPane={props.narrowPane}
       onNarrowPane={props.onNarrowPane}
-      top={
-        <TopBar
+      rail={
+        <ActivityBar
           screens={props.screens}
           activeScreenId={props.activeScreenId}
           screenBadges={props.screenBadges}
+          collapsed={props.railCollapsed}
+          onToggleCollapsed={props.onToggleRail}
+          orientation={props.narrow ? 'horizontal' : 'vertical'}
+        />
+      }
+      top={
+        <TopBar
           projectSwitcher={props.projectSwitcher}
           userMenu={props.userMenu}
           modelStatus={props.modelStatus}

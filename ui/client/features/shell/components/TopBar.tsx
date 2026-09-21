@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { Logo } from '@/components/ui';
 import type { ModelStatus, TopBarProps } from '../types';
 
@@ -8,18 +7,15 @@ const MODEL_TEXT: Record<ModelStatus, string> = {
   offline: 'Local model offline',
 };
 
-/** The 44px top bar: brand, project switcher slot, screen navigation, status pills,
- * pane toggles and the profile menu slot. The five screens are real links to
- * existing routes; the current one carries aria-current.
+/** The 44px top bar: brand, project switcher slot, status pills,
+ * pane toggles and the profile menu slot. The five screens live in the left rail
+ * (ActivityBar), not here.
  *
  * #273: the status pills carry their label in a `.sh-pill-text` span so the
  * <=1280px tier can visually hide the words (clip, not `display: none`) and
  * leave an icon + count behind, without losing the accessible name, the
  * aria-live announcement or the hover title. */
 export function TopBar({
-  screens,
-  activeScreenId,
-  screenBadges,
   projectSwitcher,
   userMenu,
   modelStatus,
@@ -36,29 +32,6 @@ export function TopBar({
         <span>Cockpit</span>
       </span>
       {projectSwitcher}
-      <nav aria-label="Screens" className="sh-topnav">
-        {screens.map((screen) => {
-          const active = screen.id === activeScreenId;
-          const count = screenBadges?.[screen.id] ?? 0;
-          return (
-            <Link
-              key={screen.id}
-              href={screen.href}
-              className={active ? 'sh-topnav-link sh-topnav-link--active' : 'sh-topnav-link'}
-              aria-current={active ? 'page' : undefined}
-              data-testid={`screen-${screen.id}`}
-            >
-              {screen.label}
-              {count > 0 && (
-                <span className="sh-topnav-badge" data-testid={`screen-${screen.id}-badge`}>
-                  {count > 99 ? '99+' : count}
-                  <span className="sh-sr-only"> {screen.id === 'git' ? 'branches under review' : 'items'}</span>
-                </span>
-              )}
-            </Link>
-          );
-        })}
-      </nav>
       <span className="sh-spacer" />
       <button
         type="button"

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useReducer, useRef } from 'react';
+import { useCallback, useEffect, useReducer, useState } from 'react';
 import { initialShellLayout, shellLayoutReducer } from '../workflows/ShellLayout';
 import { loadLayout, saveLayout } from '../services/LayoutStorage';
 import type { PaneId } from '../types';
@@ -10,18 +10,20 @@ import type { PaneId } from '../types';
  * `projectDir` resolves, that project's saved layout is loaded. */
 export function useShellLayout(projectDir: string | null, projectKnown: boolean) {
   const [layout, dispatch] = useReducer(shellLayoutReducer, initialShellLayout);
-  const loadedFor = useRef<string | null | undefined>(undefined);
+  // State, not a ref: the save below must not see "loaded" until the render that carries the loaded layout,
+  // or a shell that mounts with the project already known would save its defaults over the stored layout.
+  const [loadedFor, setLoadedFor] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
     if (!projectKnown) return;
     dispatch({ type: 'LOAD', layout: loadLayout(projectDir) });
-    loadedFor.current = projectDir;
+    setLoadedFor(projectDir);
   }, [projectDir, projectKnown]);
 
   useEffect(() => {
-    if (!projectKnown || loadedFor.current !== projectDir) return;
+    if (!projectKnown || loadedFor !== projectDir) return;
     saveLayout(projectDir, layout);
-  }, [layout, projectDir, projectKnown]);
+  }, [layout, loadedFor, projectDir, projectKnown]);
 
   const resize = useCallback((pane: PaneId, size: number) => dispatch({ type: 'RESIZE', pane, size }), []);
   const toggle = useCallback((pane: PaneId, open?: boolean) => dispatch({ type: 'TOGGLE', pane, open }), []);

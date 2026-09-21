@@ -35,26 +35,86 @@
  * and Tools buttons appeared to touch) and the labels wrapped onto a second
  * line inside a 24px pill. The command palette trigger is the single elastic
  * item: it ellipsises by design, so it absorbs the whole deficit instead. */
-.sh-brand, .sh-topnav, .sh-pill, .sh-icon-btn, .sh-project, .sh-project-btn, .sh-user { flex: none; }
+.sh-brand, .sh-pill, .sh-icon-btn, .sh-project, .sh-project-btn, .sh-user { flex: none; }
 .sh-brand { display: inline-flex; align-items: center; gap: var(--sp-2); font-weight: 600; font-size: var(--fs-md, 0.95rem); letter-spacing: 0.22em; text-transform: uppercase; margin-right: var(--sp-2); }
 .sh-brand svg { flex: none; }
 .sh-spacer { flex: 1 1 0; min-width: 0; }
 
-/* The five primary screens (#369). The current one is marked by weight and an underline, not colour alone. */
-.sh-topnav { display: flex; align-self: stretch; gap: var(--sp-1); }
-.sh-topnav-link {
-  display: inline-flex;
+/* The five primary screens: the left rail (ActivityBar). The current one is marked by weight and an edge bar,
+ * not colour alone. Vertical, collapsible to icons; on a phone the same bar lies horizontal above the pane tabs. */
+.sh-rail {
+  position: sticky;
+  top: var(--sh-top);
+  height: calc(100vh - var(--sh-top) - var(--sh-status) - var(--sh-drawer-h, 0px));
+  width: 168px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-1);
+  border-right: 1px solid var(--border-subtle);
+}
+.sh-rail--collapsed { width: 52px; }
+.sh-rail-list { display: flex; flex-direction: column; }
+.sh-rail-link, .sh-rail-toggle {
+  appearance: none;
+  position: relative;
+  display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-3);
   min-height: 44px;
   padding: 0 var(--sp-3);
+  font: inherit;
+  font-size: var(--fs-md);
   color: var(--text-muted);
   text-decoration: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
+  background: transparent;
+  border: 0;
+  border-left: 3px solid transparent;
+  border-radius: 0;
+  cursor: pointer;
+  text-align: left;
 }
-.sh-topnav-link:hover { color: var(--text); background: var(--surface-3); }
-.sh-topnav-link--active, .sh-topnav-link--active:hover { color: var(--text); font-weight: 700; border-bottom-color: var(--accent); }
+.sh-rail-link:hover, .sh-rail-toggle:hover { color: var(--text); background: var(--surface-3); }
+.sh-rail-link:focus-visible, .sh-rail-toggle:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.sh-rail-link--active, .sh-rail-link--active:hover { color: var(--text); font-weight: 700; border-left-color: var(--accent); background: var(--surface-2, var(--surface-1)); }
+.sh-rail-icon { flex: none; }
+.sh-rail-badge { margin-left: auto; }
+.sh-rail-toggle { border-bottom: 1px solid var(--border-subtle); }
+.sh-rail--collapsed .sh-rail-link, .sh-rail--collapsed .sh-rail-toggle { justify-content: center; padding: 0; }
+.sh-rail--collapsed .sh-rail-label {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+.sh-rail--collapsed .sh-rail-badge { position: absolute; top: 2px; right: 2px; margin: 0; min-width: 16px; padding: 0 3px; font-size: var(--fs-xs); }
+/* Phone / narrow: a horizontal bar of the five screens above the pane tabs (icon over label). */
+.sh-rail--horizontal {
+  position: sticky;
+  top: auto;
+  bottom: calc(var(--sh-status) + 44px);
+  z-index: var(--z-topbar);
+  width: auto;
+  height: auto;
+  flex-shrink: 0;
+  overflow: visible;
+  border-right: 0;
+  border-top: 1px solid var(--border-strong);
+}
+.sh-rail--horizontal .sh-rail-list { flex-direction: row; }
+.sh-rail--horizontal .sh-rail-link {
+  flex: 1 1 0;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-height: 48px;
+  padding: 4px 2px;
+  font-size: var(--fs-sm);
+  border-left: 0;
+  border-top: 3px solid transparent;
+  text-align: center;
+}
+.sh-rail--horizontal .sh-rail-link--active { border-top-color: var(--accent); }
+.sh-rail--horizontal .sh-rail-badge { position: absolute; top: 2px; right: 4px; margin: 0; min-width: 16px; padding: 0 3px; font-size: var(--fs-xs); }
+.sh-root--gate .main { flex: 1; }
 .sh-topnav-badge { min-width: 18px; padding: 0 5px; text-align: center; font-size: var(--fs-sm); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text); background: var(--surface-3); border: 1px solid var(--border-strong); border-radius: 999px; }
 .sh-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
@@ -336,7 +396,7 @@ kbd {
 .sh-narrowtab:hover { color: var(--text); background: var(--surface-3); }
 .sh-narrowtab[aria-selected='true'] { color: var(--text); font-weight: 600; border-top-color: var(--accent); }
 .sh-root--narrow [hidden] { display: none !important; }
-.sh-root--narrow .sh-pane { position: static; width: 100%; height: auto; min-height: calc(100vh - var(--sh-top) - var(--sh-status) - 44px); border: 0; }
+.sh-root--narrow .sh-pane { position: static; width: 100%; height: auto; min-height: calc(100vh - var(--sh-top) - var(--sh-status) - 44px - 48px); border: 0; }
 .sh-root--narrow .main { padding: var(--sp-4); }
 
 /* #273: 1024-1280px is the band where the bar's fixed parts add up to more
@@ -356,8 +416,6 @@ kbd {
     white-space: nowrap;
   }
   .sh-pill { padding: 0 8px; }
-  .sh-topnav { gap: 0; }
-  .sh-topnav-link { padding: 0 var(--sp-2); }
   .sh-project-btn { max-width: 168px; }
   .sh-palette-trigger { width: min(280px, 20vw); }
 }
@@ -379,21 +437,14 @@ kbd {
   .sh-popover--account { top: auto; bottom: 0; left: 0; right: 0; width: auto; min-width: 0; max-width: none; max-height: 80vh; border-radius: var(--r-lg) var(--r-lg) 0 0; padding-bottom: var(--sp-4); }
 }
 
-/* Phone: the five screens do not fit beside brand + project + account, so the top bar becomes two rows:
- * the usual controls, then the screens. Every layout offset uses --sh-top, so it follows. */
+/* Phone: the bar keeps to one row (brand, project, search, account); the five screens are the bottom bar. */
 @media (max-width: 520px) {
-  :root { --sh-top: 88px; }
-  .sh-top { flex-wrap: wrap; align-content: flex-start; row-gap: 0; }
-  .sh-brand, .sh-project { min-height: 44px; }
-  /* Keep the first row to one line: the palette shows only its start and drops the key hint. */
   .sh-palette-trigger { width: auto; flex: 0 1 auto; min-width: 0; padding: 0 var(--sp-2); }
   .sh-palette-trigger span, .sh-palette-trigger kbd { display: none; }
   .sh-palette-trigger::before { content: 'Search'; font-size: var(--fs-sm); }
   .sh-spacer { flex: 0 0 0; }
   /* The local-model status is also in the profile menu (Local model row), so the phone bar drops its dot. */
   [data-testid='pill-model'] { display: none; }
-  .sh-topnav { order: 20; flex: 1 0 100%; align-self: auto; justify-content: space-between; margin: 0 calc(var(--sp-2) * -1); }
-  .sh-topnav-link { flex: 1 1 0; justify-content: center; min-height: 44px; padding: 0 var(--sp-1); }
 }
 
 /* ---- signed-in account (#278) ---------------------------------------- *

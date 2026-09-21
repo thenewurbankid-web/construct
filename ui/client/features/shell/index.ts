@@ -61,3 +61,12 @@ export * from './hooks/useShellDrawer';
 
 /** How many branches await review, for the badge beside the fourth screen in the top bar. */
 export * from './hooks/useGitBranchCount';
+
+/** Whether the screens rail is collapsed to icons, remembered per person. */
+export * from './hooks/useRailCollapsed';
+
+/** Roving-focus keyboard handling of the screens rail. */
+export * from './hooks/useRailKeys';
+
+/** The full shell (used by the shell controller only when a project is open). */
+export * from './controllers/ShellFrame';

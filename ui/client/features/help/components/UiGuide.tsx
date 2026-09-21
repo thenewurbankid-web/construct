@@ -5,9 +5,9 @@ function ShellGuide() {
       <p>
         Every screen sits in the same frame: the <strong>Browser</strong> on the left (find things), the{' '}
         <strong>stage</strong> in the middle (the screen itself), and <strong>Tools</strong> on the right
-        (inspect, edit, check). A screen&apos;s own tabs come first in the Browser. The top bar has the project
-        switcher, the five screens (<strong>Features, Pages, Components, Git, Tests</strong>), the search box
-        and the profile menu, which holds Settings, Local model, the theme (Dark, Light or System), Help and
+        (inspect, edit, check). A screen&apos;s own tabs come first in the Browser. The menu down the left edge has
+        the five screens (<strong>Features, Pages, Components, Git, Tests</strong>); collapse it to icons with
+        the arrow at its foot. The top bar has the project switcher, the search box and the profile menu, which holds Settings, Local model, the theme (Dark, Light or System), Help and
         Sign out.
       </p>
       <ul>
