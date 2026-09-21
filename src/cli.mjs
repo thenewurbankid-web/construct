@@ -708,7 +708,14 @@ export async function refactor(args) {
 // design (no persistent log) — every construct-driven change gets one clear,
 // scannable summary; a file changed without one wasn't done by the tool.
 function reportRelocation(root, verb, result) {
+  if (result.dryRun) {
+    console.log(`Dry run (${result.engine}${result.tsVersion ? ` ${result.tsVersion}` : ''}): would change ${result.files.length} file(s) to move ${result.from} -> ${result.to}:`);
+    for (const f of result.files) console.log(`  ${f}`);
+    if (result.note) console.log(`Note: ${result.note}`);
+    return;
+  }
   console.log(`${verb} ${result.from} -> ${result.to} (${result.importersUpdated} importer(s) updated)`);
+  if (result.note) console.log(`Note: ${result.note}`);
   const { violations } = validateArchitecture(root, { files: [result.to] });
   if (violations.length) console.log(formatReport(violations, { format: 'text' }));
   printAttribution('relocated/renamed the file and rewrote every importer\'s path', '0 calls — content and the exported identifier are untouched');
@@ -723,7 +730,7 @@ async function refactorMove(args) {
     );
   }
   const root = getRoot(args);
-  reportRelocation(root, 'Moved', moveLayerFile(root, args[fi + 1], name, args[fromI + 1], args[toI + 1]));
+  reportRelocation(root, 'Moved', moveLayerFile(root, args[fi + 1], name, args[fromI + 1], args[toI + 1], { dryRun: args.includes('--dry-run') }));
 }
 
 async function refactorRename(args) {
@@ -735,7 +742,7 @@ async function refactorRename(args) {
     );
   }
   const root = getRoot(args);
-  reportRelocation(root, 'Renamed', renameLayerFile(root, args[fi + 1], name, newName, args[li + 1]));
+  reportRelocation(root, 'Renamed', renameLayerFile(root, args[fi + 1], name, newName, args[li + 1], { dryRun: args.includes('--dry-run') }));
 }
 
 /** `construct import <name> --feature <feature> --layers <l1,l2,...> --from <path> [--llm <provider>]`
