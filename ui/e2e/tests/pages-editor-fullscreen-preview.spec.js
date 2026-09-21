@@ -17,7 +17,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const API_BASE = process.env.E2E_API_BASE || 'http://localhost:4000';
 const PREVIEW_PORT = Number(process.env.E2E_PREVIEW_PORT) || 5930;
 
-const FIXTURE_PAGE = `export default function HomePage({ title }: { title: string }) {
+const FIXTURE_PAGE = `export default function LandingPage({ title }: { title: string }) {
   return (
     <main>
       <h1>{title}</h1>
@@ -47,9 +47,9 @@ test.describe.serial('Pages Editor: full-screen preview and device sizes (#456)'
     tmpProjectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-ui-e2e-fullscreen-'));
     await request.post(`${API_BASE}/api/settings`, { data: { projectDir: tmpProjectDir } });
     await request.post(`${API_BASE}/api/init`);
-    await request.post(`${API_BASE}/api/create`, { data: { kind: 'single', name: 'Home', feature: 'billing', layer: 'page' } });
-    fs.writeFileSync(path.join(tmpProjectDir, 'features/billing/pages/HomePage.tsx'), FIXTURE_PAGE);
-    const { code } = annotateJsxSource(FIXTURE_PAGE, { file: 'features/billing/pages/HomePage.tsx' });
+    await request.post(`${API_BASE}/api/create`, { data: { kind: 'single', name: 'Landing', feature: 'shop', layer: 'page' } });
+    fs.writeFileSync(path.join(tmpProjectDir, 'features/shop/pages/LandingPage.tsx'), FIXTURE_PAGE);
+    const { code } = annotateJsxSource(FIXTURE_PAGE, { file: 'features/shop/pages/LandingPage.tsx' });
     const html = previewHtml(code);
     previewServer = http.createServer((req, res) => { res.setHeader('content-type', 'text/html'); res.end(html); });
     await new Promise((r) => previewServer.listen(PREVIEW_PORT, '127.0.0.1', r));
@@ -63,8 +63,8 @@ test.describe.serial('Pages Editor: full-screen preview and device sizes (#456)'
 
   async function openPreview(page) {
     await page.goto('/pages');
-    await page.locator('.pages-browser select').selectOption('billing');
-    await page.getByRole('button', { name: 'HomePage.tsx' }).click();
+    await page.locator('.pages-browser select').selectOption('shop');
+    await page.getByRole('button', { name: 'LandingPage.tsx' }).click();
     await expect(page.locator('.tree-panel')).toBeVisible();
     await page.getByLabel('Preview URL').fill(`http://127.0.0.1:${PREVIEW_PORT}/`);
     await page.getByRole('button', { name: 'Load preview' }).click();
@@ -153,8 +153,8 @@ test.describe.serial('Pages Editor: full-screen preview and device sizes (#456)'
 
   test('no dev server: a plain explanation, in the panel and full screen — never a blank rectangle', async ({ page }) => {
     await page.goto('/pages');
-    await page.locator('.pages-browser select').selectOption('billing');
-    await page.getByRole('button', { name: 'HomePage.tsx' }).click();
+    await page.locator('.pages-browser select').selectOption('shop');
+    await page.getByRole('button', { name: 'LandingPage.tsx' }).click();
     await expect(page.locator('.tree-panel')).toBeVisible();
 
     // Nothing configured yet.
