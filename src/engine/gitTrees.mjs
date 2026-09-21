@@ -33,10 +33,16 @@ function gitEnv() {
   return { ...env, GIT_OPTIONAL_LOCKS: '0', GIT_TERMINAL_PROMPT: '0', LC_ALL: 'C' };
 }
 
+// #413: every synchronous git call is bounded. A local git call that takes this long is stuck (a lock nobody
+// releases, a prompt GIT_TERMINAL_PROMPT=0 did not cover, a filter hanging), and a stuck spawnSync blocks the
+// whole event loop of whoever called it. Killed outright: SIGTERM can be ignored, SIGKILL cannot.
+export const GIT_TIMEOUT_MS = 10 * 60 * 1000;
+
 /** Run git with an argv array. Never a shell. Returns `{status, stdout, stderr}`. */
-export function git(cwd, args, { config = [], maxBuffer = 256 * 1024 * 1024 } = {}) {
+export function git(cwd, args, { config = [], maxBuffer = 256 * 1024 * 1024, timeout = GIT_TIMEOUT_MS } = {}) {
   const argv = ['--literal-pathspecs', '--no-optional-locks', ...config.flatMap((c) => ['-c', c]), ...args];
-  const r = spawnSync('git', argv, { cwd, encoding: 'utf8', shell: false, env: gitEnv(), maxBuffer });
+  const r = spawnSync('git', argv, { cwd, encoding: 'utf8', shell: false, env: gitEnv(), maxBuffer, timeout, killSignal: 'SIGKILL' });
+  if (/** @type {any} */ (r.error)?.code === 'ETIMEDOUT') return { status: -1, stdout: '', stderr: `git ${args[0]} did not finish within ${Math.round(timeout / 1000)} seconds and was stopped.` };
   if (r.error) return { status: -1, stdout: '', stderr: String(r.error.message || r.error) };
   return { status: r.status, stdout: r.stdout || '', stderr: r.stderr || '' };
 }

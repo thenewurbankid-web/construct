@@ -121,6 +121,13 @@ folder**, and it starts with **no project open**.
 - `browseRoots` is no longer a setting (`POST /api/settings { browseRoots }` is `400 BROWSE_ROOTS_FIXED`); the picker's
   only root is the workspace. `POST /api/settings { closeProject: true }` closes the project.
 
+### Timeouts: no command or model call can hang the Cockpit (#413)
+
+| Setting | Meaning |
+| --- | --- |
+| `CONSTRUCT_LLM_TIMEOUT_SEC` | Cap on one model call (`claude -p` is killed with SIGKILL; the Ollama request is aborted). The error names the provider, the seconds and this variable. Default 300. Read by core (`src/llm.mjs`), so the CLI's `--llm` honours it too. |
+| `CONSTRUCT_COMMAND_TIMEOUT_SEC` | Cap on one interactive command (`/api/create`, `/api/import`, ...). A command still running at the deadline is abandoned: `504 {ok:false, error}`, and the next queued command runs. Default 900. |
+
 ### Clone a public repository (#330 slice A)
 
 From **Open a project** paste an address such as `https://github.com/octocat/Hello-World`; the repository is copied into
@@ -141,6 +148,26 @@ protocols locked to https, no credential helper or prompt, no hooks, no redirect
 environment, one clone at a time. Private repositories are not supported yet (slice B).
 Tests only: `CONSTRUCT_E2E_CLONE_LOCAL_ROOT` lets a `file://` URL under one directory be cloned; the server refuses to
 start with it on a non-loopback host.
+
+Clone needs **git 2.37.0 or newer** (#423): older versions silently ignore `http.curloptResolve`, the setting that pins
+git to the addresses that were just checked to be public, so the protection against DNS rebinding would be off without
+a word. On an older or missing git, `POST /api/clone` answers `503 {code: 'GIT_TOO_OLD' | 'GIT_MISSING'}` and the rest of
+the Cockpit works as before; the startup log and `/api/health` say so.
+
+`GET /api/health` (public, no session) answers `{ok:true, degraded, node, git:{ok, version, minimum, cloneEnabled, reason?},
+workspace:{writable, freeBytes, low}, stateDir:{writable, freeBytes, low}, thresholds:{minFreeBytes}, warnings:[...], checkedAt}`.
+`ok` is always `true` when the server answers (liveness, unchanged for existing probes); `degraded` is `true` when any
+check failed. Writability is a real 1-byte write in each directory; `low` compares free space with
+`CONSTRUCT_HEALTH_MIN_FREE_MB` (default 500). No filesystem path is in the document. Results are cached for 10 seconds.
+The same facts are logged at startup as `Preflight:` lines (those may name paths: the log is local). A save that hits a
+full disk fails with a clear "No space left on device" error and leaves the previous record intact.
+
+A clone never outlives the server (#422): when the server exits or is stopped by a signal, every running clone's
+process group is killed. While a clone runs, a hidden marker `<workspace>/.construct-clone-<name>.json` sits beside the
+destination and is removed on every outcome; at the next start the server recovers what a crashed server left — stops
+the orphaned `git` if it is still running, removes the partial folder (only one that carries a marker, only directly
+under the workspace, never through a symlink) — and logs a `Clone recovery:` line per folder, so cloning the same
+repository again just works. A folder without a marker is never removed.
 
 Hosted example (see `tools/dev/run-hosted.sh`):
 
@@ -258,6 +285,13 @@ E2E_CLIENT_PORT=3051 E2E_SERVER_PORT=4051 npx playwright test -c playwright.auth
 The default config runs almost everything; three specs need a server or a login of their own and run under their
 own configs. Run all four for the full picture. Wrap heavy runs in `tools/dev/heavy.sh` (this box is 15 GB with no
 swap), keep `--workers=1`, and use distinct ports so parallel runs never share a server.
+
+`heavy.sh` (#414) takes one machine-wide lock with a bounded wait (`CONSTRUCT_HEAVY_LOCK_WAIT_SEC`, default 3600; on
+giving up it prints who holds it and exits 75), waits for free RAM with the lock released between checks and a bound of
+its own (`CONSTRUCT_HEAVY_RAM_WAIT_SEC`, default 1800), and afterwards prunes `/tmp/construct-*` directories **whose
+owner pid is gone** (the pid is in every directory name Construct creates, or in a `.owner` file) — never by age
+alone, so a run longer than 30 minutes no longer loses its state to another session's sweep. `tools/dev/heavy.sh
+--prune-only` runs just the sweep; `node --test tools/dev/test/` runs its tests.
 
 ```bash
 cd ui/e2e

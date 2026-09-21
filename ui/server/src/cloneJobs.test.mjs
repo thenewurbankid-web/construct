@@ -7,7 +7,7 @@ import { spawn as realSpawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
-import { cloneArgs, cloneEnv, createCloneJobs, dirBytes } from './cloneJobs.mjs';
+import { cloneArgs, cloneEnv, createCloneJobs, dirBytes, killLiveCloneGroups, liveCloneChildren, markerPath } from './cloneJobs.mjs';
 
 const PUBLIC = async () => [{ address: '140.82.112.3' }];
 
@@ -269,4 +269,191 @@ test('cancel really kills the whole process group of a real, hung child (grandch
     try { process.kill(grandchild, 0); await new Promise((res) => setTimeout(res, 50)); } catch { alive = false; }
   }
   assert.equal(alive, false, 'the grandchild process was killed with the group');
+});
+
+// ---- #423: clone refuses a git that would silently ignore the DNS pin (http.curloptResolve needs git >= 2.37.0).
+
+test('git older than 2.37.0: GIT_TOO_OLD (503), git is never started; missing git: GIT_MISSING', async () => {
+  const { ws } = sandbox();
+  const old = fakeSpawn();
+  const jobs = createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: old.spawn, gitCheck: () => ({ ok: true, major: 2, minor: 36, patch: 6, version: '2.36.6' }) });
+  const r = await jobs.start({ url: 'https://github.com/o/r' });
+  assert.equal(r.ok, false);
+  assert.equal(r.status, 503);
+  assert.equal(r.code, 'GIT_TOO_OLD');
+  assert.match(r.error, /git 2\.36\.6 is installed, but cloning needs 2\.37\.0 or newer/);
+  assert.match(r.error, /http\.curloptResolve/);
+  assert.equal(old.calls.length, 0);
+  assert.deepEqual(fs.readdirSync(ws), [], 'no marker, no directory');
+  assert.deepEqual(jobs.gitStatus(), { ok: true, version: '2.36.6', minimum: '2.37.0', cloneEnabled: false, code: 'GIT_TOO_OLD', reason: jobs.gitStatus().reason });
+
+  const none = fakeSpawn();
+  const noGit = createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: none.spawn, gitCheck: () => ({ ok: false, error: 'git could not be started (ENOENT). Is git installed and on PATH?' }) });
+  const m = await noGit.start({ url: 'https://github.com/o/r' });
+  assert.equal(m.status, 503);
+  assert.equal(m.code, 'GIT_MISSING');
+  assert.match(m.error, /Cloning is unavailable: git could not be started \(ENOENT\)/);
+  assert.equal(none.calls.length, 0);
+  assert.equal(noGit.gitStatus().cloneEnabled, false);
+
+  // Input errors still come first: a bad URL is 400, not 503, whatever the git.
+  assert.equal((await noGit.start({ url: 'ssh://git@github.com/o/r' })).status, 400);
+  // The machine's real git (>= 2.37.0 here) enables clone.
+  assert.equal(createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: fakeSpawn().spawn }).gitStatus().cloneEnabled, true);
+});
+
+// ---- #422: a clone never outlives the server; a crashed server's partial clone is recovered.
+
+/** A pid that certainly refers to no live process: a child that has already exited. */
+function deadPid() {
+  const r = spawnSync('true');
+  assert.ok(r.pid > 1);
+  return r.pid;
+}
+
+const waitGone = async (pid) => {
+  for (let i = 0; i < 100; i += 1) {
+    try { process.kill(pid, 0); await new Promise((res) => setTimeout(res, 20)); } catch { return true; }
+  }
+  return false;
+};
+
+test('a marker beside the destination exists while git runs and is removed on every outcome', async () => {
+  const { ws } = sandbox();
+  for (const end of ['done', 'failed', 'cancelled']) {
+    const f = fakeSpawn((child, args) => { fs.mkdirSync(dest(args)); child.pid = 4242; });
+    const jobs = createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: f.spawn });
+    const r = await jobs.start({ url: `https://github.com/o/${end}` });
+    assert.equal(r.ok, true, JSON.stringify(r));
+    const marker = markerPath(ws, end);
+    assert.equal(path.dirname(marker), ws, 'the marker sits directly in the workspace root');
+    assert.ok(path.basename(marker).startsWith('.'), 'hidden, and never a valid slug');
+    const m = JSON.parse(fs.readFileSync(marker, 'utf8'));
+    assert.equal(m.slug, end);
+    assert.equal(m.dest, path.join(ws, end));
+    assert.equal(m.serverPid, process.pid);
+    assert.equal(m.gitPid, 4242);
+    assert.match(m.startedAt, /^\d{4}-/);
+    if (end === 'done') f.calls[0].child.finish(0);
+    else if (end === 'failed') f.calls[0].child.finish(1);
+    else jobs.cancel(r.job.id);
+    await r.done;
+    assert.equal(jobs.get(r.job.id).state, end);
+    assert.equal(fs.existsSync(marker), false, `marker removed after ${end}`);
+  }
+  assert.deepEqual(fs.readdirSync(ws).filter((n) => n.startsWith('.construct-clone-')), []);
+});
+
+test('the exit handler SIGKILLs the whole process group of every live clone (the hosted `kill 0` cannot reach a detached group)', async () => {
+  const { dir, ws } = sandbox();
+  const pidFile = path.join(dir, 'grandchild.pid');
+  const hung = (cmd, args, opts) => realSpawn('sh', ['-c', `mkdir -p "$1" && (sleep 60 & echo $! > "$2"; wait)`, 'sh', args[args.length - 1], pidFile], opts);
+  const jobs = createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: hung });
+  const r = await jobs.start({ url: 'https://github.com/o/orphan' });
+  for (let i = 0; i < 100 && !fs.existsSync(pidFile); i += 1) await new Promise((res) => setTimeout(res, 20));
+  const grandchild = Number(fs.readFileSync(pidFile, 'utf8'));
+  assert.ok(liveCloneChildren() >= 1);
+  for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) assert.ok(process.listenerCount(sig) >= 1, `${sig} handler installed`);
+  assert.ok(process.listeners('exit').includes(killLiveCloneGroups), 'exit handler installed');
+
+  killLiveCloneGroups(); // what `exit`/SIGTERM run
+  await r.done;
+  assert.equal(liveCloneChildren(), 0);
+  assert.equal(jobs.get(r.job.id).state, 'failed');
+  assert.equal(await waitGone(grandchild), true, 'the grandchild died with the group');
+  assert.equal(fs.existsSync(path.join(ws, 'orphan')), false, 'partial directory removed');
+  assert.equal(fs.existsSync(markerPath(ws, 'orphan')), false);
+});
+
+test('startup sweep: removes a dead-owner partial that carries our marker; keeps a live one, an unmarked one, and never follows a symlink', () => {
+  const { dir, ws } = sandbox();
+  const dead = deadPid();
+  const write = (slug, marker) => fs.writeFileSync(markerPath(ws, slug), JSON.stringify(marker));
+  const partial = (slug) => { fs.mkdirSync(path.join(ws, slug)); fs.writeFileSync(path.join(ws, slug, 'partial.pack'), 'x'); };
+
+  partial('stale'); write('stale', { slug: 'stale', dest: path.join(ws, 'stale'), serverPid: dead, gitPid: null, startedAt: 'x' });
+  partial('live'); write('live', { slug: 'live', dest: path.join(ws, 'live'), serverPid: process.pid, gitPid: null, startedAt: 'x' });
+  partial('unmarked');
+  write('vanished', { slug: 'vanished', dest: path.join(ws, 'vanished'), serverPid: dead, gitPid: null, startedAt: 'x' }); // marker, no dir
+  const outside = path.join(dir, 'outside'); fs.mkdirSync(outside); fs.writeFileSync(path.join(outside, 'keep.txt'), 'x');
+  fs.symlinkSync(outside, path.join(ws, 'linked')); write('linked', { slug: 'linked', serverPid: dead, gitPid: null, startedAt: 'x' });
+  write('evil', { slug: '../outside', serverPid: dead }); // hostile slug in a marker
+  fs.writeFileSync(path.join(ws, '.construct-clone-mismatch.json'), JSON.stringify({ slug: 'unmarked', serverPid: dead })); // names another slug
+  fs.writeFileSync(path.join(ws, '.construct-clone-garbage.json'), '{not json');
+
+  const jobs = createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: fakeSpawn().spawn });
+  const out = jobs.recoverInterrupted();
+  assert.deepEqual(out.removed, ['stale']);
+  assert.deepEqual(out.killed, []);
+  assert.deepEqual(out.kept, [{ slug: 'live', why: 'this server is cloning it now' }], 'our own pid: a marker of this very server');
+  // `linked` is a bad marker too: contain() resolves the symlink out of the workspace, so nothing but the marker goes.
+  assert.deepEqual(out.badMarkers.sort(), ['.construct-clone-evil.json', '.construct-clone-garbage.json', '.construct-clone-linked.json', '.construct-clone-mismatch.json']);
+  assert.equal(fs.existsSync(path.join(ws, 'stale')), false, 'dead-owner partial removed');
+  assert.ok(fs.existsSync(path.join(ws, 'live', 'partial.pack')), 'live owner: untouched');
+  assert.ok(fs.existsSync(markerPath(ws, 'live')), 'live marker kept');
+  assert.ok(fs.existsSync(path.join(ws, 'unmarked', 'partial.pack')), 'no marker: never removed, even though a bad marker named it');
+  assert.ok(fs.lstatSync(path.join(ws, 'linked')).isSymbolicLink(), 'symlink left in place');
+  assert.ok(fs.existsSync(path.join(outside, 'keep.txt')), 'and never followed');
+  for (const slug of ['stale', 'vanished', 'linked']) assert.equal(fs.existsSync(markerPath(ws, slug)), false, `marker ${slug} removed`);
+  assert.deepEqual(fs.readdirSync(ws).filter((n) => n.startsWith('.construct-clone-')), ['.construct-clone-live.json']);
+  assert.deepEqual(jobs.recoverInterrupted().removed, [], 'idempotent');
+});
+
+test('startup sweep stops an orphaned git that is still working on the destination (Linux /proc)', async () => {
+  if (!fs.existsSync('/proc/self/cmdline')) return;
+  const { ws } = sandbox();
+  const target = path.join(ws, 'busy');
+  fs.mkdirSync(target);
+  // Stands in for an orphaned `git clone ... <dest>`: argv[0] is git and the destination is in its argv.
+  const orphan = realSpawn('sh', ['-c', 'sleep 60', 'git', target], { argv0: 'git', detached: true, stdio: 'ignore' });
+  orphan.unref();
+  await new Promise((res) => setTimeout(res, 50));
+  fs.writeFileSync(markerPath(ws, 'busy'), JSON.stringify({ slug: 'busy', dest: target, serverPid: deadPid(), gitPid: orphan.pid, startedAt: 'x' }));
+  try {
+    const jobs = createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: fakeSpawn().spawn });
+    const out = jobs.recoverInterrupted();
+    assert.deepEqual(out.killed, ['busy']);
+    assert.deepEqual(out.removed, ['busy']);
+    assert.equal(await waitGone(orphan.pid), true, 'the orphaned git was stopped');
+    assert.equal(fs.existsSync(target), false);
+  } finally {
+    try { process.kill(-orphan.pid, 'SIGKILL'); } catch { /* already gone */ }
+  }
+});
+
+test('an unrelated process named in a marker is never killed', async () => {
+  const { ws } = sandbox();
+  const bystander = realSpawn('sleep', ['60'], { stdio: 'ignore' });
+  try {
+    fs.mkdirSync(path.join(ws, 'r'));
+    fs.writeFileSync(markerPath(ws, 'r'), JSON.stringify({ slug: 'r', dest: path.join(ws, 'r'), serverPid: deadPid(), gitPid: bystander.pid, startedAt: 'x' }));
+    const jobs = createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: fakeSpawn().spawn });
+    const out = jobs.recoverInterrupted();
+    assert.deepEqual(out.killed, []);
+    assert.deepEqual(out.removed, ['r']);
+    process.kill(bystander.pid, 0); // still alive
+  } finally {
+    bystander.kill('SIGKILL');
+  }
+});
+
+test('a retry after a crash succeeds: the stale partial is recovered by start() itself', async () => {
+  const { ws } = sandbox();
+  fs.mkdirSync(path.join(ws, 'r'));
+  fs.writeFileSync(path.join(ws, 'r', 'old-partial.pack'), 'x');
+  fs.writeFileSync(markerPath(ws, 'r'), JSON.stringify({ slug: 'r', dest: path.join(ws, 'r'), serverPid: deadPid(), gitPid: null, startedAt: 'x' }));
+  const f = fakeSpawn((child, args) => { fs.mkdirSync(dest(args)); fs.writeFileSync(path.join(dest(args), 'fresh'), 'y'); });
+  const jobs = createCloneJobs({ getRoot: () => ws, lookup: PUBLIC, spawn: f.spawn });
+  const r = await jobs.start({ url: 'https://github.com/o/r' });
+  assert.equal(r.ok, true, JSON.stringify(r));
+  assert.equal(fs.existsSync(path.join(ws, 'r', 'old-partial.pack')), false, 'the crashed partial is gone');
+  f.calls[0].child.finish(0);
+  await r.done;
+  assert.equal(jobs.get(r.job.id).state, 'done');
+  assert.ok(fs.existsSync(path.join(ws, 'r', 'fresh')));
+
+  // Without a marker, an existing folder is still EXISTS: a marker is the only licence to remove anything.
+  fs.mkdirSync(path.join(ws, 'plain'));
+  assert.equal((await jobs.start({ url: 'https://github.com/o/plain' })).code, 'EXISTS');
+  assert.ok(fs.existsSync(path.join(ws, 'plain')));
 });

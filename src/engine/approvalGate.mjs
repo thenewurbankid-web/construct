@@ -75,9 +75,15 @@ const SAFE_MODES = new Set(['100644', '100755']);
 const IDENTITY = ['-c', 'user.name=Construct Gate', '-c', 'user.email=gate@construct.invalid', '-c', 'commit.gpgsign=false'];
 const sha256 = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
 
+// #413: bounded like every synchronous git call in core (see gitTrees.GIT_TIMEOUT_MS); a hung git must not hang the gate.
+const GIT_TIMEOUT_MS = 10 * 60 * 1000;
+
 function git(cwd, args, { input } = {}) {
-  const res = spawnSync('git', ['--literal-pathspecs', ...IDENTITY, ...args], { cwd, input, maxBuffer: 256 * 1024 * 1024 });
-  return { ok: res.status === 0, out: res.stdout ?? Buffer.alloc(0), err: (res.stderr?.toString() || res.error?.message || '').trim() };
+  const res = spawnSync('git', ['--literal-pathspecs', ...IDENTITY, ...args], { cwd, input, maxBuffer: 256 * 1024 * 1024, timeout: GIT_TIMEOUT_MS, killSignal: 'SIGKILL' });
+  const err = /** @type {any} */ (res.error)?.code === 'ETIMEDOUT'
+    ? `git ${args[0]} did not finish within ${Math.round(GIT_TIMEOUT_MS / 1000)} seconds and was stopped.`
+    : (res.stderr?.toString() || res.error?.message || '').trim();
+  return { ok: res.status === 0, out: res.stdout ?? Buffer.alloc(0), err };
 }
 const text = (r) => r.out.toString('utf8');
 

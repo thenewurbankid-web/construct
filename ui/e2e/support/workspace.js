@@ -19,8 +19,9 @@ const BIN = path.resolve(HERE, '../../../bin/construct.mjs');
 /** The OS temp dir as a real path: the workspace root the ordinary configs use. */
 export const tmpWorkspaceRoot = () => fs.realpathSync(os.tmpdir());
 
-/** NOTE: deliberately NOT named `construct-*`: tools/dev/heavy.sh prunes `/tmp/construct-*` directories older than
- * 30 minutes, and a full run is longer than that, so the preloaded project would be deleted mid-run.
+/** NOTE: not named `construct-*`. Until #414, tools/dev/heavy.sh pruned `/tmp/construct-*` directories older than
+ * 30 minutes (a full run is longer than that); it now prunes by the owner pid in the name, so the rename is no
+ * longer load-bearing, but there is no reason to move it either.
  * A freshly `construct init`-ed project inside the tmp workspace, created once per Playwright run (the
  * config is evaluated in the runner and again in each worker, so the path is shared through the environment). */
 export function defaultProject() {

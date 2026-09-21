@@ -21,7 +21,8 @@ const REUSE = process.env.E2E_REUSE_SERVERS === '1';
 process.env.E2E_API_BASE = SERVER_ORIGIN;
 // The server's process-record directory. A spec that needs a saved plan (Review mode's expected scope,
 // #316) seeds a process record here, through the same store the server reads.
-const STATE_DIR = process.env.E2E_STATE_DIR || fs.mkdtempSync(path.join(os.tmpdir(), 'construct-e2e-state-'));
+// The pid in the name is what lets tools/dev/heavy.sh tell a live run's state from a dead one (#414).
+const STATE_DIR = process.env.E2E_STATE_DIR || fs.mkdtempSync(path.join(os.tmpdir(), `construct-e2e-state-${process.pid}-`));
 process.env.E2E_STATE_DIR = STATE_DIR;
 
 // These tests exercise the real, rendered UI in a real browser — the gap

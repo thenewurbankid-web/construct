@@ -7,7 +7,11 @@ request or issue numbers.
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+- Every model call is bounded: `CONSTRUCT_LLM_TIMEOUT_SEC` (default 300) kills a hung `claude -p` and aborts a hung Ollama request with an error that names the timeout; every synchronous `git` call in core has a timeout; the Cockpit's command queue abandons a command at `CONSTRUCT_COMMAND_TIMEOUT_SEC` (default 900) instead of wedging behind it ([#413]).
+- `tools/dev/heavy.sh` prunes `/tmp/construct-*` by owner liveness (pid in the name or a `.owner` file), never by age alone; its lock wait and RAM wait are bounded (`CONSTRUCT_HEAVY_LOCK_WAIT_SEC`, `CONSTRUCT_HEAVY_RAM_WAIT_SEC`), the RAM wait releases the lock between checks, and a waiter that gives up names the holder; `--prune-only`; tests under `tools/dev/test/` ([#414]).
+- A clone never outlives the Cockpit server: live clone process groups are killed on exit and on SIGINT/SIGTERM/SIGHUP; a marker beside the destination lets the next start stop an orphaned `git`, remove the partial folder it left, and accept a retry ([#422]).
+- Startup preflight: clone refuses a git older than 2.37.0 (the release that introduced `http.curloptResolve`, per git's release notes) or a missing git with `503 GIT_TOO_OLD`/`GIT_MISSING` instead of running with the DNS pin silently off; `/api/health` reports node and git versions, clone availability, writability and free space of the workspace and the state directory against `CONSTRUCT_HEALTH_MIN_FREE_MB`; process-record saves fsync, clean up their temp file on failure and name a full disk plainly ([#423]).
 
 ## [0.8.0] - 2026-09-20 (planned baseline)
 
@@ -151,3 +155,7 @@ The package version fields are not changed by this entry.
 [#377]: https://github.com/thenewurbankid-web/construct/pull/377
 [#389]: https://github.com/thenewurbankid-web/construct/pull/389
 [#390]: https://github.com/thenewurbankid-web/construct/pull/390
+[#413]: https://github.com/thenewurbankid-web/construct/issues/413
+[#414]: https://github.com/thenewurbankid-web/construct/issues/414
+[#422]: https://github.com/thenewurbankid-web/construct/issues/422
+[#423]: https://github.com/thenewurbankid-web/construct/issues/423
