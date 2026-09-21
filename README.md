@@ -192,6 +192,31 @@ a deterministic block, make an existing one more atomic, make the *example*
 a layer hands the next one better, or extend the cockpit UI — or is it quietly
 routing around this and making the LLM do more work than it needs to?
 
+## How we build
+
+These are the principles behind every block, screen and decision in Construct.
+
+- **Repeatable work belongs in blocks, not in prompts.** If a task is done the
+  same way twice, it becomes a small, deterministic block with a known input
+  and a known output. People and models then spend their time on what is new.
+- **Stand on open source.** Where a well-maintained open-source tool already
+  does a job, Construct wraps it instead of rewriting it. We build only the
+  parts that make Construct what it is: the architecture rules, the plans and
+  their impact, the flow narrator and test generator, the approval gate and
+  the workspace boundary.
+- **Every choice is yours, and reversible.** Mechanical or model-assisted,
+  per action. Which model. Mock or real service. Which blocks a project may
+  use. The guardrails do not move when you flip a switch: every change is a
+  diff you approve, every path stays inside your workspace, every command
+  says how many model calls it made.
+- **No hidden single point of failure.** State lives in files you can read,
+  work lives on branches you can inspect, and a failed step stops the plan
+  instead of guessing. Where a weak point still exists, it is written down
+  and tracked, not assumed away.
+- **Automate the way we work, too.** The board, the milestones, the changelog,
+  the versioned docs and the Cockpit itself are kept in sync by machinery,
+  so what you read is what is true.
+
 ## Default architecture
 
 ```text
