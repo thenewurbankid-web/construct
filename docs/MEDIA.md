@@ -74,10 +74,48 @@ ffmpeg on the PATH (or `FFMPEG=/path/to/ffmpeg`). Use only music you have the ri
 `.audio.webm` in the site page's `@video/` reference when you are happy with it. Pace: `MEDIA_PACE=1.5` (default)
 scales every scripted pause; captions hold for their reading time.
 
-## Voice-over (local, free) — #462
+## Script, subtitles and narration (local, free, no LLM) — #462
 
-`tools/media/voiceover.mjs <captions.json> [--voice af_heart] [--video <video.webm>]` speaks each caption at its start time
-with the Kokoro model (Apache-2.0, CPU, offline once cached) and writes one `.voice.opus`; with `--video` it also writes
-`<video>.voice.webm` through `add-audio.sh`. Default voice `af_heart` (warm, female); `--list-voices` shows all (about
-28 stock voices, male and female, US and UK). One-time setup is in the script header. The narration is synthetic; say so on the page.
-Own-voice cloning comes later from a sample the speaker supplies of their own voice; imitating another real person's voice is not done.
+The narration script is a plain file, the source of truth: `site/assets/video/<slug>.captions.json`, `[{ id, text, start, end? }]`
+(seconds from the video start; edit it in any text editor). A new recording writes it itself (`writeTimeline` in `support.mjs`); for
+a take made before that, `node tools/media/captions-from-video.mjs <video.webm> <spec.js>` rebuilds it from the video's caption bar
+(deterministic, refuses to write if the counts differ). One command builds everything from the script:
+
+```
+node tools/media/script.mjs <slug> build     # .en.srt + .en.vtt + .voice.opus + .voice.webm (+ .mixed.webm if a music file exists)
+node tools/media/script.mjs <slug> srt|vtt|voice|mix|status
+node tools/media/script.mjs <slug> voice --voice-sample ~/voice/sample.wav   # own-voice clone; default is Kokoro af_heart
+```
+
+Tracks stay separate files next to the video: `<slug>.voice.opus` (narration), `<slug>.music.<mp3|wav|ogg|m4a|opus|flac>` (music you
+supply and may publish; drop it there, nothing generates or downloads music), `<slug>.en.srt`/`.vtt`; the muxed `.voice.webm` and
+`.mixed.webm` are built from them with `add-audio.sh` (`--track FILE@SECONDS:VOLUME:FADE`; `mix` takes `--music-volume` and `--music-start`).
+Clips are cached per line in `.media-cache/` (ignored by version control) by a hash of text, voice and model, so only edited lines are
+spoken again (`status` shows which). Writes are refused outside `site/assets/video` and `.media-cache`. Needs ffmpeg (or `FFMPEG=/path/to/ffmpeg`).
+The site page adds the subtitles `<track>` and the narrated download when those files exist. The narration is synthetic; the page says so.
+`tools/media/voiceover.mjs <captions.json> [--voice] [--voice-sample] [--video]` is the same engine for an arbitrary file; `--list-voices` lists the Kokoro stock voices.
+
+For a visual multi-track timeline, import the separate files (voice.opus, music, .srt/.vtt, captions.json) into any free editor: OpenReel or
+OpenCut (both MIT, in the browser) or Kdenlive or Shotcut (free desktop editors, GPL, used as separate tools only, never linked into our code).
+They are not part of Construct; there is nothing for us to build or host.
+
+Tools used (owner rule: existing free tools): `subtitle` (MIT, SRT/WebVTT text; devDependency), ffmpeg (audio and video), Kokoro
+(Apache-2.0, default voice), Chatterbox (MIT code and weights, own-voice clone; OpenVoice v2, also MIT, was not needed once Chatterbox
+worked), faster-whisper `base.en` (MIT, only to check that a clone round-trips to the right words).
+
+### Voice cloning setup (once, outside the repo)
+
+Only from a recording its speaker supplied of their own voice; never another person's voice. The sample is read where it is and never
+copied, uploaded or turned into a stored voice file (the cache key holds only a hash of it). Each clip carries Chatterbox's inaudible
+Perth watermark. About 1.5 GB venv (about 3 GB of model weights in the Hugging Face cache), about 5 GB peak RAM (run nothing else
+heavy meanwhile; wrap in `tools/dev/heavy.sh`), roughly 4 to 7 s of CPU compute per second of speech:
+
+```
+UV=~/.cache/construct-media/bin/uv; V=~/.cache/construct-media/venv
+$UV venv --python 3.11 $V
+$UV pip install --python $V/bin/python chatterbox-tts     # pulls a CUDA torch; replace it with the CPU build:
+$UV pip install --python $V/bin/python --reinstall-package torch --reinstall-package torchaudio torch==2.6.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+```
+
+Kokoro setup (default voice): `mkdir -p ~/.cache/construct-media && cd ~/.cache/construct-media && npm init -y && npm i kokoro-js`
+(`CONSTRUCT_MEDIA_CACHE` moves the folder). The clone helper is `tools/media/clone_voice.py`, run with the venv's Python.

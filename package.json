@@ -51,6 +51,7 @@
     "pagefind": "^1.5.2",
     "react": "^19.3.0",
     "react-redux": "^9.3.0",
+    "subtitle": "^4.2.2",
     "typedoc": "^0.28.20",
     "typedoc-plugin-markdown": "^4.13.1"
   },
