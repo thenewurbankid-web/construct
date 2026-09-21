@@ -49,3 +49,11 @@ tracks; output is `<video>.audio.webm` next to the input (or `--out`), never ove
 ffmpeg on the PATH (or `FFMPEG=/path/to/ffmpeg`). Use only music you have the right to publish. Use the
 `.audio.webm` in the site page's `@video/` reference when you are happy with it. Pace: `MEDIA_PACE=1.5` (default)
 scales every scripted pause; captions hold for their reading time.
+
+## Voice-over (local, free) — #462
+
+`tools/media/voiceover.mjs <captions.json> [--voice af_heart] [--video <video.webm>]` speaks each caption at its start time
+with the Kokoro model (Apache-2.0, CPU, offline once cached) and writes one `.voice.opus`; with `--video` it also writes
+`<video>.voice.webm` through `add-audio.sh`. Default voice `af_heart` (warm, female); `--list-voices` shows all (about
+28 stock voices, male and female, US and UK). One-time setup is in the script header. The narration is synthetic; say so on the page.
+Own-voice cloning comes later from a sample the speaker supplies of their own voice; imitating another real person's voice is not done.
