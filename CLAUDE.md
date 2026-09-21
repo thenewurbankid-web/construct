@@ -91,34 +91,17 @@ snapshot that rots. See #35 for the audit that established this.
    follow-up comment. Trivial changes with no independent behavior (typo
    fixes, comment-only edits, formatting) don't need their own issue —
    fold them into whichever issue/commit they're actually part of.
-2. **Comment before starting, and on every decision and every outcome —
-   strictly, not just for long or multi-session tasks.** This is the rule
-   most likely to be skipped under time pressure; don't skip it.
-   - **Before starting** any unit of work, post a comment on its issue
-     stating what you're about to do and the plan/approach — before
-     writing code, not after. A human watching the issue should be able to
-     tell you've started and what you intend, without waiting for a
-     result.
-   - **At every real decision point** during the work (a design choice, a
-     tradeoff, an unexpected finding that changes the plan), post a
-     comment when it happens, not folded into a later summary.
-   - **On every outcome** — pass, fail, blocked, or a bug found — post a
-     comment when that outcome occurs, even if the issue isn't closing
-     yet (e.g. "3 of 6 done, here's what's left" is its own comment, not
-     something to hold until everything is finished).
-   - **This applies to delegated work too.** If you hand a unit of work to
-     a subagent, YOU (the delegator) are responsible for the before/during/
-     outcome comments actually happening on the right issue — either by
-     instructing the subagent explicitly to post them itself at each stage
-     (not just "report back at the end"), or by posting them yourself as
-     soon as you learn the subagent has started/decided/finished something.
-     "I'll comment once the agent's final report comes back" is exactly
-     the failure mode this rule exists to prevent — it looks, from the
-     issue, like nothing happened for the entire duration of the work.
-   - It is fine for these to be several small comments rather than one
-     large one — the issue thread should let someone reconstruct exactly
-     what happened, in order, without reading the code or waiting for a
-     final wrap-up.
+2. **Comment sparingly: once when you start, once at the outcome.**
+   (Owner, 2026-09-21: "no frequent comments".) Post ONE comment before
+   starting a unit of work (what you will do, the approach) and ONE at the
+   outcome (result, evidence, and the rule-12 usage/API/exceptions/next
+   section). Add a comment in between only when a decision changes the
+   scope, a blocker needs the owner, or a bug is found that other work
+   depends on. No progress chatter, no "3 of 6 done" notes. This applies to
+   delegated work too: tell every subagent this rule explicitly, and post
+   the start/outcome comments yourself if it does not. The issue thread
+   should still let someone reconstruct what happened, in a handful of
+   comments rather than dozens.
 3. **Issue state must reflect current reality.** Close an issue the moment
    its work is verified done, and don't close something that isn't
    actually done yet. "Verified done" means at minimum: `npm test` passes
@@ -200,27 +183,18 @@ snapshot that rots. See #35 for the audit that established this.
       `/tmp/construct-*` test dirs. Use `--workers=1`, one dev server, start
       Ollama only for tests that need it, and never leave background servers
       running. `/tmp` is RAM-backed: clean up what you create.
-11. **Every UI feature gets a real Playwright test, run for real, with a
-    real screenshot attached to its GitHub issue — mandatory, not optional,
-    no exceptions.** This applies to `ui/` work specifically (anything
-    with a rendered screen), not to `src/`/CLI-only work (that's covered
-    by `npm test`, not screenshots). Concretely, before closing any UI
-    issue:
-    - A Playwright test exists under `ui/e2e/` covering the feature's
-      actual user-visible behavior, not just an API-level check.
-    - It was actually run (headless is fine) — not just written.
-    - At least one real screenshot from that run is attached directly to
-      the issue as an inline image (see #37 for the pattern — commit
-      PNGs to a dedicated branch, e.g. `ui-screenshots`, and embed via
-      `raw.githubusercontent.com` links in the issue comment; never just
-      describe what a screenshot would show).
-    - If a UI change alters existing screens' appearance (e.g. a new
-      theme), old screenshots on old issues go stale — re-run and post
-      fresh ones wherever the change is significant enough that "what it
-      actually looks like now" is worth re-confirming, not just left to
-      go unverified.
-    This is retroactive: any already-closed UI issue that shipped without
-    this gets caught up, not grandfathered in.
+11. **Every UI feature gets a real Playwright test, run for real.**
+    This applies to `ui/` work (anything with a rendered screen), not to
+    `src/`/CLI-only work (covered by `npm test`). Before closing any UI
+    issue a Playwright test exists under `ui/e2e/` covering the feature's
+    actual user-visible behavior (not just an API check), and it was actually
+    run. **Screenshots are for the documentation website only**
+    (owner, 2026-09-21: "screenshot only in the website"): do not attach
+    screenshots to issues or comments and never put images in chat. Website
+    screenshots come from real Playwright runs, are curated by the
+    `demo-curator` agent, and live under `site/` (see the demos module).
+    Specs may still capture images locally for the docs; they are not
+    committed to `ui-screenshots` or embedded in tickets.
 12. **Every ticket's closing comment (or body, for a changelog-style
     retroactive filing) documents how to actually use what it shipped —
     not just that it shipped.** Specifically, before closing:
