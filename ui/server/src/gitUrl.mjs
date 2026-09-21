@@ -48,6 +48,18 @@ export function validateSlug(slug) {
   return slug;
 }
 
+/** #330: a branch (or tag) name to check out. A closed set, stricter than the version-control tool's own rules:
+ * letters, digits and `. _ - /` inside, starting with a letter or digit (so it can never look like an option), no
+ * `..`, `//`, no trailing `/` `.` or `.lock`. -> the name, or null when none was given. */
+export function validateBranch(branch) {
+  if (branch === undefined || branch === null || branch === '') return null;
+  if (typeof branch !== 'string' || branch.length > MAX_SLUG_LENGTH) throw new CloneInputError('BAD_BRANCH', 'That branch name is not usable.');
+  if (!/^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(branch) || branch.includes('..') || branch.includes('//') || /[./]$/.test(branch) || branch.endsWith('.lock') || /\/\.|\.\//.test(branch)) {
+    throw new CloneInputError('BAD_BRANCH', 'A branch name may use letters, digits, "-", "_", "." and "/" only, and must start with a letter or digit.');
+  }
+  return branch;
+}
+
 /**
  * @param {unknown} input what the client sent
  * @param {{hosts?: readonly string[], localRoot?: string|null}} [opts] `localRoot` (test harness only): also accept

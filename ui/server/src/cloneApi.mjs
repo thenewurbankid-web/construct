@@ -35,13 +35,29 @@ export function createCloneRouter({ jobs, clientOrigin }) {
   });
 
   router.post('/', async (req, res) => {
-    const { url, name, depth } = bodyOf(req);
-    if (typeof url !== 'string' || (name !== undefined && name !== null && typeof name !== 'string')) {
+    const body = bodyOf(req);
+    const { url, name, depth, branch } = body;
+    // The one-time access token (#330 slice B) is taken out of the parsed body at once: from here on it lives only
+    // in cloneJobs' Buffer, never in `req.body`, a log line, a job record or a response.
+    const token = body.token;
+    if (req.body && typeof req.body === 'object') delete req.body.token;
+    if (typeof url !== 'string' || (name !== undefined && name !== null && typeof name !== 'string') || (branch !== undefined && branch !== null && typeof branch !== 'string')) {
       return res.status(400).json({ ok: false, code: 'BAD_URL', error: 'A repository URL (a string) is required.' });
     }
-    const started = await jobs.start({ url, name, depth: depth === undefined || depth === null ? null : Number(depth) });
+    const started = await jobs.start({ url, name, branch, token, depth: depth === undefined || depth === null ? null : Number(depth) });
     if (!started.ok) return res.status(started.status).json({ ok: false, code: started.code, error: started.error });
     return res.status(202).json({ ok: true, job: started.job });
+  });
+
+  // "Pull latest" for a clone this Cockpit made. Registered before the /:id routes.
+  router.post('/pull', async (req, res) => {
+    const body = bodyOf(req);
+    const token = body.token;
+    if (req.body && typeof req.body === 'object') delete req.body.token;
+    if (typeof body.name !== 'string') return res.status(400).json({ ok: false, code: 'BAD_NAME', error: 'A folder name (a string) is required.' });
+    const result = await jobs.pull({ name: body.name, token });
+    if (!result.ok) return res.status(result.status).json({ ok: false, code: result.code, error: result.error });
+    return res.json(result);
   });
 
   router.post('/:id/cancel', (req, res) => {

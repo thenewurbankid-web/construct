@@ -137,6 +137,15 @@ const app = express();
 // thing that would make a drive-by page able to mint or use a session.
 app.use(cors({ origin: CLIENT_ORIGIN, credentials: true }));
 app.use(express.json());
+// A body that is not valid JSON gets a fixed answer. The default handler prints the parser's message, which quotes
+// a snippet of the body, and a clone request's body may carry a one-time access token (#330 slice B): nothing the
+// client sent is ever echoed back or logged from here.
+app.use((err, req, res, next) => {
+  if (err && (err.type === 'entity.parse.failed' || err.type === 'entity.too.large' || err.type === 'charset.unsupported' || err.type === 'encoding.unsupported')) {
+    return res.status(err.status === 413 ? 413 : 400).json({ ok: false, error: 'The request body was not valid JSON.' });
+  }
+  return next(err);
+});
 
 function respond(res, result) {
   res.status(result.httpStatus).json(result);
