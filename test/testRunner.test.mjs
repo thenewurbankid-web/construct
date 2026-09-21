@@ -9,7 +9,7 @@ import path from 'node:path';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { generateFeatureTests } from '../src/engine/testGenerator.mjs';
 import { HELPERS } from '../src/engine/testSpecRender.mjs';
-import { bugReportText, classifyFailure, findPlaywright, parseBaseUrl, readReport, reclaimRunsOf, renderRunText, resolveSpecs, runFeatureTests, RUN_DIR_PREFIX } from '../src/engine/testRunner.mjs';
+import { bugReportText, classifyFailure, findPlaywright, parseBaseUrl, readReport, configText, keepTraces, pruneTraceDirs, TRACE_DIR_PREFIX, TRACE_KEEP_DIRS, TRACE_MAX_FILE_BYTES, reclaimRunsOf, renderRunText, resolveSpecs, runFeatureTests, RUN_DIR_PREFIX } from '../src/engine/testRunner.mjs';
 
 const LOCK = 'frozen:\n  - features/*/tests/generated/**\nnonLayer:\n  - features/*/tests/**\n';
 const BASE = 'version: 1\npreset: strict-nextjs\nproject:\n  framework: nextjs\nfeatures:\n  root: features\n';
@@ -254,4 +254,56 @@ test('findPlaywright prefers the project\'s own, then the one Construct ships', 
   fs.mkdirSync(path.dirname(own), { recursive: true });
   fs.writeFileSync(own, '');
   assert.equal(findPlaywright(root, { repo }).cli, own);
+});
+
+// ---- #438: traces of failed runs ------------------------------------------------------------------------------
+
+test('the throwaway config records a trace only for a failure, inside the run directory', () => {
+  const text = configText({ testDir: '/t', baseURL: 'http://localhost:3000', outputDir: '/run/out', reportFile: '/run/report.json', files: ['a.spec.ts'] });
+  assert.match(text, /trace: 'retain-on-failure'/);
+  assert.match(text, /outputDir: "\/run\/out"/);
+});
+
+test('keepTraces keeps a small failure trace under a renamed directory and names it relative to the temp dir', () => {
+  const tmp = makeTempDir('construct-trace-tmp-');
+  const dir = path.join(tmp, `${RUN_DIR_PREFIX}77-abc`);
+  fs.mkdirSync(path.join(dir, 'out', 'a-test'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'out', 'a-test', 'trace.zip'), 'PK-small');
+  const r = keepTraces(dir, { tmp });
+  assert.equal(r.traces.length, 1);
+  assert.ok(!path.isAbsolute(r.traces[0]) && !r.traces[0].includes('..'));
+  assert.ok(r.traces[0].startsWith(`${TRACE_DIR_PREFIX}77-abc`));
+  assert.ok(fs.existsSync(path.join(tmp, r.traces[0])));
+  assert.equal(fs.existsSync(dir), false);
+  reclaimRunsOf(77, { tmp }); // the crash backstop never touches a kept trace directory
+  assert.ok(fs.existsSync(path.join(tmp, r.traces[0])));
+});
+
+test('keepTraces keeps nothing for a passing run and drops an oversized trace', () => {
+  const tmp = makeTempDir('construct-trace-tmp-');
+  const pass = path.join(tmp, `${RUN_DIR_PREFIX}78-abc`);
+  fs.mkdirSync(path.join(pass, 'out'), { recursive: true });
+  assert.deepEqual(keepTraces(pass, { tmp }), { keptDir: null, traces: [] });
+  assert.ok(fs.existsSync(pass)); // removing it stays the caller's job
+  const big = path.join(tmp, `${RUN_DIR_PREFIX}79-abc`);
+  fs.mkdirSync(path.join(big, 'out', 't'), { recursive: true });
+  const f = path.join(big, 'out', 't', 'trace.zip');
+  fs.writeFileSync(f, '');
+  fs.truncateSync(f, TRACE_MAX_FILE_BYTES + 1);
+  assert.deepEqual(keepTraces(big, { tmp }), { keptDir: null, traces: [] });
+  assert.equal(fs.existsSync(f), false);
+});
+
+test('pruneTraceDirs removes old directories and all but the newest few', () => {
+  const tmp = makeTempDir('construct-trace-tmp-');
+  const now = Date.now();
+  const mk = (name, ageMs) => { const p = path.join(tmp, `${TRACE_DIR_PREFIX}${name}`); fs.mkdirSync(p); const t = new Date(now - ageMs); fs.utimesSync(p, t, t); return p; };
+  const old = mk('old', 2 * 60 * 60 * 1000);
+  const fresh = Array.from({ length: TRACE_KEEP_DIRS + 2 }, (_, i) => mk(`n${i}`, (i + 1) * 1000));
+  const other = path.join(tmp, 'unrelated'); fs.mkdirSync(other);
+  pruneTraceDirs({ tmp, now });
+  assert.equal(fs.existsSync(old), false);
+  assert.equal(fresh.filter((p) => fs.existsSync(p)).length, TRACE_KEEP_DIRS);
+  assert.ok(fs.existsSync(fresh[0]) && !fs.existsSync(fresh[fresh.length - 1]));
+  assert.ok(fs.existsSync(other));
 });
