@@ -1,4 +1,4 @@
-import { Logo } from '@/components/ui';
+import { AnimatedLogo } from '@/components/ui';
 import type { ModelStatus, TopBarProps } from '../types';
 
 const MODEL_TEXT: Record<ModelStatus, string> = {
@@ -28,7 +28,7 @@ export function TopBar({
   return (
     <header className="sh-top" role="banner">
       <span className="sh-brand">
-        <Logo mark="cockpit" size={22} />
+        <AnimatedLogo mark="cockpit" size={22} />
         <span>Cockpit</span>
       </span>
       {projectSwitcher}

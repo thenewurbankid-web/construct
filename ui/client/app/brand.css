@@ -1,0 +1,125 @@
+/* ---- the brand mark, alive (#455) --------------------------------------------------------------
+ * Owner request, 2026-09-21: "make the logos active always with subtle animation". No animation
+ * library: the marks are pills, a bar and a circle, so a travelling stroke-dash gap and a scale/
+ * opacity breathe do the whole job in keyframes — 0 KB added, no download, nothing to fetch offline.
+ *
+ * components/ui/AnimatedLogo.jsx owns the motion *state* and publishes it here as `data-motion`:
+ *   off     reduced motion, or before hydration — no loop at all, just the static mark
+ *   idle    the slow always-on loop
+ *   paused  tab hidden or mark scrolled out of view — frozen where it stands, zero CPU
+ * `data-part` on each shape comes from components/ui/Logo.jsx, so only ONE element per mark moves
+ * and this file never restates the geometry.
+ *
+ * The amplitude is deliberately low: a mark that pulls the eye away from the work on screen has
+ * failed. Cycles are 4-6 s, nothing jumps, nothing blinks.
+ */
+.brand-mark {
+  display: inline-flex;
+  flex: none;
+  line-height: 0;
+}
+
+/* Idle loops. Declared for `paused` too, so freezing is a pause (the shape stays where it is)
+ * rather than a snap back to the start. */
+.brand-mark[data-mark='line'][data-motion='idle'] [data-part='ring'],
+.brand-mark[data-mark='line'][data-motion='paused'] [data-part='ring'] {
+  /* Path length of the 28x11 r5.5 pill is ~68.6: a 55-long dash plus a 14-long gap wraps it exactly
+   * once, so sliding the offset by one full period loops seamlessly and ~80% of the outline is drawn
+   * at any moment — it reads as being drawn, never as a mark with a piece missing. */
+  stroke-dasharray: 55 14;
+  animation: brand-trace-line 6s linear infinite;
+}
+
+.brand-mark[data-mark='construct'][data-motion='idle'] [data-part='ring'],
+.brand-mark[data-mark='construct'][data-motion='paused'] [data-part='ring'] {
+  /* Same idea on the 40x18 r9 pill, whose path length is ~100.5. */
+  stroke-dasharray: 80 21;
+  animation: brand-trace-pill 6s linear infinite;
+}
+
+.brand-mark[data-mark='cockpit'][data-motion='idle'] [data-part='knob'],
+.brand-mark[data-mark='cockpit'][data-motion='paused'] [data-part='knob'] {
+  /* The lit knob breathes. fill-box keeps the origin on the circle itself, not the 48x48 viewBox. */
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: brand-breathe 5s ease-in-out infinite;
+}
+
+.brand-mark[data-mark='cli'][data-motion='idle'] [data-part='cursor'],
+.brand-mark[data-mark='cli'][data-motion='paused'] [data-part='cursor'] {
+  /* A slow glow, not a cursor blink: blinking is exactly the attention-stealing motion we don't want. */
+  animation: brand-glow 4.5s ease-in-out infinite;
+}
+
+.brand-mark[data-motion='paused'] * {
+  animation-play-state: paused;
+}
+
+@keyframes brand-trace-line {
+  to { stroke-dashoffset: -69; }
+}
+
+@keyframes brand-trace-pill {
+  to { stroke-dashoffset: -101; }
+}
+
+@keyframes brand-breathe {
+  0%, 100% { transform: scale(1); opacity: 0.86; }
+  50%      { transform: scale(1.1); opacity: 1; }
+}
+
+@keyframes brand-glow {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+
+/* One-shot on hover/focus, wherever the mark sits inside something clickable. Nothing in the Cockpit
+ * wraps the brand in a link today; this is written parent-side so it simply works the day one does,
+ * with no prop and no change at the call site. */
+:where(a, button):hover .brand-mark,
+:where(a, button):focus-visible .brand-mark {
+  animation: brand-pop 620ms ease-out 1;
+}
+
+@keyframes brand-pop {
+  0%   { transform: scale(1); }
+  38%  { transform: scale(1.09); }
+  100% { transform: scale(1); }
+}
+
+/* Reduced motion: no loop, full stop. tokens.css already clamps every animation's duration globally,
+ * but a 0.001ms loop is still a loop — this removes it outright, which is what the preference asks
+ * for. AnimatedLogo independently reports `data-motion="off"` so the state is assertable, not just
+ * visually absent. */
+@media (prefers-reduced-motion: reduce) {
+  .brand-mark,
+  .brand-mark * {
+    animation: none !important;
+  }
+}
+
+/* ---- the login lockup (owner request, 2026-09-21) --------------------------------------------
+ * Two rows: the mark alone, large and prominent, over the tracked-uppercase wordmark. Sized with
+ * clamp() so it stays inside a 390px-wide phone and never pushes the sign-in button below the fold
+ * on an 800px-tall window. */
+.login-brand--stacked {
+  flex-direction: column;
+  gap: var(--sp-3);
+  text-align: center;
+  font-size: clamp(1.7rem, 3.4vw, 2.3rem);
+}
+
+.login-brand__mark svg {
+  display: block;
+  width: clamp(88px, 13vw, 120px);
+  height: auto;
+  /* The mark is the brightest thing on a dark, blurred backdrop; the same soft shadow the wordmark
+   * carries keeps the two reading as one object rather than a sticker on a photo. */
+  filter: drop-shadow(0 2px 14px rgba(0, 0, 0, 0.55));
+}
+
+/* 0.36em of tracking hangs off the last letter, which would leave the word visibly left of centre
+ * now that it is on a row of its own. Matching padding on the left balances it. */
+.login-brand__word {
+  padding-left: 0.36em;
+}

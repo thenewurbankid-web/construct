@@ -8,3 +8,4 @@ export { Input } from './Input.jsx';
 export { Select } from './Select.jsx';
 export { Badge } from './Badge.jsx';
 export { Logo } from './Logo.jsx';
+export { AnimatedLogo } from './AnimatedLogo.jsx';
