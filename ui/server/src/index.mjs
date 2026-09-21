@@ -969,6 +969,11 @@ export function createUiServer() {
 
 export function start() {
   const root = workspaceRoot(); // creates the workspace if missing; throws (and the process exits) if it cannot
+  // #422: a server that died mid-clone left a marker and maybe a partial directory (and maybe a git still running).
+  const recovered = cloneJobs.recoverInterrupted();
+  for (const slug of recovered.killed) console.warn(`Clone recovery: stopped an orphaned git clone of ${slug} left by a previous server.`);
+  for (const slug of recovered.removed) console.warn(`Clone recovery: removed the partial clone ${slug} left by a previous server. It can be cloned again.`);
+  for (const { slug, why } of recovered.kept) console.log(`Clone recovery: left ${slug} alone (${why}).`);
   const server = createUiServer();
   server.listen(port, host, () => {
     console.log(`Construct UI server listening on http://${host}:${port}`);

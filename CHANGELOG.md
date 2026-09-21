@@ -10,6 +10,7 @@ request or issue numbers.
 ### Fixed
 - Every model call is bounded: `CONSTRUCT_LLM_TIMEOUT_SEC` (default 300) kills a hung `claude -p` and aborts a hung Ollama request with an error that names the timeout; every synchronous `git` call in core has a timeout; the Cockpit's command queue abandons a command at `CONSTRUCT_COMMAND_TIMEOUT_SEC` (default 900) instead of wedging behind it ([#413]).
 - `tools/dev/heavy.sh` prunes `/tmp/construct-*` by owner liveness (pid in the name or a `.owner` file), never by age alone; its lock wait and RAM wait are bounded (`CONSTRUCT_HEAVY_LOCK_WAIT_SEC`, `CONSTRUCT_HEAVY_RAM_WAIT_SEC`), the RAM wait releases the lock between checks, and a waiter that gives up names the holder; `--prune-only`; tests under `tools/dev/test/` ([#414]).
+- A clone never outlives the Cockpit server: live clone process groups are killed on exit and on SIGINT/SIGTERM/SIGHUP; a marker beside the destination lets the next start stop an orphaned `git`, remove the partial folder it left, and accept a retry ([#422]).
 
 ## [0.8.0] - 2026-09-20 (planned baseline)
 

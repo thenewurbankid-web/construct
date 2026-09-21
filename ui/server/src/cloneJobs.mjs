@@ -12,7 +12,11 @@
 //   4. git runs as an argv array (never a shell) with protocols locked to https, no credential helper, no
 //      prompts, no hooks, no redirects, no submodules, a scrubbed environment, a process group of its own,
 //      a wall-clock cap and a size cap that kills it;
-//   5. cancel, failure, timeout and overflow all remove the partial directory (only one this job created).
+//   5. cancel, failure, timeout and overflow all remove the partial directory (only one this job created);
+//   6. (#422) a clone never outlives the server: every live child's process group is SIGKILLed when the server
+//      exits or is signalled, and a marker `<workspace>/.construct-clone-<slug>.json` written before git starts
+//      (removed on every outcome) lets the next start find a partial directory a crashed server left behind,
+//      stop the orphaned git if it is still running, and remove exactly that directory — never one without a marker.
 import { spawn as nodeSpawn } from 'node:child_process';
 import crypto from 'node:crypto';
 import dns from 'node:dns/promises';
@@ -94,6 +98,68 @@ export function cloneArgs({ parsed, dest, depth = null, pin = null, allowLocal =
 
 const isLive = (s) => s === 'running' || s === 'cancelling';
 
+// ---- #422: children die with the server ----------------------------------------------------------------------
+
+// A leading dot can never be a valid slug (validateSlug refuses `.hidden`), so a marker cannot collide with a
+// project folder; it sits BESIDE the destination because git refuses to clone into a non-empty directory.
+export const MARKER_PREFIX = '.construct-clone-';
+export const markerPath = (root, slug) => path.join(root, `${MARKER_PREFIX}${slug}.json`);
+
+const liveChildren = new Set();
+let handlersInstalled = false;
+
+function killGroupOf(child, sig) {
+  try { process.kill(-child.pid, sig); } catch { try { child.kill(sig); } catch { /* gone */ } }
+}
+
+/** SIGKILL every live clone's process group. Registered on exit and on the terminating signals; exported for tests. */
+export function killLiveCloneGroups() {
+  for (const child of liveChildren) killGroupOf(child, 'SIGKILL');
+  liveChildren.clear();
+}
+
+/** How many clone children are alive right now (test seam). */
+export const liveCloneChildren = () => liveChildren.size;
+
+// `exit` covers a normal end and process.exit(); a signal with its default disposition does not run `exit`
+// handlers, so SIGINT/SIGTERM/SIGHUP are handled the same way test-utils/tmpdir.mjs and gitTrees.mjs do: clean
+// up, drop the handler, re-raise so the exit status still says "killed by that signal".
+function installExitHandlers() {
+  if (handlersInstalled) return;
+  handlersInstalled = true;
+  process.on('exit', killLiveCloneGroups);
+  for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
+    const handler = () => {
+      killLiveCloneGroups();
+      process.removeListener(signal, handler);
+      process.kill(process.pid, signal);
+    };
+    process.on(signal, handler);
+  }
+}
+
+/** True only when the pid provably no longer exists (ESRCH). EPERM, our own pid and nonsense count as alive. */
+function pidIsGone(pid) {
+  if (!Number.isInteger(pid) || pid <= 0 || pid === process.pid) return false;
+  try {
+    process.kill(pid, 0);
+    return false;
+  } catch (e) {
+    return e.code === 'ESRCH';
+  }
+}
+
+/** True when `pid` is a git process working on `dest` (Linux /proc only; anywhere else the answer is "no", and nothing is killed). */
+function isOurGit(pid, dest) {
+  if (!Number.isInteger(pid) || pid <= 1) return false;
+  try {
+    const argv = fs.readFileSync(`/proc/${pid}/cmdline`, 'utf8').split('\0');
+    return /^git(-|$)/.test(path.basename(argv[0] || '')) && argv.includes(dest);
+  } catch {
+    return false;
+  }
+}
+
 /**
  * @param {{
  *   getRoot: () => string,                       the realpath'd workspace root
@@ -155,13 +221,78 @@ export function createCloneJobs({
     }
   }
 
-  function killGroup(child, sig) {
-    try { process.kill(-child.pid, sig); } catch { try { child.kill(sig); } catch { /* gone */ } }
+  const killGroup = killGroupOf;
+
+  /** Write (or rewrite) this job's marker. Best effort: a marker that cannot be written must not stop a clone. */
+  function writeMarker(j) {
+    try {
+      fs.writeFileSync(markerPath(getRoot(), j.slug), `${JSON.stringify({ slug: j.slug, url: j.url, dest: j.dest, serverPid: process.pid, gitPid: j.child?.pid ?? null, startedAt: j.startedAt }, null, 2)}\n`);
+    } catch { /* see above */ }
+  }
+
+  function removeMarker(slug) {
+    try { fs.rmSync(markerPath(getRoot(), slug), { force: true }); } catch { /* nothing to remove */ }
+  }
+
+  /**
+   * Recover ONE marker left by a server that is gone: stop its git if still running, remove the partial directory
+   * (only when it is a real directory directly under the workspace root, by contain()), remove the marker.
+   * -> {slug, kept:true, why} | {slug, removed:boolean, killed:boolean}
+   */
+  function recoverOne(file) {
+    const root = getRoot();
+    let marker;
+    try {
+      marker = JSON.parse(fs.readFileSync(file, 'utf8'));
+    } catch {
+      try { fs.rmSync(file, { force: true }); } catch { /* not ours to worry about */ }
+      return { slug: path.basename(file), removed: false, killed: false, badMarker: true };
+    }
+    let slug;
+    try {
+      slug = validateSlug(marker?.slug);
+    } catch {
+      try { fs.rmSync(file, { force: true }); } catch { /* not ours to worry about */ }
+      return { slug: String(marker?.slug ?? ''), removed: false, killed: false, badMarker: true };
+    }
+    if (path.basename(file) !== path.basename(markerPath(root, slug))) {
+      try { fs.rmSync(file, { force: true }); } catch { /* not ours to worry about */ }
+      return { slug, removed: false, killed: false, badMarker: true };
+    }
+    if (reserved.has(slug) || marker.serverPid === process.pid) return { slug, kept: true, why: 'this server is cloning it now' };
+    if (!pidIsGone(marker.serverPid)) return { slug, kept: true, why: `server pid ${marker.serverPid} is alive` };
+    let dest;
+    try {
+      dest = contain(root, slug, { mustExist: false });
+      if (path.dirname(dest) !== root) throw new WorkspaceError(403, 'OUTSIDE_WORKSPACE', 'not directly under the workspace');
+    } catch {
+      try { fs.rmSync(file, { force: true }); } catch { /* not ours to worry about */ }
+      return { slug, removed: false, killed: false, badMarker: true };
+    }
+    let killed = false;
+    if (isOurGit(marker.gitPid, dest)) {
+      try { process.kill(-marker.gitPid, 'SIGKILL'); } catch { try { process.kill(marker.gitPid, 'SIGKILL'); } catch { /* gone */ } }
+      killed = true;
+    }
+    let removed = false;
+    try {
+      const st = fs.lstatSync(dest);
+      if (st.isDirectory() && !st.isSymbolicLink()) {
+        fs.rmSync(dest, { recursive: true, force: true, maxRetries: 2 });
+        removed = true;
+      }
+    } catch { /* nothing at the name */ }
+    try { fs.rmSync(file, { force: true }); } catch { /* best effort */ }
+    return { slug, removed, killed };
   }
 
   function run(j, args) {
+    writeMarker(j); // before git exists: a crash from here on leaves a marker, never a bare partial directory
     const child = spawn('git', args, { cwd: getRoot(), env: cloneEnv({ allowLocal: Boolean(localRoot) }), stdio: ['ignore', 'ignore', 'pipe'], detached: true });
     j.child = child;
+    liveChildren.add(child);
+    installExitHandlers();
+    writeMarker(j); // now with git's pid, so a later sweep can stop it if it outlived us
     let ended = false;
     let killReason = null;
     const stop = (reason) => {
@@ -197,6 +328,8 @@ export function createCloneJobs({
       clearTimeout(timer);
       clearInterval(poll);
       clearTimeout(j.killTimer);
+      liveChildren.delete(child);
+      removeMarker(j.slug);
       reserved.delete(j.slug);
       j.child = null;
       j.stop = null;
@@ -269,6 +402,9 @@ export function createCloneJobs({
         throw e;
       }
       if (reserved.has(slug)) return { ok: false, status: 409, code: 'EXISTS', error: `A folder named "${slug}" is being created right now.` };
+      // #422: a retry after a crash. If a previous server died mid-clone of this very slug, its marker says so; recover
+      // that one slug now, so the EXISTS check below sees the truth even when the startup sweep did not run.
+      if (fs.existsSync(markerPath(getRoot(), slug))) recoverOne(markerPath(getRoot(), slug));
       let taken = true;
       try { fs.lstatSync(dest); } catch { taken = false; } // lstat: a dangling symlink at the name counts as taken
       if (taken) {
@@ -285,11 +421,34 @@ export function createCloneJobs({
       try {
         run(j, cloneArgs({ parsed, dest, depth: depth ?? null, pin, allowLocal: Boolean(localRoot) }));
       } catch (e) {
+        removeMarker(slug);
         reserved.delete(slug);
         jobs.delete(j.id);
         return { ok: false, status: 500, code: 'SPAWN_FAILED', error: String(e?.message || e) };
       }
       return { ok: true, job: view(j), done };
+    },
+    /**
+     * #422: sweep the workspace for markers left by a server that is gone (called at server start, and usable any
+     * time). Removes only directories that carry OUR marker, are real directories, and sit directly under the
+     * workspace root; stops an orphaned git first when it is still running. A marker whose server is alive is kept.
+     * -> {removed: string[], killed: string[], kept: {slug, why}[], badMarkers: string[]}
+     */
+    recoverInterrupted() {
+      const out = { removed: [], killed: [], kept: [], badMarkers: [] };
+      let names = [];
+      try { names = fs.readdirSync(getRoot()); } catch { return out; }
+      for (const name of names) {
+        if (!name.startsWith(MARKER_PREFIX) || !name.endsWith('.json')) continue;
+        const r = recoverOne(path.join(getRoot(), name));
+        if (r.badMarker) out.badMarkers.push(name);
+        else if (r.kept) out.kept.push({ slug: r.slug, why: r.why });
+        else {
+          if (r.removed) out.removed.push(r.slug);
+          if (r.killed) out.killed.push(r.slug);
+        }
+      }
+      return out;
     },
     list: () => [...jobs.values()].sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1)).map(view),
     get(id) {

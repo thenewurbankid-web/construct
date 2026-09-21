@@ -149,6 +149,13 @@ environment, one clone at a time. Private repositories are not supported yet (sl
 Tests only: `CONSTRUCT_E2E_CLONE_LOCAL_ROOT` lets a `file://` URL under one directory be cloned; the server refuses to
 start with it on a non-loopback host.
 
+A clone never outlives the server (#422): when the server exits or is stopped by a signal, every running clone's
+process group is killed. While a clone runs, a hidden marker `<workspace>/.construct-clone-<name>.json` sits beside the
+destination and is removed on every outcome; at the next start the server recovers what a crashed server left — stops
+the orphaned `git` if it is still running, removes the partial folder (only one that carries a marker, only directly
+under the workspace, never through a symlink) — and logs a `Clone recovery:` line per folder, so cloning the same
+repository again just works. A folder without a marker is never removed.
+
 Hosted example (see `tools/dev/run-hosted.sh`):
 
 ```bash
