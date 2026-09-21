@@ -209,6 +209,11 @@ test('video pages offer a download and the published site leaves out video histo
   assert.match(page, /<video controls/);
   assert.match(page, /<figcaption><a href="[^"]*01-ticket-to-story\.webm" download>Download the video/);
   assert.ok(fs.existsSync(path.join(out, 'assets/video/01-ticket-to-story.webm')));
+  // Subtitles and the narrated version are optional siblings; when their files exist the page offers them.
+  assert.match(page, /<track kind="subtitles" srclang="en" label="English" src="[^"]*01-ticket-to-story\.en\.vtt">/);
+  assert.match(page, /<a href="[^"]*01-ticket-to-story\.voice\.webm" download>Download with synthetic narration/);
+  assert.match(page, /<a href="[^"]*01-ticket-to-story\.en\.srt" download>Subtitles/);
+  assert.ok(fs.existsSync(path.join(out, 'assets/video/01-ticket-to-story.en.vtt')));
   assert.ok(!fs.existsSync(path.join(out, 'assets/video/history')), 'earlier takes stay in the repo, not on the site');
   fs.rmSync(out, { recursive: true });
 });

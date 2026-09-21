@@ -1,4 +1,6 @@
-One example from start to finish: a wishlist for a small shop. You sign in, open the project, write the ticket, see what it reaches, choose which model may help, create the feature, let a local model write its code, look at the real page, see the running app full screen, add logic through a workflow, and check the rules. It runs about three and three-quarter minutes, with captions and no sound.
+One example from start to finish: a wishlist for a small shop. You sign in, open the project, write the ticket, see what it reaches, choose which model may help, create the feature, let a local model write its code, look at the real page, see the running app full screen, add logic through a workflow, and check the rules. It runs about three and three-quarter minutes, with captions. The video above is silent; a narrated version and English subtitles are offered under it.
+
+The narration is synthetic: a computer-generated voice, made with a free text-to-speech model from a recording the project owner supplied of their own voice. It reads the captions below and is marked as synthetic; it is not a recording of a person speaking.
 
 ![Video: build a feature, start to finish, in the Cockpit](@video/01-ticket-to-story)
 

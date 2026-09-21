@@ -1,0 +1,167 @@
+[
+  {
+    "id": "intro",
+    "text": "Build a feature, start to finish. One example: a wishlist for a small shop",
+    "start": 1.3
+  },
+  {
+    "id": "signIn",
+    "text": "First, sign in. Only accounts the owner allowed get in. (This recording uses the demo login.)",
+    "start": 8.8
+  },
+  {
+    "id": "gate",
+    "text": "Nothing is open yet. Let us try the sample shop.",
+    "start": 15.4
+  },
+  {
+    "id": "features",
+    "text": "Here is the shop, with three features: catalog, cart and checkout.",
+    "start": 19.9
+  },
+  {
+    "id": "settings",
+    "text": "Before we start: which model may help? Fill-in work can go to a local model. The plan analysis never does.",
+    "start": 26
+  },
+  {
+    "id": "settingsSaved",
+    "text": "Saved. Today the model is chosen per kind of job, not yet per block. (This recording uses a stand-in for the local model, so every take is identical.)",
+    "start": 35.9
+  },
+  {
+    "id": "ticket",
+    "text": "Now write the ticket, in plain words.",
+    "start": 47.3
+  },
+  {
+    "id": "propose",
+    "text": "Ask the Cockpit which parts of the shop it touches.",
+    "start": 60
+  },
+  {
+    "id": "confirm",
+    "text": "It makes a guess. You confirm it before anything uses it.",
+    "start": 63.7
+  },
+  {
+    "id": "impact",
+    "text": "Here is what the change reaches: files and features. Worked out from your code, no AI model.",
+    "start": 68.1
+  },
+  {
+    "id": "steps",
+    "text": "It suggests a first step: read the catalog. Now add the real work.",
+    "start": 74.7
+  },
+  {
+    "id": "stepFeature",
+    "text": "Step two: create the wishlist feature. A Construct block does it, no model.",
+    "start": 79.7
+  },
+  {
+    "id": "stepLayers",
+    "text": "Step three: create its domain, component, page and controller, and let the local model write the code.",
+    "start": 85.2
+  },
+  {
+    "id": "stepModel",
+    "text": "The plan says before it runs that a model is used, and which one.",
+    "start": 92.4
+  },
+  {
+    "id": "plan",
+    "text": "That is the plan: a checklist, and nothing changes until something runs. Let us do the first steps by hand.",
+    "start": 97
+  },
+  {
+    "id": "createFeature",
+    "text": "First the mechanical way: create the feature. A Construct block, no model.",
+    "start": 105.5
+  },
+  {
+    "id": "createdMechanical",
+    "text": "Done in a blink, with zero model calls. The folders and stubs are there.",
+    "start": 110.7
+  },
+  {
+    "id": "fillIntro",
+    "text": "Now the pages and logic. Create a slice: domain, component, page and controller.",
+    "start": 116
+  },
+  {
+    "id": "fillCheck",
+    "text": "Tick the box to let the local model write the code. It is off unless you choose it, each time.",
+    "start": 121.7
+  },
+  {
+    "id": "filled",
+    "text": "Four files written by the model, and each one checked against the rules. (Stand-in model in this recording.)",
+    "start": 134.7
+  },
+  {
+    "id": "route",
+    "text": "One hand-written line hooks the page up to the /wishlist address. The rest was generated.",
+    "start": 142.2
+  },
+  {
+    "id": "pages",
+    "text": "The Pages screen shows the real page the model wrote, and its tree of elements.",
+    "start": 150.6
+  },
+  {
+    "id": "preview",
+    "text": "Now the best part: open the wishlist in the running shop, at /wishlist.",
+    "start": 156.1
+  },
+  {
+    "id": "fullscreen",
+    "text": "Full screen. This is the generated app, running for real.",
+    "start": 163.1
+  },
+  {
+    "id": "added1",
+    "text": "Add a product. It appears in the list.",
+    "start": 168.3
+  },
+  {
+    "id": "added2",
+    "text": "Add another one.",
+    "start": 172.3
+  },
+  {
+    "id": "removed",
+    "text": "Remove one. The list follows.",
+    "start": 175.4
+  },
+  {
+    "id": "empty",
+    "text": "Remove the last one: the empty state shows. It all works.",
+    "start": 178.4
+  },
+  {
+    "id": "workflows",
+    "text": "Logic lives in workflows. This is the checkout flow, drawn from its real code.",
+    "start": 184.7
+  },
+  {
+    "id": "workflowEdit",
+    "text": "Add a way back: after a rejected order the shopper can start over.",
+    "start": 190.2
+  },
+  {
+    "id": "workflowDiff",
+    "text": "You see the exact change before it is written.",
+    "start": 195
+  },
+  {
+    "id": "validate",
+    "text": "Finally, the rules. No errors. Two warnings on the new feature: it needs a one-line summary, and its controller is not exported yet. Real findings, and quick fixes.",
+    "start": 201.6
+  },
+  {
+    "id": "outro",
+    "text": "One example, end to end. Next: review a branch, and run a test.",
+    "start": 213
+  }
+]

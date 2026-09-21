@@ -1,0 +1,131 @@
+1
+00:00:01,300 --> 00:00:06,480
+Build a feature, start to finish. One example: a wishlist for a small shop
+
+2
+00:00:08,800 --> 00:00:15,300
+First, sign in. Only accounts the owner allowed get in. (This recording uses the demo login.)
+
+3
+00:00:15,400 --> 00:00:18,760
+Nothing is open yet. Let us try the sample shop.
+
+4
+00:00:19,900 --> 00:00:24,520
+Here is the shop, with three features: catalog, cart and checkout.
+
+5
+00:00:26,000 --> 00:00:33,420
+Before we start: which model may help? Fill-in work can go to a local model. The plan analysis never does.
+
+6
+00:00:35,900 --> 00:00:46,400
+Saved. Today the model is chosen per kind of job, not yet per block. (This recording uses a stand-in for the local model, so every take is identical.)
+
+7
+00:00:47,300 --> 00:00:50,300
+Now write the ticket, in plain words.
+
+8
+00:01:00,000 --> 00:01:03,570
+Ask the Cockpit which parts of the shop it touches.
+
+9
+00:01:03,700 --> 00:01:07,690
+It makes a guess. You confirm it before anything uses it.
+
+10
+00:01:08,100 --> 00:01:14,540
+Here is what the change reaches: files and features. Worked out from your code, no AI model.
+
+11
+00:01:14,700 --> 00:01:19,320
+It suggests a first step: read the catalog. Now add the real work.
+
+12
+00:01:19,700 --> 00:01:24,950
+Step two: create the wishlist feature. A Construct block does it, no model.
+
+13
+00:01:25,200 --> 00:01:32,300
+Step three: create its domain, component, page and controller, and let the local model write the code.
+
+14
+00:01:32,400 --> 00:01:36,900
+The plan says before it runs that a model is used, and which one.
+
+15
+00:01:37,000 --> 00:01:44,490
+That is the plan: a checklist, and nothing changes until something runs. Let us do the first steps by hand.
+
+16
+00:01:45,500 --> 00:01:50,600
+First the mechanical way: create the feature. A Construct block, no model.
+
+17
+00:01:50,700 --> 00:01:55,740
+Done in a blink, with zero model calls. The folders and stubs are there.
+
+18
+00:01:56,000 --> 00:02:01,600
+Now the pages and logic. Create a slice: domain, component, page and controller.
+
+19
+00:02:01,700 --> 00:02:08,280
+Tick the box to let the local model write the code. It is off unless you choose it, each time.
+
+20
+00:02:14,700 --> 00:02:22,100
+Four files written by the model, and each one checked against the rules. (Stand-in model in this recording.)
+
+21
+00:02:22,200 --> 00:02:28,430
+One hand-written line hooks the page up to the /wishlist address. The rest was generated.
+
+22
+00:02:30,600 --> 00:02:36,000
+The Pages screen shows the real page the model wrote, and its tree of elements.
+
+23
+00:02:36,100 --> 00:02:41,070
+Now the best part: open the wishlist in the running shop, at /wishlist.
+
+24
+00:02:43,100 --> 00:02:47,090
+Full screen. This is the generated app, running for real.
+
+25
+00:02:48,300 --> 00:02:51,300
+Add a product. It appears in the list.
+
+26
+00:02:52,300 --> 00:02:55,300
+Add another one.
+
+27
+00:02:55,400 --> 00:02:58,300
+Remove one. The list follows.
+
+28
+00:02:58,400 --> 00:03:02,390
+Remove the last one: the empty state shows. It all works.
+
+29
+00:03:04,700 --> 00:03:10,100
+Logic lives in workflows. This is the checkout flow, drawn from its real code.
+
+30
+00:03:10,200 --> 00:03:14,820
+Add a way back: after a rejected order the shopper can start over.
+
+31
+00:03:15,000 --> 00:03:18,220
+You see the exact change before it is written.
+
+32
+00:03:21,600 --> 00:03:32,900
+Finally, the rules. No errors. Two warnings on the new feature: it needs a one-line summary, and its controller is not exported yet. Real findings, and quick fixes.
+
+33
+00:03:33,000 --> 00:03:37,410
+One example, end to end. Next: review a branch, and run a test.

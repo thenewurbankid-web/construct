@@ -6,6 +6,7 @@
 //   - relative links inside reused files are rewritten to site pages when one exists, else to GitHub
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Marked } from 'marked';
 import { sanitizeHtml } from './sanitize.mjs';
 import { makeSlugger, esc } from './text.mjs';
@@ -149,8 +150,18 @@ export function renderMarkdown(md, ctx) {
   // Site images: ![alt](@img/name.webp) points at site/assets/img/name.webp.
   html = html.replace(/<img src="@img\/([^"]+)"/g, (_, f) => `<img src="${root}assets/img/${f}" loading="lazy" decoding="async"`);
 
-  // Site videos: ![alt](@video/name) points at site/assets/video/name.webm, with name.png as its poster.
-  html = html.replace(/(?:<p>)?<img src="@video\/([^"]+)"(?: alt="([^"]*)")?[^>]*>(?:<\/p>)?/g, (_, f, alt = '') => `<figure class="video"><video controls preload="metadata" width="1280" height="720" poster="${root}assets/video/${f}.png" aria-label="${alt}"><source src="${root}assets/video/${f}.webm" type="video/webm"><a href="@assets/video/${f}.webm" download>Download the video</a></video><figcaption><a href="@assets/video/${f}.webm" download>Download the video (.webm)</a></figcaption></figure>`);
+  // Site videos: ![alt](@video/name) points at site/assets/video/name.webm, with name.png as its poster. Optional sibling
+  // files are picked up when present: name.en.vtt (subtitles, a <track>) and name.voice.webm (the narrated version, a second
+  // download; the narration is synthetic and the page says so).
+  const videoDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'video');
+  html = html.replace(/(?:<p>)?<img src="@video\/([^"]+)"(?: alt="([^"]*)")?[^>]*>(?:<\/p>)?/g, (_, f, alt = '') => {
+    const has = (ext) => fs.existsSync(path.join(videoDir, `${f}.${ext}`));
+    const track = has('en.vtt') ? `<track kind="subtitles" srclang="en" label="English" src="${root}assets/video/${f}.en.vtt">` : '';
+    const links = [`<a href="@assets/video/${f}.webm" download>Download the video (.webm)</a>`];
+    if (has('voice.webm')) links.push(`<a href="@assets/video/${f}.voice.webm" download>Download with synthetic narration (.webm)</a>`);
+    if (has('en.srt')) links.push(`<a href="@assets/video/${f}.en.srt" download>Subtitles (.srt)</a>`);
+    return `<figure class="video"><video controls preload="metadata" width="1280" height="720" poster="${root}assets/video/${f}.png" aria-label="${alt}"><source src="${root}assets/video/${f}.webm" type="video/webm">${track}<a href="@assets/video/${f}.webm" download>Download the video</a></video><figcaption>${links.join(' &middot; ')}</figcaption></figure>`;
+  });
 
   const ids = new Set(headings.map((h) => h.id));
   const srcDir = path.posix.dirname(source || '.');
