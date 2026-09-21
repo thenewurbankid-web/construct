@@ -16,41 +16,41 @@ type PagesEditorPageProps = ReturnType<typeof usePagesEditor> & {
 // preview, the structural mirror and the prop-flow diagram.
 export function PagesEditorPage(props: PagesEditorPageProps): ReactNode {
   const { tree, error, selectedNodeId, selectNode, previewTitle, externalChange, livePreview, gitSession } = props;
+  // #456: full screen is the app and nothing else. Everything but the preview is
+  // hidden rather than unmounted, so the tree, the diagram and the selection are
+  // exactly as they were on the way back out.
+  const full = livePreview.fullScreen;
 
   return (
-    <div className="page pages-editor-page pe-stage">
-      <h1>Pages Editor</h1>
-      <p className="hint">
-        Pick a page in the Browser, then click an element in a preview (or a node in the tree) to select it.
-        Edit it in the Tools panel; every save is checked against the architecture rules.
-      </p>
-
-      {gitSession}
-
-      {error && <p className="status-error">{error}</p>}
-
-      {tree && externalChange && (
-        <p className="pe-changed" role="status">
-          Changed on disk outside the editor. Review it in the Diff tab.
+    <div className={full ? 'page pages-editor-page pe-stage pe-stage--full' : 'page pages-editor-page pe-stage'}>
+      <div hidden={full}>
+        <h1>Pages Editor</h1>
+        <p className="hint">
+          Pick a page in the Browser, then click an element in a preview (or a node in the tree) to select it.
+          Edit it in the Tools panel; every save is checked against the architecture rules.
         </p>
-      )}
 
-      {!tree && !error && <p className="hint pe-empty">Nothing open yet. Choose a feature and a page in the Browser to start.</p>}
+        {gitSession}
+
+        {error && <p className="status-error">{error}</p>}
+
+        {tree && externalChange && (
+          <p className="pe-changed" role="status">
+            Changed on disk outside the editor. Review it in the Diff tab.
+          </p>
+        )}
+
+        {!tree && !error && <p className="hint pe-empty">Nothing open yet. Choose a feature and a page in the Browser to start.</p>}
+      </div>
 
       {tree && (
         <>
-          <LivePreviewPanel
-            draft={livePreview.draft}
-            onDraftChange={livePreview.setDraft}
-            url={livePreview.url}
-            message={livePreview.message}
-            frameRef={livePreview.frameRef}
-            onConnect={livePreview.connect}
-            onDisconnect={livePreview.disconnect}
-          />
-          <PreviewPanel roots={tree.roots} selectedId={selectedNodeId} onSelect={selectNode} titleFor={previewTitle} />
-          <NavigatorPanel feature={props.feature} file={props.file} contentHash={tree.contentHash} />
-          <PropFlowDiagram roots={tree.roots} />
+          <LivePreviewPanel {...livePreview.view} />
+          <div hidden={full}>
+            <PreviewPanel roots={tree.roots} selectedId={selectedNodeId} onSelect={selectNode} titleFor={previewTitle} />
+            <NavigatorPanel feature={props.feature} file={props.file} contentHash={tree.contentHash} />
+            <PropFlowDiagram roots={tree.roots} />
+          </div>
         </>
       )}
     </div>
