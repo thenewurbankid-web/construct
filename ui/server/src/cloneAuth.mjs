@@ -83,10 +83,10 @@ esac
 
 /**
  * Create the per-job askpass helper in a private directory. -> {path, dir, cleanup()}
- * `base` is where the private directory is made (default the OS temp dir); the directory is 0700 and named with
+ * `base` is where the private directory is made (default $CONSTRUCT_ASKPASS_DIR, else the OS temp dir: set it when /tmp is mounted noexec); the directory is 0700 and named with
  * this process's pid so the machine's temp-dir pruning knows whose it is.
  */
-export function createAskpass({ base = os.tmpdir() } = {}) {
+export function createAskpass({ base = process.env.CONSTRUCT_ASKPASS_DIR || os.tmpdir() } = {}) {
   const dir = fs.mkdtempSync(path.join(base, `construct-askpass-${process.pid}-`)); // mkdtemp: mode 0700, unique
   const file = path.join(dir, 'askpass.sh');
   try {

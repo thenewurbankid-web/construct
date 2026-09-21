@@ -19,6 +19,12 @@ export * from './domain/CloneUrl';
 /** Reads what people paste (owner/repo, a browser link, a git clone line) into one https address. */
 export * from './domain/CloneInput';
 
+/** Plain-words hints for the folder name, branch and token fields. */
+export * from './domain/CloneFieldHints';
+
+/** What the form shows for the text typed so far, and the rows of the recent list. */
+export * from './domain/CloneFormView';
+
 /** Progress numbers in words: the percentage in git's text, sizes at a glance. */
 export * from './domain/CloneProgress';
 

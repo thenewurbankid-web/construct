@@ -2,10 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { Button, Field, Input } from '@/components/ui';
-import type { CloneJobView } from '../types';
-
-/** What the pasted text was read as: the address that will be cloned, the folder and the branch. */
-export type ClonePreview = { url: string; folder: string; branch: string | null; how: string; note: string | null };
+import type { ClonePreview, CloneJobView } from '../types';
 
 type CloneFormProps = {
   input: string;

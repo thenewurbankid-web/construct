@@ -56,3 +56,19 @@ export type CloneJobView = {
   authFailed: boolean;
   log: string[];
 };
+
+/** What the pasted text was read as: the address that will be cloned, the folder and the branch. */
+export type ClonePreview = { url: string; folder: string; branch: string | null; how: string; note: string | null };
+
+/** One recent clone as the list draws it. */
+export type RecentCloneRow = {
+  id: string;
+  name: string;
+  url: string;
+  when: string;
+  isPrivate: boolean;
+  pulling: boolean;
+  /** What the last update said, and whether it worked. */
+  pullMessage: string | null;
+  pullOk: boolean;
+};

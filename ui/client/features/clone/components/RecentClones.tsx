@@ -1,19 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui';
-
-/** One recent clone as the list draws it. */
-export type RecentCloneRow = {
-  id: string;
-  name: string;
-  url: string;
-  when: string;
-  isPrivate: boolean;
-  pulling: boolean;
-  /** What the last "Pull latest" said, and whether it worked. */
-  pullMessage: string | null;
-  pullOk: boolean;
-};
+import type { RecentCloneRow } from '../types';
 
 type RecentClonesProps = {
   rows: RecentCloneRow[];

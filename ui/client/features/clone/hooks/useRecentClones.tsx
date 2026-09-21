@@ -6,8 +6,9 @@ import { forgetClone, readRecentClones } from '../services/CloneRecentStore';
 import { pullClone } from '../services/CloneStartApi';
 import { initialRecentState, recentReducer } from '../workflows/Recent';
 
-/** The clones this browser started, checked against the server's clone jobs, with "Pull latest" for each. */
-export function useRecentClones() {
+/** The clones this browser started, checked against the server's clone jobs, with "Open" and an update for each.
+ * `onOpen` receives the folder of a recent clone (the Open-a-project screen opens it). */
+export function useRecentClones(onOpen: (dir: string) => void) {
   const [state, dispatch] = useReducer(recentReducer, initialRecentState);
 
   useEffect(() => {
@@ -25,12 +26,21 @@ export function useRecentClones() {
     };
   }, []);
 
-  const pull = useCallback(async (name: string, token: string) => {
-    dispatch({ type: 'PULL_START', name });
-    dispatch({ type: 'PULL_DONE', name, result: await pullClone(name, token) });
-  }, []);
+  const byId = useCallback((id: string) => state.items.find((r) => r.id === id), [state.items]);
+
+  const open = useCallback((id: string) => {
+    const r = byId(id);
+    if (r) onOpen(r.dir);
+  }, [byId, onOpen]);
+
+  const pull = useCallback(async (id: string, token: string) => {
+    const r = byId(id);
+    if (!r) return;
+    dispatch({ type: 'PULL_START', name: r.name });
+    dispatch({ type: 'PULL_DONE', name: r.name, result: await pullClone(r.name, token) });
+  }, [byId]);
 
   const forget = useCallback((id: string) => dispatch({ type: 'SET', items: forgetClone(id) }), []);
 
-  return { state, pull, forget };
+  return { state, open, pull, forget };
 }

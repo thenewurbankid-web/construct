@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { branchProblem, describeSource, folderNameProblem, normalizeCloneInput, tokenProblem } from './CloneInput.ts';
+import { describeSource, normalizeCloneInput } from './CloneInput.ts';
+import { branchProblem, folderNameProblem, tokenProblem } from './CloneFieldHints.ts';
 
 const ok = (input, url, extra = {}) => {
   const r = normalizeCloneInput(input);
