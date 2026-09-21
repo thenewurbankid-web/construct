@@ -47,6 +47,11 @@ an LLM do work a block should be doing instead?
   we work (work lives on branches and issues, never only in a session; isolated
   worktrees and ports per job; one heavy-job queue that waits for memory; a
   stall watcher). Protocols in this file exist to guarantee that.
+- **A no-code IDE experience.** (Owner, 2026-09-21.) The Cockpit feels like an
+  IDE (rail, tabs, quick-open, keyboard-first) but is visual first: you select,
+  pick, click and press Generate; code is a drill-down ("View source", "Edit as
+  file") that is one click away and never the default surface. Screens show
+  documentation, structure, diffs and choices before they show a code editor.
 - **The goal**: make developers' lives easy so people and AI can spend their
   time on innovation instead of repeating the same work.
 
