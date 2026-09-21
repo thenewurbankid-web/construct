@@ -469,6 +469,7 @@ button:disabled {
 }
 .login-actions { display: flex; flex-direction: column; align-items: center; gap: var(--sp-3); margin-top: var(--sp-2); }
 .login-note { max-width: 420px; text-align: center; color: #e6e9ee; }
+.login-note--test { font-size: 0.78rem; color: #aab2c0; margin: 0; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 /* GitHub's standard dark "Sign in with GitHub" button. */
 .gh-signin {

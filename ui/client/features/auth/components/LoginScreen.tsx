@@ -75,9 +75,15 @@ export function LoginScreen({
                 {/* Deliberately `ghost`: the test login must not read as an
                     equally legitimate path next to the real one. */}
                 {session?.testLogin && (
-                  <Button variant="ghost" onClick={onSignInAsTestUser} disabled={signingIn} data-testid="login-test-user">
-                    {signingIn ? 'Signing in…' : `Sign in as ${session.testLoginUser} (test login)`}
-                  </Button>
+                  <>
+                    <Button variant="ghost" onClick={onSignInAsTestUser} disabled={signingIn} data-testid="login-test-user">
+                      {signingIn ? 'Signing in…' : `Sign in as ${session.testLoginUser} (test login)`}
+                    </Button>
+                    {/* Only ever rendered on an e2e server: the hatch says what it is rather than hiding. */}
+                    <p className="hint login-note login-note--test">
+                      Test login: for the end-to-end suite only; refused under NODE_ENV=production and off loopback.
+                    </p>
+                  </>
                 )}
               </>
             ) : (
