@@ -62,6 +62,44 @@ test('the login screen has a full-screen slideshow, the logo, and a typed taglin
   await page.screenshot({ path: path.join(SHOTS, 'login-hero-1-slideshow-and-typing.png') });
 });
 
+// #455 (owner request, 2026-09-21): the login brand is a two-row lockup — a large mark alone on the
+// first row, the tracked-uppercase wordmark centred under it — and it is the animated mark.
+test('the login brand stacks a large, animated mark over the wordmark without crowding the card', async ({ page }) => {
+  for (const [width, height] of [
+    [1440, 900],
+    [1280, 800],
+    [390, 800],
+  ]) {
+    await page.setViewportSize({ width, height });
+    await page.goto('/');
+    const brand = page.getByTestId('login-brand');
+    await expect(brand).toBeVisible();
+
+    const logo = brand.getByTestId('animated-logo');
+    const word = brand.locator('.login-brand__word');
+    const logoBox = await logo.boundingBox();
+    const wordBox = await word.boundingBox();
+
+    // Two rows: the mark sits entirely above the word, and both are centred on the same axis.
+    expect(logoBox.y + logoBox.height, `mark is above the wordmark at ${width}x${height}`).toBeLessThanOrEqual(wordBox.y + 1);
+    expect(Math.abs(logoBox.x + logoBox.width / 2 - (wordBox.x + wordBox.width / 2))).toBeLessThan(4);
+
+    // Big and prominent, but still fluid: never below 88px, never past 120px, never wider than the phone.
+    expect(logoBox.width).toBeGreaterThanOrEqual(88);
+    expect(logoBox.width).toBeLessThanOrEqual(120);
+    expect(logoBox.width).toBeLessThan(width);
+
+    // It is the animated mark, idling.
+    await expect(logo).toHaveAttribute('data-motion', 'idle');
+
+    // The bigger mark must not push the sign-in control below the fold.
+    const signIn = page.getByTestId('login-test-user');
+    await expect(signIn).toBeVisible();
+    const button = await signIn.boundingBox();
+    expect(button.y + button.height, `sign-in stays above the fold at ${width}x${height}`).toBeLessThanOrEqual(height);
+  }
+});
+
 test('under reduced motion the tagline is static and the first slide is shown', async ({ browser }) => {
   const ctx = await browser.newContext({ reducedMotion: 'reduce', viewport: { width: 1200, height: 800 } });
   const page = await ctx.newPage();
@@ -70,6 +108,8 @@ test('under reduced motion the tagline is static and the first slide is shown', 
   const tagline = page.getByTestId('login-tagline');
   await expect(tagline).toContainText('Sign in to try a calmer way to build.');
   await expect(page.locator('.login-tagline__caret')).toHaveCount(0);
+  // #455: the brand mark is still drawn, just not animated.
+  await expect(page.getByTestId('login-brand').getByTestId('animated-logo')).toHaveAttribute('data-motion', 'off');
   const first = await page.locator('.login-backdrop__slide').first().evaluate((e) => +getComputedStyle(e).opacity);
   expect(first).toBe(1);
   await ctx.close();

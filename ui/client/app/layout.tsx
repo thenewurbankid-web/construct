@@ -10,6 +10,8 @@ import './processes.css';
 import './globals.css';
 import './navigation.css';
 import './flow-browser.css';
+// After globals.css: the login lockup rules here refine `.login-brand`, which globals.css defines.
+import './brand.css';
 
 export const metadata: Metadata = {
   title: 'Cockpit',

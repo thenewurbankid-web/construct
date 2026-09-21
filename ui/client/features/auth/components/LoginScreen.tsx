@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Logo } from '@/components/ui';
+import { AnimatedLogo, Button } from '@/components/ui';
 import type { AuthSession } from '../types';
 import { LoginBackdrop } from './LoginBackdrop';
 import { GithubMark } from './GithubMark';
@@ -47,9 +47,12 @@ export function LoginScreen({
     // none at all.
     <main className="page page--screen auth-screen" data-testid="login-screen">
       <LoginBackdrop />
-      <div className="login-brand" data-testid="login-brand">
-        <Logo mark="cockpit" size={64} />
-        <span>Cockpit</span>
+      {/* Owner request, 2026-09-21: two rows — the mark alone and large on the first, the wordmark
+          centred under it. The size below is only the intrinsic one; `.login-brand__mark` scales it
+          fluidly with clamp() so it fits a 390px phone (app/brand.css). */}
+      <div className="login-brand login-brand--stacked" data-testid="login-brand">
+        <AnimatedLogo mark="cockpit" size={112} className="login-brand__mark" />
+        <span className="login-brand__word">Cockpit</span>
       </div>
       <p className="login-tagline" data-testid="login-tagline" aria-hidden="true">
         <span>{tagline}</span>

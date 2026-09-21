@@ -36,3 +36,12 @@ export declare function Badge(props: {
 }): ReactNode;
 
 export declare function Logo(props: { mark?: 'line' | 'construct' | 'cockpit' | 'cli'; size?: number; className?: string }): ReactNode;
+
+// #455: the same mark with the always-on subtle idle animation. Identical props to `Logo` on purpose —
+// it is a drop-in at every call site — except that `className` lands on the wrapper element rather than
+// the <svg>, because the wrapper is what carries the motion state (`data-motion`).
+export declare function AnimatedLogo(props: {
+  mark?: 'line' | 'construct' | 'cockpit' | 'cli';
+  size?: number;
+  className?: string;
+}): ReactNode;
