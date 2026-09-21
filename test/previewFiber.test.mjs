@@ -374,6 +374,27 @@ test('tier 3 (_debugStack + source map): React 19 resolves to the original posit
   assert.deepEqual([r.ok, r.tier, r.confidence, r.file, r.line, r.column], [true, 'stack', 'mapped', 'src/components/Card.tsx', 5, 3]);
 });
 
+test('tier 3: a map`s relative `sources` are resolved against the map URL, not the project root', () => {
+  // esbuild/Vite write "../src/App.tsx" in a map served from /dist/: relative to
+  // the map, not an escape. The map may also be handed over as { map, url }.
+  const stack = 'Error\n    at App (http://127.0.0.1:3852/dist/main.js:3:5)';
+  const map = { version: 3, sources: ['../src/App.tsx'], names: [], mappings: ';;AAAA' };
+  const context = { projectRoot: ROOT, sourceMaps: { 'http://127.0.0.1:3852/dist/main.js': { map, url: 'http://127.0.0.1:3852/dist/main.js.map' } } };
+  const r = resolveFiberSelection(selectionWith({ stack }), context);
+  assert.deepEqual([r.ok, r.confidence, r.file, r.line], [true, 'mapped', 'src/App.tsx', 1]);
+
+  // A map that climbs past the served root stays contained: URL resolution
+  // collapses it to a project-relative path, never one outside the project.
+  const climbing = { version: 3, sources: ['../../../../etc/passwd'], names: [], mappings: ';;AAAA' };
+  const contained = resolveFiberSelection(selectionWith({ stack }), { projectRoot: ROOT, sourceMaps: { 'http://127.0.0.1:3852/dist/main.js': climbing } });
+  assert.ok(!contained.file || (!contained.file.startsWith('/') && !contained.file.includes('..')), contained.file);
+
+  // An absolute foreign path in a map is refused outright.
+  const foreign = { version: 3, sources: ['/etc/passwd'], names: [], mappings: ';;AAAA' };
+  const bad = resolveFiberSelection(selectionWith({ stack }), { projectRoot: ROOT, sourceMaps: { 'http://127.0.0.1:3852/dist/main.js': foreign } });
+  assert.deepEqual([bad.ok, bad.file, bad.reason], [false, null, 'outside-project']);
+});
+
 test('tier 3 without a source map: the file is reported, the transformed line is NOT', () => {
   const stack = 'Error\n    at jsxDEV (http://127.0.0.1:5173/node_modules/.vite/deps/react_jsx-dev-runtime.js:5:1)\n    at Card (http://127.0.0.1:5173/src/components/Card.tsx?t=1758:99:5)';
   const r = resolveFiberSelection(selectionWith({ stack }), { projectRoot: ROOT });
@@ -391,10 +412,16 @@ test('containment is enforced on the resolved result, not only on the raw input'
   const outside = resolveFiberSelection(selectionWith({ debugSource: { fileName: '/etc/passwd', lineNumber: 1, columnNumber: 1 } }), { projectRoot: ROOT });
   assert.deepEqual([outside.ok, outside.file, outside.reason], [false, null, 'outside-project']);
 
-  const mapped = { version: 3, sources: ['../../../../etc/passwd'], names: [], mappings: 'AAAA' };
+  const mapped = { version: 3, sources: [`${ROOT}/../other-project/App.tsx`], names: [], mappings: 'AAAA' };
   const stack = 'Error\n    at Card (http://127.0.0.1:5173/src/components/Card.tsx:1:1)';
   const r = resolveFiberSelection(selectionWith({ stack }), { projectRoot: ROOT, sourceMaps: { 'http://127.0.0.1:5173/src/components/Card.tsx': mapped } });
   assert.deepEqual([r.ok, r.file, r.reason], [false, null, 'outside-project']);
+
+  // A map that climbs above the served root is collapsed by URL resolution,
+  // so the worst it can name is a (non-existent) file inside the project.
+  const climbing = { version: 3, sources: ['../../../../etc/passwd'], names: [], mappings: 'AAAA' };
+  const c = resolveFiberSelection(selectionWith({ stack }), { projectRoot: ROOT, sourceMaps: { 'http://127.0.0.1:5173/src/components/Card.tsx': climbing } });
+  assert.ok(!c.file || (!c.file.startsWith('/') && !c.file.includes('..')), c.file);
 });
 
 test('the ladder falls through: a broken annotation does not stop _debugSource from resolving', () => {
