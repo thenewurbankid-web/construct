@@ -121,6 +121,13 @@ folder**, and it starts with **no project open**.
 - `browseRoots` is no longer a setting (`POST /api/settings { browseRoots }` is `400 BROWSE_ROOTS_FIXED`); the picker's
   only root is the workspace. `POST /api/settings { closeProject: true }` closes the project.
 
+### Timeouts: no command or model call can hang the Cockpit (#413)
+
+| Setting | Meaning |
+| --- | --- |
+| `CONSTRUCT_LLM_TIMEOUT_SEC` | Cap on one model call (`claude -p` is killed with SIGKILL; the Ollama request is aborted). The error names the provider, the seconds and this variable. Default 300. Read by core (`src/llm.mjs`), so the CLI's `--llm` honours it too. |
+| `CONSTRUCT_COMMAND_TIMEOUT_SEC` | Cap on one interactive command (`/api/create`, `/api/import`, ...). A command still running at the deadline is abandoned: `504 {ok:false, error}`, and the next queued command runs. Default 900. |
+
 ### Clone a public repository (#330 slice A)
 
 From **Open a project** paste an address such as `https://github.com/octocat/Hello-World`; the repository is copied into

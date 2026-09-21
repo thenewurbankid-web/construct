@@ -273,7 +273,8 @@ export function summarizeProse(root, { feature } = {}) {
 export function summarizeSince(root, sinceRef, { format = 'compact' } = {}) {
   let changed;
   try {
-    const out = execFileSync('git', ['diff', '--name-only', sinceRef], { cwd: root, encoding: 'utf8' });
+    // #413: bounded; execFileSync throws ETIMEDOUT, which the catch below reports like any other failure.
+    const out = execFileSync('git', ['diff', '--name-only', sinceRef], { cwd: root, encoding: 'utf8', timeout: 10 * 60 * 1000, killSignal: 'SIGKILL' });
     changed = out.split('\n').map((l) => l.trim()).filter(Boolean);
   } catch (err) {
     const reason = String(err.message || err).split('\n')[0];

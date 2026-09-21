@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { callLlm, stripCodeFence, PROVIDERS, DEFAULT_OLLAMA_MODEL, DEFAULT_OLLAMA_BASE_URL } from '../src/llm.mjs';
+import fs from 'node:fs';
+import path from 'node:path';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
+import { callLlm, stripCodeFence, PROVIDERS, DEFAULT_OLLAMA_MODEL, DEFAULT_OLLAMA_BASE_URL, DEFAULT_LLM_TIMEOUT_SEC, resolveLlmTimeoutMs } from '../src/llm.mjs';
 import { ConstructError } from '../src/diagnostics.mjs';
 
 test('callLlm throws a clear USAGE_ERROR for an unsupported provider', async () => {
@@ -156,5 +159,88 @@ test('PROVIDERS.ollama throws a ConstructError when the JSON body has no "respon
       assert.match(err.message, /no "response" string field/);
       return true;
     });
+  });
+});
+
+// ---- timeouts (#413) — a model that never answers must not hang the caller.
+
+test('resolveLlmTimeoutMs: CONSTRUCT_LLM_TIMEOUT_SEC in seconds, default 300, nonsense ignored', () => {
+  assert.equal(resolveLlmTimeoutMs({}), DEFAULT_LLM_TIMEOUT_SEC * 1000);
+  assert.equal(resolveLlmTimeoutMs({ CONSTRUCT_LLM_TIMEOUT_SEC: '12' }), 12_000);
+  assert.equal(resolveLlmTimeoutMs({ CONSTRUCT_LLM_TIMEOUT_SEC: '0.5' }), 500);
+  for (const bad of ['0', '-3', 'soon', '']) assert.equal(resolveLlmTimeoutMs({ CONSTRUCT_LLM_TIMEOUT_SEC: bad }), DEFAULT_LLM_TIMEOUT_SEC * 1000, JSON.stringify(bad));
+});
+
+/** Put a stub `claude` executable first on PATH for the duration of `fn`. */
+async function withStubClaude(script, fn) {
+  const bin = makeTempDir('stub-claude-');
+  const exe = path.join(bin, 'claude');
+  fs.writeFileSync(exe, `#!/bin/sh\n${script}\n`, { mode: 0o755 });
+  const priorPath = process.env.PATH;
+  process.env.PATH = `${bin}${path.delimiter}${priorPath}`;
+  try {
+    return await fn();
+  } finally {
+    process.env.PATH = priorPath;
+  }
+}
+
+test('PROVIDERS.claude: a CLI that never answers is killed at the timeout with an error naming it', async () => {
+  await withStubClaude('cat >/dev/null; sleep 30; echo late', async () => {
+    const started = Date.now();
+    await assert.rejects(() => callLlm('claude', 'hi', { timeoutMs: 300 }), (err) => {
+      assert.ok(err instanceof ConstructError);
+      assert.match(err.message, /"claude" model did not answer within 0\.3 seconds/);
+      assert.match(err.message, /CONSTRUCT_LLM_TIMEOUT_SEC/);
+      return true;
+    });
+    assert.ok(Date.now() - started < 10_000, 'did not wait for the 30 s sleep');
+  });
+});
+
+test('PROVIDERS.claude: the environment variable bounds the call when no per-call timeout is given', async () => {
+  const prior = process.env.CONSTRUCT_LLM_TIMEOUT_SEC;
+  process.env.CONSTRUCT_LLM_TIMEOUT_SEC = '0.3';
+  try {
+    await withStubClaude('cat >/dev/null; sleep 30', async () => {
+      // `callLlm` (async) rather than the sync provider: assert.rejects treats a synchronous throw as a failure.
+      await assert.rejects(() => callLlm('claude', 'hi'), /did not answer within 0\.3 seconds/);
+    });
+  } finally {
+    if (prior === undefined) delete process.env.CONSTRUCT_LLM_TIMEOUT_SEC; else process.env.CONSTRUCT_LLM_TIMEOUT_SEC = prior;
+  }
+});
+
+test('PROVIDERS.claude: a CLI that answers in time is unaffected by the timeout', async () => {
+  await withStubClaude('cat >/dev/null; echo answered', async () => {
+    assert.equal((await PROVIDERS.claude('hi', { timeoutMs: 5000 })).trim(), 'answered');
+  });
+});
+
+test('PROVIDERS.ollama: passes an AbortSignal and turns its timeout into a clear ConstructError', async () => {
+  let sawSignal = null;
+  await withFakeFetch((url, init) => new Promise((resolve, reject) => {
+    sawSignal = init.signal;
+    // A server that never answers: settle only when the caller's own signal fires.
+    init.signal.addEventListener('abort', () => reject(init.signal.reason), { once: true });
+  }), async () => {
+    await assert.rejects(() => PROVIDERS.ollama('hi', { timeoutMs: 100 }), (err) => {
+      assert.ok(err instanceof ConstructError);
+      assert.match(err.message, /"ollama" model did not answer within 0\.1 seconds/);
+      assert.match(err.message, /CONSTRUCT_LLM_TIMEOUT_SEC/);
+      return true;
+    });
+  });
+  assert.ok(sawSignal instanceof AbortSignal, 'fetch received a signal');
+  assert.equal(sawSignal.aborted, true);
+});
+
+test('PROVIDERS.ollama: a body that never finishes arriving is bounded by the same timeout', async () => {
+  await withFakeFetch((url, init) => Promise.resolve({
+    ok: true,
+    status: 200,
+    text: () => new Promise((resolve, reject) => init.signal.addEventListener('abort', () => reject(init.signal.reason), { once: true })),
+  }), async () => {
+    await assert.rejects(() => PROVIDERS.ollama('hi', { timeoutMs: 100 }), /did not answer within 0\.1 seconds/);
   });
 });

@@ -419,7 +419,8 @@ export async function doctor(args) {
   console.log('Construct doctor');
   const root = getRoot(args);
   for (const c of ['node', 'npm']) {
-    const r = spawnSync(c, ['--version'], { encoding: 'utf8' });
+    // #413: bounded; a `--version` that takes 30 s is not going to answer.
+    const r = spawnSync(c, ['--version'], { encoding: 'utf8', timeout: 30_000, killSignal: 'SIGKILL' });
     console.log(`${c}: ${r.status === 0 ? r.stdout.trim() : 'missing'}`);
   }
   console.log(`architecture.yml: ${fs.existsSync(path.join(root, 'architecture.yml')) ? 'present' : 'missing'}`);
@@ -536,11 +537,13 @@ export async function researchImpact(args) {
   if (since) {
     let changed;
     try {
-      changed = spawnSync('git', ['diff', '--name-only', since], { cwd: root, encoding: 'utf8' });
+      // #413: bounded, so a stuck git (a lock, a prompt) cannot hang `research` forever.
+      changed = spawnSync('git', ['diff', '--name-only', since], { cwd: root, encoding: 'utf8', timeout: 10 * 60 * 1000, killSignal: 'SIGKILL' });
     } catch (e) {
       throw new ConstructError(`Could not diff against "${since}": ${String(e.message || e)}`, { exitCode: EXIT_CODES.USAGE_ERROR });
     }
-    if (changed.status !== 0) throw new ConstructError(`Could not diff against "${since}": ${String(changed.stderr || '').trim() || 'git failed'}. Is ${root} a git repository, and does that ref exist?`, { exitCode: EXIT_CODES.USAGE_ERROR });
+    if (changed.error?.code === 'ETIMEDOUT') throw new ConstructError(`Could not diff against "${since}": git did not finish within 600 seconds and was stopped.`, { exitCode: EXIT_CODES.INTERNAL_ERROR });
+    if (changed.status !== 0) throw new ConstructError(`Could not diff against "${since}": ${String(changed.stderr || changed.error?.message || '').trim() || 'git failed'}. Is ${root} a git repository, and does that ref exist?`, { exitCode: EXIT_CODES.USAGE_ERROR });
     for (const p of changed.stdout.split('\n').map((s) => s.trim()).filter(Boolean)) seeds.push({ path: p, method: 'changed-files', provenance: 'explicit' });
   }
   const ticketFile = flagValue(args, '--ticket-file');

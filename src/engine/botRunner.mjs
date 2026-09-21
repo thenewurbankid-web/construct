@@ -53,9 +53,15 @@ export function resolveMaxConcurrent(explicit, env = process.env) {
 
 export const botBranch = (processId) => `construct/bot/${String(processId).replace(/[^A-Za-z0-9._-]/g, '_')}`;
 
+// #413: bounded like every synchronous git call in core (see gitTrees.GIT_TIMEOUT_MS); a hung git must not hang a bot.
+const GIT_TIMEOUT_MS = 10 * 60 * 1000;
+
 function git(cwd, args, { input } = {}) {
-  const res = spawnSync('git', [...GIT_IDENTITY, ...args], { cwd, encoding: 'utf8', input, maxBuffer: 64 * 1024 * 1024 });
-  return { ok: res.status === 0, out: res.stdout ?? '', err: (res.stderr || res.error?.message || '').trim() };
+  const res = spawnSync('git', [...GIT_IDENTITY, ...args], { cwd, encoding: 'utf8', input, maxBuffer: 64 * 1024 * 1024, timeout: GIT_TIMEOUT_MS, killSignal: 'SIGKILL' });
+  const err = res.error?.code === 'ETIMEDOUT'
+    ? `git ${args[0]} did not finish within ${Math.round(GIT_TIMEOUT_MS / 1000)} seconds and was stopped.`
+    : (res.stderr || res.error?.message || '').trim();
+  return { ok: res.status === 0, out: res.stdout ?? '', err };
 }
 
 /** True unless the pid is provably dead. Conservative on purpose. */

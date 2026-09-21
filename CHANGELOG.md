@@ -7,7 +7,8 @@ request or issue numbers.
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+- Every model call is bounded: `CONSTRUCT_LLM_TIMEOUT_SEC` (default 300) kills a hung `claude -p` and aborts a hung Ollama request with an error that names the timeout; every synchronous `git` call in core has a timeout; the Cockpit's command queue abandons a command at `CONSTRUCT_COMMAND_TIMEOUT_SEC` (default 900) instead of wedging behind it ([#413]).
 
 ## [0.8.0] - 2026-09-20 (planned baseline)
 
@@ -151,3 +152,7 @@ The package version fields are not changed by this entry.
 [#377]: https://github.com/thenewurbankid-web/construct/pull/377
 [#389]: https://github.com/thenewurbankid-web/construct/pull/389
 [#390]: https://github.com/thenewurbankid-web/construct/pull/390
+[#413]: https://github.com/thenewurbankid-web/construct/issues/413
+[#414]: https://github.com/thenewurbankid-web/construct/issues/414
+[#422]: https://github.com/thenewurbankid-web/construct/issues/422
+[#423]: https://github.com/thenewurbankid-web/construct/issues/423
