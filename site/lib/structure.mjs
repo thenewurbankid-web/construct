@@ -71,6 +71,12 @@ export const USER_GROUPS = [
     ],
   },
   {
+    group: 'Videos',
+    pages: [
+      { path: 'user-guide/videos/ticket-to-story/', title: 'From a ticket to a story', description: 'A one-minute video: a plain request becomes a plan, step by step.', file: C('user/videos/ticket-to-story.md') },
+    ],
+  },
+  {
     group: 'CLI',
     pages: [
       { path: 'user-guide/cli/', title: 'Using the command line', description: 'One command per job, the same answer every time, and a record of what ran.', file: C('user/cli.md') },
