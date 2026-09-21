@@ -321,6 +321,14 @@ export function reclaimRunsOf(pid, { tmp = os.tmpdir() } = {}) {
  * test seams `probe`, `tmp`, `repo`.
  * Resolves (never rejects) to `{ok:true, feature, baseUrl, durationMs, counts, tests, traces}` (`traces`: relative paths of kept failure traces, see keepTraces) or `{ok:false, error:{code, message}}`.
  * Nothing is written inside the project.
+ *
+ * @param {string} root Project root.
+ * @param {string} feature Feature whose tests run.
+ * @param {object} [opts] See above.
+ * @returns {Promise<object>} `{ok:true, feature, baseUrl, durationMs, counts, tests, traces}` or `{ok:false, error}`; never rejects.
+ *
+ * @example
+ * const run = await runFeatureTests(root, 'billing', { baseUrl: 'http://localhost:3000', area: 'generated' });
  */
 export async function runFeatureTests(root, feature, opts = {}) {
   const { name, area, baseUrl, signal, timeoutMs = RUN_TIMEOUT_MS, onProgress, probe = probeApp, tmp = os.tmpdir(), repo = REPO } = /** @type {any} */ (opts);
@@ -400,7 +408,12 @@ export async function runFeatureTests(root, feature, opts = {}) {
 
 const seconds = (ms) => `${(ms / 1000).toFixed(1)} s`;
 
-/** A finished run as text for a terminal (`construct test run`). Every failure keeps the words its kind was given above. */
+/**
+ * A finished run as text for a terminal (`construct test run`). Every failure keeps the words its kind was given above.
+ *
+ * @param {object} result A `runFeatureTests` result.
+ * @returns {string} A terminal summary: one line of counts, then one line per test with its failure or reason.
+ */
 export function renderRunText(result) {
   if (!result.ok) return result.error.message;
   const c = result.counts;

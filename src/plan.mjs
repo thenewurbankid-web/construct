@@ -411,7 +411,12 @@ const isPlainObject = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const isNonEmptyString = (v) => typeof v === 'string' && v.length > 0;
 const isAbsolutePath = (p) => path.isAbsolute(p) || /^[A-Za-z]:[\\/]/.test(p);
 
-/** The flow registry entry for `id`, or undefined. */
+/**
+ * The flow registry entry for `id`, or undefined.
+ *
+ * @param {string} id Flow id.
+ * @returns {object|undefined} The flow registry entry, or `undefined` for an unknown id.
+ */
 export function planFlow(id) {
   return Object.prototype.hasOwnProperty.call(PLAN_FLOWS, id) ? PLAN_FLOWS[id] : undefined;
 }
@@ -669,14 +674,22 @@ function validateDependencies(steps, push) {
   });
 }
 
-/** Validate a plan against schemas/plan.v1.json's shape and the flow
+/**
+ * Validate a plan against schemas/plan.v1.json's shape and the flow
  * registry. Returns `{ valid, errors }` where each error is
  * `{ code, path, message }` — never throws, never mutates `plan`, never
  * prints. Reports every problem rather than stopping at the first, so a
  * review UI can show them all at once.
  *
  * `path` is a JSON-pointer-ish dotted path into the plan
- * (e.g. `steps[2].args.feature`), so a caller can highlight the exact field. */
+ * (e.g. `steps[2].args.feature`), so a caller can highlight the exact field.
+ *
+ * @param {any} plan The plan to check.
+ * @returns {{valid:boolean, errors:{code:string, path:string, message:string}[]}} Every problem found.
+ *
+ * @example
+ * validatePlan(plan).errors.map((e) => `${e.path}: ${e.message}`);
+ */
 export function validatePlan(plan) {
   const errors = [];
   const push = (code, at, message) => errors.push({ code, path: at, message });
@@ -743,7 +756,8 @@ export function formatPlanErrors(errors) {
   return errors.map((e) => `${e.code}${e.path ? ` at ${e.path}` : ''}: ${e.message}`);
 }
 
-/** Turn a step into the real command that performs it — the mantra applied:
+/**
+ * Turn a step into the real command that performs it — the mantra applied:
  * each layer hands the next a concrete example, not an abstract spec. #287's
  * runner can execute a plan without re-deriving how any flow is invoked.
  *
@@ -756,7 +770,12 @@ export function formatPlanErrors(errors) {
  *             (`import.plan`'s inline plan): `[{ placeholder, arg, value }]`
  *  - `manual` true when a human, not a command, performs the step
  *
- * Throws TypeError on an unknown flow — validate the plan first. */
+ * Throws TypeError on an unknown flow — validate the plan first.
+ *
+ * @param {{flow:string, args?:object}} step A plan step.
+ * @returns {{argv:string[]|null, stdin:string|null, files:object[], manual:boolean}} The command that performs the step.
+ * @throws {TypeError} For an unknown flow.
+ */
 export function planToCommand(step) {
   const flow = planFlow(step?.flow);
   if (!flow) throw new TypeError(`Unknown flow "${step?.flow}".`);
@@ -797,12 +816,17 @@ export function planToCommand(step) {
   return { argv, stdin, files, manual: false };
 }
 
-/** Roll the per-step `touches` up to plan level — the features and files the
+/**
+ * Roll the per-step `touches` up to plan level — the features and files the
  * whole plan expects to change, deduplicated, in first-mentioned order.
  * Derived rather than stored so there is only ever one source of truth.
  * Each file carries every `change` any step declared for it and the ids of
  * the steps that touch it, so "who wrote this file?" is answerable after the
- * fact. */
+ * fact.
+ *
+ * @param {object} plan A plan with `steps[].touches`.
+ * @returns {{features:string[], files:{path:string, changes:string[], steps:string[], layer?:string}[]}} The deduplicated features and files the plan expects to change.
+ */
 export function planTouches(plan) {
   const features = [];
   const files = new Map();

@@ -105,6 +105,11 @@ export function validateGraph(layers) {
  * layersForFramework) merged with any `layers:` override in
  * architecture.yml, validated for correctness. Mirrors the way loadConfig()
  * reads architecture.yml.
+ *
+ * @param {string} root Project root; `architecture.yml` is optional.
+ * @returns {Record<string, {pattern?: string, canImport: string[]}>} The validated layer graph: layer name to file pattern and the layers it may import.
+ * @throws {Error} When the merged graph is invalid (unknown layer in `canImport`, and so on).
+ * @since 0.8
  */
 export function loadLayerGraph(root) {
   const file = path.join(root, 'architecture.yml');
@@ -130,6 +135,13 @@ export function canImport(layers, from, to) {
  * project-relative path, or null. Driven entirely by the (framework + `layers:` override) graph,
  * so a custom pattern classifies files the same way everywhere -- the enforcers, `parseFile`
  * summaries, the readability checks.
+ *
+ * @param {string} relPath Project-relative path, forward slashes.
+ * @param {Record<string, {pattern?: string}>} graph Layer graph from `loadLayerGraph`.
+ * @returns {string|null} The first layer whose pattern matches, or `null` when the file belongs to no layer.
+ *
+ * @example
+ * classifyFile('features/plan/services/planApi.ts', loadLayerGraph(root)); // => 'service'
  */
 export function classifyFile(relPath, graph) {
   for (const [layer, def] of Object.entries(graph)) {
@@ -143,6 +155,13 @@ export function classifyFile(relPath, graph) {
  * layer graph, and a file inside a configured `frozen:` region is externally authored, so it is
  * never classified (null). Pass `{ graph, frozenGlobs }` when classifying many files so the
  * graph/config are loaded once; otherwise they are loaded from `root`.
+ *
+ * @param {string} root Project root.
+ * @param {string} filePath Absolute or project-relative file path.
+ * @param {object} [options]
+ * @param {object} [options.graph] Pre-loaded layer graph (avoids re-reading config per file).
+ * @param {string[]} [options.frozenGlobs] Pre-loaded frozen globs.
+ * @returns {string|null} The layer name, or `null` for unclassified and frozen files.
  */
 export function classifyProjectFile(root, filePath, { graph, frozenGlobs } = {}) {
   const abs = path.isAbsolute(filePath) ? filePath : path.join(root, filePath);

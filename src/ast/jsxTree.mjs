@@ -6,7 +6,12 @@
 import { walkAst } from './walk.mjs';
 import { parseJsx } from './jsxParse.mjs';
 
-/** `Foo`, `ui.Item` or `ns:tag` for a JSX name node (`'?'` for anything else). */
+/**
+ * `Foo`, `ui.Item` or `ns:tag` for a JSX name node (`'?'` for anything else).
+ *
+ * @param {object} nameNode A JSX name node.
+ * @returns {string} The name as written; `'?'` for an unknown node type.
+ */
 export function jsxNameToString(nameNode) {
   if (nameNode.type === 'JSXIdentifier') return nameNode.name;
   if (nameNode.type === 'JSXMemberExpression') return `${jsxNameToString(nameNode.object)}.${jsxNameToString(nameNode.property)}`;
@@ -18,6 +23,10 @@ export function jsxNameToString(nameNode) {
  * An opening tag's attributes as `{kind, name, value, index}` records (`index` = 0-based position in the
  * attribute list; a spread has `name: null`). kinds: 'string' | 'number' | 'boolean' | 'identifier' |
  * 'expression' (value = raw source text) | 'spread' (value = the spread argument's source text).
+ *
+ * @param {object} openingElement A JSX opening element node.
+ * @param {string} source The full source text (for expression values).
+ * @returns {{kind:string, name:string|null, value:any, index:number}[]} One record per attribute, in order.
  */
 export function jsxAttributes(openingElement, source) {
   return openingElement.attributes.map((attr, index) => {
@@ -47,6 +56,15 @@ export function jsxAttributes(openingElement, source) {
  * (`openingElementNode` is the raw estree opening element, `null` for a fragment -- internal, for
  * offset-exact attribute edits). Nesting is derived from source ranges, so elements found anywhere in a
  * parent's subtree (inside `{cond && <X/>}` or `.map(...)` callbacks) nest correctly. Throws on a syntax error.
+ *
+ * @param {string} source JSX or TSX module text.
+ * @returns {{roots:object[], byId:Map<string, object>, ast:object}} The element tree.
+ * @throws {Error} On a syntax error.
+ * @since 0.8
+ *
+ * @example
+ * const { roots, byId } = parseJsxTree('export const A = () => <div><b /></div>;');
+ * roots[0].tag; // => 'div'
  */
 export function parseJsxTree(source) {
   const ast = parseJsx(source);
@@ -89,7 +107,13 @@ export function parseJsxTree(source) {
   return { roots, byId, ast };
 }
 
-/** The direct parent record of `nodeId` in a parsed tree's `byId`, or `null` for a root. */
+/**
+ * The direct parent record of `nodeId` in a parsed tree's `byId`, or `null` for a root.
+ *
+ * @param {Map<string, object>} byId The `byId` map from `parseJsxTree`.
+ * @param {string} nodeId The child's id.
+ * @returns {object|null} The parent record, or `null` for a root.
+ */
 export function findParentRecord(byId, nodeId) {
   for (const candidate of byId.values()) {
     if (candidate.children.some((c) => c.id === nodeId)) return candidate;

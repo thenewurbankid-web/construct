@@ -16,11 +16,22 @@ let cachedAst;
 
 const PARSE_OPTIONS = { comment: true, loc: true, range: true, errorOnUnknownASTType: false };
 
-/** Parse `source` into a typescript-estree AST (with `comments`), trying JSX
+/**
+ * Parse `source` into a typescript-estree AST (with `comments`), trying JSX
  * mode first (works for both .tsx and plain .ts/.js in the overwhelming
  * common case) and falling back to non-JSX mode only if JSX parsing fails —
  * these functions take `source` alone (no file path), so the extension
- * isn't available to decide up front. */
+ * isn't available to decide up front.
+ *
+ * @param {string} source TypeScript, TSX or JavaScript source text.
+ * @returns {object} A typescript-estree `Program` node with `comments`. The last result is cached by source text.
+ * @throws {Error} The parser's error when the source is not valid in either mode.
+ * @since 0.8
+ *
+ * @example
+ * const ast = parseToAst('export const a = 1;');
+ * ast.body[0].type; // => 'ExportNamedDeclaration'
+ */
 export function parseToAst(source) {
   if (source === cachedSource) return cachedAst;
   let ast;
@@ -38,9 +49,16 @@ export function parseToAst(source) {
   return ast;
 }
 
-/** Parse `source` with the TypeScript compiler API (parent pointers set, TSX script kind) — the
+/**
+ * Parse `source` with the TypeScript compiler API (parent pointers set, TSX script kind) — the
  * stack to use for type-system questions (interfaces, type aliases, members) and for
- * `ts.factory`-based generation. `fileName` only labels the SourceFile. */
+ * `ts.factory`-based generation. `fileName` only labels the SourceFile.
+ *
+ * @param {string} source TypeScript or TSX source text.
+ * @param {string} [fileName='file.tsx'] Label for the SourceFile.
+ * @returns {import("typescript").SourceFile} A TypeScript compiler API SourceFile with parent pointers set.
+ * @since 0.8
+ */
 export function parseTsSource(source, fileName = 'file.tsx') {
   return ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 }

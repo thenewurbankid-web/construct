@@ -247,10 +247,19 @@ export function featureFlow(root, feature) {
   return { machineKey: keys[0], eventIds };
 }
 
-/** Ingest `fromPath` (an externally-authored JSX/TSX file) as feature
+/**
+ * Ingest `fromPath` (an externally-authored JSX/TSX file) as feature
  * `feature`'s `<name>` page: writes `<Feature>Page.tsx` +
  * `<Feature>PageProps.ts` under `features/<feature>/pages/`, then
- * re-validates both via generators.mjs's shared selfCheck. */
+ * re-validates both via generators.mjs's shared selfCheck.
+ *
+ * @returns {{pageFile:string, propsFile:string, slots:object[], testIds:string[]}} The written files and the slots and test ids found in the source.
+ * @throws {ConstructError} Usage error (exit code 2) when `fromPath` is not a file.
+ * @param {string} root Project root.
+ * @param {string} name Page name.
+ * @param {string} feature Feature that owns the page.
+ * @param {string} fromPath The external JSX/TSX file to ingest.
+ */
 export function ingestPage(root, name, feature, fromPath) {
   const config = loadConfig(root);
   const cap = pascalCase(name, 'Page');

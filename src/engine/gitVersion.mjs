@@ -26,6 +26,15 @@ export function parseGitVersion(raw) {
   return { major, minor, patch, version: `${major}.${minor}.${patch}` };
 }
 
+/**
+ * Format a parsed git version.
+ *
+ * @param {{major:number, minor:number, patch?:number}} v Parsed version.
+ * @returns {string} `major.minor.patch` (patch defaults to 0).
+ *
+ * @example
+ * formatVersion({ major: 2, minor: 43 }); // => '2.43.0'
+ */
 export const formatVersion = (v) => `${v.major}.${v.minor}.${v.patch ?? 0}`;
 
 /** True when `v` is `min` or newer. */
@@ -39,7 +48,12 @@ export function atLeast(v, min) {
   return true;
 }
 
-/** Whether this git honours `http.curloptResolve` (see the header for the source of the number). */
+/**
+ * Whether this git honours `http.curloptResolve` (see the header for the source of the number).
+ *
+ * @param {{ok?:boolean, major:number, minor:number, patch?:number}} v A `gitVersion()` result.
+ * @returns {boolean} Whether this git is new enough for `http.curloptResolve`.
+ */
 export const supportsCurloptResolve = (v) => Boolean(v?.ok !== false) && atLeast(v, MIN_GIT_FOR_CURLOPT_RESOLVE);
 
 let cached = null;
@@ -47,6 +61,8 @@ let cached = null;
 /**
  * Ask `git --version` once (a success is cached for the life of the process; a failure is re-asked, so
  * installing git does not need a restart). argv only, a scrubbed environment, a bounded wait (#413).
+ *
+ * @returns {object} `{ok:true, major, minor, patch, raw}` or `{ok:false, error}`: the installed git version, or why it could not be read.
  * @param {{spawn?: typeof spawnSync, cache?: boolean}} [opts] test seams
  */
 export function gitVersion({ spawn = spawnSync, cache = true } = {}) {

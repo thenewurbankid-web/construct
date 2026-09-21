@@ -8,6 +8,12 @@
 // how both the REPL and the wizard get driven in tests and in scripted use.
 // This sidesteps both: one line resolved at a time, strictly in order, with
 // a clean `{ done: true }` on EOF instead of hanging forever.
+/**
+ * A minimal line reader shared by the REPL and the `import --route` wizard: one line resolved at a time, strictly in order, with `{done: true}` at end of input instead of hanging. Robust under piped input, where `node:readline` is not.
+ *
+ * @param {NodeJS.ReadableStream} input The input stream (usually `process.stdin`).
+ * @returns {{next: () => Promise<{done:boolean, value?:string}>}} `next()` resolves the next line in order, or `{done: true}` at end of input.
+ */
 export function makeLineSource(input) {
   let buffer = '';
   let ended = false;

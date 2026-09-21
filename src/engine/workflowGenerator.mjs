@@ -248,9 +248,17 @@ export function compileWorkflow(descriptor, { name }) {
   return { source, events, contextFields };
 }
 
-/** Ingest a JSON state-graph descriptor as feature `feature`'s `<name>`
+/**
+ * Ingest a JSON state-graph descriptor as feature `feature`'s `<name>`
  * workflow: writes `features/<feature>/workflows/<Name>Workflow.tsx`, then
- * re-validates via generators.mjs's shared selfCheck. */
+ * re-validates via generators.mjs's shared selfCheck.
+ *
+ * @param {string} root Project root.
+ * @param {string} name Workflow name (turned into a valid identifier).
+ * @param {string} feature Feature that owns the workflow.
+ * @param {object} descriptor JSON state-graph descriptor.
+ * @returns {{file:string, events:string[], contextFields:string[]}} The written file and what it exposes.
+ */
 export function generateWorkflow(root, name, feature, descriptor) {
   const config = loadConfig(root);
   // #216: same identifier handling as the layer generators; throws before any write.

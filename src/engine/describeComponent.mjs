@@ -65,6 +65,18 @@ function runInWorker(source, filename, timeoutMs) {
   });
 }
 
+/**
+ * Describe a React component's props with react-docgen: name, type and description of each prop. Runs in a worker with a timeout and a size cap, and never throws.
+ *
+ * @param {string} root Project root; the file must be inside it.
+ * @param {string} relPath Component file, relative to `root`.
+ * @param {object} [opts]
+ * @param {number} [opts.maxBytes] Refuse larger files.
+ * @param {number} [opts.timeoutMs] Worker timeout.
+ * @param {'react-docgen'|'none'} [opts.engine='react-docgen'] `none` switches prop documentation off.
+ * @param {(source:string, filename:string) => object} [opts.describe] Synchronous replacement for the worker (tests).
+ * @returns {Promise<object>} The description with `path`, or a failure object with a `code` (`DISABLED`, `TOO_LARGE`, `ENGINE_ERROR`, ...).
+ */
 export async function describeComponent(root, relPath, opts = {}) {
   try {
     const { maxBytes = DESCRIBE_DEFAULTS.maxBytes, timeoutMs = DESCRIBE_DEFAULTS.timeoutMs, engine = 'react-docgen', describe } = opts;

@@ -41,6 +41,12 @@ import { topLevelState } from './processMachine.mjs';
  *
  * `CONSTRUCT_STATE_DIR` wins so a test, a sandbox or a second Cockpit can be
  * pointed somewhere harmless in one variable.
+ *
+ * @param {Record<string, string|undefined>} [env] Environment to read; defaults to `process.env`.
+ * @returns {string} Absolute path of the base state directory: `CONSTRUCT_STATE_DIR`, else `$XDG_STATE_HOME/construct`, else `~/.local/state/construct`.
+ *
+ * @example
+ * resolveStateDir({ CONSTRUCT_STATE_DIR: '/tmp/state' }); // => '/tmp/state'
  */
 export function resolveStateDir(env = process.env) {
   if (env.CONSTRUCT_STATE_DIR) return path.resolve(env.CONSTRUCT_STATE_DIR);
@@ -48,9 +54,17 @@ export function resolveStateDir(env = process.env) {
   return path.join(env.HOME || os.homedir(), '.local', 'state', 'construct');
 }
 
-/** The per-project directory name: readable prefix plus a hash, so two
+/**
+ * The per-project directory name: readable prefix plus a hash, so two
  * projects called `web` in different checkouts never collide and a human
- * looking in the state directory can still tell which is which. */
+ * looking in the state directory can still tell which is which.
+ *
+ * @param {string} projectRoot Path of the project (resolved to absolute first).
+ * @returns {string} `<basename>-<12 hex chars of a SHA-1 of the absolute path>`, safe to use as a directory name.
+ *
+ * @example
+ * projectKey('/work/web'); // => 'web-3f2a9c1b7d40'
+ */
 export function projectKey(projectRoot) {
   const resolved = path.resolve(projectRoot);
   const hash = crypto.createHash('sha1').update(resolved).digest('hex').slice(0, 12);
@@ -58,7 +72,14 @@ export function projectKey(projectRoot) {
   return `${base}-${hash}`;
 }
 
-/** Absolute directory holding one project's process records. */
+/**
+ * Absolute directory holding one project's process records.
+ *
+ * @param {string} projectRoot Project the processes belong to.
+ * @param {object} [options]
+ * @param {string} [options.stateDir] Base state directory (defaults to `resolveStateDir()`).
+ * @returns {string} Absolute path of `<stateDir>/processes/<projectKey>`.
+ */
 export function processDir(projectRoot, { stateDir = resolveStateDir() } = {}) {
   return path.join(stateDir, 'processes', projectKey(projectRoot));
 }
@@ -108,6 +129,12 @@ function unreadable(file, reason) {
  * JSON in, JSON out: every method takes and returns plain process records —
  * the same objects processModel.mjs produces. Nothing here knows about HTTP,
  * WebSockets or the UI.
+ *
+ * @param {string} projectRoot The project the processes belong to.
+ * @param {object} [options]
+ * @param {string} [options.stateDir] Base state directory.
+ * @param {() => string} [options.now] Clock (ISO string).
+ * @returns {{save:Function, load:Function, all:Function, list:Function, remove:Function, adoptInterrupted:Function}} The store bound to that project.
  */
 export function openProcessStore(projectRoot, { stateDir = resolveStateDir(), now = () => new Date().toISOString() } = {}) {
   const dir = processDir(projectRoot, { stateDir });

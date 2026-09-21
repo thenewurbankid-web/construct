@@ -36,10 +36,18 @@ function fail(errors, message) {
   errors.push(message);
 }
 
-/** Structural validation against schemas/envelope.v1.json's shape. Returns
+/**
+ * Structural validation against schemas/envelope.v1.json's shape. Returns
  * `{ valid, errors }` rather than throwing, so a caller (e.g. `construct
  * pipeline run` reading a malformed envelope off stdin) can report every
- * problem at once instead of stopping at the first. */
+ * problem at once instead of stopping at the first.
+ *
+ * @param {any} envelope Parsed Context Envelope.
+ * @returns {{valid:boolean, errors:string[]}} Every structural problem found, not just the first.
+ *
+ * @example
+ * validateEnvelope({ version: 1, feature: 'billing', status: 'pending', layers: [] });
+ */
 export function validateEnvelope(envelope) {
   const errors = [];
   if (!envelope || typeof envelope !== 'object' || Array.isArray(envelope)) {

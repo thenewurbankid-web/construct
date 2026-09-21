@@ -100,6 +100,11 @@ export function ruleDiagnostics(root, relPath, source) {
  * All diagnostics for one project file. `relPath` is relative to `root`; the
  * caller is responsible for scoping (ui/server uses resolvePageFile).
  * `source` defaults to the file's current text on disk.
+ *
+ * @param {string} root Project root.
+ * @param {string} relPath File to check, relative to `root`.
+ * @param {string} [source] Text to check instead of the file on disk (an unsaved edit).
+ * @returns {any} TypeScript diagnostics plus Construct rule violations, sorted by line then column.
  */
 export function collectDiagnostics(root, relPath, source) {
   const absFile = path.resolve(root, relPath);

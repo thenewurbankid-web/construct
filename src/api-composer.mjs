@@ -73,6 +73,13 @@ function fileExistsForSpecifier(featureDir, specifier) {
  * existing export (exact or via a wildcard ancestor). Never removes or
  * reorders lines a human already wrote. Running this twice on an unchanged
  * tree is a no-op (changed: false, file left untouched).
+ *
+ * @param {string} root Project root.
+ * @param {string} featureName Feature whose `index.ts` is updated.
+ * @returns {{changed:boolean, path:string}} Whether the index was written, and its project-relative path.
+ *
+ * @example
+ * syncPublicApi(root, 'plan'); // => { changed: true, path: 'features/plan/index.ts' }
  */
 export function syncPublicApi(root, featureName) {
   const config = loadConfig(root);

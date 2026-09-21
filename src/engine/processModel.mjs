@@ -127,6 +127,8 @@ function hashOf(content) {
  * around a plan that cannot execute. Validate with `validatePlan()` and show
  * the errors before getting here.
  *
+ * @returns {object} A new `process.v1` record in its initial state, with the plan stored verbatim.
+ * @throws {TypeError} When the plan is invalid or `projectRoot` is missing.
  * @param {object} plan a valid plan.v1 object
  * @param {object} [options]
  * @param {string} [options.id]
@@ -488,6 +490,9 @@ export function applyEvent(process, eventType, { now = defaultNow, message = nul
 /**
  * What a list of processes shows (#292): enough to render a row without
  * shipping the whole plan, the whole log and every artifact to a client.
+ *
+ * @param {object} process A process record.
+ * @returns {object} The row a process list shows: id, title, project root, top-level state, pending control, step counts and current step.
  */
 export function processSummary(process) {
   const done = process.steps.filter((s) => s.status === 'done').length;

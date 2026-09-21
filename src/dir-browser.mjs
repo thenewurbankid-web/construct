@@ -18,6 +18,9 @@ export const DEFAULT_LIMIT = 200;
 export const MAX_LIMIT = 500;
 const MAX_PACKAGE_JSON_BYTES = 1024 * 1024;
 
+/**
+ * A directory-browse failure that carries the HTTP status the Cockpit server should answer with (403 for outside the allowed roots or unreadable, 404 for missing).
+ */
 export class DirBrowseError extends Error {
   constructor(status, message) {
     super(message);
@@ -119,6 +122,14 @@ function clampInt(value, min, max, fallback) {
 
 /**
  * List the sub-directories of `requested` (default: first root).
+ *
+ * @param {object} [options]
+ * @param {string} [options.path] Directory to list; defaults to the first allowed root.
+ * @param {string[]} [options.roots] Allowed roots; nothing outside them can be listed.
+ * @param {boolean} [options.showHidden=false] Include dot-directories.
+ * @param {number} [options.limit] Page size (clamped to the module maximum).
+ * @param {number} [options.offset=0] Entries to skip.
+ * @throws {DirBrowseError} When the path is outside the roots or not readable.
  * @returns {{path, parent, roots, entries, total, offset, limit, truncated}}
  *   `parent` is null when `path` is itself a root (cannot navigate above the allowlist).
  */

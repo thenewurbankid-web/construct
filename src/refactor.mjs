@@ -178,11 +178,22 @@ function relocate(root, feature, fromLayer, fromName, toLayer, toName, { dryRun 
   return result;
 }
 
-/** Move a file from one layer to another within the same feature, keeping
+/**
+ * Move a file from one layer to another within the same feature, keeping
  * its base name. Naming convention (e.g. a hook's `use` prefix) is applied
  * for the target layer — whether the result still makes sense (does the
  * export name match? is the content still pure enough for its new layer?) is
- * for `construct validate` to say, not this function. */
+ * for `construct validate` to say, not this function.
+ *
+ * @param {string} root Project root.
+ * @param {string} feature Feature that owns the file.
+ * @param {string} name Base name of the file.
+ * @param {string} fromLayer Layer it is in now.
+ * @param {string} toLayer Layer to move it to; must differ from `fromLayer`.
+ * @param {object} [options] Options for the relocation (for example `dryRun`).
+ * @returns {object} The relocation result (files changed, engine used).
+ * @throws {ConstructError} Usage error when both layers are the same.
+ */
 export function moveLayerFile(root, feature, name, fromLayer, toLayer, options = {}) {
   if (fromLayer === toLayer) {
     throw new ConstructError(
@@ -193,7 +204,17 @@ export function moveLayerFile(root, feature, name, fromLayer, toLayer, options =
   return relocate(root, feature, fromLayer, name, toLayer, name, options);
 }
 
-/** Rename a file within the same layer, keeping its layer. */
+/**
+ * Rename a file within the same layer, keeping its layer.
+ *
+ * @param {string} root Project root.
+ * @param {string} feature Feature that owns the file.
+ * @param {string} name Current base name.
+ * @param {string} newName New base name.
+ * @param {string} layer Layer the file is in.
+ * @param {object} [options] Options for the relocation (for example `dryRun`).
+ * @returns {object} The relocation result.
+ */
 export function renameLayerFile(root, feature, name, newName, layer, options = {}) {
   return relocate(root, feature, layer, name, layer, newName, options);
 }

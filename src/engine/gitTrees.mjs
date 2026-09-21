@@ -38,7 +38,20 @@ function gitEnv() {
 // whole event loop of whoever called it. Killed outright: SIGTERM can be ignored, SIGKILL cannot.
 export const GIT_TIMEOUT_MS = 10 * 60 * 1000;
 
-/** Run git with an argv array. Never a shell. Returns `{status, stdout, stderr}`. */
+/**
+ * Run git with an argv array. Never a shell. Returns `{status, stdout, stderr}`.
+ *
+ * @param {string} cwd Directory to run in.
+ * @param {string[]} args git arguments, one element each (no shell is involved).
+ * @param {object} [options]
+ * @param {string[]} [options.config] `key=value` pairs passed as `-c`.
+ * @param {number} [options.maxBuffer] Output cap in bytes.
+ * @param {number} [options.timeout] Kill after this many milliseconds.
+ * @returns {{status:number|null, stdout:string, stderr:string}} `status` is -1 when git could not run or timed out.
+ *
+ * @example
+ * git(root, ['rev-parse', 'HEAD']).stdout.trim();
+ */
 export function git(cwd, args, { config = [], maxBuffer = 256 * 1024 * 1024, timeout = GIT_TIMEOUT_MS } = {}) {
   const argv = ['--literal-pathspecs', '--no-optional-locks', ...config.flatMap((c) => ['-c', c]), ...args];
   const r = spawnSync('git', argv, { cwd, encoding: 'utf8', shell: false, env: gitEnv(), maxBuffer, timeout, killSignal: 'SIGKILL' });
@@ -58,7 +71,12 @@ export function resolveCommit(cwd, label, ref) {
   return { ok: true, sha };
 }
 
-/** `{top, prefix}`: the repo's top-level dir and the project root's path inside it ('' or 'a/b/'). */
+/**
+ * `{top, prefix}`: the repo's top-level dir and the project root's path inside it ('' or 'a/b/').
+ *
+ * @param {string} cwd A directory inside a git repository (the project root).
+ * @returns {object} `{ok:true, top, prefix}` (or `{ok:false, error}`): the repository top-level (real path) and the project's path prefix inside it, or `NOT_A_GIT_REPO`.
+ */
 export function repoInfo(cwd) {
   const top = git(cwd, ['rev-parse', '--show-toplevel']);
   if (top.status !== 0) return err('NOT_A_GIT_REPO', `${cwd} is not inside a git repository.`);
@@ -149,6 +167,10 @@ function sweepDeadRoots(tmp, repo) {
  * analysis whose worker had to be killed before its own cleanup could run). Surgical: only that pid's
  * directory is touched, and `worktree prune` runs only if a registration under it is still listed.
  * Refuses our own pid and a pid that is still alive. Returns what it removed, for the caller to verify.
+ *
+ * @param {number} pid Process id whose leftover temporary worktrees to remove.
+ * @param {string} cwd A directory inside the repository.
+ * @returns {string[]} What was removed; empty for our own pid or a pid that is still alive.
  */
 export function reclaimTreesOf(pid, cwd) {
   const removed = [];
@@ -190,6 +212,14 @@ const CHECKOUT_CONFIG = [`core.hooksPath=${os.devNull}`, 'filter.lfs.smudge=', '
  * Check out each commit id into its own temporary detached worktree, run `fn(dirs)` (dirs[i] is the
  * repo top-level of shas[i]), and ALWAYS remove them again — on return, on throw, and on process
  * exit. `fn` must only read. Returns `fn`'s result, or `{ok:false,error}` if a checkout failed.
+ *
+ * @param {string} cwd A directory inside the repository.
+ * @param {string[]} shas Commit ids to check out, one temporary worktree each.
+ * @param {(dirs:string[], info:object) => any} fn Read-only callback; `dirs[i]` is the top-level of `shas[i]`.
+ * @returns {any} Whatever `fn` returns, or `{ok:false, error}` (`NOT_A_GIT_REPO`, `INVALID_ARGUMENT`, `CHECKOUT_FAILED`).
+ *
+ * @example
+ * withTrees(root, [baseSha, headSha], ([base, head]) => diffDirs(base, head));
  */
 export function withTrees(cwd, shas, fn) {
   const info = repoInfo(cwd);

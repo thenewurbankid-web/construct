@@ -525,7 +525,12 @@ export function prHealth(root, request = {}, opts = {}) {
 
 // ---- rendering ---------------------------------------------------------------------------------
 
-/** A short markdown rendering for the CLI. The JSON is the contract; this is a convenience. */
+/**
+ * A short markdown rendering for the CLI. The JSON is the contract; this is a convenience.
+ *
+ * @param {object} report A `prHealth()` result.
+ * @returns {string} Markdown with one section per indicator, or a one-line failure.
+ */
 export function renderPrHealthMarkdown(report) {
   if (!report.ok) return `PR health failed (${report.error.code}): ${report.error.message}\n`;
   const out = [`# PR health`, '', report.summary, ''];
@@ -540,7 +545,11 @@ export function renderPrHealthMarkdown(report) {
   return `${out.join('\n')}`;
 }
 
-/** Machine-readable description of the API, mirroring `impactApiManifest`. */
+/**
+ * Machine-readable description of the API, mirroring `impactApiManifest`.
+ *
+ * @returns {object} The usage note for `prHealth`: signature, CLI, indicators, resolutions and schema.
+ */
 export function prHealthApiManifest() {
   return {
     schemaVersion: SCHEMA_VERSION,

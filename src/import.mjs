@@ -54,7 +54,8 @@ function buildPortPrompt({ layer, relFile, stubContent, oldContent, oldRelPath }
   // (requestFileText in llm-fill.mjs appends the stdout-only/no-file-access contract.)
 }
 
-/** Scaffold `layers` for one logical unit (exactly like generateVertical).
+/**
+ * Scaffold `layers` for one logical unit (exactly like generateVertical).
  * With no `llm` option: prepends a TODO breadcrumb pointing at `fromPath` to
  * each generated file — deterministic, never reads `fromPath`'s content
  * beyond confirming it exists. With `{ llm: '<provider>' }`: additionally
@@ -64,7 +65,17 @@ function buildPortPrompt({ layer, relFile, stubContent, oldContent, oldRelPath }
  *
  * Async because `callLlm` is (providers like `ollama` make a real HTTP
  * call) — with no `llm` option this still resolves on the same tick's
- * microtask queue as before, no behavior change, just a Promise wrapper. */
+ * microtask queue as before, no behavior change, just a Promise wrapper.
+ *
+ * @param {string} root Project root.
+ * @param {string} name Unit name.
+ * @param {string} feature Feature that owns the files.
+ * @param {string[]} layers Layers to scaffold.
+ * @param {string} fromPath The existing source file being ported; must exist.
+ * @param {{llm?: string, llmOptions?: object}} [options] `llm` names a provider that writes the ported logic into each stub.
+ * @returns {Promise<{source:string, files:string[], llmFilled:boolean, fills:object[], timings:object}>} The scaffolded files and, with `llm`, what each fill did.
+ * @throws {ConstructError} Usage error when `fromPath` is missing or the provider is unknown.
+ */
 export async function importVertical(root, name, feature, layers, fromPath, { llm, llmOptions } = {}) {
   const totalStart = startTimer();
   const fromAbs = path.resolve(fromPath);
@@ -206,13 +217,20 @@ export function validatePlanShape(plan, sourceDescription) {
   return plan;
 }
 
-/** Execute an already-validated plan object — the deterministic half of
+/**
+ * Execute an already-validated plan object — the deterministic half of
  * importing a non-Construct feature. The plan itself (which old files map to
  * which logical units/layers) is judgment, produced by whichever LLM
  * analyzed the old feature and approved by a human; this function only ever
  * runs `importVertical` once per already-decided unit, in the order given.
  * `{ llm }` applies uniformly to every unit (writes ported logic instead of
- * a breadcrumb) if given. */
+ * a breadcrumb) if given.
+ *
+ * @param {string} root Project root.
+ * @param {{feature:string, units:{name:string, layers:string[], from:string}[]}} plan A validated import plan.
+ * @param {{llm?: string, llmOptions?: object}} [options] Applied to every unit.
+ * @returns {Promise<{feature:string, results:object[]}>} One result per unit, in plan order.
+ */
 export async function executeImportPlan(root, plan, { llm, llmOptions } = {}) {
   const { feature, units } = plan;
   const results = [];
@@ -226,8 +244,19 @@ export async function executeImportPlan(root, plan, { llm, llmOptions } = {}) {
   return { feature, results };
 }
 
-/** Load a plan from a JSON file, validate its shape, and execute it.
- * Plan shape: `{ feature: string, units: [{ name, layers: string[], from }] }`. */
+/**
+ * Load a plan from a JSON file, validate its shape, and execute it.
+ * Plan shape: `{ feature: string, units: [{ name, layers: string[], from }] }`.
+ *
+ * @param {string} root Project root.
+ * @param {string} planPath JSON plan file.
+ * @param {{llm?: string, llmOptions?: object}} [options] Applied to every unit.
+ * @returns {Promise<{feature:string, results:object[]}>} One result per unit.
+ * @throws {ConstructError} Usage error when the plan cannot be read or has the wrong shape.
+ *
+ * @example
+ * await importPlan(root, 'plan.json');
+ */
 export async function importPlan(root, planPath, { llm, llmOptions } = {}) {
   let plan;
   try {
@@ -343,10 +372,18 @@ function labelFiles(absPaths) {
   return labeled;
 }
 
-/** Analyze an explicit list of already-resolved absolute file paths — the
+/**
+ * Analyze an explicit list of already-resolved absolute file paths — the
  * counterpart to analyzeRoute for callers (the route-tracing wizard) that
  * already know exactly which files matter, rather than "everything under
- * this directory." */
+ * this directory."
+ *
+ * @param {string[]} absPaths Absolute paths of the files to analyze.
+ * @param {string} featureName Feature the analysis is for.
+ * @param {{llm?: string}} [options] Provider that performs the analysis (default `'claude'`).
+ * @returns {Promise<object>} The analysis.
+ * @throws {ConstructError} Usage error when no files are given.
+ */
 export async function analyzeFiles(absPaths, featureName, { llm = 'claude' } = {}) {
   if (!absPaths.length) {
     throw new ConstructError('No files to analyze.', { exitCode: EXIT_CODES.USAGE_ERROR });

@@ -39,6 +39,9 @@ function jsxRoot(nameNode) {
  * `specifier`/`imported` are set for 'import' and 'jsx' references backed by an import; a 'jsx'
  * reference to a name that is not imported, and every 'dynamic' one, carries a plain-language
  * `reason` and no specifier (they cannot be followed statically).
+ *
+ * @param {string} source TypeScript or JSX source text.
+ * @returns {object[]} The reference candidates, in source order.
  */
 export function collectReferences(source) {
   const ast = parseToAst(source);
@@ -81,6 +84,10 @@ export function collectReferences(source) {
  *   from ...`, `export * as ns from ...` (importedName '*'), or an imported binding exported again;
  * - `{kind: 'star', sources}`: not named directly, but `export * from` these modules might supply it;
  * - `null`: not exported.
+ *
+ * @param {string} source Text of the module.
+ * @param {string} name Export name (`'default'` for the default export).
+ * @returns {object|null} `{kind:'local'}`, `{kind:'reexport', source, importedName}` or `{kind:'star', sources}`: where the export comes from, or `null` when the module does not export it.
  */
 export function exportOrigin(source, name) {
   const ast = parseToAst(source);

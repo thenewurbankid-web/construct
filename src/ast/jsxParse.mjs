@@ -41,14 +41,26 @@ function assertNoEmptyAttributeExpressions(ast) {
   });
 }
 
-/** Parse `source` as a JSX/TSX module. Throws (a plain Error carrying the parser's message) on a syntax error. */
+/**
+ * Parse `source` as a JSX/TSX module. Throws (a plain Error carrying the parser's message) on a syntax error.
+ *
+ * @param {string} source JSX or TSX module text.
+ * @returns {object} A typescript-estree `Program` node.
+ * @throws {Error} Carrying the parser's message on a syntax error.
+ * @since 0.8
+ */
 export function parseJsx(source) {
   const ast = parseWithTextRepair(source);
   assertNoEmptyAttributeExpressions(ast);
   return ast;
 }
 
-/** The parser's error message if `source` is not a valid JSX/TSX module, else `null`. */
+/**
+ * The parser's error message if `source` is not a valid JSX/TSX module, else `null`.
+ *
+ * @param {string} source JSX or TSX module text.
+ * @returns {string|null} The parser's message, or `null` when the source is valid.
+ */
 export function jsxParseError(source) {
   try {
     parseJsx(source);
@@ -63,6 +75,12 @@ export function jsxParseError(source) {
  * own as a JSX expression, and be exactly one element or fragment. Returns `{ok: true}`, or
  * `{ok: false, kind: 'parse', error}` (not valid JSX) / `{ok: false, kind: 'shape'}` (valid, but not a
  * single JSX element/fragment).
+ *
+ * @param {string} snippet Candidate replacement for one JSX node.
+ * @returns {{ok:true}|{ok:false, kind:'parse', error:string}|{ok:false, kind:'shape'}} Whether the snippet is exactly one element or fragment.
+ *
+ * @example
+ * checkJsxReplacement('<b>hi</b>'); // => { ok: true }
  */
 export function checkJsxReplacement(snippet) {
   let ast;

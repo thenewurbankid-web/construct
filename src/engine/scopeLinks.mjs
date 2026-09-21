@@ -31,8 +31,14 @@ function resolveDeclared(pageAst, tag, childSource) {
   return declaredPropNames(childSource, rootName, imported ? imported.isDefault : false);
 }
 
-/** The import backing a tag's root name (`{source, isDefault}`) or null -- for callers that must
- * fetch the child component's source before calling `buildScopeLinks`. */
+/**
+ * The import backing a tag's root name (`{source, isDefault}`) or null -- for callers that must
+ * fetch the child component's source before calling `buildScopeLinks`.
+ *
+ * @param {string} pageSource Source of the page.
+ * @param {string} tag JSX tag, possibly dotted (`Ui.Button`); its root name is looked up.
+ * @returns {{source:string, isDefault:boolean}|null} The import that backs the tag, or `null` for a local or unimported name.
+ */
 export function importOfTag(pageSource, tag) {
   return findImportOfName(parseJsx(pageSource), tag.split('.')[0]);
 }
@@ -52,6 +58,12 @@ export function importOfTag(pageSource, tag) {
  * - `suggestions`: unbound child props with a same-named in-scope declaration (an auto-map candidate).
  * - `unusedScope`: scope names referenced by no element's attributes anywhere in the page.
  * Throws an Error with `code: 'NO_SUCH_NODE'` for an unknown id.
+ *
+ * @param {string} pageSource Source of the page.
+ * @param {string} nodeId Id of the JSX element (from the JSX tree).
+ * @param {{childSource?: string}} [options] Source of the child component, so its declared props can be checked.
+ * @returns {object} The scope and binding graph described above.
+ * @throws {Error} With `code: 'NO_SUCH_NODE'` for an unknown id.
  */
 export function buildScopeLinks(pageSource, nodeId, { childSource } = {}) {
   const ast = parseJsx(pageSource);

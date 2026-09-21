@@ -12,6 +12,14 @@ export { walkAst };
 // reference to the global `fetch`).
 const KEY_ONLY_TYPES = new Set(['Property', 'PropertyDefinition', 'MethodDefinition', 'TSPropertySignature', 'TSMethodSignature', 'TSAbstractMethodDefinition', 'TSAbstractPropertyDefinition']);
 
+/**
+ * Whether a node sits where an identifier is a name rather than a usage: import declarations, export lists and sources, non-computed member properties and object keys.
+ *
+ * @param {object} node The node.
+ * @param {object} [parent] Its parent.
+ * @param {any} [key] The property of `parent` holding `node`.
+ * @returns {boolean} `true` when the position is not a usage.
+ */
 export function isNonUsagePosition(node, parent, key) {
   if (node.type === 'ImportDeclaration' || node.type === 'ExportAllDeclaration') return true;
   if (parent?.type === 'ExportNamedDeclaration' && (key === 'specifiers' || key === 'source')) return true;
@@ -20,8 +28,13 @@ export function isNonUsagePosition(node, parent, key) {
   return false;
 }
 
-/** Shared estree-walker traversal for both collectors below: skips whole subtrees at
- * non-usage positions (see isNonUsagePosition), visits everything else. */
+/**
+ * Shared estree-walker traversal for both collectors below: skips whole subtrees at
+ * non-usage positions (see isNonUsagePosition), visits everything else.
+ *
+ * @param {object} ast A parsed Program.
+ * @param {Function} visit `(node, parent, key) => void`, called for each node that is not at a non-usage position.
+ */
 export function walkForUsage(ast, visit) {
   walkAst(ast, {
     enter(node, parent, key) {
@@ -34,7 +47,13 @@ export function walkForUsage(ast, visit) {
   });
 }
 
-/** Every real `name(...)` call (callee is a bare identifier in `names`), sorted by position. */
+/**
+ * Every real `name(...)` call (callee is a bare identifier in `names`), sorted by position.
+ *
+ * @param {object} ast A parsed Program.
+ * @param {Set<string>} names Callee names to find.
+ * @returns {{name:string, index:number}[]} Each call, sorted by offset.
+ */
 export function collectCalls(ast, names) {
   const hits = [];
   walkForUsage(ast, (node) => {
@@ -45,9 +64,15 @@ export function collectCalls(ast, names) {
   return hits.sort((a, b) => a.index - b.index);
 }
 
-/** Every real reference to a bare identifier in `names` — called or not — sorted by
+/**
+ * Every real reference to a bare identifier in `names` — called or not — sorted by
  * position; skips property/key positions per isNonUsagePosition, so `{ fetch: 1 }` or
- * `obj.fetch` don't count, but `fetch(...)`, `window.x`, or a bare `localStorage` do. */
+ * `obj.fetch` don't count, but `fetch(...)`, `window.x`, or a bare `localStorage` do.
+ *
+ * @param {object} ast A parsed Program.
+ * @param {Set<string>} names Identifier names to find.
+ * @returns {{name:string, index:number}[]} Each reference, sorted by offset.
+ */
 export function collectBareIdentifierUsages(ast, names) {
   const hits = [];
   walkForUsage(ast, (node) => {
@@ -62,7 +87,12 @@ export function collectBareIdentifierUsages(ast, names) {
 // node types appearing anywhere in a controller file's AST.
 export const CONTROL_FLOW_TYPES = new Set(['IfStatement', 'ForStatement', 'ForInStatement', 'ForOfStatement', 'WhileStatement', 'DoWhileStatement', 'SwitchStatement', 'TryStatement']);
 
-/** Every control-flow node (see CONTROL_FLOW_TYPES) anywhere in `ast`, sorted by position. */
+/**
+ * Every control-flow node (see CONTROL_FLOW_TYPES) anywhere in `ast`, sorted by position.
+ *
+ * @param {object} ast A parsed Program.
+ * @returns {object[]} The control-flow nodes, sorted by offset.
+ */
 export function collectControlFlowNodes(ast) {
   const hits = [];
   walkForUsage(ast, (node) => {

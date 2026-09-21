@@ -20,7 +20,13 @@ export function workflowsDirOf(root, feature) {
   return dir;
 }
 
-/** Workflow source files (not tests) under the feature's workflows/ folder, relative to it, sorted. */
+/**
+ * Workflow source files (not tests) under the feature's workflows/ folder, relative to it, sorted.
+ *
+ * @param {string} root Project root.
+ * @param {string} feature Feature name.
+ * @returns {string[]} Sorted paths relative to `features/<feature>/workflows/`.
+ */
 export function listWorkflowSourceFiles(root, feature) {
   const dir = workflowsDirOf(root, feature);
   return walk(dir)
@@ -29,7 +35,15 @@ export function listWorkflowSourceFiles(root, feature) {
     .sort();
 }
 
-/** Read one workflow file, or throw a clean ConstructError if it is outside the workflows/ layer. */
+/**
+ * Read one workflow file, or throw a clean ConstructError if it is outside the workflows/ layer.
+ *
+ * @param {string} root Project root.
+ * @param {string} feature Feature name.
+ * @param {string} file Path relative to the feature's `workflows/` folder.
+ * @returns {string} The file text.
+ * @throws {ConstructError} Usage error when the path escapes the workflows layer, is not a source file, is missing or is too large.
+ */
 export function readWorkflowSource(root, feature, file) {
   const dir = workflowsDirOf(root, feature);
   const resolved = path.resolve(dir, file);

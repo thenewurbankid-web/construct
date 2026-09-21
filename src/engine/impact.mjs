@@ -407,8 +407,18 @@ function nextSteps(features, rules, fileRows) {
   return out.slice(0, 6);
 }
 
-/** PR health (#285) entry point: the changed files of a diff are the seeds. Deterministic in, so
- * every row comes back `provenance: "derived"`. One implementation — this delegates to analyzeImpact. */
+/**
+ * PR health (#285) entry point: the changed files of a diff are the seeds. Deterministic in, so
+ * every row comes back `provenance: "derived"`. One implementation — this delegates to analyzeImpact.
+ *
+ * @param {string} root Project root.
+ * @param {string|string[]} files The changed file(s), project-relative.
+ * @param {object} [opts] `depth` and `limits`, plus any other `analyzeImpact` option.
+ * @returns {object} The impact report (`{ok:true, ...}` or `{ok:false, error}`), every row `provenance: "derived"`.
+ *
+ * @example
+ * impactFromChangedFiles(root, ['features/plan/services/planApi.ts'], { depth: 2 });
+ */
 export function impactFromChangedFiles(root, files, opts = {}) {
   const { depth, limits, ...rest } = opts;
   return analyzeImpact(root, { files: Array.isArray(files) ? files : [files], depth, limits }, rest);
@@ -427,7 +437,14 @@ const COMMON_WORDS = new Set(['index', 'page', 'type', 'types', 'props', 'const'
  * A model-assisted proposer is a drop-in alternative: emit the same seed objects with
  * `method: "model"`. Core itself never calls an LLM.
  *
- * @returns {{schemaVersion:number, ok:true, method:'text-match', count:number, seeds:object[]}} or `{ok:false, error}`
+ * @param {string} root Project root.
+ * @param {string} text The ticket, in English.
+ * @param {object} [opts]
+ * @param {number} [opts.maxSeeds=10] Upper bound on candidates returned.
+ * @returns {object} `{schemaVersion, ok:true, method:'text-match', count, seeds}` or `{ok:false, error}`: candidate seeds, each `provenance: 'inferred'` with its evidence; `{ok:false}` for a missing root or empty text.
+ *
+ * @example
+ * proposeSeedsFromText(root, 'Add a retry button to the plan pane', { maxSeeds: 5 });
  */
 export function proposeSeedsFromText(root, text, opts = {}) {
   try {
@@ -507,7 +524,11 @@ export function impactFromTicketText(root, text, opts = {}) {
   return report.ok ? { ...report, proposal: { method: proposal.method, note: proposal.note } } : report;
 }
 
-/** Machine-readable usage note for agents (served by `construct research impact --usage`). */
+/**
+ * Machine-readable usage note for agents (served by `construct research impact --usage`).
+ *
+ * @returns {object} The usage note: schema version, provenance meanings, depth semantics and the call signatures.
+ */
 export function impactApiManifest() {
   return {
     schemaVersion: SCHEMA_VERSION,
@@ -536,7 +557,12 @@ export function impactApiManifest() {
 
 // ---- markdown rendering (for humans) ------------------------------------------------------------
 
-/** Render an impact report (or an error) as Markdown. */
+/**
+ * Render an impact report (or an error) as Markdown.
+ *
+ * @param {object} result An impact report or error from `analyzeImpact`.
+ * @returns {string} Markdown: the seeds, features touched and files of the report, or an error heading.
+ */
 export function renderImpactMarkdown(result) {
   if (!result.ok) return `# Impact error: ${result.error.code}\n\n${result.error.message}\n`;
   const L = [`# Impact: ${result.root}`, '', result.summary, '', '## Seeds', ''];

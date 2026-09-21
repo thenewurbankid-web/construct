@@ -50,10 +50,19 @@ function collectDynamicImports(ast, out) {
   });
 }
 
-/** Module specifiers referenced by static or dynamic import, e.g. `import x from 'y'` or `import('y')`,
+/**
+ * Module specifiers referenced by static or dynamic import, e.g. `import x from 'y'` or `import('y')`,
  * in source-position order. AST-based: walks real ImportDeclaration nodes plus ImportExpression
  * (dynamic `import(...)`) nodes anywhere in the tree, so a specifier-shaped string sitting inside a
- * comment or a string literal is never mistaken for a real import (the #74 false-positive class). */
+ * comment or a string literal is never mistaken for a real import (the #74 false-positive class).
+ *
+ * @param {string} source Source text.
+ * @returns {string[]} Import specifiers, static and dynamic, in source order.
+ * @since 0.8
+ *
+ * @example
+ * extractImports("import a from './a'; const b = import('./b');"); // => ['./a', './b']
+ */
 export function extractImports(source) {
   const ast = parseToAst(source);
   const entries = [];
@@ -64,7 +73,8 @@ export function extractImports(source) {
   return entries.sort((a, b) => a.index - b.index).map((e) => e.value);
 }
 
-/** Exported identifiers with their source index, sorted by position. Handles named
+/**
+ * Exported identifiers with their source index, sorted by position. Handles named
  * function/class/const/let/var exports (including destructured/multi-declarator
  * `export const a = 1, { b, c: renamed } = obj`), `export default function|class <Name>`,
  * `export default <identifier>;`, `export { a, b as c }` lists (alias wins), and
@@ -73,7 +83,15 @@ export function extractImports(source) {
  * AST-based: reads real ExportNamedDeclaration/ExportDefaultDeclaration/
  * ExportAllDeclaration nodes instead of scanning raw text, so `index` always points at
  * the true start of the export statement (the `export` keyword — decorators, if any,
- * sit *before* it in source and are handled separately by extractJsdoc, not here). */
+ * sit *before* it in source and are handled separately by extractJsdoc, not here).
+ *
+ * @param {string} source Source text.
+ * @returns {{name:string, index:number}[]} Exported names with the offset of their `export` keyword, sorted by position.
+ * @since 0.8
+ *
+ * @example
+ * extractExports('export const a = 1; export default function b() {}'); // => [{ name: 'a', index: 0 }, { name: 'b', index: 20 }]
+ */
 export function extractExports(source) {
   const ast = parseToAst(source);
   const results = [];
@@ -109,14 +127,21 @@ export function extractExports(source) {
   return results.sort((a, b) => a.index - b.index);
 }
 
-/** The `/** ... *\/` JSDoc block belonging to the export statement starting at `index`
+/**
+ * The `/** ... *\/` JSDoc block belonging to the export statement starting at `index`
  * (as returned by extractExports), or null. AST-based: finds the block comment
  * immediately preceding the declaration, walking back past any leading decorators
  * (`@Component(...)`) sitting between the comment and the declaration they annotate —
  * this is the fix for #19, where regex-based "immediately preceding" association broke
  * on a decorator in between. Falls back to treating `index` itself as the boundary
  * when it doesn't match a parsed top-level export node (defensive; every real call site
- * passes an index from extractExports). */
+ * passes an index from extractExports).
+ *
+ * @param {string} source Source text.
+ * @param {number} index Offset of an export statement, as returned by `extractExports`.
+ * @returns {string|null} The JSDoc block that belongs to that export, or `null`.
+ * @since 0.8
+ */
 export function extractJsdoc(source, index) {
   const ast = parseToAst(source);
   const node = ast.body.find((n) => n.range && n.range[0] === index);
@@ -134,16 +159,30 @@ export function extractJsdoc(source, index) {
   return source.slice(best.range[0], best.range[1]);
 }
 
-/** 1-based line number of character offset `index` in `source`. */
+/**
+ * 1-based line number of character offset `index` in `source`.
+ *
+ * @param {string} source Source text.
+ * @param {number} index Character offset.
+ * @returns {number} The 1-based line of that offset.
+ *
+ * @example
+ * lineOf('a\nb', 2); // => 2
+ */
 export function lineOf(source, index) {
   return source.slice(0, index).split('\n').length;
 }
 
-/** Import specifiers from top-level `import ... from '...'` declarations only (not
+/**
+ * Import specifiers from top-level `import ... from '...'` declarations only (not
  * dynamic import()), with each entry's source position — layer-boundary imports in
  * this codebase's conventions are always static, and a position is needed for
  * per-rule line-number reporting (extractImports from parser.mjs returns just the
- * specifier strings, with no position). */
+ * specifier strings, with no position).
+ *
+ * @param {object} ast A parsed Program (from `parseToAst`).
+ * @returns {{value:string, index:number}[]} Specifier and offset of each top-level `import ... from`.
+ */
 export function staticImportEntries(ast) {
   const entries = [];
   for (const node of ast.body) {

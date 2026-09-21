@@ -26,6 +26,8 @@ function mergeLayers(existingLayers, committedByLayer) {
 }
 
 /**
+ * Run the generator steps of a Context Envelope as one transaction: every step renders its layer file, all files are written together and validated, and the whole change is committed or rolled back. The envelope comes back updated (see `@returns`).
+ *
  * @param {string} root - project root.
  * @param {object} inputEnvelope - a Context Envelope, optionally carrying a
  *   `steps: [{layer, name}, ...]` list of generator steps to run against
@@ -33,6 +35,10 @@ function mergeLayers(existingLayers, committedByLayer) {
  *   (src/cli.mjs's `pipeline` command uses envelope.mjs's validateEnvelope).
  * @returns {object} the resulting Context Envelope (`status`: 'committed' |
  *   'aborted', `steps` always cleared, `layers`/`diagnostics` updated).
+ *
+ * @example
+ * const out = runPipeline(root, { version: 1, feature: 'billing', status: 'pending', layers: [], steps: [{ layer: 'service', name: 'invoice' }] });
+ * out.status; // => 'committed'
  */
 export function runPipeline(root, inputEnvelope) {
   const feature = inputEnvelope.feature;

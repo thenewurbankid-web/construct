@@ -289,6 +289,12 @@ function analyze(source, keep) {
   return { machines, error: null };
 }
 
+/**
+ * Find the XState machines in a source file and describe them as plain data (states, transitions, guards, actions). Static analysis only: nothing is executed.
+ *
+ * @param {string} source TypeScript or JSX source text.
+ * @returns {{machines:object[], error?:string}} The machines found; `error` explains a parse failure.
+ */
 export function extractMachines(source) {
   return analyze(source, false);
 }

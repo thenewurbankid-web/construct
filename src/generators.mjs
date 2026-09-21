@@ -31,6 +31,12 @@ export const folderFor=(layer)=>layer==='hook'?'hooks':layer==='controller'?'con
 // layer-constraint text for a given file, never two copies that could
 // drift apart.
 export const FOLDER_TO_LAYER={controllers:'controller',workflows:'workflow',hooks:'hook',domain:'domain',services:'service',pages:'page',components:'component'};
+/**
+ * The layer a generated file belongs to, read from its folder name.
+ *
+ * @param {string} file Path of a generated file.
+ * @returns {string} The layer name, or `'component'` when the folder is not a known layer folder.
+ */
 export const layerFromGeneratedFile=(file)=>FOLDER_TO_LAYER[path.basename(path.dirname(file))]||'component';
 
 // The rule each layer's generated file must keep obeying, whether a human,
@@ -127,6 +133,16 @@ export function pascalCase(name,label='Feature'){
  return result;
 }
 
+/**
+ * Scaffold a feature folder: the seven layer directories plus `types.ts` and `index.ts` (the public API). Validates the name before writing anything, then self-checks the result against the architecture rules.
+ *
+ * @param {string} root Project root.
+ * @param {string} name Feature name (must be a legal identifier).
+ * @returns {string} Absolute path of the new feature directory.
+ *
+ * @example
+ * createFeature(root, 'billing'); // => '<root>/features/billing'
+ */
 export function createFeature(root,name){
  // Validate before any side effect: an illegal-identifier name (#79) must
  // fail clearly with nothing written, not leave a half-scaffolded feature
@@ -169,6 +185,18 @@ export function renderLayer(root,layer,name,feature){
  return {file,content};
 }
 
+/**
+ * Generate one layer file (for example a service or a page) for a feature from its template, write it, and self-check it against the architecture rules. Nothing is written when the request is invalid or a prerequisite layer is missing.
+ *
+ * @param {string} root Project root.
+ * @param {string} layer Layer name (`domain`, `service`, `workflow`, `hook`, `component`, `page`, `controller`).
+ * @param {string} name Unit name (turned into a valid identifier).
+ * @param {string} feature Feature that owns the file.
+ * @returns {string} Absolute path of the file written.
+ *
+ * @example
+ * generateLayer(root, 'service', 'invoice', 'billing');
+ */
 export function generateLayer(root,layer,name,feature){
  // renderLayer first: it validates the layer name and the identifier (#218)
  // with this layer's own label. Only then the #275 prerequisite check — still
@@ -252,6 +280,20 @@ export function assertLayerPrerequisites(root,name,feature,layers){
 // before discovering a later one is invalid -- a real behavior change).
 // Omitting it is a no-op: every existing caller (import.mjs's
 // importVertical, every test) is unaffected.
+/**
+ * Generate several layers of one unit in dependency order (a vertical slice). The whole set is validated up front, so a bad request writes nothing.
+ *
+ * @param {string} root Project root.
+ * @param {string} name Unit name.
+ * @param {string} feature Feature that owns the files.
+ * @param {string[]} layers Layers to generate; duplicates are ignored.
+ * @param {{onLayer?: (info:{layer:string, file:string, elapsedSeconds:number}) => void}} [options] Called after each layer, for per-layer timing output.
+ * @returns {string[]} Absolute paths written, in dependency order.
+ * @throws {Error} For an unknown layer or an unbuildable combination (for example a controller without a page).
+ *
+ * @example
+ * generateVertical(root, 'invoice', 'billing', ['domain', 'service', 'workflow']);
+ */
 export function generateVertical(root,name,feature,layers,{onLayer}={}){
  const unique=[...new Set(layers)];
  const unknown=unique.filter(l=>!templates[l]);
@@ -295,7 +337,8 @@ function buildScaffoldFillPrompt({layer,relFile,stubContent,name,feature}){
  ].join('\n');
 }
 
-/** Overwrite one already-generated file's stub content with `llm`'s real
+/**
+ * Overwrite one already-generated file's stub content with `llm`'s real
  * implementation. `root` is only used to build the file's prompt-relative
  * path (for the same reason import.mjs's fill does — a clearer prompt, not
  * a behavior difference); `file` must already exist (i.e. call this after
@@ -303,7 +346,14 @@ function buildScaffoldFillPrompt({layer,relFile,stubContent,name,feature}){
  * passed straight through to callLlm — see llm.mjs's ollama provider for
  * what it can carry (model/baseUrl). Returns
  * `{ file, status: 'filled'|'rejected'|'failed', reason?, attempts }` —
- * see llm-fill.mjs; anything but 'filled' leaves the stub untouched. */
+ * see llm-fill.mjs; anything but 'filled' leaves the stub untouched.
+ *
+ * @param {string} root Project root (used for the prompt-relative path).
+ * @param {string} file An already-generated file; must exist.
+ * @param {string} layer The file's layer, whose constraint goes into the prompt.
+ * @param {{feature?:string, name?:string, llm?:string, llmOptions?:object}} [options] `llm` names the provider; `llmOptions` (model, baseUrl) is passed to it.
+ * @returns {Promise<object>} `{file, status: 'filled'|'rejected'|'failed', reason?, attempts}`; anything but `filled` leaves the stub untouched.
+ */
 export async function fillGeneratedFile(root,file,layer,{feature,name,llm,llmOptions}={}){
  const stubContent=fs.readFileSync(file,'utf8');
  const prompt=buildScaffoldFillPrompt({layer,relFile:rel(root,file),stubContent,name,feature});

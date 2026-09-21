@@ -359,6 +359,15 @@ function checkDuplication(config, out, root, featuresRoot, files) {
 // ---------------------------------------------------------------------------
 // Single entry point
 // ---------------------------------------------------------------------------
+/**
+ * Check a project against the separation-of-concerns rules (slices, layers, imports, purity) and return every violation.
+ *
+ * @param {string} root Project root.
+ * @returns {any} The violations (see `makeViolation`); empty when the project is clean.
+ *
+ * @example
+ * validateSeparationOfConcerns(process.cwd()).filter((v) => v.severity === 'error');
+ */
 export function validateSeparationOfConcerns(root) {
   const config = loadConfig(root);
   const featuresRoot = featuresRootOf(config);

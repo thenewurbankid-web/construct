@@ -157,7 +157,15 @@ export function initialProcessState() {
   return resolveEntry(PROCESS_MACHINE.initial);
 }
 
-/** `'running.active'` -> `'running'`. What #292's list and pill show. */
+/**
+ * `'running.active'` -> `'running'`. What #292's list and pill show.
+ *
+ * @param {string} statePath A dotted state path.
+ * @returns {string} Its first segment.
+ *
+ * @example
+ * topLevelState('running.active'); // => 'running'
+ */
 export function topLevelState(statePath) {
   return String(statePath || '').split('.')[0];
 }

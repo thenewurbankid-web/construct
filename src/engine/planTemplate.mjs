@@ -256,8 +256,14 @@ export function createTemplateRegistry(templates = []) {
   };
 }
 
-/** Load every `*.json` in a directory the CALLER names (sorted, so the result
- * is deterministic). A missing directory is an error, not an empty set. */
+/**
+ * Load every `*.json` in a directory the CALLER names (sorted, so the result
+ * is deterministic). A missing directory is an error, not an empty set.
+ *
+ * @param {string} dir Directory of `*.json` plan templates.
+ * @returns {object} The parsed templates, in file-name order.
+ * @throws {TemplateError} `TEMPLATE_NOT_FOUND` when the directory cannot be read.
+ */
 export function loadTemplateDir(dir) {
   let names;
   try {

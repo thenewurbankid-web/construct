@@ -71,13 +71,28 @@ const uniqSorted = (xs) => [...new Set(xs)].sort();
  * A new session id: a short random hash, deliberately NOT a timestamp. Parallel agents start within
  * the same second on this project routinely, so a timestamp both collides and leaks wall-clock into
  * every commit subject.
+ *
+ * @returns {string} `bytes * 2` random hex characters.
  * @param {number} [bytes] entropy in bytes (2 -> 4 hex chars)
+ *  
+ *
+ * @example
+ * newSessionId(); // => 'a3f7'
  */
 export function newSessionId(bytes = 2) {
   return crypto.randomBytes(Math.max(1, bytes)).toString('hex');
 }
 
-/** lowercase, `[a-z0-9-]` only, runs collapsed, trimmed to `max` chars without a trailing dash. */
+/**
+ * lowercase, `[a-z0-9-]` only, runs collapsed, trimmed to `max` chars without a trailing dash.
+ *
+ * @param {string} text Text to slugify.
+ * @param {{max?: number}} [options] Maximum length.
+ * @returns {string} The slug (`[a-z0-9-]` only).
+ *
+ * @example
+ * slugify('ProductsPage'); // => 'products-page'
+ */
 export function slugify(text, { max = MAX_SLUG } = {}) {
   const s = String(text ?? '')
     .normalize('NFKD')
@@ -105,6 +120,13 @@ function slugJoin(...parts) {
  *   2. the feature + unit first touched (`billing-invoice-layer`);
  *   3. the feature alone, when one save touched several units;
  *   4. the date, only if nothing above can be determined.
+ *
+ * @param {object} [input]
+ * @param {string} [input.planTitle] Plan or ticket title.
+ * @param {object} [input.plan] The plan (its touched features and files are used).
+ * @param {object} [input.impact] An impact report.
+ * @param {string[]} [input.changedFiles] Files changed in the save.
+ * @param {Date} [input.now] Clock, for the date fallback.
  * @returns {{slug: string, source: 'plan-title'|'plan'|'unit'|'feature'|'file'|'date'}}
  */
 export function deriveSlug({ planTitle, plan, impact, changedFiles = [], now = new Date() } = {}) {
@@ -135,6 +157,12 @@ export function deriveSlug({ planTitle, plan, impact, changedFiles = [], now = n
  * name never collides with an existing branch. The name is fixed once created: later saves in the
  * same session may touch other features, and renaming mid-session breaks anything already pointing
  * at the branch. The name says where the session started; the commits say the rest.
+ *
+ * @param {object} [parts] `{prefix?, slug?, sessionId?, suffix?}`.
+ * @returns {string} The branch name.
+ *
+ * @example
+ * sessionBranchName({ prefix: 'cockpit', slug: 'billing-invoice-layer', sessionId: 'a3f7' }); // => 'cockpit/billing-invoice-layer-a3f7'
  */
 export function sessionBranchName({ prefix = '', slug = '', sessionId = '', suffix = '' } = {}) {
   const p = slugify(prefix, { max: 30 });
@@ -146,7 +174,15 @@ export function sessionBranchName({ prefix = '', slug = '', sessionId = '', suff
 
 // ---- the serial ---------------------------------------------------------------------------------
 
-/** `CON-a3f7-0007`, or `a3f7-0007` when the user's prefix is empty. */
+/**
+ * `CON-a3f7-0007`, or `a3f7-0007` when the user's prefix is empty.
+ *
+ * @param {object} parts `{prefix?, sessionId, serial}`.
+ * @returns {string} The zero-padded serial label.
+ *
+ * @example
+ * serialLabel({ prefix: 'CON', sessionId: 'a3f7', serial: 7 }); // => 'CON-a3f7-0007'
+ */
 export function serialLabel({ prefix = '', sessionId, serial }) {
   const p = String(prefix || '').trim();
   return `${p ? `${p}-` : ''}${sessionId}-${String(serial).padStart(SERIAL_DIGITS, '0')}`;
@@ -155,6 +191,10 @@ export function serialLabel({ prefix = '', sessionId, serial }) {
 /**
  * The serial in a commit subject, or null. Matched on the SESSION ID rather than the prefix, so a
  * user who changes their prefix mid-session does not silently restart the numbering at 1.
+ *
+ * @param {string} subject A commit subject.
+ * @param {{sessionId?: string}} [options] Session whose numbering to read.
+ * @returns {number|null} The serial, or `null` when the subject has none for this session.
  */
 export function parseSerial(subject, { sessionId } = {}) {
   if (typeof subject !== 'string' || !sessionId) return null;
@@ -166,7 +206,10 @@ export function parseSerial(subject, { sessionId } = {}) {
  * Next serial for a session, from that branch's own commit subjects (newest-first or oldest-first,
  * it does not matter — the max is taken). Monotonic with gaps, never gapless: gapless needs an
  * allocator and a shared resource, which is exactly what branch-scoping removed.
- * @param {string[]} subjects `git log --format=%s <branch>` output, one subject per entry
+ *
+ * @param {string[]} subjects Commit subjects of the session branch, one per entry.
+ * @param {{sessionId?: string}} [options] Session whose numbering to continue.
+ * @returns {number} One more than the highest serial seen, or 1.
  */
 export function nextSerialFrom(subjects, { sessionId } = {}) {
   const seen = (Array.isArray(subjects) ? subjects : []).map((s) => parseSerial(s, { sessionId })).filter((n) => Number.isInteger(n) && n > 0);
@@ -182,6 +225,7 @@ export function nextSerialFrom(subjects, { sessionId } = {}) {
  * in the report is the blast radius and is reported separately as "wider impact" — never folded
  * into "N features, M layers", which must describe what the save DID.
  *
+ * @returns {any} `{available, features, featureCount, layerCount, fileCount, layers, wider, warnings, preexisting, reason?}`: the counts a commit message states; `available: false` (with `reason`) when the report is missing or failed.
  * @param {object} report an `analyzeImpact` / `impactFromChangedFiles` result
  * @param {{preexisting?: string[]}} [opts] files carried in from before the session; listed, never counted
  */

@@ -265,6 +265,14 @@ function existingGenerated(genDir) {
  * The generator is the ONLY writer allowed into the frozen `tests/generated/` region: it writes with
  * fs directly after its own checks (fs.mjs's write() refuses the frozen glob for everyone else).
  * Returns { written, unchanged, orphans, pruned, skipped, truncated }.
+ *
+ * @param {string} root Project root.
+ * @param {string} feature Feature whose specs are generated.
+ * @param {{dryRun?: boolean, prune?: boolean, max?: number}} [options] `dryRun` writes nothing, `prune` deletes orphaned specs, `max` caps the number of specs.
+ * @returns {object} `{written, unchanged, orphans, pruned, skipped, truncated}`: what happened to each spec (file names).
+ *
+ * @example
+ * generateFeatureTests(root, 'billing', { dryRun: true });
  */
 export function generateFeatureTests(root, feature, { dryRun = false, prune = false, max } = {}) {
   const plan = planFeatureTests(root, feature, { max });

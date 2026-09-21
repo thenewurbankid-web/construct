@@ -108,8 +108,9 @@ export function materializeCommand(step, { tmpDir } = {}) {
 /**
  * Create an engine over one process store.
  *
+ * @returns {object} The engine: `start`, `pause`, `resume`, `cancel` and `retry` by process id, `settled(id)`, `runningIds()`, plus `store` and `maxConcurrent`.
+ * @throws {TypeError} When `store` or `executeStep` is missing.
  * @typedef {(shadowRoot: string) => { violations: any[], ok: boolean }} ValidateFn
- *
  * @param {object} [options]
  * @param {any} [options.store]            an `openProcessStore()` result; every state change is persisted
  * @param {(context: any) => Promise<any>} [options.executeStep] `async ({ process, step, status, command, transaction, projectRoot, log, signal }) => { ok, llm, artifacts?, error? }`

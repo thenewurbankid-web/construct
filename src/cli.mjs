@@ -71,6 +71,16 @@ const ENFORCER_MODULES = [
 // controller actually registered in it — not just a page.tsx clone. Framework
 // defaults to nextjs when --framework is omitted, so every existing caller
 // of `construct init` keeps getting exactly what it got before.
+/**
+ * `construct init [dir] [--framework nextjs|react-spa]`: write `architecture.yml` and `AGENTS.md`, then scaffold the `core` feature. The entry-point scaffold is the one framework-specific part: `nextjs` (the default) gets `app/page.tsx`; `react-spa` gets `src/main.tsx` and `src/App.tsx` with the core controller registered in the router table.
+ *
+ * @param {string[]} args Command arguments: an optional target directory, then optional `--framework <name>`.
+ * @returns {Promise<void>} Resolves once the files are written (prints what it wrote).
+ * @since 0.8
+ *
+ * @example
+ * await init(['my-app', '--framework', 'react-spa']);
+ */
 export async function init(args) {
   const dir = path.resolve(args[0] && !args[0].startsWith('--') ? args[0] : '.');
   const fi = args.indexOf('--framework');
@@ -447,13 +457,21 @@ export function printAttribution(tool, llm) {
   console.log(`[tool: ${tool}] [llm: ${llm}]`);
 }
 
-/** `construct create feature <name>` | `construct create layer <name> --layers ... [--llm <provider>]`
+/**
+ * `construct create feature <name>` | `construct create layer <name> --layers ... [--llm <provider>]`
  * | `construct create <layer> <name> --feature <feature> [--llm <provider>]`
  * | `construct create service <name> --feature <feature> --openapi <spec>` (Ticket 7.5).
  * `feature` creation has nothing fillable (just types.ts/index.ts
  * boilerplate) so `--llm` only ever applies to the layer/single-layer
  * forms, which `generate(args)` itself already handles (see its own doc
- * comment) — this just reports whether that happened. */
+ * comment) — this just reports whether that happened.
+ *
+ * @param {string[]} args `feature <name>`, `layer <name> --layers ...`, `<layer> <name> --feature <f>` or `service <name> --feature <f> --openapi <spec>`, each with an optional `--llm <provider>`.
+ * @returns {Promise<void>} Resolves once the files are scaffolded and the attribution line is printed.
+ *
+ * @example
+ * await create(['feature', 'billing']);
+ */
 export async function create(args) {
   if (args[0] === 'feature') {
     await feature(['create', ...args.slice(1)]);
@@ -680,8 +698,17 @@ export async function template(args) {
   }
 }
 
-/** `construct research summarize ...` | `construct research doctor ...` | `construct research workflow ...`
- * | `construct research impact ...`. */
+/**
+ * `construct research summarize ...` | `construct research doctor ...` | `construct research workflow ...`
+ * | `construct research impact ...`.
+ *
+ * @param {string[]} args `summarize|doctor|workflow|impact` followed by that command's own arguments.
+ * @returns {Promise<void>} Resolves after printing the read-only report.
+ * @throws {ConstructError} Usage error (exit code 2) for an unknown subcommand.
+ *
+ * @example
+ * await research(['impact', '--files', 'features/plan/index.ts']);
+ */
 export async function research(args) {
   let jsonOnly = false;
   if (args[0] === 'summarize') await summarize(args.slice(1));
@@ -692,12 +719,18 @@ export async function research(args) {
   if (!jsonOnly) printAttribution('produced the read-only report above', '0 calls');
 }
 
-/** `construct refactor move <name> --feature <f> --from <layer> --to <layer>`
+/**
+ * `construct refactor move <name> --feature <f> --from <layer> --to <layer>`
  * | `construct refactor rename <name> <newName> --feature <f> --layer <layer>`.
  * Purely mechanical (relocate + rewrite every importer's path) — never
  * touches a file's own content. Reports the result, then re-validates just
  * the moved/renamed file so a naming/purity mismatch in its new home shows
- * up immediately instead of on the next full `construct validate`. */
+ * up immediately instead of on the next full `construct validate`.
+ *
+ * @param {string[]} args `move <name> --feature <f> --from <layer> --to <layer>` or `rename <name> <newName> --feature <f> --layer <layer>`.
+ * @returns {Promise<void>} Resolves after the change (or dry run) is reported.
+ * @throws {ConstructError} Usage error (exit code 2) for an unknown subcommand.
+ */
 export async function refactor(args) {
   if (args[0] === 'move') return refactorMove(args.slice(1));
   if (args[0] === 'rename') return refactorRename(args.slice(1));
@@ -745,7 +778,8 @@ async function refactorRename(args) {
   reportRelocation(root, 'Renamed', renameLayerFile(root, args[fi + 1], name, newName, args[li + 1], { dryRun: args.includes('--dry-run') }));
 }
 
-/** `construct import <name> --feature <feature> --layers <l1,l2,...> --from <path> [--llm <provider>]`
+/**
+ * `construct import <name> --feature <feature> --layers <l1,l2,...> --from <path> [--llm <provider>]`
  * | `construct import --plan <path> [--llm <provider>]`.
  * Scaffolds layers exactly like `create layer` — always deterministic, same
  * as everything else in this file. With no `--llm`: prepends a TODO
@@ -758,7 +792,12 @@ async function refactorRename(args) {
  * themselves never involves one either way. `--plan` is the batch form: an
  * approved plan (produced by whichever LLM analyzed a whole existing
  * feature — Construct never does that analysis itself) runs the same step
- * once per unit, in one command. */
+ * once per unit, in one command.
+ *
+ * @param {string[]} args `<name> --feature <f> --layers <l1,l2,...> --from <path> [--llm <provider>]`, or `--plan <path> [--llm <provider>]` for a batch.
+ * @returns {Promise<void>} Resolves once the layers are scaffolded (and filled, with `--llm`).
+ * @throws {ConstructError} Usage error (exit code 2) for missing flags, or for `--route`, which must be run directly from a shell.
+ */
 export async function importCommand(args) {
   if (args[0] === '--route') {
     throw new ConstructError(
@@ -1116,6 +1155,14 @@ function ensureWizardConsolePatched() {
   }
 }
 
+/**
+ * Run the interactive `construct import --route` wizard as an event stream instead of a terminal session, so the Cockpit can drive it over a WebSocket: every prompt arrives as a `{type: 'question', text}` event and every console line the wizard prints as a `{type: 'log', kind, text}` event.
+ *
+ * @param {(event: object) => void} onEvent Receives questions and log lines.
+ * @param {string} [seedRoute] Route to start from, when the caller already knows it.
+ * @param {object} [providers] Injectable dependencies (LLM provider and friends) for tests.
+ * @returns {{answer:(text:string) => boolean, done:Promise<any>}} `answer` feeds the reply to the pending question (`false` when none is pending); `done` settles when the wizard finishes.
+ */
 export function runImportRouteWizardEventDriven(onEvent, seedRoute, providers) {
   ensureWizardConsolePatched();
   let pendingResolve = null;

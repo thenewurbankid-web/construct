@@ -110,11 +110,15 @@ function validBy(by) {
 }
 
 /**
+ * Create the per-diff approval gate for bot-authored work: it inspects a process's bot branch, and only applies changes to the project after a human approves them, re-running validation first.
+ *
  * @param {object} options
- * @param {object} options.store    a processStore for the project
- * @param {object} [options.runner] the bot runner (for `release()`); optional in tests
- * @param {() => string} [options.now]
- * @param {(root:string) => {violations:object[]}} [options.validate]
+ * @param {object} options.store A processStore for the project.
+ * @param {object} [options.runner] The bot runner (for `release()`); optional in tests.
+ * @param {() => string} [options.now] Clock returning an ISO timestamp.
+ * @param {(root:string) => {violations:object[]}} [options.validate] Architecture validator run before applying.
+ * @returns {{review:Function, decide:Function, cleanup:Function}} `review` inspects the bot branch, `decide` approves or rejects, `cleanup` removes the branch.
+ * @throws {TypeError} When no `store` is given.
  */
 export function createApprovalGate({ store, runner = null, now = () => new Date().toISOString(), validate = validateArchitecture } = {}) {
   if (!store) throw new TypeError('createApprovalGate() needs a process store.');

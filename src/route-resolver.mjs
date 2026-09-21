@@ -364,12 +364,18 @@ function resolveReactSpaRoute(routeArg, { root, routesFile, featuresRoot = 'feat
   return { folder, entryFile, files, component };
 }
 
-/** The combining tool: given either a route folder path or a URL (starting
+/**
+ * The combining tool: given either a route folder path or a URL (starting
  * with "/", requiring `appDir` to resolve), find its page entry file and
  * trace every file it depends on. Returns `{ folder, entryFile, files }`.
  * Dispatches on `opts.framework` ('nextjs', the default, or 'react-spa') —
  * see resolveNextjsRoute/resolveReactSpaRoute above for what each framework
- * actually needs to resolve a route. */
+ * actually needs to resolve a route.
+ *
+ * @param {string} routeArg A route folder path, or a URL starting with `/` (needs `opts.appDir`).
+ * @param {object} [opts] `framework` (`'nextjs'` by default, or `'react-spa'`) and `appDir`.
+ * @returns {{folder:string, entryFile:string, files:string[]}} The route folder, its entry file and every file it depends on.
+ */
 export function resolveRoute(routeArg, opts = {}) {
   const { framework = 'nextjs' } = opts;
   if (framework === 'react-spa') return resolveReactSpaRoute(routeArg, opts);

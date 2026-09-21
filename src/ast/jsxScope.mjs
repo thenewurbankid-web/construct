@@ -42,8 +42,13 @@ function useStateNames(declarator) {
   return declarator.id.elements.filter((el) => el?.type === 'Identifier').map((el) => el.name);
 }
 
-/** In-scope names of a page: every function's destructured/plain parameter names plus every
- * `const [value, setValue] = useState(...)` binding, in source order, de-duplicated. */
+/**
+ * In-scope names of a page: every function's destructured/plain parameter names plus every
+ * `const [value, setValue] = useState(...)` binding, in source order, de-duplicated.
+ *
+ * @param {object} ast A parsed Program.
+ * @returns {string[]} The in-scope names, in source order, de-duplicated.
+ */
 export function collectComponentScopeNames(ast) {
   const hits = [];
   walkAst(ast, {
@@ -61,7 +66,13 @@ export function collectComponentScopeNames(ast) {
   return [...new Set(hits.flatMap((h) => h.names))];
 }
 
-/** How a module-level import binds `localName`: `{source, isDefault}`, or `null` if it isn't imported. */
+/**
+ * How a module-level import binds `localName`: `{source, isDefault}`, or `null` if it isn't imported.
+ *
+ * @param {object} ast A parsed Program.
+ * @param {string} localName The local binding to look up.
+ * @returns {{source:string, isDefault:boolean}|null} How it is imported, or `null`.
+ */
 export function findImportOfName(ast, localName) {
   let found = null;
   for (const node of ast.body) {
@@ -116,6 +127,10 @@ function findComponentFunction(ast, tagName, isDefault) {
  * Member names of a TS interface / type-literal alias named `typeName` declared in `source`:
  * `{closed: true, names}`, `{closed: false, names: empty}` if it has an index signature (open -- can't
  * enumerate), or `null` if not found. Uses the TypeScript compiler API, the canonical parser for type syntax.
+ *
+ * @param {string} source Source text containing the type.
+ * @param {string} typeName Name of the interface or type alias.
+ * @returns {object|null} `{closed, names}`: the member names; `closed: false` for an open type; `null` when not found.
  */
 export function findTypeMembers(source, typeName) {
   const sourceFile = parseTsSource(source, 'child.tsx');
@@ -167,6 +182,11 @@ function declaredNamesFromFunction(fn, childSource) {
  * The declared prop names of the component `tagName` defined in `childSource` (imported by default or
  * by name): `{closed, names}`, or `null` when unknown (child doesn't parse, no matching export, or its
  * first parameter's shape isn't recognized) -- callers treat null as "don't filter".
+ *
+ * @param {string} childSource Source of the child component's file.
+ * @param {string} tagName Component name.
+ * @param {boolean} isDefault Whether the component is the default export.
+ * @returns {object|null} `{closed, names}`: the declared props, or `null` when unknown.
  */
 export function declaredPropNames(childSource, tagName, isDefault) {
   let childAst;
@@ -184,6 +204,9 @@ export function declaredPropNames(childSource, tagName, isDefault) {
  * Like `collectComponentScopeNames`, but keeps what each name *is*: `{name, kind}` with kind `'prop'`
  * (a function parameter, destructured or plain), `'state'` (a `useState` value) or `'setter'` (its
  * setter). Same traversal order and de-duplication (first declaration wins) as the names-only variant.
+ *
+ * @param {object} ast A parsed Program.
+ * @returns {{name:string, kind:'prop'|'state'|'setter'}[]} What each in-scope name is.
  */
 export function collectScopeDeclarations(ast) {
   const hits = [];

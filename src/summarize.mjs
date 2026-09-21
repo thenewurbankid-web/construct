@@ -42,8 +42,11 @@ function renderMarkdown(summaries) {
   return lines.join('\n');
 }
 
-/** 'json' -> JSON.stringify of the per-feature Summary roll-ups from Epic 3.1.
+/**
+ * 'json' -> JSON.stringify of the per-feature Summary roll-ups from Epic 3.1.
  * 'md' -> a human Markdown doc, one section per feature.
+ *
+ * @returns {string} JSON text (`json`) or a Markdown document (`md`).
  * @param {string} root
  * @param {{feature?: string, format?: 'json'|'md'}} [opts]
  */
@@ -78,8 +81,11 @@ function compactParagraph(f) {
   return `Feature "${f.feature}" — ${f.loc} LOC across ${layerCounts || 'no classified files'}. Public API: ${publicApiStr}.${notes}`;
 }
 
-/** Token-budget-conscious plain-text summary for pasting into an AI agent's context
+/**
+ * Token-budget-conscious plain-text summary for pasting into an AI agent's context
  * instead of raw file reads: one short paragraph per feature, no filler.
+ *
+ * @returns {string} One short paragraph per feature, or `No features found.`
  * @param {string} root
  * @param {{feature?: string}} [opts]
  */
@@ -223,11 +229,14 @@ export function describeExport(summary, name) {
 
 const LAYER_ORDER = ['domain', 'service', 'workflow', 'hook', 'component', 'page', 'controller'];
 
-/** Deterministic, template-based English paragraph(s): one sentence per
+/**
+ * Deterministic, template-based English paragraph(s): one sentence per
  * exported function plus an opening/closing sentence for the feature as a
  * whole. No LLM call — every sentence is derived from parsed structure
  * (layer, name, imports), with JSDoc used verbatim only when it maps
  * unambiguously to a single export.
+ *
+ * @returns {string} English paragraph(s) per feature, or `No features found.`
  * @param {string} root
  * @param {{feature?: string}} [opts]
  */
@@ -262,10 +271,13 @@ export function summarizeProse(root, { feature } = {}) {
     .join('\n\n' + '='.repeat(60) + '\n\n');
 }
 
-/** Best-effort diff-aware summary: `git diff --name-only <sinceRef>` to find changed files,
+/**
+ * Best-effort diff-aware summary: `git diff --name-only <sinceRef>` to find changed files,
  * mapped to their feature, then only those features are summarized (via summarizeProject/
  * summarizeCompact — rendering is never reimplemented here). Reports gracefully, rather than
  * throwing, when `root` is not a git repo or `sinceRef` does not exist.
+ *
+ * @returns {string} The summary of features changed since `sinceRef`, or a plain message when git or the ref is unavailable.
  * @param {string} root
  * @param {string} sinceRef
  * @param {{format?: 'json'|'md'|'compact'|'prose'}} [opts]

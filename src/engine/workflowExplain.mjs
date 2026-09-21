@@ -23,7 +23,13 @@ export function explainMachine(machine, opts = {}) {
   };
 }
 
-/** Explain every machine found in `source`. Always `{ machines, error }`, never throws. */
+/**
+ * Explain every machine found in `source`. Always `{ machines, error }`, never throws.
+ *
+ * @param {string} source Source text of a file that may define XState machines.
+ * @param {object} [opts] Options passed to `explainMachine` (scenario limits and the like).
+ * @returns {{machines:object[], error:string|null}} One explanation per machine found; never throws.
+ */
 export function explainSource(source, opts = {}) {
   const { machines, error } = extractMachines(source);
   return { machines: machines.map((m) => explainMachine(m, opts)), error };
@@ -49,7 +55,13 @@ export function renderFindings(e, { markdown = false } = {}) {
   return `${e.findings.map((f) => (markdown ? `- **${f.kind}**: ${f.message}` : `  - [${f.kind}] ${f.message}`)).join('\n')}\n`;
 }
 
-/** Full report for one explained machine. format: 'prose' | 'md' | 'scenarios'. */
+/**
+ * Full report for one explained machine. format: 'prose' | 'md' | 'scenarios'.
+ *
+ * @param {object} e One machine from `explainSource().machines`.
+ * @param {'prose'|'md'|'scenarios'} [format='prose'] Output format.
+ * @returns {string} The plain-English report: states, scenarios and health findings.
+ */
 export function renderExplained(e, format = 'prose') {
   if (format === 'scenarios') return renderScenarios(e);
   if (format === 'md') {

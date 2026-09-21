@@ -51,6 +51,15 @@ export function resolveMaxConcurrent(explicit, env = process.env) {
   return Number.isInteger(n) && n >= 1 ? n : DEFAULT_MAX_CONCURRENT;
 }
 
+/**
+ * The git branch a process's bot works on.
+ *
+ * @param {string} processId Process id (characters outside `A-Za-z0-9._-` become `_`).
+ * @returns {string} `construct/bot/<processId>`.
+ *
+ * @example
+ * botBranch('p-12'); // => 'construct/bot/p-12'
+ */
 export const botBranch = (processId) => `construct/bot/${String(processId).replace(/[^A-Za-z0-9._-]/g, '_')}`;
 
 // #413: bounded like every synchronous git call in core (see gitTrees.GIT_TIMEOUT_MS); a hung git must not hang a bot.
@@ -80,11 +89,15 @@ const readIfExists = (file) => {
 };
 
 /**
+ * Create the runner that gives each process its own detached git worktree and spawns a `construct` bot inside it, bounded by a concurrency limit. Worktrees whose owning pid is dead are reclaimed.
+ *
  * @param {object} [options]
- * @param {string} [options.stateDir]       where worktrees live (`<stateDir>/worktrees`)
- * @param {number} [options.maxConcurrent]  see resolveMaxConcurrent(); hand `runner.maxConcurrent` to the engine
- * @param {string} [options.bin]            the construct entry point to spawn
- * @param {string[]} [options.nodeArgs]     extra node args
+ * @param {string} [options.stateDir] Where worktrees live (`<stateDir>/worktrees`).
+ * @param {number} [options.maxConcurrent] Concurrent bots; see `resolveMaxConcurrent()`. Hand `runner.maxConcurrent` to the engine.
+ * @param {string} [options.bin] The construct entry point to spawn.
+ * @param {string[]} [options.nodeArgs] Extra node arguments.
+ * @param {Record<string,string|undefined>} [options.env] Environment for spawned bots.
+ * @returns {{executeStep:Function, reclaimDead:Function, release:Function, maxConcurrent:number, worktreeRoot:string, worktreeOf:(processId:string)=>string|null}} The runner.
  */
 export function createBotRunner({ stateDir = resolveStateDir(), maxConcurrent, bin = BIN, nodeArgs = [], env = process.env } = {}) {
   const root = path.join(stateDir, 'worktrees');

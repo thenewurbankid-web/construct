@@ -208,11 +208,15 @@ export const HELP_TOPICS = {
 
 export const TOPIC_ORDER = ['create', 'refactor', 'research', 'import', 'init', 'feature', 'generate', 'sync', 'validate', 'summarize', 'doctor', 'dir', 'import-001'];
 
-/** The REPL's top-level "help" output, as a string. Pulled out from
+/**
+ * The REPL's top-level "help" output, as a string. Pulled out from
  * printTopLevelHelp() (which just logs this) so other callers — e.g. the
  * UI's Help page, via a small read-only backend endpoint — can reuse the
  * exact same text the REPL itself prints, instead of a hand-copied
- * duplicate that can drift from it. */
+ * duplicate that can drift from it.
+ *
+ * @returns {string} The help text the REPL prints for `help`.
+ */
 export function getTopLevelHelpText() {
   return `Construct REPL — type a command without the leading "construct".
 

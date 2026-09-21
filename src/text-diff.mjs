@@ -7,6 +7,8 @@ import { diffLines } from 'diff';
 const gap = (hidden) => ({ kind: 'gap', text: `${hidden} unchanged line${hidden === 1 ? '' : 's'}`, hidden });
 
 /**
+ * Build a line diff view of two texts, with a few lines of context around each change and gaps collapsed.
+ *
  * @param {string} before
  * @param {string} after
  * @param {{context?: number}} [opts] unchanged lines kept around each change

@@ -141,8 +141,20 @@ export function resolveUnit(root, ref, opts = {}) {
   }
 }
 
-/** List units. With `kind`: every unit of that kind. Without: an index of kinds (with counts) plus the
- * low-cardinality units (project, feature, layer, route, rule, envelope, generator, package). */
+/**
+ * List units. With `kind`: every unit of that kind. Without: an index of kinds (with counts) plus the
+ * low-cardinality units (project, feature, layer, route, rule, envelope, generator, package).
+ *
+ * @param {string} root Absolute or relative path of the project root; must exist.
+ * @param {object} [options]
+ * @param {string} [options.kind] Return every unit of this kind instead of the kind index.
+ * @param {object} [options.registry] Unit registry to read from (defaults to the built-in one).
+ * @returns {object} `{schemaVersion, ok:true, kind?, kinds?, count, units}` or `{ok:false, error}`: the units (each `{kind, id, name, path?, ref}`), plus the kind index when `kind` is omitted; `{ok:false}` for a missing root (`ROOT_NOT_FOUND`) or an unknown kind (`UNKNOWN_KIND`).
+ *
+ * @example
+ * listUnits('.', { kind: 'feature' });
+ * // => { ok: true, kind: 'feature', count: 3, units: [{ kind: 'feature', id: 'plan', ref: 'feature:plan', ... }] }
+ */
 export function listUnits(root, { kind, registry = defaultUnitRegistry() } = {}) {
   try {
     if (typeof root !== 'string' || !fs.existsSync(root)) return fail('ROOT_NOT_FOUND', `Project root not found: ${root}`);
@@ -168,7 +180,13 @@ export function listUnits(root, { kind, registry = defaultUnitRegistry() } = {})
   }
 }
 
-/** Index of features with one-line health each. */
+/**
+ * Index of features with one-line health each.
+ *
+ * @param {string} root Project root.
+ * @param {object} [opts] Passed on to `listUnits` and `summarizeUnit`.
+ * @returns {object} `{ok:true, features:[{name, path, ref, summary, health, completeness}]}` (an entry carries `error` when its summary failed), or `{ok:false, error}`.
+ */
 export function listFeatures(root, opts = {}) {
   const l = listUnits(root, { kind: 'feature', ...opts });
   if (!l.ok) return l;
@@ -187,7 +205,12 @@ export function summarizeFeatureForAgents(root, featureOrRef, opts = {}) {
   return summarizeUnit(root, featureOrRef, looksLikeRef ? opts : { kind: 'feature', ...opts });
 }
 
-/** Machine-readable usage note for agents (also served by `construct summarize --usage`). */
+/**
+ * Machine-readable usage note for agents (also served by `construct summarize --usage`).
+ *
+ * @param {object} [registry] Unit registry to describe (defaults to the built-in one).
+ * @returns {object} The usage note: schema, purpose, recommended call flow, call signatures, CLI, REST routes and the ref grammar.
+ */
 export function unitApiManifest(registry = defaultUnitRegistry()) {
   return {
     schemaVersion: SCHEMA_VERSION,
@@ -227,7 +250,12 @@ function md(value, depth = 0) {
   return `${pad}- ${value}\n`;
 }
 
-/** Render any summary/list/error result as Markdown (for humans). */
+/**
+ * Render any summary/list/error result as Markdown (for humans).
+ *
+ * @param {object} result A `summarizeUnit`, `listUnits` or `listFeatures` result (or an error).
+ * @returns {string} Markdown for a human reader.
+ */
 export function renderUnitMarkdown(result) {
   if (!result.ok) return `# Error: ${result.error.code}\n\n${result.error.message}\n${result.error.candidates?.length ? `\nCandidates:\n${result.error.candidates.map((c) => `- \`${c.ref}\``).join('\n')}\n` : ''}${result.error.hint ? `\n${result.error.hint}\n` : ''}`;
   if (result.units) return `# Units${result.kind ? ` (${result.kind})` : ''}\n\n${result.units.map((u) => `- \`${u.ref}\`${u.path ? ` — ${u.path}` : ''}`).join('\n')}\n`;

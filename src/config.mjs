@@ -45,6 +45,14 @@ const LAYERS_BY_FRAMEWORK = {
  * Validate and normalize a `project.framework` value from architecture.yml.
  * Absent/undefined normalizes to the default ('nextjs') for full backward
  * compatibility with every project written before this option existed.
+ *
+ * @param {string|null|undefined} raw The `project.framework` value from `architecture.yml`.
+ * @returns {string} A supported framework id; `'nextjs'` when `raw` is absent.
+ * @throws {Error} A usage error naming the supported frameworks when `raw` is unknown.
+ *
+ * @example
+ * normalizeFramework(undefined); // => 'nextjs'
+ * normalizeFramework('react-spa'); // => 'react-spa'
  */
 export function normalizeFramework(raw) {
   if (raw === undefined || raw === null) return DEFAULT_FRAMEWORK;
@@ -231,6 +239,13 @@ export function normalizeRules(userRules, defaults = DEFAULT_RULES) {
  * stopping at the filesystem root. Returns the containing directory, or
  * null if none is found. Supports monorepos where a subpackage has no
  * config of its own and should inherit the parent's.
+ *
+ * @param {string} startDir Directory to start from.
+ * @returns {string|null} The nearest ancestor directory (or `startDir` itself) that holds an `architecture.yml`, or `null` when there is none.
+ * @since 0.8
+ *
+ * @example
+ * findProjectRoot('/work/app/features/plan'); // => '/work/app'
  */
 export function findProjectRoot(startDir) {
   let dir = path.resolve(startDir);
@@ -261,6 +276,18 @@ export function readRawRules(root) {
   }
 }
 
+/**
+ * Load and normalize a project's `architecture.yml`. A missing file yields the built-in defaults (strict Next.js preset); a present one is merged over them: rules are normalized to severities, the layer graph is chosen from `project.framework`, and `frozen` / `nonLayer` globs are normalized.
+ *
+ * @param {string} root Project root that contains (or should contain) `architecture.yml`.
+ * @returns {{version:number, preset:string, project:object, features:{root:string}, layers:object, rules:object, exceptions:object[], frozen:string[], nonLayer:string[]}} The effective configuration.
+ * @throws {Error} A usage error when the file is not valid YAML or is not a mapping at the top level.
+ * @since 0.8
+ *
+ * @example
+ * const config = loadConfig(process.cwd());
+ * config.rules['PAGE-001'].severity; // => 'error' unless architecture.yml overrides it
+ */
 export function loadConfig(root) {
   const file = path.join(root, 'architecture.yml');
   if (!fs.existsSync(file)) {

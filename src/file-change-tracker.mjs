@@ -7,6 +7,12 @@ import crypto from 'node:crypto';
 
 const hashOf = (s) => crypto.createHash('sha256').update(s).digest('hex');
 
+/**
+ * Create an in-memory tracker that tells apart changes made by the Cockpit user from changes made by anything else (an agent, the CLI, another editor): content it `observe`s that differs from the last known snapshot is an external change; content it `adopt`s is the user's own.
+ *
+ * @param {{now?: () => number}} [options] Clock, injected for tests.
+ * @returns {{observe:(key:string, content:string) => object|null, adopt:(key:string, content:string) => void, getLastChange:(key:string) => object|null, dismiss:(key:string) => void}} The tracker.
+ */
 export function createChangeTracker({ now = () => Date.now() } = {}) {
   const snapshots = new Map(); // key -> { content, hash }
   const lastChanges = new Map(); // key -> change record

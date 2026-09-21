@@ -311,6 +311,13 @@ export const { ${hookNames.join(', ')} } = ${apiConst};
  * Every written file is re-validated against Construct's own architecture
  * rules before returning (selfCheck) — see this file's header for why
  * SERVICE-002 can never fire on this generator's own output.
+ *
+ * @param {string} root Project root.
+ * @param {string} name Service name.
+ * @param {string} feature Feature that owns the service.
+ * @param {string} specPath Path of the OpenAPI spec.
+ * @returns {Promise<string[]>} Absolute paths of the files written.
+ * @throws {Error} A usage error when an argument is missing.
  */
 export async function generateServiceFromSpec(root, name, feature, specPath) {
   if (!name || !feature || !specPath) {
