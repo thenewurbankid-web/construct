@@ -149,6 +149,9 @@ export function renderMarkdown(md, ctx) {
   // Site images: ![alt](@img/name.webp) points at site/assets/img/name.webp.
   html = html.replace(/<img src="@img\/([^"]+)"/g, (_, f) => `<img src="${root}assets/img/${f}" loading="lazy" decoding="async"`);
 
+  // Site videos: ![alt](@video/name) points at site/assets/video/name.webm, with name.png as its poster.
+  html = html.replace(/<img src="@video\/([^"]+)"(?: alt="([^"]*)")?[^>]*>/g, (_, f, alt = '') => `<video controls preload="metadata" width="1280" height="720" poster="${root}assets/video/${f}.png" aria-label="${alt}"><source src="${root}assets/video/${f}.webm" type="video/webm"><a href="${root}assets/video/${f}.webm">Download the video</a></video>`);
+
   const ids = new Set(headings.map((h) => h.id));
   const srcDir = path.posix.dirname(source || '.');
   const blob = (p, dir) => `${repoUrl}/${dir ? 'tree' : 'blob'}/${branch}/${p}`;

@@ -29,7 +29,7 @@ test('sanitizer strips scripts, handlers and javascript: urls', () => {
 });
 
 test('structure: the user guide is grouped by product, with a page for each family member', () => {
-  assert.deepEqual(USER_GROUPS.map((g) => g.group), ['Start', 'Construct', 'Cockpit', 'CLI']);
+  assert.deepEqual(USER_GROUPS.map((g) => g.group), ['Start', 'Construct', 'Cockpit', 'Videos', 'CLI']);
   const paths = USER_GROUPS.flatMap((g) => g.pages.map((p) => p.path));
   for (const p of ['user-guide/line/', 'user-guide/construct/', 'user-guide/cockpit/', 'user-guide/cli/']) assert.ok(paths.includes(p), `${p} is missing`);
   // Every page's markdown source exists, and no page is registered twice.
@@ -161,7 +161,7 @@ test('friendliness: three-item nav, product side menu, where-am-I line, quicksta
   assert.ok(gs.indexOf('Try it in 60 seconds') < gs.indexOf('What just happened'), 'quickstart comes before the explanation');
   // The side menu is grouped by product, in order, and never by surface.
   const sidebar = /<aside class="sidebar"[\s\S]*?<\/aside>/.exec(gs)[0];
-  assert.deepEqual([...sidebar.matchAll(/<p class="side-h">([^<]+)<\/p>/g)].map((m) => m[1]), ['Start', 'Construct', 'Cockpit', 'CLI']);
+  assert.deepEqual([...sidebar.matchAll(/<p class="side-h">([^<]+)<\/p>/g)].map((m) => m[1]), ['Start', 'Construct', 'Cockpit', 'Videos', 'CLI']);
   assert.doesNotMatch(gs, /side-h">Examples/);
   assert.match(gs, /<p class="kicker">Start<\/p>/);
   const plan = fs.readFileSync(path.join(out, 'user-guide/examples/cockpit-plan-and-run/index.html'), 'utf8');
