@@ -1,5 +1,7 @@
 Construct does the mechanical work of a React and TypeScript app inside rules your project defines. Run a small command, or click the same action in the Cockpit, and it creates files in the right place, moves them safely, and tells you plainly when something breaks a rule.
 
+This guide is arranged the way the package is: **Line** is the whole thing, **Construct** is the framework, and the **Cockpit** and the **command line** are the two ways to drive it. [What Line is](@user-guide/line/) explains the family in a page.
+
 ## What you can do
 
 - **Create** a feature, one file or a whole slice in one command, with imports that resolve.
@@ -13,8 +15,9 @@ Construct does the mechanical work of a React and TypeScript app inside rules yo
 ## Read in this order
 
 1. [Getting started](@user-guide/getting-started/): a working project in 60 seconds.
-2. [The five ideas](@user-guide/concepts/) behind everything.
-3. [How-to guides](@user-guide/how-to/): pick the task you have.
-4. [Examples](@user-guide/examples/): the problem, the exact command or screen, the exact result.
+2. [What Line is](@user-guide/line/): the framework, the app and the terminal, and which parts are open source.
+3. [The five ideas](@user-guide/concepts/) behind everything.
+4. [What Construct is](@user-guide/construct/), then the [how-to guides](@user-guide/how-to/): pick the task you have.
+5. [Examples](@user-guide/examples/): the problem, the exact command or screen, the exact result.
 
-Prefer to click? [Using the Cockpit](@user-guide/cockpit/). Want to change Construct itself? See [For developers](@developers/).
+Prefer to click? [Using the Cockpit](@user-guide/cockpit/). Prefer to type? [Using the command line](@user-guide/cli/). Want to change Construct itself? See [For developers](@developers/).

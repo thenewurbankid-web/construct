@@ -1,4 +1,4 @@
-The Cockpit is a browser screen for the same small tools the command line runs, so you can watch and steer instead of typing each command. Worked examples with real screenshots are in the [Cockpit examples](@user-guide/examples/cockpit-plan-and-run/).
+The Cockpit is the browser app in the package: the same small tools [Construct](@user-guide/construct/) runs on the [command line](@user-guide/cli/), as screens you can watch and steer instead of typing each command. Worked examples with real screenshots are in the [Cockpit examples](@user-guide/examples/cockpit-plan-and-run/).
 
 ## Start it
 
@@ -31,6 +31,10 @@ Choosing a provider in Settings never triggers a call by itself. A step calls a 
 - **Layout.** A **Browser** pane on the left, the main area in the middle and a **Tools** pane on the right. `Ctrl K` opens the command palette, `Ctrl J` the bottom drawer (Diagnostics, Logs and Processes), `Ctrl B` and `Ctrl Alt B` hide the side panes. Below 900 px wide one pane shows at a time. There is a light and a dark theme.
 - **Serving elsewhere.** The backend only accepts requests from `http://localhost:3000`; if you serve the frontend elsewhere, start the backend with `UI_CLIENT_ORIGIN` set to that address.
 - **Login.** It binds to `127.0.0.1` with no login by default. A non-loopback host refuses to start without a GitHub login and an allowlist; see [Sign-in allowlist and commit on save](@user-guide/examples/cockpit-sign-in-and-commits/).
+
+## Where it fits
+
+The Cockpit adds no behaviour of its own: every screen calls the same functions the command line calls, so a change made here is the same change made there. Unlike the framework and the command line, the Cockpit is not open source — see [what Line is](@user-guide/line/).
 
 ## Examples
 

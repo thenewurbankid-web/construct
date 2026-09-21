@@ -5,7 +5,7 @@ import path from 'node:path';
 import { slugify, makeSlugger, esc } from '../lib/text.mjs';
 import { sanitizeHtml } from '../lib/sanitize.mjs';
 import { build, parseArgs } from '../build.mjs';
-import { USER_GROUPS } from '../lib/structure.mjs';
+import { USER_GROUPS, EXAMPLE_SURFACES, examplePages } from '../lib/structure.mjs';
 import { makeTempDir } from '../../test-utils/tmpdir.mjs';
 
 const BUILD_TIME = new Date('2026-09-20T00:00:00Z');
@@ -13,7 +13,7 @@ const walk = (d, files = []) => {
   for (const e of fs.readdirSync(d, { withFileTypes: true })) (e.isDirectory() ? walk(path.join(d, e.name), files) : files.push(path.join(d, e.name)));
   return files;
 };
-const exampleGroups = () => USER_GROUPS.filter((g) => g.group.startsWith('Examples: '));
+const exampleGroups = () => EXAMPLE_SURFACES.map((surface) => ({ surface, pages: examplePages(surface) }));
 
 test('slugify / slugger dedupe / esc', () => {
   assert.equal(slugify('Hello, `World`!'), 'hello-world');
@@ -28,10 +28,24 @@ test('sanitizer strips scripts, handlers and javascript: urls', () => {
   assert.match(out, /<p>a<\/p>/);
 });
 
+test('structure: the user guide is grouped by product, with a page for each family member', () => {
+  assert.deepEqual(USER_GROUPS.map((g) => g.group), ['Start', 'Construct', 'Cockpit', 'CLI']);
+  const paths = USER_GROUPS.flatMap((g) => g.pages.map((p) => p.path));
+  for (const p of ['user-guide/line/', 'user-guide/construct/', 'user-guide/cockpit/', 'user-guide/cli/']) assert.ok(paths.includes(p), `${p} is missing`);
+  // Every page's markdown source exists, and no page is registered twice.
+  assert.equal(new Set(paths).size, paths.length, 'a page is registered twice');
+  for (const g of USER_GROUPS) for (const p of g.pages) assert.ok(fs.existsSync(new URL(`../../${p.file}`, import.meta.url)), `${p.file} exists`);
+  // The Cockpit and CLI groups carry their own examples; Core examples belong to the framework.
+  assert.ok(USER_GROUPS.find((g) => g.group === 'Construct').pages.every((p) => !p.example || p.example === 'Core'));
+  assert.ok(USER_GROUPS.find((g) => g.group === 'Cockpit').pages.every((p) => !p.example || p.example === 'Cockpit'));
+  assert.ok(USER_GROUPS.find((g) => g.group === 'CLI').pages.every((p) => !p.example || p.example === 'CLI'));
+});
+
 test('structure: examples are split into CLI, Cockpit and Core, and each page states its surface', () => {
-  assert.deepEqual(exampleGroups().map((g) => g.group), ['Examples: CLI', 'Examples: Cockpit', 'Examples: Core']);
+  assert.deepEqual(exampleGroups().map((g) => g.surface), ['CLI', 'Cockpit', 'Core']);
   for (const g of exampleGroups()) {
-    const surface = g.group.replace('Examples: ', '').toLowerCase();
+    const surface = g.surface.toLowerCase();
+    assert.ok(g.pages.length > 0, `no ${g.surface} examples`);
     for (const p of g.pages) {
       assert.match(p.path, new RegExp(`^user-guide/examples/${surface}-`), `${p.path} is filed under the wrong surface`);
       assert.ok(fs.existsSync(new URL(`../../${p.file}`, import.meta.url)), `${p.file} exists`);
@@ -41,7 +55,7 @@ test('structure: examples are split into CLI, Cockpit and Core, and each page st
 
 test('example pages: no user stories, the problem comes first, surfaces are never interleaved', () => {
   for (const g of exampleGroups()) {
-    const surface = g.group.replace('Examples: ', '');
+    const surface = g.surface;
     for (const p of g.pages) {
       const md = fs.readFileSync(new URL(`../../${p.file}`, import.meta.url), 'utf8');
       assert.doesNotMatch(md, /\bAs an? [\w -]+ I want\b/i, `user story in ${p.file}`);
@@ -74,6 +88,11 @@ test('build renders the site offline: home pitch, examples, references, no ticke
   assert.equal((home.match(/class="btn primary"/g) || []).length, 1, 'one primary call to action');
   assert.match(home, /small tools that give the same answer every time/);
   assert.doesNotMatch(home, /\blayer\b|envelope|worktree|blast radius/i);
+  // The family: every member named, each with its own section to go to, and the open-core boundary stated.
+  for (const member of ['Line', 'Construct', 'Cockpit', 'command line']) assert.match(home, new RegExp(`<strong>${member}</strong>`), `${member} is not named on the home page`);
+  for (const p of ['user-guide/line/', 'user-guide/construct/', 'user-guide/cockpit/', 'user-guide/cli/']) assert.match(home, new RegExp(`href="${p.replace(/\//g, '\\/')}"`), `no link to ${p}`);
+  assert.match(home, /open source under the MIT licence; the Cockpit/);
+  assert.doesNotMatch(home, /Pick how you like to work/);
   assert.match(home, /href="user-guide\/examples\/cli-scaffold-and-validate\/"/);
   assert.match(home, /href="user-guide\/examples\/cockpit-plan-and-run\/"/);
   assert.match(home, /href="user-guide\/examples\/core-plans-and-impact\/"/);
@@ -81,7 +100,9 @@ test('build renders the site offline: home pitch, examples, references, no ticke
   assert.doesNotMatch(home, /walkthrough|user stor/i);
   for (const g of exampleGroups()) for (const p of g.pages) assert.ok(fs.existsSync(path.join(out, p.path, 'index.html')), p.path);
   const idx = fs.readFileSync(path.join(out, 'user-guide/examples/index.html'), 'utf8');
-  for (const label of ['CLI', 'Cockpit', 'Core']) assert.match(idx, new RegExp(`<h2>${label}</h2>`));
+  for (const label of EXAMPLE_SURFACES) assert.match(idx, new RegExp(`<h2>${label}</h2>`));
+  // A short page for each product, reachable from the guide.
+  for (const p of ['user-guide/line/', 'user-guide/construct/', 'user-guide/cli/']) assert.ok(fs.existsSync(path.join(out, p, 'index.html')), p);
   // A Cockpit page carries real screenshots, copied and linked relative to its own depth.
   const plan = fs.readFileSync(path.join(out, 'user-guide/examples/cockpit-plan-and-run/index.html'), 'utf8');
   assert.match(plan, /src="\.\.\/\.\.\/\.\.\/assets\/img\/cockpit-plan-impact\.webp"/);
@@ -131,18 +152,20 @@ test('markdown helpers: sections, includes, ticket stripping', async () => {
   assert.doesNotMatch(stripTicketRefsHtml('<table><tr><th>#</th><th>Story</th></tr><tr><td>#128</td><td>x</td></tr></table>'), /#128/);
 });
 
-test('friendliness: three-item nav, one Examples group, where-am-I line, quickstart first, plain words', async () => {
+test('friendliness: three-item nav, product side menu, where-am-I line, quickstart first, plain words', async () => {
   const out = makeTempDir('site-test-');
   await build({ out, repo: 'o/r', buildTime: BUILD_TIME });
   const gs = fs.readFileSync(path.join(out, 'user-guide/getting-started/index.html'), 'utf8');
   assert.match(gs, /<nav class="primary"[^>]*>(?:<a [^>]*>[^<]+<\/a>){3}<\/nav>/);
   for (const label of ['Home', 'Guide', 'For developers']) assert.match(gs, new RegExp(`>${label}</a>`));
   assert.ok(gs.indexOf('Try it in 60 seconds') < gs.indexOf('What just happened'), 'quickstart comes before the explanation');
-  assert.equal((gs.match(/<p class="side-h">Examples<\/p>/g) || []).length, 1, 'one Examples group in the side menu');
-  assert.doesNotMatch(gs, /side-h">Examples: /);
+  // The side menu is grouped by product, in order, and never by surface.
+  const sidebar = /<aside class="sidebar"[\s\S]*?<\/aside>/.exec(gs)[0];
+  assert.deepEqual([...sidebar.matchAll(/<p class="side-h">([^<]+)<\/p>/g)].map((m) => m[1]), ['Start', 'Construct', 'Cockpit', 'CLI']);
+  assert.doesNotMatch(gs, /side-h">Examples/);
   assert.match(gs, /<p class="kicker">Start<\/p>/);
   const plan = fs.readFileSync(path.join(out, 'user-guide/examples/cockpit-plan-and-run/index.html'), 'utf8');
-  assert.match(plan, /<p class="kicker">Examples<\/p>/);
+  assert.match(plan, /<p class="kicker">Cockpit<\/p>/);
   assert.match(plan, /aria-current="page"/);
   for (const g of exampleGroups()) for (const p of g.pages) {
     const html = fs.readFileSync(path.join(out, p.path, 'index.html'), 'utf8');

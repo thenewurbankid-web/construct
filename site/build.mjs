@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { layout, docBody, homeBody, sectionBody, searchBody, notFoundBody, redirectPage, rootFor } from './lib/pages.mjs';
 import { normalizeBase } from './lib/versions.mjs';
 import { renderMarkdown } from './lib/markdown.mjs';
-import { USER_GROUPS, DEV_GROUPS, USER_INDEX, DEV_INDEX, EXAMPLES_INDEX, generatedMarkdown } from './lib/structure.mjs';
+import { USER_GROUPS, DEV_GROUPS, USER_INDEX, DEV_INDEX, generatedMarkdown, listGroups, userPages } from './lib/structure.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..');
@@ -51,16 +51,16 @@ export async function build({ out, repo, buildTime = new Date(), basePath, versi
 
   // ---- page registry ----------------------------------------------------
   const userGroups = USER_GROUPS.map((g) => ({ ...g }));
-  const flat = (groups) => groups.flatMap((g) => [...(g.index ? [g.index] : []), ...g.pages]);
-  const userPages = [USER_INDEX, EXAMPLES_INDEX, ...flat(userGroups)];
+  const flat = (groups) => groups.flatMap((g) => g.pages);
+  const allUserPages = [USER_INDEX, ...userPages()];
   const devPages = [DEV_INDEX, ...flat(DEV_GROUPS)];
   const resolveMap = new Map();
-  for (const p of [...userPages, ...devPages]) if (p.source) resolveMap.set(p.source, p.path);
+  for (const p of [...allUserPages, ...devPages]) if (p.source) resolveMap.set(p.source, p.path);
   resolveMap.set('docs/capabilities.md', 'developers/building-blocks/');
 
   const userNav = [
     { group: null, items: [{ title: 'Overview', path: USER_INDEX.path }] },
-    ...userGroups.map((g) => ({ group: g.group, items: [...(g.index ? [{ title: 'All how-to guides', path: g.index.path }] : []), ...(g.group === 'Examples: CLI' ? [{ title: 'All examples', path: EXAMPLES_INDEX.path }] : []), ...g.pages.map((p) => ({ title: p.title, path: p.path }))] })),
+    ...userGroups.map((g) => ({ group: g.group, items: g.pages.map((p) => ({ title: p.navTitle || p.title, path: p.path, label: p.example ? 'Example' : '' })) })),
   ];
   const devNav = [{ group: null, items: [{ title: 'Overview', path: DEV_INDEX.path }] }, ...DEV_GROUPS.map((g) => ({ group: g.group, items: g.pages.map((p) => ({ title: p.title, path: p.path })) }))];
   const order = (nav) => nav.flatMap((g) => g.items.filter((i) => !/^All /.test(i.title)));
@@ -118,21 +118,14 @@ export async function build({ out, repo, buildTime = new Date(), basePath, versi
     ];
     pageOut(USER_INDEX, 'user', userNav, rendered, { body: sectionBody({ title: USER_INDEX.title, lede: USER_INDEX.description, html: rendered.html, groups, root: rendered.root }), prev: undefined, next: undefined });
   }
-  for (const g of userGroups) {
-    if (g.index) {
-      const rendered = await renderDoc(g.index, 'user', userNav);
-      const groups = [{ group: 'Guides', items: g.pages.map((p) => ({ title: p.title, path: p.path, description: p.description })) }];
-      pageOut(g.index, 'user', userNav, rendered, { body: sectionBody({ title: g.index.title, lede: g.index.description, html: rendered.html, groups, root: rendered.root }), prev: undefined, next: undefined });
-    }
-    for (const p of g.pages) {
-      const rendered = await renderDoc(p, 'user', userNav);
+  for (const p of userPages()) {
+    const rendered = await renderDoc(p, 'user', userNav);
+    if (p.list) {
+      const groups = listGroups(p.list).map((g) => ({ group: g.group, items: g.items.map((i) => ({ title: i.title, path: i.path, description: i.description })) }));
+      pageOut(p, 'user', userNav, rendered, { body: sectionBody({ title: p.title, lede: p.description, html: rendered.html, groups, root: rendered.root }), prev: undefined, next: undefined });
+    } else {
       pageOut(p, 'user', userNav, rendered, { body: docBody({ title: p.title, lede: p.description, html: rendered.html }) });
     }
-  }
-  {
-    const rendered = await renderDoc(EXAMPLES_INDEX, 'user', userNav);
-    const groups = userGroups.filter((g) => g.group.startsWith('Examples: ')).map((g) => ({ group: g.group.replace('Examples: ', ''), items: g.pages.map((p) => ({ title: p.title, path: p.path, description: p.description })) }));
-    pageOut(EXAMPLES_INDEX, 'user', userNav, rendered, { body: sectionBody({ title: EXAMPLES_INDEX.title, lede: EXAMPLES_INDEX.description, html: rendered.html, groups, root: rendered.root }), prev: undefined, next: undefined });
   }
   // Old addresses of the retired ticket-based tutorials.
   write('user-guide/tutorials/index.html', redirectPage({ to: '../examples/', title: 'Examples' }));
@@ -166,7 +159,7 @@ export async function build({ out, repo, buildTime = new Date(), basePath, versi
   }
 
   return {
-    examples: userGroups.filter((g) => g.group.startsWith('Examples: ')).reduce((n, g) => n + g.pages.length, 0),
+    examples: userPages().filter((p) => p.example).length,
     pages: written.filter((f) => f.endsWith('.html')).length,
     searchIndexed,
   };

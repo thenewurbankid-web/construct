@@ -155,7 +155,17 @@ no token. Rules:
 - **Three surfaces, never mixed**: `cli-*` pages hold only terminal
   transcripts, `cockpit-*` pages hold only screenshots and UI text, `core-*`
   pages hold only the exported functions (JSON in, JSON out). The page file
-  name prefix and the nav group must match (`site/test/site.test.mjs`).
+  name prefix and the page's `example:` surface must match
+  (`site/test/site.test.mjs`).
+- **Structured by product**: the user guide is grouped `Start`, `Construct`,
+  `Cockpit`, `CLI` in `site/lib/structure.mjs` — Line is the whole package,
+  Construct is the framework (its Core API is one of its surfaces), and the
+  Cockpit and the command line are the two ways to drive it. Each of the four
+  has a short page of its own (`user-guide/line|construct|cockpit|cli/`).
+  Example pages live in their product's group: `cli-*` under CLI, `cockpit-*`
+  under Cockpit, `core-*` under Construct; the Examples index still lists them
+  by surface. Say plainly which parts are open source (see the Open core
+  section of `README.md`); never name MCP on the site.
 - **Pitch**: the home page names the problem first (an LLM re-deriving the
   same task with tokens each run, versus repeatable deterministic blocks; a
   cockpit, not an autopilot).

@@ -30,6 +30,8 @@ h2:hover > .anchor, h3:hover > .anchor, h4:hover > .anchor, .anchor:focus { opac
 .audience-tag { color: var(--accent); font-size: 12.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; }
 .audience-go { color: var(--accent); font-weight: 600; }
 .audience-go::after { content: " \2192"; }
+.audience h3 { margin: 8px 0; font-size: 1.15rem; }
+.see-it { color: var(--muted); font-size: 14.5px; margin: -28px 0 48px; }
 .home-what { margin-bottom: 48px; }
 .home-what pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; overflow-x: auto; font-size: 13.5px; }
 .hero { border-bottom: 0; margin-bottom: 24px; }
