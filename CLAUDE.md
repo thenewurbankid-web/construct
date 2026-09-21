@@ -81,12 +81,11 @@ sync with what's actually true, not a point-in-time snapshot (see #35).
    entry with the files/tests that back it) is fine for pre-existing work.
    Trivial changes (typos, comment-only, formatting) fold into whichever
    issue/commit they're part of.
-2. **Comment only when it carries something**: the owner needs to know or
-   decide, or a developer needs a note (the rule-12 closing comment always
-   counts). No "starting" comment, no progress chatter — a handful of
-   comments per issue, not dozens. Applies to delegated work too: tell
-   every subagent this rule, and post the closing note yourself if it
-   doesn't.
+2. **Comment only when the owner must act or know** (a decision, a blocker,
+   a security finding). Closing an issue takes one line ("Done in <sha>, verified: <suite>")
+   unless a developer needs more (rule 12). No starting comment, no progress
+   chatter, no comment per action; state and the board carry routine status.
+   Tell every subagent this rule; post any closing note yourself.
 3. **Issue state must reflect reality.** Close the moment work is verified
    done (`npm test` passing in full, plus the task's own manual bar); never
    leave finished work open, never close unfinished work. New work that
@@ -131,15 +130,17 @@ sync with what's actually true, not a point-in-time snapshot (see #35).
     A spec under `ui/e2e/` must exist and have actually run before closing.
     **Screenshots are for the documentation website only** — never in
     issues, comments or chat; curated by `demo-curator`, live under `site/`.
-12. **Every ticket's closing comment (or body, for retroactive filing)
-    documents how to use what it shipped**, not just that it shipped:
-    **Setup/run/install** (exact commands, runnable from the issue alone),
-    **the API** (CLI/REST/exports/props another piece of work builds on),
-    **exceptions** (known edge cases, deliberate scope cuts, documented
-    limitations), **future considerations** (a next step, or "none").
-    Applies to every ticket, `src/`-only ones included.
+12. **A closing note is written only when it helps the next developer**: a
+    new command, API, setup step, known exception or non-obvious next step
+    (commands runnable from the issue alone). A fix or refactor with none of
+    these closes with the one line from rule 2. `src/`-only work follows the
+    same test.
 
 ## Token economy (standing instruction)
+
+- **Reporting and tracking are frugal** (owner, 2026-09-21): refresh dashboards (Trinity, board) once per
+  work wave or on request, never on a timer; no board or issue write that only restates state that
+  machinery already shows; agents report findings once, at the end.
 
 - No progress chatter or narration in agent reports — findings and results
   only; no running commentary on an issue beyond the rule-12 closing note.
