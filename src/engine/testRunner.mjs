@@ -34,6 +34,15 @@ const PER_TEST_TIMEOUT_MS = 30_000;
 const PROBE_MS = 3_000;
 export const DEFAULT_BASE_URL = 'http://localhost:3000';
 export const RUN_DIR_PREFIX = 'construct-testrun-';
+// #438: a run that FAILED keeps its Playwright traces (a zip per failing test) in a renamed throwaway directory, bounded
+// three ways: a per-file cap, a total cap (bigger ones are deleted, never kept), and a sweep at every run start (older than
+// TRACE_KEEP_MS, or beyond the newest TRACE_KEEP_DIRS, goes). The zip's format is not a public API and nothing serves it:
+// the result only NAMES the path (relative to the temp directory). A route that serves traces needs its own security review.
+export const TRACE_DIR_PREFIX = 'construct-testtrace-';
+export const TRACE_MAX_FILE_BYTES = 8 * 1024 * 1024;
+export const TRACE_MAX_TOTAL_BYTES = 20 * 1024 * 1024;
+export const TRACE_KEEP_DIRS = 5;
+export const TRACE_KEEP_MS = 60 * 60 * 1000;
 const GENERATED_RE = /^[a-z0-9][a-z0-9-]*--[a-z0-9][a-z0-9-]*\.spec\.ts$/;
 const YOURS_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,120}\.spec\.ts$/;
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -115,7 +124,7 @@ export function findPlaywright(root, { repo = REPO } = {}) {
   return null;
 }
 
-const configText = ({ testDir, baseURL, outputDir, reportFile, files }) => `module.exports = {
+export const configText = ({ testDir, baseURL, outputDir, reportFile, files }) => `module.exports = {
   testDir: ${JSON.stringify(testDir)},
   testMatch: ${JSON.stringify(files)},
   outputDir: ${JSON.stringify(outputDir)},
@@ -124,7 +133,7 @@ const configText = ({ testDir, baseURL, outputDir, reportFile, files }) => `modu
   fullyParallel: false,
   timeout: ${PER_TEST_TIMEOUT_MS},
   reporter: [['json', { outputFile: ${JSON.stringify(reportFile)} }]],
-  use: { baseURL: ${JSON.stringify(baseURL)}, headless: true, screenshot: 'off', video: 'off', trace: 'off' },
+  use: { baseURL: ${JSON.stringify(baseURL)}, headless: true, screenshot: 'off', video: 'off', trace: 'retain-on-failure' },
 };
 `;
 
@@ -244,6 +253,51 @@ function killGroup(pid, sig) {
   try { process.kill(-pid, sig); } catch { try { process.kill(pid, sig); } catch { /* already gone */ } }
 }
 
+/** Every `*.zip` under `dir` (Playwright writes `<out>/<test>/trace.zip`), at most 3 levels deep. Never follows a link. */
+function findZips(dir, depth = 0, found = []) {
+  let entries = [];
+  try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return found; }
+  for (const e of entries) {
+    const p = path.join(dir, e.name);
+    if (e.isFile() && e.name.endsWith('.zip')) found.push(p);
+    else if (e.isDirectory() && depth < 3) findZips(p, depth + 1, found);
+  }
+  return found;
+}
+
+/**
+ * After a run: keep the failing tests' traces (within the caps) by renaming the run directory to TRACE_DIR_PREFIX, else
+ * delete nothing here (the caller removes the directory). -> { keptDir: string|null, traces: string[] } where each trace is
+ * a path RELATIVE to `tmp` (never absolute, never outside it).
+ */
+export function keepTraces(dir, { tmp = os.tmpdir() } = {}) {
+  const zips = findZips(path.join(dir, 'out'));
+  let total = 0;
+  const kept = [];
+  for (const z of zips) {
+    let size = 0;
+    try { size = fs.lstatSync(z).size; } catch { continue; }
+    if (size > TRACE_MAX_FILE_BYTES || total + size > TRACE_MAX_TOTAL_BYTES) { try { fs.rmSync(z, { force: true }); } catch { /* best effort */ } continue; }
+    total += size;
+    kept.push(z);
+  }
+  if (!kept.length) return { keptDir: null, traces: [] };
+  const target = path.join(tmp, `${TRACE_DIR_PREFIX}${path.basename(dir).slice(RUN_DIR_PREFIX.length)}`);
+  try { fs.renameSync(dir, target); } catch { return { keptDir: null, traces: [] }; }
+  return { keptDir: target, traces: kept.map((z) => path.relative(tmp, path.join(target, path.relative(dir, z)))) };
+}
+
+/** Delete kept trace directories that are too old or beyond the newest TRACE_KEEP_DIRS. Best effort, never throws. */
+export function pruneTraceDirs({ tmp = os.tmpdir(), now = Date.now() } = {}) {
+  try {
+    const dirs = fs.readdirSync(tmp).filter((n) => n.startsWith(TRACE_DIR_PREFIX)).map((n) => {
+      const p = path.join(tmp, n);
+      try { return { p, t: fs.lstatSync(p).mtimeMs }; } catch { return null; }
+    }).filter(Boolean).sort((a, b) => b.t - a.t);
+    dirs.forEach((d, i) => { if (i >= TRACE_KEEP_DIRS || now - d.t > TRACE_KEEP_MS) fs.rmSync(d.p, { recursive: true, force: true }); });
+  } catch { /* best effort */ }
+}
+
 /** Remove the debris of runs started by `pid` (its temp directories) and stop a Playwright it left behind. */
 export function reclaimRunsOf(pid, { tmp = os.tmpdir() } = {}) {
   let names = [];
@@ -265,7 +319,7 @@ export function reclaimRunsOf(pid, { tmp = os.tmpdir() } = {}) {
  *
  * Options: `name`, `area` ('generated'|'yours'), `baseUrl`, `signal` (AbortSignal), `timeoutMs`, `onProgress(line)`, and the
  * test seams `probe`, `tmp`, `repo`.
- * Resolves (never rejects) to `{ok:true, feature, baseUrl, durationMs, counts, tests}` or `{ok:false, error:{code, message}}`.
+ * Resolves (never rejects) to `{ok:true, feature, baseUrl, durationMs, counts, tests, traces}` (`traces`: relative paths of kept failure traces, see keepTraces) or `{ok:false, error:{code, message}}`.
  * Nothing is written inside the project.
  */
 export async function runFeatureTests(root, feature, opts = {}) {
@@ -284,6 +338,7 @@ export async function runFeatureTests(root, feature, opts = {}) {
   }
   if (signal?.aborted) return fail('CANCELLED', 'The run was cancelled.');
 
+  pruneTraceDirs({ tmp });
   const dir = fs.mkdtempSync(path.join(tmp, `${RUN_DIR_PREFIX}${process.pid}-`));
   const reportFile = path.join(dir, 'report.json');
   const configFile = path.join(dir, 'playwright.config.cjs');
@@ -301,13 +356,13 @@ export async function runFeatureTests(root, feature, opts = {}) {
     child.stderr.on('data', take);
     let settled = false;
     let stopping = null;
-    const done = (result) => {
+    const done = (result, { keepDir = false } = {}) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
       clearTimeout(killer);
       signal?.removeEventListener('abort', onAbort);
-      try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* the parent reclaims it */ }
+      if (!keepDir) { try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* the parent reclaims it */ } }
       resolve(result);
     };
     let killer;
@@ -337,7 +392,8 @@ export async function runFeatureTests(root, feature, opts = {}) {
       // an APP failure carries the text of its bug report, so the CLI, the Cockpit and a plan all offer the same words
       for (const t of tests) if (t.failure?.kind === 'app') t.failure.bugReport = bugReportText({ feature, baseUrl: address.origin, test: t });
       if (!tests.length) return done(fail('RUN_FAILED', `Playwright ran but reported no tests. ${clip(clean(output).trim(), 800)}`));
-      return done({ ok: true, feature, baseUrl: address.origin, durationMs: Date.now() - started, counts: countOf(tests), tests });
+      const { keptDir, traces } = keepTraces(dir, { tmp });
+      return done({ ok: true, feature, baseUrl: address.origin, durationMs: Date.now() - started, counts: countOf(tests), tests, traces }, { keepDir: Boolean(keptDir) });
     });
   });
 }

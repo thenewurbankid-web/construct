@@ -16,6 +16,7 @@ import { resolveRelativeImport } from './architecture-enforcer.mjs';
 import { folderFor, layerFileBaseName, pascalCase } from './generators.mjs';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { assertNotFrozen } from './frozen.mjs';
+import { applyEdits, planFileMove } from './engine/tsFileMove.mjs';
 
 const FILE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx']);
 // Matches the specifier in both `import ... from '...'` and
@@ -48,9 +49,7 @@ function bareSpecifier(fromDir, targetAbsPath) {
  * Must run while `oldAbsPath` still exists on disk — resolution depends on
  * the target being findable. Returns the number of files updated. Never
  * touches anything else in a rewritten file — only the matched specifier. */
-function rewriteImportersOf(root, oldAbsPath, newAbsPath) {
-  // Two passes so a frozen importer (#23) refuses the whole move before ANY
-  // file has been rewritten -- never a half-applied refactor.
+function planRegexImporters(root, oldAbsPath, newAbsPath) {
   const pending = [];
   for (const abs of walk(root)) {
     if (!FILE_EXTENSIONS.has(path.extname(abs)) || abs === oldAbsPath) continue;
@@ -65,9 +64,14 @@ function rewriteImportersOf(root, oldAbsPath, newAbsPath) {
     });
     if (changed) pending.push([abs, rewritten]);
   }
+  return pending;
+}
+
+/** Write a planned set of `[file, newContent]` pairs. Two passes so a frozen file (#23) refuses the whole move before ANY
+ * file has been rewritten -- never a half-applied refactor. */
+function writePlanned(pending) {
   for (const [abs] of pending) assertNotFrozen(abs, 'rewrite an import inside');
   for (const [abs, rewritten] of pending) fs.writeFileSync(abs, rewritten);
-  return pending.length;
 }
 
 /** After the moved file has already been renamed to `newAbsPath`, re-resolve
@@ -89,7 +93,25 @@ function rewriteOwnImportsAfterMove(oldAbsPath, newAbsPath) {
   if (rewritten !== source) fs.writeFileSync(newAbsPath, rewritten);
 }
 
-function relocate(root, feature, fromLayer, fromName, toLayer, toName) {
+/** The TypeScript engine's plan as `[file, newContent]` pairs (moved file excluded) plus the moved file's new content. */
+function planWithTypeScript(plan, oldAbs) {
+  const byFile = new Map();
+  for (const e of plan.edits) { if (!byFile.has(e.file)) byFile.set(e.file, []); byFile.get(e.file).push(e); }
+  const pending = [];
+  let movedContent = null;
+  for (const [file, edits] of byFile) {
+    const rewritten = applyEdits(fs.readFileSync(file, 'utf8'), edits);
+    if (file === oldAbs) movedContent = rewritten; else pending.push([file, rewritten]);
+  }
+  return { pending, movedContent };
+}
+
+/** `refactor.engine` in architecture.yml: `typescript` (default) or `regex`. */
+function engineOf(config) {
+  return config.refactor?.engine === 'regex' ? 'regex' : 'typescript';
+}
+
+function relocate(root, feature, fromLayer, fromName, toLayer, toName, { dryRun = false } = {}) {
   const config = loadConfig(root);
   // #218: same PascalCase + validation as the generators, so a renamed file
   // never gets an invalid identifier-derived name and a bad name throws
@@ -114,14 +136,35 @@ function relocate(root, feature, fromLayer, fromName, toLayer, toName) {
   if (fs.existsSync(newAbs)) {
     throw new ConstructError(`${rel(root, newAbs)} already exists.`, { exitCode: EXIT_CODES.USAGE_ERROR });
   }
-
-  // Find every other file's import of the old path while it still exists on
-  // disk (resolution depends on the target actually being there) — the
-  // rename itself must come after, or nothing would resolve to `oldAbs` any
-  // more and every one of these would look like it was never importing it.
   assertNotFrozen(oldAbs, 'move');
   assertNotFrozen(newAbs, 'move into');
-  const importersUpdated = rewriteImportersOf(root, oldAbs, newAbs);
+
+  // #435: ask the TypeScript language service first (relative imports, tsconfig `paths` aliases, dynamic import(),
+  // re-exports, barrels). It writes nothing; when it cannot resolve the project we say why and use the regex engine.
+  let note = null;
+  if (engineOf(config) === 'typescript') {
+    const plan = planFileMove(root, oldAbs, newAbs);
+    if (plan.ok) {
+      const { pending, movedContent } = planWithTypeScript(plan, oldAbs);
+      const touched = [...pending.map(([f]) => rel(root, f)), ...(movedContent !== null ? [rel(root, newAbs)] : [])];
+      const result = { from: rel(root, oldAbs), to: rel(root, newAbs), importersUpdated: pending.length, engine: 'typescript', tsVersion: plan.tsVersion, files: touched };
+      if (dryRun) return { ...result, dryRun: true };
+      writePlanned(pending);
+      fs.mkdirSync(toDir, { recursive: true });
+      fs.renameSync(oldAbs, newAbs);
+      if (movedContent !== null) fs.writeFileSync(newAbs, movedContent);
+      return result;
+    }
+    note = `TypeScript could not resolve this project (${'reason' in plan ? plan.reason : 'unknown'}); used the regex engine, which covers relative imports only.`;
+  }
+
+  // Regex engine: find every other file's import of the old path while it still exists on disk (resolution depends on
+  // the target actually being there) -- the rename itself must come after.
+  const pending = planRegexImporters(root, oldAbs, newAbs);
+  const result = { from: rel(root, oldAbs), to: rel(root, newAbs), importersUpdated: pending.length, engine: 'regex', files: pending.map(([f]) => rel(root, f)) };
+  if (note) result.note = note;
+  if (dryRun) return { ...result, dryRun: true };
+  writePlanned(pending);
 
   fs.mkdirSync(toDir, { recursive: true });
   fs.renameSync(oldAbs, newAbs);
@@ -132,8 +175,7 @@ function relocate(root, feature, fromLayer, fromName, toLayer, toName) {
   // the moved file's own relative imports against where it used to live, and
   // rewrite to a fresh specifier from its new home to that same target.
   rewriteOwnImportsAfterMove(oldAbs, newAbs);
-
-  return { from: rel(root, oldAbs), to: rel(root, newAbs), importersUpdated };
+  return result;
 }
 
 /** Move a file from one layer to another within the same feature, keeping
@@ -141,17 +183,17 @@ function relocate(root, feature, fromLayer, fromName, toLayer, toName) {
  * for the target layer — whether the result still makes sense (does the
  * export name match? is the content still pure enough for its new layer?) is
  * for `construct validate` to say, not this function. */
-export function moveLayerFile(root, feature, name, fromLayer, toLayer) {
+export function moveLayerFile(root, feature, name, fromLayer, toLayer, options = {}) {
   if (fromLayer === toLayer) {
     throw new ConstructError(
       '--from and --to must be different layers (use "construct refactor rename" to rename within a layer).',
       { exitCode: EXIT_CODES.USAGE_ERROR },
     );
   }
-  return relocate(root, feature, fromLayer, name, toLayer, name);
+  return relocate(root, feature, fromLayer, name, toLayer, name, options);
 }
 
 /** Rename a file within the same layer, keeping its layer. */
-export function renameLayerFile(root, feature, name, newName, layer) {
-  return relocate(root, feature, layer, name, layer, newName);
+export function renameLayerFile(root, feature, name, newName, layer, options = {}) {
+  return relocate(root, feature, layer, name, layer, newName, options);
 }

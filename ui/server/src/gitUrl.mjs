@@ -5,7 +5,6 @@
 // The rule is a closed set, not a blocklist: an https URL of exactly `https://<allowed host>/<owner>/<repo>`,
 // nothing else. No userinfo (`user:pass@`), no port, no query, no fragment, no `ext::`/`file:`/`ssh:`/`git:`
 // or scp-style `host:path`, no option-looking value (a leading `-`), no whitespace or control characters.
-import net from 'node:net';
 import path from 'node:path';
 
 /** Hosts a clone may name when nothing is configured. gitlab.com / bitbucket.org are opt-in. */
@@ -128,61 +127,6 @@ function parseLocal(input, localRoot) {
   return { kind: 'file', url: `file://${p}`, host: null, owner: null, repo, slug, display: repo };
 }
 
-/** Is `addr` (an IP literal) an address on the public internet? Loopback, private, link-local, CGNAT, multicast,
- * unspecified, documentation and reserved ranges are not; an IPv6 address embedding an IPv4 one (mapped,
- * NAT64, 6to4) is judged by the IPv4 it embeds. Anything that is not an IP literal is not public. */
-export function isPublicAddress(addr) {
-  const v = net.isIP(addr);
-  if (v === 4) return isPublicV4(addr.split('.').map(Number));
-  if (v === 6) return isPublicV6(addr.toLowerCase());
-  return false;
-}
-
-function isPublicV4([a, b, c]) {
-  if (a === 0 || a === 10 || a === 127) return false;
-  if (a === 100 && b >= 64 && b <= 127) return false; // CGNAT
-  if (a === 169 && b === 254) return false; // link-local
-  if (a === 172 && b >= 16 && b <= 31) return false;
-  if (a === 192 && b === 0 && (c === 0 || c === 2)) return false; // IETF, TEST-NET-1
-  if (a === 192 && b === 168) return false;
-  if (a === 192 && b === 88 && c === 99) return false; // 6to4 relay
-  if (a === 198 && (b === 18 || b === 19)) return false; // benchmarking
-  if (a === 198 && b === 51 && c === 100) return false;
-  if (a === 203 && b === 0 && c === 113) return false;
-  if (a >= 224) return false; // multicast, reserved, broadcast
-  return true;
-}
-
-function expandV6(addr) {
-  let s = addr.split('%')[0];
-  let tail = null;
-  if (s.includes('.')) {
-    const i = s.lastIndexOf(':');
-    const v4 = s.slice(i + 1).split('.').map(Number);
-    tail = [((v4[0] << 8) | v4[1]).toString(16), ((v4[2] << 8) | v4[3]).toString(16)];
-    s = s.slice(0, i + 1) + tail.join(':');
-  }
-  const [head, rest] = s.split('::');
-  const h = head ? head.split(':') : [];
-  const r = rest === undefined ? [] : rest ? rest.split(':') : [];
-  const fill = rest === undefined ? [] : Array(8 - h.length - r.length).fill('0');
-  return [...h, ...fill, ...r].map((x) => parseInt(x || '0', 16));
-}
-
-function isPublicV6(addr) {
-  const g = expandV6(addr);
-  if (g.every((x) => x === 0)) return false; // ::
-  if (g.slice(0, 7).every((x) => x === 0) && g[7] === 1) return false; // ::1
-  const embedded = (hi, lo) => [hi >> 8, hi & 255, lo >> 8, lo & 255];
-  if (g.slice(0, 5).every((x) => x === 0) && (g[5] === 0xffff || g[5] === 0)) return isPublicV4(embedded(g[6], g[7])); // mapped / compatible
-  if (g[0] === 0x64 && g[1] === 0xff9b) return isPublicV4(embedded(g[6], g[7])); // NAT64
-  if (g[0] === 0x2002) return isPublicV4(embedded(g[1], g[2])); // 6to4
-  if ((g[0] & 0xfe00) === 0xfc00) return false; // unique local
-  if ((g[0] & 0xffc0) === 0xfe80) return false; // link-local
-  if ((g[0] & 0xffc0) === 0xfec0) return false; // site-local (deprecated)
-  if ((g[0] & 0xff00) === 0xff00) return false; // multicast
-  if (g[0] === 0x2001 && g[1] === 0x0db8) return false; // documentation
-  if (g[0] === 0x2001 && g[1] === 0) return false; // Teredo
-  if ((g[0] & 0xe000) !== 0x2000) return false; // outside global unicast 2000::/3
-  return true;
-}
+// #436: the public-address test now lives in the one shared guard (core `safeFetch`, ipaddr.js); same contract, same
+// exhaustive tests. Re-exported so every existing importer (cloneJobs.mjs, the tests) is unchanged.
+export { isPublicAddress } from '../../../src/engine/safeFetch.mjs';
