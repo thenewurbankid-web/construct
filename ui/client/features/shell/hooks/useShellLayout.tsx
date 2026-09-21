@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useReducer, useState } from 'react';
+import { useCallback, useEffect, useReducer, useRef } from 'react';
 import { initialShellLayout, shellLayoutReducer } from '../workflows/ShellLayout';
 import { loadLayout, saveLayout } from '../services/LayoutStorage';
 import type { PaneId } from '../types';
@@ -10,20 +10,26 @@ import type { PaneId } from '../types';
  * `projectDir` resolves, that project's saved layout is loaded. */
 export function useShellLayout(projectDir: string | null, projectKnown: boolean) {
   const [layout, dispatch] = useReducer(shellLayoutReducer, initialShellLayout);
-  // State, not a ref: the save below must not see "loaded" until the render that carries the loaded layout,
-  // or a shell that mounts with the project already known would save its defaults over the stored layout.
-  const [loadedFor, setLoadedFor] = useState<string | null | undefined>(undefined);
+  const loadedFor = useRef<string | null | undefined>(undefined);
+  // The render that dispatches LOAD still holds the defaults; saving them would overwrite the stored layout
+  // (the shell now mounts with the project already known), so the save right after a load is skipped.
+  const justLoaded = useRef(false);
 
   useEffect(() => {
     if (!projectKnown) return;
     dispatch({ type: 'LOAD', layout: loadLayout(projectDir) });
-    setLoadedFor(projectDir);
+    loadedFor.current = projectDir;
+    justLoaded.current = true;
   }, [projectDir, projectKnown]);
 
   useEffect(() => {
-    if (!projectKnown || loadedFor !== projectDir) return;
+    if (!projectKnown || loadedFor.current !== projectDir) return;
+    if (justLoaded.current) {
+      justLoaded.current = false;
+      return;
+    }
     saveLayout(projectDir, layout);
-  }, [layout, loadedFor, projectDir, projectKnown]);
+  }, [layout, projectDir, projectKnown]);
 
   const resize = useCallback((pane: PaneId, size: number) => dispatch({ type: 'RESIZE', pane, size }), []);
   const toggle = useCallback((pane: PaneId, open?: boolean) => dispatch({ type: 'TOGGLE', pane, open }), []);
