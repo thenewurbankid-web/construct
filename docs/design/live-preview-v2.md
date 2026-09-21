@@ -7,7 +7,8 @@ Reference for the *experience* only: the owner's POC repo `thenewurbankid-web/co
 assets from it are copied here; the approach is re-derived and adapted below.
 
 > Status: **design + core block (slices 1-2) landed; slices 3-5 not built.** The tables below
-> mark what is code today and what is still a decision on paper.
+> mark what is code today and what is still a decision on paper. The approach is verified
+> end-to-end on two real dev builds (§9), not only on paper.
 
 ---
 
@@ -235,11 +236,15 @@ The bridge is a string of JavaScript we inject into someone else's page. Its con
 4. **A fixed, closed message vocabulary.** `hello`, `select`, `hover`, `mode`, `highlight`,
    `capabilities`, `error`. Anything else is dropped. No "run this in the page" verb exists — that
    is the difference between a cockpit and a remote shell.
-5. **Caps.** A selection payload is capped: at most 32 ancestors, 4 KB of stack text per frame and
+5. **Caps.** A selection payload is capped: at most 32 ancestors, 4 KB of stack text per stack and
    64 KB total; prop *names* and small scalar values only (never a whole `memoizedProps` graph, see
-   6 below). Hover events are throttled (one per animation frame) and the whole bridge no-ops if a
-   payload would exceed the cap, reporting `error: 'payload-too-large'` instead of truncating into
-   something that could resolve to the wrong place.
+   6 below). Hover events are throttled (one per animation frame). A payload over the total cap
+   degrades in a **fixed, declared order** — ancestor stacks, then ancestor count, then props, then
+   its own stack — and every step is listed in `selection.truncated` so the UI can say what is
+   missing; only if it still does not fit is the selection refused with
+   `error: 'payload-too-large'`. Nothing is shortened silently, and nothing is shortened in a way
+   that could resolve to a *different* place: the selected element's own stack is the last thing to
+   go, because it is the one that resolves.
 6. **No secrets.** Props are the single most likely place for a token to appear (`<Api
    token={…}>`). The bridge sends prop **names and types** plus values only for short primitives,
    and never sends functions, DOM nodes, promises or objects. Anything else is reported as
@@ -272,8 +277,17 @@ reasons are enumerated (`no-fiber`, `no-evidence`, `unmapped`, `outside-project`
 
 - *Stack frame choice.* `_debugStack` is created **inside** `jsxDEV`, so frame 0 is React's own
   (`react-jsx-dev-runtime`, `react-stack-top-frame`). The JSX call site is the first frame **not**
-  inside `react`/`react-dom`/`node_modules`/`/@react-refresh`. Frames are parsed from both V8 and
-  SpiderMonkey/JSC formats.
+  inside `react`/`react-dom`/`node_modules`/`/@react-refresh` — but in a **bundled** dev build every
+  frame shares one URL, so that test alone picks React itself (measured, §9). The resolver
+  therefore walks the frames, maps each through the source map, and takes the first that lands on a
+  file of the project; the pre-map guess additionally knows React's element-factory function names
+  (`jsxDEV`, `react_stack_bottom_frame`, `renderWithHooks`, …). Frames are parsed from both V8 and
+  SpiderMonkey/JSC formats, and the location is cut out structurally because bundler URLs contain
+  parentheses (`webpack-internal:///(app-pages-browser)/…`).
+- *A map's `sources` are relative to the map*, not to the project: `../src/App.tsx` in a map served
+  from `/dist/` means `/src/App.tsx`. Those are resolved against the map's URL before containment
+  sees them; a bare relative source is left alone unless the caller says where the map came from,
+  because bundlers write those relative to the project root just as often.
 - *Owner vs use site.* Like the POC's `ownerFile`/`ownerLine`, the chain distinguishes *where the
   element is written* from *where its owning component is used*; the inspector needs the second to
   edit the binding. We keep both (`file`/`line` and `ancestors[i].file`/`line`).
@@ -356,20 +370,46 @@ default surface of the Pages screen.
 
 ---
 
-## 9. Fixtures and what we could verify here
+## 9. Fixtures, and what the real builds proved
 
-Slice 2 ships two fixtures under `test-utils/preview-fixtures/`:
+Slice 2 ships two fixtures under `test-utils/preview-fixtures/`, neither of which installs anything
+of Construct's — that is the point:
 
-- `next-app/` — a minimal Next.js App Router page. **Next 15 is installed in this repo**
-  (`ui/client/node_modules/next`), so its dev build can be exercised locally.
-- `vite-app/` — a minimal Vite + React app. **Vite is not installed anywhere in this repo**, and
-  #443 explicitly forbids installing frameworks for this. The fixture's source is checked in so it
-  can be used the moment a Vite toolchain exists (slice 5 / e2e), and the resolver is tested
-  against **recorded payloads** shaped like a Vite dev build's (`/src/App.tsx?t=…` URLs, Vite's
-  per-file source maps) rather than against a live server.
+- `next-app/` — a minimal Next.js App Router page. Next 15 is installed in this repo
+  (`ui/client/node_modules/next`), so its dev server really runs here.
+- `vite-app/` — a minimal Vite + React app. **Vite is not installed anywhere in this repo** and
+  #443 forbids installing frameworks for this, so its sources are instead built with **esbuild**
+  (installed under `ui/client/node_modules`) using `--jsx-dev`, the same dev JSX transform Vite
+  uses, and served over plain http. The Vite dev server itself is exercised in slice 5.
 
-Recorded payloads live in `test/fixtures/previewFiber/`, each with a note saying whether it was
-captured from a real run or hand-written from an observed shape.
+`capture.mjs` records a real selection from a running build (real browser, real Alt+click, real
+fiber) into `test/fixtures/previewFiber/`, with a `capturedFrom` block so a recording can never be
+mistaken for a hand-written payload. Source maps are trimmed to the generated lines the stacks
+actually name, which turns a 1.8 MB bundler map into a 24 KB readable fixture.
+
+**Measured results (2026-09-21, React 19.3.0):**
+
+| Build | Evidence present | Resolves to | Tier / confidence |
+|---|---|---|---|
+| esbuild `--jsx-dev`, bundled, real map | `_debugStack` only | `src/App.tsx:10:9` — exactly the `<button>`, with the owner chain `Card -> src/App.tsx:9` and `App -> src/main.tsx:7` | `stack` / `mapped` |
+| `next dev` 15.5.25 | `_debugStack` only | `app/page.tsx`, **no line** | `stack` / `file-only` |
+
+Next's dev frames read `webpack-internal:///(app-pages-browser)/./app/page.tsx:27:102`: the file is
+exact with no source map at all, while `27:102` is a position in the transformed module (the source
+has 18 lines) and is therefore *not* reported as a source position. Upgrading Next to `mapped`
+means reading the inline maps of its eval'd modules — the proxy's job in slice 3, not a change to
+the ladder.
+
+**Two design bugs the real builds found** (both fixed, both now regression-tested):
+
+1. *Frame choice in a bundle.* When every frame shares one URL, "the first frame that is not
+   React's" picked React's own `jsxDEV`. The resolver now walks the frames, maps each, skips
+   library frames and takes the first that lands on a file of the project.
+2. *The cap was unreachable in practice.* A real Next selection carries 32 ancestors; 32 x a 4 KB
+   stack is far over the 64 KB total, so the bridge dropped the whole selection. It now degrades in
+   a fixed order — ancestor stacks, ancestor count, props, then its own stack — and reports what it
+   dropped in `selection.truncated`, which the UI shows ("ancestor positions unavailable"). Silent
+   truncation is still forbidden; dropping everything was simply the worse answer.
 
 ---
 
