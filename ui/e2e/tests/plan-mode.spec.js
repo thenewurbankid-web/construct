@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { gotoNotes } from './support/cockpit.js';
+import { gotoCockpit, gotoNotes } from './support/cockpit.js';
 
 // Plan mode (#289 note, impact and run; #332 plan review and edit), end to end in a real browser against a
 // REAL throwaway git repository (the impact-shared fixture). Nothing is mocked: the impact is the real
@@ -196,7 +196,9 @@ test.describe.serial('Plan mode (#289, #332)', () => {
 
   test('on a phone the screen is one pane at a time with no sideways scroll', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 800 });
-    await gotoNotes(page, '/plan');
+    // Not gotoNotes: at 390px the shell shows one pane at a time, so the Browser's Notes tab is not
+    // on screen to click — which is exactly the behaviour this test is about.
+    await gotoCockpit(page, '/plan');
     await expect(page.getByTestId('plan-stage')).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: path.join(SHOTS, '289-plan-narrow.png') });

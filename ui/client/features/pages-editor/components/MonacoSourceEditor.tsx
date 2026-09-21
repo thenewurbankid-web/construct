@@ -31,6 +31,8 @@ function toMonacoMarkers(monaco: MonacoApi, markers: SourceMarker[]) {
   }));
 }
 
+const THEME = 'construct-dark';
+
 export function MonacoSourceEditor({ value, markers, readOnly, onChange, label = 'Page source', onUnavailable }: SourceEditorProps & { onUnavailable?: () => void }) {
   const monacoRef = useRef<MonacoApi | null>(null);
   const editorRef = useRef<EditorApi | null>(null);
@@ -54,9 +56,19 @@ export function MonacoSourceEditor({ value, markers, readOnly, onChange, label =
         height={Math.min(560, Math.max(200, (value.split('\n').length + 1) * 19))}
         language="typescript"
         path="page-source.tsx"
-        theme="vs-dark"
+        theme={THEME}
         value={value}
         onChange={(v) => onChange?.(v ?? '')}
+        beforeMount={(monaco) => {
+          // Monaco's own `vs-dark` paints comments #608b4e on #1e1e1e — 4.2:1, under the 4.5 minimum
+          // (caught by the axe scan on the Components screen). Same theme, readable comment colour.
+          monaco.editor.defineTheme(THEME, {
+            base: 'vs-dark',
+            inherit: true,
+            rules: [{ token: 'comment', foreground: '8ab87a' }],
+            colors: {},
+          });
+        }}
         onMount={(editor, monaco) => {
           editorRef.current = editor;
           monacoRef.current = monaco;

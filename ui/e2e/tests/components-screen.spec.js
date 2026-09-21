@@ -159,8 +159,11 @@ test.describe.serial('Components screen: browse in the left pane, document and e
     expect(project.read(SUMMARY_PATH)).toContain('// reviewed by the e2e test');
     await expect(page.getByTestId('cd-review')).toBeDisabled();
     await expect(page.getByTestId('cd-prop')).toHaveCount(3);
-    // The save went through the normal commit-on-save path.
-    expect(project.git('log', '--oneline', '-n', '3')).toMatch(/BillingSummary|billing|update/i);
+    // The save goes through the same commit-on-save path as a Workflows edit (`afterSave` in index.mjs).
+    // What that path DOES next is the user's setting and the tree's state (commit now, coalesce, or ask
+    // because the tree is dirty) — proven in ui/server/src/autoCommit.test.mjs and commit-on-save.spec.js.
+    // Here the claim is only that the edit reached the tree as a tracked modification, not an untracked file.
+    expect(project.git('status', '--porcelain', '--', SUMMARY_PATH).trim()).toMatch(/^ ?M /);
   });
 
   test('an edit that breaks an architecture rule is blocked with the rule named, and the file on disk is untouched', async ({ page }) => {
