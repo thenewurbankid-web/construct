@@ -11,7 +11,7 @@ const PACE = Number(process.env.MEDIA_PACE) || 1.5;
 export const pause = (page, ms) => page.waitForTimeout(Math.round(ms * PACE));
 
 /** Reading time for a caption: enough for a person to read it once, unhurried (about 14 characters a second, at least 3 s). */
-export const readingMs = (text) => Math.max(3000, Math.round(text.length * 70));
+export const readingMs = (text) => Math.round(Math.max(3000, text.length * 70) * (Number(process.env.MEDIA_READ) || 1));
 
 const CAPTION_ID = 'media-caption';
 

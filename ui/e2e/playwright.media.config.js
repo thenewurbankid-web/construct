@@ -35,11 +35,13 @@ export default {
   testMatch: /\.spec\.js$/,
   outputDir: path.join(SANDBOX, 'results'),
   timeout: 240_000,
+  expect: { timeout: 15_000 },
   use: {
     baseURL: CLIENT_ORIGIN,
     viewport: { width: 1280, height: 720 },
     video: { mode: 'on', size: { width: 1280, height: 720 } },
     trace: 'off',
+    actionTimeout: 30_000,
   },
   projects: [{ name: 'media', use: { browserName: 'chromium', viewport: { width: 1280, height: 720 } } }],
   webServer: [
