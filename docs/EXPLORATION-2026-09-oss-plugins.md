@@ -654,3 +654,51 @@ that check is an acceptance criterion in each issue.
    Playwright codegen import for local developers, or both behind the `RecordedEvent` contract?
 7. **Should `construct sync` keep writing a dependency-cruiser file at all** into target projects, or move it
    behind an explicit `export ci` command so projects that do not use it are not given the file?
+
+## Registry check (2026-09-21, live from npm)
+
+The exploration itself had no registry access, so every package fact above that was marked "from knowledge" was
+re-checked against npm on 2026-09-21. Version, license, last publish date and weekly downloads are from
+`registry.npmjs.org` and `api.npmjs.org`.
+
+| Package | Latest | License | Published | Weekly downloads |
+|---|---|---|---|---|
+| react-docgen | 8.0.4 | MIT | 2026-09-20 | 14.3M |
+| react-docgen-typescript | 2.4.0 | MIT | 2025-06-10 | 12.9M |
+| typedoc | 0.28.20 | Apache-2.0 | 2026-07-05 | 3.9M |
+| @storybook/react-vite | 10.6.0 | MIT | 2026-09-02 | 9.9M |
+| ipaddr.js | 2.5.0 | MIT | 2026-08-04 | 104.0M |
+| undici | 8.10.2 | MIT | 2026-09-04 | 133.2M |
+| dependency-cruiser | 18.4.0 | MIT | 2026-09-20 | 2.8M |
+| eslint-plugin-boundaries | 7.2.0 | MIT | 2026-08-09 | 1.1M |
+| linkedom | 0.18.13 | ISC | 2026-07-07 | 3.6M |
+| parse5 | 8.0.1 | MIT | 2026-04-19 | 115.6M |
+| cheerio | 1.2.0 | MIT | 2026-01-23 | 20.1M |
+| xpath | 0.0.34 | MIT | 2023-12-16 | 9.2M |
+| @mozilla/readability | 0.6.0 | Apache-2.0 | 2025-03-03 | 2.4M |
+| turndown | 7.2.4 | MIT | 2026-04-03 | 6.8M |
+| @mixmark-io/domino | 2.2.0 | BSD-2-Clause | 2024-04-06 | 5.5M |
+| @readme/openapi-parser | 9.0.0 | MIT | 2026-09-04 | 0.8M |
+| @hey-api/openapi-ts | 0.99.0 | MIT | 2026-06-22 | 3.4M |
+| orval | 8.35.0 | MIT | 2026-09-20 | 1.7M |
+| msw | 2.15.0 | MIT | 2026-07-08 | 14.7M |
+| @stoplight/prism-cli | 5.16.0 | Apache-2.0 | 2026-07-17 | 0.14M |
+| @radix-ui/react-dialog | 1.1.23 | MIT | 2026-07-24 | 53.7M |
+| react-aria-components | 1.21.1 | Apache-2.0 | 2026-09-04 | 3.1M |
+| ajv | 8.20.0 | MIT | 2026-04-24 | 287.9M |
+| ts-morph | 28.0.0 | MIT | 2026-04-12 | 19.1M |
+| @ast-grep/napi | 0.45.3 | MIT | 2026-08-31 | 2.4M |
+| sanitize-html | 2.17.7 | MIT | 2026-08-13 | 7.9M |
+| picomatch | 4.0.7 | MIT | 2026-08-24 | 363.4M |
+| minimatch | 10.2.6 | BlueOak-1.0.0 | 2026-07-27 | 522.7M |
+| @axe-core/playwright | 4.13.0 | MPL-2.0 | 2026-08-11 | 7.2M |
+
+### What the check changed
+
+- **Turndown's DOM is fine.** The report suspected `@mixmark-io/domino` was MPL-2.0; npm says **BSD-2-Clause**. Permissive, so turndown is not blocked. (Domino itself has not been published since 2024-04, but it is stable and widely used.)
+- **`xpath` is stale but stable** (last publish 2023-12, 9.2M weekly). Acceptable behind our own `extract` interface; keep it swappable.
+- **Use `@ast-grep/napi`, not the `ast-grep` package** (the latter is a dead 2018 name).
+- **Freshness looks healthy** for every recommended package: react-docgen, dependency-cruiser, orval and the OpenAPI parser all published within the last month; linkedom, ipaddr.js, msw and Radix within a quarter.
+- **Two small-audience flags:** `@readme/openapi-parser` (0.8M weekly) and `@stoplight/prism-cli` (0.14M weekly) are niche. Prism stays SPIKE FIRST; the OpenAPI parser is still a reasonable wrap because it sits behind our `importContract` interface.
+- **License flags confirmed:** `minimatch` is BlueOak-1.0.0 (permissive, not on the MIT/BSD/ISC/Apache list; `picomatch` MIT is the swap); `@axe-core/playwright` is MPL-2.0 but test-only.
+- **Nothing recommended is GPL/LGPL/SSPL/BSL.**
