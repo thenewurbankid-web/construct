@@ -50,7 +50,9 @@ test.describe.serial('#365 workspace boundary', () => {
 
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'Open a project' })).toBeVisible();
-    await expect(page.getByTestId('project-switcher')).toContainText('No project');
+    // #429: with no project the whole UI is blocked behind the gate: no project switcher, no rail.
+    await expect(page.getByTestId('project-switcher')).toHaveCount(0);
+    await expect(page.getByRole('navigation', { name: 'Screens', exact: true })).toHaveCount(0);
     // One prompt on other screens too, not a per-screen error.
     for (const route of ['/wizard', '/pages', '/workflows', '/plan', '/review', '/tests']) {
       await page.goto(route);
@@ -146,7 +148,7 @@ test.describe.serial('#365 workspace boundary', () => {
     await page.getByTestId('project-switcher').click();
     await page.getByTestId('close-project').click();
     await expect(page.getByRole('heading', { name: 'Open a project' })).toBeVisible();
-    await expect(page.getByTestId('project-switcher')).toContainText('No project');
+    await expect(page.getByTestId('project-switcher')).toHaveCount(0);
     const reopen = page.getByTestId('reopen-project');
     await expect(reopen).toHaveText('Reopen shop');
     await page.screenshot({ path: path.join(SHOTS, '365-3-closed-reopen-offered.png'), fullPage: true });

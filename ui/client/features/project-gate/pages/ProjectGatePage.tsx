@@ -18,13 +18,16 @@ type ProjectGatePageProps = {
   picker: ReactNode;
   /** The clone-a-repository form, shown on the Open-a-project screen. */
   clone?: ReactNode;
+  /** Absolute path of the `shop` sample folder when the workspace has one (else null), and whether that is still being looked up. */
+  samplePath?: string | null;
+  sampleLoading?: boolean;
   children: ReactNode;
 };
 
 // Presentation-only routing between the possible states
 // (PAGE-002, PAGE-003, PAGE-004, PAGE-005): no application-layer imports,
 // no literal network call.
-export function ProjectGatePage({ status, initializing, error, onInit, loadError, onRetry, opening, openError, onOpen, picker, clone, children }: ProjectGatePageProps): ReactNode {
+export function ProjectGatePage({ status, initializing, error, onInit, loadError, onRetry, opening, openError, onOpen, picker, clone, samplePath = null, sampleLoading = false, children }: ProjectGatePageProps): ReactNode {
   if (!status) {
     return (
       <div className="page page--screen">
@@ -37,7 +40,7 @@ export function ProjectGatePage({ status, initializing, error, onInit, loadError
     );
   }
   if (status.noProject || status.projectDir === null) {
-    return <NoProjectScreen workspaceRoot={status.workspaceRoot ?? null} lastProject={status.lastProject ?? null} opening={opening} error={openError} onOpen={onOpen} picker={picker} clone={clone} />;
+    return <NoProjectScreen workspaceRoot={status.workspaceRoot ?? null} lastProject={status.lastProject ?? null} opening={opening} error={openError} onOpen={onOpen} picker={picker} clone={clone} samplePath={samplePath} sampleLoading={sampleLoading} />;
   }
   if (!status.valid) {
     return <ProjectGateScreen status={status} initializing={initializing} error={error} onInit={onInit} />;

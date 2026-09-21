@@ -4,6 +4,13 @@ Status: concept (nothing here is implemented). Mocks: `mocks/ia-*.html`, PNGs `m
 (built by `node docs/design/mocks/build-ia.mjs`, styles in `mocks/ia.css`). Supersedes the Explore / Plan / Build /
 Review **modes** of `cockpit-layout.md` (see "Reversal" below). Owner brief: 2026-09-20. Section 8 (POC parity) revises Pages and Components to be preview-first and adds the inline Generate control.
 
+> **Update 2026-09-21 (owner, #429): the five screens moved to a LEFT rail.** The screens rail (IDE-style activity bar,
+> `<nav aria-label="Screens">`, icon + label, collapsible to icons and remembered per person) replaces the top-bar
+> screen nav described below; at < 900px it is a bar above the Browse / Stage / Inspect bottom tabs. This reverses the
+> line "we do not add a second icon rail". With **no project open** the whole UI is replaced by the full-screen
+> "Open a project" gate under a minimal top bar (brand + profile menu), on every route; Settings, Local model and Help
+> stay reachable as full pages. The "dimmed screen nav" of section 4 is superseded by that gate.
+
 ## 1. The shape
 
 Primary screens (top navigation, `<nav aria-label="Screens">`): **Features, Pages, Components, Git, Tests**.

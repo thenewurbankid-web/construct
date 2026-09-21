@@ -5,6 +5,8 @@ import { NARROW_MEDIA_QUERY } from '../domain/NarrowLayout';
 import { DEFAULT_NARROW_PANE } from '../domain/NarrowPanes';
 import type { NarrowPane } from '../types';
 
+const MIN_REAL_WIDTH = 200;
+
 /** Whether the viewport is narrow (< 900px) and which single pane is showing
  * there. Navigating to another screen returns to the stage, so a link chosen in
  * the Browser pane actually shows its result. Server render and first paint use
@@ -15,7 +17,13 @@ export function useNarrowLayout(pathname: string) {
 
   useEffect(() => {
     const query = window.matchMedia(NARROW_MEDIA_QUERY);
-    const sync = () => setNarrow(query.matches);
+    // A viewport of a few pixels is a measurement artefact (a full-page screenshot briefly resizes the window to
+    // 1x1), not a phone. Flipping to the one-pane layout for that instant would remount the whole stage and lose
+    // its state, so keep the layout we had.
+    const sync = () => {
+      if (window.innerWidth < MIN_REAL_WIDTH) return;
+      setNarrow(query.matches);
+    };
     sync();
     query.addEventListener('change', sync);
     return () => query.removeEventListener('change', sync);

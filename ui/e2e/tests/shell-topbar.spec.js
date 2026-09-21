@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { setTheme } from './support/cockpit.js';
 
 // Design #245 — top bar: project switcher (local projects only, reuses the
-// settings project dir and the shared folder picker), the five screens (Features / Pages / Components / Git /
+// settings project dir and the shared folder picker), the five screens (now in the left rail, #429; Features / Pages / Components / Git /
 // Tests, #369; they replaced the Explore / Plan / Build / Review modes), real status pills, and the profile menu (#368).
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SHOTS = path.resolve(__dirname, '../screenshots');
@@ -41,23 +41,20 @@ test.describe('Cockpit top bar (#245)', () => {
       await page.goto(route);
       await expect(nav.getByRole('link', { name: 'Features' })).toHaveAttribute('aria-current', 'page');
     }
-    await page.goto('/pages');
-    await page.screenshot({ path: path.join(SHOTS, '369-screen-nav.png'), clip: { x: 0, y: 0, width: 1280, height: 90 } });
   });
 
-  test('at 390 px the five screens sit on their own row, all reachable, with no sideways scroll (#369)', async ({ page }) => {
+  test('at 390 px the five screens are a bar above the pane tabs, all reachable, with no sideways scroll (#369, #429)', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 800 });
     await page.goto('/pages');
     const nav = page.getByRole('navigation', { name: 'Screens', exact: true });
     await expect(nav.getByRole('link')).toHaveCount(5);
     for (const link of await nav.getByRole('link').all()) await expect(link).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-    // The nav is the second row of the bar, under brand and project.
-    const [navBox, projectBox] = [await nav.boundingBox(), await page.getByTestId('project-switcher').boundingBox()];
-    expect(navBox.y).toBeGreaterThan(projectBox.y + projectBox.height - 1);
+    // The top bar is one row again; the screens sit just above the Browser / Stage / Tools tabs.
+    const [navBox, panesBox] = [await nav.boundingBox(), await page.getByRole('navigation', { name: 'Panes' }).boundingBox()];
+    expect(navBox.y).toBeLessThan(panesBox.y);
     await nav.getByRole('link', { name: 'Tests' }).click();
     await expect(page).toHaveURL(/\/tests$/);
-    await page.screenshot({ path: path.join(SHOTS, '369-screen-nav-narrow.png') });
   });
 
   test('every former Screens-tab target is still reachable: top bar, profile menu or palette (#370)', async ({ page }) => {
@@ -67,7 +64,7 @@ test.describe('Cockpit top bar (#245)', () => {
     await expect(page.getByRole('tab', { name: 'Screens' })).toHaveCount(0);
 
     // Dashboard, Import Wizard, Pages Editor, Workflows, Tests, Local Model, Settings, Help:
-    // - the five primary screens are in the top bar (Dashboard became Features, Pages Editor Pages, Workflows Components);
+    // - the five primary screens are in the left rail (Dashboard became Features, Pages Editor Pages, Workflows Components);
     // - Settings, Local Model and Help are in the profile menu;
     // - the Import Wizard and everything else stay one palette command away.
     const nav = page.getByRole('navigation', { name: 'Screens', exact: true });

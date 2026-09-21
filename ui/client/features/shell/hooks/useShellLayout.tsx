@@ -11,15 +11,23 @@ import type { PaneId } from '../types';
 export function useShellLayout(projectDir: string | null, projectKnown: boolean) {
   const [layout, dispatch] = useReducer(shellLayoutReducer, initialShellLayout);
   const loadedFor = useRef<string | null | undefined>(undefined);
+  // The render that dispatches LOAD still holds the defaults; saving them would overwrite the stored layout
+  // (the shell now mounts with the project already known), so the save right after a load is skipped.
+  const justLoaded = useRef(false);
 
   useEffect(() => {
     if (!projectKnown) return;
     dispatch({ type: 'LOAD', layout: loadLayout(projectDir) });
     loadedFor.current = projectDir;
+    justLoaded.current = true;
   }, [projectDir, projectKnown]);
 
   useEffect(() => {
     if (!projectKnown || loadedFor.current !== projectDir) return;
+    if (justLoaded.current) {
+      justLoaded.current = false;
+      return;
+    }
     saveLayout(projectDir, layout);
   }, [layout, projectDir, projectKnown]);
 

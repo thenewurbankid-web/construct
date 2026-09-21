@@ -7,7 +7,7 @@ import type { ShellLayoutProps } from '../types';
  * an optional bottom drawer and a status bar. Every region is a slot; panes are
  * resizable (drag or arrow keys) and collapsible. Presentation only: sizes and
  * limits come in as props. */
-export function ShellLayout({ layout, limits, onResize, onTogglePane, narrow = false, narrowPane = 'mid', onNarrowPane, top, left, mid, right, drawer, status }: ShellLayoutProps) {
+export function ShellLayout({ layout, limits, onResize, onTogglePane, narrow = false, narrowPane = 'mid', onNarrowPane, top, rail, left, mid, right, drawer, status }: ShellLayoutProps) {
   if (narrow) {
     // Narrow (< 900px): one pane at a time. Inactive panes stay mounted but hidden
     // so a screen keeps its state (a wizard chat, a half-filled form) while you
@@ -26,6 +26,7 @@ export function ShellLayout({ layout, limits, onResize, onTogglePane, narrow = f
             {right}
           </aside>
         </div>
+        {rail}
         <NarrowTabBar pane={narrowPane} onSelect={(p) => onNarrowPane?.(p)} />
         {status}
       </div>
@@ -36,6 +37,7 @@ export function ShellLayout({ layout, limits, onResize, onTogglePane, narrow = f
     <div className="sh-root" style={style}>
       {top}
       <div className="sh-body">
+        {rail}
         {layout.left.open && (
           <>
             <aside id="sh-pane-left" data-pane="left" tabIndex={-1} aria-label="Browser" className="sh-pane sh-left" style={{ width: layout.left.size }}>

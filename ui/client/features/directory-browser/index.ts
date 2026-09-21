@@ -15,3 +15,6 @@ export * from './components/DirectoryPicker';
 
 /** Loader primitives (state + navigate) beneath useDirectoryBrowser. */
 export * from './hooks/useDirectoryLoader';
+
+/** Finds a folder by name directly inside the workspace (the "Try the sample shop" shortcut). */
+export * from './hooks/useWorkspaceFolder';
