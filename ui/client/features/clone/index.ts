@@ -16,6 +16,9 @@ export * from './controllers/CloneJobsController';
 /** URL hints and the folder name an address will get. */
 export * from './domain/CloneUrl';
 
+/** Reads what people paste (owner/repo, a browser link, a git clone line) into one https address. */
+export * from './domain/CloneInput';
+
 /** Progress numbers in words: the percentage in git's text, sizes at a glance. */
 export * from './domain/CloneProgress';
 
@@ -25,11 +28,17 @@ export * from './domain/CloneJobView';
 /** The clone form's state machine. */
 export * from './workflows/Clone';
 
+/** The recent-clones list's state machine. */
+export * from './workflows/Recent';
+
 /** The remote form's state machine. */
 export * from './workflows/Remote';
 
 /** Starts a clone, follows it until it ends, cancels it; hands the finished folder to the caller. */
 export * from './hooks/useClone';
+
+/** This browser's recent clones, with Pull latest. */
+export * from './hooks/useRecentClones';
 
 /** Reads the open project's remote and adds an `origin` when it has none. */
 export * from './hooks/useRemote';

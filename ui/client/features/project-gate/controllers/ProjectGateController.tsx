@@ -30,7 +30,7 @@ export function ProjectGateController({ children }: { children: ReactNode }) {
       openError={openError}
       onOpen={handleOpen}
       picker={<DirectoryBrowserController onSelect={handleOpen} />}
-      clone={<CloneController onCloned={handleOpen} />}
+      clone={<CloneController onCloned={handleOpen} workspaceRoot={status?.workspaceRoot ?? null} />}
     >
       {children}
     </ProjectGatePage>

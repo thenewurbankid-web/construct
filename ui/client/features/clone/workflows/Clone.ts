@@ -2,8 +2,14 @@ import type { CloneJob } from '../types';
 
 // Workflows own application state/flow but never import React (WORKFLOW-001): plain reducers.
 export type CloneFormState = {
-  url: string;
+  /** Whatever was pasted into the one repository field. */
+  input: string;
+  /** A folder name typed by the person; '' = use the repository name. */
   name: string;
+  /** A branch typed by the person; null = not edited (use the one read from the address, if any). */
+  branch: string | null;
+  /** The one-time access token (private repositories). Held only while the form is open; cleared once sent. */
+  token: string;
   /** Sending the request. */
   starting: boolean;
   job: CloneJob | null;
@@ -11,26 +17,34 @@ export type CloneFormState = {
 };
 
 export type CloneAction =
-  | { type: 'SET_URL'; url: string }
+  | { type: 'SET_INPUT'; input: string }
   | { type: 'SET_NAME'; name: string }
+  | { type: 'SET_BRANCH'; branch: string }
+  | { type: 'SET_TOKEN'; token: string }
   | { type: 'START' }
   | { type: 'STARTED'; job: CloneJob }
   | { type: 'REFUSED'; error: string }
   | { type: 'JOB'; job: CloneJob }
   | { type: 'DISMISS' };
 
-export const initialCloneState: CloneFormState = { url: '', name: '', starting: false, job: null, error: null };
+export const initialCloneState: CloneFormState = { input: '', name: '', branch: null, token: '', starting: false, job: null, error: null };
 
 export function cloneReducer(state: CloneFormState, action: CloneAction): CloneFormState {
   switch (action.type) {
-    case 'SET_URL':
-      return { ...state, url: action.url, error: null };
+    case 'SET_INPUT':
+      // A new address starts fresh: the branch read from the old one, and a previous failure, no longer apply.
+      return { ...state, input: action.input, branch: null, error: null };
     case 'SET_NAME':
       return { ...state, name: action.name, error: null };
+    case 'SET_BRANCH':
+      return { ...state, branch: action.branch, error: null };
+    case 'SET_TOKEN':
+      return { ...state, token: action.token, error: null };
     case 'START':
       return { ...state, starting: true, error: null, job: null };
     case 'STARTED':
-      return { ...state, starting: false, job: action.job };
+      // The token has been sent; the form does not keep it.
+      return { ...state, starting: false, job: action.job, token: '' };
     case 'REFUSED':
       return { ...state, starting: false, error: action.error };
     case 'JOB':

@@ -24,6 +24,7 @@ export function buildJobView(job: CloneJob): CloneJobView {
     size: formatBytes(job.bytes),
     live,
     error: job.error ?? null,
+    authFailed: job.code === 'AUTH',
     log: job.log,
   };
 }
