@@ -230,17 +230,24 @@ test('detach removes every listener and leaves the page clean', () => {
   assert.equal(win.handlers.message.length, 0);
 });
 
-test('an oversized payload is reported, never truncated into something resolvable', () => {
+test('an oversized payload degrades in a fixed order and says what it dropped', () => {
+  // Measured on a real Next.js dev build: 32 ancestors x a 4 KB stack is far
+  // over the 64 KB total, and dropping the selection entirely is the worst
+  // possible answer.
   const { win, posted, fire } = fakeWindow();
   installPreviewFiberBridge(win, { nonce: 'n', parentOrigin: PARENT });
-  const huge = { type: 'button', return: null, memoizedProps: { a: 'x'.repeat(200000) }, _debugStack: null };
-  fire('click', { target: fakeElement({ fiber: huge }), altKey: true, preventDefault() {}, stopPropagation() {} });
-  // props are capped at 120 chars each, so this one still fits; force the cap with many long props
-  const many = { type: 'button', return: null, memoizedProps: Object.fromEntries(Array.from({ length: 40 }, (_, i) => ['p' + i, 'y'.repeat(120)])), _debugStack: { stack: 'z'.repeat(100000) } };
-  fire('click', { target: fakeElement({ fiber: many }), altKey: true, preventDefault() {}, stopPropagation() {} });
+  const bigStack = { stack: `Error\n${'    at Thing (http://127.0.0.1:3851/_next/static/chunks/app/page.js:1:1)\n'.repeat(60)}` };
+  let top = { type: function Root() {}, return: null, memoizedProps: {}, _debugStack: bigStack };
+  for (let i = 0; i < 30; i++) top = { type: function Wrapper() {}, return: top, memoizedProps: {}, _debugStack: bigStack };
+  const host = { type: 'button', return: top, memoizedProps: { className: 'x' }, _debugStack: bigStack };
+
+  fire('click', { target: fakeElement({ fiber: host }), altKey: true, preventDefault() {}, stopPropagation() {} });
   const last = posted.at(-1).m;
-  assert.equal(last.type, 'construct:preview:select');
-  assert.ok(JSON.stringify(last).length <= 65536, 'the stack is capped at 4 KB before it is posted');
+  assert.equal(last.type, 'construct:preview:select', 'the selection still arrives');
+  assert.ok(JSON.stringify(last).length <= 65536, 'within the total cap');
+  assert.deepEqual(last.selection.truncated, ['ancestor-stacks'], 'and it names what it dropped');
+  assert.ok(last.selection.stack, 'the selected element keeps its own stack — that is the one that resolves');
+  assert.ok(last.selection.ancestors.every((a) => a.stack === null));
 });
 
 test('the generated script is self-contained, embeds its options as data and cannot break out of <script>', () => {

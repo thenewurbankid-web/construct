@@ -225,7 +225,30 @@ export function installPreviewFiberBridge(win, options) {
       props: safeProps(fiber),
       domPath: domPathOf(el),
       react: reactInfo(fiber),
+      truncated: [],
     };
+  }
+
+  // A real Next.js dev build hit the total cap: 32 ancestors x a 4 KB stack is
+  // far more than 64 KB. Dropping the whole selection there would be the worst
+  // answer, so the payload degrades in a fixed order and SAYS what it dropped
+  // (`selection.truncated`) — the Cockpit can then tell the user that, say,
+  // ancestor positions are unavailable. Nothing is ever silently shortened.
+  function fit(selection) {
+    const size = () => {
+      try { return JSON.stringify({ type: 'construct:preview:select', nonce: NONCE, protocol: PROTOCOL, selection }).length; } catch { return Infinity; }
+    };
+    const steps = [
+      () => { selection.ancestors = selection.ancestors.map((a) => ({ componentName: a.componentName, debugSource: a.debugSource, stack: null })); return 'ancestor-stacks'; },
+      () => { selection.ancestors = selection.ancestors.slice(0, 8); return 'ancestors'; },
+      () => { selection.props = []; return 'props'; },
+      () => { selection.stack = selection.stack ? selection.stack.slice(0, 2048) : null; return 'stack'; },
+    ];
+    for (const step of steps) {
+      if (size() <= LIMITS.payloadChars) return selection;
+      selection.truncated.push(step());
+    }
+    return size() <= LIMITS.payloadChars ? selection : null;
   }
 
   function post(type, body) {
@@ -270,10 +293,12 @@ export function installPreviewFiberBridge(win, options) {
     if (!pick && !e.altKey) return; // Pick off: the app keeps its own clicks
     const target = e.target;
     if (!target || target.nodeType !== 1) return;
-    const selection = buildSelection(target);
-    if (!selection) { post('construct:preview:error', { reason: 'no-fiber' }); return; }
+    const built = buildSelection(target);
+    if (!built) { post('construct:preview:error', { reason: 'no-fiber' }); return; }
     e.preventDefault();
     e.stopPropagation();
+    const selection = fit(built);
+    if (!selection) { post('construct:preview:error', { reason: 'payload-too-large' }); return; }
     post('construct:preview:select', { selection });
   }
 
@@ -328,6 +353,15 @@ export function previewFiberBridgeScript(options) {
 
 const POSITION_RE = /^(.*):(\d+):(\d+)$/;
 const REACT_INTERNAL_RE = /(?:\/node_modules\/|react-dom|react-jsx-dev-runtime|react-jsx-runtime|react-stack-bottom-frame|react-stack-top-frame|@react-refresh|react-refresh|\breact\.development\b)/;
+// In a BUNDLED dev build every frame shares one URL, so the URL says nothing:
+// the function name is the only pre-source-map signal. Measured on a real
+// React 19.3 bundle, the frames above the JSX call site are `exports.jsxDEV`
+// and `Object.react_stack_bottom_frame`, then the reconciler's own loop.
+const REACT_FN_RE = /^(?:[\w$]+\.)?(?:jsxDEV|jsxDEVImpl|jsxs?|createElement|cloneElement|react_stack_bottom_frame|renderWithHooks(?:Again)?|updateFunctionComponent|beginWork|runWithFiberInDEV|performUnitOfWork|workLoopSync|workLoopConcurrent|performWorkOnRoot|commitRoot|flushSync)$/;
+
+function isReactInternalFrame(frame) {
+  return REACT_INTERNAL_RE.test(frame.url) || REACT_FN_RE.test(frame.fn || '') || REACT_INTERNAL_RE.test(frame.fn || '');
+}
 
 /**
  * Parse an Error.stack into frames. Handles V8 ("    at Foo (url:1:2)") and
@@ -365,9 +399,12 @@ export function parseStackFrames(stack) {
 /**
  * The JSX call site is the first frame that is not React's own: `_debugStack`
  * is created inside `jsxDEV`, so frame 0 always belongs to the dev runtime.
+ * This is the pre-source-map guess; `resolveFiberSelection` additionally walks
+ * the frames and prefers the first that MAPS to a file of the project, which
+ * is what makes bundled builds (one URL for everything) work.
  */
 export function pickSourceFrame(frames) {
-  for (const f of frames) if (!REACT_INTERNAL_RE.test(f.url) && !REACT_INTERNAL_RE.test(f.fn || '')) return f;
+  for (const f of frames) if (!isReactInternalFrame(f)) return f;
   return null;
 }
 
@@ -586,24 +623,39 @@ function fromDebugSource(debugSource, context) {
   };
 }
 
-/** Tier 3: `fiber._debugStack` (React 19) mapped through the served file's source map. */
+/** Frames to consider before giving up — the JSX call site is always near the top. */
+const MAX_FRAMES = 16;
+
+/**
+ * Tier 3: `fiber._debugStack` (React 19), mapped through the served file's
+ * source map. Walks the frames in order and takes the first that lands on a
+ * file OF THE PROJECT: in a bundled dev build every frame shares one URL, so
+ * "the first non-React frame" is only a guess until the map has spoken.
+ */
 function fromStack(stack, context) {
-  const frame = pickSourceFrame(parseStackFrames(stack));
-  if (!frame) return null;
-  const found = mapFor(context.sourceMaps, frame.url);
-  const mapped = found ? applySourceMap(found.map, frame.line, frame.column) : null;
-  if (mapped) {
-    const file = toProjectPath(resolveMappedSource(mapped.source, found.url, found.isMapUrl), context);
-    if (file) return { tier: 'stack', confidence: 'mapped', file, line: mapped.line, column: mapped.column, frame };
-    return { tier: 'stack', confidence: 'none', file: null, reason: 'outside-project', frame };
+  const frames = parseStackFrames(stack).slice(0, MAX_FRAMES);
+  if (!frames.length) return null;
+  let fallback = null;
+  for (const frame of frames) {
+    if (isReactInternalFrame(frame)) continue;
+    const found = mapFor(context.sourceMaps, frame.url);
+    const mapped = found ? applySourceMap(found.map, frame.line, frame.column) : null;
+    if (mapped) {
+      if (mapped.source.includes('node_modules')) continue; // a library frame: keep walking
+      const file = toProjectPath(resolveMappedSource(mapped.source, found.url, found.isMapUrl), context);
+      if (file) return { tier: 'stack', confidence: 'mapped', file, line: mapped.line, column: mapped.column, frame };
+      if (!fallback) fallback = { tier: 'stack', confidence: 'none', file: null, reason: 'outside-project', frame };
+      continue;
+    }
+    // No map: the served URL can still name the right FILE (Vite serves
+    // /src/App.tsx, Next's eval modules are named webpack-internal:///./app/page.tsx),
+    // but its line/column are positions in the transformed output, so they are
+    // dropped rather than reported as if they were source positions.
+    const file = toProjectPath(frame.url, context);
+    if (file && looksLikeSource(file)) return { tier: 'stack', confidence: 'file-only', file, line: null, column: null, reason: 'unmapped-position', frame };
+    if (!fallback) fallback = { tier: 'stack', confidence: 'none', file: null, reason: 'unmapped', frame };
   }
-  // No map: the served URL can still name the right FILE (Vite serves
-  // /src/App.tsx, Next's eval modules are named webpack-internal:///./app/page.tsx),
-  // but its line/column are positions in the transformed output, so they are
-  // dropped rather than reported as if they were source positions.
-  const file = toProjectPath(frame.url, context);
-  if (file && looksLikeSource(file)) return { tier: 'stack', confidence: 'file-only', file, line: null, column: null, reason: 'unmapped-position', frame };
-  return { tier: 'stack', confidence: 'none', file: null, reason: 'unmapped', frame };
+  return fallback;
 }
 
 function bestOf(evidence, context) {

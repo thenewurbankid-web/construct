@@ -17,7 +17,64 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { installPreviewFiberBridge } from '../../src/engine/previewFiber.mjs';
+import { installPreviewFiberBridge, decodeMappings, parseStackFrames } from '../../src/engine/previewFiber.mjs';
+
+// --- source-map trimming ----------------------------------------------------
+// A bundled dev build's map is megabytes; a fixture must stay readable. We keep
+// only the generated lines the recorded stacks actually name (and only the
+// sources those segments reference), re-encoding the mappings so the kept lines
+// still decode to exactly the same original positions. `sourcesContent` and
+// `names` are dropped: the resolver never reads them.
+const VLQ = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+function encodeVlq(value) {
+  let v = value < 0 ? (-value << 1) | 1 : value << 1;
+  let out = '';
+  do {
+    let digit = v & 31;
+    v >>>= 5;
+    if (v > 0) digit |= 32;
+    out += VLQ[digit];
+  } while (v > 0);
+  return out;
+}
+
+function trimSourceMap(map, keepLines) {
+  if (!map || typeof map.mappings !== 'string' || map.sections) return { map, trimmed: false };
+  const decoded = decodeMappings(map.mappings);
+  const usedSources = new Map();
+  const lines = [];
+  let prevSource = 0;
+  let prevLine = 0;
+  let prevColumn = 0;
+  for (let i = 0; i < decoded.length; i++) {
+    if (!keepLines.has(i + 1)) { lines.push(''); continue; }
+    let prevColumnGen = 0;
+    const parts = [];
+    for (const segment of decoded[i]) {
+      if (segment.sourceIndex === null) continue;
+      if (!usedSources.has(segment.sourceIndex)) usedSources.set(segment.sourceIndex, usedSources.size);
+      const source = usedSources.get(segment.sourceIndex);
+      parts.push(
+        encodeVlq(segment.generatedColumn - prevColumnGen) +
+        encodeVlq(source - prevSource) +
+        encodeVlq(segment.sourceLine - prevLine) +
+        encodeVlq(segment.sourceColumn - prevColumn),
+      );
+      prevColumnGen = segment.generatedColumn;
+      prevSource = source;
+      prevLine = segment.sourceLine;
+      prevColumn = segment.sourceColumn;
+    }
+    lines.push(parts.join(','));
+  }
+  const sources = [...usedSources.entries()].sort((a, b) => a[1] - b[1]).map(([original]) => map.sources[original]);
+  return {
+    map: { version: 3, sources, sourceRoot: map.sourceRoot, names: [], mappings: lines.join(';') },
+    trimmed: true,
+    keptLines: [...keepLines].sort((a, b) => a - b),
+  };
+}
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '../..');
@@ -39,9 +96,19 @@ if (!url) {
   process.exit(2);
 }
 
-// Playwright lives in ui/e2e; this script is never part of `npm test`.
-const require = createRequire(path.join(REPO, 'ui/e2e/package.json'));
-const { chromium } = require('playwright');
+// Playwright lives in ui/e2e, and this script is never part of `npm test`.
+// In an agent worktree (`<checkout>/.claude/worktrees/<name>`) the worktree has
+// no node_modules of its own, so the main checkout is tried as well.
+const mainCheckout = REPO.includes('/.claude/worktrees/') ? REPO.slice(0, REPO.indexOf('/.claude/worktrees/')) : REPO;
+const bases = [...new Set([path.join(REPO, 'ui/e2e/package.json'), path.join(mainCheckout, 'ui/e2e/package.json')])];
+let chromium = null;
+for (const base of bases) {
+  try { ({ chromium } = createRequire(base)('playwright')); break; } catch { /* try the next base */ }
+}
+if (!chromium) {
+  console.error(`playwright not resolvable from any of:\n  ${bases.join('\n  ')}\nInstall it in ui/e2e (never with npm ci from inside a worktree).`);
+  process.exit(3);
+}
 
 const browser = await chromium.launch();
 const page = await browser.newPage();
@@ -50,6 +117,23 @@ page.on('pageerror', (e) => consoleErrors.push(String(e)));
 
 await page.goto(url, { waitUntil: 'networkidle' });
 await page.waitForSelector(selector, { timeout: 30_000 });
+
+// A server-rendered page has the DOM before React has hydrated it, and a fiber
+// is only attached on hydration. Wait for the key rather than record an empty
+// payload and call it a limitation of the approach.
+let hydrated = true;
+try {
+  await page.waitForFunction(
+    (sel) => {
+      const el = document.querySelector(sel);
+      return !!el && Object.keys(el).some((k) => k.startsWith('__reactFiber$') || k.startsWith('__reactInternalInstance$'));
+    },
+    selector,
+    { timeout: 30_000 },
+  );
+} catch {
+  hydrated = false;
+}
 
 const captured = await page.evaluate(
   async ({ source, selector: sel }) => {
@@ -113,6 +197,19 @@ for (const u of urls) {
 
 await browser.close();
 
+// Keep only the generated lines the recorded stacks name, so the fixture is a
+// readable file rather than a megabyte of bundler output.
+const trimNotes = {};
+for (const [u, entry] of Object.entries(sourceMaps)) {
+  const keep = new Set(parseStackFrames(frames.join('\n')).filter((f) => f.url.split('?')[0] === u.split('?')[0]).map((f) => f.line));
+  if (!keep.size) continue;
+  const before = JSON.stringify(entry.map).length;
+  const { map, trimmed, keptLines } = trimSourceMap(entry.map, keep);
+  if (!trimmed) continue;
+  sourceMaps[u] = { map, url: entry.url };
+  trimNotes[u] = `trimmed to generated lines ${keptLines.join(', ')} (${before} -> ${JSON.stringify(map).length} bytes); sourcesContent and names dropped`;
+}
+
 const record = {
   capturedFrom: {
     what: 'a real dev build, recorded by test-utils/preview-fixtures/capture.mjs',
@@ -122,12 +219,15 @@ const record = {
     when: new Date().toISOString().slice(0, 10),
     reactVersion: captured.reactVersion,
     userAgent: captured.userAgent,
+    note: arg('note', null),
   },
   installed: captured.installed,
+  hydrated,
   messages: captured.messages,
   stackFrames: frames,
   sourceMaps,
   sourceMapNotes,
+  sourceMapTrimmed: trimNotes,
   pageErrors: consoleErrors,
 };
 
