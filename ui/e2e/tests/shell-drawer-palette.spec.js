@@ -104,20 +104,21 @@ test.describe('Cockpit drawer and command palette (#249)', () => {
     await expect(trigger).toBeFocused();
   });
 
-  test('palette commands: go to a screen, run validate, toggle theme and drawer, switch mode, open project switcher', async ({ page }) => {
-    await page.goto('/help');
+  test('palette commands: go to a screen, run validate, toggle theme and drawer, open project switcher (#369: no more mode commands)', async ({ page }) => {
+    await gotoCockpit(page, '/help');
     const dialog = page.getByRole('dialog', { name: 'Command palette' });
     const run = async (query) => {
       await page.getByTestId('palette-trigger').click();
       await dialog.getByRole('combobox').fill(query);
       await page.keyboard.press('Enter');
-      await expect(dialog).toHaveCount(0);
+      await expect(dialog).toHaveCount(0, { timeout: 10_000 });
     };
 
     await run('go to settings');
     await expect(page).toHaveURL(/\/settings$/);
 
-    await run('explore');
+    // #369: "Explore" is gone as a mode; "Go to Pages" is the palette's route there now.
+    await run('go to pages');
     await expect(page).toHaveURL(/\/pages/);
 
     await run('toggle dark');
