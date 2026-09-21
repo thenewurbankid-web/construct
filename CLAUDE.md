@@ -91,17 +91,16 @@ snapshot that rots. See #35 for the audit that established this.
    follow-up comment. Trivial changes with no independent behavior (typo
    fixes, comment-only edits, formatting) don't need their own issue —
    fold them into whichever issue/commit they're actually part of.
-2. **Comment sparingly: once when you start, once at the outcome.**
-   (Owner, 2026-09-21: "no frequent comments".) Post ONE comment before
-   starting a unit of work (what you will do, the approach) and ONE at the
-   outcome (result, evidence, and the rule-12 usage/API/exceptions/next
-   section). Add a comment in between only when a decision changes the
-   scope, a blocker needs the owner, or a bug is found that other work
-   depends on. No progress chatter, no "3 of 6 done" notes. This applies to
-   delegated work too: tell every subagent this rule explicitly, and post
-   the start/outcome comments yourself if it does not. The issue thread
-   should still let someone reconstruct what happened, in a handful of
-   comments rather than dozens.
+2. **Comment only when it carries something.** (Owner, 2026-09-21: "no
+   frequent comments ... only if anything to notify the user or notes for
+   dev".) There is no mandatory "starting" comment and no progress chatter.
+   Write a comment when (a) the owner needs to know or decide something
+   (a blocker, a scope change, a security finding), or (b) a developer will
+   need a note: the **closing comment** with the rule-12 content (how to run
+   it, the API, exceptions, next steps) counts, and so does a gotcha that
+   other work depends on. Expect a handful of comments per issue, not dozens.
+   This applies to delegated work too: tell every subagent this rule
+   explicitly, and post the closing note yourself if it does not.
 3. **Issue state must reflect current reality.** Close an issue the moment
    its work is verified done, and don't close something that isn't
    actually done yet. "Verified done" means at minimum: `npm test` passes

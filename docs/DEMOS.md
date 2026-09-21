@@ -76,7 +76,7 @@ engineering-design-doc tone. Spell out acronyms once.
 - Screenshots come from an actual Playwright run under `ui/e2e/tests/demos/`.
 - Keep screenshots frugal: only at meaningful state changes (a result
   appears, a form succeeds, a diagram renders). Not one per click.
-- PNGs are committed to the `ui-screenshots` branch under
+- Screenshots for the site are curated by the demo-curator; they are NOT attached to tickets. Source PNGs may sit on the `ui-screenshots` branch under
   `ui/e2e/screenshots/demos/` and embedded with
   `https://raw.githubusercontent.com/thenewurbankid-web/construct/ui-screenshots/ui/e2e/screenshots/demos/<file>.png`.
 - A CLI-only capability uses a real terminal transcript instead of screenshots.

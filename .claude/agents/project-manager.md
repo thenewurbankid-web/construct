@@ -38,8 +38,8 @@ Use a token with the `project` scope, passed INLINE per command (`GH_TOKEN=... g
 
 ## Audit checklist (report, do not mutate content)
 - Closed issues with no rule-12 closing comment (Setup/run, API, Exceptions, Future considerations).
-- Closed UI issues (touching `ui/`) with no screenshot (rule 11).
-- Issues with no before-starting comment (rule 2).
+- Closed UI issues (touching `ui/`) with no Playwright spec named in the closing comment (rule 11). Screenshots are NOT required on issues.
+- (No check for a before-starting comment: rule 2 no longer requires one.)
 - Sample sensibly via the REST API and quantify with counts plus example numbers.
 
 ## Report format
