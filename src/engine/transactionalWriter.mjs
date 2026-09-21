@@ -94,7 +94,8 @@ export function createTransaction(root) {
     commit({ validate = validateArchitecture } = {}) {
       if (buffer.size === 0) return { committed: true, violations: [] };
 
-      const shadowDir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-txn-'));
+      // The pid in the name is what lets tools/dev/heavy.sh tell a live shadow copy from a dead one (#414).
+      const shadowDir = fs.mkdtempSync(path.join(os.tmpdir(), `construct-txn-${process.pid}-`));
       try {
         copyProjectTree(root, shadowDir);
         for (const [relPath, content] of buffer) {

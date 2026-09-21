@@ -266,6 +266,13 @@ The default config runs almost everything; three specs need a server or a login 
 own configs. Run all four for the full picture. Wrap heavy runs in `tools/dev/heavy.sh` (this box is 15 GB with no
 swap), keep `--workers=1`, and use distinct ports so parallel runs never share a server.
 
+`heavy.sh` (#414) takes one machine-wide lock with a bounded wait (`CONSTRUCT_HEAVY_LOCK_WAIT_SEC`, default 3600; on
+giving up it prints who holds it and exits 75), waits for free RAM with the lock released between checks and a bound of
+its own (`CONSTRUCT_HEAVY_RAM_WAIT_SEC`, default 1800), and afterwards prunes `/tmp/construct-*` directories **whose
+owner pid is gone** (the pid is in every directory name Construct creates, or in a `.owner` file) — never by age
+alone, so a run longer than 30 minutes no longer loses its state to another session's sweep. `tools/dev/heavy.sh
+--prune-only` runs just the sweep; `node --test tools/dev/test/` runs its tests.
+
 ```bash
 cd ui/e2e
 export WATCHPACK_POLLING=true CHOKIDAR_USEPOLLING=1   # fs.inotify.max_user_instances can be as low as 128
