@@ -112,3 +112,45 @@ test('connect a remote: needs a project; validates the URL; refuses non-repos an
   assert.equal((await again.json()).code, 'ALREADY_CONNECTED');
   assert.equal(g('remote', 'get-url', 'origin').stdout.trim(), 'https://github.com/octocat/Hello-World.git', 'the existing origin is never overwritten');
 });
+
+// ---- #330 slice B: the token and "Pull latest" through the real route table ---------------------------------------
+
+test('a token in the body is validated, never echoed, and a malformed body is answered with a fixed message', async () => {
+  const ws = workspaceRoot();
+  const before = fs.readdirSync(ws).sort();
+  const SECRET = 'ghp_abcdefghijklmnopqrstuvwxyz0123456789';
+  for (const token of [`${SECRET} x`, `${SECRET}\n`, 'a'.repeat(400), 7, {}]) {
+    const res = await call('POST', '/api/clone', { url: 'https://github.com/o/r', token });
+    const text = await res.text();
+    assert.equal(res.status, 400, text);
+    assert.ok(!text.includes(SECRET), 'the refusal repeats nothing');
+  }
+  // a token with an address that is not allowed is refused for the address, and the token is not echoed
+  const evil = await call('POST', '/api/clone', { url: 'https://evil.example/o/r', token: SECRET });
+  assert.equal(evil.status, 403);
+  assert.ok(!(await evil.text()).includes(SECRET));
+  // invalid JSON that contains the token: fixed answer, no parser message quoting the body
+  const broken = await fetch(`${base}/api/clone`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: `{"url":"https://github.com/o/r","token":"${SECRET}` });
+  const brokenText = await broken.text();
+  assert.equal(broken.status, 400);
+  assert.ok(!brokenText.includes(SECRET) && !/Unexpected|position|stack/i.test(brokenText), brokenText);
+  assert.deepEqual(fs.readdirSync(ws).sort(), before);
+});
+
+test('branch inputs are a closed set over the API too', async () => {
+  for (const branch of ['--upload-pack=x', 'a b', '../x', 5]) assert.equal((await call('POST', '/api/clone', { url: 'https://github.com/o/r', branch })).status, 400, JSON.stringify(branch));
+});
+
+test('Pull latest: below the gate, Origin-checked, and hostile or foreign folders are refused', async () => {
+  const evil = { origin: 'https://evil.example' };
+  assert.equal((await call('POST', '/api/clone/pull', { name: 'x' }, evil)).status, 403);
+  for (const body of [{}, { name: 5 }, { name: '../x' }, { name: 'a/b' }, { name: '.hidden' }, { name: '--x' }]) assert.equal((await call('POST', '/api/clone/pull', body)).status, 400, JSON.stringify(body));
+  assert.equal((await call('POST', '/api/clone/pull', { name: 'nope' })).status, 404);
+  const ws = workspaceRoot();
+  fs.mkdirSync(path.join(ws, 'not-ours'));
+  const res = await call('POST', '/api/clone/pull', { name: 'not-ours' });
+  assert.equal(res.status, 403);
+  assert.equal((await res.json()).code, 'NOT_A_COCKPIT_CLONE');
+  // a bare `pull` id is never mistaken for a job
+  assert.equal((await call('GET', '/api/clone/pull')).status, 404);
+});

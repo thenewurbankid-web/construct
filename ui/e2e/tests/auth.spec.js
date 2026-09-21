@@ -127,6 +127,9 @@ test.describe('#278 GitHub login gate', () => {
     expect(await apiStatus(page, '/api/clone/abc')).toBe(401);
     expect(await postJsonStatus(page, '/api/clone', { url: 'https://github.com/octocat/Hello-World' })).toBe(401);
     expect(await postJsonStatus(page, '/api/clone/abc/cancel', {})).toBe(401);
+    // #330 slice B: a clone WITH an access token and "Pull latest" are gated too, and nothing is echoed back.
+    expect(await postJsonStatus(page, '/api/clone', { url: 'https://github.com/octocat/Hello-World', token: 'ghp_abcdefghijklmnopqrstuvwxyz0123456789', branch: 'main' })).toBe(401);
+    expect(await postJsonStatus(page, '/api/clone/pull', { name: 'Hello-World', token: 'ghp_abcdefghijklmnopqrstuvwxyz0123456789' })).toBe(401);
     expect(await apiStatus(page, '/api/git/remote')).toBe(401);
     expect(await postJsonStatus(page, '/api/git/remote', { url: 'https://github.com/octocat/Hello-World' })).toBe(401);
     // #312/#313: Review mode's list, its analysis request and one change are gated too.

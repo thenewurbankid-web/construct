@@ -169,7 +169,8 @@ test('a failed clone (git exits non-zero) is reported and its partial directory 
   await r.done;
   const j = jobs.get(r.job.id);
   assert.equal(j.state, 'failed');
-  assert.match(j.error, /public repository/);
+  assert.match(j.error, /^Private or misspelled/);
+  assert.equal(j.code, 'AUTH');
   assert.equal(fs.existsSync(path.join(ws, 'private')), false);
 });
 

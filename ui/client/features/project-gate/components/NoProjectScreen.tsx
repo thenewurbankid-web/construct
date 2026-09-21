@@ -43,8 +43,8 @@ export function NoProjectScreen({ workspaceRoot, lastProject, opening, error, on
             {error}
           </p>
         )}
-        {picker}
         {clone}
+        {picker}
         <p className="hint no-project__hint">
           Don&apos;t see your project? Put it in the workspace first
           {workspaceRoot ? (
