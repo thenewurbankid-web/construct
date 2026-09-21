@@ -66,7 +66,13 @@ export function componentSource(root, rel) {
   const p = pick(root, rel);
   if (p.fail) return p.fail;
   const source = fs.readFileSync(p.real, 'utf8');
-  return { status: 200, body: { ok: true, path: rel, name: p.entry.name, feature: p.entry.feature, source, contentHash: hashOf(source), editable: Buffer.byteLength(source, 'utf8') <= MAX_EDIT_BYTES, diagnostics: collectDiagnostics(root, rel, source) } };
+  let diagnostics = [];
+  try {
+    diagnostics = collectDiagnostics(root, rel, source);
+  } catch {
+    /* a file that does not parse has no diagnostics we can compute; it still opens as plain text */
+  }
+  return { status: 200, body: { ok: true, path: rel, name: p.entry.name, feature: p.entry.feature, source, contentHash: hashOf(source), editable: Buffer.byteLength(source, 'utf8') <= MAX_EDIT_BYTES, diagnostics } };
 }
 
 /** Preview (`commit` false: nothing written, returns before/after) or save (`commit` true). The file's text is the

@@ -51,7 +51,8 @@ test('/plan is the same Features screen, and /dashboard still answers for old li
   await gotoCockpit(page, '/plan');
   await expect(page.locator('h1')).toHaveText('Features');
   await expect(page.getByTestId('stage-actions')).toBeVisible();
-  await expect(page.getByTestId('plan-ticket')).toBeVisible(); // the Notes pane is still on the left
+  await page.getByRole('complementary', { name: 'Browser' }).getByRole('tab', { name: 'Notes' }).click();
+  await expect(page.getByTestId('plan-ticket')).toBeVisible(); // the Notes tab is still in the Browser, beside the Features list
   await page.goto('/dashboard');
   await expect(page.locator('h1')).toHaveText('Dashboard');
   await expect(page.getByRole('navigation', { name: 'Screens', exact: true }).getByRole('link', { name: 'Features' })).toHaveAttribute('aria-current', 'page');

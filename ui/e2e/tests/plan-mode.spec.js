@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { gotoCockpit } from './support/cockpit.js';
+import { gotoNotes } from './support/cockpit.js';
 
 // Plan mode (#289 note, impact and run; #332 plan review and edit), end to end in a real browser against a
 // REAL throwaway git repository (the impact-shared fixture). Nothing is mocked: the impact is the real
@@ -44,7 +44,7 @@ test.describe.serial('Plan mode (#289, #332)', () => {
   });
 
   test('Plan leads to the Plan screen, whose left pane shows the note and the constraints from architecture.yml', async ({ page }) => {
-    await gotoCockpit(page, '/plan');
+    await gotoNotes(page, '/plan');
     // #369: the plan lives on the Features screen (Plan is no longer a mode).
     const nav = page.getByRole('navigation', { name: 'Screens', exact: true });
     await expect(nav.getByRole('link', { name: 'Features' })).toHaveAttribute('aria-current', 'page');
@@ -64,7 +64,7 @@ test.describe.serial('Plan mode (#289, #332)', () => {
   });
 
   test('a note becomes proposals you confirm, then a deterministic impact with derived and inferred rows', async ({ page }) => {
-    await gotoCockpit(page, '/plan');
+    await gotoNotes(page, '/plan');
     await page.getByTestId('plan-ticket-title').fill('Fix billing totals');
     await page.getByTestId('plan-ticket-body').fill(TICKET);
     await expect(page.getByTestId('plan-analyse')).toBeDisabled();
@@ -92,7 +92,7 @@ test.describe.serial('Plan mode (#289, #332)', () => {
   });
 
   test('build a plan: add, reorder, re-tag, and see a plain error next to the step until it is valid', async ({ page }) => {
-    await gotoCockpit(page, '/plan');
+    await gotoNotes(page, '/plan');
     await page.getByTestId('plan-ticket-title').fill('Wishlist');
     await page.getByTestId('plan-ticket-body').fill(TICKET);
     await page.getByTestId('plan-pick-billing').click();
@@ -162,7 +162,7 @@ test.describe.serial('Plan mode (#289, #332)', () => {
 
   test('Run plan starts a process that appears in the Processes drawer; nothing reaches the project tree', async ({ page }) => {
     const before = git('status', '--porcelain=v2', '--untracked-files=all');
-    await gotoCockpit(page, '/plan');
+    await gotoNotes(page, '/plan');
     await page.getByTestId('plan-ticket-title').fill('Add a wishlist feature');
     await page.getByTestId('plan-add-flow').selectOption('summarize.list');
     await page.getByTestId('plan-add').click();
@@ -185,7 +185,7 @@ test.describe.serial('Plan mode (#289, #332)', () => {
   });
 
   test('a plan the server refuses is not run, even if the browser is talked into sending it', async ({ page, request }) => {
-    await gotoCockpit(page, '/plan');
+    await gotoNotes(page, '/plan');
     const bad = { version: 1, ticket: { source: 'text', title: 'x' }, steps: [{ id: 's1', title: 'Page', flow: 'create.page.from', args: { name: 'P', feature: 'billing', from: '../../etc/passwd' }, executor: 'deterministic', touches: { features: [], files: [] } }] };
     const res = await page.evaluate(([api, plan]) => fetch(`${api}/api/plan/run`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan }) }).then(async (r) => ({ status: r.status, body: await r.json() })), [API, bad]);
     expect(res.status).toBe(400);
@@ -196,7 +196,7 @@ test.describe.serial('Plan mode (#289, #332)', () => {
 
   test('on a phone the screen is one pane at a time with no sideways scroll', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 800 });
-    await gotoCockpit(page, '/plan');
+    await gotoNotes(page, '/plan');
     await expect(page.getByTestId('plan-stage')).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: path.join(SHOTS, '289-plan-narrow.png') });

@@ -22,9 +22,12 @@ async function appendToSource(page, text) {
     await editor.fill(`${await editor.inputValue()}${text}`);
     return;
   }
-  await page.locator('.monaco-editor .view-lines').first().click();
-  await page.keyboard.press('Control+End');
-  await page.keyboard.type(text);
+  // Through Monaco's own model (typing key by key is eaten by its autocomplete); this fires the editor's onChange.
+  await expect.poll(() => page.evaluate(() => Boolean(window.monaco?.editor.getModels().length))).toBe(true);
+  await page.evaluate((extra) => {
+    const model = window.monaco.editor.getModels()[0];
+    model.setValue(model.getValue() + extra);
+  }, text);
 }
 
 test.describe.serial('Components screen: browse in the left pane, document and edit in the stage (#431, #434)', () => {

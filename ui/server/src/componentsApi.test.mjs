@@ -144,6 +144,10 @@ test('describe of a file that does not parse answers ok:false with a code, never
     assert.equal(status, 200);
     assert.equal(body.ok, false);
     assert.equal(body.code, 'PARSE_ERROR');
+    // The file still opens as plain text (no diagnostics can be computed for it).
+    const src = await json('GET', `/api/components/source?path=${q('features/shop/components/Bad.tsx')}`);
+    assert.equal(src.status, 200);
+    assert.deepEqual(src.body.diagnostics, []);
   });
 });
 

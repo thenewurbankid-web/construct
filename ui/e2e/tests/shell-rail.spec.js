@@ -65,7 +65,7 @@ test.describe('screens rail (#429)', () => {
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');
-    await expect(page).toHaveURL(/\/workflows$/);
+    await expect(page).toHaveURL(/\/components$/);
   });
 
   test('collapses to icons only, keeps names for screen readers and tooltips, and remembers the choice', async ({ page }) => {
