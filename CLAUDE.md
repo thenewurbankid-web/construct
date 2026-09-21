@@ -24,6 +24,32 @@ deterministic block, make an existing one more atomic, improve the example a
 layer hands the next one, or extend the cockpit UI — or does it quietly make
 an LLM do work a block should be doing instead?
 
+## Core philosophy (owner, 2026-09-21) — how we build, between us
+
+- **We are like JHipster** for AI-native React + TypeScript apps: a generator,
+  an enforcer and a cockpit over a known stack, not a new framework. Our value
+  is repeatable blocks and a human in the loop, not owning commodity code.
+- **We embrace open source and never reinvent the wheel.** New work wraps an
+  OSS tool by default (permissive licenses only, see the open-core policy);
+  we hand-build only the differentiators: architecture rules/validator, plan
+  flows and impact, the narrator and test generator, the approval gate,
+  workspace containment. Existing hand-rolled code is swapped only where an
+  audit shows a stability or maintenance win, never for its own sake.
+- **We automate how we work.** Board, milestones, changelog, versioned docs
+  and the UI stay in sync by machinery (workflows, scripts, agents), not by
+  memory. If a step is repeated by hand twice, it becomes a block or a script.
+- **Everything is switchable**: Mechanical | AI per action, model provider,
+  mock | real per service, each block on/off per project. Guardrails stay on
+  regardless of the switch: containment, per-diff approval, session gate,
+  deterministic checks before any AI output lands.
+- **No single point of failure, no deadlocks** — in the product (in-memory
+  state, one engine slot, one machine are tracked as stability debt) and in how
+  we work (work lives on branches and issues, never only in a session; isolated
+  worktrees and ports per job; one heavy-job queue that waits for memory; a
+  stall watcher). Protocols in this file exist to guarantee that.
+- **The goal**: make developers' lives easy so people and AI can spend their
+  time on innovation instead of repeating the same work.
+
 ## Dogfooding: Construct's own UI must be built using Construct
 
 `ui/` is not exempt from the architecture Construct enforces on everyone
