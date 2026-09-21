@@ -1,8 +1,6 @@
 // Pure (DOMAIN-001): the actions the Features stage offers, one per command form of the retired Dashboard
 // (owner decision 2026-09-20: the Dashboard is gone, Create / Refactor / Import become stage actions).
-export type StageActionId = 'create' | 'refactor' | 'research' | 'import';
-
-export type StageAction = { id: StageActionId; label: string; hint: string };
+import type { StageAction, StageActionId } from '../types.ts';
 
 export const STAGE_ACTIONS: StageAction[] = [
   { id: 'create', label: 'Create', hint: 'Scaffold a feature, a slice or a single layer file' },

@@ -58,3 +58,6 @@ export * from './hooks/useDrawerActions';
 
 /** Lets a screen open the drawer's Processes tab (Plan mode does after starting a process). */
 export * from './hooks/useShellDrawer';
+
+/** How many branches await review, for the badge beside the fourth screen in the top bar. */
+export * from './hooks/useGitBranchCount';

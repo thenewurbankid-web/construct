@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseTheme, toggleTheme, parseThemePreference, resolveTheme, DEFAULT_THEME } from './Theme.ts';
+import { parseTheme, toggleTheme, DEFAULT_THEME } from './Theme.ts';
+import { parseThemePreference, resolveTheme } from './ThemePreference.ts';
 import { THEME_INIT_SCRIPT, THEME_STORAGE_KEY } from './ThemeInit.ts';
 
 test('dark is the default and unknown values fall back to it', () => {

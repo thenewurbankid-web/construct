@@ -4,7 +4,8 @@ import { useCallback, useState } from 'react';
 import { OfflineState } from '@/features/states';
 import { useModelStatus } from '@/features/shell';
 import { StageActions } from '../components/StageActions';
-import { nextOpenAction, type StageActionId } from '../domain/StageActions';
+import { STAGE_ACTIONS, nextOpenAction } from '../domain/StageActions';
+import type { StageActionId } from '../types';
 import { useDashboard } from '../hooks/useDashboard';
 
 /**
@@ -16,5 +17,5 @@ export function StageActionsController() {
   const model = useModelStatus();
   const [open, setOpen] = useState<StageActionId | null>(null);
   const toggle = useCallback((id: StageActionId) => setOpen((cur) => nextOpenAction(cur, id)), []);
-  return <StageActions {...dashboard} open={open} onToggle={toggle} notice={model === 'offline' ? <OfflineState size="inline" /> : null} />;
+  return <StageActions {...dashboard} actions={STAGE_ACTIONS} open={open} onToggle={toggle} notice={model === 'offline' ? <OfflineState size="inline" /> : null} />;
 }

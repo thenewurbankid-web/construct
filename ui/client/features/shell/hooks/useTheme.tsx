@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { parseTheme, toggleTheme } from '../domain/Theme';
-import { applyTheme, loadThemePreference, resolvePreference, saveThemePreference } from '../services/ThemeStorage';
+import { loadThemePreference, saveThemePreference } from '../services/ThemeStorage';
+import { applyTheme, resolvePreference } from '../services/ThemeDom';
 import type { Theme, ThemePreference } from '../types';
 
 /** Current theme, the person's preference (Dark / Light / System) and the actions to change it. The initial
