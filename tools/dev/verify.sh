@@ -14,7 +14,7 @@ t client    bash -c "cd ui/client && $H npm test"
 res tsc     "$(cd ui/client && npx tsc --noEmit >/dev/null 2>&1 && echo PASS || echo FAIL)"
 res lint    "$(npm run lint >/dev/null 2>&1 && echo PASS || echo FAIL)"
 if [ "$BROWSER" = "--browser" ] || [ "$BROWSER" = "--full" ]; then
-  export WATCHPACK_POLLING=true CHOKIDAR_USEPOLLING=1 E2E_CLIENT_PORT="${E2E_CLIENT_PORT:-3641}" E2E_SERVER_PORT="${E2E_SERVER_PORT:-4641}"
+  export WATCHPACK_POLLING=true CHOKIDAR_USEPOLLING=1 E2E_CLIENT_PORT="${E2E_CLIENT_PORT:-3641}" E2E_SERVER_PORT="${E2E_SERVER_PORT:-4641}"; export E2E_API_BASE="http://localhost:${E2E_SERVER_PORT}"
   for c in auth workspace processes processes-approval review-processes; do
     res "e2e $c" "$(cd ui/e2e && "$H" npx playwright test -c playwright.$c.config.js --workers=1 2>&1 | grep -E "passed|failed" | tail -1)"
   done
