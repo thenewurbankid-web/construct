@@ -155,6 +155,14 @@ sync with what's actually true, not a point-in-time snapshot (see #35).
   small ad hoc shell calls for the same picture.
 - Delegate with a complete brief (scope, files, acceptance bar, report
   format) so the agent needs no follow-up round trip to start.
+- Plugins (official marketplace, project scope; local `.claude/settings.json` is git-ignored, so
+  install per machine: `claude plugin install <name>@claude-plugins-official --scope project`):
+  `session-report` (token/cache/subagent report from local logs; run after each wave, cache breaks
+  over 100k tokens are the costly ones), `claude-md-management` (audit this file, keep it lean),
+  `typescript-lsp` (go-to-definition and find-references instead of grep-and-read; needs
+  `npm i -g typescript-language-server typescript`). Rejected after review: `frontend-design`
+  (fights our token-based design system), `project-artifact` (Trinity covers it), `code-simplifier`,
+  `context7`/`serena` (external service, heavy).
 - Prefer a deterministic Construct block over reasoning by reading files —
   see "How agents should orient" in `docs/DOGFOODING-2026-09.md`.
 
