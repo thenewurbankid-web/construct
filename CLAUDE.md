@@ -320,6 +320,13 @@ user-visible behaviour, so demos, the Help Tutorials and `docs/` never drift.
 Only create demo tickets when asked — don't proactively file one per
 feature. Standard issue discipline (rules 1-2, 4, 12 above) still applies.
 
+## Media module (Module 10) — user-guide videos (standing instruction)
+
+Short, simple, real screen-recorded guides live in `docs/MEDIA.md` and are made by the `media` agent
+(`.claude/agents/media.md`): Playwright `recordVideo` runs of the real Cockpit/CLI, on-screen captions, 45-90 s,
+published on the documentation website only (like screenshots, never on issues). Invoke it to plan or record an
+episode and to re-record after visible UI changes. Standard issue discipline still applies.
+
 ## Project board (standing instruction)
 
 Work is tracked on the user-owned Projects v2 board (`docs/PROJECT_BOARD.md` is the reference). When you
