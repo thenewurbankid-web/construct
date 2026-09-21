@@ -176,6 +176,28 @@ test('friendliness: three-item nav, product side menu, where-am-I line, quicksta
   fs.rmSync(out, { recursive: true });
 });
 
+test('API reference: core, engine and AST are generated from source, versioned, and list a known module and export', async () => {
+  const out = makeTempDir('site-api-test-');
+  await build({ out, repo: 'o/r', buildTime: BUILD_TIME, version: '0.9', api: ['core', 'engine', 'ast'] });
+  const idx = fs.readFileSync(path.join(out, 'developers/api/index.html'), 'utf8');
+  assert.match(idx, /v0\.9/);
+  for (const id of ['core', 'engine', 'ast']) assert.match(idx, new RegExp(`href="[./]*developers/api/${id}/"`));
+  const engine = fs.readFileSync(path.join(out, 'developers/api/engine/index.html'), 'utf8');
+  assert.match(engine, /src\/engine\/pipeline/, 'a known module is listed');
+  const page = fs.readFileSync(path.join(out, 'developers/api/engine/src/engine/pipeline/index.html'), 'utf8');
+  assert.match(page, /runPipeline/, 'a known export is documented');
+  assert.match(page, /<h[1-4][^>]*>Parameters/, 'params are rendered');
+  assert.match(page, /v0\.9/, 'the page carries the version it was built for');
+  assert.ok(fs.existsSync(path.join(out, 'developers/api/ast/src/ast/parse/index.html')));
+  assert.ok(!fs.existsSync(path.join(out, 'developers/api/tools')), 'packages not requested are not built');
+  // Without `api` a build carries no API pages (library default).
+  const plain = makeTempDir('site-noapi-test-');
+  await build({ out: plain, repo: 'o/r', buildTime: BUILD_TIME });
+  assert.ok(!fs.existsSync(path.join(plain, 'developers/api')));
+  fs.rmSync(out, { recursive: true });
+  fs.rmSync(plain, { recursive: true });
+});
+
 test('parseArgs', () => {
   assert.deepEqual(parseArgs(['--out', 'x', '--repo', 'a/b']), { out: 'x', repo: 'a/b' });
 });

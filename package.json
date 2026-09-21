@@ -25,7 +25,8 @@
     "build": "tsc --noEmit",
     "lint": "eslint .",
     "validate": "node ./bin/construct.mjs validate",
-    "sync": "node ./bin/construct.mjs sync"
+    "sync": "node ./bin/construct.mjs sync",
+    "docs:api": "node site/build.mjs --no-search --out site/dist"
   },
   "dependencies": {
     "@hey-api/openapi-ts": "^0.97.3",
@@ -48,7 +49,9 @@
     "marked": "^18.0.13",
     "pagefind": "^1.5.2",
     "react": "^19.3.0",
-    "react-redux": "^9.3.0"
+    "react-redux": "^9.3.0",
+    "typedoc": "^0.28.20",
+    "typedoc-plugin-markdown": "^4.13.1"
   },
   "overrides": {
     "js-yaml": "^4.3.2"
