@@ -32,25 +32,25 @@ test('the top-bar brand animates in both themes and still renders the static mar
     // Always on: the component reports `idle` and the lit knob really is running a named, infinite loop.
     await expect(brand).toHaveAttribute('data-motion', 'idle');
     const knob = await animationOf(brand, 'knob');
-    expect(knob.name, `knob animates in the ${theme} theme`).toBe('brand-breathe');
+    expect(knob.name, `knob animates in the ${theme} theme`).toBe('brand-toggle-knob');
     expect(knob.iterations).toBe('infinite');
     expect(knob.playState).toBe('running');
   }
 });
 
-test('the animation is subtle: one slow, low-amplitude loop and nothing else moving', async ({ page }) => {
+test('the animation is subtle: one slow loop, the toggle flips now and then, nothing else moving', async ({ page }) => {
   await gotoCockpit(page, '/help');
   const brand = mark(page);
   await expect(brand).toHaveAttribute('data-motion', 'idle');
 
-  // Exactly one shape in the mark moves — the outline and the bar stay put.
+  // Two shapes move — the toggle's knob and its label bar, which hands over as the knob flips; the outline stays put.
   const moving = await brand.locator('svg *').evaluateAll((els) => els.filter((el) => getComputedStyle(el).animationName !== 'none').length);
-  expect(moving, 'only one element of the mark is animated').toBe(1);
+  expect(moving, 'only the knob and the bar are animated').toBe(2);
 
   // Slow: a cycle measured in seconds, not fractions of one.
   const seconds = await brand.locator('[data-part="knob"]').evaluate((el) => parseFloat(getComputedStyle(el).animationDuration));
   expect(seconds).toBeGreaterThanOrEqual(3);
-  expect(seconds).toBeLessThanOrEqual(6);
+  expect(seconds).toBeLessThanOrEqual(10);
 });
 
 test('under reduced motion the brand runs no animation loop at all', async ({ browser }) => {

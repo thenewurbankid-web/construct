@@ -21,28 +21,26 @@
 
 /* Idle loops. Declared for `paused` too, so freezing is a pause (the shape stays where it is)
  * rather than a snap back to the start. */
-.brand-mark[data-mark='line'][data-motion='idle'] [data-part='ring'],
-.brand-mark[data-mark='line'][data-motion='paused'] [data-part='ring'] {
-  /* Path length of the 28x11 r5.5 pill is ~68.6: a 55-long dash plus a 14-long gap wraps it exactly
-   * once, so sliding the offset by one full period loops seamlessly and ~80% of the outline is drawn
-   * at any moment — it reads as being drawn, never as a mark with a piece missing. */
-  stroke-dasharray: 55 14;
-  animation: brand-trace-line 6s linear infinite;
+/* Line: the two pills start stacked in one column, slide out into the staggered mark and rest there, then
+ * slide back and repeat. Construct: no motion at all (owner, 2026-09-21). Cockpit: every so often the toggle flips. */
+.brand-mark[data-mark='line'][data-motion='idle'] [data-part='bar'],
+.brand-mark[data-mark='line'][data-motion='paused'] [data-part='bar'] {
+  animation: brand-line-bar 7s ease-in-out infinite;
 }
 
-.brand-mark[data-mark='construct'][data-motion='idle'] [data-part='ring'],
-.brand-mark[data-mark='construct'][data-motion='paused'] [data-part='ring'] {
-  /* Same idea on the 40x18 r9 pill, whose path length is ~100.5. */
-  stroke-dasharray: 80 21;
-  animation: brand-trace-pill 6s linear infinite;
+.brand-mark[data-mark='line'][data-motion='idle'] [data-part='ring'],
+.brand-mark[data-mark='line'][data-motion='paused'] [data-part='ring'] {
+  animation: brand-line-ring 7s ease-in-out infinite;
 }
 
 .brand-mark[data-mark='cockpit'][data-motion='idle'] [data-part='knob'],
 .brand-mark[data-mark='cockpit'][data-motion='paused'] [data-part='knob'] {
-  /* The lit knob breathes. fill-box keeps the origin on the circle itself, not the 48x48 viewBox. */
-  transform-box: fill-box;
-  transform-origin: 50% 50%;
-  animation: brand-breathe 5s ease-in-out infinite;
+  animation: brand-toggle-knob 8s ease-in-out infinite;
+}
+
+.brand-mark[data-mark='cockpit'][data-motion='idle'] [data-part='bar'],
+.brand-mark[data-mark='cockpit'][data-motion='paused'] [data-part='bar'] {
+  animation: brand-toggle-bar 8s ease-in-out infinite;
 }
 
 .brand-mark[data-mark='cli'][data-motion='idle'] [data-part='cursor'],
@@ -55,17 +53,35 @@
   animation-play-state: paused;
 }
 
-@keyframes brand-trace-line {
-  to { stroke-dashoffset: -69; }
+/* The staggered mark is the rest position (translate 0). Stacked = both pills centred in one column: the bar
+ * (x 4-32) shifts right 6, the ring (x 16-44) shifts left 6, so both span x 10-38. */
+@keyframes brand-line-bar {
+  0%, 18%   { transform: translateX(6px); }
+  42%, 74%  { transform: translateX(0); }
+  98%, 100% { transform: translateX(6px); }
 }
 
-@keyframes brand-trace-pill {
-  to { stroke-dashoffset: -101; }
+@keyframes brand-line-ring {
+  0%, 18%   { transform: translateX(-6px); }
+  42%, 74%  { transform: translateX(0); }
+  98%, 100% { transform: translateX(-6px); }
 }
 
-@keyframes brand-breathe {
-  0%, 100% { transform: scale(1); opacity: 0.86; }
-  50%      { transform: scale(1.1); opacity: 1; }
+/* The toggle flips off and back: the knob glides to the left end while the label bar hands over to the
+ * right side (it is invisible while it jumps, so the two never cross). */
+@keyframes brand-toggle-knob {
+  0%, 38%   { transform: translateX(0); }
+  50%, 84%  { transform: translateX(-20px); }
+  96%, 100% { transform: translateX(0); }
+}
+
+@keyframes brand-toggle-bar {
+  0%, 36%   { opacity: 1; transform: translateX(0); }
+  40%, 44%  { opacity: 0; transform: translateX(0); }
+  45%, 82%  { opacity: 0; transform: translateX(17px); }
+  86%, 92%  { opacity: 1; transform: translateX(17px); }
+  93%, 94%  { opacity: 0; transform: translateX(17px); }
+  95%, 100% { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes brand-glow {
