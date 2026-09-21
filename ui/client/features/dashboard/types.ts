@@ -52,3 +52,8 @@ export type ImportInput = {
   /** Opt in to an LLM-written fill; the provider comes from Settings' importFill. */
   useLlm?: boolean;
 };
+
+/** The four actions of the Features stage (#370): one per command form of the retired Dashboard. */
+export type StageActionId = 'create' | 'refactor' | 'research' | 'import';
+
+export type StageAction = { id: StageActionId; label: string; hint: string };

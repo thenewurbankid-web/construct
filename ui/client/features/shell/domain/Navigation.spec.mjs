@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { addTab, badgeText, removeTab, resolveActiveTab } from './TabRegistry.ts';
 import { nextTabId } from './TabKeys.ts';
-import { MODES, modeForPath } from './Modes.ts';
+import { PRIMARY_SCREENS, primaryScreenForPath } from './PrimaryScreens.ts';
+import { shellCommandSpecs } from './ShellCommands.ts';
 import { SCREENS, isScreenActive } from './Screens.ts';
 import { projectLabel } from './ProjectLabel.ts';
 import { shortcutAction } from './Shortcuts.ts';
@@ -47,23 +48,35 @@ test('nextTabId: roving focus wraps, skips disabled, Home/End, ignores other key
   assert.equal(nextTabId([], 'a', 'ArrowRight'), null);
 });
 
-test('modes keep the owner names (Plan is the old Research route) and map paths', () => {
-  assert.deepEqual(MODES.map((m) => m.label), ['Explore', 'Plan', 'Build', 'Review']);
-  assert.equal(modeForPath('/pages').id, 'explore');
-  assert.equal(modeForPath('/workflows').id, 'explore');
-  assert.equal(modeForPath('/tests').id, 'explore');
-  assert.equal(modeForPath('/').id, 'plan');
-  assert.equal(modeForPath('/plan').id, 'plan');
-  assert.equal(MODES.find((m) => m.id === 'plan').href, '/plan');
-  assert.equal(modeForPath('/wizard').id, 'build');
-  assert.equal(modeForPath('/review').id, 'review');
-  assert.equal(modeForPath('/settings'), null);
+test('the five primary screens are Features, Pages, Components, Git, Tests, and every existing route belongs to one or to the profile menu', () => {
+  assert.deepEqual(PRIMARY_SCREENS.map((s) => s.label), ['Features', 'Pages', 'Components', 'Git', 'Tests']);
+  assert.deepEqual(PRIMARY_SCREENS.map((s) => s.href), ['/', '/pages', '/workflows', '/review', '/tests']);
+  for (const p of ['/', '/plan', '/dashboard', '/wizard']) assert.equal(primaryScreenForPath(p).id, 'features', p);
+  assert.equal(primaryScreenForPath('/pages').id, 'pages');
+  assert.equal(primaryScreenForPath('/workflows').id, 'components');
+  assert.equal(primaryScreenForPath('/review').id, 'git');
+  assert.equal(primaryScreenForPath('/tests').id, 'tests');
+  // Settings, Local model and Help live in the profile menu: no primary screen is current there.
+  for (const p of ['/settings', '/ollama', '/help', '/states']) assert.equal(primaryScreenForPath(p), null, p);
+  // Every route a former nav entry pointed at is either owned by a screen or a profile-menu page.
+  const profile = new Set(['/settings', '/ollama', '/help']);
+  for (const s of SCREENS) for (const r of s.activeOn) assert.ok(primaryScreenForPath(r) || profile.has(r), r);
 });
 
-test('screens list every existing route with the old nav labels', () => {
-  assert.deepEqual(SCREENS.map((s) => s.label), ['Dashboard', 'Import Wizard', 'Pages Editor', 'Workflows', 'Tests', 'Local Model', 'Settings', 'Help']);
-  assert.equal(isScreenActive(SCREENS[0], '/'), true);
-  assert.equal(isScreenActive(SCREENS[0], '/help'), false);
+test('the palette offers Go to <screen> for the five screens once, and keeps the other routes reachable', () => {
+  const specs = shellCommandSpecs(PRIMARY_SCREENS, SCREENS, []);
+  const titles = specs.map((c) => c.title);
+  for (const label of ['Features', 'Pages', 'Components', 'Git', 'Tests']) assert.equal(titles.filter((t) => t === `Go to ${label}`).length, 1, label);
+  for (const label of ['Settings', 'Local Model', 'Help']) assert.ok(titles.includes(`Go to ${label}`), label);
+  assert.equal(new Set(specs.map((c) => c.id)).size, specs.length, 'command ids are unique');
+  assert.ok(!titles.some((t) => /\bmode\b/i.test(t)), 'the modes are gone from the palette');
+});
+
+test('the palette-only screens are the Import Wizard, Settings, Local Model and Help plus the routes a primary screen also owns', () => {
+  assert.deepEqual(SCREENS.map((s) => s.label), ['Import Wizard', 'Pages Editor', 'Workflows', 'Tests', 'Local Model', 'Settings', 'Help']);
+  assert.equal(isScreenActive(SCREENS.find((s) => s.label === 'Settings'), '/settings'), true);
+  assert.equal(isScreenActive(SCREENS.find((s) => s.label === 'Settings'), '/help'), false);
+  assert.ok(!SCREENS.some((s) => s.label === 'Dashboard'), 'the Dashboard is retired');
 });
 
 test('projectLabel: last segment, separators tolerated, empty -> No project', () => {

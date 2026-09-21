@@ -4,10 +4,10 @@ import { test, expect } from '@playwright/test';
 // server even render *something* recognizable? Everything else in
 // walkthrough.spec.js builds on this working. Deliberately tolerant of
 // which of the two possible top-of-page states shows up (a valid project
-// -> "Dashboard", no architecture.yml yet -> ProjectGate's "No Construct
+// -> "Features" (the landing since #370), no architecture.yml yet -> ProjectGate's "No Construct
 // project here yet"), since that depends on whatever directory the backend
 // happened to start in.
-test('home page loads and shows Dashboard or the ProjectGate heading', async ({ page }) => {
+test('home page loads and shows Features or the ProjectGate heading', async ({ page }) => {
   const consoleErrors = [];
   const pageErrors = [];
   page.on('console', (msg) => {
@@ -20,14 +20,16 @@ test('home page loads and shows Dashboard or the ProjectGate heading', async ({ 
   const heading = page.locator('h1');
   await expect(heading).toBeVisible();
   const text = await heading.textContent();
-  expect(['Dashboard', 'No Construct project here yet']).toContain(text.trim());
+  expect(['Features', 'No Construct project here yet']).toContain(text.trim());
 
-  // Nav should render regardless of project state.
-  await expect(page.getByRole('link', { name: 'Dashboard' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Import Wizard' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Pages Editor' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Settings' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Help' })).toBeVisible();
+  // Nav should render regardless of project state: the five screens in the top bar, and Settings / Local model /
+  // Help in the profile menu (#369, #370: the Browser pane's Screens tab is gone).
+  const screens = page.getByRole('navigation', { name: 'Screens' });
+  for (const name of ['Features', 'Pages', 'Components', 'Git', 'Tests']) await expect(screens.getByRole('link', { name })).toBeVisible();
+  await page.getByTestId('user-menu-trigger').click();
+  await expect(page.getByTestId('profile-settings')).toBeVisible();
+  await expect(page.getByTestId('profile-local-model')).toBeVisible();
+  await expect(page.getByTestId('profile-help')).toBeVisible();
 
   expect(consoleErrors, `console errors: ${consoleErrors.join('\n')}`).toEqual([]);
   expect(pageErrors, `page errors: ${pageErrors.join('\n')}`).toEqual([]);

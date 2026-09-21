@@ -7,11 +7,11 @@ import { ProcessesController, useProcesses } from '@/features/processes';
 import { CommandPaletteController, CommandRegistryProvider, useOpenPalette } from '@/features/command-palette';
 import { DiagnosticsController, LogsController, statusText, statusTextChars, tabBadge, useDiagnostics } from '@/features/diagnostics';
 import { PANE_LIMITS } from '../domain/LayoutDefaults';
-import { MODES } from '../domain/Modes';
-import { SCREENS } from '../domain/Screens';
+import { PRIMARY_SCREENS } from '../domain/PrimaryScreens';
 import { SHORTCUTS } from '../domain/Shortcuts';
 import { useActiveTabs } from '../hooks/useActiveTabs';
 import { useNarrowLayout } from '../hooks/useNarrowLayout';
+import { useGitBranchCount } from '../hooks/useGitBranchCount';
 import { useModelStatus } from '../hooks/useModelStatus';
 import { useProjectSwitcher } from '../hooks/useProjectSwitcher';
 import { useRevealPanes } from '../hooks/useRevealPanes';
@@ -25,10 +25,9 @@ import { useShellCommands } from '../hooks/useShellCommands';
 import { useShellNavigation } from '../hooks/useShellNavigation';
 import { useTheme } from '../hooks/useTheme';
 import { ProjectInfoPanel } from '../components/ProjectInfoPanel';
+import { ProfileMenuItems } from '../components/ProfileMenuItems';
 import { ProjectSwitcher } from '../components/ProjectSwitcher';
-import { ScreensNav } from '../components/ScreensNav';
 import { ShellPage } from '../pages/ShellPage';
-import { ThemeController } from './ThemeController';
 import type { ShellRegion, ShellTab } from '../types';
 
 // Fixed for the lifetime of the app: how much room the validate readout reserves (#252).
@@ -46,6 +45,7 @@ function ShellFrame({ children }: { children: ReactNode }) {
   const diagnostics = useDiagnostics(project.known);
   const processes = useProcesses(project.known ? project.dir : null);
   const theme = useTheme();
+  const gitBranches = useGitBranchCount(project.known);
   const registered = { browser: useShellTabs('browser'), tools: useShellTabs('tools'), drawer: useShellTabs('drawer') };
 
   const { navigate, openPage } = useShellNavigation(route.pathname);
@@ -54,12 +54,12 @@ function ShellFrame({ children }: { children: ReactNode }) {
   // Default tabs the shell itself provides; features add more via useRegisterShellTab.
   const defaults = useMemo<Record<ShellRegion, ShellTab[]>>(
     () => ({
-      browser: [{ id: 'screens', title: 'Screens', render: () => <ScreensNav screens={SCREENS} pathname={route.pathname} /> }],
+      browser: [],
       tools: [
         {
           id: 'project',
           title: 'Project',
-          render: () => <ProjectInfoPanel dir={project.dir} modeLabel={route.mode?.label ?? null} modelStatus={model} shortcuts={SHORTCUTS} />,
+          render: () => <ProjectInfoPanel dir={project.dir} screenLabel={route.screen?.label ?? null} modelStatus={model} shortcuts={SHORTCUTS} />,
         },
       ],
       drawer: [
@@ -77,7 +77,7 @@ function ShellFrame({ children }: { children: ReactNode }) {
         },
       ],
     }),
-    [route.pathname, route.mode, project.dir, model, diagnostics, openPage, processes],
+    [route.pathname, route.screen, project.dir, model, diagnostics, openPage, processes],
   );
   const tabs = {
     // A screen's own tabs come first (they are what you came to use); the shell's defaults follow.
@@ -119,11 +119,15 @@ function ShellFrame({ children }: { children: ReactNode }) {
       narrow={narrow.narrow}
       narrowPane={narrow.pane}
       onNarrowPane={narrow.setPane}
-      modes={MODES}
-      activeModeId={route.mode?.id ?? null}
+      screens={PRIMARY_SCREENS}
+      activeScreenId={route.screen?.id ?? null}
+      screenBadges={{ git: gitBranches }}
       projectSwitcher={projectSwitcher}
-      themeToggle={<ThemeController />}
-      userMenu={<UserMenuController />}
+      userMenu={
+        <UserMenuController>
+          <ProfileMenuItems pathname={route.pathname} modelStatus={model} preference={theme.preference} onPreference={theme.setPreference} />
+        </UserMenuController>
+      }
       modelStatus={model}
       runningProcesses={processes.running}
       onOpenProcesses={() => showDrawerTab('processes')}

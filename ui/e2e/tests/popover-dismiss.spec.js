@@ -94,7 +94,7 @@ for (const key of Object.keys(POPOVERS)) {
     test('an outside click closes it without stealing focus', async ({ page }) => {
       await trigger.click();
       await expect(page.locator(`#${p.surface}`)).toBeVisible();
-      const target = page.getByTestId('theme-toggle');
+      const target = page.getByTestId('toggle-right');
       await target.click();
       await expect(page.locator(`#${p.surface}`)).toHaveCount(0);
       await expect(trigger).toHaveAttribute('aria-expanded', 'false');

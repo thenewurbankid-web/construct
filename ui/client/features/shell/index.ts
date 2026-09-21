@@ -6,13 +6,10 @@ export type * from './types';
 /** The Cockpit frame (top bar, Browser | stage | Tools, drawer, status bar). Mount once in the root layout. */
 export * from './controllers/ShellController';
 
-/** Dark/light theme switch (persisted, no flash). */
-export * from './controllers/ThemeController';
-
 /** Pre-paint theme bootstrap for the document head. */
 export * from './domain/ThemeInit';
 
-/** Current theme + toggle (used by ThemeController). */
+/** Current theme + toggle (Dark / Light / System, chosen in the profile menu). */
 export * from './hooks/useTheme';
 
 /** Let a feature add a tab to the Browser / Tools / Drawer regions (slot registry). */
@@ -61,3 +58,6 @@ export * from './hooks/useDrawerActions';
 
 /** Lets a screen open the drawer's Processes tab (Plan mode does after starting a process). */
 export * from './hooks/useShellDrawer';
+
+/** How many branches await review, for the badge beside the fourth screen in the top bar. */
+export * from './hooks/useGitBranchCount';

@@ -35,24 +35,28 @@
  * and Tools buttons appeared to touch) and the labels wrapped onto a second
  * line inside a 24px pill. The command palette trigger is the single elastic
  * item: it ellipsises by design, so it absorbs the whole deficit instead. */
-.sh-brand, .sh-modes, .sh-pill, .sh-icon-btn, .sh-project, .sh-project-btn, .sh-user { flex: none; }
+.sh-brand, .sh-topnav, .sh-pill, .sh-icon-btn, .sh-project, .sh-project-btn, .sh-user { flex: none; }
 .sh-brand { display: inline-flex; align-items: center; gap: var(--sp-2); font-weight: 600; font-size: var(--fs-md, 0.95rem); letter-spacing: 0.22em; text-transform: uppercase; margin-right: var(--sp-2); }
 .sh-brand svg { flex: none; }
 .sh-spacer { flex: 1 1 0; min-width: 0; }
 
-.sh-modes { display: flex; gap: 2px; padding: 2px; background: var(--surface-0); border: 1px solid var(--border-subtle); border-radius: var(--r-md); }
-.sh-mode {
-  padding: 4px 12px;
-  min-height: 24px;
-  color: var(--text-muted);
-  text-decoration: none;
-  border-radius: var(--r-sm);
+/* The five primary screens (#369). The current one is marked by weight and an underline, not colour alone. */
+.sh-topnav { display: flex; align-self: stretch; gap: var(--sp-1); }
+.sh-topnav-link {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 var(--sp-3);
+  color: var(--text-muted);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
 }
-.sh-mode:hover { background: var(--surface-3); color: var(--text); }
-.sh-mode--active { background: var(--accent); color: var(--accent-fg); font-weight: 600; }
-.sh-mode--active:hover { background: var(--accent); color: var(--accent-fg); }
+.sh-topnav-link:hover { color: var(--text); background: var(--surface-3); }
+.sh-topnav-link--active, .sh-topnav-link--active:hover { color: var(--text); font-weight: 700; border-bottom-color: var(--accent); }
+.sh-topnav-badge { min-width: 18px; padding: 0 5px; text-align: center; font-size: var(--fs-sm); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text); background: var(--surface-3); border: 1px solid var(--border-strong); border-radius: 999px; }
+.sh-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 .sh-pill {
   appearance: none;
@@ -352,9 +356,10 @@ kbd {
     white-space: nowrap;
   }
   .sh-pill { padding: 0 8px; }
-  .sh-mode { padding: 4px 10px; }
+  .sh-topnav { gap: 0; }
+  .sh-topnav-link { padding: 0 var(--sp-2); }
   .sh-project-btn { max-width: 168px; }
-  .sh-palette-trigger { width: min(280px, 24vw); }
+  .sh-palette-trigger { width: min(280px, 20vw); }
 }
 
 @media (max-width: 899px) {
@@ -367,14 +372,28 @@ kbd {
   .sh-toggle, [data-testid='pill-processes'], [data-testid='toggle-drawer'] { display: none; }
   /* The model pill keeps its dot and an accessible name, and drops the words. */
   .sh-pill-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-  .sh-mode { padding: 4px 8px; }
   .sh-popover { position: fixed; left: var(--sp-2); right: var(--sp-2); top: calc(var(--sh-top) + 4px); width: auto; }
+  /* The top bar's stacking context must clear the bottom tab bar, or the sheet below slides under it. */
+  .sh-top { z-index: var(--z-popover); }
+  /* The profile menu is a bottom sheet on a phone (docs/design/ia-five-screens.md, ia-narrow). */
+  .sh-popover--account { top: auto; bottom: 0; left: 0; right: 0; width: auto; min-width: 0; max-width: none; max-height: 80vh; border-radius: var(--r-lg) var(--r-lg) 0 0; padding-bottom: var(--sp-4); }
 }
 
-/* Phone: the mode links do not fit next to brand + project + theme; every
- * screen is still one tap away in the Browser pane (Screens tab). */
+/* Phone: the five screens do not fit beside brand + project + account, so the top bar becomes two rows:
+ * the usual controls, then the screens. Every layout offset uses --sh-top, so it follows. */
 @media (max-width: 520px) {
-  .sh-modes { display: none; }
+  :root { --sh-top: 88px; }
+  .sh-top { flex-wrap: wrap; align-content: flex-start; row-gap: 0; }
+  .sh-brand, .sh-project { min-height: 44px; }
+  /* Keep the first row to one line: the palette shows only its start and drops the key hint. */
+  .sh-palette-trigger { width: auto; flex: 0 1 auto; min-width: 0; padding: 0 var(--sp-2); }
+  .sh-palette-trigger span, .sh-palette-trigger kbd { display: none; }
+  .sh-palette-trigger::before { content: 'Search'; font-size: var(--fs-sm); }
+  .sh-spacer { flex: 0 0 0; }
+  /* The local-model status is also in the profile menu (Local model row), so the phone bar drops its dot. */
+  [data-testid='pill-model'] { display: none; }
+  .sh-topnav { order: 20; flex: 1 0 100%; align-self: auto; justify-content: space-between; margin: 0 calc(var(--sp-2) * -1); }
+  .sh-topnav-link { flex: 1 1 0; justify-content: center; min-height: 44px; padding: 0 var(--sp-1); }
 }
 
 /* ---- signed-in account (#278) ---------------------------------------- *
@@ -418,12 +437,23 @@ kbd {
   font-weight: 700;
 }
 .sh-user-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sh-user-login {
-  margin: 0;
-  padding: 0 var(--sp-2);
-  color: var(--text-muted);
-  font-size: var(--fs-sm);
-}
+.sh-user-head { padding: var(--sp-1) var(--sp-2) var(--sp-2); border-bottom: 1px solid var(--border); margin-bottom: var(--sp-1); }
+.sh-user-login { margin: 0; color: var(--text); font-size: var(--fs-md); font-weight: 600; }
+.sh-user-sub { margin: 2px 0 0; color: var(--text-muted); font-size: var(--fs-sm); }
+.sh-user-section { margin: var(--sp-1) 0 0; padding: 0 var(--sp-2); color: var(--text-muted); font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: 0.06em; }
+.sh-user-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); min-height: 32px; text-decoration: none; }
+.sh-user-row[aria-current='page'] { background: var(--accent-soft); }
+.sh-user-hint { color: var(--text-muted); font-size: var(--fs-sm); }
+.sh-user-chip { display: inline-flex; align-items: center; gap: var(--sp-1); color: var(--text-muted); font-size: var(--fs-sm); }
+.sh-user-chip--ready .sh-dot { background: var(--success); }
+.sh-user-chip--offline .sh-dot { background: var(--danger); }
+.sh-user-theme { margin: 0; padding: var(--sp-1) var(--sp-2); border: 0; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); min-height: 32px; }
+.sh-user-theme legend { float: left; padding: 0; margin: 0; color: var(--text); font-size: var(--fs-md); }
+.sh-seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--r-sm); overflow: hidden; margin-left: auto; }
+.sh-seg-opt { position: relative; display: inline-flex; padding: 3px var(--sp-2); color: var(--text-muted); font-size: var(--fs-sm); cursor: pointer; }
+.sh-seg-opt input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.sh-seg-opt--on { background: var(--accent); color: var(--accent-fg); font-weight: 700; }
+.sh-seg-opt:focus-within { outline: 2px solid var(--focus); outline-offset: -2px; }
 .sh-user-item {
   appearance: none;
   text-align: left;

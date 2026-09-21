@@ -6,7 +6,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from './support/cockpit.js';
 
-// Plan mode (#289 ticket, impact and run; #332 plan review and edit), end to end in a real browser against a
+// Plan mode (#289 note, impact and run; #332 plan review and edit), end to end in a real browser against a
 // REAL throwaway git repository (the impact-shared fixture). Nothing is mocked: the impact is the real
 // analyzeImpact, the verdict on every edit is the server's real validatePlan(), and Run creates a real process
 // that the real bot runner executes in its own worktree, watched in the real Processes drawer.
@@ -43,22 +43,27 @@ test.describe.serial('Plan mode (#289, #332)', () => {
     fs.rmSync(repo, { recursive: true, force: true });
   });
 
-  test('Plan leads to the Plan screen, whose left pane shows the ticket and the constraints from architecture.yml', async ({ page }) => {
-    await gotoCockpit(page, '/settings');
-    const modes = page.getByRole('navigation', { name: 'Modes' });
-    await modes.getByRole('link', { name: 'Plan' }).click();
-    await expect(page).toHaveURL(/\/plan$/);
-    await expect(modes.getByRole('link', { name: 'Plan' })).toHaveAttribute('aria-current', 'page');
+  test('Plan leads to the Plan screen, whose left pane shows the note and the constraints from architecture.yml', async ({ page }) => {
+    await gotoCockpit(page, '/plan');
+    // #369: the plan lives on the Features screen (Plan is no longer a mode).
+    const nav = page.getByRole('navigation', { name: 'Screens', exact: true });
+    await expect(nav.getByRole('link', { name: 'Features' })).toHaveAttribute('aria-current', 'page');
     await expect(page.getByTestId('plan-ticket')).toBeVisible();
+    // #366: the user-visible word is Notes, never "ticket".
+    await expect(page.getByTestId('plan-ticket')).toContainText('Notes');
+    await expect(page.getByLabel('Note title')).toBeVisible();
+    await expect(page.getByLabel('Note text')).toBeVisible();
+    await expect(page.getByTestId('plan-ticket')).not.toContainText(/ticket/i);
     await expect(page.getByTestId('plan-constraints')).toContainText('nextjs');
     await expect(page.getByTestId('plan-rule').filter({ hasText: 'SLICE-002' })).toBeVisible();
     // The empty states are designed, not blank.
     await expect(page.getByTestId('plan-impact-empty')).toContainText('No impact yet');
     await expect(page.getByTestId('plan-empty')).toContainText('No steps yet');
     await expect(page.getByTestId('plan-run')).toBeDisabled();
+    await page.screenshot({ path: path.join(SHOTS, '366-notes-plan-screen.png') });
   });
 
-  test('a ticket becomes proposals you confirm, then a deterministic impact with derived and inferred rows', async ({ page }) => {
+  test('a note becomes proposals you confirm, then a deterministic impact with derived and inferred rows', async ({ page }) => {
     await gotoCockpit(page, '/plan');
     await page.getByTestId('plan-ticket-title').fill('Fix billing totals');
     await page.getByTestId('plan-ticket-body').fill(TICKET);

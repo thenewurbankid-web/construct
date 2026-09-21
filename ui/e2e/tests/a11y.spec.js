@@ -100,6 +100,12 @@ for (const theme of THEMES) {
         await expect(page.getByRole('dialog', { name: 'Switch project' })).toBeVisible();
         await check(page, `project switcher ${theme} ${vp}`);
       });
+      test('profile menu open (#368)', async ({ page }) => {
+        await gotoCockpit(page, '/help');
+        await page.getByTestId('user-menu-trigger').click();
+        await expect(page.getByTestId('profile-settings')).toBeVisible();
+        await check(page, `profile menu ${theme} ${vp}`);
+      });
       test('drawer open', async ({ page }) => {
         test.skip(vp === 'narrow', 'the drawer is not shown at narrow widths by design (ShellLayout)');
         await gotoCockpit(page, '/help');

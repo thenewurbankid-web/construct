@@ -33,7 +33,7 @@ const measureTopBar = (page) =>
   page.evaluate(() => {
     const bar = document.querySelector('.sh-top');
     const controls = bar.querySelectorAll(
-      '.sh-brand, .sh-project-btn, .sh-modes, .sh-palette-trigger, .sh-pill, .sh-icon-btn',
+      '.sh-brand, .sh-project-btn, .sh-topnav, .sh-palette-trigger, .sh-pill, .sh-icon-btn',
     );
     return {
       bar: bar.getBoundingClientRect().toJSON(),
@@ -116,7 +116,9 @@ for (const [name, width, height] of [
 
       // The pills and toggles are single-line: 44px bar, so anything taller
       // than ~30px has wrapped.
-      for (const c of controls) {
+      // Exception (#369): the screen navigation is a row of 44px-high links by design (docs/design/ia-five-screens.md
+      // section 6, targets), so it is measured for overflow and gaps but not for height.
+      for (const c of controls.filter((x) => x.name !== 'sh-topnav')) {
         expect(c.height, `${c.name} is taller than one line`).toBeLessThanOrEqual(30);
       }
 

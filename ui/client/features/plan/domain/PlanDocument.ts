@@ -8,6 +8,6 @@ export const argText = (value: unknown): string => {
 };
 
 export const buildPlan = (ticket: Ticket, steps: PlanStep[]): PlanDoc => {
-  const title = ticket.title.trim() || ticket.body.trim().split('\n')[0]?.slice(0, 120) || 'Untitled ticket';
+  const title = ticket.title.trim() || ticket.body.trim().split('\n')[0]?.slice(0, 120) || 'Untitled note';
   return { version: 1, ticket: { source: 'text', title, ...(ticket.body.trim() ? { body: ticket.body } : {}) }, steps };
 };

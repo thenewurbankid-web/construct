@@ -32,3 +32,6 @@ export * from './hooks/useAnalysisCancel';
 
 /** The changed-units tree's keyboard state: open parents and the one tab stop (#351). */
 export * from './hooks/useTreeNavigation';
+
+/** The project's branches with their badges (the shell counts them for the Git entry in the top bar). */
+export { fetchBranches as fetchReviewBranches } from './services/ReviewApi';

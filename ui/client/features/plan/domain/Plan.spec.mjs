@@ -76,7 +76,7 @@ test('the plan document is a v1 plan whose ticket is text', () => {
   assert.equal(p.version, 1);
   assert.deepEqual(p.ticket, { source: 'text', title: 'Fix the totals', body: 'Fix the totals\nmore' });
   assert.equal(buildPlan({ title: 'T', body: '' }, []).ticket.body, undefined);
-  assert.equal(buildPlan({ title: '', body: '' }, []).ticket.title, 'Untitled ticket');
+  assert.equal(buildPlan({ title: '', body: '' }, []).ticket.title, 'Untitled note');
 });
 
 test('errors land on the step they are about; the rest are about the plan', () => {

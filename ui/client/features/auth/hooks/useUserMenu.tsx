@@ -21,8 +21,9 @@ export function useUserMenu() {
 
   const user = session?.user ?? null;
   return {
-    visible: showsAccount(session),
-    user,
+    // The menu is always there once the session is known: it also holds Settings, Theme and Help (#368).
+    visible: session !== null,
+    user: showsAccount(session) ? user : null,
     label: displayName(user),
     initial: initial(user),
     open,

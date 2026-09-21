@@ -34,12 +34,12 @@ for (const [name, width, height] of [['phone-390', 390, 844], ['tablet-768', 768
       await noHorizontalScroll(page);
       await page.screenshot({ path: path.join(SHOTS, `narrow-${name}-stage-dark.png`) });
 
-      // Browser: the screens list replaces the stage.
+      // Browser: the screen's own browsing tab (Help's Contents) replaces the stage. The Screens tab is gone (#370):
+      // the five screens sit in the top bar and Settings, Local model and Help in the profile menu.
       await bar.getByRole('tab', { name: 'Browser' }).click();
       await expect(page.getByRole('complementary', { name: 'Browser' })).toBeVisible();
-      // Help's own Contents tab comes first; the shell's Screens tab follows.
-      await page.getByRole('complementary', { name: 'Browser' }).getByRole('tab', { name: 'Screens' }).click();
-      await expect(page.getByRole('link', { name: 'Settings' }).first()).toBeVisible();
+      await expect(page.getByRole('complementary', { name: 'Browser' }).getByRole('tab', { name: 'Contents' })).toBeVisible();
+      await expect(page.getByRole('complementary', { name: 'Browser' }).getByRole('tab', { name: 'Screens' })).toHaveCount(0);
       await expect(page.getByRole('main')).toHaveCount(0);
       await noHorizontalScroll(page);
       await page.screenshot({ path: path.join(SHOTS, `narrow-${name}-browser-dark.png`) });
@@ -51,12 +51,12 @@ for (const [name, width, height] of [['phone-390', 390, 844], ['tablet-768', 768
       await noHorizontalScroll(page);
     });
 
-    test('choosing a screen in the Browser returns to the Stage showing it', async ({ page }) => {
+    test('choosing a screen from the profile menu shows it in the Stage', async ({ page }) => {
       await page.goto('/help');
       const bar = page.getByRole('tablist', { name: 'Panes' });
       await bar.getByRole('tab', { name: 'Browser' }).click();
-      await page.getByRole('complementary', { name: 'Browser' }).getByRole('tab', { name: 'Screens' }).click();
-      await page.getByRole('complementary', { name: 'Browser' }).getByRole('link', { name: 'Local Model' }).click();
+      await page.getByTestId('user-menu-trigger').click();
+      await page.getByTestId('profile-local-model').click();
       await expect(page).toHaveURL(/\/ollama$/);
       await expect(bar.getByRole('tab', { name: 'Stage' })).toHaveAttribute('aria-selected', 'true');
       await expect(page.getByRole('heading', { name: 'Local model (Ollama)' })).toBeVisible();

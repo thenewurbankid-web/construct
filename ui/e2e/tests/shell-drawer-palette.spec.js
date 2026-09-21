@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { gotoCockpit } from './support/cockpit.js';
+import { gotoCockpit, setTheme } from './support/cockpit.js';
 
 // Design #249 -- bottom drawer (real Diagnostics from `construct validate`,
 // Logs, Processes placeholder) and the Ctrl K command palette.
@@ -53,10 +53,10 @@ test.describe('Cockpit drawer and command palette (#249)', () => {
     await expect(page.getByTestId('status-validate')).toContainText(/problem/);
     await page.screenshot({ path: path.join(SHOTS, 'shell-diagnostics-dark.png') });
 
-    await page.getByTestId('theme-toggle').click();
+    await setTheme(page, 'light');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
     await page.screenshot({ path: path.join(SHOTS, 'shell-diagnostics-light.png') });
-    await page.getByTestId('theme-toggle').click();
+    await setTheme(page, 'dark');
 
     await pageRow.click();
     await expect(page).toHaveURL(/\/pages\?feature=demo&file=DemoPage\.tsx/);
@@ -104,25 +104,28 @@ test.describe('Cockpit drawer and command palette (#249)', () => {
     await expect(trigger).toBeFocused();
   });
 
-  test('palette commands: go to a screen, run validate, toggle theme and drawer, switch mode, open project switcher', async ({ page }) => {
-    await page.goto('/help');
+  test('palette commands: go to a screen, run validate, toggle theme and drawer, open project switcher (#369: no more mode commands)', async ({ page }) => {
+    await gotoCockpit(page, '/help');
     const dialog = page.getByRole('dialog', { name: 'Command palette' });
     const run = async (query) => {
       await page.getByTestId('palette-trigger').click();
       await dialog.getByRole('combobox').fill(query);
       await page.keyboard.press('Enter');
-      await expect(dialog).toHaveCount(0);
+      await expect(dialog).toHaveCount(0, { timeout: 10_000 });
     };
 
     await run('go to settings');
     await expect(page).toHaveURL(/\/settings$/);
 
-    await run('explore');
+    // #369: "Explore" is gone as a mode; "Go to Pages" is the palette's route there now.
+    await run('go to pages');
     await expect(page).toHaveURL(/\/pages/);
 
     await run('toggle dark');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-    await expect(page.getByTestId('theme-toggle')).toHaveAttribute('aria-label', 'Switch to dark theme'); // top-bar switch stays in sync
+    await page.getByTestId('user-menu-trigger').click();
+    await expect(page.getByTestId('theme-light')).toBeChecked(); // the profile menu's Theme choice stays in sync with the palette
+    await page.keyboard.press('Escape');
     await page.getByTestId('palette-trigger').click();
     await page.screenshot({ path: path.join(SHOTS, 'shell-palette-light.png') });
     await page.keyboard.press('Escape');

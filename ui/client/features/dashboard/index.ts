@@ -10,3 +10,6 @@ export * from './controllers/DashboardController';
 /** Backs the four command forms' state and calls into ui/server — used by
  * DashboardController; exported for direct reuse/testing. */
 export * from './hooks/useDashboard';
+
+/** The Create / Refactor / Research / Import actions of the Features stage (the retired Dashboard's four forms). */
+export * from './controllers/StageActionsController';

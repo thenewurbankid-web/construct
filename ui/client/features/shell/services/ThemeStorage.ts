@@ -1,26 +1,21 @@
-import { parseTheme } from '../domain/Theme.ts';
+import { parseThemePreference } from '../domain/ThemePreference.ts';
 import { THEME_STORAGE_KEY } from '../domain/ThemeInit.ts';
-import type { Theme } from '../types.ts';
+import type { ThemePreference } from '../types.ts';
 
-/** Reads the persisted theme; every browser-storage access is guarded
+/** Reads the persisted preference (dark, light or system); every browser-storage access is guarded
  * (private windows / blocked site data throw). */
-export function loadTheme(): Theme {
+export function loadThemePreference(): ThemePreference {
   try {
-    return parseTheme(window.localStorage.getItem(THEME_STORAGE_KEY));
+    return parseThemePreference(window.localStorage.getItem(THEME_STORAGE_KEY));
   } catch {
-    return parseTheme(null);
+    return parseThemePreference(null);
   }
 }
 
-export function saveTheme(theme: Theme): void {
+export function saveThemePreference(preference: ThemePreference): void {
   try {
-    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+    window.localStorage.setItem(THEME_STORAGE_KEY, preference);
   } catch {
     /* persistence is a convenience, not required */
   }
-}
-
-/** Applies the theme to <html data-theme>. */
-export function applyTheme(theme: Theme): void {
-  document.documentElement.setAttribute('data-theme', theme);
 }

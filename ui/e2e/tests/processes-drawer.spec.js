@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { setTheme } from './support/cockpit.js';
 
 // #292 — the Processes drawer, driven against a real process engine.
 //
@@ -162,7 +163,7 @@ test.describe.serial('Processes drawer (#292)', () => {
 
   test('the light theme reads just as well', async ({ page }) => {
     await page.goto('/help');
-    await page.getByRole('banner').getByTestId('theme-toggle').click();
+    await setTheme(page, 'light');
     expect(await page.evaluate(() => document.documentElement.getAttribute('data-theme'))).toBe('light');
     await openProcesses(page);
     await expect(page.getByTestId('process-row').first()).toBeVisible();

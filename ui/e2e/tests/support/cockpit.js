@@ -39,3 +39,12 @@ export async function gotoCockpit(page, url) {
   await page.goto(url);
   await waitForCockpitReady(page);
 }
+
+// #368 - the theme lives in the profile menu now (there is no top-bar toggle). Opens the menu, picks
+// 'dark' | 'light' | 'system' from its Theme radio group and closes the menu again (Escape returns focus).
+export async function setTheme(page, theme) {
+  await page.getByTestId('user-menu-trigger').click();
+  await page.getByTestId(`theme-${theme}`).check();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('user-menu-trigger')).toHaveAttribute('aria-expanded', 'false');
+}

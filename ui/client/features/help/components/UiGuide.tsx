@@ -5,10 +5,10 @@ function ShellGuide() {
       <p>
         Every screen sits in the same frame: the <strong>Browser</strong> on the left (find things), the{' '}
         <strong>stage</strong> in the middle (the screen itself), and <strong>Tools</strong> on the right
-        (inspect, edit, check). A screen&apos;s own tabs come first in the Browser; <strong>Screens</strong> is
-        the list of every screen. The top bar has the project switcher, the{' '}
-        <strong>Explore / Research / Build</strong> modes, the search box, the local-model status and the
-        light/dark switch.
+        (inspect, edit, check). A screen&apos;s own tabs come first in the Browser. The top bar has the project
+        switcher, the five screens (<strong>Features, Pages, Components, Git, Tests</strong>), the search box
+        and the profile menu, which holds Settings, Local model, the theme (Dark, Light or System), Help and
+        Sign out.
       </p>
       <ul>
         <li>
@@ -53,8 +53,8 @@ function PagesAndWorkflowsGuide() {
 function DashboardGuide() {
   return (
     <>
-      <h3>Dashboard</h3>
-      <p>Four independent forms, one per capability. Each has its own result panel.</p>
+      <h3>Features: stage actions</h3>
+      <p>The stage of Features has four actions, one per capability (they were the Dashboard&apos;s forms). Choose one to open its form; each has its own result panel.</p>
       <ul>
         <li>
           <strong>Create</strong> — scaffold a new feature (all 7 layer folders), a vertical slice

@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { setTheme } from './support/cockpit.js';
 
 // #248 (Design: workflows-in-shell): Workflows inside the Cockpit shell. The
 // workflow list is a Browser tab, the diagram is the stage, and Narrative /
@@ -103,7 +104,7 @@ test.describe('Workflows in the shell (#248)', () => {
   for (const theme of ['dark', 'light']) {
     test(`diagram is readable in the ${theme} theme (nodes, edges, labels, arrowheads)`, async ({ page }) => {
       await open(page, 'RefundWorkflow.tsx');
-      if (theme === 'light') await page.getByTestId('theme-toggle').click();
+      if (theme === 'light') await setTheme(page, 'light');
       await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
 
       const style = await page.evaluate(() => {

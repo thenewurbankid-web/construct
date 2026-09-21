@@ -36,7 +36,7 @@ $ construct research impact features/shared/components/CurrencyLabel.tsx --dir f
 23ffcf296120b0fc81ae9a488315189cdad748ccda74dfdc876e37fb9cb3493a  -
 ```
 
-Other ways to seed the same report: a git range (`--since main`), a list of files (`--files a,b`), or the change described in English (`--ticket "..."`). Anything guessed from ticket text is marked `inferred`; anything reached from a unit you named is `derived`.
+Other ways to seed the same report: a git range (`--since main`), a list of files (`--files a,b`), or the change described in English (`--ticket "..."`). Anything guessed from note text is marked `inferred`; anything reached from a unit you named is `derived`.
 
 ### 2. What does this branch actually change?
 

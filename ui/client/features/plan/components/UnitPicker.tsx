@@ -15,7 +15,7 @@ export function UnitPicker(p: UnitPickerProps) {
         {p.features.length === 0 && <span className="pl-hint">This project has no features yet.</span>}
       </div>
       <button type="button" className="dg-btn" onClick={p.onPropose} disabled={p.proposalsBusy || !p.canPropose} data-testid="plan-propose">
-        {p.proposalsBusy ? 'Looking...' : 'Suggest units from the ticket text'}
+        {p.proposalsBusy ? 'Looking...' : 'Suggest units from the note text'}
       </button>
       <p className="pl-hint">A text match against your project. No model. Suggestions are guesses: confirm each one you agree with.</p>
       {p.proposalsError && (

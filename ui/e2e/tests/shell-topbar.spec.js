@@ -3,63 +3,92 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { setTheme } from './support/cockpit.js';
 
 // Design #245 — top bar: project switcher (local projects only, reuses the
-// settings project dir and the shared folder picker), Explore / Plan /
-// Build / Review modes (Plan is the old Research button, #285; Review is the fourth mode, #312) routing to screens, real status pills, and the theme
-// switch. The old sidebar links live on in the Browser pane's "Screens" tab.
+// settings project dir and the shared folder picker), the five screens (Features / Pages / Components / Git /
+// Tests, #369; they replaced the Explore / Plan / Build / Review modes), real status pills, and the profile menu (#368).
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SHOTS = path.resolve(__dirname, '../screenshots');
 fs.mkdirSync(SHOTS, { recursive: true });
 const API = process.env.E2E_API_BASE || 'http://localhost:4000';
 
 test.describe('Cockpit top bar (#245)', () => {
-  test('modes route to existing screens and mark the current one', async ({ page }) => {
-    const modes = page.getByRole('navigation', { name: 'Modes' });
+  test('the five screens route to existing routes and mark the current one (#369)', async ({ page }) => {
+    const nav = page.getByRole('navigation', { name: 'Screens', exact: true });
     await page.goto('/settings');
-    await expect(modes.getByRole('link', { name: 'Explore' })).not.toHaveAttribute('aria-current', 'page');
-    await expect(modes.getByRole('link')).toHaveText(['Explore', 'Plan', 'Build', 'Review']);
+    // Order is fixed; a badge may follow a name (Git), so match on the start of each link's text.
+    await expect(nav.getByRole('link')).toHaveCount(5);
+    for (const [i, label] of ['Features', 'Pages', 'Components', 'Git', 'Tests'].entries()) await expect(nav.getByRole('link').nth(i)).toHaveText(new RegExp(`^${label}`));
+    // The old modes are gone, and on a utility page (Settings) no screen is current.
+    await expect(page.getByRole('navigation', { name: 'Modes' })).toHaveCount(0);
+    await expect(nav.locator('[aria-current="page"]')).toHaveCount(0);
 
-    await modes.getByRole('link', { name: 'Explore' }).click();
-    await expect(page).toHaveURL(/\/pages$/);
-    await expect(modes.getByRole('link', { name: 'Explore' })).toHaveAttribute('aria-current', 'page');
-    await expect(modes.getByRole('link', { name: 'Plan' })).not.toHaveAttribute('aria-current', 'page');
+    const go = async (label, url) => {
+      await nav.getByRole('link', { name: label }).click();
+      await expect(page).toHaveURL(url);
+      await expect(nav.locator('[aria-current="page"]')).toHaveCount(1);
+      await expect(nav.getByRole('link', { name: label })).toHaveAttribute('aria-current', 'page');
+    };
+    await go('Pages', /\/pages$/);
+    await go('Components', /\/workflows$/);
+    await go('Git', /\/review$/);
+    await go('Tests', /\/tests$/);
+    await go('Features', /\/$/);
 
-    // #289: Plan leads to the Plan screen; the Dashboard (the old research form) is still a screen in the Browser pane.
-    await modes.getByRole('link', { name: 'Plan' }).click();
-    await expect(page).toHaveURL(/\/plan$/);
-    await expect(modes.getByRole('link', { name: 'Plan' })).toHaveAttribute('aria-current', 'page');
-
-    await modes.getByRole('link', { name: 'Build' }).click();
-    await expect(page).toHaveURL(/\/wizard$/);
-    await expect(modes.getByRole('link', { name: 'Build' })).toHaveAttribute('aria-current', 'page');
-
-    await modes.getByRole('link', { name: 'Review' }).click();
-    await expect(page).toHaveURL(/\/review$/);
-    await expect(modes.getByRole('link', { name: 'Review' })).toHaveAttribute('aria-current', 'page');
+    // Every route the retired modes and the Dashboard covered belongs to Features.
+    for (const route of ['/plan', '/dashboard', '/wizard']) {
+      await page.goto(route);
+      await expect(nav.getByRole('link', { name: 'Features' })).toHaveAttribute('aria-current', 'page');
+    }
+    await page.goto('/pages');
+    await page.screenshot({ path: path.join(SHOTS, '369-screen-nav.png'), clip: { x: 0, y: 0, width: 1280, height: 90 } });
   });
 
-  test('every old sidebar screen is still one click away in the Browser pane', async ({ page }) => {
-    await page.goto('/dashboard');
-    const screens = page.getByRole('navigation', { name: 'Screens' });
-    await expect(screens.getByRole('link')).toHaveText([
-      'Dashboard',
-      'Import Wizard',
-      'Pages Editor',
-      'Workflows',
-      'Tests',
-      'Local Model',
-      'Settings',
-      'Help',
-    ]);
-    await expect(screens.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page');
-    await screens.getByRole('link', { name: 'Workflows' }).click();
+  test('at 390 px the five screens sit on their own row, all reachable, with no sideways scroll (#369)', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 800 });
+    await page.goto('/pages');
+    const nav = page.getByRole('navigation', { name: 'Screens', exact: true });
+    await expect(nav.getByRole('link')).toHaveCount(5);
+    for (const link of await nav.getByRole('link').all()) await expect(link).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    // The nav is the second row of the bar, under brand and project.
+    const [navBox, projectBox] = [await nav.boundingBox(), await page.getByTestId('project-switcher').boundingBox()];
+    expect(navBox.y).toBeGreaterThan(projectBox.y + projectBox.height - 1);
+    await nav.getByRole('link', { name: 'Tests' }).click();
+    await expect(page).toHaveURL(/\/tests$/);
+    await page.screenshot({ path: path.join(SHOTS, '369-screen-nav-narrow.png') });
+  });
+
+  test('every former Screens-tab target is still reachable: top bar, profile menu or palette (#370)', async ({ page }) => {
+    await page.goto('/settings');
+    // The Browser pane's Screens tab is gone; nothing in the pane lists screens any more.
+    await expect(page.getByRole('navigation', { name: 'All screens' })).toHaveCount(0);
+    await expect(page.getByRole('tab', { name: 'Screens' })).toHaveCount(0);
+
+    // Dashboard, Import Wizard, Pages Editor, Workflows, Tests, Local Model, Settings, Help:
+    // - the five primary screens are in the top bar (Dashboard became Features, Pages Editor Pages, Workflows Components);
+    // - Settings, Local Model and Help are in the profile menu;
+    // - the Import Wizard and everything else stay one palette command away.
+    const nav = page.getByRole('navigation', { name: 'Screens', exact: true });
+    await nav.getByRole('link', { name: 'Components' }).click();
     await expect(page).toHaveURL(/\/workflows$/);
-    // #248: a screen with its own Browser tab shows it first; Screens is the sibling tab.
-    await page.getByRole('tab', { name: 'Screens' }).click();
-    await expect(screens.getByRole('link', { name: 'Workflows' })).toHaveAttribute('aria-current', 'page');
-    await screens.getByRole('link', { name: 'Help' }).click();
+    await page.getByTestId('user-menu-trigger').click();
+    await page.getByTestId('profile-help').click();
     await expect(page.locator('h1')).toHaveText('Help');
+    await page.getByTestId('user-menu-trigger').click();
+    await page.getByTestId('profile-local-model').click();
+    await expect(page).toHaveURL(/\/ollama$/);
+    await page.getByTestId('user-menu-trigger').click();
+    await page.getByTestId('profile-settings').click();
+    await expect(page).toHaveURL(/\/settings$/);
+
+    await page.keyboard.press('Control+k');
+    const dialog = page.getByRole('dialog', { name: 'Command palette' });
+    await dialog.getByRole('combobox').fill('go to import wizard');
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/wizard$/);
+    await expect(nav.getByRole('link', { name: 'Features' })).toHaveAttribute('aria-current', 'page');
   });
 
   test('model pill shows the real Ollama state (offline / ready)', async ({ page }) => {
@@ -107,9 +136,10 @@ test.describe('Cockpit top bar (#245)', () => {
     await expect(page).toHaveTitle(/Cockpit/);
   });
 
-  test('theme switch lives in the top bar', async ({ page }) => {
+  test('the theme is chosen from the profile menu in the top bar (#368)', async ({ page }) => {
     await page.goto('/help');
-    await page.getByRole('banner').getByTestId('theme-toggle').click();
+    await expect(page.getByRole('banner').getByTestId('theme-toggle')).toHaveCount(0);
+    await setTheme(page, 'light');
     expect(await page.evaluate(() => document.documentElement.getAttribute('data-theme'))).toBe('light');
     await page.screenshot({ path: path.join(SHOTS, 'shell-topbar-light.png'), clip: { x: 0, y: 0, width: 1280, height: 90 } });
   });

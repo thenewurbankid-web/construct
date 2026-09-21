@@ -16,12 +16,12 @@ Tests: `test/impact.test.mjs` over `example/`, `fixtures/impact-shared` and `fix
 
 ## Provenance: where judgement entered
 
-Mapping a ticket written in English to code is judgement. Everything downstream of "here are the candidate
+Mapping a note written in English to code is judgement. Everything downstream of "here are the candidate
 units" is not. The report keeps the two apart **per row**, not per report:
 
 | | Values | Meaning |
 |---|---|---|
-| a **seed** | `explicit` / `inferred` | explicit = you named the unit, or it came from a git diff; inferred = guessed from ticket text (`method: "text-match"`) or proposed by a model (`method: "model"`) |
+| a **seed** | `explicit` / `inferred` | explicit = you named the unit, or it came from a git diff; inferred = guessed from note text (`method: "text-match"`) or proposed by a model (`method: "model"`) |
 | an **entry** (file, feature, warning) | `derived` / `inferred` | derived = reachable from at least one explicit seed, i.e. pure graph computation; inferred = *every* path to it starts at an inferred seed |
 
 A file reached from both an explicit and an inferred seed is `derived` — judgement only taints what
@@ -34,7 +34,7 @@ A seed is a string reference — anything `construct summarize` understands — 
 
 ```json
 { "ref": "feature:login", "provenance": "inferred", "method": "model",
-  "confidence": 0.8, "why": "the ticket says 'login form'", "evidence": "login form" }
+  "confidence": 0.8, "why": "the note says 'login form'", "evidence": "login form" }
 ```
 
 | Seed kind | Files it implicates |
@@ -98,7 +98,7 @@ import { analyzeImpact, impactFromChangedFiles, proposeSeedsFromText, impactFrom
 
 analyzeImpact(root, { seeds, files, depth, limits })  // the one computation
 impactFromChangedFiles(root, files, { depth, limits }) // PR health: seeds from a diff, every row derived
-proposeSeedsFromText(root, ticketText, { maxSeeds })   // LLM-free ticket -> candidates, all inferred
+proposeSeedsFromText(root, ticketText, { maxSeeds })   // LLM-free note -> candidates, all inferred
 impactFromTicketText(root, ticketText, opts)           // the two above, in one call
 ```
 

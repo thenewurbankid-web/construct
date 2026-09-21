@@ -9,7 +9,7 @@ export function ImpactPane({ status, error, view }: ImpactPaneProps) {
     return (
       <div className="dg-empty" data-testid="plan-impact-empty">
         <p className="dg-empty-title">No impact yet</p>
-        <p className="hint">Write the ticket on the left, pick the units it is about (or let Construct suggest some and confirm them), then choose Analyse impact.</p>
+        <p className="hint">Write a note on the left, pick the units it is about (or let Construct suggest some and confirm them), then choose Analyse impact.</p>
       </div>
     );
   }
