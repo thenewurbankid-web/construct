@@ -60,6 +60,10 @@ export const PREVIEW_FIBER_LIMITS = Object.freeze({
  * Install the in-page half. `options`: { parentOrigin, nonce, pick }.
  * Returns false when it is already installed, not embedded, or has no nonce.
  * Serialisable: everything it needs is defined inside it.
+ *
+ * @param {any} win The preview page's `window`.
+ * @param {any} options `{parentOrigin, nonce, pick}`: the Cockpit origin messages are posted to, the per-session nonce, and whether pick mode starts on.
+ * @returns {boolean} `false` when already installed, not embedded, or without a nonce.
  */
 export function installPreviewFiberBridge(win, options) {
   const opts = options || {};
@@ -337,6 +341,10 @@ export function installPreviewFiberBridge(win, options) {
  * (before any app script, so the devtools-hook stub lands before React loads).
  * `options` must carry `{ parentOrigin, nonce }`; both are embedded as JSON,
  * never interpolated as code, and the page never evaluates a string.
+ *
+ * @param {any} options Must carry `{parentOrigin, nonce}`; `pick` is optional.
+ * @returns {string} JavaScript source that installs the bridge in the page.
+ * @throws {Error} When `nonce` or `parentOrigin` is missing.
  */
 export function previewFiberBridgeScript(options) {
   const opts = options || {};
@@ -368,6 +376,8 @@ function isReactInternalFrame(frame) {
  * SpiderMonkey/JSC ("Foo@url:1:2"). Frames that carry no position are dropped.
  * The location is cut out by structure, not by a URL regex, because bundler
  * URLs contain parentheses (`webpack-internal:///(app-pages-browser)/…`).
+ *
+ * @param {string} stack An `Error.stack` string.
  * @returns {{ fn: string|null, url: string, line: number, column: number, raw: string }[]}
  */
 export function parseStackFrames(stack) {
@@ -402,6 +412,9 @@ export function parseStackFrames(stack) {
  * This is the pre-source-map guess; `resolveFiberSelection` additionally walks
  * the frames and prefers the first that MAPS to a file of the project, which
  * is what makes bundled builds (one URL for everything) work.
+ *
+ * @param {{ fn: string|null, url: string, line: number, column: number, raw: string }[]} frames Frames from `parseStackFrames`.
+ * @returns {any} The first frame that is not React's own, or `null`.
  */
 export function pickSourceFrame(frames) {
   for (const f of frames) if (!isReactInternalFrame(f)) return f;
@@ -448,6 +461,11 @@ function cleanUrl(input) {
  * `context.servedFrom` is the project-relative directory the dev server serves
  * from (a Vite `root`, a Next app in a monorepo package); URL-shaped references
  * are resolved under it.
+ *
+ * @param {string} input A path or URL reported by the previewed page.
+ * @param {{projectRoot: string, servedFrom?: string}} context The open project root, and the project-relative directory the dev server serves from.
+ * @returns {string|null} A project-relative path, or `null` when it points outside the project.
+ * @throws {Error} When `context.projectRoot` is missing.
  */
 export function toProjectPath(input, context) {
   const projectRoot = context && context.projectRoot;
@@ -491,7 +509,12 @@ function looksLikeSource(rel) {
 /** Base64 VLQ alphabet, as in the source-map spec. */
 const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
-/** Decode a source map's `mappings` string into per-generated-line segments. */
+/**
+ * Decode a source map's `mappings` string into per-generated-line segments.
+ *
+ * @param {string} mappings The `mappings` field of a source map.
+ * @returns {object[][]} One array of segments per generated line (empty when `mappings` is not a string).
+ */
 export function decodeMappings(mappings) {
   const lines = [];
   if (typeof mappings !== 'string') return lines;
@@ -537,6 +560,10 @@ export function decodeMappings(mappings) {
 
 /**
  * Map a 1-based generated position to its original one.
+ *
+ * @param {any} map A parsed source map (index maps with `sections` are not supported).
+ * @param {number} line 1-based generated line.
+ * @param {number} column 1-based generated column.
  * @returns {{ source: string, line: number, column: number, name: string|null }|null}
  */
 export function applySourceMap(map, line, column) {
