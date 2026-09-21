@@ -1,4 +1,4 @@
-// Dedicated run for cloning a repository into the workspace (#330 slice A).
+// Dedicated run for cloning a repository into the workspace (#330 slices A and B).
 //
 //   E2E_CLIENT_PORT=3771 E2E_SERVER_PORT=4771 npx playwright test -c playwright.clone.config.js --workers=1
 //
