@@ -114,3 +114,22 @@ test('under reduced motion the tagline is static and the first slide is shown', 
   expect(first).toBe(1);
   await ctx.close();
 });
+
+test('the test login matches the GitHub button in size and shape (owner request 2026-09-21)', async ({ page }) => {
+  // The e2e server has no OAuth app, so answer the session probe as one that offers both paths.
+  await page.route('**/auth/session', async (route) => {
+    const res = await route.fetch();
+    const body = await res.json();
+    await route.fulfill({ response: res, json: { ...body, githubConfigured: true } });
+  });
+  await page.goto('/');
+  const gh = page.getByTestId('login-github');
+  const test = page.getByTestId('login-test-user');
+  await expect(gh).toBeVisible();
+  await expect(test).toBeVisible();
+  const [a, b] = [await gh.boundingBox(), await test.boundingBox()];
+  expect(b.height).toBe(a.height);
+  expect(b.width).toBeGreaterThanOrEqual(240);
+  const style = (l) => l.evaluate((e) => { const c = getComputedStyle(e); return [c.borderRadius, c.fontWeight, c.borderTopWidth].join('|'); });
+  expect(await style(test)).toBe(await style(gh));
+});

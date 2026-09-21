@@ -75,13 +75,13 @@ export function LoginScreen({
                     <span>{signingIn ? 'Signing in…' : 'Sign in with GitHub'}</span>
                   </button>
                 )}
-                {/* Deliberately `ghost`: the test login must not read as an
-                    equally legitimate path next to the real one. */}
+                {/* Same geometry as the GitHub button but outlined, not filled: the
+                    test login must not read as an equally legitimate path. */}
                 {session?.testLogin && (
                   <>
-                    <Button variant="ghost" onClick={onSignInAsTestUser} disabled={signingIn} data-testid="login-test-user">
+                    <button type="button" className="gh-signin gh-signin--test" onClick={onSignInAsTestUser} disabled={signingIn} data-testid="login-test-user">
                       {signingIn ? 'Signing in…' : `Sign in as ${session.testLoginUser} (test login)`}
-                    </Button>
+                    </button>
                     {/* Only ever rendered on an e2e server: the hatch says what it is rather than hiding. */}
                     <p className="hint login-note login-note--test">
                       Test login: for the end-to-end suite only; refused under NODE_ENV=production and off loopback.
