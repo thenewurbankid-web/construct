@@ -611,12 +611,16 @@ function looksMinified(selection) {
  * Turn a bridge selection payload into a source location, project-root-relative.
  *
  * @param {object} payload   the `construct:preview:select` message, or its `selection`
- * @param {{ projectRoot: string, sourceMaps?: object|Function }} context
+ * @param {{ projectRoot: string, sourceMaps?: object|Function, servedFrom?: string }} context
+ *        `sourceMaps` maps a served URL to its parsed source map (the caller
+ *        does that I/O); `servedFrom` is the project-relative directory the
+ *        dev server serves from.
  * @returns {{ ok: boolean, tier: string|null, confidence: string, file: string|null,
  *             line: number|null, column: number|null, componentName: string|null,
  *             ancestors: object[], domPath: object[], reason: string|null }}
  */
 export function resolveFiberSelection(payload, context) {
+  /** @type {{ projectRoot?: string, sourceMaps?: object|Function, servedFrom?: string }} */
   const ctx = context || {};
   if (typeof ctx.projectRoot !== 'string' || !ctx.projectRoot) throw new Error('resolveFiberSelection: `projectRoot` is required');
   const selection = payload && payload.selection ? payload.selection : payload;
