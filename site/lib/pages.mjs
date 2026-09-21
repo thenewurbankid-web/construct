@@ -32,14 +32,7 @@ export function layout(page, { repoUrl, buildTime, versions, basePath, version }
   ]
     .map(([href, label, key]) => `<a href="${root}${href}"${section === key ? ' aria-current="page"' : ''}>${label}</a>`)
     .join('');
-  const navGroups = [];
-  for (const g of page.nav || []) {
-    const m = /^Examples: (.+)$/.exec(g.group || '');
-    if (!m) { navGroups.push(g); continue; }
-    let ex = navGroups.find((x) => x.examples);
-    if (!ex) navGroups.push((ex = { group: 'Examples', examples: true, items: [] }));
-    ex.items.push(...g.items.map((i) => ({ ...i, label: i.path.endsWith('/examples/') ? '' : m[1] })));
-  }
+  const navGroups = page.nav || [];
   const whereGroup = navGroups.find((g) => g.items.some((i) => i.path === page.path))?.group;
   const kicker = whereGroup && page.path !== SECTION_HOME[section] ? `<p class="kicker">${esc(whereGroup)}</p>` : '';
   const sidebar = page.nav
@@ -132,13 +125,16 @@ export function homeBody() {
     <li>An AI model only when you ask for one, and you see what it was given.</li>
   </ul>
 </section>
-<section aria-labelledby="pick-h">
-  <h2 id="pick-h">Pick how you like to work</h2>
+<section aria-labelledby="family-h">
+  <h2 id="family-h">Line: the framework, the app and the terminal</h2>
+  <p><strong>Line</strong> is the whole package. <strong>Construct</strong> is the framework: the rules your project sets, the small tools that keep to them, and the plain JavaScript functions underneath that everything else calls. The <strong>Cockpit</strong> is the browser app you work in, and the <strong>command line</strong> is the same tools in a terminal. Construct and its command line are open source under the MIT licence; the Cockpit and the ready-made pipelines curated for it are not.</p>
   <div class="audiences">
-    <a class="audience" href="user-guide/examples/cli-scaffold-and-validate/"><span class="audience-tag">CLI</span><h3>Commands</h3><p>Real commands and real output, for scripts, CI and the terminal.</p></a>
-    <a class="audience" href="user-guide/examples/cockpit-plan-and-run/"><span class="audience-tag">Cockpit</span><h3>The browser</h3><p>Plan, review and approve, with real screenshots.</p></a>
-    <a class="audience" href="user-guide/examples/core-plans-and-impact/"><span class="audience-tag">Core</span><h3>The API</h3><p>Plain JavaScript functions, JSON in and out.</p></a>
+    <a class="audience" href="user-guide/line/"><span class="audience-tag">Line</span><h3>The whole package</h3><p>How the framework, the app and the terminal fit together, and which parts are open.</p></a>
+    <a class="audience" href="user-guide/construct/"><span class="audience-tag">Construct</span><h3>The framework</h3><p>Your rules in a file, scaffolding that follows them, what a change touches, and the core API.</p></a>
+    <a class="audience" href="user-guide/cockpit/"><span class="audience-tag">Cockpit</span><h3>The app you work in</h3><p>Explore, plan, run in a branch, approve each file, review and test, in a browser.</p></a>
+    <a class="audience" href="user-guide/cli/"><span class="audience-tag">CLI</span><h3>The terminal</h3><p>One command per job, for your shell, your scripts and CI.</p></a>
   </div>
+  <p class="see-it">See it work: <a href="user-guide/examples/cli-scaffold-and-validate/">a broken rule caught in the terminal</a>, <a href="user-guide/examples/cockpit-plan-and-run/">a plan approved one file at a time</a>, or <a href="user-guide/examples/core-plans-and-impact/">the same work as an API</a>.</p>
 </section>`;
 }
 
