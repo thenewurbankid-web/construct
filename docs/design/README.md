@@ -18,6 +18,7 @@ Non-goals: MCP surfaces (future), marketing pages, product code.
 | [popovers.md](popovers.md) | The one dismissable popover/menu primitive: disclosure vs menu, dismissal contract, placement, states (#297) |
 | [ia-five-screens.md](ia-five-screens.md) | Information architecture: five primary screens (Features, Pages, Components, Git, Tests) x four slots, profile menu, capability map, durable Notes, migration slicing. Supersedes the modes (concept) |
 | [cockpit-layout.md](cockpit-layout.md) | The 3-pane Cockpit shell, per-screen rationale, and the ordered implementation plan |
+| [live-preview-v2.md](live-preview-v2.md) | Click-to-source by reading React fiber internals: bridge delivery (injecting loopback proxy), fiber-to-source ladder, dev server as a process, hosted-mode threat model (#443) |
 | [mocks/](mocks/) | Concept mocks as static HTML+CSS (`*.html`) and rendered PNGs (`png/`) |
 
 Concept mocks (1440x900, each in `png/<name>--dark.png` and `--light.png`):
