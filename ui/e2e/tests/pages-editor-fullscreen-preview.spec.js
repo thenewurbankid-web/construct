@@ -42,8 +42,19 @@ function previewHtml(annotatedSource) {
 test.describe.serial('Pages Editor: full-screen preview and device sizes (#456)', () => {
   let tmpProjectDir;
   let previewServer;
+  // A port nothing is listening on — taken from the OS and given straight back,
+  // so "no dev server" is a real refused connection and never collides with the
+  // preview server or another agent's run.
+  let deadPort;
 
   test.beforeAll(async ({ request }) => {
+    deadPort = await new Promise((resolve) => {
+      const probe = http.createServer();
+      probe.listen(0, '127.0.0.1', () => {
+        const { port } = probe.address();
+        probe.close(() => resolve(port));
+      });
+    });
     tmpProjectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-ui-e2e-fullscreen-'));
     await request.post(`${API_BASE}/api/settings`, { data: { projectDir: tmpProjectDir } });
     await request.post(`${API_BASE}/api/init`);
@@ -162,7 +173,7 @@ test.describe.serial('Pages Editor: full-screen preview and device sizes (#456)'
     await expect(page.locator('iframe[title="Live app preview"]')).toHaveCount(0);
 
     // Configured, but nothing is listening there.
-    await page.getByLabel('Preview URL').fill('http://127.0.0.1:5931/');
+    await page.getByLabel('Preview URL').fill(`http://127.0.0.1:${deadPort}/`);
     await page.getByRole('button', { name: 'Load preview' }).click();
     await expect(page.locator('.live-preview-empty')).toContainText('Nothing is answering');
     await expect(page.locator('.live-preview-empty')).toContainText('npm run dev');
