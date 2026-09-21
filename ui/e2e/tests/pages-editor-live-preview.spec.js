@@ -35,6 +35,9 @@ function previewHtml(annotatedSource) {
 <script>${previewBridgeScript()}</script></body></html>`;
 }
 
+// The preview's own messages are read by class, not by `getByRole('status')`:
+// the Pages screen carries other live regions too (the commit-on-save
+// indicator, the external-change notice), so the role alone is ambiguous.
 test.describe('Pages Editor: live preview + click-to-source', () => {
   let tmpProjectDir;
   let previewServer;
@@ -65,7 +68,7 @@ test.describe('Pages Editor: live preview + click-to-source', () => {
 
     await page.getByLabel('Preview URL').fill('javascript:alert(1)');
     await page.getByRole('button', { name: 'Load preview' }).click();
-    await expect(page.getByRole('status')).toContainText('http(s) URL');
+    await expect(page.locator('.live-preview-message')).toContainText('http(s) URL');
 
     await page.getByLabel('Preview URL').fill(`http://127.0.0.1:${PREVIEW_PORT}/`);
     await page.getByRole('button', { name: 'Load preview' }).click();
@@ -75,14 +78,14 @@ test.describe('Pages Editor: live preview + click-to-source', () => {
     await frame.locator('p').click();
     // The <p> node is now selected in the tree...
     await expect(page.locator('.tree-panel .tree-node.selected')).toContainText('p');
-    await expect(page.getByRole('status')).toContainText('HomePage.tsx:5:7');
+    await expect(page.locator('.live-preview-message')).toContainText('HomePage.tsx:5:7');
 
     await frame.locator('h1').click();
     await expect(page.locator('.tree-panel .tree-node.selected')).toContainText('h1');
 
     // An element from another file does not steal the selection.
     await frame.locator('footer').click();
-    await expect(page.getByRole('status')).toContainText('Footer.tsx');
+    await expect(page.locator('.live-preview-message')).toContainText('Footer.tsx');
     await expect(page.locator('.tree-panel .tree-node.selected')).toContainText('h1');
 
     await frame.locator('p').click();
