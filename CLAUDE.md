@@ -52,6 +52,9 @@ an LLM do work a block should be doing instead?
   pick, click and press Generate; code is a drill-down ("View source", "Edit as
   file") that is one click away and never the default surface. Screens show
   documentation, structure, diffs and choices before they show a code editor.
+  **Every block (a feature, layer, page, component, flow card, step) offers the
+  same two exits: "View / edit code" (drill down to the real file) and "Fill
+  with AI" (the inline Mechanical | AI control, output as a reviewable diff).**
 - **The goal**: make developers' lives easy so people and AI can spend their
   time on innovation instead of repeating the same work.
 
