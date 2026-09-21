@@ -65,6 +65,12 @@ export function listPages(root, feature) {
     .sort();
 }
 
+/** Every page of the project, `[{ feature, file }]`: what the Browser lists on the Pages screen (#431). Only names
+ * the client may later send back to the per-feature routes, each of which re-checks it with resolvePageFile. */
+export function listAllPages(root) {
+  return listFeatures(root).flatMap((feature) => listPages(root, feature).map((file) => ({ feature, file })));
+}
+
 /** Resolve + validate a (feature, file) pair to an absolute path strictly
  * inside that feature's pages/ folder. Throws PagesEditorError (#56 scope
  * guard) on any attempt to escape it — a `..` segment, an absolute file
