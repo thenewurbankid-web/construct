@@ -528,7 +528,12 @@ export function processSummary(process) {
 /**
  * Bring a stored process record up to the current schema version before
  * validation. v1 is the only version, so this is the identity (the embedded
- * plan goes through migratePlan). A v2 adds a step here; see docs/VERSIONING.md.
+ * plan goes through migratePlan). A v2 adds a step here; see docs/VERSIONING.md. *
+ * @param {any} record A parsed stored process record, any supported version.
+ * @returns {any} The record at the current schema version.
+ *
+ * @example
+ * migrateProcess(JSON.parse(text));
  */
 export function migrateProcess(record) {
   if (record && typeof record === 'object' && !Array.isArray(record) && record.plan && typeof record.plan === 'object') {

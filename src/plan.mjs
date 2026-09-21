@@ -677,7 +677,12 @@ function validateDependencies(steps, push) {
 /**
  * Bring a stored plan record up to the current schema version before
  * validation. v1 is the only version: identity. A v2 adds a step here that
- * returns the v2 shape; see docs/VERSIONING.md.
+ * returns the v2 shape; see docs/VERSIONING.md. *
+ * @param {any} record A parsed stored plan record, any supported version.
+ * @returns {any} The record at the current schema version.
+ *
+ * @example
+ * migratePlan(JSON.parse(text));
  */
 export function migratePlan(record) {
   return record;
