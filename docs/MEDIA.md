@@ -7,7 +7,7 @@ Short, real, screen-recorded guides for the documentation website. Owned by the 
 
 | # | Title | Length | Shows |
 |---|---|---|---|
-| 1 | **Build a feature, start to finish** | about 3.5 min | One continuous example on the sample shop: sign in, models in Settings, ticket, impact, plan, create the feature, local-model fill, Pages, full-screen running app, workflow edit, validate |
+| 1 | **Build a feature, start to finish** | about 3.75 min | One continuous example on the sample shop: sign in, models in Settings, ticket, impact, plan, create the feature, local-model fill, Pages, full-screen running app, workflow edit, validate |
 | 2 | Plan a change and approve it | 60 s | A Note, the plan, the impact, run, approve one file |
 | 3 | Bring in an existing feature | 60 s | Import wizard, review the diff, validate |
 | 4 | Clone a project | 45 s | Paste a link, clone, open |
@@ -25,17 +25,18 @@ captions live in `CAPTIONS` in `ui/e2e/tests/media/01-ticket-to-story.spec.js` a
 4. Features: catalog, cart, checkout. 5. Settings: `createFill` = ollama; `planAnalysis` offers no local model; Save.
 6. Notes: the ticket typed, "Which parts?" proposal confirmed, impact (no model), suggested read step.
 7. Plan: add `create.feature`, add `create.layer` tagged Local model; the plan says a model will be used.
-8. Features > Create: the feature (mechanical, 0 calls), then a slice (domain, component, page) with the local-model box
-   ticked (3 calls, via "ollama").
-9. Pages: the new `WishlistPage.tsx` and its node tree. 10. Pages: the shop page, Preview URL = the running shop,
-   Full screen, click Add to cart in the real app, leave full screen.
+8. Features > Create: the feature (mechanical, 0 calls), then a slice (domain, component, page, controller) with the local-model box
+   ticked (4 calls, via "ollama").
+9. Pages: the new `WishlistPage.tsx` and its node tree. The spec writes one route file, `app/wishlist/page.tsx`
+   (captioned as hand-written), then 10. Preview URL = the running shop's `/wishlist`, Full screen, add two products,
+   remove one, remove the last (empty state), leave full screen; each state asserted.
 11. Workflows: checkout machine, add `rejected --START_OVER--> idle`, read the diff, Confirm save.
-12. Status bar validate, Diagnostics: no errors, one real warning (READ-003 on the new feature's index).
+12. Status bar validate, Diagnostics: no errors, two real warnings on the new feature (READ-003, SLICE-003).
 13. Outro card.
 
 Mock vs real: the app, the CLI, the server, the git repo, the running Next app are real. Mock, and captioned: the demo
 login (GitHub OAuth cannot be automated) and the local model (`tests/media/mockOllama.mjs`, a stand-in on Ollama's port
-that answers with fixed code so a re-record is identical). No model is installed on the recording machine and none is
+that answers with fixed, small but working code per layer so a re-record is identical; the generated wishlist really runs). No model is installed on the recording machine and none is
 downloaded for a recording. To record with a real model later: run `ollama serve`, pull a small model, drop the stand-in.
 
 Known gaps (not faked; the video stops before them): plan-run approval of created files (#470), a model choice per

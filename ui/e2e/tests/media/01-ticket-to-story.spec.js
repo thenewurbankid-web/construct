@@ -33,22 +33,26 @@ export const CAPTIONS = {
   impact: 'Here is what the change reaches: files and features. Worked out from your code, no AI model.',
   steps: 'It suggests a first step: read the catalog. Now add the real work.',
   stepFeature: 'Step two: create the wishlist feature. A Construct block does it, no model.',
-  stepLayers: 'Step three: create its domain, component and page, and let the local model write the code.',
+  stepLayers: 'Step three: create its domain, component, page and controller, and let the local model write the code.',
   stepModel: 'The plan says before it runs that a model is used, and which one.',
   plan: 'That is the plan: a checklist, and nothing changes until something runs. Let us do the first steps by hand.',
   createFeature: 'First the mechanical way: create the feature. A Construct block, no model.',
   createdMechanical: 'Done in a blink, with zero model calls. The folders and stubs are there.',
-  fillIntro: 'Now the pages and logic. Create a slice: domain, component and page.',
+  fillIntro: 'Now the pages and logic. Create a slice: domain, component, page and controller.',
   fillCheck: 'Tick the box to let the local model write the code. It is off unless you choose it, each time.',
-  filled: 'Three files written by the model, and each one checked against the rules. (Stand-in model in this recording.)',
-  pages: 'The Pages screen shows the real page, and its tree of elements.',
-  pagesPick: 'Pick the shop page to see it running.',
-  preview: 'Point it at the running app to see the real thing, full screen.',
-  fullscreen: 'This is the actual shop, running. Try it: add a product to the cart.',
+  filled: 'Four files written by the model, and each one checked against the rules. (Stand-in model in this recording.)',
+  pages: 'The Pages screen shows the real page the model wrote, and its tree of elements.',
+  preview: 'Now the best part: open the wishlist in the running shop, at /wishlist.',
+  fullscreen: 'Full screen. This is the generated app, running for real.',
+  added1: 'Add a product. It appears in the list.',
+  added2: 'Add another one.',
+  removed: 'Remove one. The list follows.',
+  empty: 'Remove the last one: the empty state shows. It all works.',
+  route: 'One hand-written line hooks the page up to the /wishlist address. The rest was generated.',
   workflows: 'Logic lives in workflows. This is the checkout flow, drawn from its real code.',
   workflowEdit: 'Add a way back: after a rejected order the shopper can start over.',
   workflowDiff: 'You see the exact change before it is written.',
-  validate: 'Finally, the rules. No errors. One warning: the new feature still needs a one-line summary. That is a real finding, and a quick fix.',
+  validate: 'Finally, the rules. No errors. Two warnings on the new feature: it needs a one-line summary, and its controller is not exported yet. Real findings, and quick fixes.',
   outroTitle: 'One example, end to end',
   outroSub: 'Next: review a branch, and run a test.',
 };
@@ -135,7 +139,7 @@ test('episode 1: one example, end to end', async ({ page }) => {
     const layers = stepAt(page, suggested + 1);
     await layers.getByTestId('plan-arg-name').fill('Wishlist');
     await layers.getByTestId('plan-arg-feature').fill('wishlist');
-    await layers.getByTestId('plan-arg-layers').fill('domain,component,page');
+    await layers.getByTestId('plan-arg-layers').fill('domain,component,page,controller');
     await layers.getByTestId('plan-arg-llm').fill('ollama');
     await layers.getByTestId('plan-tag-local-model').click();
     await expect(layers.getByTestId('plan-step-errors')).toHaveCount(0);
@@ -161,15 +165,19 @@ test('episode 1: one example, end to end', async ({ page }) => {
     await form.getByLabel('What to scaffold').selectOption('layer');
     await form.getByPlaceholder('e.g. CpoAccess').fill('Wishlist');
     await form.getByPlaceholder('e.g. cpo-v2').fill('wishlist');
-    for (const layer of ['domain', 'component', 'page']) await form.locator('.layer-checkboxes .checkbox', { hasText: layer }).locator('input').check();
+    for (const layer of ['domain', 'component', 'page', 'controller']) await form.locator('.layer-checkboxes .checkbox', { hasText: layer }).locator('input').check();
     await caption(page, CAPTIONS.fillIntro);
     await form.getByLabel(/Have the LLM write the implementation/).check();
     await caption(page, CAPTIONS.fillCheck);
     await form.getByRole('button', { name: 'Run create' }).click();
     await expect(form.locator('.command-result')).toContainText('via "ollama"', { timeout: 60_000 });
-    expect(model.calls.sort()).toEqual(['component', 'domain', 'page']);
-    expect(fs.readFileSync(path.join(shop, 'features/wishlist/domain/Wishlist.tsx'), 'utf8')).toContain('addedAt');
+    expect(model.calls.sort()).toEqual(['component', 'controller', 'domain', 'page']);
+    expect(fs.readFileSync(path.join(shop, 'features/wishlist/domain/Wishlist.tsx'), 'utf8')).toContain('removeItem');
     await caption(page, CAPTIONS.filled);
+    // The one hand-made line: a route file that hands /wishlist to the generated controller (the shop's own app/page.tsx does the same).
+    fs.mkdirSync(path.join(shop, 'app', 'wishlist'), { recursive: true });
+    fs.writeFileSync(path.join(shop, 'app', 'wishlist', 'page.tsx'), "import { WishlistController } from '../../features/wishlist/controllers/WishlistController';\n\nexport default function Page() {\n  return <WishlistController />;\n}\n");
+    await caption(page, CAPTIONS.route);
 
     // 8. The real page, and its code, on the Pages screen.
     await rail(page).getByRole('link', { name: 'Pages' }).click();
@@ -178,21 +186,28 @@ test('episode 1: one example, end to end', async ({ page }) => {
     await expect(page.locator('.tree-panel')).toBeVisible();
     await caption(page, CAPTIONS.pages);
 
-    // 9. The real running app, full screen.
-    await page.locator('.pages-browser select').selectOption('catalog');
-    await page.getByRole('button', { name: 'CatalogPage.tsx' }).click();
-    await expect(page.locator('.tree-panel')).toBeVisible();
-    await caption(page, CAPTIONS.pagesPick);
-    await page.getByLabel('Preview URL').fill(`http://localhost:${APP_PORT}/`);
+    // 9. The generated app, running, full screen, used for real.
+    await page.getByLabel('Preview URL').fill(`http://localhost:${APP_PORT}/wishlist`);
     await caption(page, CAPTIONS.preview);
     await page.getByRole('button', { name: 'Load preview' }).click();
     const frame = page.frameLocator('iframe[title="Live app preview"]');
-    await expect(frame.getByRole('button', { name: 'Add to cart' }).first()).toBeVisible({ timeout: 120_000 });
+    await expect(frame.getByText('Nothing saved yet.')).toBeVisible({ timeout: 180_000 });
     await page.getByRole('button', { name: 'Full screen', exact: true }).click();
     await expect(page.locator('.sh-top')).toHaveCount(0);
     await caption(page, CAPTIONS.fullscreen);
-    await frame.getByRole('button', { name: 'Add to cart' }).first().click();
-    await pause(page, 2500);
+    for (const name of ['Logo T-shirt', 'Enamel mug']) {
+      await frame.getByLabel('Product name').pressSequentially(name, { delay: 90 });
+      await frame.getByRole('button', { name: 'Add', exact: true }).click();
+      await expect(frame.getByRole('listitem').filter({ hasText: name })).toBeVisible();
+      await caption(page, name === 'Logo T-shirt' ? CAPTIONS.added1 : CAPTIONS.added2);
+    }
+    await expect(frame.getByRole('listitem')).toHaveCount(2);
+    await frame.getByRole('listitem').filter({ hasText: 'Logo T-shirt' }).getByRole('button', { name: 'Remove' }).click();
+    await expect(frame.getByRole('listitem')).toHaveCount(1);
+    await caption(page, CAPTIONS.removed);
+    await frame.getByRole('listitem').getByRole('button', { name: 'Remove' }).click();
+    await expect(frame.getByText('Nothing saved yet.')).toBeVisible();
+    await caption(page, CAPTIONS.empty);
     await page.getByRole('button', { name: 'Leave full screen (Esc)' }).click();
     await expect(page.locator('.sh-top')).toBeVisible();
 
@@ -221,6 +236,7 @@ test('episode 1: one example, end to end', async ({ page }) => {
     await page.getByTestId('status-validate').click();
     await expect(drawer(page).getByText('READ-003')).toBeVisible();
     expect(await drawer(page).innerText()).not.toMatch(/^Error$/m);
+    await expect(drawer(page).getByText('SLICE-003')).toBeVisible();
     await caption(page, CAPTIONS.validate);
 
     await card(page, CAPTIONS.outroTitle, CAPTIONS.outroSub, 6000);

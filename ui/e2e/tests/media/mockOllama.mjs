@@ -5,41 +5,82 @@ import http from 'node:http';
 
 const FILES = {
   domain: `// Pure wishlist rules: no I/O, no framework.
-export type WishlistItem = { productId: string; addedAt: number };
+export type WishlistItem = { id: number; name: string };
+export type WishlistState = { items: WishlistItem[]; nextId: number };
 
-export function Wishlist(items: WishlistItem[], productId: string, now: number): WishlistItem[] {
-  if (items.some((item) => item.productId === productId)) return items.filter((item) => item.productId !== productId);
-  return [...items, { productId, addedAt: now }];
+export const emptyWishlist: WishlistState = { items: [], nextId: 1 };
+
+export function Wishlist(state: WishlistState, name: string): WishlistState {
+  const clean = name.trim();
+  if (!clean || state.items.some((item) => item.name === clean)) return state;
+  return { items: [...state.items, { id: state.nextId, name: clean }], nextId: state.nextId + 1 };
+}
+
+export function removeItem(state: WishlistState, id: number): WishlistState {
+  return { ...state, items: state.items.filter((item) => item.id !== id) };
 }
 `,
-  component: `export function Wishlist({ names, onRemove }: { names: string[]; onRemove: (index: number) => void }) {
-  return (
-    <ul>
-      {names.map((name, index) => (
-        <li key={name}>
-          {name} <button type="button" onClick={() => onRemove(index)}>Remove</button>
-        </li>
-      ))}
-    </ul>
-  );
-}
-`,
-  page: `import type { ReactNode } from 'react';
+  component: `type Item = { id: number; name: string };
 
-export function WishlistPage({ names, onRemove }: { names: string[]; onRemove: (index: number) => void }): ReactNode {
+export function Wishlist({ items, onAdd, onRemove }: { items: Item[]; onAdd: (name: string) => void; onRemove: (id: number) => void }) {
   return (
-    <main>
-      <h1>Your wishlist</h1>
-      {names.length === 0 ? <p>Nothing saved yet.</p> : (
+    <section>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          const form = event.currentTarget;
+          const field = form.elements.namedItem('name') as HTMLInputElement;
+          onAdd(field.value);
+          form.reset();
+        }}
+      >
+        <input name="name" aria-label="Product name" placeholder="Product to save" />{' '}
+        <button type="submit">Add</button>
+      </form>
+      {items.length === 0 ? (
+        <p>Nothing saved yet.</p>
+      ) : (
         <ul>
-          {names.map((name, index) => (
-            <li key={name}>
-              {name} <button type="button" onClick={() => onRemove(index)}>Remove</button>
+          {items.map((item) => (
+            <li key={item.id}>
+              {item.name}{' '}
+              <button type="button" onClick={() => onRemove(item.id)}>Remove</button>
             </li>
           ))}
         </ul>
       )}
+    </section>
+  );
+}
+`,
+  page: `import type { ReactNode } from 'react';
+import { Wishlist } from '../components/Wishlist';
+
+type Item = { id: number; name: string };
+
+export function WishlistPage({ items, onAdd, onRemove }: { items: Item[]; onAdd: (name: string) => void; onRemove: (id: number) => void }): ReactNode {
+  return (
+    <main>
+      <h1>Your wishlist</h1>
+      <Wishlist items={items} onAdd={onAdd} onRemove={onRemove} />
     </main>
+  );
+}
+`,
+  controller: `'use client';
+
+import { useState } from 'react';
+import { WishlistPage } from '../pages/WishlistPage';
+import { Wishlist, emptyWishlist, removeItem } from '../domain/Wishlist';
+
+export function WishlistController() {
+  const [state, setState] = useState(emptyWishlist);
+  return (
+    <WishlistPage
+      items={state.items}
+      onAdd={(name) => setState(Wishlist(state, name))}
+      onRemove={(id) => setState(removeItem(state, id))}
+    />
   );
 }
 `,
