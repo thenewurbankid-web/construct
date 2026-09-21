@@ -22,11 +22,28 @@ in a board filter.
 
 - One version for the whole repo. `package.json` at the root, `src/ast/package.json`, `ui/client/package.json` and
   `ui/server/package.json` move in lockstep with it. (`ui/e2e` and `tools/*` are private helpers and are not versioned.)
-- Data schemas keep their own `vN` (for example a plan or process schema `v2`). Additive changes do not bump them;
-  a breaking schema change bumps the schema version and, per the rule below, the repo version.
+- Data schemas keep their own `vN` (for example a plan or process schema `v2`); see "Schema policy" below.
 - While below 1.0: a breaking change to the CLI, a data schema or `architecture.yml` bumps the MINOR; a feature bumps
   the MINOR; a fix bumps the PATCH. From 1.0: breaking = MAJOR, feature = MINOR, fix = PATCH.
 - Breaking changes are called out under `### Changed` or `### Removed` in the changelog with a `BREAKING:` prefix.
+
+## Schema policy (plan, process, envelope)
+
+Stored records (`schemas/plan.v1.json`, `process.v1.json`, `envelope.v1.json`) follow one rule, so an older or newer
+server never has to declare a record unreadable because of an added field.
+
+- **Additive data goes in `ext`.** Each record has a reserved top-level `ext` object: free-form (any JSON object),
+  ignored by every validator, and preserved unchanged on read/write. Adding data there does not bump the schema
+  version and needs no migration.
+- **Unknown top-level fields other than `ext` stay rejected** (`PLAN_UNKNOWN_FIELD`, `PROCESS_UNKNOWN_FIELD`), so a
+  typo is caught. `required` stays strict. A non-object `ext` is a field-type error.
+- **A breaking change creates `vN+1`.** Add `schemas/<name>.v(N+1).json`, bump the version constant, and extend
+  `migratePlan()` / `migrateProcess()` (identity for v1) so a v(N) record is upgraded to v(N+1). The store read path
+  (`processStore.readFile`) calls the migrate step before validating, and the repo version is bumped per the rules
+  below.
+- **Fixtures per version.** `test/fixtures/plan/` and `test/fixtures/process/` hold one record per schema version
+  (`v1.json` now, plus `v1-ext.json`); `test/schemaMigration.test.mjs` asserts every fixture migrates, validates and
+  round-trips, so adding a version means adding its fixture.
 
 ## Versioned documentation
 

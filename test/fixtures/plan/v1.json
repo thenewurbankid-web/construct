@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "ticket": {
+    "source": "text",
+    "title": "Add totals"
+  },
+  "steps": [
+    {
+      "id": "a",
+      "title": "Create the feature",
+      "flow": "create.feature",
+      "args": {
+        "name": "checkout"
+      },
+      "executor": "deterministic",
+      "touches": {
+        "features": [
+          "checkout"
+        ],
+        "files": []
+      }
+    },
+    {
+      "id": "b",
+      "title": "Validate",
+      "flow": "validate",
+      "args": {},
+      "executor": "deterministic",
+      "dependsOn": [
+        "a"
+      ]
+    }
+  ]
+}
