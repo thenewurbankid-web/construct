@@ -94,15 +94,17 @@ for (const u of urls) {
     if (!body) { sourceMapNotes[u] = 'not fetchable'; continue; }
     const m = /[#@]\s*sourceMappingURL=(\S+)\s*$/m.exec(body);
     if (!m) { sourceMapNotes[u] = 'no sourceMappingURL'; continue; }
+    // Recorded as { map, url } — the resolver resolves a map's relative
+    // `sources` against the URL the MAP was served from, per the spec.
     if (m[1].startsWith('data:')) {
       const base64 = m[1].slice(m[1].indexOf('base64,') + 7);
-      sourceMaps[u] = JSON.parse(Buffer.from(base64, 'base64').toString('utf8'));
+      sourceMaps[u] = { map: JSON.parse(Buffer.from(base64, 'base64').toString('utf8')), url: u };
       sourceMapNotes[u] = 'inline data: URI';
       continue;
     }
     const mapUrl = new URL(m[1], u).toString();
     const mapBody = await page.evaluate((target) => fetch(target).then((r) => (r.ok ? r.text() : null)), mapUrl);
-    if (mapBody) { sourceMaps[u] = JSON.parse(mapBody); sourceMapNotes[u] = mapUrl; }
+    if (mapBody) { sourceMaps[u] = { map: JSON.parse(mapBody), url: mapUrl }; sourceMapNotes[u] = mapUrl; }
     else sourceMapNotes[u] = `${mapUrl}: not fetchable`;
   } catch (e) {
     sourceMapNotes[u] = `error: ${e.message}`;
