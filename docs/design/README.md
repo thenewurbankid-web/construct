@@ -90,3 +90,51 @@ PR review in the Cockpit (#308, explores #285), built by
 Module: **Design** (new option; the field itself is set by the
 project-manager/OG). Sub-modules proposed: Design system, Cockpit shell,
 Screens, Accessibility & review, Other.
+
+## Design-review overlay (dev-only, #454)
+
+`ui/client` carries [`threadmark-react`](https://www.npmjs.com/package/threadmark-react)
+(MIT) as a devDependency: an in-page annotation overlay so the owner and the
+`designer` agent can mark up a real, running Cockpit screen (click an element,
+highlight text, drag a region, or mark up a screenshot area) instead of writing
+prose feedback. Its GitHub repo (`gtimeyin/threadmark`) 404s as of 2026-09-21 —
+private, renamed, or moved — so it could not be source-reviewed; only the
+published npm package and its README/type declarations were used.
+
+**It is dev-only and cannot reach the hosted build.** The overlay is mounted
+once, in `app/layout.tsx` (`ReviewOverlayController`, feature
+`features/design-review`), and does nothing unless `NEXT_PUBLIC_REVIEW_OVERLAY=1`
+is set **at build time** (Next.js inlines `NEXT_PUBLIC_*` vars when the app is
+built, not when it is started, so setting the flag at `next start` time has no
+effect). When the flag is not `1`:
+
+- `features/design-review/services/ReviewOverlayLoader.ts` (the only file that
+  imports `threadmark-react`) is swapped for a no-op stub via a `webpack.
+  resolve.alias` in `next.config.ts` — the real package's source, and its own
+  dependencies (`lucide-react`, `modern-screenshot`), are never read, resolved
+  or emitted into any build output, client or server.
+- This was verified against a real `next build`: with the flag unset, grepping
+  `.next/` for `threadmark-react` finds nothing except
+  `.next/cache/.tsbuildinfo` (TypeScript's local incremental-build cache,
+  which is never served or included in `next start`); with the flag set at
+  build time, the real package's code appears in the compiled chunks as
+  expected.
+
+**Turning it on locally**: `NEXT_PUBLIC_REVIEW_OVERLAY=1 npm run dev` (from
+`ui/client`), or add the same line to `ui/client/.env.local`. Then, on any
+Cockpit screen, press <kbd>Cmd/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> to enter
+Review mode.
+
+**How feedback comes out**: annotations and screenshot evidence stay in that
+browser tab's memory only — nothing here persists or transmits them anywhere.
+Press <kbd>C</kbd> in the overlay's toolbar to copy the current annotations as
+structured Markdown, then paste that into a comment, ticket or chat by hand.
+Feedback screenshots stay local and are never attached to an issue or posted
+anywhere (standing rule 11) — the overlay's own screenshot capture is for the
+reviewer's own eyes while marking up a crop, not for publishing.
+
+**Exceptions / known limits**: beta package (`0.1.0-beta.1`); annotations are
+not persisted across a reload (in-memory only, by design — see its README);
+telemetry or an issue-sync integration from the overlay is explicitly a
+separate, not-yet-made decision (it would send Cockpit screens somewhere) —
+out of scope here.
