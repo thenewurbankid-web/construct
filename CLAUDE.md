@@ -197,8 +197,9 @@ any wave that changes user-visible behaviour. Standard issue discipline
 
 Short, real screen-recorded guides (`docs/MEDIA.md`), made by the `media`
 agent (`.claude/agents/media.md`): scripted Playwright recordings of the
-real Cockpit/CLI, on-screen captions, 45-90s, published on the
-documentation website only — never on issues. Invoke it to plan/record an
+real Cockpit/CLI, built in parts (each 1-2 min, own script, narration,
+subtitles, checkpoint), subtitles as a separate track (never burned over the
+UI), published on the documentation website only — never on issues. Invoke it to plan/record an
 episode or to re-record after a visible UI change. Standard issue
 discipline still applies.
 
