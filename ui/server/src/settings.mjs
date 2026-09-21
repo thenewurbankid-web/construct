@@ -37,6 +37,10 @@ const state = {
   // that was the Construct repo itself); the user picks one inside the workspace. Read it through
   // `getProjectDir()`, which re-verifies containment on every use.
   projectDir: null,
+  // #365 harness-only: the project named by CONSTRUCT_E2E_PROJECT_DIR (loopback only). When the open project
+  // vanishes mid-run (a spec removed its temp fixture while it was the current project), the server falls back
+  // to this one instead of leaving every later spec at "Open a project". Never set outside the e2e harness.
+  preloadedProject: null,
   // The project that was open last, offered as "Reopen <name>" and NEVER loaded automatically.
   lastProject: undefined, // undefined = not read from disk yet
   llmProviders: {
@@ -62,6 +66,7 @@ export function getBrowseRoots() {
  * containment as any client choice, and index.mjs refuses it on a non-loopback host. */
 export function preloadProject(dir) {
   state.projectDir = containInWorkspace(dir, { mustBeDir: true });
+  state.preloadedProject = state.projectDir;
 }
 
 const LAST_PROJECT_FILE = 'last-project.json';
@@ -100,8 +105,10 @@ export function getProjectDir() {
   if (state.projectDir === null) return null;
   const real = containOrNull(workspaceRoot(), state.projectDir, { mustBeDir: true });
   if (real === null) {
-    state.projectDir = null;
-    return null;
+    // Harness fallback (see `preloadedProject`): still re-contained, so a removed or replaced preload is refused too.
+    const fallback = state.preloadedProject === null ? null : containOrNull(workspaceRoot(), state.preloadedProject, { mustBeDir: true });
+    state.projectDir = fallback;
+    return fallback;
   }
   return real;
 }

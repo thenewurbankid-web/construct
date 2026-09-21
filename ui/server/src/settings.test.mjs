@@ -148,6 +148,21 @@ test('#365: preloadProject (harness) is contained exactly like a client choice',
   updateSettings({ closeProject: true });
 });
 
+test('#365 harness: when the open project vanishes, the preloaded one comes back; closing stays closed; a vanished preload is null', () => {
+  const preloaded = makeTempDir('settings-ws-preload-');
+  preloadProject(preloaded);
+  const other = makeTempDir('settings-ws-other-');
+  updateSettings({ projectDir: other });
+  assert.equal(getProjectDir(), other);
+  fs.rmSync(other, { recursive: true, force: true });
+  assert.equal(getProjectDir(), preloaded, 'falls back to the preloaded project, not to "no project"');
+  updateSettings({ closeProject: true });
+  assert.equal(getProjectDir(), null, 'an explicit close is respected');
+  preloadProject(preloaded);
+  fs.rmSync(preloaded, { recursive: true, force: true });
+  assert.equal(getProjectDir(), null, 'a preload that itself vanished is not served');
+});
+
 test('updateSettings back-compat: a bare legacy { llmProvider } body sets importFill only, never planAnalysis/createFill', () => {
   updateSettings({ llmProviders: { createFill: 'claude', planAnalysis: 'claude' } });
   const before = getSettings().llmProviders;
