@@ -1706,12 +1706,87 @@ button:disabled {
   border-color: var(--accent);
   color: var(--accent);
 }
+/* Live app preview (#456): the frame fills the stage at a chosen device size,
+ * and can take the whole viewport. Tokens only. */
 .live-preview-panel { padding: 12px; margin-top: 12px; }
-.live-preview-bar { display: flex; gap: 8px; margin-bottom: 8px; }
+.live-preview-head { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+/* `display: flex` would otherwise beat the browser's own [hidden] rule, and the
+ * toolbar would still take up room (and show) in full screen. */
+.live-preview-head[hidden] { display: none; }
+.live-preview-head h4 { margin: 0; }
+.live-preview-bar { display: flex; gap: 8px; }
 .live-preview-bar input { flex: 1; }
-.live-preview-frame { width: 100%; height: 360px; border: 1px solid var(--border); border-radius: 6px; background: var(--preview-bg); }
+.live-preview-sizes { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); }
+.live-preview-sizes label { color: var(--muted); font-size: 0.8rem; }
+/* Reserves its width from the start so a measurement landing cannot shove the
+ * Full screen button sideways (the #252 rule, applied to the size readout). */
+.live-preview-measure { min-width: 12ch; color: var(--muted); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.live-preview-full-btn { margin-left: auto; }
+/* The stage the frame lives in: the height that is actually available, not 360px. */
+.live-preview-stage { display: flex; justify-content: center; height: var(--preview-stage-h, 58vh); min-height: 240px; }
+.live-preview-box { height: 100%; display: flex; min-width: 0; }
+.live-preview-frame { width: 100%; height: 100%; border: 1px solid var(--border); border-radius: 6px; background: var(--preview-bg); }
+.live-preview-empty { display: flex; flex-direction: column; gap: var(--sp-2); align-items: flex-start; }
+.live-preview-empty p { margin: 0; }
+.live-preview-empty-actions { display: flex; gap: var(--sp-2); }
+
+/* Full screen: the app, and one way back. The shell has already hidden the rail,
+ * panes, top bar and drawer (focus mode); this covers what is left. `position:
+ * fixed` rather than the Fullscreen API — what has to disappear is the Cockpit's
+ * own chrome, which is a React/CSS matter, and Esc/focus-return then behave the
+ * same in every browser and in headless runs. */
+.live-preview-panel--full {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--preview-bg);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+/* Beats `.pe-stage .live-preview-panel`'s own margins, which would otherwise
+ * shrink the fixed box away from the viewport edges. */
+.pe-stage .live-preview-panel.live-preview-panel--full { margin: 0; padding: 0; }
+.live-preview-panel--full .live-preview-stage { flex: 1; height: auto; min-height: 0; }
+.live-preview-panel--full .live-preview-frame { border: 0; border-radius: 0; }
+.live-preview-panel--full .live-preview-empty { padding: var(--sp-4); color: var(--text); background: var(--surface-1); height: 100%; }
+/* Unobtrusive: out of the way until the pointer is over the app or it takes focus. */
+.live-preview-exit {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1;
+  min-height: 32px;
+  padding: 0 12px;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  font: inherit;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.live-preview-panel--full:hover .live-preview-exit,
+.live-preview-exit:hover,
+.live-preview-exit:focus,
+.live-preview-exit:focus-visible { opacity: 1; }
+.live-preview-exit:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.live-preview-exit--static { position: static; opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .live-preview-exit { transition: none; }
+}
 
 /* --- Pages Editor inside the shell (#247): Browser tree, stage, Tools tabs --- */
+/* The Pages screen is a viewport for a real app, so it uses the whole middle pane
+ * instead of `.main`'s 1100px reading measure (#456). */
+.main:has(> .pe-stage) { max-width: none; padding: var(--sp-3) var(--sp-4); }
 .pe-stage { max-width: none; }
 .pe-browser { display: flex; flex-direction: column; gap: var(--sp-2); }
 .pe-all-pages { align-self: flex-start; background: transparent; color: var(--accent); border: 1px solid var(--border-subtle); border-radius: 6px; padding: var(--sp-1) var(--sp-2); font: inherit; cursor: pointer; }

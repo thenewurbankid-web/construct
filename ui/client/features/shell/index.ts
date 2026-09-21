@@ -62,6 +62,12 @@ export * from './hooks/useShellDrawer';
 /** Lets a Browser-pane list bring the stage into view after a selection (narrow one-pane layout). */
 export * from './hooks/useShellStage';
 
+/** Lets a screen hide the whole Cockpit chrome and own the viewport (full screen, Esc to leave). */
+export * from './hooks/useShellFocus';
+
+/** The shell's own focus-mode state (used by the frame; screens use useShellFocus instead). */
+export * from './hooks/useFocusMode';
+
 /** How many branches await review, for the badge beside the fourth screen in the top bar. */
 export * from './hooks/useGitBranchCount';
 

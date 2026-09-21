@@ -29,6 +29,7 @@ export function ShellPage(props: ShellPageProps): ReactNode {
       narrow={props.narrow}
       narrowPane={props.narrowPane}
       onNarrowPane={props.onNarrowPane}
+      focus={props.focus}
       rail={
         <ActivityBar
           screens={props.screens}

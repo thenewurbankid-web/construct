@@ -6,44 +6,49 @@ import type { ShellLayoutProps } from '../types';
 /** The 3-pane frame: top bar, Browser (left) | stage (middle) | Tools (right),
  * an optional bottom drawer and a status bar. Every region is a slot; panes are
  * resizable (drag or arrow keys) and collapsible. Presentation only: sizes and
- * limits come in as props. */
-export function ShellLayout({ layout, limits, onResize, onTogglePane, narrow = false, narrowPane = 'mid', onNarrowPane, top, rail, left, mid, right, drawer, status }: ShellLayoutProps) {
+ * limits come in as props.
+ *
+ * `focus` is the shell standing down (#456): the rail, top bar, drawer and status
+ * bar are not rendered and the side panes are hidden, so the stage owns the
+ * viewport. The panes stay mounted behind `hidden` — a screen must not lose what
+ * is in its Tools tabs just because the app was looked at full screen. */
+export function ShellLayout({ layout, limits, onResize, onTogglePane, narrow = false, narrowPane = 'mid', onNarrowPane, focus = false, top, rail, left, mid, right, drawer, status }: ShellLayoutProps) {
   if (narrow) {
     // Narrow (< 900px): one pane at a time. Inactive panes stay mounted but hidden
     // so a screen keeps its state (a wizard chat, a half-filled form) while you
     // look at the Browser or Tools; the drawer is not shown at this size.
     return (
-      <div className="sh-root sh-root--narrow" data-narrow="true">
-        {top}
+      <div className={focus ? 'sh-root sh-root--narrow sh-root--focus' : 'sh-root sh-root--narrow'} data-narrow="true" data-focus={focus ? 'true' : undefined}>
+        {!focus && top}
         <div className="sh-body">
-          <aside id="sh-pane-left" data-pane="left" tabIndex={-1} aria-label="Browser" className="sh-pane sh-left" hidden={narrowPane !== 'left'}>
+          <aside id="sh-pane-left" data-pane="left" tabIndex={-1} aria-label="Browser" className="sh-pane sh-left" hidden={focus || narrowPane !== 'left'}>
             {left}
           </aside>
-          <div id="sh-mid" data-pane="mid" tabIndex={-1} className="sh-mid" hidden={narrowPane !== 'mid'}>
+          <div id="sh-mid" data-pane="mid" tabIndex={-1} className="sh-mid" hidden={!focus && narrowPane !== 'mid'}>
             {mid}
           </div>
-          <aside id="sh-pane-right" data-pane="right" tabIndex={-1} aria-label="Tools" className="sh-pane sh-right" hidden={narrowPane !== 'right'}>
+          <aside id="sh-pane-right" data-pane="right" tabIndex={-1} aria-label="Tools" className="sh-pane sh-right" hidden={focus || narrowPane !== 'right'}>
             {right}
           </aside>
         </div>
-        {rail}
-        <NarrowTabBar pane={narrowPane} onSelect={(p) => onNarrowPane?.(p)} />
-        {status}
+        {!focus && rail}
+        {!focus && <NarrowTabBar pane={narrowPane} onSelect={(p) => onNarrowPane?.(p)} />}
+        {!focus && status}
       </div>
     );
   }
-  const style = { '--sh-drawer-h': layout.drawer.open ? `${layout.drawer.size}px` : '0px' } as CSSProperties;
+  const style = { '--sh-drawer-h': layout.drawer.open && !focus ? `${layout.drawer.size}px` : '0px' } as CSSProperties;
   return (
-    <div className="sh-root" style={style}>
-      {top}
+    <div className={focus ? 'sh-root sh-root--focus' : 'sh-root'} style={style} data-focus={focus ? 'true' : undefined}>
+      {!focus && top}
       <div className="sh-body">
-        {rail}
+        {!focus && rail}
         {layout.left.open && (
           <>
-            <aside id="sh-pane-left" data-pane="left" tabIndex={-1} aria-label="Browser" className="sh-pane sh-left" style={{ width: layout.left.size }}>
+            <aside id="sh-pane-left" data-pane="left" tabIndex={-1} aria-label="Browser" className="sh-pane sh-left" style={{ width: layout.left.size }} hidden={focus}>
               {left}
             </aside>
-            <PaneResizer
+            {!focus && <PaneResizer
               orientation="vertical"
               label="Resize Browser pane"
               controls="sh-pane-left"
@@ -52,7 +57,7 @@ export function ShellLayout({ layout, limits, onResize, onTogglePane, narrow = f
               max={limits.left.max}
               onResize={(size) => onResize('left', size)}
               onToggle={() => onTogglePane('left')}
-            />
+            />}
           </>
         )}
         <div id="sh-mid" data-pane="mid" tabIndex={-1} className="sh-mid">
@@ -60,7 +65,7 @@ export function ShellLayout({ layout, limits, onResize, onTogglePane, narrow = f
         </div>
         {layout.right.open && (
           <>
-            <PaneResizer
+            {!focus && <PaneResizer
               orientation="vertical"
               label="Resize Tools panel"
               controls="sh-pane-right"
@@ -70,15 +75,15 @@ export function ShellLayout({ layout, limits, onResize, onTogglePane, narrow = f
               max={limits.right.max}
               onResize={(size) => onResize('right', size)}
               onToggle={() => onTogglePane('right')}
-            />
-            <aside id="sh-pane-right" data-pane="right" tabIndex={-1} aria-label="Tools" className="sh-pane sh-right" style={{ width: layout.right.size }}>
+            />}
+            <aside id="sh-pane-right" data-pane="right" tabIndex={-1} aria-label="Tools" className="sh-pane sh-right" style={{ width: layout.right.size }} hidden={focus}>
               {right}
             </aside>
           </>
         )}
       </div>
       {layout.drawer.open && (
-        <section id="sh-pane-drawer" data-pane="drawer" tabIndex={-1} aria-label="Drawer" className="sh-drawer" style={{ height: layout.drawer.size }}>
+        <section id="sh-pane-drawer" data-pane="drawer" tabIndex={-1} aria-label="Drawer" className="sh-drawer" style={{ height: layout.drawer.size }} hidden={focus}>
           <PaneResizer
             orientation="horizontal"
             label="Resize drawer"
@@ -93,7 +98,7 @@ export function ShellLayout({ layout, limits, onResize, onTogglePane, narrow = f
           {drawer}
         </section>
       )}
-      {status}
+      {!focus && status}
     </div>
   );
 }

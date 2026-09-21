@@ -103,6 +103,8 @@ export type NarrowProps = {
 };
 
 export type ShellLayoutProps = NarrowProps & {
+  /** Focus mode (#456): the chrome stands down so the stage owns the viewport. See useShellFocus. */
+  focus?: boolean;
   layout: ShellLayoutState;
   limits: Record<PaneId, PaneLimit>;
   onResize: (pane: PaneId, size: number) => void;
@@ -196,6 +198,8 @@ export type ProjectInfoPanelProps = {
 };
 
 export type ShellPageProps = NarrowProps & {
+  /** Focus mode (#456) — see ShellLayoutProps. */
+  focus?: boolean;
   children: ReactNode;
   layout: ShellLayoutState;
   limits: Record<PaneId, PaneLimit>;

@@ -524,3 +524,12 @@ kbd {
   .sh-user-name { display: none; }
   .sh-user-trigger { padding: 0 3px; }
 }
+
+/* ---- focus mode (#456): the Cockpit stands down -------------------------
+ * The rail, top bar, drawer and status bar are not rendered and the side panes
+ * are hidden (ShellLayout), so the stage is the whole frame. No animated expand:
+ * the change is instant, which is also what a reduced-motion setting asks for. */
+.sh-root--focus { min-height: 100dvh; }
+.sh-root--focus .sh-body { height: 100dvh; align-items: stretch; }
+.sh-root--focus .sh-mid { display: flex; min-height: 0; }
+.sh-root--focus .main { flex: 1; min-width: 0; max-width: none; padding: 0; }

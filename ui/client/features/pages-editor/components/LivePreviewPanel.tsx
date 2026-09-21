@@ -1,43 +1,38 @@
-import type { Ref } from 'react';
 import { GlassPanel } from '@/components/ui';
-
-type LivePreviewPanelProps = {
-  draft: string;
-  onDraftChange: (v: string) => void;
-  url: string | null;
-  message: string | null;
-  frameRef: Ref<HTMLIFrameElement>;
-  onConnect: () => void;
-  onDisconnect: () => void;
-};
+import type { LivePreviewView } from '../types';
+import { LivePreviewEmpty } from './LivePreviewEmpty';
+import { LivePreviewToolbar } from './LivePreviewToolbar';
 
 // Live preview of the target app in an iframe. Click an element (the target
 // must run the Construct preview plugin, which annotates elements with their
 // source position) to select the matching node in the tree/inspector.
-export function LivePreviewPanel({ draft, onDraftChange, url, message, frameRef, onConnect, onDisconnect }: LivePreviewPanelProps) {
+//
+// #456: the frame fills the stage at a chosen device size, and can take the
+// whole viewport — full screen is the app and one way back, because the shell
+// has already hidden the rail, panes, top bar and drawer. The iframe element is
+// the same one in both states (same place in the tree; only the classes around
+// it change), which is why the app never reloads and the selection survives.
+export function LivePreviewPanel(props: LivePreviewView) {
+  const { url, message, frameRef, fullScreen } = props;
+  const showFrame = Boolean(url) && props.reach !== 'down';
+
   return (
-    <GlassPanel className="live-preview-panel">
-      <h4>Live app preview (click an element to select its source)</h4>
-      <div className="live-preview-bar">
-        <input
-          type="url"
-          aria-label="Preview URL"
-          placeholder="http://localhost:5173"
-          value={draft}
-          onChange={(e) => onDraftChange(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') onConnect(); }}
-        />
-        <button type="button" onClick={onConnect}>Load preview</button>
-        {url && <button type="button" onClick={onDisconnect}>Close</button>}
-      </div>
-      {message && <p className="hint live-preview-message" role="status">{message}</p>}
-      {url ? (
-        <iframe ref={frameRef} className="live-preview-frame" title="Live app preview" src={url} />
+    <GlassPanel className={fullScreen ? 'live-preview-panel live-preview-panel--full' : 'live-preview-panel'}>
+      <LivePreviewToolbar {...props} />
+      {message && !fullScreen && <p className="hint live-preview-message" role="status">{message}</p>}
+      {showFrame ? (
+        <div className="live-preview-stage">
+          <div className="live-preview-box" ref={props.boxRef} style={props.frameStyle}>
+            <iframe ref={frameRef} className="live-preview-frame" title="Live app preview" src={url ?? undefined} />
+          </div>
+        </div>
       ) : (
-        <p className="hint">
-          Point this at your app&apos;s dev server. Add <code>constructPreview()</code> (from
-          src/engine/previewVitePlugin.mjs) to its Vite config so clicks can be traced back to source.
-        </p>
+        <LivePreviewEmpty {...props} />
+      )}
+      {fullScreen && showFrame && (
+        <button type="button" className="live-preview-exit" onClick={props.onExitFullScreen}>
+          Leave full screen (Esc)
+        </button>
       )}
     </GlassPanel>
   );
