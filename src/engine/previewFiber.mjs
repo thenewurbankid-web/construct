@@ -532,12 +532,36 @@ export function applySourceMap(map, line, column) {
   };
 }
 
-/** Look a source map up by the frame URL, with and without its query string. */
+/**
+ * Look a source map up by the frame URL, with and without its query string.
+ * An entry may be the parsed map, or `{ map, url }` when the caller knows
+ * where the map itself was served from.
+ */
 function mapFor(sourceMaps, url) {
   if (!sourceMaps) return null;
   const get = typeof sourceMaps === 'function' ? sourceMaps : (u) => (Object.prototype.hasOwnProperty.call(sourceMaps, u) ? sourceMaps[u] : null);
   const bare = String(url).split('#')[0];
-  return get(bare) || get(bare.split('?')[0]) || null;
+  const entry = get(bare) || get(bare.split('?')[0]) || null;
+  if (!entry) return null;
+  return entry.map
+    ? { map: entry.map, url: entry.url || bare, isMapUrl: !!entry.url }
+    : { map: entry, url: bare, isMapUrl: false };
+}
+
+/**
+ * A source map's `sources` are relative to the map's own URL (the spec), so
+ * "../src/App.tsx" in a map served from /dist/ means /src/App.tsx — not an
+ * escape attempt. Resolve those before containment sees them. A BARE relative
+ * source ("src/App.tsx") is left alone unless the caller said where the map
+ * came from, because bundlers write those relative to the project root just as
+ * often as to the map. Bundler pseudo-URLs (webpack://…) are never resolved:
+ * they are not URLs anything can be resolved against.
+ */
+function resolveMappedSource(source, baseUrl, baseIsMapUrl) {
+  if (/^[a-zA-Z][\w+.-]*:/.test(source) || source.startsWith('/')) return source;
+  if (!baseIsMapUrl && !/^\.\.?\//.test(source)) return source;
+  if (!/^https?:\/\//.test(String(baseUrl || ''))) return source;
+  try { return new URL(source, baseUrl).toString(); } catch { return source; }
 }
 
 /** Tier 1: the `data-cx-src="file:line:col"` attribute written by the v1 annotator. */
@@ -566,10 +590,10 @@ function fromDebugSource(debugSource, context) {
 function fromStack(stack, context) {
   const frame = pickSourceFrame(parseStackFrames(stack));
   if (!frame) return null;
-  const map = mapFor(context.sourceMaps, frame.url);
-  const mapped = map ? applySourceMap(map, frame.line, frame.column) : null;
+  const found = mapFor(context.sourceMaps, frame.url);
+  const mapped = found ? applySourceMap(found.map, frame.line, frame.column) : null;
   if (mapped) {
-    const file = toProjectPath(mapped.source, context);
+    const file = toProjectPath(resolveMappedSource(mapped.source, found.url, found.isMapUrl), context);
     if (file) return { tier: 'stack', confidence: 'mapped', file, line: mapped.line, column: mapped.column, frame };
     return { tier: 'stack', confidence: 'none', file: null, reason: 'outside-project', frame };
   }
