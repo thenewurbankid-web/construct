@@ -94,10 +94,10 @@ export function fileFacts(ctx, relPath) {
   try {
     if (!fs.realpathSync(abs).startsWith(fs.realpathSync(ctx.root) + path.sep)) throw new Error('outside root');
     source = fs.readFileSync(abs, 'utf8');
-  } catch { return { path: relPath, layer, error: 'unreadable', exports: [], imports: [], resolvedImports: [], loc: 0, purpose: '' }; }
+  } catch { return { path: relPath, layer, error: 'unreadable', exports: [], imports: [], resolvedImports: [], external: [], props: [], endpoints: [], loc: 0, purpose: '' }; }
   const base = { path: relPath, layer, loc: source.split('\n').length };
   let ast;
-  try { ast = parseToAst(source); } catch (e) { return { ...base, error: `parse error: ${String(e.message).split('\n')[0]}`, exports: [], imports: [], resolvedImports: [], purpose: '' }; }
+  try { ast = parseToAst(source); } catch (e) { return { ...base, error: `parse error: ${String(e.message).split('\n')[0]}`, exports: [], imports: [], resolvedImports: [], external: [], props: [], endpoints: [], purpose: '' }; }
 
   const exports = [];
   const props = [];

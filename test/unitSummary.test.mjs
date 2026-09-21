@@ -189,3 +189,14 @@ test('CLI: construct summarize <ref>, --list, --usage, structured errors + exit 
   assert.ok(Array.isArray(JSON.parse(legacy.stdout)) || typeof JSON.parse(legacy.stdout) === 'object');
   assert.ok(!('schemaVersion' in JSON.parse(legacy.stdout)));
 });
+
+test('a feature containing a file that does not parse still summarizes (the broken file is listed with its error, not a crash) (#431)', () => {
+  const dir = makeTempDir('construct-unitsummary-broken-');
+  fs.cpSync(path.join(REPO, 'fixtures', 'impact-shared'), dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'features', 'billing', 'components', 'Broken.tsx'), 'export function Broken( {\n  return <b />;\n\nconst = ;\n');
+  const s = summarizeUnit(dir, 'feature:billing');
+  assert.equal(s.ok, true, JSON.stringify(s.error));
+  assert.ok(s.sections.files.component.some((f) => /parse error/.test(f.error ?? '')), 'the broken file is listed with its parse error');
+  const index = listFeatures(dir);
+  assert.equal(index.features.find((f) => f.name === 'billing').error, undefined);
+});
