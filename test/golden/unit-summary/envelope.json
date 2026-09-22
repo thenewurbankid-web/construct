@@ -7,7 +7,7 @@
   "name": "Context Envelope v1",
   "path": "schemas/envelope.v1.json",
   "detail": "standard",
-  "summary": "Context Envelope v1: the JSON state handed between construct pipeline steps (version, feature, status, layers, unboundSlots, events, diagnostics, steps). The state handed between `construct pipeline run` steps (and, more broadly, between any two Construct generator commands run with --json) so",
+  "summary": "Context Envelope v1: the JSON state handed between construct pipeline steps (version, feature, status, layers, unboundSlots, events, ext, diagnostics, steps). The state handed between `construct pipeline run` steps (and, more broadly, between any two Construct generator commands run with --json) so",
   "sections": {
     "schema": "schemas/envelope.v1.json",
     "version": 1,
@@ -54,6 +54,12 @@
         "description": "XState event types exposed by this feature's workflow (Ticket 7.3), for downstream consumers such as the controller binder (Ticket 7.4)."
       },
       {
+        "name": "ext",
+        "required": false,
+        "type": "object",
+        "description": "Reserved, free-form object for ADDITIVE data."
+      },
+      {
         "name": "diagnostics",
         "required": false,
         "type": "array",
@@ -90,7 +96,7 @@
   ],
   "budget": {
     "maxTokens": 2000,
-    "estimatedTokens": 618,
+    "estimatedTokens": 647,
     "truncated": false
   }
 }
