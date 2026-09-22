@@ -26,6 +26,9 @@ export type LoadingStateProps = Omit<StateBase, 'title'> & {
   label: string;
   /** 0-100 when the work reports progress; omit for an indeterminate bar. */
   percent?: number;
+  /** #406: the shared AnimatedLoader (brand mark, `busy` motion) instead of the generic
+   * `.st-spinner`. Opt-in per call site — existing callers are unaffected. */
+  animated?: boolean;
 };
 export type ErrorStateProps = StateBase & {
   /** Retry action; shown as the primary button "Try again". */

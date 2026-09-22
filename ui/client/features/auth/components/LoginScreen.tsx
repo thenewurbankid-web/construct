@@ -1,6 +1,6 @@
 'use client';
 
-import { AnimatedLogo, Button } from '@/components/ui';
+import { AnimatedLoader, AnimatedLogo, Button } from '@/components/ui';
 import type { AuthSession } from '../types';
 import { LoginBackdrop } from './LoginBackdrop';
 import { GithubMark } from './GithubMark';
@@ -19,6 +19,13 @@ type LoginScreenProps = {
   tagline: string;
   /** False under reduced motion: no caret. */
   taglineAnimated: boolean;
+  /** #406: true for the short beat after a real sign-in where this screen is still mounted (as a
+   * fixed overlay — see AuthGatePage.tsx) so the mark's exit hand-off can play before it is removed.
+   * Not set on the ordinary "signed out" render, so the class/prop below is a no-op by default. */
+  exiting?: boolean;
+  /** #406: fires once the hand-off finishes (or immediately under reduced motion). Only meaningful
+   * together with `exiting`. */
+  onExitEnd?: () => void;
 };
 
 /**
@@ -40,18 +47,22 @@ export function LoginScreen({
   onRetry,
   tagline,
   taglineAnimated,
+  exiting = false,
+  onExitEnd,
 }: LoginScreenProps) {
   return (
     // <main> because the shell — which normally supplies the page's
     // landmarks — has been replaced entirely; without it the document has
     // none at all.
-    <main className="page page--screen auth-screen" data-testid="login-screen">
+    // #406: `auth-screen--handoff` only while `exiting` — it lifts this screen out of flow into a
+    // fixed, fading overlay above the Cockpit AuthGatePage has already mounted underneath it.
+    <main className={exiting ? 'page page--screen auth-screen auth-screen--handoff' : 'page page--screen auth-screen'} data-testid="login-screen">
       <LoginBackdrop />
       {/* Owner request, 2026-09-21: two rows — the mark alone and large on the first, the wordmark
           centred under it. The size below is only the intrinsic one; `.login-brand__mark` scales it
           fluidly with clamp() so it fits a 390px phone (app/brand.css). */}
       <div className="login-brand login-brand--stacked" data-testid="login-brand">
-        <AnimatedLogo mark="cockpit" size={112} className="login-brand__mark" />
+        <AnimatedLogo mark="cockpit" size={112} className="login-brand__mark" exiting={exiting} onExitEnd={onExitEnd} />
         <span className="login-brand__word">Cockpit</span>
       </div>
       <p className="login-tagline" data-testid="login-tagline" aria-hidden="true">
@@ -71,7 +82,9 @@ export function LoginScreen({
               <>
                 {session?.githubConfigured && (
                   <button type="button" className="gh-signin" onClick={onSignInWithGithub} disabled={signingIn} data-testid="login-github">
-                    <GithubMark />
+                    {/* #406: `decorative` — the button's own text ("Signing in…") is already the
+                        accessible name, so the loader adds no separate announcement. */}
+                    {signingIn ? <AnimatedLoader size="small" variant="inline" decorative /> : <GithubMark />}
                     <span>{signingIn ? 'Signing in…' : 'Sign in with GitHub'}</span>
                   </button>
                 )}
@@ -80,6 +93,7 @@ export function LoginScreen({
                 {session?.testLogin && (
                   <>
                     <button type="button" className="gh-signin gh-signin--test" onClick={onSignInAsTestUser} disabled={signingIn} data-testid="login-test-user">
+                      {signingIn && <AnimatedLoader size="small" variant="inline" decorative />}
                       {signingIn ? 'Signing in…' : `Sign in as ${session.testLoginUser} (test login)`}
                     </button>
                     {/* Only ever rendered on an e2e server: the hatch says what it is rather than hiding. */}
