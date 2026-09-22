@@ -99,6 +99,26 @@ test('propRef() is a runtime identity function (the type-level distinction has n
   assert.equal(ref.unitName, 'Header');
 });
 
+// #510 -- defineProvider's ProviderComponent really computes fn(props) and threads it through as
+// React Context's `value` prop (proven without needing a DOM renderer: React.createElement just
+// builds a plain element descriptor -- inspecting element.props.value is real proof the value
+// flowed through, not an assumption). useProvider() itself needs a live React render pass (a real
+// useContext() call requires React's hook dispatcher to be active) which this repo has no
+// react-dom/test-renderer dependency to drive from a plain node:test -- so it is proven at the type
+// level instead, in examples/providers.ts / test/typed-contracts-tsc.test.mjs.
+test('defineProvider: ProviderComponent computes fn(props) and threads it into the Context value, unitName/unitLayer are set', { skip }, () => {
+  const { defineProvider } = typedContracts;
+  const CartProvider = defineProvider('Cart', ({ total }) => ({ total: total * 2 }));
+  assert.equal(CartProvider.unitName, 'Cart');
+  assert.equal(CartProvider.unitLayer, 'hook');
+  assert.equal(typeof CartProvider.ProviderComponent, 'function');
+  assert.equal(typeof CartProvider.useProvider, 'function');
+
+  const element = CartProvider.ProviderComponent({ total: 21, children: 'child-marker' });
+  assert.deepEqual(element.props.value, { value: { total: 42 } });
+  assert.equal(element.props.children, 'child-marker');
+});
+
 test('two units of different layers built from structurally identical functions stay runtime-distinguishable via unitLayer', { skip }, () => {
   // The brand itself has zero runtime footprint (by design -- see brand.ts);
   // `unitLayer` is what lets runtime tooling recover the same distinction

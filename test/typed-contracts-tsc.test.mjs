@@ -50,6 +50,17 @@ test('the real composition example (examples/valid.ts) compiles with zero tsc er
   assert.ok(ok, `expected examples/valid.ts to compile clean; tsc said:\n${output}`);
 });
 
+// #510 -- both legitimate Provider patterns from #499 ((a) self-contained internal wiring, (b) the
+// same Provider imported and wired into a different feature's own component with a different data
+// source) compile and type-check as one real composition, same bar as examples/valid.ts above.
+test('the Provider usage examples (examples/providers.ts) compile with zero tsc errors', () => {
+  const { ok, output } = tsc([
+    path.join(TYPED_CONTRACTS, 'jsx-global.d.ts'),
+    path.join(TYPED_CONTRACTS, 'examples', 'providers.ts'),
+  ]);
+  assert.ok(ok, `expected examples/providers.ts to compile clean; tsc said:\n${output}`);
+});
+
 test('wiring a ServiceUnit into definePage\'s Props is a real tsc error (TS2344), not a silent pass', () => {
   const { ok, output } = tsc([
     path.join(TYPED_CONTRACTS, 'jsx-global.d.ts'),
@@ -62,6 +73,8 @@ test('wiring a ServiceUnit into definePage\'s Props is a real tsc error (TS2344)
   // BadComponentProps (defineComponent <- PropRef<ServiceUnit>) -- PropRef
   // changes how a slot is filled, not which layer boundary applies to it.
   assert.match(output, /Type 'BadComponentProps' does not satisfy the constraint 'Forbid<BadComponentProps, ComponentUnitAny>'/);
+  // #510 -- BadProviderProps (defineProvider <- an arbitrary other hook, not workflow/service/domain)
+  assert.match(output, /Type 'BadProviderProps' does not satisfy the constraint 'Forbid<BadProviderProps, ProviderAllowed>'/);
 });
 
 test('a Template with a code path that falls off the end (implicit undefined) is a real tsc error (TS7030)', () => {

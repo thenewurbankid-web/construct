@@ -110,6 +110,11 @@ export const DEFAULT_RULES = {
   'PAGE-004': { severity: 'error', name: 'Pages cannot call fetch' },
   'PAGE-005': { severity: 'error', name: 'Pages cannot import domain logic' },
   'PAGE-006': { severity: 'error', name: 'Pages cannot use application state/machines' },
+  // #510 -- the hooks/ layer's first real rule: a hook named use<Name>Provider must really be
+  // built through defineProvider(...). This is what makes PAGE-006's narrowing (below) sound —
+  // a page may import a hook by this naming convention alone specifically because HOOK-002
+  // holds the convention itself accountable.
+  'HOOK-002': { severity: 'error', name: 'A hook named use<Name>Provider must be built through defineProvider(...)' },
   'COMPONENT-001': { severity: 'error', name: 'Components are presentation-only' },
   'COMPONENT-002': { severity: 'error', name: 'Components cannot import controllers' },
   'COMPONENT-003': { severity: 'error', name: 'Components cannot import workflows/services/domain' },
