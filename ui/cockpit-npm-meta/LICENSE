@@ -1,0 +1,13 @@
+Copyright (c) 2026 thenewurbankid-web. All rights reserved.
+
+This package (@line/cockpit -- Construct's Cockpit UI, comprising
+`ui/client` and `ui/server`) is proprietary software. It is distributed
+privately via GitHub Packages (restricted registry) for use under a
+separate agreement with thenewurbankid-web; no license to use, copy,
+modify, merge, publish, distribute, sublicense, or sell copies of this
+package is granted except as expressly agreed in writing.
+
+The `src/` and `bin/` directories vendored inside this package are
+Construct's core CLI/engine, distributed under the MIT License as part of
+the root `construct` repository independently of this package's own
+license -- see that repository's own LICENSE for their terms.

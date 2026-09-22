@@ -1,0 +1,47 @@
+{
+  "name": "@line/cockpit",
+  "version": "0.1.0",
+  "description": "Construct's Cockpit: a self-hosted, GitHub-login-gated UI over the Construct CLI/engine. Compiled build only (no .ts/.tsx source) -- see README.md.",
+  "license": "UNLICENSED",
+  "private": false,
+  "type": "module",
+  "bin": {
+    "cockpit": "./launch.mjs"
+  },
+  "files": [
+    "ui/server/dist",
+    "ui/client/standalone",
+    "src",
+    "bin",
+    "launch.mjs",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@hey-api/openapi-ts": "^0.97.3",
+    "@reduxjs/toolkit": "^2.12.0",
+    "@typescript-eslint/typescript-estree": "^8.70.0",
+    "axios": "^1.20.0",
+    "cors": "^2.8.5",
+    "diff": "^9.0.0",
+    "estree-walker": "^3.0.3",
+    "express": "^4.19.2",
+    "ipaddr.js": "2.5.0",
+    "js-yaml": "^4.3.2",
+    "minimatch": "^10.0.1",
+    "react-docgen": "^8.0.4",
+    "typescript": "^5.8.3",
+    "ws": "^8.18.0"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thenewurbankid-web/construct.git"
+  }
+}
