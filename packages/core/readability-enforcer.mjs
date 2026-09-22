@@ -1,4 +1,4 @@
-// Readability/naming-convention enforcement (Epic 3.2), built on src/parser.mjs.
+// Readability/naming-convention enforcement (Epic 3.2), built on packages/core/parser.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 import { walk } from './fs.mjs';
@@ -8,7 +8,7 @@ import { parseFile, layerContextFor, extractExports, extractJsdoc, lineOf, EXT }
 import { loadConfig, readRawRules } from './config.mjs';
 import { isNonLayerPath } from './nonLayer.mjs';
 
-// Shaped exactly like DEFAULT_RULES in src/config.mjs, exported for Module 4 (or whoever
+// Shaped exactly like DEFAULT_RULES in packages/core/config.mjs, exported for Module 4 (or whoever
 // owns config.mjs next) to merge into the shared rule table. Not written into config.mjs
 // directly — that file is owned by another workstream while this module was built.
 export const READABILITY_RULES = {

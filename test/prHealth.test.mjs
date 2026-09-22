@@ -15,7 +15,7 @@ import { withTrees, liveTreeCount, reclaimTreesOf } from '../packages/engine/git
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const CLI = path.join(REPO, 'bin', 'construct.mjs');
+const CLI = path.join(REPO, 'packages', 'cli', 'construct.mjs');
 const SHARED = path.join(REPO, 'fixtures', 'impact-shared');
 const schema = JSON.parse(fs.readFileSync(path.join(REPO, 'schemas', 'pr-health.v1.json'), 'utf8'));
 const validateSchema = new Ajv({ allErrors: true }).compile(schema);

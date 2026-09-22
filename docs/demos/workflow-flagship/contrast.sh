@@ -11,7 +11,7 @@
 RUNS=${1:-5}
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$HERE/../../.." && pwd)"
-CLI="node $REPO/bin/construct.mjs"
+CLI="node $REPO/packages/cli/construct.mjs"
 OUT="${CONTRAST_OUT:-$(mktemp -d)}"
 mkdir -p "$OUT/llm" "$OUT/construct"
 

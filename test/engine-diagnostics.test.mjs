@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { collectDiagnostics, typescriptDiagnostics } from '../packages/engine/diagnostics.mjs';
-import { createFeature } from '../src/generators.mjs';
+import { createFeature } from '../packages/core/generators.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 function tmpProject() {

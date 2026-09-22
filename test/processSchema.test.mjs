@@ -33,7 +33,7 @@ import {
   recordArtifact,
   setApproval,
 } from '../packages/engine/processModel.mjs';
-import { PLAN_EXECUTORS } from '../src/plan.mjs';
+import { PLAN_EXECUTORS } from '../packages/core/plan.mjs';
 import { openProcessStore } from '../packages/engine/processStore.mjs';
 import { createProcessEngine } from '../packages/engine/processEngine.mjs';
 

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { startTimer, elapsedSeconds, formatDuration } from '../src/timing.mjs';
+import { startTimer, elapsedSeconds, formatDuration } from '../packages/core/timing.mjs';
 
 test('elapsedSeconds returns a non-negative number', () => {
   const t = startTimer();

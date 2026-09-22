@@ -34,7 +34,7 @@ the `exports` map (`.`, `./parse`, `./walk`, `./extract`, `./ts`) for a future m
 | ts | `findNode(root, pred)` / `findAllNodes(root, pred)` | depth-first search of a `ts.Node` tree |
 | ts | `printNode(node)` | print a `ts.factory` node as source (LF newlines) |
 
-`src/parser.mjs` re-exports `parseToAst`, `extractImports/Exports/Jsdoc` and `lineOf` so older imports keep
+`packages/core/parser.mjs` re-exports `parseToAst`, `extractImports/Exports/Jsdoc` and `lineOf` so older imports keep
 working; new code should import from `packages/ast`.
 
 ## Runnable example

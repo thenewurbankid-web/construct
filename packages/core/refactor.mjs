@@ -16,7 +16,7 @@ import { resolveRelativeImport } from './architecture-enforcer.mjs';
 import { folderFor, layerFileBaseName, pascalCase } from './generators.mjs';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { assertNotFrozen } from './frozen.mjs';
-import { applyEdits, planFileMove } from '../packages/engine/tsFileMove.mjs';
+import { applyEdits, planFileMove } from '../../packages/engine/tsFileMove.mjs';
 
 const FILE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx']);
 // Matches the specifier in both `import ... from '...'` and

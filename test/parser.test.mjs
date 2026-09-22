@@ -12,7 +12,7 @@ import {
   extractImports,
   extractJsdoc,
   estimateComplexity,
-} from '../src/parser.mjs';
+} from '../packages/core/parser.mjs';
 
 function tmpRoot() {
   return makeTempDir('construct-parser-');

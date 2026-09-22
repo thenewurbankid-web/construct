@@ -1,7 +1,7 @@
 // #435 -- "what does moving this file change?", answered by the TypeScript language service instead of a regex.
 // `planFileMove(root, oldAbs, newAbs)` is PURE: it reads the project, writes nothing, and returns every text edit the
 // move needs (relative imports, tsconfig `paths` aliases such as `@/...`, dynamic `import()`, `export ... from`
-// re-exports, index barrels, `import type`). The caller (src/refactor.mjs) applies the edits through its own guarded
+// re-exports, index barrels, `import type`). The caller (packages/core/refactor.mjs) applies the edits through its own guarded
 // writer; nothing here decides what is written.
 //
 // Deterministic, no LLM, no `ui/` imports, `typescript` only (already a dependency, Apache-2.0).

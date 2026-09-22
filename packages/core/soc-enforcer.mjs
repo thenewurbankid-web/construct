@@ -8,7 +8,7 @@ import { loadConfig, DEFAULT_RULES } from './config.mjs';
 import { walk, rel } from './fs.mjs';
 import { makeViolation } from './diagnostics.mjs';
 import { exceptionApplies } from './exceptions.mjs';
-import { parseToAst } from '../packages/ast/index.mjs';
+import { parseToAst } from '../../packages/ast/index.mjs';
 import { isNonLayerPath } from './nonLayer.mjs';
 
 const ext = new Set(['.ts', '.tsx', '.js', '.jsx']);
@@ -49,7 +49,7 @@ function listFeatureDirs(root, featuresRoot) {
 
 // ---------------------------------------------------------------------------
 // index.ts export parsing — shared by SLICE-002 detection, isPublicPath, and
-// the API composer (src/api-composer.mjs) which imports parseIndexExports.
+// the API composer (packages/core/api-composer.mjs) which imports parseIndexExports.
 // ---------------------------------------------------------------------------
 const EXPORT_FROM_RE = /export\s+(type\s+)?(\*|\{[^}]*\})\s*from\s*(['"])(.+?)\3\s*;?/g;
 

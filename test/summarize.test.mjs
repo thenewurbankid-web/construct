@@ -10,8 +10,8 @@ import {
   describeExport,
   extractDeclarationSource,
   summarizeSince,
-} from '../src/summarize.mjs';
-import { extractExports } from '../src/parser.mjs';
+} from '../packages/core/summarize.mjs';
+import { extractExports } from '../packages/core/parser.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 function tmpRoot() {

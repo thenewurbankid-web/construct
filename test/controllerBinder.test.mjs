@@ -10,16 +10,16 @@ import {
   matchSlotsToHandlers,
   generateController,
 } from '../packages/engine/controllerBinder.mjs';
-import { createFeature } from '../src/generators.mjs';
-import { parseToAst } from '../src/parser.mjs';
+import { createFeature } from '../packages/core/generators.mjs';
+import { parseToAst } from '../packages/core/parser.mjs';
 import { createEnvelope } from '../packages/engine/envelope.mjs';
-import { validateArchitecture, detectLayerViolations } from '../src/architecture-enforcer.mjs';
-import { ConstructError, EXIT_CODES } from '../src/diagnostics.mjs';
+import { validateArchitecture, detectLayerViolations } from '../packages/core/architecture-enforcer.mjs';
+import { ConstructError, EXIT_CODES } from '../packages/core/diagnostics.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(here, '..');
-const bin = path.join(REPO_ROOT, 'bin', 'construct.mjs');
+const bin = path.join(REPO_ROOT, 'packages', 'cli', 'construct.mjs');
 
 const PAGE_PROPS_SOURCE = `export interface CheckoutPageProps {
   onCategoryChange: (value: string) => void;

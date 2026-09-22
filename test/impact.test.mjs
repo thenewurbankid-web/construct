@@ -22,7 +22,7 @@ const EXAMPLE = path.join(REPO, 'example');
 const SHARED = path.join(REPO, 'fixtures', 'impact-shared');
 const INVALID = path.join(REPO, 'fixtures', 'architecture-invalid');
 const GOLDEN_DIR = path.join(REPO, 'test', 'golden', 'impact');
-const CLI = path.join(REPO, 'bin', 'construct.mjs');
+const CLI = path.join(REPO, 'packages', 'cli', 'construct.mjs');
 
 const schema = JSON.parse(fs.readFileSync(path.join(REPO, 'schemas', 'impact-report.v1.json'), 'utf8'));
 const validateSchema = new Ajv({ allErrors: true }).compile(schema);

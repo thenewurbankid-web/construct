@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { loadTemplate, loadTemplateDir, createTemplateRegistry, instantiate, TemplateError, TEMPLATE_ERROR_CODES as E } from '../packages/engine/planTemplate.mjs';
-import { validatePlan, planToCommand } from '../src/plan.mjs';
+import { validatePlan, planToCommand } from '../packages/core/plan.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
@@ -115,7 +115,7 @@ test('load-time refusals: unknown flow, undefined parameter, malformed, bad exam
 });
 
 test('the CLI lists, shows and instantiates; refuses bad params; has no default directory', () => {
-  const run = (...a) => spawnSync(process.execPath, [path.join(root, 'bin', 'construct.mjs'), 'template', ...a], { encoding: 'utf8', env: { ...process.env, CONSTRUCT_TEMPLATES_DIR: '' } });
+  const run = (...a) => spawnSync(process.execPath, [path.join(root, 'packages', 'cli', 'construct.mjs'), 'template', ...a], { encoding: 'utf8', env: { ...process.env, CONSTRUCT_TEMPLATES_DIR: '' } });
   const list = run('list', '--templates', FIXTURES);
   assert.equal(list.status, 0);
   assert.equal(JSON.parse(list.stdout).templates[0].name, 'demo.add-feature');
@@ -133,8 +133,9 @@ test('the CLI lists, shows and instantiates; refuses bad params; has no default 
 });
 
 // The open-core boundary: core must never import a curated location, and no
-// curated template may live in src/.
-test('open-core boundary: no src import reaches ui/, tools/ or any curated/proprietary location, and no template JSON lives in src/', () => {
+// curated template may live in the open packages (packages/core, packages/ast,
+// packages/engine -- the former src/, src/ast, src/engine, now split by #480).
+test('open-core boundary: no core import reaches ui/, packages/tools or any curated/proprietary location, and no template JSON lives in an open package', () => {
   const files = [];
   const walk = (d) => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
@@ -143,7 +144,7 @@ test('open-core boundary: no src import reaches ui/, tools/ or any curated/propr
       else files.push(p);
     }
   };
-  walk(path.join(root, 'src'));
+  for (const dir of ['packages/core', 'packages/ast', 'packages/engine']) walk(path.join(root, dir));
   const spec = /^(?:import|export)\b[^'"\n]*?(?:from\s*)?['"]([^'"]+)['"]|^[^/*\n]*\bimport\(\s*['"]([^'"]+)['"]/gm;
   for (const f of files.filter((p) => p.endsWith('.mjs') || p.endsWith('.js'))) {
     const text = fs.readFileSync(f, 'utf8');
@@ -151,13 +152,15 @@ test('open-core boundary: no src import reaches ui/, tools/ or any curated/propr
       const s = m[1] || m[2];
       if (!s.startsWith('.')) continue;
       const target = path.resolve(path.dirname(f), s);
-      const rel = path.relative(root, target).split(path.sep)[0];
-      assert.ok(!rel.startsWith('..') && !['ui', 'tools', 'proprietary', 'curated', 'templates', 'flows', 'mcp'].includes(rel), `${path.relative(root, f)} imports a non-core location: ${s}`);
+      const relParts = path.relative(root, target).split(path.sep);
+      const rel = relParts[0];
+      const rel2 = relParts.slice(0, 2).join('/');
+      assert.ok(!rel.startsWith('..') && !['ui', 'tools', 'proprietary', 'curated', 'templates', 'flows', 'mcp'].includes(rel) && rel2 !== 'packages/tools', `${path.relative(root, f)} imports a non-core location: ${s}`);
       assert.doesNotMatch(s, /(^|\/)(ui|proprietary|curated|flows|mcp)(\/|$)/, `${path.relative(root, f)} imports a proprietary-side path: ${s}`);
     }
   }
   const planTemplate = fs.readFileSync(path.join(root, 'packages', 'engine', 'planTemplate.mjs'), 'utf8');
-  assert.deepEqual([...planTemplate.matchAll(spec)].map((m) => m[1] || m[2]).filter((s) => s.startsWith('.')).sort(), ['../../src/plan.mjs']);
+  assert.deepEqual([...planTemplate.matchAll(spec)].map((m) => m[1] || m[2]).filter((s) => s.startsWith('.')).sort(), ['../core/plan.mjs']);
   const inSrc = files.filter((p) => p.endsWith('.json') && /"templateVersion"/.test(fs.readFileSync(p, 'utf8')));
-  assert.deepEqual(inSrc, [], 'a template lives under src/: curated flows are proprietary and must load from outside core');
+  assert.deepEqual(inSrc, [], 'a template lives under an open package: curated flows are proprietary and must load from outside core');
 });

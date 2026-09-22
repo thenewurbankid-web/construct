@@ -121,8 +121,8 @@ export const DEV_GROUPS = [
   {
     group: 'Reference',
     pages: [
-      { path: 'developers/cli-reference/', title: 'CLI reference', description: 'Every command and flag, generated from the CLI itself.', generate: 'cli', source: 'src/usage.mjs' },
-      { path: 'developers/rules-reference/', title: 'Rule reference', description: 'Every rule id and its default severity, generated from the config.', generate: 'rules', source: 'src/config.mjs' },
+      { path: 'developers/cli-reference/', title: 'CLI reference', description: 'Every command and flag, generated from the CLI itself.', generate: 'cli', source: 'packages/core/usage.mjs' },
+      { path: 'developers/rules-reference/', title: 'Rule reference', description: 'Every rule id and its default severity, generated from the config.', generate: 'rules', source: 'packages/core/config.mjs' },
     ],
   },
   {
@@ -141,10 +141,10 @@ export const DEV_INDEX = { path: 'developers/', title: 'Developer Docs', descrip
 /** Markdown for the pages derived from code. Imports the real modules, so they are exact by construction. */
 export async function generatedMarkdown(kind, repoRoot) {
   if (kind === 'cli') {
-    const { USAGE } = await import(pathToFileURL(path.join(repoRoot, 'src/usage.mjs')));
-    const { EXIT_CODES } = await import(pathToFileURL(path.join(repoRoot, 'src/diagnostics.mjs')));
+    const { USAGE } = await import(pathToFileURL(path.join(repoRoot, 'packages/core/usage.mjs')));
+    const { EXIT_CODES } = await import(pathToFileURL(path.join(repoRoot, 'packages/core/diagnostics.mjs')));
     return [
-      'This page is generated from the CLI\'s own usage text (`src/usage.mjs`), which is exactly what `construct` prints with no arguments, so it always matches the installed version.',
+      'This page is generated from the CLI\'s own usage text (`packages/core/usage.mjs`), which is exactly what `construct` prints with no arguments, so it always matches the installed version.',
       '',
       '## Usage text',
       '',
@@ -171,10 +171,10 @@ export async function generatedMarkdown(kind, repoRoot) {
     ].join('\n');
   }
   if (kind === 'rules') {
-    const { DEFAULT_RULES } = await import(pathToFileURL(path.join(repoRoot, 'src/config.mjs')));
+    const { DEFAULT_RULES } = await import(pathToFileURL(path.join(repoRoot, 'packages/core/config.mjs')));
     const rows = Object.entries(DEFAULT_RULES).map(([id, r]) => `| \`${id}\` | ${r.severity ? '`' + r.severity + '`' : (r.numeric ? 'number' : '')} | ${String(r.name).replace(/\|/g, '\\|')} |`);
     return [
-      'This table is generated from `DEFAULT_RULES` in `src/config.mjs`, the same map `construct validate` reads, so it is always current. Override any severity in `architecture.yml`:',
+      'This table is generated from `DEFAULT_RULES` in `packages/core/config.mjs`, the same map `construct validate` reads, so it is always current. Override any severity in `architecture.yml`:',
       '',
       '```yaml',
       'rules:',

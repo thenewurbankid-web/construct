@@ -7,7 +7,7 @@
 //  2. a step cannot finish without stating whether a model was involved.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validatePlan } from '../src/plan.mjs';
+import { validatePlan } from '../packages/core/plan.mjs';
 import { PROCESS_MACHINE } from '../packages/engine/processMachine.mjs';
 import {
   PROCESS_VERSION,

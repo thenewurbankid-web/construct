@@ -12,25 +12,25 @@ import { formatReport, exitCodeForViolations, ConstructError, EXIT_CODES } from 
 import { aggregateValidation } from './registry.mjs';
 import { validateArchitecture } from './architecture-enforcer.mjs';
 import { syncPublicApi } from './api-composer.mjs';
-import { summarizeUnit, listUnits, unitApiManifest, renderUnitMarkdown } from '../packages/engine/unitSummary.mjs';
-import { analyzeImpact, proposeSeedsFromText, impactApiManifest, renderImpactMarkdown } from '../packages/engine/impact.mjs';
-import { loadTemplateDir, TemplateError } from '../packages/engine/planTemplate.mjs';
-import { prHealth, renderPrHealthMarkdown, prHealthApiManifest } from '../packages/engine/prHealth.mjs';
+import { summarizeUnit, listUnits, unitApiManifest, renderUnitMarkdown } from '../../packages/engine/unitSummary.mjs';
+import { analyzeImpact, proposeSeedsFromText, impactApiManifest, renderImpactMarkdown } from '../../packages/engine/impact.mjs';
+import { loadTemplateDir, TemplateError } from '../../packages/engine/planTemplate.mjs';
+import { prHealth, renderPrHealthMarkdown, prHealthApiManifest } from '../../packages/engine/prHealth.mjs';
 import { summarizeProject, summarizeCompact, summarizeProse, summarizeSince } from './summarize.mjs';
 import { moveLayerFile, renameLayerFile } from './refactor.mjs';
 import { importVertical, importPlan, analyzeFiles, executeImportPlan } from './import.mjs';
 import { resolveRoute } from './route-resolver.mjs';
-import { DEFAULT_ENFORCERS } from '../packages/engine/defaultEnforcers.mjs';
-import { runPipeline } from '../packages/engine/pipeline.mjs';
-import { validateEnvelope } from '../packages/engine/envelope.mjs';
-import { ingestPage } from '../packages/engine/pageTransformer.mjs';
-import { generateWorkflow } from '../packages/engine/workflowGenerator.mjs';
-import { generateController } from '../packages/engine/controllerBinder.mjs';
-import { generateFeatureTests } from '../packages/engine/testGenerator.mjs';
-import { runFeatureTests, renderRunText } from '../packages/engine/testRunner.mjs';
+import { DEFAULT_ENFORCERS } from '../../packages/engine/defaultEnforcers.mjs';
+import { runPipeline } from '../../packages/engine/pipeline.mjs';
+import { validateEnvelope } from '../../packages/engine/envelope.mjs';
+import { ingestPage } from '../../packages/engine/pageTransformer.mjs';
+import { generateWorkflow } from '../../packages/engine/workflowGenerator.mjs';
+import { generateController } from '../../packages/engine/controllerBinder.mjs';
+import { generateFeatureTests } from '../../packages/engine/testGenerator.mjs';
+import { runFeatureTests, renderRunText } from '../../packages/engine/testRunner.mjs';
 import { startTimer, elapsedSeconds, formatDuration } from './timing.mjs';
-import { explainSource, renderExplained } from '../packages/engine/workflowExplain.mjs';
-import { listWorkflowSourceFiles, readWorkflowSource } from '../packages/engine/workflowSource.mjs';
+import { explainSource, renderExplained } from '../../packages/engine/workflowExplain.mjs';
+import { listWorkflowSourceFiles, readWorkflowSource } from '../../packages/engine/workflowSource.mjs';
 
 // Resolve the project root freshly per command: walks up from cwd (or from
 // --dir, when given) to find an existing architecture.yml (monorepo
@@ -49,17 +49,17 @@ function getRoot(args = []) {
 
 // The Construct package's own install directory (not the target project's
 // cwd) — enforcer modules live alongside this file, not in the user's repo.
-const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const packageRoot = path.dirname(fileURLToPath(import.meta.url));
 
 // Files that mark a module as "available" for construct doctor. These are
 // existence checks only (never imports), so they report accurately even
 // before the owning module has landed in the working tree.
 const ENFORCER_MODULES = [
-  { name: 'architecture-enforcer', file: 'src/architecture-enforcer.mjs' },
-  { name: 'soc-enforcer', file: 'src/soc-enforcer.mjs' },
-  { name: 'api-composer', file: 'src/api-composer.mjs' },
-  { name: 'readability-enforcer', file: 'src/readability-enforcer.mjs' },
-  { name: 'summarize', file: 'src/summarize.mjs' },
+  { name: 'architecture-enforcer', file: 'architecture-enforcer.mjs' },
+  { name: 'soc-enforcer', file: 'soc-enforcer.mjs' },
+  { name: 'api-composer', file: 'api-composer.mjs' },
+  { name: 'readability-enforcer', file: 'readability-enforcer.mjs' },
+  { name: 'summarize', file: 'summarize.mjs' },
 ];
 
 // `construct init [dir] [--framework nextjs|react-spa]` — the entry-point
@@ -228,7 +228,7 @@ export async function generate(args) {
   // Ticket 7.5 (#115): `construct create/generate service <name> --feature <f>
   // --openapi <spec>` compiles an OpenAPI spec into a real RTKQ injectEndpoints
   // file plus the shared transport client, instead of scaffolding the usual stub
-  // template -- see src/service-generator.mjs.
+  // template -- see packages/core/service-generator.mjs.
   const oi = args.indexOf('--openapi');
   if (layer === 'service' && oi >= 0 && args[oi + 1]) {
     const t = startTimer();
@@ -888,7 +888,7 @@ function reportImport(root, results, llm, feature, analysisCalls = 0, analysisSe
 
 // ---- import --route: interactive, whole-feature import wizard -------------
 //
-// A standalone interactive command — bin/construct.mjs dispatches it
+// A standalone interactive command — packages/cli/construct.mjs dispatches it
 // directly, bypassing importCommand entirely, and it consumes stdin itself
 // via its own line source. Deliberately NOT runnable from inside `construct
 // repl` (which is already consuming the same stdin): importCommand's

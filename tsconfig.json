@@ -15,6 +15,6 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*.mjs", "bin/**/*.mjs", "packages/ast/**/*.mjs", "packages/engine/**/*.mjs"],
+  "include": ["packages/core/**/*.mjs", "packages/cli/**/*.mjs", "packages/ast/**/*.mjs", "packages/engine/**/*.mjs"],
   "exclude": ["node_modules", "test", "test.mjs", "**/*.test.mjs"]
 }

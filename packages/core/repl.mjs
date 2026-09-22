@@ -1,4 +1,4 @@
-// Interactive front-end over the exact same functions bin/construct.mjs
+// Interactive front-end over the exact same functions packages/cli/construct.mjs
 // dispatches to for a one-shot invocation — no new command logic lives
 // here, only line-reading, tokenizing, help text, and a `cd`/`pwd`
 // convenience so a session doesn't need --dir on every line. (`import

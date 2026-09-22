@@ -7,17 +7,17 @@
 // reads real files off disk, by design, so it stays trivially reusable by
 // every other caller in this codebase), so commit() materializes the buffer
 // into a throwaway shadow copy of the project, validates *that*, and only on
-// success replays the buffered writes onto the real root -- via src/fs.mjs's
+// success replays the buffered writes onto the real root -- via packages/core/fs.mjs's
 // existing `write()` helper, the same primitive every other generator in
 // this codebase already writes through.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { write } from '../../src/fs.mjs';
-import { assertNotFrozen } from '../../src/frozen.mjs';
-import { validateArchitecture } from '../../src/architecture-enforcer.mjs';
+import { write } from '../core/fs.mjs';
+import { assertNotFrozen } from '../core/frozen.mjs';
+import { validateArchitecture } from '../core/architecture-enforcer.mjs';
 
-// Mirrors src/fs.mjs's walk(): these never belong in a shadow copy used for
+// Mirrors packages/core/fs.mjs's walk(): these never belong in a shadow copy used for
 // validation (and copying node_modules in particular would be slow/pointless).
 const SKIP_DIRS = new Set(['node_modules', '.next', '.git']);
 
@@ -81,7 +81,7 @@ export function createTransaction(root) {
      * Validate the buffered result in an isolated shadow copy of `root`,
      * then either:
      *  - commit: replay every staged write onto the real `root` (via
-     *    src/fs.mjs's `write()`) and clear the buffer, or
+     *    packages/core/fs.mjs's `write()`) and clear the buffer, or
      *  - abort: leave `root` completely untouched.
      * Either way the shadow copy itself is always cleaned up.
      *

@@ -14,11 +14,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { ts, parseTsSource as parseTs, findNode } from '../../packages/ast/index.mjs';
-import { loadConfig } from '../../src/config.mjs';
-import { write } from '../../src/fs.mjs';
-import { selfCheck, pascalCase } from '../../src/generators.mjs';
+import { loadConfig } from '../core/config.mjs';
+import { write } from '../core/fs.mjs';
+import { selfCheck, pascalCase } from '../core/generators.mjs';
 import { validateEnvelope } from './envelope.mjs';
-import { ConstructError, EXIT_CODES } from '../../src/diagnostics.mjs';
+import { ConstructError, EXIT_CODES } from '../core/diagnostics.mjs';
 
 function usageError(message) {
   return new ConstructError(message, { exitCode: EXIT_CODES.USAGE_ERROR });

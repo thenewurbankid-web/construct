@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { createFeature, generateLayer, generateVertical, missingLayerPrerequisites, selfCheck } from '../src/generators.mjs';
-import { validateArchitecture } from '../src/architecture-enforcer.mjs';
-import { ConstructError, EXIT_CODES } from '../src/diagnostics.mjs';
+import { createFeature, generateLayer, generateVertical, missingLayerPrerequisites, selfCheck } from '../packages/core/generators.mjs';
+import { validateArchitecture } from '../packages/core/architecture-enforcer.mjs';
+import { ConstructError, EXIT_CODES } from '../packages/core/diagnostics.mjs';
 import { parseToAst } from '../packages/ast/index.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-import { init, feature, generate, sync, validate, summarize, doctor, create, refactor, research, review, testCommand, template, importCommand, runImportRouteWizard, pipeline } from '../src/cli.mjs';
-import { startRepl } from '../src/repl.mjs';
-import { EXIT_CODES, ConstructError } from '../src/diagnostics.mjs';
-import { USAGE } from '../src/usage.mjs';
+import { init, feature, generate, sync, validate, summarize, doctor, create, refactor, research, review, testCommand, template, importCommand, runImportRouteWizard, pipeline } from '../core/cli.mjs';
+import { startRepl } from '../core/repl.mjs';
+import { EXIT_CODES, ConstructError } from '../core/diagnostics.mjs';
+import { USAGE } from '../core/usage.mjs';
 
 const [cmd, ...args] = process.argv.slice(2);
 

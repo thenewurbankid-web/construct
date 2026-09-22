@@ -6,12 +6,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { extractCode, whyNotCode, requestFileText, OUTPUT_CONTRACT } from '../src/llm-fill.mjs';
-import { createFeature, generateLayer, fillGeneratedFile } from '../src/generators.mjs';
-import { importVertical } from '../src/import.mjs';
-import { generate, importCommand } from '../src/cli.mjs';
-import { PROVIDERS } from '../src/llm.mjs';
-import { ConstructError } from '../src/diagnostics.mjs';
+import { extractCode, whyNotCode, requestFileText, OUTPUT_CONTRACT } from '../packages/core/llm-fill.mjs';
+import { createFeature, generateLayer, fillGeneratedFile } from '../packages/core/generators.mjs';
+import { importVertical } from '../packages/core/import.mjs';
+import { generate, importCommand } from '../packages/core/cli.mjs';
+import { PROVIDERS } from '../packages/core/llm.mjs';
+import { ConstructError } from '../packages/core/diagnostics.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const CODE = 'export function Foo() { return 7; }';

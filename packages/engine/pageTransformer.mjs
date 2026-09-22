@@ -6,21 +6,21 @@
 // presentation-only, rewires each catalogued attribute to a same-named prop,
 // and emits an explicit `<Feature>PageProps.ts` interface declaring them.
 //
-// Parsing is typescript-estree/estree-walker (src/parser.mjs's parseToAst,
+// Parsing is typescript-estree/estree-walker (packages/core/parser.mjs's parseToAst,
 // reused rather than re-parsed a second way) per the epic's reconciliation
 // notes -- not @babel/parser/@babel/traverse. This module only ever *reads*
 // AST node ranges to slice/splice the original source text (the same
-// range-based technique src/architecture-enforcer.mjs and
+// range-based technique packages/core/architecture-enforcer.mjs and
 // ui/server/src/pagesEditor.mjs already use for source-preserving edits) --
 // it never re-prints a whole AST, so original formatting/comments in the
 // kept region survive untouched.
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseToAst, walkAst } from '../../packages/ast/index.mjs';
-import { loadConfig } from '../../src/config.mjs';
-import { write } from '../../src/fs.mjs';
-import { selfCheck, pascalCase } from '../../src/generators.mjs';
-import { ConstructError, EXIT_CODES } from '../../src/diagnostics.mjs';
+import { loadConfig } from '../core/config.mjs';
+import { write } from '../core/fs.mjs';
+import { selfCheck, pascalCase } from '../core/generators.mjs';
+import { ConstructError, EXIT_CODES } from '../core/diagnostics.mjs';
 import { extractMachines } from './workflowExtractor.mjs';
 import { listWorkflowSourceFiles, readWorkflowSource } from './workflowSource.mjs';
 import { assignTestIds, slotTestId, eventTestId } from './testAttributes.mjs';

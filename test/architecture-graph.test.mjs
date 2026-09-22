@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { ConstructError } from '../src/diagnostics.mjs';
+import { ConstructError } from '../packages/core/diagnostics.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import {
   CANONICAL_LAYERS,
@@ -10,7 +10,7 @@ import {
   validateGraph,
   loadLayerGraph,
   canImport,
-} from '../src/architecture-graph.mjs';
+} from '../packages/core/architecture-graph.mjs';
 
 test('validateGraph accepts the canonical default graph', () => {
   assert.equal(validateGraph(CANONICAL_LAYERS), true);

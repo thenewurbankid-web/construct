@@ -38,7 +38,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { resolveStateDir } from './processStore.mjs';
 import { StepAborted } from './processEngine.mjs';
 
-const BIN = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'bin', 'construct.mjs');
+const BIN = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'cli', 'construct.mjs');
 const GIT_IDENTITY = ['-c', 'user.name=Construct Bot', '-c', 'user.email=bot@construct.invalid', '-c', 'commit.gpgsign=false'];
 const MODEL_ENV = ['OLLAMA_HOST', 'OLLAMA_MODEL', 'CONSTRUCT_OLLAMA_URL', 'CONSTRUCT_OLLAMA_MODEL', 'ANTHROPIC_API_KEY'];
 const DEFAULT_MAX_CONCURRENT = 1;

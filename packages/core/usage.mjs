@@ -1,4 +1,4 @@
-// The one-shot CLI's top-level usage text (printed by bin/construct.mjs
+// The one-shot CLI's top-level usage text (printed by packages/cli/construct.mjs
 // when invoked with no command, or an unrecognized one). Pulled out into
 // its own module — rather than left as a local const in the bin script —
 // so anything else that wants to show the *real* CLI usage text (e.g. the

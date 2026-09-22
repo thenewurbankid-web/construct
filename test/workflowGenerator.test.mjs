@@ -11,15 +11,15 @@ import {
   extractEventNames,
   eventsToEnvelope,
 } from '../packages/engine/workflowGenerator.mjs';
-import { createFeature } from '../src/generators.mjs';
-import { validateArchitecture, detectLayerViolations } from '../src/architecture-enforcer.mjs';
-import { parseToAst } from '../src/parser.mjs';
-import { ConstructError, EXIT_CODES } from '../src/diagnostics.mjs';
+import { createFeature } from '../packages/core/generators.mjs';
+import { validateArchitecture, detectLayerViolations } from '../packages/core/architecture-enforcer.mjs';
+import { parseToAst } from '../packages/core/parser.mjs';
+import { ConstructError, EXIT_CODES } from '../packages/core/diagnostics.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(here, '..');
-const bin = path.join(REPO_ROOT, 'bin', 'construct.mjs');
+const bin = path.join(REPO_ROOT, 'packages', 'cli', 'construct.mjs');
 const CHECKOUT_DESCRIPTOR = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'fixtures', 'workflow-graphs', 'checkout.json'), 'utf8'));
 
 function tmpProject() {

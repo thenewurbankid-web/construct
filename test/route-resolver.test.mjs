@@ -14,8 +14,8 @@ import {
   findReactSpaRoutesFile,
   parseReactSpaRoutes,
   findControllerFile,
-} from '../src/route-resolver.mjs';
-import { ConstructError } from '../src/diagnostics.mjs';
+} from '../packages/core/route-resolver.mjs';
+import { ConstructError } from '../packages/core/diagnostics.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 function tmpProject() {

@@ -8,9 +8,9 @@ import { machinesOf } from '../machines.mjs';
 import { discoverRoutes, frameworkOf } from '../route-adapters.mjs';
 import { featureNames, refOf } from './feature.mjs';
 import { extractExports } from '../../../../packages/ast/index.mjs';
-import { extractDeclarationSource } from '../../../../src/summarize.mjs';
-import { describeImplementation } from '../../../../src/prose.mjs';
-import { resolveUrlToFolder, findRouteEntryFile, findReactSpaRoutesFile, parseReactSpaRoutes } from '../../../../src/route-resolver.mjs';
+import { extractDeclarationSource } from '../../../core/summarize.mjs';
+import { describeImplementation } from '../../../core/prose.mjs';
+import { resolveUrlToFolder, findRouteEntryFile, findReactSpaRoutesFile, parseReactSpaRoutes } from '../../../core/route-resolver.mjs';
 
 const LEVEL = { brief: 0, standard: 1, full: 2 };
 const norm = (ref) => ref.replace(/^\.\//, '').replace(/\/+$/, '');

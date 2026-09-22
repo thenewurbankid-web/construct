@@ -20,7 +20,7 @@
 // record. Neither file can drift from the other silently, because an action
 // named in the config with no implementation here fails a test.
 import crypto from 'node:crypto';
-import { validatePlan, migratePlan } from '../../src/plan.mjs';
+import { validatePlan, migratePlan } from '../core/plan.mjs';
 import {
   PROCESS_STATES,
   PROCESS_STATE_PATHS,

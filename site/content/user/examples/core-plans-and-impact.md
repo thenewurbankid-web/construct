@@ -9,7 +9,7 @@ This page is the core API only. The same functions from a terminal are in the [C
 ### 1. A plan is a checked contract
 
 ```js
-import { createPlan, validatePlan, planToCommand, planTouches } from './src/plan.mjs';
+import { createPlan, validatePlan, planToCommand, planTouches } from './packages/core/plan.mjs';
 
 const plan = createPlan({ source: 'text', title: 'Add an invoice slice to billing' }, [
   { id: 's1', title: 'Create the billing feature', flow: 'create.feature',

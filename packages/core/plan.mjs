@@ -7,14 +7,14 @@
 // is executable because it names a deterministic block, not because a model
 // re-reads prose at run time.
 //
-// Relationship to `src/import.mjs`'s plan (the decision recorded on #286):
+// Relationship to `packages/core/import.mjs`'s plan (the decision recorded on #286):
 // this is a DIFFERENT artifact that CONTAINS an import plan rather than an
 // extension of it. `import.mjs`'s `{ feature, units }` is single-flow and
 // single-feature by construction (executeImportPlan runs importVertical once
 // per unit against one feature), carries no executor tag, no expected-touch
 // set, no step identity and no dependency concept, and its validator throws,
 // mutates its input and prints warnings. Here it is nested unchanged as the
-// `args.plan` of one `import.plan` step. `src/import.mjs` is untouched and
+// `args.plan` of one `import.plan` step. `packages/core/import.mjs` is untouched and
 // `validatePlanShape()` remains the authority for that sub-object at
 // execution time (including its deliberate layer repair).
 //
@@ -31,7 +31,7 @@
 // paused/failed/done) deliberately lives in #287's process model keyed by
 // `step.id`, not in the plan.
 import path from 'node:path';
-import { validateEnvelope } from '../packages/engine/envelope.mjs';
+import { validateEnvelope } from '../../packages/engine/envelope.mjs';
 
 export const PLAN_VERSION = 1;
 
@@ -90,8 +90,8 @@ export const PLAN_ERROR_CODES = Object.freeze({
 const DIR_ARG = { type: 'string', flag: '--dir', description: 'Target a Construct project nested in a subdirectory.' };
 const LLM_ARG = { type: 'string', flag: '--llm', description: 'LLM provider that writes the file bodies (claude, ollama). Only meaningful on a local-model step.' };
 
-/** The flow registry: every flow `bin/construct.mjs` actually exposes, keyed
- * by a stable dotted id. Checked against `construct --help` and src/cli.mjs,
+/** The flow registry: every flow `packages/cli/construct.mjs` actually exposes, keyed
+ * by a stable dotted id. Checked against `construct --help` and packages/core/cli.mjs,
  * not against prose.
  *
  * Each entry declares:
@@ -243,7 +243,7 @@ export const PLAN_FLOWS = Object.freeze({
   },
   'import.plan': {
     cli: ['import'],
-    summary: 'Run a whole approved import plan — the existing { feature, units } artifact from src/import.mjs, carried inline as this step\'s argument.',
+    summary: 'Run a whole approved import plan — the existing { feature, units } artifact from packages/core/import.mjs, carried inline as this step\'s argument.',
     writes: true,
     executors: ['deterministic', 'local-model', 'user'],
     args: {
@@ -253,7 +253,7 @@ export const PLAN_FLOWS = Object.freeze({
         flag: '--plan',
         materialize: 'file',
         schemaRef: '#/definitions/importPlan',
-        description: 'The import plan itself: { feature, units: [{ name, layers, from }] }. Validated structurally here and by validatePlanShape() in src/import.mjs at execution time.',
+        description: 'The import plan itself: { feature, units: [{ name, layers, from }] }. Validated structurally here and by validatePlanShape() in packages/core/import.mjs at execution time.',
       },
       llm: LLM_ARG,
       dir: DIR_ARG,
@@ -436,7 +436,7 @@ function checkArgType(spec, value) {
 }
 
 /** Structural check of a nested `import.plan` argument — deliberately the
- * same requirements validatePlanShape() in src/import.mjs enforces, but
+ * same requirements validatePlanShape() in packages/core/import.mjs enforces, but
  * without throwing, mutating or printing, so a bad one is caught while the
  * plan is being reviewed rather than half-way through executing it.
  * validatePlanShape() still runs at execution time and keeps its layer
@@ -779,7 +779,7 @@ export function formatPlanErrors(errors) {
  * runner can execute a plan without re-deriving how any flow is invoked.
  *
  * Returns `{ argv, stdin, files, manual }`:
- *  - `argv`   the arguments to `bin/construct.mjs`, or null for `manual.task`
+ *  - `argv`   the arguments to `packages/cli/construct.mjs`, or null for `manual.task`
  *             (nothing to run — read `instructions` instead)
  *  - `stdin`  a JSON string to pipe in (`pipeline.run`'s envelope), else null
  *  - `files`  object arguments the caller must write to a temp file and

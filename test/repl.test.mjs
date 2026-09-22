@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const bin = path.join(here, '..', 'bin', 'construct.mjs');
+const bin = path.join(here, '..', 'packages', 'cli', 'construct.mjs');
 
 function emptyProjectDir() {
   return makeTempDir('construct-repl-');

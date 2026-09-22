@@ -1,7 +1,7 @@
 // #286 -- the Execution Plan contract.
 //
 // Three things are being proven here, in this order of importance:
-//  1. schemas/plan.v1.json and src/plan.mjs's registry/validator cannot drift
+//  1. schemas/plan.v1.json and packages/core/plan.mjs's registry/validator cannot drift
 //     (the schema's enums, required fields and per-flow `allOf` branches are
 //     read out of the file and compared to PLAN_FLOWS, never hand-copied);
 //  2. the schema can express EVERY flow the CLI actually has -- there is one
@@ -34,8 +34,8 @@ import {
   planToCommand,
   planTouches,
   formatPlanErrors,
-} from '../src/plan.mjs';
-import { validatePlanShape } from '../src/import.mjs';
+} from '../packages/core/plan.mjs';
+import { validatePlanShape } from '../packages/core/import.mjs';
 import { createEnvelope } from '../packages/engine/envelope.mjs';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -378,7 +378,7 @@ test('planToCommand rejects an unknown flow instead of inventing a command', () 
 
 test("a planToCommand argv really runs: create.feature scaffolds the feature it said it would", () => {
   const dir = makeTempDir('construct-plan-');
-  const bin = path.join(REPO_ROOT, 'bin', 'construct.mjs');
+  const bin = path.join(REPO_ROOT, 'packages', 'cli', 'construct.mjs');
   try {
     assert.equal(spawnSync('node', [bin, 'init', '.'], { cwd: dir, encoding: 'utf8' }).status, 0);
     const step = { id: 'x', title: 'Create the checkout feature', flow: 'create.feature', executor: 'deterministic', args: { name: 'checkout' }, touches: touching('checkout', 'features/checkout/index.ts') };
@@ -442,7 +442,7 @@ test('formatPlanErrors renders one readable line per structured error', () => {
 // 6. The import-plan containment decision (#286)
 // ---------------------------------------------------------------------------
 
-test("an import.plan step's argument is exactly the artifact src/import.mjs already accepts", () => {
+test("an import.plan step's argument is exactly the artifact packages/core/import.mjs already accepts", () => {
   // The decision recorded on #286: this schema CONTAINS the existing import
   // plan rather than extending or replacing it. If the two shapes ever drift,
   // this fails -- validatePlanShape is the authority for that sub-object.

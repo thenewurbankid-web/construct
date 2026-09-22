@@ -15,7 +15,7 @@ import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { createProcess } from '../packages/engine/processModel.mjs';
 import { openProcessStore } from '../packages/engine/processStore.mjs';
 import { createProcessEngine, materializeCommand, StepAborted } from '../packages/engine/processEngine.mjs';
-import { validateArchitecture } from '../src/architecture-enforcer.mjs';
+import { validateArchitecture } from '../packages/core/architecture-enforcer.mjs';
 
 /** A clock that ticks one second per call, so every assertion about
  * timestamps and ordering is exact rather than flaky. */

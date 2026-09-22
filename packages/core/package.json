@@ -1,0 +1,33 @@
+{
+  "name": "@line/construct-core",
+  "version": "1.0.0",
+  "description": "Construct's deterministic, non-LLM core: config/architecture rules, generators, the plan/validate/summarize/impact engine. No CLI (see @line/construct), no UI.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "exports": {
+    ".": "./cli.mjs",
+    "./plan": "./plan.mjs",
+    "./validate": "./validate.mjs",
+    "./summarize": "./summarize.mjs",
+    "./impact": "./impact.mjs",
+    "./generate": "./generators.mjs",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "*.mjs",
+    "!*.test.mjs"
+  ],
+  "dependencies": {
+    "@hey-api/openapi-ts": "^0.97.3",
+    "diff": "^9.0.0",
+    "js-yaml": "^4.3.2",
+    "minimatch": "^10.0.1"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  }
+}

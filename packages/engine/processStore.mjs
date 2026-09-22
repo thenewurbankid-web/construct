@@ -13,7 +13,7 @@
 // Why not a file inside the project: runtime state would become a citizen of
 // the user's repository. It would show up in `git status`, get committed by
 // accident, need a `.gitignore` line in a repo Construct does not own, be
-// walked by src/fs.mjs's walker and by the frozen/validate enforcers, and be
+// walked by packages/core/fs.mjs's walker and by the frozen/validate enforcers, and be
 // copied into every shadow tree `transactionalWriter.commit()` builds to
 // validate against. Process state is machine-local, like shell history.
 // Source is not.

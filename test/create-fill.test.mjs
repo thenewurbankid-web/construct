@@ -6,9 +6,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { createFeature, generateLayer, fillGeneratedFile, LAYER_CONSTRAINTS } from '../src/generators.mjs';
-import { create, generate } from '../src/cli.mjs';
-import { PROVIDERS } from '../src/llm.mjs';
+import { createFeature, generateLayer, fillGeneratedFile, LAYER_CONSTRAINTS } from '../packages/core/generators.mjs';
+import { create, generate } from '../packages/core/cli.mjs';
+import { PROVIDERS } from '../packages/core/llm.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 function tmpProject() {

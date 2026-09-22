@@ -29,7 +29,7 @@ const { createActor } = requireUi('xstate');
 
 // 1. What the narrator says (the same JSON the UI panels use).
 const report = JSON.parse(
-  execFileSync('node', [path.join(repo, 'bin/construct.mjs'), 'research', 'workflow', feature, file, '--format', 'json', '--dir', projectDir], { encoding: 'utf8' }),
+  execFileSync('node', [path.join(repo, 'packages/cli/construct.mjs'), 'research', 'workflow', feature, file, '--format', 'json', '--dir', projectDir], { encoding: 'utf8' }),
 );
 const narrated = report.files[0].machines[0];
 

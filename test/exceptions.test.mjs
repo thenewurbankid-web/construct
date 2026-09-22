@@ -1,8 +1,8 @@
-// src/exceptions.mjs — the one shared implementation of scoped, time-boxed rule exceptions.
+// packages/core/exceptions.mjs — the one shared implementation of scoped, time-boxed rule exceptions.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateExceptionsShape, exceptionApplies, expiredExceptionViolations } from '../src/exceptions.mjs';
-import * as arch from '../src/architecture-enforcer.mjs';
+import { validateExceptionsShape, exceptionApplies, expiredExceptionViolations } from '../packages/core/exceptions.mjs';
+import * as arch from '../packages/core/architecture-enforcer.mjs';
 
 const live = { rule: 'PAGE-004', path: 'features/legacy/**', expires: '2999-01-01' };
 

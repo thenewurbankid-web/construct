@@ -30,7 +30,7 @@ import { createContext, isTestFile, violationsFor } from './units/facts.mjs';
 import { defaultUnitRegistry } from './units/registry.mjs';
 import { resolveUnitIn } from './unitSummary.mjs';
 import { featureNames } from './units/kinds/feature.mjs';
-import { matchFrozen } from '../../src/frozen.mjs';
+import { matchFrozen } from '../core/frozen.mjs';
 
 export const SCHEMA_VERSION = 1;
 /** Default transitive depth on the importer (upstream) direction — see the module docs and #288. */

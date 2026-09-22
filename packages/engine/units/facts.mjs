@@ -3,15 +3,15 @@
 // each unit-kind summarizer composes these instead of re-parsing.
 import fs from 'node:fs';
 import path from 'node:path';
-import { loadConfig } from '../../../src/config.mjs';
-import { walk, rel } from '../../../src/fs.mjs';
-import { loadLayerGraph, classifyProjectFile } from '../../../src/architecture-graph.mjs';
-import { readFrozenGlobs } from '../../../src/frozen.mjs';
+import { loadConfig } from '../../core/config.mjs';
+import { walk, rel } from '../../core/fs.mjs';
+import { loadLayerGraph, classifyProjectFile } from '../../core/architecture-graph.mjs';
+import { readFrozenGlobs } from '../../core/frozen.mjs';
 import { parseToAst, walkAst } from '../../../packages/ast/index.mjs';
-import { readPathAliases, resolveImportSpecifier } from '../../../src/route-resolver.mjs';
+import { readPathAliases, resolveImportSpecifier } from '../../core/route-resolver.mjs';
 import { DEFAULT_ENFORCERS } from '../defaultEnforcers.mjs';
-import { aggregateValidation } from '../../../src/registry.mjs';
-import { exceptionApplies } from '../../../src/exceptions.mjs';
+import { aggregateValidation } from '../../core/registry.mjs';
+import { exceptionApplies } from '../../core/exceptions.mjs';
 
 export const SOURCE_EXT = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs']);
 export const isTestFile = (p) => /\.(test|spec)\.[a-z]+$/.test(p) || /(^|\/)(__tests__|e2e)\//.test(p);

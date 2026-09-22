@@ -239,7 +239,7 @@ Construct's feature-internal architecture (everything from Controller down: Work
 | Route layer pattern | `app/**/page.tsx` — one file per route folder (Next.js App Router file-system routing: route groups `(name)`, dynamic segments `[name]`) | `src/App.tsx` — one centralized react-router table for the whole app |
 | How a controller gets registered as a route | A physical `app/<route>/page.tsx` imports the controller and renders it as the page's default export | A `<Route path="..." element={<XController />} />` entry inside `src/App.tsx` |
 | `construct init [--framework ...]` scaffold | `app/page.tsx` | `src/main.tsx` (a real bootstrap: `BrowserRouter` + `createRoot`) + `src/App.tsx`, with the `core` feature's controller already registered as a route |
-| `construct import --route <url>` entry resolution | Walks `app/` for the folder owning `page.tsx`, matching route groups/dynamic segments (`src/route-resolver.mjs`) | Parses `src/App.tsx`'s `<Route>` table for the controller name registered at that URL, then locates it under `features/*/controllers/` |
+| `construct import --route <url>` entry resolution | Walks `app/` for the folder owning `page.tsx`, matching route groups/dynamic segments (`packages/core/route-resolver.mjs`) | Parses `src/App.tsx`'s `<Route>` table for the controller name registered at that URL, then locates it under `features/*/controllers/` |
 
 Everything else — every generator, every rule, the controller's own composition (it still imports and renders a same-named `Page` from the feature's `pages/` folder either way, since that's Construct's own convention, not Next.js's) — is identical between the two targets. Set it in `architecture.yml`:
 

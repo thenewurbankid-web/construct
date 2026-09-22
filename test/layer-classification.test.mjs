@@ -3,9 +3,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { classifyFile, classifyProjectFile } from '../src/architecture-graph.mjs';
-import { classifyFile as enforcerClassifyFile } from '../src/architecture-enforcer.mjs';
-import { classifyLayer, parseFile, summarizeFeature } from '../src/parser.mjs';
+import { classifyFile, classifyProjectFile } from '../packages/core/architecture-graph.mjs';
+import { classifyFile as enforcerClassifyFile } from '../packages/core/architecture-enforcer.mjs';
+import { classifyLayer, parseFile, summarizeFeature } from '../packages/core/parser.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 function project(files, architectureYml) {

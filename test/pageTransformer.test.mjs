@@ -5,15 +5,15 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { transformPristineSource, ingestPage } from '../packages/engine/pageTransformer.mjs';
-import { createFeature } from '../src/generators.mjs';
-import { validateArchitecture } from '../src/architecture-enforcer.mjs';
-import { ConstructError, EXIT_CODES } from '../src/diagnostics.mjs';
-import { parseToAst } from '../src/parser.mjs';
+import { createFeature } from '../packages/core/generators.mjs';
+import { validateArchitecture } from '../packages/core/architecture-enforcer.mjs';
+import { ConstructError, EXIT_CODES } from '../packages/core/diagnostics.mjs';
+import { parseToAst } from '../packages/core/parser.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(here, '..');
-const bin = path.join(REPO_ROOT, 'bin', 'construct.mjs');
+const bin = path.join(REPO_ROOT, 'packages', 'cli', 'construct.mjs');
 const FIXTURE_SOURCE = fs.readFileSync(path.join(REPO_ROOT, 'fixtures', 'subframe-export', 'CheckoutExport.tsx'), 'utf8');
 
 function tmpProject() {

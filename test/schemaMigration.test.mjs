@@ -8,7 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Ajv from 'ajv';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
-import { validatePlan, migratePlan, PLAN_ERROR_CODES } from '../src/plan.mjs';
+import { validatePlan, migratePlan, PLAN_ERROR_CODES } from '../packages/core/plan.mjs';
 import { validateProcess, migrateProcess, PROCESS_ERROR_CODES } from '../packages/engine/processModel.mjs';
 import { validateEnvelope, createEnvelope } from '../packages/engine/envelope.mjs';
 import { openProcessStore } from '../packages/engine/processStore.mjs';

@@ -172,7 +172,7 @@ test('markdown rendering and the agent usage manifest', () => {
 });
 
 test('CLI: construct summarize <ref>, --list, --usage, structured errors + exit code, legacy form untouched', () => {
-  const run = (...a) => spawnSync(process.execPath, [path.join(REPO, 'bin', 'construct.mjs'), ...a], { encoding: 'utf8' });
+  const run = (...a) => spawnSync(process.execPath, [path.join(REPO, 'packages', 'cli', 'construct.mjs'), ...a], { encoding: 'utf8' });
   const ok = run('summarize', 'login', '--dir', EXAMPLE, '--detail', 'brief');
   assert.equal(ok.status, 0, ok.stderr);
   const parsed = JSON.parse(ok.stdout);

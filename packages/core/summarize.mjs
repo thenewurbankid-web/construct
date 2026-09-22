@@ -1,6 +1,6 @@
-// Summarization output for humans and AI agents (Epic 3.3), built on src/parser.mjs.
+// Summarization output for humans and AI agents (Epic 3.3), built on packages/core/parser.mjs.
 // Pure functions only — no CLI argument parsing here. Wiring these into
-// `construct summarize` is left to whoever owns src/cli.mjs.
+// `construct summarize` is left to whoever owns packages/core/cli.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -162,7 +162,7 @@ const LAYER_TEMPLATES = {
  * its first top-level `;`. Tracks string/template-literal and comment
  * content so semicolons or braces inside them are never mistaken for
  * statement structure. Best-effort text scanning, not a real parser — see
- * src/parser.mjs's module comment for the same tradeoff applied elsewhere. */
+ * packages/core/parser.mjs's module comment for the same tradeoff applied elsewhere. */
 export function extractDeclarationSource(source, startIndex) {
   const isBraceTerminated = /^(export\s+)?(default\s+)?(async\s+)?(function\b|class\b)/.test(source.slice(startIndex));
   let depth = 0;

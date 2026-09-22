@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DEFAULT_RULES } from '../../../../src/config.mjs';
+import { DEFAULT_RULES } from '../../../core/config.mjs';
 import { createContext, fileEntry, healthFrom } from '../facts.mjs';
 import { refOf } from './feature.mjs';
 
@@ -69,8 +69,8 @@ const GENERATORS = {
   workflow: { file: 'packages/engine/workflowGenerator.mjs', cli: 'construct create workflow <name> --feature <f>', what: 'Generates an XState workflow from a state descriptor, no LLM.' },
   controller: { file: 'packages/engine/controllerBinder.mjs', cli: 'construct create controller <name> --feature <f>', what: 'Binds a page\'s props to a hook\'s members and writes the controller.' },
   page: { file: 'packages/engine/pageTransformer.mjs', cli: 'construct import <name> --feature <f> --layers page --from <path>', what: 'Ingests an existing page into a presentation-only page.' },
-  service: { file: 'src/service-generator.mjs', cli: 'construct create service <name> --feature <f>', what: 'Generates a service/API layer (optionally from an OpenAPI spec).' },
-  layer: { file: 'src/generators.mjs', cli: 'construct create <layer> <name> --feature <f>', what: 'Scaffolds one layer file (or a whole vertical) from templates.' },
+  service: { file: 'packages/core/service-generator.mjs', cli: 'construct create service <name> --feature <f>', what: 'Generates a service/API layer (optionally from an OpenAPI spec).' },
+  layer: { file: 'packages/core/generators.mjs', cli: 'construct create <layer> <name> --feature <f>', what: 'Scaffolds one layer file (or a whole vertical) from templates.' },
   pipeline: { file: 'packages/engine/pipeline.mjs', cli: 'construct pipeline run', what: 'Runs generator steps in one validated, atomic transaction over a Context Envelope.' },
 };
 export const generatorKind = {

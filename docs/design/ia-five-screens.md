@@ -805,7 +805,7 @@ default destination becomes the configured root, and its first message names it.
 | Routes that use a feature, the router kind | `featureRoutes` / `discoverRoutes` with adapters `nextjs` and `react-spa` (`packages/engine/units/route-adapters.mjs`); `sections.flow` in the feature summary | No adapter for a plain Express backend (owner listed "Express"): a candidate adapter |
 | Layer files and the import graph | `buildFlow(ctx, feature)`, `buildImportGraph`; `listUnits` for features and files | none for present layers |
 | Missing-layer detection | `validate` reports missing files; the seven layer names are configuration | A small "layers present / missing" summary per feature (candidate deterministic block) |
-| Configurable features root | `features.root` is read by `src/config.mjs` (default `features`) | Not verified that the Cockpit, the wizard and the tree honour a non-default root everywhere; needs a check |
+| Configurable features root | `features.root` is read by `packages/core/config.mjs` (default `features`) | Not verified that the Cockpit, the wizard and the tree honour a non-default root everywhere; needs a check |
 | "Not managed" legacy files | none found | A block that lists source files outside the root (candidate) |
 | Violations per layer | validate output with file paths | grouping by layer for the pin (UI only) |
 | Feature with no route note | `NOTE_NO_ROUTE` (info) | UI wording and the "Map to a route" action |

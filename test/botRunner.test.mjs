@@ -1,5 +1,5 @@
 // #291 — the bot runner, proven against a real git repository and real child
-// processes (the child is a stand-in for bin/construct.mjs, see
+// processes (the child is a stand-in for packages/cli/construct.mjs, see
 // test-utils/fakeConstructBin.mjs). What is worth failing a build over:
 //  1. bots write only in their worktree — the user's tree is byte-identical
 //     after success, failure and cancel;
@@ -15,7 +15,7 @@ import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
-import { PLAN_FLOWS } from '../src/plan.mjs';
+import { PLAN_FLOWS } from '../packages/core/plan.mjs';
 import { createProcess } from '../packages/engine/processModel.mjs';
 import { openProcessStore } from '../packages/engine/processStore.mjs';
 import { createProcessEngine } from '../packages/engine/processEngine.mjs';

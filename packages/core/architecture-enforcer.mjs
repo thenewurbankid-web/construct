@@ -1,7 +1,7 @@
 // Epic 1.2 — Layer Boundary Enforcer
 //
 // Classifies files by path pattern, checks import edges against the layer
-// graph (src/architecture-graph.mjs), detects effects inside layers that
+// graph (packages/core/architecture-graph.mjs), detects effects inside layers that
 // must stay pure/thin, and honors scoped/time-boxed exceptions. All
 // violations are produced through diagnostics.mjs's makeViolation with
 // module: 'architecture'.
@@ -9,7 +9,7 @@
 // Layer-violation detection (detectLayerViolations, below) is AST-based
 // (epic #76 / #89): it reads real import declarations and real call/
 // identifier usage from the parsed tree via parseToAst/extractImports
-// (src/parser.mjs), not regex/text-pattern matching over the whole file. A
+// (packages/core/parser.mjs), not regex/text-pattern matching over the whole file. A
 // comment or string literal that happens to contain a banned substring
 // (e.g. "workflow/service/domain" or "fetch()") is never part of the
 // executable AST, so it can no longer trip a rule the way real code would
@@ -21,9 +21,9 @@ import { loadLayerGraph, canImport, classifyFile } from './architecture-graph.mj
 import { makeViolation, ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { walk, rel } from './fs.mjs';
 import { globToRegExp, matchGlob } from './glob.mjs';
-import { parseToAst, extractImports, staticImportEntries, lineOf, collectCalls, collectBareIdentifierUsages, collectControlFlowNodes } from '../packages/ast/index.mjs';
-import { extractMachines } from '../packages/engine/workflowExtractor.mjs';
-import { findHealthIssues } from '../packages/engine/workflowScenarios.mjs';
+import { parseToAst, extractImports, staticImportEntries, lineOf, collectCalls, collectBareIdentifierUsages, collectControlFlowNodes } from '../../packages/ast/index.mjs';
+import { extractMachines } from '../../packages/engine/workflowExtractor.mjs';
+import { findHealthIssues } from '../../packages/engine/workflowScenarios.mjs';
 import { exceptionApplies, validateExceptionsShape, expiredExceptionViolations } from './exceptions.mjs';
 import { matchFrozen } from './frozen.mjs';
 import { isNonLayerPath } from './nonLayer.mjs';

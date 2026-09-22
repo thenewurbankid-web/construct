@@ -5,7 +5,7 @@ const REQUIRED_FIELDS = ['rule', 'module', 'severity', 'file', 'line', 'message'
 export const EXIT_CODES = { OK: 0, VIOLATIONS: 1, USAGE_ERROR: 2, INTERNAL_ERROR: 3 };
 
 /**
- * An error that carries the violations that caused it and the process exit code the CLI should use. Thrown by commands that must stop (validation failures, usage errors); `src/cli.mjs` turns it into an exit status.
+ * An error that carries the violations that caused it and the process exit code the CLI should use. Thrown by commands that must stop (validation failures, usage errors); `packages/core/cli.mjs` turns it into an exit status.
  *
  * @example
  * throw new ConstructError("2 violations", { violations, exitCode: EXIT_CODES.VIOLATIONS });

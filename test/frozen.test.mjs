@@ -7,21 +7,21 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { loadConfig, DEFAULT_RULES } from '../src/config.mjs';
-import { normalizeFrozen, matchFrozen, assertNotFrozen } from '../src/frozen.mjs';
-import { validateArchitecture } from '../src/architecture-enforcer.mjs';
-import { createFeature, generateLayer, generateVertical, renderLayer } from '../src/generators.mjs';
-import { importVertical } from '../src/import.mjs';
-import { moveLayerFile, renameLayerFile } from '../src/refactor.mjs';
+import { loadConfig, DEFAULT_RULES } from '../packages/core/config.mjs';
+import { normalizeFrozen, matchFrozen, assertNotFrozen } from '../packages/core/frozen.mjs';
+import { validateArchitecture } from '../packages/core/architecture-enforcer.mjs';
+import { createFeature, generateLayer, generateVertical, renderLayer } from '../packages/core/generators.mjs';
+import { importVertical } from '../packages/core/import.mjs';
+import { moveLayerFile, renameLayerFile } from '../packages/core/refactor.mjs';
 import { createTransaction } from '../packages/engine/transactionalWriter.mjs';
 import { runPipeline } from '../packages/engine/pipeline.mjs';
-import { write } from '../src/fs.mjs';
-import { ConstructError } from '../src/diagnostics.mjs';
+import { write } from '../packages/core/fs.mjs';
+import { ConstructError } from '../packages/core/diagnostics.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(here, '..', 'fixtures', 'frozen-presentation');
-const bin = path.join(here, '..', 'bin', 'construct.mjs');
+const bin = path.join(here, '..', 'packages', 'cli', 'construct.mjs');
 const FROZEN_RULES = ['PAGE-007', 'COMPONENT-004', 'CONTROLLER-002'];
 
 /** Copy the fixture (frozen source + both projects) into a temp dir so tests

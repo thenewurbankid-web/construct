@@ -12,14 +12,14 @@
 // compiler API is for (not ts-morph, not a templating library). The
 // never-varying wrapper around it (the `import { setup } from 'xstate'`
 // line, the `setup(...).createMachine(...)` call shape, the exported
-// const) stays a plain template string, matching src/generators.mjs's own
+// const) stays a plain template string, matching packages/core/generators.mjs's own
 // style for boilerplate that needs no real synthesis.
 import path from 'node:path';
 import { ts, printNode as print } from '../../packages/ast/index.mjs';
-import { loadConfig } from '../../src/config.mjs';
-import { write } from '../../src/fs.mjs';
-import { selfCheck, pascalCase } from '../../src/generators.mjs';
-import { ConstructError, EXIT_CODES } from '../../src/diagnostics.mjs';
+import { loadConfig } from '../core/config.mjs';
+import { write } from '../core/fs.mjs';
+import { selfCheck, pascalCase } from '../core/generators.mjs';
+import { ConstructError, EXIT_CODES } from '../core/diagnostics.mjs';
 
 const { factory } = ts;
 const IDENT_RE = /^[A-Za-z_$][A-Za-z0-9_$]*$/;

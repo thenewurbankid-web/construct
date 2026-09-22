@@ -2,7 +2,7 @@
 //
 // The bars this ticket sets, and what each is checked by below:
 //   * the message is built by OUR summarizers, never a model — asserted structurally (the module
-//     graph must not reach src/llm.mjs) as well as behaviourally;
+//     graph must not reach packages/core/llm.mjs) as well as behaviourally;
 //   * the same tree + the same inputs give a byte-identical message;
 //   * the impact counts describe what the save WROTE — the seed rows of the one impact report —
 //     and never inflate to the blast radius or to files carried in from a dirty tree;

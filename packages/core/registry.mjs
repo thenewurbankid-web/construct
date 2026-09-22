@@ -2,7 +2,7 @@
 //
 // An "enforcer" is `{ name, validate(root) -> { violations } }`. Each enforcer
 // is responsible for returning diagnostics.mjs-shaped violation objects
-// (see makeViolation in src/diagnostics.mjs) tagged with their own `module`
+// (see makeViolation in packages/core/diagnostics.mjs) tagged with their own `module`
 // field. This module only knows how to merge results and compute an overall
 // pass/fail — it never imports enforcer implementations itself, so it has no
 // dependency on modules that may not exist yet in the working tree.
@@ -31,7 +31,7 @@ export function aggregateValidation(root, enforcers) {
 }
 
 // TODO(integration): once Modules 1-3 land, build the real enforcer list here
-// (or in src/cli.mjs's `validate` command) and pass it to aggregateValidation:
+// (or in packages/core/cli.mjs's `validate` command) and pass it to aggregateValidation:
 //
 //   import { validateArchitecture } from './architecture-enforcer.mjs';
 //   import { validateSeparationOfConcerns } from './soc-enforcer.mjs';
@@ -43,5 +43,5 @@ export function aggregateValidation(root, enforcers) {
 //     { name: 'readability', validate: validateReadability },
 //   ];
 //
-// See src/cli.mjs's `validate()` export for the exact call site where the
+// See packages/core/cli.mjs's `validate()` export for the exact call site where the
 // legacy single-enforcer array is built today — replace/extend that array.

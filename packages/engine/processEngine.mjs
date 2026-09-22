@@ -36,7 +36,7 @@
 // through `runCapturing`. Core imports nothing from `ui/`.
 import fs from 'node:fs';
 import path from 'node:path';
-import { planToCommand } from '../../src/plan.mjs';
+import { planToCommand } from '../core/plan.mjs';
 import { createTransaction } from './transactionalWriter.mjs';
 import { topLevelState, isTerminal } from './processMachine.mjs';
 import {

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { aggregateValidation } from '../src/registry.mjs';
-import { makeViolation } from '../src/diagnostics.mjs';
+import { aggregateValidation } from '../packages/core/registry.mjs';
+import { makeViolation } from '../packages/core/diagnostics.mjs';
 
 // Small in-memory fake enforcers standing in for Modules 1-3's real
 // architecture/separation-of-concerns/readability enforcers, which don't

@@ -15,7 +15,7 @@
 // Every function here is total: an unrecognized node shape falls back to a
 // generic, still name-based description (the identifiers found in that
 // subtree) rather than ever reprinting raw code.
-import { ts, findNode, findAllNodes } from '../packages/ast/index.mjs';
+import { ts, findNode, findAllNodes } from '../../packages/ast/index.mjs';
 
 // The AST belongs to whichever snippet describeImplementation is currently
 // translating. Safe as module-level state: this module is synchronous and
@@ -370,7 +370,7 @@ function describeMachine(machineConfig) {
 
 /** Deterministic, template-based English translation of one export's
  * implementation source (as returned by extractDeclarationSource in
- * src/summarize.mjs). No LLM: every sentence traces back to a name or a
+ * packages/core/summarize.mjs). No LLM: every sentence traces back to a name or a
  * recognized AST shape in the code itself. Never throws — a snippet the
  * translator doesn't recognize still produces an identifier-based sentence
  * rather than falling back to raw code. `code` is parsed standalone as a

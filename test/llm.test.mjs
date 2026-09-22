@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
-import { callLlm, stripCodeFence, PROVIDERS, DEFAULT_OLLAMA_MODEL, DEFAULT_OLLAMA_BASE_URL, DEFAULT_LLM_TIMEOUT_SEC, resolveLlmTimeoutMs } from '../src/llm.mjs';
-import { ConstructError } from '../src/diagnostics.mjs';
+import { callLlm, stripCodeFence, PROVIDERS, DEFAULT_OLLAMA_MODEL, DEFAULT_OLLAMA_BASE_URL, DEFAULT_LLM_TIMEOUT_SEC, resolveLlmTimeoutMs } from '../packages/core/llm.mjs';
+import { ConstructError } from '../packages/core/diagnostics.mjs';
 
 test('callLlm throws a clear USAGE_ERROR for an unsupported provider', async () => {
   await assert.rejects(() => callLlm('gpt-nope', 'hi'), (err) => {

@@ -7,11 +7,11 @@
 // Either every step's file lands on disk together, or (if the combined
 // result fails construct validate's own enforcer set) none of them do --
 // there is no partially-applied pipeline run.
-import { renderLayer } from '../../src/generators.mjs';
-import { aggregateValidation } from '../../src/registry.mjs';
+import { renderLayer } from '../core/generators.mjs';
+import { aggregateValidation } from '../core/registry.mjs';
 import { createTransaction } from './transactionalWriter.mjs';
 import { createEnvelope } from './envelope.mjs';
-import { rel } from '../../src/fs.mjs';
+import { rel } from '../core/fs.mjs';
 import { DEFAULT_ENFORCERS } from './defaultEnforcers.mjs';
 
 /** Merge freshly-committed step outputs into the envelope's `layers` map:
@@ -32,7 +32,7 @@ function mergeLayers(existingLayers, committedByLayer) {
  * @param {object} inputEnvelope - a Context Envelope, optionally carrying a
  *   `steps: [{layer, name}, ...]` list of generator steps to run against
  *   `inputEnvelope.feature`. Already schema-validated by the caller
- *   (src/cli.mjs's `pipeline` command uses envelope.mjs's validateEnvelope).
+ *   (packages/core/cli.mjs's `pipeline` command uses envelope.mjs's validateEnvelope).
  * @returns {object} the resulting Context Envelope (`status`: 'committed' |
  *   'aborted', `steps` always cleared, `layers`/`diagnostics` updated).
  *
