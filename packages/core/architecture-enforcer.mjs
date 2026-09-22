@@ -21,7 +21,7 @@ import { loadLayerGraph, canImport, classifyFile } from './architecture-graph.mj
 import { makeViolation, ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { walk, rel } from './fs.mjs';
 import { globToRegExp, matchGlob } from './glob.mjs';
-import { parseToAst, extractImports, staticImportEntries, lineOf, collectCalls, collectBareIdentifierUsages, collectControlFlowNodes, collectInlineJsxLogic, computeJsxComplexity } from '../../packages/ast/index.mjs';
+import { parseToAst, extractImports, extractExports, staticImportEntries, lineOf, collectCalls, collectBareIdentifierUsages, collectControlFlowNodes, collectInlineJsxLogic, computeJsxComplexity } from '../../packages/ast/index.mjs';
 import { extractMachines } from '../../packages/engine/workflowExtractor.mjs';
 import { findHealthIssues } from '../../packages/engine/workflowScenarios.mjs';
 import { exceptionApplies, validateExceptionsShape, expiredExceptionViolations } from './exceptions.mjs';
@@ -46,6 +46,29 @@ const DEFAULT_COMPONENT_MAX_JSX_BRANCHES = 3;
  * of "the react package itself or something nested under a react/ path segment"). */
 function isReactSpecifier(specifier) {
   return specifier === 'react' || /(^|\/)react\//.test(specifier);
+}
+
+// #510 -- the naming convention PAGE-006 (below) and HOOK-002 rely on together: a Provider hook
+// (built through defineProvider, packages/core/typed-contracts/provider.ts) is exported as
+// `use<Name>Provider`. HOOK-002 is what makes that convention trustworthy (a hook named this way
+// must really be built through defineProvider), which is what lets PAGE-006 allow a page to import
+// one by name alone, without needing to open and re-analyze the target hook file itself.
+const PROVIDER_HOOK_NAME_RE = /^use[A-Z]\w*Provider$/;
+
+function isProviderHookName(name) {
+  return typeof name === 'string' && PROVIDER_HOOK_NAME_RE.test(name);
+}
+
+/** Names bound by an ImportDeclaration's specifiers — the imported (not local/aliased) name for a
+ * named/default specifier, or null for a namespace import (`import * as x`), whose individual bound
+ * names can't be verified without following every property access, so it is treated conservatively
+ * (its one entry is `null`, which never matches a naming convention). */
+function importedSpecifierNames(specifiers) {
+  return specifiers.map((s) => {
+    if (s.type === 'ImportSpecifier') return s.imported?.name ?? s.imported?.value ?? s.local?.name ?? null;
+    if (s.type === 'ImportDefaultSpecifier') return s.local?.name ?? null;
+    return null; // ImportNamespaceSpecifier
+  });
 }
 
 // Single layer classifier lives in architecture-graph.mjs (#174); re-exported for callers.
@@ -127,11 +150,23 @@ export function detectLayerViolations(layer, source, opts = {}) {
     // controller/hook wiring), so it's reported under the same rule id rather than a
     // new one (the epic's reconciliation notes explicitly reserve a new PAGE-005 for a
     // different, already-taken meaning).
-    const hookImport = firstImportMatch(/hooks?\//);
-    if (hookImport) out.push({
-      rule: 'PAGE-006', line: lineOf(source, hookImport.index), message: 'Page imports a custom hook.',
-      why: 'Pages cannot own application flow — hooks are wired in by a controller, not imported directly by a page.',
-      expected: ['controller', 'workflow'],
+    //
+    // #510 -- narrowed: a Provider hook (named `use<Name>Provider`, the sanctioned way a page
+    // reaches shared context/store or service-backed data per #499) is allowed through; every
+    // other hook import is still banned exactly as before. detectLayerViolations stays pure
+    // (source text only, as every other check here does) -- the naming convention itself is what
+    // HOOK-002 (below, for the `hook` layer) holds accountable, not a re-read of the target
+    // file from here. An import whose specifiers can't all be verified by name (e.g. `import *
+    // as hooks from '../hooks/useCart'`) is conservatively still banned.
+    const bannedHookImport = ast.body.find(
+      (n) => n.type === 'ImportDeclaration'
+        && /hooks?\//.test(n.source.value)
+        && !(n.specifiers.length > 0 && importedSpecifierNames(n.specifiers).every(isProviderHookName)),
+    );
+    if (bannedHookImport) out.push({
+      rule: 'PAGE-006', line: lineOf(source, bannedHookImport.range[0]), message: 'Page imports a custom hook.',
+      why: 'Pages cannot own application flow — hooks are wired in by a controller, not imported directly by a page (a Provider hook, named use<Name>Provider, is the one sanctioned exception).',
+      expected: ['controller', 'workflow', 'a Provider hook (use<Name>Provider)'],
     });
   }
 
@@ -257,6 +292,24 @@ export function detectLayerViolations(layer, source, opts = {}) {
       why: 'Domain is pure by default.',
       expected: ['pure function'],
     });
+  }
+
+  // HOOK-002 (#510) -- the first real rule the `hook` layer has (see the module doc comment
+  // near PAGE-006 above): a hook exported under the `use<Name>Provider` naming convention is
+  // exactly the convention that lets a page import it directly without tripping PAGE-006's
+  // hook-import ban. That only holds if every hook named that way really is one -- built through
+  // `defineProvider` (packages/core/typed-contracts/provider.ts), not an arbitrary hook that
+  // merely opted itself out of PAGE-006 by naming alone.
+  if (layer === 'hook') {
+    const providerNamedExport = extractExports(source).find((e) => isProviderHookName(e.name));
+    if (providerNamedExport && !/\bdefineProvider\s*\(/.test(source)) {
+      out.push({
+        rule: 'HOOK-002', line: lineOf(source, providerNamedExport.index),
+        message: `Hook "${providerNamedExport.name}" is named like a Provider but is not built through defineProvider(...).`,
+        why: 'Provider hooks are the sanctioned way a page/component reaches shared context/store or service-backed data — the use<Name>Provider naming convention that lets PAGE-006 allow importing one directly only holds if every hook named that way really is one.',
+        expected: ['defineProvider(...)'],
+      });
+    }
   }
 
   return out;

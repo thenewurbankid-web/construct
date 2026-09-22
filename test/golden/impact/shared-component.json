@@ -10,7 +10,7 @@
       "maxSeeds": 100
     }
   },
-  "summary": "Impact of component:features/shared/components/CurrencyLabel.tsx: 4 feature(s) (shared, billing, checkout, reporting), 6 file(s) across 1 layer(s), depth 2; 4 warning(s); 0 rule error(s), 0 rule warning(s); every entry derived deterministically.",
+  "summary": "Impact of component:features/shared/components/CurrencyLabel.tsx: 4 feature(s) (shared, billing, checkout, reporting), 6 file(s) across 1 layer(s), depth 2; 4 warning(s); 1 rule error(s), 0 rule warning(s); every entry derived deterministically.",
   "seeds": [
     {
       "index": 0,
@@ -313,10 +313,18 @@
     }
   ],
   "rules": {
-    "violations": [],
+    "violations": [
+      {
+        "rule": "SLICE-004",
+        "severity": "error",
+        "file": "features/shared/index.ts",
+        "line": 5,
+        "message": "\"CurrencyLabel\" is re-exported directly from components/ without a distinct wrapper."
+      }
+    ],
     "exceptions": [],
     "counts": {
-      "error": 0,
+      "error": 1,
       "warning": 0
     },
     "layerConstraints": [
@@ -378,6 +386,11 @@
       "ref": "feature:checkout",
       "why": "Reached in 2 hop(s)",
       "cli": "construct summarize feature:checkout --detail full"
+    },
+    {
+      "ref": "rule:SLICE-004",
+      "why": "The implicated files already violate a rule",
+      "cli": "construct validate"
     }
   ]
 }

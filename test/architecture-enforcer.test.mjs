@@ -72,6 +72,57 @@ test('detectLayerViolations flags PAGE-006 for a page that imports a custom hook
   assert.match(violations[0].message, /custom hook/);
 });
 
+// #510 -- PAGE-006 narrowed: a page importing a Provider hook (named use<Name>Provider, the
+// sanctioned way to reach shared context/store or service-backed data) is NOT flagged, while an
+// arbitrary hook import (the exact fixture above) is still banned unchanged.
+test('#510 (before/after): PAGE-006 no longer fires for a page importing a Provider hook by name', () => {
+  const violations = detectLayerViolations(
+    'page',
+    `import { useCartProvider } from '../hooks/useCartProvider';\nexport function P(){ const { total } = useCartProvider(); return null; }`,
+  );
+  assert.deepEqual(violations, []);
+});
+
+test('#510: PAGE-006 still fires when a hook import mixes a Provider-named specifier with a non-Provider one', () => {
+  const violations = detectLayerViolations(
+    'page',
+    `import { useCartProvider, useCart } from '../hooks/useCart';\nexport function P(){ useCartProvider(); useCart(); return null; }`,
+  );
+  assert.deepEqual(violations.map((v) => v.rule), ['PAGE-006']);
+});
+
+test('#510: PAGE-006 still fires for a bare side-effect hook import with no specifiers', () => {
+  const violations = detectLayerViolations('page', `import '../hooks/useCart';\nexport function P(){ return null; }`);
+  assert.deepEqual(violations.map((v) => v.rule), ['PAGE-006']);
+});
+
+test('#510: PAGE-006 still fires for a namespace hook import (individual names cannot be verified)', () => {
+  const violations = detectLayerViolations('page', `import * as hooks from '../hooks/useCart';\nexport function P(){ hooks.useCart(); return null; }`);
+  assert.deepEqual(violations.map((v) => v.rule), ['PAGE-006']);
+});
+
+// HOOK-002 (#510) -- the hooks/ layer's own rule: a hook named use<Name>Provider must really be
+// built through defineProvider(...), which is what makes PAGE-006's naming-convention allowance
+// above sound.
+test('#510 (before/after): HOOK-002 fires for a hook named use*Provider that is not built via defineProvider', () => {
+  const violations = detectLayerViolations('hook', `export function useCartProvider() { return { total: 0 }; }`);
+  assert.deepEqual(violations.map((v) => v.rule), ['HOOK-002']);
+  assert.match(violations[0].message, /useCartProvider/);
+});
+
+test('#510: HOOK-002 does not fire for a hook named use*Provider that IS built via defineProvider', () => {
+  const violations = detectLayerViolations(
+    'hook',
+    `import { defineProvider } from '@construct/typed-contracts';\nconst Cart = defineProvider('Cart', () => ({ total: 0 }));\nexport const useCartProvider = Cart.useProvider;`,
+  );
+  assert.deepEqual(violations.filter((v) => v.rule === 'HOOK-002'), []);
+});
+
+test('#510: HOOK-002 does not fire for an ordinary hook with no Provider-shaped name (regression)', () => {
+  const violations = detectLayerViolations('hook', `export function useCart() { return { items: [] }; }`);
+  assert.deepEqual(violations.filter((v) => v.rule === 'HOOK-002'), []);
+});
+
 test('detectLayerViolations splits component rules (controller vs workflow/service/domain)', () => {
   assert.deepEqual(detectLayerViolations('component', `import { C } from '../controllers/C';`).map((v) => v.rule), ['COMPONENT-002']);
   assert.deepEqual(detectLayerViolations('component', `import { S } from '../services/S';`).map((v) => v.rule), ['COMPONENT-003']);
