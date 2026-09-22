@@ -19,6 +19,7 @@ Non-goals: MCP surfaces (future), marketing pages, product code.
 | [ia-five-screens.md](ia-five-screens.md) | Information architecture: five primary screens (Features, Pages, Components, Git, Tests) x four slots, profile menu, capability map, durable Notes, migration slicing. Supersedes the modes (concept) |
 | [cockpit-layout.md](cockpit-layout.md) | The 3-pane Cockpit shell, per-screen rationale, and the ordered implementation plan |
 | [live-preview-v2.md](live-preview-v2.md) | Click-to-source by reading React fiber internals: bridge delivery (injecting loopback proxy), fiber-to-source ladder, dev server as a process, hosted-mode threat model (#443) |
+| [block-palette.md](block-palette.md) | Pages editor block palette (Providers/Expressions/Components, grounded in the real `canImport` graph and typed-contracts factories) and the "Wrap with…" interaction; MVP scope cut and accessibility review (#518, part of #500 phase 3) |
 | [mocks/](mocks/) | Concept mocks as static HTML+CSS (`*.html`) and rendered PNGs (`png/`) |
 
 Concept mocks (1440x900, each in `png/<name>--dark.png` and `--light.png`):
@@ -49,7 +50,7 @@ Concept mocks (1440x900, each in `png/<name>--dark.png` and `--light.png`):
   prefix: `node docs/design/mocks/render.mjs flow-nav`.
 
 - **Five-screen IA** (`build-ia.mjs`, styles in `ia.css`): `ia-features`, `ia-account-menu`,
-  `ia-slot-matrix`, `ia-notes-states`, `ia-no-project`, `ia-git`, `ia-git-connect`, `ia-narrow`, and the POC-parity set `ia-pages`, `ia-pages-next`, `ia-pages-change`, `ia-components`, `ia-generate-states`, `ia-preview-states`, `ia-side-preview`, and the Story set `ia-story`, `ia-story-states`, `ia-story-modes`, `ia-story-indicators`, `ia-story-consent`, `ia-clip-bridge`, `ia-clipper`, and `ia-feature-structure` (a feature as a hierarchy). Spec: `ia-five-screens.md`.
+  `ia-slot-matrix`, `ia-notes-states`, `ia-no-project`, `ia-git`, `ia-git-connect`, `ia-narrow`, and the POC-parity set `ia-pages`, `ia-pages-next`, `ia-pages-change`, `ia-components`, `ia-generate-states`, `ia-preview-states`, `ia-side-preview`, and the Story set `ia-story`, `ia-story-states`, `ia-story-modes`, `ia-story-indicators`, `ia-story-consent`, `ia-clip-bridge`, `ia-clipper`, and `ia-feature-structure` (a feature as a hierarchy). Spec: `ia-five-screens.md`. Also in `build-ia.mjs`: the block palette set (#518) — `ia-palette` (read-only, MVP slice 1), `ia-palette-suggest` and `ia-palette-confirm` (the interactive "Wrap with…" flow, pairs with #517), `ia-palette-states` (empty/loading/error/no-selection/no-block-yet/narrow). Spec: `block-palette.md`.
 
 `plan-mode` was `research-mode` until the owner renamed the middle mode in #243:
 the modes are **Explore / Plan / Build** and the brand in the top bar is

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Palette: empty, loading, error, no-selection, no-block-yet and narrow states - Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="ia.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+</head><body>
+<div class="concept">Concept - not implemented <span>Palette: empty, loading, error, no-selection, no-block-yet and narrow states</span></div>
+
+<div class="hh">The palette: read what a feature can use, wrap what it can’t reach directly<small>Grouped by the real canImport graph (packages/core/config.mjs) and the typed-contracts factories &mdash; nothing shown here is a rule the architecture would actually refuse.</small></div>
+<div class="sheet3">
+ <div><h3>Before there is anything to show</h3>
+  <div class="card"><b>Empty: no Expressions yet</b><p>This feature has none</p><p>You can still compose Components and Providers below. Expressions appear here once you extract or create one &mdash; try "Wrap with..." on a selection.</p></div>
+  <div class="card"><b>Loading</b><p>Computing what this feature can use</p><span class="saveind busy"><span class="spin"></span> Reading the import graph for this feature…</span></div>
+  <div class="card"><b>Error</b><p>Couldn’t compute the palette</p><div class="callout danger" style="margin:0"><span>&#9888;</span><div class="grow"><b>architecture.yml failed to load</b><small>Unknown layer "expression" &mdash; check for a typo in a layers override.</small></div></div><button class="btn sm">Open architecture.yml</button></div></div>
+ <div><h3>Wrap with...: selection and sequencing</h3>
+  <div class="card"><b>No selection yet</b><p>Wrap with... needs a JSX selection</p><div><span class="gen dis" role="group" aria-label="Generate">
+   <span class="mode" role="radiogroup" aria-label="How"><button role="radio" aria-checked="true" class="on det" disabled>Mechanical</button><button role="radio" aria-checked="false" class="" disabled>AI</button></span>
+   <button class="go" disabled>Generate</button></span></div><span class="saveind">Select an element or range in the preview or source first.</span></div>
+  <div class="card"><b>Today, before #517 ships</b><p>The mechanical block does not exist yet</p><div><span class="gen " role="group" aria-label="Generate">
+   <span class="mode" role="radiogroup" aria-label="How"><button role="radio" aria-checked="true" class="on ai" disabled>AI only</button></span>
+   <button class="go" >Generate</button></span></div><span class="saveind">Shown honestly as "AI only, no block yet" (logged as a request for #517) &mdash; never a silent model fallback pretending to be mechanical.</span></div>
+  <div class="card"><b>Once #517 ships</b><p>Mechanical is the default</p><div><span class="gen " role="group" aria-label="Generate">
+   <span class="mode" role="radiogroup" aria-label="How"><button role="radio" aria-checked="true" class="on det" >Mechanical</button><button role="radio" aria-checked="false" class="" >AI</button></span>
+   <button class="go" >Generate</button></span></div><span class="tag det">Deterministic &middot; construct refactor extract-expression</span></div></div>
+ <div><h3>Narrow (390px)</h3>
+  <div class="sheet3" style="grid-template-columns:1fr;padding:0"><div><h3 style="margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted)">Palette, as the Inspect tab</h3><div class="narrow" style="position:relative;height:780px">
+ <div class="topbar" style="height:44px;flex:none"><div class="brand"><i></i>Cockpit</div><span class="spacer"></span><span class="pill run"><span class="spin"></span>2</span><span class="avatar" aria-label="Account">SP</span></div>
+ <nav class="snav" aria-label="Screens" style="height:38px;overflow:hidden;border-bottom:1px solid var(--border-subtle);flex:none;margin:0;padding:0 4px"><a class="" style="padding:0 9px;font-size:12px">Features</a><a class="on" style="padding:0 9px;font-size:12px">Pages</a><a class="" style="padding:0 9px;font-size:12px">Comp.</a><a class="" style="padding:0 9px;font-size:12px">Git</a><a class="" style="padding:0 9px;font-size:12px">Tests</a></nav>
+ <div style="flex:1;overflow:hidden;position:relative"><div class="pane-h"><span class="title">Palette</span></div><div class="tabs" role="tablist"><button role="tab" class="" aria-selected="false">Inspector</button><button role="tab" class="on" aria-selected="true">Palette <span class="badge acc">1</span></button></div><div class="scroll" style="max-height:600px"><details class="dt" open><summary>Expressions <span class="c">1</span></summary><div class="pal-item "><div class="grow"><div class="pal-name"><span class="layer expression">expression</span><b>ShowForRole</b></div><span class="path">features/cart/expressions</span><p>Wraps a role check.</p></div></div></details></div></div>
+ <div class="tabbar" role="tablist"><div class="" role="tab">Browse</div><div class="" role="tab">Stage</div><div class="on" role="tab">Inspect</div><div class="" role="tab">Run <span class="badge acc">2</span></div></div></div></div></div></div>
+</div>
+</body></html>
