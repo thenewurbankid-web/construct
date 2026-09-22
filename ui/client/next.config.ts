@@ -30,6 +30,11 @@ import type { NextConfig } from 'next';
 // never-shipped `.next/cache/.tsbuildinfo` TypeScript cache (records type-only imports; not
 // served to a browser or included in `next start`).
 const nextConfig: NextConfig = {
+  // #485: a self-contained `.next/standalone` output (server.js + only the
+  // node_modules it actually needs) is what both the Docker image and the
+  // `@line/cockpit` npm package ship — the correct shape for a compiled
+  // redistributable instead of requiring a full `npm install` on the target.
+  output: 'standalone',
   turbopack: {
     root: path.resolve(__dirname),
   },

@@ -1,0 +1,47 @@
+# #485 -- Cockpit's ui/server (Express + ws), compiled. Two stages: `builder`
+# has the full dev toolchain (esbuild) to produce ui/server/dist/; `runtime`
+# only ever gets that compiled dist/ plus production node_modules -- no
+# esbuild, no *.test.mjs, no dev dependency.
+#
+# ui/server's compiled output still imports the repo's core (`src/`, `bin/`)
+# by relative path (see ui/server/scripts/build.mjs's header comment) --
+# that split into its own published package is a later step of epic #480,
+# not done yet -- so this image ships that core alongside dist/, same as it
+# sits in the repo today. Separate from ui/client on purpose: one process
+# per container, each restarts/scales independently, matching the two-
+# process topology tools/dev/run-hosted.sh already runs (see docker-compose.yml).
+FROM node:20-alpine AS builder
+WORKDIR /repo
+
+COPY package.json package-lock.json ./
+COPY ui/server/package.json ui/server/package-lock.json ./ui/server/
+RUN npm ci --ignore-scripts && npm --prefix ui/server ci --ignore-scripts
+
+COPY src ./src
+COPY bin ./bin
+COPY ui/server ./ui/server
+RUN npm --prefix ui/server run build
+
+FROM node:20-alpine AS runtime
+WORKDIR /repo
+ENV NODE_ENV=production
+# Binding to loopback would be unreachable through Docker's port mapping;
+# 0.0.0.0 inside the container is still only reached however the operator
+# chooses to publish/proxy the port (see docs/DEPLOY.md).
+ENV HOST=0.0.0.0
+ENV PORT=4000
+
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts
+
+COPY src ./src
+COPY bin ./bin
+COPY ui/server/package.json ui/server/package-lock.json ./ui/server/
+RUN npm --prefix ui/server ci --omit=dev --ignore-scripts
+COPY --from=builder /repo/ui/server/dist ./ui/server/dist
+
+# CONSTRUCT_WORKSPACE_ROOT and the process-state dir both need to be
+# writable by this user -- see docker-compose.yml's volumes.
+USER node
+EXPOSE 4000
+CMD ["node", "ui/server/dist/index.mjs"]

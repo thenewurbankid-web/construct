@@ -1,0 +1,33 @@
+# #485 -- Cockpit's ui/client (Next.js), compiled via `output: 'standalone'`.
+# NEXT_PUBLIC_API_BASE / NEXT_PUBLIC_WS_BASE are compiled INTO the browser
+# bundle at `next build` time (Next.js convention, not something the running
+# container can change) -- pass them as build args when the server isn't
+# reachable at the default http://localhost:4000 (docker-compose.yml wires
+# PUBLIC_HOST/SCHEME into these for you). Separate image from ui/server: one
+# process per container (see Dockerfile.server's header for the reasoning).
+FROM node:20-alpine AS builder
+WORKDIR /repo/ui/client
+
+ARG NEXT_PUBLIC_API_BASE=http://localhost:4000
+ARG NEXT_PUBLIC_WS_BASE=ws://localhost:4000
+ENV NEXT_PUBLIC_API_BASE=${NEXT_PUBLIC_API_BASE}
+ENV NEXT_PUBLIC_WS_BASE=${NEXT_PUBLIC_WS_BASE}
+
+COPY ui/client/package.json ui/client/package-lock.json ./
+RUN npm ci --ignore-scripts
+COPY ui/client ./
+RUN npm run build \
+  && cp -r .next/static .next/standalone/.next/static \
+  && ([ -d public ] && cp -r public .next/standalone/public || true)
+
+FROM node:20-alpine AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
+# 0.0.0.0: reachable through Docker's port mapping (see Dockerfile.server).
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
+COPY --from=builder /repo/ui/client/.next/standalone ./
+
+USER node
+EXPOSE 3000
+CMD ["node", "server.js"]
