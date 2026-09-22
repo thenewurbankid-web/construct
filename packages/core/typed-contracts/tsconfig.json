@@ -17,5 +17,10 @@
     "forceConsistentCasingInFileNames": true
   },
   "include": ["**/*.ts"],
-  "exclude": ["examples/invalid-wiring.ts", "examples/implicit-return.ts", "examples/feature-branded-invalid.ts"]
+  "exclude": [
+    "examples/invalid-wiring.ts",
+    "examples/implicit-return.ts",
+    "examples/feature-branded-invalid.ts",
+    "examples/expression-implicit-return.ts"
+  ]
 }

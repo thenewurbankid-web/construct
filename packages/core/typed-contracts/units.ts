@@ -14,12 +14,15 @@
 // comment citing the exact `canImport` line it mirrors, so the two stay
 // auditable against each other by inspection until a later phase (#500
 // phase 4) decides whether/how to unify them.
+import type { ReactNode } from 'react';
 import type { Brand, FeatureBrand } from './brand.ts';
 import type { Template } from './template.ts';
 
 /** Layer names a unit factory can attach `unitLayer` as. */
 export type LayerName =
-  | 'route' | 'controller' | 'workflow' | 'hook' | 'service' | 'domain' | 'page' | 'component';
+  | 'route' | 'controller' | 'workflow' | 'hook' | 'service' | 'domain' | 'page' | 'component'
+  // #503 -- control-flow units that wrap JSX nodes (If/Switch/ForEach/Show, per #499's design).
+  | 'expression';
 
 /** Every unit factory attaches this alongside the compile-time brand, as a
  * plain, ordinary (non-branded) runtime property -- so tooling (Cockpit,
@@ -41,6 +44,16 @@ export interface LayerTag<Layer extends LayerName> {
 export type ComponentUnit<Props> = Brand<Template<Props>, 'component'> & LayerTag<'component'>;
 export type PageUnit<Props> = Brand<Template<Props>, 'page'> & LayerTag<'page'>;
 export type ControllerUnit<Props> = Brand<Template<Props>, 'controller'> & LayerTag<'controller'>;
+
+/**
+ * #503 -- an Expression unit: a control-flow unit that wraps a JSX node (If/Switch/ForEach/
+ * Show, per #499's design). Structurally a `Template`, exactly like Component/Page/Controller
+ * (EXPR-006 -- "must satisfy the shared Template<Props> type"), but its `Props` always carries
+ * an optional `children` slot (EXPR-005 -- "must accept children and return JSX") -- baked into
+ * the branded type itself rather than left to a convention, so `defineExpression`'s own call
+ * signature (factories.ts) is what actually requires it, not just documentation.
+ */
+export type ExpressionUnit<Props> = Brand<Template<Props & { children?: ReactNode }>, 'expression'> & LayerTag<'expression'>;
 
 /** A route's own props (Next.js `params`/`searchParams`-shaped, or nothing
  * for a react-spa route) are deliberately NOT carried in `RouteUnit`'s own
@@ -97,6 +110,9 @@ export type ControllerUnitAny = ControllerUnit<unknown>;
 export type DomainUnitAny = DomainUnit<(...args: any[]) => unknown>;
 export type ServiceUnitAny = ServiceUnit<(...args: any[]) => unknown>;
 export type HookUnitAny = HookUnit<(...args: any[]) => unknown>;
+// #503 -- see the module-level wildcard note above for why `unknown`, never a literal `any`,
+// is used here too.
+export type ExpressionUnitAny = ExpressionUnit<unknown>;
 
 export type AnyUnit =
   | ComponentUnitAny
@@ -106,7 +122,8 @@ export type AnyUnit =
   | DomainUnitAny
   | ServiceUnitAny
   | HookUnitAny
-  | WorkflowUnit;
+  | WorkflowUnit
+  | ExpressionUnitAny;
 
 /**
  * #511 — an already-layer-branded unit (`U`), additionally tagged with the
