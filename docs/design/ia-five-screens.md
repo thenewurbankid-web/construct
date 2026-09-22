@@ -677,7 +677,7 @@ assert text being changed must be updated with a stated reason: `settings-llm` (
 
 ## 11. Website friendliness pass (`site/`)
 
-Read from `site/lib/pages.mjs` (home, top nav), `site/lib/structure.mjs` (groups), `site/content/user/index.md`,
+Read from `packages/docs-site/lib/pages.mjs` (home, top nav), `packages/docs-site/lib/structure.mjs` (groups), `site/content/user/index.md`,
 `getting-started.md` and `examples/cockpit-plan-and-run.md`, 2026-09-20. Word counts: user guide 2,919 words over 13
 pages (getting-started 452, concepts 635, cockpit 536, index 263).
 
@@ -706,7 +706,7 @@ Getting started and Concepts; "worktree" or "blast radius" 7 times in four examp
 
 ### 11.2 Before / after: the home page
 
-**Before** (`site/lib/pages.mjs`):
+**Before** (`packages/docs-site/lib/pages.mjs`):
 > AI guesses. Construct computes.
 > Small, deterministic blocks that build and refactor your app under your rules. Same input, same result, zero tokens.
 > You steer from the Cockpit, a cockpit and not an autopilot.
@@ -765,7 +765,7 @@ Git screen names replace "Plan mode" and "four modes" when the IA ships.)
 ### 11.5 Issue for the demo-curator
 "Website friendliness pass": edits 1 to 9, the two rewrites above applied to the home page and to
 `cockpit-plan-and-run.md`, then the same structure applied to the other eight examples. Size **M**. Nothing about the
-build system changes (`site/lib/pages.mjs` and content files only); the site tests in `site/test` must stay green;
+build system changes (`packages/docs-site/lib/pages.mjs` and content files only); the site tests in `site/test` must stay green;
 example screenshots are retaken only where the UI changed.
 
 ## 12. Features screen: a feature as one legible hierarchy (`ia-feature-structure`)

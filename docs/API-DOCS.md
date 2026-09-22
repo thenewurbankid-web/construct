@@ -28,7 +28,7 @@ Rejected:
 
 ## Packages
 
-Same grouping as the Trinity Modules tab (`API_PACKAGES` in `site/lib/apiDocs.mjs`): Core engine (`src/*.mjs`),
+Same grouping as the Trinity Modules tab (`API_PACKAGES` in `packages/docs-site/lib/apiDocs.mjs`): Core engine (`src/*.mjs`),
 Engine (`src/engine/**`), AST (`src/ast`), Cockpit server (`ui/server/src`), Cockpit client shared
 (`ui/client/components`, `ui/client/lib`) and features (`ui/client/features/**`), Tools (`packages/tools/**`), Docs site
 (`site/**`). Test, story and `.d.ts` files and files with no exports are skipped.

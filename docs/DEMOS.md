@@ -158,7 +158,7 @@ no token. Rules:
   name prefix and the page's `example:` surface must match
   (`site/test/site.test.mjs`).
 - **Structured by product**: the user guide is grouped `Start`, `Construct`,
-  `Cockpit`, `CLI` in `site/lib/structure.mjs` — Line is the whole package,
+  `Cockpit`, `CLI` in `packages/docs-site/lib/structure.mjs` — Line is the whole package,
   Construct is the framework (its Core API is one of its surfaces), and the
   Cockpit and the command line are the two ways to drive it. Each of the four
   has a short page of its own (`user-guide/line|construct|cockpit|cli/`).

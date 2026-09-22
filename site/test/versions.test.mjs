@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { releaseVersions, planBuilds, normalizeBase, versionSwitcher, versionBanner, currentVersion } from '../lib/versions.mjs';
+import { releaseVersions, planBuilds, normalizeBase, versionSwitcher, versionBanner, currentVersion } from '../../packages/docs-site/lib/versions.mjs';
 import { build, parseArgs } from '../build.mjs';
 import { buildAll } from '../build-all.mjs';
 import { makeTempDir } from '../../test-utils/tmpdir.mjs';

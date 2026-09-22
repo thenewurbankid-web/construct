@@ -2,10 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { slugify, makeSlugger, esc } from '../lib/text.mjs';
-import { sanitizeHtml } from '../lib/sanitize.mjs';
+import { slugify, makeSlugger, esc } from '../../packages/docs-site/lib/text.mjs';
+import { sanitizeHtml } from '../../packages/docs-site/lib/sanitize.mjs';
 import { build, parseArgs } from '../build.mjs';
-import { USER_GROUPS, EXAMPLE_SURFACES, examplePages } from '../lib/structure.mjs';
+import { USER_GROUPS, EXAMPLE_SURFACES, examplePages } from '../../packages/docs-site/lib/structure.mjs';
 import { makeTempDir } from '../../test-utils/tmpdir.mjs';
 
 const BUILD_TIME = new Date('2026-09-20T00:00:00Z');
@@ -142,7 +142,7 @@ test('generated and reused docs are current, and carry no tracker plumbing or de
 });
 
 test('markdown helpers: sections, includes, ticket stripping', async () => {
-  const { extractSection, relevel, stripTicketRefs, stripTicketRefsHtml } = await import('../lib/markdown.mjs');
+  const { extractSection, relevel, stripTicketRefs, stripTicketRefsHtml } = await import('../../packages/docs-site/lib/markdown.mjs');
   const md = '# T\n\n## A\n\ntext\n\n```bash\n# not a heading\n```\n\n## B\n\nother\n';
   const { markdown } = extractSection(md, 'A');
   assert.match(markdown, /not a heading/);

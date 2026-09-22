@@ -68,7 +68,7 @@ node site/build.mjs --out /tmp/docs-0.8 --base-path /construct/0.8/ --version 0.
 ```
 
 `versions.json` is `{"versions":[{"id":"0.8","label":"v0.8","base":"/construct/0.8/","latest":false}, ...]}`; the
-list comes from `planBuilds()` in `site/lib/versions.mjs` (newest `vX.Y.Z` tag per minor, then `next`). Only refs
+list comes from `planBuilds()` in `packages/docs-site/lib/versions.mjs` (newest `vX.Y.Z` tag per minor, then `next`). Only refs
 that contain #397 can be published, so the first release is the first version with docs. The switcher links to the
 same page in each version (a page that does not exist there falls to the 404 page); the banner links to the latest
 home. Tests: `node --test site/test/*.test.mjs`.

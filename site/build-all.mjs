@@ -10,7 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { planBuilds } from './lib/versions.mjs';
+import { planBuilds } from '../packages/docs-site/lib/versions.mjs';
 import { parseArgs } from './build.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));

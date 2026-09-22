@@ -16,7 +16,7 @@ export const API_PACKAGES = [
   { id: 'cockpit-client-shared', title: 'Cockpit client (shared)', description: 'Shared components and helpers of the Cockpit UI.', dirs: [{ dir: 'ui/client/components', recursive: true }, { dir: 'ui/client/lib', recursive: true }], exts: ['.ts', '.tsx', '.jsx'], tsconfig: 'ui/client/tsconfig.json' },
   { id: 'cockpit-client-features', title: 'Cockpit client (features)', description: 'One folder per Cockpit feature: domain, services, workflows, hooks, components, pages.', dirs: [{ dir: 'ui/client/features', recursive: true }], exts: ['.ts', '.tsx'], tsconfig: 'ui/client/tsconfig.json', groupDepth: 4 },
   { id: 'tools', title: 'Tools', description: 'Project-board sync and the GitHub comment bridge.', dirs: [{ dir: 'packages/tools', recursive: true }], exts: ['.mjs'], tsconfig: 'tsconfig.json' },
-  { id: 'docs-site', title: 'Docs site', description: 'The static documentation site generator (this site).', dirs: [{ dir: 'site', recursive: true, skip: ['dist', 'assets', 'content', 'test'] }], exts: ['.mjs'], tsconfig: 'tsconfig.json' },
+  { id: 'docs-site', title: 'Docs site', description: 'The static documentation site generator (this site).', dirs: [{ dir: 'packages/docs-site/lib', recursive: true }, { dir: 'site', recursive: false }], exts: ['.mjs'], tsconfig: 'tsconfig.json' },
 ];
 
 const isTestOrNoise = (name) => /\.(test|spec|stories)\.[cm]?[jt]sx?$/.test(name) || name.endsWith('.d.ts');
