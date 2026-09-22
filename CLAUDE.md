@@ -101,11 +101,15 @@ sync with what's actually true, not a point-in-time snapshot (see #35).
    entry with the files/tests that back it) is fine for pre-existing work.
    Trivial changes (typos, comment-only, formatting) fold into whichever
    issue/commit they're part of.
-2. **Comment only when the owner must act or know** (a decision, a blocker,
-   a security finding). Closing an issue takes one line ("Done in <sha>, verified: <suite>")
-   unless a developer needs more (rule 12). No starting comment, no progress
-   chatter, no comment per action; state and the board carry routine status.
-   Tell every subagent this rule; post any closing note yourself.
+2. **Comment only on one of four things** (owner, 2026-09-22 — tightens this
+   further than before): a real **status change** (closing, reopening — one
+   line: "Done in <sha>, verified: <suite>"); a **dropped task**, with why
+   it was dropped; a **future note for dev** (rule 12's closing content,
+   only when a developer genuinely needs it); or something that must be
+   **highlighted to other devs** specifically, not just the owner. Nothing
+   else — no starting comment, no progress chatter, no comment per action,
+   no restating what the issue body/board already shows. Tell every
+   subagent this rule; post any closing note yourself.
 3. **Issue state must reflect reality.** Close the moment work is verified
    done (`npm test` passing in full, plus the task's own manual bar); never
    leave finished work open, never close unfinished work. New work that
