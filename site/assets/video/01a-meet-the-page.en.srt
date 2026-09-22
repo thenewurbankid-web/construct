@@ -1,0 +1,71 @@
+1
+00:00:01,073 --> 00:00:09,893
+Hi there! This is part one of a short series. First, let us meet a page that looks like a real product, but does not work yet.
+
+2
+00:00:10,915 --> 00:00:14,625
+First, sign in. (This recording uses the demo login.)
+
+3
+00:00:14,776 --> 00:00:17,776
+Open the sample shop.
+
+4
+00:00:19,501 --> 00:00:27,316
+The catalog feature already has a shop page in it, adapted from a real template, plus a wishlist heart and panel.
+
+5
+00:00:27,416 --> 00:00:33,856
+The page itself is frozen — wrapped, not rebuilt — so it does not even show up in this list.
+
+6
+00:00:36,875 --> 00:00:43,315
+The heart and panel are new, hand-authored components, so Construct documents them normally.
+
+7
+00:00:46,293 --> 00:00:52,243
+WishlistController: the wrapper. Right now it just forwards a fixed list of products.
+
+8
+00:00:55,235 --> 00:00:58,245
+A new route, `/shop`, already points at it.
+
+9
+00:01:01,268 --> 00:01:06,238
+One thing to look at: the wrapper is not exported from the feature yet.
+
+10
+00:01:07,748 --> 00:01:10,673
+Here is that page in the Pages screen.
+
+11
+00:01:10,773 --> 00:01:14,273
+Now let us open it, running for real, full screen.
+
+12
+00:01:17,087 --> 00:01:21,567
+Try a heart. It renders, and it can be pressed. Nothing happens.
+
+13
+00:01:21,747 --> 00:01:25,037
+Switch to Components and pick the heart button.
+
+14
+00:01:28,868 --> 00:01:39,344
+Here is what it declares: `onToggle`, a callback. This table already exists today — Construct does not yet check whether any caller actually passes it.
+
+15
+00:01:39,444 --> 00:01:46,779
+Reading the page confirms it: `ShopHome` never passes it. That gap is filed as a real ticket, number 473.
+
+16
+00:01:46,879 --> 00:01:49,879
+Finally, the rules.
+
+17
+00:01:52,311 --> 00:01:57,673
+No errors. One real warning: the wrapper is not exported from the feature yet.
+
+18
+00:01:57,773 --> 00:02:00,773
+Next time, we wire it up. See you then.

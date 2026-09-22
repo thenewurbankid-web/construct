@@ -74,6 +74,7 @@ export const USER_GROUPS = [
     group: 'Videos',
     pages: [
       { path: 'user-guide/videos/ticket-to-story/', title: 'Build a feature, start to finish', description: 'A three-minute video: one example, a wishlist for a small shop, from a plain request to a running app.', file: C('user/videos/ticket-to-story.md') },
+      { path: 'user-guide/videos/01a-meet-the-page/', title: 'Episode 1, part 1: meet the page', description: 'A two-minute video: a professional-looking shop page that does not work yet, and how the Cockpit shows the missing link today.', file: C('user/videos/01a-meet-the-page.md') },
     ],
   },
   {
