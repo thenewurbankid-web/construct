@@ -77,6 +77,52 @@ test('detectLayerViolations splits component rules (controller vs workflow/servi
   assert.deepEqual(detectLayerViolations('component', `import { S } from '../services/S';`).map((v) => v.rule), ['COMPONENT-003']);
 });
 
+// #508 -- COMPONENT-005: no inline conditional/loop logic in a component's
+// JSX (mirrors the still-unbuilt PAGE-008, #505). Three independent shapes:
+// a ternary, a `&&` short-circuit, and a `.map()` list render.
+test('detectLayerViolations flags COMPONENT-005 for inline conditional/loop JSX, in each of its shapes', () => {
+  assert.deepEqual(
+    detectLayerViolations('component', `export function C(p){ return p.ok ? <A/> : <B/>; }`).map((v) => v.rule),
+    ['COMPONENT-005'],
+  );
+  assert.deepEqual(
+    detectLayerViolations('component', `export function C(p){ return <div>{p.ok && <A/>}</div>; }`).map((v) => v.rule),
+    ['COMPONENT-005'],
+  );
+  assert.deepEqual(
+    detectLayerViolations('component', `export function C(p){ return <ul>{p.items.map(i => <li key={i}>{i}</li>)}</ul>; }`).map((v) => v.rule),
+    ['COMPONENT-005'],
+  );
+});
+
+test('detectLayerViolations does NOT flag COMPONENT-005 for a .map() whose callback never returns JSX', () => {
+  const src = `export function C(p){ const ids = p.items.map(i => i.id); return <div>{ids.length}</div>; }`;
+  assert.deepEqual(detectLayerViolations('component', src), []);
+});
+
+// #508 -- COMPONENT-006: a component-level JSX complexity budget (nesting
+// depth / inline-branch count), separate from COMPONENT-005 (which fires on
+// the *existence* of one inline branch regardless of budget) and from any
+// one Expression's own cap.
+test('detectLayerViolations flags COMPONENT-006 once the default JSX-nesting-depth budget is exceeded, with no inline logic present', () => {
+  const deep = '<div>'.repeat(7) + 'hi' + '</div>'.repeat(7);
+  const violations = detectLayerViolations('component', `export function C(){ return ${deep}; }`);
+  assert.deepEqual(violations.map((v) => v.rule), ['COMPONENT-006']);
+  assert.match(violations[0].message, /nesting depth 7/);
+});
+
+test('detectLayerViolations flags COMPONENT-006 once the default branch-count budget is exceeded (COMPONENT-005 also fires, independently)', () => {
+  const src = `export function C(p){ return <div>{p.a?<X/>:<Y/>}{p.b&&<Z/>}{p.c&&<W/>}{p.d&&<V/>}</div>; }`;
+  const rules = detectLayerViolations('component', src).map((v) => v.rule);
+  assert.deepEqual(rules.sort(), ['COMPONENT-005', 'COMPONENT-006']);
+});
+
+test('detectLayerViolations honors COMPONENT-006 opts overrides (maxJsxDepth/maxJsxBranches)', () => {
+  const src = `export function C(){ return <div><span/></div>; }`; // depth 2, 0 branches
+  assert.deepEqual(detectLayerViolations('component', src, { maxJsxDepth: 1 }).map((v) => v.rule), ['COMPONENT-006']);
+  assert.deepEqual(detectLayerViolations('component', src), []); // default budget (6) is not exceeded
+});
+
 test('detectLayerViolations flags React imports in workflow/service layers', () => {
   assert.deepEqual(detectLayerViolations('workflow', `import { useState } from 'react';`).map((v) => v.rule), ['WORKFLOW-001']);
   assert.deepEqual(detectLayerViolations('service', `import { useEffect } from 'react';`).map((v) => v.rule), ['SERVICE-002']);
@@ -237,6 +283,41 @@ test('validateArchitecture honors an exception scoping a violation away', () => 
   fs.writeFileSync(path.join(dir, 'features', 'legacy', 'pages', 'X.tsx'), `export function X(){ fetch('/'); return <div/>; }`);
   const res = validateArchitecture(dir);
   assert.equal(res.violations.some((v) => v.rule === 'PAGE-004'), false);
+});
+
+// #508 -- COMPONENT-005 defaults to 'warning' (not 'error'): a real, valid
+// project can pick it up and keep passing (res.ok stays true) until it
+// opts into 'error' itself, per #500 phase 1's additive-only constraint.
+test('validateArchitecture: COMPONENT-005 defaults to warning severity and does not fail validation', () => {
+  const dir = tmpProject();
+  fs.mkdirSync(path.join(dir, 'features', 'x', 'components'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'features', 'x', 'components', 'C.tsx'), `export function C(p){ return p.ok ? <A/> : <B/>; }`);
+  const res = validateArchitecture(dir);
+  const hit = res.violations.find((v) => v.rule === 'COMPONENT-005');
+  assert.ok(hit, 'expected a COMPONENT-005 violation');
+  assert.equal(hit.severity, 'warning');
+  assert.equal(res.ok, true);
+});
+
+test('validateArchitecture: COMPONENT-005 can be raised to error via architecture.yml, same as any other rule', () => {
+  const dir = tmpProject();
+  fs.mkdirSync(path.join(dir, 'features', 'x', 'components'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), 'rules:\n  COMPONENT-005: error\n');
+  fs.writeFileSync(path.join(dir, 'features', 'x', 'components', 'C.tsx'), `export function C(p){ return p.ok ? <A/> : <B/>; }`);
+  const res = validateArchitecture(dir);
+  assert.equal(res.ok, false);
+});
+
+// #508 -- COMPONENT-006's numeric budget overrides flow from architecture.yml
+// through loadConfig into detectLayerViolations, the same 'READ-002-max-loc'
+// numeric-override shape as every other threshold in this codebase.
+test('validateArchitecture: COMPONENT-006-max-depth/COMPONENT-006-max-branches overrides from architecture.yml are honored', () => {
+  const dir = tmpProject();
+  fs.mkdirSync(path.join(dir, 'features', 'x', 'components'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), 'rules:\n  COMPONENT-006-max-depth: 1\n');
+  fs.writeFileSync(path.join(dir, 'features', 'x', 'components', 'C.tsx'), `export function C(){ return <div><span/></div>; }`);
+  const res = validateArchitecture(dir);
+  assert.ok(res.violations.some((v) => v.rule === 'COMPONENT-006'));
 });
 
 test('validateArchitecture suggests a layer folder for an unclassifiable feature file', () => {

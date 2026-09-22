@@ -7,7 +7,8 @@ import * as parser from '../packages/core/parser.mjs';
 test('public entry point exposes the documented API', () => {
   const names = ['parseToAst', 'parseTsSource', 'walkAst', 'walkForUsage', 'collectCalls', 'collectBareIdentifierUsages',
     'collectControlFlowNodes', 'isNonUsagePosition', 'extractImports', 'extractExports', 'extractJsdoc',
-    'staticImportEntries', 'lineOf', 'ts', 'findNode', 'findAllNodes', 'printNode'];
+    'staticImportEntries', 'lineOf', 'ts', 'findNode', 'findAllNodes', 'printNode',
+    'collectInlineJsxLogic', 'computeJsxComplexity'];
   for (const n of names) assert.ok(ast[n] !== undefined, `missing export ${n}`);
 });
 
@@ -45,4 +46,46 @@ test('TypeScript-compiler helpers: parseTsSource + findNode/findAllNodes + print
     [ast.ts.factory.createVariableDeclaration('x', undefined, undefined, ast.ts.factory.createNumericLiteral(1))],
     ast.ts.NodeFlags.Const));
   assert.equal(ast.printNode(node), 'const x = 1;');
+});
+
+// #508 -- jsxComplexity.mjs (COMPONENT-005/006's shape detector).
+test('collectInlineJsxLogic finds a JSX-producing ternary, &&, and .map() render, in position order', () => {
+  const src = `function C(p) {
+  return <div>{p.a ? <X/> : <Y/>}{p.b && <Z/>}{p.items.map(i => <li key={i}>{i}</li>)}</div>;
+}`;
+  const hits = ast.collectInlineJsxLogic(ast.parseToAst(src));
+  assert.deepEqual(hits.map((h) => h.kind), ['conditional', 'conditional', 'loop']);
+  // sorted by position.
+  assert.ok(hits[0].node.range[0] < hits[1].node.range[0]);
+  assert.ok(hits[1].node.range[0] < hits[2].node.range[0]);
+});
+
+test('collectInlineJsxLogic ignores a ternary/&&/.map that never produces JSX', () => {
+  const src = `function f(p) {
+  const label = p.ok ? 'yes' : 'no';
+  const enabled = p.a && p.b;
+  const ids = p.items.map(i => i.id);
+  return label + String(enabled) + String(ids.length);
+}`;
+  assert.deepEqual(ast.collectInlineJsxLogic(ast.parseToAst(src)), []);
+});
+
+test('collectInlineJsxLogic catches a .map() whose callback returns JSX from a block body (not just a concise arrow body)', () => {
+  const src = `function C(p) {
+  return <ul>{p.items.map((i) => { return <li key={i}>{i}</li>; })}</ul>;
+}`;
+  assert.deepEqual(ast.collectInlineJsxLogic(ast.parseToAst(src)).map((h) => h.kind), ['loop']);
+});
+
+test('computeJsxComplexity reports JSX nesting depth and inline-branch count independently', () => {
+  const flat = ast.computeJsxComplexity(ast.parseToAst('function C(){ return <div><span/></div>; }'));
+  assert.deepEqual(flat, { maxDepth: 2, branchCount: 0 });
+
+  const branchy = ast.computeJsxComplexity(ast.parseToAst('function C(p){ return <div>{p.a && <X/>}{p.b && <Y/>}</div>; }'));
+  assert.equal(branchy.branchCount, 2);
+  assert.equal(branchy.maxDepth, 2); // outer <div> + each conditionally-rendered element
+
+  const deep = ast.computeJsxComplexity(ast.parseToAst('function C(){ return <a><b><c/></b></a>; }'));
+  assert.equal(deep.maxDepth, 3);
+  assert.equal(deep.branchCount, 0);
 });

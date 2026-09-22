@@ -21,7 +21,7 @@ import { loadLayerGraph, canImport, classifyFile } from './architecture-graph.mj
 import { makeViolation, ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { walk, rel } from './fs.mjs';
 import { globToRegExp, matchGlob } from './glob.mjs';
-import { parseToAst, extractImports, staticImportEntries, lineOf, collectCalls, collectBareIdentifierUsages, collectControlFlowNodes } from '../../packages/ast/index.mjs';
+import { parseToAst, extractImports, staticImportEntries, lineOf, collectCalls, collectBareIdentifierUsages, collectControlFlowNodes, collectInlineJsxLogic, computeJsxComplexity } from '../../packages/ast/index.mjs';
 import { extractMachines } from '../../packages/engine/workflowExtractor.mjs';
 import { findHealthIssues } from '../../packages/engine/workflowScenarios.mjs';
 import { exceptionApplies, validateExceptionsShape, expiredExceptionViolations } from './exceptions.mjs';
@@ -33,6 +33,13 @@ export { extractImports };
 
 const FILE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx']);
 const KNOWN_LAYERS = new Set(['route', 'controller', 'workflow', 'hook', 'service', 'domain', 'page', 'component']);
+
+// #508 -- COMPONENT-006's default JSX complexity budget (overridable via
+// architecture.yml's 'COMPONENT-006-max-depth'/'COMPONENT-006-max-branches',
+// same numeric-override mechanism as 'READ-002-max-loc'). Illustrative
+// defaults, not a load-bearing constant sourced from anywhere else.
+const DEFAULT_COMPONENT_MAX_JSX_DEPTH = 6;
+const DEFAULT_COMPONENT_MAX_JSX_BRANCHES = 3;
 
 /** Does this import specifier refer to the "react" package or a "react/" subpath
  * (e.g. "react-dom/client" is NOT matched — mirrors the old REACT_IMPORT_RE's intent
@@ -55,8 +62,14 @@ function layerFolder(def) {
  * triggers. No severity/exception/module wrapping — that happens in
  * pushViolation so this stays trivially unit-testable with in-memory
  * source strings.
+ *
+ * @param {string} layer One of the known layer names.
+ * @param {string} source The file's source text.
+ * @param {{maxJsxDepth?: number, maxJsxBranches?: number}} [opts] COMPONENT-006's
+ *   complexity budget overrides (#508) -- additive, optional; every existing
+ *   call site that omits it keeps the built-in defaults.
  */
-export function detectLayerViolations(layer, source) {
+export function detectLayerViolations(layer, source, opts = {}) {
   const ast = parseToAst(source);
   const importsList = extractImports(source);
   const staticImports = staticImportEntries(ast);
@@ -136,6 +149,35 @@ export function detectLayerViolations(layer, source) {
       message: 'Component imports application logic.',
       why: 'Components are reusable presentation and local UI state only.',
       expected: ['props', 'component'],
+    });
+
+    // #508 -- COMPONENT-005: no inline conditional/loop logic in a
+    // component's JSX (mirrors the still-unbuilt PAGE-008, #505, applied to
+    // defineComponent instead of definePage). Shape detection lives in
+    // packages/ast/jsxComplexity.mjs so a future PAGE-008 can reuse it
+    // verbatim; deliberately independent of the `expressions` layer's own
+    // types (#503, also not yet built) -- purely syntactic.
+    const inlineLogic = collectInlineJsxLogic(ast);
+    if (inlineLogic.length) out.push({
+      rule: 'COMPONENT-005', line: lineOf(source, inlineLogic[0].node.range[0]),
+      message: `Component contains inline ${inlineLogic[0].kind === 'loop' ? 'loop' : 'conditional'} logic in its JSX.`,
+      why: 'Conditional/loop rendering is control flow, not presentation — extract it into a named @expression unit so it stays visible, testable and reusable on its own.',
+      expected: ['@expression'],
+    });
+
+    // #508 -- COMPONENT-006: a component-level JSX complexity budget
+    // (nesting depth / inline-branch count), separate from any one
+    // Expression's own cap (EXPR-002, #503) -- this measures the composing
+    // component's own JSX tree, not any one piece already extracted out of
+    // it.
+    const complexity = computeJsxComplexity(ast);
+    const maxJsxDepth = opts.maxJsxDepth ?? DEFAULT_COMPONENT_MAX_JSX_DEPTH;
+    const maxJsxBranches = opts.maxJsxBranches ?? DEFAULT_COMPONENT_MAX_JSX_BRANCHES;
+    if (complexity.maxDepth > maxJsxDepth || complexity.branchCount > maxJsxBranches) out.push({
+      rule: 'COMPONENT-006', line: 1,
+      message: `Component's JSX is too complex (nesting depth ${complexity.maxDepth}, ${complexity.branchCount} inline conditional/loop branch${complexity.branchCount === 1 ? '' : 'es'}; budget is depth ${maxJsxDepth}, ${maxJsxBranches} branches).`,
+      why: "A component-level complexity budget, separate from any one Expression's own cap, keeps a single component from growing into an unreviewable JSX tree.",
+      expected: ['smaller, composed components and/or @expression units'],
     });
   }
 
@@ -353,6 +395,14 @@ export function validateArchitecture(root, opts = {}) {
   // frozen sources) is built lazily on the first page/component/controller.
   const frozenGlobs = config.frozen || [];
   const nonLayerGlobs = config.nonLayer || [];
+  // #508 -- COMPONENT-006's budget, read from the normalized config (numeric
+  // 'value' fields per the 'READ-002-max-loc' shape) once per run, not once
+  // per file; undefined when not overridden, so detectLayerViolations falls
+  // back to its own built-in defaults.
+  const componentComplexityOpts = {
+    maxJsxDepth: config.rules['COMPONENT-006-max-depth']?.value,
+    maxJsxBranches: config.rules['COMPONENT-006-max-branches']?.value,
+  };
   let frozenIndex = null;
   for (const abs of files) {
     if (!FILE_EXTENSIONS.has(path.extname(abs)) || !fs.existsSync(abs)) continue;
@@ -368,7 +418,7 @@ export function validateArchitecture(root, opts = {}) {
       continue;
     }
     const source = fs.readFileSync(abs, 'utf8');
-    for (const desc of detectLayerViolations(layer, source)) {
+    for (const desc of detectLayerViolations(layer, source, componentComplexityOpts)) {
       pushViolation(config, out, { ...desc, file: r });
     }
     if (frozenGlobs.length && FROZEN_RULE_BY_LAYER[layer]) {

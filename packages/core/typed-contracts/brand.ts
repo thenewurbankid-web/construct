@@ -16,15 +16,20 @@
 // so the two concerns (compile-time nominal typing vs. runtime
 // introspection) stay independent.
 //
-// Two independent tag channels (`layerBrand`, `propRefBrand`) are declared,
-// not one shared symbol, because a value can legitimately need BOTH brands
-// at once (e.g. `PropRef<ComponentUnit<Props>>` — "a reference to a
-// component unit already in scope"). Sharing one symbol key would make the
-// intersection's brand property require two different literal values at
-// once (e.g. `'component' & 'ref'`, which collapses to `never`), silently
-// making every such type uninhabitable. See units.ts / propRef.ts.
+// Three independent tag channels (`layerBrand`, `propRefBrand`,
+// `featureBrand`) are declared, not one shared symbol, because a value can
+// legitimately need more than one brand at once (e.g.
+// `PropRef<ComponentUnit<Props>>` — "a reference to a component unit
+// already in scope"; or, per #511, `FeatureBrand<ComponentUnit<Props>,
+// 'checkout'>` — "this specific component unit, as generated inside the
+// checkout feature", which itself can ALSO be wrapped in a PropRef). Sharing
+// one symbol key would make the intersection's brand property require two
+// different literal values at once (e.g. `'component' & 'ref'`, which
+// collapses to `never`), silently making every such type uninhabitable. See
+// units.ts / propRef.ts / #511's FeatureBrand below.
 declare const layerBrand: unique symbol;
 declare const propRefBrand: unique symbol;
+declare const featureBrand: unique symbol;
 
 /** Tags `T` with a literal value `V` under the private symbol channel `S`,
  * without disturbing any other brand `T` may already carry (see the module
@@ -43,3 +48,26 @@ export type Brand<T, Layer extends string> = Tag<T, typeof layerBrand, Layer>;
 /** Brand `T` as "a PropRef", independent of any layer brand `T` may already
  * carry. See propRef.ts for the public `PropRef<T>` type built from this. */
 export type RefBrand<T> = Tag<T, typeof propRefBrand, 'ref'>;
+
+/**
+ * #511 — brand `T` (normally an already layer-branded unit, e.g.
+ * `ComponentUnit<Props>`) as belonging to feature `Feature` (e.g.
+ * `'checkout'`), independent of any layer/PropRef brand `T` may already
+ * carry — the literal "`Brand<T, Layer, Feature>`" mechanism #511 asks for,
+ * built as its own symbol channel (see this file's module doc comment)
+ * rather than as a third type parameter grafted onto `Brand<T, Layer>`
+ * itself: every existing `Brand<T, Layer>` call site throughout
+ * units.ts/factories.ts stays byte-for-byte unchanged (#500 phase 1's
+ * additive-only constraint) because `Brand`'s own definition is never
+ * touched — `FeatureBrand` is a full sibling of `RefBrand`, layered on
+ * top of an already-built unit type, not a modification of `Brand`.
+ *
+ * The feature tag is meant to be framework-generated, never hand-typed by a
+ * developer: `withFeature()` (feature.ts) is the only place that produces a
+ * `FeatureBrand`, and it infers `Feature` from the literal string VALUE
+ * passed at the call site (the same way `propRef()` infers its `T` from a
+ * value, not from an explicit type argument) — see feature.ts's doc comment
+ * and examples/feature-branded-valid.ts for what a generated call site
+ * looks like.
+ */
+export type FeatureBrand<T, Feature extends string> = Tag<T, typeof featureBrand, Feature>;

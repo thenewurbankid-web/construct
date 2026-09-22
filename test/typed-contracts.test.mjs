@@ -99,6 +99,20 @@ test('propRef() is a runtime identity function (the type-level distinction has n
   assert.equal(ref.unitName, 'Header');
 });
 
+// #511 -- withFeature() is a runtime identity function, exactly like
+// propRef(): the FeatureBrand it applies is a compile-time-only construct
+// (see brand.ts), so tagging a unit with a feature must not change what the
+// unit actually IS or DOES at runtime.
+test('withFeature() is a runtime identity function (the feature brand has no runtime cost)', { skip }, () => {
+  const { defineComponent, withFeature } = typedContracts;
+  const Header = defineComponent('Header', (p) => p);
+  const tagged = withFeature(Header, 'checkout');
+  assert.equal(tagged, Header);
+  assert.equal(tagged.unitName, 'Header');
+  assert.equal(tagged.unitLayer, 'component');
+  assert.equal(tagged({ x: 1 }).x, 1);
+});
+
 test('two units of different layers built from structurally identical functions stay runtime-distinguishable via unitLayer', { skip }, () => {
   // The brand itself has zero runtime footprint (by design -- see brand.ts);
   // `unitLayer` is what lets runtime tooling recover the same distinction

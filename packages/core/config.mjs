@@ -113,6 +113,22 @@ export const DEFAULT_RULES = {
   'COMPONENT-001': { severity: 'error', name: 'Components are presentation-only' },
   'COMPONENT-002': { severity: 'error', name: 'Components cannot import controllers' },
   'COMPONENT-003': { severity: 'error', name: 'Components cannot import workflows/services/domain' },
+  // #508 (part of #500's typed-contracts epic) -- mirrors the still-unbuilt
+  // PAGE-008/PAGE-009 (#505) applied to defineComponent instead of
+  // definePage. Heuristic, AST-shape rules (packages/ast/jsxComplexity.mjs),
+  // not the typed-factory mechanism itself -- default severity is
+  // 'warning', not 'error', deliberately: real hand-written components (see
+  // fixtures/frozen-presentation's project-bad/HomeShell.tsx, a `.map()`
+  // render) already exist that this shape-detector correctly flags, and a
+  // silent severity bump to 'error' for existing projects is exactly the
+  // kind of non-additive breakage #500 phase 1 rules out. A project can
+  // still opt into 'error' itself via architecture.yml.
+  'COMPONENT-005': { severity: 'warning', name: 'Components cannot contain inline conditional/loop logic in JSX — must be a named @expression unit' },
+  'COMPONENT-006': { severity: 'warning', name: "Component-level JSX complexity budget (nesting depth / inline conditional-or-loop branch count), separate from any one Expression's own cap" },
+  // Numeric threshold overrides for COMPONENT-006, same `numeric: true`
+  // escape-hatch shape as 'READ-002-max-loc' above.
+  'COMPONENT-006-max-depth': { name: "Override for COMPONENT-006's max JSX nesting depth", numeric: true },
+  'COMPONENT-006-max-branches': { name: "Override for COMPONENT-006's max inline conditional/loop branch count", numeric: true },
   'WORKFLOW-001': { severity: 'error', name: 'Workflows cannot import React/UI' },
   // Epic #185 (#190) -- reuse the workflow narrator's health findings (packages/engine/workflowScenarios.mjs).
   'WORKFLOW-002': { severity: 'warning', name: 'Workflow states must be reachable from the initial state' },
