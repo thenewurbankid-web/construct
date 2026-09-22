@@ -22,6 +22,10 @@ Four capabilities, one CLI:
   construct create <layer> <name> --feature <feature> [--llm <provider>] [--dir <path>]
   construct refactor move <name> --feature <feature> --from <layer> --to <layer> [--dir <path>]
   construct refactor rename <name> <newName> --feature <feature> --layer <layer> [--dir <path>]
+  construct refactor extract-expression <file> [--range <start:end>] [--name <Name>] [--dry-run] [--dir <path>]
+    (hoists a PAGE-008/COMPONENT-005/EXPR-004-flagged inline conditional/loop out of <file> into a
+    named defineExpression(...) unit under that feature's expressions/ folder, and any hand-authored
+    markup it rendered into a companion defineComponent(...) unit — rewrites the call site to match)
   construct summarize <unit-ref> [--kind <k>] [--detail brief|standard|full] [--include a,b] [--format json|markdown] [--dir <path>]
   construct summarize --list [--kind <k>] | --usage   (structured, LLM-free summaries of any feature/file/hook/route/rule/package)
   construct research summarize [--feature <name>] [--format json|md|compact|prose] [--since <ref>] [--dir <path>]

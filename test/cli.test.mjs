@@ -197,6 +197,78 @@ test('refactor without a known sub-verb exits with USAGE_ERROR', () => {
   assert.match(res.stderr, /Usage: construct refactor/);
 });
 
+// #517 -- construct refactor extract-expression, run as the CLI would actually invoke it.
+test('refactor extract-expression hoists a flagged inline loop and validate goes clean', () => {
+  const dir = emptyProjectDir();
+  run(['create', 'feature', 'cpo'], dir);
+  const pageFile = path.join(dir, 'features', 'cpo', 'pages', 'CpoHome.tsx');
+  fs.writeFileSync(pageFile, `export default function CpoHome(props: { items: string[] }) {
+  return (
+    <ul>
+      {props.items.map((item) => (
+        <li key={item}>{item}</li>
+      ))}
+    </ul>
+  );
+}
+`);
+  const before = run(['validate'], dir);
+  assert.match(before.stdout, /PAGE-008/);
+
+  const res = run(['refactor', 'extract-expression', 'features/cpo/pages/CpoHome.tsx'], dir);
+  assert.equal(res.status, EXIT_CODES.OK);
+  assert.match(res.stdout, /Extracted ItemList from features\/cpo\/pages\/CpoHome\.tsx -> features\/cpo\/expressions\/ItemList\.tsx/);
+  assert.match(res.stdout, /hoisted native markup -> features\/cpo\/components\/ItemRow\.tsx/);
+  assert.match(res.stdout, /\[tool: .*\] \[llm: 0 calls/);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'cpo', 'expressions', 'ItemList.tsx')), true);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'cpo', 'components', 'ItemRow.tsx')), true);
+
+  const after = run(['validate'], dir);
+  assert.equal(after.status, EXIT_CODES.OK);
+  assert.doesNotMatch(after.stdout, /PAGE-008/);
+  assert.doesNotMatch(after.stdout, /EXPR-0/);
+  assert.doesNotMatch(after.stdout, /SOC-001/);
+});
+
+test('refactor extract-expression --dry-run writes nothing', () => {
+  const dir = emptyProjectDir();
+  run(['create', 'feature', 'cpo'], dir);
+  const pageFile = path.join(dir, 'features', 'cpo', 'pages', 'CpoHome.tsx');
+  const source = `export default function CpoHome(props: { items: string[] }) {
+  return <ul>{props.items.map((item) => (<li key={item}>{item}</li>))}</ul>;
+}
+`;
+  fs.writeFileSync(pageFile, source);
+  const res = run(['refactor', 'extract-expression', 'features/cpo/pages/CpoHome.tsx', '--dry-run'], dir);
+  assert.equal(res.status, EXIT_CODES.OK);
+  assert.match(res.stdout, /Dry run: would extract into features\/cpo\/expressions\/ItemList\.tsx/);
+  assert.equal(fs.readFileSync(pageFile, 'utf8'), source);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'cpo', 'expressions')), false);
+});
+
+test('refactor extract-expression --name overrides the derived name', () => {
+  const dir = emptyProjectDir();
+  run(['create', 'feature', 'cpo'], dir);
+  const pageFile = path.join(dir, 'features', 'cpo', 'pages', 'CpoHome.tsx');
+  fs.writeFileSync(pageFile, `export default function CpoHome(props: { items: string[] }) {
+  return <ul>{props.items.map((item) => (<li key={item}>{item}</li>))}</ul>;
+}
+`);
+  const res = run(['refactor', 'extract-expression', 'features/cpo/pages/CpoHome.tsx', '--name', 'ProductList'], dir);
+  assert.equal(res.status, EXIT_CODES.OK);
+  assert.match(res.stdout, /Extracted ProductList/);
+});
+
+test('refactor extract-expression on a file with nothing to extract exits with USAGE_ERROR', () => {
+  const dir = emptyProjectDir();
+  run(['create', 'feature', 'cpo'], dir);
+  const pageFile = path.join(dir, 'features', 'cpo', 'pages', 'CpoHome.tsx');
+  fs.writeFileSync(pageFile, `export default function CpoHome() {\n  return <div>Hello</div>;\n}\n`);
+  const res = run(['refactor', 'extract-expression', 'features/cpo/pages/CpoHome.tsx'], dir);
+  assert.equal(res.status, EXIT_CODES.USAGE_ERROR);
+  assert.match(res.stderr, /nothing to do/);
+});
+
 test('feature create then validate: generated feature has no forced feature-root violation', () => {
   const dir = emptyProjectDir();
   const created = run(['feature', 'create', 'checkout'], dir);

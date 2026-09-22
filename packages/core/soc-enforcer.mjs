@@ -15,6 +15,18 @@ const ext = new Set(['.ts', '.tsx', '.js', '.jsx']);
 export const LAYER_FOLDERS = ['controllers', 'workflows', 'hooks', 'domain', 'services', 'pages', 'components'];
 const LAYER_FOLDER_SET = new Set(LAYER_FOLDERS);
 
+// #517 -- 'expressions' (#503's additive `expression` layer -- architecture-enforcer.mjs /
+// config.mjs's DEFAULT_LAYERS) is a real, recognized layer folder, but is deliberately NOT added
+// to LAYER_FOLDERS itself: that array also drives checkSkeleton's SLICE-001 "every feature must
+// have all of these folders" scaffold check, below, and requiring an expressions/ folder on every
+// pre-existing feature that has never opted into this optional layer would be exactly the
+// non-additive regression #500 phase 1 rules out (no existing project has one today). This set is
+// consulted ONLY by checkOwnership's "is this a known folder" SOC-001 check, so a feature that
+// does adopt expressions/ (e.g. via `construct refactor extract-expression`, #517) is recognized
+// without every other feature being forced to grow the folder too.
+const RECOGNIZED_EXTRA_FOLDERS = ['expressions'];
+const KNOWN_FOLDER_SET = new Set([...LAYER_FOLDERS, ...RECOGNIZED_EXTRA_FOLDERS]);
+
 const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const stripExt = (p) => p.replace(/\.(tsx|ts|jsx|js)$/, '');
 
@@ -395,20 +407,20 @@ function checkOwnership(config, out, root, featuresRoot, featureName) {
         line: 1,
         message: `File "${top}" sits directly in the feature root without a recognized role.`,
         why: 'Every responsibility needs an architectural owner.',
-        expected: [...LAYER_FOLDERS, 'shared/', 'index.ts', 'types.ts'],
+        expected: [...LAYER_FOLDERS, ...RECOGNIZED_EXTRA_FOLDERS, 'shared/', 'index.ts', 'types.ts'],
         suggestedFix: `Move ${relFull} into a known layer folder (e.g. ${featuresRoot}/${featureName}/domain/) or ${featuresRoot}/${featureName}/shared/.`,
       });
       continue;
     }
-    if (top === 'shared' || LAYER_FOLDER_SET.has(top)) continue;
+    if (top === 'shared' || KNOWN_FOLDER_SET.has(top)) continue;
     pushViolation(config, out, {
       rule: 'SOC-001',
       file: relFull,
       line: 1,
       message: `File is under unrecognized folder "${top}/".`,
       why: 'Every responsibility needs an architectural owner (a known layer folder or an explicit shared/).',
-      expected: [...LAYER_FOLDERS, 'shared/'],
-      suggestedFix: `Move ${relFull} into one of ${LAYER_FOLDERS.join('/')} or ${featuresRoot}/${featureName}/shared/.`,
+      expected: [...LAYER_FOLDERS, ...RECOGNIZED_EXTRA_FOLDERS, 'shared/'],
+      suggestedFix: `Move ${relFull} into one of ${[...LAYER_FOLDERS, ...RECOGNIZED_EXTRA_FOLDERS].join('/')} or ${featuresRoot}/${featureName}/shared/.`,
     });
   }
 }

@@ -18,6 +18,7 @@ import { loadTemplateDir, TemplateError } from '../../packages/engine/planTempla
 import { prHealth, renderPrHealthMarkdown, prHealthApiManifest } from '../../packages/engine/prHealth.mjs';
 import { summarizeProject, summarizeCompact, summarizeProse, summarizeSince } from './summarize.mjs';
 import { moveLayerFile, renameLayerFile } from './refactor.mjs';
+import { extractExpression } from './extractExpression.mjs';
 import { importVertical, importPlan, analyzeFiles, executeImportPlan } from './import.mjs';
 import { resolveRoute } from './route-resolver.mjs';
 import { DEFAULT_ENFORCERS } from '../../packages/engine/defaultEnforcers.mjs';
@@ -721,20 +722,23 @@ export async function research(args) {
 
 /**
  * `construct refactor move <name> --feature <f> --from <layer> --to <layer>`
- * | `construct refactor rename <name> <newName> --feature <f> --layer <layer>`.
- * Purely mechanical (relocate + rewrite every importer's path) — never
- * touches a file's own content. Reports the result, then re-validates just
- * the moved/renamed file so a naming/purity mismatch in its new home shows
- * up immediately instead of on the next full `construct validate`.
+ * | `construct refactor rename <name> <newName> --feature <f> --layer <layer>`
+ * | `construct refactor extract-expression <file> [--range <start:end>] [--name <Name>]`.
+ * Purely mechanical (relocate + rewrite every importer's path, or hoist a
+ * flagged inline conditional/loop into a named unit) — never invents new
+ * business logic. Reports the result, then re-validates the changed file(s)
+ * so a naming/purity mismatch in their new home shows up immediately instead
+ * of on the next full `construct validate`.
  *
- * @param {string[]} args `move <name> --feature <f> --from <layer> --to <layer>` or `rename <name> <newName> --feature <f> --layer <layer>`.
+ * @param {string[]} args `move <name> --feature <f> --from <layer> --to <layer>`, `rename <name> <newName> --feature <f> --layer <layer>`, or `extract-expression <file> [--range <start:end>] [--name <Name>]`.
  * @returns {Promise<void>} Resolves after the change (or dry run) is reported.
  * @throws {ConstructError} Usage error (exit code 2) for an unknown subcommand.
  */
 export async function refactor(args) {
   if (args[0] === 'move') return refactorMove(args.slice(1));
   if (args[0] === 'rename') return refactorRename(args.slice(1));
-  throw new ConstructError('Usage: construct refactor move|rename ...', { exitCode: EXIT_CODES.USAGE_ERROR });
+  if (args[0] === 'extract-expression') return refactorExtractExpression(args.slice(1));
+  throw new ConstructError('Usage: construct refactor move|rename|extract-expression ...', { exitCode: EXIT_CODES.USAGE_ERROR });
 }
 
 // This printed line is the entire audit trail for a refactor command by
@@ -776,6 +780,42 @@ async function refactorRename(args) {
   }
   const root = getRoot(args);
   reportRelocation(root, 'Renamed', renameLayerFile(root, args[fi + 1], name, newName, args[li + 1], { dryRun: args.includes('--dry-run') }));
+}
+
+async function refactorExtractExpression(args) {
+  const file = args[0];
+  if (!file) {
+    throw new ConstructError(
+      'Usage: construct refactor extract-expression <file> [--range <start:end>] [--name <Name>] [--dry-run]',
+      { exitCode: EXIT_CODES.USAGE_ERROR },
+    );
+  }
+  const root = getRoot(args);
+  const rangeI = args.indexOf('--range');
+  let range;
+  if (rangeI >= 0) {
+    const raw = args[rangeI + 1] || '';
+    const m = raw.match(/^(\d+):(\d+)$/);
+    if (!m) throw new ConstructError(`--range must be "<start>:<end>" (two source offsets), got "${raw}".`, { exitCode: EXIT_CODES.USAGE_ERROR });
+    range = [Number(m[1]), Number(m[2])];
+  }
+  const nameI = args.indexOf('--name');
+  const result = extractExpression(root, file, {
+    range,
+    name: nameI >= 0 ? args[nameI + 1] : undefined,
+    dryRun: args.includes('--dry-run'),
+  });
+  if (result.dryRun) {
+    console.log(`Dry run: would extract into ${result.expression.file}${result.components.length ? ` (+ ${result.components.map((c) => c.file).join(', ')})` : ''}, rewriting ${result.page.file}.`);
+    printAttribution('extracted a flagged inline conditional/loop into a named @expression unit', '0 calls — the shape is copied from the flagged code itself');
+    return;
+  }
+  console.log(`Extracted ${result.expression.name} from ${result.page.file} -> ${result.expression.file}`);
+  for (const c of result.components) console.log(`  hoisted native markup -> ${c.file} (${c.name})`);
+  const touched = [result.page.file, result.expression.file, ...result.components.map((c) => c.file)];
+  const { violations } = validateArchitecture(root, { files: touched });
+  if (violations.length) console.log(formatReport(violations, { format: 'text' }));
+  printAttribution('extracted a flagged inline conditional/loop into a named @expression unit', '0 calls — the shape is copied from the flagged code itself');
 }
 
 /**
