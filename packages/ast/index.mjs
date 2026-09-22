@@ -20,3 +20,4 @@ export {
 } from './jsxEdit.mjs';
 export { collectComponentScopeNames, collectScopeDeclarations, findImportOfName, findTypeMembers, declaredPropNames } from './jsxScope.mjs';
 export { collectInlineJsxLogic, computeJsxComplexity } from './jsxComplexity.mjs';
+export { collectImpureDomainReferences, collectLocallyBoundNames, BUILTIN_GLOBALS as DOMAIN_PURITY_BUILTIN_GLOBALS } from './domainPurity.mjs';

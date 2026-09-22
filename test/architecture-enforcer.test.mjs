@@ -582,3 +582,77 @@ test('PAGE-008 defaults to warning severity: the real frozen-presentation CpoHom
   assert.equal(v.severity, 'warning');
 });
 
+
+// ---- #506: DOMAIN-002 (allowlist purity, additive alongside DOMAIN-001, flag-gated) ----
+
+// Off by default (DEFAULT_RULES) -- detectLayerViolations requires opts.domainPurityAllowlist
+// so every pre-existing call site (including the DOMAIN-001 tests above, which call
+// detectLayerViolations('domain', src) with no third argument) is completely unaffected.
+test('detectLayerViolations does not run DOMAIN-002 unless opts.domainPurityAllowlist is set', () => {
+  const src = `export function f(){ return document.title; }`;
+  assert.deepEqual(detectLayerViolations('domain', src).map((v) => v.rule), ['DOMAIN-001']);
+  assert.deepEqual(detectLayerViolations('domain', src, { domainPurityAllowlist: true }).map((v) => v.rule).sort(), ['DOMAIN-001', 'DOMAIN-002']);
+});
+
+// #492's false positive: DOMAIN-001's denylist still (unchanged, per #500 phase 1) flags a
+// parameter merely *named* document -- DOMAIN-002 does not, because it allows any of the
+// function's own parameters/local bindings regardless of name.
+test('DOMAIN-002 (#492 proof, false positive avoided): a parameter merely named "document" does not trip DOMAIN-002, though DOMAIN-001 still (unchanged) does', () => {
+  const src = `export function AddWidget(document, widget) { return { ...document, widgets: [...document.widgets, widget] }; }`;
+  const withAllowlist = detectLayerViolations('domain', src, { domainPurityAllowlist: true }).map((v) => v.rule);
+  assert.deepEqual(withAllowlist, ['DOMAIN-001'], 'DOMAIN-001 keeps its existing (buggy, unfixed-by-this-ticket) behavior');
+  assert.equal(withAllowlist.includes('DOMAIN-002'), false, 'DOMAIN-002 must not false-positive on a same-named parameter');
+});
+
+// A genuine effect still correctly flags under the new allowlist too, regardless of name.
+test('DOMAIN-002 (still-caught proof): a genuine document.querySelector(...) call is flagged', () => {
+  const src = `export function f(){ return document.querySelector('.x'); }`;
+  const rules = detectLayerViolations('domain', src, { domainPurityAllowlist: true }).map((v) => v.rule).sort();
+  assert.deepEqual(rules, ['DOMAIN-001', 'DOMAIN-002']);
+});
+
+// A value import used as a value is exactly the kind of effect DOMAIN-001's fixed name list
+// cannot see at all, but DOMAIN-002's allowlist catches regardless of what it's named.
+test('DOMAIN-002 catches a value import used as a value, which DOMAIN-001 cannot see by name', () => {
+  const src = `import { helper } from './helper';\nexport function f(x){ return helper(x); }`;
+  assert.deepEqual(detectLayerViolations('domain', src).map((v) => v.rule), []); // DOMAIN-001: nothing to see here
+  assert.deepEqual(detectLayerViolations('domain', src, { domainPurityAllowlist: true }).map((v) => v.rule), ['DOMAIN-002']);
+});
+
+// A type-only import used only in a type position is never a violation.
+test('DOMAIN-002 does not flag a type-only import used only as a type', () => {
+  const src = `import type { Foo } from './types';\nexport function f(x: Foo): Foo { return x; }`;
+  assert.deepEqual(detectLayerViolations('domain', src, { domainPurityAllowlist: true }), []);
+});
+
+// End-to-end through validateArchitecture: off by default (no architecture.yml override), and a
+// project can opt in via `rules: { DOMAIN-002: error }`. Also proves the false-positive-avoided
+// and still-caught cases survive the full config/severity pipeline, not just the pure detector.
+test('validateArchitecture: DOMAIN-002 is off by default and opt-in via architecture.yml (rules: DOMAIN-002: error)', () => {
+  const dir = tmpProject();
+  fs.mkdirSync(path.join(dir, 'features', 'x', 'domain'), { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, 'features', 'x', 'domain', 'AddWidget.ts'),
+    `export function AddWidget(document, widget) { return { ...document, widgets: [...document.widgets, widget] }; }\n`,
+  );
+  fs.writeFileSync(
+    path.join(dir, 'features', 'x', 'domain', 'RealEffect.ts'),
+    `export function f(){ return document.querySelector('.x'); }\n`,
+  );
+
+  const off = validateArchitecture(dir);
+  assert.equal(off.violations.some((v) => v.rule === 'DOMAIN-002'), false, 'DOMAIN-002 must be silent by default');
+  assert.ok(off.violations.some((v) => v.rule === 'DOMAIN-001' && v.file === 'features/x/domain/AddWidget.ts'), 'DOMAIN-001 keeps firing unchanged');
+
+  fs.appendFileSync(path.join(dir, 'architecture.yml'), 'rules:\n  DOMAIN-002: error\n');
+  const on = validateArchitecture(dir);
+  assert.equal(
+    on.violations.some((v) => v.rule === 'DOMAIN-002' && v.file === 'features/x/domain/AddWidget.ts'),
+    false,
+    'opting in must still not false-positive on the document-named parameter',
+  );
+  assert.ok(
+    on.violations.some((v) => v.rule === 'DOMAIN-002' && v.file === 'features/x/domain/RealEffect.ts' && v.severity === 'error'),
+    'opting in must still catch the genuine document.querySelector(...) effect',
+  );
+});

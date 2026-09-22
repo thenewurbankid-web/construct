@@ -163,6 +163,16 @@ export const DEFAULT_RULES = {
   'SERVICE-001': { severity: 'error', name: 'Services own external effects' },
   'SERVICE-002': { severity: 'error', name: 'Services cannot import React/UI' },
   'DOMAIN-001': { severity: 'error', name: 'Domain is pure' },
+  // #506 -- an allowlist alternative to DOMAIN-001's name-based denylist, additive alongside
+  // it for now (#500 phase 1; removing DOMAIN-001 is phase 4 work). Default severity is
+  // 'off' deliberately: this is the "flag-gated alternate implementation" #506 asks for while
+  // it's unproven -- it is stricter than DOMAIN-001 in a way DOMAIN-001's own denylist fixture
+  // (features/bad/domain/Domain001.ts's `fetch('/x')`) already demonstrates (a genuine effect
+  // legitimately trips *both* rules at once), and turning it on by default would multiply
+  // every existing DOMAIN-001 violation into two without any project opting in. A project (or
+  // this repo's own dogfooding, once #506 is "proven" per #500 phase 2) turns it on with
+  // `rules: { DOMAIN-002: error }` (or 'warning') in architecture.yml.
+  'DOMAIN-002': { severity: 'off', name: 'Domain code may only reference its own parameters/local bindings, type-only imports, and a small set of JS built-ins (allowlist, not denylist)' },
   'SLICE-001': { severity: 'error', name: 'Feature internals are isolated' },
   'SLICE-002': { severity: 'error', name: 'Cross-feature imports use public index.ts' },
   'MODULE-001': { severity: 'error', name: 'One primary module per file' },

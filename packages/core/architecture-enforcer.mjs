@@ -21,7 +21,7 @@ import { loadLayerGraph, canImport, classifyFile } from './architecture-graph.mj
 import { makeViolation, ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { walk, rel } from './fs.mjs';
 import { globToRegExp, matchGlob } from './glob.mjs';
-import { parseToAst, extractImports, extractExports, staticImportEntries, lineOf, collectCalls, collectBareIdentifierUsages, collectControlFlowNodes, collectInlineJsxLogic, computeJsxComplexity } from '../../packages/ast/index.mjs';
+import { parseToAst, extractImports, extractExports, staticImportEntries, lineOf, collectCalls, collectBareIdentifierUsages, collectControlFlowNodes, collectInlineJsxLogic, computeJsxComplexity, collectImpureDomainReferences } from '../../packages/ast/index.mjs';
 import { extractMachines } from '../../packages/engine/workflowExtractor.mjs';
 import { findHealthIssues } from '../../packages/engine/workflowScenarios.mjs';
 import { exceptionApplies, validateExceptionsShape, expiredExceptionViolations } from './exceptions.mjs';
@@ -94,9 +94,10 @@ function layerFolder(def) {
  *
  * @param {string} layer One of the known layer names.
  * @param {string} source The file's source text.
- * @param {{maxJsxDepth?: number, maxJsxBranches?: number}} [opts] COMPONENT-006/PAGE-009's
- *   complexity budget overrides (#508/#505) -- additive, optional; every existing call site
- *   that omits it keeps the built-in defaults.
+ * @param {{maxJsxDepth?: number, maxJsxBranches?: number, domainPurityAllowlist?: boolean}} [opts]
+ *   COMPONENT-006/PAGE-009's complexity budget overrides (#508/#505) and DOMAIN-002's opt-in
+ *   flag (#506) -- additive, optional; every existing call site that omits it keeps the
+ *   built-in defaults (and DOMAIN-002 off).
  */
 export function detectLayerViolations(layer, source, opts = {}) {
   const ast = parseToAst(source);
@@ -322,6 +323,34 @@ export function detectLayerViolations(layer, source, opts = {}) {
       why: 'Domain is pure by default.',
       expected: ['pure function'],
     });
+
+    // #506 -- DOMAIN-002: an allowlist alternative to DOMAIN-001's name-based denylist above,
+    // additive alongside it for now (#500 phase 1 -- removing DOMAIN-001 is phase 4 work, not
+    // this ticket). #492 showed the denylist false-positives on a parameter/local variable
+    // merely *named* document/window/fetch/etc, since it does no scope analysis; this check
+    // (packages/ast/domainPurity.mjs's collectImpureDomainReferences) instead allows only the
+    // function's own parameters/local bindings, type-only imports, and a small set of JS
+    // built-in globals -- anything else referenced as a real value is flagged regardless of
+    // its name, including effects DOMAIN-001's fixed name list can't see (a value import, an
+    // arbitrary undeclared global).
+    //
+    // Flag-gated (opts.domainPurityAllowlist, wired from config.rules['DOMAIN-002'] not being
+    // 'off' in validateArchitecture below) rather than unconditional: DOMAIN-002 is stricter
+    // than DOMAIN-001 in a way that already shows up on this repo's own DOMAIN-001 fixture (a
+    // genuine `fetch(...)` legitimately trips both rules at once), and detectLayerViolations is
+    // called directly, bypassing config/severity, by existing unit tests that assert an exact
+    // rule list for DOMAIN-001 -- gating inside detectLayerViolations itself (not only via
+    // pushViolation's severity check) is what keeps every one of those call sites byte-for-byte
+    // unchanged unless a project opts in.
+    if (opts.domainPurityAllowlist) {
+      const impureRef = collectImpureDomainReferences(ast)[0];
+      if (impureRef) out.push({
+        rule: 'DOMAIN-002', line: lineOf(source, impureRef.index),
+        message: `Domain code references "${impureRef.name}", which is not one of its own parameters/local bindings, a type-only import, or a built-in.`,
+        why: 'Domain is pure by default — an allowlist (own parameters/local bindings, type-only imports, a small set of JS built-ins) catches any external reference regardless of its name, unlike a fixed denylist of banned names.',
+        expected: ['pure function'],
+      });
+    }
   }
 
   // HOOK-002 (#510) -- the first real rule the `hook` layer has (see the module doc comment
@@ -491,6 +520,9 @@ export function validateArchitecture(root, opts = {}) {
     maxJsxDepth: config.rules['PAGE-009-max-depth']?.value,
     maxJsxBranches: config.rules['PAGE-009-max-branches']?.value,
   };
+  // #506 -- DOMAIN-002 only runs once a project opts in (severity isn't the DEFAULT_RULES
+  // 'off') -- see the flag-gating note on DOMAIN-002 in detectLayerViolations above.
+  const domainPurityAllowlist = config.rules['DOMAIN-002']?.severity !== 'off';
   let frozenIndex = null;
   for (const abs of files) {
     if (!FILE_EXTENSIONS.has(path.extname(abs)) || !fs.existsSync(abs)) continue;
@@ -507,7 +539,8 @@ export function validateArchitecture(root, opts = {}) {
     }
     const source = fs.readFileSync(abs, 'utf8');
     const complexityOpts = layer === 'page' ? pageComplexityOpts : componentComplexityOpts;
-    for (const desc of detectLayerViolations(layer, source, complexityOpts)) {
+    const layerOpts = { ...complexityOpts, domainPurityAllowlist };
+    for (const desc of detectLayerViolations(layer, source, layerOpts)) {
       pushViolation(config, out, { ...desc, file: r });
     }
     if (frozenGlobs.length && FROZEN_RULE_BY_LAYER[layer]) {
