@@ -14,7 +14,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SHOTS = path.resolve(__dirname, '../screenshots');
 fs.mkdirSync(SHOTS, { recursive: true });
 const API = process.env.E2E_API_BASE || 'http://localhost:4000';
-const BIN = path.resolve(__dirname, '../../../bin/construct.mjs');
+const BIN = path.resolve(__dirname, '../../../packages/cli/construct.mjs');
 const WS = process.env.E2E_WORKSPACE_ROOT;
 const SANDBOX = process.env.E2E_WORKSPACE_SANDBOX;
 const OUTSIDE = path.join(SANDBOX, 'outside');

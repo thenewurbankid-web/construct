@@ -5,7 +5,7 @@
 // store itself lists for the current project; it is never joined into a path, never given to git or a
 // shell. What travels on to the engine is the plan's own declared `touches` (planTouches), read from the
 // stored record -- never anything the client sent. Read-only: nothing here writes to the store.
-import { planTouches } from '../../../src/plan.mjs';
+import { planTouches } from '../../../packages/core/plan.mjs';
 import { isAnalysisPlan } from './reviewAnalyses.mjs';
 import { isTestRunPlan } from './testRuns.mjs';
 

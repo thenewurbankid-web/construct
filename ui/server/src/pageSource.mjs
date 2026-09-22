@@ -3,7 +3,7 @@
 // guard (resolvePageFile: strictly inside features/<feature>/pages/); the
 // diagnostics themselves come from the core (src/engine/diagnostics.mjs).
 import fs from 'node:fs';
-import { collectDiagnostics } from '../../../src/engine/diagnostics.mjs';
+import { collectDiagnostics } from '../../../packages/engine/diagnostics.mjs';
 import { resolvePageFile, hashOf } from './pagesEditor.mjs';
 
 export function readPageSource(root, feature, file) {

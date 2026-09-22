@@ -20,7 +20,7 @@
 // connections no longer block each other the way the old single
 // process-wide `activeSession` variable did.
 import { WebSocketServer } from 'ws';
-import { runImportRouteWizardEventDriven } from '../../../src/cli.mjs';
+import { runImportRouteWizardEventDriven } from '../../../packages/core/cli.mjs';
 import { getSettings, getProjectDir } from './settings.mjs';
 import { routeUpgrade } from './wsUpgrade.mjs';
 

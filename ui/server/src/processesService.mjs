@@ -14,11 +14,11 @@
 // matched against the paths recorded on the process, the same way.
 import { spawnSync } from 'node:child_process';
 import { containedProjectRoot } from './projectGuard.mjs';
-import { openProcessStore, resolveStateDir } from '../../../src/engine/processStore.mjs';
-import { processSummary, createProcess } from '../../../src/engine/processModel.mjs';
-import { createProcessEngine } from '../../../src/engine/processEngine.mjs';
-import { createBotRunner, botBranch } from '../../../src/engine/botRunner.mjs';
-import { createApprovalGate, GATE_CODES } from '../../../src/engine/approvalGate.mjs';
+import { openProcessStore, resolveStateDir } from '../../../packages/engine/processStore.mjs';
+import { processSummary, createProcess } from '../../../packages/engine/processModel.mjs';
+import { createProcessEngine } from '../../../packages/engine/processEngine.mjs';
+import { createBotRunner, botBranch } from '../../../packages/engine/botRunner.mjs';
+import { createApprovalGate, GATE_CODES } from '../../../packages/engine/approvalGate.mjs';
 import { composeExecutors } from './reviewAnalyses.mjs';
 
 /** The UI verbs and the machine event each one sends. The client may only

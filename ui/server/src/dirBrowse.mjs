@@ -3,7 +3,7 @@
 // origin-guards the request, parses the query string, and maps
 // DirBrowseError.status to a response. Pure function (no express) so it is
 // unit-testable without a socket.
-import { listDirectories, DirBrowseError } from '../../../src/dir-browser.mjs';
+import { listDirectories, DirBrowseError } from '../../../packages/core/dir-browser.mjs';
 import { contain, WorkspaceError } from './workspace.mjs';
 
 /**

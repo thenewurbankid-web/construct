@@ -10,9 +10,10 @@
 #                                    stays external and why)
 #
 # Run from the repo root: ui/build.sh
-# Heavy (npm ci + next build): wrap with tools/dev/heavy.sh in this repo's
-# own dev workflow; a Docker build or a fresh `npm install` of the published
-# package runs it directly (no heavy.sh outside this repo's own machine).
+# Heavy (npm ci + next build): wrap with packages/tools/dev/heavy.sh in this
+# repo's own dev workflow; a Docker build or a fresh `npm install` of the
+# published package runs it directly (no heavy.sh outside this repo's own
+# machine).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"

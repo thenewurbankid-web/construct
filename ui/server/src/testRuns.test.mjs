@@ -10,7 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import express from 'express';
 import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
-import { generateFeatureTests } from '../../../src/engine/testGenerator.mjs';
+import { generateFeatureTests } from '../../../packages/engine/testGenerator.mjs';
 import { SESSION_COOKIE, createAuth, resolveAuthConfig, signValue } from './auth.mjs';
 import { createTestsRouter } from './testsApi.mjs';
 import { createProcessesService } from './processesService.mjs';

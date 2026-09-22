@@ -13,7 +13,7 @@
 // the source tree: a repeat request costs one stat walk, not a summarize.
 import fs from 'node:fs';
 import path from 'node:path';
-import { summarizeUnit, listUnits } from '../../../src/engine/unitSummary.mjs';
+import { summarizeUnit, listUnits } from '../../../packages/engine/unitSummary.mjs';
 
 const NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
 const SKIP_DIRS = new Set(['node_modules', '.git', '.next', 'dist', 'build', 'coverage', '.construct']);

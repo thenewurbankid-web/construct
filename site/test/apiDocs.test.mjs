@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { generateApiMarkdown, API_PACKAGES, withPropsTable } from '../lib/apiDocs.mjs';
+import { generateApiMarkdown, API_PACKAGES, withPropsTable } from '../../packages/docs-site/lib/apiDocs.mjs';
 import { makeTempDir } from '../../test-utils/tmpdir.mjs';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -21,7 +21,7 @@ test('withPropsTable: a real prop table replaces TypeDoc\'s opaque __namedParame
   assert.match(out, /#### Returns/, 'the Returns section survives the replacement');
 
   // A hook (.ts, no component) is left exactly as TypeDoc rendered it.
-  assert.equal(withPropsTable(md, path.join(REPO_ROOT, 'src/cli.mjs'), 'src/cli.mjs', 1), md);
+  assert.equal(withPropsTable(md, path.join(REPO_ROOT, 'packages/core/cli.mjs'), 'packages/core/cli.mjs', 1), md);
   // More than one export in the file: left alone (ambiguous which export the props belong to).
   assert.equal(withPropsTable(md, path.join(REPO_ROOT, 'ui/client/components/ui/Input.jsx'), 'ui/client/components/ui/Input.jsx', 2), md);
 });

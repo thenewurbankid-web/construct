@@ -32,14 +32,14 @@
 //   - the POSTs are mutating: they sit behind the session gate, need a JSON body and, when the browser sends
 //     an Origin, that Origin must be the Cockpit's own.
 import express from 'express';
-import { listUnits } from '../../../src/engine/unitSummary.mjs';
-import { cloneGeneratedTest, readFeatureTest } from '../../../src/engine/testClone.mjs';
-import { compareClone, listFeatureTestsFresh } from '../../../src/engine/testFreshness.mjs';
-import { generateFeatureTests } from '../../../src/engine/testGenerator.mjs';
-import { applyStepEdit, previewStepEdit, readStepDocument } from '../../../src/engine/testSteps.mjs';
+import { listUnits } from '../../../packages/engine/unitSummary.mjs';
+import { cloneGeneratedTest, readFeatureTest } from '../../../packages/engine/testClone.mjs';
+import { compareClone, listFeatureTestsFresh } from '../../../packages/engine/testFreshness.mjs';
+import { generateFeatureTests } from '../../../packages/engine/testGenerator.mjs';
+import { applyStepEdit, previewStepEdit, readStepDocument } from '../../../packages/engine/testSteps.mjs';
 import { environmentState } from './testsEnv.mjs';
-import { DEFAULT_BASE_URL, parseBaseUrl, resolveSpecs } from '../../../src/engine/testRunner.mjs';
-import { ConstructError } from '../../../src/diagnostics.mjs';
+import { DEFAULT_BASE_URL, parseBaseUrl, resolveSpecs } from '../../../packages/engine/testRunner.mjs';
+import { ConstructError } from '../../../packages/core/diagnostics.mjs';
 
 const NAME = /^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/;
 const STATUS = { 'no-feature': 404, 'not-generated': 404, 'not-found': 404, 'not-a-clone': 422, 'bad-name': 400, exists: 409, locked: 403, stale: 409, 'not-reviewed': 409, 'no-change': 409, invalid: 422, 'not-editable': 422, unrenderable: 422 };

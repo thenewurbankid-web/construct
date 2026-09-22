@@ -2,12 +2,12 @@
 // Voice lab: speak a few representative lines of a script with several settings of the cloned voice, score each variant
 // objectively and write small .ogg files plus a manifest to compare them. No listening is needed to rank them.
 //
-//   node tools/media/voice-lab.mjs <slug> --voice-sample ~/voice/sample.wav [--lines intro,signIn,...] [--variants file.json] [--score-only]
+//   node packages/tools/media/voice-lab.mjs <slug> --voice-sample ~/voice/sample.wav [--lines intro,signIn,...] [--variants file.json] [--score-only]
 //
 // Output, all inside site/assets/video/voice-tests/: <variantId>--<lineId>.ogg (Opus in Ogg, 24 kbps) and manifest.json:
 //   { lines:[{id,text,say}], variants:[{id,label,params:{exaggeration,cfg_weight,temperature,ref},scores:{similarity,wer,f0std}}],
 //     files:{variantId:{lineId:path}}, reference:{f0std}, progress:{done,total,current,updated} }
-// `progress` is rewritten after every clip so a viewer can show it. Scores come from tools/media/eval_voice.py: speaker
+// `progress` is rewritten after every clip so a viewer can show it. Scores come from packages/tools/media/eval_voice.py: speaker
 // similarity to the real sample (Resemblyzer cosine), word error rate (faster-whisper) and pitch spread in semitones (F0 std).
 // Clips share the per-line cache with script.mjs (same key = same parameters), so a variant that wins is already cached.
 // Lines use their spoken wording (`say`) without per-line overrides, so variants differ only in the settings under test.

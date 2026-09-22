@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { describeSource } from '../../src/engine/describeDocgen.mjs';
+import { describeSource } from '../../engine/describeDocgen.mjs';
 import { stripTicketRefs } from './markdown.mjs';
 
 /** Same grouping the Trinity Modules tab uses. `dirs` are repo-relative; `recursive` walks subfolders. */

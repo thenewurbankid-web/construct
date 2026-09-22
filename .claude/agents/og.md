@@ -31,8 +31,8 @@ economy, Playwright-for-UI, board upkeep, one-write-per-command).
 ## Monitoring dispatched agents
 Silence is not progress — a completion notification means an agent
 finished; nothing tells you it stalled.
-- Watch actively: start `tools/dev/watch-agents.sh` in the background on
-  dispatch (`ISSUES="278 254" tools/dev/watch-agents.sh &`); it exits
+- Watch actively: start `packages/tools/dev/watch-agents.sh` in the background on
+  dispatch (`ISSUES="278 254" packages/tools/dev/watch-agents.sh &`); it exits
   (re-invoking you) after ~18 minutes with no movement.
 - Check by evidence, never assumption:
   `gh issue view <n> --json comments --jq '.comments|length'` and

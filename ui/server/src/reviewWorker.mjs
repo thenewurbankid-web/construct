@@ -4,9 +4,9 @@
 // through temporary detached worktrees that are removed before it returns, and so does the head read
 // below (src/engine/gitTrees.mjs).
 import path from 'node:path';
-import { prHealth } from '../../../src/engine/prHealth.mjs';
-import { withTrees } from '../../../src/engine/gitTrees.mjs';
-import { summarizeUnit } from '../../../src/engine/unitSummary.mjs';
+import { prHealth } from '../../../packages/engine/prHealth.mjs';
+import { withTrees } from '../../../packages/engine/gitTrees.mjs';
+import { summarizeUnit } from '../../../packages/engine/unitSummary.mjs';
 
 /** How many changed files get a "what it now does" sentence; the rest are one "+N more" row. */
 export const MAX_SUMMARIZED = 40;

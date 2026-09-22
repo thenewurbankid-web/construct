@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { collectCliCommands, renderCliCommandsMarkdown, dispatchedCommandNames } from '../lib/cliCommands.mjs';
+import { collectCliCommands, renderCliCommandsMarkdown, dispatchedCommandNames } from '../../packages/docs-site/lib/cliCommands.mjs';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const blobUrl = (f) => `https://github.com/o/r/blob/main/${f}`;

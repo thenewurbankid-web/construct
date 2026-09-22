@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Voice-over from a caption timeline, spoken locally (no cloud). For a video with a script under site/assets/video, prefer
-// `node tools/media/script.mjs <slug> build` (also writes subtitles); this is the same engine for an arbitrary file.
+// `node packages/tools/media/script.mjs <slug> build` (also writes subtitles); this is the same engine for an arbitrary file.
 //
 //   node packages/tools/media/voiceover.mjs site/assets/video/01-ticket-to-story.captions.json \
 //        [--voice af_heart] [--speed 0.95] [--out site/assets/video/01-ticket-to-story.voice.opus] \

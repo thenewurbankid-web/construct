@@ -3,9 +3,9 @@
 // project's root and returns the violations as data. Read-only, origin-guarded,
 // and scoped to the project root found from the settings project directory
 // (no path parameter, so a caller cannot point it at another directory).
-import { aggregateValidation } from '../../../src/registry.mjs';
-import { DEFAULT_ENFORCERS } from '../../../src/engine/defaultEnforcers.mjs';
-import { findProjectRoot } from '../../../src/config.mjs';
+import { aggregateValidation } from '../../../packages/core/registry.mjs';
+import { DEFAULT_ENFORCERS } from '../../../packages/engine/defaultEnforcers.mjs';
+import { findProjectRoot } from '../../../packages/core/config.mjs';
 import { serverLog } from './logBuffer.mjs';
 
 export const MAX_VIOLATIONS = 500;

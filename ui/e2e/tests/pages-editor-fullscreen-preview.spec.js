@@ -4,8 +4,8 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { annotateJsxSource } from '../../../src/engine/jsxSourceAnnotator.mjs';
-import { previewBridgeScript } from '../../../src/engine/previewBridge.mjs';
+import { annotateJsxSource } from '../../../packages/engine/jsxSourceAnnotator.mjs';
+import { previewBridgeScript } from '../../../packages/engine/previewBridge.mjs';
 import { runAxe, isBlocking, format } from './support/axe.js';
 
 // #456 — the Pages screen shows the real app full screen (and at device sizes),

@@ -3,23 +3,24 @@
 // a checkout of it, dogfooding `ui/` per CLAUDE.md's Dogfooding section): an arbitrary target project has no
 // Construct-generated docs of its own, so `docsPathFor` returns null for one, silently, every time.
 //
-// `PACKAGES` mirrors `API_PACKAGES` in `site/lib/apiDocs.mjs` (id, title, dirs only — the site's own
-// description/exts/tsconfig fields are a build concern, not a linking concern). `src/` -> `site/` is a
-// dependency direction this repo does not want reversed (the CLI core stays free of the doc generator's
-// dependencies, e.g. typedoc), so the mapping is duplicated here rather than imported; `test/docsPackages.test.mjs`
-// keeps the two in sync (fails the moment a package is added/renamed/moved in one file but not the other).
+// `PACKAGES` mirrors `API_PACKAGES` in `packages/docs-site/lib/apiDocs.mjs` (id, title, dirs only — the site's
+// own description/exts/tsconfig fields are a build concern, not a linking concern). `packages/core` ->
+// `packages/docs-site` is a dependency direction this repo does not want reversed (the CLI core stays free of
+// the doc generator's dependencies, e.g. typedoc), so the mapping is duplicated here rather than imported;
+// `test/docsPackages.test.mjs` keeps the two in sync (fails the moment a package is added/renamed/moved in one
+// file but not the other).
 import fs from 'node:fs';
 import path from 'node:path';
 
 export const PACKAGES = [
-  { id: 'core', title: 'Core engine', dirs: ['src'] },
-  { id: 'engine', title: 'Engine', dirs: ['src/engine'] },
-  { id: 'ast', title: 'AST', dirs: ['src/ast'] },
+  { id: 'core', title: 'Core engine', dirs: ['packages/core'] },
+  { id: 'engine', title: 'Engine', dirs: ['packages/engine'] },
+  { id: 'ast', title: 'AST', dirs: ['packages/ast'] },
   { id: 'cockpit-server', title: 'Cockpit server', dirs: ['ui/server/src'] },
   { id: 'cockpit-client-shared', title: 'Cockpit client (shared)', dirs: ['ui/client/components', 'ui/client/lib'] },
   { id: 'cockpit-client-features', title: 'Cockpit client (features)', dirs: ['ui/client/features'] },
-  { id: 'tools', title: 'Tools', dirs: ['tools'] },
-  { id: 'docs-site', title: 'Docs site', dirs: ['site'] },
+  { id: 'tools', title: 'Tools', dirs: ['packages/tools'] },
+  { id: 'docs-site', title: 'Docs site', dirs: ['packages/docs-site/lib', 'site'] },
 ];
 
 // A directory is "the Construct repo" when it carries both of these — the docs generator and the doc this

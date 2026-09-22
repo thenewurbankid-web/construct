@@ -1,6 +1,6 @@
 """Objective scores for generated narration clips, no listening needed.
 
-  venv/bin/python tools/media/eval_voice.py SAMPLE.wav ITEMS.json
+  venv/bin/python packages/packages/tools/media/eval_voice.py SAMPLE.wav ITEMS.json
 
 ITEMS.json is [{ id, wav, text }]. Prints JSON { reference, items: [{ id, similarity, wer, f0std }] }:
   similarity  cosine of Resemblyzer speaker embeddings (Apache-2.0, code and weights) clip vs the real sample's speech

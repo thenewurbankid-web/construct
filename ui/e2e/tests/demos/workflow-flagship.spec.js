@@ -9,7 +9,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SHOTS = path.resolve(__dirname, '../../screenshots/demos');
 fs.mkdirSync(SHOTS, { recursive: true });
 const REPO = path.resolve(__dirname, '../../../..');
-const CLI = path.join(REPO, 'bin/construct.mjs');
+const CLI = path.join(REPO, 'packages/cli/construct.mjs');
 const DESCRIPTOR = path.join(REPO, 'docs/demos/workflow-flagship/refund.json');
 const API_BASE = process.env.E2E_API_BASE || 'http://localhost:4000';
 

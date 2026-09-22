@@ -11,7 +11,7 @@ fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
 
 // bin/construct.mjs, the real CLI entry point, run exactly as a user would
 // run it — never a mocked/hand-written stand-in for its output.
-const CLI_BIN = path.resolve(__dirname, '../../../../bin/construct.mjs');
+const CLI_BIN = path.resolve(__dirname, '../../../../packages/cli/construct.mjs');
 const API_BASE = process.env.E2E_API_BASE || 'http://localhost:4000';
 
 /** Runs a real `construct` command against the shared scratch project and

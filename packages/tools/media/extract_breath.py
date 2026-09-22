@@ -1,6 +1,6 @@
 """Cut a short breath from the speaker's own sample, deterministically (for subtle paralinguistics in the narration).
 
-  venv/bin/python tools/media/extract_breath.py SAMPLE.wav [--out-dir DIR]
+  venv/bin/python packages/tools/media/extract_breath.py SAMPLE.wav [--out-dir DIR]
 
 Silero VAD (MIT) finds the pauses between phrases; in each pause, the 220 ms just before the next phrase starts is scored by
 noisiness (spectral flatness) and level; the best one that is quiet enough not to be speech but clearly above the noise floor

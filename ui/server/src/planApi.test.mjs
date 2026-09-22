@@ -12,7 +12,7 @@ import { SESSION_COOKIE, createAuth, resolveAuthConfig, signValue } from './auth
 import { createPlanRouter } from './planApi.mjs';
 import { createPlanService, PATH_ARGS, unsafePathReason, checkPlan } from './planService.mjs';
 import { createProcessesService } from './processesService.mjs';
-import { PLAN_FLOWS } from '../../../src/plan.mjs';
+import { PLAN_FLOWS } from '../../../packages/core/plan.mjs';
 import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
 import { app as realApp, auth as realAuth } from './index.mjs';
 

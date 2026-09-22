@@ -7,7 +7,7 @@ import '../../../test-utils/workspaceRoot.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { runCapturing, CommandTimeoutError, DEFAULT_COMMAND_TIMEOUT_SEC, resolveCommandTimeoutMs } from './commandRunner.mjs';
-import { ConstructError, EXIT_CODES } from '../../../src/diagnostics.mjs';
+import { ConstructError, EXIT_CODES } from '../../../packages/core/diagnostics.mjs';
 
 test('runCapturing reports a non-negative durationSeconds on success', async () => {
   const result = await runCapturing(async () => {

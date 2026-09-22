@@ -2,7 +2,7 @@
 // that needs a project, so the answer is the same 409 body everywhere and no route can fall back to
 // `process.cwd()` or to the directory the server was started in.
 import fs from 'node:fs';
-import { findProjectRoot } from '../../../src/config.mjs';
+import { findProjectRoot } from '../../../packages/core/config.mjs';
 import { getProjectDir } from './settings.mjs';
 import { isInside, workspaceRoot } from './workspace.mjs';
 

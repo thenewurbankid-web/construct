@@ -18,9 +18,9 @@
 //     0 and the gate has nothing to review, apply or refuse.
 //   * The commit ids are re-checked here (40-64 hex chars) before anything is spawned, because a plan is
 //     also an input the Plan screen accepts: a step must not be able to smuggle an option or a path.
-import { repoInfo } from '../../../src/engine/gitTrees.mjs';
-import { StepAborted } from '../../../src/engine/processEngine.mjs';
-import { topLevelState } from '../../../src/engine/processMachine.mjs';
+import { repoInfo } from '../../../packages/engine/gitTrees.mjs';
+import { StepAborted } from '../../../packages/engine/processEngine.mjs';
+import { topLevelState } from '../../../packages/engine/processMachine.mjs';
 import { forkRunner } from './reviewRunner.mjs';
 
 export const ANALYSIS_FLOW = 'review.analyze';

@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { compileWorkflow } from '../../../src/engine/workflowGenerator.mjs';
+import { compileWorkflow } from '../../../packages/engine/workflowGenerator.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCREENSHOTS_DIR = path.resolve(__dirname, '../screenshots');

@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCREENSHOTS_DIR = path.resolve(__dirname, '../screenshots');
 fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
-const CLI_BIN = path.resolve(__dirname, '../../../bin/construct.mjs');
+const CLI_BIN = path.resolve(__dirname, '../../../packages/cli/construct.mjs');
 const API = process.env.E2E_API_BASE || 'http://localhost:4000';
 
 test.describe.configure({ timeout: 240_000 });

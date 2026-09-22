@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 // The narration script of a video, as plain files you can edit with any text editor, and the tracks built from it.
 //
-//   node tools/media/script.mjs <slug> build           # srt + vtt + voice + muxed variants (whatever the files allow)
-//   node tools/media/script.mjs <slug> srt|vtt         # site/assets/video/<slug>.en.srt / .en.vtt   (no model)
-//   node tools/media/script.mjs <slug> voice           # <slug>.voice.opus, the narration alone (+ <slug>.voice.webm if the video exists)
-//   node tools/media/script.mjs <slug> mix             # <slug>.mixed.webm: video + narration + <slug>.music.<ext>, music ducked under speech
-//   node tools/media/script.mjs <slug> status          # which lines are cached, which would be generated, where paralinguistics land
-//   node tools/media/script.mjs <slug> timing          # measure each line's narration and write `dur` (seconds) into the script; the recording holds each caption for dur + 0.9 s
-//   node tools/media/script.mjs <slug> apply-feedback  # owner feedback (--feedback ~/voice/voice-feedback.json) -> per-line overrides
+//   node packages/tools/media/script.mjs <slug> build           # srt + vtt + voice + muxed variants (whatever the files allow)
+//   node packages/tools/media/script.mjs <slug> srt|vtt         # site/assets/video/<slug>.en.srt / .en.vtt   (no model)
+//   node packages/tools/media/script.mjs <slug> voice           # <slug>.voice.opus, the narration alone (+ <slug>.voice.webm if the video exists)
+//   node packages/tools/media/script.mjs <slug> mix             # <slug>.mixed.webm: video + narration + <slug>.music.<ext>, music ducked under speech
+//   node packages/tools/media/script.mjs <slug> status          # which lines are cached, which would be generated, where paralinguistics land
+//   node packages/tools/media/script.mjs <slug> timing          # measure each line's narration and write `dur` (seconds) into the script; the recording holds each caption for dur + 0.9 s
+//   node packages/tools/media/script.mjs <slug> apply-feedback  # owner feedback (--feedback ~/voice/voice-feedback.json) -> per-line overrides
 //
 // Voice: --voice af_heart (Kokoro, default) | --voice-sample <wav of your own voice> (Chatterbox clone; more flags below)
 //   --exaggeration 0.5 --cfg-weight 0.5 --temperature 0.8 --pause-ms 280 --seed 1   expressiveness of the clone
@@ -90,7 +90,7 @@ try {
   };
   const doMix = () => {
     const music = findMusic(slug);
-    if (!music) fail(`no music file: make one with "node tools/media/make-music.mjs ${slug}" or drop your own as ${VIDEO_DIR}/${slug}.music.<mp3|wav|ogg|m4a|opus|flac>`);
+    if (!music) fail(`no music file: make one with "node packages/tools/media/make-music.mjs ${slug}" or drop your own as ${VIDEO_DIR}/${slug}.music.<mp3|wav|ogg|m4a|opus|flac>`);
     if (!fs.existsSync(P.voice)) fail(`no narration yet: run "script.mjs ${slug} voice" first`);
     if (!fs.existsSync(P.video)) fail(`no video at ${P.video}`);
     const a = mixWithMusic({

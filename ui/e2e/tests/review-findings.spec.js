@@ -5,8 +5,8 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from './support/cockpit.js';
-import { createProcess } from '../../../src/engine/processModel.mjs';
-import { openProcessStore } from '../../../src/engine/processStore.mjs';
+import { createProcess } from '../../../packages/engine/processModel.mjs';
+import { openProcessStore } from '../../../packages/engine/processStore.mjs';
 
 // Review mode, second slice: #315 findings (mechanical fixes and conversations, visibly separated), #316
 // blast radius (declared vs actual, and the no-plan state), #318 the empty, loading, error, degraded and

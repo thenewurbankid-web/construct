@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
-import { checkPropLinks, propLinkViolations } from '../src/engine/propLinks.mjs';
+import { checkPropLinks, propLinkViolations } from '../packages/engine/propLinks.mjs';
 
 const FILES = {
   'components/Heart.tsx': `type Props = { productId: string; onToggle: () => void; size?: string };

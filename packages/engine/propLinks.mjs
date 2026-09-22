@@ -35,10 +35,10 @@ import path from 'node:path';
 import { describeComponent } from './describeComponent.mjs';
 import { createContext } from './units/facts.mjs';
 import { buildImportGraph } from './impact.mjs';
-import { resolveImportSpecifier } from '../route-resolver.mjs';
+import { resolveImportSpecifier } from '../core/route-resolver.mjs';
 import { parseToAst, parseJsxTree, findImportOfName } from '../ast/index.mjs';
-import { rel } from '../fs.mjs';
-import { makeViolation } from '../diagnostics.mjs';
+import { rel } from '../core/fs.mjs';
+import { makeViolation } from '../core/diagnostics.mjs';
 
 /** Every JSX call site of the component at `componentPath`, found in `importerRel` (a file
  * that the project's import graph says imports it). Resolves each candidate JSX tag's own

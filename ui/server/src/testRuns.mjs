@@ -13,9 +13,9 @@
 // Nothing here writes to the project: Playwright runs with a throwaway config in a temp directory (testRunner.mjs).
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { StepAborted } from '../../../src/engine/processEngine.mjs';
-import { topLevelState } from '../../../src/engine/processMachine.mjs';
-import { parseBaseUrl, reclaimRunsOf, resolveSpecs } from '../../../src/engine/testRunner.mjs';
+import { StepAborted } from '../../../packages/engine/processEngine.mjs';
+import { topLevelState } from '../../../packages/engine/processMachine.mjs';
+import { parseBaseUrl, reclaimRunsOf, resolveSpecs } from '../../../packages/engine/testRunner.mjs';
 import { forkRunner, JOB_TIMEOUT_MS } from './reviewRunner.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));

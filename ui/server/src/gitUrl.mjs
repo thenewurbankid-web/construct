@@ -129,4 +129,4 @@ function parseLocal(input, localRoot) {
 
 // #436: the public-address test now lives in the one shared guard (core `safeFetch`, ipaddr.js); same contract, same
 // exhaustive tests. Re-exported so every existing importer (cloneJobs.mjs, the tests) is unchanged.
-export { isPublicAddress } from '../../../src/engine/safeFetch.mjs';
+export { isPublicAddress } from '../../../packages/engine/safeFetch.mjs';

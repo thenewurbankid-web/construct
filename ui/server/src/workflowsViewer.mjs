@@ -7,11 +7,11 @@
 // features/<feature>/workflows/ before any disk read.
 import fs from 'node:fs';
 import path from 'node:path';
-import { loadConfig } from '../../../src/config.mjs';
-import { walk, rel } from '../../../src/fs.mjs';
-import { extractMachines } from '../../../src/engine/workflowExtractor.mjs';
-import { editWorkflow } from '../../../src/engine/workflowEditor.mjs';
-import { explainSource } from '../../../src/engine/workflowExplain.mjs';
+import { loadConfig } from '../../../packages/core/config.mjs';
+import { walk, rel } from '../../../packages/core/fs.mjs';
+import { extractMachines } from '../../../packages/engine/workflowExtractor.mjs';
+import { editWorkflow } from '../../../packages/engine/workflowEditor.mjs';
+import { explainSource } from '../../../packages/engine/workflowExplain.mjs';
 import { PagesEditorError, listFeatures, checkEnforcement, hashOf } from './pagesEditor.mjs';
 
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs']);

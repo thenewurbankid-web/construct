@@ -1,6 +1,6 @@
 // Text to speech for the caption script, with a per-line clip cache (only edited lines are generated again), and the
 // mix of the clips into one narration track. Two backends: Kokoro (default, Apache-2.0, node) and, with a voice sample its
-// speaker supplied, Chatterbox (MIT, Python venv; tools/media/clone_voice.py). Everything runs locally.
+// speaker supplied, Chatterbox (MIT, Python venv; packages/tools/media/clone_voice.py). Everything runs locally.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -125,7 +125,7 @@ export async function synthesize(lines, opts = {}, log = () => {}) {
     }
   } else if (todo.length) {
     const tts = await loadKokoro();
-    if (!tts.voices[voice]) throw new Error(`unknown voice "${voice}"; run: node tools/media/voiceover.mjs --list-voices`);
+    if (!tts.voices[voice]) throw new Error(`unknown voice "${voice}"; run: node packages/tools/media/voiceover.mjs --list-voices`);
     for (const l of todo) {
       const clip = await tts.generate(spoken(l), { voice, speed });
       await clip.save(assertWritable(clipFile(l.key)));

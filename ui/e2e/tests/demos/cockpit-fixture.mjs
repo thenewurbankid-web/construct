@@ -8,9 +8,9 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { compileWorkflow } from '../../../../src/engine/workflowGenerator.mjs';
-import { annotateJsxSource } from '../../../../src/engine/jsxSourceAnnotator.mjs';
-import { previewBridgeScript } from '../../../../src/engine/previewBridge.mjs';
+import { compileWorkflow } from '../../../../packages/engine/workflowGenerator.mjs';
+import { annotateJsxSource } from '../../../../packages/engine/jsxSourceAnnotator.mjs';
+import { previewBridgeScript } from '../../../../packages/engine/previewBridge.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const API_BASE = process.env.E2E_API_BASE || 'http://localhost:4000';

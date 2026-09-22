@@ -25,7 +25,7 @@ import path from 'node:path';
 import { CloneInputError, DEFAULT_CLONE_HOSTS, isPublicAddress, parseCloneUrl, validateBranch, validateSlug } from './gitUrl.mjs';
 import { AUTH_MESSAGE, AUTH_MESSAGE_WITH_TOKEN, createAskpass, feedToken, looksLikeAuthFailure, makeRedactor, parseToken, scrubGitConfig, wipe } from './cloneAuth.mjs';
 import { WorkspaceError, contain } from './workspace.mjs';
-import { MIN_GIT_FOR_CURLOPT_RESOLVE, formatVersion, gitVersion, supportsCurloptResolve } from '../../../src/engine/gitVersion.mjs';
+import { MIN_GIT_FOR_CURLOPT_RESOLVE, formatVersion, gitVersion, supportsCurloptResolve } from '../../../packages/engine/gitVersion.mjs';
 
 export const DEFAULT_MAX_BYTES = 500 * 1024 * 1024;
 export const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;

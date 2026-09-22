@@ -3,22 +3,23 @@
 # only ever gets that compiled dist/ plus production node_modules -- no
 # esbuild, no *.test.mjs, no dev dependency.
 #
-# ui/server's compiled output still imports the repo's core (`src/`, `bin/`)
-# by relative path (see ui/server/scripts/build.mjs's header comment) --
-# that split into its own published package is a later step of epic #480,
-# not done yet -- so this image ships that core alongside dist/, same as it
-# sits in the repo today. Separate from ui/client on purpose: one process
-# per container, each restarts/scales independently, matching the two-
-# process topology tools/dev/run-hosted.sh already runs (see docker-compose.yml).
+# ui/server's compiled output still imports the repo's core (`packages/core/`,
+# `packages/ast/`, `packages/engine/`, `packages/cli/` -- moved out of root
+# `src/`/`bin/` by the packages/ restructuring) by relative path (see
+# ui/server/scripts/build.mjs's header comment) -- splitting those into their
+# own published package is a later step of epic #480, not done yet -- so this
+# image ships that core alongside dist/, same as it sits in the repo today.
+# Separate from ui/client on purpose: one process per container, each
+# restarts/scales independently, matching the two-process topology
+# packages/tools/dev/run-hosted.sh already runs (see docker-compose.yml).
 FROM node:20-alpine AS builder
 WORKDIR /repo
 
 COPY package.json package-lock.json ./
+COPY packages ./packages
 COPY ui/server/package.json ui/server/package-lock.json ./ui/server/
 RUN npm ci --ignore-scripts && npm --prefix ui/server ci --ignore-scripts
 
-COPY src ./src
-COPY bin ./bin
 COPY ui/server ./ui/server
 RUN npm --prefix ui/server run build
 
@@ -32,10 +33,9 @@ ENV HOST=0.0.0.0
 ENV PORT=4000
 
 COPY package.json package-lock.json ./
+COPY packages ./packages
 RUN npm ci --omit=dev --ignore-scripts
 
-COPY src ./src
-COPY bin ./bin
 COPY ui/server/package.json ui/server/package-lock.json ./ui/server/
 RUN npm --prefix ui/server ci --omit=dev --ignore-scripts
 COPY --from=builder /repo/ui/server/dist ./ui/server/dist

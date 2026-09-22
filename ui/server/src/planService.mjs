@@ -13,10 +13,10 @@
 //   - the project is always the server's current one. Nothing here reads a project path from a request.
 import fs from 'node:fs';
 import path from 'node:path';
-import { loadConfig } from '../../../src/config.mjs';
-import { PLAN_FLOWS, planFlow, validatePlan, planToCommand, planTouches } from '../../../src/plan.mjs';
-import { analyzeImpact, proposeSeedsFromText } from '../../../src/engine/impact.mjs';
-import { listUnits } from '../../../src/engine/unitSummary.mjs';
+import { loadConfig } from '../../../packages/core/config.mjs';
+import { PLAN_FLOWS, planFlow, validatePlan, planToCommand, planTouches } from '../../../packages/core/plan.mjs';
+import { analyzeImpact, proposeSeedsFromText } from '../../../packages/engine/impact.mjs';
+import { listUnits } from '../../../packages/engine/unitSummary.mjs';
 
 export const MAX_STEPS = 50;
 export const MAX_TEXT = 20_000;

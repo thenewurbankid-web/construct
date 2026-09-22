@@ -18,8 +18,8 @@
 // start, a chosen directory must be inside the workspace by realpath, and it is re-verified on every read.
 import fs from 'node:fs';
 import path from 'node:path';
-import { PROVIDERS } from '../../../src/llm.mjs';
-import { resolveStateDir } from '../../../src/engine/processStore.mjs';
+import { PROVIDERS } from '../../../packages/core/llm.mjs';
+import { resolveStateDir } from '../../../packages/engine/processStore.mjs';
 import { containInWorkspace, containOrNull, relativeToWorkspace, WorkspaceError, workspaceRoot } from './workspace.mjs';
 
 // The one hard guardrail from #96: planAnalysis is the whole-feature deep-

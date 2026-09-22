@@ -24,7 +24,7 @@ process.chdir(projectDir);
 process.env.CONSTRUCT_E2E_PROJECT_DIR = projectDir;
 
 const { app, start, processesService } = await import('../../server/src/index.mjs');
-const { createProcess } = await import('../../../src/engine/processModel.mjs');
+const { createProcess } = await import('../../../packages/engine/processModel.mjs');
 
 const touching = (file) => ({ features: ['checkout'], files: [{ path: file, change: 'create' }] });
 const PLAN = (title) => ({
@@ -83,8 +83,8 @@ app.post('/__test/create', (req, res) => {
 //   approve-N.txt   declared by the plan   -> applicable, the test approves it
 //   reject-N.txt    declared by the plan   -> applicable, the test rejects it
 //   sneaky-N.txt    NOT declared by the plan -> the gate refuses it (OUTSIDE_TOUCHES)
-const { recordArtifact } = await import('../../../src/engine/processModel.mjs');
-const { botBranch } = await import('../../../src/engine/botRunner.mjs');
+const { recordArtifact } = await import('../../../packages/engine/processModel.mjs');
+const { botBranch } = await import('../../../packages/engine/botRunner.mjs');
 const { spawnSync } = await import('node:child_process');
 let seeds = 0;
 const vcs = (cwd, ...args) => spawnSync('git', ['-c', 'user.name=e2e', '-c', 'user.email=e2e@example.invalid', '-c', 'commit.gpgsign=false', ...args], { cwd, encoding: 'utf8' });

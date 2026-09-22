@@ -14,11 +14,11 @@
 //     and must be JSON (415); the body is size-capped.
 import express from 'express';
 import fs from 'node:fs';
-import { listUnits } from '../../../src/engine/unitSummary.mjs';
-import { describeComponent } from '../../../src/engine/describeComponent.mjs';
-import { checkPropLinks, propLinkViolations } from '../../../src/engine/propLinks.mjs';
-import { collectDiagnostics, fromViolation } from '../../../src/engine/diagnostics.mjs';
-import { loadConfig } from '../../../src/config.mjs';
+import { listUnits } from '../../../packages/engine/unitSummary.mjs';
+import { describeComponent } from '../../../packages/engine/describeComponent.mjs';
+import { checkPropLinks, propLinkViolations } from '../../../packages/engine/propLinks.mjs';
+import { collectDiagnostics, fromViolation } from '../../../packages/engine/diagnostics.mjs';
+import { loadConfig } from '../../../packages/core/config.mjs';
 import { resolveProjectFile } from './projectNav.mjs';
 import { checkEnforcement, featuresRootOf, hashOf, PagesEditorError } from './pagesEditor.mjs';
 

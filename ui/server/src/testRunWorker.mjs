@@ -3,7 +3,7 @@
 // (`{root, feature, name?, area?, baseUrl?}`, all validated by the parent), writes progress lines and one result, and
 // exits. On SIGTERM it stops Playwright's process group and removes its temp directory before it exits; if it is
 // SIGKILLed instead, the parent reclaims the debris by this worker's pid (src/engine/testRunner.mjs reclaimRunsOf).
-import { runFeatureTests, RUN_TIMEOUT_MS } from '../../../src/engine/testRunner.mjs';
+import { runFeatureTests, RUN_TIMEOUT_MS } from '../../../packages/engine/testRunner.mjs';
 
 if (process.send) {
   const abort = new AbortController();

@@ -26,8 +26,8 @@
 import {
   DEFAULT_COMMIT_CONFIG, COMMIT_MODES, buildCommitMessage, commitImpact, deriveSlug,
   newSessionId, nextSerialFrom, parseSerial, sessionBranchName,
-} from '../../../src/engine/commitMessage.mjs';
-import { impactFromChangedFiles } from '../../../src/engine/impact.mjs';
+} from '../../../packages/engine/commitMessage.mjs';
+import { impactFromChangedFiles } from '../../../packages/engine/impact.mjs';
 import * as git from './git.mjs';
 
 export const DIRTY_ANSWERS = ['carry', 'stash'];

@@ -1,6 +1,6 @@
 """Pick the best 10-20 s reference window of a voice sample, deterministically, or cut a chosen one.
 
-  venv/bin/python tools/media/pick_reference.py SAMPLE.wav [--min 10] [--max 20] [--top 3] [--start S --end E] [--out-dir DIR]
+  venv/bin/python packages/tools/media/pick_reference.py SAMPLE.wav [--min 10] [--max 20] [--top 3] [--start S --end E] [--out-dir DIR]
 
 Speech segments come from silero-vad (MIT). Candidate windows start and end on segment edges (never mid-word), are
 10-20 s long, contain no clipping, and are ranked by expressiveness (F0 spread in semitones from librosa pyin, plus loudness

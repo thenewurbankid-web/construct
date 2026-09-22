@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // A gentle instrumental bed, generated with ffmpeg only: no tracks, no downloads, no licence to worry about.
 //
-//   node tools/media/make-music.mjs <slug> [--key 1] [--seconds 150] [--out site/assets/video/<slug>.music.opus]
+//   node packages/tools/media/make-music.mjs <slug> [--key 1] [--seconds 150] [--out site/assets/video/<slug>.music.opus]
 //
 // Four sine-partial chords (root, third, fifth, octave, each with a slightly detuned twin) in a slow diatonic progression
 // picked from --key (an integer; the same key always gives the same music), cross-faded, looped to --seconds, then softened

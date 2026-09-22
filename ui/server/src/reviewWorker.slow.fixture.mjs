@@ -6,7 +6,7 @@
 // parent has to SIGKILL and reclaim. It writes `{pid, dirs}` to the file named by OG351_MARKER (synchronously,
 // so the test can see the checkouts exist before it cancels).
 import fs from 'node:fs';
-import { withTrees } from '../../../src/engine/gitTrees.mjs';
+import { withTrees } from '../../../packages/engine/gitTrees.mjs';
 
 process.once('message', (job) => {
   withTrees(job.root, [job.baseSha, job.headSha], (dirs) => {

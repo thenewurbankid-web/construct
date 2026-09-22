@@ -4,8 +4,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { feedbackOverrides, normalize, proposePara, spoken } from '../tools/media/lib.mjs';
-import { cloneParams, plan, said } from '../tools/media/synth.mjs';
+import { feedbackOverrides, normalize, proposePara, spoken } from '../packages/tools/media/lib.mjs';
+import { cloneParams, plan, said } from '../packages/tools/media/synth.mjs';
 
 test('say is what is spoken; subtitles keep text; overrides survive normalize', () => {
   const [l] = normalize([{ text: 'It is fine.', say: "It's fine.", start: 0, exaggeration: '0.7', para: ['breath_before'] }]);

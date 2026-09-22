@@ -11,7 +11,7 @@ import { setTheme } from './support/cockpit.js';
 // and Help stay reachable from the profile menu. Runs under playwright.workspace.config.js (no project preloaded).
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const API = process.env.E2E_API_BASE || 'http://localhost:4000';
-const BIN = path.resolve(__dirname, '../../../bin/construct.mjs');
+const BIN = path.resolve(__dirname, '../../../packages/cli/construct.mjs');
 const WS = process.env.E2E_WORKSPACE_ROOT;
 const ROUTES = ['/', '/plan', '/dashboard', '/wizard', '/pages', '/workflows', '/review', '/tests', '/states'];
 

@@ -3,7 +3,7 @@
 // result/error to an HTTP status. Read-only; refs are confined to the current project root by the
 // core (".." segments rejected, symlinks escaping the root are not read). Same-origin/CORS guard is
 // applied globally in index.mjs.
-import { summarizeUnit, listUnits, listFeatures } from '../../../src/engine/unitSummary.mjs';
+import { summarizeUnit, listUnits, listFeatures } from '../../../packages/engine/unitSummary.mjs';
 
 const STATUS = { INVALID_ARGUMENT: 400, UNKNOWN_KIND: 400, UNIT_NOT_FOUND: 404, UNIT_AMBIGUOUS: 409, ROOT_NOT_FOUND: 400, INTERNAL_ERROR: 500 };
 const one = (v) => (Array.isArray(v) ? v[0] : v);

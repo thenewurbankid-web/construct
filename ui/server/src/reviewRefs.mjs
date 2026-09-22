@@ -9,7 +9,7 @@
 // that list, so anything else -- an option (`--output=x`), a path, `..`, a sha, a name from another
 // repository -- is refused before any git command sees it. Callers pass the *sha* downstream, never
 // the client string. No repository path is ever accepted from a client: the root comes from Settings.
-import { git, repoInfo } from '../../../src/engine/gitTrees.mjs';
+import { git, repoInfo } from '../../../packages/engine/gitTrees.mjs';
 
 const SEP = '\x1f';
 const HEADS = 'refs/heads/';

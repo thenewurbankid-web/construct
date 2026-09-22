@@ -13,8 +13,8 @@
 // plain text. Each one is also logged (info) to the Diagnostics log so it stays diagnosable.
 import fs from 'node:fs';
 import path from 'node:path';
-import { collectReferences, exportOrigin } from '../../../src/engine/referenceLinks.mjs';
-import { loadLayerGraph, classifyFile } from '../../../src/architecture-graph.mjs';
+import { collectReferences, exportOrigin } from '../../../packages/engine/referenceLinks.mjs';
+import { loadLayerGraph, classifyFile } from '../../../packages/core/architecture-graph.mjs';
 import { resolvePageFile, featuresRootOf, PagesEditorError } from './pagesEditor.mjs';
 import { serverLog } from './logBuffer.mjs';
 

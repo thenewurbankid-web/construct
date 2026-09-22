@@ -17,7 +17,7 @@ const SHOTS = path.resolve(__dirname, '../screenshots/workflows-shell');
 fs.mkdirSync(SHOTS, { recursive: true });
 const API_BASE = process.env.E2E_API_BASE || 'http://localhost:4000';
 const DESCRIPTOR = path.join(REPO, 'docs/demos/workflow-flagship/refund.json');
-const CLI = path.join(REPO, 'bin/construct.mjs');
+const CLI = path.join(REPO, 'packages/cli/construct.mjs');
 
 const TWO_MACHINES = `import { createMachine } from 'xstate';
 export const alpha = createMachine({ id: 'alpha', initial: 'one', states: { one: { on: { GO: 'two' } }, two: { type: 'final' } } });

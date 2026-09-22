@@ -14,7 +14,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const BIN = path.resolve(HERE, '../../../bin/construct.mjs');
+const BIN = path.resolve(HERE, '../../../packages/cli/construct.mjs');
 
 /** The OS temp dir as a real path: the workspace root the ordinary configs use. */
 export const tmpWorkspaceRoot = () => fs.realpathSync(os.tmpdir());

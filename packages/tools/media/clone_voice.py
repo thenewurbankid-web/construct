@@ -1,6 +1,6 @@
 """Speak lines in the voice of a sample its speaker supplied (Chatterbox, MIT code and weights, CPU).
 
-  ~/.cache/construct-media/venv/bin/python tools/media/clone_voice.py SAMPLE.wav JOB.json OUT_DIR
+  ~/.cache/construct-media/venv/bin/python packages/packages/tools/media/clone_voice.py SAMPLE.wav JOB.json OUT_DIR
 
 JOB.json is a list of { text, file, exaggeration?, cfg_weight?, temperature?, pause_ms?, seed?, ref?, model? } (model "turbo" for Chatterbox-Turbo). Writes
 OUT_DIR/<file>.wav per entry and prints one JSON line per clip. Called by synth.mjs (script.mjs, voiceover.mjs).

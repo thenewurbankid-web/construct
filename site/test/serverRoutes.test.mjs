@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { collectServerRoutes, renderRouteGroupMarkdown } from '../lib/serverRoutes.mjs';
+import { collectServerRoutes, renderRouteGroupMarkdown } from '../../packages/docs-site/lib/serverRoutes.mjs';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 

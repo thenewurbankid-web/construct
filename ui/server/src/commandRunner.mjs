@@ -12,8 +12,8 @@
 // to keep concurrent requests from interleaving each other's captured
 // output. For a local, single-user dev tool this is a fine trade-off.
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { EXIT_CODES, ConstructError } from '../../../src/diagnostics.mjs';
-import { startTimer, elapsedSeconds } from '../../../src/timing.mjs';
+import { EXIT_CODES, ConstructError } from '../../../packages/core/diagnostics.mjs';
+import { startTimer, elapsedSeconds } from '../../../packages/core/timing.mjs';
 import { getProjectDir } from './settings.mjs';
 import { WorkspaceError } from './workspace.mjs';
 import { serverLog } from './logBuffer.mjs';

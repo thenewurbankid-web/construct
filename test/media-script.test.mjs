@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import { CLIP_CACHE, VIDEO_DIR, assertWritable, clipKey, normalize, paths, toSrt, toVtt } from '../tools/media/lib.mjs';
+import { CLIP_CACHE, VIDEO_DIR, assertWritable, clipKey, normalize, paths, toSrt, toVtt } from '../packages/tools/media/lib.mjs';
 
 const script = [
   { text: 'First line.', start: 1 },

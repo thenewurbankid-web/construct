@@ -18,14 +18,14 @@ import {
   parseJsxTree, findParentRecord, jsxParseError, checkJsxReplacement,
   spliceNode, setAttributeText, setSpreadText, removeAttributeText, removeNodeText, swapNodesText, addChildText,
   collectComponentScopeNames, findImportOfName, declaredPropNames,
-} from '../../../src/ast/index.mjs';
-import { buildScopeLinks, importOfTag } from '../../../src/engine/scopeLinks.mjs';
-import { loadConfig } from '../../../src/config.mjs';
-import { loadLayerGraph } from '../../../src/architecture-graph.mjs';
-import { validateArchitecture } from '../../../src/architecture-enforcer.mjs';
-import { validateSeparationOfConcerns } from '../../../src/soc-enforcer.mjs';
-import { walk, rel } from '../../../src/fs.mjs';
-import { matchGlob } from '../../../src/glob.mjs';
+} from '../../../packages/ast/index.mjs';
+import { buildScopeLinks, importOfTag } from '../../../packages/engine/scopeLinks.mjs';
+import { loadConfig } from '../../../packages/core/config.mjs';
+import { loadLayerGraph } from '../../../packages/core/architecture-graph.mjs';
+import { validateArchitecture } from '../../../packages/core/architecture-enforcer.mjs';
+import { validateSeparationOfConcerns } from '../../../packages/core/soc-enforcer.mjs';
+import { walk, rel } from '../../../packages/core/fs.mjs';
+import { matchGlob } from '../../../packages/core/glob.mjs';
 import { isInside } from './workspace.mjs';
 
 const JSX_EXTENSIONS = new Set(['.jsx', '.tsx', '.js', '.ts']);

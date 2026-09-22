@@ -10,7 +10,7 @@ import path from 'node:path';
 import { getSettings, updateSettings, getProjectDir, preloadProject } from './settings.mjs';
 import { WorkspaceError, workspaceRoot } from './workspace.mjs';
 import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
-import { PROVIDERS } from '../../../src/llm.mjs';
+import { PROVIDERS } from '../../../packages/core/llm.mjs';
 
 test('getSettings returns a per-capability llmProviders map defaulting every capability to the same provider', () => {
   const settings = getSettings();

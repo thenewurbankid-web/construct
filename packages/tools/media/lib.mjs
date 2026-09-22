@@ -1,6 +1,6 @@
 // Shared, model-free pieces of the media tools: the caption script (data model), subtitles, the clip cache key and the
 // write guard. The script is `site/assets/video/<slug>.captions.json`, [{ id, text, start, end? }] in seconds from the
-// start of the video, and is meant to be edited by hand or with `node tools/media/script.mjs <slug>`.
+// start of the video, and is meant to be edited by hand or with `node packages/tools/media/script.mjs <slug>`.
 // Subtitle text is produced by the `subtitle` package (MIT); ffmpeg does all audio and video work.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { stringifySync } from 'subtitle';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-export const REPO = path.resolve(HERE, '..', '..');
+export const REPO = path.resolve(HERE, '..', '..', '..');
 export const VIDEO_DIR = path.join(REPO, 'site', 'assets', 'video');
 /** Generated clips, one per (text, voice, model); git-ignored. */
 export const CLIP_CACHE = path.join(REPO, '.media-cache');

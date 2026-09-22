@@ -4,21 +4,23 @@
 // no *.test.mjs. Uses esbuild (MIT).
 //
 // Scope note: this server calls straight into the repo's core CLI functions
-// (src/cli.mjs and friends — see ui/server/src/index.mjs's imports of
-// `../../../src/*`). Several of those core modules resolve sibling files
-// (templates, bin/construct.mjs, worker scripts) relative to their OWN
-// import.meta.url at runtime (packageRoot in src/cli.mjs, REPO in
-// src/engine/testRunner.mjs, BIN in src/engine/botRunner.mjs, WORKER_URL in
-// src/engine/describeComponent.mjs). Bundling those files into this output
-// would collapse every one of those file-relative computations onto this
-// bundle's single location, breaking them (each assumes a different
+// (packages/core/cli.mjs and friends — see ui/server/src/index.mjs's imports
+// of `../../../packages/core/*`). Several of those core modules resolve
+// sibling files (templates, packages/cli/construct.mjs, worker scripts)
+// relative to their OWN import.meta.url at runtime (packageRoot in
+// packages/core/cli.mjs, REPO in packages/engine/testRunner.mjs, BIN in
+// packages/engine/botRunner.mjs, WORKER_URL in
+// packages/engine/describeComponent.mjs). Bundling those files into this
+// output would collapse every one of those file-relative computations onto
+// this bundle's single location, breaking them (each assumes a different
 // original depth). So this build deliberately leaves everything outside
-// `ui/server/src/` (core's `../../../src/**`, `../../../bin/**`) EXTERNAL —
-// bundling only ui/server's own code — and keeps `dist/` at the exact same
-// directory depth ui/server/src/ was, so those relative imports keep
-// resolving exactly as they did before. Core (`src/`, `bin/`, `templates/`,
-// `docs/`, `architecture.yml`) still needs to ship alongside dist/ until
-// #480's steps 5-7 split it into a separately published `@line/construct-core`
+// `ui/server/src/` (core's `../../../packages/**`) EXTERNAL — bundling only
+// ui/server's own code — and keeps `dist/` at the exact same directory
+// depth ui/server/src/ was, so those relative imports keep resolving
+// exactly as they did before. Core (`packages/core/`, `packages/ast/`,
+// `packages/engine/`, `packages/cli/`, `templates/`, `docs/`,
+// `architecture.yml`) still needs to ship alongside dist/ until #480's
+// steps 5-7 split it into a separately published `@line/construct-core`
 // package — a documented limitation, not an oversight (see docs/DEPLOY.md
 // and issue #485's closing note).
 //
@@ -38,8 +40,8 @@ const SRC = path.join(SERVER_ROOT, 'src');
 const OUT = path.join(SERVER_ROOT, 'dist');
 
 // Anything esbuild resolves to a path outside ui/server/src (core's
-// `../../../src/**`, `../../../bin/**`, node built-ins are handled by
-// platform:'node' already) is kept as an external, unbundled import —
+// `../../../packages/**`, node built-ins are handled by platform:'node'
+// already) is kept as an external, unbundled import —
 // esbuild recomputes it as a path relative to the new output location,
 // which is a no-op here since dist/ sits at the same depth src/ did.
 const keepCoreExternal = {

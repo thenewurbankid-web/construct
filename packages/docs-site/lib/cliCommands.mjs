@@ -1,8 +1,9 @@
-// CLI command reference (#467/#463): every command in the real command registry — `bin/construct.mjs`'s
-// dispatch table, `src/cli.mjs`'s command functions and `src/repl.mjs`'s `HELP_TOPICS`/`TOPIC_ORDER` (the exact
-// text `construct repl`'s own "help"/"help <topic>" prints) — rendered as one page, so this can never say
-// something the CLI itself doesn't. Deterministic; no LLM. `site/test/cliCommands.test.mjs` guards that the
-// command list here never falls behind what `bin/construct.mjs` actually dispatches.
+// CLI command reference (#467/#463): every command in the real command registry — `packages/cli/construct.mjs`'s
+// dispatch table, `packages/core/cli.mjs`'s command functions and `packages/core/repl.mjs`'s
+// `HELP_TOPICS`/`TOPIC_ORDER` (the exact text `construct repl`'s own "help"/"help <topic>" prints) — rendered
+// as one page, so this can never say something the CLI itself doesn't. Deterministic; no LLM.
+// `site/test/cliCommands.test.mjs` guards that the command list here never falls behind what
+// `packages/cli/construct.mjs` actually dispatches.
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -12,11 +13,11 @@ import { stripTicketRefs } from './markdown.mjs';
  * own, so it never needs (or gets) its own reference page. */
 export const ALIASES = { g: 'generate' };
 
-/** Every top-level command name `bin/construct.mjs` actually dispatches (its own `cmd === '...'` checks), in
- * source order, deduplicated, aliases resolved to their real command — the one source of truth for "is this
- * really a command". */
+/** Every top-level command name `packages/cli/construct.mjs` actually dispatches (its own `cmd === '...'`
+ * checks), in source order, deduplicated, aliases resolved to their real command — the one source of truth for
+ * "is this really a command". */
 export function dispatchedCommandNames(repoRoot) {
-  const src = fs.readFileSync(path.join(repoRoot, 'bin/construct.mjs'), 'utf8');
+  const src = fs.readFileSync(path.join(repoRoot, 'packages/cli/construct.mjs'), 'utf8');
   const names = [];
   for (const m of src.matchAll(/cmd === '([a-zA-Z]+)'/g)) {
     const name = ALIASES[m[1]] || m[1];
@@ -98,16 +99,16 @@ const EXTRA_COMMANDS = [
  * @returns {Promise<{commands: object[], topLevelHelp: string}>} `commands`: `{ name, description, example, usage, fromHelpTopic, source }[]`.
  */
 export async function collectCliCommands(repoRoot) {
-  const { HELP_TOPICS, TOPIC_ORDER, getTopLevelHelpText } = await import(pathToFileURL(path.join(repoRoot, 'src/repl.mjs')));
-  const cliSrc = fs.readFileSync(path.join(repoRoot, 'src/cli.mjs'), 'utf8');
+  const { HELP_TOPICS, TOPIC_ORDER, getTopLevelHelpText } = await import(pathToFileURL(path.join(repoRoot, 'packages/core/repl.mjs')));
+  const cliSrc = fs.readFileSync(path.join(repoRoot, 'packages/core/cli.mjs'), 'utf8');
   const commands = [];
   for (const name of TOPIC_ORDER) {
     if (PSEUDO_TOPICS.has(name)) continue;
-    commands.push({ name, description: stripInternal(HELP_TOPICS[name]), example: '', usage: '', fromHelpTopic: true, source: 'src/repl.mjs' });
+    commands.push({ name, description: stripInternal(HELP_TOPICS[name]), example: '', usage: '', fromHelpTopic: true, source: 'packages/core/repl.mjs' });
   }
   for (const { name, fn } of EXTRA_COMMANDS) {
     const { description, example } = jsdocAbove(cliSrc, fn);
-    commands.push({ name, description, example, usage: example ? '' : usageLineFrom(cliSrc, fn), fromHelpTopic: false, source: 'src/cli.mjs' });
+    commands.push({ name, description, example, usage: example ? '' : usageLineFrom(cliSrc, fn), fromHelpTopic: false, source: 'packages/core/cli.mjs' });
   }
   commands.push({
     name: 'repl',
@@ -115,7 +116,7 @@ export async function collectCliCommands(repoRoot) {
     example: 'construct repl',
     usage: '',
     fromHelpTopic: false,
-    source: 'src/repl.mjs',
+    source: 'packages/core/repl.mjs',
   });
   return { commands, topLevelHelp: stripInternal(getTopLevelHelpText()) };
 }

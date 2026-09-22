@@ -153,7 +153,7 @@ export function renderMarkdown(md, ctx) {
   // Site videos: ![alt](@video/name) points at site/assets/video/name.webm, with name.png as its poster. Optional sibling
   // files are picked up when present: name.en.vtt (subtitles, a <track>) and name.voice.webm and name.mixed.webm (narrated, and narrated with music), name.voice.opus / name.music.opus (audio alone). Each is
   // offered only when its file exists; the narration is synthetic and the page says so.
-  const videoDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'video');
+  const videoDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'site', 'assets', 'video');
   html = html.replace(/(?:<p>)?<img src="@video\/([^"]+)"(?: alt="([^"]*)")?[^>]*>(?:<\/p>)?/g, (_, f, alt = '') => {
     const has = (ext) => fs.existsSync(path.join(videoDir, `${f}.${ext}`));
     const track = has('en.vtt') ? `<track kind="subtitles" srclang="en" label="English" src="${root}assets/video/${f}.en.vtt">` : '';

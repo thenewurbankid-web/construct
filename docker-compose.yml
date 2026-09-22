@@ -1,6 +1,6 @@
 # #485 -- self-hosted Cockpit. Two services, mirroring the two-process
-# topology tools/dev/run-hosted.sh already runs by hand (client on 3000,
-# server on 4000). See docs/DEPLOY.md for real, verified copy-paste
+# topology packages/tools/dev/run-hosted.sh already runs by hand (client on
+# 3000, server on 4000). See docs/DEPLOY.md for real, verified copy-paste
 # instructions -- this file only wires the pieces together.
 #
 # Env vars (see docs/DEPLOY.md for the full table):

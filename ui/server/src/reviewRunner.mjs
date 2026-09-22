@@ -11,7 +11,7 @@
 import { fork } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { reclaimTreesOf } from '../../../src/engine/gitTrees.mjs';
+import { reclaimTreesOf } from '../../../packages/engine/gitTrees.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const WORKER = path.join(HERE, 'reviewWorker.mjs');

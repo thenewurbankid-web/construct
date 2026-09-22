@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Rebuild a caption timeline from an already recorded take, without re-recording (deterministic, no model).
 //
-//   node tools/media/captions-from-video.mjs site/assets/video/01-ticket-to-story.webm \
+//   node packages/tools/media/captions-from-video.mjs site/assets/video/01-ticket-to-story.webm \
 //        ui/e2e/tests/media/01-ticket-to-story.spec.js [--out <slug>.captions.json] [--fps 10]
 //
 // The recording burns each caption into a dark bar at the bottom of the frame. This decodes the video (ffmpeg, gray,

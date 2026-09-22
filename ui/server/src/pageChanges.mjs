@@ -3,8 +3,8 @@
 // Path scoping stays in pagesEditor.mjs's resolvePageFile (callers pass the
 // already-validated absPath/relPath); this module never resolves paths itself.
 import fs from 'node:fs';
-import { createChangeTracker } from '../../../src/file-change-tracker.mjs';
-import { buildDiffView } from '../../../src/text-diff.mjs';
+import { createChangeTracker } from '../../../packages/core/file-change-tracker.mjs';
+import { buildDiffView } from '../../../packages/core/text-diff.mjs';
 
 export const pageChangeTracker = createChangeTracker();
 

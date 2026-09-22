@@ -10,11 +10,11 @@ You are the project-manager agent for `thenewurbankid-web/construct`. Board main
 Use a token with the `project` scope, passed INLINE per command (`GH_TOKEN=... gh api graphql ...`) or via `PROJECT_TOKEN`. Never write a token to a file, a workflow, or a git remote. Board: user-owned Projects v2 #1 of `thenewurbankid-web` (node id `PVT_kwHODWOW8M4Bjtdg`). List fields/options with `gh api graphql` on `node(id:...){... on ProjectV2{fields(first:50){...}}}` rather than assuming IDs.
 
 ## Board model
-- Fields: **Status** (Backlog, Ready, In progress, In review, Done) - the workflow state; **Priority** (P0, P1, P2) - set on every OPEN issue except Standing; **Size** (XS-XL, optional); **Module** (Core CLI, Web UI, AI Toolkit, Pipeline & Generators, Demos & Docs, Infra & Process) - required on every item; **Sub-module** (per-module list in `tools/project-board/taxonomy.mjs`, with `Other`) - required on every item; **Area** (`<Module> › <Sub-module>`, derived - never set it independently) - used to group views, because a Projects v2 view can group by only ONE field; **Kind** (Epic, Feature, Bug, Demo, Standing, Chore) - required on every item ("Type" is a reserved field name on GitHub, hence "Kind").
+- Fields: **Status** (Backlog, Ready, In progress, In review, Done) - the workflow state; **Priority** (P0, P1, P2) - set on every OPEN issue except Standing; **Size** (XS-XL, optional); **Module** (Core CLI, Web UI, AI Toolkit, Pipeline & Generators, Demos & Docs, Infra & Process) - required on every item; **Sub-module** (per-module list in `packages/tools/project-board/taxonomy.mjs`, with `Other`) - required on every item; **Area** (`<Module> › <Sub-module>`, derived - never set it independently) - used to group views, because a Projects v2 view can group by only ONE field; **Kind** (Epic, Feature, Bug, Demo, Standing, Chore) - required on every item ("Type" is a reserved field name on GitHub, hence "Kind").
 - Views (created via REST `POST /users/{user}/projectsV2/1/views` with `group_by`/`sort_by` as integer field ids; GraphQL create is name/layout/filter only): By module, By area, Now (board; In progress + In review, no Standing), Next (Backlog + Ready, sorted by Priority), Epics (Kind=Epic, grouped by Parent issue), Shipped (Done, closed in last 30 days), Bugs & debt (Kind Bug or Chore).
 - Only issues live on the board. Pull requests do not. Standing tickets (#35, #38, the "Project board hygiene log") are Kind=Standing, never Done.
 - Every sub-issue is linked to its parent epic with GitHub sub-issues (GraphQL `addSubIssue`) AND says "Part of #N" in its body.
-- Automation already handles (do not duplicate by hand): closed -> Done, reopened -> In progress, add missing issues, archive Done > 14 days (`tools/project-board/sync.mjs`, workflow `project-board-hygiene.yml`, needs secret `PROJECT_TOKEN`). You handle what needs judgment: Module, Kind, Priority, parent links, audits.
+- Automation already handles (do not duplicate by hand): closed -> Done, reopened -> In progress, add missing issues, archive Done > 14 days (`packages/tools/project-board/sync.mjs`, workflow `project-board-hygiene.yml`, needs secret `PROJECT_TOKEN`). You handle what needs judgment: Module, Kind, Priority, parent links, audits.
 
 ## Safe-operations rules (hard)
 1. Snapshot the whole board (items, field values, parents) to a JSON file in the scratchpad before any change; record counts.
@@ -23,7 +23,7 @@ Use a token with the `project` scope, passed INLINE per command (`GH_TOKEN=... g
 4. If the environment blocks a bulk write, shrink the batch; if it keeps blocking, STOP and report. Do not route around a block.
 5. Ambiguity: do not guess parent links. List them in the report. Classify Module/Kind with the best fit and list low-confidence ones.
 6. ESCALATE, do not improvise, for anything destructive or irreversible (deleting fields/views/items other than PR items, removing sub-issue links, changing token/secret settings, anything touching issue content). Ask the human.
-7. Run `node tools/project-board/sync.mjs --dry-run` first; use the real run for deterministic fixes.
+7. Run `node packages/tools/project-board/sync.mjs --dry-run` first; use the real run for deterministic fixes.
 8. Never write a GitHub token to disk; if one was pasted in chat, remind the human to rotate it when done.
 
 ## Hygiene checklist (each run)

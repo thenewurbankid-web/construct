@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { compileWorkflow } from '../../../src/engine/workflowGenerator.mjs';
+import { compileWorkflow } from '../../../packages/engine/workflowGenerator.mjs';
 
 // #217 — dense flows must lay out without edge labels colliding, and the same
 // source must always give the same picture. Bounding boxes are read from the
@@ -17,7 +17,7 @@ const SUFFIX = process.env.LAYOUT_SHOT_SUFFIX || 'after';
 const API_BASE = process.env.E2E_API_BASE || 'http://localhost:4000';
 const CHECKOUT = JSON.parse(fs.readFileSync(path.join(REPO, 'fixtures/workflow-graphs/checkout.json'), 'utf8'));
 const DESCRIPTOR = path.join(REPO, 'docs/demos/workflow-flagship/refund.json');
-const CLI = path.join(REPO, 'bin/construct.mjs');
+const CLI = path.join(REPO, 'packages/cli/construct.mjs');
 
 const NESTED = `import { setup } from 'xstate';
 export const Player = setup({}).createMachine({
