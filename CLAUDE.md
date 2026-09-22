@@ -69,6 +69,26 @@ entry point) is its own epic with atomic sub-issues — don't force a
 premature Next.js rewrite of working UI code first; migrate `ui/` onto
 Construct as a second, separately tracked epic once support exists.
 
+## Dogfood cycle (standing instruction, owner 2026-09-22)
+
+Every real dogfood test — using Construct (CLI or Cockpit) to build something
+real, outside this repo — is tracked under the `[Epic] Dogfooding` issue
+(#489, `dogfood` label) per its own template. Two rules that apply every
+time a dogfood run finds something, not just the first one:
+
+1. **Bugs and improvements a dogfood run surfaces are always high
+   priority** — triage them ahead of other non-urgent backlog, don't let
+   them sit. A dogfood test exists to find real friction before a real user
+   does; treating its findings as routine backlog defeats the point.
+2. **Dev ex is user ex — our users are devs.** When deciding how to fix
+   something a dogfood run found, weigh it as a user-experience problem,
+   not only a correctness bug: would a developer actually using Construct
+   feel this friction, and does the fix make Construct feel like it's
+   doing the work for them (per the Vision section) or still leaving a gap
+   for them to bridge by hand. #495-498 (found analyzing #490) are the
+   worked examples of this: each ties a concrete failure back to what a
+   developer would actually experience, not just "the check was wrong."
+
 ## GitHub issue discipline (standing instruction)
 
 Repo: `thenewurbankid-web/construct`. Issues track all real work and stay in
