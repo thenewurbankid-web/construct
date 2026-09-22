@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DEFAULT_RULES } from '../../../config.mjs';
+import { DEFAULT_RULES } from '../../../../src/config.mjs';
 import { createContext, fileEntry, healthFrom } from '../facts.mjs';
 import { refOf } from './feature.mjs';
 
@@ -57,7 +57,7 @@ export const envelopeKind = {
     return {
       name: 'Context Envelope v1', path: 'schemas/envelope.v1.json',
       summary: `Context Envelope v1: the JSON state handed between construct pipeline steps (${fields.map((f) => f.name).join(', ')}). ${first(schema.description)}`,
-      sections: { schema: 'schemas/envelope.v1.json', version: 1, fields, producers: ['src/engine/envelope.mjs (createEnvelope, validateEnvelope)', 'src/engine/pipeline.mjs (runPipeline)'], cli: 'construct pipeline run < envelope.json' },
+      sections: { schema: 'schemas/envelope.v1.json', version: 1, fields, producers: ['packages/engine/envelope.mjs (createEnvelope, validateEnvelope)', 'packages/engine/pipeline.mjs (runPipeline)'], cli: 'construct pipeline run < envelope.json' },
       health: healthFrom([]),
       links: { children: [refOf('generator', 'pipeline')] }, next: [nextItem('generator', 'pipeline', 'The pipeline that consumes envelopes')],
     };
@@ -66,12 +66,12 @@ export const envelopeKind = {
 
 // ---- generator -------------------------------------------------------------------------------
 const GENERATORS = {
-  workflow: { file: 'src/engine/workflowGenerator.mjs', cli: 'construct create workflow <name> --feature <f>', what: 'Generates an XState workflow from a state descriptor, no LLM.' },
-  controller: { file: 'src/engine/controllerBinder.mjs', cli: 'construct create controller <name> --feature <f>', what: 'Binds a page\'s props to a hook\'s members and writes the controller.' },
-  page: { file: 'src/engine/pageTransformer.mjs', cli: 'construct import <name> --feature <f> --layers page --from <path>', what: 'Ingests an existing page into a presentation-only page.' },
+  workflow: { file: 'packages/engine/workflowGenerator.mjs', cli: 'construct create workflow <name> --feature <f>', what: 'Generates an XState workflow from a state descriptor, no LLM.' },
+  controller: { file: 'packages/engine/controllerBinder.mjs', cli: 'construct create controller <name> --feature <f>', what: 'Binds a page\'s props to a hook\'s members and writes the controller.' },
+  page: { file: 'packages/engine/pageTransformer.mjs', cli: 'construct import <name> --feature <f> --layers page --from <path>', what: 'Ingests an existing page into a presentation-only page.' },
   service: { file: 'src/service-generator.mjs', cli: 'construct create service <name> --feature <f>', what: 'Generates a service/API layer (optionally from an OpenAPI spec).' },
   layer: { file: 'src/generators.mjs', cli: 'construct create <layer> <name> --feature <f>', what: 'Scaffolds one layer file (or a whole vertical) from templates.' },
-  pipeline: { file: 'src/engine/pipeline.mjs', cli: 'construct pipeline run', what: 'Runs generator steps in one validated, atomic transaction over a Context Envelope.' },
+  pipeline: { file: 'packages/engine/pipeline.mjs', cli: 'construct pipeline run', what: 'Runs generator steps in one validated, atomic transaction over a Context Envelope.' },
 };
 export const generatorKind = {
   kind: 'generator',

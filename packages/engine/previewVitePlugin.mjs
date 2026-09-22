@@ -1,6 +1,6 @@
 // Vite plugin: opt-in, dev-server-only wiring for the Cockpit live preview.
 //   // vite.config.js
-//   import { constructPreview } from 'construct/src/engine/previewVitePlugin.mjs';
+//   import { constructPreview } from 'construct/packages/engine/previewVitePlugin.mjs';
 //   plugins: [constructPreview(), react()]
 // It annotates JSX in memory as Vite serves it (source files are never
 // modified) and injects the click bridge into index.html. Never runs in build.

@@ -45,5 +45,5 @@ test('mkdtemp against a non-tmpdir path is not flagged, and makeTempDir is fine'
 });
 
 test('deliberate cleanup-managed src/ call sites are out of scope (documented in eslint.config.mjs)', async () => {
-  assert.equal((await lint(BAD[0], 'src/engine/gitTrees.mjs')).length, 0);
+  assert.equal((await lint(BAD[0], 'packages/engine/gitTrees.mjs')).length, 0);
 });

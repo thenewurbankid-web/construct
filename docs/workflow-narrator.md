@@ -85,6 +85,6 @@ are named, not explained: the English says "it is low value", it does not read t
 
 ## Where the code lives
 
-`src/engine/workflowNarrator.mjs` (English), `workflowScenarios.mjs` (scenarios and findings),
+`packages/engine/workflowNarrator.mjs` (English), `workflowScenarios.mjs` (scenarios and findings),
 `workflowExplain.mjs` (one call + text renderers), `workflowSource.mjs` (path-scoped file access for the
 CLI); UI in `ui/client/features/workflows`, endpoint `GET /api/workflows/narrative`.

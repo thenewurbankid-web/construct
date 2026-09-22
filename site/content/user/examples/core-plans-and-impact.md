@@ -37,7 +37,7 @@ Every step names a real Construct flow and one of three executors: `repeatable`,
 ### 2. Impact is a computation, not a guess
 
 ```js
-import { analyzeImpact } from './src/engine/impact.mjs';
+import { analyzeImpact } from './packages/engine/impact.mjs';
 
 const report = analyzeImpact(root, { seeds: ['features/shared/components/CurrencyLabel.tsx'] });
 report.ok;                                   // true

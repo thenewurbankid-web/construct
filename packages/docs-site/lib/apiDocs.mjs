@@ -10,7 +10,7 @@ import { spawnSync } from 'node:child_process';
 /** Same grouping the Trinity Modules tab uses. `dirs` are repo-relative; `recursive` walks subfolders. */
 export const API_PACKAGES = [
   { id: 'core', title: 'Core engine', description: 'The deterministic CLI blocks: config, generators, validator, planner, LLM providers.', dirs: [{ dir: 'src', recursive: false }], exts: ['.mjs'], tsconfig: 'tsconfig.json' },
-  { id: 'engine', title: 'Engine', description: 'Pipeline, Context Envelope, processes, impact analysis, workflow narrator, test generator.', dirs: [{ dir: 'src/engine', recursive: true }], exts: ['.mjs'], tsconfig: 'tsconfig.json' },
+  { id: 'engine', title: 'Engine', description: 'Pipeline, Context Envelope, processes, impact analysis, workflow narrator, test generator.', dirs: [{ dir: 'packages/engine', recursive: true }], exts: ['.mjs'], tsconfig: 'tsconfig.json' },
   { id: 'ast', title: 'AST', description: 'Parse, walk, extract and edit TypeScript and JSX.', dirs: [{ dir: 'packages/ast', recursive: false }], exts: ['.mjs'], tsconfig: 'tsconfig.json' },
   { id: 'cockpit-server', title: 'Cockpit server', description: 'The Express backend of the Cockpit: routes, jobs, auth, workspace containment.', dirs: [{ dir: 'ui/server/src', recursive: true }], exts: ['.mjs'], tsconfig: 'tsconfig.json' },
   { id: 'cockpit-client-shared', title: 'Cockpit client (shared)', description: 'Shared components and helpers of the Cockpit UI.', dirs: [{ dir: 'ui/client/components', recursive: true }, { dir: 'ui/client/lib', recursive: true }], exts: ['.ts', '.tsx', '.jsx'], tsconfig: 'ui/client/tsconfig.json' },

@@ -7,11 +7,11 @@
 // Either every step's file lands on disk together, or (if the combined
 // result fails construct validate's own enforcer set) none of them do --
 // there is no partially-applied pipeline run.
-import { renderLayer } from '../generators.mjs';
-import { aggregateValidation } from '../registry.mjs';
+import { renderLayer } from '../../src/generators.mjs';
+import { aggregateValidation } from '../../src/registry.mjs';
 import { createTransaction } from './transactionalWriter.mjs';
 import { createEnvelope } from './envelope.mjs';
-import { rel } from '../fs.mjs';
+import { rel } from '../../src/fs.mjs';
 import { DEFAULT_ENFORCERS } from './defaultEnforcers.mjs';
 
 /** Merge freshly-committed step outputs into the envelope's `layers` map:

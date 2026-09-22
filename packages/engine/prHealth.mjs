@@ -33,7 +33,7 @@ import path from 'node:path';
 import { analyzeImpact, impactFromChangedFiles, buildImportGraph, scopeOf } from './impact.mjs';
 import { createContext, SOURCE_EXT, isTestFile } from './units/facts.mjs';
 import { explainSource } from './workflowExplain.mjs';
-import { planTouches } from '../plan.mjs';
+import { planTouches } from '../../src/plan.mjs';
 import { resolveCommit, mergeBase, changedFiles, withTrees } from './gitTrees.mjs';
 
 export const SCHEMA_VERSION = 1;

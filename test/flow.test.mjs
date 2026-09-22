@@ -5,9 +5,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Ajv from 'ajv';
-import { summarizeUnit, renderUnitMarkdown } from '../src/engine/unitSummary.mjs';
-import { createContext } from '../src/engine/units/facts.mjs';
-import { buildFlow } from '../src/engine/units/flow.mjs';
+import { summarizeUnit, renderUnitMarkdown } from '../packages/engine/unitSummary.mjs';
+import { createContext } from '../packages/engine/units/facts.mjs';
+import { buildFlow } from '../packages/engine/units/flow.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const fx = (n) => path.join(REPO, 'fixtures', n);

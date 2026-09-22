@@ -12,7 +12,7 @@
 // model being up.
 //
 // WHERE THE FACTS COME FROM — nothing here recomputes impact:
-//   * `impactFromChangedFiles` (src/engine/impact.mjs, #288) is called ONCE per message, seeded with
+//   * `impactFromChangedFiles` (packages/engine/impact.mjs, #288) is called ONCE per message, seeded with
 //     the changed files exactly as PR health (#285) seeds it. The counted headline is the report's
 //     `direction: "seed"` rows (the files the save actually wrote); the wider-impact line and the
 //     warnings are the remaining rows of that SAME report. Filtering matters: analyzeImpact always
@@ -20,7 +20,7 @@
 //     `report.features` verbatim would claim the save touched files it never opened.
 //   * Per-file prose is the report's own `purpose` field (facts.mjs: leading comment, JSDoc, or a
 //     layer-derived sentence) — already computed, no extra parse.
-//   * The narrative sentence is `summarizeUnit` (src/engine/unitSummary.mjs) — one call, so a commit
+//   * The narrative sentence is `summarizeUnit` (packages/engine/unitSummary.mjs) — one call, so a commit
 //     costs at most one extra project parse on top of the impact report.
 //   * `planTouches` (src/plan.mjs, #286) supplies the branch slug and the planned/unplanned split
 //     when the session started from a plan.
@@ -36,8 +36,8 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { impactFromChangedFiles } from './impact.mjs';
 import { summarizeUnit } from './unitSummary.mjs';
-import { planTouches } from '../plan.mjs';
-import { joinEnglishList } from '../prose.mjs';
+import { planTouches } from '../../src/plan.mjs';
+import { joinEnglishList } from '../../src/prose.mjs';
 
 export const SCHEMA_VERSION = 1;
 /** Zero-padding for the serial: `0007`. Wider serials are not truncated, only un-padded numbers grow. */
@@ -435,7 +435,7 @@ export function buildCommitMessage(root, opts = {}) {
 export function commitMessageApiManifest() {
   return {
     schemaVersion: SCHEMA_VERSION,
-    purpose: 'Deterministic commit messages for Cockpit saves: a branch-scoped serial, impact counts consumed from src/engine/impact.mjs, and prose from src/engine/unitSummary.mjs. No LLM, offline, byte-identical for the same tree.',
+    purpose: 'Deterministic commit messages for Cockpit saves: a branch-scoped serial, impact counts consumed from packages/engine/impact.mjs, and prose from packages/engine/unitSummary.mjs. No LLM, offline, byte-identical for the same tree.',
     calls: {
       newSessionId: '(bytes?) -> short random hex (never a timestamp)',
       slugify: '(text, {max?}) -> branch-safe slug',

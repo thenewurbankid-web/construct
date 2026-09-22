@@ -114,7 +114,7 @@ export const DEFAULT_RULES = {
   'COMPONENT-002': { severity: 'error', name: 'Components cannot import controllers' },
   'COMPONENT-003': { severity: 'error', name: 'Components cannot import workflows/services/domain' },
   'WORKFLOW-001': { severity: 'error', name: 'Workflows cannot import React/UI' },
-  // Epic #185 (#190) -- reuse the workflow narrator's health findings (src/engine/workflowScenarios.mjs).
+  // Epic #185 (#190) -- reuse the workflow narrator's health findings (packages/engine/workflowScenarios.mjs).
   'WORKFLOW-002': { severity: 'warning', name: 'Workflow states must be reachable from the initial state' },
   'WORKFLOW-003': { severity: 'warning', name: 'Non-final workflow states must have a way out' },
   // Ticket 7.4 (#114) -- genuinely new, per the epic's reconciliation notes (no existing

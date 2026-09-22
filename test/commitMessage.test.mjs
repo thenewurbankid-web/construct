@@ -17,8 +17,8 @@ import {
   buildCommitMessage, commitImpact, deriveSlug, newSessionId, nextSerialFrom, parseSerial,
   serialLabel, sessionBranchName, slugify, commitMessageApiManifest,
   COMMIT_MODES, DEFAULT_COMMIT_CONFIG, SUBJECT_LIMIT, SCHEMA_VERSION,
-} from '../src/engine/commitMessage.mjs';
-import { impactFromChangedFiles } from '../src/engine/impact.mjs';
+} from '../packages/engine/commitMessage.mjs';
+import { impactFromChangedFiles } from '../packages/engine/impact.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const EXAMPLE = path.join(REPO, 'example');
@@ -79,7 +79,7 @@ test('nothing on this path can reach an LLM', () => {
     const src = fs.readFileSync(file, 'utf8');
     for (const m of src.matchAll(/^\s*import\s[^'"]*['"](\.[^'"]+)['"]/gm)) visit(path.resolve(path.dirname(file), m[1]));
   };
-  visit(path.join(REPO, 'src/engine/commitMessage.mjs'));
+  visit(path.join(REPO, 'packages/engine/commitMessage.mjs'));
   const llm = [...seen].filter((f) => /\/(llm|llm-fill)\.mjs$/.test(f));
   assert.deepEqual(llm, [], `commitMessage.mjs transitively imports ${llm.join(', ')}`);
 });

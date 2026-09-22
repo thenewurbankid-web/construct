@@ -8,7 +8,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { validatePlan } from '../src/plan.mjs';
-import { PROCESS_MACHINE } from '../src/engine/processMachine.mjs';
+import { PROCESS_MACHINE } from '../packages/engine/processMachine.mjs';
 import {
   PROCESS_VERSION,
   STEP_STATUSES,
@@ -37,7 +37,7 @@ import {
   unreachableSteps,
   applyEvent,
   processSummary,
-} from '../src/engine/processModel.mjs';
+} from '../packages/engine/processModel.mjs';
 
 function clock(start = Date.UTC(2026, 8, 20, 9, 0, 0)) {
   let t = start;

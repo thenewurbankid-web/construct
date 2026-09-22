@@ -1,5 +1,5 @@
 // Workflow machines of a set of workflow-layer files, narrated in plain English by the existing
-// extractor/narrator/scenario blocks (src/engine/workflow*.mjs). Deterministic, read-only.
+// extractor/narrator/scenario blocks (packages/engine/workflow*.mjs). Deterministic, read-only.
 import fs from 'node:fs';
 import path from 'node:path';
 import { explainSource } from '../workflowExplain.mjs';

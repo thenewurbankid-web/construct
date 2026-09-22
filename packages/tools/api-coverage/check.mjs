@@ -16,7 +16,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..', '..');
 const BASELINE_FILE = path.join(HERE, 'baseline.json');
 /** Packages under the ratchet: Core engine, Engine, AST. Extend as later slices document more packages. */
-export const ROOTS = ['src'];
+export const ROOTS = ['src', 'packages/ast', 'packages/engine'];
 
 const isSource = (n) => n.endsWith('.mjs') && !/\.(test|spec)\.mjs$/.test(n);
 

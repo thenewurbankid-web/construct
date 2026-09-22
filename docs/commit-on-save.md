@@ -5,11 +5,11 @@ Construct builds itself — impact counts from `analyzeImpact`, prose from `summ
 is involved at any point, so the message costs nothing, never drifts, and works with the network and
 the provider both down.
 
-Split, and why: **message assembly is deterministic and lives in core** (`src/engine/commitMessage.mjs`,
+Split, and why: **message assembly is deterministic and lives in core** (`packages/engine/commitMessage.mjs`,
 open source); **the trigger and its UI live in `ui/`** (`ui/server/src/autoCommit.mjs`,
 `ui/client/features/git-session/`). One-way dependency — core never imports `ui/`.
 
-Code: `src/engine/commitMessage.mjs`. Tests: `test/commitMessage.test.mjs`,
+Code: `packages/engine/commitMessage.mjs`. Tests: `test/commitMessage.test.mjs`,
 `ui/server/src/autoCommit.test.mjs` (real git repositories), `ui/e2e/tests/commit-on-save.spec.js`.
 
 ## The message
@@ -118,7 +118,7 @@ import {
   buildCommitMessage, commitImpact, deriveSlug, newSessionId,
   nextSerialFrom, parseSerial, serialLabel, sessionBranchName, slugify,
   COMMIT_MODES, DEFAULT_COMMIT_CONFIG, commitMessageApiManifest,
-} from './src/engine/commitMessage.mjs';
+} from './packages/engine/commitMessage.mjs';
 
 const serial = nextSerialFrom(subjectsOnThisBranch, { sessionId });
 const built = buildCommitMessage(root, {

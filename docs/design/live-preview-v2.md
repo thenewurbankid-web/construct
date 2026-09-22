@@ -14,7 +14,7 @@ assets from it are copied here; the approach is re-derived and adapted below.
 
 ## 1. Why v1 is not enough
 
-Today (`src/engine/jsxSourceAnnotator.mjs` + `previewVitePlugin.mjs` + `previewBridge.mjs`,
+Today (`packages/engine/jsxSourceAnnotator.mjs` + `previewVitePlugin.mjs` + `previewBridge.mjs`,
 merged in #223) click-to-source works like this:
 
 1. The **target app** adds `constructPreview()` to its `vite.config.js`.
@@ -186,7 +186,7 @@ Unchanged from `ia-five-screens.md` §8.5; restated here because v2 makes it loa
 - It is **workspace-contained**: refused for any project outside `CONSTRUCT_WORKSPACE_ROOT`
   (`ui/server/src/projectGuard.mjs` / `workspace.mjs`), with the existing explanation.
 - It appears in the **bottom Run panel** as a process with Start / Restart / Stop and Logs, on the
-  existing process machinery (`src/engine/processEngine.mjs`), and is killed on Close project,
+  existing process machinery (`packages/engine/processEngine.mjs`), and is killed on Close project,
   Sign out and Cockpit shutdown. The proxy's lifetime is tied to the dev server's.
 - "Use a URL instead" stays, restricted to loopback URLs. Attaching to a user-started server gets
   the same injection, through the same proxy.
@@ -318,7 +318,7 @@ cached per dev-server session, invalidated by the HMR commit signal. Nothing is 
 
 ---
 
-## 7. The core block: `src/engine/previewFiber.mjs`
+## 7. The core block: `packages/engine/previewFiber.mjs`
 
 Built in slice 2. Permissive deps only (in fact: none — Node built-ins only), pure, unit tested.
 

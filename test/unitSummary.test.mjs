@@ -8,8 +8,8 @@ import Ajv from 'ajv'; // draft-07 validator (transitive dev dependency via esli
 import {
   summarizeUnit, resolveUnit, listUnits, listFeatures, summarizeFeatureForAgents, unitApiManifest,
   renderUnitMarkdown, TOKEN_BUDGETS, SCHEMA_VERSION,
-} from '../src/engine/unitSummary.mjs';
-import { createUnitRegistry, defaultUnitRegistry } from '../src/engine/units/registry.mjs';
+} from '../packages/engine/unitSummary.mjs';
+import { createUnitRegistry, defaultUnitRegistry } from '../packages/engine/units/registry.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');

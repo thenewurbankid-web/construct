@@ -24,8 +24,8 @@ import {
   describeProcessMachine,
   narrateProcessLifecycle,
   processLifecycleScenarios,
-} from '../src/engine/processMachine.mjs';
-import { extractMachines } from '../src/engine/workflowExtractor.mjs';
+} from '../packages/engine/processMachine.mjs';
+import { extractMachines } from '../packages/engine/workflowExtractor.mjs';
 
 test('the state set is exactly what the ticket specifies, and running is the only compound one', () => {
   assert.deepEqual(PROCESS_STATES, ['queued', 'running', 'paused', 'failed', 'done', 'cancelled']);
@@ -178,7 +178,7 @@ test('PROCESS_MACHINE is a real XState config: the repo\'s own extractor parses 
 });
 
 test('the narration derived from real parsed source is identical to the one this module produces', async () => {
-  const { narrateMachine } = await import('../src/engine/workflowNarrator.mjs');
+  const { narrateMachine } = await import('../packages/engine/workflowNarrator.mjs');
   const parsed = extractMachines(asSource()).machines[0];
   assert.equal(narrateMachine(parsed).text, narrateProcessLifecycle().text);
 });

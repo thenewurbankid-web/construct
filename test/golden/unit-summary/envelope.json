@@ -73,8 +73,8 @@
       }
     ],
     "producers": [
-      "src/engine/envelope.mjs (createEnvelope, validateEnvelope)",
-      "src/engine/pipeline.mjs (runPipeline)"
+      "packages/engine/envelope.mjs (createEnvelope, validateEnvelope)",
+      "packages/engine/pipeline.mjs (runPipeline)"
     ],
     "cli": "construct pipeline run < envelope.json"
   },
@@ -96,7 +96,7 @@
   ],
   "budget": {
     "maxTokens": 2000,
-    "estimatedTokens": 647,
+    "estimatedTokens": 650,
     "truncated": false
   }
 }

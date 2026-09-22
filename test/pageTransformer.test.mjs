@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { transformPristineSource, ingestPage } from '../src/engine/pageTransformer.mjs';
+import { transformPristineSource, ingestPage } from '../packages/engine/pageTransformer.mjs';
 import { createFeature } from '../src/generators.mjs';
 import { validateArchitecture } from '../src/architecture-enforcer.mjs';
 import { ConstructError, EXIT_CODES } from '../src/diagnostics.mjs';

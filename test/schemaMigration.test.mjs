@@ -9,9 +9,9 @@ import { fileURLToPath } from 'node:url';
 import Ajv from 'ajv';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { validatePlan, migratePlan, PLAN_ERROR_CODES } from '../src/plan.mjs';
-import { validateProcess, migrateProcess, PROCESS_ERROR_CODES } from '../src/engine/processModel.mjs';
-import { validateEnvelope, createEnvelope } from '../src/engine/envelope.mjs';
-import { openProcessStore } from '../src/engine/processStore.mjs';
+import { validateProcess, migrateProcess, PROCESS_ERROR_CODES } from '../packages/engine/processModel.mjs';
+import { validateEnvelope, createEnvelope } from '../packages/engine/envelope.mjs';
+import { openProcessStore } from '../packages/engine/processStore.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const schema = (n) => JSON.parse(fs.readFileSync(path.join(ROOT, 'schemas', n), 'utf8'));

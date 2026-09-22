@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
-import { isPublicAddress, safeFetch } from '../src/engine/safeFetch.mjs';
+import { isPublicAddress, safeFetch } from '../packages/engine/safeFetch.mjs';
 
 const HOST = 'files.example.com';
 const PUBLIC = '93.184.216.34';

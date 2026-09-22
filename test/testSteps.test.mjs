@@ -5,9 +5,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
-import { generateFeatureTests } from '../src/engine/testGenerator.mjs';
-import { cloneGeneratedTest } from '../src/engine/testClone.mjs';
-import { applyStepEdit, parseSpec, previewStepEdit, readStepDocument, renderDoc, urlProblem } from '../src/engine/testSteps.mjs';
+import { generateFeatureTests } from '../packages/engine/testGenerator.mjs';
+import { cloneGeneratedTest } from '../packages/engine/testClone.mjs';
+import { applyStepEdit, parseSpec, previewStepEdit, readStepDocument, renderDoc, urlProblem } from '../packages/engine/testSteps.mjs';
 import { parseToAst } from '../packages/ast/index.mjs';
 
 const LOCK_YML = 'frozen:\n  - features/*/tests/generated/**\nnonLayer:\n  - features/*/tests/**\n';

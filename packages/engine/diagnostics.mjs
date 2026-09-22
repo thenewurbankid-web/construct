@@ -11,8 +11,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
-import { validateArchitecture } from '../architecture-enforcer.mjs';
-import { validateSeparationOfConcerns } from '../soc-enforcer.mjs';
+import { validateArchitecture } from '../../src/architecture-enforcer.mjs';
+import { validateSeparationOfConcerns } from '../../src/soc-enforcer.mjs';
 
 const DEFAULT_COMPILER_OPTIONS = {
   target: ts.ScriptTarget.ES2022,

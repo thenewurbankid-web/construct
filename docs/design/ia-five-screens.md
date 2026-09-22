@@ -107,7 +107,7 @@ the **Plan**. Not a tracker ticket.
 
 Today: the note and the unsaved plan live only in React state (`usePlanScreen`), so a reload loses them. Only a
 plan that has been RUN becomes a record, in the per-user state dir keyed by project
-(`src/engine/processStore.mjs`).
+(`packages/engine/processStore.mjs`).
 
 Proposal:
 - **Where**: `<stateDir>/notes/<projectKey>/<noteId>.json`, next to `processes/`, using the same
@@ -230,7 +230,7 @@ file, and labelled by provenance (Deterministic, Local model, You).
 
 | Selection shows | Where | Source today |
 |---|---|---|
-| Impact ("Change touches 3 features") | inspector "Impact" section, chip on the selected tree row, one-line card in the preview | `/api/units`, `src/engine/impact.mjs` |
+| Impact ("Change touches 3 features") | inspector "Impact" section, chip on the selected tree row, one-line card in the preview | `/api/units`, `packages/engine/impact.mjs` |
 | Flow arrows and workflow state | Components: "Flow" inset + State switcher; Pages: Overlays > Flow | workflows viewer, `workflowExtractor` |
 | Tests and coverage | inspector "Tests"; Tests screen side view | Tests feature (`ui/server/src/testsApi.mjs`) |
 | Git: changed vs main, who changed it | Overlays > Git (a dot on changed rows; blame in the inspector) | `ui/server/src/git.mjs` (blame is a gap) |
@@ -249,7 +249,7 @@ Rename map to `construct refactor move|rename`, which are LLM-free by definition
 
 ### 8.4 POC capability -> our equivalent today -> gap
 
-Our equivalents are read from `ui/client/features/pages-editor`, `ui/server/src`, `src/engine` and the merged
+Our equivalents are read from `ui/client/features/pages-editor`, `ui/server/src`, `packages/engine` and the merged
 tickets (live preview #223, source view #233, scope links #223, workspace #365). "Not verified" means I did not
 run it.
 
@@ -337,7 +337,7 @@ definition. Nothing else in `src/` takes `--llm`.
 | Fill a layer (real body) | none beyond the stub | `--llm` on create / generate / import | AI is the only way to get a real body: say so |
 | Add the missing layer files | `construct create layer --layers`; `validate` finds what is missing | none | Exists (UI wiring needed) |
 | Auto-map props | `/api/pages/automap` (deterministic, cross-file) | none | Exists; type inference is a gap |
-| Add test ids | `assignTestIds` in `src/engine/testAttributes.mjs`, used by `testGenerator` and `pageTransformer` (at import time only) | none | Block exists as a library function; **not exposed** as a command or UI action |
+| Add test ids | `assignTestIds` in `packages/engine/testAttributes.mjs`, used by `testGenerator` and `pageTransformer` (at import time only) | none | Block exists as a library function; **not exposed** as a command or UI action |
 | Generate tests for this route | `testGenerator` from the feature flow (`featureFlow`), Tests tab | none | Exists (UI wiring needed from Pages) |
 | Suggest plan steps from a Note | deterministic impact and templates (`impact.mjs`, `planTemplate.mjs`) | free text to steps: none | No block for free text yet; mechanical candidate below |
 | Write a commit message | `commitMessage.mjs` (deterministic serial, slug, subject) | none | Mechanical only; AI would only polish and is not offered |
@@ -778,7 +778,7 @@ hierarchy drawn from the real import graph, uncluttered.
   SPA"). A feature can fan out to many routes, and a route can use several features (the route then appears under each).
   A feature with **no route** shows the calm info note "Not mapped to a route yet: that is fine for a shared kit, or a
   feature you imported first" with a **Map to a route** action, because users import a feature first and map routes
-  later. (Same wording as `NOTE_NO_ROUTE` in `src/engine/units/flow.mjs`.)
+  later. (Same wording as `NOTE_NO_ROUTE` in `packages/engine/units/flow.mjs`.)
 - **Layers** (present and missing): domain, service, workflow, hook, controller, page, component. Present layers show a
   file count and expand to files; **missing layers are drawn dashed** with an **Add** action (mechanical, `construct
   create layer`), so the gap is visible without a red alert. Violations are one quiet dot on the layer, listed in the
@@ -802,7 +802,7 @@ default destination becomes the configured root, and its first message names it.
 
 | Need | Today | New block needed |
 |---|---|---|
-| Routes that use a feature, the router kind | `featureRoutes` / `discoverRoutes` with adapters `nextjs` and `react-spa` (`src/engine/units/route-adapters.mjs`); `sections.flow` in the feature summary | No adapter for a plain Express backend (owner listed "Express"): a candidate adapter |
+| Routes that use a feature, the router kind | `featureRoutes` / `discoverRoutes` with adapters `nextjs` and `react-spa` (`packages/engine/units/route-adapters.mjs`); `sections.flow` in the feature summary | No adapter for a plain Express backend (owner listed "Express"): a candidate adapter |
 | Layer files and the import graph | `buildFlow(ctx, feature)`, `buildImportGraph`; `listUnits` for features and files | none for present layers |
 | Missing-layer detection | `validate` reports missing files; the seven layer names are configuration | A small "layers present / missing" summary per feature (candidate deterministic block) |
 | Configurable features root | `features.root` is read by `src/config.mjs` (default `features`) | Not verified that the Cockpit, the wizard and the tree honour a non-default root everywhere; needs a check |

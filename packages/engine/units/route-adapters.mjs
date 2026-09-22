@@ -14,7 +14,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseToAst, walkAst } from '../../../packages/ast/index.mjs';
-import { resolveImportSpecifier } from '../../route-resolver.mjs';
+import { resolveImportSpecifier } from '../../../src/route-resolver.mjs';
 
 const isTest = (p) => /\.(test|spec)\./.test(p);
 const CODE_EXT = '(?:ts|tsx|js|jsx|mjs)';

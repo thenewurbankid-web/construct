@@ -12,25 +12,25 @@ import { formatReport, exitCodeForViolations, ConstructError, EXIT_CODES } from 
 import { aggregateValidation } from './registry.mjs';
 import { validateArchitecture } from './architecture-enforcer.mjs';
 import { syncPublicApi } from './api-composer.mjs';
-import { summarizeUnit, listUnits, unitApiManifest, renderUnitMarkdown } from './engine/unitSummary.mjs';
-import { analyzeImpact, proposeSeedsFromText, impactApiManifest, renderImpactMarkdown } from './engine/impact.mjs';
-import { loadTemplateDir, TemplateError } from './engine/planTemplate.mjs';
-import { prHealth, renderPrHealthMarkdown, prHealthApiManifest } from './engine/prHealth.mjs';
+import { summarizeUnit, listUnits, unitApiManifest, renderUnitMarkdown } from '../packages/engine/unitSummary.mjs';
+import { analyzeImpact, proposeSeedsFromText, impactApiManifest, renderImpactMarkdown } from '../packages/engine/impact.mjs';
+import { loadTemplateDir, TemplateError } from '../packages/engine/planTemplate.mjs';
+import { prHealth, renderPrHealthMarkdown, prHealthApiManifest } from '../packages/engine/prHealth.mjs';
 import { summarizeProject, summarizeCompact, summarizeProse, summarizeSince } from './summarize.mjs';
 import { moveLayerFile, renameLayerFile } from './refactor.mjs';
 import { importVertical, importPlan, analyzeFiles, executeImportPlan } from './import.mjs';
 import { resolveRoute } from './route-resolver.mjs';
-import { DEFAULT_ENFORCERS } from './engine/defaultEnforcers.mjs';
-import { runPipeline } from './engine/pipeline.mjs';
-import { validateEnvelope } from './engine/envelope.mjs';
-import { ingestPage } from './engine/pageTransformer.mjs';
-import { generateWorkflow } from './engine/workflowGenerator.mjs';
-import { generateController } from './engine/controllerBinder.mjs';
-import { generateFeatureTests } from './engine/testGenerator.mjs';
-import { runFeatureTests, renderRunText } from './engine/testRunner.mjs';
+import { DEFAULT_ENFORCERS } from '../packages/engine/defaultEnforcers.mjs';
+import { runPipeline } from '../packages/engine/pipeline.mjs';
+import { validateEnvelope } from '../packages/engine/envelope.mjs';
+import { ingestPage } from '../packages/engine/pageTransformer.mjs';
+import { generateWorkflow } from '../packages/engine/workflowGenerator.mjs';
+import { generateController } from '../packages/engine/controllerBinder.mjs';
+import { generateFeatureTests } from '../packages/engine/testGenerator.mjs';
+import { runFeatureTests, renderRunText } from '../packages/engine/testRunner.mjs';
 import { startTimer, elapsedSeconds, formatDuration } from './timing.mjs';
-import { explainSource, renderExplained } from './engine/workflowExplain.mjs';
-import { listWorkflowSourceFiles, readWorkflowSource } from './engine/workflowSource.mjs';
+import { explainSource, renderExplained } from '../packages/engine/workflowExplain.mjs';
+import { listWorkflowSourceFiles, readWorkflowSource } from '../packages/engine/workflowSource.mjs';
 
 // Resolve the project root freshly per command: walks up from cwd (or from
 // --dir, when given) to find an existing architecture.yml (monorepo
@@ -124,7 +124,7 @@ export async function feature(args) {
 // Ticket 7.2/7.3/7.4/7.5's `--from`/`--bind`/`--openapi` paths below are all
 // zero-LLM: they compile a real input (JSX export, JSON state graph, an
 // already-generated Props interface, an OpenAPI spec) deterministically via
-// the src/engine/* modules or service-generator.mjs. `--llm <provider>`
+// the packages/engine/* modules or service-generator.mjs. `--llm <provider>`
 // (optional, mirrors `construct import`'s flag) only applies to the plain
 // fallback path at the bottom of this function: when given, it calls that
 // provider once to write a real implementation in place of the template
@@ -166,7 +166,7 @@ export async function generate(args) {
   const feature = args[fi + 1];
   // Ticket 7.2 (#112): `construct create/generate page <name> --feature <f> --from
   // <path>` ingests an externally-authored JSX file (e.g. a Subframe export) instead
-  // of scaffolding the usual stub template -- see src/engine/pageTransformer.mjs.
+  // of scaffolding the usual stub template -- see packages/engine/pageTransformer.mjs.
   const fromI = args.indexOf('--from');
   if (layer === 'page' && fromI >= 0 && args[fromI + 1]) {
     const t = startTimer();
@@ -179,7 +179,7 @@ export async function generate(args) {
   // Ticket 7.3 (#113): `construct create/generate workflow <name> --feature <f>
   // --from <path-to-json>` compiles a JSON state-graph descriptor into an XState v5
   // machine file instead of scaffolding the usual stub template -- see
-  // src/engine/workflowGenerator.mjs. Mirrors the page ingestion --from convention.
+  // packages/engine/workflowGenerator.mjs. Mirrors the page ingestion --from convention.
   if (layer === 'workflow' && fromI >= 0 && args[fromI + 1]) {
     const descriptorPath = path.isAbsolute(args[fromI + 1]) ? args[fromI + 1] : path.resolve(args[fromI + 1]);
     if (!fs.existsSync(descriptorPath)) {
@@ -343,7 +343,7 @@ const positionalOf = (args) => args.find((a, i) => !a.startsWith('--') && !UNIT_
 
 /** `construct summarize <unit-ref> [--kind K] [--detail brief|standard|full] [--include a,b] [--format json|markdown]`,
  * `construct summarize --list [--kind K]`, `construct summarize --usage`. Deterministic unit summaries for bots and
- * humans (src/engine/unitSummary.mjs); errors are structured JSON on stdout with a non-zero exit code. */
+ * humans (packages/engine/unitSummary.mjs); errors are structured JSON on stdout with a non-zero exit code. */
 function summarizeUnitCommand(args, root, ref) {
   const format = flagValue(args, '--format') === 'markdown' || flagValue(args, '--format') === 'md' ? 'markdown' : 'json';
   const kind = flagValue(args, '--kind');

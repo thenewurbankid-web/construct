@@ -1,7 +1,7 @@
 # Preview fixtures (#443)
 
 Two tiny real apps used to exercise the live-preview v2 bridge and resolver
-(`src/engine/previewFiber.mjs`) against **real dev builds**, plus the script
+(`packages/engine/previewFiber.mjs`) against **real dev builds**, plus the script
 that records payloads from them.
 
 | Fixture | Framework | Runnable in this repo today |

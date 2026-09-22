@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   MIN_GIT_FOR_CURLOPT_RESOLVE, atLeast, formatVersion, gitVersion, parseGitVersion, resetGitVersionCache, supportsCurloptResolve,
-} from '../src/engine/gitVersion.mjs';
+} from '../packages/engine/gitVersion.mjs';
 
 test('the minimum is the release that introduced http.curloptResolve: 2.37.0', () => {
   assert.deepEqual({ ...MIN_GIT_FOR_CURLOPT_RESOLVE }, { major: 2, minor: 37, patch: 0 });

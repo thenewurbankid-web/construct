@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createEnvelope, validateEnvelope, ENVELOPE_VERSION } from '../src/engine/envelope.mjs';
+import { createEnvelope, validateEnvelope, ENVELOPE_VERSION } from '../packages/engine/envelope.mjs';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SCHEMA = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'schemas', 'envelope.v1.json'), 'utf8'));

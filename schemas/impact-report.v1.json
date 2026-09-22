@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://construct.dev/schemas/impact-report.v1.json",
   "title": "Construct Impact Report v1",
-  "description": "Deterministic, LLM-free blast radius of a change, as returned by analyzeImpact()/impactFromChangedFiles()/impactFromTicketText() in src/engine/impact.mjs and `construct research impact`. Read-only: computing an impact report never writes anything. Every entry carries its own provenance — `derived` means it was computed from the import/layer graph starting at a seed the caller named explicitly (or a git diff), `inferred` means every path to it starts at a seed that was guessed from ticket text or proposed by a model. Breaking changes go in impact-report.v2.json.",
+  "description": "Deterministic, LLM-free blast radius of a change, as returned by analyzeImpact()/impactFromChangedFiles()/impactFromTicketText() in packages/engine/impact.mjs and `construct research impact`. Read-only: computing an impact report never writes anything. Every entry carries its own provenance — `derived` means it was computed from the import/layer graph starting at a seed the caller named explicitly (or a git diff), `inferred` means every path to it starts at a seed that was guessed from ticket text or proposed by a model. Breaking changes go in impact-report.v2.json.",
   "oneOf": [
     { "$ref": "#/definitions/report" },
     { "$ref": "#/definitions/proposal" },

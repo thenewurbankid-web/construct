@@ -16,10 +16,10 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { PLAN_FLOWS } from '../src/plan.mjs';
-import { createProcess } from '../src/engine/processModel.mjs';
-import { openProcessStore } from '../src/engine/processStore.mjs';
-import { createProcessEngine } from '../src/engine/processEngine.mjs';
-import { createBotRunner, botBranch, resolveMaxConcurrent } from '../src/engine/botRunner.mjs';
+import { createProcess } from '../packages/engine/processModel.mjs';
+import { openProcessStore } from '../packages/engine/processStore.mjs';
+import { createProcessEngine } from '../packages/engine/processEngine.mjs';
+import { createBotRunner, botBranch, resolveMaxConcurrent } from '../packages/engine/botRunner.mjs';
 
 const FAKE_BIN = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'test-utils', 'fakeConstructBin.mjs');
 const run = (cwd, ...args) => spawnSync('git', args, { cwd, encoding: 'utf8' }).stdout.trim();

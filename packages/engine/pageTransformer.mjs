@@ -17,10 +17,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseToAst, walkAst } from '../../packages/ast/index.mjs';
-import { loadConfig } from './../config.mjs';
-import { write } from '../fs.mjs';
-import { selfCheck, pascalCase } from '../generators.mjs';
-import { ConstructError, EXIT_CODES } from '../diagnostics.mjs';
+import { loadConfig } from '../../src/config.mjs';
+import { write } from '../../src/fs.mjs';
+import { selfCheck, pascalCase } from '../../src/generators.mjs';
+import { ConstructError, EXIT_CODES } from '../../src/diagnostics.mjs';
 import { extractMachines } from './workflowExtractor.mjs';
 import { listWorkflowSourceFiles, readWorkflowSource } from './workflowSource.mjs';
 import { assignTestIds, slotTestId, eventTestId } from './testAttributes.mjs';

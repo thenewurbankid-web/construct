@@ -12,9 +12,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
-import { createProcess } from '../src/engine/processModel.mjs';
-import { openProcessStore } from '../src/engine/processStore.mjs';
-import { createProcessEngine, materializeCommand, StepAborted } from '../src/engine/processEngine.mjs';
+import { createProcess } from '../packages/engine/processModel.mjs';
+import { openProcessStore } from '../packages/engine/processStore.mjs';
+import { createProcessEngine, materializeCommand, StepAborted } from '../packages/engine/processEngine.mjs';
 import { validateArchitecture } from '../src/architecture-enforcer.mjs';
 
 /** A clock that ticks one second per call, so every assertion about

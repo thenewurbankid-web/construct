@@ -4,9 +4,9 @@
 // ui/server/src/workflowsViewer.mjs has its own equivalent guard for HTTP.
 import fs from 'node:fs';
 import path from 'node:path';
-import { loadConfig } from '../config.mjs';
-import { walk, rel } from '../fs.mjs';
-import { ConstructError, EXIT_CODES } from '../diagnostics.mjs';
+import { loadConfig } from '../../src/config.mjs';
+import { walk, rel } from '../../src/fs.mjs';
+import { ConstructError, EXIT_CODES } from '../../src/diagnostics.mjs';
 
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs']);
 const MAX_BYTES = 512 * 1024;

@@ -10,7 +10,7 @@ import {
   generateWorkflow,
   extractEventNames,
   eventsToEnvelope,
-} from '../src/engine/workflowGenerator.mjs';
+} from '../packages/engine/workflowGenerator.mjs';
 import { createFeature } from '../src/generators.mjs';
 import { validateArchitecture, detectLayerViolations } from '../src/architecture-enforcer.mjs';
 import { parseToAst } from '../src/parser.mjs';

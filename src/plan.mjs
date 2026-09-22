@@ -19,7 +19,7 @@
 // execution time (including its deliberate layer repair).
 //
 // No JSON-Schema-engine dependency is added for this, matching
-// src/engine/envelope.mjs: schemas/plan.v1.json is the documentation of
+// packages/engine/envelope.mjs: schemas/plan.v1.json is the documentation of
 // record and this is the hand-written structural validator. test/plan.test.mjs
 // asserts the two stay in lockstep — the schema's enums and per-flow required
 // args are read directly out of the file and compared to PLAN_FLOWS, so drift
@@ -31,7 +31,7 @@
 // paused/failed/done) deliberately lives in #287's process model keyed by
 // `step.id`, not in the plan.
 import path from 'node:path';
-import { validateEnvelope } from './engine/envelope.mjs';
+import { validateEnvelope } from '../packages/engine/envelope.mjs';
 
 export const PLAN_VERSION = 1;
 

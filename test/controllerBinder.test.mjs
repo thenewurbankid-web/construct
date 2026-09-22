@@ -9,10 +9,10 @@ import {
   extractHookSignature,
   matchSlotsToHandlers,
   generateController,
-} from '../src/engine/controllerBinder.mjs';
+} from '../packages/engine/controllerBinder.mjs';
 import { createFeature } from '../src/generators.mjs';
 import { parseToAst } from '../src/parser.mjs';
-import { createEnvelope } from '../src/engine/envelope.mjs';
+import { createEnvelope } from '../packages/engine/envelope.mjs';
 import { validateArchitecture, detectLayerViolations } from '../src/architecture-enforcer.mjs';
 import { ConstructError, EXIT_CODES } from '../src/diagnostics.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';

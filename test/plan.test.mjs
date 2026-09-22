@@ -36,7 +36,7 @@ import {
   formatPlanErrors,
 } from '../src/plan.mjs';
 import { validatePlanShape } from '../src/import.mjs';
-import { createEnvelope } from '../src/engine/envelope.mjs';
+import { createEnvelope } from '../packages/engine/envelope.mjs';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SCHEMA = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'schemas', 'plan.v1.json'), 'utf8'));

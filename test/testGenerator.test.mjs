@@ -8,16 +8,16 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
-import { generateFeatureTests, planFeatureTests, GENERATED_MARKER, lit, comment } from '../src/engine/testGenerator.mjs';
-import { kebab, slotTestId, assignTestIds } from '../src/engine/testAttributes.mjs';
+import { generateFeatureTests, planFeatureTests, GENERATED_MARKER, lit, comment } from '../packages/engine/testGenerator.mjs';
+import { kebab, slotTestId, assignTestIds } from '../packages/engine/testAttributes.mjs';
 import { normalizeNonLayer, isNonLayerPath } from '../src/nonLayer.mjs';
 import { write } from '../src/fs.mjs';
 import { validateArchitecture } from '../src/architecture-enforcer.mjs';
 import { validateSeparationOfConcerns } from '../src/soc-enforcer.mjs';
-import { summarizeUnit } from '../src/engine/unitSummary.mjs';
+import { summarizeUnit } from '../packages/engine/unitSummary.mjs';
 import { parseToAst } from '../src/parser.mjs';
 import { ConstructError } from '../src/diagnostics.mjs';
-import { transformPristineSource } from '../src/engine/pageTransformer.mjs';
+import { transformPristineSource } from '../packages/engine/pageTransformer.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(here, '..');
@@ -389,8 +389,8 @@ test('page ingestion in a feature with a workflow: scoped testid and data-flow-s
 });
 
 test('ingestPage in a feature with workflows emits the scoped testid + flowState; the controller forwards a matching hook member and leaves an unmatched optional slot unwired', async () => {
-  const { ingestPage } = await import('../src/engine/pageTransformer.mjs');
-  const { generateController } = await import('../src/engine/controllerBinder.mjs');
+  const { ingestPage } = await import('../packages/engine/pageTransformer.mjs');
+  const { generateController } = await import('../packages/engine/controllerBinder.mjs');
   const dir = project({ features: { shop: { workflows: { 'Flows.ts': TWO } } } });
   const from = path.join(dir, 'Export.tsx');
   fs.writeFileSync(from, 'export function E() {\n  return (\n    <main>\n      <button onSubmit={() => {}}>go</button>\n    </main>\n  );\n}\n');

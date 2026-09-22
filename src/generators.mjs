@@ -160,7 +160,7 @@ export function createFeature(root,name){
 
 // Pure: compute the {file, content} a layer's template would produce,
 // without touching disk. Shared by generateLayer (below, unchanged disk-
-// writing behavior) and the Ticket 7.1 pipeline runner (src/engine/pipeline.mjs),
+// writing behavior) and the Ticket 7.1 pipeline runner (packages/engine/pipeline.mjs),
 // which stages the same content into a transactionalWriter buffer instead of
 // writing it directly -- so template logic lives in exactly one place either way.
 // Pure: where a layer's file for `name` in `feature` would be written, without

@@ -12,7 +12,7 @@ This page covers the architecture Construct **enforces on target projects**: lay
 
 ## How `construct validate` works
 
-`validate` loads `architecture.yml` (`src/config.mjs`), then runs a fixed list of enforcers (`src/engine/defaultEnforcers.mjs`) and merges their findings:
+`validate` loads `architecture.yml` (`src/config.mjs`), then runs a fixed list of enforcers (`packages/engine/defaultEnforcers.mjs`) and merges their findings:
 
 | Enforcer | Module | Checks |
 |---|---|---|
@@ -25,4 +25,4 @@ Every finding is a violation object built by `makeViolation` (`src/diagnostics.m
 
 The layer graph itself (`src/architecture-graph.mjs`) is data, not code: which layer may import which. The enforcers and the generators both read it, so they cannot disagree.
 
-Because the same enforcers run inside generators (`src/engine/transactionalWriter.mjs` validates a shadow copy before committing), generated output is held to the rules it will later be checked against.
+Because the same enforcers run inside generators (`packages/engine/transactionalWriter.mjs` validates a shadow copy before committing), generated output is held to the rules it will later be checked against.

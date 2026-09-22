@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { loadTemplate, loadTemplateDir, createTemplateRegistry, instantiate, TemplateError, TEMPLATE_ERROR_CODES as E } from '../src/engine/planTemplate.mjs';
+import { loadTemplate, loadTemplateDir, createTemplateRegistry, instantiate, TemplateError, TEMPLATE_ERROR_CODES as E } from '../packages/engine/planTemplate.mjs';
 import { validatePlan, planToCommand } from '../src/plan.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -156,8 +156,8 @@ test('open-core boundary: no src import reaches ui/, tools/ or any curated/propr
       assert.doesNotMatch(s, /(^|\/)(ui|proprietary|curated|flows|mcp)(\/|$)/, `${path.relative(root, f)} imports a proprietary-side path: ${s}`);
     }
   }
-  const planTemplate = fs.readFileSync(path.join(root, 'src', 'engine', 'planTemplate.mjs'), 'utf8');
-  assert.deepEqual([...planTemplate.matchAll(spec)].map((m) => m[1] || m[2]).filter((s) => s.startsWith('.')).sort(), ['../plan.mjs']);
+  const planTemplate = fs.readFileSync(path.join(root, 'packages', 'engine', 'planTemplate.mjs'), 'utf8');
+  assert.deepEqual([...planTemplate.matchAll(spec)].map((m) => m[1] || m[2]).filter((s) => s.startsWith('.')).sort(), ['../../src/plan.mjs']);
   const inSrc = files.filter((p) => p.endsWith('.json') && /"templateVersion"/.test(fs.readFileSync(p, 'utf8')));
   assert.deepEqual(inSrc, [], 'a template lives under src/: curated flows are proprietary and must load from outside core');
 });

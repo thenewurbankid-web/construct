@@ -16,10 +16,10 @@
 // style for boilerplate that needs no real synthesis.
 import path from 'node:path';
 import { ts, printNode as print } from '../../packages/ast/index.mjs';
-import { loadConfig } from './../config.mjs';
-import { write } from '../fs.mjs';
-import { selfCheck, pascalCase } from '../generators.mjs';
-import { ConstructError, EXIT_CODES } from '../diagnostics.mjs';
+import { loadConfig } from '../../src/config.mjs';
+import { write } from '../../src/fs.mjs';
+import { selfCheck, pascalCase } from '../../src/generators.mjs';
+import { ConstructError, EXIT_CODES } from '../../src/diagnostics.mjs';
 
 const { factory } = ts;
 const IDENT_RE = /^[A-Za-z_$][A-Za-z0-9_$]*$/;

@@ -7,7 +7,7 @@ Construct is designed to be extended by adding small blocks, not by changing exi
 3. **Test it** in `test/` with a fixture project that violates the rule and one that does not.
 4. **List it**: the [rule reference](@developers/rules-reference/) is generated from `DEFAULT_RULES`, so it appears automatically.
 
-A whole new enforcer is one more `{ name, validate(root) -> { violations } }` entry in `src/engine/defaultEnforcers.mjs`; the registry merges the results.
+A whole new enforcer is one more `{ name, validate(root) -> { violations } }` entry in `packages/engine/defaultEnforcers.mjs`; the registry merges the results.
 
 ## Add or change a layer template
 

@@ -19,8 +19,8 @@
 //     overwritten; a free name is suggested instead; nothing is ever written under generated/.
 import fs from 'node:fs';
 import path from 'node:path';
-import { loadConfig } from '../config.mjs';
-import { matchFrozen } from '../frozen.mjs';
+import { loadConfig } from '../../src/config.mjs';
+import { matchFrozen } from '../../src/frozen.mjs';
 import { GENERATED_MARKER, assertLockDeclared, assertSafeDir, comment, planFeatureTests, projectPaths } from './testGenerator.mjs';
 
 /** First line of every clone: what tells a clone (yours, never regenerated) from a generated file. */

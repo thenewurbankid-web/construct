@@ -214,7 +214,7 @@ test('a frozen importer refuses the whole TypeScript move before anything is wri
 });
 
 test('the language service is cached per project: a second plan is fast and sees a changed file', async () => {
-  const { planFileMove, clearMoveCache } = await import('../src/engine/tsFileMove.mjs');
+  const { planFileMove, clearMoveCache } = await import('../packages/engine/tsFileMove.mjs');
   clearMoveCache();
   const { dir, put } = tsProject();
   const old = path.join(dir, 'features/checkout/domain/Foo.tsx');

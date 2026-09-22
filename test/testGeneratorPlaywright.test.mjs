@@ -12,7 +12,7 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
-import { generateFeatureTests } from '../src/engine/testGenerator.mjs';
+import { generateFeatureTests } from '../packages/engine/testGenerator.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PW_MODULES = path.join(REPO, 'ui', 'e2e', 'node_modules');

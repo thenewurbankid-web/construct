@@ -120,7 +120,7 @@
     },
     "envelope": {
       "type": "object",
-      "description": "A Context Envelope. Its shape is defined by schemas/envelope.v1.json and is not re-specified here; validatePlan() delegates to validateEnvelope() in src/engine/envelope.mjs so there is exactly one authority for it.",
+      "description": "A Context Envelope. Its shape is defined by schemas/envelope.v1.json and is not re-specified here; validatePlan() delegates to validateEnvelope() in packages/engine/envelope.mjs so there is exactly one authority for it.",
       "required": [
         "version",
         "feature",

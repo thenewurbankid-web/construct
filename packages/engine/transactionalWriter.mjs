@@ -13,9 +13,9 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { write } from '../fs.mjs';
-import { assertNotFrozen } from '../frozen.mjs';
-import { validateArchitecture } from '../architecture-enforcer.mjs';
+import { write } from '../../src/fs.mjs';
+import { assertNotFrozen } from '../../src/frozen.mjs';
+import { validateArchitecture } from '../../src/architecture-enforcer.mjs';
 
 // Mirrors src/fs.mjs's walk(): these never belong in a shadow copy used for
 // validation (and copying node_modules in particular would be slow/pointless).

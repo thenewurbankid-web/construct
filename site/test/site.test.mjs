@@ -183,8 +183,8 @@ test('API reference: core, engine and AST are generated from source, versioned, 
   assert.match(idx, /v0\.9/);
   for (const id of ['core', 'engine', 'ast']) assert.match(idx, new RegExp(`href="[./]*developers/api/${id}/"`));
   const engine = fs.readFileSync(path.join(out, 'developers/api/engine/index.html'), 'utf8');
-  assert.match(engine, /src\/engine\/pipeline/, 'a known module is listed');
-  const page = fs.readFileSync(path.join(out, 'developers/api/engine/src/engine/pipeline/index.html'), 'utf8');
+  assert.match(engine, /packages\/engine\/pipeline/, 'a known module is listed');
+  const page = fs.readFileSync(path.join(out, 'developers/api/engine/packages/engine/pipeline/index.html'), 'utf8');
   assert.match(page, /runPipeline/, 'a known export is documented');
   assert.match(page, /<h[1-4][^>]*>Parameters/, 'params are rendered');
   assert.match(page, /v0\.9/, 'the page carries the version it was built for');
