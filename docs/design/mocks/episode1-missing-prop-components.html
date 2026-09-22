@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Episode 1: the missing prop, seen from Components - Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="ia.css"><link rel="stylesheet" href="episode1.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+</head><body>
+<div class="concept">Concept - not implemented <span>Episode 1: the missing prop, seen from Components</span></div>
+
+<div class="shell" style="grid-template-rows:44px 1fr 110px 24px;position:relative">
+  
+<header class="topbar" role="banner">
+  <div class="brand"><i></i>Cockpit</div>
+  <button class="chip-btn" aria-haspopup="listbox">storefront <span class="sub">main</span> &#9662;</button>
+  <nav class="snav" aria-label="Screens"><a class="" >Features</a><a class="" >Pages</a><a class="on" aria-current="page">Components</a><a class="" >Git</a><a class="" >Tests</a></nav>
+  <button class="chip-btn palette-trigger"><span>Search or run a command...</span><kbd>Ctrl K</kbd></button>
+  <span class="pill run"><span class="spin"></span>1 running</span>
+  <button class="acct" aria-haspopup="true" aria-expanded="false"><span class="avatar">SP</span>shashank-p &#9662;</button>
+</header>
+  <div class="ia-main">
+    <aside class="pane" aria-label="Left panel: Browse">
+  <div class="pane-h"><span class="title">Components</span><span class="spacer"></span><button class="icon-btn" aria-label="New">+</button><button class="icon-btn" aria-label="Collapse">&laquo;</button></div>
+  <div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Components</button><button role="tab" class="" aria-selected="false">Workflows</button></div>
+  <div class="search">&#8981; Filter <span class="spacer"></span><kbd>/</kbd></div>
+  <div class="scroll">
+  <div class="sect">catalog &middot; 6</div>
+  <div class="tree">
+    <div class="row l1 "><span class="layer page">page</span>ShopHome<span class="nbs"><span class="frozen-tag">&#128274; frozen</span></span></div>
+    <div class="row l1 sel"><span class="layer component">component</span>WishlistHeartButton<span class="nbs"><span class="frozen-tag">&#128274; frozen</span><span class="nd find" title="Prop-link finding"></span></span></div>
+    <div class="row l1"><span class="layer component">component</span>WishlistPanel<span class="nbs"><span class="frozen-tag">&#128274; frozen</span></span></div>
+    <div class="row l1"><span class="layer component">component</span>CartDrawer</div>
+    <div class="row l1"><span class="layer controller">controller</span>WishlistController</div>
+    <div class="row l1"><span class="layer workflow">workflow</span>wishlistMachine<span class="nbs"><span class="nb note">no block yet</span></span></div>
+  </div></div></aside><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <section class="pane mid" aria-label="Center stage"><div class="etabs" role="tablist"><button role="tab" class="on" aria-selected="true">&#9679; Preview WishlistHeartButton</button><button role="tab">WishlistHeartButton.tsx</button></div>
+   <div class="canvas-tb"><span class="crumbs">Components &rsaquo; catalog &rsaquo; <b>WishlistHeartButton</b></span><span class="spacer"></span><span class="frozen-tag">&#128274; Frozen</span></div>
+   <div class="stage" style="flex:1;place-items:start center;padding:16px"><div class="device" style="height:210px;width:260px"><div class="bar"><i></i><i></i><i></i>&nbsp;&nbsp;WishlistHeartButton, on its own</div>
+    <div style="height:calc(100% - 30px);display:grid;place-items:center;background:#faf7f2"><div class="sp-heart on" style="position:static">&#9825;</div></div></div></div></section><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <aside class="pane" aria-label="Right panel: Inspect"><div class="pane-h"><span class="title">Inspect</span></div>
+   <div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Inspector</button><button role="tab">Used by <span class="badge ">2</span></button><button role="tab">Source</button></div>
+   <div class="scroll">
+   <div class="section"><div class="el-head"><span class="name">WishlistHeartButton</span><span class="layer component">component</span><span class="frozen-tag">&#128274; frozen</span><span class="spacer"></span><button class="icon-btn" aria-label="More">&#8943;</button></div><div class="path">features/catalog/components/WishlistHeartButton.tsx:6</div></div>
+   <details class="dt" open><summary>Props <span class="c">3</span></summary>
+     <div class="prop"><span class="k">productId</span><span class="field">string</span><span class="bind lit">required</span></div>
+     <div class="prop"><span class="k">active</span><span class="field">boolean</span><span class="bind lit">required</span></div>
+     <div class="prop gap"><span class="k">onToggle</span><span class="field">(id: string) =&gt; void</span><span class="propchip"><span class="dt3"></span>never passed &middot; 1 of 2 uses</span></div>
+     <div style="margin-top:6px"><button class="btn sm">+ Add prop</button></div>
+   </details>
+   <details class="dt" open><summary>Used by <span class="c">2</span></summary>
+     <div class="callsite"><span class="cf">ShopHome.tsx:88</span><span class="cn warn">productId, active passed &middot; <b>onToggle not passed</b> — clicking the heart does nothing yet</span></div>
+     <div class="callsite"><span class="cf">CartDrawer.tsx:41</span><span class="cn llm">passes <code>size="sm"</code> — not a declared prop, forwarded as a DOM attribute</span></div>
+   </details>
+   <details class="dt"><summary>Findings <span class="c warn">2</span></summary></details>
+   </div></aside>
+  </div>
+  
+<div class="drawer" aria-label="Bottom panel: Run" style="height:132px">
+  <div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Processes <span class="badge acc">1</span></button><button role="tab" class="" aria-selected="false">Approvals <span class="badge ">0</span></button><button role="tab" class="" aria-selected="false">Diagnostics <span class="badge danger">2</span></button><button role="tab" class="" aria-selected="false">Logs</button></div>
+  <div class="body"><table><tr><th>Rule</th><th>File</th><th>Severity</th><th></th></tr>
+   <tr><td>PROP-LINK &middot; prop declared, never passed</td><td>ShopHome.tsx:88</td><td><span class="tag" style="background:var(--warn-soft);color:var(--warn)">Info</span></td><td><button class="btn sm">Go to source</button></td></tr>
+   <tr><td>PROP-LINK &middot; prop passed, not declared</td><td>CartDrawer.tsx:41</td><td><span class="tag" style="background:var(--warn-soft);color:var(--warn)">Info</span></td><td><button class="btn sm">Go to source</button></td></tr></table></div>
+</div>
+  <footer class="statusbar"><span class="ok">&#9679; validate: 0 new violations</span><span>Notes saved on this machine</span><span class="spacer"></span><span>qwen2.5-coder:7b</span><span><kbd>F6</kbd> next panel</span><span><kbd>Ctrl J</kbd> bottom panel</span></footer>
+</div>
+</body></html>

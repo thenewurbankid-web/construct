@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Episode 1: feature-tour highlight — ring + label beside, never over - Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="ia.css"><link rel="stylesheet" href="episode1.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+</head><body>
+<div class="concept">Concept - not implemented <span>Episode 1: feature-tour highlight — ring + label beside, never over</span></div>
+
+<div class="rec-frame" style="left:80px;top:44px;width:1280px;height:720px"><span class="rf-tag">RECORDING COMPOSITE &middot; 1280&times;720 &middot; ring + label stay inside this line</span></div>
+
+<div class="shell" style="grid-template-rows:44px 1fr 110px 24px;position:relative">
+  
+<header class="topbar" role="banner">
+  <div class="brand"><i></i>Cockpit</div>
+  <button class="chip-btn" aria-haspopup="listbox">storefront <span class="sub">main</span> &#9662;</button>
+  <nav class="snav" aria-label="Screens"><a class="" >Features</a><a class="" >Pages</a><a class="on" aria-current="page">Components</a><a class="" >Git</a><a class="" >Tests</a></nav>
+  <button class="chip-btn palette-trigger"><span>Search or run a command...</span><kbd>Ctrl K</kbd></button>
+  <span class="pill run"><span class="spin"></span>1 running</span>
+  <button class="acct" aria-haspopup="true" aria-expanded="false"><span class="avatar">SP</span>shashank-p &#9662;</button>
+</header>
+  <div class="ia-main">
+    <aside class="pane" aria-label="Left panel: Browse">
+  <div class="pane-h"><span class="title">Components</span><span class="spacer"></span><button class="icon-btn" aria-label="New">+</button><button class="icon-btn" aria-label="Collapse">&laquo;</button></div>
+  <div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Components</button><button role="tab" class="" aria-selected="false">Workflows</button></div>
+  <div class="search">&#8981; Filter <span class="spacer"></span><kbd>/</kbd></div>
+  <div class="scroll">
+  <div class="sect">catalog &middot; 6</div>
+  <div class="tree">
+    <div class="row l1 "><span class="layer page">page</span>ShopHome<span class="nbs"><span class="frozen-tag">&#128274; frozen</span></span></div>
+    <div class="row l1 sel"><span class="layer component">component</span>WishlistHeartButton<span class="nbs"><span class="frozen-tag">&#128274; frozen</span><span class="nd find" title="Prop-link finding"></span></span></div>
+    <div class="row l1"><span class="layer component">component</span>WishlistPanel<span class="nbs"><span class="frozen-tag">&#128274; frozen</span></span></div>
+    <div class="row l1"><span class="layer component">component</span>CartDrawer</div>
+    <div class="row l1"><span class="layer controller">controller</span>WishlistController</div>
+    <div class="row l1"><span class="layer workflow">workflow</span>wishlistMachine<span class="nbs"><span class="nb note">no block yet</span></span></div>
+  </div></div></aside><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <section class="pane mid" aria-label="Center stage"><div class="etabs" role="tablist"><button role="tab" class="on" aria-selected="true">&#9679; Preview WishlistHeartButton</button><button role="tab">WishlistHeartButton.tsx</button></div>
+   <div class="canvas-tb"><span class="crumbs">Components &rsaquo; catalog &rsaquo; <b>WishlistHeartButton</b></span><span class="spacer"></span><span class="frozen-tag" id="ep1-frozen-chip">&#128274; Frozen</span></div>
+   <div class="stage" style="flex:1;place-items:start start;padding:16px"><div class="device" style="height:170px;width:220px"><div class="bar"><i></i><i></i><i></i>&nbsp;&nbsp;WishlistHeartButton</div>
+    <div style="height:calc(100% - 30px);display:grid;place-items:center;background:#faf7f2"><div class="sp-heart on" style="position:static">&#9825;</div></div></div></div></section><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <aside class="pane" aria-label="Right panel: Inspect"><div class="pane-h"><span class="title">Inspect</span></div>
+   <div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Inspector</button><button role="tab">Used by <span class="badge ">2</span></button><button role="tab">Source</button></div>
+   <div class="scroll">
+   <div class="section"><div class="el-head"><span class="name">WishlistHeartButton</span><span class="layer component">component</span><span class="frozen-tag">&#128274; frozen</span></div><div class="path">features/catalog/components/WishlistHeartButton.tsx:6</div></div>
+   <details class="dt" open><summary>Props <span class="c">3</span></summary>
+     <div class="prop"><span class="k">productId</span><span class="field">string</span><span class="bind lit">required</span></div>
+     <div class="prop"><span class="k">active</span><span class="field">boolean</span><span class="bind lit">required</span></div>
+     <div class="prop gap"><span class="k">onToggle</span><span class="field">(id: string) =&gt; void</span><span class="propchip"><span class="dt3"></span>never passed</span></div>
+   </details>
+   </div></aside>
+  </div>
+  
+<div class="drawer" aria-label="Bottom panel: Run" style="height:110px">
+  <div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Processes <span class="badge acc">1</span></button><button role="tab" class="" aria-selected="false">Approvals <span class="badge ">0</span></button><button role="tab" class="" aria-selected="false">Diagnostics <span class="badge danger">2</span></button><button role="tab" class="" aria-selected="false">Logs</button></div>
+  <div class="body"><table><tr><th>Rule</th><th>File</th><th>Severity</th><th></th></tr>
+   <tr><td>PROP-LINK &middot; prop declared, never passed</td><td>ShopHome.tsx:88</td><td><span class="tag" style="background:var(--warn-soft);color:var(--warn)">Info</span></td><td></td></tr></table></div>
+</div>
+  <footer class="statusbar"><span class="ok">&#9679; validate: 0 new violations</span><span>Notes saved on this machine</span><span class="spacer"></span><span>qwen2.5-coder:7b</span><span><kbd>F6</kbd> next panel</span><span><kbd>Ctrl J</kbd> bottom panel</span></footer>
+</div>
+<!-- All three labels sit in the one big empty area of the stage (below the small preview device),
+     with a dotted connector reaching back to the small real target wherever it is on screen. This
+     is the general pattern: the ring hugs the target exactly; the label finds the nearest open
+     space and never sits on top of dense text, even if that means a longer connector line. -->
+
+<!-- Callout 1: the frozen chip in the canvas toolbar (top-right of the mid pane) -->
+<div class="tour-ring" style="left:1000px;top:104px;width:54px;height:20px"></div>
+<div class="tour-connector" style="left:900px;top:280px;width:100px;transform:rotate(58deg);transform-origin:0 0"></div>
+<div class="tour-label" style="left:660px;top:290px;width:220px"><b>Frozen UI</b>Your template, wrapped &mdash; Construct never rewrites it.</div>
+
+<!-- Callout 2: the prop-link finding on the onToggle row, in the right Inspector -->
+<div class="tour-ring" style="left:1071px;top:283px;width:355px;height:52px"></div>
+<div class="tour-connector" style="left:970px;top:340px;width:110px;transform:rotate(18deg);transform-origin:0 0"></div>
+<div class="tour-label" style="left:660px;top:352px;width:300px"><b>Prop-link check</b>Deterministic &mdash; computed by comparing declared props to every call site, before any model runs.</div>
+
+<!-- Callout 3: the Diagnostics tab + count, top of the bottom panel -->
+<div class="tour-ring" style="left:227px;top:762px;width:118px;height:26px"></div>
+<div class="tour-connector" style="left:345px;top:775px;width:280px;transform:rotate(-5deg);transform-origin:0 0"></div>
+<div class="tour-label" style="left:626px;top:430px;width:260px"><b>Findings, not failures</b>Calm and plain-language: what to fix, shown as a chip &mdash; never a red wall.</div>
+
+<div class="tour-anatomy" style="left:302px;top:470px;width:300px">
+  <b>Anatomy (tokens only)</b>
+  Ring: 2px <code>--accent</code> border + 4px <code>--accent-soft</code> glow, offset ~4px outside the target, never overlapping it.<br>
+  Connector: dotted 2px <code>--accent</code>, angled to the nearest open space.<br>
+  Label: <code>--surface-2</code> card, 1px <code>--accent</code> border, max 300px wide, always beside the ring, never over dense text.<br>
+  Motion: fade+scale in 150ms, hold 2&ndash;3s, fade out 150ms; reduced motion drops the scale and pulse, keeping only the fade.
+</div>
+
+</body></html>

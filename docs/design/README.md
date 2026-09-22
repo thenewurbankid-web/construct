@@ -35,6 +35,14 @@ Concept mocks (1440x900, each in `png/<name>--dark.png` and `--light.png`):
   `qa-tests-record`, `qa-tests-record-check`, `qa-tests-record-selector`,
   `qa-tests-record-review`.
 
+- **Episode 1 Part 1 example** (`build-episode1.mjs`, styles in `episode1.css`; #472/#474):
+  `episode1-shop-embedded`, `episode1-shop-fullscreen`, `episode1-shop-wishlist-states` (the frozen,
+  MIT-licensed shop page + wishlist heart/panel, styled as someone else's app, wrapped by the
+  Cockpit), `episode1-missing-prop-components`, `episode1-missing-prop-pages` (the missing-prop-link
+  evidence: a declared prop never passed, shown calmly as a warn chip, not a red wall — detection
+  gap filed as #473), `episode1-highlight-callout` (the feature-tour ring + label, legible at the
+  1280x720 recording composite).
+
 - **Flow tree and click to navigate** (`build-flow-nav.mjs`, styles in `flow-nav.css`;
   #328 and #321): `flow-nav-browser`, `flow-nav-selection`, `flow-nav-links`,
   `flow-nav-trail`, `flow-nav-states`. `render.mjs` takes an optional name

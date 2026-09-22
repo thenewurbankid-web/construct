@@ -1,0 +1,94 @@
+/* Episode 1 Part 1 concept mocks (#472). Two families, deliberately different:
+   1) Cockpit chrome — tokens only (docs/design/tokens.md), same classes as ia.css.
+   2) The frozen shop page ("someone else's app") — literal colours, its own
+      look, on purpose (same convention as .jp/.jbar/.jnav in ia.css for the
+      Jira clip-bridge mock). Never mix the two: a raw hex/rgb belongs only in
+      an .sp-* rule; Cockpit chrome stays on tokens so it still themes. */
+
+/* ---------------------------------------------------------------- frozen tag */
+.frozen-tag { display: inline-flex; align-items: center; gap: 4px; height: 18px; padding: 0 6px; border-radius: 3px; background: var(--surface-3); color: var(--text-muted); font: 600 10px var(--mono); text-transform: uppercase; letter-spacing: .04em; }
+.frozen-note { margin: 8px 0 0; padding: 8px 10px; border: 1px solid var(--border-subtle); border-radius: var(--r-md); background: var(--surface-1); color: var(--text-muted); font-size: 12px; line-height: 1.5; }
+.frozen-note b { color: var(--text); }
+
+/* ---------------------------------------------------------------- prop-link chip (missing prop evidence) */
+.propchip { display: inline-flex; align-items: center; gap: 5px; height: 18px; padding: 0 7px; border-radius: 9px; background: var(--warn-soft); color: var(--warn); font-size: 11px; font-weight: 600; white-space: nowrap; }
+.propchip .dt3 { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.propchip.unknown { background: var(--llm-soft); color: var(--llm); }
+.prop.gap { border: 1px dashed var(--warn); border-radius: var(--r-sm); background: var(--warn-soft); grid-template-columns: 92px auto; row-gap: 4px; padding: 6px 8px; min-height: 0; }
+.prop.gap .k { color: var(--warn); }
+.prop.gap .field { grid-column: 2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prop.gap .propchip { grid-column: 1 / 3; justify-self: start; margin-top: 2px; }
+.callsite { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 6px 10px; border-top: 1px solid var(--border-subtle); font-size: 12px; }
+.callsite .cf { font: 12px var(--mono); color: var(--text); }
+.callsite .cn { grid-column: 1 / 3; color: var(--text-muted); font-size: 11px; }
+.callsite .cn.warn { color: var(--warn); }
+.callsite .cn.llm { color: var(--llm); }
+
+/* Pages editor node-props panel: a required prop declared but never bound */
+.pf { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border-bottom: 1px solid var(--border-subtle); }
+.pf .pfh { display: flex; align-items: center; gap: 8px; }
+.pf .pfh .k { font: 700 12px var(--mono); }
+.pf .pfh .field { color: var(--text-faint); font-size: 11px; }
+.pf.set .val { font: 12px var(--mono); color: var(--text); background: var(--surface-2); border: 1px solid var(--border-subtle); border-radius: var(--r-sm); padding: 3px 8px; }
+.pf.unwired { background: var(--warn-soft); border-radius: var(--r-sm); margin: 0 -2px; padding: 8px 12px; }
+.pf.unwired .pfh .k { color: var(--warn); }
+.pf .why { color: var(--text-muted); font-size: 11px; line-height: 1.4; }
+
+/* ---------------------------------------------------------------- feature-tour highlight callout */
+.tour-ring { position: absolute; border: 2px solid var(--accent); border-radius: var(--r-md); box-shadow: 0 0 0 4px var(--accent-soft); pointer-events: none; z-index: 40; }
+.tour-ring.static { box-shadow: 0 0 0 4px var(--accent-soft); }
+.tour-connector { position: absolute; border-top: 2px dotted var(--accent); z-index: 40; pointer-events: none; }
+.tour-label { position: absolute; z-index: 41; max-width: 260px; background: var(--surface-2); border: 1px solid var(--accent); border-radius: var(--r-md); box-shadow: var(--shadow); padding: 7px 10px; font-size: 12px; line-height: 1.4; color: var(--text); }
+.tour-label b { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--accent); margin-bottom: 2px; }
+.rec-frame { position: absolute; border: 1px dashed var(--text-faint); pointer-events: none; z-index: 2; }
+.rec-frame .rf-tag { position: absolute; top: -20px; left: 0; font: 700 10px var(--mono); color: var(--text-faint); letter-spacing: .04em; }
+.tour-anatomy { position: absolute; width: 250px; background: var(--surface-1); border: 1px solid var(--border-strong); border-radius: var(--r-md); padding: 10px 12px; font-size: 11px; color: var(--text-muted); line-height: 1.6; box-shadow: var(--shadow); z-index: 42; }
+.tour-anatomy b { color: var(--text); display: block; font-size: 12px; margin-bottom: 4px; }
+
+/* ================================================================== */
+/* The frozen shop page: literal colours, its own visual language.     */
+/* ================================================================== */
+.sp-root { background: #faf7f2; color: #26251f; font-family: Georgia, "Times New Roman", serif; position: relative; overflow: hidden; }
+.sp-nav { display: flex; align-items: center; gap: 22px; padding: 14px 28px; background: #ffffff; border-bottom: 1px solid #e5e0d8; font-family: Arial, Helvetica, sans-serif; }
+.sp-nav .sp-brand { font-family: Georgia, serif; font-weight: 700; font-size: 19px; color: #1c2333; letter-spacing: .01em; }
+.sp-nav a { color: #4b4a42; text-decoration: none; font-size: 13px; }
+.sp-nav a.on { color: #1c2333; font-weight: 700; border-bottom: 2px solid #b5502e; padding-bottom: 4px; }
+.sp-nav .sp-spacer { flex: 1; }
+.sp-wish, .sp-cart { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid #1c2333; border-radius: 3px; background: #fff; color: #1c2333; font: 700 12px Arial, sans-serif; }
+.sp-wish .sp-heart-ico { color: #d1495b; }
+.sp-wish .sp-count, .sp-cart .sp-count { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; background: #1c2333; color: #fff; font-size: 10px; }
+.sp-hero { background: #1c2333; color: #fff; padding: 46px 28px; text-align: center; }
+.sp-hero h1 { margin: 0 0 8px; font-size: 34px; }
+.sp-hero p { margin: 0; color: #b9c0d4; font-family: Arial, sans-serif; font-size: 14px; }
+.sp-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; padding: 28px; }
+.sp-grid.sp-narrow { grid-template-columns: repeat(2, 1fr); gap: 14px; padding: 14px; }
+.sp-card { position: relative; background: #fff; border: 1px solid #e5e0d8; border-radius: 4px; overflow: hidden; display: flex; flex-direction: column; }
+.sp-img { height: 130px; background: linear-gradient(135deg, #dee2e6, #c8cdd3); display: grid; place-items: center; color: #6c757d; font: 11px Arial, sans-serif; }
+.sp-body { padding: 14px; text-align: center; font-family: Arial, sans-serif; flex: 1; }
+.sp-body h5 { margin: 0 0 6px; font-family: Georgia, serif; font-size: 15px; color: #1c2333; }
+.sp-price { font-size: 13px; color: #26251f; }
+.sp-price .was { color: #9a978c; text-decoration: line-through; margin-right: 6px; }
+.sp-foot { padding: 0 14px 14px; text-align: center; }
+.sp-btn { display: inline-block; border: 1px solid #1c2333; color: #1c2333; background: transparent; border-radius: 3px; padding: 6px 16px; font: 700 11px Arial, sans-serif; }
+.sp-sale { position: absolute; top: 8px; left: 8px; background: #b5502e; color: #fff; font: 700 10px Arial, sans-serif; padding: 2px 7px; border-radius: 3px; z-index: 1; }
+.sp-heart { position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; border-radius: 50%; background: #fff; border: 1px solid #e5e0d8; display: grid; place-items: center; color: #b9bcc2; font-size: 15px; z-index: 1; }
+.sp-heart.on { color: #d1495b; border-color: #f3d3d8; }
+
+/* wishlist drawer / panel */
+.sp-scrim { position: absolute; inset: 0; background: rgba(20,20,20,.35); z-index: 5; }
+.sp-drawer { position: absolute; top: 0; right: 0; bottom: 0; width: 320px; background: #fff; border-left: 1px solid #e5e0d8; z-index: 6; display: flex; flex-direction: column; font-family: Arial, sans-serif; }
+.sp-drawer .sp-dh { display: flex; align-items: center; padding: 16px; border-bottom: 1px solid #e5e0d8; font-family: Georgia, serif; font-size: 17px; font-weight: 700; color: #1c2333; }
+.sp-drawer .sp-dh .sp-x { margin-left: auto; color: #9a978c; font-size: 18px; }
+.sp-witem { display: flex; gap: 10px; padding: 12px 16px; border-bottom: 1px solid #f1efe9; align-items: center; }
+.sp-witem .sp-wimg { width: 46px; height: 46px; border-radius: 3px; background: linear-gradient(135deg, #dee2e6, #c8cdd3); flex: none; }
+.sp-witem .sp-wn { font-size: 13px; color: #26251f; }
+.sp-witem .sp-wp { font-size: 12px; color: #6b6a60; }
+.sp-witem .sp-rm { margin-left: auto; color: #b5502e; font-size: 11px; background: none; border: 0; text-decoration: underline; }
+.sp-wempty { padding: 40px 24px; text-align: center; color: #8a8879; font-size: 13px; line-height: 1.6; }
+.sp-wempty .sp-heart-big { font-size: 30px; color: #d9dbe0; display: block; margin-bottom: 10px; }
+.sp-dfoot { padding: 14px 16px; border-top: 1px solid #e5e0d8; }
+.sp-dfoot .sp-btn { display: block; text-align: center; background: #1c2333; color: #fff; border-color: #1c2333; }
+.sp-mobbar { display: flex; border-top: 1px solid #e5e0d8; background: #fff; }
+.sp-mobbar > div { flex: 1; text-align: center; padding: 8px 0; font: 11px Arial, sans-serif; color: #6b6a60; }
+.sp-mobbar > div.on { color: #1c2333; font-weight: 700; }
+.sp-license { position: absolute; left: 0; right: 0; bottom: 0; background: #f1efe9; color: #6b6a60; font: 10px/1.4 Arial, sans-serif; padding: 4px 12px; border-top: 1px solid #e5e0d8; }
