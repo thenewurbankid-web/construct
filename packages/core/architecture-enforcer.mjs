@@ -21,7 +21,7 @@ import { loadLayerGraph, canImport, classifyFile } from './architecture-graph.mj
 import { makeViolation, ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { walk, rel } from './fs.mjs';
 import { globToRegExp, matchGlob } from './glob.mjs';
-import { parseToAst, extractImports, extractExports, staticImportEntries, lineOf, collectCalls, collectBareIdentifierUsages, collectControlFlowNodes, collectInlineJsxLogic, computeJsxComplexity } from '../../packages/ast/index.mjs';
+import { parseToAst, extractImports, extractExports, staticImportEntries, lineOf, collectCalls, collectBareIdentifierUsages, collectControlFlowNodes, collectInlineJsxLogic, computeJsxComplexity, walkAst } from '../../packages/ast/index.mjs';
 import { extractMachines } from '../../packages/engine/workflowExtractor.mjs';
 import { findHealthIssues } from '../../packages/engine/workflowScenarios.mjs';
 import { exceptionApplies, validateExceptionsShape, expiredExceptionViolations } from './exceptions.mjs';
@@ -41,6 +41,63 @@ const KNOWN_LAYERS = new Set(['route', 'controller', 'workflow', 'hook', 'servic
 const DEFAULT_COMPONENT_MAX_JSX_DEPTH = 6;
 const DEFAULT_COMPONENT_MAX_JSX_BRANCHES = 3;
 
+// #503 -- EXPR-002's default budget (overridable via architecture.yml's
+// 'EXPR-002-max-depth'/'EXPR-002-max-branches', same mechanism as COMPONENT-006's above).
+// Deliberately tighter than COMPONENT-006's: an Expression is meant to stay one small, focused
+// decision, not a whole composed screen.
+const DEFAULT_EXPRESSION_MAX_JSX_DEPTH = 4;
+const DEFAULT_EXPRESSION_MAX_JSX_BRANCHES = 2;
+
+// EXPR-003 -- generic/ambiguous names a real Expression unit must not be published under
+// (case-insensitive): the bare name of the control-flow *kind* itself (If/Switch/ForEach/
+// Show/Hide, #499's own vocabulary) or another catch-all word that says nothing about WHAT is
+// being decided. "No exception for a single-return case" per the design -- a trivial
+// single-branch Expression still needs a real, specific name.
+const EXPR_GENERIC_NAMES = new Set([
+  'if', 'switch', 'foreach', 'show', 'hide', 'when', 'cond', 'conditional', 'loop', 'map',
+  'expr', 'expression', 'component', 'unit',
+]);
+
+/** Every native (lowercase-tag) JSXElement in `ast`, e.g. `<div>` -- EXPR-004's "hand-authored
+ * JSX beyond wrapping/passthrough" detector: an Expression unit decides which already-built
+ * piece to render (its own `children`, or another capitalized component/expression reference),
+ * it never authors real markup itself (that is COMPONENT-001's job, one layer over). A
+ * JSXFragment (`<>...</>`) carries no element identity of its own, so it is exempt -- it can
+ * only ever be structural wrapping, never "authored markup". */
+function findNativeJsxElement(ast) {
+  let hit = null;
+  walkAst(ast, {
+    enter(node) {
+      if (hit) return;
+      if (
+        node.type === 'JSXElement'
+        && node.openingElement.name.type === 'JSXIdentifier'
+        && /^[a-z]/.test(node.openingElement.name.name)
+      ) {
+        hit = node;
+      }
+    },
+  });
+  return hit;
+}
+
+/** Whether `ast` references the identifier `children` anywhere at all -- destructured from a
+ * parameter (`{ children }`), a member access (`props.children`), or a JSX prop
+ * (`<X children={...}/>`). Deliberately a raw, unfiltered `walkAst` (not walkForUsage's
+ * collectors, which intentionally treat a member/object-key *name* as a non-usage position --
+ * exactly the position `props.children` needs to be found in here) -- EXPR-005's "accepts
+ * children" half. */
+function referencesChildren(ast) {
+  let found = false;
+  walkAst(ast, {
+    enter(node) {
+      if (found) return;
+      if ((node.type === 'Identifier' || node.type === 'JSXIdentifier') && node.name === 'children') found = true;
+    },
+  });
+  return found;
+}
+
 /** Does this import specifier refer to the "react" package or a "react/" subpath
  * (e.g. "react-dom/client" is NOT matched — mirrors the old REACT_IMPORT_RE's intent
  * of "the react package itself or something nested under a react/ path segment"). */
@@ -57,6 +114,23 @@ const PROVIDER_HOOK_NAME_RE = /^use[A-Z]\w*Provider$/;
 
 function isProviderHookName(name) {
   return typeof name === 'string' && PROVIDER_HOOK_NAME_RE.test(name);
+}
+
+// #504 -- the second sanctioned hook-import shape PAGE-006 allows, alongside Provider hooks: a
+// tracked-state hook (built through useTrackedState(...), packages/core/typed-contracts/
+// trackedState.ts), exported as `use<Name>State`. HOOK-001 (below) is what makes this naming
+// convention trustworthy, the same way HOOK-002 backs PROVIDER_HOOK_NAME_RE above.
+const TRACKED_STATE_HOOK_NAME_RE = /^use[A-Z]\w*State$/;
+
+function isTrackedStateHookName(name) {
+  return typeof name === 'string' && TRACKED_STATE_HOOK_NAME_RE.test(name);
+}
+
+/** Either of PAGE-006's two sanctioned hook-import naming conventions (#510's Provider hook,
+ * #504's tracked-state hook) -- the two kinds a page may import directly without tripping
+ * PAGE-006's ban on arbitrary hook imports. */
+function isSanctionedPageHookName(name) {
+  return isProviderHookName(name) || isTrackedStateHookName(name);
 }
 
 /** Names bound by an ImportDeclaration's specifiers — the imported (not local/aliased) name for a
@@ -158,15 +232,21 @@ export function detectLayerViolations(layer, source, opts = {}) {
     // HOOK-002 (below, for the `hook` layer) holds accountable, not a re-read of the target
     // file from here. An import whose specifiers can't all be verified by name (e.g. `import *
     // as hooks from '../hooks/useCart'`) is conservatively still banned.
+    //
+    // #504 -- narrowed FURTHER: a tracked-state hook (named `use<Name>State`, built through
+    // useTrackedState(...) and held accountable by HOOK-001 below, exactly the way HOOK-002
+    // backs the Provider naming convention) is now ALSO allowed through, alongside a Provider
+    // hook -- isSanctionedPageHookName covers both; every other hook import is still banned
+    // exactly as before.
     const bannedHookImport = ast.body.find(
       (n) => n.type === 'ImportDeclaration'
         && /hooks?\//.test(n.source.value)
-        && !(n.specifiers.length > 0 && importedSpecifierNames(n.specifiers).every(isProviderHookName)),
+        && !(n.specifiers.length > 0 && importedSpecifierNames(n.specifiers).every(isSanctionedPageHookName)),
     );
     if (bannedHookImport) out.push({
       rule: 'PAGE-006', line: lineOf(source, bannedHookImport.range[0]), message: 'Page imports a custom hook.',
-      why: 'Pages cannot own application flow — hooks are wired in by a controller, not imported directly by a page (a Provider hook, named use<Name>Provider, is the one sanctioned exception).',
-      expected: ['controller', 'workflow', 'a Provider hook (use<Name>Provider)'],
+      why: 'Pages cannot own application flow — hooks are wired in by a controller, not imported directly by a page (a Provider hook, named use<Name>Provider, or a tracked-state hook, named use<Name>State, are the two sanctioned exceptions).',
+      expected: ['controller', 'workflow', 'a Provider hook (use<Name>Provider)', 'a tracked-state hook (use<Name>State)'],
     });
   }
 
@@ -192,12 +272,17 @@ export function detectLayerViolations(layer, source, opts = {}) {
     // packages/ast/jsxComplexity.mjs so a future PAGE-008 can reuse it
     // verbatim; deliberately independent of the `expressions` layer's own
     // types (#503, also not yet built) -- purely syntactic.
+    //
+    // #503 -- "@expression unit" is no longer aspirational: `expected` below now names the real
+    // factory (defineExpression, packages/core/typed-contracts/factories.ts) an extracted unit
+    // is actually built through, so this message is accurate now that the `expression` layer +
+    // EXPR-001..006 exist. Detection itself (collectInlineJsxLogic) is unchanged.
     const inlineLogic = collectInlineJsxLogic(ast);
     if (inlineLogic.length) out.push({
       rule: 'COMPONENT-005', line: lineOf(source, inlineLogic[0].node.range[0]),
       message: `Component contains inline ${inlineLogic[0].kind === 'loop' ? 'loop' : 'conditional'} logic in its JSX.`,
       why: 'Conditional/loop rendering is control flow, not presentation — extract it into a named @expression unit so it stays visible, testable and reusable on its own.',
-      expected: ['@expression'],
+      expected: ['@expression (defineExpression)'],
     });
 
     // #508 -- COMPONENT-006: a component-level JSX complexity budget
@@ -310,6 +395,114 @@ export function detectLayerViolations(layer, source, opts = {}) {
         expected: ['defineProvider(...)'],
       });
     }
+
+    // HOOK-001 (#504) -- the hooks/ layer's other real rule, alongside HOOK-002: a hook
+    // exported under the `use<Name>State` naming convention (the second convention PAGE-006
+    // narrows to allow, above) must really be built through `useTrackedState(...)`
+    // (packages/core/typed-contracts/trackedState.ts), and may contain ONLY that state
+    // declaration plus its directly-coupled setters/derivations -- nothing unrelated. Two
+    // independent checks, same "deterministic proxy" idiom as CONTROLLER-001's own
+    // control-flow/fetch detection: (1) the factory call itself must be present (mirrors
+    // HOOK-002's defineProvider check exactly), (2) no control-flow node and no
+    // fetch/useEffect/useRef reference anywhere in the file -- the concrete fix for the
+    // dogfood-found (#490) useCanvasEditor.tsx failure class, where an unrelated HTML5
+    // canvas-drawing effect (refs, DOM event math) was filled into a hook with nothing to
+    // stop it.
+    const trackedStateNamedExport = extractExports(source).find((e) => isTrackedStateHookName(e.name));
+    if (trackedStateNamedExport) {
+      if (!/\buseTrackedState\s*\(/.test(source)) {
+        out.push({
+          rule: 'HOOK-001', line: lineOf(source, trackedStateNamedExport.index),
+          message: `Hook "${trackedStateNamedExport.name}" is named like tracked state but is not built through useTrackedState(...).`,
+          why: 'Tracked-state hooks are the sanctioned way a page reaches local application state — the use<Name>State naming convention that lets PAGE-006 allow importing one directly only holds if every hook named that way really is one.',
+          expected: ['useTrackedState(...)'],
+        });
+      } else {
+        const unrelatedControlFlow = collectControlFlowNodes(ast)[0];
+        const unrelatedEffect = collectBareIdentifierUsages(ast, new Set(['fetch', 'useEffect', 'useRef']))[0];
+        const unrelated = unrelatedControlFlow
+          ? { index: unrelatedControlFlow.range[0] }
+          : unrelatedEffect;
+        if (unrelated) out.push({
+          rule: 'HOOK-001', line: lineOf(source, unrelated.index),
+          message: `Hook "${trackedStateNamedExport.name}" contains logic beyond its tracked state declaration and directly-coupled setters/derivations.`,
+          why: 'A hook named use<Name>State may contain only its useTrackedState(...) declaration plus directly-coupled setters/derivations — nothing unrelated (control flow, effects, refs, fetches). This is the concrete fix for the dogfood-found (#490) useCanvasEditor.tsx failure class, where unrelated business logic was filled into a hook with nothing to stop it.',
+          expected: ['useTrackedState(...) plus directly-coupled setters/derivations only'],
+        });
+      }
+    }
+  }
+
+  if (layer === 'expression') {
+    // EXPR-001 -- pure: no side effects. Same external-effect identifier set DOMAIN-001
+    // already uses -- an Expression decides what to render from its own props/children alone,
+    // exactly like a domain function decides a value from its own arguments alone.
+    const effect = collectBareIdentifierUsages(ast, new Set(['fetch', 'window', 'document', 'localStorage', 'sessionStorage', 'navigator']))[0];
+    if (effect) out.push({
+      rule: 'EXPR-001', line: lineOf(source, effect.index),
+      message: `Expression uses an external effect ("${effect.name}").`,
+      why: 'An Expression is pure control-flow over its own props/children — it must have no side effects, exactly like a domain function.',
+      expected: ['a pure function of props/children'],
+    });
+
+    // EXPR-002 -- bounded complexity, reusing the exact shape detector COMPONENT-006 already
+    // uses (packages/ast/jsxComplexity.mjs's computeJsxComplexity, which itself calls
+    // collectInlineJsxLogic) rather than reimplementing it, per #503's own brief. Its own
+    // (tighter) default budget: an Expression is meant to stay one small, focused piece of
+    // control flow, not grow into its own unreviewable tree.
+    const complexity = computeJsxComplexity(ast);
+    const maxJsxDepth = opts.exprMaxJsxDepth ?? DEFAULT_EXPRESSION_MAX_JSX_DEPTH;
+    const maxJsxBranches = opts.exprMaxJsxBranches ?? DEFAULT_EXPRESSION_MAX_JSX_BRANCHES;
+    if (complexity.maxDepth > maxJsxDepth || complexity.branchCount > maxJsxBranches) out.push({
+      rule: 'EXPR-002', line: 1,
+      message: `Expression's JSX is too complex (nesting depth ${complexity.maxDepth}, ${complexity.branchCount} inline conditional/loop branch${complexity.branchCount === 1 ? '' : 'es'}; budget is depth ${maxJsxDepth}, ${maxJsxBranches} branches).`,
+      why: "An Expression is meant to stay a small, focused decision — a complexity budget of its own, separate from any composing component/page's own cap, keeps one from growing into an unreviewable tree.",
+      expected: ['smaller, composed Expression units'],
+    });
+
+    // EXPR-003 -- unambiguous, non-trivial naming: no exception for a single-return case.
+    const genericExport = extractExports(source).find((e) => EXPR_GENERIC_NAMES.has((e.name || '').toLowerCase()));
+    if (genericExport) out.push({
+      rule: 'EXPR-003', line: lineOf(source, genericExport.index),
+      message: `Expression "${genericExport.name}" is named after its control-flow kind, not what it decides.`,
+      why: 'A generic name like "If"/"Show"/"Switch" says nothing beyond the mechanism every Expression already uses — even a single-branch Expression needs a real, specific name so it stays unambiguous in the Pages tree.',
+      expected: ['a specific, descriptive name (e.g. "ShowDiscountBadge", not "If")'],
+    });
+
+    // EXPR-004 -- no hand-authored JSX beyond wrapping/passthrough: an Expression decides, a
+    // component renders. Any native (lowercase-tag) JSXElement is real authored markup, which
+    // belongs one layer over (a component); a bare JSXFragment wrapping children/another
+    // component/expression element is the sanctioned shape.
+    const nativeJsx = findNativeJsxElement(ast);
+    if (nativeJsx) out.push({
+      rule: 'EXPR-004', line: lineOf(source, nativeJsx.range[0]),
+      message: `Expression contains hand-authored markup ("<${nativeJsx.openingElement.name.name}>").`,
+      why: "An Expression decides which already-built piece to render (children, or another named component/expression) — it must never author real markup itself; that is a component's job.",
+      expected: ['children', 'an existing @expression or component unit'],
+    });
+
+    // EXPR-005 -- must accept `children` and return JSX: guarantees visibility in the Pages
+    // tree by construction (a real, checkable shape), not a separate visibility check.
+    // `computeJsxComplexity(ast).maxDepth === 0` is reused as "returns no JSX at all" (its walk
+    // counts every JSXElement/JSXFragment it descends into).
+    if (!referencesChildren(ast) || complexity.maxDepth === 0) out.push({
+      rule: 'EXPR-005', line: 1,
+      message: 'Expression does not accept children and/or does not return JSX.',
+      why: 'Every Expression wraps a JSX node it was handed (children) and returns JSX of its own — this is what keeps it visible in the Pages tree by construction.',
+      expected: ['a children prop', 'a JSX return value'],
+    });
+
+    // EXPR-006 -- must satisfy the shared Template<Props> type. The type-level guarantee
+    // (packages/core/typed-contracts/units.ts's ExpressionUnit<Props>) only applies to a unit
+    // actually built through defineExpression(...) -- the same deterministic proxy HOOK-002
+    // already uses for defineProvider(...): presence of the real factory call, checked here so
+    // `construct validate` can flag it without needing a full type pass of its own.
+    if (!/\bdefineExpression\s*\(/.test(source)) out.push({
+      rule: 'EXPR-006', line: 1,
+      message: 'Expression is not built through defineExpression(...).',
+      why: 'defineExpression(...) is what actually ties a unit to the shared Template<Props> type tsc enforces — an Expression not built through it has no compile-time guarantee of returning JSX on every path.',
+      expected: ['defineExpression(...)'],
+    });
   }
 
   return out;
@@ -452,9 +645,14 @@ export function validateArchitecture(root, opts = {}) {
   // 'value' fields per the 'READ-002-max-loc' shape) once per run, not once
   // per file; undefined when not overridden, so detectLayerViolations falls
   // back to its own built-in defaults.
+  // #503 -- EXPR-002's own budget overrides, same mechanism, passed alongside
+  // COMPONENT-006's in the same opts object (detectLayerViolations only reads the
+  // exprMaxJsxDepth/exprMaxJsxBranches keys for the `expression` layer).
   const componentComplexityOpts = {
     maxJsxDepth: config.rules['COMPONENT-006-max-depth']?.value,
     maxJsxBranches: config.rules['COMPONENT-006-max-branches']?.value,
+    exprMaxJsxDepth: config.rules['EXPR-002-max-depth']?.value,
+    exprMaxJsxBranches: config.rules['EXPR-002-max-branches']?.value,
   };
   let frozenIndex = null;
   for (const abs of files) {

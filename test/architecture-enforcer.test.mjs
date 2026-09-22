@@ -516,3 +516,164 @@ test('architecture-invalid fixture reports exactly the expected rule per manifes
     assert.ok(['error', 'warning', 'off'].includes(v.severity));
   }
 });
+
+// ---- #503 -- the `expression` layer (EXPR-001..006) --------------------------------------
+
+test('classifyFile recognizes the expression layer by path pattern', () => {
+  assert.equal(classifyFile('features/cart/expressions/ShowDiscountBadge.tsx', CANONICAL_LAYERS), 'expression');
+});
+
+test('detectLayerViolations flags EXPR-001 for an Expression that uses an external effect', () => {
+  const violations = detectLayerViolations('expression', `export function ShowBadge(){ return fetch('/'); }`);
+  assert.ok(violations.some((v) => v.rule === 'EXPR-001'));
+});
+
+test('detectLayerViolations flags EXPR-004 for an Expression that hand-authors native JSX', () => {
+  const src = `import { defineExpression } from '@construct/typed-contracts';\n`
+    + `const ShowBadge = defineExpression('ShowBadge', ({ cond, children }) => cond ? <div>{children}</div> : null);`;
+  const violations = detectLayerViolations('expression', src);
+  assert.ok(violations.some((v) => v.rule === 'EXPR-004'));
+  assert.match(violations.find((v) => v.rule === 'EXPR-004').message, /<div>/);
+});
+
+test('detectLayerViolations flags EXPR-003 for an Expression named after its control-flow kind', () => {
+  const src = `import { defineExpression } from '@construct/typed-contracts';\n`
+    + `export const If = defineExpression('If', ({ cond, children }) => <>{cond ? children : null}</>);`;
+  assert.ok(detectLayerViolations('expression', src).some((v) => v.rule === 'EXPR-003'));
+});
+
+test('detectLayerViolations flags EXPR-005 for an Expression that never references children', () => {
+  const src = `import { defineExpression } from '@construct/typed-contracts';\n`
+    + `export const ShowDiscountBadge = defineExpression('ShowDiscountBadge', ({ cond }) => <>{cond ? 1 : null}</>);`;
+  assert.ok(detectLayerViolations('expression', src).some((v) => v.rule === 'EXPR-005'));
+});
+
+test('detectLayerViolations flags EXPR-006 for an Expression not built through defineExpression(...)', () => {
+  const src = `export const ShowDiscountBadge = ({ cond, children }) => cond ? children : null;`;
+  assert.ok(detectLayerViolations('expression', src).some((v) => v.rule === 'EXPR-006'));
+});
+
+test('detectLayerViolations flags EXPR-002 once the default JSX complexity budget is exceeded', () => {
+  const branches = Array.from({ length: 3 }, (_, i) => `{p.b${i}&&<X${i}/>}`).join('');
+  const src = `import { defineExpression } from '@construct/typed-contracts';\n`
+    + `export const ShowDiscountBadge = defineExpression('ShowDiscountBadge', ({ children, p }) => <>{children}${branches}</>);`;
+  const violations = detectLayerViolations('expression', src);
+  assert.deepEqual(violations.map((v) => v.rule), ['EXPR-002']);
+});
+
+test('detectLayerViolations honors EXPR-002 opts overrides (exprMaxJsxDepth/exprMaxJsxBranches)', () => {
+  const src = `import { defineExpression } from '@construct/typed-contracts';\n`
+    + `export const ShowDiscountBadge = defineExpression('ShowDiscountBadge', ({ children }) => <>{children}</>);`;
+  assert.deepEqual(detectLayerViolations('expression', src, { exprMaxJsxDepth: 0 }).map((v) => v.rule), ['EXPR-002']);
+  assert.deepEqual(detectLayerViolations('expression', src), []); // default budget (4) is not exceeded
+});
+
+test('detectLayerViolations reports zero EXPR violations for a real, well-formed Expression', () => {
+  const src = `import { defineExpression } from '@construct/typed-contracts';\n`
+    + `export const ShowDiscountBadge = defineExpression('ShowDiscountBadge', ({ cond, children }) => <>{cond ? children : null}</>);`;
+  assert.deepEqual(detectLayerViolations('expression', src), []);
+});
+
+test('validateArchitecture: an expression-layer file with no legal issue gets zero error-severity violations by default', () => {
+  const dir = tmpProject();
+  fs.mkdirSync(path.join(dir, 'features', 'cart', 'expressions'), { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, 'features', 'cart', 'expressions', 'ShowDiscountBadge.tsx'),
+    `import { defineExpression } from '@construct/typed-contracts';\n`
+      + `export const ShowDiscountBadge = defineExpression('ShowDiscountBadge', ({ cond, children }) => <>{cond ? children : null}</>);`,
+  );
+  const res = validateArchitecture(dir);
+  assert.deepEqual(res.violations.filter((v) => v.file.includes('expressions')), []);
+});
+
+test('validateArchitecture: an expression importing a forbidden layer (service) is caught by the generic edge check (SOC-001)', () => {
+  const dir = tmpProject();
+  fs.mkdirSync(path.join(dir, 'features', 'cart', 'expressions'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'features', 'cart', 'services'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'features', 'cart', 'services', 'CartService.ts'), `export function fetchCart(){}`);
+  fs.writeFileSync(
+    path.join(dir, 'features', 'cart', 'expressions', 'ShowDiscountBadge.tsx'),
+    `import { defineExpression } from '@construct/typed-contracts';\n`
+      + `import { fetchCart } from '../services/CartService';\n`
+      + `export const ShowDiscountBadge = defineExpression('ShowDiscountBadge', ({ children }) => { fetchCart(); return <>{children}</>; });`,
+  );
+  const res = validateArchitecture(dir);
+  const hit = res.violations.find((v) => v.file.includes('ShowDiscountBadge'));
+  assert.ok(hit, 'expected a violation for the forbidden expression -> service import');
+  assert.equal(hit.rule, 'SOC-001');
+});
+
+// ---- #504 -- HOOK-001 (useTrackedState) + PAGE-006's further narrowing -------------------
+
+test('#504 (before/after): HOOK-001 fires for a hook named use*State that is not built via useTrackedState', () => {
+  const violations = detectLayerViolations('hook', `export function useCartState() { return { total: 0 }; }`);
+  assert.deepEqual(violations.map((v) => v.rule), ['HOOK-001']);
+  assert.match(violations[0].message, /useCartState/);
+});
+
+test('#504: HOOK-001 does not fire for a hook named use*State that IS built via useTrackedState, with only directly-coupled setters/derivations', () => {
+  const violations = detectLayerViolations(
+    'hook',
+    `import { useTrackedState } from '@construct/typed-contracts';\n`
+      + `export function useCartState() { const [total, setTotal] = useTrackedState('total', 0); return { total, setTotal, isEmpty: total === 0 }; }`,
+  );
+  assert.deepEqual(violations.filter((v) => v.rule === 'HOOK-001'), []);
+});
+
+test('#504: HOOK-001 fires when a use*State hook built via useTrackedState also contains unrelated control flow', () => {
+  const violations = detectLayerViolations(
+    'hook',
+    `import { useTrackedState } from '@construct/typed-contracts';\n`
+      + `export function useCartState() { const [total, setTotal] = useTrackedState('total', 0); if (total > 10) { setTotal(0); } return { total, setTotal }; }`,
+  );
+  assert.deepEqual(violations.map((v) => v.rule), ['HOOK-001']);
+});
+
+test('#504: HOOK-001 fires when a use*State hook built via useTrackedState also contains an unrelated effect (useEffect/useRef/fetch)', () => {
+  for (const unrelated of ['useEffect(() => {}, [])', 'useRef(null)', "fetch('/')"]) {
+    const violations = detectLayerViolations(
+      'hook',
+      `import { useTrackedState } from '@construct/typed-contracts';\n`
+        + `export function useCartState() { const [total, setTotal] = useTrackedState('total', 0); ${unrelated}; return { total, setTotal }; }`,
+    );
+    assert.deepEqual(violations.map((v) => v.rule), ['HOOK-001'], `expected HOOK-001 for: ${unrelated}`);
+  }
+});
+
+test('#504: HOOK-001 does not fire for an ordinary hook with no State-shaped name (regression)', () => {
+  const violations = detectLayerViolations('hook', `export function useCart() { return { items: [] }; }`);
+  assert.deepEqual(violations.filter((v) => v.rule === 'HOOK-001'), []);
+});
+
+// #504 -- PAGE-006 narrowed FURTHER: a page importing a tracked-state hook (named
+// use<Name>State) is NOT flagged, alongside the Provider-hook allowance #510 already added;
+// every other hook import (the exact #510/#112 fixtures) is still banned unchanged.
+test('#504 (before/after): PAGE-006 no longer fires for a page importing a tracked-state hook by name', () => {
+  const violations = detectLayerViolations(
+    'page',
+    `import { useCartState } from '../hooks/useCartState';\nexport function P(){ const { total } = useCartState(); return null; }`,
+  );
+  assert.deepEqual(violations, []);
+});
+
+test('#504: PAGE-006 still fires when a hook import mixes a State-named specifier with a non-Provider/non-State one', () => {
+  const violations = detectLayerViolations(
+    'page',
+    `import { useCartState, useCart } from '../hooks/useCart';\nexport function P(){ useCartState(); useCart(); return null; }`,
+  );
+  assert.deepEqual(violations.map((v) => v.rule), ['PAGE-006']);
+});
+
+test('#504: PAGE-006 still fires for a plain hook import, and existing PAGE-006/HOOK-002 tests (#510) still pass unchanged (regression)', () => {
+  assert.deepEqual(
+    detectLayerViolations('page', `import { useCart } from '../hooks/useCart';\nexport function P(){ const { items } = useCart(); return null; }`).map((v) => v.rule),
+    ['PAGE-006'],
+  );
+  assert.deepEqual(
+    detectLayerViolations(
+      'page',
+      `import { useCartProvider } from '../hooks/useCartProvider';\nexport function P(){ const { total } = useCartProvider(); return null; }`,
+    ),
+    [],
+  );
+});

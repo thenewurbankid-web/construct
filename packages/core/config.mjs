@@ -14,6 +14,14 @@ export const DEFAULT_LAYERS = {
   domain: { pattern: 'features/*/domain/**', canImport: ['types'] },
   page: { pattern: 'features/*/pages/**', canImport: ['component', 'types'] },
   component: { pattern: 'features/*/components/**', canImport: ['component', 'types'] },
+  // #503 (part of #500's Phase 1 typed-contracts epic) -- control-flow units that wrap JSX
+  // nodes (If/Switch/ForEach/Show, per #499's design). canImport is DELIBERATELY identical to
+  // component's own (['component', 'types']) -- "mirrors component's own canImport" per #503's
+  // brief -- so an Expression may compose other component units but never reach into
+  // workflow/service/domain/controller, exactly like a component can't. Purely additive: no
+  // existing project has a `features/*/expressions/**` file today, so this new pattern/layer
+  // changes classification for zero pre-existing files.
+  expression: { pattern: 'features/*/expressions/**', canImport: ['component', 'types'] },
 };
 
 // Every layer graph below shares the same feature-internal shape
@@ -115,6 +123,13 @@ export const DEFAULT_RULES = {
   // a page may import a hook by this naming convention alone specifically because HOOK-002
   // holds the convention itself accountable.
   'HOOK-002': { severity: 'error', name: 'A hook named use<Name>Provider must be built through defineProvider(...)' },
+  // #504 -- the hooks/ layer's other real rule, alongside HOOK-002: a hook named
+  // use<Name>State must be built through useTrackedState(...) (packages/core/typed-contracts/
+  // trackedState.ts) and may contain only that state declaration plus its directly-coupled
+  // setters/derivations -- nothing unrelated. This is the concrete fix for the dogfood-found
+  // (#490) useCanvasEditor.tsx failure class: unrelated business logic (there, HTML5 canvas
+  // drawing code) filled into a hook with nothing in the rule engine to stop it.
+  'HOOK-001': { severity: 'error', name: 'A hook named use<Name>State must be built through useTrackedState(...), with nothing unrelated alongside it' },
   'COMPONENT-001': { severity: 'error', name: 'Components are presentation-only' },
   'COMPONENT-002': { severity: 'error', name: 'Components cannot import controllers' },
   'COMPONENT-003': { severity: 'error', name: 'Components cannot import workflows/services/domain' },
@@ -134,6 +149,22 @@ export const DEFAULT_RULES = {
   // escape-hatch shape as 'READ-002-max-loc' above.
   'COMPONENT-006-max-depth': { name: "Override for COMPONENT-006's max JSX nesting depth", numeric: true },
   'COMPONENT-006-max-branches': { name: "Override for COMPONENT-006's max inline conditional/loop branch count", numeric: true },
+  // #503 (part of #500's Phase 1) -- the new `expression` layer's own rules (control-flow units
+  // that wrap JSX nodes, per #499's design). Unlike COMPONENT-005/006, these default to 'error'
+  // where they are structural (EXPR-001/004/005/006): no existing project has a
+  // `features/*/expressions/**` file today, so there is no legacy-code false-positive risk the
+  // way there was for COMPONENT-005/006 landing on already-existing components -- an Expression
+  // file only ever exists once a project deliberately opts into this layer. EXPR-002/003 stay
+  // 'warning' (a numeric complexity budget and a naming heuristic are guidance, not a hard
+  // shape ban, the same category COMPONENT-006 and READ-001 already use).
+  'EXPR-001': { severity: 'error', name: 'Expressions are pure (no side effects)' },
+  'EXPR-002': { severity: 'warning', name: "An Expression's own JSX complexity budget (nesting depth / inline conditional-or-loop branch count)" },
+  'EXPR-002-max-depth': { name: "Override for EXPR-002's max JSX nesting depth", numeric: true },
+  'EXPR-002-max-branches': { name: "Override for EXPR-002's max inline conditional/loop branch count", numeric: true },
+  'EXPR-003': { severity: 'warning', name: 'Expressions need an unambiguous, non-trivial name — not the bare name of their control-flow kind' },
+  'EXPR-004': { severity: 'error', name: 'Expressions cannot contain hand-authored JSX beyond wrapping/passthrough' },
+  'EXPR-005': { severity: 'error', name: 'Expressions must accept children and return JSX' },
+  'EXPR-006': { severity: 'error', name: 'Expressions must be built through defineExpression(...) (the shared Template<Props> type)' },
   'WORKFLOW-001': { severity: 'error', name: 'Workflows cannot import React/UI' },
   // Epic #185 (#190) -- reuse the workflow narrator's health findings (packages/engine/workflowScenarios.mjs).
   'WORKFLOW-002': { severity: 'warning', name: 'Workflow states must be reachable from the initial state' },
