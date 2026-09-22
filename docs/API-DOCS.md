@@ -11,7 +11,7 @@ source of the same ref the site is built from (`/<X.Y>/` from the tag, `/next/` 
 | `typedoc` 0.28 | Apache-2.0 | Reads JSDoc in `.mjs` (via `allowJs`) and TSDoc in `.ts`/`.tsx`; one tool for the whole repo |
 | `typedoc-plugin-markdown` 4.13 | MIT | Renders markdown, one file per module (`outputFileStrategy: modules`), which our own site renderer turns into pages |
 
-Both are dev dependencies at the repo root. Spike on real sources (`src/*.mjs`, `src/engine`, `src/ast`,
+Both are dev dependencies at the repo root. Spike on real sources (`src/*.mjs`, `src/engine`, `packages/ast`,
 `ui/server/src`, `ui/client/features`, `tools`, `site`): TypeDoc produces signature, `@param` with types and
 descriptions, `@returns`, `@example`, `@since`, source links and one page per module for JS and TS alike. All eight
 packages render (about 800 modules) in about 20 seconds.
@@ -29,7 +29,7 @@ Rejected:
 ## Packages
 
 Same grouping as the Trinity Modules tab (`API_PACKAGES` in `packages/docs-site/lib/apiDocs.mjs`): Core engine (`src/*.mjs`),
-Engine (`src/engine/**`), AST (`src/ast`), Cockpit server (`ui/server/src`), Cockpit client shared
+Engine (`src/engine/**`), AST (`packages/ast`), Cockpit server (`ui/server/src`), Cockpit client shared
 (`ui/client/components`, `ui/client/lib`) and features (`ui/client/features/**`), Tools (`packages/tools/**`), Docs site
 (`site/**`). Test, story and `.d.ts` files and files with no exports are skipped.
 

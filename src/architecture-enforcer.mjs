@@ -21,7 +21,7 @@ import { loadLayerGraph, canImport, classifyFile } from './architecture-graph.mj
 import { makeViolation, ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { walk, rel } from './fs.mjs';
 import { globToRegExp, matchGlob } from './glob.mjs';
-import { parseToAst, extractImports, staticImportEntries, lineOf, collectCalls, collectBareIdentifierUsages, collectControlFlowNodes } from './ast/index.mjs';
+import { parseToAst, extractImports, staticImportEntries, lineOf, collectCalls, collectBareIdentifierUsages, collectControlFlowNodes } from '../packages/ast/index.mjs';
 import { extractMachines } from './engine/workflowExtractor.mjs';
 import { findHealthIssues } from './engine/workflowScenarios.mjs';
 import { exceptionApplies, validateExceptionsShape, expiredExceptionViolations } from './exceptions.mjs';

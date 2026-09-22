@@ -1,7 +1,7 @@
 name: Pages documentation
 
 # Builds the documentation site (User Guide + Developer Docs, site/build.mjs) and deploys it to GitHub Pages.
-# Reused docs (README.md, docs/, src/ast/README.md) are rendered at build time; tutorials come from the published guide tickets.
+# Reused docs (README.md, docs/, packages/ast/README.md) are rendered at build time; tutorials come from the published guide tickets.
 # Live at https://thenewurbankid-web.github.io/construct/
 
 on:
@@ -9,7 +9,7 @@ on:
   push:
     branches: [main]
     tags: ['v*.*.*'] # a release publishes its /X.Y/ docs (path filters do not apply to tags)
-    paths: ['site/**', 'docs/**', 'README.md', 'src/**', 'schemas/**', 'package.json', '.github/workflows/pages.yml']
+    paths: ['site/**', 'docs/**', 'README.md', 'src/**', 'packages/**', 'schemas/**', 'package.json', '.github/workflows/pages.yml']
   schedule:
     - cron: '17 */6 * * *'
   issues:

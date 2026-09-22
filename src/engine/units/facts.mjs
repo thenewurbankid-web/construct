@@ -1,5 +1,5 @@
 // Shared, pure "fact" blocks for unit summaries (deterministic, no LLM). Everything here is
-// derived from source through src/ast + existing blocks (layer graph, exceptions, enforcers);
+// derived from source through packages/ast + existing blocks (layer graph, exceptions, enforcers);
 // each unit-kind summarizer composes these instead of re-parsing.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -7,7 +7,7 @@ import { loadConfig } from '../../config.mjs';
 import { walk, rel } from '../../fs.mjs';
 import { loadLayerGraph, classifyProjectFile } from '../../architecture-graph.mjs';
 import { readFrozenGlobs } from '../../frozen.mjs';
-import { parseToAst, walkAst } from '../../ast/index.mjs';
+import { parseToAst, walkAst } from '../../../packages/ast/index.mjs';
 import { readPathAliases, resolveImportSpecifier } from '../../route-resolver.mjs';
 import { DEFAULT_ENFORCERS } from '../defaultEnforcers.mjs';
 import { aggregateValidation } from '../../registry.mjs';

@@ -1,7 +1,7 @@
-// Tests for the shared AST package's public entry point (src/ast/index.mjs).
+// Tests for the shared AST package's public entry point (packages/ast/index.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import * as ast from '../src/ast/index.mjs';
+import * as ast from '../packages/ast/index.mjs';
 import * as parser from '../src/parser.mjs';
 
 test('public entry point exposes the documented API', () => {

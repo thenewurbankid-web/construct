@@ -6,7 +6,7 @@
 // --base-path is where THIS build is served (canonical URLs, sitemap, 404); --versions-file lists every
 // published version for the header switcher and banner (packages/docs-site/lib/versions.mjs, site/build-all.mjs).
 // Every page is authored under site/content or reused from the repository (README.md, docs/*.md,
-// src/ast/README.md) and rendered at build time, so the build needs no network and no token.
+// packages/ast/README.md) and rendered at build time, so the build needs no network and no token.
 // The CLI reference and the rule reference are generated from the code itself.
 import fs from 'node:fs';
 import os from 'node:os';

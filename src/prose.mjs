@@ -15,7 +15,7 @@
 // Every function here is total: an unrecognized node shape falls back to a
 // generic, still name-based description (the identifiers found in that
 // subtree) rather than ever reprinting raw code.
-import { ts, findNode, findAllNodes } from './ast/index.mjs';
+import { ts, findNode, findAllNodes } from '../packages/ast/index.mjs';
 
 // The AST belongs to whichever snippet describeImplementation is currently
 // translating. Safe as module-level state: this module is synchronous and

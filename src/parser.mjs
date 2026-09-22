@@ -15,9 +15,9 @@ import { walk, rel } from './fs.mjs';
 import { loadConfig, DEFAULT_LAYERS } from './config.mjs';
 import { loadLayerGraph, classifyFile, classifyProjectFile } from './architecture-graph.mjs';
 import { readFrozenGlobs } from './frozen.mjs';
-import { parseToAst, extractImports, extractExports, extractJsdoc, lineOf } from './ast/index.mjs';
+import { parseToAst, extractImports, extractExports, extractJsdoc, lineOf } from '../packages/ast/index.mjs';
 
-// Parsing/extraction now live in the shared AST package (src/ast). Re-exported here so existing
+// Parsing/extraction now live in the shared AST package (packages/ast). Re-exported here so existing
 // `import ... from './parser.mjs'` call sites keep working unchanged.
 export { parseToAst, extractImports, extractExports, extractJsdoc, lineOf };
 

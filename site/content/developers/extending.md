@@ -21,7 +21,7 @@ Providers live in the `PROVIDERS` map in `src/llm.mjs`: a name mapped to `async 
 
 ## Add a deterministic block
 
-Give it a single entry point, JSDoc, tests, and a row in `docs/capabilities.md` (which appears on the [Building blocks](@developers/building-blocks/) page). If it reads or writes TypeScript/JSX, build on `src/ast` rather than a new parser. If it must touch several files, stage them through `createTransaction` so a failure leaves nothing half-written.
+Give it a single entry point, JSDoc, tests, and a row in `docs/capabilities.md` (which appears on the [Building blocks](@developers/building-blocks/) page). If it reads or writes TypeScript/JSX, build on `packages/ast` rather than a new parser. If it must touch several files, stage them through `createTransaction` so a failure leaves nothing half-written.
 
 ## Add a CLI command
 

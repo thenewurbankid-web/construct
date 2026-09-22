@@ -14,7 +14,7 @@
 // (setup({ actions, guards })), assignAction/unassignAction (a state's
 // entry/exit or a transition's actions) and setGuard. Transitions are only editable when they are a plain
 // `on: { EVENT: 'target' }` / `{ target: 'x' }` entry without a guard.
-import { parseToAst } from '../ast/index.mjs';
+import { parseToAst } from '../../packages/ast/index.mjs';
 import { analyzeMachines, extractMachines } from './workflowExtractor.mjs';
 
 const IDENT_RE = /^[A-Za-z_$][A-Za-z0-9_$]*$/;

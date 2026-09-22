@@ -27,7 +27,7 @@ function parseRef(ref, registry) {
 }
 
 function resolveIn(ctx, registry, rawRef, kindOpt) {
-  if (typeof rawRef !== 'string' || !rawRef.trim()) return fail('INVALID_ARGUMENT', 'A unit reference is required (e.g. "login", "feature:login", "src/ast", "/login").');
+  if (typeof rawRef !== 'string' || !rawRef.trim()) return fail('INVALID_ARGUMENT', 'A unit reference is required (e.g. "login", "feature:login", "packages/ast", "/login").');
   const parsed = parseRef(rawRef.trim(), registry);
   const kind = kindOpt || parsed.kind;
   if (kindOpt && parsed.kind && kindOpt !== parsed.kind) return fail('INVALID_ARGUMENT', `Reference prefix "${parsed.kind}:" conflicts with kind "${kindOpt}".`);
@@ -76,7 +76,7 @@ const finalize = (o) => JSON.parse(JSON.stringify(o)); // drops undefined; keeps
 /**
  * Summarize any unit.
  * @param {string} root project (or Construct package) root
- * @param {string} ref  "kind:id", or a bare name/path/route/rule id ("login", "src/ast", "/login", "PAGE-006")
+ * @param {string} ref  "kind:id", or a bare name/path/route/rule id ("login", "packages/ast", "/login", "PAGE-006")
  * @param {{detail?: 'brief'|'standard'|'full', include?: string[], kind?: string, registry?: object}} [opts]
  *   include: keep only these `sections` keys (summary, health, links, next are always kept)
  * @returns {object} `{schemaVersion, ok:true, kind, id, ref, name, path, detail, summary, sections, health, links, next, budget}`
@@ -230,7 +230,7 @@ export function unitApiManifest(registry = defaultUnitRegistry()) {
     },
     cli: ['construct summarize <ref> [--kind K] [--detail brief|standard|full] [--include a,b] [--format json|markdown] [--dir D]', 'construct summarize --list [--kind K]'],
     rest: ['GET /api/units?kind=', 'GET /api/units/summary?ref=&kind=&detail=&include=', 'GET /api/features', 'GET /api/features/:name/summary?detail='],
-    refGrammar: 'kind:id, or a bare ref resolved by tier (exact path/name first). Examples: feature:login, hook:useLogin, features/login/hooks/useLogin.tsx, features/login/domain/Login.tsx#loginUser, /login, PAGE-006, src/ast',
+    refGrammar: 'kind:id, or a bare ref resolved by tier (exact path/name first). Examples: feature:login, hook:useLogin, features/login/hooks/useLogin.tsx, features/login/domain/Login.tsx#loginUser, /login, PAGE-006, packages/ast',
     errorCodes: ['INVALID_ARGUMENT', 'UNKNOWN_KIND', 'ROOT_NOT_FOUND', 'UNIT_NOT_FOUND', 'UNIT_AMBIGUOUS', 'INTERNAL_ERROR'],
     tokenBudgets: TOKEN_BUDGETS,
     kinds: registry.kinds().map((k) => ({ kind: k.kind, description: k.description })),

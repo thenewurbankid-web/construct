@@ -1,6 +1,6 @@
 // #302 -- a cloned or authored Playwright spec as a STRUCTURED STEP DOCUMENT QA edits without code.
 //
-// There is no second source of truth: the document IS the spec file. The spec's test body is parsed (src/ast) into
+// There is no second source of truth: the document IS the spec file. The spec's test body is parsed (packages/ast) into
 // steps, an edit changes the steps, and the file is re-rendered through the SAME renderer the generator uses
 // (testSpecRender.mjs). The round trip is deterministic and GATED:
 //
@@ -15,7 +15,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { parseToAst } from '../ast/index.mjs';
+import { parseToAst } from '../../packages/ast/index.mjs';
 import { buildDiffView } from '../text-diff.mjs';
 import { GENERATED_MARKER, assertSafeDir, featureMachines } from './testGenerator.mjs';
 import { CLONE_MARKER, locate, parseLineage, readRegular } from './testClone.mjs';

@@ -1,13 +1,13 @@
 // Unit kinds for code below the feature level: file + one kind per layer (component, hook, service,
 // domain, page, controller, workflow), a single export, a route, and a package (any directory,
-// including Construct's own src/ast, src/engine).
+// including Construct's own packages/ast, src/engine).
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileEntry, testsFor, violationsFor, healthFrom, isTestFile, SOURCE_EXT } from '../facts.mjs';
 import { machinesOf } from '../machines.mjs';
 import { discoverRoutes, frameworkOf } from '../route-adapters.mjs';
 import { featureNames, refOf } from './feature.mjs';
-import { extractExports } from '../../../ast/index.mjs';
+import { extractExports } from '../../../../packages/ast/index.mjs';
 import { extractDeclarationSource } from '../../../summarize.mjs';
 import { describeImplementation } from '../../../prose.mjs';
 import { resolveUrlToFolder, findRouteEntryFile, findReactSpaRoutesFile, parseReactSpaRoutes } from '../../../route-resolver.mjs';
@@ -126,7 +126,7 @@ export const exportKind = {
 // ---- package (any directory) -----------------------------------------------------------------
 export const packageKind = {
   kind: 'package',
-  description: 'Any directory as a package (incl. Construct\'s own src/ast, src/engine): files + purposes, entry exports, README, dependencies.',
+  description: 'Any directory as a package (incl. Construct\'s own packages/ast, src/engine): files + purposes, entry exports, README, dependencies.',
   list: (ctx) => {
     const dirs = new Set();
     for (const p of ctx.sourceFiles()) { const parts = p.split('/'); for (let i = 1; i < Math.min(parts.length, 3); i++) dirs.add(parts.slice(0, i).join('/')); }

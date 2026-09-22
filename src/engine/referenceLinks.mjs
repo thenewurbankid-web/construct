@@ -8,7 +8,7 @@
 // File resolution (relative specifier -> real file, inside the project root) is the caller's job; see
 // ui/server/src/projectNav.mjs.
 import { walk as walkAst } from 'estree-walker';
-import { parseToAst } from '../ast/parse.mjs';
+import { parseToAst } from '../../packages/ast/parse.mjs';
 
 /** Map of local binding name -> `{specifier, imported}` for every static import. `imported` is
  * 'default', '*' (namespace) or the exported name. */

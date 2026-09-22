@@ -13,7 +13,6 @@ src/                     the tool
   generators.mjs         per-layer templates and generation
   import.mjs, route-resolver.mjs, llm-fill.mjs   the import flow and LLM-filled files
   llm.mjs                the LLM provider registry (the only place a model is called)
-  ast/                   the AST package (parse, walk, extract, generate)
   engine/                envelope, pipeline, transactional writer, workflow tools
 schemas/envelope.v1.json  the Context Envelope schema
 fixtures/                real sample projects used by tests and docs
@@ -21,10 +20,16 @@ test/                    node:test suites for src/
 ui/client                the Cockpit front end (Next.js)
 ui/server                the Cockpit backend (Node, wraps src/ in-process)
 ui/e2e                   Playwright end-to-end tests
-packages/tools/           small standalone helper tools
-site/                    this documentation site's generator
+packages/tools/          small standalone helper tools
+packages/ast/            the AST package (parse, walk, extract, generate)
+packages/docs-site/lib/  this documentation site's generator (site/content, site/build.mjs stay under site/)
+site/                    this documentation site's content and build driver
 docs/                    long-form docs reused on this site
 ```
+
+Moved into `packages/*` so far (#480): `tools/` -> `packages/tools/`, `site/lib/` -> `packages/docs-site/lib/`,
+`src/ast/` -> `packages/ast/`. `src/engine/`, the rest of `src/*.mjs` and `bin/` move in the same epic's
+remaining steps.
 
 ## Dependencies you install
 
@@ -35,7 +40,7 @@ docs/                    long-form docs reused on this site
 ```text
 bin/construct.mjs -> src/cli.mjs -> generators / enforcers / import / refactor / research
                                         |
-                                        +-> src/ast          (all source parsing and generation)
+                                        +-> packages/ast     (all source parsing and generation)
                                         +-> src/engine       (pipeline, envelope, transactional writes, workflows)
                                         +-> src/llm.mjs      (optional model calls, isolated)
 

@@ -6,7 +6,7 @@
 import {
   parseJsx, parseJsxTree, collectScopeDeclarations, collectBareIdentifierUsages,
   findImportOfName, declaredPropNames,
-} from '../ast/index.mjs';
+} from '../../packages/ast/index.mjs';
 
 /** Names from `scope` (a Set) referenced by an attribute value. */
 function referencedNames(prop, scope) {

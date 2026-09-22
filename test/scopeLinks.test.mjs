@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildScopeLinks, importOfTag } from '../src/engine/scopeLinks.mjs';
-import { collectScopeDeclarations, parseJsx } from '../src/ast/index.mjs';
+import { collectScopeDeclarations, parseJsx } from '../packages/ast/index.mjs';
 
 const PAGE = `import { Card } from '../components/Card';
 import Panel from '../components/Panel';

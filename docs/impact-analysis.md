@@ -43,7 +43,7 @@ A seed is a string reference — anything `construct summarize` understands — 
 | `features/login/domain/Login.tsx`, `useLogin`, `LoginPage` | that one file |
 | `layer:login/hook`, `layer:domain` | that layer, in one feature or across the project |
 | `/login` | the route's entry file |
-| `src/ast`, `features/login` | every file under that directory |
+| `packages/ast`, `features/login` | every file under that directory |
 | `rule:PAGE-003` | the files **currently violating** that rule |
 | `project:.` | the whole project (expect the cap to bite) |
 

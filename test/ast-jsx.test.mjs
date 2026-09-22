@@ -1,4 +1,4 @@
-// src/ast JSX family (#173): parse, tree, attribute/node edits, scope + prop analysis, on typescript-estree.
+// packages/ast JSX family (#173): parse, tree, attribute/node edits, scope + prop analysis, on typescript-estree.
 // (The byte-for-byte parity with the former Babel implementation is proven by
 // ui/server/src/pagesEditor.golden.test.mjs; these are the package's own unit tests.)
 import test from 'node:test';
@@ -7,7 +7,7 @@ import {
   parseJsx, jsxParseError, checkJsxReplacement, parseJsxTree, jsxAttributes, jsxNameToString, findParentRecord,
   setAttributeText, setSpreadText, removeAttributeText, removeNodeText, swapNodesText, addChildText, renderAttrValue, spliceNode,
   collectComponentScopeNames, findImportOfName, declaredPropNames, findTypeMembers,
-} from '../src/ast/index.mjs';
+} from '../packages/ast/index.mjs';
 
 const PAGE = `import { Card } from './Card';
 export function Home({ title, ...rest }) {

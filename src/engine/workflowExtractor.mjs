@@ -15,7 +15,7 @@
 // as "(inline guard)") degrades to a per-machine `error` string instead of
 // throwing, so the UI can say "can't visualize this machine" for that one
 // machine and still render the rest of the file.
-import { parseToAst, walkAst } from '../ast/index.mjs';
+import { parseToAst, walkAst } from '../../packages/ast/index.mjs';
 import { setupObjectOf, contextTypeInfo } from './workflowContext.mjs';
 
 class Unsupported extends Error {}

@@ -8,7 +8,7 @@ import { loadConfig, DEFAULT_RULES } from './config.mjs';
 import { walk, rel } from './fs.mjs';
 import { makeViolation } from './diagnostics.mjs';
 import { exceptionApplies } from './exceptions.mjs';
-import { parseToAst } from './ast/index.mjs';
+import { parseToAst } from '../packages/ast/index.mjs';
 import { isNonLayerPath } from './nonLayer.mjs';
 
 const ext = new Set(['.ts', '.tsx', '.js', '.jsx']);
@@ -168,7 +168,7 @@ function patternNames(node, out) {
 /**
  * countPrimaryExports(source) -> [{name, line}]
  * Top-level exported function/class/const/let/var/default/`export { }` counter,
- * in source order. Reads the real AST (src/ast), so a comma inside a generic
+ * in source order. Reads the real AST (packages/ast), so a comma inside a generic
  * (`Record<A, B>`) is not a second declarator and an `export` written inside a
  * comment or string is not an export (#326).
  * Re-exports (`export * from`, `export {..} from`) never count — they aggregate

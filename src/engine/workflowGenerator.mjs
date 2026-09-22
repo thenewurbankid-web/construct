@@ -15,7 +15,7 @@
 // const) stays a plain template string, matching src/generators.mjs's own
 // style for boilerplate that needs no real synthesis.
 import path from 'node:path';
-import { ts, printNode as print } from '../ast/index.mjs';
+import { ts, printNode as print } from '../../packages/ast/index.mjs';
 import { loadConfig } from './../config.mjs';
 import { write } from '../fs.mjs';
 import { selfCheck, pascalCase } from '../generators.mjs';

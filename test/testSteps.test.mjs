@@ -8,7 +8,7 @@ import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { generateFeatureTests } from '../src/engine/testGenerator.mjs';
 import { cloneGeneratedTest } from '../src/engine/testClone.mjs';
 import { applyStepEdit, parseSpec, previewStepEdit, readStepDocument, renderDoc, urlProblem } from '../src/engine/testSteps.mjs';
-import { parseToAst } from '../src/ast/index.mjs';
+import { parseToAst } from '../packages/ast/index.mjs';
 
 const LOCK_YML = 'frozen:\n  - features/*/tests/generated/**\nnonLayer:\n  - features/*/tests/**\n';
 const BASE_YML = 'version: 1\npreset: strict-nextjs\nproject:\n  framework: nextjs\nfeatures:\n  root: features\n';

@@ -44,4 +44,4 @@ Construct combines project policy with static validation and dependency boundari
 
 ## Shared building blocks
 
-Construct's own implementation reuses small deterministic packages rather than re-implementing them: see `docs/capabilities.md` for the maintained inventory, and `src/ast/README.md` for the AST package (parse, walk, extract, generate) used by both the CLI and `ui/server`.
+Construct's own implementation reuses small deterministic packages rather than re-implementing them: see `docs/capabilities.md` for the maintained inventory, and `packages/ast/README.md` for the AST package (parse, walk, extract, generate) used by both the CLI and `ui/server`.

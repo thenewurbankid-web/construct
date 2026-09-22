@@ -188,7 +188,7 @@ test('API reference: core, engine and AST are generated from source, versioned, 
   assert.match(page, /runPipeline/, 'a known export is documented');
   assert.match(page, /<h[1-4][^>]*>Parameters/, 'params are rendered');
   assert.match(page, /v0\.9/, 'the page carries the version it was built for');
-  assert.ok(fs.existsSync(path.join(out, 'developers/api/ast/src/ast/parse/index.html')));
+  assert.ok(fs.existsSync(path.join(out, 'developers/api/ast/packages/ast/parse/index.html')));
   assert.ok(!fs.existsSync(path.join(out, 'developers/api/tools')), 'packages not requested are not built');
   // Without `api` a build carries no API pages (library default).
   const plain = makeTempDir('site-noapi-test-');

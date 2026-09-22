@@ -441,4 +441,4 @@ Agents should read `architecture.yml`, make the smallest local change, and run v
 
 ## Reusable building blocks
 
-`docs/capabilities.md` inventories the deterministic "lego blocks" already in the codebase (with where they live, who uses them, and what to group next). All AST parsing/walking/extraction/generation lives in one package, `src/ast/` (entry `src/ast/index.mjs`, see its README): `import { extractImports, collectCalls } from './src/ast/index.mjs'`.
+`docs/capabilities.md` inventories the deterministic "lego blocks" already in the codebase (with where they live, who uses them, and what to group next). All AST parsing/walking/extraction/generation lives in one package, `packages/ast/` (entry `packages/ast/index.mjs`, see its README): `import { extractImports, collectCalls } from './packages/ast/index.mjs'`.

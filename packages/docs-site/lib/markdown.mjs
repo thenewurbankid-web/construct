@@ -1,6 +1,6 @@
 // Markdown -> HTML for the documentation pages. Pure aside from reading repo files for includes/links.
 //
-// Docs are reused from the repository at build time (README.md, docs/*.md, src/ast/README.md) rather than
+// Docs are reused from the repository at build time (README.md, docs/*.md, packages/ast/README.md) rather than
 // copied, so the site cannot drift from them. Two helpers make that practical:
 //   - {{include path#Heading level=N}}   pulls one section of a repo markdown file into an authored page
 //   - relative links inside reused files are rewritten to site pages when one exists, else to GitHub

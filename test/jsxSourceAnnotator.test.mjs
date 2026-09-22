@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { annotateJsxSource, parseCxSrc } from '../src/engine/jsxSourceAnnotator.mjs';
-import { parseJsxTree } from '../src/ast/index.mjs';
+import { parseJsxTree } from '../packages/ast/index.mjs';
 
 const fixture = (n) => new URL(`./fixtures/annotator/${n}`, import.meta.url);
 const input = fs.readFileSync(fixture('Page.input.tsx'), 'utf8');

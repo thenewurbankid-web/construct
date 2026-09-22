@@ -13,7 +13,7 @@
 // literal shape otherwise.
 import fs from 'node:fs';
 import path from 'node:path';
-import { ts, parseTsSource as parseTs, findNode } from '../ast/index.mjs';
+import { ts, parseTsSource as parseTs, findNode } from '../../packages/ast/index.mjs';
 import { loadConfig } from './../config.mjs';
 import { write } from '../fs.mjs';
 import { selfCheck, pascalCase } from '../generators.mjs';

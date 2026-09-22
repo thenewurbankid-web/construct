@@ -12,7 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { walk } from './fs.mjs';
-import { parseToAst, walkAst } from './ast/index.mjs';
+import { parseToAst, walkAst } from '../packages/ast/index.mjs';
 
 const PAGE_FILENAMES = ['page.tsx', 'page.ts', 'page.jsx', 'page.js'];
 

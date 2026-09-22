@@ -2,7 +2,7 @@
 
 `summarizeUnit` (and `construct summarize <ref>`) returns a deterministic, LLM-free, structured summary of any
 unit in a Construct project: the project, a feature, one layer, a file, a component/hook/service/domain/page/
-controller/workflow, a single export, a route, a package (any directory, including Construct's own `src/ast`),
+controller/workflow, a single export, a route, a package (any directory, including Construct's own `packages/ast`),
 a rule, the Context Envelope, or a generator. Same input on the same tree gives byte-identical output.
 
 It is built entirely from existing blocks (the AST package, the layer graph, the enforcers, the workflow
@@ -24,7 +24,7 @@ reference matches several units you get `UNIT_AMBIGUOUS` with the candidate refs
 | `component` `hook` `service` `domain` `page` `controller` `workflow` | path, file name, export name, or `feature/name` | `useLogin`, `workflow:features/login/workflows/Login.tsx` |
 | `export` | `path#name` | `features/login/hooks/useLogin.tsx#useLogin` |
 | `route` | URL | `/login` |
-| `package` | any directory | `src/ast`, `src/engine` |
+| `package` | any directory | `packages/ast`, `src/engine` |
 | `rule` | rule id | `PAGE-006` |
 | `envelope` | `v1` | `envelope` |
 | `generator` | `workflow` `controller` `page` `service` `layer` `pipeline` | `generator:workflow` |

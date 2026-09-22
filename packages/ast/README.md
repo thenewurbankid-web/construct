@@ -1,11 +1,11 @@
-# `src/ast` — Construct's AST package
+# `packages/ast` — Construct's AST package
 
 Every deterministic (non-LLM) way Construct reads, walks and generates TypeScript/JSX source, behind one
-entry point: `src/ast/index.mjs`. Both the CLI (`src/`) and the UI backend (`ui/server`) import from it.
+entry point: `packages/ast/index.mjs`. Both the CLI (`src/`) and the UI backend (`ui/server`) import from it.
 
 ```js
 // from src/*.mjs:            import { extractImports } from './ast/index.mjs';
-// from ui/server/src/*.mjs:  import { extractImports } from '../../../src/ast/index.mjs';
+// from ui/server/src/*.mjs:  import { extractImports } from '../../../packages/ast/index.mjs';
 ```
 
 Relative imports are deliberate: `ui/server` already imports `../../../src/*`, and `typescript` /
@@ -35,12 +35,12 @@ the `exports` map (`.`, `./parse`, `./walk`, `./extract`, `./ts`) for a future m
 | ts | `printNode(node)` | print a `ts.factory` node as source (LF newlines) |
 
 `src/parser.mjs` re-exports `parseToAst`, `extractImports/Exports/Jsdoc` and `lineOf` so older imports keep
-working; new code should import from `src/ast`.
+working; new code should import from `packages/ast`.
 
 ## Runnable example
 
 ```js
-import { parseToAst, extractImports, collectCalls, lineOf } from './src/ast/index.mjs';
+import { parseToAst, extractImports, collectCalls, lineOf } from './packages/ast/index.mjs';
 
 const source = `import { a } from './a';\nexport function Page() { return fetch('/x'); }\n// fetch('/ignored')`;
 console.log(extractImports(source));                                    // [ './a' ]
@@ -65,7 +65,7 @@ operations now live here, on typescript-estree, and `ui/server/src/pagesEditor.m
 | `jsxScope.mjs` | `collectComponentScopeNames(ast)`, `findImportOfName(ast, name)`, `declaredPropNames(childSource, tag, isDefault)`, `findTypeMembers(source, typeName)` |
 
 ```js
-import { parseJsxTree, setAttributeText, jsxParseError } from './src/ast/index.mjs';
+import { parseJsxTree, setAttributeText, jsxParseError } from './packages/ast/index.mjs';
 const src = '<Card title="a" />';
 const { byId } = parseJsxTree(src);
 const next = setAttributeText(src, byId.get('n0'), 'title', 'string', 'b');   // '<Card title="b" />'

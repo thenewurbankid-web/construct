@@ -11,7 +11,7 @@
 //
 // Intended only for a dev-only, in-memory copy handed to a dev server's
 // transform step (see ./previewVitePlugin.mjs) -- never written back to disk.
-import { parseJsxTree, jsxNameToString } from '../ast/index.mjs';
+import { parseJsxTree, jsxNameToString } from '../../packages/ast/index.mjs';
 
 export const CX_SRC_ATTR = 'data-cx-src';
 

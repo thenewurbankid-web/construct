@@ -5,7 +5,7 @@ import path from 'node:path';
 import { createFeature, generateLayer, generateVertical, missingLayerPrerequisites, selfCheck } from '../src/generators.mjs';
 import { validateArchitecture } from '../src/architecture-enforcer.mjs';
 import { ConstructError, EXIT_CODES } from '../src/diagnostics.mjs';
-import { parseToAst } from '../src/ast/index.mjs';
+import { parseToAst } from '../packages/ast/index.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 function tmpProject() {
