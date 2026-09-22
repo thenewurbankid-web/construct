@@ -89,6 +89,23 @@ time a dogfood run finds something, not just the first one:
    worked examples of this: each ties a concrete failure back to what a
    developer would actually experience, not just "the check was wrong."
 
+## Typed contracts (standing instruction, epic #500)
+
+Layer boundaries are enforced two ways, not one: `construct validate`'s rule
+engine (a backstop) and `packages/core/typed-contracts/`'s branded types +
+`defineX<Props>(name, fn)` factories (structural prevention — a wrong import
+is a `tsc` error at the call site, not a rule fired after the fact). When
+writing or generating a new unit for any layer that has a factory
+(`defineDomain`, `definePage`, `defineComponent`, `defineExpression`,
+`defineService`, `defineWorkflow`, `defineController`, `defineRoute`,
+`defineProvider`), use it — don't hand-write the layer's shape from scratch
+even when the rule engine alone would pass it. See README.md's "Typed
+contracts" section and `packages/core/typed-contracts/examples/` for real
+compiling/non-compiling fixtures. Phase 1 (the mechanism itself, plus
+`expressions/`, `HOOK-001`, `PAGE-008/009`, `DOMAIN-002`) is done; phase 4
+(removing the denylist rules it supersedes) waits on phase 2's dogfood
+evidence — don't delete old rule code because the new mechanism exists yet.
+
 ## GitHub issue discipline (standing instruction)
 
 Repo: `thenewurbankid-web/construct`. Issues track all real work and stay in

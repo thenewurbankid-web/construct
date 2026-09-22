@@ -265,6 +265,41 @@ project:
 - One primary module per file.
 - Every responsibility has an architectural owner.
 
+## Typed contracts (allowlist enforcement)
+
+Most layer rules above are enforced two ways at once, not just one:
+
+- **Composition prevents** — `packages/core/typed-contracts/` gives each layer a
+  branded type (`DomainUnit<T>`, `PageUnit<T>`, `ComponentUnit<T>`,
+  `ExpressionUnit<T>`, `ServiceUnit<T>`, `WorkflowUnit`, `ControllerUnit<T>`,
+  `RouteUnit`, `ProviderUnit`) and one `defineX<Props>(name, fn)` factory per
+  layer. A factory's parameter types are the actual import boundary — a
+  `defineDomain` unit's params have no slot that accepts a `ComponentUnit`, so
+  a wrong wiring is a real `tsc` error at the call site, not a rule fired
+  after the fact. `PropRef<T>` lets a param point at something already in
+  scope instead of taking a literal, and `withFeature()` brands a unit to one
+  feature so cross-feature sharing (`SLICE-004`) must go through an explicit
+  wrapper. This is the allowlist half: the factory is the one shape to copy,
+  matching the project's own mantra that an example teaches better than an
+  instruction.
+- **Validation catches** — the existing rule engine (`construct validate`)
+  remains the backstop for hand-edited files and cases a type system can't
+  see: `EXPR-001`..`EXPR-006` (a new `expressions/` layer for If/Switch/
+  template units), `HOOK-001`/`HOOK-002` (tracked state and Provider hooks),
+  `PAGE-006`/`PAGE-008`/`PAGE-009` (only sanctioned hook imports, no inline
+  JSX logic, a complexity budget), and `DOMAIN-002` (purity as an allowlist —
+  a domain function may reference only its own params/destructured bindings/
+  type-only imports/JS built-in globals, opt-in via `architecture.yml`,
+  additive alongside the older `DOMAIN-001` name-based denylist it will
+  eventually replace).
+
+Both layers are additive: a project using neither the new factories nor
+`expressions/` sees no behavior change. See `packages/core/typed-contracts/`
+and its `examples/` for real compiling and non-compiling fixtures, and issue
+#500 for the full phased plan (this is phase 1 — proving the pattern in a
+real dogfood run and wiring live Cockpit diagnostics are phases 2-3; removing
+the now-superseded denylist rules is phase 4, not yet done).
+
 ## Modifying conventions
 
 Change `architecture.yml`:
