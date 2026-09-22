@@ -287,11 +287,17 @@ Most layer rules above are enforced two ways at once, not just one:
   see: `EXPR-001`..`EXPR-006` (a new `expressions/` layer for If/Switch/
   template units), `HOOK-001`/`HOOK-002` (tracked state and Provider hooks),
   `PAGE-006`/`PAGE-008`/`PAGE-009` (only sanctioned hook imports, no inline
-  JSX logic, a complexity budget), and `DOMAIN-002` (purity as an allowlist —
+  JSX logic, a complexity budget), `DOMAIN-002` (purity as an allowlist —
   a domain function may reference only its own params/destructured bindings/
   type-only imports/JS built-in globals, opt-in via `architecture.yml`,
   additive alongside the older `DOMAIN-001` name-based denylist it will
-  eventually replace).
+  eventually replace), and `READ-004` (a unit's filename encodes its layer as
+  a suffix — `Name.layer.ext`, e.g. `AddWidget.domain.ts`,
+  `WidgetCard.component.tsx`, `useCartState.state.ts`,
+  `useUserProvider.provider.ts` — a cheap string match, no `tsc`/AST pass
+  needed, so it can run live on every keystroke; off by default since every
+  fixture in this repo predates the convention, opt-in via
+  `architecture.yml` once a project is ready to rename its own files).
 
 Both layers are additive: a project using neither the new factories nor
 `expressions/` sees no behavior change. See `packages/core/typed-contracts/`

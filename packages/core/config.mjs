@@ -223,6 +223,24 @@ export const DEFAULT_RULES = {
   // unknown or demand a severity-string/options-object shape for it (see normalizeRules
   // below, and readRawRules' doc comment for why the actual value bypasses validation).
   'READ-002-max-loc': { name: "Override for READ-002's max-lines-per-file threshold", numeric: true },
+  // #512 (part of #500 phase 1) -- a unit's filename should carry its layer as a suffix
+  // (Name.layer.ext, e.g. AddWidget.domain.ts) matching the folder it lives in (the hook
+  // layer splits further into .provider.ts/.state.ts/.hook.ts per which factory the file
+  // calls, per #499's design) -- a cheap string-match check, no tsc/AST pass needed, so it
+  // can run live on every keystroke. The route layer is exempt (its filename is
+  // framework-dictated, not something Construct's convention is free to rename) and is
+  // naturally never reached here anyway, since validateReadability only walks
+  // features/*/**, never app/**/page.tsx or src/App.tsx.
+  //
+  // Default severity is 'off', same reasoning as DOMAIN-002 above: every existing fixture
+  // in this repo (fixtures/architecture-valid*, fixtures/frozen-presentation) and this
+  // project's own packages/core/typed-contracts/ file names predate this convention and
+  // would ALL fail it if defaulted to 'error' or even 'warning' -- a silent default bump
+  // is exactly the non-additive breakage #500 phase 1 rules out. `construct create` is
+  // expected to emit this convention automatically going forward; a project opts in to
+  // enforcing it on hand-written/legacy files with `rules: { READ-004: warning }` (or
+  // 'error') in architecture.yml once it's ready to rename its own files.
+  'READ-004': { severity: 'off', name: 'A unit\'s filename encodes its layer as a suffix (Name.layer.ext)' },
   'IMPORT-001': { severity: 'error', name: 'Relative imports must resolve to a file that exists' },
   'EXCEPTION-EXPIRED': { severity: 'warning', name: 'Time-boxed exceptions must be renewed or removed once they expire' },
   // #473 -- cross-references a component's declared props (react-docgen) against every real JSX

@@ -111,6 +111,98 @@ test('READ-003: a JSDoc above a decorator on a public export is correctly associ
   assert.equal(violations.filter((v) => v.rule === 'READ-003').length, 0);
 });
 
+// ---- #512: READ-004 (filename encodes layer, Name.layer.ext) ----------
+
+// Off by default (DEFAULT_RULES / READABILITY_RULES both say 'off') -- every existing fixture
+// in this repo (readability-naming/-length/-jsdoc among them) predates this convention and
+// must produce zero READ-004 violations with no architecture.yml at all.
+test('READ-004 is off by default: no violation on any pre-existing, non-conforming fixture', () => {
+  for (const fixture of ['readability-naming', 'readability-length', 'readability-jsdoc']) {
+    const { violations } = validateReadability(path.join(fixturesRoot, fixture));
+    assert.equal(violations.filter((v) => v.rule === 'READ-004').length, 0, `expected no READ-004 in ${fixture}`);
+  }
+});
+
+test('READ-004: opting in (rules: READ-004: warning) flags a domain file with no ".domain" suffix', () => {
+  const root = tmpRoot();
+  writeFile(root, 'features/demo/domain/AddWidget.ts', `export function AddWidget(x) {\n  return x;\n}\n`);
+  fs.writeFileSync(path.join(root, 'architecture.yml'), 'rules:\n  READ-004: warning\n');
+  const { violations } = validateReadability(root);
+  const v = violations.find((x) => x.rule === 'READ-004');
+  assert.ok(v, 'expected a READ-004 violation');
+  assert.equal(v.severity, 'warning');
+  assert.equal(v.file, 'features/demo/domain/AddWidget.ts');
+  assert.equal(
+    v.message,
+    'File "AddWidget.ts" does not encode its layer in its filename (expected a ".domain" suffix before the extension).'
+  );
+  assert.equal(v.suggestedFix, 'Rename features/demo/domain/AddWidget.ts to features/demo/domain/AddWidget.domain.ts.');
+});
+
+test('READ-004: a correctly suffixed file produces no violation once opted in', () => {
+  const root = tmpRoot();
+  writeFile(root, 'features/demo/domain/AddWidget.domain.ts', `export function AddWidget(x) {\n  return x;\n}\n`);
+  writeFile(root, 'features/demo/components/WidgetCard.component.tsx', `export function WidgetCard() {\n  return <div />;\n}\n`);
+  writeFile(root, 'features/demo/services/WidgetService.service.ts', `export function fetchWidget() {\n  return null;\n}\n`);
+  writeFile(root, 'features/demo/workflows/WidgetWorkflow.workflow.ts', `export const machine = { states: { idle: {} } };\n`);
+  writeFile(root, 'features/demo/pages/WidgetPage.page.tsx', `export function WidgetPage() {\n  return <div />;\n}\n`);
+  writeFile(root, 'features/demo/controllers/WidgetController.controller.tsx', `export function WidgetController() {\n  return <div />;\n}\n`);
+  fs.writeFileSync(path.join(root, 'architecture.yml'), 'rules:\n  READ-004: error\n');
+  const { violations } = validateReadability(root);
+  assert.equal(violations.filter((v) => v.rule === 'READ-004').length, 0);
+});
+
+test('READ-004: a mis-suffixed file (wrong layer suffix) is flagged with a clean (non-doubled) suggested rename', () => {
+  const root = tmpRoot();
+  writeFile(root, 'features/demo/components/Foo.controller.tsx', `export function Foo() {\n  return <div />;\n}\n`);
+  fs.writeFileSync(path.join(root, 'architecture.yml'), 'rules:\n  READ-004: error\n');
+  const { violations } = validateReadability(root);
+  const v = violations.find((x) => x.rule === 'READ-004');
+  assert.ok(v);
+  assert.equal(v.suggestedFix, 'Rename features/demo/components/Foo.controller.tsx to features/demo/components/Foo.component.tsx.');
+});
+
+// The hook layer splits into three suffixes depending on which factory (if any) the file
+// actually calls -- the same defineProvider(...)/useTrackedState(...) presence check
+// HOOK-002/HOOK-001 already use, per #499's design (Provider hooks and tracked-state hooks
+// follow genuinely different rules, so they don't share one generic ".hook" suffix).
+test('READ-004: hook layer expects ".provider", ".state" or ".hook" depending on which factory the file calls', () => {
+  const root = tmpRoot();
+  writeFile(root, 'features/demo/hooks/useWidgetProvider.ts', `export function useWidgetProvider() {\n  return defineProvider('WidgetProvider', () => ({}));\n}\n`);
+  writeFile(root, 'features/demo/hooks/useWidgetState.ts', `export const useWidgetState = useTrackedState(0);\n`);
+  writeFile(root, 'features/demo/hooks/useWidget.ts', `export function useWidget() {\n  return true;\n}\n`);
+  fs.writeFileSync(path.join(root, 'architecture.yml'), 'rules:\n  READ-004: error\n');
+  const { violations } = validateReadability(root);
+  const byFile = Object.fromEntries(violations.filter((v) => v.rule === 'READ-004').map((v) => [v.file, v]));
+
+  assert.equal(
+    byFile['features/demo/hooks/useWidgetProvider.ts'].suggestedFix,
+    'Rename features/demo/hooks/useWidgetProvider.ts to features/demo/hooks/useWidgetProvider.provider.ts.'
+  );
+  assert.equal(
+    byFile['features/demo/hooks/useWidgetState.ts'].suggestedFix,
+    'Rename features/demo/hooks/useWidgetState.ts to features/demo/hooks/useWidgetState.state.ts.'
+  );
+  assert.equal(
+    byFile['features/demo/hooks/useWidget.ts'].suggestedFix,
+    'Rename features/demo/hooks/useWidget.ts to features/demo/hooks/useWidget.hook.ts.'
+  );
+});
+
+test('READ-004: correctly suffixed hook files (.provider.ts / .state.ts / .hook.ts) produce no violation', () => {
+  const root = tmpRoot();
+  writeFile(root, 'features/demo/hooks/useWidgetProvider.provider.ts', `export function useWidgetProvider() {\n  return defineProvider('WidgetProvider', () => ({}));\n}\n`);
+  writeFile(root, 'features/demo/hooks/useWidgetState.state.ts', `export const useWidgetState = useTrackedState(0);\n`);
+  writeFile(root, 'features/demo/hooks/useWidget.hook.ts', `export function useWidget() {\n  return true;\n}\n`);
+  fs.writeFileSync(path.join(root, 'architecture.yml'), 'rules:\n  READ-004: error\n');
+  const { violations } = validateReadability(root);
+  assert.equal(violations.filter((v) => v.rule === 'READ-004').length, 0);
+});
+
+// Route files (app/**/page.tsx, src/App.tsx) are exempt per #512's design -- moot here in
+// practice, since validateReadability only ever walks features/*/**, never a route file, so
+// there is nothing extra to assert beyond that a route-shaped path never appears in `files`.
+
 test('rule severity can be overridden to "off" via architecture.yml', () => {
   const root = tmpRoot();
   writeFile(root, 'features/demo/components/lowercase.tsx', `export function lowercase() {\n  return <div />;\n}\n`);

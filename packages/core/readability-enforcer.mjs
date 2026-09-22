@@ -15,12 +15,61 @@ export const READABILITY_RULES = {
   'READ-001': { severity: 'error', name: 'Components/controllers are PascalCase; hooks are use-prefixed camelCase' },
   'READ-002': { severity: 'error', name: 'Files and functions stay under their length threshold' },
   'READ-003': { severity: 'warning', name: 'Public API exports document intent with JSDoc' },
+  // #512 -- kept 'off' by default here too, mirroring config.mjs's DEFAULT_RULES entry (see
+  // its comment for the full rollout reasoning: every existing fixture in this repo would
+  // fail this convention today).
+  'READ-004': { severity: 'off', name: 'A unit\'s filename encodes its layer as a suffix (Name.layer.ext)' },
 };
 
 const PASCAL = /^[A-Z][A-Za-z0-9]*$/;
 const HOOK_NAME = /^use[A-Z][A-Za-z0-9]*$/;
 const DEFAULT_MAX_LOC = 200;
 const DEFAULT_MAX_FN_LINES = 40;
+
+// #512 -- READ-004's expected filename suffix per layer, for every layer whose filename
+// convention this rule is free to check. The `hook` layer is deliberately absent here: it
+// splits further, at check time, into .provider.ts / .state.ts / .hook.ts depending on
+// which factory the file actually calls (see expectedHookSuffix below) -- the same
+// distinction #499's design draws between a Provider hook (#510) and a tracked-state hook
+// (#504), which follow genuinely different rules. `route` is absent because it is exempt
+// by design (its filename is framework-dictated, not Construct's to rename) -- moot in
+// practice anyway, since validateReadability below only ever walks features/*/**, never a
+// route file.
+const LAYER_SUFFIX = {
+  domain: 'domain',
+  service: 'service',
+  workflow: 'workflow',
+  page: 'page',
+  component: 'component',
+  controller: 'controller',
+  expression: 'expression',
+};
+
+// Every suffix READ-004 knows about, layer suffixes plus the hook variants -- used to strip
+// an already-present (possibly wrong) suffix before suggesting the correct one, so a
+// mis-suffixed file (e.g. "Foo.controller.tsx" sitting in components/) gets a clean
+// suggested rename instead of "Foo.controller.component.tsx".
+const READ_004_KNOWN_SUFFIXES = new Set([...Object.values(LAYER_SUFFIX), 'provider', 'state', 'hook']);
+
+/** READ-004's expected suffix for a hook-layer file: the same defineProvider(...)/
+ * useTrackedState(...) presence check HOOK-002/HOOK-001 already use elsewhere (a real
+ * factory call is the deterministic, cheap-to-check proxy for "which kind of hook this
+ * really is") -- a plain string match against the source, no tsc/AST pass needed. Neither
+ * present falls back to the generic ".hook" suffix. */
+function expectedHookSuffix(source) {
+  if (/\bdefineProvider\s*\(/.test(source)) return 'provider';
+  if (/\buseTrackedState\s*\(/.test(source)) return 'state';
+  return 'hook';
+}
+
+/** Strip a trailing ".<knownSuffix>" segment from `base` (a filename with its outer
+ * extension already removed), if present -- e.g. "Foo.controller" -> "Foo" so a suggested
+ * rename never doubles up an existing (possibly wrong) layer suffix. */
+function stripKnownSuffix(base) {
+  const idx = base.lastIndexOf('.');
+  if (idx === -1) return base;
+  return READ_004_KNOWN_SUFFIXES.has(base.slice(idx + 1)) ? base.slice(0, idx) : base;
+}
 
 function severityFor(config, ruleId) {
   const raw = config.rules?.[ruleId];
@@ -85,6 +134,32 @@ function checkNaming(config, out, summary) {
       });
     }
   }
+}
+
+/** READ-004 (#512): a unit's filename should carry its layer as a suffix (Name.layer.ext)
+ * matching the folder it actually lives in (classified via `summary.layer`, the same layer
+ * graph every other rule already uses) -- a plain string-match check against the filename
+ * alone, no tsc/AST pass needed, so it can run live on every keystroke. Off by default (see
+ * READABILITY_RULES above); a project opts in via architecture.yml. */
+function checkLayerSuffix(config, out, summary, source) {
+  const expectedSuffix = summary.layer === 'hook' ? expectedHookSuffix(source) : LAYER_SUFFIX[summary.layer];
+  if (!expectedSuffix) return; // route (never reached here), or a layer this rule doesn't cover
+
+  const ext = path.extname(summary.path);
+  const base = path.basename(summary.path, ext);
+  if (base.endsWith(`.${expectedSuffix}`)) return; // already conforms
+
+  const dir = path.dirname(summary.path);
+  const suggestedName = `${stripKnownSuffix(base)}.${expectedSuffix}${ext}`;
+  pushViolation(config, out, {
+    rule: 'READ-004',
+    file: summary.path,
+    line: 1,
+    message: `File "${base}${ext}" does not encode its layer in its filename (expected a ".${expectedSuffix}" suffix before the extension).`,
+    why: 'A filename that encodes its layer (Name.layer.ext) is a cheap, live signal — a plain string match, no tsc pass needed — that the file matches the defineX(...) call inside it, and improves plain file-tree browsability without opening anything.',
+    expected: [`${dir}/${suggestedName}`],
+    suggestedFix: `Rename ${summary.path} to ${dir}/${suggestedName}.`,
+  });
 }
 
 /** Brace-depth scan for function bodies over `limit` lines. Heuristic, not scope-accurate:
@@ -177,6 +252,7 @@ export function validateReadability(root) {
       const source = fs.readFileSync(file, 'utf8');
       checkNaming(config, out, summary);
       checkLength(config, out, summary, source, maxLoc);
+      checkLayerSuffix(config, out, summary, source);
     }
     checkFeatureJsdoc(config, out, root, featureRoot, featureName);
   }

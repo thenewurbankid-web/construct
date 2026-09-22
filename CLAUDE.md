@@ -102,8 +102,10 @@ writing or generating a new unit for any layer that has a factory
 even when the rule engine alone would pass it. See README.md's "Typed
 contracts" section and `packages/core/typed-contracts/examples/` for real
 compiling/non-compiling fixtures. Phase 1 (the mechanism itself, plus
-`expressions/`, `HOOK-001`, `PAGE-008/009`, `DOMAIN-002`) is done; phase 4
-(removing the denylist rules it supersedes) waits on phase 2's dogfood
+`expressions/`, `HOOK-001`, `PAGE-008/009`, `DOMAIN-002`, `READ-004` — a
+unit's filename encodes its layer, `Name.layer.ext`, off by default since it
+would fail every pre-existing fixture/file name in this repo) is done; phase
+4 (removing the denylist rules it supersedes) waits on phase 2's dogfood
 evidence — don't delete old rule code because the new mechanism exists yet.
 
 ## GitHub issue discipline (standing instruction)
