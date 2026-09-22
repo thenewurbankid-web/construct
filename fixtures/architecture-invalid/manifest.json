@@ -8,6 +8,8 @@
   { "file": "features/bad/pages/Page006.tsx", "expectedRule": "PAGE-006" },
   { "file": "features/bad/components/Component002.tsx", "expectedRule": "COMPONENT-002" },
   { "file": "features/bad/components/Component003.tsx", "expectedRule": "COMPONENT-003" },
+  { "file": "features/bad/components/Component005.tsx", "expectedRule": "COMPONENT-005" },
+  { "file": "features/bad/components/Component006.tsx", "expectedRule": "COMPONENT-006" },
   { "file": "features/bad/workflows/Workflow001.tsx", "expectedRule": "WORKFLOW-001" },
   { "file": "features/bad/services/Service002.tsx", "expectedRule": "SERVICE-002" },
   { "file": "features/bad/domain/Domain001.ts", "expectedRule": "DOMAIN-001" }

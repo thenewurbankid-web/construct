@@ -10,7 +10,7 @@
       "maxSeeds": 100
     }
   },
-  "summary": "Impact of feature:signup: 1 feature(s) (signup), 10 file(s) across 8 layer(s), depth 2; 1 warning(s); 0 rule error(s), 0 rule warning(s); every entry derived deterministically.",
+  "summary": "Impact of feature:signup: 1 feature(s) (signup), 10 file(s) across 8 layer(s), depth 2; 1 warning(s); 0 rule error(s), 1 rule warning(s); every entry derived deterministically.",
   "seeds": [
     {
       "index": 0,
@@ -465,11 +465,19 @@
     }
   ],
   "rules": {
-    "violations": [],
+    "violations": [
+      {
+        "rule": "COMPONENT-005",
+        "severity": "warning",
+        "file": "features/signup/components/SignupForm.tsx",
+        "line": 39,
+        "message": "Component contains inline conditional logic in its JSX."
+      }
+    ],
     "exceptions": [],
     "counts": {
       "error": 0,
-      "warning": 0
+      "warning": 1
     },
     "layerConstraints": [
       {

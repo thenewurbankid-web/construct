@@ -19,3 +19,4 @@ export {
   removeNodeText, swapNodesText, addChildText, NEW_CHILD_SNIPPET,
 } from './jsxEdit.mjs';
 export { collectComponentScopeNames, collectScopeDeclarations, findImportOfName, findTypeMembers, declaredPropNames } from './jsxScope.mjs';
+export { collectInlineJsxLogic, computeJsxComplexity } from './jsxComplexity.mjs';

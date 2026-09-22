@@ -7,7 +7,7 @@
   "name": "login",
   "path": "features/login",
   "detail": "full",
-  "summary": "Feature \"login\": 9 files, 193 LOC, 7/7 layers; 1 workflow machine(s); 0 error(s), 0 warning(s); 0 test file(s).",
+  "summary": "Feature \"login\": 9 files, 193 LOC, 7/7 layers; 1 workflow machine(s); 0 error(s), 1 warning(s); 0 test file(s).",
   "sections": {
     "layers": {
       "present": [
@@ -315,11 +315,19 @@
       ]
     },
     "rules": {
-      "violations": [],
+      "violations": [
+        {
+          "rule": "COMPONENT-005",
+          "severity": "warning",
+          "file": "features/login/components/Login.tsx",
+          "line": 35,
+          "message": "Component contains inline conditional logic in its JSX."
+        }
+      ],
       "exceptions": [],
       "counts": {
         "error": 0,
-        "warning": 0
+        "warning": 1
       }
     },
     "tests": {
@@ -393,7 +401,7 @@
     }
   },
   "health": {
-    "status": "ok",
+    "status": "warnings",
     "findings": [
       {
         "severity": "info",
@@ -404,6 +412,11 @@
         "severity": "info",
         "code": "unclassified-files",
         "message": "2 file(s) are not in a recognized layer."
+      },
+      {
+        "severity": "warning",
+        "code": "COMPONENT-005",
+        "message": "features/login/components/Login.tsx: Component contains inline conditional logic in its JSX."
       }
     ],
     "completeness": 1
@@ -439,7 +452,7 @@
   ],
   "budget": {
     "maxTokens": 8000,
-    "estimatedTokens": 1762,
+    "estimatedTokens": 1843,
     "truncated": false
   }
 }

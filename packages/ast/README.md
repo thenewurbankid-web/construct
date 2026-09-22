@@ -25,6 +25,8 @@ the `exports` map (`.`, `./parse`, `./walk`, `./extract`, `./ts`) for a future m
 | walk | `collectBareIdentifierUsages(ast, names:Set)` | real identifier references, sorted |
 | walk | `collectControlFlowNodes(ast)` | if/for/while/switch/try nodes; `CONTROL_FLOW_TYPES` is the set |
 | walk | `isNonUsagePosition(node, parent, key)` | the predicate behind `walkForUsage` |
+| jsx complexity | `collectInlineJsxLogic(ast)` | inline conditional (`cond ? <A/> : <B/>`, `cond && <A/>`) and loop-render (`.map`/`.flatMap` returning JSX) nodes, sorted — the shape COMPONENT-005 (#508) flags |
+| jsx complexity | `computeJsxComplexity(ast)` | `{maxDepth, branchCount}` — a component/page's own JSX nesting depth and inline-logic count, the budget COMPONENT-006 (#508) caps |
 | extract | `extractImports(source)` | static + dynamic import specifiers, source order |
 | extract | `extractExports(source)` | `[{name, index}]` for every export form |
 | extract | `extractJsdoc(source, index)` | the JSDoc block for the export at `index` (decorator-aware), or `null` |

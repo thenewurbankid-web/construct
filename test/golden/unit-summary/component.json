@@ -43,11 +43,19 @@
       ]
     },
     "rules": {
-      "violations": [],
+      "violations": [
+        {
+          "rule": "COMPONENT-005",
+          "severity": "warning",
+          "file": "features/login/components/Login.tsx",
+          "line": 35,
+          "message": "Component contains inline conditional logic in its JSX."
+        }
+      ],
       "exceptions": [],
       "counts": {
         "error": 0,
-        "warning": 0
+        "warning": 1
       }
     },
     "tests": {
@@ -56,8 +64,14 @@
     }
   },
   "health": {
-    "status": "ok",
-    "findings": []
+    "status": "warnings",
+    "findings": [
+      {
+        "severity": "warning",
+        "code": "COMPONENT-005",
+        "message": "Component contains inline conditional logic in its JSX."
+      }
+    ]
   },
   "links": {
     "parent": "feature:login",
@@ -74,7 +88,7 @@
   ],
   "budget": {
     "maxTokens": 2000,
-    "estimatedTokens": 338,
+    "estimatedTokens": 410,
     "truncated": false
   }
 }
