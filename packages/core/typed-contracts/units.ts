@@ -14,7 +14,7 @@
 // comment citing the exact `canImport` line it mirrors, so the two stay
 // auditable against each other by inspection until a later phase (#500
 // phase 4) decides whether/how to unify them.
-import type { Brand } from './brand.ts';
+import type { Brand, FeatureBrand } from './brand.ts';
 import type { Template } from './template.ts';
 
 /** Layer names a unit factory can attach `unitLayer` as. */
@@ -107,6 +107,39 @@ export type AnyUnit =
   | ServiceUnitAny
   | HookUnitAny
   | WorkflowUnit;
+
+/**
+ * #511 — an already-layer-branded unit (`U`), additionally tagged with the
+ * feature it was generated inside. Built on `FeatureBrand` (brand.ts)
+ * rather than folded into `ComponentUnit`/`PageUnit`/etc. themselves, so
+ * every existing per-layer type above is untouched (#500 phase 1's
+ * additive-only constraint) — a unit only carries a `FeatureUnit` wrapper
+ * once something (in practice, generated code — see
+ * typed-contracts/feature.ts's `withFeature`) actually applies one.
+ *
+ * Bounded by `LayerTag<LayerName>` (every real unit's runtime
+ * introspection shape — see `LayerTag` above), deliberately NOT by
+ * `AnyUnit` itself: `AnyUnit`'s member types (`ComponentUnitAny`,
+ * `PageUnitAny`, ...) are wildcard-Props unit shapes, and TypeScript's
+ * strict function-parameter contravariance means a CONCRETELY-typed unit
+ * (e.g. `ComponentUnit<TotalBadgeProps>`) does not structurally satisfy its
+ * own wildcard (`ComponentUnit<unknown>`) the way `Forbid<>`'s
+ * per-property check (which never compares a raw unit's own call signature
+ * against the wildcard) needs to. `LayerTag<LayerName>` sidesteps that
+ * entirely: it only checks the two plain, non-branded introspection
+ * properties every unit already carries, so a concrete unit's specific
+ * `Props`/`Fn` shape is preserved through inference instead of being
+ * widened or rejected. (Caught empirically the same way units.ts's own
+ * `AnyUnit` wildcard-`unknown`-vs-`any` note above was — see
+ * examples/feature-branded-valid.ts, which failed to compile against an
+ * earlier `U extends AnyUnit` draft of this type before this fix.)
+ *
+ * Two `FeatureUnit`s of the same layer/shape but different `Feature`
+ * literals are NOT mutually assignable — a real `tsc` error, not a
+ * convention — proven in examples/feature-branded-invalid.ts /
+ * test/typed-contracts-feature-tsc.test.mjs.
+ */
+export type FeatureUnit<U extends LayerTag<LayerName>, Feature extends string> = FeatureBrand<U, Feature>;
 
 /**
  * The mechanism behind step 3's "no type slot that accepts a WorkflowUnit"
