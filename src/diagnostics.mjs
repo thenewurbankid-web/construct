@@ -1,4 +1,7 @@
-const VALID_SEVERITIES = new Set(['error', 'warning', 'off']);
+// 'info' (#473, PROP-LINK) is a real finding worth showing but never a validation failure --
+// exitCodeForViolations below only ever fails a run on 'error', so adding it here never changes
+// what makes `construct validate` exit non-zero.
+const VALID_SEVERITIES = new Set(['error', 'warning', 'info', 'off']);
 const VALID_MODULES = new Set(['architecture', 'separation-of-concerns', 'readability']);
 const REQUIRED_FIELDS = ['rule', 'module', 'severity', 'file', 'line', 'message', 'why', 'expected'];
 

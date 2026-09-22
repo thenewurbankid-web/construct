@@ -151,6 +151,34 @@ test('describe of a file that does not parse answers ok:false with a code, never
   });
 });
 
+test('#473 PROP-LINK: a required prop no call site passes shows up as an Info finding on both describe and source', async () => {
+  const dir = project();
+  const heartPath = 'features/shop/components/Heart.tsx';
+  fs.writeFileSync(path.join(dir, heartPath), "type Props = { productId: string; onToggle: () => void };\nexport function Heart({ productId, onToggle }: Props) {\n  return <button onClick={onToggle}>{productId}</button>;\n}\n");
+  fs.writeFileSync(path.join(dir, 'features/shop/pages/HeartPage.tsx'), "import { Heart } from '../components/Heart';\nexport function HeartPage() {\n  return <Heart productId=\"1\" />;\n}\n");
+  await withStack({ dir }, async ({ json }) => {
+    const described = await json('GET', `/api/components/describe?path=${q(heartPath)}`);
+    assert.equal(described.status, 200);
+    assert.equal(described.body.ok, true);
+    assert.equal(described.body.propLinks.length, 1);
+    assert.equal(described.body.propLinks[0].rule, 'PROP-LINK');
+    assert.equal(described.body.propLinks[0].severity, 'info');
+    assert.match(described.body.propLinks[0].message, /onToggle/);
+    assert.match(described.body.propLinks[0].message, /HeartPage\.tsx/);
+
+    const source = await json('GET', `/api/components/source?path=${q(heartPath)}`);
+    assert.equal(source.status, 200);
+    const finding = source.body.diagnostics.find((d) => d.code === 'PROP-LINK');
+    assert.ok(finding, 'the source route diagnostics should include the PROP-LINK finding too');
+    assert.equal(finding.severity, 'info');
+    assert.equal(finding.source, 'architecture');
+
+    // A component with no gap (View.tsx, exercised by other tests) reports no PROP-LINK findings.
+    const clean = await json('GET', `/api/components/describe?path=${q(VIEW_PATH)}`);
+    assert.deepEqual(clean.body.propLinks, []);
+  });
+});
+
 test('source returns the plain text, its hash, whether it is editable and diagnostics', async () => {
   await withStack({}, async ({ json }) => {
     const { body } = await json('GET', `/api/components/source?path=${q(VIEW_PATH)}`);

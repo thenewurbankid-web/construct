@@ -72,7 +72,18 @@ export function typescriptDiagnostics(absFile, source) {
   return found.map((d) => fromTsDiagnostic(d, sf));
 }
 
-function fromViolation(v, lines) {
+/**
+ * A diagnostics.mjs-shaped violation (rule/module/severity/file/line/message) -> one normalized
+ * diagnostic record. Exported so a caller that already has its own violations (e.g. #473's
+ * PROP-LINK, which isn't part of the synchronous validateArchitecture/ruleDiagnostics pass since
+ * it needs react-docgen) can merge them into the same shape the editor markers/summary expect,
+ * instead of re-deriving this mapping.
+ *
+ * @param {{rule: string, module: string, severity: string, line: number, message: string}} v A `makeViolation`-shaped violation.
+ * @param {string[]} lines The file's source, split on `\n` (for the marker's end column).
+ * @returns {object} `{source, code, severity, message, line, column, endLine, endColumn}`.
+ */
+export function fromViolation(v, lines) {
   const line = Math.max(1, Number(v.line) || 1);
   const text = lines[line - 1] ?? '';
   return {

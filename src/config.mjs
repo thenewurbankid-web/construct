@@ -150,9 +150,14 @@ export const DEFAULT_RULES = {
   'READ-002-max-loc': { name: "Override for READ-002's max-lines-per-file threshold", numeric: true },
   'IMPORT-001': { severity: 'error', name: 'Relative imports must resolve to a file that exists' },
   'EXCEPTION-EXPIRED': { severity: 'warning', name: 'Time-boxed exceptions must be renewed or removed once they expire' },
+  // #473 -- cross-references a component's declared props (react-docgen) against every real JSX
+  // call site of it in the project (src/engine/propLinks.mjs). Ships at 'info' by owner decision
+  // (2026-09-22): a real, worth-seeing gap, never a hard validation failure. A project may still
+  // raise or silence it like any other rule.
+  'PROP-LINK': { severity: 'info', name: 'A required prop is never passed at some call site, or a call site passes an undeclared prop' },
 };
 
-const VALID_SEVERITIES = new Set(['error', 'warning', 'off']);
+const VALID_SEVERITIES = new Set(['error', 'warning', 'info', 'off']);
 
 // Plain Levenshtein edit distance, used only to produce "did you mean" hints.
 function levenshtein(a, b) {

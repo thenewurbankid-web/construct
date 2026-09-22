@@ -16,7 +16,9 @@ import express from 'express';
 import fs from 'node:fs';
 import { listUnits } from '../../../src/engine/unitSummary.mjs';
 import { describeComponent } from '../../../src/engine/describeComponent.mjs';
-import { collectDiagnostics } from '../../../src/engine/diagnostics.mjs';
+import { checkPropLinks, propLinkViolations } from '../../../src/engine/propLinks.mjs';
+import { collectDiagnostics, fromViolation } from '../../../src/engine/diagnostics.mjs';
+import { loadConfig } from '../../../src/config.mjs';
 import { resolveProjectFile } from './projectNav.mjs';
 import { checkEnforcement, featuresRootOf, hashOf, PagesEditorError } from './pagesEditor.mjs';
 
@@ -55,14 +57,45 @@ export function componentsIndex(root) {
   return { status: 200, body: { ok: true, count: components.length, components } };
 }
 
+/** #473 (PROP-LINK) -- best-effort: a component's own props documentation must never fail to load
+ * because the cross-project call-site scan hit something unexpected (a huge project, an unusual
+ * tsconfig). Returns `[]` on any error, same as a project with no findings. */
+async function propLinkFindings(root, rel, described) {
+  if (!described.ok || !described.components?.length) return [];
+  try {
+    const linked = await checkPropLinks(root, rel, { described });
+    if (!linked.ok) return [];
+    const severity = loadConfig(root).rules['PROP-LINK'];
+    return linked.components.flatMap((c) => propLinkViolations(rel, c, severity));
+  } catch {
+    return [];
+  }
+}
+
 export async function componentDescribe(root, rel, options = {}) {
   const p = pick(root, rel);
   if (p.fail) return p.fail;
   const result = await describeComponent(root, rel, options);
-  return { status: 200, body: { ...result, name: p.entry.name, feature: p.entry.feature } };
+  const propLinks = await propLinkFindings(root, rel, result);
+  return { status: 200, body: { ...result, name: p.entry.name, feature: p.entry.feature, propLinks } };
 }
 
-export function componentSource(root, rel) {
+/** #473 (PROP-LINK) diagnostics for one component file, in the same normalized shape
+ * `collectDiagnostics` returns (so the editor markers and the "N notes" summary line pick them
+ * up for free, no client change needed). Best-effort: never throws, `[]` on any error. */
+async function propLinkDiagnostics(root, rel, source) {
+  try {
+    const linked = await checkPropLinks(root, rel);
+    if (!linked.ok) return [];
+    const ruleConfig = loadConfig(root).rules['PROP-LINK'];
+    const lines = source.split('\n');
+    return linked.components.flatMap((c) => propLinkViolations(rel, c, ruleConfig)).map((v) => fromViolation(v, lines));
+  } catch {
+    return [];
+  }
+}
+
+export async function componentSource(root, rel) {
   const p = pick(root, rel);
   if (p.fail) return p.fail;
   const source = fs.readFileSync(p.real, 'utf8');
@@ -72,6 +105,7 @@ export function componentSource(root, rel) {
   } catch {
     /* a file that does not parse has no diagnostics we can compute; it still opens as plain text */
   }
+  diagnostics = [...diagnostics, ...(await propLinkDiagnostics(root, rel, source))];
   return { status: 200, body: { ok: true, path: rel, name: p.entry.name, feature: p.entry.feature, source, contentHash: hashOf(source), editable: Buffer.byteLength(source, 'utf8') <= MAX_EDIT_BYTES, diagnostics } };
 }
 
