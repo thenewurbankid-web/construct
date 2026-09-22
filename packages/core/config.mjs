@@ -149,6 +149,16 @@ export const DEFAULT_RULES = {
   // escape-hatch shape as 'READ-002-max-loc' above.
   'COMPONENT-006-max-depth': { name: "Override for COMPONENT-006's max JSX nesting depth", numeric: true },
   'COMPONENT-006-max-branches': { name: "Override for COMPONENT-006's max inline conditional/loop branch count", numeric: true },
+  // #505 -- mirrors COMPONENT-005/006 exactly, applied to the page layer instead of
+  // component (same detection helpers, packages/ast/jsxComplexity.mjs). Default severity is
+  // 'warning' for the same reason as COMPONENT-005/006: a real existing fixture
+  // (fixtures/frozen-presentation/project-bad/features/cpo/pages/CpoHome.tsx, a `.map()`
+  // render) already has inline loop logic in a page's JSX, so a silent 'error' default would
+  // have broken it -- exactly the non-additive breakage #500 phase 1 rules out.
+  'PAGE-008': { severity: 'warning', name: 'Pages cannot contain inline conditional/loop logic in JSX — must be a named @expression unit' },
+  'PAGE-009': { severity: 'warning', name: "Page-level JSX complexity budget (nesting depth / inline conditional-or-loop branch count), separate from any one Expression's own cap" },
+  'PAGE-009-max-depth': { name: "Override for PAGE-009's max JSX nesting depth", numeric: true },
+  'PAGE-009-max-branches': { name: "Override for PAGE-009's max inline conditional/loop branch count", numeric: true },
   // #503 (part of #500's Phase 1) -- the new `expression` layer's own rules (control-flow units
   // that wrap JSX nodes, per #499's design). Unlike COMPONENT-005/006, these default to 'error'
   // where they are structural (EXPR-001/004/005/006): no existing project has a
@@ -184,6 +194,16 @@ export const DEFAULT_RULES = {
   'SERVICE-001': { severity: 'error', name: 'Services own external effects' },
   'SERVICE-002': { severity: 'error', name: 'Services cannot import React/UI' },
   'DOMAIN-001': { severity: 'error', name: 'Domain is pure' },
+  // #506 -- an allowlist alternative to DOMAIN-001's name-based denylist, additive alongside
+  // it for now (#500 phase 1; removing DOMAIN-001 is phase 4 work). Default severity is
+  // 'off' deliberately: this is the "flag-gated alternate implementation" #506 asks for while
+  // it's unproven -- it is stricter than DOMAIN-001 in a way DOMAIN-001's own denylist fixture
+  // (features/bad/domain/Domain001.ts's `fetch('/x')`) already demonstrates (a genuine effect
+  // legitimately trips *both* rules at once), and turning it on by default would multiply
+  // every existing DOMAIN-001 violation into two without any project opting in. A project (or
+  // this repo's own dogfooding, once #506 is "proven" per #500 phase 2) turns it on with
+  // `rules: { DOMAIN-002: error }` (or 'warning') in architecture.yml.
+  'DOMAIN-002': { severity: 'off', name: 'Domain code may only reference its own parameters/local bindings, type-only imports, and a small set of JS built-ins (allowlist, not denylist)' },
   'SLICE-001': { severity: 'error', name: 'Feature internals are isolated' },
   'SLICE-002': { severity: 'error', name: 'Cross-feature imports use public index.ts' },
   'MODULE-001': { severity: 'error', name: 'One primary module per file' },

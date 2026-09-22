@@ -677,3 +677,143 @@ test('#504: PAGE-006 still fires for a plain hook import, and existing PAGE-006/
     [],
   );
 });
+
+// ---- #505: PAGE-008 (no inline JSX logic) / PAGE-009 (page complexity budget) ---------
+
+// PAGE-008 mirrors COMPONENT-005 exactly (same collectInlineJsxLogic helper), applied to the
+// page layer instead of component. Same three independent shapes as the COMPONENT-005 test.
+test('detectLayerViolations flags PAGE-008 for inline conditional/loop JSX, in each of its shapes', () => {
+  assert.deepEqual(
+    detectLayerViolations('page', `export function P(p){ return p.ok ? <A/> : <B/>; }`).map((v) => v.rule),
+    ['PAGE-008'],
+  );
+  assert.deepEqual(
+    detectLayerViolations('page', `export function P(p){ return <div>{p.ok && <A/>}</div>; }`).map((v) => v.rule),
+    ['PAGE-008'],
+  );
+  assert.deepEqual(
+    detectLayerViolations('page', `export function P(p){ return <ul>{p.items.map(i => <li key={i}>{i}</li>)}</ul>; }`).map((v) => v.rule),
+    ['PAGE-008'],
+  );
+});
+
+test('detectLayerViolations does NOT flag PAGE-008 for a .map() whose callback never returns JSX', () => {
+  const src = `export function P(p){ const ids = p.items.map(i => i.id); return <div>{ids.length}</div>; }`;
+  assert.deepEqual(detectLayerViolations('page', src), []);
+});
+
+// PAGE-009 mirrors COMPONENT-006 exactly (same computeJsxComplexity helper and default budget).
+test('detectLayerViolations flags PAGE-009 once the default JSX-nesting-depth budget is exceeded, with no inline logic present', () => {
+  const deep = '<div>'.repeat(7) + 'hi' + '</div>'.repeat(7);
+  const violations = detectLayerViolations('page', `export function P(){ return ${deep}; }`);
+  assert.deepEqual(violations.map((v) => v.rule), ['PAGE-009']);
+  assert.match(violations[0].message, /nesting depth 7/);
+});
+
+test('detectLayerViolations flags PAGE-009 once the default branch-count budget is exceeded (PAGE-008 also fires, independently)', () => {
+  const src = `export function P(p){ return <div>{p.a?<X/>:<Y/>}{p.b&&<Z/>}{p.c&&<W/>}{p.d&&<V/>}</div>; }`;
+  const rules = detectLayerViolations('page', src).map((v) => v.rule);
+  assert.deepEqual(rules.sort(), ['PAGE-008', 'PAGE-009']);
+});
+
+test('detectLayerViolations honors PAGE-009 opts overrides (maxJsxDepth/maxJsxBranches)', () => {
+  const src = `export function P(){ return <div><span/></div>; }`; // depth 2, 0 branches
+  assert.deepEqual(detectLayerViolations('page', src, { maxJsxDepth: 1 }).map((v) => v.rule), ['PAGE-009']);
+  assert.deepEqual(detectLayerViolations('page', src), []); // default budget (6) is not exceeded
+});
+
+test('validateArchitecture honors PAGE-009-max-depth/PAGE-009-max-branches overrides from architecture.yml', () => {
+  const dir = tmpProject();
+  fs.mkdirSync(path.join(dir, 'features', 'x', 'pages'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'features', 'x', 'pages', 'Deep.tsx'), `export function Deep(){ return <div><span/></div>; }\n`);
+  fs.appendFileSync(path.join(dir, 'architecture.yml'), 'rules:\n  PAGE-009-max-depth: 1\n');
+  const res = validateArchitecture(dir);
+  assert.ok(res.violations.some((v) => v.rule === 'PAGE-009' && v.file === 'features/x/pages/Deep.tsx'));
+});
+
+// PAGE-008/PAGE-009 default to 'warning' for the same reason COMPONENT-005/006 do (#508): a real,
+// pre-existing fixture already has inline loop logic in a page's JSX --
+// fixtures/frozen-presentation/project-bad's CpoHome.tsx (a `.map()` list render) -- so a silent
+// 'error' default would have broken it (exactly the non-additive breakage #500 phase 1 rules out).
+test('PAGE-008 defaults to warning severity: the real frozen-presentation CpoHome.tsx fixture already has an inline .map() render', () => {
+  const dir = path.join(REPO_ROOT, 'fixtures', 'frozen-presentation', 'project-bad');
+  const res = validateArchitecture(dir);
+  const v = res.violations.find((x) => x.rule === 'PAGE-008' && x.file === 'features/cpo/pages/CpoHome.tsx');
+  assert.ok(v, 'expected PAGE-008 to fire on CpoHome.tsx');
+  assert.equal(v.severity, 'warning');
+});
+
+
+// ---- #506: DOMAIN-002 (allowlist purity, additive alongside DOMAIN-001, flag-gated) ----
+
+// Off by default (DEFAULT_RULES) -- detectLayerViolations requires opts.domainPurityAllowlist
+// so every pre-existing call site (including the DOMAIN-001 tests above, which call
+// detectLayerViolations('domain', src) with no third argument) is completely unaffected.
+test('detectLayerViolations does not run DOMAIN-002 unless opts.domainPurityAllowlist is set', () => {
+  const src = `export function f(){ return document.title; }`;
+  assert.deepEqual(detectLayerViolations('domain', src).map((v) => v.rule), ['DOMAIN-001']);
+  assert.deepEqual(detectLayerViolations('domain', src, { domainPurityAllowlist: true }).map((v) => v.rule).sort(), ['DOMAIN-001', 'DOMAIN-002']);
+});
+
+// #492's false positive: DOMAIN-001's denylist still (unchanged, per #500 phase 1) flags a
+// parameter merely *named* document -- DOMAIN-002 does not, because it allows any of the
+// function's own parameters/local bindings regardless of name.
+test('DOMAIN-002 (#492 proof, false positive avoided): a parameter merely named "document" does not trip DOMAIN-002, though DOMAIN-001 still (unchanged) does', () => {
+  const src = `export function AddWidget(document, widget) { return { ...document, widgets: [...document.widgets, widget] }; }`;
+  const withAllowlist = detectLayerViolations('domain', src, { domainPurityAllowlist: true }).map((v) => v.rule);
+  assert.deepEqual(withAllowlist, ['DOMAIN-001'], 'DOMAIN-001 keeps its existing (buggy, unfixed-by-this-ticket) behavior');
+  assert.equal(withAllowlist.includes('DOMAIN-002'), false, 'DOMAIN-002 must not false-positive on a same-named parameter');
+});
+
+// A genuine effect still correctly flags under the new allowlist too, regardless of name.
+test('DOMAIN-002 (still-caught proof): a genuine document.querySelector(...) call is flagged', () => {
+  const src = `export function f(){ return document.querySelector('.x'); }`;
+  const rules = detectLayerViolations('domain', src, { domainPurityAllowlist: true }).map((v) => v.rule).sort();
+  assert.deepEqual(rules, ['DOMAIN-001', 'DOMAIN-002']);
+});
+
+// A value import used as a value is exactly the kind of effect DOMAIN-001's fixed name list
+// cannot see at all, but DOMAIN-002's allowlist catches regardless of what it's named.
+test('DOMAIN-002 catches a value import used as a value, which DOMAIN-001 cannot see by name', () => {
+  const src = `import { helper } from './helper';\nexport function f(x){ return helper(x); }`;
+  assert.deepEqual(detectLayerViolations('domain', src).map((v) => v.rule), []); // DOMAIN-001: nothing to see here
+  assert.deepEqual(detectLayerViolations('domain', src, { domainPurityAllowlist: true }).map((v) => v.rule), ['DOMAIN-002']);
+});
+
+// A type-only import used only in a type position is never a violation.
+test('DOMAIN-002 does not flag a type-only import used only as a type', () => {
+  const src = `import type { Foo } from './types';\nexport function f(x: Foo): Foo { return x; }`;
+  assert.deepEqual(detectLayerViolations('domain', src, { domainPurityAllowlist: true }), []);
+});
+
+// End-to-end through validateArchitecture: off by default (no architecture.yml override), and a
+// project can opt in via `rules: { DOMAIN-002: error }`. Also proves the false-positive-avoided
+// and still-caught cases survive the full config/severity pipeline, not just the pure detector.
+test('validateArchitecture: DOMAIN-002 is off by default and opt-in via architecture.yml (rules: DOMAIN-002: error)', () => {
+  const dir = tmpProject();
+  fs.mkdirSync(path.join(dir, 'features', 'x', 'domain'), { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, 'features', 'x', 'domain', 'AddWidget.ts'),
+    `export function AddWidget(document, widget) { return { ...document, widgets: [...document.widgets, widget] }; }\n`,
+  );
+  fs.writeFileSync(
+    path.join(dir, 'features', 'x', 'domain', 'RealEffect.ts'),
+    `export function f(){ return document.querySelector('.x'); }\n`,
+  );
+
+  const off = validateArchitecture(dir);
+  assert.equal(off.violations.some((v) => v.rule === 'DOMAIN-002'), false, 'DOMAIN-002 must be silent by default');
+  assert.ok(off.violations.some((v) => v.rule === 'DOMAIN-001' && v.file === 'features/x/domain/AddWidget.ts'), 'DOMAIN-001 keeps firing unchanged');
+
+  fs.appendFileSync(path.join(dir, 'architecture.yml'), 'rules:\n  DOMAIN-002: error\n');
+  const on = validateArchitecture(dir);
+  assert.equal(
+    on.violations.some((v) => v.rule === 'DOMAIN-002' && v.file === 'features/x/domain/AddWidget.ts'),
+    false,
+    'opting in must still not false-positive on the document-named parameter',
+  );
+  assert.ok(
+    on.violations.some((v) => v.rule === 'DOMAIN-002' && v.file === 'features/x/domain/RealEffect.ts' && v.severity === 'error'),
+    'opting in must still catch the genuine document.querySelector(...) effect',
+  );
+});

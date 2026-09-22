@@ -21,7 +21,7 @@ import { loadLayerGraph, canImport, classifyFile } from './architecture-graph.mj
 import { makeViolation, ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { walk, rel } from './fs.mjs';
 import { globToRegExp, matchGlob } from './glob.mjs';
-import { parseToAst, extractImports, extractExports, staticImportEntries, lineOf, collectCalls, collectBareIdentifierUsages, collectControlFlowNodes, collectInlineJsxLogic, computeJsxComplexity, walkAst } from '../../packages/ast/index.mjs';
+import { parseToAst, extractImports, extractExports, staticImportEntries, lineOf, collectCalls, collectBareIdentifierUsages, collectControlFlowNodes, collectInlineJsxLogic, computeJsxComplexity, walkAst, collectImpureDomainReferences } from '../../packages/ast/index.mjs';
 import { extractMachines } from '../../packages/engine/workflowExtractor.mjs';
 import { findHealthIssues } from '../../packages/engine/workflowScenarios.mjs';
 import { exceptionApplies, validateExceptionsShape, expiredExceptionViolations } from './exceptions.mjs';
@@ -40,6 +40,12 @@ const KNOWN_LAYERS = new Set(['route', 'controller', 'workflow', 'hook', 'servic
 // defaults, not a load-bearing constant sourced from anywhere else.
 const DEFAULT_COMPONENT_MAX_JSX_DEPTH = 6;
 const DEFAULT_COMPONENT_MAX_JSX_BRANCHES = 3;
+
+// #505 -- PAGE-009's budget, mirroring COMPONENT-006's defaults exactly (same numeric-override
+// mechanism, via 'PAGE-009-max-depth'/'PAGE-009-max-branches' in architecture.yml). A page's own
+// composing JSX is held to the same illustrative budget as a component's.
+const DEFAULT_PAGE_MAX_JSX_DEPTH = 6;
+const DEFAULT_PAGE_MAX_JSX_BRANCHES = 3;
 
 // #503 -- EXPR-002's default budget (overridable via architecture.yml's
 // 'EXPR-002-max-depth'/'EXPR-002-max-branches', same mechanism as COMPONENT-006's above).
@@ -162,9 +168,10 @@ function layerFolder(def) {
  *
  * @param {string} layer One of the known layer names.
  * @param {string} source The file's source text.
- * @param {{maxJsxDepth?: number, maxJsxBranches?: number}} [opts] COMPONENT-006's
- *   complexity budget overrides (#508) -- additive, optional; every existing
- *   call site that omits it keeps the built-in defaults.
+ * @param {{maxJsxDepth?: number, maxJsxBranches?: number, domainPurityAllowlist?: boolean}} [opts]
+ *   COMPONENT-006/PAGE-009's complexity budget overrides (#508/#505) and DOMAIN-002's opt-in
+ *   flag (#506) -- additive, optional; every existing call site that omits it keeps the
+ *   built-in defaults (and DOMAIN-002 off).
  */
 export function detectLayerViolations(layer, source, opts = {}) {
   const ast = parseToAst(source);
@@ -247,6 +254,30 @@ export function detectLayerViolations(layer, source, opts = {}) {
       rule: 'PAGE-006', line: lineOf(source, bannedHookImport.range[0]), message: 'Page imports a custom hook.',
       why: 'Pages cannot own application flow — hooks are wired in by a controller, not imported directly by a page (a Provider hook, named use<Name>Provider, or a tracked-state hook, named use<Name>State, are the two sanctioned exceptions).',
       expected: ['controller', 'workflow', 'a Provider hook (use<Name>Provider)', 'a tracked-state hook (use<Name>State)'],
+    });
+
+    // #505 -- PAGE-008: no inline conditional/loop logic in a page's JSX, mirroring
+    // COMPONENT-005 exactly (same detection helper, packages/ast/jsxComplexity.mjs's
+    // collectInlineJsxLogic -- reused verbatim, not reimplemented).
+    const inlinePageLogic = collectInlineJsxLogic(ast);
+    if (inlinePageLogic.length) out.push({
+      rule: 'PAGE-008', line: lineOf(source, inlinePageLogic[0].node.range[0]),
+      message: `Page contains inline ${inlinePageLogic[0].kind === 'loop' ? 'loop' : 'conditional'} logic in its JSX.`,
+      why: 'Conditional/loop rendering is control flow, not presentation — extract it into a named @expression unit so it stays visible, testable and reusable on its own.',
+      expected: ['@expression'],
+    });
+
+    // #505 -- PAGE-009: a page-level JSX complexity budget, mirroring COMPONENT-006
+    // exactly (same detection helper, computeJsxComplexity), separate from any one
+    // Expression's own cap.
+    const pageComplexity = computeJsxComplexity(ast);
+    const maxPageJsxDepth = opts.maxJsxDepth ?? DEFAULT_PAGE_MAX_JSX_DEPTH;
+    const maxPageJsxBranches = opts.maxJsxBranches ?? DEFAULT_PAGE_MAX_JSX_BRANCHES;
+    if (pageComplexity.maxDepth > maxPageJsxDepth || pageComplexity.branchCount > maxPageJsxBranches) out.push({
+      rule: 'PAGE-009', line: 1,
+      message: `Page's JSX is too complex (nesting depth ${pageComplexity.maxDepth}, ${pageComplexity.branchCount} inline conditional/loop branch${pageComplexity.branchCount === 1 ? '' : 'es'}; budget is depth ${maxPageJsxDepth}, ${maxPageJsxBranches} branches).`,
+      why: "A page-level complexity budget, separate from any one Expression's own cap, keeps a single page from growing into an unreviewable JSX tree.",
+      expected: ['smaller, composed components and/or @expression units'],
     });
   }
 
@@ -377,6 +408,34 @@ export function detectLayerViolations(layer, source, opts = {}) {
       why: 'Domain is pure by default.',
       expected: ['pure function'],
     });
+
+    // #506 -- DOMAIN-002: an allowlist alternative to DOMAIN-001's name-based denylist above,
+    // additive alongside it for now (#500 phase 1 -- removing DOMAIN-001 is phase 4 work, not
+    // this ticket). #492 showed the denylist false-positives on a parameter/local variable
+    // merely *named* document/window/fetch/etc, since it does no scope analysis; this check
+    // (packages/ast/domainPurity.mjs's collectImpureDomainReferences) instead allows only the
+    // function's own parameters/local bindings, type-only imports, and a small set of JS
+    // built-in globals -- anything else referenced as a real value is flagged regardless of
+    // its name, including effects DOMAIN-001's fixed name list can't see (a value import, an
+    // arbitrary undeclared global).
+    //
+    // Flag-gated (opts.domainPurityAllowlist, wired from config.rules['DOMAIN-002'] not being
+    // 'off' in validateArchitecture below) rather than unconditional: DOMAIN-002 is stricter
+    // than DOMAIN-001 in a way that already shows up on this repo's own DOMAIN-001 fixture (a
+    // genuine `fetch(...)` legitimately trips both rules at once), and detectLayerViolations is
+    // called directly, bypassing config/severity, by existing unit tests that assert an exact
+    // rule list for DOMAIN-001 -- gating inside detectLayerViolations itself (not only via
+    // pushViolation's severity check) is what keeps every one of those call sites byte-for-byte
+    // unchanged unless a project opts in.
+    if (opts.domainPurityAllowlist) {
+      const impureRef = collectImpureDomainReferences(ast)[0];
+      if (impureRef) out.push({
+        rule: 'DOMAIN-002', line: lineOf(source, impureRef.index),
+        message: `Domain code references "${impureRef.name}", which is not one of its own parameters/local bindings, a type-only import, or a built-in.`,
+        why: 'Domain is pure by default — an allowlist (own parameters/local bindings, type-only imports, a small set of JS built-ins) catches any external reference regardless of its name, unlike a fixed denylist of banned names.',
+        expected: ['pure function'],
+      });
+    }
   }
 
   // HOOK-002 (#510) -- the first real rule the `hook` layer has (see the module doc comment
@@ -654,6 +713,14 @@ export function validateArchitecture(root, opts = {}) {
     exprMaxJsxDepth: config.rules['EXPR-002-max-depth']?.value,
     exprMaxJsxBranches: config.rules['EXPR-002-max-branches']?.value,
   };
+  // #505 -- PAGE-009's budget override, mirroring COMPONENT-006's above exactly.
+  const pageComplexityOpts = {
+    maxJsxDepth: config.rules['PAGE-009-max-depth']?.value,
+    maxJsxBranches: config.rules['PAGE-009-max-branches']?.value,
+  };
+  // #506 -- DOMAIN-002 only runs once a project opts in (severity isn't the DEFAULT_RULES
+  // 'off') -- see the flag-gating note on DOMAIN-002 in detectLayerViolations above.
+  const domainPurityAllowlist = config.rules['DOMAIN-002']?.severity !== 'off';
   let frozenIndex = null;
   for (const abs of files) {
     if (!FILE_EXTENSIONS.has(path.extname(abs)) || !fs.existsSync(abs)) continue;
@@ -669,7 +736,9 @@ export function validateArchitecture(root, opts = {}) {
       continue;
     }
     const source = fs.readFileSync(abs, 'utf8');
-    for (const desc of detectLayerViolations(layer, source, componentComplexityOpts)) {
+    const complexityOpts = layer === 'page' ? pageComplexityOpts : componentComplexityOpts;
+    const layerOpts = { ...complexityOpts, domainPurityAllowlist };
+    for (const desc of detectLayerViolations(layer, source, layerOpts)) {
       pushViolation(config, out, { ...desc, file: r });
     }
     if (frozenGlobs.length && FROZEN_RULE_BY_LAYER[layer]) {
