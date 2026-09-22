@@ -143,6 +143,106 @@ test('fixture soc-god-file: exactly one MODULE-001 violation fires', () => {
 });
 
 // ---------------------------------------------------------------------------
+// SLICE-004 (#509) — cross-feature component/provider re-export must be a distinct wrapper
+// ---------------------------------------------------------------------------
+test('SLICE-004 (regression): the existing SLICE-002 fixtures (soc-clean, soc-cross-feature) fire zero SLICE-004 violations', () => {
+  // soc-clean re-exports a plain (non-Provider) hook (`export * from './hooks/useAlpha'`) --
+  // a pre-existing, legitimate pattern that must stay untouched.
+  assert.deepEqual(
+    validateSeparationOfConcerns(path.join(fixturesRoot, 'soc-clean')).violations.filter((v) => v.rule === 'SLICE-004'),
+    [],
+  );
+  assert.deepEqual(
+    validateSeparationOfConcerns(path.join(fixturesRoot, 'soc-cross-feature')).violations.filter((v) => v.rule === 'SLICE-004'),
+    [],
+  );
+  // and soc-cross-feature's own SLICE-002 case still fires exactly as before (unchanged).
+  const r = validateSeparationOfConcerns(path.join(fixturesRoot, 'soc-cross-feature'));
+  assert.equal(r.violations.length, 1);
+  assert.equal(r.violations[0].rule, 'SLICE-002');
+});
+
+test('SLICE-004: a direct re-export of an internal component from index.ts is flagged', () => {
+  const d = tmpProject();
+  scaffoldFeature(d, 'alpha');
+  writeFile(d, 'features/alpha/index.ts', `export { InternalThing } from './components/InternalThing';\n`);
+  writeFile(d, 'features/alpha/components/InternalThing.tsx', `export function InternalThing() { return null; }\n`);
+  const r = validateSeparationOfConcerns(d);
+  const v = r.violations.filter((x) => x.rule === 'SLICE-004');
+  assert.equal(v.length, 1);
+  assert.equal(v[0].file, 'features/alpha/index.ts');
+  assert.match(v[0].message, /InternalThing/);
+});
+
+test('SLICE-004: aliasing the raw internal component under a different exported name is STILL flagged', () => {
+  const d = tmpProject();
+  scaffoldFeature(d, 'alpha');
+  writeFile(d, 'features/alpha/index.ts', `export { InternalThing as SharedThing } from './components/InternalThing';\n`);
+  writeFile(d, 'features/alpha/components/InternalThing.tsx', `export function InternalThing() { return null; }\n`);
+  const r = validateSeparationOfConcerns(d);
+  const v = r.violations.filter((x) => x.rule === 'SLICE-004');
+  assert.equal(v.length, 1);
+  assert.match(v[0].message, /SharedThing/);
+});
+
+test('SLICE-004: a bare local alias (import then re-export the same reference, no wrapping) is STILL flagged', () => {
+  const d = tmpProject();
+  scaffoldFeature(d, 'alpha');
+  writeFile(
+    d,
+    'features/alpha/index.ts',
+    `import { InternalThing } from './components/InternalThing';\nexport const SharedThing = InternalThing;\n`,
+  );
+  writeFile(d, 'features/alpha/components/InternalThing.tsx', `export function InternalThing() { return null; }\n`);
+  const r = validateSeparationOfConcerns(d);
+  const v = r.violations.filter((x) => x.rule === 'SLICE-004');
+  assert.equal(v.length, 1);
+  assert.match(v[0].message, /SharedThing/);
+});
+
+test('SLICE-004: a distinct wrapper function (a genuinely new function that wraps the internal unit) PASSES', () => {
+  const d = tmpProject();
+  scaffoldFeature(d, 'alpha');
+  writeFile(
+    d,
+    'features/alpha/index.ts',
+    `import { InternalThing } from './components/InternalThing';\nexport const SharedThing = (props) => InternalThing(props);\n`,
+  );
+  writeFile(d, 'features/alpha/components/InternalThing.tsx', `export function InternalThing(props) { return props; }\n`);
+  const r = validateSeparationOfConcerns(d);
+  assert.deepEqual(r.violations.filter((x) => x.rule === 'SLICE-004'), []);
+});
+
+test('SLICE-004: an ordinary (non-Provider) hook re-exported directly from hooks/ is NOT flagged (matches the existing soc-clean pattern)', () => {
+  const d = tmpProject();
+  scaffoldFeature(d, 'alpha');
+  writeFile(d, 'features/alpha/index.ts', `export * from './hooks/useAlpha';\n`);
+  writeFile(d, 'features/alpha/hooks/useAlpha.ts', `export function useAlpha() { return {}; }\n`);
+  const r = validateSeparationOfConcerns(d);
+  assert.deepEqual(r.violations.filter((x) => x.rule === 'SLICE-004'), []);
+});
+
+test('SLICE-004: a Provider hook (use<Name>Provider) re-exported directly IS flagged', () => {
+  const d = tmpProject();
+  scaffoldFeature(d, 'alpha');
+  writeFile(d, 'features/alpha/index.ts', `export { useCartProvider } from './hooks/useCartProvider';\n`);
+  writeFile(d, 'features/alpha/hooks/useCartProvider.ts', `export function useCartProvider() { return {}; }\n`);
+  const r = validateSeparationOfConcerns(d);
+  const v = r.violations.filter((x) => x.rule === 'SLICE-004');
+  assert.equal(v.length, 1);
+  assert.match(v[0].message, /useCartProvider/);
+});
+
+test('SLICE-004: a wildcard re-export of a Provider hook file IS flagged, keyed off the file name', () => {
+  const d = tmpProject();
+  scaffoldFeature(d, 'alpha');
+  writeFile(d, 'features/alpha/index.ts', `export * from './hooks/useCartProvider';\n`);
+  writeFile(d, 'features/alpha/hooks/useCartProvider.ts', `export function useCartProvider() { return {}; }\n`);
+  const r = validateSeparationOfConcerns(d);
+  assert.equal(r.violations.filter((x) => x.rule === 'SLICE-004').length, 1);
+});
+
+// ---------------------------------------------------------------------------
 // SLICE-001 — feature-root/skeleton existence
 // ---------------------------------------------------------------------------
 test('SLICE-001: missing features root is reported with a create-feature suggestion', () => {

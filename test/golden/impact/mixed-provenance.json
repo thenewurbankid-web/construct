@@ -10,7 +10,7 @@
       "maxSeeds": 100
     }
   },
-  "summary": "Impact of domain:features/billing/domain/billingRules.ts, feature:checkout: 3 feature(s) (checkout, billing, shared), 14 file(s) across 8 layer(s), depth 2; 2 warning(s); 0 rule error(s), 0 rule warning(s); 11 entry/entries inferred rather than derived.",
+  "summary": "Impact of domain:features/billing/domain/billingRules.ts, feature:checkout: 3 feature(s) (checkout, billing, shared), 14 file(s) across 8 layer(s), depth 2; 2 warning(s); 1 rule error(s), 0 rule warning(s); 11 entry/entries inferred rather than derived.",
   "seeds": [
     {
       "index": 0,
@@ -648,10 +648,18 @@
     }
   ],
   "rules": {
-    "violations": [],
+    "violations": [
+      {
+        "rule": "SLICE-004",
+        "severity": "error",
+        "file": "features/shared/index.ts",
+        "line": 5,
+        "message": "\"CurrencyLabel\" is re-exported directly from components/ without a distinct wrapper."
+      }
+    ],
     "exceptions": [],
     "counts": {
-      "error": 0,
+      "error": 1,
       "warning": 0
     },
     "layerConstraints": [
@@ -772,6 +780,11 @@
       "ref": "file:features/checkout/workflows/CheckoutWorkflow.ts",
       "why": "A workflow state machine is implicated — check its scenarios",
       "cli": "construct research workflow checkout"
+    },
+    {
+      "ref": "rule:SLICE-004",
+      "why": "The implicated files already violate a rule",
+      "cli": "construct validate"
     }
   ]
 }

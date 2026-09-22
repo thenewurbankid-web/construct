@@ -139,6 +139,9 @@ export const DEFAULT_RULES = {
   'DRY-001': { severity: 'warning', name: 'Business knowledge has one source of truth' },
   'SOC-001': { severity: 'error', name: 'Every responsibility has an architectural owner' },
   'SLICE-003': { severity: 'warning', name: 'Public API (index.ts) stays in sync with actual feature exports' },
+  // #509 -- a component or Provider re-exported cross-feature must be a distinct wrapper, not a
+  // raw re-export/alias of the internal unit (the release point for sharing, per #499).
+  'SLICE-004': { severity: 'error', name: 'Cross-feature component/provider re-exports must be a distinct wrapper' },
   'READ-001': { severity: 'error', name: 'Components/controllers are PascalCase; hooks are use-prefixed camelCase' },
   'READ-002': { severity: 'error', name: 'Files and functions stay under their length threshold' },
   'READ-003': { severity: 'warning', name: 'Public API exports document intent with JSDoc' },

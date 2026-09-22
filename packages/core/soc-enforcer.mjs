@@ -153,6 +153,151 @@ function checkCrossFeatureImports(config, out, root, featuresRoot, relFile, src)
 }
 
 // ---------------------------------------------------------------------------
+// SLICE-004 (#509/#500 phase 1) — a component or provider re-exported from a feature's index.ts
+// for cross-feature use must be a distinct wrapper, not a raw re-export/alias of the internal
+// unit. Extends this file's existing index.ts-export-parsing machinery (parseIndexExports /
+// isPublicPath, above) rather than building a parallel mechanism -- reads the SAME index.ts source
+// through the real AST (parseToAst, already used by countPrimaryExports below) to tell "this export
+// forwards the internal function/component AS-IS" from "this export is a genuinely new function
+// that happens to wrap it".
+//
+// Scope: EVERY `components/` export is in scope (a component is always the release point #509
+// describes). A `hooks/` export is in scope only when it looks like a Provider (`use<Name>Provider`,
+// the same naming convention architecture-enforcer.mjs's HOOK-002/PAGE-006 rely on) -- an ordinary
+// hook re-exported directly is a pre-existing, legitimate pattern (see fixtures/soc-clean's
+// `export * from './hooks/useAlpha'`) and stays untouched.
+const PROVIDER_HOOK_NAME_RE = /^use[A-Z]\w*Provider$/;
+const isProviderHookName = (name) => typeof name === 'string' && PROVIDER_HOOK_NAME_RE.test(name);
+const specifierBaseName = (specifier) => (specifier.split('/').pop() || '').replace(/\.(tsx?|jsx?)$/, '');
+
+/** 'components' | 'hooks' | null — which internal-unit folder of the CURRENT feature a resolved,
+ * feature-relative specifier path (see resolveSpecifier) sits under. */
+function internalUnitKind(resolved, featuresRoot) {
+  const m = resolved && resolved.match(new RegExp(`^${escapeRegex(featuresRoot)}/[^/]+/(components|hooks)/`));
+  return m ? m[1] : null;
+}
+
+/** Does SLICE-004 apply to an export whose origin is `origin` (`{kind, baseName}`), given `name`
+ * (the specific exported/local identifier, when one applies)? See the scope note above. */
+function slice004Applies(origin, name) {
+  if (!origin) return false;
+  if (origin.kind === 'components') return true;
+  return isProviderHookName(name) || isProviderHookName(origin.baseName);
+}
+
+function checkDistinctWrapperExports(config, out, root, featuresRoot, relFile, src) {
+  let ast;
+  try {
+    ast = parseToAst(src);
+  } catch {
+    return; // a syntax error is reported elsewhere, not as a SLICE-004 finding
+  }
+
+  const report = (exportedName, kind, line) => pushViolation(config, out, {
+    rule: 'SLICE-004',
+    file: relFile,
+    line,
+    message: `"${exportedName}" is re-exported directly from ${kind}/ without a distinct wrapper.`,
+    why: 'A component or provider shared across features must go through a distinct wrapper at the public boundary, so the internal unit stays free to change without breaking outside consumers.',
+    expected: [`export const ${exportedName} = (props) => <Internal {...props} /> // a real wrapping function`],
+    suggestedFix: `Wrap the ${kind === 'hooks' ? 'provider hook' : 'component'} in a distinct function in ${relFile} instead of re-exporting it directly.`,
+  });
+
+  // local binding name -> its import origin, for every plain (value) import resolving under this
+  // feature's components/ or hooks/.
+  const importOrigin = new Map();
+  for (const node of ast.body) {
+    if (node.type !== 'ImportDeclaration' || node.importKind === 'type') continue;
+    const resolved = resolveSpecifier(relFile, node.source.value, featuresRoot);
+    const kind = internalUnitKind(resolved, featuresRoot);
+    if (!kind) continue;
+    const baseName = specifierBaseName(node.source.value);
+    for (const spec of node.specifiers) {
+      if (spec.type === 'ImportSpecifier' || spec.type === 'ImportDefaultSpecifier') {
+        importOrigin.set(spec.local.name, { kind, baseName });
+      }
+    }
+  }
+
+  // Top-level `const X = <init>` initializers, to trace a bare `export { B }` (no `from`) back to
+  // what B was actually declared as.
+  const localInit = new Map();
+  for (const node of ast.body) {
+    if (node.type === 'VariableDeclaration') {
+      for (const d of node.declarations) {
+        if (d.id.type === 'Identifier') localInit.set(d.id.name, d.init);
+      }
+    }
+  }
+
+  const isWrapperFn = (node) => node && (node.type === 'ArrowFunctionExpression' || node.type === 'FunctionExpression');
+
+  /** Resolve `name` to its ultimate import origin ONLY through a bare alias chain (Identifier ->
+   * Identifier -> ... -> an import) with no wrapping function anywhere along the way -- a real
+   * function found at any point means "distinct wrapper", so tracing stops (returns null) there. */
+  function aliasOrigin(name, seen = new Set()) {
+    if (seen.has(name)) return null;
+    seen.add(name);
+    if (importOrigin.has(name)) return importOrigin.get(name);
+    const init = localInit.get(name);
+    if (init && init.type === 'Identifier') return aliasOrigin(init.name, seen);
+    return null; // undeclared, or a real (non-alias) value -- e.g. a wrapper function
+  }
+
+  for (const node of ast.body) {
+    if (node.type === 'ExportAllDeclaration') {
+      const resolved = resolveSpecifier(relFile, node.source.value, featuresRoot);
+      const kind = internalUnitKind(resolved, featuresRoot);
+      if (!kind) continue;
+      const baseName = specifierBaseName(node.source.value);
+      if (slice004Applies({ kind, baseName }, baseName)) report(baseName, kind, node.loc.start.line);
+      continue;
+    }
+
+    if (node.type !== 'ExportNamedDeclaration') continue;
+    const line = node.loc.start.line;
+
+    if (node.source) {
+      // `export { A as B } from '...'` / `export { A } from '...'` -- a from-export can never be
+      // a wrapper (the syntax has no room to call anything); it is always a bare forward.
+      const resolved = resolveSpecifier(relFile, node.source.value, featuresRoot);
+      const kind = internalUnitKind(resolved, featuresRoot);
+      if (!kind) continue;
+      const baseName = specifierBaseName(node.source.value);
+      for (const spec of node.specifiers || []) {
+        const originName = spec.local?.name;
+        const exportedName = spec.exported?.name ?? spec.exported?.value ?? originName;
+        if (slice004Applies({ kind, baseName }, originName)) report(exportedName, kind, line);
+      }
+      continue;
+    }
+
+    if (node.declaration?.type === 'VariableDeclaration') {
+      // `export const B = <init>;`
+      for (const d of node.declaration.declarations) {
+        if (d.id.type !== 'Identifier' || isWrapperFn(d.init)) continue; // a real wrapper -- passes
+        if (d.init?.type === 'Identifier') {
+          const origin = aliasOrigin(d.init.name);
+          if (slice004Applies(origin, d.init.name)) report(d.id.name, origin.kind, line);
+        }
+      }
+      continue;
+    }
+
+    if (node.specifiers?.length) {
+      // `export { A }` / `export { A as B };` (no `from` -- refers to a local binding)
+      for (const spec of node.specifiers) {
+        const localName = spec.local?.name;
+        if (!localName) continue;
+        const exportedName = spec.exported?.name ?? spec.exported?.value ?? localName;
+        const origin = aliasOrigin(localName);
+        if (slice004Applies(origin, localName)) report(exportedName, origin.kind, line);
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Epic 2.2 — Module Cohesion Enforcer
 // ---------------------------------------------------------------------------
 /** Names bound by a declaration pattern (`const { a, b: c } = x`, `const [d] = y`). */
@@ -399,6 +544,7 @@ export function validateSeparationOfConcerns(root) {
     const src = fs.readFileSync(p, 'utf8');
     checkCrossFeatureImports(config, out, root, featuresRoot, r, src);
     checkModuleCohesion(config, out, r, src);
+    if (path.basename(r) === 'index.ts') checkDistinctWrapperExports(config, out, root, featuresRoot, r, src);
   }
   for (const name of featureNames) checkOwnership(config, out, root, featuresRoot, name);
   checkDuplication(config, out, root, featuresRoot, featureFiles);
