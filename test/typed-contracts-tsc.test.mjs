@@ -61,6 +61,26 @@ test('the Provider usage examples (examples/providers.ts) compile with zero tsc 
   assert.ok(ok, `expected examples/providers.ts to compile clean; tsc said:\n${output}`);
 });
 
+// #503 -- the Expression usage example (a real defineExpression composing a component and
+// consuming `children`) compiles with zero tsc errors, same bar as examples/valid.ts.
+test('the Expression usage example (examples/expression.ts) compiles with zero tsc errors', () => {
+  const { ok, output } = tsc([
+    path.join(TYPED_CONTRACTS, 'jsx-global.d.ts'),
+    path.join(TYPED_CONTRACTS, 'examples', 'expression.ts'),
+  ]);
+  assert.ok(ok, `expected examples/expression.ts to compile clean; tsc said:\n${output}`);
+});
+
+// #504 -- the useTrackedState usage example (a real use<Name>State hook built through it)
+// compiles with zero tsc errors.
+test('the tracked-state usage example (examples/tracked-state.ts) compiles with zero tsc errors', () => {
+  const { ok, output } = tsc([
+    path.join(TYPED_CONTRACTS, 'jsx-global.d.ts'),
+    path.join(TYPED_CONTRACTS, 'examples', 'tracked-state.ts'),
+  ]);
+  assert.ok(ok, `expected examples/tracked-state.ts to compile clean; tsc said:\n${output}`);
+});
+
 test('wiring a ServiceUnit into definePage\'s Props is a real tsc error (TS2344), not a silent pass', () => {
   const { ok, output } = tsc([
     path.join(TYPED_CONTRACTS, 'jsx-global.d.ts'),
@@ -75,6 +95,9 @@ test('wiring a ServiceUnit into definePage\'s Props is a real tsc error (TS2344)
   assert.match(output, /Type 'BadComponentProps' does not satisfy the constraint 'Forbid<BadComponentProps, ComponentUnitAny>'/);
   // #510 -- BadProviderProps (defineProvider <- an arbitrary other hook, not workflow/service/domain)
   assert.match(output, /Type 'BadProviderProps' does not satisfy the constraint 'Forbid<BadProviderProps, ProviderAllowed>'/);
+  // #503 -- BadExpressionProps (defineExpression <- ServiceUnit, same forbidden set as
+  // definePage's -- Forbid<Props, ComponentUnitAny>, mirroring component's own canImport).
+  assert.match(output, /Type 'BadExpressionProps' does not satisfy the constraint 'Forbid<BadExpressionProps, ComponentUnitAny>'/);
 });
 
 test('a Template with a code path that falls off the end (implicit undefined) is a real tsc error (TS7030)', () => {
@@ -84,6 +107,18 @@ test('a Template with a code path that falls off the end (implicit undefined) is
   ]);
   assert.equal(ok, false, 'expected examples/implicit-return.ts to fail to compile');
   assert.match(output, /examples[\\/]implicit-return\.ts\(\d+,\d+\): error TS7030: Not all code paths return a value\./);
+});
+
+// #503 -- EXPR-006's "must satisfy the shared Template<Props> type" as a real tsc error, the
+// same TS7030 proof as above, now for defineExpression's own Template shape (Props &
+// {children?: ReactNode}).
+test('EXPR-006: an Expression with a code path that falls off the end is a real tsc error (TS7030), not just claimed', () => {
+  const { ok, output } = tsc([
+    path.join(TYPED_CONTRACTS, 'jsx-global.d.ts'),
+    path.join(TYPED_CONTRACTS, 'examples', 'expression-implicit-return.ts'),
+  ]);
+  assert.equal(ok, false, 'expected examples/expression-implicit-return.ts to fail to compile');
+  assert.match(output, /examples[\\/]expression-implicit-return\.ts\(\d+,\d+\): error TS7030: Not all code paths return a value\./);
 });
 
 test('the whole typed-contracts project (its own tsconfig.json) compiles with zero errors', () => {

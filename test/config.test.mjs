@@ -122,7 +122,7 @@ test('layersForFramework returns the react-spa route pattern with everything els
   const layers = layersForFramework('react-spa');
   assert.equal(layers.route.pattern, 'src/App.tsx');
   assert.deepEqual(layers.route.canImport, DEFAULT_LAYERS.route.canImport);
-  for (const layer of ['controller', 'workflow', 'hook', 'service', 'domain', 'page', 'component']) {
+  for (const layer of ['controller', 'workflow', 'hook', 'service', 'domain', 'page', 'component', 'expression']) {
     assert.deepEqual(layers[layer], DEFAULT_LAYERS[layer]);
   }
 });

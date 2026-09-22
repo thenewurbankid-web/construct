@@ -133,6 +133,31 @@ test('defineProvider: ProviderComponent computes fn(props) and threads it into t
   assert.equal(element.props.children, 'child-marker');
 });
 
+// #503 -- defineExpression is a real, callable factory in the same family as every other
+// defineX: attaches unitName/unitLayer, names the real function, and actually runs `fn`.
+test('defineExpression returns a callable function with unitName/unitLayer("expression") attached, and runs its fn', { skip }, () => {
+  const { defineExpression } = typedContracts;
+  const ShowBadge = defineExpression('ShowBadge', (props) => (props.active ? props.children : null));
+  assert.equal(typeof ShowBadge, 'function');
+  assert.equal(ShowBadge.name, 'ShowBadge');
+  assert.equal(ShowBadge.unitName, 'ShowBadge');
+  assert.equal(ShowBadge.unitLayer, 'expression');
+  assert.equal(ShowBadge({ active: true, children: 'child-marker' }), 'child-marker');
+  assert.equal(ShowBadge({ active: false, children: 'child-marker' }), null);
+});
+
+// #504 -- useTrackedState itself calls React.useState, a real hook -- exactly like
+// defineProvider's own useProvider() (see typed-contracts-tsc.test.mjs's comment on
+// defineProvider), it can only be exercised for real inside an active React render pass, which
+// a plain node:test process has no way to provide. Proven here only as a real, named,
+// importable export; its actual stateful behavior is proven at the type level
+// (examples/tracked-state.ts, test/typed-contracts-tsc.test.mjs).
+test('useTrackedState is exported as a real, named function (its stateful behavior needs a live React render, proven at the type level instead)', { skip }, () => {
+  const { useTrackedState } = typedContracts;
+  assert.equal(typeof useTrackedState, 'function');
+  assert.equal(useTrackedState.name, 'useTrackedState');
+});
+
 test('two units of different layers built from structurally identical functions stay runtime-distinguishable via unitLayer', { skip }, () => {
   // The brand itself has zero runtime footprint (by design -- see brand.ts);
   // `unitLayer` is what lets runtime tooling recover the same distinction

@@ -75,6 +75,10 @@
       "component": [
         "component",
         "types"
+      ],
+      "expression": [
+        "component",
+        "types"
       ]
     },
     "rules": {
@@ -113,7 +117,7 @@
   ],
   "budget": {
     "maxTokens": 2000,
-    "estimatedTokens": 347,
+    "estimatedTokens": 356,
     "truncated": false
   }
 }

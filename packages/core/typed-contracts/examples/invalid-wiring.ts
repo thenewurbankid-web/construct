@@ -3,7 +3,7 @@
 // compiled on its own by test/typed-contracts-tsc.test.mjs, which asserts
 // on the actual `tsc` diagnostics produced (not just "some error happened").
 import * as React from 'react';
-import { defineService, definePage, defineComponent, defineProvider, type PropRef, type HookUnitAny } from '../index.ts';
+import { defineService, definePage, defineComponent, defineProvider, defineExpression, type PropRef, type HookUnitAny } from '../index.ts';
 
 const fetchUser = defineService<{ id: string }, Promise<{ id: string }>>('fetchUser', async ({ id }) => ({ id }));
 
@@ -40,3 +40,15 @@ void BadComponent;
 interface BadProviderProps { other: typeof someOtherHook }
 const BadProvider = defineProvider<BadProviderProps, string>('BadProvider', ({ other }) => other('x'));
 void BadProvider;
+
+// A fourth, independent illegal wiring (#503): an Expression's own Props may only reference
+// component units (mirrors DEFAULT_LAYERS.expression.canImport = ['component', 'types'],
+// deliberately identical to component's own canImport) -- never a ServiceUnit.
+// `defineExpression`'s own generic constraint (`Forbid<Props, ComponentUnitAny>`,
+// factories.ts) rejects this BadExpressionProps at the `defineExpression<BadExpressionProps>(...)`
+// call site below.
+interface BadExpressionProps { fetchUser: typeof fetchUser }
+const BadExpression = defineExpression<BadExpressionProps>('BadExpression', (props) =>
+  React.createElement('span', null, String(props.fetchUser)),
+);
+void BadExpression;

@@ -15,6 +15,7 @@
 // CONTROLLER-001, WORKFLOW-001, SERVICE-002, PAGE-004, DOMAIN-001, ...)
 // keep running completely unchanged, whether or not a project uses any of
 // this.
+import type { ReactNode } from 'react';
 import type { Template } from './template.ts';
 import type {
   AnyUnit,
@@ -24,6 +25,7 @@ import type {
   ControllerUnitAny,
   DomainUnit,
   DomainUnitAny,
+  ExpressionUnit,
   Forbid,
   HookUnitAny,
   PageUnit,
@@ -89,6 +91,21 @@ export function definePage<Props extends Forbid<Props, ComponentUnitAny>>(
   fn: Template<Props>,
 ): PageUnit<Props> {
   return tagUnit(name, fn, 'page');
+}
+
+// ---- expression (#503) -------------------------------------------------
+// Mirrors DEFAULT_LAYERS.expression.canImport = ['component', 'types'] (config.mjs) --
+// deliberately identical to component's own canImport above, per #503's brief ("mirrors
+// component's own canImport"): an Expression may compose component units, never
+// workflow/service/domain/controller. `fn`'s signature is `Template<Props & {children?:
+// ReactNode}>` (also baked into `ExpressionUnit` itself, units.ts) -- EXPR-005's "must accept
+// children and return JSX" as a real `tsc`-checked call-site shape, not just a convention.
+
+export function defineExpression<Props extends Forbid<Props, ComponentUnitAny>>(
+  name: string,
+  fn: Template<Props & { children?: ReactNode }>,
+): ExpressionUnit<Props> {
+  return tagUnit(name, fn, 'expression');
 }
 
 // ---- controller --------------------------------------------------------
