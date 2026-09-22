@@ -83,6 +83,40 @@ node tools/api-coverage/check.mjs --report   # lists every exported function/cla
 node tools/api-coverage/check.mjs --update   # rewrites the baseline; refuses to raise it
 ```
 
+## CLI reference (slice 4, #467)
+
+`site/lib/cliCommands.mjs`'s `collectCliCommands()` reads the CLI's real command registry — `src/repl.mjs`'s
+`HELP_TOPICS`/`TOPIC_ORDER` (the exact text `construct repl`'s own `help`/`help <topic>` prints, reused verbatim
+rather than re-derived) for every command with an interactive equivalent, plus a JSDoc-derived description/usage
+for the four dispatched commands that have none (`review`, `test`, `template`, `pipeline`) — and renders it as
+one page, `developers/api/cli/`. `dispatchedCommandNames()` parses `bin/construct.mjs`'s own `cmd === '...'`
+checks and `site/test/cliCommands.test.mjs` asserts every dispatched command has a reference entry, so the page
+cannot silently fall behind a new command.
+
+## Versioned build, manifest, and `construct summarize` links (slice 5, #468)
+
+- **Versioned build**: no extra wiring needed. `site/build-all.mjs`'s `buildRef()` runs each ref's own
+  `site/build.mjs` with no `--no-api`, and the CLI defaults `api` to `true` (every package) when neither
+  `--api`/`--no-api` is passed — so `/<X.Y>/` and `/next/` already carry the full API reference (TypeDoc
+  packages, the REST reference, the CLI reference), each with the version switcher/banner like the rest of the
+  site. Verified manually: a `--base-path`/`--version` build shows `ver-switch`/`ver-banner` markup on both a
+  REST group page and the CLI reference page.
+- **`api-manifest.json`**: written at the root of every build that has `api` on (omitted when `api` is off), a
+  flat JSON list of every package/module/REST-group/CLI-reference URL this build produced (`{version, basePath,
+  generatedAt, packages: [{id, title, path, url, modules: [{name, path, url}]}], cockpitServerRest: {path, url,
+  groups: [{group, path, url, routeCount}]}, cli: {path, url, commandCount}}`). Trinity is a Claude Artifact
+  outside this repo and cannot run this generator itself; this manifest is the data a future Trinity refresh
+  reads instead. `site/build-all.mjs` writes one per ref build (so `/<X.Y>/api-manifest.json`,
+  `/next/api-manifest.json`, ...).
+- **`construct summarize` links**: `src/docsPackages.mjs` maps a source path onto Construct's own package pages
+  — meaningful ONLY inside a checkout of this repository (it looks for `docs/API-DOCS.md` + `site/build.mjs` at
+  an ancestor directory as its "this is Construct itself" signal); an ordinary target project gets no link, ever.
+  `src/summarize.mjs`'s compact/prose/md human-readable formats append a `View docs: developers/api/<pkg>/` line
+  per feature when its directory falls under one of the packages `docs/API-DOCS.md` documents (dogfooding
+  `ui/client`'s features, for example, links to `cockpit-client-features`). `PACKAGES` in `docsPackages.mjs`
+  duplicates `API_PACKAGES`' id/dirs from `site/lib/apiDocs.mjs` rather than importing it (the CLI core does not
+  depend on the doc generator); `test/docsPackages.test.mjs` keeps the two lists in sync.
+
 ## Known limits
 
 - Package versions in `package.json` (root is still `1.0.0`) are what pages show when `--version` is not passed; release

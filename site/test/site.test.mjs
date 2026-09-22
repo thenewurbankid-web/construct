@@ -231,6 +231,25 @@ test('API reference: Cockpit server REST reference and CLI command reference are
   fs.rmSync(out, { recursive: true });
 });
 
+test('api-manifest.json: every package/module/REST group/CLI URL a future Trinity refresh needs, omitted without --api', async () => {
+  const out = makeTempDir('site-api-manifest-test-');
+  await build({ out, repo: 'o/r', buildTime: BUILD_TIME, version: '0.9', api: ['core', 'cockpit-server', 'cli'] });
+  const manifest = JSON.parse(fs.readFileSync(path.join(out, 'api-manifest.json'), 'utf8'));
+  assert.equal(manifest.version, 'v0.9');
+  const core = manifest.packages.find((p) => p.id === 'core');
+  assert.equal(core.url, 'https://o.github.io/r/developers/api/core/');
+  assert.ok(core.modules.length > 5);
+  assert.ok(core.modules.every((m) => m.url.startsWith(core.url)));
+  assert.equal(manifest.cockpitServerRest.groups.find((g) => g.group === 'processes').routeCount > 0, true);
+  assert.equal(manifest.cli.commandCount > 10, true);
+  fs.rmSync(out, { recursive: true });
+
+  const plain = makeTempDir('site-api-manifest-plain-test-');
+  await build({ out: plain, repo: 'o/r', buildTime: BUILD_TIME });
+  assert.ok(!fs.existsSync(path.join(plain, 'api-manifest.json')), 'no manifest without --api');
+  fs.rmSync(plain, { recursive: true });
+});
+
 test('parseArgs', () => {
   assert.deepEqual(parseArgs(['--out', 'x', '--repo', 'a/b']), { out: 'x', repo: 'a/b' });
 });

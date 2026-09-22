@@ -86,6 +86,36 @@ test('summarizeCompact renders one no-filler paragraph per feature including JSD
   assert.match(text, /Public API: initCheckout, useCheckoutStatus\./);
   assert.match(text, /Boots the checkout flow's state machine\./);
   assert.equal(text.split('\n\n').length, 1);
+  // An ordinary target project has no Construct-generated docs of its own (#468): no "View docs" line.
+  assert.doesNotMatch(text, /View docs/);
+});
+
+test('compact/prose/md: "View docs" links a feature to its package page ONLY inside a checkout of Construct itself', () => {
+  const root = tmpRoot();
+  // Shape this fixture like the real repo: the two signature files docsPackages.mjs looks for, plus a feature
+  // directory under one of Construct's own documented package dirs (ui/client/features).
+  writeFile(root, 'docs/API-DOCS.md', '# API reference generation\n');
+  writeFile(root, 'site/build.mjs', '// --base-path\n');
+  writeFile(
+    root,
+    'ui/client/architecture.yml',
+    'version: 1\npreset: strict-nextjs\nproject:\n  framework: nextjs\n  language: typescript\nfeatures:\n  root: features\nrules: {}\n'
+  );
+  writeFile(root, 'ui/client/features/widgets/index.ts', `export { useWidgets } from './hooks/useWidgets';\n`);
+  writeFile(root, 'ui/client/features/widgets/hooks/useWidgets.ts', `export function useWidgets() {\n  return [];\n}\n`);
+  const projectRoot = path.join(root, 'ui', 'client');
+
+  assert.match(summarizeCompact(projectRoot, { feature: 'widgets' }), /View docs: developers\/api\/cockpit-client-features\//);
+  assert.match(summarizeProse(projectRoot, { feature: 'widgets' }), /View docs: developers\/api\/cockpit-client-features\//);
+  assert.match(summarizeProject(projectRoot, { feature: 'widgets', format: 'md' }), /### API reference\n\nView docs: developers\/api\/cockpit-client-features\//);
+
+  // The same feature shape, but not inside a Construct checkout (no docs/API-DOCS.md + site/build.mjs at any
+  // ancestor): no link, in any format.
+  const plain = tmpRoot();
+  seedCheckoutFeature(plain);
+  assert.doesNotMatch(summarizeCompact(plain), /View docs/);
+  assert.doesNotMatch(summarizeProse(plain), /View docs/);
+  assert.doesNotMatch(summarizeProject(plain, { format: 'md' }), /View docs|API reference/);
 });
 
 test('describeExport uses JSDoc verbatim when the file has exactly one export', () => {

@@ -258,6 +258,36 @@ export async function build({ out, repo, buildTime = new Date(), basePath, versi
   const pagePaths = written.filter((f) => f.endsWith('index.html') && !f.startsWith('user-guide/tutorials/')).map((f) => f.replace(/index\.html$/, ''));
   write('sitemap.txt', pagePaths.map((p) => siteUrl + p).join('\n') + '\n');
 
+  // ---- API doc manifest (#468) -------------------------------------------
+  // Every module/route-group/CLI-command doc URL this build produced, as data — so a consumer that cannot run
+  // this generator itself (Trinity is a Claude Artifact outside this repo) can still link to the right page for
+  // this version. Omitted entirely when `api` is off (no API pages exist to list).
+  if (api) {
+    const manifest = {
+      version: versionLabel,
+      basePath,
+      generatedAt: new Date(buildTime).toISOString(),
+      packages: apiResults.map((r) => ({
+        id: r.pkg.id,
+        title: r.pkg.title,
+        path: `${API_ROOT}${r.pkg.id}/`,
+        url: `${siteUrl}${API_ROOT}${r.pkg.id}/`,
+        modules: r.modules.map((m) => ({ name: m.name, path: `${API_ROOT}${r.pkg.id}/${m.slug}/`, url: `${siteUrl}${API_ROOT}${r.pkg.id}/${m.slug}/` })),
+      })),
+      ...(restGroups.length
+        ? {
+            cockpitServerRest: {
+              path: `${API_ROOT}cockpit-server/rest/`,
+              url: `${siteUrl}${API_ROOT}cockpit-server/rest/`,
+              groups: restGroups.map((g) => ({ group: g.group, path: `${API_ROOT}cockpit-server/rest/${g.group}/`, url: `${siteUrl}${API_ROOT}cockpit-server/rest/${g.group}/`, routeCount: g.routes.length })),
+            },
+          }
+        : {}),
+      ...(cliData ? { cli: { path: `${API_ROOT}cli/`, url: `${siteUrl}${API_ROOT}cli/`, commandCount: cliData.commands.length } } : {}),
+    };
+    write('api-manifest.json', JSON.stringify(manifest, null, 2));
+  }
+
   let searchIndexed = null;
   if (search) {
     const bin = path.join(repoRoot, 'node_modules', '.bin', 'pagefind');
