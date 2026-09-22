@@ -8,7 +8,7 @@
 // separate LLM session to fill in later, same as before this existed.
 import fs from 'node:fs';
 import path from 'node:path';
-import { generateVertical, LAYER_ORDER, LAYER_PREREQUISITES, LAYER_CONSTRAINTS, layerFromGeneratedFile } from './generators.mjs';
+import { generateVertical, LAYER_ORDER, LAYER_PREREQUISITES, LAYER_CONSTRAINTS, layerFromGeneratedFile, layerTargetFile } from './generators.mjs';
 import { walk } from './fs.mjs';
 import { callLlm, stripCodeFence, PROVIDERS } from './llm.mjs';
 import { requestFileText } from './llm-fill.mjs';
@@ -28,12 +28,37 @@ const CODE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx']);
 // source they cover (e.g. useCpoGate.ts + useCpoGate.test.ts).
 const TEST_FILE_RE = /\.(test|spec)\.[^./]+$/;
 
+// Marks a scaffolded-but-unfilled stub (see breadcrumb() below and
+// requestFileText's per-file writes) — the one signal `existingRealFiles`
+// (#519) trusts to tell "nobody has touched this yet, safe to redo" apart
+// from "a human or an earlier LLM fill already wrote something real here."
+const IMPORT_TODO_MARKER = 'TODO(import):';
+
 function breadcrumb(fromAbsPath, intoAbsPath) {
   const relPath = path.relative(path.dirname(intoAbsPath), fromAbsPath).split(path.sep).join('/');
   // Deliberately plain wording — DOMAIN-001 bans certain words (fetch,
   // window, document, ...) anywhere in a domain file, even in a comment, so
   // this stays generic rather than describing what the old file does.
-  return `/** TODO(import): port the relevant logic from ${relPath} into this file. */\n`;
+  return `/** ${IMPORT_TODO_MARKER} port the relevant logic from ${relPath} into this file. */\n`;
+}
+
+/** Target files (for `layers`) that already exist with real content — i.e.
+ * NOT just an earlier, still-unfilled import stub (one that still carries
+ * the TODO(import) breadcrumb, which importVertical is always free to
+ * rewrite). #519 found that re-running `construct import` for the same
+ * name/feature/layer silently overwrote whatever was already there,
+ * including a file a human had already hand-ported or an earlier `--llm`
+ * fill had already written — real work destroyed with no warning, purely
+ * because generateVertical's write() has no existence check. Read-only:
+ * never writes, so it's safe to call before anything is scaffolded. */
+function existingRealFiles(root, name, feature, layers) {
+  const hits = [];
+  for (const layer of layers) {
+    const file = layerTargetFile(root, layer, name, feature);
+    if (!fs.existsSync(file)) continue;
+    if (!fs.readFileSync(file, 'utf8').includes(IMPORT_TODO_MARKER)) hits.push(file);
+  }
+  return hits;
 }
 
 function buildPortPrompt({ layer, relFile, stubContent, oldContent, oldRelPath }) {
@@ -63,6 +88,11 @@ function buildPortPrompt({ layer, relFile, stubContent, oldContent, oldRelPath }
  * directly, replacing the stub. Either way, locating the source and
  * scaffolding the files themselves never involves an LLM call.
  *
+ * Refuses (writing nothing) if any target file already has real content —
+ * i.e. exists and does NOT still carry the TODO(import) breadcrumb — so
+ * re-running this for the same name/feature/layer never silently discards
+ * a hand-port or an earlier LLM fill (#519).
+ *
  * Async because `callLlm` is (providers like `ollama` make a real HTTP
  * call) — with no `llm` option this still resolves on the same tick's
  * microtask queue as before, no behavior change, just a Promise wrapper.
@@ -74,7 +104,7 @@ function buildPortPrompt({ layer, relFile, stubContent, oldContent, oldRelPath }
  * @param {string} fromPath The existing source file being ported; must exist.
  * @param {{llm?: string, llmOptions?: object}} [options] `llm` names a provider that writes the ported logic into each stub.
  * @returns {Promise<{source:string, files:string[], llmFilled:boolean, fills:object[], timings:object}>} The scaffolded files and, with `llm`, what each fill did.
- * @throws {ConstructError} Usage error when `fromPath` is missing or the provider is unknown.
+ * @throws {ConstructError} Usage error when `fromPath` is missing, the provider is unknown, or a target file already has real content.
  */
 export async function importVertical(root, name, feature, layers, fromPath, { llm, llmOptions } = {}) {
   const totalStart = startTimer();
@@ -87,6 +117,17 @@ export async function importVertical(root, name, feature, layers, fromPath, { ll
   // USAGE_ERROR, but only after files were already written).
   if (llm && !PROVIDERS[llm]) {
     throw new ConstructError(`Unknown --llm provider "${llm}". Supported: ${Object.keys(PROVIDERS).join(', ')}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+  }
+  // #519: refuse to scaffold over a target file that already holds real
+  // content — checked before anything is written, same as the two checks
+  // above, so a re-run (or a plan re-applied by mistake) never silently
+  // discards work already done on this unit.
+  const collisions = existingRealFiles(root, name, feature, layers);
+  if (collisions.length) {
+    throw new ConstructError(
+      `Refusing to import "${name}" into feature "${feature}" — ${collisions.length} target file(s) already exist with real content (not just an unfilled import stub): ${collisions.map((f) => path.relative(root, f)).join(', ')}. Remove them first (or import under a different name) if you really mean to redo this unit; nothing was written.`,
+      { exitCode: EXIT_CODES.USAGE_ERROR },
+    );
   }
   const scaffoldStart = startTimer();
   const files = generateVertical(root, name, feature, layers);

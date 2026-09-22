@@ -69,6 +69,39 @@ test('importVertical throws if the source file does not exist', async () => {
   await assert.rejects(() => importVertical(dir, 'Foo', 'checkout', ['domain'], path.join(dir, 'nope.tsx')), ConstructError);
 });
 
+// #519 (dogfood-surfaced): re-running import for the same name/feature/layer
+// used to silently overwrite whatever was already there — including a
+// human's finished hand-port or an earlier LLM fill — because
+// generateVertical's write() has no existence check of its own.
+test('importVertical refuses to overwrite a target file that already has real (non-stub) content', async () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  const sourceFile = path.join(tmpProject(), 'Old.tsx');
+  fs.writeFileSync(sourceFile, `export function old() { return true; }\n`);
+
+  const { files } = await importVertical(dir, 'Foo', 'checkout', ['domain'], sourceFile);
+  // Simulate a human finishing the port: real content, no TODO(import) marker left.
+  fs.writeFileSync(files[0], `export function Foo() { return 42; }\n`);
+  const before = fs.readFileSync(files[0], 'utf8');
+
+  await assert.rejects(
+    () => importVertical(dir, 'Foo', 'checkout', ['domain'], sourceFile),
+    (e) => e instanceof ConstructError && /already exist with real content/.test(e.message) && e.message.includes('domain/Foo.tsx'),
+  );
+  assert.equal(fs.readFileSync(files[0], 'utf8'), before, 'the hand-ported file must be left untouched');
+});
+
+test('importVertical still allows re-running over a target file that is still just an unfilled import stub', async () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  const sourceFile = path.join(tmpProject(), 'Old.tsx');
+  fs.writeFileSync(sourceFile, `export function old() { return true; }\n`);
+
+  await importVertical(dir, 'Foo', 'checkout', ['domain'], sourceFile);
+  // No edits — the stub + TODO(import) breadcrumb is still exactly what was written.
+  await assert.doesNotReject(() => importVertical(dir, 'Foo', 'checkout', ['domain'], sourceFile));
+});
+
 test('importVertical throws if --from points at a directory, not a file', async () => {
   const dir = tmpProject();
   createFeature(dir, 'checkout');
