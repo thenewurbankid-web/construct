@@ -7,9 +7,18 @@ import { execFileSync } from 'node:child_process';
 import { summarizeFeature, extractExports } from './parser.mjs';
 import { loadConfig } from './config.mjs';
 import { describeImplementation } from './prose.mjs';
+import { docsPathFor } from './docsPackages.mjs';
 
 function featureRootOf(root) {
   return loadConfig(root).features.root;
+}
+
+/** "View docs: developers/api/<pkg>/" for a feature, when `root` is a checkout of Construct's own repository
+ * and this feature's directory falls under one of its documented packages (docs/API-DOCS.md) — null for an
+ * ordinary target project, every time, which is the common case and the safe default. */
+function docsLineFor(root, featureName) {
+  const p = docsPathFor(root, path.join(root, featureRootOf(root), featureName));
+  return p ? `View docs: ${p}` : null;
 }
 
 function listFeatureNames(root, only) {
@@ -23,7 +32,7 @@ function getFeatureSummaries(root, only) {
   return listFeatureNames(root, only).map((name) => summarizeFeature(root, name));
 }
 
-function renderMarkdown(summaries) {
+function renderMarkdown(summaries, root) {
   const lines = ['# Construct Project Summary', ''];
   for (const f of summaries) {
     lines.push(`## Feature: ${f.feature}`, '');
@@ -38,6 +47,8 @@ function renderMarkdown(summaries) {
       ''
     );
     lines.push(`### Total LOC: ${f.loc}`, '');
+    const docsLine = docsLineFor(root, f.feature);
+    if (docsLine) lines.push(`### API reference`, '', docsLine, '');
   }
   return lines.join('\n');
 }
@@ -52,7 +63,7 @@ function renderMarkdown(summaries) {
  */
 export function summarizeProject(root, { feature, format = 'json' } = {}) {
   const summaries = getFeatureSummaries(root, feature);
-  if (format === 'md') return renderMarkdown(summaries);
+  if (format === 'md') return renderMarkdown(summaries, root);
   return JSON.stringify(summaries);
 }
 
@@ -68,7 +79,7 @@ function cleanJsdoc(block) {
   return text.length > 140 ? text.slice(0, 137) + '...' : text;
 }
 
-function compactParagraph(f) {
+function compactParagraph(f, root) {
   const layerEntries = Object.entries(f.layers);
   const layerCounts = layerEntries.map(([layer, files]) => `${files.length} ${layer}${files.length === 1 ? '' : 's'}`).join(', ');
   const jsdocs = layerEntries
@@ -78,7 +89,8 @@ function compactParagraph(f) {
     .map(cleanJsdoc);
   const publicApiStr = f.publicApi.length ? f.publicApi.join(', ') : 'none';
   const notes = jsdocs.length ? ` Notes: ${jsdocs.slice(0, 3).join(' ')}` : '';
-  return `Feature "${f.feature}" — ${f.loc} LOC across ${layerCounts || 'no classified files'}. Public API: ${publicApiStr}.${notes}`;
+  const docsLine = docsLineFor(root, f.feature);
+  return `Feature "${f.feature}" — ${f.loc} LOC across ${layerCounts || 'no classified files'}. Public API: ${publicApiStr}.${notes}${docsLine ? ` ${docsLine}` : ''}`;
 }
 
 /**
@@ -92,7 +104,7 @@ function compactParagraph(f) {
 export function summarizeCompact(root, { feature } = {}) {
   const summaries = getFeatureSummaries(root, feature);
   if (!summaries.length) return 'No features found.';
-  return summaries.map(compactParagraph).join('\n\n');
+  return summaries.map((f) => compactParagraph(f, root)).join('\n\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -266,7 +278,8 @@ export function summarizeProse(root, { feature } = {}) {
         ? `Outside the feature, only ${joinEnglishList(f.publicApi.map((p) => `\`${p}\``))} ${f.publicApi.length === 1 ? 'is' : 'are'} reachable, via its index.ts.`
         : `This feature exposes nothing through its index.ts yet.`;
 
-      return [opening, ...sections, closing].join('\n\n');
+      const docsLine = docsLineFor(root, f.feature);
+      return [opening, ...sections, closing, ...(docsLine ? [docsLine] : [])].join('\n\n');
     })
     .join('\n\n' + '='.repeat(60) + '\n\n');
 }

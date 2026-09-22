@@ -6,6 +6,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { describeSource } from '../../src/engine/describeDocgen.mjs';
+import { stripTicketRefs } from './markdown.mjs';
 
 /** Same grouping the Trinity Modules tab uses. `dirs` are repo-relative; `recursive` walks subfolders. */
 export const API_PACKAGES = [
@@ -65,7 +67,11 @@ export function headerSummary(source) {
     }
     para.push(t.trim());
   }
-  const joined = para.join(' ').replace(/^@module\b\s*/, '').replace(/\s+/g, ' ').trim();
+  // Many header comments in this codebase open with their own ticket ref ("#292 — REST surface for...",
+  // "#289 / #332 — ...", "#312/#313 -- ..."), which stripTicketRefs (below) does not catch — its own patterns all
+  // need a space, parenthesis or "issue/ticket/PR" before the "#", none of which a *leading* ref has.
+  const noLeadingRef = para.join(' ').replace(/^@module\b\s*/, '').replace(/^#\d+(?:\s*[/,]\s*#\d+)*[.:]?\s*[-–—]{0,2}\s*/, '');
+  const joined = stripTicketRefs(noLeadingRef).replace(/\s+/g, ' ').trim();
   const m = /^(.*?[.!?])(\s|$)/.exec(joined);
   const first = (m ? m[1] : joined).trim();
   return first.length > 220 ? first.slice(0, 217).trimEnd() + '...' : first;
@@ -88,6 +94,40 @@ export function exportsOf(md) {
     if (e && kind) list.push({ name: e[1].replace(/\\/g, ''), kind });
   }
   return list;
+}
+
+const REACT_SOURCE = /\.(tsx|jsx)$/;
+
+/** One module's react-docgen prop table(s) as a markdown fragment, or '' when the source has no component (a
+ * hook, a helper). `name` labels the sub-heading only when the file exports more than one component. */
+function propsTableMarkdown(components) {
+  const table = (props) => {
+    if (!props.length) return '_No documented props._';
+    const rows = props.map((p) => `| \`${p.name}\` | \`${p.type}\` | ${p.required ? 'Yes' : 'No'} | ${p.default != null ? `\`${p.default}\`` : '—'} | ${(p.description || '').replace(/\|/g, '\\|')} |`);
+    return ['| Prop | Type | Required | Default | Description |', '|---|---|---|---|---|', ...rows].join('\n');
+  };
+  return components.map((c) => `#### Props${components.length > 1 ? `: ${c.name}` : ''}\n\n${table(c.props)}`).join('\n\n');
+}
+
+// TypeDoc renders a destructured props parameter as an opaque `__namedParameters` type with no description; for a
+// module with exactly one function export we replace that block with a real prop table from react-docgen (the
+// same block `describeComponent`/componentsApi.mjs uses for the Cockpit's own Components screen), read straight
+// from the source text (no project code is ever evaluated). A module with more than one export, or no discovered
+// component (a hook file), is left as TypeDoc rendered it.
+const PARAMETERS_BLOCK = /\n#### Parameters\n\n[\s\S]*?(?=\n#### |\n$|$)/;
+
+/** Replace (or append) a `.tsx`/`.jsx` module's TypeDoc markdown with a real react-docgen prop table. */
+export function withPropsTable(md, sourceAbs, sourceRel, exportCount) {
+  if (!sourceRel || !REACT_SOURCE.test(sourceRel) || exportCount !== 1) return md;
+  let described;
+  try {
+    described = describeSource(fs.readFileSync(sourceAbs, 'utf8'), path.basename(sourceRel));
+  } catch {
+    return md;
+  }
+  if (!described.ok || !described.components.length) return md;
+  const section = propsTableMarkdown(described.components);
+  return PARAMETERS_BLOCK.test(md) ? md.replace(PARAMETERS_BLOCK, `\n${section}`) : `${md}\n\n${section}`;
 }
 
 /**
@@ -141,10 +181,12 @@ export function generateApiMarkdown({ repoRoot, repoUrl, outDir, packages = API_
           else if (e.name.endsWith('.md') && e.name !== 'README.md') {
             const rel = path.relative(out, p).split(path.sep).join('/');
             const name = rel.replace(/\.md$/, '');
-            const md = fs.readFileSync(p, 'utf8');
+            let md = fs.readFileSync(p, 'utf8');
             const source = entries.find((s) => s.replace(/\.[cm]?[jt]sx?$/, '') === name) || '';
             const summary = source ? headerSummary(fs.readFileSync(path.join(repoRoot, source), 'utf8')) : '';
-            modules.push({ name, slug: name, group: groupOf(pkg, name), file: rel, md, source, summary, exports: exportsOf(md) });
+            const exports = exportsOf(md);
+            if (source) md = withPropsTable(md, path.join(repoRoot, source), source, exports.length);
+            modules.push({ name, slug: name, group: groupOf(pkg, name), file: rel, md, source, summary, exports });
           }
         }
       };

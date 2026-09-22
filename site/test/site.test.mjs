@@ -198,6 +198,58 @@ test('API reference: core, engine and AST are generated from source, versioned, 
   fs.rmSync(plain, { recursive: true });
 });
 
+test('API reference: Cockpit server REST reference and CLI command reference are wired into the versioned build', async () => {
+  const out = makeTempDir('site-api-rest-cli-test-');
+  await build({ out, repo: 'o/r', buildTime: BUILD_TIME, version: '0.9', api: ['cockpit-server', 'cli'] });
+
+  const idx = fs.readFileSync(path.join(out, 'developers/api/index.html'), 'utf8');
+  assert.match(idx, /href="[./]*developers\/api\/cockpit-server\/rest\/"/, 'the REST reference is linked from the API nav');
+  assert.match(idx, /href="[./]*developers\/api\/cli\/"/, 'the CLI reference is linked from the API nav');
+
+  const restIdx = fs.readFileSync(path.join(out, 'developers/api/cockpit-server/rest/index.html'), 'utf8');
+  assert.match(restIdx, /href="[./]*developers\/api\/cockpit-server\/rest\/processes\/"/);
+  const processes = fs.readFileSync(path.join(out, 'developers/api/cockpit-server/rest/processes/index.html'), 'utf8');
+  assert.match(processes, /POST \/api\/processes\/:id\/decide/);
+  assert.match(processes, /v0\.9/, 'the REST page carries the version it was built for');
+
+  const cli = fs.readFileSync(path.join(out, 'developers/api/cli/index.html'), 'utf8');
+  assert.match(cli, /construct review/);
+  assert.match(cli, /v0\.9/, 'the CLI reference page carries the version it was built for');
+
+  // No dead links and no internal ticket numbers on the pages this slice adds.
+  for (const rel of ['developers/api/index.html', 'developers/api/cockpit-server/rest/index.html', 'developers/api/cockpit-server/rest/processes/index.html', 'developers/api/cli/index.html']) {
+    const f = path.join(out, rel);
+    const html = fs.readFileSync(f, 'utf8');
+    const text = html.replace(/<script[\s\S]*?<\/script>/g, '').replace(/&#\d+;/g, "'").replace(/<[^>]+>/g, ' ');
+    assert.doesNotMatch(text, /#\d{2,4}\b/, `ticket number leaked in ${rel}`);
+    for (const m of html.matchAll(/<(?:a|img|link)\b[^>]*?(?:href|src)="(?!https?:|mailto:|data:|\/)([^"#]+)/g)) {
+      let target = path.resolve(path.dirname(f), m[1]);
+      if (fs.existsSync(target) && fs.statSync(target).isDirectory()) target = path.join(target, 'index.html');
+      assert.ok(fs.existsSync(target), `dead link ${m[1]} in ${rel}`);
+    }
+  }
+  fs.rmSync(out, { recursive: true });
+});
+
+test('api-manifest.json: every package/module/REST group/CLI URL a future Trinity refresh needs, omitted without --api', async () => {
+  const out = makeTempDir('site-api-manifest-test-');
+  await build({ out, repo: 'o/r', buildTime: BUILD_TIME, version: '0.9', api: ['core', 'cockpit-server', 'cli'] });
+  const manifest = JSON.parse(fs.readFileSync(path.join(out, 'api-manifest.json'), 'utf8'));
+  assert.equal(manifest.version, 'v0.9');
+  const core = manifest.packages.find((p) => p.id === 'core');
+  assert.equal(core.url, 'https://o.github.io/r/developers/api/core/');
+  assert.ok(core.modules.length > 5);
+  assert.ok(core.modules.every((m) => m.url.startsWith(core.url)));
+  assert.equal(manifest.cockpitServerRest.groups.find((g) => g.group === 'processes').routeCount > 0, true);
+  assert.equal(manifest.cli.commandCount > 10, true);
+  fs.rmSync(out, { recursive: true });
+
+  const plain = makeTempDir('site-api-manifest-plain-test-');
+  await build({ out: plain, repo: 'o/r', buildTime: BUILD_TIME });
+  assert.ok(!fs.existsSync(path.join(plain, 'api-manifest.json')), 'no manifest without --api');
+  fs.rmSync(plain, { recursive: true });
+});
+
 test('parseArgs', () => {
   assert.deepEqual(parseArgs(['--out', 'x', '--repo', 'a/b']), { out: 'x', repo: 'a/b' });
 });
