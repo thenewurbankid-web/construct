@@ -203,7 +203,7 @@ export async function build({ out, repo, buildTime = new Date(), basePath, versi
   write('404.html', layout({ path: '404.html', root: '', fullTitle: 'Page not found · Construct', description: 'Page not found.', section: 'none', body: notFoundBody({ basePath }), crumbs: false, basePath }, chrome));
   write('try-it.html', redirectPage({ to: 'user-guide/getting-started/', title: 'Getting started' }));
   // Earlier takes stay in the repo (assets/video/history) until deleted, but are not published.
-  fs.cpSync(path.join(HERE, 'assets'), path.join(out, 'assets'), { recursive: true, filter: (src) => !src.includes(`${path.sep}video${path.sep}history`) });
+  fs.cpSync(path.join(HERE, 'assets'), path.join(out, 'assets'), { recursive: true, filter: (src) => !src.includes(`${path.sep}video${path.sep}history`) && !src.includes(`${path.sep}video${path.sep}voice-tests`) });
   write('.nojekyll', '');
   const pagePaths = written.filter((f) => f.endsWith('index.html') && !f.startsWith('user-guide/tutorials/')).map((f) => f.replace(/index\.html$/, ''));
   write('sitemap.txt', pagePaths.map((p) => siteUrl + p).join('\n') + '\n');

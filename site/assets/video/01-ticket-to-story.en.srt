@@ -1,6 +1,6 @@
 1
-00:00:01,300 --> 00:00:06,480
-Build a feature, start to finish. One example: a wishlist for a small shop
+00:00:00,600 --> 00:00:08,700
+Hi there, and welcome! In a few minutes we will build a small feature together, from a plain request to a working app.
 
 2
 00:00:08,800 --> 00:00:15,300
@@ -127,5 +127,5 @@ You see the exact change before it is written.
 Finally, the rules. No errors. Two warnings on the new feature: it needs a one-line summary, and its controller is not exported yet. Real findings, and quick fixes.
 
 33
-00:03:33,000 --> 00:03:37,410
-One example, end to end. Next: review a branch, and run a test.
+00:03:33,000 --> 00:03:36,850
+That is it. Thanks for watching, and have fun building.

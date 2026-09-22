@@ -15,6 +15,18 @@ export const readingMs = (text) => Math.round(Math.max(3000, text.length * 70) *
 
 const CAPTION_ID = 'media-caption';
 
+// Voice-first timing: when the script has measured the narration (`node tools/media/script.mjs <slug> timing` writes `dur`, seconds,
+// per line), hold each caption for its narration + 0.9 s (never less than the reading time), so the video follows the voice.
+let DURATIONS = new Map();
+/** Load `dur` values from `<slug>.captions.json` (call once at the start of a test); harmless when the file or `dur` is missing. */
+export function loadDurations(file) {
+  try {
+    DURATIONS = new Map(JSON.parse(fs.readFileSync(file, 'utf8')).filter((l) => l.dur).map((l) => [l.text, l.dur]));
+  } catch { DURATIONS = new Map(); }
+}
+const holdMs = (text) => Math.max(readingMs(text), DURATIONS.has(text) ? Math.round((DURATIONS.get(text) + 0.9) * 1000) : 0);
+const BURN = process.env.MEDIA_BURN_CAPTIONS === '1';
+
 // The caption timeline: every caption and card, with seconds from the start of the recording (for the voice-over,
 // tools/media/voiceover.mjs). Measured on the wall clock from startTimeline(); nothing on screen changes.
 let T0 = Date.now();
@@ -26,34 +38,71 @@ export function startTimeline() { T0 = Date.now(); TIMELINE = []; }
 
 /** Write the timeline as `<slug>.captions.json` ([{ text, start }]) into `dir`. */
 export function writeTimeline(fsMod, dir, slug) {
-  fsMod.writeFileSync(path.join(dir, `${slug}.captions.json`), JSON.stringify(TIMELINE, null, 2) + '\n');
+  // The script is hand-edited (say, id, exaggeration, para, dur...): keep those fields and only update `start` of lines with the
+  // same text; lines that are new are added, in order.
+  const file = path.join(dir, `${slug}.captions.json`);
+  let existing = [];
+  try { existing = JSON.parse(fsMod.readFileSync(file, 'utf8')); } catch { /* first take */ }
+  const out = TIMELINE.map((t) => ({ ...(existing.find((e) => e.text === t.text) || {}), text: t.text, start: t.start }));
+  fsMod.writeFileSync(file, JSON.stringify(out, null, 2) + '\n');
 }
 
-/** Show `text` as a high-contrast caption bar at the bottom of the page until replaced or cleared. */
+/** Announce a caption: it goes on the timeline (and so into the narration and the .srt/.vtt) and the recording holds for it.
+ * The bar itself is NOT drawn any more, it blocked the UI; subtitles are a separate track. `MEDIA_BURN_CAPTIONS=1` draws the
+ * old bar back, for a silent-video export. */
 export async function caption(page, text) {
   stamp(text);
-  await page.evaluate(([id, text]) => {
-    let el = document.getElementById(id);
-    if (!el) {
-      el = document.createElement('div');
-      el.id = id;
-      el.setAttribute('aria-hidden', 'true');
-      el.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);max-width:1040px;z-index:2147483646;'
-        + 'padding:14px 26px;border-radius:12px;background:rgba(13,15,18,.92);color:#fff;font:600 26px/1.3 system-ui,sans-serif;'
-        + 'text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.4);pointer-events:none';
-      document.body.appendChild(el);
-    }
-    el.textContent = text;
-  }, [CAPTION_ID, text]);
-  // Hold on the caption before the next action, so every scene registers before the screen changes.
-  await page.waitForTimeout(readingMs(text));
+  if (BURN) {
+    await page.evaluate(([id, text]) => {
+      let el = document.getElementById(id);
+      if (!el) {
+        el = document.createElement('div');
+        el.id = id;
+        el.setAttribute('aria-hidden', 'true');
+        el.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);max-width:1040px;z-index:2147483646;'
+          + 'padding:14px 26px;border-radius:12px;background:rgba(13,15,18,.92);color:#fff;font:600 26px/1.3 system-ui,sans-serif;'
+          + 'text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.4);pointer-events:none';
+        document.body.appendChild(el);
+      }
+      el.textContent = text;
+    }, [CAPTION_ID, text]);
+  }
+  // Hold before the next action, so every scene registers before the screen changes.
+  await page.waitForTimeout(holdMs(text));
+}
+
+/** A small, short-lived callout: a ring around `locator` and a short label beside it (never over it), for `ms` (default 2.4 s),
+ * then removed. For the feature tour: one clear beat per feature. */
+export async function highlight(page, locator, label, ms = 2400) {
+  const box = await locator.first().boundingBox();
+  if (!box) return;
+  await page.evaluate(([b, label, ms]) => {
+    const ring = document.createElement('div');
+    ring.className = 'media-highlight';
+    ring.setAttribute('aria-hidden', 'true');
+    ring.style.cssText = `position:fixed;left:${b.x - 4}px;top:${b.y - 4}px;width:${b.width + 8}px;height:${b.height + 8}px;border:2px solid #f5a524;`
+      + 'border-radius:8px;box-shadow:0 0 0 4px rgba(245,165,36,.25);z-index:2147483645;pointer-events:none;transition:opacity .25s';
+    const tag = document.createElement('div');
+    tag.className = 'media-highlight';
+    tag.setAttribute('aria-hidden', 'true');
+    tag.textContent = label;
+    const right = b.x + b.width + 12 + 180 < window.innerWidth;
+    const top = Math.min(Math.max(b.y, 8), window.innerHeight - 40);
+    tag.style.cssText = `position:fixed;top:${top}px;${right ? `left:${b.x + b.width + 12}px` : `right:${Math.max(8, window.innerWidth - b.x + 12)}px`};max-width:200px;`
+      + 'padding:5px 10px;border-radius:6px;background:#f5a524;color:#1a1200;font:600 13px/1.3 system-ui,sans-serif;z-index:2147483645;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.3)';
+    document.body.append(ring, tag);
+    setTimeout(() => document.querySelectorAll('.media-highlight').forEach((e) => e.remove()), ms);
+  }, [box, label, ms]);
+  await page.waitForTimeout(ms);
 }
 
 export const clearCaption = (page) => page.evaluate((id) => document.getElementById(id)?.remove(), CAPTION_ID);
 
 /** A full-screen brand card (the Line mark, a title and a subtitle) shown for `ms`, then removed. */
-export async function card(page, title, subtitle = '', ms = 5000) {
-  stamp(subtitle ? `${title}. ${subtitle}` : title);
+export async function card(page, title, subtitle = '', ms = 5000, said = '') {
+  // `said` is what the voice-over says over the card (a greeting or sign-off); hold the card for at least its reading time + 1 s.
+  stamp(said || (subtitle ? `${title}. ${subtitle}` : title));
+  if (said) ms = Math.max(ms, Math.ceil((holdMs(said) + 1000) / PACE));
   await clearCaption(page);
   await page.evaluate(([svg, title, subtitle]) => {
     const el = document.createElement('div');

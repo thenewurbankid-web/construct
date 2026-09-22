@@ -5,15 +5,22 @@ Short, real, screen-recorded guides for the documentation website. Owned by the 
 
 ## The series (plan)
 
-| # | Title | Length | Shows |
-|---|---|---|---|
-| 1 | **Build a feature, start to finish** | about 3.75 min | One continuous example on the sample shop: sign in, models in Settings, ticket, impact, plan, create the feature, local-model fill, Pages, full-screen running app, workflow edit, validate |
-| 2 | Plan a change and approve it | 60 s | A Note, the plan, the impact, run, approve one file |
-| 3 | Bring in an existing feature | 60 s | Import wizard, review the diff, validate |
-| 4 | Clone a project | 45 s | Paste a link, clone, open |
-| 5 | Review a branch and run a test | 60 s | Git screen findings, run a generated test |
+**Rule: every episode is built in parts of 1-2 minutes.** Each part has its own script (`<episode>-<part>-<slug>.captions.json`),
+narration, subtitles, music and download; it starts from a checkpoint (a saved copy or commit of the sample project made at the end of
+the previous part, restored deterministically) so any part re-records alone in minutes; subtitles are a separate track (`.vtt`/`.srt`,
+never a burned-in bar); the site lists the parts as chapters of the episode's landing page. The helpers (`support.mjs`, `saveRecording`,
+`script.mjs`, `voice-lab.mjs`) take the `<episode>-<part>-<slug>` name as their slug and need no change for later episodes.
 
-Only episode 1 is built for now.
+| Episode | Parts |
+|---|---|
+| 1 Build a feature, start to finish (wishlist) | 1a Meet the page (sign in, open the project, a static React page that looks like a product and does nothing, Features/Pages/Components, Construct shows the missing prop link) / 1b Plan the change (Note, impact, plan steps, Mechanical or AI, model settings) / 1c Generate the logic (the model fills the layers, props get wired, the page comes alive full screen) / 1d Workflows and checks (diagram, edit, diff, rules, tests, git) / 1e Wrap-up (the finished app, what Construct did without an LLM, what is next) |
+| 2 Plan a change and approve it | 2a A Note and the plan / 2b Impact and run / 2c Approve one file |
+| 3 Bring in an existing feature | 3a The import wizard / 3b Review the diff / 3c Validate |
+| 4 Clone a project | 4a Paste a link and clone / 4b Open it and look around |
+| 5 Review a branch and run a test | 5a The Git screen findings / 5b Run a generated test |
+
+State of the series: episode 1 exists as ONE 3.75 min recording (the pre-parts take, captions burned in); splitting it into parts, the
+static-React example page and the feature tour are planned and not built yet (see the report of #462). Nothing else is recorded.
 
 ## Episode 1 storyboard (captions are the script; v2, one continuous example: a wishlist for the sample shop)
 
@@ -51,6 +58,10 @@ before saving to stay under 10 MB: `ffmpeg -i take.webm -c:v libvpx-vp9 -crf 38 
 `saveRecording` (keeps history, until the owner deletes it).
 
 ## Recording protocol
+
+- No caption bar is drawn: it blocked the UI. `caption(page, text)` only puts the line on the timeline (narration, `.srt`/`.vtt`) and holds; `MEDIA_BURN_CAPTIONS=1` draws the old bar for a silent export. Cards keep their title text.
+- `highlight(page, locator, label)` draws a small ring and a short label beside (never over) an element for about 2.4 s; one beat per feature.
+- Voice-first timing: `node tools/media/script.mjs <slug> timing` writes each line's narration length as `dur` into the script; the spec (`loadDurations`) then holds every caption for `dur + 0.9 s` (at least the reading time), so the video follows the voice. `writeTimeline` keeps the hand-edited fields (`say`, `dur`, `para`, ...) and only updates `start`.
 
 - Spec in `ui/e2e/tests/media/<nn>-<slug>.spec.js`, own config `ui/e2e/playwright.media.config.js`
   (`video: 'on'`, 1280x720, own ports, workspace = a temp dir, no project preloaded).
@@ -123,3 +134,52 @@ Kokoro setup (default voice): `mkdir -p ~/.cache/construct-media && cd ~/.cache/
 ## Visible pointer
 
 Recordings draw a highlighted pointer (ring that follows the mouse and pulses on click): `installCursor(page)` before `goto`, and `glide(page, locator)` to travel to an element before clicking it. Episode 1 has it from the next re-record.
+
+### Expression, pacing and paralinguistics (own-voice clone)
+
+Settings live in `<slug>.voice.json` (script-wide defaults; flags win) and per line in `captions.json` (`exaggeration`, `cfg_weight`,
+`pause_ms`, `para`; `say` is the spoken wording, `text` stays the subtitle). Chatterbox exaggeration raises emotion, a lower `cfg_weight`
+slows and loosens the pacing; every line is spoken sentence by sentence, joined with a `pause_ms` pause (default 280, episode 1 uses
+650), trimmed of leading/trailing silence and levelled to -20 LUFS. `--tempo 0.9` slows the speech afterwards without re-speaking.
+Episode 1 uses exaggeration 0.7 / cfg 0.3, the greeting and sign-off 0.8 / 0.3 with a 450 ms pause, and the best reference window.
+
+Measured on 7 lines (`tools/media/voice-lab.mjs`; scores from `eval_voice.py`; similarity = Resemblyzer cosine to the real sample, WER =
+faster-whisper `base.en`, F0 std = pitch spread in semitones, the real sample is 1.89):
+
+| Variant | Similarity | WER | F0 std |
+|---|---|---|---|
+| default (0.5 / 0.5, whole sample) | 0.820 | 0.9% | 4.31 |
+| expressive (0.7 / 0.3, whole sample) | 0.786 | 4.5% | 5.77 |
+| best-ref (0.5 / 0.5, best 10-20 s window) | 0.862 | 1.8% | 2.01 |
+| expressive-best-ref (0.7 / 0.3, best window) | 0.849 | 5.4% | 2.62 |
+| turbo-best-ref (Chatterbox-Turbo, MIT weights) | 0.846 | 5.4% | 2.70 |
+
+The best window (`tools/media/pick_reference.py`: silero-vad segments, F0 spread and loudness dynamics, clipping penalty) is what
+raised similarity most (+0.04); more exaggeration adds expression at a small similarity cost. Episode 1 takes expressive-best-ref (WER under
+6%). Chatterbox-Turbo (MIT code and weights, about 3 GB, similar speed here) understands `[chuckle]` style tags and scores the same; it is a
+`--model turbo` switch, not the default. The comparison clips are `site/assets/video/voice-tests/<variant>--<line>.ogg` with a
+`manifest.json` (variants, scores, progress) that Trinity Studio's voice lab reads; `script.mjs <slug> apply-feedback` turns the owner's
+`~/voice/voice-feedback.json` (pick and tags per line) into per-line overrides, from a fixed base so it is repeatable.
+
+Paralinguistics are subtle and deterministic (`para`, proposed by a fixed-seed placer, `--no-para` turns them off): a quiet breath before the
+greeting and before roughly every 3rd-4th long non-technical line, never two lines in a row, at most one `chuckle_after` (spoken only by a
+model with tags, i.e. `--model turbo`; the default model skips it). Breaths are a 220 ms snippet cut from the speaker's own sample
+(`extract_breath.py`, kept outside the repo), mixed at -22 dB with 30 ms fades; nothing is downloaded. Explicit `para` in the script
+(even `[]`) wins over the placer. If in doubt, fewer.
+
+### Plug in another voice model (`--tts-cmd`)
+
+`--tts-cmd "<command>"` (or `"ttsCmd"` in `<slug>.voice.json`) replaces the built-in backends, so a fine-tuned model trained elsewhere drops in:
+
+1. The command is run once per line through `sh -c`; `{text_file}` is a UTF-8 text file with the spoken text, `{out}` is where it must write a wav (or ogg), `{voice_ref}` is the reference sample or excerpt (optional to use).
+2. Exit code 0 means success; anything else stops the build. Output on stdout/stderr is shown.
+3. Every clip is then trimmed and levelled to -20 LUFS the same way as the built-in voices, so backends are interchangeable.
+4. The command string is part of the clip cache key: a new model or new flags re-speak every line, unchanged lines are reused otherwise.
+5. Chatterbox (`--voice-sample`) and Kokoro (`--voice`) stay built in and are the fallback.
+
+### Music and mixing
+
+`node tools/media/make-music.mjs <slug> [--key 1] [--seconds 150]` generates a gentle instrumental bed with ffmpeg only (sine-partial chords,
+low-pass, tremolo, chorus, echo; deterministic per key; nothing downloaded). `script.mjs <slug> mix` writes `<slug>.mixed.webm`: video copied,
+narration plus music, the music at -14 dB while a card is on screen and -28 dB otherwise, ducked further under the voice with ffmpeg
+`sidechaincompress`, 1.5 s fades. The exact ffmpeg command is printed by `mix`.

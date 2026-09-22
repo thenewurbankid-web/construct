@@ -151,16 +151,24 @@ export function renderMarkdown(md, ctx) {
   html = html.replace(/<img src="@img\/([^"]+)"/g, (_, f) => `<img src="${root}assets/img/${f}" loading="lazy" decoding="async"`);
 
   // Site videos: ![alt](@video/name) points at site/assets/video/name.webm, with name.png as its poster. Optional sibling
-  // files are picked up when present: name.en.vtt (subtitles, a <track>) and name.voice.webm (the narrated version, a second
-  // download; the narration is synthetic and the page says so).
+  // files are picked up when present: name.en.vtt (subtitles, a <track>) and name.voice.webm and name.mixed.webm (narrated, and narrated with music), name.voice.opus / name.music.opus (audio alone). Each is
+  // offered only when its file exists; the narration is synthetic and the page says so.
   const videoDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'video');
   html = html.replace(/(?:<p>)?<img src="@video\/([^"]+)"(?: alt="([^"]*)")?[^>]*>(?:<\/p>)?/g, (_, f, alt = '') => {
     const has = (ext) => fs.existsSync(path.join(videoDir, `${f}.${ext}`));
     const track = has('en.vtt') ? `<track kind="subtitles" srclang="en" label="English" src="${root}assets/video/${f}.en.vtt">` : '';
-    const links = [`<a href="@assets/video/${f}.webm" download>Download the video (.webm)</a>`];
-    if (has('voice.webm')) links.push(`<a href="@assets/video/${f}.voice.webm" download>Download with synthetic narration (.webm)</a>`);
-    if (has('en.srt')) links.push(`<a href="@assets/video/${f}.en.srt" download>Subtitles (.srt)</a>`);
-    return `<figure class="video"><video controls preload="metadata" width="1280" height="720" poster="${root}assets/video/${f}.png" aria-label="${alt}"><source src="${root}assets/video/${f}.webm" type="video/webm">${track}<a href="@assets/video/${f}.webm" download>Download the video</a></video><figcaption>${links.join(' &middot; ')}</figcaption></figure>`;
+    const dl = (ext, label) => `<a href="@assets/video/${f}.${ext}" download>${label}</a>`;
+    const versions = [dl('webm', 'Silent video (.webm)')];
+    if (has('voice.webm')) versions.push(dl('voice.webm', 'With synthetic narration (.webm)'));
+    if (has('mixed.webm')) versions.push(dl('mixed.webm', 'With narration and music (.webm)'));
+    const audio = [];
+    if (has('voice.opus')) audio.push(dl('voice.opus', 'Narration only (.opus)'));
+    if (has('music.opus')) audio.push(dl('music.opus', 'Music only (.opus)'));
+    const subs = [];
+    if (has('en.srt')) subs.push(dl('en.srt', 'Subtitles (.srt)'));
+    if (has('en.vtt')) subs.push(dl('en.vtt', 'Subtitles (.vtt)'));
+    const links = [...versions, ...audio, ...subs];
+    return `<figure class="video"><video controls preload="metadata" width="1280" height="720" poster="${root}assets/video/${f}.png" aria-label="${alt}"><source src="${root}assets/video/${f}.webm" type="video/webm">${track}<a href="@assets/video/${f}.webm" download>Download the video</a></video><figcaption>Downloads: ${links.join(' &middot; ')}</figcaption></figure>`;
   });
 
   const ids = new Set(headings.map((h) => h.id));
