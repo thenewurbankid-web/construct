@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { caption, clearCaption, card, pause, saveRecording, startTimeline, writeTimeline } from './support.mjs';
+import { caption, clearCaption, card, pause, saveRecording, startTimeline, writeTimeline, loadDurations } from './support.mjs';
 import { startMockOllama } from './mockOllama.mjs';
 
 // Episode 1 (v2): one continuous example, a wishlist for the sample shop, from sign-in to a running app (docs/MEDIA.md).
@@ -53,6 +53,8 @@ export const CAPTIONS = {
   workflowEdit: 'Add a way back: after a rejected order the shopper can start over.',
   workflowDiff: 'You see the exact change before it is written.',
   validate: 'Finally, the rules. No errors. Two warnings on the new feature: it needs a one-line summary, and its controller is not exported yet. Real findings, and quick fixes.',
+  greeting: 'Hi there, and welcome! In a few minutes we will build a small feature together, from a plain request to a working app.',
+  signOff: 'That is it. Thanks for watching, and have fun building.',
   outroTitle: 'One example, end to end',
   outroSub: 'Next: review a branch, and run a test.',
 };
@@ -68,6 +70,7 @@ test('episode 1: one example, end to end', async ({ page }) => {
   test.setTimeout(900_000);
   fs.mkdirSync(OUT, { recursive: true });
   startTimeline();
+  loadDurations(path.join(OUT, `${SLUG}.captions.json`));
   // The sample project the gate offers as "Try the sample shop": a copy of the shop in the (otherwise empty) workspace.
   const shop = path.join(WS, 'shop');
   fs.cpSync(SAMPLE, shop, { recursive: true, filter: (s) => !/[\\/](node_modules|\.next)([\\/]|$)/.test(s) });
@@ -79,7 +82,7 @@ test('episode 1: one example, end to end', async ({ page }) => {
   try {
     await page.goto('/');
     await expect(page.getByTestId('login-test-user')).toBeVisible();
-    await card(page, CAPTIONS.introTitle, CAPTIONS.introSub);
+    await card(page, CAPTIONS.introTitle, CAPTIONS.introSub, 5000, CAPTIONS.greeting);
 
     // 1. Sign in (the documented demo login).
     await caption(page, CAPTIONS.signIn);
@@ -240,7 +243,7 @@ test('episode 1: one example, end to end', async ({ page }) => {
     await expect(drawer(page).getByText('SLICE-003')).toBeVisible();
     await caption(page, CAPTIONS.validate);
 
-    await card(page, CAPTIONS.outroTitle, CAPTIONS.outroSub, 6000);
+    await card(page, CAPTIONS.outroTitle, CAPTIONS.outroSub, 6000, CAPTIONS.signOff);
 
     const video = page.video();
     await page.close();

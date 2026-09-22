@@ -31,8 +31,8 @@ const order = [];
 for (const m of body.matchAll(/CAPTIONS\.(\w+)/g)) if (!order.includes(m[1]) || /^added/.test(m[1])) order.push(m[1]);
 const texts = [];
 for (const k of order) {
-  if (k === 'introTitle' || k === 'outroTitle') texts.push({ card: true, id: k.replace('Title', ''), text: `${TEXT[k]}. ${TEXT[k.replace('Title', 'Sub')]}` });
-  else if (k.endsWith('Sub')) continue;
+  if (k === 'introTitle' || k === 'outroTitle') texts.push({ card: true, id: k.replace('Title', ''), text: k === 'introTitle' && TEXT.greeting ? TEXT.greeting : k === 'outroTitle' && TEXT.signOff ? TEXT.signOff : `${TEXT[k]}. ${TEXT[k.replace('Title', 'Sub')]}` });
+  else if (k.endsWith('Sub') || k === 'greeting' || k === 'signOff') continue;
   else texts.push({ card: false, id: k, text: TEXT[k] });
 }
 const captionsOnly = texts.filter((t) => !t.card);
