@@ -516,3 +516,69 @@ test('architecture-invalid fixture reports exactly the expected rule per manifes
     assert.ok(['error', 'warning', 'off'].includes(v.severity));
   }
 });
+
+// ---- #505: PAGE-008 (no inline JSX logic) / PAGE-009 (page complexity budget) ---------
+
+// PAGE-008 mirrors COMPONENT-005 exactly (same collectInlineJsxLogic helper), applied to the
+// page layer instead of component. Same three independent shapes as the COMPONENT-005 test.
+test('detectLayerViolations flags PAGE-008 for inline conditional/loop JSX, in each of its shapes', () => {
+  assert.deepEqual(
+    detectLayerViolations('page', `export function P(p){ return p.ok ? <A/> : <B/>; }`).map((v) => v.rule),
+    ['PAGE-008'],
+  );
+  assert.deepEqual(
+    detectLayerViolations('page', `export function P(p){ return <div>{p.ok && <A/>}</div>; }`).map((v) => v.rule),
+    ['PAGE-008'],
+  );
+  assert.deepEqual(
+    detectLayerViolations('page', `export function P(p){ return <ul>{p.items.map(i => <li key={i}>{i}</li>)}</ul>; }`).map((v) => v.rule),
+    ['PAGE-008'],
+  );
+});
+
+test('detectLayerViolations does NOT flag PAGE-008 for a .map() whose callback never returns JSX', () => {
+  const src = `export function P(p){ const ids = p.items.map(i => i.id); return <div>{ids.length}</div>; }`;
+  assert.deepEqual(detectLayerViolations('page', src), []);
+});
+
+// PAGE-009 mirrors COMPONENT-006 exactly (same computeJsxComplexity helper and default budget).
+test('detectLayerViolations flags PAGE-009 once the default JSX-nesting-depth budget is exceeded, with no inline logic present', () => {
+  const deep = '<div>'.repeat(7) + 'hi' + '</div>'.repeat(7);
+  const violations = detectLayerViolations('page', `export function P(){ return ${deep}; }`);
+  assert.deepEqual(violations.map((v) => v.rule), ['PAGE-009']);
+  assert.match(violations[0].message, /nesting depth 7/);
+});
+
+test('detectLayerViolations flags PAGE-009 once the default branch-count budget is exceeded (PAGE-008 also fires, independently)', () => {
+  const src = `export function P(p){ return <div>{p.a?<X/>:<Y/>}{p.b&&<Z/>}{p.c&&<W/>}{p.d&&<V/>}</div>; }`;
+  const rules = detectLayerViolations('page', src).map((v) => v.rule);
+  assert.deepEqual(rules.sort(), ['PAGE-008', 'PAGE-009']);
+});
+
+test('detectLayerViolations honors PAGE-009 opts overrides (maxJsxDepth/maxJsxBranches)', () => {
+  const src = `export function P(){ return <div><span/></div>; }`; // depth 2, 0 branches
+  assert.deepEqual(detectLayerViolations('page', src, { maxJsxDepth: 1 }).map((v) => v.rule), ['PAGE-009']);
+  assert.deepEqual(detectLayerViolations('page', src), []); // default budget (6) is not exceeded
+});
+
+test('validateArchitecture honors PAGE-009-max-depth/PAGE-009-max-branches overrides from architecture.yml', () => {
+  const dir = tmpProject();
+  fs.mkdirSync(path.join(dir, 'features', 'x', 'pages'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'features', 'x', 'pages', 'Deep.tsx'), `export function Deep(){ return <div><span/></div>; }\n`);
+  fs.appendFileSync(path.join(dir, 'architecture.yml'), 'rules:\n  PAGE-009-max-depth: 1\n');
+  const res = validateArchitecture(dir);
+  assert.ok(res.violations.some((v) => v.rule === 'PAGE-009' && v.file === 'features/x/pages/Deep.tsx'));
+});
+
+// PAGE-008/PAGE-009 default to 'warning' for the same reason COMPONENT-005/006 do (#508): a real,
+// pre-existing fixture already has inline loop logic in a page's JSX --
+// fixtures/frozen-presentation/project-bad's CpoHome.tsx (a `.map()` list render) -- so a silent
+// 'error' default would have broken it (exactly the non-additive breakage #500 phase 1 rules out).
+test('PAGE-008 defaults to warning severity: the real frozen-presentation CpoHome.tsx fixture already has an inline .map() render', () => {
+  const dir = path.join(REPO_ROOT, 'fixtures', 'frozen-presentation', 'project-bad');
+  const res = validateArchitecture(dir);
+  const v = res.violations.find((x) => x.rule === 'PAGE-008' && x.file === 'features/cpo/pages/CpoHome.tsx');
+  assert.ok(v, 'expected PAGE-008 to fire on CpoHome.tsx');
+  assert.equal(v.severity, 'warning');
+});
+

@@ -41,6 +41,12 @@ const KNOWN_LAYERS = new Set(['route', 'controller', 'workflow', 'hook', 'servic
 const DEFAULT_COMPONENT_MAX_JSX_DEPTH = 6;
 const DEFAULT_COMPONENT_MAX_JSX_BRANCHES = 3;
 
+// #505 -- PAGE-009's budget, mirroring COMPONENT-006's defaults exactly (same numeric-override
+// mechanism, via 'PAGE-009-max-depth'/'PAGE-009-max-branches' in architecture.yml). A page's own
+// composing JSX is held to the same illustrative budget as a component's.
+const DEFAULT_PAGE_MAX_JSX_DEPTH = 6;
+const DEFAULT_PAGE_MAX_JSX_BRANCHES = 3;
+
 /** Does this import specifier refer to the "react" package or a "react/" subpath
  * (e.g. "react-dom/client" is NOT matched — mirrors the old REACT_IMPORT_RE's intent
  * of "the react package itself or something nested under a react/ path segment"). */
@@ -88,9 +94,9 @@ function layerFolder(def) {
  *
  * @param {string} layer One of the known layer names.
  * @param {string} source The file's source text.
- * @param {{maxJsxDepth?: number, maxJsxBranches?: number}} [opts] COMPONENT-006's
- *   complexity budget overrides (#508) -- additive, optional; every existing
- *   call site that omits it keeps the built-in defaults.
+ * @param {{maxJsxDepth?: number, maxJsxBranches?: number}} [opts] COMPONENT-006/PAGE-009's
+ *   complexity budget overrides (#508/#505) -- additive, optional; every existing call site
+ *   that omits it keeps the built-in defaults.
  */
 export function detectLayerViolations(layer, source, opts = {}) {
   const ast = parseToAst(source);
@@ -167,6 +173,30 @@ export function detectLayerViolations(layer, source, opts = {}) {
       rule: 'PAGE-006', line: lineOf(source, bannedHookImport.range[0]), message: 'Page imports a custom hook.',
       why: 'Pages cannot own application flow — hooks are wired in by a controller, not imported directly by a page (a Provider hook, named use<Name>Provider, is the one sanctioned exception).',
       expected: ['controller', 'workflow', 'a Provider hook (use<Name>Provider)'],
+    });
+
+    // #505 -- PAGE-008: no inline conditional/loop logic in a page's JSX, mirroring
+    // COMPONENT-005 exactly (same detection helper, packages/ast/jsxComplexity.mjs's
+    // collectInlineJsxLogic -- reused verbatim, not reimplemented).
+    const inlinePageLogic = collectInlineJsxLogic(ast);
+    if (inlinePageLogic.length) out.push({
+      rule: 'PAGE-008', line: lineOf(source, inlinePageLogic[0].node.range[0]),
+      message: `Page contains inline ${inlinePageLogic[0].kind === 'loop' ? 'loop' : 'conditional'} logic in its JSX.`,
+      why: 'Conditional/loop rendering is control flow, not presentation — extract it into a named @expression unit so it stays visible, testable and reusable on its own.',
+      expected: ['@expression'],
+    });
+
+    // #505 -- PAGE-009: a page-level JSX complexity budget, mirroring COMPONENT-006
+    // exactly (same detection helper, computeJsxComplexity), separate from any one
+    // Expression's own cap.
+    const pageComplexity = computeJsxComplexity(ast);
+    const maxPageJsxDepth = opts.maxJsxDepth ?? DEFAULT_PAGE_MAX_JSX_DEPTH;
+    const maxPageJsxBranches = opts.maxJsxBranches ?? DEFAULT_PAGE_MAX_JSX_BRANCHES;
+    if (pageComplexity.maxDepth > maxPageJsxDepth || pageComplexity.branchCount > maxPageJsxBranches) out.push({
+      rule: 'PAGE-009', line: 1,
+      message: `Page's JSX is too complex (nesting depth ${pageComplexity.maxDepth}, ${pageComplexity.branchCount} inline conditional/loop branch${pageComplexity.branchCount === 1 ? '' : 'es'}; budget is depth ${maxPageJsxDepth}, ${maxPageJsxBranches} branches).`,
+      why: "A page-level complexity budget, separate from any one Expression's own cap, keeps a single page from growing into an unreviewable JSX tree.",
+      expected: ['smaller, composed components and/or @expression units'],
     });
   }
 
@@ -456,6 +486,11 @@ export function validateArchitecture(root, opts = {}) {
     maxJsxDepth: config.rules['COMPONENT-006-max-depth']?.value,
     maxJsxBranches: config.rules['COMPONENT-006-max-branches']?.value,
   };
+  // #505 -- PAGE-009's budget override, mirroring COMPONENT-006's above exactly.
+  const pageComplexityOpts = {
+    maxJsxDepth: config.rules['PAGE-009-max-depth']?.value,
+    maxJsxBranches: config.rules['PAGE-009-max-branches']?.value,
+  };
   let frozenIndex = null;
   for (const abs of files) {
     if (!FILE_EXTENSIONS.has(path.extname(abs)) || !fs.existsSync(abs)) continue;
@@ -471,7 +506,8 @@ export function validateArchitecture(root, opts = {}) {
       continue;
     }
     const source = fs.readFileSync(abs, 'utf8');
-    for (const desc of detectLayerViolations(layer, source, componentComplexityOpts)) {
+    const complexityOpts = layer === 'page' ? pageComplexityOpts : componentComplexityOpts;
+    for (const desc of detectLayerViolations(layer, source, complexityOpts)) {
       pushViolation(config, out, { ...desc, file: r });
     }
     if (frozenGlobs.length && FROZEN_RULE_BY_LAYER[layer]) {

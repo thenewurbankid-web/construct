@@ -134,6 +134,16 @@ export const DEFAULT_RULES = {
   // escape-hatch shape as 'READ-002-max-loc' above.
   'COMPONENT-006-max-depth': { name: "Override for COMPONENT-006's max JSX nesting depth", numeric: true },
   'COMPONENT-006-max-branches': { name: "Override for COMPONENT-006's max inline conditional/loop branch count", numeric: true },
+  // #505 -- mirrors COMPONENT-005/006 exactly, applied to the page layer instead of
+  // component (same detection helpers, packages/ast/jsxComplexity.mjs). Default severity is
+  // 'warning' for the same reason as COMPONENT-005/006: a real existing fixture
+  // (fixtures/frozen-presentation/project-bad/features/cpo/pages/CpoHome.tsx, a `.map()`
+  // render) already has inline loop logic in a page's JSX, so a silent 'error' default would
+  // have broken it -- exactly the non-additive breakage #500 phase 1 rules out.
+  'PAGE-008': { severity: 'warning', name: 'Pages cannot contain inline conditional/loop logic in JSX — must be a named @expression unit' },
+  'PAGE-009': { severity: 'warning', name: "Page-level JSX complexity budget (nesting depth / inline conditional-or-loop branch count), separate from any one Expression's own cap" },
+  'PAGE-009-max-depth': { name: "Override for PAGE-009's max JSX nesting depth", numeric: true },
+  'PAGE-009-max-branches': { name: "Override for PAGE-009's max inline conditional/loop branch count", numeric: true },
   'WORKFLOW-001': { severity: 'error', name: 'Workflows cannot import React/UI' },
   // Epic #185 (#190) -- reuse the workflow narrator's health findings (packages/engine/workflowScenarios.mjs).
   'WORKFLOW-002': { severity: 'warning', name: 'Workflow states must be reachable from the initial state' },
