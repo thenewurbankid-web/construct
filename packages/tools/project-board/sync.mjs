@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Deterministic (no-LLM) Projects v2 hygiene sync.
-//   node tools/project-board/sync.mjs [--dry-run] [--archive-days N]
+//   node packages/tools/project-board/sync.mjs [--dry-run] [--archive-days N]
 //        [--owner thenewurbankid-web] [--repo construct] [--project 1]
 // Auth: PROJECT_TOKEN (preferred) or GH_TOKEN env var. It must be a token that can
 // write user-owned Projects v2 (classic: `project` + `repo`; fine-grained: Projects

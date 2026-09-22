@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One-shot status: open PRs, agent worktrees (commits ahead + last activity), heavy-job lock, memory, hosted health.
-# Usage: tools/dev/status.sh
-R="$(cd "$(dirname "$0")/../.." && pwd)"
+# Usage: packages/tools/dev/status.sh
+R="$(cd "$(dirname "$0")/../../.." && pwd)"
 echo "== $(date -u +%H:%M) UTC =="
 echo "-- open PRs"; env -u GH_TOKEN -u GITHUB_TOKEN gh pr list --state open --json number,title --jq '.[]|"#\(.number) \(.title)"' 2>/dev/null || echo "(gh unavailable)"
 echo "-- agent worktrees (commits ahead of origin/main, last commit)"

@@ -11,7 +11,7 @@
 # STALL_MIN minutes the script exits and prints what it found, which re-invokes
 # the orchestrator so it can intervene.
 #
-# Usage:  ISSUES="278 254" tools/dev/watch-agents.sh     (run in background)
+# Usage:  ISSUES="278 254" packages/tools/dev/watch-agents.sh     (run in background)
 cd "$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)" || exit 1
 ISSUES="${ISSUES:-}"          # space-separated issue numbers to watch
 STALL_MIN=${STALL_MIN:-18}           # minutes with no signal before we call it stalled

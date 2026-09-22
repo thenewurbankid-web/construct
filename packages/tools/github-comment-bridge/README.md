@@ -158,7 +158,7 @@ State is kept in `.state/state.json` (gitignored, created on first run):
 ## Setup
 
 ```bash
-cd tools/github-comment-bridge
+cd packages/tools/github-comment-bridge
 npm install   # no-op today; there are no dependencies, this just confirms package.json is valid
 ```
 
@@ -181,7 +181,7 @@ export GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 ### Run it
 
-In its own terminal, from `tools/github-comment-bridge/`:
+In its own terminal, from `packages/tools/github-comment-bridge/`:
 
 ```bash
 npm start
@@ -268,7 +268,7 @@ Verified directly, by hand, in this environment (not guessed from docs):
 ## Files
 
 ```
-tools/github-comment-bridge/
+packages/tools/github-comment-bridge/
   index.mjs              entry point: wiring + poll loop + shutdown handling
   src/config.mjs         env var -> config, GITHUB_TOKEN required here
   src/github.mjs         GitHub REST client, built on @octokit/rest

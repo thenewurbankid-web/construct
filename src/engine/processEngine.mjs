@@ -85,7 +85,7 @@ export function materializeCommand(step, { tmpDir } = {}) {
   const written = [];
   let argv = command.argv;
   for (const file of command.files) {
-    // The pid in the name is what lets tools/dev/heavy.sh tell a live step dir from a dead one (#414).
+    // The pid in the name is what lets packages/tools/dev/heavy.sh tell a live step dir from a dead one (#414).
     const dir = tmpDir || fs.mkdtempSync(path.join(process.env.TMPDIR || '/tmp', `construct-step-${process.pid}-`));
     const target = path.join(dir, `${file.arg}.json`);
     fs.mkdirSync(path.dirname(target), { recursive: true });

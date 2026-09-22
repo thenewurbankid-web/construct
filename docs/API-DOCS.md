@@ -24,13 +24,13 @@ Rejected:
 - **documentation.js** (ISC): JS-first, weaker TypeScript story, less maintained; not pursued because TypeDoc
   already covers both languages (not run in the spike).
 - **eslint-plugin-jsdoc**: licence is BSD-3-Clause, not in the MIT/Apache set we default to, so the coverage ratchet is
-  a small in-repo script instead (`tools/api-coverage/`).
+  a small in-repo script instead (`packages/tools/api-coverage/`).
 
 ## Packages
 
 Same grouping as the Trinity Modules tab (`API_PACKAGES` in `site/lib/apiDocs.mjs`): Core engine (`src/*.mjs`),
 Engine (`src/engine/**`), AST (`src/ast`), Cockpit server (`ui/server/src`), Cockpit client shared
-(`ui/client/components`, `ui/client/lib`) and features (`ui/client/features/**`), Tools (`tools/**`), Docs site
+(`ui/client/components`, `ui/client/lib`) and features (`ui/client/features/**`), Tools (`packages/tools/**`), Docs site
 (`site/**`). Test, story and `.d.ts` files and files with no exports are skipped.
 
 ## Run
@@ -51,12 +51,12 @@ site, then deleted. `site/build-all.mjs` needs no change; each ref builds with i
 
 Plain JSDoc: a description, `@param {type} name description`, `@returns {type} description`, one `@example` on public
 entry points, `@since 0.8`. A file's leading `//` or block comment becomes the module summary on the index pages
-(first sentence). Coverage is enforced by the ratchet in `tools/api-coverage/` (baseline only decreases):
+(first sentence). Coverage is enforced by the ratchet in `packages/tools/api-coverage/` (baseline only decreases):
 
 ```
-node tools/api-coverage/check.mjs            # fails if the gap count rises above tools/api-coverage/baseline.json
-node tools/api-coverage/check.mjs --report   # lists every exported function/class missing a description, @param or @returns
-node tools/api-coverage/check.mjs --update   # rewrites the baseline; refuses to raise it
+node packages/tools/api-coverage/check.mjs            # fails if the gap count rises above packages/tools/api-coverage/baseline.json
+node packages/tools/api-coverage/check.mjs --report   # lists every exported function/class missing a description, @param or @returns
+node packages/tools/api-coverage/check.mjs --update   # rewrites the baseline; refuses to raise it
 ```
 
 ## Known limits

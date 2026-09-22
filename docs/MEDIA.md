@@ -57,14 +57,14 @@ before saving to stay under 10 MB: `ffmpeg -i take.webm -c:v libvpx-vp9 -crf 38 
 - Helpers in `ui/e2e/tests/media/support.mjs`: `caption(page, text)`, `pause(page, ms)`, `card(page, title, subtitle)`.
 - Output: `site/assets/video/<nn>-<slug>.webm` (+ `.mp4`, `.jpg` poster), and a page
   `site/content/user/videos/<slug>.md` with a native `<video controls poster>` and the storyboard as text.
-- Run: `tools/dev/heavy.sh npx playwright test -c playwright.media.config.js --workers=1`.
+- Run: `packages/tools/dev/heavy.sh npx playwright test -c playwright.media.config.js --workers=1`.
 
 ## Adding audio (music, voice-over)
 
 Recordings are silent. To add sound, record or pick a track and mix it in; the video is copied untouched:
 
 ```
-tools/media/add-audio.sh site/assets/video/01-ticket-to-story.webm \
+packages/tools/media/add-audio.sh site/assets/video/01-ticket-to-story.webm \
   --track music.mp3 --track voice.wav@4 --volume 0.35 --fade 2
 ```
 
@@ -76,7 +76,7 @@ scales every scripted pause; captions hold for their reading time.
 
 ## Voice-over (local, free) — #462
 
-`tools/media/voiceover.mjs <captions.json> [--voice af_heart] [--video <video.webm>]` speaks each caption at its start time
+`packages/tools/media/voiceover.mjs <captions.json> [--voice af_heart] [--video <video.webm>]` speaks each caption at its start time
 with the Kokoro model (Apache-2.0, CPU, offline once cached) and writes one `.voice.opus`; with `--video` it also writes
 `<video>.voice.webm` through `add-audio.sh`. Default voice `af_heart` (warm, female); `--list-voices` shows all (about
 28 stock voices, male and female, US and UK). One-time setup is in the script header. The narration is synthetic; say so on the page.

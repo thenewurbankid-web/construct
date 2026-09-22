@@ -1,7 +1,7 @@
-// #414 -- tools/dev/heavy.sh, run for real against a sandbox: prune by owner liveness (never by age alone),
+// #414 -- packages/tools/dev/heavy.sh, run for real against a sandbox: prune by owner liveness (never by age alone),
 // a bounded lock wait that names the holder, a bounded RAM wait that releases the lock, exit-code passthrough.
 //
-//   node --test tools/dev/test/            (also picked up by the root `npm test`)
+//   node --test packages/tools/dev/test/            (also picked up by the root `npm test`)
 //
 // Everything points at a sandbox: CONSTRUCT_HEAVY_TMP (the directory pruned), CONSTRUCT_HEAVY_LOCK (a private
 // lock file), CONSTRUCT_MIN_FREE_MB=0 (no real RAM wait). The machine-wide lock is never touched.
@@ -11,7 +11,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
+import { makeTempDir } from '../../../../test-utils/tmpdir.mjs';
 
 const HEAVY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'heavy.sh');
 

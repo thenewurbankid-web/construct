@@ -51,7 +51,7 @@ jobs:
         if: steps.gate.outputs.run == 'true'
         run: |
           if [ "$DRY_RUN" = "true" ]; then
-            node tools/project-board/sync.mjs --dry-run
+            node packages/tools/project-board/sync.mjs --dry-run
           else
-            node tools/project-board/sync.mjs
+            node packages/tools/project-board/sync.mjs
           fi

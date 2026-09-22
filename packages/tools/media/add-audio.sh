@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Add one or more audio tracks (music, voice-over) to a recorded guide video. Video is copied untouched.
 #
-#   tools/media/add-audio.sh site/assets/video/01-ticket-to-story.webm \
+#   packages/tools/media/add-audio.sh site/assets/video/01-ticket-to-story.webm \
 #       --track music.mp3 --track voice.wav@4 --volume 0.35 --fade 2
 #
 #   --track FILE[@SECONDS]  audio to mix in, starting at SECONDS (default 0); repeat for more tracks

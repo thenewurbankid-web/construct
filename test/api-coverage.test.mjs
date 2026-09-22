@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { gapsOf, compare, measure } from '../tools/api-coverage/check.mjs';
+import { gapsOf, compare, measure } from '../packages/tools/api-coverage/check.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -38,7 +38,7 @@ test('api coverage: compare flags a rise per file and never a fall', () => {
 });
 
 test('api coverage ratchet: the repository has no more undocumented exports than the committed baseline', () => {
-  const baseline = JSON.parse(fs.readFileSync(path.join(ROOT, 'tools/api-coverage/baseline.json'), 'utf8')).files;
+  const baseline = JSON.parse(fs.readFileSync(path.join(ROOT, 'packages/tools/api-coverage/baseline.json'), 'utf8')).files;
   const { files } = measure(ROOT);
   const current = Object.fromEntries(Object.entries(files).map(([f, g]) => [f, g.length]));
   const { regressions } = compare(current, baseline);

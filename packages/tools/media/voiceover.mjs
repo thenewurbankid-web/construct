@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // Voice-over from a caption timeline, with a local text-to-speech model (Kokoro, Apache-2.0, CPU, offline once cached).
 //
-//   node tools/media/voiceover.mjs site/assets/video/01-ticket-to-story.captions.json \
+//   node packages/tools/media/voiceover.mjs site/assets/video/01-ticket-to-story.captions.json \
 //        [--voice af_heart] [--speed 0.95] [--out site/assets/video/01-ticket-to-story.voice.opus] \
 //        [--video site/assets/video/01-ticket-to-story.webm]
-//   node tools/media/voiceover.mjs --list-voices
+//   node packages/tools/media/voiceover.mjs --list-voices
 //
 // The captions file is a JSON array of { "text": "...", "start": <seconds from the video start> }.
 // Output: one audio file with each caption spoken at its start time (default voice: af_heart, a warm female

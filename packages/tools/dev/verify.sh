@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Independent verification of a branch on merged-with-main state, ONE compact summary at the end.
-# Usage: tools/dev/verify.sh <branch> [--browser|--full]   (--browser: own-server e2e configs; --full: also the default config, ~25 min)    (run from the main checkout; needs a clean tree)
+# Usage: packages/tools/dev/verify.sh <branch> [--browser|--full]   (--browser: own-server e2e configs; --full: also the default config, ~25 min)    (run from the main checkout; needs a clean tree)
 # Runs: merge (no commit) -> root/server/client tests, tsc, lint -> optional browser configs. Prints only PASS/FAIL lines.
 set -uo pipefail
-BR="${1:?branch}"; BROWSER="${2:-}"; R="$(cd "$(dirname "$0")/../.." && pwd)"; H="$R/tools/dev/heavy.sh"
+BR="${1:?branch}"; BROWSER="${2:-}"; R="$(cd "$(dirname "$0")/../../.." && pwd)"; H="$R/packages/tools/dev/heavy.sh"
 OUT="$(mktemp /tmp/verify-XXXX.log)"; cd "$R"
 git fetch -q origin "$BR" 2>/dev/null; git merge --no-ff --no-edit "origin/$BR" >>"$OUT" 2>&1 || { echo "MERGE CONFLICT — see $OUT"; git merge --abort; exit 1; }
 res() { printf '%-22s %s\n' "$1" "$2"; }

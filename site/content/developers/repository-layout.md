@@ -21,7 +21,7 @@ test/                    node:test suites for src/
 ui/client                the Cockpit front end (Next.js)
 ui/server                the Cockpit backend (Node, wraps src/ in-process)
 ui/e2e                   Playwright end-to-end tests
-tools/                   small standalone helper tools
+packages/tools/           small standalone helper tools
 site/                    this documentation site's generator
 docs/                    long-form docs reused on this site
 ```

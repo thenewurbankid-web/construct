@@ -2,18 +2,18 @@
 // JSDoc coverage ratchet (epic #463, slice 2). Deterministic, no LLM.
 // Reports every exported function or class under the checked roots that lacks a description, an @param for its
 // parameters, or an @returns when it returns a value, and FAILS when a file has more such gaps than
-// tools/api-coverage/baseline.json allows (the baseline only ever decreases; new files start at zero).
+// packages/tools/api-coverage/baseline.json allows (the baseline only ever decreases; new files start at zero).
 //
-//   node tools/api-coverage/check.mjs            check against the baseline (exit 1 on regression)
-//   node tools/api-coverage/check.mjs --report   list every gap
-//   node tools/api-coverage/check.mjs --update   lower the baseline to the current counts (refuses to raise it)
+//   node packages/tools/api-coverage/check.mjs            check against the baseline (exit 1 on regression)
+//   node packages/tools/api-coverage/check.mjs --report   list every gap
+//   node packages/tools/api-coverage/check.mjs --update   lower the baseline to the current counts (refuses to raise it)
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from '@typescript-eslint/typescript-estree';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = path.resolve(HERE, '..', '..');
+const REPO_ROOT = path.resolve(HERE, '..', '..', '..');
 const BASELINE_FILE = path.join(HERE, 'baseline.json');
 /** Packages under the ratchet: Core engine, Engine, AST. Extend as later slices document more packages. */
 export const ROOTS = ['src'];
@@ -172,7 +172,7 @@ if (isMain) {
       console.error('Refusing to raise the baseline:\n' + regressions.map((r) => `  ${r.file}: ${r.was} -> ${r.now}`).join('\n'));
       process.exit(1);
     }
-    fs.writeFileSync(BASELINE_FILE, JSON.stringify({ note: 'Exported functions/classes lacking a description, @param or @returns, per file. Only ever decreases: node tools/api-coverage/check.mjs --update', total: total(counts), files: Object.fromEntries(Object.entries(counts).sort(([a], [b]) => a.localeCompare(b))) }, null, 2) + '\n');
+    fs.writeFileSync(BASELINE_FILE, JSON.stringify({ note: 'Exported functions/classes lacking a description, @param or @returns, per file. Only ever decreases: node packages/tools/api-coverage/check.mjs --update', total: total(counts), files: Object.fromEntries(Object.entries(counts).sort(([a], [b]) => a.localeCompare(b))) }, null, 2) + '\n');
     console.log(`Baseline written (${total(counts)}).`);
   } else if (regressions.length) {
     console.error('API doc coverage regressed (document the new exports; the baseline only decreases):\n' + regressions.map((r) => `  ${r.file}: ${r.was} -> ${r.now}`).join('\n'));

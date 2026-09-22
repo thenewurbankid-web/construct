@@ -2,7 +2,7 @@
 # Run the Cockpit reachable from any IP, with mandatory GitHub login (#278).
 # Secrets come from the environment only; nothing is written to disk.
 #   PUBLIC_HOST=203.0.113.10 CONSTRUCT_GITHUB_CLIENT_ID=... CONSTRUCT_GITHUB_CLIENT_SECRET=... \
-#   CONSTRUCT_ALLOWED_LOGINS=you tools/dev/run-hosted.sh
+#   CONSTRUCT_ALLOWED_LOGINS=you packages/tools/dev/run-hosted.sh
 # Ports: client 3000, server 4000. Set SCHEME=https if a TLS proxy fronts both.
 set -euo pipefail
 # Optional: CONSTRUCT_ENV_FILE=/path/outside/the/repo (chmod 600) holding the same
@@ -13,10 +13,10 @@ if [ -n "${CONSTRUCT_ENV_FILE:-}" ]; then set -a; . "$CONSTRUCT_ENV_FILE"; set +
 : "${CONSTRUCT_GITHUB_CLIENT_SECRET:?set CONSTRUCT_GITHUB_CLIENT_SECRET}"
 : "${CONSTRUCT_ALLOWED_LOGINS:?set CONSTRUCT_ALLOWED_LOGINS (comma-separated GitHub logins)}"
 SCHEME="${SCHEME:-http}"; WS=$([ "$SCHEME" = https ] && echo wss || echo ws)
-# BEHIND_PROXY=1: a reverse proxy (tools/dev/Caddyfile.hosted) serves one https origin
+# BEHIND_PROXY=1: a reverse proxy (packages/tools/dev/Caddyfile.hosted) serves one https origin
 # on 443; the browser then talks to that origin only, never to :3000 / :4000 directly.
 if [ "${BEHIND_PROXY:-}" = 1 ]; then ORIGIN="$SCHEME://$PUBLIC_HOST"; API="$ORIGIN"; else ORIGIN="$SCHEME://$PUBLIC_HOST:3000"; API="$SCHEME://$PUBLIC_HOST:4000"; fi
-ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 export CONSTRUCT_SESSION_SECRET="${CONSTRUCT_SESSION_SECRET:-$(openssl rand -hex 32)}"
 export CONSTRUCT_OAUTH_CALLBACK_URL="${CONSTRUCT_OAUTH_CALLBACK_URL:-$API/auth/callback}"
 echo "Callback URL to register on the OAuth app: $CONSTRUCT_OAUTH_CALLBACK_URL"

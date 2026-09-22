@@ -3,9 +3,9 @@
 # Playwright, next dev, npm ci). Waits for the lock and for enough free RAM,
 # lowers priority, caps Node's heap, and prunes stale Construct temp dirs after.
 #
-#   tools/dev/heavy.sh npm test
-#   tools/dev/heavy.sh npx playwright test --workers=1 pages-editor
-#   tools/dev/heavy.sh --prune-only        # only the temp-dir sweep, no lock, no command
+#   packages/tools/dev/heavy.sh npm test
+#   packages/tools/dev/heavy.sh npx playwright test --workers=1 pages-editor
+#   packages/tools/dev/heavy.sh --prune-only        # only the temp-dir sweep, no lock, no command
 #
 # Env: CONSTRUCT_HEAVY_LOCK (lock file, default /tmp/construct-heavy.lock),
 #      CONSTRUCT_MIN_FREE_MB (default 3000), CONSTRUCT_HEAVY_HEAP_MB (default 2048),

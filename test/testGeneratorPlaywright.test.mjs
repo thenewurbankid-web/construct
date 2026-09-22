@@ -3,7 +3,7 @@
 // HARNESS problem (naming the convention and the exact expected attribute), not "element not found".
 //
 // Opt-in (needs Chromium + @playwright/test, which live under ui/e2e/node_modules):
-//   CONSTRUCT_RUN_PLAYWRIGHT=1 tools/dev/heavy.sh node --test test/testGeneratorPlaywright.test.mjs
+//   CONSTRUCT_RUN_PLAYWRIGHT=1 packages/tools/dev/heavy.sh node --test test/testGeneratorPlaywright.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

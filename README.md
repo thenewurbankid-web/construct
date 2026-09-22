@@ -102,7 +102,7 @@ PUBLIC_HOST=<your ip or domain> \
 CONSTRUCT_GITHUB_CLIENT_ID=<oauth app id> \
 CONSTRUCT_GITHUB_CLIENT_SECRET=<oauth app secret> \
 CONSTRUCT_ALLOWED_LOGINS=<comma-separated github logins> \
-tools/dev/run-hosted.sh
+packages/tools/dev/run-hosted.sh
 ```
 
 The script prints the callback URL to register on your OAuth app. Details,
@@ -437,7 +437,7 @@ Agents should read `architecture.yml`, make the smallest local change, and run v
 
 ## Tooling
 
-`tools/github-comment-bridge/` is a standalone, separately-run poller (own `package.json`, not part of the Construct CLI) that lets a human dispatch a real `claude` CLI run by posting a `/claude <instruction>` comment on a GitHub issue. See its own README for setup and the exact trigger syntax.
+`packages/tools/github-comment-bridge/` is a standalone, separately-run poller (own `package.json`, not part of the Construct CLI) that lets a human dispatch a real `claude` CLI run by posting a `/claude <instruction>` comment on a GitHub issue. See its own README for setup and the exact trigger syntax.
 
 ## Reusable building blocks
 

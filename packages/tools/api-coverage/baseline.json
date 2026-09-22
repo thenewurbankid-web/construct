@@ -1,5 +1,5 @@
 {
-  "note": "Exported functions/classes lacking a description, @param or @returns, per file. Only ever decreases: node tools/api-coverage/check.mjs --update",
+  "note": "Exported functions/classes lacking a description, @param or @returns, per file. Only ever decreases: node packages/tools/api-coverage/check.mjs --update",
   "total": 261,
   "files": {
     "src/api-composer.mjs": 1,

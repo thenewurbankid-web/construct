@@ -21,7 +21,7 @@ in a board filter.
 ## What gets a number
 
 - One version for the whole repo. `package.json` at the root, `src/ast/package.json`, `ui/client/package.json` and
-  `ui/server/package.json` move in lockstep with it. (`ui/e2e` and `tools/*` are private helpers and are not versioned.)
+  `ui/server/package.json` move in lockstep with it. (`ui/e2e` and `packages/tools/*` are private helpers and are not versioned.)
 - Data schemas keep their own `vN` (for example a plan or process schema `v2`); see "Schema policy" below.
 - While below 1.0: a breaking change to the CLI, a data schema or `architecture.yml` bumps the MINOR; a feature bumps
   the MINOR; a fix bumps the PATCH. From 1.0: breaking = MAJOR, feature = MINOR, fix = PATCH.
