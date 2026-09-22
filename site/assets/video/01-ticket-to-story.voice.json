@@ -1,0 +1,9 @@
+{
+  "exaggeration": 0.7,
+  "cfg_weight": 0.3,
+  "temperature": 0.8,
+  "pause_ms": 650,
+  "seed": 1,
+  "ref": "best",
+  "tempo": 0.9
+}

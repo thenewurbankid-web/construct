@@ -1,0 +1,236 @@
+{
+ "lines": [
+  {
+   "id": "intro",
+   "text": "Hi there, and welcome! In a few minutes we will build a small feature together, from a plain request to a working app.",
+   "say": "Hi there, and welcome! In a few minutes, we will build a small feature together, from a plain request, to a working app."
+  },
+  {
+   "id": "signIn",
+   "text": "First, sign in. Only accounts the owner allowed get in. (This recording uses the demo login.)",
+   "say": "First, sign in. Only accounts the owner allowed get in. (This recording uses the demo login.)"
+  },
+  {
+   "id": "impact",
+   "text": "Here is what the change reaches: files and features. Worked out from your code, no AI model.",
+   "say": "Here's what the change reaches: files and features. Worked out from your code, no AI model."
+  },
+  {
+   "id": "fillCheck",
+   "text": "Tick the box to let the local model write the code. It is off unless you choose it, each time.",
+   "say": "Tick the box to let the local model write the code. It's off unless you choose it, each time."
+  },
+  {
+   "id": "validate",
+   "text": "Finally, the rules. No errors. Two warnings on the new feature: it needs a one-line summary, and its controller is not exported yet. Real findings, and quick fixes.",
+   "say": "Finally, the rules. No errors. Two warnings on the new feature: it needs a one-line summary, and its controller isn't exported yet. Real findings, and quick fixes."
+  },
+  {
+   "id": "outro",
+   "text": "That is it. Thanks for watching, and have fun building.",
+   "say": "That's it. Thanks for watching, and have fun building."
+  }
+ ],
+ "variants": [
+  {
+   "id": "default",
+   "label": "Defaults (exaggeration 0.5, cfg 0.5), whole sample",
+   "params": {
+    "exaggeration": 0.5,
+    "cfg_weight": 0.5,
+    "temperature": 0.8,
+    "ref": "full",
+    "ref_file": "sample.wav"
+   },
+   "scores": {
+    "similarity": 0.82,
+    "wer": 0.009,
+    "f0std": 4.31
+   }
+  },
+  {
+   "id": "expressive",
+   "label": "More expressive (0.7, cfg 0.3), whole sample",
+   "params": {
+    "exaggeration": 0.7,
+    "cfg_weight": 0.3,
+    "temperature": 0.8,
+    "ref": "full",
+    "ref_file": "sample.wav"
+   },
+   "scores": {
+    "similarity": 0.786,
+    "wer": 0.045,
+    "f0std": 5.77
+   }
+  },
+  {
+   "id": "best-ref",
+   "label": "Defaults, best 10-20 s reference window",
+   "params": {
+    "exaggeration": 0.5,
+    "cfg_weight": 0.5,
+    "temperature": 0.8,
+    "ref": "best",
+    "ref_file": "best-2.9-14.0.wav"
+   },
+   "scores": {
+    "similarity": 0.862,
+    "wer": 0.018,
+    "f0std": 2.01
+   }
+  },
+  {
+   "id": "expressive-best-ref",
+   "label": "More expressive (0.7, cfg 0.3), best reference window",
+   "params": {
+    "exaggeration": 0.7,
+    "cfg_weight": 0.3,
+    "temperature": 0.8,
+    "ref": "best",
+    "ref_file": "best-2.9-14.0.wav"
+   },
+   "scores": {
+    "similarity": 0.849,
+    "wer": 0.054,
+    "f0std": 2.62
+   }
+  },
+  {
+   "id": "turbo-best-ref",
+   "label": "Chatterbox-Turbo (MIT, 350M, tags), best reference window",
+   "params": {
+    "exaggeration": 0.5,
+    "cfg_weight": 0.5,
+    "temperature": 0.8,
+    "ref": "best",
+    "model": "turbo",
+    "ref_file": "best-2.9-14.0.wav"
+   },
+   "scores": {
+    "similarity": 0.846,
+    "wer": 0.054,
+    "f0std": 2.7
+   }
+  },
+  {
+   "id": "para",
+   "label": "Defaults, best 10-20 s reference window, plus a quiet breath before intro, validate (from your own sample)",
+   "params": {
+    "exaggeration": 0.5,
+    "cfg_weight": 0.5,
+    "temperature": 0.8,
+    "ref": "best",
+    "ref_file": "best-2.9-14.0.wav",
+    "para": [
+     "intro",
+     "validate"
+    ]
+   },
+   "scores": {
+    "similarity": 0.862,
+    "wer": 0.018,
+    "f0std": 2.01
+   }
+  }
+ ],
+ "files": {
+  "default": {
+   "intro": "voice-tests/default--intro.ogg",
+   "signIn": "voice-tests/default--signIn.ogg",
+   "impact": "voice-tests/default--impact.ogg",
+   "fillCheck": "voice-tests/default--fillCheck.ogg",
+   "validate": "voice-tests/default--validate.ogg",
+   "outro": "voice-tests/default--outro.ogg"
+  },
+  "expressive": {
+   "intro": "voice-tests/expressive--intro.ogg",
+   "signIn": "voice-tests/expressive--signIn.ogg",
+   "impact": "voice-tests/expressive--impact.ogg",
+   "fillCheck": "voice-tests/expressive--fillCheck.ogg",
+   "validate": "voice-tests/expressive--validate.ogg",
+   "outro": "voice-tests/expressive--outro.ogg"
+  },
+  "best-ref": {
+   "intro": "voice-tests/best-ref--intro.ogg",
+   "signIn": "voice-tests/best-ref--signIn.ogg",
+   "impact": "voice-tests/best-ref--impact.ogg",
+   "fillCheck": "voice-tests/best-ref--fillCheck.ogg",
+   "validate": "voice-tests/best-ref--validate.ogg",
+   "outro": "voice-tests/best-ref--outro.ogg"
+  },
+  "expressive-best-ref": {
+   "intro": "voice-tests/expressive-best-ref--intro.ogg",
+   "signIn": "voice-tests/expressive-best-ref--signIn.ogg",
+   "impact": "voice-tests/expressive-best-ref--impact.ogg",
+   "fillCheck": "voice-tests/expressive-best-ref--fillCheck.ogg",
+   "validate": "voice-tests/expressive-best-ref--validate.ogg",
+   "outro": "voice-tests/expressive-best-ref--outro.ogg"
+  },
+  "turbo-best-ref": {
+   "intro": "voice-tests/turbo-best-ref--intro.ogg",
+   "signIn": "voice-tests/turbo-best-ref--signIn.ogg",
+   "impact": "voice-tests/turbo-best-ref--impact.ogg",
+   "fillCheck": "voice-tests/turbo-best-ref--fillCheck.ogg",
+   "validate": "voice-tests/turbo-best-ref--validate.ogg",
+   "outro": "voice-tests/turbo-best-ref--outro.ogg"
+  },
+  "para": {
+   "intro": "voice-tests/para--intro.ogg",
+   "signIn": "voice-tests/para--signIn.ogg",
+   "impact": "voice-tests/para--impact.ogg",
+   "fillCheck": "voice-tests/para--fillCheck.ogg",
+   "validate": "voice-tests/para--validate.ogg",
+   "outro": "voice-tests/para--outro.ogg"
+  }
+ },
+ "reference": {
+  "f0std": 1.89
+ },
+ "progress": {
+  "done": 7,
+  "total": 7,
+  "current": "finished",
+  "updated": "2026-09-22T00:08:36.345Z"
+ },
+ "perLine": {
+  "turbo-best-ref": {
+   "intro": {
+    "similarity": 0.8474,
+    "wer_errors": 1,
+    "wer_words": 23,
+    "f0std": 2.47
+   },
+   "signIn": {
+    "similarity": 0.84,
+    "wer_errors": 3,
+    "wer_words": 16,
+    "f0std": 2.21
+   },
+   "impact": {
+    "similarity": 0.8593,
+    "wer_errors": 1,
+    "wer_words": 16,
+    "f0std": 2.47
+   },
+   "fillCheck": {
+    "similarity": 0.8601,
+    "wer_errors": 1,
+    "wer_words": 19,
+    "f0std": 5.05
+   },
+   "validate": {
+    "similarity": 0.871,
+    "wer_errors": 0,
+    "wer_words": 28,
+    "f0std": 1.68
+   },
+   "outro": {
+    "similarity": 0.7961,
+    "wer_errors": 0,
+    "wer_words": 9,
+    "f0std": 2.29
+   }
+  }
+ }
+}
