@@ -20,7 +20,7 @@
 // record. Neither file can drift from the other silently, because an action
 // named in the config with no implementation here fails a test.
 import crypto from 'node:crypto';
-import { validatePlan } from '../plan.mjs';
+import { validatePlan, migratePlan } from '../plan.mjs';
 import {
   PROCESS_STATES,
   PROCESS_STATE_PATHS,
@@ -94,7 +94,7 @@ export const PROCESS_ERROR_CODES = Object.freeze({
 
 export const PROCESS_TOP_LEVEL_FIELDS = Object.freeze([
   'version', 'id', 'projectRoot', 'title', 'plan', 'state', 'pendingControl', 'currentStepId',
-  'createdAt', 'startedAt', 'finishedAt', 'steps', 'log', 'logSeq', 'logDropped', 'artifacts', 'error', 'owner',
+  'createdAt', 'startedAt', 'finishedAt', 'steps', 'log', 'logSeq', 'logDropped', 'artifacts', 'error', 'owner', 'ext',
 ]);
 export const PROCESS_REQUIRED_FIELDS = Object.freeze([
   'version', 'id', 'projectRoot', 'plan', 'state', 'createdAt', 'steps', 'log', 'artifacts',
@@ -526,6 +526,24 @@ export function processSummary(process) {
 // ---------------------------------------------------------------------------
 
 /**
+ * Bring a stored process record up to the current schema version before
+ * validation. v1 is the only version, so this is the identity (the embedded
+ * plan goes through migratePlan). A v2 adds a step here; see docs/VERSIONING.md. *
+ * @param {any} record A parsed stored process record, any supported version.
+ * @returns {any} The record at the current schema version.
+ *
+ * @example
+ * migrateProcess(JSON.parse(text));
+ */
+export function migrateProcess(record) {
+  if (record && typeof record === 'object' && !Array.isArray(record) && record.plan && typeof record.plan === 'object') {
+    const plan = migratePlan(record.plan);
+    return plan === record.plan ? record : { ...record, plan };
+  }
+  return record;
+}
+
+/**
  * Structural check of a process record, mirroring `validatePlan()`'s
  * contract: `{ valid, errors }`, never throws, never mutates, never prints,
  * and reports every problem rather than stopping at the first. The store runs
@@ -550,6 +568,7 @@ export function validateProcess(process) {
   if ('version' in process && process.version !== PROCESS_VERSION) {
     push(PROCESS_ERROR_CODES.PROCESS_VERSION_INVALID, 'version', `"version" must be ${PROCESS_VERSION} (got ${JSON.stringify(process.version)}).`);
   }
+  if ('ext' in process && !isPlainObject(process.ext)) push(PROCESS_ERROR_CODES.PROCESS_FIELD_TYPE, 'ext', '"ext" must be an object (free-form, ignored by validators).');
   if ('id' in process && !isNonEmptyString(process.id)) push(PROCESS_ERROR_CODES.PROCESS_FIELD_TYPE, 'id', '"id" must be a non-empty string.');
   if ('projectRoot' in process && !isNonEmptyString(process.projectRoot)) push(PROCESS_ERROR_CODES.PROCESS_FIELD_TYPE, 'projectRoot', '"projectRoot" must be a non-empty string.');
   if ('state' in process && !PROCESS_STATE_PATHS.includes(process.state)) {

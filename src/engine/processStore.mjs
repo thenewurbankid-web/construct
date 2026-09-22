@@ -32,7 +32,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { validateProcess, processSummary, appendLog, formatProcessErrors } from './processModel.mjs';
+import { validateProcess, migrateProcess, processSummary, appendLog, formatProcessErrors } from './processModel.mjs';
 import { topLevelState } from './processMachine.mjs';
 
 /**
@@ -147,6 +147,7 @@ export function openProcessStore(projectRoot, { stateDir = resolveStateDir(), no
     } catch (e) {
       return { process: null, problem: unreadable(file, `unreadable: ${e.message}`) };
     }
+    parsed = migrateProcess(parsed);
     const { valid, errors } = validateProcess(parsed);
     if (!valid) return { process: null, problem: unreadable(file, `invalid: ${formatProcessErrors(errors)[0]}`) };
     return { process: parsed, problem: null };

@@ -1,0 +1,104 @@
+{
+  "version": 1,
+  "id": "fixture-2",
+  "projectRoot": "/tmp/fixture-project",
+  "title": "Add totals",
+  "plan": {
+    "version": 1,
+    "ticket": {
+      "source": "text",
+      "title": "Add totals"
+    },
+    "steps": [
+      {
+        "id": "a",
+        "title": "Create the feature",
+        "flow": "create.feature",
+        "args": {
+          "name": "checkout"
+        },
+        "executor": "deterministic",
+        "touches": {
+          "features": [
+            "checkout"
+          ],
+          "files": []
+        }
+      },
+      {
+        "id": "b",
+        "title": "Validate",
+        "flow": "validate",
+        "args": {},
+        "executor": "deterministic",
+        "dependsOn": [
+          "a"
+        ]
+      }
+    ],
+    "ext": {
+      "note": "additive data",
+      "nested": {
+        "n": [
+          1,
+          2,
+          {
+            "k": null
+          }
+        ]
+      }
+    }
+  },
+  "state": "queued",
+  "pendingControl": null,
+  "currentStepId": null,
+  "createdAt": "2026-09-20T10:00:00.000Z",
+  "startedAt": null,
+  "finishedAt": null,
+  "steps": [
+    {
+      "id": "a",
+      "title": "Create the feature",
+      "flow": "create.feature",
+      "executor": "deterministic",
+      "status": "pending",
+      "attempts": 0,
+      "startedAt": null,
+      "finishedAt": null,
+      "durationMs": null,
+      "llm": null,
+      "error": null
+    },
+    {
+      "id": "b",
+      "title": "Validate",
+      "flow": "validate",
+      "executor": "deterministic",
+      "status": "pending",
+      "attempts": 0,
+      "startedAt": null,
+      "finishedAt": null,
+      "durationMs": null,
+      "llm": null,
+      "error": null
+    }
+  ],
+  "log": [],
+  "logSeq": 0,
+  "logDropped": 0,
+  "artifacts": [],
+  "error": null,
+  "owner": null,
+  "ext": {
+    "note": "additive data",
+    "nested": {
+      "n": [
+        1,
+        2,
+        {
+          "k": null
+        }
+      ]
+    }
+  }
+}

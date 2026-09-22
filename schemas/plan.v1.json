@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://construct.dev/schemas/plan.v1.json",
   "title": "Construct Execution Plan v1",
-  "description": "The output of Research mode and the input to execution: an ORDERED list of steps, each one a reference to a real, named Construct flow (a create/import/refactor/research block that already exists) rather than free text -- a plan is executable because its steps name deterministic blocks, not because a model re-reads prose at run time. Each step also carries who performs it (deterministic | local-model | user, the Deterministic / Local model / You tags in docs/design/cockpit-layout.md section 4), what it is expected to touch (features and project-relative files, so the plan can be checked against reality afterwards), and which earlier steps it depends on. See src/plan.mjs (PLAN_FLOWS, validatePlan, planToCommand) for the runtime this describes; the per-flow argument contract lives in PLAN_FLOWS and is mirrored into this file's `allOf` branches, with test/plan.test.mjs asserting the two never drift. DELIBERATE OMISSIONS: no step `status` (queued/running/paused/failed/done is the process runtime's state, keyed by step.id, not the plan's) and no timestamp anywhere (the same research input must produce a byte-identical plan). src/import.mjs's own `{ feature, units }` import plan is a DIFFERENT, narrower artifact that this one CONTAINS, as the `plan` argument of an `import.plan` step -- it is not extended or replaced. Breaking changes go in plan.v2.json rather than mutating v1 in place.",
+  "description": "The output of Research mode and the input to execution: an ORDERED list of steps, each one a reference to a real, named Construct flow (a create/import/refactor/research block that already exists) rather than free text -- a plan is executable because its steps name deterministic blocks, not because a model re-reads prose at run time. Each step also carries who performs it (deterministic | local-model | user, the Deterministic / Local model / You tags in docs/design/cockpit-layout.md section 4), what it is expected to touch (features and project-relative files, so the plan can be checked against reality afterwards), and which earlier steps it depends on. See src/plan.mjs (PLAN_FLOWS, validatePlan, planToCommand) for the runtime this describes; the per-flow argument contract lives in PLAN_FLOWS and is mirrored into this file's `allOf` branches, with test/plan.test.mjs asserting the two never drift. DELIBERATE OMISSIONS: no step `status` (queued/running/paused/failed/done is the process runtime's state, keyed by step.id, not the plan's) and no timestamp anywhere (the same research input must produce a byte-identical plan). src/import.mjs's own `{ feature, units }` import plan is a DIFFERENT, narrower artifact that this one CONTAINS, as the `plan` argument of an `import.plan` step -- it is not extended or replaced. Additive data goes in the reserved free-form `ext` object (ignored by validators); a breaking change creates plan.v2.json with a migratePlan() step (docs/VERSIONING.md) rather than mutating v1 in place.",
   "type": "object",
   "required": [
     "version",
@@ -29,6 +29,10 @@
     "impact": {
       "type": "object",
       "description": "The impact report the plan was derived from (the features and files a ticket touches). Its shape is the impact analysis contract, deliberately not redefined here; carried along so a plan can be re-reviewed against the analysis that produced it."
+    },
+    "ext": {
+      "type": "object",
+      "description": "Reserved, free-form object for ADDITIVE data. Validators ignore its contents; any other unknown top-level field is still rejected (so typos are caught). See docs/VERSIONING.md."
     },
     "provenance": {
       "type": "object",

@@ -59,6 +59,10 @@
         }
       }
     },
+    "ext": {
+      "type": "object",
+      "description": "Reserved, free-form object for ADDITIVE data. Validators ignore its contents; any other unknown top-level field is still rejected (so typos are caught). See docs/VERSIONING.md."
+    },
     "diagnostics": {
       "type": "array",
       "description": "construct validate violations (diagnostics.mjs's makeViolation shape) produced by the last validation attempt on this envelope's buffered result. Empty when status is 'committed'.",

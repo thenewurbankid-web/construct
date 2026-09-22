@@ -402,7 +402,7 @@ export const PLAN_FLOWS = Object.freeze({
   },
 });
 
-export const PLAN_TOP_LEVEL_FIELDS = Object.freeze(['version', 'ticket', 'steps', 'summary', 'impact', 'constraints', 'provenance']);
+export const PLAN_TOP_LEVEL_FIELDS = Object.freeze(['version', 'ticket', 'steps', 'summary', 'impact', 'constraints', 'provenance', 'ext']);
 export const PLAN_REQUIRED_FIELDS = Object.freeze(['version', 'ticket', 'steps']);
 export const STEP_FIELDS = Object.freeze(['id', 'title', 'flow', 'args', 'executor', 'dependsOn', 'touches', 'estimateSeconds', 'rationale']);
 export const STEP_REQUIRED_FIELDS = Object.freeze(['id', 'title', 'flow', 'args', 'executor']);
@@ -675,11 +675,27 @@ function validateDependencies(steps, push) {
 }
 
 /**
+ * Bring a stored plan record up to the current schema version before
+ * validation. v1 is the only version: identity. A v2 adds a step here that
+ * returns the v2 shape; see docs/VERSIONING.md. *
+ * @param {any} record A parsed stored plan record, any supported version.
+ * @returns {any} The record at the current schema version.
+ *
+ * @example
+ * migratePlan(JSON.parse(text));
+ */
+export function migratePlan(record) {
+  return record;
+}
+
+/**
  * Validate a plan against schemas/plan.v1.json's shape and the flow
  * registry. Returns `{ valid, errors }` where each error is
  * `{ code, path, message }` — never throws, never mutates `plan`, never
  * prints. Reports every problem rather than stopping at the first, so a
  * review UI can show them all at once.
+ *
+ * `ext` (any object) is reserved for additive data and is never inspected.
  *
  * `path` is a JSON-pointer-ish dotted path into the plan
  * (e.g. `steps[2].args.feature`), so a caller can highlight the exact field.
@@ -709,6 +725,7 @@ export function validatePlan(plan) {
     push(PLAN_ERROR_CODES.PLAN_VERSION_INVALID, 'version', `"version" must be ${PLAN_VERSION} (got ${JSON.stringify(plan.version)}).`);
   }
   if ('summary' in plan && typeof plan.summary !== 'string') push(PLAN_ERROR_CODES.PLAN_FIELD_TYPE, 'summary', '"summary" must be a string.');
+  if ('ext' in plan && !isPlainObject(plan.ext)) push(PLAN_ERROR_CODES.PLAN_FIELD_TYPE, 'ext', '"ext" must be an object (free-form, ignored by validators).');
   if ('impact' in plan && !isPlainObject(plan.impact)) push(PLAN_ERROR_CODES.PLAN_FIELD_TYPE, 'impact', '"impact" must be an object (the impact report from #288).');
   if ('constraints' in plan && !isPlainObject(plan.constraints)) push(PLAN_ERROR_CODES.PLAN_FIELD_TYPE, 'constraints', '"constraints" must be an object.');
   if ('provenance' in plan) {

@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://construct.dev/schemas/process.v1.json",
   "title": "Construct Process v1",
-  "description": "A running plan, and the contract the Cockpit's Processes section renders. A process is an execution plan (schemas/plan.v1.json) plus everything the plan deliberately refuses to carry: which step is running, each step's status keyed by the plan step's `id`, a log whose every entry states whether a model was involved, and the files the process changed, collected for approval before anything is accepted. See src/engine/processMachine.mjs (the lifecycle, a real XState v5 config), src/engine/processModel.mjs (this record and its validator), src/engine/processStore.mjs (persistence) and src/engine/processEngine.mjs (the driver). test/processSchema.test.mjs asserts this file and the code never drift: every enum here is read out of the file and compared to the exported constant. DELIBERATE OMISSIONS: no step `status` is ever written back into the embedded plan (plan.v1.json rejects one, so re-planning the same ticket still produces byte-identical JSON), and nothing here is derived -- progress, model-step counts and available controls are computed by processSummary()/allowedEvents() rather than stored, so there is one source of truth. Breaking changes go in process.v2.json rather than mutating v1 in place.",
+  "description": "A running plan, and the contract the Cockpit's Processes section renders. A process is an execution plan (schemas/plan.v1.json) plus everything the plan deliberately refuses to carry: which step is running, each step's status keyed by the plan step's `id`, a log whose every entry states whether a model was involved, and the files the process changed, collected for approval before anything is accepted. See src/engine/processMachine.mjs (the lifecycle, a real XState v5 config), src/engine/processModel.mjs (this record and its validator), src/engine/processStore.mjs (persistence) and src/engine/processEngine.mjs (the driver). test/processSchema.test.mjs asserts this file and the code never drift: every enum here is read out of the file and compared to the exported constant. DELIBERATE OMISSIONS: no step `status` is ever written back into the embedded plan (plan.v1.json rejects one, so re-planning the same ticket still produces byte-identical JSON), and nothing here is derived -- progress, model-step counts and available controls are computed by processSummary()/allowedEvents() rather than stored, so there is one source of truth. Additive data goes in the reserved free-form `ext` object, which validators ignore; any other unknown top-level field is rejected. A breaking change creates process.v2.json with a migrateProcess() step rather than mutating v1 in place (docs/VERSIONING.md).",
   "type": "object",
   "required": [
     "version",
@@ -77,6 +77,10 @@
     "error": {
       "type": ["string", "null"],
       "description": "A process-level failure -- the runtime itself stopping this process, as opposed to a step failing, which is recorded on the step."
+    },
+    "ext": {
+      "type": "object",
+      "description": "Reserved, free-form object for ADDITIVE data. Validators ignore its contents; any other unknown top-level field is still rejected (so typos are caught). See docs/VERSIONING.md."
     },
     "owner": {
       "anyOf": [
