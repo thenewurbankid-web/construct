@@ -1,5 +1,6 @@
 // Helpers for the scripted recordings (docs/MEDIA.md). Pacing and captions only; no product logic.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -179,3 +180,28 @@ export async function glide(page, locator, steps = 18) {
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps });
   await page.waitForTimeout(250);
 }
+
+// Checkpoints: every episode is built in parts (docs/MEDIA.md); each part after the first starts from a copy of the
+// sample project as the previous part left it, restored deterministically instead of re-running every earlier part.
+// Kept outside the repo (never committed): a plain recursive copy, keyed by "<episode>-<part>" (e.g. "01-a").
+const CHECKPOINT_ROOT = process.env.CONSTRUCT_MEDIA_CHECKPOINTS || path.join(os.tmpdir(), 'construct-media-checkpoints');
+
+/** Save `projectDir` as the checkpoint named `tag`, overwriting any previous save under that name. */
+export function saveCheckpoint(fsMod, projectDir, tag) {
+  const dest = path.join(CHECKPOINT_ROOT, tag);
+  fsMod.rmSync(dest, { recursive: true, force: true });
+  fsMod.mkdirSync(path.dirname(dest), { recursive: true });
+  fsMod.cpSync(projectDir, dest, { recursive: true, filter: (s) => !/[\\/](node_modules|\.next)([\\/]|$)/.test(s) });
+  return dest;
+}
+
+/** Restore the checkpoint named `tag` into `destDir` (created if missing). Throws a clear error if it does not exist —
+ * run the earlier part first, or pass CONSTRUCT_MEDIA_CHECKPOINTS at the same path it was saved to. */
+export function restoreCheckpoint(fsMod, tag, destDir) {
+  const src = path.join(CHECKPOINT_ROOT, tag);
+  if (!fsMod.existsSync(src)) throw new Error(`no checkpoint "${tag}" at ${src}; run the part that saves it first`);
+  fsMod.mkdirSync(destDir, { recursive: true });
+  fsMod.cpSync(src, destDir, { recursive: true });
+  return destDir;
+}
+

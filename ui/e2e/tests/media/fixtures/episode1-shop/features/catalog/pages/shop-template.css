@@ -1,0 +1,46 @@
+/* Layout, class names and colour palette adapted from Start Bootstrap "Shop Homepage" / "Shop Item"
+   (MIT licensed, see ../../../vendor/shop-template/LICENSE). Kept on literal colours on purpose: this
+   page is wrapped, frozen, presentational content, not restyled with the Cockpit's own design tokens
+   (see README.md's "Wrapping frozen, externally-authored UI" section). */
+.sp-root { background: #faf7f2; color: #26251f; font-family: Georgia, "Times New Roman", serif; position: relative; }
+.sp-nav { display: flex; align-items: center; gap: 22px; padding: 14px 28px; background: #ffffff; border-bottom: 1px solid #e5e0d8; font-family: Arial, Helvetica, sans-serif; }
+.sp-nav .sp-brand { font-family: Georgia, serif; font-weight: 700; font-size: 19px; color: #1c2333; letter-spacing: .01em; }
+.sp-nav a { color: #4b4a42; text-decoration: none; font-size: 13px; }
+.sp-nav a.on { color: #1c2333; font-weight: 700; border-bottom: 2px solid #b5502e; padding-bottom: 4px; }
+.sp-nav .sp-spacer { flex: 1; }
+.sp-wish, .sp-cart { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid #1c2333; border-radius: 3px; background: #fff; color: #1c2333; font: 700 12px Arial, sans-serif; }
+.sp-wish .sp-heart-ico { color: #d1495b; }
+.sp-wish .sp-count, .sp-cart .sp-count { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; background: #1c2333; color: #fff; font-size: 10px; }
+.sp-hero { background: #1c2333; color: #fff; padding: 46px 28px; text-align: center; }
+.sp-hero h1 { margin: 0 0 8px; font-size: 34px; }
+.sp-hero p { margin: 0; color: #b9c0d4; font-family: Arial, sans-serif; font-size: 14px; }
+.sp-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; padding: 28px; }
+@media (max-width: 640px) {
+  .sp-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; padding: 14px; }
+}
+.sp-card { position: relative; background: #fff; border: 1px solid #e5e0d8; border-radius: 4px; overflow: hidden; display: flex; flex-direction: column; }
+.sp-img { height: 130px; background: linear-gradient(135deg, #dee2e6, #c8cdd3); display: grid; place-items: center; color: #6c757d; font: 11px Arial, sans-serif; }
+.sp-body { padding: 14px; text-align: center; font-family: Arial, sans-serif; flex: 1; }
+.sp-body h5 { margin: 0 0 6px; font-family: Georgia, serif; font-size: 15px; color: #1c2333; }
+.sp-price { font-size: 13px; color: #26251f; }
+.sp-price .was { color: #9a978c; text-decoration: line-through; margin-right: 6px; }
+.sp-foot { padding: 0 14px 14px; text-align: center; }
+.sp-btn { display: inline-block; border: 1px solid #1c2333; color: #1c2333; background: transparent; border-radius: 3px; padding: 6px 16px; font: 700 11px Arial, sans-serif; cursor: default; }
+.sp-sale { position: absolute; top: 8px; left: 8px; background: #b5502e; color: #fff; font: 700 10px Arial, sans-serif; padding: 2px 7px; border-radius: 3px; z-index: 1; }
+.sp-heart { position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; border-radius: 50%; background: #fff; border: 1px solid #e5e0d8; display: grid; place-items: center; color: #b9bcc2; font-size: 15px; z-index: 1; cursor: pointer; padding: 0; }
+.sp-heart.on { color: #d1495b; border-color: #f3d3d8; }
+.sp-license { padding: 6px 12px; background: #f1efe9; color: #6b6a60; font: 10px/1.4 Arial, sans-serif; border-top: 1px solid #e5e0d8; }
+
+/* wishlist panel (not yet opened from the live page in this part; previewed on its own in Components) */
+.sp-drawer { width: 320px; background: #fff; border: 1px solid #e5e0d8; font-family: Arial, sans-serif; }
+.sp-drawer .sp-dh { display: flex; align-items: center; padding: 16px; border-bottom: 1px solid #e5e0d8; font-family: Georgia, serif; font-size: 17px; font-weight: 700; color: #1c2333; }
+.sp-drawer .sp-dh .sp-x { margin-left: auto; color: #9a978c; font-size: 18px; background: none; border: 0; }
+.sp-witem { display: flex; gap: 10px; padding: 12px 16px; border-bottom: 1px solid #f1efe9; align-items: center; }
+.sp-witem .sp-wimg { width: 46px; height: 46px; border-radius: 3px; background: linear-gradient(135deg, #dee2e6, #c8cdd3); flex: none; }
+.sp-witem .sp-wn { font-size: 13px; color: #26251f; }
+.sp-witem .sp-wp { font-size: 12px; color: #6b6a60; }
+.sp-witem .sp-rm { margin-left: auto; color: #b5502e; font-size: 11px; background: none; border: 0; text-decoration: underline; cursor: pointer; }
+.sp-wempty { padding: 40px 24px; text-align: center; color: #8a8879; font-size: 13px; line-height: 1.6; }
+.sp-wempty .sp-heart-big { font-size: 30px; color: #d9dbe0; display: block; margin-bottom: 10px; }
+.sp-dfoot { padding: 14px 16px; border-top: 1px solid #e5e0d8; }
+.sp-dfoot .sp-btn { display: block; width: 100%; text-align: center; background: #1c2333; color: #fff; border-color: #1c2333; }

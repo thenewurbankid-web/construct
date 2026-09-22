@@ -19,8 +19,14 @@ never a burned-in bar); the site lists the parts as chapters of the episode's la
 | 4 Clone a project | 4a Paste a link and clone / 4b Open it and look around |
 | 5 Review a branch and run a test | 5a The Git screen findings / 5b Run a generated test |
 
-State of the series: episode 1 exists as ONE 3.75 min recording (the pre-parts take, captions burned in); splitting it into parts, the
-static-React example page and the feature tour are planned and not built yet (see the report of #462). Nothing else is recorded.
+State of the series: episode 1 part 1 ("Meet the page", slug `01a-meet-the-page`, 2:06) is real and recorded — a static,
+presentational shop page adapted from an MIT template, its wishlist components, and today's real (not the ideal, not-yet-built)
+evidence for the missing `onToggle` prop link. The pre-parts monolithic take (`01-ticket-to-story`, 3.75 min, captions burned in)
+is still published as the series landing page. **The series is paused here by owner direction (2026-09-22): parts 1b-1e and
+episodes 2-5 are not built.** Real gaps found and filed while building part 1: #473 (no rule cross-checks a declared prop
+against every call site) and #478 (a frozen file is invisible to Construct's own Components/Pages documentation, not only
+skipped by its layer rules — so the missing-prop evidence in part 1 is shown on a first-party sibling component, not on the
+frozen page itself).
 
 ## Episode 1 storyboard (captions are the script; v2, one continuous example: a wishlist for the sample shop)
 

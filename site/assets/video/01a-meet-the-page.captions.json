@@ -1,0 +1,77 @@
+[
+  {
+    "text": "Hi there! This is part one of a short series. First, let us meet a page that looks like a real product, but does not work yet.",
+    "start": 1.073
+  },
+  {
+    "text": "First, sign in. (This recording uses the demo login.)",
+    "start": 10.915
+  },
+  {
+    "text": "Open the sample shop.",
+    "start": 14.776
+  },
+  {
+    "text": "The catalog feature already has a shop page in it, adapted from a real template, plus a wishlist heart and panel.",
+    "start": 19.501
+  },
+  {
+    "text": "The page itself is frozen \u2014 wrapped, not rebuilt \u2014 so it does not even show up in this list.",
+    "start": 27.416
+  },
+  {
+    "text": "The heart and panel are new, hand-authored components, so Construct documents them normally.",
+    "start": 36.875
+  },
+  {
+    "text": "WishlistController: the wrapper. Right now it just forwards a fixed list of products.",
+    "start": 46.293
+  },
+  {
+    "text": "A new route, `/shop`, already points at it.",
+    "start": 55.235,
+    "say": "A new route, slash shop, already points at it."
+  },
+  {
+    "text": "One thing to look at: the wrapper is not exported from the feature yet.",
+    "start": 61.268
+  },
+  {
+    "text": "Here is that page in the Pages screen.",
+    "start": 67.748
+  },
+  {
+    "text": "Now let us open it, running for real, full screen.",
+    "start": 70.773
+  },
+  {
+    "text": "Try a heart. It renders, and it can be pressed. Nothing happens.",
+    "start": 77.087
+  },
+  {
+    "text": "Switch to Components and pick the heart button.",
+    "start": 81.747
+  },
+  {
+    "text": "Here is what it declares: `onToggle`, a callback. This table already exists today \u2014 Construct does not yet check whether any caller actually passes it.",
+    "start": 88.868,
+    "say": "Here is what it declares: on-toggle, a callback. This table already exists today. Construct does not yet check whether any caller actually passes it."
+  },
+  {
+    "text": "Reading the page confirms it: `ShopHome` never passes it. That gap is filed as a real ticket, number 473.",
+    "start": 99.444,
+    "say": "Reading the page confirms it: Shop Home never passes it. That gap is filed as a real ticket, number four seventy-three."
+  },
+  {
+    "text": "Finally, the rules.",
+    "start": 106.879
+  },
+  {
+    "text": "No errors. One real warning: the wrapper is not exported from the feature yet.",
+    "start": 112.311
+  },
+  {
+    "text": "Next time, we wire it up. See you then.",
+    "start": 117.773
+  }
+]
