@@ -33,6 +33,30 @@ Engine (`src/engine/**`), AST (`src/ast`), Cockpit server (`ui/server/src`), Coc
 (`ui/client/components`, `ui/client/lib`) and features (`ui/client/features/**`), Tools (`tools/**`), Docs site
 (`site/**`). Test, story and `.d.ts` files and files with no exports are skipped.
 
+## Cockpit client: real prop tables (slice 3, #466)
+
+`site/lib/apiDocs.mjs`'s `withPropsTable()` runs `describeSource` (`src/engine/describeDocgen.mjs`, the same
+react-docgen adapter `ui/server/src/componentsApi.mjs` uses for the Cockpit's own Components screen) over every
+`.tsx`/`.jsx` module with exactly one function export, and replaces TypeDoc's opaque `#### Parameters /
+##### __namedParameters` breakdown with a real `#### Props` table (name, type, required, default, description).
+Read-only, no project code evaluated, no LLM. Known scope cut: a file with more than one exported component (or
+none) is left exactly as TypeDoc rendered it — one export per file is the common case for a component, and
+disambiguating props across several exports in one file needs more than this block does today.
+
+## Cockpit server REST reference (slice 3, #466)
+
+`site/lib/serverRoutes.mjs`'s `collectServerRoutes()` reads the *real* Express route table — every direct
+`app.<method>(...)` in `ui/server/src/index.mjs`, plus every `app.use('/mount', createXRouter(...))` sub-router it
+imports, walked the same way inside that router's own file — groups routes by their first `/api/<group>` path
+segment, and renders one page per group under `developers/api/cockpit-server/rest/<group>/` (method, path, a
+light params surface: path `:params`, `req.query.x`/`req.body.x`, including one hop through a `const body =
+req.body...` local alias, and the route's own leading comment). Regex-based, like the rest of this generator;
+never imports or runs the server. Known scope cuts: request/response *body shape* comes only from what a handler
+visibly destructures off `req.query`/`req.body` (no JSDoc `@param`/type inference over route handlers exists in
+this codebase today, unlike the plain functions TypeDoc documents), and `cloneApi.mjs`-style "two router
+factories in one file" is handled by bounding each factory to its own declaration-to-next-`export` window, which
+assumes factories never interleave (true today, checked by `site/test/serverRoutes.test.mjs`).
+
 ## Run
 
 ```
@@ -63,6 +87,10 @@ node tools/api-coverage/check.mjs --update   # rewrites the baseline; refuses to
 
 - Package versions in `package.json` (root is still `1.0.0`) are what pages show when `--version` is not passed; release
   builds pass `--version X.Y`.
-- Cockpit client symbols typed only by props (`__namedParameters`) show the props type name; prop tables come from
-  react-docgen in slice 3 (#466).
 - A package with exactly one entry point renders as a single module instead of a module list (no current package).
+- Ticket-ref scrubbing (`site/lib/markdown.mjs`'s `stripTicketRefs`) targets the phrasings authored prose docs
+  use ("(see #96)", "Tracked under issue #104"); it does not catch every free-form ticket mention inside a raw
+  source comment (a mid-paragraph "#77 follow-up to #53 — ..." after a line break, for example). `apiDocs.mjs`'s
+  `headerSummary()` and this slice's own `serverRoutes.mjs`/`cliCommands.mjs` add their own stronger scrubbing
+  for the text they generate; the pre-existing TypeDoc module pages from slices 1-2 (every package's per-export
+  JSDoc prose) can still show one — filed as a follow-up, out of scope for #466/#467/#468.
