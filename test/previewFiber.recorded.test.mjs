@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { resolveFiberSelection, PREVIEW_FIBER_PROTOCOL } from '../src/engine/previewFiber.mjs';
+import { resolveFiberSelection, PREVIEW_FIBER_PROTOCOL } from '../packages/engine/previewFiber.mjs';
 
 const DIR = fileURLToPath(new URL('./fixtures/previewFiber/', import.meta.url));
 const files = fs.existsSync(DIR) ? fs.readdirSync(DIR).filter((f) => f.endsWith('.json')).sort() : [];

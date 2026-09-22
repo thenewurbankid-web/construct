@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { validateReadability, READABILITY_RULES } from '../src/readability-enforcer.mjs';
+import { validateReadability, READABILITY_RULES } from '../packages/core/readability-enforcer.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));

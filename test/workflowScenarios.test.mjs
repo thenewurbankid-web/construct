@@ -2,10 +2,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { extractMachines } from '../src/engine/workflowExtractor.mjs';
-import { compileWorkflow } from '../src/engine/workflowGenerator.mjs';
-import { enumerateScenarios, findHealthIssues } from '../src/engine/workflowScenarios.mjs';
-import { explainSource, renderExplained } from '../src/engine/workflowExplain.mjs';
+import { extractMachines } from '../packages/engine/workflowExtractor.mjs';
+import { compileWorkflow } from '../packages/engine/workflowGenerator.mjs';
+import { enumerateScenarios, findHealthIssues } from '../packages/engine/workflowScenarios.mjs';
+import { explainSource, renderExplained } from '../packages/engine/workflowExplain.mjs';
 
 const fx = (name) => new URL(`../fixtures/workflow-graphs/${name}`, import.meta.url);
 const machineOf = (src) => extractMachines(src).machines[0];

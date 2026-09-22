@@ -11,7 +11,7 @@ source of the same ref the site is built from (`/<X.Y>/` from the tag, `/next/` 
 | `typedoc` 0.28 | Apache-2.0 | Reads JSDoc in `.mjs` (via `allowJs`) and TSDoc in `.ts`/`.tsx`; one tool for the whole repo |
 | `typedoc-plugin-markdown` 4.13 | MIT | Renders markdown, one file per module (`outputFileStrategy: modules`), which our own site renderer turns into pages |
 
-Both are dev dependencies at the repo root. Spike on real sources (`src/*.mjs`, `src/engine`, `src/ast`,
+Both are dev dependencies at the repo root. Spike on real sources (`src/*.mjs`, `packages/engine`, `packages/ast`,
 `ui/server/src`, `ui/client/features`, `tools`, `site`): TypeDoc produces signature, `@param` with types and
 descriptions, `@returns`, `@example`, `@since`, source links and one page per module for JS and TS alike. All eight
 packages render (about 800 modules) in about 20 seconds.
@@ -19,18 +19,18 @@ packages render (about 800 modules) in about 20 seconds.
 Rejected:
 
 - **jsdoc + jsdoc-to-markdown** (Apache-2.0 / MIT): ignores `.mjs` unless reconfigured (its default source filter
-  returned "no input files" on `src/engine/pipeline.mjs`), and cannot read TypeScript or TSX at all, so it would need
+  returned "no input files" on `packages/engine/pipeline.mjs`), and cannot read TypeScript or TSX at all, so it would need
   a second tool for `ui/client`.
 - **documentation.js** (ISC): JS-first, weaker TypeScript story, less maintained; not pursued because TypeDoc
   already covers both languages (not run in the spike).
 - **eslint-plugin-jsdoc**: licence is BSD-3-Clause, not in the MIT/Apache set we default to, so the coverage ratchet is
-  a small in-repo script instead (`tools/api-coverage/`).
+  a small in-repo script instead (`packages/tools/api-coverage/`).
 
 ## Packages
 
-Same grouping as the Trinity Modules tab (`API_PACKAGES` in `site/lib/apiDocs.mjs`): Core engine (`src/*.mjs`),
-Engine (`src/engine/**`), AST (`src/ast`), Cockpit server (`ui/server/src`), Cockpit client shared
-(`ui/client/components`, `ui/client/lib`) and features (`ui/client/features/**`), Tools (`tools/**`), Docs site
+Same grouping as the Trinity Modules tab (`API_PACKAGES` in `packages/docs-site/lib/apiDocs.mjs`): Core engine (`src/*.mjs`),
+Engine (`packages/engine/**`), AST (`packages/ast`), Cockpit server (`ui/server/src`), Cockpit client shared
+(`ui/client/components`, `ui/client/lib`) and features (`ui/client/features/**`), Tools (`packages/tools/**`), Docs site
 (`site/**`). Test, story and `.d.ts` files and files with no exports are skipped.
 
 ## Cockpit client: real prop tables (slice 3, #466)
@@ -75,12 +75,12 @@ site, then deleted. `site/build-all.mjs` needs no change; each ref builds with i
 
 Plain JSDoc: a description, `@param {type} name description`, `@returns {type} description`, one `@example` on public
 entry points, `@since 0.8`. A file's leading `//` or block comment becomes the module summary on the index pages
-(first sentence). Coverage is enforced by the ratchet in `tools/api-coverage/` (baseline only decreases):
+(first sentence). Coverage is enforced by the ratchet in `packages/tools/api-coverage/` (baseline only decreases):
 
 ```
-node tools/api-coverage/check.mjs            # fails if the gap count rises above tools/api-coverage/baseline.json
-node tools/api-coverage/check.mjs --report   # lists every exported function/class missing a description, @param or @returns
-node tools/api-coverage/check.mjs --update   # rewrites the baseline; refuses to raise it
+node packages/tools/api-coverage/check.mjs            # fails if the gap count rises above packages/tools/api-coverage/baseline.json
+node packages/tools/api-coverage/check.mjs --report   # lists every exported function/class missing a description, @param or @returns
+node packages/tools/api-coverage/check.mjs --update   # rewrites the baseline; refuses to raise it
 ```
 
 ## CLI reference (slice 4, #467)

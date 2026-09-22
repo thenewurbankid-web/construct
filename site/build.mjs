@@ -4,23 +4,23 @@
 //                       [--base-path /name/X.Y/] [--version X.Y|next] [--versions-file versions.json]
 //                       [--no-api | --api core,engine,ast]   (API reference: TypeDoc, docs/API-DOCS.md; default all packages)
 // --base-path is where THIS build is served (canonical URLs, sitemap, 404); --versions-file lists every
-// published version for the header switcher and banner (site/lib/versions.mjs, site/build-all.mjs).
+// published version for the header switcher and banner (packages/docs-site/lib/versions.mjs, site/build-all.mjs).
 // Every page is authored under site/content or reused from the repository (README.md, docs/*.md,
-// src/ast/README.md) and rendered at build time, so the build needs no network and no token.
+// packages/ast/README.md) and rendered at build time, so the build needs no network and no token.
 // The CLI reference and the rule reference are generated from the code itself.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { layout, docBody, homeBody, sectionBody, searchBody, notFoundBody, redirectPage, rootFor } from './lib/pages.mjs';
-import { esc } from './lib/text.mjs';
-import { normalizeBase } from './lib/versions.mjs';
-import { renderMarkdown } from './lib/markdown.mjs';
-import { generateApiMarkdown, API_PACKAGES } from './lib/apiDocs.mjs';
-import { collectServerRoutes, renderRouteGroupMarkdown } from './lib/serverRoutes.mjs';
-import { collectCliCommands, renderCliCommandsMarkdown } from './lib/cliCommands.mjs';
-import { USER_GROUPS, DEV_GROUPS, USER_INDEX, DEV_INDEX, generatedMarkdown, listGroups, userPages } from './lib/structure.mjs';
+import { layout, docBody, homeBody, sectionBody, searchBody, notFoundBody, redirectPage, rootFor } from '../packages/docs-site/lib/pages.mjs';
+import { esc } from '../packages/docs-site/lib/text.mjs';
+import { normalizeBase } from '../packages/docs-site/lib/versions.mjs';
+import { renderMarkdown } from '../packages/docs-site/lib/markdown.mjs';
+import { generateApiMarkdown, API_PACKAGES } from '../packages/docs-site/lib/apiDocs.mjs';
+import { collectServerRoutes, renderRouteGroupMarkdown } from '../packages/docs-site/lib/serverRoutes.mjs';
+import { collectCliCommands, renderCliCommandsMarkdown } from '../packages/docs-site/lib/cliCommands.mjs';
+import { USER_GROUPS, DEV_GROUPS, USER_INDEX, DEV_INDEX, generatedMarkdown, listGroups, userPages } from '../packages/docs-site/lib/structure.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..');
@@ -240,11 +240,11 @@ export async function build({ out, repo, buildTime = new Date(), basePath, versi
   // ---- CLI command reference (from the real command registry, not TypeDoc) ------------------------------
   if (cliData) {
     const CLI_ROOT = `${API_ROOT}cli/`;
-    const indexDef = { path: CLI_ROOT, title: 'CLI command reference', description: `Every command in the CLI's real command registry (bin/construct.mjs's dispatch, src/cli.mjs, src/repl.mjs): flags and one example each.` };
+    const indexDef = { path: CLI_ROOT, title: 'CLI command reference', description: `Every command in the CLI's real command registry (packages/cli/construct.mjs's dispatch, packages/core/cli.mjs, packages/core/repl.mjs): flags and one example each.` };
     const root = rootFor(CLI_ROOT);
     const md = `*CLI command reference, ${versionLabel}.*\n\n${renderCliCommandsMarkdown(cliData, blobUrl)}`;
-    const { html, headings } = renderMarkdown(md, { repoRoot, repoUrl, source: 'src/cli.mjs', resolvePage: () => null, root });
-    pageOut(indexDef, 'dev', devNav, { headings, srcFile: 'src/cli.mjs' }, { body: docBody({ title: indexDef.title, lede: indexDef.description, html }) });
+    const { html, headings } = renderMarkdown(md, { repoRoot, repoUrl, source: 'packages/core/cli.mjs', resolvePage: () => null, root });
+    pageOut(indexDef, 'dev', devNav, { headings, srcFile: 'packages/core/cli.mjs' }, { body: docBody({ title: indexDef.title, lede: indexDef.description, html }) });
   }
 
   // ---- home, search, 404, redirects ------------------------------------

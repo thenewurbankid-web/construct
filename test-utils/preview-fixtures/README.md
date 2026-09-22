@@ -1,7 +1,7 @@
 # Preview fixtures (#443)
 
 Two tiny real apps used to exercise the live-preview v2 bridge and resolver
-(`src/engine/previewFiber.mjs`) against **real dev builds**, plus the script
+(`packages/engine/previewFiber.mjs`) against **real dev builds**, plus the script
 that records payloads from them.
 
 | Fixture | Framework | Runnable in this repo today |
@@ -29,7 +29,7 @@ cp -r test-utils/preview-fixtures/next-app /tmp/cx-next && \
 (cd /tmp/cx-next && PORT=3851 ./node_modules/.bin/next dev -p 3851) &
 
 # 3. record
-tools/dev/heavy.sh node test-utils/preview-fixtures/capture.mjs \
+packages/tools/dev/heavy.sh node test-utils/preview-fixtures/capture.mjs \
   --url http://127.0.0.1:3851/ --name next-dev --selector '[data-testid="cta"]'
 ```
 

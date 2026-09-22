@@ -5,7 +5,7 @@
 //
 // It starts nothing: point it at a dev server you already started (see
 // ./README.md). It drives the Chromium that ui/e2e already has, installs the
-// real bridge from src/engine/previewFiber.mjs against a stand-in window
+// real bridge from packages/engine/previewFiber.mjs against a stand-in window
 // object (the bridge refuses to run in a top-level window, and Playwright's
 // page IS top-level), Alt+clicks the element, and writes what the page sent to
 // test/fixtures/previewFiber/<name>.json, plus any source map it could fetch.
@@ -17,7 +17,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { installPreviewFiberBridge, decodeMappings, parseStackFrames } from '../../src/engine/previewFiber.mjs';
+import { installPreviewFiberBridge, decodeMappings, parseStackFrames } from '../../packages/engine/previewFiber.mjs';
 
 // --- source-map trimming ----------------------------------------------------
 // A bundled dev build's map is megabytes; a fixture must stay readable. We keep

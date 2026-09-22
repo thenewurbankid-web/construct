@@ -12,8 +12,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
-import { createProcess, appendLog, startStep } from '../src/engine/processModel.mjs';
-import { openProcessStore, resolveStateDir, processDir, projectKey, atomicWriteJson } from '../src/engine/processStore.mjs';
+import { createProcess, appendLog, startStep } from '../packages/engine/processModel.mjs';
+import { openProcessStore, resolveStateDir, processDir, projectKey, atomicWriteJson } from '../packages/engine/processStore.mjs';
 
 function clock(start = Date.UTC(2026, 8, 20, 10, 0, 0)) {
   let t = start;

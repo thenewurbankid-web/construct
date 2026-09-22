@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { collectReferences, exportOrigin } from '../src/engine/referenceLinks.mjs';
+import { collectReferences, exportOrigin } from '../packages/engine/referenceLinks.mjs';
 
 const PAGE = `import { PriceCard } from '../components';
 import Badge from '../components/Badge';

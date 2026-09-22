@@ -121,7 +121,7 @@ sync with what's actually true, not a point-in-time snapshot (see #35).
       push; stop and report — never force-resolve — on a real conflict.
     - **Respect the machine** (15 GB, no swap; OOM kills end sessions): at
       most **two** agents run heavy work at once; wrap every heavy command
-      (`npm test`, Playwright, `next dev`, `npm ci`) in `tools/dev/heavy.sh`
+      (`npm test`, Playwright, `next dev`, `npm ci`) in `packages/tools/dev/heavy.sh`
       (serializes machine-wide, waits for free RAM, prunes stale
       `/tmp/construct-*`). `--workers=1`, one dev server, Ollama only when
       needed, no lingering background servers; clean up `/tmp`.
@@ -152,7 +152,7 @@ sync with what's actually true, not a point-in-time snapshot (see #35).
 - Never paste large file contents or full test logs into a report — cite
   `path:line` and counts. Never read a dispatched agent's transcript; read
   its final report and verify with your own commands instead.
-- Prefer `tools/dev/status.sh` and `tools/dev/verify.sh` over composing many
+- Prefer `packages/tools/dev/status.sh` and `packages/tools/dev/verify.sh` over composing many
   small ad hoc shell calls for the same picture.
 - Delegate with a complete brief (scope, files, acceptance bar, report
   format) so the agent needs no follow-up round trip to start.

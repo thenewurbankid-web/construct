@@ -4,13 +4,13 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { EXIT_CODES } from '../src/diagnostics.mjs';
-import { loadLayerGraph } from '../src/architecture-graph.mjs';
-import { classifyFile } from '../src/architecture-enforcer.mjs';
+import { EXIT_CODES } from '../packages/core/diagnostics.mjs';
+import { loadLayerGraph } from '../packages/core/architecture-graph.mjs';
+import { classifyFile } from '../packages/core/architecture-enforcer.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const bin = path.join(here, '..', 'bin', 'construct.mjs');
+const bin = path.join(here, '..', 'packages', 'cli', 'construct.mjs');
 
 function run(args, cwd) {
   return spawnSync('node', [bin, ...args], { encoding: 'utf8', cwd: cwd ?? process.cwd() });

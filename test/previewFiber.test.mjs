@@ -10,7 +10,7 @@ import {
   decodeMappings,
   toProjectPath,
   PREVIEW_FIBER_PROTOCOL,
-} from '../src/engine/previewFiber.mjs';
+} from '../packages/engine/previewFiber.mjs';
 
 const ROOT = '/home/dev/workspace/storefront';
 const PARENT = 'http://127.0.0.1:3000';

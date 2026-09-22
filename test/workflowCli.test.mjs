@@ -6,11 +6,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { EXIT_CODES } from '../src/diagnostics.mjs';
+import { EXIT_CODES } from '../packages/core/diagnostics.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const bin = path.join(here, '..', 'bin', 'construct.mjs');
+const bin = path.join(here, '..', 'packages', 'cli', 'construct.mjs');
 const fixtures = path.join(here, '..', 'fixtures', 'workflow-graphs');
 const run = (args, cwd) => spawnSync('node', [bin, ...args], { encoding: 'utf8', cwd });
 

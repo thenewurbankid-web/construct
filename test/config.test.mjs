@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { loadConfig, findProjectRoot, DEFAULT_RULES, DEFAULT_LAYERS, REACT_SPA_LAYERS, FRAMEWORKS, normalizeFramework, layersForFramework, DATA_LAYER_PROVIDERS, normalizeDataLayerProvider } from '../src/config.mjs';
-import { ConstructError, EXIT_CODES } from '../src/diagnostics.mjs';
+import { loadConfig, findProjectRoot, DEFAULT_RULES, DEFAULT_LAYERS, REACT_SPA_LAYERS, FRAMEWORKS, normalizeFramework, layersForFramework, DATA_LAYER_PROVIDERS, normalizeDataLayerProvider } from '../packages/core/config.mjs';
+import { ConstructError, EXIT_CODES } from '../packages/core/diagnostics.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 function tmpProject() {

@@ -30,7 +30,7 @@ export default [
   { ignores: ['.claude/**', 'example/**', '**/node_modules/**', '**/dist/**', 'ui/e2e/test-results/**', 'ui/e2e/playwright-report/**'] },
 
   // Scope (#335): the places where makeTempDir applies. Deliberately NOT covered:
-  //  - src/engine/*.mjs (gitTrees, transactionalWriter, processEngine) manage their own directory
+  //  - packages/engine/*.mjs (gitTrees, transactionalWriter, processEngine) manage their own directory
   //    lifetime as product behaviour and must not depend on a test helper;
   //  - ui/e2e/**/*.spec.js create their own dirs and rmSync them in afterAll (measured: zero leaks);
   //    migrating specs that cannot be run in a worktree risks drift (the #254 codemod wrote imports

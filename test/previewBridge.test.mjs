@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { installPreviewBridge, previewBridgeScript } from '../src/engine/previewBridge.mjs';
-import { transformForPreview } from '../src/engine/previewVitePlugin.mjs';
+import { installPreviewBridge, previewBridgeScript } from '../packages/engine/previewBridge.mjs';
+import { transformForPreview } from '../packages/engine/previewVitePlugin.mjs';
 
 function fakeWindow() {
   const listeners = {};

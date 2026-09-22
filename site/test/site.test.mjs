@@ -2,10 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { slugify, makeSlugger, esc } from '../lib/text.mjs';
-import { sanitizeHtml } from '../lib/sanitize.mjs';
+import { slugify, makeSlugger, esc } from '../../packages/docs-site/lib/text.mjs';
+import { sanitizeHtml } from '../../packages/docs-site/lib/sanitize.mjs';
 import { build, parseArgs } from '../build.mjs';
-import { USER_GROUPS, EXAMPLE_SURFACES, examplePages } from '../lib/structure.mjs';
+import { USER_GROUPS, EXAMPLE_SURFACES, examplePages } from '../../packages/docs-site/lib/structure.mjs';
 import { makeTempDir } from '../../test-utils/tmpdir.mjs';
 
 const BUILD_TIME = new Date('2026-09-20T00:00:00Z');
@@ -142,7 +142,7 @@ test('generated and reused docs are current, and carry no tracker plumbing or de
 });
 
 test('markdown helpers: sections, includes, ticket stripping', async () => {
-  const { extractSection, relevel, stripTicketRefs, stripTicketRefsHtml } = await import('../lib/markdown.mjs');
+  const { extractSection, relevel, stripTicketRefs, stripTicketRefsHtml } = await import('../../packages/docs-site/lib/markdown.mjs');
   const md = '# T\n\n## A\n\ntext\n\n```bash\n# not a heading\n```\n\n## B\n\nother\n';
   const { markdown } = extractSection(md, 'A');
   assert.match(markdown, /not a heading/);
@@ -183,12 +183,12 @@ test('API reference: core, engine and AST are generated from source, versioned, 
   assert.match(idx, /v0\.9/);
   for (const id of ['core', 'engine', 'ast']) assert.match(idx, new RegExp(`href="[./]*developers/api/${id}/"`));
   const engine = fs.readFileSync(path.join(out, 'developers/api/engine/index.html'), 'utf8');
-  assert.match(engine, /src\/engine\/pipeline/, 'a known module is listed');
-  const page = fs.readFileSync(path.join(out, 'developers/api/engine/src/engine/pipeline/index.html'), 'utf8');
+  assert.match(engine, /packages\/engine\/pipeline/, 'a known module is listed');
+  const page = fs.readFileSync(path.join(out, 'developers/api/engine/packages/engine/pipeline/index.html'), 'utf8');
   assert.match(page, /runPipeline/, 'a known export is documented');
   assert.match(page, /<h[1-4][^>]*>Parameters/, 'params are rendered');
   assert.match(page, /v0\.9/, 'the page carries the version it was built for');
-  assert.ok(fs.existsSync(path.join(out, 'developers/api/ast/src/ast/parse/index.html')));
+  assert.ok(fs.existsSync(path.join(out, 'developers/api/ast/packages/ast/parse/index.html')));
   assert.ok(!fs.existsSync(path.join(out, 'developers/api/tools')), 'packages not requested are not built');
   // Without `api` a build carries no API pages (library default).
   const plain = makeTempDir('site-noapi-test-');

@@ -3,9 +3,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createContext } from '../src/engine/units/facts.mjs';
-import { discoverRoutes, featureRoutes, readRouteTable, routeAdapterFor, ROUTE_ADAPTERS } from '../src/engine/units/route-adapters.mjs';
-import { summarizeUnit } from '../src/engine/unitSummary.mjs';
+import { createContext } from '../packages/engine/units/facts.mjs';
+import { discoverRoutes, featureRoutes, readRouteTable, routeAdapterFor, ROUTE_ADAPTERS } from '../packages/engine/units/route-adapters.mjs';
+import { summarizeUnit } from '../packages/engine/unitSummary.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import fs from 'node:fs';
 

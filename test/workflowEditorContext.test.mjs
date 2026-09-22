@@ -4,10 +4,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { editWorkflow } from '../src/engine/workflowEditor.mjs';
-import { extractMachines } from '../src/engine/workflowExtractor.mjs';
-import { compileWorkflow } from '../src/engine/workflowGenerator.mjs';
-import { narrateMachine } from '../src/engine/workflowNarrator.mjs';
+import { editWorkflow } from '../packages/engine/workflowEditor.mjs';
+import { extractMachines } from '../packages/engine/workflowExtractor.mjs';
+import { compileWorkflow } from '../packages/engine/workflowGenerator.mjs';
+import { narrateMachine } from '../packages/engine/workflowNarrator.mjs';
 
 const fixture = JSON.parse(fs.readFileSync(new URL('../fixtures/workflow-graphs/checkout.json', import.meta.url), 'utf8'));
 const SRC = compileWorkflow(fixture, { name: 'Checkout' }).source;

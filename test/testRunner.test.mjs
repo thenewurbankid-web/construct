@@ -7,9 +7,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
-import { generateFeatureTests } from '../src/engine/testGenerator.mjs';
-import { HELPERS } from '../src/engine/testSpecRender.mjs';
-import { bugReportText, classifyFailure, findPlaywright, parseBaseUrl, readReport, configText, keepTraces, pruneTraceDirs, TRACE_DIR_PREFIX, TRACE_KEEP_DIRS, TRACE_MAX_FILE_BYTES, reclaimRunsOf, renderRunText, resolveSpecs, runFeatureTests, RUN_DIR_PREFIX } from '../src/engine/testRunner.mjs';
+import { generateFeatureTests } from '../packages/engine/testGenerator.mjs';
+import { HELPERS } from '../packages/engine/testSpecRender.mjs';
+import { bugReportText, classifyFailure, findPlaywright, parseBaseUrl, readReport, configText, keepTraces, pruneTraceDirs, TRACE_DIR_PREFIX, TRACE_KEEP_DIRS, TRACE_MAX_FILE_BYTES, reclaimRunsOf, renderRunText, resolveSpecs, runFeatureTests, RUN_DIR_PREFIX } from '../packages/engine/testRunner.mjs';
 
 const LOCK = 'frozen:\n  - features/*/tests/generated/**\nnonLayer:\n  - features/*/tests/**\n';
 const BASE = 'version: 1\npreset: strict-nextjs\nproject:\n  framework: nextjs\nfeatures:\n  root: features\n';

@@ -11,11 +11,11 @@ import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
-import { createProcess, recordArtifact } from '../src/engine/processModel.mjs';
-import { openProcessStore } from '../src/engine/processStore.mjs';
-import { createProcessEngine } from '../src/engine/processEngine.mjs';
-import { createBotRunner, botBranch } from '../src/engine/botRunner.mjs';
-import { createApprovalGate, pathProblem, GATE_CODES } from '../src/engine/approvalGate.mjs';
+import { createProcess, recordArtifact } from '../packages/engine/processModel.mjs';
+import { openProcessStore } from '../packages/engine/processStore.mjs';
+import { createProcessEngine } from '../packages/engine/processEngine.mjs';
+import { createBotRunner, botBranch } from '../packages/engine/botRunner.mjs';
+import { createApprovalGate, pathProblem, GATE_CODES } from '../packages/engine/approvalGate.mjs';
 
 const FAKE_BIN = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'test-utils', 'fakeConstructBin.mjs');
 const ID = ['-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'commit.gpgsign=false'];

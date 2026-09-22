@@ -1,0 +1,407 @@
+// Module 2 — Separation of Concerns Enforcer (Epics 2.1 and 2.2).
+// Feature-slice boundary checks (SLICE-001, SLICE-002) and module-cohesion
+// checks (MODULE-001, SOC-001, DRY-001). All violations are built through
+// makeViolation() from ./diagnostics.mjs with module: 'separation-of-concerns'.
+import fs from 'node:fs';
+import path from 'node:path';
+import { loadConfig, DEFAULT_RULES } from './config.mjs';
+import { walk, rel } from './fs.mjs';
+import { makeViolation } from './diagnostics.mjs';
+import { exceptionApplies } from './exceptions.mjs';
+import { parseToAst } from '../../packages/ast/index.mjs';
+import { isNonLayerPath } from './nonLayer.mjs';
+
+const ext = new Set(['.ts', '.tsx', '.js', '.jsx']);
+export const LAYER_FOLDERS = ['controllers', 'workflows', 'hooks', 'domain', 'services', 'pages', 'components'];
+const LAYER_FOLDER_SET = new Set(LAYER_FOLDERS);
+
+const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const stripExt = (p) => p.replace(/\.(tsx|ts|jsx|js)$/, '');
+
+// ---------------------------------------------------------------------------
+// Config-driven severity/exceptions, wired through the shared diagnostics
+// contract.
+// ---------------------------------------------------------------------------
+function severityFor(config, rule) {
+  const entry = config.rules?.[rule];
+  if (typeof entry === 'string') return entry;
+  return entry?.severity ?? DEFAULT_RULES[rule]?.severity ?? 'error';
+}
+
+function pushViolation(config, out, opts) {
+  const severity = severityFor(config, opts.rule);
+  if (severity === 'off' || exceptionApplies(config, opts.rule, opts.file)) return;
+  out.push(makeViolation({ module: 'separation-of-concerns', severity, ...opts }));
+}
+
+function featuresRootOf(config) {
+  return config.features?.root || 'features';
+}
+
+function listFeatureDirs(root, featuresRoot) {
+  const base = path.join(root, featuresRoot);
+  if (!fs.existsSync(base)) return [];
+  return fs
+    .readdirSync(base, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name);
+}
+
+// ---------------------------------------------------------------------------
+// index.ts export parsing — shared by SLICE-002 detection, isPublicPath, and
+// the API composer (packages/core/api-composer.mjs) which imports parseIndexExports.
+// ---------------------------------------------------------------------------
+const EXPORT_FROM_RE = /export\s+(type\s+)?(\*|\{[^}]*\})\s*from\s*(['"])(.+?)\3\s*;?/g;
+
+export function parseIndexExports(source) {
+  const out = [];
+  for (const m of source.matchAll(EXPORT_FROM_RE)) {
+    out.push({
+      specifier: m[4],
+      isWildcard: m[2] === '*',
+      isType: Boolean(m[1]),
+      line: source.slice(0, m.index).split('\n').length,
+      raw: m[0].trim(),
+    });
+  }
+  return out;
+}
+
+/**
+ * isPublicPath(root, filePath) -> boolean
+ * A path is public only if it is re-exported — directly, or via `export *` —
+ * from its feature's index.ts. Paths outside the configured features root are
+ * considered "not applicable" and return true. Stable signature: reused by
+ * other Construct modules (e.g. the API composer) to classify files.
+ */
+export function isPublicPath(root, filePath) {
+  const config = loadConfig(root);
+  const featuresRoot = featuresRootOf(config);
+  const relFile = path.isAbsolute(filePath) ? rel(root, filePath) : filePath.replaceAll(path.sep, '/');
+
+  const m = relFile.match(new RegExp(`^${escapeRegex(featuresRoot)}/([^/]+)/(.*)$`));
+  if (!m) return true; // not under a feature slice — no restriction applies
+  const [, featureName, restPath] = m;
+  const restNoExt = stripExt(restPath);
+  if (restNoExt === 'index') return true; // the index.ts itself
+
+  const indexPath = path.join(root, featuresRoot, featureName, 'index.ts');
+  if (!fs.existsSync(indexPath)) return false;
+  const exportsList = parseIndexExports(fs.readFileSync(indexPath, 'utf8'));
+
+  return exportsList.some((e) => {
+    const resolved = path.posix.normalize(e.specifier.replace(/^\.\//, ''));
+    if (resolved === restNoExt) return true;
+    if (e.isWildcard && (restNoExt === resolved || restNoExt.startsWith(resolved + '/'))) return true;
+    return false;
+  });
+}
+
+function resolveSpecifier(currentRelFile, spec, featuresRoot) {
+  if (spec.startsWith('.')) {
+    const dir = path.posix.dirname(currentRelFile);
+    return path.posix.normalize(path.posix.join(dir, spec));
+  }
+  if (spec.startsWith('@features/')) {
+    return path.posix.normalize(path.posix.join(featuresRoot, spec.slice('@features/'.length)));
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Epic 2.1 — Feature Slice Boundary Enforcer
+// ---------------------------------------------------------------------------
+function checkSkeleton(config, out, root, featuresRoot, name) {
+  const featureDir = path.join(root, featuresRoot, name);
+  const missing = LAYER_FOLDERS.filter((f) => !fs.existsSync(path.join(featureDir, f)));
+  if (!missing.length) return;
+  pushViolation(config, out, {
+    rule: 'SLICE-001',
+    file: `${featuresRoot}/${name}/`,
+    line: 1,
+    message: `Feature "${name}" is missing expected folder(s): ${missing.join(', ')}.`,
+    why: 'A feature slice must expose a full, predictable set of layer folders so ownership stays unambiguous.',
+    expected: missing.map((f) => `${featuresRoot}/${name}/${f}/`),
+    suggestedFix: `Run: construct feature create ${name}`,
+  });
+}
+
+const IMPORT_RE = /(?:import\s+(?:type\s+)?[\s\S]*?from\s*|import\s*\()(['"])(.*?)\1/g;
+
+function checkCrossFeatureImports(config, out, root, featuresRoot, relFile, src) {
+  const currentFeature = relFile.match(new RegExp(`^${escapeRegex(featuresRoot)}/([^/]+)/`))?.[1];
+  if (!currentFeature) return;
+  for (const m of src.matchAll(IMPORT_RE)) {
+    const resolved = resolveSpecifier(relFile, m[2], featuresRoot);
+    if (!resolved) continue;
+    const other = resolved.match(new RegExp(`^${escapeRegex(featuresRoot)}/([^/]+)/(.*)$`));
+    if (!other) continue;
+    const [, otherFeature, restPath] = other;
+    if (otherFeature === currentFeature) continue;
+    if (isPublicPath(root, resolved)) continue;
+    const line = src.slice(0, m.index).split('\n').length;
+    pushViolation(config, out, {
+      rule: 'SLICE-002',
+      file: relFile,
+      line,
+      message: `Cross-feature import reaches into "${otherFeature}" internals (${restPath}).`,
+      why: 'Features may only consume another feature through its public index API.',
+      expected: [`${featuresRoot}/${otherFeature}/index.ts`],
+      suggestedFix: `Import from ${featuresRoot}/${otherFeature}/index.ts instead — export the needed symbol there first if it isn't already public.`,
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Epic 2.2 — Module Cohesion Enforcer
+// ---------------------------------------------------------------------------
+/** Names bound by a declaration pattern (`const { a, b: c } = x`, `const [d] = y`). */
+function patternNames(node, out) {
+  if (!node) return;
+  if (node.type === 'Identifier') out.push(node.name);
+  else if (node.type === 'ObjectPattern') node.properties.forEach((p) => patternNames(p.type === 'RestElement' ? p.argument : p.value, out));
+  else if (node.type === 'ArrayPattern') node.elements.forEach((e) => patternNames(e, out));
+  else if (node.type === 'AssignmentPattern') patternNames(node.left, out);
+  else if (node.type === 'RestElement') patternNames(node.argument, out);
+}
+
+/**
+ * countPrimaryExports(source) -> [{name, line}]
+ * Top-level exported function/class/const/let/var/default/`export { }` counter,
+ * in source order. Reads the real AST (packages/ast), so a comma inside a generic
+ * (`Record<A, B>`) is not a second declarator and an `export` written inside a
+ * comment or string is not an export (#326).
+ * Re-exports (`export * from`, `export {..} from`) never count — they aggregate
+ * an API, they don't declare a new responsibility in this file. Type-only
+ * declarations (`export type/interface/enum`, `export type { }`) and ambient
+ * `export declare` are not counted either, as before. A file that does not parse
+ * yields no exports (a syntax error is reported elsewhere, not as a cohesion error).
+ */
+export function countPrimaryExports(source) {
+  let ast;
+  try {
+    ast = parseToAst(source);
+  } catch {
+    return [];
+  }
+  const results = [];
+  for (const node of ast.body) {
+    const line = node.loc.start.line;
+    if (node.type === 'ExportDefaultDeclaration') {
+      const d = node.declaration;
+      const named = (d.type === 'FunctionDeclaration' || d.type === 'ClassDeclaration') && d.id;
+      results.push({ name: named ? d.id.name : 'default', line });
+    } else if (node.type === 'ExportNamedDeclaration') {
+      if (node.exportKind === 'type' || node.source) continue;
+      const d = node.declaration;
+      if (d) {
+        if (d.declare) continue;
+        if (d.type === 'VariableDeclaration') {
+          const names = [];
+          d.declarations.forEach((x) => patternNames(x.id, names));
+          names.forEach((name) => results.push({ name, line }));
+        } else if ((d.type === 'FunctionDeclaration' || d.type === 'TSDeclareFunction' || d.type === 'ClassDeclaration') && d.id) {
+          results.push({ name: d.id.name, line });
+        }
+      } else {
+        for (const spec of node.specifiers) {
+          const name = spec.exported?.name ?? spec.exported?.value;
+          if (name) results.push({ name, line });
+        }
+      }
+    }
+  }
+  return results;
+}
+
+function checkModuleCohesion(config, out, relFile, src) {
+  // Threshold is configurable via architecture.yml as a nested field on the
+  // rule's own entry, per config.mjs's uniform rules-map contract:
+  //   rules:
+  //     MODULE-001:
+  //       threshold: 5
+  const threshold = Number(config.rules?.['MODULE-001']?.threshold) || 3;
+  const exported = countPrimaryExports(src);
+  if (exported.length <= threshold) return;
+  const overflow = exported.slice(threshold).map((e) => e.name);
+  pushViolation(config, out, {
+    rule: 'MODULE-001',
+    file: relFile,
+    line: exported[0]?.line || 1,
+    message: `File declares ${exported.length} primary exports (threshold ${threshold}).`,
+    why: 'One primary module per file keeps files single-purpose and easy to navigate.',
+    expected: [`${threshold} or fewer primary exports per file`],
+    suggestedFix: `Split out ${overflow.join(', ')} into their own file(s).`,
+  });
+}
+
+function checkOwnership(config, out, root, featuresRoot, featureName) {
+  const featureDir = path.join(root, featuresRoot, featureName);
+  for (const p of walk(featureDir).filter((p) => ext.has(path.extname(p)) && !isNonLayerPath(root, p, config.nonLayer))) {
+    const relToFeature = rel(featureDir, p);
+    const segments = relToFeature.split('/');
+    const top = segments[0];
+    const relFull = rel(root, p);
+    if (segments.length === 1) {
+      if (top === 'index.ts' || top === 'types.ts') continue;
+      pushViolation(config, out, {
+        rule: 'SOC-001',
+        file: relFull,
+        line: 1,
+        message: `File "${top}" sits directly in the feature root without a recognized role.`,
+        why: 'Every responsibility needs an architectural owner.',
+        expected: [...LAYER_FOLDERS, 'shared/', 'index.ts', 'types.ts'],
+        suggestedFix: `Move ${relFull} into a known layer folder (e.g. ${featuresRoot}/${featureName}/domain/) or ${featuresRoot}/${featureName}/shared/.`,
+      });
+      continue;
+    }
+    if (top === 'shared' || LAYER_FOLDER_SET.has(top)) continue;
+    pushViolation(config, out, {
+      rule: 'SOC-001',
+      file: relFull,
+      line: 1,
+      message: `File is under unrecognized folder "${top}/".`,
+      why: 'Every responsibility needs an architectural owner (a known layer folder or an explicit shared/).',
+      expected: [...LAYER_FOLDERS, 'shared/'],
+      suggestedFix: `Move ${relFull} into one of ${LAYER_FOLDERS.join('/')} or ${featuresRoot}/${featureName}/shared/.`,
+    });
+  }
+}
+
+// DRY-001 — cheap, approximate near-duplicate heuristic. Not a clone detector.
+const MIN_BODY_LEN = 60;
+const FUNCTION_BLOCK_RE = /(?:function\s*[A-Za-z_$][\w$]*\s*\([^)]*\)|\([^)]*\)\s*=>)\s*\{/g;
+
+function findMatchingBrace(src, openIdx) {
+  let depth = 0;
+  for (let i = openIdx; i < src.length; i++) {
+    if (src[i] === '{') depth++;
+    else if (src[i] === '}') {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+function extractFunctionBlocks(src) {
+  const blocks = [];
+  for (const m of src.matchAll(FUNCTION_BLOCK_RE)) {
+    const openIdx = m.index + m[0].length - 1;
+    const closeIdx = findMatchingBrace(src, openIdx);
+    if (closeIdx > openIdx) blocks.push({ text: src.slice(openIdx, closeIdx + 1), line: src.slice(0, m.index).split('\n').length });
+  }
+  return blocks;
+}
+
+function normalizeBody(body) {
+  return body
+    .replace(/\/\/.*$/gm, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/["'`][^"'`]*["'`]/g, 'STR')
+    .replace(/[A-Za-z_$][\w$]*/g, 'ID')
+    .replace(/\s+/g, '');
+}
+
+// #338: a body only counts as business LOGIC if it decides or computes something. A thin wiring
+// function (`const {a,b} = useX(); return <Page a={build(a)} />`) has the same shape as every other
+// one, and identifier erasure makes all of them collide; it has no rule to keep single-sourced.
+// Identifiers stay erased on purpose: a copy-pasted function with renamed variables is exactly
+// what DRY-001 exists to catch. Heuristic on the comment/string-stripped text: a control-flow
+// keyword, a ternary, a logical operator, or a spaced arithmetic/comparison operator. Anything
+// else is pure wiring and is skipped.
+const LOGIC_RE = /\b(?:if|else|for|while|do|switch|case|try|catch|throw)\b|\?(?![.:])|&&|\|\||\?\?|\s(?:[+\-*%]|[<>]=?|[!=]==?)\s/;
+
+function hasLogic(body) {
+  const stripped = body
+    .replace(/\/\/.*$/gm, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/["'`][^"'`]*["'`]/g, 'STR');
+  return LOGIC_RE.test(stripped);
+}
+
+function checkDuplication(config, out, root, featuresRoot, files) {
+  const bodies = [];
+  for (const p of files) {
+    const rp = rel(root, p);
+    const feature = rp.match(new RegExp(`^${escapeRegex(featuresRoot)}/([^/]+)/`))?.[1];
+    if (!feature) continue;
+    const src = fs.readFileSync(p, 'utf8');
+    for (const block of extractFunctionBlocks(src)) {
+      const norm = normalizeBody(block.text);
+      if (norm.length < MIN_BODY_LEN) continue;
+      if (!hasLogic(block.text)) continue;
+      bodies.push({ feature, file: rp, line: block.line, norm });
+    }
+  }
+  const groups = new Map();
+  for (const b of bodies) {
+    if (!groups.has(b.norm)) groups.set(b.norm, []);
+    groups.get(b.norm).push(b);
+  }
+  for (const group of groups.values()) {
+    if (new Set(group.map((g) => g.feature)).size < 2) continue;
+    const [original, ...dupes] = group;
+    for (const dup of dupes) {
+      pushViolation(config, out, {
+        rule: 'DRY-001',
+        file: dup.file,
+        line: dup.line,
+        message: 'Near-identical business logic found in another feature.',
+        why: 'Duplicated logic drifts silently and breaks single-source-of-truth for business rules.',
+        expected: ['shared/', 'a common domain/service module'],
+        suggestedFix: `This looks like a near-duplicate of ${original.file}:${original.line}. Consider extracting the shared logic into a shared/ module.`,
+      });
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Single entry point
+// ---------------------------------------------------------------------------
+/**
+ * Check a project against the separation-of-concerns rules (slices, layers, imports, purity) and return every violation.
+ *
+ * @param {string} root Project root.
+ * @returns {any} The violations (see `makeViolation`); empty when the project is clean.
+ *
+ * @example
+ * validateSeparationOfConcerns(process.cwd()).filter((v) => v.severity === 'error');
+ */
+export function validateSeparationOfConcerns(root) {
+  const config = loadConfig(root);
+  const featuresRoot = featuresRootOf(config);
+  const out = [];
+
+  if (!fs.existsSync(path.join(root, featuresRoot))) {
+    pushViolation(config, out, {
+      rule: 'SLICE-001',
+      file: `${featuresRoot}/`,
+      line: 1,
+      message: 'Missing feature root.',
+      why: 'Feature slices are mandatory for isolation and ownership.',
+      expected: [`${featuresRoot}/<feature>`],
+      suggestedFix: 'Run: construct feature create <name>',
+    });
+    return { violations: out };
+  }
+
+  const featureNames = listFeatureDirs(root, featuresRoot);
+  for (const name of featureNames) checkSkeleton(config, out, root, featuresRoot, name);
+
+  const featureFiles = walk(root)
+    .filter((p) => ext.has(path.extname(p)))
+    .filter((p) => rel(root, p).startsWith(featuresRoot + '/'))
+    .filter((p) => !isNonLayerPath(root, p, config.nonLayer)); // #348: declared non-layer paths (tests) sit outside the graph
+
+  for (const p of featureFiles) {
+    const r = rel(root, p);
+    const src = fs.readFileSync(p, 'utf8');
+    checkCrossFeatureImports(config, out, root, featuresRoot, r, src);
+    checkModuleCohesion(config, out, r, src);
+  }
+  for (const name of featureNames) checkOwnership(config, out, root, featuresRoot, name);
+  checkDuplication(config, out, root, featuresRoot, featureFiles);
+
+  return { violations: out };
+}

@@ -3,9 +3,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { extractMachines } from '../src/engine/workflowExtractor.mjs';
-import { compileWorkflow } from '../src/engine/workflowGenerator.mjs';
-import { narrateMachine, humanize, guardText, delayText } from '../src/engine/workflowNarrator.mjs';
+import { extractMachines } from '../packages/engine/workflowExtractor.mjs';
+import { compileWorkflow } from '../packages/engine/workflowGenerator.mjs';
+import { narrateMachine, humanize, guardText, delayText } from '../packages/engine/workflowNarrator.mjs';
 
 const fx = (name) => new URL(`../fixtures/workflow-graphs/${name}`, import.meta.url);
 const checkoutJson = JSON.parse(fs.readFileSync(fx('checkout.json'), 'utf8'));

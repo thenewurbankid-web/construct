@@ -2,13 +2,13 @@
 
 `summarizeUnit` (and `construct summarize <ref>`) returns a deterministic, LLM-free, structured summary of any
 unit in a Construct project: the project, a feature, one layer, a file, a component/hook/service/domain/page/
-controller/workflow, a single export, a route, a package (any directory, including Construct's own `src/ast`),
+controller/workflow, a single export, a route, a package (any directory, including Construct's own `packages/ast`),
 a rule, the Context Envelope, or a generator. Same input on the same tree gives byte-identical output.
 
 It is built entirely from existing blocks (the AST package, the layer graph, the enforcers, the workflow
 narrator), so it costs no tokens to produce and never drifts from the code. Contract:
-[`schemas/unit-summary.v1.json`](../schemas/unit-summary.v1.json). Code: `src/engine/unitSummary.mjs` (API),
-`src/engine/units/` (shared facts + one small summarizer per kind, registered in `units/registry.mjs`).
+[`schemas/unit-summary.v1.json`](../schemas/unit-summary.v1.json). Code: `packages/engine/unitSummary.mjs` (API),
+`packages/engine/units/` (shared facts + one small summarizer per kind, registered in `units/registry.mjs`).
 
 ## Addressing a unit
 
@@ -24,7 +24,7 @@ reference matches several units you get `UNIT_AMBIGUOUS` with the candidate refs
 | `component` `hook` `service` `domain` `page` `controller` `workflow` | path, file name, export name, or `feature/name` | `useLogin`, `workflow:features/login/workflows/Login.tsx` |
 | `export` | `path#name` | `features/login/hooks/useLogin.tsx#useLogin` |
 | `route` | URL | `/login` |
-| `package` | any directory | `src/ast`, `src/engine` |
+| `package` | any directory | `packages/ast`, `packages/engine` |
 | `rule` | rule id | `PAGE-006` |
 | `envelope` | `v1` | `envelope` |
 | `generator` | `workflow` `controller` `page` `service` `layer` `pipeline` | `generator:workflow` |

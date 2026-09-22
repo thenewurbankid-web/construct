@@ -1,8 +1,8 @@
-// Tests for the shared AST package's public entry point (src/ast/index.mjs).
+// Tests for the shared AST package's public entry point (packages/ast/index.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import * as ast from '../src/ast/index.mjs';
-import * as parser from '../src/parser.mjs';
+import * as ast from '../packages/ast/index.mjs';
+import * as parser from '../packages/core/parser.mjs';
 
 test('public entry point exposes the documented API', () => {
   const names = ['parseToAst', 'parseTsSource', 'walkAst', 'walkForUsage', 'collectCalls', 'collectBareIdentifierUsages',
@@ -11,7 +11,7 @@ test('public entry point exposes the documented API', () => {
   for (const n of names) assert.ok(ast[n] !== undefined, `missing export ${n}`);
 });
 
-test('src/parser.mjs re-exports are the very same functions', () => {
+test('packages/core/parser.mjs re-exports are the very same functions', () => {
   for (const n of ['parseToAst', 'extractImports', 'extractExports', 'extractJsdoc', 'lineOf']) {
     assert.equal(parser[n], ast[n]);
   }

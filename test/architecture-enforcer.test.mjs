@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ConstructError } from '../src/diagnostics.mjs';
+import { ConstructError } from '../packages/core/diagnostics.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
-import { CANONICAL_LAYERS, loadLayerGraph } from '../src/architecture-graph.mjs';
+import { CANONICAL_LAYERS, loadLayerGraph } from '../packages/core/architecture-graph.mjs';
 import {
   classifyFile,
   detectLayerViolations,
@@ -14,7 +14,7 @@ import {
   validateExceptionsShape,
   expiredExceptionViolations,
   validateArchitecture,
-} from '../src/architecture-enforcer.mjs';
+} from '../packages/core/architecture-enforcer.mjs';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 

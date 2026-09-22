@@ -20,7 +20,7 @@ import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import {
   PROCESS_STATES,
   PROCESS_STATE_PATHS,
-} from '../src/engine/processMachine.mjs';
+} from '../packages/engine/processMachine.mjs';
 import {
   PROCESS_VERSION,
   PROCESS_TOP_LEVEL_FIELDS,
@@ -32,10 +32,10 @@ import {
   createProcess,
   recordArtifact,
   setApproval,
-} from '../src/engine/processModel.mjs';
-import { PLAN_EXECUTORS } from '../src/plan.mjs';
-import { openProcessStore } from '../src/engine/processStore.mjs';
-import { createProcessEngine } from '../src/engine/processEngine.mjs';
+} from '../packages/engine/processModel.mjs';
+import { PLAN_EXECUTORS } from '../packages/core/plan.mjs';
+import { openProcessStore } from '../packages/engine/processStore.mjs';
+import { createProcessEngine } from '../packages/engine/processEngine.mjs';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SCHEMA = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'schemas', 'process.v1.json'), 'utf8'));

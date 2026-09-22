@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createTransaction } from '../src/engine/transactionalWriter.mjs';
-import { validateArchitecture } from '../src/architecture-enforcer.mjs';
+import { createTransaction } from '../packages/engine/transactionalWriter.mjs';
+import { validateArchitecture } from '../packages/core/architecture-enforcer.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 function tmpProject() {

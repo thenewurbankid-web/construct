@@ -3,7 +3,7 @@
 //
 // Every scenario title, route, guard and Given/When/Then line below is REAL
 // output of `explainSource(fixtures/workflow-graphs/refund-request.ts)` — the
-// deterministic enumerator in src/engine/workflowScenarios.mjs — so the mocks
+// deterministic enumerator in packages/engine/workflowScenarios.mjs — so the mocks
 // show what the tool actually computes, not invented content.
 import { writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';

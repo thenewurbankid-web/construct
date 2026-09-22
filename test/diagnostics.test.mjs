@@ -8,7 +8,7 @@ import {
   exitCodeForViolations,
   ConstructError,
   EXIT_CODES,
-} from '../src/diagnostics.mjs';
+} from '../packages/core/diagnostics.mjs';
 
 const VALID = {
   rule: 'PAGE-004',

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { describeImplementation } from '../src/prose.mjs';
+import { describeImplementation } from '../packages/core/prose.mjs';
 
 test('translates a pure comparison function using parameter and constant names', () => {
   const code = `export function isValidCredentials(username, password) {

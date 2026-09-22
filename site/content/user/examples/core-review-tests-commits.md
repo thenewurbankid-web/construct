@@ -9,7 +9,7 @@ This page is the core API only. The terminal versions are in the [CLI examples](
 ### 1. Review two refs
 
 ```js
-import { prHealth } from './src/engine/prHealth.mjs';
+import { prHealth } from './packages/engine/prHealth.mjs';
 
 const report = prHealth(root, { base: 'main', head: 'feature/invoice-fetch' /*, expected: plan */ });
 report.summary;
@@ -31,9 +31,9 @@ It is read-only by construction: git is spawned with argument arrays (never a sh
 ### 2. Generate, clone and edit tests
 
 ```js
-import { generateFeatureTests } from './src/engine/testGenerator.mjs';
-import { cloneGeneratedTest } from './src/engine/testClone.mjs';
-import { readStepDocument, previewStepEdit, applyStepEdit } from './src/engine/testSteps.mjs';
+import { generateFeatureTests } from './packages/engine/testGenerator.mjs';
+import { cloneGeneratedTest } from './packages/engine/testClone.mjs';
+import { readStepDocument, previewStepEdit, applyStepEdit } from './packages/engine/testSteps.mjs';
 
 generateFeatureTests(root, 'login', { dryRun: false });          // one locked spec per route
 cloneGeneratedTest(root, { feature: 'login', source: 'login--happy-path.spec.ts', name: 'login-mine' });
@@ -47,7 +47,7 @@ The safety contract is part of the API: generation writes only under a feature's
 ### 3. Write a commit message, the same way every time
 
 ```js
-import { buildCommitMessage, nextSerialFrom, newSessionId } from './src/engine/commitMessage.mjs';
+import { buildCommitMessage, nextSerialFrom, newSessionId } from './packages/engine/commitMessage.mjs';
 
 const built = buildCommitMessage(root, {
   changedFiles: ['features/billing/domain/billingRules.ts'],

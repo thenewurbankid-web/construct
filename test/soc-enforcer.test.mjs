@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { validateSeparationOfConcerns, isPublicPath, countPrimaryExports, parseIndexExports } from '../src/soc-enforcer.mjs';
+import { validateSeparationOfConcerns, isPublicPath, countPrimaryExports, parseIndexExports } from '../packages/core/soc-enforcer.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

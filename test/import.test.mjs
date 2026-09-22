@@ -2,11 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { createFeature } from '../src/generators.mjs';
-import { importVertical, importPlan, analyzeRoute, validatePlanShape, normalizePlanLayers } from '../src/import.mjs';
-import { PROVIDERS } from '../src/llm.mjs';
-import { validateArchitecture } from '../src/architecture-enforcer.mjs';
-import { ConstructError } from '../src/diagnostics.mjs';
+import { createFeature } from '../packages/core/generators.mjs';
+import { importVertical, importPlan, analyzeRoute, validatePlanShape, normalizePlanLayers } from '../packages/core/import.mjs';
+import { PROVIDERS } from '../packages/core/llm.mjs';
+import { validateArchitecture } from '../packages/core/architecture-enforcer.mjs';
+import { ConstructError } from '../packages/core/diagnostics.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 function tmpProject() {

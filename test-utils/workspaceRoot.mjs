@@ -15,7 +15,7 @@ import path from 'node:path';
 
 process.env.CONSTRUCT_WORKSPACE_ROOT ||= fs.realpathSync(os.tmpdir());
 if (!process.env.CONSTRUCT_STATE_DIR) {
-  // The pid in the name is what lets tools/dev/heavy.sh tell a live test's state from a dead one (#414).
+  // The pid in the name is what lets packages/tools/dev/heavy.sh tell a live test's state from a dead one (#414).
   process.env.CONSTRUCT_STATE_DIR = fs.mkdtempSync(path.join(os.tmpdir(), `construct-test-state-${process.pid}-`));
   process.on('exit', () => fs.rmSync(process.env.CONSTRUCT_STATE_DIR, { recursive: true, force: true }));
 }

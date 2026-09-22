@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import ts from 'typescript';
-import { buildScopeLinks } from '../src/engine/scopeLinks.mjs';
+import { buildScopeLinks } from '../packages/engine/scopeLinks.mjs';
 
 const file = new URL('../ui/client/features/pages-editor/domain/ScopeLinkView.ts', import.meta.url);
 const js = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.ES2022, target: ts.ScriptTarget.ES2022 } }).outputText;

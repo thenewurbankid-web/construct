@@ -169,7 +169,7 @@ recorder in the iframe only sees what the page emits (no native dialogs, file pi
 **Job to be done.** `refactor.move/rename` and "change from a selection" (Move, Rename, Extract, Wrap in) must be
 safe: every importer rewritten, nothing else touched.
 
-**What we have [V].** `src/refactor.mjs` rewrites importers with the regex `/\bfrom\s*(['"])(.*?)\1/g`
+**What we have [V].** `packages/core/refactor.mjs` rewrites importers with the regex `/\bfrom\s*(['"])(.*?)\1/g`
 (header says "intentionally broader than extractImports"). By reading it, this misses dynamic `import('...')`,
 `require`, `import type` edge forms, and does not consult `tsconfig` `paths` aliases. `src/ast` (typescript-estree
 plus `jsxEdit.mjs` range edits) handles JSX-level edits.
@@ -218,7 +218,7 @@ side by side with the regex path on `ui/client` to list disagreements before swi
 **Job to be done.** `construct create <layer>` writes controller/workflow/hook/domain/service/page/component
 files.
 
-**What we have [V].** `src/generators.mjs`: a `templates` object of small string-template functions
+**What we have [V].** `packages/core/generators.mjs`: a `templates` object of small string-template functions
 (`controller`, `workflow`, `hook`, `domain`, `service`, `page`, `component`, with a per-framework controller
 variant for `nextjs` and `react-spa`), pure functions of the name; `service-generator.mjs` for OpenAPI; a plan
 template layer (`planTemplate.mjs`), and spec rendering (`testSpecRender.mjs`).
@@ -256,7 +256,7 @@ features/services, generate typed clients and DTOs and mock adapters, export a c
 between Mock and Real.
 
 **What we have [V].** `@hey-api/openapi-ts@0.97.3` (MIT, 10 dependencies) already used by
-`src/service-generator.mjs` (`createClient`). Reading its installed `dist`: it bundles its own fork of
+`packages/core/service-generator.mjs` (`createClient`). Reading its installed `dist`: it bundles its own fork of
 `json-schema-ref-parser` (`@hey-api/json-schema-ref-parser`) so it already resolves `$ref`s, and it ships plugins
 for TypeScript types, `sdk`, `schemas`, `transformers`, `zod`, `valibot`, `@tanstack/*`, `swr`, `fastify` and
 several HTTP clients (`client-fetch`, `client-axios`, ...). It has **no msw or mock plugin** (0 mentions of
@@ -375,7 +375,7 @@ conversion: SPIKE later, only if a story needs "main content as text".
 ## 8. Architecture-as-code and boundary tools (#395)
 
 **What we have [V].** A static `.dependency-cruiser.cjs` at the repo root and, from `construct init/sync`,
-`src/cli.mjs` line ~312 writes that file into target projects as a **fixed string of 6 forbidden rules**
+`packages/core/cli.mjs` line ~312 writes that file into target projects as a **fixed string of 6 forbidden rules**
 (`page-to-workflow`, `page-to-service`, `page-to-domain`, `component-to-app-logic`, `workflow-to-ui`,
 `service-to-ui`), not derived from the project's `architecture.yml`. `dependency-cruiser` itself is not installed
 in this checkout (it runs in target projects); the package's `files` list ships the config. ESLint 10 is in use

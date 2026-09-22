@@ -67,21 +67,21 @@ before saving to stay under 10 MB: `ffmpeg -i take.webm -c:v libvpx-vp9 -crf 38 
 
 - No caption bar is drawn: it blocked the UI. `caption(page, text)` only puts the line on the timeline (narration, `.srt`/`.vtt`) and holds; `MEDIA_BURN_CAPTIONS=1` draws the old bar for a silent export. Cards keep their title text.
 - `highlight(page, locator, label)` draws a small ring and a short label beside (never over) an element for about 2.4 s; one beat per feature.
-- Voice-first timing: `node tools/media/script.mjs <slug> timing` writes each line's narration length as `dur` into the script; the spec (`loadDurations`) then holds every caption for `dur + 0.9 s` (at least the reading time), so the video follows the voice. `writeTimeline` keeps the hand-edited fields (`say`, `dur`, `para`, ...) and only updates `start`.
+- Voice-first timing: `node packages/tools/media/script.mjs <slug> timing` writes each line's narration length as `dur` into the script; the spec (`loadDurations`) then holds every caption for `dur + 0.9 s` (at least the reading time), so the video follows the voice. `writeTimeline` keeps the hand-edited fields (`say`, `dur`, `para`, ...) and only updates `start`.
 
 - Spec in `ui/e2e/tests/media/<nn>-<slug>.spec.js`, own config `ui/e2e/playwright.media.config.js`
   (`video: 'on'`, 1280x720, own ports, workspace = a temp dir, no project preloaded).
 - Helpers in `ui/e2e/tests/media/support.mjs`: `caption(page, text)`, `pause(page, ms)`, `card(page, title, subtitle)`.
 - Output: `site/assets/video/<nn>-<slug>.webm` (+ `.mp4`, `.jpg` poster), and a page
   `site/content/user/videos/<slug>.md` with a native `<video controls poster>` and the storyboard as text.
-- Run: `tools/dev/heavy.sh npx playwright test -c playwright.media.config.js --workers=1`.
+- Run: `packages/tools/dev/heavy.sh npx playwright test -c playwright.media.config.js --workers=1`.
 
 ## Adding audio (music, voice-over)
 
 Recordings are silent. To add sound, record or pick a track and mix it in; the video is copied untouched:
 
 ```
-tools/media/add-audio.sh site/assets/video/01-ticket-to-story.webm \
+packages/tools/media/add-audio.sh site/assets/video/01-ticket-to-story.webm \
   --track music.mp3 --track voice.wav@4 --volume 0.35 --fade 2
 ```
 
@@ -95,13 +95,13 @@ scales every scripted pause; captions hold for their reading time.
 
 The narration script is a plain file, the source of truth: `site/assets/video/<slug>.captions.json`, `[{ id, text, start, end? }]`
 (seconds from the video start; edit it in any text editor). A new recording writes it itself (`writeTimeline` in `support.mjs`); for
-a take made before that, `node tools/media/captions-from-video.mjs <video.webm> <spec.js>` rebuilds it from the video's caption bar
+a take made before that, `node packages/tools/media/captions-from-video.mjs <video.webm> <spec.js>` rebuilds it from the video's caption bar
 (deterministic, refuses to write if the counts differ). One command builds everything from the script:
 
 ```
-node tools/media/script.mjs <slug> build     # .en.srt + .en.vtt + .voice.opus + .voice.webm (+ .mixed.webm if a music file exists)
-node tools/media/script.mjs <slug> srt|vtt|voice|mix|status
-node tools/media/script.mjs <slug> voice --voice-sample ~/voice/sample.wav   # own-voice clone; default is Kokoro af_heart
+node packages/tools/media/script.mjs <slug> build     # .en.srt + .en.vtt + .voice.opus + .voice.webm (+ .mixed.webm if a music file exists)
+node packages/tools/media/script.mjs <slug> srt|vtt|voice|mix|status
+node packages/tools/media/script.mjs <slug> voice --voice-sample ~/voice/sample.wav   # own-voice clone; default is Kokoro af_heart
 ```
 
 Tracks stay separate files next to the video: `<slug>.voice.opus` (narration), `<slug>.music.<mp3|wav|ogg|m4a|opus|flac>` (music you
@@ -110,7 +110,7 @@ supply and may publish; drop it there, nothing generates or downloads music), `<
 Clips are cached per line in `.media-cache/` (ignored by version control) by a hash of text, voice and model, so only edited lines are
 spoken again (`status` shows which). Writes are refused outside `site/assets/video` and `.media-cache`. Needs ffmpeg (or `FFMPEG=/path/to/ffmpeg`).
 The site page adds the subtitles `<track>` and the narrated download when those files exist. The narration is synthetic; the page says so.
-`tools/media/voiceover.mjs <captions.json> [--voice] [--voice-sample] [--video]` is the same engine for an arbitrary file; `--list-voices` lists the Kokoro stock voices.
+`packages/tools/media/voiceover.mjs <captions.json> [--voice] [--voice-sample] [--video]` is the same engine for an arbitrary file; `--list-voices` lists the Kokoro stock voices.
 
 For a visual multi-track timeline, import the separate files (voice.opus, music, .srt/.vtt, captions.json) into any free editor: OpenReel or
 OpenCut (both MIT, in the browser) or Kdenlive or Shotcut (free desktop editors, GPL, used as separate tools only, never linked into our code).
@@ -125,7 +125,7 @@ worked), faster-whisper `base.en` (MIT, only to check that a clone round-trips t
 Only from a recording its speaker supplied of their own voice; never another person's voice. The sample is read where it is and never
 copied, uploaded or turned into a stored voice file (the cache key holds only a hash of it). Each clip carries Chatterbox's inaudible
 Perth watermark. About 1.5 GB venv (about 3 GB of model weights in the Hugging Face cache), about 5 GB peak RAM (run nothing else
-heavy meanwhile; wrap in `tools/dev/heavy.sh`), roughly 4 to 7 s of CPU compute per second of speech:
+heavy meanwhile; wrap in `packages/tools/dev/heavy.sh`), roughly 4 to 7 s of CPU compute per second of speech:
 
 ```
 UV=~/.cache/construct-media/bin/uv; V=~/.cache/construct-media/venv
@@ -135,7 +135,7 @@ $UV pip install --python $V/bin/python --reinstall-package torch --reinstall-pac
 ```
 
 Kokoro setup (default voice): `mkdir -p ~/.cache/construct-media && cd ~/.cache/construct-media && npm init -y && npm i kokoro-js`
-(`CONSTRUCT_MEDIA_CACHE` moves the folder). The clone helper is `tools/media/clone_voice.py`, run with the venv's Python.
+(`CONSTRUCT_MEDIA_CACHE` moves the folder). The clone helper is `packages/tools/media/clone_voice.py`, run with the venv's Python.
 
 ## Visible pointer
 
@@ -149,7 +149,7 @@ slows and loosens the pacing; every line is spoken sentence by sentence, joined 
 650), trimmed of leading/trailing silence and levelled to -20 LUFS. `--tempo 0.9` slows the speech afterwards without re-speaking.
 Episode 1 uses exaggeration 0.7 / cfg 0.3, the greeting and sign-off 0.8 / 0.3 with a 450 ms pause, and the best reference window.
 
-Measured on 7 lines (`tools/media/voice-lab.mjs`; scores from `eval_voice.py`; similarity = Resemblyzer cosine to the real sample, WER =
+Measured on 7 lines (`packages/tools/media/voice-lab.mjs`; scores from `eval_voice.py`; similarity = Resemblyzer cosine to the real sample, WER =
 faster-whisper `base.en`, F0 std = pitch spread in semitones, the real sample is 1.89):
 
 | Variant | Similarity | WER | F0 std |
@@ -160,7 +160,7 @@ faster-whisper `base.en`, F0 std = pitch spread in semitones, the real sample is
 | expressive-best-ref (0.7 / 0.3, best window) | 0.849 | 5.4% | 2.62 |
 | turbo-best-ref (Chatterbox-Turbo, MIT weights) | 0.846 | 5.4% | 2.70 |
 
-The best window (`tools/media/pick_reference.py`: silero-vad segments, F0 spread and loudness dynamics, clipping penalty) is what
+The best window (`packages/tools/media/pick_reference.py`: silero-vad segments, F0 spread and loudness dynamics, clipping penalty) is what
 raised similarity most (+0.04); more exaggeration adds expression at a small similarity cost. Episode 1 takes expressive-best-ref (WER under
 6%). Chatterbox-Turbo (MIT code and weights, about 3 GB, similar speed here) understands `[chuckle]` style tags and scores the same; it is a
 `--model turbo` switch, not the default. The comparison clips are `site/assets/video/voice-tests/<variant>--<line>.ogg` with a
@@ -185,7 +185,7 @@ model with tags, i.e. `--model turbo`; the default model skips it). Breaths are 
 
 ### Music and mixing
 
-`node tools/media/make-music.mjs <slug> [--key 1] [--seconds 150]` generates a gentle instrumental bed with ffmpeg only (sine-partial chords,
+`node packages/tools/media/make-music.mjs <slug> [--key 1] [--seconds 150]` generates a gentle instrumental bed with ffmpeg only (sine-partial chords,
 low-pass, tremolo, chorus, echo; deterministic per key; nothing downloaded). `script.mjs <slug> mix` writes `<slug>.mixed.webm`: video copied,
 narration plus music, the music at -14 dB while a card is on screen and -28 dB otherwise, ducked further under the voice with ffmpeg
 `sidechaincompress`, 1.5 s fades. The exact ffmpeg command is printed by `mix`.

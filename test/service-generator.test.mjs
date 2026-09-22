@@ -11,11 +11,11 @@ import {
   renderEndpoints,
   ensureClient,
   generateServiceFromSpec,
-} from '../src/service-generator.mjs';
-import { validateArchitecture } from '../src/architecture-enforcer.mjs';
-import { createFeature } from '../src/generators.mjs';
-import { ConstructError } from '../src/diagnostics.mjs';
-import { parseToAst } from '../src/parser.mjs';
+} from '../packages/core/service-generator.mjs';
+import { validateArchitecture } from '../packages/core/architecture-enforcer.mjs';
+import { createFeature } from '../packages/core/generators.mjs';
+import { ConstructError } from '../packages/core/diagnostics.mjs';
+import { parseToAst } from '../packages/core/parser.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -282,7 +282,7 @@ test('SERVICE-002: this generator\'s own output never trips it, but the rule sti
 test('CLI: construct create service <name> --feature <f> --openapi <spec> generates and reports the files', () => {
   const dir = tmpProject();
   writeArchitectureYml(dir, 'dataLayer:\n    provider: mock\n');
-  const bin = path.join(repoRoot, 'bin', 'construct.mjs');
+  const bin = path.join(repoRoot, 'packages', 'cli', 'construct.mjs');
   const r = spawnSync('node', [bin, 'create', 'service', 'petStore', '--feature', 'pet', '--openapi', petstoreSpec], {
     encoding: 'utf8',
     cwd: dir,

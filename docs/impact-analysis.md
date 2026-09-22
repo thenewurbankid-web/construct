@@ -5,13 +5,13 @@ these units, what else is affected, and why?** It returns the features touched w
 implicated file with the reason it is implicated, shared-component warnings, and what the project's own
 rules already say about those files.
 
-It is assembly, not new machinery — the layer graph classifies, `src/engine/units/facts.mjs` parses and
+It is assembly, not new machinery — the layer graph classifies, `packages/engine/units/facts.mjs` parses and
 resolves imports, the unit registry resolves any reference, the enforcers supply rule findings. The only
 new part is a reverse import index and a bounded traversal over it. Read-only: computing an impact report
 never writes anything. No LLM: the whole computation runs offline, and the same input on the same tree
 gives byte-identical output.
 
-Contract: [`schemas/impact-report.v1.json`](../schemas/impact-report.v1.json). Code: `src/engine/impact.mjs`.
+Contract: [`schemas/impact-report.v1.json`](../schemas/impact-report.v1.json). Code: `packages/engine/impact.mjs`.
 Tests: `test/impact.test.mjs` over `example/`, `fixtures/impact-shared` and `fixtures/architecture-invalid`.
 
 ## Provenance: where judgement entered
@@ -43,7 +43,7 @@ A seed is a string reference — anything `construct summarize` understands — 
 | `features/login/domain/Login.tsx`, `useLogin`, `LoginPage` | that one file |
 | `layer:login/hook`, `layer:domain` | that layer, in one feature or across the project |
 | `/login` | the route's entry file |
-| `src/ast`, `features/login` | every file under that directory |
+| `packages/ast`, `features/login` | every file under that directory |
 | `rule:PAGE-003` | the files **currently violating** that rule |
 | `project:.` | the whole project (expect the cap to bite) |
 
@@ -94,7 +94,7 @@ Errors are `{ok: false, error: {code, message}}` — `INVALID_ARGUMENT`, `ROOT_N
 
 ```js
 import { analyzeImpact, impactFromChangedFiles, proposeSeedsFromText, impactFromTicketText }
-  from './src/engine/impact.mjs';
+  from './packages/engine/impact.mjs';
 
 analyzeImpact(root, { seeds, files, depth, limits })  // the one computation
 impactFromChangedFiles(root, files, { depth, limits }) // PR health: seeds from a diff, every row derived

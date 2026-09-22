@@ -5,8 +5,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
-import { generateFeatureTests } from '../src/engine/testGenerator.mjs';
-import { CLONE_MARKER, cloneGeneratedTest, listFeatureTests, parseLineage, readFeatureTest } from '../src/engine/testClone.mjs';
+import { generateFeatureTests } from '../packages/engine/testGenerator.mjs';
+import { CLONE_MARKER, cloneGeneratedTest, listFeatureTests, parseLineage, readFeatureTest } from '../packages/engine/testClone.mjs';
 
 const LOCK_YML = 'frozen:\n  - features/*/tests/generated/**\nnonLayer:\n  - features/*/tests/**\n';
 const BASE_YML = 'version: 1\npreset: strict-nextjs\nproject:\n  framework: nextjs\nfeatures:\n  root: features\n';

@@ -15,14 +15,14 @@ import Ajv from 'ajv';
 import {
   analyzeImpact, impactFromChangedFiles, proposeSeedsFromText, impactFromTicketText,
   impactApiManifest, renderImpactMarkdown, DEFAULT_DEPTH, SCHEMA_VERSION,
-} from '../src/engine/impact.mjs';
+} from '../packages/engine/impact.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const EXAMPLE = path.join(REPO, 'example');
 const SHARED = path.join(REPO, 'fixtures', 'impact-shared');
 const INVALID = path.join(REPO, 'fixtures', 'architecture-invalid');
 const GOLDEN_DIR = path.join(REPO, 'test', 'golden', 'impact');
-const CLI = path.join(REPO, 'bin', 'construct.mjs');
+const CLI = path.join(REPO, 'packages', 'cli', 'construct.mjs');
 
 const schema = JSON.parse(fs.readFileSync(path.join(REPO, 'schemas', 'impact-report.v1.json'), 'utf8'));
 const validateSchema = new Ajv({ allErrors: true }).compile(schema);
@@ -266,7 +266,7 @@ test('an impact report built from ticket text marks every entry inferred', () =>
 });
 
 test('no LLM is reachable from the impact module', () => {
-  const src = fs.readFileSync(path.join(REPO, 'src', 'engine', 'impact.mjs'), 'utf8');
+  const src = fs.readFileSync(path.join(REPO, 'packages', 'engine', 'impact.mjs'), 'utf8');
   assert.equal(/llm|ollama|openai|anthropic|fetch\(/i.test(src.replace(/no LLM|an LLM|LLM-free|a model|model proposed|method: "model"/g, '')), false, 'the deterministic core stays offline');
 });
 

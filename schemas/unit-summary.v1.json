@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://construct.dev/schemas/unit-summary.v1.json",
   "title": "Construct Unit Summary v1",
-  "description": "Deterministic, LLM-free structured summary of one unit (project, feature, layer, file, component, hook, service, domain, page, controller, workflow, export, route, package, rule, envelope, generator) as returned by summarizeUnit() in src/engine/unitSummary.mjs, `construct summarize <ref>` and GET /api/units/summary. Also describes the list, feature-index and error results. The common envelope is fixed; `sections` is a per-`kind` object (see docs/unit-summary.md). Breaking changes go in unit-summary.v2.json.",
+  "description": "Deterministic, LLM-free structured summary of one unit (project, feature, layer, file, component, hook, service, domain, page, controller, workflow, export, route, package, rule, envelope, generator) as returned by summarizeUnit() in packages/engine/unitSummary.mjs, `construct summarize <ref>` and GET /api/units/summary. Also describes the list, feature-index and error results. The common envelope is fixed; `sections` is a per-`kind` object (see docs/unit-summary.md). Breaking changes go in unit-summary.v2.json.",
   "oneOf": [
     { "$ref": "#/definitions/summary" },
     { "$ref": "#/definitions/unitList" },

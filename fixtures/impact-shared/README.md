@@ -8,7 +8,7 @@ A small, deliberately shaped project for testing impact analysis (#288).
   consume that component through `features/shared/index.ts` — the sanctioned
   cross-feature path — so a naive "who imports this file" query sees a single
   edge while the real answer is three features. This is what
-  `consumerFeatures()` in `src/engine/impact.mjs` exists to get right.
+  `consumerFeatures()` in `packages/engine/impact.mjs` exists to get right.
 - Each slice is a clean layer chain (domain -> service -> workflow -> hook ->
   controller, and component -> page -> controller), so depth limits are easy to
   reason about from a seed at any layer.

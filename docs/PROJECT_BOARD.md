@@ -26,7 +26,7 @@ Module and Sub-module automatically.
 
 ### Modules and sub-modules
 
-The list lives in code: `tools/project-board/taxonomy.mjs` (single source of truth for the sync check).
+The list lives in code: `packages/tools/project-board/taxonomy.mjs` (single source of truth for the sync check).
 
 - Core CLI: Config & framework support, AST & parsing, Enforcers, Import, Research & narrator, CLI shell & build, Other
 - Web UI: Dashboard, Import Wizard, Pages Editor, Visual composer, Workflows screen, Settings & Local model, Help & Tutorials, Design system, Other
@@ -34,7 +34,7 @@ The list lives in code: `tools/project-board/taxonomy.mjs` (single source of tru
 - Pipeline & Generators: Envelope engine, Workflows (XState), Generators, Frozen presentation, Other
 - Demos & Docs: Guides, Tutorials, Screenshots, Style guide, Other
 - Infra & Process: CI & e2e, Security, Dependencies, Project board, Comment bridge, Other
-- Design (Module 9, proposed): Design system, Cockpit shell, Screens, Accessibility & review, Other. Needs the option added to the Module and Sub-module fields, the Area options, and `tools/project-board/taxonomy.mjs` (not yet done; see docs/design/README.md)
+- Design (Module 9, proposed): Design system, Cockpit shell, Screens, Accessibility & review, Other. Needs the option added to the Module and Sub-module fields, the Area options, and `packages/tools/project-board/taxonomy.mjs` (not yet done; see docs/design/README.md)
 
 Epics and structural containers normally get `Other`. To add a sub-module: add it to `taxonomy.mjs`, add the
 option to the Sub-module field and the matching `<Module> › <Sub-module>` option to the Area field (Project
@@ -85,12 +85,12 @@ even if a workflow toggle is missed.
 
 ## Automation (deterministic, no LLM)
 
-`tools/project-board/sync.mjs` (pure logic in `plan.mjs`, tests in `plan.test.mjs`, run by `npm test`):
+`packages/tools/project-board/sync.mjs` (pure logic in `plan.mjs`, tests in `plan.test.mjs`, run by `npm test`):
 
 ```
-PROJECT_TOKEN=<token> node tools/project-board/sync.mjs --dry-run   # report only
-PROJECT_TOKEN=<token> node tools/project-board/sync.mjs             # apply
-node --test tools/project-board/*.test.mjs                          # unit tests
+PROJECT_TOKEN=<token> node packages/tools/project-board/sync.mjs --dry-run   # report only
+PROJECT_TOKEN=<token> node packages/tools/project-board/sync.mjs             # apply
+node --test packages/tools/project-board/*.test.mjs                          # unit tests
 ```
 
 It: adds any issue missing from the board (issues only, never PRs; Status from state), sets closed issues to

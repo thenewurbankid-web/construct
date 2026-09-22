@@ -6,7 +6,7 @@
 // DEFAULT_OLLAMA_MODEL) — never runs as part of a normal `npm test`.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { PROVIDERS, DEFAULT_OLLAMA_MODEL } from '../src/llm.mjs';
+import { PROVIDERS, DEFAULT_OLLAMA_MODEL } from '../packages/core/llm.mjs';
 
 const live = process.env.CONSTRUCT_TEST_LIVE_OLLAMA === '1';
 

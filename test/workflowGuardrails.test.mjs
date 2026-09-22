@@ -5,9 +5,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DEFAULT_RULES } from '../src/config.mjs';
-import { detectLayerViolations, validateArchitecture } from '../src/architecture-enforcer.mjs';
-import { compileWorkflow } from '../src/engine/workflowGenerator.mjs';
+import { DEFAULT_RULES } from '../packages/core/config.mjs';
+import { detectLayerViolations, validateArchitecture } from '../packages/core/architecture-enforcer.mjs';
+import { compileWorkflow } from '../packages/engine/workflowGenerator.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const fixtures = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'fixtures', 'workflow-graphs');

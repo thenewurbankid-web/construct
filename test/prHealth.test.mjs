@@ -10,12 +10,12 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { spawnSync, spawn } from 'node:child_process';
 import Ajv from 'ajv';
-import { prHealth, renderPrHealthMarkdown, MECHANICAL_RULES } from '../src/engine/prHealth.mjs';
-import { withTrees, liveTreeCount, reclaimTreesOf } from '../src/engine/gitTrees.mjs';
+import { prHealth, renderPrHealthMarkdown, MECHANICAL_RULES } from '../packages/engine/prHealth.mjs';
+import { withTrees, liveTreeCount, reclaimTreesOf } from '../packages/engine/gitTrees.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const CLI = path.join(REPO, 'bin', 'construct.mjs');
+const CLI = path.join(REPO, 'packages', 'cli', 'construct.mjs');
 const SHARED = path.join(REPO, 'fixtures', 'impact-shared');
 const schema = JSON.parse(fs.readFileSync(path.join(REPO, 'schemas', 'pr-health.v1.json'), 'utf8'));
 const validateSchema = new Ajv({ allErrors: true }).compile(schema);
@@ -293,7 +293,7 @@ test('cleanup after failure: a throw inside the run, and a broken project on hea
 });
 
 function childProgram(mode) {
-  return `import { withTrees } from ${JSON.stringify(path.join(REPO, 'src/engine/gitTrees.mjs'))};
+  return `import { withTrees } from ${JSON.stringify(path.join(REPO, 'packages/engine/gitTrees.mjs'))};
 const sha = process.argv[2];
 withTrees(process.argv[3], [sha], ([dir]) => {
   process.stdout.write('ready ' + dir + '\\n');

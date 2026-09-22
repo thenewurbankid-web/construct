@@ -9,7 +9,7 @@ This page is the core API only. The same functions from a terminal are in the [C
 ### 1. A plan is a checked contract
 
 ```js
-import { createPlan, validatePlan, planToCommand, planTouches } from './src/plan.mjs';
+import { createPlan, validatePlan, planToCommand, planTouches } from './packages/core/plan.mjs';
 
 const plan = createPlan({ source: 'text', title: 'Add an invoice slice to billing' }, [
   { id: 's1', title: 'Create the billing feature', flow: 'create.feature',
@@ -37,7 +37,7 @@ Every step names a real Construct flow and one of three executors: `repeatable`,
 ### 2. Impact is a computation, not a guess
 
 ```js
-import { analyzeImpact } from './src/engine/impact.mjs';
+import { analyzeImpact } from './packages/engine/impact.mjs';
 
 const report = analyzeImpact(root, { seeds: ['features/shared/components/CurrencyLabel.tsx'] });
 report.ok;                                   // true

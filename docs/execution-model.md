@@ -3,7 +3,7 @@
 This is the real, current inventory of every `construct` command/capability
 and how it actually executes today: deterministic code, an LLM call (and
 which one), or a human approval gate — re-derived directly from the code as
-of the AI Toolkit work landing. Re-verify this against `src/cli.mjs`'s command dispatch
+of the AI Toolkit work landing. Re-verify this against `packages/core/cli.mjs`'s command dispatch
 whenever a new capability is added; a stale version of this table is worse
 than none.
 
@@ -30,7 +30,7 @@ feature's shape are **never** delegated to an LLM in either case — that
 stays deterministic code, or a human/Claude-in-conversation decision made
 *before* any of this runs.
 
-## Providers (`src/llm.mjs`)
+## Providers (`packages/core/llm.mjs`)
 
 | Provider | How it's called | Notes |
 |---|---|---|
@@ -39,7 +39,7 @@ stays deterministic code, or a human/Claude-in-conversation decision made
 
 Both share one shape: `callLlm(provider, prompt, options?) -> Promise<string>`,
 throwing a `ConstructError` on failure. Adding a new provider means adding
-one entry to `PROVIDERS` in `src/llm.mjs` — nothing else in the framework
+one entry to `PROVIDERS` in `packages/core/llm.mjs` — nothing else in the framework
 needs to change to support it.
 
 ## Per-command inventory
@@ -66,7 +66,7 @@ needs to change to support it.
 ## The UI layer (`ui/`)
 
 `ui/server`'s Dashboard/Wizard/Pages-Editor features wrap the exact same
-core CLI functions in-process (`src/cli.mjs`'s `create`/`refactor`/
+core CLI functions in-process (`packages/core/cli.mjs`'s `create`/`refactor`/
 `research`/`importCommand`, called directly — never a shell-out to the
 `construct` binary) and add **zero LLM calls of their own**: every LLM call
 that happens because of a UI action is one of the calls listed in the table
@@ -77,7 +77,7 @@ real logic on top of this: a per-capability provider map,
 ```
 llmProviders: { importFill: 'claude' | 'ollama', createFill: 'claude' | 'ollama', planAnalysis: 'claude' }
 ```
-validated against the real `PROVIDERS` map in `src/llm.mjs` (never a
+validated against the real `PROVIDERS` map in `packages/core/llm.mjs` (never a
 UI-side copy), with `planAnalysis` hard-rejecting `ollama` in
 `updateSettings` itself. Settings only *configures which provider a future
 call would use* — it never makes a call by itself.
@@ -105,7 +105,7 @@ in `updateSettings`, before any call or write.
 ## LLM output is validated before it is written
 
 Every per-file fill (`import`, `create`, `generate`) goes through
-`src/llm-fill.mjs`: the prompt states the reply is captured from stdout and
+`packages/core/llm-fill.mjs`: the prompt states the reply is captured from stdout and
 that the model has no file access; a reply that wraps exactly one fenced
 block in prose is unwrapped; the result must parse as TypeScript/JavaScript
 (`parseToAst`) and contain a declaration, import or export. A rejected

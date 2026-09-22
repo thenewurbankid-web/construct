@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createChangeTracker } from '../src/file-change-tracker.mjs';
-import { buildDiffView } from '../src/text-diff.mjs';
+import { createChangeTracker } from '../packages/core/file-change-tracker.mjs';
+import { buildDiffView } from '../packages/core/text-diff.mjs';
 
 test('first observation is a baseline, not a change', () => {
   const t = createChangeTracker();

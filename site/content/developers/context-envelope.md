@@ -1,6 +1,6 @@
 A **Context Envelope** is the plain-JSON state handed between generator steps, so a script (or a model) driving a multi-step build never has to re-derive what already exists. Each step reads the envelope from the previous step and returns an updated one.
 
-The schema of record is [`schemas/envelope.v1.json`](/schemas/envelope.v1.json). `src/engine/envelope.mjs` builds and structurally validates envelopes (`createEnvelope`, `validateEnvelope`); a test reads the schema's own `required` list so the two cannot drift.
+The schema of record is [`schemas/envelope.v1.json`](/schemas/envelope.v1.json). `packages/engine/envelope.mjs` builds and structurally validates envelopes (`createEnvelope`, `validateEnvelope`); a test reads the schema's own `required` list so the two cannot drift.
 
 ## Shape
 
@@ -48,9 +48,9 @@ If validation fails, nothing is written, `status` is `aborted`, `diagnostics` li
 
 | Piece | File |
 |---|---|
-| Runner | `src/engine/pipeline.mjs` (`runPipeline`) |
-| Atomic writes | `src/engine/transactionalWriter.mjs` (`createTransaction`) |
-| Envelope helpers | `src/engine/envelope.mjs` |
-| Page ingestion, workflow generation, controller binding | `src/engine/pageTransformer.mjs`, `workflowGenerator.mjs`, `controllerBinder.mjs` |
+| Runner | `packages/engine/pipeline.mjs` (`runPipeline`) |
+| Atomic writes | `packages/engine/transactionalWriter.mjs` (`createTransaction`) |
+| Envelope helpers | `packages/engine/envelope.mjs` |
+| Page ingestion, workflow generation, controller binding | `packages/engine/pageTransformer.mjs`, `workflowGenerator.mjs`, `controllerBinder.mjs` |
 
 Each of the zero-LLM generators can feed the envelope: ingest a page and record its unbound slots, generate a workflow from a state descriptor, then bind the controller. The envelope carries what one step learned to the next as a concrete example rather than a specification to re-interpret.

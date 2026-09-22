@@ -14,7 +14,7 @@ Install `ui/client`, `ui/server` and `ui/e2e` only if you work on the Cockpit. S
 ## What makes a good change
 
 - **Prefer a deterministic block.** Before adding a capability, ask whether it adds a small, testable block, makes an existing one more atomic, or improves the concrete example one step hands to the next. Work that would make a model do what a block could do belongs in a block.
-- **Reuse before writing.** Check [Building blocks](@developers/building-blocks/); parse TypeScript with `src/ast`, write files through the transactional writer, call models only through `src/llm.mjs`.
+- **Reuse before writing.** Check [Building blocks](@developers/building-blocks/); parse TypeScript with `packages/ast`, write files through the transactional writer, call models only through `packages/core/llm.mjs`.
 - **Keep model use opt-in and checked.** A model call must be explicitly requested, scoped to one file, and its output validated before it is written.
 - **Prefer established open-source libraries** over hand-rolled code, and check the licence first: this project is MIT, so GPL or AGPL dependencies are not acceptable.
 - **Test with real files.** Add or extend a suite in `test/` (see [Testing](@developers/testing/)).

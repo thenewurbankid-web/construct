@@ -28,7 +28,7 @@ on:
   push:
     branches: [main]
     tags: ['v*.*.*'] # a release publishes its /X.Y/ docs (path filters do not apply to tags)
-    paths: ['site/**', 'docs/**', 'README.md', 'src/**', 'schemas/**', 'package.json', '.github/workflows/pages.yml']
+    paths: ['site/**', 'docs/**', 'README.md', 'packages/**', 'schemas/**', 'package.json', '.github/workflows/pages.yml']
   schedule:
     - cron: '17 */6 * * *'
   issues:

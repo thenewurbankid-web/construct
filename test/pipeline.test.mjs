@@ -4,14 +4,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { runPipeline } from '../src/engine/pipeline.mjs';
-import { createEnvelope } from '../src/engine/envelope.mjs';
-import { createFeature } from '../src/generators.mjs';
-import { EXIT_CODES } from '../src/diagnostics.mjs';
+import { runPipeline } from '../packages/engine/pipeline.mjs';
+import { createEnvelope } from '../packages/engine/envelope.mjs';
+import { createFeature } from '../packages/core/generators.mjs';
+import { EXIT_CODES } from '../packages/core/diagnostics.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const bin = path.join(here, '..', 'bin', 'construct.mjs');
+const bin = path.join(here, '..', 'packages', 'cli', 'construct.mjs');
 
 function tmpProject() {
   const dir = makeTempDir('construct-pipeline-test-');

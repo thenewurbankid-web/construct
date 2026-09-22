@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { listDirectories, detectProject, DirBrowseError } from '../src/dir-browser.mjs';
+import { listDirectories, detectProject, DirBrowseError } from '../packages/core/dir-browser.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 function fixture() {

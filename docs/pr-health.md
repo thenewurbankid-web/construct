@@ -6,7 +6,7 @@ lives in, what the layer graph allows, and what the project's own rules say, so 
 assembled from blocks that already exist. No model, no network, no GitHub login: local branches are
 first-class. Epic #285; engine tickets #314 (indicators that need no plan) and #316 (blast radius).
 
-- Code: `src/engine/prHealth.mjs` (indicators), `src/engine/gitTrees.mjs` (read-only git).
+- Code: `packages/engine/prHealth.mjs` (indicators), `packages/engine/gitTrees.mjs` (read-only git).
 - Contract: `schemas/pr-health.v1.json`.
 - Consumes: `impactFromChangedFiles` (the same function Research mode uses), the `rule:<ID>` impact seed,
   `planTouches()`, the workflow narrator's `enumerateScenarios`.
@@ -26,7 +26,7 @@ verb is unchanged.
 ## API
 
 ```js
-import { prHealth } from './src/engine/prHealth.mjs';
+import { prHealth } from './packages/engine/prHealth.mjs';
 const report = prHealth(root, { base: 'main', head: 'feature/x', expected: plan /* optional */ });
 // report.ok === false => { error: { code, message } }; it never throws.
 ```

@@ -1,4 +1,4 @@
-// A stand-in for bin/construct.mjs used by the bot runner tests: it obeys the
+// A stand-in for packages/cli/construct.mjs used by the bot runner tests: it obeys the
 // argv planToCommand produces, but does trivial deterministic work so a test
 // can script success, failure, a hang, or a model-flag echo.
 import fs from 'node:fs';

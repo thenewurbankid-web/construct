@@ -3,13 +3,15 @@
   "version": "1.0.0",
   "description": "Opinionated, modifiable architecture enforcement for Next.js applications.",
   "type": "module",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
   "bin": {
-    "construct": "./bin/construct.mjs"
+    "construct": "./packages/cli/construct.mjs"
   },
   "files": [
-    "bin",
-    "src",
-    "templates",
+    "packages",
     "docs",
     "architecture.yml",
     "eslint.config.mjs",
@@ -24,10 +26,10 @@
     "test": "node --test",
     "build": "tsc --noEmit",
     "lint": "eslint .",
-    "validate": "node ./bin/construct.mjs validate",
-    "sync": "node ./bin/construct.mjs sync",
+    "validate": "node ./packages/cli/construct.mjs validate",
+    "sync": "node ./packages/cli/construct.mjs sync",
     "docs:api": "node site/build.mjs --no-search --out site/dist",
-    "docs:coverage": "node tools/api-coverage/check.mjs"
+    "docs:coverage": "node packages/tools/api-coverage/check.mjs"
   },
   "dependencies": {
     "@hey-api/openapi-ts": "^0.97.3",

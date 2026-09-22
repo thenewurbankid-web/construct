@@ -5,8 +5,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
-import { describeComponent } from '../src/engine/describeComponent.mjs';
-import { describeSource, typeText } from '../src/engine/describeDocgen.mjs';
+import { describeComponent } from '../packages/engine/describeComponent.mjs';
+import { describeSource, typeText } from '../packages/engine/describeDocgen.mjs';
 
 const FILES = {
   'features/a/components/Fn.tsx': `type P = { /** the total */ total: number; label?: string; onStart: () => void };

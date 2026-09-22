@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://construct.dev/schemas/envelope.v1.json",
   "title": "Construct Context Envelope v1",
-  "description": "The state handed between `construct pipeline run` steps (and, more broadly, between any two Construct generator commands run with --json) so an LLM or script driving a multi-step build never has to re-derive what already exists -- it reads the envelope from the previous step's stdout and passes it straight to the next. See src/engine/envelope.mjs (createEnvelope/validateEnvelope) and src/engine/pipeline.mjs for the runtime shapes this describes; docs/README should point back here as the source of truth.",
+  "description": "The state handed between `construct pipeline run` steps (and, more broadly, between any two Construct generator commands run with --json) so an LLM or script driving a multi-step build never has to re-derive what already exists -- it reads the envelope from the previous step's stdout and passes it straight to the next. See packages/engine/envelope.mjs (createEnvelope/validateEnvelope) and packages/engine/pipeline.mjs for the runtime shapes this describes; docs/README should point back here as the source of truth.",
   "type": "object",
   "required": ["version", "feature", "status", "layers"],
   "additionalProperties": false,

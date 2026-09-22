@@ -20,8 +20,8 @@ in a board filter.
 
 ## What gets a number
 
-- One version for the whole repo. `package.json` at the root, `src/ast/package.json`, `ui/client/package.json` and
-  `ui/server/package.json` move in lockstep with it. (`ui/e2e` and `tools/*` are private helpers and are not versioned.)
+- One version for the whole repo. `package.json` at the root, `packages/ast/package.json`, `ui/client/package.json` and
+  `ui/server/package.json` move in lockstep with it. (`ui/e2e` and `packages/tools/*` are private helpers and are not versioned.)
 - Data schemas keep their own `vN` (for example a plan or process schema `v2`); see "Schema policy" below.
 - While below 1.0: a breaking change to the CLI, a data schema or `architecture.yml` bumps the MINOR; a feature bumps
   the MINOR; a fix bumps the PATCH. From 1.0: breaking = MAJOR, feature = MINOR, fix = PATCH.
@@ -68,7 +68,7 @@ node site/build.mjs --out /tmp/docs-0.8 --base-path /construct/0.8/ --version 0.
 ```
 
 `versions.json` is `{"versions":[{"id":"0.8","label":"v0.8","base":"/construct/0.8/","latest":false}, ...]}`; the
-list comes from `planBuilds()` in `site/lib/versions.mjs` (newest `vX.Y.Z` tag per minor, then `next`). Only refs
+list comes from `planBuilds()` in `packages/docs-site/lib/versions.mjs` (newest `vX.Y.Z` tag per minor, then `next`). Only refs
 that contain #397 can be published, so the first release is the first version with docs. The switcher links to the
 same page in each version (a page that does not exist there falls to the 404 page); the banner links to the latest
 home. Tests: `node --test site/test/*.test.mjs`.
@@ -95,7 +95,7 @@ home. Tests: `node --test site/test/*.test.mjs`.
 
 ## Notes on the current state
 
-The root and `src/ast` package.json files currently say `1.0.0` although the project is pre-1.0. The first release
+The root and `packages/ast` package.json files currently say `1.0.0` although the project is pre-1.0. The first release
 (v0.8.0) resets them to `0.8.0`, together with `ui/client` and `ui/server` (currently `0.2.0` and `0.1.0`). Nothing
 has been tagged yet. Confirm that `construct-architecture` was never published to npm at 1.0.0 before resetting;
 if it was, publish 0.x under a different dist-tag or keep the root at 1.x and version the rest separately.

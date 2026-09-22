@@ -2,10 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { createFeature, generateLayer } from '../src/generators.mjs';
-import { moveLayerFile, renameLayerFile } from '../src/refactor.mjs';
-import { validateArchitecture } from '../src/architecture-enforcer.mjs';
-import { ConstructError, EXIT_CODES } from '../src/diagnostics.mjs';
+import { createFeature, generateLayer } from '../packages/core/generators.mjs';
+import { moveLayerFile, renameLayerFile } from '../packages/core/refactor.mjs';
+import { validateArchitecture } from '../packages/core/architecture-enforcer.mjs';
+import { ConstructError, EXIT_CODES } from '../packages/core/diagnostics.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 function tmpProject() {
@@ -214,7 +214,7 @@ test('a frozen importer refuses the whole TypeScript move before anything is wri
 });
 
 test('the language service is cached per project: a second plan is fast and sees a changed file', async () => {
-  const { planFileMove, clearMoveCache } = await import('../src/engine/tsFileMove.mjs');
+  const { planFileMove, clearMoveCache } = await import('../packages/engine/tsFileMove.mjs');
   clearMoveCache();
   const { dir, put } = tsProject();
   const old = path.join(dir, 'features/checkout/domain/Foo.tsx');

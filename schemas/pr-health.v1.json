@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://construct.dev/schemas/pr-health.v1.json",
   "title": "Construct PR Health v1",
-  "description": "Deterministic, LLM-free review indicators for the change between two git refs, as returned by prHealth() in src/engine/prHealth.mjs and `construct review`. Read-only: computing it never writes to the repository, working tree, index, branches or stash. Every indicator is `deterministic:true`; every problem is a finding classified `mechanical` (a Construct block can resolve it with no model) or `conversation` (a human must decide) and the two are never merged. Breaking changes go in pr-health.v2.json.",
+  "description": "Deterministic, LLM-free review indicators for the change between two git refs, as returned by prHealth() in packages/engine/prHealth.mjs and `construct review`. Read-only: computing it never writes to the repository, working tree, index, branches or stash. Every indicator is `deterministic:true`; every problem is a finding classified `mechanical` (a Construct block can resolve it with no model) or `conversation` (a human must decide) and the two are never merged. Breaking changes go in pr-health.v2.json.",
   "oneOf": [
     { "$ref": "#/definitions/report" },
     { "$ref": "#/definitions/error" }
