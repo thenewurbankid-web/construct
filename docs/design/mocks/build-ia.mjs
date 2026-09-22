@@ -571,6 +571,129 @@ const featureTree = frame({ screen: 'Features', lw: 340, rw: 380, left: ftLeft, 
 Object.assign(pocOut, { 'ia-feature-structure': featureTree });
 Object.assign(pocTitles, { 'ia-feature-structure': 'Features: a feature as a hierarchy, routes nested under it, then layers, drawn from the import graph' });
 
+/* ================================================= Block palette: Providers / Expressions / Components (#518, part of #500 phase 3) */
+// Grounded in the real canImport graph (packages/core/config.mjs DEFAULT_LAYERS) and the typed-contracts
+// factories (packages/core/typed-contracts/{provider,units,factories}.ts), not invented categories:
+// a page's own canImport is ['component', 'types'], and architecture-enforcer.mjs's per-layer checks
+// (PAGE-002/003/005/006) additionally allow exactly two hook-layer exceptions by naming convention --
+// a Provider hook (use<Name>Provider, built via defineProvider) and a tracked-state hook (use<Name>State).
+// So the palette's three groups are: Providers (hook-layer, shown with the plain grey layer chip already
+// used for hook/service/domain elsewhere in these mocks -- a Provider is NOT its own branded LayerName,
+// only a naming convention over `hook`), Expressions (the real, newly-branded `expression` layer, its own
+// warn/amber chip), and Components (component-layer, existing chip). Workflows/services/domain are never
+// listed, even collapsed -- the boundary is explained in one plain-language line instead ("never show
+// something the architecture wouldn't allow").
+const palLayer = (k, t) => `<span class="layer${k ? ' ' + k : ''}">${t || k}</span>`;
+const palItem = (chip, name, path, desc, action, cls = '') =>`<div class="pal-item ${cls}"><div class="grow"><div class="pal-name">${chip}<b>${name}</b></div><span class="path">${path}</span><p>${desc}</p></div>${action || ''}</div>`;
+const palGroup = (title, count, itemsHtml, open = true) => `<details class="dt" ${open ? 'open' : ''}><summary>${title} <span class="c">${count}</span></summary>${itemsHtml}</details>`;
+const palBoundary = `<p style="margin:10px 12px;padding:8px 10px;border:1px solid var(--border-subtle);border-radius:var(--r-md);background:var(--surface-1);color:var(--text-muted);font-size:12px;line-height:1.5"><b style="color:var(--text)">Not shown here:</b> workflows, services and domain logic. A page composes components, expressions and providers only &mdash; it can't reach a workflow, service or domain unit directly (rules PAGE-002/003/005). Ask a controller to wire one of those in instead.</p>`;
+
+// The shared "cart" scenario for this initiative: CartSummaryPage, feature `cart`.
+const cartTree = (o = {}) => `${treeHead('Pages', [['Tree'], ['Pages'], ['Flow']], 'Tree')}
+  <div class="scroll"><div class="sect">/cart</div><div class="tree">
+   ${trow(0, 'page', 'CartSummaryPage', o.pageFlag ? dot('find', '1 finding: inline .map() (PAGE-008)') : '', { tw: '&#9662;', sel: !!o.pageSel })}
+   ${trow(1, 'component', 'AppNav')}
+   ${trow(1, 'component', 'PromoCodeField')}
+   ${trow(1, 'component', 'CheckoutCta')}</div></div>`;
+const cartBox = (o = {}) => `
+<div class="cartbox">
+  <h2>Your cart</h2>
+  <div class="cartline">Canvas tote bag &times; 1<span>$38.00</span></div>
+  <div class="cartline">Ceramic mug &times; 2<span>$24.00</span></div>
+  <div class="cartline">Wool scarf &times; 1<span>$42.00</span></div>
+  <div class="cartin">Promo code</div>
+  <div class="cartcta">Checkout &middot; $104.00</div>
+</div>`;
+const cartDevice = (o = {}) => `<div class="device" style="height:440px;width:640px">
+  <div class="bar"><i></i><i></i><i></i>&nbsp;&nbsp;localhost:5173/cart</div>
+  <div class="app-nav"><b>Storefront</b><span>Catalog</span><span>Cart (3)</span></div>
+  ${cartBox()}
+  ${o.sel ? `<div class="sel-box" style="left:20px;top:78px;width:596px;height:96px"></div><div class="sel-tag" style="left:20px;top:58px">3 elements &middot; inline .map() over cartItems</div>` : ''}
+</div>`;
+
+// Slice 1 (MVP first slice, read-only browse, no selection): what the feature can use, no actions yet.
+const palReadOnly = `
+  ${palGroup('Providers this feature can use', 2, `
+    ${palItem(palLayer('', 'provider'), 'CartProvider', 'features/cart/hooks/useCartProvider.ts', 'Shares { total, itemCount } from the cart service across this page’s tree via React Context (defineProvider) &mdash; no prop drilling.', '')}
+    ${palItem(palLayer('', 'provider'), 'AuthProvider', 'features/auth &middot; via its public index', 'Shares the signed-in customer. Imported from another feature’s public API (SLICE-002), wired the same way regardless of which feature defined it.', '')}
+  `)}
+  ${palGroup('Expressions this feature can wrap with', 1, `
+    ${palItem(palLayer('expression'), 'ShowForRole', 'features/cart/expressions/ShowForRole.tsx', 'Renders children only for a matching signed-in role. Wraps today’s member-discount banner. Pure, accepts children, returns JSX (EXPR-001/005).', '')}
+  `)}
+  ${palGroup('Components this feature can compose', 3, `
+    ${palItem(palLayer('component'), 'AmountField', 'features/ui-kit &middot; via its public index', 'Formats a currency amount. Used by 5 features.', '')}
+    ${palItem(palLayer('component'), 'PromoCodeField', 'features/cart/components', 'A labelled text field with an Apply button.', '')}
+    ${palItem(palLayer('component'), 'CheckoutCta', 'features/cart/components', 'Primary button; routes to /checkout.', '')}
+  `)}
+  ${palBoundary}`;
+const paletteMock = frame({ screen: 'Pages', lw: 280, rw: 420,
+  left: cartTree({}),
+  mid: editorBar('Pages &rsaquo; /cart &rsaquo; <b>CartSummaryPage</b>', [['Preview /cart', true, true], ['CartSummaryPage.tsx']], ovMenu(0)) +
+    `<div class="stage" style="flex:1;padding:14px;place-items:start center">${cartDevice({})}</div>` + foot,
+  right: `<div class="pane-h"><span class="title">Palette</span></div>${tabs([['Inspector'], ['Scope'], ['Source'], ['Palette'], ['Diff']], 'Palette')}<div class="scroll">${palReadOnly}</div>`,
+  bot: bottom('Processes', runProcs(), 104, { p: '1', a: '0' }), botH: 104 });
+
+// Slice 3 (interactive, needs #517): a JSX selection made, palette suggests a new Expression to wrap it with.
+const palSuggest = `
+  <div class="callout info"><span>&#8981;</span><div class="grow"><b>Selection: 3 elements from a .map() over cartItems</b><small>CartSummaryPage.tsx:18-24 &middot; flagged PAGE-008 (inline loop rendering, not presentation)</small></div></div>
+  ${palGroup('Expressions this feature can wrap with', 2, `
+    ${palItem(palLayer('expression'), '+ New Expression', '', 'No existing Expression fits a loop. Name derived from the mapped array’s element (editable) &mdash; per #517’s naming rule, never a placeholder.', `<div class="grow" style="flex:none;display:flex;flex-direction:column;gap:6px;align-items:flex-end"><span class="field" style="width:170px">ForEachCartLine</span><button class="btn sm primary">Wrap with...</button></div>`, 'suggest')}
+    ${palItem(palLayer('expression'), 'ShowForRole', 'features/cart/expressions/ShowForRole.tsx', 'Wraps a single child behind a role check &mdash; not a fit for a loop over an array.', '<span class="tag" style="background:var(--surface-3);color:var(--text-muted)">Not a fit</span>', 'unfit')}
+  `)}
+  ${palGroup('Providers this feature can use', 2, `
+    ${palItem(palLayer('', 'provider'), 'CartProvider', 'features/cart/hooks/useCartProvider.ts', 'Shares { total, itemCount } across this page’s tree.', '')}
+    ${palItem(palLayer('', 'provider'), 'AuthProvider', 'features/auth &middot; via its public index', 'Shares the signed-in customer.', '')}
+  `, false)}
+  ${palGroup('Components this feature can compose', 3, `
+    ${palItem(palLayer('component'), 'AmountField', 'features/ui-kit &middot; via its public index', 'Formats a currency amount.', '')}
+    ${palItem(palLayer('component'), 'PromoCodeField', 'features/cart/components', 'A labelled text field with an Apply button.', '')}
+    ${palItem(palLayer('component'), 'CheckoutCta', 'features/cart/components', 'Primary button; routes to /checkout.', '')}
+  `, false)}
+  ${palBoundary}`;
+const paletteSuggestMock = frame({ screen: 'Pages', lw: 280, rw: 440,
+  left: cartTree({ pageSel: true, pageFlag: true }),
+  mid: editorBar('Pages &rsaquo; /cart &rsaquo; <b>CartSummaryPage</b>', [['Preview /cart', true, true], ['CartSummaryPage.tsx']], ovMenu(1)) +
+    `<div class="stage" style="flex:1;padding:14px;place-items:start center">${cartDevice({ sel: true })}</div>` + foot,
+  right: `<div class="pane-h"><span class="title">Palette</span></div>${tabs([['Inspector'], ['Scope'], ['Source'], ['Palette', ['1', 'acc']], ['Diff']], 'Palette')}<div class="scroll">${palSuggest}</div>`,
+  bot: bottom('Processes', runProcs(), 104, { p: '1', a: '0' }), botH: 104 });
+
+// Confirm step, once #517's mechanical extraction block exists: an ask card + steps + per-file approval,
+// the exact same idiom as ia-pages-change's Change tab (Move/Rename/Extract/Wrap in.../Delete) -- "Wrap
+// with..." is that same verb, triggered from the palette instead of typed from a blank Change form.
+const palConfirm = `
+  <div class="ask"><b>Wrap with</b> a new Expression named <span class="field" style="display:inline-flex;width:170px">ForEachCartLine</span></div>
+  ${nextRow(1, 'Create ForEachCartLine.tsx', 'features/cart/expressions &middot; defineExpression(...) &mdash; satisfies EXPR-005/006', gen({}), '<div class="nxl"><a>Preview diff</a> &middot; 1 file &middot; 0 model calls</div>')}
+  ${nextRow(2, 'Rewrite CartSummaryPage.tsx', 'replace the inline .map() with &lt;ForEachCartLine&gt;', gen({}), '<div class="nxl"><a>Preview diff</a> &middot; 1 file</div>')}
+  <div class="sect" style="padding-top:10px">Approve per file &middot; 2 of 2</div>
+  ${[['ForEachCartLine.tsx (new)', '+18', 1], ['CartSummaryPage.tsx', '+2 -7', 1]].map((a) => `<div class="art"><span class="cb ${a[2] ? 'on' : ''}">${a[2] ? '&#10003;' : ''}</span><span>${a[0]}</span><span style="color:var(--text-muted)">${a[1]}</span></div>`).join('')}
+  <div style="padding:10px 12px"><button class="btn primary">Approve 2 of 2</button> <button class="btn">Discard</button></div>`;
+const paletteConfirmMock = frame({ screen: 'Pages', lw: 280, rw: 420,
+  left: cartTree({ pageSel: true, pageFlag: true }),
+  mid: editorBar('Pages &rsaquo; /cart &rsaquo; <b>CartSummaryPage</b>', [['Preview /cart', true, true], ['CartSummaryPage.tsx']], ovMenu(1)) +
+    `<div class="stage" style="flex:1;padding:14px;place-items:start center">${cartDevice({ sel: true })}<div class="ovcard" style="left:20px;top:410px;width:596px;border-color:var(--accent)"><b>Wrap with ForEachCartLine</b><span>Nothing is written until you approve &mdash; construct refactor extract-expression under the hood.</span></div></div>` + foot,
+  right: `<div class="pane-h"><span class="title">Palette</span></div>${tabs([['Inspector'], ['Scope'], ['Source'], ['Palette', ['1', 'acc']], ['Diff']], 'Palette')}<div class="scroll">${palConfirm}</div>`,
+  bot: bottom('Approvals', `<table><tr><th>Waiting for you</th><th>From</th><th></th></tr><tr><td><b>Wrap CartSummaryPage’s cart lines with ForEachCartLine</b> &middot; 2 files, 2 selected</td><td><span class="tag det">Mechanical</span></td><td><button class="btn sm primary">Review diff</button></td></tr></table>`, 110, { p: '0', a: '1' }), botH: 110 });
+
+/* Palette states: empty / loading / error / no selection / no block yet (before #517 ships) / narrow */
+const palStates = `
+<div class="hh">The palette: read what a feature can use, wrap what it can’t reach directly<small>Grouped by the real canImport graph (packages/core/config.mjs) and the typed-contracts factories &mdash; nothing shown here is a rule the architecture would actually refuse.</small></div>
+<div class="sheet3">
+ <div><h3>Before there is anything to show</h3>
+  ${sc('Empty: no Expressions yet', 'This feature has none', `<p>You can still compose Components and Providers below. Expressions appear here once you extract or create one &mdash; try "Wrap with..." on a selection.</p>`)}
+  ${sc('Loading', 'Computing what this feature can use', `<span class="saveind busy"><span class="spin"></span> Reading the import graph for this feature…</span>`)}
+  ${sc('Error', 'Couldn’t compute the palette', `<div class="callout danger" style="margin:0"><span>&#9888;</span><div class="grow"><b>architecture.yml failed to load</b><small>Unknown layer "expression" &mdash; check for a typo in a layers override.</small></div></div><button class="btn sm">Open architecture.yml</button>`)}</div>
+ <div><h3>Wrap with...: selection and sequencing</h3>
+  ${sc('No selection yet', 'Wrap with... needs a JSX selection', `<div>${gen({ disabled: true })}</div><span class="saveind">Select an element or range in the preview or source first.</span>`)}
+  ${sc('Today, before #517 ships', 'The mechanical block does not exist yet', `<div>${gen({ only: true })}</div><span class="saveind">Shown honestly as "AI only, no block yet" (logged as a request for #517) &mdash; never a silent model fallback pretending to be mechanical.</span>`)}
+  ${sc('Once #517 ships', 'Mechanical is the default', `<div>${gen({})}</div><span class="tag det">Deterministic &middot; construct refactor extract-expression</span>`)}</div>
+ <div><h3>Narrow (390px)</h3>
+  <div class="sheet3" style="grid-template-columns:1fr;padding:0">${phone('Palette, as the Inspect tab', 'Inspect', `<div class="pane-h"><span class="title">Palette</span></div>${tabs([['Inspector'], ['Palette', ['1', 'acc']]], 'Palette')}<div class="scroll" style="max-height:600px">${palGroup('Expressions', 1, palItem(palLayer('expression'), 'ShowForRole', 'features/cart/expressions', 'Wraps a role check.', ''))}</div>`)
+    .replace('class="on" style="padding:0 9px;font-size:12px">Features', 'class="" style="padding:0 9px;font-size:12px">Features')
+    .replace('class="" style="padding:0 9px;font-size:12px">Pages', 'class="on" style="padding:0 9px;font-size:12px">Pages')}</div></div>
+</div>`;
+Object.assign(pocOut, { 'ia-palette': paletteMock, 'ia-palette-suggest': paletteSuggestMock, 'ia-palette-confirm': paletteConfirmMock, 'ia-palette-states': palStates });
+Object.assign(pocTitles, { 'ia-palette': 'Pages: block palette, read-only (Providers / Expressions / Components a page can actually use)', 'ia-palette-suggest': 'Pages: JSX selected, palette suggests wrapping it with a new Expression', 'ia-palette-confirm': 'Pages: Wrap with... confirmed, mechanical steps and per-file approval', 'ia-palette-states': 'Palette: empty, loading, error, no-selection, no-block-yet and narrow states' });
+
 const out = { 'ia-features': features, 'ia-account-menu': menuMock, 'ia-slot-matrix': matrix, 'ia-notes-states': drafts, 'ia-no-project': noProj, 'ia-git': git, 'ia-git-connect': gitConnect, 'ia-narrow': narrow };
 const titles = { 'ia-features': 'Features screen: notes, impact, plan, processes', 'ia-account-menu': 'Account menu: settings, local model, theme, help, sign out', 'ia-slot-matrix': 'Five screens, four slots', 'ia-notes-states': 'Notes: durable states', 'ia-no-project': 'No project: where the Open a project prompt sits', 'ia-git': 'Git screen: PRs and review inside the shell', 'ia-git-connect': 'Git with no remote: where Connect remote and Clone sit', 'ia-narrow': 'Narrow (390 px): one panel at a time' };
 Object.assign(out, pocOut); Object.assign(titles, pocTitles);

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Pages: JSX selected, palette suggests wrapping it with a new Expression - Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="ia.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+</head><body>
+<div class="concept">Concept - not implemented <span>Pages: JSX selected, palette suggests wrapping it with a new Expression</span></div>
+
+<div class="shell" style="--lw:280px;--rw:440px;grid-template-rows:44px 1fr 104px 24px;position:relative">
+  
+<header class="topbar" role="banner">
+  <div class="brand"><i></i>Cockpit</div>
+  <button class="chip-btn" aria-haspopup="listbox">storefront <span class="sub">main</span> &#9662;</button>
+  <nav class="snav " aria-label="Screens"><a class="" >Features</a><a class="on" aria-current="page">Pages</a><a class="" >Components</a><a class="" >Git <span class="badge">3</span></a><a class="" >Tests</a></nav>
+  <button class="chip-btn palette-trigger"><span>Search or run a command...</span><kbd>Ctrl K</kbd></button>
+  <span class="pill run"><span class="spin"></span>2 running</span>
+  <button class="acct " aria-haspopup="true" aria-expanded="false"><span class="avatar">SP</span>shashank-p &#9662;</button>
+</header>
+  <div class="ia-main">
+    <aside class="pane" aria-label="Left panel: Browse"><div class="pane-h"><span class="title">Pages</span><span class="spacer"></span><button class="icon-btn" aria-label="New">+</button><button class="icon-btn" aria-label="Collapse">&laquo;</button></div><div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Tree</button><button role="tab" class="" aria-selected="false">Pages</button><button role="tab" class="" aria-selected="false">Flow</button></div><div class="search">&#8981; Go to file, node or route <span class="spacer"></span><kbd>Ctrl P</kbd></div>
+  <div class="scroll"><div class="sect">/cart</div><div class="tree">
+   <div class="row l0 sel"><span class="twisty">&#9662;</span><span class="layer page">page</span><span>CartSummaryPage</span><span class="nbs"><span class="nd find" title="1 finding: inline .map() (PAGE-008)" aria-label="1 finding: inline .map() (PAGE-008)"></span></span></div>
+   <div class="row l1 "><span class="layer component">component</span><span>AppNav</span><span class="nbs"></span></div>
+   <div class="row l1 "><span class="layer component">component</span><span>PromoCodeField</span><span class="nbs"></span></div>
+   <div class="row l1 "><span class="layer component">component</span><span>CheckoutCta</span><span class="nbs"></span></div></div></div></aside><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <section class="pane mid" aria-label="Center stage"><div class="etabs" role="tablist"><button role="tab" class="on" aria-selected="true">&#9679; Preview /cart</button><button role="tab" class="" aria-selected="false">CartSummaryPage.tsx <span class="x">&times;</span></button></div><div class="canvas-tb"><span class="crumbs">Pages &rsaquo; /cart &rsaquo; <b>CartSummaryPage</b></span><span class="devpill"><span class="dot"></span>:5173 running</span><span class="spacer"></span><button class="tg" aria-haspopup="true">Overlays &middot; 1 on &#9662;</button><button class="tg" aria-pressed="true" title="Click an element without holding Alt">&#8853; Pick</button></div><div class="stage" style="flex:1;padding:14px;place-items:start center"><div class="device" style="height:440px;width:640px">
+  <div class="bar"><i></i><i></i><i></i>&nbsp;&nbsp;localhost:5173/cart</div>
+  <div class="app-nav"><b>Storefront</b><span>Catalog</span><span>Cart (3)</span></div>
+  
+<div class="cartbox">
+  <h2>Your cart</h2>
+  <div class="cartline">Canvas tote bag &times; 1<span>$38.00</span></div>
+  <div class="cartline">Ceramic mug &times; 2<span>$24.00</span></div>
+  <div class="cartline">Wool scarf &times; 1<span>$42.00</span></div>
+  <div class="cartin">Promo code</div>
+  <div class="cartcta">Checkout &middot; $104.00</div>
+</div>
+  <div class="sel-box" style="left:20px;top:78px;width:596px;height:96px"></div><div class="sel-tag" style="left:20px;top:58px">3 elements &middot; inline .map() over cartItems</div>
+</div></div><div class="canvas-foot"><span>Desktop 1280</span><span>Alt+Click opens source</span><span class="spacer"></span><span>Live: reloads when a file changes</span></div></section><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <aside class="pane" aria-label="Right panel: Inspect"><div class="pane-h"><span class="title">Palette</span></div><div class="tabs" role="tablist"><button role="tab" class="" aria-selected="false">Inspector</button><button role="tab" class="" aria-selected="false">Scope</button><button role="tab" class="" aria-selected="false">Source</button><button role="tab" class="on" aria-selected="true">Palette <span class="badge acc">1</span></button><button role="tab" class="" aria-selected="false">Diff</button></div><div class="scroll">
+  <div class="callout info"><span>&#8981;</span><div class="grow"><b>Selection: 3 elements from a .map() over cartItems</b><small>CartSummaryPage.tsx:18-24 &middot; flagged PAGE-008 (inline loop rendering, not presentation)</small></div></div>
+  <details class="dt" open><summary>Expressions this feature can wrap with <span class="c">2</span></summary>
+    <div class="pal-item suggest"><div class="grow"><div class="pal-name"><span class="layer expression">expression</span><b>+ New Expression</b></div><span class="path"></span><p>No existing Expression fits a loop. Name derived from the mapped array’s element (editable) &mdash; per #517’s naming rule, never a placeholder.</p></div><div class="grow" style="flex:none;display:flex;flex-direction:column;gap:6px;align-items:flex-end"><span class="field" style="width:170px">ForEachCartLine</span><button class="btn sm primary">Wrap with...</button></div></div>
+    <div class="pal-item unfit"><div class="grow"><div class="pal-name"><span class="layer expression">expression</span><b>ShowForRole</b></div><span class="path">features/cart/expressions/ShowForRole.tsx</span><p>Wraps a single child behind a role check &mdash; not a fit for a loop over an array.</p></div><span class="tag" style="background:var(--surface-3);color:var(--text-muted)">Not a fit</span></div>
+  </details>
+  <details class="dt" ><summary>Providers this feature can use <span class="c">2</span></summary>
+    <div class="pal-item "><div class="grow"><div class="pal-name"><span class="layer">provider</span><b>CartProvider</b></div><span class="path">features/cart/hooks/useCartProvider.ts</span><p>Shares { total, itemCount } across this page’s tree.</p></div></div>
+    <div class="pal-item "><div class="grow"><div class="pal-name"><span class="layer">provider</span><b>AuthProvider</b></div><span class="path">features/auth &middot; via its public index</span><p>Shares the signed-in customer.</p></div></div>
+  </details>
+  <details class="dt" ><summary>Components this feature can compose <span class="c">3</span></summary>
+    <div class="pal-item "><div class="grow"><div class="pal-name"><span class="layer component">component</span><b>AmountField</b></div><span class="path">features/ui-kit &middot; via its public index</span><p>Formats a currency amount.</p></div></div>
+    <div class="pal-item "><div class="grow"><div class="pal-name"><span class="layer component">component</span><b>PromoCodeField</b></div><span class="path">features/cart/components</span><p>A labelled text field with an Apply button.</p></div></div>
+    <div class="pal-item "><div class="grow"><div class="pal-name"><span class="layer component">component</span><b>CheckoutCta</b></div><span class="path">features/cart/components</span><p>Primary button; routes to /checkout.</p></div></div>
+  </details>
+  <p style="margin:10px 12px;padding:8px 10px;border:1px solid var(--border-subtle);border-radius:var(--r-md);background:var(--surface-1);color:var(--text-muted);font-size:12px;line-height:1.5"><b style="color:var(--text)">Not shown here:</b> workflows, services and domain logic. A page composes components, expressions and providers only &mdash; it can't reach a workflow, service or domain unit directly (rules PAGE-002/003/005). Ask a controller to wire one of those in instead.</p></div></aside>
+  </div>
+  
+<div class="drawer" aria-label="Bottom panel: Run" style="height:104px">
+  <div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Processes <span class="badge acc">1</span></button><button role="tab" class="" aria-selected="false">Approvals <span class="badge ">0</span></button><button role="tab" class="" aria-selected="false">Diagnostics <span class="badge danger">3</span></button><button role="tab" class="" aria-selected="false">Logs</button></div>
+  <div class="body"><table><tr><th>Process</th><th>Project</th><th>Status</th><th></th></tr>
+ <tr><td><b>dev server &middot; storefront</b> <span class="tag det">Deterministic</span></td><td>storefront (inside the workspace)</td><td>running on :5173 &middot; 14 min</td><td><button class="btn sm">Restart</button> <button class="btn sm danger">Stop</button></td></tr></table></div>
+</div>
+  <footer class="statusbar"><span class="ok">&#9679; validate: 0 new violations</span><span>Notes saved on this machine</span><span class="spacer"></span><span>qwen2.5-coder:7b</span><span><kbd>F6</kbd> next panel</span><span><kbd>Ctrl J</kbd> bottom panel</span></footer>
+  
+</div>
+</body></html>
