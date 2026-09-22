@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { blocksCockpit, canSignIn } from '../domain/Session';
 import { LOGIN_PHRASES } from '../domain/Typewriter';
 import { useTypewriter } from '../hooks/useTypewriter';
@@ -21,6 +21,28 @@ import { AuthGatePage } from '../pages/AuthGatePage';
 export function AuthGateController({ children }: { children: ReactNode }) {
   const { session, loading, unreachable, signingIn, error, refresh, signInWithGithub, signInAsTestUser } = useAuthSession();
   const { text: tagline, animated: taglineAnimated } = useTypewriter(LOGIN_PHRASES);
+  const blocked = blocksCockpit(session);
+
+  // #406: a real sign-in witnessed in THIS tab (the login screen was actually on screen, then
+  // resolved to unblocked) gets a brief hand-off instead of an instant cut. `shownLogin` — not just
+  // "was blocked" — is what keeps an ordinary already-signed-in page load (which never renders the
+  // login screen at all; `loading` is true the whole time until it resolves straight to unblocked)
+  // from triggering it: there is nothing on screen to hand off from in that case.
+  const shownLogin = useRef(false);
+  const [handoff, setHandoff] = useState(false);
+  useEffect(() => {
+    if (loading) return;
+    if (blocked) {
+      shownLogin.current = true;
+      return;
+    }
+    if (shownLogin.current) {
+      setHandoff(true);
+      shownLogin.current = false;
+    }
+  }, [loading, blocked]);
+  const onHandoffEnd = useCallback(() => setHandoff(false), []);
+
   return (
     <AuthGatePage
       tagline={tagline}
@@ -30,7 +52,9 @@ export function AuthGateController({ children }: { children: ReactNode }) {
       unreachable={unreachable}
       signingIn={signingIn}
       error={error}
-      blocked={blocksCockpit(session)}
+      blocked={blocked}
+      handoff={handoff}
+      onHandoffEnd={onHandoffEnd}
       canSignIn={canSignIn(session)}
       onSignInWithGithub={signInWithGithub}
       onSignInAsTestUser={() => void signInAsTestUser()}

@@ -133,3 +133,92 @@ test('the test login matches the GitHub button in size and shape (owner request 
   const style = (l) => l.evaluate((e) => { const c = getComputedStyle(e); return [c.borderRadius, c.fontWeight, c.borderTopWidth].join('|'); });
   expect(await style(test)).toBe(await style(gh));
 });
+
+// #406 (owner request 2026-09-21): after a real sign-in the mark plays a short exit hand-off before
+// the login screen is gone, instead of an instant cut — and the Cockpit is reachable either way.
+test.describe('#406 login hand-off', () => {
+  test('a real sign-in plays the mark\'s exit hand-off, then the Cockpit is reachable', async ({ page }) => {
+    await page.goto('/dashboard');
+    await expect(page.getByTestId('login-screen')).toBeVisible();
+    const mark = page.getByTestId('login-brand').getByTestId('animated-logo');
+    await expect(mark).toHaveAttribute('data-motion', 'idle');
+
+    await page.getByTestId('login-test-user').click();
+
+    // Not an instant cut: the mark reports a real, named "exit" motion state at some point in the
+    // hand-off, and while it does the browser is actually running a named animation on it — not
+    // just an attribute with nothing behind it.
+    await expect(mark).toHaveAttribute('data-motion', 'exit');
+    const animated = await mark.evaluate((el) => getComputedStyle(el).animationName !== 'none');
+    expect(animated, 'the exit motion state is a real, named CSS animation').toBe(true);
+
+    // The hand-off finishes on its own — nobody has to unmount it by hand — the login screen is
+    // fully gone, and the Cockpit underneath (already mounted for the hand-off, #406) is reachable.
+    await expect(page.getByTestId('login-screen')).toHaveCount(0);
+    await expect(page.getByRole('banner')).toBeVisible();
+    await expect(page.getByTestId('user-menu-trigger')).toBeVisible();
+  });
+
+  test('under reduced motion the hand-off is skipped instantly and the Cockpit is still reachable', async ({ browser }) => {
+    const ctx = await browser.newContext({ reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    await page.goto('/dashboard');
+    await expect(page.getByTestId('login-screen')).toBeVisible();
+    const mark = page.getByTestId('login-brand').getByTestId('animated-logo');
+    await expect(mark).toHaveAttribute('data-motion', 'off');
+
+    await page.getByTestId('login-test-user').click();
+
+    // No animation loop at all (the same contract idle/off already holds): the login screen resolves
+    // almost at once rather than staying around for a visible hand-off, and the Cockpit is reachable.
+    await expect(page.getByTestId('login-screen')).toHaveCount(0, { timeout: 1500 });
+    await expect(page.getByRole('banner')).toBeVisible();
+    await ctx.close();
+  });
+});
+
+// #406: the shared AnimatedLoader (same brand mark, a faster `busy` loop) replaces the generic
+// `.st-spinner` on the "Checking your session" screen — the one real drop-in site this ticket wires.
+test.describe('#406 AnimatedLoader', () => {
+  test('the shared loader appears while the session is being checked', async ({ page }) => {
+    // Slow the session probe down so the loading branch stays on screen long enough to assert on.
+    await page.route('**/auth/session', async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 700));
+      await route.continue();
+    });
+    await page.goto('/dashboard');
+    const region = page.getByTestId('state-loading');
+    await expect(region).toBeVisible();
+    await expect(region).toHaveAttribute('role', 'status');
+    await expect(region).toContainText('Checking your session');
+
+    const loader = page.getByTestId('animated-loader');
+    await expect(loader).toBeVisible();
+    // Decorative here: `state-loading` above is already the one status announcement — the loader
+    // does not add a second, competing one.
+    await expect(loader).toHaveAttribute('aria-hidden', 'true');
+    const mark = loader.getByTestId('animated-logo');
+    await expect(mark).toHaveAttribute('data-motion', 'busy');
+    // The default mark is 'cockpit' (app/brand.css animates its knob, not the wrapper, for `busy` —
+    // same idiom as the always-on idle loop): a real, named animation is actually running.
+    const animated = await mark.locator('[data-part="knob"]').evaluate((el) => getComputedStyle(el).animationName !== 'none');
+    expect(animated, 'busy is a real, named CSS animation').toBe(true);
+  });
+
+  test('under reduced motion the loader shows a static mark, no animation loop', async ({ browser }) => {
+    const ctx = await browser.newContext({ reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    await page.route('**/auth/session', async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 700));
+      await route.continue();
+    });
+    await page.goto('/dashboard');
+    const loader = page.getByTestId('animated-loader');
+    await expect(loader).toBeVisible();
+    const mark = loader.getByTestId('animated-logo');
+    await expect(mark).toHaveAttribute('data-motion', 'off');
+    const moving = await mark.locator('svg *').evaluateAll((els) => els.filter((el) => getComputedStyle(el).animationName !== 'none').length);
+    expect(moving, 'no animation runs under reduced motion').toBe(0);
+    await ctx.close();
+  });
+});

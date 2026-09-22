@@ -40,8 +40,29 @@ export declare function Logo(props: { mark?: 'line' | 'construct' | 'cockpit' | 
 // #455: the same mark with the always-on subtle idle animation. Identical props to `Logo` on purpose —
 // it is a drop-in at every call site — except that `className` lands on the wrapper element rather than
 // the <svg>, because the wrapper is what carries the motion state (`data-motion`).
+//
+// #406 adds two opt-in states, both no-ops when omitted: `busy` (a faster loop of the same
+// keyframes — what AnimatedLoader below sets) and `exiting` (a one-shot hand-off; `onExitEnd` fires
+// once, when the animation finishes or immediately under reduced motion).
 export declare function AnimatedLogo(props: {
   mark?: 'line' | 'construct' | 'cockpit' | 'cli';
   size?: number;
+  className?: string;
+  busy?: boolean;
+  exiting?: boolean;
+  onExitEnd?: () => void;
+}): ReactNode;
+
+// #406: a reusable loading indicator built from AnimatedLogo's `busy` state — the same marks/tokens,
+// not a separate spinner. `decorative` mirrors AnimatedLogo's own aria-hidden idiom: pass it when the
+// loader sits beside a control that already carries the accessible name (e.g. a button whose own text
+// reads "Signing in…"); omit it for a standalone loader, which announces itself instead
+// (`role="status"` + `aria-label`).
+export declare function AnimatedLoader(props: {
+  size?: 'small' | 'medium' | 'large' | number;
+  variant?: 'inline' | 'overlay';
+  label?: string;
+  mark?: 'line' | 'construct' | 'cockpit' | 'cli';
+  decorative?: boolean;
   className?: string;
 }): ReactNode;
