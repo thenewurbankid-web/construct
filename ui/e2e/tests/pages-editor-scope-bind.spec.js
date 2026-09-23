@@ -5,8 +5,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const SCREENSHOTS_DIR = path.resolve(__dirname, '../screenshots');
-fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
 
 const API_BASE = process.env.E2E_API_BASE || 'http://localhost:4000';
 
@@ -111,13 +109,10 @@ test.describe.serial('Pages Editor Scope tab click-to-bind (#534)', () => {
     await expect(labelCandidate).toBeDisabled();
     await expect(labelCandidate).toHaveClass(/scope-unfit/);
 
-    await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '534-scope-bind-armed.png') });
-
     await total.click();
     await expect(panel.locator('.status-ok')).toContainText('Bound "amount" to "total"');
     await expect(amountTarget).toHaveClass(/scope-status-bound/);
     await expect(amountTarget).toContainText('amount=total');
-    await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '534-scope-bind-bound.png') });
 
     // The real source file on disk, not just the UI's own re-render, was rewired.
     const source = fs.readFileSync(pagePath, 'utf8');
