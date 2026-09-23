@@ -324,7 +324,13 @@ Most layer rules above are enforced two ways at once, not just one:
   object `{ severity: error, tsconfig: tsconfig.app.json, timeoutMs: 120000 }`.
   If TypeScript or the tsconfig is missing it reports a
   `TYPE-001 could not run: <reason>` warning rather than passing silently.
-  When `validateArchitecture` is scoped to `files`, only errors in those files
+  A solution-style `tsconfig.json` (a Vite/React template's root: `references`,
+  no `files`/`include`) is expanded: each `references[].path` project is
+  checked with `tsc --noEmit -p` (never `tsc -b`, which emits) and the
+  diagnostics are merged; an unfindable reference, or any checked config that
+  resolves to zero files, is a `could not run` warning naming it (#579). The
+  configs actually checked are returned as `typeCheck.checked` by
+  `validateArchitecture` (and `runTypeCheckDetailed`). When `validateArchitecture` is scoped to `files`, only errors in those files
   are reported (the whole program is still checked).
 
 Both layers are additive: a project using neither the new factories nor

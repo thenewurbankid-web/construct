@@ -1,0 +1,11 @@
+version: 1
+preset: strict-nextjs
+
+project:
+  framework: react-spa
+  language: typescript
+
+features:
+  root: src
+rules:
+  TYPE-001: error

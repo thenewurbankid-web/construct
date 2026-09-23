@@ -9,7 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { EXIT_CODES } from '../packages/core/diagnostics.mjs';
 import { validateArchitecture } from '../packages/core/architecture-enforcer.mjs';
-import { parseTscOutput, runTypeCheck } from '../packages/core/type-check.mjs';
+import { parseTscOutput, runTypeCheck, runTypeCheckDetailed, solutionReferences, resolveProjectTsc } from '../packages/core/type-check.mjs';
 import { DEFAULT_RULES } from '../packages/core/config.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
@@ -100,4 +100,62 @@ test('parseTscOutput folds continuation lines and reads global diagnostics', () 
   assert.deepEqual([d[0].file, d[0].line, d[0].code], ['src/a.ts', 3, 'TS2322']);
   assert.match(d[0].text, /incompatible\.$/);
   assert.deepEqual([d[1].file, d[1].code], [null, 'TS18003']);
+});
+
+// #579 -- a solution-style root tsconfig (references, no files/include) checks its referenced projects.
+test('TYPE-001 solution-style with a real error in a referenced project: exit 1, file and line, checked configs named', () => {
+  const { status, report } = validateCli(fixture('type-check-solution-failing'));
+  assert.equal(status, EXIT_CODES.VIOLATIONS);
+  const useRef = report.violations.find((v) => v.rule === 'TYPE-001' && /TS2304: Cannot find name 'useRef'/.test(v.message));
+  assert.ok(useRef, 'the useRef diagnostic must be reported through the reference');
+  assert.equal(useRef.file, 'src/useCanvasEditor.ts');
+  assert.equal(useRef.line, 3);
+  assert.equal(useRef.severity, 'error');
+  assert.match(useRef.why, /checked via tsconfig\.app\.json/);
+  const { checked } = runTypeCheckDetailed(fixture('type-check-solution-failing'), { severity: 'error' });
+  assert.deepEqual(checked, ['tsconfig.app.json', 'tools/tsconfig.json']);
+});
+
+test('TYPE-001 solution-style and clean: exit 0, both referenced configs (file and directory form) reported as checked', () => {
+  const { status, report } = validateCli(fixture('type-check-solution-clean'));
+  assert.equal(status, EXIT_CODES.OK);
+  assert.equal(report.status, 'passed');
+  assert.deepEqual(report.violations, []);
+  const { violations, checked } = runTypeCheckDetailed(fixture('type-check-solution-clean'), { severity: 'error' });
+  assert.deepEqual(violations, []);
+  assert.deepEqual(checked, ['tsconfig.app.json', 'tools/tsconfig.json']);
+  assert.deepEqual(validateArchitecture(fixture('type-check-solution-clean')).typeCheck, { checked });
+});
+
+test('TYPE-001 solution-style whose referenced project has zero files: a "checked zero files" warning, not a pass', () => {
+  const { status, report } = validateCli(fixture('type-check-solution-empty'));
+  assert.equal(status, EXIT_CODES.OK, 'a warning does not fail the run');
+  const w = report.violations.find((v) => v.rule === 'TYPE-001');
+  assert.ok(w, 'must not silently pass');
+  assert.equal(w.severity, 'warning');
+  assert.match(w.message, /^TYPE-001 could not run: checked zero files: tsconfig\.app\.json/);
+  assert.deepEqual(runTypeCheckDetailed(fixture('type-check-solution-empty')).checked, []);
+});
+
+test('TYPE-001 zero files also applies to a plain (non-solution) tsconfig', () => {
+  const [w] = runTypeCheck(fixture('type-check-solution-empty'), { severity: 'error', tsconfig: 'tsconfig.app.json' });
+  assert.equal(w.severity, 'warning');
+  assert.match(w.message, /^TYPE-001 could not run: checked zero files: tsconfig\.app\.json/);
+});
+
+test('TYPE-001 solution-style with a reference that cannot be found: a warning naming it, the other reference is still checked', () => {
+  const { violations, checked } = runTypeCheckDetailed(fixture('type-check-solution-missing-ref'), { severity: 'error' });
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].severity, 'warning');
+  assert.match(violations[0].message, /^TYPE-001 could not run: referenced project tsconfig\.node\.json .*not found/);
+  assert.deepEqual(checked, ['tsconfig.app.json']);
+});
+
+test('solutionReferences: a normal tsconfig (with include) is not solution-style; a solution config lists its references', () => {
+  const dir = fixture('type-check-clean');
+  const tsc = resolveProjectTsc(dir);
+  assert.equal(solutionReferences(tsc, dir, path.join(dir, 'tsconfig.json')), null);
+  const sol = fixture('type-check-solution-clean');
+  const refs = solutionReferences(tsc, sol, path.join(sol, 'tsconfig.json')).map((p) => path.relative(sol, p));
+  assert.deepEqual(refs, ['tsconfig.app.json', 'tools']);
 });

@@ -1,0 +1,5 @@
+{
+  // Vite/React-style solution config: no files/include, only references (#579).
+  "files": [],
+  "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tools" }]
+}
