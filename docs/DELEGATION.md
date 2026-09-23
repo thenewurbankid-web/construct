@@ -72,6 +72,16 @@ Agents are fresh sessions: they know only the brief, CLAUDE.md, the issue and
 the repo docs. Anything that matters (branch, ports, verification bar, what not
 to touch) goes in the brief or in a doc, never in chat history.
 
+A missing symlink doesn't always fail loudly right away: `packages/docs-site/lib/apiDocs.mjs`
+does a literal `fs.existsSync(repoRoot + '/node_modules/typedoc/...')` check rather than Node's
+own module resolution, so it only ever finds `typedoc` via the worktree's *own* `node_modules`
+symlink, never by walking up to the outer checkout the way a plain `import` does. Most tests pass
+fine without the root symlink (resolution walks up into the main checkout); a batch of ~40
+unrelated-looking failures (api-manifest/apiDocs tests, every `ui/server/*.test.mjs`, every
+typed-contracts tsc test) with no connection to what you changed means the setup step was
+skipped, not that you broke something — symlink node_modules for every directory in the setup
+list above, then re-run before concluding a regression.
+
 ## Verifying a report (orchestrator)
 
 A report is a claim. Before closing or building on it:
