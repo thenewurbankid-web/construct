@@ -4,9 +4,10 @@
 R="$(cd "$(dirname "$0")/../../.." && pwd)"
 echo "== $(date -u +%H:%M) UTC =="
 echo "-- open PRs"; env -u GH_TOKEN -u GITHUB_TOKEN gh pr list --state open --json number,title --jq '.[]|"#\(.number) \(.title)"' 2>/dev/null || echo "(gh unavailable)"
-echo "-- agent worktrees (commits ahead of origin/main, last commit)"
+BASE="${CONSTRUCT_BASE_BRANCH:-origin/work/2026-09-23}"   # main is frozen; see docs/DELEGATION.md
+echo "-- agent worktrees (commits ahead of $BASE, last commit)"
 for d in "$R"/.claude/worktrees/agent-*; do [ -d "$d" ] || continue
-  n=$(git -C "$d" rev-list --count origin/main..HEAD 2>/dev/null || echo ?)
+  n=$(git -C "$d" rev-list --count "$BASE"..HEAD 2>/dev/null || echo ?)
   [ "$n" = "0" ] && continue
   printf '%s  %s ahead, last %s\n' "$(basename "$d" | cut -c7-14)" "$n" "$(git -C "$d" log -1 --format=%cr 2>/dev/null)"
 done

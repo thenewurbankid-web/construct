@@ -1,301 +1,143 @@
-# Working on construct-final
+# Working on Construct
 
-Instructions for any AI agent working on this repo — the Construct tool
-itself, not a project that uses it. `AGENTS.md` and `architecture.yml` at
-this root are leftover output from once running `construct init .` here;
-they describe the contract Construct enforces on *target* projects, not
-this one — ignore them here.
+This repo is the Construct tool itself, not a project that uses it.
+`AGENTS.md` and `architecture.yml` at the root are leftover output of
+`construct init .`; they describe what Construct enforces on *target*
+projects. Ignore them here.
 
-## Vision — read before proposing or building anything new
+## Branch, machine, verification
 
-See the "Vision" section at the top of `README.md` in full; it is this
-project's charter. Short version: Construct is a library of small,
-deterministic, non-LLM "lego blocks" that build/refactor a web app under
-user-defined constraints, extended by a UI (`ui/`) so a human can observe
-and collaborate — a cockpit, not an autopilot. The same blocks are exposed
-to LLMs (`--llm` flags today, an MCP server with deterministic flows later)
-so automated work goes through the same repeatable machinery a human would
-use, instead of an LLM reinventing the task with tokens every time. Mantra:
-an LLM understands an example better than an instruction — hand the next
-layer a concrete example, not an abstract spec. Before adding a capability,
-ask: does this add a deterministic block, make an existing one more atomic,
-improve an example handed downstream, or extend the cockpit UI — or does it
-quietly make an LLM do work a block should be doing instead?
+- `main` is frozen at tag `stable-2026-09-23`. All work lands on
+  `work/2026-09-23`: branch from `origin/work/2026-09-23`, `git pull --rebase`
+  before every push, never force-resolve a conflict (stop and report).
+- Heavy commands (`npm test`, Playwright, `next dev`, `npm ci`) run through
+  `packages/tools/dev/heavy.sh` (15 GB, no swap). Single test files run
+  directly. Playwright: `--workers=1`, one dev server, no lingering processes.
+- Done means: `packages/tools/dev/heavy.sh npm test` 0 fail on the combined
+  tree, eslint clean, plus the task's own manual bar. Smoke-test single files
+  while iterating; full suite once at the end.
+- Delegation mechanics (worktree setup, brief template, verifying reports,
+  rescue, cost): `docs/DELEGATION.md`. An agent is a fresh session: it knows
+  only its brief, this file, the issue and the repo docs.
 
-## Core philosophy — how we build
+## Vision (charter: README.md "Vision")
 
-- **Like JHipster** for AI-native React + TypeScript apps: a generator,
-  enforcer and cockpit over a known stack, not a new framework. Value is
-  repeatable blocks and a human in the loop, not owning commodity code.
-- **Embrace open source, never reinvent the wheel.** Wrap an OSS tool by
-  default (permissive licenses only); hand-build only the differentiators
-  (architecture rules/validator, plan/impact, narrator, test generator,
-  approval gate, workspace containment). Swap hand-rolled code only where an
-  audit shows a real stability/maintenance win.
-- **Automate how we work.** Board, milestones, changelog, versioned docs and
-  the UI stay in sync by machinery, not memory; a step done by hand twice
-  becomes a block or a script.
-- **Everything is switchable** (Mechanical | AI per action, model provider,
-  mock | real per service, per project); guardrails (containment, per-diff
-  approval, session gate, deterministic checks before AI output lands) stay
-  on regardless.
-- **No single point of failure, no deadlocks** — in the product (in-memory
-  state, one engine slot, one machine are tracked as stability debt) and in
-  how we work (branches/issues never only a session, isolated worktrees/
-  ports per job, one heavy-job queue that waits for memory, a stall
-  watcher).
-- **A no-code IDE experience.** Visual first: select, pick, click, Generate;
-  code is a drill-down ("View source", "Edit as file"), never the default
-  surface. Screens show documentation, structure, diffs and choices before
-  a code editor. **Every block (feature, layer, page, component, flow card,
-  step) offers the same two exits: "View/edit code" and "Fill with AI"**
-  (inline Mechanical | AI control, output as a reviewable diff).
-- **The goal**: developers' (and AI's) time goes to innovation, not
-  repeating the same work.
+Construct is a library of small, deterministic, non-LLM blocks that build and
+refactor a web app under user-defined constraints, plus a cockpit UI (`ui/`)
+where a human observes and collaborates: a cockpit, not an autopilot. The
+same blocks are exposed to LLMs (`--llm` today, MCP later) so automated work
+runs through repeatable machinery instead of tokens. Mantra: hand the next
+layer a concrete example, not an abstract spec. Before adding anything, ask:
+does it add a deterministic block, make one more atomic, improve an example
+handed downstream, or extend the cockpit, or does it quietly make an LLM do a
+block's work?
 
-## Dogfooding: Construct's own UI must be built using Construct
+## How we build
 
-`ui/` should itself be organized as a real Construct feature (domain/
-service/workflow/hook/component/page/controller) and pass `construct
-validate`, not just be "a React app that lives here" — this is how the
-framework gets proven.
+- Like JHipster for AI-native React + TypeScript: generator, enforcer and
+  cockpit over a known stack, not a new framework.
+- Wrap OSS (permissive licenses only) by default; hand-build only the
+  differentiators (rules/validator, plan/impact, narrator, test generator,
+  approval gate, workspace containment).
+- Automate how we work: anything done by hand twice becomes a block or a
+  script; board, changelog, docs and UI stay in sync by machinery.
+- Everything is switchable (Mechanical | AI per action, provider, mock |
+  real, per project); guardrails (containment, per-diff approval, session
+  gate, deterministic checks before AI output lands) never switch off.
+- No single point of failure or deadlock, in the product (in-memory state and
+  one engine slot are tracked debt) and in how we work (isolated worktrees and
+  ports, one heavy-job queue).
+- No-code IDE: visual first, code is a drill-down. Every block (feature,
+  layer, page, component, flow card, step) offers the same two exits:
+  "View/edit code" and "Fill with AI" (output as a reviewable diff).
 
-This needs Construct to support **React + TypeScript beyond Next.js App
-Router** — today's assumptions (`page.tsx` entry, `app/` routing,
-`route-resolver.mjs`'s Next.js-shaped URL resolution) don't fit `ui/
-client`'s Vite SPA or `ui/server`'s Express backend. Generalizing this (a
-`framework` option in `architecture.yml`, an abstracted route/controller
-entry point) is its own epic with atomic sub-issues — don't force a
-premature Next.js rewrite of working UI code first; migrate `ui/` onto
-Construct as a second, separately tracked epic once support exists.
+## Standing constraints
 
-## Dogfood cycle (standing instruction, owner 2026-09-22)
+- **Dogfood the UI**: `ui/` must become a real Construct feature that passes
+  `construct validate`. That needs support for Vite SPA and Express beyond
+  Next.js App Router (a `framework` option, an abstracted route entry), its
+  own epic. Do not force a Next.js rewrite of working UI code.
+- **Dogfood runs** (epic #489, label `dogfood`): every finding is high
+  priority and is judged as developer experience, not only correctness. Does
+  the fix make Construct do the work, or leave a gap to bridge by hand?
+  (#495-#498 are the worked examples.)
+- **Typed contracts** (epic #500, `packages/core/typed-contracts/`): when
+  writing or generating a unit for a layer with a factory (`defineDomain`,
+  `definePage`, `defineComponent`, `defineExpression`, `defineService`,
+  `defineWorkflow`, `defineController`, `defineRoute`, `defineProvider`), use
+  it. Phase 1 rules (`HOOK-001`, `PAGE-008/009`, `DOMAIN-002`, `READ-004`,
+  filename `Name.layer.ext`) are off by default. Do not delete the old
+  denylist rules until phase 2 dogfood evidence lands.
+- Prefer a deterministic Construct block over reasoning by reading files
+  (`docs/DOGFOODING-2026-09.md`, "How agents should orient").
 
-Every real dogfood test — using Construct (CLI or Cockpit) to build something
-real, outside this repo — is tracked under the `[Epic] Dogfooding` issue
-(#489, `dogfood` label) per its own template. Two rules that apply every
-time a dogfood run finds something, not just the first one:
+## Issue discipline (`thenewurbankid-web/construct`)
 
-1. **Bugs and improvements a dogfood run surfaces are always high
-   priority** — triage them ahead of other non-urgent backlog, don't let
-   them sit. A dogfood test exists to find real friction before a real user
-   does; treating its findings as routine backlog defeats the point.
-2. **Dev ex is user ex — our users are devs.** When deciding how to fix
-   something a dogfood run found, weigh it as a user-experience problem,
-   not only a correctness bug: would a developer actually using Construct
-   feel this friction, and does the fix make Construct feel like it's
-   doing the work for them (per the Vision section) or still leaving a gap
-   for them to bridge by hand. #495-498 (found analyzing #490) are the
-   worked examples of this: each ties a concrete failure back to what a
-   developer would actually experience, not just "the check was wrong."
+1. Every unit of work has an issue before or as it starts. Search first
+   (`gh issue list --search "<kw>" --state all`); reuse or reopen a match.
+   File mid-task discoveries before moving on. Trivial fixes fold into the
+   current issue.
+2. Tickets are user stories: "As a `<role>`, I want `<capability>`, so that
+   `<benefit>`", label `story`, 2-4 acceptance bullets, a milestone. Slices
+   and design are sub-issues (GitHub sub-issue link plus a "Part of #N"
+   line); design is optional and never a gate. Multi-story features get an
+   epic parent. Bugs and chores stay flat. Obsolete work is closed with a
+   one-line reason naming what supersedes it.
+3. State reflects reality: close the moment work is verified done; never
+   close unfinished work; work that reopens or supersedes links back.
+4. Comment only when it adds what state and commits do not show: a dropped
+   task and why; a note the next developer needs (new command, API, setup
+   step, known exception, non-obvious next step, runnable from the issue
+   alone); something to highlight to other devs; verification detail worth
+   keeping. No start, progress or "done" comments. Closing needs no comment.
+5. Board (`docs/PROJECT_BOARD.md`): set Module, Sub-module, Kind, Priority and
+   the parent link when filing. PRs are not on the board. If the board is
+   unreachable, say so and ask for a token.
+6. GitHub writes: one create/comment/close/PATCH per command, never chained
+   (bulk scripts get blocked). Never write a token to disk; a token pasted in
+   chat is compromised, tell the owner to rotate it.
+7. Commit and push every shippable piece; never one giant commit.
+   Uncommitted work is invisible and dies with the session.
+8. Never idle while backlog exists. Pause only for a genuine human decision
+   (security tradeoff, ambiguous requirement, credentials).
+9. Parallel, isolated streams by default (`isolation: "worktree"`, merge back
+   explicitly once verified). One deliverable per delegation, 10-15 minutes.
+10. Every UI feature has a Playwright spec under `ui/e2e/` that actually ran
+    before closing; `src/` and CLI work is covered by `npm test`. Screenshots
+    exist only for the docs site (`site/`, curated by `demo-curator`), never
+    in issues, comments or chat.
 
-## Typed contracts (standing instruction, epic #500)
+## Token economy
 
-Layer boundaries are enforced two ways, not one: `construct validate`'s rule
-engine (a backstop) and `packages/core/typed-contracts/`'s branded types +
-`defineX<Props>(name, fn)` factories (structural prevention — a wrong import
-is a `tsc` error at the call site, not a rule fired after the fact). When
-writing or generating a new unit for any layer that has a factory
-(`defineDomain`, `definePage`, `defineComponent`, `defineExpression`,
-`defineService`, `defineWorkflow`, `defineController`, `defineRoute`,
-`defineProvider`), use it — don't hand-write the layer's shape from scratch
-even when the rule engine alone would pass it. See README.md's "Typed
-contracts" section and `packages/core/typed-contracts/examples/` for real
-compiling/non-compiling fixtures. Phase 1 (the mechanism itself, plus
-`expressions/`, `HOOK-001`, `PAGE-008/009`, `DOMAIN-002`, `READ-004` — a
-unit's filename encodes its layer, `Name.layer.ext`, off by default since it
-would fail every pre-existing fixture/file name in this repo) is done; phase
-4 (removing the denylist rules it supersedes) waits on phase 2's dogfood
-evidence — don't delete old rule code because the new mechanism exists yet.
+- Report once, at the end: findings and results, counts and `path:line`, no
+  narration, no pasted logs. Never read a dispatched agent's transcript; read
+  its report and verify with your own commands.
+- Verify claims: `git ls-remote` for pushes, re-run the affected tests, full
+  suite once on the combined tree.
+- Dashboards (Trinity, board) refresh once per wave or on request, never on a
+  timer; no board or issue write that restates visible state.
+- `packages/tools/dev/status.sh` and `verify.sh` over many ad hoc shell calls.
+- Plugins and dev tooling: `docs/DELEGATION.md`, "Tooling". Run
+  `session-report` after each wave.
 
-## GitHub issue discipline (standing instruction)
+## Notifications
 
-Repo: `thenewurbankid-web/construct`. Issues track all real work and stay in
-sync with what's actually true, not a point-in-time snapshot (see #35).
+`PushNotification` the owner when a request is finished or needs a decision
+or a security finding, never for progress. No channel: fail silently. A
+success result is not delivery: send it, do not claim it arrived. Owner
+attention items also go on the Notice Board, #224.
 
-1. **Every unit of work gets an issue** before or as you start it. Search
-   first (`gh issue list --search "<keywords>" --state all`); comment/
-   reopen a match instead of duplicating. File mid-task discoveries before
-   moving to the next distinct unit. Retroactive filing (a changelog-style
-   entry with the files/tests that back it) is fine for pre-existing work.
-   Trivial changes (typos, comment-only, formatting) fold into whichever
-   issue/commit they're part of.
-2. **Closing/reopening itself needs no comment** (owner, 2026-09-22 — tightens
-   this further than before). The issue state and its linked commit/PR
-   already say it's done; don't restate that. Comment only when there is
-   real info to log that isn't otherwise visible: a **dropped task**, with
-   why it was dropped; a **future note for dev** (rule 12's closing content,
-   only when a developer genuinely needs it); something that must be
-   **highlighted to other devs** specifically, not just the owner; or
-   verification detail (exact test counts, a real exception found) that
-   genuinely helps and isn't obvious from the commit alone. Nothing else —
-   no starting comment, no progress chatter, no comment per action, no
-   restating what the issue body/board already shows. Tell every subagent
-   this rule; post any real closing note yourself.
-3. **Issue state must reflect reality.** Close the moment work is verified
-   done (`npm test` passing in full, plus the task's own manual bar); never
-   leave finished work open, never close unfinished work. New work that
-   reopens/supersedes closed work says so in a comment with a link.
-4. **Granularity — tickets are user stories** (owner, 2026-09-23). Every
-   independently shippable capability is one **user story** issue: "As a
-   `<role>`, I want `<capability>`, so that `<benefit>`", labelled `story`,
-   with 2-4 checkable acceptance bullets and a milestone. Implementation
-   slices and **design** are **sub-issues** of their story (GitHub
-   sub-issues plus a "Part of #N" line). Design is never a standalone
-   top-level ticket and never a gate: it is optional (the designer agent
-   runs only when the owner asks) and does not block its story. A
-   multi-story feature gets an epic parent. Bugs and chores stay flat.
-   **Obsolete work is closed**, with a one-line reason naming what
-   supersedes it (a shipped issue or a recorded decision) — not left open
-   and not shuffled between milestones. Feature/story-level status (stories
-   per release, their sub-tickets, missing acceptance or missing milestone)
-   must stay visible for grooming — Trinity's Releases tab reads it from the
-   sub-issue graph, so keep parent links real.
-5. **Keep the project board matching reality** — state plus column always
-   true. If unreachable (no Projects scope), say so explicitly and ask for
-   a token or for cards to be moved manually.
-6. **Never write a GitHub token to disk** — inline it in the one command
-   that needs it. A token pasted in plaintext chat is compromised; fine to
-   keep using for that session if told to, but tell the owner to rotate it.
-7. **One external write (create/comment/close/PATCH) per action** — never
-   chain GitHub API writes in one command; bulk scripts get blocked by this
-   environment's safety classifier, single `curl`/`gh` calls go through.
-8. **Commit and push at every milestone**, not just at the end of a feature
-   — one commit per independently-shippable piece (rule 4's boundaries),
-   never one giant commit at the end. Uncommitted work is invisible to
-   anyone but the current session and is lost if it ends badly.
-9. **Never sit idle while backlog work exists.** Pick up the next queued
-   item as soon as something in flight finishes — capacity being free is
-   itself the go-ahead. Pause only for a genuine human decision (security/
-   safety tradeoff, ambiguous requirement, credentials only the human has).
-10. **Default to parallel, independent work streams** over serializing out
-    of caution, even over overlapping files.
-    - **Prefer real isolation**: dispatch with `isolation: "worktree"` over
-      the shared tree when supported; merge each branch back explicitly
-      once verified.
-    - Without worktree isolation, rely on rule 8's frequent commits/pushes
-      and rule 2's comments as mitigation; `git pull --rebase` before every
-      push; stop and report — never force-resolve — on a real conflict.
-    - **Respect the machine** (15 GB, no swap; OOM kills end sessions): at
-      most **two** agents run heavy work at once; wrap every heavy command
-      (`npm test`, Playwright, `next dev`, `npm ci`) in `packages/tools/dev/heavy.sh`
-      (serializes machine-wide, waits for free RAM, prunes stale
-      `/tmp/construct-*`). `--workers=1`, one dev server, Ollama only when
-      needed, no lingering background servers; clean up `/tmp`.
-11. **Every UI feature gets a real Playwright test, run for real** (`ui/`
-    work with a rendered screen; `src/`/CLI-only is covered by `npm test`).
-    A spec under `ui/e2e/` must exist and have actually run before closing.
-    **Screenshots are for the documentation website only** — never in
-    issues, comments or chat; curated by `demo-curator`, live under `site/`.
-12. **A closing note is written only when it helps the next developer**: a
-    new command, API, setup step, known exception or non-obvious next step
-    (commands runnable from the issue alone). A fix or refactor with none of
-    these closes with the one line from rule 2. `src/`-only work follows the
-    same test.
+## Modules with their own playbooks
 
-## Token economy (standing instruction)
-
-- **Reporting and tracking are frugal** (owner, 2026-09-21): refresh dashboards (Trinity, board) once per
-  work wave or on request, never on a timer; no board or issue write that only restates state that
-  machinery already shows; agents report findings once, at the end.
-
-- No progress chatter or narration in agent reports — findings and results
-  only; no running commentary on an issue beyond the rule-12 closing note.
-- Screenshots only for the documentation website (rule 11); one commit per
-  shippable piece, not per file (rule 8).
-- Run the full verification suite once at the end of a task; smoke-test
-  individual pieces while iterating instead of re-running everything each
-  small change.
-- Never paste large file contents or full test logs into a report — cite
-  `path:line` and counts. Never read a dispatched agent's transcript; read
-  its final report and verify with your own commands instead.
-- Prefer `packages/tools/dev/status.sh` and `packages/tools/dev/verify.sh` over composing many
-  small ad hoc shell calls for the same picture.
-- Delegate with a complete brief (scope, files, acceptance bar, report
-  format) so the agent needs no follow-up round trip to start. **An agent
-  is a fresh session with no memory of the conversation**: it knows only the
-  brief, this file, the issue and the repo's docs — so decisions that matter
-  (branch policy, frozen main, screenshot rule, ports, verification bar) live
-  in those places, not in chat. **Keep delegations short and bounded** (owner,
-  2026-09-23): one deliverable a fresh session can finish in roughly 10-15
-  minutes; anything larger is split into sequenced pieces, each verified
-  before the next starts. Long single tasks stall, drift and hide failures.
-- Plugins (official marketplace, project scope; local `.claude/settings.json` is git-ignored, so
-  install per machine: `claude plugin install <name>@claude-plugins-official --scope project`):
-  `session-report` (token/cache/subagent report from local logs; run after each wave, cache breaks
-  over 100k tokens are the costly ones), `claude-md-management` (audit this file, keep it lean),
-  `typescript-lsp` (go-to-definition and find-references instead of grep-and-read; needs
-  `npm i -g typescript-language-server typescript`). Rejected after review: `frontend-design`
-  (fights our token-based design system), `project-artifact` (Trinity covers it), `code-simplifier`,
-  `context7`/`serena` (external service, heavy).
-- Prefer a deterministic Construct block over reasoning by reading files —
-  see "How agents should orient" in `docs/DOGFOODING-2026-09.md`.
-
-## Notifications (standing instruction)
-
-Notify the owner (via `PushNotification`, where a channel exists) when a
-request is finished or something needs their attention (a blocking
-decision, a security finding) — not for routine progress or anything you
-can verify and merge yourself. Fail silently if there is no channel — never
-an error or a message about the channel.
-
-A success result from `PushNotification` is not proof of delivery (it can
-report success with no Remote Control binding to deliver over) — send it,
-don't claim it arrived, don't ask the owner to check (`ListAgents` shows
-whether this session is Remote-Control-connected). This doesn't replace the
-Notice Board (#224), where owner-attention items still go.
-
-## Demos module (Module 8) — on-demand feature documentation
-
-Full rules and the single source of truth: `docs/DEMOS.md` — read it before
-creating or curating a demo. Short version: only when asked (never
-proactively), file a parent `[Demo Guide] <feature>` referencing #125, then
-one real GitHub sub-issue per capability (never a flat mega-ticket), each
-with separate CLI/UI/Core sections, real evidence (frugal screenshots or a
-terminal transcript), a Benefit block and a "Verified on" line. Delegated to
-the `demo-curator` agent (`.claude/agents/demo-curator.md`) — run it after
-any wave that changes user-visible behaviour. Standard issue discipline
-(rules 1-2, 4, 12) still applies.
-
-## Media module (Module 10) — user-guide videos
-
-Short, real screen-recorded guides (`docs/MEDIA.md`), made by the `media`
-agent (`.claude/agents/media.md`): scripted Playwright recordings of the
-real Cockpit/CLI, built in parts (each 1-2 min, own script, narration,
-subtitles, checkpoint), subtitles as a separate track (never burned over the
-UI), published on the documentation website only — never on issues. Invoke it to plan/record an
-episode or to re-record after a visible UI change. Standard issue
-discipline still applies.
-
-## Project board (standing instruction)
-
-Work is tracked on the user-owned Projects v2 board (`docs/PROJECT_BOARD.md`
-is the reference). When filing an issue, set **Module**, **Sub-module** and
-**Kind** (Area is derived), set **Priority** on anything open that is not
-Standing, and link it to its parent epic (GitHub sub-issues plus a "Part of
-#N" line). Pull requests don't go on the board. Maintenance is delegated to
-the `project-manager` agent (`.claude/agents/project-manager.md`) — run it
-at the end of each work wave and whenever the board looks off; it also
-checks Module/Sub-module/Area consistency and the open-core boundary.
-Deterministic hygiene (closed→Done, reopened→In progress, missing issues,
-archive Done >14 days) is automated by
-`.github/workflows/project-board-hygiene.yml` (needs the `PROJECT_TOKEN`
-secret).
-
-## Design module (Module 9) — product and UX design
-
-Charter, principles, tokens, the 3-pane cockpit layout, mocks and the
-ticket-shape/hand-off rules live in `docs/design/` (`docs/design/README.md`
-is the entry point). Delegated to the `designer` agent
-(`.claude/agents/designer.md`), but **opt-in only, not a default gate**
-(owner, 2026-09-23 — supersedes the earlier "designer before any visible
-change" rule): invoke it only when the owner explicitly asks for a design
-pass, an accessibility/consistency review, or a token change. Otherwise,
-build a UI change directly — brief the implementing agent to reuse
-established patterns from `docs/design/` (e.g. the `.pal-group`
-`<details>/<summary>` disclosure idiom) rather than inventing new ones, and
-keep the rule-11 Playwright test requirement regardless. The designer never
-edits `ui/client` product code. An implementation that does go through a
-design pass still links back with `Design: #N (mock: <file>)`. Open-core:
-the Cockpit UI is proprietary-future, design work stays in `docs/design/`,
-and no open-core package depends on it.
+- Demos (`docs/DEMOS.md`, agent `demo-curator`): only when asked; a
+  `[Demo Guide]` parent under #125 with one sub-issue per capability and real
+  evidence. Run the agent after any wave that changes user-visible behaviour.
+- Media (`docs/MEDIA.md`, agent `media`): scripted Playwright recordings,
+  subtitles as a separate track, docs site only.
+- Board (`docs/PROJECT_BOARD.md`, agent `project-manager`): run at the end of
+  each wave; deterministic hygiene in
+  `.github/workflows/project-board-hygiene.yml`.
+- Design (`docs/design/README.md`, agent `designer`): opt-in only, never a
+  gate. Otherwise reuse patterns from `docs/design/` (for example the
+  `.pal-group` disclosure). The designer never edits `ui/client`. Cockpit UI
+  is proprietary-future; open-core packages never depend on `docs/design/`.
