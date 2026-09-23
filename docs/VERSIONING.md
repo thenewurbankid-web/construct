@@ -103,4 +103,4 @@ only via relative imports from `packages/core`/`packages/cli` — not an indepen
 not part of this or any future version bump unless it becomes one. `ui/client` and `ui/server` (currently `0.2.0`
 and `0.1.0`) are intentionally left as-is by #525 — the Cockpit's own versioning is a separate, not-yet-cut decision
 (see #480) — but "Cutting a release" step 3 above still lists them: resolve that when v0.8.0 is actually tagged.
-Nothing has been tagged yet.
+`v0.8.0` is the first tag. It is cut on `work/2026-09-23` while `main` stays frozen at `stable-2026-09-23`; the Cockpit packages stay unversioned until #480 is decided.

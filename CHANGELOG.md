@@ -7,18 +7,45 @@ request or issue numbers.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-09-23
+
+The first tagged release. It is the 2026-09-20 baseline (below) plus everything shipped up to the
+`stable-2026-09-23` freeze. Package versions are `0.8.0`; the Cockpit (`ui/`) is not versioned separately yet.
+
+### Added
+- Typed contracts: branded per-layer types and a `defineX` factory for every layer (`defineDomain`, `definePage`, `defineComponent`, `defineExpression`, `defineService`, `defineWorkflow`, `defineController`, `defineRoute`, `defineProvider`), `useTrackedState`, `PropRef`, feature-branded types. Structural prevention: a wrong import is a `tsc` error at the call site ([#501], [#502], [#503], [#504], [#510], [#511]).
+- New rules: `EXPR-001..006`, `HOOK-001/002`, `PAGE-008/009`, `COMPONENT-005/006`, `DOMAIN-002` (allowlist purity, flag-gated), `SLICE-004`, `READ-004` (filename encodes layer), `PROP-LINK` (declared versus passed props) ([#505], [#506], [#508], [#509], [#512], [#473]).
+- `construct refactor extract-expression`: hoist an inline conditional or loop out of a page or component into a named expression unit, deterministically, with an `--llm` fill option ([#517], [#522]).
+- `construct --version` and a real single-file CLI bundle (`npm run build:cli`) ([#525]).
+- `construct import` refuses to overwrite a file that already has real content ([#519]).
+- Export the layer graph in `architecture.yml` to `eslint-plugin-boundaries` ([#513]).
+- Cockpit Pages editor: Palette tab (providers, expressions, components; insert at cursor; "Wrap with..." via preview then approve), and click-to-bind in the Scope tab ([#527], [#532], [#533], [#534]).
+- Cockpit: the target app's dev server as a managed process with a live status indicator, branch provenance and app-error cards ([#378]).
+- Cockpit: per-project execution mode (`project.execution.mode: engine | cli`); in `cli` mode validation runs the real CLI as a subprocess, with an engine/CLI parity contract test ([#541]).
+- Live preview v2 spike: `previewFiber` resolves a click to its source file from React internals, on Next.js and Vite ([#443]).
+- Docs: generated API reference per package with a JSDoc coverage ratchet ([#463], [#464], [#465], [#466], [#467], [#468]); versioned documentation site published to this repository's own GitHub Pages ([#397]); one copy-paste prompt that lets any model drive the CLI.
+- Schemas: reserved free-form `ext` field on plan, process and envelope, with `migratePlan`/`migrateProcess` on the store read path ([#419]).
+
+### Changed
+- Repository layout is a workspace: `packages/{core,cli,ast,engine,docs-site,tools}` ([#481], [#482], [#483], [#484], [#486]). The Cockpit compiled build, Docker image and private package were added ([#485]).
+- Cockpit: the screens rail stacks above the Browser pane in one collapsible column, and the Pages editor Browser pane is one collapsible group ([#537], [#539]).
+- Docs: the User Guide is organised around the product family; brand marks are subtly animated ([#455]).
+
 ### Fixed
+- `READ-001` strips a correct layer suffix before comparing to the export name; `EXPR-006`/`HOOK-001`/`HOOK-002` recognise the generic-argument factory call shape ([#516], [#521]).
+
 - Every model call is bounded: `CONSTRUCT_LLM_TIMEOUT_SEC` (default 300) kills a hung `claude -p` and aborts a hung Ollama request with an error that names the timeout; every synchronous `git` call in core has a timeout; the Cockpit's command queue abandons a command at `CONSTRUCT_COMMAND_TIMEOUT_SEC` (default 900) instead of wedging behind it ([#413]).
 - `tools/dev/heavy.sh` prunes `/tmp/construct-*` by owner liveness (pid in the name or a `.owner` file), never by age alone; its lock wait and RAM wait are bounded (`CONSTRUCT_HEAVY_LOCK_WAIT_SEC`, `CONSTRUCT_HEAVY_RAM_WAIT_SEC`), the RAM wait releases the lock between checks, and a waiter that gives up names the holder; `--prune-only`; tests under `tools/dev/test/` ([#414]).
 - A clone never outlives the Cockpit server: live clone process groups are killed on exit and on SIGINT/SIGTERM/SIGHUP; a marker beside the destination lets the next start stop an orphaned `git`, remove the partial folder it left, and accept a retry ([#422]).
 - Startup preflight: clone refuses a git older than 2.37.0 (the release that introduced `http.curloptResolve`, per git's release notes) or a missing git with `503 GIT_TOO_OLD`/`GIT_MISSING` instead of running with the DNS pin silently off; `/api/health` reports node and git versions, clone availability, writability and free space of the workspace and the state directory against `CONSTRUCT_HEALTH_MIN_FREE_MB`; process-record saves fsync, clean up their temp file on failure and name a full disk plainly ([#423]).
 
-## [0.8.0] - 2026-09-20 (planned baseline)
+Known: a batch-order flake in one Pages-editor e2e spec ([#538]).
 
-First tracked baseline. It collects everything shipped since the project began.
-The package version fields are not changed by this entry.
+### Baseline (2026-09-20)
 
-### CLI
+The first tracked baseline. It collects everything shipped since the project began.
+
+#### CLI
 - `construct create`, `refactor`, `research` groups over the flat commands; `IMPORT-001` build-order enforcement ([#25]).
 - `construct import`, including `--plan` batches, optional `--llm` fill, and the guided `--route` wizard ([#26], [#27]).
 - Adopt Construct in a subdirectory of an existing project with `--dir` ([#22]).
@@ -33,7 +60,7 @@ The package version fields are not changed by this entry.
 - Generators and refactor produce valid identifiers for hyphenated names ([#219], [#220]); a controller without its page is refused by name ([#280]).
 - `--llm` fill hardened, with an Ollama provider and per-capability routing ([#107], [#179]).
 
-### Cockpit
+#### Cockpit
 - Run a generated QA test from the Cockpit as a process, with failures told apart by cause ([#389], issue #305).
 - Confine the Cockpit to one workspace folder (`CONSTRUCT_WORKSPACE_ROOT`) and start with no project open ([#390], issue #365).
 - Web UI over create, refactor, research and import, plus the import wizard chat (Module 5).
@@ -52,7 +79,7 @@ The package version fields are not changed by this entry.
 - In-product Help with tutorials ([#168], [#170]); popovers close consistently ([#360]).
 - Accessibility pass over every screen and theme ([#262]).
 
-### Core
+#### Core
 - `src/ast/`: all parsing on typescript-estree, in one package ([#95], [#177]).
 - Context envelope pipeline and zero-model generators ([#118]).
 - Framework targets: `nextjs` and `react-spa`, with per-framework route adapters ([#342]).
@@ -65,12 +92,12 @@ The package version fields are not changed by this entry.
 - Rules: workflow dead-end and unreachable-state checks, `MODULE-001` on the AST, `DRY-001` thin-controller fix, tests-dir lint ([#339], [#354]).
 - Workflow narrator: plain-English machine explanation, scenarios, health findings ([#203]).
 
-### Security
+#### Security
 - The UI server restricts CORS and WebSocket origins; it was allow-all ([#143]).
 - GitHub OAuth login: every API route and the WebSocket require a session, with an allowlist of logins ([#310]).
 - Non-local binds are refused without login.
 
-### Docs and site
+#### Docs and site
 - Docs site on GitHub Pages: user guide and developer docs ([#201], [#226]).
 - Site rebuilt problem-first, nine CLI, Cockpit and Core examples in place of tutorials and walkthroughs ([#362]).
 - Demo guides and the Demo Style Guide ([#202]); `docs/` for the execution model, impact analysis, PR health, unit summaries and design ([#242], [#272]).
@@ -159,3 +186,47 @@ The package version fields are not changed by this entry.
 [#414]: https://github.com/thenewurbankid-web/construct/issues/414
 [#422]: https://github.com/thenewurbankid-web/construct/issues/422
 [#423]: https://github.com/thenewurbankid-web/construct/issues/423
+[#378]: https://github.com/thenewurbankid-web/construct/issues/378
+[#397]: https://github.com/thenewurbankid-web/construct/issues/397
+[#419]: https://github.com/thenewurbankid-web/construct/issues/419
+[#443]: https://github.com/thenewurbankid-web/construct/issues/443
+[#455]: https://github.com/thenewurbankid-web/construct/issues/455
+[#463]: https://github.com/thenewurbankid-web/construct/issues/463
+[#464]: https://github.com/thenewurbankid-web/construct/issues/464
+[#465]: https://github.com/thenewurbankid-web/construct/issues/465
+[#466]: https://github.com/thenewurbankid-web/construct/issues/466
+[#467]: https://github.com/thenewurbankid-web/construct/issues/467
+[#468]: https://github.com/thenewurbankid-web/construct/issues/468
+[#473]: https://github.com/thenewurbankid-web/construct/issues/473
+[#481]: https://github.com/thenewurbankid-web/construct/issues/481
+[#482]: https://github.com/thenewurbankid-web/construct/issues/482
+[#483]: https://github.com/thenewurbankid-web/construct/issues/483
+[#484]: https://github.com/thenewurbankid-web/construct/issues/484
+[#485]: https://github.com/thenewurbankid-web/construct/issues/485
+[#486]: https://github.com/thenewurbankid-web/construct/issues/486
+[#501]: https://github.com/thenewurbankid-web/construct/issues/501
+[#502]: https://github.com/thenewurbankid-web/construct/issues/502
+[#503]: https://github.com/thenewurbankid-web/construct/issues/503
+[#504]: https://github.com/thenewurbankid-web/construct/issues/504
+[#505]: https://github.com/thenewurbankid-web/construct/issues/505
+[#506]: https://github.com/thenewurbankid-web/construct/issues/506
+[#508]: https://github.com/thenewurbankid-web/construct/issues/508
+[#509]: https://github.com/thenewurbankid-web/construct/issues/509
+[#510]: https://github.com/thenewurbankid-web/construct/issues/510
+[#511]: https://github.com/thenewurbankid-web/construct/issues/511
+[#512]: https://github.com/thenewurbankid-web/construct/issues/512
+[#513]: https://github.com/thenewurbankid-web/construct/issues/513
+[#516]: https://github.com/thenewurbankid-web/construct/issues/516
+[#517]: https://github.com/thenewurbankid-web/construct/issues/517
+[#519]: https://github.com/thenewurbankid-web/construct/issues/519
+[#521]: https://github.com/thenewurbankid-web/construct/issues/521
+[#522]: https://github.com/thenewurbankid-web/construct/issues/522
+[#525]: https://github.com/thenewurbankid-web/construct/issues/525
+[#527]: https://github.com/thenewurbankid-web/construct/issues/527
+[#532]: https://github.com/thenewurbankid-web/construct/issues/532
+[#533]: https://github.com/thenewurbankid-web/construct/issues/533
+[#534]: https://github.com/thenewurbankid-web/construct/issues/534
+[#537]: https://github.com/thenewurbankid-web/construct/issues/537
+[#538]: https://github.com/thenewurbankid-web/construct/issues/538
+[#539]: https://github.com/thenewurbankid-web/construct/issues/539
+[#541]: https://github.com/thenewurbankid-web/construct/issues/541
