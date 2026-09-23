@@ -206,6 +206,49 @@ button.sh-pill:hover { background: var(--surface-3); }
 
 /* ---- body: panes ---- */
 .sh-body { flex: 1; display: flex; align-items: flex-start; min-height: 0; }
+
+/* #539 — wide layout only: the screens rail and the Browser pane's own content share one left
+ * column (rail on top, Browser content below) instead of sitting beside each other as two
+ * separate columns. `.sh-rail`/`.sh-pane.sh-left` keep their own rules (position, background,
+ * border) for every OTHER context (narrow's horizontal bar, standalone use) -- these overrides
+ * apply only inside `.sh-left-col`, the wide-layout wrapper.
+ *
+ * The column itself is the sticky, full-height frame; its two children divide that height
+ * between them instead of each claiming the full viewport height on their own:
+ *   - Browser pane CLOSED (no `--split`): the rail is the column's only child, so it grows
+ *     (flex: 1) to fill the whole column, exactly as its own `height: calc(100vh ...)` rule did
+ *     when it rendered as an independent sibling column before this change.
+ *   - Browser pane OPEN (`--split`): the rail shrinks back to its own content height (its
+ *     collapse toggle still works exactly as before -- see shell-rail.spec.js), stretches to the
+ *     column's full (resizable) width, and gets a bottom divider; the Browser pane's `<aside>`
+ *     below it drops its own explicit width to stretch (flex default `align-items: stretch`) to
+ *     that same width, and grows (flex: 1) to fill the remaining height, scrolling on its own. */
+.sh-left-col {
+  position: sticky;
+  top: var(--sh-top);
+  height: calc(100vh - var(--sh-top) - var(--sh-status) - var(--sh-drawer-h, 0px));
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.sh-left-col .sh-rail {
+  position: static;
+  height: auto;
+  flex: 1 1 auto;
+}
+.sh-left-col--split .sh-rail {
+  flex: 0 0 auto;
+  width: 100%;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.sh-left-col--split .sh-pane.sh-left {
+  position: static;
+  height: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .sh-mid { flex: 1; min-width: 0; outline: none; }
 .sh-pane {
   position: sticky;

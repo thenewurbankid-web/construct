@@ -79,7 +79,17 @@ test.describe('screens rail (#429)', () => {
     await toggle.click();
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');
     await expect(rail).toHaveAttribute('data-collapsed', 'true');
-    expect((await rail.boundingBox()).width).toBeLessThan(wide / 2);
+    // #539 (genuine structural move, not a behavior regression): the rail now shares one column
+    // with the Browser pane (`.sh-left-col`), stretched to that column's own, Browser-pane-
+    // resizable width, instead of being its own independently-sized sibling column. So collapsing
+    // it no longer narrows the rail's own footprint -- that was the old side-by-side layout's
+    // doing, and the Browser pane's resizer now owns the shared column's width regardless. What
+    // still goes icons-only is the row content: the label collapses to a 1x1px clipped box
+    // (still in the accessibility tree, still the tooltip -- checked below) instead of its normal
+    // rendered width.
+    expect((await rail.boundingBox()).width).toBe(wide);
+    const labelBox = await rail.getByRole('link', { name: 'Components' }).locator('.sh-rail-label').boundingBox();
+    expect(labelBox.width).toBeLessThanOrEqual(1);
     // The name is still the accessible name and the tooltip; only the visible word is gone.
     await expect(rail.getByRole('link', { name: 'Components' })).toHaveAttribute('title', 'Components');
     const box = await rail.getByRole('link', { name: 'Components' }).boundingBox();

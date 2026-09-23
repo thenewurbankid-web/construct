@@ -42,23 +42,31 @@ export function ShellLayout({ layout, limits, onResize, onTogglePane, narrow = f
     <div className={focus ? 'sh-root sh-root--focus' : 'sh-root'} style={style} data-focus={focus ? 'true' : undefined}>
       {!focus && top}
       <div className="sh-body">
-        {!focus && rail}
-        {layout.left.open && (
-          <>
-            <aside id="sh-pane-left" data-pane="left" tabIndex={-1} aria-label="Browser" className="sh-pane sh-left" style={{ width: layout.left.size }} hidden={focus}>
+        {/* #539: the screens rail sits above the Browser pane's own content in one shared left
+         * column instead of beside it as a separate column. The column carries the resizable
+         * width (when the Browser pane is open) or shrinks to the rail's own width (when it is
+         * closed, exactly as the rail rendered alone before this change); see shell.css's
+         * `.sh-left-col` rules. The wrapper (like the aside it holds) stays mounted-but-hidden in
+         * focus mode, not unmounted, for the same reason as every other pane here. */}
+        <div className={layout.left.open ? 'sh-left-col sh-left-col--split' : 'sh-left-col'} style={layout.left.open ? { width: layout.left.size } : undefined} hidden={focus}>
+          {!focus && rail}
+          {layout.left.open && (
+            <aside id="sh-pane-left" data-pane="left" tabIndex={-1} aria-label="Browser" className="sh-pane sh-left" hidden={focus}>
               {left}
             </aside>
-            {!focus && <PaneResizer
-              orientation="vertical"
-              label="Resize Browser pane"
-              controls="sh-pane-left"
-              value={layout.left.size}
-              min={limits.left.min}
-              max={limits.left.max}
-              onResize={(size) => onResize('left', size)}
-              onToggle={() => onTogglePane('left')}
-            />}
-          </>
+          )}
+        </div>
+        {layout.left.open && !focus && (
+          <PaneResizer
+            orientation="vertical"
+            label="Resize Browser pane"
+            controls="sh-pane-left"
+            value={layout.left.size}
+            min={limits.left.min}
+            max={limits.left.max}
+            onResize={(size) => onResize('left', size)}
+            onToggle={() => onTogglePane('left')}
+          />
         )}
         <div id="sh-mid" data-pane="mid" tabIndex={-1} className="sh-mid">
           {mid}
