@@ -42,6 +42,21 @@ export function CartBadge() {
 }
 `;
 
+// #533 (Slice 3 of #518's design) -- a separate page (never touched by the Slice 1/2 tests above) with
+// a real PAGE-008-flagged inline `.map()`, for the "Wrap with..." flow to select and extract.
+const CART_ITEMS_PAGE = `export default function CartItemsPage(props: { items: string[] }) {
+  return (
+    <div>
+      <ul>
+        {props.items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+`;
+
 const CART_SUMMARY_PAGE = `import { useCartProvider } from '../hooks/useCartProvider';
 import { PromoCodeField } from '../components/PromoCodeField';
 
@@ -90,6 +105,7 @@ test.describe.serial('Pages Editor Palette tab (#527)', () => {
     fs.writeFileSync(path.join(tmpProjectDir, 'features/cart/components/PromoCodeField.tsx'), PROMO_CODE_FIELD);
     fs.writeFileSync(path.join(tmpProjectDir, 'features/cart/components/CartBadge.tsx'), CART_BADGE);
     fs.writeFileSync(path.join(tmpProjectDir, 'features/cart/pages/CartSummaryPage.tsx'), CART_SUMMARY_PAGE);
+    fs.writeFileSync(path.join(tmpProjectDir, 'features/cart/pages/CartItemsPage.tsx'), CART_ITEMS_PAGE);
 
     fs.writeFileSync(path.join(tmpProjectDir, 'features/auth/hooks/useAuthProvider.ts'), AUTH_PROVIDER);
     fs.writeFileSync(path.join(tmpProjectDir, 'features/auth/index.ts'), AUTH_INDEX);
@@ -218,5 +234,84 @@ test.describe.serial('Pages Editor Palette tab (#527)', () => {
     expect(fileContent).toMatch(/import \{ useAuthProvider \} from '\.\.\/\.\.\/auth\/index';/);
     expect(fileContent).not.toMatch(/auth\/hooks\/useAuthProvider/);
     expect(fileContent).toMatch(/const auth = useAuthProvider\(\);/);
+  });
+
+  // #533 (Slice 3 of #518's design) -- "Wrap with...": selecting the flagged `.map()` on a SEPARATE
+  // page (CartItemsPage, never touched by the Slice 1/2 tests above) surfaces the callout and
+  // fit-checked suggestions; Slice 1/2's own behaviour above is completely unaffected.
+  test('Wrap with...: selecting the flagged loop shows the callout and fit-checked Expressions (#533)', async ({ page }) => {
+    await page.goto('/pages');
+    await page.locator('.pages-browser select').selectOption('cart');
+    await page.getByRole('button', { name: 'CartItemsPage.tsx' }).click();
+    await expect(page.locator('.tree-panel')).toBeVisible();
+    await page.getByRole('tab', { name: 'Palette' }).click();
+
+    await Promise.all([
+      page.waitForResponse((res) => res.url().includes('/api/pages/palette/wrap-suggest')),
+      page.locator('.tree-panel').getByText('<li>', { exact: true }).click(),
+    ]);
+
+    const callout = page.getByTestId('wrap-callout');
+    await expect(callout).toBeVisible();
+    await expect(callout).toContainText('.map()');
+    await expect(callout).toContainText('items');
+    await expect(callout).toContainText('PAGE-008');
+
+    // ShowForRole has no discoverable Props shape ('unknown') -- it must show NEITHER fit chip,
+    // never dimmed on an unproven guess, and must stay visible (never silently hidden).
+    const showForRoleRow = page.locator('.pal-panel .pal-item', { hasText: 'ShowForRole' });
+    await expect(showForRoleRow).toBeVisible();
+    await expect(showForRoleRow.locator('.pal-chip--fit-fits')).toHaveCount(0);
+    await expect(showForRoleRow.locator('.pal-chip--fit-not-a-fit')).toHaveCount(0);
+    await expect(showForRoleRow).not.toHaveClass(/pal-item--dim/);
+
+    // The name derives from the flagged shape itself (the mapped array's own property name).
+    await expect(page.getByLabel('New Expression name')).toHaveValue('ItemList');
+  });
+
+  test('Wrap with...: Approve runs the real extractExpression codemod -- import added, call site rewritten, new Expression file created; nothing written before Approve (#533)', async ({ page }) => {
+    await page.goto('/pages');
+    await page.locator('.pages-browser select').selectOption('cart');
+    await page.getByRole('button', { name: 'CartItemsPage.tsx' }).click();
+    await expect(page.locator('.tree-panel')).toBeVisible();
+    await page.getByRole('tab', { name: 'Palette' }).click();
+
+    await Promise.all([
+      page.waitForResponse((res) => res.url().includes('/api/pages/palette/wrap-suggest')),
+      page.locator('.tree-panel').getByText('<li>', { exact: true }).click(),
+    ]);
+
+    const exprFile = path.join(tmpProjectDir, 'features/cart/expressions/ItemList.tsx');
+    expect(fs.existsSync(exprFile)).toBe(false);
+
+    await Promise.all([
+      page.waitForResponse((res) => res.url().includes('/api/pages/palette/wrap-suggest') && res.url().includes('name=ItemList')),
+      page.getByTestId('wrap-with-button').click(),
+    ]);
+
+    // The real dry-run preview -- shown before anything is written.
+    const preview = page.locator('.pal-wrap-preview');
+    await expect(preview).toBeVisible();
+    await expect(preview).toContainText('features/cart/expressions/ItemList.tsx');
+    await expect(preview).toContainText('features/cart/pages/CartItemsPage.tsx');
+    expect(fs.existsSync(exprFile)).toBe(false); // still nothing written -- this is only a preview
+
+    await Promise.all([
+      page.waitForResponse((res) => res.url().endsWith('/api/pages/palette/wrap') && res.request().method() === 'POST'),
+      page.getByRole('button', { name: 'Approve — write these files' }).click(),
+    ]);
+    await expect(page.locator('.pal-panel .status-ok')).toContainText('Extracted ItemList');
+
+    // The page: import added, call site rewritten, the .map() itself gone.
+    const pageContent = fs.readFileSync(path.join(tmpProjectDir, 'features/cart/pages/CartItemsPage.tsx'), 'utf8');
+    expect(pageContent).toMatch(/import \{ ItemList \} from '\.\.\/expressions\/ItemList';/);
+    expect(pageContent).toMatch(/<ItemList items=\{props\.items\} \/>/);
+    expect(pageContent).not.toMatch(/\.map\(/);
+
+    // The new Expression unit, written for real, for the first time only now.
+    expect(fs.existsSync(exprFile)).toBe(true);
+    const exprContent = fs.readFileSync(exprFile, 'utf8');
+    expect(exprContent).toMatch(/defineExpression\('ItemList'/);
+    expect(exprContent).toMatch(/\bchildren\b/);
   });
 });

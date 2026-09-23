@@ -205,3 +205,44 @@ export type PaletteChipKind = 'provider' | 'expression' | 'component';
 export type PaletteEntry = { name: string; path: string; feature: string; via: string | null; description: string };
 
 export type PaletteData = { feature: string; providers: PaletteEntry[]; expressions: PaletteEntry[]; components: PaletteEntry[] };
+
+// #533 (Slice 3 of #518's design) -- "Wrap with...": a JSX selection resolves to a flagged
+// PAGE-008 conditional/loop (or nothing, meaning no Wrap affordance for this selection), every
+// Expression in scope annotated with whether it structurally fits that flagged shape
+// (packages/engine/palette.mjs), and -- once a name is available -- a real dry-run preview of
+// exactly what `construct refactor extract-expression` (#517) would write.
+export type WrapHitKind = 'loop' | 'conditional';
+
+export type WrapHit = { kind: WrapHitKind; range: [number, number]; line: number; subject: string | null; summary: string; rule: string };
+
+/** `'fits'` (same structural shape as the selection), `'unknown'` (can't tell -- never dimmed), or
+ * `'not-a-fit'` (concretely the other shape, dimmed with `reason` shown, per block-palette.md's
+ * "never show something the architecture wouldn't allow" applied at the shape level). */
+export type WrapFit = 'fits' | 'unknown' | 'not-a-fit';
+
+export type WrapSuggestionEntry = PaletteEntry & { fit: WrapFit; reason: string | null };
+
+export type WrapFilePreview = { file: string; name: string | null; before: string; after: string };
+
+export type WrapSuggestion = {
+  ok: boolean;
+  error?: string;
+  hit: WrapHit | null;
+  suggestions: WrapSuggestionEntry[];
+  /** The Expression name that would be used: derived from the flagged shape, or the caller's own
+   * override once one is typed. `null` only when it can't be derived AND none was given yet. */
+  name: string | null;
+  /** `true` when the name could not be derived and none was given — the "+ New Expression" field
+   * must be filled in before a preview can be requested. */
+  nameRequired: boolean;
+  /** A rejected/invalid given name's message (e.g. EXPR-003's generic-name rule), or null. */
+  nameError: string | null;
+  /** The real dry-run preview (page + new Expression + any hoisted Components), or `null` until a
+   * usable name is available. Nothing here has touched disk. */
+  files: WrapFilePreview[] | null;
+};
+
+export type WrapConfirmOutcome = SaveOutcome & PageTree & {
+  expression: { file: string; name: string } | null;
+  components: { file: string; name: string }[];
+};

@@ -85,9 +85,9 @@ export function usePagesEditorTabs(e: Editor): void {
       id: 'palette',
       title: 'Palette',
       disabled: !tree,
-      render: () => <PalettePanel feature={feature} file={file} contentHash={hash} onInserted={onTreeSaved} />,
+      render: () => <PalettePanel feature={feature} file={file} contentHash={hash} selectedNodeId={selectedNodeId} onInserted={onTreeSaved} />,
     }),
-    [tree, feature, file, hash, onTreeSaved],
+    [tree, feature, file, hash, selectedNodeId, onTreeSaved],
   );
 
   const diffTab = useMemo<ShellTab>(

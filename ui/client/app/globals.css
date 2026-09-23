@@ -2155,11 +2155,78 @@ button:disabled {
 /* #532 (Slice 2 of #518's design) -- the Insert action on a Component/Provider row. Compact variant
  * of the global <button> baseline above (same colours/radius, smaller so it sits inline with the
  * chip and name) pushed to the row's trailing edge; still >=24px tall per the design's target-size
- * review. Expression rows pass no `onInsert` (Slice 3 is a separate, later ticket) so they render no
+ * review. Expression rows still get no `onInsert` here (there is no mechanical block to insert an
+ * existing Expression by reference yet -- see #533's own "no block yet" note) so they render no
  * button at all -- never a disabled placeholder that implies an action isn't there yet. */
 .pal-insert {
   margin-left: auto;
   padding: 3px 10px;
   font-size: var(--fs-xs);
   min-height: 24px;
+}
+
+/* #533 (Slice 3 of #518's design) -- "Wrap with...". Additive only: nothing above this rule changes
+ * when no JSX selection is flagged (Slice 1/2 render byte-for-byte as before). Status is always a
+ * text chip ("Fits this selection" / "Not a fit"), never colour alone, per principles.md's review. */
+.pal-item--dim {
+  opacity: 0.65;
+}
+
+.pal-chip--fit-fits {
+  color: var(--success);
+  background: var(--success-soft);
+  border-color: transparent;
+}
+
+.pal-wrap-new {
+  padding: var(--sp-2) 0 var(--sp-3) 20px;
+  border-top: 1px solid var(--border-subtle);
+  margin-bottom: var(--sp-2);
+}
+
+.pal-wrap-callout {
+  margin: 0 0 var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--warn);
+  background: var(--warn-soft);
+  border-radius: var(--r-md);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+.pal-wrap-note {
+  margin: 0 0 var(--sp-2);
+}
+
+.pal-wrap-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pal-wrap-name-input {
+  flex: 1;
+  min-height: 26px;
+  padding: 2px 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
+
+.pal-wrap-preview {
+  margin-top: var(--sp-2);
+}
+
+.pal-wrap-file {
+  margin-bottom: var(--sp-2);
+}
+
+.pal-wrap-file-name {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-family: var(--mono);
 }
