@@ -43,7 +43,10 @@ function listSourceFiles(dir, out = []) {
     if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
-      if (entry.name === 'test' || entry.name === 'docs-site') continue;
+      // 'dist' (e.g. packages/cli/dist/construct.mjs, #525's esbuild bundle) is generated
+      // output that mechanically re-includes config.mjs's whole registry text verbatim -- scanning
+      // it made every registered rule id look like it has a real detector, exempted-file or not.
+      if (entry.name === 'test' || entry.name === 'docs-site' || entry.name === 'dist') continue;
       listSourceFiles(full, out);
     } else if (entry.isFile() && (full.endsWith('.mjs') || full.endsWith('.ts')) && !full.endsWith('.test.mjs')) {
       out.push(full);
