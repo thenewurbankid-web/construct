@@ -3,19 +3,25 @@
 // Buffers generated file content in memory across however many pipeline
 // steps a caller runs, then commits it to disk only if the buffered result
 // passes `construct validate` -- with zero partial writes on failure. The
-// validation itself can't run against the buffer directly (validateArchitecture
-// reads real files off disk, by design, so it stays trivially reusable by
+// validation itself can't run against the buffer directly (every enforcer
+// reads real files off disk, by design, so each stays trivially reusable by
 // every other caller in this codebase), so commit() materializes the buffer
 // into a throwaway shadow copy of the project, validates *that*, and only on
 // success replays the buffered writes onto the real root -- via packages/core/fs.mjs's
 // existing `write()` helper, the same primitive every other generator in
 // this codebase already writes through.
+//
+// #546 -- commit()'s default validate used to be validateArchitecture alone, so a bot/engine
+// write could pass this gate while violating SOC, readability or public-api-drift -- rules
+// `construct validate` itself enforces. Defaults to the same aggregateValidation(DEFAULT_ENFORCERS)
+// set pipeline.mjs already used, so a green engine run and a green `construct validate` agree.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { write } from '../core/fs.mjs';
 import { assertNotFrozen } from '../core/frozen.mjs';
-import { validateArchitecture } from '../core/architecture-enforcer.mjs';
+import { aggregateValidation } from '../core/registry.mjs';
+import { DEFAULT_ENFORCERS } from './defaultEnforcers.mjs';
 
 // Mirrors packages/core/fs.mjs's walk(): these never belong in a shadow copy used for
 // validation (and copying node_modules in particular would be slow/pointless).
@@ -86,12 +92,12 @@ export function createTransaction(root) {
      * Either way the shadow copy itself is always cleaned up.
      *
      * @param {{validate?: (shadowRoot: string) => {violations: object[], ok: boolean}}} [opts]
-     *   `validate` defaults to validateArchitecture; overridable for tests
-     *   and for callers that want a stricter/composed check (e.g. the full
-     *   aggregateValidation enforcer set used by `construct validate`).
+     *   `validate` defaults to the same `aggregateValidation(DEFAULT_ENFORCERS)` set
+     *   `construct validate` runs (#546); overridable for tests and for a caller that wants a
+     *   narrower or different check.
      * @returns {{committed: boolean, violations: object[]}}
      */
-    commit({ validate = validateArchitecture } = {}) {
+    commit({ validate = (shadowRoot) => aggregateValidation(shadowRoot, DEFAULT_ENFORCERS) } = {}) {
       if (buffer.size === 0) return { committed: true, violations: [] };
 
       // The pid in the name is what lets packages/tools/dev/heavy.sh tell a live shadow copy from a dead one (#414).

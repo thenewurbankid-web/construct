@@ -36,7 +36,8 @@ import { spawnSync } from 'node:child_process';
 import yaml from 'js-yaml';
 import { planTouches } from '../core/plan.mjs';
 import { matchFrozen, readFrozenGlobs } from '../core/frozen.mjs';
-import { validateArchitecture } from '../core/architecture-enforcer.mjs';
+import { aggregateValidation } from '../core/registry.mjs';
+import { DEFAULT_ENFORCERS } from './defaultEnforcers.mjs';
 import { appendLog, setApproval } from './processModel.mjs';
 import { topLevelState } from './processMachine.mjs';
 import { botBranch } from './botRunner.mjs';
@@ -116,11 +117,14 @@ function validBy(by) {
  * @param {object} options.store A processStore for the project.
  * @param {object} [options.runner] The bot runner (for `release()`); optional in tests.
  * @param {() => string} [options.now] Clock returning an ISO timestamp.
- * @param {(root:string) => {violations:object[]}} [options.validate] Architecture validator run before applying.
+ * @param {(root:string) => {violations:object[]}} [options.validate] Validator run before applying;
+ *   defaults to the same `aggregateValidation(DEFAULT_ENFORCERS)` set `construct validate` runs
+ *   (#546), not architecture alone, so a bot's output can't pass this gate while violating SOC,
+ *   readability or public-api-drift.
  * @returns {{review:Function, decide:Function, cleanup:Function}} `review` inspects the bot branch, `decide` approves or rejects, `cleanup` removes the branch.
  * @throws {TypeError} When no `store` is given.
  */
-export function createApprovalGate({ store, runner = null, now = () => new Date().toISOString(), validate = validateArchitecture } = {}) {
+export function createApprovalGate({ store, runner = null, now = () => new Date().toISOString(), validate = (root) => aggregateValidation(root, DEFAULT_ENFORCERS) } = {}) {
   if (!store) throw new TypeError('createApprovalGate() needs a process store.');
 
   /** Everything that is the same for every artifact of one process. */
@@ -423,8 +427,11 @@ export function createApprovalGate({ store, runner = null, now = () => new Date(
         record = appendLog(record, {
           provenance: fresh.length ? 'warn' : 'ok',
           message: fresh.length
-            ? `Applying the approved files introduced ${fresh.length} new architecture violation(s). Nothing was reverted — see the details.`
-            : 'Applying the approved files introduced no new architecture violations.',
+            // #546 -- was "architecture violation(s)"; validate now runs every construct-validate
+            // enforcer (SOC, readability, public-api-drift too), so the wording no longer implies
+            // architecture is the only rule set being checked here.
+            ? `Applying the approved files introduced ${fresh.length} new violation(s). Nothing was reverted — see the details.`
+            : 'Applying the approved files introduced no new violations.',
           detail: fresh.length ? fresh.slice(0, 20).map((v) => `${v.rule} ${v.file}: ${v.message}`).join('\n') : null,
           now,
         });

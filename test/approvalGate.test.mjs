@@ -50,8 +50,11 @@ const planWith = (files, { executor = 'deterministic' } = {}) => ({
  * A project with a committed base, a bot branch holding `bot` (path -> string
  * content, null = delete), a process record with one artifact per bot file.
  * `declared` is the plan's touches (default: every bot file with its change).
+ * `realValidate` (#546): every other test here stubs `validate` to isolate the gate's own logic
+ * from the real enforcers; passing true instead lets createApprovalGate use its own real default
+ * (aggregateValidation(DEFAULT_ENFORCERS)), for the one test that exists to prove that default.
  */
-function scenario({ base = {}, bot = {}, declared, executor, state = 'done', extraProject = () => {}, afterCommit = () => {}, id = 'p1' } = {}) {
+function scenario({ base = {}, bot = {}, declared, executor, state = 'done', extraProject = () => {}, afterCommit = () => {}, id = 'p1', realValidate = false } = {}) {
   const projectRoot = fs.realpathSync(makeTempDir('construct-gate-project-'));
   const stateDir = makeTempDir('construct-gate-state-');
   git(projectRoot, 'init', '-q', '-b', 'main');
@@ -92,7 +95,11 @@ function scenario({ base = {}, bot = {}, declared, executor, state = 'done', ext
   const store = openProcessStore(projectRoot, { stateDir });
   store.save(rec);
   let tick = 0;
-  const gate = createApprovalGate({ store, now: () => new Date(Date.UTC(2026, 8, 20, 12, 0, tick++)).toISOString(), validate: () => ({ violations: [] }) });
+  const gate = createApprovalGate({
+    store,
+    now: () => new Date(Date.UTC(2026, 8, 20, 12, 0, tick++)).toISOString(),
+    ...(realValidate ? {} : { validate: () => ({ violations: [] }) }),
+  });
   return { projectRoot, stateDir, store, gate, id, changes };
 }
 
@@ -475,7 +482,19 @@ test('post-apply validation reports only NEW violations and does not revert', ()
   assert.equal(out.validation.ok, false);
   assert.equal(out.validation.autoReverted, false);
   assert.equal(fs.readFileSync(path.join(s.projectRoot, 'a.ts'), 'utf8'), 'bad\n', 'not auto-reverted');
-  assert.equal(s.store.load(s.id).log.some((e) => e.provenance === 'warn' && /new architecture violation/.test(e.message)), true);
+  // #546 -- was "new architecture violation(s)"; the wording no longer names one enforcer since
+  // validate's default now runs all of them.
+  assert.equal(s.store.load(s.id).log.some((e) => e.provenance === 'warn' && /new violation/.test(e.message)), true);
+});
+
+test('#546: with no validate override, the gate\'s real default catches a readability-only violation too, not just architecture', () => {
+  // A component whose filename doesn't match its export: READ-001, not an architecture rule --
+  // the old default (validateArchitecture alone) would have reported zero new violations here.
+  const s = scenario({ bot: { 'features/checkout/components/CheckoutBadge.tsx': 'export function Badge(){ return null; }\n' }, realValidate: true });
+  const out = s.gate.decide(s.id, { by: 'o', decisions: [approve(s, 'features/checkout/components/CheckoutBadge.tsx')] });
+  assert.equal(out.applied, 1);
+  assert.ok(out.validation.newViolations.some((v) => v.rule === 'READ-001'), JSON.stringify(out.validation.newViolations));
+  assert.equal(out.validation.ok, false);
 });
 
 test('a validator that throws is reported, not fatal, and the applied file stays', () => {

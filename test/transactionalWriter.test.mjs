@@ -65,6 +65,23 @@ test('commit() leaves disk completely untouched when the buffered result fails v
   assert.deepEqual(txn.pendingFiles().sort(), [badFile, goodFile].sort());
 });
 
+// #546 -- commit()'s default used to be validateArchitecture alone, so a step that violated a
+// non-architecture rule (SOC, readability, public-api-drift) would commit anyway. The default is
+// now the same aggregateValidation(DEFAULT_ENFORCERS) set `construct validate` runs.
+test('commit() with no validate option refuses a readability-only violation, not just an architecture one (#546)', () => {
+  const dir = tmpProject();
+  const txn = createTransaction(dir);
+  // A component file whose name doesn't match its export: READ-001, not an architecture rule --
+  // validateArchitecture alone (the old default) would have let this commit.
+  txn.writeFile('features/checkout/components/CheckoutBadge.tsx', `export function Badge(){ return null; }\n`);
+
+  const result = txn.commit();
+
+  assert.equal(result.committed, false);
+  assert.ok(result.violations.some((v) => v.rule === 'READ-001'));
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'components', 'CheckoutBadge.tsx')), false);
+});
+
 test('commit() with an empty transaction is a no-op success and never touches disk', () => {
   const dir = tmpProject();
   const txn = createTransaction(dir);
