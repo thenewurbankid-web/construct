@@ -16,8 +16,9 @@ export { parseJsx, jsxParseError, checkJsxReplacement } from './jsxParse.mjs';
 export { jsxNameToString, jsxAttributes, parseJsxTree, findParentRecord } from './jsxTree.mjs';
 export {
   spliceNode, renderAttrValue, setAttributeText, setSpreadText, removeAttributeText,
-  removeNodeText, swapNodesText, addChildText, NEW_CHILD_SNIPPET,
+  removeNodeText, swapNodesText, addChildText, NEW_CHILD_SNIPPET, insertStatementBeforeJsx,
 } from './jsxEdit.mjs';
 export { collectComponentScopeNames, collectScopeDeclarations, findImportOfName, findTypeMembers, declaredPropNames } from './jsxScope.mjs';
+export { insertNamedImport } from './imports.mjs';
 export { collectInlineJsxLogic, computeJsxComplexity } from './jsxComplexity.mjs';
 export { collectImpureDomainReferences, collectLocallyBoundNames, BUILTIN_GLOBALS as DOMAIN_PURITY_BUILTIN_GLOBALS } from './domainPurity.mjs';

@@ -17,9 +17,10 @@ import crypto from 'node:crypto';
 import {
   parseJsx, parseJsxTree, findParentRecord, jsxParseError, checkJsxReplacement,
   spliceNode, setAttributeText, setSpreadText, removeAttributeText, removeNodeText, swapNodesText, addChildText,
-  collectComponentScopeNames, findImportOfName, declaredPropNames,
+  collectComponentScopeNames, findImportOfName, declaredPropNames, insertNamedImport, insertStatementBeforeJsx,
 } from '../../../packages/ast/index.mjs';
 import { buildScopeLinks, importOfTag, providerHookImports } from '../../../packages/engine/scopeLinks.mjs';
+import { describeComponent } from '../../../packages/engine/describeComponent.mjs';
 import { loadConfig } from '../../../packages/core/config.mjs';
 import { loadLayerGraph } from '../../../packages/core/architecture-graph.mjs';
 import { validateArchitecture } from '../../../packages/core/architecture-enforcer.mjs';
@@ -592,6 +593,125 @@ export function applyAutoMap(source, nodeId, propNames) {
     hash = hashOf(patched);
   }
   return patched;
+}
+
+/**
+ * #532 (Slice 2 of #518's design, docs/design/block-palette.md) -- the import specifier for one
+ * Palette entry (#527's buildPalette output), relative to the page it is being inserted into.
+ * Own-feature (`entry.via` is null): relative to the unit's own real file, exactly the shape a
+ * hand-written same-feature import already takes (e.g. `../hooks/useCartProvider`). Cross-feature
+ * (`entry.via` is set): relative to that OTHER feature's public `index.ts` ONLY, never its internals
+ * -- reaching into `entry.path` directly would trip SLICE-002 ("Cross-feature imports use public
+ * index.ts"), the same rule `checkEnforcement` below would then block the save on anyway.
+ */
+function paletteImportSpecifier(root, pageAbsPath, entry) {
+  const featuresRoot = featuresRootOf(root);
+  const targetAbs = entry.via ? path.join(root, featuresRoot, entry.feature, 'index.ts') : path.join(root, entry.path);
+  let specifier = path.relative(path.dirname(pageAbsPath), targetAbs).split(path.sep).join('/');
+  specifier = specifier.replace(/\.(tsx|ts|jsx|js)$/, '');
+  return specifier.startsWith('.') ? specifier : `./${specifier}`;
+}
+
+/** A stub value for one required prop, from its describeComponent-reported `type` text (real
+ * react-docgen output, not invented): a bare guess by TYPE SHAPE only (never a value pretending to be
+ * meaningful project data) so the inserted JSX always parses and type-checks against a `string`,
+ * `number`, `boolean`, array, object or function-shaped prop -- anything else stays `undefined`,
+ * which is honest about not knowing more. */
+function stubAttrText(prop) {
+  const t = String(prop.type || '');
+  const lower = t.toLowerCase();
+  if (/=>/.test(t)) return `${prop.name}={() => {}}`;
+  if (lower === 'string') return `${prop.name}=""`;
+  if (lower === 'number') return `${prop.name}={0}`;
+  if (lower === 'bool' || lower === 'boolean') return `${prop.name}={false}`;
+  if (lower.endsWith('[]') || lower.startsWith('array')) return `${prop.name}={[]}`;
+  if (t.startsWith('{') || lower === 'object' || lower === 'shape') return `${prop.name}={{}}`;
+  return `${prop.name}={undefined}`;
+}
+
+/** A self-closing JSX usage for a Component entry, its required props stubbed from `described`
+ * (describeComponent's real react-docgen result) -- optional props are left out entirely rather than
+ * guessed. `described` may be null/failed (a component that couldn't be documented): the usage then
+ * has no props at all, same as any component with none. */
+export function buildComponentUsageJsx(name, described) {
+  const comp = described?.components?.find((c) => c.name === name) || described?.components?.[0];
+  const attrs = (comp?.props || []).filter((p) => p.required).map(stubAttrText);
+  return attrs.length ? `<${name} ${attrs.join(' ')} />` : `<${name} />`;
+}
+
+/** A Provider hook-call statement for a Provider entry. Assigns the WHOLE result to a local variable
+ * rather than destructuring named fields: `useProvider()`'s return shape (`Value`) isn't statically
+ * known here (no type-checker run for this), so guessing field names would risk inserting code that
+ * doesn't compile -- calling the hook and letting the developer destructure by hand is the honest
+ * "real, working reference" this slice promises, not a fabricated shape. */
+export function buildProviderUsageStatement(name) {
+  const base = name.replace(/^use/, '').replace(/Provider$/, '');
+  const varName = base ? base[0].toLowerCase() + base.slice(1) : 'value';
+  return `const ${varName} = ${name}();`;
+}
+
+function finalizeInsertion(patched) {
+  const patchedError = jsxParseError(patched);
+  if (patchedError) return { ok: false, error: `Inserting this would leave invalid code: ${patchedError}` };
+  return { ok: true, source: patched };
+}
+
+/**
+ * #532 (Slice 2 of #518's design) -- insert one Palette entry's real usage into a page: the import
+ * (skipped if already present; rejected if the name is already imported from somewhere ELSE) plus
+ * either a self-closing JSX usage (Component, appended as the last child of the page's own root JSX
+ * element/fragment) or a hook-call statement (Provider, inserted as the first statement of that
+ * root's enclosing component function). No selection UI needed (block-palette.md section 4's Slice 2
+ * note): unlike "Wrap with..." (Slice 3, #517), a brand-new usage doesn't need to target existing
+ * JSX -- there is exactly one sensible place to add it. `entry` must be one of `buildPalette`'s own
+ * `providers`/`components` entries (the caller re-derives it from a fresh `buildPalette` call rather
+ * than trusting whatever the client sent, the same "never resolve a client-named path directly"
+ * discipline `componentsApi.mjs`'s `pick()` uses) plus a `kind`.
+ */
+export async function buildPaletteInsertion(root, pageAbsPath, source, entry, describe = describeComponent) {
+  if (!entry || (entry.kind !== 'component' && entry.kind !== 'provider')) {
+    return { ok: false, error: 'Only Components and Providers can be inserted here (Expressions are Slice 3, "Wrap with...").' };
+  }
+  const { roots, ast } = parsePageTree(source);
+  if (roots.length === 0) return { ok: false, error: 'This page has no JSX to insert into.' };
+
+  const specifier = paletteImportSpecifier(root, pageAbsPath, entry);
+  const existingImport = findImportOfName(ast, entry.name);
+  if (existingImport && existingImport.source !== specifier) {
+    return { ok: false, error: `"${entry.name}" is already imported from "${existingImport.source}" — rename or remove that import first.` };
+  }
+
+  let usageText;
+  if (entry.kind === 'component') {
+    const described = await describe(root, entry.path);
+    usageText = buildComponentUsageJsx(entry.name, described.ok !== false ? described : null);
+  } else {
+    usageText = buildProviderUsageStatement(entry.name);
+  }
+
+  const { source: withImport } = insertNamedImport(source, { name: entry.name, specifier });
+  const after = parsePageTree(withImport);
+  const targetRoot = after.roots[0];
+
+  if (entry.kind === 'component') {
+    const added = addChildText(withImport, targetRoot, usageText);
+    if (!added.ok) {
+      return {
+        ok: false,
+        error:
+          added.reason === 'self-closing'
+            ? "This page's own root element is self-closing (`<Tag />`) — convert it to an open/close pair before inserting here."
+            : "Could not find where to insert this component in the page's JSX.",
+      };
+    }
+    return finalizeInsertion(added.source);
+  }
+
+  const inserted = insertStatementBeforeJsx(withImport, after.ast, targetRoot, usageText);
+  if (!inserted.ok) {
+    return { ok: false, error: "Could not find this page's own component function to add the Provider hook call to." };
+  }
+  return finalizeInsertion(inserted.source);
 }
 
 /**
