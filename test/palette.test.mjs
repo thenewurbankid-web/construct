@@ -93,3 +93,28 @@ test('same tree, same ref -> byte-identical output (deterministic, no LLM)', () 
   const dir = project();
   assert.deepEqual(buildPalette(dir, 'cart'), buildPalette(dir, 'cart'));
 });
+
+// #531 -- isRealProviderExport's factory-presence check must also recognize defineProvider
+// called with an explicit generic type argument (defineProvider<Props>('Name', fn)), the same
+// gap #521 fixed in architecture-enforcer.mjs's own HOOK-002 check. Before the fix, this hook
+// (real, named like a Provider, genuinely built through defineProvider) would have been
+// invisible to the Palette because the plain-`(`-only regex missed the `<CartState>` shape.
+test('a Provider hook built via defineProvider<Props>(...) (generic-argument call) is listed', () => {
+  const dir = makeTempDir('construct-palette-generic-');
+  const write = (rel, content) => {
+    const abs = path.join(dir, rel);
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, content);
+  };
+  write('architecture.yml', 'features:\n  root: features\n');
+  write(
+    'features/loyalty/hooks/useLoyaltyProvider.ts',
+    `import { defineProvider } from '@construct/typed-contracts';\n` +
+      `export const useLoyaltyProvider = defineProvider<LoyaltyState>('Loyalty', () => ({ points: 0 })).useProvider;\n`,
+  );
+  write('features/loyalty/pages/LoyaltyPage.tsx', `export default function LoyaltyPage() { return null; }\n`);
+
+  const r = buildPalette(dir, 'loyalty');
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.providers.map((p) => p.name), ['useLoyaltyProvider']);
+});

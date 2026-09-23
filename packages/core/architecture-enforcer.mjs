@@ -111,13 +111,22 @@ function isReactSpecifier(specifier) {
   return specifier === 'react' || /(^|\/)react\//.test(specifier);
 }
 
-/** Whether `source` contains a call to the factory `name` -- EXPR-006/HOOK-002/HOOK-001's
- * shared "factory call present" detection (#521): tolerates an optional explicit generic type
- * argument between the name and the opening paren (e.g. `defineExpression<FooProps>(...)`), the
- * canonical call shape this repo's own `packages/core/typed-contracts/examples/` already use,
- * alongside the plain `defineExpression(...)` shape. A single shared helper so all three checks
- * recognize exactly the same call shapes, rather than three separately-maintained regexes. */
-function hasFactoryCall(name, source) {
+/**
+ * Whether `source` contains a call to the factory `name` -- EXPR-006/HOOK-002/HOOK-001's shared
+ * "factory call present" detection (#521): tolerates an optional explicit generic type argument
+ * between the name and the opening paren (e.g. `defineExpression<FooProps>(...)`), the canonical
+ * call shape this repo's own `packages/core/typed-contracts/examples/` already use, alongside the
+ * plain `defineExpression(...)` shape. A single shared helper so all three checks recognize
+ * exactly the same call shapes, rather than three separately-maintained regexes. Exported (#531)
+ * so readability-enforcer.mjs's READ-004 suffix detection and packages/engine/palette.mjs's
+ * Provider detection reuse this exact check instead of each carrying its own plain-`(`-only regex
+ * with the same generic-argument gap.
+ *
+ * @param {string} name The factory's exported identifier (e.g. `"defineProvider"`).
+ * @param {string} source The file's full source text to search.
+ * @returns {boolean} `true` when `source` calls `name(...)` or `name<...>(...)`.
+ */
+export function hasFactoryCall(name, source) {
   return new RegExp(`\\b${name}\\s*(<[^(]*>)?\\s*\\(`).test(source);
 }
 

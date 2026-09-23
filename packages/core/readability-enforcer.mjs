@@ -7,6 +7,7 @@ import { exceptionApplies } from './exceptions.mjs';
 import { parseFile, layerContextFor, extractExports, extractJsdoc, lineOf, EXT } from './parser.mjs';
 import { loadConfig, readRawRules } from './config.mjs';
 import { isNonLayerPath } from './nonLayer.mjs';
+import { hasFactoryCall } from './architecture-enforcer.mjs';
 
 // Shaped exactly like DEFAULT_RULES in packages/core/config.mjs, exported for Module 4 (or whoever
 // owns config.mjs next) to merge into the shared rule table. Not written into config.mjs
@@ -55,10 +56,13 @@ const READ_004_KNOWN_SUFFIXES = new Set([...Object.values(LAYER_SUFFIX), 'provid
  * useTrackedState(...) presence check HOOK-002/HOOK-001 already use elsewhere (a real
  * factory call is the deterministic, cheap-to-check proxy for "which kind of hook this
  * really is") -- a plain string match against the source, no tsc/AST pass needed. Neither
- * present falls back to the generic ".hook" suffix. */
+ * present falls back to the generic ".hook" suffix. Uses architecture-enforcer.mjs's shared
+ * `hasFactoryCall` (#531) so a `defineProvider<Props>(...)`/`useTrackedState<T>(...)`
+ * generic-argument call is recognized here exactly as HOOK-001/HOOK-002 already recognize it,
+ * instead of this file's own plain-`(`-only regex missing it. */
 function expectedHookSuffix(source) {
-  if (/\bdefineProvider\s*\(/.test(source)) return 'provider';
-  if (/\buseTrackedState\s*\(/.test(source)) return 'state';
+  if (hasFactoryCall('defineProvider', source)) return 'provider';
+  if (hasFactoryCall('useTrackedState', source)) return 'state';
   return 'hook';
 }
 

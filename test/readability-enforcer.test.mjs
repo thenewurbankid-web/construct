@@ -246,6 +246,30 @@ test('READ-004: correctly suffixed hook files (.provider.ts / .state.ts / .hook.
   assert.equal(violations.filter((v) => v.rule === 'READ-004').length, 0);
 });
 
+// #531 -- expectedHookSuffix's factory-presence check must also recognize defineProvider/
+// useTrackedState called with an explicit generic type argument (defineProvider<Props>(...),
+// useTrackedState<T>(...)), the same gap #521 fixed in architecture-enforcer.mjs's own
+// EXPR-006/HOOK-001/HOOK-002 checks -- not just the plain factoryName(...) shape. Both files
+// here are suffix-less, so a suffix suggestion (".provider"/".state") is the proof they were
+// correctly recognized as built through the generic-argument call, not falling through to the
+// generic ".hook" suffix.
+test('#531: READ-004 suggests ".provider"/".state" for a hook built via a generic-argument factory call', () => {
+  const root = tmpRoot();
+  writeFile(root, 'features/demo/hooks/useCartProvider.ts', `export const useCartProvider = defineProvider<CartState>('Cart', () => ({ total: 0 }));\n`);
+  writeFile(root, 'features/demo/hooks/useCartState.ts', `export const useCartState = useTrackedState<number>('total', 0);\n`);
+  fs.writeFileSync(path.join(root, 'architecture.yml'), 'rules:\n  READ-004: error\n');
+  const { violations } = validateReadability(root);
+  const byFile = Object.fromEntries(violations.filter((v) => v.rule === 'READ-004').map((v) => [v.file, v]));
+  assert.equal(
+    byFile['features/demo/hooks/useCartProvider.ts'].suggestedFix,
+    'Rename features/demo/hooks/useCartProvider.ts to features/demo/hooks/useCartProvider.provider.ts.'
+  );
+  assert.equal(
+    byFile['features/demo/hooks/useCartState.ts'].suggestedFix,
+    'Rename features/demo/hooks/useCartState.ts to features/demo/hooks/useCartState.state.ts.'
+  );
+});
+
 // Route files (app/**/page.tsx, src/App.tsx) are exempt per #512's design -- moot here in
 // practice, since validateReadability only ever walks features/*/**, never a route file, so
 // there is nothing extra to assert beyond that a route-shaped path never appears in `files`.

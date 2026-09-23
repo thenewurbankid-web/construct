@@ -16,6 +16,7 @@ import { createContext, isTestFile } from './units/facts.mjs';
 import { featureNames } from './units/kinds/feature.mjs';
 import { parseToAst } from '../ast/index.mjs';
 import { resolveImportSpecifier } from '../core/route-resolver.mjs';
+import { hasFactoryCall } from '../core/architecture-enforcer.mjs';
 
 // Mirrors architecture-enforcer.mjs's PROVIDER_HOOK_NAME_RE exactly (#510) -- the naming convention
 // PAGE-006 relies on to let a page import a Provider hook directly.
@@ -35,13 +36,15 @@ function readSource(root, relPath) {
 
 /** HOOK-002's real test: named like a Provider AND actually built through `defineProvider(...)`, not
  * just named like one -- the same check the enforcer applies, applied here so the palette only ever
- * lists Provider hooks the enforcer itself would vouch for. */
+ * lists Provider hooks the enforcer itself would vouch for. Uses architecture-enforcer.mjs's shared
+ * `hasFactoryCall` (#531) so a `defineProvider<Props>(...)` generic-argument call is recognized here
+ * exactly as HOOK-002 recognizes it, instead of this file's own plain-`(`-only regex missing it. */
 function isRealProviderExport(ctx, relPath, name) {
   if (!isProviderHookName(name)) return false;
   const f = ctx.facts(relPath);
   if (!f.exports.some((e) => e.name === name)) return false;
   const source = readSource(ctx.root, relPath);
-  return !!source && /\bdefineProvider\s*\(/.test(source);
+  return !!source && hasFactoryCall('defineProvider', source);
 }
 
 /** The export whose name best identifies "the unit this file is" -- the one matching the file's own
