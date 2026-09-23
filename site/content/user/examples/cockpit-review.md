@@ -1,6 +1,6 @@
 **Problem.** A pull request is a pile of changed lines. Reviewing it means rebuilding, in your head, which feature each line belongs to, what depends on it, and whether it broke a rule your project already had.
 
-The Review screen reads two git refs and shows what the change means: the changed units grouped by feature and part, what each one now does, and five indicators computed from your own `architecture.yml`. No model, no network, no GitHub login: local branches are first-class.
+The **Git** screen reads two git refs and shows what the change means: the changed units grouped by feature and part, what each one now does, and five indicators computed from your own `architecture.yml`. No model, no network, no GitHub login: local branches are first-class.
 
 This page shows the Cockpit only. The same report from a terminal is in the [CLI examples](@user-guide/examples/cli-impact-and-review/); the engine behind it is in the [Core examples](@user-guide/examples/core-review-tests-commits/).
 
@@ -8,7 +8,7 @@ This page shows the Cockpit only. The same report from a terminal is in the [CLI
 
 ### 1. Pick a branch
 
-**Git** in the top bar (the `/review` route) lists the current project's local branches compared against a base (`main` by default), riskiest first: branches with more indicators needing attention, then more findings. A legend on the right explains every badge (scope, rule regressions, unexplained changes, public API, flow changed).
+**Git** in the left rail (the `/review` route) lists the current project's local branches compared against a base (`main` by default), riskiest first: branches with more indicators needing attention, then more findings. A legend on the right explains every badge (scope, rule regressions, unexplained changes, public API, flow changed).
 
 ### 2. Read what the change does
 

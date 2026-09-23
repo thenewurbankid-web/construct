@@ -2,7 +2,7 @@
 
 ## Do this
 
-Open **Features** in the top bar and its **Plan** tab (the `/plan` route), and describe the change in your own words, or name a feature, file or route. The Cockpit shows what the change will touch, then lists the steps, each marked *Deterministic*, *Local model* or *You*. Press **Run plan**.
+Open **Features** in the left rail (the `/plan` route lands there too), open the **Notes** tab in the Browser pane and describe the change in your own words, or name a feature, file or route. The middle shows what the change will touch; the **Plan** tab in the Tools pane lists the steps, each marked *Deterministic*, *Local model* or *You*. Press **Run plan**.
 
 This page shows the Cockpit only. The same tools are available from the [command line](@user-guide/examples/cli-impact-and-review/) and as a [Core API](@user-guide/examples/core-plans-and-impact/).
 
@@ -12,7 +12,7 @@ You can press **Suggest units from the note text**. That is a plain text match, 
 
 **Analyse impact** then shows what the change reaches: features, files, and warnings such as "the seeds live in 2 features but the impact reaches 1 more". Each row is marked `derived` (worked out from your code) or `inferred` (reached only through a guess).
 
-![Plan screen showing what a change touches: 3 features and 21 files, with cross-feature and public-API warnings and derived or inferred marks on every row](@img/cockpit-plan-impact.webp)
+![What a change touches: 3 features and 21 files, with cross-feature and public-API warnings and derived or inferred marks on every row](@img/cockpit-plan-impact.webp)
 
 ### 2. Build the plan and run it
 
@@ -20,7 +20,7 @@ Add steps from the catalogue, or add the read-only steps the analysis suggests. 
 
 **Run plan** starts one bot. It works in its own copy of the repository, on its own branch, and every step that succeeds becomes a commit there. The **Processes** drawer narrates the run and lets you pause or cancel. A failed step stops the plan and its half-written files are reset. Cancelling or failing leaves your own files as they were.
 
-![Plan screen with two steps and the Processes drawer showing the run in progress, with a line per step and Pause and Cancel buttons](@img/cockpit-plan-run.webp)
+![A plan of two steps and the Processes drawer showing the run in progress, with a line per step and Pause and Cancel buttons](@img/cockpit-plan-run.webp)
 
 ## You get
 
