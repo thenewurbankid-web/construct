@@ -47,11 +47,14 @@ export function useSnippetEditor(feature: string, file: string, nodeId: string, 
   }
 
   /** The actual save-back-to-source call, only ever reached after the diff
-   * preview has been shown and explicitly confirmed. */
+   * preview has been shown and explicitly confirmed. The hash sent is the one this snippet's own
+   * `getNodeSnippet` load resolved to; before that resolves, it's the tree's own hash (`contentHash`,
+   * the same file, from the same load that opened this node) — never an empty string, which the
+   * server now refuses outright (#590: 400 HASH_REQUIRED). */
   async function confirmSave() {
     setBusy(true);
     setStatus(null);
-    const result = await saveNodeSnippet({ feature, file, nodeId, snippet, contentHash: loadedHash || '' });
+    const result = await saveNodeSnippet({ feature, file, nodeId, snippet, contentHash: loadedHash ?? contentHash });
     setBusy(false);
     setShowDiff(false);
     if (result.ok) {

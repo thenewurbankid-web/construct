@@ -35,10 +35,11 @@ import { isInside } from './workspace.mjs';
 const JSX_EXTENSIONS = new Set(['.jsx', '.tsx', '.js', '.ts']);
 
 export class PagesEditorError extends Error {
-  constructor(message, { status = 400, violations } = {}) {
+  constructor(message, { status = 400, violations, code } = {}) {
     super(message);
     this.status = status;
     this.violations = violations;
+    this.code = code;
   }
 }
 
@@ -127,6 +128,28 @@ function noSuchNode(nodeId) {
 }
 
 /**
+ * #590 — the one hash guard every Pages-editor write that lands on disk goes through, the same
+ * contract `componentSave` (componentsApi.mjs) already enforces for the Components screen: a hash
+ * that's missing, empty or not a string is a distinct 400 `HASH_REQUIRED` (the client never fetched,
+ * or forgot to resend, the hash it loaded the file against — a client bug, never routine) from a
+ * present-but-wrong hash's 409 `CHANGED_ON_DISK` (someone else's edit landed on disk first — routine,
+ * "reload and try again"). Never optional: a save endpoint that skips this on a falsy hash is exactly
+ * #590's bug (a client that omits the hash silently wins over whatever is on disk).
+ */
+export function assertContentHash(
+  source,
+  contentHash,
+  { mismatchMessage = 'The file changed on disk since this was loaded — reload the tree and try again.' } = {},
+) {
+  if (typeof contentHash !== 'string' || contentHash === '') {
+    throw new PagesEditorError('contentHash is required to save — reload the tree and try again.', { status: 400, code: 'HASH_REQUIRED' });
+  }
+  if (hashOf(source) !== contentHash) {
+    throw new PagesEditorError(mismatchMessage, { status: 409, code: 'CHANGED_ON_DISK' });
+  }
+}
+
+/**
  * Parse a page file's JSX into a navigable, serializable element tree.
  * Node ids are assigned in source (document) order during one traversal —
  * `n0`, `n1`, ... — which is what every later save/props/auto-map lookup
@@ -203,20 +226,15 @@ export function getNodeSnippet(source, nodeId) {
 }
 
 /**
- * Patch one node's JSX back into the file (#52 — AST-located, textual
- * splice, not a whole-file AST reprint). We re-parse the *current* disk
- * content, re-locate the node by id, verify the caller's `contentHash`
- * still matches (optimistic-concurrency guard), verify the replacement
+ * The actual AST-located, textual splice (#52) — re-locate the node by id, verify the replacement
  * parses as a standalone JSX expression on its own, then splice
- * `source.slice(0, node.start) + newSnippet + source.slice(node.end)`.
- * Splicing the original text (rather than handing the whole file to a
- * generator) is what guarantees every *other* line in the file — imports,
- * comments, unrelated formatting — comes out byte-for-byte unchanged.
+ * `source.slice(0, node.start) + newSnippet + source.slice(node.end)`. Splicing the original text
+ * (rather than handing the whole file to a generator) is what guarantees every *other* line in the
+ * file — imports, comments, unrelated formatting — comes out byte-for-byte unchanged. No hash check
+ * here: this is the primitive `patchNode` (disk-backed, hash-required) and `rewireWireInSnippet`
+ * (in-memory snippet text with no disk/hash of its own) both build on.
  */
-export function patchNode(source, nodeId, newSnippet, expectedHash) {
-  if (expectedHash && hashOf(source) !== expectedHash) {
-    throw new PagesEditorError('The file changed on disk since this snippet was loaded — reload the tree and try again.', { status: 409 });
-  }
+function spliceNodeText(source, nodeId, newSnippet) {
   const { byId } = parsePageTree(source);
   const node = byId.get(nodeId);
   if (!node) throw noSuchNode(nodeId);
@@ -234,6 +252,18 @@ export function patchNode(source, nodeId, newSnippet, expectedHash) {
   if (patchedError) throw new PagesEditorError(`Patched file would no longer parse: ${patchedError}`);
 
   return patched;
+}
+
+/**
+ * Patch one node's JSX back into the file (#52). We re-parse the *current* disk content, require the
+ * caller's `contentHash` to match it (#590's `assertContentHash` guard — missing is 400
+ * `HASH_REQUIRED`, stale is 409 `CHANGED_ON_DISK`, so a client that omits or forgets to refresh its
+ * hash can never silently clobber a concurrent edit), then delegate the actual splice to
+ * `spliceNodeText`.
+ */
+export function patchNode(source, nodeId, newSnippet, expectedHash) {
+  assertContentHash(source, expectedHash, { mismatchMessage: 'The file changed on disk since this snippet was loaded — reload the tree and try again.' });
+  return spliceNodeText(source, nodeId, newSnippet);
 }
 
 /** #53 read-only helper: same shape as a tree node's `props`, for a single
@@ -336,9 +366,9 @@ export function rewireWireInSnippet(snippetSource, { parentId, propName, fromChi
 
   try {
     const removed = removeAttributeSnippet(snippetSource, fromChildId, propName);
-    let patched = patchNode(snippetSource, fromChildId, removed);
+    let patched = spliceNodeText(snippetSource, fromChildId, removed);
     const added = buildAttributeSnippet(patched, toChildId, propName, prop.kind, prop.value);
-    patched = patchNode(patched, toChildId, added);
+    patched = spliceNodeText(patched, toChildId, added);
     return { ok: true, snippet: patched };
   } catch (e) {
     return { ok: false, error: e.message };

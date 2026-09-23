@@ -50,6 +50,7 @@ import {
   serializeTree,
   getNodeSnippet,
   patchNode,
+  assertContentHash,
   getNodeProps,
   buildAttributeSnippet,
   findUnmappedProps,
@@ -59,7 +60,6 @@ import {
   buildWrapSuggestion,
   applyWrapConfirm,
   checkEnforcement,
-  hashOf,
   parseSnippetToTree,
   rewireWireInSnippet,
   removeNodeInSnippet,
@@ -453,7 +453,7 @@ function currentRoot() {
 
 function handlePagesEditorError(res, e) {
   if (e instanceof PagesEditorError) {
-    return res.status(e.status).json({ ok: false, error: e.message, violations: e.violations });
+    return res.status(e.status).json({ ok: false, error: e.message, violations: e.violations, code: e.code });
   }
   return res.status(500).json({ ok: false, error: e.message });
 }
@@ -609,9 +609,7 @@ app.post('/api/pages/props', (req, res) => {
     const root = currentRoot();
     const { absPath, relPath } = resolvePageFile(root, feature, file);
     const source = fs.readFileSync(absPath, 'utf8');
-    if (contentHash && hashOf(source) !== contentHash) {
-      return res.status(409).json({ ok: false, error: 'The file changed on disk since this was loaded — reload the tree and try again.' });
-    }
+    assertContentHash(source, contentHash);
     const attrSnippet = buildAttributeSnippet(source, nodeId, propName, kind, value, index);
     const patched = patchNode(source, nodeId, attrSnippet, contentHash);
     saveAndRespond(res, root, relPath, absPath, patched);
@@ -672,9 +670,7 @@ app.post('/api/pages/palette/insert', async (req, res) => {
     const root = currentRoot();
     const { absPath, relPath } = resolvePageFile(root, feature, file);
     const source = fs.readFileSync(absPath, 'utf8');
-    if (contentHash && hashOf(source) !== contentHash) {
-      return res.status(409).json({ ok: false, error: 'The file changed on disk since this was loaded — reload the tree and try again.' });
-    }
+    assertContentHash(source, contentHash);
     const palette = buildPalette(root, feature);
     if (!palette.ok) return res.status(400).json({ ok: false, error: palette.error });
     const list = kind === 'provider' ? palette.providers : palette.components;
@@ -724,9 +720,7 @@ app.post('/api/pages/palette/wrap', (req, res) => {
     const root = currentRoot();
     const { absPath, relPath } = resolvePageFile(root, feature, file);
     const source = fs.readFileSync(absPath, 'utf8');
-    if (contentHash && hashOf(source) !== contentHash) {
-      return res.status(409).json({ ok: false, error: 'The file changed on disk since this was loaded — reload the tree and try again.' });
-    }
+    assertContentHash(source, contentHash);
     let result;
     try {
       result = applyWrapConfirm(root, absPath, source, nodeId, name);
@@ -802,9 +796,7 @@ app.post('/api/pages/automap', (req, res) => {
     const root = currentRoot();
     const { absPath, relPath } = resolvePageFile(root, feature, file);
     const source = fs.readFileSync(absPath, 'utf8');
-    if (contentHash && hashOf(source) !== contentHash) {
-      return res.status(409).json({ ok: false, error: 'The file changed on disk since this was loaded — reload the tree and try again.' });
-    }
+    assertContentHash(source, contentHash);
     const patched = applyAutoMap(source, nodeId, propNames);
     saveAndRespond(res, root, relPath, absPath, patched);
   } catch (e) {

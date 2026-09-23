@@ -9,6 +9,7 @@ import {
   serializeTree,
   getNodeSnippet,
   patchNode,
+  assertContentHash,
   getNodeProps,
   buildAttributeSnippet,
   findUnmappedProps,
@@ -158,7 +159,41 @@ test('patchNode splices only the target node, leaving the rest of the file untou
 test('patchNode rejects a stale contentHash (optimistic concurrency)', () => {
   const { roots } = serializeTree(SOURCE);
   const h1Id = roots[0].children[0].id;
-  assert.throws(() => patchNode(SOURCE, h1Id, '<h1>x</h1>', 'not-the-real-hash'), PagesEditorError);
+  assert.throws(
+    () => patchNode(SOURCE, h1Id, '<h1>x</h1>', 'not-the-real-hash'),
+    (e) => e instanceof PagesEditorError && e.status === 409 && e.code === 'CHANGED_ON_DISK',
+  );
+});
+
+// #590 -- patchNode's own hash guard is mandatory, not "checked if present": a client that omits
+// contentHash entirely must never silently win the write. Missing/blank/non-string is a distinct 400
+// HASH_REQUIRED (a client bug) from a present-but-wrong hash's 409 CHANGED_ON_DISK (someone else's
+// edit landed first) -- never a write in either case.
+test('patchNode requires contentHash -- omitted, empty or non-string is 400 HASH_REQUIRED, never a write', () => {
+  const { roots } = serializeTree(SOURCE);
+  const h1Id = roots[0].children[0].id;
+  const isRequired = (e) => e instanceof PagesEditorError && e.status === 400 && e.code === 'HASH_REQUIRED';
+  assert.throws(() => patchNode(SOURCE, h1Id, '<h1>x</h1>'), isRequired, 'omitted');
+  assert.throws(() => patchNode(SOURCE, h1Id, '<h1>x</h1>', undefined), isRequired, 'undefined');
+  assert.throws(() => patchNode(SOURCE, h1Id, '<h1>x</h1>', null), isRequired, 'null');
+  assert.throws(() => patchNode(SOURCE, h1Id, '<h1>x</h1>', ''), isRequired, 'empty string');
+  assert.throws(() => patchNode(SOURCE, h1Id, '<h1>x</h1>', 42), isRequired, 'non-string');
+});
+
+test('patchNode saves on a matching contentHash, same as before (#590 unchanged on match)', () => {
+  const { roots, contentHash } = serializeTree(SOURCE);
+  const h1Id = roots[0].children[0].id;
+  const patched = patchNode(SOURCE, h1Id, '<h1>x</h1>', contentHash);
+  assert.ok(patched.includes('<h1>x</h1>'));
+});
+
+// #590's one shared guard, exercised directly: missing -> 400 HASH_REQUIRED, mismatch -> 409
+// CHANGED_ON_DISK, match -> no throw. Every disk-writing Pages editor route calls this.
+test('assertContentHash: missing is 400 HASH_REQUIRED, mismatch is 409 CHANGED_ON_DISK, match passes', () => {
+  assert.throws(() => assertContentHash(SOURCE, undefined), (e) => e.status === 400 && e.code === 'HASH_REQUIRED');
+  assert.throws(() => assertContentHash(SOURCE, ''), (e) => e.status === 400 && e.code === 'HASH_REQUIRED');
+  assert.throws(() => assertContentHash(SOURCE, 'deadbeef'), (e) => e.status === 409 && e.code === 'CHANGED_ON_DISK');
+  assert.doesNotThrow(() => assertContentHash(SOURCE, hashOf(SOURCE)));
 });
 
 test('patchNode rejects a replacement that is not valid JSX', () => {
