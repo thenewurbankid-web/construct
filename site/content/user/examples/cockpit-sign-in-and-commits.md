@@ -63,4 +63,4 @@ Construct-Summary: deterministic (construct summarize + impact); no LLM
 
 Only people you named can reach it, and every save is a commit you can read and undo.
 
-Checked against commit `081150b` on 2026-09-20 (wording revised for plain language on the same day; behaviour taken from the running code and its documentation; the sign-in screen needs a real OAuth app, so it is described, not pictured).
+Checked against commit `d23283f` on 2026-09-23 (behaviour taken from the running code and its documentation; the sign-in screen needs a real OAuth app, so it is described, not pictured).

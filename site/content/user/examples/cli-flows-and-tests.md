@@ -84,4 +84,4 @@ Options: `--dry-run` shows what would be written, `--prune` removes generated fi
 
 Every route through a flow is explained and tested, and the tests follow the flow when it changes.
 
-Checked against commit `081150b` on 2026-09-20 (wording revised for plain language on the same day).
+Checked against commit `d23283f` on 2026-09-23.

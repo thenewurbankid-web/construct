@@ -18,7 +18,7 @@ construct research impact features/shared/components/CurrencyLabel.tsx \
 Trimmed output (the full report also lists every file with the reason it is included):
 
 ```text
-Impact of component:features/shared/components/CurrencyLabel.tsx: 4 feature(s) (shared, billing, checkout, reporting), 6 file(s) across 1 layer(s), depth 2; 4 warning(s); 0 rule error(s), 0 rule warning(s); every entry derived deterministically.
+Impact of component:features/shared/components/CurrencyLabel.tsx: 4 feature(s) (shared, billing, checkout, reporting), 6 file(s) across 1 layer(s), depth 2; 4 warning(s); 1 rule error(s), 0 rule warning(s); every entry derived deterministically.
 
 ## Warnings
 
@@ -31,9 +31,9 @@ Same input, same tree, same bytes. Running the JSON form twice and hashing it:
 
 ```text
 $ construct research impact features/shared/components/CurrencyLabel.tsx --dir fixtures/impact-shared --format json | sha256sum
-23ffcf296120b0fc81ae9a488315189cdad748ccda74dfdc876e37fb9cb3493a  -
+d45a9f2d4cf5bb555bb19d6156475aafbec6f2747012dcfba95fb28daeed26dd  -
 $ construct research impact features/shared/components/CurrencyLabel.tsx --dir fixtures/impact-shared --format json | sha256sum
-23ffcf296120b0fc81ae9a488315189cdad748ccda74dfdc876e37fb9cb3493a  -
+d45a9f2d4cf5bb555bb19d6156475aafbec6f2747012dcfba95fb28daeed26dd  -
 ```
 
 Other ways to seed the same report: a git range (`--since main`), a list of files (`--files a,b`), or the change described in English (`--ticket "..."`). Anything guessed from note text is marked `inferred`; anything reached from a unit you named is `derived`.
@@ -91,4 +91,4 @@ Nothing is written. Refs are validated, git runs from temporary detached checkou
 
 You know what a change reaches, and what a branch means, before you approve it, and the answer is the same every time.
 
-Checked against commit `081150b` on 2026-09-20 (wording revised for plain language on the same day).
+Checked against commit `d23283f` on 2026-09-23.

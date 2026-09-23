@@ -66,4 +66,4 @@ Every rule id and its default severity is listed in the [Rule reference](@develo
 
 A rule break is caught in milliseconds, with the file, the line and the fix, before the fifth feature copies it.
 
-Checked against commit `081150b` on 2026-09-20 (wording revised for plain language on the same day).
+Checked against commit `d23283f` on 2026-09-23.

@@ -19,7 +19,7 @@ report.indicators.map((i) => [i.id, i.status, i.measured]);
 //  ["rule-regressions","attention",true], ["public-surface","info",true], ["flow-diff","clear",true]]
 ```
 
-Every indicator carries the sentence, its evidence, where the number comes from, and `repeatable: true`. Findings are `mechanical` (a Construct block resolves it, with the command) or `conversation` (a human decides); the engine classifies and never fixes. Bad input comes back as data, not an exception:
+Every indicator carries the sentence, its evidence, where the number comes from, and `deterministic: true`. Findings are `mechanical` (a Construct block resolves it, with the command) or `conversation` (a human decides); the engine classifies and never fixes. Bad input comes back as data, not an exception:
 
 ```text
 prHealth(root, { base: 'main', head: '--upload-pack=x' })
@@ -61,7 +61,7 @@ Impact counts come from the impact report and the prose from the unit summarizer
 
 ### 4. Where a bot's output lands
 
-Two more building blocks sit behind the Cockpit's Plan screen and are equally callable: the bot runner (each plan runs in its own git its own copy of the repository, one commit per successful step, on branch `construct/bot/<process id>`, with a repeatable step run with no model reachable) and the approval gate, whose `review` reads each artifact's diff and every reason it cannot apply, and whose `decide` is the only call that writes into your tree, for named files only, quoting the diff fingerprint. Both return JSON and never throw on bad input.
+Two more building blocks sit behind the Cockpit's Plan screen and are equally callable: the bot runner (each plan runs in its own git worktree (its own copy of the repository), one commit per successful step, on branch `construct/bot/<process id>`, with a repeatable step run with no model reachable) and the approval gate, whose `review` reads each artifact's diff and every reason it cannot apply, and whose `decide` is the only call that writes into your tree, for named files only, quoting the diff fingerprint. Both return JSON and never throw on bad input.
 
 ## You get
 
@@ -78,4 +78,4 @@ The full inventory is in [Building blocks](@developers/building-blocks/).
 
 Review, tests and commit messages come out identical every run, at no model cost.
 
-Checked against commit `081150b` on 2026-09-20 (wording revised for plain language on the same day).
+Checked against commit `d23283f` on 2026-09-23.

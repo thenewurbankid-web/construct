@@ -56,4 +56,4 @@ Open <http://localhost:3000>. The **Settings** page tells the Cockpit which proj
 - The [how-to guides](@user-guide/how-to/) cover each task: creating, refactoring, importing, tuning rules.
 - The [examples](@user-guide/examples/) show a problem, the exact command or screen, and the exact result, separately for the CLI, the Cockpit and the core API.
 
-Checked against commit `584753c` on 2026-09-20: the three quickstart commands were run in a fresh folder and printed the created feature, `[llm: 0 calls ...]` and two READ-003 warnings with exit code 0.
+Checked against commit `d23283f` on 2026-09-23: the three quickstart commands were run in a fresh folder and printed the created feature, `[llm: 0 calls ...]` and two READ-003 warnings with exit code 0.

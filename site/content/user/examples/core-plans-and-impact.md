@@ -26,10 +26,10 @@ planToCommand(plan.steps[1]);  // { argv: ['create', 'layer', 'Invoice', '--feat
 planTouches(plan);             // { features: ['billing'], files: [{ path: 'features/billing/index.ts', changes: ['create'], steps: ['s1'] }] }
 ```
 
-Every step names a real Construct flow and one of three executors: `repeatable`, `local-model` or `user`. A model can appear only on flows that genuinely have a model path. Real output when a step names a flow that does not exist:
+Every step names a real Construct flow and one of three executors: `deterministic`, `local-model` or `user`. A model can appear only on flows that genuinely have a model path. Real output when a step names a flow that does not exist:
 
 ```text
-{"valid":false,"errors":[{"code":"STEP_FLOW_UNKNOWN","path":"steps[1].flow","message":"Unknown flow \"deploy.to.prod\". A plan step must name a real Construct flow: project.init, create.feature, create.layer, create.unit, create.page.from, create.workflow.from, create.controller.bind, create.service.openapi, refactor.move, refactor.rename, import.unit, import.plan, import.route, summarize.unit, summarize.list, summarize.usage, research.summarize, research.workflow, research.doctor, validate, sync, pipeline.run, manual.task."}]}
+{"valid":false,"errors":[{"code":"STEP_FLOW_UNKNOWN","path":"steps[1].flow","message":"Unknown flow \"deploy.to.prod\". A plan step must name a real Construct flow: project.init, create.feature, create.layer, create.unit, create.page.from, create.workflow.from, create.controller.bind, create.service.openapi, refactor.move, refactor.rename, import.unit, import.plan, import.route, summarize.unit, summarize.list, summarize.usage, research.summarize, research.workflow, research.doctor, validate, review.analyze, test.run, sync, pipeline.run, manual.task."}]}
 ```
 
 `planToCommand` turns a step into the exact `argv` the CLI would run, and `planTouches` is what the review checks later compare against.
@@ -65,4 +65,4 @@ Schemas: `schemas/plan.v1.json` and `schemas/impact-report.v1.json`. Design note
 
 A script or an agent gets a checked plan and a measured answer, not a guess, with the same functions the CLI and the Cockpit use.
 
-Checked against commit `081150b` on 2026-09-20 (wording revised for plain language on the same day).
+Checked against commit `d23283f` on 2026-09-23.
