@@ -173,6 +173,7 @@ export const PLAN_FLOWS = Object.freeze({
       name: { type: 'string', required: true, positional: 0 },
       feature: { type: 'string', required: true, flag: '--feature' },
       from: { type: 'string', required: true, flag: '--from', description: 'Path to the state-graph JSON descriptor.' },
+      stateUnion: { type: 'boolean', flag: '--state-union', description: 'Also emit a typed <Name>State union and exhaustive matcher beside the machine.' },
       dir: DIR_ARG,
     },
   },

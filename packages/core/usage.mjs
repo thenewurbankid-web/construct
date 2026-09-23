@@ -94,10 +94,13 @@ Commands:
     pristine, presentation-only page + an explicit <Name>PageProps.ts interface,
     instead of scaffolding the usual stub template; 'construct create page ... --from
     <path>' is the equivalent under the create/refactor/research/import grouping)
-  construct generate workflow <name> --feature <feature> --from <path-to-json> [--dir <path>]
+  construct generate workflow <name> --feature <feature> --from <path-to-json> [--state-union] [--dir <path>]
     (compiles a JSON state-graph descriptor into a real XState v5 machine file
     instead of the usual stub template; 'construct create workflow ... --from <path>'
-    is the equivalent under the create/refactor/research/import grouping)
+    is the equivalent under the create/refactor/research/import grouping.
+    --state-union also writes <Name>WorkflowState.ts beside it: a <Name>State
+    discriminated union, one { status } member per state, plus match<Name>State and
+    assertNever<Name>State, which stop compiling when a state is left unhandled)
   construct generate controller <name> --feature <feature> --bind [--envelope <path>] [--dir <path>]
     (auto-wires an already-generated hook into an already-generated pristine page's
     Props interface via exact + fuzzy AST signature matching, instead of the usual

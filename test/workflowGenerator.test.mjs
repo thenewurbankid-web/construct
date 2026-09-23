@@ -258,3 +258,102 @@ test('generateWorkflow: a name that cannot form an identifier is rejected before
   }
   assert.deepEqual(listFiles(path.join(dir, 'features')), before);
 });
+
+// ---- #580: opt-in --state-union (typed state union + exhaustive matcher) -----------------
+
+const STATE_UNION_FILE = ['features', 'checkout', 'workflows', 'CheckoutWorkflowState.ts'];
+
+/** Type-check `files` (absolute paths) with the repo's TypeScript; returns the error messages. */
+function tscErrors(dir, files) {
+  const opts = { noEmit: true, strict: true, target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler, skipLibCheck: true, types: [] };
+  fs.writeFileSync(path.join(dir, 'tsconfig.json'), JSON.stringify({ compilerOptions: { noEmit: true, strict: true, target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', types: [] }, files: files.map((f) => path.relative(dir, f)) }));
+  const program = ts.createProgram(files, opts);
+  return ts.getPreEmitDiagnostics(program).map((d) => ts.flattenDiagnosticMessageText(d.messageText, '\n'));
+}
+
+test('--state-union: without the flag nothing but the machine is written and its output is unchanged (#580)', () => {
+  const dir = tmpProject();
+  const res = generateWorkflow(dir, 'Checkout', 'checkout', CHECKOUT_DESCRIPTOR);
+  assert.deepEqual(Object.keys(res), ['file', 'events', 'contextFields']);
+  assert.deepEqual(listFiles(path.join(dir, 'features', 'checkout', 'workflows')), ['CheckoutWorkflow.tsx']);
+  const withFlag = tmpProject();
+  generateWorkflow(withFlag, 'Checkout', 'checkout', CHECKOUT_DESCRIPTOR, { stateUnion: true });
+  assert.equal(
+    fs.readFileSync(res.file, 'utf8'),
+    fs.readFileSync(path.join(withFlag, 'features', 'checkout', 'workflows', 'CheckoutWorkflow.tsx'), 'utf8'),
+  );
+});
+
+test('--state-union: the union has exactly the descriptor\'s states, status only, and validate passes (#580)', () => {
+  const dir = tmpProject();
+  const { stateFile } = generateWorkflow(dir, 'Checkout', 'checkout', CHECKOUT_DESCRIPTOR, { stateUnion: true });
+  assert.equal(stateFile, path.join(dir, ...STATE_UNION_FILE));
+  const source = fs.readFileSync(stateFile, 'utf8');
+  const members = [...source.matchAll(/\| \{ status: '([^']+)' \}/g)].map((m) => m[1]);
+  assert.deepEqual(members, Object.keys(CHECKOUT_DESCRIPTOR.states));
+  assert.match(source, /export function matchCheckoutState</);
+  assert.match(source, /export function assertNeverCheckoutState\(/);
+  const { violations } = validateArchitecture(dir);
+  assert.deepEqual(violations.filter((v) => v.severity === 'error'), []);
+});
+
+test('--state-union: the emitted file type-checks, and a non-exhaustive match or switch fails tsc (#580)', () => {
+  const dir = tmpProject();
+  const { stateFile } = generateWorkflow(dir, 'Checkout', 'checkout', CHECKOUT_DESCRIPTOR, { stateUnion: true });
+  const good = path.join(dir, 'good.ts');
+  fs.writeFileSync(good, [
+    `import { matchCheckoutState, assertNeverCheckoutState, type CheckoutState } from './features/checkout/workflows/CheckoutWorkflowState';`,
+    `export const label = (s: CheckoutState): string => matchCheckoutState(s, { idle: () => 'i', submitting: () => 's', done: () => 'd' });`,
+    `export function sw(s: CheckoutState): number {`,
+    `  switch (s.status) { case 'idle': return 1; case 'submitting': return 2; case 'done': return 3; default: return assertNeverCheckoutState(s); }`,
+    `}`,
+  ].join('\n'));
+  assert.deepEqual(tscErrors(dir, [stateFile, good]), []);
+
+  const missingKey = path.join(dir, 'bad-match.ts');
+  fs.writeFileSync(missingKey, [
+    `import { matchCheckoutState, type CheckoutState } from './features/checkout/workflows/CheckoutWorkflowState';`,
+    `export const label = (s: CheckoutState): string => matchCheckoutState(s, { idle: () => 'i', submitting: () => 's' });`,
+  ].join('\n'));
+  assert.ok(tscErrors(dir, [stateFile, missingKey]).some((m) => /done/.test(m)), 'a missing handler must be a type error naming the state');
+
+  const missingCase = path.join(dir, 'bad-switch.ts');
+  fs.writeFileSync(missingCase, [
+    `import { assertNeverCheckoutState, type CheckoutState } from './features/checkout/workflows/CheckoutWorkflowState';`,
+    `export function sw(s: CheckoutState): number {`,
+    `  switch (s.status) { case 'idle': return 1; case 'submitting': return 2; default: return assertNeverCheckoutState(s); }`,
+    `}`,
+  ].join('\n'));
+  assert.ok(tscErrors(dir, [stateFile, missingCase]).length > 0, 'an unhandled switch case must be a type error');
+});
+
+test('--state-union: two runs give identical bytes, and a hand-written file is refused with nothing written (#580)', () => {
+  const dir = tmpProject();
+  const first = generateWorkflow(dir, 'Checkout', 'checkout', CHECKOUT_DESCRIPTOR, { stateUnion: true });
+  const bytes = [first.file, first.stateFile].map((f) => fs.readFileSync(f, 'utf8'));
+  const second = generateWorkflow(dir, 'Checkout', 'checkout', CHECKOUT_DESCRIPTOR, { stateUnion: true });
+  assert.deepEqual([second.file, second.stateFile].map((f) => fs.readFileSync(f, 'utf8')), bytes);
+
+  fs.writeFileSync(first.stateFile, 'export type CheckoutState = { status: "mine" };\n');
+  fs.rmSync(first.file);
+  assert.throws(() => generateWorkflow(dir, 'Checkout', 'checkout', CHECKOUT_DESCRIPTOR, { stateUnion: true }), (err) => {
+    assert.ok(err instanceof ConstructError);
+    assert.equal(err.exitCode, EXIT_CODES.USAGE_ERROR);
+    assert.match(err.message, /Refusing to write .*CheckoutWorkflowState\.ts/);
+    return true;
+  });
+  assert.equal(fs.existsSync(first.file), false, 'the machine must not be written when the union file is refused');
+  assert.equal(fs.readFileSync(first.stateFile, 'utf8'), 'export type CheckoutState = { status: "mine" };\n');
+});
+
+test('construct generate workflow --state-union: CLI writes both files and validate passes; usage text lists the flag (#580)', () => {
+  const dir = tmpProject();
+  const res = spawnSync('node', [
+    bin, 'generate', 'workflow', 'Checkout', '--feature', 'checkout', '--from', path.join(REPO_ROOT, 'fixtures', 'workflow-graphs', 'checkout.json'), '--state-union',
+  ], { encoding: 'utf8', cwd: dir });
+  assert.equal(res.status, EXIT_CODES.OK, res.stderr);
+  assert.match(res.stdout, /CheckoutWorkflowState\.ts/);
+  assert.equal(fs.existsSync(path.join(dir, ...STATE_UNION_FILE)), true);
+  assert.equal(spawnSync('node', [bin, 'validate'], { encoding: 'utf8', cwd: dir }).status, EXIT_CODES.OK);
+  assert.match(spawnSync('node', [bin, '--help'], { encoding: 'utf8' }).stdout, /--state-union/);
+});

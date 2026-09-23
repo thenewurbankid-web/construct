@@ -84,6 +84,22 @@ A richer example (guards, a 48 hour timeout, a retry loop, two end states) is
 `fixtures/workflow-graphs/refund-request.ts`; its exact expected output is in
 `fixtures/workflow-graphs/golden/`.
 
+## Typed state union (opt-in)
+
+`construct generate workflow Checkout --feature shop --from fixtures/workflow-graphs/checkout.json --state-union`
+writes the machine as usual and also `features/shop/workflows/CheckoutWorkflowState.ts` beside it:
+
+- `CheckoutState`, a discriminated union with one member per state and nothing else
+  (`{ status: 'idle' } | { status: 'submitting' } | { status: 'done' }`).
+- `matchCheckoutState(state, { idle, submitting, done })`, an exhaustive match: leave a state out and
+  `tsc` fails, naming it. A key the union does not have fails too.
+- `assertNeverCheckoutState(state)` for the `default` branch of a `switch`, so a state added to the
+  descriptor later breaks every switch that forgot it.
+
+The file starts with a generated-file marker and is deterministic (two runs give the same bytes). Re-running
+regenerates it; a file at that path without the marker is real work and is refused, with nothing written.
+Without the flag, output is unchanged.
+
 ## Limits
 
 Only machines written as plain object literals are explained (the same limit as the diagram); others say

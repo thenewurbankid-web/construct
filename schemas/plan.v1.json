@@ -603,6 +603,10 @@
                     "minLength": 1,
                     "description": "Path to the state-graph JSON descriptor."
                   },
+                  "stateUnion": {
+                    "type": "boolean",
+                    "description": "Also emit a typed <Name>State union and exhaustive matcher beside the machine."
+                  },
                   "dir": {
                     "type": "string",
                     "minLength": 1,

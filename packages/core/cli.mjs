@@ -193,8 +193,10 @@ export async function generate(args) {
       throw new ConstructError(`Malformed workflow descriptor JSON at ${descriptorPath}: ${e.message}`, { exitCode: EXIT_CODES.USAGE_ERROR });
     }
     const t = startTimer();
-    const { file, events } = generateWorkflow(root, name, feature, descriptor);
+    // #580: opt-in `--state-union` also emits <Name>WorkflowState.ts (typed state union + exhaustive matcher).
+    const { file, events, stateFile } = generateWorkflow(root, name, feature, descriptor, { stateUnion: args.includes('--state-union') });
     console.log(`Created ${path.relative(root, file)} (${formatDuration(elapsedSeconds(t))}, ${events.length} event(s): ${events.join(', ') || 'none'})`);
+    if (stateFile) console.log(`Created ${path.relative(root, stateFile)} (typed state union + exhaustive matcher)`);
     return;
   }
   // Ticket 7.4 (#114): `construct create/generate controller <name> --feature <f>
