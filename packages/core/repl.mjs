@@ -91,7 +91,7 @@ export const HELP_TOPICS = {
       2 importer hops; what lies past it is counted, not dropped.
       Example: research impact feature:login --depth 3 --format markdown
 
-  research spec <file> [--format json|text] [--dir <path>]
+  research spec <file> [--generate [--feature <name>]] [--format json|text] [--dir <path>]
       Checks a machine-spec.v1 file: an English requirement (sentences with
       ids) broken down into states, events, guarded transitions and typed
       functions, every item linked back to its sentence by "req". Refuses
@@ -99,7 +99,13 @@ export const HELP_TOPICS = {
       state, unknown state/event, untyped function, a sentence neither
       covered nor marked out of scope. Deterministic, no LLM; exit 1 on any
       failure. Schema and worked example: docs/machine-spec.md.
-      Example: research spec specs/sign-in.machine-spec.json --format json
+      --generate: on an accepted spec, writes the workflow (with its typed
+      state union and named guard stubs, each a TODO returning false) and
+      one defineService(...) stub per function (throws, precondition/
+      postcondition and req text as comments) -- never overwrites an
+      existing file. --feature is used only when the spec has no "feature"
+      field; exit 2 when neither is given.
+      Example: research spec specs/sign-in.machine-spec.json --generate --feature auth
 
   research doctor [--dir <path>]
       Environment sanity check: node/npm versions, architecture.yml presence,

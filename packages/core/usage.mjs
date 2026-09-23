@@ -33,10 +33,13 @@ Four capabilities, one CLI:
   construct research doctor [--dir <path>]
   construct research impact <unit-ref>... [--files a,b] [--since <ref>] [--ticket <text>] [--ticket-file <path>] [--depth N] [--max-files N] [--format json|markdown] [--dir <path>]
   construct research impact --usage   (deterministic blast radius: which features/layers/files a change touches, and why)
-  construct research spec <file> [--format json|text] [--dir <path>]
+  construct research spec <file> [--generate [--feature <name>]] [--format json|text] [--dir <path>]
     (checks a machine-spec.v1 file -- an English requirement broken down into states, events, transitions and typed
     functions -- and refuses it with a SPEC-* code, the path and the reason: unreachable state, unknown state/event,
     untyped function, sentence neither covered nor out of scope; see docs/machine-spec.md; exit 1 on any failure)
+    (--generate: on an accepted spec, writes the workflow (with its typed state union and named guard stubs) and
+    one defineService(...) stub per function, never overwriting an existing file; --feature is used only when the
+    spec has no "feature" field, and it is a usage error (exit 2) to have neither)
   construct review <base> <head> [--plan <file>] [--features a,b] [--no-merge-base] [--format json|markdown] [--dir <path>]
   construct review --usage   (read-only PR health between two git refs: scope, unexplained changes, rule regressions, public surface, flow diff; findings split mechanical vs conversation)
   construct test run <feature> [--name <file> --area generated|yours] [--base-url <url>] [--format json|text] [--dir <path>]

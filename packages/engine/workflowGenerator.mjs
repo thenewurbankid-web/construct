@@ -32,11 +32,19 @@ function propName(key) {
   return IDENT_RE.test(key) ? factory.createIdentifier(key) : factory.createStringLiteral(key);
 }
 
-/** Parse a standalone TS type string (e.g. "number", "string | null") into
- * a real ts.TypeNode via the compiler API's own parser -- so a hand-authored
- * type string in the descriptor prints back out exactly as valid TS,
- * whatever its shape, instead of being pasted in as unchecked text. */
-function parseTypeString(typeStr) {
+/**
+ * Parse a standalone TS type string (e.g. "number", "string | null") into a real `ts.TypeNode` via
+ * the compiler API's own parser -- so a hand-authored type string in a descriptor (a context field,
+ * or #593's function input/output types) prints back out exactly as valid TS, whatever its shape,
+ * instead of being pasted in as unchecked text. Exported so other generators that accept the same
+ * kind of free-form TS-type-as-string field (`packages/core/research/specToCode.mjs`'s function
+ * stubs) reuse this exact parse-and-reprint step instead of a second copy of it.
+ *
+ * @param {string} typeStr A standalone TypeScript type expression (e.g. `"string | null"`).
+ * @returns {import('typescript').TypeNode} The parsed type node, ready to print or splice into other AST.
+ * @throws {ConstructError} When `typeStr` is not a valid standalone TS type.
+ */
+export function parseTypeString(typeStr) {
   const sf = ts.createSourceFile('t.ts', `type T = ${typeStr};`, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const alias = sf.statements.find((s) => ts.isTypeAliasDeclaration(s));
   if (!alias) throw usageError(`Invalid TypeScript type string in context field: "${typeStr}"`);
@@ -81,6 +89,9 @@ function validateDescriptor(descriptor) {
   }
   if (descriptor.context !== undefined && (typeof descriptor.context !== 'object' || Array.isArray(descriptor.context))) {
     throw usageError('Workflow descriptor\'s "context" (if given) must be an object mapping field name -> {type, default}.');
+  }
+  if (descriptor.guards !== undefined && (typeof descriptor.guards !== 'object' || Array.isArray(descriptor.guards))) {
+    throw usageError('Workflow descriptor\'s "guards" (if given) must be an object mapping guard name -> a note for its TODO stub.');
   }
 }
 
@@ -175,6 +186,28 @@ function buildContextDefaultsLiteral(contextJson) {
   );
 }
 
+// #593 -- opt-in `descriptor.guards`: `{ [guardName]: note }`, one per named guard a transition
+// refers to. Nothing in this module inferred guard behavior before this (a hand-authored
+// descriptor's guard names were just strings on a transition, with no matching setup() entry) --
+// R2 (spec-to-code) needs every guard `construct research spec --generate` derives from a
+// machine-spec.v1 transition to exist as a real, named stub the generated file actually compiles
+// against, not just a string XState would fail to resolve at runtime. Each stub is deliberately a
+// plain template (not AST-synthesized): the shape never varies (one arrow function, one TODO
+// comment, one `return false`) -- only the name and the note text do, which is exactly the class
+// of boilerplate this module's own header says stays a template string.
+const GUARD_NAME_RE = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
+
+function buildGuardsText(guardsJson) {
+  const entries = Object.entries(guardsJson || {});
+  if (!entries.length) return null;
+  const lines = entries.map(([name, note]) => {
+    if (!GUARD_NAME_RE.test(name)) throw usageError(`Invalid guard name in descriptor: ${JSON.stringify(name)} (must be a valid identifier).`);
+    const todo = String(note ?? '').replace(/\s+/g, ' ').trim() || `implement guard "${name}"`;
+    return [`    ${name}: () => {`, `      // TODO: ${todo}`, '      return false;', '    },'].join('\n');
+  });
+  return `  guards: {\n${lines.join('\n')}\n  },`;
+}
+
 function buildEventUnionType(eventNames) {
   const members = eventNames.map((name) =>
     factory.createTypeLiteralNode([
@@ -189,7 +222,11 @@ function buildEventUnionType(eventNames) {
  * Compile a JSON state-graph descriptor into an XState v5 workflow source
  * file. Pure -- no filesystem access.
  *
- * @param {object} descriptor - `{id?, initial, context?: {field: {type, default}}, states: {...}}`.
+ * @param {object} descriptor - `{id?, initial, context?: {field: {type, default}}, guards?: {name: note}, states: {...}}`.
+ *   `guards` (#593) is optional: each entry becomes a named stub in `setup()`'s `guards:` map that
+ *   returns `false` with a `// TODO: <note>` comment -- typically the req sentence the guard exists
+ *   to satisfy -- so a transition that names a guard always compiles against a real (if unimplemented)
+ *   predicate instead of a dangling string.
  * @param {{name: string}} opts - `name` is the already-capitalized layer base name (e.g. "Checkout").
  * @returns {{source: string, events: string[], contextFields: string[]}}
  */
@@ -198,6 +235,7 @@ export function compileWorkflow(descriptor, { name }) {
   const contextJson = descriptor.context || {};
   const events = extractEventNames(descriptor.states);
   const contextFields = Object.keys(contextJson);
+  const guardsText = buildGuardsText(descriptor.guards);
 
   const contextTypeName = `${name}Context`;
   const eventTypeName = `${name}Event`;
@@ -237,6 +275,7 @@ export function compileWorkflow(descriptor, { name }) {
     `    context: ${contextTypeName};`,
     `    events: ${eventTypeName};`,
     `  },`,
+    ...(guardsText ? [guardsText] : []),
     `}).createMachine({`,
     `  id: '${machineId}',`,
     `  initial: '${descriptor.initial}',`,
