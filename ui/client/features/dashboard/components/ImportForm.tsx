@@ -67,7 +67,7 @@ export function ImportForm(props: ImportFormProps) {
       <h3>Import (non-interactive)</h3>
       <p className="hint">
         For a single old file or an already-approved plan file. For the guided, chat-style
-        whole-route wizard, use the <strong>Import Wizard</strong> page instead.
+        whole-route wizard, use the <strong>Import Wizard</strong> instead (from the command palette).
       </p>
       <Field label="Mode">
         <Select value={mode} onChange={(e) => setMode(e.target.value)}>

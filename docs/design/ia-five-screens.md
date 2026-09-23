@@ -1,6 +1,8 @@
 # Information architecture: five screens, four slots
 
-Status: concept (nothing here is implemented). Mocks: `mocks/ia-*.html`, PNGs `mocks/png/ia-*--{dark,light}.png`
+Status: partially implemented — the five-screen left rail (2026-09-21 update below) shipped in `0678516`;
+the rest of this doc (section 8's preview-first Pages/Components redesign, tab strip, breadcrumb, Ctrl P
+quick-open) is still concept. Mocks: `mocks/ia-*.html`, PNGs `mocks/png/ia-*--{dark,light}.png`
 (built by `node docs/design/mocks/build-ia.mjs`, styles in `mocks/ia.css`). Supersedes the Explore / Plan / Build /
 Review **modes** of `cockpit-layout.md` (see "Reversal" below). Owner brief: 2026-09-20. Section 8 (POC parity) revises Pages and Components to be preview-first and adds the inline Generate control.
 
@@ -222,6 +224,8 @@ the owner's `cockpit` POC repo (read for experience only; no code or assets used
   the user opens become tabs), a **breadcrumb** (Pages > /login > LoginForm), **Ctrl P** quick-open ("Go to file, node
   or route", the tree filter box is the same control), **Ctrl K** for commands (existing), F6 pane cycling
   (existing). The top-bar screen nav plays the role of the activity bar; we do not add a second icon rail.
+  *(Superseded by the 2026-09-21 update above: the screen nav moved off the top bar into its own left
+  rail, which is the second icon rail this sentence ruled out. Left as written for the design history.)*
 
 ### 8.2 Our capabilities plugged into the selection ("for the better")
 

@@ -29,8 +29,8 @@ export function SettingsPage({ settings, loadError, reload, projectDirInput, set
     <div className="page page--screen">
       <h1>Settings</h1>
       <p className="hint">
-        These settings apply to every command run from this UI (dashboard actions and the import
-        wizard). Nothing is persisted to disk — restarting the backend resets to its defaults.
+        These settings apply to every command run from this UI. Nothing is persisted to disk —
+        restarting the backend resets to its defaults.
       </p>
 
       <SettingsForm

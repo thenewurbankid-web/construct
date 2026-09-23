@@ -2,7 +2,7 @@
 
 It already knows which feature and part every file belongs to and who imports whom. `research impact` computes the what it touches from that graph, and `review` compares two git refs against your own rules. Both are read-only, offline and repeatable.
 
-This page is CLI only. The Review screen is in the [Cockpit examples](@user-guide/examples/cockpit-review/).
+This page is CLI only. The Git screen is in the [Cockpit examples](@user-guide/examples/cockpit-review/).
 
 ## Do this
 
