@@ -259,15 +259,24 @@ export async function generate(args) {
 // the scaffolded stub was left as-is and the line says why. A rejected/failed
 // fill sets a non-zero exit code so scripts and the UI notice, but never
 // aborts the rest of a batch.
-function reportFill(root, { file, status, reason }, timingNote = '') {
+function reportFill(root, { file, status, reason, fixCommand }, timingNote = '') {
   const rel = path.relative(root, file);
   if (status === 'filled') {
     console.log(`Created + LLM-filled ${rel}${timingNote}`);
+    if (fixCommand) printExtractExpressionHint(fixCommand);
     return;
   }
   const what = status === 'rejected' ? "the model's output was rejected" : 'the LLM call failed';
   console.log(`Created ${rel} (stub kept — ${what}: ${reason})${timingNote}`);
   process.exitCode = EXIT_CODES.INTERNAL_ERROR;
+}
+
+// #522 -- printed right after a --llm fill whose own output trips PAGE-008/COMPONENT-005 (inline
+// conditional/loop JSX): names the deterministic block (`construct refactor extract-expression`,
+// packages/core/extractExpression.mjs, #517) that fixes it mechanically, so a human or a bot
+// reading this output reaches for that block next instead of hand-writing the extraction.
+function printExtractExpressionHint(fixCommand) {
+  console.log(`  Note: the model's own output has inline conditional/loop JSX (PAGE-008/COMPONENT-005) — run \`${fixCommand}\` to extract it into a compliant Expression mechanically, rather than hand-editing.`);
 }
 
 // `construct generate layer <name> --feature <feature> --layers <l1,l2,...>
@@ -890,6 +899,9 @@ function reportImport(root, results, llm, feature, analysisCalls = 0, analysisSe
       const ft = r.timings?.files.find((f) => f.file === file);
       const llmNote = llm && ft ? ` (llm ${formatDuration(ft.llmSeconds)})` : '';
       console.log(`  ${path.relative(root, file)}${llmNote}${miss ? `  <- ${miss.status === 'rejected' ? "model output rejected" : 'LLM call failed'}, stub + TODO(import) kept` : ''}`);
+      // #522 -- same hint reportFill prints for create/generate's --llm fill, for import's.
+      const fixCommand = (r.fills || []).find((f) => f.file === file)?.fixCommand;
+      if (fixCommand) printExtractExpressionHint(fixCommand);
     }
     problems.push(...unfilled);
     totalFiles += r.files.length;

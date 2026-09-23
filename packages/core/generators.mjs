@@ -44,13 +44,21 @@ export const layerFromGeneratedFile=(file)=>FOLDER_TO_LAYER[path.basename(path.d
 // body — handed verbatim to whichever LLM does that writing, in its
 // prompt, so the constraint is an example the model sees rather than
 // something enforced only after the fact by construct validate.
+// #522 -- page/component each end with the same reminder: if the JSX genuinely needs a
+// conditional or a loop, do not write it inline (PAGE-008/COMPONENT-005) and do not hand-split it
+// into a pseudo-Expression yourself either -- `construct refactor extract-expression <file>`
+// (packages/core/extractExpression.mjs, #517) is the deterministic block that already does this
+// extraction correctly (including EXPR-004/005/006 compliance for the new unit); reach for it
+// instead of reinventing the extraction in raw tokens.
+const NO_INLINE_JSX_LOGIC='If the JSX needs a conditional or a loop, keep it out of this file rather than writing it inline — a human or bot can mechanically extract it afterward into a compliant named Expression by running `construct refactor extract-expression <this file>`; never hand-author that extraction yourself.';
+
 export const LAYER_CONSTRAINTS={
  domain:'Pure function(s) only. Never write the words fetch, window, document, localStorage, sessionStorage, or navigator anywhere in the file, even in a comment. No React import.',
  service:'Owns an external effect on behalf of the feature. Never import React or any react-related package.',
  workflow:'A state machine (e.g. via xstate\'s setup/createMachine). Never import "react" or any package path containing "react/".',
  hook:'A React hook — the exported function name must start with "use". May import anything.',
- component:'Presentation-only, from props. Never write the substring "controllers/", "workflows/", "services/", or "domain/" anywhere in the file, even in a comment.',
- page:'Presentation composition from props only. Never write "workflows/", "services/", or "domain/" anywhere in the file (even in a comment), never call fetch(), never use useMachine/useActor/createMachine.',
+ component:`Presentation-only, from props. Never write the substring "controllers/", "workflows/", "services/", or "domain/" anywhere in the file, even in a comment. ${NO_INLINE_JSX_LOGIC}`,
+ page:`Presentation composition from props only. Never write "workflows/", "services/", or "domain/" anywhere in the file (even in a comment), never call fetch(), never use useMachine/useActor/createMachine. ${NO_INLINE_JSX_LOGIC}`,
  controller:'Composes hooks/domain/pages for a route. No import restrictions.',
 };
 
@@ -337,6 +345,31 @@ function buildScaffoldFillPrompt({layer,relFile,stubContent,name,feature}){
  ].join('\n');
 }
 
+// #522 -- rule ids `construct refactor extract-expression` (packages/core/extractExpression.mjs,
+// #517) exists to mechanically fix. Kept as a set (not a single rule) so both PAGE-008
+// (page layer) and COMPONENT-005 (component layer) are covered by one check.
+const EXTRACTABLE_JSX_RULES=new Set(['PAGE-008','COMPONENT-005']);
+
+/**
+ * After an LLM fill writes a page or component layer file, checks whether the model's own output
+ * introduced inline conditional/loop JSX (PAGE-008/COMPONENT-005) -- the exact shape `construct
+ * refactor extract-expression <file>` exists to mechanically fix (#522). Returns the ready-to-run
+ * command when it did, else `undefined`. Advisory only, never throws: an LLM producing this shape
+ * is a normal outcome to hand off to the deterministic block, not a template bug (selfCheck above
+ * is for the latter and is not reused here for that reason).
+ *
+ * @param {string} root Project root.
+ * @param {string} file The just-filled file (page or component layer).
+ * @param {string} layer The file's layer.
+ * @returns {string|undefined} A `construct refactor extract-expression ...` command, or `undefined` when nothing to extract.
+ */
+export function extractExpressionHint(root,file,layer){
+ if(layer!=='page'&&layer!=='component')return undefined;
+ const relFile=rel(root,file);
+ const {violations}=validateArchitecture(root,{files:[relFile]});
+ return violations.some(v=>EXTRACTABLE_JSX_RULES.has(v.rule))?`construct refactor extract-expression ${relFile}`:undefined;
+}
+
 /**
  * Overwrite one already-generated file's stub content with `llm`'s real
  * implementation. `root` is only used to build the file's prompt-relative
@@ -345,14 +378,16 @@ function buildScaffoldFillPrompt({layer,relFile,stubContent,name,feature}){
  * generateLayer/generateVertical, never instead of it). `llmOptions` is
  * passed straight through to callLlm — see llm.mjs's ollama provider for
  * what it can carry (model/baseUrl). Returns
- * `{ file, status: 'filled'|'rejected'|'failed', reason?, attempts }` —
- * see llm-fill.mjs; anything but 'filled' leaves the stub untouched.
+ * `{ file, status: 'filled'|'rejected'|'failed', reason?, attempts, fixCommand? }` —
+ * see llm-fill.mjs; anything but 'filled' leaves the stub untouched. `fixCommand` (#522) is only
+ * present when a 'filled' page/component file's own new content trips PAGE-008/COMPONENT-005 —
+ * the `construct refactor extract-expression` invocation that mechanically fixes it.
  *
  * @param {string} root Project root (used for the prompt-relative path).
  * @param {string} file An already-generated file; must exist.
  * @param {string} layer The file's layer, whose constraint goes into the prompt.
  * @param {{feature?:string, name?:string, llm?:string, llmOptions?:object}} [options] `llm` names the provider; `llmOptions` (model, baseUrl) is passed to it.
- * @returns {Promise<object>} `{file, status: 'filled'|'rejected'|'failed', reason?, attempts}`; anything but `filled` leaves the stub untouched.
+ * @returns {Promise<object>} `{file, status: 'filled'|'rejected'|'failed', reason?, attempts, fixCommand?}`; anything but `filled` leaves the stub untouched.
  */
 export async function fillGeneratedFile(root,file,layer,{feature,name,llm,llmOptions}={}){
  const stubContent=fs.readFileSync(file,'utf8');
@@ -360,7 +395,11 @@ export async function fillGeneratedFile(root,file,layer,{feature,name,llm,llmOpt
  // Never write a response that isn't valid code (#144): on rejection or a
  // failed provider call the scaffolded stub stays exactly as generated.
  const outcome=await requestFileText(llm,prompt,llmOptions);
- if(outcome.status==='filled') write(file,outcome.code);
+ if(outcome.status==='filled'){
+  write(file,outcome.code);
+  const fixCommand=extractExpressionHint(root,file,layer);
+  if(fixCommand)outcome.fixCommand=fixCommand;
+ }
  const {code:_code,...rest}=outcome;
  return {file,...rest};
 }

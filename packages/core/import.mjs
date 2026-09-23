@@ -8,7 +8,7 @@
 // separate LLM session to fill in later, same as before this existed.
 import fs from 'node:fs';
 import path from 'node:path';
-import { generateVertical, LAYER_ORDER, LAYER_PREREQUISITES, LAYER_CONSTRAINTS, layerFromGeneratedFile, layerTargetFile } from './generators.mjs';
+import { generateVertical, LAYER_ORDER, LAYER_PREREQUISITES, LAYER_CONSTRAINTS, layerFromGeneratedFile, layerTargetFile, extractExpressionHint } from './generators.mjs';
 import { walk } from './fs.mjs';
 import { callLlm, stripCodeFence, PROVIDERS } from './llm.mjs';
 import { requestFileText } from './llm-fill.mjs';
@@ -161,7 +161,11 @@ export async function importVertical(root, name, feature, layers, fromPath, { ll
     fileTimings.push({ file, llmSeconds });
     if (outcome.status === 'filled') {
       fs.writeFileSync(file, outcome.code + '\n');
-      fills.push({ file, status: 'filled', attempts: outcome.attempts });
+      // #522 -- the ported logic itself may have brought inline conditional/loop JSX along with
+      // it; if so, point at the deterministic extraction block rather than leaving it for a human
+      // (or a future LLM call) to hand-fix.
+      const fixCommand = extractExpressionHint(root, file, layer);
+      fills.push({ file, status: 'filled', attempts: outcome.attempts, ...(fixCommand ? { fixCommand } : {}) });
       continue;
     }
     // The model's output was rejected (#144) or the call failed (#141) — leave
