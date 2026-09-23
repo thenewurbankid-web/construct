@@ -8,8 +8,6 @@ import { makeBrowseProject, openProject } from './support/browseProject.js';
 import { previewBridgeScript } from '../../../packages/engine/previewBridge.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const SCREENSHOTS_DIR = path.resolve(__dirname, '../screenshots');
-fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
 const API = process.env.E2E_API_BASE || 'http://localhost:4000';
 // The server's own first-port choice for a fixture app (set by playwright.config.js, never a human's 3000/4000).
 const PORT_BASE = Number(process.env.E2E_DEVSERVER_PORT_BASE) || 0;
@@ -137,7 +135,6 @@ test.describe.serial('Live preview: Start dev server as a managed process (#378)
     // --- app error: the app throws inside the preview, and the Cockpit says what it threw ---
     await frame(page).locator('#boom').click();
     await expect(page.getByTestId('preview-app-error')).toContainText("Cannot read properties of undefined (reading 'email')");
-    await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'preview-devserver-running.png'), fullPage: true });
     await page.getByTestId('preview-app-error').getByRole('button', { name: 'Dismiss' }).click();
     await expect(page.getByTestId('preview-app-error')).toHaveCount(0);
 
