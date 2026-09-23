@@ -4,7 +4,7 @@ import path from 'node:path';
 import { walk } from './fs.mjs';
 import { makeViolation } from './diagnostics.mjs';
 import { exceptionApplies } from './exceptions.mjs';
-import { parseFile, layerContextFor, extractExports, extractJsdoc, lineOf, EXT } from './parser.mjs';
+import { parseFile, layerContextFor, extractExports, extractJsdoc, lineOf, parseToAst, EXT } from './parser.mjs';
 import { loadConfig, readRawRules } from './config.mjs';
 import { isNonLayerPath } from './nonLayer.mjs';
 import { hasFactoryCall } from './architecture-enforcer.mjs';
@@ -122,6 +122,41 @@ function toHookName(name) {
   return 'use' + toPascalCase(stripped);
 }
 
+/** Names exported from `source` only at the type level (`export interface X`, `export type X = ...`,
+ * `export type { X }`, `export { type X }`, or `export { X }` of a local interface/type alias). These
+ * are not the unit a filename names, so READ-001 must not compare a file against them (#493). */
+function typeOnlyExportNames(source) {
+  const typeOnly = new Set();
+  let body;
+  try { body = parseToAst(source).body; } catch { return typeOnly; }
+  const localTypes = new Set();
+  for (const node of body) {
+    const decl = node.type === 'ExportNamedDeclaration' ? node.declaration : node;
+    if (decl && (decl.type === 'TSInterfaceDeclaration' || decl.type === 'TSTypeAliasDeclaration')) {
+      localTypes.add(decl.id.name);
+      if (node !== decl) typeOnly.add(decl.id.name);
+    }
+  }
+  for (const node of body) {
+    if (node.type !== 'ExportNamedDeclaration' || node.declaration || node.source) continue;
+    for (const spec of node.specifiers || []) {
+      const local = spec.local?.name ?? spec.local?.value;
+      const exported = spec.exported?.name ?? spec.exported?.value;
+      if (node.exportKind === 'type' || spec.exportKind === 'type' || localTypes.has(local)) typeOnly.add(exported);
+    }
+  }
+  return typeOnly;
+}
+
+/** The export a component/controller file is named after: value-level PascalCase exports only
+ * (type/interface exports such as `<Name>Props` are ignored), preferring the one matching the
+ * filename, else the first. */
+function pickComponentExport(summary, source, compareBase) {
+  const typeOnly = typeOnlyExportNames(source);
+  const candidates = summary.exports.filter((e) => PASCAL.test(e) && !typeOnly.has(e));
+  return candidates.find((e) => e === compareBase) || candidates[0];
+}
+
 function checkNaming(config, out, summary, source) {
   const ext = path.extname(summary.path);
   const base = path.basename(summary.path, ext);
@@ -130,7 +165,7 @@ function checkNaming(config, out, summary, source) {
   if (summary.layer === 'component' || summary.layer === 'controller') {
     const kind = summary.layer === 'component' ? 'Component' : 'Controller';
     const { compareBase, suffix } = stripReadOneSuffix(summary.layer, base, source);
-    const matchingExport = summary.exports.find((e) => PASCAL.test(e));
+    const matchingExport = pickComponentExport(summary, source, compareBase);
     const ok = PASCAL.test(compareBase) && matchingExport === compareBase;
     if (!ok) {
       const suggestedName = matchingExport || toPascalCase(compareBase);

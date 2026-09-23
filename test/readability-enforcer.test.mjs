@@ -111,6 +111,33 @@ test('READ-003: a JSDoc above a decorator on a public export is correctly associ
   assert.equal(violations.filter((v) => v.rule === 'READ-003').length, 0);
 });
 
+// ---- #493: READ-001 must not pick a Props/type export over the real component ---
+
+test('READ-001: an exported <Name>Props interface above the component does not trigger a rename (#493)', () => {
+  const root = tmpRoot();
+  writeFile(root, 'features/canvas/components/CanvasStage.tsx', `export interface CanvasStageProps {\n  width: number;\n}\n\nexport function CanvasStage({ width }: CanvasStageProps) {\n  return <div style={{ width }} />;\n}\n`);
+  writeFile(root, 'features/canvas/components/Card.tsx', `export type CardProps = { a: string };\nexport const Card = ({ a }: CardProps) => <div>{a}</div>;\n`);
+  writeFile(root, 'features/canvas/controllers/CanvasController.tsx', `type Local = { a: string };\nexport type { Local };\nexport function CanvasController() {\n  return <div />;\n}\n`);
+  const { violations } = validateReadability(root);
+  assert.deepEqual(violations.filter((v) => v.rule === 'READ-001'), []);
+});
+
+test('READ-001: a genuine mismatch still suggests the value export, never the Props type (#493)', () => {
+  const root = tmpRoot();
+  writeFile(root, 'features/canvas/components/Stage.tsx', `export interface CanvasStageProps {\n  width: number;\n}\nexport function CanvasStage() {\n  return <div />;\n}\n`);
+  const { violations } = validateReadability(root);
+  const v = violations.find((x) => x.rule === 'READ-001');
+  assert.ok(v, 'expected a READ-001 violation');
+  assert.equal(v.suggestedFix, 'Rename features/canvas/components/Stage.tsx to features/canvas/components/CanvasStage.tsx.');
+});
+
+test('READ-001: a file exporting only types still fails READ-001 (#493)', () => {
+  const root = tmpRoot();
+  writeFile(root, 'features/canvas/components/Only.tsx', `export interface OnlyProps {\n  a: string;\n}\n`);
+  const { violations } = validateReadability(root);
+  assert.ok(violations.some((x) => x.rule === 'READ-001'));
+});
+
 // ---- #516: READ-001 must not fight #512's Name.layer.ext convention ---
 
 test('READ-001: a correctly ".layer"-suffixed component/controller/hook passes both READ-001 and READ-004 (#516)', () => {
