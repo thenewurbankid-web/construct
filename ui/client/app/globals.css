@@ -677,10 +677,72 @@ button:disabled {
 
 /* --- Pages Editor (epic #48) --- */
 
-.pages-browser {
-  /* background/border/blur come from .glass-panel (GlassPanel component) */
-  padding: 16px;
-  margin-bottom: 16px;
+/* #536 — Browser pane merge (docs/design/browser-panel-merge.md): the Files-view's
+ * PagesBrowser/TreePanel content shares one GlassPanel (`.pe-browser-group`) as two
+ * independently collapsible native <details>/<summary> sections, the same disclosure idiom
+ * PalettePanel.tsx's `.pal-group` already ships (~L2056 below). `.pages-browser`/`.tree-panel`
+ * keep their exact pre-existing class names (~30 ui/e2e specs locate the two panels by them,
+ * now on <details> elements instead of their own GlassPanel) — only their own chrome changes,
+ * from two standalone glass cards to two bordered rows in one shared card. */
+.pe-browser-group {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0;
+}
+
+.pages-browser,
+.tree-panel {
+  margin: 0;
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.pe-browser-group > .pages-browser:last-child,
+.pe-browser-group > .tree-panel:last-child {
+  border-bottom: none;
+}
+
+.pages-browser > summary,
+.tree-panel > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: var(--sp-2) 0;
+  font-weight: 600;
+  font-size: var(--fs-md);
+}
+
+.pages-browser > summary::-webkit-details-marker,
+.tree-panel > summary::-webkit-details-marker {
+  display: none;
+}
+
+.pages-browser > summary::before,
+.tree-panel > summary::before {
+  content: '▸';
+  color: var(--text-muted);
+  font-size: 0.75em;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.pages-browser[open] > summary::before,
+.tree-panel[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.pages-browser[open] > :not(summary),
+.tree-panel[open] > :not(summary) {
+  margin-top: var(--sp-1);
+}
+
+.pe-count {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-weight: 400;
+  font-size: var(--fs-sm);
 }
 
 .pages-file-list {
@@ -718,7 +780,14 @@ button:disabled {
   }
 }
 
-.tree-panel,
+/* #536 — .tree-panel is no longer a standalone GlassPanel (see the disclosure rules above); it
+ * keeps its own max-height/overflow since it's still the real scroll container (ui/e2e's
+ * pages-editor-autoscroll.spec.js sets `.tree-panel`'s own scrollTop directly). */
+.tree-panel {
+  max-height: 45vh;
+  overflow: auto;
+}
+
 .preview-panel,
 .inspector-panel {
   /* background/border/blur come from .glass-panel (GlassPanel component) */
@@ -1812,9 +1881,6 @@ button:disabled {
 .pe-all-pages { align-self: flex-start; background: transparent; color: var(--accent); border: 1px solid var(--border-subtle); border-radius: 6px; padding: var(--sp-1) var(--sp-2); font: inherit; cursor: pointer; }
 .pe-all-pages:hover { background: var(--hover); }
 .pe-all-pages:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-.pe-browser .pages-browser,
-.pe-browser .tree-panel { margin: 0; padding: var(--sp-2); max-height: none; }
-.pe-browser .tree-panel { max-height: 45vh; }
 .pe-stage .live-preview-panel,
 .pe-stage .preview-panel { margin-top: 0; margin-bottom: var(--sp-3); }
 .pe-stage .preview-panel { max-height: 60vh; }
