@@ -29,6 +29,7 @@ import { ingestPage } from '../../packages/engine/pageTransformer.mjs';
 import { generateWorkflow } from '../../packages/engine/workflowGenerator.mjs';
 import { generateController } from '../../packages/engine/controllerBinder.mjs';
 import { generateFeatureTests } from '../../packages/engine/testGenerator.mjs';
+import { generateUnitTests } from '../../packages/engine/testUnitGenerator.mjs';
 import { runFeatureTests, renderRunText } from '../../packages/engine/testRunner.mjs';
 import { startTimer, elapsedSeconds, formatDuration } from './timing.mjs';
 import { explainSource, renderExplained } from '../../packages/engine/workflowExplain.mjs';
@@ -165,15 +166,30 @@ export async function feature(args) {
 // exactly as before this existed.
 // #348: `construct generate tests <feature> [--dry-run] [--prune]` writes one LOCKED Playwright spec per
 // workflow scenario into features/<feature>/tests/generated/ (see engine/testGenerator.mjs).
+// #583: `--unit` writes one LOCKED every-path unit test per machine instead (engine/testUnitGenerator.mjs):
+// @xstate/graph walks the machine under node's test runner, no browser.
 function generateTests(args) {
-  const feature = args[1];
-  if (!feature || feature.startsWith('--')) {
-    throw new ConstructError('Usage: construct generate tests <feature> [--dry-run] [--prune] [--dir <path>]', { exitCode: EXIT_CODES.USAGE_ERROR });
+  const feature = args.slice(1).find((a, i, all) => !a.startsWith('--') && all[i - 1] !== '--dir');
+  if (!feature) {
+    throw new ConstructError('Usage: construct generate tests [--unit] <feature> [--dry-run] [--prune] [--dir <path>]', { exitCode: EXIT_CODES.USAGE_ERROR });
   }
   const root = getRoot(args);
   const t = startTimer();
-  const r = generateFeatureTests(root, feature, { dryRun: args.includes('--dry-run'), prune: args.includes('--prune') });
   const dry = args.includes('--dry-run') ? ' (dry run, nothing written)' : '';
+  if (args.includes('--unit')) {
+    const r = generateUnitTests(root, feature, { dryRun: args.includes('--dry-run'), prune: args.includes('--prune') });
+    for (const f of r.written) console.log(`Wrote ${f}${dry}`);
+    for (const f of r.unchanged) console.log(`Unchanged ${f}`);
+    for (const f of r.pruned) console.log(`Pruned ${f}${dry}`);
+    for (const f of r.orphans.filter((o) => !r.pruned.includes(o))) console.log(`Orphan ${f} (no machine produces it any more; --prune removes it)`);
+    for (const sk of r.skipped) console.log(`Skipped machine "${sk.machine}" in ${sk.file}: ${sk.reason}`);
+    const sum = r.files.reduce((n, f) => n + f.transitions, 0);
+    console.log(`${r.files.length} every-path test(s) for feature "${feature}" (${r.written.length} written, ${r.unchanged.length} unchanged; ${sum} transition(s) checked) (${formatDuration(elapsedSeconds(t))})`);
+    if (r.missingDependencies.length) console.log(`Note: the test needs ${r.missingDependencies.join(', ')} in this project: npm install -D ${r.missingDependencies.join(' ')}`);
+    if (r.files.length) console.log(`Run: npx tsx --test ${r.files.map((f) => f.relPath).join(' ')}`);
+    return;
+  }
+  const r = generateFeatureTests(root, feature, { dryRun: args.includes('--dry-run'), prune: args.includes('--prune') });
   for (const f of r.written) console.log(`Wrote ${f}${dry}`);
   for (const f of r.unchanged) console.log(`Unchanged ${f}`);
   for (const f of r.pruned) console.log(`Pruned ${f}${dry}`);

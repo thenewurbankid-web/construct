@@ -14,7 +14,7 @@ nonLayer:
 ```
 
 ```
-construct generate tests <feature> [--dry-run] [--prune] [--dir <path>]
+construct generate tests [--unit] <feature> [--dry-run] [--prune] [--dir <path>]
 ```
 
 Output: `features/<feature>/tests/generated/<machine>--<slug>.spec.ts`. Clones and hand-written tests go one level up in `features/<feature>/tests/` (name them `*.spec.ts`), where nothing regenerates them.
@@ -40,6 +40,26 @@ A missing `data-testid` fails as a harness problem: the message names the conven
 ## Lineage
 
 Each file's header records the `machine-hash` and `scenario-hash`, so a clone can later be flagged stale when its source scenario changes.
+
+## Every path, no browser (`--unit`, #583, part of #574)
+
+```
+construct generate tests --unit <feature> [--dry-run] [--prune] [--dir <path>]
+```
+
+Writes one **locked** unit test per workflow machine, `features/<feature>/tests/generated/<machine>--every-path.test.ts`, next to the Playwright specs (same marker, same `frozen:`/`nonLayer:` regions, same overwrite and prune rules; `*.spec.ts` stays Playwright's, `*.test.ts` is node's, so neither runner nor the Cockpit's test listing picks up the other's files). Deterministic, no LLM; `--unit` and the plain command are independent and complement each other: the specs drive the UI through one scenario each, the unit test checks the whole state space in milliseconds.
+
+The generated file imports the machine and, under `node:test`, walks it with [`@xstate/graph`](https://github.com/statelyai/xstate/tree/main/packages/xstate-graph) (MIT): `getShortestPaths` for every reachable state, `getAdjacencyMap` for every transition. It compares what it finds with a table baked in at generation time, read statically from the machine (`packages/engine/workflowExtractor.mjs`; nothing is executed by the generator):
+
+| Constant | Meaning |
+|---|---|
+| `STATES` | every state the machine declares (`parent.child` for nested states); the walk may not reach a state outside it |
+| `REACHABLE` | states every run reaches without a fixture (no guard, no service outcome, no timer to choose); each must be reached |
+| `TRANSITIONS` | per resting state and user event, the states the flow may land on; one candidate is the ordinary case, several when the machine decides (a guarded group, a transient `always` state, a final child settling through its parent's `onDone`) |
+
+A transition removed, retargeted or added since generation fails the test with a one-line reason (`failed --RETRY--> is gone (it landed on loading)`, `audit --OK--> lands on idle, expected done`, `the flow can no longer reach loading`). Once the change is intended, `construct generate tests --unit <feature>` refreshes the table. `after`, `invoke` and `onDone` steps are not in the user-event table, but the walk follows them, so a state only they reach is still visited and its own transitions checked. Machines that are not an exported `const`, or that use `parallel`/`history` states, are reported as skipped with the reason.
+
+**Running it.** The machine files are `.tsx`, which node's own type stripping cannot load, so the project needs a TypeScript loader for node's test runner: `npx tsx --test features/<feature>/tests/generated/<machine>--every-path.test.ts` (the file's `run:` header line says exactly this). `construct init` scaffolds `@xstate/graph`, `tsx` and `@types/node` as devDependencies plus a `test:unit` script (`tsx --test "features/**/tests/generated/*.test.ts"`); on a project that lacks them the command prints the `npm install -D ...` line. Core: `generateUnitTests(root, feature, { dryRun, prune })`, `planUnitTests`, `pathModel` in `packages/engine/testUnitGenerator.mjs`.
 
 ## Safety
 

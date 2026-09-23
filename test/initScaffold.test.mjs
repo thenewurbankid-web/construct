@@ -31,10 +31,11 @@ test('init --framework react-spa scaffolds a Vite + React shell that agrees with
   assert.equal(res.status, EXIT_CODES.OK);
   for (const f of SHELL['react-spa']) assert.ok(has(dir, f), `${f} should exist`);
   const pkg = readJson(dir, 'package.json');
-  assert.deepEqual(Object.keys(pkg.scripts).sort(), ['build', 'dev', 'preview']);
+  assert.deepEqual(Object.keys(pkg.scripts).sort(), ['build', 'dev', 'preview', 'test:unit']);
   assert.equal(pkg.scripts.dev, 'vite');
+  assert.equal(pkg.scripts['test:unit'], 'tsx --test "features/**/tests/generated/*.test.ts"'); // #583: runs `construct generate tests --unit` output
   for (const d of ['react', 'react-dom', 'react-router-dom', 'xstate']) assert.ok(pkg.dependencies[d], `dependency ${d}`);
-  for (const d of ['vite', '@vitejs/plugin-react', 'typescript', '@types/react', '@types/react-dom']) assert.ok(pkg.devDependencies[d], `devDependency ${d}`);
+  for (const d of ['vite', '@vitejs/plugin-react', 'typescript', '@types/react', '@types/react-dom', '@types/node', '@xstate/graph', 'tsx']) assert.ok(pkg.devDependencies[d], `devDependency ${d}`);
   assert.equal(pkg.name, path.basename(dir).toLowerCase().replace(/[^a-z0-9._~-]+/g, '-').replace(/^[-._]+|-+$/g, ''));
   assert.deepEqual(readJson(dir, 'tsconfig.json').include, ['src', 'features', 'vite.config.ts']);
   assert.equal(readJson(dir, 'tsconfig.json').compilerOptions.jsx, 'react-jsx');
@@ -55,9 +56,9 @@ test('init (default nextjs) scaffolds a Next App Router shell with create-next-a
   assert.equal(res.status, EXIT_CODES.OK);
   for (const f of SHELL.nextjs) assert.ok(has(dir, f), `${f} should exist`);
   const pkg = readJson(dir, 'package.json');
-  assert.deepEqual(pkg.scripts, { dev: 'next dev', build: 'next build', start: 'next start' });
+  assert.deepEqual(pkg.scripts, { dev: 'next dev', build: 'next build', start: 'next start', 'test:unit': 'tsx --test "features/**/tests/generated/*.test.ts"' });
   for (const d of ['next', 'react', 'react-dom', 'xstate']) assert.ok(pkg.dependencies[d], `dependency ${d}`);
-  for (const d of ['typescript', '@types/node', '@types/react', '@types/react-dom']) assert.ok(pkg.devDependencies[d], `devDependency ${d}`);
+  for (const d of ['typescript', '@types/node', '@types/react', '@types/react-dom', '@xstate/graph', 'tsx']) assert.ok(pkg.devDependencies[d], `devDependency ${d}`);
   const ts = readJson(dir, 'tsconfig.json');
   assert.equal(ts.compilerOptions.jsx, 'preserve');
   assert.ok(ts.include.includes('next-env.d.ts'));

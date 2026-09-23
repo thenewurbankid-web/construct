@@ -14,6 +14,11 @@ import { write } from './fs.mjs';
 // xstate: `construct generate workflow` emits XState v5 machines, so a generated project needs it to type-check.
 const REACT = { react: '^19.1.0', 'react-dom': '^19.1.0', xstate: '^5.0.0' };
 const REACT_TYPES = { '@types/react': '^19', '@types/react-dom': '^19' };
+// #583: `construct generate tests --unit` writes node:test files that walk a machine with @xstate/graph;
+// tsx is the TypeScript loader for node's test runner (the machine files are .tsx, which node alone cannot load);
+// @types/node lets `tsc --noEmit` type-check the test's node:test / node:assert imports.
+const UNIT_TESTS = { '@types/node': '^20', '@xstate/graph': '^3.0.4', tsx: '^4.19.0' };
+const TEST_UNIT_SCRIPT = 'tsx --test "features/**/tests/generated/*.test.ts"';
 
 const GITIGNORE = 'node_modules\ndist\n.next\nout\n*.tsbuildinfo\n.env*.local\n.DS_Store\nnpm-debug.log*\n';
 
@@ -21,9 +26,9 @@ const TEMPLATES = {
   'react-spa': {
     'package.json': {
       name: '__NAME__', private: true, version: '0.1.0', type: 'module',
-      scripts: { dev: 'vite', build: 'tsc --noEmit && vite build', preview: 'vite preview' },
+      scripts: { dev: 'vite', build: 'tsc --noEmit && vite build', preview: 'vite preview', 'test:unit': TEST_UNIT_SCRIPT },
       dependencies: { ...REACT, 'react-router-dom': '^7.0.0' },
-      devDependencies: { ...REACT_TYPES, '@vitejs/plugin-react': '^5.0.0', typescript: '^5.9.0', vite: '^7.0.0' },
+      devDependencies: { ...REACT_TYPES, ...UNIT_TESTS, '@vitejs/plugin-react': '^5.0.0', typescript: '^5.9.0', vite: '^7.0.0' },
     },
     'tsconfig.json': {
       compilerOptions: {
@@ -41,9 +46,9 @@ const TEMPLATES = {
   nextjs: {
     'package.json': {
       name: '__NAME__', private: true, version: '0.1.0',
-      scripts: { dev: 'next dev', build: 'next build', start: 'next start' },
+      scripts: { dev: 'next dev', build: 'next build', start: 'next start', 'test:unit': TEST_UNIT_SCRIPT },
       dependencies: { next: '^15.5.0', ...REACT },
-      devDependencies: { ...REACT_TYPES, '@types/node': '^20', typescript: '^5' },
+      devDependencies: { ...REACT_TYPES, ...UNIT_TESTS, '@types/node': '^20', typescript: '^5' },
     },
     'tsconfig.json': {
       compilerOptions: {

@@ -116,6 +116,10 @@ Commands:
   construct generate tests <feature> [--dry-run] [--prune] [--dir <path>]
     (one LOCKED Playwright spec per workflow scenario into features/<feature>/tests/generated/;
     needs frozen: + nonLayer: globs for tests in architecture.yml; deterministic, no LLM)
+  construct generate tests --unit <feature> [--dry-run] [--prune] [--dir <path>]
+    (one LOCKED every-path unit test per workflow machine, <machine>--every-path.test.ts in the
+    same directory: @xstate/graph walks every reachable state and user-event transition under
+    node's test runner, no browser; run with npx tsx --test <file>)
   construct sync [--dir <path>]
   construct validate [--format json] [--dir <path>]
   construct summarize [--feature <name>] [--format json|md|compact|prose] [--since <ref>] [--dir <path>]
