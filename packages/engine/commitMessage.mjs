@@ -172,6 +172,31 @@ export function sessionBranchName({ prefix = '', slug = '', sessionId = '', suff
   return p ? `${p}/${stem}` : stem;
 }
 
+/** The prefix Cockpit session branches carry unless the user sets another (`cockpit/<slug>-<id>`). */
+export const DEFAULT_SESSION_BRANCH_PREFIX = 'cockpit';
+
+/**
+ * Did Cockpit make this branch? The reverse of `sessionBranchName`: a branch is a session branch when it sits
+ * under the `cockpit/` namespace, under the user's configured prefix (slugified exactly as `sessionBranchName`
+ * does), or is the branch the live session says it created (which also covers a user who set an empty prefix).
+ * Everything else (pre-existing, hand-made, or a detached HEAD) is "other": Cockpit may work on it, but it did
+ * not create it and does not control what else touches it.
+ *
+ * @param {string|null|undefined} branch The checked-out branch name, or null.
+ * @param {object} [options] `{prefix?, sessionBranch?}`: the user's configured prefix and the live session's branch, if any.
+ * @returns {boolean} True when Cockpit created the branch.
+ *
+ * @example
+ * isSessionBranch('cockpit/billing-invoice-layer-a3f7'); // => true
+ * isSessionBranch('feature/login');                      // => false
+ */
+export function isSessionBranch(branch, { prefix = DEFAULT_SESSION_BRANCH_PREFIX, sessionBranch = null } = {}) {
+  if (typeof branch !== 'string' || !branch) return false;
+  if (sessionBranch && branch === sessionBranch) return true;
+  const own = slugify(prefix, { max: 30 });
+  return [DEFAULT_SESSION_BRANCH_PREFIX, own].some((p) => p && branch.startsWith(`${p}/`));
+}
+
 // ---- the serial ---------------------------------------------------------------------------------
 
 /**
@@ -441,6 +466,7 @@ export function commitMessageApiManifest() {
       slugify: '(text, {max?}) -> branch-safe slug',
       deriveSlug: '({planTitle?, plan?, impact?, changedFiles?, now?}) -> {slug, source}',
       sessionBranchName: '({prefix, slug, sessionId, suffix}) -> "<prefix>/<slug>-<id><suffix>"',
+      isSessionBranch: '(branch, {prefix?, sessionBranch?}) -> boolean (did Cockpit create this branch?)',
       serialLabel: '({prefix, sessionId, serial}) -> "CON-a3f7-0007"',
       parseSerial: '(subject, {sessionId}) -> number|null',
       nextSerialFrom: '(subjects[], {sessionId}) -> number (monotonic within the branch, gaps allowed)',

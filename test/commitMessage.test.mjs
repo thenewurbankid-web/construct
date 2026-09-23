@@ -15,7 +15,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   buildCommitMessage, commitImpact, deriveSlug, newSessionId, nextSerialFrom, parseSerial,
-  serialLabel, sessionBranchName, slugify, commitMessageApiManifest,
+  serialLabel, sessionBranchName, isSessionBranch, slugify, commitMessageApiManifest,
   COMMIT_MODES, DEFAULT_COMMIT_CONFIG, SUBJECT_LIMIT, SCHEMA_VERSION,
 } from '../packages/engine/commitMessage.mjs';
 import { impactFromChangedFiles } from '../packages/engine/impact.mjs';
@@ -194,6 +194,24 @@ test('the branch is <prefix>/<slug>-<session-id><suffix>', () => {
   assert.equal(sessionBranchName({ prefix: '', slug: 'billing', sessionId: 'a3f7' }), 'billing-a3f7');
   assert.equal(sessionBranchName({ prefix: 'PROJ-9', slug: 'billing', sessionId: 'a3f7', suffix: '-wip' }), 'proj-9/billing-a3f7-wip');
   assert.equal(sessionBranchName({ sessionId: 'a3f7' }), 'session-a3f7');
+});
+
+test('isSessionBranch tells a Cockpit session branch from any other branch (#378)', () => {
+  // The default namespace, and the exact names sessionBranchName produces.
+  assert.equal(isSessionBranch('cockpit/billing-invoice-layer-a3f7'), true);
+  assert.equal(isSessionBranch(sessionBranchName({ prefix: 'cockpit', slug: 'billing', sessionId: 'a3f7' })), true);
+  // Anything hand-made or pre-existing is "other", including look-alikes.
+  for (const other of ['main', 'feature/login', 'cockpitx/foo', 'my-cockpit/foo', 'cockpit', 'construct/bot/proc_1']) {
+    assert.equal(isSessionBranch(other), false, other);
+  }
+  assert.equal(isSessionBranch(null), false);
+  assert.equal(isSessionBranch(''), false);
+  // A user who configured another prefix still gets their own branches recognised (slugified like the name is).
+  assert.equal(isSessionBranch('proj-9/billing-a3f7-wip', { prefix: 'PROJ-9' }), true);
+  assert.equal(isSessionBranch('proj-9/billing-a3f7-wip'), false);
+  // An empty prefix leaves nothing to match on: the live session's own branch is the only signal.
+  assert.equal(isSessionBranch('billing-a3f7', { prefix: '', sessionBranch: 'billing-a3f7' }), true);
+  assert.equal(isSessionBranch('billing-a3f7', { prefix: '' }), false);
 });
 
 test('the same slug on two sessions cannot collide, because the id is in the name', () => {

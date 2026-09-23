@@ -6,21 +6,48 @@ import { transformForPreview } from '../packages/engine/previewVitePlugin.mjs';
 function fakeWindow() {
   const listeners = {};
   const posted = [];
+  const winListeners = {};
   const win = {
     document: { addEventListener: (t, fn) => { listeners[t] = fn; } },
+    addEventListener: (t, fn) => { winListeners[t] = fn; },
     parent: { postMessage: (m, o) => posted.push([m, o]) },
   };
-  return { win, listeners, posted };
+  return { win, listeners, winListeners, posted };
 }
 const el = (src, style = {}) => ({ style, getAttribute: () => src, closest() { return this; } });
 
 test('click on an annotated element posts its src to the parent and suppresses the click', () => {
   const { win, listeners, posted } = fakeWindow();
   assert.equal(installPreviewBridge(win), true);
+  posted.length = 0; // the one-time construct:ready is covered below
   let prevented = 0;
   listeners.click({ target: el('a.tsx:3:5'), preventDefault: () => prevented++, stopPropagation() {} });
   assert.deepEqual(posted, [[{ type: 'construct:select', src: 'a.tsx:3:5' }, '*']]);
   assert.equal(prevented, 1);
+});
+
+test('installing announces itself once (construct:ready), so the Cockpit can tell "plugin missing" from "plugin on" (#378)', () => {
+  const { win, posted } = fakeWindow();
+  installPreviewBridge(win);
+  installPreviewBridge(win);
+  assert.deepEqual(posted, [[{ type: 'construct:ready' }, '*']]);
+});
+
+test('an uncaught error or unhandled rejection in the app is forwarded as construct:error, clipped, never anything else (#378)', () => {
+  const { win, winListeners, posted } = fakeWindow();
+  installPreviewBridge(win);
+  posted.length = 0;
+  winListeners.error({ message: "Cannot read properties of undefined (reading 'email')" });
+  winListeners.unhandledrejection({ reason: new Error('boom') });
+  winListeners.unhandledrejection({ reason: 'plain string' });
+  winListeners.error({});
+  winListeners.error({ message: 'x'.repeat(1000) });
+  assert.deepEqual(posted.map(([m]) => m.type), Array(5).fill('construct:error'));
+  assert.equal(posted[0][0].message, "Cannot read properties of undefined (reading 'email')");
+  assert.equal(posted[1][0].message, 'boom');
+  assert.equal(posted[2][0].message, 'plain string');
+  assert.equal(posted[3][0].message, 'Unknown error');
+  assert.equal(posted[4][0].message.length, 300);
 });
 
 test('hover outline is cleared when the pointer leaves the iframe (null relatedTarget), not on internal moves', () => {
@@ -41,6 +68,7 @@ test('hover outline is cleared when the pointer leaves the iframe (null relatedT
 test('click on an unannotated element does nothing', () => {
   const { win, listeners, posted } = fakeWindow();
   installPreviewBridge(win);
+  posted.length = 0;
   listeners.click({ target: { closest: () => null }, preventDefault() { throw new Error('no'); }, stopPropagation() {} });
   assert.equal(posted.length, 0);
 });
