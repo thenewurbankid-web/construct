@@ -352,12 +352,15 @@ function escapeHtml(s) {
  *
  * `deps` exists so the tests can drive the OAuth round trip without a
  * network: `fetchImpl` stands in for GitHub, `now` for the clock and
- * `randomToken` for the CSRF state.
+ * `randomToken` for the CSRF state. `onLogout` (#378) runs when a session signs
+ * out, so work the session started (the target app's dev server) stops with it.
  */
 export function createAuth(config, deps = {}) {
   const fetchImpl = deps.fetchImpl || ((...args) => fetch(...args));
   const now = deps.now || (() => Date.now());
   const randomToken = deps.randomToken || (() => crypto.randomBytes(24).toString('base64url'));
+  // #378: signing out stops what the session started (the target app's dev server). Never blocks or fails the logout.
+  const onLogout = typeof deps.onLogout === 'function' ? deps.onLogout : () => {};
 
   const testLoginEnabled = Boolean(config.testUser);
 
@@ -560,6 +563,7 @@ export function createAuth(config, deps = {}) {
   }
 
   function handleLogout(req, res) {
+    try { onLogout(); } catch { /* a cleanup hook must never keep someone signed in */ }
     clearCookie(res, SESSION_COOKIE);
     res.json({ ok: true });
   }

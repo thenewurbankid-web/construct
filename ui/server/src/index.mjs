@@ -22,6 +22,9 @@ import { runCapturing, withDir } from './commandRunner.mjs';
 import { attachWizardSocket } from './wizardSocket.mjs';
 import { createProcessesService } from './processesService.mjs';
 import { createProcessesRouter } from './processesApi.mjs';
+import { createDevServerService } from './devServer.mjs';
+import { createDevServerRouter } from './devServerApi.mjs';
+import { isSessionBranch } from '../../../packages/engine/commitMessage.mjs';
 import { createPlanService } from './planService.mjs';
 import { createPlanRouter } from './planApi.mjs';
 import { attachProcessesSocket } from './processesSocket.mjs';
@@ -104,9 +107,21 @@ const host = process.env.HOST || '127.0.0.1';
 // log in, the e2e test login left on in production, OAuth configured with
 // an empty allowlist — throws, and the process exits rather than starting
 // in an unsafe state.
+// #378: the target app's dev server. Created BEFORE auth because signing out stops it (it is project code
+// running on the developer's machine for the signed-in session). Nothing starts it but an explicit POST.
+export const devServer = createDevServerService({
+  getProjectDir,
+  // Which branch is checked out in the project's working tree, and did Cockpit create it. This is the same
+  // tree the dev server runs in, so on a session branch the server and Cockpit's saves see the same files.
+  getBranchInfo: (root) => {
+    const s = getSessionStatus(root);
+    return { branch: s.branch, isSession: isSessionBranch(s.branch, { prefix: s.config.branchPrefix, sessionBranch: s.session?.branch ?? null }) };
+  },
+});
+
 let auth;
 try {
-  auth = createAuth(resolveAuthConfig(process.env, { host, port, clientOrigin: CLIENT_ORIGIN }));
+  auth = createAuth(resolveAuthConfig(process.env, { host, port, clientOrigin: CLIENT_ORIGIN }), { onLogout: () => { devServer.stopAll(); } });
 } catch (e) {
   if (e instanceof AuthConfigError && isEntrypoint()) {
     console.error(`\nConstruct UI server refused to start:\n\n  ${e.message}\n`);
@@ -239,7 +254,10 @@ app.get('/api/settings', (req, res) => {
 
 app.post('/api/settings', (req, res) => {
   try {
+    // #378: closing a project, or opening a different one, stops the dev server it was running.
+    const before = devServer.currentRoot();
     const settings = updateSettings(req.body || {});
+    if (before && before !== devServer.currentRoot()) devServer.stopForRoot(before);
     res.json({ ...settings, ...projectStatusFor(settings.projectDir) });
   } catch (e) {
     const { status, body } = settingsErrorBody(e);
@@ -1017,6 +1035,9 @@ app.get('/api/logs', (req, res) => {
   const { status, body } = handleLogs(req.query, { origin: req.get('origin'), clientOrigin: CLIENT_ORIGIN });
   res.status(status).json(body);
 });
+
+// #378: the dev server of the open project (Start / Restart / Stop, states, branch provenance). Below the gate.
+app.use('/api/dev-server', createDevServerRouter(devServer, { clientOrigin: CLIENT_ORIGIN }));
 
 // #292: the Processes drawer. Registered below the gate like every other
 // `/api` route; the WebSocket (createUiServer) takes the same `auth`.
