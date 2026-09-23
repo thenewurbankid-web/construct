@@ -109,6 +109,11 @@ export const DEFAULT_EXECUTION_MODE = 'engine';
  * Validate and normalize a `project.execution.mode` value from architecture.yml. Absent/undefined
  * normalizes to 'engine'.
  *
+ * @param {string|null|undefined} raw The `project.execution.mode` value from `architecture.yml`.
+ * @returns {'engine'|'cli'} A supported execution mode; `'engine'` when `raw` is absent.
+ * @throws {Error} A usage error naming the supported modes when `raw` is unknown.
+ * @since 0.9
+ *
  * @example
  * normalizeExecutionMode(undefined); // => 'engine'
  * normalizeExecutionMode('cli'); // => 'cli'
