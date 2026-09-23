@@ -97,6 +97,37 @@ export function normalizeDataLayerProvider(raw) {
   return raw;
 }
 
+// #541 -- recognized `project.execution.mode` values: WHICH implementation runs a core activity for the
+// Cockpit. 'engine' (the default, so a project that never sets this behaves exactly as before) calls the
+// packages/core + packages/engine functions in-process; 'cli' runs the real `construct` binary as a
+// subprocess and parses its `--format json` output. Same shape and same backward-compatible default as
+// project.dataLayer.provider above; the CLI itself ignores it (it always is the CLI).
+export const EXECUTION_MODES = ['engine', 'cli'];
+export const DEFAULT_EXECUTION_MODE = 'engine';
+
+/**
+ * Validate and normalize a `project.execution.mode` value from architecture.yml. Absent/undefined
+ * normalizes to 'engine'.
+ *
+ * @param {string|null|undefined} raw The `project.execution.mode` value from `architecture.yml`.
+ * @returns {'engine'|'cli'} A supported execution mode; `'engine'` when `raw` is absent.
+ * @throws {Error} A usage error naming the supported modes when `raw` is unknown.
+ * @since 0.9
+ *
+ * @example
+ * normalizeExecutionMode(undefined); // => 'engine'
+ * normalizeExecutionMode('cli'); // => 'cli'
+ */
+export function normalizeExecutionMode(raw) {
+  if (raw === undefined || raw === null) return DEFAULT_EXECUTION_MODE;
+  if (typeof raw !== 'string' || !EXECUTION_MODES.includes(raw)) {
+    throw usageError(
+      `Unknown project.execution.mode '${raw}' in architecture.yml — expected one of: ${EXECUTION_MODES.join(', ')}.`,
+    );
+  }
+  return raw;
+}
+
 /** The canonical base layer graph for a given (already-normalized) framework
  * value — the shape #66/#67 and architecture-graph.mjs's loadLayerGraph
  * branch on before applying any project-level `layers:` override. */
@@ -392,7 +423,7 @@ export function loadConfig(root) {
     return {
       version: 1,
       preset: 'strict-nextjs',
-      project: { framework: DEFAULT_FRAMEWORK, dataLayer: { provider: DEFAULT_DATA_LAYER_PROVIDER } },
+      project: { framework: DEFAULT_FRAMEWORK, dataLayer: { provider: DEFAULT_DATA_LAYER_PROVIDER }, execution: { mode: DEFAULT_EXECUTION_MODE } },
       features: { root: 'features' },
       layers: DEFAULT_LAYERS,
       rules: DEFAULT_RULES,
@@ -415,6 +446,7 @@ export function loadConfig(root) {
   const rules = normalizeRules(c.rules, DEFAULT_RULES);
   const framework = normalizeFramework(c.project?.framework);
   const dataLayerProvider = normalizeDataLayerProvider(c.project?.dataLayer?.provider);
+  const executionMode = normalizeExecutionMode(c.project?.execution?.mode);
 
   return {
     version: 1,
@@ -424,6 +456,7 @@ export function loadConfig(root) {
       ...(c.project || {}),
       framework,
       dataLayer: { ...(c.project?.dataLayer || {}), provider: dataLayerProvider },
+      execution: { ...(c.project?.execution || {}), mode: executionMode },
     },
     features: { root: 'features', ...(c.features || {}) },
     layers: layersForFramework(framework),
