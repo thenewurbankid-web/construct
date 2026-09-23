@@ -28,6 +28,7 @@ import { exceptionApplies, validateExceptionsShape, expiredExceptionViolations }
 import { matchFrozen } from './frozen.mjs';
 import { isNonLayerPath } from './nonLayer.mjs';
 import { buildFrozenIndex, detectFrozenViolations, FROZEN_RULE_BY_LAYER } from './frozen-detector.mjs';
+import { runTypeCheck } from './type-check.mjs';
 
 export { extractImports };
 
@@ -827,6 +828,14 @@ export function validateArchitecture(root, opts = {}) {
     if (!KNOWN_LAYERS.has(layer)) {
       checkGenericEdges(config, graph, root, abs, r, layer, out);
     }
+  }
+
+  // #495 -- TYPE-001 only runs once a project opts in (severity isn't the DEFAULT_RULES 'off').
+  // Whole-program tsc run; when `opts.files` scopes this call, only errors in those files count.
+  const typeRule = config.rules['TYPE-001'];
+  if (typeRule && typeRule.severity !== 'off') {
+    const found = runTypeCheck(root, { severity: typeRule.severity, tsconfig: typeRule.tsconfig, timeoutMs: typeRule.timeoutMs, files: opts.files });
+    out.push(...found.filter((v) => v.message.startsWith('TYPE-001 could not run') || !exceptionApplies(config, 'TYPE-001', v.file)));
   }
 
   out.push(...expiredExceptionViolations(config));

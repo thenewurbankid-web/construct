@@ -273,6 +273,15 @@ export const DEFAULT_RULES = {
   // enforcing it on hand-written/legacy files with `rules: { READ-004: warning }` (or
   // 'error') in architecture.yml once it's ready to rename its own files.
   'READ-004': { severity: 'off', name: 'A unit\'s filename encodes its layer as a suffix (Name.layer.ext)' },
+  // #495 -- a real TypeScript type-check (the project's own node_modules/typescript, `tsc
+  // --noEmit -p tsconfig.json`; packages/core/type-check.mjs), because an --llm fill can produce code
+  // that parses and matches its layer but does not compile (#490: `Cannot find name 'useRef'`),
+  // which neither the rule engine nor a transpile-only `vite build` catches. Default severity is
+  // 'off', same reasoning as DOMAIN-002/READ-004 above: it spawns tsc (seconds, not the
+  // millisecond string/AST checks) and would fail any project or fixture that has type errors or
+  // no TypeScript, so it is strictly opt-in: `rules: { TYPE-001: error }` in architecture.yml, or
+  // an options object `{ severity: error, tsconfig: tsconfig.app.json, timeoutMs: 120000 }`.
+  'TYPE-001': { severity: 'off', name: 'Code must type-check (a real tsc --noEmit run with the project\'s own TypeScript)' },
   'IMPORT-001': { severity: 'error', name: 'Relative imports must resolve to a file that exists' },
   'EXCEPTION-EXPIRED': { severity: 'warning', name: 'Time-boxed exceptions must be renewed or removed once they expire' },
   // #473 -- cross-references a component's declared props (react-docgen) against every real JSX

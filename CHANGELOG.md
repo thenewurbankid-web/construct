@@ -7,6 +7,9 @@ request or issue numbers.
 
 ## [Unreleased]
 
+### Added
+- `TYPE-001` (off by default, opt-in via `rules: { TYPE-001: error }` in `architecture.yml`): `construct validate` runs the project's own TypeScript (`tsc --noEmit -p tsconfig.json`) and reports each diagnostic as a violation with its `TSxxxx` code, file and line; if TypeScript or the tsconfig is missing it warns `TYPE-001 could not run: <reason>` instead of passing silently ([#495]).
+
 ## [0.8.0] - 2026-09-23
 
 The first tagged release. It is the 2026-09-20 baseline (below) plus everything shipped up to the
@@ -204,6 +207,7 @@ The first tracked baseline. It collects everything shipped since the project beg
 [#484]: https://github.com/thenewurbankid-web/construct/issues/484
 [#485]: https://github.com/thenewurbankid-web/construct/issues/485
 [#486]: https://github.com/thenewurbankid-web/construct/issues/486
+[#495]: https://github.com/thenewurbankid-web/construct/issues/495
 [#501]: https://github.com/thenewurbankid-web/construct/issues/501
 [#502]: https://github.com/thenewurbankid-web/construct/issues/502
 [#503]: https://github.com/thenewurbankid-web/construct/issues/503
