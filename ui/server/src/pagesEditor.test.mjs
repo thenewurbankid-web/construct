@@ -18,6 +18,7 @@ import {
   applyAutoMap,
   checkEnforcement,
   hashOf,
+  assertContentHash,
   PagesEditorError,
   parseSnippetToTree,
   removeAttributeSnippet,
@@ -155,10 +156,27 @@ test('patchNode splices only the target node, leaving the rest of the file untou
   assert.equal(patched.split('\n').length, SOURCE.split('\n').length); // same line count, single-line edit
 });
 
-test('patchNode rejects a stale contentHash (optimistic concurrency)', () => {
+test('patchNode rejects a stale contentHash with 409 CHANGED_ON_DISK (optimistic concurrency)', () => {
   const { roots } = serializeTree(SOURCE);
   const h1Id = roots[0].children[0].id;
-  assert.throws(() => patchNode(SOURCE, h1Id, '<h1>x</h1>', 'not-the-real-hash'), PagesEditorError);
+  assert.throws(() => patchNode(SOURCE, h1Id, '<h1>x</h1>', 'not-the-real-hash'), (e) => e instanceof PagesEditorError && e.status === 409 && e.code === 'CHANGED_ON_DISK');
+});
+
+test('#590: patchNode REQUIRES the contentHash -- omitted, empty or non-string is 400 HASH_REQUIRED, never a write', () => {
+  const { roots } = serializeTree(SOURCE);
+  const h1Id = roots[0].children[0].id;
+  const isRequired = (e) => e instanceof PagesEditorError && e.status === 400 && e.code === 'HASH_REQUIRED';
+  assert.throws(() => patchNode(SOURCE, h1Id, '<h1>x</h1>'), isRequired, 'omitted');
+  assert.throws(() => patchNode(SOURCE, h1Id, '<h1>x</h1>', undefined), isRequired, 'undefined');
+  assert.throws(() => patchNode(SOURCE, h1Id, '<h1>x</h1>', null), isRequired, 'null');
+  assert.throws(() => patchNode(SOURCE, h1Id, '<h1>x</h1>', ''), isRequired, 'empty string');
+  assert.throws(() => patchNode(SOURCE, h1Id, '<h1>x</h1>', 42), isRequired, 'non-string');
+});
+
+test('#590: assertContentHash is the one guard -- missing 400 HASH_REQUIRED, mismatch 409 CHANGED_ON_DISK, match passes', () => {
+  assert.throws(() => assertContentHash(SOURCE, undefined), (e) => e.status === 400 && e.code === 'HASH_REQUIRED');
+  assert.throws(() => assertContentHash(SOURCE, 'deadbeef'), (e) => e.status === 409 && e.code === 'CHANGED_ON_DISK');
+  assert.doesNotThrow(() => assertContentHash(SOURCE, hashOf(SOURCE)));
 });
 
 test('patchNode rejects a replacement that is not valid JSX', () => {
