@@ -211,6 +211,12 @@ export const DEFAULT_RULES = {
   'WORKFLOW-002': { severity: 'warning', name: 'Workflow states must be reachable from the initial state' },
   'WORKFLOW-003': { severity: 'warning', name: 'Non-final workflow states must have a way out' },
   'WORKFLOW-004': { severity: 'off', name: 'Every non-final workflow state must decide every event the machine handles (transition or explicit ignore)' },
+  // #573/#581 -- a workflow's or hook's state must not be a bag of co-occurring status flags
+  // (`isLoading` + `isError`, or a flag next to both `error` and `data`) that can express states
+  // which cannot happen; a discriminated union on one `status` field is the fix. Off by default
+  // (same phasing as DOMAIN-002/WORKFLOW-004: additive and flag-gated until dogfood evidence);
+  // opt in with `rules: { STATE-001: warning }`.
+  'STATE-001': { severity: 'off', name: 'Workflow/hook state is a discriminated union on one status field, not a bag of co-occurring loading/error/data flags' },
   // Ticket 7.4 (#114) -- genuinely new, per the epic's reconciliation notes (no existing
   // rule covers this): a controller's whole job is composing/wiring already-generated
   // layers together (import a page, import a hook, pass matched handlers down) -- never

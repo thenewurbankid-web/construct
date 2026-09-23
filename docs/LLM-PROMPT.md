@@ -90,8 +90,10 @@ THE LOOP (do this after every change)
 2. Exit code 0 = clean. 1 = violations. 2 = usage or config error. 3 = internal error.
 3. Each violation has: rule, severity, file, line, message, why, expected, suggestedFix.
    Fix it by following suggestedFix. Do not suppress it, and do not work around it.
-4. If the project enables the opt-in rules TYPE-001 (the code must type-check) and WORKFLOW-004 (every state
-   decides every event), those appear in the same list and are fixed the same way.
+4. If the project enables the opt-in rules TYPE-001 (the code must type-check), WORKFLOW-004 (every state
+   decides every event) and STATE-001 (state is a discriminated union on one `status` field, never a bag
+   of `loading`/`error`/`data` flags; the violation carries the exact union to write), those appear in the
+   same list and are fixed the same way.
 5. Re-run until the exit code is 0. Warnings are not failures, but fix them or say why you did not.
 6. If the project has tests, run them as well, and say what you ran and what it showed.
 

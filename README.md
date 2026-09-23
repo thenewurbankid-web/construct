@@ -347,7 +347,10 @@ Most layer rules above are enforced two ways at once, not just one:
   `useUserProvider.provider.ts` — a cheap string match, no `tsc`/AST pass
   needed, so it can run live on every keystroke; off by default since every
   fixture in this repo predates the convention, opt-in via
-  `architecture.yml` once a project is ready to rename its own files).
+  `architecture.yml` once a project is ready to rename its own files), and
+  `STATE-001` (a workflow's or hook's state is a discriminated union on one
+  `status` field, not a bag of co-occurring flags — see below; off by
+  default, opt in with `rules: { STATE-001: warning }`).
 - **Type-check** — `TYPE-001` runs a real `tsc --noEmit` (the project's own
   `node_modules/typescript`, never a global one) and reports every diagnostic
   (`TS2304: Cannot find name 'useRef'`, with file and line) as a violation, so
@@ -365,6 +368,33 @@ Most layer rules above are enforced two ways at once, not just one:
   configs actually checked are returned as `typeCheck.checked` by
   `validateArchitecture` (and `runTypeCheckDetailed`). When `validateArchitecture` is scoped to `files`, only errors in those files
   are reported (the whole program is still checked).
+
+`STATE-001` reads the state shapes a workflow or hook file declares — an
+interface, an object-literal type alias, the initial object (or inline type
+argument) of `useState`/`useReducer`, a top-level const named like an initial
+state, an XState `context` — and flags one whose fields combine two boolean
+status flags (`isLoading` + `isError`, `pending` + `failed`, `ready` + `loaded`)
+or one flag with both an `error` and a `data`-style field. Those objects can
+express states that cannot happen (loading and failed at once, stale data next
+to an error). One flag plus `data`, a `status` field, a union, or a flag-named
+field that is not a boolean (`ready: Promise<void>`) is never reported. The
+violation names the fields and carries the rewrite, built from the real field
+names and types:
+
+```ts
+// Before (STATE-001): `loading`, `error` and `data` can all be set at once
+type ItemsState = { loading: boolean; error: string | null; data: Item[] | null };
+
+// After: each state carries only the fields that exist in it, and a
+// `switch (state.status)` is checked for exhaustiveness by the compiler
+type ItemsState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'error'; error: string }
+  | { status: 'success'; data: Item[] };
+
+const [state, setState] = useState<ItemsState>({ status: 'idle' });
+```
 
 Both layers are additive: a project using neither the new factories nor
 `expressions/` sees no behavior change. See `packages/core/typed-contracts/`

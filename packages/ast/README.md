@@ -27,6 +27,8 @@ the `exports` map (`.`, `./parse`, `./walk`, `./extract`, `./ts`) for a future m
 | walk | `isNonUsagePosition(node, parent, key)` | the predicate behind `walkForUsage` |
 | jsx complexity | `collectInlineJsxLogic(ast)` | inline conditional (`cond ? <A/> : <B/>`, `cond && <A/>`) and loop-render (`.map`/`.flatMap` returning JSX) nodes, sorted — the shape COMPONENT-005 (#508) flags |
 | jsx complexity | `computeJsxComplexity(ast)` | `{maxDepth, branchCount}` — a component/page's own JSX nesting depth and inline-logic count, the budget COMPONENT-006 (#508) caps |
+| state shape | `collectBagOfFlagsStates(ast, source)` | every "bag of flags" state shape (an interface / object-literal alias / `useState`-`useReducer` initial object or inline type / initial-state const / XState `context` whose fields combine two status flags, or a flag with both `error` and `data`), each with the offending fields and a compiling `status`-union rewrite — the shape STATE-001 (#573) flags |
+| state shape | `classifyStateFields(members)` | the heuristic's boundary on one member list: `{flags, error, data}` when it is a bag, `null` when allowed (one flag + `data` is fine) |
 | extract | `extractImports(source)` | static + dynamic import specifiers, source order |
 | extract | `extractExports(source)` | `[{name, index}]` for every export form |
 | extract | `extractJsdoc(source, index)` | the JSDoc block for the export at `index` (decorator-aware), or `null` |

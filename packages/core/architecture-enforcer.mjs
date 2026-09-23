@@ -21,7 +21,7 @@ import { loadLayerGraph, canImport, classifyFile } from './architecture-graph.mj
 import { makeViolation, ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { walk, rel } from './fs.mjs';
 import { globToRegExp, matchGlob } from './glob.mjs';
-import { parseToAst, extractImports, extractExports, staticImportEntries, lineOf, collectCalls, collectBareIdentifierUsages, collectControlFlowNodes, collectInlineJsxLogic, computeJsxComplexity, walkAst, collectImpureDomainReferences } from '../../packages/ast/index.mjs';
+import { parseToAst, extractImports, extractExports, staticImportEntries, lineOf, collectCalls, collectBareIdentifierUsages, collectControlFlowNodes, collectInlineJsxLogic, computeJsxComplexity, walkAst, collectImpureDomainReferences, collectBagOfFlagsStates } from '../../packages/ast/index.mjs';
 import { extractMachines } from '../../packages/engine/workflowExtractor.mjs';
 import { findHealthIssues } from '../../packages/engine/workflowScenarios.mjs';
 import { exceptionApplies, validateExceptionsShape, expiredExceptionViolations } from './exceptions.mjs';
@@ -232,10 +232,11 @@ export function findTransitionHoles(machine) {
  *
  * @param {string} layer One of the known layer names.
  * @param {string} source The file's source text.
- * @param {{maxJsxDepth?: number, maxJsxBranches?: number, domainPurityAllowlist?: boolean, workflowTransitionTable?: boolean}} [opts]
+ * @param {{maxJsxDepth?: number, maxJsxBranches?: number, domainPurityAllowlist?: boolean, workflowTransitionTable?: boolean, stateUnion?: boolean}} [opts]
  *   COMPONENT-006/PAGE-009's complexity budget overrides (#508/#505), DOMAIN-002's opt-in
- *   flag (#506) and WORKFLOW-004's opt-in flag (#578) -- additive, optional; every existing
- *   call site that omits them keeps the built-in defaults (and DOMAIN-002/WORKFLOW-004 off).
+ *   flag (#506), WORKFLOW-004's opt-in flag (#578) and STATE-001's opt-in flag (#581) --
+ *   additive, optional; every existing call site that omits them keeps the built-in defaults
+ *   (and DOMAIN-002/WORKFLOW-004/STATE-001 off).
  */
 export function detectLayerViolations(layer, source, opts = {}) {
   const ast = parseToAst(source);
@@ -243,6 +244,25 @@ export function detectLayerViolations(layer, source, opts = {}) {
   const staticImports = staticImportEntries(ast);
   const firstImportMatch = (re) => staticImports.find((e) => re.test(e.value));
   const out = [];
+
+  // #581 -- STATE-001 (part of #573), flag-gated like DOMAIN-002/WORKFLOW-004: in the two
+  // layers that own application state (workflow, hook), a state shape that is a bag of
+  // co-occurring status flags. Detection is packages/ast/stateShape.mjs's
+  // collectBagOfFlagsStates (interface / object-literal type alias / useState-useReducer
+  // initial object or inline type argument / XState `context`), which also spells out the
+  // concrete discriminated-union rewrite carried in `suggestedFix`.
+  if (opts.stateUnion && (layer === 'workflow' || layer === 'hook')) {
+    for (const s of collectBagOfFlagsStates(ast, source)) out.push({
+      rule: 'STATE-001', line: lineOf(source, s.index),
+      message: `${s.kind === 'interface' || s.kind === 'type' ? `${s.kind} "${s.name}"` : s.kind === 'initial' ? `initial state "${s.name}"` : `${s.kind} state`} is a bag of flags: ${s.fields.join(', ')} (${s.contradiction}).`,
+      why: 'Independent status flags let the object express states that cannot happen (loading and failed at once, data next to an error); one discriminated `status` field makes each state carry only the fields that exist in it, and an exhaustive switch over it is checked by the compiler.',
+      suggestedFix: `replace the fields with a discriminated union: ${s.suggestion}${
+        s.kind === 'useState' ? `, then useState<${s.typeName}>({ status: 'idle' })`
+          : s.kind === 'useReducer' ? `, type the reducer's state as ${s.typeName} and start from { status: 'idle' }`
+            : s.kind === 'context' ? `, and type the machine's context as ${s.typeName}` : ''}`,
+      expected: ['a discriminated union on one `status` field'],
+    });
+  }
 
   if (layer === 'route') {
     if (!importsList.some((x) => /controllers?\//.test(x))) {
@@ -797,6 +817,8 @@ export function validateArchitecture(root, opts = {}) {
   const domainPurityAllowlist = config.rules['DOMAIN-002']?.severity !== 'off';
   // #578 -- WORKFLOW-004 opts in the same way.
   const workflowTransitionTable = config.rules['WORKFLOW-004']?.severity !== 'off';
+  // #581 -- STATE-001 opts in the same way.
+  const stateUnion = config.rules['STATE-001']?.severity !== 'off';
   let frozenIndex = null;
   for (const abs of files) {
     if (!FILE_EXTENSIONS.has(path.extname(abs)) || !fs.existsSync(abs)) continue;
@@ -813,7 +835,7 @@ export function validateArchitecture(root, opts = {}) {
     }
     const source = fs.readFileSync(abs, 'utf8');
     const complexityOpts = layer === 'page' ? pageComplexityOpts : componentComplexityOpts;
-    const layerOpts = { ...complexityOpts, domainPurityAllowlist, workflowTransitionTable };
+    const layerOpts = { ...complexityOpts, domainPurityAllowlist, workflowTransitionTable, stateUnion };
     for (const desc of detectLayerViolations(layer, source, layerOpts)) {
       pushViolation(config, out, { ...desc, file: r });
     }
