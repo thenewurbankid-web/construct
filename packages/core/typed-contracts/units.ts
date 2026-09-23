@@ -75,6 +75,14 @@ export type DomainUnit<Fn extends (...args: any[]) => any> = Brand<Fn, 'domain'>
 export type ServiceUnit<Fn extends (...args: any[]) => any> = Brand<Fn, 'service'> & LayerTag<'service'>;
 export type HookUnit<Fn extends (...args: any[]) => any> = Brand<Fn, 'hook'> & LayerTag<'hook'>;
 
+/** #585 -- a service built with `defineService(name, fn, { schema })`: an ordinary
+ * `ServiceUnit` (so every `Forbid<>` boundary that rejects a service still rejects it) whose
+ * `Fn` now returns the boundary result (`ServiceResult<Output>`, schema.ts) instead of `fn`'s
+ * raw value, plus the schema itself as a plain runtime property so tooling (the OpenAPI slice,
+ * the Cockpit) can introspect what the service declares it returns. */
+export type CheckedServiceUnit<Fn extends (...args: any[]) => any, Schema> =
+  ServiceUnit<Fn> & { readonly schema: Schema };
+
 /** A workflow unit brands a machine-shaped configuration value, not a
  * function -- this mirrors what `extractMachines`
  * (packages/engine/workflowExtractor.mjs) already looks for: a

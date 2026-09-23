@@ -58,7 +58,8 @@
     "react-redux": "^9.3.0",
     "subtitle": "^4.2.2",
     "typedoc": "^0.28.20",
-    "typedoc-plugin-markdown": "^4.13.1"
+    "typedoc-plugin-markdown": "^4.13.1",
+    "zod": "^4.6.5"
   },
   "overrides": {
     "js-yaml": "^4.3.2"

@@ -74,6 +74,9 @@ Create the files first, then fill in only the bodies. Do not hand-write a layer'
 scratch, and do not reorganise folders. Where a layer has a typed factory (defineDomain, definePage,
 defineComponent, defineExpression, defineService, defineWorkflow, defineController, defineProvider,
 useTrackedState) use it: the factory is the one legal shape, and a wrong wiring is a type error.
+A service that returns wire data declares its shape: `defineService(name, fn, { schema })` with a
+Standard Schema / zod object; the caller gets `{ status: 'ok', value }` (typed as the schema's output) or
+`{ status: 'error', kind: 'schema', issues }` and must narrow on `status` -- never parse a response by hand.
 Model state as a discriminated union (`{ status: 'idle' } | { status: 'loading' } | ...`), never as a bag of
 flags such as isLoading + error + data. For a workflow, generate the union with the machine:
             construct generate workflow <name> --feature <f> --from <graph.json> --state-union

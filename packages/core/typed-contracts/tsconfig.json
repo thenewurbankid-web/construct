@@ -21,6 +21,7 @@
     "examples/invalid-wiring.ts",
     "examples/implicit-return.ts",
     "examples/feature-branded-invalid.ts",
-    "examples/expression-implicit-return.ts"
+    "examples/expression-implicit-return.ts",
+    "examples/service-schema-invalid.ts"
   ]
 }

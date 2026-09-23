@@ -19,6 +19,7 @@ import type { ReactNode } from 'react';
 import type { Template } from './template.ts';
 import type {
   AnyUnit,
+  CheckedServiceUnit,
   ComponentUnit,
   ComponentUnitAny,
   ControllerUnit,
@@ -37,6 +38,7 @@ import type {
   WorkflowConfig,
   WorkflowUnit,
 } from './units.ts';
+import { checkServiceReturn, type CheckedReturn, type ResponseSchema, type SchemaOutput } from './schema.ts';
 
 /** Shared by every factory below: wrap `fn` in a fresh delegating function
  * carrying the given name (both as a plain, introspectable `unitName`
@@ -153,12 +155,39 @@ export function defineWorkflow<Props extends Forbid<Props, WorkflowAllowed>>(
 
 // ---- service ---------------------------------------------------------
 // Mirrors DEFAULT_LAYERS.service.canImport = ['domain', 'types'].
+//
+// #585 -- the optional third argument `{ schema }` (a Standard Schema or `safeParse`-shaped
+// object, see schema.ts) turns the unit into a boundary-checked service: `fn`'s value is parsed
+// on the way out and the unit returns `ServiceResult<Output>` (`{ status: 'ok', value }` typed
+// as the schema's output, or `{ status: 'error', kind: 'schema', issues }`), keeping `fn`'s own
+// sync/async-ness. Two overloads rather than one optional parameter so the no-schema call keeps
+// EXACTLY its pre-#585 signature and return type -- a service without `schema` is unchanged in
+// both behaviour and types.
+
+export interface ServiceOptions<Schema extends ResponseSchema> {
+  /** Parsed against the service's response at the boundary; a mismatch is a typed error state. */
+  readonly schema: Schema;
+}
 
 export function defineService<Props extends Forbid<Props, DomainUnitAny>, Return>(
   name: string,
   fn: (props: Props) => Return,
-): ServiceUnit<(props: Props) => Return> {
-  return tagUnit(name, fn, 'service');
+): ServiceUnit<(props: Props) => Return>;
+export function defineService<Props extends Forbid<Props, DomainUnitAny>, Return, Schema extends ResponseSchema>(
+  name: string,
+  fn: (props: Props) => Return,
+  options: ServiceOptions<Schema>,
+): CheckedServiceUnit<(props: Props) => CheckedReturn<Return, SchemaOutput<Schema>>, Schema>;
+export function defineService<Props extends Forbid<Props, DomainUnitAny>, Return, Schema extends ResponseSchema>(
+  name: string,
+  fn: (props: Props) => Return,
+  options?: ServiceOptions<Schema>,
+): ServiceUnit<(props: Props) => unknown> {
+  if (!options?.schema) return tagUnit(name, fn, 'service');
+  const { schema } = options;
+  const checked = (props: Props) => checkServiceReturn(schema, fn(props));
+  const unit = tagUnit<typeof checked, ServiceUnit<typeof checked>>(name, checked, 'service');
+  return Object.assign(unit, { schema });
 }
 
 // ---- domain ------------------------------------------------------------

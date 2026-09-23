@@ -299,6 +299,39 @@ Most layer rules above are enforced two ways at once, not just one:
   wrapper. This is the allowlist half: the factory is the one shape to copy,
   matching the project's own mantra that an example teaches better than an
   instruction.
+- **A service declares what it returns** — `defineService(name, fn, { schema })`
+  parses `fn`'s value at the boundary. `schema` is any
+  [Standard Schema](https://standardschema.dev) object (`~standard.validate`:
+  zod 3.24+/4, Valibot, ArkType, or one written by hand) or a `safeParse`-shaped
+  one; core imports no schema library. A mismatch is a typed state, never a
+  throw, and the caller has to narrow on it before touching `value`:
+
+  ```ts
+  import { z } from 'zod';
+  // the vendored packages/core/typed-contracts/index.ts, at whatever relative path applies
+  import { defineService } from '../../typed-contracts/index.ts';
+
+  const User = z.object({ id: z.string(), role: z.enum(['user', 'admin']).default('user') });
+
+  const fetchUser = defineService(
+    'fetchUser',
+    async ({ id }: { id: string }): Promise<unknown> => (await fetch(`/api/users/${id}`)).json(),
+    { schema: User },
+  );
+
+  const result = await fetchUser({ id: 'u1' });
+  //    ^? { status: 'ok'; value: { id: string; role: 'user' | 'admin' } }
+  //     | { status: 'error'; kind: 'schema'; issues: { message: string; path: PropertyKey[] }[] }
+  if (result.status === 'error') return showIssues(result.issues);
+  result.value.role; // narrowed to the schema's OUTPUT type (`.default()` applied), not `unknown`
+  ```
+
+  A sync `fn` stays sync; without `{ schema }` the two-argument form is
+  byte-for-byte what it was. The schema also rides along as `fetchUser.schema`
+  for tooling. Fixtures: `examples/service-schema.ts` (hand-written Standard
+  Schema, `safeParse`), `examples/service-schema-zod.ts` (real zod) and
+  `examples/service-schema-invalid.ts` (using `.value` before narrowing is a
+  `tsc` error).
 - **Validation catches** — the existing rule engine (`construct validate`)
   remains the backstop for hand-edited files and cases a type system can't
   see: `EXPR-001`..`EXPR-006` (a new `expressions/` layer for If/Switch/

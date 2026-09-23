@@ -21,6 +21,13 @@
 //   node --experimental-strip-types --test test/typed-contracts.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { validateArchitecture } from '../packages/core/architecture-enforcer.mjs';
+import { makeTempDir } from '../test-utils/tmpdir.mjs';
+
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 let typedContracts;
 let loadError;
@@ -156,6 +163,137 @@ test('useTrackedState is exported as a real, named function (its stateful behavi
   const { useTrackedState } = typedContracts;
   assert.equal(typeof useTrackedState, 'function');
   assert.equal(useTrackedState.name, 'useTrackedState');
+});
+
+// #585 -- defineService's optional `{ schema }`, at runtime: the boundary check itself. A
+// hand-written Standard Schema object (no library) and a `safeParse`-shaped object; the real-zod
+// path is the same `~standard.validate` call and is proven at the type level in
+// examples/service-schema-zod.ts (test/typed-contracts-tsc.test.mjs).
+const userSchema = {
+  '~standard': {
+    version: 1,
+    vendor: 'test',
+    validate: (value) => {
+      const issues = [];
+      if (typeof value?.id !== 'string') issues.push({ message: 'expected string', path: ['id'] });
+      if (typeof value?.name !== 'string') issues.push({ message: 'expected string', path: [{ key: 'name' }] });
+      return issues.length ? { issues } : { value: { id: value.id, name: value.name } };
+    },
+  },
+};
+
+test('#585: a schema-checked async service resolves to { status: "ok", value } with the PARSED value on a match', { skip }, async () => {
+  const { defineService } = typedContracts;
+  const fetchUser = defineService('fetchUser', async () => ({ id: 'u1', name: 'Ada', extra: 'dropped by the schema' }), { schema: userSchema });
+  const result = await fetchUser({});
+  assert.deepEqual(result, { status: 'ok', value: { id: 'u1', name: 'Ada' } });
+  assert.equal(fetchUser.unitLayer, 'service');
+  assert.equal(fetchUser.unitName, 'fetchUser');
+  assert.equal(fetchUser.schema, userSchema, 'the schema rides along on the unit for tooling');
+});
+
+test('#585: a mismatch resolves to { status: "error", kind: "schema", issues } with normalized paths -- never a throw', { skip }, async () => {
+  const { defineService } = typedContracts;
+  const fetchUser = defineService('fetchUser', async () => ({ id: 42 }), { schema: userSchema });
+  const result = await fetchUser({});
+  assert.deepEqual(result, {
+    status: 'error',
+    kind: 'schema',
+    issues: [
+      { message: 'expected string', path: ['id'] },
+      { message: 'expected string', path: ['name'] }, // `{ key: 'name' }` flattened to 'name'
+    ],
+  });
+});
+
+test('#585: a synchronous service stays synchronous (no Promise) and is checked the same way', { skip }, () => {
+  const { defineService } = typedContracts;
+  const readUser = defineService('readUser', ({ raw }) => raw, { schema: userSchema });
+  assert.deepEqual(readUser({ raw: { id: 'u1', name: 'Ada' } }), { status: 'ok', value: { id: 'u1', name: 'Ada' } });
+  const bad = readUser({ raw: null });
+  assert.equal(typeof bad.then, 'undefined', 'sync in, sync out');
+  assert.equal(bad.status, 'error');
+  assert.equal(bad.kind, 'schema');
+  assert.equal(bad.issues.length, 2);
+});
+
+test('#585: a safeParse-shaped schema (zod\'s classic surface) is accepted; success.data becomes value, error.issues become issues', { skip }, () => {
+  const { defineService } = typedContracts;
+  const countSchema = {
+    safeParse: (value) => (typeof value === 'number'
+      ? { success: true, data: value }
+      : { success: false, error: { issues: [{ message: 'expected number', path: [] }] } }),
+  };
+  const count = defineService('count', ({ n }) => n, { schema: countSchema });
+  assert.deepEqual(count({ n: 3 }), { status: 'ok', value: 3 });
+  assert.deepEqual(count({ n: 'x' }), { status: 'error', kind: 'schema', issues: [{ message: 'expected number', path: [] }] });
+});
+
+test('#585: a validator that throws, or that can only validate asynchronously for a sync service, is a typed error state too', { skip }, async () => {
+  const { defineService } = typedContracts;
+  const throwing = { safeParse: () => { throw new Error('boom'); } };
+  const viaThrow = defineService('viaThrow', () => 1, { schema: throwing });
+  assert.deepEqual(viaThrow({}), { status: 'error', kind: 'schema', issues: [{ message: 'schema threw: boom', path: [] }] });
+
+  const asyncSchema = { '~standard': { version: 1, vendor: 'test', validate: async (v) => ({ value: v }) } };
+  const syncFn = defineService('syncFn', () => 1, { schema: asyncSchema });
+  const r = syncFn({});
+  assert.equal(r.status, 'error');
+  assert.equal(r.kind, 'schema');
+  assert.match(r.issues[0].message, /validates asynchronously/);
+  // ...while an async service with the same async validator is simply awaited through.
+  const asyncFn = defineService('asyncFn', async () => 1, { schema: asyncSchema });
+  assert.deepEqual(await asyncFn({}), { status: 'ok', value: 1 });
+});
+
+test('#585: a real zod schema (root devDependency, MIT) goes through the same ~standard path: defaults applied on a match, zod issues on a mismatch', { skip }, async () => {
+  const { defineService } = typedContracts;
+  const { z } = await import('zod');
+  const schema = z.object({ id: z.string(), role: z.enum(['user', 'admin']).default('user') });
+  const fetchUser = defineService('fetchUser', async ({ wire }) => wire, { schema });
+  assert.deepEqual(await fetchUser({ wire: { id: 'u1' } }), { status: 'ok', value: { id: 'u1', role: 'user' } });
+  const bad = await fetchUser({ wire: { id: 7, role: 'root' } });
+  assert.equal(bad.status, 'error');
+  assert.equal(bad.kind, 'schema');
+  assert.deepEqual(bad.issues.map((i) => i.path), [['id'], ['role']]);
+  assert.ok(bad.issues.every((i) => typeof i.message === 'string' && i.message.length > 0));
+});
+
+test('#585: off by default -- without { schema } a service returns fn\'s raw value untouched and carries no schema property', { skip }, async () => {
+  const { defineService } = typedContracts;
+  const raw = { id: 42, anything: true };
+  const plain = defineService('plain', async () => raw);
+  assert.equal(await plain({}), raw, 'same object reference, no parsing, no wrapping');
+  assert.equal('schema' in plain, false);
+  assert.deepEqual(Object.keys(plain).sort(), ['unitLayer', 'unitName']);
+});
+
+// #585 -- no `construct validate` rule inspects defineService's argument shape (hasFactoryCall
+// tolerates any arguments; SERVICE-001/002 look at imports), and a bare `zod` import is not a
+// layer. Proven by running the real validator over a service that uses the option -- plain JS,
+// so this one runs with or without type stripping.
+test('#585: a service built with defineService(name, fn, { schema }) and a zod import passes construct validate', () => {
+  const dir = makeTempDir('construct-service-schema-');
+  fs.writeFileSync(
+    path.join(dir, 'architecture.yml'),
+    'version: 1\npreset: strict-nextjs\nproject:\n  framework: nextjs\n  language: typescript\nfeatures:\n  root: features\nrules: {}\nexceptions: []\n',
+  );
+  const servicesDir = path.join(dir, 'features', 'user', 'services');
+  fs.mkdirSync(servicesDir, { recursive: true });
+  // Same relative-to-the-vendored-index import shape extractExpression.mjs generates (IMPORT-001 needs a real file).
+  const specifier = path.relative(servicesDir, path.join(REPO_ROOT, 'packages', 'core', 'typed-contracts', 'index.ts')).split(path.sep).join('/');
+  fs.writeFileSync(path.join(servicesDir, 'fetchUser.ts'), [
+    "import { z } from 'zod';",
+    `import { defineService } from '${specifier}';`,
+    '',
+    'const User = z.object({ id: z.string(), name: z.string() });',
+    '',
+    "export const fetchUser = defineService('fetchUser', async ({ id }: { id: string }): Promise<unknown> =>",
+    '  (await fetch(`/api/users/${id}`)).json(), { schema: User });',
+    '',
+  ].join('\n'));
+  const { ok, violations } = validateArchitecture(dir, {});
+  assert.equal(ok, true, JSON.stringify(violations));
 });
 
 test('two units of different layers built from structurally identical functions stay runtime-distinguishable via unitLayer', { skip }, () => {

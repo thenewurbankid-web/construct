@@ -8,6 +8,7 @@
 //   - feature.ts       withFeature(), the framework-generated feature-identity tag (#511).
 //   - provider.ts      defineProvider (React-Context-backed Provider hooks, #510).
 //   - trackedState.ts  useTrackedState (typed, tracked local state, #504).
+//   - schema.ts        the optional response schema for defineService (Standard Schema / safeParse, #585).
 export type { Template } from './template.ts';
 export type { Brand, RefBrand, FeatureBrand } from './brand.ts';
 export type { PropRef } from './propRef.ts';
@@ -27,6 +28,7 @@ export type {
   DomainUnitAny,
   ServiceUnit,
   ServiceUnitAny,
+  CheckedServiceUnit,
   HookUnit,
   HookUnitAny,
   WorkflowConfig,
@@ -47,6 +49,19 @@ export {
   defineDomain,
   defineExpression,
 } from './factories.ts';
+export type { ServiceOptions } from './factories.ts';
+export type {
+  StandardSchema,
+  StandardSchemaIssue,
+  StandardSchemaResult,
+  SafeParseSchema,
+  ResponseSchema,
+  SchemaOutput,
+  SchemaIssue,
+  ServiceResult,
+  CheckedReturn,
+} from './schema.ts';
+export { checkResponse } from './schema.ts';
 export { withFeature } from './feature.ts';
 export type { ProviderUnit } from './provider.ts';
 export { defineProvider } from './provider.ts';

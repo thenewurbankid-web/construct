@@ -81,6 +81,32 @@ test('the tracked-state usage example (examples/tracked-state.ts) compiles with 
   assert.ok(ok, `expected examples/tracked-state.ts to compile clean; tsc said:\n${output}`);
 });
 
+// #585 -- defineService's optional `{ schema }`: a hand-written Standard Schema object (no
+// library at all) and a real zod schema both compile, and the fixtures' own type-level
+// assertions pin the narrowing (ok.value is the schema's OUTPUT type, sync stays sync, the
+// two-argument form is untouched).
+test('the service-schema examples (hand-written Standard Schema, and real zod) compile with zero tsc errors', () => {
+  const { ok, output } = tsc([
+    path.join(TYPED_CONTRACTS, 'jsx-global.d.ts'),
+    path.join(TYPED_CONTRACTS, 'examples', 'service-schema.ts'),
+    path.join(TYPED_CONTRACTS, 'examples', 'service-schema-zod.ts'),
+  ]);
+  assert.ok(ok, `expected examples/service-schema*.ts to compile clean; tsc said:\n${output}`);
+});
+
+test('#585: using a schema-checked service\'s .value/.issues before narrowing on status is a real tsc error (TS2339)', () => {
+  const { ok, output } = tsc([
+    path.join(TYPED_CONTRACTS, 'jsx-global.d.ts'),
+    path.join(TYPED_CONTRACTS, 'examples', 'service-schema-invalid.ts'),
+  ]);
+  assert.equal(ok, false, 'expected examples/service-schema-invalid.ts to fail to compile');
+  assert.match(output, /examples[\\/]service-schema-invalid\.ts\(\d+,\d+\): error TS2339: Property 'value' does not exist on type 'ServiceResult<User>'/);
+  assert.match(output, /Property 'value' does not exist on type '\{ readonly status: "error"; readonly kind: "schema"; readonly issues: readonly SchemaIssue\[\]; \}'/);
+  assert.match(output, /examples[\\/]service-schema-invalid\.ts\(\d+,\d+\): error TS2339: Property 'issues' does not exist on type 'ServiceResult<User>'/);
+  // Exactly the two intended errors -- nothing else in the fixture is wrong.
+  assert.equal((output.match(/error TS\d+/g) || []).length, 2, output);
+});
+
 test('wiring a ServiceUnit into definePage\'s Props is a real tsc error (TS2344), not a silent pass', () => {
   const { ok, output } = tsc([
     path.join(TYPED_CONTRACTS, 'jsx-global.d.ts'),
