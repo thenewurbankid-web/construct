@@ -1,6 +1,7 @@
 import { GlassPanel } from '@/components/ui';
 import type { LivePreviewView } from '../types';
 import { LivePreviewEmpty } from './LivePreviewEmpty';
+import { LivePreviewNotes } from './LivePreviewNotes';
 import { LivePreviewToolbar } from './LivePreviewToolbar';
 
 // Live preview of the target app in an iframe. Click an element (the target
@@ -20,6 +21,7 @@ export function LivePreviewPanel(props: LivePreviewView) {
     <GlassPanel className={fullScreen ? 'live-preview-panel live-preview-panel--full' : 'live-preview-panel'}>
       <LivePreviewToolbar {...props} />
       {message && !fullScreen && <p className="hint live-preview-message" role="status">{message}</p>}
+      {showFrame && !fullScreen && <LivePreviewNotes plugin={props.plugin} appError={props.appError} onDismissAppError={props.onDismissAppError} />}
       {showFrame ? (
         <div className="live-preview-stage">
           <div className="live-preview-box" ref={props.boxRef} style={props.frameStyle}>

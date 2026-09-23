@@ -2,8 +2,10 @@
 
 import { ProjectGateController } from '@/features/project-gate';
 import { CommitIndicatorController } from '@/features/git-session';
+import { DevServerController } from '@/features/dev-server';
 import { usePagesEditor } from '../hooks/usePagesEditor';
 import { usePagesEditorTabs } from '../hooks/usePagesEditorTabs';
+import { usePreviewServerUrl } from '../hooks/usePreviewServerUrl';
 import { PagesEditorPage } from '../pages/PagesEditorPage';
 
 // Mounted only once a project is chosen, so the shell's Browser/Tools tabs
@@ -11,9 +13,10 @@ import { PagesEditorPage } from '../pages/PagesEditorPage';
 function PagesEditorScreen() {
   const pagesEditor = usePagesEditor();
   usePagesEditorTabs(pagesEditor);
-  // Commit-on-save (#283) is composed in as a slot: the Pages Editor knows nothing about git,
-  // and the same controller drops into any other edit surface unchanged.
-  return <PagesEditorPage {...pagesEditor} gitSession={<CommitIndicatorController />} />;
+  const onServerUrl = usePreviewServerUrl(pagesEditor.livePreview);
+  // Commit-on-save (#283) and the dev server (#378) are composed in as slots: the Pages Editor knows
+  // nothing about git or how a server is started, and the same controllers drop into any other edit surface.
+  return <PagesEditorPage {...pagesEditor} gitSession={<CommitIndicatorController />} devServer={<DevServerController onUrl={onServerUrl} />} />;
 }
 
 export function PagesEditorController() {

@@ -6,6 +6,10 @@ import type { Ref } from 'react';
 /** What we know about the preview address: nothing yet, being probed, answering, or refusing. */
 export type PreviewReach = 'unknown' | 'checking' | 'up' | 'down';
 
+/** Has the target app said it loads the Cockpit preview plugin? `waiting` until it does or we give up; `off` means
+ * the server answers but never announced it, so click-to-source cannot work (#378). */
+export type PreviewPlugin = 'unknown' | 'waiting' | 'on' | 'off';
+
 export type LivePreviewView = {
   draft: string;
   onDraftChange: (v: string) => void;
@@ -18,6 +22,10 @@ export type LivePreviewView = {
   reach: PreviewReach;
   onRetry: () => void;
   onLoadAnyway: () => void;
+  /** Plugin state and the app's last uncaught error (the spec's "Click-to-source is off" and "App error" cards). */
+  plugin: PreviewPlugin;
+  appError: string | null;
+  onDismissAppError: () => void;
   /** Device size picker: the chosen id, the options, and the change handler. */
   size: string;
   sizes: { id: string; label: string; title: string }[];

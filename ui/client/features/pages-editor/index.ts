@@ -86,3 +86,9 @@ export * from './hooks/usePreviewMeasure';
 
 /** Showing the previewed app full screen: the shell's focus mode, Ctrl+Alt+F in, Esc out. */
 export * from './hooks/useFullScreenPreview';
+
+/** What the framed app says about itself: the preview plugin is loaded, or it threw (#378). */
+export * from './hooks/usePreviewSignals';
+
+/** Frames the dev server the Cockpit started, and lets go of it when it stops (#378). */
+export * from './hooks/usePreviewServerUrl';

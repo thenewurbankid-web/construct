@@ -9,6 +9,7 @@ import { probePreview } from '../services/PreviewReachability';
 import type { LivePreviewView, PreviewReach } from '../domain/LivePreviewView';
 import type { PagesEditorNode } from '../types';
 import { useFullScreenPreview } from './useFullScreenPreview';
+import { usePreviewSignals } from './usePreviewSignals';
 import { usePreviewSize } from './usePreviewSize';
 
 type Args = {
@@ -39,6 +40,7 @@ export function useLivePreview({ roots, feature, file, onSelectNode }: Args) {
   const full = useFullScreenPreview(Boolean(url));
 
   const source = useMemo(() => (url ? createIframePreviewSource(url, () => frameRef.current?.contentWindow) : null), [url]);
+  const signals = usePreviewSignals(source, reach === 'up');
 
   useEffect(() => {
     if (!source) return undefined;
@@ -74,12 +76,27 @@ export function useLivePreview({ roots, feature, file, onSelectNode }: Args) {
     probe(normalized);
   }, [draft, probe]);
 
+  /** Point the frame at an address the Cockpit itself was given (the dev server it started, #378). */
+  const connectTo = useCallback((target: string) => {
+    const normalized = normalizePreviewUrl(target);
+    if (!normalized) return;
+    setDraft(normalized);
+    setMessage(null);
+    setUrl(normalized);
+    probe(normalized);
+  }, [probe]);
+
   const disconnect = useCallback(() => {
     setUrl(null);
     setMessage(null);
     setReach('unknown');
     full.exit();
   }, [full]);
+
+  /** Let go of `target` only if that is what the frame is showing: a server stopping must not close a URL the person typed. */
+  const release = useCallback((target: string) => {
+    if (url && url === normalizePreviewUrl(target)) disconnect();
+  }, [url, disconnect]);
 
   const retry = useCallback(() => {
     if (url) probe(url);
@@ -95,6 +112,9 @@ export function useLivePreview({ roots, feature, file, onSelectNode }: Args) {
       onConnect: connect,
       onDisconnect: disconnect,
       reach,
+      plugin: signals.plugin,
+      appError: signals.appError,
+      onDismissAppError: signals.dismissAppError,
       onRetry: retry,
       onLoadAnyway: () => setReach('up'),
       size: sizing.size,
@@ -108,8 +128,8 @@ export function useLivePreview({ roots, feature, file, onSelectNode }: Args) {
       onExitFullScreen: full.exit,
       fullScreenRef: full.triggerRef,
     }),
-    [draft, url, message, connect, disconnect, reach, retry, sizing, full],
+    [draft, url, message, connect, disconnect, reach, retry, sizing, full, signals.plugin, signals.appError, signals.dismissAppError],
   );
 
-  return { draft, setDraft, url, message, frameRef, connect, disconnect, fullScreen: full.fullScreen, view };
+  return { draft, setDraft, url, message, frameRef, connect, connectTo, release, disconnect, fullScreen: full.fullScreen, view };
 }

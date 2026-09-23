@@ -92,7 +92,7 @@ export function ShellFrame({ children, route, project, model, theme, userMenu }:
   };
 
   const { showDrawerTab } = useDrawerActions(toggle, select);
-  const drawerApi = useMemo(() => ({ openProcesses: () => showDrawerTab('processes') }), [showDrawerTab]);
+  const drawerApi = useMemo(() => ({ openProcesses: () => showDrawerTab('processes'), openLogs: () => showDrawerTab('logs') }), [showDrawerTab]);
   const { setPane } = narrow;
   const stageApi = useMemo(() => ({ showStage: () => setPane('mid') }), [setPane]);
   useShellCommands({

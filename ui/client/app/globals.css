@@ -1932,6 +1932,42 @@ button:disabled {
 .git-indicator__commit dt { color: var(--text-faint); }
 .git-indicator__commit dd { margin: 0; color: var(--text-muted); overflow-wrap: anywhere; }
 
+/* ---------------------------------------------------------------------------
+   Dev server (#378) — the live preview's connection status card and the branch
+   provenance line. A state is a title plus words, never a colour alone; the
+   border only reinforces it. Tokens only, so both themes follow.
+   --------------------------------------------------------------------------- */
+.dev-server { margin: 0 0 var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2); }
+.dev-server__card {
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-subtle);
+  background: var(--sunken);
+  border-radius: var(--r-md);
+  font-size: var(--fs-md);
+}
+.dev-server__card[data-card='running'] { border-color: var(--success); background: var(--success-soft); }
+.dev-server__card[data-card='starting'] { border-color: var(--accent); background: var(--accent-soft); }
+.dev-server__card[data-card='outside-workspace'],
+.dev-server__card[data-card='port-busy'],
+.dev-server__card[data-card='stopped'] { border-color: var(--danger); background: var(--danger-soft); }
+.dev-server__card[data-card='no-script'] { border-color: var(--warn); background: var(--warn-soft); }
+.dev-server__title { margin: 0 0 var(--sp-1); font-weight: 600; color: var(--text); }
+.dev-server__message { margin: 0 0 var(--sp-2); color: var(--text); overflow-wrap: anywhere; }
+.dev-server__command { margin: 0 0 var(--sp-2); overflow-wrap: anywhere; }
+.dev-server__confirm { margin: 0 0 var(--sp-2); padding: var(--sp-2); border: 1px solid var(--warn); background: var(--warn-soft); border-radius: var(--r-md); }
+.dev-server__confirm p { margin: 0 0 var(--sp-2); }
+.dev-server__actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.dev-server__actions:empty { display: none; }
+.dev-server__branch { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); font-size: var(--fs-sm); }
+.dev-server__branch code { color: var(--text); overflow-wrap: anywhere; }
+.dev-server__branch-hint { flex-basis: 100%; margin: 0; }
+/* The two cards about the framed app itself, above the frame. */
+.live-preview-note { margin: 0 0 var(--sp-2); padding: var(--sp-2) var(--sp-3); border: 1px solid var(--border-subtle); border-radius: var(--r-md); font-size: var(--fs-sm); display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.live-preview-note p { margin: 0; flex: 1 1 16rem; }
+.live-preview-note code { background: var(--surface-3); padding: 2px 6px; border-radius: 4px; }
+.live-preview-note--warn { border-color: var(--warn); background: var(--warn-soft); }
+.live-preview-note--danger { border-color: var(--danger); background: var(--danger-soft); }
+
 .git-dirty {
   margin: 0 0 var(--sp-3);
   padding: var(--sp-3);

@@ -8,6 +8,8 @@ import type { usePagesEditor } from '../hooks/usePagesEditor';
 type PagesEditorPageProps = ReturnType<typeof usePagesEditor> & {
   /** Commit-on-save indicator + dirty-tree prompt, supplied by the controller (another feature). */
   gitSession?: ReactNode;
+  /** The target app's dev server card and branch indicator (#378), supplied by the controller (another feature). */
+  devServer?: ReactNode;
 };
 
 // The stage (middle pane) of the Pages Editor. The page/feature tree lives in
@@ -15,7 +17,7 @@ type PagesEditorPageProps = ReturnType<typeof usePagesEditor> & {
 // its Tools tabs (see usePagesEditorTabs); this renders what you look at: the
 // live app preview, the structural mirror and the prop-flow diagram.
 export function PagesEditorPage(props: PagesEditorPageProps): ReactNode {
-  const { tree, error, selectedNodeId, selectNode, previewTitle, externalChange, livePreview, gitSession } = props;
+  const { tree, error, selectedNodeId, selectNode, previewTitle, externalChange, livePreview, gitSession, devServer } = props;
   // #456: full screen is the app and nothing else. Everything but the preview is
   // hidden rather than unmounted, so the tree, the diagram and the selection are
   // exactly as they were on the way back out.
@@ -31,6 +33,8 @@ export function PagesEditorPage(props: PagesEditorPageProps): ReactNode {
         </p>
 
         {gitSession}
+
+        {devServer}
 
         {error && <p className="status-error">{error}</p>}
 
