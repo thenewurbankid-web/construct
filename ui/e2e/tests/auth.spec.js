@@ -222,7 +222,7 @@ test.describe('#278 GitHub login gate', () => {
     expect(await postJsonStatus(page, '/api/import', { mode: 'plan', planPath: '/etc/passwd' })).toBe(403);
     expect(await postJsonStatus(page, '/api/settings', { closeProject: true })).toBe(200);
     expect(await apiStatus(page, '/api/validate')).toBe(409);
-    expect(await postJsonStatus(page, '/api/settings', { projectDir: process.env.E2E_DEFAULT_PROJECT })).toBe(200);
+    expect(await postJsonStatus(page, '/api/settings', { projectDir: process.env.E2E_DEFAULT_PROJECT_E2E_OWNER })).toBe(200);
     expect(await apiStatus(page, '/api/validate')).toBe(200);
     expect(await wsOpens(page)).toBe(true);
     expect(await apiStatus(page, '/api/processes')).toBe(200);

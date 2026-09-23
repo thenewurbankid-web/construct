@@ -50,7 +50,7 @@ export default {
         CONSTRUCT_SESSION_SECRET: 'e2e-session-secret-not-a-real-one-0123456789',
         NODE_ENV: 'test',
         CONSTRUCT_STATE_DIR: process.env.E2E_STATE_DIR,
-        ...workspaceEnv(),
+        ...workspaceEnv({ user: 'e2e-owner' }), // #567: the test login's own directory under the root
       },
     },
     {

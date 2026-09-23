@@ -24,9 +24,13 @@ export const tmpWorkspaceRoot = () => fs.realpathSync(os.tmpdir());
  * longer load-bearing, but there is no reason to move it either.
  * A freshly `construct init`-ed project inside the tmp workspace, created once per Playwright run (the
  * config is evaluated in the runner and again in each worker, so the path is shared through the environment). */
-export function defaultProject() {
-  if (process.env.E2E_DEFAULT_PROJECT && fs.existsSync(process.env.E2E_DEFAULT_PROJECT)) return process.env.E2E_DEFAULT_PROJECT;
-  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-default-project-')));
+export function defaultProject({ user } = {}) {
+  // #567: with login required every request is scoped to `<root>/<login>`, so the preloaded project must live there.
+  const cacheKey = user ? `E2E_DEFAULT_PROJECT_${user.toUpperCase().replace(/[^A-Z0-9]/g, '_')}` : 'E2E_DEFAULT_PROJECT';
+  if (process.env[cacheKey] && fs.existsSync(process.env[cacheKey])) return process.env[cacheKey];
+  const parent = user ? path.join(fs.realpathSync(os.tmpdir()), user) : os.tmpdir();
+  if (user) fs.mkdirSync(parent, { recursive: true, mode: 0o700 });
+  const dir = fs.realpathSync(fs.mkdtempSync(path.join(parent, 'e2e-default-project-')));
   execFileSync(process.execPath, [BIN, 'init', dir], { stdio: 'ignore' });
   // The project the suite used to open was a git checkout, and the commit indicator renders differently in a
   // folder that is not one (a second role=status), so the preloaded project is a repository with one commit.
@@ -34,14 +38,14 @@ export function defaultProject() {
   git('init', '-q');
   git('add', '-A');
   git('commit', '-q', '-m', 'init');
-  process.env.E2E_DEFAULT_PROJECT = dir;
+  process.env[cacheKey] = dir;
   return dir;
 }
 
 /** Server env: workspace = tmp dir, project preloaded (what every pre-#365 spec implicitly relied on). */
-export function workspaceEnv({ preload = true } = {}) {
+export function workspaceEnv({ preload = true, user } = {}) {
   return {
     CONSTRUCT_WORKSPACE_ROOT: tmpWorkspaceRoot(),
-    ...(preload ? { CONSTRUCT_E2E_PROJECT_DIR: defaultProject() } : {}),
+    ...(preload ? { CONSTRUCT_E2E_PROJECT_DIR: defaultProject({ user }) } : {}),
   };
 }
