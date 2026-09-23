@@ -664,13 +664,22 @@ test('#504: HOOK-001 fires when a use*State hook built via useTrackedState also 
 });
 
 test('#504: HOOK-001 fires when a use*State hook built via useTrackedState also contains an unrelated effect (useEffect/useRef/fetch)', () => {
-  for (const unrelated of ['useEffect(() => {}, [])', 'useRef(null)', "fetch('/')"]) {
+  // #589 -- a bare fetch() is now ALSO a genuine, independent SERVICE-001 finding (only the
+  // service layer may own an external effect) alongside HOOK-001's own "unrelated effect in a
+  // tracked-state hook" finding -- two different rules correctly reporting two different
+  // problems about the same fetch() call, not a duplicate. useEffect/useRef aren't in
+  // SERVICE-001's effect vocabulary, so those two cases are unaffected.
+  for (const [unrelated, expectedRules] of [
+    ['useEffect(() => {}, [])', ['HOOK-001']],
+    ['useRef(null)', ['HOOK-001']],
+    ["fetch('/')", ['SERVICE-001', 'HOOK-001']],
+  ]) {
     const violations = detectLayerViolations(
       'hook',
       `import { useTrackedState } from '@construct/typed-contracts';\n`
         + `export function useCartState() { const [total, setTotal] = useTrackedState('total', 0); ${unrelated}; return { total, setTotal }; }`,
     );
-    assert.deepEqual(violations.map((v) => v.rule), ['HOOK-001'], `expected HOOK-001 for: ${unrelated}`);
+    assert.deepEqual(violations.map((v) => v.rule), expectedRules, `expected ${expectedRules} for: ${unrelated}`);
   }
 });
 

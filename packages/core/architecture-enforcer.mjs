@@ -223,6 +223,69 @@ export function findTransitionHoles(machine) {
   return holes;
 }
 
+// #589 -- SERVICE-001 ("Services own external effects"): registered at error severity since the
+// rule engine's beginning but had no detector anywhere (a project reading the rule list believed
+// it was enforced when it could never fire). Distinct from SERVICE-002 (below, which checks the
+// service layer's OWN files for a banned React/UI import) -- SERVICE-001's job runs the other
+// direction: only the service layer may perform an external effect (network call, browser
+// storage, a polling timer) at all, so every OTHER layer that performs one directly is the
+// violation. Checked in the four layers named in #589's own brief -- component and hook (which
+// had no effect check of their own before this), plus page and controller (whose PAGE-004/
+// CONTROLLER-001 already ban a direct fetch() there, so SERVICE_001_ALREADY_COVERED drops
+// 'fetch' for those two rather than reporting the identical fetch() call under two rule ids at
+// once). domain/route/expression are deliberately left out: DOMAIN-001/ROUTE-002/EXPR-001
+// already enforce the same "no external effect in this layer" concern for those three.
+const SERVICE_001_LAYERS = new Set(['component', 'hook', 'page', 'controller']);
+const SERVICE_001_LAYER_LABEL = { component: 'Component', hook: 'Hook', page: 'Page', controller: 'Controller' };
+// The "natural reading" #589 itself names: a network call (fetch/XMLHttpRequest/WebSocket/
+// axios), browser storage (localStorage/sessionStorage), or a timer used for polling
+// (setInterval -- setTimeout is deliberately excluded: it is routinely used for one-off UI
+// concerns, debounce/animation/auto-dismiss, that are not "owning an external effect" and would
+// be real false positives in component/hook code).
+//
+// Split into three groups by how a real usage looks in the AST, not one flat bare-identifier
+// list, because a flat list produced two confirmed false positives on this repo's own
+// ui/client (useProcessesLive.tsx, useWizard.tsx): `WebSocket` and `XMLHttpRequest` are DOM-lib
+// names that are simultaneously a real global CONSTRUCTOR and a TS TYPE of the same spelling
+// (`useRef<WebSocket | null>(null)`, `let ws: WebSocket | null`) -- a type-position reference
+// only says what a value (already handed back by a properly-abstracted service call) is typed
+// as, it never itself performs the effect. Restricting those two to `new X(...)` (the only shape
+// that actually performs the effect) is what collectCalls/collectBareIdentifierUsages alone
+// can't express, so a small NewExpression-only collector is added just for them, below.
+const SERVICE_001_CALL_NAMES = ['fetch', 'setInterval'];
+const SERVICE_001_BARE_NAMES = ['axios', 'localStorage', 'sessionStorage'];
+const SERVICE_001_NEW_NAMES = ['WebSocket', 'XMLHttpRequest'];
+const SERVICE_001_ALREADY_COVERED = { page: new Set(['fetch']), controller: new Set(['fetch']) };
+
+/** Every `new name(...)` (name in `names`), sorted by position -- the constructor-only
+ * counterpart to collectCalls/collectBareIdentifierUsages, needed so a TS type-position
+ * reference to a DOM-lib global (e.g. `useRef<WebSocket | null>`) is never mistaken for the
+ * global actually being constructed (see the SERVICE-001 constants above for why). */
+function collectNewExpressions(ast, names) {
+  const hits = [];
+  walkAst(ast, {
+    enter(node) {
+      if (node.type === 'NewExpression' && node.callee.type === 'Identifier' && names.has(node.callee.name)) {
+        hits.push({ name: node.callee.name, index: node.callee.range[0] });
+      }
+    },
+  });
+  return hits.sort((a, b) => a.index - b.index);
+}
+
+/** The first SERVICE-001 external-effect reference in `ast` for `layer`, or null. */
+function findService001Effect(ast, layer) {
+  const covered = SERVICE_001_ALREADY_COVERED[layer] || new Set();
+  const callNames = new Set(SERVICE_001_CALL_NAMES.filter((n) => !covered.has(n)));
+  const hits = [
+    ...collectCalls(ast, callNames),
+    ...collectBareIdentifierUsages(ast, new Set(SERVICE_001_BARE_NAMES)),
+    ...collectNewExpressions(ast, new Set(SERVICE_001_NEW_NAMES)),
+  ];
+  hits.sort((a, b) => a.index - b.index);
+  return hits[0] || null;
+}
+
 const SERVICE_003_SUGGESTED_FIX = '({ signal }: { signal: AbortSignal }) => fetch(url, { signal })';
 
 const propKeyName = (key) => (key?.type === 'Identifier' ? key.name : key?.type === 'Literal' ? String(key.value) : null);
@@ -323,6 +386,18 @@ export function detectLayerViolations(layer, source, opts = {}) {
           : s.kind === 'useReducer' ? `, type the reducer's state as ${s.typeName} and start from { status: 'idle' }`
             : s.kind === 'context' ? `, and type the machine's context as ${s.typeName}` : ''}`,
       expected: ['a discriminated union on one `status` field'],
+    });
+  }
+
+  // #589 -- SERVICE-001, see the constants above for the full rationale.
+  if (SERVICE_001_LAYERS.has(layer)) {
+    const hit = findService001Effect(ast, layer);
+    if (hit) out.push({
+      rule: 'SERVICE-001', line: lineOf(source, hit.index),
+      message: `${SERVICE_001_LAYER_LABEL[layer]} uses "${hit.name}" directly, not through a service.`,
+      why: 'Services own external effects (network calls, browser storage, polling timers) -- every other layer must delegate to one so the effect stays mockable, testable and swappable from a single place.',
+      suggestedFix: `Extract the "${hit.name}" call into a service (e.g. features/<feature>/services/<Name>Service.ts) and call it from here through a controller or hook.`,
+      expected: ['service'],
     });
   }
 
