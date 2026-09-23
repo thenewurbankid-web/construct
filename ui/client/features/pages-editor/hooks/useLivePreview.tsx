@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { previewFrameStyle, previewSizeReadout } from '../domain/PreviewFrameStyle';
 import { resolvePreviewSelection } from '../domain/PreviewSelection';
-import { normalizePreviewUrl } from '../domain/PreviewUrl';
+import { isLocalPreviewUrl, normalizePreviewUrl } from '../domain/PreviewUrl';
 import { createIframePreviewSource } from '../services/PreviewSource';
 import { probePreview } from '../services/PreviewReachability';
 import type { LivePreviewView, PreviewReach } from '../domain/LivePreviewView';
@@ -69,6 +69,10 @@ export function useLivePreview({ roots, feature, file, onSelectNode }: Args) {
     const normalized = normalizePreviewUrl(draft);
     if (!normalized) {
       setMessage('Enter a full http(s) URL, e.g. http://localhost:5173');
+      return;
+    }
+    if (!isLocalPreviewUrl(normalized)) {
+      setMessage('Only a local address can be previewed (localhost or 127.0.0.1): the preview shows your own dev server, not a site elsewhere.');
       return;
     }
     setMessage(null);

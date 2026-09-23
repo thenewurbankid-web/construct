@@ -536,6 +536,7 @@ servers it didn't start by default:
 | `E2E_CLIENT_PORT` | `3000` | Port for `next dev` (Playwright `baseURL`) |
 | `E2E_SERVER_PORT` | `4000` | Port for `ui/server` (`PORT`); specs read it as `E2E_API_BASE` |
 | `E2E_REUSE_SERVERS` | off | Set `1` to reuse servers already running on those ports (local debugging only) |
+| `E2E_DEVSERVER_PORT_BASE` | `E2E_SERVER_PORT` + 1000 | First port the Cockpit's "Start dev server" tries for a fixture app (#378); passed to the server as `CONSTRUCT_DEV_SERVER_PORT_BASE` |
 
 The config passes `UI_CLIENT_ORIGIN` (server CORS/WebSocket origin
 restriction) and `NEXT_PUBLIC_API_BASE`/`NEXT_PUBLIC_WS_BASE` (client to
@@ -663,6 +664,17 @@ REST (`ui/server/src/index.mjs`), all `POST` except settings' `GET`:
   `GET /api/pages/unmapped`, `POST /api/pages/automap` — the pages-editor
   endpoints (see `ui/server/src/pagesEditor.mjs`), each scoped
   server-side to `features/<feature>/pages/`.
+
+- `GET /api/dev-server`, `POST /api/dev-server/start|restart|stop` (#378) — the open project's dev server as a
+  managed process (`ui/server/src/devServer.mjs`). `start` runs the project's own `scripts.dev` (else `scripts.start`)
+  as `npm run <script>`, never a different command and only on this explicit POST; `{ port? }` picks a port ("Use port
+  N"). The status is `{ state: 'not-running'|'starting'|'running'|'failed', refusal, command, url, port, failure,
+  branch, branchKind: 'session'|'other'|null }`. It refuses a project whose root is outside the workspace
+  (`PROJECT_ROOT_OUTSIDE_WORKSPACE`) or with no script (`NO_DEV_SCRIPT`), runs with an allowlisted environment (plus
+  `PORT`/`HOST`), streams its output to the Logs tab, and stops on Close project, Sign out and server exit. The first
+  port tried is `CONSTRUCT_DEV_SERVER_PORT_BASE` (default 5173; never 80, 443, 3000 or 4000). The dev server runs in
+  the project's own working tree, so on a Cockpit session branch (`cockpit/...`) it sees exactly the files Cockpit
+  saves; `branchKind` only reports which kind of branch is checked out.
 
 Every command endpoint responds `{ ok, output: string[], attribution: {tool, llm} | null, error? }`.
 

@@ -19,6 +19,10 @@ const SERVER_ORIGIN = `http://localhost:${SERVER_PORT}`;
 const REUSE = process.env.E2E_REUSE_SERVERS === '1';
 // Read by the specs (API_BASE) — set here so Playwright's workers inherit it.
 process.env.E2E_API_BASE = SERVER_ORIGIN;
+// #378: the first port the Cockpit's "Start dev server" tries for a fixture app. Derived from the server port so
+// concurrent runs never share it, and never one of the humans' own (3000/4000) or the Cockpit's reserved ports.
+const DEV_SERVER_PORT_BASE = Number(process.env.E2E_DEVSERVER_PORT_BASE) || SERVER_PORT + 1000;
+process.env.E2E_DEVSERVER_PORT_BASE = String(DEV_SERVER_PORT_BASE);
 // The server's process-record directory. A spec that needs a saved plan (Review mode's expected scope,
 // #316) seeds a process record here, through the same store the server reads.
 // The pid in the name is what lets tools/dev/heavy.sh tell a live run's state from a dead one (#414).
@@ -69,7 +73,7 @@ export default defineConfig({
       // ui/server restricts CORS + WebSocket origin to UI_CLIENT_ORIGIN.
       // #292: process records live in a per-user state dir; a fresh one keeps the
       // ordinary suite from ever seeing a real process of the developer's own.
-      env: { PORT: String(SERVER_PORT), UI_CLIENT_ORIGIN: CLIENT_ORIGIN, CONSTRUCT_STATE_DIR: STATE_DIR, ...workspaceEnv() },
+      env: { PORT: String(SERVER_PORT), UI_CLIENT_ORIGIN: CLIENT_ORIGIN, CONSTRUCT_STATE_DIR: STATE_DIR, CONSTRUCT_DEV_SERVER_PORT_BASE: String(DEV_SERVER_PORT_BASE), ...workspaceEnv() },
     },
     {
       command: `npx next dev -p ${CLIENT_PORT}`,
