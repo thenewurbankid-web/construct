@@ -3,10 +3,23 @@
 // which props the child component declares but nobody passes. Pure and deterministic -- no I/O, no
 // LLM. The caller supplies the page source and (optionally) the source of the file the child
 // component is imported from; cross-file resolution stays the caller's job (see ui/server).
+//
+// #528 -- widens the scope itself (strictly additive to the above -- 'prop'/'state'/'setter' keep
+// their exact existing meaning) with two more real scope sources, both gated on the same real
+// reachability boundary PAGE-006/HOOK-002 already enforce (a sanctioned hook import from a
+// `hooks?/` path), reusing that logic (isProviderHookName/isTrackedStateHookName) rather than
+// re-implementing it:
+//   - 'provider': a field a reachable ProviderUnit exposes via useProvider() (provider.ts) -- the
+//     caller supplies the Provider hook's own file source (providerSources), same cross-file-lookup
+//     shape as the existing childSource, since the field names live in that file, not the page's.
+//   - 'unit-output': a local binding already destructured from an already-called tracked-state hook
+//     (trackedState.ts, HOOK-001) in the open page -- no cross-file lookup needed, the names are
+//     already right there in the page's own source, exactly like a useState pair is today.
 import {
   parseJsx, parseJsxTree, collectScopeDeclarations, collectBareIdentifierUsages,
-  findImportOfName, declaredPropNames,
+  findImportOfName, declaredPropNames, findTypeMembers, walkAst, parseTsSource, ts,
 } from '../../packages/ast/index.mjs';
+import { isProviderHookName, isTrackedStateHookName } from '../core/architecture-enforcer.mjs';
 
 /** Names from `scope` (a Set) referenced by an attribute value. */
 function referencedNames(prop, scope) {
@@ -43,12 +56,149 @@ export function importOfTag(pageSource, tag) {
   return findImportOfName(parseJsx(pageSource), tag.split('.')[0]);
 }
 
+/** The imported (not local/aliased) name for a named/default import specifier, or `null` for a
+ * namespace import -- same conservative shape architecture-enforcer.mjs's own
+ * importedSpecifierNames uses, kept local here so this module doesn't need a second import from it. */
+function importedSpecifierName(spec) {
+  if (spec.type === 'ImportSpecifier') return spec.imported?.name ?? spec.imported?.value ?? spec.local?.name ?? null;
+  if (spec.type === 'ImportDefaultSpecifier') return spec.local?.name ?? null;
+  return null; // ImportNamespaceSpecifier
+}
+
+/** Provider hooks reachable from the page's own top-level imports: one `{source, hookName}` per
+ * specifier, from a `hooks?/` path, whose imported name is a real Provider hook name
+ * (`use<Name>Provider`) -- the same reachability boundary PAGE-006 already enforces. */
+function providerHookImports(ast) {
+  const hits = [];
+  for (const node of ast.body) {
+    if (node.type !== 'ImportDeclaration' || !/hooks?\//.test(node.source.value)) continue;
+    for (const spec of node.specifiers) {
+      const importedName = importedSpecifierName(spec);
+      if (importedName && isProviderHookName(importedName)) hits.push({ source: node.source.value, hookName: importedName });
+    }
+  }
+  return hits;
+}
+
+/** Local names bound to a tracked-state hook import (`use<Name>State`), from a `hooks?/` path --
+ * same reachability boundary as providerHookImports, for PAGE-006's other sanctioned hook shape. */
+function trackedStateHookLocalNames(ast) {
+  const names = new Set();
+  for (const node of ast.body) {
+    if (node.type !== 'ImportDeclaration' || !/hooks?\//.test(node.source.value)) continue;
+    for (const spec of node.specifiers) {
+      const importedName = importedSpecifierName(spec);
+      if (importedName && isTrackedStateHookName(importedName)) names.add(spec.local.name);
+    }
+  }
+  return names;
+}
+
+/**
+ * The field names a Provider hook exposes via `useProvider()`, read from the hook's own file
+ * source: finds `defineProvider<Props, Value>(...)`'s second type argument (following a local
+ * `const XProvider = defineProvider<...>(...)` binding when the export is `export const
+ * use<Name>Provider = XProvider.useProvider`, or the inline call directly), then that Value type's
+ * member names (`findTypeMembers`, the same TS-compiler-API introspection `declaredPropNames`
+ * already uses for a child component's Props).
+ *
+ * @param {string} hookSource Source of the file the Provider hook is exported from.
+ * @param {string} hookName The hook's exported name (`use<Name>Provider`).
+ * @returns {string[]|null} Field names, or `null` when the hook/its Value type can't be resolved
+ *   (unknown shape, open/index-signature type) -- callers treat `null` as "don't add sources".
+ */
+export function providerExposedFields(hookSource, hookName) {
+  let sourceFile;
+  try {
+    sourceFile = parseTsSource(hookSource, 'provider.tsx');
+  } catch {
+    return null;
+  }
+
+  const defineProviderValueType = (expr) => {
+    if (!expr) return null;
+    if (ts.isCallExpression(expr) && ts.isIdentifier(expr.expression) && expr.expression.text === 'defineProvider' && expr.typeArguments?.length >= 2) {
+      return expr.typeArguments[1];
+    }
+    if (ts.isIdentifier(expr)) {
+      let found = null;
+      const visit = (node) => {
+        if (found) return;
+        if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.name.text === expr.text && node.initializer) {
+          found = defineProviderValueType(node.initializer);
+          if (found) return;
+        }
+        ts.forEachChild(node, visit);
+      };
+      visit(sourceFile);
+      return found;
+    }
+    return null;
+  };
+
+  let valueTypeNode = null;
+  const visitExport = (node) => {
+    if (valueTypeNode) return;
+    if (
+      ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.name.text === hookName
+      && node.initializer && ts.isPropertyAccessExpression(node.initializer) && node.initializer.name.text === 'useProvider'
+    ) {
+      valueTypeNode = defineProviderValueType(node.initializer.expression);
+      return;
+    }
+    ts.forEachChild(node, visitExport);
+  };
+  visitExport(sourceFile);
+  if (!valueTypeNode) return null;
+
+  if (ts.isTypeLiteralNode(valueTypeNode)) {
+    if (valueTypeNode.members.some((m) => ts.isIndexSignatureDeclaration(m))) return null;
+    const names = [];
+    for (const m of valueTypeNode.members) if (ts.isPropertySignature(m) && m.name && ts.isIdentifier(m.name)) names.push(m.name.text);
+    return names;
+  }
+  if (ts.isTypeReferenceNode(valueTypeNode) && ts.isIdentifier(valueTypeNode.typeName)) {
+    const members = findTypeMembers(hookSource, valueTypeNode.typeName.text);
+    return members && members.closed ? [...members.names] : null;
+  }
+  return null;
+}
+
+/** Local names already destructured from an already-called tracked-state hook in the page
+ * (`const {a, b} = useXState()`, or `const {a, ...rest} = useXState()`), in source order --
+ * `hookLocalNames` is the set of locally-bound names that really are a sanctioned tracked-state
+ * hook import (trackedStateHookLocalNames). Mirrors namesFromParams'/useStateNames' own shape in
+ * packages/ast/jsxScope.mjs, kept local here since it walks a CallExpression's result, not a
+ * function's own parameters or a bare `useState` call. */
+function collectTrackedStateOutputs(ast, hookLocalNames) {
+  const hits = [];
+  walkAst(ast, {
+    enter(node) {
+      if (node.type !== 'VariableDeclarator' || node.id.type !== 'ObjectPattern') return;
+      const init = node.init;
+      if (!init || init.type !== 'CallExpression' || init.callee.type !== 'Identifier') return;
+      if (!hookLocalNames.has(init.callee.name)) return;
+      const names = [];
+      for (const prop of node.id.properties) {
+        if (prop.type === 'Property' && prop.value.type === 'Identifier') names.push(prop.value.name);
+        else if (prop.type === 'RestElement' && prop.argument.type === 'Identifier') names.push(prop.argument.name);
+      }
+      hits.push({ at: node.range[0], names });
+    },
+  });
+  hits.sort((a, b) => a.at - b.at);
+  return hits.flatMap((h) => h.names);
+}
+
 /**
  * Build the scope/binding graph for element `nodeId`.
  *
  * Returns `{nodeId, tag, isCustomComponent, scope, links, spreads, childProps, undeclared,
  * suggestions, unusedScope, childPropsResolved}`:
- * - `scope`: `[{name, kind: 'prop'|'state'|'setter'}]` page declarations available to the element.
+ * - `scope`: `[{name, kind: 'prop'|'state'|'setter'|'provider'|'unit-output'}]` page declarations
+ *   available to the element -- 'provider' (a reachable Provider's exposed field, #528, only added
+ *   when `providerSources` resolves it) and 'unit-output' (a name already destructured from an
+ *   already-called tracked-state hook) alongside the original 'prop'/'state'/'setter' set.
  * - `links`: one per named attribute `{prop, valueKind, text, from: [{name, kind}]}`; `valueKind` is
  *   'literal' | 'identifier' | 'expression'. `from` is empty when the value uses no scope name.
  * - `spreads`: `[{text, from}]` for `{...x}` attributes.
@@ -61,11 +211,15 @@ export function importOfTag(pageSource, tag) {
  *
  * @param {string} pageSource Source of the page.
  * @param {string} nodeId Id of the JSX element (from the JSX tree).
- * @param {{childSource?: string}} [options] Source of the child component, so its declared props can be checked.
+ * @param {{childSource?: string, providerSources?: Record<string,string>}} [options] Source of the
+ *   child component, so its declared props can be checked; `providerSources` maps a reachable
+ *   Provider hook import's source path OR its imported hook name to that hook's own file source, so
+ *   its exposed fields can be resolved (#528) -- omitted or unresolved entries simply add no
+ *   'provider' scope for that import, exactly like an unresolved `childSource` leaves `childProps` null.
  * @returns {object} The scope and binding graph described above.
  * @throws {Error} With `code: 'NO_SUCH_NODE'` for an unknown id.
  */
-export function buildScopeLinks(pageSource, nodeId, { childSource } = {}) {
+export function buildScopeLinks(pageSource, nodeId, { childSource, providerSources } = {}) {
   const ast = parseJsx(pageSource);
   const { byId } = parseJsxTree(pageSource);
   const node = byId.get(nodeId);
@@ -75,6 +229,31 @@ export function buildScopeLinks(pageSource, nodeId, { childSource } = {}) {
     throw err;
   }
   const scope = collectScopeDeclarations(ast);
+
+  // #528 -- widen `scope` with reachable Provider fields and already-called tracked-state-hook
+  // outputs, strictly additive: existing 'prop'/'state'/'setter' entries are untouched, and a name
+  // already declared one of those ways is never overridden by a same-named provider/unit-output one.
+  const declaredNames = new Set(scope.map((d) => d.name));
+  for (const { source, hookName } of providerHookImports(ast)) {
+    const hookSource = providerSources?.[source] ?? providerSources?.[hookName];
+    if (!hookSource) continue;
+    const fields = providerExposedFields(hookSource, hookName);
+    if (!fields) continue;
+    for (const name of fields) {
+      if (declaredNames.has(name)) continue;
+      declaredNames.add(name);
+      scope.push({ name, kind: 'provider' });
+    }
+  }
+  const trackedHookNames = trackedStateHookLocalNames(ast);
+  if (trackedHookNames.size > 0) {
+    for (const name of collectTrackedStateOutputs(ast, trackedHookNames)) {
+      if (declaredNames.has(name)) continue;
+      declaredNames.add(name);
+      scope.push({ name, kind: 'unit-output' });
+    }
+  }
+
   const scopeNames = new Set(scope.map((d) => d.name));
   const kindOf = new Map(scope.map((d) => [d.name, d.kind]));
   const toFrom = (names) => names.map((name) => ({ name, kind: kindOf.get(name) }));

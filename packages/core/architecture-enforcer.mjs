@@ -118,7 +118,16 @@ function isReactSpecifier(specifier) {
 // one by name alone, without needing to open and re-analyze the target hook file itself.
 const PROVIDER_HOOK_NAME_RE = /^use[A-Z]\w*Provider$/;
 
-function isProviderHookName(name) {
+/**
+ * Whether `name` is shaped like a sanctioned Provider hook export (`use<Name>Provider`, #510) --
+ * exported (additive, same behavior) so packages/engine/scopeLinks.mjs can reuse the exact same
+ * reachability convention for its own Provider-scope-source detection (#528), rather than
+ * re-implementing PAGE-006/HOOK-002's naming rule a second time.
+ *
+ * @param {unknown} name The candidate export name.
+ * @returns {boolean} `true` when `name` matches the `use<Name>Provider` convention.
+ */
+export function isProviderHookName(name) {
   return typeof name === 'string' && PROVIDER_HOOK_NAME_RE.test(name);
 }
 
@@ -128,7 +137,15 @@ function isProviderHookName(name) {
 // convention trustworthy, the same way HOOK-002 backs PROVIDER_HOOK_NAME_RE above.
 const TRACKED_STATE_HOOK_NAME_RE = /^use[A-Z]\w*State$/;
 
-function isTrackedStateHookName(name) {
+/**
+ * Whether `name` is shaped like a sanctioned tracked-state hook export (`use<Name>State`, #504) --
+ * exported alongside `isProviderHookName`, same reason: scopeLinks.mjs's unit-output scope source
+ * (#528) reuses this exact convention instead of re-implementing it.
+ *
+ * @param {unknown} name The candidate export name.
+ * @returns {boolean} `true` when `name` matches the `use<Name>State` convention.
+ */
+export function isTrackedStateHookName(name) {
   return typeof name === 'string' && TRACKED_STATE_HOOK_NAME_RE.test(name);
 }
 

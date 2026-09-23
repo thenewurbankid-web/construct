@@ -99,3 +99,168 @@ test('importOfTag reads the import of a compound tag root', () => {
   assert.deepEqual(importOfTag(PAGE, 'Panel'), { source: '../components/Panel', isDefault: true });
   assert.equal(importOfTag(PAGE, 'div'), null);
 });
+
+// #528 -- widen ScopeDeclKind/buildScopeLinks with 'provider' (a reachable Provider's exposed
+// fields) and 'unit-output' (an already-called tracked-state hook's destructured output). Strictly
+// additive: every test above this point is unchanged and still passes, proving the original
+// prop/state/setter behavior is untouched.
+
+// A real Provider hook file, shaped exactly like provider.ts's own documented example
+// (features/cart/hooks/useCartProvider.ts): `const XProvider = defineProvider<Props, Value>(...)`
+// then `export const use<Name>Provider = XProvider.useProvider`.
+const CART_PROVIDER_HOOK = `interface CartProviderProps { total: number }
+interface CartValue { total: number; label: string }
+const CartProvider = defineProvider<CartProviderProps, CartValue>('Cart', ({ total }) => ({ total, label: 'x' }));
+export const useCartProvider = CartProvider.useProvider;
+`;
+
+const CARD_WITH_AMOUNT = `export function Card({ title, amount, label }) { return null; }`;
+
+const PAGE_WITH_PROVIDER = `import { Card } from '../components/Card';
+import { useCartProvider } from '../hooks/useCartProvider';
+
+export function Home({ title }) {
+  return (
+    <div>
+      <Card title={title} amount={total} label={label} />
+    </div>
+  );
+}
+`;
+
+// Same element/attributes, but no Provider import at all -- (b)'s counterpart.
+const PAGE_WITHOUT_PROVIDER = `import { Card } from '../components/Card';
+
+export function Home({ title }) {
+  return (
+    <div>
+      <Card title={title} amount={total} label={label} />
+    </div>
+  );
+}
+`;
+
+test('(a) provider: a page that imports a reachable Provider hook sees its exposed fields as \'provider\' scope sources', () => {
+  const g = buildScopeLinks(PAGE_WITH_PROVIDER, 'n1', {
+    childSource: CARD_WITH_AMOUNT,
+    providerSources: { '../hooks/useCartProvider': CART_PROVIDER_HOOK },
+  });
+  assert.deepEqual(g.scope, [
+    { name: 'title', kind: 'prop' },
+    { name: 'total', kind: 'provider' },
+    { name: 'label', kind: 'provider' },
+  ]);
+  assert.deepEqual(g.links, [
+    { prop: 'title', valueKind: 'identifier', text: 'title', from: [{ name: 'title', kind: 'prop' }] },
+    { prop: 'amount', valueKind: 'identifier', text: 'total', from: [{ name: 'total', kind: 'provider' }] },
+    { prop: 'label', valueKind: 'identifier', text: 'label', from: [{ name: 'label', kind: 'provider' }] },
+  ]);
+});
+
+test('(b) provider: a page that does NOT import the Provider hook does not see its fields, even when providerSources is supplied', () => {
+  const g = buildScopeLinks(PAGE_WITHOUT_PROVIDER, 'n1', {
+    childSource: CARD_WITH_AMOUNT,
+    providerSources: { '../hooks/useCartProvider': CART_PROVIDER_HOOK },
+  });
+  assert.deepEqual(g.scope, [{ name: 'title', kind: 'prop' }]);
+  assert.deepEqual(g.links[1].from, []); // 'amount' references 'total', which is not in scope here
+  assert.deepEqual(g.links[2].from, []); // 'label' likewise
+});
+
+test('provider: reachable import without a supplied providerSources entry adds no scope (same "unresolved -> null" contract as childSource)', () => {
+  const g = buildScopeLinks(PAGE_WITH_PROVIDER, 'n1', { childSource: CARD_WITH_AMOUNT });
+  assert.deepEqual(g.scope, [{ name: 'title', kind: 'prop' }]);
+});
+
+test('provider: an open (index-signature) Value type is not enumerable, mirroring child-prop resolution', () => {
+  const openHook = `interface CartProviderProps { total: number }
+interface CartValue { [k: string]: unknown }
+const CartProvider = defineProvider<CartProviderProps, CartValue>('Cart', ({ total }) => ({ total }));
+export const useCartProvider = CartProvider.useProvider;
+`;
+  const g = buildScopeLinks(PAGE_WITH_PROVIDER, 'n1', {
+    childSource: CARD_WITH_AMOUNT,
+    providerSources: { '../hooks/useCartProvider': openHook },
+  });
+  assert.deepEqual(g.scope, [{ name: 'title', kind: 'prop' }]);
+});
+
+test('provider: an untyped defineProvider call (no type arguments) resolves no Value type, so adds no scope', () => {
+  const untypedHook = `const CartProvider = defineProvider('Cart', () => ({ total: 1 }));
+export const useCartProvider = CartProvider.useProvider;
+`;
+  const g = buildScopeLinks(PAGE_WITH_PROVIDER, 'n1', {
+    childSource: CARD_WITH_AMOUNT,
+    providerSources: { '../hooks/useCartProvider': untypedHook },
+  });
+  assert.deepEqual(g.scope, [{ name: 'title', kind: 'prop' }]);
+});
+
+test('provider: a providerSources entry keyed by the hook\'s imported name (instead of the import path) also resolves', () => {
+  const g = buildScopeLinks(PAGE_WITH_PROVIDER, 'n1', {
+    childSource: CARD_WITH_AMOUNT,
+    providerSources: { useCartProvider: CART_PROVIDER_HOOK },
+  });
+  assert.deepEqual(g.scope, [
+    { name: 'title', kind: 'prop' },
+    { name: 'total', kind: 'provider' },
+    { name: 'label', kind: 'provider' },
+  ]);
+});
+
+const PAGE_WITH_TRACKED_STATE = `import { Card } from '../components/Card';
+import { useCartState } from '../hooks/useCartState';
+
+export function Home({ title }) {
+  const { total, setTotal } = useCartState();
+  return (
+    <div>
+      <Card title={title} amount={total} />
+    </div>
+  );
+}
+`;
+
+test('(a\') unit-output: an already-called, reachable tracked-state hook\'s destructured output is a \'unit-output\' scope source', () => {
+  const g = buildScopeLinks(PAGE_WITH_TRACKED_STATE, 'n1', { childSource: CARD_WITH_AMOUNT });
+  assert.deepEqual(g.scope, [
+    { name: 'title', kind: 'prop' },
+    { name: 'total', kind: 'unit-output' },
+    { name: 'setTotal', kind: 'unit-output' },
+  ]);
+  assert.deepEqual(g.links[1], { prop: 'amount', valueKind: 'identifier', text: 'total', from: [{ name: 'total', kind: 'unit-output' }] });
+});
+
+test('(b\') unit-output: a same-shaped call NOT imported from a hooks path is not treated as a tracked-state source', () => {
+  const page = `import { Card } from '../components/Card';
+import { useCartState } from '../utils/useCartState';
+
+export function Home({ title }) {
+  const { total, setTotal } = useCartState();
+  return (
+    <div>
+      <Card title={title} amount={total} />
+    </div>
+  );
+}
+`;
+  const g = buildScopeLinks(page, 'n1', { childSource: CARD_WITH_AMOUNT });
+  assert.deepEqual(g.scope, [{ name: 'title', kind: 'prop' }]);
+});
+
+test('unit-output: a hook import whose name does not match the use<Name>State convention is not treated as a tracked-state source', () => {
+  const page = `import { Card } from '../components/Card';
+import { useCartTotal } from '../hooks/useCartTotal';
+
+export function Home({ title }) {
+  const { total, setTotal } = useCartTotal();
+  return (
+    <div>
+      <Card title={title} amount={total} />
+    </div>
+  );
+}
+`;
+  const g = buildScopeLinks(page, 'n1', { childSource: CARD_WITH_AMOUNT });
+  assert.deepEqual(g.scope, [{ name: 'title', kind: 'prop' }]);
+});

@@ -75,7 +75,12 @@ export type SaveOutcome = { ok: boolean; error?: string; violations?: Violation[
 export type StatusMessage = { ok: boolean; message: string; violations?: Violation[] };
 
 // #223 scope/binding links: the server graph (core buildScopeLinks) and the view model derived from it.
-export type ScopeDeclKind = 'prop' | 'state' | 'setter';
+// #528 widens this with two more real scope sources buildScopeLinks() now also walks (additive —
+// 'prop'/'state'/'setter' keep their exact existing meaning): 'provider' is a field a reachable
+// ProviderUnit exposes via useProvider() (packages/core/typed-contracts/provider.ts, PAGE-006/
+// HOOK-002's import convention), 'unit-output' is a local binding already destructured from an
+// already-called tracked-state hook (packages/core/typed-contracts/trackedState.ts, HOOK-001).
+export type ScopeDeclKind = 'prop' | 'state' | 'setter' | 'provider' | 'unit-output';
 
 export type ScopeLinkGraph = {
   nodeId: string;
