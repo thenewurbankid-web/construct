@@ -33,22 +33,21 @@ const CAPABILITIES = ['importFill', 'createFill', 'planAnalysis'];
 const defaultProvider = Object.keys(PROVIDERS)[0] || null;
 
 // #569 slice 1: the open project and the remembered project are per signed-in login (key = lowercased login, or ''
-// with no session / auth off). Slice 2: the dev server slot is per login too (devServer.mjs). STILL SHARED, to be keyed in
-// later #569 slices: the LLM provider choices below, the engine/command queue, processes and review workers.
+// with no session / auth off). Slice 2: the dev server slot is per login too (devServer.mjs). Slice 3: the LLM provider
+// choices are per login (userState().llmProviders). Provider choices were never persisted (in-memory only), so there is
+// no on-disk shape to migrate: every login, including '', starts from the defaults exactly as the old shared object did.
+// STILL SHARED, to be keyed in later #569 slices: the engine/command queue, processes and review workers.
 const shared = {
   // #365 harness-only: the project named by CONSTRUCT_E2E_PROJECT_DIR (loopback only). When the open project
   // vanishes mid-run (a spec removed its temp fixture while it was the current project), the server falls back
   // to this one instead of leaving every later spec at "Open a project". Never set outside the e2e harness. It is
   // offered to a login only when it lies inside that login's own directory (containOrNull).
   preloadedProject: null,
-  llmProviders: {
-    importFill: defaultProvider,
-    createFill: defaultProvider,
-    planAnalysis: defaultProvider,
-  },
 };
 
-/** login key -> { projectDir, lastProject }. */
+const defaultLlmProviders = () => ({ importFill: defaultProvider, createFill: defaultProvider, planAnalysis: defaultProvider });
+
+/** login key -> { projectDir, lastProject, llmProviders }. */
 const userStates = new Map();
 
 /** The state of the current request's login, created on first use. #365: NO project at start; the Cockpit never
@@ -61,6 +60,7 @@ function userState() {
       projectDir: shared.preloadedProject === null ? null : containOrNull(workspaceRoot(), shared.preloadedProject, { mustBeDir: true }),
       // The project that was open last, offered as "Reopen <name>" and NEVER loaded automatically.
       lastProject: undefined, // undefined = not read from disk yet
+      llmProviders: defaultLlmProviders(),
     };
     userStates.set(key, entry);
   }
@@ -142,6 +142,7 @@ export function getProjectDir() {
 
 export function getSettings() {
   const projectDir = getProjectDir();
+  const { llmProviders } = userState();
   return {
     projectDir,
     workspaceRoot: workspaceRoot(),
@@ -149,12 +150,12 @@ export function getSettings() {
     projectRelative: projectDir === null ? null : relativeToWorkspace(workspaceRoot(), projectDir),
     lastProject: readLastProject(),
     browseRoots: getBrowseRoots(),
-    llmProviders: { ...shared.llmProviders },
+    llmProviders: { ...llmProviders },
     // Kept for exact backward compatibility with any existing reader of
     // the old single-provider shape (e.g. project-gate's status display) —
     // mirrors importFill, the closest analog to "the" provider a user
     // would expect this to mean.
-    llmProvider: shared.llmProviders.importFill,
+    llmProvider: llmProviders.importFill,
     availableProviders: Object.keys(PROVIDERS),
     availableProvidersByCapability: Object.fromEntries(CAPABILITIES.map((c) => [c, availableProvidersFor(c)])),
   };
@@ -175,7 +176,7 @@ function applyCapabilityProvider(capability, value) {
       `"${value}" cannot be used for planAnalysis — the whole-feature plan-analysis call is deliberately Claude/hosted-model-only (see epic #96) and never delegated to a local model, even by explicit request.`,
     );
   }
-  shared.llmProviders[capability] = value;
+  userState().llmProviders[capability] = value;
 }
 
 /** @throws {WorkspaceError} for a projectDir outside the workspace / missing / not a directory; Error for a bad provider. */
