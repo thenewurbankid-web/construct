@@ -123,6 +123,17 @@ test('#510: HOOK-002 does not fire for an ordinary hook with no Provider-shaped 
   assert.deepEqual(violations.filter((v) => v.rule === 'HOOK-002'), []);
 });
 
+// #521 -- HOOK-002's factory-presence check must also recognize defineProvider called with an
+// explicit generic type argument (defineProvider<Props>(...)), not just the plain
+// defineProvider(...) shape -- both must be treated as "really built through defineProvider".
+test('#521: HOOK-002 does not fire for defineProvider called with an explicit generic type argument', () => {
+  const violations = detectLayerViolations(
+    'hook',
+    `import { defineProvider } from '@construct/typed-contracts';\nconst Cart = defineProvider<CartState>('Cart', () => ({ total: 0 }));\nexport const useCartProvider = Cart.useProvider;`,
+  );
+  assert.deepEqual(violations.filter((v) => v.rule === 'HOOK-002'), []);
+});
+
 test('detectLayerViolations splits component rules (controller vs workflow/service/domain)', () => {
   assert.deepEqual(detectLayerViolations('component', `import { C } from '../controllers/C';`).map((v) => v.rule), ['COMPONENT-002']);
   assert.deepEqual(detectLayerViolations('component', `import { S } from '../services/S';`).map((v) => v.rule), ['COMPONENT-003']);
@@ -553,6 +564,16 @@ test('detectLayerViolations flags EXPR-006 for an Expression not built through d
   assert.ok(detectLayerViolations('expression', src).some((v) => v.rule === 'EXPR-006'));
 });
 
+// #521 -- EXPR-006's factory-presence check must also recognize defineExpression called with an
+// explicit generic type argument (defineExpression<Props>('Name', fn)) -- the canonical call
+// shape this repo's own packages/core/typed-contracts/examples/expression.ts uses -- not just
+// the plain defineExpression('Name', fn) shape.
+test('#521: EXPR-006 does not fire for defineExpression called with an explicit generic type argument', () => {
+  const src = `import { defineExpression } from '@construct/typed-contracts';\n`
+    + `export const ShowDiscountBadge = defineExpression<ShowDiscountBadgeProps>('ShowDiscountBadge', ({ cond, children }) => <>{cond ? children : null}</>);`;
+  assert.deepEqual(detectLayerViolations('expression', src).filter((v) => v.rule === 'EXPR-006'), []);
+});
+
 test('detectLayerViolations flags EXPR-002 once the default JSX complexity budget is exceeded', () => {
   const branches = Array.from({ length: 3 }, (_, i) => `{p.b${i}&&<X${i}/>}`).join('');
   const src = `import { defineExpression } from '@construct/typed-contracts';\n`
@@ -642,6 +663,18 @@ test('#504: HOOK-001 fires when a use*State hook built via useTrackedState also 
 
 test('#504: HOOK-001 does not fire for an ordinary hook with no State-shaped name (regression)', () => {
   const violations = detectLayerViolations('hook', `export function useCart() { return { items: [] }; }`);
+  assert.deepEqual(violations.filter((v) => v.rule === 'HOOK-001'), []);
+});
+
+// #521 -- HOOK-001's factory-presence check must also recognize useTrackedState called with an
+// explicit generic type argument (useTrackedState<T>(...)), not just the plain
+// useTrackedState(...) shape.
+test('#521: HOOK-001 does not fire for useTrackedState called with an explicit generic type argument', () => {
+  const violations = detectLayerViolations(
+    'hook',
+    `import { useTrackedState } from '@construct/typed-contracts';\n`
+      + `export function useCartState() { const [total, setTotal] = useTrackedState<number>('total', 0); return { total, setTotal }; }`,
+  );
   assert.deepEqual(violations.filter((v) => v.rule === 'HOOK-001'), []);
 });
 

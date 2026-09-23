@@ -111,6 +111,16 @@ function isReactSpecifier(specifier) {
   return specifier === 'react' || /(^|\/)react\//.test(specifier);
 }
 
+/** Whether `source` contains a call to the factory `name` -- EXPR-006/HOOK-002/HOOK-001's
+ * shared "factory call present" detection (#521): tolerates an optional explicit generic type
+ * argument between the name and the opening paren (e.g. `defineExpression<FooProps>(...)`), the
+ * canonical call shape this repo's own `packages/core/typed-contracts/examples/` already use,
+ * alongside the plain `defineExpression(...)` shape. A single shared helper so all three checks
+ * recognize exactly the same call shapes, rather than three separately-maintained regexes. */
+function hasFactoryCall(name, source) {
+  return new RegExp(`\\b${name}\\s*(<[^(]*>)?\\s*\\(`).test(source);
+}
+
 // #510 -- the naming convention PAGE-006 (below) and HOOK-002 rely on together: a Provider hook
 // (built through defineProvider, packages/core/typed-contracts/provider.ts) is exported as
 // `use<Name>Provider`. HOOK-002 is what makes that convention trustworthy (a hook named this way
@@ -463,7 +473,7 @@ export function detectLayerViolations(layer, source, opts = {}) {
   // merely opted itself out of PAGE-006 by naming alone.
   if (layer === 'hook') {
     const providerNamedExport = extractExports(source).find((e) => isProviderHookName(e.name));
-    if (providerNamedExport && !/\bdefineProvider\s*\(/.test(source)) {
+    if (providerNamedExport && !hasFactoryCall('defineProvider', source)) {
       out.push({
         rule: 'HOOK-002', line: lineOf(source, providerNamedExport.index),
         message: `Hook "${providerNamedExport.name}" is named like a Provider but is not built through defineProvider(...).`,
@@ -486,7 +496,7 @@ export function detectLayerViolations(layer, source, opts = {}) {
     // stop it.
     const trackedStateNamedExport = extractExports(source).find((e) => isTrackedStateHookName(e.name));
     if (trackedStateNamedExport) {
-      if (!/\buseTrackedState\s*\(/.test(source)) {
+      if (!hasFactoryCall('useTrackedState', source)) {
         out.push({
           rule: 'HOOK-001', line: lineOf(source, trackedStateNamedExport.index),
           message: `Hook "${trackedStateNamedExport.name}" is named like tracked state but is not built through useTrackedState(...).`,
@@ -573,7 +583,7 @@ export function detectLayerViolations(layer, source, opts = {}) {
     // actually built through defineExpression(...) -- the same deterministic proxy HOOK-002
     // already uses for defineProvider(...): presence of the real factory call, checked here so
     // `construct validate` can flag it without needing a full type pass of its own.
-    if (!/\bdefineExpression\s*\(/.test(source)) out.push({
+    if (!hasFactoryCall('defineExpression', source)) out.push({
       rule: 'EXPR-006', line: 1,
       message: 'Expression is not built through defineExpression(...).',
       why: 'defineExpression(...) is what actually ties a unit to the shared Template<Props> type tsc enforces — an Expression not built through it has no compile-time guarantee of returning JSX on every path.',
