@@ -427,6 +427,19 @@ test('validateArchitecture flags a relative import that resolves to nothing', ()
   assert.match(v.message, /"\.\.\/pages\/XPage"/);
 });
 
+test('IMPORT-001 checks the root app/page.tsx (nextjs route glob matches zero intervening segments, #491)', () => {
+  const dir = tmpProject();
+  fs.mkdirSync(path.join(dir, 'app'), { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, 'app', 'page.tsx'),
+    `import { CoreController } from '../features/core/controllers/CoreController';\nexport default function Page(){ return <CoreController/>; }`,
+  );
+  const res = validateArchitecture(dir);
+  const v = res.violations.find((x) => x.rule === 'IMPORT-001');
+  assert.ok(v, 'expected an IMPORT-001 violation for the root page');
+  assert.equal(v.file, 'app/page.tsx');
+});
+
 test('validateArchitecture does not flag a relative import once the target file exists', () => {
   const dir = tmpProject();
   fs.mkdirSync(path.join(dir, 'features', 'x', 'controllers'), { recursive: true });
