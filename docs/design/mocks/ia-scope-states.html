@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Scope: empty, loading, error, no-fit, keyboard focus, drag and deferred multi-field states - Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="ia.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+</head><body>
+<div class="concept">Concept - not implemented <span>Scope: empty, loading, error, no-fit, keyboard focus, drag and deferred multi-field states</span></div>
+
+<div class="hh">Scope: what this feature could plug in, and how to plug it in<small>Extends the real, shipped ScopeLinkGraph/ScopePanel (#223) and AutoMapPanel (#54) &mdash; not a parallel screen.</small></div>
+<div class="sheet3">
+ <div><h3>Before there is anything to show</h3>
+  <div class="card"><b>Empty scope</b><p>Nothing reachable yet</p><p>This component takes no props of its own, no Provider is reachable, and no other unit&rsquo;s output is called here yet. Every target stays a literal until one exists.</p></div>
+  <div class="card"><b>Loading</b><p>Computing scope for this file</p><span class="saveind busy"><span class="spin"></span> Reading declarations, Providers and unit outputs in scope&hellip;</span></div>
+  <div class="card"><b>Error</b><p>Couldn&rsquo;t compute scope links</p><div class="callout danger" style="margin:0"><span>&#9888;</span><div class="grow"><b>EmailField.tsx&rsquo;s own props could not be resolved</b><small>Falling back to every in-scope name, unfiltered by what the child actually declares (same fallback ScopePanel already has today).</small></div></div></div></div>
+ <div><h3>Linking mode: no fit, no selection</h3>
+  <div class="card"><b>No selection yet</b><p>Bind needs an element selected</p><div><button class="linkbtn" disabled>&#8672;</button></div><span class="saveind">Select an element in the tree or preview first.</span></div>
+  <div class="card"><b>Nothing type-matches</b><p>Every candidate is dimmed</p><button class="sc-src unfit" disabled aria-label="onSubmit">onSubmit<span class="sc-not-type">() =&gt; void</span></button><button class="sc-src unfit" disabled aria-label="disabled">disabled<span class="sc-not-type">boolean</span></button><p style="margin:8px 0 0">Type a literal instead, or add a component/hook that exposes the right type &mdash; never silently hidden as "nothing available".</p></div>
+  <div class="card"><b>Keyboard focus</b><p>Tab/Arrow reach every candidate, no pointer needed</p><div class="scmock" style="position:static;display:flex;gap:6px;flex-wrap:wrap"><button class="sc-src suggest kbd"  aria-label="email">email<span class="sc-not-type">string</span></button></div><span class="saveind">Focus ring is the same 2px accent outline used everywhere else (principles.md); Enter/Space commits, Escape cancels.</span></div></div>
+ <div><h3>Drag-and-drop: the optional pointer accelerator</h3>
+  <div class="card"><b>Dragging a source</b><p>Grabbed, not yet over a target</p><div class="scmock" style="position:static"><span class="sc-src sc-dragging">email<span class="sc-not-type">string</span></span></div><span class="saveind">Purely additive: drops call the exact same bind action click-to-link already does &mdash; never the only way to reach the outcome (WCAG 2.5.7).</span></div>
+  <div class="card"><b>Valid drop target</b><p>Type matches, drop accepted</p><div class="prop"><span class="k">value</span><span class="field sc-drop-ok">{email}</span></div></div>
+  <div class="card"><b>Invalid drop target</b><p>Type mismatch, drop refused</p><div class="prop"><span class="k">disabled</span><span class="field sc-drop-bad">not-allowed</span></div><span class="saveind">Cursor and outline both change; refusal is never silent.</span></div></div>
+ <div><h3>Deferred: multi-field linking ("Ctrl + related fields")</h3>
+  <div class="card"><b>Not in this slice</b><p>A real idea, not yet scoped</p><p>Binding an object&rsquo;s several sub-fields at once (e.g. <code>customer.street</code> + <code>customer.city</code> onto two sibling props together) needs a destructure-aware mechanical block AutoMap doesn&rsquo;t have today. AutoMap&rsquo;s existing checkbox multi-select (#54, shown bound above) is the closest real precedent &mdash; extending it to cross-source, cross-type candidates is the natural next step, logged, not built here.</p></div></div>
+ <div><h3>Narrow (390px)</h3>
+  <div class="sheet3" style="grid-template-columns:1fr;padding:0"><div><h3 style="margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted)">Scope, as the Inspect tab</h3><div class="narrow" style="position:relative;height:780px">
+ <div class="topbar" style="height:44px;flex:none"><div class="brand"><i></i>Cockpit</div><span class="spacer"></span><span class="pill run"><span class="spin"></span>2</span><span class="avatar" aria-label="Account">SP</span></div>
+ <nav class="snav" aria-label="Screens" style="height:38px;overflow:hidden;border-bottom:1px solid var(--border-subtle);flex:none;margin:0;padding:0 4px"><a class="" style="padding:0 9px;font-size:12px">Features</a><a class="on" style="padding:0 9px;font-size:12px">Pages</a><a class="" style="padding:0 9px;font-size:12px">Comp.</a><a class="" style="padding:0 9px;font-size:12px">Git</a><a class="" style="padding:0 9px;font-size:12px">Tests</a></nav>
+ <div style="flex:1;overflow:hidden;position:relative"><div class="pane-h"><span class="title">Scope</span></div><div class="tabs" role="tablist"><button role="tab" class="" aria-selected="false">Inspector</button><button role="tab" class="on" aria-selected="true">Scope <span class="badge acc">1</span></button></div><div class="scroll" style="max-height:600px">
+  <div class="sc-group-lbl">This file&rsquo;s own props &middot; LoginForm</div>
+  <button class="sc-src suggest"  aria-label="email">email<span class="sc-not-type">string</span></button>
+  <button class="sc-src unfit" disabled aria-label="onSubmit">onSubmit<span class="sc-not-type">() =&gt; void</span></button>
+  <button class="sc-src unfit" disabled aria-label="disabled">disabled<span class="sc-not-type">boolean</span></button>
+  <div class="sc-group-lbl">Providers this feature can use</div>
+  <button class="sc-src suggest"  aria-label="customer.email, string, from AuthProvider">customer.email<span class="sc-not-type">string</span></button>
+  <button class="sc-src suggest"  aria-label="customer.name, string, from AuthProvider">customer.name<span class="sc-not-type">string</span></button>
+  <button class="sc-src suggest"  aria-label="customer.id, string, from AuthProvider &mdash; likely the wrong pick, an opaque id">customer.id<span class="sc-not-type">string</span></button>
+  <div class="sc-group-lbl">Other units&rsquo; outputs already used here</div>
+  <button class="sc-src unfit" disabled aria-label="isPending">isPending<span class="sc-not-type">boolean</span></button>
+</div></div>
+ <div class="tabbar" role="tablist"><div class="" role="tab">Browse</div><div class="" role="tab">Stage</div><div class="on" role="tab">Inspect</div><div class="" role="tab">Run <span class="badge acc">2</span></div></div></div></div></div></div>
+</div>
+</body></html>

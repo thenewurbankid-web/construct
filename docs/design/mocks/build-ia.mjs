@@ -694,6 +694,146 @@ const palStates = `
 Object.assign(pocOut, { 'ia-palette': paletteMock, 'ia-palette-suggest': paletteSuggestMock, 'ia-palette-confirm': paletteConfirmMock, 'ia-palette-states': palStates });
 Object.assign(pocTitles, { 'ia-palette': 'Pages: block palette, read-only (Providers / Expressions / Components a page can actually use)', 'ia-palette-suggest': 'Pages: JSX selected, palette suggests wrapping it with a new Expression', 'ia-palette-confirm': 'Pages: Wrap with... confirmed, mechanical steps and per-file approval', 'ia-palette-states': 'Palette: empty, loading, error, no-selection, no-block-yet and narrow states' });
 
+/* ================================================= Prop-to-scope binding: the Scope tab (#523, pairs with #518's Palette tab) */
+// Extends the REAL, already-shipped screen -- ui/client/features/pages-editor/components/{ScopePanel,
+// ScopeLinkGraph}.tsx (#223) already renders a two-column view (page declarations left, the selected
+// element's props right) from packages/engine/scopeLinks.mjs's buildScopeLinks(), but every row is a
+// plain, non-interactive <span> (its <svg> is aria-hidden) -- nothing can be clicked, focused or
+// dragged today. AutoMapPanel (ui/client/.../AutoMapPanel.tsx, #54) already offers a checkbox
+// multi-select "wire N props" action, but only for SAME-NAMED matches already destructured in the
+// SAME file (ScopeDeclKind is 'prop'|'state'|'setter' only -- no Provider values, no other unit's
+// output, ever). This mock's real gap, in order: (1) make the existing rows real interactive elements
+// (2) let a person pick a SPECIFIC, possibly differently-named candidate, not just accept a same-name
+// guess (3) widen the source list itself to Provider-exposed values and other already-called units'
+// outputs, which the current server-side graph does not enumerate at all yet -- a small, separate
+// core extension (packages/engine/scopeLinks.mjs), not just UI paint.
+const scGroupLbl = (t) => `<div class="sc-group-lbl">${t}</div>`;
+const scChip = (kind, name, type, o = {}) => `<button class="sc-${kind} ${o.cls || ''}" ${o.disabled ? 'disabled' : ''} aria-label="${o.aria || name}">${name}<span class="sc-not-type">${type}</span></button>`;
+
+// Same LoginForm/EmailField scenario as every other Pages mock (ia-pages.html, cockpit-shell.html):
+// LoginForm.tsx destructures { email, onSubmit, disabled } from its own Props (already shown, unchanged,
+// in those mocks' "Props and bindings" section) and renders EmailField as a child. Selecting EmailField
+// asks the question this ticket answers: where can EmailField.value come FROM?
+const scopeSelTree = `${treeHead('Pages', [['Tree'], ['Pages'], ['Flow']], 'Tree')}
+  <div class="scroll"><div class="sect">/login</div><div class="tree">
+   ${trow(0, 'page', 'LoginPage', '', { tw: '&#9662;' })}
+   ${trow(1, 'component', 'AppNav')}
+   ${trow(1, 'component', 'LoginForm', '', { tw: '&#9662;' })}
+   ${trow(2, 'component', 'EmailField', '', { sel: true })}
+   ${trow(2, 'component', 'PasswordField')}
+   ${trow(2, 'component', 'SubmitButton')}
+   ${trow(1, 'component', 'AuthFooter')}
+  </div></div>`;
+const scopeDevice = () => `
+<div class="device" style="height:440px;width:640px">
+  <div class="bar"><i></i><i></i><i></i>&nbsp;&nbsp;localhost:5173/login</div>
+  <div class="app-nav"><b>Storefront</b><span>Catalog</span><span>Cart (2)</span><span>Sign in</span></div>
+  <div class="login" id="lf"><h2>Welcome back</h2><p>Sign in to continue checkout.</p>
+    <label>Email</label><div class="in">sam@example.com</div>
+    <label>Password</label><div class="in">&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;</div>
+    <div class="cta">Sign in</div></div>
+  <div class="sel-box" style="left:calc(50% - 174px);top:172px;width:348px;height:52px"></div>
+  <div class="sel-tag" style="left:calc(50% - 174px);top:152px">EmailField</div>
+</div>`;
+
+// The three real ScopeSourceItem groups (extends ScopeDeclKind: today only 'prop'|'state'|'setter' --
+// 'provider' and 'unit-output' are the two new kinds this ticket needs added to buildScopeLinks()).
+const scSourceGroups = (linking) => `
+  ${scGroupLbl("This file&rsquo;s own props &middot; LoginForm")}
+  ${scChip('src', 'email', 'string', linking ? { cls: 'suggest' } : {})}
+  ${scChip('src', 'onSubmit', '() =&gt; void', linking ? { cls: 'unfit', disabled: true } : {})}
+  ${scChip('src', 'disabled', 'boolean', linking ? { cls: 'unfit', disabled: true } : {})}
+  ${scGroupLbl('Providers this feature can use')}
+  ${scChip('src', 'customer.email', 'string', linking ? { cls: 'suggest', aria: 'customer.email, string, from AuthProvider' } : {})}
+  ${scChip('src', 'customer.name', 'string', linking ? { cls: 'suggest', aria: 'customer.name, string, from AuthProvider' } : {})}
+  ${scChip('src', 'customer.id', 'string', linking ? { cls: 'suggest', aria: 'customer.id, string, from AuthProvider &mdash; likely the wrong pick, an opaque id' } : {})}
+  ${scGroupLbl('Other units&rsquo; outputs already used here')}
+  ${scChip('src', 'isPending', 'boolean', linking ? { cls: 'unfit', disabled: true } : {})}
+`;
+const scTargets = (linking, bound) => `
+  <div class="prop"><span class="k">value</span>${bound
+    ? `<span class="field">email</span><span style="display:inline-flex;align-items:center;gap:4px"><span class="bind ref">linked</span><span class="via">via LoginForm&rsquo;s own prop</span></span>`
+    : `<span class="field ${linking ? 'linking' : ''}">${linking ? '?' : '""'}</span>${linking ? '<span class="tag" style="background:var(--danger-soft);color:var(--danger)">Linking&hellip;</span>' : '<button class="linkbtn" aria-label="Bind value on EmailField to a scope value" title="Bind...">&#8672;</button>'}`}</div>
+  <div class="prop"><span class="k">label</span><span class="field">"Email"</span><span class="bind lit">literal</span></div>`;
+const scInspector = (linking, bound) => `
+  <div class="section"><div class="el-head"><span class="name">EmailField</span>${L('component')}<span class="spacer"></span><button class="icon-btn" aria-label="More">&#8943;</button></div><div class="path">features/auth/components/EmailField.tsx:6</div></div>
+  <details class="dt" open><summary>Props and bindings <span class="c">2</span></summary>${scTargets(linking, bound)}</details>`;
+
+// 1 -- read only: what CAN fill this prop, grounded, before any action exists (Slice 1, same "no
+// execution risk" first cut as Palette's own).
+const scopeReadMock = frame({ screen: 'Pages', lw: 280, rw: 420,
+  left: scopeSelTree,
+  mid: editorBar('Pages &rsaquo; /login &rsaquo; <b>EmailField</b>', [['Preview /login', true, true], ['EmailField.tsx']], ovMenu(0)) +
+    `<div class="stage" style="flex:1;padding:14px;place-items:start center">${scopeDevice()}</div>` + foot,
+  right: `<div class="pane-h"><span class="title">Scope</span></div>${tabs([['Inspector'], ['Scope'], ['Source'], ['Palette'], ['Diff']], 'Scope')}<div class="scroll">${scInspector(false, false)}
+   <div class="section"><h4 style="margin-bottom:2px">Available in this feature&rsquo;s scope</h4><p style="margin:0 0 8px;color:var(--text-muted);font-size:12px">Same reachability the block palette (#518) already computes, read for data instead of imports &mdash; nothing here reaches a workflow, service or domain unit either.</p>${scSourceGroups(false)}</div></div>`,
+  bot: bottom('Processes', runProcs(), 104, { p: '1', a: '0' }), botH: 104 });
+
+// 2 -- linking mode: "Bind..." pressed on `value`. Click-to-select-then-click-to-target, the same
+// selection vocabulary Pages already uses (Pick element, Palette's Wrap-with selection) -- typed
+// candidates highlighted (.suggest, exactly Palette's own "fits" style), mismatches dimmed and
+// disabled with a text reason (.unfit + "Not this type", the direct analogue of Palette's "Not a fit"),
+// never colour alone. Keyboard: Tab from the pressed Bind button lands here with focus already inside
+// the candidate list (first enabled item); Up/Down/Tab move between candidates, Enter/Space commits
+// the focused one, Escape (or re-pressing the toggled Bind button) cancels back to the prop row.
+const scopeLinkMock = frame({ screen: 'Pages', lw: 280, rw: 440,
+  left: scopeSelTree,
+  mid: editorBar('Pages &rsaquo; /login &rsaquo; <b>EmailField</b>', [['Preview /login', true, true], ['EmailField.tsx']], ovMenu(0)) +
+    `<div class="stage" style="flex:1;padding:14px;place-items:start center">${scopeDevice()}</div>` + foot,
+  right: `<div class="pane-h"><span class="title">Scope</span></div>${tabs([['Inspector'], ['Scope', ['1', 'acc']], ['Source'], ['Palette'], ['Diff']], 'Scope')}<div class="scroll">${scInspector(true, false)}
+   <div class="callout info"><span>&#8672;</span><div class="grow"><b>Linking: value (string) on EmailField</b><small>Click or Enter a highlighted candidate, drag one onto the field, or press Escape to cancel. Dimmed candidates are a different type &mdash; disabled, not hidden, so you can see why.</small></div></div>
+   <div class="section">${scSourceGroups(true)}</div></div>`,
+  bot: bottom('Processes', runProcs(), 104, { p: '1', a: '0' }), botH: 104 });
+
+// 3 -- bound: committed, mechanical, per-file approval (the SAME idiom as Palette's confirm and
+// ia-pages-change's Change tab -- construct's own auto-map (packages/engine/pagesEditor.mjs
+// applyAutoMap) already does the same-name case as a bulk checkbox action (kept below, unchanged);
+// this single differently-named/-sourced pick needs the same one-line snippet-rewire block
+// (pages-editor-propflow-rename/-values already cover literal<->variable, per ia-five-screens.md 8.4)
+// pointed at a new source name instead of a new mechanical block.
+const scopeBoundMock = frame({ screen: 'Pages', lw: 280, rw: 420,
+  left: scopeSelTree,
+  mid: editorBar('Pages &rsaquo; /login &rsaquo; <b>EmailField</b>', [['Preview /login', true, true], ['EmailField.tsx']], ovMenu(0)) +
+    `<div class="stage" style="flex:1;padding:14px;place-items:start center">${scopeDevice()}</div>` + foot,
+  right: `<div class="pane-h"><span class="title">Scope</span></div>${tabs([['Inspector'], ['Scope'], ['Source'], ['Palette'], ['Diff']], 'Scope')}<div class="scroll">${scInspector(false, true)}
+   <div class="ask"><b>Bind</b> EmailField&rsquo;s <span class="field" style="display:inline-flex;width:60px">value</span> to <span class="field" style="display:inline-flex;width:60px">email</span></div>
+   ${nextRow(1, 'Rewrite the JSX attribute', 'existing snippet-rewire block &middot; value={email} &mdash; no new mechanical block', gen({}), '<div class="nxl"><a>Preview diff</a> &middot; 1 file &middot; 0 model calls</div>')}
+   <div class="sect" style="padding-top:10px">Approve &middot; 1 of 1</div>
+   <div class="art"><span class="cb on">&#10003;</span><span>LoginForm.tsx</span><span style="color:var(--text-muted)">+1 -1</span></div>
+   <div style="padding:10px 12px"><button class="btn primary">Approve</button> <button class="btn">Discard</button></div>
+   <div class="section" style="border-top:1px solid var(--border-subtle)"><h4>Scope links on this file</h4><div class="link">email &rarr; EmailField.value</div></div>
+   <div class="cb-group"><b style="font-size:12px">Auto-map (unchanged, #54) &middot; same-named candidates only</b>
+    <div class="cbrow"><input type="checkbox" checked disabled />disabled &rarr; SubmitButton.disabled</div>
+    <div class="cbrow" style="color:var(--text-muted)">Wire 1 prop(s) &middot; doesn&rsquo;t see Providers or other units&rsquo; outputs</div></div></div>`,
+  bot: bottom('Approvals', `<table><tr><th>Waiting for you</th><th>From</th><th></th></tr><tr><td><b>Bind EmailField&rsquo;s value to LoginForm&rsquo;s email</b> &middot; 1 file</td><td><span class="tag det">Mechanical</span></td><td><button class="btn sm primary">Review diff</button></td></tr></table>`, 110, { p: '0', a: '1' }), botH: 110 });
+
+/* States: empty scope, loading, error, no selection, all-mismatched, drag, keyboard focus, deferred
+   multi-field linking, narrow. */
+const scopeStates = `
+<div class="hh">Scope: what this feature could plug in, and how to plug it in<small>Extends the real, shipped ScopeLinkGraph/ScopePanel (#223) and AutoMapPanel (#54) &mdash; not a parallel screen.</small></div>
+<div class="sheet3">
+ <div><h3>Before there is anything to show</h3>
+  ${sc('Empty scope', 'Nothing reachable yet', `<p>This component takes no props of its own, no Provider is reachable, and no other unit&rsquo;s output is called here yet. Every target stays a literal until one exists.</p>`)}
+  ${sc('Loading', 'Computing scope for this file', `<span class="saveind busy"><span class="spin"></span> Reading declarations, Providers and unit outputs in scope&hellip;</span>`)}
+  ${sc('Error', 'Couldn&rsquo;t compute scope links', `<div class="callout danger" style="margin:0"><span>&#9888;</span><div class="grow"><b>EmailField.tsx&rsquo;s own props could not be resolved</b><small>Falling back to every in-scope name, unfiltered by what the child actually declares (same fallback ScopePanel already has today).</small></div></div>`)}</div>
+ <div><h3>Linking mode: no fit, no selection</h3>
+  ${sc('No selection yet', 'Bind needs an element selected', `<div><button class="linkbtn" disabled>&#8672;</button></div><span class="saveind">Select an element in the tree or preview first.</span>`)}
+  ${sc('Nothing type-matches', 'Every candidate is dimmed', `${scChip('src', 'onSubmit', '() =&gt; void', { cls: 'unfit', disabled: true })}${scChip('src', 'disabled', 'boolean', { cls: 'unfit', disabled: true })}<p style="margin:8px 0 0">Type a literal instead, or add a component/hook that exposes the right type &mdash; never silently hidden as "nothing available".</p>`)}
+  ${sc('Keyboard focus', 'Tab/Arrow reach every candidate, no pointer needed', `<div class="scmock" style="position:static;display:flex;gap:6px;flex-wrap:wrap">${scChip('src', 'email', 'string', { cls: 'suggest kbd' })}</div><span class="saveind">Focus ring is the same 2px accent outline used everywhere else (principles.md); Enter/Space commits, Escape cancels.</span>`)}</div>
+ <div><h3>Drag-and-drop: the optional pointer accelerator</h3>
+  ${sc('Dragging a source', 'Grabbed, not yet over a target', `<div class="scmock" style="position:static"><span class="sc-src sc-dragging">email<span class="sc-not-type">string</span></span></div><span class="saveind">Purely additive: drops call the exact same bind action click-to-link already does &mdash; never the only way to reach the outcome (WCAG 2.5.7).</span>`)}
+  ${sc('Valid drop target', 'Type matches, drop accepted', `<div class="prop"><span class="k">value</span><span class="field sc-drop-ok">${'{email}'}</span></div>`)}
+  ${sc('Invalid drop target', 'Type mismatch, drop refused', `<div class="prop"><span class="k">disabled</span><span class="field sc-drop-bad">not-allowed</span></div><span class="saveind">Cursor and outline both change; refusal is never silent.</span>`)}</div>
+ <div><h3>Deferred: multi-field linking ("Ctrl + related fields")</h3>
+  ${sc('Not in this slice', 'A real idea, not yet scoped', `<p>Binding an object&rsquo;s several sub-fields at once (e.g. <code>customer.street</code> + <code>customer.city</code> onto two sibling props together) needs a destructure-aware mechanical block AutoMap doesn&rsquo;t have today. AutoMap&rsquo;s existing checkbox multi-select (#54, shown bound above) is the closest real precedent &mdash; extending it to cross-source, cross-type candidates is the natural next step, logged, not built here.</p>`)}</div>
+ <div><h3>Narrow (390px)</h3>
+  <div class="sheet3" style="grid-template-columns:1fr;padding:0">${phone('Scope, as the Inspect tab', 'Inspect', `<div class="pane-h"><span class="title">Scope</span></div>${tabs([['Inspector'], ['Scope', ['1', 'acc']]], 'Scope')}<div class="scroll" style="max-height:600px">${scSourceGroups(true)}</div>`)
+    .replace('class="on" style="padding:0 9px;font-size:12px">Features', 'class="" style="padding:0 9px;font-size:12px">Features')
+    .replace('class="" style="padding:0 9px;font-size:12px">Pages', 'class="on" style="padding:0 9px;font-size:12px">Pages')}</div></div>
+</div>`;
+Object.assign(pocOut, { 'ia-scope': scopeReadMock, 'ia-scope-link': scopeLinkMock, 'ia-scope-bound': scopeBoundMock, 'ia-scope-states': scopeStates });
+Object.assign(pocTitles, { 'ia-scope': 'Pages: Scope tab, read-only (Providers / this file&rsquo;s own props / other units&rsquo; outputs a prop could bind to)', 'ia-scope-link': 'Pages: linking mode, a prop&rsquo;s Bind... pressed, type-matching candidates highlighted', 'ia-scope-bound': 'Pages: bound, mechanical rewrite and per-file approval, existing auto-map shown alongside', 'ia-scope-states': 'Scope: empty, loading, error, no-fit, keyboard focus, drag and deferred multi-field states' });
+
 const out = { 'ia-features': features, 'ia-account-menu': menuMock, 'ia-slot-matrix': matrix, 'ia-notes-states': drafts, 'ia-no-project': noProj, 'ia-git': git, 'ia-git-connect': gitConnect, 'ia-narrow': narrow };
 const titles = { 'ia-features': 'Features screen: notes, impact, plan, processes', 'ia-account-menu': 'Account menu: settings, local model, theme, help, sign out', 'ia-slot-matrix': 'Five screens, four slots', 'ia-notes-states': 'Notes: durable states', 'ia-no-project': 'No project: where the Open a project prompt sits', 'ia-git': 'Git screen: PRs and review inside the shell', 'ia-git-connect': 'Git with no remote: where Connect remote and Clone sit', 'ia-narrow': 'Narrow (390 px): one panel at a time' };
 Object.assign(out, pocOut); Object.assign(titles, pocTitles);

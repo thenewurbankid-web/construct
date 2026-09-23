@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Pages: bound, mechanical rewrite and per-file approval, existing auto-map shown alongside - Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="ia.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+</head><body>
+<div class="concept">Concept - not implemented <span>Pages: bound, mechanical rewrite and per-file approval, existing auto-map shown alongside</span></div>
+
+<div class="shell" style="--lw:280px;--rw:420px;grid-template-rows:44px 1fr 110px 24px;position:relative">
+  
+<header class="topbar" role="banner">
+  <div class="brand"><i></i>Cockpit</div>
+  <button class="chip-btn" aria-haspopup="listbox">storefront <span class="sub">main</span> &#9662;</button>
+  <nav class="snav " aria-label="Screens"><a class="" >Features</a><a class="on" aria-current="page">Pages</a><a class="" >Components</a><a class="" >Git <span class="badge">3</span></a><a class="" >Tests</a></nav>
+  <button class="chip-btn palette-trigger"><span>Search or run a command...</span><kbd>Ctrl K</kbd></button>
+  <span class="pill run"><span class="spin"></span>2 running</span>
+  <button class="acct " aria-haspopup="true" aria-expanded="false"><span class="avatar">SP</span>shashank-p &#9662;</button>
+</header>
+  <div class="ia-main">
+    <aside class="pane" aria-label="Left panel: Browse"><div class="pane-h"><span class="title">Pages</span><span class="spacer"></span><button class="icon-btn" aria-label="New">+</button><button class="icon-btn" aria-label="Collapse">&laquo;</button></div><div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Tree</button><button role="tab" class="" aria-selected="false">Pages</button><button role="tab" class="" aria-selected="false">Flow</button></div><div class="search">&#8981; Go to file, node or route <span class="spacer"></span><kbd>Ctrl P</kbd></div>
+  <div class="scroll"><div class="sect">/login</div><div class="tree">
+   <div class="row l0 "><span class="twisty">&#9662;</span><span class="layer page">page</span><span>LoginPage</span><span class="nbs"></span></div>
+   <div class="row l1 "><span class="layer component">component</span><span>AppNav</span><span class="nbs"></span></div>
+   <div class="row l1 "><span class="twisty">&#9662;</span><span class="layer component">component</span><span>LoginForm</span><span class="nbs"></span></div>
+   <div class="row l2 sel"><span class="layer component">component</span><span>EmailField</span><span class="nbs"></span></div>
+   <div class="row l2 "><span class="layer component">component</span><span>PasswordField</span><span class="nbs"></span></div>
+   <div class="row l2 "><span class="layer component">component</span><span>SubmitButton</span><span class="nbs"></span></div>
+   <div class="row l1 "><span class="layer component">component</span><span>AuthFooter</span><span class="nbs"></span></div>
+  </div></div></aside><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <section class="pane mid" aria-label="Center stage"><div class="etabs" role="tablist"><button role="tab" class="on" aria-selected="true">&#9679; Preview /login</button><button role="tab" class="" aria-selected="false">EmailField.tsx <span class="x">&times;</span></button></div><div class="canvas-tb"><span class="crumbs">Pages &rsaquo; /login &rsaquo; <b>EmailField</b></span><span class="devpill"><span class="dot"></span>:5173 running</span><span class="spacer"></span><button class="tg" aria-haspopup="true">Overlays &middot; 0 on &#9662;</button><button class="tg" aria-pressed="true" title="Click an element without holding Alt">&#8853; Pick</button></div><div class="stage" style="flex:1;padding:14px;place-items:start center">
+<div class="device" style="height:440px;width:640px">
+  <div class="bar"><i></i><i></i><i></i>&nbsp;&nbsp;localhost:5173/login</div>
+  <div class="app-nav"><b>Storefront</b><span>Catalog</span><span>Cart (2)</span><span>Sign in</span></div>
+  <div class="login" id="lf"><h2>Welcome back</h2><p>Sign in to continue checkout.</p>
+    <label>Email</label><div class="in">sam@example.com</div>
+    <label>Password</label><div class="in">&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;</div>
+    <div class="cta">Sign in</div></div>
+  <div class="sel-box" style="left:calc(50% - 174px);top:172px;width:348px;height:52px"></div>
+  <div class="sel-tag" style="left:calc(50% - 174px);top:152px">EmailField</div>
+</div></div><div class="canvas-foot"><span>Desktop 1280</span><span>Alt+Click opens source</span><span class="spacer"></span><span>Live: reloads when a file changes</span></div></section><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <aside class="pane" aria-label="Right panel: Inspect"><div class="pane-h"><span class="title">Scope</span></div><div class="tabs" role="tablist"><button role="tab" class="" aria-selected="false">Inspector</button><button role="tab" class="on" aria-selected="true">Scope</button><button role="tab" class="" aria-selected="false">Source</button><button role="tab" class="" aria-selected="false">Palette</button><button role="tab" class="" aria-selected="false">Diff</button></div><div class="scroll">
+  <div class="section"><div class="el-head"><span class="name">EmailField</span><span class="layer component">component</span><span class="spacer"></span><button class="icon-btn" aria-label="More">&#8943;</button></div><div class="path">features/auth/components/EmailField.tsx:6</div></div>
+  <details class="dt" open><summary>Props and bindings <span class="c">2</span></summary>
+  <div class="prop"><span class="k">value</span><span class="field">email</span><span style="display:inline-flex;align-items:center;gap:4px"><span class="bind ref">linked</span><span class="via">via LoginForm&rsquo;s own prop</span></span></div>
+  <div class="prop"><span class="k">label</span><span class="field">"Email"</span><span class="bind lit">literal</span></div></details>
+   <div class="ask"><b>Bind</b> EmailField&rsquo;s <span class="field" style="display:inline-flex;width:60px">value</span> to <span class="field" style="display:inline-flex;width:60px">email</span></div>
+   <div class="nx"><div class="nxh"><span class="no">1</span><div class="grow"><b>Rewrite the JSX attribute</b><small>existing snippet-rewire block &middot; value={email} &mdash; no new mechanical block</small></div><span class="gen " role="group" aria-label="Generate">
+   <span class="mode" role="radiogroup" aria-label="How"><button role="radio" aria-checked="true" class="on det" >Mechanical</button><button role="radio" aria-checked="false" class="" >AI</button></span>
+   <button class="go" >Generate</button></span></div><div class="nxl"><a>Preview diff</a> &middot; 1 file &middot; 0 model calls</div></div>
+   <div class="sect" style="padding-top:10px">Approve &middot; 1 of 1</div>
+   <div class="art"><span class="cb on">&#10003;</span><span>LoginForm.tsx</span><span style="color:var(--text-muted)">+1 -1</span></div>
+   <div style="padding:10px 12px"><button class="btn primary">Approve</button> <button class="btn">Discard</button></div>
+   <div class="section" style="border-top:1px solid var(--border-subtle)"><h4>Scope links on this file</h4><div class="link">email &rarr; EmailField.value</div></div>
+   <div class="cb-group"><b style="font-size:12px">Auto-map (unchanged, #54) &middot; same-named candidates only</b>
+    <div class="cbrow"><input type="checkbox" checked disabled />disabled &rarr; SubmitButton.disabled</div>
+    <div class="cbrow" style="color:var(--text-muted)">Wire 1 prop(s) &middot; doesn&rsquo;t see Providers or other units&rsquo; outputs</div></div></div></aside>
+  </div>
+  
+<div class="drawer" aria-label="Bottom panel: Run" style="height:110px">
+  <div class="tabs" role="tablist"><button role="tab" class="" aria-selected="false">Processes <span class="badge acc">0</span></button><button role="tab" class="on" aria-selected="true">Approvals <span class="badge ">1</span></button><button role="tab" class="" aria-selected="false">Diagnostics <span class="badge danger">3</span></button><button role="tab" class="" aria-selected="false">Logs</button></div>
+  <div class="body"><table><tr><th>Waiting for you</th><th>From</th><th></th></tr><tr><td><b>Bind EmailField&rsquo;s value to LoginForm&rsquo;s email</b> &middot; 1 file</td><td><span class="tag det">Mechanical</span></td><td><button class="btn sm primary">Review diff</button></td></tr></table></div>
+</div>
+  <footer class="statusbar"><span class="ok">&#9679; validate: 0 new violations</span><span>Notes saved on this machine</span><span class="spacer"></span><span>qwen2.5-coder:7b</span><span><kbd>F6</kbd> next panel</span><span><kbd>Ctrl J</kbd> bottom panel</span></footer>
+  
+</div>
+</body></html>
