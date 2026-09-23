@@ -33,8 +33,8 @@ const CAPABILITIES = ['importFill', 'createFill', 'planAnalysis'];
 const defaultProvider = Object.keys(PROVIDERS)[0] || null;
 
 // #569 slice 1: the open project and the remembered project are per signed-in login (key = lowercased login, or ''
-// with no session / auth off). STILL SHARED, to be keyed in later #569 slices: the LLM provider choices below, the dev
-// server slot, the engine/command queue, processes and review workers.
+// with no session / auth off). Slice 2: the dev server slot is per login too (devServer.mjs). STILL SHARED, to be keyed in
+// later #569 slices: the LLM provider choices below, the engine/command queue, processes and review workers.
 const shared = {
   // #365 harness-only: the project named by CONSTRUCT_E2E_PROJECT_DIR (loopback only). When the open project
   // vanishes mid-run (a spec removed its temp fixture while it was the current project), the server falls back

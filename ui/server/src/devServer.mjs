@@ -31,7 +31,7 @@ import net from 'node:net';
 import path from 'node:path';
 import { containedProjectRoot, rootEscapesWorkspace } from './projectGuard.mjs';
 import { serverLog } from './logBuffer.mjs';
-import { isInside, workspaceRoot } from './workspace.mjs';
+import { currentLogin, isInside, normalizeLogin, workspaceRoot } from './workspace.mjs';
 
 /** The port tried first: Vite's default, so a typical app lands where its developer expects. */
 export const DEFAULT_PORT_BASE = 5173;
@@ -94,10 +94,10 @@ export function isPortFree(port, host = '127.0.0.1') {
   });
 }
 
-/** The first free port at or above `from`, skipping the reserved ones; null when none in the search window. */
-export async function findFreePort(from = DEFAULT_PORT_BASE, { reserved = RESERVED_PORTS } = {}) {
+/** The first free port at or above `from`, skipping the reserved ones and any in `taken` (ports another slot has claimed but not bound yet); null when none in the search window. */
+export async function findFreePort(from = DEFAULT_PORT_BASE, { reserved = RESERVED_PORTS, taken = null } = {}) {
   for (let p = from; p < from + PORT_SEARCH && p <= 65535; p += 1) {
-    if (reserved.includes(p)) continue;
+    if (reserved.includes(p) || taken?.has(p)) continue;
     if (await isPortFree(p)) return p;
   }
   return null;
@@ -169,13 +169,23 @@ export function createDevServerService({
   spawn = nodeSpawn,
   log = serverLog,
 } = {}) {
-  /** project root -> the one dev server slot for that project */
+  // #569: one slot per (signed-in login, project root). The login is the session's (workspace.mjs currentLogin(),
+  // '' when auth is off), so two users never see, stop or replace each other's dev server; single-user is one key.
+  /** `login\0root` -> the one dev server slot for that user's project */
   const slots = new Map();
-  let version = 0;
+  /** login -> status version, so one user's activity is not visible to another's poll */
+  const versions = new Map();
+  /** Ports handed to a slot that has not necessarily bound yet, across ALL users: two concurrent starts never get the same one. */
+  const claimed = new Set();
 
-  const blank = (root) => ({ root, state: 'not-running', child: null, exited: null, stopping: false, reported: null, port: null, url: null, pid: null, startedAt: null, failure: null, tail: [], timers: [], command: null });
-  const slotFor = (root) => { let s = slots.get(root); if (!s) { s = blank(root); slots.set(root, s); } return s; };
-  const bump = () => { version += 1; };
+  const blank = (root, login) => ({ root, login, state: 'not-running', child: null, exited: null, stopping: false, reported: null, port: null, url: null, pid: null, startedAt: null, failure: null, tail: [], timers: [], command: null, claimedPort: null });
+  const keyOf = (root, login = currentLogin()) => `${login}\u0000${root}`;
+  const slotFor = (root) => { const k = keyOf(root); let s = slots.get(k); if (!s) { s = blank(root, currentLogin()); slots.set(k, s); } return s; };
+  const bump = (login) => { versions.set(login, (versions.get(login) ?? 0) + 1); };
+  let portLock = Promise.resolve();
+  const withPortLock = (fn) => { const r = portLock.then(fn); portLock = r.catch(() => {}); return r; };
+  const claim = (slot, port) => { release(slot); if (port) { slot.claimedPort = port; claimed.add(port); } };
+  const release = (slot) => { if (slot.claimedPort) { claimed.delete(slot.claimedPort); slot.claimedPort = null; } };
 
   /** Which project this call is about, and why nothing can start there. Reads only. */
   function target() {
@@ -188,12 +198,12 @@ export function createDevServerService({
   }
 
   function statusFor(root, refusal) {
-    const slot = root ? slots.get(root) : null;
+    const slot = root ? slots.get(keyOf(root)) : null;
     const branch = root ? getBranchInfo(root) : { branch: null, isSession: false };
     const command = root && !refusal ? readDevCommand(root) : null;
     return {
       ok: true,
-      version,
+      version: versions.get(currentLogin()) ?? 0,
       state: slot ? slot.state : 'not-running',
       refusal: refusal ?? null,
       command: command && !command.refusal ? { script: command.script, text: command.text, display: command.display } : null,
@@ -233,7 +243,7 @@ export function createDevServerService({
     if (looksLikePortBusy(output)) {
       // The port the server itself says it could not have, which is not ours when the script hardcodes one.
       const busy = busyPortFrom(output) ?? slot.port;
-      const suggestedPort = await findFreePort((busy || portBase) + 1);
+      const suggestedPort = await findFreePort((busy || portBase) + 1, { taken: claimed });
       return { kind: 'port-busy', message: `Port ${busy} is in use by another process.`, port: busy, suggestedPort };
     }
     const last = [...slot.tail].reverse().find((l) => /error|cannot|failed|not found|missing/i.test(l)) || slot.tail[slot.tail.length - 1] || '';
@@ -253,12 +263,12 @@ export function createDevServerService({
         slot.url = `http://${host === '::1' ? 'localhost' : '127.0.0.1'}:${port}/`;
         slot.state = 'running';
         clearTimers(slot);
-        bump();
+        bump(slot.login);
         log.record('dev-server', 'info', `Dev server is running at ${slot.url}`);
       } else if (Date.now() - startedAt > startupTimeoutMs) {
         slot.failure = { kind: 'timeout', message: `The dev server did not start answering within ${Math.round(startupTimeoutMs / 1000)} seconds.` };
         clearTimers(slot);
-        bump();
+        bump(slot.login);
         killGroup(slot.child, 'SIGTERM');
       }
     }, POLL_MS);
@@ -269,6 +279,7 @@ export function createDevServerService({
     clearTimers(slot);
     liveChildren.delete(slot.child);
     slot.exited = { code, signal };
+    release(slot);
     slot.pid = null;
     slot.url = null;
     const wasStarting = slot.state === 'starting';
@@ -277,7 +288,7 @@ export function createDevServerService({
     if (requested) {
       slot.state = 'not-running';
       slot.failure = null;
-      bump();
+      bump(slot.login);
       log.record('dev-server', 'info', 'Dev server stopped.');
       return Promise.resolve();
     }
@@ -285,7 +296,7 @@ export function createDevServerService({
       // A start that timed out already carries its own reason.
       slot.failure = slot.failure && slot.failure.kind === 'timeout' && wasStarting ? slot.failure : failure;
       slot.state = 'failed';
-      bump();
+      bump(slot.login);
       log.record('dev-server', 'error', slot.failure.message);
     });
   }
@@ -329,26 +340,36 @@ export function createDevServerService({
       }
       port = n;
     }
-    const wantedFree = port === null ? await findFreePort(portBase) : ((await isPortFree(port)) ? port : null);
+    // Choose AND claim under one lock: the probing awaits, so without it two users starting at once both see
+    // 5173 free. Only the winner's claim is visible to the next probe.
+    const wantedFree = await withPortLock(async () => {
+      const p = port === null ? await findFreePort(portBase, { taken: claimed }) : ((!claimed.has(port) && await isPortFree(port)) ? port : null);
+      if (p !== null) claim(slot, p);
+      return p;
+    });
     if (wantedFree === null) {
-      const suggestedPort = await findFreePort((port ?? portBase) + 1);
-      Object.assign(slot, blank(root), { state: 'failed', port, failure: { kind: 'port-busy', message: `Port ${port ?? portBase} is in use by another process.`, port, suggestedPort } });
-      bump();
+      const suggestedPort = await findFreePort((port ?? portBase) + 1, { taken: claimed });
+      release(slot);
+      Object.assign(slot, blank(root, slot.login), { state: 'failed', port, failure: { kind: 'port-busy', message: `Port ${port ?? portBase} is in use by another process.`, port, suggestedPort } });
+      bump(slot.login);
       return { status: 409, body: { ...statusFor(root, null), ok: false, code: 'PORT_BUSY', error: slot.failure.message } };
     }
     port = wantedFree;
 
-    Object.assign(slot, blank(root), { state: 'starting', port, startedAt: new Date().toISOString(), command });
-    bump();
+    // (the port is already claimed above; blank() resets claimedPort, so it is set again right after)
+    Object.assign(slot, blank(root, slot.login), { state: 'starting', port, startedAt: new Date().toISOString(), command });
+    bump(slot.login);
+    slot.claimedPort = port;
     installExitHandlers();
     log.record('dev-server', 'info', `Starting ${command.display} (${command.text}) in ${path.basename(root)} on port ${port}`);
     let child;
     try {
       child = spawn('npm', ['run', command.script], { cwd: root, env: childEnv({ port }), detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
     } catch (e) {
+      release(slot);
       slot.state = 'failed';
       slot.failure = { kind: 'exited', message: `Could not run npm: ${e.message}` };
-      bump();
+      bump(slot.login);
       return { status: 500, body: { ...statusFor(root, null), ok: false, code: 'SPAWN_FAILED', error: slot.failure.message } };
     }
     slot.child = child;
@@ -365,11 +386,11 @@ export function createDevServerService({
   async function stop() {
     const t = target();
     const root = t.root;
-    const slot = root ? slots.get(root) : null;
+    const slot = root ? slots.get(keyOf(root)) : null;
     if (slot) {
       await stopSlot(slot);
       // Stopping a failed slot is dismissing it: back to "not running", with the old failure forgotten.
-      if (slot.state === 'failed') slots.delete(root);
+      if (slot.state === 'failed') { release(slot); slots.delete(keyOf(root)); }
     }
     return { status: 200, body: statusFor(root, t.refusal) };
   }
@@ -384,13 +405,23 @@ export function createDevServerService({
     },
     /** Stop the dev server of one project (Close project / switching projects). Never throws. */
     async stopForRoot(root) {
-      const slot = root ? slots.get(root) : null;
-      if (slot) { await stopSlot(slot).catch(() => {}); slots.delete(root); }
+      const slot = root ? slots.get(keyOf(root)) : null;
+      if (slot) { await stopSlot(slot).catch(() => {}); release(slot); slots.delete(keyOf(root)); }
     },
-    /** Stop every dev server (Sign out). Never throws. */
+    /** Stop every dev server one login started (that login signing out); other users' keep running. `null`/unusable
+     * login stops nothing. '' is the no-session (auth off) user. Never throws. */
+    async stopForLogin(login) {
+      let who;
+      try { who = login === '' ? '' : normalizeLogin(login); } catch { return; }
+      const mine = [...slots.entries()].filter(([, s]) => s.login === who);
+      await Promise.all(mine.map(([, s]) => stopSlot(s).catch(() => {})));
+      for (const [k, s] of mine) { release(s); slots.delete(k); }
+    },
+    /** Stop every user's dev server (the Cockpit itself is shutting down, and tests). Never throws. */
     async stopAll() {
       await Promise.all([...slots.values()].map((s) => stopSlot(s).catch(() => {})));
       slots.clear();
+      claimed.clear();
     },
     /** The project root a stop-on-close should target: the one the Cockpit is looking at now, or null. */
     currentRoot() { const dir = getProjectDir(); return dir ? (containedProjectRoot(dir) || dir) : null; },

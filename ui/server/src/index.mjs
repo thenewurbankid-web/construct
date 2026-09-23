@@ -121,7 +121,7 @@ export const devServer = createDevServerService({
 
 let auth;
 try {
-  auth = createAuth(resolveAuthConfig(process.env, { host, port, clientOrigin: CLIENT_ORIGIN }), { onLogout: () => { devServer.stopAll(); } });
+  auth = createAuth(resolveAuthConfig(process.env, { host, port, clientOrigin: CLIENT_ORIGIN }), { onLogout: (login) => { devServer.stopForLogin(login ?? ''); } });
 } catch (e) {
   if (e instanceof AuthConfigError && isEntrypoint()) {
     console.error(`\nConstruct UI server refused to start:\n\n  ${e.message}\n`);
