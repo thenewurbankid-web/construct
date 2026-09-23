@@ -49,7 +49,7 @@ before(() => {
   process.env.CONSTRUCT_WORKSPACE_ROOT = base;
   resetWorkspaceRootForTests();
   base = baseWorkspaceRoot();
-  svc = createDevServerService({ getProjectDir, portBase: 47500 });
+  svc = createDevServerService({ getProjectDir, portBase: 47900 });
 });
 
 after(async () => {
