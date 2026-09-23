@@ -223,6 +223,68 @@ export function findTransitionHoles(machine) {
   return holes;
 }
 
+const SERVICE_003_SUGGESTED_FIX = '({ signal }: { signal: AbortSignal }) => fetch(url, { signal })';
+
+const propKeyName = (key) => (key?.type === 'Identifier' ? key.name : key?.type === 'Literal' ? String(key.value) : null);
+
+/**
+ * SERVICE-003 core: the "stale response lands" gap in a service file's first `fetch()` call or
+ * `defineService()`-wrapped function (see docs/staleness-by-layer.md's Service row -- XState's
+ * `fromPromise` hands the invoked function a `signal`, aborted when the invoking state exits; a
+ * service that forwards it is cancelled for free). Two independent, deliberately narrow checks
+ * (AST-only, first hit only -- the same first-hit style as PAGE-004/SERVICE-002 above, not the
+ * fuller per-call/axios/type-resolution sketch drafted for #577's earlier WIP):
+ *   - `fetch(url, init)` where `init` is missing, or is an object literal with no `signal`
+ *     property (a spread or non-literal init is "cannot tell" and never reported);
+ *   - `defineService(name, fn)` where `fn`'s first parameter's inline object type has no
+ *     `signal` member (a typed reference to an imported/aliased type is "cannot tell").
+ * Called only once the caller has confirmed the file has a fetch() call at all (a service with
+ * no network calls is never reported) -- see the `opts.serviceAbortSignal` gate below.
+ *
+ * @param {object} ast A parsed Program (typescript-estree, with ranges).
+ * @param {string} source The file's source text, for the call snippet in the message.
+ * @returns {{line:number, message:string} | null} The one violation to report, or null when the first fetch() forwards a signal and every defineService() fn declares one.
+ */
+function findMissingAbortSignal(ast, source) {
+  let firstFetch = null;
+  let firstDefineService = null;
+  walkAst(ast, {
+    enter(node) {
+      if (node.type !== 'CallExpression' || node.callee.type !== 'Identifier') return;
+      if (node.callee.name === 'fetch' && !firstFetch) firstFetch = node;
+      if (node.callee.name === 'defineService' && !firstDefineService) firstDefineService = node;
+    },
+  });
+
+  if (firstFetch) {
+    const init = firstFetch.arguments[1];
+    const hasSignal = init?.type === 'ObjectExpression'
+      && init.properties.some((p) => p.type === 'Property' && propKeyName(p.key) === 'signal');
+    if (!hasSignal) {
+      const raw = source.slice(firstFetch.range[0], firstFetch.range[1]).replace(/\s+/g, ' ');
+      const call = raw.length > 60 ? `${raw.slice(0, 57)}...` : raw;
+      return { line: lineOf(source, firstFetch.range[0]), message: `Service calls ${call} without forwarding an AbortSignal.` };
+    }
+  }
+
+  if (firstDefineService) {
+    const fn = firstDefineService.arguments[1];
+    const param = fn?.params?.[0];
+    // The props type may be written inline on the fn's own first parameter
+    // (`({ signal }: { signal: AbortSignal }) => ...`) or as defineService's own explicit
+    // generic type argument (`defineService<{ signal: AbortSignal }, R>(...)`, the form
+    // docs/staleness-by-layer.md's Service example uses) -- read whichever is present.
+    const typeAnn = param?.typeAnnotation?.typeAnnotation ?? firstDefineService.typeArguments?.params?.[0];
+    const hasSignal = typeAnn?.type === 'TSTypeLiteral'
+      && typeAnn.members.some((m) => m.type === 'TSPropertySignature' && propKeyName(m.key) === 'signal');
+    if (!hasSignal) {
+      return { line: lineOf(source, firstDefineService.range[0]), message: 'defineService() function takes no `signal: AbortSignal` to forward to fetch().' };
+    }
+  }
+
+  return null;
+}
+
 /**
  * Pure rule-detection: given a layer name and a file's source text, return
  * the raw violation descriptors (rule/line/message/why/expected) it
@@ -232,11 +294,11 @@ export function findTransitionHoles(machine) {
  *
  * @param {string} layer One of the known layer names.
  * @param {string} source The file's source text.
- * @param {{maxJsxDepth?: number, maxJsxBranches?: number, domainPurityAllowlist?: boolean, workflowTransitionTable?: boolean, stateUnion?: boolean}} [opts]
+ * @param {{maxJsxDepth?: number, maxJsxBranches?: number, domainPurityAllowlist?: boolean, workflowTransitionTable?: boolean, stateUnion?: boolean, serviceAbortSignal?: boolean}} [opts]
  *   COMPONENT-006/PAGE-009's complexity budget overrides (#508/#505), DOMAIN-002's opt-in
- *   flag (#506), WORKFLOW-004's opt-in flag (#578) and STATE-001's opt-in flag (#581) --
- *   additive, optional; every existing call site that omits them keeps the built-in defaults
- *   (and DOMAIN-002/WORKFLOW-004/STATE-001 off).
+ *   flag (#506), WORKFLOW-004's opt-in flag (#578), STATE-001's opt-in flag (#581) and
+ *   SERVICE-003's opt-in flag (#594) -- additive, optional; every existing call site that
+ *   omits them keeps the built-in defaults (and DOMAIN-002/WORKFLOW-004/STATE-001/SERVICE-003 off).
  */
 export function detectLayerViolations(layer, source, opts = {}) {
   const ast = parseToAst(source);
@@ -470,6 +532,20 @@ export function detectLayerViolations(layer, source, opts = {}) {
       message: 'Service imports React/UI.',
       why: 'Services own external effects, not rendering.',
       expected: ['api', 'domain', 'types'],
+    });
+  }
+
+  // #594 -- SERVICE-003, flag-gated like DOMAIN-002/WORKFLOW-004/STATE-001 (off unless the
+  // project opts in). Gated on there being a fetch() call in the file at all (via the same
+  // collectCalls(ast, new Set(['fetch']))[0] presence check PAGE-004 uses above) so a service
+  // with no network calls is never reported; findMissingAbortSignal does the real detection.
+  if (opts.serviceAbortSignal && layer === 'service' && collectCalls(ast, new Set(['fetch']))[0]) {
+    const violation = findMissingAbortSignal(ast, source);
+    if (violation) out.push({
+      rule: 'SERVICE-003', line: violation.line, message: violation.message,
+      why: "a response that arrives after its request was superseded must not land — XState's fromPromise hands the invoked function a signal, aborted when the invoking state exits, and a service that forwards it to fetch is cancelled for free",
+      suggestedFix: SERVICE_003_SUGGESTED_FIX,
+      expected: [SERVICE_003_SUGGESTED_FIX],
     });
   }
 
@@ -819,6 +895,8 @@ export function validateArchitecture(root, opts = {}) {
   const workflowTransitionTable = config.rules['WORKFLOW-004']?.severity !== 'off';
   // #581 -- STATE-001 opts in the same way.
   const stateUnion = config.rules['STATE-001']?.severity !== 'off';
+  // #594 -- SERVICE-003 opts in the same way.
+  const serviceAbortSignal = config.rules['SERVICE-003']?.severity !== 'off';
   let frozenIndex = null;
   for (const abs of files) {
     if (!FILE_EXTENSIONS.has(path.extname(abs)) || !fs.existsSync(abs)) continue;
@@ -835,7 +913,7 @@ export function validateArchitecture(root, opts = {}) {
     }
     const source = fs.readFileSync(abs, 'utf8');
     const complexityOpts = layer === 'page' ? pageComplexityOpts : componentComplexityOpts;
-    const layerOpts = { ...complexityOpts, domainPurityAllowlist, workflowTransitionTable, stateUnion };
+    const layerOpts = { ...complexityOpts, domainPurityAllowlist, workflowTransitionTable, stateUnion, serviceAbortSignal };
     for (const desc of detectLayerViolations(layer, source, layerOpts)) {
       pushViolation(config, out, { ...desc, file: r });
     }

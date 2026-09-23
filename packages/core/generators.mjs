@@ -18,7 +18,10 @@ const templates={
  workflow:(n)=>`import { setup } from 'xstate';\n\nexport const ${n}Workflow = setup({}).createMachine({\n  id: '${n.toLowerCase()}',\n  initial: 'idle',\n  states: { idle: {} }\n});\n`,
  hook:(n)=>`import { useCallback } from 'react';\n\nexport function use${n}() {\n  return { action: useCallback(() => {}, []) };\n}\n`,
  domain:(n)=>`export function ${n}() {\n  return true;\n}\n`,
- service:(n)=>`export async function ${n}() {\n  const response = await fetch('/api/${n.toLowerCase()}', { method: 'GET' });\n  if (!response.ok) throw new Error('Request failed');\n  return response.json();\n}\n`,
+ // #594 -- takes and forwards the caller's AbortSignal (SERVICE-003, off by default): a stale
+ // response that lands after its request is superseded should not, and XState's fromPromise
+ // already hands the invoking function a signal for free.
+ service:(n)=>`export async function ${n}({ signal }: { signal: AbortSignal }) {\n  const response = await fetch('/api/${n.toLowerCase()}', { method: 'GET', signal });\n  if (!response.ok) throw new Error('Request failed');\n  return response.json();\n}\n`,
  page:(n)=>`import type { ReactNode } from 'react';\n\nexport function ${n}Page(): ReactNode {\n  return <main>${n}</main>;\n}\n`,
  component:(n)=>`export function ${n}() {\n  return <div>${n}</div>;\n}\n`
 };

@@ -350,7 +350,10 @@ Most layer rules above are enforced two ways at once, not just one:
   `architecture.yml` once a project is ready to rename its own files), and
   `STATE-001` (a workflow's or hook's state is a discriminated union on one
   `status` field, not a bag of co-occurring flags — see below; off by
-  default, opt in with `rules: { STATE-001: warning }`).
+  default, opt in with `rules: { STATE-001: warning }`), and `SERVICE-003`
+  (a service's `fetch` forwards the caller's `AbortSignal` so a superseded
+  request never lands — off by default, opt in with
+  `rules: { SERVICE-003: warning }`).
 - **Type-check** — `TYPE-001` runs a real `tsc --noEmit` (the project's own
   `node_modules/typescript`, never a global one) and reports every diagnostic
   (`TS2304: Cannot find name 'useRef'`, with file and line) as a violation, so

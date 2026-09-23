@@ -21,7 +21,7 @@ it by relative path. The names and shapes are what matter here.
 | Layer | Stale means | Guard | Status |
 |---|---|---|---|
 | Domain | a value outside its type's meaning | pure, boundary-typed function; branded values | ENFORCED |
-| Service | a response after its request was superseded, or of the wrong shape | `AbortSignal` per request slot; schema at the boundary (#575) | PROPOSED (ships first) |
+| Service | a response after its request was superseded, or of the wrong shape | `AbortSignal` per request slot, `SERVICE-003`; schema at the boundary (#575) | ENFORCED (opt-in) |
 | Workflow | an event in a state that does not decide it | transition table + `WORKFLOW-004`; typed state union | ENFORCED (opt-in) |
 | Hook | an effect that outlives its owner; a closure over an old value | `useTrackedState` + `HOOK-001`; `useProvider` throws outside its tree; effect cleanup | PARTIAL |
 | Component / Page | props older than the state they render | pure view of one union member; `PAGE-00x`/`COMPONENT-00x` | PARTIAL |
@@ -65,27 +65,35 @@ that does not match the declared shape, changes nothing.
 
 **Guard today.** `defineService` fixes the import boundary
 (`packages/core/typed-contracts/factories.ts:157-162`); `SERVICE-002` keeps React
-out (`packages/core/architecture-enforcer.mjs:447-454`). Nothing checks
-supersede or shape. `SERVICE-001` ("Services own external effects") is
-registered (`packages/core/config.mjs:226`) but has no detector in any enforcer.
-**PROPOSED.**
+out (`packages/core/architecture-enforcer.mjs:447-454`). `SERVICE-001` ("Services
+own external effects") is registered (`packages/core/config.mjs:226`) but has no
+detector in any enforcer. Supersede is now checked; shape at the boundary is
+still open. **ENFORCED (opt-in, supersede half); PROPOSED (shape half, #575).**
 
-**Proposed guard, ships first: supersede-and-abort.** Every service takes an
+**Supersede-and-abort (`SERVICE-003`, opt-in).** Every service takes an
 `AbortSignal` and passes it to `fetch`; the caller owns one `AbortController`
 per request slot and aborts the previous request before starting the next.
 Inside a workflow this is free: XState v5's `fromPromise` hands the invoked
 function a `signal` that is aborted the moment the invoking state exits, so
 the workflow's own cancel-on-exit becomes the network abort.
 
-- Rule `SERVICE-003` (warning, off by default): a service body that calls
-  `fetch(url, init)` must pass `signal` in `init`, and `signal` must come from
-  the service's own parameters. Deterministic: `collectCalls(ast, {'fetch'})`
-  plus a check of the second argument's `signal` property; same helpers
-  `PAGE-004`/`CONTROLLER-001` use.
-- Generator: the service template (`packages/core/generators.mjs:21`) emits the
-  signal-taking form below.
+- Rule `SERVICE-003` (off by default; opt in with `rules: { SERVICE-003:
+  warning }`): a service's first `fetch(url, init)` call must pass `signal` in
+  `init`, and a `defineService(name, fn)` call's `fn` must declare
+  `signal: AbortSignal` in its first parameter's type (inline, or as
+  `defineService`'s own explicit generic type argument). Deterministic, first-hit
+  only, same style as `PAGE-004`/`SERVICE-002`: `collectCalls(ast,
+  new Set(['fetch']))[0]` gates presence (a service with no network calls is
+  never reported), `findMissingAbortSignal`
+  (`packages/core/architecture-enforcer.mjs:230-283`) does the real check,
+  emitted at `packages/core/architecture-enforcer.mjs:542-549`, opt-in flag
+  read at `packages/core/architecture-enforcer.mjs:899`. Registered at
+  `packages/core/config.mjs:239`.
+- Generator: the service template (`packages/core/generators.mjs:21-24`) emits
+  the signal-taking form below.
 - Fixture: `fixtures/staleness/features/bad/services/fetchOrder.ts` (no
-  `signal`) fails; `.../good/services/fetchOrder.ts` (below) passes.
+  `signal` anywhere) fails; `.../good/services/fetchOrder.ts` (below) passes.
+  Test: `test/serviceAbortSignal.test.mjs`.
 
 ```ts
 // features/orders/services/fetchOrder.ts

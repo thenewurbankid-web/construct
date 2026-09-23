@@ -231,6 +231,12 @@ export const DEFAULT_RULES = {
   'CONTROLLER-002': { severity: 'warning', name: 'Controllers wrap frozen (externally-authored) markup instead of reimplementing it' },
   'SERVICE-001': { severity: 'error', name: 'Services own external effects' },
   'SERVICE-002': { severity: 'error', name: 'Services cannot import React/UI' },
+  // #594 (part of #577) -- supersede-and-abort: a fetch() with no `signal` in its init, or a
+  // defineService() fn whose first parameter type has no `signal: AbortSignal`, lets a stale
+  // response land after its request was superseded (docs/staleness-by-layer.md's Service row).
+  // Flag-gated off by default like DOMAIN-002/WORKFLOW-004/STATE-001 -- see the gating note on
+  // SERVICE-003 in architecture-enforcer.mjs.
+  'SERVICE-003': { severity: 'off', name: 'Services forward the caller\'s AbortSignal to fetch() so a superseded request never lands' },
   'DOMAIN-001': { severity: 'error', name: 'Domain is pure' },
   // #506 -- an allowlist alternative to DOMAIN-001's name-based denylist, additive alongside
   // it for now (#500 phase 1; removing DOMAIN-001 is phase 4 work). Default severity is
