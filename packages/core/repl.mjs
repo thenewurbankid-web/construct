@@ -91,6 +91,16 @@ export const HELP_TOPICS = {
       2 importer hops; what lies past it is counted, not dropped.
       Example: research impact feature:login --depth 3 --format markdown
 
+  research spec <file> [--format json|text] [--dir <path>]
+      Checks a machine-spec.v1 file: an English requirement (sentences with
+      ids) broken down into states, events, guarded transitions and typed
+      functions, every item linked back to its sentence by "req". Refuses
+      the spec with a SPEC-* code, the path and the reason: unreachable
+      state, unknown state/event, untyped function, a sentence neither
+      covered nor marked out of scope. Deterministic, no LLM; exit 1 on any
+      failure. Schema and worked example: docs/machine-spec.md.
+      Example: research spec specs/sign-in.machine-spec.json --format json
+
   research doctor [--dir <path>]
       Environment sanity check: node/npm versions, architecture.yml presence,
       which enforcer modules are available.`,

@@ -33,6 +33,7 @@ import { runFeatureTests, renderRunText } from '../../packages/engine/testRunner
 import { startTimer, elapsedSeconds, formatDuration } from './timing.mjs';
 import { explainSource, renderExplained } from '../../packages/engine/workflowExplain.mjs';
 import { listWorkflowSourceFiles, readWorkflowSource } from '../../packages/engine/workflowSource.mjs';
+import { validateMachineSpec, renderMachineSpecReport } from './research/machine-spec.mjs';
 
 // Resolve the project root freshly per command: walks up from cwd (or from
 // --dir, when given) to find an existing architecture.yml (monorepo
@@ -569,6 +570,42 @@ export async function researchWorkflow(args) {
   return false;
 }
 
+/**
+ * `construct research spec <file> [--format json|text] [--dir <path>]` (#576/#584). Checks a
+ * machine-spec.v1 file (an English requirement broken down into states, events, transitions and typed
+ * functions, see docs/machine-spec.md): structure, then meaning (reachability, unknown states/events,
+ * untyped functions, uncovered sentences, ...). Deterministic, read-only, no LLM. Exit code 1 on any
+ * SPEC-* failure, 2 when the file cannot be read or is not JSON.
+ *
+ * @param {string[]} args `<file>` plus optional `--format json|text` (default text) and `--dir <path>` (where a relative `<file>` is resolved from; default cwd).
+ * @returns {Promise<boolean>} Resolves to true when it printed only JSON (so the caller skips the attribution line).
+ * @throws {ConstructError} Usage error (exit code 2) for missing/extra positionals, an unknown format, or an unreadable/non-JSON file.
+ *
+ * @example
+ * await researchSpec(['specs/sign-in.machine-spec.json', '--format', 'json']);
+ */
+export async function researchSpec(args) {
+  const usage = 'Usage: construct research spec <file> [--format json|text] [--dir <path>]';
+  const valueFlags = new Set(['--format', '--dir']);
+  const positional = args.filter((a, i) => !a.startsWith('--') && !valueFlags.has(args[i - 1]));
+  const format = flagValue(args, '--format') ?? 'text';
+  if (positional.length !== 1 || !['json', 'text'].includes(format)) throw new ConstructError(usage, { exitCode: EXIT_CODES.USAGE_ERROR });
+  // The file is resolved from where the user stands (or --dir), not from the project root a
+  // parent architecture.yml would pick: a spec is an input file, not a project unit.
+  const dir = flagValue(args, '--dir');
+  const file = path.resolve(dir ? path.resolve(dir) : process.cwd(), positional[0]);
+  let spec;
+  try {
+    spec = JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch (e) {
+    throw new ConstructError(`Could not read the spec "${positional[0]}": ${String(e.message || e)}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+  }
+  const result = validateMachineSpec(spec, { file: path.relative(process.cwd(), file) || positional[0] });
+  console.log(renderMachineSpecReport(result, { format }));
+  if (result.status !== 'passed') setExitCode(EXIT_CODES.VIOLATIONS);
+  return format === 'json';
+}
+
 /** `construct research impact <ref>... [--files a,b] [--since <git-ref>] [--ticket <text>]
  * [--ticket-file <path>] [--depth N] [--max-files N] [--format json|markdown] [--dir <path>]`
  * | `construct research impact --usage` (#288).
@@ -739,9 +776,9 @@ export async function template(args) {
 
 /**
  * `construct research summarize ...` | `construct research doctor ...` | `construct research workflow ...`
- * | `construct research impact ...`.
+ * | `construct research impact ...` | `construct research spec ...`.
  *
- * @param {string[]} args `summarize|doctor|workflow|impact` followed by that command's own arguments.
+ * @param {string[]} args `summarize|doctor|workflow|impact|spec` followed by that command's own arguments.
  * @returns {Promise<void>} Resolves after printing the read-only report.
  * @throws {ConstructError} Usage error (exit code 2) for an unknown subcommand.
  *
@@ -754,7 +791,8 @@ export async function research(args) {
   else if (args[0] === 'doctor') await doctor(args.slice(1));
   else if (args[0] === 'workflow') jsonOnly = await researchWorkflow(args.slice(1));
   else if (args[0] === 'impact') jsonOnly = await researchImpact(args.slice(1));
-  else throw new ConstructError('Usage: construct research summarize|doctor|workflow|impact ...', { exitCode: EXIT_CODES.USAGE_ERROR });
+  else if (args[0] === 'spec') jsonOnly = await researchSpec(args.slice(1));
+  else throw new ConstructError('Usage: construct research summarize|doctor|workflow|impact|spec ...', { exitCode: EXIT_CODES.USAGE_ERROR });
   if (!jsonOnly) printAttribution('produced the read-only report above', '0 calls');
 }
 

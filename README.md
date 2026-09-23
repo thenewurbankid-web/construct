@@ -452,10 +452,13 @@ construct refactor rename <name> <newName> --feature <feature> --layer <layer> [
 # research — read-only: summarize a feature, or check environment/tooling
 construct research summarize [--feature <name>] [--format json|md|compact|prose] [--since <ref>] [--dir <path>]
 construct research impact <unit-ref>... [--files a,b] [--since <ref>] [--ticket <text>] [--depth N] [--format json|markdown] [--dir <path>]
+construct research spec <file> [--format json|text] [--dir <path>]
 construct research doctor [--dir <path>]
 ```
 
 `construct research workflow <feature> [<file>] [--format prose|md|json|scenarios]` explains a feature's XState workflows in plain English (each state, every start-to-end scenario, health findings), derived from the real source every time with no LLM — see `docs/workflow-narrator.md`.
+
+`construct research spec <file> [--format json|text]` checks a `machine-spec.v1` file — an English requirement, sentence by sentence, broken down into states, events, guarded transitions and typed functions, each linked back to the sentence it came from — and refuses it with a `SPEC-*` code, the path and the reason when a state is unreachable, a transition names an unknown state or event, a function has no types, or a sentence is neither covered nor marked out of scope. Deterministic, no LLM; the spec is the contract a person (or a model, given the schema and the worked example) drafts before anything is generated from it — see `docs/machine-spec.md`.
 
 `construct summarize <ref> [--detail brief|standard|full] [--format json|markdown]` (and `--list`, `--usage`) returns a deterministic, LLM-free summary of any project, feature, layer, file, hook, workflow, route, rule or package, sized for a bot or a teammate — see `docs/unit-summary.md`.
 

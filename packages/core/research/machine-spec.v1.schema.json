@@ -1,0 +1,278 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://construct.dev/schemas/machine-spec.v1.json",
+  "title": "Construct Machine Spec v1",
+  "description": "The checked breakdown of an English requirement into states, events, guarded transitions and typed functions (#576, R1). English goes in as an ordered list of sentences, each with an id; every state, event, transition and function carries a `req` list naming the sentence(s) it came from, and a sentence that deliberately produces nothing is listed under `outOfScope` with a reason -- so `construct research spec <file>` can refuse a spec that silently dropped a sentence, invented an item no sentence asked for, or cannot be turned into a real machine (an unreachable state, a transition to a state or event that does not exist, a function without types). Drafting one is the only fuzzy step (a person, a form, or a model given this schema plus examples/machine-spec.v1.example.json -- never prose instructions); everything after it is deterministic: packages/core/research/machine-spec.mjs runs the checks, and the sibling R2 slice turns an accepted spec into the state union, the XState machine (`states[].id` are the machine's state keys, `events[].id` its event types, `transitions[]` its `on` map with `guard` names, `functions[]` its typed stubs). Additive data goes in the free-form `ext` object; a breaking shape change creates machine-spec.v2 rather than mutating v1 in place.",
+  "type": "object",
+  "required": [
+    "version",
+    "name",
+    "requirement",
+    "states",
+    "events",
+    "transitions",
+    "functions"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 1,
+      "description": "Spec schema version. Bump to v2 on any breaking shape change."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "What the machine is called in plain words (e.g. \"sign-in with retry\"). The generated workflow unit's name is derived from it."
+    },
+    "feature": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional: the Construct feature the machine belongs to (features/<feature>/workflows/). The generating command can also take it as a flag."
+    },
+    "requirement": {
+      "type": "array",
+      "minItems": 1,
+      "description": "The English requirement, split into sentences in reading order. Ids are what every other item's `req` points at; the text is kept verbatim so the read-back can diff against it.",
+      "items": {
+        "$ref": "#/definitions/sentence"
+      }
+    },
+    "outOfScope": {
+      "type": "array",
+      "description": "Sentences that deliberately produce no state, event, transition or function, each with the reason. A sentence must be either covered by some item's `req` or listed here -- never both, never neither.",
+      "items": {
+        "$ref": "#/definitions/outOfScopeEntry"
+      }
+    },
+    "states": {
+      "type": "array",
+      "minItems": 1,
+      "description": "The machine's states. Exactly one is `initial`; every state must be reachable from it through `transitions`.",
+      "items": {
+        "$ref": "#/definitions/state"
+      }
+    },
+    "events": {
+      "type": "array",
+      "description": "Every event a transition may name. `payload` is the TypeScript type of the event's data, if any.",
+      "items": {
+        "$ref": "#/definitions/event"
+      }
+    },
+    "transitions": {
+      "type": "array",
+      "description": "Directed edges: in state `from`, on `event`, go to `to` -- only when `guard` (a named boolean condition, if given) holds.",
+      "items": {
+        "$ref": "#/definitions/transition"
+      }
+    },
+    "functions": {
+      "type": "array",
+      "description": "The functions the machine needs, each fully typed (TypeScript type strings) and framed by a precondition and a postcondition in plain words. These become the typed stubs and their unit tests.",
+      "items": {
+        "$ref": "#/definitions/function"
+      }
+    },
+    "ext": {
+      "type": "object",
+      "description": "Reserved free-form extension object, ignored by validators."
+    }
+  },
+  "definitions": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^\\S(.*\\S)?$",
+      "description": "A non-empty identifier with no leading or trailing whitespace. Unique within its own list."
+    },
+    "sentenceId": {
+      "$ref": "#/definitions/id"
+    },
+    "req": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "The requirement sentence(s) this item was derived from. Every id must exist in `requirement`.",
+      "items": {
+        "$ref": "#/definitions/sentenceId"
+      }
+    },
+    "typeString": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S",
+      "description": "A TypeScript type written as source text, e.g. \"Credentials\", \"Promise<Session | null>\", \"void\"."
+    },
+    "sentence": {
+      "type": "object",
+      "required": [
+        "id",
+        "text"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/sentenceId"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The sentence verbatim."
+        }
+      }
+    },
+    "outOfScopeEntry": {
+      "type": "object",
+      "required": [
+        "req",
+        "reason"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "req": {
+          "$ref": "#/definitions/sentenceId",
+          "description": "The sentence that produces nothing."
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Why, in plain words (e.g. \"a non-functional constraint, checked by a rule instead\")."
+        }
+      }
+    },
+    "state": {
+      "type": "object",
+      "required": [
+        "id",
+        "req"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id",
+          "description": "The state key in the generated machine."
+        },
+        "initial": {
+          "type": "boolean",
+          "description": "True on exactly one state: where the machine starts."
+        },
+        "final": {
+          "type": "boolean",
+          "description": "True when the machine stops here; a final state has no outgoing transitions."
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional one line for the read-back."
+        },
+        "req": {
+          "$ref": "#/definitions/req"
+        }
+      }
+    },
+    "event": {
+      "type": "object",
+      "required": [
+        "id",
+        "req"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id",
+          "description": "The event type in the generated machine (e.g. \"SUBMIT\")."
+        },
+        "payload": {
+          "$ref": "#/definitions/typeString",
+          "description": "Optional TypeScript type of the event's data."
+        },
+        "description": {
+          "type": "string"
+        },
+        "req": {
+          "$ref": "#/definitions/req"
+        }
+      }
+    },
+    "transition": {
+      "type": "object",
+      "required": [
+        "from",
+        "to",
+        "event",
+        "req"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id",
+          "description": "Optional stable id for traceability; unique among transitions when given."
+        },
+        "from": {
+          "$ref": "#/definitions/id",
+          "description": "A state id."
+        },
+        "to": {
+          "$ref": "#/definitions/id",
+          "description": "A state id."
+        },
+        "event": {
+          "$ref": "#/definitions/id",
+          "description": "An event id."
+        },
+        "guard": {
+          "$ref": "#/definitions/id",
+          "description": "Optional name of the boolean condition that must hold for this transition to be taken. Two transitions with the same from/event/guard are ambiguous and refused."
+        },
+        "description": {
+          "type": "string"
+        },
+        "req": {
+          "$ref": "#/definitions/req"
+        }
+      }
+    },
+    "function": {
+      "type": "object",
+      "required": [
+        "name",
+        "input",
+        "output",
+        "precondition",
+        "postcondition",
+        "req"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z_$][A-Za-z0-9_$]*$",
+          "description": "A valid TypeScript identifier; the exported function's name."
+        },
+        "input": {
+          "$ref": "#/definitions/typeString",
+          "description": "The parameter type (use \"void\" for none)."
+        },
+        "output": {
+          "$ref": "#/definitions/typeString",
+          "description": "The return type (use \"void\" for none; wrap async results in Promise<...>)."
+        },
+        "precondition": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What must be true before the call, in plain words."
+        },
+        "postcondition": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What is true after the call, in plain words; the generated unit test asserts it."
+        },
+        "description": {
+          "type": "string"
+        },
+        "req": {
+          "$ref": "#/definitions/req"
+        }
+      }
+    }
+  }
+}

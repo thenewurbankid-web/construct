@@ -117,6 +117,7 @@ export const DEV_GROUPS = [
       { path: 'developers/context-envelope/', title: 'Context Envelope and pipeline', description: 'Chain generator steps with machine-readable state.', file: C('developers/context-envelope.md') },
       { path: 'developers/ast/', title: 'The AST package', description: 'Parse, walk, extract and generate TypeScript and JSX.', file: 'packages/ast/README.md', source: 'packages/ast/README.md' },
       { path: 'developers/workflows/', title: 'Workflow narrator', description: 'State machines to plain English, scenarios and health checks.', file: 'docs/workflow-narrator.md', source: 'docs/workflow-narrator.md' },
+      { path: 'developers/machine-spec/', title: 'Machine spec', description: 'An English requirement, checked: states, events, transitions and typed functions, each traced to its sentence.', file: 'docs/machine-spec.md', source: 'docs/machine-spec.md' },
       { path: 'developers/building-blocks/', title: 'Building blocks', description: 'The inventory of reusable deterministic modules.', file: 'docs/capabilities.md', source: 'docs/capabilities.md' },
     ],
   },

@@ -1,0 +1,183 @@
+{
+  "version": 1,
+  "name": "sign-in with retry",
+  "feature": "auth",
+  "requirement": [
+    {
+      "id": "s1",
+      "text": "A visitor signs in with an email and a password."
+    },
+    {
+      "id": "s2",
+      "text": "While the credentials are being checked, the form is locked."
+    },
+    {
+      "id": "s3",
+      "text": "If the credentials are valid, the visitor is signed in and taken to their dashboard."
+    },
+    {
+      "id": "s4",
+      "text": "If the credentials are invalid, the visitor sees the reason and can try again."
+    },
+    {
+      "id": "s5",
+      "text": "After three failed attempts in a row, the visitor is locked out and must reset their password."
+    },
+    {
+      "id": "s6",
+      "text": "The sign-in page must load in under two seconds."
+    }
+  ],
+  "states": [
+    {
+      "id": "idle",
+      "initial": true,
+      "description": "The form is shown and editable.",
+      "req": [
+        "s1"
+      ]
+    },
+    {
+      "id": "checking",
+      "description": "The form is locked while the credentials are verified.",
+      "req": [
+        "s2"
+      ]
+    },
+    {
+      "id": "signedIn",
+      "final": true,
+      "description": "The visitor has a session and is on the dashboard.",
+      "req": [
+        "s3"
+      ]
+    },
+    {
+      "id": "failed",
+      "description": "The reason is shown; the form is editable again.",
+      "req": [
+        "s4"
+      ]
+    },
+    {
+      "id": "lockedOut",
+      "final": true,
+      "description": "No more attempts; only a password reset gets the visitor out.",
+      "req": [
+        "s5"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "id": "SUBMIT",
+      "payload": "{ email: string; password: string }",
+      "req": [
+        "s1"
+      ]
+    },
+    {
+      "id": "VALID",
+      "payload": "{ session: Session }",
+      "req": [
+        "s3"
+      ]
+    },
+    {
+      "id": "INVALID",
+      "payload": "{ reason: string }",
+      "req": [
+        "s4"
+      ]
+    },
+    {
+      "id": "RETRY",
+      "req": [
+        "s4"
+      ]
+    }
+  ],
+  "transitions": [
+    {
+      "id": "t1",
+      "from": "idle",
+      "to": "checking",
+      "event": "SUBMIT",
+      "req": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "id": "t2",
+      "from": "checking",
+      "to": "signedIn",
+      "event": "VALID",
+      "req": [
+        "s3"
+      ]
+    },
+    {
+      "id": "t3",
+      "from": "checking",
+      "to": "lockedOut",
+      "event": "INVALID",
+      "guard": "attemptsExhausted",
+      "req": [
+        "s5"
+      ]
+    },
+    {
+      "id": "t4",
+      "from": "checking",
+      "to": "failed",
+      "event": "INVALID",
+      "req": [
+        "s4"
+      ]
+    },
+    {
+      "id": "t5",
+      "from": "failed",
+      "to": "idle",
+      "event": "RETRY",
+      "req": [
+        "s4"
+      ]
+    }
+  ],
+  "functions": [
+    {
+      "name": "verifyCredentials",
+      "input": "{ email: string; password: string }",
+      "output": "Promise<{ ok: true; session: Session } | { ok: false; reason: string }>",
+      "precondition": "email and password are both non-empty strings.",
+      "postcondition": "Resolves { ok: true, session } when the pair matches an account; otherwise { ok: false, reason } with a reason that does not say which of the two was wrong.",
+      "req": [
+        "s1",
+        "s3",
+        "s4"
+      ]
+    },
+    {
+      "name": "recordFailedAttempt",
+      "input": "{ attempts: number }",
+      "output": "{ attempts: number; exhausted: boolean }",
+      "precondition": "attempts is a non-negative integer (0 before the first failure).",
+      "postcondition": "attempts is one higher than the input; exhausted is true exactly when the new count is 3 or more.",
+      "req": [
+        "s5"
+      ]
+    },
+    {
+      "name": "openDashboard",
+      "input": "Session",
+      "output": "void",
+      "precondition": "The session was just issued by verifyCredentials.",
+      "postcondition": "The browser is on the dashboard route with the session attached.",
+      "req": [
+        "s3"
+      ]
+    }
+  ]
+}

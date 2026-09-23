@@ -18,7 +18,8 @@
   },
   "files": [
     "*.mjs",
-    "!*.test.mjs"
+    "!*.test.mjs",
+    "research/"
   ],
   "dependencies": {
     "@hey-api/openapi-ts": "^0.97.3",
