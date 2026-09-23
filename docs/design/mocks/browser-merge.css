@@ -1,0 +1,78 @@
+/* #536 — Pages editor Browser pane: merge PagesBrowser + TreePanel into one grouped, collapsible
+ * panel. Deliberately mirrors the REAL ui/client class names (pe-browser, pages-browser, tree-panel,
+ * pages-file-list, pe-all-pages, tree-root, tree-node, lb / lb-*) so this mock reads as a literal
+ * before/after of the shipped screen, not an abstract concept. New classes are prefixed `pbm-` (this
+ * ticket's own) to stay distinguishable at a glance from the ones an implementer will actually touch. */
+
+/* ---- "before": today's two separate floating glass-panel cards, unchanged real look ---- */
+.pbm-glass {
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-lg);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+}
+.pe-browser { display: flex; flex-direction: column; gap: var(--sp-2, 10px); padding: 10px; }
+.pages-browser.pbm-glass,
+.tree-panel.pbm-glass { padding: 12px; margin: 0; }
+.pages-browser .field { display: flex; flex-direction: column; align-items: stretch; gap: 4px; font-size: 11px; color: var(--text-muted); height: auto; border: 0; padding: 0; }
+.pages-browser select { height: 28px; width: 100%; border: 1px solid var(--border-strong); background: var(--surface-1); color: var(--text); border-radius: var(--r-md); padding: 0 8px; font: inherit; }
+.pages-browser h4, .tree-panel h4 { margin: 10px 0 6px; font-size: 12px; color: var(--text-muted); font-weight: 600; }
+.pages-file-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.pages-file-list button { width: 100%; text-align: left; height: 28px; padding: 0 8px; border: 1px solid var(--border-subtle); background: transparent; color: var(--text); border-radius: var(--r-sm); cursor: pointer; }
+.pages-file-list li.active button { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.pe-all-pages { align-self: flex-start; background: transparent; color: var(--accent); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 4px 8px; font: inherit; font-size: 12px; cursor: pointer; }
+.tree-root, .tree-root ul { list-style: none; margin: 0; padding: 0; font-size: 12px; font-family: var(--mono); }
+.tree-root ul { padding-left: 14px; }
+.tree-node { padding: 3px 6px; border-radius: 4px; cursor: pointer; color: var(--text); }
+.tree-node.selected { background: var(--accent); color: var(--accent-fg); }
+.tree-node.component .tree-node-tag { color: var(--llm); }
+.tree-node.selected .tree-node-tag { color: inherit; }
+.tree-node-props { color: var(--text-muted); font-size: 11px; margin-left: 4px; }
+.flow-switch { display: inline-flex; padding: 2px; background: var(--surface-2); border: 1px solid var(--border-subtle); border-radius: var(--r-md); align-self: flex-start; }
+.flow-switch button { border: 0; background: transparent; height: 24px; padding: 0 12px; border-radius: 6px; color: var(--text-muted); cursor: pointer; font: inherit; }
+.flow-switch button.on { background: var(--accent); color: var(--accent-fg); font-weight: 600; }
+
+/* ---- "after": one grouped card, two native <details> sections (same idiom as .pal-group, see
+ * PalettePanel.tsx / block-palette.md) ---- */
+.pbm-group { padding: 4px 0; display: flex; flex-direction: column; }
+.pbm-group > details { border-bottom: 1px solid var(--border-subtle); padding: 8px 12px; }
+.pbm-group > details:last-child { border-bottom: 0; }
+.pbm-group > details > summary {
+  cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px;
+  padding: 4px 0; font-weight: 600; font-size: 12px; color: var(--text);
+}
+.pbm-group > details > summary::-webkit-details-marker { display: none; }
+.pbm-group > details > summary::before { content: "▸"; color: var(--text-faint); font-size: .75em; width: 10px; display: inline-block; transition: transform .15s ease; }
+.pbm-group > details[open] > summary::before { transform: rotate(90deg); }
+.pbm-group .pbm-count { margin-left: auto; color: var(--text-muted); font-weight: 400; font-size: 11px; }
+.pbm-group > details[open] > :not(summary) { margin-top: 6px; }
+.pbm-group > details.pages-browser { padding-top: 6px; }
+.pbm-group .pbm-empty { color: var(--text-muted); font-size: 12px; margin: 4px 0 2px; }
+.pbm-group summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+
+/* the all-pages ListBrowser (real classes .lb / .lb-filter / .lb-count / .lb-list / .lb-row), shown
+ * in the second section when no feature is selected */
+.lb-filter { width: 100%; height: 28px; border: 1px solid var(--border-strong); background: var(--surface-1); color: var(--text); border-radius: var(--r-md); padding: 0 8px; margin: 2px 0 6px; }
+.lb-count { color: var(--text-muted); font-size: 11px; margin: 0 0 6px; }
+.lb-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.lb-row { padding: 4px 6px; border-radius: var(--r-sm); cursor: pointer; }
+.lb-row:hover { background: var(--surface-3); }
+.lb-label { display: block; font-size: 12px; }
+.lb-detail { display: block; font-size: 11px; color: var(--text-muted); }
+
+.pbm-callout { display: flex; gap: 8px; padding: 8px 10px; border: 1px solid var(--danger); background: var(--danger-soft); border-radius: var(--r-md); font-size: 12px; margin: 4px 0; }
+.pbm-callout b { color: var(--danger); }
+.pbm-callout button { margin-left: auto; }
+
+.pbm-label { position: absolute; top: -10px; left: 12px; background: var(--surface-0); padding: 0 6px; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; }
+.pbm-frame { position: relative; border: 1px dashed var(--border-strong); border-radius: var(--r-md); margin: 18px 12px 8px; }
+.pbm-frame > .pane { border: 0; }
+
+/* states sheet (own copy of ia.css's .sheet3/.card so this initiative's stylesheet stays self-contained) */
+.pbm-sheet { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 12px 20px; align-content: start; }
+.pbm-sheet h3 { grid-column: 1 / -1; margin: 2px 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted); }
+.pbm-card { background: var(--surface-1); border: 1px solid var(--border-subtle); border-radius: var(--r-lg); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.pbm-card > b { font-size: 13px; }
+.pbm-card > p { margin: 0 0 2px; color: var(--text-muted); font-size: 11px; line-height: 1.35; }
+.pbm-mini { border: 1px solid var(--border-subtle); border-radius: var(--r-md); background: var(--surface-0); padding: 6px; font-size: 12px; }
+.pbm-mini .flow-switch { transform: scale(0.92); transform-origin: left top; }
