@@ -20,7 +20,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { PROVIDERS } from '../../../packages/core/llm.mjs';
 import { resolveStateDir } from '../../../packages/engine/processStore.mjs';
-import { containInWorkspace, containOrNull, relativeToWorkspace, WorkspaceError, workspaceRoot } from './workspace.mjs';
+import { containInWorkspace, containOrNull, currentLogin, normalizeLogin, relativeToWorkspace, WorkspaceError, workspaceRoot } from './workspace.mjs';
 
 // The one hard guardrail from #96: planAnalysis is the whole-feature deep-
 // analysis call and must never be delegated to a local model, no matter
@@ -32,23 +32,40 @@ const CAPABILITIES = ['importFill', 'createFill', 'planAnalysis'];
 
 const defaultProvider = Object.keys(PROVIDERS)[0] || null;
 
-const state = {
-  // #365: NO project at start. The Cockpit never opens the directory it was launched from (on a hosted server
-  // that was the Construct repo itself); the user picks one inside the workspace. Read it through
-  // `getProjectDir()`, which re-verifies containment on every use.
-  projectDir: null,
+// #569 slice 1: the open project and the remembered project are per signed-in login (key = lowercased login, or ''
+// with no session / auth off). STILL SHARED, to be keyed in later #569 slices: the LLM provider choices below, the dev
+// server slot, the engine/command queue, processes and review workers.
+const shared = {
   // #365 harness-only: the project named by CONSTRUCT_E2E_PROJECT_DIR (loopback only). When the open project
   // vanishes mid-run (a spec removed its temp fixture while it was the current project), the server falls back
-  // to this one instead of leaving every later spec at "Open a project". Never set outside the e2e harness.
+  // to this one instead of leaving every later spec at "Open a project". Never set outside the e2e harness. It is
+  // offered to a login only when it lies inside that login's own directory (containOrNull).
   preloadedProject: null,
-  // The project that was open last, offered as "Reopen <name>" and NEVER loaded automatically.
-  lastProject: undefined, // undefined = not read from disk yet
   llmProviders: {
     importFill: defaultProvider,
     createFill: defaultProvider,
     planAnalysis: defaultProvider,
   },
 };
+
+/** login key -> { projectDir, lastProject }. */
+const userStates = new Map();
+
+/** The state of the current request's login, created on first use. #365: NO project at start; the Cockpit never
+ * opens the directory it was launched from. Read the project through `getProjectDir()`, which re-verifies containment. */
+function userState() {
+  const key = currentLogin();
+  let entry = userStates.get(key);
+  if (entry === undefined) {
+    entry = {
+      projectDir: shared.preloadedProject === null ? null : containOrNull(workspaceRoot(), shared.preloadedProject, { mustBeDir: true }),
+      // The project that was open last, offered as "Reopen <name>" and NEVER loaded automatically.
+      lastProject: undefined, // undefined = not read from disk yet
+    };
+    userStates.set(key, entry);
+  }
+  return entry;
+}
 
 function availableProvidersFor(capability) {
   const all = Object.keys(PROVIDERS);
@@ -65,32 +82,40 @@ export function getBrowseRoots() {
 /** Harness-only preload (#365). An e2e config may name a project to open at start; it goes through the same
  * containment as any client choice, and index.mjs refuses it on a non-loopback host. */
 export function preloadProject(dir) {
-  state.projectDir = containInWorkspace(dir, { mustBeDir: true });
-  state.preloadedProject = state.projectDir;
+  const real = containInWorkspace(dir, { mustBeDir: true });
+  userState().projectDir = real;
+  shared.preloadedProject = real;
 }
 
 const LAST_PROJECT_FILE = 'last-project.json';
 
-const lastProjectFile = () => path.join(resolveStateDir(), LAST_PROJECT_FILE);
+/** The state file for `login` ('' = no session keeps the original `last-project.json`). The login is validated as one
+ * safe path segment (normalizeLogin) before it can name a file, so it can never select another path. */
+export function lastProjectFilePath(login) {
+  return path.join(resolveStateDir(), login === '' ? LAST_PROJECT_FILE : `last-project.${normalizeLogin(login)}.json`);
+}
+
+const lastProjectFile = () => lastProjectFilePath(currentLogin());
 
 /** The remembered project, re-contained on every read so a stale or tampered file can never point outside the workspace. */
 function readLastProject() {
-  if (state.lastProject === undefined) {
+  const user = userState();
+  if (user.lastProject === undefined) {
     let stored = null;
     try {
       stored = JSON.parse(fs.readFileSync(lastProjectFile(), 'utf8')).projectDir;
     } catch {
       /* none saved */
     }
-    state.lastProject = typeof stored === 'string' ? stored : null;
+    user.lastProject = typeof stored === 'string' ? stored : null;
   }
-  if (!state.lastProject) return null;
-  const real = containOrNull(workspaceRoot(), state.lastProject, { mustBeDir: true });
-  return real && real !== state.projectDir ? real : null;
+  if (!user.lastProject) return null;
+  const real = containOrNull(workspaceRoot(), user.lastProject, { mustBeDir: true });
+  return real && real !== user.projectDir ? real : null;
 }
 
 function rememberProject(dir) {
-  state.lastProject = dir;
+  userState().lastProject = dir;
   try {
     fs.mkdirSync(resolveStateDir(), { recursive: true });
     fs.writeFileSync(lastProjectFile(), JSON.stringify({ projectDir: dir }));
@@ -102,12 +127,14 @@ function rememberProject(dir) {
 /** The open project directory, or null. Re-verified against the workspace on EVERY call (realpath), so a
  * directory that was replaced by a symlink out of the workspace, or removed, stops being served at once. */
 export function getProjectDir() {
-  if (state.projectDir === null) return null;
-  const real = containOrNull(workspaceRoot(), state.projectDir, { mustBeDir: true });
+  const user = userState();
+  if (user.projectDir === null) return null;
+  const real = containOrNull(workspaceRoot(), user.projectDir, { mustBeDir: true });
   if (real === null) {
+    const preloaded = shared.preloadedProject;
     // Harness fallback (see `preloadedProject`): still re-contained, so a removed or replaced preload is refused too.
-    const fallback = state.preloadedProject === null ? null : containOrNull(workspaceRoot(), state.preloadedProject, { mustBeDir: true });
-    state.projectDir = fallback;
+    const fallback = preloaded === null ? null : containOrNull(workspaceRoot(), preloaded, { mustBeDir: true });
+    user.projectDir = fallback;
     return fallback;
   }
   return real;
@@ -122,12 +149,12 @@ export function getSettings() {
     projectRelative: projectDir === null ? null : relativeToWorkspace(workspaceRoot(), projectDir),
     lastProject: readLastProject(),
     browseRoots: getBrowseRoots(),
-    llmProviders: { ...state.llmProviders },
+    llmProviders: { ...shared.llmProviders },
     // Kept for exact backward compatibility with any existing reader of
     // the old single-provider shape (e.g. project-gate's status display) —
     // mirrors importFill, the closest analog to "the" provider a user
     // would expect this to mean.
-    llmProvider: state.llmProviders.importFill,
+    llmProvider: shared.llmProviders.importFill,
     availableProviders: Object.keys(PROVIDERS),
     availableProvidersByCapability: Object.fromEntries(CAPABILITIES.map((c) => [c, availableProvidersFor(c)])),
   };
@@ -148,7 +175,7 @@ function applyCapabilityProvider(capability, value) {
       `"${value}" cannot be used for planAnalysis — the whole-feature plan-analysis call is deliberately Claude/hosted-model-only (see epic #96) and never delegated to a local model, even by explicit request.`,
     );
   }
-  state.llmProviders[capability] = value;
+  shared.llmProviders[capability] = value;
 }
 
 /** @throws {WorkspaceError} for a projectDir outside the workspace / missing / not a directory; Error for a bad provider. */
@@ -174,11 +201,11 @@ export function updateSettings({ projectDir, closeProject, llmProviders, llmProv
     applyCapabilityProvider('importFill', llmProvider);
   }
   if (nextProject !== undefined) {
-    state.projectDir = nextProject;
+    userState().projectDir = nextProject;
     rememberProject(nextProject);
   } else if (closeProject === true) {
-    if (state.projectDir !== null) rememberProject(state.projectDir);
-    state.projectDir = null;
+    if (userState().projectDir !== null) rememberProject(userState().projectDir);
+    userState().projectDir = null;
   }
   return getSettings();
 }

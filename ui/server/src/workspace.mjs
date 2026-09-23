@@ -192,6 +192,15 @@ export const MAX_LOGIN_LENGTH = 64;
 const LOGIN_PATTERN = /^[a-z0-9_-]+$/;
 const refusedLogin = () => new WorkspaceError(403, 'OUTSIDE_WORKSPACE', 'That path is outside the workspace.');
 
+/** The one place a login is validated as a single safe path segment (#567, #569): lowercased, bounded, `[a-z0-9_-]`.
+ * Anything that builds a path from a login (workspace directory, per-user state file) goes through this. */
+export function normalizeLogin(login) {
+  if (typeof login !== 'string') throw refusedLogin();
+  const name = login.toLowerCase();
+  if (name.length === 0 || name.length > MAX_LOGIN_LENGTH || !LOGIN_PATTERN.test(name)) throw refusedLogin();
+  return name;
+}
+
 /**
  * The private directory of `login` under the base root: created on first use with mode 0700, realpath'd and
  * confirmed strictly inside `base` (a `<base>/<login>` that is a symlink leading out is refused).
@@ -200,9 +209,7 @@ const refusedLogin = () => new WorkspaceError(403, 'OUTSIDE_WORKSPACE', 'That pa
  * @returns {string} the real absolute path of the user's directory
  */
 export function userWorkspaceDir(base, login) {
-  if (typeof login !== 'string') throw refusedLogin();
-  const name = login.toLowerCase();
-  if (name.length === 0 || name.length > MAX_LOGIN_LENGTH || !LOGIN_PATTERN.test(name)) throw refusedLogin();
+  const name = normalizeLogin(login);
   const dir = path.join(base, name);
   try {
     fs.mkdirSync(dir, { mode: 0o700 });
@@ -225,7 +232,7 @@ const userScope = new AsyncLocalStorage();
 /** Run `fn` with `workspaceRoot()` scoped to `login`'s private directory (throws a 403 WorkspaceError for an unusable login). */
 export function runInUserWorkspace(login, fn) {
   const dir = userWorkspaceDir(baseWorkspaceRoot(), login);
-  return userScope.run(dir, fn);
+  return userScope.run({ dir, login: normalizeLogin(login) }, fn);
 }
 
 /** Express middleware: mount ONCE, right after the session gate. With `req.session.login` the rest of the request
@@ -240,12 +247,17 @@ export function userWorkspaceMiddleware(req, res, next) {
     if (!(e instanceof WorkspaceError)) throw e;
     return res.status(e.status).json({ ok: false, code: e.code, error: e.message });
   }
-  return userScope.run(dir, next);
+  return userScope.run({ dir, login: normalizeLogin(login) }, next);
 }
 
 /** The workspace root for the current request: the signed-in user's directory, else the base root. */
 export function workspaceRoot() {
-  return userScope.getStore() ?? baseWorkspaceRoot();
+  return userScope.getStore()?.dir ?? baseWorkspaceRoot();
+}
+
+/** The signed-in login (validated, lowercased) of the current request, or '' when there is no session (auth off). */
+export function currentLogin() {
+  return userScope.getStore()?.login ?? '';
 }
 
 /** Test seam: forget the cached root so the next `workspaceRoot()` re-reads the environment. */
