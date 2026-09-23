@@ -29,6 +29,10 @@
 // enforced separately, deterministically, by HOOK-002/PAGE-006 in architecture-enforcer.mjs (a hook
 // exported as `use<Name>Provider` must really be built via `defineProvider`, and that exact naming
 // convention is what lets a page import it without tripping PAGE-006's hook-import ban).
+// #591 -- see template.ts's own doc comment: ProviderComponent below references bare
+// `JSX.Element` directly (not through Template<Props>), so this file needs its own copy of the
+// triple-slash reference, not just template.ts's.
+/// <reference path="./jsx-global.d.ts" />
 import * as React from 'react';
 import type { Template } from './template.ts';
 import type { Brand } from './brand.ts';

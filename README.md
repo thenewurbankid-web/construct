@@ -308,8 +308,7 @@ Most layer rules above are enforced two ways at once, not just one:
 
   ```ts
   import { z } from 'zod';
-  // the vendored packages/core/typed-contracts/index.ts, at whatever relative path applies
-  import { defineService } from '../../typed-contracts/index.ts';
+  import { defineService } from '@line/construct-core/typed-contracts';
 
   const User = z.object({ id: z.string(), role: z.enum(['user', 'admin']).default('user') });
 

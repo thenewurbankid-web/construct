@@ -12,11 +12,11 @@ Status words: **ENFORCED** (a rule, factory or module exists and has a test),
 **PARTIAL** (part of the invariant is enforced, the rest is by example),
 **PROPOSED** (nothing enforces it yet; the rule and its fixture are named).
 
-Factory imports below are written as `@line/construct-core/typed-contracts`.
-That subpath is not exported yet (`packages/core/package.json` lists neither
-it nor the `.ts` sources under `exports`/`files`); today the factories live at
-`packages/core/typed-contracts/index.ts` and the repo's own examples import
-it by relative path. The names and shapes are what matter here.
+Factory imports below are written as `@line/construct-core/typed-contracts`
+(#591: `packages/core/package.json` exports that subpath and ships the `.ts`
+sources directly, no compile step -- a TS-aware toolchain like a
+`construct init` scaffold consumes them as-is). The repo's own examples
+still import by relative path (`packages/core/typed-contracts/index.ts`).
 
 | Layer | Stale means | Guard | Status |
 |---|---|---|---|

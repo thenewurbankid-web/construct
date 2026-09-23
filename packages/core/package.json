@@ -14,12 +14,18 @@
     "./summarize": "./summarize.mjs",
     "./impact": "./impact.mjs",
     "./generate": "./generators.mjs",
+    "./typed-contracts": {
+      "types": "./typed-contracts/index.ts",
+      "default": "./typed-contracts/index.ts"
+    },
     "./package.json": "./package.json"
   },
   "files": [
     "*.mjs",
     "!*.test.mjs",
-    "research/"
+    "research/",
+    "typed-contracts/*.ts",
+    "typed-contracts/*.d.ts"
   ],
   "dependencies": {
     "@hey-api/openapi-ts": "^0.97.3",

@@ -35,6 +35,12 @@ const TEMPLATES = {
         target: 'ES2022', lib: ['ES2022', 'DOM', 'DOM.Iterable'], module: 'ESNext', moduleResolution: 'bundler',
         jsx: 'react-jsx', strict: true, noEmit: true, skipLibCheck: true, isolatedModules: true,
         resolveJsonModule: true, moduleDetection: 'force',
+        // #591: @line/construct-core/typed-contracts ships its .ts sources directly (no compile
+        // step) and its own relative imports use explicit .ts extensions (needed for Node's native
+        // type-stripping, see packages/core/typed-contracts/index.ts) -- a project's own `tsc`
+        // needs this flag to type-check through node_modules/@line/construct-core, not just to
+        // write its own extension-suffixed imports.
+        allowImportingTsExtensions: true,
       },
       include: ['src', 'features', 'vite.config.ts'],
     },
@@ -55,6 +61,8 @@ const TEMPLATES = {
         target: 'ES2017', lib: ['dom', 'dom.iterable', 'esnext'], allowJs: true, skipLibCheck: true, strict: true,
         noEmit: true, esModuleInterop: true, module: 'esnext', moduleResolution: 'bundler', resolveJsonModule: true,
         isolatedModules: true, jsx: 'preserve', incremental: true, plugins: [{ name: 'next' }],
+        // #591: see the react-spa template's same flag above.
+        allowImportingTsExtensions: true,
       },
       include: ['next-env.d.ts', '**/*.ts', '**/*.tsx', '.next/types/**/*.ts'],
       exclude: ['node_modules'],
