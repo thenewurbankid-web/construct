@@ -21,6 +21,7 @@ Non-goals: MCP surfaces (future), marketing pages, product code.
 | [live-preview-v2.md](live-preview-v2.md) | Click-to-source by reading React fiber internals: bridge delivery (injecting loopback proxy), fiber-to-source ladder, dev server as a process, hosted-mode threat model (#443) |
 | [block-palette.md](block-palette.md) | Pages editor block palette (Providers/Expressions/Components, grounded in the real `canImport` graph and typed-contracts factories) and the "Wrap with…" interaction; MVP scope cut and accessibility review (#518, part of #500 phase 3) |
 | [scope-binding.md](scope-binding.md) | Prop-to-scope binding: making the real, shipped `ScopeLinkGraph`/`ScopePanel` (#223) interactive so a person can pick a specific Provider value, parent prop or other unit's output for a control's `PropRef<T>` prop; click-to-link primary, drag-and-drop additive, full keyboard path, multi-field linking deferred (#523, follows #518) |
+| [browser-panel-merge.md](browser-panel-merge.md) | Pages editor Browser pane: merging `PagesBrowser` + `TreePanel`/`ListBrowser` into one grouped panel, each independently collapsible via the same native `<details>/<summary>` idiom as `block-palette.md`'s palette groups; grounded in a real screenshot of the live Cockpit, not guessed from JSX (#536) |
 | [mocks/](mocks/) | Concept mocks as static HTML+CSS (`*.html`) and rendered PNGs (`png/`) |
 
 Concept mocks (1440x900, each in `png/<name>--dark.png` and `--light.png`):
@@ -71,6 +72,15 @@ PR review in the Cockpit (#308, explores #285), built by
 (`pr-review.css`): `pr-review-list`, `pr-review-open`, `pr-review-indicators`,
 `pr-review-findings`, `pr-review-no-plan`, `pr-review-autofix`,
 `pr-review-states`.
+
+Pages editor Browser pane merge (#536), built by
+`node docs/design/mocks/build-browser-merge.mjs` with its own stylesheet
+(`browser-merge.css`, deliberately reusing the real `ui/client` class names —
+`pe-browser`, `pages-browser`, `tree-panel`, `lb`/`lb-*` — so the mock is a literal
+before/after of the shipped screen): `browser-merge-before` (today, two floating
+panels), `browser-merge-after` (merged, two independently collapsible `<details>`
+sections), `browser-merge-states` (collapse/keyboard-focus/no-feature/empty/error
+states), `browser-merge-narrow` (390px). Spec: `browser-panel-merge.md`.
 
 ## How design tickets work
 

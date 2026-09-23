@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Browser pane merge: narrow screen (#536) — Concept</title>
+<link rel="stylesheet" href="mock.css">
+<link rel="stylesheet" href="browser-merge.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+<script>document.addEventListener('DOMContentLoaded',()=>{document.body.dataset.x=1});</script>
+</head><body>
+<div class="concept">Concept — not implemented <span>Browser pane merge: narrow screen (#536)</span></div>
+
+<div style="padding:24px;display:flex;gap:24px;align-items:flex-start">
+  <div>
+    <h3 style="margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted)">Narrow (390px) — Browser pane full width, both sections open</h3>
+    <div class="narrow" style="height:520px">
+      <div class="pe-browser" style="padding:10px"><div class="flow-switch" role="radiogroup" aria-label="Browser view"><button type="button" class="on" role="radio" aria-checked="true">Files</button><button type="button" role="radio" aria-checked="false">Flow</button></div>
+<div class="pbm-group pbm-glass">
+  <details class="pages-browser" open>
+    <summary>Files <span class="pbm-count">1</span></summary>
+    
+<label class="field"><span>Feature</span>
+  <select><option>billing</option></select>
+</label>
+<div>
+  <h4>pages/ in "billing"</h4>
+  <ul class="pages-file-list"><li class="active"><button type="button">HomePage.tsx</button></li></ul>
+</div>
+    <button type="button" class="pe-all-pages" data-testid="pages-all">All pages</button>
+  </details>
+  <details class="tree-panel" open>
+    <summary>JSX tree</summary>
+    
+<ul class="tree-root">
+  <li><div class="tree-node"><span class="tree-node-tag">&lt;main&gt;</span></div>
+    <ul>
+      <li><div class="tree-node"><span class="tree-node-tag">&lt;h1&gt;</span></div></li>
+      <li><div class="tree-node component selected"><span class="tree-node-tag">&lt;Counter&gt;</span><span class="tree-node-props">2 props</span></div></li>
+    </ul>
+  </li>
+</ul>
+  </details>
+</div></div>
+    </div>
+  </div>
+</div>
+<script>(()=>{const t=document.documentElement.dataset.theme;document.body.parentElement.setAttribute('data-theme',t)})()</script>
+</body></html>

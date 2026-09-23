@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Pages editor Browser pane — merged, two independently collapsible sections (#536) — Concept</title>
+<link rel="stylesheet" href="mock.css">
+<link rel="stylesheet" href="browser-merge.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+<script>document.addEventListener('DOMContentLoaded',()=>{document.body.dataset.x=1});</script>
+</head><body>
+<div class="concept">Concept — not implemented <span>Pages editor Browser pane — merged, two independently collapsible sections (#536)</span></div>
+
+<div class="shell " style="--lw:300px;grid-template-rows:44px 1fr 132px 24px">
+  
+<header class="topbar">
+  <div class="brand"><i></i>Cockpit</div>
+  <button class="chip-btn" aria-haspopup="listbox">storefront <span class="sub">main</span> ▾</button>
+  <div class="seg" role="radiogroup" aria-label="Mode"><button class="on" role="radio" aria-checked="true">Explore</button><button class="" role="radio" aria-checked="false">Plan</button><button class="" role="radio" aria-checked="false">Build</button></div>
+  <button class="chip-btn palette-trigger"><span>Search files, features, or run a command…</span><kbd>Ctrl K</kbd></button>
+  
+  <span class="pill run"><span class="spin"></span>2 running</span>
+  <span class="pill ok"><span class="dot"></span>Local model ready</span>
+  <button class="icon-btn" aria-label="Theme">◐</button>
+  <button class="icon-btn" aria-label="Help">?</button>
+  <span class="avatar">SP</span>
+</header>
+  <div class="main">
+    <aside class="pane" aria-label="Browser"><div class="pane-h"><span class="title">Pages</span></div>
+<div class="pe-browser">
+  <div class="flow-switch" role="radiogroup" aria-label="Browser view"><button type="button" class="on" role="radio" aria-checked="true">Files</button><button type="button" role="radio" aria-checked="false">Flow</button></div>
+  
+<div class="pbm-group pbm-glass">
+  <details class="pages-browser" open>
+    <summary>Files <span class="pbm-count">1</span></summary>
+    
+<label class="field"><span>Feature</span>
+  <select><option>billing</option></select>
+</label>
+<div>
+  <h4>pages/ in "billing"</h4>
+  <ul class="pages-file-list"><li class="active"><button type="button">HomePage.tsx</button></li></ul>
+</div>
+    <button type="button" class="pe-all-pages" data-testid="pages-all">All pages</button>
+  </details>
+  <details class="tree-panel" open>
+    <summary>JSX tree</summary>
+    
+<ul class="tree-root">
+  <li><div class="tree-node"><span class="tree-node-tag">&lt;main&gt;</span></div>
+    <ul>
+      <li><div class="tree-node"><span class="tree-node-tag">&lt;h1&gt;</span></div></li>
+      <li><div class="tree-node component selected"><span class="tree-node-tag">&lt;Counter&gt;</span><span class="tree-node-props">2 props</span></div></li>
+    </ul>
+  </li>
+</ul>
+  </details>
+</div>
+</div></aside><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <section class="pane mid" aria-label="Preview"><div class="canvas-tb"><span class="crumbs">billing › pages › <b>HomePage</b></span></div><div class="stage"><div class="device" style="height:220px;width:420px"><div class="bar"><i></i><i></i><i></i>&nbsp;&nbsp;preview</div></div></div><div class="canvas-foot">Selection: &lt;Counter&gt;</div></section><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <aside class="pane" aria-label="Tools"><div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Inspector</button><button role="tab" class="" aria-selected="false">Scope</button><button role="tab" class="" aria-selected="false">Source</button><button role="tab" class="" aria-selected="false">Palette</button><button role="tab" class="" aria-selected="false">Diff</button></div><div class="scroll"><div class="section"><h4>Props</h4><div class="prop"><span class="k">count</span><span class="field">count</span><span class="bind var">variable</span></div><div class="prop"><span class="k">label</span><span class="field">"Counter"</span><span class="bind lit">literal</span></div></div></div></aside>
+  </div>
+  <div class="drawer" aria-label="Drawer"></div>
+  
+<footer class="statusbar">
+  <span class="ok">● validate: 0 new violations</span><span>5 baseline</span><span>Saved · in sync with disk</span>
+  <span class="spacer"></span><span>qwen2.5-coder:7b</span><span><kbd>Ctrl J</kbd> drawer</span><span><kbd>?</kbd> shortcuts</span>
+</footer>
+</div>
+<script>(()=>{const t=document.documentElement.dataset.theme;document.body.parentElement.setAttribute('data-theme',t)})()</script>
+</body></html>
