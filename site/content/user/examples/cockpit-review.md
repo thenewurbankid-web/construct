@@ -47,4 +47,4 @@ Pick a saved plan from **Compare with a plan** and the scope check compares what
 
 You review what a change means and decide on a short list, instead of rebuilding the picture from changed lines.
 
-Checked against commit `d23283f` on 2026-09-23. Screenshots come from the project's own Playwright runs of these screens.
+Checked against commit `9c81b5b` on 2026-09-23. Screenshots come from the project's own Playwright runs of these screens.

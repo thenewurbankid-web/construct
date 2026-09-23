@@ -48,4 +48,4 @@ You review a small, exact change instead of untangling a surprise, and nothing r
 | Your own files untouched until you approve | the bot's own copy and branch |
 | A decision per file, on the exact difference | "You get" above |
 
-Checked against commit `d23283f` on 2026-09-23. Screenshots come from the project's own Playwright runs of these screens.
+Checked against commit `9c81b5b` on 2026-09-23. Screenshots come from the project's own Playwright runs of these screens.

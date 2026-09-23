@@ -45,4 +45,4 @@ Safety and honesty rules the editor keeps:
 
 You can see which routes are untested, and edit a test without the next run overwriting your work.
 
-Checked against commit `d23283f` on 2026-09-23. Screenshots come from the project's own Playwright runs of these screens.
+Checked against commit `9c81b5b` on 2026-09-23. Screenshots come from the project's own Playwright runs of these screens.
