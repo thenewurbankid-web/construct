@@ -1,7 +1,4 @@
-import { useEffect, useRef } from 'react';
-import { GlassPanel } from '@/components/ui';
 import type { PagesEditorNode } from '../types';
-import { scrollSelectionIntoView } from '@/lib/scrollSelectionIntoView';
 
 type TreeNodeProps = { node: PagesEditorNode; selectedId: string | null; onSelect: (id: string) => void; depth: number };
 
@@ -31,25 +28,16 @@ function TreeNodeItem({ node, selectedId, onSelect, depth }: TreeNodeProps) {
   );
 }
 
-// #50 — JSX tree view. Presentation-only, plus (#77 follow-up to #51)
-// auto-scrolling the selected row into view when selection changes —
-// purely local UI state (a ref + an effect), same pattern this repo
-// already uses in ChatLog.tsx.
+// #50 — JSX tree view. Presentation-only: just the `<ul class="tree-root">` content now (#536 —
+// PagesBrowserTab.tsx owns the surrounding `.tree-panel` <details>/<summary> and, since that
+// element is the actual scroll container, the auto-scroll-selection-into-view ref/effect too;
+// this component no longer renders its own GlassPanel/heading).
 export function TreePanel({ roots, selectedId, onSelect }: { roots: PagesEditorNode[]; selectedId: string | null; onSelect: (id: string) => void }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    scrollSelectionIntoView(containerRef.current, selectedId);
-  }, [selectedId]);
-
   return (
-    <GlassPanel className="tree-panel" ref={containerRef}>
-      <h4>JSX tree</h4>
-      <ul className="tree-root">
-        {roots.map((r) => (
-          <TreeNodeItem key={r.id} node={r} selectedId={selectedId} onSelect={onSelect} depth={0} />
-        ))}
-      </ul>
-    </GlassPanel>
+    <ul className="tree-root">
+      {roots.map((r) => (
+        <TreeNodeItem key={r.id} node={r} selectedId={selectedId} onSelect={onSelect} depth={0} />
+      ))}
+    </ul>
   );
 }

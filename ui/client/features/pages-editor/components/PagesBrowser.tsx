@@ -10,12 +10,16 @@ type PagesBrowserProps = {
   loading: boolean;
   /** False in the Flow view, which shows the feature picker without the pages list. */
   showPages?: boolean;
+  /** False in the Files view (#536): rendered as the content of PagesBrowserTab's shared
+   * `.pages-browser` <details> section instead of its own GlassPanel card. The Flow view's call
+   * site (`showPages={false}`) keeps the default, unchanged standalone-card rendering. */
+  panel?: boolean;
 };
 
 // #49 — pages browser. Presentation-only.
-export function PagesBrowser({ feature, onFeatureChange, features, file, onOpen, files, loading, showPages = true }: PagesBrowserProps) {
-  return (
-    <GlassPanel className="pages-browser">
+export function PagesBrowser({ feature, onFeatureChange, features, file, onOpen, files, loading, showPages = true, panel = true }: PagesBrowserProps) {
+  const content = (
+    <>
       <label className="field">
         <span>Feature</span>
         <Select value={feature} onChange={(e) => onFeatureChange(e.target.value)}>
@@ -43,6 +47,8 @@ export function PagesBrowser({ feature, onFeatureChange, features, file, onOpen,
           )}
         </div>
       )}
-    </GlassPanel>
+    </>
   );
+
+  return panel ? <GlassPanel className="pages-browser">{content}</GlassPanel> : content;
 }
