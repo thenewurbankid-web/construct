@@ -196,6 +196,33 @@ function layerFolder(def) {
 }
 
 /**
+ * WORKFLOW-004 core: the (state, event) pairs of one extracted workflow machine where an event
+ * the machine handles somewhere has no decision. An "event" is any name in an `on:` map of any
+ * state; a state decides an event when it (or an ancestor, since XState bubbles events up)
+ * lists it in `on:`. The one explicit ignore form is a targetless, action-less, guard-less
+ * transition, `EVENT: {}`, which the extractor sees as an `on` edge and so counts as a decision.
+ * Only atomic non-final states are checked (a compound/parallel state is decided by its children).
+ * Reuses the WORKFLOW-002/003 parse (`extractMachines`); adds no parser.
+ *
+ * @param {{states:object[], transitions:object[]}} machine A machine from `extractMachines`.
+ * @returns {{state:string, event:string, line:number}[]} One entry per hole, ordered by state then event.
+ */
+export function findTransitionHoles(machine) {
+  const on = machine.transitions.filter((t) => t.kind === 'on');
+  const events = [...new Set(on.map((t) => t.event))].sort();
+  const holes = [];
+  for (const st of machine.states) {
+    if (st.final || st.type !== 'atomic') continue;
+    const decided = new Set();
+    for (let p = st.path; p; p = p.includes('.') ? p.slice(0, p.lastIndexOf('.')) : '') {
+      for (const t of on) if (t.from === p) decided.add(t.event);
+    }
+    for (const event of events) if (!decided.has(event)) holes.push({ state: st.path, event, line: st.line ?? machine.line ?? 1 });
+  }
+  return holes;
+}
+
+/**
  * Pure rule-detection: given a layer name and a file's source text, return
  * the raw violation descriptors (rule/line/message/why/expected) it
  * triggers. No severity/exception/module wrapping — that happens in
@@ -204,10 +231,10 @@ function layerFolder(def) {
  *
  * @param {string} layer One of the known layer names.
  * @param {string} source The file's source text.
- * @param {{maxJsxDepth?: number, maxJsxBranches?: number, domainPurityAllowlist?: boolean}} [opts]
- *   COMPONENT-006/PAGE-009's complexity budget overrides (#508/#505) and DOMAIN-002's opt-in
- *   flag (#506) -- additive, optional; every existing call site that omits it keeps the
- *   built-in defaults (and DOMAIN-002 off).
+ * @param {{maxJsxDepth?: number, maxJsxBranches?: number, domainPurityAllowlist?: boolean, workflowTransitionTable?: boolean}} [opts]
+ *   COMPONENT-006/PAGE-009's complexity budget overrides (#508/#505), DOMAIN-002's opt-in
+ *   flag (#506) and WORKFLOW-004's opt-in flag (#578) -- additive, optional; every existing
+ *   call site that omits them keeps the built-in defaults (and DOMAIN-002/WORKFLOW-004 off).
  */
 export function detectLayerViolations(layer, source, opts = {}) {
   const ast = parseToAst(source);
@@ -401,6 +428,16 @@ export function detectLayerViolations(layer, source, opts = {}) {
           message: f.message.replace(/\*/g, '"'),
           why: 'A non-final state with no way out traps the flow; either add a transition out or mark it final.',
           expected: ['a transition out of the state, or type: "final"'],
+        });
+      }
+      // #578 -- WORKFLOW-004, flag-gated like DOMAIN-002 (off unless the project opts in).
+      if (opts.workflowTransitionTable) {
+        for (const h of findTransitionHoles(machine)) out.push({
+          rule: 'WORKFLOW-004', line: h.line,
+          message: `State "${h.state}" has no decision for event "${h.event}" (handled in other states of "${machine.id}")`,
+          why: 'an event with no decision for this state does nothing, and nobody chose that',
+          suggestedFix: `add a transition for ${h.event} in ${h.state}, or mark it ignored`,
+          expected: [`a transition for ${h.event} in ${h.state}, or \`${h.event}: {}\` to ignore it on purpose`],
         });
       }
     }
@@ -757,6 +794,8 @@ export function validateArchitecture(root, opts = {}) {
   // #506 -- DOMAIN-002 only runs once a project opts in (severity isn't the DEFAULT_RULES
   // 'off') -- see the flag-gating note on DOMAIN-002 in detectLayerViolations above.
   const domainPurityAllowlist = config.rules['DOMAIN-002']?.severity !== 'off';
+  // #578 -- WORKFLOW-004 opts in the same way.
+  const workflowTransitionTable = config.rules['WORKFLOW-004']?.severity !== 'off';
   let frozenIndex = null;
   for (const abs of files) {
     if (!FILE_EXTENSIONS.has(path.extname(abs)) || !fs.existsSync(abs)) continue;
@@ -773,7 +812,7 @@ export function validateArchitecture(root, opts = {}) {
     }
     const source = fs.readFileSync(abs, 'utf8');
     const complexityOpts = layer === 'page' ? pageComplexityOpts : componentComplexityOpts;
-    const layerOpts = { ...complexityOpts, domainPurityAllowlist };
+    const layerOpts = { ...complexityOpts, domainPurityAllowlist, workflowTransitionTable };
     for (const desc of detectLayerViolations(layer, source, layerOpts)) {
       pushViolation(config, out, { ...desc, file: r });
     }

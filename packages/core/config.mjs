@@ -210,6 +210,7 @@ export const DEFAULT_RULES = {
   // Epic #185 (#190) -- reuse the workflow narrator's health findings (packages/engine/workflowScenarios.mjs).
   'WORKFLOW-002': { severity: 'warning', name: 'Workflow states must be reachable from the initial state' },
   'WORKFLOW-003': { severity: 'warning', name: 'Non-final workflow states must have a way out' },
+  'WORKFLOW-004': { severity: 'off', name: 'Every non-final workflow state must decide every event the machine handles (transition or explicit ignore)' },
   // Ticket 7.4 (#114) -- genuinely new, per the epic's reconciliation notes (no existing
   // rule covers this): a controller's whole job is composing/wiring already-generated
   // layers together (import a page, import a hook, pass matched handlers down) -- never
