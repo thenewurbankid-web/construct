@@ -21,10 +21,13 @@ import {
 } from '../../../packages/ast/index.mjs';
 import { buildScopeLinks, importOfTag, providerHookImports } from '../../../packages/engine/scopeLinks.mjs';
 import { describeComponent } from '../../../packages/engine/describeComponent.mjs';
+import { buildWrapSuggestions, findWrapHit, describeWrapHit } from '../../../packages/engine/palette.mjs';
 import { loadConfig } from '../../../packages/core/config.mjs';
 import { loadLayerGraph } from '../../../packages/core/architecture-graph.mjs';
 import { validateArchitecture } from '../../../packages/core/architecture-enforcer.mjs';
 import { validateSeparationOfConcerns } from '../../../packages/core/soc-enforcer.mjs';
+import { extractExpression } from '../../../packages/core/extractExpression.mjs';
+import { ConstructError } from '../../../packages/core/diagnostics.mjs';
 import { walk, rel } from '../../../packages/core/fs.mjs';
 import { matchGlob } from '../../../packages/core/glob.mjs';
 import { isInside } from './workspace.mjs';
@@ -712,6 +715,71 @@ export async function buildPaletteInsertion(root, pageAbsPath, source, entry, de
     return { ok: false, error: "Could not find this page's own component function to add the Provider hook call to." };
   }
   return finalizeInsertion(inserted.source);
+}
+
+// A ConstructError message this specific -- extractExpression.mjs's own wording when a name can't be
+// derived from the flagged shape ("pass --name <Name>") -- is the one usage error that means "ask the
+// user for a name", not "something is actually wrong"; every other ConstructError from a dry run
+// (a rejected generic name, a stale/unmatched range) is a real, show-worthy error instead.
+const NAME_REQUIRED_RE = /pass --name/;
+
+/**
+ * #533 (Slice 3 of #518's design, docs/design/block-palette.md section 3) -- everything the Palette
+ * tab's "Wrap with..." flow needs for one JSX selection: which flagged PAGE-008 conditional/loop (if
+ * any) encloses it, every Expression in scope annotated with its structural fit
+ * (packages/engine/palette.mjs's buildWrapSuggestions), the name that would be used (derived, or
+ * `name` once given), and -- only when `includeFiles` is true -- a real dry-run preview of exactly
+ * what `construct refactor extract-expression` (packages/core/extractExpression.mjs, #517) would
+ * write. `dryRun: true` throughout: nothing here ever touches disk. `includeFiles` defaults to
+ * false so the automatic "you selected something" suggestion (fired the moment a selection lands,
+ * per design section 3 step 1-2) never itself renders a diff -- only the explicit "Wrap with..."
+ * click (design section 3 step 4) asks for one, keeping "Suggest" and "Confirm" two distinct,
+ * separately-observable steps exactly as the design's own step numbering has them.
+ *
+ * @returns {{ok:true, hit:object|null, suggestions:object[], name:string|null, nameRequired:boolean,
+ *   nameError:string|null, files:{file:string,name:string|null,before:string,after:string}[]|null}}
+ */
+export function buildWrapSuggestion(root, absPath, source, nodeId, palette, name, { includeFiles = false } = {}) {
+  const { byId } = parsePageTree(source);
+  const node = byId.get(nodeId);
+  if (!node) throw noSuchNode(nodeId);
+
+  const { hit, suggestions } = buildWrapSuggestions(root, source, [node.start, node.end], palette);
+  if (!hit) return { ok: true, hit: null, suggestions: [], name: null, nameRequired: false, nameError: null, files: null };
+
+  try {
+    const result = extractExpression(root, absPath, { range: hit.range, name: name || undefined, dryRun: true });
+    const files = includeFiles
+      ? [
+          { file: result.page.file, name: null, before: source, after: result.preview[result.page.file] },
+          { file: result.expression.file, name: result.expression.name, before: '', after: result.preview[result.expression.file] },
+          ...result.components.map((c) => ({ file: c.file, name: c.name, before: '', after: result.preview[c.file] })),
+        ]
+      : null;
+    return { ok: true, hit, suggestions, name: result.expression.name, nameRequired: false, nameError: null, files };
+  } catch (e) {
+    if (!(e instanceof ConstructError)) throw e;
+    if (!name && NAME_REQUIRED_RE.test(e.message)) {
+      return { ok: true, hit, suggestions, name: null, nameRequired: true, nameError: null, files: null };
+    }
+    return { ok: true, hit, suggestions, name: name || null, nameRequired: false, nameError: e.message, files: null };
+  }
+}
+
+/**
+ * #533 -- the real write, only ever reached from "Approve": re-derives the same flagged hit from
+ * `nodeId` (never trusting a client-sent range) and calls the real, non-dry-run
+ * `extractExpression()`. Touches multiple files (the page, a new Expression, and optionally one or
+ * more new Components) -- the caller (the server route) commits/records all of them as one save.
+ */
+export function applyWrapConfirm(root, absPath, source, nodeId, name) {
+  const { byId } = parsePageTree(source);
+  const node = byId.get(nodeId);
+  if (!node) throw noSuchNode(nodeId);
+  const hit = findWrapHit(source, [node.start, node.end]);
+  if (!hit) throw new PagesEditorError('Nothing flagged (PAGE-008) at that selection to wrap — reload the Palette tab and try again.');
+  const hitInfo = describeWrapHit(source, hit);
+  return extractExpression(root, absPath, { range: hitInfo.range, name, dryRun: false });
 }
 
 /**

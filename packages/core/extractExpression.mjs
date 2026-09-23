@@ -74,10 +74,17 @@ function stripBooleanPrefix(name) {
   return m ? m[2] : name;
 }
 
-/** The identifier a test/array expression is "about", for naming purposes: `items` for `items` or
- * `props.items`, `isLoggedIn` for `isLoggedIn` or `!isLoggedIn`, `x` for `x()`. Returns `null` when
- * nothing nameable is found (e.g. a bare literal), which callers treat as "ask the user". */
-function subjectOf(node) {
+/**
+ * The identifier a test/array expression is "about", for naming purposes: `items` for `items` or
+ * `props.items`, `isLoggedIn` for `isLoggedIn` or `!isLoggedIn`, `x` for `x()`. Exported (#533) so
+ * the Palette tab's "Wrap with..." callout can name the same subject in its selection summary
+ * ("...over `cartItems`...") without re-deriving the identifier a second, different way.
+ *
+ * @param {object|null} node A test/array expression AST node (or null).
+ * @returns {string|null} The nameable identifier, or `null` when nothing nameable is found (e.g. a
+ *   bare literal) — callers treat that as "ask the user".
+ */
+export function subjectOf(node) {
   if (!node) return null;
   if (node.type === 'Identifier') return node.name;
   if (node.type === 'MemberExpression' && !node.computed && node.property.type === 'Identifier') return node.property.name;

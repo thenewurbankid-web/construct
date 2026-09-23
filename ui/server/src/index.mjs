@@ -53,6 +53,8 @@ import {
   getScopeLinks,
   applyAutoMap,
   buildPaletteInsertion,
+  buildWrapSuggestion,
+  applyWrapConfirm,
   checkEnforcement,
   hashOf,
   parseSnippetToTree,
@@ -62,6 +64,7 @@ import {
   addChildInSnippet,
 } from './pagesEditor.mjs';
 import { handleValidate } from './validateApi.mjs';
+import { validateArchitecture } from '../../../packages/core/architecture-enforcer.mjs';
 import { createComponentsRouter } from './componentsApi.mjs';
 import { handleLogs } from './logBuffer.mjs';
 import { unitsIndex, unitSummary, featuresIndex, featureSummary } from './unitsApi.mjs';
@@ -660,6 +663,74 @@ app.post('/api/pages/palette/insert', async (req, res) => {
     const result = await buildPaletteInsertion(root, absPath, source, { ...entry, kind });
     if (!result.ok) return res.status(422).json({ ok: false, error: result.error });
     saveAndRespond(res, root, relPath, absPath, result.source);
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+// #533 (Slice 3 of #518's design, docs/design/block-palette.md section 3) -- "Wrap with...": given a
+// JSX selection (`nodeId`, from the same tree/preview selection every other tab already uses), does
+// it fall inside a PAGE-008-flagged conditional/loop, does an existing Expression in scope
+// structurally fit it, and -- once a name is available -- a real dry-run preview of exactly what
+// `construct refactor extract-expression` (#517) would write. Read-only: `dryRun: true` throughout,
+// nothing here ever touches disk (the write is the separate POST below, reached only from Approve).
+app.get('/api/pages/palette/wrap-suggest', (req, res) => {
+  try {
+    const { feature, file, nodeId, name, preview } = req.query;
+    const root = currentRoot();
+    const { absPath } = resolvePageFile(root, feature, file);
+    const source = fs.readFileSync(absPath, 'utf8');
+    const palette = buildPalette(root, feature);
+    if (!palette.ok) return res.status(400).json({ ok: false, error: palette.error });
+    const opts = { includeFiles: preview === '1' || preview === 'true' };
+    res.json(buildWrapSuggestion(root, absPath, source, nodeId, palette, typeof name === 'string' && name ? name : undefined, opts));
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+// #533 -- confirm ("Approve") one Wrap-with: re-derives the same flagged hit from `nodeId` (never a
+// client-sent range/offset) and calls the real, non-dry-run extractExpression(), which writes the
+// page plus a new Expression (and, if native markup was hoisted out, one or more new Components).
+// No #56 checkEnforcement gate here (unlike every other Pages editor write): extractExpression.mjs's
+// own contract is to satisfy EXPR-004/005/006 BY CONSTRUCTION, and checkEnforcement itself assumes
+// the file it patches already exists on disk, which a brand-new Expression/Component file does not
+// -- `construct refactor extract-expression`'s CLI form validates and reports the same way (writes,
+// then reports any violation found), which this mirrors instead of inventing a second gate shape.
+app.post('/api/pages/palette/wrap', (req, res) => {
+  try {
+    const { feature, file, nodeId, name, contentHash } = req.body || {};
+    const root = currentRoot();
+    const { absPath, relPath } = resolvePageFile(root, feature, file);
+    const source = fs.readFileSync(absPath, 'utf8');
+    if (contentHash && hashOf(source) !== contentHash) {
+      return res.status(409).json({ ok: false, error: 'The file changed on disk since this was loaded — reload the tree and try again.' });
+    }
+    let result;
+    try {
+      result = applyWrapConfirm(root, absPath, source, nodeId, name);
+    } catch (e) {
+      if (e instanceof PagesEditorError) throw e;
+      return res.status(422).json({ ok: false, error: e.message });
+    }
+    const touched = [result.page.file, result.expression.file, ...result.components.map((c) => c.file)];
+    const { violations } = validateArchitecture(root, { files: touched });
+    for (const t of touched) adoptOwnWrite(t, fs.readFileSync(path.join(root, t), 'utf8'));
+    const newSource = fs.readFileSync(absPath, 'utf8');
+    let autoCommit;
+    try {
+      autoCommit = recordSave(root, touched, { kind: 'add' });
+    } catch (e) {
+      autoCommit = { committed: false, status: 'error', error: e.message };
+    }
+    res.json({
+      ok: true,
+      violations,
+      autoCommit,
+      expression: result.expression,
+      components: result.components,
+      ...serializeTree(newSource),
+    });
   } catch (e) {
     handlePagesEditorError(res, e);
   }
