@@ -166,7 +166,7 @@ export function listUnits(root, { kind, registry = defaultUnitRegistry() } = {})
       const units = one(k);
       return { schemaVersion: SCHEMA_VERSION, ok: true, kind, count: units.length, units };
     }
-    const NOISY = new Set(['file', 'component', 'hook', 'service', 'domain', 'page', 'controller', 'workflow', 'export']);
+    const NOISY = new Set(['file', 'component', 'hook', 'service', 'domain', 'page', 'controller', 'workflow', 'expression', 'export']);
     const kinds = [];
     const units = [];
     for (const k of registry.kinds()) {
