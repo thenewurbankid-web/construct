@@ -56,6 +56,7 @@ export const USER_GROUPS = [
       { path: 'user-guide/how-to/explain-workflows/', title: 'Explain workflows in English', description: 'Turn state machines into readable steps and test scenarios.', file: C('user/explain-workflows.md'), howTo: true },
       { path: 'user-guide/how-to/frozen-ui/', title: 'Wrap design-tool output', description: 'Use Subframe or Figma-to-code output without forking it.', file: C('user/frozen-ui.md'), howTo: true },
       { path: 'user-guide/how-to/use-an-llm/', title: 'Using an AI model, optionally', description: 'When a model is involved, how to choose one, and how output is checked.', file: C('user/use-an-llm.md'), howTo: true },
+      { path: 'user-guide/how-to/llm-instructions/', title: 'Let an AI model use Construct', description: 'One copy-paste prompt that lets any model drive the CLI: orient, build with the blocks, validate in a loop.', file: C('user/llm-instructions.md'), howTo: true },
       { path: 'user-guide/examples/core-plans-and-impact/', title: 'Plans and impact as an API', description: 'Validate a plan and work out what a change touches, from JavaScript.', file: E('core-plans-and-impact'), example: 'Core' },
       { path: 'user-guide/examples/core-review-tests-commits/', title: 'Review, tests and commit messages as an API', description: 'The functions the CLI and the Cockpit both call.', file: E('core-review-tests-commits'), example: 'Core' },
     ],
