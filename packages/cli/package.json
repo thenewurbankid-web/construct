@@ -1,6 +1,6 @@
 {
   "name": "@line/construct",
-  "version": "1.0.0",
+  "version": "0.8.0",
   "description": "The construct CLI: create/refactor/research/import/validate/sync/pipeline over a deterministic, non-LLM architecture engine (@line/construct-core).",
   "type": "module",
   "license": "MIT",
@@ -11,10 +11,18 @@
     "construct": "./construct.mjs"
   },
   "files": [
-    "construct.mjs"
+    "construct.mjs",
+    "version.mjs",
+    "dist"
   ],
+  "scripts": {
+    "build": "node build.mjs"
+  },
   "dependencies": {
-    "@line/construct-core": "^1.0.0"
+    "@line/construct-core": "^0.8.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",

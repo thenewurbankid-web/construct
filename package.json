@@ -1,6 +1,6 @@
 {
   "name": "construct-architecture",
-  "version": "1.0.0",
+  "version": "0.8.0",
   "description": "Opinionated, modifiable architecture enforcement for Next.js applications.",
   "type": "module",
   "private": true,
@@ -25,6 +25,7 @@
   "scripts": {
     "test": "node --test",
     "build": "tsc --noEmit",
+    "build:cli": "npm run build --workspace=packages/cli",
     "lint": "eslint .",
     "validate": "node ./packages/cli/construct.mjs validate",
     "sync": "node ./packages/cli/construct.mjs sync",
