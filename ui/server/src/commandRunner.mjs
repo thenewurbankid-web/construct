@@ -6,16 +6,26 @@
 // the UI can show tool-work vs llm-work distinctly instead of a generic
 // success toast.
 //
-// These functions call plain `console.log`/`warn`/`error` and expect to run
-// once per process (some set `process.exitCode`); patching console is
-// process-global, so command executions are serialized through one queue
-// to keep concurrent requests from interleaving each other's captured
-// output. For a local, single-user dev tool this is a fine trade-off.
+// These functions call plain `console.log`/`warn`/`error` and report their
+// status through `setExitCode` (diagnostics.mjs), both written for one
+// command per process. Here several run in one process, so (#569):
+//
+//   - commands are serialized PER LOGIN (`queues`): one user's long command
+//     never delays another user's, while one user's own commands still run
+//     one at a time in the order they were sent (key '' = no session / auth
+//     off, which behaves exactly as the old single queue did);
+//   - at most `CONSTRUCT_MAX_CONCURRENT_COMMANDS` (default 2) run at once
+//     across all logins, so a room full of users cannot flood the machine;
+//   - console is patched once for as long as any command is running, and a
+//     line is kept only by the command whose async context printed it
+//     (`commandContext`), so two commands' output never interleaves;
+//   - the exit code is captured per command through `withExitCodeSink`,
+//     never read from `process.exitCode`, which is shared.
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { EXIT_CODES, ConstructError } from '../../../packages/core/diagnostics.mjs';
+import { EXIT_CODES, ConstructError, withExitCodeSink } from '../../../packages/core/diagnostics.mjs';
 import { startTimer, elapsedSeconds } from '../../../packages/core/timing.mjs';
 import { getProjectDir } from './settings.mjs';
-import { WorkspaceError } from './workspace.mjs';
+import { WorkspaceError, currentLogin } from './workspace.mjs';
 import { serverLog } from './logBuffer.mjs';
 
 const ATTRIBUTION_RE = /^\[tool: (.*)\] \[llm: (.*)\]$/;
@@ -35,6 +45,18 @@ export function resolveCommandTimeoutMs(env = process.env) {
   return Math.round(sec * 1000);
 }
 
+// #569: how many commands may run at the same time across ALL logins. Two is
+// the machine budget this repo already works to (CLAUDE.md: at most two heavy
+// jobs at once on a 15 GB box); a bigger host raises it through the
+// environment.
+export const DEFAULT_MAX_CONCURRENT_COMMANDS = 2;
+
+/** The global concurrency cap: `CONSTRUCT_MAX_CONCURRENT_COMMANDS` (a positive integer) or the default. */
+export function resolveMaxConcurrentCommands(env = process.env) {
+  const raw = Number(env.CONSTRUCT_MAX_CONCURRENT_COMMANDS);
+  return Number.isInteger(raw) && raw > 0 ? raw : DEFAULT_MAX_CONCURRENT_COMMANDS;
+}
+
 export class CommandTimeoutError extends Error {
   constructor(ms) {
     super(`The command did not finish within ${Math.round(ms / 1000)} seconds and was abandoned (CONSTRUCT_COMMAND_TIMEOUT_SEC, default ${DEFAULT_COMMAND_TIMEOUT_SEC}). If it was waiting on a model, CONSTRUCT_LLM_TIMEOUT_SEC bounds that call.`);
@@ -42,19 +64,93 @@ export class CommandTimeoutError extends Error {
   }
 }
 
-let queue = Promise.resolve();
+// ---- Per-login serialization (#569).
 
-// Which command a console line belongs to (#413). The console patch is process-global, so a command abandoned
-// at its deadline that later prints would otherwise land in whatever command is being captured at that moment.
-// Every command runs inside its own async context; a capture keeps a line only when it was printed from inside
-// the context of the command it is capturing for.
+/** login key -> the tail of that login's command chain. An entry is dropped once its chain is idle, so the map
+ * never accumulates logins that signed out. */
+const queues = new Map();
+
+/** Run `fn` after every earlier command of the CURRENT login has settled. Commands of different logins are
+ * independent chains. The login is read now (the caller's request context), not when `fn` eventually starts. */
+function serialize(fn) {
+  const key = currentLogin();
+  const prior = queues.get(key) ?? Promise.resolve();
+  const run = prior.then(fn, fn);
+  // Swallow so one failed command doesn't wedge the chain for the next one.
+  const tail = run.then(() => undefined, () => undefined);
+  queues.set(key, tail);
+  tail.then(() => { if (queues.get(key) === tail) queues.delete(key); });
+  return run;
+}
+
+// ---- Global concurrency cap (#569): a small FIFO counting semaphore.
+
+let running = 0;
+const waiting = [];
+
+/** Resolves once a run slot is free (at most `limit` commands hold one). FIFO: a command that waited longer
+ * starts first. */
+function acquireSlot(limit) {
+  if (running < limit) {
+    running += 1;
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => waiting.push(resolve));
+}
+
+function releaseSlot() {
+  running -= 1;
+  const next = waiting.shift();
+  if (next) {
+    running += 1;
+    next();
+  }
+}
+
+/** How many commands hold a run slot right now (test seam). */
+export function runningCommandCount() {
+  return running;
+}
+
+// ---- Console capture, scoped per command (#413, #569).
+
+// Which command a console line belongs to. The console patch is process-global, so a line printed by a command
+// running at the same time as another (#569), or by a command abandoned at its deadline that later prints (#413),
+// would otherwise land in whatever capture happened to be active. Every command runs inside its own async
+// context carrying its own line list; a line is kept only by the command whose context printed it, and only
+// while that command is still being captured.
 const commandContext = new AsyncLocalStorage();
 
-function serialize(fn) {
-  const run = queue.then(fn, fn);
-  // Swallow so one failed command doesn't wedge the queue for the next one.
-  queue = run.then(() => undefined, () => undefined);
-  return run;
+let captures = 0;
+let originalConsole = null;
+
+function keepLine(parts) {
+  const store = commandContext.getStore();
+  if (store?.open) store.lines.push(parts.map((p) => (typeof p === 'string' ? p : String(p))).join(' '));
+}
+
+/** Patch console for the first concurrent capture; every later one shares the patch. */
+function beginCapture() {
+  captures += 1;
+  if (captures > 1) return;
+  originalConsole = { log: console.log, warn: console.warn, error: console.error };
+  const patch = (orig) => (...parts) => {
+    keepLine(parts);
+    orig(...parts);
+  };
+  console.log = patch(originalConsole.log);
+  console.warn = patch(originalConsole.warn);
+  console.error = patch(originalConsole.error);
+}
+
+/** Restore console once the last concurrent capture ends. */
+function endCapture() {
+  captures -= 1;
+  if (captures > 0) return;
+  console.log = originalConsole.log;
+  console.warn = originalConsole.warn;
+  console.error = originalConsole.error;
+  originalConsole = null;
 }
 
 /** Resolve with `fn()`'s outcome, or reject with a CommandTimeoutError after `ms` — whichever comes first.
@@ -103,46 +199,40 @@ const EXIT_CODE_TO_HTTP = {
  * their own "Total:" line, so the UI still needs a real number from
  * somewhere. Measured around the whole `fn()` call including a thrown
  * error, so a mid-command failure still reports accurate elapsed time
- * rather than losing it.
+ * rather than losing it. Time spent waiting for an earlier command of the
+ * same login, or for a free run slot, is not counted.
  *
  * `timeoutMs` (#413, default `resolveCommandTimeoutMs()`): a command that has
- * not settled by then is abandoned — console is restored, the result is
- * `{ok:false, httpStatus:504}` with a message naming the timeout, and the
- * queue moves on to the next command. Whatever the abandoned command prints
- * afterwards goes to the real console only, never into a later command's
- * capture. */
-export async function runCapturing(fn, { timeoutMs = resolveCommandTimeoutMs() } = {}) {
+ * not settled by then is abandoned — its console capture and run slot are
+ * released, the result is `{ok:false, httpStatus:504}` with a message naming
+ * the timeout, and the login's queue moves on to the next command. Whatever
+ * the abandoned command prints afterwards goes to the real console only,
+ * never into any later or concurrent command's capture.
+ *
+ * `maxConcurrent` (#569, default `resolveMaxConcurrentCommands()`): the
+ * command waits for one of that many global run slots before it starts. */
+export async function runCapturing(fn, { timeoutMs = resolveCommandTimeoutMs(), maxConcurrent = resolveMaxConcurrentCommands() } = {}) {
   return serialize(async () => {
+    await acquireSlot(maxConcurrent);
     const totalStart = startTimer();
-    const lines = [];
-    const original = { log: console.log, warn: console.warn, error: console.error };
-    const token = Symbol('command');
-    // Only lines printed from inside THIS command's async context are kept: a previous command abandoned at its
-    // deadline may still print, and those lines go to the real console only (see `commandContext`).
-    const capture = (orig) => (...parts) => {
-      if (commandContext.getStore() === token) lines.push(parts.map((p) => (typeof p === 'string' ? p : String(p))).join(' '));
-      orig(...parts);
-    };
-    console.log = capture(original.log);
-    console.warn = capture(original.warn);
-    console.error = capture(original.error);
+    const store = { lines: [], open: true };
+    const sink = { exitCode: undefined };
+    beginCapture();
 
     let caught = null;
-    const priorExitCode = process.exitCode;
-    process.exitCode = undefined;
     try {
-      await withDeadline(() => commandContext.run(token, fn), timeoutMs);
+      await withDeadline(() => withExitCodeSink(sink, () => commandContext.run(store, fn)), timeoutMs);
     } catch (e) {
       caught = e;
     } finally {
-      // Restored exactly once, by whichever ended first — the command or the deadline. A late completion of an
-      // abandoned command never reaches this block again.
-      console.log = original.log;
-      console.warn = original.warn;
-      console.error = original.error;
+      // Released exactly once, by whichever ended first — the command or the deadline. A late completion of an
+      // abandoned command never reaches this block again; `open` false drops anything it still prints.
+      store.open = false;
+      endCapture();
+      releaseSlot();
     }
-    const exitCodeSet = process.exitCode;
-    process.exitCode = priorExitCode;
+    const { lines } = store;
+    const exitCodeSet = sink.exitCode;
 
     // Feed the cockpit Logs tab (bounded ring buffer; see logBuffer.mjs).
     for (const line of lines) serverLog.record('command', 'info', line);

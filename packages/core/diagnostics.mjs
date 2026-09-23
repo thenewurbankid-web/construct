@@ -1,3 +1,5 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
+
 // 'info' (#473, PROP-LINK) is a real finding worth showing but never a validation failure --
 // exitCodeForViolations below only ever fails a run on 'error', so adding it here never changes
 // what makes `construct validate` exit non-zero.
@@ -83,4 +85,35 @@ export function formatReport(violations, { format = 'text' } = {}) {
  */
 export function exitCodeForViolations(violations) {
   return violations.some((v) => v.severity === 'error') ? EXIT_CODES.VIOLATIONS : EXIT_CODES.OK;
+}
+
+// #569: a CLI process has one exit status, but the Cockpit server runs several CLI commands at once in one
+// process, so `process.exitCode` cannot say which command failed. Every command sets its status through
+// `setExitCode`; a caller that runs the command inside `withExitCodeSink` gets the status in its own sink object
+// instead of on the process. Outside a sink (the real `construct` binary, the REPL, tests that call a command
+// directly) `setExitCode(code)` is exactly `process.exitCode = code`.
+const exitCodeSink = new AsyncLocalStorage();
+
+/**
+ * Record the exit status of the running command: on the process, or in the enclosing `withExitCodeSink` sink.
+ *
+ * @param {number|undefined} code One of `EXIT_CODES`.
+ */
+export function setExitCode(code) {
+  const sink = exitCodeSink.getStore();
+  if (sink) sink.exitCode = code;
+  else process.exitCode = code;
+}
+
+/**
+ * Run `fn` so that every `setExitCode` call made from inside it (however deeply awaited) lands in
+ * `sink.exitCode` and never on `process.exitCode`. The caller owns `sink` and reads it after `fn` settles.
+ *
+ * @template T
+ * @param {{ exitCode?: number }} sink A plain object; `exitCode` is written to it.
+ * @param {() => T} fn The command to run.
+ * @returns {T} Whatever `fn` returns (a promise for an async command).
+ */
+export function withExitCodeSink(sink, fn) {
+  return exitCodeSink.run(sink, fn);
 }

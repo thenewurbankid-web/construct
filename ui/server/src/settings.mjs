@@ -36,7 +36,10 @@ const defaultProvider = Object.keys(PROVIDERS)[0] || null;
 // with no session / auth off). Slice 2: the dev server slot is per login too (devServer.mjs). Slice 3: the LLM provider
 // choices are per login (userState().llmProviders). Provider choices were never persisted (in-memory only), so there is
 // no on-disk shape to migrate: every login, including '', starts from the defaults exactly as the old shared object did.
-// STILL SHARED, to be keyed in later #569 slices: the engine/command queue, processes and review workers.
+// Slice 4: the command queue is per login with a global concurrency cap (commandRunner.mjs), and a command's exit
+// code is captured per command (diagnostics.mjs withExitCodeSink), never read from the shared `process.exitCode`.
+// STILL SHARED, to be keyed in later #569 slices: the Logs ring buffer (logBuffer.mjs), review workers
+// (reviewJobs.mjs, reviewAnalyses.mjs), clone jobs (cloneJobs.mjs) and page-change tracking (pageChanges.mjs).
 const shared = {
   // #365 harness-only: the project named by CONSTRUCT_E2E_PROJECT_DIR (loopback only). When the open project
   // vanishes mid-run (a spec removed its temp fixture while it was the current project), the server falls back

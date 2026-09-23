@@ -9,7 +9,7 @@ import { generateServiceFromSpec } from './service-generator.mjs';
 import { write, ensureDir } from './fs.mjs';
 import { scaffoldProject } from './scaffold.mjs';
 import { loadConfig, findProjectRoot, DEFAULT_RULES, normalizeFramework } from './config.mjs';
-import { formatReport, exitCodeForViolations, ConstructError, EXIT_CODES } from './diagnostics.mjs';
+import { formatReport, exitCodeForViolations, ConstructError, EXIT_CODES, setExitCode } from './diagnostics.mjs';
 import { aggregateValidation } from './registry.mjs';
 import { validateArchitecture } from './architecture-enforcer.mjs';
 import { syncPublicApi } from './api-composer.mjs';
@@ -297,7 +297,7 @@ function reportFill(root, { file, status, reason, fixCommand }, timingNote = '')
   }
   const what = status === 'rejected' ? "the model's output was rejected" : 'the LLM call failed';
   console.log(`Created ${rel} (stub kept — ${what}: ${reason})${timingNote}`);
-  process.exitCode = EXIT_CODES.INTERNAL_ERROR;
+  setExitCode(EXIT_CODES.INTERNAL_ERROR);
 }
 
 // #522 -- printed right after a --llm fill whose own output trips PAGE-008/COMPONENT-005 (inline
@@ -373,7 +373,7 @@ export async function validate(args) {
   const fi = args.indexOf('--format');
   const format = fi >= 0 && args[fi + 1] === 'json' ? 'json' : 'text';
   console.log(formatReport(violations, { format }));
-  if (!ok) process.exitCode = exitCodeForViolations(violations);
+  if (!ok) setExitCode(exitCodeForViolations(violations));
 }
 
 const UNIT_VALUE_FLAGS = new Set(['--dir', '--feature', '--format', '--since', '--kind', '--detail', '--include']);
@@ -394,7 +394,7 @@ function summarizeUnitCommand(args, root, ref) {
     result = summarizeUnit(root, ref, { detail: flagValue(args, '--detail') || 'standard', kind, ...(include ? { include: include.split(',').map((s) => s.trim()) } : {}) });
   }
   console.log(result.manifest ? JSON.stringify(result.manifest, null, 2) : format === 'markdown' ? renderUnitMarkdown(result) : JSON.stringify(result, null, 2));
-  if (!result.ok) process.exitCode = result.error.code === 'INTERNAL_ERROR' ? EXIT_CODES.INTERNAL_ERROR : EXIT_CODES.USAGE_ERROR;
+  if (!result.ok) setExitCode(result.error.code === 'INTERNAL_ERROR' ? EXIT_CODES.INTERNAL_ERROR : EXIT_CODES.USAGE_ERROR);
 }
 
 export async function summarize(args) {
@@ -461,7 +461,7 @@ export async function pipeline(args) {
 
   const output = runPipeline(root, input);
   console.log(JSON.stringify(output, null, 2));
-  if (output.status === 'aborted') process.exitCode = exitCodeForViolations(output.diagnostics);
+  if (output.status === 'aborted') setExitCode(exitCodeForViolations(output.diagnostics));
 }
 
 export async function doctor(args) {
@@ -610,7 +610,7 @@ export async function researchImpact(args) {
     const proposal = proposeSeedsFromText(root, ticket, maxSeeds ? { maxSeeds: Number(maxSeeds) } : {});
     if (!proposal.ok) {
       console.log(JSON.stringify(proposal, null, 2));
-      process.exitCode = EXIT_CODES.USAGE_ERROR;
+      setExitCode(EXIT_CODES.USAGE_ERROR);
       return true;
     }
     seeds.push(...proposal.seeds);
@@ -631,7 +631,7 @@ export async function researchImpact(args) {
     ...(Object.keys(limits).length ? { limits } : {}),
   });
   console.log(format === 'markdown' ? renderImpactMarkdown(result) : JSON.stringify(result, null, 2));
-  if (!result.ok) process.exitCode = result.error.code === 'INTERNAL_ERROR' ? EXIT_CODES.INTERNAL_ERROR : EXIT_CODES.USAGE_ERROR;
+  if (!result.ok) setExitCode(result.error.code === 'INTERNAL_ERROR' ? EXIT_CODES.INTERNAL_ERROR : EXIT_CODES.USAGE_ERROR);
   return format === 'json';
 }
 
@@ -669,7 +669,7 @@ export async function review(args) {
   }
   const result = prHealth(root, { base: refs[0], head: refs[1], expected, mergeBase: !args.includes('--no-merge-base') });
   console.log(format === 'markdown' ? renderPrHealthMarkdown(result) : JSON.stringify(result, null, 2));
-  if (!result.ok) process.exitCode = result.error.code === 'INTERNAL_ERROR' ? EXIT_CODES.INTERNAL_ERROR : EXIT_CODES.USAGE_ERROR;
+  if (!result.ok) setExitCode(result.error.code === 'INTERNAL_ERROR' ? EXIT_CODES.INTERNAL_ERROR : EXIT_CODES.USAGE_ERROR);
   return format === 'json';
 }
 
@@ -692,8 +692,8 @@ export async function testCommand(args) {
   process.off('SIGINT', onSignal);
   process.off('SIGTERM', onSignal);
   console.log(format === 'json' ? JSON.stringify(result, null, 2) : renderRunText(result));
-  if (!result.ok) process.exitCode = EXIT_CODES.USAGE_ERROR;
-  else if (result.counts.failed > 0) process.exitCode = EXIT_CODES.VIOLATIONS;
+  if (!result.ok) setExitCode(EXIT_CODES.USAGE_ERROR);
+  else if (result.counts.failed > 0) setExitCode(EXIT_CODES.VIOLATIONS);
   return format === 'json';
 }
 
@@ -733,7 +733,7 @@ export async function template(args) {
   } catch (e) {
     if (!(e instanceof TemplateError) && !(e instanceof SyntaxError)) throw e;
     console.log(JSON.stringify({ ok: false, error: { code: e.code || 'PARAMS_JSON_INVALID', message: e.message, errors: e.errors } }, null, 2));
-    process.exitCode = EXIT_CODES.USAGE_ERROR;
+    setExitCode(EXIT_CODES.USAGE_ERROR);
   }
 }
 
@@ -942,7 +942,7 @@ function reportImport(root, results, llm, feature, analysisCalls = 0, analysisSe
     for (const p of problems) {
       console.log(`  ${path.relative(root, p.file)}: ${p.status === 'rejected' ? "the model's output was rejected" : 'the LLM call failed'} after ${p.attempts} attempt(s) — ${p.reason}`);
     }
-    process.exitCode = EXIT_CODES.INTERNAL_ERROR;
+    setExitCode(EXIT_CODES.INTERNAL_ERROR);
   }
   const featureNote = feature ? ` --feature ${feature}` : '';
   const analysisNote = analysisCalls ? `${analysisCalls} call(s) to analyze the route + ` : '';

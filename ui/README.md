@@ -128,6 +128,7 @@ folder**, and it starts with **no project open**.
 | --- | --- |
 | `CONSTRUCT_LLM_TIMEOUT_SEC` | Cap on one model call (`claude -p` is killed with SIGKILL; the Ollama request is aborted). The error names the provider, the seconds and this variable. Default 300. Read by core (`src/llm.mjs`), so the CLI's `--llm` honours it too. |
 | `CONSTRUCT_COMMAND_TIMEOUT_SEC` | Cap on one interactive command (`/api/create`, `/api/import`, ...). A command still running at the deadline is abandoned: `504 {ok:false, error}`, and the next queued command runs. Default 900. |
+| `CONSTRUCT_MAX_CONCURRENT_COMMANDS` | How many interactive commands may run at once across every signed-in user (#569). Commands are queued per login — one user's long `import` never delays another user's `create` — and this cap keeps the whole server from running more than this many at a time; the rest wait in the order they arrived. Default 2 (the two-heavy-jobs budget of a 15 GB machine). |
 
 ### Clone a public repository (#330 slice A)
 

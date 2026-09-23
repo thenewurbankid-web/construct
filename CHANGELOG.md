@@ -9,6 +9,7 @@ request or issue numbers.
 
 ### Added
 - `TYPE-001` (off by default, opt-in via `rules: { TYPE-001: error }` in `architecture.yml`): `construct validate` runs the project's own TypeScript (`tsc --noEmit -p tsconfig.json`) and reports each diagnostic as a violation with its `TSxxxx` code, file and line; if TypeScript or the tsconfig is missing it warns `TYPE-001 could not run: <reason>` instead of passing silently ([#495]). A solution-style root tsconfig (`references`, no `files`/`include`, as in a Vite/React template) is now expanded: each referenced project is checked with `tsc --noEmit -p` (never `tsc -b`) and the diagnostics merged; a missing reference or a config that resolves to zero files warns `TYPE-001 could not run: ...` instead of passing, and the checked configs are reported as `typeCheck.checked` ([#579]).
+- Cockpit: interactive commands (`/api/create`, `/api/import`, ...) are queued per signed-in login instead of one server-wide queue, so one user's long command no longer delays another's; `CONSTRUCT_MAX_CONCURRENT_COMMANDS` (default 2) caps how many run at once across all users. Each command's console output and exit code are captured per command (`setExitCode`/`withExitCodeSink` in `packages/core/diagnostics.mjs`; core commands no longer write `process.exitCode` directly), so concurrent commands never see each other's output or status ([#569]).
 
 ## [0.8.0] - 2026-09-23
 
@@ -234,4 +235,5 @@ The first tracked baseline. It collects everything shipped since the project beg
 [#538]: https://github.com/thenewurbankid-web/construct/issues/538
 [#539]: https://github.com/thenewurbankid-web/construct/issues/539
 [#541]: https://github.com/thenewurbankid-web/construct/issues/541
+[#569]: https://github.com/thenewurbankid-web/construct/issues/569
 [#579]: https://github.com/thenewurbankid-web/construct/issues/579
