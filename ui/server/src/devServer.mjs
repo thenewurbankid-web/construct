@@ -9,8 +9,9 @@
 // Why not the plan/bot process engine (processesService)? A process there is a validated plan of steps that
 // ends and produces artifacts for the approval gate. A dev server has no steps, no artifacts and no end: it
 // runs until someone stops it. So this is its own small lifecycle (not-running -> starting -> running |
-// failed), and its output goes to the Cockpit's Logs tab through the same `serverLog` ring the command
-// runner feeds.
+// failed), and its output goes to the Cockpit's Logs tab through the same `serverLog` registry the command
+// runner feeds: into the ring of the login that started it (#569), named explicitly on every line because
+// child-process events and timers fire outside that user's request context.
 //
 // SESSION BRANCH: nothing here copies or checks out anything. Cockpit's session branch IS the branch checked
 // out in the project's own working tree (autoCommit.mjs `createBranch` = `git checkout -b`), and the dev
@@ -158,7 +159,7 @@ function childEnv({ port }) {
  * @param {number} [options.startupTimeoutMs] how long "starting" may last before it is treated as failed
  * @param {number} [options.killGraceMs] SIGTERM -> SIGKILL grace on stop
  * @param {typeof nodeSpawn} [options.spawn] test seam
- * @param {{record: Function}} [options.log] where output lines go (the Logs tab)
+ * @param {{record: Function}} [options.log] where output lines go (the Logs tab); `record(source, level, text, now, login)`
  */
 export function createDevServerService({
   getProjectDir,
@@ -221,12 +222,14 @@ export function createDevServerService({
   }
 
   const clearTimers = (slot) => { for (const t of slot.timers) clearInterval(t); slot.timers = []; };
+  /** One Logs-tab line for the login that owns `slot` (never the login of whoever's request, if any, is current). */
+  const say = (slot, level, text) => log.record('dev-server', level, text, Date.now(), slot.login);
 
   function record(slot, level, chunk) {
     for (const line of String(chunk).split(/\r?\n/)) {
       const text = line.replace(/\u001b\[[0-9;]*m/g, '').trimEnd();
       if (!text) continue;
-      log.record('dev-server', level, text);
+      say(slot, level, text);
       slot.tail.push(text);
       if (slot.tail.length > LOG_KEEP) slot.tail.shift();
       // The real address is whatever the server says it is listening on. Only a line that says so counts, so a
@@ -264,7 +267,7 @@ export function createDevServerService({
         slot.state = 'running';
         clearTimers(slot);
         bump(slot.login);
-        log.record('dev-server', 'info', `Dev server is running at ${slot.url}`);
+        say(slot, 'info', `Dev server is running at ${slot.url}`);
       } else if (Date.now() - startedAt > startupTimeoutMs) {
         slot.failure = { kind: 'timeout', message: `The dev server did not start answering within ${Math.round(startupTimeoutMs / 1000)} seconds.` };
         clearTimers(slot);
@@ -289,7 +292,7 @@ export function createDevServerService({
       slot.state = 'not-running';
       slot.failure = null;
       bump(slot.login);
-      log.record('dev-server', 'info', 'Dev server stopped.');
+      say(slot, 'info', 'Dev server stopped.');
       return Promise.resolve();
     }
     return failureFor(slot, code).then((failure) => {
@@ -297,7 +300,7 @@ export function createDevServerService({
       slot.failure = slot.failure && slot.failure.kind === 'timeout' && wasStarting ? slot.failure : failure;
       slot.state = 'failed';
       bump(slot.login);
-      log.record('dev-server', 'error', slot.failure.message);
+      say(slot, 'error', slot.failure.message);
     });
   }
 
@@ -361,7 +364,7 @@ export function createDevServerService({
     bump(slot.login);
     slot.claimedPort = port;
     installExitHandlers();
-    log.record('dev-server', 'info', `Starting ${command.display} (${command.text}) in ${path.basename(root)} on port ${port}`);
+    say(slot, 'info', `Starting ${command.display} (${command.text}) in ${path.basename(root)} on port ${port}`);
     let child;
     try {
       child = spawn('npm', ['run', command.script], { cwd: root, env: childEnv({ port }), detached: true, stdio: ['ignore', 'pipe', 'pipe'] });

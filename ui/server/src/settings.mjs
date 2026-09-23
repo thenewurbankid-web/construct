@@ -38,8 +38,10 @@ const defaultProvider = Object.keys(PROVIDERS)[0] || null;
 // no on-disk shape to migrate: every login, including '', starts from the defaults exactly as the old shared object did.
 // Slice 4: the command queue is per login with a global concurrency cap (commandRunner.mjs), and a command's exit
 // code is captured per command (diagnostics.mjs withExitCodeSink), never read from the shared `process.exitCode`.
-// STILL SHARED, to be keyed in later #569 slices: the Logs ring buffer (logBuffer.mjs), review workers
-// (reviewJobs.mjs, reviewAnalyses.mjs), clone jobs (cloneJobs.mjs) and page-change tracking (pageChanges.mjs).
+// Slice 5: the Logs ring buffer is per login (logBuffer.mjs serverLog, a registry of rings; context-less lines
+// land in '' and are visible to no signed-in user).
+// STILL SHARED, to be keyed in later #569 slices: review workers (reviewJobs.mjs, reviewAnalyses.mjs), clone jobs
+// (cloneJobs.mjs) and page-change tracking (pageChanges.mjs).
 const shared = {
   // #365 harness-only: the project named by CONSTRUCT_E2E_PROJECT_DIR (loopback only). When the open project
   // vanishes mid-run (a spec removed its temp fixture while it was the current project), the server falls back
