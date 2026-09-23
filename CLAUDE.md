@@ -212,7 +212,14 @@ sync with what's actually true, not a point-in-time snapshot (see #35).
 - Prefer `packages/tools/dev/status.sh` and `packages/tools/dev/verify.sh` over composing many
   small ad hoc shell calls for the same picture.
 - Delegate with a complete brief (scope, files, acceptance bar, report
-  format) so the agent needs no follow-up round trip to start.
+  format) so the agent needs no follow-up round trip to start. **An agent
+  is a fresh session with no memory of the conversation**: it knows only the
+  brief, this file, the issue and the repo's docs — so decisions that matter
+  (branch policy, frozen main, screenshot rule, ports, verification bar) live
+  in those places, not in chat. **Keep delegations short and bounded** (owner,
+  2026-09-23): one deliverable a fresh session can finish in roughly 10-15
+  minutes; anything larger is split into sequenced pieces, each verified
+  before the next starts. Long single tasks stall, drift and hide failures.
 - Plugins (official marketplace, project scope; local `.claude/settings.json` is git-ignored, so
   install per machine: `claude plugin install <name>@claude-plugins-official --scope project`):
   `session-report` (token/cache/subagent report from local logs; run after each wave, cache breaks
