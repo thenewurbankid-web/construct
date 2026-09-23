@@ -339,6 +339,9 @@ and its `examples/` for real compiling and non-compiling fixtures, and issue
 #500 for the full phased plan (this is phase 1 — proving the pattern in a
 real dogfood run and wiring live Cockpit diagnostics are phases 2-3; removing
 the now-superseded denylist rules is phase 4, not yet done).
+`docs/staleness-by-layer.md` states, per layer, what "stale input" means, the
+guard that rejects it, and which guards are enforced today versus proposed
+(#577), with a copyable example per layer.
 
 ## Modifying conventions
 
