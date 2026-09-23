@@ -111,6 +111,53 @@ test('READ-003: a JSDoc above a decorator on a public export is correctly associ
   assert.equal(violations.filter((v) => v.rule === 'READ-003').length, 0);
 });
 
+// ---- #516: READ-001 must not fight #512's Name.layer.ext convention ---
+
+test('READ-001: a correctly ".layer"-suffixed component/controller/hook passes both READ-001 and READ-004 (#516)', () => {
+  const root = tmpRoot();
+  writeFile(root, 'features/demo/components/WidgetCard.component.tsx', `export function WidgetCard() {\n  return <div />;\n}\n`);
+  writeFile(root, 'features/demo/controllers/WidgetController.controller.tsx', `export function WidgetController() {\n  return <div />;\n}\n`);
+  writeFile(root, 'features/demo/hooks/useWidgetProvider.provider.ts', `export function useWidgetProvider() {\n  return defineProvider('WidgetProvider', () => ({}));\n}\n`);
+  writeFile(root, 'features/demo/hooks/useWidget.hook.ts', `export function useWidget() {\n  return true;\n}\n`);
+  fs.writeFileSync(path.join(root, 'architecture.yml'), 'rules:\n  READ-004: error\n');
+  const { violations } = validateReadability(root);
+  assert.equal(violations.filter((v) => v.rule === 'READ-001').length, 0, 'expected no READ-001 violations');
+  assert.equal(violations.filter((v) => v.rule === 'READ-004').length, 0, 'expected no READ-004 violations');
+});
+
+test('READ-001: a genuine mismatch with no layer suffix still fails exactly as before (#516)', () => {
+  const root = tmpRoot();
+  writeFile(root, 'features/demo/components/WidgetCard.tsx', `export function Widget() {\n  return <div />;\n}\n`);
+  const { violations } = validateReadability(root);
+  const v = violations.find((x) => x.rule === 'READ-001');
+  assert.ok(v, 'expected a READ-001 violation');
+  assert.equal(v.message, 'Component file "WidgetCard.tsx" does not follow PascalCase naming matching its export.');
+  assert.equal(v.suggestedFix, 'Rename features/demo/components/WidgetCard.tsx to features/demo/components/Widget.tsx.');
+});
+
+test('READ-001: a WRONG layer suffix (mis-suffixed file) still trips READ-001, not silently accepted (#516)', () => {
+  const root = tmpRoot();
+  // Sits in components/ (so its real layer is "component") but is suffixed ".controller" --
+  // stripReadOneSuffix only ever strips the EXPECTED suffix for the file's real layer, so this
+  // wrong suffix stays part of the compared name and still breaks the PascalCase shape.
+  writeFile(root, 'features/demo/components/Foo.controller.tsx', `export function Foo() {\n  return <div />;\n}\n`);
+  const { violations } = validateReadability(root);
+  const v = violations.find((x) => x.rule === 'READ-001');
+  assert.ok(v, 'expected a READ-001 violation for a wrongly-suffixed file');
+});
+
+test('READ-001: a correctly-suffixed file with a genuine export mismatch still fails, with the suffix preserved in the suggested rename (#516)', () => {
+  const root = tmpRoot();
+  writeFile(root, 'features/demo/components/WidgetCard.component.tsx', `export function Widget() {\n  return <div />;\n}\n`);
+  const { violations } = validateReadability(root);
+  const v = violations.find((x) => x.rule === 'READ-001');
+  assert.ok(v, 'expected a READ-001 violation');
+  assert.equal(
+    v.suggestedFix,
+    'Rename features/demo/components/WidgetCard.component.tsx to features/demo/components/Widget.component.tsx.'
+  );
+});
+
 // ---- #512: READ-004 (filename encodes layer, Name.layer.ext) ----------
 
 // Off by default (DEFAULT_RULES / READABILITY_RULES both say 'off') -- every existing fixture

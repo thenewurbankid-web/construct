@@ -62,6 +62,31 @@ function expectedHookSuffix(source) {
   return 'hook';
 }
 
+/** The layer suffix READ-004 expects for `layer` (a plain lookup for every layer it
+ * checks except `hook`, which splits further via expectedHookSuffix above) -- shared by
+ * checkLayerSuffix (READ-004 itself) and checkNaming (READ-001, #516) so both rules agree
+ * on exactly the same convention instead of two separately-maintained notions of it. */
+function expectedLayerSuffix(layer, source) {
+  return layer === 'hook' ? expectedHookSuffix(source) : LAYER_SUFFIX[layer];
+}
+
+/** READ-001 (#516): if `base` (a file's basename minus extension) already carries the
+ * layer suffix READ-004 expects for `layer` (expectedLayerSuffix, the exact same logic
+ * READ-004 itself uses), strip it before comparing to the exported identifier -- so a file
+ * correctly following #512's Name.layer.ext convention doesn't trip READ-001's PascalCase/
+ * hook-name check. A file with no suffix, or the WRONG suffix, is untouched: the suffix
+ * segment (or its absence) stays part of the compared name, so it still breaks the
+ * PascalCase/hook-name shape and READ-001 still fires exactly as before. The suffix is
+ * returned separately (with its leading dot) so a suggested rename can preserve it instead
+ * of silently dropping the convention it was already following. */
+function stripReadOneSuffix(layer, base, source) {
+  const expectedSuffix = expectedLayerSuffix(layer, source);
+  if (expectedSuffix && base.endsWith(`.${expectedSuffix}`)) {
+    return { compareBase: base.slice(0, -(expectedSuffix.length + 1)), suffix: `.${expectedSuffix}` };
+  }
+  return { compareBase: base, suffix: '' };
+}
+
 /** Strip a trailing ".<knownSuffix>" segment from `base` (a filename with its outer
  * extension already removed), if present -- e.g. "Foo.controller" -> "Foo" so a suggested
  * rename never doubles up an existing (possibly wrong) layer suffix. */
@@ -93,43 +118,45 @@ function toHookName(name) {
   return 'use' + toPascalCase(stripped);
 }
 
-function checkNaming(config, out, summary) {
+function checkNaming(config, out, summary, source) {
   const ext = path.extname(summary.path);
   const base = path.basename(summary.path, ext);
   const dir = path.dirname(summary.path);
 
   if (summary.layer === 'component' || summary.layer === 'controller') {
     const kind = summary.layer === 'component' ? 'Component' : 'Controller';
+    const { compareBase, suffix } = stripReadOneSuffix(summary.layer, base, source);
     const matchingExport = summary.exports.find((e) => PASCAL.test(e));
-    const ok = PASCAL.test(base) && matchingExport === base;
+    const ok = PASCAL.test(compareBase) && matchingExport === compareBase;
     if (!ok) {
-      const suggestedName = matchingExport || toPascalCase(base);
-      const suggestedPath = `${dir}/${suggestedName}${ext}`;
+      const suggestedName = matchingExport || toPascalCase(compareBase);
+      const suggestedPath = `${dir}/${suggestedName}${suffix}${ext}`;
       pushViolation(config, out, {
         rule: 'READ-001',
         file: summary.path,
         line: 1,
         message: `${kind} file "${base}${ext}" does not follow PascalCase naming matching its export.`,
         why: `${kind}s are named after the PascalCase identifier they export so ownership is obvious from the filename alone.`,
-        expected: [`${suggestedName}${ext} exporting ${suggestedName}`],
+        expected: [`${suggestedName}${suffix}${ext} exporting ${suggestedName}`],
         suggestedFix: `Rename ${summary.path} to ${suggestedPath}${matchingExport ? '' : ` and export a PascalCase identifier named ${suggestedName}`}.`,
       });
     }
   }
 
   if (summary.layer === 'hook') {
+    const { compareBase, suffix } = stripReadOneSuffix(summary.layer, base, source);
     const matchingExport = summary.exports.find((e) => HOOK_NAME.test(e));
-    const ok = HOOK_NAME.test(base) && matchingExport === base;
+    const ok = HOOK_NAME.test(compareBase) && matchingExport === compareBase;
     if (!ok) {
-      const suggestedName = matchingExport || toHookName(base);
-      const suggestedPath = `${dir}/${suggestedName}${ext}`;
+      const suggestedName = matchingExport || toHookName(compareBase);
+      const suggestedPath = `${dir}/${suggestedName}${suffix}${ext}`;
       pushViolation(config, out, {
         rule: 'READ-001',
         file: summary.path,
         line: 1,
         message: `Hook file "${base}${ext}" does not export a use-prefixed camelCase function matching its filename.`,
         why: 'Hooks must be discoverable by their use-prefixed name; consistent naming signals React hook-rule eligibility to tooling and reviewers.',
-        expected: [`${suggestedName}${ext} exporting ${suggestedName}`],
+        expected: [`${suggestedName}${suffix}${ext} exporting ${suggestedName}`],
         suggestedFix: `Rename ${summary.path} to ${suggestedPath}${matchingExport ? '' : ` and export a function named ${suggestedName}`}.`,
       });
     }
@@ -142,7 +169,7 @@ function checkNaming(config, out, summary) {
  * alone, no tsc/AST pass needed, so it can run live on every keystroke. Off by default (see
  * READABILITY_RULES above); a project opts in via architecture.yml. */
 function checkLayerSuffix(config, out, summary, source) {
-  const expectedSuffix = summary.layer === 'hook' ? expectedHookSuffix(source) : LAYER_SUFFIX[summary.layer];
+  const expectedSuffix = expectedLayerSuffix(summary.layer, source);
   if (!expectedSuffix) return; // route (never reached here), or a layer this rule doesn't cover
 
   const ext = path.extname(summary.path);
@@ -250,7 +277,7 @@ export function validateReadability(root) {
     for (const file of files) {
       const summary = parseFile(root, file, layerContext);
       const source = fs.readFileSync(file, 'utf8');
-      checkNaming(config, out, summary);
+      checkNaming(config, out, summary, source);
       checkLength(config, out, summary, source, maxLoc);
       checkLayerSuffix(config, out, summary, source);
     }
