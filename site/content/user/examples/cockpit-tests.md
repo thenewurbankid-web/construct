@@ -1,6 +1,6 @@
 **Problem.** Tests for a workflow are written once and drift. Nobody can say which routes through the flow are covered. And a generated test that a person edits by hand is overwritten by the next regeneration, or worse, silently diverges from the flow it claims to test.
 
-The Tests screen (under **Explore**) lists every route through a feature's workflow, worked out from the flow itself, and whether each has a test. Generated tests are locked. To change one you clone it, and the clone is yours and nothing regenerates it. It keeps a record of the scenario it came from.
+The **Tests** screen in the top bar lists every route through a feature's workflow, worked out from the flow itself, and whether each has a test. Generated tests are locked. To change one you clone it, and the clone is yours and nothing regenerates it. It keeps a record of the scenario it came from.
 
 This page shows the Cockpit only. Generating the tests from a terminal is in the [CLI examples](@user-guide/examples/cli-flows-and-tests/); the engine is in the [Core examples](@user-guide/examples/core-review-tests-commits/).
 

@@ -2,7 +2,7 @@
 
 ## Do this
 
-Open the **Plan** screen and describe the change in your own words, or name a feature, file or route. The Cockpit shows what the change will touch, then lists the steps, each marked *Deterministic*, *Local model* or *You*. Press **Run plan**.
+Open **Features** in the top bar and its **Plan** tab (the `/plan` route), and describe the change in your own words, or name a feature, file or route. The Cockpit shows what the change will touch, then lists the steps, each marked *Deterministic*, *Local model* or *You*. Press **Run plan**.
 
 This page shows the Cockpit only. The same tools are available from the [command line](@user-guide/examples/cli-impact-and-review/) and as a [Core API](@user-guide/examples/core-plans-and-impact/).
 

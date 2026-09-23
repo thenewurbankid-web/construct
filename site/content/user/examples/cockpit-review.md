@@ -8,7 +8,7 @@ This page shows the Cockpit only. The same report from a terminal is in the [CLI
 
 ### 1. Pick a branch
 
-**Review** in the top bar lists the current project's local branches compared against a base (`main` by default), riskiest first: branches with more indicators needing attention, then more findings. A legend on the right explains every badge (scope, rule regressions, unexplained changes, public API, flow changed).
+**Git** in the top bar (the `/review` route) lists the current project's local branches compared against a base (`main` by default), riskiest first: branches with more indicators needing attention, then more findings. A legend on the right explains every badge (scope, rule regressions, unexplained changes, public API, flow changed).
 
 ### 2. Read what the change does
 
