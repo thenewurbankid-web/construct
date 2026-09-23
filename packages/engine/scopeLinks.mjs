@@ -107,12 +107,14 @@ function trackedStateHookLocalNames(ast) {
  * `const XProvider = defineProvider<...>(...)` binding when the export is `export const
  * use<Name>Provider = XProvider.useProvider`, or the inline call directly), then that Value type's
  * member names (`findTypeMembers`, the same TS-compiler-API introspection `declaredPropNames`
- * already uses for a child component's Props).
+ * already uses for a child component's Props). `type` (#534) is that member's own type annotation
+ * text, `null` when it has none.
  *
  * @param {string} hookSource Source of the file the Provider hook is exported from.
  * @param {string} hookName The hook's exported name (`use<Name>Provider`).
- * @returns {string[]|null} Field names, or `null` when the hook/its Value type can't be resolved
- *   (unknown shape, open/index-signature type) -- callers treat `null` as "don't add sources".
+ * @returns {{name:string,type:string|null}[]|null} Fields, or `null` when the hook/its Value type
+ *   can't be resolved (unknown shape, open/index-signature type) -- callers treat `null` as "don't add
+ *   sources".
  */
 export function providerExposedFields(hookSource, hookName) {
   let sourceFile;
@@ -160,13 +162,17 @@ export function providerExposedFields(hookSource, hookName) {
 
   if (ts.isTypeLiteralNode(valueTypeNode)) {
     if (valueTypeNode.members.some((m) => ts.isIndexSignatureDeclaration(m))) return null;
-    const names = [];
-    for (const m of valueTypeNode.members) if (ts.isPropertySignature(m) && m.name && ts.isIdentifier(m.name)) names.push(m.name.text);
-    return names;
+    const fields = [];
+    for (const m of valueTypeNode.members) {
+      if (ts.isPropertySignature(m) && m.name && ts.isIdentifier(m.name)) {
+        fields.push({ name: m.name.text, type: m.type ? m.type.getText(sourceFile) : null });
+      }
+    }
+    return fields;
   }
   if (ts.isTypeReferenceNode(valueTypeNode) && ts.isIdentifier(valueTypeNode.typeName)) {
     const members = findTypeMembers(hookSource, valueTypeNode.typeName.text);
-    return members && members.closed ? [...members.names] : null;
+    return members && members.closed ? [...members.names].map((name) => ({ name, type: members.types.get(name) ?? null })) : null;
   }
   return null;
 }
@@ -214,6 +220,12 @@ function collectTrackedStateOutputs(ast, hookLocalNames) {
  * - `undeclared`: passed props the (closed) child doesn't declare.
  * - `suggestions`: unbound child props with a same-named in-scope declaration (an auto-map candidate).
  * - `unusedScope`: scope names referenced by no element's attributes anywhere in the page.
+ * - `scopeTypes`/`childPropTypes` (#534, additive): `{name: typeText}` maps, sibling fields (never
+ *   folded into `scope`/`childProps`' own item shape, so the original arrays stay byte-for-byte what
+ *   every existing caller/test already expects) giving a best-effort, purely-syntactic type for a
+ *   scope name / declared child prop where one could be read off source text -- a name absent from the
+ *   map means "type not known", never a guess. A `'setter'`-kind name always gets `'(value) => void'`
+ *   (the one thing always true of every `useState` setter, not an inference).
  * Throws an Error with `code: 'NO_SUCH_NODE'` for an unknown id.
  *
  * @param {string} pageSource Source of the page.
@@ -241,15 +253,18 @@ export function buildScopeLinks(pageSource, nodeId, { childSource, providerSourc
   // outputs, strictly additive: existing 'prop'/'state'/'setter' entries are untouched, and a name
   // already declared one of those ways is never overridden by a same-named provider/unit-output one.
   const declaredNames = new Set(scope.map((d) => d.name));
+  // #534 -- sibling type map, see the jsdoc above: never merged into `scope`'s own item shape.
+  const scopeTypes = {};
   for (const { source, hookName } of providerHookImports(ast)) {
     const hookSource = providerSources?.[source] ?? providerSources?.[hookName];
     if (!hookSource) continue;
     const fields = providerExposedFields(hookSource, hookName);
     if (!fields) continue;
-    for (const name of fields) {
+    for (const { name, type } of fields) {
       if (declaredNames.has(name)) continue;
       declaredNames.add(name);
       scope.push({ name, kind: 'provider' });
+      if (type) scopeTypes[name] = type;
     }
   }
   const trackedHookNames = trackedStateHookLocalNames(ast);
@@ -260,6 +275,8 @@ export function buildScopeLinks(pageSource, nodeId, { childSource, providerSourc
       scope.push({ name, kind: 'unit-output' });
     }
   }
+  // Always true of a `useState` setter regardless of the state's own type -- a real fact, not a guess.
+  for (const d of scope) if (d.kind === 'setter') scopeTypes[d.name] = '(value) => void';
 
   const scopeNames = new Set(scope.map((d) => d.name));
   const kindOf = new Map(scope.map((d) => [d.name, d.kind]));
@@ -284,6 +301,7 @@ export function buildScopeLinks(pageSource, nodeId, { childSource, providerSourc
   let childProps = null;
   let undeclared = [];
   let suggestions = [];
+  const childPropTypes = {};
   const declared = node.isCustomComponent ? resolveDeclared(ast, node.tag, childSource) : null;
   if (declared && declared.closed) {
     const passed = new Set(links.map((l) => l.prop));
@@ -293,6 +311,7 @@ export function buildScopeLinks(pageSource, nodeId, { childSource, providerSourc
     }));
     undeclared = [...passed].filter((n) => !declared.names.has(n) && n !== 'key' && n !== 'ref');
     suggestions = childProps.filter((c) => c.status === 'unbound' && scopeNames.has(c.name)).map((c) => c.name);
+    if (declared.types) for (const [name, type] of declared.types) childPropTypes[name] = type;
   }
 
   return {
@@ -307,5 +326,7 @@ export function buildScopeLinks(pageSource, nodeId, { childSource, providerSourc
     suggestions,
     unusedScope,
     childPropsResolved: Boolean(declared && declared.closed),
+    scopeTypes,
+    childPropTypes,
   };
 }

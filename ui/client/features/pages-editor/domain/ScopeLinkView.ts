@@ -18,6 +18,9 @@ export function buildScopeView(graph: ScopeLinkGraph): ScopeView {
   const undeclared = new Set(graph.undeclared);
   const linkedNames = new Set(graph.links.flatMap((l) => l.from.map((f) => f.name)));
   const unusedInPage = new Set(graph.unusedScope);
+  // #534 -- sibling type maps; `|| {}` tolerates a caller/fixture built before these fields existed.
+  const scopeTypes = graph.scopeTypes || {};
+  const childPropTypes = graph.childPropTypes || {};
 
   const sources: ScopeSourceItem[] = graph.scope.map((d) => ({
     name: d.name,
@@ -25,6 +28,7 @@ export function buildScopeView(graph: ScopeLinkGraph): ScopeView {
     color: colorOf.get(d.name) as string,
     linked: linkedNames.has(d.name),
     unusedInPage: unusedInPage.has(d.name),
+    type: scopeTypes[d.name] ?? null,
   }));
 
   const targets: ScopeTargetItem[] = graph.links.map((l) => {
@@ -35,12 +39,20 @@ export function buildScopeView(graph: ScopeLinkGraph): ScopeView {
       text: l.valueKind === 'literal' ? JSON.stringify(l.text) : l.text,
       color: first ? colorOf.get(first.name) ?? null : null,
       declared: declared ? declared.has(l.prop) : true,
+      type: childPropTypes[l.prop] ?? null,
     };
   });
   const passed = new Set(graph.links.map((l) => l.prop));
   for (const c of graph.childProps ?? []) {
     if (passed.has(c.name)) continue;
-    targets.push({ prop: c.name, status: c.status === 'spread' ? 'spread' : 'unbound', text: '', color: null, declared: true });
+    targets.push({
+      prop: c.name,
+      status: c.status === 'spread' ? 'spread' : 'unbound',
+      text: '',
+      color: null,
+      declared: true,
+      type: childPropTypes[c.name] ?? null,
+    });
   }
 
   const edges: ScopeEdge[] = [];

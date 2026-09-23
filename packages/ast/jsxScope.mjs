@@ -125,12 +125,18 @@ function findComponentFunction(ast, tagName, isDefault) {
 
 /**
  * Member names of a TS interface / type-literal alias named `typeName` declared in `source`:
- * `{closed: true, names}`, `{closed: false, names: empty}` if it has an index signature (open -- can't
- * enumerate), or `null` if not found. Uses the TypeScript compiler API, the canonical parser for type syntax.
+ * `{closed: true, names, types}`, `{closed: false, names: empty, types: empty}` if it has an index
+ * signature (open -- can't enumerate), or `null` if not found. Uses the TypeScript compiler API, the
+ * canonical parser for type syntax.
+ *
+ * `types` (#534) is additive alongside `names`: a `Map` of member name -> its type annotation's exact
+ * source text (e.g. `'string'`, `'() => void'`), present only for members that have one. Purely
+ * syntactic (the annotation's own text, not a resolved/normalized type), deterministic, no LLM --
+ * callers that only need names (the original, still-tested contract) can ignore it.
  *
  * @param {string} source Source text containing the type.
  * @param {string} typeName Name of the interface or type alias.
- * @returns {object|null} `{closed, names}`: the member names; `closed: false` for an open type; `null` when not found.
+ * @returns {object|null} `{closed, names, types}`; `closed: false` for an open type; `null` when not found.
  */
 export function findTypeMembers(source, typeName) {
   const sourceFile = parseTsSource(source, 'child.tsx');
@@ -142,13 +148,17 @@ export function findTypeMembers(source, typeName) {
     if (isInterface || isTypeLiteralAlias) {
       const members = isInterface ? node.members : node.type.members;
       if (members.some((m) => ts.isIndexSignatureDeclaration(m))) {
-        result = { closed: false, names: new Set() };
+        result = { closed: false, names: new Set(), types: new Map() };
       } else {
         const names = new Set();
+        const types = new Map();
         for (const m of members) {
-          if (ts.isPropertySignature(m) && m.name && ts.isIdentifier(m.name)) names.add(m.name.text);
+          if (ts.isPropertySignature(m) && m.name && ts.isIdentifier(m.name)) {
+            names.add(m.name.text);
+            if (m.type) types.set(m.name.text, m.type.getText(sourceFile));
+          }
         }
-        result = { closed: true, names };
+        result = { closed: true, names, types };
       }
       return;
     }
@@ -158,15 +168,38 @@ export function findTypeMembers(source, typeName) {
   return result;
 }
 
+// #534 -- a destructured parameter's OWN inline type annotation (`{ a, b }: { a: string; b: number }`,
+// the convention this codebase's own components mostly use) or a reference to a same-file type
+// (`{ a, b }: Props`); returns a name -> type-text Map, purely by slicing `childSource` at the
+// annotation's own range (Babel/typescript-estree node, not the TS compiler) or, for a reference,
+// delegating to findTypeMembers. Empty Map when there is no annotation at all.
+function typesFromObjectPatternAnnotation(param, childSource) {
+  const types = new Map();
+  const typeAnn = param.typeAnnotation?.type === 'TSTypeAnnotation' ? param.typeAnnotation.typeAnnotation : null;
+  if (!typeAnn) return types;
+  if (typeAnn.type === 'TSTypeLiteral') {
+    for (const m of typeAnn.members) {
+      if (m.type === 'TSPropertySignature' && m.key?.type === 'Identifier' && m.typeAnnotation) {
+        const [start, end] = m.typeAnnotation.typeAnnotation.range;
+        types.set(m.key.name, childSource.slice(start, end).trim());
+      }
+    }
+  } else if (typeAnn.type === 'TSTypeReference' && typeAnn.typeName?.type === 'Identifier') {
+    const referenced = findTypeMembers(childSource, typeAnn.typeName.name);
+    if (referenced) for (const [name, type] of referenced.types) types.set(name, type);
+  }
+  return types;
+}
+
 function declaredNamesFromFunction(fn, childSource) {
   const param = fn.params[0];
-  if (!param) return { closed: true, names: new Set() };
+  if (!param) return { closed: true, names: new Set(), types: new Map() };
   if (param.type === 'ObjectPattern') {
     const names = new Set();
     for (const prop of param.properties) {
       if (prop.type === 'Property' && prop.key.type === 'Identifier') names.add(prop.key.name);
     }
-    return { closed: true, names };
+    return { closed: true, names, types: typesFromObjectPatternAnnotation(param, childSource) };
   }
   if (param.type === 'Identifier' && param.typeAnnotation?.type === 'TSTypeAnnotation') {
     const typeRef = param.typeAnnotation.typeAnnotation;
@@ -180,13 +213,15 @@ function declaredNamesFromFunction(fn, childSource) {
 
 /**
  * The declared prop names of the component `tagName` defined in `childSource` (imported by default or
- * by name): `{closed, names}`, or `null` when unknown (child doesn't parse, no matching export, or its
- * first parameter's shape isn't recognized) -- callers treat null as "don't filter".
+ * by name): `{closed, names, types}`, or `null` when unknown (child doesn't parse, no matching export,
+ * or its first parameter's shape isn't recognized) -- callers treat null as "don't filter". `types`
+ * (#534) is the same additive name -> type-text `Map` `findTypeMembers` returns, best-effort (empty
+ * when no annotation is found on a plain destructured parameter).
  *
  * @param {string} childSource Source of the child component's file.
  * @param {string} tagName Component name.
  * @param {boolean} isDefault Whether the component is the default export.
- * @returns {object|null} `{closed, names}`: the declared props, or `null` when unknown.
+ * @returns {object|null} `{closed, names, types}`: the declared props, or `null` when unknown.
  */
 export function declaredPropNames(childSource, tagName, isDefault) {
   let childAst;

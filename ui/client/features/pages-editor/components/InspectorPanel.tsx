@@ -37,7 +37,7 @@ export function InspectorPanel({ feature, file, node, contentHash, onSaved, with
           ))
         )}
       </div>
-      {withScope && !node.isFragment && <ScopePanel feature={feature} file={file} nodeId={node.id} contentHash={contentHash} />}
+      {withScope && !node.isFragment && <ScopePanel feature={feature} file={file} node={node} contentHash={contentHash} onSaved={onSaved} />}
       {node.isCustomComponent && (
         <AutoMapPanel feature={feature} file={file} nodeId={node.id} contentHash={contentHash} onSaved={onSaved} />
       )}

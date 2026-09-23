@@ -94,9 +94,22 @@ export type ScopeLinkGraph = {
   suggestions: string[];
   unusedScope: string[];
   childPropsResolved: boolean;
+  // #534 -- sibling type maps (name -> type text), deliberately NOT folded into `scope`/`childProps`'
+  // own item shape above so that shape stays exactly what it always was. A name absent from the map
+  // means its type isn't known (never a guess); see packages/engine/scopeLinks.mjs's own jsdoc.
+  scopeTypes: Record<string, string>;
+  childPropTypes: Record<string, string>;
 };
 
-export type ScopeSourceItem = { name: string; kind: ScopeDeclKind; color: string; linked: boolean; unusedInPage: boolean };
+export type ScopeSourceItem = {
+  name: string;
+  kind: ScopeDeclKind;
+  color: string;
+  linked: boolean;
+  unusedInPage: boolean;
+  /** #534 -- best-effort real type text (e.g. `'string'`), or `null` when not known. */
+  type: string | null;
+};
 
 export type ScopeTargetStatus = 'bound' | 'literal' | 'unbound' | 'spread' | 'undeclared';
 
@@ -109,6 +122,8 @@ export type ScopeTargetItem = {
   color: string | null;
   /** True when the (closed) child declares this prop. */
   declared: boolean;
+  /** #534 -- this prop's own declared type text (from the child's Props), or `null` when not known. */
+  type: string | null;
 };
 
 export type ScopeEdge = { from: string; to: string; color: string };
