@@ -315,6 +315,17 @@ Most layer rules above are enforced two ways at once, not just one:
   needed, so it can run live on every keystroke; off by default since every
   fixture in this repo predates the convention, opt-in via
   `architecture.yml` once a project is ready to rename its own files).
+- **Type-check** — `TYPE-001` runs a real `tsc --noEmit` (the project's own
+  `node_modules/typescript`, never a global one) and reports every diagnostic
+  (`TS2304: Cannot find name 'useRef'`, with file and line) as a violation, so
+  code that parses and matches its layer but does not compile (a typical
+  `--llm` fill mistake, #495) fails `construct validate`. Off by default (it
+  spawns `tsc`); opt in with `rules: { TYPE-001: error }`, or an options
+  object `{ severity: error, tsconfig: tsconfig.app.json, timeoutMs: 120000 }`.
+  If TypeScript or the tsconfig is missing it reports a
+  `TYPE-001 could not run: <reason>` warning rather than passing silently.
+  When `validateArchitecture` is scoped to `files`, only errors in those files
+  are reported (the whole program is still checked).
 
 Both layers are additive: a project using neither the new factories nor
 `expressions/` sees no behavior change. See `packages/core/typed-contracts/`
