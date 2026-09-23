@@ -419,6 +419,22 @@ project:
 
 Switching providers only ever touches `client.ts` — every generated `services/*.ts` endpoint file calls the same provider-agnostic `buildRequest(method, urlTemplate, data)` helper regardless of which adapter is active. Every operation in the spec needs an explicit `operationId` (used to line up the RTKQ endpoint with the type hey-api generated for it) — a spec without one fails fast with a clear error rather than guessing a name that might not match.
 
+## Cockpit execution mode: in-process engine or the real CLI (#541)
+
+The Cockpit runs a core activity (today: **Diagnostics = `construct validate`**; the other verbs follow under #541) in one of two modes, chosen per project in `architecture.yml`, same shape as `project.dataLayer.provider`:
+
+```yaml
+project:
+  execution:
+    mode: cli   # or engine (default): call packages/core in-process
+```
+
+- `engine` (default, nothing changes unless a project opts in): the Cockpit server calls the same core functions the CLI does, in-process.
+- `cli`: the server spawns the real binary, `node <construct.mjs> validate --format json --dir <project>`, in the project directory with the `CONSTRUCT_*` variables (e.g. `CONSTRUCT_WORKSPACE_ROOT`) and a minimal environment, parses only the JSON, and shows a timeout, a crash or non-JSON output as an error (HTTP 502 with the CLI's own message), never as an empty result. Use it where you want the Cockpit to run exactly the `construct` a project pins.
+- Which binary: `CONSTRUCT_CLI_BIN=/path/to/construct.mjs` (a source `packages/cli/construct.mjs` or the built `packages/cli/dist/construct.mjs`); otherwise this repo's `packages/cli/construct.mjs`; otherwise an installed `@line/construct` (how the split Cockpit repo will get it, #540). `CONSTRUCT_CLI_TIMEOUT_MS` changes the 120 s limit. An unknown `mode` fails with a message naming the allowed values.
+- Parity is a test, not a promise: `test/executionModeParity.test.mjs` runs the same fixtures through both modes and asserts byte-identical JSON.
+- UI-helper endpoints (scope links, Palette, live-preview bridge, pane state) never take the CLI path; they stay in-process in both modes. The seam and that rule live in `ui/server/src/coreExecutor.mjs`.
+
 ## Build order is enforced, not a convention to remember
 
 `construct generate layer` scaffolds one logical unit across several layers in a single command:

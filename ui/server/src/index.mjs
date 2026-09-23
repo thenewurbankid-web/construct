@@ -66,7 +66,7 @@ import {
   moveNodeInSnippet,
   addChildInSnippet,
 } from './pagesEditor.mjs';
-import { handleValidate } from './validateApi.mjs';
+import { handleValidateForProject } from './validateApi.mjs';
 import { validateArchitecture } from '../../../packages/core/architecture-enforcer.mjs';
 import { createComponentsRouter } from './componentsApi.mjs';
 import { handleLogs } from './logBuffer.mjs';
@@ -1026,8 +1026,8 @@ app.get('/api/flow/:feature', (req, res) => {
 // Cockpit drawer: Diagnostics (construct validate for the current project) and
 // Logs (bounded in-memory ring of recent command/validate output). Both are
 // read-only and refuse a foreign browser origin.
-app.get('/api/validate', (req, res) => {
-  const { status, body } = handleValidate({ origin: req.get('origin'), clientOrigin: CLIENT_ORIGIN, projectDir: getProjectDir(), findRoot: containedProjectRoot });
+app.get('/api/validate', async (req, res) => {
+  const { status, body } = await handleValidateForProject({ origin: req.get('origin'), clientOrigin: CLIENT_ORIGIN, projectDir: getProjectDir(), findRoot: containedProjectRoot });
   res.status(status).json(body);
 });
 
