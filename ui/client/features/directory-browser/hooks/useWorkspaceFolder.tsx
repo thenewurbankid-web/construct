@@ -13,7 +13,7 @@ export function useWorkspaceFolder(name: string): WorkspaceFolder {
   useEffect(() => {
     let alive = true;
     // The first page is enough for a shortcut; a huge workspace simply may not offer one.
-    browseDirectory({}).then((listing) => {
+    browseDirectory().then((listing) => {
       if (!alive) return;
       const hit = listing.ok ? listing.entries.find((e) => e.name === name) : undefined;
       setResult(hit ? { state: 'found', path: hit.path } : { state: 'missing' });

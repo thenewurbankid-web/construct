@@ -1681,23 +1681,18 @@ button:disabled {
   padding: 2px 0;
 }
 
-/* #223 — folder picker (features/directory-browser). Layout + focus only. */
+/* #223 / #568 — "Your projects" list (features/directory-browser). Layout only. */
 .dir-picker {
   margin: 12px 0 20px;
   padding: 12px 14px;
   border: 1px solid var(--border);
   border-radius: 8px;
 }
-.dir-picker__current,
-.dir-picker__actions,
 .dir-picker__row {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-}
-.dir-picker__actions {
-  margin: 10px 0;
 }
 .dir-picker__list {
   list-style: none;
@@ -1710,57 +1705,9 @@ button:disabled {
   padding: 4px 0;
   border-bottom: 1px solid var(--border);
 }
-.dir-picker__open {
-  background: none;
-  border: none;
-  color: var(--accent);
-  font: inherit;
-  cursor: pointer;
+.dir-picker__name {
+  font-weight: 500;
   padding: 2px 4px;
-  text-align: left;
-}
-.dir-picker__open:hover {
-  text-decoration: underline;
-}
-.dir-picker__open:focus-visible,
-.dir-picker__hidden input:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-.dir-picker__hidden {
-  font-size: 0.85rem;
-  color: var(--muted);
-}
-/* #365 — workspace-relative breadcrumb: the picker never leaves the workspace, so the trail starts there. */
-.dir-picker__crumbs ol {
-  list-style: none;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 2px;
-  margin: 0 0 8px;
-  padding: 0;
-  font-size: 0.9rem;
-}
-.dir-picker__crumbs li + li::before {
-  content: '/';
-  color: var(--muted);
-  padding: 0 4px;
-}
-.dir-picker__crumb {
-  background: none;
-  border: none;
-  color: var(--accent);
-  font: inherit;
-  cursor: pointer;
-  padding: 2px 4px;
-}
-.dir-picker__crumb:hover {
-  text-decoration: underline;
-}
-.dir-picker__crumb:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
 }
 /* #365 — "Open a project" empty state (features/project-gate). */
 .no-project {

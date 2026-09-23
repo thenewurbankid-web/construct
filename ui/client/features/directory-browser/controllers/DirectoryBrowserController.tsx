@@ -3,21 +3,9 @@
 import { useDirectoryBrowser } from '../hooks/useDirectoryBrowser';
 import { DirectoryBrowserPage } from '../pages/DirectoryBrowserPage';
 
-/** Mount anywhere a folder must be chosen. `onSelect` receives the absolute
- * path the user picked; `initialPath` (optional) is where browsing starts. */
-export function DirectoryBrowserController({ onSelect, initialPath }: { onSelect: (path: string) => void; initialPath?: string }) {
-  const b = useDirectoryBrowser(initialPath);
-  return (
-    <DirectoryBrowserPage
-      listing={b.listing}
-      loading={b.loading}
-      error={b.error}
-      showHidden={b.showHidden}
-      onNavigate={b.navigate}
-      onUp={b.goUp}
-      onSelect={onSelect}
-      onToggleHidden={b.toggleHidden}
-      onLoadMore={b.loadMore}
-    />
-  );
+/** Mount anywhere a project must be chosen. `onSelect` receives the absolute path of the project the user
+ * picked from their own workspace (#568: a flat list; there is no folder navigation to start from). */
+export function DirectoryBrowserController({ onSelect }: { onSelect: (path: string) => void }) {
+  const b = useDirectoryBrowser();
+  return <DirectoryBrowserPage listing={b.listing} loading={b.loading} error={b.error} onSelect={onSelect} onLoadMore={b.loadMore} />;
 }

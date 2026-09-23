@@ -115,6 +115,10 @@ test('fs/browse: `..`, absolute paths and symlinks out are 403; the listing neve
     const r = await json('GET', `/api/fs/browse?path=${encodeURIComponent(p)}`);
     assert.equal(r.status, 403, p);
   }
+  // #568: one level only, even a folder inside the workspace is not navigable.
+  for (const p of ['proj', path.join(ws, 'proj')]) {
+    assert.equal((await json('GET', `/api/fs/browse?path=${encodeURIComponent(p)}`)).status, 403, p);
+  }
   const top = await (await json('GET', '/api/fs/browse')).json();
   assert.equal(top.path, workspaceRoot());
   assert.equal(top.parent, null);

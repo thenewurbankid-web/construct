@@ -59,11 +59,12 @@ test.describe.serial('#365 workspace boundary', () => {
       await expect(page.getByRole('heading', { name: 'Open a project' }), route).toBeVisible();
     }
     await page.goto('/');
-    // The picker is scoped to the workspace: a breadcrumb that starts at "Workspace", no way up, and a hint.
-    const picker = page.getByRole('region', { name: 'Choose a project folder' });
-    await expect(picker.getByTestId('dir-picker-crumbs')).toContainText('Workspace');
-    await expect(picker.getByRole('button', { name: 'Up one level' })).toBeDisabled();
-    await expect(picker.getByRole('button', { name: 'Open shop' })).toBeVisible();
+    // #568: the picker is a flat "Your projects" list of my workspace: no breadcrumb, no way up, and a hint.
+    const picker = page.getByRole('region', { name: 'Your projects' });
+    await expect(picker.getByTestId('dir-picker-crumbs')).toHaveCount(0);
+    await expect(picker.getByRole('button', { name: 'Up one level' })).toHaveCount(0);
+    await expect(picker.getByRole('button', { name: 'Select shop' })).toBeVisible();
+    await expect(picker.locator('li', { hasText: 'shop' }).getByText('Construct project', { exact: true })).toBeVisible();
     await expect(page.getByTestId('no-project')).toContainText('git clone');
     await expect(page.getByTestId('no-project')).toContainText(WS);
     await page.screenshot({ path: path.join(SHOTS, '365-1-open-a-project.png'), fullPage: true });
@@ -71,8 +72,9 @@ test.describe.serial('#365 workspace boundary', () => {
 
   test('the picker never lists a symlink that leaves the workspace, nor anything above it', async ({ page }) => {
     await page.goto('/');
-    const picker = page.getByRole('region', { name: 'Choose a project folder' });
-    await expect(picker.getByRole('button', { name: 'Open notes' })).toBeVisible();
+    const picker = page.getByRole('region', { name: 'Your projects' });
+    await expect(picker.getByRole('button', { name: 'Select notes' })).toBeVisible();
+    await expect(picker.locator('li', { hasText: 'notes' })).toContainText('not a Construct project yet');
     await expect(picker.getByText('link-to-outside')).toHaveCount(0);
     await expect(picker.getByText('link-to-project')).toHaveCount(0);
     await expect(picker.getByText('outside')).toHaveCount(0);
@@ -108,6 +110,10 @@ test.describe.serial('#365 workspace boundary', () => {
     expect(top.path).toBe(WS);
     expect(top.parent).toBeNull();
     expect(top.entries.map((e) => e.name).sort()).toEqual(['notes', 'shop']);
+    // #568: one level - a real folder inside the workspace is refused too, with the same 403 as an outside path.
+    for (const p of ['shop', path.join(WS, 'shop'), path.join(WS, 'notes')]) {
+      expect((await browse(request, p)).status(), p).toBe(403);
+    }
   });
 
   test('ATTACK: with a project open, import cannot read files outside the workspace', async ({ request }) => {
@@ -138,7 +144,7 @@ test.describe.serial('#365 workspace boundary', () => {
 
   test('opening a project inside the workspace works from the picker; it can be closed and reopened', async ({ page }) => {
     await page.goto('/');
-    const picker = page.getByRole('region', { name: 'Choose a project folder' });
+    const picker = page.getByRole('region', { name: 'Your projects' });
     await picker.getByRole('button', { name: 'Select shop' }).click();
     await expect(page.getByRole('heading', { name: 'Features', level: 1 })).toBeVisible();
     await expect(page.getByTestId('project-switcher')).toContainText('shop');

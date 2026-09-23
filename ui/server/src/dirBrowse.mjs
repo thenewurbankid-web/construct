@@ -3,7 +3,7 @@
 // origin-guards the request, parses the query string, and maps
 // DirBrowseError.status to a response. Pure function (no express) so it is
 // unit-testable without a socket.
-import { listDirectories, DirBrowseError } from '../../../packages/core/dir-browser.mjs';
+import { listDirectories, normalizeRoots, DirBrowseError } from '../../../packages/core/dir-browser.mjs';
 import { contain, WorkspaceError } from './workspace.mjs';
 
 /**
@@ -25,6 +25,9 @@ export function handleBrowse(query, { origin, clientOrigin, roots }) {
   try {
     // #365: a relative `path` means workspace-relative (never process.cwd()), and the path is contained by
     // realpath here first, so a symlink or `..` out of the root is a 403 before anything is listed.
+    // #568: "My projects" is ONE level: the workspace root itself. A `path` is accepted only when it names that
+    // root (so an old client still works); any other spelling, even one inside the workspace, is the same 403 as
+    // an outside path. Hidden folders are never listed, and no entry carries a way to navigate deeper.
     let requested = q.path;
     if (typeof requested === 'string' && requested !== '' && Array.isArray(roots) && roots.length > 0) {
       let firstError = null;
@@ -39,12 +42,15 @@ export function handleBrowse(query, { origin, clientOrigin, roots }) {
         }
       }
       if (contained === null) return { status: firstError.status, body: { ok: false, code: firstError.code, error: firstError.message } };
+      if (!normalizeRoots(roots).includes(contained)) {
+        return { status: 403, body: { ok: false, code: 'OUTSIDE_WORKSPACE', error: 'That path is outside the workspace.' } };
+      }
       requested = contained;
     }
     const result = listDirectories({
       path: requested,
       roots,
-      showHidden: q.showHidden === 'true' || q.showHidden === '1',
+      showHidden: false,
       limit: q.limit,
       offset: q.offset,
     });

@@ -11,7 +11,7 @@ type NoProjectScreenProps = {
   opening: boolean;
   error: string | null;
   onOpen: (dir: string) => void;
-  /** The workspace-scoped folder picker (another feature's controller, composed by the controller). */
+  /** The "Your projects" list (another feature's controller, composed by the controller). */
   picker: ReactNode;
   /** The clone-a-repository form (another feature's controller, composed by the controller). */
   clone?: ReactNode;
@@ -30,8 +30,8 @@ export function NoProjectScreen({ workspaceRoot, lastProject, opening, error, on
       <GlassPanel className="gate-panel no-project" data-testid="no-project">
         <h1>Open a project</h1>
         <p className="hint">
-          No project is open. Choose a folder from the workspace to work on — the Cockpit only opens projects
-          that live inside it, and cannot browse anywhere else.
+          No project is open. Choose one of your projects to work on — the Cockpit only lists and opens projects
+          that live in your own workspace, and cannot browse anywhere else.
         </p>
         {lastProject && (
           <div className="no-project__reopen">
@@ -64,8 +64,8 @@ export function NoProjectScreen({ workspaceRoot, lastProject, opening, error, on
         {clone}
         {picker}
         <p className="hint no-project__hint">
-          Don&apos;t see your project? Clone it above, or pick a folder that is already in the workspace
-          {workspaceRoot ? <> (<code>{workspaceRoot}</code>)</> : null}.
+          Don&apos;t see your project? Clone it above, or put a folder in your workspace
+          {workspaceRoot ? <> (<code>{workspaceRoot}</code>)</> : null} and it shows up in the list.
         </p>
       </GlassPanel>
     </div>

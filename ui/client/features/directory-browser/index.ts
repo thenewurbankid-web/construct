@@ -3,17 +3,17 @@
 /** Listing / badge view types. */
 export type * from './types';
 
-/** Drop-in folder picker: renders an allowlisted server-side directory
- * browser and calls onSelect(absolutePath). */
+/** Drop-in "Your projects" list (#568): one flat level of the signed-in user's workspace,
+ * calls onSelect(absolutePath). No navigation, no typed paths. */
 export * from './controllers/DirectoryBrowserController';
 
-/** Browsing state/actions — used by the controller; exported for reuse/testing. */
+/** List state/actions — used by the controller; exported for reuse/testing. */
 export * from './hooks/useDirectoryBrowser';
 
-/** Swappable presentational picker (bring your own data source). */
+/** Swappable presentational list (bring your own data source). */
 export * from './components/DirectoryPicker';
 
-/** Loader primitives (state + navigate) beneath useDirectoryBrowser. */
+/** Loader primitives (state + load) beneath useDirectoryBrowser. */
 export * from './hooks/useDirectoryLoader';
 
 /** Finds a folder by name directly inside the workspace (the "Try the sample shop" shortcut). */

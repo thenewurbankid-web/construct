@@ -48,7 +48,6 @@ type SettingsFormProps = {
 
 export function SettingsForm({
   projectDirInput,
-  setProjectDirInput,
   llmProviders,
   setLlmProvider,
   availableProvidersByCapability,
@@ -64,8 +63,8 @@ export function SettingsForm({
         label="Project directory"
         hint={
           <>
-            Passed as <code>--dir</code> to every command (same as the CLI). Must be an existing
-            directory; it doesn&apos;t need <code>architecture.yml</code> yet if you plan to run{' '}
+            Passed as <code>--dir</code> to every command (same as the CLI). Pick it from your projects;
+            it doesn&apos;t need <code>architecture.yml</code> yet if you plan to run{' '}
             <code>init</code>-equivalent actions from here first.
           </>
         }
@@ -73,12 +72,12 @@ export function SettingsForm({
         <Input
           type="text"
           value={projectDirInput}
-          onChange={(e) => setProjectDirInput(e.target.value)}
-          placeholder="/path/to/your/construct-project"
+          readOnly
+          placeholder="Choose one of your projects below"
         />
       </Field>
       <Button type="button" variant="ghost" onClick={onTogglePicker} aria-expanded={pickerOpen}>
-        {pickerOpen ? 'Close folder browser' : 'Browse folders…'}
+        {pickerOpen ? 'Close project list' : 'Choose a project…'}
       </Button>
       {pickerOpen && picker}
 

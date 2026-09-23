@@ -1,16 +1,12 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
-// #223: allowlisted directory picker on the Settings screen. Real servers,
+// #223 / #568: the "Your projects" list on the Settings screen (one flat level of my own workspace). Real servers,
 // real filesystem fixture; nothing mocked.
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const SCREENSHOTS_DIR = path.resolve(__dirname, '../screenshots');
-fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
 const API = process.env.E2E_API_BASE || 'http://localhost:4000';
 
-test.describe.serial('#223 directory picker', () => {
+test.describe.serial('#223/#568 my-projects list', () => {
   let base;
   let root;
 
@@ -38,44 +34,44 @@ test.describe.serial('#223 directory picker', () => {
     fs.rmSync(path.join(base, 'off-limits'), { recursive: true, force: true });
   });
 
-  test('browse, keyboard-navigate, mark projects, hide hidden/escape/files, choose a folder', async ({ page }) => {
+  test('#568: the list is only my projects, flat, and offers no way to reach a path outside it', async ({ page }) => {
     await page.goto('/settings');
-    await page.getByRole('button', { name: 'Browse folders…' }).click();
+    await page.getByRole('button', { name: 'Choose a project…' }).click();
 
-    const picker = page.getByRole('region', { name: 'Choose a project folder' });
-    await expect(picker.getByTestId('dir-picker-path')).toHaveText(root);
-    // Markers, and only directories.
-    await expect(picker.getByRole('button', { name: 'Open shop-app' })).toBeVisible();
-    await expect(picker.locator('li', { hasText: 'shop-app' }).getByText('Construct project')).toBeVisible();
-    await expect(picker.locator('li', { hasText: 'web-ui' }).getByText('React')).toBeVisible();
+    const picker = page.getByRole('region', { name: 'Your projects' });
+    const rows = picker.getByRole('listitem');
+    // Exactly the direct child folders of my workspace: files, hidden folders and the escaping symlink are not there.
+    await expect(rows).toHaveCount(3);
+    await expect(rows.nth(0)).toContainText('notes');
+    await expect(rows.nth(0)).toContainText('not a Construct project yet');
+    await expect(rows.nth(1)).toContainText('shop-app');
+    await expect(rows.nth(1)).toContainText('Construct project');
+    await expect(rows.nth(1)).not.toContainText('not a Construct project yet');
+    await expect(rows.nth(2)).toContainText('web-ui');
+    await expect(rows.nth(2)).toContainText('React');
     await expect(picker.getByText('passwords.txt')).toHaveCount(0);
     await expect(picker.getByText('.secret-cache')).toHaveCount(0);
     await expect(picker.getByText('sneaky-link')).toHaveCount(0);
-    // At the allowlisted root you cannot go up.
-    await expect(picker.getByRole('button', { name: 'Up one level' })).toBeDisabled();
-    await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'directory-picker-browse.png'), fullPage: true });
+    await expect(picker.getByText('off-limits')).toHaveCount(0);
 
-    await picker.getByLabel('Show hidden folders').check();
-    await expect(picker.getByRole('button', { name: 'Open .secret-cache' })).toBeVisible();
-    await picker.getByLabel('Show hidden folders').uncheck();
+    // No navigation of any kind: no path, breadcrumbs, up-a-level, open-a-subfolder, hidden toggle or typing.
+    await expect(picker.getByTestId('dir-picker-path')).toHaveCount(0);
+    await expect(picker.getByTestId('dir-picker-crumbs')).toHaveCount(0);
+    await expect(picker.getByRole('button', { name: 'Up one level' })).toHaveCount(0);
+    await expect(picker.getByRole('button', { name: /^Open / })).toHaveCount(0);
+    await expect(picker.getByLabel('Show hidden folders')).toHaveCount(0);
+    await expect(picker.getByRole('textbox')).toHaveCount(0);
+    await expect(page.getByPlaceholder('Choose one of your projects below')).toHaveAttribute('readonly', '');
+    // The only actions are one Select per listed project.
+    await expect(picker.getByRole('button')).toHaveCount(3);
 
-    // Keyboard only: focus a row's open button and press Enter to descend.
-    await picker.getByRole('button', { name: 'Open notes' }).focus();
-    await page.keyboard.press('Enter');
-    await expect(picker.getByTestId('dir-picker-path')).toHaveText(path.join(root, 'notes'));
-    await expect(picker.getByRole('button', { name: 'Up one level' })).toBeEnabled();
-    await picker.getByRole('button', { name: 'Up one level' }).focus();
-    await page.keyboard.press('Enter');
-    await expect(picker.getByTestId('dir-picker-path')).toHaveText(root);
-
-    // Choose (keyboard) — fills the input; Save applies it.
+    // Choose (keyboard) - fills the field; Save applies it.
     await picker.getByRole('button', { name: 'Select shop-app' }).focus();
     await page.keyboard.press('Enter');
-    await expect(page.getByPlaceholder('/path/to/your/construct-project')).toHaveValue(path.join(root, 'shop-app'));
+    await expect(page.getByPlaceholder('Choose one of your projects below')).toHaveValue(path.join(root, 'shop-app'));
     await expect(picker).toHaveCount(0);
     await page.getByRole('button', { name: 'Save settings' }).click();
     await expect(page.getByText('Settings saved.')).toBeVisible();
-    await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'directory-picker-chosen.png'), fullPage: true });
   });
 
   test('server refuses traversal, escape, foreign origin (real HTTP)', async ({ request }) => {
@@ -84,9 +80,21 @@ test.describe.serial('#223 directory picker', () => {
     expect((await get(`${root}/shop-app/../../off-limits`)).status()).toBe(403);
     expect((await get(path.join(root, 'sneaky-link'))).status()).toBe(403);
     expect((await get('/etc')).status()).toBe(403);
+    // #568: one level only - even a real folder inside the workspace is not navigable, and answers like an outside one.
     expect((await get(path.join(root, 'passwords.txt'))).status()).toBe(400);
+    const outside = await (await get('/etc')).text();
+    for (const inside of [path.join(root, 'shop-app'), 'shop-app', path.join(root, 'notes')]) {
+      const r = await get(inside);
+      expect(r.status(), inside).toBe(403);
+      expect(await r.text(), inside).toBe(outside);
+    }
     expect((await get(root, { Origin: 'http://evil.example' })).status()).toBe(403);
     const ok = await (await get(root)).json();
     expect(JSON.stringify(ok)).not.toContain('passwords.txt');
+    expect(ok.entries.map((e) => e.name)).toEqual(['notes', 'shop-app', 'web-ui']);
+    expect(ok.parent).toBeNull();
+    // Hidden folders stay hidden even when a client asks for them.
+    const hidden = await (await request.get(`${API}/api/fs/browse`, { params: { showHidden: 'true' } })).json();
+    expect(hidden.entries.map((e) => e.name)).not.toContain('.secret-cache');
   });
 });

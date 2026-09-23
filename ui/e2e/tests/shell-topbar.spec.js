@@ -144,15 +144,18 @@ test.describe('Cockpit top bar (#245)', () => {
   test.describe.serial('project switcher', () => {
     let base;
     let root;
+    let target;
     let original;
 
     test.beforeAll(async ({ request }) => {
       original = (await (await request.get(`${API}/api/settings`)).json()).projectDir;
       base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'construct-switcher-')));
       root = path.join(base, 'projects');
-      fs.mkdirSync(path.join(root, 'shop-app'), { recursive: true });
-      fs.writeFileSync(path.join(root, 'shop-app', 'architecture.yml'), 'version: 1\n');
-      fs.mkdirSync(path.join(root, 'notes'));
+      fs.mkdirSync(path.join(root, 'notes'), { recursive: true });
+      // #568: the switcher lists only the workspace's direct children (here the OS tmp dir), so the switch
+      // target is one of them; the `aa-` prefix keeps it inside the list's first page.
+      target = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'aa-switch-target-')));
+      fs.writeFileSync(path.join(target, 'architecture.yml'), 'version: 1\n');
       const res = await request.post(`${API}/api/settings`, { data: { projectDir: root } });
       expect(res.ok()).toBeTruthy();
     });
@@ -160,6 +163,7 @@ test.describe('Cockpit top bar (#245)', () => {
     test.afterAll(async ({ request }) => {
       await request.post(`${API}/api/settings`, { data: { projectDir: original } });
       fs.rmSync(base, { recursive: true, force: true });
+      fs.rmSync(target, { recursive: true, force: true });
     });
 
     test('shows the current project, opens the folder picker, Esc closes, choosing a folder switches project', async ({ page, request }) => {
@@ -172,18 +176,19 @@ test.describe('Cockpit top bar (#245)', () => {
       const dialog = page.getByRole('dialog', { name: 'Switch project' });
       await expect(dialog).toBeVisible();
       await expect(switcher).toHaveAttribute('aria-expanded', 'true');
-      await expect(dialog.getByTestId('dir-picker-path')).toHaveText(root);
+      await expect(dialog.getByRole('region', { name: 'Your projects' })).toBeVisible();
+      await expect(dialog.getByTestId('dir-picker-path')).toHaveCount(0);
       await page.screenshot({ path: path.join(SHOTS, 'shell-project-switcher.png') });
 
       await page.keyboard.press('Escape');
       await expect(dialog).toHaveCount(0);
 
       await switcher.click();
-      await dialog.getByRole('button', { name: 'Select shop-app' }).click();
+      await dialog.getByRole('button', { name: `Select ${path.basename(target)}` }).click();
       // The page reloads onto the new project; the switcher now names it.
-      await expect(page.getByTestId('project-switcher')).toContainText('shop-app');
+      await expect(page.getByTestId('project-switcher')).toContainText(path.basename(target));
       const settings = await (await request.get(`${API}/api/settings`)).json();
-      expect(settings.projectDir).toBe(path.join(root, 'shop-app'));
+      expect(settings.projectDir).toBe(target);
     });
   });
 });

@@ -113,7 +113,7 @@ export function ShellFrame({ children, route, project, model, theme, userMenu }:
       onClose={project.close}
       error={project.error}
       onCloseProject={project.closeProject}
-      picker={<DirectoryBrowserController onSelect={project.choose} initialPath={project.dir ?? undefined} />}
+      picker={<DirectoryBrowserController onSelect={project.choose} />}
     />
   );
 

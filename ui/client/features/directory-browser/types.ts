@@ -26,36 +26,22 @@ export type RawDirListing = {
 
 export type BrowseFailure = { ok: false; error: string };
 
-export type DirBadge = { key: 'construct' | 'react' | 'package'; label: string };
+export type DirBadge = { key: 'construct' | 'plain' | 'react' | 'package'; label: string };
 
-export type DirEntryView = { name: string; path: string; badges: DirBadge[]; looksLikeProject: boolean };
+export type DirEntryView = { name: string; path: string; badges: DirBadge[]; isConstructProject: boolean };
 
-/** Props of the swappable presentational picker (components/DirectoryPicker). */
+/** Props of the swappable presentational list (components/DirectoryPicker). */
 export type DirectoryPickerProps = {
   listing: DirListingView | null;
   loading: boolean;
   error: string | null;
-  showHidden: boolean;
-  onNavigate: (path: string) => void;
-  onUp: () => void;
   onSelect: (path: string) => void;
-  onToggleHidden: (value: boolean) => void;
   onLoadMore: () => void;
 };
 
-/** UI-ready listing (see domain/DirectoryListing.tsx). */
-/** One step of the workspace-relative breadcrumb ("Workspace" then each folder below it). */
-export type DirCrumb = { label: string; path: string };
-
+/** UI-ready listing (see domain/DirectoryListing.tsx): the user's projects, one flat level. */
 export type DirListingView = {
-  path: string;
-  /** The browsable root (the workspace); null if the server did not report one. */
-  root: string | null;
-  /** Breadcrumb from the root down to `path`, so the UI can show workspace-relative locations. */
-  crumbs: DirCrumb[];
-  parent: string | null;
   entries: DirEntryView[];
   total: number;
   truncated: boolean;
-  currentBadges: DirBadge[];
 };

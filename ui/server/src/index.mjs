@@ -268,10 +268,10 @@ app.post('/api/settings', (req, res) => {
   }
 });
 
-// #223 + #365: allowlisted, directories-only folder browser for the project picker. The ONLY root is the
-// workspace (never $HOME, never a client-set list); a relative `path` is workspace-relative; anything that
-// resolves outside it by realpath is refused. All listing logic lives in src/dir-browser.mjs
-// (+ ./dirBrowse.mjs adapter).
+// #223 + #365 + #568: "My projects" list for the project picker. The ONLY root is the signed-in user's
+// workspace (never $HOME, never a client-set list) and only that ONE level is listed, directories only, each
+// flagged with whether it holds architecture.yml; any `path` other than the root itself is a 403. All listing
+// logic lives in src/dir-browser.mjs (+ ./dirBrowse.mjs adapter).
 app.get('/api/fs/browse', (req, res) => {
   const { status, body } = handleBrowse(req.query, {
     origin: req.get('origin'),
