@@ -3,11 +3,13 @@ import { init, feature, generate, sync, validate, summarize, doctor, create, ref
 import { startRepl } from '../core/repl.mjs';
 import { EXIT_CODES, ConstructError } from '../core/diagnostics.mjs';
 import { USAGE } from '../core/usage.mjs';
+import { getVersion } from './version.mjs';
 
 const [cmd, ...args] = process.argv.slice(2);
 
 try {
-  if (cmd === 'init') await init(args);
+  if (cmd === '--version' || cmd === '-v') console.log(getVersion());
+  else if (cmd === 'init') await init(args);
   else if (cmd === 'feature') await feature(args);
   else if (cmd === 'generate' || cmd === 'g') await generate(args);
   else if (cmd === 'sync') await sync(args);

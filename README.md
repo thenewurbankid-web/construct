@@ -27,7 +27,24 @@ cd construct && npm install && npm link      # puts `construct` on your PATH
 construct init my-app                        # a new project with the rules already in place
 cd my-app && npm install
 construct validate                           # checks the code against architecture.yml
+construct --version                          # confirm which build you're running
 ```
+
+`npm link` points `construct` at `packages/cli/construct.mjs` straight out of the
+checkout — nothing to build first. If you want a single, portable file instead (to
+copy elsewhere, or vendor into another project), build it:
+
+```bash
+npm run build:cli               # bundles packages/cli/construct.mjs -> packages/cli/dist/construct.mjs
+node packages/cli/dist/construct.mjs --version
+```
+
+That's an esbuild bundle (the same approach as `ui/server`'s own build, see
+[docs/DEPLOY.md](docs/DEPLOY.md)): it inlines this repo's own `packages/cli`
++ `packages/core` + `packages/ast` + `packages/engine` code into one file, so it has
+no dependency on the workspace's folder layout; real npm dependencies still resolve
+normally from `node_modules`. The root `npm run build` (`tsc --noEmit`) is a separate,
+unrelated type-check — run both if you're touching the CLI's own source.
 
 A fresh project passes. `construct validate` exits 0 and may print warnings,
 each with a reason and a fix. Now open the Cockpit on that project (two
