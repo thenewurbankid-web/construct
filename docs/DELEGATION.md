@@ -20,11 +20,18 @@ Worktrees are created on frozen `main` and have no `node_modules`:
 
 ```bash
 git fetch origin && git checkout -B <branch> origin/work/2026-09-23
+```
+then, as a **separate** command (chaining it into the checkout with `&&` has tripped the sandbox's
+worktree-containment guard — the string "git" inside "github-comment-bridge" reads as nested git use):
+```bash
 M=/home/developer/Desktop/repos/construct
 for d in . ui/server ui/client ui/e2e packages/tools/github-comment-bridge; do
   [ -d "$M/$d/node_modules" ] && ln -sfn "$M/$d/node_modules" "$d/node_modules"
 done
 ```
+If the checkout silently didn't run (you're still on the worktree's default branch, based on frozen
+`main`), rename the branch and rebase onto `origin/work/2026-09-23` before continuing — don't build on
+frozen `main`.
 
 The links are git-ignored. Never `npm install` in a worktree unless the brief
 says so (one package, through `heavy.sh`, lockfile committed).
