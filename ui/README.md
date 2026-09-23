@@ -100,7 +100,8 @@ folder**, and it starts with **no project open**.
 
 | Setting | Meaning |
 | --- | --- |
-| `CONSTRUCT_WORKSPACE_ROOT` | Absolute path of the workspace. Default `$HOME/workspace`. Created if missing, resolved with `realpath` once at startup. Relative paths and `/` are refused (the server does not start). |
+| `CONSTRUCT_WORKSPACE_ROOT` | Absolute path of the workspace root, set by DevOps. Created if missing, resolved with `realpath` once at startup. Relative paths and `/` are refused (the server does not start). Default `$HOME/workspace` **only when login is off** (loopback dev): every user then shares that one folder. When login is required (hosted) there is **no default** — it must be set, and the server refuses to start if it is unset or overlaps the Construct checkout or the server's working directory. |
+| Per-user directory | With login required, each signed-in user gets `<CONSTRUCT_WORKSPACE_ROOT>/<github-login>` (login lowercased, letters/digits/`-`/`_` only, at most 64 characters; created `0700` on first use, resolved with `realpath`). It is the workspace for that user's requests, so browsing, cloning, opening and running commands are all confined to it; another user's directory is refused with the same `403 OUTSIDE_WORKSPACE` as any outside path. A login that is not one safe path segment gets `403`. |
 | `CONSTRUCT_STATE_DIR` | Where process records, bot worktrees and the remembered "last project" live. Server-owned, outside the workspace, never client-addressable. |
 
 - **No project at start.** `GET /api/settings` returns `projectDir: null, noProject: true`. The Cockpit shows one

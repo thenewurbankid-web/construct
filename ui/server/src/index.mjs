@@ -13,7 +13,7 @@ import { Readable } from 'node:stream';
 import { AuthConfigError, createAuth, isLoopbackHost, resolveAuthConfig } from './auth.mjs';
 import { create, refactor, research, importCommand, init } from '../../../packages/core/cli.mjs';
 import { containedProjectRoot, requireProject } from './projectGuard.mjs';
-import { WorkspaceError, containInWorkspace, contain, workspaceRoot } from './workspace.mjs';
+import { WorkspaceError, baseWorkspaceRoot, containInWorkspace, contain, userWorkspaceMiddleware, workspaceRoot } from './workspace.mjs';
 import { USAGE } from '../../../packages/core/usage.mjs';
 import { HELP_TOPICS, TOPIC_ORDER, getTopLevelHelpText } from '../../../packages/core/repl.mjs';
 import { getSettings, updateSettings, getBrowseRoots, getProjectDir, preloadProject } from './settings.mjs';
@@ -202,6 +202,9 @@ auth.mountRoutes(app);
 // above it is public, and this API runs CLI commands and writes files.
 // ---------------------------------------------------------------------------
 app.use('/api', auth.requireSession);
+// #567: right after the gate, scope the request to the signed-in user's own workspace directory (`<root>/<login>`),
+// so every `workspaceRoot()` below is per user. Mounted once, here, so no route can forget it.
+app.use('/api', userWorkspaceMiddleware);
 
 // Read-only. Returns the CLI's *real* help/usage text, imported directly
 // from the same source modules bin/construct.mjs and the REPL use (see
@@ -1151,7 +1154,9 @@ export function createUiServer() {
 }
 
 export function start() {
-  const root = workspaceRoot(); // creates the workspace if missing; throws (and the process exits) if it cannot
+  // Creates the workspace if missing; throws (and the process exits) if it cannot. With login required the root has
+  // no default and must be outside the checkout and cwd (#567).
+  const root = baseWorkspaceRoot({ authRequired: auth.required });
   // #422: a server that died mid-clone left a marker and maybe a partial directory (and maybe a git still running).
   const recovered = cloneJobs.recoverInterrupted();
   for (const slug of recovered.killed) console.warn(`Clone recovery: stopped an orphaned git clone of ${slug} left by a previous server.`);
