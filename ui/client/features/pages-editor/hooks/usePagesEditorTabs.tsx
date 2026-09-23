@@ -65,9 +65,9 @@ export function usePagesEditorTabs(e: Editor): void {
       id: 'scope',
       title: 'Scope',
       disabled: !tree,
-      render: () => <ScopeTab feature={feature} file={file} node={selectedNode} contentHash={hash} />,
+      render: () => <ScopeTab feature={feature} file={file} node={selectedNode} contentHash={hash} onSaved={onTreeSaved} />,
     }),
-    [tree, feature, file, selectedNode, hash],
+    [tree, feature, file, selectedNode, hash, onTreeSaved],
   );
 
   const sourceTab = useMemo<ShellTab>(

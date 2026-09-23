@@ -1531,15 +1531,29 @@ button:disabled {
 .scope-panel { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 10px; }
 .scope-graph { position: relative; max-width: 100%; }
 .scope-graph-svg { position: absolute; inset: 0; pointer-events: none; }
+/* #534 -- scope-source/scope-target are real <button>s now (Slice 1's accessibility fix); reset the
+   UA button chrome back to the original span's look, then layer interaction states on top. */
 .scope-source, .scope-target {
   position: absolute; height: 22px; box-sizing: border-box; padding: 0 8px; line-height: 20px;
   border: 1px solid var(--border); border-radius: 11px; font-size: 0.75rem; white-space: nowrap;
   overflow: hidden; text-overflow: ellipsis;
+  appearance: none; background: var(--surface-2); font: inherit; text-align: left; cursor: pointer;
 }
+.scope-source:disabled, .scope-target:disabled { cursor: default; }
+.scope-source:focus-visible, .scope-target:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .scope-source.unused { opacity: 0.55; border-style: dashed; }
 .scope-target.scope-status-unbound { border-style: dashed; border-color: var(--danger); color: var(--danger); }
 .scope-target.scope-status-undeclared { border-color: var(--warn); color: var(--warn); }
 .scope-target.scope-status-spread { border-style: dotted; opacity: 0.7; }
+/* Slice 2 -- click-to-bind states. Fit/unfit never rely on colour alone: an unfit candidate also
+   carries `disabled` (announced, native-skipped by Tab) plus its own real type in `title`, never hidden. */
+.scope-target.armed { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+.scope-source.scope-fit { border-color: var(--accent); background: var(--accent-soft); }
+.scope-source.scope-unfit { opacity: 0.55; border-style: dashed; }
+.scope-callout {
+  font-size: 0.8rem; margin: 6px 0; padding: 4px 8px; border-radius: 6px;
+  background: var(--accent-soft); border: 1px solid var(--accent);
+}
 .scope-flags { list-style: none; margin: 8px 0 0; padding: 0; font-size: 0.8rem; }
 .scope-flag-warn::before { content: '\26A0  '; color: var(--warn); }
 .scope-flag-info { opacity: 0.75; }

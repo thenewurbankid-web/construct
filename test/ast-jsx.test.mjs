@@ -129,3 +129,29 @@ test('findTypeMembers: closed interface, type literal, open index signature, mis
   assert.equal(findTypeMembers('interface I { [k: string]: 1 }', 'I').closed, false);
   assert.equal(findTypeMembers('interface I { a: 1 }', 'Nope'), null);
 });
+
+// #534 -- findTypeMembers/declaredPropNames additionally carry each member's own type-annotation
+// text (a `types` Map), purely by reading the annotation's source text -- additive: every assertion
+// above this point is unchanged and still passes.
+test('findTypeMembers: types map carries each member\'s own annotation text', () => {
+  const members = findTypeMembers('interface Props { title: string; total: number; onClose: () => void }', 'Props');
+  assert.deepEqual([...members.types], [['title', 'string'], ['total', 'number'], ['onClose', '() => void']]);
+  assert.deepEqual([...findTypeMembers('interface I { [k: string]: 1 }', 'I').types], []);
+});
+
+test('declaredPropNames: types resolve from an inline object-pattern type literal (this codebase\'s own component convention)', () => {
+  const r = declaredPropNames('export function Card({ title, total }: { title: string; total: number }) { return null; }', 'Card', false);
+  assert.deepEqual([...r.types], [['title', 'string'], ['total', 'number']]);
+});
+
+test('declaredPropNames: types resolve from an object pattern annotated with a same-file type reference', () => {
+  const src = 'interface CardProps { title: string; total: number }\nexport function Card({ title, total }: CardProps) { return null; }';
+  const r = declaredPropNames(src, 'Card', false);
+  assert.deepEqual([...r.types], [['title', 'string'], ['total', 'number']]);
+});
+
+test('declaredPropNames: a plain, unannotated destructured parameter has names but no types', () => {
+  const r = declaredPropNames('export function Card({ title, total }) { return null; }', 'Card', false);
+  assert.deepEqual([...r.names], ['title', 'total']);
+  assert.deepEqual([...r.types], []);
+});

@@ -69,8 +69,9 @@ test.describe.serial('Pages Editor inside the shell (#247)', () => {
     await expect(main.locator('.live-preview-panel')).toBeVisible();
     await expect(main.locator('.preview-panel')).toBeVisible();
 
-    // Tools tabs, Inspector first; Scope / Source / Diff enabled once a page is open.
-    await expect(tools.getByRole('tab')).toHaveText(['Inspector', 'Scope', 'Source', 'Diff', 'Project']);
+    // Tools tabs, Inspector first; Scope / Source / Palette / Diff enabled once a page is open (#527
+    // added the Palette tab after this spec was written; this list drifted stale, not touched by #534).
+    await expect(tools.getByRole('tab')).toHaveText(['Inspector', 'Scope', 'Source', 'Palette', 'Diff', 'Project']);
     await expect(tools.getByRole('tab', { name: 'Inspector' })).toHaveAttribute('aria-selected', 'true');
     await expect(tools.getByText('Select a tree node or preview element to inspect it.')).toBeVisible();
 

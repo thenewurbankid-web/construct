@@ -248,6 +248,34 @@ export function Home({ title }) {
   assert.deepEqual(g.scope, [{ name: 'title', kind: 'prop' }]);
 });
 
+// #534 -- scopeTypes/childPropTypes are new SIBLING fields on the returned graph (never folded into
+// `scope`/`childProps`' own item shape -- every `assert.deepEqual(g.scope, ...)`/`assert.deepEqual(g.childProps, ...)`
+// assertion above this point is untouched and still passes byte-for-byte).
+test('scopeTypes/childPropTypes: a provider field\'s real type and the child\'s own declared prop types both surface', () => {
+  const g = buildScopeLinks(PAGE_WITH_PROVIDER, 'n1', {
+    childSource: CARD_WITH_AMOUNT,
+    providerSources: { '../hooks/useCartProvider': CART_PROVIDER_HOOK },
+  });
+  assert.deepEqual(g.scopeTypes, { total: 'number', label: 'string' });
+  assert.equal(g.childPropTypes.title, undefined); // CARD_WITH_AMOUNT's props have no type annotation
+});
+
+test('scopeTypes: a useState setter always gets the one type every setter really has, regardless of the state\'s own type', () => {
+  const g = buildScopeLinks(PAGE, 'n1', { childSource: CARD });
+  assert.equal(g.scopeTypes.setOpen, '(value) => void');
+  assert.equal(g.scopeTypes.setDraft, '(value) => void');
+  assert.equal(g.scopeTypes.title, undefined); // no annotation on PAGE's own destructured param
+});
+
+test('childPropTypes: a child\'s declared prop types resolve from its own typed object-pattern parameter', () => {
+  const childSource = 'export function Card({ title, amount, label }: { title: string; amount: number; label: string }) { return null; }';
+  const g = buildScopeLinks(PAGE_WITH_PROVIDER, 'n1', {
+    childSource,
+    providerSources: { '../hooks/useCartProvider': CART_PROVIDER_HOOK },
+  });
+  assert.deepEqual(g.childPropTypes, { title: 'string', amount: 'number', label: 'string' });
+});
+
 test('unit-output: a hook import whose name does not match the use<Name>State convention is not treated as a tracked-state source', () => {
   const page = `import { Card } from '../components/Card';
 import { useCartTotal } from '../hooks/useCartTotal';
