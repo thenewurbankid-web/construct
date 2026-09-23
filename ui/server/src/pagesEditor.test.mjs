@@ -59,6 +59,42 @@ function makeFixture() {
   return root;
 }
 
+// #529 -- a real page importing a real Provider hook file (same shape #528's own
+// test/scopeLinks.test.mjs fixtures use: provider.ts's documented
+// `defineProvider<Props, Value>(...)` + `export const use<Name>Provider = XProvider.useProvider`).
+const CART_PROVIDER_HOOK = `interface CartProviderProps { total: number }
+interface CartValue { total: number; label: string }
+const CartProvider = defineProvider<CartProviderProps, CartValue>('Cart', ({ total }) => ({ total, label: 'x' }));
+export const useCartProvider = CartProvider.useProvider;
+`;
+
+const CARD_WITH_AMOUNT = `export function Card({ title, amount, label }: { title: string; amount: number; label: string }) { return null; }
+`;
+
+const PAGE_WITH_PROVIDER = `import { Card } from '../components/Card';
+import { useCartProvider } from '../hooks/useCartProvider';
+
+export default function CartPage({ title }: { title: string }) {
+  return (
+    <div>
+      <Card title={title} amount={total} label={label} />
+    </div>
+  );
+}
+`;
+
+function makeProviderFixture() {
+  const root = makeTempDir('construct-pages-editor-provider-');
+  fs.writeFileSync(path.join(root, 'architecture.yml'), 'version: 1\npreset: strict-nextjs\nfeatures:\n  root: features\n');
+  fs.mkdirSync(path.join(root, 'features/cart/pages'), { recursive: true });
+  fs.mkdirSync(path.join(root, 'features/cart/components'), { recursive: true });
+  fs.mkdirSync(path.join(root, 'features/cart/hooks'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'features/cart/pages/CartPage.tsx'), PAGE_WITH_PROVIDER);
+  fs.writeFileSync(path.join(root, 'features/cart/components/Card.tsx'), CARD_WITH_AMOUNT);
+  fs.writeFileSync(path.join(root, 'features/cart/hooks/useCartProvider.ts'), CART_PROVIDER_HOOK);
+  return root;
+}
+
 test('listFeatures / listPages find the fixture feature and page', () => {
   const root = makeFixture();
   assert.deepEqual(listFeatures(root), ['demo']);
@@ -200,6 +236,24 @@ test('getScopeLinks resolves the child file across the import and reports links/
   assert.deepEqual(g.childProps, [{ name: 'children', status: 'unbound' }]);
   assert.deepEqual(g.scope.map((d) => d.name), ['title', 'count', 'open', 'setOpen']);
   assert.throws(() => getScopeLinks(SOURCE, 'n999', root, absPath), PagesEditorError);
+});
+
+test('getScopeLinks resolves a real, reachable Provider hook import and passes its fields as \'provider\' scope (#529)', () => {
+  const root = makeProviderFixture();
+  const { absPath } = resolvePageFile(root, 'cart', 'CartPage.tsx');
+  const { roots } = serializeTree(PAGE_WITH_PROVIDER);
+  const cardId = roots[0].children[0].id; // <div><Card .../></div>
+  const g = getScopeLinks(PAGE_WITH_PROVIDER, cardId, root, absPath);
+  assert.deepEqual(g.scope, [
+    { name: 'title', kind: 'prop' },
+    { name: 'total', kind: 'provider' },
+    { name: 'label', kind: 'provider' },
+  ]);
+  assert.deepEqual(g.links, [
+    { prop: 'title', valueKind: 'identifier', text: 'title', from: [{ name: 'title', kind: 'prop' }] },
+    { prop: 'amount', valueKind: 'identifier', text: 'total', from: [{ name: 'total', kind: 'provider' }] },
+    { prop: 'label', valueKind: 'identifier', text: 'label', from: [{ name: 'label', kind: 'provider' }] },
+  ]);
 });
 
 test('findUnmappedProps without root/pageAbsPath keeps the old permissive (unfiltered) behavior', () => {

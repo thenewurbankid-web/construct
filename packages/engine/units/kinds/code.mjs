@@ -56,8 +56,11 @@ function buildFile(ctx, p, detail, kind) {
   };
 }
 
-const FILE_LAYER_KINDS = ['component', 'hook', 'service', 'domain', 'page', 'controller', 'workflow'];
-const LAYER_DESC = { component: 'A presentation component', hook: 'A React hook', service: 'A service (external effects)', domain: 'A pure domain module', page: 'A page (presentation)', controller: 'A controller', workflow: 'A workflow file and its state machines' };
+// #530 -- 'expression' (features/*/expressions/**, packages/core/config.mjs's DEFAULT_LAYERS) is a
+// real file-layer kind like the others below; ctx.layerOf already classifies it correctly (used by
+// palette.mjs since #527), it just hadn't been added to this kind registry yet.
+const FILE_LAYER_KINDS = ['component', 'hook', 'service', 'domain', 'page', 'controller', 'workflow', 'expression'];
+const LAYER_DESC = { component: 'A presentation component', hook: 'A React hook', service: 'A service (external effects)', domain: 'A pure domain module', page: 'A page (presentation)', controller: 'A controller', workflow: 'A workflow file and its state machines', expression: 'A named control-flow/expression unit' };
 
 function fileKind(kind) {
   const layer = kind === 'file' ? null : kind;
