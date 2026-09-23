@@ -193,3 +193,15 @@ export type CodeSegment = { text: string; ref?: NavReference };
 
 /** What the trail draws: a step, or a fold standing in for the hidden middle steps. */
 export type TrailItem = { kind: 'step'; index: number; step: TrailStep } | { kind: 'fold'; hidden: number[] };
+
+// #527 (Slice 1 of #518's design) -- the read-only Palette tab: Providers/Expressions/Components
+// this feature's pages can actually reach, computed server-side from the real canImport graph
+// (packages/engine/palette.mjs). `via` is null for the feature's own unit, or the owning feature's
+// name for one reached through that feature's public index.ts.
+/** The chip label a Palette entry gets -- "provider" for a Provider hook (a naming convention over
+ * the `hook` layer, not its own branded layer, so it stays the plain grey chip, not a new colour). */
+export type PaletteChipKind = 'provider' | 'expression' | 'component';
+
+export type PaletteEntry = { name: string; path: string; feature: string; via: string | null; description: string };
+
+export type PaletteData = { feature: string; providers: PaletteEntry[]; expressions: PaletteEntry[]; components: PaletteEntry[] };
