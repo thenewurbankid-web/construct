@@ -1,32 +1,22 @@
 name: Pages documentation
 
-# Builds the documentation site (User Guide + Developer Docs, site/build.mjs) and publishes it.
+# Builds the documentation site (User Guide + Developer Docs, site/build.mjs) and publishes it to
+# THIS repo's GitHub Pages: https://thenewurbankid-web.github.io/construct/
 #
-# This repo is private, so GitHub Pages here needs a paid plan and may already be disabled
-# (confirmed 404 on GET /repos/thenewurbankid-web/construct/pages, 2026-09-22). The docs site is
-# instead published to a NEW `gh-pages` branch of a separate, already-public repo the owner owns —
-# thenewurbankid-web/cockpit (an unrelated old prototype; only that one new branch is touched,
-# never its existing code or branches) — with GitHub Pages enabled there.
-# Live at https://thenewurbankid-web.github.io/cockpit/
+# History: while this repo was private (2026-09-22 to 2026-09-23) GitHub Pages was unavailable on
+# the owner's plan, so the site was pushed cross-repo to thenewurbankid-web/cockpit#gh-pages with a
+# COCKPIT_REPO_TOKEN secret that was never added -- the site was 404 the whole time. The repo went
+# public on 2026-09-23 (#540 / #559) and native Pages replaced that hack; no secret is needed now.
+# The old cockpit#gh-pages branch is a stale copy and can be deleted once this publishes.
 #
-# If this repo's own Pages ever comes back (repo goes public again, or a paid plan is added), swap
-# the `publish` job below for actions/upload-pages-artifact + actions/deploy-pages against the
-# `build` job's `site/dist` output (see this file's git history before the cross-repo-publish change
-# for that job definition) — or run both in parallel.
-#
-# Cross-repo push needs a token with write access to thenewurbankid-web/cockpit; the default
-# GITHUB_TOKEN only covers this repo. To enable `publish`:
-#   1. Create a fine-grained personal access token scoped ONLY to thenewurbankid-web/cockpit, with
-#      repository permission "Contents: Read and write".
-#   2. Add it to THIS repo as a secret named COCKPIT_REPO_TOKEN
-#      (Settings > Secrets and variables > Actions > New repository secret).
-# Until that secret exists, `publish` is skipped (its steps check for it) and only `build` runs, so
-# regressions in the site generator are still caught by every push.
+# Branch: `main` is frozen at tag stable-2026-09-23 and ongoing work merges to work/2026-09-23,
+# so the site is built from work/2026-09-23 (the / and /next/ paths) plus every v*.*.* tag.
+# When main is unfrozen, put it back in `branches:` below.
 
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [work/2026-09-23, main]
     tags: ['v*.*.*'] # a release publishes its /X.Y/ docs (path filters do not apply to tags)
     paths: ['site/**', 'docs/**', 'README.md', 'packages/**', 'schemas/**', 'package.json', '.github/workflows/pages.yml']
   schedule:
@@ -37,6 +27,8 @@ on:
 permissions:
   contents: read
   issues: read
+  pages: write
+  id-token: write
 
 concurrency:
   group: pages
@@ -61,53 +53,20 @@ jobs:
       - name: Test site generator
         run: node --test site/test/*.test.mjs
       # One artifact holds every version (each publish replaces the whole site):
-      # / = newest release (main while no tag exists), /X.Y/ = each release, /next/ = this checkout.
-      # --repo is the COCKPIT repo (not this one): base paths, canonical URLs, sitemap and the 404
-      # page all need to match where the site is actually served.
+      # / = newest release (the checkout while no tag exists), /X.Y/ = each release, /next/ = this checkout.
+      # --repo is where the site is served: base paths, canonical URLs, sitemap and the 404 page match it.
       - name: Build all documentation versions
-        run: node site/build-all.mjs --repo thenewurbankid-web/cockpit --out site/dist
-      - uses: actions/upload-artifact@v4
+        run: node site/build-all.mjs --repo thenewurbankid-web/construct --out site/dist
+      - uses: actions/upload-pages-artifact@v3
         with:
-          name: docs-site
           path: site/dist
-          retention-days: 7
 
-  publish:
+  deploy:
     needs: build
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Check for COCKPIT_REPO_TOKEN
-        id: check
-        run: echo "has-token=${{ secrets.COCKPIT_REPO_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
-      - uses: actions/download-artifact@v4
-        if: steps.check.outputs.has-token == 'true'
-        with:
-          name: docs-site
-          path: site/dist
-      - name: Push to thenewurbankid-web/cockpit#gh-pages
-        if: steps.check.outputs.has-token == 'true'
-        env:
-          COCKPIT_REPO_TOKEN: ${{ secrets.COCKPIT_REPO_TOKEN }}
-        run: |
-          set -euo pipefail
-          rm -rf /tmp/cockpit-gh-pages
-          git clone --branch gh-pages --single-branch \
-            "https://x-access-token:${COCKPIT_REPO_TOKEN}@github.com/thenewurbankid-web/cockpit.git" \
-            /tmp/cockpit-gh-pages
-          cd /tmp/cockpit-gh-pages
-          # Replace tracked content with the new build; .git (and any other branch) is untouched.
-          git rm -rf . >/dev/null
-          cp -a "$GITHUB_WORKSPACE/site/dist/." .
-          git config user.name "construct-docs-bot"
-          git config user.email "actions@users.noreply.github.com"
-          git add -A
-          if git diff --cached --quiet; then
-            echo "No content changes; nothing to publish."
-            exit 0
-          fi
-          git commit -m "docs: publish from thenewurbankid-web/construct@${GITHUB_SHA}"
-          git push origin gh-pages
-      - name: COCKPIT_REPO_TOKEN not set
-        if: steps.check.outputs.has-token != 'true'
-        run: |
-          echo "::warning::COCKPIT_REPO_TOKEN secret is not set on this repo — skipping publish to thenewurbankid-web/cockpit#gh-pages. See the comment block at the top of .github/workflows/pages.yml for what to add."
+      - id: deployment
+        uses: actions/deploy-pages@v4
