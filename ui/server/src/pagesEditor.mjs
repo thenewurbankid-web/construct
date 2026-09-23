@@ -15,11 +15,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import {
-  parseJsxTree, findParentRecord, jsxParseError, checkJsxReplacement,
+  parseJsx, parseJsxTree, findParentRecord, jsxParseError, checkJsxReplacement,
   spliceNode, setAttributeText, setSpreadText, removeAttributeText, removeNodeText, swapNodesText, addChildText,
   collectComponentScopeNames, findImportOfName, declaredPropNames,
 } from '../../../packages/ast/index.mjs';
-import { buildScopeLinks, importOfTag } from '../../../packages/engine/scopeLinks.mjs';
+import { buildScopeLinks, importOfTag, providerHookImports } from '../../../packages/engine/scopeLinks.mjs';
 import { loadConfig } from '../../../packages/core/config.mjs';
 import { loadLayerGraph } from '../../../packages/core/architecture-graph.mjs';
 import { validateArchitecture } from '../../../packages/core/architecture-enforcer.mjs';
@@ -527,9 +527,41 @@ export function findUnmappedProps(source, nodeId, root, pageAbsPath) {
 }
 
 /**
+ * #529 -- every Provider hook reachable from the page's own top-level imports (`providerHookImports`,
+ * the exact detection `buildScopeLinks` already uses internally -- reused, not re-derived a third
+ * time), each resolved across the import to that hook's own file the same way `childSource` already
+ * resolves a rendered child component's file, keyed by import specifier so `buildScopeLinks`'s
+ * `providerSources` lookup (`providerSources?.[source] ?? providerSources?.[hookName]`) finds it. An
+ * import that doesn't resolve to a real in-project file (bare/package import, missing file) is simply
+ * left out -- same "unresolved -> no scope added" contract `childSource` already has.
+ */
+function resolveProviderSources(source, root, pageAbsPath) {
+  let ast;
+  try {
+    ast = parseJsx(source);
+  } catch {
+    return undefined;
+  }
+  const entries = {};
+  for (const { source: specifier } of providerHookImports(ast)) {
+    if (entries[specifier] !== undefined) continue;
+    const abs = resolveImportSource(pageAbsPath, specifier, root);
+    if (!abs) continue;
+    try {
+      entries[specifier] = fs.readFileSync(abs, 'utf8');
+    } catch {
+      // leave unresolved -- same contract as childSource's own read failure above
+    }
+  }
+  return Object.keys(entries).length ? entries : undefined;
+}
+
+/**
  * Scope/binding link graph for one element (#223): thin glue over the core `buildScopeLinks` block --
- * this only does the path-scoped cross-file lookup of the child component's source (bare/package
- * imports and anything outside `root` resolve to null, leaving `childProps` unknown).
+ * the path-scoped cross-file lookup of the child component's source (bare/package imports and
+ * anything outside `root` resolve to null, leaving `childProps` unknown) plus, independently of which
+ * element is selected, every reachable Provider hook's own source (#529, `resolveProviderSources`
+ * above) so the 'provider' scope kind (#528) is populated for real Cockpit pages.
  */
 export function getScopeLinks(source, nodeId, root, pageAbsPath) {
   let childSource;
@@ -547,7 +579,8 @@ export function getScopeLinks(source, nodeId, root, pageAbsPath) {
       }
     }
   }
-  return buildScopeLinks(source, nodeId, { childSource });
+  const providerSources = root && pageAbsPath ? resolveProviderSources(source, root, pageAbsPath) : undefined;
+  return buildScopeLinks(source, nodeId, { childSource, providerSources });
 }
 
 export function applyAutoMap(source, nodeId, propNames) {

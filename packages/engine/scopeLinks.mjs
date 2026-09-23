@@ -65,10 +65,17 @@ function importedSpecifierName(spec) {
   return null; // ImportNamespaceSpecifier
 }
 
-/** Provider hooks reachable from the page's own top-level imports: one `{source, hookName}` per
+/**
+ * Provider hooks reachable from the page's own top-level imports: one `{source, hookName}` per
  * specifier, from a `hooks?/` path, whose imported name is a real Provider hook name
- * (`use<Name>Provider`) -- the same reachability boundary PAGE-006 already enforces. */
-function providerHookImports(ast) {
+ * (`use<Name>Provider`) -- the same reachability boundary PAGE-006 already enforces. Exported (#529)
+ * so a caller resolving `providerSources` across files (ui/server's getScopeLinks) can reuse this
+ * exact detection instead of re-deriving the naming-convention check a third time.
+ *
+ * @param {object} ast The page's parsed AST (`parseJsx(pageSource)`).
+ * @returns {{source:string, hookName:string}[]} One entry per reachable Provider hook import.
+ */
+export function providerHookImports(ast) {
   const hits = [];
   for (const node of ast.body) {
     if (node.type !== 'ImportDeclaration' || !/hooks?\//.test(node.source.value)) continue;
