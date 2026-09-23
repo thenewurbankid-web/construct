@@ -7,6 +7,7 @@ import { makeLineSource } from './line-source.mjs';
 import { createFeature, generateLayer, generateVertical, layerFromGeneratedFile, fillGeneratedFile } from './generators.mjs';
 import { generateServiceFromSpec } from './service-generator.mjs';
 import { write, ensureDir } from './fs.mjs';
+import { scaffoldProject } from './scaffold.mjs';
 import { loadConfig, findProjectRoot, DEFAULT_RULES, normalizeFramework } from './config.mjs';
 import { formatReport, exitCodeForViolations, ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { aggregateValidation } from './registry.mjs';
@@ -63,6 +64,16 @@ const ENFORCER_MODULES = [
   { name: 'summarize', file: 'summarize.mjs' },
 ];
 
+const INIT_HELP = `Usage: construct init [dir] [--framework nextjs|react-spa] [--no-scaffold]
+
+Writes architecture.yml, AGENTS.md, the core feature and the framework's entry file(s).
+Also lays down a minimal runnable project shell (package.json with dev/build scripts,
+tsconfig.json, bundler config, .gitignore) so \`npm install && npm run dev\` works next.
+Static files only: no network, no npm install. An existing file is never overwritten.
+
+  --framework <name>  nextjs (default) | react-spa
+  --no-scaffold       skip the project shell; write only the Construct files`;
+
 // `construct init [dir] [--framework nextjs|react-spa]` — the entry-point
 // scaffold this writes is the one genuinely framework-specific part of
 // init: nextjs gets a physical app/page.tsx (Next.js's own file-system
@@ -73,7 +84,7 @@ const ENFORCER_MODULES = [
 // defaults to nextjs when --framework is omitted, so every existing caller
 // of `construct init` keeps getting exactly what it got before.
 /**
- * `construct init [dir] [--framework nextjs|react-spa]`: write `architecture.yml` and `AGENTS.md`, then scaffold the `core` feature. The entry-point scaffold is the one framework-specific part: `nextjs` (the default) gets `app/page.tsx`; `react-spa` gets `src/main.tsx` and `src/App.tsx` with the core controller registered in the router table.
+ * `construct init [dir] [--framework nextjs|react-spa] [--no-scaffold]`: write `architecture.yml` and `AGENTS.md`, then scaffold the `core` feature, then (unless `--no-scaffold`) a minimal runnable project shell that never overwrites an existing file (#497). The entry-point scaffold is the one framework-specific part: `nextjs` (the default) gets `app/page.tsx`; `react-spa` gets `src/main.tsx` and `src/App.tsx` with the core controller registered in the router table.
  *
  * @param {string[]} args Command arguments: an optional target directory, then optional `--framework <name>`.
  * @returns {Promise<void>} Resolves once the files are written (prints what it wrote).
@@ -83,6 +94,10 @@ const ENFORCER_MODULES = [
  * await init(['my-app', '--framework', 'react-spa']);
  */
 export async function init(args) {
+  if (args.includes('--help') || args.includes('-h')) {
+    console.log(INIT_HELP);
+    return;
+  }
   const dir = path.resolve(args[0] && !args[0].startsWith('--') ? args[0] : '.');
   const fi = args.indexOf('--framework');
   const framework = normalizeFramework(fi >= 0 ? args[fi + 1] : undefined);
@@ -110,6 +125,18 @@ export async function init(args) {
     write(path.join(dir, 'app', 'page.tsx'), `import { CoreController } from '../features/core/controllers/CoreController';\n\nexport default function Page() {\n  return <CoreController />;\n}\n`);
   }
   console.log(`Initialized Construct in ${dir} (framework: ${framework})`);
+  // #497: a runnable project shell (package.json, tsconfig, bundler config, ...) unless --no-scaffold.
+  if (args.includes('--no-scaffold')) return;
+  const { written, skipped } = scaffoldProject(dir, framework);
+  if (written.length) console.log(`Scaffolded ${written.length} project file(s): ${written.join(', ')}`);
+  if (skipped.length) console.log(`Kept existing (not overwritten): ${skipped.join(', ')}`);
+  if (written.includes('package.json')) {
+    const rel = path.relative(process.cwd(), dir);
+    console.log(`Next: ${rel ? `cd ${/\s/.test(rel) ? JSON.stringify(rel) : rel} && ` : ''}npm install && npm run dev`);
+  } else {
+    console.log('Next: add the dependencies your framework needs to your existing package.json, then run your dev script.');
+  }
+  console.log('Note: the entry file imports features/core/controllers/CoreController, which does not exist yet; generate it (construct generate layer core --feature core --layers domain,service,workflow,hook,component,page,controller) or `construct validate` and the dev server will report the unresolved import.');
 }
 
 export async function feature(args) {

@@ -464,6 +464,19 @@ You can list `--layers` in any order — Construct always generates them in depe
 
 This isn't just a convenience — it's backed by a real rule, `IMPORT-001`: any relative import that doesn't resolve to a file on disk is a validation error, checked both by `construct validate` and at generation time. A controller's template already imports its same-named page, so `construct generate controller X --feature F` fails immediately, with a clear message, if `pages/XPage.tsx` doesn't exist yet — you can't generate out of order and end up with a silently broken import. This is the mechanism, not `construct generate layer`'s ordering alone: any file, generated or hand-written, with a dangling relative import fails `construct validate` the same way.
 
+## `construct init`'s project scaffold
+
+Alongside `architecture.yml`, `AGENTS.md` and the `core` feature, `construct init` also writes a
+minimal, runnable project shell for the chosen `--framework` — `package.json` (with `dev`/`build`
+scripts), `tsconfig.json`, the bundler config (`vite.config.ts` + `index.html` for `react-spa`,
+`next.config.mjs` + `next-env.d.ts` + `app/layout.tsx` for `nextjs`) and `.gitignore` — so
+`npm install && npm run dev` (init prints this) works right after `init`, with no other
+bootstrapping step. Versions are pinned to current stable majors; nothing is downloaded or
+installed by `init` itself (static template files only). **An existing file is never
+overwritten** — init reports it as "kept" and moves on — so re-running `init` in a project that
+already has its own `package.json`/`tsconfig.json` is always safe. Pass `--no-scaffold` to write
+only the Construct files and skip the project shell entirely.
+
 ## Adopting Construct inside an existing project
 
 Construct doesn't need to own your whole repository. `construct init` accepts a directory, so you can scope it to one subdirectory of a larger, unrelated project — no changes required anywhere else in that project:

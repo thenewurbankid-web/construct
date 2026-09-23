@@ -86,7 +86,9 @@ shell — not typed inside 'construct repl', which is already reading input.
 Each of the above has a flat equivalent (unchanged, still supported):
 
 Commands:
-  construct init [dir] [--framework nextjs|react-spa]
+  construct init [dir] [--framework nextjs|react-spa] [--no-scaffold]
+    (also writes a runnable project shell — package.json, tsconfig, bundler config,
+    .gitignore — never overwriting existing files; --no-scaffold skips that part)
   construct feature create <name> [--dir <path>]
   construct generate <layer> <name> --feature <feature> [--llm <provider>] [--dir <path>]
   construct generate page <name> --feature <feature> --from <path> [--dir <path>]
