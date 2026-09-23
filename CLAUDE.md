@@ -136,10 +136,21 @@ sync with what's actually true, not a point-in-time snapshot (see #35).
    done (`npm test` passing in full, plus the task's own manual bar); never
    leave finished work open, never close unfinished work. New work that
    reopens/supersedes closed work says so in a comment with a link.
-4. **Granularity**: a parent "epic" issue for a multi-part feature, one
-   atomic sub-issue per independently-shippable module, each closable on
-   its own and referencing the parent (`[Module N] ...`, `Epic X.Y — ...`
-   where they fit). A flat issue is fine for small, one-piece work.
+4. **Granularity — tickets are user stories** (owner, 2026-09-23). Every
+   independently shippable capability is one **user story** issue: "As a
+   `<role>`, I want `<capability>`, so that `<benefit>`", labelled `story`,
+   with 2-4 checkable acceptance bullets and a milestone. Implementation
+   slices and **design** are **sub-issues** of their story (GitHub
+   sub-issues plus a "Part of #N" line). Design is never a standalone
+   top-level ticket and never a gate: it is optional (the designer agent
+   runs only when the owner asks) and does not block its story. A
+   multi-story feature gets an epic parent. Bugs and chores stay flat.
+   **Obsolete work is closed**, with a one-line reason naming what
+   supersedes it (a shipped issue or a recorded decision) — not left open
+   and not shuffled between milestones. Feature/story-level status (stories
+   per release, their sub-tickets, missing acceptance or missing milestone)
+   must stay visible for grooming — Trinity's Releases tab reads it from the
+   sub-issue graph, so keep parent links real.
 5. **Keep the project board matching reality** — state plus column always
    true. If unreachable (no Projects scope), say so explicitly and ask for
    a token or for cards to be moved manually.
