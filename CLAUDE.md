@@ -266,13 +266,18 @@ secret).
 
 ## Design module (Module 9) — product and UX design
 
-The Cockpit is designed before it is built. Charter, principles, tokens,
-the 3-pane cockpit layout, mocks and the ticket-shape/hand-off rules live in
-`docs/design/` (`docs/design/README.md` is the entry point). Delegated to
-the `designer` agent (`.claude/agents/designer.md`): invoke it BEFORE
-building any new Cockpit screen or a visible change to an existing one, for
-design/accessibility reviews, and when tokens change; it never edits
-`ui/client` product code. Implementation tickets link back with `Design: #N
-(mock: <file>)` and still need the rule-11 Playwright test. Open-core: the
-Cockpit UI is proprietary-future, design work stays in `docs/design/`, and
-no open-core package depends on it.
+Charter, principles, tokens, the 3-pane cockpit layout, mocks and the
+ticket-shape/hand-off rules live in `docs/design/` (`docs/design/README.md`
+is the entry point). Delegated to the `designer` agent
+(`.claude/agents/designer.md`), but **opt-in only, not a default gate**
+(owner, 2026-09-23 — supersedes the earlier "designer before any visible
+change" rule): invoke it only when the owner explicitly asks for a design
+pass, an accessibility/consistency review, or a token change. Otherwise,
+build a UI change directly — brief the implementing agent to reuse
+established patterns from `docs/design/` (e.g. the `.pal-group`
+`<details>/<summary>` disclosure idiom) rather than inventing new ones, and
+keep the rule-11 Playwright test requirement regardless. The designer never
+edits `ui/client` product code. An implementation that does go through a
+design pass still links back with `Design: #N (mock: <file>)`. Open-core:
+the Cockpit UI is proprietary-future, design work stays in `docs/design/`,
+and no open-core package depends on it.
