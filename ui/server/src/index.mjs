@@ -52,6 +52,7 @@ import {
   findUnmappedProps,
   getScopeLinks,
   applyAutoMap,
+  buildPaletteInsertion,
   checkEnforcement,
   hashOf,
   parseSnippetToTree,
@@ -627,6 +628,38 @@ app.get('/api/pages/palette', (req, res) => {
   try {
     const { feature } = req.query;
     res.json(buildPalette(currentRoot(), typeof feature === 'string' ? feature : ''));
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+// #532 (Slice 2 of #518's design) -- click a Component/Provider entry in the read-only Palette (#527)
+// to insert its real import + usage at the end of the currently open page. `kind`/`name`/`path` are
+// only a LOOKUP KEY: the actual entry inserted is re-derived from a fresh buildPalette call for this
+// page's own feature (never the client-sent object verbatim), the same "never trust a client-named
+// path directly" discipline componentsApi.mjs's `pick()` already uses. Goes through the same #56
+// enforcement gate (saveAndRespond) as every other Pages editor write.
+app.post('/api/pages/palette/insert', async (req, res) => {
+  try {
+    const { feature, file, kind, name, path: entryPath, contentHash } = req.body || {};
+    if (kind !== 'component' && kind !== 'provider') {
+      return res.status(400).json({ ok: false, error: 'kind must be "component" or "provider" (Expressions are Slice 3, "Wrap with...").' });
+    }
+    const root = currentRoot();
+    const { absPath, relPath } = resolvePageFile(root, feature, file);
+    const source = fs.readFileSync(absPath, 'utf8');
+    if (contentHash && hashOf(source) !== contentHash) {
+      return res.status(409).json({ ok: false, error: 'The file changed on disk since this was loaded — reload the tree and try again.' });
+    }
+    const palette = buildPalette(root, feature);
+    if (!palette.ok) return res.status(400).json({ ok: false, error: palette.error });
+    const list = kind === 'provider' ? palette.providers : palette.components;
+    const entry = list.find((e) => e.name === name && e.path === entryPath);
+    if (!entry) return res.status(404).json({ ok: false, error: 'That Palette entry is no longer available for this feature — reload the Palette tab and try again.' });
+
+    const result = await buildPaletteInsertion(root, absPath, source, { ...entry, kind });
+    if (!result.ok) return res.status(422).json({ ok: false, error: result.error });
+    saveAndRespond(res, root, relPath, absPath, result.source);
   } catch (e) {
     handlePagesEditorError(res, e);
   }

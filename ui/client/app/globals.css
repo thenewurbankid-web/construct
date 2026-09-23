@@ -2151,3 +2151,15 @@ button:disabled {
 .pal-boundary b {
   color: var(--text);
 }
+
+/* #532 (Slice 2 of #518's design) -- the Insert action on a Component/Provider row. Compact variant
+ * of the global <button> baseline above (same colours/radius, smaller so it sits inline with the
+ * chip and name) pushed to the row's trailing edge; still >=24px tall per the design's target-size
+ * review. Expression rows pass no `onInsert` (Slice 3 is a separate, later ticket) so they render no
+ * button at all -- never a disabled placeholder that implies an action isn't there yet. */
+.pal-insert {
+  margin-left: auto;
+  padding: 3px 10px;
+  font-size: var(--fs-xs);
+  min-height: 24px;
+}

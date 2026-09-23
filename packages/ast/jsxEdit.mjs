@@ -5,6 +5,7 @@
 // (`{start, end, isFragment, tag, openingElementNode}`) and the source it was parsed from. Pure: no
 // I/O, no validation of the *result* (callers re-parse with `jsxParseError`).
 import { jsxNameToString } from './jsxTree.mjs';
+import { walkAst } from './walk.mjs';
 
 /**
  * Splice `newText` over `node`'s range.
@@ -145,4 +146,49 @@ export function addChildText(source, parent, childSnippet = NEW_CHILD_SNIPPET) {
   const insertAt = parent.end - closingLength;
   if (insertAt < parent.start) return { ok: false, reason: 'no-position' };
   return { ok: true, source: source.slice(0, insertAt) + childSnippet + source.slice(insertAt) };
+}
+
+const ENCLOSING_FUNCTION_TYPES = new Set(['FunctionDeclaration', 'ArrowFunctionExpression', 'FunctionExpression']);
+
+/**
+ * #532 (Slice 2 of #518's design) -- insert a new statement as the FIRST statement of the nearest
+ * enclosing function BODY (a real `{ ... }` block) around `targetNode`, e.g. adding a Provider hook
+ * call (`const cart = useCartProvider();`) to the top of a page component's body -- located relative
+ * to a JSX node it already returns (`targetNode`, typically the page's own root element from
+ * `parseJsxTree`), rather than by guessing which export "is" the component. Indentation matches the
+ * body's existing first statement, or falls back to two spaces for an empty body.
+ *
+ * @param {string} source Full source text.
+ * @param {object} ast The Program AST `targetNode` was found in (`parseJsxTree(source).ast`).
+ * @param {{start:number, end:number}} targetNode A node record with source offsets (e.g. a JSX root).
+ * @param {string} statementText The new statement's source text (no trailing newline needed).
+ * @returns {{ok:true, source:string}|{ok:false, reason:'no-enclosing-function'}} The new full source, or why it could not be added.
+ */
+export function insertStatementBeforeJsx(source, ast, targetNode, statementText) {
+  let enclosing = null;
+  const stack = [];
+  walkAst(ast, {
+    enter(node) {
+      const isBlockFn = ENCLOSING_FUNCTION_TYPES.has(node.type) && node.body?.type === 'BlockStatement';
+      if (isBlockFn) stack.push(node);
+      if (node.range[0] === targetNode.start && node.range[1] === targetNode.end && stack.length) {
+        enclosing = stack[stack.length - 1];
+      }
+    },
+    leave(node) {
+      const isBlockFn = ENCLOSING_FUNCTION_TYPES.has(node.type) && node.body?.type === 'BlockStatement';
+      if (isBlockFn && stack[stack.length - 1] === node) stack.pop();
+    },
+  });
+  if (!enclosing) return { ok: false, reason: 'no-enclosing-function' };
+
+  const block = enclosing.body;
+  const bodyStart = block.range[0] + 1; // right after the block's own '{'
+  const firstStmt = block.body[0];
+  let indent = '  ';
+  if (firstStmt) {
+    const lineStart = source.lastIndexOf('\n', firstStmt.range[0]) + 1;
+    indent = source.slice(lineStart, firstStmt.range[0]);
+  }
+  return { ok: true, source: source.slice(0, bodyStart) + `\n${indent}${statementText}` + source.slice(bodyStart) };
 }
