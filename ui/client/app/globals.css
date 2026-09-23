@@ -2028,3 +2028,126 @@ button:disabled {
   flex-direction: column;
   gap: 8px;
 }
+
+/* #527 (Slice 1 of #518's design, docs/design/block-palette.md) — Pages editor's read-only Palette
+ * tab. Group headers are native <details>/<summary> (same disclosure idiom as .help-topic above),
+ * keyboard-toggleable with no bespoke widget. Only existing tokens (tokens.md): the Provider chip is
+ * deliberately plain grey (a naming convention over `hook`, not its own branded layer), the
+ * Expression chip earns --warn as a real branded layer, and Component reuses --success like every
+ * other component tag in the Cockpit. */
+.pal-panel h3 {
+  margin: 0 0 4px;
+}
+
+.pal-group {
+  margin: 10px 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding: 2px var(--sp-3) var(--sp-2);
+  background: var(--surface-1);
+}
+
+.pal-group > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: var(--sp-2) 0;
+  font-weight: 600;
+  font-size: var(--fs-md);
+}
+
+.pal-group > summary::-webkit-details-marker {
+  display: none;
+}
+
+.pal-group > summary::before {
+  content: '▸';
+  color: var(--text-muted);
+  font-size: 0.75em;
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.pal-group[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.pal-count {
+  color: var(--text-muted);
+  font-weight: 400;
+  font-size: var(--fs-sm);
+}
+
+.pal-item {
+  padding: var(--sp-2) 0 var(--sp-2) 20px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.pal-item:first-of-type {
+  border-top: none;
+}
+
+.pal-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pal-chip {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-xs);
+  line-height: 1.6;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border-subtle);
+}
+
+.pal-chip--expression {
+  color: var(--warn);
+  background: var(--warn-soft);
+  border-color: transparent;
+}
+
+.pal-chip--component {
+  color: var(--success);
+  background: var(--success-soft);
+  border-color: transparent;
+}
+
+.pal-path {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+  font-family: var(--mono);
+}
+
+.pal-desc {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+.pal-empty {
+  padding-left: 20px;
+}
+
+.pal-boundary {
+  margin: var(--sp-3) 0 0;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  background: var(--surface-1);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+.pal-boundary b {
+  color: var(--text);
+}

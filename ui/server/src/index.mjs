@@ -64,6 +64,7 @@ import { handleValidate } from './validateApi.mjs';
 import { createComponentsRouter } from './componentsApi.mjs';
 import { handleLogs } from './logBuffer.mjs';
 import { unitsIndex, unitSummary, featuresIndex, featureSummary } from './unitsApi.mjs';
+import { buildPalette } from '../../../packages/engine/palette.mjs';
 import { readPageSource } from './pageSource.mjs';
 import { viewPage, openReference, viewProjectFile } from './projectNav.mjs';
 import { featureFlow, flowFilePaths } from './flowApi.mjs';
@@ -613,6 +614,19 @@ app.get('/api/pages/scope-links', (req, res) => {
     const root = currentRoot();
     const { absPath } = resolvePageFile(root, feature, file);
     res.json(getScopeLinks(fs.readFileSync(absPath, 'utf8'), nodeId, root, absPath));
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+// #527 (Slice 1 of #518's design) -- read-only Palette tab: the Providers/Expressions/Components
+// pages in this feature could actually import, computed from the real canImport graph
+// (packages/engine/palette.mjs). Feature-scoped, not file-scoped: identical for every page in the
+// same feature, so the client recomputes it only when the open feature changes.
+app.get('/api/pages/palette', (req, res) => {
+  try {
+    const { feature } = req.query;
+    res.json(buildPalette(currentRoot(), typeof feature === 'string' ? feature : ''));
   } catch (e) {
     handlePagesEditorError(res, e);
   }

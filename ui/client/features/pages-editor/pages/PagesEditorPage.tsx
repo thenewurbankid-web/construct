@@ -11,9 +11,9 @@ type PagesEditorPageProps = ReturnType<typeof usePagesEditor> & {
 };
 
 // The stage (middle pane) of the Pages Editor. The page/feature tree lives in
-// the shell's Browser pane and Inspector / Scope / Source / Diff in its Tools
-// tabs (see usePagesEditorTabs); this renders what you look at: the live app
-// preview, the structural mirror and the prop-flow diagram.
+// the shell's Browser pane and Inspector / Scope / Source / Palette / Diff in
+// its Tools tabs (see usePagesEditorTabs); this renders what you look at: the
+// live app preview, the structural mirror and the prop-flow diagram.
 export function PagesEditorPage(props: PagesEditorPageProps): ReactNode {
   const { tree, error, selectedNodeId, selectNode, previewTitle, externalChange, livePreview, gitSession } = props;
   // #456: full screen is the app and nothing else. Everything but the preview is
