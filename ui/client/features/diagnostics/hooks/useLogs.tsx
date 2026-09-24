@@ -3,9 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { lastId, mergeEntries } from '../domain/LogEntries';
 import { fetchLogs } from '../services/LogsApi';
+import { watchLogs } from '../services/LogsPolling';
 import type { LogEntry } from '../types';
-
-const POLL_MS = 2500;
 
 /** Recent server/command output, polled while the Logs tab is mounted.
  * "Clear" only hides what is already shown (the server keeps its own bounded buffer). */
@@ -27,11 +26,7 @@ export function useLogs() {
     }
   }, []);
 
-  useEffect(() => {
-    refresh();
-    const t = setInterval(refresh, POLL_MS);
-    return () => clearInterval(t);
-  }, [refresh]);
+  useEffect(() => watchLogs(refresh), [refresh]);
 
   const clear = useCallback(() => setEntries([]), []);
   return { entries, error, refresh, clear };
