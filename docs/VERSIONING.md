@@ -94,6 +94,65 @@ home. Tests: `node --test site/test/*.test.mjs`.
    confirm the docs deploy published `/<X.Y>/` and moved the site root.
 9. Post the release link on the Notice Board (#224).
 
+## Builds
+
+Releases (`vX.Y.Z`) are rare and deliberate. Builds are the other rhythm: many a day, automatic, one per team ("lane":
+`construct`, `cockpit`, `site`, `design`, `adhoc` for Studio) each time something an end user can see or use has landed.
+A build is a checked, tagged commit. It is not a deploy: deploying stays a separate step that needs the owner's standing
+approval, and nothing here publishes, deploys or bumps a version (#639).
+
+**A capability is a change for an end user in scope of usability.** A commit is a capability for a lane when it touches a
+user-facing path of that lane and is not a refactor, test, CI, board, changelog, lockfile or internal-docs change:
+
+| Lane | User-facing paths |
+| --- | --- |
+| `construct` | `packages/{core,cli,engine,ast}/**` source (`.mjs`, `.ts`), `schemas/` |
+| `cockpit` | `ui/client/{app,components,features,lib,public}`, `ui/server/src` and `scripts` |
+| `site` | `site/content`, `site/assets`, the site generator and `site/logo.json`, `packages/docs-site/lib` |
+| `design` | `docs/design` |
+| `adhoc` | `packages/studio/src`, `packages/studio/bin` (the `studio` branch only) |
+
+Test and spec files, fixtures, CI, `docs/PROJECT_BOARD.md`, `CHANGELOG.md` and lockfiles never count, and neither does a
+subject that says `chore:`, `refactor:`, `test:`, `e2e:`, `ci:`, `board:`, `style:`, `release:`, a merge, "into services/..." and
+similar. The whole rule is data in `packages/tools/dev/lanes.json` (`userFacing`, `ignore`, `ignoreSubjects`, `branches`)
+and is tested; a `[#N]` story or bug reference in the subject raises the classifier's confidence and is put into the tag,
+but is never required.
+
+**Tags.** A lane with at least one capability since its last build tag is checked and tagged at the branch tip:
+
+- `<lane>/build-YYYY-MM-DD-HHMM` in UTC (`cockpit/build-2026-09-24-1930`); design uses `design/pack-YYYY-MM-DD-HHMM`. A second build in
+  the same minute appends `-2`, `-3`. None of these starts with `v`, so `pages.yml` (release tags `v*.*.*`) never reacts.
+- The tag is annotated and its message is JSON: `lane`, `branch`, `from`/`to`/`range`, `builtAt`, every capability commit
+  (`sha`, `subject`, `issues`), the union of `issues`, the number of commits the build carried, and the timing of each check.
+  Commits that are not capabilities ride along with the next build; they never trigger one.
+- Every lane has a light `check` in `lanes.json` (commands run without a shell, each with a timeout). If it fails the lane is
+  **held**: no tag, the output tail in the run log, the run turns red, and the other lanes are built anyway. The held
+  commits stay pending, so the next push retries them.
+- **Idempotent.** The range is always "since the lane's last tag", so re-running, re-pushing or re-running the job builds
+  nothing twice.
+- **First run: baseline.** A lane with no tag yet gets `<lane>/build-baseline` (`design/pack-baseline`) at the tip. It is a
+  starting line, reported as such, not a build; history before it is never built retroactively.
+- `main` is frozen and is not built. `work/2026-09-23` builds `construct`, `cockpit`, `site` and `design`; the `studio` branch builds
+  `adhoc` only.
+
+**Who runs it.** `.github/workflows/build-on-ready.yml` on every push to `work/2026-09-23` and `studio` (no dependence on
+any machine or session): plan without installing anything, install only what the building lanes' checks need (the Cockpit
+client's large tree is never installed), check, tag, push. One run per branch at a time; later pushes queue. Tags pushed
+with the workflow token do not start other workflows. `[skip build]` in a commit message skips it.
+
+**By hand** (repo root; the default is a dry run that changes nothing):
+
+```
+node packages/tools/dev/build-on-ready.mjs --branch work/2026-09-23              # the plan, per lane, with the capabilities
+node packages/tools/dev/build-on-ready.mjs --branch work/2026-09-23 --check      # ... and run each building lane's check
+node packages/tools/dev/build-on-ready.mjs --branch work/2026-09-23 --since 2026-09-24   # simulate: as if untagged lanes were last built before that date
+node packages/tools/dev/build-on-ready.mjs --branch work/2026-09-23 --push       # check, tag and push (what CI does)
+node packages/tools/dev/build-on-ready.mjs --branch studio --ref origin/studio   # the Studio branch
+```
+
+Add `--json` for the machine-readable plan/result. Exit status 3 means a lane was held. Builds per day and lane, with the
+capabilities each contains, are in `node packages/tools/dev/delivery-report.mjs --since <day> [--json]`; `git tag -l --format='%(contents)' <tag>` shows one tag's message.
+
 ## Notes on the current state
 
 The root, `packages/cli`, `packages/core` and `packages/ast` package.json files said `1.0.0` although the project is
