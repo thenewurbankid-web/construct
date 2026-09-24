@@ -1,5 +1,6 @@
 // Pure (WORKFLOW-001): what the Plan screen knows, and how each event changes it. No I/O.
 import type { ScreenAction, ScreenState } from '../domain/PlanTypes';
+import { noteMeta, screenFromNote } from '../domain/PlanNote.ts';
 
 export const initialScreen: ScreenState = {
   contextStatus: 'idle',
@@ -24,6 +25,8 @@ export const initialScreen: ScreenState = {
   runErrors: [],
   startedId: null,
   startedModels: [],
+  note: null,
+  noteSave: { status: 'idle' },
 };
 
 const toggle = (list: string[], ref: string): string[] => (list.includes(ref) ? list.filter((r) => r !== ref) : [...list, ref]);
@@ -65,6 +68,18 @@ export function screenReducer(state: ScreenState, action: ScreenAction): ScreenS
       return { ...state, runStatus: 'ready', startedId: action.processId, startedModels: action.models };
     case 'RUN_FAILED':
       return { ...state, runStatus: 'failed', runError: action.error, runErrors: action.errors };
+    case 'NOTE_OPENED':
+      return { ...state, ...screenFromNote(action.note), validation: null, validatedFor: null, runStatus: 'idle', runError: null, runErrors: [], startedId: null, startedModels: [], note: noteMeta(action.note), noteSave: { status: 'idle' } };
+    case 'NOTE_SYNCED':
+      return { ...state, note: noteMeta(action.note), noteSave: { status: 'saved' } };
+    case 'NOTE_SAVING':
+      return { ...state, noteSave: { status: 'saving' } };
+    case 'NOTE_SAVE_FAILED':
+      return { ...state, noteSave: { status: 'failed', message: action.message } };
+    case 'NOTE_CONFLICT':
+      return { ...state, noteSave: { status: 'conflict', theirs: action.theirs } };
+    case 'NOTE_RETRY':
+      return { ...state, noteSave: { status: 'idle' } };
     default:
       return state;
   }

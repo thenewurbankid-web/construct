@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useReducer } from 'react';
 import { initialScreen, screenReducer } from '../workflows/PlanMachine';
 import { usePlanContext } from './usePlanContext';
+import { usePlanNote } from './usePlanNote';
 import { usePlanRun } from './usePlanRun';
 import { usePlanValidation } from './usePlanValidation';
 import { useSeedActions } from './useSeedActions';
@@ -21,9 +22,11 @@ export function usePlanScreen(onStarted: () => void) {
   const { plan, stale, canRun } = usePlanValidation(state, dispatch);
   const seeds = useSeedActions(state, dispatch);
   const steps = useStepActions(state, dispatch, flows);
-  const run = usePlanRun(plan, dispatch, onStarted);
+  const note = usePlanNote(state, dispatch);
+  const noteForRun = useMemo(() => ({ flush: note.flush, resync: note.resync }), [note.flush, note.resync]);
+  const run = usePlanRun(plan, dispatch, onStarted, noteForRun);
   const setTicket = useCallback((t: Partial<Ticket>) => dispatch({ type: 'TICKET', ticket: t }), []);
   const togglePick = useCallback((ref: string) => dispatch({ type: 'TOGGLE_PICK', ref }), []);
   const toggleAccept = useCallback((ref: string) => dispatch({ type: 'TOGGLE_ACCEPT', ref }), []);
-  return { state, stale, canRun, run, setTicket, togglePick, toggleAccept, ...seeds, ...steps };
+  return { state, stale, canRun, run, setTicket, togglePick, toggleAccept, noteActions: { onRetry: note.retry, onLoadTheirs: note.loadTheirs, onKeepMine: note.keepMine, onKeepPlan: note.keepPlan }, ...seeds, ...steps };
 }

@@ -79,7 +79,21 @@ export type UnitPickerProps = {
   canPropose: boolean;
 };
 
+/** The durable note's state as the ticket pane shows it (#609): one line of text, and only the actions that apply. */
+export type NoteStatusView = {
+  kind: 'none' | 'saving' | 'saved' | 'failed' | 'conflict' | 'ran';
+  label: string;
+  /** "Plan out of date": the text changed after the plan was saved. */
+  planStale: boolean;
+  canRetry: boolean;
+  canResolve: boolean;
+};
+
+export type NoteStatusHandlers = { onRetry: () => void; onLoadTheirs: () => void; onKeepMine: () => void; onKeepPlan: () => void };
+
 export type TicketPaneProps = TicketFieldsProps &
+  NoteStatusHandlers &
+  { noteStatus: NoteStatusView } &
   ConstraintsProps &
   UnitPickerProps & {
     onAnalyse: () => void;
@@ -127,4 +141,4 @@ export type PlanHandlers = Pick<PlanPaneProps, 'onMove' | 'onRemove' | 'onRetag'
 };
 
 /** What the controller wires into the ticket pane. */
-export type TicketHandlers = Pick<TicketPaneProps, 'onTicket' | 'onTogglePick' | 'onToggleAccept' | 'onPropose' | 'onAnalyse'>;
+export type TicketHandlers = Pick<TicketPaneProps, 'onTicket' | 'onTogglePick' | 'onToggleAccept' | 'onPropose' | 'onAnalyse'> & NoteStatusHandlers;

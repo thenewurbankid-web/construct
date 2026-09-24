@@ -16,9 +16,10 @@ export const validatePlanOnServer = async (plan: PlanDoc): Promise<ApiResult<Val
   }
 };
 
-export const runPlanOnServer = async (plan: PlanDoc): Promise<ApiResult<{ processId: string; models: string[] }>> => {
+/** `noteId` names the durable note the plan was made in; the server marks it ran once the process has started (#609). */
+export const runPlanOnServer = async (plan: PlanDoc, noteId?: string): Promise<ApiResult<{ processId: string; models: string[] }>> => {
   try {
-    const body = await postJson<{ ok?: boolean; processId?: string; models?: string[]; error?: string; errors?: PlanError[] }>('/api/plan/run', { plan });
+    const body = await postJson<{ ok?: boolean; processId?: string; models?: string[]; error?: string; errors?: PlanError[] }>('/api/plan/run', { plan, ...(noteId ? { noteId } : {}) });
     if (body.ok && body.processId) return { ok: true, data: { processId: body.processId, models: body.models ?? [] } };
     return { ok: false, error: body.error ?? 'The plan could not be started.', errors: body.errors };
   } catch {

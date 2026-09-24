@@ -1,4 +1,5 @@
 // Plan mode (#289 intake + impact, #332 plan review and edit): server shapes (ui/server /api/plan) and the screen state.
+import type { Note } from '@/features/notes';
 import type { Executor, Provenance, Status, Ticket } from '../types.ts';
 
 export type { Executor, Provenance, Status, Ticket };
@@ -111,6 +112,15 @@ export type Validation = {
 };
 
 
+/** The durable note this screen is writing to (#609): what the server last confirmed, never the text itself. */
+export type PlanNote = { id: string; rev: number; status: 'draft' | 'plan-ready' | 'ran'; planStale: boolean; processId: string | null };
+
+export type NoteSave =
+  | { status: 'idle' | 'saving' | 'saved' }
+  | { status: 'failed'; message: string }
+  /** Someone else saved first; `theirs` is the copy on disk. */
+  | { status: 'conflict'; theirs: Note };
+
 export type ScreenState = {
   contextStatus: Status;
   contextError: string | null;
@@ -136,6 +146,8 @@ export type ScreenState = {
   runErrors: PlanError[];
   startedId: string | null;
   startedModels: string[];
+  note: PlanNote | null;
+  noteSave: NoteSave;
 };
 
 export type ScreenAction =
@@ -155,7 +167,16 @@ export type ScreenAction =
   | { type: 'VALIDATED'; validation: Validation; for: string }
   | { type: 'RUN_LOADING' }
   | { type: 'RUN_STARTED'; processId: string; models: string[] }
-  | { type: 'RUN_FAILED'; error: string; errors: PlanError[] };
+  | { type: 'RUN_FAILED'; error: string; errors: PlanError[] }
+  /** Open a saved note: its text and its plan replace what is on screen. */
+  | { type: 'NOTE_OPENED'; note: Note }
+  /** The server confirmed a copy (after a save, a create or a Run): only the bookkeeping moves, the typed text stays. */
+  | { type: 'NOTE_SYNCED'; note: Note }
+  | { type: 'NOTE_SAVING' }
+  | { type: 'NOTE_SAVE_FAILED'; message: string }
+  | { type: 'NOTE_CONFLICT'; theirs: Note }
+  /** Back to idle so autosave tries again (Retry). */
+  | { type: 'NOTE_RETRY' };
 
 /** What every /api/plan call resolves to: the data, or a plain error (and the validator's named errors when it refused a plan). */
 export type ApiResult<T> = { ok: true; data: T } | { ok: false; error: string; errors?: PlanError[] };

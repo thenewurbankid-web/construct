@@ -11,3 +11,6 @@ export * from './controllers/NotesController';
 
 /** Everything the screen does, composed from small hooks. */
 export * from './hooks/useNotes';
+
+/** Notes over /api/notes, for the screens that keep a note of their own (the Plan screen, #609). */
+export * from './services/NotesApi';

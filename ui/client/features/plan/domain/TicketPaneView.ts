@@ -2,10 +2,12 @@
 import type { ScreenState } from './PlanTypes.ts';
 import { constraintsView, proposalView } from './ConstraintsView.ts';
 import type { TicketHandlers } from '../types.ts';
+import { buildNoteStatus } from './NoteStatusView.ts';
 import type { TicketPaneProps } from '../types.ts';
 
 export const buildTicketPane = (s: ScreenState, h: TicketHandlers): TicketPaneProps => ({
   ticket: s.ticket,
+  noteStatus: buildNoteStatus(s),
   constraints: s.context ? constraintsView(s.context.constraints) : null,
   features: s.context?.features ?? [],
   picked: s.picked,

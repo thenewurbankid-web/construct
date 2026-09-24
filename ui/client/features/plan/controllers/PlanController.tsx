@@ -15,7 +15,7 @@ function PlanScreen({ stageActions, featureDetail }: { stageActions?: ReactNode;
   const drawer = useShellDrawer();
   const s = usePlanScreen(drawer.openProcesses);
   const { state } = s;
-  const ticket = buildTicketPane(state, { onTicket: s.setTicket, onTogglePick: s.togglePick, onToggleAccept: s.toggleAccept, onPropose: s.propose, onAnalyse: s.analyse });
+  const ticket = buildTicketPane(state, { onTicket: s.setTicket, onTogglePick: s.togglePick, onToggleAccept: s.toggleAccept, onPropose: s.propose, onAnalyse: s.analyse, ...s.noteActions });
   const plan = buildPlanPane(state, s.stale, s.canRun, s.suggestions.length, {
     onAdd: s.addStep, onAddSuggested: s.addSuggested, onMove: s.move, onRemove: s.remove, onRetag: s.retag, onArg: s.setArg, onTitle: s.setTitle, onRun: s.run, onOpenProcesses: drawer.openProcesses,
   });

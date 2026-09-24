@@ -2,7 +2,7 @@
 // "ran" means) is the server's; this only asks and reports. A stale write (409) and a failed one are different
 // answers on purpose: the first is routine and offers a choice, the second keeps your text and offers Retry.
 import { sendJson } from '@/lib/http';
-import type { ApiResult, Draft, Note, NoteRow, SaveResult } from '../domain/NoteTypes';
+import type { ApiResult, Draft, Note, NoteRow, NoteStatus, SaveResult } from '../domain/NoteTypes';
 
 type Failure = { ok?: false; code?: string; error?: string; current?: Note };
 const UNREACHABLE = 'The Cockpit server could not be reached.';
@@ -39,10 +39,12 @@ export async function createNote(draft: Partial<Draft> = {}): Promise<ApiResult<
   }
 }
 
-/** Save against `rev` (sent as If-Match). 409 STALE_REV hands back the copy that won. */
-export async function saveNote(id: string, rev: number, draft: Draft): Promise<SaveResult> {
+/** Save against `rev` (sent as If-Match). 409 STALE_REV hands back the copy that won. `extra` carries a plan and its
+ * status when the caller (the Plan screen, #609) saves one along with the text; the server marks the plan out of date
+ * when text is saved without one. */
+export async function saveNote(id: string, rev: number, draft: Draft, extra: { plan?: unknown; status?: NoteStatus } = {}): Promise<SaveResult> {
   try {
-    const { status, body } = await sendJson<{ ok?: true; note?: Note } & Failure>('PUT', `/api/notes/${encodeURIComponent(id)}`, draft, { 'If-Match': String(rev) });
+    const { status, body } = await sendJson<{ ok?: true; note?: Note } & Failure>('PUT', `/api/notes/${encodeURIComponent(id)}`, { ...draft, ...extra }, { 'If-Match': String(rev) });
     if (status === 200 && body.ok && body.note) return { kind: 'ok', note: body.note };
     if (status === 409 && body.current && body.code === 'STALE_REV') return { kind: 'conflict', current: body.current };
     return { kind: 'failed', message: body.error ?? 'The note could not be saved.', code: body.code ?? 'FAILED' };

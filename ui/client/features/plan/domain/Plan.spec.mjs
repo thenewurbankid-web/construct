@@ -150,3 +150,64 @@ test('the screen machine: ticket edits make proposals stale; step edits reset th
   s = screenReducer(s, { type: 'TOGGLE_PICK', ref: 'feature:a' });
   assert.deepEqual(s.picked, []);
 });
+
+// --- #609 durable notes ---------------------------------------------------------------------------------------
+
+import { counterAfter, isUnsaved, keysOfNote, planPart, stepsOf, textKey, stepsKey } from './PlanNote.ts';
+import { buildNoteStatus } from './NoteStatusView.ts';
+
+const wireNote = (over = {}) => ({ id: 'n1', title: 'Fix totals', body: 'the text', plan: null, status: 'draft', rev: 1, createdAt: 't', updatedAt: 't', processId: null, planStale: false, ...over });
+
+test('#609 opening a note puts its text and plan on screen and keeps ids from colliding', () => {
+  const plan = { version: 1, ticket: { source: 'text', title: 'Fix totals' }, steps: [step('s1'), step('s4')] };
+  const s = screenReducer(initialScreen, { type: 'NOTE_OPENED', note: wireNote({ plan, status: 'plan-ready', rev: 3 }) });
+  assert.deepEqual(s.ticket, { title: 'Fix totals', body: 'the text' });
+  assert.deepEqual(s.steps.map((x) => x.id), ['s1', 's4']);
+  assert.equal(s.nextId, 5, 'the next id is after the highest one the plan already uses');
+  assert.deepEqual(s.note, { id: 'n1', rev: 3, status: 'plan-ready', planStale: false, processId: null });
+  assert.equal(s.validation, null, 'the loaded plan is re-checked by the server, never trusted from disk');
+  assert.equal(s.startedId, null);
+  assert.equal(counterAfter([]), 1);
+  assert.deepEqual(stepsOf({ steps: 'nope' }), [], 'a plan that is not a list of steps reads as no plan');
+});
+
+test('#609 a synced note moves the bookkeeping, not the typed text; save states are one union', () => {
+  let s = screenReducer(initialScreen, { type: 'TICKET', ticket: { body: 'typed since' } });
+  s = screenReducer(s, { type: 'NOTE_SYNCED', note: wireNote({ rev: 4, planStale: true }) });
+  assert.equal(s.ticket.body, 'typed since');
+  assert.equal(s.note.rev, 4);
+  assert.equal(s.noteSave.status, 'saved');
+  s = screenReducer(s, { type: 'NOTE_SAVE_FAILED', message: 'Disk full.' });
+  assert.deepEqual(s.noteSave, { status: 'failed', message: 'Disk full.' });
+  s = screenReducer(s, { type: 'NOTE_CONFLICT', theirs: wireNote({ rev: 9 }) });
+  assert.equal(s.noteSave.status, 'conflict');
+  assert.equal(screenReducer(s, { type: 'NOTE_RETRY' }).noteSave.status, 'idle');
+});
+
+test('#609 unsaved means the screen differs from what the server holds; the plan is sent only when steps changed or asked for', () => {
+  const screen = { ticket: { title: 'T', body: 'B' }, steps: [step('s1')] };
+  assert.equal(isUnsaved({ ticket: { title: '', body: '' }, steps: [] }, null), false, 'an empty screen with no note is nothing to save');
+  assert.equal(isUnsaved({ ticket: { title: '', body: 'x' }, steps: [] }, null), true);
+  const saved = { text: textKey(screen.ticket), steps: stepsKey(screen.steps) };
+  assert.equal(isUnsaved(screen, saved), false);
+  assert.equal(isUnsaved({ ...screen, ticket: { title: 'T', body: 'B2' } }, saved), true);
+  assert.deepEqual(planPart({ ...screen, ticket: { title: 'T', body: 'B2' } }, saved, false), {}, 'a text-only edit sends no plan, so the server marks the plan out of date');
+  assert.equal(planPart({ ...screen, steps: [step('s1'), step('s2')] }, saved, false).status, 'plan-ready');
+  assert.equal(planPart(screen, saved, true).plan.steps.length, 1, 'Keep this plan sends it again');
+  assert.deepEqual(planPart({ ...screen, steps: [] }, saved, false), { plan: null, status: 'draft' }, 'removing every step saves no plan');
+  assert.deepEqual(keysOfNote(wireNote({ plan: { steps: [step('s1')] } })).steps, stepsKey([step('s1')]));
+});
+
+test('#609 the status line: saved, failed with Retry, conflict with a choice, ran, and Plan out of date only with a plan on screen', () => {
+  const at = (over) => buildNoteStatus({ ...initialScreen, ...over });
+  assert.equal(at({}).kind, 'none');
+  const note = { id: 'n1', rev: 2, status: 'draft', planStale: false, processId: null };
+  assert.equal(at({ note, noteSave: { status: 'saved' } }).label, 'Saved on this machine');
+  const failed = at({ note, noteSave: { status: 'failed', message: 'The disk is full.' } });
+  assert.equal(failed.canRetry, true);
+  assert.match(failed.label, /still here/);
+  assert.equal(at({ note, noteSave: { status: 'conflict', theirs: wireNote() } }).canResolve, true);
+  assert.equal(at({ note: { ...note, status: 'ran' }, noteSave: { status: 'saved' } }).kind, 'ran');
+  assert.equal(at({ note: { ...note, planStale: true }, steps: [step('s1')], noteSave: { status: 'saved' } }).planStale, true);
+  assert.equal(at({ note: { ...note, planStale: true }, steps: [], noteSave: { status: 'saved' } }).planStale, false, 'no steps, nothing to be out of date');
+});
