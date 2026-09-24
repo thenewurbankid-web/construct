@@ -494,3 +494,47 @@ test('importVertical with { llm: "ollama" } calls the ollama provider (mocked HT
     global.fetch = originalFetch;
   }
 });
+
+// Real-project dogfood case (2026-09-24): a controller stub already composes its own Page
+// component (`return <${n}Page />;`, controllerTemplates in generators.mjs), but the old
+// (pre-Construct) source file rendered its UI directly -- the port prompt used to say only "port
+// the old file's logic here," so the model faithfully copied the old file's JSX return statement
+// into the controller too, orphaning the real Page file. This asserts the fix: the controller
+// layer's prompt explicitly tells the model that composition is load-bearing.
+test('#<import-composition-fix>: the controller-layer port prompt tells the model to preserve its existing Page composition, not inline UI over it', async () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  const sourceFile = path.join(dir, 'OldPage.tsx');
+  fs.writeFileSync(
+    sourceFile,
+    "import SetNewPassword from './SetNewPassword';\nexport function OldPage() {\n  return <SetNewPassword />;\n}\n",
+  );
+
+  let capturedPrompts = [];
+  const originalClaude = PROVIDERS.claude;
+  PROVIDERS.claude = (prompt) => {
+    capturedPrompts.push(prompt);
+    // A deliberately unfilled response is fine here -- this test only inspects what the model
+    // was TOLD, not what it did with it.
+    return '';
+  };
+  try {
+    await importVertical(dir, 'ResetPassword', 'checkout', ['page', 'controller'], sourceFile, { llm: 'claude' });
+  } finally {
+    PROVIDERS.claude = originalClaude;
+  }
+
+  const controllerPrompt = capturedPrompts.find((p) => p.includes('layer: "controller"'));
+  assert.ok(controllerPrompt, 'expected a prompt for the controller layer');
+  assert.match(controllerPrompt, /composition is load-bearing, not/);
+  assert.match(controllerPrompt, /keep it/);
+  // The instruction is layer-scoped: a page-layer prompt should not claim to already compose
+  // ANOTHER file the way a controller stub does, so it shouldn't repeat the controller-specific
+  // wording verbatim -- both prompts share the general "split across several files" framing, but
+  // only the composition-preservation sentence is controller-specific by construction (any layer
+  // stub could in principle already import another generated file, so this just confirms the
+  // shared instruction text is present for every layer, not that it's controller-exclusive).
+  const pagePrompt = capturedPrompts.find((p) => p.includes('layer: "page"'));
+  assert.ok(pagePrompt, 'expected a prompt for the page layer');
+  assert.match(pagePrompt, /split across SEVERAL files by layer/);
+});

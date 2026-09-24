@@ -63,10 +63,25 @@ function existingRealFiles(root, name, feature, layers) {
 
 function buildPortPrompt({ layer, relFile, stubContent, oldContent, oldRelPath }) {
   return [
-    'You are porting existing code into one file of a Construct-architecture project.',
+    'You are porting existing code into one file of a Construct-architecture project. The old file\'s',
+    'logic is split across SEVERAL files by layer — this prompt fills only ONE of them. Every other',
+    'layer file for this same unit is filled by a separate, independent call exactly like this one, so',
+    'nothing you decide not to include here is lost — it will be (or already has been) ported into the',
+    'file whose layer actually owns it.',
     `Target file: ${relFile} (layer: "${layer}").`,
     `Layer constraint: ${LAYER_CONSTRAINTS[layer] || 'none.'}`,
     'Keep the exact exported identifier name(s) already present in the current stub below unchanged — replace only the body with real logic ported from the old source file. Do not invent behavior the old file does not have.',
+    // #<import-composition-fix> -- the root cause: a controller stub already composes this unit's own
+    // Page component by construction (see generators.mjs's controllerTemplates), but nothing told the
+    // model that composition was load-bearing, not scaffolding to discard — a "port the old file's
+    // logic" instruction alone reproduced the old file's JSX return statement verbatim in the
+    // controller, orphaning the real Page file. This line is the fix: preserve it explicitly.
+    'If the current stub already imports and renders another generated file from this same unit (for',
+    'example a controller stub rendering its own `<XPage />`), that composition is load-bearing, not',
+    'placeholder scaffolding — keep it. Port only the logic that belongs to THIS layer\'s own',
+    'responsibility (per the layer constraint above) into this file, passing whatever a lower layer',
+    'needs as props/arguments through that existing composition; do not inline another layer\'s UI or',
+    'move a call out of the layer that owns it just because the old file had it in one place.',
     '',
     '=== CURRENT STUB (this is the file you are rewriting) ===',
     stubContent,
