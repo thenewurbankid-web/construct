@@ -50,6 +50,18 @@ export const BLOCK_DOCS = Object.freeze({
     writes: 'One locked test file in the feature, and the test regions in architecture.yml the first time.',
     example: { title: 'Prove the Products screen', args: { name: 'Products', feature: 'products', shape: 'list', entity: 'Product', fields: 'id:string,name:string,price:number', kind: 'render' } },
   },
+  'create.route': {
+    purpose: 'Point the project\'s route entry at the controller of a generated screen, so the screen can be opened.',
+    reads: 'The controller of the screen, and the route entry (the app folder, or src/App.tsx).',
+    writes: 'A page file for the route (Next.js) or one route added to src/App.tsx (Vite SPA); it also drops the placeholder import that a new project starts with.',
+    example: { title: 'Wire the Products screen into the route entry', args: { name: 'Products', feature: 'products', route: '/products' } },
+  },
+  'add.dependency': {
+    purpose: 'Add one dependency line to package.json, such as the package the generated screens import. Nothing is installed.',
+    reads: 'package.json.',
+    writes: 'One line in the dependencies of package.json.',
+    example: { title: 'Add @line/construct-core', args: { name: '@line/construct-core', version: '^0.9.0' } },
+  },
   'create.page.from': {
     purpose: 'Bring in a page someone designed elsewhere (a JSX file) as a page plus its props.',
     reads: 'The JSX file you point at; it may live outside the project.',
