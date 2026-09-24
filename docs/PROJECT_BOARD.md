@@ -10,7 +10,7 @@ automated.
 | Field | Values | Meaning |
 | --- | --- | --- |
 | Status | Backlog, Ready, In progress, In review, Done | Workflow state. Closed issues are Done; a reopened issue goes back to In progress. Standing items (Kind=Standing) have no Status: they are never worked through, so the field stays empty (owner decision 2026-09-24). |
-| Priority | P0, P1, P2 | Set on every open issue except Standing ones. |
+| Priority | P0, P1, P2 | Set on every open issue except Standing ones. Owner rule (2026-09-24): Lego blocks and core first, so every open Front-end Blocks issue is P0 and every open Core CLI issue is at least P1; `sync.mjs --check` fails when this is broken. |
 | Size | XS-XL | Optional. |
 | Module | Core CLI, Web UI, AI Toolkit, Pipeline & Generators, Demos & Docs, Infra & Process, Front-end Blocks, Design | Required on every item. |
 | Sub-module | see below | Required on every item. Unique option names; `Other` is shared. Use for filtering. |
@@ -52,8 +52,8 @@ Module/Sub-module concern when triaging. There is deliberately no Edition field 
 ### Off-board work
 
 Work outside the project team (owner decision 2026-09-24: the Studio epic, #637) is tracked as an issue with the label
-`off-board`. The sync tool never adds such an issue to the board, and the auto-add workflow filter must exclude the label
-(see Workflows below). Remove the label to bring an issue onto the board.
+`off-board`. The sync tool never adds such an issue to the board and removes the board item (never the issue) if GitHub's auto-add
+put it there; the auto-add workflow filter should also exclude the label (see Workflows below). Remove the label to bring an issue onto the board.
 
 ### Milestone (not a board field)
 

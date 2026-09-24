@@ -13,7 +13,8 @@ export async function startClone(input: CloneStartInput): Promise<CloneStartResu
       url: input.url,
       ...(input.name ? { name: input.name } : {}),
       ...(input.branch ? { branch: input.branch } : {}),
-      ...(input.token ? { token: input.token } : {}),
+      // #638: the GitHub connection (looked up by the server for THIS session) or a pasted token, never both.
+      ...(input.useLogin ? { useLogin: true } : input.token ? { token: input.token } : {}),
     });
     return body.ok && body.job ? { ok: true, job: body.job } : { ok: false, error: body.error ?? 'The clone could not be started.' };
   } catch {
@@ -22,9 +23,9 @@ export async function startClone(input: CloneStartInput): Promise<CloneStartResu
 }
 
 /** "Pull latest" for a clone this Cockpit made (fast-forward only, decided by the server). */
-export async function pullClone(name: string, token: string): Promise<PullResult> {
+export async function pullClone(name: string, token: string, useLogin = false): Promise<PullResult> {
   try {
-    const body = await postJson<Body>('/api/clone/pull', { name, ...(token ? { token } : {}) });
+    const body = await postJson<Body>('/api/clone/pull', { name, ...(useLogin ? { useLogin: true } : token ? { token } : {}) });
     return body.ok
       ? { ok: true, message: body.message ?? 'Updated.', upToDate: !!body.upToDate, detail: body.detail ?? [] }
       : { ok: false, error: body.error ?? 'The update did not work.', code: body.code };

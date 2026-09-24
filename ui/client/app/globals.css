@@ -2215,6 +2215,36 @@ button:disabled {
 .clone__howto a {
   color: var(--accent);
 }
+.clone__github {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  min-width: 0;
+}
+.clone__github legend {
+  padding: 0 4px;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+.clone__choice {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2, 8px);
+}
+.clone__choice input[type='radio'] {
+  width: 24px; /* the 24px target size, like the other checkboxes */
+  height: 24px;
+  flex: none;
+}
+.clone__picker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 .clone-recent {
   display: flex;
   flex-direction: column;

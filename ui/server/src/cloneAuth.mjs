@@ -70,6 +70,9 @@ export function looksLikeAuthFailure(text) {
 }
 
 export const AUTH_MESSAGE = 'Private or misspelled — paste a token with read access.';
+/** #638: a clone or pull made with the person's GitHub login that GitHub answered as "not found / not allowed". */
+export const NOT_VISIBLE_CODE = 'NOT_VISIBLE_TO_CONNECTION';
+export const NOT_VISIBLE_MESSAGE = 'Your GitHub connection cannot see this repository. Either the address is misspelled, or the Cockpit\'s GitHub app is not installed on it: install the app on this repository, and for an organisation\'s repository ask an organisation owner to install or approve it. If you revoked the connection on GitHub, Disconnect and connect again. You can also paste an access token instead.';
 export const AUTH_MESSAGE_WITH_TOKEN = 'Private or misspelled — the token you pasted was not accepted for this repository. Paste a token with read access to it.';
 
 // No secret in this file. It is written once, verbatim, by createAskpass().

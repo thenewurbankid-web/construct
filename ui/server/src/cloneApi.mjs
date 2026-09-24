@@ -11,8 +11,9 @@ import express from 'express';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import { parseCloneUrl, CloneInputError } from './gitUrl.mjs';
+import { sessionKeyOf } from './repoConnection.mjs';
 
-function guard(clientOrigin, mutating) {
+export function guard(clientOrigin, mutating) {
   return (req, res, next) => {
     const origin = req.get('origin');
     if (clientOrigin && origin && origin !== clientOrigin) return res.status(403).json({ ok: false, error: 'This request came from a page that is not the Cockpit.' });
@@ -44,7 +45,8 @@ export function createCloneRouter({ jobs, clientOrigin }) {
     if (typeof url !== 'string' || (name !== undefined && name !== null && typeof name !== 'string') || (branch !== undefined && branch !== null && typeof branch !== 'string')) {
       return res.status(400).json({ ok: false, code: 'BAD_URL', error: 'A repository URL (a string) is required.' });
     }
-    const started = await jobs.start({ url, name, branch, token, depth: depth === undefined || depth === null ? null : Number(depth) });
+    // #638: `useLogin: true` (the connection this SESSION made, looked up here on the server) replaces a pasted token; both is refused by jobs.start.
+    const started = await jobs.start({ url, name, branch, token, useLogin: body.useLogin, sessionKey: sessionKeyOf(req.session), depth: depth === undefined || depth === null ? null : Number(depth) });
     if (!started.ok) return res.status(started.status).json({ ok: false, code: started.code, error: started.error });
     return res.status(202).json({ ok: true, job: started.job });
   });
@@ -55,7 +57,7 @@ export function createCloneRouter({ jobs, clientOrigin }) {
     const token = body.token;
     if (req.body && typeof req.body === 'object') delete req.body.token;
     if (typeof body.name !== 'string') return res.status(400).json({ ok: false, code: 'BAD_NAME', error: 'A folder name (a string) is required.' });
-    const result = await jobs.pull({ name: body.name, token });
+    const result = await jobs.pull({ name: body.name, token, useLogin: body.useLogin, sessionKey: sessionKeyOf(req.session) });
     if (!result.ok) return res.status(result.status).json({ ok: false, code: result.code, error: result.error });
     return res.json(result);
   });

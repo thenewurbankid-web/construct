@@ -13,6 +13,18 @@ export * from './controllers/ConnectRemoteController';
 /** Recent clones, for the Processes drawer. */
 export * from './controllers/CloneJobsController';
 
+/** The GitHub connection for private repositories (#638): status, account, Connect and Disconnect (a slot on the Settings screen). */
+export * from './controllers/GithubConnectionController';
+
+/** The connection as the screens show it: the login-or-token default, the panel line, the repository picker's entries and hints. */
+export * from './domain/GithubConnection';
+
+/** The repository picker's entries and what is selected. */
+export * from './domain/GithubRepoPick';
+
+/** Paging and plain-words hints for the repository picker. */
+export * from './domain/GithubRepoPages';
+
 /** URL hints and the folder name an address will get. */
 export * from './domain/CloneUrl';
 
@@ -40,6 +52,9 @@ export * from './workflows/Recent';
 /** The remote form's state machine. */
 export * from './workflows/Remote';
 
+/** The GitHub connection's state machine (status and the repositories it can read; never a token). */
+export * from './workflows/Github';
+
 /** Starts a clone, follows it until it ends, cancels it; hands the finished folder to the caller. */
 export * from './hooks/useClone';
 
@@ -51,3 +66,6 @@ export * from './hooks/useRemote';
 
 /** Recent clone jobs, refreshed while the Processes drawer shows them. */
 export * from './hooks/useCloneJobs';
+
+/** Reads the GitHub connection and its repositories; Connect and Disconnect. */
+export * from './hooks/useGithubConnection';

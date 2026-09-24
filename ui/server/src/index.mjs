@@ -37,6 +37,8 @@ import { createHealth } from './health.mjs';
 import { createDevActivity, createDevStatusRouter } from './devActivity.mjs';
 import { resolveStateDir } from '../../../packages/engine/processStore.mjs';
 import { createCloneRouter, createRemoteRouter } from './cloneApi.mjs';
+import { createRepoConnections, resolveRepoConnectionConfig, sessionKeyOf } from './repoConnection.mjs';
+import { createGithubRouter, mountRepoAuthRoutes } from './githubRepoApi.mjs';
 import { createNewProjectRouter } from './newProjectApi.mjs';
 import { resolveCloneHosts } from './gitUrl.mjs';
 import { createReviewJobs } from './reviewJobs.mjs';
@@ -129,9 +131,18 @@ export const devServer = createDevServerService({
   },
 });
 
+// #638: the per-session GitHub connection for private clones (repoConnection.mjs). Declared before `auth` because
+// signing out wipes it; assigned right after, and null-safe in the sign-out hook until then.
+export let repoConnections = null;
 let auth;
 try {
-  auth = createAuth(resolveAuthConfig(process.env, { host, port, clientOrigin: CLIENT_ORIGIN }), { onLogout: (login) => { devServer.stopForLogin(login ?? ''); } });
+  auth = createAuth(resolveAuthConfig(process.env, { host, port, clientOrigin: CLIENT_ORIGIN }), {
+    onLogout: (login) => {
+      devServer.stopForLogin(login ?? '');
+      repoConnections?.wipeKey(sessionKeyOf({ login }));
+    },
+  });
+  repoConnections = createRepoConnections(resolveRepoConnectionConfig(process.env, { host, port }), { maxTtlMs: auth.config.sessionTtlMs });
 } catch (e) {
   if (e instanceof AuthConfigError && isEntrypoint()) {
     console.error(`\nConstruct UI server refused to start:\n\n  ${e.message}\n`);
@@ -207,6 +218,9 @@ app.get('/api/health', (req, res) => {
 // Log in / out. Deliberately outside `/api`, and therefore outside the
 // gate — you cannot log in through a door that requires being logged in.
 auth.mountRoutes(app);
+// #638: the separate "connect GitHub for private repositories" consent. Also outside `/api` (the browser navigates
+// to it), so each route checks the session itself; both answer 404 when CONSTRUCT_GITHUB_REPO_CLIENT_ID/SECRET are unset.
+mountRepoAuthRoutes(app, { connections: repoConnections, auth, clientOrigin: CLIENT_ORIGIN });
 
 // Is an agent or model working on the framework itself right now? Public, read-only, booleans only (devActivity.mjs): the docs
 // site's logo reads it. Above the gate on purpose (a visitor has no session). It is on where the server runs on the machine the
@@ -1142,6 +1156,7 @@ export const cloneJobs = createCloneJobs({
   localRoot: cloneLocalRoot,
   maxBytes: Number(process.env.CONSTRUCT_CLONE_MAX_MB) > 0 ? Number(process.env.CONSTRUCT_CLONE_MAX_MB) * 1024 * 1024 : DEFAULT_MAX_BYTES,
   timeoutMs: Number(process.env.CONSTRUCT_CLONE_TIMEOUT_SEC) > 0 ? Number(process.env.CONSTRUCT_CLONE_TIMEOUT_SEC) * 1000 : DEFAULT_TIMEOUT_MS,
+  loginToken: (sessionKey) => repoConnections.acquire(sessionKey), // #638: a Buffer copy for one job, zeroed by the job
 });
 // #445: "New project" -- a validated name becomes an empty folder in the caller's workspace, `init`-ed and opened.
 // Below the gate, deliberately NOT behind requireProject (nothing is open yet); the client sends a name only.
@@ -1152,6 +1167,7 @@ app.use('/api/projects', createNewProjectRouter({
 }));
 
 app.use('/api/clone', createCloneRouter({ jobs: cloneJobs, clientOrigin: CLIENT_ORIGIN }));
+app.use('/api/github', createGithubRouter({ connections: repoConnections, clientOrigin: CLIENT_ORIGIN })); // #638
 app.use('/api/git/remote', createRemoteRouter({
   clientOrigin: CLIENT_ORIGIN,
   hosts: cloneHosts,
@@ -1202,6 +1218,8 @@ export function start() {
   server.listen(port, host, () => {
     console.log(`Construct UI server listening on http://${host}:${port}`);
     console.log(`Workspace: ${root} (the only place projects can be opened; set CONSTRUCT_WORKSPACE_ROOT to change it). No project is open until one is chosen.`);
+    if (repoConnections.enabled) console.log('GitHub connection for private repositories: enabled (callback /auth/repo/callback).');
+    else if (repoConnections.config.halfConfigured) console.warn('WARNING: GitHub connection for private repositories is OFF: set both CONSTRUCT_GITHUB_REPO_CLIENT_ID and CONSTRUCT_GITHUB_REPO_CLIENT_SECRET, or neither (#638).');
     for (const line of [...auth.describeStartup(), ...health.describeStartup()]) {
       (line.level === 'warn' ? console.warn : console.log)(line.level === 'warn' ? `WARNING: ${line.text}` : line.text);
     }

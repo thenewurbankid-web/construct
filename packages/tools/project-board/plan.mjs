@@ -23,10 +23,14 @@ export function isOlderThan(closedAt, days, now) {
   return now.getTime() - new Date(closedAt).getTime() > days * 24 * 60 * 60 * 1000;
 }
 
-/** An issue with this label is work outside the project team: it is never added to the board. */
+/** An issue with this label is work outside the project team: it is never added to the board, and an item that
+ * GitHub's own auto-add put there anyway is removed (the board item only, never the issue). */
 export const OFF_BOARD_LABEL = 'off-board';
 
 export function planActions({ issues, items, now = new Date(), archiveDays = DEFAULT_ARCHIVE_DAYS }) {
+  const offBoard = new Set(issues.filter(i => i.labels?.includes(OFF_BOARD_LABEL)).map(i => i.number));
+  const remove = items.filter(i => !i.isArchived && offBoard.has(i.number)).map(i => ({ itemId: i.itemId, number: i.number }));
+  items = items.filter(i => !offBoard.has(i.number));
   const byNumber = new Map(items.filter(i => !i.isArchived).map(i => [i.number, i]));
   const archivedNumbers = new Set(items.filter(i => i.isArchived).map(i => i.number));
   const add = [];
@@ -73,6 +77,11 @@ export function planActions({ issues, items, now = new Date(), archiveDays = DEF
     openWithoutPriority: items
       .filter(i => !i.isArchived && openNumbers.has(i.number) && !i.priority && i.kind !== 'Standing')
       .map(i => i.number),
+    // Owner rule (2026-09-24): Lego blocks and core come first. Open Front-end Blocks issues are P0; open Core CLI issues are at least P1.
+    priorityRule: items
+      .filter(i => !i.isArchived && openNumbers.has(i.number) && i.kind !== 'Standing'
+        && ((i.module === 'Front-end Blocks' && i.priority !== 'P0') || (i.module === 'Core CLI' && !['P0', 'P1'].includes(i.priority))))
+      .map(i => i.number),
   };
-  return { add, setStatus, setArea, archive, report };
+  return { add, setStatus, setArea, archive, remove, report };
 }

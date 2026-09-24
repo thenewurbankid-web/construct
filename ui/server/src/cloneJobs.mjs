@@ -23,12 +23,14 @@ import dns from 'node:dns/promises';
 import fs from 'node:fs';
 import path from 'node:path';
 import { CloneInputError, DEFAULT_CLONE_HOSTS, isPublicAddress, parseCloneUrl, validateBranch, validateSlug } from './gitUrl.mjs';
-import { AUTH_MESSAGE, AUTH_MESSAGE_WITH_TOKEN, createAskpass, feedToken, looksLikeAuthFailure, makeRedactor, parseToken, scrubGitConfig, wipe } from './cloneAuth.mjs';
+import { AUTH_MESSAGE, AUTH_MESSAGE_WITH_TOKEN, NOT_VISIBLE_CODE, NOT_VISIBLE_MESSAGE, createAskpass, feedToken, looksLikeAuthFailure, makeRedactor, parseToken, scrubGitConfig, wipe } from './cloneAuth.mjs';
 import { WorkspaceError, contain } from './workspace.mjs';
 import { MIN_GIT_FOR_CURLOPT_RESOLVE, formatVersion, gitVersion, supportsCurloptResolve } from '../../../packages/engine/gitVersion.mjs';
 
 export const DEFAULT_MAX_BYTES = 500 * 1024 * 1024;
 export const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
+/** #638: the only hosts the person's GitHub login (repoConnection.mjs) may be sent to, whatever CONSTRUCT_CLONE_HOSTS allows. */
+export const LOGIN_HOSTS = Object.freeze(['github.com']);
 const KEEP_FINISHED = 20;
 const LOG_LIMIT = 200;
 const SIZE_POLL_MS = 500;
@@ -203,6 +205,8 @@ function sealClone(j, tokenBuf) {
  *   lookup?: (host:string) => Promise<{address:string}[]>,
  *   spawn?: typeof nodeSpawn,
  *   gitCheck?: () => ReturnType<typeof gitVersion>,   #423: which git is installed (default: ask `git --version` once)
+ *   loginToken?: (sessionKey:string) => Promise<Buffer|null>,   #638: a Buffer COPY of the session's GitHub login token (the job zeroes it), or null
+ *   loginHosts?: readonly string[],                              #638: hosts the login token may be used for (default github.com)
  *   maxBytes?: number, timeoutMs?: number, sizePollMs?: number,
  * }} deps
  */
@@ -213,6 +217,8 @@ export function createCloneJobs({
   lookup = (h) => dns.lookup(h, { all: true, verbatim: true }),
   spawn = nodeSpawn,
   gitCheck = gitVersion,
+  loginToken = null,
+  loginHosts = LOGIN_HOSTS,
   maxBytes = DEFAULT_MAX_BYTES,
   timeoutMs = DEFAULT_TIMEOUT_MS,
   sizePollMs = SIZE_POLL_MS,
@@ -254,6 +260,7 @@ export function createCloneJobs({
     ...(j.error ? { error: j.error } : {}),
     ...(j.errorCode ? { code: j.errorCode } : {}),
     private: Boolean(j.private),
+    ...(j.viaLogin ? { via: 'login' } : {}),
     ...(j.branch ? { branch: j.branch } : {}),
     log: j.log.slice(-LOG_LIMIT),
   });
@@ -421,8 +428,8 @@ export function createCloneJobs({
             : outcome.message;
         const recent = (j.recent ?? []).join('\n');
         if (!killReason && outcome.ok === false && looksLikeAuthFailure(recent)) {
-          j.error = j.private ? AUTH_MESSAGE_WITH_TOKEN : AUTH_MESSAGE;
-          j.errorCode = 'AUTH';
+          j.error = j.viaLogin ? NOT_VISIBLE_MESSAGE : j.private ? AUTH_MESSAGE_WITH_TOKEN : AUTH_MESSAGE;
+          j.errorCode = j.viaLogin ? NOT_VISIBLE_CODE : 'AUTH';
         }
         say(j, j.error);
       } else {
@@ -465,9 +472,25 @@ export function createCloneJobs({
     return { pin: `${parsed.host}:443:${chosen.join(',')}` };
   }
 
-  /** The validated, allowlisted request -> a running job. `tokenBuf` is a Buffer or null; `handOff()` tells the caller
+  /**
+   * #638: may the person's login token be used for this address? Only https on an allowlisted host (checked on the
+   * PARSED url, never the raw text). A file:// source exists only in the test harness (`localRoot`) and never asks git
+   * for a credential, so the harness can exercise the whole flow with a local repository.
+   */
+  const loginHostOk = (parsed) => (parsed.kind === 'https' && loginHosts.includes(parsed.host)) || (parsed.kind === 'file' && Boolean(localRoot));
+
+  const LOGIN_HOST_REFUSAL = { ok: false, status: 403, code: 'LOGIN_HOST_NOT_ALLOWED', error: `Your GitHub login can only be used for ${loginHosts.join(', ')} repositories.` };
+  const NOT_CONNECTED_REFUSAL = { ok: false, status: 409, code: 'NOT_CONNECTED', error: 'GitHub is not connected (or the connection expired). Connect GitHub for private repositories, or paste an access token.' };
+
+  /** The login token for this request as a Buffer copy the caller must zero, or null. Never throws. */
+  async function acquireLogin(sessionKey) {
+    try { return loginToken ? await loginToken(String(sessionKey ?? '')) : null; } catch { return null; }
+  }
+
+  /** The validated, allowlisted request -> a running job. `holder.buf` is the pasted token as a Buffer or null (the
+   * login token, when asked for, is put there once the request has passed every check); `handOff()` tells the caller
    * the job now owns it (and will zero it). */
-  async function startInner({ url, name, depth, branch }, tokenBuf, handOff) {
+  async function startInner({ url, name, depth, branch, useLogin, sessionKey }, holder, handOff) {
     let parsed;
     let slug;
     let checkedBranch;
@@ -482,11 +505,17 @@ export function createCloneJobs({
       if (e instanceof CloneInputError) return { ok: false, status: e.status, code: e.code, error: e.message };
       throw e;
     }
+    if (useLogin && !loginHostOk(parsed)) return LOGIN_HOST_REFUSAL;
     const git = gitStatus();
     if (!git.cloneEnabled) return { ok: false, status: 503, code: git.code, error: git.ok ? `Cloning is disabled: ${git.reason}` : `Cloning is unavailable: ${git.reason}` };
     if ([...jobs.values()].some((j) => isLive(j.state))) {
       return { ok: false, status: 409, code: 'BUSY', error: 'Another clone is already running. Wait for it to finish or cancel it.' };
     }
+    if (useLogin) {
+      holder.buf = await acquireLogin(sessionKey);
+      if (!holder.buf) return NOT_CONNECTED_REFUSAL;
+    }
+    const tokenBuf = holder.buf;
     const resolved = await resolvePin(parsed);
     if (resolved.refusal) return resolved.refusal;
     const { pin } = resolved;
@@ -516,12 +545,12 @@ export function createCloneJobs({
       }
     }
     const j = {
-      id: crypto.randomBytes(8).toString('hex'), display: parsed.display, url: parsed.url, slug, dest, private: Boolean(tokenBuf), branch: checkedBranch,
+      id: crypto.randomBytes(8).toString('hex'), display: parsed.display, url: parsed.url, slug, dest, private: Boolean(tokenBuf), viaLogin: Boolean(useLogin), branch: checkedBranch,
       state: 'running', progress: 'Starting', bytes: 0, startedAt: new Date().toISOString(), finishedAt: null, error: null, log: [], child: null,
     };
     reserved.add(slug);
     jobs.set(j.id, j);
-    say(j, `Cloning ${parsed.url} into ${slug}${checkedBranch ? ` (branch ${checkedBranch})` : ''} (${tokenBuf ? 'with the access token you pasted, used once and not stored' : 'public repository'}, https only, no hooks, no submodules).`);
+    say(j, `Cloning ${parsed.url} into ${slug}${checkedBranch ? ` (branch ${checkedBranch})` : ''} (${useLogin ? 'with your GitHub login, used for this clone only and not stored' : tokenBuf ? 'with the access token you pasted, used once and not stored' : 'public repository'}, https only, no hooks, no submodules).`);
     const done = new Promise((r) => { j.settle = r; });
     handOff();
     try {
@@ -535,6 +564,14 @@ export function createCloneJobs({
       return { ok: false, status: 500, code: 'SPAWN_FAILED', error: String(e?.message || e) };
     }
     return { ok: true, job: view(j), done };
+  }
+
+  /** #638: a pasted token and "use my GitHub login" are two answers to one question; both at once is refused. -> a refusal or null. */
+  function authChoice(opts) {
+    if (opts.useLogin !== undefined && typeof opts.useLogin !== 'boolean') return { ok: false, status: 400, code: 'BAD_AUTH_CHOICE', error: 'useLogin must be true or false.' };
+    const pasted = opts.token !== undefined && opts.token !== null && opts.token !== '';
+    if (opts.useLogin && pasted) return { ok: false, status: 400, code: 'BAD_AUTH_CHOICE', error: 'Use either your GitHub login or a pasted access token, not both.' };
+    return null;
   }
 
   // ---- #330 "Pull latest": update a clone WE made, fast-forward only ------------------------------------------------
@@ -559,7 +596,7 @@ export function createCloneJobs({
     ];
   }
 
-  async function pullInner({ name }, tokenBuf, handOff) {
+  async function pullInner({ name, useLogin, sessionKey }, holder, handOff) {
     let slug;
     try {
       slug = validateSlug(name);
@@ -591,8 +628,14 @@ export function createCloneJobs({
       origin = m ? m[1].trim() : null;
     } catch { /* unreadable: treated as changed */ }
     if (origin !== parsed.url) return pullRefusal(409, 'ORIGIN_CHANGED', `The remote of "${slug}" is no longer the address it was cloned from, so it was not updated.`);
+    if (useLogin && !loginHostOk(parsed)) return LOGIN_HOST_REFUSAL;
     const gitState = gitStatus();
     if (!gitState.cloneEnabled) return pullRefusal(503, gitState.code, gitState.reason);
+    if (useLogin) {
+      holder.buf = await acquireLogin(sessionKey);
+      if (!holder.buf) return NOT_CONNECTED_REFUSAL;
+    }
+    const tokenBuf = holder.buf;
     const resolved = await resolvePin(parsed);
     if (resolved.refusal) return resolved.refusal;
     let askpass = null;
@@ -647,7 +690,7 @@ export function createCloneJobs({
           const detail = text.split('\n').map((l) => l.trim()).filter((l) => /^(Updating|Fast-forward| \d+ files? changed|\d+ files? changed)/.test(l) || /\|/.test(l)).slice(0, 6);
           return end({ ok: true, name: slug, upToDate, message: upToDate ? 'Already up to date.' : 'Updated to the latest.', detail });
         }
-        if (looksLikeAuthFailure(text)) return end(pullRefusal(401, 'AUTH', tokenBuf ? AUTH_MESSAGE_WITH_TOKEN : AUTH_MESSAGE));
+        if (looksLikeAuthFailure(text)) return end(useLogin ? pullRefusal(403, NOT_VISIBLE_CODE, NOT_VISIBLE_MESSAGE) : pullRefusal(401, 'AUTH', tokenBuf ? AUTH_MESSAGE_WITH_TOKEN : AUTH_MESSAGE));
         if (/not possible to fast-forward|diverging branches|refusing to merge unrelated/i.test(text)) {
           return end(pullRefusal(409, 'DIVERGED', 'This copy has its own changes that the remote does not have, so it cannot be brought up to date automatically (fast-forward only). Nothing was changed.'));
         }
@@ -664,18 +707,20 @@ export function createCloneJobs({
      * validated, held as a Buffer, given to the process only through the per-job askpass helper, and zeroed when the
      * job ends. -> {ok:true, job} | {ok:false, status, code, error} */
     async start(opts = {}) {
-      let tokenBuf = null;
+      const holder = { buf: null };
       let handed = false;
+      const choice = authChoice(opts);
+      if (choice) return choice;
       try {
-        tokenBuf = parseToken(opts.token);
+        holder.buf = parseToken(opts.token);
       } catch (e) {
         if (e instanceof CloneInputError) return { ok: false, status: e.status, code: e.code, error: e.message };
         throw e;
       }
       try {
-        return await startInner(opts, tokenBuf, () => { handed = true; });
+        return await startInner(opts, holder, () => { handed = true; });
       } finally {
-        if (!handed) wipe(tokenBuf);
+        if (!handed) wipe(holder.buf);
       }
     },
     /**
@@ -703,18 +748,20 @@ export function createCloneJobs({
     /** "Pull latest" for a clone this Cockpit made: `git pull --ff-only`, argv only, contained, with the same one-time
      * `token` handling as start(). -> {ok:true, name, upToDate, message, detail} | {ok:false, status, code, error} */
     async pull(opts = {}) {
-      let tokenBuf = null;
+      const holder = { buf: null };
       let handed = false;
+      const choice = authChoice(opts);
+      if (choice) return choice;
       try {
-        tokenBuf = parseToken(opts.token);
+        holder.buf = parseToken(opts.token);
       } catch (e) {
         if (e instanceof CloneInputError) return { ok: false, status: e.status, code: e.code, error: e.message };
         throw e;
       }
       try {
-        return await pullInner(opts, tokenBuf, () => { handed = true; });
+        return await pullInner(opts, holder, () => { handed = true; });
       } finally {
-        if (!handed) wipe(tokenBuf);
+        if (!handed) wipe(holder.buf);
       }
     },
     gitStatus,

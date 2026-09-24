@@ -119,12 +119,13 @@ console.log(`Board ${opts.owner}/#${opts.project}: ${issues.length} issues, ${it
 console.log(`${label} add ${plan.add.length} missing issue(s): ${plan.add.map(a => `#${a.number}(${a.status})`).join(' ') || '-'}`);
 console.log(`${label} change status on ${plan.setStatus.length}: ${plan.setStatus.map(s => `#${s.number} ${s.from ?? 'none'}->${s.status}`).join(' ') || '-'}`);
 console.log(`${label} archive ${plan.archive.length} Done item(s) closed >${opts.archiveDays}d ago: ${plan.archive.map(a => `#${a.number}`).join(' ') || '-'}`);
+console.log(`${label} remove ${plan.remove.length} off-board item(s) from the board: ${plan.remove.map(r => `#${r.number}`).join(' ') || '-'}`);
 console.log(`${label} fix Area on ${plan.setArea.length}: ${plan.setArea.map(s => `#${s.number}->${s.area}`).join(' ') || '-'}`);
-console.log(`report: missing Module ${JSON.stringify(plan.report.missingModule)}; missing Sub-module ${JSON.stringify(plan.report.missingSubModule)}; Area problems ${JSON.stringify(plan.report.areaProblems)}; missing Kind ${JSON.stringify(plan.report.missingKind)}; open without Priority ${JSON.stringify(plan.report.openWithoutPriority)}`);
+console.log(`report: missing Module ${JSON.stringify(plan.report.missingModule)}; missing Sub-module ${JSON.stringify(plan.report.missingSubModule)}; Area problems ${JSON.stringify(plan.report.areaProblems)}; missing Kind ${JSON.stringify(plan.report.missingKind)}; open without Priority ${JSON.stringify(plan.report.openWithoutPriority)}; priority rule broken ${JSON.stringify(plan.report.priorityRule)}`);
 
 if (opts.check) {
   const r = plan.report;
-  const bad = r.missingModule.length + r.missingSubModule.length + r.areaProblems.length + r.missingKind.length + r.openWithoutPriority.length + plan.add.length + plan.setArea.length;
+  const bad = r.missingModule.length + r.missingSubModule.length + r.areaProblems.length + r.missingKind.length + r.openWithoutPriority.length + r.priorityRule.length + plan.add.length + plan.setArea.length;
   console.log(bad ? `Check FAILED: ${bad} problem(s).` : 'Check passed: every issue is on the board with Module, Sub-module, Kind, Area (and Priority when open).');
   process.exit(bad ? 1 : 0);
 }
@@ -147,6 +148,7 @@ if (!opts.dryRun) {
     return `updateProjectV2ItemFieldValue(input:{projectId:"${project.id}",itemId:"${s.itemId}",fieldId:"${areaField.id}",value:{singleSelectOptionId:"${o.id}"}}){projectV2Item{id}}`;
   }).filter(Boolean);
   await runBatches(areaMuts);
+  await runBatches(plan.remove.map(r => `deleteProjectV2Item(input:{projectId:"${project.id}",itemId:"${r.itemId}"}){deletedItemId}`));
   await runBatches(plan.archive.map(a => `archiveProjectV2Item(input:{projectId:"${project.id}",itemId:"${a.itemId}"}){item{id}}`));
   console.log('Applied.');
 }

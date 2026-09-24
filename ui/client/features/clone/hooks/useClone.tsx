@@ -7,11 +7,14 @@ import { readClone } from '../services/CloneReadApi';
 import { rememberClone } from '../services/CloneRecentStore';
 import { cancelClone, startClone } from '../services/CloneStartApi';
 import { pollCloneJob } from '../services/CloneJobPolling';
+import { effectiveAuthMode } from '../domain/GithubConnection';
+import { repoAddress } from '../domain/GithubRepoPick';
 import { cloneReducer, initialCloneState } from '../workflows/Clone';
+import type { CloneAuthMode, GithubStatus } from '../types';
 
 /** The clone form: read what was pasted, start a clone, follow its job until it ends, cancel it, and hand the
  * finished folder to `onCloned` (the Open-a-project screen opens it). */
-export function useClone(onCloned: (dir: string) => void) {
+export function useClone(onCloned: (dir: string) => void, github: GithubStatus | null = null) {
   const [state, dispatch] = useReducer(cloneReducer, initialCloneState);
   const handed = useRef<string | null>(null);
   const jobId = state.job?.id ?? null;
@@ -38,9 +41,11 @@ export function useClone(onCloned: (dir: string) => void) {
       return;
     }
     dispatch({ type: 'START' });
-    const r = await startClone({ url: parsed.url, name: state.name.trim(), branch: (state.branch ?? parsed.branch ?? '').trim(), token: state.token });
+    // #638: with a GitHub connection the login is the default; only then is no token sent (and never both).
+    const useLogin = effectiveAuthMode(github, state.authChoice) === 'login';
+    const r = await startClone({ url: parsed.url, name: state.name.trim(), branch: (state.branch ?? parsed.branch ?? '').trim(), token: useLogin ? '' : state.token, useLogin });
     dispatch(r.ok ? { type: 'STARTED', job: r.job } : { type: 'REFUSED', error: r.error });
-  }, [state.input, state.name, state.branch, state.token]);
+  }, [state.input, state.name, state.branch, state.token, state.authChoice, github]);
 
   const cancel = useCallback(async () => {
     if (!jobId) return;
@@ -54,6 +59,11 @@ export function useClone(onCloned: (dir: string) => void) {
     setName: (name: string) => dispatch({ type: 'SET_NAME', name }),
     setBranch: (branch: string) => dispatch({ type: 'SET_BRANCH', branch }),
     setToken: (token: string) => dispatch({ type: 'SET_TOKEN', token }),
+    setAuthMode: (mode: CloneAuthMode) => dispatch({ type: 'SET_AUTH', mode }),
+    /** #638: picking a repository from the GitHub picker fills the address; an empty pick changes nothing. */
+    pickRepo: (fullName: string) => {
+      if (fullName) dispatch({ type: 'SET_INPUT', input: repoAddress(fullName) });
+    },
     start,
     cancel,
     dismiss: () => dispatch({ type: 'DISMISS' }),

@@ -1,0 +1,85 @@
+name: Build on ready
+
+# #639. Every user-facing capability that lands on the work branch (or the Studio branch) is checked and tagged right away,
+# as often as it happens: `<lane>/build-YYYY-MM-DD-HHMM` (design: `design/pack-...`), an annotated tag whose message is JSON
+# (commit range, capability subjects, issue numbers). What counts as a capability, and each lane's light check, is data in
+# packages/tools/dev/lanes.json; the logic is packages/tools/dev/build-on-ready.mjs (docs/VERSIONING.md, "Builds").
+#
+# This workflow builds, checks and tags. It never deploys, never commits and never touches a release: pages.yml reacts only
+# to `v*.*.*` tags and no build tag starts with `v`.
+#
+# Loop safety: (1) the workflow creates only tags, and pushes made with the default GITHUB_TOKEN do not start other workflow
+# runs, so tag pushes cannot retrigger this or any workflow; (2) `on.push.branches` never matches a tag push; (3) a commit
+# whose message contains `[skip ci]` is skipped by GitHub itself, and `[skip build]` skips only this workflow.
+#
+# On the `studio` branch this file must exist on the branch itself (a push runs the workflow file of the pushed commit): it
+# arrives when studio next takes work/2026-09-23. lanes.json maps that branch to the `adhoc` lane only.
+
+on:
+  push:
+    branches: [work/2026-09-23, studio]
+
+permissions:
+  contents: write # push tags; nothing else
+
+# One run per branch at a time. Later pushes queue instead of cancelling a run that is checking or tagging.
+concurrency:
+  group: build-on-ready-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: ${{ !contains(github.event.head_commit.message, '[skip build]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BRANCH: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # every lane tag and the history since it
+      - run: git fetch --tags --force
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            ui/server/package-lock.json
+      # Plan first, with nothing installed (the script has no dependencies): most pushes build one or two lanes, some none.
+      - name: Plan
+        id: plan
+        shell: bash
+        run: |
+          node packages/tools/dev/build-on-ready.mjs --branch "$BRANCH" --json > "$RUNNER_TEMP/plan.json"
+          {
+            echo "any=$(jq '((.builds | length) + (.baselines | length)) > 0' "$RUNNER_TEMP/plan.json")"
+            echo "root=$(jq 'any(.install[]; . == ".")' "$RUNNER_TEMP/plan.json")"
+            echo "server=$(jq 'any(.install[]; . == "ui/server")' "$RUNNER_TEMP/plan.json")"
+          } >> "$GITHUB_OUTPUT"
+      # Install only what the building lanes' checks need. ui/client's ~870 MB tree is never installed: the Cockpit lane's
+      # client check is a set of dependency-free node specs (see lanes.json).
+      - name: Install root dependencies
+        if: steps.plan.outputs.root == 'true'
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install Cockpit server dependencies
+        if: steps.plan.outputs.server == 'true'
+        run: npm ci --prefix ui/server --ignore-scripts --no-audit --no-fund
+      - name: Check, tag and push
+        if: steps.plan.outputs.any == 'true'
+        shell: bash
+        run: |
+          set +e
+          node packages/tools/dev/build-on-ready.mjs --branch "$BRANCH" --push > "$RUNNER_TEMP/result.txt" 2>&1
+          code=$?
+          cat "$RUNNER_TEMP/result.txt"
+          {
+            echo '### Build on ready'
+            echo '```'
+            cat "$RUNNER_TEMP/result.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit $code # 3 = a lane was held by a failing check (the other lanes were still tagged)
+      - name: Nothing to build
+        if: steps.plan.outputs.any != 'true'
+        run: echo "No lane has a capability commit since its last build tag." >> "$GITHUB_STEP_SUMMARY"

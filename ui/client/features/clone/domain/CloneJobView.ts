@@ -25,6 +25,7 @@ export function buildJobView(job: CloneJob): CloneJobView {
     live,
     error: job.error ?? null,
     authFailed: job.code === 'AUTH',
+    notVisible: job.code === 'NOT_VISIBLE_TO_CONNECTION',
     log: job.log,
   };
 }

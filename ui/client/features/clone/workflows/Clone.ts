@@ -1,4 +1,4 @@
-import type { CloneJob } from '../types';
+import type { CloneAuthMode, CloneJob } from '../types';
 
 // Workflows own application state/flow but never import React (WORKFLOW-001): plain reducers.
 export type CloneFormState = {
@@ -10,6 +10,8 @@ export type CloneFormState = {
   branch: string | null;
   /** The one-time access token (private repositories). Held only while the form is open; cleared once sent. */
   token: string;
+  /** #638: how a private repository is authorised. Null = not chosen: the GitHub login when a connection exists, else the pasted token. */
+  authChoice: CloneAuthMode | null;
   /** Sending the request. */
   starting: boolean;
   job: CloneJob | null;
@@ -21,13 +23,14 @@ export type CloneAction =
   | { type: 'SET_NAME'; name: string }
   | { type: 'SET_BRANCH'; branch: string }
   | { type: 'SET_TOKEN'; token: string }
+  | { type: 'SET_AUTH'; mode: CloneAuthMode }
   | { type: 'START' }
   | { type: 'STARTED'; job: CloneJob }
   | { type: 'REFUSED'; error: string }
   | { type: 'JOB'; job: CloneJob }
   | { type: 'DISMISS' };
 
-export const initialCloneState: CloneFormState = { input: '', name: '', branch: null, token: '', starting: false, job: null, error: null };
+export const initialCloneState: CloneFormState = { input: '', name: '', branch: null, token: '', authChoice: null, starting: false, job: null, error: null };
 
 export function cloneReducer(state: CloneFormState, action: CloneAction): CloneFormState {
   switch (action.type) {
@@ -40,6 +43,9 @@ export function cloneReducer(state: CloneFormState, action: CloneAction): CloneF
       return { ...state, branch: action.branch, error: null };
     case 'SET_TOKEN':
       return { ...state, token: action.token, error: null };
+    case 'SET_AUTH':
+      // Switching the way in drops what was typed for the other one: a token is never kept once it is not going to be used.
+      return { ...state, authChoice: action.mode, token: action.mode === 'login' ? '' : state.token, error: null };
     case 'START':
       return { ...state, starting: true, error: null, job: null };
     case 'STARTED':
