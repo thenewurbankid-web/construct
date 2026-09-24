@@ -23,3 +23,4 @@ export { insertNamedImport } from './imports.mjs';
 export { collectInlineJsxLogic, computeJsxComplexity } from './jsxComplexity.mjs';
 export { collectImpureDomainReferences, collectLocallyBoundNames, BUILTIN_GLOBALS as DOMAIN_PURITY_BUILTIN_GLOBALS } from './domainPurity.mjs';
 export { collectBagOfFlagsStates, classifyStateFields } from './stateShape.mjs';
+export { readModuleDirective, collectModuleEdges, collectSecretEnvReads } from './clientBoundary.mjs';

@@ -20,6 +20,13 @@ rules:
   PAGE-007: { severity: error, similarity: 0.9 }
 ```
 
+`CLIENT-001` (a `'use client'` file cannot import server-only code) takes a `serverOnly` list of your own server-only packages, on top of the built-in databases and SDKs, and `serviceLayer: false` when your services are browser-side API clients rather than server code. It is `error` in a project made by `construct init` and `off` in an existing one until you turn it on:
+
+```yaml
+rules:
+  CLIENT-001: { severity: error, serverOnly: [acme-billing, '@acme/*'] }
+```
+
 The [rule reference](@developers/rules-reference/) lists every rule id and its default severity.
 
 ## The defaults you start from

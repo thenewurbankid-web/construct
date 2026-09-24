@@ -248,6 +248,15 @@ export const DEFAULT_RULES = {
   // this repo's own dogfooding, once #506 is "proven" per #500 phase 2) turns it on with
   // `rules: { DOMAIN-002: error }` (or 'warning') in architecture.yml.
   'DOMAIN-002': { severity: 'off', name: 'Domain code may only reference its own parameters/local bindings, type-only imports, and a small set of JS built-ins (allowlist, not denylist)' },
+  // #644 -- a file marked 'use client', and every file only it pulls in, ships to the browser, so it
+  // may not import server-only code: a `service`-layer module, the `server-only` package, a database
+  // or external-SDK adapter (default list in packages/core/client-boundary.mjs, extended by this
+  // rule's `serverOnly: [...]` option), or a module that reads a non-public process.env variable.
+  // Default severity is 'off', same reasoning as DOMAIN-002/READ-004: existing projects (this repo's
+  // fixtures, and real apps whose client hooks call browser-safe services) are not silently turned
+  // red. `construct init` opts NEW projects in at 'error' (NEW_PROJECT_RULE_SEVERITIES below); an
+  // existing project opts in with `rules: { CLIENT-001: error }`.
+  'CLIENT-001': { severity: 'off', name: "A 'use client' file cannot import server-only code" },
   'SLICE-001': { severity: 'error', name: 'Feature internals are isolated' },
   'SLICE-002': { severity: 'error', name: 'Cross-feature imports use public index.ts' },
   'MODULE-001': { severity: 'error', name: 'One primary module per file' },
@@ -302,6 +311,14 @@ export const DEFAULT_RULES = {
   // raise or silence it like any other rule.
   'PROP-LINK': { severity: 'info', name: 'A required prop is never passed at some call site, or a call site passes an undeclared prop' },
 };
+
+/**
+ * Rules that ship OFF in `DEFAULT_RULES` (so an existing project's result never changes) but that
+ * `construct init` scaffolds at a real severity in a NEW project's `architecture.yml`.
+ *
+ * @type {Readonly<Record<string, string>>}
+ */
+export const NEW_PROJECT_RULE_SEVERITIES = Object.freeze({ 'CLIENT-001': 'error' });
 
 const VALID_SEVERITIES = new Set(['error', 'warning', 'info', 'off']);
 

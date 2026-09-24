@@ -29,6 +29,7 @@ import { matchFrozen } from './frozen.mjs';
 import { isNonLayerPath } from './nonLayer.mjs';
 import { buildFrozenIndex, detectFrozenViolations, FROZEN_RULE_BY_LAYER } from './frozen-detector.mjs';
 import { runTypeCheckDetailed } from './type-check.mjs';
+import { checkClientBoundary } from './client-boundary.mjs';
 
 export { extractImports };
 
@@ -1002,6 +1003,18 @@ export function validateArchitecture(root, opts = {}) {
     checkDanglingImports(config, abs, source, r, out);
     if (!KNOWN_LAYERS.has(layer)) {
       checkGenericEdges(config, graph, root, abs, r, layer, out);
+    }
+  }
+
+  // #644 -- CLIENT-001 only runs once a project opts in (severity isn't the DEFAULT_RULES 'off').
+  // Project-scope (the client set is a walk over the import graph), so the whole tree is read even
+  // when `opts.files` scopes this call; only findings in the scoped files are reported.
+  const clientRule = config.rules['CLIENT-001'];
+  if (clientRule && clientRule.severity !== 'off') {
+    const scoped = (opts.files && opts.files.length) ? new Set(files.map((f) => rel(root, f))) : null;
+    const found = checkClientBoundary(root, { graph, frozenGlobs, nonLayerGlobs, options: clientRule });
+    for (const desc of found) {
+      if (!scoped || scoped.has(desc.file)) pushViolation(config, out, desc);
     }
   }
 

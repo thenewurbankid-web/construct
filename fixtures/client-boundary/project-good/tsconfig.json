@@ -1,0 +1,3 @@
+{
+  "compilerOptions": { "baseUrl": ".", "paths": { "@/*": ["./*"] }, "jsx": "preserve", "strict": true }
+}

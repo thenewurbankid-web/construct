@@ -29,6 +29,9 @@ the `exports` map (`.`, `./parse`, `./walk`, `./extract`, `./ts`) for a future m
 | jsx complexity | `computeJsxComplexity(ast)` | `{maxDepth, branchCount}` — a component/page's own JSX nesting depth and inline-logic count, the budget COMPONENT-006 (#508) caps |
 | state shape | `collectBagOfFlagsStates(ast, source)` | every "bag of flags" state shape (an interface / object-literal alias / `useState`-`useReducer` initial object or inline type / initial-state const / XState `context` whose fields combine two status flags, or a flag with both `error` and `data`), each with the offending fields and a compiling `status`-union rewrite — the shape STATE-001 (#573) flags |
 | state shape | `classifyStateFields(members)` | the heuristic's boundary on one member list: `{flags, error, data}` when it is a bag, `null` when allowed (one flag + `data` is fine) |
+| client boundary | `readModuleDirective(ast)` | the file's leading directive: `'client'` (`'use client'`), `'server'` (`'use server'`) or `null`; a comment, a later string or `('use client')` never counts |
+| client boundary | `collectModuleEdges(ast, source)` | every value edge to another module (`import`, `export ... from`, literal `import('...')`) with its line; type-only edges are erased and left out — the graph CLIENT-001 (#644) walks |
+| client boundary | `collectSecretEnvReads(ast, source, opts?)` | each read of a non-public `process.env.NAME` (member, `?.`, `['NAME']`, destructuring); `NEXT_PUBLIC_*` and `NODE_ENV` are public — the reads CLIENT-001 flags |
 | extract | `extractImports(source)` | static + dynamic import specifiers, source order |
 | extract | `extractExports(source)` | `[{name, index}]` for every export form |
 | extract | `extractJsdoc(source, index)` | the JSDoc block for the export at `index` (decorator-aware), or `null` |

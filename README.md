@@ -353,6 +353,35 @@ Most layer rules above are enforced two ways at once, not just one:
   (a service's `fetch` forwards the caller's `AbortSignal` so a superseded
   request never lands — off by default, opt in with
   `rules: { SERVICE-003: warning }`).
+- **Client boundary** — `CLIENT-001` (*a `'use client'` file cannot import
+  server-only code*, #644). A file whose first statement is the `'use client'`
+  directive, and every file only reachable through it, ships to the browser, so
+  none of them may import a module in the `service` layer, the `server-only`
+  package, a database or SDK adapter (`@prisma/client`, `pg`, `mysql2`,
+  `mongodb`, `redis`, `stripe`, `aws-sdk`, `@aws-sdk/*`, `nodemailer`, `fs`,
+  `child_process`, ...; extend the list with `serverOnly: [...]`), or a module
+  that reads a `process.env` variable that is not `NEXT_PUBLIC_*`, and may not
+  read one itself. It follows imports, re-exports (`export * from`) and
+  `import('...')` through the project's import graph: a file imported by both a
+  server and a client file is judged from the client edge, `import type` is
+  erased and never counts, and a `'use server'` file is the sanctioned exit (a
+  client imports the action, nothing behind it is followed). The finding sits
+  on the file that draws the import, names the `'use client'` entry and the
+  chain that puts it in the browser, and says the fix: move the call behind a
+  server action or a service a server component calls. `construct init`
+  scaffolds it as `error`; an existing project is untouched (default `off`) and
+  opts in with the rule below. A project whose `services/` are browser-side
+  API clients (a `'use client'` hook calling a `fetch` wrapper, as `ui/client`
+  does) sets `serviceLayer: false` so the service layer is not treated as
+  server-only; adapters, `server-only` and secret reads still are.
+
+  ```yaml
+  rules:
+    CLIENT-001:
+      severity: error
+      serverOnly: [acme-billing, '@acme/*']   # optional: your own server-only packages
+      serviceLayer: true                      # false: services are browser-side API clients
+  ```
 - **Type-check** — `TYPE-001` runs a real `tsc --noEmit` (the project's own
   `node_modules/typescript`, never a global one) and reports every diagnostic
   (`TS2304: Cannot find name 'useRef'`, with file and line) as a violation, so

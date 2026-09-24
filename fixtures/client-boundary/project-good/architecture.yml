@@ -1,0 +1,14 @@
+version: 1
+preset: strict-nextjs
+
+project:
+  framework: nextjs
+  language: typescript
+
+features:
+  root: features
+
+rules:
+  CLIENT-001: error
+
+exceptions: []

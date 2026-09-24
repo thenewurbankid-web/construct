@@ -92,9 +92,12 @@ THE LOOP (do this after every change)
    Fix it by following suggestedFix. Do not suppress it, and do not work around it.
 4. If the project enables the opt-in rules TYPE-001 (the code must type-check), WORKFLOW-004 (every state
    decides every event), STATE-001 (state is a discriminated union on one `status` field, never a bag
-   of `loading`/`error`/`data` flags; the violation carries the exact union to write) and SERVICE-003
+   of `loading`/`error`/`data` flags; the violation carries the exact union to write), SERVICE-003
    (a service's `fetch` forwards the caller's `AbortSignal`, so a late response after the request was
-   superseded is dropped), those appear in the same list and are fixed the same way.
+   superseded is dropped) and CLIENT-001 (a `'use client'` file, or one only it imports, must not import
+   a service, `server-only`, a database/SDK adapter or a non-`NEXT_PUBLIC_` `process.env` read; the fix
+   is a server action or a service a server component calls), those appear in the same list and are
+   fixed the same way. CLIENT-001 is on (error) in projects created by `construct init`.
 5. Re-run until the exit code is 0. Warnings are not failures, but fix them or say why you did not.
 6. If the project has tests, run them as well, and say what you ran and what it showed.
 
