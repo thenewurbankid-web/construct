@@ -6,9 +6,8 @@ import { normalizeCloneInput } from '../domain/CloneInput';
 import { readClone } from '../services/CloneReadApi';
 import { rememberClone } from '../services/CloneRecentStore';
 import { cancelClone, startClone } from '../services/CloneStartApi';
+import { pollCloneJob } from '../services/CloneJobPolling';
 import { cloneReducer, initialCloneState } from '../workflows/Clone';
-
-const POLL_MS = 700;
 
 /** The clone form: read what was pasted, start a clone, follow its job until it ends, cancel it, and hand the
  * finished folder to `onCloned` (the Open-a-project screen opens it). */
@@ -20,17 +19,7 @@ export function useClone(onCloned: (dir: string) => void) {
 
   useEffect(() => {
     if (!jobId || !live) return;
-    let stop = false;
-    const tick = async () => {
-      const r = await readClone(jobId);
-      if (stop) return;
-      if (r.ok) dispatch({ type: 'JOB', job: r.job });
-    };
-    const t = setInterval(tick, POLL_MS);
-    return () => {
-      stop = true;
-      clearInterval(t);
-    };
+    return pollCloneJob(jobId, readClone, (job) => dispatch({ type: 'JOB', job }));
   }, [jobId, live]);
 
   const job = state.job;
