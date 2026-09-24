@@ -228,6 +228,17 @@ function printTypedContractsNote(root) {
   if (!hasTypedContractsDependency(root)) console.log(`Note: the generated units import ${TYPED_CONTRACTS_SPECIFIER}: add "@line/construct-core" to your package.json dependencies before you build or type-check.`);
 }
 
+/**
+ * `construct generate <layer> <name> --feature <f>` and its siblings: one layer file, `layer <name> --layers ...` for a whole
+ * slice, or `tests <feature>`. `--shape list [--entity E] [--fields a:string,...]` (#619) fills the units with real typed code for
+ * a named screen shape instead of the stub template; the other forms are described where they are handled below.
+ *
+ * @param {string[]} args The words after `generate` (or `create`).
+ * @returns {Promise<void>} Resolves once the files are written and printed.
+ *
+ * @example
+ * await generate(['layer', 'Products', '--feature', 'shop', '--layers', 'domain,service', '--shape', 'list']);
+ */
 export async function generate(args) {
   if (args[0] === 'tests') return generateTests(args);
   if (args[0] === 'layer') return generateVerticalSlice(args);

@@ -5,7 +5,7 @@ where each verb's code belongs, by three fixed questions and two data tables, wi
 card and the chooser plan (`docs/BLOCK-CONTRACT.md`, #617).
 
 - Code: `packages/core/placement.mjs` (`@line/construct-core/placement`).
-- `placeCard(card, { layers, framework, screen, answers })` gives `{ blocks, open, notes, decisions, errors }`;
+- `placeCard(card, { layers, framework, screen, answers })` gives `{ blocks, open, offers, notes, decisions, errors }` (`offers` are closed questions that never hold the plan back: the list shape, below);
   `resolvePlacementOpen(card, answers, options)` answers an open question; `planFromBlocks(blocks, { feature, root })` gives
   `{ ok, plan, decisions, files, errors }`; `checkPlacementImports(blocks, layers)` proves the layer assignment obeys the
   import rules; `blockSummary(result)` and `blockLines(result)` are what a person, an LLM and a decision model read.
@@ -594,7 +594,149 @@ Who answered is returned as `decisions` and passed to `planFromBlocks({ decision
 way `compileChain` does. A card that still has its own open words is refused (`PLACE_CARD_OPEN`): answer those with
 `resolveOpen` first.
 
+## The list shape: a screen that works, not a stub (#619, part of #616)
+
+Without a shape, a plan's files are empty scaffolds with a TODO in each. A **shape** is a named recipe whose typed templates
+(`packages/core/shapes.mjs`) fill the units of a feature with real code, so confirming the plan gives a screen that works.
+`list` is the first: a screen that lists the items of an entity, with loading, empty and error states. No model is involved:
+the same request writes the same bytes, and a second run changes nothing.
+
+**The offer.** When the card asks for one list (the card's one verb is a read, its one data object is named in the plural
+by the lexicon's own test, `products` for the entry `product`, and the screen is named after it) `placeCard` adds a closed
+question to `result.offers` (not to `open`, so it never holds the plan back):
+
+| Question id | Raised when | Options |
+|---|---|---|
+| `q-shape` | one read verb on one plural data object, every block presentational or a server read ("see a list of products") | `list` (the rules-only default), `scaffold` |
+
+An unanswered offer leaves the plan exactly as it was, the plain scaffold. Answering `list` (a person, or the rules provider's
+suggestion, recorded in `decisions` as `person` or `decision-model`) turns the read into a server-read block (domain, service,
+hook, controller) plus the presentational block that shows it (component, page), and every `create.unit` step of the plan
+carries the three new optional arguments `shape`, `entity` and `fields` (`--shape list --entity Product --fields ...` on the
+command). The entity is the singular of the plural noun; the fields are the card entity's properties, typed by their names
+(`price` and `amount` are numbers, `isActive` a boolean, the rest strings) after an `id`. A search, a write, or two data objects
+in one card is not offered the shape: those are later slices. The Cockpit's `POST /api/requirement/read` returns the offer as
+`offers` and takes the answer as `{ id: 'q-shape', option: 'list' }`; the Requirement screen does not draw `offers` yet.
+
+**Worked example, run by `test/shapes.test.mjs` so it cannot go stale:**
+
+<!-- list-shape-example:code -->
+```js
+import { parseRequirement } from '@line/construct-core/requirement-card';
+import { placeCard, planFromBlocks } from '@line/construct-core/placement';
+import { planToCommand } from '@line/construct-core/plan';
+
+const { card } = parseRequirement('A user wants to see a list of products');
+
+// 1. Placement makes the offer. It is a closed question that does not hold the plan back.
+const offered = placeCard(card, { framework: 'react-spa' });
+const [offer] = offered.offers;
+
+// 2. Answer it (a person, or the rules provider's suggestion), and compile the plan.
+const placed = placeCard(card, { framework: 'react-spa', answers: { [offer.id]: { option: offer.default, by: 'decision-model', provider: 'rules' } } });
+const planned = planFromBlocks(placed.blocks, { feature: 'products', root: '/path/to/project', decisions: placed.decisions });
+
+export const question = { id: offer.id, question: offer.question, options: offer.options.map((o) => o.id), default: offer.default, entity: offer.entity, fields: offer.fields };
+export const decisions = placed.decisions;
+export const commands = planned.plan.steps.map((step) => `construct ${planToCommand(step).argv.join(' ')}`);
+export const files = planned.files;
+```
+
+<!-- list-shape-example:question -->
+```json
+{
+  "id": "q-shape",
+  "question": "How should the \"products\" screen be built?",
+  "options": ["list", "scaffold"],
+  "default": "list",
+  "entity": "Product",
+  "fields": "id:string,name:string,price:number"
+}
+```
+
+<!-- list-shape-example:decisions -->
+```json
+[{ "question": "q-shape", "option": "list", "by": "decision-model", "provider": "rules" }]
+```
+
+The seven commands the plan runs (each is a step `planToCommand` turns into a real command; the fields are the same on every one):
+
+<!-- list-shape-example:commands -->
+```json
+[
+  "construct create feature products",
+  "construct create domain Products --feature products --shape list --entity Product --fields id:string,name:string,price:number",
+  "construct create service Products --feature products --shape list --entity Product --fields id:string,name:string,price:number",
+  "construct create hook Products --feature products --shape list --entity Product --fields id:string,name:string,price:number",
+  "construct create component Products --feature products --shape list --entity Product --fields id:string,name:string,price:number",
+  "construct create page Products --feature products --shape list --entity Product --fields id:string,name:string,price:number",
+  "construct create controller Products --feature products --shape list --entity Product --fields id:string,name:string,price:number"
+]
+```
+
+The files each step declares (`touches`) and writes, by block (the approval gate refuses any file a step did not declare):
+
+<!-- list-shape-example:files -->
+```json
+{
+  "b1": [
+    "features/products/domain/Products.domain.ts",
+    "features/products/types.ts",
+    "features/products/services/Products.service.ts",
+    "features/products/hooks/useProducts.state.ts",
+    "features/products/controllers/ProductsController.controller.tsx"
+  ],
+  "b1-view": [
+    "features/products/components/ProductRow.component.tsx",
+    "features/products/components/ProductList.component.tsx",
+    "features/products/components/ProductsNotice.component.tsx",
+    "features/products/pages/ProductsPage.page.tsx",
+    "features/products/expressions/ProductsByStatus.expression.tsx"
+  ]
+}
+```
+
+**What each file is.** Every unit is built with the typed factory of its layer and is named `Name.layer.ext` (rule READ-004),
+so the output passes `construct validate` with the typed-contracts phase 1 rules on (HOOK-001, PAGE-008/009, DOMAIN-002,
+READ-004, plus SERVICE-003 and STATE-001) with no error and no warning, and `tsc --noEmit`:
+
+| File | What it holds |
+|---|---|
+| `types.ts` (appended by the domain step) | `Product { id; name; price }`, `ProductsState` (a `status` union: loading, ready with items, error with a message) and `ProductsResult`. A declaration already in the file is kept. |
+| `domain/Products.domain.ts` | `sortProducts`, a pure selector built with `defineDomain`: the rows ordered by the title field, the list it is given unchanged. |
+| `services/Products.service.ts` | `fetchProducts`, built with `defineService`: takes the caller's `AbortSignal`, forwards it to `fetch('/api/products')`, checks the shape of every row, and answers a typed `ProductsResult`; a failed request, a bad status or a wrong shape is an error result, never a throw. |
+| `hooks/useProducts.state.ts` | `useProducts()`: `useTrackedState` for the state, one effect that calls the service and aborts on unmount, sorts with the domain function. |
+| `components/ProductRow`, `ProductList`, `ProductsNotice` `.component.tsx` | The row (`<li>`, the title field and the other fields), the list (`<ul>`) and a notice (`role="status"` or `role="alert"`), each with `defineComponent`. |
+| `pages/ProductsPage.page.tsx` | `definePage`: a heading and the expression, from props. It holds no conditional JSX, so PAGE-008 and PAGE-009 pass. |
+| `expressions/ProductsByStatus.expression.tsx` | `defineExpression`: loading notice, error notice, its children when there are no rows (the page says "No products yet."), else the rows. This is where the branches live. |
+| `controllers/ProductsController.controller.tsx` | `defineController`: calls `useProducts()` and renders the page with the state; no logic of its own. On Next.js the hook and the controller start with `'use client'`. |
+
+**On the CLI**, the same shape on its own, without a plan:
+
+```sh
+construct create layer Products --feature products \
+  --layers domain,service,hook,component,page,controller \
+  --shape list --entity Product --fields id:string,name:string,price:number
+```
+
+`--entity` defaults to the singular of the unit name, `--fields` to `id:string,name:string`. A layer set that would leave an
+import dangling (a `service` without the `domain` whose types it imports) is refused before anything is written, naming the
+layers to add. `--shape` cannot be combined with `--llm`. The generated units import `@line/construct-core/typed-contracts`,
+so the project needs `@line/construct-core` in its dependencies (the command says so when it does not have it). By hand
+afterwards, once: add the controller to the route entry, serve the `/api/products` endpoint, and run `construct sync` so the
+feature's `index.ts` exports the new units (a generated feature always needs that, shapes or not).
+
+**Decisions where the issue was silent.** The shape's `types.ts` edit is declared as a `modify` of the file the feature step
+created. The expression is written by the page step, since a page may not hold conditional JSX and `LAYER_ORDER` has no
+`expression` layer. The shape fetches in the browser, so it uses the default layer table even on Next.js (no Server
+Component). `DOMAIN-002` used to flag the `defineDomain` import itself; it now allows that one factory from a typed-contracts
+module. A project's own custom `templates/` are not used for a shaped unit.
+
 ## What is not here yet
 
 The timeline read-back and its Cockpit screen are the Requirement screen (`/requirement`, #642): `toTimeline(placement)` in `ui/client/features/requirement/domain/Timeline.ts` turns the blocks into steps in run order (a slice to move it into core, so the CLI and an LLM read the same steps, is open). Not here yet: a `use client` / `use server` directive in the generated files, a route
 entry step, and words beyond the lexicon. Each is a slice of #616.
+
+Not here yet for the shapes (each a slice of #616): the other shapes (detail, form, dashboard, wizard); wiring a data source into
+a shaped screen (#621) and proofs for it (#623); a `route.ts` handler for the endpoint the list fetches; and drawing `offers`
+on the Requirement screen (`ui/client`), which needs a small client slice: `requirementApi` already returns them.

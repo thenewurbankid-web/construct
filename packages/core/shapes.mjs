@@ -241,7 +241,7 @@ function rowFile(ctx) {
     `export interface ${names.rowProps} {`, `  item: ${names.Entity};`, '}', '',
     `/** One ${singular} as a row of the list. */`,
     `export const ${names.row} = defineComponent<${names.rowProps}>('${names.row}', ({ item }) => (`,
-    '  <li>', `    <strong>{${show(title)}}</strong>`, others.map((f) => `    <span> {${show(f)}}</span>`), '  </li>', '));',
+    '  <li>', `    <strong>{${show(title)}}</strong>`, others.flatMap((f) => ["    {' '}", `    <span>{\`${f.name}: \${${show(f)}}\`}</span>`]), '  </li>', '));',
   );
 }
 
