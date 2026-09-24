@@ -165,3 +165,12 @@ test('process lifecycle run: an event the machine accepts passes, one it refuses
   assert.deepEqual(ok.changedFiles, []);
   await assert.rejects(runBlock(processLifecycleBlock, { event: 'RESUME', state: 'queued' }), { code: 'BLOCK_EVENT_REFUSED' });
 });
+
+test('docs/BLOCK-CONTRACT.md audits every flow, and its Scope cell is the one flowScopeKind computes', () => {
+  const doc = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'docs', 'BLOCK-CONTRACT.md'), 'utf8');
+  const rows = Object.fromEntries([...doc.matchAll(/^\| `([^`]+)` \| (empty|derived|declared) \|/gm)].map((m) => [m[1], m[2]]));
+  assert.deepEqual(Object.keys(rows).sort(), Object.keys(PLAN_FLOWS).sort());
+  for (const [id, scope] of Object.entries(rows)) assert.equal(scope, flowScopeKind(id), id);
+  const offered = Object.fromEntries([...doc.matchAll(/^\| `([^`]+)` \| (?:empty|derived|declared) \| ([^|]+) \|/gm)].map((m) => [m[1], m[2].trim()]));
+  for (const id of Object.keys(PLAN_FLOWS)) assert.equal(offered[id], ids(flowBlocks()[id].actions({ args: {}, root: '/x' })).join(', '), `${id} actions`);
+});
