@@ -568,9 +568,10 @@ export function printAttribution(tool, llm) {
  * await create(['feature', 'billing']);
  */
 export async function create(args) {
+  if (flagValue(args, '--format') === 'json') return printJsonResult(() => createDocument(args));
   if (args[0] === 'feature') {
     await feature(['create', ...args.slice(1)]);
-    printAttribution('scaffolded the file(s) above from templates', '0 calls — filling in the logic is a separate step, by you or whichever LLM you choose');
+    printAttribution(SCAFFOLD_ATTRIBUTION.tool, SCAFFOLD_ATTRIBUTION.llm);
     return;
   }
   await generate(args);
@@ -582,8 +583,63 @@ export async function create(args) {
       `call(s) via "${llm}" to write the real implementation into each generated file — review it before trusting it`,
     );
   } else {
-    printAttribution('scaffolded the file(s) above from templates', '0 calls — filling in the logic is a separate step, by you or whichever LLM you choose');
+    printAttribution(SCAFFOLD_ATTRIBUTION.tool, SCAFFOLD_ATTRIBUTION.llm);
   }
+}
+
+/** The attribution of a deterministic `create`: templates only, no model call. */
+const SCAFFOLD_ATTRIBUTION = Object.freeze({ tool: 'scaffolded the file(s) above from templates', llm: '0 calls — filling in the logic is a separate step, by you or whichever LLM you choose' });
+
+const usageFail = (message) => new ConstructError(message, { exitCode: EXIT_CODES.USAGE_ERROR });
+
+/**
+ * Run a verb body that returns its result document and print it as the verb's `--format json` output (#541): one
+ * pretty-printed JSON object on stdout, `{ok: true, ...result}`, or `{ok: false, error: {code, message}}` with the
+ * matching exit code for any failure. Nothing else is printed, so the Cockpit's `cli` execution mode can parse
+ * stdout as a whole and compare it with its in-process twin byte for byte.
+ */
+async function printJsonResult(body) {
+  try {
+    console.log(JSON.stringify({ ok: true, ...(await body()) }, null, 2));
+  } catch (e) {
+    const exitCode = e instanceof ConstructError ? e.exitCode : EXIT_CODES.INTERNAL_ERROR;
+    const code = exitCode === EXIT_CODES.USAGE_ERROR ? 'USAGE_ERROR' : exitCode === EXIT_CODES.VIOLATIONS ? 'VIOLATIONS' : 'INTERNAL_ERROR';
+    console.log(JSON.stringify({ ok: false, error: { code, message: String(e?.message || e) } }, null, 2));
+    setExitCode(exitCode);
+  }
+}
+
+/** `--format json` covers the deterministic forms only; a flag that implies a model call or an external input is refused by name. */
+function refuseNonDeterministicFlags(verb, args, flags) {
+  const found = flags.find((f) => args.includes(f));
+  if (found) throw usageFail(`${verb} --format json covers the deterministic form only, without ${flags.join(', ')} (${found} was given). Run it without --format json.`);
+}
+
+/** The result document of `create feature <name>` | `create layer <name> --feature f --layers l1,l2` | `create <layer> <name> --feature f`. */
+async function createDocument(args) {
+  refuseNonDeterministicFlags('create', args, ['--llm', '--from', '--bind', '--envelope', '--openapi']);
+  const attribution = { ...SCAFFOLD_ATTRIBUTION };
+  if (args[0] === 'feature') {
+    const name = args[1];
+    if (!name || name.startsWith('--')) throw usageFail('Usage: construct feature create <name>');
+    const root = getRoot(args);
+    return { verb: 'create', kind: 'feature', feature: name, path: path.relative(root, createFeature(root, name)), attribution };
+  }
+  if (args[0] === 'tests') throw usageFail('create --format json does not cover `tests`: use `construct generate tests <feature>`.');
+  const fi = args.indexOf('--feature');
+  const feature = fi >= 0 ? args[fi + 1] : undefined;
+  if (args[0] === 'layer') {
+    const name = args[1], li = args.indexOf('--layers');
+    if (!name || !feature || li < 0 || !args[li + 1]) throw usageFail('Usage: construct generate layer <name> --feature <feature> --layers <layer1,layer2,...> [--llm <provider>]');
+    const root = getRoot(args);
+    const layers = args[li + 1].split(',').map((l) => l.trim()).filter(Boolean);
+    const files = generateVertical(root, name, feature, layers);
+    return { verb: 'create', kind: 'layer', feature, name, layers, files: files.map((f) => path.relative(root, f)), attribution };
+  }
+  const layer = args[0], name = args[1];
+  if (!layer || !name || !feature) throw usageFail('Usage: construct generate <layer> <name> --feature <feature> [--openapi <spec>] [--llm <provider>]');
+  const root = getRoot(args);
+  return { verb: 'create', kind: 'single', feature, layer, name, files: [path.relative(root, generateLayer(root, layer, name, feature))], attribution };
 }
 
 /** `construct research workflow <feature> [<file>] [--format prose|md|json|scenarios] [--dir <path>]`
@@ -886,6 +942,7 @@ export async function research(args) {
  * @throws {ConstructError} Usage error (exit code 2) for an unknown subcommand.
  */
 export async function refactor(args) {
+  if (flagValue(args, '--format') === 'json') return printJsonResult(() => refactorDocument(args));
   if (args[0] === 'move') return refactorMove(args.slice(1));
   if (args[0] === 'rename') return refactorRename(args.slice(1));
   if (args[0] === 'extract-expression') return refactorExtractExpression(args.slice(1));
@@ -896,20 +953,69 @@ export async function refactor(args) {
 // design (no persistent log) — every construct-driven change gets one clear,
 // scannable summary; a file changed without one wasn't done by the tool.
 function reportRelocation(root, verb, result) {
-  if (result.dryRun) {
-    console.log(`Dry run (${result.engine}${result.tsVersion ? ` ${result.tsVersion}` : ''}): would change ${result.files.length} file(s) to move ${result.from} -> ${result.to}:`);
-    for (const f of result.files) console.log(`  ${f}`);
-    if (result.note) console.log(`Note: ${result.note}`);
-    return;
-  }
-  console.log(`${verb} ${result.from} -> ${result.to} (${result.importersUpdated} importer(s) updated)`);
-  if (result.note) console.log(`Note: ${result.note}`);
-  const { violations } = validateArchitecture(root, { files: [result.to] });
-  if (violations.length) console.log(formatReport(violations, { format: 'text' }));
-  printAttribution('relocated/renamed the file and rewrote every importer\'s path', '0 calls — content and the exported identifier are untouched');
+  const violations = result.dryRun ? [] : validateArchitecture(root, { files: [result.to] }).violations;
+  for (const line of relocationLines(verb, result, violations)) console.log(line);
+  if (!result.dryRun) printAttribution(RELOCATE_ATTRIBUTION.tool, RELOCATE_ATTRIBUTION.llm);
 }
 
-async function refactorMove(args) {
+/** The printed lines of a relocation, without the attribution: one source for the text CLI and the Cockpit's `cli` mode. */
+function relocationLines(verb, result, violations) {
+  if (result.dryRun) {
+    return [
+      `Dry run (${result.engine}${result.tsVersion ? ` ${result.tsVersion}` : ''}): would change ${result.files.length} file(s) to move ${result.from} -> ${result.to}:`,
+      ...result.files.map((f) => `  ${f}`),
+      ...(result.note ? [`Note: ${result.note}`] : []),
+    ];
+  }
+  return [
+    `${verb} ${result.from} -> ${result.to} (${result.importersUpdated} importer(s) updated)`,
+    ...(result.note ? [`Note: ${result.note}`] : []),
+    ...(violations.length ? [formatReport(violations, { format: 'text' })] : []),
+  ];
+}
+
+/**
+ * The text lines of a `refactor move|rename --format json` document, as `construct refactor` prints them (without
+ * the attribution line, which the document carries as `attribution`). The Cockpit's `cli` execution mode shows these.
+ *
+ * @param {object} doc A `refactor ... --format json` document.
+ * @returns {string[]} The printed lines.
+ */
+export function renderRefactorText(doc) {
+  return relocationLines(doc.action === 'move' ? 'Moved' : 'Renamed', doc, doc.violations ?? []);
+}
+
+/**
+ * The text lines of a `create ... --format json` document: one `Created <path>` line per scaffolded file (the text
+ * CLI adds per-file timings, which are not part of the deterministic document).
+ *
+ * @param {object} doc A `create ... --format json` document.
+ * @returns {string[]} The lines to show.
+ */
+export function renderCreateText(doc) {
+  return doc.kind === 'feature' ? [`Created feature ${doc.feature} at ${doc.path}`] : doc.files.map((f) => `Created ${f}`);
+}
+
+/**
+ * The text lines of an `import ... --format json` document, as `construct import` prints them minus its timings.
+ *
+ * @param {object} doc An `import ... --format json` document.
+ * @returns {string[]} The lines to show.
+ */
+export function renderImportText(doc) {
+  const featureNote = doc.mode === 'plan' && doc.feature ? ` --feature ${doc.feature}` : '';
+  return [
+    ...doc.results.flatMap((r) => [`${r.name}: scaffolded ${r.files.length} file(s) from ${r.source}`, ...r.files.map((f) => `  ${f}`)]),
+    `Next (needs judgment, not a tool): fill in each TODO(import) marker across ${doc.results.length} logical unit(s), then run validate${featureNote}.`,
+  ];
+}
+
+/** The attribution of a `refactor move|rename`: mechanical, no model call. */
+const RELOCATE_ATTRIBUTION = Object.freeze({ tool: "relocated/renamed the file and rewrote every importer's path", llm: '0 calls — content and the exported identifier are untouched' });
+
+// `refactor move|rename` -- argument checks and the mechanical relocation, shared by the text form (which
+// prints a line per file) and the `--format json` form (which returns the result document).
+function relocateMove(args) {
   const name = args[0], fi = args.indexOf('--feature'), fromI = args.indexOf('--from'), toI = args.indexOf('--to');
   if (!name || fi < 0 || !args[fi + 1] || fromI < 0 || !args[fromI + 1] || toI < 0 || !args[toI + 1]) {
     throw new ConstructError(
@@ -918,10 +1024,10 @@ async function refactorMove(args) {
     );
   }
   const root = getRoot(args);
-  reportRelocation(root, 'Moved', moveLayerFile(root, args[fi + 1], name, args[fromI + 1], args[toI + 1], { dryRun: args.includes('--dry-run') }));
+  return { root, result: moveLayerFile(root, args[fi + 1], name, args[fromI + 1], args[toI + 1], { dryRun: args.includes('--dry-run') }) };
 }
 
-async function refactorRename(args) {
+function relocateRename(args) {
   const name = args[0], newName = args[1], fi = args.indexOf('--feature'), li = args.indexOf('--layer');
   if (!name || !newName || fi < 0 || !args[fi + 1] || li < 0 || !args[li + 1]) {
     throw new ConstructError(
@@ -930,7 +1036,27 @@ async function refactorRename(args) {
     );
   }
   const root = getRoot(args);
-  reportRelocation(root, 'Renamed', renameLayerFile(root, args[fi + 1], name, newName, args[li + 1], { dryRun: args.includes('--dry-run') }));
+  return { root, result: renameLayerFile(root, args[fi + 1], name, newName, args[li + 1], { dryRun: args.includes('--dry-run') }) };
+}
+
+async function refactorMove(args) {
+  const { root, result } = relocateMove(args);
+  reportRelocation(root, 'Moved', result);
+}
+
+async function refactorRename(args) {
+  const { root, result } = relocateRename(args);
+  reportRelocation(root, 'Renamed', result);
+}
+
+/** The result document of `refactor move|rename ... --format json`: the relocation result, plus the architecture
+ * violations re-checked in the file's new home (none for a dry run, which changes nothing). */
+async function refactorDocument(args) {
+  const action = args[0];
+  if (action !== 'move' && action !== 'rename') throw usageFail('refactor --format json covers `move` and `rename`; `extract-expression` has no JSON form yet. Usage: construct refactor move|rename ... [--format json]');
+  const { root, result } = (action === 'move' ? relocateMove : relocateRename)(args.slice(1));
+  const violations = result.dryRun ? [] : validateArchitecture(root, { files: [result.to] }).violations;
+  return { verb: 'refactor', action, ...result, violations, attribution: result.dryRun ? null : { ...RELOCATE_ATTRIBUTION } };
 }
 
 async function refactorExtractExpression(args) {
@@ -996,6 +1122,7 @@ export async function importCommand(args) {
       { exitCode: EXIT_CODES.USAGE_ERROR },
     );
   }
+  if (flagValue(args, '--format') === 'json') return printJsonResult(() => importDocument(args));
   const llmI = args.indexOf('--llm');
   const llm = llmI >= 0 ? args[llmI + 1] : undefined;
   const planI = args.indexOf('--plan');
@@ -1071,13 +1198,46 @@ function reportImport(root, results, llm, feature, analysisCalls = 0, analysisSe
     );
   } else {
     console.log(`Next (needs judgment, not a tool): fill in each TODO(import) marker across ${results.length} logical unit(s), then run validate${featureNote}.`);
-    printAttribution(
-      `scaffolded ${totalFiles} file(s) across ${results.length} logical unit(s) and wrote a TODO(import) breadcrumb in each`,
-      analysisCalls
-        ? `${analysisNote}0 calls to write the logic — that's next, by you or whichever LLM you choose`
-        : '0 calls — reading the source(s) and writing the ported logic is next, by you or whichever LLM you choose',
-    );
+    const a = noLlmImportAttribution(totalFiles, results.length, analysisNote);
+    printAttribution(a.tool, a.llm);
   }
+}
+
+/** The attribution of an import that made no model call for the port (`analysisNote` names a plan-analysis call, if any). */
+function noLlmImportAttribution(totalFiles, units, analysisNote = '') {
+  return {
+    tool: `scaffolded ${totalFiles} file(s) across ${units} logical unit(s) and wrote a TODO(import) breadcrumb in each`,
+    llm: analysisNote
+      ? `${analysisNote}0 calls to write the logic — that's next, by you or whichever LLM you choose`
+      : '0 calls — reading the source(s) and writing the ported logic is next, by you or whichever LLM you choose',
+  };
+}
+
+/** The result document of `import ... --format json` (no `--llm`): what was scaffolded, per logical unit, and where from. */
+async function importDocument(args) {
+  refuseNonDeterministicFlags('import', args, ['--llm', '--route']);
+  const planI = args.indexOf('--plan');
+  let root, results, feature, mode;
+  if (planI >= 0) {
+    if (!args[planI + 1]) throw usageFail('Usage: construct import --plan <path> [--llm <provider>]');
+    mode = 'plan';
+    root = getRoot(args);
+    ({ feature, results } = await importPlan(root, args[planI + 1], {}));
+  } else {
+    const name = args[0], fi = args.indexOf('--feature'), li = args.indexOf('--layers'), fromI = args.indexOf('--from');
+    if (!name || name.startsWith('--') || fi < 0 || !args[fi + 1] || li < 0 || !args[li + 1] || fromI < 0 || !args[fromI + 1]) {
+      throw usageFail('Usage: construct import <name> --feature <feature> --layers <l1,l2,...> --from <path> [--llm <provider>]\n   or: construct import --plan <path> [--llm <provider>]\n   or: construct import --route <path>  (run directly, not inside repl)');
+    }
+    mode = 'unit';
+    root = getRoot(args);
+    feature = args[fi + 1];
+    const layers = args[li + 1].split(',').map((l) => l.trim()).filter(Boolean);
+    const { source, files } = await importVertical(root, name, feature, layers, args[fromI + 1], {});
+    results = [{ name, source, files }];
+  }
+  const units = results.map((r) => ({ name: r.name, source: r.source, files: r.files.map((f) => path.relative(root, f)) }));
+  const totalFiles = units.reduce((n, u) => n + u.files.length, 0);
+  return { verb: 'import', mode, ...(feature ? { feature } : {}), results: units, attribution: noLlmImportAttribution(totalFiles, units.length) };
 }
 
 // ---- import --route: interactive, whole-feature import wizard -------------

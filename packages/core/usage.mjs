@@ -17,11 +17,11 @@ Four capabilities, one CLI:
   construct research ...  read-only: summarize a feature, explain its workflows in English, compute a change's impact, or check environment/tooling
   construct import ...    scaffold layers for an existing, non-Construct file + a breadcrumb to it
 
-  construct create feature <name> [--dir <path>]
-  construct create layer <name> --feature <feature> --layers <l1,l2,...> [--llm <provider>] [--dir <path>]
-  construct create <layer> <name> --feature <feature> [--llm <provider>] [--dir <path>]
-  construct refactor move <name> --feature <feature> --from <layer> --to <layer> [--dir <path>]
-  construct refactor rename <name> <newName> --feature <feature> --layer <layer> [--dir <path>]
+  construct create feature <name> [--format json] [--dir <path>]
+  construct create layer <name> --feature <feature> --layers <l1,l2,...> [--llm <provider> | --format json] [--dir <path>]
+  construct create <layer> <name> --feature <feature> [--llm <provider> | --format json] [--dir <path>]
+  construct refactor move <name> --feature <feature> --from <layer> --to <layer> [--format json] [--dir <path>]
+  construct refactor rename <name> <newName> --feature <feature> --layer <layer> [--format json] [--dir <path>]
   construct refactor extract-expression <file> [--range <start:end>] [--name <Name>] [--dry-run] [--dir <path>]
     (hoists a PAGE-008/COMPONENT-005/EXPR-004-flagged inline conditional/loop out of <file> into a
     named defineExpression(...) unit under that feature's expressions/ folder, and any hand-authored
@@ -47,8 +47,8 @@ Four capabilities, one CLI:
     only) and says per failure whether the test harness or the app is at fault; read-only, no LLM; exit 1 on any failure)
   construct template list|show <name>|instantiate <name> [--param key=value]... [--params-json <json>] --templates <dir>
   construct template ...   (named, reusable, parameterised plans: instantiate prints a concrete plan.v1; curated templates load from --templates <dir> or CONSTRUCT_TEMPLATES_DIR, none are bundled)
-  construct import <name> --feature <feature> --layers <l1,l2,...> --from <path> [--llm <provider>] [--dir <path>]
-  construct import --plan <path> [--llm <provider>] [--dir <path>]
+  construct import <name> --feature <feature> --layers <l1,l2,...> --from <path> [--llm <provider> | --format json] [--dir <path>]
+  construct import --plan <path> [--llm <provider> | --format json] [--dir <path>]
   construct import --route <path>  (standalone interactive wizard, run directly — not inside repl)
 
 'construct import' scaffolds the requested layers and drops a TODO(import)

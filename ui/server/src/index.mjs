@@ -70,6 +70,7 @@ import {
 } from './pagesEditor.mjs';
 import { handleValidateForProject } from './validateApi.mjs';
 import { handleResearch } from './researchApi.mjs';
+import { handleCreate, handleRefactor, handleImport } from './writeVerbsApi.mjs';
 import { validateArchitecture } from '../../../packages/core/architecture-enforcer.mjs';
 import { createComponentsRouter } from './componentsApi.mjs';
 import { createNotesRouter } from './notesApi.mjs';
@@ -332,42 +333,30 @@ app.post('/api/init', async (req, res) => {
 });
 
 // create feature <name> | create layer <name> --feature f --layers l1,l2 | create <layer> <name> --feature f
+// #541: create, refactor, research and import honour project.execution.mode (engine = the in-process call, cli =
+// the real CLI's --format json); requests that ask for a model call always run in-process (writeVerbsApi.mjs).
+// LLM use is opt-in PER RUN (#109): Settings only says WHICH provider a capability uses; nothing is called
+// unless the request itself asks (`useLlm: true`). A "feature" has no fillable body, so it never applies.
 app.post('/api/create', async (req, res) => {
-  const { kind, name, feature, layer, layers, useLlm } = req.body || {};
-  let args;
-  if (kind === 'feature') {
-    if (!name) return res.status(400).json({ ok: false, error: 'name is required' });
-    args = ['feature', name];
-  } else if (kind === 'layer') {
-    if (!name || !feature || !layers?.length) return res.status(400).json({ ok: false, error: 'name, feature, and a non-empty layers[] are required' });
-    args = ['layer', name, '--feature', feature, '--layers', layers.join(',')];
-  } else if (kind === 'single') {
-    if (!name || !feature || !layer) return res.status(400).json({ ok: false, error: 'name, feature, and layer are required' });
-    args = [layer, name, '--feature', feature];
-  } else {
-    return res.status(400).json({ ok: false, error: 'kind must be "feature", "layer", or "single"' });
-  }
-  // LLM use is opt-in PER RUN (#109): Settings only says WHICH provider a
-  // capability uses; nothing is called unless the request itself asks
-  // (`useLlm: true`). A "feature" has no fillable body, so it never applies.
-  if (useLlm === true && kind !== 'feature') args.push('--llm', getSettings().llmProviders.createFill);
-  respond(res, await runCapturing(() => create(withDir(args))));
+  const { status, body } = await handleCreate({
+    body: req.body,
+    projectDir: getProjectDir(),
+    findRoot: containedProjectRoot,
+    inProcess: (args) => runCapturing(() => create(withDir(args))),
+    llmProvider: () => getSettings().llmProviders.createFill,
+  });
+  res.status(status).json(body);
 });
 
 // refactor move <name> --feature f --from l1 --to l2 | refactor rename <name> <newName> --feature f --layer l
 app.post('/api/refactor', async (req, res) => {
-  const { action, name, newName, feature, from, to, layer } = req.body || {};
-  let args;
-  if (action === 'move') {
-    if (!name || !feature || !from || !to) return res.status(400).json({ ok: false, error: 'name, feature, from, and to are required' });
-    args = ['move', name, '--feature', feature, '--from', from, '--to', to];
-  } else if (action === 'rename') {
-    if (!name || !newName || !feature || !layer) return res.status(400).json({ ok: false, error: 'name, newName, feature, and layer are required' });
-    args = ['rename', name, newName, '--feature', feature, '--layer', layer];
-  } else {
-    return res.status(400).json({ ok: false, error: 'action must be "move" or "rename"' });
-  }
-  respond(res, await runCapturing(() => refactor(withDir(args))));
+  const { status, body } = await handleRefactor({
+    body: req.body,
+    projectDir: getProjectDir(),
+    findRoot: containedProjectRoot,
+    inProcess: (args) => runCapturing(() => refactor(withDir(args))),
+  });
+  res.status(status).json(body);
 });
 
 // research summarize [--feature ...] [--format ...] [--since ...] | research doctor
@@ -384,30 +373,20 @@ app.post('/api/research', async (req, res) => {
 
 // import <name> --feature f --layers l1,l2 --from path [--llm p] | import --plan path [--llm p]
 app.post('/api/import', async (req, res) => {
-  const { mode, name, feature, layers, from, llm, useLlm, planPath } = req.body || {};
-  let args;
-  // #365: `from` and `planPath` are files the server will READ (and, with --llm, send to a provider). They must
-  // resolve, by realpath, inside the workspace; a relative one is relative to the open project, not to the server.
-  const containRead = (value) => contain(workspaceRoot(), value, { base: getProjectDir() });
-  try {
-    if (mode === 'unit') {
-      if (!name || !feature || !layers?.length || !from) return res.status(400).json({ ok: false, error: 'name, feature, a non-empty layers[], and from are required' });
-      args = [name, '--feature', feature, '--layers', layers.join(','), '--from', containRead(from)];
-    } else if (mode === 'plan') {
-      if (!planPath) return res.status(400).json({ ok: false, error: 'planPath is required' });
-      args = ['--plan', containRead(planPath)];
-    } else {
-      return res.status(400).json({ ok: false, error: 'mode must be "unit" or "plan"' });
-    }
-  } catch (e) {
-    const { status, body } = settingsErrorBody(e);
-    return res.status(status).json(body);
-  }
-  // An explicit `llm` provider name (direct API use) still wins; the UI sends
-  // `useLlm: true` instead and the provider comes from Settings.importFill.
-  const importLlm = llm || (useLlm === true ? getSettings().llmProviders.importFill : undefined);
-  if (importLlm) args.push('--llm', importLlm);
-  respond(res, await runCapturing(() => importCommand(withDir(args))));
+  const { status, body } = await handleImport({
+    body: req.body,
+    projectDir: getProjectDir(),
+    findRoot: containedProjectRoot,
+    inProcess: (args) => runCapturing(() => importCommand(withDir(args))),
+    // #365: `from` and `planPath` are files the server will READ (and, with --llm, send to a provider). They must
+    // resolve, by realpath, inside the workspace; a relative one is relative to the open project, not to the server.
+    resolveRead: (value) => contain(workspaceRoot(), value, { base: getProjectDir() }),
+    mapError: settingsErrorBody,
+    // An explicit `llm` provider name (direct API use) still wins; the UI sends `useLlm: true` instead and the
+    // provider comes from Settings.importFill.
+    llmProvider: () => getSettings().llmProviders.importFill,
+  });
+  res.status(status).json(body);
 });
 
 // ---------------------------------------------------------------------------
