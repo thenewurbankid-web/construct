@@ -55,8 +55,38 @@ function isCovered(existingExports, specifier) {
   });
 }
 
+const LAYER_SUMMARY = {
+  controllers: (n) => `Route controller: ${n}.`,
+  hooks: (n) => `Hook: ${n}.`,
+  pages: (n) => `Page: ${n}.`,
+  components: (n) => `Component: ${n}.`,
+  services: (n) => `Service: ${n}.`,
+  workflows: (n) => `Workflow: ${n}.`,
+  domain: (n) => `Domain logic: ${n}.`,
+};
+
+/**
+ * A short, deterministic one-line summary for a public export, derived from where it lives
+ * (`./controllers/ResetPassword` -> "Route controller: ResetPassword."), so a generated index.ts
+ * satisfies READ-003 (every public export has a JSDoc summary) without a model or a placeholder.
+ *
+ * @param {string} specifier The export's relative module specifier, e.g. `./hooks/useCart`.
+ * @returns {string} The one-line summary text (no comment delimiters).
+ *
+ * @example
+ * summaryForSpecifier('./hooks/useCart'); // => 'Hook: useCart.'
+ */
+export function summaryForSpecifier(specifier) {
+  const parts = String(specifier).replace(/^\.\//, '').split('/');
+  if (parts.length === 1) return parts[0] === 'types' ? 'Types shared across this feature.' : `Public API: ${parts[0]}.`;
+  const summary = LAYER_SUMMARY[parts[0]];
+  const name = parts[parts.length - 1].replace(/\.(tsx?|jsx?)$/, '');
+  return summary ? summary(name) : `Public API: ${parts.join('/')}.`;
+}
+
 function exportLineFor(candidate) {
-  return candidate.typeOnly ? `export type * from '${candidate.specifier}';` : `export * from '${candidate.specifier}';`;
+  const line = candidate.typeOnly ? `export type * from '${candidate.specifier}';` : `export * from '${candidate.specifier}';`;
+  return `/** ${summaryForSpecifier(candidate.specifier)} */\n${line}`;
 }
 
 function fileExistsForSpecifier(featureDir, specifier) {

@@ -74,14 +74,15 @@ test('scaffolded .mjs config parses (node --check)', () => {
   assert.equal(check.status, 0, check.stderr);
 });
 
-test('scaffolded project does not add violations: validate reports only the known forward import + READ-003', () => {
+test('scaffolded project does not add violations: validate reports only the known forward import', () => {
   for (const framework of Object.keys(SHELL)) {
     const dir = makeTempDir('construct-scaffold-');
     run(['init', '--framework', framework], dir);
     const res = run(['validate', '--format', 'json'], dir);
     const violations = JSON.parse(res.stdout).violations;
     const entry = framework === 'nextjs' ? 'app/page.tsx' : 'src/App.tsx';
-    assert.deepEqual(violations.map((v) => `${v.rule}@${v.file}`).sort(), [`IMPORT-001@${entry}`, 'READ-003@features/core/index.ts'], framework);
+    // READ-003 used to be here too (the scaffolded index.ts export had no JSDoc); createFeature now writes one.
+    assert.deepEqual(violations.map((v) => `${v.rule}@${v.file}`).sort(), [`IMPORT-001@${entry}`], framework);
   }
 });
 

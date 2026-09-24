@@ -1101,7 +1101,9 @@ export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude
   // ({phase, detail}: tracing, analyzing, plan-ready, scaffolding, filling, validating,
   // auto-fixing, done, cancelled), and `onThought` receives the model's own streamed output text.
   // `signal` (an AbortSignal) cancels an in-flight model call and stops the run.
-  const step = (phase, detail = {}) => onStep?.({ phase, detail });
+  // `reason` is the framework's own why for this block, shown under the step so the deterministic side
+  // explains itself the way the model's stream does.
+  const step = (phase, detail = {}, reason) => onStep?.({ phase, detail, ...(reason ? { reason } : {}) });
   const llmOptions = { ...(onThought ? { onChunk: onThought } : {}), ...(signal ? { signal } : {}) };
   // Whole-feature plan analysis is deliberately hosted-model-only (#96) — the
   // same guardrail ui/server's Settings enforces, repeated here so a direct
@@ -1184,7 +1186,7 @@ export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude
     await ask('After you approve the plan, should the LLM also write the ported logic (not just TODO breadcrumbs)? [y/N]: '),
   );
 
-  step('tracing', { routes: routeArgs });
+  step('tracing', { routes: routeArgs }, 'Follows the real import statements from the route\'s entry file (parsed, not guessed), so only files it actually depends on are included.');
   console.log(`Tracing ${routeArgs.join(', ')} ...`);
   const traceStart = startTimer();
   const tracedFiles = new Map(); // absolute path -> true, deduped across routes
@@ -1217,7 +1219,7 @@ export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude
     `Analyzing via "${planAnalysis}" — one LLM call for a single combined plan across all of them, nothing is written yet...`,
   );
   let plan;
-  step('analyzing', { provider: planAnalysis, files: tracedFiles.size });
+  step('analyzing', { provider: planAnalysis, files: tracedFiles.size }, 'One model call proposes the units and layers; the framework then checks every layer name and source file it names and repairs impossible combinations (a controller always gets its page).');
   const analysisStart = startTimer();
   try {
     plan = await analyzeFiles([...tracedFiles.keys()], featureName, { llm: planAnalysis, llmOptions });
@@ -1228,7 +1230,7 @@ export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude
   const analysisSeconds = elapsedSeconds(analysisStart);
   console.log(`Analysis complete (llm ${formatDuration(analysisSeconds)}).`);
 
-  step('plan-ready', { units: plan.units.length });
+  step('plan-ready', { units: plan.units.length }, plan.layerAdjustments?.length ? `Repaired the plan deterministically: ${plan.layerAdjustments.map((a) => `added ${a.added.join(', ')} to ${a.unit}`).join('; ')} (a controller composes a same-named page). Nothing is written until you approve.` : 'Nothing is written until you approve this plan.');
   console.log('');
   console.log(renderPlanTable(plan));
   console.log('');
@@ -1238,6 +1240,7 @@ export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude
     return;
   }
 
+  step('scaffolding', { feature: plan.feature }, 'Layer files come from Construct\'s own templates in build order (domain → service → workflow → hook → component → page → controller); no model is involved.');
   const { results, cancelled: fillCancelled } = await executeImportPlan(root, plan, { llm: fillWithLlm ? importFill : undefined, llmOptions, onStep: step });
   reportImport(root, results, fillWithLlm ? importFill : undefined, plan.feature, 1, analysisSeconds);
   if (fillCancelled) {
@@ -1247,7 +1250,10 @@ export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude
   }
 
   console.log('');
-  step('validating', { feature: plan.feature });
+  // The public API is deterministic work, not a model's: export every new layer file from index.ts (with a JSDoc line each) so SLICE-003/READ-003 never fire on what we just generated.
+  const apiSync = syncPublicApi(root, plan.feature);
+  if (apiSync.changed) console.log(`Updated ${apiSync.path} (the feature's public API) with the new exports.`);
+  step('validating', { feature: plan.feature }, 'Runs every construct-validate enforcer on the new feature. The model\'s output is only trusted once this passes.');
   console.log(`Running validate --feature ${plan.feature} ...`);
   const validateStart = startTimer();
   const { violations } = aggregateValidation(root, DEFAULT_ENFORCERS);
@@ -1271,7 +1277,7 @@ export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude
       ),
     );
     if (wantsFix) {
-      step('auto-fixing', { files: affectedFiles });
+      step('auto-fixing', { files: affectedFiles }, 'Errors first, then files with the most violations. Each retry is told what earlier attempts left behind and sees the other files of this unit; it stops early if two attempts in a row change nothing.');
       const { fixed, stillFailing, cancelled: fixCancelled } = await autoFixViolations(
         root,
         affectedFiles,
@@ -1279,6 +1285,7 @@ export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude
         {
           llm: importFill,
           llmOptions,
+          siblingFiles: [...importedRelFiles],
           onPlan: (plan) => {
             console.log(`Fix plan (${plan.length} file(s), errors first):`);
             for (const item of plan) {

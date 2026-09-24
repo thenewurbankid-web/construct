@@ -61,7 +61,19 @@ function existingRealFiles(root, name, feature, layers) {
   return hits;
 }
 
-function buildPortPrompt({ layer, relFile, stubContent, oldContent, oldRelPath }) {
+// Sibling files are shown to the model so a later layer composes an earlier one instead of
+// re-implementing it (the controller that copied the hook's try/catch, #601 follow-up). Each is
+// truncated so a big unit cannot crowd out the actual task.
+const SIBLING_MAX_CHARS = 6000;
+function siblingSection(siblings) {
+  if (!siblings?.length) return [];
+  return [
+    '=== FILES OF THIS SAME UNIT, ALREADY FILLED (compose them: import and call what they export; do NOT re-implement their logic here) ===',
+    ...siblings.flatMap((f) => [`--- ${f.relFile} ---`, f.content.length > SIBLING_MAX_CHARS ? `${f.content.slice(0, SIBLING_MAX_CHARS)}\n/* ...truncated... */` : f.content, '']),
+  ];
+}
+
+function buildPortPrompt({ layer, relFile, stubContent, oldContent, oldRelPath, siblings = [] }) {
   return [
     'You are porting existing code into one file of a Construct-architecture project. The old file\'s',
     'logic is split across SEVERAL files by layer — this prompt fills only ONE of them. Every other',
@@ -83,6 +95,7 @@ function buildPortPrompt({ layer, relFile, stubContent, oldContent, oldRelPath }
     'needs as props/arguments through that existing composition; do not inline another layer\'s UI or',
     'move a call out of the layer that owns it just because the old file had it in one place.',
     '',
+    ...siblingSection(siblings),
     '=== CURRENT STUB (this is the file you are rewriting) ===',
     stubContent,
     '',
@@ -109,7 +122,7 @@ function buildPortPrompt({ layer, relFile, stubContent, oldContent, oldRelPath }
  *   already tried and what it left behind instead of guessing again from scratch.
  * @returns {string} The complete prompt text, ready for `requestFileText`.
  */
-export function buildFixPrompt({ layer, relFile, currentContent, violations, history = [] }) {
+export function buildFixPrompt({ layer, relFile, currentContent, violations, history = [], siblings = [] }) {
   const violationText = violations
     .map((v) => `- ${v.rule} (line ${v.line}): ${v.message}${v.suggestedFix ? ` — suggested fix: ${v.suggestedFix}` : ''}`)
     .join('\n');
@@ -131,6 +144,8 @@ export function buildFixPrompt({ layer, relFile, currentContent, violations, his
         '',
       ]
       : []),
+    ...siblingSection(siblings),
+    ...(siblings.length ? ['If a violation says to move logic into another layer, that layer\'s file is shown above: call what it already exports from here and delete the duplicate — do not paste the logic into this file again.', ''] : []),
     '=== CURRENT FILE CONTENT ===',
     currentContent,
     '',
@@ -177,8 +192,9 @@ const violationKey = (v) => `${v.rule}|${v.line}|${v.message}`;
  * @param {string} root Project root.
  * @param {string[]} relFiles Root-relative paths of files from this import to consider for auto-fix.
  * @param {(root: string) => {violations: object[]}} validate Injected validator.
- * @param {{llm: string, llmOptions?: object, maxAttempts?: number, onPlan?: (plan: object[]) => void, onAttempt?: (info: object) => void}} options
- *   `maxAttempts` (default 5) is per file. `onPlan` fires once with buildFixPlan's result before the
+ * @param {{llm: string, llmOptions?: object, maxAttempts?: number, onPlan?: (plan: object[]) => void, onAttempt?: (info: object) => void, siblingFiles?: string[]}} options
+ *   `siblingFiles` are the other root-relative files of the same import, shown to the model so a fix can call
+ *   what another layer already exports instead of duplicating it. `maxAttempts` (default 5) is per file. `onPlan` fires once with buildFixPlan's result before the
  *   first call; `onAttempt` fires before each retry with `{file, attempt, violations}` — a caller
  *   uses them to print progress (or to drive the live step tracker, #599).
  * @returns {Promise<{fixed: object[], stillFailing: object[], cancelled: boolean}>} `fixed`: `{file, attempts}` for
@@ -191,7 +207,7 @@ const violationKey = (v) => `${v.rule}|${v.line}|${v.message}`;
  *   root, relFiles, (r) => aggregateValidation(r, DEFAULT_ENFORCERS), { llm: 'claude' },
  * );
  */
-export async function autoFixViolations(root, relFiles, validate, { llm, llmOptions, maxAttempts = 5, onPlan, onAttempt } = {}) {
+export async function autoFixViolations(root, relFiles, validate, { llm, llmOptions, maxAttempts = 5, onPlan, onAttempt, siblingFiles = [] } = {}) {
   const fixed = [];
   const stillFailing = [];
   let cancelled = false;
@@ -210,7 +226,10 @@ export async function autoFixViolations(root, relFiles, validate, { llm, llmOpti
       onAttempt?.({ file: relFile, attempt, violations: mine });
       const layer = layerFromGeneratedFile(file);
       const currentContent = fs.readFileSync(file, 'utf8');
-      const prompt = buildFixPrompt({ layer, relFile, currentContent, violations: mine, history });
+      const siblings = siblingFiles
+        .filter((f) => f !== relFile && fs.existsSync(path.join(root, f)))
+        .map((f) => ({ relFile: f, content: fs.readFileSync(path.join(root, f), 'utf8') }));
+      const prompt = buildFixPrompt({ layer, relFile, currentContent, violations: mine, history, siblings });
       const outcome = await requestFileText(llm, prompt, llmOptions);
       if (outcome.status === 'cancelled') cancelled = true; // #599
       if (outcome.status !== 'filled') {
@@ -300,6 +319,7 @@ export async function importVertical(root, name, feature, layers, fromPath, { ll
   // for the no-`llm` breadcrumb path (nothing to distinguish it from).
   const fileTimings = [];
   let cancelled = false;
+  const filledSiblings = []; // files of this unit already filled, in layer order (#601 follow-up)
   for (const file of files) {
     const stubContent = fs.readFileSync(file, 'utf8');
     if (!llm) {
@@ -324,6 +344,7 @@ export async function importVertical(root, name, feature, layers, fromPath, { ll
       stubContent,
       oldContent,
       oldRelPath: path.relative(path.dirname(file), fromAbs).split(path.sep).join('/'),
+      siblings: filledSiblings,
     });
     const fillStart = startTimer();
     const outcome = await requestFileText(llm, prompt, llmOptions);
@@ -331,6 +352,7 @@ export async function importVertical(root, name, feature, layers, fromPath, { ll
     fileTimings.push({ file, llmSeconds });
     if (outcome.status === 'filled') {
       fs.writeFileSync(file, outcome.code + '\n');
+      filledSiblings.push({ relFile: path.relative(root, file), content: outcome.code });
       // #522 -- the ported logic itself may have brought inline conditional/loop JSX along with
       // it; if so, point at the deterministic extraction block rather than leaving it for a human
       // (or a future LLM call) to hand-fix.

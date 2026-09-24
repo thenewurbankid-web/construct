@@ -2,7 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { createFeature } from '../packages/core/generators.mjs';
+import { createFeature, LAYER_CONSTRAINTS } from '../packages/core/generators.mjs';
+import { syncPublicApi } from '../packages/core/api-composer.mjs';
+import { aggregateValidation } from '../packages/core/registry.mjs';
+import { DEFAULT_ENFORCERS } from '../packages/engine/defaultEnforcers.mjs';
 import { importVertical, importPlan, analyzeRoute, validatePlanShape, normalizePlanLayers, autoFixViolations, buildFixPrompt, buildFixPlan } from '../packages/core/import.mjs';
 import { PROVIDERS } from '../packages/core/llm.mjs';
 import { validateArchitecture } from '../packages/core/architecture-enforcer.mjs';
@@ -804,4 +807,67 @@ test('auto-fix reports "attempt limit" when it keeps changing things but never c
   } finally {
     PROVIDERS.claude = originalClaude;
   }
+});
+
+// ---- the controller that copied the hook's logic (real user, 2026-09-24) -----------------------
+
+test('the controller layer constraint states what CONTROLLER-001 actually enforces', () => {
+  assert.match(LAYER_CONSTRAINTS.controller, /NO control flow/);
+  assert.match(LAYER_CONSTRAINTS.controller, /try\/catch/);
+  assert.match(LAYER_CONSTRAINTS.controller, /hook/);
+});
+
+test('each fill sees the files of its unit that are already filled, so a controller composes the hook instead of re-implementing it', async () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  const sourceFile = path.join(dir, 'Old.tsx');
+  fs.writeFileSync(sourceFile, 'export function old() { try { return 1; } catch { return 2; } }\n');
+  const prompts = {};
+  const originalClaude = PROVIDERS.claude;
+  PROVIDERS.claude = (prompt) => {
+    const layer = /layer: "(\w+)"/.exec(prompt)[1];
+    prompts[layer] = prompt;
+    return layer === 'hook'
+      ? 'export function useReset() { try { return 1; } catch { return 2; } }'
+      : layer === 'page'
+        ? 'export function ResetPage() { return null; }'
+        : 'export function ResetController() { return null; }';
+  };
+  try {
+    await importVertical(dir, 'Reset', 'checkout', ['hook', 'page', 'controller'], sourceFile, { llm: 'claude' });
+  } finally {
+    PROVIDERS.claude = originalClaude;
+  }
+  assert.doesNotMatch(prompts.hook, /ALREADY FILLED/, 'the first layer has nothing to compose yet');
+  assert.match(prompts.page, /ALREADY FILLED/);
+  assert.match(prompts.page, /features\/checkout\/hooks\/useReset\.tsx/);
+  assert.match(prompts.controller, /export function useReset\(\) \{ try/, 'the controller is shown the real hook it should call');
+  assert.match(prompts.controller, /export function ResetPage/, 'and the page it renders');
+  assert.match(prompts.controller, /do NOT re-implement/);
+});
+
+test('buildFixPrompt shows sibling files and tells the model to call them rather than paste their logic back', () => {
+  const prompt = buildFixPrompt({
+    layer: 'controller',
+    relFile: 'features/x/controllers/XController.tsx',
+    currentContent: 'export function XController() { if (a) {} }',
+    violations: [{ rule: 'CONTROLLER-001', line: 1, message: 'control flow', suggestedFix: 'Move it to a hook' }],
+    siblings: [{ relFile: 'features/x/hooks/useX.tsx', content: 'export function useX() {}' }],
+  });
+  assert.match(prompt, /--- features\/x\/hooks\/useX\.tsx ---/);
+  assert.match(prompt, /call what it already exports from here and delete the duplicate/);
+});
+
+test('a fresh import followed by the public-API sync validates clean of READ-003 and SLICE-003 (no scaffolder noise)', async () => {
+  const dir = tmpProject();
+  createFeature(dir, 'res');
+  const sourceFile = path.join(dir, 'Old.tsx');
+  fs.writeFileSync(sourceFile, 'export function old() { return null; }\n');
+  await importVertical(dir, 'ResetPassword', 'res', ['hook', 'page', 'controller'], sourceFile);
+  const { changed } = syncPublicApi(dir, 'res');
+  assert.equal(changed, true);
+  const index = fs.readFileSync(path.join(dir, 'features', 'res', 'index.ts'), 'utf8');
+  assert.match(index, /\/\*\* Route controller: ResetPasswordController\. \*\/\nexport \* from '\.\/controllers\/ResetPasswordController';/);
+  const noise = aggregateValidation(dir, DEFAULT_ENFORCERS).violations.filter((v) => v.file.startsWith('features/res/') && (v.rule === 'READ-003' || v.rule === 'SLICE-003'));
+  assert.deepEqual(noise, []);
 });

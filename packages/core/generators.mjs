@@ -62,7 +62,7 @@ export const LAYER_CONSTRAINTS={
  hook:'A React hook — the exported function name must start with "use". May import anything.',
  component:`Presentation-only, from props. Never write the substring "controllers/", "workflows/", "services/", or "domain/" anywhere in the file, even in a comment. ${NO_INLINE_JSX_LOGIC}`,
  page:`Presentation composition from props only. Never write "workflows/", "services/", or "domain/" anywhere in the file (even in a comment), never call fetch(), never use useMachine/useActor/createMachine. ${NO_INLINE_JSX_LOGIC}`,
- controller:'Composes hooks/domain/pages for a route. No import restrictions.',
+ controller:'Composes hooks/domain/pages for a route and nothing else: it calls hooks and renders its own Page, passing them props. It must contain NO control flow at all (no if/else, loops, switch, or try/catch) and never call fetch() — CONTROLLER-001 rejects both. Any conditional, loop, error handling or async handler belongs in a hook (or workflow/domain function) that the controller calls. No import restrictions.',
 };
 
 // Shared by generateLayer and refactor.mjs's move/rename: the filename base a
@@ -164,7 +164,7 @@ export function createFeature(root,name){
  for(const d of ['controllers','workflows','hooks','domain','services','pages','components'])ensureDir(path.join(base,d));
  const typesFile=path.join(base,'types.ts'), indexFile=path.join(base,'index.ts');
  write(typesFile,`export type ${capName}Id = string;\n`);
- write(indexFile,`// Public API for feature: ${name}\nexport type * from './types';\n`);
+ write(indexFile,`// Public API for feature: ${name}\n/** Types shared across this feature. */\nexport type * from './types';\n`);
  selfCheck(root,[typesFile,indexFile]);
  return base;
 }
