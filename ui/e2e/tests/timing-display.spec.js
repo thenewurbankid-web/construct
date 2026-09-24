@@ -40,7 +40,7 @@ test.describe('Demo/verification #167 -- timing breakdown shows in the UI', () =
     for (const layer of ['domain', 'hook', 'page']) {
       await createForm.locator('.layer-checkboxes .checkbox', { hasText: layer }).locator('input[type="checkbox"]').check();
     }
-    await createForm.getByRole('button', { name: 'Run create' }).click();
+    await createForm.getByRole('button', { name: /^Create (feature|slice|file)$/ }).click();
 
     const output = createForm.locator('.command-output');
     await expect(output).toBeVisible({ timeout: 15_000 });

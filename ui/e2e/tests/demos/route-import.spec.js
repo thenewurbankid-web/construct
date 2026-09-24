@@ -130,13 +130,14 @@ test.describe.serial('Demo #147 -- guided route import: scaffold + AI-written lo
     test.setTimeout(660_000);
     await page.goto('/dashboard');
     await expect(page.locator('h1')).toHaveText('Dashboard');
-    const importForm = page.locator('.command-form', { has: page.getByRole('heading', { name: 'Import (non-interactive)' }) });
+    await page.locator('.dashboard-more > summary').click(); // #391: Import sits under More actions
+    const importForm = page.locator('.command-form', { has: page.getByRole('heading', { name: 'Import an existing file' }) });
 
     await importForm.getByLabel('Mode').selectOption('plan');
     await importForm.getByLabel('Plan file path').fill(PLAN_FILE);
     await importForm.getByLabel(/Have the LLM write the ported logic/).check();
 
-    await importForm.getByRole('button', { name: 'Run import' }).click();
+    await importForm.getByRole('button', { name: /^Import (file|plan)$/ }).click();
     // 8 real per-file ollama calls (qwen2.5-coder:7b) -- genuinely slow;
     // the CLI run of the same plan took ~2 minutes end to end.
     await expect(importForm.locator('.command-result')).toBeVisible({ timeout: 600_000 });

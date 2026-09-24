@@ -12,13 +12,13 @@ function CreateFirstFeature() {
           stage actions row; its form opens in the stage.
         </li>
         <li>
-          Leave &quot;What to scaffold&quot; on <em>A new feature (all 7 layer folders)</em>.
+          Leave &quot;What to scaffold&quot; on <em>A new feature</em>.
         </li>
         <li>
           Type a name, e.g. <code>billing</code>, into <strong>Name</strong>.
         </li>
         <li>
-          Click <strong>Run create</strong>.
+          Click <strong>Create feature</strong>.
         </li>
         <li>
           A result panel appears below the form: the deterministic output (something like{' '}
@@ -61,7 +61,7 @@ function ScaffoldVerticalSlice() {
           UI convenience.
         </li>
         <li>
-          Click <strong>Run create</strong> and read the result panel the same way as step 1 — one
+          Click <strong>Create slice</strong> and read the result panel the same way as step 1 — one
           line per generated file, then the tool/llm attribution split (llm again reads{' '}
           <code>0 calls</code>; scaffolding is always deterministic).
         </li>

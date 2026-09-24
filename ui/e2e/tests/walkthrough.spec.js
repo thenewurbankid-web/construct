@@ -93,7 +93,7 @@ test.describe.serial('Construct UI walkthrough (issue #37)', () => {
 
     const createForm = page.locator('.command-form', { has: page.getByRole('heading', { name: 'Create' }) });
     await createForm.getByPlaceholder('e.g. CpoAccess').fill('billing');
-    await createForm.getByRole('button', { name: 'Run create' }).click();
+    await createForm.getByRole('button', { name: /^Create (feature|slice|file)$/ }).click();
 
     const toolBadge = createForm.locator('.attribution-label.tool').first();
     const llmBadge = createForm.locator('.attribution-row .attribution-label').nth(1);
@@ -253,7 +253,7 @@ test.describe.serial('Construct UI walkthrough (issue #37)', () => {
     await createForm.getByPlaceholder('e.g. CpoAccess').fill('Home');
     await createForm.getByPlaceholder('e.g. cpo-v2').fill('billing');
     await createForm.locator('select').nth(1).selectOption('page');
-    await createForm.getByRole('button', { name: 'Run create' }).click();
+    await createForm.getByRole('button', { name: /^Create (feature|slice|file)$/ }).click();
     await expect(createForm.locator('.attribution-label.tool').first()).toBeVisible({ timeout: 10_000 });
 
     await page.getByRole('navigation', { name: 'Screens' }).getByRole('link', { name: 'Pages' }).click();

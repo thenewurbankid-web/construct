@@ -22,7 +22,7 @@ test('/ lands on Features, the stage actions are collapsed, and each opens its o
   await expect(page.locator('.command-form')).toHaveCount(0);
 
   const panel = page.getByTestId('stage-action-panel');
-  for (const [id, heading] of [['create', 'Create'], ['refactor', 'Refactor'], ['research', 'Research'], ['import', 'Import (non-interactive)']]) {
+  for (const [id, heading] of [['create', 'Create'], ['refactor', 'Refactor'], ['research', 'Research'], ['import', 'Import an existing file']]) {
     await page.getByTestId(`stage-action-${id}`).click();
     await expect(page.getByTestId(`stage-action-${id}`)).toHaveAttribute('aria-expanded', 'true');
     await expect(panel.getByRole('heading', { name: heading })).toBeVisible();

@@ -84,7 +84,8 @@ test.describe.serial('Demo #138/#139 -- construct import (UI)', () => {
 
     await page.goto('/dashboard');
     await expect(page.locator('h1')).toHaveText('Dashboard');
-    const importForm = page.locator('.command-form', { has: page.getByRole('heading', { name: 'Import (non-interactive)' }) });
+    await page.locator('.dashboard-more > summary').click(); // #391: Refactor, Research and Import sit under More actions
+    const importForm = page.locator('.command-form', { has: page.getByRole('heading', { name: 'Import an existing file' }) });
 
     await importForm.getByLabel('Name').fill('DiscountWidget');
     await importForm.getByLabel('Feature').fill('pricing');
@@ -94,7 +95,7 @@ test.describe.serial('Demo #138/#139 -- construct import (UI)', () => {
     await importForm.getByLabel('From (path to the old source file)').fill(OLD_FILE);
     await expect(importForm.getByLabel(/Have the LLM write/)).not.toBeChecked();
 
-    await importForm.getByRole('button', { name: 'Run import' }).click();
+    await importForm.getByRole('button', { name: /^Import (file|plan)$/ }).click();
     await expect(importForm.locator('.command-output')).toContainText('DiscountWidget', { timeout: 10_000 });
     await expect(importForm.locator('.attribution-label.tool')).toBeVisible();
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'import-1-ui-scaffold-result.png'), fullPage: true });
@@ -111,7 +112,8 @@ test.describe.serial('Demo #138/#139 -- construct import (UI)', () => {
   // a successful LLM fill -- captured as-is, never fabricated.
   test('#139 UI: Import form with LLM checkbox -- real attempt, real result', async ({ page }) => {
     await page.goto('/dashboard');
-    const importForm = page.locator('.command-form', { has: page.getByRole('heading', { name: 'Import (non-interactive)' }) });
+    await page.locator('.dashboard-more > summary').click(); // #391
+    const importForm = page.locator('.command-form', { has: page.getByRole('heading', { name: 'Import an existing file' }) });
 
     await importForm.getByLabel('Name').fill('DiscountBadge');
     await importForm.getByLabel('Feature').fill('pricing');
@@ -119,7 +121,7 @@ test.describe.serial('Demo #138/#139 -- construct import (UI)', () => {
     await importForm.getByLabel('From (path to the old source file)').fill(OLD_FILE);
     await importForm.getByLabel(/Have the LLM write/).check();
 
-    await importForm.getByRole('button', { name: 'Run import' }).click();
+    await importForm.getByRole('button', { name: /^Import (file|plan)$/ }).click();
     // Either a real error (claude CLI not installed in this sandbox) or,
     // on an environment where it is installed, a real success -- asserted
     // loosely on purpose so this test documents whatever actually happens

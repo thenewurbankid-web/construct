@@ -70,7 +70,7 @@ function DashboardGuide() {
           project).
         </li>
         <li>
-          <strong>Import (non-interactive)</strong> — for a single already-known old file or an
+          <strong>Import an existing file</strong> — for a single already-known old file or an
           already-approved plan file. For the guided, chat-style whole-route flow, use the Import
           Wizard page instead.
         </li>

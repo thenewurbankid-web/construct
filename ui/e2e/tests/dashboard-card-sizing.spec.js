@@ -27,6 +27,8 @@ test.describe('Dashboard card sizing (#163)', () => {
     const createCard = page.locator('.command-form', { hasText: 'Create' });
     const refactorCard = page.locator('.command-form', { hasText: 'Refactor' });
     await expect(createCard).toBeVisible();
+    // #391: Refactor, Research and Import start collapsed under "More actions"; open it to compare the cards.
+    await page.locator('.dashboard-more > summary').click();
     await expect(refactorCard).toBeVisible();
 
     const createBox = await createCard.boundingBox();
@@ -40,6 +42,30 @@ test.describe('Dashboard card sizing (#163)', () => {
     // visible difference instead of near-equal heights.
     expect(refactorBox.height - createBox.height).toBeGreaterThan(40);
 
-    await page.locator('.dashboard-grid').screenshot({ path: path.join(SCREENSHOTS_DIR, 'dashboard-card-sizing.png') });
+    await page.locator('.page--screen').screenshot({ path: path.join(SCREENSHOTS_DIR, 'dashboard-card-sizing.png') });
+  });
+
+  test('2. #391: Create is open, Refactor / Research / Import wait under a collapsed "More actions", with plain copy', async ({ page }) => {
+    await page.goto('/dashboard');
+    await expect(page.locator('h1')).toHaveText('Dashboard');
+    await expect(page.getByRole('heading', { name: 'Create', level: 3 })).toBeVisible();
+    const more = page.locator('.dashboard-more');
+    await expect(more.locator('summary')).toHaveText('More actions');
+    await expect(more).not.toHaveAttribute('open', '');
+    for (const name of ['Refactor', 'Research', 'Import an existing file']) {
+      await expect(page.getByRole('heading', { name, level: 3 })).toBeHidden();
+    }
+    // Plain words: no CLI-named lede, no "(all 7 layer folders)", the layer-order sentence is a tooltip.
+    await expect(page.getByText("CLI's create/refactor")).toHaveCount(0);
+    await expect(page.getByRole('option', { name: 'A new feature', exact: true })).toHaveCount(1);
+    await expect(page.getByText('regardless of the order checked')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Create feature' })).toBeVisible();
+
+    await more.locator('summary').click();
+    await expect(page.getByRole('heading', { name: 'Refactor', level: 3 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Research', level: 3 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Import an existing file', level: 3 })).toBeVisible();
+    // The Import card's redirect is a link to the wizard, not prose.
+    await expect(more.getByRole('link', { name: 'Import Wizard' })).toHaveAttribute('href', '/wizard');
   });
 });

@@ -69,7 +69,7 @@ export function RefactorForm(props: RefactorFormProps) {
         <Field label="Layer"><LayerSelect value={layer} onChange={setLayer} options={allLayers} /></Field>
       )}
       <Button type="submit" disabled={busy}>
-        {busy ? 'Running…' : 'Run refactor'}
+        {busy ? 'Running…' : visibility.move ? 'Move unit' : 'Rename unit'}
       </Button>
       <CommandResult result={result} />
     </GlassPanel>

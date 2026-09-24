@@ -35,7 +35,7 @@ export function CreateForm({ kind, setKind, name, setName, feature, setFeature, 
       <h3>Create</h3>
       <Field label="What to scaffold">
         <Select value={kind} onChange={(e) => setKind(e.target.value)}>
-          <option value="feature">A new feature (all 7 layer folders)</option>
+          <option value="feature">A new feature</option>
           <option value="layer">A vertical slice (several layers of one logical unit)</option>
           <option value="single">A single layer file</option>
         </Select>
@@ -58,7 +58,7 @@ export function CreateForm({ kind, setKind, name, setName, feature, setFeature, 
         </Field>
       )}
       {visibility.layers && (
-        <Field label="Layers (built in dependency order regardless of the order checked)">
+        <Field label={<span title="Layers are built in dependency order, whatever order you check them in.">Layers</span>}>
           <LayerCheckboxes selected={layers} onToggle={toggleLayer} options={allLayers} />
         </Field>
       )}
@@ -69,7 +69,7 @@ export function CreateForm({ kind, setKind, name, setName, feature, setFeature, 
         </label>
       )}
       <Button type="submit" disabled={busy}>
-        {busy ? 'Running…' : 'Run create'}
+        {busy ? 'Running…' : kind === 'feature' ? 'Create feature' : kind === 'layer' ? 'Create slice' : 'Create file'}
       </Button>
       <CommandResult result={result} />
     </GlassPanel>

@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import type { FormEvent } from 'react';
 import { CommandResult } from '@/components/CommandResult';
 import { Button, Field, GlassPanel, Input, Select } from '@/components/ui';
@@ -64,10 +65,9 @@ export function ImportForm(props: ImportFormProps) {
   const { mode, setMode, planPath, setPlanPath, visibility, result, busy, run } = props;
   return (
     <GlassPanel as="form" className="command-form" onSubmit={run}>
-      <h3>Import (non-interactive)</h3>
+      <h3>Import an existing file</h3>
       <p className="hint">
-        For a single old file or an already-approved plan file. For the guided, chat-style
-        whole-route wizard, use the <strong>Import Wizard</strong> instead (from the command palette).
+        To bring in a whole route, use the <Link href="/wizard">Import Wizard</Link>.
       </p>
       <Field label="Mode">
         <Select value={mode} onChange={(e) => setMode(e.target.value)}>
@@ -84,7 +84,7 @@ export function ImportForm(props: ImportFormProps) {
       )}
       <LlmFields {...props} />
       <Button type="submit" disabled={busy}>
-        {busy ? 'Running…' : 'Run import'}
+        {busy ? 'Running…' : visibility.unit ? 'Import file' : 'Import plan'}
       </Button>
       <CommandResult result={result} />
     </GlassPanel>

@@ -63,7 +63,7 @@ test.describe.serial('#109 Settings LLM providers are consumed, opt-in per run',
     await page.goto('/dashboard');
     const form = await fillSingleLayerCreate(page, 'PlainStub');
     await expect(form.getByLabel(/Have the LLM write the implementation/)).not.toBeChecked();
-    await form.getByRole('button', { name: 'Run create' }).click();
+    await form.getByRole('button', { name: /^Create (feature|slice|file)$/ }).click();
     await expect(form.locator('.command-output')).toContainText('Created features/pricing/domain/PlainStub.tsx', { timeout: 15_000 });
     await expect(form.locator('.command-output')).not.toContainText('LLM-filled');
     await expect(form.locator('.command-result')).toContainText('0 calls');
@@ -76,7 +76,7 @@ test.describe.serial('#109 Settings LLM providers are consumed, opt-in per run',
     await page.goto('/dashboard');
     const form = await fillSingleLayerCreate(page, 'OllamaFilled');
     await form.getByLabel(/Have the LLM write the implementation/).check();
-    await form.getByRole('button', { name: 'Run create' }).click();
+    await form.getByRole('button', { name: /^Create (feature|slice|file)$/ }).click();
     await expect(form.locator('.command-result')).toContainText('via "ollama"', { timeout: 200_000 });
     await expect(form.locator('.command-output')).toContainText('OllamaFilled.tsx');
     const content = fs.readFileSync(path.join(projectDir, 'features/pricing/domain/OllamaFilled.tsx'), 'utf8');
@@ -91,7 +91,7 @@ test.describe.serial('#109 Settings LLM providers are consumed, opt-in per run',
     await page.goto('/dashboard');
     const form = await fillSingleLayerCreate(page, 'ClaudeFilled');
     await form.getByLabel(/Have the LLM write the implementation/).check();
-    await form.getByRole('button', { name: 'Run create' }).click();
+    await form.getByRole('button', { name: /^Create (feature|slice|file)$/ }).click();
     await expect(form.locator('.command-result')).toContainText('via "claude"', { timeout: 120_000 });
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'settings-llm-create-on-claude.png'), fullPage: true });
   });
@@ -100,14 +100,15 @@ test.describe.serial('#109 Settings LLM providers are consumed, opt-in per run',
     await setProviders(request, { importFill: 'ollama' });
     const oldFile = path.join(routeDir, 'discount.ts');
     await page.goto('/dashboard');
-    const form = page.locator('.command-form', { has: page.getByRole('heading', { name: 'Import (non-interactive)' }) });
+    await page.locator('.dashboard-more > summary').click(); // #391: Import sits under More actions
+    const form = page.locator('.command-form', { has: page.getByRole('heading', { name: 'Import an existing file' }) });
     await form.getByLabel('Name', { exact: true }).fill('DiscountLabel');
     await form.getByLabel('Feature', { exact: true }).fill('pricing');
     await form.locator('.layer-checkboxes .checkbox', { hasText: 'domain' }).locator('input[type="checkbox"]').check();
     await form.getByLabel('From (path to the old source file)').fill(oldFile);
     await expect(form.getByRole('textbox', { name: 'Provider' })).toHaveCount(0);
     await form.getByLabel(/Have the LLM write the ported logic/).check();
-    await form.getByRole('button', { name: 'Run import' }).click();
+    await form.getByRole('button', { name: /^Import (file|plan)$/ }).click();
     await expect(form.locator('.command-result')).toContainText('via "ollama"', { timeout: 200_000 });
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'settings-llm-import-ollama.png'), fullPage: true });
   });

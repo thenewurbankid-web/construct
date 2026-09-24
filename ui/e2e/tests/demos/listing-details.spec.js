@@ -58,7 +58,7 @@ test.describe.serial('Demo #133 — Products listing & details (UI)', () => {
 
     // 1. A new feature.
     await createForm.getByPlaceholder('e.g. CpoAccess').fill('products');
-    await createForm.getByRole('button', { name: 'Run create' }).click();
+    await createForm.getByRole('button', { name: /^Create (feature|slice|file)$/ }).click();
     await expect(createForm.locator('.attribution-label.tool').first()).toBeVisible({ timeout: 10_000 });
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'listing-details-1-ui-create-feature.png'), fullPage: true });
 
@@ -69,13 +69,13 @@ test.describe.serial('Demo #133 — Products listing & details (UI)', () => {
     for (const layer of ['domain', 'service', 'hook', 'component', 'page', 'controller']) {
       await createForm.locator('.layer-checkboxes .checkbox', { hasText: layer }).locator('input[type="checkbox"]').check();
     }
-    await createForm.getByRole('button', { name: 'Run create' }).click();
+    await createForm.getByRole('button', { name: /^Create (feature|slice|file)$/ }).click();
     await expect(createForm.locator('.command-output')).toContainText('ProductsListingPage', { timeout: 10_000 });
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'listing-details-2-ui-create-listing-slice.png'), fullPage: true });
 
     // 3. The details page's vertical slice — same layers, same one form.
     await createForm.getByPlaceholder('e.g. CpoAccess').fill('ProductDetails');
-    await createForm.getByRole('button', { name: 'Run create' }).click();
+    await createForm.getByRole('button', { name: /^Create (feature|slice|file)$/ }).click();
     await expect(createForm.locator('.command-output')).toContainText('ProductDetailsPage', { timeout: 10_000 });
 
     // Both pages are immediately browsable in Pages Editor — same project on disk.
@@ -116,6 +116,7 @@ test.describe.serial('Demo #133 — Products listing & details (UI)', () => {
     runCli(['create', 'service', 'products', '--feature', 'products', '--openapi', OPENAPI_FIXTURE, '--dir', projectDir]);
 
     await page.goto('/dashboard');
+    await page.locator('.dashboard-more > summary').click(); // #391: Research sits under More actions
     const researchForm = page.locator('.command-form', { has: page.getByRole('heading', { name: 'Research' }) });
     await researchForm.locator('select').selectOption('summarize');
     await researchForm.getByLabel(/Feature/).fill('products');
@@ -131,7 +132,7 @@ test.describe.serial('Demo #133 — Products listing & details (UI)', () => {
     await createForm.getByPlaceholder('e.g. cpo-v2').fill('products');
     await createForm.locator('select').nth(1).selectOption('service');
     await expect(createForm.getByText(/openapi/i)).toHaveCount(0);
-    await createForm.getByRole('button', { name: 'Run create' }).click();
+    await createForm.getByRole('button', { name: /^Create (feature|slice|file)$/ }).click();
     await expect(createForm.locator('.command-output')).toContainText('Reviews', { timeout: 10_000 });
   });
 });

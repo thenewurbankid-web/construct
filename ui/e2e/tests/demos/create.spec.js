@@ -108,7 +108,7 @@ test.describe.serial('Demo #127 — construct create (connected CLI <-> UI walkt
 
     // Create a new feature from the form.
     await createForm.getByPlaceholder('e.g. CpoAccess').fill('storefront');
-    await createForm.getByRole('button', { name: 'Run create' }).click();
+    await createForm.getByRole('button', { name: /^Create (feature|slice|file)$/ }).click();
     await expect(createForm.locator('.attribution-label.tool').first()).toBeVisible({ timeout: 10_000 });
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '4-ui-create-feature-result.png'), fullPage: true });
 
@@ -119,7 +119,7 @@ test.describe.serial('Demo #127 — construct create (connected CLI <-> UI walkt
     for (const layer of ['domain', 'service', 'page']) {
       await createForm.locator('.layer-checkboxes .checkbox', { hasText: layer }).locator('input[type="checkbox"]').check();
     }
-    await createForm.getByRole('button', { name: 'Run create' }).click();
+    await createForm.getByRole('button', { name: /^Create (feature|slice|file)$/ }).click();
     await expect(createForm.locator('.command-output')).toContainText('CheckoutPage', { timeout: 10_000 });
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '5-ui-create-layer-result.png'), fullPage: true });
 
@@ -128,7 +128,7 @@ test.describe.serial('Demo #127 — construct create (connected CLI <-> UI walkt
     await createForm.getByPlaceholder('e.g. CpoAccess').fill('PromoBanner');
     await createForm.getByPlaceholder('e.g. cpo-v2').fill('storefront');
     await createForm.locator('select').nth(1).selectOption('component');
-    await createForm.getByRole('button', { name: 'Run create' }).click();
+    await createForm.getByRole('button', { name: /^Create (feature|slice|file)$/ }).click();
     await expect(createForm.locator('.command-output')).toContainText('PromoBanner', { timeout: 10_000 });
 
     // Back in the terminal: everything the form just did is there for real

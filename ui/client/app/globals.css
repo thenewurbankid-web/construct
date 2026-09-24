@@ -73,6 +73,18 @@ body {
   align-items: start;
 }
 
+/* #391: "More actions" and "Show resolved paths" are plain native disclosures. */
+.dashboard-more {
+  margin-top: 20px;
+}
+
+.dashboard-more > summary,
+.settings-current > summary {
+  cursor: pointer;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
 @media (max-width: 900px) {
   .dashboard-grid {
     grid-template-columns: 1fr;
