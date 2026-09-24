@@ -1,0 +1,35 @@
+/* #445 -- New project (features/new-project): the form on the Open-a-project screen. Tokens only; same look as the
+   clone form it sits beside. */
+.new-project {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3, 12px);
+  border-top: 1px solid var(--border-strong);
+  padding-top: var(--sp-3, 12px);
+  margin-top: var(--sp-3, 12px);
+}
+.new-project__heading {
+  font-size: 1.05rem;
+  margin: 0;
+}
+.new-project__form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.new-project__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+.new-project__dest {
+  margin: 0;
+}
+.new-project__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.new-project code {
+  overflow-wrap: anywhere;
+}

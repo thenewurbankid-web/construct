@@ -44,7 +44,7 @@ export default defineConfig({
   // their own configs, which the full-suite recipe in ui/README.md lists:
   //   npx playwright test -c playwright.processes.config.js
   //   npx playwright test -c playwright.processes-approval.config.js
-  testIgnore: [/processes-drawer\.spec\.js/, /processes-approval\.spec\.js/, /workspace\.spec\.js/, /project-gate\.spec\.js/, /clone\.spec\.js/, /directory-picker\.spec\.js/, /auth\.spec\.js/, /login-hero\.spec\.js/, /tests[\\/]media[\\/]/],
+  testIgnore: [/processes-drawer\.spec\.js/, /processes-approval\.spec\.js/, /workspace\.spec\.js/, /project-gate\.spec\.js/, /new-project\.spec\.js/, /clone\.spec\.js/, /directory-picker\.spec\.js/, /auth\.spec\.js/, /login-hero\.spec\.js/, /tests[\\/]media[\\/]/],
   outputDir: './test-results',
   fullyParallel: false, // the backend serializes create/refactor/research/import command execution (commandRunner.mjs's queue) — unrelated to the wizard, whose sessions (#80) can now run concurrently and are exercised that way within a single test below
   workers: 1,

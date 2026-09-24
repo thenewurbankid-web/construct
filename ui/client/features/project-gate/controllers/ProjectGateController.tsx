@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { CloneController } from '@/features/clone';
+import { NewProjectController } from '@/features/new-project';
 import { DirectoryBrowserController, useWorkspaceFolder } from '@/features/directory-browser';
 import { useProjectGate } from '../hooks/useProjectGate';
 import { ProjectGatePage } from '../pages/ProjectGatePage';
@@ -36,6 +37,7 @@ export function ProjectGateController({ children }: { children: ReactNode }) {
       picker={<DirectoryBrowserController onSelect={handleOpen} />}
       samplePath={sample.state === 'found' ? sample.path : null}
       sampleLoading={sample.state === 'loading'}
+      newProject={<NewProjectController onCreated={handleOpen} workspaceRoot={status?.workspaceRoot ?? null} />}
       clone={<CloneController onCloned={handleOpen} workspaceRoot={status?.workspaceRoot ?? null} />}
     >
       {children}

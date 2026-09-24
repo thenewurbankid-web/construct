@@ -185,7 +185,8 @@ git clone https://github.com/you/shop /srv/construct/workspace/shop   # then pic
 choice and the server **refuses to start** with it on a non-loopback host. The ordinary e2e configs set the workspace to
 the OS temp dir (their fixtures are `mkdtemp` directories) and preload one initialised project;
 `playwright.workspace.config.js` runs a narrow workspace with nothing preloaded and attacks the boundary
-(`tests/workspace.spec.js`); `playwright.directory-picker.config.js` runs the picker spec against the same harness.
+(`tests/workspace.spec.js`), and also runs `tests/project-gate.spec.js` and `tests/new-project.spec.js` (#445);
+`playwright.directory-picker.config.js` runs the picker spec against the same harness.
 
 Known limits: files *inside* a project are guarded by each route's own project-relative checks (a symlink inside a
 project that points out of the workspace is followed by the CLI commands that generate into it); a project whose git
