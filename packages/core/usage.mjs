@@ -45,6 +45,10 @@ Four capabilities, one CLI:
   construct test run <feature> [--name <file> --area generated|yours] [--base-url <url>] [--format json|text] [--dir <path>]
     (runs the feature's Playwright tests against the project's own running app (default http://localhost:3000, this machine
     only) and says per failure whether the test harness or the app is at fault; read-only, no LLM; exit 1 on any failure)
+  construct test proof <feature> [--name <file>] [--format json|text] [--dir <path>]
+    (runs the render proof of a shaped screen, written by 'construct create proof': no browser, no server, needs esbuild in the
+    project (it comes with tsx and vite); says per failure whether the app or the harness is at fault and whether the chain is
+    complete; read-only, no LLM; exit 1 on any failure)
   construct template list|show <name>|instantiate <name> [--param key=value]... [--params-json <json>] --templates <dir>
   construct template ...   (named, reusable, parameterised plans: instantiate prints a concrete plan.v1; curated templates load from --templates <dir> or CONSTRUCT_TEMPLATES_DIR, none are bundled)
   construct import <name> --feature <feature> --layers <l1,l2,...> --from <path> [--llm <provider> | --format json] [--dir <path>]
@@ -119,6 +123,10 @@ Commands:
   construct generate tests <feature> [--dry-run] [--prune] [--dir <path>]
     (one LOCKED Playwright spec per workflow scenario into features/<feature>/tests/generated/;
     needs frozen: + nonLayer: globs for tests in architecture.yml; deterministic, no LLM)
+  construct create proof <Name> --feature <feature> [--shape list] [--entity <Entity>] [--fields id:string,...] [--kind render|playwright] [--route </path>] [--dir <path>]
+    (the locked proof of a shaped screen in features/<feature>/tests/generated/: the four states with sample props, the controller's
+    loading state, the service with a stubbed fetch; --kind playwright writes the route flow only when the project already has a
+    Playwright config; declares the frozen: and nonLayer: test regions in architecture.yml once; deterministic, no LLM)
   construct generate tests --unit <feature> [--dry-run] [--prune] [--dir <path>]
     (one LOCKED every-path unit test per workflow machine, <machine>--every-path.test.ts in the
     same directory: @xstate/graph walks every reachable state and user-event transition under

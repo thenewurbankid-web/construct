@@ -11,7 +11,7 @@
 //
 //   placeCard(card, options)             card -> { blocks, open, notes, decisions, errors }; deterministic, pure.
 //   resolvePlacementOpen(card, answers)  closed-question answers -> a NEW placement (typed errors, never a throw).
-//   planFromBlocks(blocks, options)      blocks -> { ok, plan, decisions, files, errors }; the plan is checked by validatePlan.
+//   planFromBlocks(blocks, options)      blocks -> { ok, plan, decisions, files, proof, notes, errors }; the plan is checked by validatePlan.
 //   checkPlacementImports(blocks, layers) the import-rule violations of a layer assignment (a page never imports a service).
 //   blockSummary(result) / blockLines    the small fixed-size summary a person, an LLM and a decision model all receive.
 //
@@ -27,6 +27,7 @@ import { LAYER_ORDER, LAYER_PREREQUISITES } from './generators.mjs';
 import { validatePlan, PLAN_SHAPES } from './plan.mjs';
 import { flowBlock } from './block-flows.mjs';
 import { SHAPES, singularOf, fieldsFromProperties, endpointOf } from './shapes.mjs';
+import { detectPlaywright } from './proof.mjs';
 
 /** The schema version string of a placement result. */
 export const PLACEMENT_VERSION = 'placement.v1';
@@ -698,11 +699,18 @@ const FEATURE_RE = /^[A-Za-z][A-Za-z0-9_-]*$/;
  * questions (`decisions`, from `placeCard`) is returned beside the plan, as `compileChain` does, because `validatePlan`
  * rejects unknown plan fields. `files` lists the files each block will touch.
  *
+ * A shaped screen (#619) ends with its proof (#623): a `create.proof` step after the units, then a read-only `test.proof` step
+ * (and, when the project already has a Playwright config, the browser flow and its `test.run`). `proof` says so:
+ * `{ required, complete: false, state: 'pending', steps, verifiedBy, playwright: { configured, config, skipped } }`; the chain is
+ * complete only when `proofStatus` (proof.mjs) of the `verifiedBy` steps' results is green or skipped. `proof` is `null` for a
+ * plan with no shaped unit, and `notes` carries what was left out (no Playwright config: nothing is installed).
+ *
  * @param {PlacementBlock[]} blocks Blocks from `placeCard` (a block with an unsupported placement or layer is refused).
- * @param {{ feature: string, root: string, title?: string, decisions?: PlacementDecision[] }} options The feature the units go in, the
- *   project root (its architecture.yml decides the folders), an optional ticket title and the attribution to carry.
- * @returns {{ ok: true, plan: object, decisions: PlacementDecision[], files: Record<string, string[]>, errors: [] } | { ok: false, plan: null, decisions: [], files: {}, errors: PlacementError[] }}
- *   The plan, who decided what and the files per block, or every problem found.
+ * @param {{ feature: string, root: string, title?: string, decisions?: PlacementDecision[], proof?: boolean }} options The feature the units go in, the
+ *   project root (its architecture.yml decides the folders), an optional ticket title, the attribution to carry, and `proof: false` to leave
+ *   the proof steps out of a shaped plan (default: they are planned).
+ * @returns {{ ok: true, plan: object, decisions: PlacementDecision[], files: Record<string, string[]>, proof: object | null, notes: string[], errors: [] } | { ok: false, plan: null, decisions: [], files: {}, errors: PlacementError[] }}
+ *   The plan, who decided what, the files per block and the proof of the chain, or every problem found.
  *
  * @example
  * planFromBlocks(placeCard(card).blocks, { feature: 'billing', root }).plan.steps.map((s) => s.title);
@@ -771,6 +779,32 @@ export function planFromBlocks(blocks, options = {}) {
     const id = add('create.unit', `Create ${u.layer} ${u.name}`, { layer: u.layer, name: u.name, feature: opts.feature, ...shapeArgs }, [...deps].sort(idOrder), u.why);
     stepOf.set(`${u.layer}:${u.name}`, id);
   }
+  // #623: a shaped screen is not finished until something shows it behaves. Each shaped unit name gets a proof step (after every
+  // unit of the shape) and a read-only verification step; a project that already has Playwright also gets the route flow and its
+  // run. `options.proof: false` opts out (a plan then ends with the units, as before #623). Nothing is installed: a project
+  // without Playwright is told so, in `notes` and `proof.playwright.skipped`.
+  const proofSteps = [];
+  const notes = [];
+  const playwrightConfig = detectPlaywright(opts.root ?? '');
+  if (opts.proof !== false) {
+    const shaped = new Map();
+    for (const u of ordered) if (u.shape) shaped.set(u.name, { shape: u.shape, unitSteps: [...(shaped.get(u.name)?.unitSteps ?? []), stepOf.get(`${u.layer}:${u.name}`)] });
+    for (const [name, { shape, unitSteps }] of shaped) {
+      const base = { name, feature: opts.feature, shape: shape.name, entity: shape.entity, fields: shape.fields };
+      const after = [...new Set(unitSteps)].sort(idOrder);
+      const render = add('create.proof', `Prove the ${name} screen`, { ...base, kind: 'render' }, after, 'A screen is not done until something shows it behaves: its four states, its controller and its service.');
+      const verify = add('test.proof', `Run the proof of ${name}`, { feature: opts.feature, name: `${name}Screen.proof.test.ts` }, [render], 'Read-only: pass, or a classified failure (the app behaved differently, or the harness lost a file). The chain is complete when this is green or explicitly skipped.');
+      const entry = { name, kind: 'render', proofStep: render, verifiedBy: verify };
+      proofSteps.push(entry);
+      if (playwrightConfig) {
+        const slug = name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+        const flow = add('create.proof', `Prove the ${name} route in a browser`, { ...base, kind: 'playwright' }, after, 'The route of the screen with its API mocked in the browser.');
+        const run = add('test.run', `Run the browser flow of ${name}`, { feature: opts.feature, name: `${slug}--screen.spec.ts`, area: 'generated' }, [flow, verify], 'Needs the app running (see --base-url); read-only.');
+        proofSteps.push({ name, kind: 'playwright', proofStep: flow, verifiedBy: run });
+      }
+    }
+    if (proofSteps.length && !playwrightConfig) notes.push('Playwright is not configured in this project (no playwright.config.* at the root), so the plan has no browser flow and nothing is installed. The render proof still proves the screen; add Playwright and plan again for the browser flow.');
+  }
   if (errors.length) return fail();
 
   const plan = { version: 1, ticket: { source: 'text', title: isNonEmptyString(opts.title) ? opts.title : `Place blocks for ${opts.feature}` }, steps };
@@ -784,7 +818,10 @@ export function planFromBlocks(blocks, options = {}) {
     const paths = block.layers.flatMap((l) => steps.find((s) => s.id === stepOf.get(`${l.layer}:${l.name}`))?.touches?.files ?? []).map((f) => f.path);
     files[block.id] = [...new Set(paths)];
   }
-  return { ok: true, plan, decisions: decisions.map((d) => ({ ...d })), files, errors: [] };
+  const proof = proofSteps.length
+    ? { required: true, complete: false, state: 'pending', steps: proofSteps, verifiedBy: proofSteps.map((p) => p.verifiedBy), playwright: { configured: playwrightConfig !== null, config: playwrightConfig, skipped: playwrightConfig ? null : notes[0] } }
+    : null;
+  return { ok: true, plan, decisions: decisions.map((d) => ({ ...d })), files, proof, notes, errors: [] };
 }
 
 // ---------------------------------------------------------------------------------------------------------------- summary

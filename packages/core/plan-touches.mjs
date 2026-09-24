@@ -7,6 +7,7 @@ import path from 'node:path';
 import { loadConfig } from './config.mjs';
 import { LAYER_ORDER, layerTargetFile, pascalCase } from './generators.mjs';
 import { shapeTouches } from './shapes.mjs';
+import { proofTouches } from './proof.mjs';
 
 const isName = (v) => typeof v === 'string' && v.trim().length > 0;
 const asList = (v) => (Array.isArray(v) ? v : typeof v === 'string' ? v.split(',') : []).map((x) => String(x).trim()).filter(Boolean);
@@ -14,7 +15,7 @@ const rel = (root, abs) => path.relative(root, abs).split(path.sep).join('/');
 const shapeArgs = (args) => ({ shape: args.shape, name: args.name, feature: args.feature, entity: args.entity, fields: args.fields });
 
 /** Flows whose written files are derived here. Every other writing flow answers `null` until its output is pinned by a test. */
-export const DERIVED_FLOWS = Object.freeze(['create.feature', 'create.unit', 'create.layer']);
+export const DERIVED_FLOWS = Object.freeze(['create.feature', 'create.unit', 'create.layer', 'create.proof']);
 
 /**
  * The project-relative files a writing plan step will create, derived from its own arguments without touching the disk.
@@ -22,7 +23,7 @@ export const DERIVED_FLOWS = Object.freeze(['create.feature', 'create.unit', 'cr
  * @param {string} root Project root (its architecture.yml decides the features folder).
  * @param {string} flowId A plan flow id (`create.unit`, ...).
  * @param {Record<string, unknown>} [args] The step's arguments.
- * @returns {{path: string, change: 'create', layer?: string}[] | null} Project-relative POSIX paths the step will create,
+ * @returns {{path: string, change: 'create'|'modify', layer?: string}[] | null} Project-relative POSIX paths the step will create,
  *   or `null` when the flow is not derived or the arguments do not name a valid unit yet (the validator says why).
  */
 export function expectedFiles(root, flowId, args = {}) {
@@ -49,6 +50,11 @@ export function expectedFiles(root, flowId, args = {}) {
       }
       // Generated in canonical order, whatever order the step lists them in (generateVertical).
       return LAYER_ORDER.filter((l) => layers.includes(l)).map((l) => ({ path: rel(root, layerTargetFile(root, l, args.name, args.feature, config)), change: 'create', layer: l }));
+    }
+    // #623: the proof of a shaped screen writes its test file (when its kind applies to this project) and declares the test regions.
+    if (flowId === 'create.proof') {
+      if (!isName(args.name) || !isName(args.feature)) return null;
+      return proofTouches(root, { name: args.name, feature: args.feature, kind: args.kind, shape: args.shape, entity: args.entity, fields: args.fields });
     }
     return null;
   } catch {

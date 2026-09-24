@@ -35,6 +35,8 @@ import { generateController } from '../../packages/engine/controllerBinder.mjs';
 import { generateFeatureTests } from '../../packages/engine/testGenerator.mjs';
 import { generateUnitTests } from '../../packages/engine/testUnitGenerator.mjs';
 import { runFeatureTests, renderRunText } from '../../packages/engine/testRunner.mjs';
+import { runProofs, renderProofRunText } from '../../packages/engine/proofRunner.mjs';
+import { generateProof } from './proof.mjs';
 import { startTimer, elapsedSeconds, formatDuration } from './timing.mjs';
 import { explainSource, renderExplained } from '../../packages/engine/workflowExplain.mjs';
 import { listWorkflowSourceFiles, readWorkflowSource } from '../../packages/engine/workflowSource.mjs';
@@ -232,6 +234,40 @@ function printTypedContractsNote(root) {
 }
 
 /**
+ * The request of `construct create proof <Name> --feature <f> [--shape list] [--entity <E>] [--fields a:string,...] [--kind render|playwright] [--route </path>]` (#623).
+ * A proof is deterministic like the shape it proves, so `--llm` is refused.
+ */
+function proofRequestOf(args) {
+  const name = args[1];
+  const feature = flagValue(args, '--feature');
+  if (!name || name.startsWith('--') || !feature) throw new ConstructError('Usage: construct create proof <Name> --feature <feature> [--shape list] [--entity <Entity>] [--fields id:string,...] [--kind render|playwright] [--route </path>] [--dir <path>]', { exitCode: EXIT_CODES.USAGE_ERROR });
+  if (args.includes('--llm')) throw new ConstructError('A proof is written from typed templates with no model, so it cannot be combined with --llm. Run it without --llm.', { exitCode: EXIT_CODES.USAGE_ERROR });
+  return { name, feature, shape: flagValue(args, '--shape'), entity: flagValue(args, '--entity'), fields: flagValue(args, '--fields'), kind: flagValue(args, '--kind'), route: flagValue(args, '--route') };
+}
+
+/** `construct create proof <Name> --feature <f> ...` (#623): write the locked proof of a shaped screen, or say why nothing was written. */
+function generateProofFiles(args) {
+  const root = getRoot(args);
+  const t = startTimer();
+  const request = proofRequestOf(args);
+  const result = generateProof(root, request);
+  const dt = formatDuration(elapsedSeconds(t));
+  for (const key of result.regions) console.log(`Updated architecture.yml (declared ${key}: for the generated tests)`);
+  for (const file of result.files) console.log(`Created ${path.relative(root, file)} (${dt})`);
+  if (result.skipped) console.log(`Skipped: ${result.skipped}`);
+  else if (result.kind === 'render') console.log(`Needs ${result.needs.join(', ')} in the project (esbuild comes with tsx and with vite). Run: construct test proof ${request.feature}`);
+  else console.log(`Run it against your running app: construct test run ${request.feature} --area generated`);
+}
+
+/** The result document of `create proof` for `--format json`: the files written (project-relative), the regions declared and why anything was skipped. */
+function proofDocument(args, attribution) {
+  const root = getRoot(args);
+  const request = proofRequestOf(args);
+  const result = generateProof(root, request);
+  return { verb: 'create', kind: 'proof', feature: request.feature, name: request.name, proofKind: result.kind, files: result.files.map((f) => path.relative(root, f)), regions: result.regions, skipped: result.skipped, needs: result.needs, attribution };
+}
+
+/**
  * `construct generate <layer> <name> --feature <f>` and its siblings: one layer file, `layer <name> --layers ...` for a whole
  * slice, or `tests <feature>`. `--shape list [--entity E] [--fields a:string,...]` (#619) fills the units with real typed code for
  * a named screen shape instead of the stub template; the other forms are described where they are handled below.
@@ -245,6 +281,7 @@ function printTypedContractsNote(root) {
 export async function generate(args) {
   if (args[0] === 'tests') return generateTests(args);
   if (args[0] === 'layer') return generateVerticalSlice(args);
+  if (args[0] === 'proof') return generateProofFiles(args);
   const layer = args[0], name = args[1], fi = args.indexOf('--feature');
   if (!layer || !name || fi < 0 || !args[fi + 1]) {
     throw new ConstructError('Usage: construct generate <layer> <name> --feature <feature> [--openapi <spec>] [--llm <provider>]', { exitCode: EXIT_CODES.USAGE_ERROR });
@@ -759,6 +796,7 @@ async function createDocument(args) {
     return { verb: 'create', kind: 'feature', feature: name, path: path.relative(root, createFeature(root, name)), attribution };
   }
   if (args[0] === 'tests') throw usageFail('create --format json does not cover `tests`: use `construct generate tests <feature>`.');
+  if (args[0] === 'proof') return proofDocument(args, attribution);
   const fi = args.indexOf('--feature');
   const feature = fi >= 0 ? args[fi + 1] : undefined;
   if (args[0] === 'layer') {
@@ -977,11 +1015,27 @@ export async function review(args) {
   return format === 'json';
 }
 
+/** `construct test proof <feature> [--name <file>] [--format json|text] [--dir <path>]` (#623). Runs the render proof of a shaped screen
+ * (no browser, no server) and says, for each failure, whether the app or the harness is at fault, then whether the chain is complete.
+ * Read-only, deterministic, no LLM. Exit code 1 when any test failed, 2 when the proof could not run. */
+async function testProof(rest, usage) {
+  const valueFlags = new Set(['--dir', '--name', '--format']);
+  const feature = rest.find((a, i) => !a.startsWith('--') && !valueFlags.has(rest[i - 1]));
+  if (!feature) throw new ConstructError(usage, { exitCode: EXIT_CODES.USAGE_ERROR });
+  const format = flagValue(rest, '--format') === 'json' ? 'json' : 'text';
+  const result = await runProofs(getRoot(rest), feature, { name: flagValue(rest, '--name') });
+  console.log(format === 'json' ? JSON.stringify(result, null, 2) : renderProofRunText(result));
+  if (!result.ok) setExitCode(EXIT_CODES.USAGE_ERROR);
+  else if (result.counts.failed > 0) setExitCode(EXIT_CODES.VIOLATIONS);
+  return format === 'json';
+}
+
 /** `construct test run <feature> [--name <file> --area generated|yours] [--base-url <url>] [--format json|text] [--dir <path>]`
  * (#305). Runs a feature's Playwright tests against the project's own running app and says, for each failure, whether
  * the harness or the app is at fault. Read-only, deterministic, no LLM. Exit code 1 when any test failed. */
 export async function testCommand(args) {
-  const usage = 'Usage: construct test run <feature> [--name <file> --area generated|yours] [--base-url <url>] [--format json|text] [--dir <path>]';
+  const usage = 'Usage: construct test run <feature> [--name <file> --area generated|yours] [--base-url <url>] [--format json|text] [--dir <path>]\n       construct test proof <feature> [--name <file>] [--format json|text] [--dir <path>]';
+  if (args[0] === 'proof') return testProof(args.slice(1), usage);
   if (args[0] !== 'run') throw new ConstructError(usage, { exitCode: EXIT_CODES.USAGE_ERROR });
   const rest = args.slice(1);
   const valueFlags = new Set(['--dir', '--name', '--area', '--base-url', '--format']);

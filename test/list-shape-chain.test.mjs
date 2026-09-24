@@ -5,6 +5,9 @@
 //   - `tsc --noEmit` passes on the project's features and its route entry,
 //   - the page and the controller render (react-dom/server) with the expected text for loading, empty, items and error,
 //   - the generated service behaves (abort signal forwarded, every failure an error result).
+// #623 adds the proof: the plan ends with `create proof` and `test proof` steps, run by the same commands; the proof (a node test
+// bundled with the project's esbuild) passes on the generated screen, FAILS with a message naming the state when the page is
+// broken (an app failure) or a file it binds to is gone (a convention failure), and is byte-identical on a second run.
 // Offline: the project has no node_modules of its own, so the test links the repo's (react, react-dom, typescript, @types) and
 // `@line/construct-core` (this checkout's packages/core, which the generated units import their factories from).
 import test from 'node:test';
@@ -16,6 +19,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { parseRequirement } from '../packages/core/requirement-card.mjs';
 import { placeCard, planFromBlocks } from '../packages/core/placement.mjs';
+import { proofStatus } from '../packages/core/proof.mjs';
 import { planToCommand, planTouches, validatePlan } from '../packages/core/plan.mjs';
 import { suggest } from '../packages/core/decision-provider.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
@@ -44,6 +48,8 @@ function initProject(framework) {
   link('react', firstExisting(path.join(REPO, 'node_modules', 'react'), path.join(REPO, 'ui', 'client', 'node_modules', 'react')));
   link('react-dom', firstExisting(path.join(REPO, 'node_modules', 'react-dom'), path.join(REPO, 'ui', 'client', 'node_modules', 'react-dom')));
   link('typescript', path.join(REPO, 'node_modules', 'typescript'));
+  link('esbuild', path.join(REPO, 'node_modules', 'esbuild')); // the proof is bundled with the project's own esbuild (it comes with tsx and vite)
+  link('@esbuild', path.join(REPO, 'node_modules', '@esbuild'));
   link('@types', path.join(REPO, 'node_modules', '@types'));
   link('@line/construct-core', path.join(REPO, 'packages', 'core'));
   return dir;
@@ -78,18 +84,23 @@ function execute(dir, plan) {
 const featureFiles = (dir) => Object.fromEntries(fs.readdirSync(path.join(dir, 'features'), { recursive: true }).filter((f) => fs.statSync(path.join(dir, 'features', f)).isFile()).sort().map((f) => [`features/${f}`, fs.readFileSync(path.join(dir, 'features', f), 'utf8')]));
 const validateJson = (dir) => JSON.parse(run(['validate', '--format', 'json'], dir).stdout);
 
-test('the sentence becomes a plan of 7 steps, runs, and gives a screen that validates, type-checks and renders', async (t) => {
+test('the sentence becomes a plan of 9 steps, runs, and gives a screen that validates, type-checks, renders and is PROVEN', async (t) => {
   const dir = initProject('react-spa');
   const { placed, planned } = await planFor(dir, 'products');
   assert.deepEqual(placed.decisions, [{ question: 'q-shape', option: 'list', by: 'decision-model', provider: 'rules' }], 'who decided is recorded');
-  assert.deepEqual(planned.plan.steps.map((s) => s.title), ['Create feature products', 'Create domain Products', 'Create service Products', 'Create hook Products', 'Create component Products', 'Create page Products', 'Create controller Products']);
+  assert.deepEqual(planned.plan.steps.map((s) => s.title), ['Create feature products', 'Create domain Products', 'Create service Products', 'Create hook Products', 'Create component Products', 'Create page Products', 'Create controller Products', 'Prove the Products screen', 'Run the proof of Products']);
+  assert.deepEqual(planned.proof, { required: true, complete: false, state: 'pending', steps: [{ name: 'Products', kind: 'render', proofStep: 's8', verifiedBy: 's9' }], verifiedBy: ['s9'], playwright: { configured: false, config: null, skipped: planned.notes[0] } }, 'the chain is not complete until s9 is green or skipped');
+  assert.match(planned.notes[0], /^Playwright is not configured in this project/, 'a project without Playwright is told so, and nothing is installed');
+  assert.equal(planned.plan.steps[8].flow, 'test.proof', 'the last step is the read-only verification');
+  assert.deepEqual(planned.plan.steps[8].dependsOn, ['s8']);
   assert.equal(planned.plan.steps[3].args.fields, 'id:string,name:string,price:number', 'the fields are the card entity\'s properties, typed by name, with an id');
 
   execute(dir, planned.plan);
   const written = featureFiles(dir); // includes features/core, which `construct init` scaffolds
   const declared = planTouches(planned.plan).files.map((f) => f.path).sort();
-  assert.deepEqual(Object.keys(written).filter((f) => f.startsWith('features/products/')).sort(), declared, 'the commands wrote exactly the files the plan declared (the gate refuses any other)');
-  assert.equal(declared.length, 11, 'index.ts from the feature step, and the ten files of the shape (types.ts among them)');
+  assert.deepEqual(Object.keys(written).filter((f) => f.startsWith('features/products/')).sort(), declared.filter((f) => f.startsWith('features/')), 'the commands wrote exactly the files the plan declared (the gate refuses any other)');
+  assert.ok(declared.includes('architecture.yml'), 'the proof step declares the test regions it adds to architecture.yml');
+  assert.equal(declared.length, 13, 'index.ts from the feature step, the ten files of the shape (types.ts among them), the proof and architecture.yml');
   await t.test('the files it wrote', () => {
     for (const f of ['domain/Products.domain.ts', 'services/Products.service.ts', 'hooks/useProducts.state.ts', 'components/ProductRow.component.tsx', 'pages/ProductsPage.page.tsx', 'expressions/ProductsByStatus.expression.tsx', 'controllers/ProductsController.controller.tsx']) {
       assert.ok(written[`features/products/${f}`], f);
@@ -108,9 +119,81 @@ test('the sentence becomes a plan of 7 steps, runs, and gives a screen that vali
   });
 
   await t.test('tsc --noEmit passes on the features and the route entry', () => {
-    fs.writeFileSync(path.join(dir, 'tsconfig.check.json'), JSON.stringify({ extends: './tsconfig.json', compilerOptions: { types: [] }, include: ['features', 'src/App.tsx'] }));
+    // features/ includes the proof (tests/generated). A real project has @types/react-dom; this offline fixture has not, so it declares the one module.
+    fs.writeFileSync(path.join(dir, 'offline-types.d.ts'), "declare module 'react-dom/server';\n");
+    fs.writeFileSync(path.join(dir, 'tsconfig.check.json'), JSON.stringify({ extends: './tsconfig.json', compilerOptions: { types: ['node'] }, include: ['features', 'src/App.tsx', 'offline-types.d.ts'] }));
     const tsc = spawnSync(process.execPath, [path.join(dir, 'node_modules', 'typescript', 'bin', 'tsc'), '--noEmit', '-p', 'tsconfig.check.json'], { encoding: 'utf8', cwd: dir });
     assert.equal(tsc.status, 0, `${tsc.stdout}${tsc.stderr}`);
+  });
+
+  const proofFile = path.join(dir, 'features', 'products', 'tests', 'generated', 'ProductsScreen.proof.test.ts');
+  const proofRun = (name) => run(['test', 'proof', 'products', '--format', 'json', ...(name ? ['--name', name] : [])], dir);
+
+  await t.test('the proof passes: node --test on the generated screen, no browser, and the chain is complete', () => {
+    const res = proofRun();
+    assert.equal(res.status, 0, `${res.stdout}${res.stderr}`);
+    const result = JSON.parse(res.stdout);
+    assert.deepEqual(result.counts, { total: 10, passed: 10, failed: 0, notRun: 0 });
+    assert.deepEqual(result.tests.map((x) => x.title.replace(/^Products /, '')), ['screen: the loading state', 'screen: the empty state', 'screen: the items, with every field value', 'screen: the error state, with role alert', 'controller: renders the loading state first', 'service: a good answer is the rows', 'service: a 500 is an error result', 'service: a wrong shape is an error result', 'service: a network failure is an error result', "service: the caller's AbortSignal reaches fetch"]);
+    assert.deepEqual(result.chain, proofStatus([{ id: 'proof', result: { ok: true, counts: result.counts } }]));
+    assert.equal(result.chain.complete, true);
+    assert.deepEqual(result.summary.options, [], 'a green proof has nothing left to choose');
+    assert.ok(fs.readFileSync(path.join(dir, 'architecture.yml'), 'utf8').includes('nonLayer:\n  - features/*/tests/**'), 'the test regions are declared once');
+  });
+
+  await t.test('the proof file: named Name.layer.ext, locked, from the entity fields, and it is text a person can read', () => {
+    const text = fs.readFileSync(proofFile, 'utf8');
+    assert.ok(text.startsWith('// @construct-generated tests v1 - LOCKED, do not edit (#348)\n'));
+    for (const want of ['{ id: "product-1", name: "Product name 1", price: 12.5 }', '"<strong>Product name 1</strong>", "<span>price: 12.5</span>"', "role=\"alert\"", 'renders the loading state first', 'a 500 is an error result', 'a wrong shape is an error result', 'a network failure is an error result']) assert.ok(text.includes(want), want);
+    const gen = run(['create', 'proof', 'Products', '--feature', 'products', '--entity', 'Product', '--fields', 'id:string,name:string,price:number'], dir);
+    assert.equal(gen.status, 0, `${gen.stdout}${gen.stderr}`);
+    assert.equal(fs.readFileSync(proofFile, 'utf8'), text, 'regenerating writes the same bytes');
+    assert.doesNotMatch(gen.stdout, /Updated architecture.yml/, 'the regions are declared once');
+  });
+
+  await t.test('a broken page FAILS the proof with an app failure that names the state (the empty branch is gone)', () => {
+    const expression = path.join(dir, 'features', 'products', 'expressions', 'ProductsByStatus.expression.tsx');
+    const good = fs.readFileSync(expression, 'utf8');
+    const broken = good.replace("  if (state.items.length === 0) return <>{children}</>;\n", '');
+    assert.notEqual(broken, good, 'the empty-state branch was there');
+    fs.writeFileSync(expression, broken);
+    try {
+      const res = proofRun();
+      assert.equal(res.status, 1, 'exit 1: the proof ran and failed');
+      const result = JSON.parse(res.stdout);
+      const failed = result.tests.filter((x) => x.status === 'failed');
+      assert.deepEqual(failed.map((x) => x.title), ['Products screen: the empty state']);
+      assert.equal(failed[0].failure.kind, 'app', 'the app behaved differently: not a harness problem');
+      assert.deepEqual([failed[0].failure.expected, failed[0].failure.reached], ['empty', 'blank']);
+      assert.equal(failed[0].failure.summary, 'The page given no rows: the empty state is wrong, the screen shows blank.');
+      assert.equal(result.chain.complete, false);
+      assert.deepEqual(result.summary.options.map((o) => o.id), ['edit-code', 'fill-with-ai', 'skip-proof'], 'the two exits every block has, and an explicit skip');
+      assert.equal(proofStatus([{ id: 's9', result: { ok: true, counts: result.counts } }]).complete, false);
+      const text = run(['test', 'proof', 'products'], dir).stdout;
+      assert.match(text, /FAIL {3}Products screen: the empty state\n {10}APP BEHAVED DIFFERENTLY: The page given no rows: the empty state is wrong, the screen shows blank\./);
+      assert.match(text, /Chain: NOT complete/);
+    } finally {
+      fs.writeFileSync(expression, good);
+    }
+    assert.equal(proofRun().status, 0, 'and the proof is green again once the page is');
+  });
+
+  await t.test('a file the proof binds to gone is a CONVENTION failure, not a product bug', () => {
+    const page = path.join(dir, 'features', 'products', 'pages', 'ProductsPage.page.tsx');
+    const good = fs.readFileSync(page, 'utf8');
+    fs.renameSync(page, `${page}.off`);
+    try {
+      const result = JSON.parse(proofRun().stdout);
+      const [failed] = result.tests;
+      assert.equal(result.chain.complete, false);
+      assert.equal(failed.failure.kind, 'convention');
+      assert.match(failed.failure.selector, /ProductsPage\.page/);
+      assert.ok(result.summary.options.map((o) => o.id).includes('regenerate-screen'));
+    } finally {
+      fs.renameSync(`${page}.off`, page);
+    }
+    assert.equal(fs.readFileSync(page, 'utf8'), good);
+    assert.equal(proofRun().status, 0);
   });
 
   await t.test('the screen renders: loading, empty, items and error', async () => {
@@ -168,7 +251,8 @@ test('the sentence becomes a plan of 7 steps, runs, and gives a screen that vali
     const again = await planFor(other, 'products');
     assert.deepEqual(again.planned.plan, planned.plan, 'the same plan');
     execute(other, again.planned.plan);
-    assert.deepEqual(featureFiles(other), written);
+    assert.deepEqual(featureFiles(other), written, 'the proof included');
+    assert.equal(fs.readFileSync(path.join(other, 'architecture.yml'), 'utf8'), fs.readFileSync(path.join(dir, 'architecture.yml'), 'utf8'), 'and the regions it declared');
   });
 });
 
@@ -182,7 +266,11 @@ test('the same plan on a Next.js project validates too, and its hook and control
   const files = featureFiles(dir);
   assert.ok(files['features/products/controllers/ProductsController.controller.tsx'].startsWith("'use client';"));
   assert.ok(files['features/products/hooks/useProducts.state.ts'].startsWith("'use client';"));
-  fs.writeFileSync(path.join(dir, 'tsconfig.check.json'), JSON.stringify({ extends: './tsconfig.json', compilerOptions: { types: [], plugins: [], incremental: false }, include: ['features', 'app/page.tsx'] }));
+  fs.writeFileSync(path.join(dir, 'offline-types.d.ts'), "declare module 'react-dom/server';\n"); // stands in for @types/react-dom, which this offline fixture lacks
+  fs.writeFileSync(path.join(dir, 'tsconfig.check.json'), JSON.stringify({ extends: './tsconfig.json', compilerOptions: { types: ['node'], plugins: [], incremental: false }, include: ['features', 'app/page.tsx', 'offline-types.d.ts'] }));
+  const proof = run(['test', 'proof', 'products', '--format', 'json'], dir);
+  assert.equal(proof.status, 0, 'the proof of the same screen passes on a Next.js project, where the hook and the controller are client files');
+  assert.equal(JSON.parse(proof.stdout).counts.failed, 0);
   const tsc = spawnSync(process.execPath, [path.join(dir, 'node_modules', 'typescript', 'bin', 'tsc'), '--noEmit', '-p', 'tsconfig.check.json'], { encoding: 'utf8', cwd: dir });
   assert.equal(tsc.status, 0, `${tsc.stdout}${tsc.stderr}`);
 });

@@ -98,6 +98,14 @@ const LLM_ARG = { type: 'string', flag: '--llm', description: 'LLM provider that
  */
 export const PLAN_SHAPES = Object.freeze(['list']);
 
+/**
+ * The kinds of proof a `create.proof` step writes for a shaped screen (#623): `render` runs offline as a node test, `playwright` is
+ * written only when the project already has a Playwright config. A test keeps this equal to `PROOF_KINDS` in `packages/core/proof.mjs`.
+ *
+ * @type {readonly string[]}
+ */
+export const PLAN_PROOF_KINDS = Object.freeze(['render', 'playwright']);
+
 // #619 -- the three optional arguments of a shaped step. Additive: a step without them is exactly what it was.
 const SHAPE_ARG = { type: 'string', flag: '--shape', enum: [...PLAN_SHAPES], description: 'A named screen shape: the units are filled with real, typed code for it (list: an entity list with loading, empty and error states).' };
 const ENTITY_ARG = { type: 'string', flag: '--entity', description: 'The entity a shape shows, PascalCase and singular (Product). Defaults to the singular of the unit name.' };
@@ -168,6 +176,22 @@ export const PLAN_FLOWS = Object.freeze({
       entity: ENTITY_ARG,
       fields: FIELDS_ARG,
       llm: LLM_ARG,
+      dir: DIR_ARG,
+    },
+  },
+  'create.proof': {
+    cli: ['create', 'proof'],
+    summary: 'Write the locked proof of a shaped screen (#623): the four states with sample props, the controller\'s loading state and the service with a stubbed fetch (kind render, offline), or the route flow with a mocked API (kind playwright, only when the project already has a Playwright config). Declares the generated-test regions in architecture.yml once. Zero-LLM.',
+    writes: true,
+    executors: ['deterministic', 'user'],
+    args: {
+      name: { type: 'string', required: true, positional: 0, description: 'The unit name of the shaped screen, PascalCase (Products).' },
+      feature: { type: 'string', required: true, flag: '--feature' },
+      shape: SHAPE_ARG,
+      entity: ENTITY_ARG,
+      fields: FIELDS_ARG,
+      kind: { type: 'string', flag: '--kind', enum: [...PLAN_PROOF_KINDS], description: 'render (a node test, offline; the default) or playwright (the route flow with a mocked API; needs a Playwright config already in the project).' },
+      route: { type: 'string', flag: '--route', description: 'The route of the screen for a playwright proof, for example /products. Defaults to /.' },
       dir: DIR_ARG,
     },
   },
@@ -385,6 +409,17 @@ export const PLAN_FLOWS = Object.freeze({
       name: { type: 'string', flag: '--name', description: 'Run only this test file (with area). Omit to run every test of the feature.' },
       area: { type: 'string', flag: '--area', enum: ['generated', 'yours'], description: 'Which directory the named test is in: generated (locked) or yours (clones and authored tests).' },
       'base-url': { type: 'string', flag: '--base-url', description: 'Where the project\'s app is running, for example http://localhost:3000. Only an address on this machine is accepted.' },
+      dir: DIR_ARG,
+    },
+  },
+  'test.proof': {
+    cli: ['test', 'proof'],
+    summary: 'Run the render proof of a shaped screen (written by create.proof) and say what each result means: a pass, an app failure (the screen reached another state than the proof expects; the failure names the state) or a convention failure (a file the proof binds to is gone; not a product bug). Needs no browser and no running app. The chain of a screen is complete when this is green or explicitly skipped. Read-only: it writes nothing in the project. Zero-LLM.',
+    writes: false,
+    executors: ['deterministic'],
+    args: {
+      feature: { type: 'string', required: true, positional: 0, description: 'The feature whose proofs are run.' },
+      name: { type: 'string', flag: '--name', description: 'Run only this proof file, for example ProductsScreen.proof.test.ts. Omit to run every proof of the feature.' },
       dir: DIR_ARG,
     },
   },
@@ -655,6 +690,13 @@ function validateStep(step, index, seenIds, push) {
       if ('name' in a && !('area' in a)) push(PLAN_ERROR_CODES.STEP_ARG_MISSING, `${at}.args.area`, 'Naming one test needs "area" too: generated or yours.');
       if ('area' in a && !('name' in a)) push(PLAN_ERROR_CODES.STEP_ARG_MISSING, `${at}.args.name`, '"area" only makes sense with the name of the test it is about.');
       if (typeof a['base-url'] === 'string' && !/^https?:\/\/[^\s/?#]+\/?$/.test(a['base-url'])) push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.base-url`, 'The address of the app is where it runs, like http://localhost:3000 (no page, no query).');
+    }
+    if (step.flow === 'test.proof' || step.flow === 'create.proof') {
+      const a = step.args;
+      if (typeof a.feature === 'string' && !/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(a.feature)) push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.feature`, 'A feature name uses letters, digits, "_" and "-" only.');
+    }
+    if (step.flow === 'test.proof' && typeof step.args.name === 'string' && !/^[A-Za-z][A-Za-z0-9]*\.proof\.test\.ts$/.test(step.args.name)) {
+      push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.name`, 'A proof is named by its file name, like ProductsScreen.proof.test.ts (no folders).');
     }
     if (step.flow === 'pipeline.run' && isPlainObject(step.args.envelope)) {
       const { valid, errors } = validateEnvelope(step.args.envelope);

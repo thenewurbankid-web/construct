@@ -299,9 +299,10 @@ test('the plan of a list-shaped card is valid, every step carries the shape, and
   const planned = planFromBlocks(placed.blocks, { feature: 'shop', root: dir, decisions: placed.decisions });
   assert.equal(planned.ok, true, JSON.stringify(planned.errors));
   assert.deepEqual(validatePlan(planned.plan), { valid: true, errors: [] });
-  assert.deepEqual(planned.plan.steps.map((s) => s.title), ['Create feature shop', ...LAYERS.map((l) => `Create ${l} Products`)]);
-  assert.deepEqual(planned.plan.steps.slice(1).map((s) => s.args.layer), LAYERS);
-  for (const s of planned.plan.steps.slice(1)) assert.deepEqual([s.args.shape, s.args.entity, s.args.fields], ['list', 'Product', 'id:string,name:string,price:number']);
+  assert.deepEqual(planned.plan.steps.map((s) => s.title), ['Create feature shop', ...LAYERS.map((l) => `Create ${l} Products`), 'Prove the Products screen', 'Run the proof of Products'], '#623: a shaped screen ends with its proof and the read-only run of it');
+  assert.deepEqual(planned.plan.steps.slice(1, 1 + LAYERS.length).map((s) => s.args.layer), LAYERS);
+  for (const s of planned.plan.steps.slice(1, -1)) assert.deepEqual([s.args.shape, s.args.entity, s.args.fields], ['list', 'Product', 'id:string,name:string,price:number']);
+  assert.equal(planFromBlocks(placed.blocks, { feature: 'shop', root: dir, proof: false }).plan.steps.length, 1 + LAYERS.length, 'proof: false leaves the plan as it was before #623');
   const stepOf = (layer) => planned.plan.steps.find((s) => s.args.layer === layer);
   assert.deepEqual(stepOf('page').dependsOn, ['s1', 's2', 's5'], 'the page waits for the domain (its types) and the component');
   assert.deepEqual(stepOf('controller').dependsOn, ['s1', 's4', 's6']);
@@ -332,5 +333,5 @@ test('the worked example in docs/PLACEMENT.md runs and produces exactly the JSON
   for (const tag of ['question', 'decisions', 'commands', 'files']) {
     assert.deepEqual(JSON.parse(block(tag, 'json')), JSON.parse(JSON.stringify(shown[tag])), tag);
   }
-  assert.equal(shown.commands.length, 7);
+  assert.equal(shown.commands.length, 9);
 });

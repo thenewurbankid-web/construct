@@ -663,7 +663,7 @@ export const files = planned.files;
 [{ "question": "q-shape", "option": "list", "by": "decision-model", "provider": "rules" }]
 ```
 
-The seven commands the plan runs (each is a step `planToCommand` turns into a real command; the fields are the same on every one):
+The nine commands the plan runs (each is a step `planToCommand` turns into a real command; the fields are the same on every one; the last two are the proof of the screen, see "The proof step" below):
 
 <!-- list-shape-example:commands -->
 ```json
@@ -674,7 +674,9 @@ The seven commands the plan runs (each is a step `planToCommand` turns into a re
   "construct create hook Products --feature products --shape list --entity Product --fields id:string,name:string,price:number",
   "construct create component Products --feature products --shape list --entity Product --fields id:string,name:string,price:number",
   "construct create page Products --feature products --shape list --entity Product --fields id:string,name:string,price:number",
-  "construct create controller Products --feature products --shape list --entity Product --fields id:string,name:string,price:number"
+  "construct create controller Products --feature products --shape list --entity Product --fields id:string,name:string,price:number",
+  "construct create proof Products --feature products --shape list --entity Product --fields id:string,name:string,price:number --kind render",
+  "construct test proof products --name ProductsScreen.proof.test.ts"
 ]
 ```
 
@@ -736,11 +738,81 @@ created. The expression is written by the page step, since a page may not hold c
 Component). `DOMAIN-002` used to flag the `defineDomain` import itself; it now allows that one factory from a typed-contracts
 module. A project's own custom `templates/` are not used for a shaped unit.
 
+## The proof step: a screen that is shown to work (#623, part of #616)
+
+A chain that ends with files that validate and type-check has not shown the screen behaves. A shaped plan therefore ends with a
+**proof** (`packages/core/proof.mjs`, `packages/engine/proofRunner.mjs`), a deterministic step of the chain with no model in it.
+`planFromBlocks` adds it by default to a plan with a shaped unit (`{ proof: false }` leaves it out, the plan is then as it was
+before #623):
+
+| Step | Flow | What it does |
+|---|---|---|
+| `s8` Prove the Products screen | `create.proof` (`--kind render`) | Writes `features/<f>/tests/generated/ProductsScreen.proof.test.ts` (and, once, declares the `frozen:` and `nonLayer:` test regions in `architecture.yml`, which the step lists in its `touches`). |
+| `s9` Run the proof of Products | `test.proof` (read-only) | Runs it and answers a pass, or a classified failure. |
+| `s10`, `s11`, only with Playwright | `create.proof --kind playwright`, `test.run` | The route flow with a mocked API, and its run against your running app. |
+
+**The render proof** needs nothing a `construct init` project does not have: react, react-dom and `esbuild` (it comes with `tsx`
+and with `vite`, both in the init `package.json`). `construct test proof <feature>` bundles the proof with the project's own
+esbuild into a throwaway temp directory and runs it with `node --test`: no browser, no server, no network, nothing written in
+the project, no new dependency in Construct. A project without esbuild is told to `npm install -D tsx`; the file also runs on its
+own with `npx tsx --test <file>`, like the every-path unit tests. The file is named `Name.proof.test.ts` (READ-004's `Name.layer.ext`),
+carries the generated-test marker (edits are refused, so the proof cannot be edited until it is green), is a pure function of
+(unit name, entity, fields), and passes `construct validate` because it sits in the `nonLayer` test region. It asserts, from
+sample rows built out of the entity's fields:
+
+- the four states of the page: **loading** (`role="status"`), **empty**, **items** (each row's exact markup, the title in
+  `<strong>` and every other field as `name: value`) and **error** (`role="alert"` with the message);
+- that the **controller** renders the loading state first, and hands the hook state to the page unchanged;
+- that the **service**, with a stubbed `fetch`, answers a good list with the rows, and a **500**, a **wrong shape** (not a list,
+  and a row of the wrong type) and a **network failure** with an error result, and forwards the caller's `AbortSignal`.
+
+**A failure names the state.** Every assertion fails with `Expected: "empty"` / `Received: "blank"` lines, so the runner reuses the
+Playwright runner's classification (`classifyFailure`) and its words:
+
+| Kind | Meaning | Example |
+|---|---|---|
+| `app` | The screen reached another state than the proof expects. A bug worth reporting. | `The page given no rows: the empty state is wrong, the screen shows blank.` (the empty branch of the expression was removed) |
+| `convention` | A file or export the proof binds to is gone. Not a product bug. | `The proof expected ../../pages/ProductsPage.page, and it is not there.` |
+| `other` | Anything else, shown as it is. | |
+
+The states are `loading`, `empty`, `items`, `error`, and for what is wrong `blank` (a list with no rows and no message) or `nothing`.
+
+**The chain is complete when the proof is green or explicitly skipped.** `planFromBlocks` returns `proof`:
+`{ required: true, complete: false, state: 'pending', steps, verifiedBy: ['s9'], playwright: { configured, config, skipped } }`, and
+`notes` holds what was left out. `proofStatus(entries)` (pure) takes what each `verifiedBy` step answered (`runProofs`, `runFeatureTests`,
+`{ skipped: 'why' }` or nothing yet) and answers `{ complete, state: pending|failed|green|skipped, steps }`: any step still pending or failed
+keeps the chain open, a run that found no test proves nothing, and only green or an explicit skip completes it. `proofSummary(run)` is the
+fixed-size, AI-ready summary (`proof-summary.v1`: state, counts, at most five failures with the state that is wrong, and closed option
+ids: `edit-code` (View/edit code), `fill-with-ai` (a reviewable diff), `regenerate-screen`, `skip-proof`, `run-proof`), so a person, an LLM or a
+decision model receive the same thing and the proof stays the referee.
+
+**Playwright is never installed for you.** The browser flow is planned only when the project already has a `playwright.config.*` at
+its root; otherwise the plan says so (`proof.playwright.skipped`, and the same sentence in `notes`), `construct create proof --kind
+playwright` prints `Skipped: ...` and writes nothing, and the render proof still proves the screen. The flow (`<name>--screen.spec.ts`, a
+locked generated spec `construct test run` already finds) mocks `/api/products` with `page.route`, holds the answer back to see the loading
+state, then checks the list, the empty state and the error state with `role="alert"`, reading the state off `<main>` in the same words as the
+render proof. Its route is `--route` (default `/`). It is exercised for real in `test/proof.test.mjs` (opt-in: `CONSTRUCT_RUN_PLAYWRIGHT=1`).
+
+```sh
+construct create proof Products --feature products --entity Product --fields id:string,name:string,price:number
+construct test proof products          # exit 0 green, 1 a failed test, 2 it could not run
+construct test proof products --format json
+```
+
+**Decisions where the issue was silent.** The proof lives in `tests/generated/` (the generated-test region, locked by `frozen:`), not
+in a layer folder, so it can reach across layers without an exemption. The step declares `architecture.yml` as a `modify` because
+adding the regions is part of the step, not a manual chore (a half-declared project is refused, nothing rewritten). The render
+proof is a `.test.ts` (the project's `test:unit` glob and `tsx --test` find it) and is bundled by the runner rather than run through
+`tsx`, because esbuild is the one loader every init project has and it works offline. A skip is an input to `proofStatus`, not a
+command flag: the runner (or the Cockpit) records it, so it stays visible. The Requirement screen does not draw the proof steps yet:
+its plan already carries them (`/api/requirement/read` returns the same plan), and it would need to show `proof` (pending, green,
+failed, skipped) and the failing state, the `proofSummary` options as buttons, and a Skip that records the reason.
+
 ## What is not here yet
 
 The timeline read-back and its Cockpit screen are the Requirement screen (`/requirement`, #642): `toTimeline(placement)` in `ui/client/features/requirement/domain/Timeline.ts` turns the blocks into steps in run order (a slice to move it into core, so the CLI and an LLM read the same steps, is open). Not here yet: a `use client` / `use server` directive in the generated files, a route
 entry step, and words beyond the lexicon. Each is a slice of #616.
 
 Not here yet for the shapes (each a slice of #616): the other shapes (detail, form, dashboard, wizard); wiring a data source into
-a shaped screen (#621) and proofs for it (#623); a `route.ts` handler for the endpoint the list fetches; and drawing `offers`
+a shaped screen (#621); the proof for the other shapes (the list has one, above; #623 is the pattern); a `route.ts` handler for the endpoint the list fetches; and drawing `offers`
 on the Requirement screen (`ui/client`), which needs a small client slice: `requirementApi` already returns them.

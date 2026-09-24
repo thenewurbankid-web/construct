@@ -58,6 +58,7 @@ a `local-model` path, `view-code` (mechanical) and `edit-code` (free) on writing
 | `create.feature` | derived | run, view-code, edit-code, do-by-hand | |
 | `create.layer` | derived | run, fill-with-ai, view-code, edit-code, do-by-hand | |
 | `create.unit` | derived | run, fill-with-ai, view-code, edit-code, do-by-hand | |
+| `create.proof` | derived | run, view-code, edit-code, do-by-hand | the locked proof of a shaped screen (#623) plus `architecture.yml` (`modify`, the test regions, once); a Playwright proof is derived only when the project has a Playwright config |
 | `create.page.from` | declared | run, view-code, edit-code, do-by-hand | one page file plus its Props; derivable next |
 | `create.workflow.from` | declared | run, view-code, edit-code, do-by-hand | machine file (+ state union with `--state-union`) |
 | `create.controller.bind` | declared | run, view-code, edit-code, do-by-hand | modifies an existing page; kind `modify` |
@@ -76,6 +77,7 @@ a `local-model` path, `view-code` (mechanical) and `edit-code` (free) on writing
 | `validate` | empty | run | |
 | `review.analyze` | empty | run | reads two commits through temporary checkouts |
 | `test.run` | empty | run | writes nothing in the project |
+| `test.proof` | empty | run | runs the render proof of a shaped screen offline; writes nothing in the project |
 | `sync` | declared | run, view-code, edit-code | derived rule config and each feature's barrel; the set is computable from architecture.yml |
 | `pipeline.run` | declared | run, view-code, edit-code | steps carry no scope today (see below) |
 | `manual.task` | declared | do-by-hand | no CLI behind it; the only flow that is free by definition |
@@ -98,7 +100,7 @@ a `local-model` path, `view-code` (mechanical) and `edit-code` (free) on writing
 
 ## Findings
 
-- Of 25 flows, 12 fit as-is (9 read-only with an empty scope, 3 with a derived scope); 13 are writers that need a scope
+- Of 27 flows, 14 fit as-is (10 read-only with an empty scope, 4 with a derived scope); 13 are writers that need a scope
   declaration from the plan step (`manual.task` among them, by definition).
 - `test.run` and `review.analyze` are read-only in `PLAN_FLOWS` and get an empty scope; the contract makes that checkable
   (`RUN_READONLY_WROTE`) where before it was a comment.

@@ -80,6 +80,11 @@ const EVERY_FLOW_STEPS = [
     touches: touching('checkout', 'features/checkout/domain/Discount.ts', 'create', 'domain'),
   },
   {
+    id: 's-proof', title: 'Write the proof of the Totals screen', flow: 'create.proof', executor: 'deterministic',
+    args: { name: 'Totals', feature: 'checkout', shape: 'list', entity: 'Total', fields: 'id:string,name:string', kind: 'render' }, dependsOn: ['s-slice'],
+    touches: { features: ['checkout'], files: [{ path: 'features/checkout/tests/generated/TotalsScreen.proof.test.ts', change: 'create' }, { path: 'architecture.yml', change: 'modify' }] },
+  },
+  {
     id: 's-page', title: 'Ingest the designed checkout page', flow: 'create.page.from', executor: 'deterministic',
     args: { name: 'Checkout', feature: 'checkout', from: '../design-exports/Checkout.jsx' }, dependsOn: ['s-feature'],
     touches: touching('checkout', 'features/checkout/pages/CheckoutPage.tsx', 'create', 'page'),
@@ -167,6 +172,10 @@ const EVERY_FLOW_STEPS = [
   {
     id: 's-test-run', title: 'Run the checkout tests against the running app', flow: 'test.run', executor: 'deterministic',
     args: { feature: 'checkout', name: 'happy-path.spec.ts', area: 'yours', 'base-url': 'http://localhost:3000' }, dependsOn: ['s-validate'],
+  },
+  {
+    id: 's-test-proof', title: 'Run the proof of the Totals screen', flow: 'test.proof', executor: 'deterministic',
+    args: { feature: 'checkout', name: 'TotalsScreen.proof.test.ts' }, dependsOn: ['s-proof'],
   },
   {
     id: 's-sync', title: 'Regenerate the rule config and public API barrels', flow: 'sync', executor: 'deterministic',

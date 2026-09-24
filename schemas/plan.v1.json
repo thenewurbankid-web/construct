@@ -236,6 +236,7 @@
             "create.feature",
             "create.layer",
             "create.unit",
+            "create.proof",
             "create.page.from",
             "create.workflow.from",
             "create.controller.bind",
@@ -254,6 +255,7 @@
             "validate",
             "review.analyze",
             "test.run",
+            "test.proof",
             "sync",
             "pipeline.run",
             "manual.task"
@@ -540,6 +542,90 @@
                 "enum": [
                   "deterministic",
                   "local-model",
+                  "user"
+                ]
+              },
+              "touches": {
+                "$ref": "#/definitions/touches"
+              }
+            },
+            "required": [
+              "touches"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "create.proof"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The unit name of the shaped screen, PascalCase (Products)."
+                  },
+                  "feature": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "shape": {
+                    "type": "string",
+                    "minLength": 1,
+                    "enum": [
+                      "list"
+                    ],
+                    "description": "A named screen shape: the units are filled with real, typed code for it (list: an entity list with loading, empty and error states)."
+                  },
+                  "entity": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The entity a shape shows, PascalCase and singular (Product). Defaults to the singular of the unit name."
+                  },
+                  "fields": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The entity fields for a shape as name:type pairs, comma separated (id:string,name:string,price:number). Types: string, number, boolean; an id field is required."
+                  },
+                  "kind": {
+                    "type": "string",
+                    "minLength": 1,
+                    "enum": [
+                      "render",
+                      "playwright"
+                    ],
+                    "description": "render (a node test, offline; the default) or playwright (the route flow with a mocked API; needs a Playwright config already in the project)."
+                  },
+                  "route": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The route of the screen for a playwright proof, for example /products. Defaults to /."
+                  },
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": [
+                  "name",
+                  "feature"
+                ]
+              },
+              "executor": {
+                "enum": [
+                  "deterministic",
                   "user"
                 ]
               },
@@ -1494,6 +1580,51 @@
                     "type": "string",
                     "minLength": 1,
                     "description": "Where the project's app is running, for example http://localhost:3000. Only an address on this machine is accepted."
+                  },
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": [
+                  "feature"
+                ]
+              },
+              "executor": {
+                "enum": [
+                  "deterministic"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "test.proof"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "feature": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The feature whose proofs are run."
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Run only this proof file, for example ProductsScreen.proof.test.ts. Omit to run every proof of the feature."
                   },
                   "dir": {
                     "type": "string",
