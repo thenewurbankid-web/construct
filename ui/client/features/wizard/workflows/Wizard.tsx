@@ -33,6 +33,11 @@ export const initialWizardState: WizardState = { messages: [], status: 'connecti
 
 function pushMessage(state: WizardState, role: ChatRole, text: string): WizardState {
   const attribution = role === 'log' ? parseAttributionLine(text) : undefined;
+  // Consecutive plain output lines read as one block (a printed plan or validation report), not a stack of bubbles.
+  const last = state.messages[state.messages.length - 1];
+  if (role === 'log' && !attribution && last && last.role === 'log' && !last.attribution) {
+    return { ...state, messages: [...state.messages.slice(0, -1), { ...last, text: `${last.text}\n${text}` }] };
+  }
   return { ...state, messages: [...state.messages, { id: state.nextId, role, text, attribution }], nextId: state.nextId + 1 };
 }
 

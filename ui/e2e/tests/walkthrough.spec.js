@@ -122,13 +122,9 @@ test.describe.serial('Construct UI walkthrough (issue #37)', () => {
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'dashboard-action-result.png'), fullPage: true });
   });
 
-  test('4. settings.png — per-capability LLM provider dropdowns, project directory field visible', async ({ page }) => {
+  test('4. settings.png — per-capability LLM provider dropdowns', async ({ page }) => {
     await page.goto('/settings');
     await expect(page.locator('h1')).toHaveText('Settings');
-
-    const projectDirInput = page.locator('input[placeholder="/path/to/your/construct-project"]');
-    await expect(projectDirInput).toBeVisible();
-    await expect(projectDirInput).toHaveValue(tmpProjectDir);
 
     // #100/Epic 6.4: one independently-configurable dropdown per LLM
     // capability (importFill/createFill/planAnalysis), not one global

@@ -1,5 +1,6 @@
 import { AttributionBadge } from '@/components/AttributionBadge';
 import type { ChatMessageData, ReviewFinding } from '../types';
+import { Markdown } from './Markdown';
 
 function ReviewGroup({ title, findings }: { title: string; findings: ReviewFinding[] }) {
   if (findings.length === 0) return null;
@@ -11,7 +12,11 @@ function ReviewGroup({ title, findings }: { title: string; findings: ReviewFindi
           <li key={`${f.file}-${i}`} className={`review-finding review-finding--${f.severity}`}>
             <strong>{f.summary}</strong>
             {f.file && <code className="review-finding__file"> {f.file}</code>}
-            {f.detail && <div className="review-finding__detail">{f.detail}</div>}
+            {f.detail && (
+              <div className="review-finding__detail">
+                <Markdown>{f.detail}</Markdown>
+              </div>
+            )}
           </li>
         ))}
       </ul>
@@ -47,7 +52,8 @@ export function ChatMessage({ message }: { message: ChatMessageData }) {
   if (message.role === 'thought') {
     return (
       <div className="chat-message chat-thought">
-        <span className="chat-badge chat-badge--model">Model</span> {message.text}
+        <span className="chat-badge chat-badge--model">Model</span>
+        <Markdown>{message.text}</Markdown>
       </div>
     );
   }

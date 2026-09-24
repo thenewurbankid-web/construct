@@ -210,4 +210,46 @@ test.describe('Import Wizard live progress (#599)', () => {
     expect(received).toContain('review');
     await expect(reviewButton).toBeEnabled();
   });
+
+  // #602: a professional chat surface: the model's markdown renders (code blocks), plain output lines group into one
+  // block, the log follows new messages until the reader scrolls up, and "Jump to latest" brings them back.
+  test('chat renders markdown, groups log lines, and only follows new messages while the reader is at the bottom', async ({ page }) => {
+    let send;
+    await page.routeWebSocket('**/ws/wizard', (ws) => {
+      send = (event) => ws.send(JSON.stringify(event));
+      ws.onMessage((raw) => {
+        if (JSON.parse(String(raw)).type === 'start') {
+          send({ type: 'log', text: 'line one' });
+          send({ type: 'log', text: 'line two' });
+          send({ type: 'thought', text: 'Here is the port:\n\n```ts\nexport const a = 1;\n```\n\n- keeps the **total**' });
+        }
+      });
+    });
+
+    await page.goto('/wizard');
+    await page.getByRole('button', { name: 'Start wizard session' }).click();
+
+    await expect(page.locator('.chat-log')).toHaveCount(1);
+    await expect(page.locator('.chat-log')).toContainText('line one');
+    await expect(page.locator('.chat-log')).toContainText('line two');
+    await expect(page.locator('.chat-thought pre code')).toHaveText('export const a = 1;');
+    await expect(page.locator('.chat-thought li strong')).toHaveText('total');
+
+    // Fill the log past its height: it follows the newest message.
+    for (let i = 0; i < 40; i++) send({ type: 'step', phase: 'filling', detail: { unit: `U${i}`, file: `f${i}.ts`, layer: 'domain', index: i, total: 40 } });
+    const log = page.getByRole('log', { name: 'Import conversation' });
+    const atBottom = () => log.evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight < 8);
+    await expect.poll(atBottom).toBe(true);
+    await expect(page.getByRole('button', { name: 'Jump to latest' })).toHaveCount(0);
+
+    // The reader scrolls up: new messages no longer drag them back down.
+    await log.evaluate((el) => { el.scrollTop = 0; });
+    await expect(page.getByRole('button', { name: 'Jump to latest' })).toBeVisible();
+    send({ type: 'step', phase: 'validating', detail: { feature: 'health' } });
+    await expect(page.getByRole('button', { name: 'Jump to latest' })).toBeVisible();
+    expect(await atBottom()).toBe(false); // still up where they were reading
+
+    await page.getByRole('button', { name: 'Jump to latest' }).click();
+    await expect.poll(atBottom).toBe(true);
+  });
 });

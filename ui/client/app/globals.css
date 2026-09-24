@@ -327,13 +327,34 @@ button:disabled {
 }
 
 .chat {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
   min-height: 300px;
   max-height: 55vh;
   overflow-y: auto;
   padding: 16px;
+}
+
+.chat-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chat-wrap { position: relative; }
+
+/* Shown only while the reader has scrolled up away from the newest message. */
+.chat-jump {
+  position: absolute;
+  right: 16px;
+  bottom: 12px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong, var(--border));
+  background: var(--surface-2, var(--sunken));
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  box-shadow: var(--glass-shadow);
 }
 
 .chat-message {
@@ -348,6 +369,10 @@ button:disabled {
   background: var(--sunken);
   color: var(--muted);
   align-self: flex-start;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.8rem;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .chat-question {
@@ -405,7 +430,27 @@ button:disabled {
   align-self: flex-start;
   font-style: italic;
   border: 1px dashed var(--border);
+  white-space: normal;
 }
+
+/* Markdown inside a message (the model's prose, review details): compact, token-coloured, never wider than the bubble. */
+.md > :first-child { margin-top: 0; }
+.md > :last-child { margin-bottom: 0; }
+.md p, .md ul, .md ol { margin: 4px 0; }
+.md pre {
+  margin: 6px 0;
+  padding: 8px 10px;
+  overflow-x: auto;
+  border-radius: 6px;
+  background: var(--sunken);
+  font-style: normal;
+  white-space: pre;
+}
+.md code { font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); font-size: 0.85em; font-style: normal; }
+.md :not(pre) > code { padding: 1px 4px; border-radius: 4px; background: var(--sunken); }
+.md table { border-collapse: collapse; font-size: 0.85em; }
+.md th, .md td { border: 1px solid var(--border); padding: 2px 8px; }
+.md a { color: var(--accent); }
 
 .chat-badge {
   display: inline-block;
