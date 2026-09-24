@@ -92,12 +92,25 @@ function ancestorDirs(start) {
 
 // What the subprocess sees: the variables a user's shell would give it, not the Cockpit server's whole
 // environment (which holds tokens for the hosted instance). Same allow-list idea as packages/engine/testRunner.mjs's
-// childEnv, plus every CONSTRUCT_* variable (CONSTRUCT_WORKSPACE_ROOT, CONSTRUCT_TEMPLATES_DIR, ...).
+// childEnv. CONSTRUCT_* is NOT forwarded wholesale (#638 review): the server's own CONSTRUCT_* names hold the session
+// secret, both GitHub client secrets and the e2e seams, and the child runs inside a cloned project whose code is not
+// ours. Only the names the CLI packages actually read go through (CLI_ENV), and never a secret-shaped one.
 const SAFE_ENV = ['PATH', 'HOME', 'USER', 'LANG', 'LC_ALL', 'TMPDIR', 'SystemRoot', 'LOCALAPPDATA', 'NODE_PATH'];
-function childEnv(env) {
+/** The CONSTRUCT_* names packages/cli, packages/core and packages/engine read from their environment (`grep -rn
+ * "env.CONSTRUCT_" packages/`); every one is a path, a URL, a number or a version, never a credential. A new CLI
+ * setting is added HERE (coreExecutor.test.mjs keeps this list equal to what the packages' sources read), never by
+ * widening to a prefix. */
+export const CLI_ENV = Object.freeze([
+  'CONSTRUCT_TEMPLATES_DIR', 'CONSTRUCT_STATE_DIR', 'CONSTRUCT_CLI_VERSION',
+  'CONSTRUCT_LLM_TIMEOUT_SEC', 'CONSTRUCT_OLLAMA_URL', 'CONSTRUCT_OLLAMA_MODEL', 'CONSTRUCT_BOT_CONCURRENCY',
+  'CONSTRUCT_TEST_BASE_URL',
+]);
+/** Never forwarded, whatever list names it. */
+const SECRET_SHAPED = /(_SECRET|_TOKEN|_PASSWORD|_KEY)$/i;
+/** The environment a `cli`-mode child gets: exported so a test can assert exactly what is (not) in it. */
+export function childEnv(env) {
   const out = { FORCE_COLOR: '0', NO_COLOR: '1' };
-  for (const k of SAFE_ENV) if (env[k] !== undefined) out[k] = env[k];
-  for (const [k, v] of Object.entries(env)) if (k.startsWith('CONSTRUCT_') && v !== undefined) out[k] = v;
+  for (const k of [...SAFE_ENV, ...CLI_ENV]) if (env[k] !== undefined && !SECRET_SHAPED.test(k)) out[k] = env[k];
   return out;
 }
 
@@ -157,7 +170,7 @@ function runCli({ bin, args, cwd, env, timeoutMs, spawnImpl = spawn, signal, onS
 
 /**
  * The ONE way any core activity runs in `cli` mode (#541): `node <construct.mjs> <argv...> --dir <root>` with
- * `cwd` = the project root, the allow-listed environment (CONSTRUCT_* included), a timeout and a process-group
+ * `cwd` = the project root, the allow-listed environment (childEnv: the CLI's own CONSTRUCT_* names only), a timeout and a process-group
  * kill. `root` must be the server's own derived, contained project root (never a client string). Returns the raw
  * process result; each verb's parser decides what is a valid document.
  *
