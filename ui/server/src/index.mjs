@@ -69,6 +69,7 @@ import {
   addChildInSnippet,
 } from './pagesEditor.mjs';
 import { handleValidateForProject } from './validateApi.mjs';
+import { handleResearch } from './researchApi.mjs';
 import { validateArchitecture } from '../../../packages/core/architecture-enforcer.mjs';
 import { createComponentsRouter } from './componentsApi.mjs';
 import { createNotesRouter } from './notesApi.mjs';
@@ -370,20 +371,15 @@ app.post('/api/refactor', async (req, res) => {
 });
 
 // research summarize [--feature ...] [--format ...] [--since ...] | research doctor
+// #541: honours project.execution.mode (engine = the in-process call below, cli = the real CLI's --format json).
 app.post('/api/research', async (req, res) => {
-  const { action, feature, format, since } = req.body || {};
-  let args;
-  if (action === 'summarize') {
-    args = ['summarize'];
-    if (feature) args.push('--feature', feature);
-    if (format) args.push('--format', format);
-    if (since) args.push('--since', since);
-  } else if (action === 'doctor') {
-    args = ['doctor'];
-  } else {
-    return res.status(400).json({ ok: false, error: 'action must be "summarize" or "doctor"' });
-  }
-  respond(res, await runCapturing(() => research(withDir(args))));
+  const { status, body } = await handleResearch({
+    body: req.body,
+    projectDir: getProjectDir(),
+    findRoot: containedProjectRoot,
+    inProcess: (args) => runCapturing(() => research(withDir(args))),
+  });
+  res.status(status).json(body);
 });
 
 // import <name> --feature f --layers l1,l2 --from path [--llm p] | import --plan path [--llm p]

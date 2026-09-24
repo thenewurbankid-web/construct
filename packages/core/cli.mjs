@@ -485,21 +485,56 @@ export async function pipeline(args) {
   if (output.status === 'aborted') setExitCode(exitCodeForViolations(output.diagnostics));
 }
 
+/**
+ * `construct doctor [--format json] [--dir <path>]`: read-only environment check (node and npm versions, whether
+ * the project has an `architecture.yml`, which enforcer modules are installed). `--format json` prints one stable
+ * document, `{node, npm, architectureYml, enforcers:[{name, available}]}` (a version is `null` when the tool is
+ * missing), instead of the text list; the Cockpit's `cli` execution mode reads that document (#541).
+ *
+ * @param {string[]} args Optional `--format json` and `--dir <path>`.
+ * @returns {Promise<void>} Resolves after printing the report.
+ *
+ * @example
+ * await doctor(['--format', 'json']);
+ */
 export async function doctor(args) {
-  console.log('Construct doctor');
   const root = getRoot(args);
+  const versions = {};
   for (const c of ['node', 'npm']) {
     // #413: bounded; a `--version` that takes 30 s is not going to answer.
     const r = spawnSync(c, ['--version'], { encoding: 'utf8', timeout: 30_000, killSignal: 'SIGKILL' });
-    console.log(`${c}: ${r.status === 0 ? r.stdout.trim() : 'missing'}`);
+    versions[c] = r.status === 0 ? r.stdout.trim() : null;
   }
-  console.log(`architecture.yml: ${fs.existsSync(path.join(root, 'architecture.yml')) ? 'present' : 'missing'}`);
-  console.log('Enforcer modules:');
-  for (const { name, file } of ENFORCER_MODULES) {
-    const available = fs.existsSync(path.join(packageRoot, file));
-    console.log(`  ${name}: ${available ? 'available' : 'not yet available'}`);
-  }
+  const hasConfig = fs.existsSync(path.join(root, 'architecture.yml'));
+  const enforcers = ENFORCER_MODULES.map(({ name, file }) => ({ name, available: fs.existsSync(path.join(packageRoot, file)) }));
+  const report = { node: versions.node, npm: versions.npm, architectureYml: hasConfig, enforcers };
+  if (flagValue(args, '--format') === 'json') console.log(JSON.stringify(report, null, 2));
+  else for (const line of renderDoctorText(report)) console.log(line);
 }
+
+/**
+ * The text form of a `doctor` report, one string per printed line. `construct doctor` prints exactly these lines,
+ * and the Cockpit's `cli` execution mode rebuilds them from the JSON document, so both modes show the same text.
+ *
+ * @param {{node:string|null, npm:string|null, architectureYml:boolean, enforcers:{name:string, available:boolean}[]}} report A `doctor --format json` document.
+ * @returns {string[]} The lines `construct doctor` prints.
+ */
+export function renderDoctorText(report) {
+  return [
+    'Construct doctor',
+    `node: ${report.node ?? 'missing'}`,
+    `npm: ${report.npm ?? 'missing'}`,
+    `architecture.yml: ${report.architectureYml ? 'present' : 'missing'}`,
+    'Enforcer modules:',
+    ...report.enforcers.map(({ name, available }) => `  ${name}: ${available ? 'available' : 'not yet available'}`),
+  ];
+}
+
+/**
+ * The attribution every read-only `research` report ends with. Exported so the Cockpit's `cli` execution mode
+ * labels its result exactly as the in-process path does.
+ */
+export const READ_ONLY_ATTRIBUTION = Object.freeze({ tool: 'produced the read-only report above', llm: '0 calls' });
 
 // ---- capability groups: create / refactor / research ----------------------
 //
@@ -833,7 +868,7 @@ export async function research(args) {
   else if (args[0] === 'impact') jsonOnly = await researchImpact(args.slice(1));
   else if (args[0] === 'spec') jsonOnly = await researchSpec(args.slice(1));
   else throw new ConstructError('Usage: construct research summarize|doctor|workflow|impact|spec ...', { exitCode: EXIT_CODES.USAGE_ERROR });
-  if (!jsonOnly) printAttribution('produced the read-only report above', '0 calls');
+  if (!jsonOnly) printAttribution(READ_ONLY_ATTRIBUTION.tool, READ_ONLY_ATTRIBUTION.llm);
 }
 
 /**

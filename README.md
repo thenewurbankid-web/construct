@@ -480,7 +480,7 @@ construct generate layer <name> --feature <feature> --layers <l1,l2,...> [--dir 
 construct sync [--dir <path>]
 construct validate [--dir <path>]
 construct validate --format json [--dir <path>]
-construct doctor [--dir <path>]
+construct doctor [--format json] [--dir <path>]
 ```
 
 ## Service generator: OpenAPI -> RTK Query

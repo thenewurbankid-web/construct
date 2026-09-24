@@ -146,6 +146,50 @@ function runCli({ bin, args, cwd, env, timeoutMs, spawnImpl = spawn }) {
 }
 
 /**
+ * The ONE way any core activity runs in `cli` mode (#541): `node <construct.mjs> <argv...> --dir <root>` with
+ * `cwd` = the project root, the allow-listed environment (CONSTRUCT_* included), a timeout and a process-group
+ * kill. `root` must be the server's own derived, contained project root (never a client string). Returns the raw
+ * process result; each verb's parser decides what is a valid document.
+ *
+ * @param {string} root Resolved project root (the directory holding architecture.yml).
+ * @param {string[]} argv The verb and its flags, WITHOUT `--dir` (appended here, last).
+ * @param {{env?:NodeJS.ProcessEnv, bin?:string, timeoutMs?:number, spawnImpl?:Function}} [opts]
+ * @returns {Promise<{code:number|null, signal:string|null, stdout:string, stderr:string}>}
+ * @throws {ExecutionError} CLI_NOT_FOUND, CLI_START_FAILED, CLI_TIMEOUT, or CLI_BAD_OUTPUT (output overflow).
+ */
+export async function runCliVerb(root, argv, { env = process.env, bin, timeoutMs, spawnImpl } = {}) {
+  const cliBin = bin ?? resolveCliBin(env);
+  const limit = timeoutMs ?? (Number(env[CLI_TIMEOUT_ENV]) > 0 ? Number(env[CLI_TIMEOUT_ENV]) : DEFAULT_CLI_TIMEOUT_MS);
+  return runCli({ bin: cliBin, args: [...argv, '--dir', root], cwd: root, env, timeoutMs: limit, spawnImpl });
+}
+
+/**
+ * Parse a verb's `--format json` output. Only the JSON document is read, never the text form. The exit code must
+ * be one of `okCodes` (a verb's own "this is a result" codes, e.g. 1 for "violations found"); every other exit,
+ * unparseable output, or a document `check` rejects is an ExecutionError, never a silent empty result.
+ *
+ * @param {{code:number|null, signal?:string|null, stdout:string, stderr:string}} raw The process result.
+ * @param {{what:string, okCodes?:number[], check?:(doc:any, code:number)=>string|null}} spec `what` names the document in
+ *   messages; `check` returns a problem description, or null when the document has the expected shape.
+ * @returns {any} The parsed document (an object or an array).
+ * @throws {ExecutionError} CLI_FAILED for an unexpected exit, CLI_BAD_OUTPUT for anything that is not the document.
+ */
+export function parseJsonOutput({ code, signal = null, stdout, stderr }, { what, okCodes = [0], check }) {
+  const detail = () => clip((stderr.trim() || stdout.trim()) || '(no output)');
+  if (!okCodes.includes(code)) {
+    throw new ExecutionError('CLI_FAILED', `The construct CLI exited with ${signal ? `signal ${signal}` : `code ${code}`}: ${detail()}`);
+  }
+  let doc;
+  try { doc = JSON.parse(stdout); } catch {
+    throw new ExecutionError('CLI_BAD_OUTPUT', `The construct CLI's output was not JSON (exit ${code}): ${detail()}`);
+  }
+  if (doc === null || typeof doc !== 'object') throw new ExecutionError('CLI_BAD_OUTPUT', `The construct CLI's JSON was not ${what} (exit ${code}): ${clip(stdout.trim())}`);
+  const problem = check ? check(doc, code) : null;
+  if (problem) throw new ExecutionError('CLI_BAD_OUTPUT', `The construct CLI's JSON was not ${what} (exit ${code}): ${problem}`);
+  return doc;
+}
+
+/**
  * Parse `construct validate --format json` output. Only the JSON document is read, never the text form.
  * Exit 0 with status "passed" or exit 1 with status "failed" are the two success shapes (exit 1 means
  * "violations found", not "the CLI broke"); every other combination is an error.
@@ -194,9 +238,7 @@ export async function runValidate(root, { mode = 'engine', env = process.env, bi
     return { mode, status: ok ? 'passed' : 'failed', ok, violations, report: formatReport(violations, { format: 'json' }) };
   }
   if (mode !== 'cli') throw new ExecutionError('CLI_START_FAILED', `Unknown execution mode '${mode}'.`);
-  const cliBin = bin ?? resolveCliBin(env);
-  const limit = timeoutMs ?? (Number(env[CLI_TIMEOUT_ENV]) > 0 ? Number(env[CLI_TIMEOUT_ENV]) : DEFAULT_CLI_TIMEOUT_MS);
-  const raw = await runCli({ bin: cliBin, args: ['validate', '--format', 'json', '--dir', root], cwd: root, env, timeoutMs: limit, spawnImpl });
+  const raw = await runCliVerb(root, ['validate', '--format', 'json'], { env, bin, timeoutMs, spawnImpl });
   const doc = parseValidateOutput(raw);
   return { mode, status: doc.status, ok: doc.status === 'passed', violations: doc.violations, report: raw.stdout.replace(/\n$/, '') };
 }

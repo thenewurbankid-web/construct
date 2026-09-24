@@ -186,7 +186,8 @@ const EXIT_CODE_TO_HTTP = {
 
 /** Run `fn` (an async call into one of the wrapped cli.mjs functions),
  * capturing every console line it (or anything it calls) prints, and
- * return `{ ok, output, attribution, durationSeconds, error?, httpStatus }`.
+ * return `{ ok, output, attribution, durationSeconds, exitCode, error?, httpStatus }`
+ * (`exitCode` is the process exit code the CLI would have ended with, #541).
  * `attribution` is `{ tool, llm }` parsed from the one `[tool: ...] [llm:
  * ...]` line the command printed, or null if none was found (shouldn't
  * normally happen for a successful create/refactor/research/import call,
@@ -254,6 +255,7 @@ export async function runCapturing(fn, { timeoutMs = resolveCommandTimeoutMs(), 
         output,
         attribution,
         durationSeconds,
+        exitCode,
         error: caught.message,
         // 504: the command was abandoned at the deadline, not refused and not broken (#413).
         httpStatus: caught instanceof CommandTimeoutError ? 504 : (EXIT_CODE_TO_HTTP[exitCode] ?? 500),
@@ -264,6 +266,7 @@ export async function runCapturing(fn, { timeoutMs = resolveCommandTimeoutMs(), 
       output,
       attribution,
       durationSeconds,
+      exitCode: exitCodeSet ?? EXIT_CODES.OK,
       httpStatus: EXIT_CODE_TO_HTTP[exitCodeSet ?? EXIT_CODES.OK] ?? 200,
     };
   });
