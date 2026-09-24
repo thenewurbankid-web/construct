@@ -13,12 +13,18 @@ construct init shop
 cd shop
 construct create feature billing
 construct create layer Invoice --feature billing --layers page,domain,controller,hook
+construct create layer Core --feature core --layers page,controller
 ```
+
+The last command gives the entry page `app/page.tsx` the `CoreController` it imports, which `init` prints a note about; without it `validate` would also report that import as unresolved.
 
 Real output. The parts were asked for in a different order than they were built:
 
 ```text
 Initialized Construct in .../shop (framework: nextjs)
+Scaffolded 6 project file(s): package.json, tsconfig.json, next.config.mjs, next-env.d.ts, app/layout.tsx, .gitignore
+Next: cd shop && npm install && npm run dev
+Note: the entry file imports features/core/controllers/CoreController, which does not exist yet; generate it (construct generate layer core --feature core --layers domain,service,workflow,hook,component,page,controller) or `construct validate` and the dev server will report the unresolved import.
 Created feature billing at features/billing (0.01s)
 [tool: scaffolded the file(s) above from templates] [llm: 0 calls — filling in the logic is a separate step, by you or whichever LLM you choose]
 Created features/billing/domain/Invoice.tsx (0.01s)
@@ -27,9 +33,13 @@ Created features/billing/pages/InvoicePage.tsx (0.00s)
 Created features/billing/controllers/InvoiceController.tsx (0.00s)
 Total: 0.03s
 [tool: scaffolded the file(s) above from templates] [llm: 0 calls — filling in the logic is a separate step, by you or whichever LLM you choose]
+Created features/core/pages/CorePage.tsx (0.02s)
+Created features/core/controllers/CoreController.tsx (0.00s)
+Total: 0.02s
+[tool: scaffolded the file(s) above from templates] [llm: 0 calls — filling in the logic is a separate step, by you or whichever LLM you choose]
 ```
 
-Two things to notice. The parts are always built in dependency order (domain, then hook, then page, then controller) whatever order you type them, so imports resolve. And every command ends with a line that says whether a model was involved. Here: `0 calls`.
+Two things to notice. The parts are always built in dependency order (domain, then hook, then page, then controller) whatever order you type them, so imports resolve. And every `create` command ends with a line that says whether a model was involved. Here: `0 calls`.
 
 ### 2. Break a rule on purpose
 
@@ -49,7 +59,7 @@ construct validate
   Fix: Move the responsibility to controller or workflow.
 ```
 
-The exit code is `1` because this is an error. Warnings, such as a public export with no description, are printed but do not fail the run.
+The exit code is `1` because this is an error. Warnings are printed after it but do not fail the run. Here there are three `SLICE-003` warnings, because the new hook and controllers are not exported from their feature's `index.ts` yet (the block above is that run trimmed to the error). A public export with no description is another common one (`READ-003`).
 
 ## You get
 
@@ -57,7 +67,7 @@ The exit code is `1` because this is an error. Warnings, such as a public export
 |---|---|
 | The rule, file, line, reason and fix in one place | the `PAGE-004` block |
 | A pass/fail you can put in CI | exit code `1` with an error |
-| No model in the loop unless you ask | `[llm: 0 calls]` on every command |
+| No model in the loop unless you ask | `[llm: 0 calls]` on every `create` command |
 | Per-step timing, from Construct itself | `(0.01s)` per file, `Total: 0.03s` |
 
 Every rule id and its default severity is listed in the [Rule reference](@developers/rules-reference/); severity and time-boxed exceptions are covered in [Validate and tune the rules](@user-guide/how-to/tune-rules/).
@@ -66,4 +76,4 @@ Every rule id and its default severity is listed in the [Rule reference](@develo
 
 A rule break is caught in milliseconds, with the file, the line and the fix, before the fifth feature copies it.
 
-Checked against commit `d23283f` on 2026-09-23.
+Checked against commit `a33b5fa` on 2026-09-24.

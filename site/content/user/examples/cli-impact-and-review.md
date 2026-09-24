@@ -25,6 +25,7 @@ Impact of component:features/shared/components/CurrencyLabel.tsx: 4 feature(s) (
 - **CROSS-FEATURE** (warning, derived): The seeds live in 1 feature(s) (shared) but the impact reaches 3 more: billing, checkout, reporting.
 - **PUBLIC-API** (warning, derived): 1 implicated file(s) are re-exported from features/shared/index.ts: changing them changes feature "shared"'s public API.
 - **SHARED-COMPONENT** (warning, derived): features/shared/components/CurrencyLabel.tsx is used by 3 other feature(s): billing, checkout, reporting. A change here is not feature-local.
+- **SHARED-COMPONENT** (warning, derived): features/shared/index.ts is used by 3 other feature(s): billing, checkout, reporting. A change here is not feature-local.
 ```
 
 Same input, same tree, same bytes. Running the JSON form twice and hashing it:
@@ -40,13 +41,13 @@ Other ways to seed the same report: a git range (`--since main`), a list of file
 
 ### 2. What does this branch actually change?
 
-On a branch where a page gained a `fetch()` call:
+On a branch where a page gained a `fetch()` call (here the `shop` project from the [scaffold example](@user-guide/examples/cli-scaffold-and-validate/), committed on `main`, with the `fetch()` line from that page's step 2 committed on `feature/invoice-fetch`):
 
 ```bash
 construct review main feature/invoice-fetch --format markdown
 ```
 
-Trimmed output:
+Trimmed output (each section also carries a short "Where this comes from" note):
 
 ```text
 # PR health
@@ -59,22 +60,26 @@ Scope is not measured for this change.
 
 No plan is linked. That is normal for hand-written work and outside contributions. Every other check still runs.
 
+## Unexplained changes
+
+Nothing to compare: the changed files form no connected group, so none can be singled out.
+
 ## Rule regressions
 
-1 new rule violation on this change (6 already there, not counted).
+1 new rule violation on this change (5 already there, not counted).
 
 - **conversation** [error] PAGE-004 is newly violated in features/billing/pages/InvoicePage.tsx — Page calls fetch().
 
 ## Public surface
 
-1 public file changed; no export was removed (0 added).
+No public exports changed.
 
 ## What the flow now does
 
 No workflow files changed, so the flows behave as before.
 ```
 
-Rule regressions counts only violations that are new on the head branch: the 6 that were already there are a number, never blamed on this change. Findings are split into those a Construct block can fix mechanically and those that need a human decision; the two are never mixed. Pass `--plan <file>` and the scope check compares what the plan declared with what the branch touched.
+Rule regressions counts only violations that are new on the head branch: the 5 that were already there are a number, never blamed on this change. Findings are split into those a Construct block can fix mechanically and those that need a human decision; the two are never mixed. Pass `--plan <file>` and the scope check compares what the plan declared with what the branch touched.
 
 Nothing is written. Refs are validated, git runs from temporary detached checkouts that are removed afterwards, and your working tree, index and branches are unchanged after the run.
 
@@ -82,13 +87,13 @@ Nothing is written. Refs are validated, git runs from temporary detached checkou
 
 | You get | Evidence above |
 |---|---|
-| A what it touches without asking a model | `every entry derived the same way every time` |
+| A what it touches without asking a model | `every entry derived deterministically` |
 | The same answer every time | identical `sha256` on two runs |
-| Review that knows your rules | `1 new rule violation ... (6 already there, not counted)` |
+| Review that knows your rules | `1 new rule violation ... (5 already there, not counted)` |
 | No side effects | read-only by construction |
 
 ## Why it matters
 
 You know what a change reaches, and what a branch means, before you approve it, and the answer is the same every time.
 
-Checked against commit `d23283f` on 2026-09-23.
+Checked against commit `a33b5fa` on 2026-09-24.
