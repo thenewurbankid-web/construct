@@ -56,7 +56,7 @@ test('archived items are not re-added and are ignored', () => {
     issues: [{ number: 1, id: 'A', state: 'CLOSED', closedAt: '2026-01-01T00:00:00Z' }],
     items: [item({ number: 1, isArchived: true })], now,
   });
-  assert.deepEqual(p, { add: [], setStatus: [], setArea: [], archive: [], report: { missingModule: [], missingSubModule: [], areaProblems: [], missingKind: [], openWithoutPriority: [] } });
+  assert.deepEqual(p, { add: [], setStatus: [], setArea: [], archive: [], remove: [], report: { missingModule: [], missingSubModule: [], areaProblems: [], missingKind: [], openWithoutPriority: [] } });
 });
 
 test('is idempotent: applying the plan yields an empty plan', () => {
@@ -94,4 +94,11 @@ test('Area is derived from Module + Sub-module: mismatches are fixed, impossible
 test('an issue labelled off-board is never added to the board', () => {
   const p = planActions({ issues: [{ id: 'I1', number: 1, state: 'OPEN', labels: [OFF_BOARD_LABEL] }, { id: 'I2', number: 2, state: 'OPEN', labels: [] }], items: [] });
   assert.deepEqual(p.add.map((a) => a.number), [2]);
+});
+
+test('an off-board issue that GitHub auto-added is removed from the board, and never reported as a gap', () => {
+  const p = planActions({ issues: [{ id: 'I1', number: 1, state: 'OPEN', labels: [OFF_BOARD_LABEL] }], items: [{ itemId: 'PVTI_1', number: 1, isArchived: false }] });
+  assert.deepEqual(p.remove, [{ itemId: 'PVTI_1', number: 1 }]);
+  assert.deepEqual(p.report.missingModule, []);
+  assert.deepEqual(p.add, []);
 });

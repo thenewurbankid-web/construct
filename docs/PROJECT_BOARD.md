@@ -52,8 +52,8 @@ Module/Sub-module concern when triaging. There is deliberately no Edition field 
 ### Off-board work
 
 Work outside the project team (owner decision 2026-09-24: the Studio epic, #637) is tracked as an issue with the label
-`off-board`. The sync tool never adds such an issue to the board, and the auto-add workflow filter must exclude the label
-(see Workflows below). Remove the label to bring an issue onto the board.
+`off-board`. The sync tool never adds such an issue to the board and removes the board item (never the issue) if GitHub's auto-add
+put it there; the auto-add workflow filter should also exclude the label (see Workflows below). Remove the label to bring an issue onto the board.
 
 ### Milestone (not a board field)
 
