@@ -23,6 +23,7 @@ import { extractExpression } from './extractExpression.mjs';
 import { importVertical, importPlan, analyzeFiles, executeImportPlan, autoFixViolations } from './import.mjs';
 import { planMechanically } from './mechanical-plan.mjs';
 import { reviewImport } from './import-review.mjs';
+import { repairRelativeImports } from './import-repair.mjs';
 import { resolveRoute } from './route-resolver.mjs';
 import { DEFAULT_ENFORCERS } from '../../packages/engine/defaultEnforcers.mjs';
 import { runPipeline } from '../../packages/engine/pipeline.mjs';
@@ -1272,6 +1273,12 @@ export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude
   }
 
   console.log('');
+  // A model's most common slip is the spelling of a sibling import (`../services/ordersApi` for `OrdersApi.tsx`); fixing it is exact-match work, so it is done here instead of by a retry.
+  const importRepairs = repairRelativeImports(results.flatMap((r) => r.files));
+  if (importRepairs.length) {
+    step('validating', { feature: plan.feature }, `Fixed the spelling of ${importRepairs.length} relative import(s) that matched a generated file only by case; no model call was needed.`);
+    for (const r of importRepairs) console.log(`Import repaired in ${path.relative(root, r.file)}: '${r.from}' -> '${r.to}'`);
+  }
   // The public API is deterministic work, not a model's: export every new layer file from index.ts (with a JSDoc line each) so SLICE-003/READ-003 never fire on what we just generated.
   const apiSync = syncPublicApi(root, plan.feature);
   if (apiSync.changed) console.log(`Updated ${apiSync.path} (the feature's public API) with the new exports.`);

@@ -334,3 +334,36 @@ test('every step event a full run emits has a string phase and its own detail (t
   assert.equal(filling.detail.layer, 'domain');
   assert.match(filling.reason, /stub and breadcrumb/);
 });
+
+test('a model import spelled with the wrong case is repaired deterministically, so validation never sees IMPORT-001', async () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  const routeDir = buildRouteFixture(['./Api', './Cart'], {
+    'Api.ts': 'export async function load() { return fetch("/x"); }\n',
+    'Cart.ts': 'export const useCart = () => 1;\n',
+  });
+  const plan = { feature: 'checkout', units: [{ name: 'Api', layers: ['service'], from: 'Api.ts' }, { name: 'Cart', layers: ['hook'], from: 'Cart.ts' }] };
+  const printed = [];
+  const originalLog = console.log;
+  console.log = (...a) => printed.push(a.join(' '));
+  try {
+    await inProject(dir, () =>
+      withFakeAnalysis(
+        (n) => {
+          if (n === 1) return JSON.stringify(plan);
+          if (n === 2) return 'export async function Api() { return fetch("/x"); }';
+          return "import { Api } from '../services/api';\nexport function useCart() { return Api; }";
+        },
+        async () => {
+          await importRouteWizard(scriptedAsk(['checkout', '', 'y', 'y', 'n']), routeDir);
+        },
+      ),
+    );
+  } finally {
+    console.log = originalLog;
+  }
+  const out = printed.join('\n');
+  assert.match(out, /Import repaired in features\/checkout\/hooks\/useCart\.tsx: '\.\.\/services\/api' -> '\.\.\/services\/Api'/);
+  assert.doesNotMatch(out, /IMPORT-001/);
+  assert.match(fs.readFileSync(path.join(dir, 'features', 'checkout', 'hooks', 'useCart.tsx'), 'utf8'), /'\.\.\/services\/Api'/);
+});
