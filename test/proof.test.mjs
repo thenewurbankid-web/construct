@@ -148,9 +148,10 @@ test('with a Playwright config the plan adds the browser flow and its run; the s
   assert.equal(detectPlaywright(dir), 'playwright.config.ts');
   const planned = planIn(dir);
   assert.equal(planned.ok, true, JSON.stringify(planned.errors));
-  assert.deepEqual(planned.plan.steps.slice(7).map((s) => `${s.id} ${s.flow} ${s.args.kind ?? ''} ${(s.dependsOn ?? []).join('+')}`), ['s8 create.proof render s2+s3+s4+s5+s6+s7', 's9 test.proof  s8', 's10 create.proof playwright s2+s3+s4+s5+s6+s7', 's11 test.run  s10+s9']);
-  assert.deepEqual(planned.plan.steps[10].args, { feature: 'products', name: 'products--screen.spec.ts', area: 'generated' });
-  assert.deepEqual(planned.proof.verifiedBy, ['s9', 's11']);
+  assert.deepEqual(planned.plan.steps.slice(7).map((s) => `${s.id} ${s.flow} ${s.args.kind ?? ''} ${(s.dependsOn ?? []).join('+')}`), ['s8 add.dependency  ', 's9 sync  s2+s3+s4+s5+s6+s7', 's10 create.route  s7+s9', 's11 create.proof render s2+s3+s4+s5+s6+s7+s8+s9+s10', 's12 test.proof  s11', 's13 create.proof playwright s2+s3+s4+s5+s6+s7+s8+s9+s10', 's14 test.run  s13+s12']);
+  assert.deepEqual(planned.plan.steps[12].args, { name: 'Products', feature: 'products', shape: 'list', entity: 'Product', fields: FIELDS, kind: 'playwright', route: '/products' }, '#654: the browser flow opens the route the plan wired');
+  assert.deepEqual(planned.plan.steps[13].args, { feature: 'products', name: 'products--screen.spec.ts', area: 'generated' });
+  assert.deepEqual(planned.proof.verifiedBy, ['s12', 's14']);
   assert.deepEqual(planned.proof.playwright, { configured: true, config: 'playwright.config.ts', skipped: null });
   assert.deepEqual(planned.notes, []);
   assert.deepEqual(planTouches(planned.plan).files.filter((f) => f.path.includes('tests/')).map((f) => f.path), ['features/products/tests/generated/ProductsScreen.proof.test.ts', 'features/products/tests/generated/products--screen.spec.ts']);
@@ -169,8 +170,9 @@ test('a plan for a card without the shape has no proof; proof: false leaves a sh
   const dir = project();
   const plain = planFromBlocks(placeCard(cardOf('A user wants to see a list of products'), { framework: 'react-spa' }).blocks, { feature: 'products', root: dir });
   assert.deepEqual([plain.proof, plain.notes, plain.plan.steps.length], [null, [], 3]);
-  const shaped = planIn(dir, { proof: false });
-  assert.deepEqual([shaped.proof, shaped.plan.steps.length], [null, 7]);
+  const shaped = planIn(dir, { proof: false, wire: false });
+  assert.deepEqual([shaped.proof, shaped.wiring, shaped.offers, shaped.plan.steps.length], [null, null, [], 7]);
+  assert.equal(planIn(dir, { proof: false }).plan.steps.length, 10, '#654: the dependency, sync and route steps are planned unless wire: false');
 });
 
 test('proofStatus: the chain is complete only when every proof step is green or explicitly skipped', () => {

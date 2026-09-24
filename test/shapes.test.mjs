@@ -277,8 +277,8 @@ test('answering the offer applies the shape: blocks carry it, the attribution is
   ]);
   assert.ok(listed.blocks.every((b) => b.shape.name === 'list' && b.shape.entity === 'Product' && b.shape.fields === 'id:string,name:string,price:number'));
   assert.deepEqual(listed.decisions, [{ question: 'q-shape', option: 'list', by: 'decision-model', provider: 'rules' }]);
-  assert.equal(listed.notes.length, 3);
-  assert.match(listed.notes[2], /fetches \/api\/products from the browser/);
+  assert.equal(listed.notes.length, 2);
+  assert.match(listed.notes[1], /fetches \/api\/products from the browser: serve that endpoint .* The plan wires the route entry, runs sync/, '#654: the route entry is no longer a by-hand note');
   assert.deepEqual(blockSummary(listed).lines, ['"see list products" is a list fetched by a service (domain, service, hook, controller).', '"see list products" shows that list from props (component, page).']);
   assert.deepEqual(placeCard(card, { framework: 'nextjs', answers: { 'q-shape': 'list' } }).blocks.map((b) => b.layers.length), [4, 2], 'the app-router layer table is not used: the shape fetches in the browser');
 
@@ -299,10 +299,10 @@ test('the plan of a list-shaped card is valid, every step carries the shape, and
   const planned = planFromBlocks(placed.blocks, { feature: 'shop', root: dir, decisions: placed.decisions });
   assert.equal(planned.ok, true, JSON.stringify(planned.errors));
   assert.deepEqual(validatePlan(planned.plan), { valid: true, errors: [] });
-  assert.deepEqual(planned.plan.steps.map((s) => s.title), ['Create feature shop', ...LAYERS.map((l) => `Create ${l} Products`), 'Prove the Products screen', 'Run the proof of Products'], '#623: a shaped screen ends with its proof and the read-only run of it');
+  assert.deepEqual(planned.plan.steps.map((s) => s.title), ['Create feature shop', ...LAYERS.map((l) => `Create ${l} Products`), 'Add @line/construct-core to package.json', "Export the shop feature's public API (sync)", 'Wire the Products screen into the route entry (/products)', 'Prove the Products screen', 'Run the proof of Products'], '#623 and #654: a shaped screen is wired (dependency, sync, route) and ends with its proof and the read-only run of it');
   assert.deepEqual(planned.plan.steps.slice(1, 1 + LAYERS.length).map((s) => s.args.layer), LAYERS);
-  for (const s of planned.plan.steps.slice(1, -1)) assert.deepEqual([s.args.shape, s.args.entity, s.args.fields], ['list', 'Product', 'id:string,name:string,price:number']);
-  assert.equal(planFromBlocks(placed.blocks, { feature: 'shop', root: dir, proof: false }).plan.steps.length, 1 + LAYERS.length, 'proof: false leaves the plan as it was before #623');
+  for (const s of planned.plan.steps.slice(1, 1 + LAYERS.length)) assert.deepEqual([s.args.shape, s.args.entity, s.args.fields], ['list', 'Product', 'id:string,name:string,price:number']);
+  assert.equal(planFromBlocks(placed.blocks, { feature: 'shop', root: dir, proof: false, wire: false }).plan.steps.length, 1 + LAYERS.length, 'proof: false and wire: false leave the plan as it was before #623 and #654');
   const stepOf = (layer) => planned.plan.steps.find((s) => s.args.layer === layer);
   assert.deepEqual(stepOf('page').dependsOn, ['s1', 's2', 's5'], 'the page waits for the domain (its types) and the component');
   assert.deepEqual(stepOf('controller').dependsOn, ['s1', 's4', 's6']);
@@ -333,5 +333,5 @@ test('the worked example in docs/PLACEMENT.md runs and produces exactly the JSON
   for (const tag of ['question', 'decisions', 'commands', 'files']) {
     assert.deepEqual(JSON.parse(block(tag, 'json')), JSON.parse(JSON.stringify(shown[tag])), tag);
   }
-  assert.equal(shown.commands.length, 9);
+  assert.equal(shown.commands.length, 12);
 });

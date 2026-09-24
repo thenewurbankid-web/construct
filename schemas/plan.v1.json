@@ -237,6 +237,8 @@
             "create.layer",
             "create.unit",
             "create.proof",
+            "create.route",
+            "add.dependency",
             "create.page.from",
             "create.workflow.from",
             "create.controller.bind",
@@ -621,6 +623,116 @@
                 "required": [
                   "name",
                   "feature"
+                ]
+              },
+              "executor": {
+                "enum": [
+                  "deterministic",
+                  "user"
+                ]
+              },
+              "touches": {
+                "$ref": "#/definitions/touches"
+              }
+            },
+            "required": [
+              "touches"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "create.route"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The controller unit name of the screen, PascalCase (Products)."
+                  },
+                  "feature": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "route": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The route path of the screen, for example /products. Defaults to the kebab-case of the name."
+                  },
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": [
+                  "name",
+                  "feature"
+                ]
+              },
+              "executor": {
+                "enum": [
+                  "deterministic",
+                  "user"
+                ]
+              },
+              "touches": {
+                "$ref": "#/definitions/touches"
+              }
+            },
+            "required": [
+              "touches"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "add.dependency"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The package name, for example @line/construct-core."
+                  },
+                  "version": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The version range to add, for example ^0.9.0."
+                  },
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": [
+                  "name",
+                  "version"
                 ]
               },
               "executor": {

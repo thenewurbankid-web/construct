@@ -85,6 +85,16 @@ const EVERY_FLOW_STEPS = [
     touches: { features: ['checkout'], files: [{ path: 'features/checkout/tests/generated/TotalsScreen.proof.test.ts', change: 'create' }, { path: 'architecture.yml', change: 'modify' }] },
   },
   {
+    id: 's-route', title: 'Wire the Totals screen into the route entry', flow: 'create.route', executor: 'deterministic',
+    args: { name: 'Totals', feature: 'checkout', route: '/totals' }, dependsOn: ['s-slice'],
+    touches: { features: ['checkout'], files: [{ path: 'app/totals/page.tsx', change: 'create', layer: 'route' }] },
+  },
+  {
+    id: 's-dependency', title: 'Add @line/construct-core to package.json', flow: 'add.dependency', executor: 'deterministic',
+    args: { name: '@line/construct-core', version: '^0.9.0' },
+    touches: { features: [], files: [{ path: 'package.json', change: 'modify' }] },
+  },
+  {
     id: 's-page', title: 'Ingest the designed checkout page', flow: 'create.page.from', executor: 'deterministic',
     args: { name: 'Checkout', feature: 'checkout', from: '../design-exports/Checkout.jsx' }, dependsOn: ['s-feature'],
     touches: touching('checkout', 'features/checkout/pages/CheckoutPage.tsx', 'create', 'page'),

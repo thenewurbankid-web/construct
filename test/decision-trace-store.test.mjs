@@ -10,11 +10,11 @@ import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { loadConfig, normalizeTraces } from '../packages/core/config.mjs';
 import { compileChain, defineChooser } from '../packages/core/chooser.mjs';
 import { parseRequirement } from '../packages/core/requirement-card.mjs';
-import { placeCard } from '../packages/core/placement.mjs';
+import { placeCard, planFromBlocks } from '../packages/core/placement.mjs';
 import { registerDecisionProvider, unregisterDecisionProvider } from '../packages/core/decision-provider.mjs';
 import { buildTrace, serializeTrace } from '../packages/core/decision-trace.mjs';
 import { TRACE_FILE, TRACE_STORE_LIMITS, readTraces, recordChoices, recordDecisions, recordOutcome, recordOutcomes, traceDir, tracesEnabled } from '../packages/core/decision-trace-store.mjs';
-import { choiceFromCardQuestion, choicesFromChain, choicesFromPlacement, placementChooserId } from '../packages/core/decision-trace-adapters.mjs';
+import { choiceFromCardQuestion, choicesFromChain, choicesFromPlacement, choicesFromWiring, placementChooserId, wiringChooserId } from '../packages/core/decision-trace-adapters.mjs';
 
 const opt = (id) => ({ id, label: id, enabled: true, why: `Because ${id}.` });
 const summary = (n = 1, over = {}) => ({ id: `o${n}`, question: `What does "word${n}" mean here?`, options: [opt('entity'), opt('state'), opt('ui-part')], chosen: null, ...over });
@@ -236,6 +236,22 @@ test('a placement decision becomes a choice with the question AS OFFERED, the at
   const [q] = choicesFromPlacement(server, opts, placeCard(server, opts));
   assert.deepEqual([q.chooser.id, q.chosen], ['requirement.placement.server-check', 'mutation']);
   assert.deepEqual(['q-v1', 'q-c2', 'q-server', 'q-shape', 'q-zz'].map(placementChooserId), ['requirement.placement.ambiguity', 'requirement.placement.check', 'requirement.placement.server-check', 'requirement.placement.shape', 'requirement.placement.other']);
+});
+
+test('#654: the answered wiring questions of a shaped plan become choices; an unanswered one records nothing', () => {
+  const dir = makeTempDir('construct-wiring-trace-');
+  fs.writeFileSync(path.join(dir, 'package.json'), '{ "name": "x", "dependencies": {} }\n');
+  const card = parseRequirement('A user wants to see a list of products').card;
+  const placed = placeCard(card, { framework: 'react-spa', answers: { 'q-shape': 'list' } });
+  const opts = { feature: 'products', root: dir, decisions: placed.decisions };
+  assert.deepEqual(choicesFromWiring(planFromBlocks(placed.blocks, opts)), [], 'the default was applied, nobody chose');
+  const planned = planFromBlocks(placed.blocks, { ...opts, answers: { 'q-dependency': { option: 'skip', by: 'decision-model', provider: 'rules' } } });
+  const [c, ...rest] = choicesFromWiring(planned);
+  assert.equal(rest.length, 0, 'the shape decision is the placement adapter\'s, not this one');
+  assert.deepEqual([c.chooser.id, c.chosen, c.by, c.provider, c.summary.chosen], ['requirement.plan.dependency', 'skip', 'decision-model', 'rules', null]);
+  assert.deepEqual(c.summary.options.map((o) => o.id), ['add-dependency', 'skip']);
+  assert.equal(buildTrace({ ...c, provider: { name: 'rules', version: '1' } }, { at: '2026-09-24T10:00:00.000Z' }).ok, true);
+  assert.deepEqual(['q-dependency', 'q-route', 'q-route-orders', 'q-zz'].map(wiringChooserId), ['requirement.plan.dependency', 'requirement.plan.route', 'requirement.plan.route', 'requirement.plan.other']);
 });
 
 test('compileChain decisions become choices with their attribution; the chooser summary is what was offered', async () => {

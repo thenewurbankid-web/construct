@@ -37,6 +37,7 @@ import { generateUnitTests } from '../../packages/engine/testUnitGenerator.mjs';
 import { runFeatureTests, renderRunText } from '../../packages/engine/testRunner.mjs';
 import { runProofs, renderProofRunText } from '../../packages/engine/proofRunner.mjs';
 import { generateProof } from './proof.mjs';
+import { generateRouteEntry, addDependency } from './wiring.mjs';
 import { startTimer, elapsedSeconds, formatDuration } from './timing.mjs';
 import { explainSource, renderExplained } from '../../packages/engine/workflowExplain.mjs';
 import { listWorkflowSourceFiles, readWorkflowSource } from '../../packages/engine/workflowSource.mjs';
@@ -267,6 +268,54 @@ function proofDocument(args, attribution) {
   return { verb: 'create', kind: 'proof', feature: request.feature, name: request.name, proofKind: result.kind, files: result.files.map((f) => path.relative(root, f)), regions: result.regions, skipped: result.skipped, needs: result.needs, attribution };
 }
 
+/** The request of `construct create route <Name> --feature <f> [--route </path>]` (#654): wire the controller of a generated screen into the route entry. No model, so `--llm` is refused. */
+function routeRequestOf(args) {
+  const name = args[1];
+  const feature = flagValue(args, '--feature');
+  if (!name || name.startsWith('--') || !feature) throw new ConstructError('Usage: construct create route <Name> --feature <feature> [--route </path>] [--dir <path>]', { exitCode: EXIT_CODES.USAGE_ERROR });
+  if (args.includes('--llm')) throw new ConstructError('The route entry is written from a fixed template with no model, so it cannot be combined with --llm. Run it without --llm.', { exitCode: EXIT_CODES.USAGE_ERROR });
+  return { name, feature, route: flagValue(args, '--route') };
+}
+
+/** `construct create route <Name> --feature <f>` (#654): point the project's route entry at the controller, or say there was nothing to do. */
+function generateRouteFiles(args) {
+  const root = getRoot(args);
+  const t = startTimer();
+  const request = routeRequestOf(args);
+  const result = generateRouteEntry(root, request);
+  const dt = formatDuration(elapsedSeconds(t));
+  for (const id of result.removed) console.log(result.framework === 'react-spa' ? `Removed the dangling import of ${id} from ${result.file}` : `Removed ${id} (the init scaffold's page, which rendered a controller that was never generated)`);
+  console.log(result.changed ? `${result.framework === 'react-spa' ? 'Updated' : 'Created'} ${result.file} (${dt}): ${result.route} renders ${request.name}Controller` : `Unchanged ${result.file}: ${result.route} already renders ${request.name}Controller`);
+}
+
+/** The result document of `create route` for `--format json`. */
+function routeDocument(args, attribution) {
+  const root = getRoot(args);
+  const request = routeRequestOf(args);
+  const result = generateRouteEntry(root, request);
+  return { verb: 'create', kind: 'route', feature: request.feature, name: request.name, route: result.route, framework: result.framework, files: result.changed ? [result.file] : [], removed: result.removed, attribution };
+}
+
+/** The request of `construct create dependency <package> --version <range>` (#654): one line in package.json, no package manager. */
+function dependencyRequestOf(args) {
+  const name = args[1];
+  const version = flagValue(args, '--version');
+  if (!name || name.startsWith('--') || !version) throw new ConstructError('Usage: construct create dependency <package> --version <range> [--dir <path>]', { exitCode: EXIT_CODES.USAGE_ERROR });
+  return { name, version };
+}
+
+/** `construct create dependency @line/construct-core --version ^0.9.0` (#654): add the line to package.json; never installs. */
+function generateDependencyLine(args) {
+  const result = addDependency(getRoot(args), dependencyRequestOf(args));
+  console.log(result.changed ? `Updated ${result.file}: added ${result.line} to dependencies. Nothing is installed: run your package manager.` : `Unchanged ${result.file}: ${result.line.split(':')[0]} is already a dependency.`);
+}
+
+/** The result document of `create dependency` for `--format json`. */
+function dependencyDocument(args, attribution) {
+  const result = addDependency(getRoot(args), dependencyRequestOf(args));
+  return { verb: 'create', kind: 'dependency', line: result.line, files: result.changed ? [result.file] : [], attribution };
+}
+
 /**
  * `construct generate <layer> <name> --feature <f>` and its siblings: one layer file, `layer <name> --layers ...` for a whole
  * slice, or `tests <feature>`. `--shape list [--entity E] [--fields a:string,...]` (#619) fills the units with real typed code for
@@ -282,6 +331,8 @@ export async function generate(args) {
   if (args[0] === 'tests') return generateTests(args);
   if (args[0] === 'layer') return generateVerticalSlice(args);
   if (args[0] === 'proof') return generateProofFiles(args);
+  if (args[0] === 'route') return generateRouteFiles(args);
+  if (args[0] === 'dependency') return generateDependencyLine(args);
   const layer = args[0], name = args[1], fi = args.indexOf('--feature');
   if (!layer || !name || fi < 0 || !args[fi + 1]) {
     throw new ConstructError('Usage: construct generate <layer> <name> --feature <feature> [--openapi <spec>] [--llm <provider>]', { exitCode: EXIT_CODES.USAGE_ERROR });
@@ -797,6 +848,8 @@ async function createDocument(args) {
   }
   if (args[0] === 'tests') throw usageFail('create --format json does not cover `tests`: use `construct generate tests <feature>`.');
   if (args[0] === 'proof') return proofDocument(args, attribution);
+  if (args[0] === 'route') return routeDocument(args, attribution);
+  if (args[0] === 'dependency') return dependencyDocument(args, attribution);
   const fi = args.indexOf('--feature');
   const feature = fi >= 0 ? args[fi + 1] : undefined;
   if (args[0] === 'layer') {

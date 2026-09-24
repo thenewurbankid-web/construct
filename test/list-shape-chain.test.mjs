@@ -8,6 +8,9 @@
 // #623 adds the proof: the plan ends with `create proof` and `test proof` steps, run by the same commands; the proof (a node test
 // bundled with the project's esbuild) passes on the generated screen, FAILS with a message naming the state when the page is
 // broken (an app failure) or a file it binds to is gone (a convention failure), and is byte-identical on a second run.
+// #654 takes the two by-hand steps out: the plan itself adds the dependency line, runs `sync` and points the route entry at the
+// controller (Next.js: app/products/page.tsx; react-spa: src/App.tsx, whose dangling init import of CoreController it drops). The
+// test runs the plan's commands and nothing else, and every file that changed is a file the plan declared.
 // Offline: the project has no node_modules of its own, so the test links the repo's (react, react-dom, typescript, @types) and
 // `@line/construct-core` (this checkout's packages/core, which the generated units import their factories from).
 import test from 'node:test';
@@ -82,25 +85,33 @@ function execute(dir, plan) {
 }
 
 const featureFiles = (dir) => Object.fromEntries(fs.readdirSync(path.join(dir, 'features'), { recursive: true }).filter((f) => fs.statSync(path.join(dir, 'features', f)).isFile()).sort().map((f) => [`features/${f}`, fs.readFileSync(path.join(dir, 'features', f), 'utf8')]));
+/** Every file of the project (not node_modules) with its bytes, to tell what a run changed. */
+const projectFiles = (dir) => Object.fromEntries(fs.readdirSync(dir, { recursive: true }).filter((f) => !/^node_modules(\/|$)/.test(f) && fs.statSync(path.join(dir, f)).isFile()).sort().map((f) => [f.split(path.sep).join('/'), fs.readFileSync(path.join(dir, f), 'utf8')]));
 const validateJson = (dir) => JSON.parse(run(['validate', '--format', 'json'], dir).stdout);
 
-test('the sentence becomes a plan of 9 steps, runs, and gives a screen that validates, type-checks, renders and is PROVEN', async (t) => {
+test('the sentence becomes a plan of 12 steps, runs, and gives a screen that validates, type-checks, renders and is PROVEN', async (t) => {
   const dir = initProject('react-spa');
   const { placed, planned } = await planFor(dir, 'products');
   assert.deepEqual(placed.decisions, [{ question: 'q-shape', option: 'list', by: 'decision-model', provider: 'rules' }], 'who decided is recorded');
-  assert.deepEqual(planned.plan.steps.map((s) => s.title), ['Create feature products', 'Create domain Products', 'Create service Products', 'Create hook Products', 'Create component Products', 'Create page Products', 'Create controller Products', 'Prove the Products screen', 'Run the proof of Products']);
-  assert.deepEqual(planned.proof, { required: true, complete: false, state: 'pending', steps: [{ name: 'Products', kind: 'render', proofStep: 's8', verifiedBy: 's9' }], verifiedBy: ['s9'], playwright: { configured: false, config: null, skipped: planned.notes[0] } }, 'the chain is not complete until s9 is green or skipped');
+  assert.deepEqual(planned.plan.steps.map((s) => s.title), ['Create feature products', 'Create domain Products', 'Create service Products', 'Create hook Products', 'Create component Products', 'Create page Products', 'Create controller Products', 'Add @line/construct-core to package.json', "Export the products feature's public API (sync)", 'Wire the Products screen into the route entry (/products)', 'Prove the Products screen', 'Run the proof of Products']);
+  assert.deepEqual(planned.plan.steps.slice(7, 10).map((s) => s.flow), ['add.dependency', 'sync', 'create.route'], 'the wiring sits after the units and before the proof');
+  assert.deepEqual(planned.wiring, { dependency: 's8', sync: 's9', routes: [{ name: 'Products', route: '/products', step: 's10', file: 'src/App.tsx' }] });
+  assert.deepEqual(planned.offers.map((o) => [o.id, o.default, o.options.map((x) => x.id), o.line]), [['q-dependency', 'add-dependency', ['add-dependency', 'skip'], '"@line/construct-core": "^0.9.0"']], 'a project without the dependency is offered the exact line, as a closed choice');
+  assert.deepEqual(planned.proof, { required: true, complete: false, state: 'pending', steps: [{ name: 'Products', kind: 'render', proofStep: 's11', verifiedBy: 's12' }], verifiedBy: ['s12'], playwright: { configured: false, config: null, skipped: planned.notes[0] } }, 'the chain is not complete until s12 is green or skipped');
   assert.match(planned.notes[0], /^Playwright is not configured in this project/, 'a project without Playwright is told so, and nothing is installed');
-  assert.equal(planned.plan.steps[8].flow, 'test.proof', 'the last step is the read-only verification');
-  assert.deepEqual(planned.plan.steps[8].dependsOn, ['s8']);
+  assert.equal(planned.plan.steps[11].flow, 'test.proof', 'the last step is the read-only verification');
+  assert.deepEqual(planned.plan.steps[11].dependsOn, ['s11']);
   assert.equal(planned.plan.steps[3].args.fields, 'id:string,name:string,price:number', 'the fields are the card entity\'s properties, typed by name, with an id');
 
+  const before = projectFiles(dir);
   execute(dir, planned.plan);
   const written = featureFiles(dir); // includes features/core, which `construct init` scaffolds
   const declared = planTouches(planned.plan).files.map((f) => f.path).sort();
+  const after = projectFiles(dir);
+  assert.deepEqual(Object.keys(after).filter((f) => after[f] !== before[f]).sort(), declared, 'every file the commands created or changed is a file the plan declared, and every declared file changed: nothing was done by hand');
   assert.deepEqual(Object.keys(written).filter((f) => f.startsWith('features/products/')).sort(), declared.filter((f) => f.startsWith('features/')), 'the commands wrote exactly the files the plan declared (the gate refuses any other)');
   assert.ok(declared.includes('architecture.yml'), 'the proof step declares the test regions it adds to architecture.yml');
-  assert.equal(declared.length, 13, 'index.ts from the feature step, the ten files of the shape (types.ts among them), the proof and architecture.yml');
+  assert.equal(declared.length, 16, 'index.ts from the feature step, the ten files of the shape (types.ts among them), the proof, architecture.yml, package.json, .dependency-cruiser.cjs and src/App.tsx');
   await t.test('the files it wrote', () => {
     for (const f of ['domain/Products.domain.ts', 'services/Products.service.ts', 'hooks/useProducts.state.ts', 'components/ProductRow.component.tsx', 'pages/ProductsPage.page.tsx', 'expressions/ProductsByStatus.expression.tsx', 'controllers/ProductsController.controller.tsx']) {
       assert.ok(written[`features/products/${f}`], f);
@@ -108,9 +119,14 @@ test('the sentence becomes a plan of 9 steps, runs, and gives a screen that vali
     assert.ok(Object.values(written).every((c) => !/\bTODO\b/.test(c)), 'no stub is left to fill');
   });
 
-  // What a person does by hand, once: wire the controller into the route entry, and let sync export it from the feature.
-  fs.writeFileSync(path.join(dir, 'src', 'App.tsx'), "import { ProductsController } from '../features/products/controllers/ProductsController.controller';\n\nexport function App() {\n  return <ProductsController />;\n}\n");
-  assert.equal(run(['sync'], dir).status, 0);
+  await t.test('the plan wired the route entry and the barrel: no by-hand step', () => {
+    const app = fs.readFileSync(path.join(dir, 'src', 'App.tsx'), 'utf8');
+    assert.equal(app, "import { Routes, Route } from 'react-router-dom';\nimport { ProductsController } from '../features/products/controllers/ProductsController.controller';\n\nexport function App() {\n  return (\n    <Routes>\n      <Route path=\"/products\" element={<ProductsController />} />\n    </Routes>\n  );\n}\n", 'the dangling CoreController import and its route are gone, the new route is in');
+    const barrel = fs.readFileSync(path.join(dir, 'features', 'products', 'index.ts'), 'utf8');
+    assert.match(barrel, /ProductsController/, 'sync exported the controller');
+    assert.match(barrel, /useProducts/, 'and the hook');
+    assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')).dependencies['@line/construct-core'], '^0.9.0', 'the dependency line was added, and nothing was installed');
+  });
 
   await t.test('construct validate: no error and no warning, with the phase 1 rules on', () => {
     const report = validateJson(dir);
@@ -120,7 +136,7 @@ test('the sentence becomes a plan of 9 steps, runs, and gives a screen that vali
 
   await t.test('tsc --noEmit passes on the features and the route entry', () => {
     // features/ includes the proof (tests/generated). A real project has @types/react-dom; this offline fixture has not, so it declares the one module.
-    fs.writeFileSync(path.join(dir, 'offline-types.d.ts'), "declare module 'react-dom/server';\n");
+    fs.writeFileSync(path.join(dir, 'offline-types.d.ts'), "declare module 'react-dom/server';\ndeclare module 'react-router-dom';\n"); // react-router-dom is in the init package.json; this offline fixture has not installed it
     fs.writeFileSync(path.join(dir, 'tsconfig.check.json'), JSON.stringify({ extends: './tsconfig.json', compilerOptions: { types: ['node'] }, include: ['features', 'src/App.tsx', 'offline-types.d.ts'] }));
     const tsc = spawnSync(process.execPath, [path.join(dir, 'node_modules', 'typescript', 'bin', 'tsc'), '--noEmit', '-p', 'tsconfig.check.json'], { encoding: 'utf8', cwd: dir });
     assert.equal(tsc.status, 0, `${tsc.stdout}${tsc.stderr}`);
@@ -252,6 +268,8 @@ test('the sentence becomes a plan of 9 steps, runs, and gives a screen that vali
     assert.deepEqual(again.planned.plan, planned.plan, 'the same plan');
     execute(other, again.planned.plan);
     assert.deepEqual(featureFiles(other), written, 'the proof included');
+    for (const f of ['src/App.tsx', '.dependency-cruiser.cjs']) assert.equal(fs.readFileSync(path.join(other, f), 'utf8'), fs.readFileSync(path.join(dir, f), 'utf8'), `${f} too`);
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(other, 'package.json'), 'utf8')).dependencies, JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')).dependencies, 'and the dependency line');
     assert.equal(fs.readFileSync(path.join(other, 'architecture.yml'), 'utf8'), fs.readFileSync(path.join(dir, 'architecture.yml'), 'utf8'), 'and the regions it declared');
   });
 });
@@ -259,15 +277,21 @@ test('the sentence becomes a plan of 9 steps, runs, and gives a screen that vali
 test('the same plan on a Next.js project validates too, and its hook and controller are client files', async () => {
   const dir = initProject('nextjs');
   const { planned } = await planFor(dir, 'products');
+  assert.deepEqual(planned.wiring.routes, [{ name: 'Products', route: '/products', step: 's10', file: 'app/products/page.tsx' }]);
+  assert.deepEqual(planned.plan.steps[9].touches.files.map((f) => `${f.change} ${f.path}`), ['create app/products/page.tsx', 'delete app/page.tsx'], "the init scaffold's dangling root page is declared as removed");
+  const before = projectFiles(dir);
   execute(dir, planned.plan);
-  fs.writeFileSync(path.join(dir, 'app', 'page.tsx'), "import { ProductsController } from '../features/products/controllers/ProductsController.controller';\n\nexport default function Page() {\n  return <ProductsController />;\n}\n");
-  assert.equal(run(['sync'], dir).status, 0);
+  const after = projectFiles(dir);
+  assert.deepEqual([...Object.keys(after), ...Object.keys(before)].filter((f, i, all) => all.indexOf(f) === i && after[f] !== before[f]).sort(), planTouches(planned.plan).files.map((f) => f.path).sort(), 'no file changed that the plan did not declare');
+  assert.equal(after['app/page.tsx'], undefined, 'the dangling CoreController page is gone');
+  assert.equal(after['app/products/page.tsx'], "import { ProductsController } from '../../features/products/controllers/ProductsController.controller';\n\nexport default function Page() {\n  return <ProductsController />;\n}\n", 'the route entry renders the controller and nothing else');
+  assert.match(after['features/products/index.ts'], /ProductsController/, 'sync exported the controller');
   assert.deepEqual(validateJson(dir).violations.map((v) => `${v.severity} ${v.rule} ${v.file}`), []);
   const files = featureFiles(dir);
   assert.ok(files['features/products/controllers/ProductsController.controller.tsx'].startsWith("'use client';"));
   assert.ok(files['features/products/hooks/useProducts.state.ts'].startsWith("'use client';"));
   fs.writeFileSync(path.join(dir, 'offline-types.d.ts'), "declare module 'react-dom/server';\n"); // stands in for @types/react-dom, which this offline fixture lacks
-  fs.writeFileSync(path.join(dir, 'tsconfig.check.json'), JSON.stringify({ extends: './tsconfig.json', compilerOptions: { types: ['node'], plugins: [], incremental: false }, include: ['features', 'app/page.tsx', 'offline-types.d.ts'] }));
+  fs.writeFileSync(path.join(dir, 'tsconfig.check.json'), JSON.stringify({ extends: './tsconfig.json', compilerOptions: { types: ['node'], plugins: [], incremental: false }, include: ['features', 'app/products/page.tsx', 'offline-types.d.ts'] }));
   const proof = run(['test', 'proof', 'products', '--format', 'json'], dir);
   assert.equal(proof.status, 0, 'the proof of the same screen passes on a Next.js project, where the hook and the controller are client files');
   assert.equal(JSON.parse(proof.stdout).counts.failed, 0);

@@ -28,6 +28,7 @@ import { validatePlan, PLAN_SHAPES } from './plan.mjs';
 import { flowBlock } from './block-flows.mjs';
 import { SHAPES, singularOf, fieldsFromProperties, endpointOf } from './shapes.mjs';
 import { detectPlaywright } from './proof.mjs';
+import { routePathOf, routeOffer, syncTouches, dependencyOffer, ROUTE_QUESTION_ID, DEPENDENCY_QUESTION_ID, CONSTRUCT_CORE_PACKAGE } from './wiring.mjs';
 
 /** The schema version string of a placement result. */
 export const PLACEMENT_VERSION = 'placement.v1';
@@ -596,7 +597,8 @@ export function placeCard(card, options = {}) {
   for (const v of violations) push(v.code, v.path, v.message);
   if (errors.length) return result();
   const notes = [...VARIANT_NOTES[variant]];
-  if (offer && shapeAnswer?.option === 'list') notes.push(`The list shape fetches ${endpointOf(candidate.unit)} from the browser: serve that endpoint (a route handler or your backend), and add "@line/construct-core" to your dependencies, since the units import its typed factories.`);
+  // #654: a shaped plan wires the route entry itself (and offers the dependency as a closed choice), so the by-hand route note is replaced.
+  if (offer && shapeAnswer?.option === 'list') notes.splice(1, 1, `The list shape fetches ${endpointOf(candidate.unit)} from the browser: serve that endpoint (a route handler or your backend). The plan wires the route entry, runs sync and, if the project lacks "@line/construct-core" (the units import its typed factories), offers to add it (q-dependency).`);
   return result({ ok: true, complete: open.length === 0, blocks, open, offers: offer ? [offer] : [], notes, decisions: decisions.sort((a, b) => a.question.localeCompare(b.question)) });
 }
 
@@ -758,8 +760,9 @@ export function planFromBlocks(blocks, options = {}) {
   const edges = unitEdges(blocks.map((b) => ({ ...b, layers: b.layers.filter((l) => LAYER_ORDER.includes(l.layer)) })));
   const stepOf = new Map();
   const steps = [];
-  const add = (stepFlow, title, args, dependsOn, why) => {
-    const touches = flowBlock(stepFlow).declaredScope(args, { root: opts.root });
+  const notes = [];
+  const add = (stepFlow, title, args, dependsOn, why, scope) => {
+    const touches = scope ?? flowBlock(stepFlow).declaredScope(args, { root: opts.root });
     const step = { id: `s${steps.length + 1}`, title, flow: stepFlow, args, executor: 'deterministic' };
     if (dependsOn.length) step.dependsOn = dependsOn;
     if (touches) step.touches = touches;
@@ -779,31 +782,70 @@ export function planFromBlocks(blocks, options = {}) {
     const id = add('create.unit', `Create ${u.layer} ${u.name}`, { layer: u.layer, name: u.name, feature: opts.feature, ...shapeArgs }, [...deps].sort(idOrder), u.why);
     stepOf.set(`${u.layer}:${u.name}`, id);
   }
+  // #654: a shaped screen is not reachable until the route entry points at its controller and the feature's barrel exports it. Both
+  // are plan steps after the units and before the proof: `sync` (the existing flow, with the barrel it rewrites declared), then
+  // `create.route`; and, when the project does not depend on @line/construct-core (the units import its factories), a closed
+  // choice `q-dependency` whose default adds the one line to package.json (nothing is installed). `q-route` is asked only when the
+  // screen's path is reserved or taken. Unanswered questions use their default, so nothing holds the plan back; `options.wire: false`
+  // leaves all of it out (a plan then ends its units as before #654).
+  const shaped = new Map();
+  for (const u of ordered) if (u.shape) shaped.set(u.name, { shape: u.shape, unitSteps: [...(shaped.get(u.name)?.unitSteps ?? []), stepOf.get(`${u.layer}:${u.name}`)] });
+  const answers = isPlainObject(opts.answers) ? opts.answers : {};
+  const offers = [];
+  const wiringDecisions = [];
+  const routeOf = new Map();
+  const wiringSteps = [];
+  let wiring = null;
+  const record = (question, answer) => {
+    const a = typeof answer === 'string' ? { option: answer } : answer;
+    if (question.chosen && isPlainObject(a)) wiringDecisions.push({ question: question.id, option: question.chosen, by: a.by ?? 'person', ...(a.provider ? { provider: a.provider } : {}) });
+  };
+  if (opts.wire !== false && shaped.size) {
+    const everyUnit = [...stepOf.values()].sort(idOrder);
+    wiring = { dependency: null, sync: null, routes: [] };
+    const dep = dependencyOffer(opts.root, answers[DEPENDENCY_QUESTION_ID]);
+    if (dep) {
+      offers.push(dep.question);
+      record(dep.question, answers[DEPENDENCY_QUESTION_ID]);
+      if (dep.add) wiring.dependency = add('add.dependency', `Add ${CONSTRUCT_CORE_PACKAGE} to package.json`, { name: CONSTRUCT_CORE_PACKAGE, version: dep.version }, [], `The generated units import their typed factories from it. Adds ${dep.line}; nothing is installed.`);
+    }
+    if (wiring.dependency) wiringSteps.push(wiring.dependency);
+    wiring.sync = add('sync', `Export the ${opts.feature} feature's public API (sync)`, {}, everyUnit, 'The feature barrel (index.ts) must export the new controller and hook, or SLICE-003 warns.', syncTouches(opts.root, opts.feature));
+    wiringSteps.push(wiring.sync);
+    for (const [name] of shaped) {
+      const id = shaped.size === 1 ? ROUTE_QUESTION_ID : `${ROUTE_QUESTION_ID}-${routePathOf(name).slice(1)}`;
+      const offer = routeOffer(opts.root, { name, feature: opts.feature, answer: answers[id] });
+      if (offer.question) { offer.question.id = id; offers.push(offer.question); record(offer.question, answers[id]); }
+      if (!offer.route) { notes.push(`The ${name} screen has no route step (you chose to skip it): add its controller to the route entry by hand.`); continue; }
+      const step = add('create.route', `Wire the ${name} screen into the route entry (${offer.route})`, { name, feature: opts.feature, route: offer.route }, [stepOf.get(`controller:${name}`), wiring.sync].filter(Boolean).sort(idOrder), 'A screen nobody can open is not done: the route entry renders its controller and nothing else.');
+      routeOf.set(name, offer.route);
+      wiringSteps.push(step);
+      wiring.routes.push({ name, route: offer.route, step, file: steps.find((x) => x.id === step)?.touches?.files?.[0]?.path ?? null });
+    }
+  }
   // #623: a shaped screen is not finished until something shows it behaves. Each shaped unit name gets a proof step (after every
   // unit of the shape) and a read-only verification step; a project that already has Playwright also gets the route flow and its
   // run. `options.proof: false` opts out (a plan then ends with the units, as before #623). Nothing is installed: a project
   // without Playwright is told so, in `notes` and `proof.playwright.skipped`.
   const proofSteps = [];
-  const notes = [];
+  let playwrightNote = null;
   const playwrightConfig = detectPlaywright(opts.root ?? '');
   if (opts.proof !== false) {
-    const shaped = new Map();
-    for (const u of ordered) if (u.shape) shaped.set(u.name, { shape: u.shape, unitSteps: [...(shaped.get(u.name)?.unitSteps ?? []), stepOf.get(`${u.layer}:${u.name}`)] });
     for (const [name, { shape, unitSteps }] of shaped) {
       const base = { name, feature: opts.feature, shape: shape.name, entity: shape.entity, fields: shape.fields };
-      const after = [...new Set(unitSteps)].sort(idOrder);
+      const after = [...new Set([...unitSteps, ...wiringSteps])].sort(idOrder);
       const render = add('create.proof', `Prove the ${name} screen`, { ...base, kind: 'render' }, after, 'A screen is not done until something shows it behaves: its four states, its controller and its service.');
       const verify = add('test.proof', `Run the proof of ${name}`, { feature: opts.feature, name: `${name}Screen.proof.test.ts` }, [render], 'Read-only: pass, or a classified failure (the app behaved differently, or the harness lost a file). The chain is complete when this is green or explicitly skipped.');
       const entry = { name, kind: 'render', proofStep: render, verifiedBy: verify };
       proofSteps.push(entry);
-      if (playwrightConfig) {
+      if (playwrightConfig && (!wiring || routeOf.has(name))) {
         const slug = name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
-        const flow = add('create.proof', `Prove the ${name} route in a browser`, { ...base, kind: 'playwright' }, after, 'The route of the screen with its API mocked in the browser.');
+        const flow = add('create.proof', `Prove the ${name} route in a browser`, { ...base, kind: 'playwright', ...(routeOf.has(name) ? { route: routeOf.get(name) } : {}) }, after, 'The route of the screen with its API mocked in the browser.');
         const run = add('test.run', `Run the browser flow of ${name}`, { feature: opts.feature, name: `${slug}--screen.spec.ts`, area: 'generated' }, [flow, verify], 'Needs the app running (see --base-url); read-only.');
         proofSteps.push({ name, kind: 'playwright', proofStep: flow, verifiedBy: run });
       }
     }
-    if (proofSteps.length && !playwrightConfig) notes.push('Playwright is not configured in this project (no playwright.config.* at the root), so the plan has no browser flow and nothing is installed. The render proof still proves the screen; add Playwright and plan again for the browser flow.');
+    if (proofSteps.length && !playwrightConfig) notes.push(playwrightNote = 'Playwright is not configured in this project (no playwright.config.* at the root), so the plan has no browser flow and nothing is installed. The render proof still proves the screen; add Playwright and plan again for the browser flow.');
   }
   if (errors.length) return fail();
 
@@ -819,9 +861,9 @@ export function planFromBlocks(blocks, options = {}) {
     files[block.id] = [...new Set(paths)];
   }
   const proof = proofSteps.length
-    ? { required: true, complete: false, state: 'pending', steps: proofSteps, verifiedBy: proofSteps.map((p) => p.verifiedBy), playwright: { configured: playwrightConfig !== null, config: playwrightConfig, skipped: playwrightConfig ? null : notes[0] } }
+    ? { required: true, complete: false, state: 'pending', steps: proofSteps, verifiedBy: proofSteps.map((p) => p.verifiedBy), playwright: { configured: playwrightConfig !== null, config: playwrightConfig, skipped: playwrightConfig ? null : playwrightNote } }
     : null;
-  return { ok: true, plan, decisions: decisions.map((d) => ({ ...d })), files, proof, notes, errors: [] };
+  return { ok: true, plan, decisions: [...decisions.map((d) => ({ ...d })), ...wiringDecisions], files, proof, offers, wiring, notes, errors: [] };
 }
 
 // ---------------------------------------------------------------------------------------------------------------- summary

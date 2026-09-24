@@ -195,6 +195,29 @@ export const PLAN_FLOWS = Object.freeze({
       dir: DIR_ARG,
     },
   },
+  'create.route': {
+    cli: ['create', 'route'],
+    summary: 'Point the project\'s route entry at the controller of a generated screen (#654): Next.js creates app/<route>/page.tsx that renders the controller; react-spa adds the import and a <Route> to src/App.tsx and drops the dangling controller import the init scaffold leaves. Idempotent; refuses a route something else owns. Zero-LLM.',
+    writes: true,
+    executors: ['deterministic', 'user'],
+    args: {
+      name: { type: 'string', required: true, positional: 0, description: 'The controller unit name of the screen, PascalCase (Products).' },
+      feature: { type: 'string', required: true, flag: '--feature' },
+      route: { type: 'string', flag: '--route', description: 'The route path of the screen, for example /products. Defaults to the kebab-case of the name.' },
+      dir: DIR_ARG,
+    },
+  },
+  'add.dependency': {
+    cli: ['create', 'dependency'],
+    summary: 'Add one dependency line to package.json (#654), for example @line/construct-core, which the generated typed units import. Never runs a package manager: install afterwards. Idempotent. Zero-LLM.',
+    writes: true,
+    executors: ['deterministic', 'user'],
+    args: {
+      name: { type: 'string', required: true, positional: 0, description: 'The package name, for example @line/construct-core.' },
+      version: { type: 'string', required: true, flag: '--version', description: 'The version range to add, for example ^0.9.0.' },
+      dir: DIR_ARG,
+    },
+  },
   'create.page.from': {
     cli: ['create', 'page'],
     summary: 'Ingest an externally authored JSX page (e.g. a Subframe export) as a pristine page plus an explicit Props interface. Zero-LLM.',
@@ -694,6 +717,17 @@ function validateStep(step, index, seenIds, push) {
     if (step.flow === 'test.proof' || step.flow === 'create.proof') {
       const a = step.args;
       if (typeof a.feature === 'string' && !/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(a.feature)) push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.feature`, 'A feature name uses letters, digits, "_" and "-" only.');
+    }
+    if (step.flow === 'create.route') {
+      const a = step.args;
+      if (typeof a.feature === 'string' && !/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(a.feature)) push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.feature`, 'A feature name uses letters, digits, "_" and "-" only.');
+      if (typeof a.name === 'string' && !/^[A-Za-z][A-Za-z0-9]*$/.test(a.name)) push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.name`, 'A controller is named in PascalCase, like Products.');
+      if (typeof a.route === 'string' && !/^\/[a-z0-9]+(-[a-z0-9]+)*(\/[a-z0-9]+(-[a-z0-9]+)*)*$/.test(a.route)) push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.route`, 'A route is lowercase segments like /products or /shop/products.');
+    }
+    if (step.flow === 'add.dependency') {
+      const a = step.args;
+      if (typeof a.name === 'string' && !/^(@[a-z0-9~-][a-z0-9._~-]*\/)?[a-z0-9~-][a-z0-9._~-]*$/.test(a.name)) push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.name`, 'A package name like @line/construct-core or react.');
+      if (typeof a.version === 'string' && !/^[\^~]?\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.test(a.version)) push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.version`, 'A version range like ^0.9.0.');
     }
     if (step.flow === 'test.proof' && typeof step.args.name === 'string' && !/^[A-Za-z][A-Za-z0-9]*\.proof\.test\.ts$/.test(step.args.name)) {
       push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.name`, 'A proof is named by its file name, like ProductsScreen.proof.test.ts (no folders).');

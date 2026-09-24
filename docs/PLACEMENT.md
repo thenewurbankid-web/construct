@@ -28,8 +28,8 @@ sentence ("a logged-in user", or name the service).
 ## Layers
 
 `LAYER_TABLE` maps each result to the project's layers. Every layer of a row imports only what `config.layers[...].canImport`
-allows (`checkPlacementImports` proves it; a page never imports a service). The route entry (`app/**/page.tsx`) is not a plan
-step: the notes say to wire it by hand.
+allows (`checkPlacementImports` proves it; a page never imports a service). The route entry (`app/**/page.tsx`) is not a step of a
+plain plan (the notes say to wire it by hand); a shaped screen's plan wires it (see "The route entry, sync and the dependency").
 
 | Placement | Layers (Next.js App Router, framework `nextjs`) | Layers (no Server Components, framework `react-spa`) |
 |---|---|---|
@@ -663,7 +663,7 @@ export const files = planned.files;
 [{ "question": "q-shape", "option": "list", "by": "decision-model", "provider": "rules" }]
 ```
 
-The nine commands the plan runs (each is a step `planToCommand` turns into a real command; the fields are the same on every one; the last two are the proof of the screen, see "The proof step" below):
+The twelve commands the plan runs (each is a step `planToCommand` turns into a real command; the fields are the same on every unit; the three after the units wire the screen, see "The route entry, sync and the dependency"; the last two are the proof of the screen, see "The proof step"):
 
 <!-- list-shape-example:commands -->
 ```json
@@ -675,6 +675,9 @@ The nine commands the plan runs (each is a step `planToCommand` turns into a rea
   "construct create component Products --feature products --shape list --entity Product --fields id:string,name:string,price:number",
   "construct create page Products --feature products --shape list --entity Product --fields id:string,name:string,price:number",
   "construct create controller Products --feature products --shape list --entity Product --fields id:string,name:string,price:number",
+  "construct create dependency @line/construct-core --version ^0.9.0",
+  "construct sync",
+  "construct create route Products --feature products --route /products",
   "construct create proof Products --feature products --shape list --entity Product --fields id:string,name:string,price:number --kind render",
   "construct test proof products --name ProductsScreen.proof.test.ts"
 ]
@@ -729,8 +732,9 @@ construct create layer Products --feature products \
 import dangling (a `service` without the `domain` whose types it imports) is refused before anything is written, naming the
 layers to add. `--shape` cannot be combined with `--llm`. The generated units import `@line/construct-core/typed-contracts`,
 so the project needs `@line/construct-core` in its dependencies (the command says so when it does not have it). By hand
-afterwards, once: add the controller to the route entry, serve the `/api/products` endpoint, and run `construct sync` so the
-feature's `index.ts` exports the new units (a generated feature always needs that, shapes or not).
+afterwards, once: serve the `/api/products` endpoint. In a plan the rest is steps: the dependency line, `construct sync` (the
+feature's `index.ts` exports the new units) and the route entry are planned after the units (#654, below); on the bare CLI
+`construct create layer` you run `construct sync` and `construct create route` yourself.
 
 **Decisions where the issue was silent.** The shape's `types.ts` edit is declared as a `modify` of the file the feature step
 created. The expression is written by the page step, since a page may not hold conditional JSX and `LAYER_ORDER` has no
@@ -747,9 +751,9 @@ before #623):
 
 | Step | Flow | What it does |
 |---|---|---|
-| `s8` Prove the Products screen | `create.proof` (`--kind render`) | Writes `features/<f>/tests/generated/ProductsScreen.proof.test.ts` (and, once, declares the `frozen:` and `nonLayer:` test regions in `architecture.yml`, which the step lists in its `touches`). |
-| `s9` Run the proof of Products | `test.proof` (read-only) | Runs it and answers a pass, or a classified failure. |
-| `s10`, `s11`, only with Playwright | `create.proof --kind playwright`, `test.run` | The route flow with a mocked API, and its run against your running app. |
+| `s11` Prove the Products screen | `create.proof` (`--kind render`) | Writes `features/<f>/tests/generated/ProductsScreen.proof.test.ts` (and, once, declares the `frozen:` and `nonLayer:` test regions in `architecture.yml`, which the step lists in its `touches`). |
+| `s12` Run the proof of Products | `test.proof` (read-only) | Runs it and answers a pass, or a classified failure. |
+| `s13`, `s14`, only with Playwright | `create.proof --kind playwright --route /products`, `test.run` | The route flow (of the route the plan wired) with a mocked API, and its run against your running app. |
 
 **The render proof** needs nothing a `construct init` project does not have: react, react-dom and `esbuild` (it comes with `tsx`
 and with `vite`, both in the init `package.json`). `construct test proof <feature>` bundles the proof with the project's own
@@ -778,7 +782,7 @@ Playwright runner's classification (`classifyFailure`) and its words:
 The states are `loading`, `empty`, `items`, `error`, and for what is wrong `blank` (a list with no rows and no message) or `nothing`.
 
 **The chain is complete when the proof is green or explicitly skipped.** `planFromBlocks` returns `proof`:
-`{ required: true, complete: false, state: 'pending', steps, verifiedBy: ['s9'], playwright: { configured, config, skipped } }`, and
+`{ required: true, complete: false, state: 'pending', steps, verifiedBy: ['s12'], playwright: { configured, config, skipped } }`, and
 `notes` holds what was left out. `proofStatus(entries)` (pure) takes what each `verifiedBy` step answered (`runProofs`, `runFeatureTests`,
 `{ skipped: 'why' }` or nothing yet) and answers `{ complete, state: pending|failed|green|skipped, steps }`: any step still pending or failed
 keeps the chain open, a run that found no test proves nothing, and only green or an explicit skip completes it. `proofSummary(run)` is the
@@ -808,10 +812,67 @@ command flag: the runner (or the Cockpit) records it, so it stays visible. The R
 its plan already carries them (`/api/requirement/read` returns the same plan), and it would need to show `proof` (pending, green,
 failed, skipped) and the failing state, the `proofSummary` options as buttons, and a Skip that records the reason.
 
+## The route entry, sync and the dependency: a screen you can open (#654, part of #616)
+
+A shaped screen used to end with two by-hand steps: point the route entry at the controller, and run `construct sync`. A shaped
+plan now carries them as steps, after the units and before the proof (`planFromBlocks` option `wire: false` leaves them out, a
+plan is then as it was before #654). For the products screen on a fresh `construct init` project the steps are:
+
+| Step | Flow | What it does | Declared `touches` |
+|---|---|---|---|
+| `s1`-`s7` | `create.feature`, `create.unit` | the feature and the six units | as before |
+| `s8` Add @line/construct-core to package.json | `add.dependency` (`construct create dependency`) | adds `"@line/construct-core": "^0.9.0"` to `dependencies`; never runs a package manager | `modify package.json` |
+| `s9` Export the products feature's public API (sync) | `sync` (the existing flow) | the feature barrel exports the controller and the hook, so SLICE-003 does not warn | `modify features/products/index.ts`, `.dependency-cruiser.cjs` (`create` or `modify`) |
+| `s10` Wire the Products screen into the route entry (/products) | `create.route` (`construct create route`) | see below | Next.js: `create app/products/page.tsx`; react-spa: `modify src/App.tsx` |
+| `s11`, `s12` | `create.proof`, `test.proof` | the proof, see above | |
+
+**The route entry** (`packages/core/wiring.mjs`). The route path is the kebab-case of the screen name (`Products` gives `/products`,
+`SubscriptionPlan` gives `/subscription-plan`).
+- **Next.js** creates `app/<route>/page.tsx` that imports the controller and renders it and nothing else (ROUTE-001 and ROUTE-002
+  hold). The init scaffold's root `app/page.tsx` imports a `CoreController` that `construct init` never writes, which
+  `construct validate` flags (IMPORT-001) and `next build` cannot resolve; when that page still is exactly the scaffold and its
+  import resolves to nothing, the step removes it (declared as `delete app/page.tsx`).
+- **react-spa** edits `src/App.tsx` with a minimal, line-based change: the controller's import goes after the last import, a
+  `<Route path="/products" element={<ProductsController />} />` line before `</Routes>`, and the dangling `CoreController` import of
+  the init scaffold with its own `<Route>` line is dropped. Everything else is kept byte for byte. A file with no `</Routes>` is
+  refused with the line to add by hand; a route that already renders this controller changes nothing.
+- A route that something else owns is refused (`construct create route` exits with a usage error naming it), never overwritten.
+
+**Two closed questions**, in the chooser shape of `q-shape` (`{ id, question, options: [{ id, label, enabled, why }], default,
+chosen }`) and returned by `planFromBlocks` as `offers`, so a person, an LLM or a decision model answers them the same way. Neither
+holds a plan back: an unanswered question uses its rules default. An answer is passed as `planFromBlocks(blocks, { answers: {
+'q-route': 'skip' } })` (or `{ option, by, provider }`) and recorded in `decisions` like any other.
+
+| Question id | Raised when | Options (stable ids) | Default |
+|---|---|---|---|
+| `q-route` | the screen's path is reserved (`/api`) or already served by another page or `<Route>` | `alternate` (the first free of `/<feature>/<name>` when the feature is named otherwise, `/<name>-screen`, `/<name>-2`), `skip` (no route step: the screen stays unreachable until wired, and a note says so) | `alternate` |
+| `q-dependency` | the project has a `package.json` that lists no `@line/construct-core` (the units import its typed factories) | `add-dependency` (its `line` field is the exact text added), `skip` | `add-dependency` |
+
+`planFromBlocks` returns `{ ..., offers, wiring }`; `wiring` is `{ dependency: 's8' | null, sync: 's9', routes: [{ name, route, step, file }] }`
+(`null` when nothing was wired). A Playwright proof step takes `--route` from the route the plan wired. The Requirement API and
+screen do not pass or draw `q-route` and `q-dependency` yet (the screen draws every `offers` entry, and the client is a later
+slice): their defaults apply, and the plan preview shows the steps.
+
+**The full-path test** (`test/list-shape-chain.test.mjs`) runs the plan's own commands and nothing else in a fresh react-spa project
+and in a fresh Next.js project, then asserts that every file that changed is a file the plan declared, `construct validate` reports no
+error and no warning, `tsc --noEmit` passes and the proof is green.
+
+**On the CLI:**
+
+```sh
+construct create route Products --feature products [--route /products]
+construct create dependency @line/construct-core --version ^0.9.0
+```
+
+**Decisions where the issue was silent.** The dependency choice defaults to adding the line, because the screen does not compile
+without it and every step still goes through the per-diff approval; `skip` is one answer away. The plan declares only its own
+feature's barrel for `sync` (sync also refreshes the barrels of features that have drifted; the approval gate would refuse that).
+A screen's route is one segment; nested routes come with the alternate. The init scaffold's dangling page is removed by the route
+step rather than repointed, so `/` is not silently the new screen.
+
 ## What is not here yet
 
-The timeline read-back and its Cockpit screen are the Requirement screen (`/requirement`, #642): `toTimeline(placement)` in `ui/client/features/requirement/domain/Timeline.ts` turns the blocks into steps in run order (a slice to move it into core, so the CLI and an LLM read the same steps, is open). Not here yet: a `use client` / `use server` directive in the generated files, a route
-entry step, and words beyond the lexicon. Each is a slice of #616.
+The timeline read-back and its Cockpit screen are the Requirement screen (`/requirement`, #642): `toTimeline(placement)` in `ui/client/features/requirement/domain/Timeline.ts` turns the blocks into steps in run order (a slice to move it into core, so the CLI and an LLM read the same steps, is open). Not here yet: a `use client` / `use server` directive in the generated files, and words beyond the lexicon. Each is a slice of #616.
 
 Not here yet for the shapes (each a slice of #616): the other shapes (detail, form, dashboard, wizard); wiring a data source into
 a shaped screen (#621); the proof for the other shapes (the list has one, above; #623 is the pattern); a `route.ts` handler for the endpoint the list fetches; and drawing `offers`

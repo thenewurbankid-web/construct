@@ -127,6 +127,13 @@ Commands:
     (the locked proof of a shaped screen in features/<feature>/tests/generated/: the four states with sample props, the controller's
     loading state, the service with a stubbed fetch; --kind playwright writes the route flow only when the project already has a
     Playwright config; declares the frozen: and nonLayer: test regions in architecture.yml once; deterministic, no LLM)
+  construct create route <Name> --feature <feature> [--route </path>] [--dir <path>]
+    (points the project's route entry at the controller of a generated screen: Next.js creates app/<route>/page.tsx, react-spa adds
+    the import and a <Route> to src/App.tsx and drops the dangling controller import 'construct init' leaves; the route defaults to the
+    kebab-case of the name; refuses a route something else owns; idempotent; deterministic, no LLM)
+  construct create dependency <package> --version <range> [--dir <path>]
+    (adds one line to the dependencies of package.json, for example @line/construct-core, which the generated typed units import;
+    never runs a package manager; idempotent; deterministic, no LLM)
   construct generate tests --unit <feature> [--dry-run] [--prune] [--dir <path>]
     (one LOCKED every-path unit test per workflow machine, <machine>--every-path.test.ts in the
     same directory: @xstate/graph walks every reachable state and user-event transition under

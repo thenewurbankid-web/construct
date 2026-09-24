@@ -4,6 +4,7 @@
 //   choiceFromCardQuestion(card, item, option, by)      one answered open question of a requirement card (requirement-card.mjs)
 //   choicesFromPlacement(card, placeOptions, placement) the `decisions` of a `placeCard` result, each with the question AS IT
 //                                                       WAS OFFERED (placement.mjs: open questions and the `q-shape` offer)
+//   choicesFromWiring(planned)                          the answered `q-route` and `q-dependency` of a `planFromBlocks` result (#654)
 //
 // Pure: no filesystem, no clock, no network. The summary of each choice is the fixed-size object that was offered, with
 // `chosen` null and every path hidden; a choice that cannot be rebuilt (its question is gone) is left out, never guessed.
@@ -80,6 +81,43 @@ export function choicesFromPlacement(card, placeOptions, placement) {
     if (!q) continue;
     const summary = offered(q);
     out.push({ chooser: { id: placementChooserId(d.question), question: summary.question }, summary, chosen: d.option, by: d.by, ...(d.provider ? { provider: d.provider } : {}) });
+  }
+  return out;
+}
+
+/**
+ * The trace chooser id of a wiring question of a shaped plan (#654): `q-dependency` and `q-route` (or `q-route-<name>`).
+ *
+ * @param {string} questionId A wiring question id.
+ * @returns {string} `requirement.plan.dependency`, `requirement.plan.route` or `requirement.plan.other`.
+ *
+ * @example
+ * wiringChooserId('q-route'); // => 'requirement.plan.route'
+ */
+export function wiringChooserId(questionId) {
+  if (questionId === 'q-dependency') return 'requirement.plan.dependency';
+  if (/^q-route(-|$)/.test(questionId)) return 'requirement.plan.route';
+  return 'requirement.plan.other';
+}
+
+/**
+ * The choices behind the wiring of a shaped plan: each answered `q-route` / `q-dependency` of a `planFromBlocks` result, with the
+ * question as it was offered (`chosen` null, paths hidden) and the attribution it was answered with. An unanswered question records
+ * nothing (its default was applied, nobody chose).
+ *
+ * @param {{ offers?: object[], decisions?: import('./placement.mjs').PlacementDecision[] }} planned The result of `planFromBlocks`.
+ * @returns {object[]} Choices for `recordChoices`, in the plan's decision order.
+ *
+ * @example
+ * choicesFromWiring(planFromBlocks(blocks, { feature, root, answers: { 'q-dependency': 'skip' } }))[0].chooser.id; // => 'requirement.plan.dependency'
+ */
+export function choicesFromWiring(planned) {
+  const out = [];
+  for (const d of planned?.decisions ?? []) {
+    const q = (planned?.offers ?? []).find((x) => x.id === d.question);
+    if (!q) continue;
+    const summary = offered(q);
+    out.push({ chooser: { id: wiringChooserId(d.question), question: summary.question }, summary, chosen: d.option, by: d.by, ...(d.provider ? { provider: d.provider } : {}) });
   }
   return out;
 }
