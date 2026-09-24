@@ -237,3 +237,21 @@ test('the worked example in docs/DECISION-TRACES.md runs and produces exactly th
   const { result } = await import(pathToFileURL(file).href);
   assert.deepEqual(JSON.parse(shown), JSON.parse(JSON.stringify(result)));
 });
+
+test('#653: what a person does about the proof of a screen is a valid trace over the closed options of proofSummary', async () => {
+  const { choiceFromProofOptions } = await import('../packages/core/decision-trace-adapters.mjs');
+  const { proofSummary } = await import('../packages/core/proof.mjs');
+  const { buildTrace } = await import('../packages/core/decision-trace.mjs');
+  const at = '2026-09-24T10:00:00.000Z';
+  const failed = proofSummary({ chain: { state: 'failed' }, counts: { failed: 1 }, tests: [{ title: 't', status: 'failed', failure: { kind: 'app' } }] });
+  for (const [summary, pick] of [[proofSummary(null), 'run-proof'], [proofSummary(null), 'skip-proof'], [failed, 'skip-proof']]) {
+    const choice = choiceFromProofOptions('products', summary, pick);
+    assert.equal(choice.chooser.id, 'requirement.proof.next');
+    assert.equal(choice.summary.chosen, null, 'the summary is what was offered');
+    const built = buildTrace(choice, { at });
+    assert.equal(built.ok, true, JSON.stringify(built.errors));
+    assert.deepEqual(built.trace.options, summary.options.map((o) => o.id));
+    assert.equal(built.trace.chosen, pick);
+  }
+  assert.equal(buildTrace(choiceFromProofOptions('products', proofSummary({ chain: { state: 'green' } }), 'skip-proof'), { at }).ok, false, 'a green proof offers nothing, so nothing is chosen');
+});

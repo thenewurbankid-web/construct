@@ -16,6 +16,9 @@
 //     record to the per-user state directory (#643, docs/DECISION-TRACES.md), with what the rules provider suggested, and
 //     `planValidated` once the plan from those answers validates. The project's `traces: off` in architecture.yml stops it;
 //     a failing recording (full disk, bad state directory) is swallowed and never changes the response.
+//   - #653: the proof of a shaped screen has three more routes, POST /api/requirement/proof/{status,run,skip}, in
+//     requirementProofApi.mjs (same gates, same Origin/JSON/cap checks, a bigger cap because they carry the plan). The read
+//     response carries `proof` (the plan's proof steps and the chain state, pending).
 //   - stateless: the client sends the sentence and every answer so far, in order. A card question is answered against the
 //     card as it stood then (ids renumber once a word is answered), so the answers are replayed in the order given.
 import fs from 'node:fs';
@@ -26,6 +29,7 @@ import { parseRequirement, resolveOpen, openQuestion, readBack, cardSummary } fr
 import { placeCard, planFromBlocks, blockLines } from '../../../packages/core/placement.mjs';
 import { recordChoices } from '../../../packages/core/decision-trace-store.mjs';
 import { choiceFromCardQuestion, choicesFromPlacement } from '../../../packages/core/decision-trace-adapters.mjs';
+import { createProofHandlers, MAX_PROOF_REQUEST_BYTES } from './requirementProofApi.mjs';
 
 export const MAX_TEXT = 2000;
 export const MAX_ANSWERS = 20;
@@ -109,13 +113,14 @@ export function readRequirement(body, root, trace = { choices: [] }) {
   if (!planned.ok) return { status: 200, body: { ...out, placement: { ...placement, ok: false, errors: [...placement.errors, ...planned.errors] } } };
   const featuresRoot = config.features?.root ?? 'features';
   const warnings = fs.existsSync(path.join(root, featuresRoot, feature)) ? [`The feature "${feature}" already exists in this project, so the "Create feature ${feature}" step will be refused. Remove that step in the Plan screen, or use other words.`] : [];
-  return { status: 200, body: { ...out, plan: planned.plan, files: planned.files, warnings } };
+  return { status: 200, body: { ...out, plan: planned.plan, files: planned.files, proof: planned.proof ?? null, warnings } };
 }
 
 /**
- * @param {{ getRoot: () => {ok: true, root: string} | {ok: false, status?: number, body?: object}, clientOrigin?: string }} deps
+ * @param {{ getRoot: () => {ok: true, root: string} | {ok: false, status?: number, body?: object}, clientOrigin?: string, proofRunner?: Function, proofTimeoutMs?: number }} deps
+ *   `proofRunner` and `proofTimeoutMs` are test seams for the proof routes (#653).
  */
-export function createRequirementRouter({ getRoot, clientOrigin }) {
+export function createRequirementRouter({ getRoot, clientOrigin, proofRunner, proofTimeoutMs }) {
   const router = express.Router();
   router.use((req, res, next) => {
     if (req.method !== 'GET') {
@@ -127,7 +132,7 @@ export function createRequirementRouter({ getRoot, clientOrigin }) {
   router.use((req, res, next) => {
     if (req.method !== 'POST') return next();
     if (!req.is('application/json')) return res.status(415).json({ ok: false, code: 'JSON_ONLY', error: 'Send a JSON body.' });
-    if (Number(req.get('content-length') || 0) > MAX_REQUEST_BYTES) return res.status(413).json({ ok: false, code: 'TOO_LARGE', error: 'That request is too large.' });
+    if (Number(req.get('content-length') || 0) > (req.path.startsWith('/proof/') ? MAX_PROOF_REQUEST_BYTES : MAX_REQUEST_BYTES)) return res.status(413).json({ ok: false, code: 'TOO_LARGE', error: 'That request is too large.' });
     return next();
   });
   router.post('/read', async (req, res) => {
@@ -142,6 +147,20 @@ export function createRequirementRouter({ getRoot, clientOrigin }) {
       return res.status(500).json({ ok: false, code: 'READ_FAILED', error: 'The requirement could not be read.' });
     }
   });
+  // #653: the proof of a generated screen. Each handler answers { status, body }; none takes a path from the client.
+  const proof = createProofHandlers({ ...(proofRunner ? { runProofs: proofRunner } : {}), ...(proofTimeoutMs ? { timeoutMs: proofTimeoutMs } : {}) });
+  for (const [name, handler] of Object.entries(proof)) {
+    router.post(`/proof/${name}`, async (req, res) => {
+      const r = getRoot();
+      if (!r.ok) return res.status(r.status ?? 400).json(r.body ?? { ok: false, error: r.error ?? 'No project is open.' });
+      try {
+        const out = await handler(req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {}, r.root);
+        return res.status(out.status).json(out.body);
+      } catch {
+        return res.status(500).json({ ok: false, code: 'PROOF_FAILED', error: 'The proof could not be handled.' });
+      }
+    });
+  }
   router.use((req, res) => res.status(404).json({ ok: false, error: 'Not found.' }));
   return router;
 }

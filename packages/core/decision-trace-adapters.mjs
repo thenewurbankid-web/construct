@@ -5,6 +5,8 @@
 //   choicesFromPlacement(card, placeOptions, placement) the `decisions` of a `placeCard` result, each with the question AS IT
 //                                                       WAS OFFERED (placement.mjs: open questions and the `q-shape` offer)
 //   choicesFromWiring(planned)                          the answered `q-route` and `q-dependency` of a `planFromBlocks` result (#654)
+//   choiceFromProofOptions(feature, summary, chosen, by) what a person did about the proof of a screen (#653): the closed options of
+//                                                       `proofSummary` (proof.mjs) as offered, and the one chosen (run or skip)
 //
 // Pure: no filesystem, no clock, no network. The summary of each choice is the fixed-size object that was offered, with
 // `chosen` null and every path hidden; a choice that cannot be rebuilt (its question is gone) is left out, never guessed.
@@ -145,4 +147,23 @@ export function choicesFromChain(choosers, decisions, ctx = {}) {
     out.push({ chooser: { id: chooser.id, question: summary.question }, summary, chosen: d.option, by: d.by, ...(d.provider ? { provider: d.provider } : {}) });
   }
   return out;
+}
+
+/**
+ * What a person chose to do about the proof of a screen: the closed options of a `proofSummary` (2 to 5, as offered) and the one
+ * chosen (`run-proof`, `skip-proof`...). The chooser is the same for every feature, so statistics group like with like.
+ *
+ * @param {string} feature The feature whose screen the proof is of.
+ * @param {{ options: { id: string, label: string, why?: string }[] }} summary A `proofSummary` (proof.mjs).
+ * @param {string} chosen One of the option ids of `summary`.
+ * @param {'person'|'llm'|'decision-model'} [by] Who chose (default `person`).
+ * @returns {{ chooser: { id: string, question: string }, summary: object, chosen: string, by: string }} A choice for `recordChoices`.
+ *
+ * @example
+ * choiceFromProofOptions('products', proofSummary(null), 'skip-proof').chooser.id; // => 'requirement.proof.next'
+ */
+export function choiceFromProofOptions(feature, summary, chosen, by = 'person') {
+  const question = `What next for the proof of the ${String(feature).slice(0, 80)} screen?`;
+  const shown = hidePathsDeep({ id: 'requirement.proof.next', question, options: (summary?.options ?? []).map((o) => ({ id: o.id, label: o.label, enabled: true, why: o.why ?? '' })), chosen: null });
+  return { chooser: { id: 'requirement.proof.next', question }, summary: shown, chosen, by };
 }
