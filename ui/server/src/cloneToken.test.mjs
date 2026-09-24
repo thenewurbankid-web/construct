@@ -10,7 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
 import { AUTH_MESSAGE, AUTH_MESSAGE_WITH_TOKEN } from './cloneAuth.mjs';
-import { createCloneJobs, stampPath } from './cloneJobs.mjs';
+import { UNSAFE_PULL_CONFIG, createCloneJobs, stampPath, unsafeConfigKeys } from './cloneJobs.mjs';
 
 const SECRET = 'ghp_abcdefghijklmnopqrstuvwxyz0123456789';
 const PUBLIC = async () => [{ address: '140.82.112.3' }];
@@ -286,6 +286,77 @@ test('Pull latest: fast-forwards a clone we made, says "already up to date", and
   // a re-pointed origin is no longer one we vouch for
   g(path.join(fx.ws, 'demo'), 'remote', 'set-url', 'origin', 'file:///elsewhere');
   assert.equal((await jobs.pull({ name: 'demo' })).code, 'ORIGIN_CHANGED');
+});
+
+test('unsafeConfigKeys: section.name, case-insensitive, any subsection (dots and all); a fresh clone\'s own keys pass', () => {
+  assert.deepEqual(unsafeConfigKeys(['core.repositoryformatversion', 'core.filemode', 'core.bare', 'core.logallrefupdates', 'remote.origin.url', 'remote.origin.fetch', 'branch.main.remote', 'branch.main.merge', 'user.email', 'pull.rebase']), []);
+  assert.deepEqual(unsafeConfigKeys(['url.https://evil.example/.insteadof']), ['url.*.insteadof']);
+  assert.deepEqual(unsafeConfigKeys(['URL.x.InsteadOf', 'Include.Path']), ['url.*.insteadof', 'include.*']);
+  assert.deepEqual(unsafeConfigKeys(['http.https://github.com/.extraheader', 'http.proxy']), ['http.*']);
+  assert.deepEqual(unsafeConfigKeys(['includeif.gitdir:/x/.path']), ['includeif.*']);
+  assert.deepEqual(unsafeConfigKeys(['remote.origin.proxy', 'remote.origin.vcs', 'remote.origin.url']), ['remote.*.proxy', 'remote.*.vcs']);
+  assert.deepEqual(unsafeConfigKeys(['merge.x.driver', 'diff.x.command', 'filter.lfs.clean', 'protocol.allow', 'credential.helper', 'core.sshcommand', 'core.hookspath', 'core.fsmonitor', 'core.gitproxy', 'url.x.pushinsteadof']).sort(), ['core.fsmonitor', 'core.gitproxy', 'core.hookspath', 'core.sshcommand', 'credential.*', 'diff.*.command', 'filter.*', 'merge.*.driver', 'protocol.*', 'url.*.pushinsteadof']);
+  assert.deepEqual(unsafeConfigKeys(['merge.renames', 'diff.renames', 'nodot', '']), [], 'only the named keys of merge/diff, not the sections');
+  assert.ok(UNSAFE_PULL_CONFIG.includes('url.*.insteadof'));
+});
+
+test('Pull latest refuses a clone whose .git/config could re-route the update or its credential (insteadOf, http.*, include, ...): nothing fetched, no token fetched or passed', async () => {
+  const fx = fixture();
+  const spy = [];
+  const asked = [];
+  const jobs = createCloneJobs({
+    getRoot: () => fx.ws, localRoot: fx.fixtures,
+    spawn: (cmd, args, opts) => { spy.push({ args, env: opts.env }); return realSpawn(cmd, args, opts); },
+    loginToken: async (k) => { asked.push(k); return Buffer.from(SECRET, 'latin1'); },
+  });
+  const r = await jobs.start({ url: fx.url });
+  await r.done;
+  assert.equal(jobs.get(r.job.id).state, 'done');
+  const d = path.join(fx.ws, 'demo');
+  fx.publish('two.txt', 'new\n');
+  // The attack: something that ran inside the clone re-routes every file:// (or https://github.com/) address.
+  g(d, 'config', 'url.file:///elsewhere/.insteadOf', 'file://');
+  assert.equal(g(d, 'config', '--get', 'remote.origin.url'), fx.url, 'the origin line itself is untouched, which is why the old check passed');
+  spy.length = 0;
+  for (const opts of [{ name: 'demo', useLogin: true, sessionKey: 'alice' }, { name: 'demo', token: SECRET }, { name: 'demo' }]) {
+    const p = await jobs.pull(opts);
+    assert.equal(p.ok, false, JSON.stringify(p));
+    assert.equal(p.status, 409);
+    assert.equal(p.code, 'UNSAFE_CONFIG');
+    assert.match(p.error, /url\.\*\.insteadof/);
+    assert.ok(!p.error.includes('elsewhere'), 'the value is not echoed');
+    assert.ok(!JSON.stringify(p).includes(SECRET));
+  }
+  assert.deepEqual(asked, [], 'the login token was never fetched');
+  assert.deepEqual(spy, [], 'git pull was never started');
+  assert.equal(fs.existsSync(path.join(d, 'two.txt')), false, 'nothing was fetched');
+  assert.deepEqual(grepTree(fx.dir, SECRET), []);
+  assert.ok(!askpassDirs().some((n) => fs.existsSync(path.join(os.tmpdir(), n, 'askpass.sh'))), 'no helper was made');
+  g(d, 'config', '--unset', 'url.file:///elsewhere/.insteadOf');
+  // Every other listed setting, one at a time.
+  for (const [k, v] of [
+    ['url.file:///x/.pushInsteadOf', 'file://'], ['include.path', '/dev/null'], ['includeIf.gitdir:/x/.path', '/dev/null'],
+    ['http.proxy', 'http://127.0.0.1:1'], ['http.https://github.com/.extraHeader', 'x: y'], ['credential.helper', 'store'],
+    ['core.sshCommand', 'true'], ['core.gitProxy', 'true'], ['core.fsmonitor', 'false'], ['core.hooksPath', '.'],
+    ['filter.x.clean', 'cat'], ['merge.x.driver', 'true'], ['diff.x.command', 'cat'], ['protocol.allow', 'always'],
+    ['remote.origin.proxy', 'http://127.0.0.1:1'], ['remote.origin.vcs', 'x'],
+  ]) {
+    g(d, 'config', k, v);
+    const p = await jobs.pull({ name: 'demo', useLogin: true, sessionKey: 'alice' });
+    assert.equal(p.code, 'UNSAFE_CONFIG', `${k}: ${JSON.stringify(p)}`);
+    g(d, 'config', '--unset', k);
+  }
+  assert.deepEqual(asked, []);
+  assert.deepEqual(spy, []);
+  // Clean again: the update goes through, with the login, and fetches what was published.
+  const ok = await jobs.pull({ name: 'demo', useLogin: true, sessionKey: 'alice' });
+  assert.equal(ok.ok, true, JSON.stringify(ok));
+  assert.equal(fs.readFileSync(path.join(d, 'two.txt'), 'utf8'), 'new\n');
+  assert.deepEqual(asked, ['alice']);
+  assert.equal(spy.length, 1);
+  // A configuration git cannot read at all is refused too (never "assumed fine").
+  fs.writeFileSync(path.join(d, '.git', 'config'), `${fs.readFileSync(path.join(d, '.git', 'config'), 'utf8')}[broken\n`);
+  assert.equal((await jobs.pull({ name: 'demo' })).code, 'CONFIG_UNREADABLE');
 });
 
 test('Pull latest is refused while that folder is still being cloned', async () => {

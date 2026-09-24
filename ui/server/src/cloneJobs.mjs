@@ -17,7 +17,7 @@
 //      exits or is signalled, and a marker `<workspace>/.construct-clone-<slug>.json` written before git starts
 //      (removed on every outcome) lets the next start find a partial directory a crashed server left behind,
 //      stop the orphaned git if it is still running, and remove exactly that directory — never one without a marker.
-import { spawn as nodeSpawn } from 'node:child_process';
+import { spawn as nodeSpawn, spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import dns from 'node:dns/promises';
 import fs from 'node:fs';
@@ -31,6 +31,34 @@ export const DEFAULT_MAX_BYTES = 500 * 1024 * 1024;
 export const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
 /** #638: the only hosts the person's GitHub login (repoConnection.mjs) may be sent to, whatever CONSTRUCT_CLONE_HOSTS allows. */
 export const LOGIN_HOSTS = Object.freeze(['github.com']);
+/**
+ * #638 review: `.git/config` settings that would send "Pull latest", or the credential fed to it, somewhere other than
+ * the recorded origin (`url.*.insteadOf` re-routes the fetch AND the askpass answer; `http.*`, `remote.*.proxy` and
+ * `credential.*` change where and how it is sent; `include.*` pulls in a file that could set any of them) or run a
+ * program of the repository's choosing. Anything running inside a cloned project (its dev server, its scripts) can
+ * write that file, and comparing the origin URL alone does not see these. A pull is refused while any is set, before
+ * a token is fetched. Matched as `section.name` (git lower-cases both; `*` is any subsection or any name).
+ */
+export const UNSAFE_PULL_CONFIG = Object.freeze([
+  'url.*.insteadof', 'url.*.pushinsteadof', 'include.*', 'includeif.*', 'http.*', 'credential.*',
+  'core.sshcommand', 'core.gitproxy', 'core.fsmonitor', 'core.hookspath', 'filter.*', 'merge.*.driver', 'diff.*.command', 'protocol.*',
+  'remote.*.proxy', 'remote.*.proxyauthmethod', 'remote.*.vcs',
+]);
+const UNSAFE_RULES = UNSAFE_PULL_CONFIG.map((pattern) => { const parts = pattern.split('.'); return { pattern, section: parts[0], name: parts[parts.length - 1] }; });
+
+/** The UNSAFE_PULL_CONFIG patterns that `keys` (git config keys, `section[.subsection].name`) match; [] when none. */
+export function unsafeConfigKeys(keys) {
+  const hit = new Set();
+  for (const raw of keys) {
+    const key = String(raw).toLowerCase();
+    const first = key.indexOf('.');
+    if (first < 0) continue;
+    const section = key.slice(0, first);
+    const name = key.slice(key.lastIndexOf('.') + 1);
+    for (const r of UNSAFE_RULES) if (r.section === section && (r.name === '*' || r.name === name)) hit.add(r.pattern);
+  }
+  return [...hit];
+}
 const KEEP_FINISHED = 20;
 const LOG_LIMIT = 200;
 const SIZE_POLL_MS = 500;
@@ -596,6 +624,16 @@ export function createCloneJobs({
     ];
   }
 
+  /** Every key in the clone's own `.git/config` (includes expanded, as git would see them), read with the scrubbed
+   * environment and no credential; null when git could not read it. A local read, so it never touches the network. */
+  function localConfigKeys(dest) {
+    const r = spawnSync('git', ['config', '--file', path.join(dest, '.git', 'config'), '--list', '-z'], {
+      cwd: dest, env: cloneEnv({ allowLocal: Boolean(localRoot) }), encoding: 'latin1', stdio: ['ignore', 'pipe', 'ignore'], timeout: 10_000, maxBuffer: 4 * 1024 * 1024,
+    });
+    if (r.error || r.status !== 0 || typeof r.stdout !== 'string') return null;
+    return r.stdout.split('\0').filter(Boolean).map((entry) => entry.split('\n', 1)[0]);
+  }
+
   async function pullInner({ name, useLogin, sessionKey }, holder, handOff) {
     let slug;
     try {
@@ -631,6 +669,11 @@ export function createCloneJobs({
     if (useLogin && !loginHostOk(parsed)) return LOGIN_HOST_REFUSAL;
     const gitState = gitStatus();
     if (!gitState.cloneEnabled) return pullRefusal(503, gitState.code, gitState.reason);
+    // #638 review: the whole local configuration, not just the origin line, and before any token exists for this request.
+    const keys = localConfigKeys(dest);
+    if (!keys) return pullRefusal(409, 'CONFIG_UNREADABLE', `The configuration of "${slug}" could not be read, so it was not updated.`);
+    const unsafe = unsafeConfigKeys(keys);
+    if (unsafe.length) return pullRefusal(409, 'UNSAFE_CONFIG', `The configuration of "${slug}" has settings that could redirect the update or its credentials (${unsafe.join(', ')}), so it was not updated. Remove them from its .git/config, or clone it again.`);
     if (useLogin) {
       holder.buf = await acquireLogin(sessionKey);
       if (!holder.buf) return NOT_CONNECTED_REFUSAL;
