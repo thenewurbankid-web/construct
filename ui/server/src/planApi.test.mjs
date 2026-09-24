@@ -32,9 +32,9 @@ const makeProject = () => {
 const step = (over = {}) => ({ id: 's1', title: 'List features', flow: 'summarize.list', args: { kind: 'feature' }, executor: 'deterministic', ...over });
 const plan = (steps = [step()]) => ({ version: 1, ticket: { source: 'text', title: 'A ticket' }, steps });
 
-async function withStack({ authOn = true, root = makeProject() } = {}, fn) {
+async function withStack({ authOn = true, root = makeProject(), onStarted } = {}, fn) {
   const started = [];
-  const service = createPlanService({ getRoot: () => root, startPlan: (p) => { started.push(p); return { ok: true, processId: 'p-1' }; } });
+  const service = createPlanService({ getRoot: () => root, startPlan: (p) => { started.push(p); return { ok: true, processId: 'p-1' }; }, onStarted });
   const auth = createAuth(resolveAuthConfig(authOn ? ENV : {}, { host: '127.0.0.1', clientOrigin: ORIGIN }));
   const app = express();
   app.use(express.json());
@@ -248,4 +248,26 @@ test('runPlan through the real processes service creates a process and starts it
   assert.equal(listed[0].id, good.body.processId);
   await processes.engine().settled(good.body.processId);
   assert.equal(checkPlan(plan(), root).valid, true);
+});
+
+test('#609 a run that names a note reports it to onStarted; a failing hook never undoes the run; a refusal never calls it', async () => {
+  const seen = [];
+  await withStack({ onStarted: (x) => seen.push(x) }, async ({ json, started }) => {
+    const ok = await json('POST', '/api/plan/run', { body: { plan: plan(), noteId: 'n-1' } });
+    assert.equal(ok.status, 200);
+    assert.equal(ok.body.noteRan, true);
+    assert.deepEqual(seen.map((x) => [x.noteId, x.processId]), [['n-1', 'p-1']]);
+    const plain = await json('POST', '/api/plan/run', { body: { plan: plan() } });
+    assert.equal(plain.body.noteRan, undefined, 'no note named, nothing to report');
+    const refused = await json('POST', '/api/plan/run', { body: { plan: plan([]), noteId: 'n-2' } });
+    assert.equal(refused.status, 400);
+    assert.equal(seen.length, 1);
+    assert.equal(started.length, 2);
+  });
+  await withStack({ onStarted: () => { throw new Error('disk'); } }, async ({ json, started }) => {
+    const r = await json('POST', '/api/plan/run', { body: { plan: plan(), noteId: 'n-3' } });
+    assert.equal(r.status, 200);
+    assert.equal(r.body.noteRan, false);
+    assert.equal(started.length, 1);
+  });
 });

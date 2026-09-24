@@ -211,6 +211,26 @@ export function openNotesStore(projectRoot, { stateDir = resolveStateDir(), now 
       return next;
     },
 
+    /**
+     * Run marks the note ran (#609): the plan that started and the process it became are copied onto the note, which
+     * is read-only history from then on. Server-side only (`status: 'ran'` is not settable from a client), so it takes
+     * no `rev`: Run reads the note as it is on disk, and the text that ran is the plan's own ticket text.
+     *
+     * @throws {NotesStoreError} 404 `NOT_FOUND`; 409 `NOTE_RAN` (it already ran: one note, one run).
+     */
+    markRan(id, { plan, processId }) {
+      const file = fileFor(dir, id);
+      if (!fs.existsSync(file)) throw new NotesStoreError(`No such note "${id}".`, { status: 404, code: 'NOT_FOUND' });
+      const { note: current, problem } = readFile(file);
+      if (problem) throw new NotesStoreError(`Note "${id}" is unreadable on disk — ${problem.reason}`, { status: 500, code: 'UNREADABLE' });
+      if (current.status === 'ran') throw new NotesStoreError('This note already ran. Duplicate it to iterate.', { status: 409, code: 'NOTE_RAN' });
+      const body = typeof plan?.ticket?.body === 'string' ? plan.ticket.body : current.body;
+      assertBodyWithinCap(body);
+      const next = { ...current, body, plan, status: 'ran', processId, planStale: false, rev: current.rev + 1, updatedAt: now() };
+      atomicWriteJson(file, next);
+      return next;
+    },
+
     /** Remove a note. Returns `true` if there was one, `false` otherwise (mirrors
      * `processStore.mjs`'s `remove`). */
     remove(id) {

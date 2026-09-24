@@ -228,3 +228,20 @@ test('#596 plan freshness: editing the text after a plan marks it stale; saving 
   const renewed = store.update(note.id, { rev: stillStale.rev, plan: { steps: [{ id: 'a' }] } });
   assert.equal(renewed.planStale, false);
 });
+
+test('#609 markRan: copies the plan and process onto the note, sets ran, clears stale, and a second run is refused', () => {
+  const store = openNotesStore(freshProject(), { stateDir: freshStateDir() });
+  const note = store.create({ title: 'Fix totals', body: 'draft text' });
+  store.update(note.id, { rev: note.rev, plan: { steps: [] }, status: 'plan-ready' });
+  const plan = { version: 1, ticket: { source: 'text', title: 'Fix totals', body: 'the text that ran' }, steps: [{ id: 's1' }] };
+  const ran = store.markRan(note.id, { plan, processId: 'p-9' });
+  assert.equal(ran.status, 'ran');
+  assert.equal(ran.processId, 'p-9');
+  assert.deepEqual(ran.plan, plan);
+  assert.equal(ran.body, 'the text that ran', 'the note holds the text that actually ran');
+  assert.equal(ran.planStale, false);
+  assert.equal(ran.rev, 3);
+  assert.deepEqual(store.get(note.id), ran);
+  assert.throws(() => store.markRan(note.id, { plan, processId: 'p-10' }), (e) => e instanceof NotesStoreError && e.code === 'NOTE_RAN' && e.status === 409);
+  assert.throws(() => store.markRan('nope', { plan, processId: 'p-1' }), (e) => e instanceof NotesStoreError && e.code === 'NOT_FOUND');
+});

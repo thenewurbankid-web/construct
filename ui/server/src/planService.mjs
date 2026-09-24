@@ -201,8 +201,11 @@ const refOk = (r) => typeof r === 'string' && r.length > 0 && r.length <= 200 &&
  * @param {() => string|null} o.getRoot the current project's root (never from a request)
  * @param {(plan: object) => {ok: boolean, processId?: string, status?: number, error?: string}} o.startPlan
  *   starts a validated plan; injected so tests can watch that nothing starts on refusal
+ * @param {(started: {noteId: string, plan: object, processId: string}) => void} [o.onStarted]
+ *   #609: called once a plan that named a note (`noteId`) has started, to mark that note ran. A failure here never
+ *   undoes the run (the process exists); it is reported as `noteRan: false` so the screen can say so.
  */
-export function createPlanService({ getRoot, startPlan }) {
+export function createPlanService({ getRoot, startPlan, onStarted }) {
   const withRoot = (fn) => {
     const root = getRoot();
     if (!root) return fail(409, 'No Construct project found for the current project directory. Pick a project first.');
@@ -266,7 +269,17 @@ export function createPlanService({ getRoot, startPlan }) {
         if (!checked.valid) return fail(400, 'The plan is not valid, so it was not run.', { errors: checked.errors });
         const started = startPlan(plan);
         if (!started?.ok) return fail(started?.status || 500, started?.error || 'The plan could not be started.');
-        return { status: 200, body: { ok: true, processId: started.processId, models: plan.steps.filter((s) => s.executor === 'local-model').map((s) => s.id) } };
+        const noteId = typeof body?.noteId === 'string' && body.noteId ? body.noteId : null;
+        let noteRan = null;
+        if (noteId && onStarted) {
+          try {
+            onStarted({ noteId, plan, processId: started.processId });
+            noteRan = true;
+          } catch {
+            noteRan = false;
+          }
+        }
+        return { status: 200, body: { ok: true, processId: started.processId, models: plan.steps.filter((s) => s.executor === 'local-model').map((s) => s.id), ...(noteRan === null ? {} : { noteRan }) } };
       });
     },
   };

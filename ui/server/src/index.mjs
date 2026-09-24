@@ -71,6 +71,7 @@ import { handleValidateForProject } from './validateApi.mjs';
 import { validateArchitecture } from '../../../packages/core/architecture-enforcer.mjs';
 import { createComponentsRouter } from './componentsApi.mjs';
 import { createNotesRouter } from './notesApi.mjs';
+import { openNotesStore } from './notesStore.mjs';
 import { handleLogs } from './logBuffer.mjs';
 import { unitsIndex, unitSummary, featuresIndex, featureSummary } from './unitsApi.mjs';
 import { buildPalette } from '../../../packages/engine/palette.mjs';
@@ -1061,6 +1062,12 @@ app.use('/api/processes', createProcessesRouter(processesService));
 export const planService = createPlanService({
   getRoot: () => containedProjectRoot(getProjectDir()),
   startPlan: (plan) => processesService.startPlan(plan),
+  // #609: Run marks the note it was run from as ran (same project root the Notes router uses, see below).
+  onStarted: ({ noteId, plan, processId }) => {
+    const dir = getProjectDir();
+    const root = dir ? containedProjectRoot(dir) || dir : null;
+    if (root) openNotesStore(root).markRan(noteId, { plan, processId });
+  },
 });
 app.use('/api/plan', createPlanRouter(planService));
 
