@@ -37,22 +37,15 @@ code, pre { font-family: var(--mono); }
 .brand { display: flex; align-items: center; gap: 10px; color: var(--text); font-weight: 650; }
 .brand:hover { text-decoration: none; }
 .brand-mark { width: 26px; height: 26px; flex: none; color: var(--text); }
-/* The Line mark is a status light, not decoration. The white pill stays; the blue pill slowly slides left, 12 units, to sit directly
- * under it (stacked), rests, then slowly slides back. It runs only while <html data-dev-status="active"> (or "ending": the cycle in progress finishes so the pill never snaps back), which
- * assets/js/logo-status.js sets from the owner's own setting (never for a visitor who has not set one). Transform only; CSS
- * pixels inside an SVG are its own user units, so -12px is the 12 units between the two pills' left edges. */
-.brand-mark .pill-blue { transform: translateX(0); }
-html[data-dev-status='active'] .brand-mark .pill-blue,
-html[data-dev-status='ending'] .brand-mark .pill-blue { animation: brand-stack 9s ease-in-out infinite; }
-@keyframes brand-stack {
-  0%, 8% { transform: translateX(0); }
-  46%, 54% { transform: translateX(-12px); }
-  92%, 100% { transform: translateX(0); }
-}
+/* The Line mark is a status light, not decoration. Its pills move only while <html data-dev-status="active"> (or "ending": the cycle in
+ * progress finishes so nothing snaps back), and how they move is a motion (the Logo Lab's JSON) that assets/js/logo-status.js turns into
+ * keyframes and injects as <style id="logo-motion">: the built-in one, the site's (logo.json), or this browser's own. The pills are
+ * `.pill-white` and `.pill-blue` in the header logo. Nothing here animates by itself. */
 .logo-panel { position: fixed; right: 16px; bottom: 16px; z-index: 50; display: grid; gap: 8px; width: min(320px, calc(100vw - 32px)); padding: 12px 14px; background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25); font-size: 0.9rem; }
 .logo-panel h2 { margin: 0; font-size: 1rem; }
 .logo-panel label { display: grid; gap: 4px; }
-.logo-panel select, .logo-panel input { font: inherit; padding: 4px 6px; }
+.logo-panel select, .logo-panel input, .logo-panel textarea { font: inherit; padding: 4px 6px; }
+.logo-panel textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8rem; resize: vertical; }
 .logo-panel-note { margin: 0; color: var(--muted); min-height: 1.2em; }
 @media (prefers-reduced-motion: reduce) { .brand-mark, .brand-mark * { animation: none !important; } }
 .brand-name { font-weight: 600; letter-spacing: 0.3em; text-transform: uppercase; font-size: 0.95rem; }

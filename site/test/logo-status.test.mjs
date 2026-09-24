@@ -47,19 +47,23 @@ test('only a full "an agent is working" answer counts as active', () => {
   for (const no of [null, undefined, {}, { ok: true, available: true, active: false }, { ok: true, available: false, active: true }, { ok: false, available: true, active: true }, { ok: true, available: true, active: 'yes' }]) assert.equal(m.isActive(no), false);
 });
 
-test("the site's own setting: mode and endpoint each read on their own, anything wrong is dropped, and nothing throws", () => {
+test("the site's own setting: mode, endpoint and motion each read on their own, anything wrong is dropped, and nothing throws", () => {
   const m = load();
-  assert.deepEqual({ ...m.parseConfig('{"mode":"status","api":"https://h.example/api/dev-status"}') }, { mode: 'status', api: 'https://h.example/api/dev-status' });
-  assert.deepEqual({ ...m.parseConfig('{"mode":"always"}') }, { mode: 'always', api: null });
-  assert.deepEqual({ ...m.parseConfig('{"mode":"loud","api":"http://evil.example/x"}') }, { mode: null, api: null });
-  for (const bad of ['', 'not json', '[]', 'null', '"x"', '{', undefined]) assert.deepEqual({ ...m.parseConfig(bad) }, { mode: null, api: null }, String(bad));
+  const lab = { mark: 'line', parts: { white: 'pos', blue: 'neg' }, effect: 'slide', distance: 6, durationSeconds: 5 };
+  const ok = m.parseConfig(JSON.stringify({ mode: 'status', api: 'https://h.example/api/dev-status', motion: lab }));
+  assert.equal(ok.mode, 'status');
+  assert.equal(ok.api, 'https://h.example/api/dev-status');
+  assert.equal(ok.motion.duration, 5);
+  assert.deepEqual({ ...m.parseConfig('{"mode":"always"}') }, { mode: 'always', api: null, motion: null });
+  assert.deepEqual({ ...m.parseConfig('{"mode":"loud","api":"http://evil.example/x","motion":{"mark":"cockpit"}}') }, { mode: null, api: null, motion: null });
+  for (const bad of ['', 'not json', '[]', 'null', '"x"', '{', undefined]) assert.deepEqual({ ...m.parseConfig(bad) }, { mode: null, api: null, motion: null }, String(bad));
 });
 
 test('site/logo.json ships as off with no endpoint (public); the build copies it and the page points at it', () => {
   const m = load();
   const cfg = m.parseConfig(read('site/logo.json'));
   assert.equal(JSON.parse(read('site/logo.json')).mode, 'off');
-  assert.deepEqual({ ...cfg }, { mode: 'off', api: null });
+  assert.deepEqual({ ...cfg }, { mode: 'off', api: null, motion: null });
   assert.match(read('site/build.mjs'), /copyFileSync\(path\.join\(HERE, 'logo\.json'\), path\.join\(out, 'logo\.json'\)\)/);
   assert.match(read('packages/docs-site/lib/pages.mjs'), /data-config="\$\{root\}logo\.json"/);
   // The browser's own choice wins over the site's, then the site's, then off (checked in the script's own resolution).
@@ -79,7 +83,8 @@ test('link parameters: a mode, an endpoint, an empty endpoint clears it, config 
 });
 
 test('a visitor who has set nothing makes no request: no endpoint address is in the script, the markup or the styles', () => {
-  const files = [SCRIPT, read('packages/docs-site/lib/pages.mjs'), read('site/assets/css/site.css')];
+  const code = SCRIPT.replace(/\/\*[\s\S]*?\*\//g, ''); // the header comment shows an example address; only code counts
+  const files = [code, read('packages/docs-site/lib/pages.mjs'), read('site/assets/css/site.css')];
   for (const text of files) {
     assert.doesNotMatch(text, /sslip\.io|2-28-127-143/, 'no personal or hosted address is baked into the public site');
     assert.doesNotMatch(text, /api\/dev-status['"`]?\s*[,)]/, 'the endpoint is not a default in code');
@@ -88,43 +93,91 @@ test('a visitor who has set nothing makes no request: no endpoint address is in 
   assert.match(SCRIPT, /if \(mode\(\) !== 'status'\) return;/);
 });
 
-test('the logo: two pills with their own classes, the blue one slides 12 units under the white one only while dev status is active, and reduced motion stops it', () => {
+test('the logo: two pills with their own classes, the script installs the keyframes, nothing animates in the stylesheet, and reduced motion stops it', () => {
   const pages = read('packages/docs-site/lib/pages.mjs');
   assert.match(pages, /<rect class="pill-white" x="4" y="10"[^>]*fill="currentColor"\/>/);
   assert.match(pages, /<rect class="pill-blue" x="16" y="27"[^>]*stroke="url\(#lg\)"/);
   assert.match(pages, /<script src="\$\{root\}assets\/js\/logo-status\.js" data-config="\$\{root\}logo\.json" defer><\/script>/);
   const css = read('site/assets/css/site.css');
-  assert.doesNotMatch(css, /brand-trace|brand-pop|stroke-dasharray: 55 14/, 'the rolling dash is gone');
-  assert.match(css, /html\[data-dev-status='active'\] \.brand-mark \.pill-blue,\s*html\[data-dev-status='ending'\] \.brand-mark \.pill-blue \{ animation: brand-stack 9s ease-in-out infinite; \}/);
-  assert.match(SCRIPT, /animationiteration/, 'a quiet status lets the cycle in progress finish instead of cutting it');
-  assert.match(css, /46%, 54% \{ transform: translateX\(-12px\); \}/);
+  assert.doesNotMatch(css, /brand-trace|brand-pop|brand-stack|stroke-dasharray: 55 14|@keyframes logo-/, 'the stylesheet carries no fixed animation');
   assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{ \.brand-mark, \.brand-mark \* \{ animation: none !important; \} \}/);
-  // Transform only: nothing about the stroke, size or rotation moves.
-  const block = css.slice(css.indexOf('@keyframes brand-stack'), css.indexOf('.logo-panel {'));
-  assert.doesNotMatch(block, /rotate|scale|stroke|opacity/);
+  assert.match(SCRIPT, /styleEl\.id = 'logo-motion'/);
+  assert.match(SCRIPT, /animationiteration/, 'a quiet status lets the cycle in progress finish instead of cutting it');
 });
 
-test('the tab icon moves like the logo: the same rest, slide, hold, slide back, rest, and the same drawing as the static icon', () => {
+test('the built-in motion is the Handshake: both pills 6 units toward each other (they share a column), 6.6 s, holds, parts, rests', () => {
   const m = load();
-  const at = (p) => m.pillOffset(p * m.CYCLE_MS);
-  assert.equal(at(0), 0);
-  assert.equal(at(0.05), 0, 'rests at the start');
-  assert.ok(at(0.27) < -5 && at(0.27) > -7, 'half way through the slide is about half the travel');
-  assert.equal(at(0.5), -12, 'holds under the white pill');
-  assert.ok(at(0.73) < -5 && at(0.73) > -7, 'and slides back');
-  assert.equal(at(0.95), 0, 'ends at rest');
-  assert.equal(m.pillOffset(m.CYCLE_MS * 3 + 100), m.pillOffset(100), 'it loops');
-  let prev = at(0);
-  for (let i = 1; i <= 1000; i += 1) {
-    const now = at(i / 1000);
-    assert.ok(Math.abs(now - prev) < 0.2, 'smooth: no jump between frames');
-    prev = now;
-  }
-  // The frame is the static icon with only the blue pill moved.
+  const S = m.parseMotion(m.DEFAULT_MOTION_JSON);
+  assert.equal(S.duration, 6.6);
+  assert.deepEqual({ ...S.parts }, { white: 'pos', blue: 'neg' });
+  const at = (pct) => m.motionAt(S, (pct / 100) * S.duration * 1000);
+  const near = (a, b, msg) => assert.ok(Math.abs(a - b) < 1e-6, `${msg}: ${a} vs ${b}`);
+  near(at(0).white.x, 0, 'starts at rest');
+  near(at(0).blue.x, 0, 'starts at rest');
+  near(at(19).white.x, 6, 'white is 6 right after the move in');
+  near(at(19).blue.x, -6, 'blue is 6 left');
+  near(at(33).white.x, 6, 'holds while stacked');
+  near(at(47).blue.x, -6, 'still held at 47%');
+  assert.ok(at(10).white.x > 1 && at(10).white.x < 5, 'moving in at 10%');
+  assert.ok(at(60).white.x > 0 && at(60).white.x < 6, 'parting at 60%');
+  near(at(66).white.x, 0, 'back at rest at 66%');
+  near(at(80).white.x, 0, 'rests for the last third');
+  assert.equal(m.atRest(at(80)), true);
+  assert.equal(m.atRest(at(10)), false);
+  // The white pill (x 4-32, 12 apart from the blue at 16-44) and the blue one land on the same column: 4+6 = 16-6.
+  near(4 + at(33).white.x, 16 + at(33).blue.x, 'the pills stack in one column');
+});
+
+test('the keyframes the script installs are generated from the same motion: timing, distances, easing and reduced-motion-safe selectors', () => {
+  const m = load();
+  const css = m.motionCss(m.parseMotion(m.DEFAULT_MOTION_JSON));
+  assert.match(css, /html\[data-dev-status='active'\] \.brand-mark \.pill-white, html\[data-dev-status='ending'\] \.brand-mark \.pill-white \{ animation: logo-white 6\.6s infinite; \}/);
+  assert.match(css, /html\[data-dev-status='active'\] \.brand-mark \.pill-blue, html\[data-dev-status='ending'\] \.brand-mark \.pill-blue \{ animation: logo-blue 6\.6s infinite; \}/);
+  assert.match(css, /@keyframes logo-white \{[\s\S]*19%, 47% \{ transform: translate\(6px, 0px\); animation-timing-function: ease-in-out; \}/, 'in by 19%, held until 47%');
+  assert.match(css, /@keyframes logo-blue \{[\s\S]*19%, 47% \{ transform: translate\(-6px, 0px\); animation-timing-function: ease-in-out; \}/);
+  assert.match(css, /66%, 100% \{ transform: translate\(0px, 0px\)/, 'back at rest by 66%, resting to the end');
+  assert.doesNotMatch(css, /scale\(|opacity:/, 'a slide moves nothing but position');
+});
+
+test("a Logo Lab export is read as it comes: other effects, stagger and easing all become keyframes; a motion for another mark, or one that moves nothing, is refused", () => {
+  const m = load();
+  const breathe = m.parseMotion({ mark: 'line', parts: { white: 'still', blue: 'pos' }, effect: 'pulse', distance: 4, durationSeconds: 4, restBeforePct: 0, restAfterPct: 0, holdPct: 0, beats: 1, easing: { type: 'ease-in-out' }, staggerPct: 0, direction: 'out-and-back' });
+  const css = m.motionCss(breathe);
+  assert.match(css, /scale\(1\.12\)/);
+  assert.match(css, /opacity: 0\.76/);
+  assert.doesNotMatch(css, /pill-white \{ animation|logo-white/, 'a pill that stays still gets no animation');
+  const ripple = m.parseMotion({ mark: 'line', parts: { white: 'pos', blue: 'pos' }, effect: 'pulse', distance: 5, durationSeconds: 2.4, staggerPct: 18, easing: { type: 'steps', count: 4 } });
+  assert.match(m.motionCss(ripple), /animation-delay: 0\.432s/);
+  assert.match(m.motionCss(ripple), /steps\(4, end\)/);
+  assert.equal(m.parseMotion({ mark: 'cockpit', parts: { ring: 'still', bar: 'pos', knob: 'neg' } }), null, 'the Cockpit mark is not the docs logo');
+  assert.equal(m.parseMotion({ mark: 'line', parts: { white: 'still', blue: 'still' } }), null, 'nothing moves');
+  assert.equal(m.parseMotion('not json'), null);
+  const clamped = m.parseMotion({ parts: { blue: 'neg' }, distance: 999, durationSeconds: -3, restBeforePct: 500, beats: 99 });
+  assert.equal(clamped.distance, 30);
+  assert.equal(clamped.duration, 0.3);
+  assert.equal(clamped.rb, 90);
+  assert.equal(clamped.beats, 4);
+  assert.equal(m.parseMotion({ mark: 'line', parts: { blue: 'neg' }, effect: 'nonsense', axis: 'q' }).fx, 'slide');
+});
+
+test('the tab icon is drawn from the same motion: at rest it IS the static icon, moved frames move the same pills the same way, and it never jumps', () => {
+  const m = load();
+  const S = m.parseMotion(m.DEFAULT_MOTION_JSON);
+  const cycle = S.duration * 1000;
   const pages = read('packages/docs-site/lib/pages.mjs');
   const staticIcon = decodeURIComponent(pages.match(/const FAVICON =\s*"([^"]+)"/)[1].replace('data:image/svg+xml,', ''));
-  assert.equal(m.faviconSvg(0), staticIcon, 'at rest the frame IS the static icon');
-  assert.match(m.faviconSvg(-12), /<rect x="4" y="27" width="28"/);
+  assert.equal(m.faviconSvg(m.motionAt(S, 0)), staticIcon, 'at rest the frame IS the static icon');
+  assert.equal(m.faviconSvg(), staticIcon);
+  const stacked = m.faviconSvg(m.motionAt(S, 0.3 * cycle));
+  assert.match(stacked, /<rect x="4" y="10"[^>]*transform="translate\(6 0\)"\/>/);
+  assert.match(stacked, /<rect x="16" y="27"[^>]*transform="translate\(-6 0\)"\/>/);
+  assert.equal(m.motionAt(S, cycle * 5 + 1000).white.x, m.motionAt(S, 1000).white.x, 'it loops on the clock');
+  let prev = m.motionAt(S, 0);
+  for (let t = 20; t <= cycle; t += 20) {
+    const now = m.motionAt(S, t);
+    assert.ok(Math.abs(now.white.x - prev.white.x) < 0.5 && Math.abs(now.blue.x - prev.blue.x) < 0.5, `no jump at ${t} ms`);
+    prev = now;
+  }
   assert.match(SCRIPT, /iconOriginal/, 'the original icon is put back once the cycle has finished');
   assert.match(SCRIPT, /prefers-reduced-motion/, 'reduced motion never animates the icon');
 });

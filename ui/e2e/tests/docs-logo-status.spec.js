@@ -80,7 +80,8 @@ test.describe.serial('Docs logo follows the framework-development status (#614)'
 
   const status = (page) => page.evaluate(() => document.documentElement.getAttribute('data-dev-status'));
   const iconHref = (page) => page.locator('link[rel~="icon"]').first().getAttribute('href');
-  const pillX = (page) => page.locator('.brand-mark .pill-blue').evaluate((el) => el.getBoundingClientRect().x);
+  const pillX = (page, which = 'blue') => page.locator(`.brand-mark .pill-${which}`).evaluate((el) => el.getBoundingClientRect().x);
+  const bothX = async (page) => [await pillX(page, 'white'), await pillX(page, 'blue')];
 
   test('the endpoint answers from real file times, booleans only', async () => {
     const idle = await (await fetch(apiUrl)).json();
@@ -99,10 +100,13 @@ test.describe.serial('Docs logo follows the framework-development status (#614)'
     expect(await pillX(page)).toBe(x);
   });
 
-  test('an agent starts working: the blue pill slides 12 units under the white one and back; when it stops the cycle finishes, no snap', async ({ page }) => {
+  // The docs default motion (the Logo Lab's Handshake, 6.6 s): both pills move 6 units toward each other until they share a column, hold,
+  // part, rest. 6 SVG units at 26 px / 48 units = 3.25 px each; the pills start 12 units (6.5 px) apart and meet at 0.
+  test('an agent starts working: the pills meet in one column and part again; when it stops the cycle finishes, no snap', async ({ page }) => {
     await page.goto(siteUrl);
     await page.waitForTimeout(2500); // the server caches its answer for 2 s; start from a settled idle
-    const rest = await pillX(page);
+    const [whiteRest, blueRest] = await bothX(page);
+    expect(Math.abs(blueRest - whiteRest - 6.5), 'at rest the pills are 12 units apart').toBeLessThan(0.1);
 
     const iconRest = await iconHref(page);
     const started = Date.now();
@@ -110,59 +114,101 @@ test.describe.serial('Docs logo follows the framework-development status (#614)'
     await page.waitForFunction(() => document.documentElement.getAttribute('data-dev-status') === 'active', null, { timeout: 20_000 });
     expect(Date.now() - started, 'the logo starts within the poll interval plus the cache').toBeLessThan(12_000);
 
-    // Working: keep the transcript fresh and sample about two cycles (9 s each).
-    const xs = [];
+    // Working: keep the transcript fresh and sample two cycles (6.6 s each).
+    const w = [];
+    const bl = [];
     const t0 = Date.now();
     let lastTouch = 0;
-    while (Date.now() - t0 < 19_000) {
+    while (Date.now() - t0 < 14_500) {
       if (Date.now() - lastTouch > 4000) { setAge(0); lastTouch = Date.now(); }
-      xs.push(await pillX(page));
-      await page.waitForTimeout(100);
+      const [wx, bx] = await bothX(page);
+      w.push(wx);
+      bl.push(bx);
+      await page.waitForTimeout(80);
     }
-    const travel = Math.max(...xs) - Math.min(...xs);
-    // 12 SVG units at 26 px / 48 units = 6.5 px, to the left of rest (under the white pill), and back to rest.
-    expect(travel).toBeGreaterThan(6.2);
-    expect(travel).toBeLessThan(6.8);
-    expect(Math.max(...xs)).toBeLessThan(rest + 0.1);
-    expect(xs.some((x, i) => i > xs.length / 2 && Math.abs(x - rest) < 0.2), 'it slides back to rest').toBe(true);
+    const travel = (xs) => Math.max(...xs) - Math.min(...xs);
+    expect(travel(w), 'the white pill moves 6 units right').toBeGreaterThan(3.0);
+    expect(travel(w)).toBeLessThan(3.5);
+    expect(travel(bl), 'the blue pill moves 6 units left').toBeGreaterThan(3.0);
+    expect(travel(bl)).toBeLessThan(3.5);
+    expect(Math.max(...w)).toBeGreaterThan(whiteRest + 2.8);
+    expect(Math.min(...bl)).toBeLessThan(blueRest - 2.8);
+    const gaps = w.map((x, i) => bl[i] - x);
+    expect(Math.min(...gaps), 'at the hold they share one column').toBeLessThan(0.3);
+    expect(Math.max(...gaps), 'and part again to the resting gap').toBeGreaterThan(6.3);
+    expect(bl.some((x, i) => i > bl.length / 2 && Math.abs(x - blueRest) < 0.2), 'it returns to rest inside the window').toBe(true);
 
-    // The tab icon slides its blue pill too (drawn from the clock), so work shows in a background tab.
+    // The tab icon moves the same pills the same way (drawn from the clock), so work shows in a background tab.
     const frames = new Set();
-    for (let i = 0; i < 30; i += 1) { frames.add(await iconHref(page)); await page.waitForTimeout(100); }
+    for (let i = 0; i < 40; i += 1) { frames.add(await iconHref(page)); await page.waitForTimeout(100); }
     expect(frames.size, 'the tab icon changes frame while the agent works').toBeGreaterThanOrEqual(3);
     for (const href of frames) if (href !== iconRest) expect(href).toMatch(/^data:image\/svg\+xml,/);
     setAge(0);
 
-    // Stop the agent while the pill is mid-slide, and watch every 30 ms.
+    // Stop the agent while the pills are mid-move, and watch every ~40 ms.
     for (let i = 0; i < 400; i += 1) {
-      const x = await pillX(page);
-      if (x < rest - 2.5 && x > rest - 4.5) break;
-      await page.waitForTimeout(40);
+      const x = await pillX(page, 'blue');
+      if (x < blueRest - 1.2 && x > blueRest - 2.4) break;
+      await page.waitForTimeout(30);
     }
     setAge(5 * 60_000);
     const stopped = Date.now();
     const after = [];
     let sawEnding = false;
-    while (Date.now() - stopped < 25_000) {
-      const s = await status(page);
-      if (s === 'ending') sawEnding = true;
-      after.push({ x: await pillX(page), s, t: Date.now() - stopped });
-      if (s === null && Date.now() - stopped > 2000) break;
+    while (Date.now() - stopped < 30_000) {
+      const st = await status(page);
+      if (st === 'ending') sawEnding = true;
+      const [wx, bx] = await bothX(page);
+      after.push({ w: wx, b: bx, s: st });
+      if (st === null && Date.now() - stopped > 2000) break;
       await page.waitForTimeout(30);
     }
     expect(sawEnding, 'a quiet status winds the cycle down instead of cutting it').toBe(true);
     let maxStep = 0;
-    for (let i = 1; i < after.length; i += 1) maxStep = Math.max(maxStep, Math.abs(after[i].x - after[i - 1].x));
-    expect(maxStep, 'the pill never jumps (a snap would be several pixels)').toBeLessThan(1);
-    expect(after[after.length - 1].s).toBeNull();
-    expect(Math.abs(after[after.length - 1].x - rest), 'it ends exactly at rest').toBeLessThan(0.05);
+    for (let i = 1; i < after.length; i += 1) maxStep = Math.max(maxStep, Math.abs(after[i].w - after[i - 1].w), Math.abs(after[i].b - after[i - 1].b));
+    expect(maxStep, 'the pills never jump (a snap would be over a pixel)').toBeLessThan(0.7);
+    const end = after[after.length - 1];
+    expect(end.s).toBeNull();
+    expect(Math.abs(end.b - blueRest) + Math.abs(end.w - whiteRest), 'both end exactly at rest').toBeLessThan(0.1);
     // The tab icon goes back to the static icon once its own cycle is done, and stays there.
-    await expect.poll(() => iconHref(page), { timeout: 12_000 }).toBe(iconRest);
-    // And it stays still afterwards.
+    await expect.poll(() => iconHref(page), { timeout: 14_000 }).toBe(iconRest);
     await page.waitForTimeout(3000);
     expect(await iconHref(page)).toBe(iconRest);
-    expect(Math.abs((await pillX(page)) - rest)).toBeLessThan(0.05);
+    const [w2, b2] = await bothX(page);
+    expect(Math.abs(w2 - whiteRest) + Math.abs(b2 - blueRest)).toBeLessThan(0.1);
     expect(await status(page)).toBeNull();
+  });
+
+  test('a motion pasted from the Logo Lab in the config panel replaces the default in this browser; a bad paste is refused', async ({ page }) => {
+    await page.goto(`${siteUrl}?logo=config`);
+    const panel = page.locator('form.logo-panel');
+    await expect(panel).toBeVisible();
+    await panel.locator('textarea').fill('this is not json');
+    await panel.getByRole('button', { name: 'Save' }).click();
+    await expect(panel.locator('.logo-panel-note')).toContainText('not a Line motion');
+    // A cockpit-mark export is not a docs-logo motion either.
+    await panel.locator('textarea').fill(JSON.stringify({ mark: 'cockpit', parts: { knob: 'neg' } }));
+    await panel.getByRole('button', { name: 'Save' }).click();
+    await expect(panel.locator('.logo-panel-note')).toContainText('not a Line motion');
+
+    const breathe = { mark: 'line', parts: { white: 'still', blue: 'pos' }, effect: 'pulse', distance: 4, axis: 'x', durationSeconds: 3, restBeforePct: 0, restAfterPct: 0, holdPct: 0, beats: 1, easing: { type: 'ease-in-out' }, staggerPct: 0, direction: 'out-and-back' };
+    await panel.locator('textarea').fill(JSON.stringify(breathe));
+    await panel.locator('select').selectOption('always');
+    await panel.getByRole('button', { name: 'Save' }).click();
+    await expect(panel.locator('.logo-panel-note')).toHaveText('Saved.');
+    await expect(page.locator('html')).toHaveAttribute('data-dev-status', 'active');
+    const css = await page.locator('style#logo-motion').textContent();
+    expect(css).toContain('animation: logo-blue 3s infinite');
+    expect(css, 'a pill that stays still gets no animation').not.toContain('logo-white');
+    const anim = await page.locator('.brand-mark .pill-blue').evaluate((el) => { const c = getComputedStyle(el); return { name: c.animationName, dur: c.animationDuration }; });
+    expect(anim).toEqual({ name: 'logo-blue', dur: '3s' });
+    // It sticks for this browser across a reload, and "follow the site" (empty paste) puts the default back.
+    await page.goto(siteUrl);
+    await expect.poll(() => page.locator('style#logo-motion').textContent()).toContain('logo-blue 3s');
+    await page.goto(`${siteUrl}?logo=config`);
+    await page.locator('form.logo-panel textarea').fill('');
+    await page.locator('form.logo-panel').getByRole('button', { name: 'Save' }).click();
+    await expect.poll(() => page.locator('style#logo-motion').textContent()).toContain('logo-white 6.6s');
   });
 
   test('the endpoint goes away while the agent is working: the logo does not stay animated', async ({ page }) => {
