@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { ImpactPane } from '../components/ImpactPane';
+import { RequirementLink } from '../components/RequirementLink';
 import type { ImpactPaneProps } from '../types';
 
 export type PlanPageProps = {
@@ -19,6 +20,7 @@ export function PlanPage({ contextError, impact, stageActions, featureDetail }: 
       <p className="pl-lede">
         From a note to a plan you can review before anything runs. The impact is worked out from your code and your rules, <span className="pl-det">DETERMINISTIC</span> and without a model; the plan shows exactly where a model would be used.
       </p>
+      <RequirementLink />
       {stageActions}
       {featureDetail}
       {contextError && (

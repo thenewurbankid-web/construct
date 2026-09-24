@@ -26,3 +26,6 @@ export * from './hooks/useStepActions';
 
 /** Run plan: the server re-validates and starts the process. */
 export * from './hooks/usePlanRun';
+
+/** The plan check and Run over /api/plan, for the screens that hand a plan to the same run path (the Requirement screen, #642). */
+export * from './services/PlanCheckApi';
