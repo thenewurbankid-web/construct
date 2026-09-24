@@ -95,6 +95,93 @@ function buildPortPrompt({ layer, relFile, stubContent, oldContent, oldRelPath }
 }
 
 /**
+ * #496/#601 — a targeted correction prompt: fix exactly the violations `construct validate` found
+ * in one already-filled file, not a fresh port. Each violation's own `suggestedFix` (when the rule
+ * provides one) is passed through verbatim, so a retry is grounded in a concrete, deterministic
+ * signal rather than the model guessing again from scratch.
+ *
+ * @param {{layer: string, relFile: string, currentContent: string, violations: object[]}} options
+ *   `layer` names the target file's layer (for its constraint text); `relFile` is its root-relative
+ *   path; `currentContent` is what's on disk now (the file this prompt is asking to be rewritten);
+ *   `violations` is the subset of `construct validate`'s violations for this file (each with at
+ *   least `rule`, `line`, `message`, and optionally `suggestedFix`).
+ * @returns {string} The complete prompt text, ready for `requestFileText`.
+ */
+export function buildFixPrompt({ layer, relFile, currentContent, violations }) {
+  const violationText = violations
+    .map((v) => `- ${v.rule} (line ${v.line}): ${v.message}${v.suggestedFix ? ` — suggested fix: ${v.suggestedFix}` : ''}`)
+    .join('\n');
+  return [
+    'You are fixing specific construct-validate violations in one file of a Construct-architecture project.',
+    'Make the smallest change that resolves every violation listed below. Do not rewrite unrelated code,',
+    'do not change the exported identifier name(s), and do not introduce new behavior beyond what fixing',
+    'the violation requires.',
+    `Target file: ${relFile} (layer: "${layer}").`,
+    `Layer constraint: ${LAYER_CONSTRAINTS[layer] || 'none.'}`,
+    '',
+    '=== VIOLATIONS TO FIX ===',
+    violationText,
+    '',
+    '=== CURRENT FILE CONTENT ===',
+    currentContent,
+    '',
+    'Return ONLY the new, complete file content with every violation above resolved. No markdown code fences, no explanation, no commentary — just the raw file content that will be written as-is.',
+  ].join('\n');
+}
+
+/**
+ * Retry a fill for files with real construct-validate violations, feeding each violation's own
+ * message and suggestedFix back as correction context (#496) — a real correction, not the
+ * identical prompt rerun. Bounded to `maxAttempts` per file so a model that can't converge never
+ * loops forever; a caller with its own cancel/stop control (a CLI's Ctrl+C, or a Cockpit abort
+ * button, #599) interrupts this the same way it would any other in-flight call, since nothing
+ * here catches or suppresses that.
+ *
+ * `validate` is injected rather than imported so this stays a core module with no dependency on
+ * packages/engine's enforcer set — the same pattern packages/engine/transactionalWriter.mjs's
+ * commit() and approvalGate.mjs's createApprovalGate() already use for their own injected
+ * validate option. Pass `(root) => aggregateValidation(root, DEFAULT_ENFORCERS)`.
+ *
+ * @param {string} root Project root.
+ * @param {string[]} relFiles Root-relative paths of files from this import to consider for auto-fix.
+ * @param {(root: string) => {violations: object[]}} validate Injected validator.
+ * @param {{llm: string, llmOptions?: object, maxAttempts?: number, onAttempt?: (info: object) => void}} options
+ *   `onAttempt` fires before each retry with `{file, attempt, violations}` — a caller uses it to
+ *   print progress (or, later, to drive a live step tracker, #599).
+ * @returns {Promise<{fixed: object[], stillFailing: object[]}>} `fixed`: `{file, attempts}` for
+ *   every file that ended up clean. `stillFailing`: `{file, violations, attempts}` for every file
+ *   that still has a violation after `maxAttempts` (or whose fill call itself failed/was rejected).
+ *
+ * @example
+ * const { fixed, stillFailing } = await autoFixViolations(
+ *   root, relFiles, (r) => aggregateValidation(r, DEFAULT_ENFORCERS), { llm: 'claude' },
+ * );
+ */
+export async function autoFixViolations(root, relFiles, validate, { llm, llmOptions, maxAttempts = 2, onAttempt } = {}) {
+  const fixed = [];
+  const stillFailing = [];
+  for (const relFile of relFiles) {
+    const file = path.join(root, relFile);
+    let attempt = 0;
+    let mine = validate(root).violations.filter((v) => v.file === relFile);
+    while (mine.length && attempt < maxAttempts) {
+      attempt += 1;
+      onAttempt?.({ file: relFile, attempt, violations: mine });
+      const layer = layerFromGeneratedFile(file);
+      const currentContent = fs.readFileSync(file, 'utf8');
+      const prompt = buildFixPrompt({ layer, relFile, currentContent, violations: mine });
+      const outcome = await requestFileText(llm, prompt, llmOptions);
+      if (outcome.status !== 'filled') break; // the call itself failed/was rejected — retrying identically won't help
+      fs.writeFileSync(file, outcome.code + '\n');
+      mine = validate(root).violations.filter((v) => v.file === relFile);
+    }
+    if (mine.length) stillFailing.push({ file: relFile, violations: mine, attempts: attempt });
+    else if (attempt > 0) fixed.push({ file: relFile, attempts: attempt });
+  }
+  return { fixed, stillFailing };
+}
+
+/**
  * Scaffold `layers` for one logical unit (exactly like generateVertical).
  * With no `llm` option: prepends a TODO breadcrumb pointing at `fromPath` to
  * each generated file — deterministic, never reads `fromPath`'s content

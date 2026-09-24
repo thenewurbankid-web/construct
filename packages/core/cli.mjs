@@ -20,7 +20,7 @@ import { prHealth, renderPrHealthMarkdown, prHealthApiManifest } from '../../pac
 import { summarizeProject, summarizeCompact, summarizeProse, summarizeSince } from './summarize.mjs';
 import { moveLayerFile, renameLayerFile } from './refactor.mjs';
 import { extractExpression } from './extractExpression.mjs';
-import { importVertical, importPlan, analyzeFiles, executeImportPlan } from './import.mjs';
+import { importVertical, importPlan, analyzeFiles, executeImportPlan, autoFixViolations } from './import.mjs';
 import { resolveRoute } from './route-resolver.mjs';
 import { DEFAULT_ENFORCERS } from '../../packages/engine/defaultEnforcers.mjs';
 import { runPipeline } from '../../packages/engine/pipeline.mjs';
@@ -1235,9 +1235,45 @@ export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude
   console.log(`Running validate --feature ${plan.feature} ...`);
   const validateStart = startTimer();
   const { violations } = aggregateValidation(root, DEFAULT_ENFORCERS);
-  const scoped = violations.filter((v) => v.file.startsWith(`${featuresRoot}/${plan.feature}/`));
+  let scoped = violations.filter((v) => v.file.startsWith(`${featuresRoot}/${plan.feature}/`));
   console.log(formatReport(scoped, { format: 'text' }));
   console.log(`Validated in ${formatDuration(elapsedSeconds(validateStart))}.`);
+
+  // #496/#601 -- offer a real correction pass, not just the report: only when this run already
+  // called the model once (fillWithLlm) and only against files this import itself just wrote, so
+  // a pre-existing violation elsewhere in the project is never silently "fixed" without being asked
+  // about. Bounded (autoFixViolations' own maxAttempts, default 2) and interruptible the same way
+  // the rest of this wizard is -- Ctrl+C at any point stops it; there is no separate stop control
+  // to build here.
+  const importedRelFiles = new Set(results.flatMap((r) => r.files).map((f) => path.relative(root, f)));
+  const fixableViolations = scoped.filter((v) => importedRelFiles.has(v.file));
+  if (fillWithLlm && fixableViolations.length) {
+    const affectedFiles = [...new Set(fixableViolations.map((v) => v.file))];
+    const wantsFix = isYes(
+      await ask(
+        `Try to auto-fix ${fixableViolations.length} violation(s) in ${affectedFiles.length} file(s) with "${importFill}"? Up to 2 attempts per file, each fed the exact violation to fix. Press Ctrl+C at any time to stop. [y/N]: `,
+      ),
+    );
+    if (wantsFix) {
+      const { fixed, stillFailing } = await autoFixViolations(
+        root,
+        affectedFiles,
+        (r) => aggregateValidation(r, DEFAULT_ENFORCERS),
+        {
+          llm: importFill,
+          onAttempt: ({ file, attempt, violations: v }) =>
+            console.log(`  Attempt ${attempt} on ${file}: fixing ${v.length} violation(s) (${v.map((x) => x.rule).join(', ')})...`),
+        },
+      );
+      if (fixed.length) console.log(`Fixed: ${fixed.map((f) => `${f.file} (${f.attempts} attempt(s))`).join(', ')}`);
+      if (stillFailing.length) {
+        console.log(`Still failing after auto-fix: ${stillFailing.map((f) => f.file).join(', ')} — review manually.`);
+      }
+      const revalidated = aggregateValidation(root, DEFAULT_ENFORCERS);
+      scoped = revalidated.violations.filter((v) => v.file.startsWith(`${featuresRoot}/${plan.feature}/`));
+      console.log(formatReport(scoped, { format: 'text' }));
+    }
+  }
 
   const allFiles = results.flatMap((r) => r.files);
   const todoFiles = allFiles.filter((f) => fs.readFileSync(f, 'utf8').includes('TODO(import)'));

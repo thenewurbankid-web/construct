@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createFeature } from '../packages/core/generators.mjs';
-import { importVertical, importPlan, analyzeRoute, validatePlanShape, normalizePlanLayers } from '../packages/core/import.mjs';
+import { importVertical, importPlan, analyzeRoute, validatePlanShape, normalizePlanLayers, autoFixViolations, buildFixPrompt } from '../packages/core/import.mjs';
 import { PROVIDERS } from '../packages/core/llm.mjs';
 import { validateArchitecture } from '../packages/core/architecture-enforcer.mjs';
 import { ConstructError } from '../packages/core/diagnostics.mjs';
@@ -537,4 +537,114 @@ test('#<import-composition-fix>: the controller-layer port prompt tells the mode
   const pagePrompt = capturedPrompts.find((p) => p.includes('layer: "page"'));
   assert.ok(pagePrompt, 'expected a prompt for the page layer');
   assert.match(pagePrompt, /split across SEVERAL files by layer/);
+});
+
+test('buildFixPrompt includes each violation\'s rule, message and suggestedFix, not just a generic instruction', () => {
+  const prompt = buildFixPrompt({
+    layer: 'page',
+    relFile: 'features/checkout/pages/FooPage.tsx',
+    currentContent: 'export function FooPage() { return null; }\n',
+    violations: [{ rule: 'READ-001', line: 3, message: 'bad name', suggestedFix: 'Rename to Foo.tsx' }],
+  });
+  assert.match(prompt, /READ-001 \(line 3\): bad name — suggested fix: Rename to Foo\.tsx/);
+  assert.match(prompt, /smallest change/);
+});
+
+test('#496: autoFixViolations retries a violating file, feeding the violation back, and stops once clean', async () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  const domainDir = path.join(dir, 'features', 'checkout', 'domain');
+  fs.mkdirSync(domainDir, { recursive: true });
+  const file = path.join(domainDir, 'Bad.ts');
+  const relFile = 'features/checkout/domain/Bad.ts';
+  fs.writeFileSync(file, 'export function Bad() { return "still broken"; }\n');
+
+  // A fake validator: "broken" while the file's content contains the word, clean once it doesn't —
+  // deliberately independent of real construct-validate rules, so this test is about
+  // autoFixViolations' own retry/stop logic, not any particular rule's detection.
+  const validate = (root) => ({
+    violations: fs.readFileSync(file, 'utf8').includes('broken')
+      ? [{ rule: 'FAKE-001', file: relFile, line: 1, message: 'still broken', suggestedFix: 'remove the word "broken"' }]
+      : [],
+  });
+
+  let calls = 0;
+  const originalClaude = PROVIDERS.claude;
+  PROVIDERS.claude = (prompt) => {
+    calls += 1;
+    assert.match(prompt, /still broken/); // the violation's own message reached the model
+    return 'export function Bad() { return "fixed"; }';
+  };
+  const attempts = [];
+  try {
+    const { fixed, stillFailing } = await autoFixViolations(dir, [relFile], validate, {
+      llm: 'claude',
+      onAttempt: (info) => attempts.push(info),
+    });
+    assert.equal(calls, 1, 'one call fixed it — no reason for a second attempt');
+    assert.deepEqual(attempts, [{ file: relFile, attempt: 1, violations: validate(dir).violations.length ? [] : attempts[0].violations }]);
+    assert.deepEqual(stillFailing, []);
+    assert.deepEqual(fixed, [{ file: relFile, attempts: 1 }]);
+    assert.equal(fs.readFileSync(file, 'utf8').trim(), 'export function Bad() { return "fixed"; }');
+  } finally {
+    PROVIDERS.claude = originalClaude;
+  }
+});
+
+test('#496: autoFixViolations stops at maxAttempts and reports stillFailing rather than looping forever', async () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  const domainDir = path.join(dir, 'features', 'checkout', 'domain');
+  fs.mkdirSync(domainDir, { recursive: true });
+  const file = path.join(domainDir, 'Stubborn.ts');
+  const relFile = 'features/checkout/domain/Stubborn.ts';
+  fs.writeFileSync(file, 'export function Stubborn() { return "broken"; }\n');
+
+  // A model that never actually fixes anything -- every "fix" just rewrites the identical
+  // violation, the failure mode #496's own dogfood evidence described.
+  const validate = () => ({ violations: [{ rule: 'FAKE-001', file: relFile, line: 1, message: 'broken', suggestedFix: 'fix it' }] });
+  let calls = 0;
+  const originalClaude = PROVIDERS.claude;
+  PROVIDERS.claude = () => {
+    calls += 1;
+    return 'export function Stubborn() { return "broken"; }'; // unchanged -- never converges
+  };
+  try {
+    const { fixed, stillFailing } = await autoFixViolations(dir, [relFile], validate, { llm: 'claude', maxAttempts: 2 });
+    assert.equal(calls, 2, 'bounded to maxAttempts, never loops forever');
+    assert.deepEqual(fixed, []);
+    assert.equal(stillFailing.length, 1);
+    assert.equal(stillFailing[0].file, relFile);
+    assert.equal(stillFailing[0].attempts, 2);
+  } finally {
+    PROVIDERS.claude = originalClaude;
+  }
+});
+
+test('#496: autoFixViolations stops immediately (no second attempt) when the fill call itself is rejected, not retried blindly', async () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  const domainDir = path.join(dir, 'features', 'checkout', 'domain');
+  fs.mkdirSync(domainDir, { recursive: true });
+  const file = path.join(domainDir, 'Bad.ts');
+  const relFile = 'features/checkout/domain/Bad.ts';
+  fs.writeFileSync(file, 'export function Bad() { fetch("/x"); return null; }\n'); // domain layer, real DOMAIN-001-shaped violation
+
+  const validate = () => ({ violations: [{ rule: 'DOMAIN-001', file: relFile, line: 1, message: 'no fetch in domain', suggestedFix: 'move to a service' }] });
+  let calls = 0;
+  const originalClaude = PROVIDERS.claude;
+  // Same banned word back -- requestFileText's own rejection logic (llm-fill.mjs) should refuse
+  // this as a no-op/still-violates response; autoFixViolations must not keep calling after that.
+  PROVIDERS.claude = () => {
+    calls += 1;
+    return 'export function Bad() { fetch("/x"); return null; }\n';
+  };
+  try {
+    const { fixed, stillFailing } = await autoFixViolations(dir, [relFile], validate, { llm: 'claude', maxAttempts: 3 });
+    assert.ok(calls <= 3, 'never exceeds maxAttempts regardless of rejection behavior');
+    assert.deepEqual(fixed, []);
+    assert.equal(stillFailing.length, 1);
+  } finally {
+    PROVIDERS.claude = originalClaude;
+  }
 });
