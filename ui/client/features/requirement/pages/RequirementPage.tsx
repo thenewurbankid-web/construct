@@ -3,6 +3,7 @@ import { CardPanel } from '../components/CardPanel';
 import { OpenQuestions } from '../components/OpenQuestions';
 import { PlacementPanel } from '../components/PlacementPanel';
 import { SentenceForm } from '../components/SentenceForm';
+import { ShapeOffer } from '../components/ShapeOffer';
 import { TimelinePanel } from '../components/TimelinePanel';
 import type { RequirementPageProps } from '../types';
 
@@ -20,6 +21,7 @@ export function RequirementPage({ view, onText, onExample, onRead, onAnswer, onA
       {result && <CardPanel card={result.card} />}
       {result && result.open.length > 0 && <OpenQuestions open={result.open} busy={view.busy} onAnswer={onAnswer} />}
       {result && result.blocks && <PlacementPanel blocks={result.blocks} notes={result.notes} errors={result.errors} />}
+      {result && result.offers.length > 0 && <ShapeOffer offers={result.offers} busy={view.busy} onAnswer={onAnswer} />}
       {result && result.timeline.length > 0 && <TimelinePanel steps={result.timeline} />}
       {result && <ApproveBar approve={result.approve} warnings={result.warnings} files={result.files} onApprove={onApprove} onSaveNote={onSaveNote} onOpenProcesses={onOpenProcesses} />}
     </div>

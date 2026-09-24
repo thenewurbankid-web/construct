@@ -5,6 +5,7 @@ import { EXAMPLES } from './Examples.ts';
 import { NOUN_LABEL, PLACEMENT_LABEL, VERB_LABEL } from './Labels.ts';
 import { QUESTIONS } from './PlacementQuestions.ts';
 import type { CardNoun, ReadResult, ScreenState } from './RequirementTypes.ts';
+import { offerViews } from './ShapeOffer.ts';
 import { toTimeline } from './Timeline.ts';
 
 const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -49,7 +50,8 @@ function approveView(state: ScreenState, result: ReadResult): ApproveView {
   const open = result.open.length;
   const hint = result.plan ? null : open ? `Answer ${plural(open, 'open question')} first.` : 'There is no plan to approve yet.';
   return {
-    canApprove: result.plan !== null && open === 0 && approve.status !== 'running' && approve.status !== 'started',
+    // An offer (the screen shape) is not an open question: it never disables Approve. A read in flight does: the plan on screen may be about to change.
+    canApprove: result.plan !== null && open === 0 && state.read.status !== 'loading' && approve.status !== 'running' && approve.status !== 'started',
     running: approve.status === 'running',
     started: approve.status === 'started',
     processId: approve.processId,
@@ -64,6 +66,7 @@ function resultView(state: ScreenState, result: ReadResult): ResultView {
   return {
     card: cardView(result),
     open: openViews(result),
+    offers: offerViews(result),
     blocks: blockViews(result),
     notes: result.placement?.notes ?? [],
     errors: (result.placement?.errors ?? []).map((e) => e.message),

@@ -17,6 +17,11 @@ export type Card = { source: { text: string }; nouns: CardNoun[]; verbs: CardVer
 export type QuestionOption = { id: string; label: string; enabled: boolean; why: string };
 export type Question = { id: string; question: string; options: QuestionOption[]; chosen: string | null; source: 'card' | 'placement' };
 
+/** A closed question that never holds the plan back (#619: the screen shape). `default` is the rules' suggestion; nothing is chosen until a person answers. */
+export type Offer = Question & { default: string; suggestion?: { option: string; reason: string; provider: string } };
+/** Who answered a placement question, as the blocks record it: `person`, or `decision-model` with its provider. */
+export type Decision = { question: string; option: string; by: string; provider?: string };
+
 export type PlacementLayer = { layer: string; name: string; why: string };
 export type PlacementBlock = {
   id: string;
@@ -34,6 +39,7 @@ export type Placement = {
   blocks: PlacementBlock[];
   notes: string[];
   errors: { code: string; path: string; message: string }[];
+  decisions?: Decision[];
 };
 
 export type ReadResult = {
@@ -44,6 +50,8 @@ export type ReadResult = {
   /** The files each block will create, by block id. */
   files: Record<string, string[]>;
   open: Question[];
+  /** Closed questions beside the plan (never in `open`): the list shape. Absent from an older server. */
+  offers?: Offer[];
   warnings: string[];
   summary: { readBack: string[]; blocks: string[] };
 };

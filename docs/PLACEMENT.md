@@ -616,7 +616,11 @@ carries the three new optional arguments `shape`, `entity` and `fields` (`--shap
 command). The entity is the singular of the plural noun; the fields are the card entity's properties, typed by their names
 (`price` and `amount` are numbers, `isActive` a boolean, the rest strings) after an `id`. A search, a write, or two data objects
 in one card is not offered the shape: those are later slices. The Cockpit's `POST /api/requirement/read` returns the offer as
-`offers` and takes the answer as `{ id: 'q-shape', option: 'list' }`; the Requirement screen does not draw `offers` yet.
+`offers` and takes the answer as `{ id: 'q-shape', option: 'list' }`; the Requirement screen draws it (#651) as a small **Screen shape** card between the placement blocks and the timeline: the two
+options as buttons ("List screen, generated with typed code", "Empty scaffold"), the rules' default marked "suggested", one plain
+line on what each gives, and, once a person has chosen, "Decided by: person". Nothing is preselected: an unanswered offer leaves
+the plain scaffold on screen, Approve stays on and approves exactly that plan; choosing re-reads with the answers extended by
+`{ id: 'q-shape', option }`, so the plan preview, the timeline and the files list redraw (Approve waits while that read is in flight).
 
 **Worked example, run by `test/shapes.test.mjs` so it cannot go stale:**
 

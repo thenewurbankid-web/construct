@@ -6,7 +6,7 @@ import { runPlanOnServer } from '@/features/plan';
 import { withAnswer } from '../domain/Examples';
 import { noteDraftOf } from '../domain/NoteDraft';
 import type { Answer, ScreenAction } from '../domain/RequirementTypes';
-import type { OpenView } from '../types';
+import type { AnswerTarget } from '../types';
 import { readRequirement } from '../services/RequirementApi';
 import { initialScreen, screenReducer } from '../workflows/RequirementMachine';
 
@@ -41,14 +41,14 @@ export function useRequirement(onApproved: () => void) {
     send({ type: 'TEXT', text });
     return run(text, []);
   }, [send, run]);
-  const answer = useCallback((question: OpenView, option: string) => {
+  const answer = useCallback((question: AnswerTarget, option: string) => {
     const next = withAnswer(latest.current.answers, question, option);
     send({ type: 'ANSWERS', answers: next });
     return run(latest.current.text, next);
   }, [send, run]);
 
   const approve = useCallback(async () => {
-    const plan = latest.current.read.result?.plan;
+    const plan = latest.current.read.status === 'loading' ? null : latest.current.read.result?.plan;
     if (!plan) return;
     send({ type: 'APPROVE_RUNNING' });
     const r = await runPlanOnServer(plan);

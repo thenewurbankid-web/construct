@@ -12,6 +12,22 @@ export type CardView = { counts: string; nouns: CardNounView[]; verbs: CardVerbV
 export type OpenOptionView = { id: string; label: string; why: string };
 export type OpenView = { id: string; question: string; source: 'card' | 'placement'; options: OpenOptionView[] };
 
+/** What a question needs to be answered: its id, and whether it is a word of the card or a placement (which replaces an earlier answer). */
+export type AnswerTarget = Pick<OpenView, 'id' | 'source'>;
+
+export type OfferOptionView = { id: string; label: string; gives: string; suggested: boolean; chosen: boolean };
+/** The screen-shape offer (q-shape): a closed question that never blocks Approve. */
+export type OfferView = {
+  id: string;
+  source: 'placement';
+  question: string;
+  options: OfferOptionView[];
+  /** One plain line: what the plan below is right now, and who decided. */
+  status: string;
+  /** "person" once someone chose, else null. */
+  decidedBy: string | null;
+};
+
 export type AnswerView = { question: string; answer: string; yes: boolean };
 export type BlockView = { id: string; label: string; kind: PlacementKind; kindLabel: string; answers: AnswerView[]; why: string; layers: string[]; checks: string[]; files: string[] };
 
@@ -30,6 +46,7 @@ export type ApproveView = {
 export type ResultView = {
   card: CardView;
   open: OpenView[];
+  offers: OfferView[];
   /** null while a word of the card is open: nothing is placed until a person answers. */
   blocks: BlockView[] | null;
   notes: string[];
@@ -45,7 +62,8 @@ export type RequirementView = { text: string; busy: boolean; canRead: boolean; e
 
 export type SentenceFormProps = { view: RequirementView; onText: (text: string) => void; onExample: (text: string) => void; onRead: () => void };
 export type CardPanelProps = { card: CardView };
-export type OpenQuestionsProps = { open: OpenView[]; busy: boolean; onAnswer: (question: OpenView, option: string) => void };
+export type OpenQuestionsProps = { open: OpenView[]; busy: boolean; onAnswer: (question: AnswerTarget, option: string) => void };
+export type ShapeOfferProps = { offers: OfferView[]; busy: boolean; onAnswer: (question: AnswerTarget, option: string) => void };
 export type PlacementPanelProps = { blocks: BlockView[]; notes: string[]; errors: string[] };
 export type TimelinePanelProps = { steps: TimelineStep[] };
 export type ApproveBarProps = { approve: ApproveView; warnings: string[]; files: string[]; onApprove: () => void; onSaveNote: () => void; onOpenProcesses: () => void };
@@ -54,7 +72,7 @@ export type RequirementPageProps = {
   onText: (text: string) => void;
   onExample: (text: string) => void;
   onRead: () => void;
-  onAnswer: (question: OpenView, option: string) => void;
+  onAnswer: (question: AnswerTarget, option: string) => void;
   onApprove: () => void;
   onSaveNote: () => void;
   onOpenProcesses: () => void;
