@@ -147,7 +147,8 @@ REST (below the session gate, foreign-Origin refused): `POST /api/clone {url, na
 `GET /api/clone`, `GET /api/clone/:id`, `POST /api/clone/:id/cancel`; `GET|POST /api/git/remote {url}`. Only `https://<allowed host>/<owner>/<repo>`
 is accepted (no userinfo, port, query or other scheme); the host must resolve to public addresses only; git runs with
 protocols locked to https, no credential helper or prompt, no hooks, no redirects, no submodules and a scrubbed
-environment, one clone at a time. Private repositories are not supported yet (slice B).
+environment, one clone at a time. A private repository takes a one-time `token` (a read-only access token, used once and never stored), or, when
+the GitHub connection of docs/DEPLOY.md ("Private repositories with a GitHub login", #638) is set up, `useLogin: true` (never both).
 Tests only: `CONSTRUCT_E2E_CLONE_LOCAL_ROOT` lets a `file://` URL under one directory be cloned; the server refuses to
 start with it on a non-loopback host.
 
@@ -306,6 +307,7 @@ export WATCHPACK_POLLING=true CHOKIDAR_USEPOLLING=1   # fs.inotify.max_user_inst
 ../../tools/dev/heavy.sh npx playwright test -c playwright.workspace.config.js          # workspace boundary + "Open a project" (#365)
 ../../tools/dev/heavy.sh npx playwright test -c playwright.directory-picker.config.js   # folder picker inside a narrow workspace
 ../../tools/dev/heavy.sh npx playwright test -c playwright.clone.config.js              # clone a repository, connect a remote (#330)
+../../tools/dev/heavy.sh npx playwright test -c playwright.github-repo.config.js        # connect GitHub, clone a private repo with the login (#638; a mock GitHub, ports 49210-49212)
 ```
 
 `a11y.spec.js` and `tests-tab.spec.js` import `@axe-core/playwright`, a declared devDependency: run `npm install` in

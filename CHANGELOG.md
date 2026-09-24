@@ -7,6 +7,9 @@ request or issue numbers.
 
 ## [Unreleased]
 
+### Added
+- Cockpit: clone a private repository with your GitHub login, no pasted token. A separate, opt-in **Connect GitHub for private repositories** consent (a dedicated GitHub App or OAuth app, set by `CONSTRUCT_GITHUB_REPO_CLIENT_ID` / `_SECRET`; unset means the feature is off and invisible, and sign-in stays identity-only) gives a per-session connection held only in the server's memory (never on disk, in a cookie, a log, a job or a response; refreshed server-side, wiped on sign-out, Disconnect and server stop). The clone form then defaults to **Use my GitHub login** with a picker of the repositories the connection can read, the pasted token stays as the fallback, a repository the connection cannot see says which app installation or organisation approval is missing, and Settings shows the account. Clone and pull take `useLogin: true` instead of `token`, for `github.com` only, through the existing one-shot `GIT_ASKPASS` pipe ([#638], part of [#277]).
+
 ## [0.9.0] - 2026-09-24
 
 The MVP release: a five-screen Cockpit with durable Notes, a calmer interface, blocks you can see and switch off, a workspace of your own on a hosted Cockpit, and results you can trust on a real project. Package versions are `0.9.0`; the Cockpit (`ui/`) is not versioned separately yet.
@@ -181,6 +184,7 @@ The first tracked baseline. It collects everything shipped since the project beg
 [#258]: https://github.com/thenewurbankid-web/construct/pull/258
 [#262]: https://github.com/thenewurbankid-web/construct/pull/262
 [#272]: https://github.com/thenewurbankid-web/construct/pull/272
+[#277]: https://github.com/thenewurbankid-web/construct/issues/277
 [#280]: https://github.com/thenewurbankid-web/construct/pull/280
 [#293]: https://github.com/thenewurbankid-web/construct/pull/293
 [#294]: https://github.com/thenewurbankid-web/construct/pull/294
@@ -309,3 +313,4 @@ The first tracked baseline. It collects everything shipped since the project beg
 [#609]: https://github.com/thenewurbankid-web/construct/issues/609
 [#611]: https://github.com/thenewurbankid-web/construct/issues/611
 [#614]: https://github.com/thenewurbankid-web/construct/issues/614
+[#638]: https://github.com/thenewurbankid-web/construct/issues/638

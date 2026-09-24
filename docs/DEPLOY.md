@@ -55,6 +55,9 @@ the `client` image (`docker compose build client`), not just restarting it.
 | `CONSTRUCT_SESSION_SECRET` | yes | — (compose refuses to start without it) | signs session cookies; `openssl rand -hex 32` |
 | `CONSTRUCT_GITHUB_CLIENT_ID` / `_SECRET` | for login | unset | GitHub OAuth app credentials |
 | `CONSTRUCT_ALLOWED_LOGINS` | for login | unset | comma-separated GitHub logins allowed in |
+| `CONSTRUCT_GITHUB_REPO_CLIENT_ID` / `_SECRET` | no | unset | a second, dedicated GitHub App (or OAuth app) for cloning private repositories with the person's own GitHub login (see below). Both or neither; unset means the feature is off and invisible |
+| `CONSTRUCT_GITHUB_REPO_CALLBACK_URL` | no | `CONSTRUCT_OAUTH_CALLBACK_URL` with `/auth/callback` replaced by `/auth/repo/callback`, else `http://localhost:<port>/auth/repo/callback` | where GitHub sends the browser back after the repository consent |
+| `CONSTRUCT_GITHUB_REPO_SCOPE` | no | unset | only for an OAuth app (for example `repo`); a GitHub App ignores it and uses its own permissions |
 | `CONSTRUCT_WORKSPACE_ROOT` | no | `/workspace` (set by compose) | the one folder projects open from, inside the `cockpit-workspace` volume |
 | `PUBLIC_HOST` | no | `localhost` | host the client is reachable at (baked into the client build) |
 | `SCHEME` / `WS_SCHEME` | no | `http` / `ws` | `https`/`wss` behind TLS |
@@ -64,6 +67,19 @@ persist in the named volumes `cockpit-workspace` and `cockpit-state` — clone
 projects into the workspace from inside the running container
 (`docker compose exec server sh`) or mount a host directory instead of the
 named volume if you'd rather manage it directly.
+
+## Private repositories with a GitHub login (optional, #638)
+
+Sign-in (above) only proves who someone is (`read:user`). To let a signed-in person clone a private repository without pasting a token, register a **second, separate** app. Nothing changes for sign-in, and without these variables the clone form's token field works exactly as before.
+
+Register a GitHub App (preferred; an OAuth app also works, the code is a standard authorization-code exchange and the app's permissions decide what can be read):
+
+1. GitHub, Settings, Developer settings, GitHub Apps, New GitHub App. Name it, for example, "Line Cockpit repos". Homepage URL: the Cockpit URL. Callback URL: `<Cockpit origin>/auth/repo/callback`. Untick Webhook.
+2. Permissions: Repository, Contents = Read-only (Metadata read-only is implied). Nothing else. Leave "Expire user authorization tokens" on: the server refreshes them itself before they run out. Where can it be installed: Any account (needed for an organisation's repositories).
+3. Generate a client secret. Put `CONSTRUCT_GITHUB_REPO_CLIENT_ID` and `CONSTRUCT_GITHUB_REPO_CLIENT_SECRET` in the server's environment file (mode 600; for the hosted Cockpit, `~/.construct-hosted.env`). Never paste them in chat, an issue or a commit.
+4. Install the app on the repositories the Cockpit should be able to clone. For an organisation's repository an organisation owner has to install or approve it; without that the repository stays invisible to the connection, and the clone says so.
+
+How it behaves: **Connect GitHub for private repositories** (clone form or Settings) sends the browser to GitHub and back to `/auth/repo/callback` (a `state` bound to the session, single use, valid ten minutes). The resulting user access token (and refresh token, if the app issues expiring ones) is held only in the server's memory, per signed-in login: never on disk, in a cookie, a job record, a log line, an error or any response. It lives no longer than its own expiry or the Cockpit session, is refreshed server-side before it expires, and is zeroed on sign-out, on **Disconnect** (which also asks GitHub to revoke it) and when the server stops. A clone or update uses it only for `github.com` addresses, handed to the clone process through the same one-shot `GIT_ASKPASS` pipe as a pasted token, so it never appears in a command line or environment. Routes: `GET /api/github/status`, `GET /api/github/repos` (names and visibility only), `POST /api/github/disconnect`, `GET /auth/repo/start`, `GET /auth/repo/callback`; a clone or pull takes `useLogin: true` instead of `token` (never both).
 
 ## What's built, and a known limitation
 

@@ -27,6 +27,15 @@ A rail on the left lists the five screens. The arrow at its top collapses it to 
 
 Choosing a provider in Settings never triggers a call by itself. A step calls a model only when you tick an explicit box on that form, or when a plan step says its executor is a local model. The Import Wizard always asks for your approval before writing files.
 
+## Clone a private repository with your GitHub login
+
+The **Open a project** screen also clones. Paste `owner/repo`, a link from the browser or a whole clone command line and press **Clone and open**; a public repository needs nothing else. For a private one you have two ways in, and the second is always there:
+
+1. **Use my GitHub login.** When the person who runs your Cockpit has set it up, the clone form shows **Connect GitHub for private repositories**. It is a separate, one-time permission, apart from signing in: GitHub asks you to allow the Cockpit's GitHub app, then brings you back. From then on **Use my GitHub login** is the default, with a list of the repositories the app can read to pick from (the pick fills the address; nothing is cloned until you press **Clone and open**). **Settings** shows whether you are connected and as which account, and **Disconnect GitHub** (on the form or in Settings) takes it away at once.
+2. **Paste an access token.** The token field stays as the fallback: a read-only fine-grained token, used once for that clone and never saved.
+
+The connection is held only in the server's memory. It is never written to disk, a cookie, a log or a page, and it ends when you sign out, disconnect, or the server stops. It is used only for `github.com` addresses. If a clone says your connection cannot see a repository, the Cockpit's GitHub app is not installed on it: install it on that repository, and for an organisation's repository an organisation owner has to install or approve it. When the server has no such app set up, none of this appears and the token field works exactly as before.
+
 ## More detail
 
 - **Layout.** A **Browser** pane on the left (under the rail), the main area in the middle and a **Tools** pane on the right; each screen fills the panes with its own tabs. The top bar holds the project switcher, the command palette, a **Processes** count and the local model status, the Browser and Tools toggles and the profile menu. The status bar at the bottom shows the last validate result. `Ctrl K` opens the command palette, `Ctrl J` the bottom drawer (**Diagnostics**, **Logs** and **Processes**, where you pause, cancel and approve a run), `Ctrl B` and `Ctrl Alt B` hide the side panes, `F6` moves focus to the next pane. Below 900 px wide one pane shows at a time. There is a light and a dark theme.
