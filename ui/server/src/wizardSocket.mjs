@@ -116,6 +116,12 @@ export function attachWizardSocket(server, path = '/ws/wizard', allowedOrigin, a
         return;
       }
 
+      if (msg.type === 'cancel') {
+        // #599 -- stop the run: aborts an in-flight model call; the wizard reports 'cancelled'.
+        if (session) session.cancel();
+        return;
+      }
+
       if (msg.type === 'answer') {
         if (!session) {
           send(ws, { type: 'log', kind: 'error', text: 'No wizard session is running — send {"type":"start"} first.' });

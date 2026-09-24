@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createFeature } from '../packages/core/generators.mjs';
-import { importVertical, importPlan, analyzeRoute, validatePlanShape, normalizePlanLayers, autoFixViolations, buildFixPrompt } from '../packages/core/import.mjs';
+import { importVertical, importPlan, analyzeRoute, validatePlanShape, normalizePlanLayers, autoFixViolations, buildFixPrompt, buildFixPlan } from '../packages/core/import.mjs';
 import { PROVIDERS } from '../packages/core/llm.mjs';
 import { validateArchitecture } from '../packages/core/architecture-enforcer.mjs';
 import { ConstructError } from '../packages/core/diagnostics.mjs';
@@ -644,6 +644,163 @@ test('#496: autoFixViolations stops immediately (no second attempt) when the fil
     assert.ok(calls <= 3, 'never exceeds maxAttempts regardless of rejection behavior');
     assert.deepEqual(fixed, []);
     assert.equal(stillFailing.length, 1);
+  } finally {
+    PROVIDERS.claude = originalClaude;
+  }
+});
+
+// ---- #599: step events, and cancel that never leaves a half-written file ---------------------
+
+test('#599: importVertical reports scaffolding then filling (per file, in order) through onStep', async () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  const sourceFile = path.join(dir, 'Old.tsx');
+  fs.writeFileSync(sourceFile, 'export function old() { return true; }\n');
+  const originalClaude = PROVIDERS.claude;
+  PROVIDERS.claude = () => 'export function Foo() { return 1; }';
+  const steps = [];
+  try {
+    await importVertical(dir, 'Foo', 'checkout', ['domain', 'service'], sourceFile, { llm: 'claude', onStep: (s) => steps.push(s) });
+  } finally {
+    PROVIDERS.claude = originalClaude;
+  }
+  assert.deepEqual(steps.map((s) => s.phase), ['scaffolding', 'filling', 'filling']);
+  assert.deepEqual(steps.filter((s) => s.phase === 'filling').map((s) => s.detail.index), [1, 2]);
+  assert.ok(steps[1].detail.file.endsWith('.tsx') && steps[1].detail.total === 2);
+});
+
+test('#599: cancelling mid-import stops further model calls and leaves every unfilled file a valid TODO stub', async () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  const sourceFile = path.join(dir, 'Old.tsx');
+  fs.writeFileSync(sourceFile, 'export function old() { return true; }\n');
+  const controller = new AbortController();
+  let calls = 0;
+  const originalClaude = PROVIDERS.claude;
+  PROVIDERS.claude = () => {
+    calls += 1;
+    controller.abort(); // the person presses Cancel while the first file's call is in flight
+    throw Object.assign(new ConstructError('The model call was cancelled.'), { cancelled: true });
+  };
+  let result;
+  try {
+    result = await importVertical(dir, 'Foo', 'checkout', ['domain', 'service', 'workflow'], sourceFile, { llm: 'claude', llmOptions: { signal: controller.signal } });
+  } finally {
+    PROVIDERS.claude = originalClaude;
+  }
+  assert.equal(calls, 1, 'no model call after the cancel');
+  assert.equal(result.cancelled, true);
+  assert.deepEqual(result.fills.map((f) => f.status), ['cancelled', 'cancelled', 'cancelled']);
+  for (const file of result.files) {
+    const content = fs.readFileSync(file, 'utf8');
+    assert.match(content, /TODO\(import\)/, 'left as a breadcrumb stub, never partial');
+  }
+});
+
+test('#599: autoFixViolations reports cancelled and stops without another call', async () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  const domainDir = path.join(dir, 'features', 'checkout', 'domain');
+  fs.mkdirSync(domainDir, { recursive: true });
+  const relFile = 'features/checkout/domain/Bad.ts';
+  fs.writeFileSync(path.join(dir, relFile), 'export function Bad() { return "broken"; }\n');
+  const validate = () => ({ violations: [{ rule: 'FAKE-001', file: relFile, line: 1, message: 'broken' }] });
+  let calls = 0;
+  const originalClaude = PROVIDERS.claude;
+  PROVIDERS.claude = () => { calls += 1; throw Object.assign(new ConstructError('cancelled'), { cancelled: true }); };
+  try {
+    const out = await autoFixViolations(dir, [relFile], validate, { llm: 'claude', maxAttempts: 3 });
+    assert.equal(out.cancelled, true);
+    assert.equal(calls, 1);
+  } finally {
+    PROVIDERS.claude = originalClaude;
+  }
+});
+
+// ---- auto-fix plans first, then keeps trying while it is making progress -----------------------
+
+test('buildFixPlan groups by file, errors first, then by how many violations each carries', () => {
+  const plan = buildFixPlan([
+    { file: 'b.ts', rule: 'R1', severity: 'warning', line: 1, message: 'w' },
+    { file: 'a.ts', rule: 'R2', severity: 'error', line: 1, message: 'e' },
+    { file: 'c.ts', rule: 'R3', severity: 'warning', line: 1, message: 'w1' },
+    { file: 'c.ts', rule: 'R4', severity: 'warning', line: 2, message: 'w2' },
+  ]);
+  assert.deepEqual(plan.map((p) => p.file), ['a.ts', 'c.ts', 'b.ts']);
+  assert.deepEqual(plan.map((p) => p.violations.length), [1, 2, 1]);
+});
+
+test('auto-fix keeps going past two attempts while each attempt makes progress, and tells each retry what was left behind', async () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  const domainDir = path.join(dir, 'features', 'checkout', 'domain');
+  fs.mkdirSync(domainDir, { recursive: true });
+  const relFile = 'features/checkout/domain/Multi.ts';
+  const file = path.join(dir, relFile);
+  fs.writeFileSync(file, 'export const a = "A"; export const b = "B"; export const c = "C"; export const d = "D";\n');
+  // One violation per remaining capital letter: every attempt clears exactly one, so it needs four.
+  const validate = () => {
+    const text = fs.readFileSync(file, 'utf8');
+    return { violations: ['A', 'B', 'C', 'D'].filter((l) => text.includes(`"${l}"`)).map((l) => ({ rule: 'FAKE', file: relFile, line: 1, severity: 'error', message: `remove ${l}` })) };
+  };
+  const prompts = [];
+  const originalClaude = PROVIDERS.claude;
+  PROVIDERS.claude = (prompt) => {
+    prompts.push(prompt);
+    const text = fs.readFileSync(file, 'utf8');
+    const next = ['A', 'B', 'C', 'D'].find((l) => text.includes(`"${l}"`));
+    return text.replace(`"${next}"`, '"x"');
+  };
+  let plan;
+  try {
+    const { fixed, stillFailing } = await autoFixViolations(dir, [relFile], validate, { llm: 'claude', onPlan: (p) => { plan = p; } });
+    assert.equal(plan.length, 1, 'the plan is shown before the first call');
+    assert.deepEqual(fixed, [{ file: relFile, attempts: 4 }], 'went past two attempts because each one made progress');
+    assert.deepEqual(stillFailing, []);
+  } finally {
+    PROVIDERS.claude = originalClaude;
+  }
+  assert.doesNotMatch(prompts[0], /EARLIER ATTEMPTS/, 'the first attempt has no history');
+  assert.match(prompts[1], /EARLIER ATTEMPTS ON THIS FILE/);
+  assert.match(prompts[1], /Attempt 1 left: FAKE \(line 1\): remove B/);
+  assert.match(prompts[3], /Attempt 2 left/);
+});
+
+test('auto-fix stops early with reason "no progress" when two attempts in a row leave the same violations', async () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  fs.mkdirSync(path.join(dir, 'features', 'checkout', 'domain'), { recursive: true });
+  const relFile = 'features/checkout/domain/Stuck.ts';
+  fs.writeFileSync(path.join(dir, relFile), 'export const x = "broken";\n');
+  const validate = () => ({ violations: [{ rule: 'FAKE', file: relFile, line: 1, severity: 'error', message: 'still broken' }] });
+  let calls = 0;
+  const originalClaude = PROVIDERS.claude;
+  PROVIDERS.claude = () => { calls += 1; return `export const x = "broken"; // try ${calls}`; };
+  try {
+    const { stillFailing } = await autoFixViolations(dir, [relFile], validate, { llm: 'claude', maxAttempts: 10 });
+    assert.equal(calls, 2, 'gave up after two identical outcomes instead of burning all ten');
+    assert.equal(stillFailing[0].reason, 'no progress');
+  } finally {
+    PROVIDERS.claude = originalClaude;
+  }
+});
+
+test('auto-fix reports "attempt limit" when it keeps changing things but never clears the violation', async () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  fs.mkdirSync(path.join(dir, 'features', 'checkout', 'domain'), { recursive: true });
+  const relFile = 'features/checkout/domain/Endless.ts';
+  fs.writeFileSync(path.join(dir, relFile), 'export const x = 0;\n');
+  let n = 0;
+  // A different violation each time: it moves, so it is not "stuck", but it never ends either.
+  const validate = () => ({ violations: [{ rule: 'FAKE', file: relFile, line: 1, severity: 'error', message: `problem ${n}` }] });
+  const originalClaude = PROVIDERS.claude;
+  PROVIDERS.claude = () => { n += 1; return `export const x = ${n};`; };
+  try {
+    const { stillFailing } = await autoFixViolations(dir, [relFile], validate, { llm: 'claude', maxAttempts: 3 });
+    assert.equal(n, 3);
+    assert.equal(stillFailing[0].reason, 'attempt limit');
+    assert.equal(stillFailing[0].attempts, 3);
   } finally {
     PROVIDERS.claude = originalClaude;
   }

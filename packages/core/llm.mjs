@@ -7,7 +7,7 @@
 // the caller explicitly opts in (`--llm <provider>`).
 // Everything else — locating files, scaffolding layers, wiring
 // breadcrumbs — stays fully deterministic regardless of this module.
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 
 // Defaults for the `ollama` provider below — overridable per call via its
@@ -79,6 +79,131 @@ function timedOut(provider, ms) {
   );
 }
 
+/** Read Ollama's streamed `/api/generate` body (newline-delimited JSON, one `{response, done}` object
+ * per line), calling `onChunk(text)` for each non-empty piece as it arrives, and return the whole
+ * concatenated response. A line that is not JSON is a real error, not something to skip. */
+async function readOllamaStream(body, onChunk) {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let full = '';
+  const take = (line) => {
+    if (!line.trim()) return;
+    let obj;
+    try {
+      obj = JSON.parse(line);
+    } catch (e) {
+      throw new ConstructError(`Ollama streamed a non-JSON line (${e.message}): ${line.slice(0, 200)}`, { exitCode: EXIT_CODES.INTERNAL_ERROR });
+    }
+    if (typeof obj.response === 'string' && obj.response) {
+      full += obj.response;
+      onChunk(obj.response);
+    }
+  };
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let nl;
+    while ((nl = buffer.indexOf('\n')) >= 0) {
+      take(buffer.slice(0, nl));
+      buffer = buffer.slice(nl + 1);
+    }
+  }
+  take(buffer);
+  return full;
+}
+
+/**
+ * #599 — the `claude` provider as an ASYNC child process that streams. The plain path is a blocking
+ * `spawnSync`, which freezes the whole Node server while the model works: no WebSocket frame (a
+ * step marker, a streamed thought) can be flushed to the Cockpit until the call ends, which is
+ * exactly "nothing shows while the model is working". This path never blocks the event loop, hands
+ * each piece of the model's text to `onChunk` as it is generated (`--output-format stream-json
+ * --include-partial-messages` emits `text_delta`/`thinking_delta` events), and can be cancelled
+ * (`signal` kills the child) or timed out. Used only when a caller passes `onChunk` or `signal`;
+ * otherwise the original single synchronous call is unchanged.
+ */
+function claudeStreaming(prompt, options) {
+  const timeout = timeoutOf(options);
+  const onChunk = typeof options.onChunk === 'function' ? options.onChunk : null;
+  const cancelledError = () => Object.assign(new ConstructError('The model call was cancelled.', { exitCode: EXIT_CODES.INTERNAL_ERROR }), { cancelled: true });
+  if (options.signal?.aborted) return Promise.reject(cancelledError());
+  return new Promise((resolve, reject) => {
+    const child = spawn('claude', ['-p', '--output-format', 'stream-json', '--verbose', '--include-partial-messages', '--permission-prompts', 'none'], { stdio: ['pipe', 'pipe', 'pipe'] });
+    let settled = false;
+    let stdoutBuffer = '';
+    let stderr = '';
+    let streamed = '';
+    let finalText = null;
+    let resultError = null;
+    const finish = (fn, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      options.signal?.removeEventListener?.('abort', onAbort);
+      fn(value);
+    };
+    const onAbort = () => {
+      child.kill('SIGKILL');
+      finish(reject, cancelledError());
+    };
+    const timer = setTimeout(() => {
+      child.kill('SIGKILL');
+      finish(reject, timedOut('claude', timeout));
+    }, timeout);
+    options.signal?.addEventListener?.('abort', onAbort, { once: true });
+
+    const take = (line) => {
+      if (!line.trim()) return;
+      let msg;
+      try {
+        msg = JSON.parse(line);
+      } catch {
+        return; // a non-JSON line on stdout is not a model event; the exit status decides success
+      }
+      if (msg.type === 'stream_event') {
+        const delta = msg.event?.delta;
+        const piece = delta?.type === 'text_delta' ? delta.text : delta?.type === 'thinking_delta' ? delta.thinking : '';
+        if (piece) {
+          if (delta.type === 'text_delta') streamed += piece;
+          onChunk?.(piece);
+        }
+      } else if (msg.type === 'result') {
+        if (msg.is_error) resultError = typeof msg.result === 'string' ? msg.result : JSON.stringify(msg);
+        else if (typeof msg.result === 'string') finalText = msg.result;
+      }
+    };
+
+    child.stdout.on('data', (data) => {
+      stdoutBuffer += data.toString('utf8');
+      let nl;
+      while ((nl = stdoutBuffer.indexOf('\n')) >= 0) {
+        take(stdoutBuffer.slice(0, nl));
+        stdoutBuffer = stdoutBuffer.slice(nl + 1);
+      }
+    });
+    child.stderr.on('data', (data) => { stderr += data.toString('utf8'); });
+    child.on('error', (e) => finish(reject, new ConstructError(
+      `Could not run the "claude" CLI (${e.message}). Is it installed and on your PATH?`,
+      { exitCode: EXIT_CODES.INTERNAL_ERROR },
+    )));
+    child.on('close', (code) => {
+      take(stdoutBuffer);
+      if (resultError !== null || code !== 0) {
+        finish(reject, new ConstructError(
+          `"claude -p" exited with status ${code}: ${(resultError ?? (stderr || streamed)).slice(0, 500)}`,
+          { exitCode: EXIT_CODES.INTERNAL_ERROR },
+        ));
+        return;
+      }
+      finish(resolve, finalText ?? streamed);
+    });
+    child.stdin.on('error', () => {}); // the child may exit before reading everything; close/exit reports why
+    child.stdin.end(prompt);
+  });
+}
+
 // Exported (not a private const) so tests can monkey-patch a provider with a
 // fake implementation instead of actually shelling out to a real CLI/HTTP
 // server. Every provider's shape is `(prompt, options?) -> string | Promise<string>`
@@ -97,6 +222,9 @@ export const PROVIDERS = {
   // killed outright (SIGTERM could be caught and ignored by a stuck child),
   // and spawnSync reports it as `error.code === 'ETIMEDOUT'`.
   claude(prompt, options = {}) {
+    // #599 -- with onChunk or a cancel signal the call is async and streams (claudeStreaming above);
+    // the blocking spawnSync below is only the plain, callback-free path.
+    if (options.onChunk || options.signal) return claudeStreaming(prompt, options);
     const timeout = timeoutOf(options);
     const res = spawnSync('claude', ['-p', '--output-format', 'text', '--permission-prompts', 'none'], {
       input: prompt,
@@ -169,20 +297,37 @@ export const PROVIDERS = {
     }
     const controller = new AbortController();
     let expired = false;
+    // #599 -- an external cancel (options.signal, e.g. the Cockpit's Cancel button) aborts this same
+    // controller, but is reported as a cancel (error.cancelled), never as a timeout or a generic
+    // failure: a person pressing Cancel is not an error to retry or to blame on the model.
+    let cancelled = false;
+    const onAbort = () => { cancelled = true; controller.abort(); };
+    if (options.signal) {
+      if (options.signal.aborted) onAbort();
+      else options.signal.addEventListener('abort', onAbort, { once: true });
+    }
+    const cancelledError = () => Object.assign(new ConstructError('The model call was cancelled.', { exitCode: EXIT_CODES.INTERNAL_ERROR }), { cancelled: true });
+    if (cancelled) throw cancelledError(); // already aborted: never even make the request
     const timer = setTimeout(() => { expired = true; controller.abort(); }, timeout);
-    const isTimeout = (e) => expired || e?.name === 'TimeoutError' || e?.name === 'AbortError';
+    const isTimeout = (e) => !cancelled && (expired || e?.name === 'TimeoutError' || e?.name === 'AbortError');
+    // #599 -- with an onChunk callback the call streams (stream:true, one JSON object per line) and
+    // hands each piece of the model's own output to the callback as it is generated; without one,
+    // behaviour is exactly the single non-streamed request it always was.
+    const onChunk = typeof options.onChunk === 'function' ? options.onChunk : null;
 
     let bodyText;
+    let streamed = null;
     let res;
     try {
       try {
         res = await fetch(`${baseUrl}/api/generate`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ model, prompt, stream: false, options: { num_ctx: numCtx } }),
+          body: JSON.stringify({ model, prompt, stream: Boolean(onChunk), options: { num_ctx: numCtx } }),
           signal: controller.signal,
         });
       } catch (e) {
+        if (cancelled) throw cancelledError();
         if (isTimeout(e)) throw timedOut('ollama', timeout);
         throw new ConstructError(
           `Could not reach Ollama at ${baseUrl} (${e.message}). Is "ollama serve" running, and is the model ("${model}") pulled?`,
@@ -191,9 +336,12 @@ export const PROVIDERS = {
       }
 
       try {
-        bodyText = await res.text();
+        if (onChunk && res.ok && res.body) streamed = await readOllamaStream(res.body, onChunk);
+        else bodyText = await res.text();
       } catch (e) {
+        if (cancelled) throw cancelledError();
         if (isTimeout(e)) throw timedOut('ollama', timeout);
+        if (e instanceof ConstructError) throw e;
         throw new ConstructError(
           `Ollama (${baseUrl}) closed the connection before the response was complete (${e.message}).`,
           { exitCode: EXIT_CODES.INTERNAL_ERROR },
@@ -201,6 +349,7 @@ export const PROVIDERS = {
       }
     } finally {
       clearTimeout(timer);
+      options.signal?.removeEventListener?.('abort', onAbort);
     }
     if (!res.ok) {
       throw new ConstructError(
@@ -208,6 +357,7 @@ export const PROVIDERS = {
         { exitCode: EXIT_CODES.INTERNAL_ERROR },
       );
     }
+    if (streamed !== null) return streamed;
 
     let parsed;
     try {

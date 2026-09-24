@@ -100,14 +100,16 @@ function buildPortPrompt({ layer, relFile, stubContent, oldContent, oldRelPath }
  * provides one) is passed through verbatim, so a retry is grounded in a concrete, deterministic
  * signal rather than the model guessing again from scratch.
  *
- * @param {{layer: string, relFile: string, currentContent: string, violations: object[]}} options
+ * @param {{layer: string, relFile: string, currentContent: string, violations: object[], history?: object[]}} options
  *   `layer` names the target file's layer (for its constraint text); `relFile` is its root-relative
  *   path; `currentContent` is what's on disk now (the file this prompt is asking to be rewritten);
  *   `violations` is the subset of `construct validate`'s violations for this file (each with at
- *   least `rule`, `line`, `message`, and optionally `suggestedFix`).
+ *   least `rule`, `line`, `message`, and optionally `suggestedFix`); `history` (optional) is the earlier
+ *   attempts on this same file, `{attempt, remaining: violations[]}` each, so a retry knows what was
+ *   already tried and what it left behind instead of guessing again from scratch.
  * @returns {string} The complete prompt text, ready for `requestFileText`.
  */
-export function buildFixPrompt({ layer, relFile, currentContent, violations }) {
+export function buildFixPrompt({ layer, relFile, currentContent, violations, history = [] }) {
   const violationText = violations
     .map((v) => `- ${v.rule} (line ${v.line}): ${v.message}${v.suggestedFix ? ` — suggested fix: ${v.suggestedFix}` : ''}`)
     .join('\n');
@@ -122,6 +124,13 @@ export function buildFixPrompt({ layer, relFile, currentContent, violations }) {
     '=== VIOLATIONS TO FIX ===',
     violationText,
     '',
+    ...(history.length
+      ? [
+        '=== EARLIER ATTEMPTS ON THIS FILE (each left violations behind — do NOT repeat the same change) ===',
+        ...history.map((h) => `Attempt ${h.attempt} left: ${h.remaining.map((v) => `${v.rule} (line ${v.line}): ${v.message}`).join('; ') || 'nothing'}`),
+        '',
+      ]
+      : []),
     '=== CURRENT FILE CONTENT ===',
     currentContent,
     '',
@@ -130,12 +139,35 @@ export function buildFixPrompt({ layer, relFile, currentContent, violations }) {
 }
 
 /**
- * Retry a fill for files with real construct-validate violations, feeding each violation's own
- * message and suggestedFix back as correction context (#496) — a real correction, not the
- * identical prompt rerun. Bounded to `maxAttempts` per file so a model that can't converge never
- * loops forever; a caller with its own cancel/stop control (a CLI's Ctrl+C, or a Cockpit abort
- * button, #599) interrupts this the same way it would any other in-flight call, since nothing
- * here catches or suppresses that.
+ * The deterministic fix plan (#496): every violation grouped by file, files with errors first and
+ * then by how many violations they carry, each with the rule's own suggested fix. No model is
+ * involved — this is what auto-fix is about to attempt, shown before any call is made.
+ *
+ * @param {object[]} violations `construct validate` violations for the files about to be fixed.
+ * @returns {{file: string, errors: number, violations: object[]}[]} One entry per file, in the order they will be attempted.
+ */
+export function buildFixPlan(violations) {
+  const byFile = new Map();
+  for (const v of violations) {
+    if (!byFile.has(v.file)) byFile.set(v.file, []);
+    byFile.get(v.file).push(v);
+  }
+  return [...byFile.entries()]
+    .map(([file, vs]) => ({ file, errors: vs.filter((v) => v.severity === 'error').length, violations: vs }))
+    .sort((a, b) => b.errors - a.errors || b.violations.length - a.violations.length || a.file.localeCompare(b.file));
+}
+
+const violationKey = (v) => `${v.rule}|${v.line}|${v.message}`;
+
+/**
+ * Fix files with real construct-validate violations, feeding each violation's own message and
+ * suggestedFix back as correction context (#496) — a real correction, not the identical prompt
+ * rerun. It keeps trying while it is making progress: each retry is also told what the earlier
+ * attempts left behind, the whole project is re-validated after every attempt (fixing one file can
+ * resolve or introduce another's violations), and it stops early only when two attempts in a row
+ * leave the very same violations (`no progress`) or `maxAttempts` is reached. A caller's own cancel
+ * (a CLI's Ctrl+C, the Cockpit's Cancel via the AbortSignal in `llmOptions`, #599) stops it at any
+ * point — nothing here catches or suppresses that.
  *
  * `validate` is injected rather than imported so this stays a core module with no dependency on
  * packages/engine's enforcer set — the same pattern packages/engine/transactionalWriter.mjs's
@@ -145,40 +177,64 @@ export function buildFixPrompt({ layer, relFile, currentContent, violations }) {
  * @param {string} root Project root.
  * @param {string[]} relFiles Root-relative paths of files from this import to consider for auto-fix.
  * @param {(root: string) => {violations: object[]}} validate Injected validator.
- * @param {{llm: string, llmOptions?: object, maxAttempts?: number, onAttempt?: (info: object) => void}} options
- *   `onAttempt` fires before each retry with `{file, attempt, violations}` — a caller uses it to
- *   print progress (or, later, to drive a live step tracker, #599).
- * @returns {Promise<{fixed: object[], stillFailing: object[]}>} `fixed`: `{file, attempts}` for
- *   every file that ended up clean. `stillFailing`: `{file, violations, attempts}` for every file
- *   that still has a violation after `maxAttempts` (or whose fill call itself failed/was rejected).
+ * @param {{llm: string, llmOptions?: object, maxAttempts?: number, onPlan?: (plan: object[]) => void, onAttempt?: (info: object) => void}} options
+ *   `maxAttempts` (default 5) is per file. `onPlan` fires once with buildFixPlan's result before the
+ *   first call; `onAttempt` fires before each retry with `{file, attempt, violations}` — a caller
+ *   uses them to print progress (or to drive the live step tracker, #599).
+ * @returns {Promise<{fixed: object[], stillFailing: object[], cancelled: boolean}>} `fixed`: `{file, attempts}` for
+ *   every file that ended up clean. `stillFailing`: `{file, violations, attempts, reason}` for every
+ *   file that still has a violation, with `reason` one of `no progress`, `attempt limit`, or the fill
+ *   call's own failure/rejection reason. `cancelled` is true when the caller's AbortSignal stopped it.
  *
  * @example
  * const { fixed, stillFailing } = await autoFixViolations(
  *   root, relFiles, (r) => aggregateValidation(r, DEFAULT_ENFORCERS), { llm: 'claude' },
  * );
  */
-export async function autoFixViolations(root, relFiles, validate, { llm, llmOptions, maxAttempts = 2, onAttempt } = {}) {
+export async function autoFixViolations(root, relFiles, validate, { llm, llmOptions, maxAttempts = 5, onPlan, onAttempt } = {}) {
   const fixed = [];
   const stillFailing = [];
-  for (const relFile of relFiles) {
+  let cancelled = false;
+  const initial = validate(root).violations.filter((v) => relFiles.includes(v.file));
+  const plan = buildFixPlan(initial);
+  onPlan?.(plan);
+  for (const { file: relFile } of plan) {
     const file = path.join(root, relFile);
     let attempt = 0;
+    let stalled = 0;
+    let reason = '';
+    const history = [];
     let mine = validate(root).violations.filter((v) => v.file === relFile);
     while (mine.length && attempt < maxAttempts) {
       attempt += 1;
       onAttempt?.({ file: relFile, attempt, violations: mine });
       const layer = layerFromGeneratedFile(file);
       const currentContent = fs.readFileSync(file, 'utf8');
-      const prompt = buildFixPrompt({ layer, relFile, currentContent, violations: mine });
+      const prompt = buildFixPrompt({ layer, relFile, currentContent, violations: mine, history });
       const outcome = await requestFileText(llm, prompt, llmOptions);
-      if (outcome.status !== 'filled') break; // the call itself failed/was rejected — retrying identically won't help
+      if (outcome.status === 'cancelled') cancelled = true; // #599
+      if (outcome.status !== 'filled') {
+        reason = outcome.status === 'cancelled' ? 'cancelled' : outcome.reason || outcome.status;
+        break; // the call itself failed/was rejected/cancelled — retrying identically won't help
+      }
       fs.writeFileSync(file, outcome.code + '\n');
+      const before = new Set(mine.map(violationKey));
       mine = validate(root).violations.filter((v) => v.file === relFile);
+      history.push({ attempt, remaining: mine });
+      // No progress = the attempt left exactly the same violations behind. Two in a row is a model
+      // that is not going to get there by being asked again the same way.
+      const same = mine.length === before.size && mine.every((v) => before.has(violationKey(v)));
+      stalled = same ? stalled + 1 : 0;
+      if (mine.length && stalled >= 2) {
+        reason = 'no progress';
+        break;
+      }
     }
-    if (mine.length) stillFailing.push({ file: relFile, violations: mine, attempts: attempt });
+    if (mine.length) stillFailing.push({ file: relFile, violations: mine, attempts: attempt, reason: reason || 'attempt limit' });
     else if (attempt > 0) fixed.push({ file: relFile, attempts: attempt });
+    if (cancelled) break;
   }
-  return { fixed, stillFailing };
+  return { fixed, stillFailing, cancelled };
 }
 
 /**
@@ -208,7 +264,7 @@ export async function autoFixViolations(root, relFiles, validate, { llm, llmOpti
  * @returns {Promise<{source:string, files:string[], llmFilled:boolean, fills:object[], timings:object}>} The scaffolded files and, with `llm`, what each fill did.
  * @throws {ConstructError} Usage error when `fromPath` is missing, the provider is unknown, or a target file already has real content.
  */
-export async function importVertical(root, name, feature, layers, fromPath, { llm, llmOptions } = {}) {
+export async function importVertical(root, name, feature, layers, fromPath, { llm, llmOptions, onStep } = {}) {
   const totalStart = startTimer();
   const fromAbs = path.resolve(fromPath);
   if (!fs.existsSync(fromAbs) || !fs.statSync(fromAbs).isFile()) {
@@ -231,6 +287,7 @@ export async function importVertical(root, name, feature, layers, fromPath, { ll
       { exitCode: EXIT_CODES.USAGE_ERROR },
     );
   }
+  onStep?.({ phase: 'scaffolding', detail: { unit: name, feature, layers } });
   const scaffoldStart = startTimer();
   const files = generateVertical(root, name, feature, layers);
   const scaffoldSeconds = elapsedSeconds(scaffoldStart);
@@ -242,6 +299,7 @@ export async function importVertical(root, name, feature, layers, fromPath, { ll
   // per-file, not just as one lump for the whole unit -- `llmSeconds` is 0
   // for the no-`llm` breadcrumb path (nothing to distinguish it from).
   const fileTimings = [];
+  let cancelled = false;
   for (const file of files) {
     const stubContent = fs.readFileSync(file, 'utf8');
     if (!llm) {
@@ -249,7 +307,17 @@ export async function importVertical(root, name, feature, layers, fromPath, { ll
       fileTimings.push({ file, llmSeconds: 0 });
       continue;
     }
+    // #599 -- once cancelled, every remaining file is left as its scaffolded stub + breadcrumb (a
+    // valid file, never a partial write) without spending another model call.
+    if (cancelled || llmOptions?.signal?.aborted) {
+      cancelled = true;
+      fs.writeFileSync(file, breadcrumb(fromAbs, file) + stubContent);
+      fills.push({ file, status: 'cancelled', reason: 'cancelled', attempts: 0 });
+      fileTimings.push({ file, llmSeconds: 0 });
+      continue;
+    }
     const layer = layerFromGeneratedFile(file);
+    onStep?.({ phase: 'filling', detail: { unit: name, file: path.relative(root, file), layer, index: files.indexOf(file) + 1, total: files.length } });
     const prompt = buildPortPrompt({
       layer,
       relFile: path.relative(root, file),
@@ -274,11 +342,13 @@ export async function importVertical(root, name, feature, layers, fromPath, { ll
     // the scaffolded stub as a valid file, with the same breadcrumb the no-llm
     // path writes, so the file is still discoverable.
     fs.writeFileSync(file, breadcrumb(fromAbs, file) + stubContent);
+    if (outcome.status === 'cancelled') cancelled = true;
     fills.push({ file, status: outcome.status, reason: outcome.reason, attempts: outcome.attempts });
   }
   return {
     source: fromAbs,
     files,
+    cancelled,
     llmFilled: fills.some((f) => f.status === 'filled'),
     fills,
     timings: { scaffoldSeconds, files: fileTimings, totalSeconds: elapsedSeconds(totalStart) },
@@ -378,7 +448,7 @@ export function validatePlanShape(plan, sourceDescription) {
  * @param {{llm?: string, llmOptions?: object}} [options] Applied to every unit.
  * @returns {Promise<{feature:string, results:object[]}>} One result per unit, in plan order.
  */
-export async function executeImportPlan(root, plan, { llm, llmOptions } = {}) {
+export async function executeImportPlan(root, plan, { llm, llmOptions, onStep } = {}) {
   const { feature, units } = plan;
   const results = [];
   // Sequential (not Promise.all) — deliberately mirrors the old synchronous
@@ -386,9 +456,11 @@ export async function executeImportPlan(root, plan, { llm, llmOptions } = {}) {
   // local Ollama instance (or any provider) with N concurrent requests for
   // one plan.
   for (const unit of units) {
-    results.push({ name: unit.name, ...(await importVertical(root, unit.name, feature, unit.layers, unit.from, { llm, llmOptions })) });
+    const result = { name: unit.name, ...(await importVertical(root, unit.name, feature, unit.layers, unit.from, { llm, llmOptions, onStep })) };
+    results.push(result);
+    if (result.cancelled) break; // #599 -- a cancel stops the whole plan, not just the current file
   }
-  return { feature, results };
+  return { feature, results, cancelled: results.some((r) => r.cancelled) };
 }
 
 /**
@@ -467,7 +539,7 @@ function buildAnalysisPrompt(featureName, files) {
  * across directories (and the model's response) stay unambiguous; with
  * just one directory the label is the bare relative path, unchanged from
  * before this accepted more than one. */
-export async function analyzeRoute(routeDirs, featureName, { llm = 'claude' } = {}) {
+export async function analyzeRoute(routeDirs, featureName, { llm = 'claude', llmOptions } = {}) {
   const dirs = (Array.isArray(routeDirs) ? routeDirs : [routeDirs]).map((d) => path.resolve(d));
   for (const d of dirs) {
     if (!fs.existsSync(d) || !fs.statSync(d).isDirectory()) {
@@ -490,7 +562,7 @@ export async function analyzeRoute(routeDirs, featureName, { llm = 'claude' } = 
       { exitCode: EXIT_CODES.USAGE_ERROR },
     );
   }
-  return runAnalysis(fileMap, featureName, llm, `analysis of ${dirs.join(', ')}`);
+  return runAnalysis(fileMap, featureName, llm, `analysis of ${dirs.join(', ')}`, llmOptions);
 }
 
 /** Build a { label -> absolute path } map for an arbitrary list of already-
@@ -531,18 +603,18 @@ function labelFiles(absPaths) {
  * @returns {Promise<object>} The analysis.
  * @throws {ConstructError} Usage error when no files are given.
  */
-export async function analyzeFiles(absPaths, featureName, { llm = 'claude' } = {}) {
+export async function analyzeFiles(absPaths, featureName, { llm = 'claude', llmOptions } = {}) {
   if (!absPaths.length) {
     throw new ConstructError('No files to analyze.', { exitCode: EXIT_CODES.USAGE_ERROR });
   }
   const fileMap = labelFiles(absPaths.map((p) => path.resolve(p)));
-  return runAnalysis(fileMap, featureName, llm, `analysis of ${absPaths.length} traced file(s)`);
+  return runAnalysis(fileMap, featureName, llm, `analysis of ${absPaths.length} traced file(s)`, llmOptions);
 }
 
 /** Shared core: given a { label -> absolute path } map, build the prompt,
  * call the LLM, and validate the response into a plan whose every unit's
  * `from` is resolved back to a real absolute path. */
-async function runAnalysis(fileMap, featureName, llm, sourceDescription) {
+async function runAnalysis(fileMap, featureName, llm, sourceDescription, llmOptions) {
   const files = [...fileMap.entries()].map(([relPath, abs]) => ({ relPath, content: fs.readFileSync(abs, 'utf8') }));
   const { prompt, omitted } = buildAnalysisPrompt(featureName, files);
   if (omitted.length) {
@@ -550,7 +622,7 @@ async function runAnalysis(fileMap, featureName, llm, sourceDescription) {
       `Warning: ${omitted.length} file(s) were too long to fit in this analysis and were left out (or partially cut): ${omitted.join(', ')}. Consider running import --route again scoped to just those, or splitting the analysis.`,
     );
   }
-  const raw = await callLlm(llm, prompt);
+  const raw = await callLlm(llm, prompt, llmOptions);
   let plan;
   try {
     plan = JSON.parse(stripCodeFence(raw));

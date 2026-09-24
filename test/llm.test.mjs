@@ -296,3 +296,137 @@ test('PROVIDERS.ollama: a body that never finishes arriving is bounded by the sa
     await assert.rejects(() => PROVIDERS.ollama('hi', { timeoutMs: 100 }), /did not answer within 0\.1 seconds/);
   });
 });
+
+// ---- #599: streaming, onChunk and external cancel for the ollama provider ---------------------
+
+const ndjson = (objs) => new ReadableStream({
+  start(controller) {
+    const enc = new TextEncoder();
+    for (const o of objs) controller.enqueue(enc.encode(`${JSON.stringify(o)}\n`));
+    controller.close();
+  },
+});
+
+test('#599: PROVIDERS.ollama with onChunk streams (stream:true) and hands each piece over as it arrives', async () => {
+  const calls = [];
+  const chunks = [];
+  await withFakeFetch(async (url, init) => {
+    calls.push({ url, init });
+    return { ok: true, status: 200, body: ndjson([{ response: 'const ', done: false }, { response: 'x = ', done: false }, { response: '1;', done: false }, { response: '', done: true }]) };
+  }, async () => {
+    const out = await PROVIDERS.ollama('write', { onChunk: (c) => chunks.push(c) });
+    assert.equal(out, 'const x = 1;');
+  });
+  assert.equal(JSON.parse(calls[0].init.body).stream, true);
+  assert.deepEqual(chunks, ['const ', 'x = ', '1;'], 'each non-empty piece, in order, exactly once');
+});
+
+test('#599: without onChunk the ollama call is still the single non-streamed request', async () => {
+  const calls = [];
+  await withFakeFetch(async (url, init) => {
+    calls.push(init);
+    return { ok: true, status: 200, text: async () => JSON.stringify({ response: 'ok' }) };
+  }, async () => { await PROVIDERS.ollama('hi'); });
+  assert.equal(JSON.parse(calls[0].body).stream, false);
+});
+
+test('#599: a non-JSON line in the stream is a real error, not silently skipped', async () => {
+  await withFakeFetch(async () => ({
+    ok: true,
+    status: 200,
+    body: new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode('not json\n')); c.close(); } }),
+  }), async () => {
+    await assert.rejects(() => PROVIDERS.ollama('x', { onChunk() {} }), /non-JSON line/);
+  });
+});
+
+test('#599: an external AbortSignal cancels an in-flight ollama call and is reported as cancelled, not a timeout', async () => {
+  const controller = new AbortController();
+  await withFakeFetch((url, init) => new Promise((resolve, reject) => {
+    init.signal.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' })));
+    setTimeout(() => controller.abort(), 10);
+  }), async () => {
+    await assert.rejects(() => PROVIDERS.ollama('x', { signal: controller.signal }), (err) => err.cancelled === true && /cancelled/.test(err.message));
+  });
+});
+
+test('#599: an already-aborted signal cancels before any request is made', async () => {
+  const controller = new AbortController();
+  controller.abort();
+  let fetched = false;
+  await withFakeFetch(async () => { fetched = true; return { ok: true, status: 200, text: async () => '{}' }; }, async () => {
+    await assert.rejects(() => PROVIDERS.ollama('x', { signal: controller.signal }), (err) => err.cancelled === true);
+  });
+  assert.equal(fetched, false);
+});
+
+// ---- #599: the claude provider streams asynchronously (never blocks the event loop) -----------
+// A fake `claude` on PATH prints the same stream-json events the real CLI does, so this proves the
+// parsing, the streaming, the cancel and the non-blocking behaviour without spending a token.
+
+function withFakeClaudeBin(script, fn) {
+  const dir = makeTempDir('construct-fake-claude-');
+  const bin = path.join(dir, 'claude');
+  fs.writeFileSync(bin, `#!/usr/bin/env node\n${script}`);
+  fs.chmodSync(bin, 0o755);
+  const originalPath = process.env.PATH;
+  process.env.PATH = `${dir}${path.delimiter}${originalPath}`;
+  return (async () => {
+    try {
+      return await fn();
+    } finally {
+      process.env.PATH = originalPath;
+    }
+  })();
+}
+
+const STREAM_SCRIPT = `
+process.stdin.resume(); process.stdin.on('data', () => {});
+const ev = (text) => JSON.stringify({ type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'text_delta', text } } });
+let i = 0; const pieces = ['export ', 'const x', ' = 1;'];
+const t = setInterval(() => {
+  if (i < pieces.length) { console.log(ev(pieces[i++])); return; }
+  clearInterval(t);
+  console.log(JSON.stringify({ type: 'result', subtype: 'success', is_error: false, result: pieces.join('') }));
+}, 40);
+`;
+
+test('#599: PROVIDERS.claude with onChunk streams each text_delta as it arrives and returns the final result', async () => {
+  const chunks = [];
+  await withFakeClaudeBin(STREAM_SCRIPT, async () => {
+    const out = await PROVIDERS.claude('write', { onChunk: (c) => chunks.push(c) });
+    assert.equal(out, 'export const x = 1;');
+  });
+  assert.deepEqual(chunks, ['export ', 'const x', ' = 1;']);
+});
+
+test('#599: the streaming claude call does not block the event loop (the server can keep sending frames)', async () => {
+  let ticks = 0;
+  const iv = setInterval(() => { ticks += 1; }, 10);
+  try {
+    await withFakeClaudeBin(STREAM_SCRIPT, () => PROVIDERS.claude('write', { onChunk() {} }));
+  } finally {
+    clearInterval(iv);
+  }
+  assert.ok(ticks >= 5, `the event loop ran ${ticks} ticks during a ~200ms call; the old spawnSync path would give 0`);
+});
+
+test('#599: a cancel signal kills the streaming claude child and is reported as cancelled', async () => {
+  const controller = new AbortController();
+  await withFakeClaudeBin(`process.stdin.resume(); setInterval(() => {}, 1000);`, async () => {
+    setTimeout(() => controller.abort(), 60);
+    await assert.rejects(() => PROVIDERS.claude('x', { signal: controller.signal }), (err) => err.cancelled === true);
+  });
+});
+
+test('#599: an is_error result from the streaming claude call is a real error, not an empty success', async () => {
+  await withFakeClaudeBin(`process.stdin.resume(); process.stdin.on('data', () => {}); console.log(JSON.stringify({ type: 'result', is_error: true, result: 'rate limited' })); process.exit(1);`, async () => {
+    await assert.rejects(() => PROVIDERS.claude('x', { onChunk() {} }), /rate limited/);
+  });
+});
+
+test('#599: without onChunk or signal the claude provider is still the plain call (no stream-json flags)', async () => {
+  await withFakeClaudeBin(`process.stdin.resume(); process.stdin.on('data', () => {}); process.stdin.on('end', () => { console.log(process.argv.includes('stream-json') ? 'STREAMING' : 'plain'); });`, async () => {
+    assert.equal((await PROVIDERS.claude('x')).trim(), 'plain');
+  });
+});

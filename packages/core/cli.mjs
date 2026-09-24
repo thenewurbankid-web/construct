@@ -1095,7 +1095,14 @@ function isYes(answer) {
  * way, the actual file list comes from tracing the real import graph
  * (route-resolver.mjs), never from "everything under a directory you point
  * at". */
-export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude', importFill = 'claude' } = {}) {
+export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude', importFill = 'claude', onStep, onThought, signal } = {}) {
+  // #599 -- two SEPARATE kinds of live output, kept apart on purpose so a UI can style them
+  // differently: `onStep` receives the framework's own deterministic phase markers
+  // ({phase, detail}: tracing, analyzing, plan-ready, scaffolding, filling, validating,
+  // auto-fixing, done, cancelled), and `onThought` receives the model's own streamed output text.
+  // `signal` (an AbortSignal) cancels an in-flight model call and stops the run.
+  const step = (phase, detail = {}) => onStep?.({ phase, detail });
+  const llmOptions = { ...(onThought ? { onChunk: onThought } : {}), ...(signal ? { signal } : {}) };
   // Whole-feature plan analysis is deliberately hosted-model-only (#96) — the
   // same guardrail ui/server's Settings enforces, repeated here so a direct
   // caller can't route it to a local model either.
@@ -1177,6 +1184,7 @@ export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude
     await ask('After you approve the plan, should the LLM also write the ported logic (not just TODO breadcrumbs)? [y/N]: '),
   );
 
+  step('tracing', { routes: routeArgs });
   console.log(`Tracing ${routeArgs.join(', ')} ...`);
   const traceStart = startTimer();
   const tracedFiles = new Map(); // absolute path -> true, deduped across routes
@@ -1209,9 +1217,10 @@ export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude
     `Analyzing via "${planAnalysis}" — one LLM call for a single combined plan across all of them, nothing is written yet...`,
   );
   let plan;
+  step('analyzing', { provider: planAnalysis, files: tracedFiles.size });
   const analysisStart = startTimer();
   try {
-    plan = await analyzeFiles([...tracedFiles.keys()], featureName, { llm: planAnalysis });
+    plan = await analyzeFiles([...tracedFiles.keys()], featureName, { llm: planAnalysis, llmOptions });
   } catch (e) {
     console.error(`Analysis failed: ${e.message}`);
     return;
@@ -1219,6 +1228,7 @@ export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude
   const analysisSeconds = elapsedSeconds(analysisStart);
   console.log(`Analysis complete (llm ${formatDuration(analysisSeconds)}).`);
 
+  step('plan-ready', { units: plan.units.length });
   console.log('');
   console.log(renderPlanTable(plan));
   console.log('');
@@ -1228,10 +1238,16 @@ export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude
     return;
   }
 
-  const { results } = await executeImportPlan(root, plan, { llm: fillWithLlm ? importFill : undefined });
+  const { results, cancelled: fillCancelled } = await executeImportPlan(root, plan, { llm: fillWithLlm ? importFill : undefined, llmOptions, onStep: step });
   reportImport(root, results, fillWithLlm ? importFill : undefined, plan.feature, 1, analysisSeconds);
+  if (fillCancelled) {
+    step('cancelled', { during: 'filling' });
+    console.log('Cancelled — files not yet filled were left as their TODO(import) stubs; nothing was half-written.');
+    return;
+  }
 
   console.log('');
+  step('validating', { feature: plan.feature });
   console.log(`Running validate --feature ${plan.feature} ...`);
   const validateStart = startTimer();
   const { violations } = aggregateValidation(root, DEFAULT_ENFORCERS);
@@ -1251,23 +1267,39 @@ export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude
     const affectedFiles = [...new Set(fixableViolations.map((v) => v.file))];
     const wantsFix = isYes(
       await ask(
-        `Try to auto-fix ${fixableViolations.length} violation(s) in ${affectedFiles.length} file(s) with "${importFill}"? Up to 2 attempts per file, each fed the exact violation to fix. Press Ctrl+C at any time to stop. [y/N]: `,
+        `Try to auto-fix ${fixableViolations.length} violation(s) in ${affectedFiles.length} file(s) with "${importFill}"? It plans first, then keeps trying each file (up to 5 attempts, each told what earlier attempts left behind) and stops early if it stops making progress. Cancel or Ctrl+C stops it at any time. [y/N]: `,
       ),
     );
     if (wantsFix) {
-      const { fixed, stillFailing } = await autoFixViolations(
+      step('auto-fixing', { files: affectedFiles });
+      const { fixed, stillFailing, cancelled: fixCancelled } = await autoFixViolations(
         root,
         affectedFiles,
         (r) => aggregateValidation(r, DEFAULT_ENFORCERS),
         {
           llm: importFill,
-          onAttempt: ({ file, attempt, violations: v }) =>
-            console.log(`  Attempt ${attempt} on ${file}: fixing ${v.length} violation(s) (${v.map((x) => x.rule).join(', ')})...`),
+          llmOptions,
+          onPlan: (plan) => {
+            console.log(`Fix plan (${plan.length} file(s), errors first):`);
+            for (const item of plan) {
+              console.log(`  ${item.file}`);
+              for (const v of item.violations) console.log(`    - ${v.rule} (line ${v.line}): ${v.message}${v.suggestedFix ? ` → ${v.suggestedFix}` : ''}`);
+            }
+          },
+          onAttempt: ({ file, attempt, violations: v }) => {
+            step('auto-fixing', { files: affectedFiles, file, attempt });
+            console.log(`  Attempt ${attempt} on ${file}: fixing ${v.length} violation(s) (${v.map((x) => x.rule).join(', ')})...`);
+          },
         },
       );
+      if (fixCancelled) {
+        step('cancelled', { during: 'auto-fixing' });
+        console.log('Cancelled — auto-fix stopped; files keep their last valid content.');
+        return;
+      }
       if (fixed.length) console.log(`Fixed: ${fixed.map((f) => `${f.file} (${f.attempts} attempt(s))`).join(', ')}`);
       if (stillFailing.length) {
-        console.log(`Still failing after auto-fix: ${stillFailing.map((f) => f.file).join(', ')} — review manually.`);
+        console.log(`Still failing after auto-fix — review manually: ${stillFailing.map((f) => `${f.file} (${f.reason}, ${f.attempts} attempt(s))`).join(', ')}`);
       }
       const revalidated = aggregateValidation(root, DEFAULT_ENFORCERS);
       scoped = revalidated.violations.filter((v) => v.file.startsWith(`${featuresRoot}/${plan.feature}/`));
@@ -1280,13 +1312,17 @@ export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude
   if (fillWithLlm) {
     console.log(`Review the ${allFiles.length - todoFiles.length} LLM-written file(s) above against their source before trusting them.`);
   }
-  if (fillWithLlm && !todoFiles.length) return;
+  if (fillWithLlm && !todoFiles.length) {
+    step('done', { files: allFiles.length, todo: 0 });
+    return;
+  }
   console.log(
     todoFiles.length
       ? `${todoFiles.length} of ${allFiles.length} file(s) still have a TODO(import) marker to fill in — that's what's left before this feature is done:`
       : 'No TODO(import) markers left — nothing further needed from this pass.',
   );
   for (const f of todoFiles) console.log(`  ${path.relative(root, f)}`);
+  step('done', { files: allFiles.length, todo: todoFiles.length });
 }
 
 export async function runImportRouteWizard(routeArg) {
@@ -1353,7 +1389,7 @@ function ensureWizardConsolePatched() {
  * @param {(event: object) => void} onEvent Receives questions and log lines.
  * @param {string} [seedRoute] Route to start from, when the caller already knows it.
  * @param {object} [providers] Injectable dependencies (LLM provider and friends) for tests.
- * @returns {{answer:(text:string) => boolean, done:Promise<any>}} `answer` feeds the reply to the pending question (`false` when none is pending); `done` settles when the wizard finishes.
+ * @returns {{answer:(text:string) => boolean, cancel:() => void, done:Promise<any>}} `answer` feeds the reply to the pending question (`false` when none is pending); `cancel` aborts an in-flight model call and stops the run (#599); `done` settles when the wizard finishes.
  */
 export function runImportRouteWizardEventDriven(onEvent, seedRoute, providers) {
   ensureWizardConsolePatched();
@@ -1377,8 +1413,26 @@ export function runImportRouteWizardEventDriven(onEvent, seedRoute, providers) {
     return true;
   }
 
+  // #599 -- framework steps and the model's own output are two different event types on purpose:
+  // `{type:'step', phase, detail}` vs `{type:'thought', text}`, so a UI can render them distinctly.
+  const controller = new AbortController();
+  /** Cancel the run: aborts an in-flight model call and declines any pending question. */
+  function cancel() {
+    controller.abort();
+    if (pendingResolve) {
+      const resolve = pendingResolve;
+      pendingResolve = null;
+      resolve('');
+    }
+  }
+
   const done = wizardLogStore
-    .run(onEvent, () => importRouteWizard(ask, seedRoute, providers))
+    .run(onEvent, () => importRouteWizard(ask, seedRoute, {
+      ...providers,
+      signal: controller.signal,
+      onStep: (s) => onEvent({ type: 'step', ...s }),
+      onThought: (text) => onEvent({ type: 'thought', text }),
+    }))
     .catch((e) => {
       onEvent({ type: 'log', kind: 'error', text: `Error: ${e.message}` });
     })
@@ -1386,5 +1440,5 @@ export function runImportRouteWizardEventDriven(onEvent, seedRoute, providers) {
       onEvent({ type: 'done' });
     });
 
-  return { answer, done };
+  return { answer, cancel, done };
 }

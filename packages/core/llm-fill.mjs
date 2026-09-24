@@ -53,6 +53,7 @@ export function whyNotCode(code) {
  *   { status: 'filled', code, attempts }
  *   { status: 'rejected', reason, attempts, preview }  — model answered, output isn't valid code
  *   { status: 'failed', reason, attempts }             — the provider call itself threw (#141)
+ *   { status: 'cancelled', reason, attempts }          — the caller's AbortSignal fired (#599); never retried
  * At most ONE retry, and only after a *rejection* (a model that just proved
  * it can be non-deterministic gets one corrected re-ask with the reason
  * appended). A thrown provider error is never retried: a missing CLI, dead
@@ -70,6 +71,9 @@ export async function requestFileText(llm, prompt, llmOptions, { retryOnReject =
       raw = await callLlm(llm, currentPrompt, llmOptions);
     } catch (e) {
       if (e?.exitCode === 2) throw e;
+      // #599 -- a person cancelling is not a failure: report it as its own status so callers stop
+      // (rather than move on to the next file) and a UI can show "cancelled", not "failed".
+      if (e?.cancelled) return { status: 'cancelled', reason: 'cancelled', attempts };
       return { status: 'failed', reason: e?.message || String(e), attempts };
     }
     const { code } = extractCode(raw);
