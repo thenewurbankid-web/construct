@@ -127,10 +127,36 @@
   function endpoint() {
     return parseApi(get(API_KEY)) || site.api;
   }
+  var pill = document.querySelector('.brand-mark .pill-blue');
+  var windDown = null;
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function cancelWindDown() {
+    if (windDown) window.clearTimeout(windDown);
+    windDown = null;
+    if (pill) pill.removeEventListener('animationiteration', finishWindDown);
+  }
+  function finishWindDown() {
+    cancelWindDown();
+    if (html.getAttribute('data-dev-status') === 'ending') html.removeAttribute('data-dev-status');
+  }
+  /** Status went quiet mid-slide: let the current cycle finish (the pill ends each cycle at rest) instead of snapping it there. */
+  function beginWindDown() {
+    html.setAttribute('data-dev-status', 'ending');
+    pill.addEventListener('animationiteration', finishWindDown);
+    // A background tab may never run the next frame: do not stay "ending" for ever.
+    windDown = window.setTimeout(finishWindDown, 10000);
+  }
   function apply() {
     var active = moves(mode(), polled);
-    if (active) html.setAttribute('data-dev-status', 'active');
-    else html.removeAttribute('data-dev-status');
+    var state = html.getAttribute('data-dev-status');
+    if (active) {
+      cancelWindDown();
+      if (state !== 'active') html.setAttribute('data-dev-status', 'active');
+    } else if (state === 'active' && pill && !reduced) {
+      beginWindDown();
+    } else if (state !== 'ending') {
+      html.removeAttribute('data-dev-status');
+    }
   }
   function note(text) {
     lastNote = text;

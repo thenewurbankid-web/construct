@@ -95,7 +95,8 @@ test('the logo: two pills with their own classes, the blue one slides 12 units u
   assert.match(pages, /<script src="\$\{root\}assets\/js\/logo-status\.js" data-config="\$\{root\}logo\.json" defer><\/script>/);
   const css = read('site/assets/css/site.css');
   assert.doesNotMatch(css, /brand-trace|brand-pop|stroke-dasharray: 55 14/, 'the rolling dash is gone');
-  assert.match(css, /html\[data-dev-status='active'\] \.brand-mark \.pill-blue \{ animation: brand-stack 9s ease-in-out infinite; \}/);
+  assert.match(css, /html\[data-dev-status='active'\] \.brand-mark \.pill-blue,\s*html\[data-dev-status='ending'\] \.brand-mark \.pill-blue \{ animation: brand-stack 9s ease-in-out infinite; \}/);
+  assert.match(SCRIPT, /animationiteration/, 'a quiet status lets the cycle in progress finish instead of cutting it');
   assert.match(css, /46%, 54% \{ transform: translateX\(-12px\); \}/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{ \.brand-mark, \.brand-mark \* \{ animation: none !important; \} \}/);
   // Transform only: nothing about the stroke, size or rotation moves.

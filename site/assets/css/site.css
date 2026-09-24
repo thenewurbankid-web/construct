@@ -38,11 +38,12 @@ code, pre { font-family: var(--mono); }
 .brand:hover { text-decoration: none; }
 .brand-mark { width: 26px; height: 26px; flex: none; color: var(--text); }
 /* The Line mark is a status light, not decoration. The white pill stays; the blue pill slowly slides left, 12 units, to sit directly
- * under it (stacked), rests, then slowly slides back. It runs only while <html data-dev-status="active">, which
+ * under it (stacked), rests, then slowly slides back. It runs only while <html data-dev-status="active"> (or "ending": the cycle in progress finishes so the pill never snaps back), which
  * assets/js/logo-status.js sets from the owner's own setting (never for a visitor who has not set one). Transform only; CSS
  * pixels inside an SVG are its own user units, so -12px is the 12 units between the two pills' left edges. */
 .brand-mark .pill-blue { transform: translateX(0); }
-html[data-dev-status='active'] .brand-mark .pill-blue { animation: brand-stack 9s ease-in-out infinite; }
+html[data-dev-status='active'] .brand-mark .pill-blue,
+html[data-dev-status='ending'] .brand-mark .pill-blue { animation: brand-stack 9s ease-in-out infinite; }
 @keyframes brand-stack {
   0%, 8% { transform: translateX(0); }
   46%, 54% { transform: translateX(-12px); }
