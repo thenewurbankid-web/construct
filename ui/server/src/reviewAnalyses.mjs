@@ -21,7 +21,10 @@
 import { repoInfo } from '../../../packages/engine/gitTrees.mjs';
 import { StepAborted } from '../../../packages/engine/processEngine.mjs';
 import { topLevelState } from '../../../packages/engine/processMachine.mjs';
+import { findProjectRoot } from '../../../packages/core/config.mjs';
 import { forkRunner } from './reviewRunner.mjs';
+import { cliReviewRunner } from './reviewCli.mjs';
+import { resolveExecutionMode } from './coreExecutor.mjs';
 
 export const ANALYSIS_FLOW = 'review.analyze';
 export const ANALYSIS_STEP = 'analyse';
@@ -68,11 +71,20 @@ export function createResults() {
   };
 }
 
+/** The execution mode of the project an analysis belongs to (`project.execution.mode`, #541); 'engine' when the
+ * folder has no architecture.yml. Throws the config's own error for an unknown value. */
+export function projectModeOf(projectRoot) {
+  const root = findProjectRoot(projectRoot);
+  return root ? resolveExecutionMode(root) : 'engine';
+}
+
 /**
- * @param {{run?: Function, results?: ReturnType<typeof createResults>, runOptions?: object}} [opts]
- *   `run(job, {signal, onProgress})` is the test seam; the default forks the read-only worker.
+ * @param {{run?: Function, runCli?: Function, modeOf?: (projectRoot:string)=>string, results?: ReturnType<typeof createResults>, runOptions?: object}} [opts]
+ *   `run(job, {signal, onProgress})` is the test seam; the default forks the read-only worker. In a project whose
+ *   `project.execution.mode` is `cli` the same job goes to `runCli` instead (default: the real `construct review`
+ *   subprocess, reviewCli.mjs); `modeOf` reads the mode (default: architecture.yml).
  */
-export function createReviewExecutor({ run = forkRunner, results = createResults(), runOptions = {} } = {}) {
+export function createReviewExecutor({ run = forkRunner, runCli = cliReviewRunner, modeOf = projectModeOf, results = createResults(), runOptions = {} } = {}) {
   async function executeStep({ process: proc, step, signal, log }) {
     const none = { ok: false, llm: null, artifacts: [] };
     if (step.flow !== ANALYSIS_FLOW) return { ...none, error: `Step "${step.id}" is not an analysis.` };
@@ -83,10 +95,16 @@ export function createReviewExecutor({ run = forkRunner, results = createResults
     const info = repoInfo(proc.projectRoot);
     if (!info.ok) return { ...none, error: info.error.message };
     const job = { root: info.top, baseSha: base, headSha: head, ...(plan ? { expected: { features: plan.features ?? [], files: plan.files ?? [] } } : {}) };
-    log('ok', `Reading ${short(base)} and ${short(head)} in temporary checkouts. Read-only: the working tree, branches and stash are not touched.`);
+    let mode;
+    try {
+      mode = modeOf(proc.projectRoot);
+    } catch (e) {
+      return { ...none, error: String(e?.message || e) };
+    }
+    log('ok', `Reading ${short(base)} and ${short(head)} in temporary checkouts${mode === 'cli' ? ' (through the construct CLI, project.execution.mode: cli)' : ''}. Read-only: the working tree, branches and stash are not touched.`);
     let outcome;
     try {
-      outcome = await run(job, { ...runOptions, signal, onProgress: (m) => { log('ok', String(m.progress)); runOptions.onProgress?.(m); } });
+      outcome = await (mode === 'cli' ? runCli : run)(job, { ...runOptions, signal, onProgress: (m) => { log('ok', String(m.progress)); runOptions.onProgress?.(m); } });
     } catch (e) {
       outcome = { ok: false, error: { code: 'WORKER_FAILED', message: String(e?.message || e) } };
     }

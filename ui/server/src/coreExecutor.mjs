@@ -100,9 +100,12 @@ function childEnv(env) {
 
 const clip = (s, n = 800) => (s.length > n ? `${s.slice(0, n)}…` : s);
 
-/** Runs `node <bin> <args>` in `cwd`; resolves { code, stdout, stderr } or rejects with an ExecutionError. */
-function runCli({ bin, args, cwd, env, timeoutMs, spawnImpl = spawn }) {
+/** Runs `node <bin> <args>` in `cwd`; resolves { code, stdout, stderr } or rejects with an ExecutionError.
+ * `signal` (an AbortSignal) stops the process group like the timeout does, rejecting CLI_CANCELLED; `onStart(pid)`
+ * reports the child's pid so a caller can reclaim what a killed child left behind. */
+function runCli({ bin, args, cwd, env, timeoutMs, spawnImpl = spawn, signal, onStart, graceMs = KILL_GRACE_MS }) {
   return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(new ExecutionError('CLI_CANCELLED', 'The construct CLI was cancelled before it started.'));
     let child;
     try {
       // argv array, no shell; own process group so a timeout stops the whole tree
@@ -110,6 +113,7 @@ function runCli({ bin, args, cwd, env, timeoutMs, spawnImpl = spawn }) {
     } catch (e) {
       return reject(new ExecutionError('CLI_START_FAILED', `The construct CLI could not be started: ${String(e.message || e)}`));
     }
+    try { onStart?.(child.pid); } catch { /* a listener must not stop the run */ }
     let stdout = '';
     let stderr = '';
     let bytes = 0;
@@ -120,7 +124,7 @@ function runCli({ bin, args, cwd, env, timeoutMs, spawnImpl = spawn }) {
       if (stopping) return;
       stopping = why;
       kill('SIGTERM');
-      killer = setTimeout(() => kill('SIGKILL'), KILL_GRACE_MS);
+      killer = setTimeout(() => kill('SIGKILL'), graceMs);
     };
     const take = (which) => (d) => {
       bytes += d.length;
@@ -128,19 +132,22 @@ function runCli({ bin, args, cwd, env, timeoutMs, spawnImpl = spawn }) {
       if (which === 'out') stdout += d; else stderr += d;
     };
     const timer = setTimeout(() => stop('TIMEOUT'), timeoutMs);
+    const onAbort = () => stop('CANCELLED');
+    signal?.addEventListener('abort', onAbort, { once: true });
     child.stdout.setEncoding('utf8');
     child.stderr.setEncoding('utf8');
     child.stdout.on('data', take('out'));
     child.stderr.on('data', take('err'));
     child.once('error', (e) => {
-      clearTimeout(timer); clearTimeout(killer);
+      clearTimeout(timer); clearTimeout(killer); signal?.removeEventListener('abort', onAbort);
       reject(new ExecutionError('CLI_START_FAILED', `The construct CLI could not be started: ${String(e.message || e)}`));
     });
-    child.once('close', (code, signal) => {
-      clearTimeout(timer); clearTimeout(killer);
+    child.once('close', (code, sig) => {
+      clearTimeout(timer); clearTimeout(killer); signal?.removeEventListener('abort', onAbort);
+      if (stopping === 'CANCELLED') return reject(new ExecutionError('CLI_CANCELLED', 'The construct CLI was cancelled.'));
       if (stopping === 'TIMEOUT') return reject(new ExecutionError('CLI_TIMEOUT', `The construct CLI took longer than ${Math.round(timeoutMs / 1000)} seconds and was stopped.`));
       if (stopping === 'OVERFLOW') return reject(new ExecutionError('CLI_BAD_OUTPUT', 'The construct CLI produced more output than the Cockpit accepts and was stopped.'));
-      resolve({ code, signal, stdout, stderr });
+      resolve({ code, signal: sig, stdout, stderr });
     });
   });
 }
@@ -153,14 +160,15 @@ function runCli({ bin, args, cwd, env, timeoutMs, spawnImpl = spawn }) {
  *
  * @param {string} root Resolved project root (the directory holding architecture.yml).
  * @param {string[]} argv The verb and its flags, WITHOUT `--dir` (appended here, last).
- * @param {{env?:NodeJS.ProcessEnv, bin?:string, timeoutMs?:number, spawnImpl?:Function}} [opts]
+ * @param {{env?:NodeJS.ProcessEnv, bin?:string, timeoutMs?:number, spawnImpl?:Function, signal?:AbortSignal, onStart?:(pid:number)=>void, graceMs?:number}} [opts]
+ *   `signal` cancels the run (the process group gets SIGTERM, then SIGKILL after `graceMs`); `onStart` receives the child's pid.
  * @returns {Promise<{code:number|null, signal:string|null, stdout:string, stderr:string}>}
- * @throws {ExecutionError} CLI_NOT_FOUND, CLI_START_FAILED, CLI_TIMEOUT, or CLI_BAD_OUTPUT (output overflow).
+ * @throws {ExecutionError} CLI_NOT_FOUND, CLI_START_FAILED, CLI_TIMEOUT, CLI_CANCELLED, or CLI_BAD_OUTPUT (output overflow).
  */
-export async function runCliVerb(root, argv, { env = process.env, bin, timeoutMs, spawnImpl } = {}) {
+export async function runCliVerb(root, argv, { env = process.env, bin, timeoutMs, spawnImpl, signal, onStart, graceMs } = {}) {
   const cliBin = bin ?? resolveCliBin(env);
   const limit = timeoutMs ?? (Number(env[CLI_TIMEOUT_ENV]) > 0 ? Number(env[CLI_TIMEOUT_ENV]) : DEFAULT_CLI_TIMEOUT_MS);
-  return runCli({ bin: cliBin, args: [...argv, '--dir', root], cwd: root, env, timeoutMs: limit, spawnImpl });
+  return runCli({ bin: cliBin, args: [...argv, '--dir', root], cwd: root, env, timeoutMs: limit, spawnImpl, signal, onStart, graceMs });
 }
 
 /**

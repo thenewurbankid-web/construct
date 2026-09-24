@@ -28,8 +28,14 @@ export function summarizeChangedUnits(root, headSha, files) {
   return { units: out, omitted: candidates.length - chosen.length };
 }
 
-/** The whole job. `baseSha`/`headSha` are commit ids the parent took from its validated branch list. */
-export function analyse({ root, baseSha, headSha, expected }, deps = { prHealth, summarizeChangedUnits }) {
+/** The whole job. `baseSha`/`headSha` are commit ids the parent took from its validated branch list.
+ * `unitsOnly` (#541, the Cockpit's `cli` execution mode) skips the PR-health computation, which the real CLI did in
+ * another process, and answers only the "what it now does" rows for the given `files`. */
+export function analyse({ root, baseSha, headSha, expected, unitsOnly, files }, deps = { prHealth, summarizeChangedUnits }) {
+  if (unitsOnly) {
+    const summaries = deps.summarizeChangedUnits(root, headSha, files ?? []);
+    return { ok: true, units: summaries.units, unitsOmitted: summaries.omitted, ...(summaries.error ? { unitsError: summaries.error } : {}) };
+  }
   const report = deps.prHealth(root, { base: baseSha, head: headSha, ...(expected ? { expected } : {}) });
   if (!report.ok) return { ok: false, error: report.error };
   const summaries = deps.summarizeChangedUnits(root, headSha, report.change.files);
