@@ -18,6 +18,35 @@ import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 export const DEFAULT_OLLAMA_MODEL = 'qwen2.5-coder:7b';
 export const DEFAULT_OLLAMA_BASE_URL = 'http://localhost:11434';
 
+// Ollama's own /api/generate defaults its RUNTIME context window to a small value (historically
+// 2048 tokens) regardless of what the model itself supports ("context length" in `ollama show
+// <model>`, 32768 for qwen2.5-coder:7b) — the model's ceiling and what a request actually gets
+// allocated are two different numbers, and only options.num_ctx (never set anywhere in this
+// codebase until now) controls the second one. A prompt with an inlined source file routinely
+// exceeds the old undocumented default by a wide margin, so a real fill call was silently
+// truncated from the model's point of view — a materially worse input than the identical prompt
+// text sent to `claude`, which has no such default-truncation gap. See ollamaContextFor() below.
+export const MIN_OLLAMA_CONTEXT = 4096; // never smaller than a short prompt legitimately needs
+export const MAX_OLLAMA_CONTEXT = 32768; // qwen2.5-coder:7b's own ceiling; asking for more would just fail or thrash
+const OLLAMA_CHARS_PER_TOKEN = 4; // conservative estimate, matches import.mjs's MAX_ANALYSIS_CHARS comment
+const OLLAMA_OUTPUT_RESERVE_TOKENS = 1024; // headroom for the model's own reply, on top of the prompt
+
+/**
+ * The context window (`options.num_ctx`) Ollama should allocate for `prompt`, so a real prompt
+ * (which can be many times the size of a short one, once a whole source file is inlined) is
+ * never silently truncated the way it was with no override at all. Rounds up to the next power
+ * of two — Ollama's own convention for `num_ctx` — and clamps to
+ * [MIN_OLLAMA_CONTEXT, MAX_OLLAMA_CONTEXT].
+ *
+ * @param {string} prompt The full prompt text this call is about to send.
+ * @returns {number} The `num_ctx` value to pass.
+ */
+export function ollamaContextFor(prompt) {
+  const estimatedTokens = Math.ceil(String(prompt ?? '').length / OLLAMA_CHARS_PER_TOKEN) + OLLAMA_OUTPUT_RESERVE_TOKENS;
+  const power = Math.ceil(Math.log2(Math.max(estimatedTokens, MIN_OLLAMA_CONTEXT)));
+  return Math.min(2 ** power, MAX_OLLAMA_CONTEXT);
+}
+
 // #413: every model call is bounded. A model that never answers used to hang
 // the calling command forever — and, in the Cockpit, every command queued
 // behind it (ui/server/src/commandRunner.mjs serialises them). The default is
@@ -127,6 +156,17 @@ export const PROVIDERS = {
     const model = options.model || DEFAULT_OLLAMA_MODEL;
     const baseUrl = options.baseUrl || DEFAULT_OLLAMA_BASE_URL;
     const timeout = timeoutOf(options);
+    // num_ctx: sized from the real prompt (see ollamaContextFor's own comment for why this
+    // matters) unless the caller overrides it. If even MAX_OLLAMA_CONTEXT can't fit the whole
+    // prompt, truncation is still unavoidable locally — warn instead of repeating the silent
+    // version of this same mistake at a different number.
+    const numCtx = options.numCtx || ollamaContextFor(prompt);
+    const estimatedPromptTokens = Math.ceil(String(prompt ?? '').length / OLLAMA_CHARS_PER_TOKEN);
+    if (estimatedPromptTokens > numCtx - OLLAMA_OUTPUT_RESERVE_TOKENS) {
+      console.warn(
+        `ollama: this prompt (~${estimatedPromptTokens} tokens) may not fully fit even at num_ctx=${numCtx} (${model}'s effective ceiling) — the model may still not see all of it.`,
+      );
+    }
     const controller = new AbortController();
     let expired = false;
     const timer = setTimeout(() => { expired = true; controller.abort(); }, timeout);
@@ -139,7 +179,7 @@ export const PROVIDERS = {
         res = await fetch(`${baseUrl}/api/generate`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ model, prompt, stream: false }),
+          body: JSON.stringify({ model, prompt, stream: false, options: { num_ctx: numCtx } }),
           signal: controller.signal,
         });
       } catch (e) {

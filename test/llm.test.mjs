@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
-import { callLlm, stripCodeFence, PROVIDERS, DEFAULT_OLLAMA_MODEL, DEFAULT_OLLAMA_BASE_URL, DEFAULT_LLM_TIMEOUT_SEC, resolveLlmTimeoutMs } from '../packages/core/llm.mjs';
+import { callLlm, stripCodeFence, PROVIDERS, DEFAULT_OLLAMA_MODEL, DEFAULT_OLLAMA_BASE_URL, DEFAULT_LLM_TIMEOUT_SEC, resolveLlmTimeoutMs, ollamaContextFor, MIN_OLLAMA_CONTEXT, MAX_OLLAMA_CONTEXT } from '../packages/core/llm.mjs';
 import { ConstructError } from '../packages/core/diagnostics.mjs';
 
 test('callLlm throws a clear USAGE_ERROR for an unsupported provider', async () => {
@@ -87,6 +87,58 @@ test('PROVIDERS.ollama posts to /api/generate with the default model + base URL 
   assert.equal(body.model, DEFAULT_OLLAMA_MODEL);
   assert.equal(body.prompt, 'write me a file');
   assert.equal(body.stream, false);
+  // A short prompt still gets MIN_OLLAMA_CONTEXT, not Ollama's own small undocumented default —
+  // this is the actual fix: num_ctx is now always explicit, never left unset.
+  assert.equal(body.options.num_ctx, MIN_OLLAMA_CONTEXT);
+});
+
+test('ollamaContextFor sizes to the prompt, rounds up to a power of two, and clamps to [MIN,MAX]', () => {
+  assert.equal(ollamaContextFor('x'), MIN_OLLAMA_CONTEXT, 'a tiny prompt never asks for less than the floor');
+  assert.equal(ollamaContextFor('x'.repeat(1000)), MIN_OLLAMA_CONTEXT, 'still small enough to fit the floor');
+  // ~40,000 chars -> ~10,000 prompt tokens + 1024 reserve -> next power of two is 16384.
+  assert.equal(ollamaContextFor('x'.repeat(40000)), 16384);
+  // A prompt far larger than any real model's ceiling clamps at MAX, never grows unbounded.
+  assert.equal(ollamaContextFor('x'.repeat(10_000_000)), MAX_OLLAMA_CONTEXT);
+});
+
+test('PROVIDERS.ollama: a real import-sized prompt gets a larger num_ctx than the default, and it is a power of two', async () => {
+  const calls = [];
+  await withFakeFetch(async (url, init) => {
+    calls.push({ url, init });
+    return { ok: true, status: 200, text: async () => JSON.stringify({ response: 'ok' }) };
+  }, async () => {
+    // Simulate a real port prompt with a sizeable inlined source file — big enough that the old
+    // (unset num_ctx) behavior would have silently truncated most of it.
+    await PROVIDERS.ollama(`instructions...\n${'const line = 1;\n'.repeat(2000)}`);
+  });
+  const body = JSON.parse(calls[0].init.body);
+  assert.ok(body.options.num_ctx > MIN_OLLAMA_CONTEXT, `expected a larger window than the floor, got ${body.options.num_ctx}`);
+  assert.equal(Math.log2(body.options.num_ctx) % 1, 0, 'num_ctx should be a power of two');
+});
+
+test('PROVIDERS.ollama: an explicit { numCtx } option overrides the computed size', async () => {
+  const calls = [];
+  await withFakeFetch(async (url, init) => {
+    calls.push({ url, init });
+    return { ok: true, status: 200, text: async () => JSON.stringify({ response: 'ok' }) };
+  }, async () => {
+    await PROVIDERS.ollama('hi', { numCtx: 8192 });
+  });
+  assert.equal(JSON.parse(calls[0].init.body).options.num_ctx, 8192);
+});
+
+test('PROVIDERS.ollama warns (but still calls) when even MAX_OLLAMA_CONTEXT cannot fit the prompt', async () => {
+  const originalWarn = console.warn;
+  const warnings = [];
+  console.warn = (msg) => warnings.push(msg);
+  try {
+    await withFakeFetch(async () => ({ ok: true, status: 200, text: async () => JSON.stringify({ response: 'ok' }) }), async () => {
+      await PROVIDERS.ollama('x'.repeat(MAX_OLLAMA_CONTEXT * 5));
+    });
+  } finally {
+    console.warn = originalWarn;
+  }
+  assert.ok(warnings.some((w) => w.includes('may not fully fit')), JSON.stringify(warnings));
 });
 
 test('PROVIDERS.ollama honors an explicit { model, baseUrl } option', async () => {
