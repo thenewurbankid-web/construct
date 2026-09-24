@@ -12,7 +12,7 @@ import { pathToFileURL } from 'node:url';
 import { Readable } from 'node:stream';
 import { AuthConfigError, createAuth, isLoopbackHost, resolveAuthConfig } from './auth.mjs';
 import { create, refactor, research, importCommand, init } from '../../../packages/core/cli.mjs';
-import { containedProjectRoot, requireProject } from './projectGuard.mjs';
+import { containedProjectRoot, requireProject, NO_PROJECT_BODY } from './projectGuard.mjs';
 import { WorkspaceError, baseWorkspaceRoot, containInWorkspace, contain, userWorkspaceMiddleware, workspaceRoot } from './workspace.mjs';
 import { USAGE } from '../../../packages/core/usage.mjs';
 import { HELP_TOPICS, TOPIC_ORDER, getTopLevelHelpText } from '../../../packages/core/repl.mjs';
@@ -70,6 +70,7 @@ import {
 import { handleValidateForProject } from './validateApi.mjs';
 import { validateArchitecture } from '../../../packages/core/architecture-enforcer.mjs';
 import { createComponentsRouter } from './componentsApi.mjs';
+import { createNotesRouter } from './notesApi.mjs';
 import { handleLogs } from './logBuffer.mjs';
 import { unitsIndex, unitSummary, featuresIndex, featureSummary } from './unitsApi.mjs';
 import { buildPalette } from '../../../packages/engine/palette.mjs';
@@ -159,7 +160,10 @@ const app = express();
 // than `*` — a credentialed wildcard is both rejected by browsers and the
 // thing that would make a drive-by page able to mint or use a session.
 app.use(cors({ origin: CLIENT_ORIGIN, credentials: true }));
-app.use(express.json());
+// #596: `/api/notes` carries its own, larger body parser (a note may be 256 KiB; this one stops at 100 KB) and
+// mounts it below the session gate, so no unauthenticated request is ever parsed at that size.
+const jsonBody = express.json();
+app.use((req, res, next) => (req.path === '/api/notes' || req.path.startsWith('/api/notes/') ? next() : jsonBody(req, res, next)));
 // A body that is not valid JSON gets a fixed answer. The default handler prints the parser's message, which quotes
 // a snippet of the body, and a clone request's body may carry a one-time access token (#330 slice B): nothing the
 // client sent is ever echoed back or logged from here.
@@ -298,7 +302,7 @@ app.use(
     '/api/create', '/api/refactor', '/api/research', '/api/import',
     '/api/pages', '/api/workflows', '/api/units', '/api/features', '/api/flow', '/api/nav', '/api/validate',
     '/api/git/session', '/api/git/dirty-answer', '/api/git/commit', '/api/git/plan',
-    '/api/processes', '/api/plan', '/api/review', '/api/tests', '/api/project',
+    '/api/processes', '/api/plan', '/api/review', '/api/tests', '/api/project', '/api/notes',
   ],
   requireProject(),
 );
@@ -1086,6 +1090,17 @@ app.use('/api/components', createComponentsRouter({
   getRoot: () => {
     const root = containedProjectRoot(getProjectDir());
     return root ? { ok: true, root } : { ok: false, error: 'No Construct project found for the current project directory. Pick a project first.' };
+  },
+}));
+
+// #596: durable Notes (drafts kept per project in the per-user state directory, never in the project). Below the
+// session gate and the project-open gate above; the client names a note by id only (notesApi.mjs).
+app.use('/api/notes', createNotesRouter({
+  clientOrigin: CLIENT_ORIGIN,
+  getRoot: () => {
+    const dir = getProjectDir();
+    const root = dir ? containedProjectRoot(dir) || dir : null;
+    return root ? { ok: true, root } : { ok: false, status: 409, body: NO_PROJECT_BODY };
   },
 }));
 

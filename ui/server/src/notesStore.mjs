@@ -1,9 +1,7 @@
 // #373 (part of #367, drives story #561) — durable, per-project Notes.
 //
-// SERVER PERSISTENCE ONLY. Wiring `GET/POST /api/notes`, `GET/PUT/DELETE
-// /api/notes/:id` into index.mjs, the client UI (Keep mine / Load theirs /
-// Compare) and the Playwright spec are a follow-up slice — not attempted
-// here.
+// Persistence only; the HTTP surface is `notesApi.mjs` (`GET/POST /api/notes`, `GET/PUT/DELETE
+// /api/notes/:id`, #596) and the Cockpit screen is `ui/client/features/notes`.
 //
 // Same pattern as `packages/engine/processStore.mjs` (processes) and
 // `ui/server/src/settings.mjs` (last-open project): state lives OUTSIDE the
@@ -132,7 +130,7 @@ export function openNotesStore(projectRoot, { stateDir = resolveStateDir(), now 
       assertBodyWithinCap(body);
       const id = crypto.randomUUID();
       const createdAt = now();
-      const record = { id, title: String(title), body: String(body), plan, status, rev: 1, createdAt, updatedAt: createdAt, processId };
+      const record = { id, title: String(title), body: String(body), plan, status, rev: 1, createdAt, updatedAt: createdAt, processId, planStale: false };
       atomicWriteJson(fileFor(dir, id), record);
       return record;
     },
@@ -192,10 +190,17 @@ export function openNotesStore(projectRoot, { stateDir = resolveStateDir(), now 
       assertKnownStatus(status);
       const nextBody = body !== undefined ? String(body) : current.body;
       assertBodyWithinCap(nextBody);
+      const nextTitle = title !== undefined ? String(title) : current.title;
+      // #596 plan freshness: editing the text after a plan exists marks the plan "Out of date" (never
+      // regenerated silently); saving a plan alongside clears the mark. Records written before this field
+      // existed read as fresh.
+      const textChanged = nextBody !== current.body || nextTitle !== current.title;
+      const planStale = plan !== undefined ? false : textChanged && current.plan != null ? true : current.planStale === true;
       const next = {
         ...current,
-        ...(title !== undefined ? { title: String(title) } : {}),
+        title: nextTitle,
         body: nextBody,
+        planStale,
         ...(plan !== undefined ? { plan } : {}),
         ...(status !== undefined ? { status } : {}),
         ...(processId !== undefined ? { processId } : {}),

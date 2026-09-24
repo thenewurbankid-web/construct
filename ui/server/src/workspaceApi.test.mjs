@@ -49,14 +49,14 @@ test('fresh server: settings say no project, and the workspace is reported', asy
 
 test('every project route answers a consistent 409 NO_PROJECT with nothing open (never a crash, never cwd)', async () => {
   const gets = ['/api/pages/features', '/api/pages?feature=x', '/api/pages/tree?feature=x&file=y', '/api/pages/source?feature=x&file=y', '/api/workflows/features',
-    '/api/units', '/api/features', '/api/flow/x', '/api/nav/file?feature=x&path=y', '/api/validate', '/api/git/session', '/api/processes', '/api/review/branches', '/api/tests/x'];
+    '/api/units', '/api/features', '/api/flow/x', '/api/nav/file?feature=x&path=y', '/api/validate', '/api/git/session', '/api/processes', '/api/review/branches', '/api/tests/x', '/api/notes', '/api/notes/some-id'];
   for (const url of gets) {
     const r = await json('GET', url);
     assert.equal(r.status, 409, url);
     assert.equal((await r.json()).code, 'NO_PROJECT', url);
   }
   const posts = [['/api/init', {}], ['/api/create', { kind: 'feature', name: 'x' }], ['/api/refactor', {}], ['/api/research', { action: 'doctor' }],
-    ['/api/import', { mode: 'plan', planPath: 'x' }], ['/api/pages/save', {}], ['/api/workflows/edit', {}], ['/api/git/commit', {}], ['/api/plan', {}], ['/api/review/jobs', {}]];
+    ['/api/import', { mode: 'plan', planPath: 'x' }], ['/api/pages/save', {}], ['/api/workflows/edit', {}], ['/api/git/commit', {}], ['/api/plan', {}], ['/api/review/jobs', {}], ['/api/notes', { title: 'x' }]];
   for (const [url, body] of posts) {
     const r = await json('POST', url, body);
     assert.equal(r.status, 409, url);

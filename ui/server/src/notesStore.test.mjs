@@ -209,3 +209,22 @@ test('survives a fresh store instance pointed at the same dir (simulated server 
   assert.deepEqual(reloaded.plan, plan); // plan shape preserved across the "restart"
   assert.deepEqual(after.list().notes.map((n) => n.id), [note.id]);
 });
+
+test('#596 plan freshness: editing the text after a plan marks it stale; saving a plan clears it; no plan, never stale', () => {
+  const store = openNotesStore(freshProject(), { stateDir: freshStateDir() });
+  const note = store.create({ title: 'x', body: 'one' });
+  assert.equal(note.planStale, false);
+  const noPlan = store.update(note.id, { rev: note.rev, body: 'two' });
+  assert.equal(noPlan.planStale, false, 'a note with no plan has nothing to be out of date');
+
+  const withPlan = store.update(note.id, { rev: noPlan.rev, plan: { steps: [] }, status: 'plan-ready' });
+  assert.equal(withPlan.planStale, false);
+  const same = store.update(note.id, { rev: withPlan.rev, body: 'two' });
+  assert.equal(same.planStale, false, 'saving identical text does not stale the plan');
+  const edited = store.update(note.id, { rev: same.rev, body: 'three' });
+  assert.equal(edited.planStale, true);
+  const stillStale = store.update(note.id, { rev: edited.rev, status: 'plan-ready' });
+  assert.equal(stillStale.planStale, true, 'stays stale until a plan is saved again');
+  const renewed = store.update(note.id, { rev: stillStale.rev, plan: { steps: [{ id: 'a' }] } });
+  assert.equal(renewed.planStale, false);
+});
