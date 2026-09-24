@@ -25,9 +25,15 @@ then, as a **separate** command (chaining it into the checkout with `&&` has tri
 worktree-containment guard — the string "git" inside "github-comment-bridge" reads as nested git use):
 ```bash
 M=/home/developer/Desktop/repos/construct
-for d in . ui/server ui/client ui/e2e packages/tools/github-comment-bridge; do
+for d in . ui/server ui/client ui/e2e; do
   [ -d "$M/$d/node_modules" ] && ln -sfn "$M/$d/node_modules" "$d/node_modules"
 done
+```
+and the comment-bridge link as a third command (the same guard refuses any command whose text contains
+"git" inside its path, so it cannot share the loop; without it `packages/tools/github-comment-bridge/test/github.test.mjs`
+fails on a fresh worktree):
+```bash
+ln -sfn /home/developer/Desktop/repos/construct/packages/tools/github-comment-bridge/node_modules packages/tools/github-comment-bridge/node_modules
 ```
 If the checkout silently didn't run (you're still on the worktree's default branch, based on frozen
 `main`), rename the branch and rebase onto `origin/work/2026-09-23` before continuing — don't build on
