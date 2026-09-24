@@ -175,7 +175,7 @@ export async function generatedMarkdown(kind, repoRoot) {
   }
   if (kind === 'rules') {
     const { DEFAULT_RULES } = await import(pathToFileURL(path.join(repoRoot, 'packages/core/config.mjs')));
-    const rows = Object.entries(DEFAULT_RULES).map(([id, r]) => `| \`${id}\` | ${r.severity ? '`' + r.severity + '`' : (r.numeric ? 'number' : '')} | ${String(r.name).replace(/\|/g, '\\|')} |`);
+    const rows = Object.entries(DEFAULT_RULES).map(([id, r]) => `| \`${id}\` | ${r.severity ? '`' + r.severity + '`' : (r.numeric ? 'number' : '')} | ${String(r.name).replace(/\|/g, '\\|').replace(/</g, '&lt;').replace(/>/g, '&gt;')} |`);
     return [
       'This table is generated from `DEFAULT_RULES` in `packages/core/config.mjs`, the same map `construct validate` reads, so it is always current. Override any severity in `architecture.yml`:',
       '',

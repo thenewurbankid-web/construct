@@ -28,6 +28,54 @@ test('sanitizer strips scripts, handlers and javascript: urls', () => {
   assert.match(out, /<p>a<\/p>/);
 });
 
+test('sanitizer (#421): the bypasses a regex pass misses are stripped by the parser', () => {
+  const dropped = [
+    '<img src=x onerror=alert(1)>',
+    '<img src="x" onerror="alert(1)">',
+    '<script>alert(1)',
+    '<scr<script>ipt>alert(1)</scr</script>ipt>',
+    "<a href='javascript:alert(1)'>x</a>",
+    '<a href="JaVaScRiPt:alert(1)">x</a>',
+    '<a href="&#106;avascript:alert(1)">x</a>',
+    '<a href="java&#x0A;script:alert(1)">x</a>',
+    '<a href=" javascript:alert(1)">x</a>',
+    '<a href="data:text/html,<script>alert(1)</script>">x</a>',
+    '<svg><script>alert(1)</script></svg>',
+    '<svg onload=alert(1)>',
+    '<math><mtext><table><mglyph><style><!--</style><img title="--&gt;&lt;img src=1 onerror=alert(1)&gt;">',
+    '<noscript><p title="</noscript><img src=x onerror=alert(1)>">',
+    '<iframe srcdoc="<script>alert(1)</script>"></iframe>',
+    '<form action="javascript:alert(1)"><button>x</button></form>',
+    '<body onload=alert(1)>',
+    '<div style="background:url(javascript:alert(1))">x</div>',
+    '<input type="text" onfocus="alert(1)" autofocus>',
+    '<object data="javascript:alert(1)"></object>',
+  ];
+  for (const input of dropped) {
+    const out = sanitizeHtml(input);
+    assert.doesNotMatch(out, /<script|<svg|<iframe|<form|<object|<style|<body|onerror|onload|onfocus|onclick|javascript:|srcdoc|style=/i, `not stripped: ${input} -> ${out}`);
+  }
+  // A dropped element keeps its words; an unclosed tag does not swallow the rest of the page.
+  assert.equal(sanitizeHtml('<p>a</p><script>alert(1)'), '<p>a</p>');
+  assert.match(sanitizeHtml('<p>before</p><div onclick="x()">kept words</div>'), /kept words/);
+});
+
+test('sanitizer (#421): what the site itself writes passes untouched', () => {
+  const page = [
+    '<h2 id="a-b">A b<a class="anchor" href="#a-b" aria-label="Link to this section">#</a></h2>',
+    '<p>It&#39;s a <code>x -&gt; y</code> &quot;quote&quot; <a href="../rel/" rel="noopener">rel</a> <a href="https://example.com/x" rel="noopener">abs</a> <a href="mailto:a@b.c">m</a></p>',
+    '<img src="../assets/img/a.webp" loading="lazy" decoding="async" alt="An alt">',
+    '<pre><code class="language-js">const a = 1 &lt; 2;\n</code></pre>',
+    '<table><thead><tr><th align="left">h</th></tr></thead><tbody><tr><td>c</td></tr></tbody></table>',
+    '<ul class="contains-task-list"><li><input type="checkbox" checked disabled> done</li></ul>',
+    '<figure class="video"><video controls preload="metadata" width="1280" height="720" poster="p.png" aria-label="v"><source src="v.webm" type="video/webm"><track kind="subtitles" srclang="en" label="English" src="v.vtt"><a href="v.webm" download>Download the video</a></video><figcaption>Downloads: <a href="v.webm" download>Silent video</a> &middot; <a href="v.vtt" download>Subtitles</a></figcaption></figure>',
+  ].join('\n');
+  assert.equal(sanitizeHtml(page), page);
+  // Only a checkbox may be an input, and an image may be a data: image but a link may not be a data: page.
+  assert.doesNotMatch(sanitizeHtml('<input type="text" value="x">'), /<input/);
+  assert.match(sanitizeHtml('<img src="data:image/png;base64,AAAA" alt="">'), /data:image\/png/);
+});
+
 test('structure: the user guide is grouped by product, with a page for each family member', () => {
   assert.deepEqual(USER_GROUPS.map((g) => g.group), ['Start', 'Construct', 'Cockpit', 'Videos', 'CLI']);
   const paths = USER_GROUPS.flatMap((g) => g.pages.map((p) => p.path));
