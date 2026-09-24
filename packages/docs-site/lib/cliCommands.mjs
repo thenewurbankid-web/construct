@@ -90,6 +90,7 @@ const EXTRA_COMMANDS = [
   { name: 'test', fn: 'testCommand' },
   { name: 'template', fn: 'template' },
   { name: 'pipeline', fn: 'pipeline' },
+  { name: 'traces', fn: 'traces' },
 ];
 
 /**
