@@ -65,14 +65,14 @@ test.describe.serial('Plan mode (#289, #332)', () => {
     await page.screenshot({ path: path.join(SHOTS, '366-notes-plan-screen.png') });
   });
 
-  test('a note becomes proposals you confirm, then a deterministic impact with derived and inferred rows', async ({ page }) => {
+  test('a note becomes proposals you confirm, then a deterministic impact with Computed and Guess rows', async ({ page }) => {
     await gotoNotes(page, '/plan');
     await page.getByTestId('plan-ticket-title').fill('Fix billing totals');
     await page.getByTestId('plan-ticket-body').fill(TICKET);
     await expect(page.getByTestId('plan-analyse')).toBeDisabled();
 
     await page.getByTestId('plan-propose').click();
-    await expect(page.getByTestId('plan-proposal').first()).toContainText('inferred');
+    await expect(page.getByTestId('plan-proposal').first()).toContainText('Guess');
     await expect(page.getByTestId('plan-proposal').filter({ hasText: 'feature:billing' })).toHaveCount(1);
     // A proposal is not used until it is confirmed.
     await expect(page.getByTestId('plan-analyse')).toBeDisabled();
@@ -85,9 +85,10 @@ test.describe.serial('Plan mode (#289, #332)', () => {
     await expect(page.getByTestId('plan-impact')).toBeVisible();
     await expect(page.getByTestId('plan-impact-headline')).toContainText('DETERMINISTIC');
     await expect(page.getByTestId('plan-impact-headline')).toContainText('you picked');
+    await expect(page.getByTestId('plan-impact-headline')).toContainText('computed'); // #391: "computed · guessed", not derived / inferred
     await expect(page.getByTestId('plan-impact-file').first()).toBeVisible();
-    // Provenance: what was picked is derived; what depends on the confirmed guess is inferred.
-    await expect(page.getByTestId('plan-impact-file').getByTestId('plan-provenance').filter({ hasText: 'derived' }).first()).toBeVisible();
+    // Provenance: what was picked is Computed; what depends on the confirmed guess is a Guess.
+    await expect(page.getByTestId('plan-impact-file').getByTestId('plan-provenance').filter({ hasText: 'Computed' }).first()).toBeVisible();
     await expect(page.getByTestId('plan-impact-features').getByTestId('plan-provenance').first()).toBeVisible();
     await expect(page.getByTestId('plan-impact-file').filter({ hasText: 'features/billing/domain/billingRules.ts' })).toHaveCount(1);
     await page.screenshot({ path: path.join(SHOTS, '289-plan-impact.png') });

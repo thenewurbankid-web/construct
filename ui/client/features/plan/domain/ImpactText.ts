@@ -5,7 +5,7 @@ export const whyText = (f: ImpactFile): string => f.reasons[0]?.message ?? (f.di
 
 export const seedNote = (seeds: { explicit: number; inferred: number }): string => {
   if (seeds.inferred && seeds.explicit) return `${seeds.explicit} unit(s) you picked and ${seeds.inferred} you confirmed from the Notes text`;
-  if (seeds.inferred) return `${seeds.inferred} unit(s) you confirmed from the Notes text (guessed, so the result is marked inferred)`;
+  if (seeds.inferred) return `${seeds.inferred} unit(s) you confirmed from the Notes text (guessed, so the result is marked Guess)`;
   return `${seeds.explicit} unit(s) you picked`;
 };
 

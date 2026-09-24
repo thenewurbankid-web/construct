@@ -13,7 +13,7 @@ export function TicketPane(p: TicketPaneProps) {
       <ConstraintsList constraints={p.constraints} />
       <UnitPicker {...p} />
       <button type="button" className="dg-btn pl-primary" onClick={p.onAnalyse} disabled={!p.canAnalyse || p.analyseBusy} data-testid="plan-analyse">
-        {p.analyseBusy ? 'Analysing...' : 'Analyse impact'}
+        {p.analyseBusy ? 'Checking...' : 'Check impact'}
       </button>
     </div>
   );

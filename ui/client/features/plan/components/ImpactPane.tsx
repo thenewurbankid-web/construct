@@ -2,21 +2,21 @@ import type { ImpactPaneProps } from '../types';
 import { ImpactTable } from './ImpactTable';
 import { ProvenanceBadge } from './ProvenanceBadge';
 
-/** Middle pane: the impact report, every row tagged derived or inferred. Deterministic; no model is involved
+/** Middle pane: the impact report, every row tagged Computed or Guess. Deterministic; no model is involved
  * and the screen says so. Empty, loading and error are designed states, each with a next action. */
 export function ImpactPane({ status, error, view }: ImpactPaneProps) {
   if (status === 'idle') {
     return (
       <div className="dg-empty" data-testid="plan-impact-empty">
         <p className="dg-empty-title">No impact yet</p>
-        <p className="hint">Write a note on the left, pick the units it is about (or let Construct suggest some and confirm them), then choose Analyse impact.</p>
+        <p className="hint">Write a note on the left, pick the units it is about (or let Construct suggest some and confirm them), then choose Check impact.</p>
       </div>
     );
   }
   if (status === 'loading') {
     return (
       <p className="pl-lede" role="status" data-testid="plan-impact-loading">
-        Analysing: reading your project&apos;s imports and layers. Deterministic, no model.
+        Checking: reading your project&apos;s imports and layers. Deterministic, no model.
       </p>
     );
   }

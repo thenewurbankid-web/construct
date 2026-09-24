@@ -7,4 +7,4 @@ export const constraintsView = (c: Constraints): ConstraintsView => ({
   rules: c.rules,
 });
 
-export const proposalView = (p: Proposal): ProposalView => ({ ref: p.ref, badge: `inferred ${Math.round(p.confidence * 100)}%`, why: p.why });
+export const proposalView = (p: Proposal): ProposalView => ({ ref: p.ref, badge: `Guess ${Math.round(p.confidence * 100)}%`, why: p.why });

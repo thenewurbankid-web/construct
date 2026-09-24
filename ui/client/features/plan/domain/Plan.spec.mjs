@@ -116,7 +116,7 @@ test('impact view: headline, reasons and the seed note', () => {
   assert.equal(headline(report()), '1 feature · 2 files');
   assert.equal(whyText(report().files[0]), 'A seed.');
   assert.match(whyText(report().files[1]), /1 hop/);
-  assert.match(seedNote({ explicit: 0, inferred: 2 }), /guessed, so the result is marked inferred/);
+  assert.match(seedNote({ explicit: 0, inferred: 2 }), /guessed, so the result is marked Guess/);
   assert.match(seedNote({ explicit: 1, inferred: 1 }), /picked and 1 you confirmed/);
   assert.match(seedNote({ explicit: 2, inferred: 0 }), /2 unit\(s\) you picked/);
 });
