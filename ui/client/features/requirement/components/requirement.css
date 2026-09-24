@@ -51,4 +51,17 @@
 .rq-warn { margin: 0; padding: var(--sp-2); border: 1px solid var(--warn); background: var(--warn-soft); border-radius: var(--r-md); color: var(--text); }
 .rq-ok { margin: 0; color: var(--success); font-weight: 600; }
 .rq-files-all summary { cursor: pointer; }
+/* #653: the Proof card. State is a word and a symbol as well as a colour. */
+.rq-badge--proof-pending { background: var(--neutral-soft); }
+.rq-badge--proof-green { background: var(--success-soft); border-color: var(--success); }
+.rq-badge--proof-failed { background: var(--danger-soft); border-color: var(--danger); }
+.rq-badge--proof-skipped { background: var(--warn-soft); border-color: var(--warn); }
+.rq-fail { display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-3); border: 1px solid var(--warn); background: var(--warn-soft); border-radius: var(--r-md); color: var(--text); min-width: 0; overflow-wrap: anywhere; }
+.rq-fail--app { border-color: var(--danger); background: var(--danger-soft); }
+.rq-fail p { margin: 0; }
+.rq-h3-plain { margin: 0; font-size: var(--fs-md); }
+.rq-pre { margin: 0; padding: var(--sp-2); background: var(--surface-2); border-radius: var(--r-md); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 12rem; overflow: auto; font-size: var(--fs-sm); }
+.rq-proof-options { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
+.rq-skip { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-3); border: 1px solid var(--border-strong); border-radius: var(--r-md); background: var(--surface-2); }
+.rq-input { min-height: 2.25rem; }
 @media (max-width: 600px) { .rq-stage { padding: var(--sp-2) var(--sp-3) var(--sp-3); } }

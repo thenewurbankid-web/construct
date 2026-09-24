@@ -20,6 +20,11 @@ function RequirementScreen() {
       onApprove={() => void r.approve()}
       onSaveNote={() => void r.saveNote()}
       onOpenProcesses={drawer.openProcesses}
+      onProofRun={() => void r.runProof()}
+      onProofSkipOpen={r.openSkip}
+      onProofSkipDraft={r.editSkipReason}
+      onProofSkipConfirm={() => void r.confirmSkip()}
+      onProofSkipCancel={r.cancelSkip}
     />
   );
 }

@@ -9,6 +9,7 @@ import type { Answer, ScreenAction } from '../domain/RequirementTypes';
 import type { AnswerTarget } from '../types';
 import { readRequirement } from '../services/RequirementApi';
 import { initialScreen, screenReducer } from '../workflows/RequirementMachine';
+import { useProof } from './useProof';
 
 /**
  * The Requirement screen: a sentence is read into a card, a placement, a plan and a timeline by the server's deterministic
@@ -65,5 +66,7 @@ export function useRequirement(onApproved: () => void) {
     send(r.ok ? { type: 'NOTE_SAVED' } : { type: 'NOTE_FAILED', error: r.error });
   }, [send]);
 
-  return { state, setText, read, pickExample, answer, approve, saveNote };
+  const proof = useProof(state, latest, send);
+
+  return { state, setText, read, pickExample, answer, approve, saveNote, ...proof };
 }

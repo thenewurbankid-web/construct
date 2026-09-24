@@ -3,6 +3,7 @@
 import type { ApproveView, BlockView, CardView, OpenView, RequirementView, ResultView } from '../types.ts';
 import { EXAMPLES } from './Examples.ts';
 import { NOUN_LABEL, PLACEMENT_LABEL, VERB_LABEL } from './Labels.ts';
+import { buildProofView } from './ProofCard.ts';
 import { QUESTIONS } from './PlacementQuestions.ts';
 import type { CardNoun, ReadResult, ScreenState } from './RequirementTypes.ts';
 import { offerViews } from './ShapeOffer.ts';
@@ -74,6 +75,7 @@ function resultView(state: ScreenState, result: ReadResult): ResultView {
     timeline: toTimeline(result.placement),
     files: allFiles(result.files),
     approve: approveView(state, result),
+    proof: buildProofView(state, result),
   };
 }
 

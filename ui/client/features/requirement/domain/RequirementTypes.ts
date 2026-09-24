@@ -54,7 +54,30 @@ export type ReadResult = {
   offers?: Offer[];
   warnings: string[];
   summary: { readBack: string[]; blocks: string[] };
+  /** The proof of a shaped screen (#623): its steps and the chain state (pending when it comes from a read). null for a plan with no shaped unit. Absent from an older server. */
+  proof?: PlanProof | null;
 };
+
+/** What planFromBlocks says about the proof of the chain (packages/core/placement.mjs). */
+export type PlanProof = { required: boolean; complete: boolean; state: ProofState; steps: { name: string; kind: string; proofStep: string; verifiedBy: string }[]; verifiedBy: string[] };
+
+/** The four states of the proof of a screen (packages/core/proof.mjs proofStatus). */
+export type ProofState = 'pending' | 'green' | 'failed' | 'skipped';
+/** One closed option of a proof summary (proofSummary): a stable id, its label and why it is offered. */
+export type ProofOption = { id: string; label: string; why: string };
+/** One failed test of the proof, classified like the Tests screen's failures (kind app: the state is wrong; convention: a file the proof binds to is gone). */
+export type ProofFailure = { test: string; kind: 'app' | 'convention' | 'other'; title: string; summary: string; message: string; expected?: string; reached?: string; selector?: string; fix?: string };
+/** A run of the proof, as POST /api/requirement/proof/run answers it. `error` is a run that could not start or finish (no esbuild, timed out). */
+export type ProofRun = {
+  state: ProofState;
+  complete: boolean;
+  durationMs: number;
+  counts: { total: number; passed: number; failed: number };
+  failures: ProofFailure[];
+  error: { code: string; message: string } | null;
+  summary: { options: ProofOption[] };
+};
+export type ProofStatusReply = { applied: boolean; options: ProofOption[] };
 
 /** An answer to a closed question, sent back with the sentence: the server replays them in order. */
 export type Answer = { id: string; option: string };
@@ -65,7 +88,16 @@ export type ReadState = { status: 'idle' | 'loading' | 'ready' | 'failed'; resul
 export type ApproveState = { status: 'idle' | 'running' | 'started' | 'failed'; processId: string | null; error: string | null };
 export type NoteState = { status: 'idle' | 'saving' | 'saved' | 'failed'; error: string | null };
 
-export type ScreenState = { text: string; answers: Answer[]; read: ReadState; approve: ApproveState; note: NoteState };
+/** The proof card's state (#653): whether the plan's files are in the project (unknown until the server says), the last run, and a skip. */
+export type ProofCardState = {
+  applied: boolean | null;
+  /** The closed options the server offered last (proofSummary), so the buttons are its, not a copy. */
+  options: ProofOption[];
+  run: { status: 'idle' | 'running' | 'done' | 'failed'; result: ProofRun | null; error: string | null };
+  skip: { status: 'idle' | 'open' | 'saving' | 'skipped' | 'failed'; draft: string; reason: string | null; error: string | null };
+};
+
+export type ScreenState = { text: string; answers: Answer[]; read: ReadState; approve: ApproveState; note: NoteState; proof: ProofCardState };
 
 export type ScreenAction =
   | { type: 'TEXT'; text: string }
@@ -78,7 +110,17 @@ export type ScreenAction =
   | { type: 'APPROVE_FAILED'; error: string }
   | { type: 'NOTE_SAVING' }
   | { type: 'NOTE_SAVED' }
-  | { type: 'NOTE_FAILED'; error: string };
+  | { type: 'NOTE_FAILED'; error: string }
+  | { type: 'PROOF_APPLIED'; applied: boolean; options: ProofOption[] }
+  | { type: 'PROOF_RUN_STARTED' }
+  | { type: 'PROOF_RUN_DONE'; run: ProofRun }
+  | { type: 'PROOF_RUN_FAILED'; error: string; applied?: boolean }
+  | { type: 'PROOF_SKIP_OPEN' }
+  | { type: 'PROOF_SKIP_CANCEL' }
+  | { type: 'PROOF_SKIP_DRAFT'; draft: string }
+  | { type: 'PROOF_SKIP_SAVING' }
+  | { type: 'PROOF_SKIP_DONE'; reason: string }
+  | { type: 'PROOF_SKIP_FAILED'; error: string };
 
 export type TimelineKind = 'page-load' | 'server-read' | 'presentation' | 'interaction' | 'mutation' | 'redirect';
 

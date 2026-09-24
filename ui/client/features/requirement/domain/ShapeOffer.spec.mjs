@@ -39,7 +39,7 @@ test('the offer never blocks Approve: an unanswered offer approves the plain pla
   assert.equal(v.result.approve.hint, null);
 });
 
-test('choosing list: the view names the chooser (person), the plan has 7 steps and the typed files; scaffold gives fewer', () => {
+test('choosing list: the view names the chooser (person), the plan has 9 steps (the feature, six units, the proof and its run, #623) and the typed files; scaffold gives fewer', () => {
   const chosen = shapeResult({ 'q-shape': 'list' });
   const list = shapeView(chosen);
   const [offer] = list.result.offers;
@@ -49,8 +49,8 @@ test('choosing list: the view names the chooser (person), the plan has 7 steps a
   assert.deepEqual(list.result.timeline.map((s) => s.kind), ['page-load', 'server-read', 'presentation'], 'the list shape reads on the server, then shows');
   assert.equal(list.result.files.length, 10);
   assert.ok(list.result.files.includes('features/products/services/Products.service.ts'));
-  assert.equal(chosen.plan.steps.length, 7);
-  assert.ok(chosen.plan.steps.slice(1).every((s) => s.args.shape === 'list'));
+  assert.equal(chosen.plan.steps.length, 9);
+  assert.ok(chosen.plan.steps.slice(1, 7).every((s) => s.args.shape === 'list'));
   const scaffold = shapeView(shapeResult({ 'q-shape': 'scaffold' }));
   assert.equal(scaffold.result.offers[0].decidedBy, 'person');
   assert.deepEqual(scaffold.result.offers[0].options.map((o) => o.chosen), [false, true]);

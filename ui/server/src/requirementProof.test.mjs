@@ -68,6 +68,7 @@ test('the read response carries the plan\'s proof, pending and incomplete', () =
 test('before the plan is applied: status says so, run is refused with the reason, and a skip is allowed only with a reason', async () => {
   const status = await call('status', target);
   assert.deepEqual([status.status, status.body.applied], [200, false]);
+  assert.deepEqual(status.body.options.map((o) => o.id), ['run-proof', 'skip-proof'], 'the closed options of a proof that has not run');
   const run = await call('run', target);
   assert.equal(run.status, 409);
   assert.equal(run.body.code, 'NOT_APPLIED');

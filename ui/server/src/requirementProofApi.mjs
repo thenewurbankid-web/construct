@@ -129,7 +129,7 @@ export function createProofHandlers({ runProofs = defaultRunProofs, timeoutMs = 
     async status(body, root) {
       const t = proofTarget(body, root);
       if (!t.ok) return t;
-      return { status: 200, body: { ok: true, feature: t.feature, applied: t.applied, files: t.names } };
+      return { status: 200, body: { ok: true, feature: t.feature, applied: t.applied, files: t.names, options: proofSummary(null).options } };
     },
 
     async run(body, root) {
