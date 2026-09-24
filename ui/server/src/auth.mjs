@@ -652,6 +652,8 @@ export function createAuth(config, deps = {}) {
     requireSession,
     mountRoutes,
     describeStartup,
+    /** #638: the same plain error page, for the separate repository-connection callback (githubRepoApi.mjs). */
+    sendError,
     // exported for tests / reuse
     handleSession,
     handleLogin,

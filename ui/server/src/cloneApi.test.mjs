@@ -14,6 +14,8 @@ process.env.CONSTRUCT_STATE_DIR = path.join(sandbox, 'state');
 fs.mkdirSync(process.env.CONSTRUCT_WORKSPACE_ROOT);
 delete process.env.CONSTRUCT_GITHUB_CLIENT_ID;
 delete process.env.CONSTRUCT_GITHUB_CLIENT_SECRET;
+delete process.env.CONSTRUCT_GITHUB_REPO_CLIENT_ID;
+delete process.env.CONSTRUCT_GITHUB_REPO_CLIENT_SECRET;
 delete process.env.CONSTRUCT_E2E_PROJECT_DIR;
 delete process.env.CONSTRUCT_E2E_CLONE_LOCAL_ROOT;
 
@@ -153,4 +155,23 @@ test('Pull latest: below the gate, Origin-checked, and hostile or foreign folder
   assert.equal((await res.json()).code, 'NOT_A_COCKPIT_CLONE');
   // a bare `pull` id is never mistaken for a job
   assert.equal((await call('GET', '/api/clone/pull')).status, 404);
+});
+
+// #638: with the repository-connection app not configured (the default) the feature is invisible through the real route table.
+test('GitHub connection unset: status says only enabled:false, its routes 404, and useLogin is "not connected" or refused', async () => {
+  const before = fs.readdirSync(workspaceRoot());
+  assert.deepEqual(await (await call('GET', '/api/github/status')).json(), { ok: true, enabled: false, connected: false });
+  assert.equal((await call('GET', '/api/github/repos')).status, 404);
+  assert.equal((await call('POST', '/api/github/disconnect', {})).status, 404);
+  assert.equal((await call('GET', '/auth/repo/start')).status, 404);
+  assert.equal((await call('GET', '/auth/repo/callback?code=a&state=b')).status, 404);
+  assert.equal((await call('GET', '/api/github/status', undefined, { origin: 'https://evil.example' })).status, 403);
+  const login = await call('POST', '/api/clone', { url: 'https://github.com/o/r', useLogin: true });
+  assert.equal(login.status, 409);
+  assert.equal((await login.json()).code, 'NOT_CONNECTED');
+  const both = await call('POST', '/api/clone', { url: 'https://github.com/o/r', useLogin: true, token: 'ghp_abcdefghijklmnop' });
+  assert.equal(both.status, 400);
+  assert.equal((await both.json()).code, 'BAD_AUTH_CHOICE');
+  assert.equal((await call('POST', '/api/clone/pull', { name: 'x', useLogin: true, token: 'ghp_abcdefghijklmnop' })).status, 400);
+  assert.deepEqual(fs.readdirSync(workspaceRoot()), before);
 });
