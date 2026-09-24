@@ -1,13 +1,16 @@
 // #541 -- the executor seam: WHICH implementation runs a core activity for the Cockpit.
 //
 //   engine  (default) -- call the packages/core + packages/engine function in-process, exactly as before.
-//   cli               -- spawn the real `construct` binary as a subprocess (`validate --format json --dir <root>`),
+//   cli               -- spawn the real `construct` binary as a subprocess (`<verb> --format json --dir <root>`),
 //                        parse ONLY its JSON document, and treat anything else as a clear error.
 //
 // The mode is a per-project setting: `project.execution.mode` in architecture.yml (packages/core/config.mjs).
+// This file holds the primitives (binary lookup, the spawn, the JSON parse) and `runValidate`; the other verbs are
+// wrappers over them in coreVerbs.mjs (summarize, doctor, review, create, refactor, import), and the routes that
+// honour the mode are researchApi.mjs, writeVerbsApi.mjs, validateApi.mjs and reviewAnalyses.mjs (via reviewCli.mjs).
 //
-// RULE (do not break it): this seam is for CORE ACTIVITIES ONLY -- CLI-native verbs that have (or are getting)
-// a stable `--format json` contract (validate today; create/refactor/import/summarize/research/review later).
+// RULE (do not break it): this seam is for CORE ACTIVITIES ONLY -- CLI-native verbs with a stable `--format json`
+// contract (validate, summarize, research/doctor, review, create, refactor, import).
 // The Cockpit's UI-helper endpoints -- scope-links graph data, Palette grouping, the live-preview bridge,
 // pane/resize state, the dev-server manager -- are high-frequency interaction plumbing and ALWAYS stay
 // in-process regardless of the mode: a subprocess spawn on every hover or drag would make the UI feel broken,

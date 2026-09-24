@@ -442,14 +442,14 @@ Three capabilities, each with its own namespace — a friendlier grouping over t
 
 ```bash
 # create — scaffold a feature, a layer, or a whole vertical slice
-construct create feature <name> [--dir <path>]
-construct create layer <name> --feature <feature> --layers <l1,l2,...> [--dir <path>]
-construct create <layer> <name> --feature <feature> [--dir <path>]
+construct create feature <name> [--format json] [--dir <path>]
+construct create layer <name> --feature <feature> --layers <l1,l2,...> [--format json] [--dir <path>]
+construct create <layer> <name> --feature <feature> [--format json] [--dir <path>]
 construct create service <name> --feature <feature> --openapi <spec> [--dir <path>]
 
 # refactor — mechanical, LLM-free moves/renames within the architecture
-construct refactor move <name> --feature <feature> --from <layer> --to <layer> [--dir <path>]
-construct refactor rename <name> <newName> --feature <feature> --layer <layer> [--dir <path>]
+construct refactor move <name> --feature <feature> --from <layer> --to <layer> [--format json] [--dir <path>]
+construct refactor rename <name> <newName> --feature <feature> --layer <layer> [--format json] [--dir <path>]
 
 # research — read-only: summarize a feature, or check environment/tooling
 construct research summarize [--feature <name>] [--format json|md|compact|prose] [--since <ref>] [--dir <path>]
@@ -509,7 +509,7 @@ Switching providers only ever touches `client.ts` — every generated `services/
 
 ## Cockpit execution mode: in-process engine or the real CLI (#541)
 
-The Cockpit runs a core activity (today: **Diagnostics = `construct validate`**; the other verbs follow under #541) in one of two modes, chosen per project in `architecture.yml`, same shape as `project.dataLayer.provider`:
+The Cockpit runs each **core activity** (the verbs `validate`, `summarize`, `research`, `review`, `create`, `refactor`, `import`) in one of two modes, chosen per project in `architecture.yml`, same shape as `project.dataLayer.provider`:
 
 ```yaml
 project:
@@ -517,11 +517,32 @@ project:
     mode: cli   # or engine (default): call packages/core in-process
 ```
 
-- `engine` (default, nothing changes unless a project opts in): the Cockpit server calls the same core functions the CLI does, in-process.
-- `cli`: the server spawns the real binary, `node <construct.mjs> validate --format json --dir <project>`, in the project directory with the `CONSTRUCT_*` variables (e.g. `CONSTRUCT_WORKSPACE_ROOT`) and a minimal environment, parses only the JSON, and shows a timeout, a crash or non-JSON output as an error (HTTP 502 with the CLI's own message), never as an empty result. Use it where you want the Cockpit to run exactly the `construct` a project pins.
-- Which binary: `CONSTRUCT_CLI_BIN=/path/to/construct.mjs` (a source `packages/cli/construct.mjs` or the built `packages/cli/dist/construct.mjs`); otherwise this repo's `packages/cli/construct.mjs`; otherwise an installed `@line/construct` (how the split Cockpit repo will get it, #540). `CONSTRUCT_CLI_TIMEOUT_MS` changes the 120 s limit. An unknown `mode` fails with a message naming the allowed values.
-- Parity is a test, not a promise: `test/executionModeParity.test.mjs` runs the same fixtures through both modes and asserts byte-identical JSON.
-- UI-helper endpoints (scope links, Palette, live-preview bridge, pane state) never take the CLI path; they stay in-process in both modes. The seam and that rule live in `ui/server/src/coreExecutor.mjs`.
+`project.execution.mode` is `engine` or `cli`; absent means `engine`, so nothing changes unless a project opts in. Any other value is a usage error (exit 2 on the CLI, HTTP 400 in the Cockpit) that names the allowed values. The CLI itself ignores the setting: it always is the CLI.
+
+- `engine` (default): the Cockpit server calls the same `packages/core` and `packages/engine` functions the CLI does, in-process.
+- `cli`: the server spawns the real binary, `node <construct.mjs> <verb> ... --format json --dir <project>`, with the project root as its working directory, the `CONSTRUCT_*` variables (e.g. `CONSTRUCT_WORKSPACE_ROOT`) and a minimal allow-listed environment (no server secrets), parses only the JSON document (never the human text), and shows a timeout, a crash or non-JSON output as an error (HTTP 502 with the CLI's own message), never as an empty result. The `--dir` it is given is always the server's own derived, contained project root, and the paths `create`/`import` read are the workspace-contained ones, never a client string. Runs go through the same per-login queue and concurrency cap as the in-process path. Use it where you want the Cockpit to run exactly the `construct` a project pins.
+- Which binary: `CONSTRUCT_CLI_BIN=/path/to/construct.mjs` (a source `packages/cli/construct.mjs` or the built `packages/cli/dist/construct.mjs`); otherwise this repo's `packages/cli/construct.mjs`; otherwise an installed `@line/construct` (how the split Cockpit repo will get it, #540). `CONSTRUCT_CLI_TIMEOUT_MS` changes the 120 s limit.
+- Every response says which mode ran (`mode`).
+
+Per verb, what `cli` mode runs and what it deliberately does not:
+
+| Verb | Cockpit endpoint | `cli` mode runs | Stays in-process even in `cli` mode |
+|---|---|---|---|
+| validate | `GET /api/validate` | `construct validate --format json` | nothing |
+| summarize | `POST /api/research` `{action: summarize}` | `construct summarize --format json [--feature f]` | the `md`, `compact`, `prose` views and `since` (no JSON contract; the body says `mode: "engine"` and why) |
+| research | `POST /api/research` `{action: doctor}` | `construct doctor --format json` (the text is rebuilt from the document) | nothing (`research workflow`, `impact`, `spec` have no Cockpit endpoint; they run as Processes, which already spawn the CLI) |
+| review | Review mode's analysis (`review.analyze` Process step) | `construct review <base> <head> --format json`, the changed-file summaries still computed by the existing worker | nothing; refused with `CLI_ROOT_MISMATCH` when the repository top level is not itself the folder holding `architecture.yml` (the CLI would climb out of it) |
+| create | `POST /api/create` | `construct create feature\|layer\|<layer> ... --format json` | any request with `useLlm` (a model call: the provider keys live in the Cockpit server) |
+| refactor | `POST /api/refactor` | `construct refactor move\|rename ... --format json` | nothing |
+| import | `POST /api/import` | `construct import ... --format json` | any request with `useLlm` or `llm`, and the Import Wizard (`/ws/wizard`, an interactive plan analysis with an LLM) |
+
+`--format json` on `create`, `refactor` and `import` covers the deterministic forms only and prints one document (`{ok: true, verb, ...}`, or `{ok: false, error: {code, message}}` with the matching exit code); a flag that implies a model call or an external input (`--llm`, `--from` on `create`, `--bind`, `--openapi`, `--route`) is refused by name.
+
+**Never switchable**, by rule (`ui/server/src/coreExecutor.mjs`): the UI-helper endpoints (scope links, Palette, the live-preview bridge, pane and resize state, the dev-server manager, and the read models `/api/units`, `/api/flow`, `/api/features`, `/api/components`) stay in-process in both modes. They fire on every hover, drag or tab change, and there is no CLI verb for them to be equal to.
+
+Parity is a test, not a promise: `test/executionModeParity.test.mjs` (validate), `test/executionModeVerbs.test.mjs` (summarize, doctor), `test/executionModeReview.test.mjs` and `test/executionModeWrites.test.mjs` run the same throwaway project through both modes and assert byte-identical JSON (for the verbs that write files, also byte-identical project trees). The audit of which verb has which contract, and where the two paths would diverge, is in [docs/execution-model.md](docs/execution-model.md#cockpit-execution-mode-audit-of-the-seven-verbs-541-story-560).
+
+**Recommendation for the hosted Cockpit (pending the owner's decision, not applied):** run it in `cli` mode. A hosted Cockpit runs many users' projects in one server process: `validate`, `summarize` and `review` are synchronous walks of a user's files, so in `engine` mode one large or malformed project stalls every user and a crash or out-of-memory takes the server down, whereas a subprocess is killed on timeout as a whole process group, cannot see the server's tokens (allow-listed environment), and fails as a clear per-request error. The price is one Node start-up and module load per action (measured at about 0.6 s for `construct --version` from source on the dev machine; the bundled `packages/cli/dist` is the lever to cut it) and a little more memory under load, both bounded by the existing concurrency cap; local single-user use keeps the `engine` default for the lowest latency. Open items before flipping it: the installed-package path from the split Cockpit repo (#540), and a Cockpit indicator/switch for the mode.
 
 ## Build order is enforced, not a convention to remember
 

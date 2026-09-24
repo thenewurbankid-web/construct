@@ -95,7 +95,8 @@ export function runDoctor(root, { mode = 'engine', env, bin, timeoutMs, spawnImp
  * Run a `cli`-mode verb and shape the outcome like `runCapturing` does (`{ok, output, attribution,
  * durationSeconds, httpStatus, ...}`), plus `mode`, so the Cockpit renders it exactly as it renders the in-process
  * path. A failure of the CLI itself (not found, timeout, non-success exit, output that is not the document) is an
- * `ok:false` result with the CLI's own words and HTTP 502, never an empty success.
+ * `ok:false` result with the CLI's own words and HTTP 502, never an empty success. The run goes through the same
+ * per-login queue and concurrency cap as the in-process path (`runCapturing`).
  *
  * @param {() => Promise<{mode:string, exitCode:number, report:string, doc:any}>} run A verb runner from this file, already bound to its root and options.
  * @param {{lines?:(result:object)=>string[], attribution?:{tool:string, llm:string}|null|((result:object)=>({tool:string, llm:string}|null))}} [shape]
@@ -104,9 +105,18 @@ export function runDoctor(root, { mode = 'engine', env, bin, timeoutMs, spawnImp
  * @returns {Promise<object>} The `runCapturing`-shaped result, with `mode: 'cli'`.
  */
 export async function cliCommandResult(run, { lines, attribution = null } = {}) {
-  const started = startTimer();
+  // The subprocess runs INSIDE the same per-login queue, global concurrency cap and deadline as the in-process
+  // path (runCapturing), so switching mode never lets two writes to one project overlap or floods the machine.
+  let started = startTimer();
+  let outcome = null;
+  const queued = await runCapturing(async () => {
+    started = startTimer();
+    try { outcome = { result: await run() }; } catch (e) { outcome = { error: e }; }
+  });
+  if (outcome === null) return { ok: false, mode: 'cli', output: [], attribution: null, durationSeconds: queued.durationSeconds, error: queued.error ?? 'The command was abandoned.', httpStatus: queued.httpStatus };
   try {
-    const result = await run();
+    if (outcome.error) throw outcome.error;
+    const { result } = outcome;
     // a verb's own refusal (`{ok:false, error}`, exit 2 or 3): the caller's mistake or the verb's failure, with its message
     if (result.doc && !Array.isArray(result.doc) && result.doc.ok === false) {
       const httpStatus = result.exitCode === EXIT_CODES.USAGE_ERROR ? 400 : 500;

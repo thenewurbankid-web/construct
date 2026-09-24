@@ -197,6 +197,20 @@ test('handleImport: the subprocess gets the CONTAINED path resolveRead returned,
   assert.equal(viaLlm.body.mode, 'engine');
 });
 
+test('cli mode obeys the same per-login queue as the in-process path: two writes to one project never overlap', async () => {
+  const dir = cliOnlyProject();
+  const scratch = makeTempDir('construct-writes-queue-');
+  const log = path.join(scratch, 'log.txt');
+  const slow = path.join(scratch, 'slow.mjs');
+  fs.writeFileSync(slow, `import fs from 'node:fs';\nfs.appendFileSync(${JSON.stringify(log)}, 'start ' + Date.now() + '\\n');\nawait new Promise((r) => setTimeout(r, 300));\nfs.appendFileSync(${JSON.stringify(log)}, 'end ' + Date.now() + '\\n');\nconsole.log(JSON.stringify({ ok: true, verb: 'refactor', action: 'move', from: 'a', to: 'b', importersUpdated: 0, files: [], violations: [], attribution: null }));\n`);
+  const ask = () => handleRefactor({ body: { action: 'move', name: 'A', feature: 'f', from: 'a', to: 'b' }, projectDir: dir, findRoot: () => dir, inProcess: () => { throw new Error('no'); }, cli: { bin: slow, timeoutMs: 10_000 } });
+  const [r1, r2] = await Promise.all([ask(), ask()]);
+  assert.equal(r1.status, 200);
+  assert.equal(r2.status, 200);
+  const events = fs.readFileSync(log, 'utf8').trim().split('\n').map((l) => l.split(' ')[0]);
+  assert.deepEqual(events, ['start', 'end', 'start', 'end'], 'the second subprocess started only after the first ended');
+});
+
 test('handle* (cli mode): a CLI that cannot run is a 502 with its own message; an unknown project.execution.mode is a 400', async () => {
   const dir = cliOnlyProject();
   const bad = path.join(makeTempDir('construct-writes-bin-'), 'bad.mjs');

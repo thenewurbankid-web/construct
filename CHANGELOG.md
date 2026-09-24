@@ -26,7 +26,7 @@ The first tagged release. It is the 2026-09-20 baseline (below) plus everything 
 - Export the layer graph in `architecture.yml` to `eslint-plugin-boundaries` ([#513]).
 - Cockpit Pages editor: Palette tab (providers, expressions, components; insert at cursor; "Wrap with..." via preview then approve), and click-to-bind in the Scope tab ([#527], [#532], [#533], [#534]).
 - Cockpit: the target app's dev server as a managed process with a live status indicator, branch provenance and app-error cards ([#378]).
-- Cockpit: per-project execution mode (`project.execution.mode: engine | cli`); in `cli` mode validation runs the real CLI as a subprocess, with an engine/CLI parity contract test ([#541]).
+- Cockpit: per-project execution mode (`project.execution.mode: engine | cli`); in `cli` mode validate, summarize, doctor, review, create, refactor and import run the real CLI as a subprocess (`--format json`), each with an engine/CLI byte-identical parity contract test ([#541], [#560]). `create`, `refactor`, `import` and `doctor` gained a deterministic `--format json`.
 - Live preview v2 spike: `previewFiber` resolves a click to its source file from React internals, on Next.js and Vite ([#443]).
 - Docs: generated API reference per package with a JSDoc coverage ratchet ([#463], [#464], [#465], [#466], [#467], [#468]); versioned documentation site published to this repository's own GitHub Pages ([#397]); one copy-paste prompt that lets any model drive the CLI.
 - Schemas: reserved free-form `ext` field on plan, process and envelope, with `migratePlan`/`migrateProcess` on the store read path ([#419]).
@@ -236,6 +236,7 @@ The first tracked baseline. It collects everything shipped since the project beg
 [#538]: https://github.com/thenewurbankid-web/construct/issues/538
 [#539]: https://github.com/thenewurbankid-web/construct/issues/539
 [#541]: https://github.com/thenewurbankid-web/construct/issues/541
+[#560]: https://github.com/thenewurbankid-web/construct/issues/560
 [#569]: https://github.com/thenewurbankid-web/construct/issues/569
 [#575]: https://github.com/thenewurbankid-web/construct/issues/575
 [#579]: https://github.com/thenewurbankid-web/construct/issues/579
