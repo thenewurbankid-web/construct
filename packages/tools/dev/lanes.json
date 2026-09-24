@@ -1,0 +1,102 @@
+{
+  "$comment": "#639. Data only, read by packages/tools/dev/build-on-ready.mjs. A commit is a CAPABILITY for a lane when it changes a userFacing path of that lane (minus the ignore globs) and its subject is not an ignored kind of change; the rule lives here and nowhere else. Globs: ** any depth, * one path segment, {a,b} alternatives. ignoreSubjects are case-insensitive regexes tried on the subject with leading [#N] references removed. Every lane is checked by its own light `check` commands (run with execFile, no shell) on a CI runner; a lane whose check fails is held (no tag) and the other lanes are unaffected. `install` lists the directories that need `npm ci` before the lane's check can run. In `check[].args`, {from} and {to} become the commit the lane was last built (or baselined) at and the commit being built. Deploys are not part of this: it builds, checks and tags only.",
+  "version": 1,
+  "branches": {
+    "work/2026-09-23": ["construct", "cockpit", "site", "design"],
+    "studio": ["adhoc"]
+  },
+  "ignore": [
+    "**/*.test.*",
+    "**/*.spec.*",
+    "**/test/**",
+    "**/tests/**",
+    "**/__tests__/**",
+    "**/fixtures/**",
+    "**/*.stories.*",
+    "**/package-lock.json",
+    "**/CHANGELOG.md",
+    ".github/**",
+    "docs/PROJECT_BOARD.md",
+    "docs/DELEGATION.md",
+    "packages/tools/**",
+    ".claude/**"
+  ],
+  "ignoreSubjects": [
+    "^(chore|refactor|refactoring|test|tests|e2e|ci|board|style|build|deps|wip|revert|release)(\\([^)]*\\))?[:!]",
+    "^merge\\b",
+    "^wip\\b",
+    "\\brefactor(s|ed|ing)?\\b",
+    "\\b(lockfile|package-lock)\\b",
+    "\\bformatting only\\b",
+    "\\binto (services|domain|workflows|hooks)/[A-Za-z]"
+  ],
+  "lanes": {
+    "construct": {
+      "tagPrefix": "construct/build-",
+      "userFacing": [
+        "packages/{core,cli,engine,ast}/**/*.mjs",
+        "packages/{core,cli,engine,ast}/**/*.ts",
+        "schemas/**"
+      ],
+      "ignore": [],
+      "ignoreSubjects": [],
+      "install": ["."],
+      "check": [
+        { "name": "construct tests", "cmd": "node", "args": ["--test", "test/*.test.mjs"], "cwd": ".", "timeoutSec": 480 }
+      ]
+    },
+    "cockpit": {
+      "tagPrefix": "cockpit/build-",
+      "userFacing": [
+        "ui/client/{app,components,features,lib,public}/**",
+        "ui/server/src/**/*.mjs",
+        "ui/server/scripts/**"
+      ],
+      "ignore": ["ui/e2e/**"],
+      "ignoreSubjects": [],
+      "install": [".", "ui/server"],
+      "check": [
+        { "name": "cockpit server tests", "cmd": "node", "args": ["--test", "ui/server/src/*.test.mjs"], "cwd": ".", "timeoutSec": 300 },
+        { "name": "cockpit client unit specs", "cmd": "node", "args": ["--experimental-strip-types", "--test", "features/*/domain/*.spec.mjs", "features/*/services/*.spec.mjs", "features/*/workflows/*.spec.mjs", "lib/*.spec.mjs"], "cwd": "ui/client", "timeoutSec": 120 }
+      ]
+    },
+    "site": {
+      "tagPrefix": "site/build-",
+      "userFacing": [
+        "site/content/**",
+        "site/assets/**",
+        "site/build.mjs",
+        "site/build-all.mjs",
+        "site/logo.json",
+        "packages/docs-site/lib/**"
+      ],
+      "ignore": ["site/dist/**"],
+      "ignoreSubjects": [],
+      "install": ["."],
+      "check": [
+        { "name": "site tests", "cmd": "node", "args": ["--test", "site/test/*.test.mjs"], "cwd": ".", "timeoutSec": 180 },
+        { "name": "site build", "cmd": "node", "args": ["site/build.mjs", "--no-search", "--out", "site/dist"], "cwd": ".", "timeoutSec": 300 }
+      ]
+    },
+    "design": {
+      "tagPrefix": "design/pack-",
+      "userFacing": ["docs/design/**"],
+      "ignore": [],
+      "ignoreSubjects": [],
+      "install": [],
+      "check": [
+        { "name": "no whitespace errors or conflict markers", "cmd": "git", "args": ["diff", "--check", "{from}", "{to}", "--", "docs/design"], "cwd": ".", "timeoutSec": 60 }
+      ]
+    },
+    "adhoc": {
+      "tagPrefix": "adhoc/build-",
+      "userFacing": ["packages/studio/src/**", "packages/studio/bin/**"],
+      "ignore": ["packages/studio/scripts/**"],
+      "ignoreSubjects": [],
+      "install": ["."],
+      "check": [
+        { "name": "studio tests", "cmd": "node", "args": ["--test", "packages/studio/test/*.test.mjs"], "cwd": ".", "timeoutSec": 300 }
+      ]
+    }
+  }
+}
