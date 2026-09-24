@@ -8,7 +8,7 @@ This page describes the Cockpit only. There is no login or commit-on-save in the
 
 ### 1. Sign in with GitHub, allowlist only
 
-Out of the box the server binds to `127.0.0.1` and prints a loud `Authentication is OFF` banner: fine for your own machine. Two rules keep it from being exposed by accident:
+Out of the box the server binds to `127.0.0.1` and prints a loud `Authentication is OFF` banner in its console: fine for your own machine. The account button at the right of the top bar then reads "This computer" and "No sign-in on this server". Two rules keep it from being exposed by accident:
 
 - Set `HOST` to anything that is not loopback and the process **refuses to start** unless a GitHub login is configured.
 - With a GitHub OAuth app configured, login is required, always.
@@ -23,6 +23,8 @@ npm start
 ```
 
 `CONSTRUCT_ALLOWED_LOGINS` is required whenever OAuth is on: without it, "sign in with GitHub" would mean every GitHub account on earth. Anyone else signs in to GitHub successfully and is still refused with a `403`. Every route under `/api` answers `401` without a session, and the live wizard connection is refused at the handshake; the only public route is a health check that returns nothing else. Sessions last 8 hours by default (`CONSTRUCT_SESSION_TTL_HOURS`). Register the OAuth app at github.com/settings/developers with the callback URL `http://localhost:4000/auth/callback` (or your real host); it must match `CONSTRUCT_OAUTH_CALLBACK_URL` exactly. Never commit these values.
+
+With login on, opening the Cockpit shows a sign-in screen with one button, **Sign in with GitHub**; a server that requires a login but has no OAuth app configured says so on that screen and names the three variables to set. Once signed in, the account button in the top bar opens a small panel with your login ("Signed in with GitHub") and **Sign out**, which ends this session only.
 
 Limits worth knowing: the session cookie is same-site, so serve the Cockpit and its API from one origin.
 
@@ -48,7 +50,7 @@ Construct-Serial: 7
 Construct-Summary: deterministic (construct summarize + impact); no LLM
 ```
 
-(Illustrative of the format, shortened; the exact layout is specified in the project's commit-on-save doc.) The serial in the subject counts up within the branch, so parallel sessions never collide. Saves inside 30 seconds become one commit by default; you can choose one commit per save, or manual commits. Only the files the Cockpit wrote are staged, a dirty tree at the start is something you are asked about (carry it in, or stash it), and nothing is ever pushed. A commit problem never blocks a save.
+(Illustrative of the format, shortened; the exact layout is specified in the project's commit-on-save doc.) The serial in the subject counts up within the branch, so parallel sessions never collide. Saves inside 30 seconds become one commit by default. Under **Settings**, **Commit on save**, you can turn it off (then the Cockpit never touches git), or set **When to commit** to **Group rapid saves** (with a **Grouping window**), **Every save**, or **Only when I click Commit** (the same message, made when you press **Commit now**). Only the files the Cockpit wrote are staged, a dirty tree at the start is something you are asked about (carry it in, or stash it), and nothing is ever pushed. A commit problem never blocks a save.
 
 ## You get
 
@@ -63,4 +65,4 @@ Construct-Summary: deterministic (construct summarize + impact); no LLM
 
 Only people you named can reach it, and every save is a commit you can read and undo.
 
-Checked against commit `d23283f` on 2026-09-23 (behaviour taken from the running code and its documentation; the sign-in screen needs a real OAuth app, so it is described, not pictured).
+Checked against commit `6d5ef23` on 2026-09-24 (behaviour taken from the running code and its documentation; the sign-in screen needs a real OAuth app, so it is described, not pictured).
