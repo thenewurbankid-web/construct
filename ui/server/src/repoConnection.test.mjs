@@ -4,7 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { AuthConfigError } from './auth.mjs';
-import { PENDING_TTL_MS, REFRESH_MARGIN_MS, createRepoConnections, resolveRepoConnectionConfig, sessionKeyOf } from './repoConnection.mjs';
+import { MAX_PENDING_PER_KEY, PENDING_TTL_MS, REFRESH_MARGIN_MS, REPOS_CACHE_MS, createRepoConnections, resolveRepoConnectionConfig, sessionKeyOf } from './repoConnection.mjs';
 
 const ENV = { CONSTRUCT_GITHUB_REPO_CLIENT_ID: 'cid', CONSTRUCT_GITHUB_REPO_CLIENT_SECRET: 'csecret' };
 const cfg = (extra = {}, opts = {}) => resolveRepoConnectionConfig({ ...ENV, ...extra }, opts);
@@ -71,6 +71,17 @@ test('config: the mock GitHub base URLs are a harness setting, refused off loopb
   assert.throws(() => cfg(mock, { host: '0.0.0.0' }), AuthConfigError);
   assert.throws(() => cfg({ CONSTRUCT_E2E_GITHUB_REPO_API_BASE: 'http://127.0.0.1:1/path' }), AuthConfigError);
   assert.throws(() => cfg({ CONSTRUCT_E2E_GITHUB_REPO_API_BASE: 'ftp://x' }), AuthConfigError);
+});
+
+test('config: the mock GitHub base URLs are refused under NODE_ENV=production (any case, either variable), like CONSTRUCT_AUTH_TEST_USER', () => {
+  const mock = { CONSTRUCT_E2E_GITHUB_REPO_OAUTH_BASE: 'http://127.0.0.1:49100', CONSTRUCT_E2E_GITHUB_REPO_API_BASE: 'http://127.0.0.1:49100' };
+  for (const NODE_ENV of ['production', 'Production', ' PRODUCTION ']) {
+    assert.throws(() => cfg({ ...mock, NODE_ENV }), (e) => e instanceof AuthConfigError && /NODE_ENV=production/.test(e.message) && /CONSTRUCT_E2E_GITHUB_REPO_OAUTH_BASE/.test(e.message), NODE_ENV);
+    assert.throws(() => cfg({ CONSTRUCT_E2E_GITHUB_REPO_OAUTH_BASE: 'http://127.0.0.1:49100', NODE_ENV }), AuthConfigError, 'oauth base alone');
+    assert.throws(() => cfg({ CONSTRUCT_E2E_GITHUB_REPO_API_BASE: 'http://127.0.0.1:49100', NODE_ENV }), AuthConfigError, 'api base alone');
+  }
+  assert.equal(cfg({ ...mock, NODE_ENV: 'test' }).apiBase, 'http://127.0.0.1:49100');
+  assert.equal(cfg({ NODE_ENV: 'production' }).apiBase, 'https://api.github.com', 'production without the seams is fine');
 });
 
 test('a disabled store does nothing: no state, no calls, status says only enabled:false', async () => {
@@ -390,4 +401,75 @@ test('listRepos: a provider that does not answer in time is a 502 with fixed wor
   assert.equal(r.status, 502);
   assert.equal(r.code, 'GITHUB_UNREACHABLE');
   assert.ok(!JSON.stringify(r).includes('ghu_leak'));
+});
+
+test('pending states are capped per session (the oldest of THAT session goes), so one session cannot evict another\'s in-flight state; the global cap stays', () => {
+  const { c } = make(fakeGithub());
+  assert.equal(MAX_PENDING_PER_KEY, 3);
+  const bob = c.begin('bob').state; // state1
+  const alice = [];
+  for (let i = 0; i < MAX_PENDING_PER_KEY + 2; i += 1) alice.push(c.begin('alice').state); // state2..state6
+  // Alice's two oldest are gone, her newest three stand.
+  assert.equal(c.consumeState('alice', alice[0]), false);
+  assert.equal(c.consumeState('alice', alice[1]), false);
+  for (const s of alice.slice(2)) assert.equal(c.consumeState('alice', s), true, s);
+  // Bob's, started before Alice's flood, is untouched.
+  assert.equal(c.consumeState('bob', bob), true);
+  // The global FIFO cap (500) is still there: 500 sessions with one state each, then one more evicts the oldest overall.
+  const { c: big } = make(fakeGithub());
+  const first = big.begin('k0').state;
+  for (let i = 1; i < 500; i += 1) big.begin(`k${i}`);
+  assert.equal(big.consumeState('k0', first), true, 'exactly at the cap nothing is evicted');
+  const again = big.begin('k0').state;
+  for (let i = 1; i < 500; i += 1) big.begin(`k${i}`); // back to 500, k0's `again` is the oldest
+  big.begin('one-more');
+  assert.equal(big.consumeState('k0', again), false, 'the 501st evicts the oldest overall');
+});
+
+test('listRepos keeps a session\'s listing for a short while: no second fan-out inside the window, one fan-out for concurrent asks, forgotten on Disconnect, expiry and re-connect, never a failure', async () => {
+  const gh = fakeGithub({ repos: [{ full_name: 'o/r', private: true }, { full_name: 'o/s', private: false }] });
+  const { c, clock } = make(gh);
+  await connect(c);
+  const listingCalls = () => gh.calls.filter((k) => /\/user\/(installations|repos)/.test(k.url)).length;
+  const first = await c.listRepos('alice');
+  assert.equal(first.ok, true);
+  const n1 = listingCalls();
+  assert.equal(n1, 3, 'installations + two installation listings');
+  assert.deepEqual((await c.listRepos('alice', { q: 's' })).repos.map((r) => r.fullName), ['o/s']);
+  assert.deepEqual((await c.listRepos('alice', { page: 2, perPage: 1 })).repos.map((r) => r.fullName), ['o/s']);
+  assert.equal((await c.listRepos('alice')).installations, 2);
+  assert.equal(listingCalls(), n1, 'no upstream call inside the window');
+  clock.t += REPOS_CACHE_MS - 1;
+  await c.listRepos('alice');
+  assert.equal(listingCalls(), n1, 'still inside the window');
+  clock.t += 1;
+  const [x, y] = await Promise.all([c.listRepos('alice'), c.listRepos('alice')]);
+  assert.equal(x.ok && y.ok, true);
+  assert.equal(listingCalls(), n1 * 2, 'the window passed: one refresh, shared by the two concurrent asks');
+  // Another session has its own listing.
+  await connect(c, 'bob');
+  await c.listRepos('bob');
+  assert.equal(listingCalls(), n1 * 3);
+  await c.listRepos('bob');
+  assert.equal(listingCalls(), n1 * 3);
+  // Disconnect forgets it: the next listing after a re-connect asks GitHub again.
+  await c.disconnect('alice');
+  assert.equal((await c.listRepos('alice')).code, 'NOT_CONNECTED');
+  assert.equal(listingCalls(), n1 * 3, 'not connected: nothing asked');
+  await connect(c, 'alice');
+  await c.listRepos('alice');
+  assert.equal(listingCalls(), n1 * 4);
+  // A refused token (401) is not kept as a listing either: the next ask (after connecting again) goes upstream.
+  const wrap = gh.fetchImpl;
+  let refuse = true;
+  gh.fetchImpl = async (u, o) => (refuse && String(u).includes('/user/installations?') ? { status: 401, ok: false, json: async () => ({}) } : wrap(u, o));
+  clock.t += REPOS_CACHE_MS + 1;
+  assert.equal((await c.listRepos('alice')).code, 'NOT_CONNECTED');
+  refuse = false;
+  await connect(c, 'alice');
+  const before = listingCalls();
+  assert.equal((await c.listRepos('alice')).ok, true);
+  assert.ok(listingCalls() > before, 'a failure was not cached');
+  // The listing itself is never in what leaves the store beyond its repos, and holds no token.
+  assert.ok(!/ghu_|ghr_/.test(JSON.stringify(await c.listRepos('alice'))));
 });

@@ -30,6 +30,12 @@ export const REFRESH_MARGIN_MS = 60 * 1000;
 export const REQUEST_TIMEOUT_MS = 8000;
 const SWEEP_MS = 30 * 1000;
 const MAX_PENDING = 500;
+/** #638 review: pending states ONE session may hold; the oldest of that session goes first, so a session that keeps
+ * starting connections evicts its own, never another session's in-flight one. The global cap stays as the backstop. */
+export const MAX_PENDING_PER_KEY = 3;
+/** #638 review: how long a session's repository listing is kept, so a picker that refreshes, filters or pages does not
+ * fan out to GitHub (up to 1 + installations x pages calls) on every request. Forgotten with the connection. */
+export const REPOS_CACHE_MS = 60 * 1000;
 const MAX_INSTALLATIONS = 20;
 const MAX_PAGES = 3; // pages of 100 per listing
 const MAX_REPOS = 1000;
@@ -57,6 +63,11 @@ export function resolveRepoConnectionConfig(env = process.env, { host = '127.0.0
   const oBase = trimmed(env.CONSTRUCT_E2E_GITHUB_REPO_OAUTH_BASE);
   const aBase = trimmed(env.CONSTRUCT_E2E_GITHUB_REPO_API_BASE);
   if (oBase || aBase) {
+    // Same two refusals as CONSTRUCT_AUTH_TEST_USER (auth.mjs): never in production (case-insensitively, as there),
+    // never off loopback. These seams point the person's GitHub login at another server.
+    if (trimmed(env.NODE_ENV).toLowerCase() === 'production') {
+      throw new AuthConfigError('CONSTRUCT_E2E_GITHUB_REPO_OAUTH_BASE / _API_BASE are set while NODE_ENV=production. They point the GitHub connection at a stand-in for github.com and exist only for the e2e suite — refusing to start rather than send a login somewhere that is not GitHub. Unset them.');
+    }
     if (!isLoopbackHost(host)) {
       throw new AuthConfigError('CONSTRUCT_E2E_GITHUB_REPO_OAUTH_BASE / _API_BASE are test-harness settings and are refused when the server is exposed beyond loopback.');
     }
@@ -98,7 +109,8 @@ export function createRepoConnections(config, deps = {}) {
 
   /** state -> { key, exp }: an authorization this server started and has not seen come back yet. */
   const pending = new Map();
-  /** key -> { access: Buffer, accessExp: number|null, refresh: Buffer|null, hardExp: number, login: string, refreshing: Promise|null } */
+  /** key -> { access: Buffer, accessExp: number|null, refresh: Buffer|null, hardExp: number, login: string, refreshing: Promise|null,
+   *            repos: {at, all, source, truncated, installations}|null (the last listing, REPOS_CACHE_MS), listing: Promise|null (a fan-out in flight) } */
   const conns = new Map();
   let timer = null;
 
@@ -184,6 +196,8 @@ export function createRepoConnections(config, deps = {}) {
   function begin(key) {
     if (!enabled) return null;
     sweep();
+    const mine = [...pending].filter(([, p]) => p.key === key).map(([s]) => s); // insertion order: oldest first
+    if (mine.length >= MAX_PENDING_PER_KEY) pending.delete(mine[0]);
     if (pending.size >= MAX_PENDING) pending.delete(pending.keys().next().value);
     const state = randomToken();
     pending.set(state, { key, exp: now() + PENDING_TTL_MS });
@@ -224,7 +238,7 @@ export function createRepoConnections(config, deps = {}) {
       return { ok: false, code: 'IDENTIFY_FAILED', error: 'The connected GitHub account could not be identified.' };
     }
     wipeKey(key); // a second connect replaces the first
-    conns.set(key, { ...entry, login, refreshing: null });
+    conns.set(key, { ...entry, login, refreshing: null, repos: null, listing: null });
     ensureSweeper();
     return { ok: true, login };
   }
@@ -330,44 +344,64 @@ export function createRepoConnections(config, deps = {}) {
     const tok = await acquire(key);
     if (!tok) return { ok: false, status: 409, code: 'NOT_CONNECTED', error: 'GitHub is not connected. Connect it first.' };
     try {
-      let source = 'installations';
-      let found = [];
-      let truncated = false;
-      const inst = await pages('/user/installations', (j) => (Array.isArray(j?.installations) ? j.installations : []), tok, MAX_INSTALLATIONS);
-      if (!inst.ok && inst.status === 0) return { ok: false, status: 502, code: 'GITHUB_UNREACHABLE', error: 'GitHub did not answer in time.' };
-      if (!inst.ok && inst.status === 401) {
-        wipeKey(key);
-        return { ok: false, status: 409, code: 'NOT_CONNECTED', error: 'GitHub no longer accepts this connection (it was revoked or expired). Connect again.' };
-      }
-      if (inst.ok) {
-        const ids = inst.items.map((i) => i?.id).filter((id) => Number.isInteger(id) && id > 0).slice(0, MAX_INSTALLATIONS);
-        for (const id of ids) {
-          const r = await pages(`/user/installations/${id}/repositories`, (j) => (Array.isArray(j?.repositories) ? j.repositories : []), tok, MAX_REPOS - found.length);
-          if (!r.ok) return { ok: false, status: 502, code: 'GITHUB_FAILED', error: 'GitHub could not list the repositories.' };
-          found.push(...r.items);
-          if (found.length >= MAX_REPOS) { truncated = true; break; }
+      const e = conns.get(key);
+      if (!e) return { ok: false, status: 409, code: 'NOT_CONNECTED', error: 'GitHub is not connected. Connect it first.' };
+      let listing = e.repos && now() - e.repos.at < REPOS_CACHE_MS ? e.repos : null;
+      if (!listing) {
+        // One fan-out per session at a time: a request that arrives while one is in flight gets that one's answer.
+        if (!e.listing) {
+          e.listing = fetchListing(key, tok)
+            .then((r) => { if (r.ok && conns.get(key) === e) e.repos = r; return r; })
+            .finally(() => { e.listing = null; });
         }
-      } else {
-        // Not a GitHub App token (403/404/422): an OAuth app's token lists the person's repositories directly.
-        source = 'user';
-        const r = await pages('/user/repos?sort=full_name&affiliation=owner,collaborator,organization_member', (j) => (Array.isArray(j) ? j : []), tok, MAX_REPOS);
-        if (!r.ok) return r.status === 0
-          ? { ok: false, status: 502, code: 'GITHUB_UNREACHABLE', error: 'GitHub did not answer in time.' }
-          : { ok: false, status: 502, code: 'GITHUB_FAILED', error: 'GitHub could not list the repositories.' };
-        found = r.items;
-        truncated = found.length >= MAX_REPOS;
+        const r = await e.listing;
+        if (!r.ok) return r; // a failure is answered, never kept
+        listing = r;
       }
-      const byName = new Map();
-      for (const x of found) { const r = repoOf(x); if (r) byName.set(r.fullName.toLowerCase(), r); }
       const needle = String(q ?? '').trim().toLowerCase().slice(0, 100);
-      const all = [...byName.values()].filter((r) => !needle || r.fullName.toLowerCase().includes(needle)).sort((a, b) => a.fullName.localeCompare(b.fullName));
+      const all = needle ? listing.all.filter((r) => r.fullName.toLowerCase().includes(needle)) : listing.all;
       const size = Math.min(100, Math.max(1, Number.isInteger(perPage) ? perPage : 30));
       const pg = Math.max(1, Number.isInteger(page) ? page : 1);
       const start = (pg - 1) * size;
-      return { ok: true, repos: all.slice(start, start + size), page: pg, perPage: size, total: all.length, hasMore: start + size < all.length, truncated, source, installations: source === 'installations' ? inst.items.length : null };
+      return { ok: true, repos: all.slice(start, start + size), page: pg, perPage: size, total: all.length, hasMore: start + size < all.length, truncated: listing.truncated, source: listing.source, installations: listing.installations };
     } finally {
       wipe(tok);
     }
+  }
+
+  /** The fan-out itself (`tok` stays the caller's to zero): -> { ok:true, at, all (sorted, de-duplicated), source, truncated, installations } | { ok:false, status, code, error } */
+  async function fetchListing(key, tok) {
+    let source = 'installations';
+    let found = [];
+    let truncated = false;
+    const inst = await pages('/user/installations', (j) => (Array.isArray(j?.installations) ? j.installations : []), tok, MAX_INSTALLATIONS);
+    if (!inst.ok && inst.status === 0) return { ok: false, status: 502, code: 'GITHUB_UNREACHABLE', error: 'GitHub did not answer in time.' };
+    if (!inst.ok && inst.status === 401) {
+      wipeKey(key);
+      return { ok: false, status: 409, code: 'NOT_CONNECTED', error: 'GitHub no longer accepts this connection (it was revoked or expired). Connect again.' };
+    }
+    if (inst.ok) {
+      const ids = inst.items.map((i) => i?.id).filter((id) => Number.isInteger(id) && id > 0).slice(0, MAX_INSTALLATIONS);
+      for (const id of ids) {
+        const r = await pages(`/user/installations/${id}/repositories`, (j) => (Array.isArray(j?.repositories) ? j.repositories : []), tok, MAX_REPOS - found.length);
+        if (!r.ok) return { ok: false, status: 502, code: 'GITHUB_FAILED', error: 'GitHub could not list the repositories.' };
+        found.push(...r.items);
+        if (found.length >= MAX_REPOS) { truncated = true; break; }
+      }
+    } else {
+      // Not a GitHub App token (403/404/422): an OAuth app's token lists the person's repositories directly.
+      source = 'user';
+      const r = await pages('/user/repos?sort=full_name&affiliation=owner,collaborator,organization_member', (j) => (Array.isArray(j) ? j : []), tok, MAX_REPOS);
+      if (!r.ok) return r.status === 0
+        ? { ok: false, status: 502, code: 'GITHUB_UNREACHABLE', error: 'GitHub did not answer in time.' }
+        : { ok: false, status: 502, code: 'GITHUB_FAILED', error: 'GitHub could not list the repositories.' };
+      found = r.items;
+      truncated = found.length >= MAX_REPOS;
+    }
+    const byName = new Map();
+    for (const x of found) { const r = repoOf(x); if (r) byName.set(r.fullName.toLowerCase(), r); }
+    const all = [...byName.values()].sort((a, b) => a.fullName.localeCompare(b.fullName));
+    return { ok: true, at: now(), all, source, truncated, installations: source === 'installations' ? inst.items.length : null };
   }
 
   return { enabled, config, begin, complete, consumeState, status, acquire, disconnect, wipeKey, wipeAll, listRepos, close, sweep };
