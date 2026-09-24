@@ -26,7 +26,7 @@ const client001 = (root, opts) => validateArchitecture(root, opts).violations.fi
 const at = (vs, file) => vs.filter((v) => v.file === file);
 
 /** A throwaway project: architecture.yml with the given rules, plus the given files. */
-function project(files, rules = { 'CLIENT-001': 'error' }, framework = 'nextjs') {
+function project(files, rules = { 'CLIENT-001': { severity: 'error', serviceLayer: true } }, framework = 'nextjs') {
   const dir = makeTempDir('construct-client001-');
   fs.writeFileSync(path.join(dir, 'architecture.yml'), yaml.dump({ version: 1, preset: 'strict-nextjs', project: { framework }, features: { root: 'features' }, rules }));
   fs.writeFileSync(path.join(dir, 'tsconfig.json'), JSON.stringify({ compilerOptions: { baseUrl: '.', paths: { '@/*': ['./*'] } } }));
@@ -230,12 +230,12 @@ test('serverOnly in architecture.yml extends the default list (exact name, subpa
   assert.equal(isServerOnlySpecifier('react'), null);
 });
 
-test('serviceLayer: false stops the service layer counting as server-only, and nothing else changes', () => {
+test('the service layer counts as server-only only when the rule sets serviceLayer: true (a Construct service is often a browser-side API client)', () => {
   const files = Object.fromEntries([SERVICE,
     ['widgets/A.tsx', "'use client';\nimport { charge } from '../features/shop/services/payments';\nimport Stripe from 'stripe';\nexport const A = () => [charge(1), Stripe];\n"]]);
-  assert.equal(client001(project(files)).length, 2);
-  const off = client001(project(files, { 'CLIENT-001': { severity: 'error', serviceLayer: false } }));
-  assert.deepEqual(off.map((v) => v.line), [3], 'only the stripe adapter is left');
+  assert.equal(client001(project(files)).length, 2, 'serviceLayer: true: the service import and the adapter');
+  const off = client001(project(files, { 'CLIENT-001': 'error' }));
+  assert.deepEqual(off.map((v) => v.line), [3], 'by default only the stripe adapter is left');
 });
 
 test('a malformed serverOnly option is a usage error naming the rule', () => {
@@ -245,7 +245,7 @@ test('a malformed serverOnly option is a usage error naming the rule', () => {
 
 test('an exception by path silences a finding like any other rule; a warning severity is honoured', () => {
   const files = Object.fromEntries([SERVICE, ['widgets/A.tsx', "'use client';\nimport { charge } from '../features/shop/services/payments';\nexport const A = () => charge(1);\n"]]);
-  const warn = project(files, { 'CLIENT-001': 'warning' });
+  const warn = project(files, { 'CLIENT-001': { severity: 'warning', serviceLayer: true } });
   assert.deepEqual(client001(warn).map((v) => v.severity), ['warning']);
   const dir = project(files);
   const cfg = yaml.load(fs.readFileSync(path.join(dir, 'architecture.yml'), 'utf8'));

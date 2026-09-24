@@ -11,6 +11,7 @@ features:
 rules:
   CLIENT-001:
     severity: error
+    serviceLayer: true
     serverOnly:
       - acme-billing
 

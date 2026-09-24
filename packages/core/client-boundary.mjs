@@ -11,10 +11,11 @@
 //   * a 'use server' file: a server-action boundary. The browser gets an RPC stub, so importing one
 //     is the sanctioned fix, and nothing behind it is followed;
 //   * a server-only module: it is already reported, and what it imports is a consequence.
-// A module is server-only when it is in the project's `service` layer, imports the `server-only`
-// package, imports a database/SDK/Node adapter (default list below, extended by the rule's
-// `serverOnly` option in architecture.yml), or reads a non-public process.env variable. A project
-// whose service layer holds browser-side API clients sets `serviceLayer: false` on the rule. A finding sits
+// A module is server-only when it imports the `server-only` package (or, when the rule sets `serviceLayer: true`,
+// when it is in the project's `service` layer), imports a database/SDK/Node adapter (default list below, extended by the rule's
+// `serverOnly` option in architecture.yml), or reads a non-public process.env variable. In Construct's own layering a service is an effect wrapper that a
+// browser hook may call (a fetch client), so the service layer is NOT server-only by default; a project whose services are
+// server-only (Server Components and Actions) sets `serviceLayer: true` on the rule. A finding sits
 // on the file that draws the offending edge (or reads the variable) and names the client entry and
 // the chain that puts that file in the browser, so `exceptions:` by path work as for every rule.
 import fs from 'node:fs';
@@ -99,7 +100,7 @@ const WHY = "A module marked 'use client' (and every module only it pulls in) is
  * @param {Record<string, {pattern?: string, canImport: string[]}>} ctx.graph The layer graph (`loadLayerGraph`), to find the `service` layer.
  * @param {string[]} [ctx.frozenGlobs] Frozen globs; frozen files are externally authored and skipped.
  * @param {string[]} [ctx.nonLayerGlobs] Non-layer globs (tests); skipped.
- * @param {object} [ctx.options] The CLIENT-001 rule entry; `serverOnly` extends the default adapter list, and `serviceLayer: false` stops treating the service layer as server-only (for a project whose services are browser-side API clients).
+ * @param {object} [ctx.options] The CLIENT-001 rule entry; `serverOnly` extends the default adapter list, and `serviceLayer: true` treats the service layer as server-only (for a project whose services are server-only; off by default because a Construct service is often a browser-side API client) (was: browser-side API clients).
  * @returns {{rule:'CLIENT-001', file:string, line:number, message:string, why:string, expected:string[], suggestedFix:string}[]} Finding descriptors (project-relative `file`), sorted by file then line.
  * @throws {Error} A usage error when the `serverOnly` option is not a list of strings.
  *
@@ -108,7 +109,7 @@ const WHY = "A module marked 'use client' (and every module only it pulls in) is
  */
 export function checkClientBoundary(root, { graph, frozenGlobs = [], nonLayerGlobs = [], options = {} } = {}) {
   const extra = readExtraModules(options);
-  const serviceLayerIsServerOnly = options?.serviceLayer !== false;
+  const serviceLayerIsServerOnly = options?.serviceLayer === true;
   const aliases = readPathAliases(root).aliases;
   const skip = (abs) => (frozenGlobs.length && matchFrozen(root, abs, frozenGlobs)) || (nonLayerGlobs.length && isNonLayerPath(root, abs, nonLayerGlobs));
   const inRoot = (abs) => { const r = path.relative(root, abs); return r && !r.startsWith('..') && !path.isAbsolute(r); };

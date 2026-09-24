@@ -20,7 +20,7 @@ rules:
   PAGE-007: { severity: error, similarity: 0.9 }
 ```
 
-`CLIENT-001` (a `'use client'` file cannot import server-only code) takes a `serverOnly` list of your own server-only packages, on top of the built-in databases and SDKs, and `serviceLayer: false` when your services are browser-side API clients rather than server code. It is `error` in a project made by `construct init` and `off` in an existing one until you turn it on:
+`CLIENT-001` (a `'use client'` file cannot import server-only code) takes a `serverOnly` list of your own server-only packages, on top of the built-in databases and SDKs, and `serviceLayer: true` when your services are server-only code (Server Components and Actions) rather than browser-side API clients, which is what a Construct service usually is. It is `error` in a project made by `construct init` and `off` in an existing one until you turn it on:
 
 ```yaml
 rules:
