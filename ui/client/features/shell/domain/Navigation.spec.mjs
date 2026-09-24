@@ -51,7 +51,7 @@ test('nextTabId: roving focus wraps, skips disabled, Home/End, ignores other key
 test('the five primary screens are Features, Pages, Components, Git, Tests, and every existing route belongs to one or to the profile menu', () => {
   assert.deepEqual(PRIMARY_SCREENS.map((s) => s.label), ['Features', 'Pages', 'Components', 'Git', 'Tests']);
   assert.deepEqual(PRIMARY_SCREENS.map((s) => s.href), ['/', '/pages', '/components', '/review', '/tests']);
-  for (const p of ['/', '/plan', '/dashboard', '/wizard', '/notes']) assert.equal(primaryScreenForPath(p).id, 'features', p);
+  for (const p of ['/', '/plan', '/dashboard', '/wizard', '/notes', '/requirement']) assert.equal(primaryScreenForPath(p).id, 'features', p);
   assert.equal(primaryScreenForPath('/pages').id, 'pages');
   assert.equal(primaryScreenForPath('/components').id, 'components');
   assert.equal(primaryScreenForPath('/workflows').id, 'components');
@@ -73,8 +73,8 @@ test('the palette offers Go to <screen> for the five screens once, and keeps the
   assert.ok(!titles.some((t) => /\bmode\b/i.test(t)), 'the modes are gone from the palette');
 });
 
-test('the palette-only screens are Notes (#596), the Import Wizard, Settings, Local Model and Help plus the routes a primary screen also owns', () => {
-  assert.deepEqual(SCREENS.map((s) => s.label), ['Notes', 'Import Wizard', 'Pages Editor', 'Workflows', 'Tests', 'Local Model', 'Settings', 'Help']);
+test('the palette-only screens are Notes (#596), Requirement (#642), the Import Wizard, Settings, Local Model and Help plus the routes a primary screen also owns', () => {
+  assert.deepEqual(SCREENS.map((s) => s.label), ['Notes', 'Requirement', 'Import Wizard', 'Pages Editor', 'Workflows', 'Tests', 'Local Model', 'Settings', 'Help']);
   assert.equal(isScreenActive(SCREENS.find((s) => s.label === 'Settings'), '/settings'), true);
   assert.equal(isScreenActive(SCREENS.find((s) => s.label === 'Settings'), '/help'), false);
   assert.ok(!SCREENS.some((s) => s.label === 'Dashboard'), 'the Dashboard is retired');

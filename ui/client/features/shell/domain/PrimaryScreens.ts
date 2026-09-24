@@ -8,7 +8,7 @@
 import type { PrimaryScreen } from '../types.ts';
 
 export const PRIMARY_SCREENS: PrimaryScreen[] = [
-  { id: 'features', label: 'Features', href: '/', activeOn: ['/', '/plan', '/dashboard', '/wizard', '/notes'] },
+  { id: 'features', label: 'Features', href: '/', activeOn: ['/', '/plan', '/dashboard', '/wizard', '/notes', '/requirement'] },
   { id: 'pages', label: 'Pages', href: '/pages', activeOn: ['/pages'] },
   { id: 'components', label: 'Components', href: '/components', activeOn: ['/components', '/workflows'] },
   { id: 'git', label: 'Git', href: '/review', activeOn: ['/review'] },
