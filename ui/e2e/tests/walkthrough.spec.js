@@ -186,11 +186,13 @@ test.describe.serial('Construct UI walkthrough (issue #37)', () => {
 
     // Turn 3: "...should the LLM also write the ported logic...? [y/N]: "
     await expect(page.locator('.chat-question').last()).toContainText('LLM also write the ported logic');
+    await expect(page.locator('.chat-question').last()).toContainText('Yes or No'); // #391: shown as a plain question, not "[y/N]"
+    await expect(page.locator('.chat-question').last()).not.toContainText('[y/N]');
     await answerNextQuestion(page, 'n');
 
     // Turn 4: the seed route isn't an existing directory, so it's treated
     // as a URL-style route -> asks for the Next.js app/ directory.
-    await expect(page.locator('.chat-question').last()).toContainText('Next.js app');
+    await expect(page.locator('.chat-question').last()).toContainText("Where are your app's routes"); // #391: was the CLI prompt "Path to your Next.js app/ directory ..."
     await answerNextQuestion(page, 'definitely-not-a-real-app-dir');
 
     // Real, unmocked outcome: resolveRoute() fails against a nonexistent

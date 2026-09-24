@@ -86,9 +86,9 @@ test.describe('Wizard: two concurrent sessions do not cross-talk (#80)', () => {
       await answerNextQuestion(pageB, 'n');
 
       // Turn 4: Next.js app/ directory (seed route isn't an existing dir).
-      await expect(pageA.locator('.chat-question').last()).toContainText('Next.js app');
+      await expect(pageA.locator('.chat-question').last()).toContainText("Where are your app's routes"); // #391: was the CLI prompt "Path to your Next.js app/ directory ..."
       await answerNextQuestion(pageA, 'definitely-not-a-real-app-dir-A');
-      await expect(pageB.locator('.chat-question').last()).toContainText('Next.js app');
+      await expect(pageB.locator('.chat-question').last()).toContainText("Where are your app's routes"); // #391: was the CLI prompt "Path to your Next.js app/ directory ..."
       await answerNextQuestion(pageB, 'definitely-not-a-real-app-dir-B');
 
       // Both end in a real, unmocked resolution error — never reaching the

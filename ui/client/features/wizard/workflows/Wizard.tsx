@@ -1,3 +1,4 @@
+import { plainQuestion } from '../domain/PlainQuestion';
 import { parseAttributionLine } from '../domain/Wizard';
 import { applyStepEvent, endRun, initialSteps, stepNote, type WizardStep } from '../domain/WizardSteps';
 import type { ChatMessageData, ChatRole, PathExpectation, ServerWizardEvent, WizardStatus } from '../types';
@@ -72,7 +73,7 @@ function applyServerEvent(state: WizardState, event: ServerWizardEvent): WizardS
     return { ...pushed, messages: pushed.messages.map((m, i) => (i === pushed.messages.length - 1 ? { ...m, findings: event.findings } : m)), reviewing: false };
   }
   if (event.type === 'question') {
-    return { ...pushMessage(state, 'question', event.text), awaitingAnswer: true, expects: event.expects, status: 'running' };
+    return { ...pushMessage(state, 'question', plainQuestion(event.text)), awaitingAnswer: true, expects: event.expects, status: 'running' };
   }
   if (event.type === 'log') {
     return pushMessage(state, event.kind === 'error' ? 'error' : 'log', event.text);
