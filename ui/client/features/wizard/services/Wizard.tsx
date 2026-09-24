@@ -38,3 +38,8 @@ export function sendStart(ws: WebSocket, seedRoute?: string): void {
 export function sendAnswer(ws: WebSocket, text: string): void {
   send(ws, { type: 'answer', text });
 }
+
+/** Stop the run: the server aborts an in-flight model call (#599). */
+export function sendCancel(ws: WebSocket): void {
+  send(ws, { type: 'cancel' });
+}

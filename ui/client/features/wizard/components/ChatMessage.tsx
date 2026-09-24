@@ -16,6 +16,22 @@ export function ChatMessage({ message }: { message: ChatMessageData }) {
     if (!message.text.trim()) return null;
     return <div className="chat-message chat-log">{message.text}</div>;
   }
+  // #599 -- two kinds of live output, told apart by a label AND a style (not colour alone):
+  // `step` is the framework (deterministic Construct); `thought` is the model's own streamed text.
+  if (message.role === 'step') {
+    return (
+      <div className="chat-message chat-step">
+        <span className="chat-badge chat-badge--framework">Framework</span> {message.text}
+      </div>
+    );
+  }
+  if (message.role === 'thought') {
+    return (
+      <div className="chat-message chat-thought">
+        <span className="chat-badge chat-badge--model">Model</span> {message.text}
+      </div>
+    );
+  }
   if (message.role === 'question') return <div className="chat-message chat-question">{message.text}</div>;
   if (message.role === 'answer') {
     // A blank answer is meaningful (e.g. "finish adding routes") — show that it registered (#40).

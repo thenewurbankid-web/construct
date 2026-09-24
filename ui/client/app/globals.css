@@ -383,6 +383,131 @@ button:disabled {
   font-style: italic;
 }
 
+.chat-step {
+  background: var(--accent-soft);
+  color: var(--text);
+  align-self: flex-start;
+  border-left: 3px solid var(--accent);
+  font-size: 0.82rem;
+}
+
+/* The model's own output: dashed, italic, muted -- never mistaken for a framework step (#599). */
+.chat-thought {
+  background: transparent;
+  color: var(--muted);
+  align-self: flex-start;
+  font-style: italic;
+  border: 1px dashed var(--border);
+}
+
+.chat-badge {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.chat-badge--framework {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+.chat-badge--model {
+  border: 1px solid var(--muted);
+  color: var(--muted);
+}
+
+.wizard-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .wizard-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.step-tracker {
+  padding: 14px 16px;
+  position: sticky;
+  top: 12px;
+}
+
+.step-tracker h2 {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+}
+
+.step-tracker ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.step-tracker__item {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  column-gap: 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.step-tracker__note {
+  grid-column: 2;
+  font-size: 0.74rem;
+  word-break: break-all;
+}
+
+.step-tracker__item--done {
+  color: var(--text);
+}
+
+.step-tracker__item--skipped {
+  opacity: 0.55;
+}
+
+.step-tracker__item--active {
+  background: var(--accent-soft);
+  color: var(--text);
+  font-weight: 700;
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.step-tracker__item--cancelled,
+.step-tracker__item--stopped {
+  color: var(--text);
+  box-shadow: inset 3px 0 0 var(--error);
+}
+
+.step-tracker__cancel {
+  margin-top: 12px;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--error);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.step-tracker__cancel:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .chat-input {
   display: flex;
   gap: 10px;

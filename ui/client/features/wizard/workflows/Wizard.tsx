@@ -1,4 +1,5 @@
 import { parseAttributionLine } from '../domain/Wizard';
+import { applyStepEvent, endRun, initialSteps, stepNote, type WizardStep } from '../domain/WizardSteps';
 import type { ChatMessageData, ChatRole, ServerWizardEvent, WizardStatus } from '../types';
 
 // Pure (WORKFLOW-001) — the wizard's whole chat/connection flow as a plain
@@ -8,6 +9,9 @@ export type WizardState = {
   status: WizardStatus;
   awaitingAnswer: boolean;
   nextId: number;
+  /** The framework's blocks in run order, one active at a time (#599). */
+  steps: WizardStep[];
+  cancelling: boolean;
 };
 
 export type WizardAction =
@@ -16,23 +20,40 @@ export type WizardAction =
   | { type: 'SOCKET_ERROR' }
   | { type: 'SERVER_EVENT'; event: ServerWizardEvent }
   | { type: 'START' }
-  | { type: 'ANSWER_SENT'; text: string };
+  | { type: 'ANSWER_SENT'; text: string }
+  | { type: 'CANCEL_SENT' };
 
-export const initialWizardState: WizardState = { messages: [], status: 'connecting', awaitingAnswer: false, nextId: 1 };
+export const initialWizardState: WizardState = { messages: [], status: 'connecting', awaitingAnswer: false, nextId: 1, steps: initialSteps(), cancelling: false };
 
 function pushMessage(state: WizardState, role: ChatRole, text: string): WizardState {
   const attribution = role === 'log' ? parseAttributionLine(text) : undefined;
   return { ...state, messages: [...state.messages, { id: state.nextId, role, text, attribution }], nextId: state.nextId + 1 };
 }
 
+/** The model's streamed output arrives in pieces: a piece continues the previous `thought` message when
+ * nothing else has been said since, otherwise it opens a new one. */
+function appendThought(state: WizardState, text: string): WizardState {
+  const last = state.messages[state.messages.length - 1];
+  if (last && last.role === 'thought') {
+    return { ...state, messages: [...state.messages.slice(0, -1), { ...last, text: last.text + text }] };
+  }
+  return pushMessage(state, 'thought', text);
+}
+
 function applyServerEvent(state: WizardState, event: ServerWizardEvent): WizardState {
+  if (event.type === 'step') {
+    return { ...pushMessage(state, 'step', stepNote(event)), steps: applyStepEvent(state.steps, event) };
+  }
+  if (event.type === 'thought') {
+    return appendThought(state, event.text);
+  }
   if (event.type === 'question') {
     return { ...pushMessage(state, 'question', event.text), awaitingAnswer: true, status: 'running' };
   }
   if (event.type === 'log') {
     return pushMessage(state, event.kind === 'error' ? 'error' : 'log', event.text);
   }
-  return { ...pushMessage(state, 'system', 'Session finished.'), awaitingAnswer: false, status: 'done' };
+  return { ...pushMessage(state, 'system', 'Session finished.'), awaitingAnswer: false, status: 'done', steps: endRun(state.steps), cancelling: false };
 }
 
 export function wizardReducer(state: WizardState, action: WizardAction): WizardState {
@@ -44,9 +65,11 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
     case 'SOCKET_ERROR':
       return pushMessage(state, 'error', 'WebSocket error — is the backend running?');
     case 'START':
-      return { ...state, messages: [], status: 'running', awaitingAnswer: false };
+      return { ...state, messages: [], status: 'running', awaitingAnswer: false, steps: initialSteps(), cancelling: false };
     case 'ANSWER_SENT':
       return { ...pushMessage(state, 'answer', action.text), awaitingAnswer: false };
+    case 'CANCEL_SENT':
+      return { ...pushMessage(state, 'system', 'Cancelling…'), cancelling: true, awaitingAnswer: false };
     case 'SERVER_EVENT':
       return applyServerEvent(state, action.event);
     default:

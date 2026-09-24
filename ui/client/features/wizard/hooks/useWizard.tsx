@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useReducer, useRef, useState, type Dispatch, type FormEvent } from 'react';
-import { connectWizardSocket, sendAnswer, sendStart } from '../services/Wizard';
+import { connectWizardSocket, sendAnswer, sendCancel, sendStart } from '../services/Wizard';
 import { initialWizardState, wizardReducer, type WizardAction } from '../workflows/Wizard';
 
 /** Opens the socket on mount and tears it down on unmount — the socket's
@@ -13,7 +13,12 @@ function useWizardSocket(dispatch: Dispatch<WizardAction>) {
   useEffect(() => {
     const ws = connectWizardSocket({
       onOpen: () => dispatch({ type: 'CONNECTED' }),
-      onClose: () => dispatch({ type: 'DISCONNECTED' }),
+      // A socket that has already been replaced (React StrictMode mounts, unmounts and remounts in
+      // development) reports its close late; that stale close must not overwrite the live socket's
+      // open, or a healthy session shows as "Disconnected".
+      onClose: () => {
+        if (wsRef.current === ws) dispatch({ type: 'DISCONNECTED' });
+      },
       onError: () => dispatch({ type: 'SOCKET_ERROR' }),
       onMessage: (event) => dispatch({ type: 'SERVER_EVENT', event }),
     });
@@ -38,6 +43,12 @@ export function useWizard() {
     if (wsRef.current) sendStart(wsRef.current, seedRoute);
   }
 
+  function cancel() {
+    if (state.status !== 'running' || state.cancelling) return;
+    dispatch({ type: 'CANCEL_SENT' });
+    if (wsRef.current) sendCancel(wsRef.current);
+  }
+
   function submitAnswer(e: FormEvent) {
     e.preventDefault();
     if (!state.awaitingAnswer) return;
@@ -50,6 +61,9 @@ export function useWizard() {
     messages: state.messages,
     status: state.status,
     awaitingAnswer: state.awaitingAnswer,
+    steps: state.steps,
+    cancelling: state.cancelling,
+    cancel,
     input,
     setInput,
     seedRoute,

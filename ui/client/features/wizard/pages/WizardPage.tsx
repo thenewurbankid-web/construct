@@ -1,13 +1,14 @@
 import type { ReactNode } from 'react';
 import { ErrorState, LoadingState } from '@/features/states';
 import { ChatLog } from '../components/ChatLog';
+import { StepTracker } from '../components/StepTracker';
 import { WizardAnswerForm } from '../components/WizardAnswerForm';
 import { WizardStartPanel } from '../components/WizardStartPanel';
 import type { useWizard } from '../hooks/useWizard';
 
 type WizardPageProps = ReturnType<typeof useWizard>;
 
-export function WizardPage({ messages, status, awaitingAnswer, input, setInput, seedRoute, setSeedRoute, start, submitAnswer }: WizardPageProps): ReactNode {
+export function WizardPage({ messages, status, awaitingAnswer, steps, cancelling, cancel, input, setInput, seedRoute, setSeedRoute, start, submitAnswer }: WizardPageProps): ReactNode {
   return (
     <div className="page page--screen">
       <h1>Import Route Wizard</h1>
@@ -25,9 +26,14 @@ export function WizardPage({ messages, status, awaitingAnswer, input, setInput, 
         <LoadingState size="inline" label="Connecting to the wizard" hint="Opening a session with the backend." />
       )}
 
-      <ChatLog messages={messages} />
+      <div className="wizard-layout">
+        <div className="wizard-layout__main">
+          <ChatLog messages={messages} />
 
-      {awaitingAnswer && <WizardAnswerForm input={input} setInput={setInput} onSubmit={submitAnswer} />}
+          {awaitingAnswer && <WizardAnswerForm input={input} setInput={setInput} onSubmit={submitAnswer} />}
+        </div>
+        <StepTracker steps={steps} running={status === 'running'} cancelling={cancelling} onCancel={cancel} />
+      </div>
 
       {status === 'closed' && (
         <ErrorState

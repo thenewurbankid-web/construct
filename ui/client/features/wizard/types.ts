@@ -1,6 +1,8 @@
 export type WizardId = string;
 
-export type ChatRole = 'log' | 'question' | 'answer' | 'error' | 'system';
+/** `step` = a framework block starting (deterministic Construct); `thought` = the model's own streamed
+ * output (#599). Kept as two roles so they are never confused on screen. */
+export type ChatRole = 'log' | 'question' | 'answer' | 'error' | 'system' | 'step' | 'thought';
 
 export type ChatMessageData = {
   id: number;
@@ -19,6 +21,8 @@ export type WizardStatus = 'connecting' | 'idle' | 'running' | 'done' | 'closed'
 export type ServerWizardEvent =
   | { type: 'question'; text: string }
   | { type: 'log'; text: string; kind?: string }
+  | { type: 'step'; phase: string; detail?: Record<string, unknown> }
+  | { type: 'thought'; text: string }
   | { type: 'done' };
 
-export type ClientWizardEvent = { type: 'start'; seedRoute?: string } | { type: 'answer'; text: string };
+export type ClientWizardEvent = { type: 'start'; seedRoute?: string } | { type: 'answer'; text: string } | { type: 'cancel' };
