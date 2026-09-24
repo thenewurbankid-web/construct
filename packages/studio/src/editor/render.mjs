@@ -14,7 +14,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { stringifySync } from 'subtitle';
-import { EditorError, ERR, SLUG_RE, assertProject, isBareName, isInside, openWorkspace, projectDuration, resolveMedia } from './project.mjs';
+import { EditorError, ERR, SLUG_RE, assertProject, isBareName, isInside, openWorkspace, resolveMedia } from './project.mjs';
+import { slugify } from './store.mjs';
 
 /** Voice level Studio's narration is made at (media tools: loudnorm I=-20). */
 export const VOICE_LUFS = -20;
@@ -124,9 +125,10 @@ function writeAtomic(workspace, name, data) {
 /**
  * Render a project into the workspace. `execFile` is `child_process.execFile` (injected in tests); `onEvent` receives
  * `{ type: 'start' | 'progress' | 'done' | 'error', ... }`. Writes only inside the workspace (its real path), never outside; the
- * input files are looked up by bare name in the workspace and its `videos/` folder. Resolves with `{ outputs, plan }`.
+ * input files are looked up by bare name in the workspace and its `videos/` folder. `slug` names the outputs (default: the
+ * project's name made file-safe). Resolves with `{ outputs, plan }`.
  */
-export async function renderProject({ project, workspace, slug, execFile, onEvent = () => {}, burnSubtitles = false, ffmpeg = process.env.FFMPEG || 'ffmpeg' }) {
+export async function renderProject({ project, workspace, slug = slugify(project?.name), execFile, onEvent = () => {}, burnSubtitles = false, ffmpeg = process.env.FFMPEG || 'ffmpeg' }) {
   const emit = (e) => { try { onEvent(e); } catch { /* a listener must not break a render */ } };
   try {
     const root = openWorkspace(workspace);
@@ -176,4 +178,3 @@ export async function renderProject({ project, workspace, slug, execFile, onEven
   }
 }
 
-export { projectDuration };

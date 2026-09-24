@@ -3,7 +3,7 @@
 //
 //   handleEditorRequest(req, res, { workspace, url }) -> true when it answered, false when the path is not the editor's.
 //
-//   GET  /editor                                page (ui/editor.html); its modules and vendored files: GET /api/editor/ui/<file>
+//   GET  /editor                                the page: ui/editor.html with its styles, script and modules inlined (page.mjs)
 //   GET  /api/editor/projects                   list: name, modified, duration, clip counts per kind
 //   POST /api/editor/projects                   { name, from? }  create blank, or from the Studio job `from`
 //   POST /api/editor/projects/import            { bundle, slug?, name? }
@@ -20,26 +20,24 @@
 //   GET  /api/editor/jobs/:id/events            server-sent events of a render
 //   GET  /api/editor/media/:file                a workspace media file, with Range support
 //
+// The server's access-token gate runs before this handler (this file never sees or stores the token); the page carries the token it was
+// opened with and sends it as a bearer header, or as ?token= for what a browser fetches without headers (media, downloads, events).
 // No route takes a filesystem path: slugs and file names are [A-Za-z0-9._-] and are resolved inside the workspace's real path.
 // Every write carries the rev it was made against; a stale one answers 409 { code: 'STALE_REV', current }.
 import { execFile as nodeExecFile } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { applyOp, createHistory } from './ops.mjs';
 import { AUDIO_EXT, EditorError, ERR, VIDEO_EXT, extOf, isBareName, listMedia, openWorkspace, resolveMedia } from './project.mjs';
+import { pageCache } from './page.mjs';
 import { renderProject } from './render.mjs';
 import { checkSlug, openStore } from './store.mjs';
 
-const UI_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'ui');
 const MAX_BODY = 1024 * 1024;
 const MEDIA_TYPES = {
   webm: 'video/webm', mp4: 'video/mp4', mov: 'video/quicktime', mkv: 'video/x-matroska', opus: 'audio/ogg', ogg: 'audio/ogg', mp3: 'audio/mpeg', wav: 'audio/wav', m4a: 'audio/mp4', flac: 'audio/flac', vtt: 'text/vtt; charset=utf-8', srt: 'text/plain; charset=utf-8',
 };
 const SERVED_EXT = new Set([...VIDEO_EXT, ...AUDIO_EXT, 'srt', 'vtt']);
-const UI_TYPES = { html: 'text/html; charset=utf-8', mjs: 'text/javascript; charset=utf-8', js: 'text/javascript; charset=utf-8', css: 'text/css; charset=utf-8', map: 'application/json' };
-const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'self'";
 
 /** `If-Match: 3`, `"3"` or `W/"3"` -> 3, else undefined. */
 export function revFromHeader(value) {
@@ -78,7 +76,8 @@ async function readBody(req) {
  * The handler keeps, per project, a working copy with its undo history in memory (a restart loses history, never saved work;
  * the recovery copy `<slug>.studio.autosave.json` is written a moment after each edit).
  */
-export function createEditorHandler({ execFile = nodeExecFile, autosaveDelayMs = 1000, uiDir = UI_DIR, maxJobs = 20 } = {}) {
+export function createEditorHandler({ execFile = nodeExecFile, autosaveDelayMs = 1000, uiDir, maxJobs = 20 } = {}) {
+  const page = pageCache(uiDir);
   const stores = new Map();
   const sessions = new Map();
   const jobs = new Map();
@@ -154,17 +153,11 @@ export function createEditorHandler({ execFile = nodeExecFile, autosaveDelayMs =
     return stream.pipe(res);
   }
 
-  function serveUi(res, rest) {
-    const parts = rest.split('/');
-    const okParts = parts.length <= 2 && parts.every((p) => /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(p) && !p.includes('..'));
-    const file = okParts ? path.join(uiDir, ...parts) : null;
-    let real = null;
-    try { real = file ? fs.realpathSync(file) : null; } catch { real = null; }
-    const dir = fs.realpathSync(uiDir);
-    if (!real || !real.startsWith(dir + path.sep) || !fs.statSync(real).isFile() || !UI_TYPES[extOf(real)]) return send(res, 404, { ok: false, code: ERR.NOT_FOUND, message: 'No such file.' });
-    const body = fs.readFileSync(real);
-    res.writeHead(200, { 'Content-Type': UI_TYPES[extOf(real)], 'Cache-Control': 'no-cache', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': CSP, 'Content-Length': body.length });
-    return res.end(body);
+  function servePage(req, res) {
+    const { html, csp } = page();
+    const body = Buffer.from(html);
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'DENY', 'Content-Security-Policy': csp, 'Content-Length': body.length });
+    res.end(req.method === 'HEAD' ? undefined : body);
   }
 
   async function api(req, res, { workspace, segs, url }) {
@@ -318,7 +311,6 @@ export function createEditorHandler({ execFile = nodeExecFile, autosaveDelayMs =
       if (method !== 'GET' && method !== 'HEAD') return wrongMethod();
       return serveMedia(req, res, store.root, a);
     }
-    if (head === 'ui') return serveUi(res, segs.slice(1).join('/'));
     return send(res, 404, { ok: false, code: ERR.NOT_FOUND, message: 'No such editor route.' });
   }
 
@@ -332,7 +324,7 @@ export function createEditorHandler({ execFile = nodeExecFile, autosaveDelayMs =
       if (!workspace) throw new EditorError(ERR.NOT_FOUND, 'No workspace.', 500);
       if (isPage) {
         if (req.method !== 'GET' && req.method !== 'HEAD') send(res, 405, { ok: false, code: ERR.METHOD_NOT_ALLOWED, message: 'GET only.' });
-        else serveUi(res, 'editor.html');
+        else servePage(req, res);
         return true;
       }
       const segs = p.slice('/api/editor/'.length).split('/').filter(Boolean).map((x) => { try { return decodeURIComponent(x); } catch { return '\u0000'; } });

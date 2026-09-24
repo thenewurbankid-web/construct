@@ -2,11 +2,13 @@
 // /editor and /api/editor/* to the default export.
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
+import { bundleModules } from '../src/editor/page.mjs';
 import { ERR } from '../src/editor/project.mjs';
 import defaultHandler, { createEditorHandler, revFromHeader } from '../src/editor/routes.mjs';
 import { sampleProject, writeSampleWorkspace } from '../src/editor/sample.mjs';
@@ -72,20 +74,50 @@ test('the default export is a handler; a path that is not the editor is not hand
   assert.equal((await call('GET', '/editorial')).text, 'not the editor');
 });
 
-test('GET /editor serves the page and its modules; nothing else under /api/editor/ui', async () => {
+test('GET /editor serves one self-contained page: modules and vendored script inlined, a CSP that allows exactly those scripts, nothing else under /api/editor/ui', async () => {
   const { call } = await setup();
   const page = await call('GET', '/editor');
   assert.equal(page.status, 200);
   assert.match(page.headers.get('content-type'), /text\/html/);
   assert.match(page.text, /<title>[^<]+<\/title>/);
-  assert.match(page.headers.get('content-security-policy'), /default-src 'self'/);
+  const csp = page.headers.get('content-security-policy');
+  assert.match(csp, /default-src 'none'/);
+  assert.ok(!/script-src[^;]*'unsafe-inline'/.test(csp) && !/script-src[^;]*\*/.test(csp), 'no blanket script allowance');
+  const scripts = [...page.text.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)];
+  assert.equal(scripts.length, 2, 'the vendored timeline script and the module bundle');
+  assert.deepEqual(scripts.map((m) => /type="module"/.test(m[1])), [false, true]);
+  for (const [, attrs, code] of scripts) {
+    assert.ok(!/\bsrc=/.test(attrs), 'no script is fetched by URL (the access-token gate cannot serve a bare <script src>)');
+    assert.ok(csp.includes(`'sha256-${crypto.createHash('sha256').update(code).digest('base64')}'`), 'each inline script is allowed by its hash');
+  }
+  const bundle = scripts[1][2];
+  assert.match(bundle, /function createTimeline/);
+  assert.ok(!/^import\s/m.test(bundle) && !/^export\s/m.test(bundle), 'imports and exports are resolved');
+  assert.ok(!/<link[^>]+stylesheet|<script[^>]+src=/.test(page.text));
+  assert.ok(Buffer.byteLength(page.text) < 800 * 1024, 'a light page');
   assert.equal((await call('GET', '/editor/')).status, 200);
+  assert.equal((await call('HEAD', '/editor')).text, '');
   assert.equal((await call('POST', '/editor', {})).status, 405);
-  const js = await call('GET', `${api}/ui/app.mjs`);
-  assert.equal(js.status, 200);
-  assert.match(js.headers.get('content-type'), /javascript/);
-  for (const bad of ['../routes.mjs', '..%2Froutes.mjs', 'vendor', 'nope.mjs', '.hidden', 'a/b/c.js', 'vendor/..%2F..%2Fproject.mjs']) assert.equal((await call('GET', `${api}/ui/${bad}`)).status, bad.startsWith('..%2F') || bad.includes('%2F') ? 400 : 404, bad);
-  assert.equal((await call('GET', `${api}/ui/editor.html`)).status, 200);
+  for (const bad of ['app.mjs', 'vendor/vis-timeline.min.js', '..%2Froutes.mjs']) assert.notEqual((await call('GET', `${api}/ui/${bad}`)).status, 200, bad);
+});
+
+test('bundleModules joins modules in dependency order, drops imports and exports, and refuses forms it cannot resolve', () => {
+  const dir = fs.realpathSync(makeTempDir('studio-editor-bundle-'));
+  fs.writeFileSync(path.join(dir, 'a.mjs'), "import { b } from './b.mjs';\nexport const a = () => b();\nexport async function run() { return a(); }\n");
+  fs.writeFileSync(path.join(dir, 'b.mjs'), "import { c } from './c.mjs';\nexport function b() { return c; }\n");
+  fs.writeFileSync(path.join(dir, 'c.mjs'), 'export const c = 1;\n');
+  const out = bundleModules(dir, 'a.mjs');
+  assert.deepEqual([...out.matchAll(/\/\/ ---- (\w)\.mjs/g)].map((m) => m[1]), ['c', 'b', 'a']);
+  assert.ok(!/\bimport\b|^export\b/m.test(out));
+  assert.match(out, /const a = \(\) => b\(\);/);
+  assert.match(out, /async function run/);
+  fs.writeFileSync(path.join(dir, 'bad.mjs'), "import x from 'https://evil.example/x.mjs';\n");
+  assert.throws(() => bundleModules(dir, 'bad.mjs'), /only single-line/);
+  fs.writeFileSync(path.join(dir, 'bad2.mjs'), 'const q = 1;\nexport { q };\n');
+  assert.throws(() => bundleModules(dir, 'bad2.mjs'), /unsupported export/);
+  fs.writeFileSync(path.join(dir, 'bad3.mjs'), "import { z } from './../escape.mjs';\n");
+  assert.throws(() => bundleModules(dir, 'bad3.mjs'), /only single-line/);
+  assert.throws(() => bundleModules(dir, '../x.mjs'), /outside the ui folder/);
 });
 
 test('projects: list, create blank, create from a job, collision 409, bad names 400; sources list jobs and media', async () => {
@@ -363,15 +395,14 @@ test('render: one at a time (RENDER_BUSY), and an ffmpeg failure is an error eve
   await events(base, four.json.id);
 });
 
-test('the vendored browser file is served from the page, matches its recorded hash, ships its licences, and nothing loads from a CDN', async () => {
+test('the vendored browser file is carried by the page, matches its recorded hash, ships its licences, and nothing loads from a CDN', async () => {
   const info = JSON.parse(fs.readFileSync(path.join(VENDOR_DIR, 'VERSION.json'), 'utf8'));
   assert.deepEqual([info.name, info.version, info.license], ['vis-timeline', '8.5.4', '(Apache-2.0 OR MIT)']);
   for (const [name, hash] of Object.entries(info.files)) assert.equal(sha256(path.join(VENDOR_DIR, name)), hash, `${name} is unmodified`);
   assert.ok(fs.statSync(path.join(VENDOR_DIR, 'vis-timeline.min.js')).size < 700 * 1024, 'stays a lightweight download');
   const { call } = await setup();
-  const js = await call('GET', `${api}/ui/vendor/vis-timeline.min.js`);
-  assert.equal(js.status, 200);
-  assert.match(js.headers.get('content-type'), /javascript/);
+  const vendored = fs.readFileSync(path.join(VENDOR_DIR, 'vis-timeline.min.js'), 'utf8').replace(/^\/\/# sourceMappingURL=.*$/gm, '');
+  assert.ok((await call('GET', '/editor')).text.includes(vendored.slice(0, 2000)), 'the vendored script is what the page carries');
   const uiDir = path.join(path.dirname(VENDOR_DIR));
   for (const f of ['editor.html', 'editor.css', 'app.mjs', 'api.mjs', 'dom.mjs', 'player.mjs', 'projects.mjs', 'timeline.mjs']) {
     const text = fs.readFileSync(path.join(uiDir, f), 'utf8');

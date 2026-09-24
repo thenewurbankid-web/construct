@@ -16,9 +16,13 @@ export function sampleProject(slug = 'demo') {
   return p;
 }
 
-/** Write placeholder media for the sample job into `dir` (the workspace) and, when `withProject`, its `<slug>.studio.json`. */
-export function writeSampleWorkspace(dir, { slug = 'demo', withProject = true } = {}) {
-  for (const name of [`${slug}.webm`, `${slug}.voice.opus`, `${slug}.music.mp3`]) fs.writeFileSync(path.join(dir, name), Buffer.from(`placeholder ${name}\n`.repeat(50)));
+/**
+ * Write placeholder media for the sample job into `dir` (the workspace) and, when `withProject`, its `<slug>.studio.json`.
+ * `mediaDir` puts the media in a sub-folder (Studio itself writes recordings to `<workspace>/videos`).
+ */
+export function writeSampleWorkspace(dir, { slug = 'demo', withProject = true, mediaDir = '' } = {}) {
+  fs.mkdirSync(path.join(dir, mediaDir), { recursive: true });
+  for (const name of [`${slug}.webm`, `${slug}.voice.opus`, `${slug}.music.mp3`]) fs.writeFileSync(path.join(dir, mediaDir, name), Buffer.from(`placeholder ${name}\n`.repeat(50)));
   if (withProject) fs.writeFileSync(path.join(dir, `${slug}.studio.json`), `${JSON.stringify(sampleProject(slug), null, 2)}\n`);
   return dir;
 }

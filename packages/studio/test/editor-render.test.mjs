@@ -180,6 +180,15 @@ test('a failing ffmpeg is a RENDER_FAILED error event with the tail of its messa
   await assert.rejects(renderProject({ project: sampleProject(), workspace: ws, slug: 'demo', execFile: () => { throw new Error('spawn ENOENT'); } }), (e) => e.code === ERR.RENDER_FAILED);
 });
 
+test('renderProject without a slug names the outputs after the project (made file-safe)', async () => {
+  const ws = fs.realpathSync(makeTempDir('studio-editor-render4-'));
+  writeSampleWorkspace(ws, { withProject: false });
+  const p = sampleProject();
+  p.name = 'My Demo, take 2!';
+  const out = await renderProject({ project: p, workspace: ws, execFile: fakeFfmpeg().execFile });
+  assert.deepEqual(out.outputs, ['my-demo-take-2.export.webm', 'my-demo-take-2.srt', 'my-demo-take-2.vtt']);
+});
+
 // ---- one real render, when ffmpeg is here
 
 const FFMPEG = process.env.FFMPEG || (spawnSync('ffmpeg', ['-version']).status === 0 ? 'ffmpeg' : null);
