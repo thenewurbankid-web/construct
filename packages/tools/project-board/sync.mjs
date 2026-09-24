@@ -68,10 +68,11 @@ async function loadIssues() {
   return paged(async (after) => {
     const d = await gql(
       `query($o:String!,$r:String!,$c:String){repository(owner:$o,name:$r){issues(first:100,after:$c){
-        pageInfo{hasNextPage endCursor} nodes{id number state closedAt}}}}`,
+        pageInfo{hasNextPage endCursor} nodes{id number state closedAt labels(first:20){nodes{name}}}}}}`,
       { o: opts.owner, r: opts.repo, c: after },
     );
-    return d.repository.issues;
+    const issues = d.repository.issues;
+    return { ...issues, nodes: issues.nodes.map((i) => ({ ...i, labels: (i.labels?.nodes ?? []).map((l) => l.name) })) };
   });
 }
 

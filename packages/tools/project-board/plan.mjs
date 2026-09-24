@@ -23,6 +23,9 @@ export function isOlderThan(closedAt, days, now) {
   return now.getTime() - new Date(closedAt).getTime() > days * 24 * 60 * 60 * 1000;
 }
 
+/** An issue with this label is work outside the project team: it is never added to the board. */
+export const OFF_BOARD_LABEL = 'off-board';
+
 export function planActions({ issues, items, now = new Date(), archiveDays = DEFAULT_ARCHIVE_DAYS }) {
   const byNumber = new Map(items.filter(i => !i.isArchived).map(i => [i.number, i]));
   const archivedNumbers = new Set(items.filter(i => i.isArchived).map(i => i.number));
@@ -33,6 +36,7 @@ export function planActions({ issues, items, now = new Date(), archiveDays = DEF
   const areaProblems = [];
 
   for (const issue of issues) {
+    if (issue.labels?.includes(OFF_BOARD_LABEL)) continue;
     const item = byNumber.get(issue.number);
     if (!item) {
       // Archived items are deliberately off the board: do not re-add them.

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { planActions, isOlderThan, statusForState } from './plan.mjs';
+import { planActions, isOlderThan, statusForState, OFF_BOARD_LABEL } from './plan.mjs';
 
 const now = new Date('2026-10-01T00:00:00Z');
 const item = (o) => ({ itemId: 'I' + o.number, isArchived: false, status: 'Done', module: 'Core CLI', subModule: 'Enforcers', area: 'Core CLI › Enforcers', kind: 'Feature', priority: null, ...o });
@@ -89,4 +89,9 @@ test('Area is derived from Module + Sub-module: mismatches are fixed, impossible
   assert.equal(p.report.areaProblems.length, 1);
   assert.match(p.report.areaProblems[0], /^#3: /);
   assert.deepEqual(p.report.missingSubModule, [4]);
+});
+
+test('an issue labelled off-board is never added to the board', () => {
+  const p = planActions({ issues: [{ id: 'I1', number: 1, state: 'OPEN', labels: [OFF_BOARD_LABEL] }, { id: 'I2', number: 2, state: 'OPEN', labels: [] }], items: [] });
+  assert.deepEqual(p.add.map((a) => a.number), [2]);
 });

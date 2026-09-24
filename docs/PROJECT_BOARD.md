@@ -49,6 +49,12 @@ Open-core note: items about the Cockpit UI, an MCP server and predefined envelop
 packages (enforcers, AST, generators) are open. The project-manager agent watches that boundary as a
 Module/Sub-module concern when triaging. There is deliberately no Edition field yet (optional follow-up).
 
+### Off-board work
+
+Work outside the project team (owner decision 2026-09-24: the Studio epic, #637) is tracked as an issue with the label
+`off-board`. The sync tool never adds such an issue to the board, and the auto-add workflow filter must exclude the label
+(see Workflows below). Remove the label to bring an issue onto the board.
+
 ### Milestone (not a board field)
 
 Releases are tracked with GitHub milestones (`v0.8.0`, `v0.9.0`, `v0.10.0`, `v1.0.0`), set on the issue, not on the
@@ -80,8 +86,8 @@ open `...` menu > Settings > Workflows and set:
 
 1. **Item closed**: enabled, Set Status to Done (already enabled).
 2. **Item reopened**: enable, Set Status to In progress.
-3. **Auto-add to project**: repository `thenewurbankid-web/construct`, filter `is:issue` (so pull requests
-   are never added), Set Status to Backlog.
+3. **Auto-add to project**: repository `thenewurbankid-web/construct`, filter `is:issue -label:off-board` (so pull
+   requests and off-board work are never added), Set Status to Backlog.
 4. **Auto-archive items**: enable, filter `is:closed updated:<@today-14d` (or "Done" status, older than 14 days).
 5. **Pull request merged**: turn off (no pull requests are on the board).
 
