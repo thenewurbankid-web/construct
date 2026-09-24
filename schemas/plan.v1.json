@@ -421,6 +421,24 @@
                       "minLength": 1
                     }
                   },
+                  "shape": {
+                    "type": "string",
+                    "minLength": 1,
+                    "enum": [
+                      "list"
+                    ],
+                    "description": "A named screen shape: the units are filled with real, typed code for it (list: an entity list with loading, empty and error states)."
+                  },
+                  "entity": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The entity a shape shows, PascalCase and singular (Product). Defaults to the singular of the unit name."
+                  },
+                  "fields": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The entity fields for a shape as name:type pairs, comma separated (id:string,name:string,price:number). Types: string, number, boolean; an id field is required."
+                  },
                   "llm": {
                     "type": "string",
                     "minLength": 1,
@@ -482,6 +500,24 @@
                   "feature": {
                     "type": "string",
                     "minLength": 1
+                  },
+                  "shape": {
+                    "type": "string",
+                    "minLength": 1,
+                    "enum": [
+                      "list"
+                    ],
+                    "description": "A named screen shape: the units are filled with real, typed code for it (list: an entity list with loading, empty and error states)."
+                  },
+                  "entity": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The entity a shape shows, PascalCase and singular (Product). Defaults to the singular of the unit name."
+                  },
+                  "fields": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The entity fields for a shape as name:type pairs, comma separated (id:string,name:string,price:number). Types: string, number, boolean; an id field is required."
                   },
                   "llm": {
                     "type": "string",

@@ -835,6 +835,18 @@ test('DOMAIN-002 catches a value import used as a value, which DOMAIN-001 cannot
   assert.deepEqual(detectLayerViolations('domain', src, { domainPurityAllowlist: true }).map((v) => v.rule), ['DOMAIN-002']);
 });
 
+// #619: defineDomain is the typed-contracts factory a domain unit is built through; the allowlist must not
+// count importing it as an effect, or DOMAIN-002 and defineDomain(...) could never both be on. Only that one
+// factory, only from a typed-contracts module: any other value import is still flagged.
+test('DOMAIN-002 lets a domain unit import defineDomain from typed-contracts, and nothing else by value', () => {
+  const unit = (from, name = 'defineDomain') => `import { ${name} } from '${from}';\nexport const sortAll = ${name}('sortAll', ({ items }) => [...items].sort());`;
+  for (const from of ['@line/construct-core/typed-contracts', '../../../packages/core/typed-contracts/index.ts']) {
+    assert.deepEqual(detectLayerViolations('domain', unit(from), { domainPurityAllowlist: true }), [], from);
+  }
+  assert.deepEqual(detectLayerViolations('domain', unit('./helpers'), { domainPurityAllowlist: true }).map((v) => v.rule), ['DOMAIN-002'], 'the same name from another module is an effect');
+  assert.deepEqual(detectLayerViolations('domain', unit('@line/construct-core/typed-contracts', 'defineService'), { domainPurityAllowlist: true }).map((v) => v.rule), ['DOMAIN-002'], 'another factory is not the domain factory');
+});
+
 // A type-only import used only in a type position is never a violation.
 test('DOMAIN-002 does not flag a type-only import used only as a type', () => {
   const src = `import type { Foo } from './types';\nexport function f(x: Foo): Foo { return x; }`;

@@ -90,6 +90,19 @@ export const PLAN_ERROR_CODES = Object.freeze({
 const DIR_ARG = { type: 'string', flag: '--dir', description: 'Target a Construct project nested in a subdirectory.' };
 const LLM_ARG = { type: 'string', flag: '--llm', description: 'LLM provider that writes the file bodies (claude, ollama). Only meaningful on a local-model step.' };
 
+/**
+ * The named screen shapes a `create.layer` / `create.unit` step can scaffold with real, typed code instead of an empty stub (#619).
+ * Extensible: a new shape is one more name here and one more entry in `packages/core/shapes.mjs` (a test keeps the two equal).
+ *
+ * @type {readonly string[]}
+ */
+export const PLAN_SHAPES = Object.freeze(['list']);
+
+// #619 -- the three optional arguments of a shaped step. Additive: a step without them is exactly what it was.
+const SHAPE_ARG = { type: 'string', flag: '--shape', enum: [...PLAN_SHAPES], description: 'A named screen shape: the units are filled with real, typed code for it (list: an entity list with loading, empty and error states).' };
+const ENTITY_ARG = { type: 'string', flag: '--entity', description: 'The entity a shape shows, PascalCase and singular (Product). Defaults to the singular of the unit name.' };
+const FIELDS_ARG = { type: 'string', flag: '--fields', description: 'The entity fields for a shape as name:type pairs, comma separated (id:string,name:string,price:number). Types: string, number, boolean; an id field is required.' };
+
 /** The flow registry: every flow `packages/cli/construct.mjs` actually exposes, keyed
  * by a stable dotted id. Checked against `construct --help` and packages/core/cli.mjs,
  * not against prose.
@@ -135,6 +148,9 @@ export const PLAN_FLOWS = Object.freeze({
       name: { type: 'string', required: true, positional: 0 },
       feature: { type: 'string', required: true, flag: '--feature' },
       layers: { type: 'string[]', required: true, flag: '--layers', join: ',' },
+      shape: SHAPE_ARG,
+      entity: ENTITY_ARG,
+      fields: FIELDS_ARG,
       llm: LLM_ARG,
       dir: DIR_ARG,
     },
@@ -148,6 +164,9 @@ export const PLAN_FLOWS = Object.freeze({
       layer: { type: 'string', required: true, positional: 0 },
       name: { type: 'string', required: true, positional: 1 },
       feature: { type: 'string', required: true, flag: '--feature' },
+      shape: SHAPE_ARG,
+      entity: ENTITY_ARG,
+      fields: FIELDS_ARG,
       llm: LLM_ARG,
       dir: DIR_ARG,
     },

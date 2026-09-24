@@ -6,10 +6,12 @@
 import path from 'node:path';
 import { loadConfig } from './config.mjs';
 import { LAYER_ORDER, layerTargetFile, pascalCase } from './generators.mjs';
+import { shapeTouches } from './shapes.mjs';
 
 const isName = (v) => typeof v === 'string' && v.trim().length > 0;
 const asList = (v) => (Array.isArray(v) ? v : typeof v === 'string' ? v.split(',') : []).map((x) => String(x).trim()).filter(Boolean);
 const rel = (root, abs) => path.relative(root, abs).split(path.sep).join('/');
+const shapeArgs = (args) => ({ shape: args.shape, name: args.name, feature: args.feature, entity: args.entity, fields: args.fields });
 
 /** Flows whose written files are derived here. Every other writing flow answers `null` until its output is pinned by a test. */
 export const DERIVED_FLOWS = Object.freeze(['create.feature', 'create.unit', 'create.layer']);
@@ -34,11 +36,17 @@ export function expectedFiles(root, flowId, args = {}) {
     }
     if (flowId === 'create.unit') {
       if (!isName(args.name) || !isName(args.feature) || !LAYER_ORDER.includes(args.layer)) return null;
+      // #619: a shaped unit writes every file its shape lists for the layer (and the feature's types.ts for the domain layer).
+      if (args.shape !== undefined) return shapeTouches(root, { ...shapeArgs(args), layer: args.layer });
       return [{ path: rel(root, layerTargetFile(root, args.layer, args.name, args.feature, config)), change: 'create', layer: args.layer }];
     }
     if (flowId === 'create.layer') {
       const layers = asList(args.layers);
       if (!isName(args.name) || !isName(args.feature) || !layers.length || !layers.every((l) => LAYER_ORDER.includes(l))) return null;
+      if (args.shape !== undefined) {
+        const shaped = LAYER_ORDER.filter((l) => layers.includes(l)).map((l) => shapeTouches(root, { ...shapeArgs(args), layer: l }));
+        return shaped.every(Boolean) ? shaped.flat() : null;
+      }
       // Generated in canonical order, whatever order the step lists them in (generateVertical).
       return LAYER_ORDER.filter((l) => layers.includes(l)).map((l) => ({ path: rel(root, layerTargetFile(root, l, args.name, args.feature, config)), change: 'create', layer: l }));
     }

@@ -122,6 +122,23 @@ function collectTypeOnlyImportNames(ast) {
   return names;
 }
 
+/** The typed-contracts factory a domain unit is defined through (#502). It is Construct's own boundary type, not an effect:
+ * DOMAIN-002 lets the file import and call it, so `defineDomain(...)` and the allowlist rule can both be on (#619). */
+const DOMAIN_FACTORY = 'defineDomain';
+
+/** Local names bound by a value import of `defineDomain` from a typed-contracts module (`@line/construct-core/typed-contracts`,
+ * or the relative path of the vendored copy). Any other module exporting the same name is not trusted. */
+function collectDomainFactoryNames(ast) {
+  const names = new Set();
+  for (const node of ast.body) {
+    if (node.type !== 'ImportDeclaration' || node.importKind === 'type' || !/typed-contracts(?:\/index(?:\.ts)?)?$/.test(String(node.source.value))) continue;
+    for (const spec of node.specifiers) {
+      if (spec.type === 'ImportSpecifier' && spec.importKind !== 'type' && (spec.imported?.name ?? spec.imported?.value) === DOMAIN_FACTORY && spec.local?.name) names.add(spec.local.name);
+    }
+  }
+  return names;
+}
+
 /**
  * Every reference in `ast` to a free identifier the domain-purity allowlist does not cover:
  * not one of the file's own locally-bound names (collectLocallyBoundNames), not a type-only
@@ -147,6 +164,7 @@ function collectTypeOnlyImportNames(ast) {
 export function collectImpureDomainReferences(ast) {
   const locallyBound = collectLocallyBoundNames(ast);
   const typeOnlyImports = collectTypeOnlyImportNames(ast);
+  const factoryNames = collectDomainFactoryNames(ast);
   const hits = [];
 
   walkAst(ast, {
@@ -160,7 +178,7 @@ export function collectImpureDomainReferences(ast) {
         return;
       }
       if (node.type !== 'Identifier') return;
-      if (locallyBound.has(node.name) || typeOnlyImports.has(node.name) || BUILTIN_GLOBALS.has(node.name)) return;
+      if (locallyBound.has(node.name) || typeOnlyImports.has(node.name) || factoryNames.has(node.name) || BUILTIN_GLOBALS.has(node.name)) return;
       hits.push({ name: node.name, index: node.range[0] });
     },
   });

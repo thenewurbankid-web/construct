@@ -6,6 +6,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { makeLineSource } from './line-source.mjs';
 import { createFeature, generateLayer, generateVertical, layerFromGeneratedFile, fillGeneratedFile } from './generators.mjs';
 import { generateServiceFromSpec } from './service-generator.mjs';
+import { generateShapeLayer, generateShapeVertical, hasTypedContractsDependency, TYPED_CONTRACTS_SPECIFIER } from './shapes.mjs';
 import { write, ensureDir } from './fs.mjs';
 import { scaffoldProject } from './scaffold.mjs';
 import { loadConfig, findProjectRoot, DEFAULT_RULES, NEW_PROJECT_RULE_SEVERITIES, normalizeFramework } from './config.mjs';
@@ -204,6 +205,29 @@ function generateTests(args) {
   console.log(`${r.files.length} spec(s) for feature "${feature}" (${r.written.length} written, ${r.unchanged.length} unchanged; ${todo} pending a fixture), start URL ${r.route ?? 'TODO (no route reaches this feature)'} (${formatDuration(elapsedSeconds(t))})`);
 }
 
+/**
+ * The `--shape <name> [--entity <Entity>] [--fields a:string,b:number]` request of a create/generate command (#619), or `null` when
+ * no shape was asked for. `--entity` and `--fields` mean nothing without `--shape`, and a shape is deterministic, so `--llm` is refused.
+ */
+function shapeRequestOf(args, name, feature) {
+  const shape = flagValue(args, '--shape');
+  if (shape === undefined) {
+    const stray = ['--entity', '--fields'].find((f) => args.includes(f));
+    if (stray) throw new ConstructError(`${stray} only applies with --shape, for example --shape list.`, { exitCode: EXIT_CODES.USAGE_ERROR });
+    return null;
+  }
+  if (args.includes('--llm')) throw new ConstructError('--shape writes real code from typed templates with no model, so it cannot be combined with --llm. Run it without --llm.', { exitCode: EXIT_CODES.USAGE_ERROR });
+  return { shape, name, feature, entity: flagValue(args, '--entity'), fields: flagValue(args, '--fields') };
+}
+
+/** One output line per file a shape wrote: `types.ts` is appended to (`Updated`), every other file is new (`Created`). */
+const shapeLine = (root, file, dt) => `${path.basename(file) === 'types.ts' ? 'Updated' : 'Created'} ${path.relative(root, file)} (${dt})`;
+
+/** After a shape wrote files that import the typed-contracts package, say so once when the project does not depend on it yet. */
+function printTypedContractsNote(root) {
+  if (!hasTypedContractsDependency(root)) console.log(`Note: the generated units import ${TYPED_CONTRACTS_SPECIFIER}: add "@line/construct-core" to your package.json dependencies before you build or type-check.`);
+}
+
 export async function generate(args) {
   if (args[0] === 'tests') return generateTests(args);
   if (args[0] === 'layer') return generateVerticalSlice(args);
@@ -213,6 +237,16 @@ export async function generate(args) {
   }
   const root = getRoot(args);
   const feature = args[fi + 1];
+  // #619: `--shape list` fills the unit with real, typed code for the shape instead of the stub template.
+  const shaped = shapeRequestOf(args, name, feature);
+  if (shaped) {
+    const t = startTimer();
+    const files = generateShapeLayer(root, { ...shaped, layer });
+    const dt = formatDuration(elapsedSeconds(t));
+    for (const file of files) console.log(shapeLine(root, file, dt));
+    printTypedContractsNote(root);
+    return;
+  }
   // Ticket 7.2 (#112): `construct create/generate page <name> --feature <f> --from
   // <path>` ingests an externally-authored JSX file (e.g. a Subframe export) instead
   // of scaffolding the usual stub template -- see packages/engine/pageTransformer.mjs.
@@ -346,6 +380,16 @@ async function generateVerticalSlice(args) {
   const root = getRoot(args);
   const feature = args[fi + 1];
   const layers = args[li + 1].split(',').map((l) => l.trim()).filter(Boolean);
+  const shaped = shapeRequestOf(args, name, feature);
+  if (shaped) {
+    const totalStart = startTimer();
+    const written = generateShapeVertical(root, shaped, layers, {
+      onLayer: ({ files, elapsedSeconds: dt }) => { for (const file of files) console.log(shapeLine(root, file, formatDuration(dt))); },
+    });
+    console.log(`Total: ${formatDuration(elapsedSeconds(totalStart))} (${written.length} file(s))`);
+    printTypedContractsNote(root);
+    return;
+  }
   const llmI = args.indexOf('--llm');
   const llm = llmI >= 0 ? args[llmI + 1] : undefined;
   // Per-layer scaffold timing comes from generateVertical's own onLayer hook
@@ -633,12 +677,15 @@ async function createDocument(args) {
     if (!name || !feature || li < 0 || !args[li + 1]) throw usageFail('Usage: construct generate layer <name> --feature <feature> --layers <layer1,layer2,...> [--llm <provider>]');
     const root = getRoot(args);
     const layers = args[li + 1].split(',').map((l) => l.trim()).filter(Boolean);
-    const files = generateVertical(root, name, feature, layers);
-    return { verb: 'create', kind: 'layer', feature, name, layers, files: files.map((f) => path.relative(root, f)), attribution };
+    const shaped = shapeRequestOf(args, name, feature);
+    const files = shaped ? generateShapeVertical(root, shaped, layers) : generateVertical(root, name, feature, layers);
+    return { verb: 'create', kind: 'layer', feature, name, layers, ...(shaped ? { shape: shaped.shape } : {}), files: files.map((f) => path.relative(root, f)), attribution };
   }
   const layer = args[0], name = args[1];
   if (!layer || !name || !feature) throw usageFail('Usage: construct generate <layer> <name> --feature <feature> [--openapi <spec>] [--llm <provider>]');
   const root = getRoot(args);
+  const shaped = shapeRequestOf(args, name, feature);
+  if (shaped) return { verb: 'create', kind: 'single', feature, layer, name, shape: shaped.shape, files: generateShapeLayer(root, { ...shaped, layer }).map((f) => path.relative(root, f)), attribution };
   return { verb: 'create', kind: 'single', feature, layer, name, files: [path.relative(root, generateLayer(root, layer, name, feature))], attribution };
 }
 
