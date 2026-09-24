@@ -15,6 +15,8 @@ const rel = (root, abs) => path.relative(root, abs).split(path.sep).join('/');
 export const DERIVED_FLOWS = Object.freeze(['create.feature', 'create.unit', 'create.layer']);
 
 /**
+ * The project-relative files a writing plan step will create, derived from its own arguments without touching the disk.
+ *
  * @param {string} root Project root (its architecture.yml decides the features folder).
  * @param {string} flowId A plan flow id (`create.unit`, ...).
  * @param {Record<string, unknown>} [args] The step's arguments.

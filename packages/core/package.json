@@ -10,6 +10,7 @@
   "exports": {
     ".": "./cli.mjs",
     "./plan": "./plan.mjs",
+    "./block-contract": "./block-contract.mjs",
     "./validate": "./validate.mjs",
     "./summarize": "./summarize.mjs",
     "./impact": "./impact.mjs",

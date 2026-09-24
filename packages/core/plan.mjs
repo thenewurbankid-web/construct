@@ -464,7 +464,16 @@ function validateImportPlanArg(value, at, push) {
   });
 }
 
-function validateTouches(touches, at, push) {
+/**
+ * Check a step's declared scope (`touches`): an object with optional `features` and `files` arrays. Shared with the
+ * block contract (block-contract.mjs), whose `declaredScope` is exactly this shape, so there is one definition.
+ *
+ * @param {any} touches The value to check.
+ * @param {string} at Dotted path used in error paths, e.g. `steps[0].touches`.
+ * @param {(code:string, at:string, message:string) => void} push Called once per problem found.
+ * @returns {void}
+ */
+export function validateTouches(touches, at, push) {
   if (!isPlainObject(touches)) {
     push(PLAN_ERROR_CODES.STEP_TOUCHES_INVALID, at, '"touches" must be an object with "features" and "files" arrays.');
     return;
