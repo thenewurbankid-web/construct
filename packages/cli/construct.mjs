@@ -22,7 +22,7 @@ try {
   else if (cmd === 'review') await review(args);
   else if (cmd === 'test') await testCommand(args);
   else if (cmd === 'template') await template(args);
-  else if (cmd === 'import' && args[0] === '--route') await runImportRouteWizard(args[1]);
+  else if (cmd === 'import' && args[0] === '--route') await runImportRouteWizard(args[1]?.startsWith('--') ? undefined : args[1], { planner: args[args.indexOf('--planner') + 1] === 'mechanical' ? 'mechanical' : 'ai' });
   else if (cmd === 'import') await importCommand(args);
   else if (cmd === 'pipeline') await pipeline(args);
   else if (cmd === 'repl') {

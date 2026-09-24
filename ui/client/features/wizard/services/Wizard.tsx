@@ -31,8 +31,8 @@ function send(ws: WebSocket, event: ClientWizardEvent): void {
   ws.send(JSON.stringify(event));
 }
 
-export function sendStart(ws: WebSocket, seedRoute?: string): void {
-  send(ws, { type: 'start', seedRoute: seedRoute || undefined });
+export function sendStart(ws: WebSocket, seedRoute?: string, planner?: 'ai' | 'mechanical'): void {
+  send(ws, { type: 'start', seedRoute: seedRoute || undefined, planner });
 }
 
 export function sendAnswer(ws: WebSocket, text: string): void {

@@ -112,4 +112,23 @@ test.describe('Import Wizard live progress (#599)', () => {
     await expect(items.nth(6)).toHaveClass(/--skipped/);
     await expect(tracker.getByRole('button', { name: /Cancel/ })).toHaveCount(0);
   });
+
+  // #605: the start panel lets the user pick the mechanical planner; the choice is sent with `start`.
+  test('the planner choice is sent with the start message (AI by default, mechanical when selected)', async ({ page }) => {
+    const starts = [];
+    await page.routeWebSocket('**/ws/wizard', (ws) => {
+      ws.onMessage((raw) => {
+        const msg = JSON.parse(String(raw));
+        if (msg.type === 'start') starts.push(msg);
+      });
+    });
+
+    await page.goto('/wizard');
+    const planner = page.getByTestId('wizard-planner');
+    await expect(planner).toHaveValue('ai');
+    await planner.selectOption('mechanical');
+    await page.getByRole('button', { name: 'Start wizard session' }).click();
+    await expect.poll(() => starts.length).toBe(1);
+    expect(starts[0].planner).toBe('mechanical');
+  });
 });

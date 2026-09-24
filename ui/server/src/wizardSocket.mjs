@@ -109,6 +109,7 @@ export function attachWizardSocket(server, path = '/ws/wizard', allowedOrigin, a
         session = runImportRouteWizardEventDriven((event) => send(ws, event), msg.seedRoute || undefined, {
           planAnalysis: llmProviders.planAnalysis,
           importFill: llmProviders.importFill,
+          planner: msg.planner === 'mechanical' ? 'mechanical' : 'ai',
         });
         session.done.finally(() => {
           session = null;

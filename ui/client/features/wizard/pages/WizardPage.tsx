@@ -8,18 +8,18 @@ import type { useWizard } from '../hooks/useWizard';
 
 type WizardPageProps = ReturnType<typeof useWizard>;
 
-export function WizardPage({ messages, status, awaitingAnswer, steps, cancelling, cancel, input, setInput, seedRoute, setSeedRoute, start, submitAnswer }: WizardPageProps): ReactNode {
+export function WizardPage({ messages, status, awaitingAnswer, steps, cancelling, cancel, input, setInput, seedRoute, setSeedRoute, planner, setPlanner, start, submitAnswer }: WizardPageProps): ReactNode {
   return (
     <div className="page page--screen">
       <h1>Import Route Wizard</h1>
       <p className="hint">
-        Guides a whole-feature import: traces a route&apos;s real import graph, proposes a plan with
-        one combined LLM call, and only writes anything once you approve it. Each browser tab runs
+        Guides a whole-feature import: traces a route&apos;s real import graph, proposes a plan (one model call,
+        or mechanically from the code), and only writes anything once you approve it. Each browser tab runs
         its own independent session.
       </p>
 
       {(status === 'idle' || status === 'done') && (
-        <WizardStartPanel seedRoute={seedRoute} setSeedRoute={setSeedRoute} onStart={start} />
+        <WizardStartPanel seedRoute={seedRoute} setSeedRoute={setSeedRoute} planner={planner} setPlanner={setPlanner} onStart={start} />
       )}
 
       {status === 'connecting' && messages.length === 0 && (

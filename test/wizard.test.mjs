@@ -281,3 +281,37 @@ test('importRouteWizard reports an analysis failure without throwing', async () 
     }),
   );
 });
+
+test('importRouteWizard with the mechanical planner builds from a plan it computed itself: zero model calls, reasons in the plan table', async () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  const routeDir = buildRouteFixture(['./Old', './Card'], {
+    'Old.ts': 'export function old() { return true; }\n',
+    'Card.tsx': 'export function Card() { return <div>hi</div>; }\n',
+  });
+  const printed = [];
+  const originalLog = console.log;
+  console.log = (...a) => printed.push(a.join(' '));
+  let calls;
+  try {
+    await inProject(dir, () =>
+      withFakeAnalysis({}, async (c) => {
+        calls = c;
+        await importRouteWizard(scriptedAsk(['checkout', '', 'n', 'y']), routeDir, { planner: 'mechanical' });
+      }),
+    );
+  } finally {
+    console.log = originalLog;
+  }
+
+  assert.equal(calls.length, 0, 'the mechanical planner must not call any model');
+  const out = printed.join('\n');
+  assert.match(out, /Planning mechanically/);
+  assert.match(out, /domain: plain functions/);
+  assert.match(out, /component: renders JSX/);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Old.tsx')), true);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'components', 'Card.tsx')), true);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'pages', 'CheckoutPage.tsx')), true);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'controllers', 'CheckoutController.tsx')), true);
+  assert.doesNotMatch(out, /call\(s\) to analyze the route/);
+});

@@ -21,6 +21,7 @@ import { summarizeProject, summarizeCompact, summarizeProse, summarizeSince } fr
 import { moveLayerFile, renameLayerFile } from './refactor.mjs';
 import { extractExpression } from './extractExpression.mjs';
 import { importVertical, importPlan, analyzeFiles, executeImportPlan, autoFixViolations } from './import.mjs';
+import { planMechanically } from './mechanical-plan.mjs';
 import { resolveRoute } from './route-resolver.mjs';
 import { DEFAULT_ENFORCERS } from '../../packages/engine/defaultEnforcers.mjs';
 import { runPipeline } from '../../packages/engine/pipeline.mjs';
@@ -1057,6 +1058,7 @@ function renderPlanTable(plan) {
   const lines = [`Proposed plan for feature "${plan.feature}" (${plan.units.length} unit(s)):`, ''];
   for (const [i, u] of plan.units.entries()) {
     lines.push(`  ${i + 1}. ${u.name.padEnd(24)} ${u.layers.join(', ').padEnd(28)} <- ${u.from}`);
+    for (const layer of u.layers) if (u.reasons?.[layer]) lines.push(`       ${layer}: ${u.reasons[layer]}`);
   }
   return lines.join('\n');
 }
@@ -1095,7 +1097,7 @@ function isYes(answer) {
  * way, the actual file list comes from tracing the real import graph
  * (route-resolver.mjs), never from "everything under a directory you point
  * at". */
-export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude', importFill = 'claude', onStep, onThought, signal } = {}) {
+export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude', importFill = 'claude', planner = 'ai', onStep, onThought, signal } = {}) {
   // #599 -- two SEPARATE kinds of live output, kept apart on purpose so a UI can style them
   // differently: `onStep` receives the framework's own deterministic phase markers
   // ({phase, detail}: tracing, analyzing, plan-ready, scaffolding, filling, validating,
@@ -1108,7 +1110,7 @@ export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude
   // Whole-feature plan analysis is deliberately hosted-model-only (#96) — the
   // same guardrail ui/server's Settings enforces, repeated here so a direct
   // caller can't route it to a local model either.
-  if (planAnalysis === 'ollama') {
+  if (planner !== 'mechanical' && planAnalysis === 'ollama') {
     console.error('Plan analysis cannot use "ollama" — the whole-feature analysis call is hosted-model-only (see epic #96). Use "claude" for planAnalysis.');
     return;
   }
@@ -1190,6 +1192,7 @@ export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude
   console.log(`Tracing ${routeArgs.join(', ')} ...`);
   const traceStart = startTimer();
   const tracedFiles = new Map(); // absolute path -> true, deduped across routes
+  const entryFiles = []; // each route's own entry file (first traced), the page/controller of the plan
   const folders = [];
   try {
     for (const routeArg of routeArgs) {
@@ -1205,6 +1208,7 @@ export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude
       }
       const resolved = resolveRoute(routeArg, opts);
       folders.push(resolved.folder);
+      if (resolved.files[0]) entryFiles.push(resolved.files[0]);
       for (const f of resolved.files) tracedFiles.set(f, true);
     }
   } catch (e) {
@@ -1215,24 +1219,40 @@ export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude
   console.log(
     `Found ${tracedFiles.size} file(s) across ${folders.length} route(s) in ${formatDuration(elapsedSeconds(traceStart))}: ${folders.map((f) => path.relative(root, f)).join(', ')}`,
   );
-  console.log(
-    `Analyzing via "${planAnalysis}" — one LLM call for a single combined plan across all of them, nothing is written yet...`,
-  );
   let plan;
-  step('analyzing', { provider: planAnalysis, files: tracedFiles.size }, 'One model call proposes the units and layers; the framework then checks every layer name and source file it names and repairs impossible combinations (a controller always gets its page).');
   const analysisStart = startTimer();
-  try {
-    plan = await analyzeFiles([...tracedFiles.keys()], featureName, { llm: planAnalysis, llmOptions });
-  } catch (e) {
-    console.error(`Analysis failed: ${e.message}`);
-    return;
+  if (planner === 'mechanical') {
+    console.log('Planning mechanically — reading each file\'s syntax tree, no model call, nothing is written yet...');
+    step('analyzing', { provider: 'mechanical', files: tracedFiles.size }, 'No model is involved: each file is classified from what its code does (JSX, its own state, fetch/storage, reducer shape, plain functions) and the reason is shown per layer.');
+    try {
+      plan = planMechanically([...tracedFiles.keys()], featureName, { entryFiles });
+    } catch (e) {
+      console.error(`Planning failed: ${e.message}`);
+      return;
+    }
+    if (!plan.units.length) {
+      console.error(`Planning failed: none of the ${tracedFiles.size} traced file(s) could be classified (${plan.skipped.map((k) => `${path.basename(k.file)}: ${k.reason}`).join('; ')}).`);
+      return;
+    }
+  } else {
+    console.log(
+      `Analyzing via "${planAnalysis}" — one LLM call for a single combined plan across all of them, nothing is written yet...`,
+    );
+    step('analyzing', { provider: planAnalysis, files: tracedFiles.size }, 'One model call proposes the units and layers; the framework then checks every layer name and source file it names and repairs impossible combinations (a controller always gets its page).');
+    try {
+      plan = await analyzeFiles([...tracedFiles.keys()], featureName, { llm: planAnalysis, llmOptions });
+    } catch (e) {
+      console.error(`Analysis failed: ${e.message}`);
+      return;
+    }
   }
   const analysisSeconds = elapsedSeconds(analysisStart);
-  console.log(`Analysis complete (llm ${formatDuration(analysisSeconds)}).`);
+  console.log(planner === 'mechanical' ? `Plan ready (mechanical, ${formatDuration(analysisSeconds)}).` : `Analysis complete (llm ${formatDuration(analysisSeconds)}).`);
 
   step('plan-ready', { units: plan.units.length }, plan.layerAdjustments?.length ? `Repaired the plan deterministically: ${plan.layerAdjustments.map((a) => `added ${a.added.join(', ')} to ${a.unit}`).join('; ')} (a controller composes a same-named page). Nothing is written until you approve.` : 'Nothing is written until you approve this plan.');
   console.log('');
   console.log(renderPlanTable(plan));
+  if (plan.skipped?.length) console.log(`Left out (not a layer of their own): ${plan.skipped.map((k) => `${path.basename(k.file)} — ${k.reason}`).join('; ')}`);
   console.log('');
 
   if (!isYes(await ask('Approve this plan and build it now? [y/N]: '))) {
@@ -1242,7 +1262,7 @@ export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude
 
   step('scaffolding', { feature: plan.feature }, 'Layer files come from Construct\'s own templates in build order (domain → service → workflow → hook → component → page → controller); no model is involved.');
   const { results, cancelled: fillCancelled } = await executeImportPlan(root, plan, { llm: fillWithLlm ? importFill : undefined, llmOptions, onStep: step });
-  reportImport(root, results, fillWithLlm ? importFill : undefined, plan.feature, 1, analysisSeconds);
+  reportImport(root, results, fillWithLlm ? importFill : undefined, plan.feature, planner === 'mechanical' ? 0 : 1, analysisSeconds);
   if (fillCancelled) {
     step('cancelled', { during: 'filling' });
     console.log('Cancelled — files not yet filled were left as their TODO(import) stubs; nothing was half-written.');
@@ -1332,14 +1352,14 @@ export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude
   step('done', { files: allFiles.length, todo: todoFiles.length });
 }
 
-export async function runImportRouteWizard(routeArg) {
+export async function runImportRouteWizard(routeArg, options = {}) {
   const lineSource = makeLineSource(process.stdin);
   async function ask(promptText) {
     process.stdout.write(promptText);
     const { done, value } = await lineSource.next();
     return done ? '' : value;
   }
-  await importRouteWizard(ask, routeArg);
+  await importRouteWizard(ask, routeArg, options);
 }
 
 // ---- event-driven adapter for non-terminal callers (e.g. a chat UI) -------

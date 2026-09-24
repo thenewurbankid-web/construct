@@ -36,11 +36,12 @@ export function useWizard() {
   const [state, dispatch] = useReducer(wizardReducer, initialWizardState);
   const [input, setInput] = useState('');
   const [seedRoute, setSeedRoute] = useState('');
+  const [planner, setPlanner] = useState<'ai' | 'mechanical'>('ai');
   const wsRef = useWizardSocket(dispatch);
 
   function start() {
     dispatch({ type: 'START' });
-    if (wsRef.current) sendStart(wsRef.current, seedRoute);
+    if (wsRef.current) sendStart(wsRef.current, seedRoute, planner);
   }
 
   function cancel() {
@@ -67,6 +68,8 @@ export function useWizard() {
     input,
     setInput,
     seedRoute,
+    planner,
+    setPlanner,
     setSeedRoute,
     start,
     submitAnswer,

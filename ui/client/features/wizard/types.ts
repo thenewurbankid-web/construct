@@ -28,4 +28,4 @@ export type ServerWizardEvent =
   | { type: 'thought'; text: string }
   | { type: 'done' };
 
-export type ClientWizardEvent = { type: 'start'; seedRoute?: string } | { type: 'answer'; text: string } | { type: 'cancel' };
+export type ClientWizardEvent = { type: 'start'; seedRoute?: string; planner?: 'ai' | 'mechanical' } | { type: 'answer'; text: string } | { type: 'cancel' };
