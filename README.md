@@ -536,6 +536,18 @@ project:
 
 Switching providers only ever touches `client.ts` — every generated `services/*.ts` endpoint file calls the same provider-agnostic `buildRequest(method, urlTemplate, data)` helper regardless of which adapter is active. Every operation in the spec needs an explicit `operationId` (used to line up the RTKQ endpoint with the type hey-api generated for it) — a spec without one fails fast with a clear error rather than guessing a name that might not match.
 
+## Decision traces: what was chosen, recorded, and any decision provider scored on it (#643)
+
+Every closed question a person answers in a chain (the Requirement screen's open questions and the list-shape offer, a placement question, a compiled chooser chain) is appended as one `decision-trace.v1` record: the question as it was offered, the option chosen, who chose, what the `rules` provider suggested and whether it was taken, and later whether the plan validated. Records go to the per-user state directory (`<state dir>/traces/<project>/decisions.jsonl`, next to process records), never into your project, hold no path or secret (a record that would is refused), and never leave the machine. A project switches recording off with a top-level `traces: off` in `architecture.yml` (default `on`, because they stay local).
+
+```bash
+construct traces list [--chooser <id>] [--json]
+construct traces stats [--json]
+construct traces replay --provider <name> [--min-traces 30] [--plugin <file.mjs>] [--json]   # beats / ties / loses vs the rules baseline
+```
+
+Replay is deterministic and read-only: no model, no network. A provider is promotable only when it beats the `rules` baseline on at least 30 person-made traces. Fields, privacy and the command in full: `docs/DECISION-TRACES.md`.
+
 ## Cockpit execution mode: in-process engine or the real CLI (#541)
 
 The Cockpit runs each **core activity** (the verbs `validate`, `summarize`, `research`, `review`, `create`, `refactor`, `import`) in one of two modes, chosen per project in `architecture.yml`, same shape as `project.dataLayer.provider`:

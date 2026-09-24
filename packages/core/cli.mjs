@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { makeLineSource } from './line-source.mjs';
@@ -40,6 +40,9 @@ import { explainSource, renderExplained } from '../../packages/engine/workflowEx
 import { listWorkflowSourceFiles, readWorkflowSource } from '../../packages/engine/workflowSource.mjs';
 import { validateMachineSpec, renderMachineSpecReport } from './research/machine-spec.mjs';
 import { generateFromSpec } from './research/specToCode.mjs';
+import { readTraces } from './decision-trace-store.mjs';
+import { registerDecisionProvider } from './decision-provider.mjs';
+import { traceStats, replayTraces, renderTraceList, renderTraceStats, renderReplay, DEFAULT_MIN_TRACES } from './decision-trace-replay.mjs';
 
 // Resolve the project root freshly per command: walks up from cwd (or from
 // --dir, when given) to find an existing architecture.yml (monorepo
@@ -538,6 +541,80 @@ export async function pipeline(args) {
   const output = runPipeline(root, input);
   console.log(JSON.stringify(output, null, 2));
   if (output.status === 'aborted') setExitCode(exitCodeForViolations(output.diagnostics));
+}
+
+const TRACES_USAGE = 'Usage: construct traces list [--chooser <id>] [--limit <n>] [--json] | stats [--chooser <id>] [--json] | replay --provider <name> [--chooser <id>] [--min-traces <n>] [--baseline <name>] [--plugin <file.mjs>] [--json] [--dir <path>]';
+const TRACES_VALUE_FLAGS = new Set(['--chooser', '--limit', '--provider', '--baseline', '--min-traces', '--plugin', '--dir', '--format']);
+
+/**
+ * `construct traces list|stats|replay` (#643): read-only, deterministic, no model and no network. The traces are the
+ * `decision-trace.v1` records the chain wrote to this project's state directory (docs/DECISION-TRACES.md).
+ *
+ *   list [--chooser <id>] [--limit <n>]     the recorded decisions
+ *   stats [--chooser <id>]                  counts per chooser, acceptance rate of suggestions, per provider
+ *   replay --provider <name> [--chooser <id>] [--min-traces <n>] [--baseline <name>] [--plugin <file.mjs>]
+ *                                           score a provider on the recorded summaries against the `rules` baseline
+ *
+ * `--json` (or `--format json`) prints one JSON document. `--plugin <file.mjs>` imports a module that registers a decision
+ * provider (it calls `registerDecisionProvider`, or default-exports `{ name, suggest }`); code you name yourself, run
+ * locally, so it is as trusted as any script you run. A provider that is not registered is a usage error (exit 2).
+ *
+ * @param {string[]} args `list`, `stats` or `replay` followed by its flags.
+ * @returns {Promise<void>} Resolves after printing the report.
+ * @throws {ConstructError} Usage error (exit code 2) for an unknown subcommand, a missing or unknown provider, or a bad number.
+ *
+ * @example
+ * await traces(['replay', '--provider', 'rules', '--json']);
+ */
+export async function traces(args) {
+  const usage = (message) => new ConstructError(`${message}\n${TRACES_USAGE}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+  const sub = args.find((a, i) => !a.startsWith('--') && !TRACES_VALUE_FLAGS.has(args[i - 1]));
+  if (!['list', 'stats', 'replay'].includes(sub)) throw usage(sub ? `Unknown traces command "${sub}".` : 'Say what to do with the traces.');
+  const json = args.includes('--json') || flagValue(args, '--format') === 'json';
+  const chooser = flagValue(args, '--chooser');
+  const count = (name, fallback) => {
+    const raw = flagValue(args, name);
+    if (raw === undefined) return fallback;
+    if (!/^\d+$/.test(raw)) throw usage(`${name} must be a whole number (got ${JSON.stringify(raw)}).`);
+    return Number(raw);
+  };
+  const root = getRoot(args);
+  const read = readTraces(root);
+  const decisions = chooser ? read.decisions.filter((d) => d.chooser.id === chooser) : read.decisions;
+  const print = (doc, text) => console.log(json ? JSON.stringify(doc, null, 2) : text);
+  const notes = [
+    ...(read.enabled ? [] : ['Recording is off for this project (traces: off in architecture.yml); what was recorded earlier is shown.']),
+    ...(read.skipped ? [`${read.skipped} unreadable line(s) skipped.`] : []),
+    ...(read.error ? [`Could not read the traces: ${read.error}`] : []),
+  ];
+  const withNotes = (text) => [text, ...(notes.length ? ['', ...notes] : [])].join('\n');
+  if (sub === 'list') {
+    const limit = count('--limit');
+    print({ ok: true, enabled: read.enabled, total: decisions.length, skipped: read.skipped, decisions: limit ? decisions.slice(-limit) : decisions }, withNotes(`${renderTraceList(decisions, { limit })}\n(${read.dir})`));
+  } else if (sub === 'stats') {
+    const stats = traceStats(decisions);
+    print({ ok: true, enabled: read.enabled, skipped: read.skipped, ...stats }, withNotes(renderTraceStats(stats)));
+  } else {
+    const provider = flagValue(args, '--provider');
+    if (!provider) throw usage('replay needs --provider <name>.');
+    const plugin = flagValue(args, '--plugin');
+    if (plugin) {
+      let mod;
+      try {
+        mod = await import(pathToFileURL(path.resolve(plugin)).href);
+      } catch (e) {
+        throw usage(`Could not load the plugin ${plugin}: ${String(e?.message ?? e).split('\n')[0]}`);
+      }
+      const def = mod.default;
+      if (def && typeof def === 'object' && typeof def.name === 'string' && typeof def.suggest === 'function') registerDecisionProvider(def.name, def);
+    }
+    const report = await replayTraces(decisions, { provider, baseline: flagValue(args, '--baseline'), chooser, minTraces: count('--min-traces', DEFAULT_MIN_TRACES) });
+    if (!report.ok) {
+      if (json) console.log(JSON.stringify(report, null, 2));
+      throw usage(report.error);
+    }
+    print({ ...report, enabled: read.enabled, skipped: read.skipped }, withNotes(renderReplay(report)));
+  }
 }
 
 /**

@@ -128,6 +128,13 @@ Commands:
   construct summarize [--feature <name>] [--format json|md|compact|prose] [--since <ref>] [--dir <path>]
   construct doctor [--format json] [--dir <path>]
   construct pipeline run [--dir <path>]   (reads a Context Envelope as JSON on stdin, writes one to stdout)
+  construct traces list [--chooser <id>] [--limit <n>] [--json] [--dir <path>]
+  construct traces stats [--chooser <id>] [--json] [--dir <path>]
+  construct traces replay --provider <name> [--chooser <id>] [--min-traces <n>] [--baseline <name>] [--plugin <file.mjs>] [--json] [--dir <path>]
+    (the choices made in a chain are recorded locally as decision-trace.v1, never inside your project: 'list' shows them, 'stats'
+    counts them and how often a suggestion was taken, 'replay' scores a decision provider (rules, off, a plugin) on what people
+    chose against the rules baseline: beats, ties or loses, promotable only on >= 30 traces; read-only, no model, no network;
+    switch recording off with 'traces: off' in architecture.yml; see docs/DECISION-TRACES.md)
 
 --dir <path> targets a Construct project nested in a subdirectory (e.g. one
 created with 'construct init <path>' inside a larger, unrelated project)
