@@ -7,10 +7,38 @@ request or issue numbers.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-09-24
+
+The MVP release: a five-screen Cockpit with durable Notes, a calmer interface, blocks you can see and switch off, a workspace of your own on a hosted Cockpit, and results you can trust on a real project. Package versions are `0.9.0`; the Cockpit (`ui/`) is not versioned separately yet.
+
 ### Added
 - `TYPE-001` (off by default, opt-in via `rules: { TYPE-001: error }` in `architecture.yml`): `construct validate` runs the project's own TypeScript (`tsc --noEmit -p tsconfig.json`) and reports each diagnostic as a violation with its `TSxxxx` code, file and line; if TypeScript or the tsconfig is missing it warns `TYPE-001 could not run: <reason>` instead of passing silently ([#495]). A solution-style root tsconfig (`references`, no `files`/`include`, as in a Vite/React template) is now expanded: each referenced project is checked with `tsc --noEmit -p` (never `tsc -b`) and the diagnostics merged; a missing reference or a config that resolves to zero files warns `TYPE-001 could not run: ...` instead of passing, and the checked configs are reported as `typeCheck.checked` ([#579]).
 - Cockpit: interactive commands (`/api/create`, `/api/import`, ...) are queued per signed-in login instead of one server-wide queue, so one user's long command no longer delays another's; `CONSTRUCT_MAX_CONCURRENT_COMMANDS` (default 2) caps how many run at once across all users. Each command's console output and exit code are captured per command (`setExitCode`/`withExitCodeSink` in `packages/core/diagnostics.mjs`; core commands no longer write `process.exitCode` directly), so concurrent commands never see each other's output or status ([#569]).
 - `defineService(name, fn, { schema })`: an optional response schema, checked at the service's boundary. `schema` is any Standard Schema object (`~standard.validate` — zod 3.24+/4, Valibot, ArkType, or hand-written) or a `safeParse`-shaped one; core imports no schema library. The unit then returns `{ status: 'ok', value }` (typed as the schema's output) or `{ status: 'error', kind: 'schema', issues }` — never a throw — keeping `fn`'s own sync/async-ness; the two-argument form is unchanged ([#585], part of [#575]).
+- Cockpit shell: five screens (Features, Pages, Components, Git, Tests) in a left rail, a profile menu (Settings, Local model, Theme, Help, Sign out), and the whole UI blocked until a project is open. Features, Pages and Components browse in the left pane and open in the stage; the Pages screen can show the real app full screen and at device sizes ([#243], [#368], [#369], [#370], [#429], [#431], [#456]).
+- Durable Notes: a per-project draft that autosaves 800 ms after you stop typing, survives a reload and a server restart, and offers Keep mine / Load theirs / Compare when another tab saved first. The Plan screen writes its own note: `?note=<id>` follows it, step edits save the plan, editing the text afterwards shows "Plan out of date" (Keep this plan), and Run marks the note ran and keeps it as read-only history (editing it starts a copy). "Ticket" is now "Notes" everywhere users read ([#366], [#373], [#561], [#609]).
+- Open a project: clone from GitHub, and a New project action that creates an initialised folder in your workspace ([#330], [#445], [#562]).
+- A workspace of your own on a hosted Cockpit: DevOps sets the root (`CONSTRUCT_WORKSPACE_ROOT`), each signed-in user is confined to `<root>/<login>/`, the project picker lists only your projects, and project state is per session so two users can be signed in at once ([#566], [#567], [#568], [#569]).
+- Blocks: a uniform block contract (`packages/core/block-contract.mjs`, `block-flows.mjs`, `docs/BLOCK-CONTRACT.md`) with an audit of every plan flow; a Blocks tab in the Features Browser pane lists each block in plain words and lets you turn it off per project or set its default engine. A turned-off block is refused server-side (`COCKPIT_BLOCK_DISABLED`) on every screen that starts it, and nothing starts ([#407], [#543], [#563], [#611]).
+- A plan built in the Cockpit declares the files its steps write (`packages/core/plan-touches.mjs` derives them for `create.feature`, `create.unit` and `create.layer`, pinned against the real generators), so the approval gate can approve them one by one; the step card shows "writes <file>" ([#470], [#564]).
+- The Cockpit and the CLI give the same result: the per-project execution mode now covers summarize, doctor, review, create, refactor and import as well as validate, each with an engine/CLI byte-identical contract test ([#560]).
+- Workflows: `WORKFLOW-004` transition-table completeness and an opt-in typed state union with an exhaustive matcher for generated workflows ([#571], [#572], [#578], [#580]).
+- Logos as status lights: the Cockpit logo moves only while the framework is working (a command, the Import Wizard, a Process) and the tab icon flips with it; the docs logo is a status light too, driven by `GET /api/dev-status` (public, booleans only, read from local agent activity, off unless enabled), with its mode and a Logo Lab motion set in `site/logo.json` or in your own browser ([#614]).
+- Brand marks (Line, Construct, Cockpit, CLI), a login hero, a reusable animated loader, and a calmer login screen ([#401], [#406], [#424], [#455]).
+- Components screen: props read with react-docgen ([#434]). API reference for every package, versioned with the documentation site ([#463], [#464], [#465], [#466], [#467], [#468]).
+
+### Changed
+- A calmer Cockpit: Settings drops the "Current resolution" panel, the Dashboard opens with Create and folds Refactor, Research and Import under "More actions", Help opens only "Getting started", the status bar shows one "? Shortcuts", buttons say what they do ("Create feature", "Check impact"), plain words replace derived/inferred ("Computed"/"Guess"), and empty states end with one primary action ([#391], [#565]).
+- The documentation site sanitizes rendered HTML with `sanitize-html` and an explicit allowlist instead of a regular-expression pass ([#421]).
+- Scenario names are distinguishable in a list ([#307]).
+
+### Fixed
+- `IMPORT-001` and the `ROUTE-*` rules now check the root `app/page.tsx` ([#491]); `READ-001` no longer suggests renaming a unit after a type export ([#493]); `construct init` scaffolds a runnable project ([#497]); the process engine, transaction commit and approval gate validate the four constraints `construct validate` enforces ([#546]).
+- Stability: model calls time out instead of hanging ([#413]), clone children die with the server ([#422]) and the VCS binary is checked before a clone ([#423]), `heavy.sh` prunes by dead owner and bounds its waits ([#414]).
+- The rules reference no longer loses `<Name>` in rule names (it was rendered as an HTML tag).
+
+### Security
+- The hosted Cockpit confines each signed-in user to their own directory by realpath, and answers another user's directory with the same refusal as an outside path ([#566]).
 
 ## [0.8.0] - 2026-09-23
 
@@ -241,3 +269,43 @@ The first tracked baseline. It collects everything shipped since the project beg
 [#575]: https://github.com/thenewurbankid-web/construct/issues/575
 [#579]: https://github.com/thenewurbankid-web/construct/issues/579
 [#585]: https://github.com/thenewurbankid-web/construct/issues/585
+[#243]: https://github.com/thenewurbankid-web/construct/issues/243
+[#307]: https://github.com/thenewurbankid-web/construct/issues/307
+[#330]: https://github.com/thenewurbankid-web/construct/issues/330
+[#366]: https://github.com/thenewurbankid-web/construct/issues/366
+[#368]: https://github.com/thenewurbankid-web/construct/issues/368
+[#369]: https://github.com/thenewurbankid-web/construct/issues/369
+[#370]: https://github.com/thenewurbankid-web/construct/issues/370
+[#373]: https://github.com/thenewurbankid-web/construct/issues/373
+[#391]: https://github.com/thenewurbankid-web/construct/issues/391
+[#401]: https://github.com/thenewurbankid-web/construct/issues/401
+[#406]: https://github.com/thenewurbankid-web/construct/issues/406
+[#407]: https://github.com/thenewurbankid-web/construct/issues/407
+[#421]: https://github.com/thenewurbankid-web/construct/issues/421
+[#424]: https://github.com/thenewurbankid-web/construct/issues/424
+[#429]: https://github.com/thenewurbankid-web/construct/issues/429
+[#431]: https://github.com/thenewurbankid-web/construct/issues/431
+[#434]: https://github.com/thenewurbankid-web/construct/issues/434
+[#445]: https://github.com/thenewurbankid-web/construct/issues/445
+[#456]: https://github.com/thenewurbankid-web/construct/issues/456
+[#470]: https://github.com/thenewurbankid-web/construct/issues/470
+[#491]: https://github.com/thenewurbankid-web/construct/issues/491
+[#493]: https://github.com/thenewurbankid-web/construct/issues/493
+[#497]: https://github.com/thenewurbankid-web/construct/issues/497
+[#543]: https://github.com/thenewurbankid-web/construct/issues/543
+[#546]: https://github.com/thenewurbankid-web/construct/issues/546
+[#561]: https://github.com/thenewurbankid-web/construct/issues/561
+[#562]: https://github.com/thenewurbankid-web/construct/issues/562
+[#563]: https://github.com/thenewurbankid-web/construct/issues/563
+[#564]: https://github.com/thenewurbankid-web/construct/issues/564
+[#565]: https://github.com/thenewurbankid-web/construct/issues/565
+[#566]: https://github.com/thenewurbankid-web/construct/issues/566
+[#567]: https://github.com/thenewurbankid-web/construct/issues/567
+[#568]: https://github.com/thenewurbankid-web/construct/issues/568
+[#571]: https://github.com/thenewurbankid-web/construct/issues/571
+[#572]: https://github.com/thenewurbankid-web/construct/issues/572
+[#578]: https://github.com/thenewurbankid-web/construct/issues/578
+[#580]: https://github.com/thenewurbankid-web/construct/issues/580
+[#609]: https://github.com/thenewurbankid-web/construct/issues/609
+[#611]: https://github.com/thenewurbankid-web/construct/issues/611
+[#614]: https://github.com/thenewurbankid-web/construct/issues/614

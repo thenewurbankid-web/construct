@@ -1,6 +1,6 @@
 {
   "name": "@line/construct-core",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "Construct's deterministic, non-LLM core: config/architecture rules, generators, the plan/validate/summarize/impact engine. No CLI (see @line/construct), no UI.",
   "type": "module",
   "license": "MIT",
