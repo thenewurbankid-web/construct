@@ -60,7 +60,7 @@ const traces = () => readTraces(project.root, { stateDir }).decisions.filter((d)
 test('the read response carries the plan\'s proof, pending and incomplete', () => {
   assert.equal(chosen.status, 200);
   assert.ok(JSON.stringify(PLAN).length < 32 * 1024, `a whole plan fits the proof routes' cap: ${JSON.stringify(PLAN).length} bytes`);
-  assert.deepEqual(chosen.body.proof.steps.map((s) => [s.name, s.kind, s.verifiedBy]), [['Products', 'render', 's9']]);
+  assert.deepEqual(chosen.body.proof.steps.map((s) => [s.name, s.kind, s.verifiedBy]), [['Products', 'render', 's12']]);
   assert.equal(chosen.body.proof.complete, false);
   assert.equal(chosen.body.proof.state, 'pending');
 });

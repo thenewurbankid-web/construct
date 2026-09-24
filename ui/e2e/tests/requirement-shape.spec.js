@@ -90,7 +90,7 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
     expect(await listedFiles(page)).toEqual(SCAFFOLD_FILES);
   });
 
-  test('choosing scaffold shows fewer files; choosing list shows the 9-step plan, the typed file names and who decided (person)', async ({ page }) => {
+  test('choosing scaffold shows fewer files; choosing list shows the 11-step plan, the typed file names and who decided (person)', async ({ page }) => {
     await gotoCockpit(page, '/requirement');
     await readSentence(page, PRODUCTS);
 
@@ -106,8 +106,8 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
 
     const list = await choose(page, 'list');
     expect(list.body.offers[0].chosen).toBe('list');
-    expect(list.body.plan.steps.map((s) => s.flow)).toEqual(['create.feature', ...Array(6).fill('create.unit'), 'create.proof', 'test.proof']);
-    expect(list.body.plan.steps.slice(1, 7).every((s) => s.args.shape === 'list' && s.args.entity === 'Product')).toBe(true); // then the proof and its run (#623)
+    expect(list.body.plan.steps.map((s) => s.flow)).toEqual(['create.feature', ...Array(6).fill('create.unit'), 'sync', 'create.route', 'create.proof', 'test.proof']);
+    expect(list.body.plan.steps.slice(1, 7).every((s) => s.args.shape === 'list' && s.args.entity === 'Product')).toBe(true); // then sync and the route entry (#654), the proof and its run (#623)
     await expect(page.getByTestId('requirement-shape-list')).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByTestId('requirement-shape-scaffold')).toHaveAttribute('aria-pressed', 'false');
     await expect(page.getByTestId('requirement-shape-status')).toHaveText('Chosen: List screen, generated with typed code. Decided by: person.');
@@ -136,7 +136,7 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
     await expect(page.getByTestId('requirement-started')).toContainText(processId);
     const detail = await (await request.get(`${API}/api/processes/${processId}`)).json();
     expect(detail.ok).toBe(true);
-    expect(detail.process.steps.map((s) => s.flow)).toEqual(['create.feature', ...Array(6).fill('create.unit'), 'create.proof', 'test.proof']);
+    expect(detail.process.steps.map((s) => s.flow)).toEqual(['create.feature', ...Array(6).fill('create.unit'), 'sync', 'create.route', 'create.proof', 'test.proof']);
     // The API shows a step without its arguments; the saved record (the server's own store) keeps the plan verbatim, and its steps are what runs.
     const record = openProcessStore(project.repo, { stateDir: STATE_DIR }).load(processId);
     const commands = record.plan.steps.map((s) => planToCommand(s).argv.join(' '));

@@ -49,7 +49,7 @@ test('choosing list: the view names the chooser (person), the plan has 9 steps (
   assert.deepEqual(list.result.timeline.map((s) => s.kind), ['page-load', 'server-read', 'presentation'], 'the list shape reads on the server, then shows');
   assert.equal(list.result.files.length, 10);
   assert.ok(list.result.files.includes('features/products/services/Products.service.ts'));
-  assert.equal(chosen.plan.steps.length, 9);
+  assert.equal(chosen.plan.steps.length, 11);
   assert.ok(chosen.plan.steps.slice(1, 7).every((s) => s.args.shape === 'list'));
   const scaffold = shapeView(shapeResult({ 'q-shape': 'scaffold' }));
   assert.equal(scaffold.result.offers[0].decidedBy, 'person');
