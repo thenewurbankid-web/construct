@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node --experimental-strip-types --test features/*/domain/*.spec.mjs features/*/services/*.spec.mjs",
+    "test": "node --experimental-strip-types --test features/*/domain/*.spec.mjs features/*/services/*.spec.mjs lib/*.spec.mjs",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },

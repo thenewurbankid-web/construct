@@ -1,4 +1,5 @@
 import { API_BASE } from './apiBase';
+import { trackWork } from './workActivity';
 
 // Shared, non-feature POST-JSON helper (see apiBase.ts for why this lives
 // outside features/) — every feature's service/ layer that talks to
@@ -11,22 +12,27 @@ import { API_BASE } from './apiBase';
 // in each feature's service/ layer: a feature that forgot it would look
 // logged out for no discoverable reason.
 export async function postJson<T = unknown>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+  // Counted as work while a command (create, refactor, ...) is in flight: the top-bar mark animates only then.
+  return trackWork('POST', path, async () => {
+    const res = await fetch(`${API_BASE}${path}`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    try {
+      return (await res.json()) as T;
+    } catch {
+      return {} as T;
+    }
   });
-  try {
-    return (await res.json()) as T;
-  } catch {
-    return {} as T;
-  }
 }
 
 export async function getJson<T = unknown>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, { credentials: 'include' });
-  return res.json() as Promise<T>;
+  return trackWork('GET', path, async () => {
+    const res = await fetch(`${API_BASE}${path}`, { credentials: 'include' });
+    return (await res.json()) as T;
+  });
 }
 
 // #596: any verb with any headers, answering `{ status, body }` instead of throwing on a non-2xx. Notes need it: a

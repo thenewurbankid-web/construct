@@ -26,6 +26,7 @@ import { ShellStageContext } from '../hooks/useShellStage';
 import { ShellToolsContext } from '../hooks/useShellTools';
 import { useShellCommands } from '../hooks/useShellCommands';
 import { useShellNavigation } from '../hooks/useShellNavigation';
+import { useWorking } from '../hooks/useWorking';
 import type { useTheme } from '../hooks/useTheme';
 import { ProjectInfoPanel } from '../components/ProjectInfoPanel';
 import { ProjectSwitcher } from '../components/ProjectSwitcher';
@@ -51,6 +52,7 @@ export function ShellFrame({ children, route, project, model, theme, userMenu }:
   const openPalette = useOpenPalette();
   const diagnostics = useDiagnostics(project.known);
   const processes = useProcesses(project.known ? project.dir : null);
+  const working = useWorking(processes.running);
   const gitBranches = useGitBranchCount(project.known);
   const registered = { browser: useShellTabs('browser'), tools: useShellTabs('tools'), drawer: useShellTabs('drawer') };
 
@@ -138,6 +140,7 @@ export function ShellFrame({ children, route, project, model, theme, userMenu }:
       userMenu={userMenu}
       modelStatus={model}
       runningProcesses={processes.running}
+      working={working}
       onOpenProcesses={() => showDrawerTab('processes')}
       onOpenPalette={openPalette}
       validateStatus={statusText(diagnostics.state)}

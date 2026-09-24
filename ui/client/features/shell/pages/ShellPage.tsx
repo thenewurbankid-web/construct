@@ -46,6 +46,7 @@ export function ShellPage(props: ShellPageProps): ReactNode {
           userMenu={props.userMenu}
           modelStatus={props.modelStatus}
           runningProcesses={props.runningProcesses}
+          working={props.working}
           layout={props.layout}
           onTogglePane={props.onTogglePane}
           onOpenProcesses={props.onOpenProcesses}

@@ -20,6 +20,7 @@ export function TopBar({
   userMenu,
   modelStatus,
   runningProcesses,
+  working,
   layout,
   onTogglePane,
   onOpenProcesses,
@@ -28,7 +29,7 @@ export function TopBar({
   return (
     <header className="sh-top" role="banner">
       <span className="sh-brand">
-        <AnimatedLogo mark="cockpit" size={22} />
+        <AnimatedLogo mark="cockpit" size={22} busy={working} still />
         <span>Cockpit</span>
       </span>
       {projectSwitcher}

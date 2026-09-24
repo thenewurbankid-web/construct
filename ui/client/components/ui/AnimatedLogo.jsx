@@ -35,6 +35,9 @@
 //     to move; this component additionally fires `onExitEnd` on the very next tick instead of waiting
 //     for an `animationend` that would never come.
 //
+// A caller can also ask for `still`: no ambient idle loop, motion only while `busy`. The Cockpit's top bar uses it so the mark
+// is a processing indicator (it moves only while the framework is working), not decoration.
+//
 // Accessibility is unchanged from `Logo`: the wrapper is `aria-hidden` decoration beside the real text
 // label ("Cockpit"), it is not focusable, and it adds no accessible name of its own.
 import { useEffect, useRef, useState } from 'react';
@@ -46,7 +49,7 @@ const REDUCED = '(prefers-reduced-motion: reduce)';
 // `onExitEnd` to unmount this screen must not be stuck forever.
 const EXIT_FALLBACK_MS = 700;
 
-export function AnimatedLogo({ mark = 'cockpit', size = 22, className, busy = false, exiting = false, onExitEnd }) {
+export function AnimatedLogo({ mark = 'cockpit', size = 22, className, busy = false, still = false, exiting = false, onExitEnd }) {
   const ref = useRef(null);
   // Server render and first paint are deliberately "off": the static mark is what ships in the HTML,
   // and motion only ever starts once the effect below has confirmed this browser wants it.
@@ -73,6 +76,11 @@ export function AnimatedLogo({ mark = 'cockpit', size = 22, className, busy = fa
         setMotion('busy');
         return;
       }
+      // `still`: no ambient loop at all; the mark moves only while `busy` (the Cockpit's processing indicator).
+      if (still) {
+        setMotion('off');
+        return;
+      }
       setMotion(onScreen && !document.hidden ? 'idle' : 'paused');
     };
 
@@ -97,7 +105,7 @@ export function AnimatedLogo({ mark = 'cockpit', size = 22, className, busy = fa
       document.removeEventListener('visibilitychange', apply);
       query?.removeEventListener?.('change', apply);
     };
-  }, [busy, exiting]);
+  }, [busy, still, exiting]);
 
   // The exit's completion signal — see `exiting` in the file header for why reduced motion is a
   // separate, immediate path rather than a wait that would never resolve.

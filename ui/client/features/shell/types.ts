@@ -169,6 +169,8 @@ export type TopBarProps = {
   userMenu?: ReactNode;
   modelStatus: ModelStatus;
   runningProcesses: number;
+  /** The framework is working (a command, the Import Wizard or a Process): the brand mark animates only then. */
+  working: boolean;
   layout: ShellLayoutState;
   onTogglePane: (pane: PaneId) => void;
   onOpenProcesses: () => void;
@@ -216,6 +218,8 @@ export type ShellPageProps = NarrowProps & {
   userMenu?: ReactNode;
   modelStatus: ModelStatus;
   runningProcesses: number;
+  /** The framework is working (a command, the Import Wizard or a Process): the brand mark animates only then. */
+  working: boolean;
   onOpenProcesses: () => void;
   onOpenPalette: () => void;
   validateStatus: string;

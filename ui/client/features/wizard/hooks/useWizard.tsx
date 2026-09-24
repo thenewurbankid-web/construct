@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useReducer, useRef, useState, type Dispatch, type FormEvent } from 'react';
+import { beginWork } from '@/lib/workActivity';
 import { breadcrumbs, canChoose, chooseHint } from '../domain/ProjectPaths';
 import { useProjectTree } from './useProjectTree';
 import { connectWizardSocket, sendAnswer, sendCancel, sendReview, sendStart } from '../services/Wizard';
@@ -40,6 +41,8 @@ export function useWizard() {
   const [seedRoute, setSeedRoute] = useState('');
   const [planner, setPlanner] = useState<'ai' | 'mechanical'>('ai');
   const wsRef = useWizardSocket(dispatch);
+  // A running wizard session is the framework working (its model calls and mechanical steps): the top-bar mark animates.
+  useEffect(() => (state.status === 'running' ? beginWork() : undefined), [state.status]);
   const projectTree = useProjectTree();
   const expects = state.expects;
 

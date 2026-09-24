@@ -49,6 +49,8 @@ export declare function AnimatedLogo(props: {
   size?: number;
   className?: string;
   busy?: boolean;
+  /** No ambient idle loop: the mark moves only while `busy` (the Cockpit's processing indicator). */
+  still?: boolean;
   exiting?: boolean;
   onExitEnd?: () => void;
 }): ReactNode;

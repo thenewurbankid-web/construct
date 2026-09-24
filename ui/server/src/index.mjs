@@ -8,6 +8,7 @@ import cors from 'cors';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { pathToFileURL } from 'node:url';
 import { Readable } from 'node:stream';
 import { AuthConfigError, createAuth, isLoopbackHost, resolveAuthConfig } from './auth.mjs';
@@ -33,6 +34,7 @@ import { createReviewRouter } from './reviewApi.mjs';
 import { createTestsRouter } from './testsApi.mjs';
 import { createCloneJobs, DEFAULT_MAX_BYTES, DEFAULT_TIMEOUT_MS } from './cloneJobs.mjs';
 import { createHealth } from './health.mjs';
+import { createDevActivity, createDevStatusRouter } from './devActivity.mjs';
 import { resolveStateDir } from '../../../packages/engine/processStore.mjs';
 import { createCloneRouter, createRemoteRouter } from './cloneApi.mjs';
 import { createNewProjectRouter } from './newProjectApi.mjs';
@@ -205,6 +207,15 @@ app.get('/api/health', (req, res) => {
 // Log in / out. Deliberately outside `/api`, and therefore outside the
 // gate — you cannot log in through a door that requires being logged in.
 auth.mountRoutes(app);
+
+// Is an agent or model working on the framework itself right now? Public, read-only, booleans only (devActivity.mjs): the docs
+// site's logo reads it. Above the gate on purpose (a visitor has no session). It is on where the server runs on the machine the
+// framework is built on: any loopback dev server, or a hosted one told so with CONSTRUCT_DEV_ACTIVITY=1 (the repository whose
+// agent sessions count is CONSTRUCT_DEV_ACTIVITY_REPO, default this checkout).
+const devActivityRepo = process.env.CONSTRUCT_DEV_ACTIVITY_REPO || path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+app.use('/api/dev-status', createDevStatusRouter({
+  read: createDevActivity({ repoRoot: devActivityRepo, enabled: () => !auth.required || process.env.CONSTRUCT_DEV_ACTIVITY === '1' }),
+}));
 
 // ---------------------------------------------------------------------------
 // THE GATE (#278). Every route below this line requires a valid, signed
