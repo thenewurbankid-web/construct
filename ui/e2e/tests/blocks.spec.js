@@ -178,6 +178,83 @@ test.describe.serial('Blocks: catalogue, per-project settings, refusal (#407)', 
     expect((await (await request.post(`${API}/api/plan/validate`, { data: { plan } })).json()).valid).toBe(true);
   });
 
+  test('Run this block opens the Plan tab with that block\'s example as a step, validated by the server, and starts nothing', async ({ page, request }) => {
+    const processes = async () => (await (await request.get(`${API}/api/processes`)).json()).processes.length;
+    const before = await processes();
+    const tools = page.getByRole('complementary', { name: 'Tools' });
+    await openBlocks(page);
+    // Look at another Tools tab first: Run must bring the Plan tab back.
+    await tools.getByRole('tab', { name: 'Project' }).click();
+    await expect(tools.getByRole('tab', { name: 'Plan' })).toHaveAttribute('aria-selected', 'false');
+
+    await card(page, 'validate').getByTestId('block-run').click();
+    await expect(tools.getByRole('tab', { name: /^Plan/ })).toHaveAttribute('aria-selected', 'true');
+    const first = page.getByTestId('plan-step').nth(0);
+    await expect(page.getByTestId('plan-step')).toHaveCount(1);
+    await expect(first).toHaveAttribute('data-flow', 'validate');
+    await expect(first.getByTestId('plan-arg-format')).toHaveValue('text');
+    await expect(first.getByTestId('plan-step-command')).toContainText('construct validate --format text');
+    await expect(first.getByTestId('plan-step-tag')).toHaveText('Deterministic');
+    await expect(page.getByTestId('plan-run')).toBeEnabled();
+
+    // A writing block adds its own example beside it: real arguments, the feature it touches, and the exact command.
+    await card(page, 'create.unit').getByTestId('block-run').click();
+    const second = page.getByTestId('plan-step').nth(1);
+    await expect(page.getByTestId('plan-step')).toHaveCount(2);
+    await expect(second).toHaveAttribute('data-flow', 'create.unit');
+    await expect(second.getByTestId('plan-arg-layer')).toHaveValue('domain');
+    await expect(second.getByTestId('plan-arg-name')).toHaveValue('Cart');
+    await expect(second.getByTestId('plan-arg-feature')).toHaveValue('checkout');
+    await expect(second.getByTestId('plan-step-touches')).toContainText('checkout');
+    await expect(second.getByTestId('plan-step-command')).toContainText('construct create domain Cart --feature checkout');
+
+    // With the default engine set to AI, the step is tagged Local model and the plan says so before anything runs.
+    const layer = card(page, 'create.layer');
+    await layer.getByText('Details').click();
+    await layer.getByTestId('block-engine-ai').click();
+    await expect(layer.getByTestId('block-engine-ai')).toHaveAttribute('aria-pressed', 'true');
+    await layer.getByTestId('block-run').click();
+    const third = page.getByTestId('plan-step').nth(2);
+    await expect(third).toHaveAttribute('data-flow', 'create.layer');
+    await expect(third.getByTestId('plan-step-tag')).toHaveText('Local model');
+    await expect(page.getByTestId('plan-model-notice')).toBeVisible();
+
+    // The step is an ordinary one: it can be edited or removed, and nothing has started.
+    await third.getByTestId('plan-step-remove').click();
+    await second.getByTestId('plan-step-remove').click();
+    await expect(page.getByTestId('plan-step')).toHaveCount(1);
+    expect(await processes()).toBe(before);
+    expect(project.git('status', '--porcelain').trim()).toBe('');
+
+    // Back to the default engine so later specs see plain settings.
+    await layer.getByTestId('block-engine-mechanical').click();
+    await expect(layer.getByTestId('block-engine-mechanical')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('a turned-off block has no Run: its button is disabled and says why', async ({ page }) => {
+    await openBlocks(page);
+    await card(page, 'sync').getByTestId('block-toggle').click();
+    await expect(card(page, 'sync').getByTestId('block-toggle')).not.toBeChecked();
+    await expect(card(page, 'sync').getByTestId('block-run')).toBeDisabled();
+    await expect(card(page, 'sync').getByTestId('block-run')).toHaveAttribute('title', 'Turned off for this project.');
+    await expect(card(page, 'pipeline.run').getByTestId('block-run')).toBeDisabled();
+    await expect(card(page, 'validate').getByTestId('block-run')).toBeEnabled();
+    await card(page, 'sync').getByTestId('block-toggle').click();
+    await expect(card(page, 'sync').getByTestId('block-run')).toBeEnabled();
+  });
+
+  test('at 390px Run this block shows the Tools pane with the new step', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await gotoCockpit(page, '/');
+    const panes = page.getByRole('tablist', { name: 'Panes' });
+    await panes.getByRole('tab', { name: 'Browser' }).click();
+    await browser(page).getByRole('tab', { name: 'Blocks' }).click();
+    await card(page, 'summarize.list').getByTestId('block-run').click();
+    await expect(panes.getByRole('tab', { name: 'Tools' })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByTestId('plan-step')).toHaveCount(1);
+    await expect(page.getByTestId('plan-step').first()).toHaveAttribute('data-flow', 'summarize.list');
+  });
+
   test('accessible at desktop and narrow widths', async ({ page }) => {
     for (const size of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
       await page.setViewportSize(size);

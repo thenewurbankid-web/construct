@@ -23,6 +23,7 @@ import { ShellDrawerContext } from '../hooks/useShellDrawer';
 import { ShellFocusContext } from '../hooks/useShellFocus';
 import { useFocusMode } from '../hooks/useFocusMode';
 import { ShellStageContext } from '../hooks/useShellStage';
+import { ShellToolsContext } from '../hooks/useShellTools';
 import { useShellCommands } from '../hooks/useShellCommands';
 import { useShellNavigation } from '../hooks/useShellNavigation';
 import type { useTheme } from '../hooks/useTheme';
@@ -95,6 +96,7 @@ export function ShellFrame({ children, route, project, model, theme, userMenu }:
   const drawerApi = useMemo(() => ({ openProcesses: () => showDrawerTab('processes'), openLogs: () => showDrawerTab('logs') }), [showDrawerTab]);
   const { setPane } = narrow;
   const stageApi = useMemo(() => ({ showStage: () => setPane('mid') }), [setPane]);
+  const toolsApi = useMemo(() => ({ showTool: (id: string) => { toggle('right', true); select('tools', id); setPane('right'); } }), [toggle, select, setPane]);
   useShellCommands({
     navigate,
     togglePane: toggle,
@@ -148,7 +150,9 @@ export function ShellFrame({ children, route, project, model, theme, userMenu }:
     >
       <ShellDrawerContext.Provider value={drawerApi}>
         <ShellStageContext.Provider value={stageApi}>
-          <ShellFocusContext.Provider value={focus}>{children}</ShellFocusContext.Provider>
+          <ShellToolsContext.Provider value={toolsApi}>
+            <ShellFocusContext.Provider value={focus}>{children}</ShellFocusContext.Provider>
+          </ShellToolsContext.Provider>
         </ShellStageContext.Provider>
       </ShellDrawerContext.Provider>
     </ShellPage>

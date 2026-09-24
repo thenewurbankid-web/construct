@@ -62,6 +62,9 @@ export * from './hooks/useShellDrawer';
 /** Lets a Browser-pane list bring the stage into view after a selection (narrow one-pane layout). */
 export * from './hooks/useShellStage';
 
+/** Lets a screen bring a Tools-pane tab into view (open the pane, select the tab, show it in the narrow layout). */
+export * from './hooks/useShellTools';
+
 /** Lets a screen hide the whole Cockpit chrome and own the viewport (full screen, Esc to leave). */
 export * from './hooks/useShellFocus';
 
