@@ -42,7 +42,9 @@ function appendThought(state: WizardState, text: string): WizardState {
 
 function applyServerEvent(state: WizardState, event: ServerWizardEvent): WizardState {
   if (event.type === 'step') {
-    return { ...pushMessage(state, 'step', stepNote(event)), steps: applyStepEvent(state.steps, event) };
+    const pushed = pushMessage(state, 'step', stepNote(event));
+    const messages = event.reason ? pushed.messages.map((m, i) => (i === pushed.messages.length - 1 ? { ...m, reason: event.reason } : m)) : pushed.messages;
+    return { ...pushed, messages, steps: applyStepEvent(state.steps, event) };
   }
   if (event.type === 'thought') {
     return appendThought(state, event.text);

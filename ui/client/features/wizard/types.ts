@@ -12,6 +12,9 @@ export type ChatMessageData = {
    * (see workflows/Wizard.tsx) — presentational components never parse
    * this themselves (COMPONENT-003 bans importing domain). */
   attribution?: { tool: string; llm: string } | null;
+  /** For a `step` message: the framework's own reason for this block (why it does what it does), shown
+   * under the step line so the deterministic side explains itself the way the model's stream does (#599). */
+  reason?: string;
 };
 
 export type WizardStatus = 'connecting' | 'idle' | 'running' | 'done' | 'closed';
@@ -21,7 +24,7 @@ export type WizardStatus = 'connecting' | 'idle' | 'running' | 'done' | 'closed'
 export type ServerWizardEvent =
   | { type: 'question'; text: string }
   | { type: 'log'; text: string; kind?: string }
-  | { type: 'step'; phase: string; detail?: Record<string, unknown> }
+  | { type: 'step'; phase: string; detail?: Record<string, unknown>; reason?: string }
   | { type: 'thought'; text: string }
   | { type: 'done' };
 

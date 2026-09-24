@@ -391,6 +391,13 @@ button:disabled {
   font-size: 0.82rem;
 }
 
+.chat-reason {
+  margin-top: 4px;
+  font-size: 0.76rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
 /* The model's own output: dashed, italic, muted -- never mistaken for a framework step (#599). */
 .chat-thought {
   background: transparent;

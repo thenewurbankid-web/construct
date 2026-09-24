@@ -22,6 +22,7 @@ export function ChatMessage({ message }: { message: ChatMessageData }) {
     return (
       <div className="chat-message chat-step">
         <span className="chat-badge chat-badge--framework">Framework</span> {message.text}
+        {message.reason && <div className="chat-reason">Why: {message.reason}</div>}
       </div>
     );
   }

@@ -39,7 +39,7 @@ test.describe('Import Wizard live progress (#599)', () => {
         const msg = JSON.parse(String(raw));
         received.push(msg);
         if (msg.type === 'start') {
-          send({ type: 'step', phase: 'tracing', detail: { routes: ['/en/portfolio-health'] } });
+          send({ type: 'step', phase: 'tracing', detail: { routes: ['/en/portfolio-health'] }, reason: 'Follows the real import statements from the route entry file.' });
           send({ type: 'step', phase: 'analyzing', detail: { provider: 'claude', files: 4 } });
           send({ type: 'step', phase: 'filling', detail: { unit: 'Health', file: 'features/health/controllers/HealthController.tsx', layer: 'controller', index: 1, total: 3 } });
           send({ type: 'thought', text: 'Porting the data ' });
@@ -66,6 +66,9 @@ test.describe('Import Wizard live progress (#599)', () => {
     await expect(items.nth(1)).toHaveClass(/--done/);
     await expect(items.nth(2)).toHaveClass(/--skipped/); // plan approval was never asked in this run
     await expect(items.nth(5)).toHaveClass(/--pending/);
+
+    // The framework explains itself: a step's reason shows under it, in the framework's own voice.
+    await expect(page.locator('.chat-step .chat-reason').first()).toContainText('Follows the real import statements');
 
     // The model's output streams into ONE message as pieces arrive, not one message per piece.
     const thought = page.locator('.chat-thought');
