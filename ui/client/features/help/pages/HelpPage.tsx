@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { GlassPanel } from '@/components/ui';
 import { Attribution } from '../components/Attribution';
 import { CliReference } from '../components/CliReference';
 import { GettingStarted } from '../components/GettingStarted';
@@ -9,7 +8,7 @@ import { SetupSettingsTutorial } from '../components/SetupSettingsTutorial';
 import { UiGuide } from '../components/UiGuide';
 import type { HelpViewState } from '../types';
 
-export function HelpPage({ topics, ...view }: HelpViewState & { topics: Array<{ id: string; label: string }> }): ReactNode {
+export function HelpPage(view: HelpViewState): ReactNode {
   return (
     <div className="page page--screen help-page">
       <h1>Help</h1>
@@ -18,36 +17,24 @@ export function HelpPage({ topics, ...view }: HelpViewState & { topics: Array<{ 
         this UI — in one place.
       </p>
 
-      <GlassPanel as="nav" className="help-contents">
-        {topics.map((t) => (
-          <a key={t.id} href={`#${t.id}`}>
-            {t.label}
-          </a>
-        ))}
-      </GlassPanel>
-
-      {/* #162 — each top-level topic is now a native <details>, open by
-          default (so the page reads exactly as before on first load, and
-          the existing Playwright walkthrough test's `#getting-started`/
-          `#cli-reference` visibility assertions keep passing unchanged),
-          but individually collapsible so a reader can fold away whatever
-          they're not currently using instead of scrolling past it. */}
+      {/* #162 — each top-level topic is a native <details>. #391: only Getting started starts open; the rest
+          open from a click on their title or from a Contents link (useOpenSectionOnHash). */}
       <details id="getting-started" className="help-section" open>
         <summary><h2>Getting started</h2></summary>
         <GettingStarted />
       </details>
 
-      <details id="attribution" className="help-section" open>
+      <details id="attribution" className="help-section">
         <summary><h2>Tool vs LLM attribution</h2></summary>
         <Attribution />
       </details>
 
-      <details id="ui-guide" className="help-section" open>
+      <details id="ui-guide" className="help-section">
         <summary><h2>UI guide</h2></summary>
         <UiGuide />
       </details>
 
-      <details id="tutorials" className="help-section" open>
+      <details id="tutorials" className="help-section">
         <summary><h2>Tutorials</h2></summary>
         <p className="hint">
           Full walkthroughs of Construct&apos;s three headline flows, with real screenshots from
@@ -61,7 +48,7 @@ export function HelpPage({ topics, ...view }: HelpViewState & { topics: Array<{ 
         <ListingDetailsTutorial />
       </details>
 
-      <details id="cli-reference" className="help-section" open>
+      <details id="cli-reference" className="help-section">
         <summary><h2>CLI reference</h2></summary>
         <CliReference {...(view as HelpViewState)} />
       </details>

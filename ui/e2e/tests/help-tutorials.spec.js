@@ -43,10 +43,15 @@ test.describe('Help page — Tutorials section (#154)', () => {
 
     // Nav entry present and links to the section, matching the existing
     // #getting-started/#attribution/#ui-guide/#cli-reference pattern.
-    await expect(page.locator('.help-contents a[href="#tutorials"]')).toBeVisible();
-    await page.locator('.help-contents a[href="#tutorials"]').click();
-
+    // #391: the link row under the title is gone (the Browser's Contents tab is the one list) and every
+    // section but Getting started starts collapsed, so the Contents link both jumps to and opens Tutorials.
+    await expect(page.locator('.help-contents')).toHaveCount(0);
     const tutorials = page.locator('#tutorials');
+    await expect(tutorials).not.toHaveAttribute('open', '');
+    const browser = page.getByRole('complementary', { name: 'Browser' });
+    await browser.getByRole('tab', { name: 'Contents' }).click();
+    await browser.getByRole('link', { name: 'Tutorials' }).click();
+    await expect(tutorials).toHaveAttribute('open', '');
     await expect(tutorials).toBeVisible();
     await expect(tutorials).toContainText('Guided route import');
     await expect(tutorials).toContainText('New user setup and settings');

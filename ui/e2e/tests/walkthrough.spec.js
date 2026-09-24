@@ -225,6 +225,7 @@ test.describe.serial('Construct UI walkthrough (issue #37)', () => {
     // src/repl.mjs, not just that the section container exists).
     const cliSection = page.locator('#cli-reference');
     await expect(cliSection).toBeVisible();
+    await cliSection.locator('> summary').click(); // #391: only Getting started is open by default
     await expect(cliSection.getByText('Top-level overview')).toBeVisible({ timeout: 10_000 });
     const usagePre = cliSection.locator('pre.help-pre').first();
     const usageText = await usagePre.textContent();

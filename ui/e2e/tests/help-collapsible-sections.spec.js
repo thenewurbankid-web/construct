@@ -26,6 +26,7 @@ test.describe('Help page collapsible sections (#162)', () => {
     await page.goto('/help');
     await expect(page.locator('h1')).toHaveText('Help');
     const cliSection = page.locator('#cli-reference');
+    await cliSection.locator('> summary').click(); // #391: the section itself starts collapsed
     await expect(cliSection.getByText('Top-level overview')).toBeVisible({ timeout: 10_000 });
 
     // Collapsed by default: a topic's <details> exists and is visible as a
@@ -49,7 +50,20 @@ test.describe('Help page collapsible sections (#162)', () => {
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'help-topics-expanded.png') });
   });
 
-  test('2. top-level sections default open and stay individually collapsible', async ({ page }) => {
+  test('3. #391: only Getting started is open by default; a #hash link opens its section', async ({ page }) => {
+    await page.goto('/help');
+    await expect(page.locator('#getting-started')).toHaveAttribute('open', '');
+    for (const id of ['attribution', 'ui-guide', 'tutorials', 'cli-reference']) {
+      await expect(page.locator(`#${id}`)).not.toHaveAttribute('open', '');
+    }
+    // The contents list appears once (the Browser's Contents tab), not again under the title.
+    await expect(page.locator('.help-page > nav')).toHaveCount(0);
+    await page.goto('/help#ui-guide');
+    await expect(page.locator('#ui-guide')).toHaveAttribute('open', '');
+    await expect(page.locator('#attribution')).not.toHaveAttribute('open', '');
+  });
+
+  test('2. Getting started is open by default and stays individually collapsible', async ({ page }) => {
     await page.goto('/help');
     const gettingStarted = page.locator('#getting-started');
     await expect(gettingStarted).toBeVisible();
@@ -61,6 +75,7 @@ test.describe('Help page collapsible sections (#162)', () => {
     await gettingStarted.locator('> summary').click();
     await expect(gettingStarted.getByText('Create your first feature')).not.toBeVisible();
     await expect(page.locator('#attribution')).toBeVisible();
+    await page.locator('#attribution > summary').click();
     await expect(page.locator('#attribution')).toContainText('tool');
   });
 });
