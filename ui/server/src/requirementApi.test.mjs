@@ -84,7 +84,8 @@ test('a list of products offers the list shape beside the open questions; answer
 
   const shaped = (await post({ text: sentence, answers: [{ id: 'q-shape', option: 'list' }] })).body;
   assert.equal(validatePlan(shaped.plan).valid, true);
-  assert.deepEqual(shaped.plan.steps.slice(1).map((s) => s.args.shape), ['list', 'list', 'list', 'list', 'list', 'list']);
+  assert.deepEqual(shaped.plan.steps.slice(1, 7).map((s) => s.args.shape), ['list', 'list', 'list', 'list', 'list', 'list']);
+  assert.deepEqual(shaped.plan.steps.slice(7).map((s) => s.flow), ['create.proof', 'test.proof'], '#623: the plan ends with the proof of the screen and its read-only run');
   assert.deepEqual(shaped.plan.steps[1].args, { layer: 'domain', name: 'Products', feature: 'products', shape: 'list', entity: 'Product', fields: 'id:string,name:string,price:number' });
   assert.deepEqual(shaped.placement.decisions, [{ question: 'q-shape', option: 'list', by: 'person' }]);
   assert.equal(shaped.offers[0].chosen, 'list');

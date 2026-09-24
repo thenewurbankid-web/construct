@@ -44,6 +44,12 @@ export const BLOCK_DOCS = Object.freeze({
     writes: 'One new file in the feature.',
     example: { title: 'Add the Cart domain', args: { layer: 'domain', name: 'Cart', feature: 'checkout' } },
   },
+  'create.proof': {
+    purpose: 'Write the locked proof that a generated screen works: its four states, its controller and its service.',
+    reads: 'The screen the list shape wrote and architecture.yml.',
+    writes: 'One locked test file in the feature, and the test regions in architecture.yml the first time.',
+    example: { title: 'Prove the Products screen', args: { name: 'Products', feature: 'products', shape: 'list', entity: 'Product', fields: 'id:string,name:string,price:number', kind: 'render' } },
+  },
   'create.page.from': {
     purpose: 'Bring in a page someone designed elsewhere (a JSX file) as a page plus its props.',
     reads: 'The JSX file you point at; it may live outside the project.',
@@ -154,6 +160,12 @@ export const BLOCK_DOCS = Object.freeze({
     reads: 'The feature\'s tests and your running app.',
     writes: null,
     example: { title: 'Run the checkout tests', args: { feature: 'checkout' } },
+  },
+  'test.proof': {
+    purpose: 'Run the proof of a generated screen and say whether it passes, or which state is wrong.',
+    reads: 'The feature\'s proof files and the screen\'s code.',
+    writes: null,
+    example: { title: 'Run the proof of the products screen', args: { feature: 'products' } },
   },
   sync: {
     purpose: 'Regenerate the derived rule config and each feature\'s public API from architecture.yml.',
