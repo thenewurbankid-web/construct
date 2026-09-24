@@ -222,7 +222,7 @@ vocabulary choices, not plan flows, so they are not built with `defineChooser` (
 they share its summary shape, its 2-5 option limit and its typed-error rule, and `suggest(question)` from
 `decision-provider.mjs` works on them unchanged.
 
-## Also classified without a model (inputs for the next slice, #641)
+## Also classified without a model (placed in `docs/PLACEMENT.md`, #641)
 
 - "A user wants to upload a profile picture and see it update instantly." gives the entity `profile picture`, `upload`
   (interact), `see` (read), `update` (write) and the check `latency-budget` from "instantly".

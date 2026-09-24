@@ -110,6 +110,9 @@ a `local-model` path, `view-code` (mechanical) and `edit-code` (free) on writing
 (The step before a chooser, English to a noun-verb card whose unknown words are closed questions of the same shape, is
 `packages/core/requirement-card.mjs`: see `docs/REQUIREMENT-CARD.md`, #640.)
 
+(After the card and before the plan, each verb is placed by three fixed questions and assigned to the project's layers, and
+the blocks compile to an ordinary plan: `packages/core/placement.mjs`, see `docs/PLACEMENT.md`, #641.)
+
 A chooser is a block that asks ONE closed question with 2-5 options. Each option is a fixed `PLAN_FLOWS` flow plus fixed
 `args` (nobody types them), so a chain of answers compiles to an ordinary plan and approval, containment and
 `validatePlan` apply unchanged. `packages/core/chooser.mjs` and `packages/core/decision-provider.mjs`; nothing calls a model.

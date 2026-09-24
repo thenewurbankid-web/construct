@@ -13,6 +13,7 @@
     "./block-contract": "./block-contract.mjs",
     "./block-flows": "./block-flows.mjs",
     "./chooser": "./chooser.mjs",
+    "./placement": "./placement.mjs",
     "./decision-provider": "./decision-provider.mjs",
     "./requirement-card": "./requirement-card.mjs",
     "./requirement-lexicon": "./requirement-lexicon.json",
