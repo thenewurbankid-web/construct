@@ -15,6 +15,18 @@ const animationOf = (locator, part) =>
   });
 const movingParts = (locator) => locator.locator('svg *').evaluateAll((els) => els.filter((el) => getComputedStyle(el).animationName !== 'none').length);
 
+const iconHref = (page) => page.locator('link[rel~="icon"]').first().getAttribute('href');
+/** The distinct tab-icon drawings seen over `ms` (sampled every 100 ms). */
+async function iconFrames(page, ms) {
+  const seen = new Set();
+  const start = Date.now();
+  while (Date.now() - start < ms) {
+    seen.add(await iconHref(page));
+    await page.waitForTimeout(100);
+  }
+  return seen;
+}
+
 /** Hold the shell's background validate open (real work in flight) until released. */
 async function holdValidate(page) {
   let release = () => {};
@@ -59,10 +71,20 @@ test('while the framework is working the mark moves (the toggle flips), and it g
   await expect(brand.locator('svg')).toHaveCount(1);
   await expect(brand).toHaveAttribute('aria-hidden', 'true');
 
+  // The tab icon flips with the logo (the same toggle mark, drawn frame by frame), so work shows even in a background tab.
+  const frames = await iconFrames(page, 2400);
+  expect(frames.size, 'the tab icon changes frame while work is going on').toBeGreaterThanOrEqual(4);
+  for (const href of frames) if (!href.startsWith('/icon.svg')) expect(href).toMatch(/^data:image\/svg\+xml,/);
+
   release();
   // Work ended: a short hold so a fast command still shows one visible cycle, then still.
   await expect(brand).toHaveAttribute('data-motion', 'off', { timeout: 30_000 });
   expect(await movingParts(brand)).toBe(0);
+  // ...and the tab icon settles back to the static icon once its flip in progress is done (never left frozen mid-flip).
+  await expect.poll(() => iconHref(page), { timeout: 10_000 }).toMatch(/^\/icon\.svg/);
+  const still = await iconFrames(page, 1200);
+  expect(still.size, 'nothing redraws the icon at rest').toBe(1);
+  expect([...still][0]).toMatch(/^\/icon\.svg/);
 });
 
 test('under reduced motion the brand runs no animation at all, even while the framework is working', async ({ browser }) => {
@@ -77,6 +99,9 @@ test('under reduced motion the brand runs no animation at all, even while the fr
   await expect(brand).toHaveAttribute('data-motion', 'off');
   expect((await animationOf(brand, 'knob')).name).toBe('none');
   expect(await movingParts(brand), 'nothing in the mark animates under reduced motion').toBe(0);
+
+  // The tab icon is not animated either.
+  expect((await iconFrames(page, 1500)).size).toBe(1);
 
   // The mark is still there: reduced motion loses the animation, never the brand.
   await expect(brand.locator('svg')).toHaveCount(1);

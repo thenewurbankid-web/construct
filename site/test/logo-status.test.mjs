@@ -103,3 +103,28 @@ test('the logo: two pills with their own classes, the blue one slides 12 units u
   const block = css.slice(css.indexOf('@keyframes brand-stack'), css.indexOf('.logo-panel {'));
   assert.doesNotMatch(block, /rotate|scale|stroke|opacity/);
 });
+
+test('the tab icon moves like the logo: the same rest, slide, hold, slide back, rest, and the same drawing as the static icon', () => {
+  const m = load();
+  const at = (p) => m.pillOffset(p * m.CYCLE_MS);
+  assert.equal(at(0), 0);
+  assert.equal(at(0.05), 0, 'rests at the start');
+  assert.ok(at(0.27) < -5 && at(0.27) > -7, 'half way through the slide is about half the travel');
+  assert.equal(at(0.5), -12, 'holds under the white pill');
+  assert.ok(at(0.73) < -5 && at(0.73) > -7, 'and slides back');
+  assert.equal(at(0.95), 0, 'ends at rest');
+  assert.equal(m.pillOffset(m.CYCLE_MS * 3 + 100), m.pillOffset(100), 'it loops');
+  let prev = at(0);
+  for (let i = 1; i <= 1000; i += 1) {
+    const now = at(i / 1000);
+    assert.ok(Math.abs(now - prev) < 0.2, 'smooth: no jump between frames');
+    prev = now;
+  }
+  // The frame is the static icon with only the blue pill moved.
+  const pages = read('packages/docs-site/lib/pages.mjs');
+  const staticIcon = decodeURIComponent(pages.match(/const FAVICON =\s*"([^"]+)"/)[1].replace('data:image/svg+xml,', ''));
+  assert.equal(m.faviconSvg(0), staticIcon, 'at rest the frame IS the static icon');
+  assert.match(m.faviconSvg(-12), /<rect x="4" y="27" width="28"/);
+  assert.match(SCRIPT, /iconOriginal/, 'the original icon is put back once the cycle has finished');
+  assert.match(SCRIPT, /prefers-reduced-motion/, 'reduced motion never animates the icon');
+});

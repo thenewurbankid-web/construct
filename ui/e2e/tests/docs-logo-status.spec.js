@@ -79,6 +79,7 @@ test.describe.serial('Docs logo follows the framework-development status (#614)'
   });
 
   const status = (page) => page.evaluate(() => document.documentElement.getAttribute('data-dev-status'));
+  const iconHref = (page) => page.locator('link[rel~="icon"]').first().getAttribute('href');
   const pillX = (page) => page.locator('.brand-mark .pill-blue').evaluate((el) => el.getBoundingClientRect().x);
 
   test('the endpoint answers from real file times, booleans only', async () => {
@@ -103,6 +104,7 @@ test.describe.serial('Docs logo follows the framework-development status (#614)'
     await page.waitForTimeout(2500); // the server caches its answer for 2 s; start from a settled idle
     const rest = await pillX(page);
 
+    const iconRest = await iconHref(page);
     const started = Date.now();
     setAge(0);
     await page.waitForFunction(() => document.documentElement.getAttribute('data-dev-status') === 'active', null, { timeout: 20_000 });
@@ -123,6 +125,13 @@ test.describe.serial('Docs logo follows the framework-development status (#614)'
     expect(travel).toBeLessThan(6.8);
     expect(Math.max(...xs)).toBeLessThan(rest + 0.1);
     expect(xs.some((x, i) => i > xs.length / 2 && Math.abs(x - rest) < 0.2), 'it slides back to rest').toBe(true);
+
+    // The tab icon slides its blue pill too (drawn from the clock), so work shows in a background tab.
+    const frames = new Set();
+    for (let i = 0; i < 30; i += 1) { frames.add(await iconHref(page)); await page.waitForTimeout(100); }
+    expect(frames.size, 'the tab icon changes frame while the agent works').toBeGreaterThanOrEqual(3);
+    for (const href of frames) if (href !== iconRest) expect(href).toMatch(/^data:image\/svg\+xml,/);
+    setAge(0);
 
     // Stop the agent while the pill is mid-slide, and watch every 30 ms.
     for (let i = 0; i < 400; i += 1) {
@@ -147,8 +156,11 @@ test.describe.serial('Docs logo follows the framework-development status (#614)'
     expect(maxStep, 'the pill never jumps (a snap would be several pixels)').toBeLessThan(1);
     expect(after[after.length - 1].s).toBeNull();
     expect(Math.abs(after[after.length - 1].x - rest), 'it ends exactly at rest').toBeLessThan(0.05);
+    // The tab icon goes back to the static icon once its own cycle is done, and stays there.
+    await expect.poll(() => iconHref(page), { timeout: 12_000 }).toBe(iconRest);
     // And it stays still afterwards.
     await page.waitForTimeout(3000);
+    expect(await iconHref(page)).toBe(iconRest);
     expect(Math.abs((await pillX(page)) - rest)).toBeLessThan(0.05);
     expect(await status(page)).toBeNull();
   });

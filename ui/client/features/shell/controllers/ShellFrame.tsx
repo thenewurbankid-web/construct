@@ -26,6 +26,7 @@ import { ShellStageContext } from '../hooks/useShellStage';
 import { ShellToolsContext } from '../hooks/useShellTools';
 import { useShellCommands } from '../hooks/useShellCommands';
 import { useShellNavigation } from '../hooks/useShellNavigation';
+import { useFaviconMotion } from '../hooks/useFaviconMotion';
 import { useWorking } from '../hooks/useWorking';
 import type { useTheme } from '../hooks/useTheme';
 import { ProjectInfoPanel } from '../components/ProjectInfoPanel';
@@ -53,6 +54,7 @@ export function ShellFrame({ children, route, project, model, theme, userMenu }:
   const diagnostics = useDiagnostics(project.known);
   const processes = useProcesses(project.known ? project.dir : null);
   const working = useWorking(processes.running);
+  useFaviconMotion(working);
   const gitBranches = useGitBranchCount(project.known);
   const registered = { browser: useShellTabs('browser'), tools: useShellTabs('tools'), drawer: useShellTabs('drawer') };
 

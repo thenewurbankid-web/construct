@@ -50,6 +50,32 @@
     return mode === 'always' || (mode === 'status' && polled === true);
   }
 
+  var CYCLE_MS = 9000;
+
+  /** Where the blue pill is, in SVG units left of rest, `t` ms into the loop: the same shape as the CSS keyframes (rest, slide
+   * under the white pill, hold, slide back, rest), so the tab icon and the logo tell one story. 0 while at rest. */
+  function pillOffset(t) {
+    var p = (((t % CYCLE_MS) + CYCLE_MS) % CYCLE_MS) / CYCLE_MS;
+    var ease = function (u) {
+      return u * u * (3 - 2 * u);
+    };
+    if (p < 0.08) return 0;
+    if (p < 0.46) return -12 * ease((p - 0.08) / 0.38);
+    if (p < 0.54) return -12;
+    if (p < 0.92) return -12 * (1 - ease((p - 0.54) / 0.38));
+    return 0;
+  }
+
+  /** The Line mark as the tab icon, with the blue pill `dx` units from rest (same drawing as the static icon in every page). */
+  function faviconSvg(dx) {
+    return (
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><style>:root{--i:#0d0f12}@media (prefers-color-scheme:dark){:root{--i:#f2f4f7}}</style>' +
+      '<defs><linearGradient id="g" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs>' +
+      '<rect x="4" y="10" width="28" height="11" rx="5.5" fill="var(--i)"/>' +
+      '<rect x="' + (16 + dx) + '" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#g)" stroke-width="2.8"/></svg>'
+    );
+  }
+
   /** The site's own setting: `{ mode, api }`, each `null` when missing or not allowed. Never throws. */
   function parseConfig(text) {
     var data;
@@ -74,7 +100,7 @@
     return out;
   }
 
-  if (typeof module !== 'undefined' && module.exports) module.exports = { parseMode: parseMode, parseApi: parseApi, parseConfig: parseConfig, isActive: isActive, moves: moves, readParams: readParams, MODES: MODES };
+  if (typeof module !== 'undefined' && module.exports) module.exports = { parseMode: parseMode, parseApi: parseApi, parseConfig: parseConfig, isActive: isActive, moves: moves, readParams: readParams, pillOffset: pillOffset, faviconSvg: faviconSvg, CYCLE_MS: CYCLE_MS, MODES: MODES };
   if (typeof document === 'undefined') return;
 
   var html = document.documentElement;
@@ -210,6 +236,37 @@
     polled = false;
     apply();
     if (mode() === 'status') poll();
+  }
+
+  // The tab icon moves with the logo: while the status is active or winding down, redraw it from the clock (5 frames a second; a
+  // hidden tab throttles this, and because it is clock-based it is simply choppier, never wrong), then finish the cycle and put
+  // the original icon back. Reduced motion: no animation here either.
+  var iconLink = document.querySelector('link[rel~="icon"]');
+  var iconOriginal = iconLink ? iconLink.getAttribute('href') : null;
+  var iconTimer = null;
+  var iconLast = null;
+  function iconTick() {
+    var dx = pillOffset(Date.now());
+    var status = html.getAttribute('data-dev-status');
+    if (!status && dx === 0) {
+      window.clearInterval(iconTimer);
+      iconTimer = null;
+      iconLast = null;
+      if (iconLink && iconOriginal !== null) iconLink.setAttribute('href', iconOriginal);
+      return;
+    }
+    var rounded = Math.round(dx * 4) / 4;
+    if (rounded === iconLast) return;
+    iconLast = rounded;
+    if (iconLink) iconLink.setAttribute('href', 'data:image/svg+xml,' + encodeURIComponent(faviconSvg(rounded)));
+  }
+  if (iconLink && iconOriginal !== null && !reduced && typeof MutationObserver === 'function') {
+    new MutationObserver(function () {
+      if (html.getAttribute('data-dev-status') && !iconTimer) {
+        iconTimer = window.setInterval(iconTick, 200);
+        iconTick();
+      }
+    }).observe(html, { attributes: true, attributeFilter: ['data-dev-status'] });
   }
 
   restart();
