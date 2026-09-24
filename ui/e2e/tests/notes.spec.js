@@ -35,6 +35,10 @@ test.describe.serial('Notes: durable, autosaved drafts (#596)', () => {
     await gotoCockpit(page, '/notes');
     await expect(page.getByRole('navigation', { name: 'Screens', exact: true }).getByRole('link', { name: 'Features' })).toHaveAttribute('aria-current', 'page');
     await expect(page.getByTestId('notes-stage')).toContainText('No notes yet');
+    // #391: an empty state ends with ONE primary action and no secondary paragraph.
+    const empty = page.getByTestId('notes-stage').getByTestId('state-empty');
+    await expect(empty.getByRole('button')).toHaveText(['Start a note']);
+    await expect(empty).not.toContainText('It saves as you go');
     await expect(browser(page).getByTestId('notes-list-empty')).toBeVisible();
     await expect(page.getByTestId('note-editor')).toHaveCount(0);
   });

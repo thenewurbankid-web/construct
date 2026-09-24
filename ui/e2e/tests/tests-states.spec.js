@@ -14,7 +14,7 @@ import { runAxe, isBlocking, format } from './support/axe.js';
 // tests are regenerated, and the verdict comes from the real comparison in src/engine/testFreshness.mjs.
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(__dirname, '../../..');
-const BIN = path.join(REPO, 'bin', 'construct.mjs');
+const BIN = path.join(REPO, 'packages', 'cli', 'construct.mjs');
 const SHOTS = path.resolve(__dirname, '../screenshots/tests-states');
 fs.mkdirSync(SHOTS, { recursive: true });
 const API = process.env.E2E_API_BASE || 'http://localhost:4000';
@@ -133,8 +133,9 @@ test.describe.serial('Tests tab states (#306)', () => {
     await expect(empty).toContainText('No tests for this feature yet');
     await expect(empty).toContainText('9 ways');
     await expect(empty.getByTestId('empty-generate')).toHaveText('Generate 9 tests');
-    await expect(empty.getByTestId('empty-new')).toBeDisabled();
-    await expect(empty).toContainText('not available yet');
+    // #391: one primary action; the disabled "New test" button and its "not available yet" paragraph are gone.
+    await expect(empty.getByRole('button')).toHaveCount(1);
+    await expect(empty).not.toContainText('not available yet');
     await page.screenshot({ path: path.join(SHOTS, '306-empty--dark.png') });
     expect((await runAxe(page)).filter(isBlocking), format(await runAxe(page))).toEqual([]);
 

@@ -67,7 +67,6 @@ export function FeaturesScreenController() {
       <EmptyState
         size="inline"
         title={`“${selection.value}” is not a feature of this project`}
-        hint="The link may be old, or the feature was renamed or removed."
         actions={[{ label: 'Choose another in the Browser', onClick: () => select(null), primary: true }]}
       />
     );

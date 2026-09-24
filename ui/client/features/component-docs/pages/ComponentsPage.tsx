@@ -28,7 +28,6 @@ export function ComponentsPage({ hasSelection, staleName, onClearStale, listRead
         <EmptyState
           size="inline"
           title={`“${staleName}” is not a component of this project`}
-          hint="The link may be old, or the component was renamed or removed."
           actions={[{ label: 'Choose another in the Browser', onClick: onClearStale, primary: true }]}
         />
       ) : (

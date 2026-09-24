@@ -29,7 +29,7 @@ export function NotesPage({ status, listError, openError, editor, onCreate }: No
       )}
       {editor && <NoteEditor {...editor} />}
       {status === 'ready' && !editor && !openError && (
-        <EmptyState title="No notes yet" hint="Describe a change you want. It saves as you go." size="inline" actions={[{ label: 'New note', primary: true, onClick: onCreate }]} />
+        <EmptyState title="No notes yet" size="inline" actions={[{ label: 'Start a note', primary: true, onClick: onCreate }]} />
       )}
     </div>
   );
