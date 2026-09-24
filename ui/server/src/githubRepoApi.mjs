@@ -35,6 +35,12 @@ export function mountRepoAuthRoutes(app, { connections, auth, clientOrigin }) {
 
   app.get('/auth/repo/start', (req, res) => {
     if (!connections.enabled) return notFound(res);
+    // A navigation another site started (a link, a redirect, a form) must not start a connection for this browser's
+    // session. The Cockpit's own button is same-origin or same-site, a typed address or bookmark is `none`, and a
+    // browser that does not say sends no header: all of those pass.
+    if (String(req.get('sec-fetch-site') ?? '').trim().toLowerCase() === 'cross-site') {
+      return res.status(403).json({ ok: false, code: 'cross_site', error: 'This request came from another site, so the GitHub connection was not started. Use the Connect button in the Cockpit.' });
+    }
     const key = keyOf(req);
     if (key === null) return res.status(401).json({ ok: false, code: 'auth_required', error: 'Sign in to the Cockpit first.', loginPath: '/auth/login' });
     const begun = connections.begin(key);

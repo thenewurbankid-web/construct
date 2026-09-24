@@ -369,6 +369,53 @@ test('POST /api/clone: useLogin xor token, a foreign host refused, no connection
   } finally { await t.close(); }
 });
 
+test('GET /auth/repo/start refuses a cross-site navigation (Sec-Fetch-Site: cross-site) without starting anything; same-origin, same-site, none and no header pass', async () => {
+  const t = await boot({ port: 49130, mockPort: 49131 });
+  try {
+    const begun = [];
+    const orig = t.connections.begin;
+    t.connections.begin = (key) => { begun.push(key); return orig(key); };
+    for (const site of ['cross-site', 'Cross-Site', ' cross-site ']) {
+      const r = await t.call('GET', '/auth/repo/start', { cookies: t.session('alice'), headers: { 'sec-fetch-site': site, 'sec-fetch-mode': 'navigate', 'sec-fetch-dest': 'document' } });
+      assert.equal(r.status, 403, site);
+      assert.equal(r.json.code, 'cross_site');
+      assert.equal(r.headers.get('location'), null, 'no redirect to GitHub');
+      assert.equal(r.headers.getSetCookie().length, 0, 'no state cookie');
+    }
+    assert.deepEqual(begun, [], 'no state was started for the session');
+    assert.deepEqual(t.mock.seen(), []);
+    for (const site of ['same-origin', 'same-site', 'none', null]) {
+      const r = await t.call('GET', '/auth/repo/start', { cookies: t.session('alice'), headers: site ? { 'sec-fetch-site': site } : {} });
+      assert.equal(r.status, 302, String(site));
+      assert.ok(r.headers.get('location').startsWith(t.mock.origin));
+      assert.ok(r.headers.getSetCookie().some((c) => c.startsWith(`${REPO_STATE_COOKIE}=`)));
+    }
+    assert.equal(begun.length, 4);
+    // A signed-out cross-site attempt is refused as cross-site too, before the session is even looked at.
+    assert.equal((await t.call('GET', '/auth/repo/start', { headers: { 'sec-fetch-site': 'cross-site' } })).status, 403);
+  } finally { await t.close(); }
+});
+
+test('GET /api/github/repos: a second request inside the window makes no call to GitHub; Disconnect forgets the listing', async () => {
+  const t = await boot({ port: 49132, mockPort: 49133 });
+  try {
+    const cookies = t.session('alice');
+    await t.connect(cookies);
+    const upstream = () => t.mock.seen().filter((r) => /^\/user\/(installations|repos)/.test(r.path)).length;
+    const before = upstream();
+    assert.equal((await t.call('GET', '/api/github/repos', { cookies })).json.repos.length, 3);
+    const after = upstream();
+    assert.equal(after - before, 3, 'installations + 2 installation listings');
+    assert.equal((await t.call('GET', '/api/github/repos?q=notes', { cookies })).json.repos.length, 1);
+    assert.equal((await t.call('GET', '/api/github/repos?page=2&per_page=2', { cookies })).json.repos.length, 1);
+    assert.equal(upstream(), after, 'served from the session\'s listing');
+    await t.call('POST', '/api/github/disconnect', { cookies, body: {} });
+    await t.connect(cookies);
+    assert.equal((await t.call('GET', '/api/github/repos', { cookies })).status, 200);
+    assert.equal(upstream(), after + 3, 'a new connection lists afresh');
+  } finally { await t.close(); }
+});
+
 test('no token the mock ever issued appears in any response, header, redirect or console line this file saw', () => {
   // The mocks issue tokens shaped ghu_/ghr_ + 36 hex; any such string in what this file saw is a leak.
   const all = transcript.join('\n') + '\n' + consoleLines.join('\n');
