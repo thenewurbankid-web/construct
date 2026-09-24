@@ -12,8 +12,12 @@ export function ProjectInfoPanel({ dir, screenLabel, modelStatus, shortcuts }: P
         <dd data-testid="info-project-dir">
           <code>{dir ?? 'None selected'}</code>
         </dd>
-        <dt>Screen</dt>
-        <dd>{screenLabel ?? 'None (Settings, Local model or Help)'}</dd>
+        {screenLabel && (
+          <>
+            <dt>Screen</dt>
+            <dd>{screenLabel}</dd>
+          </>
+        )}
         <dt>Local model</dt>
         <dd>{MODEL_LABEL[modelStatus]}</dd>
       </dl>

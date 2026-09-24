@@ -26,6 +26,20 @@ test.describe('Right-panel / drawer tab host (#245)', () => {
     await page.screenshot({ path: path.join(SHOTS, 'shell-tools-tab.png') });
   });
 
+  test('#391: the status bar has one "? Shortcuts" button that opens the Tools panel; the panel has no "Mode" or "utility screen" wording', async ({ page }) => {
+    await gotoCockpit(page, '/help');
+    const bar = page.getByRole('contentinfo');
+    await expect(bar.getByTestId('status-shortcuts')).toHaveText('? Shortcuts');
+    await expect(bar.locator('.sh-hint')).toHaveCount(0); // the four separate hints are gone
+    const tools = page.getByRole('complementary', { name: 'Tools' });
+    await expect(tools).toBeHidden();
+    await bar.getByTestId('status-shortcuts').click();
+    await expect(tools).toBeVisible();
+    await expect(tools.getByText('Ctrl Alt B')).toBeVisible(); // the list appears here, once
+    await expect(tools).not.toContainText('utility screen');
+    await expect(tools).not.toContainText('Mode');
+  });
+
   test('Drawer: arrow keys / Home / End move between tabs (roving tabindex) and change the panel', async ({ page }) => {
     await gotoCockpit(page, '/help');
     await page.keyboard.press('Control+j');

@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import type { StatusBarProps } from '../types';
 
-/** The 24px bottom status bar: drawer toggle and the shortcut hints. */
+/** The 24px bottom status bar: drawer toggle, validate result and the one "? Shortcuts" button. */
 export function StatusBar({ layout, onTogglePane, shortcuts, validateStatus, validateStatusChars = 0, onOpenDiagnostics }: StatusBarProps) {
   return (
     <footer className="sh-status" role="contentinfo">
@@ -31,12 +31,20 @@ export function StatusBar({ layout, onTogglePane, shortcuts, validateStatus, val
         {validateStatus}
       </button>
       <span className="sh-spacer" />
+      {/* #391: one hint instead of four. The list itself lives in the Tools panel's Project tab, and the tooltip
+          carries it too; the button opens that panel. */}
       <span className="sh-hints">
-        {shortcuts.map((s) => (
-          <span key={s.action} className="sh-hint">
-            <kbd>{s.keys}</kbd> {s.label}
-          </span>
-        ))}
+        <button
+          type="button"
+          className="sh-status-btn"
+          data-testid="status-shortcuts"
+          title={shortcuts.map((s) => `${s.keys}: ${s.label}`).join('\n')}
+          onClick={() => {
+            if (!layout.right.open) onTogglePane('right');
+          }}
+        >
+          <kbd>?</kbd> Shortcuts
+        </button>
       </span>
     </footer>
   );
