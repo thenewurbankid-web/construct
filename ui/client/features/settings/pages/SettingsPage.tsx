@@ -50,11 +50,7 @@ export function SettingsPage({ settings, loadError, reload, projectDirInput, set
       {gitSession}
       {remote}
 
-      <SettingsSummary
-        projectDir={settings.projectDir}
-        resolvedProjectRoot={settings.resolvedProjectRoot}
-        llmProviders={settings.llmProviders}
-      />
+      <SettingsSummary projectDir={settings.projectDir} resolvedProjectRoot={settings.resolvedProjectRoot} />
     </div>
   );
 }

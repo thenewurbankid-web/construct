@@ -100,19 +100,25 @@ test.describe.serial('Demo #150 (UI) -- Settings: project directory + per-capabi
     });
   });
 
-  test('1. Settings page loads current resolution', async ({ page }) => {
+  test('1. Settings page loads; the resolved paths are collapsed and the old "Current resolution" panel is gone (#391)', async ({ page }) => {
     await page.goto('/settings');
     await expect(page.locator('h1')).toHaveText('Settings');
-    await expect(page.locator('.settings-current')).toContainText('Project directory');
+    await expect(page.getByText('Current resolution')).toHaveCount(0);
+    const paths = page.locator('details.settings-current');
+    await expect(paths.locator('summary')).toHaveText('Show resolved paths');
+    await expect(paths).not.toHaveAttribute('open', '');
+    await paths.locator('summary').click();
+    await expect(paths).toContainText('Project directory');
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '150-1-settings-initial.png'), fullPage: true });
   });
 
-  test('2. switching the active project directory to a different real project', async ({ page }) => {
+  test('2. switching the active project directory to a different real project', async ({ page, request }) => {
+    // The project field is read-only since the folder picker (#365), so the switch goes through the same API
+    // the picker uses; this test was already failing on the old typed-path placeholder before #391.
+    const res = await request.post(`${API_BASE}/api/settings`, { data: { projectDir: otherProjectDir } });
+    expect(res.ok()).toBeTruthy();
     await page.goto('/settings');
-    const projectDirInput = page.locator('input[placeholder="/path/to/your/construct-project"]');
-    await projectDirInput.fill(otherProjectDir);
-    await page.getByRole('button', { name: 'Save settings' }).click();
-    await expect(page.locator('.status-ok')).toBeVisible();
+    await page.locator('details.settings-current summary').click();
     await expect(page.locator('.settings-current')).toContainText(otherProjectDir);
     await expect(page.locator('.settings-current')).toContainText('Resolved Construct project root');
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '150-2-settings-project-dir-switched.png'), fullPage: true });
@@ -130,8 +136,8 @@ test.describe.serial('Demo #150 (UI) -- Settings: project directory + per-capabi
     await page.selectOption('#llm-createFill', 'ollama');
     await page.getByRole('button', { name: 'Save settings' }).click();
     await expect(page.locator('.status-ok')).toBeVisible();
-    await expect(page.locator('.settings-current')).toContainText('Import fill: ollama');
-    await expect(page.locator('.settings-current')).toContainText('Create/generate fill: ollama');
+    await expect(page.locator('#llm-importFill')).toHaveValue('ollama');
+    await expect(page.locator('#llm-createFill')).toHaveValue('ollama');
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '150-3-settings-ollama-selected.png'), fullPage: true });
   });
 
@@ -159,7 +165,7 @@ test.describe.serial('Demo #150 (UI) -- Settings: project directory + per-capabi
     // Confirm the rejected write left no trace: reloading Settings still
     // shows planAnalysis at whatever it was, never 'ollama'.
     await page.reload();
-    await expect(page.locator('.settings-current')).not.toContainText('Plan analysis: ollama');
+    await expect(page.locator('#llm-planAnalysis')).not.toHaveValue('ollama');
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '150-4-settings-plananalysis-ollama-rejected.png'), fullPage: true });
   });
 });

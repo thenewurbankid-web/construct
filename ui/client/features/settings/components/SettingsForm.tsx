@@ -16,18 +16,18 @@ type CapabilityRow = { capability: LlmCapability; label: string; hint: string };
 const CAPABILITY_ROWS: CapabilityRow[] = [
   {
     capability: 'importFill',
-    label: 'Import: per-file fill',
-    hint: 'Used when you tick “Have the LLM write the ported logic” on the Dashboard Import form, and for the per-file fill of the Import Wizard (only if you approve it there). Never used unless you opt in per run. Selects the provider only — models use their defaults (Ollama: qwen2.5-coder:7b). May be a local model.',
+    label: 'Import: which model fills in files',
+    hint: 'Writes the ported logic when you ask for it on an import; it can be a local model.',
   },
   {
     capability: 'createFill',
-    label: 'Create/generate: per-file fill',
-    hint: 'Used only when you tick “Have the LLM write the implementation” on the Dashboard Create form (layer / vertical slice). Off by default per run. Selects the provider only — models use their defaults. May be a local model.',
+    label: 'Create: which model fills in files',
+    hint: 'Writes the implementation when you ask for it on a create; it can be a local model.',
   },
   {
     capability: 'planAnalysis',
-    label: 'Import route wizard: plan analysis',
-    hint: 'The one whole-feature analysis call the Import Wizard makes (that wizard always calls it). Deliberately never offered as a local model — always a hosted model.',
+    label: 'Import wizard: which model reads the plan',
+    hint: 'Always a hosted model; a local one is never offered.',
   },
 ];
 

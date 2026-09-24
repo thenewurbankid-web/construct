@@ -120,7 +120,7 @@ test.describe.serial('#109 Settings LLM providers are consumed, opt-in per run',
     expect(options.join(' ')).not.toContain('ollama');
     const importOptions = await page.locator('#llm-importFill option').allTextContents();
     expect(importOptions.join(' ')).toContain('ollama');
-    await expect(page.getByText('Used only when you tick')).toBeVisible();
+    await expect(page.getByText('Writes the ported logic when you ask for it on an import')).toBeVisible();
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'settings-llm-settings-page.png'), fullPage: true });
   });
 
