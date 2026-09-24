@@ -75,7 +75,7 @@ ${page.basePath ? `<base href="${esc(page.basePath)}">` : ''}
 <a class="skip" href="#main">Skip to content</a>
 <header class="topbar">
   <div class="topbar-inner">
-    <a class="brand" href="${root}"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
+    <a class="brand" href="${root}"><svg class="brand-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" stop-color="#8fb0ff"/><stop offset="1" stop-color="#4b63f5"/></linearGradient></defs><rect class="pill-white" x="4" y="10" width="28" height="11" rx="5.5" fill="currentColor"/><rect class="pill-blue" x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#lg)" stroke-width="2.8"/></svg><span class="brand-name">Line</span></a>
     <nav class="primary" aria-label="Primary">${top}</nav>
     <div class="topbar-tools">
       ${switcher}
@@ -100,6 +100,7 @@ ${toc}
 <span>Construct is open source (MIT). Documentation built <time datetime="__BUILD__">__BUILD_DATE__</time>.</span>
 <span>${page.sourceUrl ? `<a href="${esc(page.sourceUrl)}">View source</a> · ` : ''}<a href="${esc(repoUrl)}">GitHub</a></span>
 </div></footer>
+<script src="${root}assets/js/logo-status.js" defer></script>
 <script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
 </body>
 </html>
