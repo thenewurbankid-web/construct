@@ -75,7 +75,7 @@ test('the editor page in Chromium: split, trim by dragging, copy and paste, inli
     const items = (kind) => page.locator(`.vis-item.kind-${kind}`);
 
     // the gate: no token, no editor
-    assert.equal((await fetch(`${studio.url}/editor`)).status, 401);
+    assert.equal((await fetch(`${studio.url}/editor`)).status, 200, "the page shell holds no secret and reloads without a token");
     assert.equal((await fetch(`${studio.url}/api/editor/projects`)).status, 401);
 
     // first screen: New quick demo is the default path; the token leaves the address bar

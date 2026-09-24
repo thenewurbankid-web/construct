@@ -274,7 +274,10 @@ export async function startStudio({ port = 0, host = '127.0.0.1', workspace, con
       const isEditor = url.pathname === '/editor' || url.pathname.startsWith('/editor/');
       if (!isApi && !isMedia && !isEditor) throw new HttpError(404, 'NOT_FOUND', 'not found');
       const bearer = /^Bearer (.+)$/.exec(req.headers.authorization || '');
-      if (!safeEqual(bearer ? bearer[1] : url.searchParams.get('token'), token)) throw new HttpError(401, 'UNAUTHORIZED', 'a valid access token is required');
+      // The editor page is one static document (no secrets in it); like `/` it loads without a token so a reload after the
+      // page stripped ?token= from the address bar still works. Everything it then fetches (/api/editor, /media) is gated.
+      const isEditorShell = method === 'GET' && url.pathname === '/editor';
+      if (!isEditorShell && !safeEqual(bearer ? bearer[1] : url.searchParams.get('token'), token)) throw new HttpError(401, 'UNAUTHORIZED', 'a valid access token is required');
       if (isMedia) {
         if (method !== 'GET') throw new HttpError(405, 'METHOD_NOT_ALLOWED', 'GET only');
         return serveMedia(req, res, decodeURIComponent(url.pathname.slice('/media/'.length)));

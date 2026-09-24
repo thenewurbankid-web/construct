@@ -368,3 +368,15 @@ test('a real site end to end through the server: static page, mock model, approv
     assert.ok(site.hits.includes('/'));
   } finally { await studio.close(); await ollama.close(); await site.close(); }
 });
+
+test('the /editor page reloads without a token (it holds no secret); its API and media stay gated', async () => {
+  const t = await boot({ ollamaBase: 48373 });
+  try {
+    const page = await t.call('/editor', { token: '' });
+    assert.equal(page.status, 200, 'GET /editor without a token');
+    assert.match(page.headers.get('content-type') || '', /text\/html/);
+    assert.equal((await t.call('/api/editor/projects', { token: '' })).status, 401, 'the editor API needs the token');
+    assert.equal((await t.call('/api/editor/projects')).status, 200, 'and works with it');
+    assert.equal((await t.call('/editor', { method: 'POST', token: '', body: {} })).status, 401, 'only GET of the shell is open');
+  } finally { await t.stop(); }
+});
