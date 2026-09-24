@@ -15,7 +15,7 @@ import { runAxe, isBlocking, format } from './support/axe.js';
 // the flow says (the product's bug). The Tests tab has to tell them apart, in the generator's own words.
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(__dirname, '../../..');
-const BIN = path.join(REPO, 'bin', 'construct.mjs');
+const BIN = path.join(REPO, 'packages', 'cli', 'construct.mjs');
 const SHOTS = path.resolve(__dirname, '../screenshots/tests-run');
 fs.mkdirSync(SHOTS, { recursive: true });
 const API = process.env.E2E_API_BASE || 'http://localhost:4000';
