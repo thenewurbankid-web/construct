@@ -10,8 +10,12 @@
 //   - the sentence is capped (MAX_TEXT); answers are a short list of { id, option } with ids of the two shapes the
 //     blocks ask (`o<n>` a word of the card, `q-...` a placement question) and every option is checked by the block that
 //     owns the question, so an unknown answer is a typed 400, never a guess;
-//   - the route only READS: it writes nothing and starts nothing. Approving the plan is the existing Plan route
+//   - the route reads and starts nothing, and writes NOTHING to the project. Approving the plan is the existing Plan route
 //     (POST /api/plan/run), with its own re-validation, containment, block switches and per-file approval, unchanged.
+//     One thing is recorded, outside the project: each closed question a person answered is appended as a decision-trace.v1
+//     record to the per-user state directory (#643, docs/DECISION-TRACES.md), with what the rules provider suggested, and
+//     `planValidated` once the plan from those answers validates. The project's `traces: off` in architecture.yml stops it;
+//     a failing recording (full disk, bad state directory) is swallowed and never changes the response.
 //   - stateless: the client sends the sentence and every answer so far, in order. A card question is answered against the
 //     card as it stood then (ids renumber once a word is answered), so the answers are replayed in the order given.
 import fs from 'node:fs';
@@ -20,6 +24,8 @@ import express from 'express';
 import { loadConfig } from '../../../packages/core/config.mjs';
 import { parseRequirement, resolveOpen, openQuestion, readBack, cardSummary } from '../../../packages/core/requirement-card.mjs';
 import { placeCard, planFromBlocks, blockLines } from '../../../packages/core/placement.mjs';
+import { recordChoices } from '../../../packages/core/decision-trace-store.mjs';
+import { choiceFromCardQuestion, choicesFromPlacement } from '../../../packages/core/decision-trace-adapters.mjs';
 
 export const MAX_TEXT = 2000;
 export const MAX_ANSWERS = 20;
@@ -42,9 +48,11 @@ const asQuestion = (source, q) => ({ ...q, source });
  *
  * @param {{ text?: unknown, answers?: unknown }} body
  * @param {string} root the open project's root
+ * @param {{ choices: object[], planValidated?: boolean }} [trace] filled in as it reads: the closed questions answered so far
+ *   (as `recordChoices` takes them) and whether the plan from them validated (undefined while no plan was built)
  * @returns {{ status: number, body: object }}
  */
-export function readRequirement(body, root) {
+export function readRequirement(body, root, trace = { choices: [] }) {
   const text = body?.text;
   if (typeof text !== 'string' || !text.trim()) return fail(400, 'TEXT_REQUIRED', 'Write the requirement first.');
   if (text.length > MAX_TEXT) return fail(400, 'TEXT_TOO_LONG', `The requirement is longer than ${MAX_TEXT} characters.`);
@@ -62,11 +70,15 @@ export function readRequirement(body, root) {
   const parsed = parseRequirement(text);
   if (!parsed.card) return fail(400, 'PARSE_FAILED', parsed.errors[0]?.message ?? 'The requirement could not be read.');
   let card = parsed.card;
+  const answered = [];
   for (const a of cardAnswers) {
+    const item = card.open.find((o) => o.id === a.id);
     const r = resolveOpen(card, { [a.id]: a.option });
     if (!r.ok) return fail(400, r.errors[0]?.code ?? 'ANSWER_REFUSED', r.errors[0]?.message ?? 'That answer was not accepted.');
+    if (item) answered.push(choiceFromCardQuestion(card, item, a.option));
     card = r.card;
   }
+  trace.choices = answered;
 
   const base = { ok: true, card, summary: { card: cardSummary(card), readBack: readBack(card).map((l) => l.line) } };
   // A word the lexicon does not know is a question first; nothing is placed until a person answers it.
@@ -80,7 +92,9 @@ export function readRequirement(body, root) {
   } catch (e) {
     return fail(409, 'CONFIG_UNREADABLE', `This project's architecture.yml could not be read: ${String(e?.message ?? e).split('\n')[0]}`);
   }
-  const placement = placeCard(card, { layers: config.layers, framework: config.project?.framework, answers: placementAnswers });
+  const placeOptions = { layers: config.layers, framework: config.project?.framework, answers: placementAnswers };
+  const placement = placeCard(card, placeOptions);
+  trace.choices = [...answered, ...choicesFromPlacement(card, placeOptions, placement)];
   const open = placement.open.map((q) => asQuestion('placement', q));
   const summary = { ...base.summary, blocks: blockLines(placement).map((l) => l.line) };
   // #619: the shape offer (q-shape) is a closed question that never holds the plan back, so it rides beside `open`, not in it.
@@ -91,6 +105,7 @@ export function readRequirement(body, root) {
   const screen = placement.blocks.flatMap((b) => b.layers).find((l) => l.layer === 'page' || l.layer === 'controller')?.name ?? 'Requirement';
   const feature = featureNameOf(screen);
   const planned = planFromBlocks(placement.blocks, { feature, root, title: `Requirement: ${text.trim().slice(0, 80)}`, decisions: placement.decisions });
+  trace.planValidated = planned.ok;
   if (!planned.ok) return { status: 200, body: { ...out, placement: { ...placement, ok: false, errors: [...placement.errors, ...planned.errors] } } };
   const featuresRoot = config.features?.root ?? 'features';
   const warnings = fs.existsSync(path.join(root, featuresRoot, feature)) ? [`The feature "${feature}" already exists in this project, so the "Create feature ${feature}" step will be refused. Remove that step in the Plan screen, or use other words.`] : [];
@@ -115,11 +130,13 @@ export function createRequirementRouter({ getRoot, clientOrigin }) {
     if (Number(req.get('content-length') || 0) > MAX_REQUEST_BYTES) return res.status(413).json({ ok: false, code: 'TOO_LARGE', error: 'That request is too large.' });
     return next();
   });
-  router.post('/read', (req, res) => {
+  router.post('/read', async (req, res) => {
     const r = getRoot();
     if (!r.ok) return res.status(r.status ?? 400).json(r.body ?? { ok: false, error: r.error ?? 'No project is open.' });
     try {
-      const out = readRequirement(req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {}, r.root);
+      const trace = { choices: [] };
+      const out = readRequirement(req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {}, r.root, trace);
+      if (out.status === 200 && trace.choices.length) await recordChoices(r.root, trace.choices, trace.planValidated === undefined ? {} : { outcome: { planValidated: trace.planValidated } });
       return res.status(out.status).json(out.body);
     } catch {
       return res.status(500).json({ ok: false, code: 'READ_FAILED', error: 'The requirement could not be read.' });
