@@ -1,19 +1,18 @@
 // State-machine shapes for the Review screens (list and one change). Re-exported from types.ts.
-import type { BranchList, ChangeResponse, ListOrder } from '../types.ts';
+import type { BranchList, ChangeResponse } from '../types.ts';
 
 // ---- state machine -------------------------------------------------------------
 
-export type ListState = {
-  loaded: boolean;
-  error: string | null;
-  errorCode: string | null;
-  data: BranchList | null;
-  order: ListOrder;
-};
+/** The branch list's load: one status at a time (#592). The ranking order is independent of it and lives beside it. */
+export type ListState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'error'; error: string; errorCode: string | null }
+  | { status: 'ready'; data: BranchList };
 export type ListAction =
+  | { type: 'STARTED' }
   | { type: 'LOADED'; data: BranchList }
-  | { type: 'FAILED'; error: string; code?: string | null }
-  | { type: 'ORDER'; order: ListOrder };
+  | { type: 'FAILED'; error: string; code?: string | null };
 
 export type ChangeViewState = {
   status: 'loading' | 'waiting' | 'ready' | 'failed';

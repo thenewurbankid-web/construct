@@ -93,10 +93,36 @@ test('a not-measured indicator shows its reason calmly (neutral tone, not an err
 test('the list keeps polling while any row is unfinished, and stops when all are done', () => {
   const branches = (states) => states.map((s, i) => ({ name: `b${i}`, analysis: { state: s } }));
   let s = listReducer(initialList, { type: 'LOADED', data: { branches: branches(['done', 'running']) } });
+  assert.equal(s.status, 'ready');
   assert.equal(listIsSettling(s), true);
   s = listReducer(s, { type: 'LOADED', data: { branches: branches(['done', 'done']) } });
   assert.equal(listIsSettling(s), false);
-  assert.equal(listReducer(s, { type: 'ORDER', order: 'newest' }).order, 'newest');
+});
+
+test('the list is a union: idle, then loading, then ready or error; a refresh keeps the rows it has (#592)', () => {
+  const data = { branches: [{ name: 'b', analysis: { state: 'running' } }] };
+  assert.deepEqual(initialList, { status: 'idle' });
+  let s = listReducer(initialList, { type: 'STARTED' });
+  assert.deepEqual(s, { status: 'loading' });
+  s = listReducer(s, { type: 'LOADED', data });
+  assert.deepEqual(s, { status: 'ready', data });
+  assert.equal(listReducer(s, { type: 'STARTED' }), s, 'a re-read of a ready list keeps showing it');
+  s = listReducer(s, { type: 'FAILED', error: 'boom', code: 'WORKER_FAILED' });
+  assert.deepEqual(s, { status: 'error', error: 'boom', errorCode: 'WORKER_FAILED' });
+  assert.equal('data' in s, false, 'an error carries no stale rows');
+  assert.deepEqual(listReducer(s, { type: 'STARTED' }), { status: 'loading' }, 'retrying an error goes back to loading');
+  assert.deepEqual(listReducer(initialList, { type: 'FAILED', error: 'x' }), { status: 'error', error: 'x', errorCode: null });
+});
+
+test('a poll that failed does not leave the list claiming it is still analysing (#592)', () => {
+  const running = { branches: [{ name: 'b', analysis: { state: 'running' } }] };
+  let s = listReducer(initialList, { type: 'LOADED', data: running });
+  assert.equal(listIsSettling(s), true);
+  // The poll loop stops on a failed read; the state must agree.
+  s = listReducer(s, { type: 'FAILED', error: 'The Cockpit server could not be reached.', code: 'UNREACHABLE' });
+  assert.equal(listIsSettling(s), false);
+  assert.equal(listIsSettling(initialList), false);
+  assert.equal(listIsSettling({ status: 'loading' }), false);
 });
 
 test('one change: waiting while queued, ready when done, failed with the engine message on error', () => {

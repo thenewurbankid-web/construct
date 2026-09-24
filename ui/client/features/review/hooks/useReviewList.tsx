@@ -4,7 +4,7 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { fetchBranches } from '../services/ReviewApi';
 import { requestAnalysis } from '../services/AnalysisApi';
 import { headsToStart, isLive } from '../domain/AnalysisStart';
-import { initialList, listIsSettling, listReducer } from '../workflows/ListMachine';
+import { initialList, listData, listIsSettling, listReducer } from '../workflows/ListMachine';
 import type { ListOrder } from '../types';
 
 const POLL_MS = 1000;
@@ -16,6 +16,7 @@ const POLL_MS = 1000;
  */
 export function useReviewList(baseFromRoute: string | null) {
   const [state, dispatch] = useReducer(listReducer, initialList);
+  const [order, setOrder] = useState<ListOrder>('risk');
   const [base, setBase] = useState<string | null>(baseFromRoute);
   const [tick, setTick] = useState(0);
   const asked = useRef<string>('');
@@ -24,6 +25,7 @@ export function useReviewList(baseFromRoute: string | null) {
   useEffect(() => {
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    dispatch({ type: 'STARTED' });
     async function read() {
       const r = await fetchBranches(base ?? undefined);
       if (cancelled) return;
@@ -46,8 +48,7 @@ export function useReviewList(baseFromRoute: string | null) {
     };
   }, [base, tick]);
 
-  const setOrder = useCallback((order: ListOrder) => dispatch({ type: 'ORDER', order }), []);
   const reanalyse = useCallback(() => { asked.current = ''; forced.current = true; setTick((t) => t + 1); }, []);
 
-  return { state, base: base ?? state.data?.base ?? null, setBase, setOrder, reload: reanalyse, settling: listIsSettling(state) };
+  return { state, order, base: base ?? listData(state)?.base ?? null, setBase, setOrder, reload: reanalyse, settling: listIsSettling(state) };
 }

@@ -7,6 +7,7 @@ import { orderExplanation, rankBranches } from '../domain/Ranking';
 import { describeFailure } from '../domain/FailureView';
 import { useFailureActions } from '../hooks/useFailureActions';
 import { useReviewList } from '../hooks/useReviewList';
+import { listData } from '../workflows/ListMachine';
 import { useReviewRoute } from '../hooks/useReviewRoute';
 import { ReviewListPage } from '../pages/ReviewListPage';
 import { listShellTabs } from '../pages/ReviewShellTabs';
@@ -33,7 +34,7 @@ export function ReviewListController() {
   const route = useReviewRoute();
   const list = useReviewList(route.base);
   const { state } = list;
-  const data = state.data;
+  const data = listData(state);
   const base = list.base;
   const onFailureAction = useFailureActions({ retry: list.reload, list: list.reload });
 
@@ -48,17 +49,17 @@ export function ReviewListController() {
 
   return (
     <ReviewListPage
-      loaded={state.loaded}
-      failure={state.error ? describeFailure(state.errorCode, state.error) : null}
+      loaded={state.status === 'ready' || state.status === 'error'}
+      failure={state.status === 'error' ? describeFailure(state.errorCode, state.error) : null}
       noBranches={!!data && !data.base}
       onFailureAction={onFailureAction}
       list={
         data && base
           ? {
               base,
-              rows: rankBranches(data.branches, state.order).map(rowView),
-              order: state.order,
-              explanation: orderExplanation(state.order),
+              rows: rankBranches(data.branches, list.order).map(rowView),
+              order: list.order,
+              explanation: orderExplanation(list.order),
               onOrder: list.setOrder,
               onOpen: (name) => route.openChange(base, name),
               onReload: list.reload,
