@@ -610,7 +610,8 @@ export function printAttribution(tool, llm) {
 /**
  * `construct create feature <name>` | `construct create layer <name> --layers ... [--llm <provider>]`
  * | `construct create <layer> <name> --feature <feature> [--llm <provider>]`
- * | `construct create service <name> --feature <feature> --openapi <spec>` (Ticket 7.5).
+ * | `construct create service <name> --feature <feature> --openapi <spec>` (Ticket 7.5)
+ * | `construct create layer|<layer> <name> --feature <feature> --shape list [--entity <E>] [--fields id:string,...]` (#619: real typed code, no model).
  * `feature` creation has nothing fillable (just types.ts/index.ts
  * boilerplate) so `--llm` only ever applies to the layer/single-layer
  * forms, which `generate(args)` itself already handles (see its own doc
