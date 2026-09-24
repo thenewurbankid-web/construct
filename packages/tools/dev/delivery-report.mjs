@@ -9,25 +9,26 @@ import { fileURLToPath } from 'node:url';
 
 /** Lane -> the path prefixes it owns. First match wins; anything else is `shared` (docs, board, root files). */
 export const LANE_PATHS = Object.freeze({
+  adhoc: ['packages/studio/'], // the ad hoc team's current product (Studio); checked before construct's packages/
   design: ['docs/design/'],
   site: ['site/', 'packages/docs-site/'],
   cockpit: ['ui/'],
   construct: ['packages/', 'src/', 'bin/', 'tools/', 'test/', 'fixtures/'], // the pre-split layout counts for history
 });
-export const LANES = Object.freeze(['construct', 'cockpit', 'site', 'design']);
-const LANE_TAG = /^(construct|cockpit|site)\/build-(\d{4}-\d{2}-\d{2})$|^(design)\/pack-(\d{4}-\d{2}-\d{2})$/;
+export const LANES = Object.freeze(['construct', 'cockpit', 'site', 'design', 'adhoc']);
+const LANE_TAG = /^(construct|cockpit|site|adhoc)\/build-(\d{4}-\d{2}-\d{2})$|^(design)\/pack-(\d{4}-\d{2}-\d{2})$/;
 
 /**
  * The lane that owns a file.
  *
  * @param {string} file Repo-relative path.
- * @returns {'construct'|'cockpit'|'site'|'design'|'shared'} The owning lane, or `shared`.
+ * @returns {'construct'|'cockpit'|'site'|'design'|'adhoc'|'shared'} The owning lane, or `shared`.
  *
  * @example
  * laneOf('ui/client/app/page.tsx'); // => 'cockpit'
  */
 export function laneOf(file) {
-  for (const lane of ['design', 'site', 'cockpit', 'construct']) {
+  for (const lane of ['adhoc', 'design', 'site', 'cockpit', 'construct']) {
     if (LANE_PATHS[lane].some((p) => file.startsWith(p))) return lane;
   }
   return 'shared';

@@ -9,6 +9,7 @@ test('laneOf assigns a file to the lane that owns its path, else shared', () => 
   assert.equal(laneOf('site/content/user/import.md'), 'site');
   assert.equal(laneOf('packages/docs-site/lib/pages.mjs'), 'site');
   assert.equal(laneOf('docs/design/README.md'), 'design');
+  assert.equal(laneOf('packages/studio/src/server.mjs'), 'adhoc');
   assert.equal(laneOf('docs/DELEGATION.md'), 'shared');
 });
 
