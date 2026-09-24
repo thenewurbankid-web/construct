@@ -1,0 +1,319 @@
+{
+  "$comment": "Paperclip setup as code (company Line). Read by apply.mjs and github-sync.mjs. Keys starting with $comment are documentation and are never sent. Placeholders in strings: ${repoRoot} ${home} ${key}. SAFETY: every agent is created paused with the timer heartbeat off; apply.mjs never resumes an agent and never enables a heartbeat. To go live the owner resumes ONE agent by hand (README).",
+  "paths": {
+    "repoRoot": "/home/developer/Desktop/repos/construct"
+  },
+  "company": {
+    "name": "Line",
+    "description": "Line is front-end development as a chain of deterministic blocks with closed options, AI-ready and System 1 first: rules and fixed blocks decide, a model only fills what remains once the structure is fixed. MVP: a sentence to a validated, proven screen by clicking. Many automatic builds a day, one per user-facing capability. GitHub (thenewurbankid-web/construct issues, board project 1) stays the ticket source of truth; Paperclip issues mirror it."
+  },
+  "budgets": {
+    "$comment": "THE budget table: cents per month, soft caps (the platform's spend is unknown for a subscription login). Policy on each agent: warn at 80 percent, hard stop (pause) at 100 percent. Change a number here and re-run apply.mjs --apply. 0 would mean no policy, so it is refused.",
+    "warnPercent": 80,
+    "hardStop": true,
+    "company": 30000,
+    "agents": {
+      "og": 4000,
+      "construct-dev": 3500,
+      "construct-qa": 2000,
+      "guardrails-dev": 3000,
+      "guardrails-qa": 1500,
+      "cockpit-dev": 3000,
+      "cockpit-qa": 2000,
+      "website-dev": 1500,
+      "website-qa": 800,
+      "adhoc-dev": 2000,
+      "adhoc-qa": 1000,
+      "design-dev": 500,
+      "design-qa": 500,
+      "pm": 1000
+    }
+  },
+  "goals": [
+    {
+      "key": "line",
+      "title": "Front-end development as a chain of deterministic blocks with closed options",
+      "description": "AI-ready and System 1 first: a rule, a lexicon, a classifier or a fixed block answers before any multi-step LLM reasoning. Lego blocks and core first (Front-end Blocks is P0, Core CLI at least P1).",
+      "level": "company",
+      "status": "active",
+      "owner": "og"
+    },
+    {
+      "key": "mvp",
+      "title": "MVP: a sentence to a validated, proven screen by clicking",
+      "description": "Epic #616. A person types one sentence, picks among closed options, and ends with a screen that passes construct validate and has a generated, locked proof.",
+      "level": "company",
+      "status": "active",
+      "parent": "line",
+      "owner": "og"
+    },
+    {
+      "key": "builds",
+      "title": "Many automatic builds a day, one per user-facing capability",
+      "description": "packages/tools/dev/build-on-ready.mjs tags a lane build when a user-facing capability lands and the lane check is green (#639). Lanes are held on red, never forced.",
+      "level": "company",
+      "status": "active",
+      "parent": "line",
+      "owner": "og"
+    }
+  ],
+  "lanes": {
+    "construct": { "dev": "construct-dev", "qa": "construct-qa", "$comment": "packages/core, cli, engine, schemas; Front-end Blocks; Core CLI (block, chooser, plan)" },
+    "guardrails": { "dev": "guardrails-dev", "qa": "guardrails-qa", "$comment": "rules, validator, AST, typed contracts" },
+    "cockpit": { "dev": "cockpit-dev", "qa": "cockpit-qa", "$comment": "ui/" },
+    "website": { "dev": "website-dev", "qa": "website-qa", "$comment": "site/, packages/docs-site" },
+    "adhoc": { "dev": "adhoc-dev", "qa": "adhoc-qa", "$comment": "owner requests outside the plan; Studio on branch studio" },
+    "design": { "dev": "design-dev", "qa": "design-qa", "held": true, "$comment": "ON HOLD by the owner: created, kept paused, receives issues only in backlog" },
+    "og": { "dev": "og", "$comment": "Infra and process, and anything unmapped" }
+  },
+  "adapterDefaults": {
+    "$comment": "Every claude_local agent starts from this and its own adapterConfig is merged over it. engine cli is REQUIRED: Paperclip rejects filesystemScope and networkScope on the default ACP engine. dangerouslySkipPermissions is set explicitly: it is the platform default for non-interactive runs, so a run never stops to ask; the real guardrails are the bubblewrap confinement (filesystemScope workspace, networkScope allowlist), the git_worktree workspace, the budgets, paused-by-default and the rules in each AGENTS.md. TODO for the pilot (bwrap exists on this host, not yet exercised by a run): confirm the sandbox sees git, node, gh and the shared node_modules through filesystemExtraPaths; confirm /tmp/construct-heavy.lock (heavy.sh) works inside the sandbox; confirm whether the agent needs 127.0.0.1:3100 in networkAllowlist to comment on its Paperclip issue (left out on purpose: the brief lists five hosts only).",
+    "engine": "cli",
+    "cwd": "${repoRoot}",
+    "model": "claude-sonnet-5",
+    "effort": "medium",
+    "maxTurnsPerRun": 40,
+    "timeoutSec": 1800,
+    "graceSec": 30,
+    "dangerouslySkipPermissions": true,
+    "workspaceStrategy": {
+      "type": "git_worktree",
+      "baseRef": "origin/work/2026-09-23",
+      "branchTemplate": "pc-${key}-{{issue.identifier}}-{{slug}}",
+      "worktreeParentDir": "${repoRoot}/.claude/worktrees/pc-${key}"
+    },
+    "filesystemScope": "workspace",
+    "filesystemExtraPaths": [
+      { "path": "${repoRoot}/.git", "access": "rw" },
+      { "path": "${repoRoot}/node_modules", "access": "ro" },
+      { "path": "${repoRoot}/ui/server/node_modules", "access": "ro" },
+      { "path": "${repoRoot}/ui/client/node_modules", "access": "ro" },
+      { "path": "${repoRoot}/ui/e2e/node_modules", "access": "ro" },
+      { "path": "${home}/.config/gh", "access": "ro" }
+    ],
+    "networkScope": "allowlist",
+    "networkAllowlist": [
+      "api.anthropic.com",
+      "github.com",
+      "api.github.com",
+      "registry.npmjs.org",
+      "objects.githubusercontent.com"
+    ]
+  },
+  "agents": [
+    {
+      "key": "og",
+      "name": "OG",
+      "role": "ceo",
+      "title": "Release captain",
+      "icon": "crown",
+      "reportsTo": null,
+      "capabilities": "Integrates the lanes onto work/2026-09-23, keeps the GitHub board honest, verifies every report with its own commands, talks to the owner. Does not build features itself.",
+      "heartbeat": { "enabled": false, "intervalSec": 7200, "$comment": "OG is the only agent with a timer. It is OFF until the owner says go; then PATCH runtimeConfig.heartbeat to heartbeatAtGo (README). All other agents are event-driven (assignment) and never get a timer." },
+      "heartbeatAtGo": { "enabled": true, "intervalSec": 7200 },
+      "adapterConfig": { "maxTurnsPerRun": 40, "timeoutSec": 1200 }
+    },
+    {
+      "key": "pm",
+      "name": "PM",
+      "role": "pm",
+      "title": "Board hygiene",
+      "icon": "target",
+      "reportsTo": "og",
+      "capabilities": "Keeps the GitHub Projects board (project 1) consistent through packages/tools/project-board (Module, Sub-module, Kind, Priority, parents, milestones). Reads and fixes board state; never edits issue content.",
+      "heartbeat": { "enabled": false },
+      "adapterConfig": { "maxTurnsPerRun": 30, "timeoutSec": 900 }
+    },
+    {
+      "key": "construct-dev",
+      "name": "Construct Dev",
+      "role": "engineer",
+      "title": "Construct lane developer",
+      "icon": "code",
+      "reportsTo": "og",
+      "lane": "construct",
+      "capabilities": "Builds deterministic blocks, choosers, plan flows and the CLI in packages/core, packages/cli, packages/engine and schemas/. Front-end Blocks (P0) and Core CLI (at least P1).",
+      "heartbeat": { "enabled": false },
+      "adapterConfig": { "maxTurnsPerRun": 60, "timeoutSec": 2400 }
+    },
+    {
+      "key": "construct-qa",
+      "name": "Construct QA",
+      "role": "qa",
+      "title": "Construct lane QA",
+      "icon": "bug",
+      "reportsTo": "og",
+      "lane": "construct",
+      "capabilities": "Verifies Construct lane work with its own commands: targeted tests, fails-before-passes, AI-READY checklist, block contract. Reports findings only.",
+      "heartbeat": { "enabled": false },
+      "adapterConfig": { "maxTurnsPerRun": 40, "timeoutSec": 1500 }
+    },
+    {
+      "key": "guardrails-dev",
+      "name": "Guardrails Dev",
+      "role": "engineer",
+      "title": "Guardrails lane developer",
+      "icon": "shield",
+      "reportsTo": "og",
+      "lane": "guardrails",
+      "capabilities": "Builds and fixes rules, the validator, AST parsing and typed contracts (packages/ast, packages/core/typed-contracts, the enforcers). Enforcers, AST and States and proof.",
+      "heartbeat": { "enabled": false },
+      "adapterConfig": { "maxTurnsPerRun": 60, "timeoutSec": 2400 }
+    },
+    {
+      "key": "guardrails-qa",
+      "name": "Guardrails QA",
+      "role": "qa",
+      "title": "Guardrails lane QA",
+      "icon": "eye",
+      "reportsTo": "og",
+      "lane": "guardrails",
+      "capabilities": "Verifies rule, validator and typed-contract changes: false-positive and false-negative fixtures, off-by-default phase 1 rules, no deleted denylist rules.",
+      "heartbeat": { "enabled": false },
+      "adapterConfig": { "maxTurnsPerRun": 40, "timeoutSec": 1500 }
+    },
+    {
+      "key": "cockpit-dev",
+      "name": "Cockpit Dev",
+      "role": "engineer",
+      "title": "Cockpit lane developer",
+      "icon": "terminal",
+      "reportsTo": "og",
+      "lane": "cockpit",
+      "capabilities": "Builds the Cockpit UI (ui/client, ui/server) with a Playwright spec per feature. Web UI module and the Chain UI.",
+      "heartbeat": { "enabled": false },
+      "adapterConfig": { "maxTurnsPerRun": 60, "timeoutSec": 2400 }
+    },
+    {
+      "key": "cockpit-qa",
+      "name": "Cockpit QA",
+      "role": "qa",
+      "title": "Cockpit lane QA",
+      "icon": "search",
+      "reportsTo": "og",
+      "lane": "cockpit",
+      "capabilities": "Verifies Cockpit changes: the Playwright spec actually ran (--workers=1, one dev server, no lingering process), phone and desktop widths, both themes.",
+      "heartbeat": { "enabled": false },
+      "adapterConfig": { "maxTurnsPerRun": 40, "timeoutSec": 1800 }
+    },
+    {
+      "key": "website-dev",
+      "name": "Website Dev",
+      "role": "engineer",
+      "title": "Website lane developer",
+      "icon": "globe",
+      "reportsTo": "og",
+      "lane": "website",
+      "capabilities": "Maintains the docs site and website (site/, packages/docs-site): guides, CLI reference, curated demos. Demos and Docs module.",
+      "heartbeat": { "enabled": false },
+      "adapterConfig": { "maxTurnsPerRun": 50, "timeoutSec": 1800 }
+    },
+    {
+      "key": "website-qa",
+      "name": "Website QA",
+      "role": "qa",
+      "title": "Website lane QA",
+      "icon": "search",
+      "reportsTo": "og",
+      "lane": "website",
+      "capabilities": "Verifies site builds, links, search index and that every documented command still exists.",
+      "heartbeat": { "enabled": false },
+      "adapterConfig": { "maxTurnsPerRun": 30, "timeoutSec": 1200 }
+    },
+    {
+      "key": "adhoc-dev",
+      "name": "Ad hoc Dev",
+      "role": "engineer",
+      "title": "Ad hoc lane developer",
+      "icon": "wrench",
+      "reportsTo": "og",
+      "lane": "adhoc",
+      "capabilities": "Owner requests outside the plan. Studio (packages/studio) lives on the branch studio, not on work/2026-09-23.",
+      "heartbeat": { "enabled": false },
+      "adapterConfig": {
+        "maxTurnsPerRun": 50,
+        "timeoutSec": 1800,
+        "workspaceStrategy": { "baseRef": "origin/studio" }
+      }
+    },
+    {
+      "key": "adhoc-qa",
+      "name": "Ad hoc QA",
+      "role": "qa",
+      "title": "Ad hoc lane QA",
+      "icon": "bug",
+      "reportsTo": "og",
+      "lane": "adhoc",
+      "capabilities": "Verifies ad hoc and Studio work with its own commands on the studio branch.",
+      "heartbeat": { "enabled": false },
+      "adapterConfig": {
+        "maxTurnsPerRun": 30,
+        "timeoutSec": 1200,
+        "workspaceStrategy": { "baseRef": "origin/studio" }
+      }
+    },
+    {
+      "key": "design-dev",
+      "name": "Design Dev",
+      "role": "designer",
+      "title": "Design lane (ON HOLD)",
+      "icon": "wand",
+      "reportsTo": "og",
+      "lane": "design",
+      "hold": true,
+      "capabilities": "ON HOLD by the owner. Concept mocks and specs under docs/design/; never edits ui/client. Stays paused until the owner lifts the hold.",
+      "heartbeat": { "enabled": false },
+      "adapterConfig": { "maxTurnsPerRun": 30, "timeoutSec": 1200 }
+    },
+    {
+      "key": "design-qa",
+      "name": "Design QA",
+      "role": "qa",
+      "title": "Design lane QA (ON HOLD)",
+      "icon": "eye",
+      "reportsTo": "og",
+      "lane": "design",
+      "hold": true,
+      "capabilities": "ON HOLD by the owner. Accessibility and consistency review of docs/design/. Stays paused until the owner lifts the hold.",
+      "heartbeat": { "enabled": false },
+      "adapterConfig": { "maxTurnsPerRun": 20, "timeoutSec": 900 }
+    }
+  ],
+  "github": {
+    "repo": "thenewurbankid-web/construct",
+    "milestone": "v0.10.0",
+    "project": { "owner": "thenewurbankid-web", "number": 1 },
+    "bodyChars": 1500,
+    "skipLabels": ["off-board"],
+    "createStatus": "backlog",
+    "$comment": "Mirror issues are created in backlog on purpose: moving one to todo is the owner's go for that work. Priority comes from the board (P0 critical, P1 high, P2 medium)."
+  },
+  "priorityMap": { "P0": "critical", "P1": "high", "P2": "medium" },
+  "laneMapping": {
+    "$comment": "Board Module (and Sub-module) to lane. byIssue wins and is the only way an off-board issue is mirrored (Studio #637 is ad hoc). Pipeline and Generators and AI Toolkit are not in the owner's list: generators and envelopes are blocks (Construct), LLM fill safety is a guardrail. Chain UI is the Cockpit's chain screen. Anything unmapped falls back to OG.",
+    "byIssue": { "637": "adhoc" },
+    "byModule": {
+      "Front-end Blocks": { "default": "construct", "subModules": { "States & proof": "guardrails", "Chain UI": "cockpit" } },
+      "Core CLI": { "default": "construct", "subModules": { "Enforcers": "guardrails", "AST & parsing": "guardrails" } },
+      "Web UI": { "default": "cockpit" },
+      "Demos & Docs": { "default": "website" },
+      "Design": { "default": "design" },
+      "Infra & Process": { "default": "og" },
+      "Pipeline & Generators": { "default": "construct" },
+      "AI Toolkit": { "default": "construct", "subModules": { "LLM fill safety": "guardrails" } }
+    },
+    "fallback": "og"
+  },
+  "labelColors": {
+    "Front-end Blocks": "#0e8a16",
+    "Core CLI": "#1d76db",
+    "Web UI": "#5319e7",
+    "Demos & Docs": "#fbca04",
+    "Design": "#d93f0b",
+    "Infra & Process": "#6e7781",
+    "Pipeline & Generators": "#0052cc",
+    "AI Toolkit": "#b60205",
+    "Studio": "#c5def5",
+    "Unclassified": "#cccccc"
+  }
+}
