@@ -56,7 +56,7 @@ test('archived items are not re-added and are ignored', () => {
     issues: [{ number: 1, id: 'A', state: 'CLOSED', closedAt: '2026-01-01T00:00:00Z' }],
     items: [item({ number: 1, isArchived: true })], now,
   });
-  assert.deepEqual(p, { add: [], setStatus: [], setArea: [], archive: [], remove: [], report: { missingModule: [], missingSubModule: [], areaProblems: [], missingKind: [], openWithoutPriority: [] } });
+  assert.deepEqual(p, { add: [], setStatus: [], setArea: [], archive: [], remove: [], report: { missingModule: [], missingSubModule: [], areaProblems: [], missingKind: [], openWithoutPriority: [], priorityRule: [] } });
 });
 
 test('is idempotent: applying the plan yields an empty plan', () => {
@@ -71,7 +71,7 @@ test('report flags missing Module/Kind and open non-standing issues without Prio
     items: [item({ number: 1, status: 'Backlog', module: null }), item({ number: 2, status: 'Backlog', kind: 'Standing' })],
     now,
   });
-  assert.deepEqual(p.report, { missingModule: [1], missingSubModule: [], areaProblems: [], missingKind: [], openWithoutPriority: [1] });
+  assert.deepEqual(p.report, { missingModule: [1], missingSubModule: [], areaProblems: [], missingKind: [], openWithoutPriority: [1], priorityRule: [] });
 });
 
 test('Area is derived from Module + Sub-module: mismatches are fixed, impossible combos are reported', () => {
@@ -101,4 +101,11 @@ test('an off-board issue that GitHub auto-added is removed from the board, and n
   assert.deepEqual(p.remove, [{ itemId: 'PVTI_1', number: 1 }]);
   assert.deepEqual(p.report.missingModule, []);
   assert.deepEqual(p.add, []);
+});
+
+test('the priority rule: open Front-end Blocks issues are P0 and open Core CLI issues are at least P1', () => {
+  const it = (number, module, priority) => item({ number, module, subModule: 'Other', kind: 'Feature', priority });
+  const issues = [1, 2, 3, 4, 5].map((n) => ({ id: `I${n}`, number: n, state: 'OPEN' }));
+  const p = planActions({ issues, items: [it(1, 'Front-end Blocks', 'P1'), it(2, 'Front-end Blocks', 'P0'), it(3, 'Core CLI', 'P2'), it(4, 'Core CLI', 'P1'), it(5, 'Web UI', 'P2')], now });
+  assert.deepEqual(p.report.priorityRule, [1, 3]);
 });

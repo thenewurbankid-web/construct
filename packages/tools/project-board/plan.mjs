@@ -77,6 +77,11 @@ export function planActions({ issues, items, now = new Date(), archiveDays = DEF
     openWithoutPriority: items
       .filter(i => !i.isArchived && openNumbers.has(i.number) && !i.priority && i.kind !== 'Standing')
       .map(i => i.number),
+    // Owner rule (2026-09-24): Lego blocks and core come first. Open Front-end Blocks issues are P0; open Core CLI issues are at least P1.
+    priorityRule: items
+      .filter(i => !i.isArchived && openNumbers.has(i.number) && i.kind !== 'Standing'
+        && ((i.module === 'Front-end Blocks' && i.priority !== 'P0') || (i.module === 'Core CLI' && !['P0', 'P1'].includes(i.priority))))
+      .map(i => i.number),
   };
   return { add, setStatus, setArea, archive, remove, report };
 }
