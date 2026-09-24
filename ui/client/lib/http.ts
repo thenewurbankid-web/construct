@@ -28,3 +28,21 @@ export async function getJson<T = unknown>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, { credentials: 'include' });
   return res.json() as Promise<T>;
 }
+
+// #596: any verb with any headers, answering `{ status, body }` instead of throwing on a non-2xx. Notes need it: a
+// stale write is a 409 whose body is the copy to compare, and a full disk is a 507 the screen shows with Retry.
+export async function sendJson<T = unknown>(method: 'GET' | 'POST' | 'PUT' | 'DELETE', path: string, body?: unknown, headers: Record<string, string> = {}): Promise<{ status: number; body: T }> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method,
+    credentials: 'include',
+    headers: { ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...headers },
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+  });
+  let parsed: unknown = {};
+  try {
+    parsed = await res.json();
+  } catch {
+    /* an empty or non-JSON body is `{}` here, like postJson */
+  }
+  return { status: res.status, body: parsed as T };
+}
