@@ -35,6 +35,7 @@ import { createCloneJobs, DEFAULT_MAX_BYTES, DEFAULT_TIMEOUT_MS } from './cloneJ
 import { createHealth } from './health.mjs';
 import { resolveStateDir } from '../../../packages/engine/processStore.mjs';
 import { createCloneRouter, createRemoteRouter } from './cloneApi.mjs';
+import { createNewProjectRouter } from './newProjectApi.mjs';
 import { resolveCloneHosts } from './gitUrl.mjs';
 import { createReviewJobs } from './reviewJobs.mjs';
 import { createReviewExecutor, createAnalyses } from './reviewAnalyses.mjs';
@@ -261,13 +262,18 @@ app.get('/api/settings', (req, res) => {
   res.json({ ...settings, ...projectStatusFor(settings.projectDir) });
 });
 
+/** Apply a settings change; #378: closing a project, or opening a different one, stops the dev server it was running.
+ * Returns the body `/api/settings` answers with. Shared by POST /api/settings and "New project" (#445). */
+function applySettings(change) {
+  const before = devServer.currentRoot();
+  const settings = updateSettings(change);
+  if (before && before !== devServer.currentRoot()) devServer.stopForRoot(before);
+  return { ...settings, ...projectStatusFor(settings.projectDir) };
+}
+
 app.post('/api/settings', (req, res) => {
   try {
-    // #378: closing a project, or opening a different one, stops the dev server it was running.
-    const before = devServer.currentRoot();
-    const settings = updateSettings(req.body || {});
-    if (before && before !== devServer.currentRoot()) devServer.stopForRoot(before);
-    res.json({ ...settings, ...projectStatusFor(settings.projectDir) });
+    res.json(applySettings(req.body || {}));
   } catch (e) {
     const { status, body } = settingsErrorBody(e);
     res.status(status).json(body);
@@ -1136,6 +1142,14 @@ export const cloneJobs = createCloneJobs({
   maxBytes: Number(process.env.CONSTRUCT_CLONE_MAX_MB) > 0 ? Number(process.env.CONSTRUCT_CLONE_MAX_MB) * 1024 * 1024 : DEFAULT_MAX_BYTES,
   timeoutMs: Number(process.env.CONSTRUCT_CLONE_TIMEOUT_SEC) > 0 ? Number(process.env.CONSTRUCT_CLONE_TIMEOUT_SEC) * 1000 : DEFAULT_TIMEOUT_MS,
 });
+// #445: "New project" -- a validated name becomes an empty folder in the caller's workspace, `init`-ed and opened.
+// Below the gate, deliberately NOT behind requireProject (nothing is open yet); the client sends a name only.
+app.use('/api/projects', createNewProjectRouter({
+  clientOrigin: CLIENT_ORIGIN,
+  runInit: (dir, framework) => runCapturing(() => init([dir, '--framework', framework])),
+  openProject: (dir) => applySettings({ projectDir: dir }),
+}));
+
 app.use('/api/clone', createCloneRouter({ jobs: cloneJobs, clientOrigin: CLIENT_ORIGIN }));
 app.use('/api/git/remote', createRemoteRouter({
   clientOrigin: CLIENT_ORIGIN,

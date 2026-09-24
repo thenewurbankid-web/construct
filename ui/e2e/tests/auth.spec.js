@@ -132,6 +132,9 @@ test.describe('#278 GitHub login gate', () => {
     expect(await postJsonStatus(page, '/api/clone/pull', { name: 'Hello-World', token: 'ghp_abcdefghijklmnopqrstuvwxyz0123456789' })).toBe(401);
     expect(await apiStatus(page, '/api/git/remote')).toBe(401);
     expect(await postJsonStatus(page, '/api/git/remote', { url: 'https://github.com/octocat/Hello-World' })).toBe(401);
+    // #445: "New project" creates a folder and runs init, so it is gated too (a hostile name included).
+    expect(await postJsonStatus(page, '/api/projects', { name: 'my-shop' })).toBe(401);
+    expect(await postJsonStatus(page, '/api/projects', { name: '../escape' })).toBe(401);
     // #312/#313: Review mode's list, its analysis request and one change are gated too.
     expect(await apiStatus(page, '/api/review/branches')).toBe(401);
     expect(await apiStatus(page, '/api/review/change?base=main&head=main')).toBe(401);
