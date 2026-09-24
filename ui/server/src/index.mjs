@@ -1061,7 +1061,8 @@ app.use('/api/dev-server', createDevServerRouter(devServer, { clientOrigin: CLIE
 export const reviewExecutor = createReviewExecutor();
 // #305: `test.run` steps (a Tests-tab run) run the same way: a forked worker, no bot branch, no artifacts.
 export const testRunExecutor = createTestRunExecutor();
-export const processesService = createProcessesService({ getProjectDir, reviewExecutor, testRunExecutor });
+// #611: startPlan itself refuses a plan that uses a block turned off for the project, whoever starts it.
+export const processesService = createProcessesService({ getProjectDir, reviewExecutor, testRunExecutor, getBlockSettings: (root) => openBlockSettingsStore(root).disabledFlows() });
 app.use('/api/processes', createProcessesRouter(processesService));
 
 // #289/#332: Plan mode. Below the gate like every other `/api` route. The plan comes from the browser, so

@@ -75,6 +75,25 @@ function runGit(cwd, args) {
 }
 
 /**
+ * #611: why a plan may not start because of the project's block settings, or null. Fail closed: settings that cannot be
+ * read refuse every plan (the Blocks tab offers a reset), the same rule the plan check applies (planService.mjs).
+ * Nothing is saved or started when this answers.
+ */
+function blockRefusal(getBlockSettings, root, plan) {
+  if (!getBlockSettings) return null;
+  let s;
+  try {
+    s = getBlockSettings(root);
+  } catch (e) {
+    s = { flows: [], unreadable: String(e?.message || e) };
+  }
+  if (s?.unreadable) return 'This project\'s block settings could not be read, so nothing can be started. Open Features, Blocks tab, and save the settings again to reset them.';
+  const off = new Set(Array.isArray(s?.flows) ? s.flows : []);
+  const hit = (Array.isArray(plan?.steps) ? plan.steps : []).find((step) => off.has(step?.flow));
+  return hit ? `The block "${hit.flow}" is turned off for this project. Turn it on in Features, Blocks tab, then try again.` : null;
+}
+
+/**
  * @param {object} options
  * @param {() => string} options.getProjectDir the project directory the Cockpit is pointed at right now
  * @param {string} [options.stateDir]
@@ -83,8 +102,11 @@ function runGit(cwd, args) {
  *   worktree, no branch, never any artifact); every other flow still goes to the bot runner
  * @param {{executeStep: Function}} [options.testRunExecutor] #305: runs `test.run` steps the same way (read-only, forked
  *   worker, never any artifact)
+ * @param {(root: string) => {flows: string[], unreadable?: string|null}} [options.getBlockSettings] #611: the blocks turned
+ *   off for a project (Features, Blocks tab), read fresh on every start. `startPlan` refuses a plan that uses one, so the
+ *   Git screen's Review analysis and the Tests screen's run, which start their own plans, cannot forget the check.
  */
-export function createProcessesService({ getProjectDir, stateDir = resolveStateDir(), executeStep = null, reviewExecutor = null, testRunExecutor = null } = {}) {
+export function createProcessesService({ getProjectDir, stateDir = resolveStateDir(), executeStep = null, reviewExecutor = null, testRunExecutor = null, getBlockSettings = null } = {}) {
   /** project root -> { store, engine, root } */
   const projects = new Map();
   const listeners = new Set();
@@ -147,6 +169,8 @@ export function createProcessesService({ getProjectDir, stateDir = resolveStateD
     startPlan(plan) {
       const entry = open();
       if (!entry) return { ok: false, status: 409, error: 'No Construct project is open.' };
+      const refused = blockRefusal(getBlockSettings, entry.root, plan);
+      if (refused) return { ok: false, status: 409, error: refused };
       let record;
       try {
         record = entry.store.save(createProcess(plan, { projectRoot: entry.root }));
