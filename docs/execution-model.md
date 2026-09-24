@@ -113,3 +113,25 @@ reply gets **one** corrected retry; a provider call that throws is not
 retried. Whatever happens, an unfilled file keeps its scaffolded stub (plus
 the `TODO(import)` breadcrumb on the import path), the command reports it
 per file, other files continue, and the exit code is 3.
+
+## Cockpit execution mode: audit of the seven verbs (#541, story #560)
+
+The Cockpit runs a core activity in-process (`engine`, default) or as the real `construct` binary (`cli`), per
+project (`project.execution.mode`, see README "Cockpit execution mode"). This table is the audit that decides,
+verb by verb, what `cli` mode can honestly promise. "Contract" means `construct <verb> ... --format json` prints one
+stable document that a test compares byte for byte with the in-process result. Status is kept current as each verb lands.
+
+| Verb | `--format json` contract today | In-process path in `ui/server` | Where the two would diverge | Status |
+|---|---|---|---|---|
+| `validate` | yes (`validate --format json`) | `GET /api/validate` (`validateApi.mjs`) | none found; exit 1 is a result, not a crash | done (first slice) |
+| `summarize` | yes for the default project/feature summary (`summarize --format json [--feature f]`, one compact line) | `POST /api/research {action: summarize}` through `runCapturing(research(...))`; `research` appends the `[tool: ...] [llm: 0 calls]` line | the `md`, `compact`, `prose` views and `since` are text or concatenated text, no JSON contract, so they stay in-process in both modes; the attribution line only exists under `research`, so `cli` mode runs `summarize` and attaches the same constant | done |
+| `research` | `doctor` had none (added: `doctor --format json`); `workflow`, `impact`, `spec` already have one | `POST /api/research {action: doctor}`; workflow, impact and spec have no Cockpit endpoint, they run only as Processes, and the bot runner already spawns the CLI | `doctor` text is rendered from the same document in both modes (`renderDoctorText`) | doctor done; the rest are subprocess already |
+| `review` | yes (`review <base> <head> --format json`, default) | Review mode's analysis: a Process step (`review.analyze`) running a forked worker (`reviewWorker.mjs`) | the worker adds `units` (what each changed file now does, from `summarizeUnit`) which the CLI does not print; the plan travels as `expected {features, files}`, the CLI takes `--plan <file>`; the worker's root is the git top level, the CLI's `--dir` walks UP to the nearest `architecture.yml`, so `cli` mode refuses a root that would climb out of itself | see status below |
+| `create` | none: text with per-file timings (`(0.01s)`, `Total:`), so never byte-stable | `POST /api/create` (feature, layer, single) through `runCapturing(create(...))` | needs a deterministic result document (files created), and `--llm` fills cannot be in a contract (a provider call) | see status below |
+| `refactor` | none: text; the core result (`moveLayerFile`, `renameLayerFile`) is structured already | `POST /api/refactor` (move, rename) through `runCapturing(refactor(...))` | needs a result document (from, to, files, importers updated, follow-up validation) | see status below |
+| `import` | none: text with timings and per-file fill reports | `POST /api/import` (unit, plan) through `runCapturing(importCommand(...))`; the Import Wizard (`/ws/wizard`) is interactive with an LLM plan analysis | needs a result document; `--llm` fills and the wizard's analysis are AI work that stays in-process | see status below |
+
+Never switchable, by rule (`ui/server/src/coreExecutor.mjs` header): scope links, Palette grouping, the live-preview
+bridge, pane and resize state, the dev-server manager, and the read models `/api/units`, `/api/flow`, `/api/features`,
+`/api/components` (they call `summarizeUnit` in-process on every hover or tab change). Processes (bots) already spawn
+the CLI in a worktree and are not part of this switch.
