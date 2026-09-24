@@ -100,7 +100,7 @@ ${toc}
 <span>Construct is open source (MIT). Documentation built <time datetime="__BUILD__">__BUILD_DATE__</time>.</span>
 <span>${page.sourceUrl ? `<a href="${esc(page.sourceUrl)}">View source</a> · ` : ''}<a href="${esc(repoUrl)}">GitHub</a></span>
 </div></footer>
-<script src="${root}assets/js/logo-status.js" defer></script>
+<script src="${root}assets/js/logo-status.js" data-config="${root}logo.json" defer></script>
 <script>(function(){var d=document.querySelector('.side-menu');if(d&&window.matchMedia&&!window.matchMedia('(min-width: 901px)').matches)d.removeAttribute('open');})();</script>
 </body>
 </html>

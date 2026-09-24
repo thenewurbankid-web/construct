@@ -3,10 +3,14 @@
  *   off     (default) never moves: this is what every visitor sees
  *   always  moves all the time
  *   status  moves while the endpoint the owner configured says an agent or model is working on the framework
- * The endpoint is never in the page or the repository (the site is public): the owner gives it once, by link or with the small
- * panel that `?logo=config` opens, and it lives in this browser's localStorage. A visitor who never does that makes no request.
- *   ?logo=off|always|status   sets the mode         ?logoApi=https://host/api/dev-status   sets the endpoint (?logoApi= clears it)
- *   ?logo=config              opens the panel
+ * Two places set it, the browser's own setting first:
+ *   1. this browser (localStorage), set by link or with the small panel `?logo=config` opens:
+ *        ?logo=off|always|status   the mode          ?logoApi=https://host/api/dev-status   the endpoint (?logoApi= clears it)
+ *        ?logo=site                follow the site's setting again          ?logo=config   opens the panel
+ *   2. the site's own setting, `logo.json` next to the pages (`{ "mode": "status", "api": "https://host/api/dev-status" }`), which the
+ *      owner edits on GitHub (Trinity links there); a commit redeploys the docs. It is public like the rest of the site, so put in
+ *      `api` only an address you are happy to publish; with no `api` there, only a browser that set its own endpoint polls.
+ * A visitor with neither makes no request (mode off is the default).
  * The address is cleaned afterwards. The endpoint is read with a plain GET, no cookies, a 2 s timeout, every 5 s, only while the
  * tab is visible. Plain script, no libraries, works with storage blocked (the mode then lasts for the page). */
 (function () {
@@ -46,18 +50,31 @@
     return mode === 'always' || (mode === 'status' && polled === true);
   }
 
+  /** The site's own setting: `{ mode, api }`, each `null` when missing or not allowed. Never throws. */
+  function parseConfig(text) {
+    var data;
+    try {
+      data = typeof text === 'string' ? JSON.parse(text) : text;
+    } catch (e) {
+      return { mode: null, api: null };
+    }
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return { mode: null, api: null };
+    return { mode: parseMode(data.mode), api: parseApi(data.api) };
+  }
+
   /** Read the link's parameters: what to store, what to clear, whether to open the panel. */
   function readParams(search) {
     var p = new URLSearchParams(search);
     var out = { mode: null, api: undefined, config: false, touched: p.has('logo') || p.has('logoApi') };
     var logo = p.get('logo');
     if (logo === 'config') out.config = true;
+    else if (logo === 'site') out.mode = 'site';
     else out.mode = parseMode(logo);
     if (p.has('logoApi')) out.api = p.get('logoApi') === '' ? '' : parseApi(p.get('logoApi'));
     return out;
   }
 
-  if (typeof module !== 'undefined' && module.exports) module.exports = { parseMode: parseMode, parseApi: parseApi, isActive: isActive, moves: moves, readParams: readParams, MODES: MODES };
+  if (typeof module !== 'undefined' && module.exports) module.exports = { parseMode: parseMode, parseApi: parseApi, parseConfig: parseConfig, isActive: isActive, moves: moves, readParams: readParams, MODES: MODES };
   if (typeof document === 'undefined') return;
 
   var html = document.documentElement;
@@ -81,7 +98,8 @@
   }
 
   var params = readParams(window.location.search);
-  if (params.mode) set(MODE_KEY, params.mode);
+  if (params.mode === 'site') set(MODE_KEY, null);
+  else if (params.mode) set(MODE_KEY, params.mode);
   if (params.api === '') set(API_KEY, null);
   else if (params.api) set(API_KEY, params.api);
   if (params.touched) {
@@ -95,14 +113,19 @@
     }
   }
 
+  var site = { mode: null, api: null };
   var polled = false;
   var lastNote = '';
   var timer = null;
   var controller = null;
   var onNote = null;
 
+  /** This browser's own choice first, then the site's setting, then off. */
   function mode() {
-    return parseMode(get(MODE_KEY)) || 'off';
+    return parseMode(get(MODE_KEY)) || site.mode || 'off';
+  }
+  function endpoint() {
+    return parseApi(get(API_KEY)) || site.api;
   }
   function apply() {
     var active = moves(mode(), polled);
@@ -122,7 +145,7 @@
   function poll() {
     timer = null;
     if (mode() !== 'status') return;
-    var api = parseApi(get(API_KEY));
+    var api = endpoint();
     if (!api) {
       polled = false;
       apply();
@@ -164,6 +187,20 @@
   }
 
   restart();
+  // The site's own setting (logo.json, same origin). A missing or broken file is just "off": nothing here can fail loudly.
+  var configUrl = document.currentScript && document.currentScript.getAttribute('data-config');
+  if (configUrl && typeof window.fetch === 'function') {
+    window
+      .fetch(configUrl, { cache: 'no-store', credentials: 'same-origin' })
+      .then(function (r) {
+        return r.ok ? r.text() : '';
+      })
+      .then(function (text) {
+        site = parseConfig(text);
+        restart();
+      })
+      .catch(function () {});
+  }
   document.addEventListener('visibilitychange', function () {
     if (!document.hidden && mode() === 'status' && !timer && !controller) poll();
   });
@@ -177,14 +214,14 @@
     panel.setAttribute('aria-label', 'Logo status settings');
     panel.innerHTML =
       '<h2>Logo</h2>' +
-      '<label>Moves<select name="mode"><option value="off">Never</option><option value="status">While development is active</option><option value="always">Always</option></select></label>' +
+      '<label>Moves<select name="mode"><option value="site">Follow the site setting</option><option value="off">Never</option><option value="status">While development is active</option><option value="always">Always</option></select></label>' +
       '<label>Endpoint address<input name="api" type="url" placeholder="https://your-host/api/dev-status" autocomplete="off"></label>' +
       '<p class="logo-panel-note" role="status" aria-live="polite"></p>' +
       '<button type="submit">Save</button>';
     var sel = panel.querySelector('select');
     var input = panel.querySelector('input');
     var noteEl = panel.querySelector('.logo-panel-note');
-    sel.value = mode();
+    sel.value = parseMode(get(MODE_KEY)) || 'site';
     input.value = get(API_KEY) || '';
     onNote = function (text) {
       noteEl.textContent = text;
@@ -197,7 +234,7 @@
         noteEl.textContent = 'That address is not allowed: use https, or http on localhost.';
         return;
       }
-      set(MODE_KEY, sel.value);
+      set(MODE_KEY, sel.value === 'site' ? null : sel.value);
       set(API_KEY, api === '' ? null : api);
       noteEl.textContent = 'Saved.';
       restart();

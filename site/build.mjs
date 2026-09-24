@@ -252,6 +252,8 @@ export async function build({ out, repo, buildTime = new Date(), basePath, versi
   write('search/index.html', layout({ path: 'search/', title: 'Search', description: 'Search the Construct documentation.', section: 'none', body: searchBody({ root: '../' }), canonical: siteUrl + 'search/' }, chrome));
   write('404.html', layout({ path: '404.html', root: '', fullTitle: 'Page not found · Construct', description: 'Page not found.', section: 'none', body: notFoundBody({ basePath }), crumbs: false, basePath }, chrome));
   write('try-it.html', redirectPage({ to: 'user-guide/getting-started/', title: 'Getting started' }));
+  // The docs logo's own setting (mode, optional endpoint), edited on GitHub; read by assets/js/logo-status.js at runtime.
+  fs.copyFileSync(path.join(HERE, 'logo.json'), path.join(out, 'logo.json'));
   // Earlier takes stay in the repo (assets/video/history) until deleted, but are not published.
   fs.cpSync(path.join(HERE, 'assets'), path.join(out, 'assets'), { recursive: true, filter: (src) => !src.includes(`${path.sep}video${path.sep}history`) && !src.includes(`${path.sep}video${path.sep}voice-tests`) });
   write('.nojekyll', '');

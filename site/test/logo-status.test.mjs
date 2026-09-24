@@ -47,12 +47,33 @@ test('only a full "an agent is working" answer counts as active', () => {
   for (const no of [null, undefined, {}, { ok: true, available: true, active: false }, { ok: true, available: false, active: true }, { ok: false, available: true, active: true }, { ok: true, available: true, active: 'yes' }]) assert.equal(m.isActive(no), false);
 });
 
+test("the site's own setting: mode and endpoint each read on their own, anything wrong is dropped, and nothing throws", () => {
+  const m = load();
+  assert.deepEqual({ ...m.parseConfig('{"mode":"status","api":"https://h.example/api/dev-status"}') }, { mode: 'status', api: 'https://h.example/api/dev-status' });
+  assert.deepEqual({ ...m.parseConfig('{"mode":"always"}') }, { mode: 'always', api: null });
+  assert.deepEqual({ ...m.parseConfig('{"mode":"loud","api":"http://evil.example/x"}') }, { mode: null, api: null });
+  for (const bad of ['', 'not json', '[]', 'null', '"x"', '{', undefined]) assert.deepEqual({ ...m.parseConfig(bad) }, { mode: null, api: null }, String(bad));
+});
+
+test('site/logo.json ships as off with no endpoint (public); the build copies it and the page points at it', () => {
+  const m = load();
+  const cfg = m.parseConfig(read('site/logo.json'));
+  assert.equal(JSON.parse(read('site/logo.json')).mode, 'off');
+  assert.deepEqual({ ...cfg }, { mode: 'off', api: null });
+  assert.match(read('site/build.mjs'), /copyFileSync\(path\.join\(HERE, 'logo\.json'\), path\.join\(out, 'logo\.json'\)\)/);
+  assert.match(read('packages/docs-site/lib/pages.mjs'), /data-config="\$\{root\}logo\.json"/);
+  // The browser's own choice wins over the site's, then the site's, then off (checked in the script's own resolution).
+  assert.match(SCRIPT, /return parseMode\(get\(MODE_KEY\)\) \|\| site\.mode \|\| 'off';/);
+  assert.match(SCRIPT, /return parseApi\(get\(API_KEY\)\) \|\| site\.api;/);
+});
+
 test('link parameters: a mode, an endpoint, an empty endpoint clears it, config opens the panel, and an invalid endpoint is dropped', () => {
   const m = load();
   assert.deepEqual({ ...m.readParams('?logo=status&logoApi=https://h.example/api/dev-status') }, { mode: 'status', api: 'https://h.example/api/dev-status', config: false, touched: true });
   assert.equal(m.readParams('?logoApi=').api, '');
   assert.equal(m.readParams('?logoApi=http://evil.example/x').api, null);
   assert.equal(m.readParams('?logo=config').config, true);
+  assert.equal(m.readParams('?logo=site').mode, 'site', 'follow the site setting again');
   assert.equal(m.readParams('?logo=bogus').mode, null);
   assert.equal(m.readParams('?other=1').touched, false);
 });
@@ -71,7 +92,7 @@ test('the logo: two pills with their own classes, the blue one slides 12 units u
   const pages = read('packages/docs-site/lib/pages.mjs');
   assert.match(pages, /<rect class="pill-white" x="4" y="10"[^>]*fill="currentColor"\/>/);
   assert.match(pages, /<rect class="pill-blue" x="16" y="27"[^>]*stroke="url\(#lg\)"/);
-  assert.match(pages, /<script src="\$\{root\}assets\/js\/logo-status\.js" defer><\/script>/);
+  assert.match(pages, /<script src="\$\{root\}assets\/js\/logo-status\.js" data-config="\$\{root\}logo\.json" defer><\/script>/);
   const css = read('site/assets/css/site.css');
   assert.doesNotMatch(css, /brand-trace|brand-pop|stroke-dasharray: 55 14/, 'the rolling dash is gone');
   assert.match(css, /html\[data-dev-status='active'\] \.brand-mark \.pill-blue \{ animation: brand-stack 9s ease-in-out infinite; \}/);
