@@ -29,6 +29,7 @@ import { createDevServerRouter } from './devServerApi.mjs';
 import { isSessionBranch } from '../../../packages/engine/commitMessage.mjs';
 import { createPlanService } from './planService.mjs';
 import { createPlanRouter } from './planApi.mjs';
+import { createRequirementRouter } from './requirementApi.mjs';
 import { attachProcessesSocket } from './processesSocket.mjs';
 import { createReviewRouter } from './reviewApi.mjs';
 import { createTestsRouter } from './testsApi.mjs';
@@ -338,7 +339,7 @@ app.use(
     '/api/create', '/api/refactor', '/api/research', '/api/import',
     '/api/pages', '/api/workflows', '/api/units', '/api/features', '/api/flow', '/api/nav', '/api/validate',
     '/api/git/session', '/api/git/dirty-answer', '/api/git/commit', '/api/git/plan',
-    '/api/processes', '/api/plan', '/api/review', '/api/tests', '/api/project', '/api/notes', '/api/blocks',
+    '/api/processes', '/api/plan', '/api/requirement', '/api/review', '/api/tests', '/api/project', '/api/notes', '/api/blocks',
   ],
   requireProject(),
 );
@@ -1081,6 +1082,16 @@ export const planService = createPlanService({
   },
 });
 app.use('/api/plan', createPlanRouter(planService));
+
+// #642: the requirement chain (a sentence read back as card, placement, plan and timeline). Below the session gate and the
+// project-open gate; read-only and model-free. Approving its plan goes through the Plan route above, unchanged.
+app.use('/api/requirement', createRequirementRouter({
+  clientOrigin: CLIENT_ORIGIN,
+  getRoot: () => {
+    const root = containedProjectRoot(getProjectDir());
+    return root ? { ok: true, root } : { ok: false, status: 409, body: NO_PROJECT_BODY };
+  },
+}));
 
 // #312/#313: Review mode (read-only). Registered below the gate like every other `/api` route. The
 // repository is always the current project's -- the client sends branch names only, and each is

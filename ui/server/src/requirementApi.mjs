@@ -1,0 +1,128 @@
+// #642 (part of epic #616) -- the requirement chain, read back before anything is written. One route,
+// POST /api/requirement/read: a plain-English sentence goes through the deterministic blocks (parseRequirement, then
+// placeCard, then planFromBlocks of @line/construct-core) and comes back as { card, placement, plan, files, open, summary }.
+// No model is called and no network is used anywhere in this file.
+//
+// Security and contract, in one place:
+//   - mounted below the session gate AND the project-open gate (index.mjs), so nothing runs with no project open (409
+//     NO_PROJECT); the project is always the server's current one and the client never names a path;
+//   - a request from a foreign browser Origin is refused (403); the body must be JSON (415) and is capped (413);
+//   - the sentence is capped (MAX_TEXT); answers are a short list of { id, option } with ids of the two shapes the
+//     blocks ask (`o<n>` a word of the card, `q-...` a placement question) and every option is checked by the block that
+//     owns the question, so an unknown answer is a typed 400, never a guess;
+//   - the route only READS: it writes nothing and starts nothing. Approving the plan is the existing Plan route
+//     (POST /api/plan/run), with its own re-validation, containment, block switches and per-file approval, unchanged.
+//   - stateless: the client sends the sentence and every answer so far, in order. A card question is answered against the
+//     card as it stood then (ids renumber once a word is answered), so the answers are replayed in the order given.
+import fs from 'node:fs';
+import path from 'node:path';
+import express from 'express';
+import { loadConfig } from '../../../packages/core/config.mjs';
+import { parseRequirement, resolveOpen, openQuestion, readBack, cardSummary } from '../../../packages/core/requirement-card.mjs';
+import { placeCard, planFromBlocks, blockLines } from '../../../packages/core/placement.mjs';
+
+export const MAX_TEXT = 2000;
+export const MAX_ANSWERS = 20;
+export const MAX_REQUEST_BYTES = 16 * 1024;
+
+const CARD_ID = /^o\d{1,3}$/;
+const PLACEMENT_ID = /^q-[A-Za-z0-9-]{1,40}$/;
+const OPTION_ID = /^[a-z][a-z-]{0,30}$/;
+
+const fail = (status, code, error, extra = {}) => ({ status, body: { ok: false, code, error, ...extra } });
+
+/** "SubscriptionPlan" -> "subscription-plan": the feature the units go in, derived from the screen name the blocks chose. */
+export const featureNameOf = (screen) => String(screen).replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+
+const asQuestion = (source, q) => ({ ...q, source });
+
+/**
+ * Read one requirement. Pure over (text, answers, root): it reads the project's architecture.yml (layers, framework) and
+ * the folder listing of its features root, nothing else.
+ *
+ * @param {{ text?: unknown, answers?: unknown }} body
+ * @param {string} root the open project's root
+ * @returns {{ status: number, body: object }}
+ */
+export function readRequirement(body, root) {
+  const text = body?.text;
+  if (typeof text !== 'string' || !text.trim()) return fail(400, 'TEXT_REQUIRED', 'Write the requirement first.');
+  if (text.length > MAX_TEXT) return fail(400, 'TEXT_TOO_LONG', `The requirement is longer than ${MAX_TEXT} characters.`);
+  const given = body?.answers === undefined ? [] : body.answers;
+  if (!Array.isArray(given) || given.length > MAX_ANSWERS) return fail(400, 'BAD_ANSWERS', `answers must be a list of at most ${MAX_ANSWERS} { id, option }.`);
+  const cardAnswers = [];
+  const placementAnswers = {};
+  for (const a of given) {
+    if (!a || typeof a !== 'object' || Array.isArray(a) || typeof a.id !== 'string' || typeof a.option !== 'string' || !OPTION_ID.test(a.option)) return fail(400, 'BAD_ANSWERS', 'Each answer must be { id, option }.');
+    if (CARD_ID.test(a.id)) cardAnswers.push(a);
+    else if (PLACEMENT_ID.test(a.id)) placementAnswers[a.id] = a.option;
+    else return fail(400, 'BAD_ANSWERS', `"${a.id}" is not a question this requirement can ask.`);
+  }
+
+  const parsed = parseRequirement(text);
+  if (!parsed.card) return fail(400, 'PARSE_FAILED', parsed.errors[0]?.message ?? 'The requirement could not be read.');
+  let card = parsed.card;
+  for (const a of cardAnswers) {
+    const r = resolveOpen(card, { [a.id]: a.option });
+    if (!r.ok) return fail(400, r.errors[0]?.code ?? 'ANSWER_REFUSED', r.errors[0]?.message ?? 'That answer was not accepted.');
+    card = r.card;
+  }
+
+  const base = { ok: true, card, summary: { card: cardSummary(card), readBack: readBack(card).map((l) => l.line) } };
+  // A word the lexicon does not know is a question first; nothing is placed until a person answers it.
+  if (card.open.length) {
+    return { status: 200, body: { ...base, placement: null, plan: null, files: {}, open: card.open.map((item) => asQuestion('card', openQuestion(card, item))), warnings: [], summary: { ...base.summary, blocks: [] } } };
+  }
+
+  let config;
+  try {
+    config = loadConfig(root);
+  } catch (e) {
+    return fail(409, 'CONFIG_UNREADABLE', `This project's architecture.yml could not be read: ${String(e?.message ?? e).split('\n')[0]}`);
+  }
+  const placement = placeCard(card, { layers: config.layers, framework: config.project?.framework, answers: placementAnswers });
+  const open = placement.open.map((q) => asQuestion('placement', q));
+  const summary = { ...base.summary, blocks: blockLines(placement).map((l) => l.line) };
+  const out = { ...base, placement, plan: null, files: {}, open, warnings: [], summary };
+  if (!placement.ok || !placement.complete) return { status: 200, body: out };
+
+  const screen = placement.blocks.flatMap((b) => b.layers).find((l) => l.layer === 'page' || l.layer === 'controller')?.name ?? 'Requirement';
+  const feature = featureNameOf(screen);
+  const planned = planFromBlocks(placement.blocks, { feature, root, title: `Requirement: ${text.trim().slice(0, 80)}`, decisions: placement.decisions });
+  if (!planned.ok) return { status: 200, body: { ...out, placement: { ...placement, ok: false, errors: [...placement.errors, ...planned.errors] } } };
+  const featuresRoot = config.features?.root ?? 'features';
+  const warnings = fs.existsSync(path.join(root, featuresRoot, feature)) ? [`The feature "${feature}" already exists in this project, so the "Create feature ${feature}" step will be refused. Remove that step in the Plan screen, or use other words.`] : [];
+  return { status: 200, body: { ...out, plan: planned.plan, files: planned.files, warnings } };
+}
+
+/**
+ * @param {{ getRoot: () => {ok: true, root: string} | {ok: false, status?: number, body?: object}, clientOrigin?: string }} deps
+ */
+export function createRequirementRouter({ getRoot, clientOrigin }) {
+  const router = express.Router();
+  router.use((req, res, next) => {
+    if (req.method !== 'GET') {
+      const origin = req.get('origin');
+      if (clientOrigin && origin && origin !== clientOrigin) return res.status(403).json({ ok: false, code: 'FOREIGN_ORIGIN', error: 'This request came from a page that is not the Cockpit.' });
+    }
+    return next();
+  });
+  router.use((req, res, next) => {
+    if (req.method !== 'POST') return next();
+    if (!req.is('application/json')) return res.status(415).json({ ok: false, code: 'JSON_ONLY', error: 'Send a JSON body.' });
+    if (Number(req.get('content-length') || 0) > MAX_REQUEST_BYTES) return res.status(413).json({ ok: false, code: 'TOO_LARGE', error: 'That request is too large.' });
+    return next();
+  });
+  router.post('/read', (req, res) => {
+    const r = getRoot();
+    if (!r.ok) return res.status(r.status ?? 400).json(r.body ?? { ok: false, error: r.error ?? 'No project is open.' });
+    try {
+      const out = readRequirement(req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {}, r.root);
+      return res.status(out.status).json(out.body);
+    } catch {
+      return res.status(500).json({ ok: false, code: 'READ_FAILED', error: 'The requirement could not be read.' });
+    }
+  });
+  router.use((req, res) => res.status(404).json({ ok: false, error: 'Not found.' }));
+  return router;
+}

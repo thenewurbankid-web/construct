@@ -56,7 +56,7 @@ test('every project route answers a consistent 409 NO_PROJECT with nothing open 
     assert.equal((await r.json()).code, 'NO_PROJECT', url);
   }
   const posts = [['/api/init', {}], ['/api/create', { kind: 'feature', name: 'x' }], ['/api/refactor', {}], ['/api/research', { action: 'doctor' }],
-    ['/api/import', { mode: 'plan', planPath: 'x' }], ['/api/pages/save', {}], ['/api/workflows/edit', {}], ['/api/git/commit', {}], ['/api/plan', {}], ['/api/review/jobs', {}], ['/api/notes', { title: 'x' }]];
+    ['/api/import', { mode: 'plan', planPath: 'x' }], ['/api/pages/save', {}], ['/api/workflows/edit', {}], ['/api/git/commit', {}], ['/api/plan', {}], ['/api/review/jobs', {}], ['/api/notes', { title: 'x' }], ['/api/requirement/read', { text: 'x' }]];
   for (const [url, body] of posts) {
     const r = await json('POST', url, body);
     assert.equal(r.status, 409, url);
