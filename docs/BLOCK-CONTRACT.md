@@ -260,7 +260,7 @@ The decision model (a rules baseline today, a small trained model later, see #63
 
 1. **A fixed-size summary** of its state and options that a person, an LLM and a decision model all receive (`chooserSummary`, `cardSummary`, `blockSummary` are the examples). No paths or secrets in it.
 2. **Closed options with stable ids.** Decisions are a choice among 2-5 named options, never free text; ids do not change between versions, so recorded choices stay valid.
-3. **Attribution and a trace.** Every choice records who made it (person, LLM, decision model, plugin) and, once #643 lands, is written as a `decision-trace.v1` record with its outcome.
+3. **Attribution and a trace.** Every choice records who made it (person, LLM, decision model, plugin) and is written as a `decision-trace.v1` record with its outcome (#643, `packages/core/decision-trace*.mjs`, see `docs/DECISION-TRACES.md`): `choicesFromChain`, `choiceFromCardQuestion` or `choicesFromPlacement` turn what the block returned into a choice, `recordChoices` writes it to the project's state directory (`traces: off` in `architecture.yml` stops it), and a new chooser is done only when its choices can be recorded and `construct traces replay` can score a provider on them.
 4. **A rules-only fallback.** The block works with no model, and any model-backed proposal goes through the decision-provider seam, suggests only and never executes.
-5. **Replay-scorable.** A provider can be scored on recorded traces of this block; the block never depends on a specific model.
+5. **Replay-scorable.** A provider can be scored on recorded traces of this block (`construct traces replay --provider <name>`: agreement with what people chose, coverage, and beats/ties/loses against the `rules` baseline); the block never depends on a specific model.
 6. **Cheap on a small machine.** No model file is loaded unless the feature is enabled; the block reports what it needs (see the low-end tiers, #648).

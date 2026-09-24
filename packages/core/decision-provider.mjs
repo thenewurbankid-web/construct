@@ -43,13 +43,14 @@ const enabledIds = (summary) => summary.options.filter((o) => o.enabled).map((o)
 
 const rulesProvider = deepFreeze({
   name: 'rules',
+  version: '1', // recorded beside every suggestion in a decision trace (#643); a plugin may carry its own `version`
   suggest(summary) {
     const [first, second] = enabledIds(summary);
     return first === undefined ? null : { option: first, reason: 'first available step', runnerUp: second ?? null };
   },
 });
 
-const offProvider = deepFreeze({ name: 'off', suggest: () => null });
+const offProvider = deepFreeze({ name: 'off', version: '1', suggest: () => null });
 
 const BUILT_IN = Object.freeze({ rules: rulesProvider, off: offProvider });
 const registry = new Map(Object.entries(BUILT_IN));

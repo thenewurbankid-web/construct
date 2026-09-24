@@ -14,6 +14,7 @@
 import { planFlow, validatePlan } from './plan.mjs';
 import { BLOCK_ID_RE, GUARDRAILS, emptyScope, validateAction, validateScope } from './block-contract.mjs';
 import { argProblem, flowBlock, flowScopeKind } from './block-flows.mjs';
+import { PATH_LIKE_PATTERN } from './redaction.mjs';
 
 /** Sizes fixed so a summary is always small: 2-5 options, capped text. */
 export const CHOOSER_LIMITS = Object.freeze({ minOptions: 2, maxOptions: 5, question: 160, label: 60, why: 120 });
@@ -214,10 +215,10 @@ export function defineChooser(spec) {
   return chooser;
 }
 
-/** Collapse whitespace, hide anything that looks like an absolute or traversing path, and cap the length with an ellipsis. */
+/** Collapse whitespace, hide anything that looks like an absolute or traversing path (`redaction.mjs`, the pattern a decision trace refuses), and cap the length with an ellipsis. */
 function plain(text, max) {
   const clean = String(text ?? '')
-    .replace(/(?<![\w.-])(?:[A-Za-z]:[\\/]|~?\/|\.\.?\/)[^\s'"`),;]+/g, '[path]')
+    .replace(PATH_LIKE_PATTERN, '[path]')
     .replace(/\s+/g, ' ')
     .trim();
   return clean.length > max ? `${clean.slice(0, max - 1)}…` : clean;

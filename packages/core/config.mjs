@@ -128,6 +128,31 @@ export function normalizeExecutionMode(raw) {
   return raw;
 }
 
+/** #643 -- the recognized top-level `traces` values in architecture.yml: whether the chain records `decision-trace.v1` records. */
+export const TRACES_SETTINGS = ['on', 'off'];
+/** Recording defaults to on: a trace is local (the state directory, outside the project), holds no path or secret, and never leaves the machine unless the owner exports it. */
+export const DEFAULT_TRACES = 'on';
+
+/**
+ * Validate and normalize the top-level `traces:` value of architecture.yml (the per-project switch for decision traces,
+ * #643). Absent normalizes to `on`; YAML `on`/`off` and `true`/`false` are all accepted.
+ *
+ * @param {string|boolean|null|undefined} raw The `traces` value from `architecture.yml`.
+ * @returns {'on'|'off'} The setting; `'on'` when `raw` is absent.
+ * @throws {Error} A usage error naming the allowed values when `raw` is anything else.
+ * @since 0.10
+ *
+ * @example
+ * normalizeTraces(undefined); // => 'on'
+ * normalizeTraces(false); // => 'off'
+ */
+export function normalizeTraces(raw) {
+  if (raw === undefined || raw === null) return DEFAULT_TRACES;
+  if (raw === true || raw === 'on') return 'on';
+  if (raw === false || raw === 'off') return 'off';
+  throw usageError(`Unknown traces '${raw}' in architecture.yml — expected one of: ${TRACES_SETTINGS.join(', ')}.`);
+}
+
 /** The canonical base layer graph for a given (already-normalized) framework
  * value — the shape #66/#67 and architecture-graph.mjs's loadLayerGraph
  * branch on before applying any project-level `layers:` override. */
@@ -464,6 +489,7 @@ export function loadConfig(root) {
       preset: 'strict-nextjs',
       project: { framework: DEFAULT_FRAMEWORK, dataLayer: { provider: DEFAULT_DATA_LAYER_PROVIDER }, execution: { mode: DEFAULT_EXECUTION_MODE } },
       features: { root: 'features' },
+      traces: DEFAULT_TRACES,
       layers: DEFAULT_LAYERS,
       rules: DEFAULT_RULES,
       exceptions: [],
@@ -498,6 +524,7 @@ export function loadConfig(root) {
       execution: { ...(c.project?.execution || {}), mode: executionMode },
     },
     features: { root: 'features', ...(c.features || {}) },
+    traces: normalizeTraces(c.traces),
     layers: layersForFramework(framework),
     rules,
     exceptions: c.exceptions || [],
