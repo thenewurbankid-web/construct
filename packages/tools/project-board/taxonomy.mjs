@@ -9,6 +9,8 @@ export const TAXONOMY = {
   'Pipeline & Generators': ['Envelope engine', 'Workflows (XState)', 'Generators', 'Frozen presentation', OTHER],
   'Demos & Docs': ['Guides', 'Tutorials', 'Screenshots', 'Style guide', OTHER],
   'Infra & Process': ['CI & e2e', 'Security', 'Dependencies', 'Project board', 'Comment bridge', OTHER],
+  'Front-end Blocks': ['Chooser engine', 'Screen shapes', 'Data & services', 'States & proof', 'Chain UI', OTHER],
+  'Design': ['Design system', 'Cockpit shell', 'Screens', 'Accessibility & review', OTHER],
 };
 
 export const MODULES = Object.keys(TAXONOMY);

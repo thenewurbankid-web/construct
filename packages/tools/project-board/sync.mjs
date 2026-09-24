@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Deterministic (no-LLM) Projects v2 hygiene sync.
-//   node packages/tools/project-board/sync.mjs [--dry-run] [--archive-days N]
+//   node packages/tools/project-board/sync.mjs [--dry-run] [--check] [--archive-days N]
 //        [--owner thenewurbankid-web] [--repo construct] [--project 1]
 // Auth: PROJECT_TOKEN (preferred) or GH_TOKEN env var. It must be a token that can
 // write user-owned Projects v2 (classic: `project` + `repo`; fine-grained: Projects
@@ -9,10 +9,11 @@
 import { planActions, DEFAULT_ARCHIVE_DAYS } from './plan.mjs';
 
 function parseArgs(argv) {
-  const o = { dryRun: false, archiveDays: DEFAULT_ARCHIVE_DAYS, owner: 'thenewurbankid-web', repo: 'construct', project: 1 };
+  const o = { dryRun: false, check: false, archiveDays: DEFAULT_ARCHIVE_DAYS, owner: 'thenewurbankid-web', repo: 'construct', project: 1 };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--dry-run') o.dryRun = true;
+    else if (a === '--check') { o.check = true; o.dryRun = true; } // report only; exit 1 when any item is unclassified
     else if (a === '--archive-days') o.archiveDays = Number(argv[++i]);
     else if (a === '--owner') o.owner = argv[++i];
     else if (a === '--repo') o.repo = argv[++i];
@@ -119,6 +120,13 @@ console.log(`${label} change status on ${plan.setStatus.length}: ${plan.setStatu
 console.log(`${label} archive ${plan.archive.length} Done item(s) closed >${opts.archiveDays}d ago: ${plan.archive.map(a => `#${a.number}`).join(' ') || '-'}`);
 console.log(`${label} fix Area on ${plan.setArea.length}: ${plan.setArea.map(s => `#${s.number}->${s.area}`).join(' ') || '-'}`);
 console.log(`report: missing Module ${JSON.stringify(plan.report.missingModule)}; missing Sub-module ${JSON.stringify(plan.report.missingSubModule)}; Area problems ${JSON.stringify(plan.report.areaProblems)}; missing Kind ${JSON.stringify(plan.report.missingKind)}; open without Priority ${JSON.stringify(plan.report.openWithoutPriority)}`);
+
+if (opts.check) {
+  const r = plan.report;
+  const bad = r.missingModule.length + r.missingSubModule.length + r.areaProblems.length + r.missingKind.length + r.openWithoutPriority.length + plan.add.length + plan.setArea.length;
+  console.log(bad ? `Check FAILED: ${bad} problem(s).` : 'Check passed: every issue is on the board with Module, Sub-module, Kind, Area (and Priority when open).');
+  process.exit(bad ? 1 : 0);
+}
 
 if (!opts.dryRun) {
   // Newly added items get their status set in a second pass (need the new item id).

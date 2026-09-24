@@ -12,7 +12,7 @@ automated.
 | Status | Backlog, Ready, In progress, In review, Done | Workflow state. Closed issues are Done; a reopened issue goes back to In progress. Standing items (Kind=Standing) have no Status: they are never worked through, so the field stays empty (owner decision 2026-09-24). |
 | Priority | P0, P1, P2 | Set on every open issue except Standing ones. |
 | Size | XS-XL | Optional. |
-| Module | Core CLI, Web UI, AI Toolkit, Pipeline & Generators, Demos & Docs, Infra & Process, Design | Required on every item. |
+| Module | Core CLI, Web UI, AI Toolkit, Pipeline & Generators, Demos & Docs, Infra & Process, Front-end Blocks, Design | Required on every item. |
 | Sub-module | see below | Required on every item. Unique option names; `Other` is shared. Use for filtering. |
 | Area | `<Module> › <Sub-module>` | Derived from Module + Sub-module. Use for the two-level grouped view. |
 | Kind | Epic, Feature, Bug, Demo, Standing, Chore | Required on every item. |
@@ -34,7 +34,12 @@ The list lives in code: `packages/tools/project-board/taxonomy.mjs` (single sour
 - Pipeline & Generators: Envelope engine, Workflows (XState), Generators, Frozen presentation, Other
 - Demos & Docs: Guides, Tutorials, Screenshots, Style guide, Other
 - Infra & Process: CI & e2e, Security, Dependencies, Project board, Comment bridge, Other
-- Design (Module 9, proposed): Design system, Cockpit shell, Screens, Accessibility & review, Other. Needs the option added to the Module and Sub-module fields, the Area options, and `packages/tools/project-board/taxonomy.mjs` (not yet done; see docs/design/README.md)
+- Front-end Blocks: Chooser engine, Screen shapes, Data & services, States & proof, Chain UI, Other (epic #616: front-end development as a chain of blocks with closed options)
+- Design: Design system, Cockpit shell, Screens, Accessibility & review, Other (Module 9, owned by the `designer` agent; see `docs/design/README.md`)
+
+Sub-module names are unique across the board (`Design system` exists under both Web UI and Design; `Other` is shared),
+so the Area option is what tells them apart. Every issue belongs to a module: there are no stray items. A new module is
+justified when 5 or more open issues fit none of the existing ones.
 
 Epics and structural containers normally get `Other`. To add a sub-module: add it to `taxonomy.mjs`, add the
 option to the Sub-module field and the matching `<Module> › <Sub-module>` option to the Area field (Project
@@ -89,6 +94,7 @@ even if a workflow toggle is missed.
 
 ```
 PROJECT_TOKEN=<token> node packages/tools/project-board/sync.mjs --dry-run   # report only
+PROJECT_TOKEN=<token> node packages/tools/project-board/sync.mjs --check     # dry run, exit 1 if any issue is unclassified or off the board
 PROJECT_TOKEN=<token> node packages/tools/project-board/sync.mjs             # apply
 node --test packages/tools/project-board/*.test.mjs                          # unit tests
 ```
