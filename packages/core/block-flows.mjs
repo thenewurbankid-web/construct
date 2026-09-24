@@ -52,8 +52,21 @@ function scopeOf(flowId, args, ctx) {
   return { features: typeof feature === 'string' && feature ? [feature] : [], files };
 }
 
-/** First reason `args` is not runnable by `executor`, from validatePlan itself (so the menu and the validator cannot disagree), or null. */
-function argProblem(flowId, args, executor, touches) {
+/**
+ * First reason `args` is not runnable by `executor`, from validatePlan itself (so the menu, a chooser option and the
+ * validator cannot disagree), or null. Checks the arguments only: a writing flow is given the supplied `touches`, or an
+ * empty scope, because declaring scope is the approval gate's job.
+ *
+ * @param {string} flowId A key of PLAN_FLOWS.
+ * @param {any} args The step's arguments.
+ * @param {string} executor The executor tag the step would carry (`deterministic`, `local-model`, `user`).
+ * @param {import('./block-contract.mjs').DeclaredScope} [touches] The step's declared scope, when there is one.
+ * @returns {string | null} The first validatePlan message about the step, or `null` when the arguments are accepted.
+ *
+ * @example
+ * argProblem('create.feature', {}, 'deterministic'); // => 'Flow "create.feature" requires the "name" argument.'
+ */
+export function argProblem(flowId, args, executor, touches) {
   const flow = planFlow(flowId);
   const step = { id: 's1', title: flowId, flow: flowId, args: isObj(args) ? args : {}, executor };
   if (flow.writes) step.touches = touches ?? emptyScope(); // declaring scope is the gate's job; this asks about the arguments

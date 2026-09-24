@@ -104,3 +104,145 @@ a `local-model` path, `view-code` (mechanical) and `edit-code` (free) on writing
   (`RUN_READONLY_WROTE`) where before it was a comment.
 - `create.workflow.from`, `create.page.from`, `create.service.openapi` and `sync` are the cheapest next derivations
   (their generators name their own output paths).
+
+## Choosers and the decision seam (#617, part of epic #616)
+
+A chooser is a block that asks ONE closed question with 2-5 options. Each option is a fixed `PLAN_FLOWS` flow plus fixed
+`args` (nobody types them), so a chain of answers compiles to an ordinary plan and approval, containment and
+`validatePlan` apply unchanged. `packages/core/chooser.mjs` and `packages/core/decision-provider.mjs`; nothing calls a model.
+
+- `defineChooser({ id, question, options: [{ id, label, flow, args, why?, requires?, touches? }], exit? })` validates by
+  named code (`CHOOSER_ERROR_CODES`): dotted id, 2-5 options, unique option ids, every flow in `PLAN_FLOWS`, every option's
+  `args` accepted by `validatePlan` in a one-step plan (the same `argProblem` the flow blocks use), a writing flow whose
+  files cannot be derived (a `declared` flow) carries `touches`. The `exit` is `{ flow: 'manual.task', args }` (default:
+  do it by hand) or an `ai` action carrying every `GUARDRAILS` gate (`Fill with AI`, a reviewable diff).
+- `chooserSummary(chooser, state)` is the on-demand summary, `{ id, question, options: [{ id, label, enabled, why }], chosen }`,
+  at a fixed size (at most 5 options, question 160 / label 60 / why 120 characters, absolute paths redacted). A person's
+  screen, an LLM's tool result and a decision model's input are all this object. `state` is
+  `{ chosen?, facts?, disabled? }`: an option is disabled by a reason in `disabled`, or when its `requires` are not in `facts`.
+- `compileChain(choosers, answers, ctx)` turns `{ [chooserId]: optionId }` into `{ ok, plan, decisions, errors }`. Each
+  answer is a step (`deterministic` where the flow allows it), depending on the previous one, with `touches` from the option
+  or from `flowBlock(flow).declaredScope(args, { root })`; the plan is returned only when `validatePlan` reports no errors.
+  An unknown, missing or disabled answer, or files that cannot be derived, come back as typed errors, never a throw.
+  Answer `'exit'` takes the manual exit (a `manual.task` step); an `ai` exit is not compiled into a step.
+- Attribution: `ctx.by` (`person`, `llm`, `decision-model`, default `person`) and `ctx.provider`, or per answer
+  `{ option, by, provider }`, are recorded per step in `decisions`. They come back BESIDE the plan, not inside it, because
+  `validatePlan` rejects unknown top-level fields and is not changed for this.
+
+The decision seam: a provider is `{ suggest(summary) }` and returns `{ option, reason, runnerUp }`. `suggest(summary,
+{ provider })` calls it with a deep-frozen copy of the summary (no path, no credential, no project file) and validates
+the answer: the option must be an enabled option of that summary and there must be a reason, else the result is `null`
+(a throw or a hang, 5 s by default, is `null` too). A provider can only suggest; nothing it returns is executed. Built in:
+`rules` (frozen, deterministic: the first enabled option, reason `first available step`, the next as runner-up) and `off`
+(always `null`). A plugin such as the decision model of #633 calls `registerDecisionProvider(name, provider)`.
+
+Worked example, run by `test/chooser.test.mjs` so it cannot go stale:
+
+<!-- chooser-example:code -->
+```js
+import { defineChooser, compileChain } from '@line/construct-core/chooser';
+
+const feature = defineChooser({
+  id: 'app.feature',
+  question: 'Which feature do you start with?',
+  options: [
+    { id: 'cart', label: 'Cart', flow: 'create.feature', args: { name: 'cart' }, why: 'The empty cart slice.' },
+    { id: 'wishlist', label: 'Wishlist', flow: 'create.feature', args: { name: 'wishlist' } },
+  ],
+});
+const unit = defineChooser({
+  id: 'app.unit',
+  question: 'What is its first unit?',
+  options: [
+    { id: 'rules', label: 'Cart rules', flow: 'create.unit', args: { layer: 'domain', name: 'cartRules', feature: 'cart' }, why: 'Pure business rules first.' },
+    { id: 'page', label: 'Cart page', flow: 'create.unit', args: { layer: 'page', name: 'CartPage', feature: 'cart' } },
+  ],
+});
+
+export const result = compileChain([feature, unit], { 'app.feature': 'cart', 'app.unit': 'rules' }, { root: process.cwd(), title: 'Start the cart' });
+```
+
+`result` (the files are derived from the arguments and the project's `architecture.yml`, not typed in):
+
+<!-- chooser-example:result -->
+```json
+{
+  "ok": true,
+  "plan": {
+    "version": 1,
+    "ticket": {
+      "source": "text",
+      "title": "Start the cart"
+    },
+    "steps": [
+      {
+        "id": "s1",
+        "title": "Cart",
+        "flow": "create.feature",
+        "args": {
+          "name": "cart"
+        },
+        "executor": "deterministic",
+        "touches": {
+          "features": [
+            "cart"
+          ],
+          "files": [
+            {
+              "path": "features/cart/types.ts",
+              "change": "create"
+            },
+            {
+              "path": "features/cart/index.ts",
+              "change": "create"
+            }
+          ]
+        },
+        "rationale": "The empty cart slice."
+      },
+      {
+        "id": "s2",
+        "title": "Cart rules",
+        "flow": "create.unit",
+        "args": {
+          "layer": "domain",
+          "name": "cartRules",
+          "feature": "cart"
+        },
+        "executor": "deterministic",
+        "touches": {
+          "features": [
+            "cart"
+          ],
+          "files": [
+            {
+              "path": "features/cart/domain/CartRules.tsx",
+              "change": "create",
+              "layer": "domain"
+            }
+          ]
+        },
+        "rationale": "Pure business rules first.",
+        "dependsOn": [
+          "s1"
+        ]
+      }
+    ]
+  },
+  "decisions": [
+    {
+      "step": "s1",
+      "chooser": "app.feature",
+      "option": "cart",
+      "by": "person"
+    },
+    {
+      "step": "s2",
+      "chooser": "app.unit",
+      "option": "rules",
+      "by": "person"
+    }
+  ],
+  "errors": []
+}
+```

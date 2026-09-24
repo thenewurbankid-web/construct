@@ -77,7 +77,8 @@ export const BLOCK_ERROR_CODES = Object.freeze({
 
 const isPlainObject = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const isNonEmptyString = (v) => typeof v === 'string' && v.length > 0;
-const BLOCK_ID_RE = /^[A-Za-z][A-Za-z0-9_-]*(\.[A-Za-z0-9_-]+)*$/;
+/** The shape of a dotted block id (`create.unit`, `process.lifecycle`); choosers reuse it. */
+export const BLOCK_ID_RE = /^[A-Za-z][A-Za-z0-9_-]*(\.[A-Za-z0-9_-]+)*$/;
 const isAbsolutePath = (p) => path.isAbsolute(p) || /^[A-Za-z]:[\\/]/.test(p);
 
 /**

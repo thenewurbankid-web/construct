@@ -12,6 +12,8 @@
     "./plan": "./plan.mjs",
     "./block-contract": "./block-contract.mjs",
     "./block-flows": "./block-flows.mjs",
+    "./chooser": "./chooser.mjs",
+    "./decision-provider": "./decision-provider.mjs",
     "./validate": "./validate.mjs",
     "./summarize": "./summarize.mjs",
     "./impact": "./impact.mjs",
