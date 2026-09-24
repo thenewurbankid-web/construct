@@ -187,7 +187,7 @@ export function baselineTagName(tagPrefix) {
  * parseTagName('cockpit/build-2026-09-24-1930-2'); // => { lane: 'cockpit', kind: 'build', date: '2026-09-24', time: '1930', n: 2, ... }
  */
 export function parseTagName(name) {
-  const m = /^(construct|cockpit|site|adhoc)\/build-(?:(baseline)|(\d{4}-\d{2}-\d{2})(?:-(\d{4})(?:-(\d+))?)?)$|^(design)\/pack-(?:(baseline)|(\d{4}-\d{2}-\d{2})(?:-(\d{4})(?:-(\d+))?)?)$/.exec(name);
+  const m = /^(construct|guardrails|cockpit|site|adhoc)\/build-(?:(baseline)|(\d{4}-\d{2}-\d{2})(?:-(\d{4})(?:-(\d+))?)?)$|^(design)\/pack-(?:(baseline)|(\d{4}-\d{2}-\d{2})(?:-(\d{4})(?:-(\d+))?)?)$/.exec(name);
   if (!m) return null;
   const lane = m[1] || m[6];
   if (m[2] || m[7]) return { lane, kind: 'baseline', date: null, time: null, n: 0, sort: '' };

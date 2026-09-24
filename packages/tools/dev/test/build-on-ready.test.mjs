@@ -19,7 +19,7 @@ const verdict = (subject, files, lanes) => classifyCommit({ subject, files }, co
 // ------------------------------------------------------------------------------------------------ classifier, per lane
 
 test('lanes.json is data only: every lane has globs, a tag prefix and a check with a timeout', () => {
-  assert.deepEqual(Object.keys(config.lanes), ['construct', 'cockpit', 'site', 'design', 'adhoc']);
+  assert.deepEqual(Object.keys(config.lanes), ['construct', 'guardrails', 'cockpit', 'site', 'design', 'adhoc']);
   for (const [name, lane] of Object.entries(config.lanes)) {
     assert.ok(lane.userFacing.length, name);
     assert.ok(lane.tagPrefix.startsWith(`${name}/`), name);

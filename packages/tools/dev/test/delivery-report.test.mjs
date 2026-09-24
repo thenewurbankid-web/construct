@@ -15,6 +15,9 @@ test('laneOf assigns a file to the lane that owns its path, else shared', () => 
   assert.equal(laneOf('packages/docs-site/lib/pages.mjs'), 'site');
   assert.equal(laneOf('docs/design/README.md'), 'design');
   assert.equal(laneOf('packages/studio/src/server.mjs'), 'adhoc');
+  assert.equal(laneOf('packages/core/architecture-enforcer.mjs'), 'guardrails');
+  assert.equal(laneOf('packages/ast/parse.mjs'), 'guardrails');
+  assert.equal(laneOf('packages/core/plan.mjs'), 'construct');
   assert.equal(laneOf('docs/DELEGATION.md'), 'shared');
 });
 
@@ -99,7 +102,7 @@ test('the JSON report keeps every field it had (backward compatible); builds, ca
   assert.deepEqual(Object.keys(r).sort(), ['baselines', 'days', 'releases']);
   assert.deepEqual(Object.keys(r.days[1]).sort(), ['commits', 'date', 'lanes']);
   assert.deepEqual(Object.keys(r.days[1].lanes.site).sort(), ['builds', 'capabilities', 'commits', 'files', 'subjects', 'tags']);
-  assert.deepEqual(Object.keys(r.days[1].lanes).sort(), ['adhoc', 'cockpit', 'construct', 'design', 'shared', 'site']);
+  assert.deepEqual(Object.keys(r.days[1].lanes).sort(), ['adhoc', 'cockpit', 'construct', 'design', 'guardrails', 'shared', 'site']);
   assert.deepEqual(r.releases, [{ name: 'v0.9.0', date: '2026-09-24' }]);
 });
 
