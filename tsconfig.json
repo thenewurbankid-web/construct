@@ -16,5 +16,5 @@
     "forceConsistentCasingInFileNames": true
   },
   "include": ["packages/core/**/*.mjs", "packages/cli/**/*.mjs", "packages/ast/**/*.mjs", "packages/engine/**/*.mjs"],
-  "exclude": ["node_modules", "test", "test.mjs", "**/*.test.mjs"]
+  "exclude": ["node_modules", "**/dist", "test", "test.mjs", "**/*.test.mjs"]
 }
