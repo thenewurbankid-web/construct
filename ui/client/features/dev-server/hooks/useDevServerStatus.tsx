@@ -1,13 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
+import { pollIntervalMs } from '../domain/DevServerPolling';
 import { fetchDevServer } from '../services/DevServerApi';
+import { watchDevServerStatus } from '../services/DevServerPolling';
 import { devServerReducer, initialDevServerSession } from '../workflows/DevServer';
 import type { DevServerStatus } from '../types';
-
-/** While the server is coming up the card is watched closely; otherwise it is only kept honest (a branch switch, a crash). */
-const POLL_STARTING_MS = 600;
-const POLL_MS = 2000;
 
 /** The dev server's status, polled because it can change with no request in flight (it can crash, the branch can be switched). */
 export function useDevServerStatus() {
@@ -36,11 +34,7 @@ export function useDevServerStatus() {
 
   const refresh = useCallback(() => take(fetchDevServer), [take]);
   const state = session.status?.state;
-  useEffect(() => {
-    refresh();
-    const id = setInterval(refresh, state === 'starting' ? POLL_STARTING_MS : POLL_MS);
-    return () => clearInterval(id);
-  }, [refresh, state]);
+  useEffect(() => watchDevServerStatus(refresh, pollIntervalMs(state)), [refresh, state]);
 
   return { session, dispatch, take };
 }
