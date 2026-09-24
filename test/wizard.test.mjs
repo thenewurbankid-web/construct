@@ -315,3 +315,22 @@ test('importRouteWizard with the mechanical planner builds from a plan it comput
   assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'controllers', 'CheckoutController.tsx')), true);
   assert.doesNotMatch(out, /call\(s\) to analyze the route/);
 });
+
+test('every step event a full run emits has a string phase and its own detail (the Cockpit renders phase as text)', async () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  const routeDir = buildRouteFixture(['./Old'], { 'Old.ts': 'export function old() { return true; }\n' });
+  const steps = [];
+  const plan = { feature: 'checkout', units: [{ name: 'Foo', layers: ['domain'], from: 'Old.ts' }] };
+  await inProject(dir, () =>
+    withFakeAnalysis((n) => (n === 1 ? JSON.stringify(plan) : 'export function Foo() { return true; }'), async () => {
+      await importRouteWizard(scriptedAsk(['checkout', '', 'y', 'y', 'n']), routeDir, { onStep: (s) => steps.push(s) });
+    }),
+  );
+  assert.ok(steps.length >= 4);
+  for (const s of steps) assert.equal(typeof s.phase, 'string', JSON.stringify(s));
+  const filling = steps.find((s) => s.phase === 'filling');
+  assert.equal(filling.detail.unit, 'Foo');
+  assert.equal(filling.detail.layer, 'domain');
+  assert.match(filling.reason, /stub and breadcrumb/);
+});

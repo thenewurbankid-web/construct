@@ -1262,7 +1262,7 @@ export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude
   }
 
   step('scaffolding', { feature: plan.feature }, 'Layer files come from Construct\'s own templates in build order (domain → service → workflow → hook → component → page → controller); no model is involved.');
-  const { results, cancelled: fillCancelled } = await executeImportPlan(root, plan, { llm: fillWithLlm ? importFill : undefined, llmOptions, onStep: step });
+  const { results, cancelled: fillCancelled } = await executeImportPlan(root, plan, { llm: fillWithLlm ? importFill : undefined, llmOptions, onStep: (s) => step(s.phase, s.detail, s.phase === 'filling' ? 'The model ports this one file; if its output is unusable the file keeps its scaffolded stub and breadcrumb.' : undefined) });
   reportImport(root, results, fillWithLlm ? importFill : undefined, plan.feature, planner === 'mechanical' ? 0 : 1, analysisSeconds);
   onWritten?.({ root, plan, results });
   if (fillCancelled) {
