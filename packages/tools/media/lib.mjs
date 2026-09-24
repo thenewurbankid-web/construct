@@ -9,8 +9,10 @@ import { fileURLToPath } from 'node:url';
 import { stringifySync } from 'subtitle';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-export const REPO = path.resolve(HERE, '..', '..', '..');
-export const VIDEO_DIR = path.join(REPO, 'site', 'assets', 'video');
+// STUDIO_ROOT / STUDIO_VIDEO_DIR: set by the packed @line/studio (bin/cli.mjs) to its workspace, so a vendored copy of this
+// file never derives a path from its own location outside the package. In the repo they are unset and nothing changes.
+export const REPO = process.env.STUDIO_ROOT ? path.resolve(process.env.STUDIO_ROOT) : path.resolve(HERE, '..', '..', '..'); // studio-pack: escape-ok (repo checkout only; STUDIO_ROOT replaces it)
+export const VIDEO_DIR = process.env.STUDIO_VIDEO_DIR ? path.resolve(process.env.STUDIO_VIDEO_DIR) : path.join(REPO, 'site', 'assets', 'video');
 /** Generated clips, one per (text, voice, model); git-ignored. */
 export const CLIP_CACHE = path.join(REPO, '.media-cache');
 

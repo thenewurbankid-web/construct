@@ -15,7 +15,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { VIDEO_DIR, assertWritable, normalize, paths, proposePara, spoken } from './lib.mjs';
+import { CLIP_CACHE, VIDEO_DIR, assertWritable, normalize, paths, proposePara, spoken } from './lib.mjs';
 import { FFMPEG, MEDIA_CACHE, breathSnippet, clipFile, plan, resolveRef, synthesize } from './synth.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -99,7 +99,7 @@ if (flag('--para-of')) {
 
 save('scoring');
 const items = Object.entries(clipsOf).flatMap(([vid, clips]) => clips.map((c) => ({ id: `${vid}|${c.id}`, wav: c.wav, text: c.say })));
-const itemsFile = assertWritable(path.join(VIDEO_DIR, '..', '..', '..', '.media-cache', 'lab-items.json'));
+const itemsFile = assertWritable(path.join(CLIP_CACHE, 'lab-items.json'));
 fs.mkdirSync(path.dirname(itemsFile), { recursive: true });
 fs.writeFileSync(itemsFile, JSON.stringify(items));
 const res = JSON.parse(execFileSync(py, [path.join(HERE, 'eval_voice.py'), sample, itemsFile], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 1 << 26 }).split('\n').filter((x) => x.startsWith('{')).pop());
