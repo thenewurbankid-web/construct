@@ -1,6 +1,7 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
+import { blocksShellTab } from '@/features/blocks';
 import { ProjectGateController } from '@/features/project-gate';
 import { useRegisterShellTab, useShellDrawer } from '@/features/shell';
 import '../components/plan.css';
@@ -22,6 +23,9 @@ function PlanScreen({ stageActions, featureDetail }: { stageActions?: ReactNode;
   const tabs = planShellTabs(ticket, plan);
   useRegisterShellTab('browser', tabs.browser);
   useRegisterShellTab('tools', tabs.tools);
+  // #407: the Blocks tab sits in the Browser pane beside Notes and Features.
+  const blocksTab = useMemo(() => blocksShellTab(), []);
+  useRegisterShellTab('browser', blocksTab);
   const view = state.impact ? buildImpactView(state.impact, state.impactSeeds) : null;
   return <PlanPage contextError={state.contextError} impact={{ status: state.impactStatus, error: state.impactError, view }} stageActions={stageActions} featureDetail={featureDetail} />;
 }
