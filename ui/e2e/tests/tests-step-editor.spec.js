@@ -13,7 +13,7 @@ import { runAxe, isBlocking, format } from './support/axe.js';
 // diff, the locked original is checked byte for byte, and a file that does not round-trip is shown read-only.
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(__dirname, '../../..');
-const BIN = path.join(REPO, 'bin', 'construct.mjs');
+const BIN = path.join(REPO, 'packages', 'cli', 'construct.mjs');
 const SHOTS = path.resolve(__dirname, '../screenshots/tests-step-editor');
 fs.mkdirSync(SHOTS, { recursive: true });
 const API = process.env.E2E_API_BASE || 'http://localhost:4000';

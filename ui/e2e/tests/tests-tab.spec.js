@@ -12,7 +12,7 @@ import { runAxe, isBlocking, format } from './support/axe.js';
 // refund-request workflow, the coverage rows come from the scenario enumerator, and a clone is a real file on disk.
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(__dirname, '../../..');
-const BIN = path.join(REPO, 'bin', 'construct.mjs');
+const BIN = path.join(REPO, 'packages', 'cli', 'construct.mjs');
 const SHOTS = path.resolve(__dirname, '../screenshots/tests-tab');
 fs.mkdirSync(SHOTS, { recursive: true });
 const API = process.env.E2E_API_BASE || 'http://localhost:4000';
