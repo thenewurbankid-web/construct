@@ -14,3 +14,6 @@ export * from './hooks/useRequirement';
 
 /** The placement read back in the order it runs, as steps with one plain-English line each. Pure. */
 export * from './domain/Timeline';
+
+/** The proof of a generated screen: is the plan applied, run the read-only proof, skip it with a reason (#653). */
+export * from './hooks/useProof';

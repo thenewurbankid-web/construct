@@ -46,19 +46,23 @@ export type ApproveView = {
 /** One failed test of the proof as drawn, in the words of the Tests screen: the app behaved differently (a state is wrong) or a harness problem (a file is gone). */
 export type ProofFailureView = {
   kind: 'app' | 'convention' | 'other';
+  /** A symbol beside the heading, so the kind is never only a colour. */
+  symbol: string;
   heading: string;
-  test: string;
   summary: string;
-  /** The state the proof expected, when the screen reached another: the one that is wrong ("empty"). */
-  failingState: string | null;
-  expected: string | null;
-  reached: string | null;
+  /** Short facts, each with a stable id ("failing-state": "Failing state: empty, the screen reached blank"). */
+  facts: { id: string; text: string }[];
+  /** What the proof said, as text (a harness problem or a run that could not finish); null for an app failure. */
   message: string | null;
-  fix: string | null;
+  notes: string[];
 };
-/** An option of the proof card. `live` options work in this slice; the others show `why` and stay off with `disabledReason`. */
-export type ProofOptionView = { id: string; label: string; why: string; live: boolean; disabledReason: string | null };
-export type ProofSkipView = { open: boolean; saving: boolean; draft: string; error: string | null; min: number; max: number };
+/** A line above the actions: the counts of the last run, the run in progress, or why it could not run. */
+export type ProofNoticeView = { id: 'counts' | 'running' | 'error'; tone: 'muted' | 'error'; role: 'status' | 'alert' | undefined; text: string };
+/** One button: run first, then the closed options of the server's summary. `action` 'off' shows what it will do and stays off. */
+export type ProofButtonView = { id: string; testId: string; label: string; variant: 'primary' | 'ghost'; action: 'run' | 'skip' | 'off'; disabled: boolean; why: string };
+/** What an option that is not wired yet will do, and why it is off. */
+export type ProofNoteView = { id: string; text: string };
+export type ProofSkipView = { open: boolean; saving: boolean; draft: string; error: string | null; invalid: boolean; hint: string; max: number; confirmLabel: string };
 /** The Proof card (#653): the state of the proof of a generated screen, the chain summary, and what can be done next. */
 export type ProofView = {
   feature: string;
@@ -67,17 +71,14 @@ export type ProofView = {
   symbol: string;
   stateLabel: string;
   headline: string;
-  counts: string | null;
   /** "complete (proof green: 10 passed)", "complete (proof skipped: <reason>)" or "incomplete (...)": never a plain "complete". */
   chain: { complete: boolean; line: string };
-  skippedReason: string | null;
-  running: boolean;
-  runLabel: string;
-  runDisabledReason: string | null;
-  canRun: boolean;
+  notices: ProofNoticeView[];
   failures: ProofFailureView[];
-  runError: string | null;
-  options: ProofOptionView[];
+  buttons: ProofButtonView[];
+  notes: ProofNoteView[];
+  /** Why the proof cannot be run yet ("Approve the plan first..."), or null. */
+  runReason: string | null;
   skip: ProofSkipView;
 };
 

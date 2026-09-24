@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { parseRequirement } from '../../../../../packages/core/requirement-card.mjs';
 import { placeCard, planFromBlocks } from '../../../../../packages/core/placement.mjs';
 import { proofSummary } from '../../../../../packages/core/proof.mjs';
-import { buildProofView, chainLine, proofStateOf, proofTargetOf, skipReasonOf, PROOF_REASON } from './ProofCard.ts';
+import { buildProofView, chainLine, proofStateOf } from './ProofCard.ts';
+import { PROOF_REASON, skipReasonOf } from './ProofSkip.ts';
+import { proofTargetOf } from './ProofTarget.ts';
 import { buildRequirementView } from './RequirementView.ts';
 import { initialScreen, screenReducer } from '../workflows/RequirementMachine.ts';
 
@@ -27,6 +29,7 @@ const run = (over = {}) => ({
 const APP_FAILURE = { test: 'Products screen: the empty state', kind: 'app', title: 'The app behaved differently', summary: 'The page given no rows: the empty state is wrong, the screen shows blank.', message: 'x', expected: 'empty', reached: 'blank' };
 const failedRun = (failure = APP_FAILURE) => run({ state: 'failed', complete: false, counts: { total: 10, passed: 9, failed: 1 }, failures: [failure], summary: proofSummary({ chain: { state: 'failed' }, counts: { failed: 1 }, tests: [{ title: failure.test, status: 'failed', failure }] }) });
 const view = (state) => buildProofView(state, state.read.result);
+const runButton = (v) => v.buttons.find((b) => b.id === 'run-proof');
 
 test('a plan with a shaped screen has a proof target; the plain scaffold, a note and no plan have none', () => {
   assert.deepEqual(proofTargetOf(LIST), { feature: 'products', screen: 'Products' });
@@ -38,32 +41,34 @@ test('a plan with a shaped screen has a proof target; the plain scaffold, a note
 
 test('the order of the chain is plain: run is off until the plan is applied, with the reason; then it is on', () => {
   const unknown = view(ready());
-  assert.equal(unknown.canRun, false);
-  assert.match(unknown.runDisabledReason, /^Checking whether/);
+  assert.equal(runButton(unknown).disabled, true);
+  assert.match(unknown.runReason, /^Checking whether/);
   const notApplied = view(step(ready(), { type: 'PROOF_APPLIED', applied: false, options: OPTIONS }));
-  assert.equal(notApplied.canRun, false);
-  assert.match(notApplied.runDisabledReason, /^Approve the plan first/);
+  assert.equal(runButton(notApplied).disabled, true);
+  assert.match(notApplied.runReason, /^Approve the plan first/);
+  assert.equal(notApplied.buttons.find((b) => b.id === 'skip-proof').disabled, true, 'skip waits for the plan too');
   assert.equal(notApplied.state, 'pending');
   assert.equal(notApplied.chain.line, 'incomplete (the proof has not run yet)');
   assert.equal(notApplied.chain.complete, false);
   const approved = view(step(ready(), { type: 'PROOF_APPLIED', applied: false, options: OPTIONS }, { type: 'APPROVE_STARTED', processId: 'p1' }));
-  assert.match(approved.runDisabledReason, /approve each of its files in the process/, 'approved but not applied: the reason changes, the step stays off');
+  assert.match(approved.runReason, /approve each of its files in the process/, 'approved but not applied: the reason changes, the step stays off');
   const applied = view(step(ready(), { type: 'PROOF_APPLIED', applied: true, options: OPTIONS }));
-  assert.deepEqual([applied.canRun, applied.runDisabledReason, applied.runLabel], [true, null, 'Run the proof']);
-  assert.deepEqual(applied.options.map((o) => [o.id, o.disabledReason]), [['skip-proof', null]], 'run is the primary button; the rest of the closed options follow');
+  assert.deepEqual([runButton(applied).disabled, applied.runReason, runButton(applied).label], [false, null, 'Run the proof']);
+  assert.deepEqual(applied.buttons.map((b) => [b.id, b.action, b.disabled]), [['run-proof', 'run', false], ['skip-proof', 'skip', false]], 'run is the primary button; the rest of the closed options follow');
 });
 
 test('while it runs: the run is off, the chain says so, and nothing is complete', () => {
   const v = view(step(ready(), { type: 'PROOF_APPLIED', applied: true, options: OPTIONS }, { type: 'PROOF_RUN_STARTED' }));
-  assert.deepEqual([v.running, v.canRun, v.runLabel, v.chain], [true, false, 'Running...', { complete: false, line: 'incomplete (the proof is running)' }]);
+  assert.deepEqual([runButton(v).disabled, runButton(v).label, v.chain], [true, 'Running...', { complete: false, line: 'incomplete (the proof is running)' }]);
+  assert.deepEqual(v.notices.map((n) => [n.id, n.role]), [['running', 'status']]);
 });
 
 test('green: the chain reads "complete (proof green: N passed)", never a plain complete; nothing more is offered but a rerun', () => {
   const v = view(step(ready(), { type: 'PROOF_APPLIED', applied: true, options: OPTIONS }, { type: 'PROOF_RUN_STARTED' }, { type: 'PROOF_RUN_DONE', run: run() }));
   assert.deepEqual([v.state, v.stateLabel, v.chain.complete, v.chain.line], ['green', 'Green', true, 'complete (proof green: 10 passed)']);
-  assert.equal(v.counts, '10 passed, 0 failed (0.4 s, no browser)');
-  assert.deepEqual(v.options, [], 'a green proof offers no other option');
-  assert.equal(v.runLabel, 'Run the proof again');
+  assert.deepEqual(v.notices.map((n) => [n.id, n.text]), [['counts', '10 passed, 0 failed (0.4 s, no browser)']]);
+  assert.deepEqual(v.buttons.map((b) => b.id), ['run-proof'], 'a green proof offers no other option');
+  assert.equal(runButton(v).label, 'Run the proof again');
   assert.equal(v.failures.length, 0);
 });
 
@@ -71,30 +76,32 @@ test('failed (app): the failing state is named, in the Tests screen words; edit,
   const v = view(step(ready(), { type: 'PROOF_APPLIED', applied: true, options: OPTIONS }, { type: 'PROOF_RUN_DONE', run: failedRun() }));
   assert.deepEqual([v.state, v.chain.complete, v.chain.line.startsWith('incomplete')], ['failed', false, true]);
   const [f] = v.failures;
-  assert.deepEqual([f.kind, f.heading, f.failingState, f.expected, f.reached], ['app', 'The app behaved differently', 'empty', 'empty', 'blank']);
+  assert.deepEqual([f.kind, f.heading], ['app', 'The app behaved differently']);
+  assert.deepEqual(f.facts.map((x) => x.text), ['Failing state: empty, the screen reached blank', 'Test: Products screen: the empty state']);
   assert.equal(f.summary, 'The page given no rows: the empty state is wrong, the screen shows blank.');
-  assert.deepEqual(v.options.map((o) => o.id), ['edit-code', 'fill-with-ai', 'skip-proof']);
-  const off = v.options.filter((o) => !o.live);
-  assert.equal(off.length, 2);
-  for (const o of off) assert.match(o.disabledReason, /^Not wired here yet: /);
-  assert.equal(v.options.find((o) => o.id === 'skip-proof').disabledReason, null);
-  assert.equal(v.canRun, true, 'run stays on, to run again after the fix');
+  assert.deepEqual(v.buttons.map((b) => [b.id, b.action, b.disabled]), [['run-proof', 'run', false], ['edit-code', 'off', true], ['fill-with-ai', 'off', true], ['skip-proof', 'skip', false]], 'run stays on, to run again after the fix; edit and fill with AI are off');
+  assert.equal(v.notes.length, 2);
+  for (const n of v.notes) assert.match(n.text, /Not wired here yet: /);
+  assert.match(v.notes.find((n) => n.id === 'fill-with-ai').text, /reviewable diff/);
 });
 
 test('failed (convention): a harness problem, not a product bug; regenerate is the first option and is off with a reason', () => {
   const conv = { test: 'Products proof', kind: 'convention', title: 'Harness problem, not a product bug', summary: 'The proof expected ../../pages/ProductsPage.page, and it is not there.', message: 'The proof expected ../../pages/ProductsPage.page, and it is not there.', selector: '../../pages/ProductsPage.page', fix: 'Put the file back.' };
   const v = view(step(ready(), { type: 'PROOF_APPLIED', applied: true, options: OPTIONS }, { type: 'PROOF_RUN_DONE', run: failedRun(conv) }));
   const [f] = v.failures;
-  assert.deepEqual([f.kind, f.heading, f.failingState, f.fix], ['convention', 'Harness problem, not a product bug', null, 'Put the file back.']);
-  assert.deepEqual(v.options.map((o) => o.id), ['regenerate-screen', 'edit-code', 'skip-proof']);
+  assert.deepEqual([f.kind, f.heading, f.notes], ['convention', 'Harness problem, not a product bug', ['How to fix it. Put the file back.']]);
+  assert.ok(f.facts.some((x) => x.text === 'Looked for: ../../pages/ProductsPage.page'));
+  assert.equal(f.facts.some((x) => x.id === 'failing-state'), false, 'a convention failure names no state');
+  assert.deepEqual(v.buttons.map((b) => b.id), ['run-proof', 'regenerate-screen', 'edit-code', 'skip-proof']);
+  assert.equal(v.buttons.find((b) => b.id === 'regenerate-screen').disabled, true);
 });
 
 test('a run that could not start shows its reason and stays failed', () => {
   const err = run({ state: 'failed', complete: false, counts: { total: 0, passed: 0, failed: 0 }, error: { code: 'RUNNER_MISSING', message: 'The proof is bundled with esbuild.' }, summary: proofSummary({ chain: { state: 'failed' }, tests: [] }) });
   const v = view(step(ready(), { type: 'PROOF_APPLIED', applied: true, options: OPTIONS }, { type: 'PROOF_RUN_DONE', run: err }));
-  assert.deepEqual([v.state, v.runError], ['failed', 'The proof is bundled with esbuild.']);
+  assert.deepEqual([v.state, v.notices.find((n) => n.id === 'error').text], ['failed', 'The proof is bundled with esbuild.']);
   const refused = view(step(ready(), { type: 'PROOF_APPLIED', applied: true, options: OPTIONS }, { type: 'PROOF_RUN_STARTED' }, { type: 'PROOF_RUN_FAILED', error: 'Approve the plan first.', applied: false }));
-  assert.deepEqual([refused.runError, refused.canRun, refused.running], ['Approve the plan first.', false, false], 'a refusal turns "applied" off again');
+  assert.deepEqual([refused.notices.find((n) => n.id === 'error').text, runButton(refused).disabled, refused.notices.some((n) => n.id === 'running')], ['Approve the plan first.', true, false], 'a refusal turns "applied" off again');
 });
 
 test('skipped: the chain reads "complete (proof skipped: <reason>)", and running again supersedes the skip', () => {
@@ -102,11 +109,11 @@ test('skipped: the chain reads "complete (proof skipped: <reason>)", and running
   assert.deepEqual([view(opened).skip.open, view(opened).skip.draft, view(opened).chain.complete], [true, 'the empty state is redesigned', false]);
   const skipped = step(opened, { type: 'PROOF_SKIP_SAVING' }, { type: 'PROOF_SKIP_DONE', reason: 'the empty state is redesigned' });
   const v = view(skipped);
-  assert.deepEqual([v.state, v.stateLabel, v.chain.complete, v.chain.line, v.skippedReason], ['skipped', 'Skipped', true, 'complete (proof skipped: the empty state is redesigned)', 'the empty state is redesigned']);
+  assert.deepEqual([v.state, v.stateLabel, v.chain.complete, v.chain.line], ['skipped', 'Skipped', true, 'complete (proof skipped: the empty state is redesigned)']);
   assert.equal(v.skip.open, false);
   assert.equal(proofStateOf(skipped), 'skipped');
   const again = view(step(skipped, { type: 'PROOF_RUN_DONE', run: failedRun() }));
-  assert.deepEqual([again.state, again.chain.complete, again.skippedReason], ['failed', false, null]);
+  assert.deepEqual([again.state, again.chain.complete], ['failed', false]);
   const refused = step(opened, { type: 'PROOF_SKIP_SAVING' }, { type: 'PROOF_SKIP_FAILED', error: 'Give a reason.' });
   assert.deepEqual([view(refused).skip.open, view(refused).skip.error, view(refused).chain.complete], [true, 'Give a reason.', false], 'a refused skip keeps the form open with the reason of the refusal');
   assert.equal(view(step(opened, { type: 'PROOF_SKIP_CANCEL' })).skip.open, false);

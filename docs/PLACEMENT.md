@@ -808,9 +808,31 @@ in a layer folder, so it can reach across layers without an exemption. The step 
 adding the regions is part of the step, not a manual chore (a half-declared project is refused, nothing rewritten). The render
 proof is a `.test.ts` (the project's `test:unit` glob and `tsx --test` find it) and is bundled by the runner rather than run through
 `tsx`, because esbuild is the one loader every init project has and it works offline. A skip is an input to `proofStatus`, not a
-command flag: the runner (or the Cockpit) records it, so it stays visible. The Requirement screen does not draw the proof steps yet:
-its plan already carries them (`/api/requirement/read` returns the same plan), and it would need to show `proof` (pending, green,
-failed, skipped) and the failing state, the `proofSummary` options as buttons, and a Skip that records the reason.
+command flag: the runner (or the Cockpit) records it, so it stays visible.
+
+**The Requirement screen draws the proof (#653).** `POST /api/requirement/read` now also returns `proof` (the plan's proof steps and the
+chain state, `pending`), and a shaped plan gets a "6. Prove the screen" card after "5. Approve": the state (`pending | green | failed |
+skipped`, a word and a symbol), the chain summary (`complete (proof green: 10 passed)`, `complete (proof skipped: <reason>)` or
+`incomplete (...)`, never a plain "complete"), and for a failure the classified message in the Tests screen's words (`app`: "The app
+behaved differently", with the failing state, for example `empty`, and what the screen reached; `convention`: "Harness problem, not
+a product bug"). The buttons are the closed options of `proofSummary`: **Run the proof** and **Skip the proof** work; **Edit code**,
+**Fill with AI** and **Regenerate the screen** show what they will do and stay off until their Cockpit exits exist. Approving the plan
+and running the proof are separate, visible steps: the proof runs against the files the plan wrote, so Run and Skip stay off ("Approve
+the plan first") until the proof file is in the project; the card asks the server when a plan is shown and every 2 s while it is
+approved and the files are not in yet. Three routes, all `POST`, below the session and project-open gates, Origin-checked, JSON only, no
+path from the client (`ui/server/src/requirementProofApi.mjs`):
+
+| Route | Body | Answer |
+|---|---|---|
+| `/api/requirement/proof/status` | `{ feature, plan }` | `{ applied, files, options }`: is the proof file the plan's `test.proof` step names on disk. |
+| `/api/requirement/proof/run` | `{ feature, plan }` | `{ run: { state, complete, counts, failures[{ kind, summary, expected, reached, fix }], error, summary } }`. Refused with 409 `NOT_APPLIED` before the plan is applied, 409 `RUN_IN_PROGRESS` while another run of the project is going, 504 `TIMEOUT` after 90 s (the lock is held until the run really ends). |
+| `/api/requirement/proof/skip` | `{ feature, plan, reason }` | `{ skipped, state: 'skipped', complete: true, reason }`. The reason is one trimmed line of 8 to 200 characters, else 400 `REASON_REQUIRED`. |
+
+The plan is re-validated (`validatePlan`), the feature must be the one a `test.proof` step of that plan names and a feature on disk, and
+what runs is `runProofs` (the block behind `construct test proof`), read-only. A run and a skip are recorded as decision traces
+(`requirement.proof.next`, the closed options of `proofSummary` as offered; the outcome `testsPassed` for a run; the free text of a
+skip reason is not in the trace), failure-safe. Left for later slices: the three options that are off, the browser flow (`test.run`) when
+Playwright is configured, and keeping the skip across a reload (it lives in the screen and in the trace, not in the project).
 
 ## The route entry, sync and the dependency: a screen you can open (#654, part of #616)
 

@@ -1,12 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, type MutableRefObject } from 'react';
-import { proofTargetOf, skipReasonOf } from '../domain/ProofCard';
+import { skipReasonOf } from '../domain/ProofSkip';
+import { proofTargetOf } from '../domain/ProofTarget';
 import type { ScreenAction, ScreenState } from '../domain/RequirementTypes';
-import { proofStatusOnServer, runProofOnServer, skipProofOnServer } from '../services/RequirementApi';
-
-/** How often the screen asks whether the plan's files have reached the project, while the plan is approved and they have not. */
-export const APPLIED_POLL_MS = 2000;
+import { proofStatusOnServer, runProofOnServer, skipProofOnServer } from '../services/ProofApi';
+import { watchPlanApplied, APPLIED_POLL_MS } from '../services/ProofPolling';
 
 /**
  * The proof of a generated screen (#653): is the plan applied (asked once when a plan is shown, then every couple of seconds
@@ -36,8 +35,7 @@ export function useProof(state: ScreenState, latest: MutableRefObject<ScreenStat
 
   useEffect(() => {
     if (!polling) return undefined;
-    const timer = setInterval(() => void check(), APPLIED_POLL_MS);
-    return () => clearInterval(timer);
+    return watchPlanApplied(check, APPLIED_POLL_MS);
   }, [polling, check]);
 
   const runProof = useCallback(async () => {
