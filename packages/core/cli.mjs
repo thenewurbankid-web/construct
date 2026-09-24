@@ -22,6 +22,7 @@ import { moveLayerFile, renameLayerFile } from './refactor.mjs';
 import { extractExpression } from './extractExpression.mjs';
 import { importVertical, importPlan, analyzeFiles, executeImportPlan, autoFixViolations } from './import.mjs';
 import { planMechanically } from './mechanical-plan.mjs';
+import { reviewImport } from './import-review.mjs';
 import { resolveRoute } from './route-resolver.mjs';
 import { DEFAULT_ENFORCERS } from '../../packages/engine/defaultEnforcers.mjs';
 import { runPipeline } from '../../packages/engine/pipeline.mjs';
@@ -1097,7 +1098,7 @@ function isYes(answer) {
  * way, the actual file list comes from tracing the real import graph
  * (route-resolver.mjs), never from "everything under a directory you point
  * at". */
-export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude', importFill = 'claude', planner = 'ai', onStep, onThought, signal } = {}) {
+export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude', importFill = 'claude', planner = 'ai', onStep, onThought, onWritten, signal } = {}) {
   // #599 -- two SEPARATE kinds of live output, kept apart on purpose so a UI can style them
   // differently: `onStep` receives the framework's own deterministic phase markers
   // ({phase, detail}: tracing, analyzing, plan-ready, scaffolding, filling, validating,
@@ -1263,6 +1264,7 @@ export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude
   step('scaffolding', { feature: plan.feature }, 'Layer files come from Construct\'s own templates in build order (domain → service → workflow → hook → component → page → controller); no model is involved.');
   const { results, cancelled: fillCancelled } = await executeImportPlan(root, plan, { llm: fillWithLlm ? importFill : undefined, llmOptions, onStep: step });
   reportImport(root, results, fillWithLlm ? importFill : undefined, plan.feature, planner === 'mechanical' ? 0 : 1, analysisSeconds);
+  onWritten?.({ root, plan, results });
   if (fillCancelled) {
     step('cancelled', { during: 'filling' });
     console.log('Cancelled — files not yet filled were left as their TODO(import) stubs; nothing was half-written.');
@@ -1416,7 +1418,7 @@ function ensureWizardConsolePatched() {
  * @param {(event: object) => void} onEvent Receives questions and log lines.
  * @param {string} [seedRoute] Route to start from, when the caller already knows it.
  * @param {object} [providers] Injectable dependencies (LLM provider and friends) for tests.
- * @returns {{answer:(text:string) => boolean, cancel:() => void, done:Promise<any>}} `answer` feeds the reply to the pending question (`false` when none is pending); `cancel` aborts an in-flight model call and stops the run (#599); `done` settles when the wizard finishes.
+ * @returns {{answer:(text:string) => boolean, cancel:() => void, done:Promise<any>, review:() => Promise<void>}} `review` runs the read-only plan-vs-written review (#603); `answer` feeds the reply to the pending question (`false` when none is pending); `cancel` aborts an in-flight model call and stops the run (#599); `done` settles when the wizard finishes.
  */
 export function runImportRouteWizardEventDriven(onEvent, seedRoute, providers) {
   ensureWizardConsolePatched();
@@ -1443,9 +1445,12 @@ export function runImportRouteWizardEventDriven(onEvent, seedRoute, providers) {
   // #599 -- framework steps and the model's own output are two different event types on purpose:
   // `{type:'step', phase, detail}` vs `{type:'thought', text}`, so a UI can render them distinctly.
   const controller = new AbortController();
+  let reviewable = null; // what the wizard has written so far, once something has been (#603)
+  let reviewController = null;
   /** Cancel the run: aborts an in-flight model call and declines any pending question. */
   function cancel() {
     controller.abort();
+    reviewController?.abort();
     if (pendingResolve) {
       const resolve = pendingResolve;
       pendingResolve = null;
@@ -1459,6 +1464,10 @@ export function runImportRouteWizardEventDriven(onEvent, seedRoute, providers) {
       signal: controller.signal,
       onStep: (s) => onEvent({ type: 'step', ...s }),
       onThought: (text) => onEvent({ type: 'thought', text }),
+      onWritten: (written) => {
+        reviewable = written;
+        onEvent({ type: 'reviewable' });
+      },
     }))
     .catch((e) => {
       onEvent({ type: 'log', kind: 'error', text: `Error: ${e.message}` });
@@ -1467,5 +1476,26 @@ export function runImportRouteWizardEventDriven(onEvent, seedRoute, providers) {
       onEvent({ type: 'done' });
     });
 
-  return { answer, cancel, done };
+  /** #603 -- a read-only model review of what has been written against the approved plan; available as soon as one file exists, including while a later question is still pending. Findings arrive as one `{type:'review'}` event. */
+  async function review() {
+    if (!reviewable) {
+      onEvent({ type: 'log', kind: 'error', text: 'Nothing to review yet -- a review is available once the wizard has written at least one file.' });
+      return;
+    }
+    if (reviewController) return;
+    reviewController = new AbortController();
+    onEvent({ type: 'review', phase: 'running' });
+    try {
+      const provider = providers?.planAnalysis && providers.planAnalysis !== 'ollama' ? providers.planAnalysis : 'claude';
+      const { findings } = await reviewImport(reviewable.root, reviewable.plan, reviewable.results, { llm: provider, llmOptions: { signal: reviewController.signal } });
+      onEvent({ type: 'review', phase: 'done', findings });
+    } catch (e) {
+      onEvent({ type: 'review', phase: 'failed' });
+      onEvent({ type: 'log', kind: 'error', text: e.cancelled ? 'Review cancelled.' : `Review failed: ${e.message}` });
+    } finally {
+      reviewController = null;
+    }
+  }
+
+  return { answer, cancel, done, review };
 }

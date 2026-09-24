@@ -166,4 +166,48 @@ test.describe('Import Wizard live progress (#599)', () => {
     await page.getByRole('button', { name: 'Send' }).click();
     await expect.poll(() => answers).toEqual(['src/app/[locale]/portfolio']);
   });
+
+  // #603: Review is offered once a file has been written (also while a later question is pending), sends
+  // {type:'review'}, and shows the findings split into mechanical fixes and decisions.
+  test('Review appears once something is written, works at a paused question, and groups findings', async ({ page }) => {
+    const received = [];
+    await page.routeWebSocket('**/ws/wizard', (ws) => {
+      const send = (event) => ws.send(JSON.stringify(event));
+      ws.onMessage((raw) => {
+        const msg = JSON.parse(String(raw));
+        received.push(msg.type);
+        if (msg.type === 'start') {
+          send({ type: 'reviewable' }); // a file was written before the next pause
+          send({ type: 'question', text: 'Approve this plan and build it now? [y/N]: ' });
+        }
+        if (msg.type === 'review') {
+          send({ type: 'review', phase: 'running' });
+          send({
+            type: 'review',
+            phase: 'done',
+            findings: [
+              { file: 'features/h/domain/Total.tsx', kind: 'fix', severity: 'error', summary: 'total ignores its input', detail: 'The source summed the list.' },
+              { file: 'features/h/hooks/useCart.tsx', kind: 'decision', severity: 'warning', summary: 'polling interval dropped', detail: 'The source polled every 5s.' },
+            ],
+          });
+        }
+      });
+    });
+
+    await page.goto('/wizard');
+    await expect(page.getByRole('button', { name: 'Review what was written' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Start wizard session' }).click();
+
+    const reviewButton = page.getByRole('button', { name: 'Review what was written' });
+    await expect(reviewButton).toBeVisible();
+    await expect(page.getByPlaceholder('Type your answer…')).toBeVisible(); // still paused on a question
+    await reviewButton.click();
+
+    const result = page.getByTestId('review-result');
+    await expect(result).toContainText('Review: 2 findings.');
+    await expect(result.getByRole('region', { name: 'Mechanical fixes' })).toContainText('total ignores its input');
+    await expect(result.getByRole('region', { name: 'Needs a decision' })).toContainText('polling interval dropped');
+    expect(received).toContain('review');
+    await expect(reviewButton).toBeEnabled();
+  });
 });

@@ -551,6 +551,16 @@ button:disabled {
 .project-picker__tag { margin-left: 8px; font-size: 0.75em; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
 .project-picker__error { color: var(--danger, #e5484d); margin: 0; }
 
+/* #603: the Import Wizard's read-only review of what was written. */
+.review-bar { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.chat-review { border-left: 3px solid var(--border); padding-left: 10px; }
+.review-group__title { font-size: 0.95em; margin: 10px 0 4px; }
+.review-group ul { margin: 0; padding-left: 18px; }
+.review-finding { margin-bottom: 6px; }
+.review-finding--error strong { color: var(--danger, #e5484d); }
+.review-finding__file { color: var(--muted); }
+.review-finding__detail { color: var(--muted); font-size: 0.9em; }
+
 /* .help-contents / .gate-panel (#46): layout-only, rendered as
  * <GlassPanel className="…"> in Help.jsx/ProjectGate.jsx respectively —
  * see the .settings-current/.wizard-start/.chat comment above. */

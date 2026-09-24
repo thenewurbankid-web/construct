@@ -61,6 +61,7 @@ export function attachWizardSocket(server, path = '/ws/wizard', allowedOrigin, a
 
   wss.on('connection', (ws) => {
     let session = null;
+    let lastSession = null; // kept after the run ends so a review can still be asked for (#603)
 
     send(ws, {
       type: 'log',
@@ -111,9 +112,19 @@ export function attachWizardSocket(server, path = '/ws/wizard', allowedOrigin, a
           importFill: llmProviders.importFill,
           planner: msg.planner === 'mechanical' ? 'mechanical' : 'ai',
         });
+        lastSession = session;
         session.done.finally(() => {
           session = null;
         });
+        return;
+      }
+
+      if (msg.type === 'review') {
+        // #603 -- read-only: a model compares the approved plan with what was written and reports findings.
+        // Works while a later question is pending and after the session has finished.
+        const target = session || lastSession;
+        if (target) void target.review();
+        else send(ws, { type: 'log', kind: 'error', text: 'Nothing to review yet -- run the wizard first.' });
         return;
       }
 

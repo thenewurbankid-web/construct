@@ -2,7 +2,10 @@ export type WizardId = string;
 
 /** `step` = a framework block starting (deterministic Construct); `thought` = the model's own streamed
  * output (#599). Kept as two roles so they are never confused on screen. */
-export type ChatRole = 'log' | 'question' | 'answer' | 'error' | 'system' | 'step' | 'thought';
+export type ChatRole = 'log' | 'question' | 'answer' | 'error' | 'system' | 'step' | 'thought' | 'review';
+
+/** One finding of the read-only plan-vs-written review (#603). `fix` = mechanical, one-sentence correction; `decision` = a person has to choose. */
+export type ReviewFinding = { file: string; kind: 'fix' | 'decision'; severity: 'error' | 'warning' | 'info'; summary: string; detail: string };
 
 export type ChatMessageData = {
   id: number;
@@ -15,6 +18,8 @@ export type ChatMessageData = {
   /** For a `step` message: the framework's own reason for this block (why it does what it does), shown
    * under the step line so the deterministic side explains itself the way the model's stream does (#599). */
   reason?: string;
+  /** For a `review` message: the findings, grouped by the component (#603). */
+  findings?: ReviewFinding[];
 };
 
 /** What a question wants as its answer, when it wants a project path (#600): a route (folder with a page, or a code file) or any folder. */
@@ -34,6 +39,10 @@ export type ServerWizardEvent =
   | { type: 'log'; text: string; kind?: string }
   | { type: 'step'; phase: string; detail?: Record<string, unknown>; reason?: string }
   | { type: 'thought'; text: string }
+  | { type: 'reviewable' }
+  | { type: 'review'; phase: 'running' }
+  | { type: 'review'; phase: 'failed' }
+  | { type: 'review'; phase: 'done'; findings: ReviewFinding[] }
   | { type: 'done' };
 
-export type ClientWizardEvent = { type: 'start'; seedRoute?: string; planner?: 'ai' | 'mechanical' } | { type: 'answer'; text: string } | { type: 'cancel' };
+export type ClientWizardEvent = { type: 'start'; seedRoute?: string; planner?: 'ai' | 'mechanical' } | { type: 'answer'; text: string } | { type: 'cancel' } | { type: 'review' };

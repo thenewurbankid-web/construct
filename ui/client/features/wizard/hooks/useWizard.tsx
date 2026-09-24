@@ -3,7 +3,7 @@
 import { useEffect, useReducer, useRef, useState, type Dispatch, type FormEvent } from 'react';
 import { breadcrumbs, canChoose, chooseHint } from '../domain/ProjectPaths';
 import { useProjectTree } from './useProjectTree';
-import { connectWizardSocket, sendAnswer, sendCancel, sendStart } from '../services/Wizard';
+import { connectWizardSocket, sendAnswer, sendCancel, sendReview, sendStart } from '../services/Wizard';
 import { initialWizardState, wizardReducer, type WizardAction } from '../workflows/Wizard';
 
 /** Opens the socket on mount and tears it down on unmount — the socket's
@@ -54,6 +54,12 @@ export function useWizard() {
     if (wsRef.current) sendCancel(wsRef.current);
   }
 
+  function review() {
+    if (!state.reviewable || state.reviewing) return;
+    dispatch({ type: 'REVIEW_SENT' });
+    if (wsRef.current) sendReview(wsRef.current);
+  }
+
   function chooseFromPicker(path: string) {
     setInput(path);
     projectTree.closePicker();
@@ -74,6 +80,9 @@ export function useWizard() {
     awaitingAnswer: state.awaitingAnswer,
     steps: state.steps,
     cancelling: state.cancelling,
+    reviewable: state.reviewable,
+    reviewing: state.reviewing,
+    review,
     cancel,
     input,
     setInput,

@@ -151,3 +151,39 @@ test('the route question is tagged expects:"route" (so the Cockpit can offer a p
     process.chdir(original);
   }
 });
+
+test('review is refused before anything is written, then works once files exist (after the session ended), read-only (#603)', async () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  const routeDir = buildRouteFixture(['./Old'], { 'Old.ts': 'export function old() { return true; }\n' });
+  const original = PROVIDERS.claude;
+  const plan = { feature: 'checkout', units: [{ name: 'Foo', layers: ['domain'], from: 'Old.ts' }] };
+  const review = { findings: [{ file: 'features/checkout/domain/Foo.tsx', kind: 'decision', severity: 'warning', summary: 'still a stub' }] };
+  let calls = 0;
+  PROVIDERS.claude = () => (++calls === 1 ? JSON.stringify(plan) : JSON.stringify(review));
+  const cwd = process.cwd();
+  process.chdir(dir);
+  try {
+    const events = [];
+    const queue = ['checkout', '', 'n', 'y'];
+    let session;
+    session = runImportRouteWizardEventDriven((event) => {
+      events.push(event);
+      if (event.type === 'question') queueMicrotask(() => session.answer(queue.shift() ?? ''));
+    }, routeDir);
+    await session.review();
+    assert.ok(events.some((e) => e.type === 'log' && e.kind === 'error' && /Nothing to review yet/.test(e.text)));
+    await session.done;
+    assert.ok(events.some((e) => e.type === 'reviewable'), 'the session announces that a review is now possible');
+
+    const target = path.join(dir, 'features', 'checkout', 'domain', 'Foo.tsx');
+    const before = fs.readFileSync(target, 'utf8');
+    await session.review();
+    const done = events.find((e) => e.type === 'review' && e.phase === 'done');
+    assert.equal(done.findings[0].summary, 'still a stub');
+    assert.equal(fs.readFileSync(target, 'utf8'), before);
+  } finally {
+    process.chdir(cwd);
+    PROVIDERS.claude = original;
+  }
+});

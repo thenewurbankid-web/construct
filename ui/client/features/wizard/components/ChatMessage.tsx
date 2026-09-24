@@ -1,5 +1,23 @@
 import { AttributionBadge } from '@/components/AttributionBadge';
-import type { ChatMessageData } from '../types';
+import type { ChatMessageData, ReviewFinding } from '../types';
+
+function ReviewGroup({ title, findings }: { title: string; findings: ReviewFinding[] }) {
+  if (findings.length === 0) return null;
+  return (
+    <section className="review-group" aria-label={title}>
+      <h3 className="review-group__title">{title} ({findings.length})</h3>
+      <ul>
+        {findings.map((f, i) => (
+          <li key={`${f.file}-${i}`} className={`review-finding review-finding--${f.severity}`}>
+            <strong>{f.summary}</strong>
+            {f.file && <code className="review-finding__file"> {f.file}</code>}
+            {f.detail && <div className="review-finding__detail">{f.detail}</div>}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 // Presentation-only — `message.attribution` arrives already parsed (see
 // the workflow layer's pushMessage helper), so this never touches the
@@ -38,6 +56,17 @@ export function ChatMessage({ message }: { message: ChatMessageData }) {
     // A blank answer is meaningful (e.g. "finish adding routes") — show that it registered (#40).
     if (!message.text.trim()) return <div className="chat-message chat-answer chat-answer-blank">(blank)</div>;
     return <div className="chat-message chat-answer">{message.text}</div>;
+  }
+  if (message.role === 'review') {
+    const fixes = (message.findings ?? []).filter((f) => f.kind === 'fix');
+    const decisions = (message.findings ?? []).filter((f) => f.kind === 'decision');
+    return (
+      <div className="chat-message chat-review" data-testid="review-result">
+        <span className="chat-badge chat-badge--model">Review</span> {message.text}
+        <ReviewGroup title="Mechanical fixes" findings={fixes} />
+        <ReviewGroup title="Needs a decision" findings={decisions} />
+      </div>
+    );
   }
   if (message.role === 'error') return <div className="chat-message chat-error">{message.text}</div>;
   return <div className="chat-message chat-system">{message.text}</div>;

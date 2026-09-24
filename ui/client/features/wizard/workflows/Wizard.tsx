@@ -14,6 +14,9 @@ export type WizardState = {
   /** The framework's blocks in run order, one active at a time (#599). */
   steps: WizardStep[];
   cancelling: boolean;
+  /** True once the wizard has written at least one file: a review can be asked for (#603). */
+  reviewable: boolean;
+  reviewing: boolean;
 };
 
 export type WizardAction =
@@ -23,9 +26,10 @@ export type WizardAction =
   | { type: 'SERVER_EVENT'; event: ServerWizardEvent }
   | { type: 'START' }
   | { type: 'ANSWER_SENT'; text: string }
-  | { type: 'CANCEL_SENT' };
+  | { type: 'CANCEL_SENT' }
+  | { type: 'REVIEW_SENT' };
 
-export const initialWizardState: WizardState = { messages: [], status: 'connecting', awaitingAnswer: false, nextId: 1, steps: initialSteps(), cancelling: false };
+export const initialWizardState: WizardState = { messages: [], status: 'connecting', awaitingAnswer: false, nextId: 1, steps: initialSteps(), cancelling: false, reviewable: false, reviewing: false };
 
 function pushMessage(state: WizardState, role: ChatRole, text: string): WizardState {
   const attribution = role === 'log' ? parseAttributionLine(text) : undefined;
@@ -51,6 +55,17 @@ function applyServerEvent(state: WizardState, event: ServerWizardEvent): WizardS
   if (event.type === 'thought') {
     return appendThought(state, event.text);
   }
+  if (event.type === 'reviewable') {
+    return { ...state, reviewable: true };
+  }
+  if (event.type === 'review') {
+    if (event.phase === 'running') return { ...pushMessage(state, 'system', 'Reviewing what was written against the plan…'), reviewing: true };
+    if (event.phase === 'failed') return { ...state, reviewing: false };
+    const count = event.findings.length;
+    const summary = count === 0 ? 'Review: nothing drifted from the source or the plan.' : `Review: ${count} finding${count === 1 ? '' : 's'}.`;
+    const pushed = pushMessage(state, 'review', summary);
+    return { ...pushed, messages: pushed.messages.map((m, i) => (i === pushed.messages.length - 1 ? { ...m, findings: event.findings } : m)), reviewing: false };
+  }
   if (event.type === 'question') {
     return { ...pushMessage(state, 'question', event.text), awaitingAnswer: true, expects: event.expects, status: 'running' };
   }
@@ -69,11 +84,13 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
     case 'SOCKET_ERROR':
       return pushMessage(state, 'error', 'WebSocket error — is the backend running?');
     case 'START':
-      return { ...state, messages: [], status: 'running', awaitingAnswer: false, steps: initialSteps(), cancelling: false };
+      return { ...state, messages: [], status: 'running', awaitingAnswer: false, steps: initialSteps(), cancelling: false, reviewable: false, reviewing: false };
     case 'ANSWER_SENT':
       return { ...pushMessage(state, 'answer', action.text), awaitingAnswer: false, expects: undefined };
     case 'CANCEL_SENT':
       return { ...pushMessage(state, 'system', 'Cancelling…'), cancelling: true, awaitingAnswer: false, expects: undefined };
+    case 'REVIEW_SENT':
+      return { ...state, reviewing: true };
     case 'SERVER_EVENT':
       return applyServerEvent(state, action.event);
     default:

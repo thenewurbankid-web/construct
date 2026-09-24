@@ -43,3 +43,7 @@ export function sendAnswer(ws: WebSocket, text: string): void {
 export function sendCancel(ws: WebSocket): void {
   send(ws, { type: 'cancel' });
 }
+
+export function sendReview(ws: WebSocket): void {
+  send(ws, { type: 'review' });
+}
