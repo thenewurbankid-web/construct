@@ -280,6 +280,35 @@ test.describe.serial('Plan mode (#289, #332)', () => {
     await expect.poll(() => noteId(page)).not.toBeNull();
   });
 
+  test('#470 a plan built here can be approved: the step declares the file it will write, so the review offers Approve', async ({ page }) => {
+    const file = 'features/billing/domain/WishRules.tsx';
+    await gotoNotes(page, '/plan');
+    await page.getByTestId('plan-ticket-title').fill('Add wishlist rules');
+    await page.getByTestId('plan-add-flow').selectOption('create.unit');
+    await page.getByTestId('plan-add').click();
+    const unit = step(page, 0);
+    await unit.getByTestId('plan-arg-layer').fill('domain');
+    await unit.getByTestId('plan-arg-name').fill('wishRules');
+    // Nothing is derived from an incomplete step: no feature yet, so no file is declared and none is guessed.
+    await expect(unit.getByTestId('plan-step-touches')).toHaveCount(0);
+    await unit.getByTestId('plan-arg-feature').fill('billing');
+    await expect(unit.getByTestId('plan-step-touches')).toContainText(`writes ${file}`);
+    await expect(page.getByTestId('plan-run')).toBeEnabled();
+    await page.getByTestId('plan-run').click();
+    await expect(page.getByTestId('plan-started')).toBeVisible();
+
+    // The real bot writes the file in its own worktree; the review lists it with an enabled Approve, not the gate's refusal.
+    await page.getByTestId('process-review-open').click({ timeout: 60_000 });
+    const row = page.locator(`[data-testid="review-artifact"][data-path="${file}"]`);
+    await expect(row).toBeVisible();
+    await expect(row.getByTestId('review-refusal')).toHaveCount(0);
+    await expect(row.getByTestId('review-approve')).toBeEnabled();
+    expect(fs.existsSync(path.join(repo, file))).toBe(false);
+    await row.getByTestId('review-approve').click();
+    await expect(row.getByTestId('review-verdict')).toContainText('Approved by');
+    expect(fs.existsSync(path.join(repo, file))).toBe(true);
+  });
+
   test('a plan the server refuses is not run, even if the browser is talked into sending it', async ({ page, request }) => {
     await gotoNotes(page, '/plan');
     const bad = { version: 1, ticket: { source: 'text', title: 'x' }, steps: [{ id: 's1', title: 'Page', flow: 'create.page.from', args: { name: 'P', feature: 'billing', from: '../../etc/passwd' }, executor: 'deterministic', touches: { features: [], files: [] } }] };

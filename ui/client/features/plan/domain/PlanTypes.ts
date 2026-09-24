@@ -102,7 +102,8 @@ export type PlanDoc = {
 
 export type PlanError = { code: string; path: string; message: string; plain: string };
 
-export type StepPreview = { id: string | null; manual: boolean; argv: string[] | null; stdin: string | null; model: boolean };
+/** `files`: what the step will write, declared or derived by the server (#470), so the card says so before Run. */
+export type StepPreview = { id: string | null; manual: boolean; argv: string[] | null; stdin: string | null; model: boolean; files?: string[] };
 
 export type Validation = {
   valid: boolean;

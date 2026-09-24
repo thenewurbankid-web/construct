@@ -15,6 +15,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { loadConfig } from '../../../packages/core/config.mjs';
 import { PLAN_FLOWS, planFlow, validatePlan, planToCommand, planTouches } from '../../../packages/core/plan.mjs';
+import { expectedFiles } from '../../../packages/core/plan-touches.mjs';
 import { analyzeImpact, proposeSeedsFromText } from '../../../packages/engine/impact.mjs';
 import { listUnits } from '../../../packages/engine/unitSummary.mjs';
 
@@ -135,8 +136,32 @@ export function plainMessage(e) {
   }
 }
 
+/**
+ * #470: declare, for every step the bot will run, the files that step will create, so the approval gate can match what
+ * the bot wrote against what the plan said. Only files the step did not already declare are added (a person's own
+ * declaration is never replaced), only for flows core derives exactly (`expectedFiles`), and never for a manual step.
+ * Returns the same plan object when there is nothing to add.
+ */
+export function withExpectedFiles(plan, root) {
+  if (!plan || typeof plan !== 'object' || !Array.isArray(plan.steps)) return plan;
+  let changed = false;
+  const steps = plan.steps.map((step) => {
+    if (!step || typeof step !== 'object' || step.executor === 'user' || !planFlow(step.flow)?.writes) return step;
+    const touches = step.touches === undefined ? { features: [] } : step.touches;
+    const declared = touches?.files === undefined ? [] : touches?.files;
+    if (!touches || typeof touches !== 'object' || Array.isArray(touches) || !Array.isArray(declared)) return step; // malformed: the validator reports it
+    const args = step.args && typeof step.args === 'object' && !Array.isArray(step.args) ? step.args : {};
+    const missing = (expectedFiles(root, step.flow, args) ?? []).filter((d) => !declared.some((f) => f?.path === d.path));
+    if (!missing.length) return step;
+    changed = true;
+    return { ...step, touches: { ...touches, files: [...declared, ...missing] } };
+  });
+  return changed ? { ...plan, steps } : plan;
+}
+
 /** validatePlan() + the Cockpit checks + a preview of what each step would run. Pure over (plan, root). */
-export function checkPlan(plan, root) {
+export function checkPlan(given, root) {
+  const plan = withExpectedFiles(given, root);
   const base = validatePlan(plan);
   const errors = [...base.errors];
   if (plan && typeof plan === 'object' && Array.isArray(plan.steps)) errors.push(...cockpitErrors(plan, root));
@@ -152,6 +177,8 @@ export function checkPlan(plan, root) {
         argv: cmd?.argv ? ['construct', ...cmd.argv] : null,
         stdin: cmd?.stdin ?? null,
         model: step?.executor === 'local-model',
+        // #470: the files this step will write, declared or derived, so the card can say so before Run.
+        files: (Array.isArray(step?.touches?.files) ? step.touches.files : []).filter((f) => typeof f?.path === 'string' && f.change !== 'read').map((f) => f.path),
       });
     }
   }
@@ -264,7 +291,8 @@ export function createPlanService({ getRoot, startPlan, onStarted }) {
     /** Re-validates, then starts. On ANY error nothing is created and nothing is started. */
     run(body) {
       return withRoot((root) => {
-        const plan = body?.plan;
+        // The plan that starts is the plan with its derived files declared (#470), the one the record and the gate see.
+        const plan = withExpectedFiles(body?.plan, root);
         const checked = checkPlan(plan, root);
         if (!checked.valid) return fail(400, 'The plan is not valid, so it was not run.', { errors: checked.errors });
         const started = startPlan(plan);

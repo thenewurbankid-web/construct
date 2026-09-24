@@ -211,3 +211,13 @@ test('#609 the status line: saved, failed with Retry, conflict with a choice, ra
   assert.equal(at({ note: { ...note, planStale: true }, steps: [step('s1')], noteSave: { status: 'saved' } }).planStale, true);
   assert.equal(at({ note: { ...note, planStale: true }, steps: [], noteSave: { status: 'saved' } }).planStale, false, 'no steps, nothing to be out of date');
 });
+
+import { buildStepView } from './StepView.ts';
+
+test('#470 a step card names the files the server says it will write, next to the features it touches', () => {
+  const s = step('s1', { flow: 'create.unit', touches: { features: ['billing'], files: [] } });
+  const preview = { id: 's1', manual: false, argv: ['construct', 'create'], stdin: null, model: false, files: ['features/billing/domain/WishRules.tsx'] };
+  assert.equal(buildStepView({ step: s, flow: createUnit, preview, errors: [] }).touches, 'billing · writes features/billing/domain/WishRules.tsx');
+  assert.equal(buildStepView({ step: s, flow: createUnit, preview: { ...preview, files: [] }, errors: [] }).touches, 'billing');
+  assert.equal(buildStepView({ step: s, flow: createUnit, preview: null, errors: [] }).touches, 'billing', 'no verdict yet: the features alone');
+});

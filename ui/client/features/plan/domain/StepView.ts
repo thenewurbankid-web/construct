@@ -18,7 +18,7 @@ export function buildStepView({ step, flow, preview, errors }: StepViewInput): S
     tags: EXECUTORS.map((e) => ({ ...e, pressed: e.id === step.executor })),
     args: args.map((a) => ({ name: a.name, label: `${a.name}${a.required ? ' *' : ''}`, enum: a.enum ?? null, description: a.description ?? null, value: argText(step.args[a.name]) })),
     hasObjectArg: !!flow?.args.some((a) => a.type === 'object'),
-    touches: (step.touches?.features ?? []).join(', '),
+    touches: [(step.touches?.features ?? []).join(', '), preview?.files?.length ? `writes ${preview.files.join(', ')}` : ''].filter(Boolean).join(' · '),
     command: preview?.argv ? commandLine(preview.argv) : null,
     manual: !!preview?.manual,
     model: step.executor === 'local-model',
