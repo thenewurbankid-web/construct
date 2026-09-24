@@ -595,5 +595,5 @@ way `compileChain` does. A card that still has its own open words is refused (`P
 
 ## What is not here yet
 
-The sequence-diagram read-back, Cockpit rendering, a `use client` / `use server` directive in the generated files, a route
+The timeline read-back and its Cockpit screen are the Requirement screen (`/requirement`, #642): `toTimeline(placement)` in `ui/client/features/requirement/domain/Timeline.ts` turns the blocks into steps in run order (a slice to move it into core, so the CLI and an LLM read the same steps, is open). Not here yet: a `use client` / `use server` directive in the generated files, a route
 entry step, and words beyond the lexicon. Each is a slice of #616.
