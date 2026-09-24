@@ -17,12 +17,20 @@ export type ChatMessageData = {
   reason?: string;
 };
 
+/** What a question wants as its answer, when it wants a project path (#600): a route (folder with a page, or a code file) or any folder. */
+export type PathExpectation = 'route' | 'dir';
+
+/** One row of the project picker, as ui/server's GET /api/project/tree returns it. */
+export type ProjectTreeEntry = { name: string; path: string; kind: 'dir' | 'file'; route: boolean };
+
+export type ProjectTree = { path: string; parent: string | null; entries: ProjectTreeEntry[]; truncated?: boolean };
+
 export type WizardStatus = 'connecting' | 'idle' | 'running' | 'done' | 'closed';
 
 /** Messages exchanged with ui/server's /ws/wizard endpoint (see
  * ui/server/src/wizardSocket.mjs). */
 export type ServerWizardEvent =
-  | { type: 'question'; text: string }
+  | { type: 'question'; text: string; expects?: PathExpectation }
   | { type: 'log'; text: string; kind?: string }
   | { type: 'step'; phase: string; detail?: Record<string, unknown>; reason?: string }
   | { type: 'thought'; text: string }

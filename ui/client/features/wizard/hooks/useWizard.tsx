@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useReducer, useRef, useState, type Dispatch, type FormEvent } from 'react';
+import { breadcrumbs, canChoose, chooseHint } from '../domain/ProjectPaths';
+import { useProjectTree } from './useProjectTree';
 import { connectWizardSocket, sendAnswer, sendCancel, sendStart } from '../services/Wizard';
 import { initialWizardState, wizardReducer, type WizardAction } from '../workflows/Wizard';
 
@@ -38,6 +40,8 @@ export function useWizard() {
   const [seedRoute, setSeedRoute] = useState('');
   const [planner, setPlanner] = useState<'ai' | 'mechanical'>('ai');
   const wsRef = useWizardSocket(dispatch);
+  const projectTree = useProjectTree();
+  const expects = state.expects;
 
   function start() {
     dispatch({ type: 'START' });
@@ -50,9 +54,15 @@ export function useWizard() {
     if (wsRef.current) sendCancel(wsRef.current);
   }
 
+  function chooseFromPicker(path: string) {
+    setInput(path);
+    projectTree.closePicker();
+  }
+
   function submitAnswer(e: FormEvent) {
     e.preventDefault();
     if (!state.awaitingAnswer) return;
+    projectTree.closePicker();
     dispatch({ type: 'ANSWER_SENT', text: input });
     if (wsRef.current) sendAnswer(wsRef.current, input);
     setInput('');
@@ -73,5 +83,22 @@ export function useWizard() {
     setSeedRoute,
     start,
     submitAnswer,
+    /** The project picker for a question that wants a path (#600); `undefined` for every other question. */
+    picker: expects
+      ? {
+          expects,
+          open: projectTree.open,
+          tree: projectTree.tree,
+          crumbs: breadcrumbs(projectTree.tree?.path ?? ''),
+          loading: projectTree.loading,
+          error: projectTree.error,
+          canChooseEntry: (entry: Parameters<typeof canChoose>[1]) => canChoose(expects, entry),
+          hintFor: (entry: Parameters<typeof chooseHint>[1]) => chooseHint(expects, entry),
+          openPicker: projectTree.openPicker,
+          load: projectTree.load,
+          choose: chooseFromPicker,
+          close: projectTree.closePicker,
+        }
+      : undefined,
   };
 }

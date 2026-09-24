@@ -24,6 +24,11 @@ test.describe('Import Wizard live progress (#599)', () => {
     expect(settingsRes.ok()).toBeTruthy();
     const initRes = await request.post(`${API_BASE}/api/init`);
     expect(initRes.ok()).toBeTruthy();
+    // A small Next.js-shaped tree for the path picker (#600).
+    fs.mkdirSync(path.join(tmpProjectDir, 'src/app/[locale]/portfolio'), { recursive: true });
+    fs.mkdirSync(path.join(tmpProjectDir, 'src/app/[locale]/plain'), { recursive: true });
+    fs.writeFileSync(path.join(tmpProjectDir, 'src/app/[locale]/portfolio/page.tsx'), 'export default function P() { return null; }\n');
+    fs.writeFileSync(path.join(tmpProjectDir, 'src/app/[locale]/plain/notes.txt'), 'x');
   });
 
   test.afterAll(() => {
@@ -130,5 +135,35 @@ test.describe('Import Wizard live progress (#599)', () => {
     await page.getByRole('button', { name: 'Start wizard session' }).click();
     await expect.poll(() => starts.length).toBe(1);
     expect(starts[0].planner).toBe('mechanical');
+  });
+  // #600: a question that wants a route offers "Browse project…"; the picker lists only the open project, marks
+  // routes, refuses a folder with no page, and the picked path becomes the answer.
+  test('the route question offers a project picker that fills the answer with a real route folder', async ({ page }) => {
+    const answers = [];
+    await page.routeWebSocket('**/ws/wizard', (ws) => {
+      ws.onMessage((raw) => {
+        const msg = JSON.parse(String(raw));
+        if (msg.type === 'start') ws.send(JSON.stringify({ type: 'question', text: 'Route to import: ', expects: 'route' }));
+        if (msg.type === 'answer') answers.push(msg.text);
+      });
+    });
+
+    await page.goto('/wizard');
+    await page.getByRole('button', { name: 'Start wizard session' }).click();
+    await page.getByRole('button', { name: 'Browse project…' }).click();
+
+    const picker = page.getByTestId('project-picker');
+    await picker.getByRole('button', { name: 'src/' }).click();
+    await picker.getByRole('button', { name: 'app/' }).click();
+    await picker.getByRole('button', { name: '[locale]/' }).click();
+    await expect(picker.getByRole('button', { name: /^portfolio\/\s*route$/ })).toBeVisible();
+    await expect(picker.getByText('no page file here')).toBeVisible();
+    await expect(picker.getByRole('button', { name: 'Use src/app/[locale]/plain' })).toHaveCount(0);
+
+    await picker.getByRole('button', { name: 'Use src/app/[locale]/portfolio' }).click();
+    await expect(picker).toHaveCount(0);
+    await expect(page.getByPlaceholder('Type your answer…')).toHaveValue('src/app/[locale]/portfolio');
+    await page.getByRole('button', { name: 'Send' }).click();
+    await expect.poll(() => answers).toEqual(['src/app/[locale]/portfolio']);
   });
 });

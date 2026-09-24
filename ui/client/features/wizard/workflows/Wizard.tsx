@@ -1,6 +1,6 @@
 import { parseAttributionLine } from '../domain/Wizard';
 import { applyStepEvent, endRun, initialSteps, stepNote, type WizardStep } from '../domain/WizardSteps';
-import type { ChatMessageData, ChatRole, ServerWizardEvent, WizardStatus } from '../types';
+import type { ChatMessageData, ChatRole, PathExpectation, ServerWizardEvent, WizardStatus } from '../types';
 
 // Pure (WORKFLOW-001) — the wizard's whole chat/connection flow as a plain
 // reducer instead of ad hoc setState calls scattered across event handlers.
@@ -8,6 +8,8 @@ export type WizardState = {
   messages: ChatMessageData[];
   status: WizardStatus;
   awaitingAnswer: boolean;
+  /** Set while the open question wants a project path, so the UI can offer the picker (#600). */
+  expects?: PathExpectation;
   nextId: number;
   /** The framework's blocks in run order, one active at a time (#599). */
   steps: WizardStep[];
@@ -50,7 +52,7 @@ function applyServerEvent(state: WizardState, event: ServerWizardEvent): WizardS
     return appendThought(state, event.text);
   }
   if (event.type === 'question') {
-    return { ...pushMessage(state, 'question', event.text), awaitingAnswer: true, status: 'running' };
+    return { ...pushMessage(state, 'question', event.text), awaitingAnswer: true, expects: event.expects, status: 'running' };
   }
   if (event.type === 'log') {
     return pushMessage(state, event.kind === 'error' ? 'error' : 'log', event.text);
@@ -69,9 +71,9 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
     case 'START':
       return { ...state, messages: [], status: 'running', awaitingAnswer: false, steps: initialSteps(), cancelling: false };
     case 'ANSWER_SENT':
-      return { ...pushMessage(state, 'answer', action.text), awaitingAnswer: false };
+      return { ...pushMessage(state, 'answer', action.text), awaitingAnswer: false, expects: undefined };
     case 'CANCEL_SENT':
-      return { ...pushMessage(state, 'system', 'Cancelling…'), cancelling: true, awaitingAnswer: false };
+      return { ...pushMessage(state, 'system', 'Cancelling…'), cancelling: true, awaitingAnswer: false, expects: undefined };
     case 'SERVER_EVENT':
       return applyServerEvent(state, action.event);
     default:

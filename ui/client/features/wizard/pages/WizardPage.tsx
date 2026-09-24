@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { ErrorState, LoadingState } from '@/features/states';
+import { ProjectPathPicker } from '../components/ProjectPathPicker';
 import { ChatLog } from '../components/ChatLog';
 import { StepTracker } from '../components/StepTracker';
 import { WizardAnswerForm } from '../components/WizardAnswerForm';
@@ -8,7 +9,7 @@ import type { useWizard } from '../hooks/useWizard';
 
 type WizardPageProps = ReturnType<typeof useWizard>;
 
-export function WizardPage({ messages, status, awaitingAnswer, steps, cancelling, cancel, input, setInput, seedRoute, setSeedRoute, planner, setPlanner, start, submitAnswer }: WizardPageProps): ReactNode {
+export function WizardPage({ messages, status, awaitingAnswer, steps, cancelling, cancel, input, setInput, seedRoute, setSeedRoute, planner, setPlanner, start, submitAnswer, picker }: WizardPageProps): ReactNode {
   return (
     <div className="page page--screen">
       <h1>Import Route Wizard</h1>
@@ -30,7 +31,21 @@ export function WizardPage({ messages, status, awaitingAnswer, steps, cancelling
         <div className="wizard-layout__main">
           <ChatLog messages={messages} />
 
-          {awaitingAnswer && <WizardAnswerForm input={input} setInput={setInput} onSubmit={submitAnswer} />}
+          {awaitingAnswer && picker?.open && (
+            <ProjectPathPicker
+              tree={picker.tree}
+              crumbs={picker.crumbs}
+              expects={picker.expects}
+              loading={picker.loading}
+              error={picker.error}
+              canChooseEntry={picker.canChooseEntry}
+              hintFor={picker.hintFor}
+              onOpen={(p) => void picker.load(p)}
+              onChoose={picker.choose}
+              onClose={picker.close}
+            />
+          )}
+          {awaitingAnswer && <WizardAnswerForm input={input} setInput={setInput} onSubmit={submitAnswer} onBrowse={picker?.openPicker} />}
         </div>
         <StepTracker steps={steps} running={status === 'running'} cancelling={cancelling} onCancel={cancel} />
       </div>

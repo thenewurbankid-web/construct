@@ -16,6 +16,7 @@ import { containedProjectRoot, requireProject } from './projectGuard.mjs';
 import { WorkspaceError, baseWorkspaceRoot, containInWorkspace, contain, userWorkspaceMiddleware, workspaceRoot } from './workspace.mjs';
 import { USAGE } from '../../../packages/core/usage.mjs';
 import { HELP_TOPICS, TOPIC_ORDER, getTopLevelHelpText } from '../../../packages/core/repl.mjs';
+import { listProjectTree } from './projectTree.mjs';
 import { getSettings, updateSettings, getBrowseRoots, getProjectDir, preloadProject } from './settings.mjs';
 import { handleBrowse } from './dirBrowse.mjs';
 import { runCapturing, withDir } from './commandRunner.mjs';
@@ -281,6 +282,12 @@ app.get('/api/fs/browse', (req, res) => {
   res.status(status).json(body);
 });
 
+// #600: one directory of the OPEN project at a time, for the Import Wizard's route/folder picker.
+app.get('/api/project/tree', (req, res) => {
+  const { status, body } = listProjectTree(getProjectDir(), req.query.path);
+  res.status(status).json(body);
+});
+
 // #365: every route below that works on a project answers 409 {code:'NO_PROJECT'} when none is open (never a
 // crash, never a fallback to process.cwd()), and refuses a project whose architecture.yml lives outside the
 // workspace. Mounted once, here, so no individual route can forget it. `init` creates a project, so it only
@@ -291,7 +298,7 @@ app.use(
     '/api/create', '/api/refactor', '/api/research', '/api/import',
     '/api/pages', '/api/workflows', '/api/units', '/api/features', '/api/flow', '/api/nav', '/api/validate',
     '/api/git/session', '/api/git/dirty-answer', '/api/git/commit', '/api/git/plan',
-    '/api/processes', '/api/plan', '/api/review', '/api/tests',
+    '/api/processes', '/api/plan', '/api/review', '/api/tests', '/api/project',
   ],
   requireProject(),
 );

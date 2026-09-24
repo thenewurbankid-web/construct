@@ -1157,7 +1157,7 @@ export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude
       .map((p) => path.join(root, p))
       .find((p) => fs.existsSync(p) && fs.statSync(p).isDirectory());
     const answer = (
-      await ask(`Path to your Next.js app/ directory (needed to resolve a URL route)${guess ? ` [${path.relative(root, guess)}]` : ''}: `)
+      await ask(`Path to your Next.js app/ directory (needed to resolve a URL route)${guess ? ` [${path.relative(root, guess)}]` : ''}: `, { expects: 'dir' })
     ).trim();
     appDir = answer ? path.resolve(answer) : guess;
     if (!appDir) {
@@ -1173,7 +1173,7 @@ export async function importRouteWizard(ask, seedRoute, { planAnalysis = 'claude
         ? 'Route to import (a URL like /dashboard, or a controller file path): '
         : 'Route to import (a URL like /v2/home, or a route folder path): ')
       : `Another route to include (leave blank to finish — ${routeArgs.length} so far): `;
-    const answer = (await ask(prompt)).trim();
+    const answer = (await ask(prompt, { expects: 'route' })).trim();
     if (!answer) {
       if (routeArgs.length === 0) {
         console.log('Cancelled — no route given.');
@@ -1422,8 +1422,8 @@ export function runImportRouteWizardEventDriven(onEvent, seedRoute, providers) {
   ensureWizardConsolePatched();
   let pendingResolve = null;
 
-  function ask(promptText) {
-    onEvent({ type: 'question', text: promptText });
+  function ask(promptText, hint) {
+    onEvent({ type: 'question', text: promptText, ...(hint?.expects ? { expects: hint.expects } : {}) });
     return new Promise((resolve) => {
       pendingResolve = resolve;
     });

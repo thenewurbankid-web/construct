@@ -173,3 +173,31 @@ test('an architecture.yml found only ABOVE the workspace is not used: 409 PROJEC
   assert.notEqual((await init.json()).code, 'PROJECT_ROOT_OUTSIDE_WORKSPACE', 'init is the way out');
   await json('POST', '/api/settings', { closeProject: true });
 });
+
+test('project/tree (#600): lists one directory of the open project, routes flagged, and refuses `..`, absolute and symlink escapes', async () => {
+  const proj = path.join(workspaceRoot(), 'treeproj');
+  fs.mkdirSync(path.join(proj, 'src', 'app', 'home'), { recursive: true });
+  fs.mkdirSync(path.join(proj, 'node_modules', 'x'), { recursive: true });
+  fs.writeFileSync(path.join(proj, 'architecture.yml'), 'project: {}\n');
+  fs.writeFileSync(path.join(proj, 'src', 'app', 'home', 'page.tsx'), 'export default function P(){return null}\n');
+  fs.writeFileSync(path.join(proj, 'src', 'app', 'notes.txt'), 'x');
+  fs.symlinkSync(outside, path.join(proj, 'src', 'escape'));
+  assert.equal((await json('POST', '/api/settings', { projectDir: 'treeproj' })).status, 200);
+
+  const top = await (await json('GET', '/api/project/tree')).json();
+  assert.equal(top.path, '');
+  assert.equal(top.parent, null);
+  assert.deepEqual(top.entries.map((e) => e.name), ['src']);
+
+  const app = await (await json('GET', `/api/project/tree?path=${encodeURIComponent('src/app')}`)).json();
+  assert.equal(app.parent, 'src');
+  assert.deepEqual(app.entries.map((e) => [e.name, e.kind, e.route]), [['home', 'dir', true]]);
+
+  const src = await (await json('GET', `/api/project/tree?path=src`)).json();
+  assert.deepEqual(src.entries.map((e) => e.name), ['app'], 'a symlink pointing outside the project is not listed');
+
+  for (const p of ['..', outside, 'src/escape', '../ws']) {
+    const r = await json('GET', `/api/project/tree?path=${encodeURIComponent(p)}`);
+    assert.equal(r.status, 403, p);
+  }
+});

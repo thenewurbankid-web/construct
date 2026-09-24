@@ -136,3 +136,18 @@ test('runImportRouteWizardEventDriven: a single session still captures its own o
 
   assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.tsx')), true);
 });
+
+test('the route question is tagged expects:"route" (so the Cockpit can offer a picker); the feature-name question is not', async () => {
+  const dir = tmpProject();
+  const original = process.cwd();
+  process.chdir(dir);
+  try {
+    const { events, done } = driveEventDrivenWizard(undefined, ['checkout', '']);
+    await done;
+    const questions = events.filter((e) => e.type === 'question');
+    assert.equal(questions[0].expects, undefined, 'the feature-name question wants free text');
+    assert.equal(questions[1].expects, 'route');
+  } finally {
+    process.chdir(original);
+  }
+});
