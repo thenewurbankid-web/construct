@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "stopWords": {
+    "markers": ["to", "be", "able", "and", "or", "of", "is", "are", "can", "could", "may", "must", "should", "will", "need", "needs", "want", "wants", "when", "if", "then", "so", "that", "in", "on", "by", "for", "from", "with", "via"],
+    "determiners": ["a", "an", "the", "their", "his", "her", "its", "my", "our", "your", "this", "some", "any", "each", "every"],
+    "actors": ["user", "users", "customer", "customers", "visitor", "visitors", "member", "person", "app", "system"],
+    "pronouns": ["it", "they", "them"]
+  },
+  "verbs": {
+    "read": ["see", "view", "show", "list", "display", "browse", "search", "filter"],
+    "interact": ["click", "press", "tap", "type", "select", "drag", "upload"],
+    "write": ["manage", "save", "update", "create", "delete", "submit", "change", "pay"],
+    "navigate": ["open", "go", "visit", "return", "redirect"]
+  },
+  "nouns": {
+    "entity": {
+      "subscription plan": { "properties": ["planName", "status"] },
+      "plan": { "properties": ["planName", "status"] },
+      "billing details": {},
+      "profile picture": { "properties": ["imageUrl"] },
+      "profile": {},
+      "product": { "properties": ["name", "price"] },
+      "order": {},
+      "invoice": {},
+      "account": {},
+      "cart": {}
+    },
+    "ui-part": {
+      "button": { "properties": ["interactive"] },
+      "form": { "properties": ["interactive"] },
+      "table": {},
+      "list": {},
+      "card": {},
+      "dialog": {},
+      "menu": { "properties": ["interactive"] },
+      "input": { "properties": ["interactive"] },
+      "page": {},
+      "keyboard": { "properties": ["interactive"] }
+    },
+    "state": {
+      "logged-in": { "properties": ["session"] },
+      "signed-in": { "properties": ["session"] },
+      "guest": { "properties": ["session"] },
+      "admin": { "properties": ["role"] }
+    },
+    "external": {
+      "stripe": {},
+      "paypal": {},
+      "github": {},
+      "google": {},
+      "twilio": {}
+    }
+  },
+  "modifiers": ["current", "new", "existing", "recent"],
+  "checks": {
+    "auth-session-check": { "why": "Refuse the action unless the person has a valid signed-in session, checked on the server." },
+    "server-only-secret": { "why": "Keep the API key or secret on the server; it must never reach the browser bundle." },
+    "validated-redirect": { "why": "Redirect only to an allow-listed address, so a crafted link cannot send the person elsewhere." },
+    "latency-budget": { "why": "Set a response-time budget for this action and check it with a test or a threshold." },
+    "owner-only-access": { "why": "Only the owner of the data may read or change it; check ownership on the server." },
+    "retry-and-error-state": { "why": "Show an error state and offer a retry when the action fails." },
+    "accessibility-check": { "why": "Usable by keyboard and screen reader; run an automated accessibility check." }
+  },
+  "adjectives": {
+    "safely": ["auth-session-check", "server-only-secret", "validated-redirect"],
+    "securely": ["auth-session-check", "server-only-secret"],
+    "privately": ["auth-session-check", "owner-only-access"],
+    "instantly": ["latency-budget"],
+    "instant": ["latency-budget"],
+    "quickly": ["latency-budget"],
+    "reliably": ["retry-and-error-state"],
+    "accessibly": ["accessibility-check"]
+  },
+  "questions": {
+    "noun": {
+      "prompt": "What is \"{text}\" in this requirement?",
+      "options": [
+        { "id": "entity", "label": "A data object", "why": "Something the app stores or shows, like a plan or a picture." },
+        { "id": "state", "label": "A state of the user", "why": "Something that is true of the session, like logged in." },
+        { "id": "ui-part", "label": "A part of the screen", "why": "Something a person sees or touches, like a button." },
+        { "id": "external", "label": "An outside service", "why": "Another company's service, like a payment provider." },
+        { "id": "ignore", "label": "Leave it out", "why": "It does not change what gets built." }
+      ]
+    },
+    "verb": {
+      "prompt": "What does \"{text}\" do?",
+      "options": [
+        { "id": "read", "label": "Shows something", "why": "Reads data and displays it." },
+        { "id": "write", "label": "Changes stored data", "why": "Creates, updates or deletes data." },
+        { "id": "interact", "label": "The person acts on the screen", "why": "A click, a tap, typing or an upload." },
+        { "id": "navigate", "label": "Moves somewhere else", "why": "Opens another page or an outside address." },
+        { "id": "ignore", "label": "Leave it out", "why": "It does not change what gets built." }
+      ]
+    }
+  }
+}
