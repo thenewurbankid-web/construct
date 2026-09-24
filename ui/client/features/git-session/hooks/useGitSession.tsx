@@ -3,12 +3,9 @@
 import { useCallback, useEffect, useReducer, type Dispatch } from 'react';
 import { fetchGitSession, saveCommitConfig } from '../services/GitSessionApi';
 import { answerDirtyTree, commitNow } from '../services/GitSessionActions';
+import { watchGitSession } from '../services/GitSessionPolling';
 import { gitSessionReducer, initialGitSessionState, type GitSessionAction } from '../workflows/GitSession';
 import type { CommitConfig, DirtyAnswer } from '../types';
-
-/** How often the Cockpit re-reads the session. The coalescing window closes on the SERVER's timer,
- * so without a poll the indicator would go stale at exactly the moment a commit happens. */
-export const POLL_MS = 1500;
 
 // Top-level (not closures) so the hook itself stays short and each step is independently readable.
 function load(dispatch: Dispatch<GitSessionAction>) {
@@ -33,11 +30,7 @@ export function useGitSession() {
   const [state, dispatch] = useReducer(gitSessionReducer, initialGitSessionState);
 
   const refresh = useCallback(() => load(dispatch), []);
-  useEffect(() => {
-    refresh();
-    const id = setInterval(refresh, POLL_MS);
-    return () => clearInterval(id);
-  }, [refresh]);
+  useEffect(() => watchGitSession(refresh), [refresh]);
 
   const updateConfig = useCallback((patch: Partial<CommitConfig>) => act(dispatch, () => saveCommitConfig(patch)), []);
   const answer = useCallback((choice: DirtyAnswer, remember: boolean) => act(dispatch, () => answerDirtyTree(choice, remember)), []);
