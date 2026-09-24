@@ -33,11 +33,11 @@ export function useRecentClones(onOpen: (dir: string) => void) {
     if (r) onOpen(r.dir);
   }, [byId, onOpen]);
 
-  const pull = useCallback(async (id: string, token: string) => {
+  const pull = useCallback(async (id: string, token: string, useLogin = false) => {
     const r = byId(id);
     if (!r) return;
     dispatch({ type: 'PULL_START', name: r.name });
-    dispatch({ type: 'PULL_DONE', name: r.name, result: await pullClone(r.name, token) });
+    dispatch({ type: 'PULL_DONE', name: r.name, result: await pullClone(r.name, token, useLogin) });
   }, [byId]);
 
   const forget = useCallback((id: string) => dispatch({ type: 'SET', items: forgetClone(id) }), []);

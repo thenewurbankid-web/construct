@@ -3,13 +3,13 @@
 import type { ReactNode } from 'react';
 import { Button, Field, Input } from '@/components/ui';
 import type { ClonePreview, CloneJobView } from '../types';
+import { CloneAuthSection, type CloneAuthSectionProps } from './CloneAuthSection';
 
 type CloneFormProps = {
   input: string;
   name: string;
   /** The branch as it will be used: typed by the person, else read from the address, else ''. */
   branch: string;
-  token: string;
   /** A plain problem with the pasted text, or null. */
   inputProblem: string | null;
   /** The derived address, folder and branch, once the text is understood. */
@@ -17,7 +17,8 @@ type CloneFormProps = {
   workspaceRoot: string | null;
   folderProblem: string | null;
   branchProblem: string | null;
-  tokenProblem: string | null;
+  /** How a private repository is authorised: the GitHub login (#638) or the one-time token field. */
+  auth: Omit<CloneAuthSectionProps, 'disabled'>;
   busy: boolean;
   error: string | null;
   job: CloneJobView | null;
@@ -26,24 +27,21 @@ type CloneFormProps = {
   onInput: (v: string) => void;
   onName: (v: string) => void;
   onBranch: (v: string) => void;
-  onToken: (v: string) => void;
   onStart: () => void;
   onCancel: () => void;
   onDismiss: () => void;
 };
 
-const TOKEN_PAGE = 'https://github.com/settings/personal-access-tokens/new';
-
 /** Presentation-only "Clone a repository" form for the Open-a-project screen (#330): ONE field that takes whatever
  * people paste, the address it was understood as, an optional folder name and branch, an optional one-time access
  * token for a private repository, the button, and the live progress of the clone with a Cancel. */
 export function CloneForm({
-  input, name, branch, token, inputProblem, preview, workspaceRoot, folderProblem, branchProblem, tokenProblem, busy, error, job, recent,
-  onInput, onName, onBranch, onToken, onStart, onCancel, onDismiss,
+  input, name, branch, inputProblem, preview, workspaceRoot, folderProblem, branchProblem, auth, busy, error, job, recent,
+  onInput, onName, onBranch, onStart, onCancel, onDismiss,
 }: CloneFormProps) {
   const working = busy || !!job?.live;
   // The hints are advice, not a gate: the server is the one that decides what may be cloned.
-  const canStart = input.trim() !== '' && !inputProblem && !folderProblem && !branchProblem && !tokenProblem && !working;
+  const canStart = input.trim() !== '' && !inputProblem && !folderProblem && !branchProblem && !auth.tokenProblem && !working;
   return (
     <section className="clone" aria-labelledby="clone-heading" data-testid="clone">
       <h2 id="clone-heading" className="clone__heading">Clone a repository</h2>
@@ -113,29 +111,7 @@ export function CloneForm({
             />
           </Field>
         </div>
-        <Field label="Access token (only for private repos)" hint={tokenProblem ?? 'Used once for this clone and never saved.'}>
-          <Input
-            type="password"
-            autoComplete="new-password"
-            spellCheck={false}
-            value={token}
-            disabled={working}
-            aria-invalid={tokenProblem ? true : undefined}
-            onChange={(e) => onToken(e.target.value)}
-            data-testid="clone-token"
-          />
-        </Field>
-        <details className="clone__howto" data-testid="clone-token-help">
-          <summary>How do I get a token?</summary>
-          <ol>
-            <li>
-              Open <a href={TOKEN_PAGE} target="_blank" rel="noopener noreferrer">GitHub&apos;s new fine-grained token page</a>.
-            </li>
-            <li>Under &ldquo;Repository access&rdquo; choose &ldquo;Only select repositories&rdquo; and pick just this one.</li>
-            <li>Under &ldquo;Repository permissions&rdquo; set &ldquo;Contents&rdquo; to &ldquo;Read-only&rdquo;. Nothing else is needed.</li>
-            <li>Give it a short expiry, create it, and paste it above. It can read that one repository and cannot change anything.</li>
-          </ol>
-        </details>
+        <CloneAuthSection {...auth} disabled={working} />
         <div className="clone__actions">
           <Button type="submit" disabled={!canStart} data-testid="clone-start">
             {busy ? 'Starting…' : 'Clone and open'}

@@ -10,9 +10,11 @@ type SettingsPageProps = ReturnType<typeof useSettings> & {
   gitSession?: ReactNode;
   /** #330: connect the open project to a remote (another feature's controller). */
   remote?: ReactNode;
+  /** #638: the GitHub connection for private repositories (another feature's controller; renders nothing when the server has none). */
+  github?: ReactNode;
 };
 
-export function SettingsPage({ settings, loadError, reload, projectDirInput, setProjectDirInput, llmProviders, setLlmProvider, status, save, pickerOpen, togglePicker, picker, gitSession, remote }: SettingsPageProps): ReactNode {
+export function SettingsPage({ settings, loadError, reload, projectDirInput, setProjectDirInput, llmProviders, setLlmProvider, status, save, pickerOpen, togglePicker, picker, gitSession, remote, github }: SettingsPageProps): ReactNode {
   if (!settings) {
     return (
       <div className="page page--screen">
@@ -49,6 +51,7 @@ export function SettingsPage({ settings, loadError, reload, projectDirInput, set
 
       {gitSession}
       {remote}
+      {github}
 
       <SettingsSummary projectDir={settings.projectDir} resolvedProjectRoot={settings.resolvedProjectRoot} />
     </div>
