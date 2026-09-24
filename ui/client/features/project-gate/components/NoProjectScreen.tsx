@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { Button, GlassPanel } from '@/components/ui';
 
 type NoProjectScreenProps = {
-  /** The one folder the server will ever open projects from. */
+  /** The one folder the server will ever open projects from (named in the one-sentence hint). */
   workspaceRoot: string | null;
   /** The previously open project (a real folder in the workspace), offered but never opened automatically. */
   lastProject: string | null;
@@ -26,14 +26,13 @@ const nameOf = (dir: string) => dir.split(/[\\/]+/).filter(Boolean).pop() ?? dir
 
 /** Presentation-only "Open a project" screen (#365): the Cockpit starts with nothing open and never loads the
  * directory it was launched from. One prompt, one picker, scoped to the workspace. */
-export function NoProjectScreen({ workspaceRoot, lastProject, opening, error, onOpen, picker, newProject, clone, samplePath = null, sampleLoading = false }: NoProjectScreenProps) {
+export function NoProjectScreen({ workspaceRoot, lastProject, opening, error, onOpen, picker, newProject, clone, samplePath = null }: NoProjectScreenProps) {
   return (
     <div className="page page--screen">
       <GlassPanel className="gate-panel no-project" data-testid="no-project">
         <h1>Open a project</h1>
         <p className="hint">
-          No project is open. Choose one of your projects to work on — the Cockpit only lists and opens projects
-          that live in your own workspace, and cannot browse anywhere else.
+          Pick a project{workspaceRoot ? <> in <code>{workspaceRoot}</code></> : null}, or start a new one.
         </p>
         {lastProject && (
           <div className="no-project__reopen">
@@ -55,21 +54,10 @@ export function NoProjectScreen({ workspaceRoot, lastProject, opening, error, on
             </Button>
             <span className="hint">A small demo app already in your workspace. Opens like any other project.</span>
           </div>
-        ) : (
-          !sampleLoading && (
-            <p className="hint no-project__sample" data-testid="sample-hint">
-              Want something to try? Clone or create a folder named <code>shop</code> in the workspace and a
-              &ldquo;Try the sample shop&rdquo; button appears here.
-            </p>
-          )
-        )}
+        ) : null}
         {newProject}
         {clone}
         {picker}
-        <p className="hint no-project__hint">
-          Don&apos;t see your project? Clone it above, or put a folder in your workspace
-          {workspaceRoot ? <> (<code>{workspaceRoot}</code>)</> : null} and it shows up in the list.
-        </p>
       </GlassPanel>
     </div>
   );

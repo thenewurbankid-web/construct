@@ -102,7 +102,6 @@ test.describe.serial('no project: the gate (#429)', () => {
     makeShop();
     fs.mkdirSync(path.join(WS, 'notes'));
     await page.goto('/');
-    await expect(page.getByTestId('sample-hint')).toHaveCount(0);
     const open = page.getByTestId('open-sample-shop');
     await expect(open).toHaveText('Try the sample shop');
     await open.click();
@@ -122,12 +121,14 @@ test.describe.serial('no project: the gate (#429)', () => {
     await expectOnlyTheGate(page, '/tests');
   });
 
-  test('without a `shop` folder the gate says how to get a sample instead', async ({ page }) => {
+  // #391 item 1: an empty state ends with one primary action and no secondary paragraph, so with no `shop` folder the
+  // gate offers no sample button and no "how to get one" text (this test used to assert that hint).
+  test('without a `shop` folder the gate offers no sample and no extra explanation', async ({ page }) => {
     fs.mkdirSync(path.join(WS, 'notes'));
     await page.goto('/');
     await expect(page.getByTestId('open-sample-shop')).toHaveCount(0);
-    await expect(page.getByTestId('sample-hint')).toContainText('shop');
-    await expect(page.getByTestId('sample-hint')).toContainText('Try the sample shop');
+    await expect(page.getByTestId('sample-hint')).toHaveCount(0);
+    await expect(page.getByTestId('no-project')).not.toContainText('Want something to try');
   });
 
   test('the sample is only ever a workspace folder: a `shop` symlink out of it is not offered', async ({ page }) => {
