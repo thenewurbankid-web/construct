@@ -5,6 +5,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { gotoCockpit, gotoNotes } from './support/cockpit.js';
+import { openNotesStore } from '../../server/src/notesStore.mjs';
 
 // Plan mode (#289 note, impact and run; #332 plan review and edit), end to end in a real browser against a
 // REAL throwaway git repository (the impact-shared fixture). Nothing is mocked: the impact is the real
@@ -15,6 +16,7 @@ const SHOTS = path.resolve(__dirname, '../screenshots');
 fs.mkdirSync(SHOTS, { recursive: true });
 const API = process.env.E2E_API_BASE || 'http://localhost:4000';
 const FIXTURE = path.resolve(__dirname, '../../../fixtures/impact-shared');
+const STATE_DIR = process.env.E2E_STATE_DIR;
 const TICKET = 'The billing totals are wrong when checkout applies a discount';
 
 const step = (page, n) => page.getByTestId('plan-step').nth(n);
@@ -182,6 +184,100 @@ test.describe.serial('Plan mode (#289, #332)', () => {
     // The bot works in its own worktree and branch; the project tree is untouched until an approval.
     expect(git('status', '--porcelain=v2', '--untracked-files=all')).toEqual(before);
     expect(fs.existsSync(path.join(repo, 'features', 'Wishlist'))).toBe(false);
+  });
+
+  // #609: the Plan screen writes a durable note (the file in the per-user state directory), not React state.
+  const noteId = (page) => new URL(page.url()).searchParams.get('note');
+  const savedLine = (page) => expect(page.getByTestId('plan-note-saved')).toHaveText('Saved on this machine');
+  // A reload keeps the note (its address names it) but not which Browser tab was open, so the Notes tab is opened again.
+  const reloadToNotes = async (page) => {
+    await page.reload();
+    await page.getByRole('complementary', { name: 'Browser' }).getByRole('tab', { name: 'Notes' }).click();
+  };
+  const addListStep = async (page) => {
+    await page.getByTestId('plan-add-flow').selectOption('summarize.list');
+    await page.getByTestId('plan-add').click();
+  };
+
+  test('#609 a note and its plan survive a reload; editing the text after the plan shows "Plan out of date" until you keep the plan', async ({ page }) => {
+    const store = () => openNotesStore(repo, { stateDir: STATE_DIR });
+    await gotoNotes(page, '/plan');
+    await page.getByTestId('plan-ticket-title').fill('Durable plan');
+    await page.getByTestId('plan-ticket-body').fill('first text');
+    await addListStep(page);
+    await expect(page.getByTestId('plan-step')).toHaveCount(1);
+    await savedLine(page);
+    // The address follows the note, so a reload lands on it.
+    await expect.poll(() => noteId(page)).not.toBeNull();
+    const id = noteId(page);
+    await expect.poll(() => store().get(id)?.plan?.steps?.length).toBe(1);
+    expect(store().get(id)).toMatchObject({ title: 'Durable plan', body: 'first text', status: 'plan-ready', planStale: false });
+
+    await reloadToNotes(page);
+    await expect(page.getByTestId('plan-ticket-title')).toHaveValue('Durable plan');
+    await expect(page.getByTestId('plan-ticket-body')).toHaveValue('first text');
+    await expect(page.getByTestId('plan-step')).toHaveCount(1);
+    await expect(page.getByTestId('plan-run')).toBeEnabled();
+    await expect(page.getByTestId('plan-note-stale')).toHaveCount(0);
+
+    // Text changed after the plan: the plan is not regenerated, it is marked, and the mark survives a reload.
+    await page.getByTestId('plan-ticket-body').fill('second text');
+    await expect(page.getByTestId('plan-note-stale')).toContainText('Plan out of date');
+    await expect.poll(() => store().get(id)?.planStale).toBe(true);
+    await reloadToNotes(page);
+    await expect(page.getByTestId('plan-ticket-body')).toHaveValue('second text');
+    await expect(page.getByTestId('plan-note-stale')).toBeVisible();
+    await page.getByTestId('plan-note-keep-plan').click();
+    await expect(page.getByTestId('plan-note-stale')).toHaveCount(0);
+    await expect.poll(() => store().get(id)?.planStale).toBe(false);
+    expect(store().get(id).plan.ticket.body).toBe('second text');
+  });
+
+  test('#609 Run marks the note ran and keeps it as history; changing it afterwards starts a copy', async ({ page }) => {
+    const store = () => openNotesStore(repo, { stateDir: STATE_DIR });
+    await gotoNotes(page, '/plan');
+    await page.getByTestId('plan-ticket-title').fill('Ran once');
+    await page.getByTestId('plan-ticket-body').fill('what ran');
+    await addListStep(page);
+    await expect(page.getByTestId('plan-run')).toBeEnabled();
+    await page.getByTestId('plan-run').click();
+    await expect(page.getByTestId('plan-started')).toBeVisible();
+
+    await expect.poll(() => noteId(page)).not.toBeNull();
+    const ranId = noteId(page);
+    await expect.poll(() => store().get(ranId)?.status).toBe('ran');
+    const ran = store().get(ranId);
+    expect(ran.processId).toBeTruthy();
+    expect(ran.plan.ticket).toMatchObject({ title: 'Ran once', body: 'what ran' });
+    expect(ran.plan.steps).toHaveLength(1);
+    await expect(page.getByTestId('plan-note-status')).toHaveAttribute('data-kind', 'ran');
+
+    // Editing what ran does not rewrite history: the change lands in a copy, and the address follows the copy.
+    await page.getByTestId('plan-ticket-body').fill('what runs next');
+    await expect.poll(() => noteId(page)).not.toBe(ranId);
+    const copyId = noteId(page);
+    await savedLine(page);
+    await expect.poll(() => store().get(copyId)?.body).toBe('what runs next');
+    expect(store().get(copyId)).toMatchObject({ status: 'plan-ready', processId: null });
+    expect(store().get(copyId).plan.steps).toHaveLength(1);
+    expect(store().get(ranId)).toMatchObject({ status: 'ran', body: 'what ran', processId: ran.processId });
+  });
+
+  test('#609 a failed save keeps your text and offers Retry; nothing is lost and nothing loops', async ({ page }) => {
+    await gotoNotes(page, '/plan');
+    let refuse = true;
+    await page.route('**/api/notes', async (route) => {
+      if (route.request().method() === 'POST' && refuse) return route.fulfill({ status: 507, contentType: 'application/json', body: JSON.stringify({ ok: false, code: 'DISK_FULL', error: 'The disk is full, so the note could not be saved.' }) });
+      return route.continue();
+    });
+    await page.getByTestId('plan-ticket-body').fill('text that must not be lost');
+    await expect(page.getByTestId('plan-note-status')).toHaveAttribute('data-kind', 'failed');
+    await expect(page.getByTestId('plan-note-saved')).toContainText('Your text is still here');
+    await expect(page.getByTestId('plan-ticket-body')).toHaveValue('text that must not be lost');
+    refuse = false;
+    await page.getByTestId('plan-note-retry').click();
+    await savedLine(page);
+    await expect.poll(() => noteId(page)).not.toBeNull();
   });
 
   test('a plan the server refuses is not run, even if the browser is talked into sending it', async ({ page, request }) => {
