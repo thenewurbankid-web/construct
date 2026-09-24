@@ -99,15 +99,20 @@ test('the real CLI\'s own errors surface: a project with an unknown execution.mo
   await assert.rejects(runValidate(dir, { mode: 'cli' }), (e) => e.code === 'CLI_FAILED' && /Unknown project\.execution\.mode 'bogus'/.test(e.message));
 });
 
-test('the subprocess gets --dir, cwd and CONSTRUCT_* variables, and not the server\'s other secrets', async () => {
+test('the subprocess gets --dir, cwd and the CLI\'s own CONSTRUCT_* settings, and not the server\'s CONSTRUCT_* secrets or other secrets (#638 review)', async () => {
   const dir = project('architecture-valid-react-spa');
   const spy = path.join(makeTempDir('construct-parity-bin-'), 'spy.mjs');
-  fs.writeFileSync(spy, `console.log(JSON.stringify({ status: 'passed', violations: [], argv: process.argv.slice(2), cwd: process.cwd(), ws: process.env.CONSTRUCT_WORKSPACE_ROOT, secret: process.env.GITHUB_TOKEN ?? null }));`);
-  const r = await runValidate(dir, { mode: 'cli', bin: spy, env: { ...process.env, CONSTRUCT_WORKSPACE_ROOT: '/ws', GITHUB_TOKEN: 'shh' } });
+  fs.writeFileSync(spy, `console.log(JSON.stringify({ status: 'passed', violations: [], argv: process.argv.slice(2), cwd: process.cwd(), state: process.env.CONSTRUCT_STATE_DIR ?? null, ws: process.env.CONSTRUCT_WORKSPACE_ROOT ?? null, session: process.env.CONSTRUCT_SESSION_SECRET ?? null, repo: process.env.CONSTRUCT_GITHUB_REPO_CLIENT_SECRET ?? null, e2e: process.env.CONSTRUCT_E2E_CLONE_LOCAL_ROOT ?? null, secret: process.env.GITHUB_TOKEN ?? null }));`);
+  const env = { ...process.env, CONSTRUCT_STATE_DIR: '/state', CONSTRUCT_WORKSPACE_ROOT: '/ws', CONSTRUCT_SESSION_SECRET: 'shh-session', CONSTRUCT_GITHUB_REPO_CLIENT_SECRET: 'shh-repo', CONSTRUCT_E2E_CLONE_LOCAL_ROOT: '/tmp/fixtures', GITHUB_TOKEN: 'shh' };
+  const r = await runValidate(dir, { mode: 'cli', bin: spy, env });
   const seen = JSON.parse(r.report);
   assert.deepEqual(seen.argv, ['validate', '--format', 'json', '--dir', dir]);
   assert.equal(fs.realpathSync(seen.cwd), fs.realpathSync(dir));
-  assert.equal(seen.ws, '/ws');
+  assert.equal(seen.state, '/state', 'a setting the CLI reads goes through');
+  assert.equal(seen.ws, null, 'a CONSTRUCT_* name no package reads is not forwarded');
+  assert.equal(seen.session, null);
+  assert.equal(seen.repo, null);
+  assert.equal(seen.e2e, null);
   assert.equal(seen.secret, null);
 });
 
