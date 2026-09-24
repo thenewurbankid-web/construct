@@ -49,7 +49,7 @@ test('fresh server: settings say no project, and the workspace is reported', asy
 
 test('every project route answers a consistent 409 NO_PROJECT with nothing open (never a crash, never cwd)', async () => {
   const gets = ['/api/pages/features', '/api/pages?feature=x', '/api/pages/tree?feature=x&file=y', '/api/pages/source?feature=x&file=y', '/api/workflows/features',
-    '/api/units', '/api/features', '/api/flow/x', '/api/nav/file?feature=x&path=y', '/api/validate', '/api/git/session', '/api/processes', '/api/review/branches', '/api/tests/x', '/api/notes', '/api/notes/some-id'];
+    '/api/units', '/api/features', '/api/flow/x', '/api/nav/file?feature=x&path=y', '/api/validate', '/api/git/session', '/api/processes', '/api/review/branches', '/api/tests/x', '/api/notes', '/api/notes/some-id', '/api/blocks'];
   for (const url of gets) {
     const r = await json('GET', url);
     assert.equal(r.status, 409, url);

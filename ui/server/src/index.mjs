@@ -73,6 +73,8 @@ import { validateArchitecture } from '../../../packages/core/architecture-enforc
 import { createComponentsRouter } from './componentsApi.mjs';
 import { createNotesRouter } from './notesApi.mjs';
 import { openNotesStore } from './notesStore.mjs';
+import { createBlocksRouter } from './blocksApi.mjs';
+import { openBlockSettingsStore } from './blockSettingsStore.mjs';
 import { handleLogs } from './logBuffer.mjs';
 import { unitsIndex, unitSummary, featuresIndex, featureSummary } from './unitsApi.mjs';
 import { buildPalette } from '../../../packages/engine/palette.mjs';
@@ -165,7 +167,7 @@ app.use(cors({ origin: CLIENT_ORIGIN, credentials: true }));
 // #596: `/api/notes` carries its own, larger body parser (a note may be 256 KiB; this one stops at 100 KB) and
 // mounts it below the session gate, so no unauthenticated request is ever parsed at that size.
 const jsonBody = express.json();
-app.use((req, res, next) => (req.path === '/api/notes' || req.path.startsWith('/api/notes/') ? next() : jsonBody(req, res, next)));
+app.use((req, res, next) => (req.path === '/api/notes' || req.path.startsWith('/api/notes/') || req.path === '/api/blocks' ? next() : jsonBody(req, res, next)));
 // A body that is not valid JSON gets a fixed answer. The default handler prints the parser's message, which quotes
 // a snippet of the body, and a clone request's body may carry a one-time access token (#330 slice B): nothing the
 // client sent is ever echoed back or logged from here.
@@ -309,7 +311,7 @@ app.use(
     '/api/create', '/api/refactor', '/api/research', '/api/import',
     '/api/pages', '/api/workflows', '/api/units', '/api/features', '/api/flow', '/api/nav', '/api/validate',
     '/api/git/session', '/api/git/dirty-answer', '/api/git/commit', '/api/git/plan',
-    '/api/processes', '/api/plan', '/api/review', '/api/tests', '/api/project', '/api/notes',
+    '/api/processes', '/api/plan', '/api/review', '/api/tests', '/api/project', '/api/notes', '/api/blocks',
   ],
   requireProject(),
 );
@@ -1068,6 +1070,8 @@ app.use('/api/processes', createProcessesRouter(processesService));
 export const planService = createPlanService({
   getRoot: () => containedProjectRoot(getProjectDir()),
   startPlan: (plan) => processesService.startPlan(plan),
+  // #407: blocks turned off for this project (Features, Blocks tab) are refused by the plan check, read fresh on every call.
+  getBlockSettings: (root) => openBlockSettingsStore(root).disabledFlows(),
   // #609: Run marks the note it was run from as ran (same project root the Notes router uses, see below).
   onStarted: ({ noteId, plan, processId }) => {
     const dir = getProjectDir();
@@ -1113,6 +1117,16 @@ app.use('/api/notes', createNotesRouter({
   getRoot: () => {
     const dir = getProjectDir();
     const root = dir ? containedProjectRoot(dir) || dir : null;
+    return root ? { ok: true, root } : { ok: false, status: 409, body: NO_PROJECT_BODY };
+  },
+}));
+
+// #407: the Blocks catalogue and its per-project settings (which blocks are on, default engine and local model). Below the
+// session gate and the project-open gate; the same project root the plan check reads the settings for (planService).
+app.use('/api/blocks', createBlocksRouter({
+  clientOrigin: CLIENT_ORIGIN,
+  getRoot: () => {
+    const root = containedProjectRoot(getProjectDir());
     return root ? { ok: true, root } : { ok: false, status: 409, body: NO_PROJECT_BODY };
   },
 }));

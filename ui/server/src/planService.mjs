@@ -8,6 +8,8 @@
 //   - every path-valued argument must be project-relative: no `..`, no absolute path, no URL, no symlink out of
 //     the project (checked lexically AND with realpath on the deepest existing ancestor).
 //   - no string argument may start with `-` (it would be read as an option) or hold a control character.
+//   - #407: a block (flow) turned off for this project in Features > Blocks is refused (COCKPIT_BLOCK_DISABLED), by the
+//     same check that refuses everything else here, so it is enforced on the server and not merely hidden in the UI.
 //   - the only model a step may name is `ollama` (local); `llm: claude` is refused. A model runs only on a step
 //     the plan tags `local-model`, which `validatePlan()` already enforces for `deterministic`.
 //   - the project is always the server's current one. Nothing here reads a project path from a request.
@@ -19,6 +21,8 @@ import { expectedFiles } from '../../../packages/core/plan-touches.mjs';
 import { analyzeImpact, proposeSeedsFromText } from '../../../packages/engine/impact.mjs';
 import { listUnits } from '../../../packages/engine/unitSummary.mjs';
 
+/** The one model provider a Cockpit step may name (a local Ollama); anything else is refused (COCKPIT_LLM_PROVIDER). */
+export const LOCAL_PROVIDER = 'ollama';
 export const MAX_STEPS = 50;
 export const MAX_TEXT = 20_000;
 export const MAX_SEEDS = 50;
@@ -80,9 +84,17 @@ function checkStringValue(value, at, name, push) {
   if (value.startsWith('-')) push(err('COCKPIT_ARG_DASH', at, `"${name}" must not start with "-" (it would be read as a command option).`));
 }
 
-/** The Cockpit's own checks on top of validatePlan(). Only steps that name a whitelisted flow are examined. */
-export function cockpitErrors(plan, root) {
+/**
+ * The Cockpit's own checks on top of validatePlan(). Only steps that name a whitelisted flow are examined.
+ *
+ * @param {object} plan
+ * @param {string} root The project root.
+ * @param {{disabledFlows?: string[], blockSettingsUnreadable?: string|null}} [options] #407: the blocks turned off for
+ *   this project. When the settings file cannot be read the check fails closed (every step is refused, by name).
+ */
+export function cockpitErrors(plan, root, { disabledFlows = [], blockSettingsUnreadable = null } = {}) {
   const out = [];
+  const off = new Set(disabledFlows);
   const push = (e) => out.push(e);
   const steps = Array.isArray(plan?.steps) ? plan.steps : [];
   if (steps.length > MAX_STEPS) push(err('COCKPIT_TOO_MANY_STEPS', 'steps', `A plan run from the Cockpit may have at most ${MAX_STEPS} steps.`));
@@ -92,6 +104,8 @@ export function cockpitErrors(plan, root) {
     const flow = planFlow(step.flow);
     if (!flow) return; // validatePlan() names this one
     const at = `steps[${i}]`;
+    if (off.has(step.flow)) push(err('COCKPIT_BLOCK_DISABLED', `${at}.flow`, `The block "${step.flow}" is turned off for this project (Features, Blocks tab). Turn it on there, or remove this step.`));
+    if (blockSettingsUnreadable && !out.some((e) => e.code === 'COCKPIT_BLOCK_SETTINGS_UNREADABLE')) push(err('COCKPIT_BLOCK_SETTINGS_UNREADABLE', 'blocks', 'This project\'s block settings could not be read, so no plan can be checked against them. Open Features, Blocks tab, and save the settings again to reset them.'));
     if (Object.hasOwn(NOT_OFFERED, step.flow)) push(err('COCKPIT_FLOW_NOT_OFFERED', `${at}.flow`, NOT_OFFERED[step.flow]));
     const args = step.args && typeof step.args === 'object' && !Array.isArray(step.args) ? step.args : {};
     for (const [name, value] of Object.entries(args)) {
@@ -110,8 +124,8 @@ export function cockpitErrors(plan, root) {
       if (typeof value === 'string' && ROUTE_ARGS.has(name)) {
         if (value.split('/').includes('..') || /[\\\0]/.test(value)) push(err('COCKPIT_ARG_PATH', argAt, `"${name}" must stay inside the project (no "..").`));
       }
-      if (name === 'llm' && typeof value === 'string' && value !== 'ollama') {
-        push(err('COCKPIT_LLM_PROVIDER', argAt, `The Cockpit only runs a local model (ollama); "${value}" is not allowed on a step.`));
+      if (name === 'llm' && typeof value === 'string' && value !== LOCAL_PROVIDER) {
+        push(err('COCKPIT_LLM_PROVIDER', argAt, `The Cockpit only runs a local model (${LOCAL_PROVIDER}); "${value}" is not allowed on a step.`));
       }
     }
     if (step.flow === 'import.plan' && Array.isArray(args.plan?.units)) {
@@ -159,12 +173,12 @@ export function withExpectedFiles(plan, root) {
   return changed ? { ...plan, steps } : plan;
 }
 
-/** validatePlan() + the Cockpit checks + a preview of what each step would run. Pure over (plan, root). */
-export function checkPlan(given, root) {
+/** validatePlan() + the Cockpit checks + a preview of what each step would run. Pure over (plan, root, block settings). */
+export function checkPlan(given, root, blockSettings = {}) {
   const plan = withExpectedFiles(given, root);
   const base = validatePlan(plan);
   const errors = [...base.errors];
-  if (plan && typeof plan === 'object' && Array.isArray(plan.steps)) errors.push(...cockpitErrors(plan, root));
+  if (plan && typeof plan === 'object' && Array.isArray(plan.steps)) errors.push(...cockpitErrors(plan, root, blockSettings));
   const shaped = errors.map((e) => ({ ...e, plain: plainMessage(e) }));
   const steps = [];
   if (plan && Array.isArray(plan.steps)) {
@@ -186,10 +200,12 @@ export function checkPlan(given, root) {
 }
 
 /** The flow catalogue the review UI adds steps from: every whitelisted flow, its arguments and executors. */
-export function flowCatalogue() {
+export function flowCatalogue({ disabledFlows = [] } = {}) {
+  const off = new Set(disabledFlows);
   return Object.entries(PLAN_FLOWS).map(([id, f]) => ({
     id,
     summary: f.summary,
+    enabled: !off.has(id),
     writes: !!f.writes,
     executors: [...f.executors],
     offered: !Object.hasOwn(NOT_OFFERED, id),
@@ -228,15 +244,27 @@ const refOk = (r) => typeof r === 'string' && r.length > 0 && r.length <= 200 &&
  * @param {() => string|null} o.getRoot the current project's root (never from a request)
  * @param {(plan: object) => {ok: boolean, processId?: string, status?: number, error?: string}} o.startPlan
  *   starts a validated plan; injected so tests can watch that nothing starts on refusal
+ * @param {(root: string) => {flows: string[], unreadable?: string|null}} [o.getBlockSettings]
+ *   #407: the blocks turned off for the project at `root`. Read on EVERY check and run (never cached), so turning a block
+ *   off takes effect at once; a reader that throws is treated as unreadable and fails closed.
  * @param {(started: {noteId: string, plan: object, processId: string}) => void} [o.onStarted]
  *   #609: called once a plan that named a note (`noteId`) has started, to mark that note ran. A failure here never
  *   undoes the run (the process exists); it is reported as `noteRan: false` so the screen can say so.
  */
-export function createPlanService({ getRoot, startPlan, onStarted }) {
+export function createPlanService({ getRoot, startPlan, onStarted, getBlockSettings }) {
   const withRoot = (fn) => {
     const root = getRoot();
     if (!root) return fail(409, 'No Construct project found for the current project directory. Pick a project first.');
     return fn(root);
+  };
+  const blockSettingsFor = (root) => {
+    if (!getBlockSettings) return {};
+    try {
+      const s = getBlockSettings(root);
+      return { disabledFlows: Array.isArray(s?.flows) ? s.flows : [], blockSettingsUnreadable: s?.unreadable ?? null };
+    } catch (e) {
+      return { disabledFlows: [], blockSettingsUnreadable: String(e?.message || e) };
+    }
   };
   return {
     context() {
@@ -244,7 +272,7 @@ export function createPlanService({ getRoot, startPlan, onStarted }) {
         const units = listUnits(root, { kind: 'feature' });
         return {
           status: 200,
-          body: { ok: true, project: path.basename(root), constraints: readConstraints(root), features: units.ok ? units.units.map((u) => ({ ref: u.ref, name: u.name })) : [], flows: flowCatalogue() },
+          body: { ok: true, project: path.basename(root), constraints: readConstraints(root), features: units.ok ? units.units.map((u) => ({ ref: u.ref, name: u.name })) : [], flows: flowCatalogue({ disabledFlows: blockSettingsFor(root).disabledFlows }) },
         };
       });
     },
@@ -286,14 +314,14 @@ export function createPlanService({ getRoot, startPlan, onStarted }) {
       });
     },
     validate(body) {
-      return withRoot((root) => ({ status: 200, body: { ok: true, ...checkPlan(body?.plan, root) } }));
+      return withRoot((root) => ({ status: 200, body: { ok: true, ...checkPlan(body?.plan, root, blockSettingsFor(root)) } }));
     },
     /** Re-validates, then starts. On ANY error nothing is created and nothing is started. */
     run(body) {
       return withRoot((root) => {
         // The plan that starts is the plan with its derived files declared (#470), the one the record and the gate see.
         const plan = withExpectedFiles(body?.plan, root);
-        const checked = checkPlan(plan, root);
+        const checked = checkPlan(plan, root, blockSettingsFor(root));
         if (!checked.valid) return fail(400, 'The plan is not valid, so it was not run.', { errors: checked.errors });
         const started = startPlan(plan);
         if (!started?.ok) return fail(started?.status || 500, started?.error || 'The plan could not be started.');
