@@ -240,6 +240,7 @@ blocks:
     }
   ],
   "open": [],
+  "offers": [],
   "notes": [
     "App Router: a client leaf is a \"use client\" leaf, a server read a Server Component fetch, a mutation a Server Action. The generators do not write the \"use client\" and \"use server\" directives yet: add them by hand.",
     "The route entry (app/**/page.tsx) is not created by a plan step: it imports the controller (by hand or with `construct import --route`)."

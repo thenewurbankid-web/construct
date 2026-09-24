@@ -71,6 +71,31 @@ test('the other two example sentences place as the docs say', async () => {
   assert.deepEqual([up.plan !== null, se.plan !== null], [true, true]);
 });
 
+// #619 -- a list of a plural data object is OFFERED the list shape as a closed question that does not hold the plan back;
+// answering it (by the same { id, option } shape as every other question) puts the shape on the plan steps.
+test('a list of products offers the list shape beside the open questions; answering it shapes the plan, and the plan is valid either way', async () => {
+  const sentence = 'A user wants to see a list of products';
+  const plain = (await post({ text: sentence })).body;
+  assert.deepEqual(plain.open, [], 'the offer never blocks the plan');
+  assert.deepEqual(plain.offers.map((q) => [q.id, q.source, q.default, q.chosen]), [['q-shape', 'placement', 'list', null]]);
+  assert.deepEqual(plain.offers[0].options.map((o) => o.id), ['list', 'scaffold']);
+  assert.equal(validatePlan(plain.plan).valid, true);
+  assert.ok(plain.plan.steps.every((s) => s.args.shape === undefined), 'unanswered: the plain scaffold, exactly as before');
+
+  const shaped = (await post({ text: sentence, answers: [{ id: 'q-shape', option: 'list' }] })).body;
+  assert.equal(validatePlan(shaped.plan).valid, true);
+  assert.deepEqual(shaped.plan.steps.slice(1).map((s) => s.args.shape), ['list', 'list', 'list', 'list', 'list', 'list']);
+  assert.deepEqual(shaped.plan.steps[1].args, { layer: 'domain', name: 'Products', feature: 'products', shape: 'list', entity: 'Product', fields: 'id:string,name:string,price:number' });
+  assert.deepEqual(shaped.placement.decisions, [{ question: 'q-shape', option: 'list', by: 'person' }]);
+  assert.equal(shaped.offers[0].chosen, 'list');
+
+  const bad = (await post({ text: sentence, answers: [{ id: 'q-shape', option: 'grid' }] })).body;
+  assert.equal(bad.placement.ok, false, 'an unknown option is a typed error, never a guess');
+  assert.deepEqual(bad.placement.errors.map((e) => e.code), ['PLACE_UNKNOWN_OPTION']);
+  assert.equal(bad.plan, null);
+  assert.deepEqual((await post({ text: SEARCH })).body.offers, [], 'a search is not a plain list: no offer');
+});
+
 test('a word the lexicon does not know is a closed question; answering replays and places the card', async () => {
   const text = 'A customer wants to frobnicate the invoice list.';
   const first = (await post({ text })).body;

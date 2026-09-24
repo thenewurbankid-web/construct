@@ -369,7 +369,7 @@ test('the summary has a fixed maximum size, one plain-English line per block, an
 test('nothing here can reach a model or the network: only sibling modules are imported and no client is used', () => {
   const src = fs.readFileSync(path.join(here, '..', 'packages', 'core', 'placement.mjs'), 'utf8');
   const imports = [...src.matchAll(/^import .* from '([^']+)';/gm)].map((m) => m[1]).sort();
-  assert.deepEqual(imports, ['./block-flows.mjs', './chooser.mjs', './config.mjs', './generators.mjs', './plan.mjs', './requirement-card.mjs']);
+  assert.deepEqual(imports, ['./block-flows.mjs', './chooser.mjs', './config.mjs', './generators.mjs', './plan.mjs', './requirement-card.mjs', './shapes.mjs']);
   assert.doesNotMatch(src, /\b(fetch\s*\(|XMLHttpRequest|WebSocket|child_process|https?:\/\/|require\()/);
   assert.doesNotMatch(src, /(?<!\{)\bimport\s*\(/, 'no dynamic import (a JSDoc type import is fine)');
   assert.doesNotMatch(src, /\b(Date\.now|Math\.random|new Date)\b/, 'no clock or randomness: same input, same output');

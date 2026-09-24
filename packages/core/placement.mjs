@@ -24,11 +24,28 @@ import { CARD_LIMITS, defaultLexicon, validateCard } from './requirement-card.mj
 import { DECISION_SOURCES } from './chooser.mjs';
 import { DEFAULT_LAYERS, FRAMEWORKS } from './config.mjs';
 import { LAYER_ORDER, LAYER_PREREQUISITES } from './generators.mjs';
-import { validatePlan } from './plan.mjs';
+import { validatePlan, PLAN_SHAPES } from './plan.mjs';
 import { flowBlock } from './block-flows.mjs';
+import { SHAPES, singularOf, fieldsFromProperties, endpointOf } from './shapes.mjs';
 
 /** The schema version string of a placement result. */
 export const PLACEMENT_VERSION = 'placement.v1';
+
+/**
+ * The id of the closed question that offers the list shape (#619). It is stable, so an answer recorded once stays valid, and it
+ * is asked at most once per card.
+ */
+export const SHAPE_QUESTION_ID = 'q-shape';
+
+/**
+ * The two options of the shape question, `list` first so that the rules-only decision provider (the first enabled option)
+ * suggests the list shape, which is the default for a plural data object. Nothing is applied until somebody answers: an
+ * unanswered offer leaves the plan exactly as it was, with empty scaffold files.
+ */
+export const SHAPE_OPTIONS = Object.freeze([
+  Object.freeze({ id: 'list', label: 'List shape', why: 'Real typed code: the list, its rows, and its loading, empty and error states.' }),
+  Object.freeze({ id: 'scaffold', label: 'Scaffold only', why: 'Empty files with a TODO stub in each, for you to fill in.' }),
+]);
 
 /** The four results of the three questions. */
 export const PLACEMENTS = Object.freeze(['client-leaf', 'server-read', 'mutation', 'presentational']);
@@ -71,7 +88,7 @@ export const PLACEMENT_ERROR_CODES = Object.freeze({
  * @typedef {{ layer: string, name: string, why: string, uses?: string[] }} PlacedLayer
  * One unit the block needs: its layer, its name, why, and the layers of the same block it imports (`uses`).
  *
- * @typedef {{ id: string, verbs: string[], nouns: string[], label: string, placement: 'client-leaf'|'server-read'|'mutation'|'presentational', answers: PlacementAnswers, layers: PlacedLayer[], checks: string[], checkNames: string[], why: string }} PlacementBlock
+ * @typedef {{ id: string, verbs: string[], nouns: string[], label: string, placement: 'client-leaf'|'server-read'|'mutation'|'presentational', answers: PlacementAnswers, layers: PlacedLayer[], checks: string[], checkNames: string[], why: string, shape?: BlockShape }} PlacementBlock
  *
  * @typedef {{ id: string, question: string, options: { id: string, label: string, enabled: boolean, why: string }[], chosen: string | null }} PlacementOpen
  * The same shape as a chooser summary and as a requirement-card open question.
@@ -79,7 +96,14 @@ export const PLACEMENT_ERROR_CODES = Object.freeze({
  * @typedef {{ question: string, option: string, by: 'person'|'llm'|'decision-model', provider?: string }} PlacementDecision
  * Who answered which open question.
  *
- * @typedef {{ version: string, ok: boolean, complete: boolean, framework: string, variant: string, blocks: PlacementBlock[], open: PlacementOpen[], notes: string[], decisions: PlacementDecision[], errors: PlacementError[] }} PlacementResult
+ * @typedef {{ name: 'list', entity: string, fields: string }} BlockShape
+ * The shape a block was built with (#619): its name, the entity and the `--fields` text the units are generated from.
+ *
+ * @typedef {PlacementOpen & { block: string, default: string, entity: string, fields: string, unit: string, suggestion: { option: string, reason: string, provider: 'rules' } }} PlacementOffer
+ * A question that changes how a screen is built but never blocks the plan: the chooser-summary shape plus the block it is about,
+ * the rules-only default, and the entity and fields the shape would use. Unanswered, the plan is the plain scaffold.
+ *
+ * @typedef {{ version: string, ok: boolean, complete: boolean, framework: string, variant: string, blocks: PlacementBlock[], open: PlacementOpen[], offers: PlacementOffer[], notes: string[], decisions: PlacementDecision[], errors: PlacementError[] }} PlacementResult
  */
 
 const isPlainObject = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -234,6 +258,9 @@ const VARIANT_NOTES = deepFreeze({
 });
 
 /** What each placement means, in the words of the three questions (a block's `why` and the phrase of its plain-English line). */
+/** The phrase of a block built with a shape (#619): a list is fetched by a service in the browser and shown from props. */
+const SHAPE_PHRASE = deepFreeze({ 'server-read': 'is a list fetched by a service', presentational: 'shows that list from props' });
+
 const PLACEMENT_TEXT = deepFreeze({
   'client-leaf': { why: 'Client leaf: needs the browser.', line: 'runs in the browser' },
   'server-read': { why: 'Server read: fetched on the server, changes nothing.', line: 'is fetched on the server' },
@@ -342,6 +369,68 @@ function readAnswer(raw, ctx, at, push) {
   return { option: answer.option, by, provider };
 }
 
+// -------------------------------------------------------------------------------------------------------------- list shape
+
+/**
+ * Whether a data object is named in the plural, by the lexicon alone: the words are not an entry as written (`billing details`
+ * is one entry, not several) and the singular of the last word is (`products` is the entry `product`).
+ */
+function isPluralEntity(text, entities, modifiers) {
+  const parts = words(text.toLowerCase()).filter((w) => !modifiers.has(w));
+  if (!parts.length || Object.hasOwn(entities, parts.join(' '))) return false;
+  const last = parts.at(-1);
+  const singulars = [];
+  if (/[^aeiou]ies$/.test(last)) singulars.push(`${last.slice(0, -3)}y`);
+  if (/(?:s|x|z|ch|sh)es$/.test(last)) singulars.push(last.slice(0, -2));
+  if (/s$/.test(last)) singulars.push(last.slice(0, -1));
+  return singulars.some((s) => Object.hasOwn(entities, [...parts.slice(0, -1), s].join(' ')));
+}
+
+/**
+ * The one list the card asks for, or null. The rule (data, not a guess): every block is presentational or a server read, the
+ * card has exactly one verb (a read) and exactly one data object, that object is named in the plural, and the screen is named
+ * after it. Anything richer (a search, a write, two data objects) is not offered the shape: it is a later slice.
+ */
+function listCandidate(card, blocks, screen, modifiers, entities) {
+  if (!blocks.length || !blocks.every((b) => b.placement === 'presentational' || b.placement === 'server-read')) return null;
+  const nouns = card.nouns.filter((n) => n.kind === 'entity');
+  const [verb] = card.verbs;
+  if (nouns.length !== 1 || card.verbs.length !== 1 || verb.kind !== 'read' || !verb.on.includes(nouns[0].id)) return null;
+  const [noun] = nouns;
+  if (!isPluralEntity(noun.text, entities, modifiers) || nounName(noun.text, modifiers) !== screen) return null;
+  return { noun, entity: singularOf(screen), fields: fieldsFromProperties(noun.properties), unit: screen };
+}
+
+/** The shape question for a candidate, in the shape of a chooser summary, with the rules-only default and who suggested it. */
+function listOffer(candidate, blockId, chosen) {
+  const L = PLACEMENT_LIMITS;
+  const reason = `the data object "${candidate.noun.text}" is plural, so a list of ${candidate.entity} items is the usual screen`;
+  return {
+    id: SHAPE_QUESTION_ID,
+    question: capText(`How should the "${candidate.noun.text}" screen be built?`, L.question),
+    options: SHAPE_OPTIONS.map((o) => ({ id: o.id, label: capText(o.label, L.label), enabled: true, why: capText(o.why, L.why) })),
+    chosen,
+    block: blockId,
+    default: 'list',
+    entity: candidate.entity,
+    fields: candidate.fields,
+    unit: candidate.unit,
+    suggestion: { option: 'list', reason: capText(reason, L.why), provider: 'rules' },
+  };
+}
+
+/**
+ * The blocks of a list-shaped screen: a server read (domain, service, hook, controller) and the presentational block that shows
+ * it (component, page), from the default layer table whatever the framework (the shape fetches in the browser). The first block
+ * keeps the id, the verbs, the nouns and the checks of the block it replaces.
+ */
+function listBlocks(first, offer, table, names) {
+  const shape = { name: 'list', entity: offer.entity, fields: offer.fields };
+  const read = { ...first, placement: 'server-read', answers: { browserApi: false, touchesSecretOrDb: true, changesBackend: false }, layers: layersFor(table, 'server-read', names), shape, why: `List shape: the ${names.noun} list is fetched by a service and shown from props. Because the person asked for a list of a plural data object.` };
+  const view = { ...first, id: `${first.id}-view`, placement: 'presentational', answers: { browserApi: false, touchesSecretOrDb: false, changesBackend: false }, layers: layersFor(table, 'presentational', names), checks: [], checkNames: [], shape, why: 'List shape: it shows what the list fetch returns.' };
+  return [read, view];
+}
+
 // ------------------------------------------------------------------------------------------------------------------- placeCard
 
 /**
@@ -369,7 +458,7 @@ export function placeCard(card, options = {}) {
   const opts = isPlainObject(options) ? options : {};
   const framework = opts.framework ?? 'nextjs';
   const variant = VARIANT_OF_FRAMEWORK[framework];
-  const result = (extra = {}) => ({ version: PLACEMENT_VERSION, ok: errors.length === 0, complete: false, framework: String(framework), variant: variant ?? 'unknown', blocks: [], open: [], notes: [], decisions: [], errors, ...extra });
+  const result = (extra = {}) => ({ version: PLACEMENT_VERSION, ok: errors.length === 0, complete: false, framework: String(framework), variant: variant ?? 'unknown', blocks: [], open: [], offers: [], notes: [], decisions: [], errors, ...extra });
   if (!isPlainObject(options)) push('PLACE_OPTIONS_INVALID', 'options', 'options must be an object.');
   if (!variant || !FRAMEWORKS.includes(framework)) push('PLACE_FRAMEWORK_UNKNOWN', 'framework', `Unknown framework ${JSON.stringify(framework)}. Expected one of: ${Object.keys(VARIANT_OF_FRAMEWORK).join(', ')}.`);
   if (opts.screen !== undefined && (typeof opts.screen !== 'string' || !/^[A-Z][A-Za-z0-9]*$/.test(opts.screen))) push('PLACE_SCREEN_INVALID', 'screen', '"screen" must be a PascalCase name such as Billing.');
@@ -469,8 +558,27 @@ export function placeCard(card, options = {}) {
     }
   }
 
+  // #619 -- the list shape is OFFERED when the card asks for one list, never forced: it is not an open question (it does not hold
+  // the plan back) and an unanswered offer leaves the plan as the plain scaffold it always was.
+  const candidate = open.length === 0 ? listCandidate(card, blocks, screen, modifiers, lexicon.nouns?.entity ?? {}) : null;
+  let offer = null;
+  let shapeAnswer = null;
+  if (candidate) {
+    askable.set(SHAPE_QUESTION_ID, SHAPE_OPTIONS.map((o) => o.id));
+    if (SHAPE_QUESTION_ID in answers) {
+      const given = readAnswer(answers[SHAPE_QUESTION_ID], opts, `answers.${SHAPE_QUESTION_ID}`, push);
+      if (given && !SHAPE_OPTIONS.some((o) => o.id === given.option)) push('PLACE_UNKNOWN_OPTION', `answers.${SHAPE_QUESTION_ID}`, `"${SHAPE_QUESTION_ID}" has no option ${JSON.stringify(given.option)}. Options: ${SHAPE_OPTIONS.map((o) => o.id).join(', ')}.`);
+      else if (given) {
+        shapeAnswer = given;
+        decisions.push({ question: SHAPE_QUESTION_ID, option: given.option, by: given.by, ...(given.provider ? { provider: given.provider } : {}) });
+      }
+    }
+    offer = listOffer(candidate, blocks[0].id, shapeAnswer?.option ?? null);
+  }
+
   for (const key of Object.keys(answers)) if (!askable.has(key)) push('PLACE_UNKNOWN_OPEN', `answers.${key}`, `No open question "${key}". Questions: ${[...askable.keys()].join(', ') || 'none'}.`);
   if (errors.length) return result();
+  if (offer && shapeAnswer?.option === 'list') blocks.splice(0, blocks.length, ...listBlocks(blocks[0], offer, LAYER_TABLE.default, { noun: candidate.unit, action: candidate.unit, screen }));
 
   // A controller imports its page (generators LAYER_PREREQUISITES): give a block that has a controller and no page its page.
   for (const block of blocks) {
@@ -487,7 +595,8 @@ export function placeCard(card, options = {}) {
   for (const v of violations) push(v.code, v.path, v.message);
   if (errors.length) return result();
   const notes = [...VARIANT_NOTES[variant]];
-  return result({ ok: true, complete: open.length === 0, blocks, open, notes, decisions: decisions.sort((a, b) => a.question.localeCompare(b.question)) });
+  if (offer && shapeAnswer?.option === 'list') notes.push(`The list shape fetches ${endpointOf(candidate.unit)} from the browser: serve that endpoint (a route handler or your backend), and add "@line/construct-core" to your dependencies, since the units import its typed factories.`);
+  return result({ ok: true, complete: open.length === 0, blocks, open, offers: offer ? [offer] : [], notes, decisions: decisions.sort((a, b) => a.question.localeCompare(b.question)) });
 }
 
 /**
@@ -619,6 +728,11 @@ export function planFromBlocks(blocks, options = {}) {
     const at = `blocks[${i}]`;
     if (!isPlainObject(block) || !isNonEmptyString(block.id) || !Array.isArray(block.layers)) { push('PLAN_BLOCK_INVALID', at, 'A block must be an object { id, placement, layers[] }.'); return; }
     if (!PLACEMENTS.includes(block.placement)) { push('PLAN_PLACEMENT_UNKNOWN', `${at}.placement`, `Unsupported placement ${JSON.stringify(block.placement)}. Supported: ${PLACEMENTS.join(', ')}.`); return; }
+    const shape = block.shape;
+    if (shape !== undefined && !(isPlainObject(shape) && PLAN_SHAPES.includes(shape.name) && isNonEmptyString(shape.entity) && isNonEmptyString(shape.fields))) {
+      push('PLAN_BLOCK_INVALID', `${at}.shape`, `A block's shape must be { name: ${PLAN_SHAPES.join('|')}, entity, fields }.`);
+      return;
+    }
     block.layers.forEach((unit, j) => {
       const path = `${at}.layers[${j}]`;
       if (!isPlainObject(unit) || !isNonEmptyString(unit.layer) || !isNonEmptyString(unit.name)) { push('PLAN_LAYER_INVALID', path, 'A layer entry must be { layer, name }.'); return; }
@@ -627,6 +741,7 @@ export function planFromBlocks(blocks, options = {}) {
       const key = `${unit.layer}:${unit.name}`;
       if (!units.has(key)) units.set(key, { layer: unit.layer, name: unit.name, why: unit.why, blocks: [] });
       units.get(key).blocks.push(block.id);
+      if (shape) units.get(key).shape = shape;
     });
   });
   if (errors.length) return fail();
@@ -649,7 +764,11 @@ export function planFromBlocks(blocks, options = {}) {
   for (const u of ordered) {
     const deps = new Set([featureStep]);
     for (const e of edges) if (e.from.layer === u.layer && e.from.name === u.name && stepOf.has(`${e.to.layer}:${e.to.name}`)) deps.add(stepOf.get(`${e.to.layer}:${e.to.name}`));
-    const id = add('create.unit', `Create ${u.layer} ${u.name}`, { layer: u.layer, name: u.name, feature: opts.feature }, [...deps].sort(idOrder), u.why);
+    // #619: a shaped unit carries the shape, its entity and its fields (the CLI's --shape/--entity/--fields), and waits for the
+    // units of the same shape that it imports or takes its types from.
+    if (u.shape) for (const need of SHAPES[u.shape.name].requires[u.layer] ?? []) if (stepOf.has(`${need}:${u.name}`)) deps.add(stepOf.get(`${need}:${u.name}`));
+    const shapeArgs = u.shape ? { shape: u.shape.name, entity: u.shape.entity, fields: u.shape.fields } : {};
+    const id = add('create.unit', `Create ${u.layer} ${u.name}`, { layer: u.layer, name: u.name, feature: opts.feature, ...shapeArgs }, [...deps].sort(idOrder), u.why);
     stepOf.set(`${u.layer}:${u.name}`, id);
   }
   if (errors.length) return fail();
@@ -683,7 +802,7 @@ export function planFromBlocks(blocks, options = {}) {
 export function blockLines(result) {
   return (result?.blocks ?? []).map((b) => ({
     id: b.id,
-    line: capText(`"${b.label}" ${PLACEMENT_TEXT[b.placement]?.line ?? 'is placed'} (${(b.layers ?? []).map((l) => l.layer).join(', ')}).${b.checkNames?.length ? ` Checks: ${b.checkNames.join(', ')}.` : ''}`, PLACEMENT_LIMITS.line),
+    line: capText(`"${b.label}" ${b.shape ? SHAPE_PHRASE[b.placement] ?? 'is placed' : PLACEMENT_TEXT[b.placement]?.line ?? 'is placed'} (${(b.layers ?? []).map((l) => l.layer).join(', ')}).${b.checkNames?.length ? ` Checks: ${b.checkNames.join(', ')}.` : ''}`, PLACEMENT_LIMITS.line),
   }));
 }
 
@@ -694,7 +813,7 @@ export function blockLines(result) {
  * decision model's input are all built from this one object.
  *
  * @param {PlacementResult} result A result from `placeCard`.
- * @returns {{ version: string, ok: boolean, complete: boolean, framework: string, counts: { blocks: number, open: number, errors: number }, blocks: object[], lines: string[], open: PlacementOpen[], notes: string[], errors: object[], truncated: boolean }} The summary.
+ * @returns {{ version: string, ok: boolean, complete: boolean, framework: string, counts: { blocks: number, open: number, errors: number }, blocks: object[], lines: string[], open: PlacementOpen[], offers: object[], notes: string[], errors: object[], truncated: boolean }} The summary.
  *
  * @example
  * blockSummary(placeCard(card)).counts; // => { blocks: 4, open: 0, errors: 0 }
@@ -728,6 +847,13 @@ export function blockSummary(result) {
       question: capText(q.question, L.question),
       options: (q.options ?? []).slice(0, L.options).map((o) => ({ id: o.id, label: capText(o.label, L.label), enabled: !!o.enabled, why: capText(o.why, L.why) })),
       chosen: q.chosen ?? null,
+    })),
+    offers: (Array.isArray(result?.offers) ? result.offers : []).slice(0, CARD_LIMITS.maxOptions).map((q) => ({
+      id: q.id,
+      question: capText(q.question, L.question),
+      options: (q.options ?? []).slice(0, L.options).map((o) => ({ id: o.id, label: capText(o.label, L.label), enabled: !!o.enabled, why: capText(o.why, L.why) })),
+      chosen: q.chosen ?? null,
+      default: q.default ?? null,
     })),
     notes: notes.slice(0, L.notes).map((n) => capText(n, L.note)),
     errors: errors.slice(0, L.notes).map((e) => ({ code: e.code, path: capText(e.path, L.label) })),

@@ -63,6 +63,19 @@ export function singularOf(name) {
 }
 
 /**
+ * The endpoint a shaped list fetches, from its unit name: `Products` is `/api/products`, `OrderItems` is `/api/order-items`.
+ *
+ * @param {string} name A PascalCase unit name.
+ * @returns {string} The path the generated service requests.
+ *
+ * @example
+ * endpointOf('OrderItems'); // => '/api/order-items'
+ */
+export function endpointOf(name) {
+  return `/api/${words(name).join('-').toLowerCase()}`;
+}
+
+/**
  * Read a `--fields` value: `name:type` pairs separated by commas (`id:string,name:string,price:number`). A type is `string`,
  * `number` or `boolean`; a name is camelCase and unique; an `id` field (the row key) is required.
  *
@@ -147,7 +160,7 @@ export function shapeContext(root, request) {
     request: { shape: request.shape, name: Name, feature: request.feature, entity: Entity, fields: fields.map((f) => `${f.name}:${f.type}`).join(',') },
     names, fields, title,
     plural: words(Name).join(' ').toLowerCase(), singular: words(Entity).join(' ').toLowerCase(), heading: words(Name).map(cap).join(' '),
-    endpoint: `/api/${words(Name).join('-').toLowerCase()}`,
+    endpoint: endpointOf(Name),
     useClient: framework !== 'react-spa',
   };
 }

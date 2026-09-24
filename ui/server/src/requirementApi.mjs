@@ -71,7 +71,7 @@ export function readRequirement(body, root) {
   const base = { ok: true, card, summary: { card: cardSummary(card), readBack: readBack(card).map((l) => l.line) } };
   // A word the lexicon does not know is a question first; nothing is placed until a person answers it.
   if (card.open.length) {
-    return { status: 200, body: { ...base, placement: null, plan: null, files: {}, open: card.open.map((item) => asQuestion('card', openQuestion(card, item))), warnings: [], summary: { ...base.summary, blocks: [] } } };
+    return { status: 200, body: { ...base, placement: null, plan: null, files: {}, open: card.open.map((item) => asQuestion('card', openQuestion(card, item))), offers: [], warnings: [], summary: { ...base.summary, blocks: [] } } };
   }
 
   let config;
@@ -83,7 +83,9 @@ export function readRequirement(body, root) {
   const placement = placeCard(card, { layers: config.layers, framework: config.project?.framework, answers: placementAnswers });
   const open = placement.open.map((q) => asQuestion('placement', q));
   const summary = { ...base.summary, blocks: blockLines(placement).map((l) => l.line) };
-  const out = { ...base, placement, plan: null, files: {}, open, warnings: [], summary };
+  // #619: the shape offer (q-shape) is a closed question that never holds the plan back, so it rides beside `open`, not in it.
+  const offers = (placement.offers ?? []).map((q) => asQuestion('placement', q));
+  const out = { ...base, placement, plan: null, files: {}, open, offers, warnings: [], summary };
   if (!placement.ok || !placement.complete) return { status: 200, body: out };
 
   const screen = placement.blocks.flatMap((b) => b.layers).find((l) => l.layer === 'page' || l.layer === 'controller')?.name ?? 'Requirement';
