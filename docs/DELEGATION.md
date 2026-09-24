@@ -67,6 +67,8 @@ CONTEXT: <files, recent commits, what is already done, what is out of scope>.
 DELIVERABLE: <one thing>, with tests that fail before the change.
 ACCEPTANCE: targeted tests pass; `packages/tools/dev/heavy.sh npm test` 0 fail;
   eslint clean; Playwright spec under ui/e2e/ run for real if a screen changed.
+AI-READY (any block or chain step): summary of fixed size, closed options with stable ids, attribution
+  recorded, rules-only fallback, replay-scorable; see docs/BLOCK-CONTRACT.md "AI-ready by design".
 FINISH: commit "[#N] <summary>", `git pull --rebase origin work/2026-09-23`,
   `git push origin HEAD:work/2026-09-23`; stop and report on a real conflict.
   Do not close the issue.

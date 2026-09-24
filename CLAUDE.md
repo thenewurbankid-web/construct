@@ -39,6 +39,10 @@ block's work?
 - Wrap OSS (permissive licenses only) by default; hand-build only the
   differentiators (rules/validator, plan/impact, narrator, test generator,
   approval gate, workspace containment).
+- AI-ready from the first line: every new block or chain step exposes a fixed-size summary, closed options
+  with stable ids, recorded attribution and a rules-only fallback, so the decision model (rules today, a small
+  trained model later) plugs in without rework (`docs/BLOCK-CONTRACT.md`, "AI-ready by design"). System 1 first:
+  deterministic rules and small classifiers before LLM reasoning.
 - Automate how we work: anything done by hand twice becomes a block or a
   script; board, changelog, docs and UI stay in sync by machinery.
 - Everything is switchable (Mechanical | AI per action, provider, mock |

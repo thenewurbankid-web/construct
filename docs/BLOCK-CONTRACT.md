@@ -252,3 +252,15 @@ export const result = compileChain([feature, unit], { 'app.feature': 'cart', 'ap
   "errors": []
 }
 ```
+
+
+## AI-ready by design (owner rule, 2026-09-24)
+
+The decision model (a rules baseline today, a small trained model later, see #633, #643, #645, #647) is part of the design of every block from the first line, not something added afterwards. A new block, chooser or chain step is not done until it is AI-ready:
+
+1. **A fixed-size summary** of its state and options that a person, an LLM and a decision model all receive (`chooserSummary`, `cardSummary`, `blockSummary` are the examples). No paths or secrets in it.
+2. **Closed options with stable ids.** Decisions are a choice among 2-5 named options, never free text; ids do not change between versions, so recorded choices stay valid.
+3. **Attribution and a trace.** Every choice records who made it (person, LLM, decision model, plugin) and, once #643 lands, is written as a `decision-trace.v1` record with its outcome.
+4. **A rules-only fallback.** The block works with no model, and any model-backed proposal goes through the decision-provider seam, suggests only and never executes.
+5. **Replay-scorable.** A provider can be scored on recorded traces of this block; the block never depends on a specific model.
+6. **Cheap on a small machine.** No model file is loaded unless the feature is enabled; the block reports what it needs (see the low-end tiers, #648).
