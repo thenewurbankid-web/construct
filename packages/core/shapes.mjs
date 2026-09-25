@@ -31,6 +31,7 @@ import { DETAIL_SHAPE } from './shape-detail.mjs';
 import { FORM_SHAPE } from './shape-form.mjs';
 import { DASHBOARD_SHAPE, dashboardBaseOf } from './shape-dashboard.mjs';
 import { WIZARD_SHAPE, parseSteps } from './shape-wizard.mjs';
+import { DEFAULT_STATES, STATES_SHAPES, readStates, stateNames, stateView, stateImports, stateComponentFiles, viewsOf } from './shape-states.mjs';
 
 const usage = (message) => new ConstructError(message, { exitCode: EXIT_CODES.USAGE_ERROR });
 
@@ -150,8 +151,8 @@ export function fieldsFromProperties(properties = []) {
  * and which of them is the title of a row. Throws a usage error for a bad name, entity or field list, before anything is written.
  *
  * @param {string} root Project root (its architecture.yml decides the framework).
- * @param {{ shape: string, name: string, feature: string, entity?: string, fields?: string, source?: string, steps?: string }} request The shape, the unit name (`Products`), the feature and the optional entity, fields, data source (`local`, `endpoint` (what none means) or `openapi`, #621) and, for the wizard, its steps (`details,review,done`).
- * @returns {object} The resolved context (`names`, `fields`, `title`, `entityPlural`, `steps` (the wizard's steps, else `null`), `endpoint`, `useClient`, `source`, `operation` (the OpenAPI operation of the `openapi` source, else `null`) and `store` (the identifiers of the local store)).
+ * @param {{ shape: string, name: string, feature: string, entity?: string, fields?: string, source?: string, steps?: string, states?: string }} request The shape, the unit name (`Products`), the feature and the optional entity, fields, data source (`local`, `endpoint` (what none means) or `openapi`, #621), for the wizard its steps (`details,review,done`) and, for a list, detail or dashboard, how its states are shown (`default` (what none means), `custom`, `skip-empty` or `skip-all`, #622).
+ * @returns {object} The resolved context (`names`, `fields`, `title`, `entityPlural`, `steps` (the wizard's steps, else `null`), `endpoint`, `useClient`, `source`, `operation` (the OpenAPI operation of the `openapi` source, else `null`), `store` (the identifiers of the local store), `states` (how the states are shown, #622), `views` (what each state shows: notice, custom or skip; `null` for a shape without fetch states) and `stateNames` (the custom state components, else `null`)).
  * @throws {Error} A usage error naming the problem.
  *
  * @example
@@ -176,6 +177,7 @@ export function shapeContext(root, request) {
   if (shape.inputFieldsOnly && !fields.some((f) => f.name !== 'id')) throw usage(`The ${request.shape} shape needs at least one field besides "id" (the server assigns it), for example id:string,name:string.`);
   if (request.shape === 'dashboard' && fields.some((f) => f.name === 'count')) throw usage('The dashboard shape keeps the number of rows in "count", so a field cannot be named that. Rename the field, for example itemCount.');
   const dataSource = readSource(request.source);
+  const states = readStates(request.states, request.shape);
   const wanted = operationOf(request.shape);
   const operation = dataSource === 'openapi' ? findEntityOperation(root, { kind: wanted.kind, plural: pluralOf(Entity) }) : null;
   if (dataSource === 'openapi' && !operation) {
@@ -184,7 +186,9 @@ export function shapeContext(root, request) {
   }
   const store = storeNames(request.shape, Name);
   const names = shape.names(Name, Entity);
-  const generated = [...Object.entries(names).filter(([role]) => role !== 'Name' && role !== 'Entity').map(([, identifier]) => identifier), ...(dataSource === 'local' ? [store.seed, store.op] : [])];
+  const views = STATES_SHAPES.includes(request.shape) ? viewsOf(states, request.shape) : null;
+  const customNames = states === 'custom' ? stateNames(Name, request.shape) : null;
+  const generated = [...Object.entries(names).filter(([role]) => role !== 'Name' && role !== 'Entity').map(([, identifier]) => identifier), ...(dataSource === 'local' ? [store.seed, store.op] : []), ...(customNames ? Object.values(customNames).filter((n) => typeof n === 'string' && !n.endsWith('Props')) : [])];
   const pool = [...generated, Entity, ...(shape.nameMayEqualEntity ? [] : [Name])];
   const clashes = pool.filter((n, i, all) => all.indexOf(n) !== i);
   if (clashes.length) throw usage(`The unit name "${Name}" and the entity "${Entity}" produce clashing names (${[...new Set(clashes)].join(', ')}); give the entity a different name with --entity.`);
@@ -193,8 +197,8 @@ export function shapeContext(root, request) {
   const config = loadConfig(root);
   const framework = config.project?.framework ?? 'nextjs';
   return {
-    request: { shape: request.shape, name: Name, feature: request.feature, entity: Entity, fields: fields.map((f) => `${f.name}:${f.type}`).join(','), source: dataSource, ...(steps ? { steps: steps.map((st) => st.name).join(',') } : {}) },
-    names, fields, title, source: dataSource, operation, store, steps,
+    request: { shape: request.shape, name: Name, feature: request.feature, entity: Entity, fields: fields.map((f) => `${f.name}:${f.type}`).join(','), source: dataSource, ...(states !== DEFAULT_STATES ? { states } : {}), ...(steps ? { steps: steps.map((st) => st.name).join(',') } : {}) },
+    names, fields, title, source: dataSource, operation, store, steps, states, views, stateNames: customNames,
     plural: words(Name).join(' ').toLowerCase(), singular: words(Entity).join(' ').toLowerCase(), entityPlural: words(pluralOf(Entity)).join(' ').toLowerCase(), heading: words(Name).map(cap).join(' '),
     endpoint: operation ? operation.url : shape.endpoint(Name, Entity),
     useClient: framework !== 'react-spa',
@@ -325,15 +329,17 @@ function noticeFile(ctx) {
 
 function expressionFile(ctx) {
   const { names, plural } = ctx;
+  const loading = stateView(ctx, 'loading', `<${names.notice} role="status" text="Loading ${plural}..." />`);
+  const failed = stateView(ctx, 'error', `<${names.notice} role="alert" text={state.message} />`);
   return lines(
     importLine('defineExpression'),
-    `import { ${names.list} } from '../components/${names.list}.component';`, `import { ${names.row} } from '../components/${names.row}.component';`, `import { ${names.notice} } from '../components/${names.notice}.component';`,
+    `import { ${names.list} } from '../components/${names.list}.component';`, `import { ${names.row} } from '../components/${names.row}.component';`, stateImports(ctx, ['loading', 'error']),
     `import type { ${names.state} } from '../types';`, '',
     `export interface ${names.expressionProps} {`, `  state: ${names.state};`, '}', '',
     `/** Decides what the ${plural} screen shows: a loading or error notice, its children when there are no rows, else the rows. */`,
     `export const ${names.expression} = defineExpression<${names.expressionProps}>('${names.expression}', ({ state, children }) => {`,
-    `  if (state.status === 'loading') return <${names.notice} role="status" text="Loading ${plural}..." />;`,
-    `  if (state.status === 'error') return <${names.notice} role="alert" text={state.message} />;`,
+    `  if (state.status === 'loading') return ${loading ?? '<></>'};`,
+    `  if (state.status === 'error') return ${failed ?? '<></>'};`,
     '  if (state.items.length === 0) return <>{children}</>;',
     `  const rows = state.items.map((item) => <${names.row} key={String(item.id)} item={item} />);`,
     `  return <${names.list}>{rows}</${names.list}>;`, '});',
@@ -342,13 +348,14 @@ function expressionFile(ctx) {
 
 function pageFile(ctx) {
   const { names, plural, heading } = ctx;
+  const empty = stateView(ctx, 'empty', `<${names.notice} role="status" text="No ${plural} yet." />`);
   return lines(
     importLine('definePage'),
-    `import { ${names.notice} } from '../components/${names.notice}.component';`, `import { ${names.expression} } from '../expressions/${names.expression}.expression';`, `import type { ${names.state} } from '../types';`, '',
+    stateImports(ctx, ['empty']), `import { ${names.expression} } from '../expressions/${names.expression}.expression';`, `import type { ${names.state} } from '../types';`, '',
     `export interface ${names.pageProps} {`, `  state: ${names.state};`, '}', '',
     `/** The ${plural} screen, from props: a heading, and the list with its loading, empty and error states. */`,
     `export const ${names.page} = definePage<${names.pageProps}>('${names.page}', ({ state }) => (`,
-    '  <main>', `    <h1>${heading}</h1>`, `    <${names.expression} state={state}>`, `      <${names.notice} role="status" text="No ${plural} yet." />`, `    </${names.expression}>`, '  </main>', '));',
+    '  <main>', `    <h1>${heading}</h1>`, empty ? [`    <${names.expression} state={state}>`, `      ${empty}`, `    </${names.expression}>`] : `    <${names.expression} state={state} />`, '  </main>', '));',
   );
 }
 
@@ -404,7 +411,7 @@ export const SHAPES = Object.freeze({
       component: [
         { folder: 'components', base: `${ctx.names.row}.component.tsx`, content: rowFile(ctx) },
         { folder: 'components', base: `${ctx.names.list}.component.tsx`, content: listFile(ctx) },
-        { folder: 'components', base: `${ctx.names.notice}.component.tsx`, content: noticeFile(ctx) },
+        ...stateComponentFiles(ctx, noticeFile),
       ],
       page: [
         { folder: 'pages', base: `${ctx.names.page}.page.tsx`, content: pageFile(ctx) },

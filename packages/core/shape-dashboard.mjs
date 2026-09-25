@@ -11,6 +11,7 @@
 // (one per number field, at most MAX_PANELS, listing sum, average and highest); the hook holds loading, ready and error in tracked state; the page
 // composes the tile row and the panels from props, and imports no service. Nothing is charted, stored or routed between panels.
 import { cap, importLine, labelOf, lines, lowerFirst, operationComment, rowText, sampleRows, ts, words } from './shape-kit.mjs';
+import { stateComponentFiles, stateImports, stateView } from './shape-states.mjs';
 
 /** Most tiles a dashboard shows: the count and up to three more (one per number field, then one per yes or no field). */
 export const MAX_TILES = 4;
@@ -317,15 +318,17 @@ function panelListFile(ctx) {
 /** @returns {string} `expressions/<Name>ByStatus.expression.tsx`: the branches (loading, error, ready with its tiles and panels). */
 function expressionFile(ctx) {
   const { names, plural } = ctx;
+  const loading = stateView(ctx, 'loading', `<${names.notice} role="status" text="Loading ${plural}..." />`);
+  const failed = stateView(ctx, 'error', `<${names.notice} role="alert" text={state.message} />`);
   return lines(
     importLine('defineExpression'),
-    `import { ${names.notice} } from '../components/${names.notice}.component';`, `import { ${names.panelList} } from './${names.panelList}.expression';`, `import { ${names.tileRow} } from './${names.tileRow}.expression';`,
+    stateImports(ctx, ['loading', 'error']), `import { ${names.panelList} } from './${names.panelList}.expression';`, `import { ${names.tileRow} } from './${names.tileRow}.expression';`,
     `import type { ${names.state} } from '../types';`, '',
     `export interface ${names.expressionProps} {`, `  state: ${names.state};`, '}', '',
     `/** Decides what the ${plural} screen shows: a loading or error notice, else the row of tiles and the panels, then its children. */`,
     `export const ${names.expression} = defineExpression<${names.expressionProps}>('${names.expression}', ({ state, children }) => {`,
-    `  if (state.status === 'loading') return <${names.notice} role="status" text="Loading ${plural}..." />;`,
-    `  if (state.status === 'error') return <${names.notice} role="alert" text={state.message} />;`,
+    `  if (state.status === 'loading') return ${loading ?? '<></>'};`,
+    `  if (state.status === 'error') return ${failed ?? '<></>'};`,
     '  return (', '    <>', `      <${names.tileRow} tiles={state.tiles} />`, `      <${names.panelList} panels={state.panels} />`, '      {children}', '    </>', '  );', '});',
   );
 }
@@ -390,7 +393,7 @@ export const DASHBOARD_SHAPE = Object.freeze({
       { folder: 'components', base: `${ctx.names.tiles}.component.tsx`, content: tilesFile(ctx) },
       { folder: 'components', base: `${ctx.names.panel}.component.tsx`, content: panelFile(ctx) },
       { folder: 'components', base: `${ctx.names.line}.component.tsx`, content: lineFile(ctx) },
-      { folder: 'components', base: `${ctx.names.notice}.component.tsx`, content: noticeFile(ctx) },
+      ...stateComponentFiles(ctx, noticeFile),
     ],
     page: [
       { folder: 'pages', base: `${ctx.names.page}.page.tsx`, content: pageFile(ctx) },

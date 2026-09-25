@@ -17,6 +17,7 @@ import { sampleValue, shownValue, typedValue } from './proof-screens.mjs';
 import { dealFields } from './shape-wizard.mjs';
 import { inputFieldsOf } from './shape-form.mjs';
 import { cap, kebab, labelOf } from './shape-kit.mjs';
+import { proofViews, skippedInBrowser } from './shape-states.mjs';
 
 /**
  * @typedef {{ header: (extra: string, command: string) => string[], command: string, run: string, lit: (value: string) => string, rowLiteral: (row: object) => string }} BrowserKit
@@ -124,6 +125,7 @@ export function detailBrowserText(ctx, route, kit) {
   const { lit } = kit;
   const Name = ctx.names.Name;
   const [item] = ctx.rows;
+  const pv = proofViews(ctx);
   const L = [
     ...kit.header('shape detail, kind playwright', kit.command),
     ...intro(kit, [
@@ -151,11 +153,13 @@ export function detailBrowserText(ctx, route, kit) {
     '',
     ...openReads("'**' + ENDPOINT + '/*'", "START_URL + (START_URL.includes('?') ? '&' : '?') + 'id=' + encodeURIComponent(String(ITEM.id))"),
     '',
-    `test(${lit(`${Name} screen: loading, then the item with every field`)}, async ({ page }) => {`,
+    `test(${lit(`${Name} screen: ${pv.loading === 'shown' ? 'loading, then ' : ''}the item with every field`)}, async ({ page }) => {`,
+    ...(pv.loading === 'shown' ? [
     ...GATE,
     '  await open(page, { status: 200, body: ITEM }, gate);',
     "  await expect.poll(() => stateOf(page)).toBe('loading');",
     '  release();',
+    ] : ['  await open(page, { status: 200, body: ITEM });']),
     "  await expect.poll(() => stateOf(page)).toBe('ready');",
     `  await expectMarkup(page, 'The heading', ${lit(`<h1>${cap(ctx.singular)} details</h1>`)});`,
     '  const shown: [string, string, string][] = [',
@@ -167,17 +171,21 @@ export function detailBrowserText(ctx, route, kit) {
     '  }',
     '});',
     '',
+    ...(pv.empty === 'shown' ? [
     `test(${lit(`${Name} screen: the not-found state`)}, async ({ page }) => {`,
     '  await open(page, { status: 404, body: {} });',
     "  await expect.poll(() => stateOf(page)).toBe('not-found');",
     "  await expectMarkup(page, 'The not-found notice', '<p role=\"status\">' + NOT_FOUND_TEXT + '</p>');",
     '});',
+    ] : skippedInBrowser('not-found')),
     '',
+    ...(pv.error === 'shown' ? [
     `test(${lit(`${Name} screen: the error state, with role alert`)}, async ({ page }) => {`,
     '  await open(page, { status: 500, body: {} });',
     "  await expect.poll(() => stateOf(page)).toBe('error');",
     "  await expect(page.getByRole('alert')).toHaveText(ERROR_TEXT);",
     '});',
+    ] : skippedInBrowser('error')),
   ];
   return `${L.join('\n')}\n`;
 }
@@ -201,6 +209,7 @@ export function dashboardBrowserText(ctx, route, kit) {
   const Name = ctx.names.Name;
   const { summary, tiles, panels, tileHtml, lineHtml } = dashboardExpectations(ctx);
   const literalOf = (value) => (value !== null && typeof value === 'object' ? `{ ${Object.entries(value).map(([k, v]) => `${k}: ${literalOf(v)}`).join(', ')} }` : typeof value === 'string' ? lit(value) : String(value));
+  const pv = proofViews(ctx);
   const L = [
     ...kit.header('shape dashboard, kind playwright', kit.command),
     ...intro(kit, [
@@ -226,11 +235,13 @@ export function dashboardBrowserText(ctx, route, kit) {
     '',
     ...openReads("'**' + ENDPOINT", 'START_URL'),
     '',
-    `test(${lit(`${Name} screen: loading, then every tile and every panel`)}, async ({ page }) => {`,
+    `test(${lit(`${Name} screen: ${pv.loading === 'shown' ? 'loading, then ' : ''}every tile and every panel`)}, async ({ page }) => {`,
+    ...(pv.loading === 'shown' ? [
     ...GATE,
     '  await open(page, { status: 200, body: SUMMARY }, gate);',
     "  await expect.poll(() => stateOf(page)).toBe('loading');",
     '  release();',
+    ] : ['  await open(page, { status: 200, body: SUMMARY });']),
     "  await expect.poll(() => stateOf(page)).toBe('ready');",
     `  await expectMarkup(page, 'The heading', ${lit(`<h1>${ctx.heading}</h1>`)});`,
     '  const tiles: [string, string][] = [',
@@ -246,11 +257,13 @@ export function dashboardBrowserText(ctx, route, kit) {
     '  }',
     '});',
     '',
+    ...(pv.error === 'shown' ? [
     `test(${lit(`${Name} screen: the error state, with role alert`)}, async ({ page }) => {`,
     '  await open(page, { status: 500, body: {} });',
     "  await expect.poll(() => stateOf(page)).toBe('error');",
     "  await expect(page.getByRole('alert')).toHaveText(ERROR_TEXT);",
     '});',
+    ] : skippedInBrowser('error')),
   ];
   return `${L.join('\n')}\n`;
 }

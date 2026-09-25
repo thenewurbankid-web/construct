@@ -62,7 +62,7 @@ test('the plan flows: create.proof and test.proof are registered, typed, and the
   const create = PLAN_FLOWS['create.proof'];
   assert.equal(create.writes, true);
   assert.deepEqual(create.executors, ['deterministic', 'user'], 'no model in a proof');
-  assert.deepEqual(Object.keys(create.args), ['name', 'feature', 'shape', 'entity', 'fields', 'steps', 'source', 'kind', 'route', 'dir']);
+  assert.deepEqual(Object.keys(create.args), ['name', 'feature', 'shape', 'entity', 'fields', 'steps', 'states', 'source', 'kind', 'route', 'dir']);
   const verify = PLAN_FLOWS['test.proof'];
   assert.equal(verify.writes, false, 'the verification is read-only');
   assert.deepEqual(verify.executors, ['deterministic']);
@@ -176,7 +176,7 @@ test('a plan for a card without the shape has no proof; proof: false leaves a sh
   const plain = planFromBlocks(placeCard(cardOf('A user wants to see a list of products'), { framework: 'react-spa' }).blocks, { feature: 'products', root: dir });
   assert.deepEqual([plain.proof, plain.notes, plain.plan.steps.length], [null, [], 3]);
   const shaped = planIn(dir, { proof: false, wire: false });
-  assert.deepEqual([shaped.proof, shaped.wiring, shaped.offers.map((o) => o.id), shaped.plan.steps.length], [null, null, ['q-source'], 7], 'the data source is asked whether or not the plan is wired');
+  assert.deepEqual([shaped.proof, shaped.wiring, shaped.offers.map((o) => o.id), shaped.plan.steps.length], [null, null, ['q-source', 'q-states'], 7], 'the data source is asked whether or not the plan is wired');
   assert.equal(planIn(dir, { proof: false }).plan.steps.length, 11, '#654 and #632: the dependency, sync, route and type-check steps are planned unless wire: false');
 });
 

@@ -403,7 +403,7 @@ test('several shaped screens in one plan each get their own question, q-source-<
 
 test('planFromBlocks needs no wiring to ask the question, and a plan for a card that has no shape asks nothing', () => {
   const dir = shapeProject();
-  assert.deepEqual(planOf(dir, { wire: false, proof: false }).offers.map((o) => o.id), ['q-source']);
+  assert.deepEqual(planOf(dir, { wire: false, proof: false }).offers.map((o) => o.id), ['q-source', 'q-states']);
   const plain = planFromBlocks(placeCard(cardOf(LIST), { framework: 'react-spa' }).blocks, { feature: 'shop', root: dir });
   assert.deepEqual([plain.offers, plain.plan.steps.some((s) => 'source' in s.args)], [[], false]);
   assert.deepEqual(planTouches(planOf(dir).plan).files.filter((f) => f.path.includes('Store')).map((f) => f.path), ['features/shop/domain/ProductsStore.domain.ts']);

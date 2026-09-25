@@ -6,6 +6,7 @@
 // proof.mjs owns the file, the header and the helpers every proof shares; it passes them in as `kit`, so this file needs nothing from it.
 import { kebab, labelOf } from './shape-kit.mjs';
 import { inputFieldsOf } from './shape-form.mjs';
+import { proofViews, statesFlag } from './shape-states.mjs';
 
 /**
  * @typedef {{ header: (extra: string, command: string) => string[], expectLines: string[], fetchLines: string[], lit: (value: string) => string, rowLiteral: (row: object) => string, comment: (text: string) => string }} ProofKit
@@ -23,7 +24,6 @@ import { inputFieldsOf } from './shape-form.mjs';
  * sourceFlag({ source: 'local' }); // => ' --source local'
  */
 export const sourceFlag = (ctx) => (ctx.source === 'endpoint' ? '' : ` --source ${ctx.source}`);
-
 /**
  * How a value of the sample row reads on the details screen: a string as it is, a number by `String`, a boolean as Yes or No.
  *
@@ -55,7 +55,10 @@ export function detailProofText(ctx, request, relPath, kit) {
   const { lit } = kit;
   const Name = names.Name;
   const local = ctx.source === 'local';
-  const command = `construct create proof ${Name} --feature ${request.feature} --shape detail --entity ${names.Entity} --fields ${ctx.request.fields}${sourceFlag(ctx)}`;
+  const command = `construct create proof ${Name} --feature ${request.feature} --shape detail --entity ${names.Entity} --fields ${ctx.request.fields}${sourceFlag(ctx)}${statesFlag(ctx)}`;
+  const pv = proofViews(ctx);
+  // #622: a state with no view (`skip-empty`, `skip-all`) is proven to show nothing, so a skip is a checked choice, never an unproven gap.
+  const wants = (kind, shown) => (pv[kind] === 'shown' ? shown : 'nothing');
   const [item] = rows;
   const lineOf = (f) => `[${lit(`<dt>${labelOf(f.name)}</dt>`)}, ${lit(`<dd>${shownValue(f, item[f.name])}</dd>`)}]`;
   const localServiceTests = [
@@ -133,12 +136,12 @@ export function detailProofText(ctx, request, relPath, kit) {
     ...kit.fetchLines,
     `const ask = (id: string = String(ITEM.id)) => ${names.fetch}({ id, signal: new AbortController().signal });`,
     '',
-    `test(${lit(`${Name} screen: the loading state`)}, () => {`,
-    "  expectState('The page given status loading', 'loading', stateOf(render({ status: 'loading' })));",
+    `test(${lit(`${Name} screen: the loading state${pv.loading === 'shown' ? '' : ' shows nothing (skipped)'}`)}, () => {`,
+    `  expectState('The page given status loading', '${wants('loading', 'loading')}', stateOf(render({ status: 'loading' })));`,
     '});',
     '',
-    `test(${lit(`${Name} screen: the not-found state`)}, () => {`,
-    "  expectState('The page given status not-found', 'not-found', stateOf(render({ status: 'not-found' })));",
+    `test(${lit(`${Name} screen: the not-found state${pv.empty === 'shown' ? '' : ' shows nothing (skipped)'}`)}, () => {`,
+    `  expectState('The page given status not-found', '${wants('empty', 'not-found')}', stateOf(render({ status: 'not-found' })));`,
     '});',
     '',
     `test(${lit(`${Name} screen: the ready state, with every field label and value`)}, () => {`,
@@ -150,15 +153,15 @@ export function detailProofText(ctx, request, relPath, kit) {
     "  shown.forEach((parts) => parts.forEach((part) => expectShown('The item', html, part)));",
     '});',
     '',
-    `test(${lit(`${Name} screen: the error state, with role alert`)}, () => {`,
+    `test(${lit(`${Name} screen: the error state${pv.error === 'shown' ? ', with role alert' : ' shows nothing (skipped)'}`)}, () => {`,
     "  const html = render({ status: 'error', message: ERROR_TEXT });",
-    "  expectState('The page given an error', 'error', stateOf(html));",
-    "  expectShown('The error', html, ERROR_TEXT);",
+    `  expectState('The page given an error', '${wants('error', 'error')}', stateOf(html));`,
+    pv.error === 'shown' ? "  expectShown('The error', html, ERROR_TEXT);" : "  assert.equal(html.includes(ERROR_TEXT), false, 'a skipped error state does not show the message');",
     '});',
     '',
     `test(${lit(`${Name} controller: renders the loading state first`)}, () => {`,
     `  const html = renderToString(createElement(${names.controller}, { id: String(ITEM.id) }));`,
-    "  expectState('The controller on its first render', 'loading', stateOf(html));",
+    `  expectState('The controller on its first render', '${wants('loading', 'loading')}', stateOf(html));`,
     "  assert.equal(html, render({ status: 'loading' }), 'the controller hands the hook state to the page and adds nothing');",
     `  assert.equal(renderToString(createElement(${names.controller}, {})), html, 'with no id prop it reads the address after the first render, so the first render is the same');`,
     '});',

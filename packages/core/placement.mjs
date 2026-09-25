@@ -29,6 +29,7 @@ import { flowBlock } from './block-flows.mjs';
 import { SHAPES, FORM_VERBS, singularOf, pluralOf, fieldsFromProperties, endpointOf } from './shapes.mjs';
 import { DASHBOARD_WORDS } from './shape-dashboard.mjs';
 import { DEFAULT_STEPS, WIZARD_WORDS, stepsOffer, STEPS_QUESTION_ID } from './shape-wizard.mjs';
+import { DEFAULT_STATES, STATES_QUESTION_ID, statesOffer } from './shape-states.mjs';
 import { detectPlaywright, PLAYWRIGHT_SHAPES } from './proof.mjs';
 import { sourceOffer, operationOf, SOURCE_QUESTION_ID } from './shape-source.mjs';
 import { routePathOf, routeOffer, syncTouches, dependencyOffer, ROUTE_QUESTION_ID, DEPENDENCY_QUESTION_ID, CONSTRUCT_CORE_PACKAGE } from './wiring.mjs';
@@ -113,6 +114,7 @@ export const PLACEMENT_ERROR_CODES = Object.freeze({
   PLAN_ROOT_REQUIRED: 'PLAN_ROOT_REQUIRED',
   PLAN_SOURCE_UNAVAILABLE: 'PLAN_SOURCE_UNAVAILABLE',
   PLAN_STEPS_UNAVAILABLE: 'PLAN_STEPS_UNAVAILABLE',
+  PLAN_STATES_UNAVAILABLE: 'PLAN_STATES_UNAVAILABLE',
   PLAN_DECISIONS_INVALID: 'PLAN_DECISIONS_INVALID',
   PLAN_TOUCHES_UNKNOWN: 'PLAN_TOUCHES_UNKNOWN',
   PLAN_INVALID: 'PLAN_INVALID',
@@ -890,6 +892,9 @@ export function checkPlacementImports(blocks, layers = DEFAULT_LAYERS) {
 const NAME_RE = /^[A-Za-z][A-Za-z0-9]*$/;
 const FEATURE_RE = /^[A-Za-z][A-Za-z0-9_-]*$/;
 
+/** The `states` argument of a shaped step (#622): nothing for the default (a plan that predates `q-states` is unchanged), else the answer. */
+const statesArg = (states) => (states && states !== DEFAULT_STATES ? { states } : {});
+
 /**
  * Compile placed blocks to an ordinary plan: `create.feature` then one `create.unit` per distinct (layer, name), in layer
  * order, each depending on the feature and on the units it imports, with `touches` derived by block-flows.mjs (plan-touches.mjs)
@@ -908,12 +913,15 @@ const FEATURE_RE = /^[A-Za-z][A-Za-z0-9_-]*$/;
  * A card that calls for a secret or a redirect allow-list (`options.card`, #632) adds one `add.env` step per named variable, each behind a closed
  * question (`q-env`, or `q-env-<name>`: add | skip), and a wired shaped plan adds `check.types` (and `check.build`) after the wiring and before the proof behind the
  * closed question `q-verify` (types | types-build | none, default types). `env` lists the variables and their steps; `verify` the two step ids.
+ * A list, detail or dashboard screen also asks how it shows its loading, empty (or not-found) and error states (#622, `q-states`, or `q-states-<name>`:
+ * default | custom | skip-empty | skip-all, default `default`); a skipping answer adds a line to `warnings`, and a non-default answer rides on the screen's
+ * steps as `states`.
  *
  * @param {{ feature: string, root: string, title?: string, decisions?: PlacementDecision[], proof?: boolean, wire?: boolean, verify?: boolean, card?: object, answers?: Record<string, string | { option: string }> }} options The feature the units go in, the
  *   project root (its architecture.yml decides the folders), an optional ticket title, the attribution to carry, `proof: false` to leave
  *   the proof steps out of a shaped plan (default: they are planned), `wire: false` to leave out the wiring, the environment variables and the verification, `verify: false` to
  *   leave out only the verification, `card` (the requirement card the blocks came from) to name the environment variables its checks call for, and `answers` to the closed questions of the plan.
- * @returns {{ ok: true, plan: object, decisions: PlacementDecision[], files: Record<string, string[]>, proof: object | null, offers: object[], wiring: object | null, env: { variable: string, scope: string, question: string, step: string | null }[], verify: { types: string | null, build: string | null } | null, notes: string[], errors: [] } | { ok: false, plan: null, decisions: [], files: {}, errors: PlacementError[] }}
+ * @returns {{ ok: true, plan: object, decisions: PlacementDecision[], files: Record<string, string[]>, proof: object | null, offers: object[], wiring: object | null, env: { variable: string, scope: string, question: string, step: string | null }[], verify: { types: string | null, build: string | null } | null, notes: string[], warnings: string[], errors: [] } | { ok: false, plan: null, decisions: [], files: {}, errors: PlacementError[] }}
  *   The plan, who decided what, the files per block and the proof of the chain, or every problem found.
  *
  * @example
@@ -941,8 +949,8 @@ export function planFromBlocks(blocks, options = {}) {
     if (!isPlainObject(block) || !isNonEmptyString(block.id) || !Array.isArray(block.layers)) { push('PLAN_BLOCK_INVALID', at, 'A block must be an object { id, placement, layers[] }.'); return; }
     if (!PLACEMENTS.includes(block.placement)) { push('PLAN_PLACEMENT_UNKNOWN', `${at}.placement`, `Unsupported placement ${JSON.stringify(block.placement)}. Supported: ${PLACEMENTS.join(', ')}.`); return; }
     const shape = block.shape;
-    if (shape !== undefined && !(isPlainObject(shape) && PLAN_SHAPES.includes(shape.name) && isNonEmptyString(shape.entity) && isNonEmptyString(shape.fields) && (shape.steps === undefined || isNonEmptyString(shape.steps)))) {
-      push('PLAN_BLOCK_INVALID', `${at}.shape`, `A block's shape must be { name: ${PLAN_SHAPES.join('|')}, entity, fields, steps? }.`);
+    if (shape !== undefined && !(isPlainObject(shape) && PLAN_SHAPES.includes(shape.name) && isNonEmptyString(shape.entity) && isNonEmptyString(shape.fields) && (shape.steps === undefined || isNonEmptyString(shape.steps)) && (shape.states === undefined || isNonEmptyString(shape.states)))) {
+      push('PLAN_BLOCK_INVALID', `${at}.shape`, `A block's shape must be { name: ${PLAN_SHAPES.join('|')}, entity, fields, steps?, states? }.`);
       return;
     }
     block.layers.forEach((unit, j) => {
@@ -985,6 +993,8 @@ export function planFromBlocks(blocks, options = {}) {
   // never holds the plan back. The answer rides on every step of the screen (`source`), so the plan says what will be written.
   const sourceOf = new Map();
   const stepsOf = new Map();
+  const statesOf = new Map();
+  const warnings = [];
   const sourceNotes = [];
   const shapedNames = [...new Set(ordered.filter((u) => u.shape).map((u) => u.name))];
   for (const name of shapedNames) {
@@ -1012,6 +1022,20 @@ export function planFromBlocks(blocks, options = {}) {
         stepsOf.set(name, asked.steps);
       }
     }
+    // #622: how a list, detail or dashboard screen shows its loading, empty (or not-found) and error states is a closed question too (`q-states`, or
+    // `q-states-<name>`): default views, a component of its own for each, or a skip (which warns). An unanswered question uses the default, so it never
+    // holds the plan back; the form and the wizard have no fetch states and are not asked. A default answer is left out of the steps' arguments, so a plan
+    // that predates the question is unchanged.
+    const statesQuestionId = shapedNames.length === 1 ? STATES_QUESTION_ID : `${STATES_QUESTION_ID}-${name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase()}`;
+    const shown = statesOffer({ unit: name, shape: shape.name, current: shape.states, answer: answers[statesQuestionId] });
+    if (shown) {
+      if (shown.refused) push('PLAN_STATES_UNAVAILABLE', `answers.${statesQuestionId}`, shown.refused);
+      shown.question.id = statesQuestionId;
+      offers.push(shown.question);
+      record(shown.question, answers[statesQuestionId]);
+      statesOf.set(name, shown.states);
+      if (shown.warning) warnings.push(shown.warning);
+    }
   }
   const featureStep = add('create.feature', `Create feature ${opts.feature}`, { name: opts.feature }, [], 'The slice every unit below goes into.');
   for (const u of ordered) {
@@ -1020,7 +1044,7 @@ export function planFromBlocks(blocks, options = {}) {
     // #619: a shaped unit carries the shape, its entity and its fields (the CLI's --shape/--entity/--fields), and waits for the
     // units of the same shape that it imports or takes its types from.
     if (u.shape) for (const need of SHAPES[u.shape.name].requires[u.layer] ?? []) if (stepOf.has(`${need}:${u.name}`)) deps.add(stepOf.get(`${need}:${u.name}`));
-    const shapeArgs = u.shape ? { shape: u.shape.name, entity: u.shape.entity, fields: u.shape.fields, ...(stepsOf.get(u.name) ?? u.shape.steps ? { steps: stepsOf.get(u.name) ?? u.shape.steps } : {}), source: sourceOf.get(u.name) } : {};
+    const shapeArgs = u.shape ? { shape: u.shape.name, entity: u.shape.entity, fields: u.shape.fields, ...(stepsOf.get(u.name) ?? u.shape.steps ? { steps: stepsOf.get(u.name) ?? u.shape.steps } : {}), ...statesArg(statesOf.get(u.name)), source: sourceOf.get(u.name) } : {};
     const id = add('create.unit', `Create ${u.layer} ${u.name}`, { layer: u.layer, name: u.name, feature: opts.feature, ...shapeArgs }, [...deps].sort(idOrder), u.why);
     stepOf.set(`${u.layer}:${u.name}`, id);
   }
@@ -1096,7 +1120,7 @@ export function planFromBlocks(blocks, options = {}) {
   const playwrightConfig = detectPlaywright(opts.root ?? '');
   if (opts.proof !== false) {
     for (const [name, { shape, unitSteps }] of shaped) {
-      const base = { name, feature: opts.feature, shape: shape.name, entity: shape.entity, fields: shape.fields, ...(stepsOf.get(name) ?? shape.steps ? { steps: stepsOf.get(name) ?? shape.steps } : {}), source: sourceOf.get(name) };
+      const base = { name, feature: opts.feature, shape: shape.name, entity: shape.entity, fields: shape.fields, ...(stepsOf.get(name) ?? shape.steps ? { steps: stepsOf.get(name) ?? shape.steps } : {}), ...statesArg(statesOf.get(name)), source: sourceOf.get(name) };
       const after = [...new Set([...unitSteps, ...wiringSteps])].sort(idOrder);
       const render = add('create.proof', `Prove the ${name} screen`, { ...base, kind: 'render' }, after, 'A screen is not done until something shows it behaves: its states, its controller and its service.');
       const verify = add('test.proof', `Run the proof of ${name}`, { feature: opts.feature, name: `${name}Screen.proof.test.ts` }, [render], 'Read-only: pass, or a classified failure (the app behaved differently, or the harness lost a file). The chain is complete when this is green or explicitly skipped.');
@@ -1135,7 +1159,7 @@ export function planFromBlocks(blocks, options = {}) {
   const proof = proofSteps.length
     ? { required: true, complete: false, state: 'pending', steps: proofSteps, verifiedBy: proofSteps.map((p) => p.verifiedBy), playwright: { configured: playwrightConfig !== null, config: playwrightConfig, skipped: playwrightNote } }
     : null;
-  return { ok: true, plan, decisions: [...decisions.map((d) => ({ ...d })), ...wiringDecisions], files, proof, offers, wiring, env: envPlan, verify: verification, notes, errors: [] };
+  return { ok: true, plan, decisions: [...decisions.map((d) => ({ ...d })), ...wiringDecisions], files, proof, offers, wiring, env: envPlan, verify: verification, notes, warnings, errors: [] };
 }
 
 // ---------------------------------------------------------------------------------------------------------------- summary

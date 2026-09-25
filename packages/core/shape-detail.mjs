@@ -8,6 +8,7 @@
 // The item is fetched by id (`GET /api/products/<id>`); the id comes from the controller's `id` prop, else from `?id=` in the address,
 // so the route entry (which renders the controller and nothing else) needs no route parameter. States: loading, not-found, ready, error.
 import { cap, importLine, labelOf, lines, lowerFirst, operationComment, rowText, sampleRows, ts } from './shape-kit.mjs';
+import { stateComponentFiles, stateImports, stateView } from './shape-states.mjs';
 
 /**
  * The identifiers of a detail shape, from its unit name and its entity: `Product` and `Product` give `useProduct`, `fetchProduct`,
@@ -178,16 +179,18 @@ function noticeFile(ctx) {
 /** @returns {string} `expressions/<Name>ByStatus.expression.tsx`: the branches (loading, not found, error, ready). */
 function expressionFile(ctx) {
   const { names, singular } = ctx;
+  const loading = stateView(ctx, 'loading', `<${names.notice} role="status" text="Loading ${singular}..." />`);
+  const failed = stateView(ctx, 'error', `<${names.notice} role="alert" text={state.message} />`);
   return lines(
     importLine('defineExpression'),
-    `import { ${names.details} } from '../components/${names.details}.component';`, `import { ${names.row} } from '../components/${names.row}.component';`, `import { ${names.notice} } from '../components/${names.notice}.component';`,
+    `import { ${names.details} } from '../components/${names.details}.component';`, `import { ${names.row} } from '../components/${names.row}.component';`, stateImports(ctx, ['loading', 'error']),
     `import type { ${names.state} } from '../types';`, '',
     `export interface ${names.expressionProps} {`, `  state: ${names.state};`, '}', '',
     `/** Decides what the ${singular} screen shows: a loading or error notice, its children when the ${singular} is not found, else the ${singular}'s fields. */`,
     `export const ${names.expression} = defineExpression<${names.expressionProps}>('${names.expression}', ({ state, children }) => {`,
-    `  if (state.status === 'loading') return <${names.notice} role="status" text="Loading ${singular}..." />;`,
+    `  if (state.status === 'loading') return ${loading ?? '<></>'};`,
     `  if (state.status === 'not-found') return <>{children}</>;`,
-    `  if (state.status === 'error') return <${names.notice} role="alert" text={state.message} />;`,
+    `  if (state.status === 'error') return ${failed ?? '<></>'};`,
     `  const rows = state.rows.map((entry) => <${names.row} key={entry.field} entry={entry} />);`,
     `  return <${names.details}>{rows}</${names.details}>;`, '});',
   );
@@ -196,13 +199,14 @@ function expressionFile(ctx) {
 /** @returns {string} `pages/<Name>Page.page.tsx`: the heading and the states, from props. */
 function pageFile(ctx) {
   const { names, singular } = ctx;
+  const empty = stateView(ctx, 'empty', `<${names.notice} role="status" text="${cap(singular)} not found." />`);
   return lines(
     importLine('definePage'),
-    `import { ${names.notice} } from '../components/${names.notice}.component';`, `import { ${names.expression} } from '../expressions/${names.expression}.expression';`, `import type { ${names.state} } from '../types';`, '',
+    stateImports(ctx, ['empty']), `import { ${names.expression} } from '../expressions/${names.expression}.expression';`, `import type { ${names.state} } from '../types';`, '',
     `export interface ${names.pageProps} {`, `  state: ${names.state};`, '}', '',
     `/** The ${singular} screen, from props: a heading, and the ${singular} with its loading, not-found and error states. */`,
     `export const ${names.page} = definePage<${names.pageProps}>('${names.page}', ({ state }) => (`,
-    '  <main>', `    <h1>${cap(singular)} details</h1>`, `    <${names.expression} state={state}>`, `      <${names.notice} role="status" text="${cap(singular)} not found." />`, `    </${names.expression}>`, '  </main>', '));',
+    '  <main>', `    <h1>${cap(singular)} details</h1>`, empty ? [`    <${names.expression} state={state}>`, `      ${empty}`, `    </${names.expression}>`] : `    <${names.expression} state={state} />`, '  </main>', '));',
   );
 }
 
@@ -236,7 +240,7 @@ export const DETAIL_SHAPE = Object.freeze({
     component: [
       { folder: 'components', base: `${ctx.names.row}.component.tsx`, content: rowFile(ctx) },
       { folder: 'components', base: `${ctx.names.details}.component.tsx`, content: detailsFile(ctx) },
-      { folder: 'components', base: `${ctx.names.notice}.component.tsx`, content: noticeFile(ctx) },
+      ...stateComponentFiles(ctx, noticeFile),
     ],
     page: [
       { folder: 'pages', base: `${ctx.names.page}.page.tsx`, content: pageFile(ctx) },

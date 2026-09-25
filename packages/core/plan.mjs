@@ -108,6 +108,14 @@ export const PLAN_SHAPES = Object.freeze(['list', 'detail', 'form', 'dashboard',
 export const PLAN_SOURCES = Object.freeze(['local', 'endpoint', 'openapi']);
 
 /**
+ * The ways a shaped `create.unit` / `create.layer` / `create.proof` step can show its screen's states with `states` (#622): `default` is what a step
+ * without one means. A test keeps this equal to `STATES_IDS` in `packages/core/shape-states.mjs` and to schemas/plan.v1.json.
+ *
+ * @type {readonly string[]}
+ */
+export const PLAN_STATES = Object.freeze(['default', 'custom', 'skip-empty', 'skip-all']);
+
+/**
  * The kinds of proof a `create.proof` step writes for a shaped screen (#623): `render` runs offline as a node test, `playwright` is
  * written only when the project already has a Playwright config. A test keeps this equal to `PROOF_KINDS` in `packages/core/proof.mjs`.
  *
@@ -121,6 +129,8 @@ const ENTITY_ARG = { type: 'string', flag: '--entity', description: 'The entity 
 const FIELDS_ARG = { type: 'string', flag: '--fields', description: 'The entity fields for a shape as name:type pairs, comma separated (id:string,name:string,price:number). Types: string, number, boolean; an id field is required (a form has no input for it: the server assigns it; a dashboard adds up the number fields and counts the boolean ones).' };
 // #628 -- the steps of a wizard shape. Additive: a wizard step without it has the default steps; another shape refuses it.
 const STEPS_ARG = { type: 'string', flag: '--steps', description: 'The steps of a wizard shape as names separated by commas (details,review,done, the default): lower-case words, two to six, each a state of the machine and a component; the fields are dealt to every step but the last, which shows them all and submits.' };
+// #622 -- how a list, detail or dashboard screen shows its states. Additive: a step without it is `default`, what every such screen was before.
+const STATES_ARG = { type: 'string', flag: '--states', enum: [...PLAN_STATES], description: 'How a list, detail or dashboard screen shows its loading, empty (or not-found) and error states (#622): default (a short message for each from one notice component; what a step without states does), custom (a component of its own for each state, for you to restyle), skip-empty (no view for the empty or not-found state; a warning; not for a dashboard) or skip-all (no view for any state; a warning). The typed state union never changes.' };
 // #621 -- where a shaped screen reads its data from. Additive: a step without it is `endpoint`, what every shaped step did before.
 const SOURCE_ARG = { type: 'string', flag: '--source', enum: [...PLAN_SOURCES], description: 'Where a shaped screen reads its data from (#621): local (a typed in-memory store with seed rows: the screen works with no backend), endpoint (fetch /api/<plural>, which must exist; what a step without a source does) or openapi (the address of the matching operation in the project\'s OpenAPI file, refused when there is none).' };
 
@@ -173,6 +183,7 @@ export const PLAN_FLOWS = Object.freeze({
       entity: ENTITY_ARG,
       fields: FIELDS_ARG,
       steps: STEPS_ARG,
+      states: STATES_ARG,
       source: SOURCE_ARG,
       llm: LLM_ARG,
       dir: DIR_ARG,
@@ -191,6 +202,7 @@ export const PLAN_FLOWS = Object.freeze({
       entity: ENTITY_ARG,
       fields: FIELDS_ARG,
       steps: STEPS_ARG,
+      states: STATES_ARG,
       source: SOURCE_ARG,
       llm: LLM_ARG,
       dir: DIR_ARG,
@@ -208,6 +220,7 @@ export const PLAN_FLOWS = Object.freeze({
       entity: ENTITY_ARG,
       fields: FIELDS_ARG,
       steps: STEPS_ARG,
+      states: STATES_ARG,
       source: SOURCE_ARG,
       kind: { type: 'string', flag: '--kind', enum: [...PLAN_PROOF_KINDS], description: 'render (a node test, offline; the default) or playwright (the route flow with a mocked API; needs a Playwright config already in the project).' },
       route: { type: 'string', flag: '--route', description: 'The route of the screen for a playwright proof, for example /products. Defaults to /.' },

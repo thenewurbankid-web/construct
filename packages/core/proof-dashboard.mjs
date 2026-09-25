@@ -7,6 +7,7 @@
 // proof.mjs owns the file, the header and the helpers every proof shares; it passes them in as `kit`, so this file needs nothing from it.
 import { sourceFlag } from './proof-screens.mjs';
 import { layoutOf, measuresOf } from './shape-dashboard.mjs';
+import { proofViews, statesFlag } from './shape-states.mjs';
 
 const show = (value) => String(Math.round(value * 100) / 100);
 
@@ -81,7 +82,10 @@ export function dashboardProofText(ctx, request, relPath, kit) {
   const { lit } = kit;
   const Name = names.Name;
   const local = ctx.source === 'local';
-  const command = `construct create proof ${Name} --feature ${request.feature} --shape dashboard --entity ${names.Entity} --fields ${ctx.request.fields}${sourceFlag(ctx)}`;
+  const command = `construct create proof ${Name} --feature ${request.feature} --shape dashboard --entity ${names.Entity} --fields ${ctx.request.fields}${sourceFlag(ctx)}${statesFlag(ctx)}`;
+  const pv = proofViews(ctx);
+  // #622: a state with no view (`skip-all`) is proven to show nothing, so a skip is a checked choice, never an unproven gap.
+  const wants = (kind, shown) => (pv[kind] === 'shown' ? shown : 'nothing');
   const { summary, tiles, panels, tileHtml, lineHtml } = dashboardExpectations(ctx);
   const numbers = measuresOf(ctx.fields).numbers;
   const flags = measuresOf(ctx.fields).flags;
@@ -163,14 +167,14 @@ export function dashboardProofText(ctx, request, relPath, kit) {
     ...kit.fetchLines,
     `const ask = () => ${names.fetch}({ signal: new AbortController().signal });`,
     '',
-    `test(${lit(`${Name} screen: the loading state`)}, () => {`,
-    "  expectState('The page given status loading', 'loading', stateOf(render({ status: 'loading' })));",
+    `test(${lit(`${Name} screen: the loading state${pv.loading === 'shown' ? '' : ' shows nothing (skipped)'}`)}, () => {`,
+    `  expectState('The page given status loading', '${wants('loading', 'loading')}', stateOf(render({ status: 'loading' })));`,
     '});',
     '',
-    `test(${lit(`${Name} screen: the error state, with role alert`)}, () => {`,
+    `test(${lit(`${Name} screen: the error state${pv.error === 'shown' ? ', with role alert' : ' shows nothing (skipped)'}`)}, () => {`,
     "  const html = render({ status: 'error', message: ERROR_TEXT });",
-    "  expectState('The page given an error', 'error', stateOf(html));",
-    "  expectMarkup('The error', html, ERROR_TEXT);",
+    `  expectState('The page given an error', '${wants('error', 'error')}', stateOf(html));`,
+    pv.error === 'shown' ? "  expectMarkup('The error', html, ERROR_TEXT);" : "  assert.equal(html.includes(ERROR_TEXT), false, 'a skipped error state does not show the message');",
     '});',
     '',
     `test(${lit(`${Name} screen: the ready state, with every tile and every panel`)}, () => {`,
@@ -198,7 +202,7 @@ export function dashboardProofText(ctx, request, relPath, kit) {
     '',
     `test(${lit(`${Name} controller: renders the loading state first`)}, () => {`,
     `  const html = renderToString(createElement(${names.controller}, {}));`,
-    "  expectState('The controller on its first render', 'loading', stateOf(html));",
+    `  expectState('The controller on its first render', '${wants('loading', 'loading')}', stateOf(html));`,
     "  assert.equal(html, render({ status: 'loading' }), 'the controller hands the hook state to the page and adds nothing');",
     '});',
     '',

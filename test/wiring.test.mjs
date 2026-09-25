@@ -176,7 +176,7 @@ test('a shaped plan: dependency, sync, route between the units and the proof; th
   assert.deepEqual(planned.plan.steps.slice(7).map((s) => `${s.id} ${s.flow}`), ['s8 add.dependency', 's9 sync', 's10 create.route', 's11 check.types', 's12 create.proof', 's13 test.proof']);
   assert.deepEqual(planned.plan.steps[8].touches, { features: ['products'], files: [{ path: 'features/products/index.ts', change: 'modify' }, { path: '.dependency-cruiser.cjs', change: 'create' }] });
   assert.deepEqual(planned.plan.steps[9].dependsOn, ['s7', 's9'], 'the route waits for the controller and for the barrel');
-  assert.deepEqual(planned.offers.map((o) => o.id), ['q-source', 'q-dependency', 'q-verify']);
+  assert.deepEqual(planned.offers.map((o) => o.id), ['q-source', 'q-states', 'q-dependency', 'q-verify']);
   assert.deepEqual(planned.decisions, [{ question: 'q-shape', option: 'list', by: 'person' }, { question: 'q-source', option: 'endpoint', by: 'person' }], 'an unanswered question records no decision');
 
   const skipDep = planIn(dir, { answers: { 'q-dependency': { option: 'skip', by: 'decision-model', provider: 'rules' } } });
@@ -186,7 +186,7 @@ test('a shaped plan: dependency, sync, route between the units and the proof; th
 
   addDependency(dir, { name: '@line/construct-core', version: '^0.9.0' });
   const has = planIn(dir);
-  assert.deepEqual([has.offers.map((o) => o.id), has.wiring.dependency, has.plan.steps.length], [['q-source', 'q-verify'], null, 12], 'a project that has the dependency is not asked');
+  assert.deepEqual([has.offers.map((o) => o.id), has.wiring.dependency, has.plan.steps.length], [['q-source', 'q-states', 'q-verify'], null, 12], 'a project that has the dependency is not asked');
 
   put(dir, 'src/App.tsx', "import { Routes, Route } from 'react-router-dom';\n\nexport const App = () => (\n  <Routes>\n    <Route path=\"/products\" element={<Other />} />\n  </Routes>\n);\n");
   const taken = planIn(dir);

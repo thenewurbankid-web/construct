@@ -456,6 +456,17 @@
                     "minLength": 1,
                     "description": "The steps of a wizard shape as names separated by commas (details,review,done, the default): lower-case words, two to six, each a state of the machine and a component; the fields are dealt to every step but the last, which shows them all and submits."
                   },
+                  "states": {
+                    "type": "string",
+                    "minLength": 1,
+                    "enum": [
+                      "default",
+                      "custom",
+                      "skip-empty",
+                      "skip-all"
+                    ],
+                    "description": "How a list, detail or dashboard screen shows its loading, empty (or not-found) and error states (#622): default (a short message for each from one notice component; what a step without states does), custom (a component of its own for each state, for you to restyle), skip-empty (no view for the empty or not-found state; a warning; not for a dashboard) or skip-all (no view for any state; a warning). The typed state union never changes."
+                  },
                   "source": {
                     "type": "string",
                     "minLength": 1,
@@ -555,6 +566,17 @@
                     "minLength": 1,
                     "description": "The steps of a wizard shape as names separated by commas (details,review,done, the default): lower-case words, two to six, each a state of the machine and a component; the fields are dealt to every step but the last, which shows them all and submits."
                   },
+                  "states": {
+                    "type": "string",
+                    "minLength": 1,
+                    "enum": [
+                      "default",
+                      "custom",
+                      "skip-empty",
+                      "skip-all"
+                    ],
+                    "description": "How a list, detail or dashboard screen shows its loading, empty (or not-found) and error states (#622): default (a short message for each from one notice component; what a step without states does), custom (a component of its own for each state, for you to restyle), skip-empty (no view for the empty or not-found state; a warning; not for a dashboard) or skip-all (no view for any state; a warning). The typed state union never changes."
+                  },
                   "source": {
                     "type": "string",
                     "minLength": 1,
@@ -650,6 +672,17 @@
                     "type": "string",
                     "minLength": 1,
                     "description": "The steps of a wizard shape as names separated by commas (details,review,done, the default): lower-case words, two to six, each a state of the machine and a component; the fields are dealt to every step but the last, which shows them all and submits."
+                  },
+                  "states": {
+                    "type": "string",
+                    "minLength": 1,
+                    "enum": [
+                      "default",
+                      "custom",
+                      "skip-empty",
+                      "skip-all"
+                    ],
+                    "description": "How a list, detail or dashboard screen shows its loading, empty (or not-found) and error states (#622): default (a short message for each from one notice component; what a step without states does), custom (a component of its own for each state, for you to restyle), skip-empty (no view for the empty or not-found state; a warning; not for a dashboard) or skip-all (no view for any state; a warning). The typed state union never changes."
                   },
                   "source": {
                     "type": "string",

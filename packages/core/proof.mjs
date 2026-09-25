@@ -25,6 +25,7 @@ import { isNonLayerPath, GENERATED_TESTS_GLOB, TESTS_GLOB } from './nonLayer.mjs
 import { shapeContext } from './shapes.mjs';
 import { cap, sampleRows } from './shape-kit.mjs';
 import { detailProofText, formProofText, sourceFlag } from './proof-screens.mjs';
+import { proofViews, skippedInBrowser, statesFlag } from './shape-states.mjs';
 import { dashboardProofText } from './proof-dashboard.mjs';
 import { wizardProofText } from './proof-wizard.mjs';
 import { dashboardBrowserText, detailBrowserText, formBrowserText, wizardBrowserText } from './proof-browser.mjs';
@@ -79,7 +80,7 @@ const rowLiteral = (row) => `{ ${Object.entries(row).map(([k, v]) => `${k}: ${li
 
 /** Everything a proof needs, from a shape request: the shape context plus the sample rows and the texts the screen shows. */
 function proofContext(root, request) {
-  const ctx = shapeContext(root, { shape: request.shape ?? 'list', name: request.name, feature: request.feature, entity: request.entity, fields: request.fields, source: request.source, steps: request.steps });
+  const ctx = shapeContext(root, { shape: request.shape ?? 'list', name: request.name, feature: request.feature, entity: request.entity, fields: request.fields, source: request.source, steps: request.steps, states: request.states });
   if (!request.feature) throw usage('A proof needs the feature its screen belongs to (--feature).');
   return {
     ...ctx, rows: sampleRows(ctx.names.Entity, ctx.fields), errorText: 'The server answered 500.',
@@ -155,7 +156,10 @@ function renderProofText(ctx, request, relPath) {
   const { names, fields, title, rows } = ctx;
   const Name = names.Name;
   const local = ctx.source === 'local';
-  const command = `construct create proof ${Name} --feature ${request.feature} --entity ${names.Entity} --fields ${ctx.request.fields}${sourceFlag(ctx)}`;
+  const command = `construct create proof ${Name} --feature ${request.feature} --entity ${names.Entity} --fields ${ctx.request.fields}${sourceFlag(ctx)}${statesFlag(ctx)}`;
+  const pv = proofViews(ctx);
+  // #622: a state with no view (`skip-empty`, `skip-all`) is proven to show nothing, so a skip is a checked choice, never an unproven gap.
+  const wants = (kind, shown) => (pv[kind] === 'shown' ? shown : 'nothing');
   const others = fields.filter((f) => f.name !== 'id' && f !== title);
   const shown = (row) => [`<strong>${row[title.name]}</strong>`, ...others.map((f) => `<span>${f.name}: ${row[f.name]}</span>`)];
   const localServiceTests = [
@@ -222,12 +226,12 @@ function renderProofText(ctx, request, relPath) {
     ...FETCH_LINES,
     `const ask = () => ${names.fetch}({ signal: new AbortController().signal });`,
     '',
-    `test(${lit(`${Name} screen: the loading state`)}, () => {`,
-    "  expectState('The page given status loading', 'loading', stateOf(render({ status: 'loading' })));",
+    `test(${lit(`${Name} screen: the loading state${pv.loading === 'shown' ? '' : ' shows nothing (skipped)'}`)}, () => {`,
+    `  expectState('The page given status loading', '${wants('loading', 'loading')}', stateOf(render({ status: 'loading' })));`,
     '});',
     '',
-    `test(${lit(`${Name} screen: the empty state`)}, () => {`,
-    "  expectState('The page given no rows', 'empty', stateOf(render({ status: 'ready', items: [] })));",
+    `test(${lit(`${Name} screen: the empty state${pv.empty === 'shown' ? '' : ' shows nothing (skipped)'}`)}, () => {`,
+    `  expectState('The page given no rows', '${wants('empty', 'empty')}', stateOf(render({ status: 'ready', items: [] })));`,
     '});',
     '',
     `test(${lit(`${Name} screen: the items, with every field value`)}, () => {`,
@@ -239,15 +243,15 @@ function renderProofText(ctx, request, relPath) {
     "  shown.forEach((parts, i) => parts.forEach((part) => expectShown('Row ' + (i + 1), html, part)));",
     '});',
     '',
-    `test(${lit(`${Name} screen: the error state, with role alert`)}, () => {`,
+    `test(${lit(`${Name} screen: the error state${pv.error === 'shown' ? ', with role alert' : ' shows nothing (skipped)'}`)}, () => {`,
     "  const html = render({ status: 'error', message: ERROR_TEXT });",
-    "  expectState('The page given an error', 'error', stateOf(html));",
-    "  expectShown('The error', html, ERROR_TEXT);",
+    `  expectState('The page given an error', '${wants('error', 'error')}', stateOf(html));`,
+    pv.error === 'shown' ? "  expectShown('The error', html, ERROR_TEXT);" : "  assert.equal(html.includes(ERROR_TEXT), false, 'a skipped error state does not show the message');",
     '});',
     '',
     `test(${lit(`${Name} controller: renders the loading state first`)}, () => {`,
     `  const html = renderToString(createElement(${names.controller}, {}));`,
-    "  expectState('The controller on its first render', 'loading', stateOf(html));",
+    `  expectState('The controller on its first render', '${wants('loading', 'loading')}', stateOf(html));`,
     "  assert.equal(html, render({ status: 'loading' }), 'the controller hands the hook state to the page and adds nothing');",
     '});',
     '',
@@ -306,14 +310,15 @@ function playwrightProofText(ctx, request, route) {
   if (ctx.request.shape !== 'list') {
     // #659: the other shapes' flows are written in proof-browser.mjs; their command line carries the shape, the steps and the route, so it regenerates the same bytes.
     const shape = ctx.request.shape;
-    const command = `construct create proof ${Name} --feature ${request.feature} --shape ${shape} --kind playwright --entity ${names.Entity} --fields ${ctx.request.fields}${shape === 'wizard' ? ` --steps ${ctx.request.steps}` : ''}${sourceFlag(ctx)}${route === '/' ? '' : ` --route ${route}`}`;
+    const command = `construct create proof ${Name} --feature ${request.feature} --shape ${shape} --kind playwright --entity ${names.Entity} --fields ${ctx.request.fields}${shape === 'wizard' ? ` --steps ${ctx.request.steps}` : ''}${sourceFlag(ctx)}${statesFlag(ctx)}${route === '/' ? '' : ` --route ${route}`}`;
     const kit = {
       header: (extra, cmd) => header(ctx, request, cmd, extra), command, lit, rowLiteral,
       run: `// run: construct test run ${comment(request.feature)} --area generated --name ${slugOf(Name)}--screen.spec.ts   (the app must be running)`,
     };
     return ({ detail: detailBrowserText, form: formBrowserText, dashboard: dashboardBrowserText, wizard: wizardBrowserText })[shape](ctx, route, kit);
   }
-  const command = `construct create proof ${Name} --feature ${request.feature} --kind playwright --entity ${names.Entity} --fields ${ctx.request.fields}${sourceFlag(ctx)}`;
+  const command = `construct create proof ${Name} --feature ${request.feature} --kind playwright --entity ${names.Entity} --fields ${ctx.request.fields}${sourceFlag(ctx)}${statesFlag(ctx)}`;
+  const pv = proofViews(ctx);
   const L = [
     ...header(ctx, request, command, `shape ${request.shape ?? 'list'}, kind playwright`),
     `// run: construct test run ${comment(request.feature)} --area generated --name ${slugOf(Name)}--screen.spec.ts   (the app must be running)`,
@@ -351,6 +356,7 @@ function playwrightProofText(ctx, request, route) {
     '  await page.goto(START_URL);',
     '}',
     '',
+    ...(pv.loading === 'shown' ? [
     `test(${lit(`${Name} screen: loading, then the list`)}, async ({ page }) => {`,
     '  let release: () => void = () => {};',
     '  const gate = new Promise<void>((resolve) => { release = resolve; });',
@@ -360,17 +366,28 @@ function playwrightProofText(ctx, request, route) {
     "  await expect.poll(() => stateOf(page)).toBe('items');",
     ...rows.map((r) => `  await expect(page.getByText(${lit(String(r[ctx.title.name]))})).toBeVisible();`),
     '});',
+    ] : [
+    `test(${lit(`${Name} screen: the list`)}, async ({ page }) => {`,
+    '  await open(page, { status: 200, body: ROWS });',
+    "  await expect.poll(() => stateOf(page)).toBe('items');",
+    ...rows.map((r) => `  await expect(page.getByText(${lit(String(r[ctx.title.name]))})).toBeVisible();`),
+    '});',
+    ]),
     '',
+    ...(pv.empty === 'shown' ? [
     `test(${lit(`${Name} screen: the empty state`)}, async ({ page }) => {`,
     '  await open(page, { status: 200, body: [] });',
     "  await expect.poll(() => stateOf(page)).toBe('empty');",
     '});',
+    ] : skippedInBrowser('empty')),
     '',
+    ...(pv.error === 'shown' ? [
     `test(${lit(`${Name} screen: the error state, with role alert`)}, async ({ page }) => {`,
     '  await open(page, { status: 500, body: {} });',
     "  await expect.poll(() => stateOf(page)).toBe('error');",
     "  await expect(page.getByRole('alert')).toHaveText(ERROR_TEXT);",
     '});',
+    ] : skippedInBrowser('error')),
   ];
   return `${L.join('\n')}\n`;
 }

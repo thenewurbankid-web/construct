@@ -20,13 +20,15 @@ Four capabilities, one CLI:
   construct create feature <name> [--format json] [--dir <path>]
   construct create layer <name> --feature <feature> --layers <l1,l2,...> [--llm <provider> | --format json] [--dir <path>]
   construct create <layer> <name> --feature <feature> [--llm <provider> | --format json] [--dir <path>]
-  construct create layer|<layer> <name> --feature <feature> --shape list|detail|form|dashboard|wizard [--entity <Entity>] [--fields id:string,name:string,...] [--source local|endpoint|openapi] [--steps details,review,done]
+  construct create layer|<layer> <name> --feature <feature> --shape list|detail|form|dashboard|wizard [--entity <Entity>] [--fields id:string,name:string,...] [--source local|endpoint|openapi] [--steps details,review,done] [--states default|custom|skip-empty|skip-all]
     (a screen shape fills the units with real, typed code, deterministic, no model, so no --llm: list = the items of an entity with
     loading, empty and error states; detail = one item by id (the id prop or ?id=) with loading, not-found, ready and error states;
     form = a typed input per field, validation in a domain unit, a submit service, and editing, submitting, submitted and error states;
     dashboard = a titled overview: a row of tiles and up to three panels composed from one typed summary, with loading and error states;
     wizard = a multi-step flow run by an XState machine in the workflow layer (--steps a,b,c: two to six, default details,review,done;
     NEXT and BACK guarded by the step, SUBMIT only on the last), a component per step, and a submit service;
+    --states says how a list, detail or dashboard shows its states (#622): default = a message for each, custom = a component of its own for each,
+    skip-empty = no view for the empty or not-found state (a warning), skip-all = no view for any state (a warning); the typed states never change;
     --layers domain,service,hook,component,page,controller writes the whole screen (a wizard adds workflow: --layers
     domain,service,workflow,hook,component,page,controller);
     --source picks where the service reads its data (#621): local = a typed in-memory store with seed rows (a second domain file), so the
@@ -148,7 +150,7 @@ Commands:
   construct generate tests <feature> [--dry-run] [--prune] [--dir <path>]
     (one LOCKED Playwright spec per workflow scenario into features/<feature>/tests/generated/;
     needs frozen: + nonLayer: globs for tests in architecture.yml; deterministic, no LLM)
-  construct create proof <Name> --feature <feature> [--shape list|detail|form|dashboard|wizard] [--entity <Entity>] [--fields id:string,...] [--source local|endpoint|openapi] [--steps a,b,c] [--kind render|playwright] [--route </path>] [--dir <path>]
+  construct create proof <Name> --feature <feature> [--shape list|detail|form|dashboard|wizard] [--entity <Entity>] [--fields id:string,...] [--source local|endpoint|openapi] [--steps a,b,c] [--states default|custom|skip-empty|skip-all] [--kind render|playwright] [--route </path>] [--dir <path>]
     (the locked proof of a shaped screen in features/<feature>/tests/generated/: the states of the shape with sample props (list: loading,
     empty, items, error; detail: loading, not found, ready, error; form: fields with labels, a message per invalid field, submitting,
     submitted, error), the controller's first state, the service with a stubbed fetch; --kind playwright writes the route flow only when the project already has a
