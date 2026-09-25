@@ -88,7 +88,7 @@ test('a list of products offers the list shape beside the open questions; answer
   assert.deepEqual(shaped.plan.steps.slice(7).map((s) => s.flow), ['sync', 'create.route', 'create.proof', 'test.proof'], '#654 and #623: the plan wires the screen (sync, then the route entry) and ends with its proof and the read-only run of it');
   assert.equal(shaped.plan.steps[8].args.route, '/products');
   assert.equal(shaped.plan.steps[8].touches.files.length >= 1, true, 'the route step declares its file');
-  assert.deepEqual(shaped.plan.steps[1].args, { layer: 'domain', name: 'Products', feature: 'products', shape: 'list', entity: 'Product', fields: 'id:string,name:string,price:number' });
+  assert.deepEqual(shaped.plan.steps[1].args, { layer: 'domain', name: 'Products', feature: 'products', shape: 'list', entity: 'Product', fields: 'id:string,name:string,price:number', source: 'local' }, '#621: the unit says where the screen reads from (the rules default: local, this project has no OpenAPI file)');
   assert.deepEqual(shaped.placement.decisions, [{ question: 'q-shape', option: 'list', by: 'person' }]);
   assert.equal(shaped.offers[0].chosen, 'list');
 
@@ -219,6 +219,45 @@ test('a project whose framework the blocks do not know answers with typed errors
   assert.equal(r.status, 200);
   assert.ok(r.body.placement.notes.some((n) => /react-spa/.test(n)), 'the SPA variant says so');
   assert.ok(r.body.plan);
+});
+
+// #621 -- where a shaped screen reads its data from is a closed question beside the plan (`q-source`), drawn by the client like q-shape:
+// answered by the same { id, option }, recorded like the others, never holding Approve back, and an option that was not offered is refused.
+test('a shaped screen is offered its data source; the rules default is local, or the OpenAPI operation when the project has one; answering changes the units', async () => {
+  const sentence = 'A user wants to see a list of products';
+  const shape = { id: 'q-shape', option: 'list' };
+  const unitSteps = (r) => r.plan.steps.filter((s) => s.flow === 'create.unit');
+  const plain = (await post({ text: sentence })).body;
+  assert.deepEqual(plain.offers.map((q) => q.id), ['q-shape'], 'no shape chosen, no shaped unit, no data source to ask about');
+
+  const asked = (await post({ text: sentence, answers: [shape] })).body;
+  assert.deepEqual(asked.offers.map((q) => [q.id, q.source, q.default, q.chosen, q.options.map((o) => o.id)]), [['q-shape', 'placement', 'list', 'list', ['list', 'scaffold']], ['q-source', 'plan', 'local', null, ['local', 'endpoint']]]);
+  assert.equal(asked.suggestions['q-source'].option, 'local', 'the decision provider suggests on it like on every other offer');
+  assert.deepEqual(asked.open, [], 'the offer never blocks the plan');
+  assert.ok(unitSteps(asked).every((s) => s.args.source === 'local'));
+  assert.ok(asked.plan.steps[1].touches.files.map((f) => f.path).includes('features/products/domain/ProductsStore.domain.ts'), 'the domain step declares the local store it writes');
+
+  const endpoint = (await post({ text: sentence, answers: [shape, { id: 'q-source', option: 'endpoint' }] })).body;
+  assert.equal(endpoint.offers[1].chosen, 'endpoint');
+  assert.ok(unitSteps(endpoint).every((s) => s.args.source === 'endpoint'));
+  assert.deepEqual(endpoint.placement.decisions, [{ question: 'q-shape', option: 'list', by: 'person' }, { question: 'q-source', option: 'endpoint', by: 'person' }], 'who chose is recorded beside the shape');
+  assert.equal(endpoint.plan.steps[1].touches.files.some((f) => f.path.includes('Store')), false, 'the endpoint source writes no store');
+
+  const refused = (await post({ text: sentence, answers: [shape, { id: 'q-source', option: 'openapi' }] })).body;
+  assert.deepEqual([refused.placement.ok, refused.plan, refused.placement.errors.map((e) => e.code)], [false, null, ['PLAN_SOURCE_UNAVAILABLE']], 'openapi was not offered, so it is refused, never replaced by another source');
+
+  fs.writeFileSync(path.join(root, 'openapi.yaml'), "openapi: 3.0.3\ninfo: { title: t, version: '1' }\nservers: [{ url: /v1 }]\npaths:\n  /products:\n    get: { operationId: listProducts, responses: { '200': { description: ok } } }\n");
+  try {
+    const spec = (await post({ text: sentence, answers: [shape] })).body;
+    assert.deepEqual(spec.offers[1].options.map((o) => o.id), ['openapi', 'local', 'endpoint']);
+    assert.equal(spec.offers[1].default, 'openapi', 'the rules default is the contract when there is one');
+    assert.ok(unitSteps(spec).every((s) => s.args.source === 'openapi'));
+    assert.equal(JSON.stringify(spec).includes(root), false, 'no server path leaves the server');
+    const local = (await post({ text: sentence, answers: [shape, { id: 'q-source', option: 'local' }] })).body;
+    assert.ok(unitSteps(local).every((s) => s.args.source === 'local'));
+  } finally {
+    fs.rmSync(path.join(root, 'openapi.yaml'));
+  }
 });
 
 test('featureNameOf turns the screen name into a feature folder name', () => {
