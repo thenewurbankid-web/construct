@@ -123,7 +123,7 @@ test.describe.serial('Requirement: the proof of a generated screen is shown, run
     await expect(page.getByTestId('proof-failure')).toHaveCount(0);
     await expect(page.getByTestId('proof-skip')).toHaveCount(0);
     await expect(page.getByTestId('proof-run')).toHaveText('Run the proof again');
-    expect(run.counts.passed).toBeGreaterThanOrEqual(10);
+    expect(run.counts.passed).toBeGreaterThanOrEqual(7); // #621: the plan's default source is local, whose list proof has 7 tests (10 for the endpoint source)
   });
 
   test('a deliberately broken page: the card is failed, the failing state ("empty") is named, in the words of the Tests screen; the chain is incomplete', async ({ page }) => {

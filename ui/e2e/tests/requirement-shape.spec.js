@@ -434,6 +434,8 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
           await chooseSource(page, 'endpoint');
           await expect(page.getByTestId('requirement-source-endpoint')).toHaveAttribute('aria-pressed', 'true'); // the redraw has landed
         }
+        // axe reads target-size at the current scroll position (the narrow layout has a fixed bottom bar): put the files summary mid-screen first.
+        await page.getByTestId('requirement-files').locator('summary').evaluate((el) => el.scrollIntoView({ block: 'center' }));
         const found = await runAxe(page);
         expect(found.filter(isBlocking), `${theme} ${step}: ${format(found.filter(isBlocking))}`).toEqual([]);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${theme} ${step}: page scroll`).toBe(true);
