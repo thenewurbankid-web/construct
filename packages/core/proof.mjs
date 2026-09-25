@@ -23,8 +23,8 @@ import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { matchFrozen } from './frozen.mjs';
 import { isNonLayerPath, GENERATED_TESTS_GLOB, TESTS_GLOB } from './nonLayer.mjs';
 import { shapeContext } from './shapes.mjs';
-import { cap } from './shape-kit.mjs';
-import { detailProofText, formProofText } from './proof-screens.mjs';
+import { cap, sampleRows } from './shape-kit.mjs';
+import { detailProofText, formProofText, sourceFlag } from './proof-screens.mjs';
 import { GENERATED_MARKER, assertSafeDir } from '../engine/testGenerator.mjs';
 import { lit, comment } from '../engine/testSpecRender.mjs';
 
@@ -71,28 +71,38 @@ export function detectPlaywright(root) {
 
 // ---------------------------------------------------------------------------------------------------------- the sample
 
-/** Two sample rows of the entity, from its fields: readable text for strings, 12.5 and 7 for numbers, true and false for booleans. */
-function sampleRows(ctx) {
-  const words = (text) => String(text).replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
-  return [1, 2].map((n) => Object.fromEntries(ctx.fields.map((f) => {
-    if (f.type === 'number') return [f.name, f.name === 'id' ? n : n === 1 ? 12.5 : 7];
-    if (f.type === 'boolean') return [f.name, n === 1];
-    return [f.name, f.name === 'id' ? `${words(ctx.names.Entity).replace(/ /g, '-')}-${n}` : `${ctx.names.Entity} ${words(f.name)} ${n}`];
-  })));
-}
-
 const literal = (value) => (typeof value === 'string' ? lit(value) : String(value));
 const rowLiteral = (row) => `{ ${Object.entries(row).map(([k, v]) => `${k}: ${literal(v)}`).join(', ')} }`;
 
 /** Everything a proof needs, from a shape request: the shape context plus the sample rows and the texts the screen shows. */
 function proofContext(root, request) {
-  const ctx = shapeContext(root, { shape: request.shape ?? 'list', name: request.name, feature: request.feature, entity: request.entity, fields: request.fields });
+  const ctx = shapeContext(root, { shape: request.shape ?? 'list', name: request.name, feature: request.feature, entity: request.entity, fields: request.fields, source: request.source });
   if (!request.feature) throw usage('A proof needs the feature its screen belongs to (--feature).');
   return {
-    ...ctx, rows: sampleRows(ctx), errorText: 'The server answered 500.',
+    ...ctx, rows: sampleRows(ctx.names.Entity, ctx.fields), errorText: 'The server answered 500.',
     loadingText: request.shape === 'detail' ? `Loading ${ctx.singular}...` : `Loading ${ctx.plural}...`, emptyText: `No ${ctx.plural} yet.`,
     notFoundText: `${cap(ctx.singular)} not found.`, submittedText: `${cap(ctx.singular)} added.`, savingText: 'Saving...',
   };
+}
+
+/** The extra service test of the `openapi` source: the service asks the path the OpenAPI operation gives (none for another source). */
+function openapiServiceTests(ctx, lit) {
+  if (ctx.source !== 'openapi') return [];
+  const { operation, names } = ctx;
+  return [
+    `test(${lit(`${names.Name} service: asks the path of the OpenAPI operation`)}, async () => {`,
+    '  let asked: unknown;',
+    '  const original = globalThis.fetch;',
+    '  globalThis.fetch = (async (url: unknown) => { asked = url; return respond(200, [])(); }) as unknown as typeof fetch;',
+    '  try {',
+    '    await ask();',
+    '  } finally {',
+    '    globalThis.fetch = original;',
+    '  }',
+    `  assert.equal(asked, ${lit(ctx.endpoint)}, ${lit(`the path is the one of ${operation.method} ${operation.path} in ${operation.file}`)});`,
+    '});',
+    '',
+  ];
 }
 
 // -------------------------------------------------------------------------------------------------------- the render proof
@@ -141,22 +151,41 @@ function renderProofText(ctx, request, relPath) {
   }
   const { names, fields, title, rows } = ctx;
   const Name = names.Name;
-  const command = `construct create proof ${Name} --feature ${request.feature} --entity ${names.Entity} --fields ${ctx.request.fields}`;
+  const local = ctx.source === 'local';
+  const command = `construct create proof ${Name} --feature ${request.feature} --entity ${names.Entity} --fields ${ctx.request.fields}${sourceFlag(ctx)}`;
   const others = fields.filter((f) => f.name !== 'id' && f !== title);
   const shown = (row) => [`<strong>${row[title.name]}</strong>`, ...others.map((f) => `<span>${f.name}: ${row[f.name]}</span>`)];
+  const localServiceTests = [
+    `test(${lit(`${Name} service: the local store answers the seed rows, with no network`)}, async () => {`,
+    "  await withFetch(async () => { throw new Error('the local store must not use the network'); }, async () => {",
+    '    const result = await ask();',
+    "    expectState('The service reading the local store', 'items', resultState(result));",
+    `    assert.deepEqual(result.status === 'ready' ? result.items : null, ${ctx.store.seed}({}), 'the rows are the seed rows of the store');`,
+    '  });',
+    '});',
+    '',
+    `test(${lit(`${Name} service: a cancelled request is an error result`)}, async () => {`,
+    '  const controller = new AbortController();',
+    '  controller.abort();',
+    `  expectState('The service given a cancelled request', 'error', resultState(await ${names.fetch}({ signal: controller.signal })));`,
+    '});',
+  ];
   const L = [
     ...header(ctx, request, command, `shape ${request.shape ?? 'list'}, kind render`),
     `// run: construct test proof ${comment(request.feature)}   (on its own: npx tsx --test ${comment(relPath)})`,
     '//',
     `// Proves the ${ctx.plural} screen with no browser and no server: its four states from sample props (loading, empty, items with`,
     '// every field value, error with role="alert"), that the controller renders the loading state first, and that the service',
-    '// answers a 500, a wrong shape and a network failure with an error result (fetch is stubbed). A failure names the state.',
+    ...(local
+      ? ['// answers the seed rows of its local store with no network, and a cancelled request with an error result. A failure names the state.']
+      : ['// answers a 500, a wrong shape and a network failure with an error result (fetch is stubbed). A failure names the state.']),
     '',
     "import { test } from 'node:test';",
     "import assert from 'node:assert/strict';",
     "import { createElement } from 'react';",
     "import { renderToString } from 'react-dom/server';",
     `import { ${names.controller} } from '../../controllers/${names.controller}.controller';`,
+    ...(local ? [`import { ${ctx.store.seed} } from '../../domain/${ctx.store.file}.domain';`] : []),
     `import { ${names.page} } from '../../pages/${names.page}.page';`,
     `import { ${names.fetch} } from '../../services/${Name}.service';`,
     `import type { ${names.Entity}, ${names.result}, ${names.state} } from '../../types';`,
@@ -219,6 +248,8 @@ function renderProofText(ctx, request, relPath) {
     "  assert.equal(html, render({ status: 'loading' }), 'the controller hands the hook state to the page and adds nothing');",
     '});',
     '',
+    ...(local ? localServiceTests : openapiServiceTests(ctx, lit)),
+    ...(local ? [] : [
     `test(${lit(`${Name} service: a good answer is the rows`)}, async () => {`,
     '  await withFetch(respond(200, ROWS), async () => {',
     "    expectState('The service given a list', 'items', resultState(await ask()));",
@@ -259,6 +290,7 @@ function renderProofText(ctx, request, relPath) {
     '  }',
     "  assert.equal(seen, controller.signal, 'the service forwards the AbortSignal, so leaving the screen cancels the request');",
     '});',
+    ]),
   ];
   return `${L.join('\n')}\n`;
 }
@@ -268,7 +300,7 @@ function renderProofText(ctx, request, relPath) {
 function playwrightProofText(ctx, request, route) {
   const { names, rows } = ctx;
   const Name = names.Name;
-  const command = `construct create proof ${Name} --feature ${request.feature} --kind playwright --entity ${names.Entity} --fields ${ctx.request.fields}`;
+  const command = `construct create proof ${Name} --feature ${request.feature} --kind playwright --entity ${names.Entity} --fields ${ctx.request.fields}${sourceFlag(ctx)}`;
   const L = [
     ...header(ctx, request, command, `shape ${request.shape ?? 'list'}, kind playwright`),
     `// run: construct test run ${comment(request.feature)} --area generated --name ${slugOf(Name)}--screen.spec.ts   (the app must be running)`,
@@ -354,7 +386,7 @@ export function proofFiles(root, request) {
     const file = path.join(genDir, `${ctx.names.Name}Screen.proof.test.ts`);
     return [{ path: file, content: renderProofText(ctx, request, rel(root, file)), change: 'create', kind }];
   }
-  if (!detectPlaywright(root) || !PLAYWRIGHT_SHAPES.includes(ctx.request.shape)) return [];
+  if (!detectPlaywright(root) || !PLAYWRIGHT_SHAPES.includes(ctx.request.shape) || ctx.source === 'local') return []; // a local source makes no request to mock
   const file = path.join(genDir, `${slugOf(ctx.names.Name)}--screen.spec.ts`);
   return [{ path: file, content: playwrightProofText(ctx, request, request.route ?? '/'), change: 'create', kind }];
 }
@@ -419,7 +451,9 @@ export function generateProof(root, request) {
   const files = proofFiles(root, request);
   if (!files.length) {
     const shape = request?.shape ?? 'list';
-    const skipped = PLAYWRIGHT_SHAPES.includes(shape)
+    const skipped = request?.source === 'local'
+      ? 'The local data source makes no request, so there is nothing to mock and no Playwright flow was written. The render proof still proves the screen.'
+      : PLAYWRIGHT_SHAPES.includes(shape)
       ? 'Playwright is not configured in this project (no playwright.config.* at the root), so no Playwright flow was written and nothing was installed. The render proof still proves the screen; add Playwright and run this again for the browser flow.'
       : `The ${shape} shape has no Playwright flow yet (only ${PLAYWRIGHT_SHAPES.join(', ')} does), so none was written. The render proof still proves the screen.`;
     return { kind, files: [], regions: [], skipped, needs: [] };
