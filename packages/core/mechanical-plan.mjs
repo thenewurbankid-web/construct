@@ -8,7 +8,7 @@
 // code; it just no longer has to be trusted to decide where the code goes.
 import fs from 'node:fs';
 import path from 'node:path';
-import ts from 'typescript';
+import { ts } from '../ast/lazy.mjs';
 import { LAYER_ORDER } from './generators.mjs';
 import { normalizePlanLayers } from './import.mjs';
 

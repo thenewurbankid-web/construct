@@ -12,23 +12,23 @@
     },
     "validate": {
       "label": "construct validate (small project)",
-      "ms": 700,
-      "peakMb": 160
+      "ms": 480,
+      "peakMb": 135
     },
     "summarize": {
       "label": "construct summarize (small project)",
-      "ms": 660,
-      "peakMb": 160
+      "ms": 460,
+      "peakMb": 130
     },
     "decide": {
       "label": "construct decide --requirement",
-      "ms": 640,
-      "peakMb": 160
+      "ms": 190,
+      "peakMb": 75
     },
     "cockpit-start": {
       "label": "Cockpit server, start until it answers",
-      "ms": 680,
-      "peakMb": 175
+      "ms": 320,
+      "peakMb": 95
     }
   }
 }

@@ -49,10 +49,10 @@ Measured by `packages/tools/dev/benchmark.mjs`, which starts each command as a f
 | Command | Cold start | Peak memory | Budget (time and memory) |
 |---|---|---|---|
 | construct --version | 50 ms | 45 MB | 0.6 s and 120 MB |
-| construct validate (small project) | 700 ms | 160 MB | 3 s and 400 MB |
-| construct summarize (small project) | 660 ms | 160 MB | 3 s and 400 MB |
-| construct decide --requirement | 640 ms | 160 MB | 1.5 s and 250 MB |
-| Cockpit server, start until it answers | 680 ms | 175 MB | 10 s and 400 MB |
+| construct validate (small project) | 480 ms | 135 MB | 3 s and 400 MB |
+| construct summarize (small project) | 460 ms | 130 MB | 3 s and 400 MB |
+| construct decide --requirement | 190 ms | 75 MB | 0.6 s and 150 MB |
+| Cockpit server, start until it answers | 320 ms | 95 MB | 10 s and 400 MB |
 <!-- measured:end -->
 
 The small project is the `architecture-valid-react-spa` fixture, so a large project takes longer; the numbers show what starting Construct costs, not what your project costs.

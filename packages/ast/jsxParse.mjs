@@ -3,7 +3,7 @@
 // Unlike parseToAst (which falls back to non-JSX mode), the JSX operations always parse in JSX +
 // TypeScript mode as a module and let syntax errors propagate: an editor must never guess at
 // intent for text that is not valid JSX. Positions are `range` (UTF-16 offsets) and `loc` lines.
-import { parse } from '@typescript-eslint/typescript-estree';
+import { estreeParse as parse } from './lazy.mjs';
 import { walkAst } from './walk.mjs';
 
 const JSX_OPTIONS = { jsx: true, loc: true, range: true, comment: false, sourceType: 'module', errorOnUnknownASTType: false };

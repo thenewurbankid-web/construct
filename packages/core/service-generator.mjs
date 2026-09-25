@@ -28,7 +28,6 @@
 // working, compiling endpoints file every time.
 import fs from 'node:fs';
 import path from 'node:path';
-import { createClient } from '@hey-api/openapi-ts';
 import { ensureDir, write, rel } from './fs.mjs';
 import { loadConfig } from './config.mjs';
 import { createFeature, pascalCase as identifierPascalCase } from './generators.mjs';
@@ -374,6 +373,9 @@ export async function generateServiceFromSpec(root, name, feature, specPath, opt
   ensureDir(servicesDir);
   const generatedDir = path.join(servicesDir, name);
 
+  // Loaded here, not at import: the generator pulls in the TypeScript compiler (about 72 MB), which every other
+  // command that imports this module would otherwise pay for (#657).
+  const { createClient } = await import('@hey-api/openapi-ts');
   await createClient({
     input: absSpecPath,
     output: generatedDir,

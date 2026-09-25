@@ -10,11 +10,12 @@
 // Rule violations only carry a line, so they span that whole line.
 import fs from 'node:fs';
 import path from 'node:path';
-import ts from 'typescript';
+import { ts } from '../ast/lazy.mjs';
 import { validateArchitecture } from '../core/architecture-enforcer.mjs';
 import { validateSeparationOfConcerns } from '../core/soc-enforcer.mjs';
 
-const DEFAULT_COMPILER_OPTIONS = {
+// Built on first use: reading `ts.*` here at import time would load the compiler for every importer (#657).
+const defaultCompilerOptions = () => ({
   target: ts.ScriptTarget.ES2022,
   module: ts.ModuleKind.ESNext,
   moduleResolution: ts.ModuleResolutionKind.Bundler,
@@ -26,27 +27,27 @@ const DEFAULT_COMPILER_OPTIONS = {
   noEmit: true,
   esModuleInterop: true,
   resolveJsonModule: true,
-};
+});
 
-const SEVERITY_BY_CATEGORY = {
+const severityByCategory = () => ({
   [ts.DiagnosticCategory.Error]: 'error',
   [ts.DiagnosticCategory.Warning]: 'warning',
   [ts.DiagnosticCategory.Suggestion]: 'info',
   [ts.DiagnosticCategory.Message]: 'info',
-};
+});
 
 function compilerOptionsFor(absFile) {
   const configPath = ts.findConfigFile(path.dirname(absFile), ts.sys.fileExists, 'tsconfig.json');
-  if (!configPath) return DEFAULT_COMPILER_OPTIONS;
+  if (!configPath) return defaultCompilerOptions();
   const read = ts.readConfigFile(configPath, ts.sys.readFile);
-  if (read.error) return DEFAULT_COMPILER_OPTIONS;
+  if (read.error) return defaultCompilerOptions();
   const parsed = ts.parseJsonConfigFileContent(read.config, ts.sys, path.dirname(configPath));
   return { ...parsed.options, noEmit: true, skipLibCheck: true, incremental: false };
 }
 
 function fromTsDiagnostic(d, sf) {
   const message = ts.flattenDiagnosticMessageText(d.messageText, '\n');
-  const base = { source: 'typescript', code: `TS${d.code}`, severity: SEVERITY_BY_CATEGORY[d.category] || 'error', message };
+  const base = { source: 'typescript', code: `TS${d.code}`, severity: severityByCategory()[d.category] || 'error', message };
   if (d.start === undefined || !sf) return { ...base, line: 1, column: 1, endLine: 1, endColumn: 1 };
   const start = sf.getLineAndCharacterOfPosition(d.start);
   const end = sf.getLineAndCharacterOfPosition(d.start + (d.length || 0));

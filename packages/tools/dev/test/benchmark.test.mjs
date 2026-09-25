@@ -86,7 +86,11 @@ test('budgets.json is data only: a maxMs and a maxRssMb for every check the scri
     assert.deepEqual(Object.keys(b).sort(), ['maxMs', 'maxRssMb'], id);
     assert.ok(b.maxMs > 0 && b.maxRssMb > 0, id);
   }
-  assert.ok(file.checks.validate.maxMs >= 3000 && file.checks.decide.maxRssMb >= 250, 'the first budgets are generous');
+  // budgets are tightened from measurements (#657), but stay generous: at least 1.5 times the committed snapshot, so timing noise does not trip them
+  const snap = JSON.parse(fs.readFileSync(path.join(HERE, '..', 'benchmark-snapshot.json'), 'utf8'));
+  for (const [id, b] of Object.entries(file.checks)) {
+    assert.ok(b.maxMs >= snap.checks[id].ms * 1.5 && b.maxRssMb >= snap.checks[id].peakMb * 1.5, `${id}: budget is at least 1.5 times the snapshot`);
+  }
 });
 
 test('measureCli runs the real CLI cold and reports time and peak memory (or null memory where nothing can measure it)', async () => {

@@ -1,6 +1,6 @@
 // AST package: TypeScript compiler API helpers -- searching a ts.SourceFile and printing
 // `ts.factory` nodes back to source. (Builders themselves are just `ts.factory`, via the `ts` re-export.)
-import ts from 'typescript';
+import { ts } from './lazy.mjs';
 
 export { ts };
 
@@ -39,8 +39,8 @@ export function findAllNodes(root, predicate) {
   return results;
 }
 
-const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
-const DUMMY_SOURCE_FILE = ts.createSourceFile('generated.ts', '', ts.ScriptTarget.Latest, false, ts.ScriptKind.TS);
+let printer;
+let dummySourceFile;
 
 /**
  * Print a `ts.factory`-built node as TypeScript source (LF newlines).
@@ -49,5 +49,7 @@ const DUMMY_SOURCE_FILE = ts.createSourceFile('generated.ts', '', ts.ScriptTarge
  * @returns {string} TypeScript source with LF newlines.
  */
 export function printNode(node) {
-  return printer.printNode(ts.EmitHint.Unspecified, node, DUMMY_SOURCE_FILE);
+  printer ??= ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
+  dummySourceFile ??= ts.createSourceFile('generated.ts', '', ts.ScriptTarget.Latest, false, ts.ScriptKind.TS);
+  return printer.printNode(ts.EmitHint.Unspecified, node, dummySourceFile);
 }

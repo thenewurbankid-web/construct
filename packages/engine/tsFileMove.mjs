@@ -17,13 +17,14 @@
 // project is answered from memory) and dropped when the tsconfig changes.
 import fs from 'node:fs';
 import path from 'node:path';
-import ts from 'typescript';
+import { ts } from '../ast/lazy.mjs';
 
 export const MAX_FILES = 4000;
 export const MAX_CACHED = 3;
 const SOURCE_EXT = new Set(['.ts', '.tsx', '.js', '.jsx', '.mts', '.cts', '.mjs', '.cjs']);
 const SKIP_DIRS = new Set(['node_modules', '.next', '.git', 'dist', 'build', 'coverage']);
-const TS_LIB_DIR = path.dirname(ts.getDefaultLibFilePath({}));
+let tsLibDirCache;
+const tsLibDir = () => (tsLibDirCache ??= path.dirname(ts.getDefaultLibFilePath({})));
 
 const cache = new Map(); // root -> { configMtime, service, versions:Map<file, string>, files:string[] }
 
@@ -53,7 +54,7 @@ function readOptions(root) {
   let escaped = null;
   const confined = (p) => {
     const abs = path.resolve(p);
-    if (inside(root, abs) || inside(TS_LIB_DIR, abs)) return true;
+    if (inside(root, abs) || inside(tsLibDir(), abs)) return true;
     escaped = escaped || abs;
     return false;
   };
@@ -83,17 +84,17 @@ function serviceFor(root, files, options, configMtime) {
     entry = { configMtime, versions: new Map(), files: [], options, service: null };
     const host = {
       getScriptFileNames: () => entry.files,
-      getScriptVersion: (f) => entry.versions.get(f) ?? (inside(TS_LIB_DIR, f) ? '1' : mtimeOf(f)),
+      getScriptVersion: (f) => entry.versions.get(f) ?? (inside(tsLibDir(), f) ? '1' : mtimeOf(f)),
       getScriptSnapshot: (f) => {
         const abs = path.resolve(f);
-        if (!inside(root, abs) && !inside(TS_LIB_DIR, abs)) return undefined;
+        if (!inside(root, abs) && !inside(tsLibDir(), abs)) return undefined;
         try { return ts.ScriptSnapshot.fromString(fs.readFileSync(abs, 'utf8')); } catch { return undefined; }
       },
       getCurrentDirectory: () => root,
       getCompilationSettings: () => entry.options,
       getDefaultLibFileName: (o) => ts.getDefaultLibFilePath(o),
-      fileExists: (p) => (inside(root, path.resolve(p)) || inside(TS_LIB_DIR, path.resolve(p))) && ts.sys.fileExists(p),
-      readFile: (p) => (inside(root, path.resolve(p)) || inside(TS_LIB_DIR, path.resolve(p)) ? ts.sys.readFile(p) : undefined),
+      fileExists: (p) => (inside(root, path.resolve(p)) || inside(tsLibDir(), path.resolve(p))) && ts.sys.fileExists(p),
+      readFile: (p) => (inside(root, path.resolve(p)) || inside(tsLibDir(), path.resolve(p)) ? ts.sys.readFile(p) : undefined),
       directoryExists: (p) => inside(root, path.resolve(p)) && ts.sys.directoryExists(p),
       getDirectories: () => [],
       readDirectory: () => [],

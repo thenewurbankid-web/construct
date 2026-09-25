@@ -5,7 +5,7 @@
     "version": { "maxMs": 600, "maxRssMb": 120 },
     "validate": { "maxMs": 3000, "maxRssMb": 400 },
     "summarize": { "maxMs": 3000, "maxRssMb": 400 },
-    "decide": { "maxMs": 1500, "maxRssMb": 250 },
+    "decide": { "maxMs": 600, "maxRssMb": 150 },
     "cockpit-start": { "maxMs": 10000, "maxRssMb": 400 }
   }
 }

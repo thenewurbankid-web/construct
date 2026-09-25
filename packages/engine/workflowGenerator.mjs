@@ -22,7 +22,8 @@ import { write } from '../core/fs.mjs';
 import { selfCheck, pascalCase } from '../core/generators.mjs';
 import { ConstructError, EXIT_CODES } from '../core/diagnostics.mjs';
 
-const { factory } = ts;
+// A lazy view of `ts.factory`: reading it at import time would load the compiler for every importer (#657).
+const factory = new Proxy({}, { get: (_target, key) => ts.factory[key] });
 const IDENT_RE = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 function usageError(message) {
   return new ConstructError(message, { exitCode: EXIT_CODES.USAGE_ERROR });

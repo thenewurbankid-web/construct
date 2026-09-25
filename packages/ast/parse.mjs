@@ -1,8 +1,7 @@
 // AST package: parsing. One place that knows how to turn source text into a tree.
 //   - parseToAst      -> typescript-estree (ESTree-shaped, with comments/ranges/loc)
 //   - parseTsSource   -> TypeScript compiler API SourceFile (for type-system introspection)
-import ts from 'typescript';
-import { parse } from '@typescript-eslint/typescript-estree';
+import { ts, estreeParse as parse } from './lazy.mjs';
 
 // Single-slot memoized parse: parseFile and the readability enforcer's
 // checkFeatureJsdoc both call extractImports/extractExports/extractJsdoc

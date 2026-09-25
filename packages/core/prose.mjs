@@ -102,7 +102,9 @@ function unwrapParens(node) {
 
 // ---- expressions ----------------------------------------------------------
 
-const BINARY_WORDS = {
+// Built on first use so importing this module does not load the TypeScript compiler (#657).
+let binaryWords;
+const binaryWordsOf = () => (binaryWords ??= {
   [ts.SyntaxKind.AmpersandAmpersandToken]: 'and',
   [ts.SyntaxKind.BarBarToken]: 'or',
   [ts.SyntaxKind.EqualsEqualsEqualsToken]: 'equals',
@@ -110,7 +112,7 @@ const BINARY_WORDS = {
   [ts.SyntaxKind.ExclamationEqualsEqualsToken]: 'does not equal',
   [ts.SyntaxKind.ExclamationEqualsToken]: 'does not equal',
   [ts.SyntaxKind.QuestionQuestionToken]: 'or, if that is null/undefined,',
-};
+});
 
 function paramNames(params) {
   const names = [];
@@ -155,7 +157,7 @@ export function describeExpr(node) {
     if (eq && ts.isTypeOfExpression(node.left) && ts.isStringLiteralLike(node.right)) {
       return node.right.text === 'undefined' ? `${describeExpr(node.left.expression)} is undefined` : `${describeExpr(node.left.expression)} is of type "${node.right.text}"`;
     }
-    const word = BINARY_WORDS[node.operatorToken.kind];
+    const word = binaryWordsOf()[node.operatorToken.kind];
     if (word) return `${describeExpr(node.left)} ${word} ${describeExpr(node.right)}`;
     return `${describeExpr(node.left)} (${text(node.operatorToken)}) ${describeExpr(node.right)}`;
   }
