@@ -72,8 +72,11 @@ Error codes (`ERROR_CODES` in `src/limits.mjs`): `INVALID_INPUT`, `PATH_OUTSIDE_
 
 ## Cost
 
-About 175 ms to answer `initialize` and `tools/list`, about 70 MB peak memory (the core blocks are loaded by the tool that needs them, not
-at startup). Budget: under 1 s and 150 MB, asserted in `test/startup.test.mjs`.
+About 175 to 215 ms to answer `initialize` and `tools/list`, about 72 MB peak memory (the core blocks are loaded by the tool that needs
+them, not at startup). Budget: under 1 s and 150 MB, asserted in `test/startup.test.mjs`. The first call of `placement_place`, `decide`,
+`summarize` or `validate` loads the engine, which imports the TypeScript compiler: about 450 ms once, and about 165 MB peak afterwards
+(`requirement_parse`, `plan_validate`, `machine_capabilities` and `traces_stats` stay near 72 MB). That cost is core's import graph, not
+the adapter's; it is tracked in #657.
 
 ## Out of scope in this slice
 
