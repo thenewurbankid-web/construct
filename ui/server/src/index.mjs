@@ -38,6 +38,7 @@ import { createHealth } from './health.mjs';
 import { createDevActivity, createDevStatusRouter } from './devActivity.mjs';
 import { resolveStateDir } from '../../../packages/engine/processStore.mjs';
 import { createCloneRouter, createRemoteRouter } from './cloneApi.mjs';
+import { resolveHarnessSeams } from './testSeams.mjs';
 import { createRepoConnections, resolveRepoConnectionConfig, sessionKeyOf } from './repoConnection.mjs';
 import { createGithubRouter, mountRepoAuthRoutes } from './githubRepoApi.mjs';
 import { createNewProjectRouter } from './newProjectApi.mjs';
@@ -136,7 +137,9 @@ export const devServer = createDevServerService({
 // signing out wipes it; assigned right after, and null-safe in the sign-out hook until then.
 export let repoConnections = null;
 let auth;
+let harnessSeams;
 try {
+  harnessSeams = resolveHarnessSeams(process.env, { host });
   auth = createAuth(resolveAuthConfig(process.env, { host, port, clientOrigin: CLIENT_ORIGIN }), {
     onLogout: (login) => {
       devServer.stopForLogin(login ?? '');
@@ -152,26 +155,12 @@ try {
   throw e;
 }
 
-// #365 harness-only preload. The Cockpit starts with NO project open. An e2e config (and only an e2e config)
-// may name one through CONSTRUCT_E2E_PROJECT_DIR; it goes through the same workspace containment as a client's
-// choice, and the server refuses to start with it on a non-loopback host, so it can never be a production bypass.
-if (process.env.CONSTRUCT_E2E_PROJECT_DIR) {
-  if (!isLoopbackHost(host)) {
-    throw new Error('CONSTRUCT_E2E_PROJECT_DIR is a test-harness setting and is refused when the server is exposed beyond loopback.');
-  }
-  preloadProject(process.env.CONSTRUCT_E2E_PROJECT_DIR);
-}
-
-// #330 harness-only: a local bare repository may be cloned from a file:// URL under this directory. Same guard
-// as CONSTRUCT_E2E_PROJECT_DIR: refused outright when the server is exposed beyond loopback, so the production
-// clone path stays https-only.
-let cloneLocalRoot = null;
-if (process.env.CONSTRUCT_E2E_CLONE_LOCAL_ROOT) {
-  if (!isLoopbackHost(host)) {
-    throw new Error('CONSTRUCT_E2E_CLONE_LOCAL_ROOT is a test-harness setting and is refused when the server is exposed beyond loopback.');
-  }
-  cloneLocalRoot = path.resolve(process.env.CONSTRUCT_E2E_CLONE_LOCAL_ROOT);
-}
+// #365 / #330 / #650 harness-only seams (testSeams.mjs): CONSTRUCT_E2E_PROJECT_DIR opens a project at start (through the
+// same workspace containment as a client's choice) and CONSTRUCT_E2E_CLONE_LOCAL_ROOT lets a file:// URL under that
+// directory be cloned. Both, like every CONSTRUCT_E2E_* seam, are refused outright under NODE_ENV=production and when the
+// server is exposed beyond loopback, so they can never be a production bypass. They are resolved inside the try above.
+if (harnessSeams.projectDir) preloadProject(harnessSeams.projectDir);
+const cloneLocalRoot = harnessSeams.cloneLocalRoot;
 
 const app = express();
 // `credentials: true` is required for the session cookie to survive the

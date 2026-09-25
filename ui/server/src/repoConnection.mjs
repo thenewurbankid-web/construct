@@ -18,7 +18,8 @@
 // (the repository list, refresh and revoke), and as a Buffer copy handed to a clone/pull job, which pipes it into
 // git's GIT_ASKPASS (cloneAuth.mjs) and only for github.com URLs (cloneJobs.mjs).
 import crypto from 'node:crypto';
-import { AuthConfigError, isLoopbackHost } from './auth.mjs';
+import { AuthConfigError } from './auth.mjs';
+import { refuseTestSeam } from './testSeams.mjs';
 
 const trimmed = (v) => (typeof v === 'string' ? v.trim() : '');
 
@@ -51,7 +52,7 @@ export const sessionKeyOf = (session) => String(session?.login ?? '').toLowerCas
  *                                               else http://localhost:<port>/auth/repo/callback
  *   CONSTRUCT_GITHUB_REPO_SCOPE                 optional; only an OAuth app needs it (e.g. `repo`); a GitHub App ignores it.
  *   CONSTRUCT_E2E_GITHUB_REPO_OAUTH_BASE / _API_BASE   TEST HARNESS ONLY: a mock standing in for github.com and
- *                                               api.github.com. Refused off loopback, like CONSTRUCT_E2E_CLONE_LOCAL_ROOT.
+ *                                               api.github.com. Refused in production and off loopback (testSeams.mjs, #650).
  */
 export function resolveRepoConnectionConfig(env = process.env, { host = '127.0.0.1', port = 4000 } = {}) {
   const clientId = trimmed(env.CONSTRUCT_GITHUB_REPO_CLIENT_ID);
@@ -63,16 +64,11 @@ export function resolveRepoConnectionConfig(env = process.env, { host = '127.0.0
   const oBase = trimmed(env.CONSTRUCT_E2E_GITHUB_REPO_OAUTH_BASE);
   const aBase = trimmed(env.CONSTRUCT_E2E_GITHUB_REPO_API_BASE);
   if (oBase || aBase) {
-    // Same two refusals as CONSTRUCT_AUTH_TEST_USER (auth.mjs): never in production (case-insensitively, as there),
-    // never off loopback. These seams point the person's GitHub login at another server.
-    if (trimmed(env.NODE_ENV).toLowerCase() === 'production') {
-      throw new AuthConfigError('CONSTRUCT_E2E_GITHUB_REPO_OAUTH_BASE / _API_BASE are set while NODE_ENV=production. They point the GitHub connection at a stand-in for github.com and exist only for the e2e suite — refusing to start rather than send a login somewhere that is not GitHub. Unset them.');
-    }
-    if (!isLoopbackHost(host)) {
-      throw new AuthConfigError('CONSTRUCT_E2E_GITHUB_REPO_OAUTH_BASE / _API_BASE are test-harness settings and are refused when the server is exposed beyond loopback.');
-    }
-    for (const [name, v] of [['OAUTH_BASE', oBase], ['API_BASE', aBase]]) {
-      if (v && !/^https?:\/\/[^/\s]+$/.test(v)) throw new AuthConfigError(`CONSTRUCT_E2E_GITHUB_REPO_${name} must be an http(s) origin with no path.`);
+    // #650: the shared seam guard (testSeams.mjs): never in production, never off loopback, like CONSTRUCT_AUTH_TEST_USER.
+    // These seams point the person's GitHub login at another server.
+    refuseTestSeam(env, host, 'githubRepoBases');
+    for (const [name, v] of [['CONSTRUCT_E2E_GITHUB_REPO_OAUTH_BASE', oBase], ['CONSTRUCT_E2E_GITHUB_REPO_API_BASE', aBase]]) {
+      if (v && !/^https?:\/\/[^/\s]+$/.test(v)) throw new AuthConfigError(`${name} must be an http(s) origin with no path.`);
     }
     oauthBase = oBase || oauthBase;
     apiBase = aBase || apiBase;
