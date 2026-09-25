@@ -132,6 +132,15 @@ ticket blocked on an owner decision. Run as many agents in parallel as the
 memory allows (check `free -m`; each agent is ~400 MB plus its test
 processes), with `heavy.sh` serializing the heavy commands.
 
+## Keeping a session alive (og-watchdog)
+
+`packages/tools/dev/og-watchdog.sh` runs from cron every 3 minutes. When no interactive Claude Code session is running in this repo (VS Code sessions count), it starts OG in a detached tmux session named `og` with `--agent og --permission-mode auto --remote-control`, so work resumes and the owner can reach it from claude.ai/code or the phone. The resume prompt is `~/.og-watchdog/prompt.txt`; edit it to change what OG does on start.
+
+- `og-watchdog.sh status` shows what it sees; `attach` opens the tmux session (Ctrl-b d leaves it running).
+- `pause` before you open your own session for a long stretch (two sessions in one tree collide); `resume` afterwards.
+- A started session that dies within 15 minutes (usage limit, crash) backs the next start off 5, 10, 20, 40, then 60 minutes.
+- `install` copies the script to `~/.og-watchdog` and writes the cron entry; rerun it after editing the script. `uninstall` removes the entry.
+
 ## Tooling
 
 Plugins are installed per machine at project scope
