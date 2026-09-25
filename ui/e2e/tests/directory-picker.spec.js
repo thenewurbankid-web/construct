@@ -74,6 +74,38 @@ test.describe.serial('#223/#568 my-projects list', () => {
     await expect(page.getByText('Settings saved.')).toBeVisible();
   });
 
+  // #664: the list's state is one status (idle | loading | error | ready). A failed "Load more" must say so
+  // and keep the rows already on screen (not strand the user with an empty list); Load more then recovers.
+  // The seam is the HTTP boundary (a route stub); the machine, hook, controller and picker are real.
+  test('#664: a failed Load more shows the error, keeps the rows, and Load more recovers', async ({ page }) => {
+    const entry = (name) => ({ name, path: `${root}/${name}`, hasArchitectureYml: false, hasPackageJson: false, isReact: false, isConstructProject: false });
+    const page1 = (truncated) => ({ ok: true, path: root, parent: null, roots: [root], entries: [entry('alpha'), entry('beta')], total: 3, offset: 0, limit: 2, truncated, current: { hasArchitectureYml: false, hasPackageJson: false, isReact: false, isConstructProject: false } });
+    let moreReads = 0;
+    await page.route('**/api/fs/browse*', (route) => {
+      if (!route.request().url().includes('offset=')) return route.fulfill({ json: page1(true) });
+      moreReads += 1;
+      if (moreReads === 1) return route.fulfill({ json: { ok: false, error: 'The workspace could not be listed.' } });
+      return route.fulfill({ json: { ...page1(false), entries: [entry('gamma')], offset: 2 } });
+    });
+
+    await page.goto('/settings');
+    await page.getByRole('button', { name: 'Choose a project…' }).click();
+    const picker = page.getByRole('region', { name: 'Your projects' });
+    const rows = picker.getByRole('listitem');
+    await expect(rows).toHaveCount(2);
+
+    await picker.getByRole('button', { name: /Load more/ }).click();
+    await expect(picker.getByRole('alert')).toContainText('The workspace could not be listed.');
+    await expect(rows).toHaveCount(2);
+    await expect(picker).toHaveAttribute('aria-busy', 'false');
+
+    await picker.getByRole('button', { name: /Load more/ }).click();
+    await expect(rows).toHaveCount(3);
+    await expect(rows.nth(2)).toContainText('gamma');
+    await expect(picker.getByRole('alert')).toHaveCount(0);
+    await expect(picker.getByRole('button', { name: /Load more/ })).toHaveCount(0);
+  });
+
   test('server refuses traversal, escape, foreign origin (real HTTP)', async ({ request }) => {
     const get = (p, headers) => request.get(`${API}/api/fs/browse`, { params: p ? { path: p } : {}, headers });
     expect((await get(path.join(root, '..'))).status()).toBe(403);
