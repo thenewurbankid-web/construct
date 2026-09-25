@@ -32,6 +32,7 @@ the `exports` map (`.`, `./parse`, `./walk`, `./extract`, `./ts`) for a future m
 | client boundary | `readModuleDirective(ast)` | the file's leading directive: `'client'` (`'use client'`), `'server'` (`'use server'`) or `null`; a comment, a later string or `('use client')` never counts |
 | client boundary | `collectModuleEdges(ast, source)` | every value edge to another module (`import`, `export ... from`, literal `import('...')`) with its line; type-only edges are erased and left out — the graph CLIENT-001 (#644) walks |
 | client boundary | `collectSecretEnvReads(ast, source, opts?)` | each read of a non-public `process.env.NAME` (member, `?.`, `['NAME']`, destructuring); `NEXT_PUBLIC_*` and `NODE_ENV` are public — the reads CLIENT-001 flags |
+| backend summary | `collectBackendFacts(ast, source)`, `collectEffects(ast, facts)`, `collectEnvReads(ast, source)`, `collectHttpRoutes(fnNode)` | the per-file facts of `construct summarize --backend` (#634): declarations per scope, imports and exports, express receivers with their ordered route / `use` / hand-over events, fs / child_process / network / timer effects bound to the real module, `process.env` names, and `url === '/x'` routes of a plain http handler; the cross-file walk is `packages/core/backend-routes.mjs` |
 | extract | `extractImports(source)` | static + dynamic import specifiers, source order |
 | extract | `extractExports(source)` | `[{name, index}]` for every export form |
 | extract | `extractJsdoc(source, index)` | the JSDoc block for the export at `index` (decorator-aware), or `null` |
