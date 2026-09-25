@@ -45,6 +45,9 @@ request or issue numbers.
 
 - Cockpit: the Requirement screen draws the screen-shape offer (#651, part of #616). For "A user wants to see a list of products" a **Screen shape** card sits between the placement blocks and the timeline: "List screen, generated with typed code" (marked "suggested", 10 real files that validate) or "Empty scaffold" (empty stubs). Choosing re-reads with `{ id: 'q-shape', option }`; the plan preview (7 steps, each carrying `--shape list`), the timeline and the files list redraw, and the card says who decided (person). An unanswered offer never disables Approve. Approve also waits while a read is in flight, so the plan sent is the plan shown.
 
+### Fixed
+- `GET /api/validate` in `cli` execution mode goes through the per-login command queue and the concurrency cap like every other `cli`-mode verb (#612): a validate waits for an earlier command of the same login instead of overlapping a write to the project, counts against `CONSTRUCT_MAX_CONCURRENT_COMMANDS`, and an abandoned one answers 504 at the command deadline. `engine` mode is unchanged. Test: `ui/server/src/validateQueue.test.mjs`.
+
 ## [0.9.0] - 2026-09-24
 
 The MVP release: a five-screen Cockpit with durable Notes, a calmer interface, blocks you can see and switch off, a workspace of your own on a hosted Cockpit, and results you can trust on a real project. Package versions are `0.9.0`; the Cockpit (`ui/`) is not versioned separately yet.

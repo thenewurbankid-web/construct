@@ -142,7 +142,5 @@ Known gaps, deliberately left (each is a follow-up, not a silent difference):
   document; `--format json` refuses them by name.
 - The text lines a `cli`-mode `create` or `import` shows have no per-file timings (the timings are what made the text
   unfit for a byte-identical contract); the response's own `durationSeconds` still says how long it took.
-- `GET /api/validate` in `cli` mode (the first slice) is not routed through the per-login queue that the other verbs
-  use in `cli` mode, because its in-process twin is not queued either.
 - In `cli` mode the Review analysis still computes "what each changed file now does" in the existing in-process
   worker; that enrichment is not part of `construct review`'s report.
