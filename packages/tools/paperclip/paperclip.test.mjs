@@ -8,7 +8,7 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
 import { startMock } from './mock-paperclip.mjs';
-import { HERE, deepMerge, diffSubset, isLoopbackHost, loadConfig, orderAgents, readBundle, redact, resolveAgent, validateConfig, configVars } from './lib.mjs';
+import { HERE, REDACTED, deepMerge, diffSubset, isLoopbackHost, loadConfig, orderAgents, readBundle, redact, resolveAgent, validateConfig, configVars } from './lib.mjs';
 import { laneFor, mirrorBody, mirrorTitle } from './github-sync.mjs';
 
 const execFileP = promisify(execFile);
@@ -501,4 +501,9 @@ test('claude-gate: the real command gets the same arguments', async () => {
   const r = await runGate(g.env, ['--print', 'hello world']);
   assert.equal(r.code, 0);
   assert.equal(fs.readFileSync(g.log, 'utf8'), '--print|hello world|');
+});
+
+test('diffSubset treats a hidden plain env value as equal (Paperclip reads env back as { type: plain, value: redacted })', () => {
+  assert.deepEqual(diffSubset({ env: { PAPERCLIP_MAX_CLAUDE: '3' } }, { env: { PAPERCLIP_MAX_CLAUDE: { type: 'plain', value: REDACTED } } }), []);
+  assert.deepEqual(diffSubset({ env: { A: '3' } }, { env: {} }), ['env.A'], 'a missing value is still drift');
 });

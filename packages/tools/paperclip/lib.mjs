@@ -126,6 +126,8 @@ export const REDACTED = '***REDACTED***';
  */
 export function diffSubset(desired, actual, prefix = '') {
   if (actual === REDACTED) return [];
+  // An env entry is read back as { type: 'plain', value: '***REDACTED***' }: the value is hidden, so it cannot be compared.
+  if (isObj(actual) && actual.type === 'plain' && actual.value === REDACTED && !isObj(desired)) return [];
   if (isObj(desired)) {
     const out = [];
     for (const [k, v] of Object.entries(desired)) out.push(...diffSubset(v, isObj(actual) ? actual[k] : undefined, prefix ? `${prefix}.${k}` : k));
