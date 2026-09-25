@@ -337,8 +337,10 @@ Most layer rules above are enforced two ways at once, not just one:
   remains the backstop for hand-edited files and cases a type system can't
   see: `EXPR-001`..`EXPR-006` (a new `expressions/` layer for If/Switch/
   template units), `HOOK-001`/`HOOK-002` (tracked state and Provider hooks),
-  `PAGE-006`/`PAGE-008`/`PAGE-009` (only sanctioned hook imports, no inline
-  JSX logic, a complexity budget), `DOMAIN-002` (purity as an allowlist —
+  `PAGE-001`/`PAGE-006`/`PAGE-008`/`PAGE-009` (no state or effect of its own,
+  only sanctioned hook imports, no inline JSX logic, a complexity budget),
+  `COMPONENT-001` (no application state machine in a component), `PURE-001`
+  (no `Math.random`/`Date.now`/`new Date()` in domain code), `DOMAIN-002` (purity as an allowlist —
   a domain function may reference only its own params/destructured bindings/
   type-only imports/JS built-in globals, opt-in via `architecture.yml`,
   additive alongside the older `DOMAIN-001` name-based denylist it will

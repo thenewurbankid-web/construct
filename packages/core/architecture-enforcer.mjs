@@ -21,7 +21,7 @@ import { loadLayerGraph, canImport, classifyFile } from './architecture-graph.mj
 import { makeViolation, ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { walk, rel } from './fs.mjs';
 import { globToRegExp, matchGlob } from './glob.mjs';
-import { parseToAst, extractImports, extractExports, staticImportEntries, lineOf, collectCalls, collectBareIdentifierUsages, collectControlFlowNodes, collectInlineJsxLogic, computeJsxComplexity, walkAst, collectImpureDomainReferences, collectBagOfFlagsStates, collectControllerStateCalls, collectUncleanedSubscriptions, collectParamsReads } from '../../packages/ast/index.mjs';
+import { parseToAst, extractImports, extractExports, staticImportEntries, lineOf, collectCalls, collectBareIdentifierUsages, collectControlFlowNodes, collectInlineJsxLogic, computeJsxComplexity, walkAst, collectImpureDomainReferences, collectLocallyBoundNames, collectBagOfFlagsStates, collectControllerStateCalls, collectUncleanedSubscriptions, collectParamsReads } from '../../packages/ast/index.mjs';
 import { extractMachines } from '../../packages/engine/workflowExtractor.mjs';
 import { findHealthIssues } from '../../packages/engine/workflowScenarios.mjs';
 import { exceptionApplies, validateExceptionsShape, expiredExceptionViolations } from './exceptions.mjs';
@@ -290,6 +290,79 @@ function findService001Effect(ast, layer) {
 const CONTROLLER_003_SUGGESTED_FIX = 'const { state, select } = useOrder(); // read the hook live every render; move useState/useRef/useMemo into the hook or workflow';
 const HOOK_003_SUGGESTED_FIX = 'useEffect(() => { const controller = new AbortController(); window.addEventListener(\'resize\', onResize, { signal: controller.signal }); return () => controller.abort(); }, [onResize]);';
 const ROUTE_003_SUGGESTED_FIX = 'return <OrderController params={params} />; // forward params whole; parse<Name>Route in a domain unit turns them into found / not-found';
+// #597 -- PAGE-001 / COMPONENT-001 / PURE-001 were registered (PAGE-001/COMPONENT-001 at error,
+// PURE-001 at warning) with no detector anywhere, the same dead-rule bug as SERVICE-001 (#589).
+// Each is decided on evidence, not mechanically:
+//
+// PAGE-001 ("Pages are presentation-only") is an umbrella whose named clauses (no workflow/service/
+// domain import, no fetch, no application state, no inline conditional/loop JSX, bounded JSX) are
+// already PAGE-002..PAGE-009, and its external-effect clause is SERVICE-001 since #589. The one
+// clause with NO rule was "a page owns no state or effect of its own" -- docs/LLM-PROMPT.md says
+// "page and component: presentation only ... Components may hold local UI state only", i.e. only a
+// component may hold state; a page composes, and state/effects live in a hook, controller or
+// workflow. That residual is what PAGE-001 now detects: a page calling useState/useReducer/
+// useEffect/useLayoutEffect/useSyncExternalStore. (useMachine/useActor/createMachine stay PAGE-006's.)
+// Default severity is 'warning', not the registered 'error': same non-additive-default reasoning as
+// PAGE-008/009 (#505) -- a project that lists PAGE-001: error in architecture.yml (every generated
+// one does) still gets error.
+const PAGE_001_STATE_HOOKS = new Set(['useState', 'useReducer', 'useEffect', 'useLayoutEffect', 'useSyncExternalStore']);
+
+// COMPONENT-001 ("Components are presentation-only"): the same umbrella over COMPONENT-002/003/005/006
+// (+ SERVICE-001 for effects). A component MAY hold local UI state (useState/useEffect are ordinary
+// component code, 32 such calls in this repo's own ui/client components, none of them a violation),
+// so the page-style hook ban would be pure noise here. The genuine gap is the component-layer
+// mirror of PAGE-006: a component that owns an application STATE MACHINE (useMachine/useActor/
+// createMachine, imported straight from xstate so COMPONENT-003's `workflows/` import ban never
+// sees it) is doing a workflow's job, not presentation.
+const COMPONENT_001_MACHINE_NAMES = new Set(['useMachine', 'useActor', 'createMachine']);
+
+// PURE-001 ("Domain functions should be deterministic"): DOMAIN-001 bans reaching for a
+// browser/network global (fetch/window/document/storage/navigator) and DOMAIN-002 is an opt-in
+// allowlist, but neither names the one thing "deterministic" is about: the same arguments giving a
+// different answer from one call to the next. Sources of that, by real call shape: Math.random(),
+// Date.now(), new Date() / Date() with NO argument (new Date(x) is a pure conversion), performance.now(),
+// crypto.randomUUID()/getRandomValues(). A name the file itself binds (a parameter called `crypto`)
+// is not the global and is skipped. The fix is always the same: take the value (a timestamp, a
+// random number, an id) as a parameter and let the caller supply it.
+const PURE_001_MEMBER_CALLS = new Set(['Math.random', 'Date.now', 'performance.now', 'crypto.randomUUID', 'crypto.getRandomValues']);
+
+/** Every call of a hook in `names`, written bare (`useState(...)`) or as `React.useState(...)`,
+ * sorted by position. collectCalls alone misses the namespaced spelling. */
+function collectHookCalls(ast, names) {
+  const hits = [];
+  walkAst(ast, {
+    enter(node) {
+      if (node.type !== 'CallExpression') return;
+      const c = node.callee;
+      if (c.type === 'Identifier' && names.has(c.name)) hits.push({ name: c.name, index: c.range[0] });
+      else if (c.type === 'MemberExpression' && !c.computed && c.object.type === 'Identifier' && c.object.name === 'React'
+        && c.property.type === 'Identifier' && names.has(c.property.name)) hits.push({ name: c.property.name, index: c.range[0] });
+    },
+  });
+  return hits.sort((a, b) => a.index - b.index);
+}
+
+/** The first PURE-001 nondeterministic source in `ast` ({ name, index }), or null. */
+function findNondeterministicSource(ast) {
+  const bound = collectLocallyBoundNames(ast);
+  const hits = [];
+  walkAst(ast, {
+    enter(node) {
+      const c = node.type === 'CallExpression' || node.type === 'NewExpression' ? node.callee : null;
+      if (!c) return;
+      if (node.type === 'CallExpression' && c.type === 'MemberExpression' && !c.computed
+        && c.object.type === 'Identifier' && c.property.type === 'Identifier'
+        && !bound.has(c.object.name) && PURE_001_MEMBER_CALLS.has(`${c.object.name}.${c.property.name}`)) {
+        hits.push({ name: `${c.object.name}.${c.property.name}()`, index: c.range[0] });
+      } else if (c.type === 'Identifier' && c.name === 'Date' && node.arguments.length === 0 && !bound.has('Date')) {
+        hits.push({ name: node.type === 'NewExpression' ? 'new Date()' : 'Date()', index: c.range[0] });
+      }
+    },
+  });
+  hits.sort((a, b) => a.index - b.index);
+  return hits[0] || null;
+}
+
 const SERVICE_003_SUGGESTED_FIX = '({ signal }: { signal: AbortSignal }) => fetch(url, { signal })';
 
 const propKeyName = (key) => (key?.type === 'Identifier' ? key.name : key?.type === 'Literal' ? String(key.value) : null);
@@ -493,6 +566,16 @@ export function detectLayerViolations(layer, source, opts = {}) {
       expected: ['controller', 'workflow', 'a Provider hook (use<Name>Provider)', 'a tracked-state hook (use<Name>State)'],
     });
 
+    // #597 -- PAGE-001: see PAGE_001_STATE_HOOKS above for why this is the residual clause.
+    const ownState = collectHookCalls(ast, PAGE_001_STATE_HOOKS)[0];
+    if (ownState) out.push({
+      rule: 'PAGE-001', line: lineOf(source, ownState.index),
+      message: `Page holds its own state or effect ("${ownState.name}").`,
+      why: 'Pages are presentation-only: they compose components. State and effects belong in a hook, controller or workflow (a component may hold local UI state, a page may not).',
+      suggestedFix: 'Move the state/effect into a hook (features/<feature>/hooks/use<Name>State.ts, built through useTrackedState) or the controller, and pass the result down as props.',
+      expected: ['controller', 'hook', 'component'],
+    });
+
     // #505 -- PAGE-008: no inline conditional/loop logic in a page's JSX, mirroring
     // COMPONENT-005 exactly (same detection helper, packages/ast/jsxComplexity.mjs's
     // collectInlineJsxLogic -- reused verbatim, not reimplemented).
@@ -532,6 +615,16 @@ export function detectLayerViolations(layer, source, opts = {}) {
       message: 'Component imports application logic.',
       why: 'Components are reusable presentation and local UI state only.',
       expected: ['props', 'component'],
+    });
+
+    // #597 -- COMPONENT-001: see COMPONENT_001_MACHINE_NAMES above (mirror of PAGE-006).
+    const machineUse = collectBareIdentifierUsages(ast, COMPONENT_001_MACHINE_NAMES)[0];
+    if (machineUse) out.push({
+      rule: 'COMPONENT-001', line: lineOf(source, machineUse.index),
+      message: `Component owns an application state machine ("${machineUse.name}").`,
+      why: 'Components are presentation-only (props plus local UI state); a state machine is application flow, which belongs in a workflow bound by a controller or hook.',
+      suggestedFix: 'Move the machine into features/<feature>/workflows/ and pass its state and send-handlers to the component as props.',
+      expected: ['props', 'workflow'],
     });
 
     // #508 -- COMPONENT-005: no inline conditional/loop logic in a
@@ -677,6 +770,16 @@ export function detectLayerViolations(layer, source, opts = {}) {
       rule: 'DOMAIN-001', line: lineOf(source, hit.index),
       message: 'Domain code uses an external effect.',
       why: 'Domain is pure by default.',
+      expected: ['pure function'],
+    });
+
+    // #597 -- PURE-001: see PURE_001_MEMBER_CALLS above.
+    const nondeterministic = findNondeterministicSource(ast);
+    if (nondeterministic) out.push({
+      rule: 'PURE-001', line: lineOf(source, nondeterministic.index),
+      message: `Domain code calls ${nondeterministic.name}, so the same arguments can give a different result.`,
+      why: 'Domain functions should be deterministic: a clock, a random number or a generated id is an input, not something to reach for, so the function stays testable and replayable.',
+      suggestedFix: 'Take the value as a parameter (now: number, id: string, rand: () => number) and let the caller supply it.',
       expected: ['pure function'],
     });
 

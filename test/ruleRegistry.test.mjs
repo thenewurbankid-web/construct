@@ -36,7 +36,7 @@ const NON_DETECTOR_FILES = new Set([
 // anywhere) -- filed as a follow-up, #597, rather than fixed here, since fixing them is a
 // separate, unscoped change. Each entry here is asserted BELOW to still be genuinely missing, so
 // this allowlist cannot silently outlive a real fix (or hide a fix that only partially works).
-const KNOWN_GAPS = new Set(['PAGE-001', 'COMPONENT-001', 'PURE-001']);
+const KNOWN_GAPS = new Set([]); // #597 closed the last three (PAGE-001, COMPONENT-001, PURE-001)
 
 function listSourceFiles(dir, out = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {

@@ -204,7 +204,11 @@ export function layersForFramework(framework) {
 export const DEFAULT_RULES = {
   'ROUTE-001': { severity: 'error', name: 'Routes delegate to controllers' },
   'ROUTE-002': { severity: 'error', name: 'Routes cannot own business logic or effects' },
-  'PAGE-001': { severity: 'error', name: 'Pages are presentation-only' },
+  // #597 -- PAGE-001/COMPONENT-001/PURE-001 each got a real detector (architecture-enforcer.mjs, see the
+  // block above PAGE_001_STATE_HOOKS). PAGE-001 and COMPONENT-001 now default to 'warning' (was 'error'):
+  // a new detector must not turn an existing project red without it opting in, and every generated
+  // architecture.yml lists them explicitly, so those projects keep 'error'.
+  'PAGE-001': { severity: 'warning', name: 'Pages hold no state or effect of their own (presentation-only)' },
   'PAGE-002': { severity: 'error', name: 'Pages cannot import workflows' },
   'PAGE-003': { severity: 'error', name: 'Pages cannot import services' },
   'PAGE-004': { severity: 'error', name: 'Pages cannot call fetch' },
@@ -222,7 +226,7 @@ export const DEFAULT_RULES = {
   // (#490) useCanvasEditor.tsx failure class: unrelated business logic (there, HTML5 canvas
   // drawing code) filled into a hook with nothing in the rule engine to stop it.
   'HOOK-001': { severity: 'error', name: 'A hook named use<Name>State must be built through useTrackedState(...), with nothing unrelated alongside it' },
-  'COMPONENT-001': { severity: 'error', name: 'Components are presentation-only' },
+  'COMPONENT-001': { severity: 'warning', name: 'Components own no application state machine (presentation-only)' },
   'COMPONENT-002': { severity: 'error', name: 'Components cannot import controllers' },
   'COMPONENT-003': { severity: 'error', name: 'Components cannot import workflows/services/domain' },
   // #508 (part of #500's typed-contracts epic) -- mirrors the still-unbuilt
@@ -327,7 +331,7 @@ export const DEFAULT_RULES = {
   'SLICE-001': { severity: 'error', name: 'Feature internals are isolated' },
   'SLICE-002': { severity: 'error', name: 'Cross-feature imports use public index.ts' },
   'MODULE-001': { severity: 'error', name: 'One primary module per file' },
-  'PURE-001': { severity: 'warning', name: 'Domain functions should be deterministic' },
+  'PURE-001': { severity: 'warning', name: 'Domain functions should be deterministic (no Math.random, Date.now, new Date(), performance.now, crypto id)' },
   'DRY-001': { severity: 'warning', name: 'Business knowledge has one source of truth' },
   'SOC-001': { severity: 'error', name: 'Every responsibility has an architectural owner' },
   'SLICE-003': { severity: 'warning', name: 'Public API (index.ts) stays in sync with actual feature exports' },

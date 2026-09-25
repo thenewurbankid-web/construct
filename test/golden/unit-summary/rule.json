@@ -6,12 +6,12 @@
   "ref": "rule:PAGE-001",
   "name": "PAGE-001",
   "detail": "standard",
-  "summary": "Rule PAGE-001: Pages are presentation-only. Default severity error; 0 violation(s) in this project.",
+  "summary": "Rule PAGE-001: Pages hold no state or effect of their own (presentation-only). Default severity warning, configured error; 0 violation(s) in this project.",
   "sections": {
     "rule": {
       "id": "PAGE-001",
-      "statement": "Pages are presentation-only",
-      "defaultSeverity": "error",
+      "statement": "Pages hold no state or effect of their own (presentation-only)",
+      "defaultSeverity": "warning",
       "configuredSeverity": "error"
     },
     "violations": {
@@ -31,7 +31,7 @@
   "next": [],
   "budget": {
     "maxTokens": 2000,
-    "estimatedTokens": 145,
+    "estimatedTokens": 168,
     "truncated": false
   }
 }

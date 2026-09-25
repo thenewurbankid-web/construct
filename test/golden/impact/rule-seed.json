@@ -142,7 +142,7 @@
   "stats": {
     "seedsResolved": 1,
     "seedsUnresolved": 0,
-    "filesConsidered": 18,
+    "filesConsidered": 21,
     "filesImplicated": 2,
     "derived": 2,
     "inferred": 0,
