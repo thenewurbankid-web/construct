@@ -32,6 +32,10 @@ const bin = path.join(REPO, 'packages', 'cli', 'construct.mjs');
 const SENTENCE = 'A user wants to see a list of products';
 const run = (args, cwd) => spawnSync(process.execPath, [bin, ...args], { encoding: 'utf8', cwd });
 const firstExisting = (...candidates) => candidates.find((p) => fs.existsSync(p));
+/** The project runs React and bundles with esbuild: a CI lane with only the root install has no react-dom (it lives in ui/client), so these tests skip there with a reason instead of crashing. */
+const HAVE_RUNTIME = ['react', 'react-dom'].every((n) => firstExisting(path.join(REPO, 'node_modules', n), path.join(REPO, 'ui', 'client', 'node_modules', n)))
+  && ['typescript', 'esbuild', '@esbuild', '@types'].every((n) => fs.existsSync(path.join(REPO, 'node_modules', n)));
+const NEEDS_RUNTIME = { skip: HAVE_RUNTIME ? false : 'react, react-dom, esbuild and typescript are not installed here (a lane with only the root install); the full checkout runs this' };
 const PHASE_1_ON = ['DOMAIN-002', 'READ-004', 'SERVICE-003', 'STATE-001'];
 
 /** A fresh init project whose architecture.yml has the typed-contracts phase 1 rules on, and whose imports resolve offline. */
@@ -89,7 +93,7 @@ const featureFiles = (dir) => Object.fromEntries(fs.readdirSync(path.join(dir, '
 const projectFiles = (dir) => Object.fromEntries(fs.readdirSync(dir, { recursive: true }).filter((f) => !/^node_modules(\/|$)/.test(f) && fs.statSync(path.join(dir, f)).isFile()).sort().map((f) => [f.split(path.sep).join('/'), fs.readFileSync(path.join(dir, f), 'utf8')]));
 const validateJson = (dir) => JSON.parse(run(['validate', '--format', 'json'], dir).stdout);
 
-test('the sentence becomes a plan of 12 steps, runs, and gives a screen that validates, type-checks, renders and is PROVEN', async (t) => {
+test('the sentence becomes a plan of 12 steps, runs, and gives a screen that validates, type-checks, renders and is PROVEN', NEEDS_RUNTIME, async (t) => {
   const dir = initProject('react-spa');
   const { placed, planned } = await planFor(dir, 'products');
   assert.deepEqual(placed.decisions, [{ question: 'q-shape', option: 'list', by: 'decision-model', provider: 'rules' }], 'who decided is recorded');
@@ -274,7 +278,7 @@ test('the sentence becomes a plan of 12 steps, runs, and gives a screen that val
   });
 });
 
-test('the same plan on a Next.js project validates too, and its hook and controller are client files', async () => {
+test('the same plan on a Next.js project validates too, and its hook and controller are client files', NEEDS_RUNTIME, async () => {
   const dir = initProject('nextjs');
   const { planned } = await planFor(dir, 'products');
   assert.deepEqual(planned.wiring.routes, [{ name: 'Products', route: '/products', step: 's10', file: 'app/products/page.tsx' }]);

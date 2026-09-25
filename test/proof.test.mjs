@@ -27,6 +27,10 @@ const FIELDS = 'id:string,name:string,price:number';
 const REQUEST = { name: 'Products', feature: 'products', entity: 'Product', fields: FIELDS };
 const firstExisting = (...candidates) => candidates.find((p) => fs.existsSync(p));
 
+/** react, react-dom and esbuild are needed to RUN a proof: a CI lane with only the root install has no react-dom (it lives in ui/client), so those tests skip there with a reason. */
+const HAVE_RUNTIME = ['react', 'react-dom', 'esbuild', '@esbuild'].every((n) => firstExisting(path.join(REPO, 'node_modules', n), path.join(REPO, 'ui', 'client', 'node_modules', n)));
+const NEEDS_RUNTIME = { skip: HAVE_RUNTIME ? false : 'react, react-dom and esbuild are not installed here (a lane with only the root install); the full checkout runs this' };
+
 /** An init project with a `products` feature holding the list shape; nothing linked unless `link` (the proof needs react, react-dom, esbuild to RUN). */
 function project({ link = false, playwright = false } = {}) {
   const dir = makeTempDir('construct-proof-');
@@ -231,7 +235,7 @@ test('runProofs says why it could not run: no feature, no proof yet, no esbuild 
   assert.equal((await runProofs(dir, 'products', { name: 'Other.proof.test.ts' })).error.code, 'NO_PROOF');
 });
 
-test('runProofs runs read-only: nothing is written in the project, and the throwaway directory is gone', async () => {
+test('runProofs runs read-only: nothing is written in the project, and the throwaway directory is gone', NEEDS_RUNTIME, async () => {
   const dir = project({ link: true });
   generateProof(dir, REQUEST);
   const tmp = makeTempDir('construct-proof-tmp-');
