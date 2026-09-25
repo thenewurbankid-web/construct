@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { makeLineSource } from './line-source.mjs';
 import { createFeature, generateLayer, generateVertical, layerFromGeneratedFile, fillGeneratedFile } from './generators.mjs';
-import { generateServiceFromSpec } from './service-generator.mjs';
+import { generateServiceFromSpec, resolveSchemaEmit } from './service-generator.mjs';
 import { generateShapeLayer, generateShapeVertical, hasTypedContractsDependency, TYPED_CONTRACTS_SPECIFIER } from './shapes.mjs';
 import { write, ensureDir } from './fs.mjs';
 import { scaffoldProject } from './scaffold.mjs';
@@ -560,9 +560,15 @@ export async function generate(args) {
   const oi = args.indexOf('--openapi');
   if (layer === 'service' && oi >= 0 && args[oi + 1]) {
     const t = startTimer();
-    const files = await generateServiceFromSpec(root, name, feature, args[oi + 1]);
+    // #575: `--schema` writes the Zod response schemas, `--no-schema` never does, neither means "when the project declares zod".
+    const schema = args.includes('--no-schema') ? false : args.includes('--schema') ? true : 'auto';
+    const files = await generateServiceFromSpec(root, name, feature, args[oi + 1], { schema });
     const dt = formatDuration(elapsedSeconds(t));
     for (const file of files) console.log(`Created ${path.relative(root, file)} (${dt})`);
+    const zodFile = files.find((f) => f.endsWith('zod.gen.ts'));
+    if (zodFile) console.log(`  Response schemas: check a service at its boundary with defineService('<Op>', fn, { schema: z<Op>Response }) from ${path.relative(root, zodFile)}.`);
+    else if (resolveSchemaEmit(root, schema)) console.log('  No response schemas written: the spec declares no response schema.');
+    else if (schema === 'auto') console.log('  Response schemas not written (zod is not in package.json); add zod, or pass --schema, to also write services/<name>/zod.gen.ts.');
     return;
   }
   // Plain fallback: scaffold the usual template stub, optionally LLM-filled
@@ -1189,7 +1195,7 @@ export function printAttribution(tool, llm) {
  * | `construct create guard <Name> --feature <feature> --access public|signed-in|role [--roles a,b] [--redirect </path>] [--route </path>]` (who may open a screen: a typed guard wired to the route entry, and its proof; `public` writes nothing, #629)
  * | `construct create store <Name> --feature <feature> --shape value|list|keyed [--entity <Entity>] [--fields id:string,...]` (shared client state on the tracked-state factory: a status union, typed actions, a pure reducer, a hook and a locked proof, #630)
  * | `construct create handler <Name> --feature <feature> --method GET|POST|PUT|DELETE --path /api/<x> [--service <Name>]` (a Next.js route handler app/api/<x>/route.ts that delegates to a service and maps its typed result to 200, 400, 405 or 500; refused for a react-spa project, #625)
- * | `construct create service <name> --feature <feature> --openapi <spec>` (Ticket 7.5)
+ * | `construct create service <name> --feature <feature> --openapi <spec> [--schema|--no-schema]` (Ticket 7.5; Zod response schemas beside the types when the project has zod or `--schema`, #575)
  * | `construct create layer|<layer> <name> --feature <feature> --shape list [--entity <E>] [--fields id:string,...]` (#619: real typed code, no model).
  * `feature` creation has nothing fillable (just types.ts/index.ts
  * boilerplate) so `--llm` only ever applies to the layer/single-layer

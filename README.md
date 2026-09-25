@@ -327,7 +327,9 @@ Most layer rules above are enforced two ways at once, not just one:
 
   A sync `fn` stays sync; without `{ schema }` the two-argument form is
   byte-for-byte what it was. The schema also rides along as `fetchUser.schema`
-  for tooling. Fixtures: `examples/service-schema.ts` (hand-written Standard
+  for tooling. `construct create service <name> --feature <f> --openapi <spec>`
+  writes the schemas from the spec (`z<Op>Response`, zod 4) when the project
+  has zod or `--schema` is passed (see "Service generator"). Fixtures: `examples/service-schema.ts` (hand-written Standard
   Schema, `safeParse`), `examples/service-schema-zod.ts` (real zod) and
   `examples/service-schema-invalid.ts` (using `.value` before narrowing is a
   `tsc` error).
@@ -474,7 +476,7 @@ Three capabilities, each with its own namespace — a friendlier grouping over t
 construct create feature <name> [--format json] [--dir <path>]
 construct create layer <name> --feature <feature> --layers <l1,l2,...> [--format json] [--dir <path>]
 construct create <layer> <name> --feature <feature> [--format json] [--dir <path>]
-construct create service <name> --feature <feature> --openapi <spec> [--dir <path>]
+construct create service <name> --feature <feature> --openapi <spec> [--schema | --no-schema] [--dir <path>]
 
 # refactor — mechanical, LLM-free moves/renames within the architecture
 construct refactor move <name> --feature <feature> --from <layer> --to <layer> [--format json] [--dir <path>]
@@ -525,6 +527,23 @@ This writes:
 - `features/core/services/client.ts` — the shared `api` (RTKQ `createApi`) and `baseQuery`, re-exported from `features/core/index.ts` so other features can consume it through the public API (`SLICE-002`-clean).
 - `features/<feature>/services/<name>/{index.ts,types.gen.ts}` — hey-api's generated types for every operation.
 - `features/<feature>/services/<name>Api.ts` — the RTKQ `injectEndpoints` file, one `query`/`mutation` per operation (GET/HEAD -> query, everything else -> mutation), plus its generated `use<Op>Query`/`use<Op>Mutation` hooks.
+- `features/<feature>/services/<name>/zod.gen.ts` — only when asked (below): the spec's response shapes as [Zod](https://zod.dev) (MIT) schemas, `z<OperationId>Response`.
+
+**Response schemas (#575).** hey-api's `zod` plugin writes the Zod file, and `defineService` (see "Typed contracts") checks it at the service's boundary. It is written when the project's `package.json` declares `zod`, or with `--schema`; `--no-schema` never writes it; without zod the file is skipped (it imports `zod`, so a project without it would stop compiling) and the command says so. A spec with no response schema writes none. Zod 4 is what hey-api emits by default.
+
+```bash
+construct create service petStore --feature pet --openapi ./openapi/petstore.yaml --schema
+```
+
+```ts
+import { defineService } from '@line/construct-core/typed-contracts';
+import { zListPetsResponse } from './petStore/zod.gen';
+
+export const listPets = defineService('listPets', async (_: object): Promise<unknown> => (await fetch('/pets')).json(), {
+  schema: zListPetsResponse,
+});
+// (await listPets({})) is { status: 'ok', value: Pet[] } | { status: 'error', kind: 'schema', issues }
+```
 
 Which transport `client.ts` instantiates is controlled by `project.dataLayer.provider` in `architecture.yml` — `fetchBaseQuery` (the default), `axios`, or a network-free `mock` adapter for tests/demos:
 

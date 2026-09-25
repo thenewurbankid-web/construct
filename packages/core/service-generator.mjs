@@ -10,6 +10,14 @@
 //  - @reduxjs/toolkit (RTK Query) is the actual runtime the generated
 //    services target: `createApi`/`injectEndpoints`.
 //
+// #575 (response schemas): hey-api's own `zod` plugin (MIT, the same tool) also turns the
+// spec's response shapes into Zod schemas, `zod.gen.ts` beside `types.gen.ts`, one
+// `z<OperationId>Response` per operation. That file is what a hand-written
+// `defineService(name, fn, { schema: zListPetsResponse })` checks at its boundary
+// (typed-contracts/schema.ts, #585). It is OPT-IN by the project: emitted when the project
+// already declares `zod` (package.json) or `--schema` asks for it, never otherwise, because
+// the file imports `zod` and a project without it would stop compiling.
+//
 // What stays deterministic and LLM-free, by design: turning hey-api's parsed
 // output into an RTKQ `injectEndpoints` file is our own template code, not
 // hey-api's job (it has no RTKQ plugin) and not an LLM's job either — this
@@ -172,6 +180,38 @@ export function ensureClient(root) {
 
 // ---- OpenAPI spec walking (plain object walk -- no AST needed) -----------
 
+/**
+ * Whether the project at `root` declares `zod` (dependencies, devDependencies or peerDependencies of its package.json). A missing or unreadable package.json answers `false`.
+ *
+ * @param {string} root Project root.
+ * @returns {boolean} `true` when package.json lists `zod`.
+ *
+ * @example
+ * zodDeclared('/project'); // => true when /project/package.json has "zod" in devDependencies
+ */
+export function zodDeclared(root) {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+    return ['dependencies', 'devDependencies', 'peerDependencies'].some((k) => pkg?.[k] && Object.hasOwn(pkg[k], 'zod'));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * #575: whether the Zod response schemas are emitted. `true` (`--schema`) and `false` (`--no-schema`) are explicit; `'auto'` (the default) emits exactly when the project declares `zod`.
+ *
+ * @param {string} root Project root.
+ * @param {boolean | 'auto'} [option] The explicit choice, or `'auto'`.
+ * @returns {boolean} Whether `zod.gen.ts` is to be written.
+ *
+ * @example
+ * resolveSchemaEmit('/project', true); // => true
+ */
+export function resolveSchemaEmit(root, option = 'auto') {
+  return option === 'auto' || option === undefined ? zodDeclared(root) : option === true;
+}
+
 /** Read + parse an OpenAPI document (YAML or JSON -- js-yaml parses both)
  * and return its operations as { method, path, operationId } in document
  * order. Throws a clear, actionable error rather than guessing when an
@@ -305,10 +345,13 @@ export const { ${hookNames.join(', ')} } = ${apiConst};
  * @param {string} name Service name.
  * @param {string} feature Feature that owns the service.
  * @param {string} specPath Path of the OpenAPI spec.
- * @returns {Promise<string[]>} Absolute paths of the files written.
+ * @param {{ schema?: boolean | 'auto' }} [options] `schema` (#575): `true` writes the Zod response schemas
+ *   (`services/<name>/zod.gen.ts`, hey-api's `zod` plugin) when the spec declares a response schema, `false` never does,
+ *   `'auto'` (default) does when the project's package.json declares `zod`. A spec with no response schema writes none.
+ * @returns {Promise<string[]>} Absolute paths of the files written (the `zod.gen.ts` path last, when it was written).
  * @throws {Error} A usage error when an argument is missing.
  */
-export async function generateServiceFromSpec(root, name, feature, specPath) {
+export async function generateServiceFromSpec(root, name, feature, specPath, options = {}) {
   if (!name || !feature || !specPath) {
     throw usageError('generateServiceFromSpec requires a name, a feature, and an OpenAPI spec path.');
   }
@@ -317,6 +360,7 @@ export async function generateServiceFromSpec(root, name, feature, specPath) {
   // before anything is written. Already-valid names are left untouched.
   const apiIdent = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) ? name : lowerFirst(identifierPascalCase(name, 'Service'));
   const absSpecPath = path.isAbsolute(specPath) ? specPath : path.resolve(root, specPath);
+  const emitSchemas = resolveSchemaEmit(root, options.schema);
   const ops = parseOperations(absSpecPath); // fail fast on a bad/empty spec before touching disk
 
   const clientPath = ensureClient(root);
@@ -333,7 +377,7 @@ export async function generateServiceFromSpec(root, name, feature, specPath) {
   await createClient({
     input: absSpecPath,
     output: generatedDir,
-    plugins: ['@hey-api/typescript'],
+    plugins: emitSchemas ? ['@hey-api/typescript', 'zod'] : ['@hey-api/typescript'],
     logs: { level: 'silent' },
   });
 
@@ -350,6 +394,14 @@ export async function generateServiceFromSpec(root, name, feature, specPath) {
   write(endpointsPath, renderEndpoints(apiIdent, ops, generatedTypes, `./${name}/types.gen`));
 
   const written = [clientPath, path.join(generatedDir, 'index.ts'), typesGenPath, endpointsPath];
+  if (emitSchemas) {
+    // Only response schemas are what `defineService({ schema })` checks; a spec with none leaves nothing worth a file.
+    const zodPath = path.join(generatedDir, 'zod.gen.ts');
+    if (fs.existsSync(zodPath)) {
+      if (/^export const z\w*Response = (?!z\.void\(\))/m.test(fs.readFileSync(zodPath, 'utf8'))) written.push(zodPath);
+      else fs.rmSync(zodPath);
+    }
+  }
   selfCheck(root, written);
   return written;
 }
