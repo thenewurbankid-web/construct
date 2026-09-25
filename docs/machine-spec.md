@@ -79,7 +79,7 @@ never both.
 ## The command
 
 ```
-construct research spec <file> [--generate [--feature <name>]] [--format json|text] [--dir <path>]
+construct research spec <file> [--generate [--feature <name>] | --read-back] [--format json|text] [--dir <path>]
 ```
 
 Exit 0 when the spec passes, 1 on any `SPEC-*` failure, 2 when the file cannot be read or is not JSON
@@ -192,6 +192,54 @@ test passes: `test/specToCode.test.mjs` runs all three for real, not as a claim.
   person, or of a model that gets one stub at a time and must pass `validate` and `tsc`.
 - English to spec (drafting the JSON with a model, R3, and the check-and-retry loop) is not built: a spec
   is written by hand or from a form today.
+
+## `--read-back`, R4 (#672, #576): the spec in plain English
+
+```
+construct research spec <file> --read-back [--format json|text]
+```
+
+The person who wrote the requirement (or approved a model's draft of it) confirms what was understood
+before anything is generated. On an accepted spec, `--read-back` prints, per requirement sentence in
+order, the sentence and then the states, events, transitions and functions whose `req` points at it,
+each in plain words. An item that claims several sentences shows under each of them; a sentence marked
+out of scope is listed as such with its reason; the declared `types` (they carry no `req`) come last,
+so nothing is dropped. On a spec that fails a `SPEC-*` check it prints the same report as plain
+`research spec` and reads nothing back. It writes nothing and is exclusive with `--generate` (exit 2).
+
+The wording is the workflow narrator's (`packages/engine/workflowNarrator.mjs`), not a second
+vocabulary: the flow summary is `narrateMachine`'s, every transition is `transitionSentence`'s (a guarded
+branch and its "Otherwise" fallback read exactly as `construct research workflow` reads them). No model.
+
+```
+$ construct research spec packages/core/research/examples/machine-spec.v1.example.json --read-back
+Read-back of "sign-in with retry" (feature auth)
+The "sign in with retry" flow has 5 steps. It starts in *idle* and can end in *signed in* or *locked out*.
+
+s1: A visitor signs in with an email and a password.
+  - *idle*: The flow starts here. The form is shown and editable.
+  - "submit" (`SUBMIT`) is something that can happen, carrying `{ email: string; password: string }`.
+  - In *idle*: When "submit" happens, the flow moves to *checking*.
+  - `verifyCredentials` takes `{ email: string; password: string }` and gives back `Promise<...>`. It expects: ...
+...
+s5: After three failed attempts in a row, the visitor is locked out and must reset their password.
+  - *locked out*: An end state, the flow stops here. No more attempts; only a password reset gets the visitor out.
+  - In *checking*: When "invalid" happens, the flow moves to *locked out* — only if the "attempts exhausted" condition holds.
+  - `recordFailedAttempt` takes ...
+
+s6: The sign-in page must load in under two seconds.
+  Out of scope: A performance budget, not machine behaviour: checked by a Lighthouse threshold in CI, not by this workflow.
+```
+
+`--format json` is the same content as a fixed-shape result, `construct.machine-spec-readback.v1`:
+`{ schema, name, feature, summary, sentences, types, counts }`, where each `sentences[]` entry is
+`{ id, text, status, reason, states, events, transitions, functions }` and each item is
+`{ id, req, text }`. Ids are the spec's own (sentence `s1`, state `idle`, event `SUBMIT`, transition
+`t1`, function name), so they stay stable across runs and across edits to other items. `status` is
+`covered`, `out-of-scope` or (only for a spec that was never validated) `uncovered`. The library
+entry points are `readBackMachineSpec(spec)` and `renderReadBack(result, { format })` in
+`packages/core/research/readBack.mjs`. The output for the worked example is pinned by
+`test/machineSpecReadBack.test.mjs` against `fixtures/machine-spec-readback/`.
 
 ## The checks
 

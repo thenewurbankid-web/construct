@@ -1,0 +1,246 @@
+{
+  "schema": "construct.machine-spec-readback.v1",
+  "name": "sign-in with retry",
+  "feature": "auth",
+  "summary": "The \"sign in with retry\" flow has 5 steps. It starts in *idle* and can end in *signed in* or *locked out*.",
+  "sentences": [
+    {
+      "id": "s1",
+      "text": "A visitor signs in with an email and a password.",
+      "status": "covered",
+      "reason": null,
+      "states": [
+        {
+          "id": "idle",
+          "req": [
+            "s1"
+          ],
+          "text": "*idle*: The flow starts here. The form is shown and editable."
+        }
+      ],
+      "events": [
+        {
+          "id": "SUBMIT",
+          "req": [
+            "s1"
+          ],
+          "text": "\"submit\" (`SUBMIT`) is something that can happen, carrying `{ email: string; password: string }`."
+        }
+      ],
+      "transitions": [
+        {
+          "id": "t1",
+          "req": [
+            "s1",
+            "s2"
+          ],
+          "text": "In *idle*: When \"submit\" happens, the flow moves to *checking*."
+        }
+      ],
+      "functions": [
+        {
+          "id": "verifyCredentials",
+          "req": [
+            "s1",
+            "s3",
+            "s4"
+          ],
+          "text": "`verifyCredentials` takes `{ email: string; password: string }` and gives back `Promise<{ ok: true; session: Session } | { ok: false; reason: string }>`. It expects: email and password are both non-empty strings. It promises: Resolves { ok: true, session } when the pair matches an account; otherwise { ok: false, reason } with a reason that does not say which of the two was wrong."
+        }
+      ]
+    },
+    {
+      "id": "s2",
+      "text": "While the credentials are being checked, the form is locked.",
+      "status": "covered",
+      "reason": null,
+      "states": [
+        {
+          "id": "checking",
+          "req": [
+            "s2"
+          ],
+          "text": "*checking*: A step of the flow. The form is locked while the credentials are verified."
+        }
+      ],
+      "events": [],
+      "transitions": [
+        {
+          "id": "t1",
+          "req": [
+            "s1",
+            "s2"
+          ],
+          "text": "In *idle*: When \"submit\" happens, the flow moves to *checking*."
+        }
+      ],
+      "functions": []
+    },
+    {
+      "id": "s3",
+      "text": "If the credentials are valid, the visitor is signed in and taken to their dashboard.",
+      "status": "covered",
+      "reason": null,
+      "states": [
+        {
+          "id": "signedIn",
+          "req": [
+            "s3"
+          ],
+          "text": "*signed in*: An end state, the flow stops here. The visitor has a session and is on the dashboard."
+        }
+      ],
+      "events": [
+        {
+          "id": "VALID",
+          "req": [
+            "s3"
+          ],
+          "text": "\"valid\" (`VALID`) is something that can happen, carrying `{ session: Session }`."
+        }
+      ],
+      "transitions": [
+        {
+          "id": "t2",
+          "req": [
+            "s3"
+          ],
+          "text": "In *checking*: When \"valid\" happens, the flow moves to *signed in*."
+        }
+      ],
+      "functions": [
+        {
+          "id": "verifyCredentials",
+          "req": [
+            "s1",
+            "s3",
+            "s4"
+          ],
+          "text": "`verifyCredentials` takes `{ email: string; password: string }` and gives back `Promise<{ ok: true; session: Session } | { ok: false; reason: string }>`. It expects: email and password are both non-empty strings. It promises: Resolves { ok: true, session } when the pair matches an account; otherwise { ok: false, reason } with a reason that does not say which of the two was wrong."
+        },
+        {
+          "id": "openDashboard",
+          "req": [
+            "s3"
+          ],
+          "text": "`openDashboard` takes `Session` and gives back `void`. It expects: The session was just issued by verifyCredentials. It promises: The browser is on the dashboard route with the session attached."
+        }
+      ]
+    },
+    {
+      "id": "s4",
+      "text": "If the credentials are invalid, the visitor sees the reason and can try again.",
+      "status": "covered",
+      "reason": null,
+      "states": [
+        {
+          "id": "failed",
+          "req": [
+            "s4"
+          ],
+          "text": "*failed*: A step of the flow. The reason is shown; the form is editable again."
+        }
+      ],
+      "events": [
+        {
+          "id": "INVALID",
+          "req": [
+            "s4"
+          ],
+          "text": "\"invalid\" (`INVALID`) is something that can happen, carrying `{ reason: string }`."
+        },
+        {
+          "id": "RETRY",
+          "req": [
+            "s4"
+          ],
+          "text": "\"retry\" (`RETRY`) is something that can happen, carrying nothing."
+        }
+      ],
+      "transitions": [
+        {
+          "id": "t4",
+          "req": [
+            "s4"
+          ],
+          "text": "In *checking*: Otherwise, the flow moves to *failed*."
+        },
+        {
+          "id": "t5",
+          "req": [
+            "s4"
+          ],
+          "text": "In *failed*: When \"retry\" happens, the flow moves to *idle*."
+        }
+      ],
+      "functions": [
+        {
+          "id": "verifyCredentials",
+          "req": [
+            "s1",
+            "s3",
+            "s4"
+          ],
+          "text": "`verifyCredentials` takes `{ email: string; password: string }` and gives back `Promise<{ ok: true; session: Session } | { ok: false; reason: string }>`. It expects: email and password are both non-empty strings. It promises: Resolves { ok: true, session } when the pair matches an account; otherwise { ok: false, reason } with a reason that does not say which of the two was wrong."
+        }
+      ]
+    },
+    {
+      "id": "s5",
+      "text": "After three failed attempts in a row, the visitor is locked out and must reset their password.",
+      "status": "covered",
+      "reason": null,
+      "states": [
+        {
+          "id": "lockedOut",
+          "req": [
+            "s5"
+          ],
+          "text": "*locked out*: An end state, the flow stops here. No more attempts; only a password reset gets the visitor out."
+        }
+      ],
+      "events": [],
+      "transitions": [
+        {
+          "id": "t3",
+          "req": [
+            "s5"
+          ],
+          "text": "In *checking*: When \"invalid\" happens, the flow moves to *locked out* — only if the \"attempts exhausted\" condition holds."
+        }
+      ],
+      "functions": [
+        {
+          "id": "recordFailedAttempt",
+          "req": [
+            "s5"
+          ],
+          "text": "`recordFailedAttempt` takes `{ attempts: number }` and gives back `{ attempts: number; exhausted: boolean }`. It expects: attempts is a non-negative integer (0 before the first failure). It promises: attempts is one higher than the input; exhausted is true exactly when the new count is 3 or more."
+        }
+      ]
+    },
+    {
+      "id": "s6",
+      "text": "The sign-in page must load in under two seconds.",
+      "status": "out-of-scope",
+      "reason": "A performance budget, not machine behaviour: checked by a Lighthouse threshold in CI, not by this workflow.",
+      "states": [],
+      "events": [],
+      "transitions": [],
+      "functions": []
+    }
+  ],
+  "types": [
+    {
+      "id": "Session",
+      "text": "`Session` is `{ userId: string; token: string }`: What a successful sign-in hands back."
+    }
+  ],
+  "counts": {
+    "sentences": 6,
+    "covered": 5,
+    "outOfScope": 1,
+    "uncovered": 0,
+    "types": 1
+  }
+}

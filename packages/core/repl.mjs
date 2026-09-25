@@ -91,7 +91,7 @@ export const HELP_TOPICS = {
       2 importer hops; what lies past it is counted, not dropped.
       Example: research impact feature:login --depth 3 --format markdown
 
-  research spec <file> [--generate [--feature <name>]] [--format json|text] [--dir <path>]
+  research spec <file> [--generate [--feature <name>] | --read-back] [--format json|text] [--dir <path>]
       Checks a machine-spec.v1 file: an English requirement (sentences with
       ids) broken down into states, events, guarded transitions and typed
       functions, every item linked back to its sentence by "req". Refuses
@@ -108,6 +108,11 @@ export const HELP_TOPICS = {
       every-path unit test -- never overwrites an existing file. --feature
       is used only when the spec has no "feature" field; exit 2 when
       neither is given.
+      --read-back: on an accepted spec, prints it in plain English per
+      requirement sentence (the states, events, transitions and functions
+      that point at it; sentences out of scope listed as such), in the
+      workflow narrator's words. --format json: the same as a fixed-shape
+      list. Writes nothing; exclusive with --generate.
       Example: research spec specs/sign-in.machine-spec.json --generate --feature auth
 
   research doctor [--dir <path>]

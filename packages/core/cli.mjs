@@ -51,6 +51,7 @@ import { explainSource, renderExplained } from '../../packages/engine/workflowEx
 import { listWorkflowSourceFiles, readWorkflowSource } from '../../packages/engine/workflowSource.mjs';
 import { validateMachineSpec, renderMachineSpecReport } from './research/machine-spec.mjs';
 import { generateFromSpec } from './research/specToCode.mjs';
+import { readBackMachineSpec, renderReadBack } from './research/readBack.mjs';
 import { readTraces } from './decision-trace-store.mjs';
 import { providerInput, getDecisionProvider, registerDecisionProvider } from './decision-provider.mjs';
 import { loadDecisionPlugin } from './decision-plugin.mjs';
@@ -1333,7 +1334,7 @@ export async function researchWorkflow(args) {
 }
 
 /**
- * `construct research spec <file> [--generate [--feature <name>]] [--format json|text] [--dir <path>]`
+ * `construct research spec <file> [--generate [--feature <name>] | --read-back] [--format json|text] [--dir <path>]`
  * (#576/#584/#593). Checks a machine-spec.v1 file (an English requirement broken down into states,
  * events, transitions and typed functions, see docs/machine-spec.md): structure, then meaning
  * (reachability, unknown states/events, untyped functions, uncovered sentences, ...). Deterministic,
@@ -1343,9 +1344,13 @@ export async function researchWorkflow(args) {
  * `specToCode.mjs`'s `generateFromSpec` to write the workflow (with its typed state union and named
  * guard stubs, event payloads typed, declared `types` in the feature's types.ts), one function stub per
  * `functions[]` entry and the machine's locked every-path unit test, never overwriting a file that already
- * exists.
+ * exists. With `--read-back` (#672, R4): on an accepted spec, prints the spec in plain English, per
+ * requirement sentence (the states, events, transitions and functions that point at it, sentences out of
+ * scope listed as such; `--format json` is the same as a fixed-shape list, see `research/readBack.mjs`),
+ * writes nothing; on any violation prints the same report as plain `research spec`. `--read-back` and
+ * `--generate` are exclusive (usage error).
  *
- * @param {string[]} args `<file>` plus optional `--generate`, `--feature <name>` (used only when the spec has no `feature` field), `--format json|text` (default text) and `--dir <path>` (where a relative `<file>` is resolved from, and the project root `--generate` writes into; default cwd).
+ * @param {string[]} args `<file>` plus optional `--generate` or `--read-back`, `--feature <name>` (used only when the spec has no `feature` field), `--format json|text` (default text) and `--dir <path>` (where a relative `<file>` is resolved from, and the project root `--generate` writes into; default cwd).
  * @returns {Promise<boolean>} Resolves to true when it printed only JSON (so the caller skips the attribution line).
  * @throws {ConstructError} Usage error (exit code 2) for missing/extra positionals, an unknown format, an unreadable/non-JSON file, or (with `--generate`) a missing feature name.
  *
@@ -1353,11 +1358,11 @@ export async function researchWorkflow(args) {
  * await researchSpec(['specs/sign-in.machine-spec.json', '--generate', '--feature', 'auth']);
  */
 export async function researchSpec(args) {
-  const usage = 'Usage: construct research spec <file> [--generate [--feature <name>]] [--format json|text] [--dir <path>]';
+  const usage = 'Usage: construct research spec <file> [--generate [--feature <name>] | --read-back] [--format json|text] [--dir <path>]';
   const valueFlags = new Set(['--format', '--dir', '--feature']);
   const positional = args.filter((a, i) => !a.startsWith('--') && !valueFlags.has(args[i - 1]));
   const format = flagValue(args, '--format') ?? 'text';
-  if (positional.length !== 1 || !['json', 'text'].includes(format)) throw new ConstructError(usage, { exitCode: EXIT_CODES.USAGE_ERROR });
+  if (positional.length !== 1 || !['json', 'text'].includes(format) || (args.includes('--generate') && args.includes('--read-back'))) throw new ConstructError(usage, { exitCode: EXIT_CODES.USAGE_ERROR });
   // The file is resolved from where the user stands (or --dir), not from the project root a
   // parent architecture.yml would pick: a spec is an input file, not a project unit.
   const dir = flagValue(args, '--dir');
@@ -1370,6 +1375,11 @@ export async function researchSpec(args) {
   }
   const result = validateMachineSpec(spec, { file: path.relative(process.cwd(), file) || positional[0] });
   const generate = args.includes('--generate');
+  // #672: the read-back is of an ACCEPTED spec; a failing one prints R1's own report, like --generate.
+  if (args.includes('--read-back') && result.status === 'passed') {
+    console.log(renderReadBack(readBackMachineSpec(spec), { format }));
+    return format === 'json';
+  }
   // #593: on any violation, --generate is a no-op -- print R1's own report and write nothing, same
   // as plain `research spec` without the flag.
   if (result.status !== 'passed' || !generate) {

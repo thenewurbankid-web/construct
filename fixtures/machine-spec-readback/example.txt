@@ -1,0 +1,40 @@
+Read-back of "sign-in with retry" (feature auth)
+The "sign in with retry" flow has 5 steps. It starts in *idle* and can end in *signed in* or *locked out*.
+
+s1: A visitor signs in with an email and a password.
+  - *idle*: The flow starts here. The form is shown and editable.
+  - "submit" (`SUBMIT`) is something that can happen, carrying `{ email: string; password: string }`.
+  - In *idle*: When "submit" happens, the flow moves to *checking*.
+  - `verifyCredentials` takes `{ email: string; password: string }` and gives back `Promise<{ ok: true; session: Session } | { ok: false; reason: string }>`. It expects: email and password are both non-empty strings. It promises: Resolves { ok: true, session } when the pair matches an account; otherwise { ok: false, reason } with a reason that does not say which of the two was wrong.
+
+s2: While the credentials are being checked, the form is locked.
+  - *checking*: A step of the flow. The form is locked while the credentials are verified.
+  - In *idle*: When "submit" happens, the flow moves to *checking*.
+
+s3: If the credentials are valid, the visitor is signed in and taken to their dashboard.
+  - *signed in*: An end state, the flow stops here. The visitor has a session and is on the dashboard.
+  - "valid" (`VALID`) is something that can happen, carrying `{ session: Session }`.
+  - In *checking*: When "valid" happens, the flow moves to *signed in*.
+  - `verifyCredentials` takes `{ email: string; password: string }` and gives back `Promise<{ ok: true; session: Session } | { ok: false; reason: string }>`. It expects: email and password are both non-empty strings. It promises: Resolves { ok: true, session } when the pair matches an account; otherwise { ok: false, reason } with a reason that does not say which of the two was wrong.
+  - `openDashboard` takes `Session` and gives back `void`. It expects: The session was just issued by verifyCredentials. It promises: The browser is on the dashboard route with the session attached.
+
+s4: If the credentials are invalid, the visitor sees the reason and can try again.
+  - *failed*: A step of the flow. The reason is shown; the form is editable again.
+  - "invalid" (`INVALID`) is something that can happen, carrying `{ reason: string }`.
+  - "retry" (`RETRY`) is something that can happen, carrying nothing.
+  - In *checking*: Otherwise, the flow moves to *failed*.
+  - In *failed*: When "retry" happens, the flow moves to *idle*.
+  - `verifyCredentials` takes `{ email: string; password: string }` and gives back `Promise<{ ok: true; session: Session } | { ok: false; reason: string }>`. It expects: email and password are both non-empty strings. It promises: Resolves { ok: true, session } when the pair matches an account; otherwise { ok: false, reason } with a reason that does not say which of the two was wrong.
+
+s5: After three failed attempts in a row, the visitor is locked out and must reset their password.
+  - *locked out*: An end state, the flow stops here. No more attempts; only a password reset gets the visitor out.
+  - In *checking*: When "invalid" happens, the flow moves to *locked out* — only if the "attempts exhausted" condition holds.
+  - `recordFailedAttempt` takes `{ attempts: number }` and gives back `{ attempts: number; exhausted: boolean }`. It expects: attempts is a non-negative integer (0 before the first failure). It promises: attempts is one higher than the input; exhausted is true exactly when the new count is 3 or more.
+
+s6: The sign-in page must load in under two seconds.
+  Out of scope: A performance budget, not machine behaviour: checked by a Lighthouse threshold in CI, not by this workflow.
+
+Types the spec declares
+  - `Session` is `{ userId: string; token: string }`: What a successful sign-in hands back.
+
+6 sentence(s): 5 covered, 1 out of scope.

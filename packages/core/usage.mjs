@@ -53,7 +53,7 @@ Four capabilities, one CLI:
   construct research doctor [--dir <path>]
   construct research impact <unit-ref>... [--files a,b] [--since <ref>] [--ticket <text>] [--ticket-file <path>] [--depth N] [--max-files N] [--format json|markdown] [--dir <path>]
   construct research impact --usage   (deterministic blast radius: which features/layers/files a change touches, and why)
-  construct research spec <file> [--generate [--feature <name>]] [--format json|text] [--dir <path>]
+  construct research spec <file> [--generate [--feature <name>] | --read-back] [--format json|text] [--dir <path>]
     (checks a machine-spec.v1 file -- an English requirement broken down into states, events, transitions and typed
     functions -- and refuses it with a SPEC-* code, the path and the reason: unreachable state, unknown state/event,
     untyped function or a type nothing declares, sentence neither covered nor out of scope; see docs/machine-spec.md;
@@ -62,6 +62,10 @@ Four capabilities, one CLI:
     stubs), the declared "types" into the feature's types.ts, one defineService(...) stub per function and the
     machine's locked every-path unit test, never overwriting an existing file; --feature is used only when the
     spec has no "feature" field, and it is a usage error (exit 2) to have neither)
+    (--read-back: on an accepted spec, prints it in plain English per requirement sentence -- the states, events,
+    transitions and functions that point at it, sentences out of scope listed as such -- using the workflow narrator's
+    wording; --format json is the same as a fixed-shape list with stable sentence ids; writes nothing; exclusive with
+    --generate)
   construct review <base> <head> [--plan <file>] [--features a,b] [--no-merge-base] [--format json|markdown] [--dir <path>]
   construct review --usage   (read-only PR health between two git refs: scope, unexplained changes, rule regressions, public surface, flow diff; findings split mechanical vs conversation)
   construct test run <feature> [--name <file> --area generated|yours] [--base-url <url>] [--format json|text] [--dir <path>]
