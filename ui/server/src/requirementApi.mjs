@@ -43,8 +43,8 @@ export const MAX_REQUEST_BYTES = 16 * 1024;
 
 const CARD_ID = /^o\d{1,3}$/;
 const PLACEMENT_ID = /^q-[A-Za-z0-9-]{1,40}$/;
-/** #621, #654, #632: the closed questions of the PLAN (where a screen reads its data, its route, the dependency, the environment variables, how far it is verified) are asked when the plan is built (they need the project's files), so their answers go to planFromBlocks, not to placeCard. */
-const PLAN_ID = /^q-(?:source|route|dependency|env|verify)(?:-[a-z0-9-]{1,70})?$/;
+/** #621, #654, #632: the closed questions of the PLAN (where a screen reads its data, its route, the dependency, the environment variables, how far it is verified, a wizard's step count) are asked when the plan is built (they need the project's files), so their answers go to planFromBlocks, not to placeCard. */
+const PLAN_ID = /^q-(?:source|route|dependency|env|verify|steps)(?:-[a-z0-9-]{1,70})?$/;
 const OPTION_ID = /^[a-z][a-z-]{0,30}$/;
 
 const fail = (status, code, error, extra = {}) => ({ status, body: { ok: false, code, error, ...extra } });
@@ -125,7 +125,7 @@ export function readRequirement(body, root, trace = { choices: [], questions: []
   const planned = planFromBlocks(placement.blocks, { feature, root, title: `Requirement: ${text.trim().slice(0, 80)}`, decisions: placement.decisions, answers: planAnswers, card });
   trace.planValidated = planned.ok;
   if (!planned.ok) return { status: 200, body: { ...out, placement: { ...placement, ok: false, errors: [...placement.errors, ...planned.errors] } } };
-  // #621, #654, #632: every closed question of the plan (`q-source`, `q-route`, `q-dependency`, `q-env`, `q-verify`, whatever the blocks raised) is a card beside the plan,
+  // #621, #654, #632: every closed question of the plan (`q-source`, `q-route`, `q-dependency`, `q-env`, `q-verify`, `q-steps`, whatever the blocks raised) is a card beside the plan,
   // like q-shape: asked once the plan is built, answered like the others, recorded as a decision trace, and never holds Approve back (an unanswered one uses the rules' default).
   // The response is generic: the client draws whatever `offers` holds.
   const sourceOffers = (planned.offers ?? []).filter((q) => PLAN_ID.test(q.id)).map((q) => asQuestion('plan', q));

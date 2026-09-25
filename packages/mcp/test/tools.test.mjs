@@ -160,6 +160,27 @@ test('placement_place: the type-check (#632) is a closed offer, q-verify, answer
   assert.deepEqual(both.plan.steps.filter((s) => s.flow.startsWith('check.')).map((s) => [s.flow, s.files]), [['check.types', []], ['check.build', []]], 'read-only: no file is touched');
 });
 
+test('placement_place: the wizard step count (#659) is a closed offer, q-steps, answered by id and attributed to the client; the steps ride on every unit and the proof', () => withOwnSession(async (call) => {
+  const wizard = 'A user wants a step by step signup';
+  const shape = { id: 'q-shape', option: 'wizard' };
+  const asked = (await call('placement_place', { text: wizard, answers: [shape] })).body;
+  const offer = asked.offers.find((o) => o.id === 'q-steps');
+  assert.deepEqual([offer.default, offer.chosen, offer.options.map((o) => o.id)], ['three', null, ['three', 'two', 'four']]);
+  const stepFiles = (body) => body.plan.steps.find((s) => s.title === 'Create component Signup').files.map((f) => f.path).filter((f) => f.endsWith('Step.component.tsx')).map((f) => f.split('/').pop().replace('Signup', '').replace('Step.component.tsx', ''));
+  assert.deepEqual(stepFiles(asked), ['Details', 'Review', 'Done'], 'unanswered: three steps, a component each');
+  const four = (await call('placement_place', { text: wizard, answers: [shape, { id: 'q-steps', option: 'four' }] })).body;
+  assert.deepEqual(four.decisions.at(-1), { question: 'q-steps', option: 'four', by: 'llm', provider: 'claude-code' });
+  assert.equal(four.offers.find((o) => o.id === 'q-steps').chosen, 'four');
+  assert.deepEqual(stepFiles(four), ['Details', 'Options', 'Review', 'Done'], 'the four steps are the ones of the table');
+  const two = (await call('placement_place', { text: wizard, answers: [shape, { id: 'q-steps', option: 'two' }] })).body;
+  assert.deepEqual(stepFiles(two), ['Details', 'Done']);
+  const refused = await call('placement_place', { text: wizard, answers: [shape, { id: 'q-steps', option: 'seven' }] });
+  assert.equal(refused.isError, true);
+  assert.equal(refused.body.error.code, 'PLAN_REFUSED');
+  const list = (await call('placement_place', { text: SENTENCE, answers: [{ id: 'q-shape', option: 'list' }] })).body;
+  assert.equal(list.offers.some((o) => o.id === 'q-steps'), false, 'only the wizard is asked');
+}));
+
 test('placement_place: a card that needs a secret names its environment variables (#632): a q-env per variable, answered by id, the add.env steps previewed with their file', async () => {
   const text = 'A logged-in user wants to safely manage billing details Stripe';
   const asked = (await call('placement_place', { text })).body;

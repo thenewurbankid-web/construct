@@ -242,6 +242,28 @@ test('#632: the billing sentence raises a q-env per named secret and the plan ca
   assert.equal((await post({ text: BILLING, answers: [{ id: 'q-env-x'.repeat(20), option: 'add' }] })).status, 400, 'a question id that cannot be one the plan asks is refused');
 });
 
+test('#659: a wizard plan is asked q-steps: three steps by default, two or four on request; the answer changes every unit and the proof, and is recorded', async () => {
+  const sentence = 'A user wants a step by step signup';
+  const shape = { id: 'q-shape', option: 'wizard' };
+  const stepsIn = (body) => [...new Set(body.plan.steps.flatMap((s) => (s.args?.steps ? [s.args.steps] : [])))];
+  const asked = (await post({ text: sentence, answers: [shape] })).body;
+  const offer = asked.offers.find((q) => q.id === 'q-steps');
+  assert.deepEqual([offer.source, offer.default, offer.chosen, offer.options.map((o) => [o.id, o.enabled])], ['plan', 'three', null, [['three', true], ['two', true], ['four', true]]]);
+  assert.deepEqual(asked.offers.map((q) => q.id).slice(0, 3), ['q-shape', 'q-source', 'q-steps'], 'asked beside the data source');
+  assert.equal(asked.suggestions['q-steps'].option, 'three', 'the default is the first option, so the rules provider suggests it, like for q-source and q-verify');
+  assert.deepEqual(stepsIn(asked), ['details,review,done']);
+  const four = (await post({ text: sentence, answers: [shape, { id: 'q-steps', option: 'four' }] })).body;
+  assert.deepEqual(stepsIn(four), ['details,options,review,done']);
+  assert.equal(four.offers.find((q) => q.id === 'q-steps').chosen, 'four');
+  assert.deepEqual(four.placement.decisions.at(-1), { question: 'q-steps', option: 'four', by: 'person' });
+  assert.equal(validatePlan(four.plan).valid, true);
+  assert.equal((await post({ text: sentence, answers: [shape, { id: 'q-steps', option: 'Seven' }] })).status, 400, 'an option id has a fixed shape');
+  const refused = (await post({ text: sentence, answers: [shape, { id: 'q-steps', option: 'seven' }] }));
+  assert.equal(refused.body.placement.ok, false, 'a well-formed option the question does not have is refused with the choices, never replaced');
+  assert.match(refused.body.placement.errors.at(-1).message, /Options: three, two, four/);
+  assert.equal((await post({ text: 'A user wants to see a list of products', answers: [{ id: 'q-shape', option: 'list' }] })).body.offers.some((q) => q.id === 'q-steps'), false, 'only the wizard is asked');
+});
+
 test('#632: a shaped plan is asked q-verify: type-check by default, both, or none; the answer changes the steps and is recorded; a plan without the shape has nothing to verify', async () => {
   const sentence = 'A user wants to see a list of products';
   const shape = { id: 'q-shape', option: 'list' };

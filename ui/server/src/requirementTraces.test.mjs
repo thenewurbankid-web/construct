@@ -188,3 +188,15 @@ test('the response is exactly what the deterministic blocks return: no field of 
   assert.deepEqual(bare(r.body), JSON.parse(JSON.stringify(readRequirement(body, root).body)));
   for (const key of ['trace', 'traces', 'choices', 'decisionTrace']) assert.equal(key in r.body, false);
 });
+
+test('#659: the q-steps answer is a decision trace of its own (the offer as shown, the rules suggestion, accepted or not, the plan validated); unanswered records nothing', async () => {
+  fresh();
+  const WIZARD = 'A user wants a step by step signup';
+  await post({ text: WIZARD, answers: [{ id: 'q-shape', option: 'wizard' }] });
+  assert.equal(traces()?.decisions?.some((d) => d.chooser.id === 'requirement.plan.steps') ?? false, false, 'the question was asked but nobody answered it');
+  await post({ text: WIZARD, answers: [{ id: 'q-shape', option: 'wizard' }, { id: 'q-steps', option: 'four' }] });
+  const steps = traces().decisions.find((d) => d.chooser.id === 'requirement.plan.steps');
+  assert.deepEqual([steps.chosen, steps.by, steps.options, steps.summary.id, steps.summary.chosen], ['four', 'person', ['three', 'two', 'four'], 'q-steps', null]);
+  assert.deepEqual([steps.suggestion.option, steps.outcome.accepted, steps.outcome.planValidated], ['three', false, true]);
+  assert.equal(JSON.stringify(traces()).includes(root), false, 'no project path in a trace');
+});

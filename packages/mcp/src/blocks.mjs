@@ -95,7 +95,7 @@ const capKeyed = (record, max = LIMITS.previewFiles) => Object.fromEntries(Objec
  * with the MCP client's name in the returned `decisions`; nothing is written to the decision traces. The plan is never applied.
  *
  * @param {{ root: string, clientName: () => string | undefined }} ctx The server's startup configuration.
- * @param {{ text: string, answers?: { id: string, option: string }[] }} input The requirement and the answers (`o1`... for words, `q-shape`, `q-dependency`, `q-route`, `q-source`, `q-env`, `q-verify`, `q-v1`... for placement).
+ * @param {{ text: string, answers?: { id: string, option: string }[] }} input The requirement and the answers (`o1`... for words, `q-shape`, `q-dependency`, `q-route`, `q-source`, `q-env`, `q-verify`, `q-steps`, `q-v1`... for placement).
  * @returns {Promise<object>} `{ ok, stage, complete, card, blocks, questions, offers, decisions, plan, files, proof, wiring, warnings, notes, apply }`.
  * @throws {ToolError} `PARSE_FAILED`, `ANSWER_REFUSED`, `PLACEMENT_REFUSED`, `PLAN_REFUSED`, `CONFIG_UNREADABLE` or `PATH_OUTSIDE_ROOT`.
  *
@@ -115,7 +115,7 @@ export async function placementPlace(ctx, { text, answers = [] }) {
       const r = resolveOpen(card, { [a.id]: a.option });
       if (!r.ok) throw new ToolError('ANSWER_REFUSED', firstMessage(r.errors, 'That answer was not accepted.'));
       card = r.card;
-    } else if (/^q-(?:dependency|route|source|env|verify)(?:-[a-z0-9-]+)?$/.test(a.id)) wiringAnswers[a.id] = { option: a.option, ...attribution };
+    } else if (/^q-(?:dependency|route|source|env|verify|steps)(?:-[a-z0-9-]+)?$/.test(a.id)) wiringAnswers[a.id] = { option: a.option, ...attribution };
     else placementAnswers[a.id] = { option: a.option, ...attribution };
   }
 

@@ -37,7 +37,7 @@ export const TOOLS = Object.freeze([
     description: 'Place a requirement in the project\'s layers and, when nothing is left open, preview the plan: the steps, the files each step would touch, its proof and its wiring. Open questions and offers are closed choices; answer them in `answers` and call again with the same text. Reads architecture.yml and folder listings; writes nothing and applies nothing.',
     inputSchema: z.object({
       text: text('The requirement sentence.'),
-      answers: z.array(z.object({ id: z.string().regex(QUESTION_ID).describe('A question id from an earlier result: o1, o2 (words), q-shape, q-dependency, q-route, q-source, q-env, q-verify or q-v1 (placement).'), option: z.string().regex(OPTION_ID).describe('One of that question\'s option ids.') }).strict()).max(LIMITS.answers).optional(),
+      answers: z.array(z.object({ id: z.string().regex(QUESTION_ID).describe('A question id from an earlier result: o1, o2 (words), q-shape, q-dependency, q-route, q-source, q-env, q-verify, q-steps or q-v1 (placement).'), option: z.string().regex(OPTION_ID).describe('One of that question\'s option ids.') }).strict()).max(LIMITS.answers).optional(),
     }),
     run: blocks.placementPlace,
   },
