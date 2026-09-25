@@ -97,7 +97,7 @@ const LLM_ARG = { type: 'string', flag: '--llm', description: 'LLM provider that
  *
  * @type {readonly string[]}
  */
-export const PLAN_SHAPES = Object.freeze(['list', 'detail', 'form', 'dashboard']);
+export const PLAN_SHAPES = Object.freeze(['list', 'detail', 'form', 'dashboard', 'wizard']);
 
 /**
  * The data sources a shaped `create.unit` / `create.layer` / `create.proof` step can name with `source` (#621): where the screen's service reads
@@ -116,9 +116,11 @@ export const PLAN_SOURCES = Object.freeze(['local', 'endpoint', 'openapi']);
 export const PLAN_PROOF_KINDS = Object.freeze(['render', 'playwright']);
 
 // #619 -- the three optional arguments of a shaped step (#621 adds a fourth, the data source). Additive: a step without them is exactly what it was.
-const SHAPE_ARG = { type: 'string', flag: '--shape', enum: [...PLAN_SHAPES], description: 'A named screen shape: the units are filled with real, typed code for it (list: an entity list with loading, empty and error states; detail: one item by id with loading, not-found and error states; form: a typed input per field with validation and a submit service; dashboard: a titled overview of tiles and panels from one typed summary, with loading and error states).' };
+const SHAPE_ARG = { type: 'string', flag: '--shape', enum: [...PLAN_SHAPES], description: 'A named screen shape: the units are filled with real, typed code for it (list: an entity list with loading, empty and error states; detail: one item by id with loading, not-found and error states; form: a typed input per field with validation and a submit service; dashboard: a titled overview of tiles and panels from one typed summary, with loading and error states; wizard: a multi-step flow run by a state machine in the workflow layer, a component per step, Next and Back guarded by the step, and a submit service).' };
 const ENTITY_ARG = { type: 'string', flag: '--entity', description: 'The entity a shape shows or writes, PascalCase and singular (Product). Defaults to the singular of the unit name (list), the unit name (detail), the unit name without its leading verb (form: AddProduct is Product) or the singular of the unit name without its Dashboard word (dashboard: OrdersDashboard is Order).' };
 const FIELDS_ARG = { type: 'string', flag: '--fields', description: 'The entity fields for a shape as name:type pairs, comma separated (id:string,name:string,price:number). Types: string, number, boolean; an id field is required (a form has no input for it: the server assigns it; a dashboard adds up the number fields and counts the boolean ones).' };
+// #628 -- the steps of a wizard shape. Additive: a wizard step without it has the default steps; another shape refuses it.
+const STEPS_ARG = { type: 'string', flag: '--steps', description: 'The steps of a wizard shape as names separated by commas (details,review,done, the default): lower-case words, two to six, each a state of the machine and a component; the fields are dealt to every step but the last, which shows them all and submits.' };
 // #621 -- where a shaped screen reads its data from. Additive: a step without it is `endpoint`, what every shaped step did before.
 const SOURCE_ARG = { type: 'string', flag: '--source', enum: [...PLAN_SOURCES], description: 'Where a shaped screen reads its data from (#621): local (a typed in-memory store with seed rows: the screen works with no backend), endpoint (fetch /api/<plural>, which must exist; what a step without a source does) or openapi (the address of the matching operation in the project\'s OpenAPI file, refused when there is none).' };
 
@@ -170,6 +172,7 @@ export const PLAN_FLOWS = Object.freeze({
       shape: SHAPE_ARG,
       entity: ENTITY_ARG,
       fields: FIELDS_ARG,
+      steps: STEPS_ARG,
       source: SOURCE_ARG,
       llm: LLM_ARG,
       dir: DIR_ARG,
@@ -187,6 +190,7 @@ export const PLAN_FLOWS = Object.freeze({
       shape: SHAPE_ARG,
       entity: ENTITY_ARG,
       fields: FIELDS_ARG,
+      steps: STEPS_ARG,
       source: SOURCE_ARG,
       llm: LLM_ARG,
       dir: DIR_ARG,
@@ -203,6 +207,7 @@ export const PLAN_FLOWS = Object.freeze({
       shape: SHAPE_ARG,
       entity: ENTITY_ARG,
       fields: FIELDS_ARG,
+      steps: STEPS_ARG,
       source: SOURCE_ARG,
       kind: { type: 'string', flag: '--kind', enum: [...PLAN_PROOF_KINDS], description: 'render (a node test, offline; the default) or playwright (the route flow with a mocked API; needs a Playwright config already in the project).' },
       route: { type: 'string', flag: '--route', description: 'The route of the screen for a playwright proof, for example /products. Defaults to /.' },

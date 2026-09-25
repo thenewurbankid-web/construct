@@ -99,10 +99,10 @@ test('a list of products offers the list shape beside the open questions; answer
   assert.deepEqual((await post({ text: SEARCH })).body.offers, [], 'a search is not a plain list: no offer');
 });
 
-// #620, #626, #627 -- the same q-shape question, with the options of the card: one item is offered detail, a write with properties form, an overview dashboard.
+// #620, #626, #627 -- the same q-shape question, with the options of the card: one item is offered detail, a write with properties form, an overview dashboard, a step-by-step flow wizard.
 // The route draws whatever `offers` carries, so the Requirement screen needs no client change.
-test('a single read is offered the detail shape, a write with properties the form shape and an overview the dashboard shape; each shapes the plan, and a wrong option for the card is refused', async () => {
-  for (const [sentence, shape, unit, feature] of [['A user wants to see the details of a product', 'detail', 'Product', 'product'], ['A user wants to add a product with a name and a price', 'form', 'AddProduct', 'add-product'], ['A manager wants an overview of orders with totals', 'dashboard', 'OrdersDashboard', 'orders-dashboard']]) {
+test('a single read is offered the detail shape, a write with properties the form shape, an overview the dashboard shape and a flow worded as steps the wizard shape; each shapes the plan, and a wrong option for the card is refused', async () => {
+  for (const [sentence, shape, unit, feature, units = 6] of [['A user wants to see the details of a product', 'detail', 'Product', 'product'], ['A user wants to add a product with a name and a price', 'form', 'AddProduct', 'add-product'], ['A manager wants an overview of orders with totals', 'dashboard', 'OrdersDashboard', 'orders-dashboard'], ['A user wants a step by step signup', 'wizard', 'Signup', 'signup', 7]]) {
     const plain = (await post({ text: sentence })).body;
     assert.deepEqual(plain.open, [], 'the offer never blocks the plan');
     assert.deepEqual(plain.offers.map((q) => [q.id, q.source, q.default, q.chosen, q.shape, q.unit]), [['q-shape', 'placement', shape, null, shape, unit]]);
@@ -113,8 +113,8 @@ test('a single read is offered the detail shape, a write with properties the for
     const shaped = (await post({ text: sentence, answers: [{ id: 'q-shape', option: shape }] })).body;
     assert.equal(validatePlan(shaped.plan).valid, true);
     assert.equal(shaped.plan.steps[0].args.name, feature);
-    assert.deepEqual(shaped.plan.steps.slice(1, 7).map((s) => [s.args.shape, s.args.name]), Array(6).fill([shape, unit]));
-    assert.deepEqual(shaped.plan.steps.slice(7).map((s) => s.flow), ['sync', 'create.route', 'check.types', 'create.proof', 'test.proof'], 'the wiring, the type-check and the proof apply to every shape');
+    assert.deepEqual(shaped.plan.steps.slice(1, 1 + units).map((s) => [s.args.shape, s.args.name]), Array(units).fill([shape, unit]));
+    assert.deepEqual(shaped.plan.steps.slice(1 + units).map((s) => s.flow), ['sync', 'create.route', 'check.types', 'create.proof', 'test.proof'], 'the wiring, the type-check and the proof apply to every shape');
     assert.deepEqual(shaped.placement.decisions, [{ question: 'q-shape', option: shape, by: 'person' }]);
     assert.equal(shaped.offers[0].chosen, shape);
     assert.equal(shaped.proof.steps.length, 1, 'the proof of the chain is returned with the plan');

@@ -110,6 +110,18 @@ test('placement_place: an overview is offered the dashboard shape (#627); an LLM
   assert.equal(wrong.isError, true, 'list is not an option of this card');
 });
 
+test('placement_place: a step-by-step flow is offered the wizard shape (#628); the plan carries its steps and the workflow layer, attributed to the client', async () => {
+  const text = 'A user wants a step by step signup';
+  const offer = (await call('placement_place', { text })).body.offers.find((o) => o.id === 'q-shape');
+  assert.deepEqual([offer.options.map((o) => o.id), offer.default], [['wizard', 'scaffold'], 'wizard']);
+  const shaped = (await call('placement_place', { text, answers: [{ id: 'q-shape', option: 'wizard' }] })).body;
+  assert.equal(shaped.complete, true);
+  assert.equal(shaped.plan.feature, 'signup');
+  assert.deepEqual(shaped.decisions, [{ question: 'q-shape', option: 'wizard', by: 'llm', provider: 'claude-code' }]);
+  assert.ok(shaped.plan.steps.some((s) => s.flow === 'create.unit' && s.files.some((f) => f.path === 'features/signup/workflows/Signup.workflow.ts')), 'the machine is a plan step');
+  assert.ok(shaped.files.b1.includes('features/signup/workflows/Signup.workflow.ts'));
+});
+
 test('placement_place: the data source of a shaped screen (#621) is a closed offer an LLM answers by id, attributed to it; an option that was not offered is refused', async () => {
   const shape = { id: 'q-shape', option: 'list' };
   const asked = (await call('placement_place', { text: SENTENCE, answers: [shape] })).body;

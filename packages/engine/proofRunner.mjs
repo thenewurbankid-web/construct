@@ -88,7 +88,7 @@ function classifyBuildError(text) {
     why: 'The proof binds to the files the shape writes (page, controller, service, types).',
     step: null,
     page: null,
-    fix: 'Put the file or export back (or regenerate the screen with `construct create layer ... --shape list|detail|form|dashboard`, then `construct create proof`). Do not file a product bug for this.',
+    fix: 'Put the file or export back (or regenerate the screen with `construct create layer ... --shape list|detail|form|dashboard|wizard`, then `construct create proof`). Do not file a product bug for this.',
   };
 }
 

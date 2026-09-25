@@ -609,7 +609,7 @@ question to `result.offers` (not to `open`, so it never holds the plan back):
 |---|---|---|
 | `q-shape` | one read verb on one plural data object, every block presentational or a server read ("see a list of products") | `list` (the rules-only default), `scaffold` |
 
-(#620, #626 and #627 added the same question for a read of one item (`detail`), a write with properties (`form`) and an overview of one data object (`dashboard`): the options belong to the card, see "The detail and form shapes" and "The dashboard shape" below.)
+(#620, #626, #627 and #628 added the same question for a read of one item (`detail`), a write with properties (`form`), an overview of one data object (`dashboard`) and a flow worded as steps (`wizard`): the options belong to the card, see "The detail and form shapes", "The dashboard shape" and "The wizard shape" below.)
 
 An unanswered offer leaves the plan exactly as it was, the plain scaffold. Answering `list` (a person, or the rules provider's
 suggestion, recorded in `decisions` as `person` or `decision-model`) turns the read into a server-read block (domain, service,
@@ -966,6 +966,102 @@ components is a later slice. `id` is never measured, a field called `count` is r
 a dashboard of an entity with no number or boolean field shows the count tile only, with no panel. The summary is a **typed object
 computed by the source**, not rows the screen adds up: the endpoint answers it, the local store computes it from its seed rows.
 
+## The wizard shape: a multi-step flow run by a state machine (#628, part of #616)
+
+A flow worded as steps ("A user wants a step by step signup") is offered `wizard | scaffold` in the same `q-shape` question, by fixed rules
+and with the same attribution as the other shapes: the card has **exactly one verb** (an interaction or a write), it or a part of the screen
+it names is a **wizard word** (`wizard`, `step`, `steps`, `multi-step`, `step by step`, `signup`, `checkout`, `onboarding`, all in the
+lexicon), and the card has at most one data object (a batch, in the plural, is not offered). A verb that is a flow in itself (`signup`,
+`checkout`, `onboarding`) names the screen (`Signup`); another write verb needs its data object and names it like a form does
+(`AddProduct`, from "add a product in steps"). The rules-only default is `wizard`; `list`, `detail`, `form` and `dashboard` are not offered
+here and an answer that names one is refused.
+
+The flow is a **real state machine in the workflow layer**: XState `setup(...).createMachine(...)`, one state per step plus `submitting` and
+`submitted`. Nothing is routed between steps (the URL stays the screen's), nothing is persisted between visits, and there is no client design.
+
+<!-- wizard-shape-example:commands -->
+```json
+[
+  "construct create feature signup",
+  "construct create domain Signup --feature signup --shape wizard --entity Signup --fields id:string,name:string --steps details,review,done --source local",
+  "construct create service Signup --feature signup --shape wizard --entity Signup --fields id:string,name:string --steps details,review,done --source local",
+  "construct create workflow Signup --feature signup --shape wizard --entity Signup --fields id:string,name:string --steps details,review,done --source local",
+  "construct create hook Signup --feature signup --shape wizard --entity Signup --fields id:string,name:string --steps details,review,done --source local",
+  "construct create component Signup --feature signup --shape wizard --entity Signup --fields id:string,name:string --steps details,review,done --source local",
+  "construct create page Signup --feature signup --shape wizard --entity Signup --fields id:string,name:string --steps details,review,done --source local",
+  "construct create controller Signup --feature signup --shape wizard --entity Signup --fields id:string,name:string --steps details,review,done --source local",
+  "construct create dependency @line/construct-core --version ^0.9.0",
+  "construct sync",
+  "construct create route Signup --feature signup --route /signup",
+  "construct create proof Signup --feature signup --shape wizard --entity Signup --fields id:string,name:string --steps details,review,done --source local --kind render",
+  "construct test proof signup --name SignupScreen.proof.test.ts"
+]
+```
+
+<!-- wizard-shape-example:files -->
+```json
+{
+  "b1": [
+    "features/signup/domain/Signup.domain.ts",
+    "features/signup/domain/SignupValidity.domain.ts",
+    "features/signup/domain/SignupScreen.domain.ts",
+    "features/signup/domain/SignupStore.domain.ts",
+    "features/signup/types.ts",
+    "features/signup/services/Signup.service.ts",
+    "features/signup/workflows/Signup.workflow.ts",
+    "features/signup/hooks/useSignup.state.ts",
+    "features/signup/controllers/SignupController.controller.tsx"
+  ],
+  "b1-view": [
+    "features/signup/components/SignupField.component.tsx",
+    "features/signup/components/SignupFrame.component.tsx",
+    "features/signup/components/SignupDetailsStep.component.tsx",
+    "features/signup/components/SignupReviewStep.component.tsx",
+    "features/signup/components/SignupDoneStep.component.tsx",
+    "features/signup/components/SignupNotice.component.tsx",
+    "features/signup/components/SignupAgain.component.tsx",
+    "features/signup/pages/SignupPage.page.tsx",
+    "features/signup/expressions/SignupByStep.expression.tsx"
+  ]
+}
+```
+
+`--steps a,b,c` (on `create.unit`, `create.layer` and `create.proof`, in `schemas/plan.v1.json`) names the steps: lower-case words with `-`
+between them, two to six, unique, none called `submitting` or `submitted`; nothing given is `details,review,done`. Another shape refuses it.
+The **input fields are dealt to every step but the last**, one after another and round again (`id` has no input: the server assigns it); the
+last step holds none, it shows everything typed and is where SUBMIT lives.
+
+| File | What it holds |
+|---|---|
+| `types.ts` (appended by the domain step) | `Signup` (a row, for the local store), `SignupInput` (the typed values), `SignupValues` (what is typed: text for a string or a number field, a tick for a boolean), `SignupStep` (`'details' \| 'review' \| 'done'`), `SignupContext { values; error }`, `SignupEvent` (`CHANGE`, `NEXT`, `BACK`, `SUBMIT`, `RESET`, and the service's answer `SUCCEEDED`, `FAILED`), `SignupState` (a `status` union: `step` with its progress and whether it may go on, `submitting`, `submitted`) and `SignupResult`. |
+| `domain/Signup.domain.ts`, `SignupValidity.domain.ts`, `SignupScreen.domain.ts` | Three files, because a domain file holds at most three units (`MODULE-001`): the steps, the empty values and the typed input; which fields a step holds and whether a step, and every step, is valid (a string is required, a number is required and must be a number, a yes or no field always passes); and `describeSignup`, the state a screen shows for a state of the machine. All pure `defineDomain` units. |
+| `services/Signup.service.ts` | `submitSignup({ input, signal })`, built with `defineService`: **POSTs** the typed values to `/api/signups` (the `local` source: saves into a typed store; the `openapi` source: `POST /<plural>` of the spec), forwards the `AbortSignal`, answers a typed `SignupResult`. |
+| `workflows/Signup.workflow.ts` | `signupMachine`, the XState machine, and `SignupWorkflow`, its `defineWorkflow` unit. **Every state lists every event** (a transition, or `{}` to ignore it on purpose), so `WORKFLOW-004` holds when it is on. `NEXT` goes on only through the guard `stepIsValid` (the step's own fields), `BACK` goes back, `SUBMIT` exists only on the last step and only through the guard `everyStepIsValid`, `RESET` starts again (not while submitting), `CHANGE` keeps what is typed. It imports the domain and no React (`WORKFLOW-001`). |
+| `hooks/useSignup.state.ts` | `useSignup()`: the machine in `useTrackedState`, run with `getNextSnapshot` (so it is pure and SSR-safe), returning `state`, `send` and one handler per event. While the machine is `submitting` it calls the service and sends back `SUCCEEDED` or `FAILED`; the request is aborted on unmount. Whether a step may go on is asked of the machine (`snapshot.can`), so the guards are the one source. |
+| `components/SignupField`, `SignupFrame`, `Signup<Step>Step`, `SignupNotice`, `SignupAgain` `.component.tsx` | A label and its input; the frame (progress, the step, and the buttons: Back is hidden on the first step, Next on the last and disabled until the step is valid, Submit only on the last); **one component per step** (the fields it holds, or, for a step with none, what was typed so far); a notice; the "Start again" button. |
+| `pages/SignupPage.page.tsx`, `expressions/SignupByStep.expression.tsx` | The heading, and the expression that shows the step of the state: the sending notice, its children (the complete notice and the button) once submitted, else the frame around the component of the step, with the message of a failed submit above it. |
+| `controllers/SignupController.controller.tsx` | Calls `useSignup()` and renders the page with the state and the handlers; no logic of its own. |
+
+**The proof** (`SignupScreen.proof.test.ts`, the render proof, no browser). The **machine** half walks the real XState machine with
+`getNextSnapshot` from a snapshot resolved in each state: NEXT blocked while the step is invalid and going on once it is valid; the whole flow
+with everything typed reaching the last step, and BACK back with what was typed kept; SUBMIT only on the last step and only when every step is
+valid; SUCCEEDED ends done and FAILED returns to the last step with its message; RESET from every state; and **a table of what every state does
+with every event**, written from the rules of the flow (not read off the machine), so it compares two accounts of it. A failure names the
+transition and the state: `The transition NEXT from "details" with nothing typed: the "details" state is wrong, the machine reaches "review".`
+The **screen** half shows that the page shows the step of the state (its progress, its legend, its fields, and nothing of the other steps), that
+the buttons follow the step, the sending and complete screens, a failed submit, the controller's first step, and the service (a stubbed
+`fetch`; for the `local` source, the save into the store with no network). It needs `xstate` in the project (a `construct init` project has it).
+The repo's own every-path generator (`construct generate tests signup --unit`, on `@xstate/graph`) accepts this machine too (checked by
+`test/wizard-shape-chain.test.mjs`); the proof carries its own walk as well, because it can type into the fields to satisfy the guards and it
+names the transition and the state that is wrong.
+
+**Decisions where the issue was silent.** The issue's options are the number of steps and the terminal action: the steps are `--steps` (a
+`q-steps` question in the Cockpit is a later slice), and the terminal action is the submit service (`q-source`: a local store, the endpoint or
+the OpenAPI operation). The last step is where SUBMIT lives, so the default `done` is the step that submits; `submitting` and `submitted` are
+states after the steps. The events are the issue's plus `CHANGE` (the machine keeps what is typed, so its guards can read it) and the
+service's two answers, `SUCCEEDED` and `FAILED`, which the hook sends (the machine stays pure). `WorkflowUnit` is not callable in
+`typed-contracts` today, so the hook runs `signupMachine` directly and `SignupWorkflow` registers the machine under its name for tooling.
+
 ## The data source: where a screen reads its data from (#621, part of #616, relates to #400)
 
 Until now the service of a shaped screen called `/api/<plural>`, an endpoint nothing in the project had made, so the screen it
@@ -1314,4 +1410,4 @@ as its options.
 
 The timeline read-back and its Cockpit screen are the Requirement screen (`/requirement`, #642): `toTimeline(placement)` in `ui/client/features/requirement/domain/Timeline.ts` turns the blocks into steps in run order (a slice to move it into core, so the CLI and an LLM read the same steps, is open). Not here yet: a `use client` / `use server` directive in the generated files, and words beyond the lexicon. Each is a slice of #616.
 
-Not here yet for the shapes (each a slice of #616): the other shapes (wizard); a dashboard that picks among the components a feature already has, or charts; a browser (Playwright) flow for the detail and form shapes (the list has one; the render proof of every shape is above); a `route.ts` handler for the endpoints the shapes call; an `update` form that addresses an item by its id (PUT), a form field other than a string, a number or a checkbox, a detail with a related list, and a route parameter for the detail's id (it is `?id=` or a prop today).
+Not here yet for the shapes (each a slice of #616): a wizard whose steps are chosen in the Cockpit (`q-steps`), routed between steps or persisted between visits; a dashboard that picks among the components a feature already has, or charts; a browser (Playwright) flow for the detail and form shapes (the list has one; the render proof of every shape is above); a `route.ts` handler for the endpoints the shapes call; an `update` form that addresses an item by its id (PUT), a form field other than a string, a number or a checkbox, a detail with a related list, and a route parameter for the detail's id (it is `?id=` or a prop today).

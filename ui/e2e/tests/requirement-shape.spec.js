@@ -196,8 +196,14 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
       shape: 'dashboard', text: 'A manager wants an overview of orders with totals', label: 'Dashboard shape', reason: 'as an overview', unit: 'OrdersDashboard', feature: 'orders-dashboard', steps: 12, entity: 'Order', fields: 'id:string,total:number',
       files: ['features/orders-dashboard/domain/OrdersDashboard.domain.ts', 'features/orders-dashboard/domain/OrdersDashboardStore.domain.ts', 'features/orders-dashboard/types.ts', 'features/orders-dashboard/services/OrdersDashboard.service.ts', 'features/orders-dashboard/hooks/useOrdersDashboard.state.ts', 'features/orders-dashboard/controllers/OrdersDashboardController.controller.tsx', 'features/orders-dashboard/components/OrdersDashboardTile.component.tsx', 'features/orders-dashboard/components/OrdersDashboardTiles.component.tsx', 'features/orders-dashboard/components/OrdersDashboardPanel.component.tsx', 'features/orders-dashboard/components/OrdersDashboardLine.component.tsx', 'features/orders-dashboard/components/OrdersDashboardNotice.component.tsx', 'features/orders-dashboard/pages/OrdersDashboardPage.page.tsx', 'features/orders-dashboard/expressions/OrdersDashboardByStatus.expression.tsx', 'features/orders-dashboard/expressions/OrdersDashboardTileRow.expression.tsx', 'features/orders-dashboard/expressions/OrdersDashboardPanelList.expression.tsx'],
     },
+    {
+      // #628: a flow worded as steps. Its plan has one more unit than the others: the workflow (the state machine) sits between the service and the hook.
+      shape: 'wizard', text: 'A user wants a step by step signup', label: 'Wizard shape', reason: 'step by step', unit: 'Signup', feature: 'signup', steps: 13, units: 7, entity: 'Signup', fields: 'id:string,name:string',
+      files: ['features/signup/domain/Signup.domain.ts', 'features/signup/domain/SignupValidity.domain.ts', 'features/signup/domain/SignupScreen.domain.ts', 'features/signup/domain/SignupStore.domain.ts', 'features/signup/types.ts', 'features/signup/services/Signup.service.ts', 'features/signup/workflows/Signup.workflow.ts', 'features/signup/hooks/useSignup.state.ts', 'features/signup/controllers/SignupController.controller.tsx', 'features/signup/components/SignupField.component.tsx', 'features/signup/components/SignupFrame.component.tsx', 'features/signup/components/SignupDetailsStep.component.tsx', 'features/signup/components/SignupReviewStep.component.tsx', 'features/signup/components/SignupDoneStep.component.tsx', 'features/signup/components/SignupNotice.component.tsx', 'features/signup/components/SignupAgain.component.tsx', 'features/signup/pages/SignupPage.page.tsx', 'features/signup/expressions/SignupByStep.expression.tsx'],
+    },
   ];
   const entityOf = (s) => s.entity ?? 'Product';
+  const unitsOf = (s) => s.units ?? 6;
   const fieldsOf = (s) => s.fields ?? 'id:string,name:string,price:number';
   for (const s of SHAPED) {
     test(`a ${s.shape} sentence: the Screen shape card offers ${s.shape} (suggested by rules, with its reason) or the scaffold; choosing ${s.shape} shows the typed plan and who decided`, async ({ page }) => {
@@ -219,8 +225,8 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
       const chosen = await choose(page, s.shape);
       expect(chosen.body.offers[0]).toMatchObject({ id: 'q-shape', chosen: s.shape, default: s.shape, shape: s.shape, unit: s.unit, entity: entityOf(s), fields: fieldsOf(s) });
       expect(chosen.body.offers[0].options.map((o) => o.id)).toEqual([s.shape, 'scaffold']);
-      expect(chosen.body.plan.steps.map((x) => x.flow)).toEqual(['create.feature', ...Array(6).fill('create.unit'), 'sync', 'create.route', 'check.types', 'create.proof', 'test.proof']);
-      expect(chosen.body.plan.steps.slice(1, 7).every((x) => x.args.shape === s.shape && x.args.name === s.unit && x.args.entity === entityOf(s) && x.args.fields === fieldsOf(s))).toBe(true);
+      expect(chosen.body.plan.steps.map((x) => x.flow)).toEqual(['create.feature', ...Array(unitsOf(s)).fill('create.unit'), 'sync', 'create.route', 'check.types', 'create.proof', 'test.proof']);
+      expect(chosen.body.plan.steps.slice(1, 1 + unitsOf(s)).every((x) => x.args.shape === s.shape && x.args.name === s.unit && x.args.entity === entityOf(s) && x.args.fields === fieldsOf(s))).toBe(true);
       expect(chosen.body.placement.decisions).toEqual([{ question: 'q-shape', option: s.shape, by: 'person' }]);
       await expect(page.getByTestId(`requirement-shape-${s.shape}`)).toHaveAttribute('aria-pressed', 'true');
       await expect(page.getByTestId('requirement-shape-status')).toHaveText(`Chosen: ${s.label}. Decided by: person.`);
@@ -240,7 +246,7 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
       const res = await ran;
       expect(res.status()).toBe(200);
       const sent = res.request().postDataJSON().plan.steps.map((x) => planToCommand(x).argv.join(' '));
-      for (const c of sent.slice(1, 7)) expect(c).toContain(`--shape ${s.shape} --entity ${entityOf(s)} --fields ${fieldsOf(s)}`);
+      for (const c of sent.slice(1, 1 + unitsOf(s))) expect(c).toContain(`--shape ${s.shape} --entity ${entityOf(s)} --fields ${fieldsOf(s)}`);
       expect(sent.at(-1)).toBe(`test proof ${s.feature} --name ${s.unit}Screen.proof.test.ts`);
       for (const f of s.files) expect(fs.existsSync(path.join(project.repo, f)), f).toBe(false);
     });

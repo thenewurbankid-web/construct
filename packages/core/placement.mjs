@@ -28,6 +28,7 @@ import { validatePlan, PLAN_SHAPES } from './plan.mjs';
 import { flowBlock } from './block-flows.mjs';
 import { SHAPES, FORM_VERBS, singularOf, pluralOf, fieldsFromProperties, endpointOf } from './shapes.mjs';
 import { DASHBOARD_WORDS } from './shape-dashboard.mjs';
+import { DEFAULT_STEPS, WIZARD_WORDS } from './shape-wizard.mjs';
 import { detectPlaywright, PLAYWRIGHT_SHAPES } from './proof.mjs';
 import { sourceOffer, operationOf, SOURCE_QUESTION_ID } from './shape-source.mjs';
 import { routePathOf, routeOffer, syncTouches, dependencyOffer, ROUTE_QUESTION_ID, DEPENDENCY_QUESTION_ID, CONSTRUCT_CORE_PACKAGE } from './wiring.mjs';
@@ -59,7 +60,8 @@ const SCAFFOLD_OPTION = SHAPE_OPTIONS[1];
 /**
  * The options of the shape question per card kind (#620, #626): a list read offers `list | scaffold`, a read of one item offers
  * `detail | scaffold`, a write with properties offers `form | scaffold`, a read worded as an overview (dashboard, overview, summary, report,
- * statistics) of one data object offers `dashboard | scaffold`. The matching shape is always first, so it is the
+ * statistics) of one data object offers `dashboard | scaffold`, a flow worded as steps (wizard, steps, multi-step, step by step, signup, checkout,
+ * onboarding) offers `wizard | scaffold`. The matching shape is always first, so it is the
  * rules-only default; every id is stable, so an answer recorded once stays valid.
  */
 export const SHAPE_OPTIONS_BY_SHAPE = Object.freeze({
@@ -74,6 +76,10 @@ export const SHAPE_OPTIONS_BY_SHAPE = Object.freeze({
   ]),
   dashboard: Object.freeze([
     Object.freeze({ id: 'dashboard', label: 'Dashboard shape', why: 'Real typed code: a titled overview with a row of tiles and panels from one typed summary, and its loading and error states.' }),
+    SCAFFOLD_OPTION,
+  ]),
+  wizard: Object.freeze([
+    Object.freeze({ id: 'wizard', label: 'Wizard shape', why: 'Real typed code: steps run by a state machine (next, back, submit, reset), a component per step, and a submit service.' }),
     SCAFFOLD_OPTION,
   ]),
 });
@@ -128,10 +134,10 @@ export const PLACEMENT_ERROR_CODES = Object.freeze({
  * @typedef {{ question: string, option: string, by: 'person'|'llm'|'decision-model', provider?: string }} PlacementDecision
  * Who answered which open question.
  *
- * @typedef {{ name: 'list'|'detail'|'form'|'dashboard', entity: string, fields: string }} BlockShape
+ * @typedef {{ name: 'list'|'detail'|'form'|'dashboard'|'wizard', entity: string, fields: string, steps?: string }} BlockShape
  * The shape a block was built with (#619): its name, the entity and the `--fields` text the units are generated from.
  *
- * @typedef {PlacementOpen & { block: string, shape: 'list'|'detail'|'form'|'dashboard', default: string, entity: string, fields: string, unit: string, suggestion: { option: string, reason: string, provider: 'rules' } }} PlacementOffer
+ * @typedef {PlacementOpen & { block: string, shape: 'list'|'detail'|'form'|'dashboard'|'wizard', default: string, entity: string, fields: string, steps?: string, unit: string, suggestion: { option: string, reason: string, provider: 'rules' } }} PlacementOffer
  * A question that changes how a screen is built but never blocks the plan: the chooser-summary shape plus the block it is about,
  * the rules-only default, and the entity and fields the shape would use. Unanswered, the plan is the plain scaffold.
  *
@@ -296,6 +302,7 @@ const SHAPE_PHRASE = deepFreeze({
   detail: { 'server-read': 'is one item fetched by id by a service', presentational: 'shows that item from props' },
   form: { mutation: 'is a form that submits through a service', presentational: 'shows that form from props' },
   dashboard: { 'server-read': 'is an overview fetched by a service', presentational: 'shows that overview from props' },
+  wizard: { mutation: 'is a step-by-step flow run by a state machine', presentational: 'shows the step the machine is in, from props' },
 });
 
 const PLACEMENT_TEXT = deepFreeze({
@@ -508,9 +515,36 @@ function dashboardCandidate(card, blocks, screen, modifiers, entities) {
   return { shape: 'dashboard', noun, verb, entity: isPluralEntity(noun.text, entities, modifiers) ? singularOf(screen) : screen, fields: fieldsFromProperties([...(noun.properties ?? []), ...measures]), unit: `${screen}Dashboard` };
 }
 
-/** The screen shape a card is offered, by fixed rules, or null: an overview, a list, one item, or a form. Never more than one shape per card. */
+/** The verbs that are a flow in themselves: a person signs up, checks out or is onboarded step by step. Their name is the screen (`Signup`). */
+const FLOW_VERBS = new Set(['signup', 'checkout', 'onboard', 'onboarding']);
+
+/**
+ * The one step-by-step flow the card asks for, or null (#628). The rule (data, not a guess): the card has exactly one verb (an interaction or a
+ * write), and it or a part of the screen it names is a wizard word (`wizard`, `step`, `multi-step`, `step by step`, `signup`, `checkout`,
+ * `onboarding`), and the card has at most one data object. A verb that is a flow in itself (`signup`) names the screen (`Signup`); another
+ * write verb needs its data object and names it like a form does (`AddProduct`). The steps are the default ones (`details,review,done`).
+ */
+function wizardCandidate(card, blocks, screen, modifiers, entities) {
+  if (!blocks.length || card.verbs.length !== 1) return null;
+  const [verb] = card.verbs;
+  if (verb.kind !== 'interact' && verb.kind !== 'write') return null;
+  const nouns = card.nouns.filter((n) => n.kind === 'entity');
+  if (nouns.length > 1) return null;
+  const asked = [verb.text, ...card.nouns.filter((n) => n.kind === 'ui-part').map((n) => n.text)].map((w) => w.toLowerCase());
+  if (!asked.some((w) => WIZARD_WORDS.includes(w))) return null;
+  const [noun] = nouns;
+  const flow = FLOW_VERBS.has(verb.text.toLowerCase());
+  const base = formVerbOf(verb.text);
+  if (!flow && (!base || !noun)) return null;
+  if (noun && isPluralEntity(noun.text, entities, modifiers)) return null;
+  const unit = flow ? pascal(verb.text) : `${capFirst(base)}${nounName(noun.text, modifiers)}`;
+  const entity = noun ? nounName(noun.text, modifiers) : unit;
+  return { shape: 'wizard', noun: noun ?? verb, verb, entity, fields: fieldsFromProperties(noun?.properties), steps: DEFAULT_STEPS, unit };
+}
+
+/** The screen shape a card is offered, by fixed rules, or null: an overview, a step-by-step flow, a list, one item, or a form. Never more than one shape per card. */
 function shapeCandidate(card, blocks, screen, modifiers, entities) {
-  return dashboardCandidate(card, blocks, screen, modifiers, entities) ?? listCandidate(card, blocks, screen, modifiers, entities) ?? detailCandidate(card, blocks, screen, modifiers, entities) ?? formCandidate(card, blocks, screen, modifiers, entities);
+  return dashboardCandidate(card, blocks, screen, modifiers, entities) ?? wizardCandidate(card, blocks, screen, modifiers, entities) ?? listCandidate(card, blocks, screen, modifiers, entities) ?? detailCandidate(card, blocks, screen, modifiers, entities) ?? formCandidate(card, blocks, screen, modifiers, entities);
 }
 
 const SHAPE_REASON = {
@@ -518,6 +552,7 @@ const SHAPE_REASON = {
   detail: (c) => `the data object "${c.noun.text}" is one item that is only read, so its details by id are the usual screen`,
   form: (c) => `"${c.verb.text}" writes the data object "${c.noun.text}", which has properties, so a form with a field for each is the usual screen`,
   dashboard: (c) => `"${c.verb.text}" reads the data object "${c.noun.text}" as an overview, so tiles and panels from one summary are the usual screen`,
+  wizard: (c) => `"${c.verb.text}" is asked for step by step, so a state machine with a step per screen is the usual flow`,
 };
 
 /** What a shaped screen needs from the person, as the note of the plan: the endpoint the generated service calls, and how the detail screen gets its id. */
@@ -525,6 +560,7 @@ const SHAPE_NOTE = {
   list: (c) => `The list shape reads its rows through a service: choose where they come from (q-source: a local store, the endpoint ${endpointOf(c.unit)}, or an OpenAPI operation).`,
   detail: (c) => `The detail shape reads one item by id through a service: choose where it comes from (q-source: a local store, the endpoint ${endpointOf(pluralOf(c.entity))}/<id>, or an OpenAPI operation). The id is the controller's id prop, else ?id= of the address.`,
   form: (c) => `The form shape submits the typed values through a service: choose where they go (q-source: a local store, POST ${endpointOf(pluralOf(c.entity))}, or an OpenAPI operation).`,
+  wizard: (c) => `The wizard shape runs ${c.steps.split(',').length} steps (${c.steps}; --steps changes them) with an XState machine in the workflow layer (the project needs "xstate", which construct init adds) and submits the typed values through a service: choose where they go (q-source: a local store, POST ${endpointOf(pluralOf(c.entity))}, or an OpenAPI operation).`,
   dashboard: (c) => `The dashboard shape reads one typed summary through a service: choose where it comes from (q-source: a local store, the endpoint ${endpointOf(pluralOf(c.entity))}/summary, or an OpenAPI operation GET on a path ending in /${pluralOf(c.entity).toLowerCase()}/summary).`,
 };
 
@@ -549,6 +585,7 @@ function shapeOffer(candidate, blockId, chosen) {
     default: candidate.shape,
     entity: candidate.entity,
     fields: candidate.fields,
+    ...(candidate.steps ? { steps: candidate.steps } : {}),
     unit: candidate.unit,
     suggestion: { option: candidate.shape, reason: capText(SHAPE_REASON[candidate.shape](candidate), L.why), provider: 'rules' },
   };
@@ -558,8 +595,20 @@ const SHAPE_BLOCK_WHY = {
   list: (names) => ({ read: `List shape: the ${names.noun} list is fetched by a service and shown from props. Because the person asked for a list of a plural data object.`, view: 'List shape: it shows what the list fetch returns.' }),
   detail: (names, offer) => ({ read: `Detail shape: one ${offer.entity} is fetched by id by a service and shown from props. Because the person asked to see one data object.`, view: 'Detail shape: it shows what the item fetch returns.' }),
   form: (names, offer) => ({ read: `Form shape: the ${offer.entity} is validated in a domain unit and submitted by a service. Because the person asked to write a data object that has properties.`, view: 'Form shape: it shows the form and what its submit answers.' }),
+  wizard: (names, offer) => ({ read: `Wizard shape: the ${offer.entity} is entered step by step (${offer.steps}), run by a state machine, and submitted by a service. Because the person asked for a step-by-step flow.`, view: 'Wizard shape: it shows the step the machine is in.' }),
   dashboard: (names, offer) => ({ read: `Dashboard shape: the ${offer.entity} summary is fetched by a service and turned into tiles and panels. Because the person asked for an overview of a data object.`, view: 'Dashboard shape: it shows the tiles and panels of the summary.' }),
 };
+
+/** The units of a wizard's first block: its domain (steps, validity, typed input), its submit service, its state machine (the workflow layer), the hook that runs the machine, and the controller. Same shape as a `LAYER_TABLE` row. */
+const WIZARD_TABLE = deepFreeze({
+  'server-read': [
+    { layer: 'domain', name: 'noun', uses: [], why: 'The steps, what each step needs to be valid, and the typed values.' },
+    { layer: 'service', name: 'noun', uses: ['domain'], why: 'Owns the submit, the external effect.' },
+    { layer: 'workflow', name: 'noun', uses: ['domain'], why: 'The state machine of the steps: next, back, submit, reset.' },
+    { layer: 'hook', name: 'noun', uses: ['workflow', 'service', 'domain'], why: 'Runs the machine in the browser and calls the submit service.' },
+    { layer: 'controller', name: 'screen', uses: ['hook'], why: 'Wires the machine hook to the page; no logic of its own.' },
+  ],
+});
 
 /**
  * The blocks of a shaped screen: the read or the write that reaches the server (domain, service, hook, controller) and the
@@ -568,10 +617,11 @@ const SHAPE_BLOCK_WHY = {
  * `list` and `detail` shapes fetch, so their first block is a server read; the `form` shape submits, so its first block is a mutation.
  */
 function shapeBlocks(first, offer, table, names) {
-  const shape = { name: offer.shape, entity: offer.entity, fields: offer.fields };
-  const submits = offer.shape === 'form';
+  const shape = { name: offer.shape, entity: offer.entity, fields: offer.fields, ...(offer.steps ? { steps: offer.steps } : {}) };
+  const submits = offer.shape === 'form' || offer.shape === 'wizard';
   const why = SHAPE_BLOCK_WHY[offer.shape](names, offer);
-  const read = { ...first, placement: submits ? 'mutation' : 'server-read', answers: { browserApi: false, touchesSecretOrDb: true, changesBackend: submits }, layers: layersFor(table, 'server-read', names), shape, why: why.read };
+  const layers = layersFor(offer.shape === 'wizard' ? WIZARD_TABLE : table, 'server-read', names);
+  const read = { ...first, placement: submits ? 'mutation' : 'server-read', answers: { browserApi: false, touchesSecretOrDb: true, changesBackend: submits }, layers, shape, why: why.read };
   const view = { ...first, id: `${first.id}-view`, placement: 'presentational', answers: { browserApi: false, touchesSecretOrDb: false, changesBackend: false }, layers: layersFor(table, 'presentational', names), checks: [], checkNames: [], shape, why: why.view };
   return [read, view];
 }
@@ -703,9 +753,9 @@ export function placeCard(card, options = {}) {
     }
   }
 
-  // #619, #620, #626 -- a screen shape is OFFERED when the card asks for one list, one item or one form, never forced: it is not an open
+  // #619, #620, #626, #627, #628 -- a screen shape is OFFERED when the card asks for one list, one item, one form, one overview or one step-by-step flow, never forced: it is not an open
   // question (it does not hold the plan back) and an unanswered offer leaves the plan as the plain scaffold it always was. The
-  // options depend on the card (a list read: list; a read of one item: detail; a write with properties: form), the id is always q-shape.
+  // options depend on the card (a list read: list; a read of one item: detail; a write with properties: form; an overview: dashboard; a flow worded as steps: wizard), the id is always q-shape.
   const candidate = open.length === 0 ? shapeCandidate(card, blocks, screen, modifiers, lexicon.nouns?.entity ?? {}) : null;
   let offer = null;
   let shapeAnswer = null;
@@ -890,8 +940,8 @@ export function planFromBlocks(blocks, options = {}) {
     if (!isPlainObject(block) || !isNonEmptyString(block.id) || !Array.isArray(block.layers)) { push('PLAN_BLOCK_INVALID', at, 'A block must be an object { id, placement, layers[] }.'); return; }
     if (!PLACEMENTS.includes(block.placement)) { push('PLAN_PLACEMENT_UNKNOWN', `${at}.placement`, `Unsupported placement ${JSON.stringify(block.placement)}. Supported: ${PLACEMENTS.join(', ')}.`); return; }
     const shape = block.shape;
-    if (shape !== undefined && !(isPlainObject(shape) && PLAN_SHAPES.includes(shape.name) && isNonEmptyString(shape.entity) && isNonEmptyString(shape.fields))) {
-      push('PLAN_BLOCK_INVALID', `${at}.shape`, `A block's shape must be { name: ${PLAN_SHAPES.join('|')}, entity, fields }.`);
+    if (shape !== undefined && !(isPlainObject(shape) && PLAN_SHAPES.includes(shape.name) && isNonEmptyString(shape.entity) && isNonEmptyString(shape.fields) && (shape.steps === undefined || isNonEmptyString(shape.steps)))) {
+      push('PLAN_BLOCK_INVALID', `${at}.shape`, `A block's shape must be { name: ${PLAN_SHAPES.join('|')}, entity, fields, steps? }.`);
       return;
     }
     block.layers.forEach((unit, j) => {
@@ -955,7 +1005,7 @@ export function planFromBlocks(blocks, options = {}) {
     // #619: a shaped unit carries the shape, its entity and its fields (the CLI's --shape/--entity/--fields), and waits for the
     // units of the same shape that it imports or takes its types from.
     if (u.shape) for (const need of SHAPES[u.shape.name].requires[u.layer] ?? []) if (stepOf.has(`${need}:${u.name}`)) deps.add(stepOf.get(`${need}:${u.name}`));
-    const shapeArgs = u.shape ? { shape: u.shape.name, entity: u.shape.entity, fields: u.shape.fields, source: sourceOf.get(u.name) } : {};
+    const shapeArgs = u.shape ? { shape: u.shape.name, entity: u.shape.entity, fields: u.shape.fields, ...(u.shape.steps ? { steps: u.shape.steps } : {}), source: sourceOf.get(u.name) } : {};
     const id = add('create.unit', `Create ${u.layer} ${u.name}`, { layer: u.layer, name: u.name, feature: opts.feature, ...shapeArgs }, [...deps].sort(idOrder), u.why);
     stepOf.set(`${u.layer}:${u.name}`, id);
   }
@@ -1031,7 +1081,7 @@ export function planFromBlocks(blocks, options = {}) {
   const playwrightConfig = detectPlaywright(opts.root ?? '');
   if (opts.proof !== false) {
     for (const [name, { shape, unitSteps }] of shaped) {
-      const base = { name, feature: opts.feature, shape: shape.name, entity: shape.entity, fields: shape.fields, source: sourceOf.get(name) };
+      const base = { name, feature: opts.feature, shape: shape.name, entity: shape.entity, fields: shape.fields, ...(shape.steps ? { steps: shape.steps } : {}), source: sourceOf.get(name) };
       const after = [...new Set([...unitSteps, ...wiringSteps])].sort(idOrder);
       const render = add('create.proof', `Prove the ${name} screen`, { ...base, kind: 'render' }, after, 'A screen is not done until something shows it behaves: its states, its controller and its service.');
       const verify = add('test.proof', `Run the proof of ${name}`, { feature: opts.feature, name: `${name}Screen.proof.test.ts` }, [render], 'Read-only: pass, or a classified failure (the app behaved differently, or the harness lost a file). The chain is complete when this is green or explicitly skipped.');

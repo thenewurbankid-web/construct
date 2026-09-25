@@ -1,12 +1,12 @@
 // #619 (part of epic #616) -- screen shapes: a named recipe whose typed templates fill the units of a feature with real,
 // rule-conforming code instead of empty stubs. `list` is the first shape: a screen that lists the items of an entity, with
 // loading, empty and error states. #620 adds `detail` (one item by id: loading, not found, ready, error), #626 adds `form` (a typed
-// input per field, validation in a domain unit, a submit service) and #627 adds `dashboard` (a titled overview of tiles and panels from one typed summary). A person confirms a plan and gets a screen that WORKS, with no
+// input per field, validation in a domain unit, a submit service), #627 adds `dashboard` (a titled overview of tiles and panels from one typed summary) and #628 adds `wizard` (a multi-step flow run by a state machine in the workflow layer). A person confirms a plan and gets a screen that WORKS, with no
 // model involved.
 //
 //   construct create layer Products --feature products --layers domain,service,hook,component,page,controller \
 //     --shape list --entity Product --fields id:string,name:string,price:number
-//   (--shape detail: shape-detail.mjs, --shape form: shape-form.mjs, --shape dashboard: shape-dashboard.mjs; this file holds the list templates, the request and the writing)
+//   (--shape detail: shape-detail.mjs, --shape form: shape-form.mjs, --shape dashboard: shape-dashboard.mjs, --shape wizard: shape-wizard.mjs; this file holds the list templates, the request and the writing)
 //
 //   shapeFiles(root, request)            pure: the files one layer of the shape writes, `{ path, content, change, layer }`
 //   shapeTouches(root, request)          the same files as a plan step's `touches.files` (project-relative, no content)
@@ -30,6 +30,7 @@ import { findEntityOperation } from './openapi-spec.mjs';
 import { DETAIL_SHAPE } from './shape-detail.mjs';
 import { FORM_SHAPE } from './shape-form.mjs';
 import { DASHBOARD_SHAPE, dashboardBaseOf } from './shape-dashboard.mjs';
+import { WIZARD_SHAPE, parseSteps } from './shape-wizard.mjs';
 
 const usage = (message) => new ConstructError(message, { exitCode: EXIT_CODES.USAGE_ERROR });
 
@@ -149,8 +150,8 @@ export function fieldsFromProperties(properties = []) {
  * and which of them is the title of a row. Throws a usage error for a bad name, entity or field list, before anything is written.
  *
  * @param {string} root Project root (its architecture.yml decides the framework).
- * @param {{ shape: string, name: string, feature: string, entity?: string, fields?: string, source?: string }} request The shape, the unit name (`Products`), the feature and the optional entity, fields and data source (`local`, `endpoint` (what none means) or `openapi`, #621).
- * @returns {object} The resolved context (`names`, `fields`, `title`, `entityPlural`, `endpoint`, `useClient`, `source`, `operation` (the OpenAPI operation of the `openapi` source, else `null`) and `store` (the identifiers of the local store)).
+ * @param {{ shape: string, name: string, feature: string, entity?: string, fields?: string, source?: string, steps?: string }} request The shape, the unit name (`Products`), the feature and the optional entity, fields, data source (`local`, `endpoint` (what none means) or `openapi`, #621) and, for the wizard, its steps (`details,review,done`).
+ * @returns {object} The resolved context (`names`, `fields`, `title`, `entityPlural`, `steps` (the wizard's steps, else `null`), `endpoint`, `useClient`, `source`, `operation` (the OpenAPI operation of the `openapi` source, else `null`) and `store` (the identifiers of the local store)).
  * @throws {Error} A usage error naming the problem.
  *
  * @example
@@ -163,6 +164,15 @@ export function shapeContext(root, request) {
   const Entity = request.entity === undefined || request.entity === '' ? shape.defaultEntity(Name) : pascalCase(String(request.entity), 'Entity');
   if (Entity !== String(request.entity ?? Entity)) throw usage(`Entity "${request.entity}" must be PascalCase, for example ${Entity}.`);
   const fields = parseFields(request.fields);
+  if (request.steps !== undefined && request.steps !== '' && request.shape !== 'wizard') throw usage(`--steps only applies to the wizard shape (it is the steps of the flow), not to ${request.shape}.`);
+  let steps = null;
+  if (request.shape === 'wizard') {
+    try {
+      steps = parseSteps(request.steps);
+    } catch (e) {
+      throw usage(e.message);
+    }
+  }
   if (shape.inputFieldsOnly && !fields.some((f) => f.name !== 'id')) throw usage(`The ${request.shape} shape needs at least one field besides "id" (the server assigns it), for example id:string,name:string.`);
   if (request.shape === 'dashboard' && fields.some((f) => f.name === 'count')) throw usage('The dashboard shape keeps the number of rows in "count", so a field cannot be named that. Rename the field, for example itemCount.');
   const dataSource = readSource(request.source);
@@ -183,8 +193,8 @@ export function shapeContext(root, request) {
   const config = loadConfig(root);
   const framework = config.project?.framework ?? 'nextjs';
   return {
-    request: { shape: request.shape, name: Name, feature: request.feature, entity: Entity, fields: fields.map((f) => `${f.name}:${f.type}`).join(','), source: dataSource },
-    names, fields, title, source: dataSource, operation, store,
+    request: { shape: request.shape, name: Name, feature: request.feature, entity: Entity, fields: fields.map((f) => `${f.name}:${f.type}`).join(','), source: dataSource, ...(steps ? { steps: steps.map((st) => st.name).join(',') } : {}) },
+    names, fields, title, source: dataSource, operation, store, steps,
     plural: words(Name).join(' ').toLowerCase(), singular: words(Entity).join(' ').toLowerCase(), entityPlural: words(pluralOf(Entity)).join(' ').toLowerCase(), heading: words(Name).map(cap).join(' '),
     endpoint: operation ? operation.url : shape.endpoint(Name, Entity),
     useClient: framework !== 'react-spa',
@@ -407,6 +417,7 @@ export const SHAPES = Object.freeze({
   detail: Object.freeze({ ...DETAIL_SHAPE, defaultEntity: (Name) => Name, endpoint: (Name, Entity) => endpointOf(pluralOf(Entity)), nameMayEqualEntity: true }),
   form: Object.freeze({ ...FORM_SHAPE, defaultEntity: formEntityOf, endpoint: (Name, Entity) => endpointOf(pluralOf(Entity)), nameMayEqualEntity: false, inputFieldsOnly: true }),
   dashboard: Object.freeze({ ...DASHBOARD_SHAPE, defaultEntity: dashboardEntityOf, endpoint: (Name, Entity) => `${endpointOf(pluralOf(Entity))}/summary`, nameMayEqualEntity: false }),
+  wizard: Object.freeze({ ...WIZARD_SHAPE, defaultEntity: (Name) => Name, endpoint: (Name, Entity) => endpointOf(pluralOf(Entity)), nameMayEqualEntity: true, inputFieldsOnly: true }),
 });
 
 // ------------------------------------------------------------------------------------------------------------- files

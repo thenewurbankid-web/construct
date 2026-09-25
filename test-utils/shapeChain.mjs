@@ -1,4 +1,4 @@
-// #620, #626 -- what the full-path tests of the screen shapes share (test/detail-shape-chain.test.mjs, test/form-shape-chain.test.mjs; the list
+// #620, #626 -- what the full-path tests of the screen shapes share (test/detail-shape-chain.test.mjs, test/form-shape-chain.test.mjs, test/dashboard-shape-chain.test.mjs, test/wizard-shape-chain.test.mjs; the list
 // shape's own test, test/list-shape-chain.test.mjs, predates it and keeps its copy): a fresh `construct init` project with the typed-contracts
 // phase 1 rules ON and its imports linked offline, the plan of a sentence with the shape offer answered by the rules provider, and the plan run
 // command by command through the CLI, exactly as the plan runner would.
@@ -26,6 +26,12 @@ const firstExisting = (...candidates) => candidates.find((p) => fs.existsSync(p)
 export const HAVE_RUNTIME = ['react', 'react-dom'].every((n) => firstExisting(path.join(REPO, 'node_modules', n), path.join(REPO, 'ui', 'client', 'node_modules', n)))
   && ['typescript', 'esbuild', '@esbuild', '@types'].every((n) => fs.existsSync(path.join(REPO, 'node_modules', n)));
 
+/** Whether xstate is installed here too (the wizard shape's workflow, hook and proof import it). */
+export const HAVE_XSTATE = HAVE_RUNTIME && fs.existsSync(path.join(REPO, 'node_modules', 'xstate'));
+
+/** The `node:test` options that skip the full-path test of the wizard shape, with the reason, in a lane without react, react-dom, esbuild, typescript and xstate. */
+export const NEEDS_WIZARD_RUNTIME = { skip: HAVE_XSTATE ? false : 'react, react-dom, esbuild, typescript and xstate are not installed here (a lane with only the root install); the full checkout runs this' };
+
 /** The `node:test` options that skip a full-path test, with the reason, in a lane without the runtime. */
 export const NEEDS_RUNTIME = { skip: HAVE_RUNTIME ? false : 'react, react-dom, esbuild and typescript are not installed here (a lane with only the root install); the full checkout runs this' };
 
@@ -51,6 +57,8 @@ export function initProject(framework, label = 'shape') {
   link('esbuild', path.join(REPO, 'node_modules', 'esbuild'));
   link('@esbuild', path.join(REPO, 'node_modules', '@esbuild'));
   link('@types', path.join(REPO, 'node_modules', '@types'));
+  if (HAVE_XSTATE) link('xstate', path.join(REPO, 'node_modules', 'xstate'));
+  if (HAVE_XSTATE && fs.existsSync(path.join(REPO, 'node_modules', '@xstate', 'graph'))) link('@xstate', path.join(REPO, 'node_modules', '@xstate'));
   link('@line/construct-core', path.join(REPO, 'packages', 'core'));
   return dir;
 }

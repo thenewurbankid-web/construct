@@ -436,9 +436,10 @@
                       "list",
                       "detail",
                       "form",
-                      "dashboard"
+                      "dashboard",
+                      "wizard"
                     ],
-                    "description": "A named screen shape: the units are filled with real, typed code for it (list: an entity list with loading, empty and error states; detail: one item by id with loading, not-found and error states; form: a typed input per field with validation and a submit service; dashboard: a titled overview of tiles and panels from one typed summary, with loading and error states)."
+                    "description": "A named screen shape: the units are filled with real, typed code for it (list: an entity list with loading, empty and error states; detail: one item by id with loading, not-found and error states; form: a typed input per field with validation and a submit service; dashboard: a titled overview of tiles and panels from one typed summary, with loading and error states; wizard: a multi-step flow run by a state machine in the workflow layer, a component per step, Next and Back guarded by the step, and a submit service)."
                   },
                   "entity": {
                     "type": "string",
@@ -449,6 +450,11 @@
                     "type": "string",
                     "minLength": 1,
                     "description": "The entity fields for a shape as name:type pairs, comma separated (id:string,name:string,price:number). Types: string, number, boolean; an id field is required (a form has no input for it: the server assigns it; a dashboard adds up the number fields and counts the boolean ones)."
+                  },
+                  "steps": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The steps of a wizard shape as names separated by commas (details,review,done, the default): lower-case words, two to six, each a state of the machine and a component; the fields are dealt to every step but the last, which shows them all and submits."
                   },
                   "source": {
                     "type": "string",
@@ -529,9 +535,10 @@
                       "list",
                       "detail",
                       "form",
-                      "dashboard"
+                      "dashboard",
+                      "wizard"
                     ],
-                    "description": "A named screen shape: the units are filled with real, typed code for it (list: an entity list with loading, empty and error states; detail: one item by id with loading, not-found and error states; form: a typed input per field with validation and a submit service; dashboard: a titled overview of tiles and panels from one typed summary, with loading and error states)."
+                    "description": "A named screen shape: the units are filled with real, typed code for it (list: an entity list with loading, empty and error states; detail: one item by id with loading, not-found and error states; form: a typed input per field with validation and a submit service; dashboard: a titled overview of tiles and panels from one typed summary, with loading and error states; wizard: a multi-step flow run by a state machine in the workflow layer, a component per step, Next and Back guarded by the step, and a submit service)."
                   },
                   "entity": {
                     "type": "string",
@@ -542,6 +549,11 @@
                     "type": "string",
                     "minLength": 1,
                     "description": "The entity fields for a shape as name:type pairs, comma separated (id:string,name:string,price:number). Types: string, number, boolean; an id field is required (a form has no input for it: the server assigns it; a dashboard adds up the number fields and counts the boolean ones)."
+                  },
+                  "steps": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The steps of a wizard shape as names separated by commas (details,review,done, the default): lower-case words, two to six, each a state of the machine and a component; the fields are dealt to every step but the last, which shows them all and submits."
                   },
                   "source": {
                     "type": "string",
@@ -619,9 +631,10 @@
                       "list",
                       "detail",
                       "form",
-                      "dashboard"
+                      "dashboard",
+                      "wizard"
                     ],
-                    "description": "A named screen shape: the units are filled with real, typed code for it (list: an entity list with loading, empty and error states; detail: one item by id with loading, not-found and error states; form: a typed input per field with validation and a submit service; dashboard: a titled overview of tiles and panels from one typed summary, with loading and error states)."
+                    "description": "A named screen shape: the units are filled with real, typed code for it (list: an entity list with loading, empty and error states; detail: one item by id with loading, not-found and error states; form: a typed input per field with validation and a submit service; dashboard: a titled overview of tiles and panels from one typed summary, with loading and error states; wizard: a multi-step flow run by a state machine in the workflow layer, a component per step, Next and Back guarded by the step, and a submit service)."
                   },
                   "entity": {
                     "type": "string",
@@ -632,6 +645,11 @@
                     "type": "string",
                     "minLength": 1,
                     "description": "The entity fields for a shape as name:type pairs, comma separated (id:string,name:string,price:number). Types: string, number, boolean; an id field is required (a form has no input for it: the server assigns it; a dashboard adds up the number fields and counts the boolean ones)."
+                  },
+                  "steps": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The steps of a wizard shape as names separated by commas (details,review,done, the default): lower-case words, two to six, each a state of the machine and a component; the fields are dealt to every step but the last, which shows them all and submits."
                   },
                   "source": {
                     "type": "string",

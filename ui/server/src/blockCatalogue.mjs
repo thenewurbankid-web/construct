@@ -45,8 +45,8 @@ export const BLOCK_DOCS = Object.freeze({
     example: { title: 'Add the Cart domain', args: { layer: 'domain', name: 'Cart', feature: 'checkout' } },
   },
   'create.proof': {
-    purpose: 'Write the locked proof that a generated screen (a list, one item, a form or a dashboard) works: its states, its controller and its service.',
-    reads: 'The screen a shape wrote (list, detail, form or dashboard) and architecture.yml.',
+    purpose: 'Write the locked proof that a generated screen (list, item, form, dashboard or wizard) works: states, controller, service.',
+    reads: 'The screen a shape wrote (list, detail, form, dashboard or wizard) and architecture.yml.',
     writes: 'One locked test file in the feature, and the test regions in architecture.yml the first time.',
     example: { title: 'Prove the Products screen', args: { name: 'Products', feature: 'products', shape: 'list', entity: 'Product', fields: 'id:string,name:string,price:number', kind: 'render' } },
   },

@@ -26,6 +26,7 @@ import { shapeContext } from './shapes.mjs';
 import { cap, sampleRows } from './shape-kit.mjs';
 import { detailProofText, formProofText, sourceFlag } from './proof-screens.mjs';
 import { dashboardProofText } from './proof-dashboard.mjs';
+import { wizardProofText } from './proof-wizard.mjs';
 import { GENERATED_MARKER, assertSafeDir } from '../engine/testGenerator.mjs';
 import { lit, comment } from '../engine/testSpecRender.mjs';
 
@@ -77,7 +78,7 @@ const rowLiteral = (row) => `{ ${Object.entries(row).map(([k, v]) => `${k}: ${li
 
 /** Everything a proof needs, from a shape request: the shape context plus the sample rows and the texts the screen shows. */
 function proofContext(root, request) {
-  const ctx = shapeContext(root, { shape: request.shape ?? 'list', name: request.name, feature: request.feature, entity: request.entity, fields: request.fields, source: request.source });
+  const ctx = shapeContext(root, { shape: request.shape ?? 'list', name: request.name, feature: request.feature, entity: request.entity, fields: request.fields, source: request.source, steps: request.steps });
   if (!request.feature) throw usage('A proof needs the feature its screen belongs to (--feature).');
   return {
     ...ctx, rows: sampleRows(ctx.names.Entity, ctx.fields), errorText: 'The server answered 500.',
@@ -146,9 +147,9 @@ const header = (ctx, request, command, extra) => [
 ];
 
 function renderProofText(ctx, request, relPath) {
-  if (request.shape === 'detail' || request.shape === 'form' || request.shape === 'dashboard') {
+  if (['detail', 'form', 'dashboard', 'wizard'].includes(request.shape)) {
     const kit = { header: (extra, command) => header(ctx, request, command, extra), expectLines: EXPECT_LINES, fetchLines: FETCH_LINES, lit, rowLiteral, comment, openapiServiceTests: openapiServiceTests(ctx, lit) };
-    return ({ detail: detailProofText, form: formProofText, dashboard: dashboardProofText })[request.shape](ctx, request, relPath, kit);
+    return ({ detail: detailProofText, form: formProofText, dashboard: dashboardProofText, wizard: wizardProofText })[request.shape](ctx, request, relPath, kit);
   }
   const { names, fields, title, rows } = ctx;
   const Name = names.Name;
@@ -473,7 +474,7 @@ export function generateProof(root, request) {
   fs.mkdirSync(genDir, { recursive: true });
   assertSafeDir(root, genRel);
   for (const f of files) fs.writeFileSync(f.path, f.content);
-  return { kind, files: files.map((f) => f.path), regions, skipped: null, needs: kind === 'render' ? [...RENDER_PROOF_NEEDS] : ['@playwright/test'] };
+  return { kind, files: files.map((f) => f.path), regions, skipped: null, needs: kind === 'render' ? [...RENDER_PROOF_NEEDS, ...(request.shape === 'wizard' ? ['xstate'] : [])] : ['@playwright/test'] };
 }
 
 // --------------------------------------------------------------------------------------------------------------- the chain
