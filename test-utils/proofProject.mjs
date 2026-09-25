@@ -84,3 +84,21 @@ export function makeProofProject({ prefix = 'og653-', git = false } = {}) {
     remove: () => fs.rmSync(root, { recursive: true, force: true }),
   };
 }
+
+/**
+ * Whether this checkout has what a proof needs to RUN (react, react-dom, typescript, esbuild). A CI lane with only the root
+ * install has no react-dom (it lives in ui/client), so the tests that build a real project skip there with a reason.
+ *
+ * @returns {boolean} `true` when a proof project can be built and run here.
+ *
+ * @example
+ * if (!proofRuntimeAvailable()) console.log(PROOF_RUNTIME_MISSING);
+ */
+export function proofRuntimeAvailable() {
+  const at = (n) => firstExisting(path.join(REPO, 'node_modules', n), path.join(REPO, 'ui', 'client', 'node_modules', n));
+  return ['react', 'react-dom', 'esbuild', '@esbuild', 'typescript', '@types'].every((n) => at(n));
+}
+
+/** Why a proof test skipped: the words the skip carries. */
+export const PROOF_RUNTIME_MISSING = 'react, react-dom, esbuild and typescript are not installed here (a lane with only the root install); the full checkout runs this';
+
