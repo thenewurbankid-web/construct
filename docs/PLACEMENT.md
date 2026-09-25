@@ -914,6 +914,7 @@ imports no service. Nothing is charted, stored, routed between panels or refresh
   "construct create dependency @line/construct-core --version ^0.9.0",
   "construct sync",
   "construct create route OrdersDashboard --feature orders-dashboard --route /orders-dashboard",
+  "construct test types",
   "construct create proof OrdersDashboard --feature orders-dashboard --shape dashboard --entity Order --fields id:string,total:number --source local --kind render",
   "construct test proof orders-dashboard --name OrdersDashboardScreen.proof.test.ts"
 ]
@@ -993,6 +994,7 @@ The flow is a **real state machine in the workflow layer**: XState `setup(...).c
   "construct create dependency @line/construct-core --version ^0.9.0",
   "construct sync",
   "construct create route Signup --feature signup --route /signup",
+  "construct test types",
   "construct create proof Signup --feature signup --shape wizard --entity Signup --fields id:string,name:string --steps details,review,done --source local --kind render",
   "construct test proof signup --name SignupScreen.proof.test.ts"
 ]

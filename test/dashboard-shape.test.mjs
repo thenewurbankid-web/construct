@@ -185,7 +185,7 @@ test('a dashboard plan carries the shape on every unit, is wired and proven, and
     const answered = placeCard(cardOf(SENTENCE), { framework: 'react-spa', answers: { 'q-shape': 'dashboard' } });
     const planned = planFromBlocks(answered.blocks, { feature: 'orders-dashboard', root: dir, decisions: answered.decisions });
     assert.equal(planned.ok, true, JSON.stringify(planned.errors));
-    assert.deepEqual(planned.plan.steps.map((s) => s.flow), ['create.feature', 'create.unit', 'create.unit', 'create.unit', 'create.unit', 'create.unit', 'create.unit', 'add.dependency', 'sync', 'create.route', 'create.proof', 'test.proof'], 'the wiring and the proof steps apply to every shape');
+    assert.deepEqual(planned.plan.steps.map((s) => s.flow), ['create.feature', 'create.unit', 'create.unit', 'create.unit', 'create.unit', 'create.unit', 'create.unit', 'add.dependency', 'sync', 'create.route', 'check.types', 'create.proof', 'test.proof'], 'the wiring, the type-check and the proof steps apply to every shape');
     assert.ok(planned.plan.steps.filter((s) => s.flow === 'create.unit').every((s) => s.args.shape === 'dashboard' && s.args.name === 'OrdersDashboard' && s.args.source === 'local'));
     assert.deepEqual(planned.proof.steps.map((s) => s.kind), ['render'], 'the browser flow exists only for the list shape');
     if (playwright) assert.match(planned.proof.playwright.skipped, /No browser flow is planned for OrdersDashboard \(dashboard\)/);

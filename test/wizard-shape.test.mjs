@@ -218,7 +218,7 @@ test('a wizard plan carries the shape, its steps and the workflow layer on every
     const planned = planFromBlocks(answered.blocks, { feature: 'signup', root: dir, decisions: answered.decisions });
     assert.equal(planned.ok, true, JSON.stringify(planned.errors));
     assert.deepEqual(validatePlan(planned.plan), { valid: true, errors: [] });
-    assert.deepEqual(planned.plan.steps.map((s) => s.flow), ['create.feature', ...Array(7).fill('create.unit'), 'add.dependency', 'sync', 'create.route', 'create.proof', 'test.proof'], 'the wiring and the proof steps apply to every shape');
+    assert.deepEqual(planned.plan.steps.map((s) => s.flow), ['create.feature', ...Array(7).fill('create.unit'), 'add.dependency', 'sync', 'create.route', 'check.types', 'create.proof', 'test.proof'], 'the wiring, the type-check and the proof steps apply to every shape');
     const units = planned.plan.steps.filter((s) => s.flow === 'create.unit');
     assert.deepEqual(units.map((s) => s.args.layer), LAYERS, 'in layer order, the workflow between the service and the hook');
     assert.ok(units.every((s) => s.args.shape === 'wizard' && s.args.name === 'Signup' && s.args.steps === 'details,review,done' && s.args.source === 'local'));

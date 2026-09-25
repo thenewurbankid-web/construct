@@ -18,9 +18,9 @@ const SENTENCE = 'A manager wants an overview of orders with totals';
 const FEATURE = 'features/orders-dashboard';
 const FIELDS = 'id:string,total:number';
 const plan = (dir, source = 'endpoint') => planFor(dir, SENTENCE, 'orders-dashboard', 'dashboard', source);
-const TITLES = ['Create feature orders-dashboard', 'Create domain OrdersDashboard', 'Create service OrdersDashboard', 'Create hook OrdersDashboard', 'Create component OrdersDashboard', 'Create page OrdersDashboard', 'Create controller OrdersDashboard', 'Add @line/construct-core to package.json', "Export the orders-dashboard feature's public API (sync)", 'Wire the OrdersDashboard screen into the route entry (/orders-dashboard)', 'Prove the OrdersDashboard screen', 'Run the proof of OrdersDashboard'];
+const TITLES = ['Create feature orders-dashboard', 'Create domain OrdersDashboard', 'Create service OrdersDashboard', 'Create hook OrdersDashboard', 'Create component OrdersDashboard', 'Create page OrdersDashboard', 'Create controller OrdersDashboard', 'Add @line/construct-core to package.json', "Export the orders-dashboard feature's public API (sync)", 'Wire the OrdersDashboard screen into the route entry (/orders-dashboard)', 'Type-check the project', 'Prove the OrdersDashboard screen', 'Run the proof of OrdersDashboard'];
 
-test('the sentence becomes a plan of 12 steps, runs, and gives an overview that validates, type-checks, renders and is PROVEN', NEEDS_RUNTIME, async (t) => {
+test('the sentence becomes a plan of 13 steps, runs, and gives an overview that validates, type-checks, renders and is PROVEN', NEEDS_RUNTIME, async (t) => {
   const dir = initProject('react-spa', 'dashboard');
   const { placed, planned, offer } = await plan(dir);
   assert.deepEqual(offer.options.map((o) => o.id), ['dashboard', 'scaffold'], 'a read worded as an overview is offered dashboard | scaffold');
@@ -29,7 +29,7 @@ test('the sentence becomes a plan of 12 steps, runs, and gives an overview that 
   assert.deepEqual(planned.plan.steps.map((s) => s.title), TITLES);
   assert.deepEqual(planned.plan.steps.slice(1, 7).map((s) => [s.args.shape, s.args.entity, s.args.fields]), Array(6).fill(['dashboard', 'Order', FIELDS]), 'every unit carries the shape');
   assert.deepEqual(planned.wiring, { dependency: 's8', sync: 's9', routes: [{ name: 'OrdersDashboard', route: '/orders-dashboard', step: 's10', file: 'src/App.tsx' }] }, 'the wiring step applies to a dashboard plan too');
-  assert.deepEqual(planned.proof.steps, [{ name: 'OrdersDashboard', kind: 'render', proofStep: 's11', verifiedBy: 's12' }]);
+  assert.deepEqual(planned.proof.steps, [{ name: 'OrdersDashboard', kind: 'render', proofStep: 's12', verifiedBy: 's13' }]);
 
   const before = projectFiles(dir);
   execute(dir, planned.plan);

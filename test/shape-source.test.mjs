@@ -65,7 +65,7 @@ test('the sources are one enum: the shape module, the plan registry, the schema 
   }
   for (const id of ['create.feature', 'create.route', 'test.proof']) assert.equal(PLAN_FLOWS[id].args.source, undefined, `${id} has no source`);
   const usage = run(['--help'], makeTempDir('construct-source-usage-')).stdout;
-  assert.match(usage, /--shape list\|detail\|form\|dashboard \[--entity <Entity>\] \[--fields id:string,name:string,\.\.\.\] \[--source local\|endpoint\|openapi\]/);
+  assert.match(usage, /--shape list\|detail\|form\|dashboard\|wizard \[--entity <Entity>\] \[--fields id:string,name:string,\.\.\.\] \[--source local\|endpoint\|openapi\]/);
   assert.match(usage, /create proof <Name> --feature <feature> .*\[--source local\|endpoint\|openapi\]/);
 });
 

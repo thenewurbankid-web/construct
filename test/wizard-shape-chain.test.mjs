@@ -20,10 +20,10 @@ const SENTENCE = 'A user wants a step by step signup';
 const FEATURE = 'features/signup';
 const FIELDS = 'id:string,name:string';
 const plan = (dir, source = 'endpoint') => planFor(dir, SENTENCE, 'signup', 'wizard', source);
-const TITLES = ['Create feature signup', 'Create domain Signup', 'Create service Signup', 'Create workflow Signup', 'Create hook Signup', 'Create component Signup', 'Create page Signup', 'Create controller Signup', 'Add @line/construct-core to package.json', "Export the signup feature's public API (sync)", 'Wire the Signup screen into the route entry (/signup)', 'Prove the Signup screen', 'Run the proof of Signup'];
+const TITLES = ['Create feature signup', 'Create domain Signup', 'Create service Signup', 'Create workflow Signup', 'Create hook Signup', 'Create component Signup', 'Create page Signup', 'Create controller Signup', 'Add @line/construct-core to package.json', "Export the signup feature's public API (sync)", 'Wire the Signup screen into the route entry (/signup)', 'Type-check the project', 'Prove the Signup screen', 'Run the proof of Signup'];
 const PROOF_TITLES = ['machine: it starts at the first step with nothing typed', 'machine: its states are the steps of the domain unit, then submitting and submitted', 'machine: NEXT is blocked while the step is invalid, and goes on once it is valid', 'machine: the whole flow with everything typed reaches the last step, and BACK goes to the step before with what was typed kept', 'machine: SUBMIT is decided only by the last step, and only when every step is valid', 'machine: a submit that succeeds is done, one that fails goes back to the last step with its message', 'machine: RESET starts again from every state, with nothing typed', 'machine: CHANGE keeps what is typed and clears an old error', 'machine: every state decides every event (the transition table)', 'domain: a step is valid when its own fields are filled, and the typed input is trimmed and numeric', 'screen: each step shows itself, its progress, its fields and nothing of the others', 'screen: Back, Next and Submit follow the step', 'screen: the sending screen, the complete screen and a failed submit', 'controller: renders the first step first', 'service: the stubbed submit is called with the typed values', 'service: a 500 is an error result', 'service: a network failure is an error result', "service: the caller's AbortSignal reaches fetch"];
 
-test('the sentence becomes a plan of 13 steps, runs, and gives a wizard that validates, type-checks, runs a real state machine and is PROVEN', NEEDS_RUNTIME, async (t) => {
+test('the sentence becomes a plan of 14 steps, runs, and gives a wizard that validates, type-checks, runs a real state machine and is PROVEN', NEEDS_RUNTIME, async (t) => {
   const dir = initProject('react-spa', 'wizard');
   const { placed, planned, offer } = await plan(dir);
   assert.deepEqual(offer.options.map((o) => o.id), ['wizard', 'scaffold'], 'a flow worded as steps is offered wizard | scaffold');
@@ -32,8 +32,8 @@ test('the sentence becomes a plan of 13 steps, runs, and gives a wizard that val
   assert.deepEqual(planned.plan.steps.map((s) => s.title), TITLES);
   assert.deepEqual(planned.plan.steps.slice(1, 8).map((s) => [s.args.layer, s.args.shape, s.args.entity, s.args.fields, s.args.steps]), ['domain', 'service', 'workflow', 'hook', 'component', 'page', 'controller'].map((l) => [l, 'wizard', 'Signup', FIELDS, 'details,review,done']), 'every unit carries the shape and its steps, the workflow layer included');
   assert.deepEqual(planned.wiring, { dependency: 's9', sync: 's10', routes: [{ name: 'Signup', route: '/signup', step: 's11', file: 'src/App.tsx' }] }, 'the wiring step applies to a wizard plan too');
-  assert.deepEqual(planned.proof.steps, [{ name: 'Signup', kind: 'render', proofStep: 's12', verifiedBy: 's13' }]);
-  assert.match(planned.plan.steps[12 - 1].args.steps, /details,review,done/, 'the proof step carries the steps');
+  assert.deepEqual(planned.proof.steps, [{ name: 'Signup', kind: 'render', proofStep: 's13', verifiedBy: 's14' }]);
+  assert.match(planned.plan.steps.find((s) => s.flow === 'create.proof').args.steps, /details,review,done/, 'the proof step carries the steps');
 
   const before = projectFiles(dir);
   execute(dir, planned.plan);
