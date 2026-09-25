@@ -19,6 +19,7 @@ import { analyzeImpact, proposeSeedsFromText, impactApiManifest, renderImpactMar
 import { loadTemplateDir, TemplateError } from '../../packages/engine/planTemplate.mjs';
 import { prHealth, renderPrHealthMarkdown, prHealthApiManifest } from '../../packages/engine/prHealth.mjs';
 import { summarizeProject, summarizeCompact, summarizeProse, summarizeSince } from './summarize.mjs';
+import { summarizeBackend, renderBackendText, resolveBackendDir } from './backend-summary.mjs';
 import { moveLayerFile, renameLayerFile } from './refactor.mjs';
 import { extractExpression } from './extractExpression.mjs';
 import { importVertical, importPlan, analyzeFiles, executeImportPlan, autoFixViolations } from './import.mjs';
@@ -570,7 +571,19 @@ function summarizeUnitCommand(args, root, ref) {
   if (!result.ok) setExitCode(result.error.code === 'INTERNAL_ERROR' ? EXIT_CODES.INTERNAL_ERROR : EXIT_CODES.USAGE_ERROR);
 }
 
+/** `construct summarize --backend [<dir>] [--format json] [--dir <project>]`: the read-only backend summary (#634). `<dir>`
+ * defaults to `backend.dir` in architecture.yml, else the project root; paths in the output are relative to the project root. */
+function summarizeBackendCommand(args) {
+  const bi = args.indexOf('--backend');
+  const given = args[bi + 1] && !args[bi + 1].startsWith('--') ? args[bi + 1] : null;
+  const root = args.includes('--dir') ? getRoot(args) : undefined;
+  const dir = given ? path.resolve(given) : resolveBackendDir(root ?? getRoot(args));
+  const summary = summarizeBackend(dir, root ? { root } : {});
+  console.log(flagValue(args, '--format') === 'json' ? JSON.stringify(summary, null, 2) : renderBackendText(summary));
+}
+
 export async function summarize(args) {
+  if (args.includes('--backend')) return summarizeBackendCommand(args);
   const root = getRoot(args);
   const ref = positionalOf(args);
   const legacy = ['--feature', '--since'].some((f) => args.includes(f)) || ['compact', 'prose', 'md'].includes(flagValue(args, '--format'));

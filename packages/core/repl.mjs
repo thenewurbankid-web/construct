@@ -201,7 +201,20 @@ export const HELP_TOPICS = {
 
   summarize: `summarize [--feature <name>] [--format json|md|compact|prose] [--since <ref>] [--dir <path>]
       The flat form of "research summarize". --since <ref> scopes the report
-      to only the features touched since that git ref.`,
+      to only the features touched since that git ref.
+  summarize --backend [<dir>] [--format json]
+      Read-only, deterministic summary of a Node.js / Express backend, no
+      model and no rules: the route map (method, full path with router mounts
+      resolved, handler, middleware, file:line), each file's role (route,
+      store, service, auth, job, util, config, test, other) with the reason,
+      the import graph and its cycles, process.env names (never values) and
+      effects (fs, child_process, network, timers). Without <dir> it reads
+      backend.dir from architecture.yml, else the project root. Roles are
+      overridable through a backend: section in architecture.yml. Express and
+      plain http.createServer only; whatever it cannot read is listed as "not
+      detected". --format json prints backend-summary.v1
+      (schemas/backend-summary.v1.json).
+      Example: summarize --backend ui/server/src --format json`,
 
   doctor: `doctor [--format json] [--dir <path>]
       Check this machine, read-only, no network, no model: Node and npm, the
