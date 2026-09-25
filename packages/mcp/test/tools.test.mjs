@@ -10,7 +10,7 @@ import { placeCard, planFromBlocks } from '../../core/placement.mjs';
 import { recordChoices } from '../../core/decision-trace-store.mjs';
 import { LIMITS } from '../src/limits.mjs';
 import { TOOLS } from '../src/server.mjs';
-import { makeProject, connectInProcess, callTool } from '../test-utils/harness.mjs';
+import { makeProject, connectInProcess, callTool, hashTree } from '../test-utils/harness.mjs';
 
 const NAMES = ['requirement_parse', 'placement_place', 'plan_validate', 'decide', 'summarize', 'validate', 'machine_capabilities', 'traces_stats'];
 const SENTENCE = 'A user wants to see a list of products';
@@ -183,6 +183,48 @@ test('summarize: the project and one feature, bounded and path-free', async () =
   const missing = await call('summarize', { feature: 'nope' });
   assert.equal(missing.isError, true);
   assert.equal(missing.body.error.code, 'NOT_FOUND');
+});
+
+test('summarize with backend: true: the Express route table, roles and env names of backend.dir, bounded and root-contained', async () => {
+  const many = Array.from({ length: LIMITS.backendRoutes + 20 }, (_, i) => `app.get('/bulk/${i}', (req, res) => res.end());`).join('\n');
+  const backendRoot = makeProject({
+    files: {
+      'server/index.mjs': `import express from 'express';\nimport { createNotesRouter } from './notesApi.mjs';\nconst app = express();\nconst secret = process.env.SESSION_SECRET;\napp.use('/api/notes', createNotesRouter());\napp.get('/api/health', (req, res) => res.end('ok'));\n${many}\n`,
+      'server/notesApi.mjs': `import express from 'express';\nexport function createNotesRouter() {\n  const router = express.Router();\n  router.get('/:id', listNote);\n  return router;\n}\nfunction listNote(req, res) { res.end(); }\n`,
+      'server/notesStore.mjs': `import fs from 'node:fs';\nexport const save = (x) => fs.writeFileSync('n', x);\n`,
+    },
+  });
+  fs.appendFileSync(path.join(backendRoot, 'architecture.yml'), '\nbackend:\n  dir: server\n');
+  const before = hashTree(backendRoot);
+  const { client, close } = await connectInProcess({ root: backendRoot });
+  const r = await callTool(client, 'summarize', { backend: true });
+  assert.equal(r.isError, false, r.text);
+  assert.equal(r.body.scope, 'backend');
+  assert.equal(r.body.dir, 'server');
+  assert.equal(r.body.framework, 'express');
+  assert.equal(r.body.counts.routes, LIMITS.backendRoutes + 22);
+  assert.equal(r.body.routes.length, LIMITS.backendRoutes);
+  assert.equal(r.body.truncated, true);
+  assert.deepEqual(r.body.routes.slice(0, 2).map((x) => [x.method, x.path, x.handler, x.file]), [['GET', '/api/notes/:id', 'listNote', 'server/notesApi.mjs'], ['GET', '/api/health', '(inline)', 'server/index.mjs']]);
+  assert.deepEqual(r.body.env, ['SESSION_SECRET']);
+  assert.equal(r.body.roles.store, 1);
+  assert.ok(r.text.length < 32 * 1024, `${r.text.length} bytes: bounded`);
+  assert.doesNotMatch(r.text, new RegExp(backendRoot.replaceAll('/', '\\/')), 'path-free');
+  const both = await callTool(client, 'summarize', { backend: true, feature: 'billing' });
+  assert.equal(both.body.error.code, 'INVALID_INPUT');
+  const off = await callTool(client, 'summarize', { backend: false });
+  assert.equal(off.body.scope, 'project', 'backend: false is the ordinary summary');
+  await close();
+  assert.equal(hashTree(backendRoot), before, 'nothing was written');
+
+  const escaping = makeProject({ files: {} });
+  fs.appendFileSync(path.join(escaping, 'architecture.yml'), '\nbackend:\n  dir: ../elsewhere\n');
+  const c2 = await connectInProcess({ root: escaping });
+  const refused = await callTool(c2.client, 'summarize', { backend: true });
+  assert.equal(refused.isError, true);
+  assert.equal(refused.body.error.code, 'CONFIG_UNREADABLE');
+  assert.doesNotMatch(refused.text, /\/tmp|\/home/, 'the refusal names no absolute path');
+  await c2.close();
 });
 
 test('validate: counts by severity and rule and the first findings with rule id, file and fix', async () => {

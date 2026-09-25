@@ -33,6 +33,7 @@ const EVERYTHING = [
   ['summarize', {}],
   ['summarize', { feature: 'billing' }],
   ['summarize', { feature: 'nope' }],
+  ['summarize', { backend: true }],
   ['validate', {}],
   ['validate', { limit: 2 }],
   ['machine_capabilities', {}],
@@ -106,7 +107,7 @@ test('a link that leaves the root is refused by every tool that reads the projec
   for (const root of [linkedDir, linkedFile, linkedConfig]) {
     const { client, close } = await connectInProcess({ root });
     const before = hashTree(root);
-    for (const [name, args] of [['summarize', {}], ['summarize', { feature: 'leak' }], ['validate', {}], ['placement_place', { text: SENTENCE }], ['decide', { text: SENTENCE }], ['traces_stats', {}]]) {
+    for (const [name, args] of [['summarize', {}], ['summarize', { feature: 'leak' }], ['summarize', { backend: true }], ['validate', {}], ['placement_place', { text: SENTENCE }], ['decide', { text: SENTENCE }], ['traces_stats', {}]]) {
       const r = await callTool(client, name, args);
       assert.equal(r.isError, true, `${name} ${JSON.stringify(args)}`);
       assert.equal(r.body.error.code, 'PATH_OUTSIDE_ROOT', `${name} ${JSON.stringify(args)}`);
@@ -206,6 +207,7 @@ test('invalid input is a typed error, never a stack trace', async () => {
     ['plan_validate', {}],
     ['decide', { summary: { id: 'x' } }],
     ['summarize', { feature: 7 }],
+    ['summarize', { backend: 'yes' }],
     ['validate', { limit: 0 }],
     ['validate', { limit: 1.5 }],
     ['validate', { limit: 'many' }],

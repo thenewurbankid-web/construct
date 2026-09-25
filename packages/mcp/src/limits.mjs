@@ -37,6 +37,10 @@ export const LIMITS = Object.freeze({
   features: 25,
   /** The longest plain-text summary `summarize` returns. */
   summaryChars: 6000,
+  /** The most routes `summarize` lists for a backend (`backend: true`). */
+  backendRoutes: 80,
+  /** The most environment variable names, import cycles, unclassified files and not-detected entries `summarize` lists for a backend. */
+  backendItems: 30,
   /** The most entries of any keyed list (rules, choosers, providers) in a result. */
   keyed: 20,
   /** The tool calls a project is scanned for links that leave it: at most this many directory entries. */

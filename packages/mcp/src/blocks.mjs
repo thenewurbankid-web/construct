@@ -272,14 +272,15 @@ export async function decide(ctx, { summary, text }) {
  * and how many files each layer holds, and the compact plain-text paragraph an agent pastes instead of reading files.
  *
  * @param {{ root: string }} ctx The server's startup configuration.
- * @param {{ feature?: string }} input A feature name (never a path); omit it for the whole project.
- * @returns {Promise<object>} `{ ok, scope, featureCount, features, summary, truncated }`.
+ * @param {{ feature?: string, backend?: boolean }} input A feature name (never a path); omit it for the whole project. `backend: true` summarizes the project's Node.js / Express backend instead (see `summarizeBackendTool`).
+ * @returns {Promise<object>} `{ ok, scope, featureCount, features, summary, truncated }`, or the backend summary when `backend` is true.
  * @throws {ToolError} `PATH_OUTSIDE_ROOT` (a path, or a link that leaves the project), `INVALID_INPUT`, `NOT_FOUND`, `CONFIG_UNREADABLE`.
  *
  * @example
  * await summarize(ctx, { feature: 'billing' }); // => { ok: true, scope: 'feature', features: [{ feature: 'billing', loc: 240, layers: { domain: 2 } }] }
  */
-export async function summarize(ctx, { feature } = {}) {
+export async function summarize(ctx, { feature, backend } = {}) {
+  if (backend === true) return summarizeBackendTool(ctx, feature);
   if (feature !== undefined) assertFeatureName(feature);
   assertContained(ctx.root);
   const config = await readConfig(ctx.root);
@@ -304,6 +305,53 @@ export async function summarize(ctx, { feature } = {}) {
     })),
     summary: text.length > LIMITS.summaryChars ? `${text.slice(0, LIMITS.summaryChars - 1)}…` : text,
     truncated: all.length > LIMITS.features || text.length > LIMITS.summaryChars,
+  };
+}
+
+/**
+ * `summarize` with `backend: true`: `construct summarize --backend` for the project, bounded. The directory is never an argument:
+ * it is `backend.dir` in the project's architecture.yml, else the project root, and never leaves the root. Returns the route
+ * table (method, full path, handler name, middleware, `file:line`), the framework, role and effect counts, the environment
+ * variable names (never values), import cycles and whatever could not be detected. Read-only.
+ *
+ * @param {{ root: string }} ctx The server's startup configuration.
+ * @param {string|undefined} feature Must be omitted: a feature summary and a backend summary are different calls.
+ * @returns {Promise<object>} `{ ok, scope: 'backend', dir, framework, counts, roles, effects, routes, env, cycles, unclassified, notDetected, truncated }`.
+ * @throws {ToolError} `INVALID_INPUT` (a feature was also given), `PATH_OUTSIDE_ROOT`, `CONFIG_UNREADABLE` (a bad `backend:` section or directory).
+ *
+ * @example
+ * await summarizeBackendTool(ctx); // => { ok: true, scope: 'backend', framework: 'express', counts: { routes: 12 }, routes: [{ method: 'GET', path: '/api/notes', handler: 'listNotes', file: 'server/notesApi.mjs', line: 8 }] }
+ */
+async function summarizeBackendTool(ctx, feature) {
+  if (feature !== undefined) throw new ToolError('INVALID_INPUT', 'Give either a feature or backend: true, not both.');
+  assertContained(ctx.root);
+  const { summarizeBackend, resolveBackendDir } = await import('@line/construct-core/backend-summary');
+  let s;
+  try {
+    s = summarizeBackend(resolveBackendDir(ctx.root), { root: ctx.root });
+  } catch (e) {
+    throw new ToolError('CONFIG_UNREADABLE', `The backend could not be summarized: ${cut(String(e?.message ?? e).split('\n')[0].replaceAll(ctx.root, '.'), LIMITS.lineChars)}`);
+  }
+  const n = LIMITS.backendItems;
+  const handlerOf = (h) => (h.inline ? (h.wrapper ? `${h.wrapper}(...)` : h.name ?? '(inline)') : `${h.name}`);
+  const others = s.files.list.filter((f) => f.role === 'other');
+  return {
+    ok: true,
+    scope: 'backend',
+    dir: s.dir,
+    framework: s.detection.framework,
+    counts: s.counts,
+    roles: s.files.roles,
+    effects: s.effects.counts,
+    routes: s.routes.slice(0, LIMITS.backendRoutes).map((r) => ({
+      method: r.method, path: cut(r.path, 120), handler: cut(handlerOf(r.handler), 60), ...(r.middleware.length ? { middleware: r.middleware.slice(0, 4).map((m) => cut(m, 40)) } : {}),
+      ...(r.inherited.length ? { inherited: r.inherited.length } : {}), file: r.file, line: r.line,
+    })),
+    env: s.env.slice(0, n).map((e) => e.name),
+    cycles: s.imports.cycles.slice(0, n).map((c) => c.path),
+    unclassified: others.slice(0, n).map((f) => f.path),
+    notDetected: s.detection.notDetected.slice(0, n).map((d) => ({ what: d.what, file: d.file, line: d.line, detail: cut(d.detail, 120) })),
+    truncated: s.routes.length > LIMITS.backendRoutes || s.env.length > n || s.imports.cycles.length > n || others.length > n || s.detection.notDetected.length > n || Object.keys(s.truncated).length > 0,
   };
 }
 

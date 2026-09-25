@@ -66,8 +66,11 @@ export const TOOLS = Object.freeze([
   {
     name: 'summarize',
     title: 'Summarize the project or a feature',
-    description: 'A bounded summary of the project or one feature: lines of code, public API and file count per layer, and a compact paragraph to use instead of reading files. Reads the project\'s sources; writes nothing.',
-    inputSchema: z.object({ feature: z.string().min(1).max(LIMITS.nameChars).optional().describe('A feature name (never a path). Omit for the whole project.') }),
+    description: 'A bounded summary of the project or one feature: lines of code, public API and file count per layer, and a compact paragraph to use instead of reading files. With backend: true, a summary of the project\'s Node.js / Express backend instead: the route table (method, full path, handler, middleware, file:line), file roles, effects, environment variable names and import cycles. Reads the project\'s sources; writes nothing.',
+    inputSchema: z.object({
+      feature: z.string().min(1).max(LIMITS.nameChars).optional().describe('A feature name (never a path). Omit for the whole project.'),
+      backend: z.boolean().optional().describe('true: summarize the backend (backend.dir in architecture.yml, else the project root) instead of the features. Not together with feature.'),
+    }),
     run: blocks.summarize,
   },
   {
