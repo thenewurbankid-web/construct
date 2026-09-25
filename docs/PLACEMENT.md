@@ -959,7 +959,7 @@ imports no service. Nothing is charted, stored, routed between panels or refresh
 every tile and every line of every panel** shown from a sample summary (a tile that is wrong is reported by its name: `The tile "Sum of
 total" does not show <li>...</li>.`); the domain unit's tiles and panels in order; the controller's first state; and the service (a stubbed
 `fetch`: a good answer, a 500, a wrong shape, a network failure, the `AbortSignal`; for the `local` source, the summary of the seed rows
-with no network). No Playwright flow yet for this shape.
+with no network). Its browser flow is described under "The proof step" below (#659).
 
 **Decisions where the issue was silent.** The issue says the screen composes components "the feature already has": this slice composes
 the components the shape itself writes (a tile, a panel, a line), so it works in an empty feature; choosing among a feature's existing
@@ -1057,8 +1057,8 @@ The repo's own every-path generator (`construct generate tests signup --unit`, o
 `test/wizard-shape-chain.test.mjs`); the proof carries its own walk as well, because it can type into the fields to satisfy the guards and it
 names the transition and the state that is wrong.
 
-**Decisions where the issue was silent.** The issue's options are the number of steps and the terminal action: the steps are `--steps` (a
-`q-steps` question in the Cockpit is a later slice), and the terminal action is the submit service (`q-source`: a local store, the endpoint or
+**Decisions where the issue was silent.** The issue's options are the number of steps and the terminal action: the steps are `--steps` (the
+Cockpit asks for their count as the closed question `q-steps`, #659, see "The wizard's step count" below), and the terminal action is the submit service (`q-source`: a local store, the endpoint or
 the OpenAPI operation). The last step is where SUBMIT lives, so the default `done` is the step that submits; `submitting` and `submitted` are
 states after the steps. The events are the issue's plus `CHANGE` (the machine keeps what is typed, so its guards can read it) and the
 service's two answers, `SUCCEEDED` and `FAILED`, which the hook sends (the machine stays pure). `WorkflowUnit` is not callable in
@@ -1131,7 +1131,7 @@ before #623):
 |---|---|---|
 | `s11` Prove the Products screen | `create.proof` (`--kind render`) | Writes `features/<f>/tests/generated/ProductsScreen.proof.test.ts` (and, once, declares the `frozen:` and `nonLayer:` test regions in `architecture.yml`, which the step lists in its `touches`). |
 | `s12` Run the proof of Products | `test.proof` (read-only) | Runs it and answers a pass, or a classified failure. |
-| `s13`, `s14`, only with Playwright | `create.proof --kind playwright --route /products`, `test.run` | The route flow (of the route the plan wired) with a mocked API, and its run against your running app. |
+| `s13`, `s14`, only with Playwright | `create.proof --kind playwright --route /products`, `test.run` | The route flow (of the route the plan wired) with a mocked API, and its run against your running app. Every shape has one since #659 (below). |
 
 **The render proof** needs nothing a `construct init` project does not have: react, react-dom and `esbuild` (it comes with `tsx`
 and with `vite`, both in the init `package.json`). `construct test proof <feature>` bundles the proof with the project's own
@@ -1170,8 +1170,9 @@ state in the same words:
 
 A page that throws (for example a branch of the expression was removed and the page reads what that state does not have) is reported as the
 state `crashed`, not as a stack trace: `The page given status not-found: the not-found state is wrong, the screen shows crashed.` The route flow
-(`--kind playwright`) exists only for the list shape (`PLAYWRIGHT_SHAPES`): for the others `construct create proof --kind playwright` prints
-`Skipped: ...`, a plan in a project with Playwright plans no browser step and says so in `notes` and `proof.playwright.skipped`.
+(`--kind playwright`) exists for every shape since #659 (`PLAYWRIGHT_SHAPES`), but only for a source that makes a request: a `local` source has
+nothing to mock, so `construct create proof --kind playwright --source local` prints `Skipped: ...`, and a plan says so in `notes` and
+`proof.playwright.skipped`.
 
 **The chain is complete when the proof is green or explicitly skipped.** `planFromBlocks` returns `proof`:
 `{ required: true, complete: false, state: 'pending', steps, verifiedBy: ['s12'], playwright: { configured, config, skipped } }`, and
@@ -1188,6 +1189,28 @@ playwright` prints `Skipped: ...` and writes nothing, and the render proof still
 locked generated spec `construct test run` already finds) mocks `/api/products` with `page.route`, holds the answer back to see the loading
 state, then checks the list, the empty state and the error state with `role="alert"`, reading the state off `<main>` in the same words as the
 render proof. Its route is `--route` (default `/`). It is exercised for real in `test/proof.test.mjs` (opt-in: `CONSTRUCT_RUN_PLAYWRIGHT=1`).
+
+**The browser flows of the other shapes (#659).** `detail`, `form`, `dashboard` and `wizard` have the same kind of flow on the same conventions:
+`construct create proof Signup --feature signup --shape wizard --kind playwright --entity Signup --fields ... --steps details,review,done
+--route /signup` writes `features/signup/tests/generated/signup--screen.spec.ts`, LOCKED (the generated-test header, `frozen:` and
+`nonLayer:`), a pure function of the request, regenerated by the command in its own header (which carries the shape, the steps and the
+route), found by `construct test run signup --area generated`, and run in the plan by a `test.run` step after it. Each flow loads the
+route of the screen with its API mocked (`page.route`, nothing touches a real server), reads the state off `<main>` and fails naming the
+state that is wrong, in the words the runner classifies (`Expected: "not-found"`, `Received: "nothing"`), so a broken screen is an
+`app` failure with its state, not "the test could not finish":
+
+| Shape | What the flow does |
+|---|---|
+| detail | opens `<route>?id=<id>` with `GET <endpoint>/<id>` held back: `loading`, then `ready` (the heading, every `<dt>` label and `<dd>` value); a 404 is `not-found`; a 500 is `error` with `role="alert"` |
+| form | finds every field by its label (`getByLabel`, so a label not tied to its input fails) and checks its input type; an empty submit shows a message beside each checked field (`invalid`); a valid submit POSTs the typed values (numbers are numbers) and shows the saved notice with Add another; a 500 shows the error with `role="alert"` |
+| dashboard | with `GET <endpoint>` held back: `loading`, then `ready` with the heading, every tile and every line of every panel of the sample summary; a 500 is `error` with `role="alert"` |
+| wizard | Next from step 1 to the last (each step shows its progress, legend and fields; a step with none of its own reviews everything typed), Back keeps what was typed, Submit POSTs the typed values and shows the complete screen; Next stays off while a step is invalid; a failed submit stays on the last step with `role="alert"` |
+
+The flows are exercised for real, one per shape, in `test/proof-browser.test.mjs` (opt-in: `CONSTRUCT_RUN_PLAYWRIGHT=1`, the project links the
+`@playwright/test` and browser of `ui/e2e`): each PASSES against the screen the shape wrote, and FAILS as an `app` failure naming the state when
+the screen is broken on purpose (a removed not-found text, a changed saved notice, a `role="alert"` that became `status`, a Next button that
+goes back). Left out: a flow for a `local` source (it makes no request, so the render proof is what proves it), the sending state of a form
+or wizard (a gate on the POST), and a run of the app by the plan itself (the `test.run` step needs it running, `--base-url`).
 
 ```sh
 construct create proof Products --feature products --entity Product --fields id:string,name:string,price:number
@@ -1265,8 +1288,8 @@ holds a plan back: an unanswered question uses its rules default. An answer is p
 
 `planFromBlocks` returns `{ ..., offers, wiring }`; `wiring` is `{ dependency: 's8' | null, sync: 's9', routes: [{ name, route, step, file }] }`
 (`null` when nothing was wired). A Playwright proof step takes `--route` from the route the plan wired. Since #632 the Requirement
-API passes and returns every closed question of the plan (`q-source`, `q-route`, `q-dependency`, `q-env`, `q-verify`) and the screen
-draws each as a card (see below); an unanswered one uses its default.
+API passes and returns every closed question of the plan (`q-source`, `q-route`, `q-dependency`, `q-env`, `q-verify`, and since #659 `q-steps`) and the screen
+draws each as a card under one heading, **Plan questions** (see below); an unanswered one uses its default.
 
 **The full-path test** (`test/list-shape-chain.test.mjs`) runs the plan's own commands and nothing else in a fresh react-spa project
 and in a fresh Next.js project, then asserts that every file that changed is a file the plan declared, `construct validate` reports no
@@ -1353,11 +1376,34 @@ which stays last: the type-check runs once the route is wired, so a dangling imp
 `planFromBlocks` also returns `env: [{ variable, scope, question, step }]` and `verify: { types, build }` (step ids or `null`); `wire:
 false` leaves the variables and the verification out (a plan is then as it was), and `verify: false` leaves out only the verification.
 A card with `server-only-secret` but no named outside service plans no variable and a note says to run `construct create env`.
-Answers are decision traces: `requirement.plan.env` and `requirement.plan.verify` (`choicesFromWiring`), with the question as offered,
+Answers are decision traces: `requirement.plan.env`, `requirement.plan.verify` and `requirement.plan.steps` (`choicesFromWiring`), with the question as offered,
 who chose and the rules suggestion. The Requirement API (`POST /api/requirement/read`) returns every plan question in `offers` and takes
 answers by id; the screen draws each as a **Route**, **Dependency**, **Environment variable** or **Verification** card (`data-testid`
 `requirement-plan`, `data-offer` the question id), the same way it draws the shape and the data source. MCP `placement_place` accepts the
 same answers (`q-env`, `q-verify`, ...), attributed to the client, and returns `env` and `verify` beside `wiring`.
+
+**The wizard's step count (#659).** A wizard plan asks one more closed question, `q-steps` (`q-steps-<name>` when a plan has several wizards), beside
+`q-source`, in the chooser shape, and only for the wizard shape. Each option is a FIXED list of step names, so the plan stays deterministic
+and the names are never free text:
+
+| Question id | Raised when | Options (stable ids) | Default |
+|---|---|---|---|
+| `q-steps` | a shaped plan has a wizard whose blocks carry no steps of their own, or one of the table | `three` (`details,review,done`), `two` (`details,done`), `four` (`details,options,review,done`) | `three` (first, so the rules-only provider suggests it, and what every wizard plan had before) |
+
+`stepsOffer` (`packages/core/shape-wizard.mjs`) makes the question; `planFromBlocks` carries the answer as `--steps` on every unit of the
+wizard and on its proof steps (`create.unit`, `create.proof`), and `STEP_TABLE` is the one table. An answer that is not one of the options is a
+typed plan error (`PLAN_STEPS_UNAVAILABLE`, naming the options), never a silent default; a block whose own steps are not in the table (a direct
+caller's `--steps address,payment`) is not asked and keeps them. The answer is a decision trace (`requirement.plan.steps`). MCP
+`placement_place` accepts `{ id: 'q-steps', option: 'four' }`, attributed to the client. The Requirement API takes and returns it like the
+other plan questions, and the screen draws a **Wizard steps** card with a plain line saying what a step is (fixed words, in the client):
+"A step is one screen of the wizard: Next and Back move between steps, each step but the last takes some of the fields, and the last one shows
+them all and submits."
+
+**The Requirement screen groups the questions of the plan (#659).** The **Screen shape** card comes first; every other closed question (the
+data source, the wizard's steps, the route, the dependency, environment variables, verification) sits under one heading, **Plan questions**
+(`data-testid="requirement-plan-questions"`, with a one-line note: each question changes a step of the plan, an unanswered one uses the rules'
+default, and Approve never waits for it). The cards keep their own test ids (`requirement-source`, `requirement-plan`, ...) and headings, in the
+order the server asked.
 
 **Decisions where the issue was silent.** The default verification is `types`, not `none`, because a chain that cannot say whether the
 app still compiles is not finished; on the fresh, offline fixtures of the chain tests the type-check honestly reports missing imports
@@ -1412,4 +1458,4 @@ as its options.
 
 The timeline read-back and its Cockpit screen are the Requirement screen (`/requirement`, #642): `toTimeline(placement)` in `ui/client/features/requirement/domain/Timeline.ts` turns the blocks into steps in run order (a slice to move it into core, so the CLI and an LLM read the same steps, is open). Not here yet: a `use client` / `use server` directive in the generated files, and words beyond the lexicon. Each is a slice of #616.
 
-Not here yet for the shapes (each a slice of #616): a wizard whose steps are chosen in the Cockpit (`q-steps`), routed between steps or persisted between visits; a dashboard that picks among the components a feature already has, or charts; a browser (Playwright) flow for the detail and form shapes (the list has one; the render proof of every shape is above); a `route.ts` handler for the endpoints the shapes call; an `update` form that addresses an item by its id (PUT), a form field other than a string, a number or a checkbox, a detail with a related list, and a route parameter for the detail's id (it is `?id=` or a prop today).
+Not here yet for the shapes (each a slice of #616): a wizard routed between steps or persisted between visits, or with steps named by a person rather than chosen from the three of `q-steps`; a dashboard that picks among the components a feature already has, or charts; a browser (Playwright) flow for a `local` data source (it makes no request to mock; the render proof of every shape is above); a `route.ts` handler for the endpoints the shapes call; an `update` form that addresses an item by its id (PUT), a form field other than a string, a number or a checkbox, a detail with a related list, and a route parameter for the detail's id (it is `?id=` or a prop today).
