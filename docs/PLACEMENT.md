@@ -615,7 +615,7 @@ An unanswered offer leaves the plan exactly as it was, the plain scaffold. Answe
 suggestion, recorded in `decisions` as `person` or `decision-model`) turns the read into a server-read block (domain, service,
 hook, controller) plus the presentational block that shows it (component, page), and every `create.unit` step of the plan
 carries the three new optional arguments `shape`, `entity` and `fields` (`--shape list --entity Product --fields ...` on the
-command). The entity is the singular of the plural noun; the fields are the card entity's properties, typed by their names
+command; and, since #621, `source`, where the screen reads its data from, see "The data source" below). The entity is the singular of the plural noun; the fields are the card entity's properties, typed by their names
 (`price` and `amount` are numbers, `isActive` a boolean, the rest strings) after an `id`. A search, a write, or two data objects
 in one card is not offered the shape: those are later slices. The Cockpit's `POST /api/requirement/read` returns the offer as
 `offers` and takes the answer as `{ id: 'q-shape', option: 'list' }`; the Requirement screen draws it (#651) as a small **Screen shape** card between the placement blocks and the timeline: the two
@@ -885,6 +885,62 @@ unit of a form is named for the verb and the object (`AddProduct`), so a page fo
 form can sit in one project without clashing; the entity is the unit name without its leading write verb (`--entity` overrides).
 The endpoint of a detail and a form is the plural of the entity (`Product` gives `/api/products`), not of the unit name.
 
+## The data source: where a screen reads its data from (#621, part of #616, relates to #400)
+
+Until now the service of a shaped screen called `/api/<plural>`, an endpoint nothing in the project had made, so the screen it
+generated could not show data on its own. The person now chooses where the screen reads from, as one closed question, and the
+units are generated to match. Nothing calls a model or the network.
+
+**The question.** `planFromBlocks` adds `q-source` (`q-source-<name>` when a plan has several shaped screens) to `result.offers`,
+one per shaped screen, in the shape of a chooser summary (`{ id, question, options: [{ id, label, enabled, why }], default, chosen }`
+plus `unit`, `shape` and the rules' `suggestion`). It never holds the plan back: an unanswered question uses its default.
+
+| Option | Offered when | What the screen reads from |
+|---|---|---|
+| `openapi` | the project has `openapi.yaml`, `openapi.yml` or `openapi.json` at the root or in `api/`, and it has the operation of the entity: `GET` on a path ending in the plural (list), `GET` on that path plus one `{parameter}` (detail), `POST` on the plural (form) | the path of that operation, with the spec's first server path as prefix (`/v1/products`); the service names the operation and the file in a comment |
+| `local` | always | a typed in-memory store: seed rows in a second domain file (`ProductsStore.domain.ts`), held and read by the service, so the screen works with no backend |
+| `endpoint` | always | `GET`/`POST /api/<plural>`, the behaviour of a shaped step before #621; the endpoint must exist in your app, nothing in the plan creates it |
+
+The rules-only default is the first option offered: `openapi` when a matching operation exists, else `local`. A spec that has a
+file but not the operation leaves `openapi` out and the plan's notes say why; an answer that was not offered (`openapi` with no
+spec, an unknown option) is a typed `PLAN_SOURCE_UNAVAILABLE`, never replaced by another source. The answer is recorded like every
+other closed choice (`requirement.plan.source`, `choicesFromWiring`, `docs/DECISION-TRACES.md`) and is replayable.
+
+**The mechanism.** `--source local|endpoint|openapi` on `construct create layer|<layer> ... --shape ...` and `construct create proof`
+(`PLAN_SOURCES` in `plan.mjs`, mirrored in `schemas/plan.v1.json`; a test keeps the enum, the schema and the source module equal). It is
+optional and additive: **no `--source` means `endpoint`**, so every plan and command written before #621 gives the same bytes, while the
+Requirement chain's default is the rules-only default above. The plan carries `source` on every unit step of a screen and on its proof
+step, and a step declares the extra store file in its `touches` (the approval gate refuses any file a step did not declare).
+
+| Source | Files it writes beyond the endpoint source | The service |
+|---|---|---|
+| `local` | `domain/<Name>Store.domain.ts` (`defineDomain` units: the seed rows, and a pure read, find or save over a set of rows); the form's `types.ts` also gains the row type | no `fetch`; keeps the rows in module state, takes the caller's `AbortSignal` and answers the same typed result (a cancelled request is an error result) |
+| `endpoint` | none | unchanged |
+| `openapi` | none | the endpoint service with the spec's path and a `// Data source: GET /products (listProducts) of openapi.yaml.` line; with no matching operation the request is refused before anything is written |
+
+The store is pure where the rules need it (`DOMAIN-002`): the domain units take rows and return rows, and only the service holds the
+mutable array. `openapi` reads the spec with the reader `create service --openapi` uses (`packages/core/openapi-spec.mjs`); it does **not**
+emit the RTK Query file of `create.service.openapi`, because that service needs a Redux store and provider the shaped hook does not have
+(the shaped hook awaits a `fetch*` service and holds the result in tracked state). The typed result and the runtime shape check of the
+service are the same for the two network sources.
+
+**The proofs adapt.** The render proof stubs the source the way it is wired: `endpoint` is unchanged; `openapi` adds a test that the
+service asks the spec's path (detail and form already assert the address); `local` drives the store with fetch made to throw, asserts the
+seed rows (list), a seeded id and an unknown id (detail), that a submit saves one more row with a fresh id and leaves the rows it was given
+alone (form), and that a cancelled request is an error result. A local source makes no request, so it has no browser flow to mock: the plan
+plans none and says so; `openapi` mocks the spec's path.
+
+**The Requirement API and screen.** `POST /api/requirement/read` returns `q-source` in `offers` (source `plan`) once the plan is built, takes
+the answer as `{ id: 'q-source', option }` like `q-shape`, attaches the decision provider's suggestion and records the choice. The
+Requirement screen draws it generically as a second card, **Data source**, after the shape card (test ids `requirement-source*`, the
+suggested option marked, "Decided by: person" once chosen); Approve never waits for it.
+
+**Left out on purpose** (each a later slice): auth, pagination and write-through caching; a store shared by the list and the form of one
+entity (each screen has its own in-memory store, so a submitted row does not show on a list); persisting the local store (localStorage,
+IndexedDB); reading the entity's fields from the spec's schema instead of `--fields` (the runtime shape check uses `--fields`); an
+OpenAPI operation with more than one path parameter or a nested collection; the RTK Query service as a screen's source; `servers`
+with variables or another origin than the app's own (only the path is used); a Playwright flow for a local source.
+
 ## The proof step: a screen that is shown to work (#623, part of #616)
 
 A chain that ends with files that validate and type-check has not shown the screen behaves. A shaped plan therefore ends with a
@@ -1053,5 +1109,4 @@ step rather than repointed, so `/` is not silently the new screen.
 
 The timeline read-back and its Cockpit screen are the Requirement screen (`/requirement`, #642): `toTimeline(placement)` in `ui/client/features/requirement/domain/Timeline.ts` turns the blocks into steps in run order (a slice to move it into core, so the CLI and an LLM read the same steps, is open). Not here yet: a `use client` / `use server` directive in the generated files, and words beyond the lexicon. Each is a slice of #616.
 
-Not here yet for the shapes (each a slice of #616): the other shapes (dashboard, wizard); wiring a data source into
-a shaped screen (#621); a browser (Playwright) flow for the detail and form shapes (the list has one; the render proof of every shape is above); a `route.ts` handler for the endpoints the shapes call; an `update` form that addresses an item by its id (PUT), a form field other than a string, a number or a checkbox, a detail with a related list, and a route parameter for the detail's id (it is `?id=` or a prop today).
+Not here yet for the shapes (each a slice of #616): the other shapes (dashboard, wizard); a browser (Playwright) flow for the detail and form shapes (the list has one; the render proof of every shape is above); a `route.ts` handler for the endpoints the shapes call; an `update` form that addresses an item by its id (PUT), a form field other than a string, a number or a checkbox, a detail with a related list, and a route parameter for the detail's id (it is `?id=` or a prop today).
