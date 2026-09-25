@@ -24,7 +24,7 @@ test('the offer view: unanswered, list is marked suggested, nothing is chosen an
   const [offer] = v.result.offers;
   assert.deepEqual([offer.id, offer.source], ['q-shape', 'placement']);
   assert.deepEqual(offer.options.map((o) => [o.id, o.label, o.suggested, o.chosen]), [['list', 'List screen, generated with typed code', true, false], ['scaffold', 'Empty scaffold', false, false]]);
-  assert.match(offer.options[0].gives, /10 real files that validate/);
+  assert.match(offer.options[0].gives, /real files that validate/);
   assert.match(offer.options[1].gives, /empty stubs/);
   assert.equal(offer.decidedBy, null);
   assert.match(offer.status, /^Not chosen yet, so the plan below is the empty scaffold\. Suggested by rules: list screen/);
@@ -48,7 +48,7 @@ test('choosing list: the view names the chooser (person), the plan has 9 steps (
   assert.equal(offer.decidedBy, 'person');
   assert.equal(offer.status, 'Chosen: List screen, generated with typed code. Decided by: person.');
   assert.deepEqual(list.result.timeline.map((s) => s.kind), ['page-load', 'server-read', 'presentation'], 'the list shape reads on the server, then shows');
-  assert.equal(list.result.files.length, 10);
+  assert.equal(list.result.files.length, 11, 'the ten files of the shape and the local store the rules default (#621) writes');
   assert.ok(list.result.files.includes('features/products/services/Products.service.ts'));
   assert.equal(chosen.plan.steps.length, 11);
   assert.ok(chosen.plan.steps.slice(1, 7).every((s) => s.args.shape === 'list'));
@@ -67,6 +67,37 @@ test('a sentence with no offer, or a server that sends none, has no card', () =>
   assert.deepEqual(shapeView(result).result.offers, []);
   const { offers, ...older } = result;
   assert.deepEqual(shapeView(older).result.offers, [], 'a response without `offers` is read as none');
+});
+
+// #621: the data source (q-source) rides in `offers` beside q-shape (the server puts it there once the plan is built) and is drawn as a card of its own.
+const sourceResult = (answers, plan = {}) => {
+  const card = parseRequirement(PRODUCTS).card;
+  const placement = placeCard(card, { framework: 'react-spa', answers: { 'q-shape': 'list' } });
+  const planned = planFromBlocks(placement.blocks, { feature: 'products', root: '/x', decisions: placement.decisions, answers, ...plan });
+  const offers = [...placement.offers, ...planned.offers.filter((q) => q.id === 'q-source').map((q) => ({ ...q, source: 'plan' }))];
+  return { card, placement: { ...placement, decisions: planned.decisions }, plan: planned.plan, files: planned.files, open: [], offers, warnings: [], summary: { readBack: [], blocks: [] } };
+};
+
+test('the data source offer: its own card kind, the server words, the rules default marked suggested, nothing chosen, Approve stays on', () => {
+  const v = shapeView(sourceResult({}));
+  assert.deepEqual(v.result.offers.map((o) => [o.id, o.kind, o.source]), [['q-shape', 'shape', 'placement'], ['q-source', 'source', 'placement']], 'two cards, the shape first; the client draws the server\'s `plan` questions like its placement ones');
+  const source = v.result.offers[1];
+  assert.deepEqual(source.options.map((o) => [o.id, o.label, o.suggested, o.chosen]), [['local', 'Local data, no backend', true, false], ['endpoint', 'Call GET /api/products', false, false]]);
+  assert.match(source.options[1].gives, /must exist in your app/);
+  assert.equal(source.status, "Not chosen yet, so the plan below uses the rules' default: local data, no backend.");
+  assert.equal(source.decidedBy, null);
+  assert.equal(v.result.approve.canApprove, true, 'a closed question beside the plan never blocks Approve');
+});
+
+test('answering the data source: the view names the chooser, the other option is not pressed, and the answer replaces an earlier one', () => {
+  const v = shapeView(sourceResult({ 'q-source': 'endpoint' }));
+  const source = v.result.offers[1];
+  assert.deepEqual(source.options.map((o) => o.chosen), [false, true]);
+  assert.equal(source.status, 'Chosen: Call GET /api/products. Decided by: person.');
+  assert.equal(source.decidedBy, 'person');
+  assert.equal(v.result.files.length, 10, 'the endpoint source writes no store');
+  const target = { id: 'q-source', source: 'placement' };
+  assert.deepEqual(withAnswer(withAnswer([{ id: 'q-shape', option: 'list' }], target, 'endpoint'), target, 'local'), [{ id: 'q-shape', option: 'list' }, { id: 'q-source', option: 'local' }]);
 });
 
 test('a decision made by the rules names its provider; an option the table does not know keeps the server words', () => {

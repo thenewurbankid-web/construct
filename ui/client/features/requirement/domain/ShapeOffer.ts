@@ -8,7 +8,7 @@ import { suggestionView } from './Suggestion.ts';
 
 /** The button text and the one plain line of what each option gives, by option id. */
 const OPTION_WORDS: Record<string, { label: string; gives: string }> = {
-  list: { label: 'List screen, generated with typed code', gives: 'Creates 10 real files that validate: the list, its rows and its loading, empty and error states.' },
+  list: { label: 'List screen, generated with typed code', gives: 'Creates real files that validate: the list, its rows and its loading, empty and error states.' },
   scaffold: { label: 'Empty scaffold', gives: 'Creates empty stubs with a TODO in each, for you to fill in.' },
 };
 
@@ -18,8 +18,12 @@ export function deciderOf(decision: Decision | undefined): string | null {
   return decision.by === 'person' ? 'person' : `${decision.by}${decision.provider ? ` (${decision.provider})` : ''}`;
 }
 
+/** The data source question (q-source, #621) is asked once a shape is chosen, so it is a card of its own beside the shape's. */
+export const isSourceOffer = (id: string): boolean => /^q-source(-|$)/.test(id);
+
 function status(o: Offer, suggestion: SuggestionView | null, decidedBy: string | null, label: (id: string) => string): string {
   if (o.chosen) return `Chosen: ${label(o.chosen)}. Decided by: ${decidedBy ?? 'person'}.`;
+  if (isSourceOffer(o.id)) return `Not chosen yet, so the plan below uses the rules' default: ${label(o.default).toLowerCase()}.`;
   const plain = `Not chosen yet, so the plan below is the ${label('scaffold').toLowerCase()}.`;
   return suggestion ? `${plain} ${suggestion.label[0].toUpperCase()}${suggestion.label.slice(1)}: ${label(suggestion.option).toLowerCase()}.` : plain;
 }
@@ -32,6 +36,7 @@ export function offerViews(result: ReadResult): OfferView[] {
     const decidedBy = o.chosen ? deciderOf(decisions.find((d) => d.question === o.id)) : null;
     return {
       id: o.id,
+      kind: isSourceOffer(o.id) ? ('source' as const) : ('shape' as const),
       source: 'placement' as const,
       question: o.question,
       options: o.options.filter((x) => x.enabled).map((x) => ({ id: x.id, label: words(x.id).label, gives: words(x.id).gives, suggested: x.id === suggestion?.option, chosen: x.id === o.chosen })),

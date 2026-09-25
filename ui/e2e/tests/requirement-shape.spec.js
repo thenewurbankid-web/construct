@@ -20,6 +20,7 @@ const BILLING = 'A logged-in user needs to see their current subscription plan a
 const SCAFFOLD_FILES = ['features/products/components/Products.tsx', 'features/products/pages/ProductsPage.tsx'];
 const LIST_FILES = [
   'features/products/domain/Products.domain.ts',
+  'features/products/domain/ProductsStore.domain.ts', // #621: the rules default is the local source, whose store is a second domain file
   'features/products/types.ts',
   'features/products/services/Products.service.ts',
   'features/products/hooks/useProducts.state.ts',
@@ -82,7 +83,7 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
     await expect(page.getByTestId('requirement-shape-reason')).toContainText('is plural'); // #633: the provider's reason, next to the option
     await expect(page.locator('[data-testid="requirement-shape-option"][data-option="scaffold"]').getByTestId('requirement-shape-suggested')).toHaveCount(0);
     await expect(page.getByTestId('requirement-shape-suggested')).toHaveCount(1);
-    await expect(page.locator('[data-testid="requirement-shape-option"][data-option="list"]')).toContainText('Creates 10 real files that validate');
+    await expect(page.locator('[data-testid="requirement-shape-option"][data-option="list"]')).toContainText('Creates real files that validate');
     await expect(page.locator('[data-testid="requirement-shape-option"][data-option="scaffold"]')).toContainText('Creates empty stubs');
     await expect(card.getByRole('button', { pressed: true })).toHaveCount(0);
     await expect(page.getByTestId('requirement-shape-status')).toContainText('Not chosen yet, so the plan below is the empty scaffold');
@@ -115,7 +116,7 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
     await expect(page.getByTestId('requirement-shape-list')).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByTestId('requirement-shape-scaffold')).toHaveAttribute('aria-pressed', 'false');
     await expect(page.getByTestId('requirement-shape-status')).toHaveText('Chosen: List screen, generated with typed code. Decided by: person.');
-    await expect(page.getByTestId('requirement-files').locator('summary')).toHaveText('10 files will be created');
+    await expect(page.getByTestId('requirement-files').locator('summary')).toHaveText('11 files will be created');
     expect(await listedFiles(page)).toEqual(LIST_FILES);
     expect(await listedFiles(page)).toContain('features/products/services/Products.service.ts');
     // The placement and the timeline redrew with the answer: a server read now sits before the screen.
@@ -184,11 +185,11 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
   const SHAPED = [
     {
       shape: 'detail', text: 'A user wants to see the details of a product', label: 'Detail shape', reason: 'one item that is only read', unit: 'Product', feature: 'product', steps: 12,
-      files: ['features/product/domain/Product.domain.ts', 'features/product/types.ts', 'features/product/services/Product.service.ts', 'features/product/hooks/useProduct.state.ts', 'features/product/controllers/ProductController.controller.tsx', 'features/product/components/ProductDetailRow.component.tsx', 'features/product/components/ProductDetails.component.tsx', 'features/product/components/ProductNotice.component.tsx', 'features/product/pages/ProductPage.page.tsx', 'features/product/expressions/ProductByStatus.expression.tsx'],
+      files: ['features/product/domain/Product.domain.ts', 'features/product/domain/ProductStore.domain.ts', 'features/product/types.ts', 'features/product/services/Product.service.ts', 'features/product/hooks/useProduct.state.ts', 'features/product/controllers/ProductController.controller.tsx', 'features/product/components/ProductDetailRow.component.tsx', 'features/product/components/ProductDetails.component.tsx', 'features/product/components/ProductNotice.component.tsx', 'features/product/pages/ProductPage.page.tsx', 'features/product/expressions/ProductByStatus.expression.tsx'],
     },
     {
       shape: 'form', text: 'A user wants to add a product with a name and a price', label: 'Form shape', reason: 'writes the data object', unit: 'AddProduct', feature: 'add-product', steps: 12,
-      files: ['features/add-product/domain/AddProduct.domain.ts', 'features/add-product/types.ts', 'features/add-product/services/AddProduct.service.ts', 'features/add-product/hooks/useAddProduct.state.ts', 'features/add-product/controllers/AddProductController.controller.tsx', 'features/add-product/components/AddProductField.component.tsx', 'features/add-product/components/AddProductForm.component.tsx', 'features/add-product/components/AddProductNotice.component.tsx', 'features/add-product/components/AddProductAgain.component.tsx', 'features/add-product/pages/AddProductPage.page.tsx', 'features/add-product/expressions/AddProductByStatus.expression.tsx'],
+      files: ['features/add-product/domain/AddProduct.domain.ts', 'features/add-product/domain/AddProductStore.domain.ts', 'features/add-product/types.ts', 'features/add-product/services/AddProduct.service.ts', 'features/add-product/hooks/useAddProduct.state.ts', 'features/add-product/controllers/AddProductController.controller.tsx', 'features/add-product/components/AddProductField.component.tsx', 'features/add-product/components/AddProductForm.component.tsx', 'features/add-product/components/AddProductNotice.component.tsx', 'features/add-product/components/AddProductAgain.component.tsx', 'features/add-product/pages/AddProductPage.page.tsx', 'features/add-product/expressions/AddProductByStatus.expression.tsx'],
     },
   ];
   for (const s of SHAPED) {
@@ -321,6 +322,125 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
       }
     });
   }
+
+  // #621: where the screen reads its data from is a closed question drawn beside the shape (a second card, its own test ids), with the same
+  // suggestion, one-click answers and decision trace. The client draws whatever `offers` carries: nothing here is mocked.
+  const chooseSource = async (page, option) => {
+    const done = page.waitForResponse(isRead);
+    await page.getByTestId(`requirement-source-${option}`).click();
+    const res = await done;
+    expect(res.status()).toBe(200);
+    return { res, body: await res.json() };
+  };
+
+  test('the data source card appears once a shape is chosen: local is suggested (no OpenAPI file), nothing is chosen, and choosing changes the files and the steps', async ({ page }) => {
+    await gotoCockpit(page, '/requirement');
+    await readSentence(page, PRODUCTS);
+    await expect(page.getByTestId('requirement-source')).toHaveCount(0); // no shape chosen, no shaped unit: nothing to ask yet
+    await choose(page, 'list');
+    const card = page.getByTestId('requirement-source');
+    await expect(card).toBeVisible();
+    await expect(card.getByRole('heading', { name: 'Data source', level: 2 })).toBeVisible();
+    await expect(card.getByRole('button')).toHaveText(['Local data, no backend', 'Call GET /api/products']);
+    await expect(page.locator('[data-testid="requirement-source-option"][data-option="local"]').getByTestId('requirement-source-suggested')).toHaveText('suggested by rules');
+    await expect(page.getByTestId('requirement-source-suggested')).toHaveCount(1);
+    await expect(page.getByTestId('requirement-source-reason')).toContainText('No OpenAPI operation for this screen was found');
+    await expect(card.getByRole('button', { pressed: true })).toHaveCount(0);
+    await expect(page.getByTestId('requirement-source-status')).toHaveText("Not chosen yet, so the plan below uses the rules' default: local data, no backend.");
+    await expect(page.getByTestId('requirement-approve-plan')).toBeEnabled();
+    // The card after the shape card, before the timeline.
+    const order = await page.getByTestId('requirement-stage').locator('[data-testid="requirement-shape"], [data-testid="requirement-source"], [data-testid="requirement-timeline"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')));
+    expect(order).toEqual(['requirement-shape', 'requirement-source', 'requirement-timeline']);
+    await expect(page.getByTestId('requirement-files').locator('summary')).toHaveText('11 files will be created');
+
+    const endpoint = await chooseSource(page, 'endpoint');
+    expect(endpoint.body.offers.map((o) => [o.id, o.chosen])).toEqual([['q-shape', 'list'], ['q-source', 'endpoint']]);
+    expect(endpoint.body.plan.steps.filter((s) => s.flow === 'create.unit').every((s) => s.args.source === 'endpoint')).toBe(true);
+    expect(endpoint.res.request().postDataJSON().answers).toEqual([{ id: 'q-shape', option: 'list' }, { id: 'q-source', option: 'endpoint' }]);
+    await expect(page.getByTestId('requirement-source-endpoint')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByTestId('requirement-source-local')).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.getByTestId('requirement-source-status')).toHaveText('Chosen: Call GET /api/products. Decided by: person.');
+    await expect(page.getByTestId('requirement-source-status')).toHaveAttribute('data-decided-by', 'person');
+    await expect(page.getByTestId('requirement-files').locator('summary')).toHaveText('10 files will be created'); // no local store
+    expect(await listedFiles(page)).toEqual(LIST_FILES.filter((f) => !f.includes('Store')));
+    await expect(page.getByTestId('requirement-shape-list')).toHaveAttribute('aria-pressed', 'true'); // the shape answer is kept
+
+    const local = await chooseSource(page, 'local'); // a changed mind replaces the earlier answer
+    expect(local.res.request().postDataJSON().answers).toEqual([{ id: 'q-shape', option: 'list' }, { id: 'q-source', option: 'local' }]);
+    await expect(page.getByTestId('requirement-source-status')).toHaveText('Chosen: Local data, no backend. Decided by: person.');
+    expect(await listedFiles(page)).toEqual(LIST_FILES);
+  });
+
+  test('Approve with the endpoint source starts a process whose steps carry --source endpoint; with nothing chosen the steps carry the default, --source local; and the choice is recorded', async ({ page }) => {
+    await gotoCockpit(page, '/requirement');
+    await readSentence(page, PRODUCTS);
+    await choose(page, 'list');
+    await chooseSource(page, 'endpoint');
+    const ran = page.waitForResponse((r) => r.url().endsWith('/api/plan/run') && r.request().method() === 'POST');
+    await page.getByTestId('requirement-approve-plan').click();
+    const res = await ran;
+    expect(res.status()).toBe(200);
+    const sent = res.request().postDataJSON().plan.steps.map((x) => planToCommand(x).argv.join(' '));
+    for (const c of sent.slice(1, 7)) expect(c).toContain('--shape list --entity Product --fields id:string,name:string,price:number --source endpoint');
+    expect(sent.at(-2)).toContain('--source endpoint --kind render'); // the proof step is written from the same source
+    for (const f of LIST_FILES) expect(fs.existsSync(path.join(project.repo, f)), f).toBe(false); // approving starts a process; nothing is written by this route
+    const recordedSource = readTraces(project.repo, { stateDir: STATE_DIR }).decisions.filter((d) => d.chooser.id === 'requirement.plan.source' && d.chosen === 'endpoint');
+    expect(recordedSource[0]).toMatchObject({ by: 'person', suggestion: { option: 'local' }, provider: { name: 'rules', version: '1' }, outcome: { accepted: false } });
+
+    await gotoCockpit(page, '/requirement');
+    await readSentence(page, PRODUCTS);
+    await choose(page, 'list');
+    const again = page.waitForResponse((r) => r.url().endsWith('/api/plan/run') && r.request().method() === 'POST');
+    await page.getByTestId('requirement-approve-plan').click();
+    const second = (await again).request().postDataJSON().plan.steps.map((x) => planToCommand(x).argv.join(' '));
+    for (const c of second.slice(1, 7)) expect(c).toContain('--source local');
+  });
+
+  test('a project with an OpenAPI file that has the operation is offered the contract first, and it is the rules default; a spec without the operation is not offered', async ({ page }) => {
+    const spec = path.join(project.repo, 'openapi.yaml');
+    fs.writeFileSync(spec, "openapi: 3.0.3\ninfo: { title: Shop, version: '1' }\nservers: [{ url: /v1 }]\npaths:\n  /products:\n    get: { operationId: listProducts, responses: { '200': { description: ok } } }\n");
+    try {
+      await gotoCockpit(page, '/requirement');
+      await readSentence(page, PRODUCTS);
+      await choose(page, 'list');
+      const card = page.getByTestId('requirement-source');
+      await expect(card.getByRole('button')).toHaveText(['Use the contract in openapi.yaml', 'Local data, no backend', 'Call GET /api/products']);
+      await expect(page.locator('[data-testid="requirement-source-option"][data-option="openapi"]').getByTestId('requirement-source-suggested')).toHaveText('suggested by rules');
+      await expect(page.locator('[data-testid="requirement-source-option"][data-option="openapi"]')).toContainText('Requests GET /v1/products (listProducts)');
+      await expect(page.getByTestId('requirement-source-status')).toHaveText("Not chosen yet, so the plan below uses the rules' default: use the contract in openapi.yaml.");
+      const chosen = await chooseSource(page, 'openapi');
+      expect(chosen.body.plan.steps.filter((s) => s.flow === 'create.unit').every((s) => s.args.source === 'openapi')).toBe(true);
+      expect(JSON.stringify(chosen.body)).not.toContain(project.repo); // no server path leaves the server
+      // A spec that has no operation for this entity: the option is not offered.
+      fs.writeFileSync(spec, "openapi: 3.0.3\ninfo: { title: Shop, version: '1' }\npaths:\n  /orders:\n    get: { operationId: listOrders, responses: { '200': { description: ok } } }\n");
+      await gotoCockpit(page, '/requirement');
+      await readSentence(page, PRODUCTS);
+      await choose(page, 'list');
+      await expect(page.getByTestId('requirement-source').getByRole('button')).toHaveText(['Local data, no backend', 'Call GET /api/products']);
+    } finally {
+      fs.rmSync(spec, { force: true });
+    }
+  });
+
+  test('the data source card passes the accessibility check at 390 px in both themes, and does not scroll sideways', async ({ page }) => {
+    for (const theme of ['dark', 'light']) {
+      await page.addInitScript((t) => localStorage.setItem('construct.theme', t), theme);
+      await page.setViewportSize({ width: 390, height: 844 });
+      await gotoCockpit(page, '/requirement');
+      await readSentence(page, PRODUCTS);
+      await choose(page, 'list');
+      for (const step of ['unanswered', 'endpoint chosen']) {
+        if (step === 'endpoint chosen') {
+          await chooseSource(page, 'endpoint');
+          await expect(page.getByTestId('requirement-source-endpoint')).toHaveAttribute('aria-pressed', 'true'); // the redraw has landed
+        }
+        const found = await runAxe(page);
+        expect(found.filter(isBlocking), `${theme} ${step}: ${format(found.filter(isBlocking))}`).toEqual([]);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${theme} ${step}: page scroll`).toBe(true);
+        expect(await page.getByTestId('requirement-source').evaluate((el) => el.scrollWidth <= el.clientWidth + 1), `${theme} ${step}: card scroll`).toBe(true);
+      }
+    }
+  });
 
   test('a plugin named in architecture.yml is "suggested by jev": its own reason, still one click to take or change, recorded with its name and version', async ({ page }) => {
     // Last in the file: this changes the project's architecture.yml (the decision block) and adds a plugin file to it.

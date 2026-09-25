@@ -19,9 +19,11 @@ export type OpenView = { id: string; question: string; source: 'card' | 'placeme
 export type AnswerTarget = Pick<OpenView, 'id' | 'source'>;
 
 export type OfferOptionView = { id: string; label: string; gives: string; suggested: boolean; chosen: boolean };
-/** The screen-shape offer (q-shape): a closed question that never blocks Approve. */
+/** A closed question beside the plan that never blocks Approve: the screen shape (q-shape) or, once a shape is chosen, where the screen reads its data from (q-source, #621). */
 export type OfferView = {
   id: string;
+  /** Which of the two cards this is: the names of its test ids and its heading follow it. */
+  kind: 'shape' | 'source';
   source: 'placement';
   question: string;
   options: OfferOptionView[];
