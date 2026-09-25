@@ -153,6 +153,42 @@ export function normalizeTraces(raw) {
   throw usageError(`Unknown traces '${raw}' in architecture.yml — expected one of: ${TRACES_SETTINGS.join(', ')}.`);
 }
 
+/** #633 -- the defaults of the top-level `decision:` setting in architecture.yml: which decision provider suggests the next option in a chain. */
+export const DEFAULT_DECISION = Object.freeze({ provider: 'rules', plugin: null, timeoutMs: 3000 });
+const DECISION_KEYS = ['provider', 'plugin', 'timeoutMs'];
+const DECISION_NAME = /^[a-z][a-z0-9._-]{0,39}$/;
+
+/**
+ * Validate and normalize the top-level `decision:` value of architecture.yml (#633): `{ provider: rules|off|<name>, plugin:
+ * <path relative to the project>, timeoutMs }`. Absent normalizes to `{ provider: 'rules', plugin: null, timeoutMs: 3000 }`.
+ * This only checks the SHAPE (a name, a relative path, a number of milliseconds between 100 and 30000); that the plugin file
+ * stays inside the project and honours the provider contract is checked when it is loaded (`decision-plugin.mjs`), and it is
+ * loaded only when its provider is named and is not `rules` or `off`.
+ *
+ * @param {unknown} raw The `decision` value from `architecture.yml`.
+ * @returns {{ provider: string | null, plugin: string | null, timeoutMs: number }} The setting (`provider` is null when only a plugin is named: its own name applies once it is loaded).
+ * @throws {Error} A usage error naming the problem when `raw` is not that shape.
+ * @since 0.10
+ *
+ * @example
+ * normalizeDecision(undefined); // => { provider: 'rules', plugin: null, timeoutMs: 3000 }
+ * normalizeDecision({ provider: 'jev', plugin: 'tools/jev.mjs' }); // => { provider: 'jev', plugin: 'tools/jev.mjs', timeoutMs: 3000 }
+ */
+export function normalizeDecision(raw) {
+  if (raw === undefined || raw === null) return { ...DEFAULT_DECISION };
+  if (typeof raw !== 'object' || Array.isArray(raw)) throw usageError("decision in architecture.yml must be a mapping like { provider: rules, plugin: tools/jev.mjs, timeoutMs: 3000 }.");
+  const unknown = Object.keys(raw).find((k) => !DECISION_KEYS.includes(k));
+  if (unknown) throw usageError(`Unknown decision.${unknown} in architecture.yml — expected: ${DECISION_KEYS.join(', ')}.`);
+  const plugin = raw.plugin ?? null;
+  if (plugin !== null && (typeof plugin !== 'string' || !plugin.trim() || plugin.includes('\0'))) throw usageError('decision.plugin in architecture.yml must be a file path relative to the project, for example tools/jev.mjs.');
+  const provider = raw.provider ?? (plugin ? undefined : DEFAULT_DECISION.provider);
+  // A plugin with no provider named means "that plugin": its own name is read when it is loaded.
+  if (provider !== undefined && (typeof provider !== 'string' || !DECISION_NAME.test(provider))) throw usageError(`decision.provider '${provider}' in architecture.yml must be rules, off or a plugin name (lowercase letters, digits, . _ -).`);
+  const timeoutMs = raw.timeoutMs ?? DEFAULT_DECISION.timeoutMs;
+  if (!Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 30000) throw usageError(`decision.timeoutMs '${timeoutMs}' in architecture.yml must be a whole number of milliseconds between 100 and 30000.`);
+  return { provider: provider ?? null, plugin: plugin?.trim() ?? null, timeoutMs };
+}
+
 /** The canonical base layer graph for a given (already-normalized) framework
  * value — the shape #66/#67 and architecture-graph.mjs's loadLayerGraph
  * branch on before applying any project-level `layers:` override. */
@@ -490,6 +526,7 @@ export function loadConfig(root) {
       project: { framework: DEFAULT_FRAMEWORK, dataLayer: { provider: DEFAULT_DATA_LAYER_PROVIDER }, execution: { mode: DEFAULT_EXECUTION_MODE } },
       features: { root: 'features' },
       traces: DEFAULT_TRACES,
+      decision: { ...DEFAULT_DECISION },
       layers: DEFAULT_LAYERS,
       rules: DEFAULT_RULES,
       exceptions: [],
@@ -525,6 +562,7 @@ export function loadConfig(root) {
     },
     features: { root: 'features', ...(c.features || {}) },
     traces: normalizeTraces(c.traces),
+    decision: normalizeDecision(c.decision),
     layers: layersForFramework(framework),
     rules,
     exceptions: c.exceptions || [],

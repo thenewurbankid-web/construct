@@ -33,7 +33,7 @@ test('the built-ins: rules is the default, off is there, and both are frozen', (
 
 test('rules: the first enabled option, reason "first available step", the next enabled one as runner-up; deterministic', async () => {
   const s = summary();
-  assert.deepEqual(await suggest(s), { option: 'cart', reason: 'first available step', runnerUp: 'orders', provider: 'rules' });
+  assert.deepEqual(await suggest(s), { option: 'cart', reason: 'first available step', runnerUp: 'orders', provider: 'rules', version: '1' });
   assert.deepEqual(await suggest(s, { provider: 'rules' }), await suggest(s));
   assert.equal(JSON.stringify(await suggest(s)), JSON.stringify(await suggest(summary())));
   const open = await suggest(summary({ facts: ['openapi'], disabled: { cart: 'Already there.' } }));
@@ -70,7 +70,7 @@ test('a plugin receives a deep-frozen copy of the summary and nothing else: no p
   const state = { disabled: { cart: 'Blocked by /home/dev/secret/token and C:\\Users\\me\\.env' } };
   const s = summary(state);
   const got = await plugin('jev', (received, ...rest) => { seen = received; extra = rest; return { option: 'orders', reason: 'Fewer dependencies.', runnerUp: 'users' }; }, () => suggest(s, { provider: 'jev' }));
-  assert.deepEqual(got, { option: 'orders', reason: 'Fewer dependencies.', runnerUp: 'users', provider: 'jev' });
+  assert.deepEqual(got, { option: 'orders', reason: 'Fewer dependencies.', runnerUp: 'users', provider: 'jev', version: 'unversioned' });
   assert.deepEqual(extra, [], 'the summary is the only argument');
   assert.notEqual(seen, s, 'a copy, not the caller\'s object');
   assert.deepEqual(seen, s);
@@ -84,11 +84,11 @@ test('a plugin receives a deep-frozen copy of the summary and nothing else: no p
   assert.equal(Object.isFrozen(s), false, 'the caller\'s own summary is left alone');
 });
 
-test('a plugin can only suggest: what comes back is reduced to option/reason/runnerUp/provider, so nothing else survives', async () => {
+test('a plugin can only suggest: what comes back is reduced to option/reason/runnerUp/provider/version, so nothing else survives', async () => {
   let ran = false;
   const got = await plugin('sneaky', () => ({ option: 'cart', reason: '  A   reason\nover lines. ', runnerUp: 'cart', execute: () => { ran = true; }, path: '/etc/passwd' }), () => suggest(summary(), { provider: 'sneaky' }));
-  assert.deepEqual(got, { option: 'cart', reason: 'A reason over lines.', runnerUp: null, provider: 'sneaky' }, 'a runner-up equal to the option is dropped');
-  assert.deepEqual(Object.keys(got).sort(), ['option', 'provider', 'reason', 'runnerUp']);
+  assert.deepEqual(got, { option: 'cart', reason: 'A reason over lines.', runnerUp: null, provider: 'sneaky', version: 'unversioned' }, 'a runner-up equal to the option is dropped');
+  assert.deepEqual(Object.keys(got).sort(), ['option', 'provider', 'reason', 'runnerUp', 'version']);
   assert.equal(ran, false);
   const long = await plugin('wordy', () => ({ option: 'cart', reason: 'x'.repeat(1000) }), () => suggest(summary(), { provider: 'wordy' }));
   assert.equal(long.reason.length, REASON_MAX_LENGTH);
