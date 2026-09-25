@@ -1,9 +1,11 @@
 // #619 (part of epic #616) -- screen shapes: a named recipe whose typed templates fill the units of a feature with real,
 // rule-conforming code instead of empty stubs. `list` is the first shape: a screen that lists the items of an entity, with
-// loading, empty and error states. A person confirms a plan and gets a screen that WORKS, with no model involved.
+// loading, empty and error states. #620 adds `detail` (one item by id: loading, not found, ready, error). A person confirms a plan and
+// gets a screen that WORKS, with no model involved.
 //
 //   construct create layer Products --feature products --layers domain,service,hook,component,page,controller \
 //     --shape list --entity Product --fields id:string,name:string,price:number
+//   (--shape detail: shape-detail.mjs; this file holds the list templates, the request and the writing)
 //
 //   shapeFiles(root, request)            pure: the files one layer of the shape writes, `{ path, content, change, layer }`
 //   shapeTouches(root, request)          the same files as a plan step's `touches.files` (project-relative, no content)
@@ -21,14 +23,12 @@ import { loadConfig } from './config.mjs';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { LAYER_ORDER, pascalCase, selfCheck } from './generators.mjs';
 import { PLAN_SHAPES } from './plan.mjs';
+import { FIELD_TYPES, TYPED_CONTRACTS_SPECIFIER, cap, importLine, lines, lowerFirst, show, ts, words } from './shape-kit.mjs';
+import { DETAIL_SHAPE } from './shape-detail.mjs';
 
 const usage = (message) => new ConstructError(message, { exitCode: EXIT_CODES.USAGE_ERROR });
 
-/** The module every generated unit imports its factory from (the published subpath of `@line/construct-core`, #591). */
-export const TYPED_CONTRACTS_SPECIFIER = '@line/construct-core/typed-contracts';
-
-/** The field types a shape accepts, and the TypeScript each one is. */
-export const FIELD_TYPES = Object.freeze({ string: 'string', number: 'number', boolean: 'boolean' });
+export { TYPED_CONTRACTS_SPECIFIER, FIELD_TYPES };
 
 /** Most fields a shape takes: a row of the list stays readable. */
 export const MAX_FIELDS = 12;
@@ -38,9 +38,6 @@ export const DEFAULT_FIELDS = 'id:string,name:string';
 
 // ------------------------------------------------------------------------------------------------------------- names
 
-const words = (text) => String(text).replace(/([a-z0-9])([A-Z])/g, '$1 $2').split(/[\s_-]+/).filter(Boolean);
-const lowerFirst = (text) => text.charAt(0).toLowerCase() + text.slice(1);
-const cap = (text) => text.charAt(0).toUpperCase() + text.slice(1);
 
 /**
  * The singular of a PascalCase plural name, by small fixed rules: categories to Category, boxes to Box, statuses to Status,
@@ -60,6 +57,22 @@ export function singularOf(name) {
   else if (/(?:s|x|z|ch|sh)es$/i.test(name)) out = name.slice(0, -2);
   else if (/s$/i.test(name) && !/(?:ss|us|is)$/i.test(name)) out = name.slice(0, -1);
   return out === name ? `${name}Item` : out;
+}
+
+/**
+ * The plural of a PascalCase singular name, by small fixed rules (the reverse of `singularOf`): Category to Categories, Box to Boxes,
+ * Product to Products. Used for the endpoint of a detail (`/api/products`).
+ *
+ * @param {string} name A PascalCase entity name such as `Product`.
+ * @returns {string} The plural, for example `Products`.
+ *
+ * @example
+ * pluralOf('Category'); // => 'Categories'
+ */
+export function pluralOf(name) {
+  if (/[^aeiou]y$/i.test(name)) return `${name.slice(0, -1)}ies`;
+  if (/(?:s|x|z|ch|sh)$/i.test(name)) return `${name}es`;
+  return `${name}s`;
 }
 
 /**
@@ -140,17 +153,15 @@ export function fieldsFromProperties(properties = []) {
  */
 export function shapeContext(root, request) {
   if (!PLAN_SHAPES.includes(request?.shape) || !Object.hasOwn(SHAPES, request.shape)) throw usage(`Unknown shape "${request?.shape}". The shapes are: ${Object.keys(SHAPES).join(', ')}.`);
+  const shape = SHAPES[request.shape];
   const Name = pascalCase(String(request.name ?? ''), 'Shape unit');
-  const Entity = request.entity === undefined || request.entity === '' ? singularOf(Name) : pascalCase(String(request.entity), 'Entity');
+  const Entity = request.entity === undefined || request.entity === '' ? shape.defaultEntity(Name) : pascalCase(String(request.entity), 'Entity');
   if (Entity !== String(request.entity ?? Entity)) throw usage(`Entity "${request.entity}" must be PascalCase, for example ${Entity}.`);
   const fields = parseFields(request.fields);
-  const names = {
-    Name, Entity,
-    state: `${Name}State`, result: `${Name}Result`, fetch: `fetch${Name}`, sort: `sort${Name}`, hook: `use${Name}`,
-    page: `${Name}Page`, pageProps: `${Name}PageProps`, controller: `${Name}Controller`, expression: `${Name}ByStatus`, expressionProps: `${Name}ByStatusProps`,
-    row: `${Entity}Row`, rowProps: `${Entity}RowProps`, list: `${Entity}List`, listProps: `${Entity}ListProps`, notice: `${Name}Notice`, noticeProps: `${Name}NoticeProps`,
-  };
-  const clashes = Object.values(names).filter((n, i, all) => all.indexOf(n) !== i);
+  const names = shape.names(Name, Entity);
+  const generated = Object.entries(names).filter(([role]) => role !== 'Name' && role !== 'Entity').map(([, identifier]) => identifier);
+  const pool = [...generated, Entity, ...(shape.nameMayEqualEntity ? [] : [Name])];
+  const clashes = pool.filter((n, i, all) => all.indexOf(n) !== i);
   if (clashes.length) throw usage(`The unit name "${Name}" and the entity "${Entity}" produce clashing names (${[...new Set(clashes)].join(', ')}); give the entity a different name with --entity.`);
   const stringFields = fields.filter((f) => f.type === 'string' && f.name !== 'id');
   const title = fields.find((f) => ['name', 'title', 'label'].includes(f.name) && f.type === 'string') ?? stringFields[0] ?? fields.find((f) => f.name === 'id');
@@ -160,17 +171,12 @@ export function shapeContext(root, request) {
     request: { shape: request.shape, name: Name, feature: request.feature, entity: Entity, fields: fields.map((f) => `${f.name}:${f.type}`).join(',') },
     names, fields, title,
     plural: words(Name).join(' ').toLowerCase(), singular: words(Entity).join(' ').toLowerCase(), heading: words(Name).map(cap).join(' '),
-    endpoint: endpointOf(Name),
+    endpoint: shape.endpoint(Name, Entity),
     useClient: framework !== 'react-spa',
   };
 }
 
 // ------------------------------------------------------------------------------------------------------------ templates
-
-const lines = (...parts) => `${parts.flat().join('\n')}\n`;
-const importLine = (factory) => `import { ${factory} } from '${TYPED_CONTRACTS_SPECIFIER}';`;
-const ts = (f) => FIELD_TYPES[f.type];
-const show = (f, item = 'item') => (f.type === 'string' ? `${item}.${f.name}` : `String(${item}.${f.name})`);
 
 /** The declarations a list shape shares between layers: the entity, the state of the screen and the answer of the service. */
 function typesBlocks(ctx) {
@@ -313,6 +319,14 @@ function controllerFile(ctx) {
 export const SHAPES = Object.freeze({
   list: Object.freeze({
     summary: 'A screen that lists the items of an entity, with loading, empty and error states.',
+    defaultEntity: singularOf,
+    endpoint: (Name) => endpointOf(Name),
+    names: (Name, Entity) => ({
+      Name, Entity,
+      state: `${Name}State`, result: `${Name}Result`, fetch: `fetch${Name}`, sort: `sort${Name}`, hook: `use${Name}`,
+      page: `${Name}Page`, pageProps: `${Name}PageProps`, controller: `${Name}Controller`, expression: `${Name}ByStatus`, expressionProps: `${Name}ByStatusProps`,
+      row: `${Entity}Row`, rowProps: `${Entity}RowProps`, list: `${Entity}List`, listProps: `${Entity}ListProps`, notice: `${Name}Notice`, noticeProps: `${Name}NoticeProps`,
+    }),
     layers: Object.freeze(['domain', 'service', 'hook', 'component', 'page', 'controller']),
     requires: Object.freeze({ service: ['domain'], hook: ['service', 'domain'], component: ['domain'], page: ['component', 'domain'], controller: ['hook', 'page'] }),
     files: (ctx) => ({
@@ -332,6 +346,7 @@ export const SHAPES = Object.freeze({
     }),
     types: typesBlocks,
   }),
+  detail: Object.freeze({ ...DETAIL_SHAPE, defaultEntity: (Name) => Name, endpoint: (Name, Entity) => endpointOf(pluralOf(Entity)), nameMayEqualEntity: true }),
 });
 
 // ------------------------------------------------------------------------------------------------------------- files

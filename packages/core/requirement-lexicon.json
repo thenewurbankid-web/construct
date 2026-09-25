@@ -30,6 +30,7 @@
       "form": { "properties": ["interactive"] },
       "table": {},
       "list": {},
+      "detail": {},
       "card": {},
       "dialog": {},
       "menu": { "properties": ["interactive"] },

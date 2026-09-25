@@ -224,7 +224,7 @@ function shapeRequestOf(args, name, feature) {
   const shape = flagValue(args, '--shape');
   if (shape === undefined) {
     const stray = ['--entity', '--fields'].find((f) => args.includes(f));
-    if (stray) throw new ConstructError(`${stray} only applies with --shape, for example --shape list.`, { exitCode: EXIT_CODES.USAGE_ERROR });
+    if (stray) throw new ConstructError(`${stray} only applies with --shape, for example --shape list (or detail).`, { exitCode: EXIT_CODES.USAGE_ERROR });
     return null;
   }
   if (args.includes('--llm')) throw new ConstructError('--shape writes real code from typed templates with no model, so it cannot be combined with --llm. Run it without --llm.', { exitCode: EXIT_CODES.USAGE_ERROR });
@@ -240,13 +240,13 @@ function printTypedContractsNote(root) {
 }
 
 /**
- * The request of `construct create proof <Name> --feature <f> [--shape list] [--entity <E>] [--fields a:string,...] [--kind render|playwright] [--route </path>]` (#623).
+ * The request of `construct create proof <Name> --feature <f> [--shape list|detail] [--entity <E>] [--fields a:string,...] [--kind render|playwright] [--route </path>]` (#623).
  * A proof is deterministic like the shape it proves, so `--llm` is refused.
  */
 function proofRequestOf(args) {
   const name = args[1];
   const feature = flagValue(args, '--feature');
-  if (!name || name.startsWith('--') || !feature) throw new ConstructError('Usage: construct create proof <Name> --feature <feature> [--shape list] [--entity <Entity>] [--fields id:string,...] [--kind render|playwright] [--route </path>] [--dir <path>]', { exitCode: EXIT_CODES.USAGE_ERROR });
+  if (!name || name.startsWith('--') || !feature) throw new ConstructError('Usage: construct create proof <Name> --feature <feature> [--shape list|detail] [--entity <Entity>] [--fields id:string,...] [--kind render|playwright] [--route </path>] [--dir <path>]', { exitCode: EXIT_CODES.USAGE_ERROR });
   if (args.includes('--llm')) throw new ConstructError('A proof is written from typed templates with no model, so it cannot be combined with --llm. Run it without --llm.', { exitCode: EXIT_CODES.USAGE_ERROR });
   return { name, feature, shape: flagValue(args, '--shape'), entity: flagValue(args, '--entity'), fields: flagValue(args, '--fields'), kind: flagValue(args, '--kind'), route: flagValue(args, '--route') };
 }

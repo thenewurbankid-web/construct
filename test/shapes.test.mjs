@@ -246,7 +246,6 @@ test('the offer is made by fixed rules: a plural data object read alone, and not
   for (const text of yes) assert.equal(offers(text).length, 1, text);
   const no = [
     'A customer wants to see their current subscription plan', // one plan, not a list
-    'A user wants to see a product', // singular
     'A customer wants to see their billing details', // "billing details" is one data object, plural in form only
     'A customer wants to search products with instant keyboard filtering.', // a search with a client leaf
     'A logged-in user wants to see their current subscription plan and click a button to manage their billing details via Stripe.',
@@ -285,7 +284,8 @@ test('answering the offer applies the shape: blocks carry it, the attribution is
   for (const [answers, code] of [[{ 'q-shape': 'grid' }, 'PLACE_UNKNOWN_OPTION'], [{ 'q-shape': { option: 'list', by: 'robot' } }, 'PLACE_ATTRIBUTION_INVALID']]) {
     assert.deepEqual(placeCard(card, { answers }).errors.map((e) => e.code), [code]);
   }
-  assert.deepEqual(placeCard(cardOf('A user wants to see a product'), { answers: { 'q-shape': 'list' } }).errors.map((e) => e.code), ['PLACE_UNKNOWN_OPEN'], 'no offer, no such question');
+  assert.deepEqual(placeCard(cardOf('A user wants to see products and orders'), { answers: { 'q-shape': 'list' } }).errors.map((e) => e.code), ['PLACE_UNKNOWN_OPEN'], 'no offer, no such question');
+  assert.deepEqual(placeCard(cardOf('A user wants to see a product'), { answers: { 'q-shape': 'list' } }).errors.map((e) => e.code), ['PLACE_UNKNOWN_OPTION'], 'a single read is offered detail, not list: the options belong to the card');
 });
 
 test('the plan of a list-shaped card is valid, every step carries the shape, and a card without the shape plans as before', () => {

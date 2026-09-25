@@ -23,6 +23,8 @@ import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { matchFrozen } from './frozen.mjs';
 import { isNonLayerPath, GENERATED_TESTS_GLOB, TESTS_GLOB } from './nonLayer.mjs';
 import { shapeContext } from './shapes.mjs';
+import { cap } from './shape-kit.mjs';
+import { detailProofText } from './proof-screens.mjs';
 import { GENERATED_MARKER, assertSafeDir } from '../engine/testGenerator.mjs';
 import { lit, comment } from '../engine/testSpecRender.mjs';
 
@@ -33,6 +35,9 @@ export const PROOF_KINDS = Object.freeze(['render', 'playwright']);
 
 /** The Playwright config file names `detectPlaywright` looks for, at the project root. */
 export const PLAYWRIGHT_CONFIGS = Object.freeze(['playwright.config.ts', 'playwright.config.js', 'playwright.config.mjs', 'playwright.config.cjs', 'playwright.config.mts', 'playwright.config.cts']);
+
+/** The shapes that also have a Playwright flow (the route with a mocked API). The other shapes have the render proof only, so far. */
+export const PLAYWRIGHT_SHAPES = Object.freeze(['list']);
 
 /** What a project must have for the render proof to run: `esbuild` (it comes with `tsx` and with `vite`), plus react and react-dom. */
 export const RENDER_PROOF_NEEDS = Object.freeze(['react', 'react-dom', 'esbuild']);
@@ -83,10 +88,44 @@ const rowLiteral = (row) => `{ ${Object.entries(row).map(([k, v]) => `${k}: ${li
 function proofContext(root, request) {
   const ctx = shapeContext(root, { shape: request.shape ?? 'list', name: request.name, feature: request.feature, entity: request.entity, fields: request.fields });
   if (!request.feature) throw usage('A proof needs the feature its screen belongs to (--feature).');
-  return { ...ctx, rows: sampleRows(ctx), loadingText: `Loading ${ctx.plural}...`, emptyText: `No ${ctx.plural} yet.`, errorText: 'The server answered 500.' };
+  return {
+    ...ctx, rows: sampleRows(ctx), errorText: 'The server answered 500.',
+    loadingText: request.shape === 'detail' ? `Loading ${ctx.singular}...` : `Loading ${ctx.plural}...`, emptyText: `No ${ctx.plural} yet.`,
+    notFoundText: `${cap(ctx.singular)} not found.`,
+  };
 }
 
 // -------------------------------------------------------------------------------------------------------- the render proof
+
+// The helpers every render proof carries (the same text in every shape's proof).
+const EXPECT_LINES = [
+  '/** Fails with the state that is wrong, in the words the test runner classifies: the Expected and Received lines name states. */',
+  'function expectState(what: string, want: string, got: string): void {',
+  '  if (got === want) return;',
+  "  const message = what + ': the ' + want + ' state is wrong, the screen shows ' + got + '.\\nExpected: \"' + want + '\"\\nReceived: \"' + got + '\"';",
+  "  throw new assert.AssertionError({ message, actual: got, expected: want, operator: 'strictEqual' });",
+  '}',
+  '',
+  'function expectShown(what: string, html: string, text: string): void {',
+  '  if (html.includes(text)) return;',
+  "  const message = what + ' does not show ' + text + '.\\nExpected: \"' + text + '\"\\nReceived: \"not shown\"';",
+  "  throw new assert.AssertionError({ message, actual: 'not shown', expected: text, operator: 'includes' });",
+  '}',
+];
+
+const FETCH_LINES = [
+  '/** Runs `check` with fetch answering `answer`, and puts the real fetch back. */',
+  'async function withFetch(answer: () => Promise<unknown>, check: () => Promise<void>): Promise<void> {',
+  '  const original = globalThis.fetch;',
+  '  globalThis.fetch = (async () => answer()) as unknown as typeof fetch;',
+  '  try {',
+  '    await check();',
+  '  } finally {',
+  '    globalThis.fetch = original;',
+  '  }',
+  '}',
+  'const respond = (status: number, body: unknown) => async () => ({ ok: status >= 200 && status < 300, status, json: async () => body });',
+];
 
 const header = (ctx, request, command, extra) => [
   GENERATED_MARKER,
@@ -96,6 +135,10 @@ const header = (ctx, request, command, extra) => [
 ];
 
 function renderProofText(ctx, request, relPath) {
+  if (request.shape === 'detail') {
+    const kit = { header: (extra, command) => header(ctx, request, command, extra), expectLines: EXPECT_LINES, fetchLines: FETCH_LINES, lit, rowLiteral, comment };
+    return detailProofText(ctx, request, relPath, kit);
+  }
   const { names, fields, title, rows } = ctx;
   const Name = names.Name;
   const command = `construct create proof ${Name} --feature ${request.feature} --entity ${names.Entity} --fields ${ctx.request.fields}`;
@@ -140,32 +183,11 @@ function renderProofText(ctx, request, relPath) {
     "  return result.items.length > 0 ? 'items' : 'empty';",
     '}',
     '',
-    '/** Fails with the state that is wrong, in the words the test runner classifies: the Expected and Received lines name states. */',
-    'function expectState(what: string, want: string, got: string): void {',
-    '  if (got === want) return;',
-    "  const message = what + ': the ' + want + ' state is wrong, the screen shows ' + got + '.\\nExpected: \"' + want + '\"\\nReceived: \"' + got + '\"';",
-    "  throw new assert.AssertionError({ message, actual: got, expected: want, operator: 'strictEqual' });",
-    '}',
-    '',
-    'function expectShown(what: string, html: string, text: string): void {',
-    '  if (html.includes(text)) return;',
-    "  const message = what + ' does not show ' + text + '.\\nExpected: \"' + text + '\"\\nReceived: \"not shown\"';",
-    "  throw new assert.AssertionError({ message, actual: 'not shown', expected: text, operator: 'includes' });",
-    '}',
+    ...EXPECT_LINES,
     '',
     `const render = (state: ${names.state}): string => renderToString(createElement(${names.page}, { state }));`,
     '',
-    '/** Runs `check` with fetch answering `answer`, and puts the real fetch back. */',
-    'async function withFetch(answer: () => Promise<unknown>, check: () => Promise<void>): Promise<void> {',
-    '  const original = globalThis.fetch;',
-    '  globalThis.fetch = (async () => answer()) as unknown as typeof fetch;',
-    '  try {',
-    '    await check();',
-    '  } finally {',
-    '    globalThis.fetch = original;',
-    '  }',
-    '}',
-    'const respond = (status: number, body: unknown) => async () => ({ ok: status >= 200 && status < 300, status, json: async () => body });',
+    ...FETCH_LINES,
     `const ask = () => ${names.fetch}({ signal: new AbortController().signal });`,
     '',
     `test(${lit(`${Name} screen: the loading state`)}, () => {`,
@@ -313,7 +335,7 @@ function playwrightProofText(ctx, request, route) {
 /**
  * The file a proof writes, without touching the disk: `{ path (absolute), content, change: 'create', kind }`. The render proof is
  * `features/<feature>/tests/generated/<Name>Screen.proof.test.ts`; the Playwright proof is `<name>--screen.spec.ts` in the same
- * directory, and only exists when the project has a Playwright config (otherwise the list is empty).
+ * directory, and only exists when the project has a Playwright config and the shape has a flow (`PLAYWRIGHT_SHAPES`; otherwise the list is empty).
  *
  * @param {string} root Project root.
  * @param {{ name: string, feature: string, kind?: 'render'|'playwright', shape?: string, entity?: string, fields?: string, route?: string }} request The unit name (`Products`), the feature, the kind (default `render`) and the shape's entity and fields.
@@ -332,7 +354,7 @@ export function proofFiles(root, request) {
     const file = path.join(genDir, `${ctx.names.Name}Screen.proof.test.ts`);
     return [{ path: file, content: renderProofText(ctx, request, rel(root, file)), change: 'create', kind }];
   }
-  if (!detectPlaywright(root)) return [];
+  if (!detectPlaywright(root) || !PLAYWRIGHT_SHAPES.includes(ctx.request.shape)) return [];
   const file = path.join(genDir, `${slugOf(ctx.names.Name)}--screen.spec.ts`);
   return [{ path: file, content: playwrightProofText(ctx, request, request.route ?? '/'), change: 'create', kind }];
 }
@@ -396,7 +418,11 @@ export function generateProof(root, request) {
   const kind = request?.kind ?? 'render';
   const files = proofFiles(root, request);
   if (!files.length) {
-    return { kind, files: [], regions: [], skipped: 'Playwright is not configured in this project (no playwright.config.* at the root), so no Playwright flow was written and nothing was installed. The render proof still proves the screen; add Playwright and run this again for the browser flow.', needs: [] };
+    const shape = request?.shape ?? 'list';
+    const skipped = PLAYWRIGHT_SHAPES.includes(shape)
+      ? 'Playwright is not configured in this project (no playwright.config.* at the root), so no Playwright flow was written and nothing was installed. The render proof still proves the screen; add Playwright and run this again for the browser flow.'
+      : `The ${shape} shape has no Playwright flow yet (only ${PLAYWRIGHT_SHAPES.join(', ')} does), so none was written. The render proof still proves the screen.`;
+    return { kind, files: [], regions: [], skipped, needs: [] };
   }
   const { genRel, genDir, featureDir } = generatedDir(root, request.feature);
   if (!fs.existsSync(featureDir) || !fs.statSync(featureDir).isDirectory()) throw usage(`Feature "${request.feature}" not found (looked in ${path.relative(root, featureDir)}). Create it first: construct create feature ${request.feature}`);

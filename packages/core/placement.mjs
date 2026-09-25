@@ -26,8 +26,8 @@ import { DEFAULT_LAYERS, FRAMEWORKS } from './config.mjs';
 import { LAYER_ORDER, LAYER_PREREQUISITES } from './generators.mjs';
 import { validatePlan, PLAN_SHAPES } from './plan.mjs';
 import { flowBlock } from './block-flows.mjs';
-import { SHAPES, singularOf, fieldsFromProperties, endpointOf } from './shapes.mjs';
-import { detectPlaywright } from './proof.mjs';
+import { SHAPES, singularOf, pluralOf, fieldsFromProperties, endpointOf } from './shapes.mjs';
+import { detectPlaywright, PLAYWRIGHT_SHAPES } from './proof.mjs';
 import { routePathOf, routeOffer, syncTouches, dependencyOffer, ROUTE_QUESTION_ID, DEPENDENCY_QUESTION_ID, CONSTRUCT_CORE_PACKAGE } from './wiring.mjs';
 
 /** The schema version string of a placement result. */
@@ -40,14 +40,30 @@ export const PLACEMENT_VERSION = 'placement.v1';
 export const SHAPE_QUESTION_ID = 'q-shape';
 
 /**
- * The two options of the shape question, `list` first so that the rules-only decision provider (the first enabled option)
+ * The options of the shape question for a list card, `list` first so that the rules-only decision provider (the first enabled option)
  * suggests the list shape, which is the default for a plural data object. Nothing is applied until somebody answers: an
- * unanswered offer leaves the plan exactly as it was, with empty scaffold files.
+ * unanswered offer leaves the plan exactly as it was, with empty scaffold files. Kept for callers of the first shape; the offer of a
+ * card is `SHAPE_OPTIONS_BY_SHAPE[shape]`.
  */
 export const SHAPE_OPTIONS = Object.freeze([
   Object.freeze({ id: 'list', label: 'List shape', why: 'Real typed code: the list, its rows, and its loading, empty and error states.' }),
   Object.freeze({ id: 'scaffold', label: 'Scaffold only', why: 'Empty files with a TODO stub in each, for you to fill in.' }),
 ]);
+
+const SCAFFOLD_OPTION = SHAPE_OPTIONS[1];
+
+/**
+ * The options of the shape question per card kind (#620): a list read offers `list | scaffold`, a read of one item offers
+ * `detail | scaffold`. The matching shape is always first, so it is the
+ * rules-only default; every id is stable, so an answer recorded once stays valid.
+ */
+export const SHAPE_OPTIONS_BY_SHAPE = Object.freeze({
+  list: SHAPE_OPTIONS,
+  detail: Object.freeze([
+    Object.freeze({ id: 'detail', label: 'Detail shape', why: 'Real typed code: one item by id, every field, and its loading, not-found and error states.' }),
+    SCAFFOLD_OPTION,
+  ]),
+});
 
 /** The four results of the three questions. */
 export const PLACEMENTS = Object.freeze(['client-leaf', 'server-read', 'mutation', 'presentational']);
@@ -98,10 +114,10 @@ export const PLACEMENT_ERROR_CODES = Object.freeze({
  * @typedef {{ question: string, option: string, by: 'person'|'llm'|'decision-model', provider?: string }} PlacementDecision
  * Who answered which open question.
  *
- * @typedef {{ name: 'list', entity: string, fields: string }} BlockShape
+ * @typedef {{ name: 'list'|'detail', entity: string, fields: string }} BlockShape
  * The shape a block was built with (#619): its name, the entity and the `--fields` text the units are generated from.
  *
- * @typedef {PlacementOpen & { block: string, default: string, entity: string, fields: string, unit: string, suggestion: { option: string, reason: string, provider: 'rules' } }} PlacementOffer
+ * @typedef {PlacementOpen & { block: string, shape: 'list'|'detail', default: string, entity: string, fields: string, unit: string, suggestion: { option: string, reason: string, provider: 'rules' } }} PlacementOffer
  * A question that changes how a screen is built but never blocks the plan: the chooser-summary shape plus the block it is about,
  * the rules-only default, and the entity and fields the shape would use. Unanswered, the plan is the plain scaffold.
  *
@@ -260,8 +276,11 @@ const VARIANT_NOTES = deepFreeze({
 });
 
 /** What each placement means, in the words of the three questions (a block's `why` and the phrase of its plain-English line). */
-/** The phrase of a block built with a shape (#619): a list is fetched by a service in the browser and shown from props. */
-const SHAPE_PHRASE = deepFreeze({ 'server-read': 'is a list fetched by a service', presentational: 'shows that list from props' });
+/** The phrase of a block built with a shape (#619, #620), by shape and placement: a list or one item is fetched by a service in the browser and shown from props. */
+const SHAPE_PHRASE = deepFreeze({
+  list: { 'server-read': 'is a list fetched by a service', presentational: 'shows that list from props' },
+  detail: { 'server-read': 'is one item fetched by id by a service', presentational: 'shows that item from props' },
+});
 
 const PLACEMENT_TEXT = deepFreeze({
   'client-leaf': { why: 'Client leaf: needs the browser.', line: 'runs in the browser' },
@@ -391,7 +410,7 @@ function isPluralEntity(text, entities, modifiers) {
 /**
  * The one list the card asks for, or null. The rule (data, not a guess): every block is presentational or a server read, the
  * card has exactly one verb (a read) and exactly one data object, that object is named in the plural, and the screen is named
- * after it. Anything richer (a search, a write, two data objects) is not offered the shape: it is a later slice.
+ * after it. Anything richer (a search, a write, two data objects) is not offered the list shape.
  */
 function listCandidate(card, blocks, screen, modifiers, entities) {
   if (!blocks.length || !blocks.every((b) => b.placement === 'presentational' || b.placement === 'server-read')) return null;
@@ -400,36 +419,79 @@ function listCandidate(card, blocks, screen, modifiers, entities) {
   if (nouns.length !== 1 || card.verbs.length !== 1 || verb.kind !== 'read' || !verb.on.includes(nouns[0].id)) return null;
   const [noun] = nouns;
   if (!isPluralEntity(noun.text, entities, modifiers) || nounName(noun.text, modifiers) !== screen) return null;
-  return { noun, entity: singularOf(screen), fields: fieldsFromProperties(noun.properties), unit: screen };
+  return { shape: 'list', noun, verb, entity: singularOf(screen), fields: fieldsFromProperties(noun.properties), unit: screen };
 }
 
+const POSSESSIVE_BEFORE = /\b(?:their|his|her|my|our|your|its)\s+$/i;
+
+/**
+ * The one item the card asks to see, or null (#620). The rule (data, not a guess): every block is presentational or a server read, the
+ * card has exactly one verb (a read) and exactly one data object, that object is named in the singular, the screen is named after
+ * it, and it is not "the person's own" (a possessive before it, or "current": those are found from the session, not by an id).
+ */
+function detailCandidate(card, blocks, screen, modifiers, entities) {
+  if (!blocks.length || !blocks.every((b) => b.placement === 'presentational' || b.placement === 'server-read')) return null;
+  const nouns = card.nouns.filter((n) => n.kind === 'entity');
+  const [verb] = card.verbs;
+  if (nouns.length !== 1 || card.verbs.length !== 1 || verb.kind !== 'read' || !verb.on.includes(nouns[0].id)) return null;
+  const [noun] = nouns;
+  if (isPluralEntity(noun.text, entities, modifiers) || nounName(noun.text, modifiers) !== screen) return null;
+  if (words(noun.text.toLowerCase()).includes('current') || POSSESSIVE_BEFORE.test(String(card.source?.text ?? '').slice(0, noun.span[0]))) return null;
+  if (card.nouns.some((n) => n.kind === 'ui-part' && ['list', 'table'].includes(n.text.toLowerCase()))) return null; // "the invoice list" is many, not one
+  return { shape: 'detail', noun, verb, entity: screen, fields: fieldsFromProperties(noun.properties), unit: screen };
+}
+
+/** The screen shape a card is offered, by fixed rules, or null: a list or one item. Never more than one shape per card. */
+function shapeCandidate(card, blocks, screen, modifiers, entities) {
+  return listCandidate(card, blocks, screen, modifiers, entities) ?? detailCandidate(card, blocks, screen, modifiers, entities);
+}
+
+const SHAPE_REASON = {
+  list: (c) => `the data object "${c.noun.text}" is plural, so a list of ${c.entity} items is the usual screen`,
+  detail: (c) => `the data object "${c.noun.text}" is one item that is only read, so its details by id are the usual screen`,
+};
+
+/** What a shaped screen needs from the person, as the note of the plan: the endpoint the generated service calls, and how the detail screen gets its id. */
+const SHAPE_NOTE = {
+  list: (c) => `The list shape fetches ${endpointOf(c.unit)} from the browser: serve that endpoint (a route handler or your backend).`,
+  detail: (c) => `The detail shape fetches ${endpointOf(pluralOf(c.entity))}/<id> from the browser: serve that endpoint (a route handler or your backend). The id is the controller's id prop, else ?id= of the address.`,
+};
+
 /** The shape question for a candidate, in the shape of a chooser summary, with the rules-only default and who suggested it. */
-function listOffer(candidate, blockId, chosen) {
+function shapeOffer(candidate, blockId, chosen) {
   const L = PLACEMENT_LIMITS;
-  const reason = `the data object "${candidate.noun.text}" is plural, so a list of ${candidate.entity} items is the usual screen`;
+  const options = SHAPE_OPTIONS_BY_SHAPE[candidate.shape];
   return {
     id: SHAPE_QUESTION_ID,
     question: capText(`How should the "${candidate.noun.text}" screen be built?`, L.question),
-    options: SHAPE_OPTIONS.map((o) => ({ id: o.id, label: capText(o.label, L.label), enabled: true, why: capText(o.why, L.why) })),
+    options: options.map((o) => ({ id: o.id, label: capText(o.label, L.label), enabled: true, why: capText(o.why, L.why) })),
     chosen,
     block: blockId,
-    default: 'list',
+    shape: candidate.shape,
+    default: candidate.shape,
     entity: candidate.entity,
     fields: candidate.fields,
     unit: candidate.unit,
-    suggestion: { option: 'list', reason: capText(reason, L.why), provider: 'rules' },
+    suggestion: { option: candidate.shape, reason: capText(SHAPE_REASON[candidate.shape](candidate), L.why), provider: 'rules' },
   };
 }
 
+const SHAPE_BLOCK_WHY = {
+  list: (names) => ({ read: `List shape: the ${names.noun} list is fetched by a service and shown from props. Because the person asked for a list of a plural data object.`, view: 'List shape: it shows what the list fetch returns.' }),
+  detail: (names, offer) => ({ read: `Detail shape: one ${offer.entity} is fetched by id by a service and shown from props. Because the person asked to see one data object.`, view: 'Detail shape: it shows what the item fetch returns.' }),
+};
+
 /**
- * The blocks of a list-shaped screen: a server read (domain, service, hook, controller) and the presentational block that shows
- * it (component, page), from the default layer table whatever the framework (the shape fetches in the browser). The first block
- * keeps the id, the verbs, the nouns and the checks of the block it replaces.
+ * The blocks of a shaped screen: the read or the write that reaches the server (domain, service, hook, controller) and the
+ * presentational block that shows it (component, page), from the default layer table whatever the framework (a shape fetches or
+ * submits in the browser). The first block keeps the id, the verbs, the nouns and the checks of the block it replaces. The
+ * `list` and `detail` shapes fetch, so their first block is a server read.
  */
-function listBlocks(first, offer, table, names) {
-  const shape = { name: 'list', entity: offer.entity, fields: offer.fields };
-  const read = { ...first, placement: 'server-read', answers: { browserApi: false, touchesSecretOrDb: true, changesBackend: false }, layers: layersFor(table, 'server-read', names), shape, why: `List shape: the ${names.noun} list is fetched by a service and shown from props. Because the person asked for a list of a plural data object.` };
-  const view = { ...first, id: `${first.id}-view`, placement: 'presentational', answers: { browserApi: false, touchesSecretOrDb: false, changesBackend: false }, layers: layersFor(table, 'presentational', names), checks: [], checkNames: [], shape, why: 'List shape: it shows what the list fetch returns.' };
+function shapeBlocks(first, offer, table, names) {
+  const shape = { name: offer.shape, entity: offer.entity, fields: offer.fields };
+  const why = SHAPE_BLOCK_WHY[offer.shape](names, offer);
+  const read = { ...first, placement: 'server-read', answers: { browserApi: false, touchesSecretOrDb: true, changesBackend: false }, layers: layersFor(table, 'server-read', names), shape, why: why.read };
+  const view = { ...first, id: `${first.id}-view`, placement: 'presentational', answers: { browserApi: false, touchesSecretOrDb: false, changesBackend: false }, layers: layersFor(table, 'presentational', names), checks: [], checkNames: [], shape, why: why.view };
   return [read, view];
 }
 
@@ -560,27 +622,30 @@ export function placeCard(card, options = {}) {
     }
   }
 
-  // #619 -- the list shape is OFFERED when the card asks for one list, never forced: it is not an open question (it does not hold
-  // the plan back) and an unanswered offer leaves the plan as the plain scaffold it always was.
-  const candidate = open.length === 0 ? listCandidate(card, blocks, screen, modifiers, lexicon.nouns?.entity ?? {}) : null;
+  // #619, #620 -- a screen shape is OFFERED when the card asks for one list or one item, never forced: it is not an open
+  // question (it does not hold the plan back) and an unanswered offer leaves the plan as the plain scaffold it always was. The
+  // options depend on the card (a list read: list; a read of one item: detail), the id is always q-shape.
+  const candidate = open.length === 0 ? shapeCandidate(card, blocks, screen, modifiers, lexicon.nouns?.entity ?? {}) : null;
   let offer = null;
   let shapeAnswer = null;
   if (candidate) {
-    askable.set(SHAPE_QUESTION_ID, SHAPE_OPTIONS.map((o) => o.id));
+    const shapeOptions = SHAPE_OPTIONS_BY_SHAPE[candidate.shape];
+    askable.set(SHAPE_QUESTION_ID, shapeOptions.map((o) => o.id));
     if (SHAPE_QUESTION_ID in answers) {
       const given = readAnswer(answers[SHAPE_QUESTION_ID], opts, `answers.${SHAPE_QUESTION_ID}`, push);
-      if (given && !SHAPE_OPTIONS.some((o) => o.id === given.option)) push('PLACE_UNKNOWN_OPTION', `answers.${SHAPE_QUESTION_ID}`, `"${SHAPE_QUESTION_ID}" has no option ${JSON.stringify(given.option)}. Options: ${SHAPE_OPTIONS.map((o) => o.id).join(', ')}.`);
+      if (given && !shapeOptions.some((o) => o.id === given.option)) push('PLACE_UNKNOWN_OPTION', `answers.${SHAPE_QUESTION_ID}`, `"${SHAPE_QUESTION_ID}" has no option ${JSON.stringify(given.option)}. Options: ${shapeOptions.map((o) => o.id).join(', ')}.`);
       else if (given) {
         shapeAnswer = given;
         decisions.push({ question: SHAPE_QUESTION_ID, option: given.option, by: given.by, ...(given.provider ? { provider: given.provider } : {}) });
       }
     }
-    offer = listOffer(candidate, blocks[0].id, shapeAnswer?.option ?? null);
+    offer = shapeOffer(candidate, blocks[0].id, shapeAnswer?.option ?? null);
   }
 
   for (const key of Object.keys(answers)) if (!askable.has(key)) push('PLACE_UNKNOWN_OPEN', `answers.${key}`, `No open question "${key}". Questions: ${[...askable.keys()].join(', ') || 'none'}.`);
   if (errors.length) return result();
-  if (offer && shapeAnswer?.option === 'list') blocks.splice(0, blocks.length, ...listBlocks(blocks[0], offer, LAYER_TABLE.default, { noun: candidate.unit, action: candidate.unit, screen }));
+  const shaped = offer !== null && shapeAnswer?.option === offer.shape;
+  if (shaped) blocks.splice(0, blocks.length, ...shapeBlocks(blocks[0], offer, LAYER_TABLE.default, { noun: candidate.unit, action: candidate.unit, screen: candidate.unit }));
 
   // A controller imports its page (generators LAYER_PREREQUISITES): give a block that has a controller and no page its page.
   for (const block of blocks) {
@@ -598,7 +663,7 @@ export function placeCard(card, options = {}) {
   if (errors.length) return result();
   const notes = [...VARIANT_NOTES[variant]];
   // #654: a shaped plan wires the route entry itself (and offers the dependency as a closed choice), so the by-hand route note is replaced.
-  if (offer && shapeAnswer?.option === 'list') notes.splice(1, 1, `The list shape fetches ${endpointOf(candidate.unit)} from the browser: serve that endpoint (a route handler or your backend). The plan wires the route entry, runs sync and, if the project lacks "@line/construct-core" (the units import its typed factories), offers to add it (q-dependency).`);
+  if (shaped) notes.splice(1, 1, `${SHAPE_NOTE[offer.shape](candidate)} The plan wires the route entry, runs sync and, if the project lacks "@line/construct-core" (the units import its typed factories), offers to add it (q-dependency).`);
   return result({ ok: true, complete: open.length === 0, blocks, open, offers: offer ? [offer] : [], notes, decisions: decisions.sort((a, b) => a.question.localeCompare(b.question)) });
 }
 
@@ -834,11 +899,11 @@ export function planFromBlocks(blocks, options = {}) {
     for (const [name, { shape, unitSteps }] of shaped) {
       const base = { name, feature: opts.feature, shape: shape.name, entity: shape.entity, fields: shape.fields };
       const after = [...new Set([...unitSteps, ...wiringSteps])].sort(idOrder);
-      const render = add('create.proof', `Prove the ${name} screen`, { ...base, kind: 'render' }, after, 'A screen is not done until something shows it behaves: its four states, its controller and its service.');
+      const render = add('create.proof', `Prove the ${name} screen`, { ...base, kind: 'render' }, after, 'A screen is not done until something shows it behaves: its states, its controller and its service.');
       const verify = add('test.proof', `Run the proof of ${name}`, { feature: opts.feature, name: `${name}Screen.proof.test.ts` }, [render], 'Read-only: pass, or a classified failure (the app behaved differently, or the harness lost a file). The chain is complete when this is green or explicitly skipped.');
       const entry = { name, kind: 'render', proofStep: render, verifiedBy: verify };
       proofSteps.push(entry);
-      if (playwrightConfig && (!wiring || routeOf.has(name))) {
+      if (playwrightConfig && PLAYWRIGHT_SHAPES.includes(shape.name) && (!wiring || routeOf.has(name))) {
         const slug = name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
         const flow = add('create.proof', `Prove the ${name} route in a browser`, { ...base, kind: 'playwright', ...(routeOf.has(name) ? { route: routeOf.get(name) } : {}) }, after, 'The route of the screen with its API mocked in the browser.');
         const run = add('test.run', `Run the browser flow of ${name}`, { feature: opts.feature, name: `${slug}--screen.spec.ts`, area: 'generated' }, [flow, verify], 'Needs the app running (see --base-url); read-only.');
@@ -846,6 +911,8 @@ export function planFromBlocks(blocks, options = {}) {
       }
     }
     if (proofSteps.length && !playwrightConfig) notes.push(playwrightNote = 'Playwright is not configured in this project (no playwright.config.* at the root), so the plan has no browser flow and nothing is installed. The render proof still proves the screen; add Playwright and plan again for the browser flow.');
+    const noFlow = [...shaped].filter(([, { shape }]) => !PLAYWRIGHT_SHAPES.includes(shape.name)).map(([name, { shape }]) => `${name} (${shape.name})`);
+    if (proofSteps.length && playwrightConfig && noFlow.length) notes.push(playwrightNote = `No browser flow is planned for ${noFlow.join(', ')}: only the ${PLAYWRIGHT_SHAPES.join(', ')} shape has one so far. The render proof still proves the screen.`);
   }
   if (errors.length) return fail();
 
@@ -861,7 +928,7 @@ export function planFromBlocks(blocks, options = {}) {
     files[block.id] = [...new Set(paths)];
   }
   const proof = proofSteps.length
-    ? { required: true, complete: false, state: 'pending', steps: proofSteps, verifiedBy: proofSteps.map((p) => p.verifiedBy), playwright: { configured: playwrightConfig !== null, config: playwrightConfig, skipped: playwrightConfig ? null : playwrightNote } }
+    ? { required: true, complete: false, state: 'pending', steps: proofSteps, verifiedBy: proofSteps.map((p) => p.verifiedBy), playwright: { configured: playwrightConfig !== null, config: playwrightConfig, skipped: playwrightNote } }
     : null;
   return { ok: true, plan, decisions: [...decisions.map((d) => ({ ...d })), ...wiringDecisions], files, proof, offers, wiring, notes, errors: [] };
 }
@@ -881,7 +948,7 @@ export function planFromBlocks(blocks, options = {}) {
 export function blockLines(result) {
   return (result?.blocks ?? []).map((b) => ({
     id: b.id,
-    line: capText(`"${b.label}" ${b.shape ? SHAPE_PHRASE[b.placement] ?? 'is placed' : PLACEMENT_TEXT[b.placement]?.line ?? 'is placed'} (${(b.layers ?? []).map((l) => l.layer).join(', ')}).${b.checkNames?.length ? ` Checks: ${b.checkNames.join(', ')}.` : ''}`, PLACEMENT_LIMITS.line),
+    line: capText(`"${b.label}" ${b.shape ? SHAPE_PHRASE[b.shape.name]?.[b.placement] ?? 'is placed' : PLACEMENT_TEXT[b.placement]?.line ?? 'is placed'} (${(b.layers ?? []).map((l) => l.layer).join(', ')}).${b.checkNames?.length ? ` Checks: ${b.checkNames.join(', ')}.` : ''}`, PLACEMENT_LIMITS.line),
   }));
 }
 

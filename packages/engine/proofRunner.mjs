@@ -85,10 +85,10 @@ function classifyBuildError(text) {
     message: `The proof expected ${selector}, and it is not there. ${text}`,
     selector,
     event: null,
-    why: 'The proof binds to the files the list shape writes (page, controller, service, types).',
+    why: 'The proof binds to the files the shape writes (page, controller, service, types).',
     step: null,
     page: null,
-    fix: 'Put the file or export back (or regenerate the screen with `construct create layer ... --shape list`, then `construct create proof`). Do not file a product bug for this.',
+    fix: 'Put the file or export back (or regenerate the screen with `construct create layer ... --shape list|detail`, then `construct create proof`). Do not file a product bug for this.',
   };
 }
 

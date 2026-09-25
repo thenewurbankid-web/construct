@@ -180,8 +180,78 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
     await expect(page.getByTestId('requirement-shape').getByRole('button', { pressed: true })).toHaveCount(0);
   });
 
+  // #620: the same card draws the other offers with no client change: the options belong to the card (server-side rules).
+  const SHAPED = [
+    {
+      shape: 'detail', text: 'A user wants to see the details of a product', label: 'Detail shape', reason: 'one item that is only read', unit: 'Product', feature: 'product', steps: 12,
+      files: ['features/product/domain/Product.domain.ts', 'features/product/types.ts', 'features/product/services/Product.service.ts', 'features/product/hooks/useProduct.state.ts', 'features/product/controllers/ProductController.controller.tsx', 'features/product/components/ProductDetailRow.component.tsx', 'features/product/components/ProductDetails.component.tsx', 'features/product/components/ProductNotice.component.tsx', 'features/product/pages/ProductPage.page.tsx', 'features/product/expressions/ProductByStatus.expression.tsx'],
+    },
+  ];
+  for (const s of SHAPED) {
+    test(`a ${s.shape} sentence: the Screen shape card offers ${s.shape} (suggested by rules, with its reason) or the scaffold; choosing ${s.shape} shows the typed plan and who decided`, async ({ page }) => {
+      await gotoCockpit(page, '/requirement');
+      await readSentence(page, s.text);
+      const card = page.getByTestId('requirement-shape');
+      await expect(card).toBeVisible();
+      await expect(card.getByRole('button')).toHaveText([s.label, 'Empty scaffold']);
+      await expect(page.locator(`[data-testid="requirement-shape-option"][data-option="${s.shape}"]`).getByTestId('requirement-shape-suggested')).toHaveText('suggested by rules');
+      await expect(page.getByTestId('requirement-shape-suggested')).toHaveCount(1);
+      await expect(page.getByTestId('requirement-shape-reason')).toContainText(s.reason);
+      await expect(card.getByRole('button', { pressed: true })).toHaveCount(0);
+      await expect(page.getByTestId('requirement-shape-status')).toContainText('Not chosen yet, so the plan below is the empty scaffold');
+      await expect(page.getByTestId('requirement-open')).toHaveCount(0);
+      await expect(page.getByTestId('requirement-approve-plan')).toBeEnabled();
+      // Only the offers of this card: no list option on a card that is not a list.
+      await expect(page.getByTestId('requirement-shape-list')).toHaveCount(0);
+
+      const chosen = await choose(page, s.shape);
+      expect(chosen.body.offers[0]).toMatchObject({ id: 'q-shape', chosen: s.shape, default: s.shape, shape: s.shape, unit: s.unit });
+      expect(chosen.body.offers[0].options.map((o) => o.id)).toEqual([s.shape, 'scaffold']);
+      expect(chosen.body.plan.steps.map((x) => x.flow)).toEqual(['create.feature', ...Array(6).fill('create.unit'), 'sync', 'create.route', 'create.proof', 'test.proof']);
+      expect(chosen.body.plan.steps.slice(1, 7).every((x) => x.args.shape === s.shape && x.args.name === s.unit && x.args.entity === 'Product')).toBe(true);
+      expect(chosen.body.placement.decisions).toEqual([{ question: 'q-shape', option: s.shape, by: 'person' }]);
+      await expect(page.getByTestId(`requirement-shape-${s.shape}`)).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByTestId('requirement-shape-status')).toHaveText(`Chosen: ${s.label}. Decided by: person.`);
+      await expect(page.getByTestId('requirement-files').locator('summary')).toHaveText(`${s.files.length} files will be created`);
+      expect(await listedFiles(page)).toEqual(s.files);
+      await expect(page.getByTestId('requirement-approve-plan')).toBeEnabled();
+      expect(chosen.res.request().postDataJSON().answers).toEqual([{ id: 'q-shape', option: s.shape }]);
+
+      // The other option of the card is the plain scaffold: fewer files, no shape on any step.
+      const scaffold = await choose(page, 'scaffold');
+      expect(scaffold.body.plan.steps.some((x) => x.args?.shape)).toBe(false);
+      await expect(page.getByTestId('requirement-shape-status')).toHaveText('Chosen: Empty scaffold. Decided by: person.');
+      // Approve with the shape chosen starts a process whose steps carry --shape <name>; nothing reaches the project.
+      await choose(page, s.shape);
+      const ran = page.waitForResponse((r) => r.url().endsWith('/api/plan/run') && r.request().method() === 'POST');
+      await page.getByTestId('requirement-approve-plan').click();
+      const res = await ran;
+      expect(res.status()).toBe(200);
+      const sent = res.request().postDataJSON().plan.steps.map((x) => planToCommand(x).argv.join(' '));
+      for (const c of sent.slice(1, 7)) expect(c).toContain(`--shape ${s.shape} --entity Product --fields id:string,name:string,price:number`);
+      expect(sent.at(-1)).toBe(`test proof ${s.feature} --name ${s.unit}Screen.proof.test.ts`);
+      for (const f of s.files) expect(fs.existsSync(path.join(project.repo, f)), f).toBe(false);
+    });
+  }
+
+  test('the detail card passes the accessibility check at 390 px in both themes, and do not scroll sideways', async ({ page }) => {
+    for (const theme of ['dark', 'light']) {
+      await page.addInitScript((t) => localStorage.setItem('construct.theme', t), theme);
+      await page.setViewportSize({ width: 390, height: 844 });
+      for (const s of SHAPED) {
+        await gotoCockpit(page, '/requirement');
+        await readSentence(page, s.text);
+        await choose(page, s.shape);
+        const found = await runAxe(page);
+        expect(found.filter(isBlocking), `${theme} ${s.shape}: ${format(found.filter(isBlocking))}`).toEqual([]);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${theme} ${s.shape}: page scroll`).toBe(true);
+        expect(await page.getByTestId('requirement-shape').evaluate((el) => el.scrollWidth <= el.clientWidth + 1), `${theme} ${s.shape}: card scroll`).toBe(true);
+      }
+    }
+  });
+
   // #633: the decision provider's suggestion is one click to take and one click to change, and the answer is recorded with it.
-  const recorded = (chooser, chosen) => readTraces(project.repo, { stateDir: STATE_DIR }).decisions.filter((d) => d.chooser.id === chooser && d.chosen === chosen);
+  const recorded =(chooser, chosen) => readTraces(project.repo, { stateDir: STATE_DIR }).decisions.filter((d) => d.chooser.id === chooser && d.chosen === chosen);
 
   test('the shape suggestion is marked "suggested by rules" with its reason; choosing another is recorded as overriding, taking it as accepted', async ({ page }) => {
     await gotoCockpit(page, '/requirement');

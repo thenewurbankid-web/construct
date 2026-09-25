@@ -20,6 +20,10 @@ Four capabilities, one CLI:
   construct create feature <name> [--format json] [--dir <path>]
   construct create layer <name> --feature <feature> --layers <l1,l2,...> [--llm <provider> | --format json] [--dir <path>]
   construct create <layer> <name> --feature <feature> [--llm <provider> | --format json] [--dir <path>]
+  construct create layer|<layer> <name> --feature <feature> --shape list|detail [--entity <Entity>] [--fields id:string,name:string,...]
+    (a screen shape fills the units with real, typed code, deterministic, no model, so no --llm: list = the items of an entity with
+    loading, empty and error states; detail = one item by id (the id prop or ?id=) with loading, not-found, ready and error states;
+    --layers domain,service,hook,component,page,controller writes the whole screen)
   construct refactor move <name> --feature <feature> --from <layer> --to <layer> [--format json] [--dir <path>]
   construct refactor rename <name> <newName> --feature <feature> --layer <layer> [--format json] [--dir <path>]
   construct refactor extract-expression <file> [--range <start:end>] [--name <Name>] [--dry-run] [--dir <path>]
@@ -123,9 +127,9 @@ Commands:
   construct generate tests <feature> [--dry-run] [--prune] [--dir <path>]
     (one LOCKED Playwright spec per workflow scenario into features/<feature>/tests/generated/;
     needs frozen: + nonLayer: globs for tests in architecture.yml; deterministic, no LLM)
-  construct create proof <Name> --feature <feature> [--shape list] [--entity <Entity>] [--fields id:string,...] [--kind render|playwright] [--route </path>] [--dir <path>]
-    (the locked proof of a shaped screen in features/<feature>/tests/generated/: the four states with sample props, the controller's
-    loading state, the service with a stubbed fetch; --kind playwright writes the route flow only when the project already has a
+  construct create proof <Name> --feature <feature> [--shape list|detail] [--entity <Entity>] [--fields id:string,...] [--kind render|playwright] [--route </path>] [--dir <path>]
+    (the locked proof of a shaped screen in features/<feature>/tests/generated/: the states of the shape with sample props (list: loading,
+    empty, items, error; detail: loading, not found, ready, error), the controller's first state, the service with a stubbed fetch; --kind playwright writes the route flow only when the project already has a
     Playwright config; declares the frozen: and nonLayer: test regions in architecture.yml once; deterministic, no LLM)
   construct create route <Name> --feature <feature> [--route </path>] [--dir <path>]
     (points the project's route entry at the controller of a generated screen: Next.js creates app/<route>/page.tsx, react-spa adds

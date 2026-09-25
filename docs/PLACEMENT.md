@@ -609,6 +609,8 @@ question to `result.offers` (not to `open`, so it never holds the plan back):
 |---|---|---|
 | `q-shape` | one read verb on one plural data object, every block presentational or a server read ("see a list of products") | `list` (the rules-only default), `scaffold` |
 
+(#620 added the same question for a read of one item (`detail`): the options belong to the card, see "The detail shape" below.)
+
 An unanswered offer leaves the plan exactly as it was, the plain scaffold. Answering `list` (a person, or the rules provider's
 suggestion, recorded in `decisions` as `person` or `decision-model`) turns the read into a server-read block (domain, service,
 hook, controller) plus the presentational block that shows it (component, page), and every `create.unit` step of the plan
@@ -742,6 +744,88 @@ created. The expression is written by the page step, since a page may not hold c
 Component). `DOMAIN-002` used to flag the `defineDomain` import itself; it now allows that one factory from a typed-contracts
 module. A project's own custom `templates/` are not used for a shaped unit.
 
+## The detail shape: one item by id (#620, part of #616)
+
+`detail` is a second shape on the mechanism the list shape introduced: the same `--shape <name> --entity <Entity> --fields
+<name:type,...>` arguments on `create.unit`, `create.layer` and `create.proof` (the enum is `PLAN_SHAPES`, mirrored in
+`schemas/plan.v1.json`; a test keeps the two and the shape table in `packages/core/shapes.mjs` equal), the same derived `touches`, the
+same wiring (dependency, `sync`, route entry, see below) and the same proof step, the same `q-shape` id in the same chooser shape, with
+its options **per card**. Every unit is built with the factory of its layer (`defineDomain`, `defineService`, `defineComponent`,
+`defineExpression`, `definePage`, `defineController`, `useTrackedState`) and is named `Name.layer.ext`; the output passes
+`construct validate` with the typed-contracts phase 1 rules on (no error, no warning) and `tsc --noEmit`. The templates live in
+`shape-detail.mjs`; nothing calls a model or the network, and the same request writes the same bytes.
+
+**The offer, by card.** `placeCard` raises `q-shape` (in `offers`, never in `open`) with the options that belong to the card, the matching
+shape first, so the rules-only decision provider (the first enabled option) suggests it. An answer that is not an option of *this* card
+(`list` for a single read) is `PLACE_UNKNOWN_OPTION`. At most one shape is offered per card; a card that is none of them gets no offer.
+
+| Card | Rule (data, not a guess) | Options | Unit and entity |
+|---|---|---|---|
+| a list | one read verb on one **plural** data object ("see a list of products") | `list`, `scaffold` | unit `Products`, entity `Product` |
+| one item | one read verb on one **singular** data object, not the person's own (a possessive before it, or "current", is found from the session, not by an id) and with no `list` or `table` part ("the invoice list" is many): "see the details of a product", "view a product" | `detail`, `scaffold` | unit `Product`, entity `Product` |
+
+To parse the example sentence with no open question the lexicon (`requirement-lexicon.json`) gained the screen part `detail`. A possessive, two
+verbs, a write, or a verb that needs the browser (a click) is not offered the detail shape.
+
+**Worked example, the detail shape, checked by `test/detail-shape.test.mjs`.** "A user wants to see the details of a product"
+answered `detail` (by the rules provider) gives twelve commands; the files are declared by block:
+
+<!-- detail-shape-example:commands -->
+```json
+[
+  "construct create feature product",
+  "construct create domain Product --feature product --shape detail --entity Product --fields id:string,name:string,price:number",
+  "construct create service Product --feature product --shape detail --entity Product --fields id:string,name:string,price:number",
+  "construct create hook Product --feature product --shape detail --entity Product --fields id:string,name:string,price:number",
+  "construct create component Product --feature product --shape detail --entity Product --fields id:string,name:string,price:number",
+  "construct create page Product --feature product --shape detail --entity Product --fields id:string,name:string,price:number",
+  "construct create controller Product --feature product --shape detail --entity Product --fields id:string,name:string,price:number",
+  "construct create dependency @line/construct-core --version ^0.9.0",
+  "construct sync",
+  "construct create route Product --feature product --route /product",
+  "construct create proof Product --feature product --shape detail --entity Product --fields id:string,name:string,price:number --kind render",
+  "construct test proof product --name ProductScreen.proof.test.ts"
+]
+```
+
+<!-- detail-shape-example:files -->
+```json
+{
+  "b1": [
+    "features/product/domain/Product.domain.ts",
+    "features/product/types.ts",
+    "features/product/services/Product.service.ts",
+    "features/product/hooks/useProduct.state.ts",
+    "features/product/controllers/ProductController.controller.tsx"
+  ],
+  "b1-view": [
+    "features/product/components/ProductDetailRow.component.tsx",
+    "features/product/components/ProductDetails.component.tsx",
+    "features/product/components/ProductNotice.component.tsx",
+    "features/product/pages/ProductPage.page.tsx",
+    "features/product/expressions/ProductByStatus.expression.tsx"
+  ]
+}
+```
+
+| File | What it holds |
+|---|---|
+| `types.ts` (appended by the domain step) | `Product { id; name; price }`, `ProductDetailEntry { field; label; value }`, `ProductDetailState` (a `status` union: `loading`, `not-found`, `ready` with the item and its lines, `error` with a message) and `ProductDetailResult` (what the service answers). |
+| `domain/Product.domain.ts` | `describeProduct`, a pure `defineDomain` unit: one line per field, in field order, with its label (`unitPrice` reads "Unit price") and its text (a boolean reads Yes or No). |
+| `services/Product.service.ts` | `fetchProduct({ id, signal })`, built with `defineService`: forwards the caller's `AbortSignal` to `fetch('/api/products/<id>')` (the id is URL-encoded), a **404 is `not-found`**, and a failed request, another bad status or a wrong shape is a typed error result, never a throw. |
+| `hooks/useProduct.state.ts` | `useProduct(id?)`: `useTrackedState` for the status union; the id is the argument, else `?id=` of the address (with neither, the item is `not-found`); one effect calls the service, describes the item with the domain function and aborts on unmount. |
+| `components/ProductDetailRow`, `ProductDetails`, `ProductNotice` `.component.tsx` | One field as `<dt>` and `<dd>`, the `<dl>` they sit in, and a notice (`role="status"` or `role="alert"`). |
+| `pages/ProductPage.page.tsx`, `expressions/ProductByStatus.expression.tsx` | The heading ("Product details") and the expression that holds the branches: loading notice, its children (the page says "Product not found.") when there is no such item, an error notice, else every field. |
+| `controllers/ProductController.controller.tsx` | `defineController<{ id?: string }>`: calls `useProduct(id)`, renders the page; no logic of its own. On Next.js the hook and the controller start with `'use client'`. |
+
+**The id.** The route entry renders the controller and nothing else (ROUTE-001, ROUTE-002), so the screen needs no route parameter:
+the controller takes an optional `id` prop, and without it the hook reads `?id=` from the address (`/product?id=p1`). A screen that
+sits in a route with a parameter passes it as the prop.
+
+**Decisions where the issue was silent.** The unit of a detail is named for the object itself (`Product`), so its page and its controller are
+`ProductPage` and `ProductController`. The endpoint is the plural of the entity (`Product` gives `/api/products`, and the item is
+`/api/products/<id>`), not of the unit name. The id is the controller's `id` prop or `?id=` of the address; a route parameter is a later slice.
+
 ## The proof step: a screen that is shown to work (#623, part of #616)
 
 A chain that ends with files that validate and type-check has not shown the screen behaves. A shaped plan therefore ends with a
@@ -780,6 +864,18 @@ Playwright runner's classification (`classifyFailure`) and its words:
 | `other` | Anything else, shown as it is. | |
 
 The states are `loading`, `empty`, `items`, `error`, and for what is wrong `blank` (a list with no rows and no message) or `nothing`.
+
+**The proof of the detail shape** (#620; `packages/core/proof-screens.mjs`, the same file name `Name.proof.test.ts`, the same locked marker, the same
+`construct test proof <feature>`, the same failure classes). The render proof needs nothing more; a failure names the state in the same words:
+
+| Shape | What it asserts (sample values built from the entity's fields) | States it names |
+|---|---|---|
+| detail | the page in `loading`, `not-found`, `ready` (every field's `<dt>` label and `<dd>` value) and `error` (`role="alert"`); the controller renders `loading` first (with or without the `id` prop); the domain lines in field order; the service with a stubbed `fetch`: a good answer, a **404 is not-found**, a 500, a wrong shape and a network failure are typed results, the id is in the address (URL-encoded) and the `AbortSignal` reaches `fetch` | `loading`, `not-found`, `ready`, `error`; `crashed` (the page threw), `nothing` |
+
+A page that throws (for example a branch of the expression was removed and the page reads what that state does not have) is reported as the
+state `crashed`, not as a stack trace: `The page given status not-found: the not-found state is wrong, the screen shows crashed.` The route flow
+(`--kind playwright`) exists only for the list shape (`PLAYWRIGHT_SHAPES`): for the others `construct create proof --kind playwright` prints
+`Skipped: ...`, a plan in a project with Playwright plans no browser step and says so in `notes` and `proof.playwright.skipped`.
 
 **The chain is complete when the proof is green or explicitly skipped.** `planFromBlocks` returns `proof`:
 `{ required: true, complete: false, state: 'pending', steps, verifiedBy: ['s12'], playwright: { configured, config, skipped } }`, and
@@ -896,6 +992,5 @@ step rather than repointed, so `/` is not silently the new screen.
 
 The timeline read-back and its Cockpit screen are the Requirement screen (`/requirement`, #642): `toTimeline(placement)` in `ui/client/features/requirement/domain/Timeline.ts` turns the blocks into steps in run order (a slice to move it into core, so the CLI and an LLM read the same steps, is open). Not here yet: a `use client` / `use server` directive in the generated files, and words beyond the lexicon. Each is a slice of #616.
 
-Not here yet for the shapes (each a slice of #616): the other shapes (detail, form, dashboard, wizard); wiring a data source into
-a shaped screen (#621); the proof for the other shapes (the list has one, above; #623 is the pattern); a `route.ts` handler for the endpoint the list fetches; and drawing `offers`
-on the Requirement screen (`ui/client`), which needs a small client slice: `requirementApi` already returns them.
+Not here yet for the shapes (each a slice of #616): the other shapes (form, dashboard, wizard); wiring a data source into
+a shaped screen (#621); a browser (Playwright) flow for the detail shape (the list has one; the render proof of every shape is above); a `route.ts` handler for the endpoints the shapes call; a detail with a related list, and a route parameter for the detail's id (it is `?id=` or a prop today).
