@@ -130,7 +130,12 @@ export function stateView(ctx, kind, notice) {
   return kind === 'error' ? `<${ctx.stateNames.error} message={state.message} />` : `<${ctx.stateNames[kind]} />`;
 }
 
-/** Whether any of a screen's states still uses the shared notice component (when none does, the notice file is not written). */
+/**
+ * Whether any of a screen's states still uses the shared notice component (when none does, the notice file is not written).
+ *
+ * @param {{ views?: Record<string, string|null> }} ctx The shape context.
+ * @returns {boolean} `true` when at least one state shows the notice.
+ */
 export const usesNotice = (ctx) => Object.values(ctx.views ?? { loading: 'notice' }).some((v) => v === 'notice');
 
 /**
@@ -154,10 +159,20 @@ export function stateComponentFiles(ctx, noticeFile) {
   return files;
 }
 
-/** The text a screen shows for its loading state (the same words the default notice uses, so the proof reads one text). */
+/**
+ * The text a screen shows for its loading state (the same words the default notice uses, so the proof reads one text).
+ *
+ * @param {{ request: { shape: string }, singular: string, plural: string }} ctx The shape context.
+ * @returns {string} `Loading <things>...`, or `Loading <thing>...` for a detail screen.
+ */
 export const loadingText = (ctx) => (ctx.request.shape === 'detail' ? `Loading ${ctx.singular}...` : `Loading ${ctx.plural}...`);
 
-/** The text of the empty or not-found state. */
+/**
+ * The text of the empty or not-found state.
+ *
+ * @param {{ request: { shape: string }, singular: string, plural: string }} ctx The shape context.
+ * @returns {string} `No <things> yet.`, or `<Thing> not found.` for a detail screen.
+ */
 export const emptyText = (ctx) => (ctx.request.shape === 'detail' ? `${ctx.singular.charAt(0).toUpperCase()}${ctx.singular.slice(1)} not found.` : `No ${ctx.plural} yet.`);
 
 function loadingFile(ctx) {
