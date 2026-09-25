@@ -62,8 +62,13 @@ test("the site's own setting: mode, endpoint and motion each read on their own, 
 test('the site setting follows the live Cockpit status endpoint; the build copies it and still publishes the activity file', () => {
   const m = load();
   const cfg = m.parseConfig(read('site/logo.json'));
-  assert.deepEqual(JSON.parse(read('site/logo.json')), { mode: 'status', api: 'https://2-28-127-143.sslip.io/api/dev-status' });
-  assert.deepEqual({ ...cfg }, { mode: 'status', api: 'https://2-28-127-143.sslip.io/api/dev-status', motion: null });
+  const setting = JSON.parse(read('site/logo.json'));
+  assert.equal(setting.mode, 'status');
+  assert.equal(setting.api, 'https://2-28-127-143.sslip.io/api/dev-status');
+  assert.equal(setting.motion.preset, 'Slide under', "the Logo Lab's shipping motion for the docs header");
+  assert.equal(cfg.mode, 'status');
+  assert.equal(cfg.api, 'https://2-28-127-143.sslip.io/api/dev-status');
+  assert.notEqual(cfg.motion, null, "the site's motion parses");
   assert.match(read('site/build.mjs'), /copyFileSync\(path\.join\(HERE, 'logo\.json'\), path\.join\(out, 'logo\.json'\)\)/);
   assert.match(read('site/build.mjs'), /path\.join\(out, 'dev-status\.json'\)/);
   assert.match(read('packages/docs-site/lib/pages.mjs'), /data-config="\$\{root\}logo\.json"/);

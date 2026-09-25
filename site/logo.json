@@ -1,4 +1,20 @@
 {
   "mode": "status",
-  "api": "https://2-28-127-143.sslip.io/api/dev-status"
+  "api": "https://2-28-127-143.sslip.io/api/dev-status",
+  "motion": {
+    "preset": "Slide under",
+    "mark": "line",
+    "parts": { "white": "still", "blue": "neg" },
+    "effect": "slide",
+    "distance": 12,
+    "axis": "x",
+    "durationSeconds": 9,
+    "restBeforePct": 8,
+    "restAfterPct": 8,
+    "holdPct": 8,
+    "beats": 1,
+    "easing": { "type": "ease-in-out" },
+    "staggerPct": 0,
+    "direction": "out-and-back"
+  }
 }

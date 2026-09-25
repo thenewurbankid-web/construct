@@ -273,7 +273,7 @@ test.describe.serial('Docs logo follows the commit-activity file published with 
   const fetches = (page) => { const seen = []; page.on('request', (r) => { if (r.resourceType() === 'fetch') seen.push(new URL(r.url()).pathname); }); return seen; };
 
   test('the build published what the page reads: logo.json points at the live endpoint and the build still publishes a dev-status.json holding times only', async () => {
-    expect(JSON.parse(fs.readFileSync(path.join(out, 'logo.json'), 'utf8'))).toEqual({ mode: 'status', api: 'https://2-28-127-143.sslip.io/api/dev-status' });
+    expect(JSON.parse(fs.readFileSync(path.join(out, 'logo.json'), 'utf8'))).toMatchObject({ mode: 'status', api: 'https://2-28-127-143.sslip.io/api/dev-status', motion: { preset: 'Slide under' } });
     expect(JSON.parse(fs.readFileSync(path.join(out, 'dev-status.json'), 'utf8'))).toMatchObject({ version: 1, lastActivityAt: '2026-09-25T08:30:00.000Z', windowSec: 900 });
   });
 

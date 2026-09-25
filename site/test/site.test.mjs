@@ -135,7 +135,7 @@ test('build writes dev-status.json next to logo.json: the newest commit time onl
     const raw = fs.readFileSync(path.join(out, 'dev-status.json'), 'utf8');
     assert.deepEqual(JSON.parse(raw), { version: 1, lastActivityAt: '2026-09-25T08:30:00.000Z', windowSec: 900, generatedAt: '2026-09-20T00:00:00.000Z' });
     assert.deepEqual(Object.keys(JSON.parse(raw)), ['version', 'lastActivityAt', 'windowSec', 'generatedAt'], 'times only: no author, message or hash');
-    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(out, 'logo.json'), 'utf8')), { mode: 'status', api: 'https://2-28-127-143.sslip.io/api/dev-status' }, 'the site setting is copied as it is');
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(out, 'logo.json'), 'utf8')), JSON.parse(fs.readFileSync(new URL('../logo.json', import.meta.url), 'utf8')), 'the site setting is copied as it is');
     const again = makeTempDir('site-devstatus-');
     await build({ out: again, repo: 'o/r', buildTime: BUILD_TIME, api: false });
     assert.equal(fs.readFileSync(path.join(again, 'dev-status.json'), 'utf8'), raw, 'the same inputs give the same file');
