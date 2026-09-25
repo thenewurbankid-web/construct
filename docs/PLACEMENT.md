@@ -1286,9 +1286,41 @@ holds a plan back: an unanswered question uses its rules default. An answer is p
 | `q-route` | the screen's path is reserved (`/api`) or already served by another page or `<Route>` | `alternate` (the first free of `/<feature>/<name>` when the feature is named otherwise, `/<name>-screen`, `/<name>-2`), `skip` (no route step: the screen stays unreachable until wired, and a note says so) | `alternate` |
 | `q-dependency` | the project has a `package.json` that lists no `@line/construct-core` (the units import its typed factories) | `add-dependency` (its `line` field is the exact text added), `skip` | `add-dependency` |
 
+**How a screen shows its states (#622).** A list, detail or dashboard plan asks one more closed question, `q-states` (`q-states-<name>` when a plan
+has several screens), beside `q-source`, in the chooser shape. These shapes always had the states in their typed state union (loading, empty or
+not found, error); the question decides how each one is SHOWN, as one choice for the whole screen (twenty-seven per-state combinations would not
+be a closed choice of two to five options):
+
+| Question id | Raised when | Options (stable ids) | Default |
+|---|---|---|---|
+| `q-states` | a shaped plan has a list, detail or dashboard | `default`, `custom`, `skip-empty` (list and detail only: a dashboard has no empty state), `skip-all` | `default` (first, so the rules-only provider suggests it, and what every such screen had before) |
+
+- `default`: one notice component shows the loading message, the empty (or not-found) message and the error (`role="alert"`). Nothing to write.
+- `custom`: a component of its own for each state (`ProductsLoading`, `ProductsEmpty` (`ProductNotFound` for a detail screen), `ProductsFailed`), starting with
+  the same text and role, for you to restyle. The screen's logic is untouched, so the proof reads the same.
+- `skip-empty`: loading and error keep their message; the empty (or not-found) state shows only the heading. A warning.
+- `skip-all`: no state has a view; the screen shows only its heading while it loads, when empty and on an error, so a failure is silent. A warning.
+
+A skip removes a VIEW, never a state: the typed `status` union, the hook and the service are the same, so no illegal state becomes possible, and the
+plan says so. The form and the wizard are not asked (their states are the steps of a machine, not a fetch that can be pending, empty or failed).
+`statesOffer` (`packages/core/shape-states.mjs`) makes the question (fixed size: at most 5 options, a label of at most 60 characters, a reason of at most
+120, the rules' suggestion with its reason); `planFromBlocks` carries the answer as `--states` on every unit of the screen and on its proof steps
+(`create.unit`, `create.layer`, `create.proof`), left out when it is `default` so a plan that predates the question is byte for byte unchanged, and
+returns `warnings` (a skipping answer adds a line; the Requirement API and MCP `placement_place` pass it on, and the screen shows it beside Approve, which a
+skip never blocks). An answer that is not one of the options is a typed plan error (`PLAN_STATES_UNAVAILABLE`, naming the options), never a silent
+default; a block that carries its own `states` (a direct caller) makes it the default. The choice is a decision trace (`requirement.plan.states`).
+MCP `placement_place` accepts `{ id: 'q-states', option: 'skip-all' }`, attributed to the client. The CLI: `construct create layer|<layer> <Name> --feature f
+--shape list --states custom` (and `construct create proof ... --states ...`).
+
+**The proof follows the choice.** Every state with a view is proven as before (the render proof reads its role and text off the markup; a `custom` view keeps the
+role and text of the default, so it reads the same). A skipped state is proven to show NOTHING: the render proof asserts the screen shows only its heading in that
+state (`expectState(..., 'nothing', ...)`, and for a skipped error that the message is not on the screen), in a test titled "... shows nothing (skipped)", and a screen
+that shows a skipped state fails it as an app failure naming the state. The Playwright flow (only when the project has Playwright) keeps the flow of every state with
+a view; a skipped state has no flow, because a browser cannot tell "not yet" from "nothing", and a comment in the file says so.
+
 `planFromBlocks` returns `{ ..., offers, wiring }`; `wiring` is `{ dependency: 's8' | null, sync: 's9', routes: [{ name, route, step, file }] }`
 (`null` when nothing was wired). A Playwright proof step takes `--route` from the route the plan wired. Since #632 the Requirement
-API passes and returns every closed question of the plan (`q-source`, `q-route`, `q-dependency`, `q-env`, `q-verify`, and since #659 `q-steps`) and the screen
+API passes and returns every closed question of the plan (`q-source`, `q-route`, `q-dependency`, `q-env`, `q-verify`, since #659 `q-steps` and since #622 `q-states`) and the screen
 draws each as a card under one heading, **Plan questions** (see below); an unanswered one uses its default.
 
 **The full-path test** (`test/list-shape-chain.test.mjs`) runs the plan's own commands and nothing else in a fresh react-spa project
