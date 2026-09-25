@@ -70,3 +70,37 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # #655 (docs/ALERTS.md). Only for a run on the work branch: a schedule or an `issues` run executes from main (frozen, its
+  # workflow cannot be edited; `alert.mjs watch` alerts on that one from outside), and a push to main is left alone too.
+  # `issues: write` is given to this job only; the two jobs above keep the workflow's read-only token.
+  alert:
+    needs: [build, deploy]
+    if: always() && github.ref == 'refs/heads/work/2026-09-23'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BRANCH: ${{ github.ref_name }}
+      BUILD_RESULT: ${{ needs.build.result }}
+      DEPLOY_RESULT: ${{ needs.deploy.result }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      RANGE: ${{ github.event.before }}..${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Raise or resolve the docs alert
+        continue-on-error: true
+        shell: bash
+        run: |
+          key="docs-$BRANCH"
+          if [ "$BUILD_RESULT" = failure ] || [ "$DEPLOY_RESULT" = failure ]; then
+            node packages/tools/dev/alert.mjs raise --key "$key" --title "docs build or deploy failed on $BRANCH" --lane docs \
+              --check "build: $BUILD_RESULT, deploy: $DEPLOY_RESULT" --range "$RANGE" --run-url "$RUN_URL"
+          elif [ "$BUILD_RESULT" = success ] && [ "$DEPLOY_RESULT" = success ]; then
+            node packages/tools/dev/alert.mjs resolve --key "$key" --note "the docs build and deploy are green again"
+          fi

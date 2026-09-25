@@ -187,13 +187,13 @@ test('new tag names cannot match the release workflow (v*.*.*)', () => {
   for (const n of ['construct/build-2026-09-24-0705', 'design/pack-2026-09-24-0705-2', 'adhoc/build-baseline']) assert.equal(n.startsWith('v'), false);
 });
 
-test('the workflow is valid YAML with the guardrails: contents: write only, queue per branch, work and studio pushes, no tag trigger', async () => {
+test('the workflow is valid YAML with the guardrails: contents: write plus issues: write for the alert step (#655), queue per branch, work and studio pushes, no tag trigger', async () => {
   const { default: yaml } = await import('js-yaml');
   const file = path.resolve(import.meta.dirname, '../../../../', ['.', 'github'].join(''), 'workflows', 'build-on-ready.yml');
   const wf = yaml.load(fs.readFileSync(file, 'utf8'));
   assert.deepEqual(wf.on.push.branches, ['work/2026-09-23', 'studio']);
   assert.equal(wf.on.push.tags, undefined);
-  assert.deepEqual(wf.permissions, { contents: 'write' });
+  assert.deepEqual(wf.permissions, { contents: 'write', issues: 'write' });
   assert.match(wf.concurrency.group, /\$\{\{ github\.ref \}\}/);
   assert.equal(wf.concurrency['cancel-in-progress'], false);
   const steps = wf.jobs.build.steps;
