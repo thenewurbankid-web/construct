@@ -88,7 +88,7 @@ test('after the plan is applied: status says so, a run is green and the chain is
   assert.equal(run.body.run.state, 'green');
   assert.equal(run.body.run.complete, true);
   assert.equal(run.body.run.counts.failed, 0);
-  assert.ok(run.body.run.counts.total >= 10);
+  assert.ok(run.body.run.counts.total >= 7); // #621: the plan's default source is local, whose list proof has 7 tests (10 for the endpoint source)
   assert.deepEqual(run.body.run.summary.options, [], 'a green proof offers nothing more to do');
   const [t] = traces();
   assert.equal(t.chosen, 'run-proof');
