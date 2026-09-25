@@ -22,7 +22,13 @@ export function deciderOf(decision: Decision | undefined): string | null {
 export const isSourceOffer = (id: string): boolean => /^q-source(-|$)/.test(id);
 
 /** The card heading of each other closed question of the plan (#632: the server raises them, this only titles them; an id it does not know is titled by the id). */
-const PLAN_HEADINGS: Record<string, string> = { 'q-route': 'Route', 'q-dependency': 'Dependency', 'q-env': 'Environment variable', 'q-verify': 'Verification' };
+const PLAN_HEADINGS: Record<string, string> = { 'q-route': 'Route', 'q-dependency': 'Dependency', 'q-env': 'Environment variable', 'q-verify': 'Verification', 'q-steps': 'Wizard steps' };
+
+/** One plain line under a question that uses a word a person may not know (#659): what a step of a wizard is. Fixed words, by question id (`q-steps-<name>` too); a question without one has none. */
+const PLAN_HINTS: Record<string, string> = { 'q-steps': 'A step is one screen of the wizard: Next and Back move between steps, each step but the last takes some of the fields, and the last one shows them all and submits.' };
+
+/** The plain line of a question, or null. */
+const offerHint = (id: string): string | null => PLAN_HINTS[/^q-[a-z]+/.exec(id)?.[0] ?? ''] ?? null;
 
 /** The heading of an offer card: the shape, the data source, or a closed question of the plan. */
 export function offerHeading(id: string): string {
@@ -51,6 +57,7 @@ export function offerViews(result: ReadResult): OfferView[] {
       id: o.id,
       kind: o.id === 'q-shape' ? ('shape' as const) : isSourceOffer(o.id) ? ('source' as const) : ('plan' as const),
       heading: offerHeading(o.id),
+      hint: offerHint(o.id),
       source: 'placement' as const,
       question: o.question,
       options: o.options.filter((x) => x.enabled).map((x) => ({ id: x.id, label: words(x.id).label, gives: words(x.id).gives, suggested: x.id === suggestion?.option, chosen: x.id === o.chosen })),

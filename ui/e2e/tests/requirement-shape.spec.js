@@ -16,6 +16,7 @@ const API = process.env.E2E_API_BASE || 'http://localhost:4000';
 const STATE_DIR = process.env.E2E_STATE_DIR;
 const PRODUCTS = 'A user wants to see a list of products';
 const FROB = 'A customer wants to frobnicate the invoice list.';
+const WIZARD = 'A user wants a step by step signup';
 const BILLING = 'A logged-in user needs to see their current subscription plan and be able to click a button to manage their billing details safely via Stripe.';
 const SCAFFOLD_FILES = ['features/products/components/Products.tsx', 'features/products/pages/ProductsPage.tsx'];
 const LIST_FILES = [
@@ -454,6 +455,14 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
     const card = planCard(page, 'q-verify');
     await expect(card).toBeVisible();
     await expect(card.getByRole('heading', { name: 'Verification', level: 2 })).toBeVisible();
+    // #659: the questions of the plan sit under one heading, in the order they were asked; the shape card is above the group, and every test id is what it was.
+    const group = page.getByTestId('requirement-plan-questions');
+    await expect(group.getByRole('heading', { name: 'Plan questions', level: 2 })).toBeVisible();
+    await expect(page.getByTestId('requirement-plan-questions-note')).toContainText("an unanswered one uses the rules' default, and Approve never waits for it");
+    await expect(group.getByTestId('requirement-source')).toHaveCount(1);
+    await expect(group.getByTestId('requirement-plan')).toHaveCount(1);
+    await expect(group.getByTestId('requirement-shape')).toHaveCount(0);
+    await expect(group).toHaveAttribute('aria-labelledby', 'rq-plan-questions-h');
     await expect(card.getByRole('button')).toHaveText(['Type-check after the wiring', 'No verification step']); // building is not offered: this project has no build script
     await expect(card.locator('[data-option="types"]').getByTestId('requirement-plan-suggested')).toHaveText('suggested by rules');
     await expect(card.getByRole('button', { pressed: true })).toHaveCount(0);
@@ -519,19 +528,63 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
     expect(d).toMatchObject({ by: 'person', suggestion: { option: 'add' }, outcome: { accepted: false } });
   });
 
+  test('the wizard step count (q-steps, #659) is a plan card with a plain line about steps: three is suggested, nothing is chosen, and choosing four changes every unit and is recorded', async ({ page }) => {
+    await gotoCockpit(page, '/requirement');
+    await readSentence(page, WIZARD);
+    await expect(page.getByTestId('requirement-plan-questions')).toHaveCount(0); // no shape chosen, no wizard yet: nothing to ask
+    const first = await choose(page, 'wizard');
+    expect(first.body.offers.map((o) => [o.id, o.chosen])).toEqual([['q-shape', 'wizard'], ['q-source', null], ['q-steps', null], ['q-dependency', null], ['q-verify', null]].filter(([id]) => first.body.offers.some((o) => o.id === id)));
+    const card = planCard(page, 'q-steps');
+    await expect(card).toBeVisible();
+    await expect(card.getByRole('heading', { name: 'Wizard steps', level: 2 })).toBeVisible();
+    await expect(card.getByTestId('requirement-plan-hint')).toHaveText('A step is one screen of the wizard: Next and Back move between steps, each step but the last takes some of the fields, and the last one shows them all and submits.');
+    await expect(card.getByRole('button')).toHaveText(['3 steps: details, review, done', '2 steps: details, done', '4 steps: details, options, review, done']);
+    await expect(card.locator('[data-option="three"]').getByTestId('requirement-plan-suggested')).toHaveText('suggested by rules');
+    await expect(card.getByTestId('requirement-plan-suggested')).toHaveCount(1);
+    await expect(card.getByRole('button', { pressed: true })).toHaveCount(0);
+    await expect(card.getByTestId('requirement-plan-status')).toHaveText("Not chosen yet, so the plan below uses the rules' default: 3 steps: details, review, done.");
+    await expect(page.getByTestId('requirement-approve-plan')).toBeEnabled(); // a closed question never blocks Approve
+    // The group: the shape card, then "Plan questions" with the data source, the steps and the rest, then the timeline.
+    const order = await page.getByTestId('requirement-stage').locator('[data-testid="requirement-shape"], [data-testid="requirement-plan-questions"], [data-testid="requirement-timeline"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')));
+    expect(order).toEqual(['requirement-shape', 'requirement-plan-questions', 'requirement-timeline']);
+    expect(await page.getByTestId('requirement-plan-questions').locator('[data-offer]').evaluateAll((els) => els.map((e) => e.getAttribute('data-offer')))).toEqual(first.body.offers.filter((o) => o.id !== 'q-shape').map((o) => o.id));
+    const stepsOf = (body) => [...new Set(body.plan.steps.filter((s) => s.flow === 'create.unit' || (s.flow === 'create.proof' && s.args.kind === 'render')).map((s) => s.args.steps))];
+    expect(stepsOf(first.body)).toEqual(['details,review,done']);
+
+    const four = await choosePlan(page, 'q-steps', 'four');
+    expect(four.res.request().postDataJSON().answers).toEqual([{ id: 'q-shape', option: 'wizard' }, { id: 'q-steps', option: 'four' }]);
+    expect(stepsOf(four.body)).toEqual(['details,options,review,done']); // every unit and the proof carry the four steps
+    expect(four.body.plan.steps.filter((s) => s.flow === 'create.unit').map((s) => planToCommand(s).argv.join(' ')).every((c) => c.includes('--steps details,options,review,done'))).toBe(true);
+    expect(four.body.placement.decisions.at(-1)).toEqual({ question: 'q-steps', option: 'four', by: 'person' });
+    await expect(card.locator('[data-option="four"] button')).toHaveAttribute('aria-pressed', 'true');
+    await expect(card.getByTestId('requirement-plan-status')).toHaveText('Chosen: 4 steps: details, options, review, done. Decided by: person.');
+    await expect(card.getByTestId('requirement-plan-status')).toHaveAttribute('data-decided-by', 'person');
+    await expect(page.getByTestId('requirement-shape-wizard')).toHaveAttribute('aria-pressed', 'true'); // the earlier answer is kept
+    expect(await listedFiles(page)).toContain('features/signup/components/SignupOptionsStep.component.tsx'); // the fourth step is a component
+    expect(JSON.stringify(four.body)).not.toContain(project.repo); // no server path leaves the server
+    const two = await choosePlan(page, 'q-steps', 'two'); // a changed mind replaces the earlier answer
+    expect(two.res.request().postDataJSON().answers).toEqual([{ id: 'q-shape', option: 'wizard' }, { id: 'q-steps', option: 'two' }]);
+    expect(stepsOf(two.body)).toEqual(['details,done']);
+    const [d] = recorded('requirement.plan.steps', 'four');
+    expect(d).toMatchObject({ by: 'person', suggestion: { option: 'three' }, provider: { name: 'rules', version: '1' }, outcome: { accepted: false } });
+    expect(recorded('requirement.plan.steps', 'two')).toHaveLength(1);
+  });
+
   test('the plan cards pass the accessibility check at 390 px in both themes, and do not scroll sideways', async ({ page }) => {
     for (const theme of ['dark', 'light']) {
       await page.addInitScript((t) => localStorage.setItem('construct.theme', t), theme);
       await page.setViewportSize({ width: 390, height: 844 });
-      for (const [sentence, shaped] of [[PRODUCTS, true], ['A logged-in user wants to safely manage billing details Stripe', false]]) {
+      for (const [sentence, shape] of [[PRODUCTS, 'list'], ['A logged-in user wants to safely manage billing details Stripe', null], [WIZARD, 'wizard']]) {
         await gotoCockpit(page, '/requirement');
         await readSentence(page, sentence);
-        if (shaped) await choose(page, 'list');
+        if (shape) await choose(page, shape);
         await expect(page.getByTestId('requirement-plan').first()).toBeVisible();
+        await expect(page.getByTestId('requirement-plan-questions')).toBeVisible(); // #659: the group, its heading and its line are part of what axe reads
         await page.getByTestId('requirement-files').locator('summary').evaluate((el) => el.scrollIntoView({ block: 'center' }));
         const found = await runAxe(page);
-        expect(found.filter(isBlocking), `${theme} ${shaped ? 'verify' : 'env'}: ${format(found.filter(isBlocking))}`).toEqual([]);
-        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${theme}: page scroll`).toBe(true);
+        expect(found.filter(isBlocking), `${theme} ${shape ?? 'env'}: ${format(found.filter(isBlocking))}`).toEqual([]);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${theme} ${shape ?? 'env'}: page scroll`).toBe(true);
+        expect(await page.getByTestId('requirement-plan-questions').evaluate((el) => el.scrollWidth <= el.clientWidth + 1), `${theme} ${shape ?? 'env'}: group scroll`).toBe(true);
         for (const card of await page.getByTestId('requirement-plan').all()) expect(await card.evaluate((el) => el.scrollWidth <= el.clientWidth + 1), `${theme}: card scroll`).toBe(true);
       }
     }

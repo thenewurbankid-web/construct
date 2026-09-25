@@ -176,3 +176,24 @@ test('a provider that is off (or abstained) suggests nothing, even where the off
   assert.equal(offer.status, 'Not chosen yet, so the plan below is the empty scaffold.');
   assert.equal(shapeView(shapeResult()).result.offers[0].options[0].suggested, true, 'no `suggestions` field at all: an older server');
 });
+
+// #659: the wizard's step count (q-steps) is a card of the kind `plan`, titled and explained in plain words, with the default first, and never blocks Approve.
+test('the wizard step count (q-steps) is a plan card with a plain line about what a step is; the other plan cards have none', () => {
+  const card = parseRequirement('A user wants a step by step signup').card;
+  const placement = placeCard(card, { framework: 'react-spa', answers: { 'q-shape': 'wizard' } });
+  const build = (answers = {}) => {
+    const planned = planFromBlocks(placement.blocks, { feature: 'signup', root: '/x', decisions: placement.decisions, answers, card });
+    return shapeView({ card, placement: { ...placement, decisions: planned.decisions }, plan: planned.plan, files: planned.files, open: [], offers: [...placement.offers, ...planned.offers.map((q) => ({ ...q, source: 'plan' }))], warnings: [], summary: { readBack: [], blocks: [] } });
+  };
+  const v = build();
+  assert.deepEqual(v.result.offers.map((o) => [o.id, o.kind, o.heading]), [['q-shape', 'shape', 'Screen shape'], ['q-source', 'source', 'Data source'], ['q-steps', 'plan', 'Wizard steps'], ['q-verify', 'plan', 'Verification']]);
+  const steps = v.result.offers[2];
+  assert.match(steps.hint, /^A step is one screen of the wizard: Next and Back move between steps/);
+  assert.deepEqual(v.result.offers.filter((o) => o.hint !== null).map((o) => o.id), ['q-steps'], 'only the question with a word to explain has a line');
+  assert.deepEqual(steps.options.map((o) => [o.id, o.label, o.suggested, o.chosen]), [['three', '3 steps: details, review, done', true, false], ['two', '2 steps: details, done', false, false], ['four', '4 steps: details, options, review, done', false, false]]);
+  assert.equal(steps.status, "Not chosen yet, so the plan below uses the rules' default: 3 steps: details, review, done.");
+  assert.equal(v.result.approve.canApprove, true);
+  const four = build({ 'q-steps': 'four' }).result.offers[2];
+  assert.deepEqual([four.status, four.decidedBy, four.options.map((o) => o.chosen)], ['Chosen: 4 steps: details, options, review, done. Decided by: person.', 'person', [false, false, true]]);
+  assert.deepEqual(withAnswer([{ id: 'q-shape', option: 'wizard' }], { id: 'q-steps', source: 'plan' }, 'four'), [{ id: 'q-shape', option: 'wizard' }, { id: 'q-steps', option: 'four' }]);
+});

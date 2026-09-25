@@ -26,6 +26,8 @@ export type OfferView = {
   kind: 'shape' | 'source' | 'plan';
   /** The card's heading, from the question's id. */
   heading: string;
+  /** One plain line about a word the question uses (what a wizard step is), or null. */
+  hint: string | null;
   source: 'placement';
   question: string;
   options: OfferOptionView[];
@@ -115,6 +117,7 @@ export type OpenQuestionsProps = { open: OpenView[]; busy: boolean; onAnswer: (q
 export type OpenQuestionProps = { q: OpenView; busy: boolean; onAnswer: (question: AnswerTarget, option: string) => void };
 export type ShapeOptionProps = { offer: OfferView; option: OfferOptionView; busy: boolean; onAnswer: (question: AnswerTarget, option: string) => void };
 export type ShapeOfferProps = { offers: OfferView[]; busy: boolean; onAnswer: (question: AnswerTarget, option: string) => void };
+export type OfferCardProps = { offer: OfferView; busy: boolean; onAnswer: (question: AnswerTarget, option: string) => void };
 export type PlacementPanelProps = { blocks: BlockView[]; notes: string[]; errors: string[] };
 export type TimelinePanelProps = { steps: TimelineStep[] };
 export type ApproveBarProps = { approve: ApproveView; warnings: string[]; files: string[]; onApprove: () => void; onSaveNote: () => void; onOpenProcesses: () => void };
