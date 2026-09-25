@@ -298,6 +298,12 @@ export const DEFAULT_RULES = {
   // Flag-gated off by default like DOMAIN-002/WORKFLOW-004/STATE-001 -- see the gating note on
   // SERVICE-003 in architecture-enforcer.mjs.
   'SERVICE-003': { severity: 'off', name: 'Services forward the caller\'s AbortSignal to fetch() so a superseded request never lands' },
+  // #667/#668/#669 (part of #577) -- the Controller, Hook and Route rows of
+  // docs/staleness-by-layer.md. Flag-gated off by default like SERVICE-003 -- see the gating
+  // notes in architecture-enforcer.mjs.
+  'CONTROLLER-003': { severity: 'off', name: 'A controller holds no state of its own (no useState/useRef/useEffect/useMemo/useCallback), so it binds the hook\'s live value, never a stale copy' },
+  'HOOK-003': { severity: 'off', name: 'A useEffect that starts a listener, timer, subscription or request returns its cleanup, so it never outlives its hook' },
+  'ROUTE-003': { severity: 'off', name: 'A route forwards params/searchParams whole instead of reading them, so a raw URL string never travels inward' },
   'DOMAIN-001': { severity: 'error', name: 'Domain is pure' },
   // #506 -- an allowlist alternative to DOMAIN-001's name-based denylist, additive alongside
   // it for now (#500 phase 1; removing DOMAIN-001 is phase 4 work). Default severity is

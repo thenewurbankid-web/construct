@@ -23,6 +23,7 @@ export { insertNamedImport } from './imports.mjs';
 export { collectInlineJsxLogic, computeJsxComplexity } from './jsxComplexity.mjs';
 export { collectImpureDomainReferences, collectLocallyBoundNames, BUILTIN_GLOBALS as DOMAIN_PURITY_BUILTIN_GLOBALS } from './domainPurity.mjs';
 export { collectBagOfFlagsStates, classifyStateFields } from './stateShape.mjs';
+export { collectControllerStateCalls, collectUncleanedSubscriptions, collectParamsReads, CONTROLLER_STATE_HOOKS } from './staleness.mjs';
 export { readModuleDirective, collectModuleEdges, collectSecretEnvReads } from './clientBoundary.mjs';
 // `construct summarize --backend` (#634): per-file Node/Express facts, effects and environment reads.
 export { collectBackendFacts, importEdgesOf, ROUTE_METHODS } from './backendFacts.mjs';

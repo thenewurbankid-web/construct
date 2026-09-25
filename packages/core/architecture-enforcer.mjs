@@ -21,7 +21,7 @@ import { loadLayerGraph, canImport, classifyFile } from './architecture-graph.mj
 import { makeViolation, ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { walk, rel } from './fs.mjs';
 import { globToRegExp, matchGlob } from './glob.mjs';
-import { parseToAst, extractImports, extractExports, staticImportEntries, lineOf, collectCalls, collectBareIdentifierUsages, collectControlFlowNodes, collectInlineJsxLogic, computeJsxComplexity, walkAst, collectImpureDomainReferences, collectBagOfFlagsStates } from '../../packages/ast/index.mjs';
+import { parseToAst, extractImports, extractExports, staticImportEntries, lineOf, collectCalls, collectBareIdentifierUsages, collectControlFlowNodes, collectInlineJsxLogic, computeJsxComplexity, walkAst, collectImpureDomainReferences, collectBagOfFlagsStates, collectControllerStateCalls, collectUncleanedSubscriptions, collectParamsReads } from '../../packages/ast/index.mjs';
 import { extractMachines } from '../../packages/engine/workflowExtractor.mjs';
 import { findHealthIssues } from '../../packages/engine/workflowScenarios.mjs';
 import { exceptionApplies, validateExceptionsShape, expiredExceptionViolations } from './exceptions.mjs';
@@ -287,6 +287,9 @@ function findService001Effect(ast, layer) {
   return hits[0] || null;
 }
 
+const CONTROLLER_003_SUGGESTED_FIX = 'const { state, select } = useOrder(); // read the hook live every render; move useState/useRef/useMemo into the hook or workflow';
+const HOOK_003_SUGGESTED_FIX = 'useEffect(() => { const controller = new AbortController(); window.addEventListener(\'resize\', onResize, { signal: controller.signal }); return () => controller.abort(); }, [onResize]);';
+const ROUTE_003_SUGGESTED_FIX = 'return <OrderController params={params} />; // forward params whole; parse<Name>Route in a domain unit turns them into found / not-found';
 const SERVICE_003_SUGGESTED_FIX = '({ signal }: { signal: AbortSignal }) => fetch(url, { signal })';
 
 const propKeyName = (key) => (key?.type === 'Identifier' ? key.name : key?.type === 'Literal' ? String(key.value) : null);
@@ -358,11 +361,13 @@ function findMissingAbortSignal(ast, source) {
  *
  * @param {string} layer One of the known layer names.
  * @param {string} source The file's source text.
- * @param {{maxJsxDepth?: number, maxJsxBranches?: number, domainPurityAllowlist?: boolean, workflowTransitionTable?: boolean, stateUnion?: boolean, serviceAbortSignal?: boolean}} [opts]
+ * @param {{maxJsxDepth?: number, maxJsxBranches?: number, domainPurityAllowlist?: boolean, workflowTransitionTable?: boolean, stateUnion?: boolean, serviceAbortSignal?: boolean, controllerNoState?: boolean, hookEffectCleanup?: boolean, routeForwardParams?: boolean}} [opts]
  *   COMPONENT-006/PAGE-009's complexity budget overrides (#508/#505), DOMAIN-002's opt-in
  *   flag (#506), WORKFLOW-004's opt-in flag (#578), STATE-001's opt-in flag (#581) and
- *   SERVICE-003's opt-in flag (#594) -- additive, optional; every existing call site that
- *   omits them keeps the built-in defaults (and DOMAIN-002/WORKFLOW-004/STATE-001/SERVICE-003 off).
+ *   SERVICE-003's opt-in flag (#594) and CONTROLLER-003/HOOK-003/ROUTE-003's opt-in flags
+ *   (#667/#668/#669) -- additive, optional; every existing call site that omits them keeps the
+ *   built-in defaults (and DOMAIN-002/WORKFLOW-004/STATE-001/SERVICE-003/CONTROLLER-003/
+ *   HOOK-003/ROUTE-003 off).
  */
 export function detectLayerViolations(layer, source, opts = {}) {
   const ast = parseToAst(source);
@@ -417,6 +422,16 @@ export function detectLayerViolations(layer, source, opts = {}) {
         message: 'Route contains application logic or effects.',
         why: 'Routes must remain thin.',
         expected: ['controller'],
+      });
+    }
+    // #669 -- ROUTE-003, flag-gated like SERVICE-003 (off unless the project opts in).
+    if (opts.routeForwardParams) {
+      for (const r of collectParamsReads(ast)) out.push({
+        rule: 'ROUTE-003', line: lineOf(source, r.index),
+        message: `Route reads ${r.name} instead of forwarding it.`,
+        why: 'a URL param that no longer names anything must become a typed not-found state once, in a domain parser; a route that reads the raw string lets it travel inward and go stale',
+        suggestedFix: ROUTE_003_SUGGESTED_FIX,
+        expected: [ROUTE_003_SUGGESTED_FIX],
       });
     }
   }
@@ -644,6 +659,16 @@ export function detectLayerViolations(layer, source, opts = {}) {
       why: 'Controllers only compose and wire existing layers together — conditional/loop/error-handling logic belongs in a hook, workflow, or domain function.',
       expected: ['hook', 'workflow', 'domain'],
     });
+    // #667 -- CONTROLLER-003, flag-gated like SERVICE-003 (off unless the project opts in).
+    if (opts.controllerNoState) {
+      for (const c of collectControllerStateCalls(ast)) out.push({
+        rule: 'CONTROLLER-003', line: lineOf(source, c.index),
+        message: `Controller calls ${c.name}(), so it holds state of its own.`,
+        why: 'a controller that stores or memoizes what a hook returned binds a copy taken at an earlier render; reading the hook live on every render is what keeps it from going stale',
+        suggestedFix: CONTROLLER_003_SUGGESTED_FIX,
+        expected: [CONTROLLER_003_SUGGESTED_FIX],
+      });
+    }
   }
 
   if (layer === 'domain') {
@@ -682,6 +707,17 @@ export function detectLayerViolations(layer, source, opts = {}) {
         expected: ['pure function'],
       });
     }
+  }
+
+  // #668 -- HOOK-003, flag-gated like SERVICE-003 (off unless the project opts in).
+  if (opts.hookEffectCleanup && layer === 'hook') {
+    for (const e of collectUncleanedSubscriptions(ast)) out.push({
+      rule: 'HOOK-003', line: lineOf(source, e.index),
+      message: `${e.effect} starts ${e.api} and returns no cleanup.`,
+      why: 'an effect that starts a listener, timer, subscription or request and never stops it outlives the hook that owns it, and keeps writing into state that has moved on',
+      suggestedFix: HOOK_003_SUGGESTED_FIX,
+      expected: [HOOK_003_SUGGESTED_FIX],
+    });
   }
 
   // HOOK-002 (#510) -- the first real rule the `hook` layer has (see the module doc comment
@@ -973,6 +1009,10 @@ export function validateArchitecture(root, opts = {}) {
   const stateUnion = config.rules['STATE-001']?.severity !== 'off';
   // #594 -- SERVICE-003 opts in the same way.
   const serviceAbortSignal = config.rules['SERVICE-003']?.severity !== 'off';
+  // #667/#668/#669 -- CONTROLLER-003, HOOK-003 and ROUTE-003 opt in the same way.
+  const controllerNoState = config.rules['CONTROLLER-003']?.severity !== 'off';
+  const hookEffectCleanup = config.rules['HOOK-003']?.severity !== 'off';
+  const routeForwardParams = config.rules['ROUTE-003']?.severity !== 'off';
   let frozenIndex = null;
   for (const abs of files) {
     if (!FILE_EXTENSIONS.has(path.extname(abs)) || !fs.existsSync(abs)) continue;
@@ -989,7 +1029,7 @@ export function validateArchitecture(root, opts = {}) {
     }
     const source = fs.readFileSync(abs, 'utf8');
     const complexityOpts = layer === 'page' ? pageComplexityOpts : componentComplexityOpts;
-    const layerOpts = { ...complexityOpts, domainPurityAllowlist, workflowTransitionTable, stateUnion, serviceAbortSignal };
+    const layerOpts = { ...complexityOpts, domainPurityAllowlist, workflowTransitionTable, stateUnion, serviceAbortSignal, controllerNoState, hookEffectCleanup, routeForwardParams };
     for (const desc of detectLayerViolations(layer, source, layerOpts)) {
       pushViolation(config, out, { ...desc, file: r });
     }
