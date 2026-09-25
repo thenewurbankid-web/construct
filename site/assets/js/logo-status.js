@@ -2,21 +2,29 @@
  * mode the owner sets:
  *   off     (default) never moves: this is what every visitor sees
  *   always  moves all the time
- *   status  moves while the endpoint the owner configured says an agent or model is working on the framework
+ *   status  moves while the status source the owner configured says an agent or model is working on the framework
+ * The status source (`api`) answers in one of two shapes, both plain GETs:
+ *   an endpoint         { ok: true, available: true, active: true }   (the Cockpit server's GET /api/dev-status)
+ *   an activity file    { "lastActivityAt": "<ISO time>", "windowSec": 900 }   active while now - lastActivityAt < windowSec
+ * The activity file needs no server: the docs build writes `dev-status.json` next to `logo.json` with the time of the newest commit of
+ * the branch it built (site/build.mjs, times only: no names, messages or hashes), so the logo moves for everyone while development is
+ * recent and rests otherwise. The age is judged on the visitor's own clock (a future time counts as age 0, an unparsable one as
+ * inactive, a missing windowSec as 900 s).
  * Two places set it, the browser's own setting first:
  *   1. this browser (localStorage), set by link or with the small panel `?logo=config` opens:
  *        ?logo=off|always|status   the mode          ?logoApi=https://host/api/dev-status   the endpoint (?logoApi= clears it)
  *        ?logo=site                follow the site's setting again          ?logo=config   opens the panel
  *   2. the site's own setting, `logo.json` next to the pages, which the owner edits on GitHub (Trinity links there); a commit
- *      redeploys the docs:  { "mode": "status", "api": "https://host/api/dev-status", "motion": { ...Logo Lab JSON... } }
- *      It is public like the rest of the site, so put in `api` only an address you are happy to publish; with no `api` there, only a
- *      browser that set its own endpoint polls.
+ *      redeploys the docs:  { "mode": "status", "api": "dev-status.json", "motion": { ...Logo Lab JSON... } }
+ *      `api` there is either an https address (or http on localhost) or a RELATIVE path on the site itself (resolved next to logo.json,
+ *      no scheme, no leading slash, no `..`). It is public like the rest of the site, so put in an absolute `api` only an address you
+ *      are happy to publish; with no `api` there, only a browser that set its own endpoint polls. The docs ship the relative one.
  * WHAT MOVES is the `motion`: the JSON the Logo Lab (Claude Artifact) exports for the Line mark (parts, effect, distance, axis,
  * durationSeconds, restBeforePct, restAfterPct, holdPct, beats, easing, staggerPct, direction). One small engine turns it into the
  * CSS keyframes, the tab icon frames and the "finish the cycle" wind-down, so they can never disagree. This browser's own motion
  * (pasted into the panel) wins over the site's, and the site's over the built-in default below.
- * A visitor with none of this makes no request (mode off is the default). The endpoint is read with a plain GET, no cookies, a 2 s
- * timeout, every 5 s, only while the tab is visible. Plain script, no libraries, works with storage blocked. */
+ * A visitor whose mode is off (or who has no source) makes no request beyond logo.json itself. The source is read with a plain GET, no
+ * cookies, a 2 s timeout, every 5 s, only while the tab is visible. Plain script, no libraries, works with storage blocked. */
 (function () {
   'use strict';
   var MODE_KEY = 'construct.docs.logo';
@@ -45,9 +53,31 @@
     return null;
   }
 
-  /** What the endpoint answers when an agent is working: `{ ok: true, available: true, active: true }`, nothing less. */
-  function isActive(body) {
-    return !!body && body.ok === true && body.available === true && body.active === true;
+  /** A path on the site itself, for the site's own setting: relative, no scheme, no leading slash (so not `//host`), no `..`, no
+   * backslash, only plain path characters. Returned as given; it is resolved next to logo.json when it is read. */
+  function parseRelativeApi(value) {
+    if (typeof value !== 'string' || !value || value.length > 200) return null;
+    if (!/^[A-Za-z0-9._~\-]+(\/[A-Za-z0-9._~\-]+)*(\?[A-Za-z0-9._~=&%\-]*)?$/.test(value)) return null;
+    var segments = value.split('?')[0].split('/');
+    for (var i = 0; i < segments.length; i += 1) if (segments[i] === '..' || segments[i] === '.') return null;
+    return value;
+  }
+
+  var DEFAULT_WINDOW_SEC = 900;
+  /** Is development active according to what the source answered? Two shapes: the Cockpit endpoint's
+   * `{ ok: true, available: true, active: true }` (nothing less), or an activity file `{ lastActivityAt, windowSec }`: active while
+   * the time is less than `windowSec` seconds old on this visitor's clock. A future time (clock skew) counts as age 0, a missing or
+   * silly windowSec as 900 s, an unparsable or absent time as inactive. `now` is milliseconds (injectable for tests). */
+  function isActive(body, now) {
+    if (!body || typeof body !== 'object') return false;
+    if (body.lastActivityAt !== undefined) {
+      var at = typeof body.lastActivityAt === 'string' ? Date.parse(body.lastActivityAt) : NaN;
+      if (!isFinite(at)) return false;
+      var win = typeof body.windowSec === 'number' && isFinite(body.windowSec) && body.windowSec > 0 ? Math.min(body.windowSec, 86400) : DEFAULT_WINDOW_SEC;
+      var age = Math.max(0, (typeof now === 'number' ? now : Date.now()) - at);
+      return age < win * 1000;
+    }
+    return body.ok === true && body.available === true && body.active === true;
   }
 
   /** Should the logo move? `polled` is the last answer from the endpoint (only read in `status` mode). */
@@ -399,7 +429,7 @@
       return none;
     }
     if (!data || typeof data !== 'object' || Array.isArray(data)) return none;
-    return { mode: parseMode(data.mode), api: parseApi(data.api), motion: parseMotion(data.motion) };
+    return { mode: parseMode(data.mode), api: parseApi(data.api) || parseRelativeApi(data.api), motion: parseMotion(data.motion) };
   }
 
   /** Read the link's parameters: what to store, what to clear, whether to open the panel. */
@@ -416,7 +446,7 @@
 
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
-      parseMode: parseMode, parseApi: parseApi, parseConfig: parseConfig, parseMotion: parseMotion, isActive: isActive, moves: moves, readParams: readParams,
+      parseMode: parseMode, parseApi: parseApi, parseRelativeApi: parseRelativeApi, parseConfig: parseConfig, parseMotion: parseMotion, isActive: isActive, moves: moves, readParams: readParams,
       motionAt: motionAt, motionCss: motionCss, atRest: atRest, faviconSvg: faviconSvg, offsets: offsets, DEFAULT_MOTION_JSON: DEFAULT_MOTION_JSON, MODES: MODES,
     };
   }
@@ -472,6 +502,15 @@
   }
   function endpoint() {
     return parseApi(get(API_KEY)) || site.api;
+  }
+  var configUrl = document.currentScript && document.currentScript.getAttribute('data-config');
+  /** The source's full address: an absolute one as it is, a site-relative one next to logo.json (the site's own base). */
+  function resolveApi(api) {
+    try {
+      return new URL(api, new URL(configUrl || '', window.location.href)).href;
+    } catch (e) {
+      return null;
+    }
   }
   /** What moves: this browser's own motion, else the site's, else the built-in one. */
   function motion() {
@@ -553,6 +592,12 @@
       timer = window.setTimeout(poll, POLL_MS);
       return;
     }
+    api = resolveApi(api);
+    if (!api) {
+      polled = false;
+      apply();
+      return;
+    }
     controller = typeof AbortController === 'function' ? new AbortController() : null;
     var cut = window.setTimeout(function () {
       if (controller) controller.abort();
@@ -564,7 +609,7 @@
       })
       .then(function (body) {
         polled = isActive(body);
-        note(body === null ? 'The endpoint did not answer as expected.' : body.available === true ? (polled ? 'Reachable: an agent is working.' : 'Reachable: idle.') : 'Reachable, but development status is not available there.');
+        note(body === null ? 'The endpoint did not answer as expected.' : body.lastActivityAt !== undefined || body.available === true ? (polled ? 'Reachable: development is active.' : 'Reachable: idle.') : 'Reachable, but development status is not available there.');
       })
       .catch(function () {
         polled = false;
@@ -617,7 +662,6 @@
 
   restart();
   // The site's own setting (logo.json, same origin). A missing or broken file is just "off": nothing here can fail loudly.
-  var configUrl = document.currentScript && document.currentScript.getAttribute('data-config');
   if (configUrl && typeof window.fetch === 'function') {
     window
       .fetch(configUrl, { cache: 'no-store', credentials: 'same-origin' })

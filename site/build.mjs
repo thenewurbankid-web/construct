@@ -37,6 +37,20 @@ export function parseArgs(argv) {
   return opts;
 }
 
+/** The activity file the docs logo reads (#614): when the newest commit of the branch being built was made. Times only: no names,
+ * no messages, no hashes. `lastActivityAt` is null when the history is unavailable or `repoRoot` is not a repository. For tests (and
+ * for a build that must not depend on it), CONSTRUCT_DEV_STATUS_LAST_ACTIVITY overrides it: an ISO time, or `none` for null. */
+export const DEV_STATUS_WINDOW_SEC = 900;
+export function devStatus({ repoRoot = REPO_ROOT, buildTime = new Date(), env = process.env } = {}) {
+  let raw = env.CONSTRUCT_DEV_STATUS_LAST_ACTIVITY;
+  if (raw === undefined || raw === '') {
+    const r = spawnSync('git', ['-C', repoRoot, 'log', '-1', '--format=%cI'], { encoding: 'utf8' });
+    raw = r.status === 0 ? r.stdout.trim() : '';
+  }
+  const t = Date.parse(raw);
+  return { version: 1, lastActivityAt: Number.isFinite(t) ? new Date(t).toISOString() : null, windowSec: DEV_STATUS_WINDOW_SEC, generatedAt: new Date(buildTime).toISOString() };
+}
+
 const stripLeadingH1 = (md) => md.replace(/^\s*#\s+[^\n]*\n+/, '');
 
 // `api`: false (default for library callers), true (every package in API_PACKAGES) or an array of package ids.
@@ -254,6 +268,8 @@ export async function build({ out, repo, buildTime = new Date(), basePath, versi
   write('try-it.html', redirectPage({ to: 'user-guide/getting-started/', title: 'Getting started' }));
   // The docs logo's own setting (mode, optional endpoint), edited on GitHub; read by assets/js/logo-status.js at runtime.
   fs.copyFileSync(path.join(HERE, 'logo.json'), path.join(out, 'logo.json'));
+  // ...and the activity file that setting points at (`"api": "dev-status.json"`): the newest commit time, so the logo needs no server.
+  fs.writeFileSync(path.join(out, 'dev-status.json'), JSON.stringify(devStatus({ repoRoot, buildTime }), null, 2) + '\n');
   // Earlier takes stay in the repo (assets/video/history) until deleted, but are not published.
   fs.cpSync(path.join(HERE, 'assets'), path.join(out, 'assets'), { recursive: true, filter: (src) => !src.includes(`${path.sep}video${path.sep}history`) && !src.includes(`${path.sep}video${path.sep}voice-tests`) });
   write('.nojekyll', '');

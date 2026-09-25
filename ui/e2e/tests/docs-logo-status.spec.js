@@ -224,3 +224,143 @@ test.describe.serial('Docs logo follows the framework-development status (#614)'
     expect(await pillX(page)).toBe(rest);
   });
 });
+
+// #614, second half: the docs logo needs no server at all. The built site's own logo.json says `"api": "dev-status.json"`, the docs
+// build publishes that file (the newest commit's time, and a 15-minute window), and the page reads it with a plain same-site GET.
+// Here the real built site is served from a static server on a fixed port (49735) whose dev-status.json the test controls: fresh,
+// stale, missing. Nothing else is faked: the same script, the same keyframes, the same header logo.
+const ACTIVITY_PORT = 49735;
+test.describe.serial('Docs logo follows the commit-activity file published with the docs (#614)', () => {
+  test.slow();
+  let tmp;
+  let out;
+  let server;
+  let siteUrl;
+  let activity; // the dev-status.json body served now (an object), or null for "no such file"
+  let logoOverride; // a logo.json body served instead of the built one, or null
+  const ago = (sec) => ({ version: 1, lastActivityAt: new Date(Date.now() - sec * 1000).toISOString(), windowSec: 900, generatedAt: new Date().toISOString() });
+  const setActivity = (sec) => { activity = ago(sec); };
+
+  test.beforeAll(async () => {
+    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'og614-activity-'));
+    out = path.join(tmp, 'site');
+    execFileSync('node', ['site/build.mjs', '--out', out, '--no-search', '--no-api'], { cwd: REPO_ROOT, stdio: 'ignore', env: { ...process.env, CONSTRUCT_DEV_STATUS_LAST_ACTIVITY: '2026-09-25T08:30:00Z' } });
+    server = http.createServer((req, res) => {
+      let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+      if (p === '/dev-status.json' && activity) return void res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' }).end(JSON.stringify(activity));
+      if (p === '/dev-status.json') return void res.writeHead(404).end();
+      if (p === '/logo.json' && logoOverride) return void res.writeHead(200, { 'content-type': 'application/json' }).end(logoOverride);
+      if (p.endsWith('/')) p += 'index.html';
+      const f = path.join(out, p);
+      if (!f.startsWith(out) || !fs.existsSync(f)) return void res.writeHead(404).end();
+      return void res.writeHead(200, { 'content-type': MIME[path.extname(f)] || 'application/octet-stream' }).end(fs.readFileSync(f));
+    });
+    await new Promise((resolve, reject) => { server.on('error', reject); server.listen(ACTIVITY_PORT, '127.0.0.1', resolve); });
+    siteUrl = `http://127.0.0.1:${ACTIVITY_PORT}/`;
+  });
+
+  test.beforeEach(() => { logoOverride = null; setActivity(3600); });
+
+  test.afterAll(async () => {
+    await new Promise((resolve) => (server ? server.close(resolve) : resolve()));
+    if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
+  });
+
+  const status = (page) => page.evaluate(() => document.documentElement.getAttribute('data-dev-status'));
+  const pillX = (page, which = 'blue') => page.locator(`.brand-mark .pill-${which}`).evaluate((el) => el.getBoundingClientRect().x);
+  const bothX = async (page) => [await pillX(page, 'white'), await pillX(page, 'blue')];
+  const fetches = (page) => { const seen = []; page.on('request', (r) => { if (r.resourceType() === 'fetch') seen.push(new URL(r.url()).pathname); }); return seen; };
+
+  test('the build published what the page reads: logo.json points at a dev-status.json holding times only', async () => {
+    expect(JSON.parse(fs.readFileSync(path.join(out, 'logo.json'), 'utf8'))).toEqual({ mode: 'status', api: 'dev-status.json' });
+    expect(JSON.parse(fs.readFileSync(path.join(out, 'dev-status.json'), 'utf8'))).toMatchObject({ version: 1, lastActivityAt: '2026-09-25T08:30:00.000Z', windowSec: 900 });
+  });
+
+  test('a fresh activity file: the logo becomes active and animates', async ({ page }) => {
+    setActivity(60);
+    const seen = fetches(page);
+    await page.goto(siteUrl);
+    await page.waitForFunction(() => document.documentElement.getAttribute('data-dev-status') === 'active', null, { timeout: 15_000 });
+    expect([...new Set(seen)].sort()).toEqual(['/dev-status.json', '/logo.json']);
+    expect(await page.locator('.brand-mark .pill-blue').evaluate((el) => getComputedStyle(el).animationName)).toBe('logo-blue');
+    const xs = [];
+    for (let i = 0; i < 40; i += 1) { xs.push(await pillX(page)); await page.waitForTimeout(100); }
+    expect(Math.max(...xs) - Math.min(...xs), 'the blue pill moves').toBeGreaterThan(1.5);
+  });
+
+  test('a stale activity file leaves the logo at rest', async ({ page }) => {
+    setActivity(30 * 60);
+    const answered = page.waitForResponse((r) => r.url().endsWith('/dev-status.json'));
+    await page.goto(siteUrl);
+    await answered;
+    await page.waitForTimeout(2000);
+    expect(await status(page)).toBeNull();
+    const x = await bothX(page);
+    await page.waitForTimeout(1500);
+    expect(await bothX(page)).toEqual(x);
+    expect(await page.locator('.brand-mark .pill-blue').evaluate((el) => getComputedStyle(el).animationName)).toBe('none');
+  });
+
+  test('a missing activity file, or one with no usable time, is just at rest', async ({ page }) => {
+    activity = null;
+    const answered = page.waitForResponse((r) => r.url().endsWith('/dev-status.json'));
+    await page.goto(siteUrl);
+    await answered;
+    await page.waitForTimeout(1500);
+    expect(await status(page)).toBeNull();
+    activity = { version: 1, lastActivityAt: null, windowSec: 900 };
+    await page.waitForResponse((r) => r.url().endsWith('/dev-status.json'), { timeout: 15_000 });
+    await page.waitForTimeout(500);
+    expect(await status(page)).toBeNull();
+  });
+
+  test('the activity goes stale while the page is open: the current cycle finishes, then it rests', async ({ page }) => {
+    setActivity(60);
+    await page.goto(siteUrl);
+    await page.waitForFunction(() => document.documentElement.getAttribute('data-dev-status') === 'active', null, { timeout: 15_000 });
+    // At rest the pills are 12 units (6.5 px) apart. Wait until they are visibly mid-move, then go stale (seen on the next poll).
+    for (let i = 0; i < 400; i += 1) {
+      const [w, b] = await bothX(page);
+      if (Math.abs(b - w - 6.5) > 1.5) break;
+      await page.waitForTimeout(30);
+    }
+    setActivity(30 * 60);
+    const stopped = Date.now();
+    const after = [];
+    let sawEnding = false;
+    while (Date.now() - stopped < 40_000) {
+      const st = await status(page);
+      if (st === 'ending') sawEnding = true;
+      const [wx, bx] = await bothX(page);
+      after.push({ w: wx, b: bx, s: st });
+      if (st === null && Date.now() - stopped > 2000) break;
+      await page.waitForTimeout(40);
+    }
+    expect(sawEnding, 'a quiet status winds the cycle down instead of cutting it').toBe(true);
+    let maxStep = 0;
+    for (let i = 1; i < after.length; i += 1) maxStep = Math.max(maxStep, Math.abs(after[i].w - after[i - 1].w), Math.abs(after[i].b - after[i - 1].b));
+    expect(maxStep, 'the pills never jump').toBeLessThan(0.7);
+    const end = after[after.length - 1];
+    expect(end.s).toBeNull();
+    expect(Math.abs(end.b - end.w - 6.5), 'both end at rest, 12 units apart').toBeLessThan(0.1);
+  });
+
+  test('?logo=off still wins over a fresh activity file: no movement and no request for the file', async ({ page }) => {
+    setActivity(10);
+    const seen = fetches(page);
+    await page.goto(`${siteUrl}?logo=off`);
+    await page.waitForTimeout(6500); // longer than a poll interval
+    expect(await status(page)).toBeNull();
+    expect(seen, 'only the site setting is fetched').toEqual(['/logo.json']);
+  });
+
+  test('a visitor whose site setting has no activity file makes no request beyond logo.json', async ({ page }) => {
+    logoOverride = JSON.stringify({ mode: 'off' });
+    setActivity(10);
+    const seen = fetches(page);
+    await page.goto(siteUrl);
+    await page.waitForTimeout(6500);
+    expect(await status(page)).toBeNull();
+    expect(seen).toEqual(['/logo.json']);
+  });
+});

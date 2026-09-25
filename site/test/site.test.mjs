@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { slugify, makeSlugger, esc } from '../../packages/docs-site/lib/text.mjs';
 import { sanitizeHtml } from '../../packages/docs-site/lib/sanitize.mjs';
-import { build, parseArgs } from '../build.mjs';
+import { build, parseArgs, devStatus } from '../build.mjs';
 import { USER_GROUPS, EXAMPLE_SURFACES, examplePages } from '../../packages/docs-site/lib/structure.mjs';
 import { makeTempDir } from '../../test-utils/tmpdir.mjs';
 
@@ -122,6 +122,36 @@ test('every image an example page uses exists in site/assets/img', () => {
       const md = fs.readFileSync(new URL(`../../${p.file}`, import.meta.url), 'utf8');
       for (const m of md.matchAll(/\(@img\/([^)]+)\)/g)) assert.ok(fs.existsSync(new URL(`../assets/img/${m[1]}`, import.meta.url)), `${m[1]} referenced by ${p.file}`);
     }
+  }
+});
+
+test('build writes dev-status.json next to logo.json: the newest commit time only, deterministic with the override, null without history (#614)', async () => {
+  const KEY = 'CONSTRUCT_DEV_STATUS_LAST_ACTIVITY';
+  const before = process.env[KEY];
+  try {
+    process.env[KEY] = '2026-09-25T10:30:00+02:00';
+    const out = makeTempDir('site-devstatus-');
+    await build({ out, repo: 'o/r', buildTime: BUILD_TIME, api: false });
+    const raw = fs.readFileSync(path.join(out, 'dev-status.json'), 'utf8');
+    assert.deepEqual(JSON.parse(raw), { version: 1, lastActivityAt: '2026-09-25T08:30:00.000Z', windowSec: 900, generatedAt: '2026-09-20T00:00:00.000Z' });
+    assert.deepEqual(Object.keys(JSON.parse(raw)), ['version', 'lastActivityAt', 'windowSec', 'generatedAt'], 'times only: no author, message or hash');
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(out, 'logo.json'), 'utf8')), { mode: 'status', api: 'dev-status.json' }, 'the file the setting points at is next to it');
+    const again = makeTempDir('site-devstatus-');
+    await build({ out: again, repo: 'o/r', buildTime: BUILD_TIME, api: false });
+    assert.equal(fs.readFileSync(path.join(again, 'dev-status.json'), 'utf8'), raw, 'the same inputs give the same file');
+    // Unparsable override or `none`: null, never a made-up time.
+    for (const v of ['none', 'garbage']) {
+      process.env[KEY] = v;
+      assert.equal(devStatus({ buildTime: BUILD_TIME }).lastActivityAt, null, v);
+    }
+    delete process.env[KEY];
+    // No repository to ask (a directory outside any checkout): null.
+    assert.equal(devStatus({ repoRoot: makeTempDir('site-nogit-'), buildTime: BUILD_TIME }).lastActivityAt, null);
+    // This checkout has history: an ISO time, from the newest commit.
+    assert.match(devStatus({ buildTime: BUILD_TIME }).lastActivityAt ?? '', /^\d{4}-\d\d-\d\dT[\d:.]+Z$/);
+  } finally {
+    if (before === undefined) delete process.env[KEY];
+    else process.env[KEY] = before;
   }
 });
 

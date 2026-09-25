@@ -1,3 +1,4 @@
 {
-  "mode": "off"
+  "mode": "status",
+  "api": "dev-status.json"
 }

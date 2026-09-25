@@ -59,16 +59,51 @@ test("the site's own setting: mode, endpoint and motion each read on their own, 
   for (const bad of ['', 'not json', '[]', 'null', '"x"', '{', undefined]) assert.deepEqual({ ...m.parseConfig(bad) }, { mode: null, api: null, motion: null }, String(bad));
 });
 
-test('site/logo.json ships as off with no endpoint (public); the build copies it and the page points at it', () => {
+test('the site setting follows the activity file published with the docs (no absolute address); the build copies it and the page points at it', () => {
   const m = load();
   const cfg = m.parseConfig(read('site/logo.json'));
-  assert.equal(JSON.parse(read('site/logo.json')).mode, 'off');
-  assert.deepEqual({ ...cfg }, { mode: 'off', api: null, motion: null });
+  assert.deepEqual(JSON.parse(read('site/logo.json')), { mode: 'status', api: 'dev-status.json' });
+  assert.deepEqual({ ...cfg }, { mode: 'status', api: 'dev-status.json', motion: null });
   assert.match(read('site/build.mjs'), /copyFileSync\(path\.join\(HERE, 'logo\.json'\), path\.join\(out, 'logo\.json'\)\)/);
+  assert.match(read('site/build.mjs'), /path\.join\(out, 'dev-status\.json'\)/);
   assert.match(read('packages/docs-site/lib/pages.mjs'), /data-config="\$\{root\}logo\.json"/);
   // The browser's own choice wins over the site's, then the site's, then off (checked in the script's own resolution).
   assert.match(SCRIPT, /return parseMode\(get\(MODE_KEY\)\) \|\| site\.mode \|\| 'off';/);
   assert.match(SCRIPT, /return parseApi\(get\(API_KEY\)\) \|\| site\.api;/);
+});
+
+test('the site setting may name a RELATIVE path on the site itself; nothing that leaves the site, and the absolute rules are unchanged', () => {
+  const m = load();
+  for (const ok of ['dev-status.json', 'status/dev-status.json', 'dev-status.json?v=1']) assert.equal(m.parseRelativeApi(ok), ok, ok);
+  for (const bad of ['../x', 'a/../x', './x', '/x', '//host/x', '\\\\host\\x', 'https://h.example/x', 'javascript:alert(1)', 'data:text/plain,x', 'a b', 'a#b', '', 'x'.repeat(300), null, 3, undefined]) assert.equal(m.parseRelativeApi(bad), null, String(bad));
+  // parseApi is untouched: it still refuses a relative path (the browser's own endpoint and ?logoApi= stay absolute).
+  assert.equal(m.parseApi('dev-status.json'), null);
+  assert.equal(m.parseApi('http://evil.example/x'), null);
+  // In the site's own setting both kinds are read, and a bad one is dropped.
+  assert.equal(m.parseConfig('{"api":"dev-status.json"}').api, 'dev-status.json');
+  assert.equal(m.parseConfig('{"api":"https://h.example/api/dev-status"}').api, 'https://h.example/api/dev-status');
+  for (const bad of ['../x', '//host/x', 'http://evil.example/x', '/abs']) assert.equal(m.parseConfig(JSON.stringify({ api: bad })).api, null, bad);
+  assert.match(SCRIPT, /new URL\(api, new URL\(configUrl \|\| '', window\.location\.href\)\)/, 'a relative source is resolved next to logo.json');
+});
+
+test("an activity file counts as active while it is younger than its window, on the visitor's clock", () => {
+  const m = load();
+  const NOW = Date.parse('2026-09-25T12:00:00Z');
+  const at = (secAgo) => new Date(NOW - secAgo * 1000).toISOString();
+  assert.equal(m.isActive({ lastActivityAt: at(60), windowSec: 900 }, NOW), true, 'fresh');
+  assert.equal(m.isActive({ lastActivityAt: at(899), windowSec: 900 }, NOW), true, 'just inside');
+  assert.equal(m.isActive({ lastActivityAt: at(900), windowSec: 900 }, NOW), false, 'exactly the window is stale');
+  assert.equal(m.isActive({ lastActivityAt: at(3600), windowSec: 900 }, NOW), false, 'stale');
+  assert.equal(m.isActive({ lastActivityAt: at(-3600), windowSec: 900 }, NOW), true, 'a time in the future (clock skew) is age 0');
+  assert.equal(m.isActive({ lastActivityAt: at(600) }, NOW), true, 'no windowSec: 900 s');
+  assert.equal(m.isActive({ lastActivityAt: at(1000) }, NOW), false, 'no windowSec: 900 s');
+  assert.equal(m.isActive({ lastActivityAt: at(1000), windowSec: 'long' }, NOW), false, 'a silly windowSec falls back to 900 s');
+  assert.equal(m.isActive({ lastActivityAt: at(1000), windowSec: -5 }, NOW), false);
+  assert.equal(m.isActive({ lastActivityAt: at(1000), windowSec: 1800 }, NOW), true, 'a longer window is honoured');
+  for (const no of [{ lastActivityAt: null, windowSec: 900 }, { lastActivityAt: 'garbage' }, { lastActivityAt: '' }, { lastActivityAt: 12345 }, { lastActivityAt: {} }, { windowSec: 900 }]) assert.equal(m.isActive(no, NOW), false, JSON.stringify(no));
+  // The endpoint shape still works, and an activity file does not need to say ok/available.
+  assert.equal(m.isActive({ ok: true, available: true, active: true }, NOW), true);
+  assert.equal(m.isActive({ ok: true, available: true, active: false }, NOW), false);
 });
 
 test('link parameters: a mode, an endpoint, an empty endpoint clears it, config opens the panel, and an invalid endpoint is dropped', () => {
