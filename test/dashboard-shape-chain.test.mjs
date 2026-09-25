@@ -88,7 +88,7 @@ test('the sentence becomes a plan of 12 steps, runs, and gives an overview that 
     const file = path.join(dir, 'features', 'orders-dashboard', 'tests', 'generated', 'OrdersDashboardScreen.proof.test.ts');
     const text = fs.readFileSync(file, 'utf8');
     assert.ok(text.startsWith('// @construct-generated tests v1 - LOCKED, do not edit (#348)\n'));
-    for (const want of ['const SUMMARY: OrderSummary = { count: 2, total: { sum: 19.5, average: 9.75, max: 12.5 } };', '["Sum of total", "<li><span>Sum of total</span><strong>19.5</strong></li>"]', '["Total", "<section aria-label=\\"Total\\"><h2>Total</h2>"', "expectShown('The tile \"' + label"]) assert.ok(text.includes(want), want);
+    for (const want of ['const SUMMARY: OrderSummary = { count: 2, total: { sum: 19.5, average: 9.75, max: 12.5 } };', '["Sum of total", "<li><span>Sum of total</span><strong>19.5</strong></li>"]', '["Total", "<section aria-label=\\"Total\\"><h2>Total</h2>"', "expectMarkup('The tile \"' + label"]) assert.ok(text.includes(want), want);
     const gen = run(['create', 'proof', 'OrdersDashboard', '--feature', 'orders-dashboard', '--shape', 'dashboard', '--entity', 'Order', '--fields', FIELDS], dir);
     assert.equal(gen.status, 0, `${gen.stdout}${gen.stderr}`);
     assert.equal(fs.readFileSync(file, 'utf8'), text, 'regenerating writes the same bytes');
