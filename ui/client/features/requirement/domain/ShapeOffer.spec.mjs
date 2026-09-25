@@ -27,7 +27,8 @@ test('the offer view: unanswered, list is marked suggested, nothing is chosen an
   assert.match(offer.options[0].gives, /10 real files that validate/);
   assert.match(offer.options[1].gives, /empty stubs/);
   assert.equal(offer.decidedBy, null);
-  assert.match(offer.status, /^Not chosen yet, so the plan below is the empty scaffold\. The rules suggest: list screen/);
+  assert.match(offer.status, /^Not chosen yet, so the plan below is the empty scaffold\. Suggested by rules: list screen/);
+  assert.deepEqual([offer.suggestion.label, offer.suggestion.option], ['suggested by rules', 'list'], 'an older server: the offer carries the rules suggestion itself');
   assert.deepEqual(v.result.timeline.map((s) => s.kind), ['page-load', 'presentation'], 'the plain scaffold: no server read yet');
   assert.equal(v.result.files.length, 2);
 });
@@ -89,4 +90,31 @@ test('Approve waits while a new read is in flight, so the plan sent is the plan 
   const ready = shapeResult({ 'q-shape': 'list' });
   assert.equal(shapeView(ready, { read: { status: 'loading', result: ready, error: null } }).result.approve.canApprove, false);
   assert.equal(shapeView(ready).result.approve.canApprove, true);
+});
+
+// #633: what the project's decision provider suggests is the server's `suggestions` (per question id), drawn as "suggested by <provider>".
+const suggestion = (option, provider = 'rules', extra = {}) => ({ option, reason: 'because', runnerUp: null, provider: { name: provider, version: '1' }, ...extra });
+
+test('a suggestion from the server: the offer and the open questions say "suggested by <provider>" with the reason; nothing is chosen', () => {
+  const r = { ...shapeResult(), suggestions: { 'q-shape': suggestion('scaffold', 'jev') } };
+  const [offer] = shapeView(r).result.offers;
+  assert.deepEqual(offer.options.map((o) => [o.id, o.suggested, o.chosen]), [['list', false, false], ['scaffold', true, false]], 'the provider, not the offer\'s own default, decides which is marked');
+  assert.deepEqual(offer.suggestion, { option: 'scaffold', label: 'suggested by jev', reason: 'because' });
+  assert.match(offer.status, /^Not chosen yet, so the plan below is the empty scaffold\. Suggested by jev: empty scaffold\.$/);
+  assert.equal(offer.decidedBy, null);
+
+  const card = parseRequirement('A customer wants to frobnicate the invoice list.').card;
+  const open = { card, placement: null, plan: null, files: {}, open: card.open.map((i) => ({ id: i.id, question: 'What does it do?', source: 'card', chosen: null, options: [{ id: 'read', label: 'Shows something', enabled: true, why: 'w' }, { id: 'write', label: 'Changes data', enabled: true, why: 'w' }] })), offers: [], warnings: [], summary: { readBack: [], blocks: [] }, suggestions: { o1: suggestion('write', 'rules', { fellBackFrom: 'jev' }) } };
+  const [q] = buildRequirementView({ ...initialScreen, text: 'x', read: { status: 'ready', result: open, error: null } }).result.open;
+  assert.deepEqual(q.options.map((o) => [o.id, o.suggested]), [['read', false], ['write', true]]);
+  assert.deepEqual(q.suggestion, { option: 'write', label: 'suggested by rules (jev did not answer)', reason: 'because' });
+});
+
+test('a provider that is off (or abstained) suggests nothing, even where the offer has its own default; an older server keeps the rules default', () => {
+  const off = { ...shapeResult(), suggestions: {} };
+  const [offer] = shapeView(off).result.offers;
+  assert.equal(offer.suggestion, null);
+  assert.deepEqual(offer.options.map((o) => o.suggested), [false, false]);
+  assert.equal(offer.status, 'Not chosen yet, so the plan below is the empty scaffold.');
+  assert.equal(shapeView(shapeResult()).result.offers[0].options[0].suggested, true, 'no `suggestions` field at all: an older server');
 });

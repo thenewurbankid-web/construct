@@ -73,7 +73,7 @@ export default defineConfig({
       // ui/server restricts CORS + WebSocket origin to UI_CLIENT_ORIGIN.
       // #292: process records live in a per-user state dir; a fresh one keeps the
       // ordinary suite from ever seeing a real process of the developer's own.
-      env: { PORT: String(SERVER_PORT), UI_CLIENT_ORIGIN: CLIENT_ORIGIN, CONSTRUCT_STATE_DIR: STATE_DIR, CONSTRUCT_DEV_SERVER_PORT_BASE: String(DEV_SERVER_PORT_BASE), ...workspaceEnv() },
+      env: { PORT: String(SERVER_PORT), UI_CLIENT_ORIGIN: CLIENT_ORIGIN, CONSTRUCT_STATE_DIR: STATE_DIR, CONSTRUCT_DEV_SERVER_PORT_BASE: String(DEV_SERVER_PORT_BASE), CONSTRUCT_DECISION_PLUGINS: 'on', ...workspaceEnv() },
     },
     {
       command: `npx next dev -p ${CLIENT_PORT}`,

@@ -19,6 +19,11 @@ export type Question = { id: string; question: string; options: QuestionOption[]
 
 /** A closed question that never holds the plan back (#619: the screen shape). `default` is the rules' suggestion; nothing is chosen until a person answers. */
 export type Offer = Question & { default: string; suggestion?: { option: string; reason: string; provider: string } };
+/** What the project's decision provider suggests for one closed question (#633): suggest-only, the person still chooses. `fellBackFrom` names a plugin that failed, the rules provider having answered instead. */
+export type Suggestion = { option: string; reason: string; runnerUp: string | null; score?: number; provider: { name: string; version: string }; fellBackFrom?: string };
+/** Who answers, what was asked for and every load or fallback line of the decision provider. */
+export type DecisionProviderInfo = { name: string; version: string; requested: string; fellBackFrom: string | null; notes: string[] };
+
 /** Who answered a placement question, as the blocks record it: `person`, or `decision-model` with its provider. */
 export type Decision = { question: string; option: string; by: string; provider?: string };
 
@@ -54,6 +59,9 @@ export type ReadResult = {
   offers?: Offer[];
   warnings: string[];
   summary: { readBack: string[]; blocks: string[] };
+  /** The decision provider's suggestion per open question and offer id (#633). Absent from an older server; empty when the provider is off. */
+  suggestions?: Record<string, Suggestion>;
+  decisionProvider?: DecisionProviderInfo;
   /** The proof of a shaped screen (#623): its steps and the chain state (pending when it comes from a read). null for a plan with no shaped unit. Absent from an older server. */
   proof?: PlanProof | null;
 };

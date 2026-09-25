@@ -2,8 +2,9 @@
 // raises the offer and owns every rule; this only words it. Fixed tables, nothing decided by a model. The offer is a closed
 // question beside the plan, never an open question: an unanswered offer leaves the plan the plain scaffold and never
 // disables Approve.
-import type { OfferView } from '../types.ts';
+import type { OfferView, SuggestionView } from '../types.ts';
 import type { Decision, Offer, ReadResult } from './RequirementTypes.ts';
+import { suggestionView } from './Suggestion.ts';
 
 /** The button text and the one plain line of what each option gives, by option id. */
 const OPTION_WORDS: Record<string, { label: string; gives: string }> = {
@@ -17,24 +18,26 @@ export function deciderOf(decision: Decision | undefined): string | null {
   return decision.by === 'person' ? 'person' : `${decision.by}${decision.provider ? ` (${decision.provider})` : ''}`;
 }
 
-function status(o: Offer, suggested: string, decidedBy: string | null, label: (id: string) => string): string {
+function status(o: Offer, suggestion: SuggestionView | null, decidedBy: string | null, label: (id: string) => string): string {
   if (o.chosen) return `Chosen: ${label(o.chosen)}. Decided by: ${decidedBy ?? 'person'}.`;
-  return `Not chosen yet, so the plan below is the ${label('scaffold').toLowerCase()}. The rules suggest: ${label(suggested).toLowerCase()}.`;
+  const plain = `Not chosen yet, so the plan below is the ${label('scaffold').toLowerCase()}.`;
+  return suggestion ? `${plain} ${suggestion.label[0].toUpperCase()}${suggestion.label.slice(1)}: ${label(suggestion.option).toLowerCase()}.` : plain;
 }
 
 export function offerViews(result: ReadResult): OfferView[] {
   const decisions = result.placement?.decisions ?? [];
   return (result.offers ?? []).map((o) => {
     const words = (id: string) => OPTION_WORDS[id] ?? { label: o.options.find((x) => x.id === id)?.label ?? id, gives: o.options.find((x) => x.id === id)?.why ?? '' };
-    const suggested = o.suggestion?.option ?? o.default;
+    const suggestion = suggestionView(result, o.id, o.suggestion ?? { option: o.default, reason: '', provider: 'rules' });
     const decidedBy = o.chosen ? deciderOf(decisions.find((d) => d.question === o.id)) : null;
     return {
       id: o.id,
       source: 'placement' as const,
       question: o.question,
-      options: o.options.filter((x) => x.enabled).map((x) => ({ id: x.id, label: words(x.id).label, gives: words(x.id).gives, suggested: x.id === suggested, chosen: x.id === o.chosen })),
-      status: status(o, suggested, decidedBy, (id) => words(id).label),
+      options: o.options.filter((x) => x.enabled).map((x) => ({ id: x.id, label: words(x.id).label, gives: words(x.id).gives, suggested: x.id === suggestion?.option, chosen: x.id === o.chosen })),
+      status: status(o, suggestion, decidedBy, (id) => words(id).label),
       decidedBy,
+      suggestion,
     };
   });
 }

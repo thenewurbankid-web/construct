@@ -6,6 +6,7 @@ import { makeBrowseProject, openProject } from './support/browseProject.js';
 import { runAxe, isBlocking, format } from './support/axe.js';
 import { planToCommand } from '../../../packages/core/plan.mjs';
 import { openProcessStore } from '../../../packages/engine/processStore.mjs';
+import { readTraces } from '../../../packages/core/decision-trace-store.mjs';
 
 // #651 (part of #616) -- the Requirement screen shows the screen-shape offer (q-shape) and takes the answer, end to end in a
 // real browser against the real server and a real throwaway git project. Nothing is mocked: the offer, the plan and the files
@@ -14,6 +15,7 @@ import { openProcessStore } from '../../../packages/engine/processStore.mjs';
 const API = process.env.E2E_API_BASE || 'http://localhost:4000';
 const STATE_DIR = process.env.E2E_STATE_DIR;
 const PRODUCTS = 'A user wants to see a list of products';
+const FROB = 'A customer wants to frobnicate the invoice list.';
 const BILLING = 'A logged-in user needs to see their current subscription plan and be able to click a button to manage their billing details safely via Stripe.';
 const SCAFFOLD_FILES = ['features/products/components/Products.tsx', 'features/products/pages/ProductsPage.tsx'];
 const LIST_FILES = [
@@ -76,13 +78,15 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
     // Two options as buttons; "suggested" is on list only; one plain line says what each gives.
     await expect(card.getByRole('button')).toHaveText(['List screen, generated with typed code', 'Empty scaffold']);
     await expect(page.getByTestId('requirement-shape-option')).toHaveCount(2);
-    await expect(page.locator('[data-testid="requirement-shape-option"][data-option="list"]').getByTestId('requirement-shape-suggested')).toHaveText('suggested');
+    await expect(page.locator('[data-testid="requirement-shape-option"][data-option="list"]').getByTestId('requirement-shape-suggested')).toHaveText('suggested by rules');
+    await expect(page.getByTestId('requirement-shape-reason')).toContainText('is plural'); // #633: the provider's reason, next to the option
     await expect(page.locator('[data-testid="requirement-shape-option"][data-option="scaffold"]').getByTestId('requirement-shape-suggested')).toHaveCount(0);
     await expect(page.getByTestId('requirement-shape-suggested')).toHaveCount(1);
     await expect(page.locator('[data-testid="requirement-shape-option"][data-option="list"]')).toContainText('Creates 10 real files that validate');
     await expect(page.locator('[data-testid="requirement-shape-option"][data-option="scaffold"]')).toContainText('Creates empty stubs');
     await expect(card.getByRole('button', { pressed: true })).toHaveCount(0);
     await expect(page.getByTestId('requirement-shape-status')).toContainText('Not chosen yet, so the plan below is the empty scaffold');
+    await expect(page.getByTestId('requirement-shape-status')).toContainText('Suggested by rules: list screen');
     // An offer is not an open question: no open card, Approve is on, and the plan shown is the plain scaffold.
     await expect(page.getByTestId('requirement-open')).toHaveCount(0);
     await expect(page.getByTestId('requirement-approve-plan')).toBeEnabled();
@@ -176,6 +180,52 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
     await expect(page.getByTestId('requirement-shape').getByRole('button', { pressed: true })).toHaveCount(0);
   });
 
+  // #633: the decision provider's suggestion is one click to take and one click to change, and the answer is recorded with it.
+  const recorded = (chooser, chosen) => readTraces(project.repo, { stateDir: STATE_DIR }).decisions.filter((d) => d.chooser.id === chooser && d.chosen === chosen);
+
+  test('the shape suggestion is marked "suggested by rules" with its reason; choosing another is recorded as overriding, taking it as accepted', async ({ page }) => {
+    await gotoCockpit(page, '/requirement');
+    const read = page.waitForResponse(isRead);
+    await page.getByTestId('requirement-text').fill(PRODUCTS);
+    await page.getByTestId('requirement-read').click();
+    const body = await (await read).json();
+    expect(body.suggestions['q-shape']).toMatchObject({ option: 'list', provider: { name: 'rules', version: '1' } });
+    expect(body.decisionProvider).toMatchObject({ name: 'rules', requested: 'rules', fellBackFrom: null });
+    await expect(page.getByTestId('requirement-shape-suggested')).toHaveText('suggested by rules');
+    await expect(page.getByTestId('requirement-shape').getByRole('button', { pressed: true })).toHaveCount(0); // suggest-only: nothing is chosen for the person
+
+    await choose(page, 'scaffold'); // a person overriding the suggestion
+    const [overridden] = recorded('requirement.placement.shape', 'scaffold');
+    expect(overridden).toMatchObject({ by: 'person', suggestion: { option: 'list' }, provider: { name: 'rules', version: '1' }, outcome: { accepted: false } });
+    await choose(page, 'list'); // a person taking it
+    const [accepted] = recorded('requirement.placement.shape', 'list');
+    expect(accepted).toMatchObject({ by: 'person', suggestion: { option: 'list' }, provider: { name: 'rules', version: '1' }, outcome: { accepted: true } });
+  });
+
+  test('an open question marks the suggested option "suggested by rules" with its reason; every option stays one click, and the answer is recorded with accepted false when another is chosen', async ({ page }) => {
+    await gotoCockpit(page, '/requirement');
+    await readSentence(page, FROB);
+    const question = page.getByTestId('requirement-question');
+    await expect(question.getByRole('button')).toHaveCount(5);
+    await expect(page.getByTestId('requirement-suggested')).toHaveCount(1);
+    await expect(page.locator('[data-testid="requirement-question"] [data-option="read"]').getByTestId('requirement-suggested')).toHaveText('suggested by rules');
+    await expect(page.getByTestId('requirement-suggestion-reason')).toHaveText('Why: first available step');
+    await expect(question.getByRole('button', { pressed: true })).toHaveCount(0);
+    const done = page.waitForResponse(isRead);
+    await page.getByTestId('requirement-answer-interact').click();
+    expect((await done).status()).toBe(200);
+    const [d] = recorded('requirement.card.verb', 'interact');
+    expect(d).toMatchObject({ by: 'person', suggestion: { option: 'read', reason: 'first available step' }, outcome: { accepted: false } });
+    // Taking the suggestion: a fresh page and a fresh read of the same words, answered with the suggested option.
+    await gotoCockpit(page, '/requirement');
+    await readSentence(page, FROB);
+    const again = page.waitForResponse(isRead);
+    await page.getByTestId('requirement-answer-read').click();
+    await again;
+    const [taken] = recorded('requirement.card.verb', 'read');
+    expect(taken).toMatchObject({ by: 'person', suggestion: { option: 'read' }, outcome: { accepted: true } });
+  });
+
   for (const theme of ['dark', 'light']) {
     test(`accessibility and layout at 390 px: ${theme}, the offer unanswered, then list chosen`, async ({ page }) => {
       await page.addInitScript((t) => localStorage.setItem('construct.theme', t), theme);
@@ -197,4 +247,25 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
       }
     });
   }
+
+  test('a plugin named in architecture.yml is "suggested by jev": its own reason, still one click to take or change, recorded with its name and version', async ({ page }) => {
+    // Last in the file: this changes the project's architecture.yml (the decision block) and adds a plugin file to it.
+    fs.writeFileSync(path.join(project.repo, 'decision-jev.mjs'), "export default { name: 'jev', version: '0.1', suggest(summary) { const o = summary.options.find((x) => x.id === 'write') ?? summary.options[1]; return { option: o.id, reason: 'Changing data is the usual meaning.' }; } };\n");
+    fs.appendFileSync(path.join(project.repo, 'architecture.yml'), '\ndecision:\n  provider: jev\n  plugin: decision-jev.mjs\n');
+    await gotoCockpit(page, '/requirement');
+    const read = page.waitForResponse(isRead);
+    await page.getByTestId('requirement-text').fill(FROB);
+    await page.getByTestId('requirement-read').click();
+    const body = await (await read).json();
+    expect(body.decisionProvider).toMatchObject({ name: 'jev', version: '0.1', fellBackFrom: null });
+    await expect(page.locator('[data-testid="requirement-question"] [data-option="write"]').getByTestId('requirement-suggested')).toHaveText('suggested by jev');
+    await expect(page.getByTestId('requirement-suggestion-reason')).toHaveText('Why: Changing data is the usual meaning.');
+    await expect(page.getByTestId('requirement-question').getByRole('button')).toHaveCount(5);
+    await expect(page.getByTestId('requirement-answer-navigate')).toBeEnabled(); // any other option is one click
+    const done = page.waitForResponse(isRead);
+    await page.getByTestId('requirement-answer-navigate').click();
+    await done;
+    const [d] = recorded('requirement.card.verb', 'navigate');
+    expect(d).toMatchObject({ by: 'person', provider: { name: 'jev', version: '0.1' }, suggestion: { option: 'write', reason: 'Changing data is the usual meaning.' }, outcome: { accepted: false } });
+  });
 });

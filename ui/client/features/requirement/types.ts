@@ -9,8 +9,11 @@ export type CardVerbView = { id: string; text: string; kind: string; kindLabel: 
 export type CardCheckView = { id: string; name: string; from: string; why: string };
 export type CardView = { counts: string; nouns: CardNounView[]; verbs: CardVerbView[]; checks: CardCheckView[] };
 
-export type OpenOptionView = { id: string; label: string; why: string };
-export type OpenView = { id: string; question: string; source: 'card' | 'placement'; options: OpenOptionView[] };
+/** The decision provider's suggestion for one question (#633): the option, "suggested by rules" and its reason. Suggest-only. */
+export type SuggestionView = { option: string; label: string; reason: string };
+
+export type OpenOptionView = { id: string; label: string; why: string; suggested: boolean };
+export type OpenView = { id: string; question: string; source: 'card' | 'placement'; options: OpenOptionView[]; suggestion: SuggestionView | null };
 
 /** What a question needs to be answered: its id, and whether it is a word of the card or a placement (which replaces an earlier answer). */
 export type AnswerTarget = Pick<OpenView, 'id' | 'source'>;
@@ -26,6 +29,7 @@ export type OfferView = {
   status: string;
   /** "person" once someone chose, else null. */
   decidedBy: string | null;
+  suggestion: SuggestionView | null;
 };
 
 export type AnswerView = { question: string; answer: string; yes: boolean };
@@ -104,6 +108,8 @@ export type RequirementView = { text: string; busy: boolean; canRead: boolean; e
 export type SentenceFormProps = { view: RequirementView; onText: (text: string) => void; onExample: (text: string) => void; onRead: () => void };
 export type CardPanelProps = { card: CardView };
 export type OpenQuestionsProps = { open: OpenView[]; busy: boolean; onAnswer: (question: AnswerTarget, option: string) => void };
+export type OpenQuestionProps = { q: OpenView; busy: boolean; onAnswer: (question: AnswerTarget, option: string) => void };
+export type ShapeOptionProps = { offer: OfferView; option: OfferOptionView; busy: boolean; onAnswer: (question: AnswerTarget, option: string) => void };
 export type ShapeOfferProps = { offers: OfferView[]; busy: boolean; onAnswer: (question: AnswerTarget, option: string) => void };
 export type PlacementPanelProps = { blocks: BlockView[]; notes: string[]; errors: string[] };
 export type TimelinePanelProps = { steps: TimelineStep[] };

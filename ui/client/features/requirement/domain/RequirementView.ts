@@ -7,6 +7,7 @@ import { buildProofView } from './ProofCard.ts';
 import { QUESTIONS } from './PlacementQuestions.ts';
 import type { CardNoun, ReadResult, ScreenState } from './RequirementTypes.ts';
 import { offerViews } from './ShapeOffer.ts';
+import { suggestionView } from './Suggestion.ts';
 import { toTimeline } from './Timeline.ts';
 
 const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -23,7 +24,10 @@ function cardView(result: ReadResult): CardView {
 }
 
 function openViews(result: ReadResult): OpenView[] {
-  return result.open.map((q) => ({ id: q.id, question: q.question, source: q.source, options: q.options.filter((o) => o.enabled).map((o) => ({ id: o.id, label: o.label, why: o.why })) }));
+  return result.open.map((q) => {
+    const suggestion = suggestionView(result, q.id);
+    return { id: q.id, question: q.question, source: q.source, suggestion, options: q.options.filter((o) => o.enabled).map((o) => ({ id: o.id, label: o.label, why: o.why, suggested: o.id === suggestion?.option })) };
+  });
 }
 
 function blockViews(result: ReadResult): BlockView[] | null {

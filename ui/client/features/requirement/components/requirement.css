@@ -17,6 +17,8 @@
 .rq-chip { appearance: none; min-height: 28px; padding: 0 var(--sp-3); color: var(--text); background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: 999px; font: inherit; cursor: pointer; }
 .rq-chip:hover:not(:disabled) { background: var(--surface-3); }
 .rq-chip:focus-visible, .rq-link:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.rq-opt { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1); max-width: 100%; }
+.rq-chip--suggested { border-color: var(--accent); border-style: dashed; }
 .rq-chip--on { background: var(--accent-soft); border-color: var(--accent); font-weight: 600; }
 .rq-shape-options { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
 .rq-shape-option { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
