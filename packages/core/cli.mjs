@@ -217,18 +217,19 @@ function generateTests(args) {
 }
 
 /**
- * The `--shape <name> [--entity <Entity>] [--fields a:string,b:number]` request of a create/generate command (#619), or `null` when
- * no shape was asked for. `--entity` and `--fields` mean nothing without `--shape`, and a shape is deterministic, so `--llm` is refused.
+ * The `--shape <name> [--entity <Entity>] [--fields a:string,b:number] [--source local|endpoint|openapi]` request of a create/generate command
+ * (#619, #621), or `null` when no shape was asked for. `--entity`, `--fields` and `--source` mean nothing without `--shape`, and a shape
+ * is deterministic, so `--llm` is refused. No `--source` is `endpoint`, what a shaped unit has always been.
  */
 function shapeRequestOf(args, name, feature) {
   const shape = flagValue(args, '--shape');
   if (shape === undefined) {
-    const stray = ['--entity', '--fields'].find((f) => args.includes(f));
+    const stray = ['--entity', '--fields', '--source'].find((f) => args.includes(f));
     if (stray) throw new ConstructError(`${stray} only applies with --shape, for example --shape list (or detail, form).`, { exitCode: EXIT_CODES.USAGE_ERROR });
     return null;
   }
   if (args.includes('--llm')) throw new ConstructError('--shape writes real code from typed templates with no model, so it cannot be combined with --llm. Run it without --llm.', { exitCode: EXIT_CODES.USAGE_ERROR });
-  return { shape, name, feature, entity: flagValue(args, '--entity'), fields: flagValue(args, '--fields') };
+  return { shape, name, feature, entity: flagValue(args, '--entity'), fields: flagValue(args, '--fields'), source: flagValue(args, '--source') };
 }
 
 /** One output line per file a shape wrote: `types.ts` is appended to (`Updated`), every other file is new (`Created`). */
@@ -246,9 +247,9 @@ function printTypedContractsNote(root) {
 function proofRequestOf(args) {
   const name = args[1];
   const feature = flagValue(args, '--feature');
-  if (!name || name.startsWith('--') || !feature) throw new ConstructError('Usage: construct create proof <Name> --feature <feature> [--shape list|detail|form] [--entity <Entity>] [--fields id:string,...] [--kind render|playwright] [--route </path>] [--dir <path>]', { exitCode: EXIT_CODES.USAGE_ERROR });
+  if (!name || name.startsWith('--') || !feature) throw new ConstructError('Usage: construct create proof <Name> --feature <feature> [--shape list|detail|form] [--entity <Entity>] [--fields id:string,...] [--source local|endpoint|openapi] [--kind render|playwright] [--route </path>] [--dir <path>]', { exitCode: EXIT_CODES.USAGE_ERROR });
   if (args.includes('--llm')) throw new ConstructError('A proof is written from typed templates with no model, so it cannot be combined with --llm. Run it without --llm.', { exitCode: EXIT_CODES.USAGE_ERROR });
-  return { name, feature, shape: flagValue(args, '--shape'), entity: flagValue(args, '--entity'), fields: flagValue(args, '--fields'), kind: flagValue(args, '--kind'), route: flagValue(args, '--route') };
+  return { name, feature, shape: flagValue(args, '--shape'), entity: flagValue(args, '--entity'), fields: flagValue(args, '--fields'), source: flagValue(args, '--source'), kind: flagValue(args, '--kind'), route: flagValue(args, '--route') };
 }
 
 /** `construct create proof <Name> --feature <f> ...` (#623): write the locked proof of a shaped screen, or say why nothing was written. */

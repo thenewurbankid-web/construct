@@ -445,6 +445,16 @@
                     "minLength": 1,
                     "description": "The entity fields for a shape as name:type pairs, comma separated (id:string,name:string,price:number). Types: string, number, boolean; an id field is required (a form has no input for it: the server assigns it)."
                   },
+                  "source": {
+                    "type": "string",
+                    "minLength": 1,
+                    "enum": [
+                      "local",
+                      "endpoint",
+                      "openapi"
+                    ],
+                    "description": "Where a shaped screen reads its data from (#621): local (a typed in-memory store with seed rows: the screen works with no backend), endpoint (fetch /api/<plural>, which must exist; what a step without a source does) or openapi (the path of the matching operation in the project's OpenAPI file, refused when there is none)."
+                  },
                   "llm": {
                     "type": "string",
                     "minLength": 1,
@@ -527,6 +537,16 @@
                     "minLength": 1,
                     "description": "The entity fields for a shape as name:type pairs, comma separated (id:string,name:string,price:number). Types: string, number, boolean; an id field is required (a form has no input for it: the server assigns it)."
                   },
+                  "source": {
+                    "type": "string",
+                    "minLength": 1,
+                    "enum": [
+                      "local",
+                      "endpoint",
+                      "openapi"
+                    ],
+                    "description": "Where a shaped screen reads its data from (#621): local (a typed in-memory store with seed rows: the screen works with no backend), endpoint (fetch /api/<plural>, which must exist; what a step without a source does) or openapi (the path of the matching operation in the project's OpenAPI file, refused when there is none)."
+                  },
                   "llm": {
                     "type": "string",
                     "minLength": 1,
@@ -605,6 +625,16 @@
                     "type": "string",
                     "minLength": 1,
                     "description": "The entity fields for a shape as name:type pairs, comma separated (id:string,name:string,price:number). Types: string, number, boolean; an id field is required (a form has no input for it: the server assigns it)."
+                  },
+                  "source": {
+                    "type": "string",
+                    "minLength": 1,
+                    "enum": [
+                      "local",
+                      "endpoint",
+                      "openapi"
+                    ],
+                    "description": "Where a shaped screen reads its data from (#621): local (a typed in-memory store with seed rows: the screen works with no backend), endpoint (fetch /api/<plural>, which must exist; what a step without a source does) or openapi (the path of the matching operation in the project's OpenAPI file, refused when there is none)."
                   },
                   "kind": {
                     "type": "string",

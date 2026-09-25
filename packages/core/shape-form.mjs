@@ -8,7 +8,7 @@
 // The form has an input for every field except `id` (the server assigns it). A string field is required; a number field is required and
 // must be a number; a boolean field is a checkbox. The typed values are POSTed as JSON to `/api/<entities>` and the answer is a typed
 // result. States: editing (with per-field messages after a failed check), submitting, submitted, error.
-import { cap, importLine, kebab, labelOf, lines, lowerFirst, ts } from './shape-kit.mjs';
+import { cap, importLine, kebab, labelOf, lines, lowerFirst, operationComment, rowText, sampleRows, ts } from './shape-kit.mjs';
 
 /**
  * The identifiers of a form shape, from its unit name and its entity: `AddProduct` and `Product` give `useAddProduct`, `validateAddProduct`,
@@ -63,6 +63,7 @@ export function formTypes(ctx) {
   const { names, singular } = ctx;
   const inputs = inputFieldsOf(ctx.fields);
   return [
+    ...(ctx.source === 'local' ? [{ declares: names.Entity, text: lines(`/** One ${singular}, as the local store holds it: the form's typed values and the id the store gives it. */`, `export interface ${names.Entity} {`, ctx.fields.map((f) => `  ${f.name}: ${ts(f)};`), '}') }] : []),
     { declares: names.input, text: lines(`/** The values of a ${singular} as the form submits them, typed. */`, `export interface ${names.input} {`, inputs.map((f) => `  ${f.name}: ${ts(f)};`), '}') },
     { declares: names.values, text: lines(`/** What a person has typed in the ${singular} form: text for a string or a number field, a tick for a yes or no field. */`, `export interface ${names.values} {`, inputs.map((f) => `  ${f.name}: ${valueType(f)};`), '}') },
     { declares: names.errors, text: lines(`/** The message for each field of the ${singular} form that failed its check. */`, `export interface ${names.errors} {`, inputs.map((f) => `  ${f.name}?: string;`), '}') },
@@ -100,7 +101,7 @@ function domainFile(ctx) {
 function serviceFile(ctx) {
   const { names, endpoint, singular } = ctx;
   return lines(
-    importLine('defineService'), `import type { ${names.input}, ${names.result} } from '../types';`, '',
+    importLine('defineService'), `import type { ${names.input}, ${names.result} } from '../types';`, operationComment(ctx.operation), '',
     `/** Submits a ${singular}: POSTs the typed values as JSON to ${endpoint}. Forwards the caller's AbortSignal and answers with a typed result: a bad status or a failed request is an error result, never a throw. */`,
     `export const ${names.submit} = defineService('${names.submit}', async ({ input, signal }: { input: ${names.input}; signal: AbortSignal }): Promise<${names.result}> => {`,
     '  try {',
@@ -110,6 +111,36 @@ function serviceFile(ctx) {
     '  } catch (error) {',
     `    return { status: 'error', message: error instanceof Error ? error.message : 'The request failed.' };`,
     '  }', '});',
+  );
+}
+
+/** @returns {string} `domain/<Name>Store.domain.ts` (the `local` source): the seed rows and the pure save of one more row, whose id is the next one. */
+function storeFile(ctx) {
+  const { names, store, singular } = ctx;
+  const idField = ctx.fields.find((f) => f.name === 'id');
+  const nextId = idField.type === 'number' ? 'rows.length + 1' : `\`${kebab(names.Entity)}-\${rows.length + 1}\``;
+  return lines(
+    importLine('defineDomain'), `import type { ${names.Entity}, ${names.input} } from '../types';`, '',
+    `/** The seed rows of the local ${singular} store: what it holds before anything is submitted. Pure. */`,
+    `export const ${store.seed} = defineDomain<Record<string, never>, ${names.Entity}[]>('${store.seed}', () => [`,
+    sampleRows(names.Entity, ctx.fields).map((row) => `  ${rowText(row)},`), ']);', '',
+    `/** Saves a ${singular}: the rows plus one more, given the next id (the server's job once there is one). Does not change the rows it is given. Pure. */`,
+    `export const ${store.op} = defineDomain<{ rows: readonly ${names.Entity}[]; input: ${names.input} }, ${names.Entity}[]>('${store.op}', ({ rows, input }) => [`,
+    `  ...rows,`, `  { id: ${nextId}, ...input },`, ']);',
+  );
+}
+
+/** @returns {string} `services/<Name>.service.ts` (the `local` source): the same typed result as the network service, saving into the store in memory. */
+function localServiceFile(ctx) {
+  const { names, store, singular } = ctx;
+  return lines(
+    importLine('defineService'), `import { ${store.op}, ${store.seed} } from '../domain/${store.file}.domain';`, `import type { ${names.Entity}, ${names.input}, ${names.result} } from '../types';`, '',
+    `/** The ${singular} rows of the local store: the seed rows, then whatever was submitted, held in memory. It is this screen's whole backend until a real source replaces it. */`,
+    `let rows: ${names.Entity}[] = ${store.seed}({});`, '',
+    `/** Submits a ${singular} to the local store and answers with the same typed result as a network source. Takes the caller's AbortSignal like one: a cancelled request is an error result, never a throw. */`,
+    `export const ${names.submit} = defineService('${names.submit}', async ({ input, signal }: { input: ${names.input}; signal: AbortSignal }): Promise<${names.result}> => {`,
+    `  if (signal.aborted) return { status: 'error', message: 'The request was cancelled.' };`,
+    `  rows = ${store.op}({ rows, input });`, `  return { status: 'submitted' };`, '});',
   );
 }
 
@@ -272,8 +303,8 @@ export const FORM_SHAPE = Object.freeze({
   names: formNames,
   types: formTypes,
   files: (ctx) => ({
-    domain: [{ folder: 'domain', base: `${ctx.names.Name}.domain.ts`, content: domainFile(ctx) }],
-    service: [{ folder: 'services', base: `${ctx.names.Name}.service.ts`, content: serviceFile(ctx) }],
+    domain: [{ folder: 'domain', base: `${ctx.names.Name}.domain.ts`, content: domainFile(ctx) }, ...(ctx.source === 'local' ? [{ folder: 'domain', base: `${ctx.store.file}.domain.ts`, content: storeFile(ctx) }] : [])],
+    service: [{ folder: 'services', base: `${ctx.names.Name}.service.ts`, content: ctx.source === 'local' ? localServiceFile(ctx) : serviceFile(ctx) }],
     hook: [{ folder: 'hooks', base: `${ctx.names.hook}.state.ts`, content: hookFile(ctx) }],
     component: [
       { folder: 'components', base: `${ctx.names.field}.component.tsx`, content: fieldFile(ctx) },

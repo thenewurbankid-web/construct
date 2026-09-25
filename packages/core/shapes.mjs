@@ -24,7 +24,9 @@ import { loadConfig } from './config.mjs';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { LAYER_ORDER, pascalCase, selfCheck } from './generators.mjs';
 import { PLAN_SHAPES } from './plan.mjs';
-import { FIELD_TYPES, TYPED_CONTRACTS_SPECIFIER, cap, importLine, lines, lowerFirst, show, ts, words } from './shape-kit.mjs';
+import { FIELD_TYPES, TYPED_CONTRACTS_SPECIFIER, cap, importLine, lines, lowerFirst, operationComment, rowText, sampleRows, show, ts, words } from './shape-kit.mjs';
+import { readSource, storeNames } from './shape-source.mjs';
+import { findEntityOperation } from './openapi-spec.mjs';
 import { DETAIL_SHAPE } from './shape-detail.mjs';
 import { FORM_SHAPE } from './shape-form.mjs';
 
@@ -146,8 +148,8 @@ export function fieldsFromProperties(properties = []) {
  * and which of them is the title of a row. Throws a usage error for a bad name, entity or field list, before anything is written.
  *
  * @param {string} root Project root (its architecture.yml decides the framework).
- * @param {{ shape: string, name: string, feature: string, entity?: string, fields?: string }} request The shape, the unit name (`Products`), the feature and the optional entity and fields.
- * @returns {object} The resolved context (`names`, `fields`, `title`, `endpoint`, `useClient`).
+ * @param {{ shape: string, name: string, feature: string, entity?: string, fields?: string, source?: string }} request The shape, the unit name (`Products`), the feature and the optional entity, fields and data source (`local`, `endpoint` (what none means) or `openapi`, #621).
+ * @returns {object} The resolved context (`names`, `fields`, `title`, `endpoint`, `useClient`, `source`, `operation` (the OpenAPI operation of the `openapi` source, else `null`) and `store` (the identifiers of the local store)).
  * @throws {Error} A usage error naming the problem.
  *
  * @example
@@ -161,8 +163,15 @@ export function shapeContext(root, request) {
   if (Entity !== String(request.entity ?? Entity)) throw usage(`Entity "${request.entity}" must be PascalCase, for example ${Entity}.`);
   const fields = parseFields(request.fields);
   if (shape.inputFieldsOnly && !fields.some((f) => f.name !== 'id')) throw usage(`The ${request.shape} shape needs at least one field besides "id" (the server assigns it), for example id:string,name:string.`);
+  const dataSource = readSource(request.source);
+  const operation = dataSource === 'openapi' ? findEntityOperation(root, { kind: request.shape, plural: pluralOf(Entity) }) : null;
+  if (dataSource === 'openapi' && !operation) {
+    const path = `/${pluralOf(Entity).toLowerCase()}${request.shape === 'detail' ? '/{id}' : ''}`;
+    throw usage(`The openapi source needs an OpenAPI file (openapi.yaml, openapi.yml or openapi.json, at the project root or in api/) with the operation ${request.shape === 'form' ? 'POST' : 'GET'} on a path ending in ${path}. Nothing was written; choose the local or endpoint source, or add the operation to the spec.`);
+  }
+  const store = storeNames(request.shape, Name);
   const names = shape.names(Name, Entity);
-  const generated = Object.entries(names).filter(([role]) => role !== 'Name' && role !== 'Entity').map(([, identifier]) => identifier);
+  const generated = [...Object.entries(names).filter(([role]) => role !== 'Name' && role !== 'Entity').map(([, identifier]) => identifier), ...(dataSource === 'local' ? [store.seed, store.op] : [])];
   const pool = [...generated, Entity, ...(shape.nameMayEqualEntity ? [] : [Name])];
   const clashes = pool.filter((n, i, all) => all.indexOf(n) !== i);
   if (clashes.length) throw usage(`The unit name "${Name}" and the entity "${Entity}" produce clashing names (${[...new Set(clashes)].join(', ')}); give the entity a different name with --entity.`);
@@ -171,10 +180,10 @@ export function shapeContext(root, request) {
   const config = loadConfig(root);
   const framework = config.project?.framework ?? 'nextjs';
   return {
-    request: { shape: request.shape, name: Name, feature: request.feature, entity: Entity, fields: fields.map((f) => `${f.name}:${f.type}`).join(',') },
-    names, fields, title,
+    request: { shape: request.shape, name: Name, feature: request.feature, entity: Entity, fields: fields.map((f) => `${f.name}:${f.type}`).join(','), source: dataSource },
+    names, fields, title, source: dataSource, operation, store,
     plural: words(Name).join(' ').toLowerCase(), singular: words(Entity).join(' ').toLowerCase(), heading: words(Name).map(cap).join(' '),
-    endpoint: shape.endpoint(Name, Entity),
+    endpoint: operation ? operation.url : shape.endpoint(Name, Entity),
     useClient: framework !== 'react-spa',
   };
 }
@@ -206,7 +215,7 @@ function serviceFile(ctx) {
   const { names, fields, endpoint, plural } = ctx;
   const checks = fields.map((f) => `typeof row.${f.name} === '${f.type}'`).join(' && ');
   return lines(
-    importLine('defineService'), `import type { ${names.Entity}, ${names.result} } from '../types';`, '',
+    importLine('defineService'), `import type { ${names.Entity}, ${names.result} } from '../types';`, operationComment(ctx.operation), '',
     `function is${names.Entity}(value: unknown): value is ${names.Entity} {`,
     `  if (typeof value !== 'object' || value === null) return false;`,
     `  const row = value as Record<string, unknown>;`,
@@ -222,6 +231,33 @@ function serviceFile(ctx) {
     '  } catch (error) {',
     `    return { status: 'error', message: error instanceof Error ? error.message : 'The request failed.' };`,
     '  }', '});',
+  );
+}
+
+/** @returns {string} `domain/<Name>Store.domain.ts` (the `local` source): the seed rows and the pure read of a set of rows, as the result the service answers. */
+function storeFile(ctx) {
+  const { names, store, plural } = ctx;
+  return lines(
+    importLine('defineDomain'), `import type { ${names.Entity}, ${names.result} } from '../types';`, '',
+    `/** The seed rows of the local ${plural} store: what the screen shows until it reads from a real source. Pure. */`,
+    `export const ${store.seed} = defineDomain<Record<string, never>, ${names.Entity}[]>('${store.seed}', () => [`,
+    sampleRows(names.Entity, ctx.fields).map((row) => `  ${rowText(row)},`), ']);', '',
+    `/** Reads a set of ${plural} rows as the result the ${plural} service answers: every row, ready. Pure. */`,
+    `export const ${store.op} = defineDomain<{ rows: readonly ${names.Entity}[] }, ${names.result}>('${store.op}', ({ rows }) => ({ status: 'ready', items: [...rows] }));`,
+  );
+}
+
+/** @returns {string} `services/<Name>.service.ts` (the `local` source): the same typed result as the network service, read from the store in memory. */
+function localServiceFile(ctx) {
+  const { names, store, plural } = ctx;
+  return lines(
+    importLine('defineService'), `import { ${store.op}, ${store.seed} } from '../domain/${store.file}.domain';`, `import type { ${names.Entity}, ${names.result} } from '../types';`, '',
+    `/** The ${plural} of the local store: the seed rows, held in memory. It is this screen's whole backend until a real source replaces it. */`,
+    `const rows: ${names.Entity}[] = ${store.seed}({});`, '',
+    `/** Reads the ${plural} from the local store and answers with the same typed result as a network source. Takes the caller's AbortSignal like one: a cancelled request is an error result, never a throw. */`,
+    `export const ${names.fetch} = defineService('${names.fetch}', async ({ signal }: { signal: AbortSignal }): Promise<${names.result}> => {`,
+    `  if (signal.aborted) return { status: 'error', message: 'The request was cancelled.' };`,
+    `  return ${store.op}({ rows });`, '});',
   );
 }
 
@@ -342,8 +378,8 @@ export const SHAPES = Object.freeze({
     layers: Object.freeze(['domain', 'service', 'hook', 'component', 'page', 'controller']),
     requires: Object.freeze({ service: ['domain'], hook: ['service', 'domain'], component: ['domain'], page: ['component', 'domain'], controller: ['hook', 'page'] }),
     files: (ctx) => ({
-      domain: [{ folder: 'domain', base: `${ctx.names.Name}.domain.ts`, content: domainFile(ctx) }],
-      service: [{ folder: 'services', base: `${ctx.names.Name}.service.ts`, content: serviceFile(ctx) }],
+      domain: [{ folder: 'domain', base: `${ctx.names.Name}.domain.ts`, content: domainFile(ctx) }, ...(ctx.source === 'local' ? [{ folder: 'domain', base: `${ctx.store.file}.domain.ts`, content: storeFile(ctx) }] : [])],
+      service: [{ folder: 'services', base: `${ctx.names.Name}.service.ts`, content: ctx.source === 'local' ? localServiceFile(ctx) : serviceFile(ctx) }],
       hook: [{ folder: 'hooks', base: `${ctx.names.hook}.state.ts`, content: hookFile(ctx) }],
       component: [
         { folder: 'components', base: `${ctx.names.row}.component.tsx`, content: rowFile(ctx) },
@@ -420,10 +456,11 @@ export function shapeTouches(root, request) {
   }
 }
 
-/** The main file of a shape layer (the first it lists), used to tell whether a required layer already exists on disk. */
+/** The main file of a shape layer (the first it lists; every file of the domain layer, whose second file is the `local` store the service imports), used to tell whether a required layer already exists on disk. */
 function layerExists(root, request, layer) {
-  const [first] = SHAPES[request.shape].files(shapeContext(root, request))[layer] ?? [];
-  return !!first && fs.existsSync(path.join(featureDir(root, request.feature), first.folder, first.base));
+  const listed = SHAPES[request.shape].files(shapeContext(root, request))[layer] ?? [];
+  const needed = layer === 'domain' ? listed : listed.slice(0, 1);
+  return needed.length > 0 && needed.every((f) => fs.existsSync(path.join(featureDir(root, request.feature), f.folder, f.base)));
 }
 
 /**

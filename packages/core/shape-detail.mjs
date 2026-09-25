@@ -7,7 +7,7 @@
 //
 // The item is fetched by id (`GET /api/products/<id>`); the id comes from the controller's `id` prop, else from `?id=` in the address,
 // so the route entry (which renders the controller and nothing else) needs no route parameter. States: loading, not-found, ready, error.
-import { cap, importLine, labelOf, lines, lowerFirst, ts } from './shape-kit.mjs';
+import { cap, importLine, labelOf, lines, lowerFirst, operationComment, rowText, sampleRows, ts } from './shape-kit.mjs';
 
 /**
  * The identifiers of a detail shape, from its unit name and its entity: `Product` and `Product` give `useProduct`, `fetchProduct`,
@@ -70,7 +70,7 @@ function serviceFile(ctx) {
   const { names, fields, endpoint, singular } = ctx;
   const checks = fields.map((f) => `typeof row.${f.name} === '${f.type}'`).join(' && ');
   return lines(
-    importLine('defineService'), `import type { ${names.Entity}, ${names.result} } from '../types';`, '',
+    importLine('defineService'), `import type { ${names.Entity}, ${names.result} } from '../types';`, operationComment(ctx.operation), '',
     `function is${names.Entity}(value: unknown): value is ${names.Entity} {`,
     `  if (typeof value !== 'object' || value === null) return false;`,
     `  const row = value as Record<string, unknown>;`,
@@ -87,6 +87,35 @@ function serviceFile(ctx) {
     '  } catch (error) {',
     `    return { status: 'error', message: error instanceof Error ? error.message : 'The request failed.' };`,
     '  }', '});',
+  );
+}
+
+/** @returns {string} `domain/<Name>Store.domain.ts` (the `local` source): the seed rows and the pure find of one row by id, as the result the service answers. */
+function storeFile(ctx) {
+  const { names, store, singular } = ctx;
+  return lines(
+    importLine('defineDomain'), `import type { ${names.Entity}, ${names.result} } from '../types';`, '',
+    `/** The seed rows of the local ${singular} store: the ${singular} ids the screen can open until it reads from a real source. Pure. */`,
+    `export const ${store.seed} = defineDomain<Record<string, never>, ${names.Entity}[]>('${store.seed}', () => [`,
+    sampleRows(names.Entity, ctx.fields).map((row) => `  ${rowText(row)},`), ']);', '',
+    `/** Finds one ${singular} by id among a set of rows, as the result the ${singular} service answers: the ${singular}, or not found. Pure. */`,
+    `export const ${store.op} = defineDomain<{ rows: readonly ${names.Entity}[]; id: string }, ${names.result}>('${store.op}', ({ rows, id }) => {`,
+    '  const item = rows.find((row) => String(row.id) === id);',
+    `  return item ? { status: 'ready', item } : { status: 'not-found' };`, '});',
+  );
+}
+
+/** @returns {string} `services/<Name>.service.ts` (the `local` source): the same typed result as the network service, found in the store in memory. */
+function localServiceFile(ctx) {
+  const { names, store, singular } = ctx;
+  return lines(
+    importLine('defineService'), `import { ${store.op}, ${store.seed} } from '../domain/${store.file}.domain';`, `import type { ${names.Entity}, ${names.result} } from '../types';`, '',
+    `/** The ${singular} rows of the local store: the seed rows, held in memory. It is this screen's whole backend until a real source replaces it. */`,
+    `const rows: ${names.Entity}[] = ${store.seed}({});`, '',
+    `/** Finds one ${singular} by id in the local store and answers with the same typed result as a network source: an id it does not hold is not-found. Takes the caller's AbortSignal like one: a cancelled request is an error result, never a throw. */`,
+    `export const ${names.fetch} = defineService('${names.fetch}', async ({ id, signal }: { id: string; signal: AbortSignal }): Promise<${names.result}> => {`,
+    `  if (signal.aborted) return { status: 'error', message: 'The request was cancelled.' };`,
+    `  return ${store.op}({ rows, id });`, '});',
   );
 }
 
@@ -201,8 +230,8 @@ export const DETAIL_SHAPE = Object.freeze({
   names: detailNames,
   types: detailTypes,
   files: (ctx) => ({
-    domain: [{ folder: 'domain', base: `${ctx.names.Name}.domain.ts`, content: domainFile(ctx) }],
-    service: [{ folder: 'services', base: `${ctx.names.Name}.service.ts`, content: serviceFile(ctx) }],
+    domain: [{ folder: 'domain', base: `${ctx.names.Name}.domain.ts`, content: domainFile(ctx) }, ...(ctx.source === 'local' ? [{ folder: 'domain', base: `${ctx.store.file}.domain.ts`, content: storeFile(ctx) }] : [])],
+    service: [{ folder: 'services', base: `${ctx.names.Name}.service.ts`, content: ctx.source === 'local' ? localServiceFile(ctx) : serviceFile(ctx) }],
     hook: [{ folder: 'hooks', base: `${ctx.names.hook}.state.ts`, content: hookFile(ctx) }],
     component: [
       { folder: 'components', base: `${ctx.names.row}.component.tsx`, content: rowFile(ctx) },

@@ -106,3 +106,57 @@ export const ts = (f) => FIELD_TYPES[f.type];
  * show({ name: 'price', type: 'number' }); // => 'String(item.price)'
  */
 export const show = (f, item = 'item') => (f.type === 'string' ? `${item}.${f.name}` : `String(${item}.${f.name})`);
+
+/**
+ * A value as TypeScript source: a string in single quotes (a backslash or a quote escaped), a number or a boolean as it is.
+ *
+ * @param {string|number|boolean} value A sample value.
+ * @returns {string} The literal.
+ *
+ * @example
+ * tsLiteral('product-1'); // => "'product-1'"
+ */
+export const tsLiteral = (value) => (typeof value === 'string' ? `'${value.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'` : String(value));
+
+/**
+ * Two sample rows of an entity, from its fields, by fixed rules: readable text for a string (`Product name 1`), an id of `product-1` (a
+ * number id is 1 and 2), 12.5 and 7 for numbers, true and false for booleans. The render proof shows them and the `local` data source
+ * seeds its store with them, so what the proof shows is what the screen holds.
+ *
+ * @param {string} entity The PascalCase entity name (`Product`).
+ * @param {{ name: string, type: 'string'|'number'|'boolean' }[]} fields The parsed `--fields`.
+ * @returns {Record<string, string|number|boolean>[]} Two rows, in field order.
+ *
+ * @example
+ * sampleRows('Product', [{ name: 'id', type: 'string' }, { name: 'price', type: 'number' }])[0]; // => { id: 'product-1', price: 12.5 }
+ */
+export function sampleRows(entity, fields) {
+  const spaced = words(entity).join(' ').toLowerCase();
+  return [1, 2].map((n) => Object.fromEntries(fields.map((f) => {
+    if (f.type === 'number') return [f.name, f.name === 'id' ? n : n === 1 ? 12.5 : 7];
+    if (f.type === 'boolean') return [f.name, n === 1];
+    return [f.name, f.name === 'id' ? `${spaced.replace(/ /g, '-')}-${n}` : `${entity} ${words(f.name).join(' ').toLowerCase()} ${n}`];
+  })));
+}
+
+/**
+ * A sample row as a TypeScript object literal on one line: `{ id: 'product-1', price: 12.5 }`.
+ *
+ * @param {Record<string, string|number|boolean>} row A row from `sampleRows`.
+ * @returns {string} The literal.
+ *
+ * @example
+ * rowText({ id: 'product-1', price: 12.5 }); // => "{ id: 'product-1', price: 12.5 }"
+ */
+export const rowText = (row) => `{ ${Object.entries(row).map(([k, v]) => `${k}: ${tsLiteral(v)}`).join(', ')} }`;
+
+/**
+ * The comment lines a generated service carries when its path comes from an OpenAPI operation (none otherwise): which operation and which file.
+ *
+ * @param {{ file: string, method: string, path: string, operationId: string | null } | null | undefined} operation The operation of `findEntityOperation`, or nothing.
+ * @returns {string[]} Zero or one comment line.
+ *
+ * @example
+ * operationComment({ file: 'openapi.yaml', method: 'GET', path: '/products', operationId: 'listProducts' })[0]; // => '// Data source: GET /products (listProducts) of openapi.yaml.'
+ */
+export const operationComment = (operation) => (operation ? [`// Data source: ${operation.method} ${operation.path}${operation.operationId ? ` (${operation.operationId.replace(/[^A-Za-z0-9_.-]/g, '')})` : ''} of ${operation.file}.`] : []);

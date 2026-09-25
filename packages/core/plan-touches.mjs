@@ -13,7 +13,7 @@ import { routeEntryTouches, dependencyTouches } from './wiring.mjs';
 const isName = (v) => typeof v === 'string' && v.trim().length > 0;
 const asList = (v) => (Array.isArray(v) ? v : typeof v === 'string' ? v.split(',') : []).map((x) => String(x).trim()).filter(Boolean);
 const rel = (root, abs) => path.relative(root, abs).split(path.sep).join('/');
-const shapeArgs = (args) => ({ shape: args.shape, name: args.name, feature: args.feature, entity: args.entity, fields: args.fields });
+const shapeArgs = (args) => ({ shape: args.shape, name: args.name, feature: args.feature, entity: args.entity, fields: args.fields, source: args.source });
 
 /** Flows whose written files are derived here. Every other writing flow answers `null` until its output is pinned by a test. */
 export const DERIVED_FLOWS = Object.freeze(['create.feature', 'create.unit', 'create.layer', 'create.proof', 'create.route', 'add.dependency']);
@@ -55,7 +55,7 @@ export function expectedFiles(root, flowId, args = {}) {
     // #623: the proof of a shaped screen writes its test file (when its kind applies to this project) and declares the test regions.
     if (flowId === 'create.proof') {
       if (!isName(args.name) || !isName(args.feature)) return null;
-      return proofTouches(root, { name: args.name, feature: args.feature, kind: args.kind, shape: args.shape, entity: args.entity, fields: args.fields });
+      return proofTouches(root, { name: args.name, feature: args.feature, kind: args.kind, shape: args.shape, entity: args.entity, fields: args.fields, source: args.source });
     }
     // #654: the route entry a screen is wired into (Next.js creates a page.tsx, react-spa modifies src/App.tsx), and the one line added to package.json.
     if (flowId === 'create.route') return routeEntryTouches(root, { name: args.name, feature: args.feature, route: args.route });

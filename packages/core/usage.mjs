@@ -20,11 +20,14 @@ Four capabilities, one CLI:
   construct create feature <name> [--format json] [--dir <path>]
   construct create layer <name> --feature <feature> --layers <l1,l2,...> [--llm <provider> | --format json] [--dir <path>]
   construct create <layer> <name> --feature <feature> [--llm <provider> | --format json] [--dir <path>]
-  construct create layer|<layer> <name> --feature <feature> --shape list|detail|form [--entity <Entity>] [--fields id:string,name:string,...]
+  construct create layer|<layer> <name> --feature <feature> --shape list|detail|form [--entity <Entity>] [--fields id:string,name:string,...] [--source local|endpoint|openapi]
     (a screen shape fills the units with real, typed code, deterministic, no model, so no --llm: list = the items of an entity with
     loading, empty and error states; detail = one item by id (the id prop or ?id=) with loading, not-found, ready and error states;
     form = a typed input per field, validation in a domain unit, a submit service, and editing, submitting, submitted and error states;
-    --layers domain,service,hook,component,page,controller writes the whole screen)
+    --layers domain,service,hook,component,page,controller writes the whole screen;
+    --source picks where the service reads its data (#621): local = a typed in-memory store with seed rows (a second domain file), so the
+    screen works with no backend; endpoint = fetch /api/<plural>, which must exist (the default when --source is not given); openapi =
+    the path of the matching operation in openapi.yaml|yml|json at the root or in api/, refused when there is none)
   construct refactor move <name> --feature <feature> --from <layer> --to <layer> [--format json] [--dir <path>]
   construct refactor rename <name> <newName> --feature <feature> --layer <layer> [--format json] [--dir <path>]
   construct refactor extract-expression <file> [--range <start:end>] [--name <Name>] [--dry-run] [--dir <path>]
@@ -128,7 +131,7 @@ Commands:
   construct generate tests <feature> [--dry-run] [--prune] [--dir <path>]
     (one LOCKED Playwright spec per workflow scenario into features/<feature>/tests/generated/;
     needs frozen: + nonLayer: globs for tests in architecture.yml; deterministic, no LLM)
-  construct create proof <Name> --feature <feature> [--shape list|detail|form] [--entity <Entity>] [--fields id:string,...] [--kind render|playwright] [--route </path>] [--dir <path>]
+  construct create proof <Name> --feature <feature> [--shape list|detail|form] [--entity <Entity>] [--fields id:string,...] [--source local|endpoint|openapi] [--kind render|playwright] [--route </path>] [--dir <path>]
     (the locked proof of a shaped screen in features/<feature>/tests/generated/: the states of the shape with sample props (list: loading,
     empty, items, error; detail: loading, not found, ready, error; form: fields with labels, a message per invalid field, submitting,
     submitted, error), the controller's first state, the service with a stubbed fetch; --kind playwright writes the route flow only when the project already has a
