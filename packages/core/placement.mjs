@@ -28,7 +28,7 @@ import { validatePlan, PLAN_SHAPES } from './plan.mjs';
 import { flowBlock } from './block-flows.mjs';
 import { SHAPES, FORM_VERBS, singularOf, pluralOf, fieldsFromProperties, endpointOf } from './shapes.mjs';
 import { DASHBOARD_WORDS } from './shape-dashboard.mjs';
-import { DEFAULT_STEPS, WIZARD_WORDS } from './shape-wizard.mjs';
+import { DEFAULT_STEPS, WIZARD_WORDS, stepsOffer, STEPS_QUESTION_ID } from './shape-wizard.mjs';
 import { detectPlaywright, PLAYWRIGHT_SHAPES } from './proof.mjs';
 import { sourceOffer, operationOf, SOURCE_QUESTION_ID } from './shape-source.mjs';
 import { routePathOf, routeOffer, syncTouches, dependencyOffer, ROUTE_QUESTION_ID, DEPENDENCY_QUESTION_ID, CONSTRUCT_CORE_PACKAGE } from './wiring.mjs';
@@ -112,6 +112,7 @@ export const PLACEMENT_ERROR_CODES = Object.freeze({
   PLAN_FEATURE_INVALID: 'PLAN_FEATURE_INVALID',
   PLAN_ROOT_REQUIRED: 'PLAN_ROOT_REQUIRED',
   PLAN_SOURCE_UNAVAILABLE: 'PLAN_SOURCE_UNAVAILABLE',
+  PLAN_STEPS_UNAVAILABLE: 'PLAN_STEPS_UNAVAILABLE',
   PLAN_DECISIONS_INVALID: 'PLAN_DECISIONS_INVALID',
   PLAN_TOUCHES_UNKNOWN: 'PLAN_TOUCHES_UNKNOWN',
   PLAN_INVALID: 'PLAN_INVALID',
@@ -983,6 +984,7 @@ export function planFromBlocks(blocks, options = {}) {
   // default is the OpenAPI operation of the entity when the project's spec has one, else a local store; an unanswered question uses it, so it
   // never holds the plan back. The answer rides on every step of the screen (`source`), so the plan says what will be written.
   const sourceOf = new Map();
+  const stepsOf = new Map();
   const sourceNotes = [];
   const shapedNames = [...new Set(ordered.filter((u) => u.shape).map((u) => u.name))];
   for (const name of shapedNames) {
@@ -997,6 +999,19 @@ export function planFromBlocks(blocks, options = {}) {
     sourceOf.set(name, chosen.source);
     if (chosen.unavailable) sourceNotes.push(chosen.unavailable);
     sourceNotes.push(SOURCE_NOTE[chosen.source]({ name, endpoint, operation: chosen.operation, verb: operationOf(shape.name).method }));
+    // #659: a wizard's step count is a closed question too (`q-steps`, or `q-steps-<name>`): two, three (the default) or four steps, each a fixed list of
+    // names, so the plan stays deterministic. A wizard whose block already carries steps of its own that are not in the table is not asked.
+    if (shape.name === 'wizard') {
+      const stepsQuestionId = shapedNames.length === 1 ? STEPS_QUESTION_ID : `${STEPS_QUESTION_ID}-${name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase()}`;
+      const asked = stepsOffer({ unit: name, current: shape.steps, answer: answers[stepsQuestionId] });
+      if (asked) {
+        if (asked.refused) push('PLAN_STEPS_UNAVAILABLE', `answers.${stepsQuestionId}`, asked.refused);
+        asked.question.id = stepsQuestionId;
+        offers.push(asked.question);
+        record(asked.question, answers[stepsQuestionId]);
+        stepsOf.set(name, asked.steps);
+      }
+    }
   }
   const featureStep = add('create.feature', `Create feature ${opts.feature}`, { name: opts.feature }, [], 'The slice every unit below goes into.');
   for (const u of ordered) {
@@ -1005,7 +1020,7 @@ export function planFromBlocks(blocks, options = {}) {
     // #619: a shaped unit carries the shape, its entity and its fields (the CLI's --shape/--entity/--fields), and waits for the
     // units of the same shape that it imports or takes its types from.
     if (u.shape) for (const need of SHAPES[u.shape.name].requires[u.layer] ?? []) if (stepOf.has(`${need}:${u.name}`)) deps.add(stepOf.get(`${need}:${u.name}`));
-    const shapeArgs = u.shape ? { shape: u.shape.name, entity: u.shape.entity, fields: u.shape.fields, ...(u.shape.steps ? { steps: u.shape.steps } : {}), source: sourceOf.get(u.name) } : {};
+    const shapeArgs = u.shape ? { shape: u.shape.name, entity: u.shape.entity, fields: u.shape.fields, ...(stepsOf.get(u.name) ?? u.shape.steps ? { steps: stepsOf.get(u.name) ?? u.shape.steps } : {}), source: sourceOf.get(u.name) } : {};
     const id = add('create.unit', `Create ${u.layer} ${u.name}`, { layer: u.layer, name: u.name, feature: opts.feature, ...shapeArgs }, [...deps].sort(idOrder), u.why);
     stepOf.set(`${u.layer}:${u.name}`, id);
   }
@@ -1081,7 +1096,7 @@ export function planFromBlocks(blocks, options = {}) {
   const playwrightConfig = detectPlaywright(opts.root ?? '');
   if (opts.proof !== false) {
     for (const [name, { shape, unitSteps }] of shaped) {
-      const base = { name, feature: opts.feature, shape: shape.name, entity: shape.entity, fields: shape.fields, ...(shape.steps ? { steps: shape.steps } : {}), source: sourceOf.get(name) };
+      const base = { name, feature: opts.feature, shape: shape.name, entity: shape.entity, fields: shape.fields, ...(stepsOf.get(name) ?? shape.steps ? { steps: stepsOf.get(name) ?? shape.steps } : {}), source: sourceOf.get(name) };
       const after = [...new Set([...unitSteps, ...wiringSteps])].sort(idOrder);
       const render = add('create.proof', `Prove the ${name} screen`, { ...base, kind: 'render' }, after, 'A screen is not done until something shows it behaves: its states, its controller and its service.');
       const verify = add('test.proof', `Run the proof of ${name}`, { feature: opts.feature, name: `${name}Screen.proof.test.ts` }, [render], 'Read-only: pass, or a classified failure (the app behaved differently, or the harness lost a file). The chain is complete when this is green or explicitly skipped.');

@@ -18,6 +18,25 @@ import { inputFieldsOf } from './shape-form.mjs';
 /** The steps of a wizard when `--steps` names none: enter the details, review them, then the last step, where the flow is submitted. */
 export const DEFAULT_STEPS = 'details,review,done';
 
+/**
+ * The wizard's step count as a closed question (#659, part of #616): `q-steps`, three options with stable ids, each a FIXED list of step names so the
+ * plan stays deterministic (the fields are dealt to every step but the last, which shows them all and submits). Ids are words because an answer's
+ * option id is letters and hyphens only.
+ *
+ * @type {Readonly<Record<'two'|'three'|'four', { count: number, steps: string }>>}
+ */
+export const STEP_TABLE = Object.freeze({
+  two: Object.freeze({ count: 2, steps: 'details,done' }),
+  three: Object.freeze({ count: 3, steps: DEFAULT_STEPS }),
+  four: Object.freeze({ count: 4, steps: 'details,options,review,done' }),
+});
+
+/** The id of the closed question about a wizard's step count (`q-steps`; `q-steps-<name>` when a plan has several wizards). */
+export const STEPS_QUESTION_ID = 'q-steps';
+
+/** What an unanswered `q-steps` uses: three steps (`details,review,done`), the wizard every plan had before the question existed. */
+export const DEFAULT_STEP_OPTION = 'three';
+
 /** Fewest and most steps a wizard has: a step is a component file, and one step is a form. */
 export const MIN_STEPS = 2;
 export const MAX_STEPS = 6;
@@ -52,6 +71,47 @@ export function parseSteps(text) {
   if (dup) throw usage(`Step "${dup}" is listed twice.`);
   if (names.length < MIN_STEPS || names.length > MAX_STEPS) throw usage(`A wizard has ${MIN_STEPS} to ${MAX_STEPS} steps (got ${names.length}); a single step is a form.`);
   return names.map((name) => ({ name, label: labelOf(name), pascal: words(name).map(cap).join('') }));
+}
+
+const answerOf = (answer) => (typeof answer === 'string' ? { option: answer } : answer && typeof answer === 'object' ? answer : null);
+const capText = (text, max) => (text.length <= max ? text : `${text.slice(0, max - 1).trimEnd()}…`);
+
+/**
+ * The closed question about a wizard's step count (chooser-summary shape: `{ id, question, options: [{ id, label, enabled, why }], default, chosen,
+ * unit, shape, suggestion }`): `three` (the default, first: `details,review,done`), `two` or `four`, each a fixed list of step names (`STEP_TABLE`), so
+ * the plan stays deterministic. The step names are never free text. An unanswered question uses `three`, so it never holds a plan back; an answer
+ * naming an option that is not offered is `refused`, never silently replaced. A block that already carries steps of its own that are not one of
+ * the table (a direct caller's `--steps address,payment`) is not asked: it returns `null`, and those steps stay. Pure.
+ *
+ * @param {{ unit: string, current?: string, answer?: string | { option: string } }} request The wizard's unit name, the steps the block already carries (nothing, or one of the table, is asked), and an answer to `q-steps`.
+ * @returns {{ question: object, steps: string, refused: string | null } | null} The question, the steps the plan uses (the answer, else the block's own, else the default) and why an answer was refused (else `null`); `null` when the block's own steps are custom.
+ *
+ * @example
+ * stepsOffer({ unit: 'Signup' }).question.options.map((o) => o.id); // => ['three', 'two', 'four']
+ * stepsOffer({ unit: 'Signup', answer: 'four' }).steps; // => 'details,options,review,done'
+ */
+export function stepsOffer(request) {
+  const own = request.current === undefined || request.current === '' ? null : Object.entries(STEP_TABLE).find(([, e]) => e.steps === request.current)?.[0] ?? undefined;
+  if (own === undefined) return null;
+  const fallback = own ?? DEFAULT_STEP_OPTION;
+  // The default is the first option, so the rules-only decision provider (the first enabled option) suggests it, like q-source and q-verify.
+  const order = [fallback, ...Object.keys(STEP_TABLE).filter((id) => id !== fallback)];
+  const options = order.map((id) => [id, STEP_TABLE[id]]).map(([id, e]) => ({
+    id,
+    label: `${e.count} steps: ${e.steps.split(',').join(', ')}`,
+    enabled: true,
+    why: capText(`${e.steps.split(',').map(labelOf).join(', ')}. The fields are dealt to every step but the last, which shows them all and submits.`, 120),
+  }));
+  const given = answerOf(request.answer)?.option;
+  const known = Object.hasOwn(STEP_TABLE, given ?? '');
+  const used = known ? given : fallback;
+  const question = {
+    id: STEPS_QUESTION_ID,
+    question: capText(`How many steps should the "${request.unit}" wizard have?`, 160),
+    options, default: fallback, chosen: known ? given : null, unit: request.unit, shape: 'wizard',
+    suggestion: { option: fallback, reason: capText(own ? `The blocks ask for ${STEP_TABLE[own].count} steps.` : `Three steps (${STEP_TABLE.three.steps.split(',').join(', ')}) are the usual flow: enter, look over, finish.`, 200), provider: 'rules' },
+  };
+  return { question, steps: STEP_TABLE[used].steps, refused: given !== undefined && !known ? `"${STEPS_QUESTION_ID}" has no option ${JSON.stringify(given)} here. Options: ${order.join(', ')}.` : null };
 }
 
 /**
