@@ -25,6 +25,7 @@ import { isNonLayerPath, GENERATED_TESTS_GLOB, TESTS_GLOB } from './nonLayer.mjs
 import { shapeContext } from './shapes.mjs';
 import { cap, sampleRows } from './shape-kit.mjs';
 import { detailProofText, formProofText, sourceFlag } from './proof-screens.mjs';
+import { dashboardProofText } from './proof-dashboard.mjs';
 import { GENERATED_MARKER, assertSafeDir } from '../engine/testGenerator.mjs';
 import { lit, comment } from '../engine/testSpecRender.mjs';
 
@@ -145,9 +146,9 @@ const header = (ctx, request, command, extra) => [
 ];
 
 function renderProofText(ctx, request, relPath) {
-  if (request.shape === 'detail' || request.shape === 'form') {
-    const kit = { header: (extra, command) => header(ctx, request, command, extra), expectLines: EXPECT_LINES, fetchLines: FETCH_LINES, lit, rowLiteral, comment };
-    return (request.shape === 'detail' ? detailProofText : formProofText)(ctx, request, relPath, kit);
+  if (request.shape === 'detail' || request.shape === 'form' || request.shape === 'dashboard') {
+    const kit = { header: (extra, command) => header(ctx, request, command, extra), expectLines: EXPECT_LINES, fetchLines: FETCH_LINES, lit, rowLiteral, comment, openapiServiceTests: openapiServiceTests(ctx, lit) };
+    return ({ detail: detailProofText, form: formProofText, dashboard: dashboardProofText })[request.shape](ctx, request, relPath, kit);
   }
   const { names, fields, title, rows } = ctx;
   const Name = names.Name;

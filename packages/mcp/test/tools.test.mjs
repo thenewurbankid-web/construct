@@ -95,6 +95,21 @@ test('placement_place: blocks, offers and a plan preview with the files each ste
   assert.ok(Object.keys(b.files).length >= 1);
 });
 
+test('placement_place: an overview is offered the dashboard shape (#627); an LLM answers it by id and the plan carries the shape, attributed to the client', async () => {
+  const text = 'A manager wants an overview of orders with totals';
+  const first = (await call('placement_place', { text })).body;
+  const offer = first.offers.find((o) => o.id === 'q-shape');
+  assert.deepEqual(offer.options.map((o) => o.id), ['dashboard', 'scaffold']);
+  assert.equal(offer.default, 'dashboard');
+  const shaped = (await call('placement_place', { text, answers: [{ id: 'q-shape', option: 'dashboard' }] })).body;
+  assert.equal(shaped.complete, true);
+  assert.equal(shaped.plan.feature, 'orders-dashboard');
+  assert.deepEqual(shaped.decisions, [{ question: 'q-shape', option: 'dashboard', by: 'llm', provider: 'claude-code' }]);
+  assert.ok(shaped.files.b1.includes('features/orders-dashboard/domain/OrdersDashboard.domain.ts'));
+  const wrong = await call('placement_place', { text, answers: [{ id: 'q-shape', option: 'list' }] });
+  assert.equal(wrong.isError, true, 'list is not an option of this card');
+});
+
 test('placement_place: the data source of a shaped screen (#621) is a closed offer an LLM answers by id, attributed to it; an option that was not offered is refused', async () => {
   const shape = { id: 'q-shape', option: 'list' };
   const asked = (await call('placement_place', { text: SENTENCE, answers: [shape] })).body;

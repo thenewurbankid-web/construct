@@ -27,8 +27,9 @@ import { LAYER_ORDER, LAYER_PREREQUISITES } from './generators.mjs';
 import { validatePlan, PLAN_SHAPES } from './plan.mjs';
 import { flowBlock } from './block-flows.mjs';
 import { SHAPES, FORM_VERBS, singularOf, pluralOf, fieldsFromProperties, endpointOf } from './shapes.mjs';
+import { DASHBOARD_WORDS } from './shape-dashboard.mjs';
 import { detectPlaywright, PLAYWRIGHT_SHAPES } from './proof.mjs';
-import { sourceOffer, SOURCE_QUESTION_ID } from './shape-source.mjs';
+import { sourceOffer, operationOf, SOURCE_QUESTION_ID } from './shape-source.mjs';
 import { routePathOf, routeOffer, syncTouches, dependencyOffer, ROUTE_QUESTION_ID, DEPENDENCY_QUESTION_ID, CONSTRUCT_CORE_PACKAGE } from './wiring.mjs';
 import { secretsOfCard, envOffers, ENV_FILE } from './env.mjs';
 import { verifyOffer, VERIFY_QUESTION_ID } from './verify.mjs';
@@ -57,7 +58,8 @@ const SCAFFOLD_OPTION = SHAPE_OPTIONS[1];
 
 /**
  * The options of the shape question per card kind (#620, #626): a list read offers `list | scaffold`, a read of one item offers
- * `detail | scaffold`, a write with properties offers `form | scaffold`. The matching shape is always first, so it is the
+ * `detail | scaffold`, a write with properties offers `form | scaffold`, a read worded as an overview (dashboard, overview, summary, report,
+ * statistics) of one data object offers `dashboard | scaffold`. The matching shape is always first, so it is the
  * rules-only default; every id is stable, so an answer recorded once stays valid.
  */
 export const SHAPE_OPTIONS_BY_SHAPE = Object.freeze({
@@ -68,6 +70,10 @@ export const SHAPE_OPTIONS_BY_SHAPE = Object.freeze({
   ]),
   form: Object.freeze([
     Object.freeze({ id: 'form', label: 'Form shape', why: 'Real typed code: an input per field, validation, a submit service, and its saving, saved and error states.' }),
+    SCAFFOLD_OPTION,
+  ]),
+  dashboard: Object.freeze([
+    Object.freeze({ id: 'dashboard', label: 'Dashboard shape', why: 'Real typed code: a titled overview with a row of tiles and panels from one typed summary, and its loading and error states.' }),
     SCAFFOLD_OPTION,
   ]),
 });
@@ -122,10 +128,10 @@ export const PLACEMENT_ERROR_CODES = Object.freeze({
  * @typedef {{ question: string, option: string, by: 'person'|'llm'|'decision-model', provider?: string }} PlacementDecision
  * Who answered which open question.
  *
- * @typedef {{ name: 'list'|'detail'|'form', entity: string, fields: string }} BlockShape
+ * @typedef {{ name: 'list'|'detail'|'form'|'dashboard', entity: string, fields: string }} BlockShape
  * The shape a block was built with (#619): its name, the entity and the `--fields` text the units are generated from.
  *
- * @typedef {PlacementOpen & { block: string, shape: 'list'|'detail'|'form', default: string, entity: string, fields: string, unit: string, suggestion: { option: string, reason: string, provider: 'rules' } }} PlacementOffer
+ * @typedef {PlacementOpen & { block: string, shape: 'list'|'detail'|'form'|'dashboard', default: string, entity: string, fields: string, unit: string, suggestion: { option: string, reason: string, provider: 'rules' } }} PlacementOffer
  * A question that changes how a screen is built but never blocks the plan: the chooser-summary shape plus the block it is about,
  * the rules-only default, and the entity and fields the shape would use. Unanswered, the plan is the plain scaffold.
  *
@@ -289,6 +295,7 @@ const SHAPE_PHRASE = deepFreeze({
   list: { 'server-read': 'is a list fetched by a service', presentational: 'shows that list from props' },
   detail: { 'server-read': 'is one item fetched by id by a service', presentational: 'shows that item from props' },
   form: { mutation: 'is a form that submits through a service', presentational: 'shows that form from props' },
+  dashboard: { 'server-read': 'is an overview fetched by a service', presentational: 'shows that overview from props' },
 });
 
 const PLACEMENT_TEXT = deepFreeze({
@@ -475,15 +482,42 @@ function formCandidate(card, blocks, screen, modifiers, entities) {
   return { shape: 'form', noun, verb, entity: screen, fields: fieldsFromProperties(noun.properties), unit: `${capFirst(base)}${screen}` };
 }
 
-/** The screen shape a card is offered, by fixed rules, or null: a list, one item, or a form. Never more than one shape per card. */
+/** The ui-part words that name the screen or a part of it rather than something to measure (`list`, `wizard`): they never become a field of a dashboard. */
+const NOT_A_MEASURE = new Set(['list', 'table', 'detail', 'page', 'card', 'dialog', 'form', 'wizard', 'step', 'steps', 'multi-step', 'step by step', ...DASHBOARD_WORDS]);
+
+/** The field name a ui-part word stands for on a dashboard: a single lower-case word, singular (`totals` is `total`), or null. */
+function measureOf(noun) {
+  const word = noun.text.toLowerCase();
+  if (noun.kind !== 'ui-part' || noun.properties?.includes('interactive') || NOT_A_MEASURE.has(word) || !/^[a-z]+$/.test(word)) return null;
+  return /s$/.test(word) && !/(?:ss|us|is)$/.test(word) ? word.slice(0, -1) : word;
+}
+
+/**
+ * The one overview the card asks for, or null (#627). The rule (data, not a guess): every block is presentational or a server read, every verb is
+ * a read, one of them is worded as an overview (`overview`, `dashboard`, `summary`, `report`, `statistics`) and acts on the one data object of the
+ * card. The screen is `<Object>Dashboard`; its fields are the object's properties and the measures the card names (`with totals` is a `total`).
+ */
+function dashboardCandidate(card, blocks, screen, modifiers, entities) {
+  if (!blocks.length || !blocks.every((b) => b.placement === 'presentational' || b.placement === 'server-read')) return null;
+  const nouns = card.nouns.filter((n) => n.kind === 'entity');
+  if (nouns.length !== 1 || !card.verbs.length || card.verbs.some((v) => v.kind !== 'read')) return null;
+  const [noun] = nouns;
+  const verb = card.verbs.find((v) => DASHBOARD_WORDS.includes(v.text.toLowerCase()) && v.on.includes(noun.id));
+  if (!verb || nounName(noun.text, modifiers) !== screen) return null;
+  const measures = card.nouns.map(measureOf).filter(Boolean);
+  return { shape: 'dashboard', noun, verb, entity: isPluralEntity(noun.text, entities, modifiers) ? singularOf(screen) : screen, fields: fieldsFromProperties([...(noun.properties ?? []), ...measures]), unit: `${screen}Dashboard` };
+}
+
+/** The screen shape a card is offered, by fixed rules, or null: an overview, a list, one item, or a form. Never more than one shape per card. */
 function shapeCandidate(card, blocks, screen, modifiers, entities) {
-  return listCandidate(card, blocks, screen, modifiers, entities) ?? detailCandidate(card, blocks, screen, modifiers, entities) ?? formCandidate(card, blocks, screen, modifiers, entities);
+  return dashboardCandidate(card, blocks, screen, modifiers, entities) ?? listCandidate(card, blocks, screen, modifiers, entities) ?? detailCandidate(card, blocks, screen, modifiers, entities) ?? formCandidate(card, blocks, screen, modifiers, entities);
 }
 
 const SHAPE_REASON = {
   list: (c) => `the data object "${c.noun.text}" is plural, so a list of ${c.entity} items is the usual screen`,
   detail: (c) => `the data object "${c.noun.text}" is one item that is only read, so its details by id are the usual screen`,
   form: (c) => `"${c.verb.text}" writes the data object "${c.noun.text}", which has properties, so a form with a field for each is the usual screen`,
+  dashboard: (c) => `"${c.verb.text}" reads the data object "${c.noun.text}" as an overview, so tiles and panels from one summary are the usual screen`,
 };
 
 /** What a shaped screen needs from the person, as the note of the plan: the endpoint the generated service calls, and how the detail screen gets its id. */
@@ -491,6 +525,7 @@ const SHAPE_NOTE = {
   list: (c) => `The list shape reads its rows through a service: choose where they come from (q-source: a local store, the endpoint ${endpointOf(c.unit)}, or an OpenAPI operation).`,
   detail: (c) => `The detail shape reads one item by id through a service: choose where it comes from (q-source: a local store, the endpoint ${endpointOf(pluralOf(c.entity))}/<id>, or an OpenAPI operation). The id is the controller's id prop, else ?id= of the address.`,
   form: (c) => `The form shape submits the typed values through a service: choose where they go (q-source: a local store, POST ${endpointOf(pluralOf(c.entity))}, or an OpenAPI operation).`,
+  dashboard: (c) => `The dashboard shape reads one typed summary through a service: choose where it comes from (q-source: a local store, the endpoint ${endpointOf(pluralOf(c.entity))}/summary, or an OpenAPI operation GET on a path ending in /${pluralOf(c.entity).toLowerCase()}/summary).`,
 };
 
 /** What the plan says about the data source each shaped screen got (#621): where it reads from, and what is left to do by hand. */
@@ -523,6 +558,7 @@ const SHAPE_BLOCK_WHY = {
   list: (names) => ({ read: `List shape: the ${names.noun} list is fetched by a service and shown from props. Because the person asked for a list of a plural data object.`, view: 'List shape: it shows what the list fetch returns.' }),
   detail: (names, offer) => ({ read: `Detail shape: one ${offer.entity} is fetched by id by a service and shown from props. Because the person asked to see one data object.`, view: 'Detail shape: it shows what the item fetch returns.' }),
   form: (names, offer) => ({ read: `Form shape: the ${offer.entity} is validated in a domain unit and submitted by a service. Because the person asked to write a data object that has properties.`, view: 'Form shape: it shows the form and what its submit answers.' }),
+  dashboard: (names, offer) => ({ read: `Dashboard shape: the ${offer.entity} summary is fetched by a service and turned into tiles and panels. Because the person asked for an overview of a data object.`, view: 'Dashboard shape: it shows the tiles and panels of the summary.' }),
 };
 
 /**
@@ -910,7 +946,7 @@ export function planFromBlocks(blocks, options = {}) {
     record(chosen.question, answers[id]);
     sourceOf.set(name, chosen.source);
     if (chosen.unavailable) sourceNotes.push(chosen.unavailable);
-    sourceNotes.push(SOURCE_NOTE[chosen.source]({ name, endpoint, operation: chosen.operation, verb: shape.name === 'form' ? 'POST' : 'GET' }));
+    sourceNotes.push(SOURCE_NOTE[chosen.source]({ name, endpoint, operation: chosen.operation, verb: operationOf(shape.name).method }));
   }
   const featureStep = add('create.feature', `Create feature ${opts.feature}`, { name: opts.feature }, [], 'The slice every unit below goes into.');
   for (const u of ordered) {

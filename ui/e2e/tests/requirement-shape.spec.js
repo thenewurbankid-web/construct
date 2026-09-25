@@ -191,7 +191,14 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
       shape: 'form', text: 'A user wants to add a product with a name and a price', label: 'Form shape', reason: 'writes the data object', unit: 'AddProduct', feature: 'add-product', steps: 12,
       files: ['features/add-product/domain/AddProduct.domain.ts', 'features/add-product/domain/AddProductStore.domain.ts', 'features/add-product/types.ts', 'features/add-product/services/AddProduct.service.ts', 'features/add-product/hooks/useAddProduct.state.ts', 'features/add-product/controllers/AddProductController.controller.tsx', 'features/add-product/components/AddProductField.component.tsx', 'features/add-product/components/AddProductForm.component.tsx', 'features/add-product/components/AddProductNotice.component.tsx', 'features/add-product/components/AddProductAgain.component.tsx', 'features/add-product/pages/AddProductPage.page.tsx', 'features/add-product/expressions/AddProductByStatus.expression.tsx'],
     },
+    {
+      // #627: a read worded as an overview of one data object. Its fields are the measures the sentence names ("with totals" is a total).
+      shape: 'dashboard', text: 'A manager wants an overview of orders with totals', label: 'Dashboard shape', reason: 'as an overview', unit: 'OrdersDashboard', feature: 'orders-dashboard', steps: 12, entity: 'Order', fields: 'id:string,total:number',
+      files: ['features/orders-dashboard/domain/OrdersDashboard.domain.ts', 'features/orders-dashboard/domain/OrdersDashboardStore.domain.ts', 'features/orders-dashboard/types.ts', 'features/orders-dashboard/services/OrdersDashboard.service.ts', 'features/orders-dashboard/hooks/useOrdersDashboard.state.ts', 'features/orders-dashboard/controllers/OrdersDashboardController.controller.tsx', 'features/orders-dashboard/components/OrdersDashboardTile.component.tsx', 'features/orders-dashboard/components/OrdersDashboardTiles.component.tsx', 'features/orders-dashboard/components/OrdersDashboardPanel.component.tsx', 'features/orders-dashboard/components/OrdersDashboardLine.component.tsx', 'features/orders-dashboard/components/OrdersDashboardNotice.component.tsx', 'features/orders-dashboard/pages/OrdersDashboardPage.page.tsx', 'features/orders-dashboard/expressions/OrdersDashboardByStatus.expression.tsx', 'features/orders-dashboard/expressions/OrdersDashboardTileRow.expression.tsx', 'features/orders-dashboard/expressions/OrdersDashboardPanelList.expression.tsx'],
+    },
   ];
+  const entityOf = (s) => s.entity ?? 'Product';
+  const fieldsOf = (s) => s.fields ?? 'id:string,name:string,price:number';
   for (const s of SHAPED) {
     test(`a ${s.shape} sentence: the Screen shape card offers ${s.shape} (suggested by rules, with its reason) or the scaffold; choosing ${s.shape} shows the typed plan and who decided`, async ({ page }) => {
       await gotoCockpit(page, '/requirement');
@@ -210,10 +217,10 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
       await expect(page.getByTestId('requirement-shape-list')).toHaveCount(0);
 
       const chosen = await choose(page, s.shape);
-      expect(chosen.body.offers[0]).toMatchObject({ id: 'q-shape', chosen: s.shape, default: s.shape, shape: s.shape, unit: s.unit });
+      expect(chosen.body.offers[0]).toMatchObject({ id: 'q-shape', chosen: s.shape, default: s.shape, shape: s.shape, unit: s.unit, entity: entityOf(s), fields: fieldsOf(s) });
       expect(chosen.body.offers[0].options.map((o) => o.id)).toEqual([s.shape, 'scaffold']);
       expect(chosen.body.plan.steps.map((x) => x.flow)).toEqual(['create.feature', ...Array(6).fill('create.unit'), 'sync', 'create.route', 'check.types', 'create.proof', 'test.proof']);
-      expect(chosen.body.plan.steps.slice(1, 7).every((x) => x.args.shape === s.shape && x.args.name === s.unit && x.args.entity === 'Product')).toBe(true);
+      expect(chosen.body.plan.steps.slice(1, 7).every((x) => x.args.shape === s.shape && x.args.name === s.unit && x.args.entity === entityOf(s) && x.args.fields === fieldsOf(s))).toBe(true);
       expect(chosen.body.placement.decisions).toEqual([{ question: 'q-shape', option: s.shape, by: 'person' }]);
       await expect(page.getByTestId(`requirement-shape-${s.shape}`)).toHaveAttribute('aria-pressed', 'true');
       await expect(page.getByTestId('requirement-shape-status')).toHaveText(`Chosen: ${s.label}. Decided by: person.`);
@@ -233,7 +240,7 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
       const res = await ran;
       expect(res.status()).toBe(200);
       const sent = res.request().postDataJSON().plan.steps.map((x) => planToCommand(x).argv.join(' '));
-      for (const c of sent.slice(1, 7)) expect(c).toContain(`--shape ${s.shape} --entity Product --fields id:string,name:string,price:number`);
+      for (const c of sent.slice(1, 7)) expect(c).toContain(`--shape ${s.shape} --entity ${entityOf(s)} --fields ${fieldsOf(s)}`);
       expect(sent.at(-1)).toBe(`test proof ${s.feature} --name ${s.unit}Screen.proof.test.ts`);
       for (const f of s.files) expect(fs.existsSync(path.join(project.repo, f)), f).toBe(false);
     });

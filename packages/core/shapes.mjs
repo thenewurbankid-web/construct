@@ -1,12 +1,12 @@
 // #619 (part of epic #616) -- screen shapes: a named recipe whose typed templates fill the units of a feature with real,
 // rule-conforming code instead of empty stubs. `list` is the first shape: a screen that lists the items of an entity, with
-// loading, empty and error states. #620 adds `detail` (one item by id: loading, not found, ready, error) and #626 adds `form` (a typed
-// input per field, validation in a domain unit, a submit service). A person confirms a plan and gets a screen that WORKS, with no
+// loading, empty and error states. #620 adds `detail` (one item by id: loading, not found, ready, error), #626 adds `form` (a typed
+// input per field, validation in a domain unit, a submit service) and #627 adds `dashboard` (a titled overview of tiles and panels from one typed summary). A person confirms a plan and gets a screen that WORKS, with no
 // model involved.
 //
 //   construct create layer Products --feature products --layers domain,service,hook,component,page,controller \
 //     --shape list --entity Product --fields id:string,name:string,price:number
-//   (--shape detail: shape-detail.mjs, --shape form: shape-form.mjs; this file holds the list templates, the request and the writing)
+//   (--shape detail: shape-detail.mjs, --shape form: shape-form.mjs, --shape dashboard: shape-dashboard.mjs; this file holds the list templates, the request and the writing)
 //
 //   shapeFiles(root, request)            pure: the files one layer of the shape writes, `{ path, content, change, layer }`
 //   shapeTouches(root, request)          the same files as a plan step's `touches.files` (project-relative, no content)
@@ -25,10 +25,11 @@ import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { LAYER_ORDER, pascalCase, selfCheck } from './generators.mjs';
 import { PLAN_SHAPES } from './plan.mjs';
 import { FIELD_TYPES, TYPED_CONTRACTS_SPECIFIER, cap, importLine, lines, lowerFirst, operationComment, rowText, sampleRows, show, ts, words } from './shape-kit.mjs';
-import { readSource, storeNames } from './shape-source.mjs';
+import { operationOf, readSource, storeNames } from './shape-source.mjs';
 import { findEntityOperation } from './openapi-spec.mjs';
 import { DETAIL_SHAPE } from './shape-detail.mjs';
 import { FORM_SHAPE } from './shape-form.mjs';
+import { DASHBOARD_SHAPE, dashboardBaseOf } from './shape-dashboard.mjs';
 
 const usage = (message) => new ConstructError(message, { exitCode: EXIT_CODES.USAGE_ERROR });
 
@@ -149,7 +150,7 @@ export function fieldsFromProperties(properties = []) {
  *
  * @param {string} root Project root (its architecture.yml decides the framework).
  * @param {{ shape: string, name: string, feature: string, entity?: string, fields?: string, source?: string }} request The shape, the unit name (`Products`), the feature and the optional entity, fields and data source (`local`, `endpoint` (what none means) or `openapi`, #621).
- * @returns {object} The resolved context (`names`, `fields`, `title`, `endpoint`, `useClient`, `source`, `operation` (the OpenAPI operation of the `openapi` source, else `null`) and `store` (the identifiers of the local store)).
+ * @returns {object} The resolved context (`names`, `fields`, `title`, `entityPlural`, `endpoint`, `useClient`, `source`, `operation` (the OpenAPI operation of the `openapi` source, else `null`) and `store` (the identifiers of the local store)).
  * @throws {Error} A usage error naming the problem.
  *
  * @example
@@ -163,11 +164,13 @@ export function shapeContext(root, request) {
   if (Entity !== String(request.entity ?? Entity)) throw usage(`Entity "${request.entity}" must be PascalCase, for example ${Entity}.`);
   const fields = parseFields(request.fields);
   if (shape.inputFieldsOnly && !fields.some((f) => f.name !== 'id')) throw usage(`The ${request.shape} shape needs at least one field besides "id" (the server assigns it), for example id:string,name:string.`);
+  if (request.shape === 'dashboard' && fields.some((f) => f.name === 'count')) throw usage('The dashboard shape keeps the number of rows in "count", so a field cannot be named that. Rename the field, for example itemCount.');
   const dataSource = readSource(request.source);
-  const operation = dataSource === 'openapi' ? findEntityOperation(root, { kind: request.shape, plural: pluralOf(Entity) }) : null;
+  const wanted = operationOf(request.shape);
+  const operation = dataSource === 'openapi' ? findEntityOperation(root, { kind: wanted.kind, plural: pluralOf(Entity) }) : null;
   if (dataSource === 'openapi' && !operation) {
-    const path = `/${pluralOf(Entity).toLowerCase()}${request.shape === 'detail' ? '/{id}' : ''}`;
-    throw usage(`The openapi source needs an OpenAPI file (openapi.yaml, openapi.yml or openapi.json, at the project root or in api/) with the operation ${request.shape === 'form' ? 'POST' : 'GET'} on a path ending in ${path}. Nothing was written; choose the local or endpoint source, or add the operation to the spec.`);
+    const path = `/${pluralOf(Entity).toLowerCase()}${wanted.tail}`;
+    throw usage(`The openapi source needs an OpenAPI file (openapi.yaml, openapi.yml or openapi.json, at the project root or in api/) with the operation ${wanted.method} on a path ending in ${path}. Nothing was written; choose the local or endpoint source, or add the operation to the spec.`);
   }
   const store = storeNames(request.shape, Name);
   const names = shape.names(Name, Entity);
@@ -182,7 +185,7 @@ export function shapeContext(root, request) {
   return {
     request: { shape: request.shape, name: Name, feature: request.feature, entity: Entity, fields: fields.map((f) => `${f.name}:${f.type}`).join(','), source: dataSource },
     names, fields, title, source: dataSource, operation, store,
-    plural: words(Name).join(' ').toLowerCase(), singular: words(Entity).join(' ').toLowerCase(), heading: words(Name).map(cap).join(' '),
+    plural: words(Name).join(' ').toLowerCase(), singular: words(Entity).join(' ').toLowerCase(), entityPlural: words(pluralOf(Entity)).join(' ').toLowerCase(), heading: words(Name).map(cap).join(' '),
     endpoint: operation ? operation.url : shape.endpoint(Name, Entity),
     useClient: framework !== 'react-spa',
   };
@@ -359,6 +362,13 @@ function formEntityOf(Name) {
   return rest.length && FORM_VERBS.includes(first.toLowerCase()) ? rest.map(cap).join('') : Name;
 }
 
+/** The entity of a dashboard unit name when none is given: the name without its trailing Dashboard word, singularised (`OrdersDashboard` is `Order`); a base the rules leave unchanged (`OrderDashboard`) is kept as it is. */
+function dashboardEntityOf(Name) {
+  const base = dashboardBaseOf(Name);
+  const one = singularOf(base);
+  return one === `${base}Item` ? base : one;
+}
+
 /**
  * The shapes and what each one writes. A layer entry lists its files as `{ folder, base, content }`: the folder under the
  * feature, the file name including the `.layer` suffix (rule READ-004) and the text. `requires` are the layers a layer's
@@ -396,6 +406,7 @@ export const SHAPES = Object.freeze({
   }),
   detail: Object.freeze({ ...DETAIL_SHAPE, defaultEntity: (Name) => Name, endpoint: (Name, Entity) => endpointOf(pluralOf(Entity)), nameMayEqualEntity: true }),
   form: Object.freeze({ ...FORM_SHAPE, defaultEntity: formEntityOf, endpoint: (Name, Entity) => endpointOf(pluralOf(Entity)), nameMayEqualEntity: false, inputFieldsOnly: true }),
+  dashboard: Object.freeze({ ...DASHBOARD_SHAPE, defaultEntity: dashboardEntityOf, endpoint: (Name, Entity) => `${endpointOf(pluralOf(Entity))}/summary`, nameMayEqualEntity: false }),
 });
 
 // ------------------------------------------------------------------------------------------------------------- files

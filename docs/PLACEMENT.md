@@ -609,7 +609,7 @@ question to `result.offers` (not to `open`, so it never holds the plan back):
 |---|---|---|
 | `q-shape` | one read verb on one plural data object, every block presentational or a server read ("see a list of products") | `list` (the rules-only default), `scaffold` |
 
-(#620 and #626 added the same question for a read of one item (`detail`) and a write with properties (`form`): the options belong to the card, see "The detail and form shapes" below.)
+(#620, #626 and #627 added the same question for a read of one item (`detail`), a write with properties (`form`) and an overview of one data object (`dashboard`): the options belong to the card, see "The detail and form shapes" and "The dashboard shape" below.)
 
 An unanswered offer leaves the plan exactly as it was, the plain scaffold. Answering `list` (a person, or the rules provider's
 suggestion, recorded in `decisions` as `person` or `decision-model`) turns the read into a server-read block (domain, service,
@@ -887,6 +887,84 @@ fields always start with `id:string`); a form needs at least one other field. Ev
 unit of a form is named for the verb and the object (`AddProduct`), so a page for the object itself (`Product`, the detail) and a
 form can sit in one project without clashing; the entity is the unit name without its leading write verb (`--entity` overrides).
 The endpoint of a detail and a form is the plural of the entity (`Product` gives `/api/products`), not of the unit name.
+
+## The dashboard shape: an overview composed from one summary (#627, part of #616)
+
+A read worded as an overview of one data object ("A manager wants an overview of orders with totals") is offered `dashboard | scaffold`
+in the same `q-shape` question, by fixed rules and with the same attribution as the other shapes: **every verb is a read**, one of them is
+worded as an overview (`overview`, `dashboard`, `summary`, `report` or `statistics`, all in the lexicon) and acts on the **one** data object
+of the card. The rules-only default is `dashboard`, the decision is recorded like the others (`by`, `provider`, the offer as shown), and an
+answer that is not an option of the card is refused (`list`, `detail` and `form` are not offered here). The unit is `<Object>Dashboard`
+(`OrdersDashboard`), so an overview and a list of the same data can sit in one project; the entity is the singular of the object; the
+fields are the object's properties plus the **measures** the sentence names (`with totals` is a number field `total`).
+
+The screen **composes** components from one typed summary and holds no logic of its own: the page is a title and one expression, and it
+imports no service. Nothing is charted, stored, routed between panels or refreshed on a timer.
+
+<!-- dashboard-shape-example:commands -->
+```json
+[
+  "construct create feature orders-dashboard",
+  "construct create domain OrdersDashboard --feature orders-dashboard --shape dashboard --entity Order --fields id:string,total:number --source local",
+  "construct create service OrdersDashboard --feature orders-dashboard --shape dashboard --entity Order --fields id:string,total:number --source local",
+  "construct create hook OrdersDashboard --feature orders-dashboard --shape dashboard --entity Order --fields id:string,total:number --source local",
+  "construct create component OrdersDashboard --feature orders-dashboard --shape dashboard --entity Order --fields id:string,total:number --source local",
+  "construct create page OrdersDashboard --feature orders-dashboard --shape dashboard --entity Order --fields id:string,total:number --source local",
+  "construct create controller OrdersDashboard --feature orders-dashboard --shape dashboard --entity Order --fields id:string,total:number --source local",
+  "construct create dependency @line/construct-core --version ^0.9.0",
+  "construct sync",
+  "construct create route OrdersDashboard --feature orders-dashboard --route /orders-dashboard",
+  "construct create proof OrdersDashboard --feature orders-dashboard --shape dashboard --entity Order --fields id:string,total:number --source local --kind render",
+  "construct test proof orders-dashboard --name OrdersDashboardScreen.proof.test.ts"
+]
+```
+
+<!-- dashboard-shape-example:files -->
+```json
+{
+  "b1": [
+    "features/orders-dashboard/domain/OrdersDashboard.domain.ts",
+    "features/orders-dashboard/domain/OrdersDashboardStore.domain.ts",
+    "features/orders-dashboard/types.ts",
+    "features/orders-dashboard/services/OrdersDashboard.service.ts",
+    "features/orders-dashboard/hooks/useOrdersDashboard.state.ts",
+    "features/orders-dashboard/controllers/OrdersDashboardController.controller.tsx"
+  ],
+  "b1-view": [
+    "features/orders-dashboard/components/OrdersDashboardTile.component.tsx",
+    "features/orders-dashboard/components/OrdersDashboardTiles.component.tsx",
+    "features/orders-dashboard/components/OrdersDashboardPanel.component.tsx",
+    "features/orders-dashboard/components/OrdersDashboardLine.component.tsx",
+    "features/orders-dashboard/components/OrdersDashboardNotice.component.tsx",
+    "features/orders-dashboard/pages/OrdersDashboardPage.page.tsx",
+    "features/orders-dashboard/expressions/OrdersDashboardByStatus.expression.tsx",
+    "features/orders-dashboard/expressions/OrdersDashboardTileRow.expression.tsx",
+    "features/orders-dashboard/expressions/OrdersDashboardPanelList.expression.tsx"
+  ]
+}
+```
+
+| File | What it holds |
+|---|---|
+| `types.ts` (appended by the domain step) | `Order` (a row, for the local store), `OrderSummary { count; total: { sum; average; max } }` (the typed summary: how many, the sum, average and highest of each number field, and how many are true for each boolean field), `OrdersDashboardTileItem`, `OrdersDashboardLineItem`, `OrdersDashboardPanelItem`, `OrdersDashboardView { tiles; panels }`, `OrdersDashboardState` (a `status` union: `loading`, `ready` with the summary, tiles and panels, `error`) and `OrdersDashboardResult`. |
+| `domain/OrdersDashboard.domain.ts` | `describeOrdersDashboard`, a pure `defineDomain` unit: the summary becomes **tiles** (the count, then the sum of each number field and the count of each boolean field: at most 4) and **panels** (one per number field, listing sum, average and highest: at most 3). Numbers show to two decimals. |
+| `services/OrdersDashboard.service.ts` | `fetchOrdersDashboard({ signal })`, built with `defineService`: reads the summary from `/api/orders/summary` (the `local` source: from the seed rows of a typed store; the `openapi` source: from `GET /<plural>/summary` of the spec), forwards the `AbortSignal`, answers a typed `OrdersDashboardResult`; a bad status, a wrong shape or a failed request is an error result, never a throw. |
+| `hooks/useOrdersDashboard.state.ts` | `useOrdersDashboard()`: `useTrackedState` for the status union; loads once, works out the tiles and panels with the domain unit, aborts the request on unmount. |
+| `components/OrdersDashboardTile`, `Tiles`, `Panel`, `Line`, `Notice` `.component.tsx` | One tile (`<li>` with a label and its number), the row the tiles sit in, a titled panel (`<section>` with a `<dl>`), one line of a panel, and a notice. |
+| `pages/OrdersDashboardPage.page.tsx`, `expressions/OrdersDashboardByStatus`, `OrdersDashboardTileRow`, `OrdersDashboardPanelList` `.expression.tsx` | The title, and the expressions that hold the branches: a loading or error notice, else the row of tiles and the panels (one expression each, so each stays inside the expression complexity budget). |
+| `controllers/OrdersDashboardController.controller.tsx` | Calls `useOrdersDashboard()` and renders the page with the state; no logic of its own. |
+
+**The proof** (`OrdersDashboardScreen.proof.test.ts`, the render proof, no browser): the loading and error states; the **ready screen with
+every tile and every line of every panel** shown from a sample summary (a tile that is wrong is reported by its name: `The tile "Sum of
+total" does not show <li>...</li>.`); the domain unit's tiles and panels in order; the controller's first state; and the service (a stubbed
+`fetch`: a good answer, a 500, a wrong shape, a network failure, the `AbortSignal`; for the `local` source, the summary of the seed rows
+with no network). No Playwright flow yet for this shape.
+
+**Decisions where the issue was silent.** The issue says the screen composes components "the feature already has": this slice composes
+the components the shape itself writes (a tile, a panel, a line), so it works in an empty feature; choosing among a feature's existing
+components is a later slice. `id` is never measured, a field called `count` is refused (the summary keeps the number of rows there), and
+a dashboard of an entity with no number or boolean field shows the count tile only, with no panel. The summary is a **typed object
+computed by the source**, not rows the screen adds up: the endpoint answers it, the local store computes it from its seed rows.
 
 ## The data source: where a screen reads its data from (#621, part of #616, relates to #400)
 
@@ -1236,4 +1314,4 @@ as its options.
 
 The timeline read-back and its Cockpit screen are the Requirement screen (`/requirement`, #642): `toTimeline(placement)` in `ui/client/features/requirement/domain/Timeline.ts` turns the blocks into steps in run order (a slice to move it into core, so the CLI and an LLM read the same steps, is open). Not here yet: a `use client` / `use server` directive in the generated files, and words beyond the lexicon. Each is a slice of #616.
 
-Not here yet for the shapes (each a slice of #616): the other shapes (dashboard, wizard); a browser (Playwright) flow for the detail and form shapes (the list has one; the render proof of every shape is above); a `route.ts` handler for the endpoints the shapes call; an `update` form that addresses an item by its id (PUT), a form field other than a string, a number or a checkbox, a detail with a related list, and a route parameter for the detail's id (it is `?id=` or a prop today).
+Not here yet for the shapes (each a slice of #616): the other shapes (wizard); a dashboard that picks among the components a feature already has, or charts; a browser (Playwright) flow for the detail and form shapes (the list has one; the render proof of every shape is above); a `route.ts` handler for the endpoints the shapes call; an `update` form that addresses an item by its id (PUT), a form field other than a string, a number or a checkbox, a detail with a related list, and a route parameter for the detail's id (it is `?id=` or a prop today).

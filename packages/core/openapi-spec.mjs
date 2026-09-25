@@ -4,7 +4,7 @@
 //
 //   findOpenApiFile(root)                    the conventional file of a project (openapi.yaml|yml|json at the root or in api/), or null
 //   loadOpenApiDocument(absPath)             read and parse a spec (YAML or JSON), or a usage error saying what is wrong
-//   findEntityOperation(root, request)       the operation of a spec that lists, reads or creates one entity, or null
+//   findEntityOperation(root, request)       the operation of a spec that lists, reads, creates or summarises one entity, or null
 import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
@@ -69,17 +69,17 @@ function serverPrefix(doc) {
   return pathname.replace(/\/+$/, '');
 }
 
-/** What each kind of screen needs from a spec: the HTTP method and whether the path ends in one `{parameter}` (a single item) or in the collection name. */
-const KINDS = Object.freeze({ list: { method: 'get', item: false }, detail: { method: 'get', item: true }, form: { method: 'post', item: false } });
+/** What each kind of screen needs from a spec: the HTTP method, whether the path ends in one `{parameter}` (a single item) or in the collection name, and (#627) a fixed last segment after the collection (`summary`). */
+const KINDS = Object.freeze({ list: { method: 'get', item: false }, detail: { method: 'get', item: true }, form: { method: 'post', item: false }, dashboard: { method: 'get', item: false, suffix: 'summary' } });
 
 /**
  * The operation of a project's OpenAPI file that lists (`list`: `GET /products`), reads one (`detail`: `GET /products/{id}`) or creates
- * (`form`: `POST /products`) an entity, matched by fixed rules on the path: its last collection segment must read as the plural of the
+ * (`form`: `POST /products`) or summarises (`dashboard`: `GET /products/summary`, #627) an entity, matched by fixed rules on the path: its last collection segment must read as the plural of the
  * entity (`products`, `order-items` and `order_items` all match `OrderItems`), it has no other path parameter, and the item form ends in
  * exactly one. The first match in document order wins. Read-only and never throws: no file, an unreadable file or no match answers `null`.
  *
  * @param {string} root Project root.
- * @param {{ kind: 'list'|'detail'|'form', plural: string }} request The kind of screen and the PascalCase plural of the entity (`Products`).
+ * @param {{ kind: 'list'|'detail'|'form'|'dashboard', plural: string }} request The kind of screen and the PascalCase plural of the entity (`Products`).
  * @returns {{ file: string, method: 'GET'|'POST', path: string, url: string, operationId: string | null } | null} The spec file (project-relative), the method, the path as the spec writes it, the collection URL the screen requests (the spec's first server path plus the path up to the item parameter), and the operation id when it has one; or `null`.
  *
  * @example
@@ -95,14 +95,16 @@ export function findEntityOperation(root, request) {
     for (const [specPath, item] of Object.entries(doc.paths)) {
       const operation = item?.[kind.method];
       if (!operation || typeof operation !== 'object') continue;
-      const segments = specPath.split('/').filter(Boolean);
+      const whole = specPath.split('/').filter(Boolean);
+      if (kind.suffix && whole.at(-1) !== kind.suffix) continue;
+      const segments = kind.suffix ? whole.slice(0, -1) : whole;
       const last = segments.at(-1) ?? '';
       const parameter = /^\{[^{}/]+\}$/.test(last);
       if (kind.item !== parameter) continue;
       const collection = kind.item ? segments.slice(0, -1) : segments;
       if (collection.length === 0 || collection.some((s) => s.includes('{') || s.includes('}'))) continue;
       if (squash(collection.at(-1)) !== wanted) continue;
-      return { file, method: kind.method.toUpperCase(), path: specPath, url: `${serverPrefix(doc)}/${collection.join('/')}`, operationId: typeof operation.operationId === 'string' ? operation.operationId : null };
+      return { file, method: kind.method.toUpperCase(), path: specPath, url: `${serverPrefix(doc)}/${collection.join('/')}${kind.suffix ? `/${kind.suffix}` : ''}`, operationId: typeof operation.operationId === 'string' ? operation.operationId : null };
     }
   } catch {
     return null;

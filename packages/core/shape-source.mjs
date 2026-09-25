@@ -1,5 +1,5 @@
 // #621 (part of epic #616, relates to #400) -- where a shaped screen reads its data from, as one closed question with three stable answers.
-// A list, detail or form screen calls a service; until now that service called `/api/<plural>`, an endpoint nothing in the project had
+// A list, detail, form, dashboard or wizard screen calls a service; until now that service called `/api/<plural>`, an endpoint nothing in the project had
 // made. The person now chooses, and the units are generated to match:
 //
 //   local     the screen reads a typed in-memory store (seed rows in a domain unit, held by the service): it works with no backend.
@@ -54,7 +54,7 @@ export function readSource(value) {
  * The identifiers of the local store of a shaped screen: the domain file that holds it (`ProductsStore`), the unit that makes the seed
  * rows, and the unit that reads (list), finds (detail) or saves (form) against a set of rows.
  *
- * @param {'list'|'detail'|'form'} shape The shape.
+ * @param {'list'|'detail'|'form'|'dashboard'|'wizard'} shape The shape.
  * @param {string} Name The PascalCase unit name of the screen.
  * @returns {{ file: string, seed: string, op: string }} The store file's base name and the two unit names.
  *
@@ -62,9 +62,33 @@ export function readSource(value) {
  * storeNames('detail', 'Product'); // => { file: 'ProductStore', seed: 'seedProduct', op: 'findProduct' }
  */
 export function storeNames(shape, Name) {
-  const verb = shape === 'form' ? 'save' : shape === 'detail' ? 'find' : 'read';
+  const verb = shape === 'form' || shape === 'wizard' ? 'save' : shape === 'detail' ? 'find' : 'read';
   return { file: `${Name}Store`, seed: `seed${Name}`, op: `${verb}${Name}` };
 }
+
+/**
+ * How each shape asks the OpenAPI file for its operation (`findEntityOperation`'s `kind`) and what that operation does, in a verb for a
+ * sentence: a wizard submits, so it looks for the same `POST` a form does; a dashboard reads one summary (`GET /<plural>/summary`, #627).
+ */
+const OPERATIONS = Object.freeze({
+  list: Object.freeze({ kind: 'list', method: 'GET', what: 'lists', tail: '' }),
+  detail: Object.freeze({ kind: 'detail', method: 'GET', what: 'reads one', tail: '/{id}' }),
+  form: Object.freeze({ kind: 'form', method: 'POST', what: 'creates', tail: '' }),
+  wizard: Object.freeze({ kind: 'form', method: 'POST', what: 'creates', tail: '' }),
+  dashboard: Object.freeze({ kind: 'dashboard', method: 'GET', what: 'summarises', tail: '/summary' }),
+});
+
+/**
+ * The operation a shape's data source needs from an OpenAPI file: the `kind` `findEntityOperation` looks for, the HTTP `method`, what the
+ * operation does (`lists`, `reads one`, `creates`, `summarises`) and the tail its path ends in after the plural (`/{id}`, `/summary`).
+ *
+ * @param {'list'|'detail'|'form'|'dashboard'|'wizard'} shape The shape.
+ * @returns {{ kind: string, method: 'GET'|'POST', what: string, tail: string }} The operation it needs.
+ *
+ * @example
+ * operationOf('dashboard'); // => { kind: 'dashboard', method: 'GET', what: 'summarises', tail: '/summary' }
+ */
+export const operationOf = (shape) => OPERATIONS[shape];
 
 /** The most text of a question, a label and a reason (the sizes of a placement offer, so a summary stays fixed). */
 const LIMITS = Object.freeze({ question: 160, label: 60, why: 120, reason: 200 });
@@ -81,7 +105,7 @@ const answerOf = (answer) => (typeof answer === 'string' ? { option: answer } : 
  * Reads the project, writes nothing, never throws.
  *
  * @param {string} root Project root (its OpenAPI file is looked for).
- * @param {{ shape: 'list'|'detail'|'form', unit: string, plural: string, endpoint: string, answer?: string | { option: string } }} request The shape, the screen's unit name, the PascalCase plural of its entity (to find the operation), the `/api/...` path the endpoint option would call, and an answer to `q-source`.
+ * @param {{ shape: 'list'|'detail'|'form'|'dashboard'|'wizard', unit: string, plural: string, endpoint: string, answer?: string | { option: string } }} request The shape, the screen's unit name, the PascalCase plural of its entity (to find the operation), the `/api/...` path the endpoint option would call, and an answer to `q-source`.
  * @returns {{ question: object, source: 'local'|'endpoint'|'openapi', operation: object | null, unavailable: string | null, refused: string | null }}
  *   The question, the source the plan uses (the answer, else the default), the OpenAPI operation when there is one, why `openapi` was not offered when a file exists without it (else `null`), and why an answer was refused (else `null`).
  *
@@ -89,11 +113,12 @@ const answerOf = (answer) => (typeof answer === 'string' ? { option: answer } : 
  * sourceOffer(root, { shape: 'list', unit: 'Products', plural: 'Products', endpoint: '/api/products' }).question.default; // => 'local'
  */
 export function sourceOffer(root, request) {
-  const operation = findEntityOperation(root, { kind: request.shape, plural: request.plural });
+  const wanted = OPERATIONS[request.shape];
+  const operation = findEntityOperation(root, { kind: wanted.kind, plural: request.plural });
   const file = findOpenApiFile(root);
-  const verb = request.shape === 'form' ? 'POST' : 'GET';
-  const item = `/${request.plural.toLowerCase()}${request.shape === 'detail' ? '/{id}' : ''}`;
-  const what = { list: 'lists', detail: 'reads one', form: 'creates' }[request.shape];
+  const verb = wanted.method;
+  const item = `/${request.plural.toLowerCase()}${wanted.tail}`;
+  const { what } = wanted;
   const all = {
     openapi: operation && { id: 'openapi', label: cap(`Use the contract in ${operation.file}`, LIMITS.label), enabled: true, why: cap(`Requests ${operation.method} ${operation.url}${operation.operationId ? ` (${operation.operationId})` : ''}, the path the OpenAPI file gives.`, LIMITS.why) },
     local: { id: 'local', label: 'Local data, no backend', enabled: true, why: cap('A typed in-memory store with seed rows: the screen works with no backend, and you swap it for an API later.', LIMITS.why) },

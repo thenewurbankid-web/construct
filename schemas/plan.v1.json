@@ -435,19 +435,20 @@
                     "enum": [
                       "list",
                       "detail",
-                      "form"
+                      "form",
+                      "dashboard"
                     ],
-                    "description": "A named screen shape: the units are filled with real, typed code for it (list: an entity list with loading, empty and error states; detail: one item by id with loading, not-found and error states; form: a typed input per field with validation and a submit service)."
+                    "description": "A named screen shape: the units are filled with real, typed code for it (list: an entity list with loading, empty and error states; detail: one item by id with loading, not-found and error states; form: a typed input per field with validation and a submit service; dashboard: a titled overview of tiles and panels from one typed summary, with loading and error states)."
                   },
                   "entity": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "The entity a shape shows or writes, PascalCase and singular (Product). Defaults to the singular of the unit name (list), the unit name (detail) or the unit name without its leading verb (form: AddProduct is Product)."
+                    "description": "The entity a shape shows or writes, PascalCase and singular (Product). Defaults to the singular of the unit name (list), the unit name (detail), the unit name without its leading verb (form: AddProduct is Product) or the singular of the unit name without its Dashboard word (dashboard: OrdersDashboard is Order)."
                   },
                   "fields": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "The entity fields for a shape as name:type pairs, comma separated (id:string,name:string,price:number). Types: string, number, boolean; an id field is required (a form has no input for it: the server assigns it)."
+                    "description": "The entity fields for a shape as name:type pairs, comma separated (id:string,name:string,price:number). Types: string, number, boolean; an id field is required (a form has no input for it: the server assigns it; a dashboard adds up the number fields and counts the boolean ones)."
                   },
                   "source": {
                     "type": "string",
@@ -527,19 +528,20 @@
                     "enum": [
                       "list",
                       "detail",
-                      "form"
+                      "form",
+                      "dashboard"
                     ],
-                    "description": "A named screen shape: the units are filled with real, typed code for it (list: an entity list with loading, empty and error states; detail: one item by id with loading, not-found and error states; form: a typed input per field with validation and a submit service)."
+                    "description": "A named screen shape: the units are filled with real, typed code for it (list: an entity list with loading, empty and error states; detail: one item by id with loading, not-found and error states; form: a typed input per field with validation and a submit service; dashboard: a titled overview of tiles and panels from one typed summary, with loading and error states)."
                   },
                   "entity": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "The entity a shape shows or writes, PascalCase and singular (Product). Defaults to the singular of the unit name (list), the unit name (detail) or the unit name without its leading verb (form: AddProduct is Product)."
+                    "description": "The entity a shape shows or writes, PascalCase and singular (Product). Defaults to the singular of the unit name (list), the unit name (detail), the unit name without its leading verb (form: AddProduct is Product) or the singular of the unit name without its Dashboard word (dashboard: OrdersDashboard is Order)."
                   },
                   "fields": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "The entity fields for a shape as name:type pairs, comma separated (id:string,name:string,price:number). Types: string, number, boolean; an id field is required (a form has no input for it: the server assigns it)."
+                    "description": "The entity fields for a shape as name:type pairs, comma separated (id:string,name:string,price:number). Types: string, number, boolean; an id field is required (a form has no input for it: the server assigns it; a dashboard adds up the number fields and counts the boolean ones)."
                   },
                   "source": {
                     "type": "string",
@@ -616,19 +618,20 @@
                     "enum": [
                       "list",
                       "detail",
-                      "form"
+                      "form",
+                      "dashboard"
                     ],
-                    "description": "A named screen shape: the units are filled with real, typed code for it (list: an entity list with loading, empty and error states; detail: one item by id with loading, not-found and error states; form: a typed input per field with validation and a submit service)."
+                    "description": "A named screen shape: the units are filled with real, typed code for it (list: an entity list with loading, empty and error states; detail: one item by id with loading, not-found and error states; form: a typed input per field with validation and a submit service; dashboard: a titled overview of tiles and panels from one typed summary, with loading and error states)."
                   },
                   "entity": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "The entity a shape shows or writes, PascalCase and singular (Product). Defaults to the singular of the unit name (list), the unit name (detail) or the unit name without its leading verb (form: AddProduct is Product)."
+                    "description": "The entity a shape shows or writes, PascalCase and singular (Product). Defaults to the singular of the unit name (list), the unit name (detail), the unit name without its leading verb (form: AddProduct is Product) or the singular of the unit name without its Dashboard word (dashboard: OrdersDashboard is Order)."
                   },
                   "fields": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "The entity fields for a shape as name:type pairs, comma separated (id:string,name:string,price:number). Types: string, number, boolean; an id field is required (a form has no input for it: the server assigns it)."
+                    "description": "The entity fields for a shape as name:type pairs, comma separated (id:string,name:string,price:number). Types: string, number, boolean; an id field is required (a form has no input for it: the server assigns it; a dashboard adds up the number fields and counts the boolean ones)."
                   },
                   "source": {
                     "type": "string",

@@ -3,12 +3,12 @@
   "stopWords": {
     "markers": ["to", "be", "able", "and", "or", "of", "is", "are", "can", "could", "may", "must", "should", "will", "need", "needs", "want", "wants", "when", "if", "then", "so", "that", "in", "on", "by", "for", "from", "with", "via"],
     "determiners": ["a", "an", "the", "their", "his", "her", "its", "my", "our", "your", "this", "some", "any", "each", "every"],
-    "actors": ["user", "users", "customer", "customers", "visitor", "visitors", "member", "person", "app", "system"],
+    "actors": ["user", "users", "customer", "customers", "visitor", "visitors", "member", "manager", "person", "app", "system"],
     "pronouns": ["it", "they", "them"]
   },
   "verbs": {
-    "read": ["see", "view", "show", "list", "display", "browse", "search", "filter"],
-    "interact": ["click", "press", "tap", "type", "select", "drag", "upload"],
+    "read": ["see", "view", "show", "list", "display", "browse", "search", "filter", "overview", "dashboard", "summary", "report", "statistics"],
+    "interact": ["click", "press", "tap", "type", "select", "drag", "upload", "signup", "checkout", "onboard"],
     "write": ["manage", "save", "update", "create", "add", "register", "delete", "submit", "change", "pay"],
     "navigate": ["open", "go", "visit", "return", "redirect"]
   },
@@ -38,6 +38,11 @@
       "menu": { "properties": ["interactive"] },
       "input": { "properties": ["interactive"] },
       "page": {},
+      "total": {},
+      "wizard": {},
+      "step": {},
+      "multi-step": {},
+      "step by step": {},
       "keyboard": { "properties": ["interactive"] }
     },
     "state": {
