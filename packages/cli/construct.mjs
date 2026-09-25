@@ -10,7 +10,7 @@ if (cmd === '--version' || cmd === '-v') {
   process.exit(0);
 }
 
-const { init, feature, generate, sync, validate, summarize, doctor, create, refactor, research, review, testCommand, template, importCommand, runImportRouteWizard, pipeline, traces, decide } = await import('../core/cli.mjs');
+const { init, feature, generate, sync, validate, summarize, doctor, create, refactor, research, review, testCommand, template, importCommand, runImportRouteWizard, pipeline, traces, decide, model } = await import('../core/cli.mjs');
 const { EXIT_CODES, ConstructError } = await import('../core/diagnostics.mjs');
 const { USAGE } = await import('../core/usage.mjs');
 
@@ -33,6 +33,7 @@ try {
   else if (cmd === 'pipeline') await pipeline(args);
   else if (cmd === 'traces') await traces(args);
   else if (cmd === 'decide') await decide(args);
+  else if (cmd === 'model') await model(args);
   else if (cmd === 'repl') {
     const { startRepl } = await import('../core/repl.mjs');
     await startRepl();

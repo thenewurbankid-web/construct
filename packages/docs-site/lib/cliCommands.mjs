@@ -92,6 +92,7 @@ const EXTRA_COMMANDS = [
   { name: 'pipeline', fn: 'pipeline' },
   { name: 'traces', fn: 'traces' },
   { name: 'decide', fn: 'decide' },
+  { name: 'model', fn: 'model' },
 ];
 
 /**

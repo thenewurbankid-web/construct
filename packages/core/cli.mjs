@@ -56,6 +56,8 @@ import { detectMachine, buildMachineReport, renderMachineText, defaultProbes as 
 import { parseRequirement, openQuestion } from './requirement-card.mjs';
 import { placeCard } from './placement.mjs';
 import { traceStats, replayTraces, renderTraceList, renderTraceStats, renderReplay, DEFAULT_MIN_TRACES } from './decision-trace-replay.mjs';
+import { exportDataset, renderExport } from './decision-dataset.mjs';
+import { importModel, listModels, removeModel, setModelEnabled, renderImport, renderModelList } from './decision-model-registry.mjs';
 
 // Resolve the project root freshly per command: walks up from cwd (or from
 // --dir, when given) to find an existing architecture.yml (monorepo
@@ -677,25 +679,63 @@ export async function pipeline(args) {
   if (output.status === 'aborted') setExitCode(exitCodeForViolations(output.diagnostics));
 }
 
-const TRACES_USAGE = 'Usage: construct traces list [--chooser <id>] [--limit <n>] [--json] | stats [--chooser <id>] [--json] | replay --provider <name> [--chooser <id>] [--min-traces <n>] [--baseline <name>] [--plugin <file.mjs>] [--json] [--dir <path>]';
-const TRACES_VALUE_FLAGS = new Set(['--chooser', '--limit', '--provider', '--baseline', '--min-traces', '--plugin', '--dir', '--format']);
+const TRACES_USAGE = 'Usage: construct traces list [--chooser <id>] [--limit <n>] [--json] | stats [--chooser <id>] [--json] | replay --provider <name> [--chooser <id>] [--min-traces <n>] [--baseline <name>] [--plugin <file.mjs>] [--json] | export --out <dir> [--since <date>] [--chooser <id>] [--yes] [--json] [--dir <path>]';
+const TRACES_VALUE_FLAGS = new Set(['--chooser', '--limit', '--provider', '--baseline', '--min-traces', '--plugin', '--dir', '--format', '--out', '--since']);
+
+/** The version of the running Construct, for the manifest of a dataset bundle: the baked value of the built CLI, else the core package's own. */
+function constructVersion() {
+  if (process.env.CONSTRUCT_CLI_VERSION) return process.env.CONSTRUCT_CLI_VERSION;
+  try {
+    return JSON.parse(fs.readFileSync(fileURLToPath(new URL('./package.json', import.meta.url)), 'utf8')).version;
+  } catch {
+    return 'unknown';
+  }
+}
+
+/** Failure codes that are the caller's wording, not the data or the machine: exit code 2 (usage). Everything else typed is 1 (refused), an internal failure 3. */
+const USAGE_CODES = new Set(['OUT_REQUIRED', 'SINCE_INVALID', 'NAME_REQUIRED', 'DIR_REQUIRED']);
+const INTERNAL_CODES = new Set(['EXPORT_FAILED', 'MODEL_VERIFY_FAILED', 'MODEL_REGISTER_FAILED', 'LEDGER_WRITE_FAILED']);
+
+/** Print a typed failure the way every #647 command does: as `{ ok: false, error: { code, message } }` with `--json`, else as one `Construct error` line; never a stack trace. */
+function reportTyped(failure, json) {
+  const exitCode = USAGE_CODES.has(failure.code) ? EXIT_CODES.USAGE_ERROR : INTERNAL_CODES.has(failure.code) ? EXIT_CODES.INTERNAL_ERROR : EXIT_CODES.VIOLATIONS;
+  if (json) {
+    console.log(JSON.stringify({ ok: false, error: { code: failure.code, message: failure.message } }, null, 2));
+    setExitCode(exitCode);
+    return;
+  }
+  throw new ConstructError(`${failure.code}: ${failure.message}`, { exitCode });
+}
+
+/** `construct traces export` (#647): preview by default, `--yes` writes the bundle. */
+function tracesExport(args, root, json) {
+  const result = exportDataset(root, { out: flagValue(args, '--out'), write: args.includes('--yes'), since: flagValue(args, '--since'), chooser: flagValue(args, '--chooser') ?? null, now: new Date().toISOString(), constructVersion: constructVersion() });
+  if (!result.ok) return reportTyped(result, json);
+  console.log(json ? JSON.stringify({ ok: true, written: result.written, out: result.out, preview: result.preview, ...(result.written ? { manifest: result.manifest } : {}) }, null, 2) : renderExport(result));
+  return undefined;
+}
 
 /**
- * `construct traces list|stats|replay` (#643): read-only, deterministic, no model and no network. The traces are the
+ * `construct traces list|stats|replay|export` (#643): read-only (`export` writes only with --yes, and only the bundle folder), deterministic, no model and no network. The traces are the
  * `decision-trace.v1` records the chain wrote to this project's state directory (docs/DECISION-TRACES.md).
  *
  *   list [--chooser <id>] [--limit <n>]     the recorded decisions
  *   stats [--chooser <id>]                  counts per chooser, acceptance rate of suggestions, per provider
  *   replay --provider <name> [--chooser <id>] [--min-traces <n>] [--baseline <name>] [--plugin <file.mjs>]
  *                                           score a provider on the recorded summaries against the `rules` baseline
+ *   export --out <dir> [--since <date>] [--chooser <id>] [--yes]
+ *                                           (#647) a dataset bundle for training the decision model ELSEWHERE: a PREVIEW of exactly what
+ *                                           would be included (records per chooser, the fields, the date range, hashed project keys, no
+ *                                           path or secret) unless --yes writes dataset.jsonl, schema.json, manifest.json and README.md
+ *                                           into <dir>; `traces: off` projects contribute nothing; docs/TRAIN-ELSEWHERE.md
  *
  * `--json` (or `--format json`) prints one JSON document. `--plugin <file.mjs>` imports a module that registers a decision
  * provider (it calls `registerDecisionProvider`, or default-exports `{ name, suggest }`); code you name yourself, run
  * locally, so it is as trusted as any script you run. A provider that is not registered is a usage error (exit 2).
  *
- * @param {string[]} args `list`, `stats` or `replay` followed by its flags.
+ * @param {string[]} args `list`, `stats`, `replay` or `export` followed by its flags.
  * @returns {Promise<void>} Resolves after printing the report.
- * @throws {ConstructError} Usage error (exit code 2) for an unknown subcommand, a missing or unknown provider, or a bad number.
+ * @throws {ConstructError} Usage error (exit code 2) for an unknown subcommand, a missing or unknown provider, or a bad number; a typed refusal of `export` (exit code 1, for example `DATASET_EMPTY`).
  *
  * @example
  * await traces(['replay', '--provider', 'rules', '--json']);
@@ -703,8 +743,9 @@ const TRACES_VALUE_FLAGS = new Set(['--chooser', '--limit', '--provider', '--bas
 export async function traces(args) {
   const usage = (message) => new ConstructError(`${message}\n${TRACES_USAGE}`, { exitCode: EXIT_CODES.USAGE_ERROR });
   const sub = args.find((a, i) => !a.startsWith('--') && !TRACES_VALUE_FLAGS.has(args[i - 1]));
-  if (!['list', 'stats', 'replay'].includes(sub)) throw usage(sub ? `Unknown traces command "${sub}".` : 'Say what to do with the traces.');
+  if (!['list', 'stats', 'replay', 'export'].includes(sub)) throw usage(sub ? `Unknown traces command "${sub}".` : 'Say what to do with the traces.');
   const json = args.includes('--json') || flagValue(args, '--format') === 'json';
+  if (sub === 'export') return tracesExport(args, getRoot(args), json);
   const chooser = flagValue(args, '--chooser');
   const count = (name, fallback) => {
     const raw = flagValue(args, name);
@@ -757,6 +798,67 @@ export async function traces(args) {
     }
     print({ ...report, enabled: read.enabled, skipped: read.skipped }, withNotes(renderReplay(report)));
   }
+}
+
+const MODEL_USAGE = 'Usage: construct model list [--json] | import <dir> [--yes] [--min-traces <n>] [--json] | remove <name> [--json] | enable <name> [--json] | disable <name> [--json] [--dir <path>]';
+const MODEL_VALUE_FLAGS = new Set(['--dir', '--min-traces', '--format']);
+
+/**
+ * `construct model list|import|remove|enable|disable` (#647): a decision model trained on ANOTHER machine comes back as a folder of
+ * plain data and is verified here. Nothing trains here and nothing in the folder is ever executed.
+ *
+ *   import <dir> [--yes] [--min-traces <n>]   verify the bundle (allowed files only: manifest.json, checksums.txt, eval-report.json,
+ *                                             MODEL_CARD.md, features.json, prototypes.json, model.onnx; no script, pickle, link or
+ *                                             path; size caps; sha256 of every file; the dataset hash must be one THIS project
+ *                                             exported), replay the held-out test records against the rules baseline (a features.json
+ *                                             model; an .onnx file is verified and stored, not loaded) and print the comparison; with
+ *                                             --yes register it in the state directory DISABLED. architecture.yml is never edited.
+ *   list                                      the registered models
+ *   remove <name>                             delete a registered model (state directory only)
+ *   enable <name> | disable <name>            the owner's explicit act: one flag in the state directory (docs/TRAIN-ELSEWHERE.md)
+ *
+ * `--json` prints one JSON document; a refusal is `{ ok: false, error: { code, message } }` and exit code 1 (2 for a usage error),
+ * never a stack trace.
+ *
+ * @param {string[]} args `list`, `import`, `remove`, `enable` or `disable` followed by its argument and flags.
+ * @returns {Promise<void>} Resolves after printing the result.
+ * @throws {ConstructError} Usage error (exit code 2) for an unknown subcommand or a missing argument; a typed refusal (exit code 1, for example `MODEL_FILE_NOT_ALLOWED`).
+ *
+ * @example
+ * await model(['import', 'model-out', '--yes']);
+ */
+export async function model(args) {
+  const usage = (message) => new ConstructError(`${message}\n${MODEL_USAGE}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+  const positionals = args.filter((a, i) => !a.startsWith('--') && !MODEL_VALUE_FLAGS.has(args[i - 1]));
+  const [sub, target] = positionals;
+  if (!['list', 'import', 'remove', 'enable', 'disable'].includes(sub)) throw usage(sub ? `Unknown model command "${sub}".` : 'Say what to do with the models.');
+  const json = args.includes('--json') || flagValue(args, '--format') === 'json';
+  const root = getRoot(args);
+  const emit = (doc, text) => console.log(json ? JSON.stringify(doc, null, 2) : text);
+  if (sub === 'list') {
+    const { models } = listModels(root);
+    emit({ ok: true, models }, renderModelList(models));
+    return;
+  }
+  if (!target) throw usage(sub === 'import' ? 'import needs the model folder: construct model import <dir>.' : `${sub} needs a model name.`);
+  if (sub === 'import') {
+    const raw = flagValue(args, '--min-traces');
+    if (raw !== undefined && !/^\d+$/.test(raw)) throw usage(`--min-traces must be a whole number (got ${JSON.stringify(raw)}).`);
+    const result = await importModel(root, target, { yes: args.includes('--yes'), minTraces: raw === undefined ? undefined : Number(raw), now: new Date().toISOString() });
+    if (!result.ok) return reportTyped(result, json);
+    emit({ ok: true, registered: result.registered, replaced: result.replaced, kind: result.kind, loadable: result.loadable, notes: result.notes, replayNote: result.replayNote, replay: result.replay, entry: result.entry }, renderImport(result));
+    return undefined;
+  }
+  if (sub === 'remove') {
+    const result = removeModel(root, target);
+    if (!result.ok) return reportTyped(result, json);
+    emit({ ok: true, removed: result.removed }, `Removed ${result.removed} from the registry.`);
+    return undefined;
+  }
+  const result = setModelEnabled(root, target, sub === 'enable');
+  if (!result.ok) return reportTyped(result, json);
+  emit({ ok: true, entry: result.entry }, `${result.entry.name}@${result.entry.version} is now ${result.entry.enabled ? 'ENABLED in the registry. It is used only when a project plugin file loads it and architecture.yml names that plugin (docs/TRAIN-ELSEWHERE.md, "Enable it")' : 'disabled'}.`);
+  return undefined;
 }
 
 const DECIDE_USAGE = 'Usage: construct decide --summary <file|-> [--provider <name>] [--format json] [--dir <path>]\n   or: construct decide --requirement "<sentence>" [--provider <name>] [--format json] [--dir <path>]';
