@@ -19,6 +19,7 @@ import path from 'node:path';
 import { TRACE_VERSION } from './decision-trace.mjs';
 import { DATASET_BUNDLE_VERSION } from './decision-dataset.mjs';
 import { validateFeaturesModel, FEATURE_VERSION } from './decision-features.mjs';
+import { validatePrototypesModel, EMBED_VERSION } from './decision-prototypes.mjs';
 import { PROVIDER_NAME_PATTERN } from './decision-plugin.mjs';
 
 /** The `schema` string of a model bundle's `manifest.json`. */
@@ -27,7 +28,7 @@ export const MODEL_BUNDLE_VERSION = 'construct.model-bundle.v1';
 export const MODEL_ALLOWED_FILES = Object.freeze(['manifest.json', 'checksums.txt', 'eval-report.json', 'MODEL_CARD.md', 'features.json', 'prototypes.json', 'model.onnx']);
 /** Size caps in bytes, per file; the whole bundle is capped at `total`. */
 export const MODEL_SIZE_CAPS = Object.freeze({ 'manifest.json': 64 * 1024, 'checksums.txt': 16 * 1024, 'eval-report.json': 1024 * 1024, 'MODEL_CARD.md': 256 * 1024, 'features.json': 8 * 1024 * 1024, 'prototypes.json': 8 * 1024 * 1024, 'model.onnx': 128 * 1024 * 1024, total: 200 * 1024 * 1024 });
-/** The model kinds a manifest may declare and the file that IS the model; only `features` can be loaded by this version. */
+/** The model kinds a manifest may declare and the file that IS the model; `features` and `prototypes` can be loaded by this version (`onnx` cannot). */
 export const MODEL_KINDS = Object.freeze({ features: 'features.json', prototypes: 'prototypes.json', onnx: 'model.onnx' });
 /** A model version: what the registry and a trace record next to the provider name. */
 export const MODEL_VERSION_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/;
@@ -100,6 +101,7 @@ export function validateModelManifest(manifest) {
   if (!Object.hasOwn(MODEL_KINDS, manifest.kind)) problems.push(`kind must be one of ${Object.keys(MODEL_KINDS).join(', ')}`);
   if (typeof manifest.datasetHash !== 'string' || !HEX64.test(manifest.datasetHash)) problems.push('datasetHash must be the 64-character sha256 of the dataset the model was trained on');
   if (manifest.featureVersion !== undefined && manifest.featureVersion !== FEATURE_VERSION) problems.push(`featureVersion must be ${FEATURE_VERSION}`);
+  if (manifest.embedVersion !== undefined && manifest.embedVersion !== EMBED_VERSION) problems.push(`embedVersion must be ${EMBED_VERSION}`);
   if (typeof manifest.createdAt !== 'string' || Number.isNaN(Date.parse(manifest.createdAt))) problems.push('createdAt must be an ISO time');
   if (!isPlainObject(manifest.files)) problems.push('files must map each file name to { sha256, bytes }');
   else {
@@ -141,12 +143,12 @@ function parseChecksums(text) {
  * caps, files are read once through O_NOFOLLOW, none starts like an executable, an archive or a pickle, text files are text,
  * `checksums.txt` matches the bytes and lists every file, `manifest.json` is valid and agrees with the bytes, the schema
  * versions are ours, the dataset hash is one THIS project exported (`findExport`), the model file parses as its kind (a
- * `features.json` is validated; `.onnx` and `prototypes.json` are only size-, hash- and sniff-checked), and `eval-report.json` is
+ * `features.json` or `prototypes.json` is validated; `.onnx` is only size-, hash- and sniff-checked), and `eval-report.json` is
  * JSON that agrees on the dataset hash.
  *
  * @param {string} dir The bundle folder.
  * @param {{ findExport: (datasetHash: string) => object | null }} options `findExport` answers whether this project exported a dataset (the ledger); a bundle for an unknown dataset is refused.
- * @returns {VerifiedModel | { ok: false, code: string, message: string, problems?: string[] }} The verified bundle, or the typed reason it is refused (`MODEL_DIR_NOT_FOUND`, `MODEL_SYMLINK`, `MODEL_FILE_NOT_ALLOWED`, `MODEL_TOO_LARGE`, `MODEL_EXECUTABLE`, `MODEL_NOT_TEXT`, `MODEL_MISSING_FILE`, `MODEL_CHECKSUM_INVALID`, `MODEL_CHECKSUM_MISMATCH`, `MODEL_CHECKSUM_MISSING`, `MODEL_PATH_TRAVERSAL`, `MODEL_MANIFEST_INVALID`, `MODEL_MANIFEST_MISMATCH`, `MODEL_SCHEMA_MISMATCH`, `MODEL_DATASET_UNKNOWN`, `MODEL_FEATURES_INVALID`, `MODEL_REPORT_INVALID`, `MODEL_UNREADABLE`).
+ * @returns {VerifiedModel | { ok: false, code: string, message: string, problems?: string[] }} The verified bundle, or the typed reason it is refused (`MODEL_DIR_NOT_FOUND`, `MODEL_SYMLINK`, `MODEL_FILE_NOT_ALLOWED`, `MODEL_TOO_LARGE`, `MODEL_EXECUTABLE`, `MODEL_NOT_TEXT`, `MODEL_MISSING_FILE`, `MODEL_CHECKSUM_INVALID`, `MODEL_CHECKSUM_MISMATCH`, `MODEL_CHECKSUM_MISSING`, `MODEL_PATH_TRAVERSAL`, `MODEL_MANIFEST_INVALID`, `MODEL_MANIFEST_MISMATCH`, `MODEL_SCHEMA_MISMATCH`, `MODEL_DATASET_UNKNOWN`, `MODEL_FEATURES_INVALID`, `MODEL_PROTOTYPES_INVALID`, `MODEL_REPORT_INVALID`, `MODEL_UNREADABLE`).
  *
  * @example
  * const v = verifyModelBundle(dir, { findExport: (h) => findExport(root, h) });
@@ -242,12 +244,16 @@ export function verifyModelBundle(dir, options) {
       model = json;
       loadable = true;
     } else if (manifest.kind === 'prototypes') {
+      let json;
       try {
-        JSON.parse(files['prototypes.json'].toString('utf8'));
+        json = JSON.parse(files['prototypes.json'].toString('utf8'));
       } catch {
-        return fail('MODEL_FEATURES_INVALID', 'prototypes.json is not JSON.');
+        return fail('MODEL_PROTOTYPES_INVALID', 'prototypes.json is not JSON.');
       }
-      notes.push('prototypes.json is verified and stored, but this version has no loader for it (the embedding classifier is #645): it is not replayed and cannot be enabled yet.');
+      const checked = validatePrototypesModel(json);
+      if (!checked.ok) return fail('MODEL_PROTOTYPES_INVALID', `prototypes.json is not a valid prototype set: ${checked.errors.slice(0, 3).join('; ')}.`, checked.errors);
+      model = json;
+      loadable = true;
     } else {
       notes.push('model.onnx is verified (size, checksum, not an executable or archive) and stored, but this version has NO ONNX loader: it is not replayed and cannot be enabled yet.');
     }

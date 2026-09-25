@@ -109,7 +109,7 @@ are the ones stored.
 | a file name outside `manifest.json checksums.txt eval-report.json MODEL_CARD.md features.json prototypes.json model.onnx` (a script, `.py`, `.pkl`, a module, a hidden file) | `MODEL_FILE_NOT_ALLOWED` |
 | a symbolic link (a file or the folder), | `MODEL_SYMLINK` |
 | a sub-folder | `MODEL_FILE_NOT_ALLOWED` |
-| a file over its cap (`features.json` 8 MiB, `model.onnx` 128 MiB, 200 MiB in all) | `MODEL_TOO_LARGE` |
+| a file over its cap (`features.json` and `prototypes.json` 8 MiB, `model.onnx` 128 MiB, 200 MiB in all) | `MODEL_TOO_LARGE` |
 | a file that starts like a script, an ELF/Mach-O/Windows executable, a zip/gzip or a pickle | `MODEL_EXECUTABLE` |
 | a text file that holds binary data | `MODEL_NOT_TEXT` |
 | a required file missing, or the declared model kind's file | `MODEL_MISSING_FILE` |
@@ -119,6 +119,7 @@ are the ones stored.
 | another bundle, trace or dataset schema version | `MODEL_SCHEMA_MISMATCH` |
 | a dataset hash this project never exported (not in the ledger) | `MODEL_DATASET_UNKNOWN` |
 | a `features.json` that is not valid data (bad weights, poisoned keys, too big) | `MODEL_FEATURES_INVALID` |
+| a `prototypes.json` that is not valid data (another embedder, a word that is not lowercase letters and digits, poisoned keys, too many prototypes) | `MODEL_PROTOTYPES_INVALID` |
 | an `eval-report.json` that is not JSON or names another dataset | `MODEL_REPORT_INVALID` |
 
 Every refusal is `{ ok: false, code, message }` (exit code 1; `--json` prints it as `{ ok: false, error }`), a one-line message
@@ -130,9 +131,54 @@ baseline, with the same yardstick as `construct traces replay` (agreement, when 
 the verified files are stored under `<state dir>/models/<project key>/<name>/` and the model is registered **DISABLED**.
 `architecture.yml` is never edited by import.
 
-Model kinds: this version can LOAD only `features.json` (weights in JSON, scored in pure JavaScript, deterministic). A
-`model.onnx` or `prototypes.json` bundle is verified and stored, but NOT loaded, not replayed and cannot be enabled; the report
-says so (the embedding classifier is #645).
+Model kinds: this version can LOAD two, both plain JSON scored in pure JavaScript, deterministic: `features.json` (the
+logistic regression above) and `prototypes.json` (the local embedding classifier, section 3b). A `model.onnx` bundle is verified
+and stored, but NOT loaded, not replayed and cannot be enabled; the report says so (no ONNX runtime here, see "What is not here").
+
+## 3b. The local embedding classifier (`prototypes.json`, #645)
+
+A second model kind that needs no training run, only a list of example words: for each closed question ("route") the
+`prototypes.json` holds words per option (for the requirement questions today, the words people chose `entity`, `state`,
+`ui-part`... for; a curated seed adds the 3-5 examples per layer of your layer graph). A new word is **embedded** and compared with
+them; the provider suggests the option of the closest example, the runner-up, and the similarity as `score`, or answers `null`.
+
+```
+TRAIN_KIND=prototypes [TRAIN_SEED=seed.json] train-kit/train.sh <dataset-bundle> <model-out>     # or: python3 train-kit/build_prototypes.py --dataset D --out M [--seed seed.json]
+construct model import M --yes            # verified as plain data, replayed on the held-out records, registered DISABLED
+construct traces replay --model layer-proto      # scored offline against the rules baseline, enabled or not
+construct model enable layer-proto        # then the same plugin file and decision: setting as in section 4
+```
+
+- **The embedding is a function, not a download.** `embed.v1`: each word is lowercased, wrapped as `<word>`, cut into its 2-, 3- and
+  4-grams, each n-gram adds +1 or -1 (top bit of its FNV-1a hash) to bucket `hash mod 256`, and the vector is divided by its length
+  (the fastText subword idea). No dictionary, no model file, no runtime, no network: `packages/core/decision-prototypes.mjs`
+  computes it and `train-kit/build_prototypes.py` repeats it exactly (a table of buckets is pinned in both tests). Words that share
+  a stem or an ending ("button", "buttons"; "orders", "customers") are close; **it does not know meaning**: a synonym with no shared
+  letters is not close, and a word unlike every example scores low and is answered with a low score or `null`. That is what replay
+  is for.
+- **Thresholds.** `minScore` (the best cosine similarity must reach it; default 0.1) and `minMargin` (the best and the runner-up must
+  differ by at least this; default 0). Below either, the provider answers `null`. It also answers `null` for a question it has no
+  prototypes for and for a question that quotes no word. It suggests only an ENABLED option.
+- **`prototypes.json`** (`construct.prototypes-model.v1`): `embedder` (`char-ngram-hash`, `embed.v1`, `dim` 16-1024, `ngrams`),
+  `minScore`, `minMargin`, `routes`: `{ "<route>": { "classes": [...option ids], "prototypes": { "<option>": ["word", ...] } } }`.
+  Limits: 64 routes, 8 classes, 100 words per class, 5000 in all, each word 1-40 characters of lowercase letters and digits;
+  another embedder kind or version, a word with a path or a capital, a prototype-polluting key are refused with
+  `MODEL_PROTOTYPES_INVALID`. The manifest says `kind: "prototypes"` (and `embedVersion`).
+- **Curated data.** The prototype set is reviewed like a rule fixture. `--seed` merges `{ "routes": { "<route>": { "<option>": [...] } } }`
+  first (curated words are never dropped by the per-class cap of `max_per_class`, default 30; the rest are the most frequent words
+  the people chose on the TRAIN split). A route is the question with quoted words blanked plus its option ids, exactly as in `features.json`.
+- **Latency** (this machine, Node, the fixture's 96 prototypes): about 5 ms once to embed the prototypes when the model loads,
+  then about 0.04 ms per suggestion (a handful of 256-number dot products), so it costs nothing measurable behind the seam. A neural
+  encoder would be milliseconds per sentence; that is why it is a later, replay-earned option.
+- **Scored by replay, on records it did not learn from.** `construct model import` replays the held-out test records of the export;
+  `construct traces replay --model <name>` (`--json`, `--chooser`, `--min-traces`, `--baseline`) scores a registered model, enabled or not,
+  on those records plus everything recorded after the export, and says how many; `--all` scores every recorded decision, including
+  the ones its prototypes came from (that flatters it). On the 120-record fixture (13 held-out) it gets 8 hits to the rules'
+  2, verdict `beats`, `promotable: false` (under 30 person-made traces). That is a synthetic fixture with learnable habits; read the
+  numbers of your own traces.
+- **Disabled by default and inert until you ask.** The registry keeps it DISABLED; a project uses it only through the plugin file
+  and `decision:` setting of section 4 after `construct model enable`; every suggestion is recorded with its name and version, so
+  the next replay scores it on what people really chose.
 
 ## 4. Enable it (your explicit act)
 
@@ -194,8 +240,13 @@ start a job with less than 8 GB free (`vm_stat`), waits and tries again.
 
 ## What is not here (left out on purpose, in order)
 
-- **Embedding prototypes plus a classification head** (the default mode of the issue, the classifier plugin of #645) and an **ONNX
-  loader**: `model.onnx` and `prototypes.json` are verified and stored, never loaded.
+- **A neural embedding and an ONNX loader** (#645 left them out on purpose): a static table (potion-base-8M, MIT) or a compact
+  encoder (bge-small-en-v1.5 MIT, all-MiniLM-L6-v2 Apache-2.0) needs either a vocabulary table of tens of MB or ONNX Runtime
+  (MIT, but a native dependency the core packages must not take). `model.onnx` is verified and stored, never loaded. The
+  `embedder` of a `prototypes.json` is versioned (`embed.v1` today), so a neural one can arrive as `embed.v2` without changing the
+  bundle format, and it is used only when it beats `embed.v1` on `construct traces replay --model`.
+- **A classification head on top of the prototypes** (SetFit-style tuning, a small instruction model as a constrained chooser):
+  the prototype scorer is nearest-neighbour, with no learned weights.
 - **LoRA of a small open model through MLX**, and Apple Silicon GPU/MPS training: documented as TODO in `train-kit/README.md`.
 - **Installing the launchd service**: the template is provided, nothing installs it.
 - **Decrypting an `age` bundle inside the kit**, and any transport code.

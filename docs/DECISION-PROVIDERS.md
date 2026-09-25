@@ -137,6 +137,8 @@ and `outcome.accepted: true|false`; with `provider: off` nothing is suggested an
 ## What is not here
 
 Bundling or downloading a model, and training (never here: `docs/TRAIN-ELSEWHERE.md`, #647, brings back a model trained on another
-machine as verified data and a plugin file that loads it once you enable it; the embedding classifier is #645), MCP exposure beyond the read-only `decide` tool of `packages/mcp` (#649), an `ignored`
+machine as verified data and a plugin file that loads it once you enable it; the local embedding classifier of #645 is the
+`prototypes.json` kind of that page, section 3b: nearest-prototype over a fixed character n-gram embedding, no model download, no runtime),
+a neural embedding or ONNX loader (a later, replay-earned `embed.v2`), MCP exposure beyond the read-only `decide` tool of `packages/mcp` (#649), an `ignored`
 outcome (a suggestion nobody looked at), and running a plugin in an isolated process. A plugin registered with
 `registerDecisionProvider` from code still works and is used by name.

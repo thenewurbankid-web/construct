@@ -25,6 +25,7 @@
     "./decision-trace-replay": "./decision-trace-replay.mjs",
     "./decision-dataset": "./decision-dataset.mjs",
     "./decision-features": "./decision-features.mjs",
+    "./decision-prototypes": "./decision-prototypes.mjs",
     "./decision-model-bundle": "./decision-model-bundle.mjs",
     "./decision-model-registry": "./decision-model-registry.mjs",
     "./redaction": "./redaction.mjs",

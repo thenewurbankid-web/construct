@@ -49,7 +49,7 @@ import { listWorkflowSourceFiles, readWorkflowSource } from '../../packages/engi
 import { validateMachineSpec, renderMachineSpecReport } from './research/machine-spec.mjs';
 import { generateFromSpec } from './research/specToCode.mjs';
 import { readTraces } from './decision-trace-store.mjs';
-import { providerInput, getDecisionProvider } from './decision-provider.mjs';
+import { providerInput, getDecisionProvider, registerDecisionProvider } from './decision-provider.mjs';
 import { loadDecisionPlugin } from './decision-plugin.mjs';
 import { openDecision, suggestForQuestions } from './decision-project.mjs';
 import { detectMachine, buildMachineReport, renderMachineText, defaultProbes as defaultMachineProbes } from './machine.mjs';
@@ -57,7 +57,7 @@ import { parseRequirement, openQuestion } from './requirement-card.mjs';
 import { placeCard } from './placement.mjs';
 import { traceStats, replayTraces, renderTraceList, renderTraceStats, renderReplay, DEFAULT_MIN_TRACES } from './decision-trace-replay.mjs';
 import { exportDataset, renderExport } from './decision-dataset.mjs';
-import { importModel, listModels, removeModel, setModelEnabled, renderImport, renderModelList } from './decision-model-registry.mjs';
+import { importModel, listModels, removeModel, setModelEnabled, loadRegisteredModelProvider, unseenByModel, renderImport, renderModelList } from './decision-model-registry.mjs';
 
 // Resolve the project root freshly per command: walks up from cwd (or from
 // --dir, when given) to find an existing architecture.yml (monorepo
@@ -679,8 +679,8 @@ export async function pipeline(args) {
   if (output.status === 'aborted') setExitCode(exitCodeForViolations(output.diagnostics));
 }
 
-const TRACES_USAGE = 'Usage: construct traces list [--chooser <id>] [--limit <n>] [--json] | stats [--chooser <id>] [--json] | replay --provider <name> [--chooser <id>] [--min-traces <n>] [--baseline <name>] [--plugin <file.mjs>] [--json] | export --out <dir> [--since <date>] [--chooser <id>] [--yes] [--json] [--dir <path>]';
-const TRACES_VALUE_FLAGS = new Set(['--chooser', '--limit', '--provider', '--baseline', '--min-traces', '--plugin', '--dir', '--format', '--out', '--since']);
+const TRACES_USAGE = 'Usage: construct traces list [--chooser <id>] [--limit <n>] [--json] | stats [--chooser <id>] [--json] | replay (--provider <name> [--plugin <file.mjs>] | --model <name> [--all]) [--chooser <id>] [--min-traces <n>] [--baseline <name>] [--json] | export --out <dir> [--since <date>] [--chooser <id>] [--yes] [--json] [--dir <path>]';
+const TRACES_VALUE_FLAGS = new Set(['--chooser', '--limit', '--provider', '--baseline', '--min-traces', '--plugin', '--model', '--dir', '--format', '--out', '--since']);
 
 /** The version of the running Construct, for the manifest of a dataset bundle: the baked value of the built CLI, else the core package's own. */
 function constructVersion() {
@@ -723,6 +723,11 @@ function tracesExport(args, root, json) {
  *   stats [--chooser <id>]                  counts per chooser, acceptance rate of suggestions, per provider
  *   replay --provider <name> [--chooser <id>] [--min-traces <n>] [--baseline <name>] [--plugin <file.mjs>]
  *                                           score a provider on the recorded summaries against the `rules` baseline
+ *   replay --model <name> [--all] [--chooser <id>] [--min-traces <n>] [--baseline <name>]
+ *                                           (#645) the same, for a model registered by `construct model import` (a features.json or a
+ *                                           prototypes.json model), ENABLED OR NOT: scoring a model offline never enables it. It scores
+ *                                           only decisions the model has not seen (the held-out records of its export and everything
+ *                                           recorded after it); --all scores every recorded decision, including the ones it was built from
  *   export --out <dir> [--since <date>] [--chooser <id>] [--yes]
  *                                           (#647) a dataset bundle for training the decision model ELSEWHERE: a PREVIEW of exactly what
  *                                           would be included (records per chooser, the fields, the date range, hashed project keys, no
@@ -770,10 +775,25 @@ export async function traces(args) {
     const stats = traceStats(decisions);
     print({ ok: true, enabled: read.enabled, skipped: read.skipped, ...stats }, withNotes(renderTraceStats(stats)));
   } else {
-    const provider = flagValue(args, '--provider');
-    if (!provider) throw usage('replay needs --provider <name>.');
+    const modelName = flagValue(args, '--model');
+    const provider = flagValue(args, '--provider') ?? modelName;
+    let scored = decisions;
+    if (!provider) throw usage('replay needs --provider <name> or --model <name>.');
     const plugin = flagValue(args, '--plugin');
-    if (plugin) {
+    if (modelName) {
+      // A registered model is scored offline, enabled or not (`requireEnabled: false`): this run only reads the stored, hash-checked data.
+      if (provider !== modelName || plugin) throw usage('--model <name> takes no other provider and no --plugin.');
+      const loaded = loadRegisteredModelProvider(modelName, { root, requireEnabled: false });
+      if (!loaded.ok) throw usage(`Could not load the model: ${loaded.message}`);
+      if (getDecisionProvider(modelName)) throw usage(`A decision provider named "${modelName}" is already registered in this process.`);
+      registerDecisionProvider(modelName, loaded.provider);
+      if (!args.includes('--all')) {
+        const unseen = unseenByModel(root, modelName, decisions);
+        if (!unseen.ok) throw usage(`${unseen.message} Use --all to score every recorded decision.`);
+        scored = unseen.decisions;
+        notes.push(`Scored on the ${unseen.decisions.length} decisions ${modelName} has not seen (${unseen.heldOut} held-out records of its export, ${unseen.later} recorded since); --all scores every recorded decision, including the ones it was built from.`);
+      }
+    } else if (plugin) {
       // The same loader as the project setting (decision-plugin.mjs). A file named on the command line is any path you type; it
       // may default-export the provider contract or register itself with registerDecisionProvider (older plugins).
       const loaded = await loadDecisionPlugin(plugin, { expectName: provider, register: true, strict: false });
@@ -791,7 +811,7 @@ export async function traces(args) {
         if (!loaded.ok) throw usage(`Could not load the project's decision plugin: ${loaded.message}`);
       }
     }
-    const report = await replayTraces(decisions, { provider, baseline: flagValue(args, '--baseline'), chooser, minTraces: count('--min-traces', DEFAULT_MIN_TRACES) });
+    const report = await replayTraces(scored, { provider, baseline: flagValue(args, '--baseline'), chooser, minTraces: count('--min-traces', DEFAULT_MIN_TRACES) });
     if (!report.ok) {
       if (json) console.log(JSON.stringify(report, null, 2));
       throw usage(report.error);

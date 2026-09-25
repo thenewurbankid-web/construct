@@ -10,11 +10,11 @@
 //                                     disabling, removing or re-importing takes effect without a restart, and a model that is not
 //                                     usable makes the suggestion fail, which the decision seam answers with the rules provider
 //
-// What is guaranteed: nothing in the bundle is executed (only JSON is parsed, only a `features.json` is loaded, by the pure scorer of
-// decision-features.mjs); an imported model is DISABLED until the owner enables it; the replay is the same yardstick as
+// What is guaranteed: nothing in the bundle is executed (only JSON is parsed; only a `features.json` (decision-features.mjs) or a
+// `prototypes.json` (decision-prototypes.mjs, #645) is loaded, by a pure scorer); an imported model is DISABLED until the owner enables it; the replay is the same yardstick as
 // `construct traces replay` (`replayTraces`), on records the model never saw; a model that loses is stored and reported as losing,
 // never promoted. `decision:` in `architecture.yml` is NEVER written by anything here. A model kind with no loader in this version
-// (`model.onnx`, `prototypes.json`) is verified and stored, not replayed, and cannot be enabled; the report says so.
+// (`model.onnx`) is verified and stored, not replayed, and cannot be enabled; the report says so.
 // No network. Every failure is `{ ok: false, code, message }`. Decision record: docs/TRAIN-ELSEWHERE.md.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -25,6 +25,7 @@ import { readTraces } from './decision-trace-store.mjs';
 import { findExport } from './decision-dataset.mjs';
 import { verifyModelBundle, MODEL_VERSION_PATTERN } from './decision-model-bundle.mjs';
 import { validateFeaturesModel, createFeaturesProvider } from './decision-features.mjs';
+import { validatePrototypesModel, createPrototypesProvider } from './decision-prototypes.mjs';
 import { getDecisionProvider, registerDecisionProvider, unregisterDecisionProvider } from './decision-provider.mjs';
 import { replayTraces, DEFAULT_MIN_TRACES } from './decision-trace-replay.mjs';
 import { PROVIDER_NAME_PATTERN } from './decision-plugin.mjs';
@@ -34,6 +35,13 @@ const errText = (e) => `${e?.code ? `${e.code}: ` : ''}${String(e?.message ?? e)
 const sha256 = (data) => crypto.createHash('sha256').update(data).digest('hex');
 const pct = (x) => (x === null || x === undefined ? 'n/a' : `${Math.round(x * 1000) / 10}%`);
 const asPath = (root) => (root instanceof URL ? fileURLToPath(root) : String(root));
+
+/** The model kinds this version can load (`onnx` cannot): the kind's file, its validator and the provider it makes. */
+const LOADERS = {
+  features: { file: 'features.json', validate: validateFeaturesModel, provider: createFeaturesProvider },
+  prototypes: { file: 'prototypes.json', validate: validatePrototypesModel, provider: createPrototypesProvider },
+};
+const loaderOf = (kind) => (Object.hasOwn(LOADERS, kind) ? LOADERS[kind] : null);
 
 /**
  * The directory of a project's model registry: `<state dir>/models/<project key>`.
@@ -90,7 +98,7 @@ async function replayHeldOut(root, verified, exported, options) {
   if (!decisions.length) return { ran: false, note: `None of the ${ids.size} held-out records of that export is in the trace store any more (rotated or deleted), so the model could not be replayed.` };
   const name = verified.manifest.name;
   if (getDecisionProvider(name)) return { ran: false, error: fail('MODEL_NAME_TAKEN', `A decision provider named "${name}" is already registered in this process; it cannot be replayed under that name.`) };
-  registerDecisionProvider(name, createFeaturesProvider(verified.model, { name, version: verified.manifest.version }));
+  registerDecisionProvider(name, loaderOf(verified.kind).provider(verified.model, { name, version: verified.manifest.version }));
   try {
     const report = await replayTraces(decisions, { provider: name, baseline: 'rules', minTraces: options.minTraces ?? DEFAULT_MIN_TRACES });
     if (!report.ok) return { ran: false, error: fail('MODEL_REPLAY_FAILED', report.error) };
@@ -231,7 +239,7 @@ export function setModelEnabled(root, name, enabled, options = {}) {
  * the hashes recorded at import (`MODEL_TAMPERED`). Reads plain JSON and scores it in pure JavaScript; nothing is executed.
  *
  * @param {string} name The registered model's name (the provider name).
- * @param {{ root: string | URL, stateDir?: string, env?: Record<string, string | undefined> }} options The project root (a path or the `URL` of the project folder) and the state directory.
+ * @param {{ root: string | URL, stateDir?: string, env?: Record<string, string | undefined>, requireEnabled?: boolean }} options The project root (a path or the `URL` of the project folder) and the state directory; `requireEnabled: false` also loads a model that is still DISABLED, for offline scoring only (`construct traces replay --model`), never for a project plugin.
  * @returns {{ ok: true, provider: { name: string, version: string, suggest: (summary: object) => object | null } } | { ok: false, code: string, message: string }} The provider, or why not.
  *
  * @example
@@ -244,20 +252,47 @@ export function loadRegisteredModelProvider(name, options) {
     const registry = readModelRegistry(root, options);
     const entry = registry.models.find((m) => m.name === name);
     if (!entry) return fail('MODEL_NOT_FOUND', `No model named ${JSON.stringify(String(name).slice(0, 40))} is registered for this project.`);
-    if (!entry.enabled) return fail('MODEL_DISABLED', `The model ${name} is registered but disabled. Enable it with: construct model enable ${name}`);
-    if (!entry.loadable || entry.kind !== 'features') return fail('MODEL_NOT_LOADABLE', `The model ${name} is a "${entry.kind}" model and this version has no loader for it.`);
-    const file = path.join(registry.dir, entry.name, 'features.json');
+    if (options.requireEnabled !== false && !entry.enabled) return fail('MODEL_DISABLED', `The model ${name} is registered but disabled. Enable it with: construct model enable ${name}`);
+    const loader = loaderOf(entry.kind);
+    if (!entry.loadable || !loader) return fail('MODEL_NOT_LOADABLE', `The model ${name} is a "${entry.kind}" model and this version has no loader for it.`);
+    const file = path.join(registry.dir, entry.name, loader.file);
     const st = fs.lstatSync(file);
     if (!st.isFile() || st.size > 8 * 1024 * 1024) return fail('MODEL_TAMPERED', `The stored files of ${name} are not what was imported.`);
     const bytes = fs.readFileSync(file);
-    if (sha256(bytes) !== entry.files['features.json']?.sha256) return fail('MODEL_TAMPERED', `The stored features.json of ${name} does not match the hash recorded at import; re-import it.`);
+    if (sha256(bytes) !== entry.files[loader.file]?.sha256) return fail('MODEL_TAMPERED', `The stored ${loader.file} of ${name} does not match the hash recorded at import; re-import it.`);
     const model = JSON.parse(bytes.toString('utf8'));
-    const checked = validateFeaturesModel(model);
-    if (!checked.ok) return fail('MODEL_TAMPERED', `The stored features.json of ${name} is not valid any more.`);
-    return { ok: true, provider: createFeaturesProvider(model, { name: entry.name, version: entry.version }) };
+    const checked = loader.validate(model);
+    if (!checked.ok) return fail('MODEL_TAMPERED', `The stored ${loader.file} of ${name} is not valid any more.`);
+    return { ok: true, provider: loader.provider(model, { name: entry.name, version: entry.version }) };
   } catch (e) {
     return fail('MODEL_NOT_LOADABLE', `The model could not be loaded (${errText(e)}).`);
   }
+}
+
+/**
+ * The recorded decisions a registered model has NOT seen: the held-out test records of the export it was built from, plus every
+ * decision recorded after that export. Scoring a model on the records it was built from would flatter it, so `construct traces
+ * replay --model` uses this unless `--all` is given.
+ *
+ * @param {string} root The project root.
+ * @param {string} name The registered model's name.
+ * @param {{ id: string, at: string }[]} decisions The recorded decisions (`readTraces`).
+ * @param {{ stateDir?: string, env?: Record<string, string | undefined> }} [options] The state directory.
+ * @returns {{ ok: true, decisions: object[], heldOut: number, later: number, exportedAt: string } | { ok: false, code: string, message: string }} The unseen decisions and how many of each kind, or `MODEL_NOT_FOUND` / `MODEL_DATASET_UNKNOWN`.
+ *
+ * @example
+ * unseenByModel(root, 'layer-proto', readTraces(root).decisions).decisions.length; // => 13
+ */
+export function unseenByModel(root, name, decisions, options = {}) {
+  const entry = readModelRegistry(root, options).models.find((m) => m.name === name);
+  if (!entry) return fail('MODEL_NOT_FOUND', `No model named ${JSON.stringify(String(name).slice(0, 40))} is registered.`);
+  const exported = findExport(root, entry.datasetHash, options);
+  if (!exported) return fail('MODEL_DATASET_UNKNOWN', 'The export ledger no longer knows the dataset this model was built from, so its held-out records cannot be told apart.');
+  const ids = new Set(exported.testIds);
+  const heldOut = decisions.filter((d) => ids.has(d.id));
+  const later = decisions.filter((d) => !ids.has(d.id) && Date.parse(d.at) > Date.parse(exported.createdAt));
+  const byTime = (a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : a.id < b.id ? -1 : 1);
+  return { ok: true, decisions: [...heldOut, ...later].sort(byTime), heldOut: heldOut.length, later: later.length, exportedAt: exported.createdAt };
 }
 
 /**
@@ -282,8 +317,9 @@ export function registeredModelProvider(name, options) {
     const entry = readModelRegistry(root, options).models.find((m) => m.name === name);
     let stamp = 'none';
     try {
-      const st = fs.statSync(path.join(modelsDir(root, options), name, 'features.json'));
-      stamp = `${st.mtimeMs}:${st.size}:${entry?.files?.['features.json']?.sha256 ?? ''}:${entry?.enabled}`;
+      const file = loaderOf(entry?.kind)?.file ?? 'features.json';
+      const st = fs.statSync(path.join(modelsDir(root, options), name, file));
+      stamp = `${st.mtimeMs}:${st.size}:${entry?.files?.[file]?.sha256 ?? ''}:${entry?.enabled}`;
     } catch {
       // not stored: loadRegisteredModelProvider says so
     }

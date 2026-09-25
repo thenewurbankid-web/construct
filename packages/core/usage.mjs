@@ -175,7 +175,7 @@ Commands:
   construct pipeline run [--dir <path>]   (reads a Context Envelope as JSON on stdin, writes one to stdout)
   construct traces list [--chooser <id>] [--limit <n>] [--json] [--dir <path>]
   construct traces stats [--chooser <id>] [--json] [--dir <path>]
-  construct traces replay --provider <name> [--chooser <id>] [--min-traces <n>] [--baseline <name>] [--plugin <file.mjs>] [--json] [--dir <path>]
+  construct traces replay (--provider <name> [--plugin <file.mjs>] | --model <name> [--all]) [--chooser <id>] [--min-traces <n>] [--baseline <name>] [--json] [--dir <path>]
   construct traces export --out <dir> [--since <date>] [--chooser <id>] [--yes] [--json] [--dir <path>]
     (the choices made in a chain are recorded locally as decision-trace.v1, never inside your project: 'list' shows them, 'stats'
     counts them and how often a suggestion was taken, 'replay' scores a decision provider (rules, off, a plugin) on what people

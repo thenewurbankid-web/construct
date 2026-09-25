@@ -131,6 +131,7 @@ export const result = { trace, outcome: record };
 construct traces list [--chooser <id>] [--limit <n>] [--json]
 construct traces stats [--chooser <id>] [--json]
 construct traces replay --provider <name> [--chooser <id>] [--min-traces <n>] [--baseline <name>] [--plugin <file.mjs>] [--json]
+construct traces replay --model <name> [--all] [--chooser <id>] [--min-traces <n>] [--baseline <name>] [--json]
 ```
 
 All three are read-only, deterministic, need no model and no network. `--dir <path>` targets a project as everywhere else.
@@ -161,6 +162,7 @@ configured provider, or `rules` when a plugin failed and the rules answered in i
 ## What is not here
 
 Export bundles, dataset splits and importing a trained model are `docs/TRAIN-ELSEWHERE.md` (#647); training happens on another
-machine (`train-kit/`), never here; the embedding classifier plugin is #645. The
+machine (`train-kit/`), never here; the embedding classifier (#645) is the `prototypes.json` model kind, scored with
+`construct traces replay --model <name>` (offline, enabled or not, on the records it has not seen). The
 Cockpit does not show traces yet. Outcomes `testsPassed` and `reverted` have a function to record them (`recordOutcome`) but no
 caller: see the seam above.
