@@ -150,6 +150,12 @@ Commands:
     counts them and how often a suggestion was taken, 'replay' scores a decision provider (rules, off, a plugin) on what people
     chose against the rules baseline: beats, ties or loses, promotable only on >= 30 traces; read-only, no model, no network;
     switch recording off with 'traces: off' in architecture.yml; see docs/DECISION-TRACES.md)
+  construct decide --summary <file|-> [--provider <name>] [--format json] [--dir <path>]
+  construct decide --requirement "<sentence>" [--provider <name>] [--format json] [--dir <path>]
+    (the decision model as a tool: a chooser or open-question summary as JSON in, one suggestion out {option, reason, runnerUp};
+    --requirement prints the suggestion for each open question and offer of a sentence. Read-only, suggests and never applies.
+    The default provider is 'rules', no model; 'decision: { provider, plugin }' in architecture.yml names a plugin, which falls
+    back to rules when it fails or is slow; see docs/DECISION-PROVIDERS.md)
 
 --dir <path> targets a Construct project nested in a subdirectory (e.g. one
 created with 'construct init <path>' inside a larger, unrelated project)

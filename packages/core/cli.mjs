@@ -44,7 +44,11 @@ import { listWorkflowSourceFiles, readWorkflowSource } from '../../packages/engi
 import { validateMachineSpec, renderMachineSpecReport } from './research/machine-spec.mjs';
 import { generateFromSpec } from './research/specToCode.mjs';
 import { readTraces } from './decision-trace-store.mjs';
-import { registerDecisionProvider } from './decision-provider.mjs';
+import { providerInput, getDecisionProvider } from './decision-provider.mjs';
+import { loadDecisionPlugin } from './decision-plugin.mjs';
+import { openDecision, suggestForQuestions } from './decision-project.mjs';
+import { parseRequirement, openQuestion } from './requirement-card.mjs';
+import { placeCard } from './placement.mjs';
 import { traceStats, replayTraces, renderTraceList, renderTraceStats, renderReplay, DEFAULT_MIN_TRACES } from './decision-trace-replay.mjs';
 
 // Resolve the project root freshly per command: walks up from cwd (or from
@@ -687,14 +691,22 @@ export async function traces(args) {
     if (!provider) throw usage('replay needs --provider <name>.');
     const plugin = flagValue(args, '--plugin');
     if (plugin) {
-      let mod;
+      // The same loader as the project setting (decision-plugin.mjs). A file named on the command line is any path you type; it
+      // may default-export the provider contract or register itself with registerDecisionProvider (older plugins).
+      const loaded = await loadDecisionPlugin(plugin, { expectName: provider, register: true, strict: false });
+      if (!loaded.ok) throw usage(`Could not load the plugin ${plugin}: ${loaded.message}`);
+    } else if (!getDecisionProvider(provider)) {
+      // No --plugin: a provider the project's architecture.yml names (decision: { provider, plugin }) is loaded from there.
+      let setting = {};
       try {
-        mod = await import(pathToFileURL(path.resolve(plugin)).href);
-      } catch (e) {
-        throw usage(`Could not load the plugin ${plugin}: ${String(e?.message ?? e).split('\n')[0]}`);
+        setting = loadConfig(root).decision ?? {};
+      } catch {
+        // an unreadable config: the provider stays unregistered and the error below says so
       }
-      const def = mod.default;
-      if (def && typeof def === 'object' && typeof def.name === 'string' && typeof def.suggest === 'function') registerDecisionProvider(def.name, def);
+      if (setting.plugin && (setting.provider ?? provider) === provider) {
+        const loaded = await loadDecisionPlugin(setting.plugin, { root, expectName: provider, register: true });
+        if (!loaded.ok) throw usage(`Could not load the project's decision plugin: ${loaded.message}`);
+      }
     }
     const report = await replayTraces(decisions, { provider, baseline: flagValue(args, '--baseline'), chooser, minTraces: count('--min-traces', DEFAULT_MIN_TRACES) });
     if (!report.ok) {
@@ -703,6 +715,126 @@ export async function traces(args) {
     }
     print({ ...report, enabled: read.enabled, skipped: read.skipped }, withNotes(renderReplay(report)));
   }
+}
+
+const DECIDE_USAGE = 'Usage: construct decide --summary <file|-> [--provider <name>] [--format json] [--dir <path>]\n   or: construct decide --requirement "<sentence>" [--provider <name>] [--format json] [--dir <path>]';
+const MAX_SUMMARY_FILE_BYTES = 64 * 1024;
+
+/** The suggestion of a provider as `construct decide` prints it: the option, the reason, the runner-up and a score when there is one. */
+const decideSuggestion = (s) => (s ? { option: s.option, reason: s.reason, runnerUp: s.runnerUp, ...(s.score === undefined ? {} : { score: s.score }) } : null);
+
+/** The provider line of a `decide` document: who answered (the rules provider after a fallback), what was asked for, and every load or fallback line. */
+const decideProvider = (decision, answered) => ({
+  provider: answered ? { name: answered.provider, version: answered.version } : decision.provider,
+  requested: decision.requested,
+  fellBackFrom: decision.fellBackFrom,
+  notes: decision.notes,
+});
+
+async function decideBody(args) {
+  const usage = (message) => new ConstructError(`${message}\n${DECIDE_USAGE}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+  const summaryArg = flagValue(args, '--summary');
+  const sentence = flagValue(args, '--requirement');
+  if ((summaryArg === undefined) === (sentence === undefined)) throw usage('Give exactly one of --summary <file|-> and --requirement "<sentence>".');
+  const root = getRoot(args);
+  // What a fallback or a plugin load says goes to stderr, so stdout stays the one document a tool reads.
+  const decision = await openDecision(root, { provider: flagValue(args, '--provider'), log: (line) => console.error(line) });
+
+  if (summaryArg !== undefined) {
+    let raw;
+    try {
+      raw = summaryArg === '-' ? await readStdin(process.stdin) : fs.readFileSync(path.resolve(summaryArg), 'utf8');
+    } catch (e) {
+      throw usage(`Could not read the summary: ${String(e?.code ?? e?.message ?? e).split('\n')[0]}`);
+    }
+    if (raw.length > MAX_SUMMARY_FILE_BYTES) throw usage(`The summary is larger than ${MAX_SUMMARY_FILE_BYTES} bytes; a summary has a fixed, small size.`);
+    let summary;
+    try {
+      summary = JSON.parse(raw);
+    } catch (e) {
+      throw usage(`The summary is not JSON: ${e.message}`);
+    }
+    if (!providerInput(summary)) throw usage('The summary must be { id, question, options: [{ id, label, enabled, why }] } with at most 5 options, at most 16 KiB, and no secret in it.');
+    const s = await decision.suggest(summary);
+    return { ...decideProvider(decision, s), suggestion: decideSuggestion(s) };
+  }
+
+  const parsed = parseRequirement(sentence);
+  if (!parsed.card) throw usage(parsed.errors[0]?.message ?? 'The requirement could not be read.');
+  const { card } = parsed;
+  let questions;
+  let note = null;
+  if (card.open.length) {
+    questions = card.open.map((item) => ({ ...openQuestion(card, item), source: 'card' }));
+    note = 'A word of the sentence is not known yet: answer these questions (the Requirement screen, or the card answers) before anything is placed.';
+  } else {
+    const config = loadConfig(root);
+    const placement = placeCard(card, { layers: config.layers, framework: config.project?.framework });
+    questions = [...placement.open, ...(placement.offers ?? [])].map((q) => ({ ...q, source: 'placement' }));
+  }
+  const suggestions = await suggestForQuestions(decision, questions);
+  const first = Object.values(suggestions)[0];
+  return {
+    ...decideProvider(decision, first ? { provider: first.provider.name, version: first.provider.version } : null),
+    ...(note ? { note } : {}),
+    questions: questions.map((q) => ({
+      id: q.id,
+      source: q.source,
+      question: q.question,
+      options: q.options.filter((o) => o.enabled !== false).map((o) => ({ id: o.id, label: o.label })),
+      suggestion: suggestions[q.id] ?? null,
+    })),
+  };
+}
+
+/**
+ * The text form of a `construct decide` document: one block per question (`--requirement`), or the one suggestion (`--summary`).
+ *
+ * @param {{ provider: { name: string, version: string }, suggestion?: object | null, note?: string, questions?: { id: string, source: string, question: string, options: { id: string }[], suggestion: { option: string, reason: string, runnerUp: string | null, provider: { name: string, version: string } } | null }[] }} doc A `decide` document (`--format json` without `ok`).
+ * @returns {string} The lines `construct decide` prints, joined by newlines.
+ *
+ * @example
+ * renderDecideText({ provider: { name: 'rules', version: '1' }, suggestion: { option: 'entity', reason: 'first available step', runnerUp: null } });
+ * // => 'suggested: entity (rules 1). Why: first available step.'
+ */
+export function renderDecideText(doc) {
+  const who = (p) => `${p.name} ${p.version}`;
+  const line = (s, provider) => (s ? `suggested: ${s.option} (${who(provider)}). Why: ${s.reason.replace(/\.$/, '')}.${s.runnerUp ? ` Runner-up: ${s.runnerUp}.` : ''}` : `no suggestion (${who(provider)})`);
+  const lines = [];
+  if (doc.questions) {
+    if (doc.note) lines.push(doc.note, '');
+    for (const q of doc.questions) lines.push(`${q.id} [${q.source}] ${q.question}`, `  options: ${q.options.map((o) => o.id).join(', ')}`, `  ${line(q.suggestion, q.suggestion?.provider ?? doc.provider)}`);
+    if (!doc.questions.length) lines.push('Nothing is open: the sentence places without a question.');
+  } else {
+    lines.push(line(doc.suggestion, doc.provider));
+  }
+  return lines.join('\n');
+}
+
+/**
+ * `construct decide --summary <file|-> [--provider <name>]` | `construct decide --requirement "<sentence>" [--provider <name>]`
+ * (#633): ask the project's decision provider which option to take next. Read-only, writes nothing, and a suggestion never
+ * applies itself. This is the tool an LLM calls: a chooser or open-question summary (JSON, from a file or stdin) in, one
+ * suggestion out. `--requirement` reads a sentence with `parseRequirement` and `placeCard` and prints, for each open
+ * question and offer, what the provider suggests and why. No model is called unless the project's `architecture.yml` names a
+ * plugin (`decision: { provider, plugin }`); the built-in `rules` provider (the default) and `off` need none. A plugin that
+ * fails or is slow is replaced by the rules provider and a line on stderr says so. `--format json` prints one document,
+ * `{ ok, provider, requested, fellBackFrom, notes, suggestion }` (or `questions`), and an error as `{ ok: false, error: { code, message } }`
+ * with exit code 2 for a usage error.
+ *
+ * @param {string[]} args `--summary <file|->` or `--requirement "<sentence>"`, optional `--provider <name>`, `--format json`, `--dir <path>`.
+ * @returns {Promise<void>} Resolves after printing the suggestion(s).
+ * @throws {ConstructError} Usage error (exit code 2) for a missing or both inputs, an unreadable or malformed summary, or a sentence that cannot be read.
+ *
+ * @example
+ * await decide(['--summary', 'chooser-summary.json', '--format', 'json']);
+ */
+export async function decide(args) {
+  if (flagValue(args, '--format') === 'json' || args.includes('--json')) {
+    await printJsonResult(() => decideBody(args));
+    return;
+  }
+  console.log(renderDecideText(await decideBody(args)));
 }
 
 /**
