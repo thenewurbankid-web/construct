@@ -93,6 +93,12 @@ function validateDescriptor(descriptor) {
   if (descriptor.guards !== undefined && (typeof descriptor.guards !== 'object' || Array.isArray(descriptor.guards))) {
     throw usageError('Workflow descriptor\'s "guards" (if given) must be an object mapping guard name -> a note for its TODO stub.');
   }
+  if (descriptor.eventPayloads !== undefined && (typeof descriptor.eventPayloads !== 'object' || descriptor.eventPayloads === null || Array.isArray(descriptor.eventPayloads))) {
+    throw usageError('Workflow descriptor\'s "eventPayloads" (if given) must be an object mapping event name -> a TypeScript type string.');
+  }
+  if (descriptor.typeImports !== undefined && !(Array.isArray(descriptor.typeImports) && descriptor.typeImports.every((i) => i && typeof i.from === 'string' && Array.isArray(i.names)))) {
+    throw usageError('Workflow descriptor\'s "typeImports" (if given) must be a list of { from, names[] }.');
+  }
 }
 
 // ---- event extraction ---------------------------------------------------
@@ -208,12 +214,23 @@ function buildGuardsText(guardsJson) {
   return `  guards: {\n${lines.join('\n')}\n  },`;
 }
 
-function buildEventUnionType(eventNames) {
-  const members = eventNames.map((name) =>
-    factory.createTypeLiteralNode([
-      factory.createPropertySignature(undefined, factory.createIdentifier('type'), undefined, factory.createLiteralTypeNode(factory.createStringLiteral(name))),
-    ]),
-  );
+/**
+ * One event's member of the union: `{ type: "NAME" }`, or, with a payload type (#576), the payload's
+ * own members beside `type` -- XState's flat-event convention, `{ type: "SUBMIT"; email: string }`.
+ * A payload that is not an object literal (a named type, an intersection) becomes `{ type } & Payload`.
+ */
+function eventMember(name, payloadStr) {
+  const typeProp = factory.createPropertySignature(undefined, factory.createIdentifier('type'), undefined, factory.createLiteralTypeNode(factory.createStringLiteral(name)));
+  if (!payloadStr) return factory.createTypeLiteralNode([typeProp]);
+  const payload = parseTypeString(payloadStr);
+  if (ts.isTypeLiteralNode(payload) && !payload.members.some((m) => m.name && m.name.getText() === 'type')) {
+    return factory.createTypeLiteralNode([typeProp, ...payload.members]);
+  }
+  return factory.createIntersectionTypeNode([factory.createTypeLiteralNode([typeProp]), payload]);
+}
+
+function buildEventUnionType(eventNames, payloads = {}) {
+  const members = eventNames.map((name) => eventMember(name, payloads[name]));
   // A machine with no events at all still needs a valid (if unusable) event type.
   return members.length ? factory.createUnionTypeNode(members) : factory.createTypeLiteralNode([]);
 }
@@ -227,6 +244,9 @@ function buildEventUnionType(eventNames) {
  *   returns `false` with a `// TODO: <note>` comment -- typically the req sentence the guard exists
  *   to satisfy -- so a transition that names a guard always compiles against a real (if unimplemented)
  *   predicate instead of a dangling string.
+ *   `eventPayloads` (#576) maps an event name to a TS type string whose members join `{ type }` in
+ *   the event union; `typeImports` (`[{from, names[]}]`) adds `import type` lines for the names those
+ *   payload types (or context fields) refer to.
  * @param {{name: string}} opts - `name` is the already-capitalized layer base name (e.g. "Checkout").
  * @returns {{source: string, events: string[], contextFields: string[]}}
  */
@@ -255,7 +275,7 @@ export function compileWorkflow(descriptor, { name }) {
       [factory.createModifier(ts.SyntaxKind.ExportKeyword)],
       eventTypeName,
       undefined,
-      buildEventUnionType(events),
+      buildEventUnionType(events, descriptor.eventPayloads),
     ),
   );
 
@@ -263,8 +283,13 @@ export function compileWorkflow(descriptor, { name }) {
   const contextDefaultsText = contextFields.length ? print(buildContextDefaultsLiteral(contextJson)) : null;
   const machineId = descriptor.id || name.toLowerCase();
 
+  const typeImportLines = (descriptor.typeImports || [])
+    .filter((i) => i.names.length)
+    .map((i) => `import type { ${[...i.names].sort().join(', ')} } from ${quote(i.from)};`);
+
   const source = [
     `import { setup } from 'xstate';`,
+    ...typeImportLines,
     '',
     contextInterfaceText,
     '',
@@ -279,7 +304,8 @@ export function compileWorkflow(descriptor, { name }) {
     `}).createMachine({`,
     `  id: '${machineId}',`,
     `  initial: '${descriptor.initial}',`,
-    ...(contextDefaultsText ? [`  context: ${contextDefaultsText},`] : []),
+    // A machine typed with an empty context still needs `context: {}`: XState's config type requires the key.
+    `  context: ${contextDefaultsText ?? '{}'},`,
     `  states: ${statesText},`,
     `});`,
     '',

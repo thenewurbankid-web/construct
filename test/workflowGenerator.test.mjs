@@ -136,7 +136,21 @@ test('compileWorkflow with no context declared falls back to a Record<string, ne
   const { source, contextFields } = compileWorkflow({ initial: 'idle', states: { idle: {} } }, { name: 'Bare' });
   assert.deepEqual(contextFields, []);
   assert.match(source, /export type BareContext = Record<string, never>;/);
-  assert.doesNotMatch(source, /context: \{/); // no defaults given -> no runtime context object emitted
+  // XState's MachineConfig requires the key when the context type is not `{}` (tsc: "Property 'context' is missing"), so an empty object is emitted (#576).
+  assert.match(source, /^  context: \{\},$/m);
+});
+
+test('compileWorkflow eventPayloads (#576): an object payload flattens beside type, any other type is intersected, typeImports become import type lines', () => {
+  const { source } = compileWorkflow({
+    initial: 'idle',
+    eventPayloads: { SUBMIT: '{ email: string; who: Person }', PICK: 'Choice' },
+    typeImports: [{ from: '../types', names: ['Person', 'Choice'] }],
+    states: { idle: { on: { SUBMIT: 'idle', PICK: 'idle', PLAIN: 'idle' } } },
+  }, { name: 'Pay' });
+  assert.match(source, /import type \{ Choice, Person \} from '\.\.\/types';/);
+  assert.match(source, /type: "SUBMIT";\s+email: string;\s+who: Person;/);
+  assert.match(source, /\{\s*type: "PICK";\s*\} & Choice/);
+  assert.match(source, /\{\s*type: "PLAIN";\s*\}/);
 });
 
 test('compileWorkflow with no events at all still emits syntactically valid TS', () => {
