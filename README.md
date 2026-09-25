@@ -145,7 +145,7 @@ principle from the Vision below. Run `npm test` before you open a pull request.
 ## Open core
 
 The core library and CLI are open source (MIT). The Cockpit UI (it lives in
-`ui/` for now), the MCP server (planned) and the curated predefined envelopes
+`ui/` for now), the MCP server (`packages/mcp`, read-only and plan-only so far) and the curated predefined envelopes
 are proprietary, not part of the open packages. The open packages never depend
 on them.
 

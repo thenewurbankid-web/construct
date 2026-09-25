@@ -271,3 +271,16 @@ The decision model (a rules baseline today, a small trained model later, see #63
 4. **A rules-only fallback.** The block works with no model, and any model-backed proposal goes through the decision-provider seam, suggests only and never executes. The provider is pluggable per project and follows one contract, `{ name, version, suggest(summary) -> { option, reason, score?, runnerUp? } | null }`: it receives ONLY the frozen, path-free summary, returns a suggestion or `null`, and a plugin error or a slow answer falls back to the `rules` provider and is logged (`docs/DECISION-PROVIDERS.md`, #633). A new chain step shows the suggestion beside its options ("suggested by <provider>", with the reason), leaves the choice to the person, and records the answer with the suggestion and `accepted: true|false`.
 5. **Replay-scorable.** A provider can be scored on recorded traces of this block (`construct traces replay --provider <name>`: agreement with what people chose, coverage, and beats/ties/loses against the `rules` baseline); the block never depends on a specific model.
 6. **Cheap on a small machine.** No model file is loaded unless the feature is enabled; the block reports what it needs (see the low-end tiers, #648).
+
+## The blocks as MCP tools (#649)
+
+`packages/mcp` (`@line/construct-mcp`, private, stdio, `construct-mcp --root <project>`) exposes the blocks above to an LLM client as eight
+read-only, plan-only tools: `requirement_parse`, `placement_place`, `plan_validate`, `decide`, `summarize`, `validate`,
+`machine_capabilities`, `traces_stats`. It is an adapter, not a block: each tool is a thin wrapper over an existing one and adds no logic, so
+the AI-ready rules above hold by construction (fixed-size summaries, closed options with stable ids, the rules-only fallback of
+`decide`). What the adapter adds is the boundary: one project root fixed at startup and never a tool argument, a link that leaves the root
+refuses the call, every result path-free, secret-free and at most 32 KiB, a token-bucket rate limit (30 calls a minute), and nothing that
+writes: a plan preview names the files each step would touch and says to apply it through the Cockpit's per-diff approval. Attribution:
+answers passed to `placement_place` are returned as `by: 'llm'` with the MCP client's name as `provider`; no tool records a decision trace
+in this slice, so a recording tool must add `recordChoices` with that attribution when it lands. Setup, the tool table and the safety model:
+`packages/mcp/README.md`.

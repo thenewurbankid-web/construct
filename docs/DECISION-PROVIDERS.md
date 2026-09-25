@@ -136,6 +136,6 @@ and `outcome.accepted: true|false`; with `provider: off` nothing is suggested an
 
 ## What is not here
 
-Bundling or downloading a model, training, exporting traces for training (#647, #645), MCP exposure (#649), an `ignored`
+Bundling or downloading a model, training, exporting traces for training (#647, #645), MCP exposure beyond the read-only `decide` tool of `packages/mcp` (#649), an `ignored`
 outcome (a suggestion nobody looked at), and running a plugin in an isolated process. A plugin registered with
 `registerDecisionProvider` from code still works and is used by name.
