@@ -368,7 +368,7 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
     await expect(page.getByTestId('requirement-files').locator('summary')).toHaveText('11 files will be created');
 
     const endpoint = await chooseSource(page, 'endpoint');
-    expect(endpoint.body.offers.map((o) => [o.id, o.chosen])).toEqual([['q-shape', 'list'], ['q-source', 'endpoint'], ['q-verify', null]]);
+    expect(endpoint.body.offers.map((o) => [o.id, o.chosen])).toEqual([['q-shape', 'list'], ['q-source', 'endpoint'], ['q-states', null], ['q-verify', null]]);
     expect(endpoint.body.plan.steps.filter((s) => s.flow === 'create.unit').every((s) => s.args.source === 'endpoint')).toBe(true);
     expect(endpoint.res.request().postDataJSON().answers).toEqual([{ id: 'q-shape', option: 'list' }, { id: 'q-source', option: 'endpoint' }]);
     await expect(page.getByTestId('requirement-source-endpoint')).toHaveAttribute('aria-pressed', 'true');
@@ -460,7 +460,7 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
     await expect(group.getByRole('heading', { name: 'Plan questions', level: 2 })).toBeVisible();
     await expect(page.getByTestId('requirement-plan-questions-note')).toContainText("an unanswered one uses the rules' default, and Approve never waits for it");
     await expect(group.getByTestId('requirement-source')).toHaveCount(1);
-    await expect(group.getByTestId('requirement-plan')).toHaveCount(1);
+    await expect(group.getByTestId('requirement-plan')).toHaveCount(2); // #622: how the screen shows its states, then the verification
     await expect(group.getByTestId('requirement-shape')).toHaveCount(0);
     await expect(group).toHaveAttribute('aria-labelledby', 'rq-plan-questions-h');
     await expect(card.getByRole('button')).toHaveText(['Type-check after the wiring', 'No verification step']); // building is not offered: this project has no build script
@@ -469,12 +469,12 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
     await expect(card.getByTestId('requirement-plan-status')).toHaveText("Not chosen yet, so the plan below uses the rules' default: type-check after the wiring.");
     await expect(page.getByTestId('requirement-approve-plan')).toBeEnabled(); // a closed question never blocks Approve
     const order = await page.getByTestId('requirement-stage').locator('[data-testid="requirement-shape"], [data-testid="requirement-source"], [data-testid="requirement-plan"], [data-testid="requirement-timeline"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')));
-    expect(order).toEqual(['requirement-shape', 'requirement-source', 'requirement-plan', 'requirement-timeline']);
+    expect(order).toEqual(['requirement-shape', 'requirement-source', 'requirement-plan', 'requirement-plan', 'requirement-timeline']);
 
     const none = await choosePlan(page, 'q-verify', 'none');
     expect(none.res.request().postDataJSON().answers).toEqual([{ id: 'q-shape', option: 'list' }, { id: 'q-verify', option: 'none' }]);
     expect(none.body.plan.steps.some((s) => s.flow === 'check.types')).toBe(false);
-    expect(none.body.offers.map((o) => [o.id, o.chosen])).toEqual([['q-shape', 'list'], ['q-source', null], ['q-verify', 'none']]);
+    expect(none.body.offers.map((o) => [o.id, o.chosen])).toEqual([['q-shape', 'list'], ['q-source', null], ['q-states', null], ['q-verify', 'none']]);
     await expect(card.locator('[data-option="none"] button')).toHaveAttribute('aria-pressed', 'true');
     await expect(card.getByTestId('requirement-plan-status')).toHaveText('Chosen: No verification step. Decided by: person.');
     await expect(card.getByTestId('requirement-plan-status')).toHaveAttribute('data-decided-by', 'person');
@@ -568,6 +568,47 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
     const [d] = recorded('requirement.plan.steps', 'four');
     expect(d).toMatchObject({ by: 'person', suggestion: { option: 'three' }, provider: { name: 'rules', version: '1' }, outcome: { accepted: false } });
     expect(recorded('requirement.plan.steps', 'two')).toHaveLength(1);
+  });
+
+  test('the screen states card (q-states, #622) is a plan card with a plain line about states: default views are suggested, nothing is chosen, and choosing a skip warns, changes the files and is recorded', async ({ page }) => {
+    await gotoCockpit(page, '/requirement');
+    await readSentence(page, PRODUCTS);
+    await expect(planCard(page, 'q-states')).toHaveCount(0); // no shape chosen, no screen yet: nothing to ask
+    const first = await choose(page, 'list');
+    expect(first.body.offers.map((o) => o.id).slice(0, 3)).toEqual(['q-shape', 'q-source', 'q-states']);
+    const card = planCard(page, 'q-states');
+    await expect(card).toBeVisible();
+    await expect(card.getByRole('heading', { name: 'Screen states', level: 2 })).toBeVisible();
+    await expect(card.getByTestId('requirement-plan-hint')).toHaveText('A state is what the screen shows in one situation: while the data loads, when there is nothing to show (or the item is not found), and when the request fails. Skipping one leaves it without a view.');
+    await expect(card.getByRole('button')).toHaveText(['Default views, a short message for each state', 'A component of your own for each state', 'Skip the empty view (a warning)', 'Skip every state view (a warning)']);
+    await expect(card.locator('[data-option="default"]').getByTestId('requirement-plan-suggested')).toHaveText('suggested by rules');
+    await expect(card.getByTestId('requirement-plan-suggested')).toHaveCount(1);
+    await expect(card.getByRole('button', { pressed: true })).toHaveCount(0);
+    await expect(card.getByTestId('requirement-plan-status')).toHaveText("Not chosen yet, so the plan below uses the rules' default: default views, a short message for each state.");
+    await expect(page.getByTestId('requirement-warning')).toHaveCount(0);
+    await expect(page.getByTestId('requirement-approve-plan')).toBeEnabled(); // a closed question never blocks Approve
+    expect(await listedFiles(page)).toContain('features/products/components/ProductsNotice.component.tsx');
+
+    const custom = await choosePlan(page, 'q-states', 'custom');
+    expect(custom.res.request().postDataJSON().answers).toEqual([{ id: 'q-shape', option: 'list' }, { id: 'q-states', option: 'custom' }]);
+    expect(await listedFiles(page)).toEqual(expect.arrayContaining(['features/products/components/ProductsLoading.component.tsx', 'features/products/components/ProductsEmpty.component.tsx', 'features/products/components/ProductsFailed.component.tsx']));
+    await expect(page.getByTestId('requirement-warning')).toHaveCount(0); // a view of your own is not a gap
+
+    const skipped = await choosePlan(page, 'q-states', 'skip-all'); // a changed mind replaces the earlier answer
+    expect(skipped.res.request().postDataJSON().answers).toEqual([{ id: 'q-shape', option: 'list' }, { id: 'q-states', option: 'skip-all' }]);
+    expect(skipped.body.plan.steps.filter((s) => s.flow === 'create.unit' || s.flow === 'create.proof').every((s) => s.args.states === 'skip-all')).toBe(true);
+    expect(skipped.body.plan.steps.filter((s) => s.flow === 'create.unit').map((s) => planToCommand(s).argv.join(' ')).every((c) => c.includes('--states skip-all'))).toBe(true);
+    expect(skipped.body.placement.decisions.at(-1)).toEqual({ question: 'q-states', option: 'skip-all', by: 'person' });
+    await expect(card.locator('[data-option="skip-all"] button')).toHaveAttribute('aria-pressed', 'true');
+    await expect(card.getByTestId('requirement-plan-status')).toHaveText('Chosen: Skip every state view (a warning). Decided by: person.');
+    await expect(page.getByTestId('requirement-warning')).toContainText('The Products screen has no view for any state');
+    await expect(page.getByTestId('requirement-approve-plan')).toBeEnabled(); // a skip is a warning, never a block
+    expect(await listedFiles(page)).not.toContain('features/products/components/ProductsNotice.component.tsx'); // nothing uses the notice
+    await expect(page.getByTestId('requirement-shape-list')).toHaveAttribute('aria-pressed', 'true'); // the earlier answer is kept
+    expect(JSON.stringify(skipped.body)).not.toContain(project.repo); // no server path leaves the server
+    const [d] = recorded('requirement.plan.states', 'skip-all');
+    expect(d).toMatchObject({ by: 'person', suggestion: { option: 'default' }, provider: { name: 'rules', version: '1' }, outcome: { accepted: false } });
+    expect(recorded('requirement.plan.states', 'custom')).toHaveLength(1);
   });
 
   test('the plan cards pass the accessibility check at 390 px in both themes, and do not scroll sideways', async ({ page }) => {

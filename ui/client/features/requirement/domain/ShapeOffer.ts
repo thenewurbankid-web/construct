@@ -22,10 +22,13 @@ export function deciderOf(decision: Decision | undefined): string | null {
 export const isSourceOffer = (id: string): boolean => /^q-source(-|$)/.test(id);
 
 /** The card heading of each other closed question of the plan (#632: the server raises them, this only titles them; an id it does not know is titled by the id). */
-const PLAN_HEADINGS: Record<string, string> = { 'q-route': 'Route', 'q-dependency': 'Dependency', 'q-env': 'Environment variable', 'q-verify': 'Verification', 'q-steps': 'Wizard steps' };
+const PLAN_HEADINGS: Record<string, string> = { 'q-route': 'Route', 'q-dependency': 'Dependency', 'q-env': 'Environment variable', 'q-verify': 'Verification', 'q-steps': 'Wizard steps', 'q-states': 'Screen states' };
 
-/** One plain line under a question that uses a word a person may not know (#659): what a step of a wizard is. Fixed words, by question id (`q-steps-<name>` too); a question without one has none. */
-const PLAN_HINTS: Record<string, string> = { 'q-steps': 'A step is one screen of the wizard: Next and Back move between steps, each step but the last takes some of the fields, and the last one shows them all and submits.' };
+/** One plain line under a question that uses a word a person may not know (#659, #622): what a step of a wizard is, what a state of a screen is. Fixed words, by question id (`q-steps-<name>` too); a question without one has none. */
+const PLAN_HINTS: Record<string, string> = {
+  'q-steps': 'A step is one screen of the wizard: Next and Back move between steps, each step but the last takes some of the fields, and the last one shows them all and submits.',
+  'q-states': 'A state is what the screen shows in one situation: while the data loads, when there is nothing to show (or the item is not found), and when the request fails. Skipping one leaves it without a view.',
+};
 
 /** The plain line of a question, or null. */
 const offerHint = (id: string): string | null => PLAN_HINTS[/^q-[a-z]+/.exec(id)?.[0] ?? ''] ?? null;

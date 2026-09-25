@@ -112,12 +112,12 @@ const planResult = (sentence, answers = {}, shape = true) => {
 
 test('the plan questions: the type-check and the environment variables are cards of the kind `plan`, titled from their id, never blocking Approve', () => {
   const v = shapeView(planResult(PRODUCTS));
-  assert.deepEqual(v.result.offers.map((o) => [o.id, o.kind, o.heading]), [['q-shape', 'shape', 'Screen shape'], ['q-source', 'source', 'Data source'], ['q-verify', 'plan', 'Verification']]);
-  const verify = v.result.offers[2];
+  assert.deepEqual(v.result.offers.map((o) => [o.id, o.kind, o.heading]), [['q-shape', 'shape', 'Screen shape'], ['q-source', 'source', 'Data source'], ['q-states', 'plan', 'Screen states'], ['q-verify', 'plan', 'Verification']]);
+  const verify = v.result.offers[3];
   assert.deepEqual(verify.options.map((o) => [o.id, o.suggested, o.chosen]), [['types', true, false], ['none', false, false]], 'the build option is disabled here (no package.json), so it is not offered');
   assert.equal(verify.status, "Not chosen yet, so the plan below uses the rules' default: type-check after the wiring.");
   assert.equal(v.result.approve.canApprove, true);
-  const answered = shapeView(planResult(PRODUCTS, { 'q-verify': 'none' })).result.offers[2];
+  const answered = shapeView(planResult(PRODUCTS, { 'q-verify': 'none' })).result.offers[3];
   assert.deepEqual([answered.status, answered.decidedBy, answered.options.map((o) => o.chosen)], ['Chosen: No verification step. Decided by: person.', 'person', [false, true]]);
   assert.deepEqual(withAnswer([], { id: 'q-verify', source: 'plan' }, 'none'), [{ id: 'q-verify', option: 'none' }]);
 
@@ -196,4 +196,27 @@ test('the wizard step count (q-steps) is a plan card with a plain line about wha
   const four = build({ 'q-steps': 'four' }).result.offers[2];
   assert.deepEqual([four.status, four.decidedBy, four.options.map((o) => o.chosen)], ['Chosen: 4 steps: details, options, review, done. Decided by: person.', 'person', [false, false, true]]);
   assert.deepEqual(withAnswer([{ id: 'q-shape', option: 'wizard' }], { id: 'q-steps', source: 'plan' }, 'four'), [{ id: 'q-shape', option: 'wizard' }, { id: 'q-steps', option: 'four' }]);
+});
+
+// #622: how a list, detail or dashboard screen shows its states (q-states) is a plan card, titled and explained in plain words, default views first, and never blocks Approve; a skip's warning reaches the Approve bar.
+test('the screen states question (q-states) is a plan card with a plain line about states; choosing a skip changes the status words and never blocks Approve', () => {
+  const card = parseRequirement('A user wants to see a list of products').card;
+  const placement = placeCard(card, { framework: 'react-spa', answers: { 'q-shape': 'list' } });
+  const build = (answers = {}) => {
+    const planned = planFromBlocks(placement.blocks, { feature: 'products', root: '/x', decisions: placement.decisions, answers, card });
+    return shapeView({ card, placement: { ...placement, decisions: planned.decisions }, plan: planned.plan, files: planned.files, open: [], offers: [...placement.offers, ...planned.offers.map((q) => ({ ...q, source: 'plan' }))], warnings: planned.warnings, summary: { readBack: [], blocks: [] } });
+  };
+  const v = build();
+  assert.deepEqual(v.result.offers.map((o) => [o.id, o.kind, o.heading]), [['q-shape', 'shape', 'Screen shape'], ['q-source', 'source', 'Data source'], ['q-states', 'plan', 'Screen states'], ['q-verify', 'plan', 'Verification']]);
+  const states = v.result.offers[2];
+  assert.match(states.hint, /^A state is what the screen shows in one situation: while the data loads/);
+  assert.deepEqual(v.result.offers.filter((o) => o.hint !== null).map((o) => o.id), ['q-states'], 'only the question with a word to explain has a line');
+  assert.deepEqual(states.options.map((o) => [o.id, o.suggested, o.chosen]), [['default', true, false], ['custom', false, false], ['skip-empty', false, false], ['skip-all', false, false]]);
+  assert.equal(states.status, "Not chosen yet, so the plan below uses the rules' default: default views, a short message for each state.");
+  assert.deepEqual([v.result.approve.canApprove, v.result.warnings], [true, []]);
+  const skipped = build({ 'q-states': 'skip-all' });
+  assert.deepEqual([skipped.result.offers[2].status, skipped.result.offers[2].decidedBy], ['Chosen: Skip every state view (a warning). Decided by: person.', 'person']);
+  assert.equal(skipped.result.approve.canApprove, true, 'a skip is a warning, never a block');
+  assert.match(skipped.result.warnings.join(' '), /Products screen has no view for any state/);
+  assert.deepEqual(withAnswer([{ id: 'q-shape', option: 'list' }], { id: 'q-states', source: 'plan' }, 'skip-all'), [{ id: 'q-shape', option: 'list' }, { id: 'q-states', option: 'skip-all' }]);
 });
