@@ -326,6 +326,27 @@ export function fillArgs(args, vars) {
   return args.map((a) => a.replace(/\{(from|to)\}/g, (_, k) => vars[k]));
 }
 
+/**
+ * The failing tests of a `node --test` run, read from its TAP output: each `not ok` line with the few lines after it (the error).
+ * The tail of a long run shows only the summary counts; this is what names the test that broke.
+ *
+ * @param {string} text The command output.
+ * @param {number} [max] Most characters returned.
+ * @returns {string} The excerpts joined by a blank line, or an empty string when there is no `not ok`.
+ *
+ * @example
+ * failureExcerpt('ok 1 - a\nnot ok 2 - b\n  error: boom\n'); // => 'not ok 2 - b\n  error: boom'
+ */
+export function failureExcerpt(text, max = 2500) {
+  const lines = String(text || '').split('\n');
+  const out = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    if (/^\s*not ok \d+ - /.test(lines[i])) out.push(lines.slice(i, i + 7).filter((l) => l.trim() !== '---' && !/^\s*duration_ms|^\s*\.\.\.$/.test(l)).join('\n'));
+  }
+  const t = out.join('\n\n');
+  return t.length > max ? `${t.slice(0, max)}...` : t;
+}
+
 /** Last lines of a command's output, bounded. */
 export function tailOf(text, lines = 25, chars = 3000) {
   const t = String(text || '').trimEnd().split('\n').slice(-lines).join('\n');
@@ -367,7 +388,8 @@ export async function runLaneCheck(laneConfig, ctx) {
     const ms = now() - t0;
     if (r.code === 0) { results.push({ name: step.name, ok: true, ms }); continue; }
     const why = r.timedOut ? `timed out after ${step.timeoutSec || 300}s\n` : '';
-    results.push({ name: step.name, ok: false, ms, tail: `${why}${tailOf(r.output)}` });
+    const failed = failureExcerpt(r.output);
+    results.push({ name: step.name, ok: false, ms, tail: `${why}${failed ? `${failed}\n---\n` : ''}${tailOf(r.output)}` });
     return { ok: false, results };
   }
   return { ok: true, results };

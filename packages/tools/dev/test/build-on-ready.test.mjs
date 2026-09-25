@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { makeTempDir } from '../../../../test-utils/tmpdir.mjs';
 import {
-  classifyCommit, globToRegExp, issuesOf, loadConfig, newestTag, parseTagMessage, parseTagName, planBaselines, planBuilds, run, stamp, tagMessage, tagName,
+  classifyCommit, failureExcerpt, globToRegExp, issuesOf, loadConfig, newestTag, parseTagMessage, parseTagName, planBaselines, planBuilds, run, stamp, tagMessage, tagName,
 } from '../build-on-ready.mjs';
 
 const config = loadConfig();
@@ -415,4 +415,13 @@ test('the result names the installs the building lanes need, and nothing else', 
   assert.deepEqual((await run({ root: r.work, branch: 'main', config: miniConfig() })).install, []);
   r.commit('[#15] a cockpit screen', 'ui/a.tsx');
   assert.deepEqual((await run({ root: r.work, branch: 'main', config: miniConfig() })).install, ['.', 'ui/server']);
+});
+
+test('a held lane names the failing test, not only the summary counts', () => {
+  const tap = ['ok 1 - fine', 'not ok 2 - the billing example still parses', '  ---', '  duration_ms: 1.2', "  error: 'boom'", '  ...', 'ok 3 - other', '# tests 3', '# fail 1'].join('\n');
+  const ex = failureExcerpt(tap);
+  assert.match(ex, /not ok 2 - the billing example still parses/);
+  assert.match(ex, /error: 'boom'/);
+  assert.doesNotMatch(ex, /duration_ms|fine|other/);
+  assert.equal(failureExcerpt('ok 1 - all good'), '');
 });
