@@ -3,10 +3,14 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, type ReactNode } from 'react';
 import { fetchSession, logout as logoutRequest } from '../services/AuthApi';
 import { startGithubLogin, testLogin } from '../services/AuthLogin';
-import { authSessionReducer, initialAuthSessionState, type AuthSessionState } from '../workflows/AuthSession';
+import { authSessionReducer, initialAuthSessionState, sessionOf, type AuthSessionState } from '../workflows/AuthSession';
 import type { AuthSession } from '../types';
 
-type AuthSessionValue = AuthSessionState & {
+type AuthSessionValue = {
+  /** The two status unions (session load, sign-in); read them through the selectors in workflows/AuthSession. */
+  state: AuthSessionState;
+  /** The session once the server has answered; null while asking or when it could not be reached. */
+  session: AuthSession | null;
   refresh: () => void;
   signInWithGithub: () => void;
   signInAsTestUser: () => Promise<void>;
@@ -43,10 +47,12 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
     refresh();
   }, [refresh]);
 
+  const session = sessionOf(state);
+
   const signInWithGithub = useCallback(() => {
     dispatch({ type: 'SIGN_IN_START' });
-    startGithubLogin(state.session?.loginPath ?? '/auth/login');
-  }, [state.session?.loginPath]);
+    startGithubLogin(session?.loginPath ?? '/auth/login');
+  }, [session?.loginPath]);
 
   const signInAsTestUser = useCallback(async () => {
     dispatch({ type: 'SIGN_IN_START' });
@@ -64,8 +70,8 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const value = useMemo<AuthSessionValue>(
-    () => ({ ...state, refresh, signInWithGithub, signInAsTestUser, signOut }),
-    [state, refresh, signInWithGithub, signInAsTestUser, signOut],
+    () => ({ state, session, refresh, signInWithGithub, signInAsTestUser, signOut }),
+    [state, session, refresh, signInWithGithub, signInAsTestUser, signOut],
   );
 
   return <AuthSessionContext.Provider value={value}>{children}</AuthSessionContext.Provider>;

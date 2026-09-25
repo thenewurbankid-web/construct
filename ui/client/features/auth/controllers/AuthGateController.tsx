@@ -5,6 +5,7 @@ import { blocksCockpit, canSignIn } from '../domain/Session';
 import { LOGIN_PHRASES } from '../domain/Typewriter';
 import { useTypewriter } from '../hooks/useTypewriter';
 import { useAuthSession } from '../hooks/useAuthSession';
+import { isLoadingSession, isSigningIn, signInError, unreachableMessage } from '../workflows/AuthSession';
 import { AuthGatePage } from '../pages/AuthGatePage';
 
 /**
@@ -19,7 +20,11 @@ import { AuthGatePage } from '../pages/AuthGatePage';
  * then fails every request inside them.
  */
 export function AuthGateController({ children }: { children: ReactNode }) {
-  const { session, loading, unreachable, signingIn, error, refresh, signInWithGithub, signInAsTestUser } = useAuthSession();
+  const { state, session, refresh, signInWithGithub, signInAsTestUser } = useAuthSession();
+  const loading = isLoadingSession(state);
+  const unreachable = unreachableMessage(state);
+  const signingIn = isSigningIn(state);
+  const error = signInError(state);
   const { text: tagline, animated: taglineAnimated } = useTypewriter(LOGIN_PHRASES);
   const blocked = blocksCockpit(session);
 
