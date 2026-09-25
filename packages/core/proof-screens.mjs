@@ -24,7 +24,17 @@ import { inputFieldsOf } from './shape-form.mjs';
  */
 export const sourceFlag = (ctx) => (ctx.source === 'endpoint' ? '' : ` --source ${ctx.source}`);
 
-const shownValue = (f, value) => (f.type === 'boolean' ? (value ? 'Yes' : 'No') : String(value));
+/**
+ * How a value of the sample row reads on the details screen: a string as it is, a number by `String`, a boolean as Yes or No.
+ *
+ * @param {{ type: string }} f The parsed field.
+ * @param {string|number|boolean} value The value of the sample row.
+ * @returns {string} The text on the screen.
+ *
+ * @example
+ * shownValue({ type: 'boolean' }, true); // => 'Yes'
+ */
+export const shownValue = (f, value) => (f.type === 'boolean' ? (value ? 'Yes' : 'No') : String(value));
 
 /**
  * The text of the render proof of a detail screen: loading, not found, ready (every field with its label and its value), error with
@@ -213,8 +223,26 @@ export function detailProofText(ctx, request, relPath, kit) {
   return `${L.join('\n')}\n`;
 }
 
-const sampleValue = (f) => (f.type === 'boolean' ? true : f.type === 'number' ? '12.5' : `${f.name} 1`);
-const typedValue = (f) => (f.type === 'boolean' ? true : f.type === 'number' ? 12.5 : `${f.name} 1`);
+/**
+ * What a person types into a field of a sample form: text for a string, `12.5` for a number, a tick for a boolean.
+ *
+ * @param {{ name: string, type: string }} f The parsed field.
+ * @returns {string|boolean} The typed value.
+ *
+ * @example
+ * sampleValue({ name: 'price', type: 'number' }); // => '12.5'
+ */
+export const sampleValue = (f) => (f.type === 'boolean' ? true : f.type === 'number' ? '12.5' : `${f.name} 1`);
+/**
+ * The typed value of a field once the check has passed: numbers are numbers.
+ *
+ * @param {{ name: string, type: string }} f The parsed field.
+ * @returns {string|number|boolean} The value the service is given.
+ *
+ * @example
+ * typedValue({ name: 'price', type: 'number' }); // => 12.5
+ */
+export const typedValue = (f) => (f.type === 'boolean' ? true : f.type === 'number' ? 12.5 : `${f.name} 1`);
 const badValue = (f) => (f.type === 'number' ? 'abc' : f.type === 'string' ? '' : false);
 
 /**

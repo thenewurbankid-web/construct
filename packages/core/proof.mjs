@@ -27,6 +27,7 @@ import { cap, sampleRows } from './shape-kit.mjs';
 import { detailProofText, formProofText, sourceFlag } from './proof-screens.mjs';
 import { dashboardProofText } from './proof-dashboard.mjs';
 import { wizardProofText } from './proof-wizard.mjs';
+import { dashboardBrowserText, detailBrowserText, formBrowserText, wizardBrowserText } from './proof-browser.mjs';
 import { GENERATED_MARKER, assertSafeDir } from '../engine/testGenerator.mjs';
 import { lit, comment } from '../engine/testSpecRender.mjs';
 
@@ -38,8 +39,8 @@ export const PROOF_KINDS = Object.freeze(['render', 'playwright']);
 /** The Playwright config file names `detectPlaywright` looks for, at the project root. */
 export const PLAYWRIGHT_CONFIGS = Object.freeze(['playwright.config.ts', 'playwright.config.js', 'playwright.config.mjs', 'playwright.config.cjs', 'playwright.config.mts', 'playwright.config.cts']);
 
-/** The shapes that also have a Playwright flow (the route with a mocked API). The other shapes have the render proof only, so far. */
-export const PLAYWRIGHT_SHAPES = Object.freeze(['list']);
+/** The shapes that also have a Playwright flow (the route with a mocked API): every shape since #659 (the list first; then detail, form, dashboard and wizard). */
+export const PLAYWRIGHT_SHAPES = Object.freeze(['list', 'detail', 'form', 'dashboard', 'wizard']);
 
 /** What a project must have for the render proof to run: `esbuild` (it comes with `tsx` and with `vite`), plus react and react-dom. */
 export const RENDER_PROOF_NEEDS = Object.freeze(['react', 'react-dom', 'esbuild']);
@@ -302,6 +303,16 @@ function renderProofText(ctx, request, relPath) {
 function playwrightProofText(ctx, request, route) {
   const { names, rows } = ctx;
   const Name = names.Name;
+  if (ctx.request.shape !== 'list') {
+    // #659: the other shapes' flows are written in proof-browser.mjs; their command line carries the shape, the steps and the route, so it regenerates the same bytes.
+    const shape = ctx.request.shape;
+    const command = `construct create proof ${Name} --feature ${request.feature} --shape ${shape} --kind playwright --entity ${names.Entity} --fields ${ctx.request.fields}${shape === 'wizard' ? ` --steps ${ctx.request.steps}` : ''}${sourceFlag(ctx)}${route === '/' ? '' : ` --route ${route}`}`;
+    const kit = {
+      header: (extra, cmd) => header(ctx, request, cmd, extra), command, lit, rowLiteral,
+      run: `// run: construct test run ${comment(request.feature)} --area generated --name ${slugOf(Name)}--screen.spec.ts   (the app must be running)`,
+    };
+    return ({ detail: detailBrowserText, form: formBrowserText, dashboard: dashboardBrowserText, wizard: wizardBrowserText })[shape](ctx, route, kit);
+  }
   const command = `construct create proof ${Name} --feature ${request.feature} --kind playwright --entity ${names.Entity} --fields ${ctx.request.fields}${sourceFlag(ctx)}`;
   const L = [
     ...header(ctx, request, command, `shape ${request.shape ?? 'list'}, kind playwright`),

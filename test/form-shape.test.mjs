@@ -36,7 +36,7 @@ test('the form shape is registered on the one mechanism: plan enum, schema, flow
   for (const id of ['create.unit', 'create.layer', 'create.proof']) assert.deepEqual(PLAN_FLOWS[id].args.shape.enum, [...PLAN_SHAPES]);
   assert.deepEqual([...SHAPES.form.layers], LAYERS, 'the six layers of a vertical slice');
   for (const [layer, needed] of Object.entries(SHAPES.form.requires)) assert.ok(needed.every((l) => SHAPES.form.layers.includes(l)), `${layer} requires only layers of the shape`);
-  assert.deepEqual([...PLAYWRIGHT_SHAPES], ['list'], 'only the list shape has a browser flow so far');
+  assert.deepEqual([...PLAYWRIGHT_SHAPES], ['list', 'detail', 'form', 'dashboard', 'wizard'], 'every shape has a browser flow since #659 (test/proof-browser.test.mjs)');
 });
 
 test('the names: the entity of a form is its unit name without the write verb, the endpoint is the plural of the entity', () => {
@@ -188,23 +188,23 @@ test('a form plan carries the shape on every unit, is wired and proven, and plan
     assert.equal(planned.ok, true, JSON.stringify(planned.errors));
     assert.deepEqual(planned.plan.steps.map((s) => s.flow), ['create.feature', 'create.unit', 'create.unit', 'create.unit', 'create.unit', 'create.unit', 'create.unit', 'add.dependency', 'sync', 'create.route', 'check.types', 'create.proof', 'test.proof'], 'the wiring, the type-check and the proof steps apply to every shape');
     assert.ok(planned.plan.steps.filter((s) => s.flow === 'create.unit').every((s) => s.args.shape === 'form' && s.args.name === 'AddProduct'));
-    assert.deepEqual(planned.proof.steps.map((s) => s.kind), ['render'], 'the browser flow exists only for the list shape');
+    assert.deepEqual(planned.proof.steps.map((s) => s.kind), ['render'], 'the local source (the default) makes no request to mock, so no browser flow');
     if (playwright) assert.match(planned.proof.playwright.skipped, /No browser flow is planned for AddProduct \(form\)/);
   }
 });
 
-test('the proof of a form is the render proof; a Playwright flow is not written for it, and says why', () => {
+test('the proof of a form is the render proof; its Playwright flow (#659) is written only for a source that makes a request', () => {
   const dir = project();
   fs.writeFileSync(path.join(dir, 'playwright.config.ts'), "export default { testDir: 'features' };\n");
   const files = proofFiles(dir, { ...FORM, kind: 'render' });
   assert.deepEqual(files.map((f) => path.basename(f.path)), ['AddProductScreen.proof.test.ts']);
   assert.ok(files[0].content.startsWith('// @construct-generated tests v1 - LOCKED, do not edit (#348)\n'));
   assert.equal(files[0].content, proofFiles(dir, { ...FORM, kind: 'render' })[0].content, 'a pure function of the request');
-  assert.deepEqual(proofFiles(dir, { ...FORM, kind: 'playwright' }), []);
-  assert.deepEqual(proofTouches(dir, { ...FORM, kind: 'playwright' }), []);
-  const result = generateProof(dir, { ...FORM, kind: 'playwright' });
-  assert.deepEqual([result.files, result.needs], [[], []]);
-  assert.match(result.skipped, /The form shape has no Playwright flow yet \(only list does\)/);
+  assert.deepEqual(proofFiles(dir, { ...FORM, kind: 'playwright' }).map((f) => path.basename(f.path)), ['add-product--screen.spec.ts'], 'the browser flow of the form (the default source is the endpoint)');
+  assert.deepEqual(proofTouches(dir, { ...FORM, kind: 'playwright' }).map((f) => f.path), ['features/shop/tests/generated/add-product--screen.spec.ts', 'architecture.yml']);
+  const local = generateProof(dir, { ...FORM, kind: 'playwright', source: 'local' });
+  assert.deepEqual([local.files, local.needs], [[], []]);
+  assert.match(local.skipped, /The local data source makes no request/);
 });
 
 test('the worked example in docs/PLACEMENT.md (form) is exactly what the code produces', () => {

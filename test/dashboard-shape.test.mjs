@@ -199,7 +199,8 @@ test('the proof of a dashboard is the render proof: locked, a pure function of t
   assert.deepEqual(files.map((f) => path.basename(f.path)), ['OrdersDashboardScreen.proof.test.ts']);
   assert.ok(files[0].content.startsWith('// @construct-generated tests v1 - LOCKED, do not edit (#348)\n'));
   assert.equal(files[0].content, proofFiles(dir, { ...DASH, kind: 'render' })[0].content, 'a pure function of the request');
-  assert.deepEqual(proofFiles(dir, { ...DASH, kind: 'playwright' }), [], 'no browser flow for this shape');
+  assert.deepEqual(proofFiles(dir, { ...DASH, kind: 'playwright' }).map((f) => path.basename(f.path)), ['orders-dashboard--screen.spec.ts'], 'the browser flow of the dashboard (#659)');
+  assert.deepEqual(proofFiles(dir, { ...DASH, kind: 'playwright', source: 'local' }), [], 'a local source makes no request to mock');
   assert.deepEqual(proofTouches(dir, { ...DASH }).map((f) => f.path), ['features/shop/tests/generated/OrdersDashboardScreen.proof.test.ts', 'architecture.yml']);
   for (const want of ['const SUMMARY: OrderSummary = { count: 2, total: { sum: 19.5, average: 9.75, max: 12.5 }, paid: 1 };', '["Paid", "<li><span>Paid</span><strong>1</strong></li>"]', 'construct create proof OrdersDashboard --feature shop --shape dashboard --entity Order --fields id:string,total:number,paid:boolean']) assert.ok(files[0].content.includes(want), want);
 });

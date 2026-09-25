@@ -36,6 +36,33 @@ export function summaryOfRows(rows, fields) {
 const literalOf = (value, lit) => (value !== null && typeof value === 'object' ? `{ ${Object.entries(value).map(([k, v]) => `${k}: ${literalOf(v, lit)}`).join(', ')} }` : typeof value === 'string' ? lit(value) : String(value));
 
 /**
+ * What a dashboard screen shows for the sample summary of the two sample rows: the summary the service answers, each tile (`key`, `label`,
+ * `from`, `value`) and each panel (`key`, `title`, `field`, `lines` as `[label, value]`), and the markup of one tile and of one panel line, so
+ * the render proof and the browser flow expect the very same text. Pure.
+ *
+ * @param {object} ctx The proof context (shape context plus `rows`).
+ * @returns {{ summary: Record<string, unknown>, tiles: { key: string, label: string, value: string }[], panels: { key: string, title: string, lines: [string, string][] }[], tileHtml: (tile: object) => string, lineHtml: (line: [string, string]) => string }} The expectations.
+ *
+ * @example
+ * dashboardExpectations(ctx).tiles.map((t) => t.label); // => ['Orders', 'Sum of total']
+ */
+export function dashboardExpectations(ctx) {
+  const summary = summaryOfRows(ctx.rows, ctx.fields);
+  const layout = layoutOf(ctx);
+  const valueOf = (from) => {
+    const [head, tail] = from.split('.');
+    return tail ? summary[head][tail] : summary[head];
+  };
+  const isCounted = (t) => t.key === 'count' || measuresOf(ctx.fields).flags.some((f) => f.name === t.key);
+  const tileValue = (t) => (isCounted(t) ? String(valueOf(t.from)) : show(valueOf(t.from)));
+  const tiles = layout.tiles.map((t) => ({ ...t, value: tileValue(t) }));
+  const panels = layout.panels.map((p) => ({ ...p, lines: [['Sum', show(summary[p.field].sum)], ['Average', show(summary[p.field].average)], ['Highest', show(summary[p.field].max)]] }));
+  const tileHtml = (t) => `<li><span>${t.label}</span><strong>${t.value}</strong></li>`;
+  const lineHtml = ([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`;
+  return { summary, tiles, panels, tileHtml, lineHtml };
+}
+
+/**
  * The text of the render proof of a dashboard screen: loading, error with role alert, the ready screen with every tile and every panel line
  * shown, the controller's first state, the domain tiles and panels, and the service (a stubbed fetch: 200, 500, wrong shape, network failure,
  * the AbortSignal; or, for the local source, the summary of the seed rows with no network and a cancelled request).
@@ -50,23 +77,12 @@ const literalOf = (value, lit) => (value !== null && typeof value === 'object' ?
  * dashboardProofText(ctx, { feature: 'orders-dashboard' }, 'features/orders-dashboard/tests/generated/OrdersDashboardScreen.proof.test.ts', kit).includes('every tile');
  */
 export function dashboardProofText(ctx, request, relPath, kit) {
-  const { names, rows } = ctx;
+  const { names } = ctx;
   const { lit } = kit;
   const Name = names.Name;
   const local = ctx.source === 'local';
   const command = `construct create proof ${Name} --feature ${request.feature} --shape dashboard --entity ${names.Entity} --fields ${ctx.request.fields}${sourceFlag(ctx)}`;
-  const summary = summaryOfRows(rows, ctx.fields);
-  const layout = layoutOf(ctx);
-  const valueOf = (from) => {
-    const [head, tail] = from.split('.');
-    return tail ? summary[head][tail] : summary[head];
-  };
-  const isCounted = (t) => t.key === 'count' || measuresOf(ctx.fields).flags.some((f) => f.name === t.key);
-  const tileValue = (t) => (isCounted(t) ? String(valueOf(t.from)) : show(valueOf(t.from)));
-  const tiles = layout.tiles.map((t) => ({ ...t, value: tileValue(t) }));
-  const panels = layout.panels.map((p) => ({ ...p, lines: [['Sum', show(summary[p.field].sum)], ['Average', show(summary[p.field].average)], ['Highest', show(summary[p.field].max)]] }));
-  const tileHtml = (t) => `<li><span>${t.label}</span><strong>${t.value}</strong></li>`;
-  const lineHtml = ([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`;
+  const { summary, tiles, panels, tileHtml, lineHtml } = dashboardExpectations(ctx);
   const numbers = measuresOf(ctx.fields).numbers;
   const flags = measuresOf(ctx.fields).flags;
   const wrong = numbers.length ? `{ ...SUMMARY, ${numbers[0].name}: 'wrong' }` : flags.length ? `{ ...SUMMARY, ${flags[0].name}: 'wrong' }` : `{ ...SUMMARY, count: 'wrong' }`;

@@ -46,7 +46,7 @@ test('the wizard shape is registered on the one mechanism: plan enum, schema, fl
   }
   assert.deepEqual([...SHAPES.wizard.layers], LAYERS, 'the seven layers: a slice plus the workflow');
   for (const [layer, needed] of Object.entries(SHAPES.wizard.requires)) assert.ok(needed.every((l) => SHAPES.wizard.layers.includes(l)), `${layer} requires only layers of the shape`);
-  assert.deepEqual([...PLAYWRIGHT_SHAPES], ['list'], 'only the list shape has a browser flow so far');
+  assert.deepEqual([...PLAYWRIGHT_SHAPES], ['list', 'detail', 'form', 'dashboard', 'wizard'], 'every shape has a browser flow since #659 (test/proof-browser.test.mjs)');
   assert.equal(planToCommand({ id: 's1', title: 't', flow: 'create.unit', args: { layer: 'workflow', name: 'Signup', feature: 'signup', shape: 'wizard', entity: 'Signup', fields: 'id:string,name:string', steps: 'a,b', source: 'local' }, executor: 'deterministic' }).argv.join(' '), 'create workflow Signup --feature signup --shape wizard --entity Signup --fields id:string,name:string --steps a,b --source local');
 });
 
@@ -237,7 +237,8 @@ test('the proof of a wizard is the render proof: locked, a pure function of the 
   assert.deepEqual(files.map((f) => path.basename(f.path)), ['SignupScreen.proof.test.ts']);
   assert.ok(files[0].content.startsWith('// @construct-generated tests v1 - LOCKED, do not edit (#348)\n'));
   assert.equal(files[0].content, proofFiles(dir, { ...request, kind: 'render' })[0].content, 'a pure function of the request');
-  assert.deepEqual(proofFiles(dir, { ...request, kind: 'playwright' }), [], 'no browser flow for this shape');
+  assert.deepEqual(proofFiles(dir, { ...request, kind: 'playwright' }).map((f) => path.basename(f.path)), ['signup--screen.spec.ts'], 'the browser flow of the wizard (#659), with the steps of the request');
+  assert.deepEqual(proofFiles(dir, { ...request, kind: 'playwright', source: 'local' }), [], 'a local source makes no request to mock');
   assert.deepEqual(proofTouches(dir, request).map((f) => f.path), ['features/shop/tests/generated/SignupScreen.proof.test.ts', 'architecture.yml']);
   assert.match(files[0].content, /construct create proof Signup --feature shop --shape wizard --entity Signup --fields id:string,name:string,email:string --steps about,confirm/);
   assert.match(files[0].content, /import \{ getInitialSnapshot, getNextSnapshot \} from 'xstate';/);

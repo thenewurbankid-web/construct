@@ -36,7 +36,7 @@ test('the detail shape is registered on the one mechanism: plan enum, schema, fl
   for (const id of ['create.unit', 'create.layer', 'create.proof']) assert.deepEqual(PLAN_FLOWS[id].args.shape.enum, [...PLAN_SHAPES]);
   assert.deepEqual([...SHAPES.detail.layers], LAYERS, 'the six layers of a vertical slice');
   for (const [layer, needed] of Object.entries(SHAPES.detail.requires)) assert.ok(needed.every((l) => SHAPES.detail.layers.includes(l)), `${layer} requires only layers of the shape`);
-  assert.ok(!PLAYWRIGHT_SHAPES.includes('detail'), 'no browser flow for the detail shape yet');
+  assert.ok(PLAYWRIGHT_SHAPES.includes('detail'), 'the detail shape has a browser flow since #659 (test/proof-browser.test.mjs)');
 });
 
 test('the names: a plural for the endpoint, the entity of a detail is its unit name, every identifier from the unit name', () => {
@@ -184,18 +184,18 @@ test('a detail plan carries the shape on every unit, is wired and proven, and pl
   }
 });
 
-test('the proof of a detail is the render proof; a Playwright flow is not written for it, and says why', () => {
+test('the proof of a detail is the render proof; its Playwright flow (#659) is written only for a source that makes a request', () => {
   const dir = project();
   fs.writeFileSync(path.join(dir, 'playwright.config.ts'), "export default { testDir: 'features' };\n");
   const files = proofFiles(dir, { ...DETAIL, kind: 'render' });
   assert.deepEqual(files.map((f) => path.basename(f.path)), ['ProductScreen.proof.test.ts']);
   assert.ok(files[0].content.startsWith('// @construct-generated tests v1 - LOCKED, do not edit (#348)\n'));
   assert.equal(files[0].content, proofFiles(dir, { ...DETAIL, kind: 'render' })[0].content, 'a pure function of the request');
-  assert.deepEqual(proofFiles(dir, { ...DETAIL, kind: 'playwright' }), []);
-  assert.deepEqual(proofTouches(dir, { ...DETAIL, kind: 'playwright' }), []);
-  const result = generateProof(dir, { ...DETAIL, kind: 'playwright' });
-  assert.deepEqual([result.files, result.needs], [[], []]);
-  assert.match(result.skipped, /The detail shape has no Playwright flow yet \(only list does\)/);
+  assert.deepEqual(proofFiles(dir, { ...DETAIL, kind: 'playwright' }).map((f) => path.basename(f.path)), ['product--screen.spec.ts'], 'the browser flow of the detail (the default source is the endpoint)');
+  assert.deepEqual(proofTouches(dir, { ...DETAIL, kind: 'playwright' }).map((f) => f.path), ['features/shop/tests/generated/product--screen.spec.ts', 'architecture.yml']);
+  const local = generateProof(dir, { ...DETAIL, kind: 'playwright', source: 'local' });
+  assert.deepEqual([local.files, local.needs], [[], []]);
+  assert.match(local.skipped, /The local data source makes no request/);
   assert.deepEqual(proofTouches(dir, { ...DETAIL, kind: 'render' }).map((f) => `${f.change} ${f.path}`), ['create features/shop/tests/generated/ProductScreen.proof.test.ts', 'modify architecture.yml']);
 });
 
