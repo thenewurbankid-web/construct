@@ -52,6 +52,8 @@ const post = async (body) => {
   return { status: res.status, body: await res.json() };
 };
 const traces = () => readTraces(root, { stateDir });
+/** The route adds the decision provider's `suggestions` (#633) to what the deterministic blocks return; the rest is byte for byte theirs. */
+const bare = ({ suggestions, decisionProvider, ...rest }) => rest;
 
 test('reading a sentence and answering nothing records nothing', async () => {
   fresh();
@@ -134,7 +136,7 @@ test('`traces: off` in the project stops it, and the response is the same', asyn
   const r = await post(body);
   assert.equal(r.status, 200);
   assert.equal(fs.existsSync(traceDir(root, { stateDir })), false, 'no directory, no file');
-  assert.deepEqual(r.body, JSON.parse(JSON.stringify(readRequirement(body, root).body)), 'recording is not part of the response');
+  assert.deepEqual(bare(r.body), JSON.parse(JSON.stringify(readRequirement(body, root).body)), 'recording is not part of the response');
 });
 
 test('a recording that fails never changes the response: the state directory is a file', async () => {
@@ -145,7 +147,7 @@ test('a recording that fails never changes the response: the state directory is 
   const body = { text: FROB, answers: [{ id: 'o1', option: 'interact' }] };
   const r = await post(body);
   assert.equal(r.status, 200, 'the chain is not broken by a bad state directory');
-  assert.deepEqual(r.body, JSON.parse(JSON.stringify(readRequirement(body, root).body)));
+  assert.deepEqual(bare(r.body), JSON.parse(JSON.stringify(readRequirement(body, root).body)));
   assert.equal(fs.readFileSync(notADir, 'utf8'), 'a file, not a directory');
 });
 
@@ -153,6 +155,6 @@ test('the response is exactly what the deterministic blocks return: no field of 
   fresh();
   const body = { text: LIST, answers: [{ id: 'q-shape', option: 'list' }] };
   const r = await post(body);
-  assert.deepEqual(r.body, JSON.parse(JSON.stringify(readRequirement(body, root).body)));
+  assert.deepEqual(bare(r.body), JSON.parse(JSON.stringify(readRequirement(body, root).body)));
   for (const key of ['trace', 'traces', 'choices', 'decisionTrace']) assert.equal(key in r.body, false);
 });

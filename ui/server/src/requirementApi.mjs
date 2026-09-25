@@ -16,6 +16,11 @@
 //     record to the per-user state directory (#643, docs/DECISION-TRACES.md), with what the rules provider suggested, and
 //     `planValidated` once the plan from those answers validates. The project's `traces: off` in architecture.yml stops it;
 //     a failing recording (full disk, bad state directory) is swallowed and never changes the response.
+//   - #633: the response carries `suggestions` (per open question and offer id: the option the project's decision provider
+//     suggests, its reason, and the provider's name and version) and `decisionProvider`. The provider is `decision: { provider,
+//     plugin }` of architecture.yml, default `rules`; a plugin that fails or is slow is replaced by `rules` and the line is in
+//     `decisionProvider.notes`. A plugin file is imported only when the server was started with CONSTRUCT_DECISION_PLUGINS=on.
+//     It only suggests: the answer is still the person's, recorded with the suggestion and `accepted: true|false`.
 //   - #653: the proof of a shaped screen has three more routes, POST /api/requirement/proof/{status,run,skip}, in
 //     requirementProofApi.mjs (same gates, same Origin/JSON/cap checks, a bigger cap because they carry the plan). The read
 //     response carries `proof` (the plan's proof steps and the chain state, pending).
@@ -27,7 +32,8 @@ import express from 'express';
 import { loadConfig } from '../../../packages/core/config.mjs';
 import { parseRequirement, resolveOpen, openQuestion, readBack, cardSummary } from '../../../packages/core/requirement-card.mjs';
 import { placeCard, planFromBlocks, blockLines } from '../../../packages/core/placement.mjs';
-import { recordChoices } from '../../../packages/core/decision-trace-store.mjs';
+import { recordChoices, tracesEnabled } from '../../../packages/core/decision-trace-store.mjs';
+import { openDecision, suggestForQuestions } from '../../../packages/core/decision-project.mjs';
 import { choiceFromCardQuestion, choicesFromPlacement } from '../../../packages/core/decision-trace-adapters.mjs';
 import { createProofHandlers, MAX_PROOF_REQUEST_BYTES } from './requirementProofApi.mjs';
 
@@ -52,11 +58,12 @@ const asQuestion = (source, q) => ({ ...q, source });
  *
  * @param {{ text?: unknown, answers?: unknown }} body
  * @param {string} root the open project's root
- * @param {{ choices: object[], planValidated?: boolean }} [trace] filled in as it reads: the closed questions answered so far
- *   (as `recordChoices` takes them) and whether the plan from them validated (undefined while no plan was built)
+ * @param {{ choices: object[], questions?: object[], planValidated?: boolean }} [trace] filled in as it reads: the closed questions answered so far
+ *   (as `recordChoices` takes them), the questions and offers still open (which the decision provider is asked about) and
+ *   whether the plan from them validated (undefined while no plan was built)
  * @returns {{ status: number, body: object }}
  */
-export function readRequirement(body, root, trace = { choices: [] }) {
+export function readRequirement(body, root, trace = { choices: [], questions: [] }) {
   const text = body?.text;
   if (typeof text !== 'string' || !text.trim()) return fail(400, 'TEXT_REQUIRED', 'Write the requirement first.');
   if (text.length > MAX_TEXT) return fail(400, 'TEXT_TOO_LONG', `The requirement is longer than ${MAX_TEXT} characters.`);
@@ -87,7 +94,9 @@ export function readRequirement(body, root, trace = { choices: [] }) {
   const base = { ok: true, card, summary: { card: cardSummary(card), readBack: readBack(card).map((l) => l.line) } };
   // A word the lexicon does not know is a question first; nothing is placed until a person answers it.
   if (card.open.length) {
-    return { status: 200, body: { ...base, placement: null, plan: null, files: {}, open: card.open.map((item) => asQuestion('card', openQuestion(card, item))), offers: [], warnings: [], summary: { ...base.summary, blocks: [] } } };
+    const openCard = card.open.map((item) => asQuestion('card', openQuestion(card, item)));
+    trace.questions = openCard;
+    return { status: 200, body: { ...base, placement: null, plan: null, files: {}, open: openCard, offers: [], warnings: [], summary: { ...base.summary, blocks: [] } } };
   }
 
   let config;
@@ -103,6 +112,7 @@ export function readRequirement(body, root, trace = { choices: [] }) {
   const summary = { ...base.summary, blocks: blockLines(placement).map((l) => l.line) };
   // #619: the shape offer (q-shape) is a closed question that never holds the plan back, so it rides beside `open`, not in it.
   const offers = (placement.offers ?? []).map((q) => asQuestion('placement', q));
+  trace.questions = [...open, ...offers];
   const out = { ...base, placement, plan: null, files: {}, open, offers, warnings: [], summary };
   if (!placement.ok || !placement.complete) return { status: 200, body: out };
 
@@ -117,10 +127,47 @@ export function readRequirement(body, root, trace = { choices: [] }) {
 }
 
 /**
- * @param {{ getRoot: () => {ok: true, root: string} | {ok: false, status?: number, body?: object}, clientOrigin?: string, proofRunner?: Function, proofTimeoutMs?: number }} deps
- *   `proofRunner` and `proofTimeoutMs` are test seams for the proof routes (#653).
+ * #633: what the project's decision provider says about a read. Adds `suggestions` (per open question or offer id: option, reason,
+ * runner-up, provider name and version) and `decisionProvider` (who answers, what was asked for, the load and fallback lines) to
+ * the response body, and attaches to every choice a person made the suggestion that was on offer, with `outcome.accepted`
+ * (true when the person took it, false when they chose another option). Suggest-only: nothing is chosen for the person.
+ * Never throws: a failing provider costs the response its suggestions and nothing else.
+ *
+ * @param {{ status: number, body: object }} out The result of `readRequirement`.
+ * @param {{ choices: object[], questions?: object[] }} trace What `readRequirement` filled in.
+ * @param {string} root The open project's root.
+ * @param {{ allowPlugins?: boolean, log?: (line: string) => void }} [deps] Whether a plugin file may be imported, and where lines go.
+ * @returns {Promise<{ out: { status: number, body: object }, choices: object[] }>} The response and the choices ready to record.
  */
-export function createRequirementRouter({ getRoot, clientOrigin, proofRunner, proofTimeoutMs }) {
+export async function withDecisions(out, trace, root, deps = {}) {
+  if (out.status !== 200) return { out, choices: trace.choices };
+  try {
+    const decision = await openDecision(root, { allowPlugins: deps.allowPlugins === true, log: deps.log });
+    const suggestions = await suggestForQuestions(decision, trace.questions ?? []);
+    const choices = [];
+    for (const choice of trace.choices) {
+      const s = tracesEnabled(root) && !choice.suggestion && (choice.by ?? 'person') === 'person' ? await decision.suggest(choice.summary) : null;
+      choices.push(s ? {
+        ...choice,
+        suggestion: { option: s.option, reason: s.reason, ...(s.score === undefined ? {} : { score: s.score }) },
+        provider: { name: s.provider, version: s.version },
+        outcome: { ...(choice.outcome ?? {}), accepted: s.option === choice.chosen },
+      } : choice);
+    }
+    const body = { ...out.body, suggestions, decisionProvider: { ...decision.provider, requested: decision.requested, fellBackFrom: decision.fellBackFrom, notes: decision.notes } };
+    return { out: { ...out, body }, choices };
+  } catch {
+    return { out: { ...out, body: { ...out.body, suggestions: {} } }, choices: trace.choices };
+  }
+}
+
+/**
+ * @param {{ getRoot: () => {ok: true, root: string} | {ok: false, status?: number, body?: object}, clientOrigin?: string, proofRunner?: Function, proofTimeoutMs?: number, allowPlugins?: boolean, decisionLog?: (line: string) => void }} deps
+ *   `proofRunner` and `proofTimeoutMs` are test seams for the proof routes (#653). `allowPlugins` lets a project's
+ *   `decision.plugin` file be imported (default: only when `CONSTRUCT_DECISION_PLUGINS=on`, because a plugin is code the
+ *   project brings); `decisionLog` receives the load and fallback lines (default: the server's stderr).
+ */
+export function createRequirementRouter({ getRoot, clientOrigin, proofRunner, proofTimeoutMs, allowPlugins = process.env.CONSTRUCT_DECISION_PLUGINS === 'on', decisionLog = (line) => console.error(line) }) {
   const router = express.Router();
   router.use((req, res, next) => {
     if (req.method !== 'GET') {
@@ -139,9 +186,11 @@ export function createRequirementRouter({ getRoot, clientOrigin, proofRunner, pr
     const r = getRoot();
     if (!r.ok) return res.status(r.status ?? 400).json(r.body ?? { ok: false, error: r.error ?? 'No project is open.' });
     try {
-      const trace = { choices: [] };
-      const out = readRequirement(req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {}, r.root, trace);
-      if (out.status === 200 && trace.choices.length) await recordChoices(r.root, trace.choices, trace.planValidated === undefined ? {} : { outcome: { planValidated: trace.planValidated } });
+      const trace = { choices: [], questions: [] };
+      const read = readRequirement(req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {}, r.root, trace);
+      const { out, choices } = await withDecisions(read, trace, r.root, { allowPlugins, log: decisionLog });
+      // suggestWith: null, because withDecisions already attached what the project's provider suggested (rules when none is named).
+      if (out.status === 200 && choices.length) await recordChoices(r.root, choices, { suggestWith: null, ...(trace.planValidated === undefined ? {} : { outcome: { planValidated: trace.planValidated } }) });
       return res.status(out.status).json(out.body);
     } catch {
       return res.status(500).json({ ok: false, code: 'READ_FAILED', error: 'The requirement could not be read.' });
