@@ -34,6 +34,15 @@ they agree on the fixture. It abstains on a question it saw fewer than `min_trai
 It is deterministic: the same dataset and config give the same `features.json` (weights rounded to 6 decimals; the golden test
 compares within 1e-5 across platforms, because `exp` may differ in the last bit between C libraries).
 
+## Prototypes (the local embedding classifier, #645)
+
+`build_prototypes.py` (or `TRAIN_KIND=prototypes ./train.sh`) writes a `prototypes.json` bundle instead: for each closed question the
+words people chose each option for on the TRAIN split (the most frequent `max_per_class`, default 30), after the curated
+`--seed` words, with the same guards, the same eval report (against the rules baseline) and the same bundle layout. Nothing is
+learned by gradient descent and the embedding (`embed.v1`, hashed character n-grams) is a fixed function that
+`packages/core/decision-prototypes.mjs` computes identically, so no model file is needed. Standard library only. See
+`docs/TRAIN-ELSEWHERE.md`, section 3b. Its test: `python3 -m unittest` runs `test_build_prototypes.py` too.
+
 ## Guards (environment variables)
 
 | variable | default | what |
@@ -43,7 +52,9 @@ compares within 1e-5 across platforms, because `exp` may differ in the last bit 
 | `TRAIN_NICE` | `19` | the job runs at the lowest priority |
 | `TRAIN_REQUIRE_AC` | `0` | `1` (macOS): do not start on battery power |
 | `TRAIN_INTERVAL` | `30` | seconds between polls of the loop |
-| `TRAIN_CONFIG` | `train.config.json` | the training config |
+| `TRAIN_CONFIG` | `train.config.json` | the training config (`prototypes.config.json` for `TRAIN_KIND=prototypes`) |
+| `TRAIN_KIND` | `features` | `features`: the logistic regression (`train_features.py`); `prototypes`: the prototype set of the local embedding classifier (`build_prototypes.py`, #645; no training run, see "Prototypes" below) |
+| `TRAIN_SEED` | none | a curated prototype file merged first (`TRAIN_KIND=prototypes` only) |
 | `TRAIN_CREATED_AT` | now | fix the manifest time for a reproducible bundle |
 | `TRAIN_PYTHON` | `python3` | the interpreter |
 
@@ -86,9 +97,10 @@ Decrypting inside the kit is a TODO. Delete the dataset when the model is back.
 
 The default mode above is CPU, pure Python and needs no GPU. Left for later slices, in order:
 
-1. **Embedding prototypes plus a small classification head** (a 22M-parameter encoder, well under 4 GB on the M5 Pro; the
-   classifier plugin of #645). Would need `torch` with the MPS backend, or MLX, in a pinned environment file. The output would be
-   `prototypes.json` and `model.onnx`; `construct model import` verifies and stores both but has no loader for them yet.
+1. **A neural embedding plus a small classification head** (a 22M-parameter encoder, well under 4 GB on the M5 Pro). The
+   prototype classifier of #645 ships without one (`build_prototypes.py`, character n-grams, standard library only). This would
+   need `torch` with the MPS backend, or MLX, in a pinned environment file, and would write `prototypes.json` with another
+   `embedder.version` and a `model.onnx`; `construct model import` verifies and stores an `.onnx` but has no loader for it.
 2. **LoRA fine-tune of a 3B-or-smaller permissively licensed model through MLX** (4-bit), with the memory guard keeping 8 GB free
    (about 16 GB usable of 24 GB), lowering the batch size before failing, and recording peak memory in `eval-report.json`.
 3. A Linux GPU mode for anything larger. No CUDA is assumed anywhere.
@@ -96,6 +108,7 @@ The default mode above is CPU, pure Python and needs no GPU. Left for later slic
 ## Files
 
 `train.sh` (entry point, guards, loop), `train_features.py` (the trainer, standard library), `train.config.json`,
+`build_prototypes.py` and `prototypes.config.json` (the prototype builder, #645) with `test_build_prototypes.py`, `fixtures/golden-prototypes/` (its golden bundle),
 `com.line.train.plist`, `test_train_features.py` (the kit's own test), `fixtures/dataset/` (a synthetic 120-record dataset bundle
 made by Construct's own exporter), `fixtures/golden/` (the model bundle a first run produced; the golden `features.json` is what
 the test compares with).

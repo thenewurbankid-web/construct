@@ -1,0 +1,10 @@
+{
+  "min_score": 0.1,
+  "min_margin": 0.0,
+  "min_train_per_route": 5,
+  "max_per_class": 30,
+  "dim": 256,
+  "ngrams": [2, 3, 4],
+  "model_name": "layer-proto",
+  "time_limit_seconds": 600
+}

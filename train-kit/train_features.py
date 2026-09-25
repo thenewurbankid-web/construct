@@ -270,13 +270,15 @@ def ratio(n, d):
     return None if not d else round(n / d, 6)
 
 
-def evaluate(records, model, split):
+def evaluate(records, model, split, scorer=None):
+    """Per chooser and overall: hits, coverage and the rules baseline. `scorer(model, summary)` defaults to the features scorer."""
+    scorer = scorer or score_summary
     per = {}
     for s, trace in records:
         if s != split:
             continue
         m = per.setdefault(trace['chooser']['id'], {'traces': 0, 'persons': 0, 'hits': 0, 'answered': 0, 'rulesHits': 0, 'suggested': 0, 'suggestedHits': 0})
-        pick = score_summary(model, trace['summary'])
+        pick = scorer(model, trace['summary'])
         m['traces'] += 1
         if pick is not None:
             m['answered'] += 1

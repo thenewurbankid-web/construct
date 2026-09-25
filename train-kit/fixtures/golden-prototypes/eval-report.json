@@ -1,0 +1,109 @@
+{
+ "config": {
+  "dim": 256,
+  "max_per_class": 30,
+  "min_margin": 0.0,
+  "min_score": 0.1,
+  "min_train_per_route": 5,
+  "model_name": "layer-proto",
+  "ngrams": [
+   2,
+   3,
+   4
+  ],
+  "time_limit_seconds": 600
+ },
+ "datasetHash": "55d26b82295fb64512b37b217a2d0f620e48e2e2f025a0067c20b2e315cb5bd6",
+ "elapsedSeconds": 0.02,
+ "note": "accuracy counts an abstention as a miss; rulesAgreement is the baseline (first enabled option); recordedSuggestionAgreement is how often the recorded suggestion was the chosen option",
+ "peakMemoryMB": 22.2,
+ "routes": {
+  "built": 2,
+  "prototypes": 96,
+  "skippedForTooLittleData": 0
+ },
+ "schema": "construct.eval-report.v1",
+ "splits": {
+  "test": 13,
+  "train": 96,
+  "validation": 11
+ },
+ "test": {
+  "byChooser": {
+   "requirement.card.noun": {
+    "accuracy": 0.5,
+    "coverage": 1.0,
+    "hits": 4,
+    "persons": 8,
+    "recordedSuggestionAgreement": 0.0,
+    "rulesAgreement": 0.0,
+    "rulesHits": 0,
+    "traces": 8,
+    "verdict": "beats"
+   },
+   "requirement.placement.shape": {
+    "accuracy": 0.8,
+    "coverage": 1.0,
+    "hits": 4,
+    "persons": 5,
+    "recordedSuggestionAgreement": 0.4,
+    "rulesAgreement": 0.4,
+    "rulesHits": 2,
+    "traces": 5,
+    "verdict": "beats"
+   }
+  },
+  "overall": {
+   "accuracy": 0.615385,
+   "coverage": 1.0,
+   "hits": 8,
+   "persons": 13,
+   "recordedSuggestionAgreement": 0.153846,
+   "rulesAgreement": 0.153846,
+   "rulesHits": 2,
+   "traces": 13,
+   "verdict": "beats"
+  }
+ },
+ "trainer": {
+  "name": "train-kit/build_prototypes.py",
+  "version": "1"
+ },
+ "validation": {
+  "byChooser": {
+   "requirement.card.noun": {
+    "accuracy": 0.666667,
+    "coverage": 1.0,
+    "hits": 6,
+    "persons": 9,
+    "recordedSuggestionAgreement": 0.444444,
+    "rulesAgreement": 0.444444,
+    "rulesHits": 4,
+    "traces": 9,
+    "verdict": "beats"
+   },
+   "requirement.placement.shape": {
+    "accuracy": 1.0,
+    "coverage": 1.0,
+    "hits": 2,
+    "persons": 2,
+    "recordedSuggestionAgreement": 1.0,
+    "rulesAgreement": 1.0,
+    "rulesHits": 2,
+    "traces": 2,
+    "verdict": "ties"
+   }
+  },
+  "overall": {
+   "accuracy": 0.727273,
+   "coverage": 1.0,
+   "hits": 8,
+   "persons": 11,
+   "recordedSuggestionAgreement": 0.545455,
+   "rulesAgreement": 0.545455,
+   "rulesHits": 6,
+   "traces": 11,
+   "verdict": "beats"
+  }
+ }
+}

@@ -1,0 +1,151 @@
+{
+ "embedder": {
+  "dim": 256,
+  "kind": "char-ngram-hash",
+  "ngrams": [
+   2,
+   3,
+   4
+  ],
+  "version": "embed.v1"
+ },
+ "minMargin": 0.0,
+ "minScore": 0.1,
+ "routes": {
+  "how should the \"_\" screen be built?|list,scaffold": {
+   "choosers": [
+    "requirement.placement.shape"
+   ],
+   "classes": [
+    "list",
+    "scaffold"
+   ],
+   "prototypes": {
+    "list": [
+     "articles",
+     "customers",
+     "events",
+     "invoices",
+     "notes",
+     "orders",
+     "payments",
+     "products",
+     "projects",
+     "settings",
+     "tickets"
+    ],
+    "scaffold": [
+     "about",
+     "account",
+     "checkout",
+     "dashboard",
+     "gallery",
+     "help",
+     "inbox",
+     "landing",
+     "login",
+     "onboarding",
+     "pricing",
+     "search"
+    ]
+   },
+   "trainCount": 23
+  },
+  "what does \"_\" mean here?|entity,state,ui-part,external,ignore": {
+   "choosers": [
+    "requirement.card.noun"
+   ],
+   "classes": [
+    "entity",
+    "state",
+    "ui-part"
+   ],
+   "prototypes": {
+    "entity": [
+     "accounts",
+     "articles",
+     "bookings",
+     "comments",
+     "contacts",
+     "coupons",
+     "customers",
+     "devices",
+     "documents",
+     "employees",
+     "events",
+     "items",
+     "messages",
+     "photos",
+     "playlists",
+     "products",
+     "projects",
+     "quotes",
+     "recipes",
+     "refunds",
+     "reports",
+     "reviews",
+     "sessions",
+     "shipments",
+     "tasks",
+     "users"
+    ],
+    "state": [
+     "cart",
+     "collapsed",
+     "cursor",
+     "darkmode",
+     "draft",
+     "filter",
+     "focus",
+     "fontsize",
+     "formdirty",
+     "hover",
+     "language",
+     "locale",
+     "pagesize",
+     "searchterm",
+     "selection",
+     "sidebarstate",
+     "sortorder",
+     "theme",
+     "timezone",
+     "tourstep",
+     "viewmode",
+     "volume",
+     "wizardstep"
+    ],
+    "ui-part": [
+     "accordion",
+     "avatar",
+     "badge",
+     "banner",
+     "breadcrumb",
+     "button",
+     "card",
+     "carousel",
+     "dialog",
+     "divider",
+     "dropdown",
+     "footer",
+     "header",
+     "menu",
+     "modal",
+     "panel",
+     "popover",
+     "sidebar",
+     "skeleton",
+     "snackbar",
+     "stepper",
+     "tab",
+     "toolbar",
+     "tooltip"
+    ]
+   },
+   "trainCount": 73
+  }
+ },
+ "schema": "construct.prototypes-model.v1",
+ "trainedOn": {
+  "datasetHash": "55d26b82295fb64512b37b217a2d0f620e48e2e2f025a0067c20b2e315cb5bd6"
+ }
+}

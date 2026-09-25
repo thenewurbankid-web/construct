@@ -15,6 +15,8 @@
 #            waits and tries again; exit code 75 in one-shot mode. TRAIN_MIN_FREE_GB=0 turns it off (tests, tiny fixtures).
 #   time     TRAIN_TIME_LIMIT seconds hard limit (default 1800): the trainer stops itself, and `timeout` (when present) is a second net.
 #   priority TRAIN_NICE (default 19): the job runs at the lowest priority so the owner's own work is not slowed.
+#   kind     TRAIN_KIND=features (default: the logistic-regression model, train_features.py) or prototypes (#645: the prototype set of
+#            the local embedding classifier, build_prototypes.py; TRAIN_SEED=<file> merges a curated seed first). One kind per loop.
 #   power    TRAIN_REQUIRE_AC=1 (macOS): do not start on battery power (the launchd template sets it).
 #
 # POSIX-leaning bash (macOS ships 3.2): no associative arrays, no ${var,,}. Needs python3 (standard library only).
@@ -26,7 +28,13 @@ MIN_FREE_GB=${TRAIN_MIN_FREE_GB:-8}
 TIME_LIMIT=${TRAIN_TIME_LIMIT:-1800}
 NICE=${TRAIN_NICE:-19}
 REQUIRE_AC=${TRAIN_REQUIRE_AC:-0}
-CONFIG=${TRAIN_CONFIG:-$HERE/train.config.json}
+KIND=${TRAIN_KIND:-features}
+SEED=${TRAIN_SEED:-}
+case "$KIND" in
+  features) SCRIPT=train_features.py; CONFIG=${TRAIN_CONFIG:-$HERE/train.config.json} ;;
+  prototypes) SCRIPT=build_prototypes.py; CONFIG=${TRAIN_CONFIG:-$HERE/prototypes.config.json} ;;
+  *) echo "TRAIN_KIND must be features or prototypes" >&2; exit 64 ;;
+esac
 INTERVAL=${TRAIN_INTERVAL:-30}
 LAST_TRAINED=""
 
@@ -89,7 +97,11 @@ train_one() {
   log "training from $dataset (nice $NICE, limit ${TIME_LIMIT}s)"
   rc=0
   # shellcheck disable=SC2086
-  nice -n "$NICE" $guard "$PY" "$HERE/train_features.py" --dataset "$dataset" --out "$tmp" --config "$CONFIG" --time-limit "$TIME_LIMIT" || rc=$?
+  if [ -n "$SEED" ] && [ "$KIND" = "prototypes" ]; then
+    nice -n "$NICE" $guard "$PY" "$HERE/$SCRIPT" --dataset "$dataset" --out "$tmp" --config "$CONFIG" --seed "$SEED" --time-limit "$TIME_LIMIT" || rc=$?
+  else
+    nice -n "$NICE" $guard "$PY" "$HERE/$SCRIPT" --dataset "$dataset" --out "$tmp" --config "$CONFIG" --time-limit "$TIME_LIMIT" || rc=$?
+  fi
   if [ "$rc" -ne 0 ]; then
     rm -rf "$tmp"
     log "training failed with exit code $rc"

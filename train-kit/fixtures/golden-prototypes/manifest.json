@@ -1,0 +1,31 @@
+{
+ "base": null,
+ "createdAt": "2026-09-25T12:00:00.000Z",
+ "datasetHash": "55d26b82295fb64512b37b217a2d0f620e48e2e2f025a0067c20b2e315cb5bd6",
+ "datasetSchema": "construct.dataset-bundle.v1",
+ "embedVersion": "embed.v1",
+ "files": {
+  "MODEL_CARD.md": {
+   "bytes": 1695,
+   "sha256": "a92b2e386a372823af577b2accf644ec581d8db03f208723740c30d8c97c2573"
+  },
+  "eval-report.json": {
+   "bytes": 2326,
+   "sha256": "e296ddd05333d360a2a29752d9275138801e839aa3f98d86a47db554dd931276"
+  },
+  "prototypes.json": {
+   "bytes": 2428,
+   "sha256": "23c9916da343b8e13e57d4a5747bb26cb592585ab60179b01baae4929ddef026"
+  }
+ },
+ "kind": "prototypes",
+ "license": "derived from the exporting project's own traces (and a curated seed); no third-party weights",
+ "name": "layer-proto",
+ "schema": "construct.model-bundle.v1",
+ "traceVersion": "decision-trace.v1",
+ "trainer": {
+  "name": "train-kit/build_prototypes.py",
+  "version": "1"
+ },
+ "version": "1-55d26b82"
+}
