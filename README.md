@@ -546,6 +546,8 @@ construct traces stats [--json]
 construct traces replay --provider <name> [--min-traces 30] [--plugin <file.mjs>] [--json]   # beats / ties / loses vs the rules baseline
 ```
 
+The suggestion that is recorded comes from the project's decision provider (`decision: { provider: rules|off|<name>, plugin: <file in the project> }` in `architecture.yml`, default `rules`). `construct decide --summary <file|-> | --requirement "<sentence>" [--format json]` is that provider as a read-only tool (a chooser summary in, one suggestion out; for a sentence, one per open question and offer), and the Requirement screen marks the suggested option "suggested by rules" with its reason, still one click to take and one to change. A plugin is a small file that default-exports `{ name, version, suggest(summary) }`, receives only the frozen, path-free summary and falls back to `rules` when it fails or is slow: see `docs/DECISION-PROVIDERS.md`.
+
 Replay is deterministic and read-only: no model, no network. A provider is promotable only when it beats the `rules` baseline on at least 30 person-made traces. Fields, privacy and the command in full: `docs/DECISION-TRACES.md`.
 
 ## Cockpit execution mode: in-process engine or the real CLI (#541)

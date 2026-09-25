@@ -139,12 +139,15 @@ A chooser is a block that asks ONE closed question with 2-5 options. Each option
   `{ option, by, provider }`, are recorded per step in `decisions`. They come back BESIDE the plan, not inside it, because
   `validatePlan` rejects unknown top-level fields and is not changed for this.
 
-The decision seam: a provider is `{ suggest(summary) }` and returns `{ option, reason, runnerUp }`. `suggest(summary,
-{ provider })` calls it with a deep-frozen copy of the summary (no path, no credential, no project file) and validates
-the answer: the option must be an enabled option of that summary and there must be a reason, else the result is `null`
-(a throw or a hang, 5 s by default, is `null` too). A provider can only suggest; nothing it returns is executed. Built in:
-`rules` (frozen, deterministic: the first enabled option, reason `first available step`, the next as runner-up) and `off`
-(always `null`). A plugin such as the decision model of #633 calls `registerDecisionProvider(name, provider)`.
+The decision seam: a provider is `{ name, version, suggest(summary) }` and returns `{ option, reason, score?, runnerUp? }` or
+`null`. `suggest(summary, { provider })` calls it with a deep-frozen copy of the summary (four fixed fields, paths hidden, a
+secret refused; no project file) and validates the answer: the option must be an enabled option of that summary and there
+must be a reason, else the result is `null` (a throw or a hang, 3 s by default, is `null` too). A provider can only suggest;
+nothing it returns is executed. Built in: `rules` (frozen, deterministic: the first enabled option, reason `first available
+step`, the next as runner-up) and `off` (always `null`). A plugin such as the decision model of #633 is selected per project
+(`decision: { provider, plugin }` in `architecture.yml`, loaded lazily from inside the project, falling back to `rules` when it
+fails or is slow) or registered by name with `registerDecisionProvider(name, provider)`. `construct decide` exposes the seam as
+a read-only tool. The contract, the setting, the trust model and the tool are in `docs/DECISION-PROVIDERS.md`.
 
 Worked example, run by `test/chooser.test.mjs` so it cannot go stale:
 
@@ -265,6 +268,6 @@ The decision model (a rules baseline today, a small trained model later, see #63
 1. **A fixed-size summary** of its state and options that a person, an LLM and a decision model all receive (`chooserSummary`, `cardSummary`, `blockSummary` are the examples). No paths or secrets in it.
 2. **Closed options with stable ids.** Decisions are a choice among 2-5 named options, never free text; ids do not change between versions, so recorded choices stay valid.
 3. **Attribution and a trace.** Every choice records who made it (person, LLM, decision model, plugin) and is written as a `decision-trace.v1` record with its outcome (#643, `packages/core/decision-trace*.mjs`, see `docs/DECISION-TRACES.md`): `choicesFromChain`, `choiceFromCardQuestion` or `choicesFromPlacement` turn what the block returned into a choice, `recordChoices` writes it to the project's state directory (`traces: off` in `architecture.yml` stops it), and a new chooser is done only when its choices can be recorded and `construct traces replay` can score a provider on them.
-4. **A rules-only fallback.** The block works with no model, and any model-backed proposal goes through the decision-provider seam, suggests only and never executes.
+4. **A rules-only fallback.** The block works with no model, and any model-backed proposal goes through the decision-provider seam, suggests only and never executes. The provider is pluggable per project and follows one contract, `{ name, version, suggest(summary) -> { option, reason, score?, runnerUp? } | null }`: it receives ONLY the frozen, path-free summary, returns a suggestion or `null`, and a plugin error or a slow answer falls back to the `rules` provider and is logged (`docs/DECISION-PROVIDERS.md`, #633). A new chain step shows the suggestion beside its options ("suggested by <provider>", with the reason), leaves the choice to the person, and records the answer with the suggestion and `accepted: true|false`.
 5. **Replay-scorable.** A provider can be scored on recorded traces of this block (`construct traces replay --provider <name>`: agreement with what people chose, coverage, and beats/ties/loses against the `rules` baseline); the block never depends on a specific model.
 6. **Cheap on a small machine.** No model file is loaded unless the feature is enabled; the block reports what it needs (see the low-end tiers, #648).

@@ -153,6 +153,11 @@ chain (`suggest()` of `decision-provider.mjs`). A plugin is a provider registere
 `--plugin <file.mjs>` imports a file that calls `registerDecisionProvider` itself or default-exports `{ name, suggest }`. That
 file is code you named yourself and runs locally with your permissions; Construct does not fetch or install one.
 
+`--plugin <file.mjs>` shares its loader with the project setting `decision: { provider, plugin }` (`docs/DECISION-PROVIDERS.md`,
+#633): without `--plugin`, `replay --provider <name>` also finds the plugin the project's `architecture.yml` names for that
+provider (relative, inside the project). The provider recorded on a trace is the one that actually suggested: the project's
+configured provider, or `rules` when a plugin failed and the rules answered in its place.
+
 ## What is not here
 
 Export bundles, dataset splits, training, the embedding classifier plugin and importing a trained model are #647 and #645. The
