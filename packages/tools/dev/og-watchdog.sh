@@ -249,6 +249,13 @@ cmd_check() {
     recycle_step 0
     return 0
   fi
+  # A session whose process cwd is outside the repo (started from ~, say) is invisible to sessions(), but its transcript
+  # and its subagents' transcripts are still being written: that is a live session, not an absent one.
+  local act now; act="$(last_activity)"; now="$(date +%s)"
+  if [ "$act" -gt 0 ] && [ $((now - act)) -lt "${OG_LIVE_SEC:-300}" ]; then
+    log "no session found by cwd, but a transcript changed $((now - act)) s ago: treating it as alive"
+    return 0
+  fi
   echo "none" >"$STATE/last-seen"; rm -f "$STATE/recycle"
   if [ -e "$STATE/PAUSE" ]; then log "no session, but paused (run: $SELF resume)"; return 0; fi
   log "no Claude Code session in $REPO"

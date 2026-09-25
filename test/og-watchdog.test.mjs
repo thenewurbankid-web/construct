@@ -130,6 +130,16 @@ test('og-watchdog: the OG session is asked for its own handoff note first, then 
   } finally { r.cleanup(); }
 });
 
+test('og-watchdog: a session outside the repo cwd that still writes transcripts is not replaced', { skip }, () => {
+  const r = rig('elsewhere');
+  try {
+    r.age(0);
+    r.run('check');
+    assert.match(r.log(), /treating it as alive/);
+    assert.equal(r.tmuxUp(), false, 'no second OG');
+  } finally { r.cleanup(); }
+});
+
 test('og-watchdog: with no session it starts OG', { skip }, async () => {
   const r = rig('none');
   try {
