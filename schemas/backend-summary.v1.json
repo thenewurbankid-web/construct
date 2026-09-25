@@ -1,0 +1,244 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://construct.dev/schemas/backend-summary.v1.json",
+  "title": "Construct Backend Summary v1",
+  "description": "What `construct summarize --backend <dir>` prints with `--format json` (summarizeBackend() in packages/core/backend-summary.mjs): the route map, module roles, import graph, environment reads (names only, never values) and effects of a Node.js / Express backend. Read-only, deterministic, no model. Every path is relative to the project root, never absolute. Lists are bounded (see `truncated` and the true totals in `counts`). Anything the reader could not see statically is listed under `detection.notDetected`, never guessed. Breaking changes go in backend-summary.v2.json.",
+  "type": "object",
+  "required": ["schema", "dir", "counts", "detection", "routes", "mounts", "middleware", "unmounted", "httpServers", "files", "imports", "env", "effects", "truncated"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "const": "backend-summary.v1" },
+    "dir": { "type": "string", "description": "The scanned directory, project-relative ('.' for the project root itself)." },
+    "counts": {
+      "type": "object",
+      "description": "True totals, before any list was cut to its bound.",
+      "required": ["files", "testFiles", "routes", "mounts", "middleware", "unmountedRoutes", "edges", "cycles", "envVars", "effects", "notDetected"],
+      "additionalProperties": false,
+      "properties": {
+        "files": { "type": "integer", "minimum": 0 },
+        "testFiles": { "type": "integer", "minimum": 0 },
+        "routes": { "type": "integer", "minimum": 0 },
+        "mounts": { "type": "integer", "minimum": 0 },
+        "middleware": { "type": "integer", "minimum": 0 },
+        "unmountedRoutes": { "type": "integer", "minimum": 0 },
+        "edges": { "type": "integer", "minimum": 0 },
+        "cycles": { "type": "integer", "minimum": 0 },
+        "envVars": { "type": "integer", "minimum": 0 },
+        "effects": { "type": "integer", "minimum": 0 },
+        "notDetected": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "detection": {
+      "type": "object",
+      "required": ["framework", "apps", "notes", "notDetected"],
+      "additionalProperties": false,
+      "properties": {
+        "framework": { "enum": ["express", "node-http", "express+node-http", "none"] },
+        "apps": { "type": "array", "description": "Every `express()` application found (a file and the line of its declaration).", "items": { "$ref": "#/definitions/position" } },
+        "notes": { "type": "array", "items": { "type": "string" } },
+        "notDetected": {
+          "type": "array",
+          "description": "What exists in the source but could not be read statically: a computed route path, a mount that is not a visible express.Router(), a plain http handler with no `url === '/x'` condition, a file that did not parse.",
+          "items": {
+            "type": "object",
+            "required": ["what", "file", "line", "detail"],
+            "additionalProperties": false,
+            "properties": {
+              "what": { "enum": ["mount", "http-server", "route-path", "file"] },
+              "file": { "type": "string" },
+              "line": { "type": "integer", "minimum": 0 },
+              "detail": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "routes": { "type": "array", "description": "Every route of every express app, with its full path (mount prefixes resolved).", "items": { "$ref": "#/definitions/route" } },
+    "mounts": {
+      "type": "array",
+      "description": "Each `use(path, router)` that mounts a router, in registration order.",
+      "items": {
+        "type": "object",
+        "required": ["path", "target", "from"],
+        "additionalProperties": false,
+        "properties": {
+          "path": { "type": "string" },
+          "dynamicPath": { "const": true },
+          "target": {
+            "type": "object",
+            "required": ["file", "name"],
+            "additionalProperties": false,
+            "properties": { "file": { "type": "string" }, "name": { "type": ["string", "null"], "description": "The router variable's name." } }
+          },
+          "from": { "$ref": "#/definitions/position" },
+          "app": { "type": "string", "description": "Only present when the project has more than one app." }
+        }
+      }
+    },
+    "middleware": {
+      "type": "array",
+      "description": "Each `use(...)` of something that is not a router, in registration order. `id` is what a route's `inherited` list names.",
+      "items": {
+        "type": "object",
+        "required": ["id", "path", "names", "file", "line"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^m[0-9]+$" },
+          "path": { "type": "string" },
+          "names": { "type": "array", "items": { "type": "string" } },
+          "file": { "type": "string" },
+          "line": { "type": "integer", "minimum": 1 },
+          "errorHandler": { "const": true, "description": "A four-parameter handler: it runs only after an error, so no route inherits it." }
+        }
+      }
+    },
+    "unmounted": { "type": "array", "description": "Routes of routers that no app mounts (or registrars nothing calls): the path is local, the prefix is not detected.", "items": { "$ref": "#/definitions/route" } },
+    "httpServers": {
+      "type": "array",
+      "description": "Plain `http.createServer` request handlers and the routes that are trivially detectable in them (`req.url === '/x'`, optionally with `req.method`, and `switch (req.url)` cases).",
+      "items": {
+        "type": "object",
+        "required": ["file", "line", "handler", "routes", "otherBranches", "detected"],
+        "additionalProperties": false,
+        "properties": {
+          "file": { "type": "string" },
+          "line": { "type": "integer", "minimum": 1 },
+          "handler": { "type": "object", "required": ["file", "name"], "additionalProperties": false, "properties": { "file": { "type": "string" }, "name": { "type": ["string", "null"] } } },
+          "routes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["method", "path", "file", "line"],
+              "additionalProperties": false,
+              "properties": { "method": { "type": "string", "description": "An upper-case method, or ANY when the condition names none." }, "path": { "type": "string" }, "file": { "type": "string" }, "line": { "type": "integer", "minimum": 1 } }
+            }
+          },
+          "otherBranches": { "type": "integer", "minimum": 0, "description": "Path conditions seen but not read (startsWith, a regular expression, a computed comparison)." },
+          "detected": { "type": "boolean" },
+          "note": { "type": "string" }
+        }
+      }
+    },
+    "files": {
+      "type": "object",
+      "required": ["roles", "list"],
+      "additionalProperties": false,
+      "properties": {
+        "roles": {
+          "type": "object",
+          "description": "File count per role.",
+          "required": ["route", "store", "service", "auth", "job", "util", "config", "test", "other"],
+          "additionalProperties": false,
+          "properties": {
+            "route": { "type": "integer", "minimum": 0 }, "store": { "type": "integer", "minimum": 0 }, "service": { "type": "integer", "minimum": 0 },
+            "auth": { "type": "integer", "minimum": 0 }, "job": { "type": "integer", "minimum": 0 }, "util": { "type": "integer", "minimum": 0 },
+            "config": { "type": "integer", "minimum": 0 }, "test": { "type": "integer", "minimum": 0 }, "other": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "list": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "role", "reason", "source", "loc"],
+            "additionalProperties": false,
+            "properties": {
+              "path": { "type": "string" },
+              "role": { "enum": ["route", "store", "service", "auth", "job", "util", "config", "test", "other"] },
+              "reason": { "type": "string", "description": "Why the file has this role." },
+              "source": { "enum": ["config", "test", "content", "name", "folder", "default"], "description": "What decided it: an architecture.yml override (`config`), a naming convention, or a content signal." },
+              "loc": { "type": "integer", "minimum": 0 },
+              "effects": { "type": "object", "description": "Effect counts by kind.", "additionalProperties": { "type": "integer", "minimum": 1 } },
+              "env": { "type": "integer", "minimum": 1, "description": "How many environment variable reads." }
+            }
+          }
+        }
+      }
+    },
+    "imports": {
+      "type": "object",
+      "required": ["edges", "cycles", "outside", "unresolved", "packages"],
+      "additionalProperties": false,
+      "properties": {
+        "edges": { "type": "array", "description": "Import edges between scanned files (type-only imports left out).", "items": { "type": "object", "required": ["from", "to", "line"], "additionalProperties": false, "properties": { "from": { "type": "string" }, "to": { "type": "string" }, "line": { "type": "integer", "minimum": 1 } } } },
+        "cycles": { "type": "array", "description": "Import cycles: the files that import each other, and one concrete loop.", "items": { "type": "object", "required": ["files", "path"], "additionalProperties": false, "properties": { "files": { "type": "array", "items": { "type": "string" } }, "path": { "type": "array", "items": { "type": "string" } } } } },
+        "outside": { "type": "array", "description": "Relative imports that resolve to a file in the project but outside the scanned directory.", "items": { "type": "object", "required": ["from", "to", "line"], "additionalProperties": false, "properties": { "from": { "type": "string" }, "to": { "type": "string" }, "line": { "type": "integer", "minimum": 1 } } } },
+        "unresolved": { "type": "array", "description": "Relative imports that resolve to no file.", "items": { "type": "object", "required": ["from", "specifier", "line"], "additionalProperties": false, "properties": { "from": { "type": "string" }, "specifier": { "type": "string" }, "line": { "type": "integer", "minimum": 1 } } } },
+        "packages": { "type": "array", "items": { "type": "object", "required": ["name", "files", "builtin"], "additionalProperties": false, "properties": { "name": { "type": "string" }, "files": { "type": "integer", "minimum": 1 }, "builtin": { "type": "boolean", "description": "A Node.js built-in module." } } } }
+      }
+    },
+    "env": {
+      "type": "array",
+      "description": "Environment variables read through `process.env`, by name only, never a value.",
+      "items": {
+        "type": "object",
+        "required": ["name", "readCount", "reads"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string" },
+          "readCount": { "type": "integer", "minimum": 1 },
+          "reads": { "type": "array", "items": { "$ref": "#/definitions/position" } }
+        }
+      }
+    },
+    "effects": {
+      "type": "object",
+      "required": ["counts", "list"],
+      "additionalProperties": false,
+      "properties": {
+        "counts": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 1 } },
+        "list": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["file", "kind", "op", "line"],
+            "additionalProperties": false,
+            "properties": {
+              "file": { "type": "string" },
+              "kind": { "enum": ["fs", "child_process", "network", "timer"] },
+              "op": { "type": "string", "description": "The function called, for example `readFileSync`, `spawn`, `fetch`, `setInterval`." },
+              "line": { "type": "integer", "minimum": 1 }
+            }
+          }
+        }
+      }
+    },
+    "truncated": { "type": "object", "description": "For each list cut to its bound, how many entries were left out.", "additionalProperties": { "type": "integer", "minimum": 1 } }
+  },
+  "definitions": {
+    "position": {
+      "type": "object",
+      "required": ["file", "line"],
+      "additionalProperties": false,
+      "properties": { "file": { "type": "string" }, "line": { "type": "integer", "minimum": 1 } }
+    },
+    "route": {
+      "type": "object",
+      "required": ["method", "path", "handler", "middleware", "inherited", "file", "line"],
+      "additionalProperties": false,
+      "properties": {
+        "method": { "type": "string", "description": "An upper-case HTTP method, or ALL." },
+        "path": { "type": "string", "description": "The full path with mount prefixes resolved. A computed path is shown as written and flagged `dynamicPath`." },
+        "dynamicPath": { "const": true },
+        "handler": {
+          "type": "object",
+          "required": ["name", "inline"],
+          "additionalProperties": false,
+          "properties": {
+            "file": { "type": ["string", "null"], "description": "Where a named or imported handler lives (null for a package). Absent for an inline function." },
+            "name": { "type": ["string", "null"] },
+            "inline": { "type": "boolean" },
+            "wrapper": { "type": "string", "description": "The function that wraps an inline handler, for example `handle` in `router.get('/', handle(...))`." },
+            "line": { "type": "integer", "minimum": 1 },
+            "package": { "type": "string" }
+          }
+        },
+        "middleware": { "type": "array", "description": "The route's own middleware, in order.", "items": { "type": "string" } },
+        "inherited": { "type": "array", "description": "Ids of the `middleware` entries registered earlier at a matching path (cors, a session gate, a body parser), in order.", "items": { "type": "string" } },
+        "file": { "type": "string" },
+        "line": { "type": "integer", "minimum": 1 },
+        "app": { "type": "string", "description": "Only present when the project has more than one app." },
+        "mounted": { "const": false, "description": "Only on `unmounted` routes." }
+      }
+    }
+  }
+}

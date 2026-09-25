@@ -28,6 +28,7 @@
     "./requirement-lexicon": "./requirement-lexicon.json",
     "./validate": "./validate.mjs",
     "./summarize": "./summarize.mjs",
+    "./backend-summary": "./backend-summary.mjs",
     "./impact": "./impact.mjs",
     "./generate": "./generators.mjs",
     "./typed-contracts": {
