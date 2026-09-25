@@ -70,6 +70,7 @@ a `local-model` path, `view-code` (mechanical) and `edit-code` (free) on writing
 | `refactor.rename` | declared | run, view-code, edit-code, do-by-hand | same |
 | `wrap.provider` | derived | run, view-code, edit-code, do-by-hand | wraps a component or page with one provider of the project (`defineProvider`, `features/*/hooks/*Provider*`): `modify` the controller that renders it; refused, with the reason, when no controller does (#631) |
 | `guard.route` | derived | run, view-code, edit-code, do-by-hand | chooses who may open a screen (`public` writes nothing, `signed-in`, `role`): a typed guard slice (domain decision, session hook, fallback notice, expression, guard controller), the route entry edited to render `<XGuardController><XController /></XGuardController>`, the feature's `types.ts` and barrel (`modify`) and the locked proof; refused, with the reason, when no route renders the controller (#629) |
+| `create.store` | derived | run, view-code, edit-code, do-by-hand | shared client state (`value`, `list` with a selection, `keyed`): the reducer (`domain/<Name>Store.domain.ts`) and the hook (`hooks/use<Name>State.state.ts`, `useTrackedState`) `create`, the feature's `types.ts` (the entity, a status union, typed actions) and barrel `modify`, and the locked proof (#630) |
 | `import.unit` | declared | run, fill-with-ai, view-code, edit-code, do-by-hand | |
 | `import.plan` | declared | run, fill-with-ai, view-code, edit-code, do-by-hand | union of its units' files |
 | `import.route` | declared | view-code, edit-code, do-by-hand | interactive wizard, user only: no `run` |
@@ -107,7 +108,7 @@ a `local-model` path, `view-code` (mechanical) and `edit-code` (free) on writing
 
 ## Findings
 
-- Of 34 flows, 21 fit as-is (12 read-only with an empty scope, 9 with a derived scope); 13 are writers that need a scope
+- Of 35 flows, 22 fit as-is (12 read-only with an empty scope, 10 with a derived scope); 13 are writers that need a scope
   declaration from the plan step (`manual.task` among them, by definition).
 - `test.run` and `review.analyze` are read-only in `PLAN_FLOWS` and get an empty scope; the contract makes that checkable
   (`RUN_READONLY_WROTE`) where before it was a comment.

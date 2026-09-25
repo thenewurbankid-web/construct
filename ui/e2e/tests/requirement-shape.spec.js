@@ -527,6 +527,37 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
     expect(d).toMatchObject({ by: 'person', suggestion: { option: 'signed-in' }, outcome: { accepted: false } });
   });
 
+  test('shared client state (#630): the Client state card is drawn with no client change, a list is suggested for "selected items", skip removes the store step, and the store steps are the real commands', async ({ page }) => {
+    await gotoCockpit(page, '/requirement');
+    await readSentence(page, 'A user wants to see a list of products with the selected items');
+    await choose(page, 'list');
+    const card = planCard(page, 'q-state');
+    await expect(card).toBeVisible();
+    await expect(card.getByRole('heading', { name: 'Client state', level: 2 })).toBeVisible();
+    await expect(card.getByRole('button')).toHaveText(['A list with a selection', 'One value', 'Items by their id', 'No store']);
+    await expect(card.locator('[data-option="store-list"]').getByTestId('requirement-plan-suggested')).toHaveText('suggested by rules');
+    await expect(card.getByRole('button', { pressed: true })).toHaveCount(0);
+    await expect(card.getByTestId('requirement-plan-status')).toHaveText("Not chosen yet, so the plan below uses the rules' default: a list with a selection.");
+    await expect(page.getByTestId('requirement-approve-plan')).toBeEnabled(); // a closed question never blocks Approve
+
+    const ran = page.waitForResponse((r) => r.url().endsWith('/api/plan/run') && r.request().method() === 'POST');
+    await page.getByTestId('requirement-approve-plan').click();
+    const sent = (await ran).request().postDataJSON().plan.steps.map((x) => planToCommand(x).argv.join(' '));
+    expect(sent).toContain('create store SelectedItems --feature products --shape list --entity Product --fields id:string,name:string,price:number');
+    expect(sent).toContain('test proof products --name SelectedItemsStore.proof.test.ts');
+
+    const keyed = await choosePlan(page, 'q-state', 'store-keyed');
+    expect(keyed.res.request().postDataJSON().answers).toEqual([{ id: 'q-shape', option: 'list' }, { id: 'q-state', option: 'store-keyed' }]);
+    expect(keyed.body.plan.steps.find((s) => s.flow === 'create.store').args.shape).toBe('keyed');
+    const skipped = await choosePlan(page, 'q-state', 'skip'); // a changed mind replaces the earlier answer
+    expect(skipped.body.plan.steps.some((s) => s.flow === 'create.store')).toBe(false);
+    expect(JSON.stringify(skipped.body)).not.toContain(project.repo); // no server path leaves the server
+    await expect(card.locator('[data-option="skip"] button')).toHaveAttribute('aria-pressed', 'true');
+    await expect(card.getByTestId('requirement-plan-status')).toHaveText('Chosen: No store. Decided by: person.');
+    const [d] = recorded('requirement.plan.state', 'skip');
+    expect(d).toMatchObject({ by: 'person', suggestion: { option: 'store-list' }, outcome: { accepted: false } });
+  });
+
   test('a card that needs a secret gets a card per environment variable: add is suggested, skipping one removes its step, and the add.env steps are the real commands', async ({ page }) => {
     await gotoCockpit(page, '/requirement');
     const read = page.waitForResponse(isRead);

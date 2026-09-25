@@ -1540,6 +1540,53 @@ app shows the fallback instead of crashing. `Session` is the feature's own type 
 
 **Left out** (MVP): an auth provider integration beyond the typed session hook, `middleware.ts`, a real redirect (navigation is an effect in the app), a role list typed in the Cockpit, guarding several routes of one controller, removing a guard, a Server Component session for Next.js (the hook and the controller are client files).
 
+## The client-state store: shared state that is declared and tracked (#630, part of #616)
+
+`create.store` (`packages/core/store.mjs`, CLI `construct create store <Name> --feature f --shape value|list|keyed [--entity E] [--fields id:string,...] [--format json]`)
+adds shared client state from a closed list of shapes. Deterministic, no model, writing, idempotent, with derived touches. The state is built on the tracked-state factory (`useTrackedState`), with a status union instead of a bag of flags, so the
+flag-bag warning of #573 (`STATE-001`) stays silent.
+
+| Shape | State (one `status` field) | Typed actions |
+|---|---|---|
+| `value` (one value) | `{ status: 'empty' }` or `{ status: 'set'; value }` | `set`, `clear` |
+| `list` (a list with a selection) | `{ status: 'empty' }` or `{ status: 'ready'; items; selectedId }` | `add` (an item with the same id replaces it), `remove` (the selection goes with the item), `select` (an id that is not in the list changes nothing; `null` clears it), `clear` |
+| `keyed` (items by id) | `{ status: 'empty' }` or `{ status: 'ready'; byId }` | `set` (upsert), `remove`, `clear` |
+
+**The slice** for `Cart` (`--entity` defaults to the singular of a list or keyed name, `CartItem`, and to the name itself for `value`; `--fields` to `id:string,name:string`, an `id` is required):
+
+| File | Unit | What it is |
+|---|---|---|
+| `types.ts` | `CartItem`, `CartState`, `CartAction` | appended once (an entity the feature already declares is reused when its fields are the same, else the store refuses; a `CartState` or `CartAction` that means something else is a refusal) |
+| `domain/CartStore.domain.ts` | `reduceCart` (`defineDomain`) | the pure reducer: `{ state, action } -> state`; every action has its own case; the state it is given is never changed |
+| `hooks/useCartState.state.ts` | `useCartState` (`useTrackedState<CartState>('cart', { status: 'empty' })`) | returns `{ state, add, remove, select, clear }`: one function per action, each through the reducer; nothing else in the hook (HOOK-001); a `'use client'` file on Next.js |
+| `tests/generated/CartStore.proof.test.ts` | the proof | locked; see below |
+
+The step also runs the feature's barrel sync (`index.ts`, so SLICE-003 stays quiet). Declared touches: the reducer and the hook and the proof (`create`), `types.ts` and `index.ts` (`modify`) and `architecture.yml` (the test regions, once). A store is not wired into a
+screen: a controller or a hook of the feature calls `useCartState()` when it needs it.
+
+**The proof** is render-free (react-dom/server, no browser, no server): every scenario of every action runs through the pure reducer and through the REAL hook (React renders a probe component, and a change made while rendering re-renders it, so each pass runs one action), against
+a reference model written independently of the store (`referenceReduce`); the hook starts empty and exposes its state and one function per action; adding an item that is already there keeps the new content; no action changes the state it is given. A failure names the action
+and the state: `The action "remove" of the selected item leaves nothing selected: the ready: product-2 state is wrong, it reaches ready: product-2 (selected product-1).`, `Expected` and `Received` lines included, which the runner classifies as the app behaving differently. A reducer that is right with a hook
+that wires the wrong action fails with `..., through the hook: ...`.
+
+**In the Requirement chain.** With the requirement card handed to `planFromBlocks` (the Requirement API and MCP do), each state noun that is not a session or a role raises the closed question `q-state` (`q-state-<name>` for several), in the chooser summary shape, at most four options with
+stable ids, **the rules default first**. The lexicon knows the state nouns "selected items", "selected item" (the property `selection`) and "shopping cart" (`store`), beside the session nouns ("logged-in", "signed-in", "guest") and the role noun ("admin"):
+
+| Question id | Raised when | Options (stable ids) | Default |
+|---|---|---|---|
+| `q-state` | the card has a state noun that is not a session or a role, and a card is handed over | `store-list` (a list with a selection), `store-value` (one value), `store-keyed` (items by their id), `skip` (no store) | `store-list` when the noun is plural or carries `selection` or `store`, else `store-value` |
+
+The options carry the prefix `store-` so that no id is also the id of a screen shape (`list`) in the Cockpit's word table. An unanswered question uses its default, so it never holds a plan back; an answer that is not an option is the typed error `PLAN_STATE_UNAVAILABLE`, never replaced. `skip` plans no step.
+Otherwise the plan gets a `create.store` step after the units (`dependsOn` all of them, so the entity of a shaped screen is already in `types.ts`; the step carries that screen's entity and fields) and a read-only `test.proof` step for `<Name>Store.proof.test.ts`, part of `proof.steps` (`<Name>Store`); the
+type-check waits for the store. The answer is a decision trace, `requirement.plan.state`. The Requirement API returns and takes it by id, the screen draws it as a **Client state** card (the same `requirement-plan` card as the route and the verification, no client change beyond its heading), and MCP
+`placement_place` accepts it, attributed to the client, and returns `stores` (`{ name, shape, question, step }`) beside `wiring`.
+
+**Decisions where the issue was silent.** The noun names the store (`selected items` gives `SelectedItems`, `useSelectedItemsState`). A list is the default for a plural, a selection or a store because that is what a person means by "selected items" and "shopping cart"; a person who means one value picks it. The store holds the entity of the
+plan's shaped screen when there is one (a cart of products), else `<Name>Item` with the default fields. `id` is required for every shape (one uniform entity). The proof exercises the hook through render-phase updates so it needs no DOM and no test renderer. The store is not connected to a screen or to a provider: that is a
+choice of the screen's author, and a store shared by several screens belongs to a provider (`wrap.provider`), which is its own step.
+
+**Left out** (MVP): wiring a store into a controller or a page, persistence (localStorage, a server), a provider that shares one store across screens, derived values (totals, filters), undo, and entity fields other than string, number and boolean.
+
 ## What is not here yet
 
 The timeline read-back and its Cockpit screen are the Requirement screen (`/requirement`, #642): `toTimeline(placement)` in `ui/client/features/requirement/domain/Timeline.ts` turns the blocks into steps in run order (a slice to move it into core, so the CLI and an LLM read the same steps, is open). Not here yet: a `use client` / `use server` directive in the generated files, and words beyond the lexicon. Each is a slice of #616.

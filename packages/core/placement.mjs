@@ -36,6 +36,7 @@ import { routePathOf, routeOffer, syncTouches, dependencyOffer, ROUTE_QUESTION_I
 import { secretsOfCard, envOffers, ENV_FILE } from './env.mjs';
 import { verifyOffer, VERIFY_QUESTION_ID } from './verify.mjs';
 import { accessOffer, ACCESS_QUESTION_ID } from './guard.mjs';
+import { stateNounsOf, stateOffer, STATE_QUESTION_ID } from './store.mjs';
 
 /** The schema version string of a placement result. */
 export const PLACEMENT_VERSION = 'placement.v1';
@@ -117,6 +118,7 @@ export const PLACEMENT_ERROR_CODES = Object.freeze({
   PLAN_STEPS_UNAVAILABLE: 'PLAN_STEPS_UNAVAILABLE',
   PLAN_STATES_UNAVAILABLE: 'PLAN_STATES_UNAVAILABLE',
   PLAN_ACCESS_UNAVAILABLE: 'PLAN_ACCESS_UNAVAILABLE',
+  PLAN_STATE_UNAVAILABLE: 'PLAN_STATE_UNAVAILABLE',
   PLAN_DECISIONS_INVALID: 'PLAN_DECISIONS_INVALID',
   PLAN_TOUCHES_UNKNOWN: 'PLAN_TOUCHES_UNKNOWN',
   PLAN_INVALID: 'PLAN_INVALID',
@@ -920,12 +922,14 @@ const statesArg = (states) => (states && states !== DEFAULT_STATES ? { states } 
  * steps as `states`.
  * A wired shaped plan given the card also asks who may open each screen (#629): `q-access` (`q-access-<name>`: public | signed-in | role, the rules default read off the card, `public` plans no step) and adds a
  * `guard.route` step after the route step and a `test.proof` step for the guard's proof; `guards` lists each screen's access and step.
+ * A card with a state noun that is not a session ("selected items", "shopping cart") asks `q-state` (`q-state-<name>`: store-value | store-list | store-keyed | skip, a list for a plural, a selection or a store) and adds a
+ * `create.store` step after the units and a `test.proof` step for its proof; `stores` lists each store and its step (#630).
  *
  * @param {{ feature: string, root: string, title?: string, decisions?: PlacementDecision[], proof?: boolean, wire?: boolean, verify?: boolean, card?: object, answers?: Record<string, string | { option: string }> }} options The feature the units go in, the
  *   project root (its architecture.yml decides the folders), an optional ticket title, the attribution to carry, `proof: false` to leave
  *   the proof steps out of a shaped plan (default: they are planned), `wire: false` to leave out the wiring, the environment variables and the verification, `verify: false` to
  *   leave out only the verification, `card` (the requirement card the blocks came from) to name the environment variables its checks call for, and `answers` to the closed questions of the plan.
- * @returns {{ ok: true, plan: object, decisions: PlacementDecision[], files: Record<string, string[]>, proof: object | null, offers: object[], wiring: object | null, env: { variable: string, scope: string, question: string, step: string | null }[], guards: { name: string, access: string, roles: string[], question: string, step: string | null }[], verify: { types: string | null, build: string | null } | null, notes: string[], warnings: string[], errors: [] } | { ok: false, plan: null, decisions: [], files: {}, errors: PlacementError[] }}
+ * @returns {{ ok: true, plan: object, decisions: PlacementDecision[], files: Record<string, string[]>, proof: object | null, offers: object[], wiring: object | null, env: { variable: string, scope: string, question: string, step: string | null }[], guards: { name: string, access: string, roles: string[], question: string, step: string | null }[], stores: { name: string, noun: string, shape: string | null, question: string, step: string | null }[], verify: { types: string | null, build: string | null } | null, notes: string[], warnings: string[], errors: [] } | { ok: false, plan: null, decisions: [], files: {}, errors: PlacementError[] }}
  *   The plan, who decided what, the files per block and the proof of the chain, or every problem found.
  *
  * @example
@@ -1062,6 +1066,23 @@ export function planFromBlocks(blocks, options = {}) {
   // variables the project must define. Each is a closed question (`q-env`, or `q-env-<name>` for several: add | skip); an unanswered one
   // uses its default (add), so it never holds the plan back. The step writes only a placeholder line and a comment to .env.example.
   // `options.card` is the requirement card the blocks came from; without it (or with `wire: false`) the plan carries none.
+  // #630: a state noun that is not a session ("selected items", "shopping cart") is shared client state. Each is a closed question (`q-state`, or `q-state-<name>` for several: store-value | store-list |
+  // store-keyed | skip; the rules default is a list for a plural or a selection or a store, else one value); an unanswered one uses its default, so it never holds the plan back. A store is a `create.store`
+  // step after the units (so the entity of a shaped screen is already in types.ts), with that screen's entity and fields when the plan has one.
+  const storePlan = [];
+  if (opts.wire !== false && isPlainObject(opts.card)) {
+    const targets = stateNounsOf(opts.card);
+    const shapeOfPlan = ordered.find((u) => u.shape)?.shape ?? null;
+    for (const target of targets) {
+      const sid = targets.length === 1 ? STATE_QUESTION_ID : `${STATE_QUESTION_ID}-${routePathOf(target.name).slice(1)}`;
+      const off = stateOffer(target, { id: sid, answer: answers[sid] });
+      offers.push(off.question);
+      record(off.question, answers[sid]);
+      if (off.refused) push('PLAN_STATE_UNAVAILABLE', `answers.${sid}`, off.refused);
+      const storeStep = off.shape ? add('create.store', `Add the ${target.noun} store (${off.shape})`, { name: target.name, feature: opts.feature, shape: off.shape, ...(shapeOfPlan ? { entity: shapeOfPlan.entity, fields: shapeOfPlan.fields } : {}) }, [...stepOf.values()].sort(idOrder), `The card names "${target.noun}", state that more than one screen may need: declared and tracked (a status union, typed actions, a pure reducer), not a bag of flags.`) : null;
+      storePlan.push({ name: target.name, noun: target.noun, shape: off.shape, question: sid, step: storeStep });
+    }
+  }
   const envPlan = [];
   if (opts.wire !== false && isPlainObject(opts.card)) {
     const secrets = secretsOfCard(opts.card);
@@ -1126,7 +1147,7 @@ export function planFromBlocks(blocks, options = {}) {
     offers.push(v.question);
     record(v.question, answers[VERIFY_QUESTION_ID]);
     verification = { types: null, build: null };
-    const upTo = [...new Set([...stepOf.values(), ...wiringSteps])].sort(idOrder);
+    const upTo = [...new Set([...stepOf.values(), ...wiringSteps, ...storePlan.map((st) => st.step).filter(Boolean)])].sort(idOrder);
     if (v.types) verification.types = add('check.types', 'Type-check the project', {}, upTo, 'Read-only: a pass, or the errors grouped by file and what kind they are (a missing import, an unknown name, a type mismatch). Runs after the route is wired, so a dangling import shows here.');
     if (v.build) verification.build = add('check.build', 'Build the project', {}, [verification.types].filter(Boolean), 'Read-only: runs the build script and says whether it passed, or the first compile errors. Nothing is installed.');
   }
@@ -1152,20 +1173,26 @@ export function planFromBlocks(blocks, options = {}) {
         proofSteps.push({ name, kind: 'playwright', proofStep: flow, verifiedBy: run });
       }
     }
+    // #630: a store is proven like a screen: its own locked proof (written by the store step) and a read-only run of it, part of the chain.
+    for (const st of storePlan) {
+      if (!st.step) continue;
+      const verify = add('test.proof', `Run the proof of the ${st.name} store`, { feature: opts.feature, name: `${st.name}Store.proof.test.ts` }, [st.step], 'Read-only: every action through the reducer and the real hook, naming the action that is wrong.');
+      proofSteps.push({ name: `${st.name}Store`, kind: 'render', proofStep: st.step, verifiedBy: verify });
+    }
     // #629: a guard is proven like a screen: its own locked proof (written by the guard step) and a read-only run of it, part of the chain.
     for (const g of guardPlan) {
       if (!g.step) continue;
       const verify = add('test.proof', `Run the proof of the ${g.name} guard`, { feature: opts.feature, name: `${g.name}Guard.proof.test.ts` }, [g.step], 'Read-only: signed-out and wrong-role people see only the fallback, an allowed person only the screen.');
       proofSteps.push({ name: `${g.name}Guard`, kind: 'render', proofStep: g.step, verifiedBy: verify });
     }
-    if (proofSteps.length && !playwrightConfig) notes.push(playwrightNote = 'Playwright is not configured in this project (no playwright.config.* at the root), so the plan has no browser flow and nothing is installed. The render proof still proves the screen; add Playwright and plan again for the browser flow.');
+    if (shaped.size && proofSteps.length && !playwrightConfig) notes.push(playwrightNote = 'Playwright is not configured in this project (no playwright.config.* at the root), so the plan has no browser flow and nothing is installed. The render proof still proves the screen; add Playwright and plan again for the browser flow.');
     const noFlow = [...shaped].filter(([, { shape }]) => !PLAYWRIGHT_SHAPES.includes(shape.name)).map(([name, { shape }]) => `${name} (${shape.name})`);
     const noRequest = [...shaped].filter(([name, { shape }]) => PLAYWRIGHT_SHAPES.includes(shape.name) && sourceOf.get(name) === 'local').map(([name, { shape }]) => `${name} (${shape.name})`);
     const why = [
       ...(noFlow.length ? [`No browser flow is planned for ${noFlow.join(', ')}: only the ${PLAYWRIGHT_SHAPES.join(', ')} shape has one so far.`] : []),
       ...(noRequest.length ? [`No browser flow is planned for ${noRequest.join(', ')}: a local data source makes no request to mock.`] : []),
     ];
-    if (proofSteps.length && playwrightConfig && why.length) notes.push(playwrightNote = `${why.join(' ')} The render proof still proves the screen.`);
+    if (shaped.size && proofSteps.length && playwrightConfig && why.length) notes.push(playwrightNote = `${why.join(' ')} The render proof still proves the screen.`);
   }
   if (errors.length) return fail();
   notes.push(...sourceNotes);
@@ -1184,7 +1211,7 @@ export function planFromBlocks(blocks, options = {}) {
   const proof = proofSteps.length
     ? { required: true, complete: false, state: 'pending', steps: proofSteps, verifiedBy: proofSteps.map((p) => p.verifiedBy), playwright: { configured: playwrightConfig !== null, config: playwrightConfig, skipped: playwrightNote } }
     : null;
-  return { ok: true, plan, decisions: [...decisions.map((d) => ({ ...d })), ...wiringDecisions], files, proof, offers, wiring, env: envPlan, guards: guardPlan, verify: verification, notes, warnings, errors: [] };
+  return { ok: true, plan, decisions: [...decisions.map((d) => ({ ...d })), ...wiringDecisions], files, proof, offers, wiring, env: envPlan, guards: guardPlan, stores: storePlan, verify: verification, notes, warnings, errors: [] };
 }
 
 // ---------------------------------------------------------------------------------------------------------------- summary

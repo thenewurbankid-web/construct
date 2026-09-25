@@ -31,7 +31,7 @@ test('the dashboard shape is registered on the one mechanism: plan enum, schema,
   (function walk(node) {
     if (Array.isArray(node)) node.forEach(walk);
     else if (node && typeof node === 'object') {
-      if (node.properties?.shape?.enum) enums.push(node.properties.shape.enum);
+      if (node.properties?.shape?.enum && !node.properties.shape.enum.includes('keyed')) enums.push(node.properties.shape.enum); // the client-state store (#630) has its own shape choice: value, list, keyed
       Object.values(node).forEach(walk);
     }
   })(schema);

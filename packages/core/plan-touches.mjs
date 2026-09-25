@@ -12,6 +12,7 @@ import { routeEntryTouches, dependencyTouches } from './wiring.mjs';
 import { envTouches } from './env.mjs';
 import { wrapProviderTouches } from './provider-wrap.mjs';
 import { guardTouches } from './guard.mjs';
+import { storeTouches } from './store.mjs';
 
 const isName = (v) => typeof v === 'string' && v.trim().length > 0;
 const asList = (v) => (Array.isArray(v) ? v : typeof v === 'string' ? v.split(',') : []).map((x) => String(x).trim()).filter(Boolean);
@@ -19,7 +20,7 @@ const rel = (root, abs) => path.relative(root, abs).split(path.sep).join('/');
 const shapeArgs = (args) => ({ shape: args.shape, name: args.name, feature: args.feature, entity: args.entity, fields: args.fields, source: args.source, steps: args.steps, states: args.states });
 
 /** Flows whose written files are derived here. Every other writing flow answers `null` until its output is pinned by a test. */
-export const DERIVED_FLOWS = Object.freeze(['create.feature', 'create.unit', 'create.layer', 'create.proof', 'create.route', 'add.dependency', 'add.env', 'wrap.provider', 'guard.route']);
+export const DERIVED_FLOWS = Object.freeze(['create.feature', 'create.unit', 'create.layer', 'create.proof', 'create.route', 'add.dependency', 'add.env', 'wrap.provider', 'guard.route', 'create.store']);
 
 /**
  * The project-relative files a writing plan step will create, derived from its own arguments without touching the disk.
@@ -68,6 +69,8 @@ export function expectedFiles(root, flowId, args = {}) {
     if (flowId === 'wrap.provider') return wrapProviderTouches(root, { name: args.name, feature: args.feature, provider: args.provider });
     // #629: the units of a route guard, the barrel and types it updates, the route entry it edits and its proof (the public access writes nothing).
     if (flowId === 'guard.route') return guardTouches(root, { name: args.name, feature: args.feature, access: args.access, roles: args.roles, redirect: args.redirect, route: args.route });
+    // #630: the reducer and the hook of a client-state store, the types and barrel it updates and its proof.
+    if (flowId === 'create.store') return storeTouches(root, { name: args.name, feature: args.feature, shape: args.shape, entity: args.entity, fields: args.fields });
     return null;
   } catch {
     return null;

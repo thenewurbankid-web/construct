@@ -157,6 +157,18 @@ test('#629: the q-access answer is a decision trace of its own (the offer as sho
   assert.equal(JSON.stringify(traces()).includes(root), false, 'no project path in a trace');
 });
 
+test('#630: the q-state answer is a decision trace of its own (the offer as shown, the rules suggestion, accepted or not, the plan validated)', async () => {
+  fresh();
+  const STATE = 'A user wants to see a list of products with the selected items';
+  await post({ text: STATE, answers: [{ id: 'q-shape', option: 'list' }] });
+  assert.equal(traces().decisions.some((d) => d.chooser.id === 'requirement.plan.state'), false, 'asked, not answered: nothing is recorded');
+  await post({ text: STATE, answers: [{ id: 'q-shape', option: 'list' }, { id: 'q-state', option: 'store-keyed' }] });
+  const state = traces().decisions.find((d) => d.chooser.id === 'requirement.plan.state');
+  assert.deepEqual([state.chosen, state.by, state.options, state.summary.id, state.summary.chosen], ['store-keyed', 'person', ['store-list', 'store-value', 'store-keyed', 'skip'], 'q-state', null]);
+  assert.deepEqual([state.suggestion.option, state.outcome], ['store-list', { accepted: false, planValidated: true }], 'the rules suggested a list; the person chose otherwise');
+  assert.equal(JSON.stringify(traces()).includes(root), false, 'no project path in a trace');
+});
+
 test('a placement question is recorded too (a server check with no server block), with the question AS OFFERED', async () => {
   fresh();
   await post({ text: 'A user can click a button safely.', answers: [{ id: 'q-server', option: 'mutation' }] });

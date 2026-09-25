@@ -330,6 +330,32 @@ test('#629: q-access is returned and answerable; the rules default reads the car
   assert.deepEqual(admin.plan.steps.find((st) => st.flow === 'guard.route').args.roles, ['admin']);
 });
 
+// #630 -- shared client state is a closed question of the plan (`q-state`): a state noun that is not a session ("selected items", "shopping cart") raises it, the rules default is a list,
+// an answer is a plan step (`create.store`) or none (skip), the store is part of the proof chain, and an option that was not offered is refused, never replaced.
+test('#630: q-state is returned and answerable; the store is a step of the plan and of its proof; skip removes it', async () => {
+  const sentence = 'A user wants to see a list of products with the selected items';
+  const shape = { id: 'q-shape', option: 'list' };
+  const asked = (await post({ text: sentence, answers: [shape] })).body;
+  const state = asked.offers.find((q) => q.id === 'q-state');
+  assert.deepEqual([state.source, state.default, state.chosen, state.options.map((o) => o.id)], ['plan', 'store-list', null, ['store-list', 'store-value', 'store-keyed', 'skip']]);
+  assert.equal(asked.suggestions['q-state'].option, 'store-list', 'the decision provider suggests on it like on every other offer');
+  const step = asked.plan.steps.find((st) => st.flow === 'create.store');
+  assert.deepEqual(step.args, { name: 'SelectedItems', feature: 'products', shape: 'list', entity: 'Product', fields: 'id:string,name:string,price:number' });
+  assert.ok(step.touches.files.some((f) => f.path === 'features/products/domain/SelectedItemsStore.domain.ts'), 'the step declares the files it writes');
+  assert.ok(asked.proof.steps.some((p) => p.name === 'SelectedItemsStore'), 'the store is proven too');
+  assert.deepEqual(asked.open, [], 'the question never blocks the plan');
+
+  const keyed = (await post({ text: sentence, answers: [shape, { id: 'q-state', option: 'store-keyed' }] })).body;
+  assert.equal(keyed.plan.steps.find((st) => st.flow === 'create.store').args.shape, 'keyed');
+  assert.deepEqual(keyed.placement.decisions.at(-1), { question: 'q-state', option: 'store-keyed', by: 'person' });
+  const skipped = (await post({ text: sentence, answers: [shape, { id: 'q-state', option: 'skip' }] })).body;
+  assert.equal(skipped.plan.steps.some((st) => st.flow === 'create.store'), false);
+  assert.equal(skipped.offers.find((q) => q.id === 'q-state').chosen, 'skip');
+  const refused = (await post({ text: sentence, answers: [shape, { id: 'q-state', option: 'list' }] })).body;
+  assert.deepEqual([refused.placement.ok, refused.plan, refused.placement.errors.map((e) => e.code)], [false, null, ['PLAN_STATE_UNAVAILABLE']], 'list is a screen shape, not a store option: refused, never replaced');
+  assert.equal((await post({ text: 'A user wants to see a list of products', answers: [shape] })).body.offers.some((q) => q.id === 'q-state'), false, 'no state noun, nothing to ask');
+});
+
 // #621 -- where a shaped screen reads its data from is a closed question beside the plan (`q-source`), drawn by the client like q-shape:
 // answered by the same { id, option }, recorded like the others, never holding Approve back, and an option that was not offered is refused.
 test('a shaped screen is offered its data source; the rules default is local, or the OpenAPI operation when the project has one; answering changes the units', async () => {

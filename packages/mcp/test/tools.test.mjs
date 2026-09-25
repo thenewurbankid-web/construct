@@ -213,6 +213,24 @@ test('placement_place: who may open the screen (#629) is a closed offer, q-acces
   assert.equal(JSON.stringify(asked).includes(root), false, 'path-free like every result');
 }));
 
+test('placement_place: shared client state (#630) is a closed offer, q-state, answered by id and attributed to the client; the store is previewed with the files it touches', () => withOwnSession(async (call) => {
+  const text = 'A user wants to see a list of products with the selected items';
+  const shape = { id: 'q-shape', option: 'list' };
+  const asked = (await call('placement_place', { text, answers: [shape] })).body;
+  const offer = asked.offers.find((o) => o.id === 'q-state');
+  assert.deepEqual([offer.default, offer.options.map((o) => o.id)], ['store-list', ['store-list', 'store-value', 'store-keyed', 'skip']]);
+  assert.deepEqual(asked.stores, [{ name: 'SelectedItems', shape: 'list', question: 'q-state', step: 's8' }]);
+  const step = asked.plan.steps.find((s) => s.flow === 'create.store');
+  assert.ok(step.files.some((f) => f.path === 'features/products/hooks/useSelectedItemsState.state.ts' && f.change === 'create'), 'the hook it writes is previewed');
+  const skipped = (await call('placement_place', { text, answers: [shape, { id: 'q-state', option: 'skip' }] })).body;
+  assert.deepEqual([skipped.stores[0].step, skipped.plan.steps.some((s) => s.flow === 'create.store')], [null, false]);
+  assert.deepEqual(skipped.decisions.at(-1), { question: 'q-state', option: 'skip', by: 'llm', provider: 'claude-code' });
+  const refused = await call('placement_place', { text, answers: [shape, { id: 'q-state', option: 'list' }] });
+  assert.equal(refused.isError, true, 'a screen shape id is not a store option: refused, not replaced');
+  assert.equal(refused.body.error.code, 'PLAN_REFUSED');
+  assert.equal(JSON.stringify(asked).includes(root), false, 'path-free like every result');
+}));
+
 test('placement_place: an unknown word is a question first, answered by id, then it places', async () => {
   const text = 'A user can frobnicate the widget';
   const open = await call('placement_place', { text });

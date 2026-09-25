@@ -33,7 +33,7 @@
 import path from 'node:path';
 import { validateEnvelope } from '../../packages/engine/envelope.mjs';
 import { envArgIssue, ENV_SCOPES } from './env.mjs';
-import { GUARD_ACCESS, guardArgIssue } from './block-args.mjs';
+import { GUARD_ACCESS, STORE_SHAPES, guardArgIssue, storeArgIssue } from './block-args.mjs';
 
 export const PLAN_VERSION = 1;
 
@@ -364,6 +364,20 @@ export const PLAN_FLOWS = Object.freeze({
       roles: { type: 'string[]', flag: '--roles', join: ',', description: 'The roles that may open the screen, for the role access: one to six lower-case words (admin,manager).' },
       redirect: { type: 'string', flag: '--redirect', description: 'A path the fallback links to, for example /sign-in. Without it the fallback is a notice.' },
       route: { type: 'string', flag: '--route', description: 'The route path the screen is served at, for example /products. Defaults to the kebab-case of the name.' },
+      dir: DIR_ARG,
+    },
+  },
+  'create.store': {
+    cli: ['create', 'store'],
+    summary: 'Add shared client state from a closed list of shapes (#630): one value, a list with a selection, or a map by id. Built on the tracked-state factory: types.ts gains the entity, a status union (one `status` field, never a bag of flags) and a union of typed actions; a pure reducer (defineDomain) and a hook (useTrackedState, one function per action through the reducer) are written, with a locked proof that drives the reducer and the real hook and fails naming the action. Idempotent; refuses, with the reason, an existing file with other content. Zero-LLM.',
+    writes: true,
+    executors: ['deterministic', 'user'],
+    args: {
+      name: { type: 'string', required: true, positional: 0, description: 'The store, PascalCase: Cart gives useCartState, reduceCart and CartState.' },
+      feature: { type: 'string', required: true, flag: '--feature' },
+      shape: { type: 'string', required: true, flag: '--shape', enum: [...STORE_SHAPES], description: 'value (one value: set, clear), list (a list with a selection: add, remove, select, clear) or keyed (a map by id: set, remove, clear).' },
+      entity: ENTITY_ARG,
+      fields: FIELDS_ARG,
       dir: DIR_ARG,
     },
   },
@@ -832,6 +846,10 @@ function validateStep(step, index, seenIds, push) {
     if (step.flow === 'guard.route') {
       const issue = guardArgIssue(step.args);
       if (issue && issue.arg !== 'access') push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.${issue.arg}`, issue.message); // a bad or missing access is the enum's and the required check's to report
+    }
+    if (step.flow === 'create.store') {
+      const issue = storeArgIssue(step.args);
+      if (issue && issue.arg !== 'shape') push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.${issue.arg}`, issue.message); // a bad or missing shape is the enum's and the required check's to report
     }
     if (step.flow === 'check.types' && typeof step.args.feature === 'string' && !/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(step.args.feature)) {
       push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.feature`, 'A feature name uses letters, digits, "_" and "-" only.');

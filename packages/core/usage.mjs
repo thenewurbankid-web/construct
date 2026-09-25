@@ -169,6 +169,11 @@ Commands:
     screen only when allowed, a guard controller), edit the route entry to render <NameGuardController><NameController /></NameGuardController> so the
     screen is never rendered for anyone else, and write its locked proof; refused, with the reason, when no route renders the controller; idempotent;
     deterministic, no LLM)
+  construct create store <Name> --feature <feature> --shape value|list|keyed [--entity <Entity>] [--fields id:string,...] [--dir <path>]
+    (adds shared client state: types.ts gains the entity, a status union on one status field (never a bag of flags) and a union of typed actions (value:
+    set, clear; list with a selection: add, remove, select, clear; keyed by id: set, remove, clear); a pure reducer in domain/ and a hook use<Name>State built
+    on useTrackedState, one function per action through the reducer; a locked proof that drives the reducer and the real hook and fails naming the action;
+    refuses, with the reason, an existing file with other content; idempotent; deterministic, no LLM)
   construct create dependency <package> --version <range> [--dir <path>]
     (adds one line to the dependencies of package.json, for example @line/construct-core, which the generated typed units import;
     never runs a package manager; idempotent; deterministic, no LLM)

@@ -116,6 +116,12 @@ export const BLOCK_DOCS = Object.freeze({
     writes: 'A small typed guard in the feature (a pure access decision, the session hook, a notice, the guard controller), one edit of the route entry, and its locked proof; "everyone" writes nothing.',
     example: { title: 'Only admins and managers may open the reports screen', args: { name: 'Reports', feature: 'reports', access: 'role', roles: ['admin', 'manager'] } },
   },
+  'create.store': {
+    purpose: 'Add shared client state from a short list of shapes, declared and tracked instead of a bag of flags.',
+    reads: 'The feature\'s types and its framework (Next.js hooks are client files).',
+    writes: 'The entity, a state and its typed actions in the feature\'s types, a pure reducer, a hook with one function per action, and a locked proof that names the action that is wrong.',
+    example: { title: 'Keep the selected items in a store', args: { name: 'SelectedItems', feature: 'products', shape: 'list', entity: 'Product', fields: 'id:string,name:string' } },
+  },
   'import.unit': {
     purpose: 'Bring one existing file into a feature as Construct layers, each with a note pointing back to it.',
     reads: 'The existing file you name; it may live outside the project.',

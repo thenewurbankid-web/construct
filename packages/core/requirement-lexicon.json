@@ -49,7 +49,10 @@
       "logged-in": { "properties": ["session"] },
       "signed-in": { "properties": ["session"] },
       "guest": { "properties": ["session"] },
-      "admin": { "properties": ["role"] }
+      "admin": { "properties": ["role"] },
+      "selected items": { "properties": ["selection"] },
+      "selected item": { "properties": ["selection"] },
+      "shopping cart": { "properties": ["store"] }
     },
     "external": {
       "stripe": {},

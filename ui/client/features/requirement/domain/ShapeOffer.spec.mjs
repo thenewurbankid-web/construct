@@ -140,6 +140,16 @@ test('q-access is drawn as a plan card titled Access: the rules default is read 
   assert.deepEqual(withAnswer([], { id: 'q-access', source: 'plan' }, 'public'), [{ id: 'q-access', option: 'public' }]);
 });
 
+// #630: shared client state is one more closed question of the plan: the client only titles it (Client state); its option ids are prefixed `store-` so none is also a screen shape's id (`list`).
+test('q-state is drawn as a plan card titled Client state: the store options keep the server words, and the screen shape words are not borrowed', () => {
+  const state = shapeView(planResult('A user wants to see a list of products with the selected items')).result.offers.find((o) => o.id === 'q-state');
+  assert.deepEqual([state.kind, state.heading, state.options.map((o) => [o.id, o.label, o.suggested, o.chosen])], ['plan', 'Client state', [['store-list', 'A list with a selection', true, false], ['store-value', 'One value', false, false], ['store-keyed', 'Items by their id', false, false], ['skip', 'No store', false, false]]]);
+  assert.equal(state.status, "Not chosen yet, so the plan below uses the rules' default: a list with a selection.");
+  const chosen = shapeView(planResult('A user wants to see a list of products with the selected items', { 'q-state': { option: 'store-keyed', by: 'person' } })).result.offers.find((o) => o.id === 'q-state');
+  assert.deepEqual([chosen.status, chosen.decidedBy], ['Chosen: Items by their id. Decided by: person.', 'person']);
+  assert.deepEqual(withAnswer([], { id: 'q-state', source: 'plan' }, 'skip'), [{ id: 'q-state', option: 'skip' }]);
+});
+
 test('a decision made by the rules names its provider; an option the table does not know keeps the server words', () => {
   const r = shapeResult({ 'q-shape': { option: 'list', by: 'decision-model', provider: 'rules' } });
   assert.equal(shapeView(r).result.offers[0].decidedBy, 'decision-model (rules)');

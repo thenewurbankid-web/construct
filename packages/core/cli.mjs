@@ -41,6 +41,7 @@ import { generateProof } from './proof.mjs';
 import { generateRouteEntry, addDependency } from './wiring.mjs';
 import { addEnv } from './env.mjs';
 import { generateGuard } from './guard.mjs';
+import { generateStore, STORE_ACTIONS } from './store.mjs';
 import { wrapProvider, providerOffer } from './provider-wrap.mjs';
 import { buildDiffView } from './text-diff.mjs';
 import { runTypesCheck, runBuildCheck, renderCheckText, checkExitCode } from '../../packages/engine/verifyRunner.mjs';
@@ -386,6 +387,38 @@ function guardDocument(args, attribution) {
   return { verb: 'create', kind: 'guard', feature: request.feature, name: request.name, access: result.access, noop: result.noop, route: result.route, session: result.session, files: result.files, notes: result.notes, attribution };
 }
 
+/** The request of `construct create store <Name> --feature <f> --shape value|list|keyed [--entity <E>] [--fields id:string,...]` (#630): shared client state on the tracked-state factory. No model, so `--llm` is refused. */
+function storeRequestOf(args) {
+  const name = args[1];
+  const feature = flagValue(args, '--feature');
+  const shape = flagValue(args, '--shape');
+  if (!name || name.startsWith('--') || !feature || !shape) throw new ConstructError('Usage: construct create store <Name> --feature <feature> --shape value|list|keyed [--entity <Entity>] [--fields id:string,...] [--dir <path>]', { exitCode: EXIT_CODES.USAGE_ERROR });
+  if (args.includes('--llm')) throw new ConstructError('A client-state store is written from fixed templates with no model, so it cannot be combined with --llm. Run it without --llm.', { exitCode: EXIT_CODES.USAGE_ERROR });
+  return { name, feature, shape, entity: flagValue(args, '--entity'), fields: flagValue(args, '--fields') };
+}
+
+/** `construct create store Cart --feature shop --shape list` (#630): write the types, the reducer, the hook and the locked proof, or say there was nothing to do. */
+function generateStoreFiles(args) {
+  const root = getRoot(args);
+  const t = startTimer();
+  const request = storeRequestOf(args);
+  const result = generateStore(root, request);
+  const dt = formatDuration(elapsedSeconds(t));
+  if (!result.changed) console.log(`Unchanged: the ${request.name} store already exists (${request.shape}).`);
+  else {
+    for (const file of result.files) console.log(`${file.endsWith('types.ts') || file.endsWith('index.ts') || file === 'architecture.yml' ? 'Updated' : 'Created'} ${file}${file === result.files[0] ? ` (${dt})` : ''}`);
+    console.log(`${result.hook}() returns { state, ${STORE_ACTIONS[request.shape].join(', ')} }. Run: construct test proof ${request.feature}`);
+  }
+}
+
+/** The result document of `create store` for `--format json`. */
+function storeDocument(args, attribution) {
+  const root = getRoot(args);
+  const request = storeRequestOf(args);
+  const result = generateStore(root, request);
+  return { verb: 'create', kind: 'store', feature: request.feature, name: request.name, shape: result.shape, hook: result.hook, files: result.files, attribution };
+}
+
 /**
  * `construct generate <layer> <name> --feature <f>` and its siblings: one layer file, `layer <name> --layers ...` for a whole
  * slice, or `tests <feature>`. `--shape list [--entity E] [--fields a:string,...]` (#619) fills the units with real typed code for
@@ -405,6 +438,7 @@ export async function generate(args) {
   if (args[0] === 'dependency') return generateDependencyLine(args);
   if (args[0] === 'env') return generateEnvLine(args);
   if (args[0] === 'guard') return generateGuardFiles(args);
+  if (args[0] === 'store') return generateStoreFiles(args);
   const layer = args[0], name = args[1], fi = args.indexOf('--feature');
   if (!layer || !name || fi < 0 || !args[fi + 1]) {
     throw new ConstructError('Usage: construct generate <layer> <name> --feature <feature> [--openapi <spec>] [--llm <provider>]', { exitCode: EXIT_CODES.USAGE_ERROR });
@@ -1118,6 +1152,7 @@ export function printAttribution(tool, llm) {
  * | `construct create <layer> <name> --feature <feature> [--llm <provider>]`
  * | `construct create env <NAME> --scope server|public [--value <placeholder>] [--comment <line>]` (one variable in .env.example, a placeholder never a real value, #632)
  * | `construct create guard <Name> --feature <feature> --access public|signed-in|role [--roles a,b] [--redirect </path>] [--route </path>]` (who may open a screen: a typed guard wired to the route entry, and its proof; `public` writes nothing, #629)
+ * | `construct create store <Name> --feature <feature> --shape value|list|keyed [--entity <Entity>] [--fields id:string,...]` (shared client state on the tracked-state factory: a status union, typed actions, a pure reducer, a hook and a locked proof, #630)
  * | `construct create service <name> --feature <feature> --openapi <spec>` (Ticket 7.5)
  * | `construct create layer|<layer> <name> --feature <feature> --shape list [--entity <E>] [--fields id:string,...]` (#619: real typed code, no model).
  * `feature` creation has nothing fillable (just types.ts/index.ts
@@ -1195,6 +1230,7 @@ async function createDocument(args) {
   if (args[0] === 'dependency') return dependencyDocument(args, attribution);
   if (args[0] === 'env') return envDocument(args, attribution);
   if (args[0] === 'guard') return guardDocument(args, attribution);
+  if (args[0] === 'store') return storeDocument(args, attribution);
   const fi = args.indexOf('--feature');
   const feature = fi >= 0 ? args[fi + 1] : undefined;
   if (args[0] === 'layer') {

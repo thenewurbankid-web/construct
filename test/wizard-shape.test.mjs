@@ -30,7 +30,7 @@ test('the wizard shape is registered on the one mechanism: plan enum, schema, fl
   (function walk(node) {
     if (Array.isArray(node)) node.forEach(walk);
     else if (node && typeof node === 'object') {
-      if (node.properties?.shape?.enum) holders.push(node.properties);
+      if (node.properties?.shape?.enum && !node.properties.shape.enum.includes('keyed')) holders.push(node.properties); // the client-state store (#630) has its own shape choice: value, list, keyed
       Object.values(node).forEach(walk);
     }
   })(schema);
