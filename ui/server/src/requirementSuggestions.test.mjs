@@ -43,7 +43,7 @@ after(() => {
 });
 
 /** A fresh project (with the decision block and plugin files given), a fresh state directory and a route with the given plugin switch. */
-function fresh({ decision, plugins = {}, allowPlugins = true, yml = '' } = {}) {
+function fresh({ decision, plugins = {}, allowPlugins = true, yml = '', capabilities } = {}) {
   root = makeTempDir('og633-api-root-');
   fs.cpSync(path.join(REPO, 'fixtures', 'impact-shared'), root, { recursive: true });
   const block = decision ? `\ndecision:\n${Object.entries(decision).map(([k, v]) => `  ${k}: ${JSON.stringify(v)}`).join('\n')}\n` : '';
@@ -54,7 +54,7 @@ function fresh({ decision, plugins = {}, allowPlugins = true, yml = '' } = {}) {
   lines = [];
   clearDecisionCache();
   delete globalThis.__api633;
-  router = createRequirementRouter({ getRoot: () => ({ ok: true, root }), clientOrigin: ORIGIN, allowPlugins, decisionLog: (l) => lines.push(l) });
+  router = createRequirementRouter({ getRoot: () => ({ ok: true, root }), clientOrigin: ORIGIN, allowPlugins, capabilities, decisionLog: (l) => lines.push(l) });
 }
 const post = async (body) => {
   const res = await fetch(`http://127.0.0.1:${PORT}/api/requirement/read`, { method: 'POST', headers: { origin: ORIGIN, 'content-type': 'application/json' }, body: JSON.stringify(body) });
@@ -130,6 +130,20 @@ test('a plugin named in architecture.yml suggests instead of rules, and its sugg
   d = traces().find((x) => x.chosen === 'read');
   assert.deepEqual([d.provider.name, d.suggestion.option, d.outcome.accepted], ['jev', 'write', false]);
   assert.equal(globalThis.__api633, 2, 'the plugin file was imported once, and asked once for this question (answers are cached)');
+});
+
+test('#648: on a machine that cannot load a model (Lite) the plugin file is never imported: rules answer, and the response says "rules only: <reason>"', async () => {
+  const capabilities = { available: false, reason: 'this machine is Lite (4 GB of memory, 2 cores) and loading a model needs 8 GB and 2 cores' };
+  fresh({ decision: { provider: 'jev', plugin: 'jev.mjs' }, plugins: { 'jev.mjs': PICK_WRITE }, capabilities });
+  const r = await post({ text: FROB });
+  assert.equal(r.status, 200);
+  assert.equal(globalThis.__api633, undefined, 'the plugin file was not imported');
+  assert.deepEqual([r.body.suggestions.o1.provider.name, r.body.suggestions.o1.fellBackFrom, r.body.decisionProvider.fellBackFrom], ['rules', 'jev', 'jev']);
+  assert.match(r.body.decisionProvider.notes[0], /rules only: this machine is Lite/);
+  assert.doesNotMatch(r.body.decisionProvider.notes[0], /\/tmp|construct-/, 'path-free');
+  // the same route on a machine that can: the plugin answers, as before
+  fresh({ decision: { provider: 'jev', plugin: 'jev.mjs' }, plugins: { 'jev.mjs': PICK_WRITE }, capabilities: { available: true, reason: 'enough' } });
+  assert.equal((await post({ text: FROB })).body.suggestions.o1.provider.name, 'jev');
 });
 
 test('where plugins are not enabled the plugin file is never imported: rules answer, and the response says so', async () => {

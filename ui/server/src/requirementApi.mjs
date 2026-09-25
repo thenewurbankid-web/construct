@@ -136,13 +136,13 @@ export function readRequirement(body, root, trace = { choices: [], questions: []
  * @param {{ status: number, body: object }} out The result of `readRequirement`.
  * @param {{ choices: object[], questions?: object[] }} trace What `readRequirement` filled in.
  * @param {string} root The open project's root.
- * @param {{ allowPlugins?: boolean, log?: (line: string) => void }} [deps] Whether a plugin file may be imported, and where lines go.
+ * @param {{ allowPlugins?: boolean, log?: (line: string) => void, capabilities?: { available: boolean, reason: string } }} [deps] Whether a plugin file may be imported, where lines go, and (a test seam) the machine's `modelProposals` answer: a machine that cannot load a model answers "rules only: <reason>" (#648).
  * @returns {Promise<{ out: { status: number, body: object }, choices: object[] }>} The response and the choices ready to record.
  */
 export async function withDecisions(out, trace, root, deps = {}) {
   if (out.status !== 200) return { out, choices: trace.choices };
   try {
-    const decision = await openDecision(root, { allowPlugins: deps.allowPlugins === true, log: deps.log });
+    const decision = await openDecision(root, { allowPlugins: deps.allowPlugins === true, log: deps.log, ...(deps.capabilities ? { capabilities: deps.capabilities } : {}) });
     const suggestions = await suggestForQuestions(decision, trace.questions ?? []);
     const choices = [];
     for (const choice of trace.choices) {
@@ -162,12 +162,12 @@ export async function withDecisions(out, trace, root, deps = {}) {
 }
 
 /**
- * @param {{ getRoot: () => {ok: true, root: string} | {ok: false, status?: number, body?: object}, clientOrigin?: string, proofRunner?: Function, proofTimeoutMs?: number, allowPlugins?: boolean, decisionLog?: (line: string) => void }} deps
+ * @param {{ getRoot: () => {ok: true, root: string} | {ok: false, status?: number, body?: object}, clientOrigin?: string, proofRunner?: Function, proofTimeoutMs?: number, capabilities?: { available: boolean, reason: string }, allowPlugins?: boolean, decisionLog?: (line: string) => void }} deps
  *   `proofRunner` and `proofTimeoutMs` are test seams for the proof routes (#653). `allowPlugins` lets a project's
  *   `decision.plugin` file be imported (default: only when `CONSTRUCT_DECISION_PLUGINS=on`, because a plugin is code the
  *   project brings); `decisionLog` receives the load and fallback lines (default: the server's stderr).
  */
-export function createRequirementRouter({ getRoot, clientOrigin, proofRunner, proofTimeoutMs, allowPlugins = process.env.CONSTRUCT_DECISION_PLUGINS === 'on', decisionLog = (line) => console.error(line) }) {
+export function createRequirementRouter({ getRoot, clientOrigin, proofRunner, proofTimeoutMs, capabilities, allowPlugins = process.env.CONSTRUCT_DECISION_PLUGINS === 'on', decisionLog = (line) => console.error(line) }) {
   const router = express.Router();
   router.use((req, res, next) => {
     if (req.method !== 'GET') {
@@ -188,7 +188,7 @@ export function createRequirementRouter({ getRoot, clientOrigin, proofRunner, pr
     try {
       const trace = { choices: [], questions: [] };
       const read = readRequirement(req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {}, r.root, trace);
-      const { out, choices } = await withDecisions(read, trace, r.root, { allowPlugins, log: decisionLog });
+      const { out, choices } = await withDecisions(read, trace, r.root, { allowPlugins, log: decisionLog, capabilities });
       // suggestWith: null, because withDecisions already attached what the project's provider suggested (rules when none is named).
       if (out.status === 200 && choices.length) await recordChoices(r.root, choices, { suggestWith: null, ...(trace.planValidated === undefined ? {} : { outcome: { planValidated: trace.planValidated } }) });
       return res.status(out.status).json(out.body);

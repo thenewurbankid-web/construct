@@ -24,6 +24,7 @@ import { loadConfig, DEFAULT_DECISION } from './config.mjs';
 import { getDecisionProvider, askProvider, DEFAULT_TIMEOUT_MS } from './decision-provider.mjs';
 import { loadDecisionPlugin } from './decision-plugin.mjs';
 import { hidePaths, looksLikeSecret } from './redaction.mjs';
+import { machineAllowsModels } from './machine.mjs';
 
 const CACHE_MAX = 500;
 const answerCache = new Map();
@@ -113,9 +114,11 @@ const safeLine = (text) => {
  * fails to load all end with the rules provider answering and a line saying why.
  *
  * @param {string} root The project root (its `architecture.yml` holds the setting).
- * @param {{ provider?: string, plugin?: string, timeoutMs?: number, allowPlugins?: boolean, log?: (line: string) => void }} [options]
+ * @param {{ provider?: string, plugin?: string, timeoutMs?: number, allowPlugins?: boolean, capabilities?: { available: boolean, reason: string }, log?: (line: string) => void }} [options]
  *   `provider` and `plugin` override the setting for this call (the `--provider` and `--plugin` flags of `construct decide`);
- *   `allowPlugins: false` refuses to import any plugin file (a hosted server that has not opted in); `log` receives each new line.
+ *   `allowPlugins: false` refuses to import any plugin file (a hosted server that has not opted in); `capabilities` is the
+ *   `modelProposals` answer of `capabilities(machine)` (default: this machine, read once and only when a plugin is about to load;
+ *   a Lite machine answers "rules only: <reason>" and imports no plugin, #648); `log` receives each new line.
  * @returns {Promise<ProjectDecision>} The project's decision provider.
  *
  * @example
@@ -157,6 +160,10 @@ export async function openDecision(root, options = {}) {
     if (options.allowPlugins === false) {
       fellBackFrom = wanted;
       note(`decision: the plugin for provider "${wanted}" was not loaded because plugins are not enabled here (CONSTRUCT_DECISION_PLUGINS=on); the rules provider is used`);
+    } else if (!(options.capabilities ?? machineAllowsModels()).available) {
+      // #648: a machine below the Cockpit tier never loads a plugin (a model may sit behind it); the rules answer, and say why.
+      fellBackFrom = wanted;
+      note(`decision: rules only: ${(options.capabilities ?? machineAllowsModels()).reason}; the plugin for provider "${wanted}" was not loaded`);
     } else {
       const loaded = await loadDecisionPlugin(plugin, { root, expectName: requested, strict: true });
       if (loaded.ok) {

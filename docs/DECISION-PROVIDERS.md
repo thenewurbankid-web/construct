@@ -65,7 +65,14 @@ before it is called.
 something that is not an enabled option and a reason is REPLACED by the `rules` provider for that question, and the response
 says so (`fellBackFrom`). After one such failure in a request the plugin is not called again in it, so a slow model costs one
 timeout, not one per question. Every load and every fallback is one line, path-free and secret-free, that can be logged and
-kept beside a trace:
+kept beside a trace.
+
+**Small machines (#648).** Before a plugin file is imported, `openDecision` asks `machineAllowsModels()` (memory and cores only,
+read once, only at that moment). On a machine below the Cockpit tier (Lite: under 8 GB of memory or 2 cores; see the "System
+requirements" page and `construct doctor`) no plugin is imported: the rules answer, `fellBackFrom` names the plugin and the line is
+`decision: rules only: <reason>`. A machine that cannot be read, or a capable one, behaves as before. `construct decide` and the
+Requirement route both go through `openDecision`, so both say so; `construct traces replay --provider` (an offline scoring run) is
+not gated.
 
 ```
 decision: loaded provider "jev" version 0.1 from the plugin file named in architecture.yml
