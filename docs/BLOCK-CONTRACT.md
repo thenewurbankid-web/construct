@@ -276,7 +276,7 @@ The decision model (a rules baseline today, a small trained model later, see #63
 
 `packages/mcp` (`@line/construct-mcp`, private, stdio, `construct-mcp --root <project>`) exposes the blocks above to an LLM client as eight
 read-only, plan-only tools: `requirement_parse`, `placement_place`, `plan_validate`, `decide`, `summarize`, `validate`,
-`machine_capabilities`, `traces_stats`. It is an adapter, not a block: each tool is a thin wrapper over an existing one and adds no logic, so
+`machine_capabilities`, `traces_stats` (`summarize` also takes `backend: true`, #634: the bounded backend summary, `docs/BACKEND-SUMMARY.md`). It is an adapter, not a block: each tool is a thin wrapper over an existing one and adds no logic, so
 the AI-ready rules above hold by construction (fixed-size summaries, closed options with stable ids, the rules-only fallback of
 `decide`). What the adapter adds is the boundary: one project root fixed at startup and never a tool argument, a link that leaves the root
 refuses the call, every result path-free, secret-free and at most 32 KiB, a token-bucket rate limit (30 calls a minute), and nothing that

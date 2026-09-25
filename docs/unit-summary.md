@@ -126,3 +126,8 @@ violations) instead of re-parsing.
 - `tests` are found by colocation and file-name match, not by import analysis.
 - `generator` and `envelope` describe Construct itself and are resolved from the installed Construct, not the target project.
 - Workflow narration covers XState machines the existing extractor understands.
+
+## Backend code
+
+`construct summarize --backend <dir>` is the backend counterpart (Node.js / Express: route map, module roles, import graph,
+environment names and effects): see [BACKEND-SUMMARY.md](BACKEND-SUMMARY.md).
