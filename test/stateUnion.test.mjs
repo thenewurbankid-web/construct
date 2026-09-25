@@ -8,6 +8,7 @@ import { DEFAULT_RULES } from '../packages/core/config.mjs';
 import { detectLayerViolations, validateArchitecture } from '../packages/core/architecture-enforcer.mjs';
 import { collectBagOfFlagsStates, classifyStateFields } from '../packages/ast/index.mjs';
 import { parseToAst } from '../packages/ast/index.mjs';
+import ts from 'typescript';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const on = (layer, source) => detectLayerViolations(layer, source, { stateUnion: true }).filter((v) => v.rule === 'STATE-001');
@@ -21,9 +22,17 @@ const USE_STATE_INLINE_TYPE = `import { useState } from 'react';\nexport functio
 const USE_REDUCER_CONST = `const empty = { pending: false, failed: false, result: null };\nfunction r(s, a) { return s; }\nexport function useThing() { const [s] = useReducer(r, empty); return s; }\n`;
 const INITIAL_CONST_FOREIGN_TYPE = `import type { ListState } from '../types';\nexport const initialList: ListState = { loaded: false, error: null, errorCode: null, data: null, order: 'risk' };\n`;
 const XSTATE_CONTEXT = `import { createMachine } from 'xstate';\nexport const m = createMachine({\n  context: { loading: false, error: null, data: null },\n  initial: 'a', states: { a: {} },\n});\n`;
+// #592: a result slot named after its domain (not in the data-name list) still completes a flag + error + payload trio
+const DOMAIN_SLOT_ALIAS = `type ListingView = { path: string };\nexport type DirectoryBrowserState = {\n  listing: ListingView | null;\n  loading: boolean;\n  error: string | null;\n};\n`;
+const DOMAIN_SLOT_OPTIONAL = `export interface SessionState { loading: boolean; error?: string; session?: Session }\ninterface Session { user: string }\n`;
 const XSTATE_SETUP_AS = `import { setup } from 'xstate';\nexport const m = setup({ types: { context: {} as { ready: boolean; loaded: boolean } } }).createMachine({ initial: 'a', states: { a: {} } });\n`;
 
 // ---- passing fixtures (the recommended form, and the allowed near-misses) ----
+// #592: the widening is bounded: a flag + error + a nullable SCALAR or key, one flag + a domain slot, an untyped null slot
+const SCALAR_SLOTS_NOT_DATA = `export type State = { loading: boolean; error: string | null; notice: string | null; selectedId: string | null; count?: number };\n`;
+const FLAG_AND_DOMAIN_SLOT_ONLY = `type V = { path: string };\nexport type State = { loading: boolean; listing: V | null };\n`;
+const UNTYPED_NULL_SLOTS = `export const initialProcesses: P = { loaded: false, error: null, order: [], selectedId: null, notice: null, listing: null };\n`;
+const DOMAIN_SLOT_UNION_STATE = `type V = { path: string };\nexport type State = { status: 'idle' } | { status: 'loading' } | { status: 'error'; error: string } | { status: 'ready'; listing: V };\n`;
 const UNION_STATE = `export type State =\n  | { status: 'idle' }\n  | { status: 'loading' }\n  | { status: 'error'; error: string }\n  | { status: 'success'; data: Item[] };\nexport function useThing() { const [s] = useState<State>({ status: 'idle' }); return s; }\n`;
 const SINGLE_FLAG_DATA = `export type State = { loading: boolean; data: Item[] | null };\n`;
 const SINGLE_FLAG_ERROR = `export type State = { loading: boolean; error: string | null };\n`;
@@ -87,7 +96,7 @@ test('STATE-001: the suggested fix is a concrete, compiling union rewrite that r
 });
 
 test('STATE-001 negative fixtures: union state, a single flag (with data, or with error), a status field, non-boolean flag names, null payload slots, params/returns', () => {
-  for (const [label, src] of Object.entries({ UNION_STATE, SINGLE_FLAG_DATA, SINGLE_FLAG_ERROR, STATUS_FIELD_NOT_UNION, NON_BOOLEAN_FLAG_NAMES, NULL_PAYLOAD_SLOTS, OPTIONS_PARAM_NOT_STATE, RETURNED_OBJECT_NOT_STATE })) {
+  for (const [label, src] of Object.entries({ UNION_STATE, SINGLE_FLAG_DATA, SINGLE_FLAG_ERROR, STATUS_FIELD_NOT_UNION, NON_BOOLEAN_FLAG_NAMES, NULL_PAYLOAD_SLOTS, OPTIONS_PARAM_NOT_STATE, RETURNED_OBJECT_NOT_STATE, SCALAR_SLOTS_NOT_DATA, FLAG_AND_DOMAIN_SLOT_ONLY, UNTYPED_NULL_SLOTS, DOMAIN_SLOT_UNION_STATE })) {
     assert.deepEqual(on('hook', src), [], label);
     assert.deepEqual(on('workflow', src), [], label);
   }
@@ -135,4 +144,50 @@ test('STATE-001: validateArchitecture (the source of `--format json`) has the sa
   // the union rewrite the fix suggests passes clean
   fs.writeFileSync(path.join(dir, 'features/shop/hooks/useCart.tsx'), UNION_STATE);
   assert.deepEqual(all().filter((x) => x.rule === 'STATE-001'), []);
+});
+
+test('STATE-001 (#592): a domain-named result slot completes the flag + error + payload trio; the fix keeps its name and type', () => {
+  const [alias] = on('workflow', DOMAIN_SLOT_ALIAS);
+  assert.ok(alias, 'flag + error + a nullable non-primitive slot is a bag of flags');
+  assert.equal(alias.line, 2);
+  assert.match(alias.message, /loading, error, listing/);
+  assert.equal(alias.suggestedFix, "replace the fields with a discriminated union: type DirectoryBrowserState = { status: 'idle' } | { status: 'loading' } | { status: 'error'; error: string } | { status: 'success'; listing: ListingView }");
+  const [opt] = on('workflow', DOMAIN_SLOT_OPTIONAL);
+  assert.match(opt.message, /loading, error, session/, 'an optional field counts as a nullable slot');
+  assert.equal(shapes(DOMAIN_SLOT_ALIAS).length, 1);
+});
+
+/** Type errors of one source text (in memory, against the real lib files); empty when it compiles. */
+function tsErrors(source) {
+  const file = '/virtual/fix.ts';
+  const options = { noEmit: true, strict: true, target: ts.ScriptTarget.ES2022, lib: ['lib.es2022.d.ts'], types: [], skipLibCheck: true };
+  const host = ts.createCompilerHost(options);
+  const fileExists = host.fileExists.bind(host);
+  const getSourceFile = host.getSourceFile.bind(host);
+  host.fileExists = (f) => f === file || fileExists(f);
+  host.getSourceFile = (f, lang, ...rest) => (f === file ? ts.createSourceFile(f, source, lang) : getSourceFile(f, lang, ...rest));
+  return ts.getPreEmitDiagnostics(ts.createProgram([file], options, host)).map((d) => ts.flattenDiagnosticMessageText(d.messageText, '\n'));
+}
+
+test('STATE-001: every suggested union compiles, and so does the rules-reference example (README), before and after', () => {
+  const fixes = [
+    ['interface', 'hook', TWO_FLAGS_INTERFACE, 'type User = { id: string };\n'],
+    ['alias', 'hook', FLAG_ERROR_DATA_ALIAS, 'type Item = { id: string };\n'],
+    ['domain slot', 'workflow', DOMAIN_SLOT_ALIAS, 'type ListingView = { path: string };\n'],
+  ];
+  for (const [label, layer, src, prelude] of fixes) {
+    const [v] = on(layer, src);
+    const union = /: (type \w+ = .*)$/.exec(v.suggestedFix)[1];
+    const decl = /^type (\w+)/.exec(union)[1];
+    assert.deepEqual(tsErrors(`${prelude}${union};\nexport const s: ${decl} = { status: 'idle' };\n`), [], `${label}: ${union}`);
+  }
+  const readme = fs.readFileSync(new URL('../README.md', import.meta.url), 'utf8');
+  const block = /```ts\n(\/\/ Before \(STATE-001\)[\s\S]*?)```/.exec(readme)?.[1];
+  assert.ok(block, 'the README rules reference carries the STATE-001 example');
+  const [before, after] = block.split(/(?=\/\/ After:)/);
+  const prelude = 'type Item = { id: string };\ndeclare function useState<S>(s: S): [S, (n: S) => void];\n';
+  assert.deepEqual(tsErrors(prelude + before), [], 'the "before" is valid TypeScript (just a bag of flags)');
+  assert.equal(on('hook', before).length, 1, 'and STATE-001 flags it');
+  assert.deepEqual(tsErrors(prelude + after), [], 'the "after" compiles');
+  assert.deepEqual(on('hook', after), [], 'and STATE-001 is silent on it');
 });

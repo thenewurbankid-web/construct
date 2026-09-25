@@ -18,7 +18,10 @@
 //     or `loading: 'yes' | 'no'` is not a flag; `error`/`err` counts as a flag only with an `is`/
 //     `has` prefix or a boolean type, otherwise it is the error payload;
 //   - one flag plus `data` is fine (a plain "loaded yet?" pair); two flags, or a flag plus an
-//     `error` field plus a `data`-style field, is the violation.
+//     `error` field plus a `data`-style field, is the violation. A `data`-style field is one of
+//     the DATA_NAMES, or (#592) a nullable non-primitive slot of any name (`listing: X | null`,
+//     `session: X | null`, `data?: X`) in a declared type -- never a primitive or key/scalar
+//     (`notice: string | null`, `selectedId`), and never read from an untyped `null` initial value.
 import { walkAst } from './walk.mjs';
 
 /** Status-style flag names, matched after lower-casing and stripping an `is`/`has`/`was` prefix. */
@@ -80,7 +83,26 @@ function valueShape(v) {
   return 'other';
 }
 
-/** Members of a TSTypeLiteral / TSInterfaceBody as `{ name, shape, typeText }`. */
+/** Field names that are a key or a scalar, never "the result" (`selectedId: string | null`). */
+const SCALAR_FIELD_NAME = /(id|ids|index|key|name|count)$/i;
+const PRIMITIVE_TYPES = new Set(['TSStringKeyword', 'TSNumberKeyword', 'TSBooleanKeyword', 'TSBigIntKeyword', 'TSLiteralType']);
+
+/**
+ * True for a nullable (`X | null`, `X | undefined`, `x?: X`) field typed as something other than a
+ * primitive: the shape of a result slot named after its domain (`listing`, `session`), which the
+ * fixed DATA_NAMES list cannot know. Only consulted beside a flag AND an error field.
+ */
+function isNullablePayload(name, t, optional) {
+  if (SCALAR_FIELD_NAME.test(name)) return false;
+  if (!t) return optional === true;
+  const isNullish = (p) => p.type === 'TSNullKeyword' || p.type === 'TSUndefinedKeyword';
+  const parts = t.type === 'TSUnionType' ? t.types : [t];
+  const rest = parts.filter((p) => !isNullish(p));
+  const nullable = optional === true || rest.length < parts.length;
+  return nullable && rest.length > 0 && !rest.some((p) => PRIMITIVE_TYPES.has(p.type));
+}
+
+/** Members of a TSTypeLiteral / TSInterfaceBody as `{ name, shape, typeText, payload }`. */
 function typeMembers(members, source) {
   const out = [];
   for (const m of members) {
@@ -88,7 +110,7 @@ function typeMembers(members, source) {
     const name = keyName(m.key);
     if (!name || m.computed) continue;
     const t = m.typeAnnotation?.typeAnnotation;
-    out.push({ name, shape: typeShape(t), typeText: t ? source.slice(t.range[0], t.range[1]) : null });
+    out.push({ name, shape: typeShape(t), typeText: t ? source.slice(t.range[0], t.range[1]) : null, payload: isNullablePayload(name, t, m.optional) });
   }
   return out;
 }
@@ -100,7 +122,9 @@ function objectMembers(obj) {
     if (p.type !== 'Property' || p.computed) continue;
     const name = keyName(p.key);
     if (!name) continue;
-    out.push({ name, shape: valueShape(p.value), typeText: null });
+    // never a payload here: an untyped `null` could be any slot (`notice: null`, `busyId: null`), so
+    // the domain-named widening reads declared types only, not initial values
+    out.push({ name, shape: valueShape(p.value), typeText: null, payload: false });
   }
   return out;
 }
@@ -116,6 +140,7 @@ export function classifyStateFields(members) {
   const flags = [];
   let error = null;
   let data = null;
+  let dataByShape = null;
   for (const m of members) {
     const { stem, prefixed } = normalise(m.name);
     const isErrorName = ERROR_NAMES.has(stem);
@@ -127,8 +152,14 @@ export function classifyStateFields(members) {
       error = m;
     } else if (!data && DATA_NAMES.has(stem) && !prefixed) {
       data = m;
+    } else if (!dataByShape && m.payload && !prefixed) {
+      dataByShape = m;
     }
   }
+  // #592: a domain-named result slot (`listing: DirListingView | null`, `session: Session | null`)
+  // counts as the data field, but only when it completes a flag + error + payload trio; two
+  // flags need no data field at all, and one flag plus a nullable slot alone stays fine.
+  if (!data && error && flags.length === 1) data = dataByShape;
   if (flags.length >= 2 || (flags.length === 1 && error && data)) return { flags, error, data };
   return null;
 }

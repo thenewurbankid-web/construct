@@ -407,7 +407,11 @@ interface, an object-literal type alias, the initial object (or inline type
 argument) of `useState`/`useReducer`, a top-level const named like an initial
 state, an XState `context` — and flags one whose fields combine two boolean
 status flags (`isLoading` + `isError`, `pending` + `failed`, `ready` + `loaded`)
-or one flag with both an `error` and a `data`-style field. Those objects can
+or one flag with both an `error` and a `data`-style field. A `data`-style field
+is `data`/`result`/`response`/`payload`/`value`/`items`, or a nullable
+non-primitive slot in a declared type whatever its name (`listing: Listing | null`,
+`session?: Session`; never `notice: string | null`, `selectedId`, or an untyped
+`null` in an initial object). Those objects can
 express states that cannot happen (loading and failed at once, stale data next
 to an error). One flag plus `data`, a `status` field, a union, or a flag-named
 field that is not a boolean (`ready: Promise<void>`) is never reported. The
