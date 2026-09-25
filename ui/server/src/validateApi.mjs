@@ -8,6 +8,7 @@ import { DEFAULT_ENFORCERS } from '../../../packages/engine/defaultEnforcers.mjs
 import { findProjectRoot } from '../../../packages/core/config.mjs';
 import { serverLog } from './logBuffer.mjs';
 import { ExecutionError, resolveExecutionMode, runValidate } from './coreExecutor.mjs';
+import { runCapturing } from './commandRunner.mjs';
 
 export const MAX_VIOLATIONS = 500;
 
@@ -84,8 +85,20 @@ export async function handleValidateForProject(ctx) {
     return { status, body: { ...body, mode } };
   }
   const started = now();
+  // #612: the subprocess runs INSIDE the per-login queue and global concurrency cap (runCapturing), like every other
+  // cli-mode verb (coreVerbs.mjs cliCommandResult), so a validate never overlaps a write to the same project.
+  let outcome = null;
+  const queued = await runCapturing(async () => {
+    try { outcome = { result: await execute(root, { mode, env: execEnv, bin: cliBin, timeoutMs }) }; } catch (e) { outcome = { error: e }; }
+  });
+  if (outcome === null) {
+    // abandoned at the command deadline (504): the queue moved on
+    log.record('validate', 'error', `validate (via CLI) failed: ${queued.error}`);
+    return { status: queued.httpStatus ?? 500, body: { ok: false, mode, error: queued.error ?? 'The command was abandoned.' } };
+  }
   try {
-    const { violations, ok } = await execute(root, { mode, env: execEnv, bin: cliBin, timeoutMs });
+    if (outcome.error) throw outcome.error;
+    const { violations, ok } = outcome.result;
     const durationMs = now() - started;
     const errors = violations.filter((v) => v.severity === 'error').length;
     log.record('validate', errors ? 'warn' : 'info', `validate (via CLI): ${violations.length} violation(s), ${errors} error(s) in ${durationMs} ms`);
