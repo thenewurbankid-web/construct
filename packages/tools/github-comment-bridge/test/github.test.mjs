@@ -1,8 +1,13 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { Octokit } from '@octokit/rest';
-import { createGitHubClient } from '../src/github.mjs';
+// @octokit/rest is installed with this tool's own dependencies; a lane or a
+// fresh worktree with only the root install lacks it, so the file skips with
+// its reason there instead of failing the whole suite.
+const HAVE_OCTOKIT = await import('@octokit/rest').then(() => true, () => false);
+const SKIP = HAVE_OCTOKIT ? false : '@octokit/rest is not installed here (install packages/tools/github-comment-bridge); the full checkout runs this';
+const { Octokit } = HAVE_OCTOKIT ? await import('@octokit/rest') : {};
+const { createGitHubClient } = HAVE_OCTOKIT ? await import('../src/github.mjs') : {};
 
 // #94 — real coverage for github.mjs's Octokit-based client, which had
 // none before this swap (poller.test.mjs/trigger.test.mjs only ever
@@ -33,7 +38,7 @@ function jsonResponse(body, { status = 200, headers = {} } = {}) {
   });
 }
 
-test('getAuthenticatedUser sends the configured token and returns the plain user object', async () => {
+test('getAuthenticatedUser sends the configured token and returns the plain user object', { skip: SKIP }, async () => {
   const calls = [];
   const octokit = fakeOctokit(
     async (url, init) => {
@@ -59,7 +64,7 @@ test('getAuthenticatedUser sends the configured token and returns the plain user
   assert.match(authHeader, /secret-token/);
 });
 
-test('createGitHubClient builds its own Octokit from the given token when none is injected (the real, non-test path)', async () => {
+test('createGitHubClient builds its own Octokit from the given token when none is injected (the real, non-test path)', { skip: SKIP }, async () => {
   // No `octokit` override here — this exercises the actual production
   // construction path (`new Octokit({ auth: token, ... })`), confirming
   // the token argument itself is what ends up authenticating requests.
@@ -69,7 +74,7 @@ test('createGitHubClient builds its own Octokit from the given token when none i
   assert.equal(typeof github.getAuthenticatedUser, 'function');
 });
 
-test('listIssueCommentsSince follows pagination (Link: rel="next") and returns every comment, in shape unchanged from the raw REST API', async () => {
+test('listIssueCommentsSince follows pagination (Link: rel="next") and returns every comment, in shape unchanged from the raw REST API', { skip: SKIP }, async () => {
   const calls = [];
   const octokit = fakeOctokit(async (url, init) => {
     calls.push(String(url));
@@ -97,7 +102,7 @@ test('listIssueCommentsSince follows pagination (Link: rel="next") and returns e
   assert.match(calls[0], /since=2024-01-01/);
 });
 
-test('getLatestCommentId returns the newest comment id, or 0 when there are none yet', async () => {
+test('getLatestCommentId returns the newest comment id, or 0 when there are none yet', { skip: SKIP }, async () => {
   const octokit = fakeOctokit(async () => jsonResponse([{ id: 42 }]));
   const github = createGitHubClient({ token: 't', owner: 'o', repo: 'r', octokit });
   assert.equal(await github.getLatestCommentId(), 42);
@@ -107,7 +112,7 @@ test('getLatestCommentId returns the newest comment id, or 0 when there are none
   assert.equal(await emptyGithub.getLatestCommentId(), 0);
 });
 
-test('getIssue requests the right issue and returns the plain issue object', async () => {
+test('getIssue requests the right issue and returns the plain issue object', { skip: SKIP }, async () => {
   const calls = [];
   const octokit = fakeOctokit(async (url) => {
     calls.push(String(url));
@@ -121,7 +126,7 @@ test('getIssue requests the right issue and returns the plain issue object', asy
   assert.match(calls[0], /\/repos\/o\/r\/issues\/37$/);
 });
 
-test('postIssueComment posts the body as JSON to the right issue and returns the created comment', async () => {
+test('postIssueComment posts the body as JSON to the right issue and returns the created comment', { skip: SKIP }, async () => {
   const calls = [];
   const octokit = fakeOctokit(async (url, init) => {
     calls.push({ url: String(url), body: init.body ? JSON.parse(init.body) : null, method: init.method });
@@ -137,7 +142,7 @@ test('postIssueComment posts the body as JSON to the right issue and returns the
   assert.match(calls[0].url, /\/repos\/o\/r\/issues\/12\/comments$/);
 });
 
-test('a 404 from GitHub surfaces as a thrown error (getIssue on a missing issue)', async () => {
+test('a 404 from GitHub surfaces as a thrown error (getIssue on a missing issue)', { skip: SKIP }, async () => {
   const octokit = fakeOctokit(async () => jsonResponse({ message: 'Not Found' }, { status: 404 }));
   const github = createGitHubClient({ token: 't', owner: 'o', repo: 'r', octokit });
   await assert.rejects(() => github.getIssue(999999));
