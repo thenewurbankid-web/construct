@@ -1,0 +1,38 @@
+{
+  "name": "@line/construct-mcp",
+  "version": "0.9.0",
+  "description": "Construct's deterministic blocks as read-only, plan-only MCP tools over stdio: parse a requirement, place it, preview and validate a plan, summarize, validate, suggest. Nothing here writes a file.",
+  "type": "module",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "construct-mcp": "./bin/construct-mcp.mjs"
+  },
+  "exports": {
+    ".": "./src/index.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md"
+  ],
+  "dependencies": {
+    "@line/construct-core": "^0.9.0",
+    "@modelcontextprotocol/server": "2.1.0",
+    "zod": "^4.2.0"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.1.0"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thenewurbankid-web/construct.git",
+    "directory": "packages/mcp"
+  }
+}
