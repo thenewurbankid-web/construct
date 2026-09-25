@@ -249,6 +249,7 @@
             "wrap.provider",
             "guard.route",
             "create.store",
+            "create.handler",
             "import.unit",
             "import.plan",
             "import.route",
@@ -1477,6 +1478,96 @@
                   "name",
                   "feature",
                   "shape"
+                ]
+              },
+              "executor": {
+                "enum": [
+                  "deterministic",
+                  "user"
+                ]
+              },
+              "touches": {
+                "$ref": "#/definitions/touches"
+              }
+            },
+            "required": [
+              "touches"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "create.handler"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The handler, PascalCase (Products gives toProductsHttp and serveProducts).",
+                    "pattern": "^[A-Z][A-Za-z0-9]*$"
+                  },
+                  "feature": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+                  },
+                  "method": {
+                    "type": "string",
+                    "minLength": 1,
+                    "enum": [
+                      "GET",
+                      "POST",
+                      "PUT",
+                      "DELETE"
+                    ],
+                    "description": "The HTTP method the route answers; every other method is a 405."
+                  },
+                  "path": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The path of the endpoint, starting with /api/ and lower-case segments (/api/products).",
+                    "pattern": "^/api(/[a-z0-9]+(-[a-z0-9]+)*)+$"
+                  },
+                  "service": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The service unit to delegate to, PascalCase (services/<Name>.service.ts, its first defineService unit, called with { input }). Omit it and a typed in-memory service is written.",
+                    "pattern": "^[A-Z][A-Za-z0-9]*$"
+                  },
+                  "entity": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The entity a shape shows or writes, PascalCase and singular (Product). Defaults to the singular of the unit name (list), the unit name (detail), the unit name without its leading verb (form: AddProduct is Product) or the singular of the unit name without its Dashboard word (dashboard: OrdersDashboard is Order).",
+                    "pattern": "^[A-Z][A-Za-z0-9]*$"
+                  },
+                  "fields": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The entity fields for a shape as name:type pairs, comma separated (id:string,name:string,price:number). Types: string, number, boolean; an id field is required (a form has no input for it: the server assigns it; a dashboard adds up the number fields and counts the boolean ones)."
+                  },
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": [
+                  "name",
+                  "feature",
+                  "method",
+                  "path"
                 ]
               },
               "executor": {

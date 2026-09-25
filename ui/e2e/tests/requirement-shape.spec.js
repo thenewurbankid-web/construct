@@ -368,7 +368,7 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
     await expect(page.getByTestId('requirement-files').locator('summary')).toHaveText('11 files will be created');
 
     const endpoint = await chooseSource(page, 'endpoint');
-    expect(endpoint.body.offers.map((o) => [o.id, o.chosen])).toEqual([['q-shape', 'list'], ['q-source', 'endpoint'], ['q-states', null], ['q-access', null], ['q-verify', null]]);
+    expect(endpoint.body.offers.map((o) => [o.id, o.chosen])).toEqual([['q-shape', 'list'], ['q-source', 'endpoint'], ['q-states', null], ['q-handler', null], ['q-access', null], ['q-verify', null]]);
     expect(endpoint.body.plan.steps.filter((s) => s.flow === 'create.unit').every((s) => s.args.source === 'endpoint')).toBe(true);
     expect(endpoint.res.request().postDataJSON().answers).toEqual([{ id: 'q-shape', option: 'list' }, { id: 'q-source', option: 'endpoint' }]);
     await expect(page.getByTestId('requirement-source-endpoint')).toHaveAttribute('aria-pressed', 'true');
@@ -556,6 +556,39 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
     await expect(card.getByTestId('requirement-plan-status')).toHaveText('Chosen: No store. Decided by: person.');
     const [d] = recorded('requirement.plan.state', 'skip');
     expect(d).toMatchObject({ by: 'person', suggestion: { option: 'store-list' }, outcome: { accepted: false } });
+  });
+
+  test('the route handler (#625): once the screen reads an endpoint on Next.js the Route handler card is drawn with no client change, add is suggested, skip removes the step, and the handler steps are the real commands', async ({ page }) => {
+    await gotoCockpit(page, '/requirement');
+    await readSentence(page, PRODUCTS);
+    await choose(page, 'list');
+    await expect(planCard(page, 'q-handler')).toHaveCount(0); // the rules default source is local data: it makes no request, so there is nothing to serve
+    const source = page.waitForResponse(isRead);
+    await page.getByTestId('requirement-source-endpoint').click();
+    expect((await source).status()).toBe(200);
+    const card = planCard(page, 'q-handler');
+    await expect(card).toBeVisible();
+    await expect(card.getByRole('heading', { name: 'Route handler', level: 2 })).toBeVisible();
+    await expect(card.getByRole('button')).toHaveText(['Add GET /api/products', 'No handler']);
+    await expect(card.locator('[data-option="add-handler"]').getByTestId('requirement-plan-suggested')).toHaveText('suggested by rules');
+    await expect(card.getByRole('button', { pressed: true })).toHaveCount(0);
+    await expect(card.getByTestId('requirement-plan-status')).toHaveText("Not chosen yet, so the plan below uses the rules' default: add GET /api/products.");
+    await expect(page.getByTestId('requirement-approve-plan')).toBeEnabled(); // a closed question never blocks Approve
+
+    const ran = page.waitForResponse((r) => r.url().endsWith('/api/plan/run') && r.request().method() === 'POST');
+    await page.getByTestId('requirement-approve-plan').click();
+    const sent = (await ran).request().postDataJSON().plan.steps.map((x) => planToCommand(x).argv.join(' '));
+    expect(sent).toContain('create handler Products --feature products --method GET --path /api/products --entity Product --fields id:string,name:string,price:number');
+    expect(sent).toContain('test proof products --name ProductsApi.proof.test.ts');
+
+    const skipped = await choosePlan(page, 'q-handler', 'skip');
+    expect(skipped.res.request().postDataJSON().answers).toEqual([{ id: 'q-shape', option: 'list' }, { id: 'q-source', option: 'endpoint' }, { id: 'q-handler', option: 'skip' }]);
+    expect(skipped.body.plan.steps.some((s) => s.flow === 'create.handler')).toBe(false);
+    expect(JSON.stringify(skipped.body)).not.toContain(project.repo); // no server path leaves the server
+    await expect(card.locator('[data-option="skip"] button')).toHaveAttribute('aria-pressed', 'true');
+    await expect(card.getByTestId('requirement-plan-status')).toHaveText('Chosen: No handler. Decided by: person.');
+    const [d] = recorded('requirement.plan.handler', 'skip');
+    expect(d).toMatchObject({ by: 'person', suggestion: { option: 'add-handler' }, outcome: { accepted: false } });
   });
 
   test('a card that needs a secret gets a card per environment variable: add is suggested, skipping one removes its step, and the add.env steps are the real commands', async ({ page }) => {

@@ -42,6 +42,7 @@ import { generateRouteEntry, addDependency } from './wiring.mjs';
 import { addEnv } from './env.mjs';
 import { generateGuard } from './guard.mjs';
 import { generateStore, STORE_ACTIONS } from './store.mjs';
+import { generateHandler } from './handler.mjs';
 import { wrapProvider, providerOffer } from './provider-wrap.mjs';
 import { buildDiffView } from './text-diff.mjs';
 import { runTypesCheck, runBuildCheck, renderCheckText, checkExitCode } from '../../packages/engine/verifyRunner.mjs';
@@ -419,6 +420,39 @@ function storeDocument(args, attribution) {
   return { verb: 'create', kind: 'store', feature: request.feature, name: request.name, shape: result.shape, hook: result.hook, files: result.files, attribution };
 }
 
+/** The request of `construct create handler <Name> --feature <f> --method GET|POST|PUT|DELETE --path /api/<x> [--service <Name>] [--entity <E>] [--fields id:string,...]` (#625): a Next.js route handler. No model, so `--llm` is refused. */
+function handlerRequestOf(args) {
+  const name = args[1];
+  const feature = flagValue(args, '--feature');
+  const method = flagValue(args, '--method');
+  const routePath = flagValue(args, '--path');
+  if (!name || name.startsWith('--') || !feature || !method || !routePath) throw new ConstructError('Usage: construct create handler <Name> --feature <feature> --method GET|POST|PUT|DELETE --path /api/<x> [--service <Name>] [--entity <Entity>] [--fields id:string,...] [--dir <path>]', { exitCode: EXIT_CODES.USAGE_ERROR });
+  if (args.includes('--llm')) throw new ConstructError('A route handler is written from fixed templates with no model, so it cannot be combined with --llm. Run it without --llm.', { exitCode: EXIT_CODES.USAGE_ERROR });
+  return { name, feature, method, path: routePath, service: flagValue(args, '--service'), entity: flagValue(args, '--entity'), fields: flagValue(args, '--fields') };
+}
+
+/** `construct create handler Products --feature shop --method GET --path /api/products` (#625): write app/api/<x>/route.ts, its domain unit, its service and its proof, or say there was nothing to do. */
+function generateHandlerFiles(args) {
+  const root = getRoot(args);
+  const t = startTimer();
+  const request = handlerRequestOf(args);
+  const result = generateHandler(root, request);
+  const dt = formatDuration(elapsedSeconds(t));
+  if (!result.changed) console.log(`Unchanged: ${request.method} ${request.path} is already served by ${result.route}.`);
+  else {
+    for (const file of result.files) console.log(`${file.endsWith('types.ts') || file.endsWith('index.ts') || file === 'architecture.yml' ? 'Updated' : 'Created'} ${file}${file === result.files[0] ? ` (${dt})` : ''}`);
+    console.log(`${request.method} ${request.path} is served by ${result.route}, delegating to ${result.service === 'in-memory' ? 'a typed in-memory service' : `the ${result.service} service`}. Run: construct test proof ${request.feature}`);
+  }
+}
+
+/** The result document of `create handler` for `--format json`. */
+function handlerDocument(args, attribution) {
+  const root = getRoot(args);
+  const request = handlerRequestOf(args);
+  const result = generateHandler(root, request);
+  return { verb: 'create', kind: 'handler', feature: request.feature, name: request.name, method: result.method, path: result.path, route: result.route, service: result.service, files: result.files, attribution };
+}
+
 /**
  * `construct generate <layer> <name> --feature <f>` and its siblings: one layer file, `layer <name> --layers ...` for a whole
  * slice, or `tests <feature>`. `--shape list [--entity E] [--fields a:string,...]` (#619) fills the units with real typed code for
@@ -439,6 +473,7 @@ export async function generate(args) {
   if (args[0] === 'env') return generateEnvLine(args);
   if (args[0] === 'guard') return generateGuardFiles(args);
   if (args[0] === 'store') return generateStoreFiles(args);
+  if (args[0] === 'handler') return generateHandlerFiles(args);
   const layer = args[0], name = args[1], fi = args.indexOf('--feature');
   if (!layer || !name || fi < 0 || !args[fi + 1]) {
     throw new ConstructError('Usage: construct generate <layer> <name> --feature <feature> [--openapi <spec>] [--llm <provider>]', { exitCode: EXIT_CODES.USAGE_ERROR });
@@ -1153,6 +1188,7 @@ export function printAttribution(tool, llm) {
  * | `construct create env <NAME> --scope server|public [--value <placeholder>] [--comment <line>]` (one variable in .env.example, a placeholder never a real value, #632)
  * | `construct create guard <Name> --feature <feature> --access public|signed-in|role [--roles a,b] [--redirect </path>] [--route </path>]` (who may open a screen: a typed guard wired to the route entry, and its proof; `public` writes nothing, #629)
  * | `construct create store <Name> --feature <feature> --shape value|list|keyed [--entity <Entity>] [--fields id:string,...]` (shared client state on the tracked-state factory: a status union, typed actions, a pure reducer, a hook and a locked proof, #630)
+ * | `construct create handler <Name> --feature <feature> --method GET|POST|PUT|DELETE --path /api/<x> [--service <Name>]` (a Next.js route handler app/api/<x>/route.ts that delegates to a service and maps its typed result to 200, 400, 405 or 500; refused for a react-spa project, #625)
  * | `construct create service <name> --feature <feature> --openapi <spec>` (Ticket 7.5)
  * | `construct create layer|<layer> <name> --feature <feature> --shape list [--entity <E>] [--fields id:string,...]` (#619: real typed code, no model).
  * `feature` creation has nothing fillable (just types.ts/index.ts
@@ -1231,6 +1267,7 @@ async function createDocument(args) {
   if (args[0] === 'env') return envDocument(args, attribution);
   if (args[0] === 'guard') return guardDocument(args, attribution);
   if (args[0] === 'store') return storeDocument(args, attribution);
+  if (args[0] === 'handler') return handlerDocument(args, attribution);
   const fi = args.indexOf('--feature');
   const feature = fi >= 0 ? args[fi + 1] : undefined;
   if (args[0] === 'layer') {

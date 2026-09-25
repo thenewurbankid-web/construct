@@ -13,6 +13,7 @@ import { envTouches } from './env.mjs';
 import { wrapProviderTouches } from './provider-wrap.mjs';
 import { guardTouches } from './guard.mjs';
 import { storeTouches } from './store.mjs';
+import { handlerTouches } from './handler.mjs';
 
 const isName = (v) => typeof v === 'string' && v.trim().length > 0;
 const asList = (v) => (Array.isArray(v) ? v : typeof v === 'string' ? v.split(',') : []).map((x) => String(x).trim()).filter(Boolean);
@@ -20,7 +21,7 @@ const rel = (root, abs) => path.relative(root, abs).split(path.sep).join('/');
 const shapeArgs = (args) => ({ shape: args.shape, name: args.name, feature: args.feature, entity: args.entity, fields: args.fields, source: args.source, steps: args.steps, states: args.states });
 
 /** Flows whose written files are derived here. Every other writing flow answers `null` until its output is pinned by a test. */
-export const DERIVED_FLOWS = Object.freeze(['create.feature', 'create.unit', 'create.layer', 'create.proof', 'create.route', 'add.dependency', 'add.env', 'wrap.provider', 'guard.route', 'create.store']);
+export const DERIVED_FLOWS = Object.freeze(['create.feature', 'create.unit', 'create.layer', 'create.proof', 'create.route', 'add.dependency', 'add.env', 'wrap.provider', 'guard.route', 'create.store', 'create.handler']);
 
 /**
  * The project-relative files a writing plan step will create, derived from its own arguments without touching the disk.
@@ -71,6 +72,8 @@ export function expectedFiles(root, flowId, args = {}) {
     if (flowId === 'guard.route') return guardTouches(root, { name: args.name, feature: args.feature, access: args.access, roles: args.roles, redirect: args.redirect, route: args.route });
     // #630: the reducer and the hook of a client-state store, the types and barrel it updates and its proof.
     if (flowId === 'create.store') return storeTouches(root, { name: args.name, feature: args.feature, shape: args.shape, entity: args.entity, fields: args.fields });
+    // #625: the route handler, its domain unit and service, the types and barrel it updates and its proof (a react-spa project has no handler: nothing is derived).
+    if (flowId === 'create.handler') return handlerTouches(root, { name: args.name, feature: args.feature, method: args.method, path: args.path, service: args.service, entity: args.entity, fields: args.fields });
     return null;
   } catch {
     return null;

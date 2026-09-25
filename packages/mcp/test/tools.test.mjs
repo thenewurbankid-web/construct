@@ -231,6 +231,36 @@ test('placement_place: shared client state (#630) is a closed offer, q-state, an
   assert.equal(JSON.stringify(asked).includes(root), false, 'path-free like every result');
 }));
 
+test('placement_place: the route handler of a screen\'s endpoint (#625) is a closed offer, q-handler, on a Next.js project only, answered by id and attributed to the client', async () => {
+  const text = 'A user wants to see a list of products';
+  const answers = [{ id: 'q-shape', option: 'list' }, { id: 'q-source', option: 'endpoint' }];
+  const next = await connectInProcess({ root: makeProject({ framework: 'nextjs' }) }, 'claude-code');
+  try {
+    const call2 = (name, args) => callTool(next.client, name, args);
+    const asked = (await call2('placement_place', { text, answers })).body;
+    const offer = asked.offers.find((o) => o.id === 'q-handler');
+    assert.deepEqual([offer.default, offer.options.map((o) => o.id)], ['add-handler', ['add-handler', 'skip']]);
+    assert.deepEqual(asked.handlers, [{ name: 'Products', method: 'GET', path: '/api/products', question: 'q-handler', step: 's8' }]);
+    const step = asked.plan.steps.find((s) => s.flow === 'create.handler');
+    assert.ok(step.files.some((f) => f.path === 'app/api/products/route.ts' && f.change === 'create'), 'the route file it writes is previewed');
+    const skipped = (await call2('placement_place', { text, answers: [...answers, { id: 'q-handler', option: 'skip' }] })).body;
+    assert.deepEqual([skipped.handlers[0].step, skipped.plan.steps.some((s) => s.flow === 'create.handler')], [null, false]);
+    assert.deepEqual(skipped.decisions.at(-1), { question: 'q-handler', option: 'skip', by: 'llm', provider: 'claude-code' });
+    const refused = await call2('placement_place', { text, answers: [...answers, { id: 'q-handler', option: 'nonsense' }] });
+    assert.equal(refused.isError, true, 'an option that was not offered is refused, not replaced');
+    assert.equal(refused.body.error.code, 'PLAN_REFUSED');
+  } finally {
+    await next.close();
+  }
+  const spa = await connectInProcess({ root }, 'claude-code');
+  try {
+    const plain = (await callTool(spa.client, 'placement_place', { text, answers })).body;
+    assert.deepEqual([plain.offers.some((o) => o.id === 'q-handler'), plain.handlers], [false, []], 'a react-spa project has no route handlers: nothing is asked');
+  } finally {
+    await spa.close();
+  }
+});
+
 test('placement_place: an unknown word is a question first, answered by id, then it places', async () => {
   const text = 'A user can frobnicate the widget';
   const open = await call('placement_place', { text });

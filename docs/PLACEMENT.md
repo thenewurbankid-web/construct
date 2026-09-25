@@ -1587,6 +1587,47 @@ choice of the screen's author, and a store shared by several screens belongs to 
 
 **Left out** (MVP): wiring a store into a controller or a page, persistence (localStorage, a server), a provider that shares one store across screens, derived values (totals, filters), undo, and entity fields other than string, number and boolean.
 
+## The route handler: the endpoint a screen calls, served (#625, part of #616)
+
+`create.handler` (`packages/core/handler.mjs`, CLI `construct create handler <Name> --feature f --method GET|POST|PUT|DELETE --path /api/<x> [--service Name] [--entity E] [--fields id:string,...] [--format json]`)
+adds a Next.js App Router route handler, `app/api/<x>/route.ts`, so serving the endpoint a screen calls is an option, not a manual task. Deterministic, no model, writing, idempotent, with derived touches. (The other half of #625, adding a dependency, is
+`add.dependency`, #654.) It refuses a **react-spa** project with `A route handler needs a Next.js project`: a Vite app has no server of its own to answer `/api` requests; nothing is written.
+
+| File | Unit | What it is |
+|---|---|---|
+| `app/api/<x>/route.ts` | the route | imports the domain unit, the service and the types and NOTHING else; the exported method (`GET`, `POST`, `PUT` or `DELETE`) hands the request to the service and answers with the status its typed result maps to; every other method of the four answers a typed JSON 405 with an `Allow` header. No `if`, no `switch`, no `process.env`, no status number: the route holds no business logic (ROUTE-001 and ROUTE-002 are not weakened) and never reads a secret |
+| `domain/<Name>Api.domain.ts` | `to<Name>Http` (`defineDomain`) | pure: `{ result: ApiResult<unknown> } -> { status, body, headers }`: `ready` is 200, `invalid` is 400, `not-allowed` is 405 (with `Allow`), `error` is 500 |
+| `services/<Name>Api.service.ts` | `serve<Name>` (`defineService`) | only without `--service`: a typed in-memory service for the method (GET lists the rows, POST checks the typed body and adds one, PUT replaces one by id, DELETE removes one by `?id=`), starting empty, answering a typed result and never throwing. It is where a database or another server would be called, and where environment variables and secrets are read |
+| `types.ts` | `ApiResult<Body>`, `ApiReply` (and the entity) | appended once (a type that means something else, or an entity declared with other fields, is a refusal) |
+| `tests/generated/<Name>Api.proof.test.ts` | the proof | locked; see below |
+
+With `--service <Name>` the handler delegates to `features/<f>/services/<Name>.service.ts`, to its first `defineService` unit, which is called with `{ input }` (the parsed JSON body; for DELETE the `id` query; `undefined` for GET) and must answer an `ApiResult<unknown>`: the type-check
+names the line when it does not. A service that is not there, or has no unit, is refused. The step also runs the feature's barrel sync. Declared touches: the route, the domain unit and the service (`create`), `types.ts` and `index.ts` (`modify`), the proof and `architecture.yml`.
+`--path` is `/api/` and lower-case segments (a dynamic segment such as `[id]` is a later slice); one route file answers one path, so another method for a path that is already served, or a route file with other content, is a refusal that says to add the method by hand.
+
+**The proof** imports the route and the domain unit and calls them with real `Request` objects (no server): the status of every typed result (200, 400, 405, 500), that the Allow header of a 405 names the method that is answered, that every other method is 405 as typed JSON, and, for a generated
+service, that a good request is answered 200 and a bad one 400. A service you named may do I/O, so the proof does not call it. A failure names the method or the status: `The invalid result: the 400 state is wrong, it reaches 422.`, `POST: the 405 state is wrong, it reaches 200.` (with `Expected`
+and `Received` lines, which the runner classifies as the app behaving differently).
+
+**In the Requirement chain.** With the requirement card handed to `planFromBlocks` (the Requirement API and MCP do), a shaped screen whose data source is `endpoint` on a **Next.js** project calls an `/api/<plural>` path that nothing answers. That is the closed question `q-handler`
+(`q-handler-<name>` for several screens), in the chooser summary shape, two options with stable ids, **the rules default first**:
+
+| Question id | Raised when | Options (stable ids) | Default |
+|---|---|---|---|
+| `q-handler` | Next.js, a card, the shaped screen's source is `endpoint`, its shape is a `list` (method GET), a `form` or a `wizard` (POST), and no route file answers the path | `add-handler` (`Add GET /api/products`), `skip` (`No handler`) | `add-handler` |
+
+An unanswered question uses its default, so it never holds a plan back; an answer that is not an option is the typed error `PLAN_HANDLER_UNAVAILABLE`, never replaced. `skip` plans no step. Otherwise the plan gets a `create.handler` step after the units (`dependsOn` all of them; the step carries the screen's
+entity and fields, so its service holds the same rows) and a read-only `test.proof` step for `<Name>Api.proof.test.ts`, part of `proof.steps` (`<Name>Api`); the type-check waits for the handler. For a source other than `endpoint` (a local store makes no request, an OpenAPI operation is another server's), a
+react-spa project, a path a route file already answers, or a shape a generated handler cannot serve yet (detail and dashboard), nothing is asked; the last two say why in the plan's `notes`. The answer is a decision trace, `requirement.plan.handler`. The Requirement API returns and takes it by id, the screen
+draws it as a **Route handler** card (the same `requirement-plan` card as the route and the verification, no client change beyond its heading), and MCP `placement_place` accepts it, attributed to the client, and returns `handlers` (`{ name, method, path, question, step }`) beside `wiring`.
+The screen and its handler work together: the screen's own service, given what the handler answers, reads an empty list (`ready`, no rows), which the chain test runs.
+
+**Decisions where the issue was silent.** The route imports the feature's files by relative path, because the route entry is not a layer (no rule reads it) and a barrel exports controllers and hooks only. The status mapping lives in a domain unit so the route stays free of logic and the mapping is provable on its own. A generated service is in memory and starts empty
+because a database is out of scope: it is the seam where one goes, and it is typed so the screen that calls it keeps working. PUT and DELETE are generated too (one row by id, one row by `?id=`), because the brief names four methods. A list, a form and a wizard are served; a detail screen calls `/api/<plural>/<id>`, a dynamic
+segment, and a dashboard reads a summary, so they need their own slice.
+
+**Left out** (MVP): dynamic segments (`[id]`), several methods in one route file, a detail or dashboard screen's endpoint, a database or any real data source, authentication on the route (a guard is `guard.route`, #629), `middleware.ts`, and request validation beyond the typed body of a generated service.
+
 ## What is not here yet
 
 The timeline read-back and its Cockpit screen are the Requirement screen (`/requirement`, #642): `toTimeline(placement)` in `ui/client/features/requirement/domain/Timeline.ts` turns the blocks into steps in run order (a slice to move it into core, so the CLI and an LLM read the same steps, is open). Not here yet: a `use client` / `use server` directive in the generated files, and words beyond the lexicon. Each is a slice of #616.

@@ -37,6 +37,7 @@ import { secretsOfCard, envOffers, ENV_FILE } from './env.mjs';
 import { verifyOffer, VERIFY_QUESTION_ID } from './verify.mjs';
 import { accessOffer, ACCESS_QUESTION_ID } from './guard.mjs';
 import { stateNounsOf, stateOffer, STATE_QUESTION_ID } from './store.mjs';
+import { handlerOffer, HANDLER_QUESTION_ID } from './handler.mjs';
 
 /** The schema version string of a placement result. */
 export const PLACEMENT_VERSION = 'placement.v1';
@@ -119,6 +120,7 @@ export const PLACEMENT_ERROR_CODES = Object.freeze({
   PLAN_STATES_UNAVAILABLE: 'PLAN_STATES_UNAVAILABLE',
   PLAN_ACCESS_UNAVAILABLE: 'PLAN_ACCESS_UNAVAILABLE',
   PLAN_STATE_UNAVAILABLE: 'PLAN_STATE_UNAVAILABLE',
+  PLAN_HANDLER_UNAVAILABLE: 'PLAN_HANDLER_UNAVAILABLE',
   PLAN_DECISIONS_INVALID: 'PLAN_DECISIONS_INVALID',
   PLAN_TOUCHES_UNKNOWN: 'PLAN_TOUCHES_UNKNOWN',
   PLAN_INVALID: 'PLAN_INVALID',
@@ -924,12 +926,14 @@ const statesArg = (states) => (states && states !== DEFAULT_STATES ? { states } 
  * `guard.route` step after the route step and a `test.proof` step for the guard's proof; `guards` lists each screen's access and step.
  * A card with a state noun that is not a session ("selected items", "shopping cart") asks `q-state` (`q-state-<name>`: store-value | store-list | store-keyed | skip, a list for a plural, a selection or a store) and adds a
  * `create.store` step after the units and a `test.proof` step for its proof; `stores` lists each store and its step (#630).
+ * On a Next.js project a shaped screen whose data source is `endpoint` (a list, form or wizard) asks `q-handler` (`q-handler-<name>`: add-handler | skip, default add) and, when added, gets a `create.handler` step after
+ * the units (the route handler that serves the endpoint the screen calls, backed by a typed in-memory service) and a `test.proof` step for its proof; `handlers` lists each one and its step (#625).
  *
  * @param {{ feature: string, root: string, title?: string, decisions?: PlacementDecision[], proof?: boolean, wire?: boolean, verify?: boolean, card?: object, answers?: Record<string, string | { option: string }> }} options The feature the units go in, the
  *   project root (its architecture.yml decides the folders), an optional ticket title, the attribution to carry, `proof: false` to leave
  *   the proof steps out of a shaped plan (default: they are planned), `wire: false` to leave out the wiring, the environment variables and the verification, `verify: false` to
  *   leave out only the verification, `card` (the requirement card the blocks came from) to name the environment variables its checks call for, and `answers` to the closed questions of the plan.
- * @returns {{ ok: true, plan: object, decisions: PlacementDecision[], files: Record<string, string[]>, proof: object | null, offers: object[], wiring: object | null, env: { variable: string, scope: string, question: string, step: string | null }[], guards: { name: string, access: string, roles: string[], question: string, step: string | null }[], stores: { name: string, noun: string, shape: string | null, question: string, step: string | null }[], verify: { types: string | null, build: string | null } | null, notes: string[], warnings: string[], errors: [] } | { ok: false, plan: null, decisions: [], files: {}, errors: PlacementError[] }}
+ * @returns {{ ok: true, plan: object, decisions: PlacementDecision[], files: Record<string, string[]>, proof: object | null, offers: object[], wiring: object | null, env: { variable: string, scope: string, question: string, step: string | null }[], guards: { name: string, access: string, roles: string[], question: string, step: string | null }[], stores: { name: string, noun: string, shape: string | null, question: string, step: string | null }[], handlers: { name: string, method: string, path: string, question: string, step: string | null }[], verify: { types: string | null, build: string | null } | null, notes: string[], warnings: string[], errors: [] } | { ok: false, plan: null, decisions: [], files: {}, errors: PlacementError[] }}
  *   The plan, who decided what, the files per block and the proof of the chain, or every problem found.
  *
  * @example
@@ -1083,6 +1087,30 @@ export function planFromBlocks(blocks, options = {}) {
       storePlan.push({ name: target.name, noun: target.noun, shape: off.shape, question: sid, step: storeStep });
     }
   }
+  // #625: a shaped screen whose data source is `endpoint` calls an /api path nothing in the project answers. On a Next.js project that is a closed question (`q-handler`, or `q-handler-<name>` for
+  // several screens: add-handler | skip, default add): the route handler `app/api/<x>/route.ts` that serves the endpoint the screen calls (a list reads it with GET, a form and a wizard POST to it),
+  // backed by a typed in-memory service. Not asked for another source, another framework, a shape a generated handler cannot serve yet (a note says so) or a path a route file already answers.
+  const handlerPlan = [];
+  if (opts.wire !== false && isPlainObject(opts.card)) {
+    const served = new Set();
+    const named = [...new Set(ordered.filter((u) => u.shape).map((u) => u.name))];
+    for (const name of named) {
+      const { shape } = ordered.find((u) => u.name === name && u.shape);
+      const endpointPath = SHAPES[shape.name].endpoint(name, shape.entity);
+      const hid = named.length === 1 ? HANDLER_QUESTION_ID : `${HANDLER_QUESTION_ID}-${routePathOf(name).slice(1)}`;
+      const off = handlerOffer(opts.root, { id: hid, name, shape: shape.name, source: sourceOf.get(name), path: endpointPath, answer: answers[hid] });
+      if (off.note) notes.push(off.note);
+      if (!off.question) continue;
+      offers.push(off.question);
+      record(off.question, answers[hid]);
+      if (off.refused) push('PLAN_HANDLER_UNAVAILABLE', `answers.${hid}`, off.refused);
+      const key = `${off.method} ${endpointPath}`;
+      if (off.add && served.has(key)) { notes.push(`${key} is already served by another handler of this plan, so ${name} has none of its own.`); continue; }
+      const handlerStep = off.add ? add('create.handler', `Serve ${key}`, { name, feature: opts.feature, method: off.method, path: endpointPath, entity: shape.entity, fields: shape.fields }, [...stepOf.values()].sort(idOrder), `The ${name} screen calls ${endpointPath}, which nothing in the project answers yet: a route handler that hands the request to a typed service and answers with the status of its typed result.`) : null;
+      if (handlerStep) served.add(key);
+      handlerPlan.push({ name, method: off.method, path: endpointPath, question: hid, step: handlerStep });
+    }
+  }
   const envPlan = [];
   if (opts.wire !== false && isPlainObject(opts.card)) {
     const secrets = secretsOfCard(opts.card);
@@ -1147,7 +1175,7 @@ export function planFromBlocks(blocks, options = {}) {
     offers.push(v.question);
     record(v.question, answers[VERIFY_QUESTION_ID]);
     verification = { types: null, build: null };
-    const upTo = [...new Set([...stepOf.values(), ...wiringSteps, ...storePlan.map((st) => st.step).filter(Boolean)])].sort(idOrder);
+    const upTo = [...new Set([...stepOf.values(), ...wiringSteps, ...storePlan.map((st) => st.step).filter(Boolean), ...handlerPlan.map((h) => h.step).filter(Boolean)])].sort(idOrder);
     if (v.types) verification.types = add('check.types', 'Type-check the project', {}, upTo, 'Read-only: a pass, or the errors grouped by file and what kind they are (a missing import, an unknown name, a type mismatch). Runs after the route is wired, so a dangling import shows here.');
     if (v.build) verification.build = add('check.build', 'Build the project', {}, [verification.types].filter(Boolean), 'Read-only: runs the build script and says whether it passed, or the first compile errors. Nothing is installed.');
   }
@@ -1172,6 +1200,12 @@ export function planFromBlocks(blocks, options = {}) {
         const run = add('test.run', `Run the browser flow of ${name}`, { feature: opts.feature, name: `${slug}--screen.spec.ts`, area: 'generated' }, [flow, verify], 'Needs the app running (see --base-url); read-only.');
         proofSteps.push({ name, kind: 'playwright', proofStep: flow, verifiedBy: run });
       }
+    }
+    // #625: a route handler is proven like a screen: its own locked proof (written by the handler step) and a read-only run of it, part of the chain.
+    for (const h of handlerPlan) {
+      if (!h.step) continue;
+      const verify = add('test.proof', `Run the proof of the ${h.name} handler`, { feature: opts.feature, name: `${h.name}Api.proof.test.ts` }, [h.step], 'Read-only: the status of every typed result, a typed 405 for every other method, and a good and a bad request against the service.');
+      proofSteps.push({ name: `${h.name}Api`, kind: 'render', proofStep: h.step, verifiedBy: verify });
     }
     // #630: a store is proven like a screen: its own locked proof (written by the store step) and a read-only run of it, part of the chain.
     for (const st of storePlan) {
@@ -1211,7 +1245,7 @@ export function planFromBlocks(blocks, options = {}) {
   const proof = proofSteps.length
     ? { required: true, complete: false, state: 'pending', steps: proofSteps, verifiedBy: proofSteps.map((p) => p.verifiedBy), playwright: { configured: playwrightConfig !== null, config: playwrightConfig, skipped: playwrightNote } }
     : null;
-  return { ok: true, plan, decisions: [...decisions.map((d) => ({ ...d })), ...wiringDecisions], files, proof, offers, wiring, env: envPlan, guards: guardPlan, stores: storePlan, verify: verification, notes, warnings, errors: [] };
+  return { ok: true, plan, decisions: [...decisions.map((d) => ({ ...d })), ...wiringDecisions], files, proof, offers, wiring, env: envPlan, guards: guardPlan, stores: storePlan, handlers: handlerPlan, verify: verification, notes, warnings, errors: [] };
 }
 
 // ---------------------------------------------------------------------------------------------------------------- summary

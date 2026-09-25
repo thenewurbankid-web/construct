@@ -25,7 +25,7 @@ import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { pascalCase, selfCheck } from './generators.mjs';
 import { write } from './fs.mjs';
 import { syncPublicApi } from './api-composer.mjs';
-import { assertFeature, featureDirOf, withDeclarations, writeOwned } from './block-kit.mjs';
+import { assertFeature, entityFieldsIn, featureDirOf, withDeclarations, writeOwned } from './block-kit.mjs';
 import { STORE_SHAPES, storeArgIssue } from './block-args.mjs';
 import { EXPECT_LINES, blockProofTouches, proofHeader, writeBlockProof } from './block-proof.mjs';
 import { FIELD_TYPES, importLine, lines, lowerFirst, sampleRows, tsLiteral, words } from './shape-kit.mjs';
@@ -392,14 +392,6 @@ export function generateStore(root, request) {
   if (wrote.regions.length) changed.push('architecture.yml');
   selfCheck(root, units.map((u) => u.path));
   return { changed: changed.length > 0, files: changed, hook: ctx.names.hook, shape: ctx.shape };
-}
-
-/** The fields of an `export interface <Entity> { ... }` already in `types.ts`, as `name:type` pairs joined by commas, or `null` when it is not declared (or is not a plain interface). */
-function entityFieldsIn(source, entity) {
-  const m = new RegExp(`export\\s+interface\\s+${entity}\\s*\\{([^}]*)\\}`).exec(source);
-  if (!m) return null;
-  const pairs = [...m[1].matchAll(/^\s*([A-Za-z_]\w*)\s*:\s*([A-Za-z]+)\s*;/gm)].map((x) => `${x[1]}:${x[2]}`);
-  return pairs.join(',');
 }
 
 // ---------------------------------------------------------------------------------------------------------------- the question

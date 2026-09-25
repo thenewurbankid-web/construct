@@ -33,7 +33,7 @@
 import path from 'node:path';
 import { validateEnvelope } from '../../packages/engine/envelope.mjs';
 import { envArgIssue, ENV_SCOPES } from './env.mjs';
-import { GUARD_ACCESS, STORE_SHAPES, guardArgIssue, storeArgIssue } from './block-args.mjs';
+import { GUARD_ACCESS, HANDLER_METHODS, STORE_SHAPES, guardArgIssue, handlerArgIssue, storeArgIssue } from './block-args.mjs';
 
 export const PLAN_VERSION = 1;
 
@@ -376,6 +376,22 @@ export const PLAN_FLOWS = Object.freeze({
       name: { type: 'string', required: true, positional: 0, description: 'The store, PascalCase: Cart gives useCartState, reduceCart and CartState.' },
       feature: { type: 'string', required: true, flag: '--feature' },
       shape: { type: 'string', required: true, flag: '--shape', enum: [...STORE_SHAPES], description: 'value (one value: set, clear), list (a list with a selection: add, remove, select, clear) or keyed (a map by id: set, remove, clear).' },
+      entity: ENTITY_ARG,
+      fields: FIELDS_ARG,
+      dir: DIR_ARG,
+    },
+  },
+  'create.handler': {
+    cli: ['create', 'handler'],
+    summary: 'Add a Next.js App Router route handler (#625): app/api/<x>/route.ts with the method, the path and the service it delegates to. The route holds no business logic: the exported method hands the request to the service and answers with the status its typed result maps to (200, 400, 405, 500, decided in a domain unit); every other method is a typed 405 with an Allow header; it never reads a secret (the service does). Without --service a typed in-memory service is written. Refuses, with the reason, a react-spa project (a handler needs a Next.js project). Idempotent. Zero-LLM.',
+    writes: true,
+    executors: ['deterministic', 'user'],
+    args: {
+      name: { type: 'string', required: true, positional: 0, description: 'The handler, PascalCase (Products gives toProductsHttp and serveProducts).' },
+      feature: { type: 'string', required: true, flag: '--feature' },
+      method: { type: 'string', required: true, flag: '--method', enum: [...HANDLER_METHODS], description: 'The HTTP method the route answers; every other method is a 405.' },
+      path: { type: 'string', required: true, flag: '--path', description: 'The path of the endpoint, starting with /api/ and lower-case segments (/api/products).' },
+      service: { type: 'string', flag: '--service', description: 'The service unit to delegate to, PascalCase (services/<Name>.service.ts, its first defineService unit, called with { input }). Omit it and a typed in-memory service is written.' },
       entity: ENTITY_ARG,
       fields: FIELDS_ARG,
       dir: DIR_ARG,
@@ -850,6 +866,10 @@ function validateStep(step, index, seenIds, push) {
     if (step.flow === 'create.store') {
       const issue = storeArgIssue(step.args);
       if (issue && issue.arg !== 'shape') push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.${issue.arg}`, issue.message); // a bad or missing shape is the enum's and the required check's to report
+    }
+    if (step.flow === 'create.handler') {
+      const issue = handlerArgIssue(step.args);
+      if (issue && issue.arg !== 'method') push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.${issue.arg}`, issue.message); // a bad or missing method is the enum's and the required check's to report
     }
     if (step.flow === 'check.types' && typeof step.args.feature === 'string' && !/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(step.args.feature)) {
       push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.feature`, 'A feature name uses letters, digits, "_" and "-" only.');

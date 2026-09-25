@@ -169,6 +169,18 @@ test('#630: the q-state answer is a decision trace of its own (the offer as show
   assert.equal(JSON.stringify(traces()).includes(root), false, 'no project path in a trace');
 });
 
+test('#625: the q-handler answer is a decision trace of its own (the offer as shown, the rules suggestion, accepted or not, the plan validated)', async () => {
+  fresh();
+  const answers = [{ id: 'q-shape', option: 'list' }, { id: 'q-source', option: 'endpoint' }];
+  await post({ text: LIST, answers });
+  assert.equal(traces().decisions.some((d) => d.chooser.id === 'requirement.plan.handler'), false, 'asked, not answered: nothing is recorded');
+  await post({ text: LIST, answers: [...answers, { id: 'q-handler', option: 'skip' }] });
+  const handler = traces().decisions.find((d) => d.chooser.id === 'requirement.plan.handler');
+  assert.deepEqual([handler.chosen, handler.by, handler.options, handler.summary.id, handler.summary.chosen], ['skip', 'person', ['add-handler', 'skip'], 'q-handler', null]);
+  assert.deepEqual([handler.suggestion.option, handler.outcome], ['add-handler', { accepted: false, planValidated: true }], 'the rules suggested adding it; the person chose otherwise');
+  assert.equal(JSON.stringify(traces()).includes(root), false, 'no project path in a trace');
+});
+
 test('a placement question is recorded too (a server check with no server block), with the question AS OFFERED', async () => {
   fresh();
   await post({ text: 'A user can click a button safely.', answers: [{ id: 'q-server', option: 'mutation' }] });

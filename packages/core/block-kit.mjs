@@ -106,3 +106,20 @@ export function writeOwned(root, files) {
   }
   return { written, unchanged };
 }
+
+/**
+ * The fields of an `export interface <Entity> { ... }` already in a `types.ts` text, as `name:type` pairs joined by commas, or `null` when the entity is not declared (or is not a plain interface).
+ * A block that needs the entity compares this with the fields it was asked for, so it never builds on a type that has other fields.
+ *
+ * @param {string} source The text of `types.ts`.
+ * @param {string} entity The entity's name.
+ * @returns {string | null} `id:string,name:string`, or `null`.
+ *
+ * @example
+ * entityFieldsIn('export interface Item {\n  id: string;\n}\n', 'Item'); // => 'id:string'
+ */
+export function entityFieldsIn(source, entity) {
+  const m = new RegExp(`export\\s+interface\\s+${entity}\\s*\\{([^}]*)\\}`).exec(source);
+  if (!m) return null;
+  return [...m[1].matchAll(/^\s*([A-Za-z_]\w*)\s*:\s*([A-Za-z]+)\s*;/gm)].map((x) => `${x[1]}:${x[2]}`).join(',');
+}

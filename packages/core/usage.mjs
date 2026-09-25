@@ -174,6 +174,12 @@ Commands:
     set, clear; list with a selection: add, remove, select, clear; keyed by id: set, remove, clear); a pure reducer in domain/ and a hook use<Name>State built
     on useTrackedState, one function per action through the reducer; a locked proof that drives the reducer and the real hook and fails naming the action;
     refuses, with the reason, an existing file with other content; idempotent; deterministic, no LLM)
+  construct create handler <Name> --feature <feature> --method GET|POST|PUT|DELETE --path /api/<x> [--service <Name>] [--entity <Entity>] [--fields id:string,...] [--dir <path>]
+    (adds a Next.js App Router route handler, app/api/<x>/route.ts: the exported method hands the request to the service and answers with the status of its
+    typed result (200, 400, 405 or 500, decided in a domain unit, never in the route), every other method is a typed JSON 405 with an Allow header, and the
+    route never reads a secret (the service does); without --service a typed in-memory service is written, with --service <Name> the handler delegates to
+    that service's first defineService unit; a locked proof; refused, with the reason, for a react-spa project (a handler needs a Next.js project) and for a
+    route file that exists with other content; idempotent; deterministic, no LLM)
   construct create dependency <package> --version <range> [--dir <path>]
     (adds one line to the dependencies of package.json, for example @line/construct-core, which the generated typed units import;
     never runs a package manager; idempotent; deterministic, no LLM)

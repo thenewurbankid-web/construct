@@ -150,6 +150,22 @@ test('q-state is drawn as a plan card titled Client state: the store options kee
   assert.deepEqual(withAnswer([], { id: 'q-state', source: 'plan' }, 'skip'), [{ id: 'q-state', option: 'skip' }]);
 });
 
+// #625: the route handler of a screen's endpoint is one more closed question of the plan: the client only titles it (Route handler); it is asked on a Next.js project once the source is `endpoint`.
+test('q-handler is drawn as a plan card titled Route handler, with the server words for its two options', () => {
+  const built = (answers) => {
+    const card = parseRequirement(PRODUCTS).card;
+    const placement = placeCard(card, { framework: 'nextjs', answers: { 'q-shape': 'list' } });
+    const planned = planFromBlocks(placement.blocks, { feature: 'products', root: process.cwd(), decisions: placement.decisions, answers, card });
+    return { card, placement: { ...placement, decisions: planned.decisions }, plan: planned.plan, files: planned.files, open: [], offers: [...placement.offers, ...planned.offers.map((q) => ({ ...q, source: 'plan' }))], warnings: [], summary: { readBack: [], blocks: [] } };
+  };
+  const handler = shapeView(built({ 'q-source': 'endpoint' })).result.offers.find((o) => o.id === 'q-handler');
+  assert.deepEqual([handler.kind, handler.heading, handler.options.map((o) => [o.id, o.label, o.suggested])], ['plan', 'Route handler', [['add-handler', 'Add GET /api/products', true], ['skip', 'No handler', false]]]);
+  assert.equal(handler.status, "Not chosen yet, so the plan below uses the rules' default: add GET /api/products.");
+  const chosen = shapeView(built({ 'q-source': 'endpoint', 'q-handler': { option: 'skip', by: 'person' } })).result.offers.find((o) => o.id === 'q-handler');
+  assert.deepEqual([chosen.status, chosen.decidedBy], ['Chosen: No handler. Decided by: person.', 'person']);
+  assert.deepEqual(withAnswer([], { id: 'q-handler', source: 'plan' }, 'skip'), [{ id: 'q-handler', option: 'skip' }]);
+});
+
 test('a decision made by the rules names its provider; an option the table does not know keeps the server words', () => {
   const r = shapeResult({ 'q-shape': { option: 'list', by: 'decision-model', provider: 'rules' } });
   assert.equal(shapeView(r).result.offers[0].decidedBy, 'decision-model (rules)');

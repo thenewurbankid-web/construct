@@ -356,6 +356,30 @@ test('#630: q-state is returned and answerable; the store is a step of the plan 
   assert.equal((await post({ text: 'A user wants to see a list of products', answers: [shape] })).body.offers.some((q) => q.id === 'q-state'), false, 'no state noun, nothing to ask');
 });
 
+// #625 -- the handler that serves the endpoint a shaped screen calls is a closed question of the plan (`q-handler`), on a Next.js project, once the data source is `endpoint`: the rules default is to add it,
+// an answer is a plan step (`create.handler`) or none (skip), the handler is part of the proof chain, and an option that was not offered is refused, never replaced.
+test('#625: q-handler is returned and answerable once the screen reads an endpoint; the handler is a step of the plan and of its proof; skip removes it', async () => {
+  const sentence = 'A user wants to see a list of products';
+  const shape = { id: 'q-shape', option: 'list' };
+  const endpoint = { id: 'q-source', option: 'endpoint' };
+  assert.equal((await post({ text: sentence, answers: [shape] })).body.offers.some((q) => q.id === 'q-handler'), false, 'the rules default source is local, which makes no request: nothing to serve');
+  const asked = (await post({ text: sentence, answers: [shape, endpoint] })).body;
+  const handler = asked.offers.find((q) => q.id === 'q-handler');
+  assert.deepEqual([handler.source, handler.default, handler.chosen, handler.options.map((o) => [o.id, o.label])], ['plan', 'add-handler', null, [['add-handler', 'Add GET /api/products'], ['skip', 'No handler']]]);
+  assert.equal(asked.suggestions['q-handler'].option, 'add-handler', 'the decision provider suggests on it like on every other offer');
+  const step = asked.plan.steps.find((st) => st.flow === 'create.handler');
+  assert.deepEqual(step.args, { name: 'Products', feature: 'products', method: 'GET', path: '/api/products', entity: 'Product', fields: 'id:string,name:string,price:number' });
+  assert.ok(step.touches.files.some((f) => f.path === 'app/api/products/route.ts' && f.change === 'create'), 'the step declares the route file it writes');
+  assert.ok(asked.proof.steps.some((p) => p.name === 'ProductsApi'), 'the handler is proven too');
+  assert.deepEqual(asked.open, [], 'the question never blocks the plan');
+  const skipped = (await post({ text: sentence, answers: [shape, endpoint, { id: 'q-handler', option: 'skip' }] })).body;
+  assert.equal(skipped.plan.steps.some((st) => st.flow === 'create.handler'), false);
+  assert.deepEqual(skipped.placement.decisions.at(-1), { question: 'q-handler', option: 'skip', by: 'person' });
+  const refused = (await post({ text: sentence, answers: [shape, endpoint, { id: 'q-handler', option: 'nonsense' }] })).body;
+  assert.deepEqual([refused.placement.ok, refused.plan, refused.placement.errors.map((e) => e.code)], [false, null, ['PLAN_HANDLER_UNAVAILABLE']]);
+  assert.equal(JSON.stringify(asked).includes(root), false, 'no server path leaves the server');
+});
+
 // #621 -- where a shaped screen reads its data from is a closed question beside the plan (`q-source`), drawn by the client like q-shape:
 // answered by the same { id, option }, recorded like the others, never holding Approve back, and an option that was not offered is refused.
 test('a shaped screen is offered its data source; the rules default is local, or the OpenAPI operation when the project has one; answering changes the units', async () => {

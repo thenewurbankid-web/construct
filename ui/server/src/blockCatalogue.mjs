@@ -122,6 +122,12 @@ export const BLOCK_DOCS = Object.freeze({
     writes: 'The entity, a state and its typed actions in the feature\'s types, a pure reducer, a hook with one function per action, and a locked proof that names the action that is wrong.',
     example: { title: 'Keep the selected items in a store', args: { name: 'SelectedItems', feature: 'products', shape: 'list', entity: 'Product', fields: 'id:string,name:string' } },
   },
+  'create.handler': {
+    purpose: 'Add a Next.js route handler that hands the request to a service and answers with a status from its typed result.',
+    reads: 'The feature\'s types, the service you name (or none), and the project\'s framework: only Next.js has route handlers.',
+    writes: 'The route file (app/api/.../route.ts), a domain unit that maps results to 200, 400, 405 or 500, an in-memory service when you name none, and a locked proof.',
+    example: { title: 'Serve GET /api/products', args: { name: 'Products', feature: 'products', method: 'GET', path: '/api/products' } },
+  },
   'import.unit': {
     purpose: 'Bring one existing file into a feature as Construct layers, each with a note pointing back to it.',
     reads: 'The existing file you name; it may live outside the project.',
