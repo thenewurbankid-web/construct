@@ -25,7 +25,7 @@ One JSON object per line, keys sorted, no whitespace:
 | `version` | `decision-trace.v1` |
 | `id` | `dt-` and 24 hex characters: a hash of `chooser`, `summary`, `chosen`, `by` and the provider name. Never random, never the time, so the same decision is the same record. What a provider suggested is not part of it. |
 | `at` | ISO time, **supplied by the caller**; the pure functions never read a clock |
-| `chooser` | `{ id, question }`. Card questions: `requirement.card.noun` / `.verb`. Placement: `requirement.placement.ambiguity` / `.check` / `.server-check` / `.shape`. The wiring of a shaped plan (#654, `choicesFromWiring`): `requirement.plan.route` / `.dependency`. A chain: the chooser's own id. |
+| `chooser` | `{ id, question }`. Card questions: `requirement.card.noun` / `.verb`. Placement: `requirement.placement.ambiguity` / `.check` / `.server-check` / `.shape`. The wiring of a shaped plan (#654, `choicesFromWiring`): `requirement.plan.route` / `.dependency` / `.source` (#621, where a shaped screen reads its data from). A chain: the chooser's own id. |
 | `summary` | the fixed-size, path-free object that was **offered** (`chooserSummary`, or a card or placement question), with `chosen: null`. Replaying it through a provider is "what would it say with the same input". At most 16 KiB. |
 | `options` | the 2-5 option ids of the summary, in order |
 | `chosen` | one of `options`, or `exit` (a chooser's manual exit) |

@@ -160,7 +160,7 @@ test('answering the offer applies the shape to the blocks, records who decided, 
   assert.deepEqual(answered.decisions, [{ question: 'q-shape', option: 'detail', by: 'decision-model', provider: 'rules' }]);
   assert.equal(answered.offers[0].chosen, 'detail');
   assert.equal(offer.unit, 'Product');
-  assert.match(answered.notes[1], /The detail shape fetches \/api\/products\/<id> from the browser/);
+  assert.match(answered.notes[1], /The detail shape reads one item by id through a service: choose where it comes from \(q-source: a local store, the endpoint \/api\/products\/<id>, or an OpenAPI operation\)/);
   assert.match(answered.notes[1], /The plan wires the route entry, runs sync/);
   const scaffold = placed(SENTENCE, { answers: { 'q-shape': 'scaffold' } });
   assert.deepEqual(scaffold.blocks, first.blocks, 'choosing the scaffold is the plain plan');

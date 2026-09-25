@@ -277,7 +277,7 @@ test('answering the offer applies the shape: blocks carry it, the attribution is
   assert.ok(listed.blocks.every((b) => b.shape.name === 'list' && b.shape.entity === 'Product' && b.shape.fields === 'id:string,name:string,price:number'));
   assert.deepEqual(listed.decisions, [{ question: 'q-shape', option: 'list', by: 'decision-model', provider: 'rules' }]);
   assert.equal(listed.notes.length, 2);
-  assert.match(listed.notes[1], /fetches \/api\/products from the browser: serve that endpoint .* The plan wires the route entry, runs sync/, '#654: the route entry is no longer a by-hand note');
+  assert.match(listed.notes[1], /reads its rows through a service: choose where they come from \(q-source: .*\)\. The plan wires the route entry, runs sync/, '#654: the route entry is no longer a by-hand note');
   assert.deepEqual(blockSummary(listed).lines, ['"see list products" is a list fetched by a service (domain, service, hook, controller).', '"see list products" shows that list from props (component, page).']);
   assert.deepEqual(placeCard(card, { framework: 'nextjs', answers: { 'q-shape': 'list' } }).blocks.map((b) => b.layers.length), [4, 2], 'the app-router layer table is not used: the shape fetches in the browser');
 
@@ -307,9 +307,10 @@ test('the plan of a list-shaped card is valid, every step carries the shape, and
   assert.deepEqual(stepOf('page').dependsOn, ['s1', 's2', 's5'], 'the page waits for the domain (its types) and the component');
   assert.deepEqual(stepOf('controller').dependsOn, ['s1', 's4', 's6']);
   assert.deepEqual(planned.decisions, placed.decisions);
-  assert.equal(planned.files.b1.length + planned.files['b1-view'].length, 10, 'the files of the two blocks are the ten of the shape');
+  assert.equal(planned.files.b1.length + planned.files['b1-view'].length, 11, 'the files of the two blocks are the ten of the shape and the local store (#621: an unanswered q-source is the rules default, local, in a project with no OpenAPI file)');
+  assert.ok(planned.plan.steps.slice(1, 1 + LAYERS.length).every((s) => s.args.source === 'local'), 'every unit of the screen carries the source it was planned with');
   assert.ok(planned.files.b1.includes('features/shop/types.ts'));
-  assert.deepEqual(planned.plan.steps[1].touches.files.map((f) => f.change), ['create', 'modify']);
+  assert.deepEqual(planned.plan.steps[1].touches.files.map((f) => f.change), ['create', 'create', 'modify'], 'the domain unit, the local store, and types.ts');
 
   // A block with a malformed shape is refused by name, not planned.
   const broken = planFromBlocks(placed.blocks.map((b) => ({ ...b, shape: { name: 'grid', entity: 'X', fields: 'id:string' } })), { feature: 'shop', root: dir });

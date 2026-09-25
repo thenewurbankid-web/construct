@@ -4,7 +4,7 @@
 //   choiceFromCardQuestion(card, item, option, by)      one answered open question of a requirement card (requirement-card.mjs)
 //   choicesFromPlacement(card, placeOptions, placement) the `decisions` of a `placeCard` result, each with the question AS IT
 //                                                       WAS OFFERED (placement.mjs: open questions and the `q-shape` offer)
-//   choicesFromWiring(planned)                          the answered `q-route` and `q-dependency` of a `planFromBlocks` result (#654)
+//   choicesFromWiring(planned)                          the answered `q-route`, `q-dependency` and `q-source` of a `planFromBlocks` result (#654, #621)
 //   choiceFromProofOptions(feature, summary, chosen, by) what a person did about the proof of a screen (#653): the closed options of
 //                                                       `proofSummary` (proof.mjs) as offered, and the one chosen (run or skip)
 //
@@ -88,10 +88,10 @@ export function choicesFromPlacement(card, placeOptions, placement) {
 }
 
 /**
- * The trace chooser id of a wiring question of a shaped plan (#654): `q-dependency` and `q-route` (or `q-route-<name>`).
+ * The trace chooser id of a wiring question of a shaped plan (#654, #621): `q-dependency`, `q-route` (or `q-route-<name>`) and `q-source` (or `q-source-<name>`).
  *
  * @param {string} questionId A wiring question id.
- * @returns {string} `requirement.plan.dependency`, `requirement.plan.route` or `requirement.plan.other`.
+ * @returns {string} `requirement.plan.dependency`, `requirement.plan.route`, `requirement.plan.source` or `requirement.plan.other`.
  *
  * @example
  * wiringChooserId('q-route'); // => 'requirement.plan.route'
@@ -99,11 +99,12 @@ export function choicesFromPlacement(card, placeOptions, placement) {
 export function wiringChooserId(questionId) {
   if (questionId === 'q-dependency') return 'requirement.plan.dependency';
   if (/^q-route(-|$)/.test(questionId)) return 'requirement.plan.route';
+  if (/^q-source(-|$)/.test(questionId)) return 'requirement.plan.source';
   return 'requirement.plan.other';
 }
 
 /**
- * The choices behind the wiring of a shaped plan: each answered `q-route` / `q-dependency` of a `planFromBlocks` result, with the
+ * The choices behind the wiring of a shaped plan: each answered `q-route` / `q-dependency` / `q-source` of a `planFromBlocks` result, with the
  * question as it was offered (`chosen` null, paths hidden) and the attribution it was answered with. An unanswered question records
  * nothing (its default was applied, nobody chose).
  *

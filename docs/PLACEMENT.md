@@ -671,16 +671,16 @@ The twelve commands the plan runs (each is a step `planToCommand` turns into a r
 ```json
 [
   "construct create feature products",
-  "construct create domain Products --feature products --shape list --entity Product --fields id:string,name:string,price:number",
-  "construct create service Products --feature products --shape list --entity Product --fields id:string,name:string,price:number",
-  "construct create hook Products --feature products --shape list --entity Product --fields id:string,name:string,price:number",
-  "construct create component Products --feature products --shape list --entity Product --fields id:string,name:string,price:number",
-  "construct create page Products --feature products --shape list --entity Product --fields id:string,name:string,price:number",
-  "construct create controller Products --feature products --shape list --entity Product --fields id:string,name:string,price:number",
+  "construct create domain Products --feature products --shape list --entity Product --fields id:string,name:string,price:number --source local",
+  "construct create service Products --feature products --shape list --entity Product --fields id:string,name:string,price:number --source local",
+  "construct create hook Products --feature products --shape list --entity Product --fields id:string,name:string,price:number --source local",
+  "construct create component Products --feature products --shape list --entity Product --fields id:string,name:string,price:number --source local",
+  "construct create page Products --feature products --shape list --entity Product --fields id:string,name:string,price:number --source local",
+  "construct create controller Products --feature products --shape list --entity Product --fields id:string,name:string,price:number --source local",
   "construct create dependency @line/construct-core --version ^0.9.0",
   "construct sync",
   "construct create route Products --feature products --route /products",
-  "construct create proof Products --feature products --shape list --entity Product --fields id:string,name:string,price:number --kind render",
+  "construct create proof Products --feature products --shape list --entity Product --fields id:string,name:string,price:number --source local --kind render",
   "construct test proof products --name ProductsScreen.proof.test.ts"
 ]
 ```
@@ -692,6 +692,7 @@ The files each step declares (`touches`) and writes, by block (the approval gate
 {
   "b1": [
     "features/products/domain/Products.domain.ts",
+    "features/products/domain/ProductsStore.domain.ts",
     "features/products/types.ts",
     "features/products/services/Products.service.ts",
     "features/products/hooks/useProducts.state.ts",
@@ -776,16 +777,16 @@ answered `detail` (by the rules provider) gives twelve commands; the files are d
 ```json
 [
   "construct create feature product",
-  "construct create domain Product --feature product --shape detail --entity Product --fields id:string,name:string,price:number",
-  "construct create service Product --feature product --shape detail --entity Product --fields id:string,name:string,price:number",
-  "construct create hook Product --feature product --shape detail --entity Product --fields id:string,name:string,price:number",
-  "construct create component Product --feature product --shape detail --entity Product --fields id:string,name:string,price:number",
-  "construct create page Product --feature product --shape detail --entity Product --fields id:string,name:string,price:number",
-  "construct create controller Product --feature product --shape detail --entity Product --fields id:string,name:string,price:number",
+  "construct create domain Product --feature product --shape detail --entity Product --fields id:string,name:string,price:number --source local",
+  "construct create service Product --feature product --shape detail --entity Product --fields id:string,name:string,price:number --source local",
+  "construct create hook Product --feature product --shape detail --entity Product --fields id:string,name:string,price:number --source local",
+  "construct create component Product --feature product --shape detail --entity Product --fields id:string,name:string,price:number --source local",
+  "construct create page Product --feature product --shape detail --entity Product --fields id:string,name:string,price:number --source local",
+  "construct create controller Product --feature product --shape detail --entity Product --fields id:string,name:string,price:number --source local",
   "construct create dependency @line/construct-core --version ^0.9.0",
   "construct sync",
   "construct create route Product --feature product --route /product",
-  "construct create proof Product --feature product --shape detail --entity Product --fields id:string,name:string,price:number --kind render",
+  "construct create proof Product --feature product --shape detail --entity Product --fields id:string,name:string,price:number --source local --kind render",
   "construct test proof product --name ProductScreen.proof.test.ts"
 ]
 ```
@@ -795,6 +796,7 @@ answered `detail` (by the rules provider) gives twelve commands; the files are d
 {
   "b1": [
     "features/product/domain/Product.domain.ts",
+    "features/product/domain/ProductStore.domain.ts",
     "features/product/types.ts",
     "features/product/services/Product.service.ts",
     "features/product/hooks/useProduct.state.ts",
@@ -830,16 +832,16 @@ sits in a route with a parameter passes it as the prop.
 ```json
 [
   "construct create feature add-product",
-  "construct create domain AddProduct --feature add-product --shape form --entity Product --fields id:string,name:string,price:number",
-  "construct create service AddProduct --feature add-product --shape form --entity Product --fields id:string,name:string,price:number",
-  "construct create hook AddProduct --feature add-product --shape form --entity Product --fields id:string,name:string,price:number",
-  "construct create component AddProduct --feature add-product --shape form --entity Product --fields id:string,name:string,price:number",
-  "construct create page AddProduct --feature add-product --shape form --entity Product --fields id:string,name:string,price:number",
-  "construct create controller AddProduct --feature add-product --shape form --entity Product --fields id:string,name:string,price:number",
+  "construct create domain AddProduct --feature add-product --shape form --entity Product --fields id:string,name:string,price:number --source local",
+  "construct create service AddProduct --feature add-product --shape form --entity Product --fields id:string,name:string,price:number --source local",
+  "construct create hook AddProduct --feature add-product --shape form --entity Product --fields id:string,name:string,price:number --source local",
+  "construct create component AddProduct --feature add-product --shape form --entity Product --fields id:string,name:string,price:number --source local",
+  "construct create page AddProduct --feature add-product --shape form --entity Product --fields id:string,name:string,price:number --source local",
+  "construct create controller AddProduct --feature add-product --shape form --entity Product --fields id:string,name:string,price:number --source local",
   "construct create dependency @line/construct-core --version ^0.9.0",
   "construct sync",
   "construct create route AddProduct --feature add-product --route /add-product",
-  "construct create proof AddProduct --feature add-product --shape form --entity Product --fields id:string,name:string,price:number --kind render",
+  "construct create proof AddProduct --feature add-product --shape form --entity Product --fields id:string,name:string,price:number --source local --kind render",
   "construct test proof add-product --name AddProductScreen.proof.test.ts"
 ]
 ```
@@ -849,6 +851,7 @@ sits in a route with a parameter passes it as the prop.
 {
   "b1": [
     "features/add-product/domain/AddProduct.domain.ts",
+    "features/add-product/domain/AddProductStore.domain.ts",
     "features/add-product/types.ts",
     "features/add-product/services/AddProduct.service.ts",
     "features/add-product/hooks/useAddProduct.state.ts",

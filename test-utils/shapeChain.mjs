@@ -62,9 +62,10 @@ export function initProject(framework, label = 'shape') {
  * @param {string} sentence The requirement sentence.
  * @param {string} feature The feature the plan creates.
  * @param {string} shape The shape the rules-only default must be.
+ * @param {string | null} [source] The answer to `q-source` (#621), `endpoint` by default (what these chain tests were written against); `null` leaves it unanswered, so the rules-only default (openapi with a matching spec, else local) applies.
  * @returns {Promise<{ placed: object, planned: object, offer: object }>} The placement, the plan and the offer as made.
  */
-export async function planFor(dir, sentence, feature, shape) {
+export async function planFor(dir, sentence, feature, shape, source = 'endpoint') {
   const { card } = parseRequirement(sentence);
   const config = { framework: JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')).dependencies?.next ? 'nextjs' : 'react-spa' };
   const first = placeCard(card, config);
@@ -74,7 +75,7 @@ export async function planFor(dir, sentence, feature, shape) {
   assert.equal(suggestion.option, shape, `the rules-only default is the ${shape} shape`);
   const placed = placeCard(card, { ...config, answers: { [offer.id]: { option: suggestion.option, by: 'decision-model', provider: suggestion.provider } } });
   assert.deepEqual(placed.errors, []);
-  const planned = planFromBlocks(placed.blocks, { feature, root: dir, title: sentence, decisions: placed.decisions });
+  const planned = planFromBlocks(placed.blocks, { feature, root: dir, title: sentence, decisions: placed.decisions, ...(source === null ? {} : { answers: { 'q-source': { option: source, by: 'person' } } }) });
   assert.equal(planned.ok, true, JSON.stringify(planned.errors));
   assert.deepEqual(validatePlan(planned.plan), { valid: true, errors: [] });
   return { placed, planned, offer };

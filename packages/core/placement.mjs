@@ -28,6 +28,7 @@ import { validatePlan, PLAN_SHAPES } from './plan.mjs';
 import { flowBlock } from './block-flows.mjs';
 import { SHAPES, FORM_VERBS, singularOf, pluralOf, fieldsFromProperties, endpointOf } from './shapes.mjs';
 import { detectPlaywright, PLAYWRIGHT_SHAPES } from './proof.mjs';
+import { sourceOffer, SOURCE_QUESTION_ID } from './shape-source.mjs';
 import { routePathOf, routeOffer, syncTouches, dependencyOffer, ROUTE_QUESTION_ID, DEPENDENCY_QUESTION_ID, CONSTRUCT_CORE_PACKAGE } from './wiring.mjs';
 
 /** The schema version string of a placement result. */
@@ -96,6 +97,7 @@ export const PLACEMENT_ERROR_CODES = Object.freeze({
   PLAN_NAME_INVALID: 'PLAN_NAME_INVALID',
   PLAN_FEATURE_INVALID: 'PLAN_FEATURE_INVALID',
   PLAN_ROOT_REQUIRED: 'PLAN_ROOT_REQUIRED',
+  PLAN_SOURCE_UNAVAILABLE: 'PLAN_SOURCE_UNAVAILABLE',
   PLAN_DECISIONS_INVALID: 'PLAN_DECISIONS_INVALID',
   PLAN_TOUCHES_UNKNOWN: 'PLAN_TOUCHES_UNKNOWN',
   PLAN_INVALID: 'PLAN_INVALID',
@@ -484,9 +486,16 @@ const SHAPE_REASON = {
 
 /** What a shaped screen needs from the person, as the note of the plan: the endpoint the generated service calls, and how the detail screen gets its id. */
 const SHAPE_NOTE = {
-  list: (c) => `The list shape fetches ${endpointOf(c.unit)} from the browser: serve that endpoint (a route handler or your backend).`,
-  detail: (c) => `The detail shape fetches ${endpointOf(pluralOf(c.entity))}/<id> from the browser: serve that endpoint (a route handler or your backend). The id is the controller's id prop, else ?id= of the address.`,
-  form: (c) => `The form shape POSTs the typed values to ${endpointOf(pluralOf(c.entity))}: serve that endpoint (a route handler or your backend).`,
+  list: (c) => `The list shape reads its rows through a service: choose where they come from (q-source: a local store, the endpoint ${endpointOf(c.unit)}, or an OpenAPI operation).`,
+  detail: (c) => `The detail shape reads one item by id through a service: choose where it comes from (q-source: a local store, the endpoint ${endpointOf(pluralOf(c.entity))}/<id>, or an OpenAPI operation). The id is the controller's id prop, else ?id= of the address.`,
+  form: (c) => `The form shape submits the typed values through a service: choose where they go (q-source: a local store, POST ${endpointOf(pluralOf(c.entity))}, or an OpenAPI operation).`,
+};
+
+/** What the plan says about the data source each shaped screen got (#621): where it reads from, and what is left to do by hand. */
+const SOURCE_NOTE = {
+  local: ({ name }) => `The ${name} screen reads a typed in-memory store (seed rows in domain/${name}Store.domain.ts), so it works with no backend. There is no browser flow for it: a local source makes no request to mock. Replace the store with a real source when there is one.`,
+  endpoint: ({ name, endpoint, verb }) => `The ${name} screen calls ${verb} ${endpoint}; that endpoint must exist in your app (a route handler or your backend), nothing in this plan creates it.`,
+  openapi: ({ name, operation, verb }) => `The ${name} screen requests ${operation?.method ?? verb} ${operation?.url ?? ''}, the path of an operation in ${operation?.file ?? 'the OpenAPI file'}; the server behind that spec must serve it.`,
 };
 
 /** The shape question for a candidate, in the shape of a chooser summary, with the rules-only default and who suggested it. */
@@ -860,6 +869,13 @@ export function planFromBlocks(blocks, options = {}) {
   const stepOf = new Map();
   const steps = [];
   const notes = [];
+  const answers = isPlainObject(opts.answers) ? opts.answers : {};
+  const offers = [];
+  const wiringDecisions = [];
+  const record = (question, answer) => {
+    const a = typeof answer === 'string' ? { option: answer } : answer;
+    if (question.chosen && isPlainObject(a)) wiringDecisions.push({ question: question.id, option: question.chosen, by: a.by ?? 'person', ...(a.provider ? { provider: a.provider } : {}) });
+  };
   const add = (stepFlow, title, args, dependsOn, why, scope) => {
     const touches = scope ?? flowBlock(stepFlow).declaredScope(args, { root: opts.root });
     const step = { id: `s${steps.length + 1}`, title, flow: stepFlow, args, executor: 'deterministic' };
@@ -870,6 +886,25 @@ export function planFromBlocks(blocks, options = {}) {
     steps.push(step);
     return step.id;
   };
+  // #621: where each shaped screen reads its data from is a closed question (`q-source`, or `q-source-<name>` for several screens). The rules'
+  // default is the OpenAPI operation of the entity when the project's spec has one, else a local store; an unanswered question uses it, so it
+  // never holds the plan back. The answer rides on every step of the screen (`source`), so the plan says what will be written.
+  const sourceOf = new Map();
+  const sourceNotes = [];
+  const shapedNames = [...new Set(ordered.filter((u) => u.shape).map((u) => u.name))];
+  for (const name of shapedNames) {
+    const { shape } = ordered.find((u) => u.name === name && u.shape);
+    const id = shapedNames.length === 1 ? SOURCE_QUESTION_ID : `${SOURCE_QUESTION_ID}-${name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase()}`;
+    const endpoint = SHAPES[shape.name].endpoint(name, shape.entity);
+    const chosen = sourceOffer(opts.root, { shape: shape.name, unit: name, plural: pluralOf(shape.entity), endpoint, answer: answers[id] });
+    if (chosen.refused) push('PLAN_SOURCE_UNAVAILABLE', `answers.${id}`, chosen.refused);
+    chosen.question.id = id;
+    offers.push(chosen.question);
+    record(chosen.question, answers[id]);
+    sourceOf.set(name, chosen.source);
+    if (chosen.unavailable) sourceNotes.push(chosen.unavailable);
+    sourceNotes.push(SOURCE_NOTE[chosen.source]({ name, endpoint, operation: chosen.operation, verb: shape.name === 'form' ? 'POST' : 'GET' }));
+  }
   const featureStep = add('create.feature', `Create feature ${opts.feature}`, { name: opts.feature }, [], 'The slice every unit below goes into.');
   for (const u of ordered) {
     const deps = new Set([featureStep]);
@@ -877,7 +912,7 @@ export function planFromBlocks(blocks, options = {}) {
     // #619: a shaped unit carries the shape, its entity and its fields (the CLI's --shape/--entity/--fields), and waits for the
     // units of the same shape that it imports or takes its types from.
     if (u.shape) for (const need of SHAPES[u.shape.name].requires[u.layer] ?? []) if (stepOf.has(`${need}:${u.name}`)) deps.add(stepOf.get(`${need}:${u.name}`));
-    const shapeArgs = u.shape ? { shape: u.shape.name, entity: u.shape.entity, fields: u.shape.fields } : {};
+    const shapeArgs = u.shape ? { shape: u.shape.name, entity: u.shape.entity, fields: u.shape.fields, source: sourceOf.get(u.name) } : {};
     const id = add('create.unit', `Create ${u.layer} ${u.name}`, { layer: u.layer, name: u.name, feature: opts.feature, ...shapeArgs }, [...deps].sort(idOrder), u.why);
     stepOf.set(`${u.layer}:${u.name}`, id);
   }
@@ -889,16 +924,9 @@ export function planFromBlocks(blocks, options = {}) {
   // leaves all of it out (a plan then ends its units as before #654).
   const shaped = new Map();
   for (const u of ordered) if (u.shape) shaped.set(u.name, { shape: u.shape, unitSteps: [...(shaped.get(u.name)?.unitSteps ?? []), stepOf.get(`${u.layer}:${u.name}`)] });
-  const answers = isPlainObject(opts.answers) ? opts.answers : {};
-  const offers = [];
-  const wiringDecisions = [];
   const routeOf = new Map();
   const wiringSteps = [];
   let wiring = null;
-  const record = (question, answer) => {
-    const a = typeof answer === 'string' ? { option: answer } : answer;
-    if (question.chosen && isPlainObject(a)) wiringDecisions.push({ question: question.id, option: question.chosen, by: a.by ?? 'person', ...(a.provider ? { provider: a.provider } : {}) });
-  };
   if (opts.wire !== false && shaped.size) {
     const everyUnit = [...stepOf.values()].sort(idOrder);
     wiring = { dependency: null, sync: null, routes: [] };
@@ -931,13 +959,13 @@ export function planFromBlocks(blocks, options = {}) {
   const playwrightConfig = detectPlaywright(opts.root ?? '');
   if (opts.proof !== false) {
     for (const [name, { shape, unitSteps }] of shaped) {
-      const base = { name, feature: opts.feature, shape: shape.name, entity: shape.entity, fields: shape.fields };
+      const base = { name, feature: opts.feature, shape: shape.name, entity: shape.entity, fields: shape.fields, source: sourceOf.get(name) };
       const after = [...new Set([...unitSteps, ...wiringSteps])].sort(idOrder);
       const render = add('create.proof', `Prove the ${name} screen`, { ...base, kind: 'render' }, after, 'A screen is not done until something shows it behaves: its states, its controller and its service.');
       const verify = add('test.proof', `Run the proof of ${name}`, { feature: opts.feature, name: `${name}Screen.proof.test.ts` }, [render], 'Read-only: pass, or a classified failure (the app behaved differently, or the harness lost a file). The chain is complete when this is green or explicitly skipped.');
       const entry = { name, kind: 'render', proofStep: render, verifiedBy: verify };
       proofSteps.push(entry);
-      if (playwrightConfig && PLAYWRIGHT_SHAPES.includes(shape.name) && (!wiring || routeOf.has(name))) {
+      if (playwrightConfig && PLAYWRIGHT_SHAPES.includes(shape.name) && sourceOf.get(name) !== 'local' && (!wiring || routeOf.has(name))) {
         const slug = name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
         const flow = add('create.proof', `Prove the ${name} route in a browser`, { ...base, kind: 'playwright', ...(routeOf.has(name) ? { route: routeOf.get(name) } : {}) }, after, 'The route of the screen with its API mocked in the browser.');
         const run = add('test.run', `Run the browser flow of ${name}`, { feature: opts.feature, name: `${slug}--screen.spec.ts`, area: 'generated' }, [flow, verify], 'Needs the app running (see --base-url); read-only.');
@@ -946,9 +974,15 @@ export function planFromBlocks(blocks, options = {}) {
     }
     if (proofSteps.length && !playwrightConfig) notes.push(playwrightNote = 'Playwright is not configured in this project (no playwright.config.* at the root), so the plan has no browser flow and nothing is installed. The render proof still proves the screen; add Playwright and plan again for the browser flow.');
     const noFlow = [...shaped].filter(([, { shape }]) => !PLAYWRIGHT_SHAPES.includes(shape.name)).map(([name, { shape }]) => `${name} (${shape.name})`);
-    if (proofSteps.length && playwrightConfig && noFlow.length) notes.push(playwrightNote = `No browser flow is planned for ${noFlow.join(', ')}: only the ${PLAYWRIGHT_SHAPES.join(', ')} shape has one so far. The render proof still proves the screen.`);
+    const noRequest = [...shaped].filter(([name, { shape }]) => PLAYWRIGHT_SHAPES.includes(shape.name) && sourceOf.get(name) === 'local').map(([name, { shape }]) => `${name} (${shape.name})`);
+    const why = [
+      ...(noFlow.length ? [`No browser flow is planned for ${noFlow.join(', ')}: only the ${PLAYWRIGHT_SHAPES.join(', ')} shape has one so far.`] : []),
+      ...(noRequest.length ? [`No browser flow is planned for ${noRequest.join(', ')}: a local data source makes no request to mock.`] : []),
+    ];
+    if (proofSteps.length && playwrightConfig && why.length) notes.push(playwrightNote = `${why.join(' ')} The render proof still proves the screen.`);
   }
   if (errors.length) return fail();
+  notes.push(...sourceNotes);
 
   const plan = { version: 1, ticket: { source: 'text', title: isNonEmptyString(opts.title) ? opts.title : `Place blocks for ${opts.feature}` }, steps };
   const validated = validatePlan(plan);

@@ -63,7 +63,7 @@ function initProject(framework) {
 }
 
 /** The plan for the sentence, with the shape offer answered by the built-in rules provider (the default), as a person would confirm it. */
-async function planFor(dir, feature) {
+async function planFor(dir, feature, source = 'endpoint') {
   const { card } = parseRequirement(SENTENCE);
   const config = { framework: JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')).dependencies?.next ? 'nextjs' : 'react-spa' };
   const first = placeCard(card, config);
@@ -73,7 +73,7 @@ async function planFor(dir, feature) {
   assert.equal(suggestion.option, 'list', 'the rules-only default is the list shape');
   const placed = placeCard(card, { ...config, answers: { [offer.id]: { option: suggestion.option, by: 'decision-model', provider: suggestion.provider } } });
   assert.deepEqual(placed.errors, []);
-  const planned = planFromBlocks(placed.blocks, { feature, root: dir, title: SENTENCE, decisions: placed.decisions });
+  const planned = planFromBlocks(placed.blocks, { feature, root: dir, title: SENTENCE, decisions: placed.decisions, ...(source === null ? {} : { answers: { 'q-source': { option: source, by: 'person' } } }) });
   assert.equal(planned.ok, true, JSON.stringify(planned.errors));
   assert.deepEqual(validatePlan(planned.plan), { valid: true, errors: [] });
   return { placed, planned };
@@ -100,7 +100,7 @@ test('the sentence becomes a plan of 12 steps, runs, and gives a screen that val
   assert.deepEqual(planned.plan.steps.map((s) => s.title), ['Create feature products', 'Create domain Products', 'Create service Products', 'Create hook Products', 'Create component Products', 'Create page Products', 'Create controller Products', 'Add @line/construct-core to package.json', "Export the products feature's public API (sync)", 'Wire the Products screen into the route entry (/products)', 'Prove the Products screen', 'Run the proof of Products']);
   assert.deepEqual(planned.plan.steps.slice(7, 10).map((s) => s.flow), ['add.dependency', 'sync', 'create.route'], 'the wiring sits after the units and before the proof');
   assert.deepEqual(planned.wiring, { dependency: 's8', sync: 's9', routes: [{ name: 'Products', route: '/products', step: 's10', file: 'src/App.tsx' }] });
-  assert.deepEqual(planned.offers.map((o) => [o.id, o.default, o.options.map((x) => x.id), o.line]), [['q-dependency', 'add-dependency', ['add-dependency', 'skip'], '"@line/construct-core": "^0.9.0"']], 'a project without the dependency is offered the exact line, as a closed choice');
+  assert.deepEqual(planned.offers.map((o) => [o.id, o.default, o.options.map((x) => x.id), o.line]), [['q-source', 'local', ['local', 'endpoint'], undefined], ['q-dependency', 'add-dependency', ['add-dependency', 'skip'], '"@line/construct-core": "^0.9.0"']], 'the data source is a closed choice (rules default: local, the project has no OpenAPI file), and a project without the dependency is offered the exact line');
   assert.deepEqual(planned.proof, { required: true, complete: false, state: 'pending', steps: [{ name: 'Products', kind: 'render', proofStep: 's11', verifiedBy: 's12' }], verifiedBy: ['s12'], playwright: { configured: false, config: null, skipped: planned.notes[0] } }, 'the chain is not complete until s12 is green or skipped');
   assert.match(planned.notes[0], /^Playwright is not configured in this project/, 'a project without Playwright is told so, and nothing is installed');
   assert.equal(planned.plan.steps[11].flow, 'test.proof', 'the last step is the read-only verification');

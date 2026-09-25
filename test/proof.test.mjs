@@ -53,7 +53,8 @@ const cardOf = (sentence) => parseRequirement(sentence).card;
 const planIn = (dir, options = {}) => {
   const card = cardOf('A user wants to see a list of products');
   const placed = placeCard(card, { framework: 'react-spa', answers: { 'q-shape': { option: 'list', by: 'person' } } });
-  return planFromBlocks(placed.blocks, { feature: 'products', root: dir, decisions: placed.decisions, ...options });
+  // #621: these tests are about the endpoint source (a fetch to mock, a browser flow), so they answer q-source as such; the default is local.
+  return planFromBlocks(placed.blocks, { feature: 'products', root: dir, decisions: placed.decisions, ...options, answers: { 'q-source': 'endpoint', ...options.answers } });
 };
 
 test('the plan flows: create.proof and test.proof are registered, typed, and their kinds match the generator', () => {
@@ -61,7 +62,7 @@ test('the plan flows: create.proof and test.proof are registered, typed, and the
   const create = PLAN_FLOWS['create.proof'];
   assert.equal(create.writes, true);
   assert.deepEqual(create.executors, ['deterministic', 'user'], 'no model in a proof');
-  assert.deepEqual(Object.keys(create.args), ['name', 'feature', 'shape', 'entity', 'fields', 'kind', 'route', 'dir']);
+  assert.deepEqual(Object.keys(create.args), ['name', 'feature', 'shape', 'entity', 'fields', 'source', 'kind', 'route', 'dir']);
   const verify = PLAN_FLOWS['test.proof'];
   assert.equal(verify.writes, false, 'the verification is read-only');
   assert.deepEqual(verify.executors, ['deterministic']);
@@ -153,11 +154,11 @@ test('with a Playwright config the plan adds the browser flow and its run; the s
   const planned = planIn(dir);
   assert.equal(planned.ok, true, JSON.stringify(planned.errors));
   assert.deepEqual(planned.plan.steps.slice(7).map((s) => `${s.id} ${s.flow} ${s.args.kind ?? ''} ${(s.dependsOn ?? []).join('+')}`), ['s8 add.dependency  ', 's9 sync  s2+s3+s4+s5+s6+s7', 's10 create.route  s7+s9', 's11 create.proof render s2+s3+s4+s5+s6+s7+s8+s9+s10', 's12 test.proof  s11', 's13 create.proof playwright s2+s3+s4+s5+s6+s7+s8+s9+s10', 's14 test.run  s13+s12']);
-  assert.deepEqual(planned.plan.steps[12].args, { name: 'Products', feature: 'products', shape: 'list', entity: 'Product', fields: FIELDS, kind: 'playwright', route: '/products' }, '#654: the browser flow opens the route the plan wired');
+  assert.deepEqual(planned.plan.steps[12].args, { name: 'Products', feature: 'products', shape: 'list', entity: 'Product', fields: FIELDS, source: 'endpoint', kind: 'playwright', route: '/products' }, '#654: the browser flow opens the route the plan wired');
   assert.deepEqual(planned.plan.steps[13].args, { feature: 'products', name: 'products--screen.spec.ts', area: 'generated' });
   assert.deepEqual(planned.proof.verifiedBy, ['s12', 's14']);
   assert.deepEqual(planned.proof.playwright, { configured: true, config: 'playwright.config.ts', skipped: null });
-  assert.deepEqual(planned.notes, []);
+  assert.deepEqual(planned.notes, ['The Products screen calls GET /api/products; that endpoint must exist in your app (a route handler or your backend), nothing in this plan creates it.'], 'the only note is what the endpoint source leaves to do by hand');
   assert.deepEqual(planTouches(planned.plan).files.filter((f) => f.path.includes('tests/')).map((f) => f.path), ['features/products/tests/generated/ProductsScreen.proof.test.ts', 'features/products/tests/generated/products--screen.spec.ts']);
 
   const spec = run(['create', 'proof', 'Products', '--feature', 'products', '--entity', 'Product', '--fields', FIELDS, '--kind', 'playwright', '--route', '/products'], dir);
@@ -175,7 +176,7 @@ test('a plan for a card without the shape has no proof; proof: false leaves a sh
   const plain = planFromBlocks(placeCard(cardOf('A user wants to see a list of products'), { framework: 'react-spa' }).blocks, { feature: 'products', root: dir });
   assert.deepEqual([plain.proof, plain.notes, plain.plan.steps.length], [null, [], 3]);
   const shaped = planIn(dir, { proof: false, wire: false });
-  assert.deepEqual([shaped.proof, shaped.wiring, shaped.offers, shaped.plan.steps.length], [null, null, [], 7]);
+  assert.deepEqual([shaped.proof, shaped.wiring, shaped.offers.map((o) => o.id), shaped.plan.steps.length], [null, null, ['q-source'], 7], 'the data source is asked whether or not the plan is wired');
   assert.equal(planIn(dir, { proof: false }).plan.steps.length, 10, '#654: the dependency, sync and route steps are planned unless wire: false');
 });
 
