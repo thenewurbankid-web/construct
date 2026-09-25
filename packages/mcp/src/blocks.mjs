@@ -115,7 +115,7 @@ export async function placementPlace(ctx, { text, answers = [] }) {
       const r = resolveOpen(card, { [a.id]: a.option });
       if (!r.ok) throw new ToolError('ANSWER_REFUSED', firstMessage(r.errors, 'That answer was not accepted.'));
       card = r.card;
-    } else if (a.id === 'q-dependency' || a.id === 'q-route') wiringAnswers[a.id] = { option: a.option, ...attribution };
+    } else if (/^q-(?:dependency|route|source)(?:-[a-z0-9-]+)?$/.test(a.id)) wiringAnswers[a.id] = { option: a.option, ...attribution };
     else placementAnswers[a.id] = { option: a.option, ...attribution };
   }
 

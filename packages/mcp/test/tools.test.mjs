@@ -95,6 +95,20 @@ test('placement_place: blocks, offers and a plan preview with the files each ste
   assert.ok(Object.keys(b.files).length >= 1);
 });
 
+test('placement_place: the data source of a shaped screen (#621) is a closed offer an LLM answers by id, attributed to it; an option that was not offered is refused', async () => {
+  const shape = { id: 'q-shape', option: 'list' };
+  const asked = (await call('placement_place', { text: SENTENCE, answers: [shape] })).body;
+  const offer = asked.offers.find((o) => o.id === 'q-source');
+  assert.deepEqual([offer.default, offer.options.map((o) => o.id)], ['local', ['local', 'endpoint']], 'no OpenAPI file in this project: local is the rules default');
+  const answered = (await call('placement_place', { text: SENTENCE, answers: [shape, { id: 'q-source', option: 'endpoint' }] })).body;
+  assert.deepEqual(answered.decisions, [{ question: 'q-shape', option: 'list', by: 'llm', provider: 'claude-code' }, { question: 'q-source', option: 'endpoint', by: 'llm', provider: 'claude-code' }]);
+  assert.equal(answered.files['b1'].some((f) => f.includes('Store')), false, 'the endpoint source writes no store');
+  assert.equal(asked.files['b1'].some((f) => f.includes('ProductsStore')), true, 'the default writes it');
+  const refused = await call('placement_place', { text: SENTENCE, answers: [shape, { id: 'q-source', option: 'openapi' }] });
+  assert.equal(refused.isError, true);
+  assert.equal(refused.body.error.code, 'PLAN_REFUSED');
+});
+
 test('placement_place: an unknown word is a question first, answered by id, then it places', async () => {
   const text = 'A user can frobnicate the widget';
   const open = await call('placement_place', { text });
