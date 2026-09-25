@@ -341,7 +341,10 @@ export function failureExcerpt(text, max = 2500) {
   const lines = String(text || '').split('\n');
   const out = [];
   for (let i = 0; i < lines.length; i += 1) {
-    if (/^\s*not ok \d+ - /.test(lines[i])) out.push(lines.slice(i, i + 7).filter((l) => l.trim() !== '---' && !/^\s*duration_ms|^\s*\.\.\.$/.test(l)).join('\n'));
+    if (!/^\s*not ok \d+ - /.test(lines[i])) continue;
+    const block = [lines[i]];
+    for (let j = i + 1; j < lines.length && block.length < 7 && !/^\s*(ok|not ok) \d+ - |^\s*#/.test(lines[j]); j += 1) block.push(lines[j]);
+    out.push(block.filter((l) => l.trim() !== '---' && !/^\s*duration_ms|^\s*\.\.\.$/.test(l)).join('\n'));
   }
   const t = out.join('\n\n');
   return t.length > max ? `${t.slice(0, max)}...` : t;
