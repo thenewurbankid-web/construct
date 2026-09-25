@@ -68,6 +68,7 @@ a `local-model` path, `view-code` (mechanical) and `edit-code` (free) on writing
 | `create.service.openapi` | declared | run, view-code, edit-code, do-by-hand | service file plus the shared transport client |
 | `refactor.move` | declared | run, view-code, edit-code, do-by-hand | touches every importer, so the set depends on the import graph (`impact`) |
 | `refactor.rename` | declared | run, view-code, edit-code, do-by-hand | same |
+| `wrap.provider` | derived | run, view-code, edit-code, do-by-hand | wraps a component or page with one provider of the project (`defineProvider`, `features/*/hooks/*Provider*`): `modify` the controller that renders it; refused, with the reason, when no controller does (#631) |
 | `import.unit` | declared | run, fill-with-ai, view-code, edit-code, do-by-hand | |
 | `import.plan` | declared | run, fill-with-ai, view-code, edit-code, do-by-hand | union of its units' files |
 | `import.route` | declared | view-code, edit-code, do-by-hand | interactive wizard, user only: no `run` |
@@ -105,7 +106,7 @@ a `local-model` path, `view-code` (mechanical) and `edit-code` (free) on writing
 
 ## Findings
 
-- Of 32 flows, 19 fit as-is (12 read-only with an empty scope, 7 with a derived scope); 13 are writers that need a scope
+- Of 33 flows, 20 fit as-is (12 read-only with an empty scope, 8 with a derived scope); 13 are writers that need a scope
   declaration from the plan step (`manual.task` among them, by definition).
 - `test.run` and `review.analyze` are read-only in `PLAN_FLOWS` and get an empty scope; the contract makes that checkable
   (`RUN_READONLY_WROTE`) where before it was a comment.

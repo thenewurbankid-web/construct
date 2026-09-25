@@ -246,6 +246,7 @@
             "create.service.openapi",
             "refactor.move",
             "refactor.rename",
+            "wrap.provider",
             "import.unit",
             "import.plan",
             "import.route",
@@ -1197,6 +1198,66 @@
                   "newName",
                   "feature",
                   "layer"
+                ]
+              },
+              "executor": {
+                "enum": [
+                  "deterministic",
+                  "user"
+                ]
+              },
+              "touches": {
+                "$ref": "#/definitions/touches"
+              }
+            },
+            "required": [
+              "touches"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "wrap.provider"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The element as the controller renders it, PascalCase (CartPage).",
+                    "pattern": "^[A-Z][A-Za-z0-9]*$"
+                  },
+                  "feature": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "provider": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The provider hook, for example useCartProvider (the closed list is the project's providers; construct refactor wrap without --provider prints it).",
+                    "pattern": "^(?:[A-Za-z0-9][A-Za-z0-9_-]*\\.)?use[A-Z]\\w*Provider$"
+                  },
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": [
+                  "name",
+                  "feature",
+                  "provider"
                 ]
               },
               "executor": {

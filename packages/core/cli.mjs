@@ -40,6 +40,8 @@ import { runProofs, renderProofRunText } from '../../packages/engine/proofRunner
 import { generateProof } from './proof.mjs';
 import { generateRouteEntry, addDependency } from './wiring.mjs';
 import { addEnv } from './env.mjs';
+import { wrapProvider, providerOffer } from './provider-wrap.mjs';
+import { buildDiffView } from './text-diff.mjs';
 import { runTypesCheck, runBuildCheck, renderCheckText, checkExitCode } from '../../packages/engine/verifyRunner.mjs';
 import { startTimer, elapsedSeconds, formatDuration } from './timing.mjs';
 import { explainSource, renderExplained } from '../../packages/engine/workflowExplain.mjs';
@@ -1373,6 +1375,7 @@ export async function research(args) {
  * `construct refactor move <name> --feature <f> --from <layer> --to <layer>`
  * | `construct refactor rename <name> <newName> --feature <f> --layer <layer>`
  * | `construct refactor extract-expression <file> [--range <start:end>] [--name <Name>]`
+ * | `construct refactor wrap <Name> --feature <f> --provider <hook> [--dry-run]` (wrap a component or page with a provider of the project, #631).
  * Purely mechanical (relocate + rewrite every importer's path, or hoist a
  * flagged inline conditional/loop into a named unit) — never invents new
  * business logic. Reports the result, then re-validates the changed file(s)
@@ -1388,7 +1391,8 @@ export async function refactor(args) {
   if (args[0] === 'move') return refactorMove(args.slice(1));
   if (args[0] === 'rename') return refactorRename(args.slice(1));
   if (args[0] === 'extract-expression') return refactorExtractExpression(args.slice(1));
-  throw new ConstructError('Usage: construct refactor move|rename|extract-expression ...', { exitCode: EXIT_CODES.USAGE_ERROR });
+  if (args[0] === 'wrap') return refactorWrap(args.slice(1));
+  throw new ConstructError('Usage: construct refactor move|rename|extract-expression|wrap ...', { exitCode: EXIT_CODES.USAGE_ERROR });
 }
 
 // This printed line is the entire audit trail for a refactor command by
@@ -1495,10 +1499,56 @@ async function refactorRename(args) {
  * violations re-checked in the file's new home (none for a dry run, which changes nothing). */
 async function refactorDocument(args) {
   const action = args[0];
-  if (action !== 'move' && action !== 'rename') throw usageFail('refactor --format json covers `move` and `rename`; `extract-expression` has no JSON form yet. Usage: construct refactor move|rename ... [--format json]');
+  if (action === 'wrap') {
+    const request = wrapRequestOf(args.slice(1));
+    const root = getRoot(args);
+    if (!request.provider) throw usageFail(providerChoiceLines(root, request).join('\n'));
+    const dryRun = args.includes('--dry-run');
+    const result = wrapProvider(root, request, { dryRun });
+    const violations = dryRun || !result.changed ? [] : validateArchitecture(root, { files: [result.file] }).violations;
+    return { verb: 'refactor', action, file: result.file, changed: result.changed, dryRun, message: result.message, provider: result.provider, root: result.root, notes: result.notes, violations, attribution: dryRun || !result.changed ? null : { ...WRAP_ATTRIBUTION } };
+  }
+  if (action !== 'move' && action !== 'rename') throw usageFail('refactor --format json covers `move`, `rename` and `wrap`; `extract-expression` has no JSON form yet. Usage: construct refactor move|rename|wrap ... [--format json]');
   const { root, result } = (action === 'move' ? relocateMove : relocateRename)(args.slice(1));
   const violations = result.dryRun ? [] : validateArchitecture(root, { files: [result.to] }).violations;
   return { verb: 'refactor', action, ...result, violations, attribution: result.dryRun ? null : { ...RELOCATE_ATTRIBUTION } };
+}
+
+/** The attribution of `refactor wrap`: a text splice at the offsets of the element, no model call. */
+const WRAP_ATTRIBUTION = Object.freeze({ tool: 'wrapped the element with the provider (a minimal edit of the file that renders it)', llm: '0 calls, the edit is a fixed splice' });
+
+/** The request of `construct refactor wrap <Name> --feature <f> --provider <hook> [--dry-run]` (#631). Without --provider the closed list of providers is printed. */
+function wrapRequestOf(args) {
+  const name = args[0];
+  const feature = flagValue(args, '--feature');
+  if (!name || name.startsWith('--') || !feature) throw usageFail('Usage: construct refactor wrap <Name> --feature <feature> --provider <hook> [--dry-run] [--dir <path>]');
+  if (args.includes('--llm')) throw usageFail('Wrapping with a provider is a fixed edit with no model, so it cannot be combined with --llm. Run it without --llm.');
+  return { name, feature, provider: flagValue(args, '--provider') };
+}
+
+/** The lines that say which providers exist, for a wrap asked without one. */
+function providerChoiceLines(root, request) {
+  const offer = providerOffer(root, request);
+  if (!offer) return ['This project has no provider: a hook named use<Name>Provider built with defineProvider in features/*/hooks/.'];
+  return ['Which provider? Run again with --provider <id>:', ...offer.question.options.filter((o) => o.id !== 'none').map((o) => `  ${o.id}${o.enabled ? '' : ' (not usable)'}  ${o.why}`), ...(offer.hidden ? [`  (${offer.hidden} more not shown)`] : [])];
+}
+
+/** `construct refactor wrap CartPage --feature cart --provider useCartProvider [--dry-run]` (#631): wrap the element with the provider in the controller that renders it. */
+async function refactorWrap(args) {
+  const request = wrapRequestOf(args);
+  const root = getRoot(args);
+  if (!request.provider) throw usageFail(providerChoiceLines(root, request).join('\n'));
+  const result = wrapProvider(root, request, { dryRun: args.includes('--dry-run') });
+  console.log(result.message);
+  if (args.includes('--dry-run') && result.changed) {
+    for (const row of buildDiffView(result.before, result.after).rows) console.log(row.kind === 'gap' ? `  ... ${row.text}` : `${{ added: '+', removed: '-', context: ' ' }[row.kind]} ${row.text}`);
+  }
+  if (result.changed && !args.includes('--dry-run')) {
+    const { violations } = validateArchitecture(root, { files: [result.file] });
+    if (violations.length) console.log(formatReport(violations, { format: 'text' }));
+  }
+  for (const note of result.notes) console.log(`Note: ${note}`);
+  if (result.changed && !args.includes('--dry-run')) printAttribution(WRAP_ATTRIBUTION.tool, WRAP_ATTRIBUTION.llm);
 }
 
 async function refactorExtractExpression(args) {

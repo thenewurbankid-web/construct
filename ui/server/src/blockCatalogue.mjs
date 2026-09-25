@@ -104,6 +104,12 @@ export const BLOCK_DOCS = Object.freeze({
     writes: 'The renamed file, and only the import lines of the files that used it.',
     example: { title: 'Rename Cart to Basket', args: { name: 'Cart', newName: 'Basket', feature: 'checkout', layer: 'domain' } },
   },
+  'wrap.provider': {
+    purpose: 'Wrap a component or page with one of the project\'s providers, so what is below it can read what it shares.',
+    reads: 'The project\'s providers (the hooks built with defineProvider) and the controller that renders the component.',
+    writes: 'The controller: one import and the component placed inside the provider, nothing else; it says why when it cannot.',
+    example: { title: 'Wrap the cart page with the cart provider', args: { name: 'CartPage', feature: 'cart', provider: 'useCartProvider' } },
+  },
   'import.unit': {
     purpose: 'Bring one existing file into a feature as Construct layers, each with a note pointing back to it.',
     reads: 'The existing file you name; it may live outside the project.',

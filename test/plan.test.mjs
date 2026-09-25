@@ -137,6 +137,11 @@ const EVERY_FLOW_STEPS = [
     touches: touching('checkout', 'features/checkout/domain/CartTotals.ts', 'move', 'domain'),
   },
   {
+    id: 's-wrap', title: 'Wrap the Totals page with the checkout provider', flow: 'wrap.provider', executor: 'deterministic',
+    args: { name: 'TotalsPage', feature: 'checkout', provider: 'useCheckoutProvider' }, dependsOn: ['s-slice'],
+    touches: touching('checkout', 'features/checkout/controllers/TotalsController.tsx', 'modify', 'controller'),
+  },
+  {
     id: 's-import-unit', title: 'Import the legacy coupon helper', flow: 'import.unit', executor: 'local-model',
     args: { name: 'Coupon', feature: 'checkout', layers: ['domain'], from: 'legacy/checkout/coupon.ts', llm: 'ollama' },
     dependsOn: ['s-feature'],
@@ -194,7 +199,7 @@ const EVERY_FLOW_STEPS = [
   },
   {
     id: 's-check-types', title: 'Type-check the checkout feature', flow: 'check.types', executor: 'deterministic',
-    args: { feature: 'checkout' }, dependsOn: ['s-route'],
+    args: { feature: 'checkout' }, dependsOn: ['s-wrap'],
   },
   {
     id: 's-check-build', title: 'Build the project', flow: 'check.build', executor: 'deterministic',

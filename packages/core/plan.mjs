@@ -321,6 +321,18 @@ export const PLAN_FLOWS = Object.freeze({
       dir: DIR_ARG,
     },
   },
+  'wrap.provider': {
+    cli: ['refactor', 'wrap'],
+    summary: 'Wrap a component or page with one provider of the project (#631): adds the import of the provider\'s root component and puts the element inside it, in the controller that renders it (a minimal edit, previewed). The provider is one of the units built with defineProvider in features/*/hooks/. Idempotent; refuses, with the reason, an element no controller renders, one rendered in several places, or a provider that cannot be used. Zero-LLM.',
+    writes: true,
+    executors: ['deterministic', 'user'],
+    args: {
+      name: { type: 'string', required: true, positional: 0, description: 'The element as the controller renders it, PascalCase (CartPage).' },
+      feature: { type: 'string', required: true, flag: '--feature' },
+      provider: { type: 'string', required: true, flag: '--provider', description: 'The provider hook, for example useCartProvider (the closed list is the project\'s providers; construct refactor wrap without --provider prints it).' },
+      dir: DIR_ARG,
+    },
+  },
   'import.unit': {
     cli: ['import'],
     summary: 'Scaffold layers for one existing non-Construct file, with a TODO(import) breadcrumb back to it.',
@@ -776,6 +788,12 @@ function validateStep(step, index, seenIds, push) {
     if (step.flow === 'add.env') {
       const issue = envArgIssue(step.args);
       if (issue && issue.arg !== 'scope') push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.${issue.arg}`, issue.message); // a bad or missing scope is the enum's and the required check's to report
+    }
+    if (step.flow === 'wrap.provider') {
+      const a = step.args;
+      if (typeof a.feature === 'string' && !/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(a.feature)) push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.feature`, 'A feature name uses letters, digits, "_" and "-" only.');
+      if (typeof a.name === 'string' && !/^[A-Z][A-Za-z0-9]*$/.test(a.name)) push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.name`, 'An element is named in PascalCase, like CartPage.');
+      if (typeof a.provider === 'string' && !/^(?:[A-Za-z0-9][A-Za-z0-9_-]*\.)?use[A-Z]\w*Provider$/.test(a.provider)) push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.provider`, 'A provider is its hook, like useCartProvider (or cart.useCartProvider when two features define one).');
     }
     if (step.flow === 'check.types' && typeof step.args.feature === 'string' && !/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(step.args.feature)) {
       push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.feature`, 'A feature name uses letters, digits, "_" and "-" only.');

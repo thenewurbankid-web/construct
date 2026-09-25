@@ -34,6 +34,12 @@ Four capabilities, one CLI:
     (hoists a PAGE-008/COMPONENT-005/EXPR-004-flagged inline conditional/loop out of <file> into a
     named defineExpression(...) unit under that feature's expressions/ folder, and any hand-authored
     markup it rendered into a companion defineComponent(...) unit — rewrites the call site to match)
+  construct refactor wrap <Name> --feature <feature> --provider <hook> [--dry-run] [--format json] [--dir <path>]
+    (wraps a component or page with one provider of the project, a hook built with defineProvider in features/*/hooks/*Provider*: adds the
+    import of the provider's root component and puts <Name /> inside it, in the controller of the feature that renders it, a minimal edit;
+    without --provider it lists the providers found; --dry-run prints the diff and writes nothing; idempotent; refuses, with the reason, an
+    element no controller renders (a route entry may import only controllers), one rendered in several places, or a provider that cannot be
+    used; deterministic, no LLM)
   construct summarize <unit-ref> [--kind <k>] [--detail brief|standard|full] [--include a,b] [--format json|markdown] [--dir <path>]
   construct summarize --list [--kind <k>] | --usage   (structured, LLM-free summaries of any feature/file/hook/route/rule/package)
   construct research summarize [--feature <name>] [--format json|md|compact|prose] [--since <ref>] [--dir <path>]

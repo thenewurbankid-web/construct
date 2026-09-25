@@ -1192,6 +1192,46 @@ framework, so `react-spa` gets `VITE_`. A secret-shaped name with no value is al
 **Left out** (MVP): installing packages (`add.dependency` still only edits package.json), a lint step, CI configuration, reading the
 project's environment schema, checking that a variable is read anywhere, and the `use client` directive.
 
+## Wrap with a provider: a flow, not only an editor gesture (#631, part of #616)
+
+`wrap.provider` (`packages/core/provider-wrap.mjs`, CLI `construct refactor wrap <Name> --feature f --provider <hook> [--dry-run] [--format json]`)
+wraps a component or page with one provider of the project, so a chain can add it and it is reviewed like any other step. Deterministic, no
+model, writing, idempotent, with declared touches.
+
+**The providers** are a scan of `features/*/hooks/*Provider*` (the features folder follows `architecture.yml`): a file that calls
+`defineProvider` and exports a `use<Name>Provider` hook (the shape HOOK-002 vouches for), plus the exported name of its
+`ProviderComponent` (`export const CartProviderRoot = CartProvider.ProviderComponent`). A provider with no root component, or one of another
+feature that its public index does not export (SLICE-002), is listed as not usable with the reason. `providersOf(root, { feature })`
+returns them sorted; an id is the hook name, or `<feature>.<hook>` when two features define the same one.
+
+**The closed question** `q-provider` (`providerOffer`, chooser summary shape, stable ids): the usable providers first, at most four, sorted by
+id, then the unusable ones disabled with their `why`, then `none` ("Do not wrap"): two to five options, the default the first enabled one, so the
+rules-only provider suggests a real provider when there is one. `construct refactor wrap` without `--provider` prints the same list and
+writes nothing.
+
+**The edit** is a text splice at the offsets of the element in the file's AST (`packages/ast`: `parseJsxTree`, `insertNamedImport`,
+`jsxParseError`): the import of the root component (relative to the provider's file in the same feature, through the other feature's `index`
+across features) and `<CartPage />` inside `<CartProviderRoot>`, on one line when the element shares its line, on lines with the indentation
+kept when it stands on its own. `--dry-run` prints the diff and writes nothing; the real run re-validates the file. The file that is edited is
+the CONTROLLER that renders the element (`<CartPage />` in `features/cart/controllers/*`): a route entry may import only controllers, so an
+element the route renders is refused with a sentence that says to wrap inside the controller.
+
+**Refused, with the reason and nothing changed:** a provider that is not one of the project's (the message lists them), an unusable one, an
+element no controller of the feature renders, an element rendered in more than one place, a root component already imported from another
+path, a result that would not parse. Already inside the root at any depth is a no-op (`Unchanged ..., <CartPage /> is already inside
+<CartProviderRoot>`); wrapping with another provider nests it.
+
+**What the Pages editor has.** `ui/server/src/pagesEditor.mjs` (#532, #533) inserts the consuming call (`const cart = useCartProvider();`) into
+a page and wraps a flagged loop or condition in an Expression; neither puts a provider's root component around an element, so there was no
+shared transformation to extract and the editor keeps its code and tests. This is the first provider wrap; when the editor grows one it should
+call `wrapProvider` with `dryRun` for its preview.
+
+**Decisions where the issue was silent.** The provider's own props are not filled in (`defineProvider<Props, Value>` types are not known to
+a text scan): the result carries a note, and `construct test types` names any that are required, so the type-check is the safety net. The
+element is named as the controller renders it (`CartPage`, the exported identifier), not by layer. The step is not raised by the Requirement
+chain: nothing in a card says which provider a screen needs, so it is a flow a person, a plan or an LLM adds by name, with the closed list
+as its options.
+
 ## What is not here yet
 
 The timeline read-back and its Cockpit screen are the Requirement screen (`/requirement`, #642): `toTimeline(placement)` in `ui/client/features/requirement/domain/Timeline.ts` turns the blocks into steps in run order (a slice to move it into core, so the CLI and an LLM read the same steps, is open). Not here yet: a `use client` / `use server` directive in the generated files, and words beyond the lexicon. Each is a slice of #616.
