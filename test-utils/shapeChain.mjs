@@ -81,11 +81,21 @@ export async function planFor(dir, sentence, feature, shape, source = 'endpoint'
   return { placed, planned, offer };
 }
 
+/**
+ * The verification steps (#632) answer with a CLASSIFIED result and an exit code of 1 when they found a problem: on these offline fixtures (no react-router-dom, no vite)
+ * the type-check honestly finds missing imports, so the runner of the tests takes a classified failure as the step's answer, not as a crash.
+ */
+export const CHECK_FLOWS = Object.freeze(['check.types', 'check.build']);
+
 /** What the plan runner does with a plan: each step's own command, through the CLI, in the project. */
 export function execute(dir, plan) {
   for (const step of plan.steps) {
     const { argv } = planToCommand(step);
     const res = run(argv, dir);
+    if (CHECK_FLOWS.includes(step.flow)) {
+      assert.match(res.stdout, /^(Type-check|Build): /, `${step.id} ${argv.join(' ')}: a classified result, not a raw log\n${res.stdout}\n${res.stderr}`);
+      continue;
+    }
     assert.equal(res.status, 0, `${step.id} ${argv.join(' ')}\n${res.stdout}\n${res.stderr}`);
   }
 }

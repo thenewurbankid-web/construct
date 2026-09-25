@@ -18,16 +18,16 @@ const SENTENCE = 'A user wants to add a product with a name and a price';
 const plan = (dir) => planFor(dir, SENTENCE, 'add-product', 'form');
 const FEATURE = 'features/add-product';
 
-test('the sentence becomes a plan of 12 steps, runs, and gives a form screen that validates, type-checks, renders and is PROVEN', NEEDS_RUNTIME, async (t) => {
+test('the sentence becomes a plan of 13 steps, runs, and gives a form screen that validates, type-checks, renders and is PROVEN', NEEDS_RUNTIME, async (t) => {
   const dir = initProject('react-spa', 'form');
   const { placed, planned, offer } = await plan(dir);
   assert.deepEqual(offer.options.map((o) => o.id), ['form', 'scaffold'], 'a write with properties is offered form | scaffold');
   assert.deepEqual([offer.shape, offer.default, offer.unit, offer.entity, offer.fields], ['form', 'form', 'AddProduct', 'Product', 'id:string,name:string,price:number']);
   assert.deepEqual(placed.decisions, [{ question: 'q-shape', option: 'form', by: 'decision-model', provider: 'rules' }], 'who decided is recorded');
-  assert.deepEqual(planned.plan.steps.map((s) => s.title), ['Create feature add-product', 'Create domain AddProduct', 'Create service AddProduct', 'Create hook AddProduct', 'Create component AddProduct', 'Create page AddProduct', 'Create controller AddProduct', 'Add @line/construct-core to package.json', "Export the add-product feature's public API (sync)", 'Wire the AddProduct screen into the route entry (/add-product)', 'Prove the AddProduct screen', 'Run the proof of AddProduct']);
+  assert.deepEqual(planned.plan.steps.map((s) => s.title), ['Create feature add-product', 'Create domain AddProduct', 'Create service AddProduct', 'Create hook AddProduct', 'Create component AddProduct', 'Create page AddProduct', 'Create controller AddProduct', 'Add @line/construct-core to package.json', "Export the add-product feature's public API (sync)", 'Wire the AddProduct screen into the route entry (/add-product)', 'Type-check the project', 'Prove the AddProduct screen', 'Run the proof of AddProduct']);
   assert.deepEqual(planned.plan.steps.slice(1, 7).map((s) => [s.args.shape, s.args.entity, s.args.fields]), Array(6).fill(['form', 'Product', 'id:string,name:string,price:number']), 'every unit carries the shape');
   assert.deepEqual(planned.wiring, { dependency: 's8', sync: 's9', routes: [{ name: 'AddProduct', route: '/add-product', step: 's10', file: 'src/App.tsx' }] }, 'the wiring step applies to a form plan too');
-  assert.deepEqual(planned.proof.steps, [{ name: 'AddProduct', kind: 'render', proofStep: 's11', verifiedBy: 's12' }]);
+  assert.deepEqual(planned.proof.steps, [{ name: 'AddProduct', kind: 'render', proofStep: 's12', verifiedBy: 's13' }]);
 
   const before = projectFiles(dir);
   execute(dir, planned.plan);

@@ -48,7 +48,7 @@ test('with a project open: turn create.unit off through the API, and the real pl
   assert.equal((await call('POST', '/api/settings', { projectDir: 'proj' })).status, 200);
   const first = await call('GET', '/api/blocks');
   assert.equal(first.status, 200);
-  assert.equal(first.body.blocks.length, 29);
+  assert.equal(first.body.blocks.length, 32);
   assert.equal(first.body.rev, 0);
 
   const before = await call('POST', '/api/plan/validate', { plan });

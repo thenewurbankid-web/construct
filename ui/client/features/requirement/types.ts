@@ -22,8 +22,10 @@ export type OfferOptionView = { id: string; label: string; gives: string; sugges
 /** A closed question beside the plan that never blocks Approve: the screen shape (q-shape) or, once a shape is chosen, where the screen reads its data from (q-source, #621). */
 export type OfferView = {
   id: string;
-  /** Which of the two cards this is: the names of its test ids and its heading follow it. */
-  kind: 'shape' | 'source';
+  /** Which card this is: the names of its test ids follow it. `plan` is every other closed question of the plan (route, dependency, environment variable, verification: #632). */
+  kind: 'shape' | 'source' | 'plan';
+  /** The card's heading, from the question's id. */
+  heading: string;
   source: 'placement';
   question: string;
   options: OfferOptionView[];

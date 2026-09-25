@@ -69,6 +69,7 @@ export function makeProofProject({ prefix = 'og653-', git = false } = {}) {
       for (const step of plan.steps) {
         const { argv } = planToCommand(step);
         const res = cli(argv, root);
+        if (step.flow === 'check.types' || step.flow === 'check.build') continue; // #632: a read-only check answers with a classified result; on an offline fixture it may honestly find missing imports
         if (res.status !== 0) throw new Error(`${step.id} ${argv.join(' ')}\n${res.stdout}\n${res.stderr}`);
       }
     },

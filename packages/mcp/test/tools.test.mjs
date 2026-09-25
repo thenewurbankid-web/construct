@@ -109,6 +109,34 @@ test('placement_place: the data source of a shaped screen (#621) is a closed off
   assert.equal(refused.body.error.code, 'PLAN_REFUSED');
 });
 
+test('placement_place: the type-check (#632) is a closed offer, q-verify, answered by id and attributed to the client; both steps on request', async () => {
+  const shape = { id: 'q-shape', option: 'list' };
+  const asked = (await call('placement_place', { text: SENTENCE, answers: [shape] })).body;
+  const offer = asked.offers.find((o) => o.id === 'q-verify');
+  assert.deepEqual([offer.default, offer.options.map((o) => o.id)], ['types', ['types', 'types-build', 'none']]);
+  assert.deepEqual([asked.verify, asked.plan.steps.some((s) => s.flow === 'check.types')], [{ types: 's11', build: null }, true]);
+  const none = (await call('placement_place', { text: SENTENCE, answers: [shape, { id: 'q-verify', option: 'none' }] })).body;
+  assert.deepEqual([none.verify, none.plan.steps.some((s) => s.flow === 'check.types')], [{ types: null, build: null }, false]);
+  assert.deepEqual(none.decisions.at(-1), { question: 'q-verify', option: 'none', by: 'llm', provider: 'claude-code' });
+  const both = (await call('placement_place', { text: SENTENCE, answers: [shape, { id: 'q-verify', option: 'types-build' }] })).body;
+  assert.deepEqual(both.verify, { types: 's11', build: 's12' }, 'the init project has a build script, so building is on offer');
+  assert.deepEqual(both.plan.steps.filter((s) => s.flow.startsWith('check.')).map((s) => [s.flow, s.files]), [['check.types', []], ['check.build', []]], 'read-only: no file is touched');
+});
+
+test('placement_place: a card that needs a secret names its environment variables (#632): a q-env per variable, answered by id, the add.env steps previewed with their file', async () => {
+  const text = 'A logged-in user wants to safely manage billing details Stripe';
+  const asked = (await call('placement_place', { text })).body;
+  assert.deepEqual(asked.offers.filter((o) => o.id.startsWith('q-env')).map((o) => [o.id, o.default, o.options.map((x) => x.id)]), [['q-env-stripe-secret-key', 'add', ['add', 'skip']], ['q-env-allowed-redirect-origins', 'add', ['add', 'skip']]]);
+  assert.deepEqual(asked.env.map((e) => [e.variable, e.scope]), [['STRIPE_SECRET_KEY', 'server'], ['ALLOWED_REDIRECT_ORIGINS', 'server']]);
+  const step = asked.plan.steps.find((s) => s.flow === 'add.env');
+  assert.deepEqual(step.files, [{ path: '.env.example', change: 'create' }]);
+  const skipped = (await call('placement_place', { text, answers: [{ id: 'q-env-stripe-secret-key', option: 'skip' }] })).body;
+  assert.deepEqual(skipped.env.map((e) => [e.variable, e.step === null]), [['STRIPE_SECRET_KEY', true], ['ALLOWED_REDIRECT_ORIGINS', false]]);
+  assert.deepEqual(skipped.decisions.at(-1), { question: 'q-env-stripe-secret-key', option: 'skip', by: 'llm', provider: 'claude-code' });
+  assert.equal(JSON.stringify(asked).includes(root), false, 'path-free like every result');
+  assert.equal(fs.existsSync(path.join(root, '.env.example')), false, 'plan-only: nothing is written');
+});
+
 test('placement_place: an unknown word is a question first, answered by id, then it places', async () => {
   const text = 'A user can frobnicate the widget';
   const open = await call('placement_place', { text });

@@ -239,6 +239,7 @@
             "create.proof",
             "create.route",
             "add.dependency",
+            "add.env",
             "create.page.from",
             "create.workflow.from",
             "create.controller.bind",
@@ -258,6 +259,8 @@
             "review.analyze",
             "test.run",
             "test.proof",
+            "check.types",
+            "check.build",
             "sync",
             "pipeline.run",
             "manual.task"
@@ -769,6 +772,76 @@
                 "required": [
                   "name",
                   "version"
+                ]
+              },
+              "executor": {
+                "enum": [
+                  "deterministic",
+                  "user"
+                ]
+              },
+              "touches": {
+                "$ref": "#/definitions/touches"
+              }
+            },
+            "required": [
+              "touches"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "add.env"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The variable name: upper case letters, digits and _, starting with a letter, at most 64 characters (STRIPE_SECRET_KEY).",
+                    "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+                  },
+                  "scope": {
+                    "type": "string",
+                    "minLength": 1,
+                    "enum": [
+                      "server",
+                      "public"
+                    ],
+                    "description": "server (never reaches the browser) or public (inlined into the browser bundle: it gets the framework's public prefix)."
+                  },
+                  "value": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "A placeholder value to write instead of the default your-<name>-here. Refused when the name looks secret; never put a real value here.",
+                    "maxLength": 200
+                  },
+                  "comment": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "One line written above the variable. Defaults to a line that says who may read it.",
+                    "maxLength": 120
+                  },
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": [
+                  "name",
+                  "scope"
                 ]
               },
               "executor": {
@@ -1783,6 +1856,78 @@
                 "required": [
                   "feature"
                 ]
+              },
+              "executor": {
+                "enum": [
+                  "deterministic"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "check.types"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "feature": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Report only the errors in this feature's files. Omit to report the whole project.",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+                  },
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": []
+              },
+              "executor": {
+                "enum": [
+                  "deterministic"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "check.build"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": []
               },
               "executor": {
                 "enum": [

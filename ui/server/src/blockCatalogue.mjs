@@ -62,6 +62,12 @@ export const BLOCK_DOCS = Object.freeze({
     writes: 'One line in the dependencies of package.json.',
     example: { title: 'Add @line/construct-core', args: { name: '@line/construct-core', version: '^0.9.0' } },
   },
+  'add.env': {
+    purpose: 'Add one environment variable to .env.example with a comment and a placeholder, never a real value.',
+    reads: '.env.example, to see whether the variable is already listed.',
+    writes: 'One commented line in .env.example (the file is created when it does not exist); a public variable gets the framework\'s public prefix.',
+    example: { title: 'Add STRIPE_SECRET_KEY to .env.example', args: { name: 'STRIPE_SECRET_KEY', scope: 'server' } },
+  },
   'create.page.from': {
     purpose: 'Bring in a page someone designed elsewhere (a JSX file) as a page plus its props.',
     reads: 'The JSX file you point at; it may live outside the project.',
@@ -178,6 +184,18 @@ export const BLOCK_DOCS = Object.freeze({
     reads: 'The feature\'s proof files and the screen\'s code.',
     writes: null,
     example: { title: 'Run the proof of the products screen', args: { feature: 'products' } },
+  },
+  'check.types': {
+    purpose: 'Type-check the project with its own TypeScript and say what is wrong, grouped by file and by kind.',
+    reads: 'The project\'s source files and its tsconfig.',
+    writes: null,
+    example: { title: 'Type-check the project', args: {} },
+  },
+  'check.build': {
+    purpose: 'Run the project\'s build script with a time limit and say whether it passed, or the first compile errors.',
+    reads: 'package.json and the project\'s source files; the build writes its own output folder.',
+    writes: null,
+    example: { title: 'Build the project', args: {} },
   },
   sync: {
     purpose: 'Regenerate the derived rule config and each feature\'s public API from architecture.yml.',

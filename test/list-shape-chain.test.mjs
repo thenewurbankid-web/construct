@@ -84,6 +84,7 @@ function execute(dir, plan) {
   for (const step of plan.steps) {
     const { argv } = planToCommand(step);
     const res = run(argv, dir);
+    if (step.flow === 'check.types') { assert.match(res.stdout, /^Type-check: /, 'a classified result: on this offline fixture (no react-router-dom, no vite) the type-check honestly finds missing imports'); continue; }
     assert.equal(res.status, 0, `${step.id} ${argv.join(' ')}\n${res.stdout}\n${res.stderr}`);
   }
 }
@@ -93,18 +94,20 @@ const featureFiles = (dir) => Object.fromEntries(fs.readdirSync(path.join(dir, '
 const projectFiles = (dir) => Object.fromEntries(fs.readdirSync(dir, { recursive: true }).filter((f) => !/^node_modules(\/|$)/.test(f) && fs.statSync(path.join(dir, f)).isFile()).sort().map((f) => [f.split(path.sep).join('/'), fs.readFileSync(path.join(dir, f), 'utf8')]));
 const validateJson = (dir) => JSON.parse(run(['validate', '--format', 'json'], dir).stdout);
 
-test('the sentence becomes a plan of 12 steps, runs, and gives a screen that validates, type-checks, renders and is PROVEN', NEEDS_RUNTIME, async (t) => {
+test('the sentence becomes a plan of 13 steps, runs, and gives a screen that validates, type-checks, renders and is PROVEN', NEEDS_RUNTIME, async (t) => {
   const dir = initProject('react-spa');
   const { placed, planned } = await planFor(dir, 'products');
   assert.deepEqual(placed.decisions, [{ question: 'q-shape', option: 'list', by: 'decision-model', provider: 'rules' }], 'who decided is recorded');
-  assert.deepEqual(planned.plan.steps.map((s) => s.title), ['Create feature products', 'Create domain Products', 'Create service Products', 'Create hook Products', 'Create component Products', 'Create page Products', 'Create controller Products', 'Add @line/construct-core to package.json', "Export the products feature's public API (sync)", 'Wire the Products screen into the route entry (/products)', 'Prove the Products screen', 'Run the proof of Products']);
+  assert.deepEqual(planned.plan.steps.map((s) => s.title), ['Create feature products', 'Create domain Products', 'Create service Products', 'Create hook Products', 'Create component Products', 'Create page Products', 'Create controller Products', 'Add @line/construct-core to package.json', "Export the products feature's public API (sync)", 'Wire the Products screen into the route entry (/products)', 'Type-check the project', 'Prove the Products screen', 'Run the proof of Products']);
   assert.deepEqual(planned.plan.steps.slice(7, 10).map((s) => s.flow), ['add.dependency', 'sync', 'create.route'], 'the wiring sits after the units and before the proof');
+  assert.equal(planned.plan.steps[10].flow, 'check.types', 'the type-check comes after the wiring (q-verify default) and before the proof');
+  assert.deepEqual(planned.verify, { types: 's11', build: null });
   assert.deepEqual(planned.wiring, { dependency: 's8', sync: 's9', routes: [{ name: 'Products', route: '/products', step: 's10', file: 'src/App.tsx' }] });
-  assert.deepEqual(planned.offers.map((o) => [o.id, o.default, o.options.map((x) => x.id), o.line]), [['q-source', 'local', ['local', 'endpoint'], undefined], ['q-dependency', 'add-dependency', ['add-dependency', 'skip'], '"@line/construct-core": "^0.9.0"']], 'the data source is a closed choice (rules default: local, the project has no OpenAPI file), and a project without the dependency is offered the exact line');
-  assert.deepEqual(planned.proof, { required: true, complete: false, state: 'pending', steps: [{ name: 'Products', kind: 'render', proofStep: 's11', verifiedBy: 's12' }], verifiedBy: ['s12'], playwright: { configured: false, config: null, skipped: planned.notes[0] } }, 'the chain is not complete until s12 is green or skipped');
+  assert.deepEqual(planned.offers.map((o) => [o.id, o.default, o.options.map((x) => x.id), o.line]), [['q-source', 'local', ['local', 'endpoint'], undefined], ['q-dependency', 'add-dependency', ['add-dependency', 'skip'], '"@line/construct-core": "^0.9.0"'], ['q-verify', 'types', ['types', 'types-build', 'none'], undefined]], 'the data source is a closed choice (rules default: local, the project has no OpenAPI file), and a project without the dependency is offered the exact line');
+  assert.deepEqual(planned.proof, { required: true, complete: false, state: 'pending', steps: [{ name: 'Products', kind: 'render', proofStep: 's12', verifiedBy: 's13' }], verifiedBy: ['s13'], playwright: { configured: false, config: null, skipped: planned.notes[0] } }, 'the chain is not complete until s13 is green or skipped');
   assert.match(planned.notes[0], /^Playwright is not configured in this project/, 'a project without Playwright is told so, and nothing is installed');
-  assert.equal(planned.plan.steps[11].flow, 'test.proof', 'the last step is the read-only verification');
-  assert.deepEqual(planned.plan.steps[11].dependsOn, ['s11']);
+  assert.equal(planned.plan.steps[12].flow, 'test.proof', 'the last step is the read-only verification');
+  assert.deepEqual(planned.plan.steps[12].dependsOn, ['s12']);
   assert.equal(planned.plan.steps[3].args.fields, 'id:string,name:string,price:number', 'the fields are the card entity\'s properties, typed by name, with an id');
 
   const before = projectFiles(dir);

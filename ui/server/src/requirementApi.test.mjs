@@ -85,7 +85,7 @@ test('a list of products offers the list shape beside the open questions; answer
   const shaped = (await post({ text: sentence, answers: [{ id: 'q-shape', option: 'list' }] })).body;
   assert.equal(validatePlan(shaped.plan).valid, true);
   assert.deepEqual(shaped.plan.steps.slice(1, 7).map((s) => s.args.shape), ['list', 'list', 'list', 'list', 'list', 'list']);
-  assert.deepEqual(shaped.plan.steps.slice(7).map((s) => s.flow), ['sync', 'create.route', 'create.proof', 'test.proof'], '#654 and #623: the plan wires the screen (sync, then the route entry) and ends with its proof and the read-only run of it');
+  assert.deepEqual(shaped.plan.steps.slice(7).map((s) => s.flow), ['sync', 'create.route', 'check.types', 'create.proof', 'test.proof'], '#654, #632 and #623: the plan wires the screen (sync, then the route entry), type-checks it and ends with its proof and the read-only run of it');
   assert.equal(shaped.plan.steps[8].args.route, '/products');
   assert.equal(shaped.plan.steps[8].touches.files.length >= 1, true, 'the route step declares its file');
   assert.deepEqual(shaped.plan.steps[1].args, { layer: 'domain', name: 'Products', feature: 'products', shape: 'list', entity: 'Product', fields: 'id:string,name:string,price:number', source: 'local' }, '#621: the unit says where the screen reads from (the rules default: local, this project has no OpenAPI file)');
@@ -114,7 +114,7 @@ test('a single read is offered the detail shape and a write with properties the 
     assert.equal(validatePlan(shaped.plan).valid, true);
     assert.equal(shaped.plan.steps[0].args.name, feature);
     assert.deepEqual(shaped.plan.steps.slice(1, 7).map((s) => [s.args.shape, s.args.name]), Array(6).fill([shape, unit]));
-    assert.deepEqual(shaped.plan.steps.slice(7).map((s) => s.flow), ['sync', 'create.route', 'create.proof', 'test.proof'], 'the wiring and the proof apply to every shape');
+    assert.deepEqual(shaped.plan.steps.slice(7).map((s) => s.flow), ['sync', 'create.route', 'check.types', 'create.proof', 'test.proof'], 'the wiring, the type-check and the proof apply to every shape');
     assert.deepEqual(shaped.placement.decisions, [{ question: 'q-shape', option: shape, by: 'person' }]);
     assert.equal(shaped.offers[0].chosen, shape);
     assert.equal(shaped.proof.steps.length, 1, 'the proof of the chain is returned with the plan');
@@ -221,6 +221,67 @@ test('a project whose framework the blocks do not know answers with typed errors
   assert.ok(r.body.plan);
 });
 
+// #632 -- every closed question of the plan rides in `offers` and is answered by id like the shape and the data source: the environment
+// variables a card's checks call for (q-env, one per named secret), and how far a shaped plan verifies itself (q-verify).
+
+test('#632: the billing sentence raises a q-env per named secret and the plan carries the add.env steps; an answer is recorded and changes the plan', async () => {
+  const plain = (await post({ text: BILLING })).body;
+  const envOffers = plain.offers.filter((q) => q.id.startsWith('q-env'));
+  assert.deepEqual(envOffers.map((q) => [q.id, q.source, q.default, q.chosen, q.options.map((o) => o.id)]), [['q-env-stripe-secret-key', 'plan', 'add', null, ['add', 'skip']], ['q-env-allowed-redirect-origins', 'plan', 'add', null, ['add', 'skip']]]);
+  assert.deepEqual(plain.plan.steps.filter((s) => s.flow === 'add.env').map((s) => [s.args, s.touches.files]), [[{ name: 'STRIPE_SECRET_KEY', scope: 'server' }, [{ path: '.env.example', change: 'create' }]], [{ name: 'ALLOWED_REDIRECT_ORIGINS', scope: 'server' }, [{ path: '.env.example', change: 'create' }]]]);
+  assert.equal(validatePlan(plain.plan).valid, true);
+  assert.equal(plain.suggestions['q-env-stripe-secret-key'].option, 'add', 'the decision provider suggests on it like on every other offer');
+  assert.deepEqual(plain.open, [], 'a closed question never blocks the plan');
+  assert.equal(JSON.stringify(plain).includes(root), false, 'no server path leaves the server');
+
+  const skipped = (await post({ text: BILLING, answers: [{ id: 'q-env-stripe-secret-key', option: 'skip' }] })).body;
+  assert.deepEqual(skipped.plan.steps.filter((s) => s.flow === 'add.env').map((s) => s.args.name), ['ALLOWED_REDIRECT_ORIGINS']);
+  assert.equal(skipped.offers.find((q) => q.id === 'q-env-stripe-secret-key').chosen, 'skip');
+  assert.deepEqual(skipped.placement.decisions.filter((d) => d.question.startsWith('q-env')), [{ question: 'q-env-stripe-secret-key', option: 'skip', by: 'person' }]);
+  assert.equal((await post({ text: BILLING, answers: [{ id: 'q-env-stripe-secret-key', option: 'Not An Option' }] })).status, 400, 'an option id has a fixed shape');
+  assert.equal((await post({ text: BILLING, answers: [{ id: 'q-env-x'.repeat(20), option: 'add' }] })).status, 400, 'a question id that cannot be one the plan asks is refused');
+});
+
+test('#632: a shaped plan is asked q-verify: type-check by default, both, or none; the answer changes the steps and is recorded; a plan without the shape has nothing to verify', async () => {
+  const sentence = 'A user wants to see a list of products';
+  const shape = { id: 'q-shape', option: 'list' };
+  assert.deepEqual((await post({ text: sentence })).body.offers.map((q) => q.id), ['q-shape'], 'no shaped unit, no verification to ask about');
+  const asked = (await post({ text: sentence, answers: [shape] })).body;
+  const verify = asked.offers.find((q) => q.id === 'q-verify');
+  assert.deepEqual([verify.source, verify.default, verify.chosen, verify.options.map((o) => [o.id, o.enabled])], ['plan', 'types', null, [['types', true], ['types-build', false], ['none', true]]], 'the fixture has no build script, so building is offered disabled');
+  assert.equal(verify.options[1].why, 'package.json has no "build" script to run.');
+  assert.deepEqual(asked.plan.steps.slice(-3).map((s) => s.flow), ['check.types', 'create.proof', 'test.proof']);
+  const none = (await post({ text: sentence, answers: [shape, { id: 'q-verify', option: 'none' }] })).body;
+  assert.deepEqual([none.plan.steps.some((s) => s.flow === 'check.types'), none.offers.find((q) => q.id === 'q-verify').chosen, none.plan.steps.at(-1).flow], [false, 'none', 'test.proof']);
+  assert.deepEqual(none.placement.decisions.at(-1), { question: 'q-verify', option: 'none', by: 'person' });
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'x', scripts: { build: 'vite build' } }));
+  try {
+    const both = (await post({ text: sentence, answers: [shape, { id: 'q-verify', option: 'types-build' }] })).body;
+    assert.deepEqual(both.plan.steps.filter((s) => s.flow.startsWith('check.')).map((s) => s.flow), ['check.types', 'check.build']);
+    assert.equal(both.offers.find((q) => q.id === 'q-verify').options[1].enabled, true);
+    assert.equal(both.plan.steps.at(-1).flow, 'test.proof', 'the proof stays last');
+  } finally {
+    fs.rmSync(path.join(root, 'package.json'));
+  }
+});
+
+test('#632: the route and dependency questions of the wiring are returned and answerable too (they were only defaults before)', async () => {
+  const sentence = 'A user wants to see a list of products';
+  const shape = { id: 'q-shape', option: 'list' };
+  assert.equal((await post({ text: sentence, answers: [shape] })).body.offers.some((q) => q.id === 'q-route'), false, 'the route is free, so nothing is asked');
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'x', dependencies: {} }));
+  try {
+    const dep = (await post({ text: sentence, answers: [shape] })).body;
+    assert.deepEqual(dep.offers.filter((q) => q.id === 'q-dependency').map((q) => [q.source, q.default]), [['plan', 'add-dependency']]);
+    assert.equal(dep.plan.steps.some((s) => s.flow === 'add.dependency'), true);
+    const skip = (await post({ text: sentence, answers: [shape, { id: 'q-dependency', option: 'skip' }] })).body;
+    assert.equal(skip.plan.steps.some((s) => s.flow === 'add.dependency'), false);
+    assert.deepEqual(skip.placement.decisions.at(-1), { question: 'q-dependency', option: 'skip', by: 'person' });
+  } finally {
+    fs.rmSync(path.join(root, 'package.json'));
+  }
+});
+
 // #621 -- where a shaped screen reads its data from is a closed question beside the plan (`q-source`), drawn by the client like q-shape:
 // answered by the same { id, option }, recorded like the others, never holding Approve back, and an option that was not offered is refused.
 test('a shaped screen is offered its data source; the rules default is local, or the OpenAPI operation when the project has one; answering changes the units', async () => {
@@ -231,7 +292,7 @@ test('a shaped screen is offered its data source; the rules default is local, or
   assert.deepEqual(plain.offers.map((q) => q.id), ['q-shape'], 'no shape chosen, no shaped unit, no data source to ask about');
 
   const asked = (await post({ text: sentence, answers: [shape] })).body;
-  assert.deepEqual(asked.offers.map((q) => [q.id, q.source, q.default, q.chosen, q.options.map((o) => o.id)]), [['q-shape', 'placement', 'list', 'list', ['list', 'scaffold']], ['q-source', 'plan', 'local', null, ['local', 'endpoint']]]);
+  assert.deepEqual(asked.offers.map((q) => [q.id, q.source, q.default, q.chosen, q.options.map((o) => o.id)]), [['q-shape', 'placement', 'list', 'list', ['list', 'scaffold']], ['q-source', 'plan', 'local', null, ['local', 'endpoint']], ['q-verify', 'plan', 'types', null, ['types', 'types-build', 'none']]]);
   assert.equal(asked.suggestions['q-source'].option, 'local', 'the decision provider suggests on it like on every other offer');
   assert.deepEqual(asked.open, [], 'the offer never blocks the plan');
   assert.ok(unitSteps(asked).every((s) => s.args.source === 'local'));

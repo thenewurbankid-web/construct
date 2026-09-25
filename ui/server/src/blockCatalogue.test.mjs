@@ -36,7 +36,7 @@ test('the catalogue has one row per block, in registry order, with the facts fro
   }
   // "model calls: 0" for everything but the four blocks that can take a model.
   assert.deepEqual(rows.filter((r) => r.modelCalls === 'optional').map((r) => r.id), ['create.layer', 'create.unit', 'import.unit', 'import.plan']);
-  assert.equal(rows.filter((r) => !r.writesFiles).length, 10, '10 read-only blocks (test.proof is the tenth, #623)');
+  assert.equal(rows.filter((r) => !r.writesFiles).length, 12, '12 read-only blocks (test.proof is the tenth, #623; check.types and check.build the last two, #632)');
 });
 
 test('every offered block has an example the validator accepts, and the command it maps to is real', () => {

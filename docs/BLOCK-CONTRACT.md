@@ -61,6 +61,7 @@ a `local-model` path, `view-code` (mechanical) and `edit-code` (free) on writing
 | `create.proof` | derived | run, view-code, edit-code, do-by-hand | the locked proof of a shaped screen (#623) plus `architecture.yml` (`modify`, the test regions, once); a Playwright proof is derived only when the project has a Playwright config |
 | `create.route` | derived | run, view-code, edit-code, do-by-hand | points the route entry at a generated screen's controller (#654): Next.js `create app/<route>/page.tsx` (and `delete` the init scaffold's dangling `app/page.tsx`), react-spa `modify src/App.tsx` |
 | `add.dependency` | derived | run, view-code, edit-code, do-by-hand | one line in `package.json` (`modify`); never runs a package manager (#654) |
+| `add.env` | derived | run, view-code, edit-code, do-by-hand | one variable in `.env.example` (`create`, or `modify` when the file exists), a comment and a placeholder, never a real value; scope `server` \| `public` decides the public prefix (#632) |
 | `create.page.from` | declared | run, view-code, edit-code, do-by-hand | one page file plus its Props; derivable next |
 | `create.workflow.from` | declared | run, view-code, edit-code, do-by-hand | machine file (+ state union with `--state-union`) |
 | `create.controller.bind` | declared | run, view-code, edit-code, do-by-hand | modifies an existing page; kind `modify` |
@@ -80,6 +81,8 @@ a `local-model` path, `view-code` (mechanical) and `edit-code` (free) on writing
 | `review.analyze` | empty | run | reads two commits through temporary checkouts |
 | `test.run` | empty | run | writes nothing in the project |
 | `test.proof` | empty | run | runs the render proof of a shaped screen offline; writes nothing in the project |
+| `check.types` | empty | run | type-checks the project with its own TypeScript and returns a classified result (a pass, or errors grouped by file with their kind); writes nothing (#632) |
+| `check.build` | empty | run | runs the project's build script through a bounded process and returns a classified result; writes nothing from Construct's side (#632) |
 | `sync` | declared | run, view-code, edit-code | derived rule config and each feature's barrel; the set is computable from architecture.yml; a shaped plan (#654) declares its feature's `index.ts` and `.dependency-cruiser.cjs` |
 | `pipeline.run` | declared | run, view-code, edit-code | steps carry no scope today (see below) |
 | `manual.task` | declared | do-by-hand | no CLI behind it; the only flow that is free by definition |
@@ -102,7 +105,7 @@ a `local-model` path, `view-code` (mechanical) and `edit-code` (free) on writing
 
 ## Findings
 
-- Of 29 flows, 16 fit as-is (10 read-only with an empty scope, 6 with a derived scope); 13 are writers that need a scope
+- Of 32 flows, 19 fit as-is (12 read-only with an empty scope, 7 with a derived scope); 13 are writers that need a scope
   declaration from the plan step (`manual.task` among them, by definition).
 - `test.run` and `review.analyze` are read-only in `PLAN_FLOWS` and get an empty scope; the contract makes that checkable
   (`RUN_READONLY_WROTE`) where before it was a comment.

@@ -43,8 +43,8 @@ export const MAX_REQUEST_BYTES = 16 * 1024;
 
 const CARD_ID = /^o\d{1,3}$/;
 const PLACEMENT_ID = /^q-[A-Za-z0-9-]{1,40}$/;
-/** #621: the data source of a shaped screen is asked when the plan is built (it needs the project's OpenAPI file), so its answers go to planFromBlocks, not to placeCard. */
-const SOURCE_ID = /^q-source(?:-[a-z0-9-]{1,30})?$/;
+/** #621, #654, #632: the closed questions of the PLAN (where a screen reads its data, its route, the dependency, the environment variables, how far it is verified) are asked when the plan is built (they need the project's files), so their answers go to planFromBlocks, not to placeCard. */
+const PLAN_ID = /^q-(?:source|route|dependency|env|verify)(?:-[a-z0-9-]{1,70})?$/;
 const OPTION_ID = /^[a-z][a-z-]{0,30}$/;
 
 const fail = (status, code, error, extra = {}) => ({ status, body: { ok: false, code, error, ...extra } });
@@ -77,7 +77,7 @@ export function readRequirement(body, root, trace = { choices: [], questions: []
   for (const a of given) {
     if (!a || typeof a !== 'object' || Array.isArray(a) || typeof a.id !== 'string' || typeof a.option !== 'string' || !OPTION_ID.test(a.option)) return fail(400, 'BAD_ANSWERS', 'Each answer must be { id, option }.');
     if (CARD_ID.test(a.id)) cardAnswers.push(a);
-    else if (SOURCE_ID.test(a.id)) planAnswers[a.id] = a.option;
+    else if (PLAN_ID.test(a.id)) planAnswers[a.id] = a.option;
     else if (PLACEMENT_ID.test(a.id)) placementAnswers[a.id] = a.option;
     else return fail(400, 'BAD_ANSWERS', `"${a.id}" is not a question this requirement can ask.`);
   }
@@ -122,14 +122,15 @@ export function readRequirement(body, root, trace = { choices: [], questions: []
 
   const screen = placement.blocks.flatMap((b) => b.layers).find((l) => l.layer === 'page' || l.layer === 'controller')?.name ?? 'Requirement';
   const feature = featureNameOf(screen);
-  const planned = planFromBlocks(placement.blocks, { feature, root, title: `Requirement: ${text.trim().slice(0, 80)}`, decisions: placement.decisions, answers: planAnswers });
+  const planned = planFromBlocks(placement.blocks, { feature, root, title: `Requirement: ${text.trim().slice(0, 80)}`, decisions: placement.decisions, answers: planAnswers, card });
   trace.planValidated = planned.ok;
   if (!planned.ok) return { status: 200, body: { ...out, placement: { ...placement, ok: false, errors: [...placement.errors, ...planned.errors] } } };
-  // #621: where a shaped screen reads its data from (`q-source`, or `q-source-<name>`) is a closed question beside the plan, like q-shape: it is
-  // asked once the plan is built, answered like the others, recorded as a decision trace, and never holds Approve back (an unanswered one uses the rules' default).
-  const sourceOffers = (planned.offers ?? []).filter((q) => SOURCE_ID.test(q.id)).map((q) => asQuestion('plan', q));
+  // #621, #654, #632: every closed question of the plan (`q-source`, `q-route`, `q-dependency`, `q-env`, `q-verify`, whatever the blocks raised) is a card beside the plan,
+  // like q-shape: asked once the plan is built, answered like the others, recorded as a decision trace, and never holds Approve back (an unanswered one uses the rules' default).
+  // The response is generic: the client draws whatever `offers` holds.
+  const sourceOffers = (planned.offers ?? []).filter((q) => PLAN_ID.test(q.id)).map((q) => asQuestion('plan', q));
   trace.questions = [...open, ...offers, ...sourceOffers];
-  trace.choices = [...trace.choices, ...choicesFromWiring({ offers: sourceOffers, decisions: (planned.decisions ?? []).filter((d) => SOURCE_ID.test(d.question)) })];
+  trace.choices = [...trace.choices, ...choicesFromWiring({ offers: sourceOffers, decisions: (planned.decisions ?? []).filter((d) => PLAN_ID.test(d.question)) })];
   const featuresRoot = config.features?.root ?? 'features';
   const warnings = fs.existsSync(path.join(root, featuresRoot, feature)) ? [`The feature "${feature}" already exists in this project, so the "Create feature ${feature}" step will be refused. Remove that step in the Plan screen, or use other words.`] : [];
   return { status: 200, body: { ...out, placement: { ...placement, decisions: planned.decisions }, offers: [...offers, ...sourceOffers], plan: planned.plan, files: planned.files, proof: planned.proof ?? null, warnings } };

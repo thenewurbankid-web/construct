@@ -57,6 +57,13 @@ Four capabilities, one CLI:
     (runs the render proof of a shaped screen, written by 'construct create proof': no browser, no server, needs esbuild in the
     project (it comes with tsx and vite); says per failure whether the app or the harness is at fault and whether the chain is
     complete; read-only, no LLM; exit 1 on any failure)
+  construct test types [--feature <feature>] [--format json|text] [--dir <path>]
+    (type-checks the project with its own TypeScript (tsc --noEmit over its tsconfig) and prints a classified result: a pass, or the errors
+    grouped by file (the first ten with line, code and message), each a missing import, an unknown name or a type mismatch; --feature reports
+    only that feature's files; exit 0 for a pass, 1 when there are errors, 2 when it could not run (no TypeScript, no tsconfig); read-only, no LLM)
+  construct test build [--format json|text] [--dir <path>]
+    (runs the project's build script through a bounded process (a timeout, an output cap) and prints a classified result: a pass, a compile
+    error with file and line, a missing build script, a timeout, or another failure with the end of its output; read-only, no LLM; exit 0/1/2 as above)
   construct template list|show <name>|instantiate <name> [--param key=value]... [--params-json <json>] --templates <dir>
   construct template ...   (named, reusable, parameterised plans: instantiate prints a concrete plan.v1; curated templates load from --templates <dir> or CONSTRUCT_TEMPLATES_DIR, none are bundled)
   construct import <name> --feature <feature> --layers <l1,l2,...> --from <path> [--llm <provider> | --format json] [--dir <path>]
@@ -140,6 +147,10 @@ Commands:
     (points the project's route entry at the controller of a generated screen: Next.js creates app/<route>/page.tsx, react-spa adds
     the import and a <Route> to src/App.tsx and drops the dangling controller import 'construct init' leaves; the route defaults to the
     kebab-case of the name; refuses a route something else owns; idempotent; deterministic, no LLM)
+  construct create env <NAME> --scope server|public [--value <placeholder>] [--comment <line>] [--dir <path>]
+    (adds one variable to .env.example with a comment and a placeholder, never a real value, creating the file when absent: the name is
+    [A-Z][A-Z0-9_]{0,63}; scope public adds the framework's public prefix (NEXT_PUBLIC_, or VITE_ for react-spa); a --value is refused when
+    the name looks like a secret; a server variable read in a 'use client' file is a CLIENT-001 violation; idempotent; deterministic, no LLM)
   construct create dependency <package> --version <range> [--dir <path>]
     (adds one line to the dependencies of package.json, for example @line/construct-core, which the generated typed units import;
     never runs a package manager; idempotent; deterministic, no LLM)

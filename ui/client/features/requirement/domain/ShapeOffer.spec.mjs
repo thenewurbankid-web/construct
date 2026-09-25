@@ -50,7 +50,7 @@ test('choosing list: the view names the chooser (person), the plan has 9 steps (
   assert.deepEqual(list.result.timeline.map((s) => s.kind), ['page-load', 'server-read', 'presentation'], 'the list shape reads on the server, then shows');
   assert.equal(list.result.files.length, 11, 'the ten files of the shape and the local store the rules default (#621) writes');
   assert.ok(list.result.files.includes('features/products/services/Products.service.ts'));
-  assert.equal(chosen.plan.steps.length, 11);
+  assert.equal(chosen.plan.steps.length, 12, 'the feature, six units, the wiring, the type-check (#632), the proof and its run');
   assert.ok(chosen.plan.steps.slice(1, 7).every((s) => s.args.shape === 'list'));
   const scaffold = shapeView(shapeResult({ 'q-shape': 'scaffold' }));
   assert.equal(scaffold.result.offers[0].decidedBy, 'person');
@@ -98,6 +98,33 @@ test('answering the data source: the view names the chooser, the other option is
   assert.equal(v.result.files.length, 10, 'the endpoint source writes no store');
   const target = { id: 'q-source', source: 'placement' };
   assert.deepEqual(withAnswer(withAnswer([{ id: 'q-shape', option: 'list' }], target, 'endpoint'), target, 'local'), [{ id: 'q-shape', option: 'list' }, { id: 'q-source', option: 'local' }]);
+});
+
+// #632: every other closed question of the plan (the type-check, the environment variables, the route, the dependency) comes back in `offers` as a `plan`
+// question and is drawn as a card of its own, titled from its id, with the same status words as the data source. The server owns the rules; this only words them.
+const planResult = (sentence, answers = {}, shape = true) => {
+  const card = parseRequirement(sentence).card;
+  const placement = placeCard(card, { framework: 'react-spa', answers: shape ? { 'q-shape': 'list' } : {} });
+  const planned = planFromBlocks(placement.blocks, { feature: 'products', root: '/x', decisions: placement.decisions, answers, card });
+  const offers = [...placement.offers, ...planned.offers.map((q) => ({ ...q, source: 'plan' }))];
+  return { card, placement: { ...placement, decisions: planned.decisions }, plan: planned.plan, files: planned.files, open: [], offers, warnings: [], summary: { readBack: [], blocks: [] } };
+};
+
+test('the plan questions: the type-check and the environment variables are cards of the kind `plan`, titled from their id, never blocking Approve', () => {
+  const v = shapeView(planResult(PRODUCTS));
+  assert.deepEqual(v.result.offers.map((o) => [o.id, o.kind, o.heading]), [['q-shape', 'shape', 'Screen shape'], ['q-source', 'source', 'Data source'], ['q-verify', 'plan', 'Verification']]);
+  const verify = v.result.offers[2];
+  assert.deepEqual(verify.options.map((o) => [o.id, o.suggested, o.chosen]), [['types', true, false], ['none', false, false]], 'the build option is disabled here (no package.json), so it is not offered');
+  assert.equal(verify.status, "Not chosen yet, so the plan below uses the rules' default: type-check after the wiring.");
+  assert.equal(v.result.approve.canApprove, true);
+  const answered = shapeView(planResult(PRODUCTS, { 'q-verify': 'none' })).result.offers[2];
+  assert.deepEqual([answered.status, answered.decidedBy, answered.options.map((o) => o.chosen)], ['Chosen: No verification step. Decided by: person.', 'person', [false, true]]);
+  assert.deepEqual(withAnswer([], { id: 'q-verify', source: 'plan' }, 'none'), [{ id: 'q-verify', option: 'none' }]);
+
+  const env = shapeView(planResult('A logged-in user wants to safely manage billing details Stripe', {}, false)).result.offers.filter((o) => o.kind === 'plan');
+  assert.deepEqual(env.map((o) => [o.id, o.heading, o.options.map((x) => x.id)]), [['q-env-stripe-secret-key', 'Environment variable', ['add', 'skip']], ['q-env-allowed-redirect-origins', 'Environment variable', ['add', 'skip']]]);
+  assert.match(env[0].question, /STRIPE_SECRET_KEY/);
+  assert.equal(env[0].options[0].suggested, true, 'add is the rules default');
 });
 
 test('a decision made by the rules names its provider; an option the table does not know keeps the server words', () => {

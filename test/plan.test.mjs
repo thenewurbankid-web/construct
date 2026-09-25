@@ -95,6 +95,11 @@ const EVERY_FLOW_STEPS = [
     touches: { features: [], files: [{ path: 'package.json', change: 'modify' }] },
   },
   {
+    id: 's-env', title: 'Add STRIPE_SECRET_KEY to .env.example', flow: 'add.env', executor: 'deterministic',
+    args: { name: 'STRIPE_SECRET_KEY', scope: 'server', comment: 'The Stripe secret key, server only.' },
+    touches: { features: [], files: [{ path: '.env.example', change: 'create' }] },
+  },
+  {
     id: 's-page', title: 'Ingest the designed checkout page', flow: 'create.page.from', executor: 'deterministic',
     args: { name: 'Checkout', feature: 'checkout', from: '../design-exports/Checkout.jsx' }, dependsOn: ['s-feature'],
     touches: touching('checkout', 'features/checkout/pages/CheckoutPage.tsx', 'create', 'page'),
@@ -186,6 +191,14 @@ const EVERY_FLOW_STEPS = [
   {
     id: 's-test-proof', title: 'Run the proof of the Totals screen', flow: 'test.proof', executor: 'deterministic',
     args: { feature: 'checkout', name: 'TotalsScreen.proof.test.ts' }, dependsOn: ['s-proof'],
+  },
+  {
+    id: 's-check-types', title: 'Type-check the checkout feature', flow: 'check.types', executor: 'deterministic',
+    args: { feature: 'checkout' }, dependsOn: ['s-route'],
+  },
+  {
+    id: 's-check-build', title: 'Build the project', flow: 'check.build', executor: 'deterministic',
+    args: {}, dependsOn: ['s-check-types'],
   },
   {
     id: 's-sync', title: 'Regenerate the rule config and public API barrels', flow: 'sync', executor: 'deterministic',

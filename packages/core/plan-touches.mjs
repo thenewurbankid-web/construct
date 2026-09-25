@@ -9,6 +9,7 @@ import { LAYER_ORDER, layerTargetFile, pascalCase } from './generators.mjs';
 import { shapeTouches } from './shapes.mjs';
 import { proofTouches } from './proof.mjs';
 import { routeEntryTouches, dependencyTouches } from './wiring.mjs';
+import { envTouches } from './env.mjs';
 
 const isName = (v) => typeof v === 'string' && v.trim().length > 0;
 const asList = (v) => (Array.isArray(v) ? v : typeof v === 'string' ? v.split(',') : []).map((x) => String(x).trim()).filter(Boolean);
@@ -16,7 +17,7 @@ const rel = (root, abs) => path.relative(root, abs).split(path.sep).join('/');
 const shapeArgs = (args) => ({ shape: args.shape, name: args.name, feature: args.feature, entity: args.entity, fields: args.fields, source: args.source });
 
 /** Flows whose written files are derived here. Every other writing flow answers `null` until its output is pinned by a test. */
-export const DERIVED_FLOWS = Object.freeze(['create.feature', 'create.unit', 'create.layer', 'create.proof', 'create.route', 'add.dependency']);
+export const DERIVED_FLOWS = Object.freeze(['create.feature', 'create.unit', 'create.layer', 'create.proof', 'create.route', 'add.dependency', 'add.env']);
 
 /**
  * The project-relative files a writing plan step will create, derived from its own arguments without touching the disk.
@@ -60,6 +61,8 @@ export function expectedFiles(root, flowId, args = {}) {
     // #654: the route entry a screen is wired into (Next.js creates a page.tsx, react-spa modifies src/App.tsx), and the one line added to package.json.
     if (flowId === 'create.route') return routeEntryTouches(root, { name: args.name, feature: args.feature, route: args.route });
     if (flowId === 'add.dependency') return dependencyTouches(root, { name: args.name, version: args.version });
+    // #632: the one file an environment variable is added to.
+    if (flowId === 'add.env') return envTouches(root, { name: args.name, scope: args.scope, value: args.value, comment: args.comment });
     return null;
   } catch {
     return null;

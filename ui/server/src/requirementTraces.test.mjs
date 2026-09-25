@@ -130,6 +130,21 @@ test('#621: the q-source answer is a decision trace of its own: the offer as sho
   assert.equal(JSON.stringify(traces()).includes(root), false, 'no project path in a trace');
 });
 
+test('#632: the q-env and q-verify answers are decision traces of their own (the offer as shown, the rules suggestion, accepted or not, the plan validated); unanswered records nothing', async () => {
+  fresh();
+  const BILLING = 'A logged-in user wants to safely manage billing details Stripe';
+  await post({ text: BILLING });
+  assert.equal(fs.existsSync(traceDir(root, { stateDir })), false, 'the questions were asked (they are in the offers) but nobody answered them');
+  await post({ text: BILLING, answers: [{ id: 'q-env-stripe-secret-key', option: 'skip' }] });
+  await post({ text: LIST, answers: [{ id: 'q-shape', option: 'list' }, { id: 'q-verify', option: 'none' }] });
+  const env = traces().decisions.find((d) => d.chooser.id === 'requirement.plan.env');
+  assert.deepEqual([env.chosen, env.by, env.options, env.summary.id, env.summary.chosen], ['skip', 'person', ['add', 'skip'], 'q-env-stripe-secret-key', null]);
+  assert.deepEqual([env.suggestion.option, env.outcome.accepted, env.outcome.planValidated], ['add', false, true]);
+  const verify = traces().decisions.find((d) => d.chooser.id === 'requirement.plan.verify');
+  assert.deepEqual([verify.chosen, verify.options, verify.summary.id, verify.suggestion.option, verify.outcome], ['none', ['types', 'types-build', 'none'], 'q-verify', 'types', { accepted: false, planValidated: true }]);
+  assert.equal(JSON.stringify(traces()).includes(root), false, 'no project path in a trace');
+});
+
 test('a placement question is recorded too (a server check with no server block), with the question AS OFFERED', async () => {
   fresh();
   await post({ text: 'A user can click a button safely.', answers: [{ id: 'q-server', option: 'mutation' }] });

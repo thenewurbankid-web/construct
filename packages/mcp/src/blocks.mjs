@@ -95,7 +95,7 @@ const capKeyed = (record, max = LIMITS.previewFiles) => Object.fromEntries(Objec
  * with the MCP client's name in the returned `decisions`; nothing is written to the decision traces. The plan is never applied.
  *
  * @param {{ root: string, clientName: () => string | undefined }} ctx The server's startup configuration.
- * @param {{ text: string, answers?: { id: string, option: string }[] }} input The requirement and the answers (`o1`... for words, `q-shape`, `q-dependency`, `q-route`, `q-v1`... for placement).
+ * @param {{ text: string, answers?: { id: string, option: string }[] }} input The requirement and the answers (`o1`... for words, `q-shape`, `q-dependency`, `q-route`, `q-source`, `q-env`, `q-verify`, `q-v1`... for placement).
  * @returns {Promise<object>} `{ ok, stage, complete, card, blocks, questions, offers, decisions, plan, files, proof, wiring, warnings, notes, apply }`.
  * @throws {ToolError} `PARSE_FAILED`, `ANSWER_REFUSED`, `PLACEMENT_REFUSED`, `PLAN_REFUSED`, `CONFIG_UNREADABLE` or `PATH_OUTSIDE_ROOT`.
  *
@@ -115,7 +115,7 @@ export async function placementPlace(ctx, { text, answers = [] }) {
       const r = resolveOpen(card, { [a.id]: a.option });
       if (!r.ok) throw new ToolError('ANSWER_REFUSED', firstMessage(r.errors, 'That answer was not accepted.'));
       card = r.card;
-    } else if (/^q-(?:dependency|route|source)(?:-[a-z0-9-]+)?$/.test(a.id)) wiringAnswers[a.id] = { option: a.option, ...attribution };
+    } else if (/^q-(?:dependency|route|source|env|verify)(?:-[a-z0-9-]+)?$/.test(a.id)) wiringAnswers[a.id] = { option: a.option, ...attribution };
     else placementAnswers[a.id] = { option: a.option, ...attribution };
   }
 
@@ -148,7 +148,7 @@ export async function placementPlace(ctx, { text, answers = [] }) {
 
   const screen = placement.blocks.flatMap((b) => b.layers).find((l) => l.layer === 'page' || l.layer === 'controller')?.name ?? 'Requirement';
   const feature = kebab(screen);
-  const planned = planFromBlocks(placement.blocks, { feature, root: ctx.root, title: `Requirement: ${text.trim().slice(0, 80)}`, decisions: placement.decisions, answers: wiringAnswers });
+  const planned = planFromBlocks(placement.blocks, { feature, root: ctx.root, title: `Requirement: ${text.trim().slice(0, 80)}`, decisions: placement.decisions, answers: wiringAnswers, card });
   if (!planned.ok) throw new ToolError('PLAN_REFUSED', firstMessage(planned.errors, 'The blocks could not be compiled to a plan.'), { errors: planned.errors.slice(0, 5).map((e) => ({ code: e.code, message: cut(e.message, LIMITS.lineChars) })) });
   const wiringOffers = (planned.offers ?? []).filter((q) => !offers.some((o) => o.id === q.id)).map((q) => asQuestion('placement', q));
   const featuresRoot = config.features?.root ?? 'features';
@@ -162,6 +162,8 @@ export async function placementPlace(ctx, { text, answers = [] }) {
     wiring: planned.wiring
       ? { dependency: planned.wiring.dependency, sync: planned.wiring.sync, routes: planned.wiring.routes.slice(0, 5).map((r) => ({ name: r.name, route: r.route, step: r.step, file: r.file })) }
       : null,
+    env: (planned.env ?? []).slice(0, 5).map((e) => ({ variable: e.variable, scope: e.scope, question: e.question, step: e.step })),
+    verify: planned.verify ?? null,
     warnings: fs.existsSync(path.join(ctx.root, featuresRoot, feature)) ? [`The feature "${feature}" already exists in this project, so the "Create feature ${feature}" step would be refused.`] : [],
     notes: [...out.notes, ...(planned.notes ?? []).slice(0, 3).map((n) => cut(n, 240))].slice(0, 5),
   };

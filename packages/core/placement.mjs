@@ -30,6 +30,8 @@ import { SHAPES, FORM_VERBS, singularOf, pluralOf, fieldsFromProperties, endpoin
 import { detectPlaywright, PLAYWRIGHT_SHAPES } from './proof.mjs';
 import { sourceOffer, SOURCE_QUESTION_ID } from './shape-source.mjs';
 import { routePathOf, routeOffer, syncTouches, dependencyOffer, ROUTE_QUESTION_ID, DEPENDENCY_QUESTION_ID, CONSTRUCT_CORE_PACKAGE } from './wiring.mjs';
+import { secretsOfCard, envOffers, ENV_FILE } from './env.mjs';
+import { verifyOffer, VERIFY_QUESTION_ID } from './verify.mjs';
 
 /** The schema version string of a placement result. */
 export const PLACEMENT_VERSION = 'placement.v1';
@@ -816,10 +818,15 @@ const FEATURE_RE = /^[A-Za-z][A-Za-z0-9_-]*$/;
  * plan with no shaped unit, and `notes` carries what was left out (no Playwright config: nothing is installed).
  *
  * @param {PlacementBlock[]} blocks Blocks from `placeCard` (a block with an unsupported placement or layer is refused).
- * @param {{ feature: string, root: string, title?: string, decisions?: PlacementDecision[], proof?: boolean }} options The feature the units go in, the
- *   project root (its architecture.yml decides the folders), an optional ticket title, the attribution to carry, and `proof: false` to leave
- *   the proof steps out of a shaped plan (default: they are planned).
- * @returns {{ ok: true, plan: object, decisions: PlacementDecision[], files: Record<string, string[]>, proof: object | null, notes: string[], errors: [] } | { ok: false, plan: null, decisions: [], files: {}, errors: PlacementError[] }}
+ * A card that calls for a secret or a redirect allow-list (`options.card`, #632) adds one `add.env` step per named variable, each behind a closed
+ * question (`q-env`, or `q-env-<name>`: add | skip), and a wired shaped plan adds `check.types` (and `check.build`) after the wiring and before the proof behind the
+ * closed question `q-verify` (types | types-build | none, default types). `env` lists the variables and their steps; `verify` the two step ids.
+ *
+ * @param {{ feature: string, root: string, title?: string, decisions?: PlacementDecision[], proof?: boolean, wire?: boolean, verify?: boolean, card?: object, answers?: Record<string, string | { option: string }> }} options The feature the units go in, the
+ *   project root (its architecture.yml decides the folders), an optional ticket title, the attribution to carry, `proof: false` to leave
+ *   the proof steps out of a shaped plan (default: they are planned), `wire: false` to leave out the wiring, the environment variables and the verification, `verify: false` to
+ *   leave out only the verification, `card` (the requirement card the blocks came from) to name the environment variables its checks call for, and `answers` to the closed questions of the plan.
+ * @returns {{ ok: true, plan: object, decisions: PlacementDecision[], files: Record<string, string[]>, proof: object | null, offers: object[], wiring: object | null, env: { variable: string, scope: string, question: string, step: string | null }[], verify: { types: string | null, build: string | null } | null, notes: string[], errors: [] } | { ok: false, plan: null, decisions: [], files: {}, errors: PlacementError[] }}
  *   The plan, who decided what, the files per block and the proof of the chain, or every problem found.
  *
  * @example
@@ -922,6 +929,22 @@ export function planFromBlocks(blocks, options = {}) {
   // choice `q-dependency` whose default adds the one line to package.json (nothing is installed). `q-route` is asked only when the
   // screen's path is reserved or taken. Unanswered questions use their default, so nothing holds the plan back; `options.wire: false`
   // leaves all of it out (a plan then ends its units as before #654).
+  // #632: a card whose checks call for a secret (`server-only-secret`) or a redirect allow-list (`validated-redirect`) names the environment
+  // variables the project must define. Each is a closed question (`q-env`, or `q-env-<name>` for several: add | skip); an unanswered one
+  // uses its default (add), so it never holds the plan back. The step writes only a placeholder line and a comment to .env.example.
+  // `options.card` is the requirement card the blocks came from; without it (or with `wire: false`) the plan carries none.
+  const envPlan = [];
+  if (opts.wire !== false && isPlainObject(opts.card)) {
+    const secrets = secretsOfCard(opts.card);
+    const checks = new Set((opts.card.checks ?? []).map((c) => c.name));
+    if (checks.has('server-only-secret') && !secrets.some((x) => x.check === 'server-only-secret')) notes.push('The card asks for a server-only secret but names no outside service, so no environment variable is planned: add one with `construct create env <NAME> --scope server`.');
+    for (const offer of envOffers(opts.root, secrets, answers)) {
+      offers.push(offer.question);
+      record(offer.question, answers[offer.id]);
+      const step = offer.add ? add('add.env', `Add ${offer.variable} to ${ENV_FILE}`, { ...offer.request }, [], 'Called for by a check of the card. A placeholder line and a comment; the real value goes in .env, which is not committed.') : null;
+      envPlan.push({ variable: offer.variable, scope: offer.request.scope, question: offer.id, step });
+    }
+  }
   const shaped = new Map();
   for (const u of ordered) if (u.shape) shaped.set(u.name, { shape: u.shape, unitSteps: [...(shaped.get(u.name)?.unitSteps ?? []), stepOf.get(`${u.layer}:${u.name}`)] });
   const routeOf = new Map();
@@ -949,6 +972,19 @@ export function planFromBlocks(blocks, options = {}) {
       wiringSteps.push(step);
       wiring.routes.push({ name, route: offer.route, step, file: steps.find((x) => x.id === step)?.touches?.files?.[0]?.path ?? null });
     }
+  }
+  // #632: a wired shaped plan says whether the project still type-checks (and builds) before the proof: `q-verify` (types | types-build | none,
+  // rules-only default types). Both steps are read-only and classified (`check.types`, `check.build`); an unanswered question uses the default.
+  // `options.verify: false` (or `wire: false`) leaves the question and the steps out.
+  let verification = null;
+  if (opts.wire !== false && opts.verify !== false && shaped.size) {
+    const v = verifyOffer(opts.root, answers[VERIFY_QUESTION_ID]);
+    offers.push(v.question);
+    record(v.question, answers[VERIFY_QUESTION_ID]);
+    verification = { types: null, build: null };
+    const upTo = [...new Set([...stepOf.values(), ...wiringSteps])].sort(idOrder);
+    if (v.types) verification.types = add('check.types', 'Type-check the project', {}, upTo, 'Read-only: a pass, or the errors grouped by file and what kind they are (a missing import, an unknown name, a type mismatch). Runs after the route is wired, so a dangling import shows here.');
+    if (v.build) verification.build = add('check.build', 'Build the project', {}, [verification.types].filter(Boolean), 'Read-only: runs the build script and says whether it passed, or the first compile errors. Nothing is installed.');
   }
   // #623: a shaped screen is not finished until something shows it behaves. Each shaped unit name gets a proof step (after every
   // unit of the shape) and a read-only verification step; a project that already has Playwright also gets the route flow and its
@@ -998,7 +1034,7 @@ export function planFromBlocks(blocks, options = {}) {
   const proof = proofSteps.length
     ? { required: true, complete: false, state: 'pending', steps: proofSteps, verifiedBy: proofSteps.map((p) => p.verifiedBy), playwright: { configured: playwrightConfig !== null, config: playwrightConfig, skipped: playwrightNote } }
     : null;
-  return { ok: true, plan, decisions: [...decisions.map((d) => ({ ...d })), ...wiringDecisions], files, proof, offers, wiring, notes, errors: [] };
+  return { ok: true, plan, decisions: [...decisions.map((d) => ({ ...d })), ...wiringDecisions], files, proof, offers, wiring, env: envPlan, verify: verification, notes, errors: [] };
 }
 
 // ---------------------------------------------------------------------------------------------------------------- summary

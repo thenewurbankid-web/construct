@@ -95,7 +95,7 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
     expect(await listedFiles(page)).toEqual(SCAFFOLD_FILES);
   });
 
-  test('choosing scaffold shows fewer files; choosing list shows the 11-step plan, the typed file names and who decided (person)', async ({ page }) => {
+  test('choosing scaffold shows fewer files; choosing list shows the 12-step plan, the typed file names and who decided (person)', async ({ page }) => {
     await gotoCockpit(page, '/requirement');
     await readSentence(page, PRODUCTS);
 
@@ -111,7 +111,7 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
 
     const list = await choose(page, 'list');
     expect(list.body.offers[0].chosen).toBe('list');
-    expect(list.body.plan.steps.map((s) => s.flow)).toEqual(['create.feature', ...Array(6).fill('create.unit'), 'sync', 'create.route', 'create.proof', 'test.proof']);
+    expect(list.body.plan.steps.map((s) => s.flow)).toEqual(['create.feature', ...Array(6).fill('create.unit'), 'sync', 'create.route', 'check.types', 'create.proof', 'test.proof']);
     expect(list.body.plan.steps.slice(1, 7).every((s) => s.args.shape === 'list' && s.args.entity === 'Product')).toBe(true); // then sync and the route entry (#654), the proof and its run (#623)
     await expect(page.getByTestId('requirement-shape-list')).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByTestId('requirement-shape-scaffold')).toHaveAttribute('aria-pressed', 'false');
@@ -141,7 +141,7 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
     await expect(page.getByTestId('requirement-started')).toContainText(processId);
     const detail = await (await request.get(`${API}/api/processes/${processId}`)).json();
     expect(detail.ok).toBe(true);
-    expect(detail.process.steps.map((s) => s.flow)).toEqual(['create.feature', ...Array(6).fill('create.unit'), 'sync', 'create.route', 'create.proof', 'test.proof']);
+    expect(detail.process.steps.map((s) => s.flow)).toEqual(['create.feature', ...Array(6).fill('create.unit'), 'sync', 'create.route', 'check.types', 'create.proof', 'test.proof']);
     // The API shows a step without its arguments; the saved record (the server's own store) keeps the plan verbatim, and its steps are what runs.
     const record = openProcessStore(project.repo, { stateDir: STATE_DIR }).load(processId);
     const commands = record.plan.steps.map((s) => planToCommand(s).argv.join(' '));
@@ -212,7 +212,7 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
       const chosen = await choose(page, s.shape);
       expect(chosen.body.offers[0]).toMatchObject({ id: 'q-shape', chosen: s.shape, default: s.shape, shape: s.shape, unit: s.unit });
       expect(chosen.body.offers[0].options.map((o) => o.id)).toEqual([s.shape, 'scaffold']);
-      expect(chosen.body.plan.steps.map((x) => x.flow)).toEqual(['create.feature', ...Array(6).fill('create.unit'), 'sync', 'create.route', 'create.proof', 'test.proof']);
+      expect(chosen.body.plan.steps.map((x) => x.flow)).toEqual(['create.feature', ...Array(6).fill('create.unit'), 'sync', 'create.route', 'check.types', 'create.proof', 'test.proof']);
       expect(chosen.body.plan.steps.slice(1, 7).every((x) => x.args.shape === s.shape && x.args.name === s.unit && x.args.entity === 'Product')).toBe(true);
       expect(chosen.body.placement.decisions).toEqual([{ question: 'q-shape', option: s.shape, by: 'person' }]);
       await expect(page.getByTestId(`requirement-shape-${s.shape}`)).toHaveAttribute('aria-pressed', 'true');
@@ -354,7 +354,7 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
     await expect(page.getByTestId('requirement-files').locator('summary')).toHaveText('11 files will be created');
 
     const endpoint = await chooseSource(page, 'endpoint');
-    expect(endpoint.body.offers.map((o) => [o.id, o.chosen])).toEqual([['q-shape', 'list'], ['q-source', 'endpoint']]);
+    expect(endpoint.body.offers.map((o) => [o.id, o.chosen])).toEqual([['q-shape', 'list'], ['q-source', 'endpoint'], ['q-verify', null]]);
     expect(endpoint.body.plan.steps.filter((s) => s.flow === 'create.unit').every((s) => s.args.source === 'endpoint')).toBe(true);
     expect(endpoint.res.request().postDataJSON().answers).toEqual([{ id: 'q-shape', option: 'list' }, { id: 'q-source', option: 'endpoint' }]);
     await expect(page.getByTestId('requirement-source-endpoint')).toHaveAttribute('aria-pressed', 'true');
@@ -419,6 +419,108 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
       await expect(page.getByTestId('requirement-source').getByRole('button')).toHaveText(['Local data, no backend', 'Call GET /api/products']);
     } finally {
       fs.rmSync(spec, { force: true });
+    }
+  });
+
+  // #632: the other closed questions of the plan (the type-check, the environment variables) come back in `offers` and are drawn as cards of the kind
+  // `plan` with no client rule of their own but a heading: the same buttons, the same suggested badge, the same status words, the same answer route.
+  const planCard = (page, id) => page.locator(`[data-testid="requirement-plan"][data-offer="${id}"]`);
+  const choosePlan = async (page, id, option) => {
+    const done = page.waitForResponse(isRead);
+    await planCard(page, id).locator(`[data-option="${option}"] button`).click();
+    const res = await done;
+    expect(res.status()).toBe(200);
+    return { res, body: await res.json() };
+  };
+
+  test('the verification card (q-verify) appears once a shape is chosen: the type-check is suggested, nothing is chosen, and choosing changes the plan and is recorded', async ({ page }) => {
+    await gotoCockpit(page, '/requirement');
+    await readSentence(page, PRODUCTS);
+    await expect(page.getByTestId('requirement-plan')).toHaveCount(0); // no shape chosen, no shaped unit: nothing to verify yet
+    await choose(page, 'list');
+    const card = planCard(page, 'q-verify');
+    await expect(card).toBeVisible();
+    await expect(card.getByRole('heading', { name: 'Verification', level: 2 })).toBeVisible();
+    await expect(card.getByRole('button')).toHaveText(['Type-check after the wiring', 'No verification step']); // building is not offered: this project has no build script
+    await expect(card.locator('[data-option="types"]').getByTestId('requirement-plan-suggested')).toHaveText('suggested by rules');
+    await expect(card.getByRole('button', { pressed: true })).toHaveCount(0);
+    await expect(card.getByTestId('requirement-plan-status')).toHaveText("Not chosen yet, so the plan below uses the rules' default: type-check after the wiring.");
+    await expect(page.getByTestId('requirement-approve-plan')).toBeEnabled(); // a closed question never blocks Approve
+    const order = await page.getByTestId('requirement-stage').locator('[data-testid="requirement-shape"], [data-testid="requirement-source"], [data-testid="requirement-plan"], [data-testid="requirement-timeline"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')));
+    expect(order).toEqual(['requirement-shape', 'requirement-source', 'requirement-plan', 'requirement-timeline']);
+
+    const none = await choosePlan(page, 'q-verify', 'none');
+    expect(none.res.request().postDataJSON().answers).toEqual([{ id: 'q-shape', option: 'list' }, { id: 'q-verify', option: 'none' }]);
+    expect(none.body.plan.steps.some((s) => s.flow === 'check.types')).toBe(false);
+    expect(none.body.offers.map((o) => [o.id, o.chosen])).toEqual([['q-shape', 'list'], ['q-source', null], ['q-verify', 'none']]);
+    await expect(card.locator('[data-option="none"] button')).toHaveAttribute('aria-pressed', 'true');
+    await expect(card.getByTestId('requirement-plan-status')).toHaveText('Chosen: No verification step. Decided by: person.');
+    await expect(card.getByTestId('requirement-plan-status')).toHaveAttribute('data-decided-by', 'person');
+
+    const types = await choosePlan(page, 'q-verify', 'types'); // a changed mind replaces the earlier answer
+    expect(types.res.request().postDataJSON().answers).toEqual([{ id: 'q-shape', option: 'list' }, { id: 'q-verify', option: 'types' }]);
+    expect(types.body.plan.steps.slice(-3).map((s) => s.flow)).toEqual(['check.types', 'create.proof', 'test.proof']); // after the wiring, the proof stays last
+    expect(types.body.plan.steps.find((s) => s.flow === 'check.types').touches).toEqual({ features: [], files: [] }); // read-only
+    expect(JSON.stringify(types.body)).not.toContain(project.repo); // no server path leaves the server
+    await expect(card.getByTestId('requirement-plan-status')).toHaveText('Chosen: Type-check after the wiring. Decided by: person.');
+    await expect(page.getByTestId('requirement-shape-list')).toHaveAttribute('aria-pressed', 'true'); // the earlier answers are kept
+
+    const ran = page.waitForResponse((r) => r.url().endsWith('/api/plan/run') && r.request().method() === 'POST');
+    await page.getByTestId('requirement-approve-plan').click();
+    const sent = (await ran).request().postDataJSON().plan.steps.map((x) => planToCommand(x).argv.join(' '));
+    expect(sent.at(-2)).toMatch(/^create proof /);
+    expect(sent.at(-1)).toMatch(/^test proof /);
+    expect(sent.indexOf('test types')).toBe(sent.length - 3); // the step is the real command, before the proof
+    const [d] = recorded('requirement.plan.verify', 'types');
+    expect(d).toMatchObject({ by: 'person', suggestion: { option: 'types' }, provider: { name: 'rules', version: '1' }, outcome: { accepted: true } });
+  });
+
+  test('a card that needs a secret gets a card per environment variable: add is suggested, skipping one removes its step, and the add.env steps are the real commands', async ({ page }) => {
+    await gotoCockpit(page, '/requirement');
+    const read = page.waitForResponse(isRead);
+    await page.getByTestId('requirement-text').fill('A logged-in user wants to safely manage billing details Stripe');
+    await page.getByTestId('requirement-read').click();
+    const body = await (await read).json();
+    expect(body.offers.map((o) => o.id)).toEqual(['q-env-stripe-secret-key', 'q-env-allowed-redirect-origins']);
+    expect(body.plan.steps.filter((s) => s.flow === 'add.env').map((s) => s.args)).toEqual([{ name: 'STRIPE_SECRET_KEY', scope: 'server' }, { name: 'ALLOWED_REDIRECT_ORIGINS', scope: 'server' }]);
+    await expect(page.getByTestId('requirement-plan')).toHaveCount(2);
+    const stripe = planCard(page, 'q-env-stripe-secret-key');
+    await expect(stripe.getByRole('heading', { name: 'Environment variable', level: 2 })).toBeVisible();
+    await expect(stripe).toContainText('STRIPE_SECRET_KEY');
+    await expect(stripe.getByRole('button')).toHaveText(['Add STRIPE_SECRET_KEY to .env.example', 'Do not add it']);
+    await expect(stripe.locator('[data-option="add"]').getByTestId('requirement-plan-suggested')).toHaveText('suggested by rules');
+    await expect(stripe.getByTestId('requirement-plan-status')).toHaveText("Not chosen yet, so the plan below uses the rules' default: add STRIPE_SECRET_KEY to .env.example.");
+    await expect(page.getByTestId('requirement-approve-plan')).toBeEnabled();
+
+    const skipped = await choosePlan(page, 'q-env-stripe-secret-key', 'skip');
+    expect(skipped.res.request().postDataJSON().answers).toEqual([{ id: 'q-env-stripe-secret-key', option: 'skip' }]);
+    expect(skipped.body.plan.steps.filter((s) => s.flow === 'add.env').map((s) => s.args.name)).toEqual(['ALLOWED_REDIRECT_ORIGINS']);
+    await expect(stripe.getByTestId('requirement-plan-status')).toHaveText('Chosen: Do not add it. Decided by: person.');
+    await expect(planCard(page, 'q-env-allowed-redirect-origins').getByRole('button', { pressed: true })).toHaveCount(0); // the other card is untouched
+    const ran = page.waitForResponse((r) => r.url().endsWith('/api/plan/run') && r.request().method() === 'POST');
+    await page.getByTestId('requirement-approve-plan').click();
+    const sent = (await ran).request().postDataJSON().plan.steps.map((x) => planToCommand(x).argv.join(' '));
+    expect(sent.filter((c) => c.startsWith('create env'))).toEqual(['create env ALLOWED_REDIRECT_ORIGINS --scope server']);
+    expect(fs.existsSync(path.join(project.repo, '.env.example'))).toBe(false); // approving starts a process; nothing is written by this route
+    const [d] = recorded('requirement.plan.env', 'skip');
+    expect(d).toMatchObject({ by: 'person', suggestion: { option: 'add' }, outcome: { accepted: false } });
+  });
+
+  test('the plan cards pass the accessibility check at 390 px in both themes, and do not scroll sideways', async ({ page }) => {
+    for (const theme of ['dark', 'light']) {
+      await page.addInitScript((t) => localStorage.setItem('construct.theme', t), theme);
+      await page.setViewportSize({ width: 390, height: 844 });
+      for (const [sentence, shaped] of [[PRODUCTS, true], ['A logged-in user wants to safely manage billing details Stripe', false]]) {
+        await gotoCockpit(page, '/requirement');
+        await readSentence(page, sentence);
+        if (shaped) await choose(page, 'list');
+        await expect(page.getByTestId('requirement-plan').first()).toBeVisible();
+        await page.getByTestId('requirement-files').locator('summary').evaluate((el) => el.scrollIntoView({ block: 'center' }));
+        const found = await runAxe(page);
+        expect(found.filter(isBlocking), `${theme} ${shaped ? 'verify' : 'env'}: ${format(found.filter(isBlocking))}`).toEqual([]);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${theme}: page scroll`).toBe(true);
+        for (const card of await page.getByTestId('requirement-plan').all()) expect(await card.evaluate((el) => el.scrollWidth <= el.clientWidth + 1), `${theme}: card scroll`).toBe(true);
+      }
     }
   });
 

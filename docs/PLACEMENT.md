@@ -665,7 +665,7 @@ export const files = planned.files;
 [{ "question": "q-shape", "option": "list", "by": "decision-model", "provider": "rules" }]
 ```
 
-The twelve commands the plan runs (each is a step `planToCommand` turns into a real command; the fields are the same on every unit; the three after the units wire the screen, see "The route entry, sync and the dependency"; the last two are the proof of the screen, see "The proof step"):
+The thirteen commands the plan runs (each is a step `planToCommand` turns into a real command; the fields are the same on every unit; the three after the units wire the screen, see "The route entry, sync and the dependency"; then the type-check, see "Type-check, build and environment variables"; the last two are the proof of the screen, see "The proof step"):
 
 <!-- list-shape-example:commands -->
 ```json
@@ -680,6 +680,7 @@ The twelve commands the plan runs (each is a step `planToCommand` turns into a r
   "construct create dependency @line/construct-core --version ^0.9.0",
   "construct sync",
   "construct create route Products --feature products --route /products",
+  "construct test types",
   "construct create proof Products --feature products --shape list --entity Product --fields id:string,name:string,price:number --source local --kind render",
   "construct test proof products --name ProductsScreen.proof.test.ts"
 ]
@@ -771,7 +772,7 @@ and the screen parts `detail`, `name` and `price` (the fields of the form the ca
 without properties, a plural, two verbs or a verb that needs the browser (a click) is not offered a shape.
 
 **Worked example, the detail shape, checked by `test/detail-shape.test.mjs`.** "A user wants to see the details of a product"
-answered `detail` (by the rules provider) gives twelve commands; the files are declared by block:
+answered `detail` (by the rules provider) gives thirteen commands; the files are declared by block:
 
 <!-- detail-shape-example:commands -->
 ```json
@@ -786,6 +787,7 @@ answered `detail` (by the rules provider) gives twelve commands; the files are d
   "construct create dependency @line/construct-core --version ^0.9.0",
   "construct sync",
   "construct create route Product --feature product --route /product",
+  "construct test types",
   "construct create proof Product --feature product --shape detail --entity Product --fields id:string,name:string,price:number --source local --kind render",
   "construct test proof product --name ProductScreen.proof.test.ts"
 ]
@@ -841,6 +843,7 @@ sits in a route with a parameter passes it as the prop.
   "construct create dependency @line/construct-core --version ^0.9.0",
   "construct sync",
   "construct create route AddProduct --feature add-product --route /add-product",
+  "construct test types",
   "construct create proof AddProduct --feature add-product --shape form --entity Product --fields id:string,name:string,price:number --source local --kind render",
   "construct test proof add-product --name AddProductScreen.proof.test.ts"
 ]
@@ -1059,7 +1062,8 @@ plan is then as it was before #654). For the products screen on a fresh `constru
 | `s8` Add @line/construct-core to package.json | `add.dependency` (`construct create dependency`) | adds `"@line/construct-core": "^0.9.0"` to `dependencies`; never runs a package manager | `modify package.json` |
 | `s9` Export the products feature's public API (sync) | `sync` (the existing flow) | the feature barrel exports the controller and the hook, so SLICE-003 does not warn | `modify features/products/index.ts`, `.dependency-cruiser.cjs` (`create` or `modify`) |
 | `s10` Wire the Products screen into the route entry (/products) | `create.route` (`construct create route`) | see below | Next.js: `create app/products/page.tsx`; react-spa: `modify src/App.tsx` |
-| `s11`, `s12` | `create.proof`, `test.proof` | the proof, see above | |
+| `s11` Type-check the project | `check.types` (`construct test types`) | see "Type-check, build and environment variables" below | none (read-only) |
+| `s12`, `s13` | `create.proof`, `test.proof` | the proof, see above | |
 
 **The route entry** (`packages/core/wiring.mjs`). The route path is the kebab-case of the screen name (`Products` gives `/products`,
 `SubscriptionPlan` gives `/subscription-plan`).
@@ -1084,9 +1088,9 @@ holds a plan back: an unanswered question uses its rules default. An answer is p
 | `q-dependency` | the project has a `package.json` that lists no `@line/construct-core` (the units import its typed factories) | `add-dependency` (its `line` field is the exact text added), `skip` | `add-dependency` |
 
 `planFromBlocks` returns `{ ..., offers, wiring }`; `wiring` is `{ dependency: 's8' | null, sync: 's9', routes: [{ name, route, step, file }] }`
-(`null` when nothing was wired). A Playwright proof step takes `--route` from the route the plan wired. The Requirement API and
-screen do not pass or draw `q-route` and `q-dependency` yet (the screen draws every `offers` entry, and the client is a later
-slice): their defaults apply, and the plan preview shows the steps.
+(`null` when nothing was wired). A Playwright proof step takes `--route` from the route the plan wired. Since #632 the Requirement
+API passes and returns every closed question of the plan (`q-source`, `q-route`, `q-dependency`, `q-env`, `q-verify`) and the screen
+draws each as a card (see below); an unanswered one uses its default.
 
 **The full-path test** (`test/list-shape-chain.test.mjs`) runs the plan's own commands and nothing else in a fresh react-spa project
 and in a fresh Next.js project, then asserts that every file that changed is a file the plan declared, `construct validate` reports no
@@ -1104,6 +1108,89 @@ without it and every step still goes through the per-diff approval; `skip` is on
 feature's barrel for `sync` (sync also refreshes the barrels of features that have drifted; the approval gate would refuse that).
 A screen's route is one segment; nested routes come with the alternate. The init scaffold's dangling page is removed by the route
 step rather than repointed, so `/` is not silently the new screen.
+
+## Type-check, build and environment variables: a chain that proves the app still builds (#632, part of #616)
+
+Three flows a plan, the CLI and the Requirement chain share. All three are deterministic blocks with no model; the two checks are
+read-only and answer with a CLASSIFIED result, never a raw log.
+
+| Flow | CLI | Writes | Declared `touches` |
+|---|---|---|---|
+| `check.types` | `construct test types [--feature f] [--format json]` | nothing | none |
+| `check.build` | `construct test build [--format json]` | nothing of its own (a build writes its own output folder) | none |
+| `add.env` | `construct create env <NAME> --scope server\|public [--value v] [--comment c]` | one variable in `.env.example` | `.env.example` (`create`, or `modify` when it exists) |
+
+**`check.types`** (`packages/engine/verifyRunner.mjs`, `packages/core/verify.mjs`) type-checks the project with its OWN TypeScript
+(`tsc --noEmit` over its tsconfig, the block `construct validate`'s opt-in `TYPE-001` already uses, solution-style tsconfigs included).
+The result is `{ ok: true, check: 'types', status, statement, counts, files, checked, notes, feature, durationMs }`:
+
+- `status: 'pass'`: no type error.
+- `status: 'type-errors'`: `files` is the errors grouped by file, the first ten in `tsc` order, each `{ line, code, kind, message }`
+  (`counts` still says how many there are: `{ errors, files, shown, omitted, byKind }`). `kind` is `missing-import` (a module or an
+  export that is not there: TS2307, TS2305, ...), `unknown-name` (used but never declared or imported: TS2304, TS2552, TS2339, ...),
+  `type-mismatch` (TS2322, TS2345, ...) or `other`; a fixed table of codes, no model. `statement` is the plain sentence:
+  `4 type errors in 2 files: 1 missing import, 1 unknown name, 2 type mismatches (missing import: a module or an export that is not there; ...)`.
+- `status: 'tool-missing' | 'no-config' | 'timeout' | 'failed'`: it could not decide (no TypeScript in the project, no `tsconfig.json`,
+  `tsc` did not finish in 120 seconds). Never a pass.
+- `--feature f` reports only the errors in that feature's files (the whole program is still checked: `tsc -p` takes no file list).
+  A read-only check leaves nothing behind: the `*.tsbuildinfo` file an incremental tsconfig makes `tsc` write is removed.
+
+**`check.build`** runs the project's `build` script (`npm run build`) through a BOUNDED child process: its own process group with a
+clean environment, killed as a group when the timeout passes (300 seconds), and only the first and last part of its output is kept
+(200 KB). The result is `{ ok: true, check: 'build', status, script, statement, errors, excerpt, exitCode, outputTruncated, durationMs }`:
+`pass`; `compile-error` (the first ten `{ file, line, message }`, read from tsc lines, Next.js `./file:line:col` blocks and
+Vite/esbuild/Rollup errors); `missing-script` (package.json has no `build`); `timeout`; or `failed` (a non-zero exit the patterns do
+not know: the last twelve lines are kept as `excerpt`, and `failure` is the `{ kind: 'other', title, message }` object the test runners' `classifyFailure` gives an unclassified failure). It runs the
+PROJECT's own script, so it runs project code, like running its tests does.
+
+**Exit codes** of both CLI verbs: `0` for a pass, `1` when the check found a problem (errors, a compile error, a timeout, another
+failure), `2` when it could not run (`tool-missing`, `no-config`, `missing-script`, an unknown `--feature`). In a plan a non-zero
+step stops the run at that step, with the classified result as its output.
+
+**`add.env`** (`packages/core/env.mjs`) adds one variable to `.env.example`: a `# comment` line and `NAME=placeholder`, appended after a
+blank line, the file created when absent, the rest of it kept byte for byte, idempotent (a name already listed, with or without
+`export`, changes nothing). It never writes `.env` and never writes a real value.
+
+- **Name**: `[A-Z][A-Z0-9_]{0,63}`. **Scope** is a closed choice, `server | public`, and decides the prefix: `public` puts the framework's
+  public prefix in front (`NEXT_PUBLIC_` for Next.js; **`VITE_` for react-spa**, where Vite inlines nothing else; never twice), `server`
+  refuses a name that already carries one.
+- **Secret-shaped names** (`SECRET`, `PASSWORD`, `TOKEN`, `PRIVATE`, `CREDENTIAL`, `API_KEY`, `ACCESS_KEY`, `SIGNING`, `SALT`, a `_KEY`
+  suffix) are refused ONLY when a `--value` is supplied: with none the placeholder `your-<name>-here` is written, which is the normal case.
+  A `public` variable whose name looks secret is written with a warning.
+- A value is a plain token (no space, quote or `$`); a comment is one line of at most 120 characters, defaulting to who may read it.
+- **CLIENT-001** (`packages/core/client-boundary.mjs`) is the reader of the other half: a `server`-scope name read as `process.env.NAME` in
+  a `'use client'` file (or a file only it imports) is a violation, so a `server` variable belongs to a server action, a route handler or
+  a server component, and only a `public` one may be read in the browser. `test/env.test.mjs` proves both directions.
+
+**In the Requirement chain.** When the card's checks include `server-only-secret` or `validated-redirect`, `planFromBlocks(blocks,
+{ card })` names the variables (`secretsOfCard`): `<SERVICE>_SECRET_KEY` per outside service the card names (`Stripe` gives
+`STRIPE_SECRET_KEY`), and `ALLOWED_REDIRECT_ORIGINS` for a redirect. Each is a closed question in the chooser shape, and an `add.env` step
+after the units (server scope, no dependency):
+
+| Question id | Raised when | Options (stable ids) | Default |
+|---|---|---|---|
+| `q-env` (or `q-env-<kebab-name>` when there are several, e.g. `q-env-stripe-secret-key`) | the card calls for the variable and `.env.example` does not list it yet | `add`, `skip` | `add` |
+| `q-verify` | a wired shaped plan | `types`, `types-build` (disabled, with the reason, when package.json has no `build` script), `none` | `types` (first, so the rules-only provider suggests it) |
+
+`q-verify` puts `check.types` (and, for `types-build`, `check.build` after it) after the sync and the route steps and before the proof,
+which stays last: the type-check runs once the route is wired, so a dangling import shows there. Neither question holds a plan back.
+`planFromBlocks` also returns `env: [{ variable, scope, question, step }]` and `verify: { types, build }` (step ids or `null`); `wire:
+false` leaves the variables and the verification out (a plan is then as it was), and `verify: false` leaves out only the verification.
+A card with `server-only-secret` but no named outside service plans no variable and a note says to run `construct create env`.
+Answers are decision traces: `requirement.plan.env` and `requirement.plan.verify` (`choicesFromWiring`), with the question as offered,
+who chose and the rules suggestion. The Requirement API (`POST /api/requirement/read`) returns every plan question in `offers` and takes
+answers by id; the screen draws each as a **Route**, **Dependency**, **Environment variable** or **Verification** card (`data-testid`
+`requirement-plan`, `data-offer` the question id), the same way it draws the shape and the data source. MCP `placement_place` accepts the
+same answers (`q-env`, `q-verify`, ...), attributed to the client, and returns `env` and `verify` beside `wiring`.
+
+**Decisions where the issue was silent.** The default verification is `types`, not `none`, because a chain that cannot say whether the
+app still compiles is not finished; on the fresh, offline fixtures of the chain tests the type-check honestly reports missing imports
+(no `react-router-dom`, no `vite`), and the test harness takes that classified result as the step's answer. `check.types` in a plan is
+whole-project, not `--feature`, because the route entry it must cover lives outside the feature. The public prefix follows the
+framework, so `react-spa` gets `VITE_`. A secret-shaped name with no value is allowed (a placeholder is the safe case).
+
+**Left out** (MVP): installing packages (`add.dependency` still only edits package.json), a lint step, CI configuration, reading the
+project's environment schema, checking that a variable is read anywhere, and the `use client` directive.
 
 ## What is not here yet
 

@@ -32,6 +32,7 @@
 // `step.id`, not in the plan.
 import path from 'node:path';
 import { validateEnvelope } from '../../packages/engine/envelope.mjs';
+import { envArgIssue, ENV_SCOPES } from './env.mjs';
 
 export const PLAN_VERSION = 1;
 
@@ -228,6 +229,19 @@ export const PLAN_FLOWS = Object.freeze({
     args: {
       name: { type: 'string', required: true, positional: 0, description: 'The package name, for example @line/construct-core.' },
       version: { type: 'string', required: true, flag: '--version', description: 'The version range to add, for example ^0.9.0.' },
+      dir: DIR_ARG,
+    },
+  },
+  'add.env': {
+    cli: ['create', 'env'],
+    summary: 'Add one environment variable to .env.example (#632): a comment and NAME=placeholder, never a real value. The scope decides the public prefix (server: none; public: NEXT_PUBLIC_, or VITE_ for react-spa). A name that looks secret is refused when a value is supplied. Creates the file when absent; idempotent. Zero-LLM.',
+    writes: true,
+    executors: ['deterministic', 'user'],
+    args: {
+      name: { type: 'string', required: true, positional: 0, description: 'The variable name: upper case letters, digits and _, starting with a letter, at most 64 characters (STRIPE_SECRET_KEY).' },
+      scope: { type: 'string', required: true, flag: '--scope', enum: [...ENV_SCOPES], description: 'server (never reaches the browser) or public (inlined into the browser bundle: it gets the framework\'s public prefix).' },
+      value: { type: 'string', flag: '--value', description: 'A placeholder value to write instead of the default your-<name>-here. Refused when the name looks secret; never put a real value here.' },
+      comment: { type: 'string', flag: '--comment', description: 'One line written above the variable. Defaults to a line that says who may read it.' },
       dir: DIR_ARG,
     },
   },
@@ -458,6 +472,23 @@ export const PLAN_FLOWS = Object.freeze({
       name: { type: 'string', flag: '--name', description: 'Run only this proof file, for example ProductsScreen.proof.test.ts. Omit to run every proof of the feature.' },
       dir: DIR_ARG,
     },
+  },
+  'check.types': {
+    cli: ['test', 'types'],
+    summary: 'Type-check the project with its own TypeScript (tsc --noEmit over its tsconfig) and say what is wrong (#632): a pass, or the errors grouped by file (the first ten with file, line, code and message) and what kind they are: a missing import, an unknown name or a type mismatch. Read-only: it writes nothing in the project. Zero-LLM.',
+    writes: false,
+    executors: ['deterministic'],
+    args: {
+      feature: { type: 'string', flag: '--feature', description: 'Report only the errors in this feature\'s files. Omit to report the whole project.' },
+      dir: DIR_ARG,
+    },
+  },
+  'check.build': {
+    cli: ['test', 'build'],
+    summary: 'Run the project\'s build script through a bounded process (a timeout, an output cap) and say what happened (#632): a pass, a compile error (the first ten with file and line), a missing build script, a timeout, or another failure with the end of its output. Read-only from Construct\'s side. Zero-LLM.',
+    writes: false,
+    executors: ['deterministic'],
+    args: { dir: DIR_ARG },
   },
   sync: {
     cli: ['sync'],
@@ -741,6 +772,13 @@ function validateStep(step, index, seenIds, push) {
       const a = step.args;
       if (typeof a.name === 'string' && !/^(@[a-z0-9~-][a-z0-9._~-]*\/)?[a-z0-9~-][a-z0-9._~-]*$/.test(a.name)) push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.name`, 'A package name like @line/construct-core or react.');
       if (typeof a.version === 'string' && !/^[\^~]?\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.test(a.version)) push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.version`, 'A version range like ^0.9.0.');
+    }
+    if (step.flow === 'add.env') {
+      const issue = envArgIssue(step.args);
+      if (issue && issue.arg !== 'scope') push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.${issue.arg}`, issue.message); // a bad or missing scope is the enum's and the required check's to report
+    }
+    if (step.flow === 'check.types' && typeof step.args.feature === 'string' && !/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(step.args.feature)) {
+      push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.feature`, 'A feature name uses letters, digits, "_" and "-" only.');
     }
     if (step.flow === 'test.proof' && typeof step.args.name === 'string' && !/^[A-Za-z][A-Za-z0-9]*\.proof\.test\.ts$/.test(step.args.name)) {
       push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.name`, 'A proof is named by its file name, like ProductsScreen.proof.test.ts (no folders).');

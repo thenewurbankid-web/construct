@@ -16,16 +16,16 @@ import { NEEDS_RUNTIME, execute, featureFiles, initProject, planFor, projectFile
 const SENTENCE = 'A user wants to see the details of a product';
 const plan = (dir) => planFor(dir, SENTENCE, 'product', 'detail');
 
-test('the sentence becomes a plan of 12 steps, runs, and gives a detail screen that validates, type-checks, renders and is PROVEN', NEEDS_RUNTIME, async (t) => {
+test('the sentence becomes a plan of 13 steps, runs, and gives a detail screen that validates, type-checks, renders and is PROVEN', NEEDS_RUNTIME, async (t) => {
   const dir = initProject('react-spa', 'detail');
   const { placed, planned, offer } = await plan(dir);
   assert.deepEqual(offer.options.map((o) => o.id), ['detail', 'scaffold'], 'a read of one item is offered detail | scaffold');
   assert.deepEqual([offer.shape, offer.default, offer.unit, offer.entity, offer.fields], ['detail', 'detail', 'Product', 'Product', 'id:string,name:string,price:number']);
   assert.deepEqual(placed.decisions, [{ question: 'q-shape', option: 'detail', by: 'decision-model', provider: 'rules' }], 'who decided is recorded');
-  assert.deepEqual(planned.plan.steps.map((s) => s.title), ['Create feature product', 'Create domain Product', 'Create service Product', 'Create hook Product', 'Create component Product', 'Create page Product', 'Create controller Product', 'Add @line/construct-core to package.json', "Export the product feature's public API (sync)", 'Wire the Product screen into the route entry (/product)', 'Prove the Product screen', 'Run the proof of Product']);
+  assert.deepEqual(planned.plan.steps.map((s) => s.title), ['Create feature product', 'Create domain Product', 'Create service Product', 'Create hook Product', 'Create component Product', 'Create page Product', 'Create controller Product', 'Add @line/construct-core to package.json', "Export the product feature's public API (sync)", 'Wire the Product screen into the route entry (/product)', 'Type-check the project', 'Prove the Product screen', 'Run the proof of Product']);
   assert.deepEqual(planned.plan.steps.slice(1, 7).map((s) => [s.args.shape, s.args.entity, s.args.fields]), Array(6).fill(['detail', 'Product', 'id:string,name:string,price:number']), 'every unit carries the shape');
   assert.deepEqual(planned.wiring, { dependency: 's8', sync: 's9', routes: [{ name: 'Product', route: '/product', step: 's10', file: 'src/App.tsx' }] }, 'the wiring step applies to a detail plan too');
-  assert.deepEqual(planned.proof.steps, [{ name: 'Product', kind: 'render', proofStep: 's11', verifiedBy: 's12' }]);
+  assert.deepEqual(planned.proof.steps, [{ name: 'Product', kind: 'render', proofStep: 's12', verifiedBy: 's13' }]);
   assert.match(planned.notes[0], /^Playwright is not configured/);
 
   const before = projectFiles(dir);

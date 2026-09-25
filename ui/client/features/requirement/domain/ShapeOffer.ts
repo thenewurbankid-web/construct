@@ -21,9 +21,22 @@ export function deciderOf(decision: Decision | undefined): string | null {
 /** The data source question (q-source, #621) is asked once a shape is chosen, so it is a card of its own beside the shape's. */
 export const isSourceOffer = (id: string): boolean => /^q-source(-|$)/.test(id);
 
+/** The card heading of each other closed question of the plan (#632: the server raises them, this only titles them; an id it does not know is titled by the id). */
+const PLAN_HEADINGS: Record<string, string> = { 'q-route': 'Route', 'q-dependency': 'Dependency', 'q-env': 'Environment variable', 'q-verify': 'Verification' };
+
+/** The heading of an offer card: the shape, the data source, or a closed question of the plan. */
+export function offerHeading(id: string): string {
+  if (id === 'q-shape') return 'Screen shape';
+  if (isSourceOffer(id)) return 'Data source';
+  return PLAN_HEADINGS[id] ?? PLAN_HEADINGS[/^q-[a-z]+/.exec(id)?.[0] ?? ''] ?? id;
+}
+
+/** The first letter in lower case, the rest as it is (a variable name keeps its capitals). */
+const lowerFirst = (text: string): string => `${text.charAt(0).toLowerCase()}${text.slice(1)}`;
+
 function status(o: Offer, suggestion: SuggestionView | null, decidedBy: string | null, label: (id: string) => string): string {
   if (o.chosen) return `Chosen: ${label(o.chosen)}. Decided by: ${decidedBy ?? 'person'}.`;
-  if (isSourceOffer(o.id)) return `Not chosen yet, so the plan below uses the rules' default: ${label(o.default).toLowerCase()}.`;
+  if (o.id !== 'q-shape') return `Not chosen yet, so the plan below uses the rules' default: ${lowerFirst(label(o.default))}.`;
   const plain = `Not chosen yet, so the plan below is the ${label('scaffold').toLowerCase()}.`;
   return suggestion ? `${plain} ${suggestion.label[0].toUpperCase()}${suggestion.label.slice(1)}: ${label(suggestion.option).toLowerCase()}.` : plain;
 }
@@ -36,7 +49,8 @@ export function offerViews(result: ReadResult): OfferView[] {
     const decidedBy = o.chosen ? deciderOf(decisions.find((d) => d.question === o.id)) : null;
     return {
       id: o.id,
-      kind: isSourceOffer(o.id) ? ('source' as const) : ('shape' as const),
+      kind: o.id === 'q-shape' ? ('shape' as const) : isSourceOffer(o.id) ? ('source' as const) : ('plan' as const),
+      heading: offerHeading(o.id),
       source: 'placement' as const,
       question: o.question,
       options: o.options.filter((x) => x.enabled).map((x) => ({ id: x.id, label: words(x.id).label, gives: words(x.id).gives, suggested: x.id === suggestion?.option, chosen: x.id === o.chosen })),

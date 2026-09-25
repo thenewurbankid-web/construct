@@ -39,6 +39,8 @@ import { runFeatureTests, renderRunText } from '../../packages/engine/testRunner
 import { runProofs, renderProofRunText } from '../../packages/engine/proofRunner.mjs';
 import { generateProof } from './proof.mjs';
 import { generateRouteEntry, addDependency } from './wiring.mjs';
+import { addEnv } from './env.mjs';
+import { runTypesCheck, runBuildCheck, renderCheckText, checkExitCode } from '../../packages/engine/verifyRunner.mjs';
 import { startTimer, elapsedSeconds, formatDuration } from './timing.mjs';
 import { explainSource, renderExplained } from '../../packages/engine/workflowExplain.mjs';
 import { listWorkflowSourceFiles, readWorkflowSource } from '../../packages/engine/workflowSource.mjs';
@@ -323,6 +325,28 @@ function dependencyDocument(args, attribution) {
   return { verb: 'create', kind: 'dependency', line: result.line, files: result.changed ? [result.file] : [], attribution };
 }
 
+/** The request of `construct create env <NAME> --scope server|public [--value <placeholder>] [--comment <line>]` (#632): one variable in .env.example, no model. */
+function envRequestOf(args) {
+  const name = args[1];
+  const scope = flagValue(args, '--scope');
+  if (!name || name.startsWith('--') || !scope) throw new ConstructError('Usage: construct create env <NAME> --scope server|public [--value <placeholder>] [--comment <line>] [--dir <path>]', { exitCode: EXIT_CODES.USAGE_ERROR });
+  if (args.includes('--llm')) throw new ConstructError('An environment variable is written from a fixed template with no model, so it cannot be combined with --llm. Run it without --llm.', { exitCode: EXIT_CODES.USAGE_ERROR });
+  return { name, scope, value: flagValue(args, '--value'), comment: flagValue(args, '--comment') };
+}
+
+/** `construct create env STRIPE_SECRET_KEY --scope server` (#632): add the variable to .env.example with a placeholder and a comment; never a real value. */
+function generateEnvLine(args) {
+  const result = addEnv(getRoot(args), envRequestOf(args));
+  console.log(result.changed ? `${result.created ? 'Created' : 'Updated'} ${result.file}: added ${result.line}` : `Unchanged ${result.file}: ${result.variable} is already listed.`);
+  if (result.warning) console.log(`Warning: ${result.warning}`);
+}
+
+/** The result document of `create env` for `--format json`. */
+function envDocument(args, attribution) {
+  const result = addEnv(getRoot(args), envRequestOf(args));
+  return { verb: 'create', kind: 'env', variable: result.variable, line: result.line, files: result.changed ? [result.file] : [], warning: result.warning, attribution };
+}
+
 /**
  * `construct generate <layer> <name> --feature <f>` and its siblings: one layer file, `layer <name> --layers ...` for a whole
  * slice, or `tests <feature>`. `--shape list [--entity E] [--fields a:string,...]` (#619) fills the units with real typed code for
@@ -340,6 +364,7 @@ export async function generate(args) {
   if (args[0] === 'proof') return generateProofFiles(args);
   if (args[0] === 'route') return generateRouteFiles(args);
   if (args[0] === 'dependency') return generateDependencyLine(args);
+  if (args[0] === 'env') return generateEnvLine(args);
   const layer = args[0], name = args[1], fi = args.indexOf('--feature');
   if (!layer || !name || fi < 0 || !args[fi + 1]) {
     throw new ConstructError('Usage: construct generate <layer> <name> --feature <feature> [--openapi <spec>] [--llm <provider>]', { exitCode: EXIT_CODES.USAGE_ERROR });
@@ -931,6 +956,7 @@ export function printAttribution(tool, llm) {
 /**
  * `construct create feature <name>` | `construct create layer <name> --layers ... [--llm <provider>]`
  * | `construct create <layer> <name> --feature <feature> [--llm <provider>]`
+ * | `construct create env <NAME> --scope server|public [--value <placeholder>] [--comment <line>]` (one variable in .env.example, a placeholder never a real value, #632)
  * | `construct create service <name> --feature <feature> --openapi <spec>` (Ticket 7.5)
  * | `construct create layer|<layer> <name> --feature <feature> --shape list [--entity <E>] [--fields id:string,...]` (#619: real typed code, no model).
  * `feature` creation has nothing fillable (just types.ts/index.ts
@@ -1006,6 +1032,7 @@ async function createDocument(args) {
   if (args[0] === 'proof') return proofDocument(args, attribution);
   if (args[0] === 'route') return routeDocument(args, attribution);
   if (args[0] === 'dependency') return dependencyDocument(args, attribution);
+  if (args[0] === 'env') return envDocument(args, attribution);
   const fi = args.indexOf('--feature');
   const feature = fi >= 0 ? args[fi + 1] : undefined;
   if (args[0] === 'layer') {
@@ -1239,12 +1266,28 @@ async function testProof(rest, usage) {
   return format === 'json';
 }
 
+/** `construct test types [--feature <f>] [--format json|text] [--dir <path>]` and `construct test build [--format json|text] [--dir <path>]` (#632). Type-check the
+ * project with its own TypeScript, or run its build script through a bounded process, and print a CLASSIFIED result (a pass, or what kind of failure and where), never a raw log.
+ * Read-only, deterministic, no LLM. Exit code 0 for a pass, 1 when the check found a problem, 2 when it could not run (no TypeScript, no tsconfig, no build script). */
+async function testCheck(which, rest, usage) {
+  const valueFlags = new Set(['--dir', '--feature', '--format']);
+  if (rest.some((a, i) => !a.startsWith('--') && !valueFlags.has(rest[i - 1]))) throw new ConstructError(usage, { exitCode: EXIT_CODES.USAGE_ERROR });
+  const format = flagValue(rest, '--format') === 'json' ? 'json' : 'text';
+  if (which === 'build' && rest.includes('--feature')) throw new ConstructError('The build is of the whole project: --feature only narrows `construct test types`.', { exitCode: EXIT_CODES.USAGE_ERROR });
+  const root = getRoot(rest);
+  const result = which === 'types' ? await runTypesCheck(root, { feature: flagValue(rest, '--feature') }) : await runBuildCheck(root);
+  console.log(format === 'json' ? JSON.stringify(result, null, 2) : renderCheckText(result));
+  setExitCode(checkExitCode(result));
+  return format === 'json';
+}
+
 /** `construct test run <feature> [--name <file> --area generated|yours] [--base-url <url>] [--format json|text] [--dir <path>]`
- * (#305). Runs a feature's Playwright tests against the project's own running app and says, for each failure, whether
- * the harness or the app is at fault. Read-only, deterministic, no LLM. Exit code 1 when any test failed. */
+ * (#305) | `construct test proof <feature>` (#623) | `construct test types [--feature <f>]` and `construct test build` (#632). Runs a feature's Playwright tests against the project's own running app and says, for each failure, whether
+ * the harness or the app is at fault; `proof` runs the render proof of a shaped screen offline; `types` type-checks the project with its own TypeScript and `build` runs its build script (bounded), each printing a classified result, never a raw log. Read-only, deterministic, no LLM. Exit code 1 when any test failed or a check found a problem. */
 export async function testCommand(args) {
-  const usage = 'Usage: construct test run <feature> [--name <file> --area generated|yours] [--base-url <url>] [--format json|text] [--dir <path>]\n       construct test proof <feature> [--name <file>] [--format json|text] [--dir <path>]';
+  const usage = 'Usage: construct test run <feature> [--name <file> --area generated|yours] [--base-url <url>] [--format json|text] [--dir <path>]\n       construct test proof <feature> [--name <file>] [--format json|text] [--dir <path>]\n       construct test types [--feature <feature>] [--format json|text] [--dir <path>]\n       construct test build [--format json|text] [--dir <path>]';
   if (args[0] === 'proof') return testProof(args.slice(1), usage);
+  if (args[0] === 'types' || args[0] === 'build') return testCheck(args[0], args.slice(1), usage);
   if (args[0] !== 'run') throw new ConstructError(usage, { exitCode: EXIT_CODES.USAGE_ERROR });
   const rest = args.slice(1);
   const valueFlags = new Set(['--dir', '--name', '--area', '--base-url', '--format']);
@@ -1329,7 +1372,7 @@ export async function research(args) {
 /**
  * `construct refactor move <name> --feature <f> --from <layer> --to <layer>`
  * | `construct refactor rename <name> <newName> --feature <f> --layer <layer>`
- * | `construct refactor extract-expression <file> [--range <start:end>] [--name <Name>]`.
+ * | `construct refactor extract-expression <file> [--range <start:end>] [--name <Name>]`
  * Purely mechanical (relocate + rewrite every importer's path, or hoist a
  * flagged inline conditional/loop into a named unit) — never invents new
  * business logic. Reports the result, then re-validates the changed file(s)

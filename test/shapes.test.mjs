@@ -299,7 +299,7 @@ test('the plan of a list-shaped card is valid, every step carries the shape, and
   const planned = planFromBlocks(placed.blocks, { feature: 'shop', root: dir, decisions: placed.decisions });
   assert.equal(planned.ok, true, JSON.stringify(planned.errors));
   assert.deepEqual(validatePlan(planned.plan), { valid: true, errors: [] });
-  assert.deepEqual(planned.plan.steps.map((s) => s.title), ['Create feature shop', ...LAYERS.map((l) => `Create ${l} Products`), 'Add @line/construct-core to package.json', "Export the shop feature's public API (sync)", 'Wire the Products screen into the route entry (/products)', 'Prove the Products screen', 'Run the proof of Products'], '#623 and #654: a shaped screen is wired (dependency, sync, route) and ends with its proof and the read-only run of it');
+  assert.deepEqual(planned.plan.steps.map((s) => s.title), ['Create feature shop', ...LAYERS.map((l) => `Create ${l} Products`), 'Add @line/construct-core to package.json', "Export the shop feature's public API (sync)", 'Wire the Products screen into the route entry (/products)', 'Type-check the project', 'Prove the Products screen', 'Run the proof of Products'], '#623, #654 and #632: a shaped screen is wired (dependency, sync, route), type-checked and ends with its proof and the read-only run of it');
   assert.deepEqual(planned.plan.steps.slice(1, 1 + LAYERS.length).map((s) => s.args.layer), LAYERS);
   for (const s of planned.plan.steps.slice(1, 1 + LAYERS.length)) assert.deepEqual([s.args.shape, s.args.entity, s.args.fields], ['list', 'Product', 'id:string,name:string,price:number']);
   assert.equal(planFromBlocks(placed.blocks, { feature: 'shop', root: dir, proof: false, wire: false }).plan.steps.length, 1 + LAYERS.length, 'proof: false and wire: false leave the plan as it was before #623 and #654');
@@ -334,5 +334,5 @@ test('the worked example in docs/PLACEMENT.md runs and produces exactly the JSON
   for (const tag of ['question', 'decisions', 'commands', 'files']) {
     assert.deepEqual(JSON.parse(block(tag, 'json')), JSON.parse(JSON.stringify(shown[tag])), tag);
   }
-  assert.equal(shown.commands.length, 12);
+  assert.equal(shown.commands.length, 13);
 });

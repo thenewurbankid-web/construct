@@ -58,7 +58,7 @@ for (const [shape, s] of Object.entries(SHAPES)) {
       const offer = planned.offers.find((o) => o.id === 'q-source');
       assert.deepEqual([offer.default, offer.chosen], [source, null], 'the rules-only default, and nobody chose');
       assert.deepEqual(offer.options.map((o) => o.id), source === 'openapi' ? ['openapi', 'local', 'endpoint'] : ['local', 'endpoint']);
-      assert.equal(planned.plan.steps.length, 12);
+      assert.equal(planned.plan.steps.length, 13);
       assert.ok(planned.plan.steps.filter((x) => x.flow === 'create.unit' || x.flow === 'create.proof').every((x) => x.args.source === source), 'every unit step and the proof step carry the source');
       assert.deepEqual(planned.decisions.filter((d) => d.question === 'q-source'), [], 'an unanswered question is nobody\'s decision');
 

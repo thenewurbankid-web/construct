@@ -166,13 +166,13 @@ test.describe.serial('Requirement: a sentence read back as card, placement and t
     await expect(page.getByTestId('requirement-started')).toContainText(processId);
     await expect(page.getByTestId('requirement-approve-plan')).toBeDisabled();
 
-    // The process is in the drawer, the real record has the plan's nine steps (the feature, then the eight units).
+    // The process is in the drawer, the real record has the plan's eleven steps (the feature, the eight units, then the two environment variables the card's secret and redirect checks call for, #632).
     const drawer = page.getByRole('region', { name: 'Drawer' });
     await expect(drawer.getByRole('tab', { name: /Processes/ })).toHaveAttribute('aria-selected', 'true');
     await expect(drawer.getByTestId('process-row').filter({ hasText: 'Requirement: A logged-in user needs to see' })).toHaveCount(1);
     const detail = await (await request.get(`${API}/api/processes/${processId}`)).json();
     expect(detail.ok).toBe(true);
-    expect(detail.process.steps.map((s) => s.flow)).toEqual(['create.feature', ...Array(8).fill('create.unit')]);
+    expect(detail.process.steps.map((s) => s.flow)).toEqual(['create.feature', ...Array(8).fill('create.unit'), 'add.env', 'add.env']);
     expect(detail.process.steps.map((s) => s.title)).toContain('Create workflow ManageBillingDetails');
     // The bot works in its own worktree; the project tree is untouched until a person approves each file.
     expect(project.git('status', '--porcelain=v2', '--untracked-files=all')).toEqual(before);
