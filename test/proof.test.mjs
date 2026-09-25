@@ -62,7 +62,7 @@ test('the plan flows: create.proof and test.proof are registered, typed, and the
   const create = PLAN_FLOWS['create.proof'];
   assert.equal(create.writes, true);
   assert.deepEqual(create.executors, ['deterministic', 'user'], 'no model in a proof');
-  assert.deepEqual(Object.keys(create.args), ['name', 'feature', 'shape', 'entity', 'fields', 'source', 'kind', 'route', 'dir']);
+  assert.deepEqual(Object.keys(create.args), ['name', 'feature', 'shape', 'entity', 'fields', 'steps', 'source', 'kind', 'route', 'dir']);
   const verify = PLAN_FLOWS['test.proof'];
   assert.equal(verify.writes, false, 'the verification is read-only');
   assert.deepEqual(verify.executors, ['deterministic']);

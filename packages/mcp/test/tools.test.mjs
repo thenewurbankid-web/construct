@@ -95,7 +95,17 @@ test('placement_place: blocks, offers and a plan preview with the files each ste
   assert.ok(Object.keys(b.files).length >= 1);
 });
 
-test('placement_place: an overview is offered the dashboard shape (#627); an LLM answers it by id and the plan carries the shape, attributed to the client', async () => {
+// The shared session allows 30 calls a minute (LIMITS): the shape tests below use a session of their own so they do not eat that budget.
+const withOwnSession = async (fn) => {
+  const own = await connectInProcess({ root }, 'claude-code');
+  try {
+    return await fn((name, args) => callTool(own.client, name, args));
+  } finally {
+    await own.close();
+  }
+};
+
+test('placement_place: an overview is offered the dashboard shape (#627); an LLM answers it by id and the plan carries the shape, attributed to the client', () => withOwnSession(async (call) => {
   const text = 'A manager wants an overview of orders with totals';
   const first = (await call('placement_place', { text })).body;
   const offer = first.offers.find((o) => o.id === 'q-shape');
@@ -108,9 +118,9 @@ test('placement_place: an overview is offered the dashboard shape (#627); an LLM
   assert.ok(shaped.files.b1.includes('features/orders-dashboard/domain/OrdersDashboard.domain.ts'));
   const wrong = await call('placement_place', { text, answers: [{ id: 'q-shape', option: 'list' }] });
   assert.equal(wrong.isError, true, 'list is not an option of this card');
-});
+}));
 
-test('placement_place: a step-by-step flow is offered the wizard shape (#628); the plan carries its steps and the workflow layer, attributed to the client', async () => {
+test('placement_place: a step-by-step flow is offered the wizard shape (#628); the plan carries its steps and the workflow layer, attributed to the client', () => withOwnSession(async (call) => {
   const text = 'A user wants a step by step signup';
   const offer = (await call('placement_place', { text })).body.offers.find((o) => o.id === 'q-shape');
   assert.deepEqual([offer.options.map((o) => o.id), offer.default], [['wizard', 'scaffold'], 'wizard']);
@@ -120,7 +130,7 @@ test('placement_place: a step-by-step flow is offered the wizard shape (#628); t
   assert.deepEqual(shaped.decisions, [{ question: 'q-shape', option: 'wizard', by: 'llm', provider: 'claude-code' }]);
   assert.ok(shaped.plan.steps.some((s) => s.flow === 'create.unit' && s.files.some((f) => f.path === 'features/signup/workflows/Signup.workflow.ts')), 'the machine is a plan step');
   assert.ok(shaped.files.b1.includes('features/signup/workflows/Signup.workflow.ts'));
-});
+}));
 
 test('placement_place: the data source of a shaped screen (#621) is a closed offer an LLM answers by id, attributed to it; an option that was not offered is refused', async () => {
   const shape = { id: 'q-shape', option: 'list' };
