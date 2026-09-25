@@ -247,6 +247,7 @@
             "refactor.move",
             "refactor.rename",
             "wrap.provider",
+            "guard.route",
             "import.unit",
             "import.plan",
             "import.route",
@@ -1312,6 +1313,93 @@
                   "name",
                   "feature",
                   "provider"
+                ]
+              },
+              "executor": {
+                "enum": [
+                  "deterministic",
+                  "user"
+                ]
+              },
+              "touches": {
+                "$ref": "#/definitions/touches"
+              }
+            },
+            "required": [
+              "touches"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "flow"
+            ],
+            "properties": {
+              "flow": {
+                "const": "guard.route"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The guarded screen, PascalCase: the name of its controller without \"Controller\" (Products guards ProductsController).",
+                    "pattern": "^[A-Z][A-Za-z0-9]*$"
+                  },
+                  "feature": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+                  },
+                  "access": {
+                    "type": "string",
+                    "minLength": 1,
+                    "enum": [
+                      "public",
+                      "signed-in",
+                      "role"
+                    ],
+                    "description": "public (no guard), signed-in (a typed session check) or role (signed in and holding one of the roles)."
+                  },
+                  "roles": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "description": "The roles that may open the screen, for the role access: one to six lower-case words (admin,manager).",
+                    "maxItems": 6
+                  },
+                  "redirect": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "A path the fallback links to, for example /sign-in. Without it the fallback is a notice.",
+                    "pattern": "^/[A-Za-z0-9._~\\-/]{0,120}$"
+                  },
+                  "route": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The route path the screen is served at, for example /products. Defaults to the kebab-case of the name.",
+                    "pattern": "^/[a-z0-9]+(-[a-z0-9]+)*(/[a-z0-9]+(-[a-z0-9]+)*)*$"
+                  },
+                  "dir": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Target a Construct project nested in a subdirectory."
+                  }
+                },
+                "required": [
+                  "name",
+                  "feature",
+                  "access"
                 ]
               },
               "executor": {

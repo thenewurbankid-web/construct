@@ -22,7 +22,7 @@ export function deciderOf(decision: Decision | undefined): string | null {
 export const isSourceOffer = (id: string): boolean => /^q-source(-|$)/.test(id);
 
 /** The card heading of each other closed question of the plan (#632: the server raises them, this only titles them; an id it does not know is titled by the id). */
-const PLAN_HEADINGS: Record<string, string> = { 'q-route': 'Route', 'q-dependency': 'Dependency', 'q-env': 'Environment variable', 'q-verify': 'Verification', 'q-steps': 'Wizard steps', 'q-states': 'Screen states' };
+const PLAN_HEADINGS: Record<string, string> = { 'q-route': 'Route', 'q-dependency': 'Dependency', 'q-env': 'Environment variable', 'q-verify': 'Verification', 'q-steps': 'Wizard steps', 'q-states': 'Screen states', 'q-access': 'Access', 'q-state': 'Client state', 'q-handler': 'Route handler' };
 
 /** One plain line under a question that uses a word a person may not know (#659, #622): what a step of a wizard is, what a state of a screen is. Fixed words, by question id (`q-steps-<name>` too); a question without one has none. */
 const PLAN_HINTS: Record<string, string> = {

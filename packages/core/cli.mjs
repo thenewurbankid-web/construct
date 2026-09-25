@@ -40,6 +40,7 @@ import { runProofs, renderProofRunText } from '../../packages/engine/proofRunner
 import { generateProof } from './proof.mjs';
 import { generateRouteEntry, addDependency } from './wiring.mjs';
 import { addEnv } from './env.mjs';
+import { generateGuard } from './guard.mjs';
 import { wrapProvider, providerOffer } from './provider-wrap.mjs';
 import { buildDiffView } from './text-diff.mjs';
 import { runTypesCheck, runBuildCheck, renderCheckText, checkExitCode } from '../../packages/engine/verifyRunner.mjs';
@@ -351,6 +352,40 @@ function envDocument(args, attribution) {
   return { verb: 'create', kind: 'env', variable: result.variable, line: result.line, files: result.changed ? [result.file] : [], warning: result.warning, attribution };
 }
 
+/** The request of `construct create guard <Name> --feature <f> --access public|signed-in|role [--roles a,b] [--redirect </path>] [--route </path>]` (#629): who may open a screen. No model, so `--llm` is refused. */
+function guardRequestOf(args) {
+  const name = args[1];
+  const feature = flagValue(args, '--feature');
+  const access = flagValue(args, '--access');
+  if (!name || name.startsWith('--') || !feature || !access) throw new ConstructError('Usage: construct create guard <Name> --feature <feature> --access public|signed-in|role [--roles a,b] [--redirect </path>] [--route </path>] [--dir <path>]', { exitCode: EXIT_CODES.USAGE_ERROR });
+  if (args.includes('--llm')) throw new ConstructError('A route guard is written from fixed templates with no model, so it cannot be combined with --llm. Run it without --llm.', { exitCode: EXIT_CODES.USAGE_ERROR });
+  return { name, feature, access, roles: flagValue(args, '--roles'), redirect: flagValue(args, '--redirect'), route: flagValue(args, '--route') };
+}
+
+/** `construct create guard Products --feature shop --access signed-in` (#629): write the guard, wire it to the route and write its proof; `public` writes nothing and says so. */
+function generateGuardFiles(args) {
+  const root = getRoot(args);
+  const t = startTimer();
+  const request = guardRequestOf(args);
+  const result = generateGuard(root, request);
+  const dt = formatDuration(elapsedSeconds(t));
+  if (result.noop) console.log(result.notes[0]);
+  else if (!result.changed) console.log(`Unchanged: the ${request.name} screen is already guarded (${request.access}).`);
+  else {
+    for (const file of result.files) console.log(`${file === result.route || file === 'architecture.yml' || file.endsWith('types.ts') || file.endsWith('index.ts') ? 'Updated' : 'Created'} ${file}${file === result.files[0] ? ` (${dt})` : ''}`);
+    console.log(`Guarded ${result.route}: ${request.name}GuardController wraps ${request.name}Controller (access ${request.access}). Run: construct test proof ${request.feature}`);
+  }
+  for (const note of result.noop || !result.changed ? [] : result.notes) console.log(`Note: ${note}`);
+}
+
+/** The result document of `create guard` for `--format json`. */
+function guardDocument(args, attribution) {
+  const root = getRoot(args);
+  const request = guardRequestOf(args);
+  const result = generateGuard(root, request);
+  return { verb: 'create', kind: 'guard', feature: request.feature, name: request.name, access: result.access, noop: result.noop, route: result.route, session: result.session, files: result.files, notes: result.notes, attribution };
+}
+
 /**
  * `construct generate <layer> <name> --feature <f>` and its siblings: one layer file, `layer <name> --layers ...` for a whole
  * slice, or `tests <feature>`. `--shape list [--entity E] [--fields a:string,...]` (#619) fills the units with real typed code for
@@ -369,6 +404,7 @@ export async function generate(args) {
   if (args[0] === 'route') return generateRouteFiles(args);
   if (args[0] === 'dependency') return generateDependencyLine(args);
   if (args[0] === 'env') return generateEnvLine(args);
+  if (args[0] === 'guard') return generateGuardFiles(args);
   const layer = args[0], name = args[1], fi = args.indexOf('--feature');
   if (!layer || !name || fi < 0 || !args[fi + 1]) {
     throw new ConstructError('Usage: construct generate <layer> <name> --feature <feature> [--openapi <spec>] [--llm <provider>]', { exitCode: EXIT_CODES.USAGE_ERROR });
@@ -1081,6 +1117,7 @@ export function printAttribution(tool, llm) {
  * `construct create feature <name>` | `construct create layer <name> --layers ... [--llm <provider>]`
  * | `construct create <layer> <name> --feature <feature> [--llm <provider>]`
  * | `construct create env <NAME> --scope server|public [--value <placeholder>] [--comment <line>]` (one variable in .env.example, a placeholder never a real value, #632)
+ * | `construct create guard <Name> --feature <feature> --access public|signed-in|role [--roles a,b] [--redirect </path>] [--route </path>]` (who may open a screen: a typed guard wired to the route entry, and its proof; `public` writes nothing, #629)
  * | `construct create service <name> --feature <feature> --openapi <spec>` (Ticket 7.5)
  * | `construct create layer|<layer> <name> --feature <feature> --shape list [--entity <E>] [--fields id:string,...]` (#619: real typed code, no model).
  * `feature` creation has nothing fillable (just types.ts/index.ts
@@ -1157,6 +1194,7 @@ async function createDocument(args) {
   if (args[0] === 'route') return routeDocument(args, attribution);
   if (args[0] === 'dependency') return dependencyDocument(args, attribution);
   if (args[0] === 'env') return envDocument(args, attribution);
+  if (args[0] === 'guard') return guardDocument(args, attribution);
   const fi = args.indexOf('--feature');
   const feature = fi >= 0 ? args[fi + 1] : undefined;
   if (args[0] === 'layer') {

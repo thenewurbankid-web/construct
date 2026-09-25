@@ -245,7 +245,7 @@ test('one disabled step refuses the whole plan (nothing partial starts); other b
 test('every offered block can be turned off and is then refused by name, read-only ones and manual steps included', async () => {
   await withStack({}, async ({ json, put, started }) => {
     const rows = (await json('GET', '/api/blocks')).body.blocks.filter((b) => b.offered && b.example);
-    assert.equal(rows.length, 32);
+    assert.equal(rows.length, 33);
     let rev = 0;
     for (const b of rows) {
       const s = { id: 's1', title: b.example.title, flow: b.id, args: b.example.args, executor: b.example.executor, ...(b.example.touches ? { touches: b.example.touches } : {}) };

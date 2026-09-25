@@ -1486,6 +1486,60 @@ element is named as the controller renders it (`CartPage`, the exported identifi
 chain: nothing in a card says which provider a screen needs, so it is a flow a person, a plan or an LLM adds by name, with the closed list
 as its options.
 
+## The route guard: who may open a screen (#629, part of #616)
+
+`guard.route` (`packages/core/guard.mjs`, CLI `construct create guard <Name> --feature f --access public|signed-in|role [--roles a,b] [--redirect /sign-in] [--route /r] [--format json]`)
+chooses who may open a screen from a closed list, so a screen is not exposed by accident. Deterministic, no model, writing, idempotent, with derived touches.
+
+| Access | What it writes | Who sees the screen |
+|---|---|---|
+| `public` | nothing (a documented no-op: a route without a guard is open to everyone; an existing guard is not removed) | everyone |
+| `signed-in` | the guard slice below | a signed-in session |
+| `role` | the guard slice, and the decision also needs one of `--roles` (one to six lower-case words) | a signed-in session holding one of the roles |
+
+**The slice** (`Name` is the screen: its controller is `<Name>Controller`; every file follows `Name.layer.ext`, and the units are built with their typed factories):
+
+| File | Unit | What it is |
+|---|---|---|
+| `domain/<Name>Access.domain.ts` | `decide<Name>Access` (`defineDomain`) | pure: `{ session } -> Access` (`allowed`, `signed-out`, `wrong-role` with the roles needed) |
+| `hooks/useSession.hook.ts` | `SessionContext`, `useSession` | the session: a React context that is **signed out until something above the screen supplies one**, so a screen nobody wired is closed, never open by accident. When the project has a session provider (a `defineProvider` unit named like a session, an auth or a user whose value is a `Session`, reachable from the feature) the hook is `hooks/use<Name>Session.hook.ts` and reads it instead; a provider whose value is not a `Session` is not used |
+| `components/<Name>Fallback.component.tsx` | `<Name>Fallback` (`defineComponent`) | the typed fallback: a notice with `role="alert"`, with a link to `--redirect` when one is given (the link is the redirect: navigating is left to the app) |
+| `expressions/<Name>ByAccess.expression.tsx` | `<Name>ByAccess` (`defineExpression`) | shows its children only when `access` is allowed, else the fallback |
+| `controllers/<Name>GuardController.controller.tsx` | `<Name>GuardController` (`defineController`) | reads the session, decides, wraps its children; no logic of its own |
+| `types.ts` | `Session`, `Access` | appended once, shared by every guard of the feature (a `Session` or `Access` that means something else is a refusal) |
+| `tests/generated/<Name>Guard.proof.test.ts` | the proof | locked; see below |
+
+**The wiring.** A route may import only controllers (ROUTE-001), so the route entry is edited to render the guard around the controller: Next.js
+`return <ProductsGuardController><ProductsController /></ProductsGuardController>;` in `app/products/page.tsx`, react-spa the same element in the `<Route>` of `src/App.tsx`, plus the import of the guard
+controller. The guarded screen is a child element the expression renders only when allowed, so for a person who is not allowed it is not rendered at all and its data hooks never run. The step
+also runs the feature's barrel sync (`index.ts`), so SLICE-003 stays quiet. Declared touches: the five units and the proof (`create`), `types.ts`, `index.ts`, the route entry (`modify`) and `architecture.yml`
+(the test regions, once).
+
+**Refusals** (each says why and nothing is written): the route entry does not render `<Name>Controller />` exactly once (wire the route first: `construct create route`); the screen is already guarded by another
+rule (the access decision file differs); a unit exists with other content; `types.ts` declares `Session` or `Access` for something else; the feature does not exist; `role` with no roles, or roles with another access.
+
+**The proof** renders the guard with `react-dom/server`, no browser and no server: a signed-out visitor (and, for `role`, a signed-in person without the role) sees ONLY the fallback (the screen is nowhere in the markup),
+a person who is allowed sees ONLY the screen, with no session provider above it the guard is closed, the decision table, and the fallback replaces the screen instead of sitting beside it. A failure names who was let in or
+kept out: `A signed-out visitor: the fallback state is wrong, it reaches screen.` with `Expected: "fallback"` and `Received: "screen"` lines, which the runner classifies as the app behaving differently.
+
+**In the Requirement chain.** With the requirement card handed to `planFromBlocks` (the Requirement API and MCP do), a wired shaped plan raises the closed question `q-access` (`q-access-<name>` for several screens),
+in the chooser summary shape, at most three options with stable ids, **the rules default first** so the rules-only provider suggests it:
+
+| Question id | Raised when | Options (stable ids) | Default |
+|---|---|---|---|
+| `q-access` | a wired shaped plan and a card | `public`, `signed-in`, `role` (`role` is offered disabled, with the reason, unless the card names a role) | `role` when the card names a role (a state noun with the property `role`, like "admin"; the roles are those nouns), else `signed-in` when it has a session noun ("logged-in user"), else `public` |
+
+An unanswered question uses its default, so it never holds a plan back; an answer the card cannot support (`role` with no role named) is the typed error `PLAN_ACCESS_UNAVAILABLE`, never replaced by another access. `public` plans no step. Otherwise the plan gets a
+`guard.route` step after the route step (`dependsOn` the route) and a read-only `test.proof` step for `<Name>Guard.proof.test.ts`, which is part of `proof.steps` (`<Name>Guard`), so the chain is complete only when the guard's proof is green too. The answer is a decision
+trace, `requirement.plan.access` (`choicesFromWiring`), with the question as offered, who chose and the rules suggestion. The Requirement API returns and takes it by id (`{ id: 'q-access', option }`), the screen draws it as an **Access** card (the same
+`requirement-plan` card as the route and the verification, no client change beyond its heading), and MCP `placement_place` accepts it, attributed to the client, and returns `guards` (`{ name, access, roles, question, step }`) beside `wiring`.
+
+**Decisions where the issue was silent.** A role noun makes `role` the default because "an admin wants to see ..." says who may see it, and the roles are the card's own words; a person who wants other roles runs the CLI. `signed-in` is the default for a session
+noun, `public` otherwise, and the question is asked only when the card is handed over and the screen is wired (a plan without a route has nothing to guard). The session hook is a context that defaults to signed-out (fails closed) instead of a hook that throws outside a provider, so an unwired
+app shows the fallback instead of crashing. `Session` is the feature's own type in `types.ts` (an app with one auth source points every feature's provider at it). The redirect is a link in the fallback, not a navigation.
+
+**Left out** (MVP): an auth provider integration beyond the typed session hook, `middleware.ts`, a real redirect (navigation is an effect in the app), a role list typed in the Cockpit, guarding several routes of one controller, removing a guard, a Server Component session for Next.js (the hook and the controller are client files).
+
 ## What is not here yet
 
 The timeline read-back and its Cockpit screen are the Requirement screen (`/requirement`, #642): `toTimeline(placement)` in `ui/client/features/requirement/domain/Timeline.ts` turns the blocks into steps in run order (a slice to move it into core, so the CLI and an LLM read the same steps, is open). Not here yet: a `use client` / `use server` directive in the generated files, and words beyond the lexicon. Each is a slice of #616.

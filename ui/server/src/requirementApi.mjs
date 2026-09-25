@@ -44,7 +44,7 @@ export const MAX_REQUEST_BYTES = 16 * 1024;
 const CARD_ID = /^o\d{1,3}$/;
 const PLACEMENT_ID = /^q-[A-Za-z0-9-]{1,40}$/;
 /** #621, #654, #632: the closed questions of the PLAN (where a screen reads its data, its route, the dependency, the environment variables, how far it is verified, a wizard's step count, how a screen shows its states) are asked when the plan is built (they need the project's files), so their answers go to planFromBlocks, not to placeCard. */
-const PLAN_ID = /^q-(?:source|route|dependency|env|verify|steps|states)(?:-[a-z0-9-]{1,70})?$/;
+const PLAN_ID = /^q-(?:source|route|dependency|env|verify|steps|states|access|state|handler)(?:-[a-z0-9-]{1,70})?$/;
 const OPTION_ID = /^[a-z][a-z-]{0,30}$/;
 
 const fail = (status, code, error, extra = {}) => ({ status, body: { ok: false, code, error, ...extra } });

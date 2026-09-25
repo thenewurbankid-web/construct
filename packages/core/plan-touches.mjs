@@ -11,6 +11,7 @@ import { proofTouches } from './proof.mjs';
 import { routeEntryTouches, dependencyTouches } from './wiring.mjs';
 import { envTouches } from './env.mjs';
 import { wrapProviderTouches } from './provider-wrap.mjs';
+import { guardTouches } from './guard.mjs';
 
 const isName = (v) => typeof v === 'string' && v.trim().length > 0;
 const asList = (v) => (Array.isArray(v) ? v : typeof v === 'string' ? v.split(',') : []).map((x) => String(x).trim()).filter(Boolean);
@@ -18,7 +19,7 @@ const rel = (root, abs) => path.relative(root, abs).split(path.sep).join('/');
 const shapeArgs = (args) => ({ shape: args.shape, name: args.name, feature: args.feature, entity: args.entity, fields: args.fields, source: args.source, steps: args.steps, states: args.states });
 
 /** Flows whose written files are derived here. Every other writing flow answers `null` until its output is pinned by a test. */
-export const DERIVED_FLOWS = Object.freeze(['create.feature', 'create.unit', 'create.layer', 'create.proof', 'create.route', 'add.dependency', 'add.env', 'wrap.provider']);
+export const DERIVED_FLOWS = Object.freeze(['create.feature', 'create.unit', 'create.layer', 'create.proof', 'create.route', 'add.dependency', 'add.env', 'wrap.provider', 'guard.route']);
 
 /**
  * The project-relative files a writing plan step will create, derived from its own arguments without touching the disk.
@@ -65,6 +66,8 @@ export function expectedFiles(root, flowId, args = {}) {
     // #632: the one file an environment variable is added to. #631: the controller that renders the element a provider wraps (a refusal derives nothing).
     if (flowId === 'add.env') return envTouches(root, { name: args.name, scope: args.scope, value: args.value, comment: args.comment });
     if (flowId === 'wrap.provider') return wrapProviderTouches(root, { name: args.name, feature: args.feature, provider: args.provider });
+    // #629: the units of a route guard, the barrel and types it updates, the route entry it edits and its proof (the public access writes nothing).
+    if (flowId === 'guard.route') return guardTouches(root, { name: args.name, feature: args.feature, access: args.access, roles: args.roles, redirect: args.redirect, route: args.route });
     return null;
   } catch {
     return null;

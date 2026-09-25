@@ -112,7 +112,7 @@ const planResult = (sentence, answers = {}, shape = true) => {
 
 test('the plan questions: the type-check and the environment variables are cards of the kind `plan`, titled from their id, never blocking Approve', () => {
   const v = shapeView(planResult(PRODUCTS));
-  assert.deepEqual(v.result.offers.map((o) => [o.id, o.kind, o.heading]), [['q-shape', 'shape', 'Screen shape'], ['q-source', 'source', 'Data source'], ['q-states', 'plan', 'Screen states'], ['q-verify', 'plan', 'Verification']]);
+  assert.deepEqual(v.result.offers.map((o) => [o.id, o.kind, o.heading]), [['q-shape', 'shape', 'Screen shape'], ['q-source', 'source', 'Data source'], ['q-states', 'plan', 'Screen states'], ['q-access', 'plan', 'Access'], ['q-verify', 'plan', 'Verification']]);
   const verify = v.result.offers[3];
   assert.deepEqual(verify.options.map((o) => [o.id, o.suggested, o.chosen]), [['types', true, false], ['none', false, false]], 'the build option is disabled here (no package.json), so it is not offered');
   assert.equal(verify.status, "Not chosen yet, so the plan below uses the rules' default: type-check after the wiring.");
@@ -125,6 +125,19 @@ test('the plan questions: the type-check and the environment variables are cards
   assert.deepEqual(env.map((o) => [o.id, o.heading, o.options.map((x) => x.id)]), [['q-env-stripe-secret-key', 'Environment variable', ['add', 'skip']], ['q-env-allowed-redirect-origins', 'Environment variable', ['add', 'skip']]]);
   assert.match(env[0].question, /STRIPE_SECRET_KEY/);
   assert.equal(env[0].options[0].suggested, true, 'add is the rules default');
+});
+
+// #629: who may open the screen is one more closed question of the plan: the client only titles it (Access); the options, their words and the suggestion are the server's.
+test('q-access is drawn as a plan card titled Access: the rules default is read off the card, a role the card cannot support is not offered, an answer marks the option', () => {
+  const session = shapeView(planResult('A logged-in user wants to see a list of products')).result.offers.find((o) => o.id === 'q-access');
+  assert.deepEqual([session.kind, session.heading, session.options.map((o) => [o.id, o.label, o.suggested, o.chosen])], ['plan', 'Access', [['signed-in', 'Only a signed-in person', true, false], ['public', 'Anyone can open it', false, false]]]);
+  assert.equal(session.status, "Not chosen yet, so the plan below uses the rules' default: only a signed-in person.");
+  const admin = shapeView(planResult('An admin wants to see a list of products')).result.offers.find((o) => o.id === 'q-access');
+  assert.deepEqual(admin.options.map((o) => [o.id, o.suggested]), [['role', true], ['public', false], ['signed-in', false]]);
+  assert.equal(admin.options[0].label, 'Only admin');
+  const chosen = shapeView(planResult('A logged-in user wants to see a list of products', { 'q-access': { option: 'public', by: 'person' } })).result.offers.find((o) => o.id === 'q-access');
+  assert.deepEqual([chosen.status, chosen.decidedBy, chosen.options.map((o) => o.chosen)], ['Chosen: Anyone can open it. Decided by: person.', 'person', [false, true]]);
+  assert.deepEqual(withAnswer([], { id: 'q-access', source: 'plan' }, 'public'), [{ id: 'q-access', option: 'public' }]);
 });
 
 test('a decision made by the rules names its provider; an option the table does not know keeps the server words', () => {

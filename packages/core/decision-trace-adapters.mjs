@@ -91,7 +91,7 @@ export function choicesFromPlacement(card, placeOptions, placement) {
  * The trace chooser id of a wiring question of a shaped plan (#654, #621): `q-dependency`, `q-route` (or `q-route-<name>`) and `q-source` (or `q-source-<name>`).
  *
  * @param {string} questionId A wiring question id.
- * @returns {string} `requirement.plan.dependency`, `requirement.plan.route`, `requirement.plan.source`, `requirement.plan.env` (#632: `q-env`, `q-env-<name>`), `requirement.plan.verify` (#632: `q-verify`), `requirement.plan.steps` (#659: `q-steps`, `q-steps-<name>`), `requirement.plan.states` (#622: `q-states`, `q-states-<name>`) or `requirement.plan.other`.
+ * @returns {string} `requirement.plan.dependency`, `requirement.plan.route`, `requirement.plan.source`, `requirement.plan.env` (#632: `q-env`, `q-env-<name>`), `requirement.plan.verify` (#632: `q-verify`), `requirement.plan.steps` (#659: `q-steps`, `q-steps-<name>`), `requirement.plan.states` (#622: `q-states`, `q-states-<name>`) `requirement.plan.access` (#629: `q-access`, `q-access-<name>`), `requirement.plan.state` (#630: `q-state`, `q-state-<name>`), `requirement.plan.handler` (#625: `q-handler`, `q-handler-<name>`) or `requirement.plan.other`.
  *
  * @example
  * wiringChooserId('q-route'); // => 'requirement.plan.route'
@@ -104,6 +104,9 @@ export function wiringChooserId(questionId) {
   if (questionId === 'q-verify') return 'requirement.plan.verify';
   if (/^q-steps(-|$)/.test(questionId)) return 'requirement.plan.steps';
   if (/^q-states(-|$)/.test(questionId)) return 'requirement.plan.states';
+  if (/^q-access(-|$)/.test(questionId)) return 'requirement.plan.access'; // #629
+  if (/^q-state(-|$)/.test(questionId)) return 'requirement.plan.state'; // #630
+  if (/^q-handler(-|$)/.test(questionId)) return 'requirement.plan.handler'; // #625
   return 'requirement.plan.other';
 }
 

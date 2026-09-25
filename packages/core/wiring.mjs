@@ -4,6 +4,7 @@
 // running any of them twice changes nothing.
 //   routePathOf(name)                       "SubscriptionPlan" -> "/subscription-plan"
 //   routeOffer(root, request)               the route the screen gets, and a closed question (q-route) when the name's path is reserved or taken
+//   routeEntryFile(root, route)             the route entry file of a route (a route guard edits it, #629)
 //   routeEntryTouches(root, request)        the file the route step will write (Next.js: create app/<route>/page.tsx; react-spa: modify src/App.tsx)
 //   generateRouteEntry(root, request)       write it (idempotent; refuses a route that something else already owns)
 //   wireRouteSource(source, options)        the pure edit of a react-router table (used by generateRouteEntry, testable alone)
@@ -56,6 +57,21 @@ function routeTarget(root) {
   const pattern = config.layers?.route?.pattern ?? (framework === 'react-spa' ? 'src/App.tsx' : 'app/**/page.tsx');
   const entry = framework === 'react-spa' ? pattern : pattern.split('/**')[0];
   return { framework, entry, config };
+}
+
+/**
+ * The route entry file of a route, project-relative: Next.js `<app>/<route>/page.tsx`, react-spa the router file. Reads only the project's architecture.yml; the file need not exist.
+ *
+ * @param {string} root Project root.
+ * @param {string} route The route path (`/products`).
+ * @returns {{ framework: string, file: string }} The framework and the route entry file.
+ *
+ * @example
+ * routeEntryFile(root, '/products'); // => { framework: 'nextjs', file: 'app/products/page.tsx' }
+ */
+export function routeEntryFile(root, route) {
+  const { framework, entry } = routeTarget(root);
+  return { framework, file: framework === 'react-spa' ? entry : `${entry}${route}/page.tsx` };
 }
 
 /** Whether `route` is already served by the project's route entry, and whether by the controller of this screen. */

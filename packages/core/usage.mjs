@@ -163,6 +163,12 @@ Commands:
     (adds one variable to .env.example with a comment and a placeholder, never a real value, creating the file when absent: the name is
     [A-Z][A-Z0-9_]{0,63}; scope public adds the framework's public prefix (NEXT_PUBLIC_, or VITE_ for react-spa); a --value is refused when
     the name looks like a secret; a server variable read in a 'use client' file is a CLIENT-001 violation; idempotent; deterministic, no LLM)
+  construct create guard <Name> --feature <feature> --access public|signed-in|role [--roles a,b] [--redirect </path>] [--route </path>] [--dir <path>]
+    (chooses who may open a screen: public writes nothing (a route without a guard is open to everyone); signed-in and role write a typed guard in the
+    feature (a pure access decision, a session hook that is signed out until something supplies a session, a fallback notice, an expression that shows the
+    screen only when allowed, a guard controller), edit the route entry to render <NameGuardController><NameController /></NameGuardController> so the
+    screen is never rendered for anyone else, and write its locked proof; refused, with the reason, when no route renders the controller; idempotent;
+    deterministic, no LLM)
   construct create dependency <package> --version <range> [--dir <path>]
     (adds one line to the dependencies of package.json, for example @line/construct-core, which the generated typed units import;
     never runs a package manager; idempotent; deterministic, no LLM)

@@ -33,6 +33,7 @@
 import path from 'node:path';
 import { validateEnvelope } from '../../packages/engine/envelope.mjs';
 import { envArgIssue, ENV_SCOPES } from './env.mjs';
+import { GUARD_ACCESS, guardArgIssue } from './block-args.mjs';
 
 export const PLAN_VERSION = 1;
 
@@ -348,6 +349,21 @@ export const PLAN_FLOWS = Object.freeze({
       name: { type: 'string', required: true, positional: 0, description: 'The element as the controller renders it, PascalCase (CartPage).' },
       feature: { type: 'string', required: true, flag: '--feature' },
       provider: { type: 'string', required: true, flag: '--provider', description: 'The provider hook, for example useCartProvider (the closed list is the project\'s providers; construct refactor wrap without --provider prints it).' },
+      dir: DIR_ARG,
+    },
+  },
+  'guard.route': {
+    cli: ['create', 'guard'],
+    summary: 'Choose who may open a screen (#629): public (no guard: a documented no-op), signed-in, or a role list. Writes a typed guard slice (a pure access decision, the session hook, a fallback notice, the expression that shows the screen only when allowed, the guard controller), wires it to the route entry (the route renders <XGuardController><XController /></XGuardController>, so the screen is never rendered for a person who is not allowed) and writes its locked proof. Idempotent; refuses, with the reason, a route that does not render the controller. Zero-LLM.',
+    writes: true,
+    executors: ['deterministic', 'user'],
+    args: {
+      name: { type: 'string', required: true, positional: 0, description: 'The guarded screen, PascalCase: the name of its controller without "Controller" (Products guards ProductsController).' },
+      feature: { type: 'string', required: true, flag: '--feature' },
+      access: { type: 'string', required: true, flag: '--access', enum: [...GUARD_ACCESS], description: 'public (no guard), signed-in (a typed session check) or role (signed in and holding one of the roles).' },
+      roles: { type: 'string[]', flag: '--roles', join: ',', description: 'The roles that may open the screen, for the role access: one to six lower-case words (admin,manager).' },
+      redirect: { type: 'string', flag: '--redirect', description: 'A path the fallback links to, for example /sign-in. Without it the fallback is a notice.' },
+      route: { type: 'string', flag: '--route', description: 'The route path the screen is served at, for example /products. Defaults to the kebab-case of the name.' },
       dir: DIR_ARG,
     },
   },
@@ -812,6 +828,10 @@ function validateStep(step, index, seenIds, push) {
       if (typeof a.feature === 'string' && !/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(a.feature)) push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.feature`, 'A feature name uses letters, digits, "_" and "-" only.');
       if (typeof a.name === 'string' && !/^[A-Z][A-Za-z0-9]*$/.test(a.name)) push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.name`, 'An element is named in PascalCase, like CartPage.');
       if (typeof a.provider === 'string' && !/^(?:[A-Za-z0-9][A-Za-z0-9_-]*\.)?use[A-Z]\w*Provider$/.test(a.provider)) push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.provider`, 'A provider is its hook, like useCartProvider (or cart.useCartProvider when two features define one).');
+    }
+    if (step.flow === 'guard.route') {
+      const issue = guardArgIssue(step.args);
+      if (issue && issue.arg !== 'access') push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.${issue.arg}`, issue.message); // a bad or missing access is the enum's and the required check's to report
     }
     if (step.flow === 'check.types' && typeof step.args.feature === 'string' && !/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(step.args.feature)) {
       push(PLAN_ERROR_CODES.STEP_ARG_TYPE, `${at}.args.feature`, 'A feature name uses letters, digits, "_" and "-" only.');

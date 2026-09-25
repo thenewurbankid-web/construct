@@ -110,6 +110,12 @@ export const BLOCK_DOCS = Object.freeze({
     writes: 'The controller: one import and the component placed inside the provider, nothing else; it says why when it cannot.',
     example: { title: 'Wrap the cart page with the cart provider', args: { name: 'CartPage', feature: 'cart', provider: 'useCartProvider' } },
   },
+  'guard.route': {
+    purpose: 'Choose who may open a screen: everyone, a signed-in person, or people with a role. The screen is never shown to anyone else.',
+    reads: 'The route entry that renders the screen, the feature\'s types and its providers (to find a session provider).',
+    writes: 'A small typed guard in the feature (a pure access decision, the session hook, a notice, the guard controller), one edit of the route entry, and its locked proof; "everyone" writes nothing.',
+    example: { title: 'Only admins and managers may open the reports screen', args: { name: 'Reports', feature: 'reports', access: 'role', roles: ['admin', 'manager'] } },
+  },
   'import.unit': {
     purpose: 'Bring one existing file into a feature as Construct layers, each with a note pointing back to it.',
     reads: 'The existing file you name; it may live outside the project.',

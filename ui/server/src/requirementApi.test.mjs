@@ -304,6 +304,32 @@ test('#632: the route and dependency questions of the wiring are returned and an
   }
 });
 
+// #629 -- who may open a screen is a closed question of the plan (`q-access`): the rules default is read off the card (a session noun: signed-in), an answer is a
+// plan step (`guard.route`) or none (public), the guard is part of the proof chain, and an answer the card cannot support is refused, never replaced.
+test('#629: q-access is returned and answerable; the rules default reads the card; the guard is a step of the plan and of its proof', async () => {
+  const sentence = 'A logged-in user wants to see a list of products';
+  const shape = { id: 'q-shape', option: 'list' };
+  const asked = (await post({ text: sentence, answers: [shape] })).body;
+  const access = asked.offers.find((q) => q.id === 'q-access');
+  assert.deepEqual([access.source, access.default, access.chosen, access.options.map((o) => [o.id, o.enabled])], ['plan', 'signed-in', null, [['signed-in', true], ['public', true], ['role', false]]]);
+  assert.equal(asked.suggestions['q-access'].option, 'signed-in', 'the decision provider suggests on it like on every other offer');
+  const guardStep = asked.plan.steps.find((st) => st.flow === 'guard.route');
+  assert.deepEqual(guardStep.args, { name: 'Products', feature: 'products', access: 'signed-in', route: '/products' });
+  assert.ok(guardStep.touches.files.some((f) => f.path === 'features/products/controllers/ProductsGuardController.controller.tsx'), 'the step declares the files it writes');
+  assert.deepEqual(asked.proof.steps.map((p) => p.name), ['Products', 'ProductsGuard'], 'the guard is proven too');
+  assert.deepEqual(asked.open, [], 'the question never blocks the plan');
+
+  const pub = (await post({ text: sentence, answers: [shape, { id: 'q-access', option: 'public' }] })).body;
+  assert.equal(pub.plan.steps.some((st) => st.flow === 'guard.route'), false, 'public plans no guard');
+  assert.deepEqual(pub.placement.decisions.at(-1), { question: 'q-access', option: 'public', by: 'person' });
+  assert.equal(pub.offers.find((q) => q.id === 'q-access').chosen, 'public');
+
+  const refused = (await post({ text: sentence, answers: [shape, { id: 'q-access', option: 'role' }] })).body;
+  assert.deepEqual([refused.placement.ok, refused.plan, refused.placement.errors.map((e) => e.code)], [false, null, ['PLAN_ACCESS_UNAVAILABLE']], 'the card names no role, so role is refused, never replaced by another access');
+  const admin = (await post({ text: 'An admin wants to see a list of products', answers: [shape] })).body;
+  assert.deepEqual(admin.plan.steps.find((st) => st.flow === 'guard.route').args.roles, ['admin']);
+});
+
 // #621 -- where a shaped screen reads its data from is a closed question beside the plan (`q-source`), drawn by the client like q-shape:
 // answered by the same { id, option }, recorded like the others, never holding Approve back, and an option that was not offered is refused.
 test('a shaped screen is offered its data source; the rules default is local, or the OpenAPI operation when the project has one; answering changes the units', async () => {
@@ -314,7 +340,7 @@ test('a shaped screen is offered its data source; the rules default is local, or
   assert.deepEqual(plain.offers.map((q) => q.id), ['q-shape'], 'no shape chosen, no shaped unit, no data source to ask about');
 
   const asked = (await post({ text: sentence, answers: [shape] })).body;
-  assert.deepEqual(asked.offers.map((q) => [q.id, q.source, q.default, q.chosen, q.options.map((o) => o.id)]), [['q-shape', 'placement', 'list', 'list', ['list', 'scaffold']], ['q-source', 'plan', 'local', null, ['local', 'endpoint']], ['q-states', 'plan', 'default', null, ['default', 'custom', 'skip-empty', 'skip-all']], ['q-verify', 'plan', 'types', null, ['types', 'types-build', 'none']]]);
+  assert.deepEqual(asked.offers.map((q) => [q.id, q.source, q.default, q.chosen, q.options.map((o) => o.id)]), [['q-shape', 'placement', 'list', 'list', ['list', 'scaffold']], ['q-source', 'plan', 'local', null, ['local', 'endpoint']], ['q-access', 'plan', 'public', null, ['public', 'signed-in', 'role']], ['q-states', 'plan', 'default', null, ['default', 'custom', 'skip-empty', 'skip-all']], ['q-verify', 'plan', 'types', null, ['types', 'types-build', 'none']]]);
   assert.equal(asked.suggestions['q-source'].option, 'local', 'the decision provider suggests on it like on every other offer');
   assert.deepEqual(asked.open, [], 'the offer never blocks the plan');
   assert.ok(unitSteps(asked).every((s) => s.args.source === 'local'));

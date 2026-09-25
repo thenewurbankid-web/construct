@@ -368,7 +368,7 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
     await expect(page.getByTestId('requirement-files').locator('summary')).toHaveText('11 files will be created');
 
     const endpoint = await chooseSource(page, 'endpoint');
-    expect(endpoint.body.offers.map((o) => [o.id, o.chosen])).toEqual([['q-shape', 'list'], ['q-source', 'endpoint'], ['q-states', null], ['q-verify', null]]);
+    expect(endpoint.body.offers.map((o) => [o.id, o.chosen])).toEqual([['q-shape', 'list'], ['q-source', 'endpoint'], ['q-states', null], ['q-access', null], ['q-verify', null]]);
     expect(endpoint.body.plan.steps.filter((s) => s.flow === 'create.unit').every((s) => s.args.source === 'endpoint')).toBe(true);
     expect(endpoint.res.request().postDataJSON().answers).toEqual([{ id: 'q-shape', option: 'list' }, { id: 'q-source', option: 'endpoint' }]);
     await expect(page.getByTestId('requirement-source-endpoint')).toHaveAttribute('aria-pressed', 'true');
@@ -469,12 +469,12 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
     await expect(card.getByTestId('requirement-plan-status')).toHaveText("Not chosen yet, so the plan below uses the rules' default: type-check after the wiring.");
     await expect(page.getByTestId('requirement-approve-plan')).toBeEnabled(); // a closed question never blocks Approve
     const order = await page.getByTestId('requirement-stage').locator('[data-testid="requirement-shape"], [data-testid="requirement-source"], [data-testid="requirement-plan"], [data-testid="requirement-timeline"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')));
-    expect(order).toEqual(['requirement-shape', 'requirement-source', 'requirement-plan', 'requirement-plan', 'requirement-timeline']);
+    expect(order).toEqual(['requirement-shape', 'requirement-source', 'requirement-plan', 'requirement-plan', 'requirement-plan', 'requirement-timeline']); // Screen states, Access (#629) and Verification
 
     const none = await choosePlan(page, 'q-verify', 'none');
     expect(none.res.request().postDataJSON().answers).toEqual([{ id: 'q-shape', option: 'list' }, { id: 'q-verify', option: 'none' }]);
     expect(none.body.plan.steps.some((s) => s.flow === 'check.types')).toBe(false);
-    expect(none.body.offers.map((o) => [o.id, o.chosen])).toEqual([['q-shape', 'list'], ['q-source', null], ['q-states', null], ['q-verify', 'none']]);
+    expect(none.body.offers.map((o) => [o.id, o.chosen])).toEqual([['q-shape', 'list'], ['q-source', null], ['q-states', null], ['q-access', null], ['q-verify', 'none']]);
     await expect(card.locator('[data-option="none"] button')).toHaveAttribute('aria-pressed', 'true');
     await expect(card.getByTestId('requirement-plan-status')).toHaveText('Chosen: No verification step. Decided by: person.');
     await expect(card.getByTestId('requirement-plan-status')).toHaveAttribute('data-decided-by', 'person');
@@ -495,6 +495,36 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
     expect(sent.indexOf('test types')).toBe(sent.length - 3); // the step is the real command, before the proof
     const [d] = recorded('requirement.plan.verify', 'types');
     expect(d).toMatchObject({ by: 'person', suggestion: { option: 'types' }, provider: { name: 'rules', version: '1' }, outcome: { accepted: true } });
+  });
+
+  test('who may open the screen (#629): the Access card is drawn with no client change, signed-in is suggested from the session noun, public removes the guard step, and the guard steps are the real commands', async ({ page }) => {
+    await gotoCockpit(page, '/requirement');
+    await readSentence(page, 'A logged-in user wants to see a list of products');
+    await choose(page, 'list');
+    const card = planCard(page, 'q-access');
+    await expect(card).toBeVisible();
+    await expect(card.getByRole('heading', { name: 'Access', level: 2 })).toBeVisible();
+    await expect(card.getByRole('button')).toHaveText(['Only a signed-in person', 'Anyone can open it']); // role is offered off, with the reason, so it is not drawn as a choice
+    await expect(card.locator('[data-option="signed-in"]').getByTestId('requirement-plan-suggested')).toHaveText('suggested by rules');
+    await expect(card.getByRole('button', { pressed: true })).toHaveCount(0);
+    await expect(card.getByTestId('requirement-plan-status')).toHaveText("Not chosen yet, so the plan below uses the rules' default: only a signed-in person.");
+    await expect(page.getByTestId('requirement-approve-plan')).toBeEnabled(); // a closed question never blocks Approve
+
+    const ran = page.waitForResponse((r) => r.url().endsWith('/api/plan/run') && r.request().method() === 'POST');
+    await page.getByTestId('requirement-approve-plan').click();
+    const sent = (await ran).request().postDataJSON().plan.steps.map((x) => planToCommand(x).argv.join(' '));
+    expect(sent).toContain('create guard Products --feature products --access signed-in --route /products');
+    expect(sent).toContain('test proof products --name ProductsGuard.proof.test.ts');
+    expect(sent.indexOf('create guard Products --feature products --access signed-in --route /products')).toBeGreaterThan(sent.indexOf('create route Products --feature products --route /products'));
+
+    const pub = await choosePlan(page, 'q-access', 'public');
+    expect(pub.res.request().postDataJSON().answers).toEqual([{ id: 'q-shape', option: 'list' }, { id: 'q-access', option: 'public' }]);
+    expect(pub.body.plan.steps.some((s) => s.flow === 'guard.route')).toBe(false);
+    expect(JSON.stringify(pub.body)).not.toContain(project.repo); // no server path leaves the server
+    await expect(card.locator('[data-option="public"] button')).toHaveAttribute('aria-pressed', 'true');
+    await expect(card.getByTestId('requirement-plan-status')).toHaveText('Chosen: Anyone can open it. Decided by: person.');
+    const [d] = recorded('requirement.plan.access', 'public');
+    expect(d).toMatchObject({ by: 'person', suggestion: { option: 'signed-in' }, outcome: { accepted: false } });
   });
 
   test('a card that needs a secret gets a card per environment variable: add is suggested, skipping one removes its step, and the add.env steps are the real commands', async ({ page }) => {

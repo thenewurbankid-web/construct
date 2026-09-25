@@ -145,6 +145,18 @@ test('#632: the q-env and q-verify answers are decision traces of their own (the
   assert.equal(JSON.stringify(traces()).includes(root), false, 'no project path in a trace');
 });
 
+test('#629: the q-access answer is a decision trace of its own (the offer as shown, the rules suggestion, accepted or not, the plan validated)', async () => {
+  fresh();
+  const SESSION = 'A logged-in user wants to see a list of products';
+  await post({ text: SESSION, answers: [{ id: 'q-shape', option: 'list' }] });
+  assert.equal(traces().decisions.some((d) => d.chooser.id === 'requirement.plan.access'), false, 'asked, not answered: nothing is recorded');
+  await post({ text: SESSION, answers: [{ id: 'q-shape', option: 'list' }, { id: 'q-access', option: 'public' }] });
+  const access = traces().decisions.find((d) => d.chooser.id === 'requirement.plan.access');
+  assert.deepEqual([access.chosen, access.by, access.options, access.summary.id, access.summary.chosen], ['public', 'person', ['signed-in', 'public', 'role'], 'q-access', null]);
+  assert.deepEqual([access.suggestion.option, access.outcome], ['signed-in', { accepted: false, planValidated: true }], 'the rules suggested signed-in; the person chose otherwise');
+  assert.equal(JSON.stringify(traces()).includes(root), false, 'no project path in a trace');
+});
+
 test('a placement question is recorded too (a server check with no server block), with the question AS OFFERED', async () => {
   fresh();
   await post({ text: 'A user can click a button safely.', answers: [{ id: 'q-server', option: 'mutation' }] });

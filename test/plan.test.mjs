@@ -142,6 +142,11 @@ const EVERY_FLOW_STEPS = [
     touches: touching('checkout', 'features/checkout/controllers/TotalsController.tsx', 'modify', 'controller'),
   },
   {
+    id: 's-guard', title: 'Only a signed-in person may open the Totals screen', flow: 'guard.route', executor: 'deterministic',
+    args: { name: 'Totals', feature: 'checkout', access: 'role', roles: ['admin', 'manager'], redirect: '/sign-in', route: '/totals' }, dependsOn: ['s-wrap'],
+    touches: touching('checkout', 'features/checkout/controllers/TotalsGuardController.controller.tsx', 'create', 'controller'),
+  },
+  {
     id: 's-import-unit', title: 'Import the legacy coupon helper', flow: 'import.unit', executor: 'local-model',
     args: { name: 'Coupon', feature: 'checkout', layers: ['domain'], from: 'legacy/checkout/coupon.ts', llm: 'ollama' },
     dependsOn: ['s-feature'],

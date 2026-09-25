@@ -48,8 +48,18 @@ export const RENDER_PROOF_NEEDS = Object.freeze(['react', 'react-dom', 'esbuild'
 
 const FEATURE_RE = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 
-/** Where a feature's generated tests live: `{ genRel, genDir, featureDir }`. Does not need the feature to exist yet (a plan derives touches before `create.feature` ran). */
-function generatedDir(root, feature) {
+/**
+ * Where a feature's generated tests live: `{ genRel, genDir, featureDir }`. Does not need the feature to exist yet (a plan derives touches before `create.feature` ran).
+ *
+ * @param {string} root Project root.
+ * @param {string} feature The feature name.
+ * @returns {{ genRel: string, genDir: string, featureDir: string }} The project-relative and absolute folder of the generated tests, and the feature folder.
+ * @throws {Error} A usage error for an invalid feature name or features folder.
+ *
+ * @example
+ * generatedDir(root, 'shop').genRel; // => 'features/shop/tests/generated'
+ */
+export function generatedDir(root, feature) {
   if (typeof feature !== 'string' || !FEATURE_RE.test(feature)) throw usage(`Invalid feature name ${JSON.stringify(feature ?? '')}: use letters, numbers, "_" and "-" only.`);
   const featuresRoot = loadConfig(root).features?.root || 'features';
   if (path.isAbsolute(featuresRoot) || featuresRoot.split(/[\\/]/).includes('..')) throw usage(`features.root "${featuresRoot}" must be a relative path inside the project.`);
@@ -445,8 +455,18 @@ export function proofTouches(root, request) {
 
 const REGION_BLOCKS = Object.freeze({ frozen: GENERATED_TESTS_GLOB, nonLayer: TESTS_GLOB });
 
-/** Declare the generated-test regions in architecture.yml when it has neither key: returns the keys it added. A half-declared project is refused (nothing is rewritten). */
-function ensureTestRegions(root, genDir) {
+/**
+ * Declare the generated-test regions in architecture.yml when it has neither key: returns the keys it added. A half-declared project is refused (nothing is rewritten).
+ *
+ * @param {string} root Project root.
+ * @param {string} genDir The absolute folder of the generated tests.
+ * @returns {string[]} The architecture.yml keys added (`frozen`, `nonLayer`), none when the regions are already declared.
+ * @throws {Error} A usage error when there is no architecture.yml or only one of the two regions is declared.
+ *
+ * @example
+ * ensureTestRegions(root, generatedDir(root, 'shop').genDir); // => ['frozen', 'nonLayer']
+ */
+export function ensureTestRegions(root, genDir) {
   const config = loadConfig(root);
   const probe = path.join(genDir, 'probe--x.spec.ts');
   const missing = [];

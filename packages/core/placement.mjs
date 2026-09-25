@@ -35,6 +35,7 @@ import { sourceOffer, operationOf, SOURCE_QUESTION_ID } from './shape-source.mjs
 import { routePathOf, routeOffer, syncTouches, dependencyOffer, ROUTE_QUESTION_ID, DEPENDENCY_QUESTION_ID, CONSTRUCT_CORE_PACKAGE } from './wiring.mjs';
 import { secretsOfCard, envOffers, ENV_FILE } from './env.mjs';
 import { verifyOffer, VERIFY_QUESTION_ID } from './verify.mjs';
+import { accessOffer, ACCESS_QUESTION_ID } from './guard.mjs';
 
 /** The schema version string of a placement result. */
 export const PLACEMENT_VERSION = 'placement.v1';
@@ -115,6 +116,7 @@ export const PLACEMENT_ERROR_CODES = Object.freeze({
   PLAN_SOURCE_UNAVAILABLE: 'PLAN_SOURCE_UNAVAILABLE',
   PLAN_STEPS_UNAVAILABLE: 'PLAN_STEPS_UNAVAILABLE',
   PLAN_STATES_UNAVAILABLE: 'PLAN_STATES_UNAVAILABLE',
+  PLAN_ACCESS_UNAVAILABLE: 'PLAN_ACCESS_UNAVAILABLE',
   PLAN_DECISIONS_INVALID: 'PLAN_DECISIONS_INVALID',
   PLAN_TOUCHES_UNKNOWN: 'PLAN_TOUCHES_UNKNOWN',
   PLAN_INVALID: 'PLAN_INVALID',
@@ -916,12 +918,14 @@ const statesArg = (states) => (states && states !== DEFAULT_STATES ? { states } 
  * A list, detail or dashboard screen also asks how it shows its loading, empty (or not-found) and error states (#622, `q-states`, or `q-states-<name>`:
  * default | custom | skip-empty | skip-all, default `default`); a skipping answer adds a line to `warnings`, and a non-default answer rides on the screen's
  * steps as `states`.
+ * A wired shaped plan given the card also asks who may open each screen (#629): `q-access` (`q-access-<name>`: public | signed-in | role, the rules default read off the card, `public` plans no step) and adds a
+ * `guard.route` step after the route step and a `test.proof` step for the guard's proof; `guards` lists each screen's access and step.
  *
  * @param {{ feature: string, root: string, title?: string, decisions?: PlacementDecision[], proof?: boolean, wire?: boolean, verify?: boolean, card?: object, answers?: Record<string, string | { option: string }> }} options The feature the units go in, the
  *   project root (its architecture.yml decides the folders), an optional ticket title, the attribution to carry, `proof: false` to leave
  *   the proof steps out of a shaped plan (default: they are planned), `wire: false` to leave out the wiring, the environment variables and the verification, `verify: false` to
  *   leave out only the verification, `card` (the requirement card the blocks came from) to name the environment variables its checks call for, and `answers` to the closed questions of the plan.
- * @returns {{ ok: true, plan: object, decisions: PlacementDecision[], files: Record<string, string[]>, proof: object | null, offers: object[], wiring: object | null, env: { variable: string, scope: string, question: string, step: string | null }[], verify: { types: string | null, build: string | null } | null, notes: string[], warnings: string[], errors: [] } | { ok: false, plan: null, decisions: [], files: {}, errors: PlacementError[] }}
+ * @returns {{ ok: true, plan: object, decisions: PlacementDecision[], files: Record<string, string[]>, proof: object | null, offers: object[], wiring: object | null, env: { variable: string, scope: string, question: string, step: string | null }[], guards: { name: string, access: string, roles: string[], question: string, step: string | null }[], verify: { types: string | null, build: string | null } | null, notes: string[], warnings: string[], errors: [] } | { ok: false, plan: null, decisions: [], files: {}, errors: PlacementError[] }}
  *   The plan, who decided what, the files per block and the proof of the chain, or every problem found.
  *
  * @example
@@ -1074,6 +1078,7 @@ export function planFromBlocks(blocks, options = {}) {
   for (const u of ordered) if (u.shape) shaped.set(u.name, { shape: u.shape, unitSteps: [...(shaped.get(u.name)?.unitSteps ?? []), stepOf.get(`${u.layer}:${u.name}`)] });
   const routeOf = new Map();
   const wiringSteps = [];
+  const guardPlan = [];
   let wiring = null;
   if (opts.wire !== false && shaped.size) {
     const everyUnit = [...stepOf.values()].sort(idOrder);
@@ -1096,6 +1101,20 @@ export function planFromBlocks(blocks, options = {}) {
       routeOf.set(name, offer.route);
       wiringSteps.push(step);
       wiring.routes.push({ name, route: offer.route, step, file: steps.find((x) => x.id === step)?.touches?.files?.[0]?.path ?? null });
+      // #629: who may open the screen is a closed question (`q-access`, or `q-access-<name>` for several screens): public | signed-in | role. The rules default is read off the
+      // card (a role noun: role; a session noun: signed-in; else public); an unanswered question uses it, so it never holds the plan back. Public plans no step; the others plan
+      // one `guard.route` step after the route is wired.
+      if (isPlainObject(opts.card)) {
+        const aid = shaped.size === 1 ? ACCESS_QUESTION_ID : `${ACCESS_QUESTION_ID}-${routePathOf(name).slice(1)}`;
+        const acc = accessOffer(opts.card, { name, answer: answers[aid] });
+        acc.question.id = aid;
+        offers.push(acc.question);
+        record(acc.question, answers[aid]);
+        if (acc.refused) push('PLAN_ACCESS_UNAVAILABLE', `answers.${aid}`, acc.refused);
+        const guardStep = acc.access === 'public' ? null : add('guard.route', `Guard the ${name} screen (${acc.access === 'role' ? `role: ${acc.roles.join(', ')}` : acc.access})`, { name, feature: opts.feature, access: acc.access, ...(acc.roles.length ? { roles: acc.roles } : {}), route: offer.route }, [step], 'Chosen from a closed list, so a screen is not exposed by accident: the route renders the guard around the controller, and the screen is never rendered for a person who is not allowed.');
+        if (guardStep) wiringSteps.push(guardStep);
+        guardPlan.push({ name, access: acc.access, roles: acc.roles, question: aid, step: guardStep });
+      }
     }
   }
   // #632: a wired shaped plan says whether the project still type-checks (and builds) before the proof: `q-verify` (types | types-build | none,
@@ -1133,6 +1152,12 @@ export function planFromBlocks(blocks, options = {}) {
         proofSteps.push({ name, kind: 'playwright', proofStep: flow, verifiedBy: run });
       }
     }
+    // #629: a guard is proven like a screen: its own locked proof (written by the guard step) and a read-only run of it, part of the chain.
+    for (const g of guardPlan) {
+      if (!g.step) continue;
+      const verify = add('test.proof', `Run the proof of the ${g.name} guard`, { feature: opts.feature, name: `${g.name}Guard.proof.test.ts` }, [g.step], 'Read-only: signed-out and wrong-role people see only the fallback, an allowed person only the screen.');
+      proofSteps.push({ name: `${g.name}Guard`, kind: 'render', proofStep: g.step, verifiedBy: verify });
+    }
     if (proofSteps.length && !playwrightConfig) notes.push(playwrightNote = 'Playwright is not configured in this project (no playwright.config.* at the root), so the plan has no browser flow and nothing is installed. The render proof still proves the screen; add Playwright and plan again for the browser flow.');
     const noFlow = [...shaped].filter(([, { shape }]) => !PLAYWRIGHT_SHAPES.includes(shape.name)).map(([name, { shape }]) => `${name} (${shape.name})`);
     const noRequest = [...shaped].filter(([name, { shape }]) => PLAYWRIGHT_SHAPES.includes(shape.name) && sourceOf.get(name) === 'local').map(([name, { shape }]) => `${name} (${shape.name})`);
@@ -1159,7 +1184,7 @@ export function planFromBlocks(blocks, options = {}) {
   const proof = proofSteps.length
     ? { required: true, complete: false, state: 'pending', steps: proofSteps, verifiedBy: proofSteps.map((p) => p.verifiedBy), playwright: { configured: playwrightConfig !== null, config: playwrightConfig, skipped: playwrightNote } }
     : null;
-  return { ok: true, plan, decisions: [...decisions.map((d) => ({ ...d })), ...wiringDecisions], files, proof, offers, wiring, env: envPlan, verify: verification, notes, warnings, errors: [] };
+  return { ok: true, plan, decisions: [...decisions.map((d) => ({ ...d })), ...wiringDecisions], files, proof, offers, wiring, env: envPlan, guards: guardPlan, verify: verification, notes, warnings, errors: [] };
 }
 
 // ---------------------------------------------------------------------------------------------------------------- summary

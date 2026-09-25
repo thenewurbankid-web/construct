@@ -95,8 +95,8 @@ const capKeyed = (record, max = LIMITS.previewFiles) => Object.fromEntries(Objec
  * with the MCP client's name in the returned `decisions`; nothing is written to the decision traces. The plan is never applied.
  *
  * @param {{ root: string, clientName: () => string | undefined }} ctx The server's startup configuration.
- * @param {{ text: string, answers?: { id: string, option: string }[] }} input The requirement and the answers (`o1`... for words, `q-shape`, `q-dependency`, `q-route`, `q-source`, `q-env`, `q-verify`, `q-steps`, `q-states`, `q-v1`... for placement).
- * @returns {Promise<object>} `{ ok, stage, complete, card, blocks, questions, offers, decisions, plan, files, proof, wiring, warnings, notes, apply }`.
+ * @param {{ text: string, answers?: { id: string, option: string }[] }} input The requirement and the answers (`o1`... for words, `q-shape`, `q-dependency`, `q-route`, `q-source`, `q-env`, `q-verify`, `q-steps`, `q-states`, `q-access`, `q-state`, `q-handler`, `q-v1`... for placement).
+ * @returns {Promise<object>} `{ ok, stage, complete, card, blocks, questions, offers, decisions, plan, files, proof, wiring, env, guards, verify, warnings, notes, apply }`.
  * @throws {ToolError} `PARSE_FAILED`, `ANSWER_REFUSED`, `PLACEMENT_REFUSED`, `PLAN_REFUSED`, `CONFIG_UNREADABLE` or `PATH_OUTSIDE_ROOT`.
  *
  * @example
@@ -115,7 +115,7 @@ export async function placementPlace(ctx, { text, answers = [] }) {
       const r = resolveOpen(card, { [a.id]: a.option });
       if (!r.ok) throw new ToolError('ANSWER_REFUSED', firstMessage(r.errors, 'That answer was not accepted.'));
       card = r.card;
-    } else if (/^q-(?:dependency|route|source|env|verify|steps|states)(?:-[a-z0-9-]+)?$/.test(a.id)) wiringAnswers[a.id] = { option: a.option, ...attribution };
+    } else if (/^q-(?:dependency|route|source|env|verify|steps|states|access|state|handler)(?:-[a-z0-9-]+)?$/.test(a.id)) wiringAnswers[a.id] = { option: a.option, ...attribution };
     else placementAnswers[a.id] = { option: a.option, ...attribution };
   }
 
@@ -163,6 +163,7 @@ export async function placementPlace(ctx, { text, answers = [] }) {
       ? { dependency: planned.wiring.dependency, sync: planned.wiring.sync, routes: planned.wiring.routes.slice(0, 5).map((r) => ({ name: r.name, route: r.route, step: r.step, file: r.file })) }
       : null,
     env: (planned.env ?? []).slice(0, 5).map((e) => ({ variable: e.variable, scope: e.scope, question: e.question, step: e.step })),
+    guards: (planned.guards ?? []).slice(0, 5).map((g) => ({ name: g.name, access: g.access, roles: g.roles, question: g.question, step: g.step })),
     verify: planned.verify ?? null,
     warnings: [...(fs.existsSync(path.join(ctx.root, featuresRoot, feature)) ? [`The feature "${feature}" already exists in this project, so the "Create feature ${feature}" step would be refused.`] : []), ...(planned.warnings ?? []).slice(0, 3).map((w) => cut(w, 240))],
     notes: [...out.notes, ...(planned.notes ?? []).slice(0, 3).map((n) => cut(n, 240))].slice(0, 5),

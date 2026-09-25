@@ -195,6 +195,24 @@ test('placement_place: a card that needs a secret names its environment variable
   assert.equal(fs.existsSync(path.join(root, '.env.example')), false, 'plan-only: nothing is written');
 });
 
+test('placement_place: who may open the screen (#629) is a closed offer, q-access, answered by id and attributed to the client; the guard is previewed with the files it touches', () => withOwnSession(async (call) => {
+  const text = 'A logged-in user wants to see a list of products';
+  const shape = { id: 'q-shape', option: 'list' };
+  const asked = (await call('placement_place', { text, answers: [shape] })).body;
+  const offer = asked.offers.find((o) => o.id === 'q-access');
+  assert.deepEqual([offer.default, offer.options.map((o) => [o.id, o.enabled])], ['signed-in', [['signed-in', true], ['public', true], ['role', false]]]);
+  assert.deepEqual(asked.guards, [{ name: 'Products', access: 'signed-in', roles: [], question: 'q-access', step: 's11' }]);
+  const step = asked.plan.steps.find((s) => s.flow === 'guard.route');
+  assert.ok(step.files.some((f) => f.path === 'src/App.tsx' && f.change === 'modify'), 'the route entry it edits is previewed');
+  const pub = (await call('placement_place', { text, answers: [shape, { id: 'q-access', option: 'public' }] })).body;
+  assert.deepEqual([pub.guards[0].step, pub.plan.steps.some((s) => s.flow === 'guard.route')], [null, false]);
+  assert.deepEqual(pub.decisions.at(-1), { question: 'q-access', option: 'public', by: 'llm', provider: 'claude-code' });
+  const refused = await call('placement_place', { text, answers: [shape, { id: 'q-access', option: 'role' }] });
+  assert.equal(refused.isError, true, 'the card names no role: refused, not replaced');
+  assert.equal(refused.body.error.code, 'PLAN_REFUSED');
+  assert.equal(JSON.stringify(asked).includes(root), false, 'path-free like every result');
+}));
+
 test('placement_place: an unknown word is a question first, answered by id, then it places', async () => {
   const text = 'A user can frobnicate the widget';
   const open = await call('placement_place', { text });
