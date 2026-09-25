@@ -1,0 +1,208 @@
+// #649 -- the tool list, the schema of each tool, and each tool run for real on a `construct init` project through the SDK's
+// in-process client. What a tool must NOT do (write, leave the root, leak) is packages/mcp/test/safety.test.mjs.
+import test, { before, after } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
+import { parseRequirement } from '../../core/requirement-card.mjs';
+import { placeCard, planFromBlocks } from '../../core/placement.mjs';
+import { recordChoices } from '../../core/decision-trace-store.mjs';
+import { LIMITS } from '../src/limits.mjs';
+import { TOOLS } from '../src/server.mjs';
+import { makeProject, connectInProcess, callTool } from '../test-utils/harness.mjs';
+
+const NAMES = ['requirement_parse', 'placement_place', 'plan_validate', 'decide', 'summarize', 'validate', 'machine_capabilities', 'traces_stats'];
+const SENTENCE = 'A user wants to see a list of products';
+
+const stateDir = makeTempDir('construct-mcp-state-');
+process.env.CONSTRUCT_STATE_DIR = stateDir;
+delete process.env.CONSTRUCT_DECISION_PLUGINS;
+
+let root;
+let session;
+before(async () => {
+  root = makeProject({ files: { 'features/billing/domain/Invoice.domain.ts': 'export type Invoice = { id: string };\n' } });
+  session = await connectInProcess({ root }, 'claude-code');
+});
+after(async () => {
+  await session.close();
+});
+const call = (name, args) => callTool(session.client, name, args);
+
+test('the tool list is exactly the eight read-only tools, each with a JSON schema and no path argument', async () => {
+  const { tools } = await session.client.listTools();
+  assert.deepEqual(tools.map((t) => t.name), NAMES);
+  assert.deepEqual(TOOLS.map((t) => t.name), NAMES);
+  for (const tool of tools) {
+    assert.equal(tool.inputSchema.type, 'object', tool.name);
+    assert.ok(tool.description.length > 40 && tool.description.length < 600, `${tool.name} has a description a model can decide on`);
+    assert.deepEqual([tool.annotations.readOnlyHint, tool.annotations.destructiveHint, tool.annotations.openWorldHint], [true, false, false], `${tool.name} is annotated read-only`);
+    for (const key of Object.keys(tool.inputSchema.properties ?? {})) assert.doesNotMatch(key, /^(root|projectRoot|project_root|path|dir|directory|file|cwd)$/i, `${tool.name} takes no path: ${key}`);
+  }
+});
+
+test('input schemas name their required fields and their bounds', async () => {
+  const { tools } = await session.client.listTools();
+  const by = Object.fromEntries(tools.map((t) => [t.name, t.inputSchema]));
+  assert.deepEqual(by.requirement_parse.required, ['text']);
+  assert.equal(by.requirement_parse.properties.text.maxLength, LIMITS.textChars);
+  assert.deepEqual(by.placement_place.required, ['text']);
+  assert.equal(by.placement_place.properties.answers.maxItems, LIMITS.answers);
+  assert.deepEqual(by.plan_validate.required, ['plan']);
+  assert.equal(by.validate.properties.limit.maximum, LIMITS.findings);
+  assert.deepEqual(by.machine_capabilities.properties ?? {}, {});
+  assert.equal(by.decide.properties.summary.properties.options.maxItems, 5);
+});
+
+test('requirement_parse: a sentence becomes a card summary, an unknown word a closed question', async () => {
+  const ok = await call('requirement_parse', { text: SENTENCE });
+  assert.equal(ok.isError, false);
+  assert.deepEqual([ok.body.ok, ok.body.complete, ok.body.questions], [true, true, []]);
+  assert.equal(ok.body.card.version, 'requirement-card.v1');
+  assert.deepEqual(ok.body.card.counts, { nouns: 2, verbs: 1, checks: 0, open: 0 });
+  assert.equal(ok.body.card.readBack.length, 3);
+
+  const open = await call('requirement_parse', { text: 'A user can frobnicate the widget' });
+  assert.equal(open.body.complete, false);
+  assert.ok(open.body.questions.length >= 1);
+  const q = open.body.questions[0];
+  assert.match(q.id, /^o\d+$/);
+  assert.equal(q.source, 'card');
+  assert.ok(q.options.length >= 2 && q.options.length <= 5, 'a chooser-shaped question: 2 to 5 options');
+  assert.deepEqual(Object.keys(q.options[0]).sort(), ['enabled', 'id', 'label', 'why']);
+});
+
+test('placement_place: blocks, offers and a plan preview with the files each step touches, proof and wiring', async () => {
+  const first = await call('placement_place', { text: SENTENCE });
+  assert.equal(first.isError, false);
+  assert.equal(first.body.stage, 'planned');
+  assert.ok(first.body.offers.some((o) => o.id === 'q-shape'), 'the shape is offered, not imposed');
+  assert.match(first.body.apply, /per-diff approval/);
+
+  const shaped = await call('placement_place', { text: SENTENCE, answers: [{ id: 'q-shape', option: 'list' }] });
+  const b = shaped.body;
+  assert.equal(b.complete, true);
+  assert.equal(b.plan.feature, 'products');
+  assert.ok(b.plan.stepCount >= 8);
+  const create = b.plan.steps.find((s) => s.flow === 'create.unit');
+  assert.ok(create.files.every((f) => /^[\w./-]+$/.test(f.path) && !f.path.startsWith('/') && ['create', 'modify'].includes(f.change)), 'files are project-relative');
+  assert.ok(b.plan.steps.some((s) => s.flow === 'create.route' && s.files[0].path === 'src/App.tsx'));
+  assert.equal(b.proof.state, 'pending');
+  assert.equal(b.wiring.routes[0].route, '/products');
+  assert.ok(b.offers.some((o) => o.id === 'q-dependency'), 'the dependency is a closed offer');
+  assert.deepEqual(b.decisions, [{ question: 'q-shape', option: 'list', by: 'llm', provider: 'claude-code' }], 'the MCP client is the attributed source of the answer');
+  assert.ok(Object.keys(b.files).length >= 1);
+});
+
+test('placement_place: an unknown word is a question first, answered by id, then it places', async () => {
+  const text = 'A user can frobnicate the widget';
+  const open = await call('placement_place', { text });
+  assert.equal(open.body.stage, 'card-questions');
+  assert.equal(open.body.plan, null);
+  const id = open.body.questions[0].id;
+  const answers = open.body.questions.map((q) => ({ id: q.id, option: q.options.find((o) => o.id === 'ignore').id }));
+  const answered = await call('placement_place', { text, answers });
+  assert.notEqual(answered.body.stage, 'card-questions', JSON.stringify(answered.body.questions));
+  const refused = await call('placement_place', { text, answers: [{ id, option: 'no-such-option' }] });
+  assert.equal(refused.isError, true);
+  assert.equal(refused.body.error.code, 'ANSWER_REFUSED');
+});
+
+test('plan_validate: a plan from placement is valid, a broken one lists what is wrong', async () => {
+  const card = parseRequirement(SENTENCE).card;
+  const placed = placeCard(card, { framework: 'react-spa', answers: { 'q-shape': 'list' } });
+  const { plan } = planFromBlocks(placed.blocks, { feature: 'products', root, decisions: placed.decisions });
+  const good = await call('plan_validate', { plan });
+  assert.equal(good.body.valid, true);
+  assert.equal(good.body.stepCount, plan.steps.length);
+  assert.ok(good.body.steps[0].files.length >= 1);
+
+  const bad = await call('plan_validate', { plan: { version: 1, ticket: { source: 'text', title: 'x' }, steps: [{ id: 's1', flow: 'no.such.flow', title: 't', args: {} }] } });
+  assert.equal(bad.isError, false);
+  assert.equal(bad.body.valid, false);
+  assert.ok(bad.body.errorCount >= 1);
+  assert.deepEqual(Object.keys(bad.body.errors[0]).sort(), ['code', 'message', 'path']);
+});
+
+test('decide: the rules provider suggests for a summary and for every open question of a sentence', async () => {
+  const summary = { id: 'q-x', question: 'Which shape?', options: [{ id: 'list', label: 'List', enabled: true, why: 'many items' }, { id: 'scaffold', label: 'Scaffold', enabled: true, why: 'empty' }] };
+  const s = await call('decide', { summary });
+  assert.equal(s.body.provider.name, 'rules');
+  assert.equal(s.body.suggestion.option, 'list');
+  assert.equal(s.body.suggestion.runnerUp, 'scaffold');
+
+  const t = await call('decide', { text: SENTENCE });
+  assert.equal(t.body.questions[0].id, 'q-shape');
+  assert.equal(t.body.questions[0].suggestion.option, 'list');
+
+  const both = await call('decide', { summary, text: SENTENCE });
+  assert.equal(both.body.error.code, 'INVALID_INPUT');
+  const neither = await call('decide', {});
+  assert.equal(neither.body.error.code, 'INVALID_INPUT');
+  const tooMany = await call('decide', { summary: { ...summary, options: Array.from({ length: 6 }, (_, i) => ({ id: `o${i}` })) } });
+  assert.equal(tooMany.body.error.code, 'INVALID_INPUT');
+});
+
+test('decide: a project plugin is not loaded unless the server was started with plugins on', async () => {
+  const withPlugin = makeProject({ files: { 'plugin.mjs': 'export default { name: "mine", version: "1", suggest: () => ({ option: "scaffold", reason: "always" }) };\n' } });
+  fs.appendFileSync(path.join(withPlugin, 'architecture.yml'), '\ndecision:\n  provider: mine\n  plugin: plugin.mjs\n');
+  const summary = { id: 'q-x', question: 'Which?', options: [{ id: 'list', label: 'List', enabled: true, why: 'a' }, { id: 'scaffold', label: 'Scaffold', enabled: true, why: 'b' }] };
+  const off = await connectInProcess({ root: withPlugin, allowPlugins: false });
+  const refused = await callTool(off.client, 'decide', { summary });
+  await off.close();
+  assert.equal(refused.body.provider.name, 'rules');
+  assert.equal(refused.body.fellBackFrom, 'mine');
+  assert.match(refused.body.notes.join(' '), /plugins are not enabled/);
+  assert.equal(refused.body.suggestion.option, 'list');
+});
+
+test('summarize: the project and one feature, bounded and path-free', async () => {
+  const all = await call('summarize', {});
+  assert.equal(all.body.scope, 'project');
+  assert.deepEqual(all.body.features.map((f) => f.feature).sort(), ['billing', 'core']);
+  const billing = await call('summarize', { feature: 'billing' });
+  assert.equal(billing.body.scope, 'feature');
+  assert.equal(billing.body.features.length, 1);
+  assert.equal(billing.body.features[0].layers.domain, 1);
+  assert.match(billing.body.summary, /billing/);
+  const missing = await call('summarize', { feature: 'nope' });
+  assert.equal(missing.isError, true);
+  assert.equal(missing.body.error.code, 'NOT_FOUND');
+});
+
+test('validate: counts by severity and rule and the first findings with rule id, file and fix', async () => {
+  const r = await call('validate', { limit: 1 });
+  assert.equal(r.body.passed, false);
+  assert.ok(r.body.counts.total >= 1);
+  assert.equal(r.body.counts.error + r.body.counts.warning, r.body.counts.total);
+  assert.ok(r.body.counts.byRule['IMPORT-001'] >= 1);
+  assert.equal(r.body.findings.length, 1);
+  const f = r.body.findings[0];
+  assert.deepEqual([typeof f.rule, typeof f.file, typeof f.fix], ['string', 'string', 'string']);
+  assert.ok(!f.file.startsWith('/'), 'the file is project-relative');
+  const many = await call('validate', {});
+  assert.ok(many.body.findings.length <= LIMITS.defaultFindings);
+});
+
+test('machine_capabilities: the tier and what memory and cores allow, nothing probed on the network', async () => {
+  const r = await call('machine_capabilities', {});
+  assert.ok(['lite', 'cockpit', 'contributor', 'below-lite'].includes(r.body.tier.id));
+  assert.equal(typeof r.body.capabilities.modelProposals.available, 'boolean');
+  assert.equal(typeof r.body.capabilities.cockpit.available, 'boolean');
+  assert.equal(r.body.decisionPlugins.enabled, false);
+  assert.ok(r.body.notProbed.includes('Ollama'));
+});
+
+test('traces_stats: an empty project, then counts of what was recorded, never a record or a path', async () => {
+  const empty = await call('traces_stats', {});
+  assert.deepEqual([empty.body.total, empty.body.enabled, empty.body.unreadable], [0, true, false]);
+  const q = { id: 'q-shape', question: 'How should it be built?', options: [{ id: 'list', label: 'List', enabled: true, why: 'a' }, { id: 'scaffold', label: 'Scaffold', enabled: true, why: 'b' }], chosen: null };
+  await recordChoices(root, [{ summary: q, chosen: 'list', by: 'person' }], { stateDir });
+  const one = await call('traces_stats', {});
+  assert.equal(one.body.total, 1);
+  assert.equal(Object.keys(one.body.byChooser).length, 1);
+  assert.doesNotMatch(one.text, /decisions\.jsonl|construct-mcp-state/);
+  const other = await call('traces_stats', { chooser: 'no-such-chooser' });
+  assert.equal(other.body.total, 0);
+});
