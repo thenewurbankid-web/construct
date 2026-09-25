@@ -64,6 +64,19 @@ Watch the first run in the UI (http://127.0.0.1:3100), check the worktree, the s
 2-hour timer once you are happy: `curl -s -X PATCH http://127.0.0.1:3100/api/agents/<ogId> -H 'content-type: application/json' -d '{"runtimeConfig":{"heartbeat":{"enabled":true,"intervalSec":7200}}}'`
 (this is `heartbeatAtGo` in `company.json`; `apply.mjs` leaves an enabled timer alone).
 
+## Everyone active, safely (owner rule, 2026-09-25)
+
+The owner wants every agent in every team active, and free agents taking future work or helping another team, always
+(`agents/_shared/RULES.md`, "Never idle"). This host has 15 GB RAM and no swap and each Claude run is about 500 MB, so
+"active" means every agent is resumed and available, while `claude-gate.sh` (the adapter `command`) lets at most
+`PAPERCLIP_MAX_CLAUDE` (default 3) Claude runs start machine-wide and none below 3 GB of free memory; the rest wait for a slot.
+Raise the number only after watching `free -m` during a busy hour.
+
+Activation order (each step checked before the next, and the go is the owner's): `apply.mjs --apply` (pushes the gate and the rules to the
+paused agents), `github-sync.mjs --apply` (mirrors the open issues into `backlog`), move one issue per lane to `todo`,
+resume ONE agent as the canary and watch its first run (worktree, sandbox, `gh`, `heavy.sh`, its push), then resume the rest in
+stages of two, OG last with its heartbeat. Pause everything with the command below at any time.
+
 ## Pause everything
 
 ```bash

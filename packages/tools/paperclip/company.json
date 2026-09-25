@@ -58,13 +58,41 @@
     }
   ],
   "lanes": {
-    "construct": { "dev": "construct-dev", "qa": "construct-qa", "$comment": "packages/core, cli, engine, schemas; Front-end Blocks; Core CLI (block, chooser, plan)" },
-    "guardrails": { "dev": "guardrails-dev", "qa": "guardrails-qa", "$comment": "rules, validator, AST, typed contracts" },
-    "cockpit": { "dev": "cockpit-dev", "qa": "cockpit-qa", "$comment": "ui/" },
-    "website": { "dev": "website-dev", "qa": "website-qa", "$comment": "site/, packages/docs-site" },
-    "adhoc": { "dev": "adhoc-dev", "qa": "adhoc-qa", "$comment": "owner requests outside the plan; Studio on branch studio" },
-    "design": { "dev": "design-dev", "qa": "design-qa", "held": true, "$comment": "ON HOLD by the owner: created, kept paused, receives issues only in backlog" },
-    "og": { "dev": "og", "$comment": "Infra and process, and anything unmapped" }
+    "construct": {
+      "dev": "construct-dev",
+      "qa": "construct-qa",
+      "$comment": "packages/core, cli, engine, schemas; Front-end Blocks; Core CLI (block, chooser, plan)"
+    },
+    "guardrails": {
+      "dev": "guardrails-dev",
+      "qa": "guardrails-qa",
+      "$comment": "rules, validator, AST, typed contracts"
+    },
+    "cockpit": {
+      "dev": "cockpit-dev",
+      "qa": "cockpit-qa",
+      "$comment": "ui/"
+    },
+    "website": {
+      "dev": "website-dev",
+      "qa": "website-qa",
+      "$comment": "site/, packages/docs-site"
+    },
+    "adhoc": {
+      "dev": "adhoc-dev",
+      "qa": "adhoc-qa",
+      "$comment": "owner requests outside the plan; Studio on branch studio"
+    },
+    "design": {
+      "dev": "design-dev",
+      "qa": "design-qa",
+      "held": true,
+      "$comment": "ON HOLD by the owner: created, kept paused, receives issues only in backlog"
+    },
+    "og": {
+      "dev": "og",
+      "$comment": "Infra and process, and anything unmapped"
+    }
   },
   "adapterDefaults": {
     "$comment": "Every claude_local agent starts from this and its own adapterConfig is merged over it. engine cli is REQUIRED: Paperclip rejects filesystemScope and networkScope on the default ACP engine. dangerouslySkipPermissions is set explicitly: it is the platform default for non-interactive runs, so a run never stops to ask; the real guardrails are the bubblewrap confinement (filesystemScope workspace, networkScope allowlist), the git_worktree workspace, the budgets, paused-by-default and the rules in each AGENTS.md. TODO for the pilot (bwrap exists on this host, not yet exercised by a run): confirm the sandbox sees git, node, gh and the shared node_modules through filesystemExtraPaths; confirm /tmp/construct-heavy.lock (heavy.sh) works inside the sandbox; confirm whether the agent needs 127.0.0.1:3100 in networkAllowlist to comment on its Paperclip issue (left out on purpose: the brief lists five hosts only).",
@@ -84,12 +112,34 @@
     },
     "filesystemScope": "workspace",
     "filesystemExtraPaths": [
-      { "path": "${repoRoot}/.git", "access": "rw" },
-      { "path": "${repoRoot}/node_modules", "access": "ro" },
-      { "path": "${repoRoot}/ui/server/node_modules", "access": "ro" },
-      { "path": "${repoRoot}/ui/client/node_modules", "access": "ro" },
-      { "path": "${repoRoot}/ui/e2e/node_modules", "access": "ro" },
-      { "path": "${home}/.config/gh", "access": "ro" }
+      {
+        "path": "${repoRoot}/.git",
+        "access": "rw"
+      },
+      {
+        "path": "${repoRoot}/node_modules",
+        "access": "ro"
+      },
+      {
+        "path": "${repoRoot}/ui/server/node_modules",
+        "access": "ro"
+      },
+      {
+        "path": "${repoRoot}/ui/client/node_modules",
+        "access": "ro"
+      },
+      {
+        "path": "${repoRoot}/ui/e2e/node_modules",
+        "access": "ro"
+      },
+      {
+        "path": "${home}/.config/gh",
+        "access": "ro"
+      },
+      {
+        "path": "/tmp/paperclip-slots",
+        "access": "rw"
+      }
     ],
     "networkScope": "allowlist",
     "networkAllowlist": [
@@ -98,7 +148,11 @@
       "api.github.com",
       "registry.npmjs.org",
       "objects.githubusercontent.com"
-    ]
+    ],
+    "command": "${repoRoot}/packages/tools/paperclip/claude-gate.sh",
+    "env": {
+      "PAPERCLIP_MAX_CLAUDE": "3"
+    }
   },
   "agents": [
     {
@@ -109,9 +163,19 @@
       "icon": "crown",
       "reportsTo": null,
       "capabilities": "Integrates the lanes onto work/2026-09-23, keeps the GitHub board honest, verifies every report with its own commands, talks to the owner. Does not build features itself.",
-      "heartbeat": { "enabled": false, "intervalSec": 7200, "$comment": "OG is the only agent with a timer. It is OFF until the owner says go; then PATCH runtimeConfig.heartbeat to heartbeatAtGo (README). All other agents are event-driven (assignment) and never get a timer." },
-      "heartbeatAtGo": { "enabled": true, "intervalSec": 7200 },
-      "adapterConfig": { "maxTurnsPerRun": 40, "timeoutSec": 1200 }
+      "heartbeat": {
+        "enabled": false,
+        "intervalSec": 7200,
+        "$comment": "OG is the only agent with a timer. It is OFF until the owner says go; then PATCH runtimeConfig.heartbeat to heartbeatAtGo (README). All other agents are event-driven (assignment) and never get a timer."
+      },
+      "heartbeatAtGo": {
+        "enabled": true,
+        "intervalSec": 7200
+      },
+      "adapterConfig": {
+        "maxTurnsPerRun": 40,
+        "timeoutSec": 1200
+      }
     },
     {
       "key": "pm",
@@ -121,8 +185,13 @@
       "icon": "target",
       "reportsTo": "og",
       "capabilities": "Keeps the GitHub Projects board (project 1) consistent through packages/tools/project-board (Module, Sub-module, Kind, Priority, parents, milestones). Reads and fixes board state; never edits issue content.",
-      "heartbeat": { "enabled": false },
-      "adapterConfig": { "maxTurnsPerRun": 30, "timeoutSec": 900 }
+      "heartbeat": {
+        "enabled": false
+      },
+      "adapterConfig": {
+        "maxTurnsPerRun": 30,
+        "timeoutSec": 900
+      }
     },
     {
       "key": "construct-dev",
@@ -133,8 +202,13 @@
       "reportsTo": "og",
       "lane": "construct",
       "capabilities": "Builds deterministic blocks, choosers, plan flows and the CLI in packages/core, packages/cli, packages/engine and schemas/. Front-end Blocks (P0) and Core CLI (at least P1).",
-      "heartbeat": { "enabled": false },
-      "adapterConfig": { "maxTurnsPerRun": 60, "timeoutSec": 2400 }
+      "heartbeat": {
+        "enabled": false
+      },
+      "adapterConfig": {
+        "maxTurnsPerRun": 60,
+        "timeoutSec": 2400
+      }
     },
     {
       "key": "construct-qa",
@@ -145,8 +219,13 @@
       "reportsTo": "og",
       "lane": "construct",
       "capabilities": "Verifies Construct lane work with its own commands: targeted tests, fails-before-passes, AI-READY checklist, block contract. Reports findings only.",
-      "heartbeat": { "enabled": false },
-      "adapterConfig": { "maxTurnsPerRun": 40, "timeoutSec": 1500 }
+      "heartbeat": {
+        "enabled": false
+      },
+      "adapterConfig": {
+        "maxTurnsPerRun": 40,
+        "timeoutSec": 1500
+      }
     },
     {
       "key": "guardrails-dev",
@@ -157,8 +236,13 @@
       "reportsTo": "og",
       "lane": "guardrails",
       "capabilities": "Builds and fixes rules, the validator, AST parsing and typed contracts (packages/ast, packages/core/typed-contracts, the enforcers). Enforcers, AST and States and proof.",
-      "heartbeat": { "enabled": false },
-      "adapterConfig": { "maxTurnsPerRun": 60, "timeoutSec": 2400 }
+      "heartbeat": {
+        "enabled": false
+      },
+      "adapterConfig": {
+        "maxTurnsPerRun": 60,
+        "timeoutSec": 2400
+      }
     },
     {
       "key": "guardrails-qa",
@@ -169,8 +253,13 @@
       "reportsTo": "og",
       "lane": "guardrails",
       "capabilities": "Verifies rule, validator and typed-contract changes: false-positive and false-negative fixtures, off-by-default phase 1 rules, no deleted denylist rules.",
-      "heartbeat": { "enabled": false },
-      "adapterConfig": { "maxTurnsPerRun": 40, "timeoutSec": 1500 }
+      "heartbeat": {
+        "enabled": false
+      },
+      "adapterConfig": {
+        "maxTurnsPerRun": 40,
+        "timeoutSec": 1500
+      }
     },
     {
       "key": "cockpit-dev",
@@ -181,8 +270,13 @@
       "reportsTo": "og",
       "lane": "cockpit",
       "capabilities": "Builds the Cockpit UI (ui/client, ui/server) with a Playwright spec per feature. Web UI module and the Chain UI.",
-      "heartbeat": { "enabled": false },
-      "adapterConfig": { "maxTurnsPerRun": 60, "timeoutSec": 2400 }
+      "heartbeat": {
+        "enabled": false
+      },
+      "adapterConfig": {
+        "maxTurnsPerRun": 60,
+        "timeoutSec": 2400
+      }
     },
     {
       "key": "cockpit-qa",
@@ -193,8 +287,13 @@
       "reportsTo": "og",
       "lane": "cockpit",
       "capabilities": "Verifies Cockpit changes: the Playwright spec actually ran (--workers=1, one dev server, no lingering process), phone and desktop widths, both themes.",
-      "heartbeat": { "enabled": false },
-      "adapterConfig": { "maxTurnsPerRun": 40, "timeoutSec": 1800 }
+      "heartbeat": {
+        "enabled": false
+      },
+      "adapterConfig": {
+        "maxTurnsPerRun": 40,
+        "timeoutSec": 1800
+      }
     },
     {
       "key": "website-dev",
@@ -205,8 +304,13 @@
       "reportsTo": "og",
       "lane": "website",
       "capabilities": "Maintains the docs site and website (site/, packages/docs-site): guides, CLI reference, curated demos. Demos and Docs module.",
-      "heartbeat": { "enabled": false },
-      "adapterConfig": { "maxTurnsPerRun": 50, "timeoutSec": 1800 }
+      "heartbeat": {
+        "enabled": false
+      },
+      "adapterConfig": {
+        "maxTurnsPerRun": 50,
+        "timeoutSec": 1800
+      }
     },
     {
       "key": "website-qa",
@@ -217,8 +321,13 @@
       "reportsTo": "og",
       "lane": "website",
       "capabilities": "Verifies site builds, links, search index and that every documented command still exists.",
-      "heartbeat": { "enabled": false },
-      "adapterConfig": { "maxTurnsPerRun": 30, "timeoutSec": 1200 }
+      "heartbeat": {
+        "enabled": false
+      },
+      "adapterConfig": {
+        "maxTurnsPerRun": 30,
+        "timeoutSec": 1200
+      }
     },
     {
       "key": "adhoc-dev",
@@ -229,11 +338,15 @@
       "reportsTo": "og",
       "lane": "adhoc",
       "capabilities": "Owner requests outside the plan. Studio (packages/studio) lives on the branch studio, not on work/2026-09-23.",
-      "heartbeat": { "enabled": false },
+      "heartbeat": {
+        "enabled": false
+      },
       "adapterConfig": {
         "maxTurnsPerRun": 50,
         "timeoutSec": 1800,
-        "workspaceStrategy": { "baseRef": "origin/studio" }
+        "workspaceStrategy": {
+          "baseRef": "origin/studio"
+        }
       }
     },
     {
@@ -245,11 +358,15 @@
       "reportsTo": "og",
       "lane": "adhoc",
       "capabilities": "Verifies ad hoc and Studio work with its own commands on the studio branch.",
-      "heartbeat": { "enabled": false },
+      "heartbeat": {
+        "enabled": false
+      },
       "adapterConfig": {
         "maxTurnsPerRun": 30,
         "timeoutSec": 1200,
-        "workspaceStrategy": { "baseRef": "origin/studio" }
+        "workspaceStrategy": {
+          "baseRef": "origin/studio"
+        }
       }
     },
     {
@@ -262,8 +379,13 @@
       "lane": "design",
       "hold": true,
       "capabilities": "ON HOLD by the owner. Concept mocks and specs under docs/design/; never edits ui/client. Stays paused until the owner lifts the hold.",
-      "heartbeat": { "enabled": false },
-      "adapterConfig": { "maxTurnsPerRun": 30, "timeoutSec": 1200 }
+      "heartbeat": {
+        "enabled": false
+      },
+      "adapterConfig": {
+        "maxTurnsPerRun": 30,
+        "timeoutSec": 1200
+      }
     },
     {
       "key": "design-qa",
@@ -275,32 +397,75 @@
       "lane": "design",
       "hold": true,
       "capabilities": "ON HOLD by the owner. Accessibility and consistency review of docs/design/. Stays paused until the owner lifts the hold.",
-      "heartbeat": { "enabled": false },
-      "adapterConfig": { "maxTurnsPerRun": 20, "timeoutSec": 900 }
+      "heartbeat": {
+        "enabled": false
+      },
+      "adapterConfig": {
+        "maxTurnsPerRun": 20,
+        "timeoutSec": 900
+      }
     }
   ],
   "github": {
     "repo": "thenewurbankid-web/construct",
     "milestone": "v0.10.0",
-    "project": { "owner": "thenewurbankid-web", "number": 1 },
+    "project": {
+      "owner": "thenewurbankid-web",
+      "number": 1
+    },
     "bodyChars": 1500,
-    "skipLabels": ["off-board"],
+    "skipLabels": [
+      "off-board"
+    ],
     "createStatus": "backlog",
     "$comment": "Mirror issues are created in backlog on purpose: moving one to todo is the owner's go for that work. Priority comes from the board (P0 critical, P1 high, P2 medium)."
   },
-  "priorityMap": { "P0": "critical", "P1": "high", "P2": "medium" },
+  "priorityMap": {
+    "P0": "critical",
+    "P1": "high",
+    "P2": "medium"
+  },
   "laneMapping": {
     "$comment": "Board Module (and Sub-module) to lane. byIssue wins and is the only way an off-board issue is mirrored (Studio #637 is ad hoc). Pipeline and Generators and AI Toolkit are not in the owner's list: generators and envelopes are blocks (Construct), LLM fill safety is a guardrail. Chain UI is the Cockpit's chain screen. Anything unmapped falls back to OG.",
-    "byIssue": { "637": "adhoc" },
+    "byIssue": {
+      "637": "adhoc"
+    },
     "byModule": {
-      "Front-end Blocks": { "default": "construct", "subModules": { "States & proof": "guardrails", "Chain UI": "cockpit" } },
-      "Core CLI": { "default": "construct", "subModules": { "Enforcers": "guardrails", "AST & parsing": "guardrails" } },
-      "Web UI": { "default": "cockpit" },
-      "Demos & Docs": { "default": "website" },
-      "Design": { "default": "design" },
-      "Infra & Process": { "default": "og" },
-      "Pipeline & Generators": { "default": "construct" },
-      "AI Toolkit": { "default": "construct", "subModules": { "LLM fill safety": "guardrails" } }
+      "Front-end Blocks": {
+        "default": "construct",
+        "subModules": {
+          "States & proof": "guardrails",
+          "Chain UI": "cockpit"
+        }
+      },
+      "Core CLI": {
+        "default": "construct",
+        "subModules": {
+          "Enforcers": "guardrails",
+          "AST & parsing": "guardrails"
+        }
+      },
+      "Web UI": {
+        "default": "cockpit"
+      },
+      "Demos & Docs": {
+        "default": "website"
+      },
+      "Design": {
+        "default": "design"
+      },
+      "Infra & Process": {
+        "default": "og"
+      },
+      "Pipeline & Generators": {
+        "default": "construct"
+      },
+      "AI Toolkit": {
+        "default": "construct",
+        "subModules": {
+          "LLM fill safety": "guardrails"
+        }
+      }
     },
     "fallback": "og"
   },

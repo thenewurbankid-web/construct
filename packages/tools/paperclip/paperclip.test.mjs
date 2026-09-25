@@ -1,6 +1,8 @@
 import { test, before, after, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
+import os from 'node:os';
+import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -442,4 +444,61 @@ else { console.error('fake gh: refusing ' + args.join(' ')); process.exit(9); }
       await empty.close();
     }
   });
+});
+
+// ---- claude-gate.sh: the machine-wide slot gate ------------------------------------------------------------------------------
+const GATE = path.join(path.dirname(fileURLToPath(import.meta.url)), 'claude-gate.sh');
+
+function gateEnv(extra = {}) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gate-'));
+  const meminfo = path.join(dir, 'meminfo');
+  fs.writeFileSync(meminfo, 'MemAvailable: 8000000 kB\n');
+  const log = path.join(dir, 'log');
+  const fake = path.join(dir, 'claude');
+  fs.writeFileSync(fake, `#!/usr/bin/env bash\necho "start $$ $(date +%s%N)" >> "${log}"\nsleep ${extra.hold ?? 1}\necho "end $$ $(date +%s%N)" >> "${log}"\n`, { mode: 0o755 });
+  return { dir, log, env: { ...process.env, PAPERCLIP_SLOT_DIR: path.join(dir, 'slots'), PAPERCLIP_REAL_CLAUDE: fake, PAPERCLIP_MEMINFO: meminfo, PAPERCLIP_MAX_CLAUDE: '2', PAPERCLIP_GATE_WAIT_SEC: '30', ...extra.env } };
+}
+const runGate = (env, args = []) => new Promise((resolve) => {
+  const c = spawn('bash', [GATE, ...args], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+  let err = '';
+  c.stderr.on('data', (b) => { err += b; });
+  c.on('close', (code) => resolve({ code, err }));
+});
+
+test('claude-gate: four concurrent runs with two slots never run more than two at once, and all finish', async () => {
+  const g = gateEnv();
+  const results = await Promise.all([1, 2, 3, 4].map(() => runGate(g.env, ['--print', 'x'])));
+  assert.deepEqual(results.map((r) => r.code), [0, 0, 0, 0]);
+  const events = fs.readFileSync(g.log, 'utf8').trim().split('\n').map((l) => l.split(' ')).map(([kind, pid, ns]) => ({ kind, pid, ns: BigInt(ns) }));
+  assert.equal(events.filter((e) => e.kind === 'start').length, 4);
+  let live = 0, peak = 0;
+  for (const e of events.sort((a, b) => (a.ns < b.ns ? -1 : a.ns > b.ns ? 1 : 0))) { live += e.kind === 'start' ? 1 : -1; peak = Math.max(peak, live); }
+  assert.ok(peak <= 2, `at most 2 at once, saw ${peak}`);
+});
+
+test('claude-gate: a killed holder frees its slot', async () => {
+  const g = gateEnv({ hold: 30, env: { PAPERCLIP_MAX_CLAUDE: '1' } });
+  const holder = spawn('bash', [GATE], { env: g.env, stdio: 'ignore', detached: true });
+  await new Promise((r) => setTimeout(r, 700));
+  process.kill(-holder.pid, 'SIGKILL');
+  await new Promise((r) => setTimeout(r, 300));
+  const fast = gateEnv({ hold: 0, env: { PAPERCLIP_MAX_CLAUDE: '1', PAPERCLIP_SLOT_DIR: g.env.PAPERCLIP_SLOT_DIR, PAPERCLIP_GATE_WAIT_SEC: '10' } });
+  const r = await runGate(fast.env);
+  assert.equal(r.code, 0, r.err);
+});
+
+test('claude-gate: too little free memory waits and then exits 75 with a message, without starting claude', async () => {
+  const g = gateEnv({ env: { PAPERCLIP_MIN_AVAILABLE_KB: '99999999', PAPERCLIP_GATE_WAIT_SEC: '2' } });
+  const r = await runGate(g.env);
+  assert.equal(r.code, 75);
+  assert.match(r.err, /too little free memory/);
+  assert.equal(fs.existsSync(g.log), false, 'claude never started');
+});
+
+test('claude-gate: the real command gets the same arguments', async () => {
+  const g = gateEnv();
+  fs.writeFileSync(path.join(g.dir, 'claude'), `#!/usr/bin/env bash\nprintf '%s|' "$@" > "${g.log}"\n`, { mode: 0o755 });
+  const r = await runGate(g.env, ['--print', 'hello world']);
+  assert.equal(r.code, 0);
+  assert.equal(fs.readFileSync(g.log, 'utf8'), '--print|hello world|');
 });

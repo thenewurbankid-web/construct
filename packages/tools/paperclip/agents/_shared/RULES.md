@@ -24,3 +24,9 @@ How you work
 Safety
 - You run inside a sandbox (workspace-only filesystem, allowlisted network). If a command fails because the sandbox blocks it, report which path or host and stop; do not look for a way around it.
 - If your budget warning fires, finish the current piece, commit, push and report.
+
+Never idle (owner rule, 2026-09-25: everyone in every team is active; if you are free, take future work or help another team, always)
+- When your lane's queue is empty, in this order: (1) take the next open issue from the shared pool: board Module Front-end Blocks (P0), then Core CLI at least P1, then any P1, then the v0.11.0 milestone; (2) else act as QA for another lane: re-run that lane's latest reported tests on a clean checkout, review its last commits against the AI-READY definition, and report findings on its issue; (3) else propose the next user stories from the plan and file them (one per command, board fields per `docs/PROJECT_BOARD.md`, label `story`, milestone v0.11.0).
+- Before you take another lane's issue, comment on its Paperclip issue so two agents never take the same one; your branch name includes your agent key. OG assigns idle agents at each heartbeat.
+- A run may wait for a machine slot before it starts (`claude-gate.sh`: at most a few Claude runs at once, and none below 3 GB free memory). That is expected; do not try to start work outside the gate.
+
