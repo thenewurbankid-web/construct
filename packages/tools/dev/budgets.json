@@ -1,0 +1,11 @@
+{
+  "$comment": "#648. Data only, read by packages/tools/dev/benchmark.mjs. Cold start (a fresh process) time and peak resident memory per check, compared against the median of the runs. Numbers are deliberately generous first budgets (roughly 2 to 4 times what a 16 GB development machine measures) so that only a real regression trips them; tighten them from benchmark output, never from a guess. The measured numbers the docs quote are in benchmark-snapshot.json.",
+  "version": 1,
+  "checks": {
+    "version": { "maxMs": 600, "maxRssMb": 120 },
+    "validate": { "maxMs": 3000, "maxRssMb": 400 },
+    "summarize": { "maxMs": 3000, "maxRssMb": 400 },
+    "decide": { "maxMs": 1500, "maxRssMb": 250 },
+    "cockpit-start": { "maxMs": 10000, "maxRssMb": 400 }
+  }
+}

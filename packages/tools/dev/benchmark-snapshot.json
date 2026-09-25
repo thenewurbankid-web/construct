@@ -1,0 +1,34 @@
+{
+  "measuredOn": "2026-09-25",
+  "node": "22.14.0",
+  "cores": 8,
+  "memoryGb": 15,
+  "runs": 5,
+  "checks": {
+    "version": {
+      "label": "construct --version",
+      "ms": 50,
+      "peakMb": 45
+    },
+    "validate": {
+      "label": "construct validate (small project)",
+      "ms": 700,
+      "peakMb": 160
+    },
+    "summarize": {
+      "label": "construct summarize (small project)",
+      "ms": 660,
+      "peakMb": 160
+    },
+    "decide": {
+      "label": "construct decide --requirement",
+      "ms": 640,
+      "peakMb": 160
+    },
+    "cockpit-start": {
+      "label": "Cockpit server, start until it answers",
+      "ms": 680,
+      "peakMb": 175
+    }
+  }
+}
