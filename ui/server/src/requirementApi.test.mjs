@@ -390,7 +390,7 @@ test('a shaped screen is offered its data source; the rules default is local, or
   assert.deepEqual(plain.offers.map((q) => q.id), ['q-shape'], 'no shape chosen, no shaped unit, no data source to ask about');
 
   const asked = (await post({ text: sentence, answers: [shape] })).body;
-  assert.deepEqual(asked.offers.map((q) => [q.id, q.source, q.default, q.chosen, q.options.map((o) => o.id)]), [['q-shape', 'placement', 'list', 'list', ['list', 'scaffold']], ['q-source', 'plan', 'local', null, ['local', 'endpoint']], ['q-access', 'plan', 'public', null, ['public', 'signed-in', 'role']], ['q-states', 'plan', 'default', null, ['default', 'custom', 'skip-empty', 'skip-all']], ['q-verify', 'plan', 'types', null, ['types', 'types-build', 'none']]]);
+  assert.deepEqual(asked.offers.map((q) => [q.id, q.source, q.default, q.chosen, q.options.map((o) => o.id)]), [['q-shape', 'placement', 'list', 'list', ['list', 'scaffold']], ['q-source', 'plan', 'local', null, ['local', 'endpoint']], ['q-states', 'plan', 'default', null, ['default', 'custom', 'skip-empty', 'skip-all']], ['q-access', 'plan', 'public', null, ['public', 'signed-in', 'role']], ['q-verify', 'plan', 'types', null, ['types', 'types-build', 'none']]]);
   assert.equal(asked.suggestions['q-source'].option, 'local', 'the decision provider suggests on it like on every other offer');
   assert.deepEqual(asked.open, [], 'the offer never blocks the plan');
   assert.ok(unitSteps(asked).every((s) => s.args.source === 'local'));

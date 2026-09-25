@@ -113,11 +113,11 @@ const planResult = (sentence, answers = {}, shape = true) => {
 test('the plan questions: the type-check and the environment variables are cards of the kind `plan`, titled from their id, never blocking Approve', () => {
   const v = shapeView(planResult(PRODUCTS));
   assert.deepEqual(v.result.offers.map((o) => [o.id, o.kind, o.heading]), [['q-shape', 'shape', 'Screen shape'], ['q-source', 'source', 'Data source'], ['q-states', 'plan', 'Screen states'], ['q-access', 'plan', 'Access'], ['q-verify', 'plan', 'Verification']]);
-  const verify = v.result.offers[3];
+  const verify = v.result.offers[4];
   assert.deepEqual(verify.options.map((o) => [o.id, o.suggested, o.chosen]), [['types', true, false], ['none', false, false]], 'the build option is disabled here (no package.json), so it is not offered');
   assert.equal(verify.status, "Not chosen yet, so the plan below uses the rules' default: type-check after the wiring.");
   assert.equal(v.result.approve.canApprove, true);
-  const answered = shapeView(planResult(PRODUCTS, { 'q-verify': 'none' })).result.offers[3];
+  const answered = shapeView(planResult(PRODUCTS, { 'q-verify': 'none' })).result.offers[4];
   assert.deepEqual([answered.status, answered.decidedBy, answered.options.map((o) => o.chosen)], ['Chosen: No verification step. Decided by: person.', 'person', [false, true]]);
   assert.deepEqual(withAnswer([], { id: 'q-verify', source: 'plan' }, 'none'), [{ id: 'q-verify', option: 'none' }]);
 
@@ -225,7 +225,7 @@ test('the wizard step count (q-steps) is a plan card with a plain line about wha
     return shapeView({ card, placement: { ...placement, decisions: planned.decisions }, plan: planned.plan, files: planned.files, open: [], offers: [...placement.offers, ...planned.offers.map((q) => ({ ...q, source: 'plan' }))], warnings: [], summary: { readBack: [], blocks: [] } });
   };
   const v = build();
-  assert.deepEqual(v.result.offers.map((o) => [o.id, o.kind, o.heading]), [['q-shape', 'shape', 'Screen shape'], ['q-source', 'source', 'Data source'], ['q-steps', 'plan', 'Wizard steps'], ['q-verify', 'plan', 'Verification']]);
+  assert.deepEqual(v.result.offers.map((o) => [o.id, o.kind, o.heading]), [['q-shape', 'shape', 'Screen shape'], ['q-source', 'source', 'Data source'], ['q-steps', 'plan', 'Wizard steps'], ['q-access', 'plan', 'Access'], ['q-verify', 'plan', 'Verification']]);
   const steps = v.result.offers[2];
   assert.match(steps.hint, /^A step is one screen of the wizard: Next and Back move between steps/);
   assert.deepEqual(v.result.offers.filter((o) => o.hint !== null).map((o) => o.id), ['q-steps'], 'only the question with a word to explain has a line');
@@ -246,7 +246,7 @@ test('the screen states question (q-states) is a plan card with a plain line abo
     return shapeView({ card, placement: { ...placement, decisions: planned.decisions }, plan: planned.plan, files: planned.files, open: [], offers: [...placement.offers, ...planned.offers.map((q) => ({ ...q, source: 'plan' }))], warnings: planned.warnings, summary: { readBack: [], blocks: [] } });
   };
   const v = build();
-  assert.deepEqual(v.result.offers.map((o) => [o.id, o.kind, o.heading]), [['q-shape', 'shape', 'Screen shape'], ['q-source', 'source', 'Data source'], ['q-states', 'plan', 'Screen states'], ['q-verify', 'plan', 'Verification']]);
+  assert.deepEqual(v.result.offers.map((o) => [o.id, o.kind, o.heading]), [['q-shape', 'shape', 'Screen shape'], ['q-source', 'source', 'Data source'], ['q-states', 'plan', 'Screen states'], ['q-access', 'plan', 'Access'], ['q-verify', 'plan', 'Verification']]);
   const states = v.result.offers[2];
   assert.match(states.hint, /^A state is what the screen shows in one situation: while the data loads/);
   assert.deepEqual(v.result.offers.filter((o) => o.hint !== null).map((o) => o.id), ['q-states'], 'only the question with a word to explain has a line');
