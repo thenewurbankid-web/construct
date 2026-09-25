@@ -110,8 +110,8 @@ export const result = { trace, outcome: record };
   It is never inside your source tree, so it is not in `git status`, not walked by the enforcers and not copied into a shadow
   tree. The directory is created private (`0700`, files `0600`).
 - **Nothing leaves the machine.** No module of the trace format imports a network API (a test walks their import graph and
-  fails on `http`, `net`, `fetch` and the like). Export is an explicit action that shows what will be included: that is #647,
-  not built here.
+  fails on `http`, `net`, `fetch` and the like). Export is an explicit action that shows what will be included first
+  (`construct traces export --out <dir>` previews, `--yes` writes; `docs/TRAIN-ELSEWHERE.md`, #647).
 - **No path, no secret.** A record is REFUSED (never repaired) when any string in it, a key included, holds an absolute path, a
   `~/`, a `./` or `../`, or a secret-shaped token (provider tokens, private key headers, JWTs, bearer credentials, `password=`
   assignments, any 40+ character run of letters and digits). It is the same path pattern `chooserSummary` uses to hide paths,
@@ -160,6 +160,7 @@ configured provider, or `rules` when a plugin failed and the rules answered in i
 
 ## What is not here
 
-Export bundles, dataset splits, training, the embedding classifier plugin and importing a trained model are #647 and #645. The
+Export bundles, dataset splits and importing a trained model are `docs/TRAIN-ELSEWHERE.md` (#647); training happens on another
+machine (`train-kit/`), never here; the embedding classifier plugin is #645. The
 Cockpit does not show traces yet. Outcomes `testsPassed` and `reverted` have a function to record them (`recordOutcome`) but no
 caller: see the seam above.
