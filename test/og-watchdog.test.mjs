@@ -25,17 +25,18 @@ function rig(name, env = {}) {
   fs.writeFileSync(path.join(bin, 'claude'), '#!/bin/bash\nexec -a claude bash -c \'while read -r l; do case "$l" in *"reply with exactly this token"*) echo "${l##* }";; esac; done; sleep 600\'\n', { mode: 0o755 });
   const tmuxName = `ogtest-${process.pid}-${name}`;
   const e = { ...process.env, HOME: path.join(root, 'home'), OG_REPO: repo, OG_STATE_DIR: state, OG_TMUX: tmuxName, CLAUDE_BIN: path.join(bin, 'claude'),
-    OG_PROJECTS_DIR: projects, OG_IDLE_MIN: '0', OG_IDLE_OG_MIN: '1', OG_SUMMARY_WAIT_MIN: '15', ...env };
+    OG_PROJECTS_DIR: projects, OG_RC: '0', OG_IDLE_MIN: '0', OG_IDLE_OG_MIN: '1', OG_SUMMARY_WAIT_MIN: '15', ...env };
   const run = (cmd, extra = {}) => spawnSync('bash', [SCRIPT, cmd], { env: { ...e, ...extra }, encoding: 'utf8' });
   const age = (minutes) => { const t = new Date(Date.now() - minutes * 60000); fs.utimesSync(transcript, t, t); };
   const foreign = [];
-  const spawnForeign = () => { const p = spawn('bash', ['-c', 'exec -a claude sleep 600'], { cwd: repo, detached: true, stdio: 'ignore' }); p.unref(); foreign.push(p.pid); return p.pid; };
+  // named: argv reads like `claude -c 'sleep 600' x -n construct-test`, i.e. a session started with -n construct-test
+  const spawnForeign = (named = false, name = 'construct-test') => { const p = spawn('bash', ['-c', named ? `exec -a claude sh -c 'sleep 600' x -n ${name}` : 'exec -a claude sleep 600'], { cwd: repo, detached: true, stdio: 'ignore' }); p.unref(); foreign.push(p.pid); return p.pid; };
   // a killed child of this test process stays a zombie until reaped: count state Z as gone
   const alive = (pid) => { try { process.kill(pid, 0); } catch { return false; } try { return !/^\d+ \(.*\) Z /.test(fs.readFileSync(`/proc/${pid}/stat`, 'utf8')); } catch { return false; } };
   const log = () => fs.existsSync(path.join(state, 'watchdog.log')) ? fs.readFileSync(path.join(state, 'watchdog.log'), 'utf8') : '';
   const cleanup = () => { spawnSync('tmux', ['kill-session', '-t', tmuxName], { stdio: 'ignore' }); for (const p of foreign) try { process.kill(p, 'SIGKILL'); } catch { /* gone */ } fs.rmSync(root, { recursive: true, force: true }); };
   const tmuxUp = () => spawnSync('tmux', ['has-session', '-t', tmuxName], { stdio: 'ignore' }).status === 0;
-  return { root, repo, state, run, age, spawnForeign, alive, log, cleanup, tmuxUp, tmuxName };
+  return { root, repo, state, transcript, run, age, spawnForeign, alive, log, cleanup, tmuxUp, tmuxName };
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -62,13 +63,38 @@ test('og-watchdog: an idle foreign session gets a handoff snapshot, is closed, a
 test('og-watchdog: an active session is left alone', { skip }, async () => {
   const r = rig('active', { OG_IDLE_MIN: '1' });
   try {
-    const pid = r.spawnForeign();
+    const pid = r.spawnForeign(true);
     r.age(0);
     await sleep(300);
     r.run('check');
     assert.doesNotMatch(r.log(), /recycling/);
     assert.equal(r.alive(pid), true);
     assert.equal(r.tmuxUp(), false);
+  } finally { r.cleanup(); }
+});
+
+test('og-watchdog: an active session that was not started under the construct name does not stop a start, and is left alone', { skip }, async () => {
+  const r = rig('unnamed', { OG_IDLE_MIN: '1' });
+  try {
+    const pid = r.spawnForeign(false);
+    r.age(0);
+    await sleep(300);
+    r.run('check');
+    assert.match(r.log(), /no session named construct\*.*unnamed sessions running/);
+    assert.ok(r.tmuxUp(), 'OG started beside it');
+    assert.equal(r.alive(pid), true, 'the unnamed session is not closed');
+  } finally { r.cleanup(); }
+});
+
+test('og-watchdog: a running session with the legacy name `og` still counts as OG, so deploying does not start a second one', { skip }, async () => {
+  const r = rig('legacy', { OG_IDLE_MIN: '1' });
+  try {
+    const pid = r.spawnForeign(true, 'og');
+    r.age(0);
+    await sleep(300);
+    r.run('check');
+    assert.equal(r.tmuxUp(), false, 'no second OG');
+    assert.equal(r.alive(pid), true);
   } finally { r.cleanup(); }
 });
 
@@ -133,6 +159,7 @@ test('og-watchdog: the OG session is asked for its own handoff note first, then 
 test('og-watchdog: a session outside the repo cwd that still writes transcripts is not replaced', { skip }, () => {
   const r = rig('elsewhere');
   try {
+    fs.appendFileSync(r.transcript, JSON.stringify({ type: 'custom-title', customTitle: 'construct-og' }) + '\n');
     r.age(0);
     r.run('check');
     assert.match(r.log(), /treating it as alive/);
@@ -145,7 +172,34 @@ test('og-watchdog: with no session it starts OG', { skip }, async () => {
   try {
     r.age(180);
     r.run('check');
-    assert.match(r.log(), /no Claude Code session/);
+    assert.match(r.log(), /no session named construct\*/);
     assert.ok(r.tmuxUp());
+  } finally { r.cleanup(); }
+});
+
+test('og-watchdog: check keeps a claude rc server in its own tmux session, once, is not counted as an OG session, and not while paused', { skip }, async () => {
+  const r = rig('rc', { OG_RC: '1' });
+  // a fake whose argv is `claude rc ...` (argv[1] is what the process scan keys on), so it must never read as an OG session
+  fs.writeFileSync(path.join(r.root, 'bin', 'claude'), '#!/bin/bash\nexec -a claude tail rc -F /dev/null\n', { mode: 0o755 });
+  try {
+    const rcName = `${r.tmuxName}-rc`;
+    const rcUp = () => spawnSync('tmux', ['has-session', '-t', rcName], { stdio: 'ignore' }).status === 0;
+    try {
+      r.run('check');
+      assert.match(r.log(), /started claude rc in tmux/);
+      assert.ok(rcUp(), 'rc tmux session is up');
+      await sleep(500);
+      r.run('check');
+      assert.equal((r.log().match(/started claude rc/g) || []).length, 1, 'a running rc is not started twice');
+      assert.match(r.run('status').stdout, /rc:\s+session .* running/);
+      // exact tmux targets: with only the rc session up, OG's own session must read as absent (tmux -t matches prefixes)
+      spawnSync('tmux', ['kill-session', '-t', '='+r.tmuxName], { stdio: 'ignore' });
+      assert.doesNotMatch(r.run('status').stdout, /tmux:\s+session '.*' exists/);
+      // pause stops new starts: after the rc session is gone, a paused check leaves it gone
+      spawnSync('tmux', ['kill-session', '-t', rcName], { stdio: 'ignore' });
+      r.run('pause');
+      r.run('check');
+      assert.ok(!rcUp(), 'paused: rc is not restarted');
+    } finally { spawnSync('tmux', ['kill-session', '-t', rcName], { stdio: 'ignore' }); }
   } finally { r.cleanup(); }
 });
