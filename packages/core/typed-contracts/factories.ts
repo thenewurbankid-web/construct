@@ -36,6 +36,7 @@ import type {
   ServiceUnit,
   ServiceUnitAny,
   WorkflowConfig,
+  WorkflowMachine,
   WorkflowUnit,
 } from './units.ts';
 import { checkServiceReturn, type CheckedReturn, type ResponseSchema, type SchemaOutput } from './schema.ts';
@@ -140,16 +141,21 @@ export function defineRoute<Props extends Forbid<Props, ControllerUnitAny>>(
 
 // ---- workflow ------------------------------------------------------
 // Mirrors DEFAULT_LAYERS.workflow.canImport = ['service', 'domain',
-// 'types']. A workflow is not JSX-returning -- `fn` builds a
-// `WorkflowConfig` (a `createMachine({...})`-shaped value; see units.ts)
-// from its props, not markup.
+// 'types']. A workflow is not JSX-returning -- `fn` builds a machine
+// (a `WorkflowConfig`, i.e. a `createMachine({...})`-shaped value, or a real
+// XState machine; see units.ts) from its props, not markup.
+//
+// #658 -- the returned `WorkflowUnit` is typed as what it is at runtime, the
+// function `tagUnit` makes (call it to build the machine), and it keeps `fn`'s
+// exact return type, so `defineWorkflow('X', () => machine)(props)` is the
+// machine itself, not a widened config.
 
 type WorkflowAllowed = ServiceUnitAny | DomainUnitAny;
 
-export function defineWorkflow<Props extends Forbid<Props, WorkflowAllowed>>(
+export function defineWorkflow<Props extends Forbid<Props, WorkflowAllowed>, Machine extends WorkflowMachine = WorkflowConfig>(
   name: string,
-  fn: (props: Props) => WorkflowConfig,
-): WorkflowUnit {
+  fn: (props: Props) => Machine,
+): WorkflowUnit<(props: Props) => Machine> {
   return tagUnit(name, fn, 'workflow');
 }
 

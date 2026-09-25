@@ -288,7 +288,7 @@ Most layer rules above are enforced two ways at once, not just one:
 
 - **Composition prevents** — `packages/core/typed-contracts/` gives each layer a
   branded type (`DomainUnit<T>`, `PageUnit<T>`, `ComponentUnit<T>`,
-  `ExpressionUnit<T>`, `ServiceUnit<T>`, `WorkflowUnit`, `ControllerUnit<T>`,
+  `ExpressionUnit<T>`, `ServiceUnit<T>`, `WorkflowUnit<Fn>`, `ControllerUnit<T>`,
   `RouteUnit`, `ProviderUnit`) and one `defineX<Props>(name, fn)` factory per
   layer. A factory's parameter types are the actual import boundary — a
   `defineDomain` unit's params have no slot that accepts a `ComponentUnit`, so

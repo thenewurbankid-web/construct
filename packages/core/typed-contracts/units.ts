@@ -83,21 +83,33 @@ export type HookUnit<Fn extends (...args: any[]) => any> = Brand<Fn, 'hook'> & L
 export type CheckedServiceUnit<Fn extends (...args: any[]) => any, Schema> =
   ServiceUnit<Fn> & { readonly schema: Schema };
 
-/** A workflow unit brands a machine-shaped configuration value, not a
- * function -- this mirrors what `extractMachines`
- * (packages/engine/workflowExtractor.mjs) already looks for: a
- * `createMachine({ id, initial, states })`-shaped object literal.
+/** What a workflow builds: a machine-shaped value. `WorkflowConfig` is the
+ * `createMachine({ id, initial, states })`-shaped object literal that
+ * `extractMachines` (packages/engine/workflowExtractor.mjs) looks for.
+ * `WorkflowMachine` is the least a workflow may return, so a real XState
+ * machine (`setup(...).createMachine(...)`: it has `id` and `states`, but no
+ * `initial`) is accepted as well as a literal config.
  * `defineWorkflow` (factories.ts) is one of #502's 7 factories
  * (route/controller/workflow/service/domain/page/component); `defineHook`
  * is intentionally NOT among them -- `HookUnit` exists as a branded type
  * (this wave), but its factory (`useTrackedState<T>`/`HOOK-001`) is
  * separate, out-of-scope future work tracked under #500 phase 1. */
-export interface WorkflowConfig {
+export interface WorkflowMachine {
   readonly id: string;
-  readonly initial: string;
   readonly states: Record<string, unknown>;
 }
-export type WorkflowUnit = Brand<WorkflowConfig, 'workflow'> & LayerTag<'workflow'>;
+export interface WorkflowConfig extends WorkflowMachine {
+  readonly initial: string;
+}
+
+/** #658 -- a workflow unit is a function, like every other non-JSX unit (`DomainUnit`,
+ * `ServiceUnit`): `defineWorkflow` returns the function that builds the machine from the unit's
+ * props, so the type says what the runtime is (it used to say "a config object", and a unit was
+ * not callable as its type claimed). `Fn` defaults to the widest workflow function, which is
+ * the wildcard the `Forbid<>` slots use (a function type, never a literal `any`: see the
+ * wildcard note below). */
+export type WorkflowUnit<Fn extends (...args: any[]) => WorkflowMachine = (...args: any[]) => WorkflowMachine> =
+  Brand<Fn, 'workflow'> & LayerTag<'workflow'>;
 
 // ---- "any instance of this layer" wildcards, for the Forbid<> checks ----
 //

@@ -49,12 +49,14 @@ test('the sentence becomes a plan of 14 steps, runs, and gives a wizard that val
     assert.ok(Object.values(written).every((c) => !/\bTODO\b/.test(c)), 'no stub is left to fill');
     const at = (f) => written[`${FEATURE}/${f}`];
     assert.match(at('workflows/Signup.workflow.ts'), /export const signupMachine = setup\(\{/);
-    assert.match(at('workflows/Signup.workflow.ts'), /defineWorkflow<Record<string, never>>\('SignupWorkflow'/);
+    assert.match(at('workflows/Signup.workflow.ts'), /defineWorkflow\('SignupWorkflow', \(\) => signupMachine\)/);
     assert.match(at('workflows/Signup.workflow.ts'), /NEXT: \{ guard: \{ type: 'stepIsValid', params: \{ step: 'details' \} \}, target: 'review' \}/);
     assert.match(at('workflows/Signup.workflow.ts'), /SUBMIT: \{ guard: 'everyStepIsValid', target: 'submitting' \}/);
     assert.doesNotMatch(at('workflows/Signup.workflow.ts'), /from 'react/, 'a workflow imports no React');
+    assert.match(at('hooks/useSignup.state.ts'), /const MACHINE = SignupWorkflow\(\{\}\);/, 'the hook runs the machine through the workflow unit, which is callable');
+    assert.doesNotMatch(at('hooks/useSignup.state.ts'), /signupMachine/, 'the hook does not reach past the unit for the machine');
     assert.match(at('hooks/useSignup.state.ts'), /useTrackedState\('signup', INITIAL\)/);
-    assert.match(at('hooks/useSignup.state.ts'), /getNextSnapshot\(signupMachine, current, event\)/);
+    assert.match(at('hooks/useSignup.state.ts'), /getNextSnapshot\(MACHINE, current, event\)/);
     assert.match(at('domain/SignupValidity.domain.ts'), /name: values\.name\.trim\(\) !== ''/);
     assert.match(at('services/Signup.service.ts'), /method: 'POST'.*body: JSON\.stringify\(input\), signal/);
     assert.match(at('components/SignupDetailsStep.component.tsx'), /<input id="signup-name" name="name" type="text"/);
