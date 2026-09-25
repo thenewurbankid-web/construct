@@ -430,19 +430,20 @@
                     "minLength": 1,
                     "enum": [
                       "list",
-                      "detail"
+                      "detail",
+                      "form"
                     ],
-                    "description": "A named screen shape: the units are filled with real, typed code for it (list: an entity list with loading, empty and error states; detail: one item by id with loading, not-found and error states)."
+                    "description": "A named screen shape: the units are filled with real, typed code for it (list: an entity list with loading, empty and error states; detail: one item by id with loading, not-found and error states; form: a typed input per field with validation and a submit service)."
                   },
                   "entity": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "The entity a shape shows, PascalCase and singular (Product). Defaults to the singular of the unit name (list) or the unit name (detail)."
+                    "description": "The entity a shape shows or writes, PascalCase and singular (Product). Defaults to the singular of the unit name (list), the unit name (detail) or the unit name without its leading verb (form: AddProduct is Product)."
                   },
                   "fields": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "The entity fields for a shape as name:type pairs, comma separated (id:string,name:string,price:number). Types: string, number, boolean; an id field is required."
+                    "description": "The entity fields for a shape as name:type pairs, comma separated (id:string,name:string,price:number). Types: string, number, boolean; an id field is required (a form has no input for it: the server assigns it)."
                   },
                   "llm": {
                     "type": "string",
@@ -511,19 +512,20 @@
                     "minLength": 1,
                     "enum": [
                       "list",
-                      "detail"
+                      "detail",
+                      "form"
                     ],
-                    "description": "A named screen shape: the units are filled with real, typed code for it (list: an entity list with loading, empty and error states; detail: one item by id with loading, not-found and error states)."
+                    "description": "A named screen shape: the units are filled with real, typed code for it (list: an entity list with loading, empty and error states; detail: one item by id with loading, not-found and error states; form: a typed input per field with validation and a submit service)."
                   },
                   "entity": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "The entity a shape shows, PascalCase and singular (Product). Defaults to the singular of the unit name (list) or the unit name (detail)."
+                    "description": "The entity a shape shows or writes, PascalCase and singular (Product). Defaults to the singular of the unit name (list), the unit name (detail) or the unit name without its leading verb (form: AddProduct is Product)."
                   },
                   "fields": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "The entity fields for a shape as name:type pairs, comma separated (id:string,name:string,price:number). Types: string, number, boolean; an id field is required."
+                    "description": "The entity fields for a shape as name:type pairs, comma separated (id:string,name:string,price:number). Types: string, number, boolean; an id field is required (a form has no input for it: the server assigns it)."
                   },
                   "llm": {
                     "type": "string",
@@ -589,19 +591,20 @@
                     "minLength": 1,
                     "enum": [
                       "list",
-                      "detail"
+                      "detail",
+                      "form"
                     ],
-                    "description": "A named screen shape: the units are filled with real, typed code for it (list: an entity list with loading, empty and error states; detail: one item by id with loading, not-found and error states)."
+                    "description": "A named screen shape: the units are filled with real, typed code for it (list: an entity list with loading, empty and error states; detail: one item by id with loading, not-found and error states; form: a typed input per field with validation and a submit service)."
                   },
                   "entity": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "The entity a shape shows, PascalCase and singular (Product). Defaults to the singular of the unit name (list) or the unit name (detail)."
+                    "description": "The entity a shape shows or writes, PascalCase and singular (Product). Defaults to the singular of the unit name (list), the unit name (detail) or the unit name without its leading verb (form: AddProduct is Product)."
                   },
                   "fields": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "The entity fields for a shape as name:type pairs, comma separated (id:string,name:string,price:number). Types: string, number, boolean; an id field is required."
+                    "description": "The entity fields for a shape as name:type pairs, comma separated (id:string,name:string,price:number). Types: string, number, boolean; an id field is required (a form has no input for it: the server assigns it)."
                   },
                   "kind": {
                     "type": "string",

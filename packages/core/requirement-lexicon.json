@@ -9,7 +9,7 @@
   "verbs": {
     "read": ["see", "view", "show", "list", "display", "browse", "search", "filter"],
     "interact": ["click", "press", "tap", "type", "select", "drag", "upload"],
-    "write": ["manage", "save", "update", "create", "delete", "submit", "change", "pay"],
+    "write": ["manage", "save", "update", "create", "add", "register", "delete", "submit", "change", "pay"],
     "navigate": ["open", "go", "visit", "return", "redirect"]
   },
   "nouns": {
@@ -31,6 +31,8 @@
       "table": {},
       "list": {},
       "detail": {},
+      "name": {},
+      "price": {},
       "card": {},
       "dialog": {},
       "menu": { "properties": ["interactive"] },

@@ -26,7 +26,7 @@ import { DEFAULT_LAYERS, FRAMEWORKS } from './config.mjs';
 import { LAYER_ORDER, LAYER_PREREQUISITES } from './generators.mjs';
 import { validatePlan, PLAN_SHAPES } from './plan.mjs';
 import { flowBlock } from './block-flows.mjs';
-import { SHAPES, singularOf, pluralOf, fieldsFromProperties, endpointOf } from './shapes.mjs';
+import { SHAPES, FORM_VERBS, singularOf, pluralOf, fieldsFromProperties, endpointOf } from './shapes.mjs';
 import { detectPlaywright, PLAYWRIGHT_SHAPES } from './proof.mjs';
 import { routePathOf, routeOffer, syncTouches, dependencyOffer, ROUTE_QUESTION_ID, DEPENDENCY_QUESTION_ID, CONSTRUCT_CORE_PACKAGE } from './wiring.mjs';
 
@@ -53,14 +53,18 @@ export const SHAPE_OPTIONS = Object.freeze([
 const SCAFFOLD_OPTION = SHAPE_OPTIONS[1];
 
 /**
- * The options of the shape question per card kind (#620): a list read offers `list | scaffold`, a read of one item offers
- * `detail | scaffold`. The matching shape is always first, so it is the
+ * The options of the shape question per card kind (#620, #626): a list read offers `list | scaffold`, a read of one item offers
+ * `detail | scaffold`, a write with properties offers `form | scaffold`. The matching shape is always first, so it is the
  * rules-only default; every id is stable, so an answer recorded once stays valid.
  */
 export const SHAPE_OPTIONS_BY_SHAPE = Object.freeze({
   list: SHAPE_OPTIONS,
   detail: Object.freeze([
     Object.freeze({ id: 'detail', label: 'Detail shape', why: 'Real typed code: one item by id, every field, and its loading, not-found and error states.' }),
+    SCAFFOLD_OPTION,
+  ]),
+  form: Object.freeze([
+    Object.freeze({ id: 'form', label: 'Form shape', why: 'Real typed code: an input per field, validation, a submit service, and its saving, saved and error states.' }),
     SCAFFOLD_OPTION,
   ]),
 });
@@ -114,10 +118,10 @@ export const PLACEMENT_ERROR_CODES = Object.freeze({
  * @typedef {{ question: string, option: string, by: 'person'|'llm'|'decision-model', provider?: string }} PlacementDecision
  * Who answered which open question.
  *
- * @typedef {{ name: 'list'|'detail', entity: string, fields: string }} BlockShape
+ * @typedef {{ name: 'list'|'detail'|'form', entity: string, fields: string }} BlockShape
  * The shape a block was built with (#619): its name, the entity and the `--fields` text the units are generated from.
  *
- * @typedef {PlacementOpen & { block: string, shape: 'list'|'detail', default: string, entity: string, fields: string, unit: string, suggestion: { option: string, reason: string, provider: 'rules' } }} PlacementOffer
+ * @typedef {PlacementOpen & { block: string, shape: 'list'|'detail'|'form', default: string, entity: string, fields: string, unit: string, suggestion: { option: string, reason: string, provider: 'rules' } }} PlacementOffer
  * A question that changes how a screen is built but never blocks the plan: the chooser-summary shape plus the block it is about,
  * the rules-only default, and the entity and fields the shape would use. Unanswered, the plan is the plain scaffold.
  *
@@ -276,10 +280,11 @@ const VARIANT_NOTES = deepFreeze({
 });
 
 /** What each placement means, in the words of the three questions (a block's `why` and the phrase of its plain-English line). */
-/** The phrase of a block built with a shape (#619, #620), by shape and placement: a list or one item is fetched by a service in the browser and shown from props. */
+/** The phrase of a block built with a shape (#619, #620, #626), by shape and placement: a list or one item is fetched by a service in the browser and shown from props; a form submits through a service. */
 const SHAPE_PHRASE = deepFreeze({
   list: { 'server-read': 'is a list fetched by a service', presentational: 'shows that list from props' },
   detail: { 'server-read': 'is one item fetched by id by a service', presentational: 'shows that item from props' },
+  form: { mutation: 'is a form that submits through a service', presentational: 'shows that form from props' },
 });
 
 const PLACEMENT_TEXT = deepFreeze({
@@ -441,20 +446,47 @@ function detailCandidate(card, blocks, screen, modifiers, entities) {
   return { shape: 'detail', noun, verb, entity: screen, fields: fieldsFromProperties(noun.properties), unit: screen };
 }
 
-/** The screen shape a card is offered, by fixed rules, or null: a list or one item. Never more than one shape per card. */
+/** The base form of a write verb the form shape knows (`adds` and `added` are `add`), or null. */
+function formVerbOf(text) {
+  const low = String(text).toLowerCase();
+  const forms = [low, low.replace(/s$/, ''), low.replace(/es$/, ''), low.replace(/ies$/, 'y'), low.replace(/ing$/, ''), low.replace(/ing$/, 'e'), low.replace(/ed$/, ''), low.replace(/d$/, '')];
+  return forms.find((f) => FORM_VERBS.includes(f)) ?? null;
+}
+
+const capFirst = (text) => text.charAt(0).toUpperCase() + text.slice(1);
+
+/**
+ * The one form the card asks for, or null (#626). The rule (data, not a guess): the only block is a mutation, the card has exactly one
+ * verb (a write: create, add, submit, save, register or update), and exactly one data object that has properties, named in the singular
+ * and the target of that verb. The unit is named for the verb and the object (`AddProduct`).
+ */
+function formCandidate(card, blocks, screen, modifiers, entities) {
+  if (blocks.length !== 1 || blocks[0].placement !== 'mutation') return null;
+  const nouns = card.nouns.filter((n) => n.kind === 'entity');
+  const [verb] = card.verbs;
+  if (nouns.length !== 1 || card.verbs.length !== 1 || verb.kind !== 'write' || !verb.on.includes(nouns[0].id)) return null;
+  const [noun] = nouns;
+  const base = formVerbOf(verb.text);
+  if (!base || !noun.properties?.length || isPluralEntity(noun.text, entities, modifiers) || nounName(noun.text, modifiers) !== screen) return null;
+  return { shape: 'form', noun, verb, entity: screen, fields: fieldsFromProperties(noun.properties), unit: `${capFirst(base)}${screen}` };
+}
+
+/** The screen shape a card is offered, by fixed rules, or null: a list, one item, or a form. Never more than one shape per card. */
 function shapeCandidate(card, blocks, screen, modifiers, entities) {
-  return listCandidate(card, blocks, screen, modifiers, entities) ?? detailCandidate(card, blocks, screen, modifiers, entities);
+  return listCandidate(card, blocks, screen, modifiers, entities) ?? detailCandidate(card, blocks, screen, modifiers, entities) ?? formCandidate(card, blocks, screen, modifiers, entities);
 }
 
 const SHAPE_REASON = {
   list: (c) => `the data object "${c.noun.text}" is plural, so a list of ${c.entity} items is the usual screen`,
   detail: (c) => `the data object "${c.noun.text}" is one item that is only read, so its details by id are the usual screen`,
+  form: (c) => `"${c.verb.text}" writes the data object "${c.noun.text}", which has properties, so a form with a field for each is the usual screen`,
 };
 
 /** What a shaped screen needs from the person, as the note of the plan: the endpoint the generated service calls, and how the detail screen gets its id. */
 const SHAPE_NOTE = {
   list: (c) => `The list shape fetches ${endpointOf(c.unit)} from the browser: serve that endpoint (a route handler or your backend).`,
   detail: (c) => `The detail shape fetches ${endpointOf(pluralOf(c.entity))}/<id> from the browser: serve that endpoint (a route handler or your backend). The id is the controller's id prop, else ?id= of the address.`,
+  form: (c) => `The form shape POSTs the typed values to ${endpointOf(pluralOf(c.entity))}: serve that endpoint (a route handler or your backend).`,
 };
 
 /** The shape question for a candidate, in the shape of a chooser summary, with the rules-only default and who suggested it. */
@@ -479,18 +511,20 @@ function shapeOffer(candidate, blockId, chosen) {
 const SHAPE_BLOCK_WHY = {
   list: (names) => ({ read: `List shape: the ${names.noun} list is fetched by a service and shown from props. Because the person asked for a list of a plural data object.`, view: 'List shape: it shows what the list fetch returns.' }),
   detail: (names, offer) => ({ read: `Detail shape: one ${offer.entity} is fetched by id by a service and shown from props. Because the person asked to see one data object.`, view: 'Detail shape: it shows what the item fetch returns.' }),
+  form: (names, offer) => ({ read: `Form shape: the ${offer.entity} is validated in a domain unit and submitted by a service. Because the person asked to write a data object that has properties.`, view: 'Form shape: it shows the form and what its submit answers.' }),
 };
 
 /**
  * The blocks of a shaped screen: the read or the write that reaches the server (domain, service, hook, controller) and the
  * presentational block that shows it (component, page), from the default layer table whatever the framework (a shape fetches or
  * submits in the browser). The first block keeps the id, the verbs, the nouns and the checks of the block it replaces. The
- * `list` and `detail` shapes fetch, so their first block is a server read.
+ * `list` and `detail` shapes fetch, so their first block is a server read; the `form` shape submits, so its first block is a mutation.
  */
 function shapeBlocks(first, offer, table, names) {
   const shape = { name: offer.shape, entity: offer.entity, fields: offer.fields };
+  const submits = offer.shape === 'form';
   const why = SHAPE_BLOCK_WHY[offer.shape](names, offer);
-  const read = { ...first, placement: 'server-read', answers: { browserApi: false, touchesSecretOrDb: true, changesBackend: false }, layers: layersFor(table, 'server-read', names), shape, why: why.read };
+  const read = { ...first, placement: submits ? 'mutation' : 'server-read', answers: { browserApi: false, touchesSecretOrDb: true, changesBackend: submits }, layers: layersFor(table, 'server-read', names), shape, why: why.read };
   const view = { ...first, id: `${first.id}-view`, placement: 'presentational', answers: { browserApi: false, touchesSecretOrDb: false, changesBackend: false }, layers: layersFor(table, 'presentational', names), checks: [], checkNames: [], shape, why: why.view };
   return [read, view];
 }
@@ -622,9 +656,9 @@ export function placeCard(card, options = {}) {
     }
   }
 
-  // #619, #620 -- a screen shape is OFFERED when the card asks for one list or one item, never forced: it is not an open
+  // #619, #620, #626 -- a screen shape is OFFERED when the card asks for one list, one item or one form, never forced: it is not an open
   // question (it does not hold the plan back) and an unanswered offer leaves the plan as the plain scaffold it always was. The
-  // options depend on the card (a list read: list; a read of one item: detail), the id is always q-shape.
+  // options depend on the card (a list read: list; a read of one item: detail; a write with properties: form), the id is always q-shape.
   const candidate = open.length === 0 ? shapeCandidate(card, blocks, screen, modifiers, lexicon.nouns?.entity ?? {}) : null;
   let offer = null;
   let shapeAnswer = null;

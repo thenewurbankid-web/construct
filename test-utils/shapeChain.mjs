@@ -1,4 +1,4 @@
-// #620 -- what the full-path tests of the screen shapes share (test/detail-shape-chain.test.mjs; the list
+// #620, #626 -- what the full-path tests of the screen shapes share (test/detail-shape-chain.test.mjs, test/form-shape-chain.test.mjs; the list
 // shape's own test, test/list-shape-chain.test.mjs, predates it and keeps its copy): a fresh `construct init` project with the typed-contracts
 // phase 1 rules ON and its imports linked offline, the plan of a sentence with the shape offer answered by the rules provider, and the plan run
 // command by command through the CLI, exactly as the plan runner would.

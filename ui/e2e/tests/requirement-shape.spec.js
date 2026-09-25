@@ -180,11 +180,15 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
     await expect(page.getByTestId('requirement-shape').getByRole('button', { pressed: true })).toHaveCount(0);
   });
 
-  // #620: the same card draws the other offers with no client change: the options belong to the card (server-side rules).
+  // #620, #626: the same card draws the other offers with no client change: the options belong to the card (server-side rules).
   const SHAPED = [
     {
       shape: 'detail', text: 'A user wants to see the details of a product', label: 'Detail shape', reason: 'one item that is only read', unit: 'Product', feature: 'product', steps: 12,
       files: ['features/product/domain/Product.domain.ts', 'features/product/types.ts', 'features/product/services/Product.service.ts', 'features/product/hooks/useProduct.state.ts', 'features/product/controllers/ProductController.controller.tsx', 'features/product/components/ProductDetailRow.component.tsx', 'features/product/components/ProductDetails.component.tsx', 'features/product/components/ProductNotice.component.tsx', 'features/product/pages/ProductPage.page.tsx', 'features/product/expressions/ProductByStatus.expression.tsx'],
+    },
+    {
+      shape: 'form', text: 'A user wants to add a product with a name and a price', label: 'Form shape', reason: 'writes the data object', unit: 'AddProduct', feature: 'add-product', steps: 12,
+      files: ['features/add-product/domain/AddProduct.domain.ts', 'features/add-product/types.ts', 'features/add-product/services/AddProduct.service.ts', 'features/add-product/hooks/useAddProduct.state.ts', 'features/add-product/controllers/AddProductController.controller.tsx', 'features/add-product/components/AddProductField.component.tsx', 'features/add-product/components/AddProductForm.component.tsx', 'features/add-product/components/AddProductNotice.component.tsx', 'features/add-product/components/AddProductAgain.component.tsx', 'features/add-product/pages/AddProductPage.page.tsx', 'features/add-product/expressions/AddProductByStatus.expression.tsx'],
     },
   ];
   for (const s of SHAPED) {
@@ -234,7 +238,7 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
     });
   }
 
-  test('the detail card passes the accessibility check at 390 px in both themes, and do not scroll sideways', async ({ page }) => {
+  test('the detail and form cards pass the accessibility check at 390 px in both themes, and do not scroll sideways', async ({ page }) => {
     for (const theme of ['dark', 'light']) {
       await page.addInitScript((t) => localStorage.setItem('construct.theme', t), theme);
       await page.setViewportSize({ width: 390, height: 844 });

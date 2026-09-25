@@ -24,7 +24,7 @@ import { matchFrozen } from './frozen.mjs';
 import { isNonLayerPath, GENERATED_TESTS_GLOB, TESTS_GLOB } from './nonLayer.mjs';
 import { shapeContext } from './shapes.mjs';
 import { cap } from './shape-kit.mjs';
-import { detailProofText } from './proof-screens.mjs';
+import { detailProofText, formProofText } from './proof-screens.mjs';
 import { GENERATED_MARKER, assertSafeDir } from '../engine/testGenerator.mjs';
 import { lit, comment } from '../engine/testSpecRender.mjs';
 
@@ -91,7 +91,7 @@ function proofContext(root, request) {
   return {
     ...ctx, rows: sampleRows(ctx), errorText: 'The server answered 500.',
     loadingText: request.shape === 'detail' ? `Loading ${ctx.singular}...` : `Loading ${ctx.plural}...`, emptyText: `No ${ctx.plural} yet.`,
-    notFoundText: `${cap(ctx.singular)} not found.`,
+    notFoundText: `${cap(ctx.singular)} not found.`, submittedText: `${cap(ctx.singular)} added.`, savingText: 'Saving...',
   };
 }
 
@@ -135,9 +135,9 @@ const header = (ctx, request, command, extra) => [
 ];
 
 function renderProofText(ctx, request, relPath) {
-  if (request.shape === 'detail') {
+  if (request.shape === 'detail' || request.shape === 'form') {
     const kit = { header: (extra, command) => header(ctx, request, command, extra), expectLines: EXPECT_LINES, fetchLines: FETCH_LINES, lit, rowLiteral, comment };
-    return detailProofText(ctx, request, relPath, kit);
+    return (request.shape === 'detail' ? detailProofText : formProofText)(ctx, request, relPath, kit);
   }
   const { names, fields, title, rows } = ctx;
   const Name = names.Name;

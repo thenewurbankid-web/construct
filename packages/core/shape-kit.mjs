@@ -1,4 +1,4 @@
-// #620 (part of epic #616) -- the small pieces every screen shape's templates share (shapes.mjs, shape-detail.mjs):
+// #620, #626 (part of epic #616) -- the small pieces every screen shape's templates share (shapes.mjs, shape-detail.mjs, shape-form.mjs):
 // how a name is worded, how a field is typed and shown, and how a template is assembled from lines. Pure text helpers, no I/O.
 
 /** The module every generated unit imports its factory from (the published subpath of `@line/construct-core`, #591). */

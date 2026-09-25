@@ -609,7 +609,7 @@ question to `result.offers` (not to `open`, so it never holds the plan back):
 |---|---|---|
 | `q-shape` | one read verb on one plural data object, every block presentational or a server read ("see a list of products") | `list` (the rules-only default), `scaffold` |
 
-(#620 added the same question for a read of one item (`detail`): the options belong to the card, see "The detail shape" below.)
+(#620 and #626 added the same question for a read of one item (`detail`) and a write with properties (`form`): the options belong to the card, see "The detail and form shapes" below.)
 
 An unanswered offer leaves the plan exactly as it was, the plain scaffold. Answering `list` (a person, or the rules provider's
 suggestion, recorded in `decisions` as `person` or `decision-model`) turns the read into a server-read block (domain, service,
@@ -744,16 +744,16 @@ created. The expression is written by the page step, since a page may not hold c
 Component). `DOMAIN-002` used to flag the `defineDomain` import itself; it now allows that one factory from a typed-contracts
 module. A project's own custom `templates/` are not used for a shaped unit.
 
-## The detail shape: one item by id (#620, part of #616)
+## The detail and form shapes: one item, and a form that submits (#620, #626, part of #616)
 
-`detail` is a second shape on the mechanism the list shape introduced: the same `--shape <name> --entity <Entity> --fields
+`detail` and `form` are two more shapes on the mechanism the list shape introduced: the same `--shape <name> --entity <Entity> --fields
 <name:type,...>` arguments on `create.unit`, `create.layer` and `create.proof` (the enum is `PLAN_SHAPES`, mirrored in
 `schemas/plan.v1.json`; a test keeps the two and the shape table in `packages/core/shapes.mjs` equal), the same derived `touches`, the
 same wiring (dependency, `sync`, route entry, see below) and the same proof step, the same `q-shape` id in the same chooser shape, with
 its options **per card**. Every unit is built with the factory of its layer (`defineDomain`, `defineService`, `defineComponent`,
 `defineExpression`, `definePage`, `defineController`, `useTrackedState`) and is named `Name.layer.ext`; the output passes
 `construct validate` with the typed-contracts phase 1 rules on (no error, no warning) and `tsc --noEmit`. The templates live in
-`shape-detail.mjs`; nothing calls a model or the network, and the same request writes the same bytes.
+`shape-detail.mjs` and `shape-form.mjs`; nothing calls a model or the network, and the same request writes the same bytes.
 
 **The offer, by card.** `placeCard` raises `q-shape` (in `offers`, never in `open`) with the options that belong to the card, the matching
 shape first, so the rules-only decision provider (the first enabled option) suggests it. An answer that is not an option of *this* card
@@ -763,9 +763,11 @@ shape first, so the rules-only decision provider (the first enabled option) sugg
 |---|---|---|---|
 | a list | one read verb on one **plural** data object ("see a list of products") | `list`, `scaffold` | unit `Products`, entity `Product` |
 | one item | one read verb on one **singular** data object, not the person's own (a possessive before it, or "current", is found from the session, not by an id) and with no `list` or `table` part ("the invoice list" is many): "see the details of a product", "view a product" | `detail`, `scaffold` | unit `Product`, entity `Product` |
+| a write | one write verb of `create`, `add`, `submit`, `save`, `register`, `update` on one singular data object **that has properties** ("add a product with a name and a price") | `form`, `scaffold` | unit `AddProduct` (the verb and the object), entity `Product` |
 
-To parse the example sentence with no open question the lexicon (`requirement-lexicon.json`) gained the screen part `detail`. A possessive, two
-verbs, a write, or a verb that needs the browser (a click) is not offered the detail shape.
+To parse those sentences with no open question the lexicon (`requirement-lexicon.json`) gained the write verbs `add` and `register`
+and the screen parts `detail`, `name` and `price` (the fields of the form the card's entity already lists). A delete, a data object
+without properties, a plural, two verbs or a verb that needs the browser (a click) is not offered a shape.
 
 **Worked example, the detail shape, checked by `test/detail-shape.test.mjs`.** "A user wants to see the details of a product"
 answered `detail` (by the rules provider) gives twelve commands; the files are declared by block:
@@ -822,9 +824,63 @@ answered `detail` (by the rules provider) gives twelve commands; the files are d
 the controller takes an optional `id` prop, and without it the hook reads `?id=` from the address (`/product?id=p1`). A screen that
 sits in a route with a parameter passes it as the prop.
 
-**Decisions where the issue was silent.** The unit of a detail is named for the object itself (`Product`), so its page and its controller are
-`ProductPage` and `ProductController`. The endpoint is the plural of the entity (`Product` gives `/api/products`, and the item is
-`/api/products/<id>`), not of the unit name. The id is the controller's `id` prop or `?id=` of the address; a route parameter is a later slice.
+**Worked example, the form shape, checked by `test/form-shape.test.mjs`.** "A user wants to add a product with a name and a price" answered `form`:
+
+<!-- form-shape-example:commands -->
+```json
+[
+  "construct create feature add-product",
+  "construct create domain AddProduct --feature add-product --shape form --entity Product --fields id:string,name:string,price:number",
+  "construct create service AddProduct --feature add-product --shape form --entity Product --fields id:string,name:string,price:number",
+  "construct create hook AddProduct --feature add-product --shape form --entity Product --fields id:string,name:string,price:number",
+  "construct create component AddProduct --feature add-product --shape form --entity Product --fields id:string,name:string,price:number",
+  "construct create page AddProduct --feature add-product --shape form --entity Product --fields id:string,name:string,price:number",
+  "construct create controller AddProduct --feature add-product --shape form --entity Product --fields id:string,name:string,price:number",
+  "construct create dependency @line/construct-core --version ^0.9.0",
+  "construct sync",
+  "construct create route AddProduct --feature add-product --route /add-product",
+  "construct create proof AddProduct --feature add-product --shape form --entity Product --fields id:string,name:string,price:number --kind render",
+  "construct test proof add-product --name AddProductScreen.proof.test.ts"
+]
+```
+
+<!-- form-shape-example:files -->
+```json
+{
+  "b1": [
+    "features/add-product/domain/AddProduct.domain.ts",
+    "features/add-product/types.ts",
+    "features/add-product/services/AddProduct.service.ts",
+    "features/add-product/hooks/useAddProduct.state.ts",
+    "features/add-product/controllers/AddProductController.controller.tsx"
+  ],
+  "b1-view": [
+    "features/add-product/components/AddProductField.component.tsx",
+    "features/add-product/components/AddProductForm.component.tsx",
+    "features/add-product/components/AddProductNotice.component.tsx",
+    "features/add-product/components/AddProductAgain.component.tsx",
+    "features/add-product/pages/AddProductPage.page.tsx",
+    "features/add-product/expressions/AddProductByStatus.expression.tsx"
+  ]
+}
+```
+
+| File | What it holds |
+|---|---|
+| `types.ts` (appended by the domain step) | `ProductInput { name; price }` (the typed values), `AddProductValues { name; price }` (what a person types: text for a string or a number field, a tick for a boolean), `AddProductErrors` (a message per field), `AddProductValidation` (`{ ok: true; input } \| { ok: false; errors }`), `AddProductState` (a `status` union: `editing` with values and errors, `submitting`, `submitted`, `error` with values and a message) and `AddProductResult`. |
+| `domain/AddProduct.domain.ts` | `validateAddProduct`, a pure `defineDomain` unit: a string field is **required**; a number field is required (a blank is not zero) and must be a number ("Price must be a number."); a boolean field has no check. Answers the typed values (text trimmed, numbers as numbers) or a message per field. |
+| `services/AddProduct.service.ts` | `submitAddProduct({ input, signal })`, built with `defineService`: **POSTs** the typed values as JSON to `/api/products`, forwards the `AbortSignal`, answers a typed `AddProductResult`; a bad status or a failed request is an error result, never a throw. |
+| `hooks/useAddProduct.state.ts` | `useAddProduct()`: `useTrackedState` for the status union, and `change`, `submit` (check, then POST, ignored while submitting) and `reset`; a request in flight is aborted on unmount. |
+| `components/AddProductField`, `AddProductForm`, `AddProductNotice`, `AddProductAgain` `.component.tsx` | A label, its input and a live region for the message; the `<form>` with one typed input per field (`type="text"`, `type="number"`, a checkbox) and a submit button; a notice; the "Add another" button. |
+| `pages/AddProductPage.page.tsx`, `expressions/AddProductByStatus.expression.tsx` | The heading and the expression that holds the branches: its children (the "Product added." notice and the button) once submitted, else the form (disabled with a "Saving..." notice while it submits, an error notice with role alert when it failed, its messages after a failed check). |
+| `controllers/AddProductController.controller.tsx` | Calls `useAddProduct()`, renders the page with the state and the three handlers; no logic of its own. |
+
+**Decisions where the issue was silent.** The form has an input for every field **except `id`**, which the server assigns (a card's
+fields always start with `id:string`); a form needs at least one other field. Every write verb of the offer POSTs to
+`/api/<entities>` (an `update` is a POST of the values too: there is no id to address); a PUT with the id is a later slice. The
+unit of a form is named for the verb and the object (`AddProduct`), so a page for the object itself (`Product`, the detail) and a
+form can sit in one project without clashing; the entity is the unit name without its leading write verb (`--entity` overrides).
+The endpoint of a detail and a form is the plural of the entity (`Product` gives `/api/products`), not of the unit name.
 
 ## The proof step: a screen that is shown to work (#623, part of #616)
 
@@ -865,12 +921,14 @@ Playwright runner's classification (`classifyFailure`) and its words:
 
 The states are `loading`, `empty`, `items`, `error`, and for what is wrong `blank` (a list with no rows and no message) or `nothing`.
 
-**The proof of the detail shape** (#620; `packages/core/proof-screens.mjs`, the same file name `Name.proof.test.ts`, the same locked marker, the same
-`construct test proof <feature>`, the same failure classes). The render proof needs nothing more; a failure names the state in the same words:
+**The proof of the other shapes** (#620, #626; `packages/core/proof-screens.mjs`, the same file name `Name.proof.test.ts`, the same
+locked marker, the same `construct test proof <feature>`, the same failure classes). The render proof needs nothing more; a failure names the
+state in the same words:
 
 | Shape | What it asserts (sample values built from the entity's fields) | States it names |
 |---|---|---|
 | detail | the page in `loading`, `not-found`, `ready` (every field's `<dt>` label and `<dd>` value) and `error` (`role="alert"`); the controller renders `loading` first (with or without the `id` prop); the domain lines in field order; the service with a stubbed `fetch`: a good answer, a **404 is not-found**, a 500, a wrong shape and a network failure are typed results, the id is in the address (URL-encoded) and the `AbortSignal` reaches `fetch` | `loading`, `not-found`, `ready`, `error`; `crashed` (the page threw), `nothing` |
+| form | every field with its `<label for>` and a typed input (`text`, `number`, `checkbox`); the check gives typed values for valid input and a **message per invalid field** (a blank number is required, not zero); the page shows that message beside the field (`aria-invalid="true"`); the `submitting` (disabled), `submitted` and `error` (role alert, what was typed kept) states; the controller renders `editing` first; the service, with a stubbed `fetch`, **is called with the typed values** (POST, JSON, numbers as numbers), a 500 and a network failure are error results and the `AbortSignal` reaches `fetch` | `editing`, `invalid`, `submitting`, `submitted`, `error`; `valid` (of the check); `crashed`, `nothing` |
 
 A page that throws (for example a branch of the expression was removed and the page reads what that state does not have) is reported as the
 state `crashed`, not as a stack trace: `The page given status not-found: the not-found state is wrong, the screen shows crashed.` The route flow
@@ -992,5 +1050,5 @@ step rather than repointed, so `/` is not silently the new screen.
 
 The timeline read-back and its Cockpit screen are the Requirement screen (`/requirement`, #642): `toTimeline(placement)` in `ui/client/features/requirement/domain/Timeline.ts` turns the blocks into steps in run order (a slice to move it into core, so the CLI and an LLM read the same steps, is open). Not here yet: a `use client` / `use server` directive in the generated files, and words beyond the lexicon. Each is a slice of #616.
 
-Not here yet for the shapes (each a slice of #616): the other shapes (form, dashboard, wizard); wiring a data source into
-a shaped screen (#621); a browser (Playwright) flow for the detail shape (the list has one; the render proof of every shape is above); a `route.ts` handler for the endpoints the shapes call; a detail with a related list, and a route parameter for the detail's id (it is `?id=` or a prop today).
+Not here yet for the shapes (each a slice of #616): the other shapes (dashboard, wizard); wiring a data source into
+a shaped screen (#621); a browser (Playwright) flow for the detail and form shapes (the list has one; the render proof of every shape is above); a `route.ts` handler for the endpoints the shapes call; an `update` form that addresses an item by its id (PUT), a form field other than a string, a number or a checkbox, a detail with a related list, and a route parameter for the detail's id (it is `?id=` or a prop today).

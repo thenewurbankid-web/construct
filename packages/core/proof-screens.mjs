@@ -1,10 +1,11 @@
-// #620 (part of epic #616) -- the render proof of the `detail` shape, as generated node tests (proof.mjs writes and locks
+// #620, #626 (part of epic #616) -- the render proofs of the `detail` and `form` shapes, as generated node tests (proof.mjs writes and locks
 // them, `construct test proof` runs them). Each proof shows the screen the shape wrote BEHAVES, with no browser and no server: every state
 // from sample props (react-dom/server), the controller's first state, the pure domain unit, and the service with a stubbed fetch. A failure
 // names the state that is wrong (`the not-found state is wrong, the screen shows loading`), so a person, an LLM or the runner can act on it.
 //
 // proof.mjs owns the file, the header and the helpers every proof shares; it passes them in as `kit`, so this file needs nothing from it.
-import { labelOf } from './shape-kit.mjs';
+import { kebab, labelOf } from './shape-kit.mjs';
+import { inputFieldsOf } from './shape-form.mjs';
 
 /**
  * @typedef {{ header: (extra: string, command: string) => string[], expectLines: string[], fetchLines: string[], lit: (value: string) => string, rowLiteral: (row: object) => string, comment: (text: string) => string }} ProofKit
@@ -170,6 +171,203 @@ export function detailProofText(ctx, request, relPath, kit) {
     '  }',
     `  assert.equal(seen.url, ${lit(`${ctx.endpoint}/a%20b%2Fc`)}, 'the id is part of the address, encoded');`,
     "  assert.equal(seen.signal, controller.signal, 'the service forwards the AbortSignal, so leaving the screen cancels the request');",
+    '});',
+  ];
+  return `${L.join('\n')}\n`;
+}
+
+const sampleValue = (f) => (f.type === 'boolean' ? true : f.type === 'number' ? '12.5' : `${f.name} 1`);
+const typedValue = (f) => (f.type === 'boolean' ? true : f.type === 'number' ? 12.5 : `${f.name} 1`);
+const badValue = (f) => (f.type === 'number' ? 'abc' : f.type === 'string' ? '' : false);
+
+/**
+ * The text of the render proof of a form screen: every field with its label and a typed input, the pure check (typed values for valid input,
+ * a message per invalid field), the screen with those messages beside the fields, the submitting, submitted and error states, the
+ * controller's first state, and the service with a stubbed fetch (the typed values are POSTed as JSON, a 500 and a network failure are
+ * error results, the AbortSignal is forwarded).
+ *
+ * @param {object} ctx The proof context (shape context plus `errorText`, `submittedText`, `savingText`).
+ * @param {{ feature: string }} request The proof request.
+ * @param {string} relPath The project-relative path of the proof file, for its run line.
+ * @param {ProofKit} kit The shared header and helpers.
+ * @returns {string} The file text, ending with a newline.
+ *
+ * @example
+ * formProofText(ctx, { feature: 'add-product' }, 'features/add-product/tests/generated/AddProductScreen.proof.test.ts', kit).includes('typed values');
+ */
+export function formProofText(ctx, request, relPath, kit) {
+  const { names } = ctx;
+  const { lit } = kit;
+  const Name = names.Name;
+  const inputs = inputFieldsOf(ctx.fields);
+  const checked = inputs.filter((f) => f.type !== 'boolean');
+  const prefix = kebab(Name);
+  const command = `construct create proof ${Name} --feature ${request.feature} --shape form --entity ${names.Entity} --fields ${ctx.request.fields}`;
+  const objectOf = (pick) => `{ ${inputs.map((f) => `${f.name}: ${typeof pick(f) === 'string' ? lit(pick(f)) : pick(f)}`).join(', ')} }`;
+  const messageOf = (f) => (f.type === 'number' ? `${labelOf(f.name)} must be a number.` : `${labelOf(f.name)} is required.`);
+  const numberField = inputs.find((f) => f.type === 'number');
+  const firstText = inputs.find((f) => f.type === 'string');
+  const L = [
+    ...kit.header(`shape form, kind render`, command),
+    `// run: construct test proof ${kit.comment(request.feature)}   (on its own: npx tsx --test ${kit.comment(relPath)})`,
+    '//',
+    `// Proves the ${ctx.singular} form screen with no browser and no server: every field with its label and a typed input, the check (typed`,
+    '// values for valid input, a message per invalid field, shown beside the field), the submitting, submitted and error states, that the',
+    '// controller renders the editing state first, and that the service POSTs the typed values (fetch is stubbed). A failure names the state.',
+    '',
+    "import { test } from 'node:test';",
+    "import assert from 'node:assert/strict';",
+    "import { createElement } from 'react';",
+    "import { renderToString } from 'react-dom/server';",
+    `import { ${names.controller} } from '../../controllers/${names.controller}.controller';`,
+    `import { ${names.validate} } from '../../domain/${Name}.domain';`,
+    `import { ${names.page} } from '../../pages/${names.page}.page';`,
+    `import { ${names.submit} } from '../../services/${Name}.service';`,
+    `import type { ${names.input}, ${names.state}, ${names.values} } from '../../types';`,
+    '',
+    `const EMPTY: ${names.values} = ${objectOf((f) => (f.type === 'boolean' ? false : ''))};`,
+    `const VALID: ${names.values} = ${objectOf((f) => sampleValue(f))};`,
+    `const TYPED: ${names.input} = ${objectOf((f) => typedValue(f))};`,
+    `const INVALID: ${names.values} = ${objectOf((f) => badValue(f))};`,
+    `const ENDPOINT = ${lit(ctx.endpoint)};`,
+    `const SUBMITTED_TEXT = ${lit(ctx.submittedText)};`,
+    `const SAVING_TEXT = ${lit(ctx.savingText)};`,
+    `const ERROR_TEXT = ${lit(ctx.errorText)};`,
+    '',
+    '/** What a person would see: the state of the screen, read off its markup. */',
+    'function stateOf(html: string): string {',
+    "  if (html.startsWith('<crashed')) return 'crashed';",
+    "  if (html.includes('role=\"alert\"')) return 'error';",
+    "  if (html.includes('role=\"status\"') && html.includes(SAVING_TEXT)) return 'submitting';",
+    "  if (html.includes('role=\"status\"') && html.includes(SUBMITTED_TEXT)) return 'submitted';",
+    "  if (html.includes('aria-invalid=\"true\"')) return 'invalid';",
+    "  if (html.includes('<form')) return 'editing';",
+    "  return 'nothing';",
+    '}',
+    '',
+    ...kit.expectLines,
+    '',
+    `const noop = (): void => {};`,
+    `const render = (state: ${names.state}): string => {`,
+    '  try {',
+    `    return renderToString(createElement(${names.page}, { state, onChange: noop, onSubmit: noop, onReset: noop }));`,
+    '  } catch (error) {',
+    "    return '<crashed: ' + (error instanceof Error ? error.message : String(error)) + '>';",
+    '  }',
+    '};',
+    '',
+    ...kit.fetchLines,
+    `const send = (input: ${names.input}) => ${names.submit}({ input, signal: new AbortController().signal });`,
+    '',
+    `test(${lit(`${Name} screen: every field with its label and a typed input`)}, () => {`,
+    `  const html = render({ status: 'editing', values: EMPTY, errors: {} });`,
+    "  expectState('The form given empty values', 'editing', stateOf(html));",
+    '  const fields: [string, string, string][] = [',
+    ...inputs.map((f) => `    [${lit(`${prefix}-${kebab(f.name)}`)}, ${lit(labelOf(f.name))}, ${lit(f.type === 'number' ? 'number' : f.type === 'boolean' ? 'checkbox' : 'text')}],`),
+    '  ];',
+    '  fields.forEach(([id, label, type]) => {',
+    "    expectShown('The field ' + id, html, '<label for=\"' + id + '\">' + label + '</label>');",
+    "    const tag = new RegExp('<input[^>]*\\\\bid=\"' + id + '\"[^>]*>').exec(html)?.[0] ?? '';",
+    "    expectShown('The input of ' + id, tag, 'type=\"' + type + '\"');",
+    '  });',
+    '});',
+    '',
+    `test(${lit(`${Name} domain: valid values give the typed values`)}, () => {`,
+    `  const result = ${names.validate}(VALID);`,
+    "  expectState('The check given valid values', 'valid', result.ok ? 'valid' : 'invalid');",
+    "  assert.deepEqual(result.ok ? result.input : null, TYPED, 'the typed values: numbers are numbers, text is trimmed');",
+    '});',
+    '',
+    ...(checked.length ? [
+      `test(${lit(`${Name} domain: invalid values give a message per field`)}, () => {`,
+      `  const result = ${names.validate}(INVALID);`,
+      "  expectState('The check given invalid values', 'invalid', result.ok ? 'valid' : 'invalid');",
+      `  const errors: Record<string, string | undefined> = result.ok ? {} : { ...result.errors };`,
+      ...checked.map((f) => `  expectState('The check of the ${f.name} field', 'invalid', errors.${f.name} === undefined ? 'valid' : 'invalid');`),
+      `  assert.deepEqual(errors, { ${checked.map((f) => `${f.name}: ${lit(messageOf(f))}`).join(', ')} });`,
+      '});',
+      '',
+      ...(numberField ? [
+        `test(${lit(`${Name} domain: a blank number is required, not zero`)}, () => {`,
+        `  const result = ${names.validate}({ ...VALID, ${numberField.name}: '  ' });`,
+        "  expectState('The check given a blank number', 'invalid', result.ok ? 'valid' : 'invalid');",
+        `  assert.equal(result.ok ? '' : result.errors.${numberField.name}, ${lit(`${labelOf(numberField.name)} is required.`)});`,
+        '});',
+        '',
+      ] : []),
+      `test(${lit(`${Name} screen: a message beside each invalid field`)}, () => {`,
+      `  const result = ${names.validate}(INVALID);`,
+      "  const html = render({ status: 'editing', values: INVALID, errors: result.ok ? {} : result.errors });",
+      "  expectState('The form given the messages of a failed check', 'invalid', stateOf(html));",
+      ...checked.flatMap((f) => [`  expectShown('The message of ${f.name}', html, ${lit(`>${messageOf(f)}</span>`)});`, `  expectShown('The field ${f.name}', html, ${lit(`id="${prefix}-${kebab(f.name)}-error"`)});`]),
+      '});',
+      '',
+    ] : []),
+    `test(${lit(`${Name} screen: the submitting state disables the form`)}, () => {`,
+    "  const html = render({ status: 'submitting', values: VALID });",
+    "  expectState('The form given status submitting', 'submitting', stateOf(html));",
+    "  expectShown('The submitting form', html, 'disabled');",
+    '});',
+    '',
+    `test(${lit(`${Name} screen: the submitted state`)}, () => {`,
+    "  const html = render({ status: 'submitted' });",
+    "  expectState('The form given status submitted', 'submitted', stateOf(html));",
+    "  expectShown('The submitted screen', html, 'Add another');",
+    '});',
+    '',
+    `test(${lit(`${Name} screen: the error state, with role alert, keeps what was typed`)}, () => {`,
+    "  const html = render({ status: 'error', values: VALID, message: ERROR_TEXT });",
+    "  expectState('The form given an error', 'error', stateOf(html));",
+    "  expectShown('The error', html, ERROR_TEXT);",
+    ...(firstText ? [`  expectShown('The form after an error', html, ${lit(`value="${sampleValue(firstText)}"`)});`] : []),
+    '});',
+    '',
+    `test(${lit(`${Name} controller: renders the editing state first`)}, () => {`,
+    `  const html = renderToString(createElement(${names.controller}, {}));`,
+    "  expectState('The controller on its first render', 'editing', stateOf(html));",
+    "  assert.equal(html, render({ status: 'editing', values: EMPTY, errors: {} }), 'the controller hands the hook state to the page and adds nothing');",
+    '});',
+    '',
+    `test(${lit(`${Name} service: the stubbed submit is called with the typed values`)}, async () => {`,
+    `  const checked = ${names.validate}(VALID);`,
+    "  assert.ok(checked.ok, 'the sample values are valid');",
+    '  let call: { url?: unknown; method?: unknown; type?: unknown; body?: unknown } = {};',
+    '  const original = globalThis.fetch;',
+    "  globalThis.fetch = (async (url: unknown, init?: { method?: string; headers?: Record<string, string>; body?: string }) => { call = { url, method: init?.method, type: init?.headers?.['Content-Type'], body: init?.body }; return respond(201, {})(); }) as unknown as typeof fetch;",
+    '  try {',
+    "    expectState('The service given the checked values', 'submitted', (await send(checked.ok ? checked.input : TYPED)).status);",
+    '  } finally {',
+    '    globalThis.fetch = original;',
+    '  }',
+    "  assert.equal(call.url, ENDPOINT, 'it posts to the endpoint');",
+    "  assert.equal(call.method, 'POST');",
+    "  assert.equal(call.type, 'application/json');",
+    "  assert.deepEqual(JSON.parse(String(call.body)), TYPED, 'the body is the typed values (numbers are numbers)');",
+    '});',
+    '',
+    `test(${lit(`${Name} service: a 500 is an error result`)}, async () => {`,
+    '  await withFetch(respond(500, {}), async () => {',
+    "    expectState('The service given a 500', 'error', (await send(TYPED)).status);",
+    '  });',
+    '});',
+    '',
+    `test(${lit(`${Name} service: a network failure is an error result`)}, async () => {`,
+    "  await withFetch(async () => { throw new Error('offline'); }, async () => {",
+    "    expectState('The service given a network failure', 'error', (await send(TYPED)).status);",
+    '  });',
+    '});',
+    '',
+    `test(${lit(`${Name} service: the caller's AbortSignal reaches fetch`)}, async () => {`,
+    '  const controller = new AbortController();',
+    '  let seen: unknown;',
+    '  const original = globalThis.fetch;',
+    '  globalThis.fetch = (async (_url: unknown, init?: { signal?: unknown }) => { seen = init?.signal; return respond(201, {})(); }) as unknown as typeof fetch;',
+    '  try {',
+    `    await ${names.submit}({ input: TYPED, signal: controller.signal });`,
+    '  } finally {',
+    '    globalThis.fetch = original;',
+    '  }',
+    "  assert.equal(seen, controller.signal, 'the service forwards the AbortSignal, so leaving the screen cancels the request');",
     '});',
   ];
   return `${L.join('\n')}\n`;

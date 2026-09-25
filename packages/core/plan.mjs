@@ -96,7 +96,7 @@ const LLM_ARG = { type: 'string', flag: '--llm', description: 'LLM provider that
  *
  * @type {readonly string[]}
  */
-export const PLAN_SHAPES = Object.freeze(['list', 'detail']);
+export const PLAN_SHAPES = Object.freeze(['list', 'detail', 'form']);
 
 /**
  * The kinds of proof a `create.proof` step writes for a shaped screen (#623): `render` runs offline as a node test, `playwright` is
@@ -107,9 +107,9 @@ export const PLAN_SHAPES = Object.freeze(['list', 'detail']);
 export const PLAN_PROOF_KINDS = Object.freeze(['render', 'playwright']);
 
 // #619 -- the three optional arguments of a shaped step. Additive: a step without them is exactly what it was.
-const SHAPE_ARG = { type: 'string', flag: '--shape', enum: [...PLAN_SHAPES], description: 'A named screen shape: the units are filled with real, typed code for it (list: an entity list with loading, empty and error states; detail: one item by id with loading, not-found and error states).' };
-const ENTITY_ARG = { type: 'string', flag: '--entity', description: 'The entity a shape shows, PascalCase and singular (Product). Defaults to the singular of the unit name (list) or the unit name (detail).' };
-const FIELDS_ARG = { type: 'string', flag: '--fields', description: 'The entity fields for a shape as name:type pairs, comma separated (id:string,name:string,price:number). Types: string, number, boolean; an id field is required.' };
+const SHAPE_ARG = { type: 'string', flag: '--shape', enum: [...PLAN_SHAPES], description: 'A named screen shape: the units are filled with real, typed code for it (list: an entity list with loading, empty and error states; detail: one item by id with loading, not-found and error states; form: a typed input per field with validation and a submit service).' };
+const ENTITY_ARG = { type: 'string', flag: '--entity', description: 'The entity a shape shows or writes, PascalCase and singular (Product). Defaults to the singular of the unit name (list), the unit name (detail) or the unit name without its leading verb (form: AddProduct is Product).' };
+const FIELDS_ARG = { type: 'string', flag: '--fields', description: 'The entity fields for a shape as name:type pairs, comma separated (id:string,name:string,price:number). Types: string, number, boolean; an id field is required (a form has no input for it: the server assigns it).' };
 
 /** The flow registry: every flow `packages/cli/construct.mjs` actually exposes, keyed
  * by a stable dotted id. Checked against `construct --help` and packages/core/cli.mjs,
