@@ -284,7 +284,7 @@ cmd_status() {
   echo "recycle:   $(cat "$STATE/recycle" 2>/dev/null || echo idle), $(recycles_in_24h)/${MAX_RECYCLES} in the last 24 h"
   echo "throttle:  $(cat "$STATE/throttle" 2>/dev/null || echo 'never started')  (epoch streak)"
   echo "handoff:   $(ls -1t "$STATE"/handoffs/handoff-*.md 2>/dev/null | head -1 || true)"
-  echo "cron:      $(crontab -l 2>/dev/null | grep -F "og-watchdog.sh check" | head -1 || true)"
+  echo "cron:      $(crontab -l 2>/dev/null | grep -F "og-watchdog.sh" | head -1 | cut -c1-130 || true)"
   echo "-- last log lines"
   tail -n 6 "$LOG" 2>/dev/null
 }
