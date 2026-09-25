@@ -134,12 +134,17 @@ processes), with `heavy.sh` serializing the heavy commands.
 
 ## Keeping a session alive (og-watchdog)
 
-`packages/tools/dev/og-watchdog.sh` runs from cron every 3 minutes. When no interactive Claude Code session is running in this repo (VS Code sessions count), it starts OG in a detached tmux session named `og` with `--agent og --permission-mode auto --remote-control`, so work resumes and the owner can reach it from claude.ai/code or the phone. The resume prompt is `~/.og-watchdog/prompt.txt`; edit it to change what OG does on start.
+`packages/tools/dev/og-watchdog.sh` runs from cron every 3 minutes and does two things.
 
-- `og-watchdog.sh status` shows what it sees; `attach` opens the tmux session (Ctrl-b d leaves it running).
-- `pause` before you open your own session for a long stretch (two sessions in one tree collide); `resume` afterwards.
+- **No session:** when no interactive Claude Code session is running in this repo, it starts OG in a detached tmux session named `og` with `--agent og --permission-mode auto --remote-control`, so work resumes and the owner can reach it from claude.ai/code or the phone.
+- **Idle session:** when the newest transcript write for the repo (subagent logs included) is older than the threshold, it writes a handoff snapshot to `~/.og-watchdog/handoffs/` (git state, last 12 hours of commits, agent worktrees with unpushed commits, `status.sh`, and the previous session's last message; no model writes it), closes the session and starts a fresh OG whose prompt points at that snapshot. If the idle session is the watchdog's own OG, OG is first asked to write its own handoff note (memory plus push) and is closed once it answers, or after 15 minutes. Thresholds: 30 minutes for the OG session (a long silent command such as a full test run writes no transcript until it ends), 120 for any other session (a VS Code session, say); a process younger than the threshold is never idle. At most 12 recycles per rolling 24 hours.
+
+The resume prompt is `~/.og-watchdog/prompt.txt`; edit it to change what OG does on start.
+
+- `og-watchdog.sh status` shows what it sees, including idle time; `attach` opens the tmux session (Ctrl-b d leaves it running); `recycle` recycles now (`OG_FORCE=1` skips the idle test).
+- `pause` before you work in the tree yourself for a long stretch (two sessions collide, and a paused watchdog neither starts nor closes anything); `resume` afterwards.
 - A started session that dies within 15 minutes (usage limit, crash) backs the next start off 5, 10, 20, 40, then 60 minutes.
-- `install` copies the script to `~/.og-watchdog` and writes the cron entry; rerun it after editing the script. `uninstall` removes the entry.
+- `install` copies the script to `~/.og-watchdog` and writes the cron entry; rerun it after editing the script. `uninstall` removes the entry. `test/og-watchdog.test.mjs` runs the script against fake sessions and a throwaway repo.
 
 ## Tooling
 
