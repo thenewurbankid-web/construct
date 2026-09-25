@@ -20,7 +20,6 @@
 // working, compiling endpoints file every time.
 import fs from 'node:fs';
 import path from 'node:path';
-import yaml from 'js-yaml';
 import { createClient } from '@hey-api/openapi-ts';
 import { ensureDir, write, rel } from './fs.mjs';
 import { loadConfig } from './config.mjs';
@@ -28,6 +27,7 @@ import { createFeature, pascalCase as identifierPascalCase } from './generators.
 import { validateArchitecture } from './architecture-enforcer.mjs';
 import { parseIndexExports } from './soc-enforcer.mjs';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
+import { loadOpenApiDocument } from './openapi-spec.mjs';
 
 const HTTP_METHODS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'];
 const QUERY_METHODS = new Set(['GET', 'HEAD']);
@@ -179,18 +179,7 @@ export function ensureClient(root) {
  * cross-reference hey-api's generated type names (see extractGeneratedTypes
  * below), so this is a deliberate scope cut, not a silent best-effort. */
 export function parseOperations(specPath) {
-  if (!fs.existsSync(specPath)) {
-    throw usageError(`OpenAPI spec not found: ${specPath}`);
-  }
-  let doc;
-  try {
-    doc = yaml.load(fs.readFileSync(specPath, 'utf8'));
-  } catch (e) {
-    throw usageError(`Failed to parse OpenAPI spec at ${specPath}: ${e.message}`);
-  }
-  if (!doc || typeof doc !== 'object' || !doc.paths || typeof doc.paths !== 'object') {
-    throw usageError(`OpenAPI spec at ${specPath} has no "paths" — nothing to generate.`);
-  }
+  const doc = loadOpenApiDocument(specPath); // #621: the one reader every OpenAPI-consuming block shares (openapi-spec.mjs)
 
   const ops = [];
   for (const [urlPath, pathItem] of Object.entries(doc.paths)) {
