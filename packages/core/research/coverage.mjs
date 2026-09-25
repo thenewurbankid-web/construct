@@ -102,7 +102,12 @@ export function coverageOfMachineSpec(root, spec, { feature } = {}) {
   };
 }
 
-/** Sentence ids the person has to act on: nothing claims them and they are not out of scope. */
+/**
+ * Sentence ids the person has to act on: nothing claims them and they are not out of scope.
+ *
+ * @param {ReturnType<typeof coverageOfMachineSpec>} coverage From `coverageOfMachineSpec`.
+ * @returns {string[]} The uncovered sentence ids, in spec order.
+ */
 export const uncoveredSentences = (coverage) => coverage.sentences.filter((s) => s.status === 'uncovered').map((s) => s.id);
 
 const list = (items) => items.join(', ');
