@@ -184,5 +184,12 @@
         "s3"
       ]
     }
+  ],
+  "types": [
+    {
+      "name": "Session",
+      "definition": "{ userId: string; token: string }",
+      "description": "What a successful sign-in hands back."
+    }
   ]
 }

@@ -73,6 +73,13 @@
         "$ref": "#/definitions/function"
       }
     },
+    "types": {
+      "type": "array",
+      "description": "Optional named types the functions and event payloads refer to (e.g. Session). Each becomes an exported type in features/<feature>/types.ts. A type string may name only these and the built-in utility/platform types (SPEC-014), or write its shape inline.",
+      "items": {
+        "$ref": "#/definitions/typeDecl"
+      }
+    },
     "ext": {
       "type": "object",
       "description": "Reserved free-form extension object, ignored by validators."
@@ -228,6 +235,28 @@
         },
         "req": {
           "$ref": "#/definitions/req"
+        }
+      }
+    },
+    "typeDecl": {
+      "type": "object",
+      "required": [
+        "name",
+        "definition"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z_$][A-Za-z0-9_$]*$",
+          "description": "A valid TypeScript identifier; the exported type's name. Unique among types."
+        },
+        "definition": {
+          "$ref": "#/definitions/typeString",
+          "description": "The type's shape, e.g. \"{ userId: string; token: string }\"."
+        },
+        "description": {
+          "type": "string"
         }
       }
     },

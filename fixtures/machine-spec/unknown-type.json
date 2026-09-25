@@ -28,6 +28,12 @@
       "text": "The sign-in page must load in under two seconds."
     }
   ],
+  "outOfScope": [
+    {
+      "req": "s6",
+      "reason": "A performance budget, not machine behaviour: checked by a Lighthouse threshold in CI, not by this workflow."
+    }
+  ],
   "states": [
     {
       "id": "idle",
@@ -171,7 +177,7 @@
     },
     {
       "name": "openDashboard",
-      "input": "Session",
+      "input": "Sesion",
       "output": "void",
       "precondition": "The session was just issued by verifyCredentials.",
       "postcondition": "The browser is on the dashboard route with the session attached.",

@@ -15,7 +15,8 @@
 //      duplicate transitions, states unreachable from `initial` (a graph
 //      walk), `req` links to sentences that do not exist, sentences neither
 //      covered by any `req` nor listed under `outOfScope` (or both), and
-//      final states with a way out.
+//      final states with a way out, and type strings that do not parse (SPEC-013) or
+//      name a type nothing declares (SPEC-014, so the generated code compiles).
 //
 // Every failure is a violation shaped like `construct validate --format
 // json`'s (`rule`, `module`, `severity`, `file`, `message`, `why`,
@@ -31,6 +32,8 @@
 // the two stay in lockstep (the schema's `required` arrays are read directly,
 // never hand-copied). That keeps @line/construct-core dependency-free and the
 // bundled CLI (#525) free of runtime file lookups.
+
+import ts from 'typescript';
 
 export const MACHINE_SPEC_VERSION = 1;
 export const MACHINE_SPEC_MODULE = 'machine-spec';
@@ -50,6 +53,8 @@ export const SPEC_RULES = Object.freeze({
   'SPEC-010': 'A requirement sentence is neither covered by any item nor marked out of scope.',
   'SPEC-011': 'A sentence is marked out of scope but an item still claims it.',
   'SPEC-012': 'A final state has an outgoing transition.',
+  'SPEC-013': 'A type string is not a valid TypeScript type.',
+  'SPEC-014': 'A type string names a type that is neither built in nor declared under types.',
 });
 
 const WHY = {
@@ -65,6 +70,8 @@ const WHY = {
   'SPEC-010': 'A sentence that produced nothing was either forgotten or should be declared out of scope with a reason.',
   'SPEC-011': 'A sentence is either implemented or deliberately not; claiming both means one of them is wrong.',
   'SPEC-012': 'A final state stops the machine; a transition out of it can never fire.',
+  'SPEC-013': 'A type that does not parse cannot become a typed stub, an event payload or a test.',
+  'SPEC-014': 'A name nothing declares would fail tsc in the generated code; declare it under "types" or write its shape inline.',
 };
 
 // ---- structural shape (mirrors machine-spec.v1.schema.json) -----------------
@@ -99,6 +106,7 @@ export const ITEM_SHAPES = Object.freeze({
   outOfScopeEntry: { required: { req: 'id', reason: 'text' }, optional: {} },
   state: { required: { id: 'id', req: 'req' }, optional: { initial: 'boolean', final: 'boolean', description: 'string' } },
   event: { required: { id: 'id', req: 'req' }, optional: { payload: 'typeString', description: 'string' } },
+  typeDecl: { required: { name: 'identifier', definition: 'typeString' }, optional: { description: 'string' } },
   transition: { required: { from: 'id', to: 'id', event: 'id', req: 'req' }, optional: { id: 'id', guard: 'id', description: 'string' } },
   function: {
     required: { name: 'identifier', input: 'typeString', output: 'typeString', precondition: 'text', postcondition: 'text', req: 'req' },
@@ -114,9 +122,10 @@ export const LIST_FIELDS = Object.freeze({
   events: { shape: 'event', minItems: 0 },
   transitions: { shape: 'transition', minItems: 0 },
   functions: { shape: 'function', minItems: 0 },
+  types: { shape: 'typeDecl', minItems: 0 },
 });
 export const TOP_LEVEL_REQUIRED = Object.freeze(['version', 'name', 'requirement', 'states', 'events', 'transitions', 'functions']);
-export const TOP_LEVEL_FIELDS = Object.freeze(['version', 'name', 'feature', 'requirement', 'outOfScope', 'states', 'events', 'transitions', 'functions', 'ext']);
+export const TOP_LEVEL_FIELDS = Object.freeze(['version', 'name', 'feature', 'requirement', 'outOfScope', 'states', 'events', 'transitions', 'functions', 'types', 'ext']);
 
 const isPlainObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 
@@ -213,6 +222,7 @@ function checkMeaning(report, spec) {
   checkDuplicates(report, 'transitions', transitions, 'id', 'Transition');
   checkDuplicates(report, 'functions', functions, 'name', 'Function');
   checkDuplicates(report, 'outOfScope', outOfScope, 'req', 'Out-of-scope sentence');
+  checkDuplicates(report, 'types', spec.types ?? [], 'name', 'Type');
 
   const stateIds = states.map((s) => s.id);
   const stateSet = new Set(stateIds);
@@ -287,7 +297,70 @@ function checkMeaning(report, spec) {
     }
   });
 
+  checkTypeStrings(report, spec);
+
   return { sentences: requirement.length, covered: covered.size, outOfScope: excluded.size, states: states.length, events: events.length, transitions: transitions.length, functions: functions.length };
+}
+
+// ---- type strings (SPEC-013, SPEC-014) -------------------------------------------
+
+/** The global types a type string may name without declaring them: the utility types and the small
+ * set of platform classes a UI function realistically takes or returns. A closed list on purpose --
+ * a name outside it (and outside `types`) would not compile in the generated project, so it is
+ * refused now, with the fix named, instead of failing later in tsc. */
+export const BUILT_IN_TYPES = Object.freeze([
+  'Array', 'ReadonlyArray', 'Record', 'Partial', 'Required', 'Readonly', 'Pick', 'Omit', 'Exclude', 'Extract',
+  'NonNullable', 'Awaited', 'ReturnType', 'Parameters', 'InstanceType', 'Promise', 'PromiseLike', 'Map', 'Set',
+  'ReadonlyMap', 'ReadonlySet', 'WeakMap', 'WeakSet', 'Date', 'Error', 'RegExp', 'URL', 'URLSearchParams',
+  'File', 'Blob', 'FormData', 'Headers', 'Request', 'Response', 'AbortSignal', 'ArrayBuffer', 'Uint8Array',
+  'Iterable', 'AsyncIterable', 'Uppercase', 'Lowercase', 'Capitalize', 'Uncapitalize',
+]);
+
+/** Parse a type string; exported so the generator asks the same question the validator did. Returns `{ error }` when it is not a valid TypeScript type, else `{ names }`, the
+ * root identifier of every type reference in it (`A.B` counts as `A`), in first-seen order. */
+export function typeReferences(typeStr) {
+  const source = `type T = ${typeStr};`;
+  const { diagnostics } = ts.transpileModule(source, { reportDiagnostics: true, compilerOptions: { target: ts.ScriptTarget.Latest } });
+  if (diagnostics?.length) return { error: ts.flattenDiagnosticMessageText(diagnostics[0].messageText, ' ') };
+  const sf = ts.createSourceFile('t.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const alias = sf.statements[0];
+  if (sf.statements.length !== 1 || !alias || !ts.isTypeAliasDeclaration(alias)) return { error: 'not a single type expression' };
+  const names = new Set();
+  const root = (n) => (ts.isIdentifier(n) ? n.text : root(n.left));
+  const walk = (node) => {
+    if (ts.isTypeReferenceNode(node) || ts.isExpressionWithTypeArguments(node)) {
+      names.add(ts.isTypeReferenceNode(node) ? root(node.typeName) : root(node.expression));
+    }
+    ts.forEachChild(node, walk);
+  };
+  walk(alias.type);
+  return { names: [...names] };
+}
+
+/** Names of the declared `types`, and for each function/event/type the type strings to check. */
+function checkTypeStrings(report, spec) {
+  const declared = (spec.types ?? []).map((t) => t.name);
+  const known = new Set([...BUILT_IN_TYPES, ...declared]);
+  const slots = [];
+  (spec.types ?? []).forEach((t, i) => slots.push([`types[${i}].definition`, t.definition, `Type "${t.name}"`]));
+  spec.events.forEach((e, i) => { if (e.payload !== undefined) slots.push([`events[${i}].payload`, e.payload, `Event "${e.id}"`]); });
+  spec.functions.forEach((f, i) => {
+    slots.push([`functions[${i}].input`, f.input, `Function "${f.name}" input`]);
+    slots.push([`functions[${i}].output`, f.output, `Function "${f.name}" output`]);
+  });
+  for (const [at, typeStr, label] of slots) {
+    if (!KIND_CHECK.typeString(typeStr)) continue; // missing or blank: already reported (SPEC-008 / SPEC-001), not a second time
+    const found = typeReferences(typeStr);
+    if (found.error) {
+      report.add('SPEC-013', at, `${label} is not a valid TypeScript type: ${JSON.stringify(typeStr)} (${found.error}).`, ['a TypeScript type, e.g. "{ id: string }" or "Promise<void>"']);
+      continue;
+    }
+    for (const name of found.names) {
+      if (!known.has(name)) {
+        report.add('SPEC-014', at, `${label} names the type "${name}", which is not built in and not declared under "types".`, [`a { "name": "${name}", "definition": "..." } entry under types`, 'the shape written inline']);
+      }
+    }
+  }
 }
 
 function describeTransition(t) {

@@ -73,6 +73,7 @@ test('each checked-in failing fixture fails with exactly the code it demonstrate
     'unreachable-state.json': ['SPEC-007', 'states[5]'],
     'untyped-function.json': ['SPEC-008', 'functions[1].output'],
     'uncovered-sentence.json': ['SPEC-010', 'requirement[5]'],
+    'unknown-type.json': ['SPEC-014', 'functions[2].input'],
   };
   assert.deepEqual(fs.readdirSync(FIXTURES).sort(), Object.keys(expected).sort(), 'every fixture in the folder is pinned here');
   for (const [name, [rule, at]] of Object.entries(expected)) {
@@ -83,9 +84,10 @@ test('each checked-in failing fixture fails with exactly the code it demonstrate
   }
   // The untyped function is the one fixture the schema can also see; ajv agrees on it.
   assert.equal(ajvValidate(readJson(path.join(FIXTURES, 'untyped-function.json'))), false);
-  // The other two are the validator's own (a graph walk and a coverage check are not JSON Schema).
+  // The others are the validator's own (a graph walk, a coverage check and a name lookup are not JSON Schema).
   assert.equal(ajvValidate(readJson(path.join(FIXTURES, 'unreachable-state.json'))), true);
   assert.equal(ajvValidate(readJson(path.join(FIXTURES, 'uncovered-sentence.json'))), true);
+  assert.equal(ajvValidate(readJson(path.join(FIXTURES, 'unknown-type.json'))), true);
 });
 
 // ---------------------------------------------------------------------------
@@ -193,9 +195,27 @@ test('SPEC-012: a final state with a way out', () => {
   failsWith('SPEC-012', 'transitions[5].from', (s) => { s.transitions.push({ from: 'signedIn', to: 'idle', event: 'RETRY', req: ['s4'] }); });
 });
 
+test('SPEC-013 / SPEC-014 (#576): a type string that does not parse, or names a type nothing declares', () => {
+  failsWith('SPEC-013', 'functions[1].output', (s) => { s.functions[1].output = '{ attempts: '; });
+  failsWith('SPEC-013', 'events[0].payload', (s) => { s.events[0].payload = 'string; const x = 1'; });
+  failsWith('SPEC-013', 'types[0].definition', (s) => { s.types[0].definition = 'string |'; });
+  failsWith('SPEC-014', 'functions[2].input', (s) => { s.functions[2].input = 'Sesion'; });
+  failsWith('SPEC-014', 'events[1].payload', (s) => { s.events[1].payload = '{ session: Sesion }'; });
+  failsWith('SPEC-014', 'types[0].definition', (s) => { s.types[0].definition = '{ user: Account }'; });
+  // Built-ins, declared names, generics, qualified names and self-reference are fine; the check names the root of A.B.
+  const ok = example();
+  ok.types.push({ name: 'Tree', definition: '{ children: Tree[]; at: Date; meta: Record<string, Partial<Session>> }' });
+  ok.functions[2].input = 'Array<Tree> | Readonly<Session> | typeof globalThis';
+  assert.equal(validateMachineSpec(ok).status, 'passed', JSON.stringify(validateMachineSpec(ok).violations));
+  failsWith('SPEC-014', 'functions[2].input', (s) => { s.functions[2].input = 'Elsewhere.Thing'; });
+  // A duplicate declared type is SPEC-002 at the second one; a bad declaration is structural.
+  failsWith('SPEC-002', 'types[1].name', (s) => { s.types.push({ name: 'Session', definition: 'string' }); });
+  failsWith('SPEC-001', 'types[0].name', (s) => { s.types[0].name = 'not an identifier'; }, { only: ['SPEC-001'] });
+});
+
 test('every SPEC-* code has a rule line and a why line, and no code is used for two checks', () => {
   const codes = Object.keys(SPEC_RULES);
-  assert.deepEqual(codes, Array.from({ length: 12 }, (_, i) => `SPEC-${String(i + 1).padStart(3, '0')}`));
+  assert.deepEqual(codes, Array.from({ length: 14 }, (_, i) => `SPEC-${String(i + 1).padStart(3, '0')}`));
   for (const code of codes) assert.match(SPEC_RULES[code], /\S/);
 });
 
@@ -245,6 +265,9 @@ test('ajv rejects every structural mutation the validator rejects, so the two ag
     (s) => { s.outOfScope[0].reason = ''; },
     (s) => { s.requirement[1] = 'a bare string'; },
     (s) => { s.ext = []; },
+    (s) => { s.types[0].name = 'not an identifier'; },
+    (s) => { delete s.types[0].definition; },
+    (s) => { s.types = {}; },
   ];
   for (const mutate of cases) {
     const spec = example();
