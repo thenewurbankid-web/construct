@@ -13,12 +13,14 @@
 #   status     sessions, idle time, tmux, pause, throttle, recycles, last log lines
 #   pause      stop all automatic starts and closes (touch the PAUSE file); use it before you work in the tree yourself
 #   resume     remove the PAUSE file
-#   install    copy this script to ~/.og-watchdog and add the cron entries (every 3 minutes and at boot); rerun after editing
+#   install    copy this script to ~/.og-watchdog and add the cron entries (every minute and at boot); rerun after editing
 #   uninstall  remove the cron entry
 #   attach     attach to the OG tmux session (Ctrl-b d leaves it running)
 #
 # Idle thresholds (minutes without transcript writes; a process younger than the threshold is never idle):
-#   OG_IDLE_OG_MIN=30 for the watchdog's own OG session (it should always be working), OG_IDLE_MIN=120 for any other session.
+#   OG_IDLE_OG_MIN=1 for the watchdog's own OG session (it should always be working), OG_IDLE_MIN=120 for any other session.
+# OG is never idle while its screen shows it working: a turn in progress ("esc to interrupt": thinking, a tool call) or
+# background agents, shells or monitors ("/tasks"); subagent and other chat transcripts count as activity.
 # Guardrails: a lock, a PAUSE file, at most OG_MAX_RECYCLES (12) recycles per rolling 24 h, a start backoff (5 -> 60 min) when a
 # started session dies within 15 minutes (usage limit, crash), and --permission-mode auto (never bypassPermissions).
 # Files live in ~/.og-watchdog (override OG_STATE_DIR); handoff summaries are kept in ~/.og-watchdog/handoffs.
@@ -36,7 +38,7 @@ CLAUDE_BIN="${CLAUDE_BIN:-$(command -v claude || echo "$HOME/.local/bin/claude")
 PROMPT_FILE="${OG_PROMPT_FILE:-$STATE/prompt.txt}"
 PROJECTS_DIR="${OG_PROJECTS_DIR:-$HOME/.claude/projects}"
 IDLE_MIN="${OG_IDLE_MIN:-120}"
-IDLE_OG_MIN="${OG_IDLE_OG_MIN:-30}"
+IDLE_OG_MIN="${OG_IDLE_OG_MIN:-1}"
 SUMMARY_WAIT_MIN="${OG_SUMMARY_WAIT_MIN:-15}"
 MAX_RECYCLES="${OG_MAX_RECYCLES:-12}"
 SELF="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
@@ -92,6 +94,8 @@ named_activity() {
 }
 
 og_pid() { tmux list-panes -t "=$TMUX_NAME:" -F '#{pane_pid}' 2>/dev/null | head -1; }
+# OG's screen says it is working: a turn in progress (thinking or a tool call) or background agents/shells/monitors.
+og_busy() { tmux capture-pane -t "=$TMUX_NAME:" -p 2>/dev/null | grep -v '^[[:space:]]*$' | tail -8 | grep -qE 'esc to i|/tasks'; }
 
 # Epoch seconds of the newest transcript write for this repo (main sessions and subagents, worktrees included); 0 if none.
 last_activity() {
@@ -268,6 +272,7 @@ recycle_step() {
   act="$(last_activity)"; idle_min=$(((now - act) / 60)); young="$(youngest_age_min $pids)"
   if [ "$force" != 1 ]; then
     [ "$idle_min" -ge "$thr" ] && [ "$young" -ge "$thr" ] || return 0
+    case " $pids " in *" $ogp "*) [ -n "$ogp" ] && og_busy && return 0 ;; esac
     [ -e "$STATE/PAUSE" ] && { log "idle ${idle_min} min but paused"; return 0; }
     if [ "$(recycles_in_24h)" -ge "$MAX_RECYCLES" ]; then log "idle ${idle_min} min but $MAX_RECYCLES recycles already in 24 h: not recycling"; return 0; fi
   fi
@@ -350,7 +355,7 @@ cmd_status() {
 # cron runs a private copy under $STATE, so switching branches in the repo can never remove the watchdog
 INSTALLED="$STATE/og-watchdog.sh"
 MARK="# og-watchdog"
-CRON_LINE="*/3 * * * * OG_REPO='$REPO' '$INSTALLED' check >>'$STATE/cron.log' 2>&1 $MARK"
+CRON_LINE="* * * * * OG_REPO='$REPO' '$INSTALLED' check >>'$STATE/cron.log' 2>&1 $MARK"
 BOOT_LINE="@reboot sleep 30; OG_REPO='$REPO' '$INSTALLED' check >>'$STATE/cron.log' 2>&1 $MARK"
 case "${1:-}" in
   check) cmd_check ;;

@@ -203,3 +203,23 @@ test('og-watchdog: check keeps a claude rc server in its own tmux session, once,
     } finally { spawnSync('tmux', ['kill-session', '-t', rcName], { stdio: 'ignore' }); }
   } finally { r.cleanup(); }
 });
+
+test('og-watchdog: OG is not recycled while its screen shows a turn in progress, even past the idle threshold', { skip }, async () => {
+  const r = rig('busy', { OG_IDLE_OG_MIN: '0' });
+  try {
+    r.run('start');
+    assert.ok(r.tmuxUp(), 'OG started');
+    spawnSync('tmux', ['send-keys', '-t', `=${r.tmuxName}:`, '-l', 'Puttering… (12s · esc to interrupt)'], { stdio: 'ignore' });
+    r.age(180);
+    await sleep(800);
+    r.run('check');
+    assert.doesNotMatch(r.log(), /recycling/);
+    assert.equal(fs.existsSync(path.join(r.state, 'recycle')), false);
+  } finally { r.cleanup(); }
+});
+
+test('og-watchdog: defaults are a check every minute and a 1-minute idle threshold for OG', () => {
+  const src = fs.readFileSync(SCRIPT, 'utf8');
+  assert.match(src, /IDLE_OG_MIN="\$\{OG_IDLE_OG_MIN:-1\}"/);
+  assert.match(src, /CRON_LINE="\* \* \* \* \* /);
+});
