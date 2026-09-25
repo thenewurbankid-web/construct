@@ -396,7 +396,7 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
     expect(res.status()).toBe(200);
     const sent = res.request().postDataJSON().plan.steps.map((x) => planToCommand(x).argv.join(' '));
     for (const c of sent.slice(1, 7)) expect(c).toContain('--shape list --entity Product --fields id:string,name:string,price:number --source endpoint');
-    expect(sent.at(-2)).toContain('--source endpoint --kind render'); // the proof step is written from the same source
+    expect(sent.find((c) => c.startsWith('create proof '))).toContain('--source endpoint --kind render'); // the proof step is written from the same source (a Next.js project also plans the handler that serves it, #625)
     for (const f of LIST_FILES) expect(fs.existsSync(path.join(project.repo, f)), f).toBe(false); // approving starts a process; nothing is written by this route
     const recordedSource = readTraces(project.repo, { stateDir: STATE_DIR }).decisions.filter((d) => d.chooser.id === 'requirement.plan.source' && d.chosen === 'endpoint');
     expect(recordedSource[0]).toMatchObject({ by: 'person', suggestion: { option: 'local' }, provider: { name: 'rules', version: '1' }, outcome: { accepted: false } });

@@ -17,7 +17,7 @@ confirms it. Nothing here calls a model or the network.
 | Field | What it is |
 |---|---|
 | `source.text` | The requirement, verbatim. Every span points into it (`[from, to)`, character offsets). |
-| `nouns[]` | `id` (`n1`..), `kind` (`entity`, `state`, `ui-part`, `external`), `text` as written, optional `properties`, `span`. |
+| `nouns[]` | `id` (`n1`..), `kind` (`entity`, `state`, `ui-part`, `external`), `text` as written, optional `properties`, `span`. A `state` noun says what is true of the person or the screen: a session (`logged-in`, `signed-in`, `guest`: property `session`, which makes the route guard's default signed-in, #629), a role (`admin`: property `role`, which makes it `role`) or client state (`selected items`, `selected item`: property `selection`; `shopping cart`: property `store`), which asks for a client-state store (#630). |
 | `verbs[]` | `id` (`v1`..), `kind` (`read`, `write`, `interact`, `navigate`), `text`, `on` (noun ids), `span`. |
 | `checks[]` | `id` (`c1`..), `name` (a check of the lexicon), `from` (the adjective as written), `span`, `why`. One adjective gives one check per name it maps to; none is dropped. |
 | `open[]` | `id` (`o1`..), `text`, `span`, `slot` (`noun` or `verb`), `question`: a word the lexicon does not know. |

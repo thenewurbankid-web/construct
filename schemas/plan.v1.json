@@ -1383,13 +1383,13 @@
                   "redirect": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "A path the fallback links to, for example /sign-in. Without it the fallback is a notice.",
+                    "description": "An address on this site the fallback links to, for example /sign-in (not a path of a file). Without it the fallback is a notice.",
                     "pattern": "^/[A-Za-z0-9._~\\-/]{0,120}$"
                   },
                   "route": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "The route path the screen is served at, for example /products. Defaults to the kebab-case of the name.",
+                    "description": "The route the screen is served at, for example /products (not a path of a file). Defaults to the kebab-case of the name.",
                     "pattern": "^/[a-z0-9]+(-[a-z0-9]+)*(/[a-z0-9]+(-[a-z0-9]+)*)*$"
                   },
                   "dir": {
@@ -1537,7 +1537,7 @@
                   "path": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "The path of the endpoint, starting with /api/ and lower-case segments (/api/products).",
+                    "description": "The address of the endpoint, starting with /api/ and lower-case segments, like /api/products (not a path of a file).",
                     "pattern": "^/api(/[a-z0-9]+(-[a-z0-9]+)*)+$"
                   },
                   "service": {
