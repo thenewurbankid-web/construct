@@ -79,7 +79,7 @@ never both.
 ## The command
 
 ```
-construct research spec <file> [--generate [--feature <name>] | --read-back] [--format json|text] [--dir <path>]
+construct research spec <file> [--generate [--feature <name>] | --read-back | --coverage [--feature <name>]] [--format json|text] [--dir <path>]
 ```
 
 Exit 0 when the spec passes, 1 on any `SPEC-*` failure, 2 when the file cannot be read or is not JSON
@@ -240,6 +240,68 @@ s6: The sign-in page must load in under two seconds.
 entry points are `readBackMachineSpec(spec)` and `renderReadBack(result, { format })` in
 `packages/core/research/readBack.mjs`. The output for the worked example is pinned by
 `test/machineSpecReadBack.test.mjs` against `fixtures/machine-spec-readback/`.
+
+## `--coverage`, R5 (#673, #576): which functions and files realize each sentence
+
+```
+construct research spec <file> --coverage [--feature <name>] [--format json|text] [--dir <path>]
+```
+
+`SPEC-010` already refuses a sentence nothing claims; `--coverage` answers the same question as a map, and
+the other way round. Per requirement sentence, in order: `covered` (with the functions, and the states,
+events and transitions, that claim it, and so the generated files it ends up in), `out-of-scope` (with the
+spec's reason) or `uncovered` (nothing claims it and it is not out of scope: the one status to act on).
+Then, per function, the sentences it cites, or `orphan` when none of its `req` links resolves to a sentence
+of the requirement (a link to an id the requirement does not have is listed as `unknownReq`, the
+`SPEC-009` case). Then, per generated file, the sentences it serves. It writes nothing and is exclusive
+with `--generate` and `--read-back` (exit 2). No model.
+
+The paths are the R2 generator's own: `plannedSpecFiles` in `packages/core/research/specToCode.mjs`,
+which `generateFromSpec` itself calls, and a test asserts the report names exactly the files `--generate`
+writes. A function maps to its `defineService` stub (`services/<name>.ts`); a state, event or transition
+maps to the machine's three files (the workflow, its typed state union, the locked every-path unit test),
+because the generator writes the whole machine into those, not one file per item. The declared `types` carry
+no `req`, so `types.ts` is not listed. Like `--generate` it needs a feature name (the spec's `feature`, or
+`--feature`; exit 2 with neither). The unit test's file name is the machine's, so a feature that already
+holds another machine with the same id numbers its test `-2` and the reported path is then off by that suffix.
+
+Exit 0 unless a sentence is uncovered and not out of scope (exit 1). A function that cites no sentence is
+reported but does not fail the run on its own. The report also runs on a spec whose only violations are
+`SPEC-009` and `SPEC-010`, since showing those is its job; a spec that breaks any other rule prints the
+plain validation report and no coverage, as `--read-back` does.
+
+```
+$ construct research spec fixtures/machine-spec-coverage/gap.spec.json --coverage
+Coverage of "contact form" (feature contact)
+
+Sentences
+s1: A visitor sends a message with the contact form.
+  function sendMessage -> features/contact/services/sendMessage.ts
+  machine (states idle, sent; events SEND; transitions t1) -> features/contact/workflows/ContactFormWorkflow.tsx, ...
+
+s2: The visitor gets a confirmation email.
+  NOT covered: no state, event, transition or function cites it, and it is not marked out of scope.
+
+s3: The form must look good on a phone.
+  Out of scope: A visual quality bar, checked by review, not by this workflow.
+
+Functions and the sentences they cite
+  sendMessage: s1
+  notifyTeam: cites no sentence of the requirement (unknown link s9)
+...
+3 sentence(s): 1 covered, 1 out of scope, 1 NOT covered; 2 function(s), 1 citing no sentence; 5 generated file(s).
+```
+
+`--format json` is a fixed-shape result, `construct.machine-spec-coverage.v1`:
+`{ schema, name, feature, sentences, functions, files, counts }`. Each `sentences[]` entry is
+`{ id, text, status, reason, functions, machine: { states, events, transitions }, files }`; each
+`functions[]` entry `{ name, file, status: 'cites' | 'orphan', req, unknownReq }`; each `files[]` entry
+`{ path, kind: 'workflow' | 'state' | 'test' | 'service', sentences }`; `counts` is `{ sentences, covered,
+outOfScope, uncovered, functions, orphanFunctions, files }`. Ids are the spec's own (sentence, state, event,
+transition, function name), so they stay stable across runs and edits to other items. The library entry
+points are `coverageOfMachineSpec(root, spec, { feature })` and `renderCoverage(result, { format })` in
+`packages/core/research/coverage.mjs`. The worked example and a fixture with a gap are pinned by
+`test/machineSpecCoverage.test.mjs` against `fixtures/machine-spec-coverage/`.
 
 ## The checks
 

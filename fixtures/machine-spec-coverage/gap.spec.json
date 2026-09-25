@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "name": "contact form",
+  "feature": "contact",
+  "requirement": [
+    { "id": "s1", "text": "A visitor sends a message with the contact form." },
+    { "id": "s2", "text": "The visitor gets a confirmation email." },
+    { "id": "s3", "text": "The form must look good on a phone." }
+  ],
+  "outOfScope": [
+    { "req": "s3", "reason": "A visual quality bar, checked by review, not by this workflow." }
+  ],
+  "states": [
+    { "id": "idle", "initial": true, "req": ["s1"] },
+    { "id": "sent", "final": true, "req": ["s1"] }
+  ],
+  "events": [
+    { "id": "SEND", "req": ["s1"] }
+  ],
+  "transitions": [
+    { "id": "t1", "from": "idle", "event": "SEND", "to": "sent", "req": ["s1"] }
+  ],
+  "functions": [
+    {
+      "name": "sendMessage",
+      "input": "{ from: string; body: string }",
+      "output": "Promise<void>",
+      "precondition": "The body is not empty.",
+      "postcondition": "The message is stored for the team.",
+      "req": ["s1"]
+    },
+    {
+      "name": "notifyTeam",
+      "input": "{ body: string }",
+      "output": "Promise<void>",
+      "precondition": "A message was stored.",
+      "postcondition": "The team channel got a notification.",
+      "req": ["s9"]
+    }
+  ]
+}

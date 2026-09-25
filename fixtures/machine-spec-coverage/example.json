@@ -1,0 +1,245 @@
+{
+  "schema": "construct.machine-spec-coverage.v1",
+  "name": "sign-in with retry",
+  "feature": "auth",
+  "sentences": [
+    {
+      "id": "s1",
+      "text": "A visitor signs in with an email and a password.",
+      "status": "covered",
+      "reason": null,
+      "functions": [
+        "verifyCredentials"
+      ],
+      "machine": {
+        "states": [
+          "idle"
+        ],
+        "events": [
+          "SUBMIT"
+        ],
+        "transitions": [
+          "t1"
+        ]
+      },
+      "files": [
+        "features/auth/workflows/SignInWithRetryWorkflow.tsx",
+        "features/auth/workflows/SignInWithRetryWorkflowState.ts",
+        "features/auth/tests/generated/signinwithretry--every-path.test.ts",
+        "features/auth/services/verifyCredentials.ts"
+      ]
+    },
+    {
+      "id": "s2",
+      "text": "While the credentials are being checked, the form is locked.",
+      "status": "covered",
+      "reason": null,
+      "functions": [],
+      "machine": {
+        "states": [
+          "checking"
+        ],
+        "events": [],
+        "transitions": [
+          "t1"
+        ]
+      },
+      "files": [
+        "features/auth/workflows/SignInWithRetryWorkflow.tsx",
+        "features/auth/workflows/SignInWithRetryWorkflowState.ts",
+        "features/auth/tests/generated/signinwithretry--every-path.test.ts"
+      ]
+    },
+    {
+      "id": "s3",
+      "text": "If the credentials are valid, the visitor is signed in and taken to their dashboard.",
+      "status": "covered",
+      "reason": null,
+      "functions": [
+        "verifyCredentials",
+        "openDashboard"
+      ],
+      "machine": {
+        "states": [
+          "signedIn"
+        ],
+        "events": [
+          "VALID"
+        ],
+        "transitions": [
+          "t2"
+        ]
+      },
+      "files": [
+        "features/auth/workflows/SignInWithRetryWorkflow.tsx",
+        "features/auth/workflows/SignInWithRetryWorkflowState.ts",
+        "features/auth/tests/generated/signinwithretry--every-path.test.ts",
+        "features/auth/services/verifyCredentials.ts",
+        "features/auth/services/openDashboard.ts"
+      ]
+    },
+    {
+      "id": "s4",
+      "text": "If the credentials are invalid, the visitor sees the reason and can try again.",
+      "status": "covered",
+      "reason": null,
+      "functions": [
+        "verifyCredentials"
+      ],
+      "machine": {
+        "states": [
+          "failed"
+        ],
+        "events": [
+          "INVALID",
+          "RETRY"
+        ],
+        "transitions": [
+          "t4",
+          "t5"
+        ]
+      },
+      "files": [
+        "features/auth/workflows/SignInWithRetryWorkflow.tsx",
+        "features/auth/workflows/SignInWithRetryWorkflowState.ts",
+        "features/auth/tests/generated/signinwithretry--every-path.test.ts",
+        "features/auth/services/verifyCredentials.ts"
+      ]
+    },
+    {
+      "id": "s5",
+      "text": "After three failed attempts in a row, the visitor is locked out and must reset their password.",
+      "status": "covered",
+      "reason": null,
+      "functions": [
+        "recordFailedAttempt"
+      ],
+      "machine": {
+        "states": [
+          "lockedOut"
+        ],
+        "events": [],
+        "transitions": [
+          "t3"
+        ]
+      },
+      "files": [
+        "features/auth/workflows/SignInWithRetryWorkflow.tsx",
+        "features/auth/workflows/SignInWithRetryWorkflowState.ts",
+        "features/auth/tests/generated/signinwithretry--every-path.test.ts",
+        "features/auth/services/recordFailedAttempt.ts"
+      ]
+    },
+    {
+      "id": "s6",
+      "text": "The sign-in page must load in under two seconds.",
+      "status": "out-of-scope",
+      "reason": "A performance budget, not machine behaviour: checked by a Lighthouse threshold in CI, not by this workflow.",
+      "functions": [],
+      "machine": {
+        "states": [],
+        "events": [],
+        "transitions": []
+      },
+      "files": []
+    }
+  ],
+  "functions": [
+    {
+      "name": "verifyCredentials",
+      "file": "features/auth/services/verifyCredentials.ts",
+      "status": "cites",
+      "req": [
+        "s1",
+        "s3",
+        "s4"
+      ],
+      "unknownReq": []
+    },
+    {
+      "name": "recordFailedAttempt",
+      "file": "features/auth/services/recordFailedAttempt.ts",
+      "status": "cites",
+      "req": [
+        "s5"
+      ],
+      "unknownReq": []
+    },
+    {
+      "name": "openDashboard",
+      "file": "features/auth/services/openDashboard.ts",
+      "status": "cites",
+      "req": [
+        "s3"
+      ],
+      "unknownReq": []
+    }
+  ],
+  "files": [
+    {
+      "path": "features/auth/workflows/SignInWithRetryWorkflow.tsx",
+      "kind": "workflow",
+      "sentences": [
+        "s1",
+        "s2",
+        "s3",
+        "s4",
+        "s5"
+      ]
+    },
+    {
+      "path": "features/auth/workflows/SignInWithRetryWorkflowState.ts",
+      "kind": "state",
+      "sentences": [
+        "s1",
+        "s2",
+        "s3",
+        "s4",
+        "s5"
+      ]
+    },
+    {
+      "path": "features/auth/tests/generated/signinwithretry--every-path.test.ts",
+      "kind": "test",
+      "sentences": [
+        "s1",
+        "s2",
+        "s3",
+        "s4",
+        "s5"
+      ]
+    },
+    {
+      "path": "features/auth/services/verifyCredentials.ts",
+      "kind": "service",
+      "sentences": [
+        "s1",
+        "s3",
+        "s4"
+      ]
+    },
+    {
+      "path": "features/auth/services/recordFailedAttempt.ts",
+      "kind": "service",
+      "sentences": [
+        "s5"
+      ]
+    },
+    {
+      "path": "features/auth/services/openDashboard.ts",
+      "kind": "service",
+      "sentences": [
+        "s3"
+      ]
+    }
+  ],
+  "counts": {
+    "sentences": 6,
+    "covered": 5,
+    "outOfScope": 1,
+    "uncovered": 0,
+    "functions": 3,
+    "orphanFunctions": 0,
+    "files": 6
+  }
+}

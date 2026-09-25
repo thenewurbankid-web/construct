@@ -26,7 +26,9 @@ import { lit, comment } from './testSpecRender.mjs';
 import { GENERATED_MARKER, projectPaths, assertLockDeclared, assertSafeDir, featureMachines, machineHash } from './testGenerator.mjs';
 
 const FILE_RE = /^[a-z0-9][a-z0-9-]*--every-path\.test\.ts$/;
-const SUFFIX = '--every-path.test.ts';
+/** The suffix of a generated every-path test's file name (`<machine key>--every-path.test.ts`). */
+export const UNIT_TEST_SUFFIX = '--every-path.test.ts';
+const SUFFIX = UNIT_TEST_SUFFIX;
 /** What the generated test needs in the target project: the walker, the machine runtime, a TS loader for node's test runner. */
 export const UNIT_TEST_DEPENDENCIES = ['@xstate/graph', 'xstate', 'tsx'];
 

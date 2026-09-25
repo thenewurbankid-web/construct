@@ -1,0 +1,124 @@
+{
+  "schema": "construct.machine-spec-coverage.v1",
+  "name": "contact form",
+  "feature": "contact",
+  "sentences": [
+    {
+      "id": "s1",
+      "text": "A visitor sends a message with the contact form.",
+      "status": "covered",
+      "reason": null,
+      "functions": [
+        "sendMessage"
+      ],
+      "machine": {
+        "states": [
+          "idle",
+          "sent"
+        ],
+        "events": [
+          "SEND"
+        ],
+        "transitions": [
+          "t1"
+        ]
+      },
+      "files": [
+        "features/contact/workflows/ContactFormWorkflow.tsx",
+        "features/contact/workflows/ContactFormWorkflowState.ts",
+        "features/contact/tests/generated/contactform--every-path.test.ts",
+        "features/contact/services/sendMessage.ts"
+      ]
+    },
+    {
+      "id": "s2",
+      "text": "The visitor gets a confirmation email.",
+      "status": "uncovered",
+      "reason": null,
+      "functions": [],
+      "machine": {
+        "states": [],
+        "events": [],
+        "transitions": []
+      },
+      "files": []
+    },
+    {
+      "id": "s3",
+      "text": "The form must look good on a phone.",
+      "status": "out-of-scope",
+      "reason": "A visual quality bar, checked by review, not by this workflow.",
+      "functions": [],
+      "machine": {
+        "states": [],
+        "events": [],
+        "transitions": []
+      },
+      "files": []
+    }
+  ],
+  "functions": [
+    {
+      "name": "sendMessage",
+      "file": "features/contact/services/sendMessage.ts",
+      "status": "cites",
+      "req": [
+        "s1"
+      ],
+      "unknownReq": []
+    },
+    {
+      "name": "notifyTeam",
+      "file": "features/contact/services/notifyTeam.ts",
+      "status": "orphan",
+      "req": [],
+      "unknownReq": [
+        "s9"
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "features/contact/workflows/ContactFormWorkflow.tsx",
+      "kind": "workflow",
+      "sentences": [
+        "s1"
+      ]
+    },
+    {
+      "path": "features/contact/workflows/ContactFormWorkflowState.ts",
+      "kind": "state",
+      "sentences": [
+        "s1"
+      ]
+    },
+    {
+      "path": "features/contact/tests/generated/contactform--every-path.test.ts",
+      "kind": "test",
+      "sentences": [
+        "s1"
+      ]
+    },
+    {
+      "path": "features/contact/services/sendMessage.ts",
+      "kind": "service",
+      "sentences": [
+        "s1"
+      ]
+    },
+    {
+      "path": "features/contact/services/notifyTeam.ts",
+      "kind": "service",
+      "sentences": []
+    }
+  ],
+  "counts": {
+    "sentences": 3,
+    "covered": 1,
+    "outOfScope": 1,
+    "uncovered": 1,
+    "functions": 2,
+    "orphanFunctions": 1,
+    "files": 5
+  }
+}

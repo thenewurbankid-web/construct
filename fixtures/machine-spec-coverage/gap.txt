@@ -1,0 +1,25 @@
+Coverage of "contact form" (feature contact)
+
+Sentences
+s1: A visitor sends a message with the contact form.
+  function sendMessage -> features/contact/services/sendMessage.ts
+  machine (states idle, sent; events SEND; transitions t1) -> features/contact/workflows/ContactFormWorkflow.tsx, features/contact/workflows/ContactFormWorkflowState.ts, features/contact/tests/generated/contactform--every-path.test.ts
+
+s2: The visitor gets a confirmation email.
+  NOT covered: no state, event, transition or function cites it, and it is not marked out of scope.
+
+s3: The form must look good on a phone.
+  Out of scope: A visual quality bar, checked by review, not by this workflow.
+
+Functions and the sentences they cite
+  sendMessage: s1
+  notifyTeam: cites no sentence of the requirement (unknown link s9)
+
+Generated files and the sentences they serve
+  features/contact/workflows/ContactFormWorkflow.tsx: s1
+  features/contact/workflows/ContactFormWorkflowState.ts: s1
+  features/contact/tests/generated/contactform--every-path.test.ts: s1
+  features/contact/services/sendMessage.ts: s1
+  features/contact/services/notifyTeam.ts: no sentence
+
+3 sentence(s): 1 covered, 1 out of scope, 1 NOT covered; 2 function(s), 1 citing no sentence; 5 generated file(s).

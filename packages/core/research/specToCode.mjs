@@ -35,7 +35,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { generateWorkflow, parseTypeString } from '../../engine/workflowGenerator.mjs';
-import { generateUnitTests } from '../../engine/testUnitGenerator.mjs';
+import { generateUnitTests, UNIT_TEST_SUFFIX } from '../../engine/testUnitGenerator.mjs';
+import { kebab } from '../../engine/testAttributes.mjs';
 import { typeReferences } from './machine-spec.mjs';
 import { ensureTestRegions, generatedDir } from '../proof.mjs';
 import { printNode as print } from '../../ast/index.mjs';
@@ -233,6 +234,36 @@ function appendDeclaredTypes(root, featureDir, spec) {
 }
 
 /**
+ * Where `generateFromSpec` puts each file of a spec, without writing anything (#673): the same paths the
+ * generator itself uses (it calls this), so a coverage report can name the files a sentence ends up in
+ * before, or without, running the generation. Pure apart from reading the project's config.
+ *
+ * @param {string} root Project root.
+ * @param {object} spec A machine-spec.v1 object (only `name`, `feature`, `functions` are read).
+ * @param {{feature?: string}} [options] `feature` is used only when `spec.feature` is absent.
+ * @returns {{feature: string, featureDir: string, workflow: {name: string, file: string, stateFile: string}, functions: {name: string, file: string}[], unitTest: string, typesFile: string}} Absolute `featureDir` and workflow/state/function-stub files; project-relative `unitTest` and `typesFile`. The unit test is named after the one machine this spec generates: a feature that already holds another machine with the same id numbers it (`-2`), and this path is then off by that suffix.
+ * @throws {ConstructError} Usage error (exit code 2) when neither `spec.feature` nor `options.feature` is given.
+ */
+export function plannedSpecFiles(root, spec, { feature: featureArg } = {}) {
+  const feature = spec.feature ?? featureArg;
+  if (!feature) {
+    throw usageError('No feature given: the spec has no "feature" field and --feature was not passed. Usage: construct research spec <file> --generate --feature <name>');
+  }
+  const config = loadConfig(root);
+  const featureDir = path.join(root, config.features?.root || 'features', feature);
+  const name = pascalCase(workflowBaseName(spec.name), 'Workflow');
+  const workflowsDir = path.join(featureDir, 'workflows');
+  return {
+    feature,
+    featureDir,
+    workflow: { name, file: path.join(workflowsDir, `${name}Workflow.tsx`), stateFile: path.join(workflowsDir, `${name}WorkflowState.ts`) },
+    functions: (spec.functions ?? []).map((fn) => ({ name: fn.name, file: path.join(featureDir, 'services', `${fn.name}.ts`) })),
+    unitTest: `${generatedDir(root, feature).genRel}/${kebab(name.toLowerCase())}${UNIT_TEST_SUFFIX}`,
+    typesFile: rel(root, path.join(featureDir, 'types.ts')),
+  };
+}
+
+/**
  * Generate the workflow (with the typed state union and named guard stubs) and one function stub
  * per `functions[]` entry from an ACCEPTED machine-spec.v1 -- the caller must have already run
  * `validateMachineSpec` and refused anything that failed. Never overwrites an existing file (same
@@ -250,13 +281,8 @@ function appendDeclaredTypes(root, featureDir, spec) {
  * console.log(result.written, result.skipped);
  */
 export function generateFromSpec(root, spec, { feature: featureArg } = {}) {
-  const feature = spec.feature ?? featureArg;
-  if (!feature) {
-    throw usageError('No feature given: the spec has no "feature" field and --feature was not passed. Usage: construct research spec <file> --generate --feature <name>');
-  }
-
-  const config = loadConfig(root);
-  const featureDir = path.join(root, config.features?.root || 'features', feature);
+  const plan = plannedSpecFiles(root, spec, { feature: featureArg });
+  const { feature, featureDir } = plan;
   const written = [];
   const skipped = [];
   const updated = [];
@@ -283,9 +309,7 @@ export function generateFromSpec(root, spec, { feature: featureArg } = {}) {
   for (const name of typesResult.existing) skipped.push(`${typesResult.file}#${name}`);
 
   // ---- workflow (+ typed state union, + named guard stubs) --------------
-  const workflowName = pascalCase(workflowBaseName(spec.name), 'Workflow');
-  const workflowFile = path.join(featureDir, 'workflows', `${workflowName}Workflow.tsx`);
-  const stateFile = path.join(featureDir, 'workflows', `${workflowName}WorkflowState.ts`);
+  const { name: workflowName, file: workflowFile, stateFile } = plan.workflow;
   let workflow = null;
   if (fs.existsSync(workflowFile) || fs.existsSync(stateFile)) {
     for (const f of [workflowFile, stateFile]) if (fs.existsSync(f)) skipped.push(rel(root, f));
@@ -298,13 +322,12 @@ export function generateFromSpec(root, spec, { feature: featureArg } = {}) {
   }
 
   // ---- one defineService(...) stub per function --------------------------
-  const servicesDir = path.join(featureDir, 'services');
   const functionsWritten = [];
   const functionFiles = [];
   for (const fn of spec.functions) {
-    const file = path.join(servicesDir, `${fn.name}.ts`);
+    const { file } = plan.functions.find((f) => f.name === fn.name);
     if (fs.existsSync(file)) { skipped.push(rel(root, file)); continue; }
-    write(file, functionStubSource(spec, fn, servicesDir));
+    write(file, functionStubSource(spec, fn, path.dirname(file)));
     written.push(rel(root, file));
     functionsWritten.push(fn.name);
     functionFiles.push(file);

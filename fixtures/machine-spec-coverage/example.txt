@@ -1,0 +1,40 @@
+Coverage of "sign-in with retry" (feature auth)
+
+Sentences
+s1: A visitor signs in with an email and a password.
+  function verifyCredentials -> features/auth/services/verifyCredentials.ts
+  machine (states idle; events SUBMIT; transitions t1) -> features/auth/workflows/SignInWithRetryWorkflow.tsx, features/auth/workflows/SignInWithRetryWorkflowState.ts, features/auth/tests/generated/signinwithretry--every-path.test.ts
+
+s2: While the credentials are being checked, the form is locked.
+  machine (states checking; transitions t1) -> features/auth/workflows/SignInWithRetryWorkflow.tsx, features/auth/workflows/SignInWithRetryWorkflowState.ts, features/auth/tests/generated/signinwithretry--every-path.test.ts
+
+s3: If the credentials are valid, the visitor is signed in and taken to their dashboard.
+  function verifyCredentials -> features/auth/services/verifyCredentials.ts
+  function openDashboard -> features/auth/services/openDashboard.ts
+  machine (states signedIn; events VALID; transitions t2) -> features/auth/workflows/SignInWithRetryWorkflow.tsx, features/auth/workflows/SignInWithRetryWorkflowState.ts, features/auth/tests/generated/signinwithretry--every-path.test.ts
+
+s4: If the credentials are invalid, the visitor sees the reason and can try again.
+  function verifyCredentials -> features/auth/services/verifyCredentials.ts
+  machine (states failed; events INVALID, RETRY; transitions t4, t5) -> features/auth/workflows/SignInWithRetryWorkflow.tsx, features/auth/workflows/SignInWithRetryWorkflowState.ts, features/auth/tests/generated/signinwithretry--every-path.test.ts
+
+s5: After three failed attempts in a row, the visitor is locked out and must reset their password.
+  function recordFailedAttempt -> features/auth/services/recordFailedAttempt.ts
+  machine (states lockedOut; transitions t3) -> features/auth/workflows/SignInWithRetryWorkflow.tsx, features/auth/workflows/SignInWithRetryWorkflowState.ts, features/auth/tests/generated/signinwithretry--every-path.test.ts
+
+s6: The sign-in page must load in under two seconds.
+  Out of scope: A performance budget, not machine behaviour: checked by a Lighthouse threshold in CI, not by this workflow.
+
+Functions and the sentences they cite
+  verifyCredentials: s1, s3, s4
+  recordFailedAttempt: s5
+  openDashboard: s3
+
+Generated files and the sentences they serve
+  features/auth/workflows/SignInWithRetryWorkflow.tsx: s1, s2, s3, s4, s5
+  features/auth/workflows/SignInWithRetryWorkflowState.ts: s1, s2, s3, s4, s5
+  features/auth/tests/generated/signinwithretry--every-path.test.ts: s1, s2, s3, s4, s5
+  features/auth/services/verifyCredentials.ts: s1, s3, s4
+  features/auth/services/recordFailedAttempt.ts: s5
+  features/auth/services/openDashboard.ts: s3
+
+6 sentence(s): 5 covered, 1 out of scope; 3 function(s); 6 generated file(s).

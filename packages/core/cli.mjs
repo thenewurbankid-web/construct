@@ -52,6 +52,7 @@ import { listWorkflowSourceFiles, readWorkflowSource } from '../../packages/engi
 import { validateMachineSpec, renderMachineSpecReport } from './research/machine-spec.mjs';
 import { generateFromSpec } from './research/specToCode.mjs';
 import { readBackMachineSpec, renderReadBack } from './research/readBack.mjs';
+import { coverageOfMachineSpec, renderCoverage, uncoveredSentences, COVERAGE_TOLERATED_RULES } from './research/coverage.mjs';
 import { readTraces } from './decision-trace-store.mjs';
 import { providerInput, getDecisionProvider, registerDecisionProvider } from './decision-provider.mjs';
 import { loadDecisionPlugin } from './decision-plugin.mjs';
@@ -1347,10 +1348,14 @@ export async function researchWorkflow(args) {
  * exists. With `--read-back` (#672, R4): on an accepted spec, prints the spec in plain English, per
  * requirement sentence (the states, events, transitions and functions that point at it, sentences out of
  * scope listed as such; `--format json` is the same as a fixed-shape list, see `research/readBack.mjs`),
- * writes nothing; on any violation prints the same report as plain `research spec`. `--read-back` and
- * `--generate` are exclusive (usage error).
+ * writes nothing; on any violation prints the same report as plain `research spec`. With `--coverage`
+ * (#673, R5): the traceability map, sentence -> functions -> generated files (the R2 generator's own
+ * paths) and functions -> sentences, `--format json` a fixed-shape result (`research/coverage.mjs`);
+ * writes nothing; exit 1 only when a sentence is uncovered and not out of scope (or the spec breaks a
+ * rule other than SPEC-009/SPEC-010, in which case the plain validation report is printed instead).
+ * `--generate`, `--read-back` and `--coverage` are exclusive (usage error).
  *
- * @param {string[]} args `<file>` plus optional `--generate` or `--read-back`, `--feature <name>` (used only when the spec has no `feature` field), `--format json|text` (default text) and `--dir <path>` (where a relative `<file>` is resolved from, and the project root `--generate` writes into; default cwd).
+ * @param {string[]} args `<file>` plus optional `--generate`, `--read-back` or `--coverage`, `--feature <name>` (used only when the spec has no `feature` field), `--format json|text` (default text) and `--dir <path>` (where a relative `<file>` is resolved from, and the project root `--generate` writes into; default cwd).
  * @returns {Promise<boolean>} Resolves to true when it printed only JSON (so the caller skips the attribution line).
  * @throws {ConstructError} Usage error (exit code 2) for missing/extra positionals, an unknown format, an unreadable/non-JSON file, or (with `--generate`) a missing feature name.
  *
@@ -1358,11 +1363,11 @@ export async function researchWorkflow(args) {
  * await researchSpec(['specs/sign-in.machine-spec.json', '--generate', '--feature', 'auth']);
  */
 export async function researchSpec(args) {
-  const usage = 'Usage: construct research spec <file> [--generate [--feature <name>] | --read-back] [--format json|text] [--dir <path>]';
+  const usage = 'Usage: construct research spec <file> [--generate [--feature <name>] | --read-back | --coverage [--feature <name>]] [--format json|text] [--dir <path>]';
   const valueFlags = new Set(['--format', '--dir', '--feature']);
   const positional = args.filter((a, i) => !a.startsWith('--') && !valueFlags.has(args[i - 1]));
   const format = flagValue(args, '--format') ?? 'text';
-  if (positional.length !== 1 || !['json', 'text'].includes(format) || (args.includes('--generate') && args.includes('--read-back'))) throw new ConstructError(usage, { exitCode: EXIT_CODES.USAGE_ERROR });
+  if (positional.length !== 1 || !['json', 'text'].includes(format) || ['--generate', '--read-back', '--coverage'].filter((f) => args.includes(f)).length > 1) throw new ConstructError(usage, { exitCode: EXIT_CODES.USAGE_ERROR });
   // The file is resolved from where the user stands (or --dir), not from the project root a
   // parent architecture.yml would pick: a spec is an input file, not a project unit.
   const dir = flagValue(args, '--dir');
@@ -1378,6 +1383,16 @@ export async function researchSpec(args) {
   // #672: the read-back is of an ACCEPTED spec; a failing one prints R1's own report, like --generate.
   if (args.includes('--read-back') && result.status === 'passed') {
     console.log(renderReadBack(readBackMachineSpec(spec), { format }));
+    return format === 'json';
+  }
+  // #673: the coverage report maps sentences to functions and files. It also runs on a spec whose only
+  // violations are the traceability rules (a sentence nothing claims, a link to a sentence that does not
+  // exist), since showing those is its job; any other violation prints R1's own report first. Exit 1 only
+  // for a sentence that is uncovered and not out of scope.
+  if (args.includes('--coverage') && result.violations.every((v) => COVERAGE_TOLERATED_RULES.includes(v.rule))) {
+    const coverage = coverageOfMachineSpec(getRoot(args), spec, { feature: flagValue(args, '--feature') });
+    console.log(renderCoverage(coverage, { format }));
+    if (uncoveredSentences(coverage).length) setExitCode(EXIT_CODES.VIOLATIONS);
     return format === 'json';
   }
   // #593: on any violation, --generate is a no-op -- print R1's own report and write nothing, same
