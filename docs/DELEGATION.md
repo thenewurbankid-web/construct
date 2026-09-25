@@ -39,6 +39,8 @@ If the checkout silently didn't run (you're still on the worktree's default bran
 `main`), rename the branch and rebase onto `origin/work/2026-09-23` before continuing — don't build on
 frozen `main`.
 
+A worktree's `node_modules` symlink points at the main checkout, so `@line/construct-core` (and the other `@line/*` packages) resolve to the MAIN checkout's copy, not the worktree's. If a test fails only in a worktree because it sees old core code, replace the `@line/*` entries with symlinks to the worktree's own `packages/*` (a small overlay directory), do not edit the main checkout.
+
 The links are git-ignored. Never `npm install` in a worktree unless the brief
 says so (one package, through `heavy.sh`, lockfile committed).
 
