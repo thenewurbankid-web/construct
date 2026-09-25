@@ -41,6 +41,7 @@ export const USER_GROUPS = [
       { path: 'user-guide/getting-started/', title: 'Getting started', description: 'Try it in 60 seconds, then see what just happened.', file: C('user/getting-started.md') },
       { path: 'user-guide/line/', title: 'What Line is', description: 'The whole package: the framework, the app you work in, the terminal — and which parts are open source.', file: C('user/line.md') },
       { path: 'user-guide/concepts/', title: 'The five ideas', description: 'Tools, features, parts, rules and records, one sentence each.', file: C('user/concepts.md') },
+      { path: 'user-guide/system-requirements/', title: 'System requirements', description: 'What each tier (Lite, Cockpit use, Contributor) needs, what a small machine switches off, and what the commands cost.', file: C('user/system-requirements.md') },
       EXAMPLES_INDEX,
     ],
   },
