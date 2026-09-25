@@ -1,6 +1,6 @@
 {
   "mode": "status",
-  "api": "https://2-28-127-143.sslip.io/api/dev-status",
+  "api": "dev-status.json",
   "motion": {
     "preset": "Slide under",
     "mark": "line",

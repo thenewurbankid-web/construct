@@ -59,15 +59,15 @@ test("the site's own setting: mode, endpoint and motion each read on their own, 
   for (const bad of ['', 'not json', '[]', 'null', '"x"', '{', undefined]) assert.deepEqual({ ...m.parseConfig(bad) }, { mode: null, api: null, motion: null }, String(bad));
 });
 
-test('the site setting follows the live Cockpit status endpoint; the build copies it and still publishes the activity file', () => {
+test('the site setting follows the activity file the build publishes next to it (no server to be down); the build copies both', () => {
   const m = load();
   const cfg = m.parseConfig(read('site/logo.json'));
   const setting = JSON.parse(read('site/logo.json'));
   assert.equal(setting.mode, 'status');
-  assert.equal(setting.api, 'https://2-28-127-143.sslip.io/api/dev-status');
+  assert.equal(setting.api, 'dev-status.json');
   assert.equal(setting.motion.preset, 'Slide under', "the Logo Lab's shipping motion for the docs header");
   assert.equal(cfg.mode, 'status');
-  assert.equal(cfg.api, 'https://2-28-127-143.sslip.io/api/dev-status');
+  assert.equal(cfg.api, 'dev-status.json');
   assert.notEqual(cfg.motion, null, "the site's motion parses");
   assert.match(read('site/build.mjs'), /copyFileSync\(path\.join\(HERE, 'logo\.json'\), path\.join\(out, 'logo\.json'\)\)/);
   assert.match(read('site/build.mjs'), /path\.join\(out, 'dev-status\.json'\)/);
