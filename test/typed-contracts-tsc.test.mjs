@@ -81,6 +81,17 @@ test('the tracked-state usage example (examples/tracked-state.ts) compiles with 
   assert.ok(ok, `expected examples/tracked-state.ts to compile clean; tsc said:\n${output}`);
 });
 
+// #658 -- a workflow unit is callable, as its type says (defineWorkflow returns a function at runtime;
+// WorkflowUnit used to be typed as a config object, so calling one was TS2349). The fixture calls a
+// config-shaped unit and a real-XState-machine unit and pins what comes back.
+test('#658: a workflow unit is callable and returns its machine (examples/workflow.ts compiles with zero tsc errors)', () => {
+  const { ok, output } = tsc([
+    path.join(TYPED_CONTRACTS, 'jsx-global.d.ts'),
+    path.join(TYPED_CONTRACTS, 'examples', 'workflow.ts'),
+  ]);
+  assert.ok(ok, `expected examples/workflow.ts to compile clean; tsc said:\n${output}`);
+});
+
 // #585 -- defineService's optional `{ schema }`: a hand-written Standard Schema object (no
 // library at all) and a real zod schema both compile, and the fixtures' own type-level
 // assertions pin the narrowing (ok.value is the schema's OUTPUT type, sync stays sync, the

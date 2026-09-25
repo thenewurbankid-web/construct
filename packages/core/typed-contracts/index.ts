@@ -32,6 +32,7 @@ export type {
   HookUnit,
   HookUnitAny,
   WorkflowConfig,
+  WorkflowMachine,
   WorkflowUnit,
   ExpressionUnit,
   ExpressionUnitAny,
