@@ -23,10 +23,10 @@ still import by relative path (`packages/core/typed-contracts/index.ts`).
 | Domain | a value outside its type's meaning | pure, boundary-typed function; branded values | ENFORCED |
 | Service | a response after its request was superseded, or of the wrong shape | `AbortSignal` per request slot, `SERVICE-003`; schema at the boundary (#575) | ENFORCED (opt-in) |
 | Workflow | an event in a state that does not decide it | transition table + `WORKFLOW-004`; typed state union | ENFORCED (opt-in) |
-| Hook | an effect that outlives its owner; a closure over an old value | `useTrackedState` + `HOOK-001`; `useProvider` throws outside its tree; effect cleanup | PARTIAL |
+| Hook | an effect that outlives its owner; a closure over an old value | `useTrackedState` + `HOOK-001`; `useProvider` throws outside its tree; `HOOK-003` (cleanup required) | ENFORCED (opt-in, cleanup half) |
 | Component / Page | props older than the state they render | pure view of one union member; `PAGE-00x`/`COMPONENT-00x` | PARTIAL |
-| Controller | a snapshot copied at an earlier render | read the hook live every render; no local state in a controller | PARTIAL |
-| Route | a URL param that no longer names anything | forward `params` whole; a domain parser turns it into found / not-found | PROPOSED |
+| Controller | a snapshot copied at an earlier render | read the hook live every render; `CONTROLLER-003` (no local state in a controller) | ENFORCED (opt-in) |
+| Route | a URL param that no longer names anything | `ROUTE-003` (forward `params` whole); a domain parser turns it into found / not-found | ENFORCED (opt-in, forwarding half) |
 | Cockpit files | a save built on an old copy of the file | sha256 content hash, `409` on mismatch | ENFORCED |
 
 ## Domain
@@ -85,10 +85,10 @@ the workflow's own cancel-on-exit becomes the network abort.
   only, same style as `PAGE-004`/`SERVICE-002`: `collectCalls(ast,
   new Set(['fetch']))[0]` gates presence (a service with no network calls is
   never reported), `findMissingAbortSignal`
-  (`packages/core/architecture-enforcer.mjs:230-283`) does the real check,
-  emitted at `packages/core/architecture-enforcer.mjs:542-549`, opt-in flag
-  read at `packages/core/architecture-enforcer.mjs:899`. Registered at
-  `packages/core/config.mjs:239`.
+  (`packages/core/architecture-enforcer.mjs:315-353`) does the real check,
+  emitted at `packages/core/architecture-enforcer.mjs:632-640`, opt-in flag
+  read at `packages/core/architecture-enforcer.mjs:1011`. Registered at
+  `packages/core/config.mjs:300`.
 - Generator: the service template (`packages/core/generators.mjs:21-24`) emits
   the signal-taking form below.
 - Fixture: `fixtures/staleness/features/bad/services/fetchOrder.ts` (no
@@ -159,8 +159,8 @@ opt in with `rules: { WORKFLOW-004: warning }`) reports every atomic non-final
 state that has no decision for an event the machine handles elsewhere;
 `findTransitionHoles` is the whole rule
 (`packages/core/architecture-enforcer.mjs:211-224`, emitted at
-`packages/core/architecture-enforcer.mjs:434-443`, opt-in flag read at
-`packages/core/architecture-enforcer.mjs:799`). The explicit ignore is `EVENT: {}`. `construct generate workflow
+`packages/core/architecture-enforcer.mjs:608-617`, opt-in flag read at
+`packages/core/architecture-enforcer.mjs:1007`). The explicit ignore is `EVENT: {}`. `construct generate workflow
 --state-union` emits a `<Name>State` union with `match<Name>State` and
 `assertNever<Name>State` (`packages/engine/workflowGenerator.mjs:274-303`), so
 handling only some states is a `tsc` error. `defineWorkflow`:
@@ -195,7 +195,8 @@ that renders outside its `ProviderComponent` throws instead of reading a
 missing value (`packages/core/typed-contracts/provider.ts:101-110`, `HOOK-002`
 at `packages/core/architecture-enforcer.mjs:521-530`). Nothing covers the
 general `use<Name>` hook (`packages/core/generators.mjs:19`) that owns an
-effect. **PARTIAL.**
+effect; `HOOK-003` (below) covers that. **ENFORCED (opt-in, cleanup half);
+PARTIAL for stale closures** (by example, and `eslint-plugin-react-hooks`).
 
 ```ts
 // features/orders/hooks/useOrderState.ts -- HOOK-001 shape; no effect can live here
@@ -211,14 +212,26 @@ export function useOrderState() {
 setCount((prev) => prev + 1);   // not: setCount(count + 1)
 ```
 
-**Proposed.** `HOOK-003` (warning, off by default): in `features/*/hooks/**`,
-an effect callback that calls a subscribe-shaped API (`addEventListener`,
-`setInterval`, `setTimeout`, `subscribe`, `.on(`, `new AbortController`) must
-return a cleanup function. Deterministic: the callback body's last statement
-is a `return` of a function. Fixture: `useViewport` with `addEventListener`
-and no `return` fails; the form below passes. Stale-closure detection needs
-data flow; wrap `eslint-plugin-react-hooks` (`exhaustive-deps`) instead of
-building a rule.
+**Cleanup (`HOOK-003`, opt-in, #668).** Off by default; opt in with
+`rules: { HOOK-003: warning }`. In `features/*/hooks/**`, a `useEffect` or
+`useLayoutEffect` (also `React.useEffect`) whose callback calls a
+subscribe-shaped API (`addEventListener`, `setInterval`, `setTimeout`,
+`subscribe`, `.on(`, `new AbortController`/`WebSocket`/`EventSource`/
+`MutationObserver`/`ResizeObserver`/`IntersectionObserver`) must return
+something React can run on cleanup: a `return <function|identifier|call>` in the
+callback's own body, or an expression body that is `store.subscribe(cb)`.
+`collectUncleanedSubscriptions` (`packages/ast/staleness.mjs:101`) is the whole
+rule, emitted at `packages/core/architecture-enforcer.mjs:713-721`, opt-in flag
+read at `packages/core/architecture-enforcer.mjs:1014`, registered at
+`packages/core/config.mjs:305`. An effect with no subscribe-shaped call is
+never reported. Known exception, by design: a timer stored in a ref and
+stopped by a *sibling* effect's cleanup (`ui/client/features/shell/hooks/useFaviconMotion.tsx`)
+is reported, because the rule reads one effect at a time; silence it with
+the usual `exceptions` entry. Stale closures need data flow; wrap
+`eslint-plugin-react-hooks` (`exhaustive-deps`) rather than build a rule.
+Fixtures: `fixtures/staleness/features/bad/hooks/useViewport.ts` (listener never
+removed) fails; `.../good/hooks/useViewport.ts` (below) passes. Test:
+`test/stalenessRules.test.mjs`.
 
 ```ts
 useEffect(() => {
@@ -269,8 +282,8 @@ never a copy taken at an earlier one.
 and the binder emits `const { ... } = useX();` read fresh each render and
 passed straight into JSX (`packages/engine/controllerBinder.mjs:219-233`);
 `defineController`: `packages/core/typed-contracts/factories.ts:119-124`.
-Nothing forbids `useState(snapshot.total)` or `useRef(snapshot)` in a
-controller, which is exactly the copy. **PARTIAL.**
+`CONTROLLER-003` (below) forbids `useState(snapshot.total)` or `useRef(snapshot)`
+in a controller, which is exactly the copy. **ENFORCED (opt-in).**
 
 ```tsx
 // features/orders/controllers/OrderController.tsx -- what the binder emits; nothing is stored
@@ -289,12 +302,19 @@ import { useSelector } from '@xstate/react';
 const total = useSelector(actorRef, (snapshot) => snapshot.context.total);
 ```
 
-**Proposed.** `CONTROLLER-003` (error, off by default, same phasing as
-`DOMAIN-002`): a controller may not call `useState`, `useRef`, `useEffect`,
-`useMemo` or `useCallback`; state lives in hooks and workflows. Deterministic:
-`collectBareIdentifierUsages(ast, ...)`, the helper `ROUTE-002` already uses.
-Fixture: `OrderController` with `const [total] = useState(state.total)` fails;
-the binder's output above passes.
+**No state of its own (`CONTROLLER-003`, opt-in, #667).** Off by default; opt in
+with `rules: { CONTROLLER-003: warning }`. A controller may not call `useState`,
+`useReducer`, `useRef`, `useEffect`, `useLayoutEffect`, `useMemo` or
+`useCallback` (also as `React.useX`): state lives in hooks and workflows, and
+reading a hook is not a violation. `collectControllerStateCalls`
+(`packages/ast/staleness.mjs:33`) is the whole rule, emitted at
+`packages/core/architecture-enforcer.mjs:663-671`, opt-in flag read at
+`packages/core/architecture-enforcer.mjs:1013`, registered at
+`packages/core/config.mjs:304`. Fixtures:
+`fixtures/staleness/features/bad/controllers/OrderController.tsx`
+(`const [total] = useState(state.total)`) fails; `.../good/controllers/OrderController.tsx`
+(the binder's output above) passes. Test: `test/stalenessRules.test.mjs`. Not
+switched on for `ui/client`: 11 of its 64 controllers hold state today.
 
 ## Route
 
@@ -304,16 +324,27 @@ not-found state at the boundary; a raw string never travels inward.
 **Guard today.** `ROUTE-001/002` make a route import a controller and hold no
 logic (`packages/core/architecture-enforcer.mjs:247-263`, `packages/core/config.mjs:144-145`);
 `defineRoute` accepts only a controller in its props
-(`packages/core/typed-contracts/factories.ts:132-137`). Nothing parses params.
-**PROPOSED.**
+(`packages/core/typed-contracts/factories.ts:132-137`). `ROUTE-003` (below) keeps
+the route from reading params; the parse itself is a domain unit, by example.
+**ENFORCED (opt-in, forwarding half); PROPOSED (a rule that the controller calls
+a `parse<Name>Route`).**
 
-**Proposed guard.** `ROUTE-003` (warning, off by default): a route under a
-dynamic segment (`[id]` folder for Next.js, `:id` in the `<Route path>` for
-react-spa) forwards `params`/`searchParams` whole to its controller and never
-member-accesses them (`params.id`, `searchParams.get(`). The controller (which
-may import domain) calls one `parse<Name>Route` domain unit and passes its
-union to the page. Fixture: `app/orders/[id]/page.tsx` passing `params.id`
-fails; the three files below pass.
+**Forward, do not read (`ROUTE-003`, opt-in, #669).** Off by default; opt in with
+`rules: { ROUTE-003: warning }`. A route reports every read into `params` or
+`searchParams`: `params.id`, `params["id"]`, `searchParams.get(...)`,
+`(await params).id`, `const { id } = params` / `= await params` / `= useParams()`,
+and `function Page({ params: { id } })`. Passing `params` on whole
+(`<OrderController params={params} />`) is never reported. It reads the file,
+not the folder name, so it needs no dynamic-segment detection: a route with no
+params has nothing to read. `collectParamsReads`
+(`packages/ast/staleness.mjs:130`) is the whole rule, emitted at
+`packages/core/architecture-enforcer.mjs:428-436`, opt-in flag read at
+`packages/core/architecture-enforcer.mjs:1015`, registered at
+`packages/core/config.mjs:306`. The controller (which may import domain) calls
+one `parse<Name>Route` domain unit and passes its union to the page.
+Fixtures: `fixtures/staleness/app/bad/orders/[id]/page.tsx` (`params.id`) fails;
+`.../good/orders/[id]/page.tsx` and the two files below pass. Test:
+`test/stalenessRules.test.mjs`.
 
 ```tsx
 // app/orders/[id]/page.tsx -- route: forward, do not read
@@ -358,11 +389,9 @@ returns `409 CHANGED_ON_DISK` (`ui/server/src/componentsApi.mjs:122`).
 **ENFORCED.** Tests: `ui/server/src/pagesEditor.test.mjs:161`,
 `ui/server/src/componentsApi.test.mjs:204-216`.
 
-Gap worth one line: `patchNode`'s hash is optional
-(`ui/server/src/pagesEditor.mjs:217`, `if (expectedHash && ...)`; likewise
-`ui/server/src/index.mjs:612`), so a client that omits it bypasses the guard;
-`componentSave` requires it. Making it required is a one-line change plus a
-test.
+The hash is required (#590): `patchNode` and every other write call
+`assertContentHash` (`ui/server/src/pagesEditor.mjs:139-150`), so a client that
+omits it gets `400 HASH_REQUIRED`, a stale one `409 CHANGED_ON_DISK`.
 
 ```ts
 // Client side: carry the hash you read; a 409 means reload, never retry the same body.
@@ -387,7 +416,10 @@ as the story says. Three reasons over the other proposed rows:
    `controller.abort()`, and `CONTROLLER-003` has nothing to copy once the
    request lives in a signal-owning hook or machine.
 
-Order after that: `CONTROLLER-003` (one identifier-set check, fixture is the
-binder's own output), `HOOK-003` (needs a return-shape check on effect
-callbacks), `ROUTE-003` (needs the dynamic-segment detection from
-`packages/core/route-resolver.mjs`), then the pages-editor hash made required.
+Then, in the order written on the page: `CONTROLLER-003` (#667; one call-name
+set, fixture is the binder's own output), `HOOK-003` (#668; a return-shape check
+on effect callbacks), `ROUTE-003` (#669; a params-read collector), and the
+pages-editor hash made required (#590). All four are shipped and opt-in. Still
+proposed: a rule that a route's controller calls a `parse<Name>Route` domain
+unit, `STATE-001`'s one-member-per-view render (story #573), and the schema at
+the service boundary (#575).

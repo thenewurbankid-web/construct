@@ -96,7 +96,10 @@ THE LOOP (do this after every change)
    decides every event), STATE-001 (state is a discriminated union on one `status` field, never a bag
    of `loading`/`error`/`data` flags; the violation carries the exact union to write), SERVICE-003
    (a service's `fetch` forwards the caller's `AbortSignal`, so a late response after the request was
-   superseded is dropped) and CLIENT-001 (a `'use client'` file, or one only it imports, must not import
+   superseded is dropped), CONTROLLER-003 (a controller holds no `useState`/`useRef`/`useEffect`/
+   `useMemo`/`useCallback`, it reads the hook live), HOOK-003 (an effect that starts a listener, timer or
+   subscription returns its cleanup), ROUTE-003 (a route forwards `params` whole and never reads
+   `params.id`; a domain unit parses it) and CLIENT-001 (a `'use client'` file, or one only it imports, must not import
    a service, `server-only`, a database/SDK adapter or a non-`NEXT_PUBLIC_` `process.env` read; the fix
    is a server action or a service a server component calls), those appear in the same list and are
    fixed the same way. CLIENT-001 is on (error) in projects created by `construct init`.

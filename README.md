@@ -354,7 +354,13 @@ Most layer rules above are enforced two ways at once, not just one:
   default, opt in with `rules: { STATE-001: warning }`), and `SERVICE-003`
   (a service's `fetch` forwards the caller's `AbortSignal` so a superseded
   request never lands — off by default, opt in with
-  `rules: { SERVICE-003: warning }`).
+  `rules: { SERVICE-003: warning }`), and three more stale-input rules of
+  story #577, each off by default: `CONTROLLER-003` (a controller calls no
+  `useState`/`useRef`/`useEffect`/`useMemo`/`useCallback`, so it binds the hook's
+  live value, never a copy), `HOOK-003` (an effect that adds a listener, timer,
+  subscription or request returns its cleanup) and `ROUTE-003` (a route forwards
+  `params`/`searchParams` whole instead of reading them); see
+  [docs/staleness-by-layer.md](docs/staleness-by-layer.md).
 - **Client boundary** — `CLIENT-001` (*a `'use client'` file cannot import
   server-only code*, #644). A file whose first statement is the `'use client'`
   directive, and every file only reachable through it, ships to the browser, so
