@@ -453,7 +453,7 @@
                       "endpoint",
                       "openapi"
                     ],
-                    "description": "Where a shaped screen reads its data from (#621): local (a typed in-memory store with seed rows: the screen works with no backend), endpoint (fetch /api/<plural>, which must exist; what a step without a source does) or openapi (the path of the matching operation in the project's OpenAPI file, refused when there is none)."
+                    "description": "Where a shaped screen reads its data from (#621): local (a typed in-memory store with seed rows: the screen works with no backend), endpoint (fetch /api/<plural>, which must exist; what a step without a source does) or openapi (the address of the matching operation in the project's OpenAPI file, refused when there is none)."
                   },
                   "llm": {
                     "type": "string",
@@ -545,7 +545,7 @@
                       "endpoint",
                       "openapi"
                     ],
-                    "description": "Where a shaped screen reads its data from (#621): local (a typed in-memory store with seed rows: the screen works with no backend), endpoint (fetch /api/<plural>, which must exist; what a step without a source does) or openapi (the path of the matching operation in the project's OpenAPI file, refused when there is none)."
+                    "description": "Where a shaped screen reads its data from (#621): local (a typed in-memory store with seed rows: the screen works with no backend), endpoint (fetch /api/<plural>, which must exist; what a step without a source does) or openapi (the address of the matching operation in the project's OpenAPI file, refused when there is none)."
                   },
                   "llm": {
                     "type": "string",
@@ -634,7 +634,7 @@
                       "endpoint",
                       "openapi"
                     ],
-                    "description": "Where a shaped screen reads its data from (#621): local (a typed in-memory store with seed rows: the screen works with no backend), endpoint (fetch /api/<plural>, which must exist; what a step without a source does) or openapi (the path of the matching operation in the project's OpenAPI file, refused when there is none)."
+                    "description": "Where a shaped screen reads its data from (#621): local (a typed in-memory store with seed rows: the screen works with no backend), endpoint (fetch /api/<plural>, which must exist; what a step without a source does) or openapi (the address of the matching operation in the project's OpenAPI file, refused when there is none)."
                   },
                   "kind": {
                     "type": "string",

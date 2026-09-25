@@ -115,6 +115,21 @@ test('the q-shape offer: answering it is recorded with the offer as shown and th
   assert.deepEqual([b.chosen, b.outcome.accepted, b.outcome.planValidated], ['scaffold', false, true]);
 });
 
+test('#621: the q-source answer is a decision trace of its own: the offer as shown, the rules suggestion, accepted true or false, the plan validated; unanswered records nothing', async () => {
+  fresh();
+  const shape = { id: 'q-shape', option: 'list' };
+  await post({ text: LIST, answers: [shape] });
+  assert.deepEqual(traces().decisions.map((d) => d.chooser.id), ['requirement.placement.shape'], 'the source question was asked (it is in the offers) but nobody answered it');
+  await post({ text: LIST, answers: [shape, { id: 'q-source', option: 'endpoint' }] });
+  await post({ text: LIST, answers: [shape, { id: 'q-source', option: 'local' }] });
+  const [endpoint, local] = traces().decisions.filter((d) => d.chooser.id === 'requirement.plan.source');
+  assert.deepEqual([endpoint.chosen, endpoint.by, endpoint.options, endpoint.summary.id, endpoint.summary.chosen], ['endpoint', 'person', ['local', 'endpoint'], 'q-source', null]);
+  assert.deepEqual(endpoint.suggestion, { option: 'local', reason: 'first available step' }, 'the decision provider suggested on it like on every other choice');
+  assert.deepEqual(endpoint.outcome, { accepted: false, planValidated: true });
+  assert.deepEqual([local.chosen, local.outcome.accepted, local.outcome.planValidated], ['local', true, true]);
+  assert.equal(JSON.stringify(traces()).includes(root), false, 'no project path in a trace');
+});
+
 test('a placement question is recorded too (a server check with no server block), with the question AS OFFERED', async () => {
   fresh();
   await post({ text: 'A user can click a button safely.', answers: [{ id: 'q-server', option: 'mutation' }] });
