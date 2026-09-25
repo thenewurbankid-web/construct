@@ -125,6 +125,7 @@ export const LIST_FIELDS = Object.freeze({
   types: { shape: 'typeDecl', minItems: 0 },
 });
 export const TOP_LEVEL_REQUIRED = Object.freeze(['version', 'name', 'requirement', 'states', 'events', 'transitions', 'functions']);
+/** Every top-level key a spec may carry; anything else is refused (SPEC-001). */
 export const TOP_LEVEL_FIELDS = Object.freeze(['version', 'name', 'feature', 'requirement', 'outOfScope', 'states', 'events', 'transitions', 'functions', 'types', 'ext']);
 
 const isPlainObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -317,7 +318,9 @@ export const BUILT_IN_TYPES = Object.freeze([
 ]);
 
 /** Parse a type string; exported so the generator asks the same question the validator did. Returns `{ error }` when it is not a valid TypeScript type, else `{ names }`, the
- * root identifier of every type reference in it (`A.B` counts as `A`), in first-seen order. */
+ * root identifier of every type reference in it (`A.B` counts as `A`), in first-seen order.
+ * @param {string} typeStr - a TypeScript type expression, for example `Promise<Session | null>`.
+ * @returns {{ error: string } | { names: string[] }} the parse error, or the root type names it references. */
 export function typeReferences(typeStr) {
   const source = `type T = ${typeStr};`;
   const { diagnostics } = ts.transpileModule(source, { reportDiagnostics: true, compilerOptions: { target: ts.ScriptTarget.Latest } });
