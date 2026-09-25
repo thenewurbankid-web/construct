@@ -2,21 +2,30 @@
 // standing in for github.com/login/oauth and api.github.com; ui/e2e/support/mock-github.mjs), never the real one.
 //
 // A real Express app with the real session gate, the real `/auth/repo/*` routes, the real `/api/github/*` router and
-// the real clone router; ports 49110-49119 (the range this feature's server tests own). Every response and header this
-// file ever sees is kept, and at the end none of them may contain a token the mock issued; the same for the console.
-import { test, before, after } from 'node:test';
+// the real clone router. Every server here (the Cockpit and the mock) listens on port 0, so no test file, no concurrent
+// run and no client socket can ever hold "its" port (#652: a fixed 49122 that was taken hung this file for 29 minutes),
+// and every wait is bounded and names itself (test-utils/bounded.mjs). Every response and header this file ever sees is
+// kept, and at the end none of them may contain a token the mock issued; the same for the console.
+import { test as nodeTest, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import express from 'express';
+import http from 'node:http';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
+import { bounded, closeServer, fetchBounded, listenOn, textBounded, watchdog } from '../../../test-utils/bounded.mjs';
 import { MOCK_CLIENT_ID, MOCK_CLIENT_SECRET, startMockGithub } from '../../e2e/support/mock-github.mjs';
 import { SESSION_COOKIE, createAuth, resolveAuthConfig, signValue } from './auth.mjs';
 import { createCloneJobs } from './cloneJobs.mjs';
 import { createCloneRouter } from './cloneApi.mjs';
 import { REPO_STATE_COOKIE, createGithubRouter, mountRepoAuthRoutes } from './githubRepoApi.mjs';
 import { createRepoConnections, resolveRepoConnectionConfig, sessionKeyOf } from './repoConnection.mjs';
+
+// Each test may take this long as a whole; every single wait inside is bounded far tighter (WAIT_MS).
+const TEST_MS = 60_000;
+const WAIT_MS = 10_000;
+const test = (name, fn) => nodeTest(name, { timeout: TEST_MS }, fn);
 
 const ORIGIN = 'http://localhost:3000';
 const SECRET = 'e2e-session-secret-not-a-real-one-0123456789';
@@ -42,8 +51,15 @@ const jar = () => {
   };
 };
 
-async function boot({ port, mockPort, mockOpts = {}, enabled = true, workspace = null, localRoot = null }) {
-  const mock = await startMockGithub({ port: mockPort, repos: REPOS, installations: 2, ...mockOpts });
+const booted = []; // every server this file started, so `after` can close what a failed test left open
+
+async function boot({ mockOpts = {}, enabled = true, workspace = null, localRoot = null } = {}) {
+  const mock = await bounded(startMockGithub({ port: 0, repos: REPOS, installations: 2, ...mockOpts }), WAIT_MS, 'the mock GitHub to listen');
+  // The Cockpit's port is needed before the app exists (it is in the OAuth callback URL), so bind first, attach the app after.
+  const server = http.createServer();
+  const closeAll = async () => { await closeServer(server, { what: 'the Cockpit test server to close' }).catch(() => {}); await bounded(mock.close(), WAIT_MS, 'the mock GitHub to close').catch(() => {}); };
+  booted.push(closeAll);
+  const port = await listenOn(server, { what: 'the Cockpit test server' }).catch(async (e) => { await closeAll(); throw e; });
   const env = {
     ...(enabled ? { CONSTRUCT_GITHUB_REPO_CLIENT_ID: MOCK_CLIENT_ID, CONSTRUCT_GITHUB_REPO_CLIENT_SECRET: MOCK_CLIENT_SECRET } : {}),
     CONSTRUCT_E2E_GITHUB_REPO_OAUTH_BASE: mock.origin,
@@ -67,12 +83,11 @@ async function boot({ port, mockPort, mockOpts = {}, enabled = true, workspace =
     jobs = createCloneJobs({ getRoot: () => workspace, localRoot, loginToken: (key) => connections.acquire(key) });
     app.use('/api/clone', createCloneRouter({ jobs, clientOrigin: ORIGIN }));
   }
-  const server = app.listen(port, '127.0.0.1');
-  await new Promise((r) => server.once('listening', r));
+  server.on('request', app);
   const base = `http://127.0.0.1:${port}`;
   const call = async (method, url, { cookies, headers = {}, body, redirect = 'manual' } = {}) => {
-    const res = await fetch(`${base}${url}`, { method, redirect, headers: { ...(body !== undefined ? { 'content-type': 'application/json' } : {}), ...(cookies ? { cookie: cookies.header() } : {}), ...headers }, body: body === undefined ? undefined : JSON.stringify(body) });
-    const text = await res.text();
+    const res = await fetchBounded(`${base}${url}`, { method, redirect, headers: { ...(body !== undefined ? { 'content-type': 'application/json' } : {}), ...(cookies ? { cookie: cookies.header() } : {}), ...headers }, body: body === undefined ? undefined : JSON.stringify(body) }, { ms: WAIT_MS, what: `${method} ${url} on the Cockpit test server` });
+    const text = await textBounded(res, `${method} ${url}`, WAIT_MS);
     transcript.push(`${method} ${url} -> ${res.status}\n${[...res.headers].map(([k, v]) => `${k}: ${v}`).join('\n')}\n${text}`);
     cookies?.take(res);
     let json = null;
@@ -85,13 +100,13 @@ async function boot({ port, mockPort, mockOpts = {}, enabled = true, workspace =
   const connect = async (cookies) => {
     const start = await call('GET', '/auth/repo/start', { cookies });
     assert.equal(start.status, 302, start.text);
-    const authorize = await fetch(start.headers.get('location'), { redirect: 'manual' });
+    const authorize = await fetchBounded(start.headers.get('location'), { redirect: 'manual' }, { ms: WAIT_MS, what: 'the mock GitHub authorize redirect' });
     assert.equal(authorize.status, 302);
     const back = new URL(authorize.headers.get('location'));
     const cb = await call('GET', `${back.pathname}${back.search}`, { cookies });
     return { start, back, cb };
   };
-  return { mock, connections, auth, app, jobs, base, call, session, connect, jar, close: async () => { connections.close(); server.closeAllConnections?.(); await new Promise((r) => server.close(r)); await mock.close(); } };
+  return { mock, connections, auth, app, jobs, base, call, session, connect, jar, close: async () => { connections.close(); await closeAll(); } };
 }
 
 before(() => {
@@ -100,12 +115,14 @@ before(() => {
     console[m] = (...a) => { consoleLines.push(a.map(String).join(' ')); };
   }
 });
-after(() => {
+after(async () => {
   Object.assign(console, origConsole);
+  for (const close of booted) await close(); // a test that failed before its own `finally` must not leave a server holding the process open
+  watchdog(10_000, 'githubRepoApi.test.mjs');
 });
 
 test('disabled (no CONSTRUCT_GITHUB_REPO_CLIENT_ID/SECRET): invisible. status says only enabled:false, every other route is a 404 and GitHub is never called', async () => {
-  const t = await boot({ port: 49110, mockPort: 49111, enabled: false });
+  const t = await boot({ enabled: false });
   try {
     const cookies = t.session();
     assert.deepEqual((await t.call('GET', '/api/github/status', { cookies })).json, { ok: true, enabled: false, connected: false });
@@ -117,7 +134,7 @@ test('disabled (no CONSTRUCT_GITHUB_REPO_CLIENT_ID/SECRET): invisible. status sa
 });
 
 test('the routes sit below the session gate: no session is a 401 (and /auth/repo/start does not start anything)', async () => {
-  const t = await boot({ port: 49112, mockPort: 49113 });
+  const t = await boot();
   try {
     for (const [m, u] of [['GET', '/api/github/status'], ['GET', '/api/github/repos'], ['POST', '/api/github/disconnect']]) {
       assert.equal((await t.call(m, u, { body: m === 'POST' ? {} : undefined })).status, 401, `${m} ${u}`);
@@ -131,7 +148,7 @@ test('the routes sit below the session gate: no session is a 401 (and /auth/repo
 });
 
 test('the whole connect flow: start -> GitHub -> callback, then status shows the account, repos lists, disconnect ends it and revokes', async () => {
-  const t = await boot({ port: 49114, mockPort: 49115 });
+  const t = await boot();
   try {
     const cookies = t.session('alice');
     assert.deepEqual((await t.call('GET', '/api/github/status', { cookies })).json, { ok: true, enabled: true, connected: false });
@@ -141,7 +158,7 @@ test('the whole connect flow: start -> GitHub -> callback, then status shows the
     const authorize = new URL(start.headers.get('location'));
     assert.equal(authorize.origin, t.mock.origin);
     assert.equal(authorize.searchParams.get('client_id'), MOCK_CLIENT_ID);
-    assert.equal(authorize.searchParams.get('redirect_uri'), 'http://127.0.0.1:49114/auth/repo/callback');
+    assert.equal(authorize.searchParams.get('redirect_uri'), `${t.base}/auth/repo/callback`);
     assert.ok(authorize.searchParams.get('state').length >= 20);
     assert.ok(!authorize.toString().includes(MOCK_CLIENT_SECRET));
     const stateCookie = start.headers.getSetCookie().find((c) => c.startsWith(`${REPO_STATE_COOKIE}=`));
@@ -185,7 +202,7 @@ test('the whole connect flow: start -> GitHub -> callback, then status shows the
 });
 
 test('CSRF state: single use, bound to the session and to the browser, short-lived; refusals say nothing about why', async () => {
-  const t = await boot({ port: 49116, mockPort: 49117 });
+  const t = await boot();
   try {
     // 1. Replay: the same callback URL twice.
     const alice = t.session('alice');
@@ -253,7 +270,7 @@ test('CSRF state: single use, bound to the session and to the browser, short-liv
 });
 
 test('a foreign browser Origin is refused on every /api/github route; the Cockpit origin and no Origin pass', async () => {
-  const t = await boot({ port: 49118, mockPort: 49119 });
+  const t = await boot();
   try {
     const cookies = t.session();
     const evil = { origin: 'https://evil.example' };
@@ -266,20 +283,20 @@ test('a foreign browser Origin is refused on every /api/github route; the Cockpi
 });
 
 test('sign-out wipes the connection (and Disconnect twice is harmless)', async () => {
-  const t = await boot({ port: 49120, mockPort: 49121 });
+  const t = await boot();
   try {
     const cookies = t.session('alice');
     await t.connect(cookies);
     assert.equal((await t.call('GET', '/api/github/status', { cookies })).json.connected, true);
     assert.equal((await t.call('POST', '/auth/logout', { cookies, body: {} })).status, 200);
     assert.equal(t.connections.status('alice').connected, false);
-    assert.equal(await t.connections.acquire('alice'), null);
+    assert.equal(await bounded(t.connections.acquire('alice'), WAIT_MS, 'connections.acquire(alice) after sign-out'), null);
     assert.equal((await t.call('POST', '/api/github/disconnect', { cookies: t.session('alice'), body: {} })).status, 200);
   } finally { await t.close(); }
 });
 
 test('an expiring token is refreshed on the server: the mock issues a new one, repos keep working, and the browser sees nothing of it', async () => {
-  const t = await boot({ port: 49122, mockPort: 49123, mockOpts: { expiresIn: 30 } }); // inside the 60 s refresh margin from the start
+  const t = await boot({ mockOpts: { expiresIn: 30 } }); // inside the 60 s refresh margin from the start
   try {
     const cookies = t.session('alice');
     await t.connect(cookies);
@@ -292,7 +309,7 @@ test('an expiring token is refreshed on the server: the mock issues a new one, r
 });
 
 test('an OAuth app (no installations endpoint) lists the person\'s repositories instead', async () => {
-  const t = await boot({ port: 49124, mockPort: 49125, mockOpts: { kind: 'oauth' } });
+  const t = await boot({ mockOpts: { kind: 'oauth' } });
   try {
     const cookies = t.session('alice');
     await t.connect(cookies);
@@ -303,7 +320,7 @@ test('an OAuth app (no installations endpoint) lists the person\'s repositories 
 });
 
 test('a token the provider revoked behind our back: repos answers "connect again" and the store lets go of it', async () => {
-  const t = await boot({ port: 49126, mockPort: 49127 });
+  const t = await boot();
   try {
     const cookies = t.session('alice');
     await t.connect(cookies);
@@ -329,7 +346,7 @@ test('POST /api/clone: useLogin xor token, a foreign host refused, no connection
   g(seed, 'add', '.');
   g(seed, 'commit', '-q', '-m', 'one');
   g(sandbox, 'clone', '-q', '--bare', seed, path.join(fixtures, 'fixture-app.git'));
-  const t = await boot({ port: 49128, mockPort: 49129, workspace, localRoot: fixtures });
+  const t = await boot({ workspace, localRoot: fixtures });
   try {
     const cookies = t.session('alice');
     const url = `file://${path.join(fixtures, 'fixture-app.git')}`;
@@ -357,7 +374,8 @@ test('POST /api/clone: useLogin xor token, a foreign host refused, no connection
     assert.equal(r.status, 202, r.text);
     assert.equal(r.json.job.via, 'login');
     assert.ok(!r.text.includes(token));
-    await new Promise((res) => { const iv = setInterval(() => { if (t.jobs.get(r.json.job.id).state !== 'running') { clearInterval(iv); res(); } }, 50); });
+    let iv;
+    await bounded(new Promise((res) => { iv = setInterval(() => { if (t.jobs.get(r.json.job.id).state !== 'running') res(); }, 50); }), 30_000, 'the clone job to leave "running"').finally(() => clearInterval(iv));
     const job = (await t.call('GET', `/api/clone/${r.json.job.id}`, { cookies })).json.job;
     assert.equal(job.state, 'done', JSON.stringify(job));
     assert.ok(fs.existsSync(path.join(workspace, 'fixture-app', 'README.md')));
@@ -370,7 +388,7 @@ test('POST /api/clone: useLogin xor token, a foreign host refused, no connection
 });
 
 test('GET /auth/repo/start refuses a cross-site navigation (Sec-Fetch-Site: cross-site) without starting anything; same-origin, same-site, none and no header pass', async () => {
-  const t = await boot({ port: 49130, mockPort: 49131 });
+  const t = await boot();
   try {
     const begun = [];
     const orig = t.connections.begin;
@@ -397,7 +415,7 @@ test('GET /auth/repo/start refuses a cross-site navigation (Sec-Fetch-Site: cros
 });
 
 test('GET /api/github/repos: a second request inside the window makes no call to GitHub; Disconnect forgets the listing', async () => {
-  const t = await boot({ port: 49132, mockPort: 49133 });
+  const t = await boot();
   try {
     const cookies = t.session('alice');
     await t.connect(cookies);

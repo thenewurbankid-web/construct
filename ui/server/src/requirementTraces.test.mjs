@@ -1,6 +1,6 @@
 // #643 -- the Requirement route records the closed questions a person answers as decision-trace.v1 records in the state
 // directory (never the project): the answer, the rules suggestion and whether it was taken, and `planValidated` once the plan
-// from those answers validates. Off by `traces: off`, failure-safe, and it never changes a response. Ports 49500-49549 are this
+// from those answers validates. Off by `traces: off`, failure-safe, and it never changes a response. Ports 49500-49509 are this
 // file's (49500 the route on its own).
 import '../../../test-utils/workspaceRoot.mjs';
 import test, { before, after } from 'node:test';

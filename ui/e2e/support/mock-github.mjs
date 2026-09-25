@@ -103,7 +103,8 @@ export async function startMockGithub({ port = 0, kind = 'app', login = 'octo-mo
     }
     return json(404, { message: 'Not Found' });
   });
-  await new Promise((r) => server.listen(port, '127.0.0.1', r));
+  // An 'error' listener: a taken port is a rejection the caller sees (#652), not an uncaught exception and a hang.
+  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', () => { server.off('error', reject); resolve(); }); });
   const origin = `http://127.0.0.1:${server.address().port}`;
   return {
     origin,

@@ -2,7 +2,7 @@
 // a `construct init` project where the plan of "a list of products" is applied through its own commands. Green run, a deliberately
 // broken page (an app failure that names the state), the plan not applied yet (refused, with the reason), a skip that needs a
 // reason, one run at a time, a bounded time, and security (foreign Origin, non-JSON, over the cap, a feature the plan does not
-// name, a plan that is not a plan, no project open). The skip and the result are recorded as decision traces. Ports 49520-49524
+// name, a plan that is not a plan, no project open). The skip and the result are recorded as decision traces. Ports 49520-49522
 // are this file's (49520 the real runner, 49521 a slow fake one).
 import '../../../test-utils/workspaceRoot.mjs';
 import test, { before, after } from 'node:test';
