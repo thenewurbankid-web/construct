@@ -1,15 +1,21 @@
 #!/usr/bin/env node
-import { init, feature, generate, sync, validate, summarize, doctor, create, refactor, research, review, testCommand, template, importCommand, runImportRouteWizard, pipeline, traces, decide } from '../core/cli.mjs';
-import { startRepl } from '../core/repl.mjs';
-import { EXIT_CODES, ConstructError } from '../core/diagnostics.mjs';
-import { USAGE } from '../core/usage.mjs';
 import { getVersion } from './version.mjs';
 
 const [cmd, ...args] = process.argv.slice(2);
 
+// #648: `--version` answers before the engine is loaded (loading it is most of a cold start: about a fifth of a gigabyte
+// and over half a second on a small machine), so the cheapest command stays cheap.
+if (cmd === '--version' || cmd === '-v') {
+  console.log(getVersion());
+  process.exit(0);
+}
+
+const { init, feature, generate, sync, validate, summarize, doctor, create, refactor, research, review, testCommand, template, importCommand, runImportRouteWizard, pipeline, traces, decide } = await import('../core/cli.mjs');
+const { EXIT_CODES, ConstructError } = await import('../core/diagnostics.mjs');
+const { USAGE } = await import('../core/usage.mjs');
+
 try {
-  if (cmd === '--version' || cmd === '-v') console.log(getVersion());
-  else if (cmd === 'init') await init(args);
+  if (cmd === 'init') await init(args);
   else if (cmd === 'feature') await feature(args);
   else if (cmd === 'generate' || cmd === 'g') await generate(args);
   else if (cmd === 'sync') await sync(args);
@@ -28,6 +34,7 @@ try {
   else if (cmd === 'traces') await traces(args);
   else if (cmd === 'decide') await decide(args);
   else if (cmd === 'repl') {
+    const { startRepl } = await import('../core/repl.mjs');
     await startRepl();
     process.exit(0);
   } else {
