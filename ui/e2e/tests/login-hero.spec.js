@@ -177,48 +177,64 @@ test.describe('#406 login hand-off', () => {
   });
 });
 
+// #406 / #665: hold the session probe's answer until the test says so. A fixed delay (the old 700 ms) races the assertions on a
+// loaded machine: the answer lands first, the loading screen is gone, and toBeVisible times out. Held, the loading branch stays on
+// screen exactly as long as the assertions need; `release()` lets the real answer through (call it in a finally, so the page
+// can finish and close cleanly whatever the assertions did).
+async function holdSessionProbe(page) {
+  let release;
+  const held = new Promise((resolve) => { release = resolve; });
+  await page.route('**/auth/session', async (route) => {
+    await held;
+    await route.continue().catch(() => {}); // the page may already be closed when a failed assertion ended the test
+  });
+  return release;
+}
+
 // #406: the shared AnimatedLoader (same brand mark, a faster `busy` loop) replaces the generic
 // `.st-spinner` on the "Checking your session" screen — the one real drop-in site this ticket wires.
 test.describe('#406 AnimatedLoader', () => {
   test('the shared loader appears while the session is being checked', async ({ page }) => {
-    // Slow the session probe down so the loading branch stays on screen long enough to assert on.
-    await page.route('**/auth/session', async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, 700));
-      await route.continue();
-    });
-    await page.goto('/dashboard');
-    const region = page.getByTestId('state-loading');
-    await expect(region).toBeVisible();
-    await expect(region).toHaveAttribute('role', 'status');
-    await expect(region).toContainText('Checking your session');
+    // Hold the session probe so the loading branch stays on screen until every assertion below has run.
+    const release = await holdSessionProbe(page);
+    try {
+      await page.goto('/dashboard', { waitUntil: 'commit' });
+      const region = page.getByTestId('state-loading');
+      await expect(region).toBeVisible();
+      await expect(region).toHaveAttribute('role', 'status');
+      await expect(region).toContainText('Checking your session');
 
-    const loader = page.getByTestId('animated-loader');
-    await expect(loader).toBeVisible();
-    // Decorative here: `state-loading` above is already the one status announcement — the loader
-    // does not add a second, competing one.
-    await expect(loader).toHaveAttribute('aria-hidden', 'true');
-    const mark = loader.getByTestId('animated-logo');
-    await expect(mark).toHaveAttribute('data-motion', 'busy');
-    // The default mark is 'cockpit' (app/brand.css animates its knob, not the wrapper, for `busy` —
-    // same idiom as the always-on idle loop): a real, named animation is actually running.
-    const animated = await mark.locator('[data-part="knob"]').evaluate((el) => getComputedStyle(el).animationName !== 'none');
-    expect(animated, 'busy is a real, named CSS animation').toBe(true);
+      const loader = page.getByTestId('animated-loader');
+      await expect(loader).toBeVisible();
+      // Decorative here: `state-loading` above is already the one status announcement — the loader
+      // does not add a second, competing one.
+      await expect(loader).toHaveAttribute('aria-hidden', 'true');
+      const mark = loader.getByTestId('animated-logo');
+      await expect(mark).toHaveAttribute('data-motion', 'busy');
+      // The default mark is 'cockpit' (app/brand.css animates its knob, not the wrapper, for `busy` —
+      // same idiom as the always-on idle loop): a real, named animation is actually running.
+      const animated = await mark.locator('[data-part="knob"]').evaluate((el) => getComputedStyle(el).animationName !== 'none');
+      expect(animated, 'busy is a real, named CSS animation').toBe(true);
+    } finally {
+      release();
+    }
   });
 
   test('under reduced motion the loader shows a static mark, no animation loop', async ({ browser }) => {
     const ctx = await browser.newContext({ reducedMotion: 'reduce' });
     const page = await ctx.newPage();
-    await page.route('**/auth/session', async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, 700));
-      await route.continue();
-    });
-    await page.goto('/dashboard');
-    const loader = page.getByTestId('animated-loader');
-    await expect(loader).toBeVisible();
-    const mark = loader.getByTestId('animated-logo');
-    await expect(mark).toHaveAttribute('data-motion', 'off');
-    const moving = await mark.locator('svg *').evaluateAll((els) => els.filter((el) => getComputedStyle(el).animationName !== 'none').length);
-    expect(moving, 'no animation runs under reduced motion').toBe(0);
-    await ctx.close();
+    const release = await holdSessionProbe(page);
+    try {
+      await page.goto('/dashboard', { waitUntil: 'commit' });
+      const loader = page.getByTestId('animated-loader');
+      await expect(loader).toBeVisible();
+      const mark = loader.getByTestId('animated-logo');
+      await expect(mark).toHaveAttribute('data-motion', 'off');
+      const moving = await mark.locator('svg *').evaluateAll((els) => els.filter((el) => getComputedStyle(el).animationName !== 'none').length);
+      expect(moving, 'no animation runs under reduced motion').toBe(0);
+    } finally {
+      release();
+      await ctx.close();
+    }
   });
 });
