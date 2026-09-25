@@ -1,0 +1,72 @@
+{
+  "schema": "construct.dataset-bundle.v1",
+  "createdAt": "2026-09-25T12:00:00.000Z",
+  "constructVersion": "fixture",
+  "traceVersion": "decision-trace.v1",
+  "split": {
+    "salt": "split.v1",
+    "modulus": 100,
+    "train": 80,
+    "validation": 10,
+    "test": 10,
+    "rule": "sha256(\"split.v1:\" + record id), first 8 hex digits as a number, mod 100: below 80 train, below 90 validation, else test"
+  },
+  "counts": {
+    "records": 120,
+    "train": 96,
+    "validation": 11,
+    "test": 13,
+    "dropped": 0,
+    "droppedByCode": {},
+    "byChooser": {
+      "requirement.card.noun": {
+        "records": 90,
+        "train": 73,
+        "validation": 9,
+        "test": 8
+      },
+      "requirement.placement.shape": {
+        "records": 30,
+        "train": 23,
+        "validation": 2,
+        "test": 5
+      }
+    }
+  },
+  "chooserIds": [
+    "requirement.card.noun",
+    "requirement.placement.shape"
+  ],
+  "providers": [
+    {
+      "name": "rules",
+      "version": "1"
+    }
+  ],
+  "dateRange": {
+    "from": "2026-09-01T09:00:00.000Z",
+    "to": "2026-09-01T10:59:00.000Z"
+  },
+  "projects": [
+    {
+      "keyHash": "fixtureproject00",
+      "records": 120
+    }
+  ],
+  "datasetHash": "55d26b82295fb64512b37b217a2d0f620e48e2e2f025a0067c20b2e315cb5bd6",
+  "files": {
+    "dataset.jsonl": {
+      "sha256": "55d26b82295fb64512b37b217a2d0f620e48e2e2f025a0067c20b2e315cb5bd6",
+      "bytes": 101273,
+      "records": 120
+    },
+    "schema.json": {
+      "sha256": "7889e001b5e9b35af8a67cbdfc25f35c19345e6cd995710fe9aefa52eab02b44",
+      "bytes": 6012
+    },
+    "README.md": {
+      "sha256": "d791dad7e77ebc30577f68e3860e33f8dc71a15392372d3360868223bae4de8a",
+      "bytes": 1837
+    }
+  }
+}

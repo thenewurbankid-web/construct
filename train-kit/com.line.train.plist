@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd agent template for the training MacBook (#647). NOT installed by Construct and not installed by the kit: copy it, edit the
+  three /Users/YOU paths, then (as your own user, no sudo):
+
+    mkdir -p ~/line-train/inbox ~/line-train/outbox ~/line-train/logs
+    cp com.line.train.plist ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.line.train.plist
+    launchctl kickstart -k gui/$(id -u)/com.line.train      # start now
+    launchctl bootout gui/$(id -u)/com.line.train           # stop and unload
+
+  It runs `train.sh` in its watch mode (the watch flag below) at load and keeps it alive. `caffeinate -i` keeps the Mac from idle-sleeping while the loop runs (it does
+  not stop the display from sleeping). Low priority (Nice 19, background process type), a hard time limit and the 8 GB memory guard
+  are the kit's own (train.sh); TRAIN_REQUIRE_AC=1 refuses to start a job on battery power. No secrets, no ports, no network: the
+  loop only reads the inbox folder and writes the outbox folder.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.line.train</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/caffeinate</string>
+    <string>-i</string>
+    <string>/Users/YOU/line-train/train-kit/train.sh</string>
+    <string>--watch</string>
+    <string>/Users/YOU/line-train/inbox</string>
+    <string>/Users/YOU/line-train/outbox</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin</string>
+    <key>TRAIN_MIN_FREE_GB</key>
+    <string>8</string>
+    <key>TRAIN_TIME_LIMIT</key>
+    <string>3600</string>
+    <key>TRAIN_REQUIRE_AC</key>
+    <string>1</string>
+    <key>TRAIN_INTERVAL</key>
+    <string>60</string>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>30</integer>
+
+  <key>Nice</key>
+  <integer>19</integer>
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>LowPriorityIO</key>
+  <true/>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/YOU/line-train</string>
+  <key>StandardOutPath</key>
+  <string>/Users/YOU/line-train/logs/train.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/YOU/line-train/logs/train.err.log</string>
+</dict>
+</plist>

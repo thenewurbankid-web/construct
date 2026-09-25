@@ -1,0 +1,32 @@
+{
+ "base": null,
+ "createdAt": "2026-09-25T12:00:00.000Z",
+ "datasetHash": "55d26b82295fb64512b37b217a2d0f620e48e2e2f025a0067c20b2e315cb5bd6",
+ "datasetSchema": "construct.dataset-bundle.v1",
+ "featureVersion": "features.v1",
+ "files": {
+  "MODEL_CARD.md": {
+   "bytes": 1626,
+   "sha256": "e2e74744dff5edaa1274ce59fc9a5915077487c0c613f34a609baae9e478a633"
+  },
+  "eval-report.json": {
+   "bytes": 2367,
+   "sha256": "b351c6116be473beb7aba1abf95a54ec81c4b2b318e3b6bc2f25d9cc2f134128"
+  },
+  "features.json": {
+   "bytes": 19296,
+   "sha256": "f40f7d53af53a6376b1c330667944da883389caa6b13fb2877d36b54628e1dfe"
+  }
+ },
+ "kind": "features",
+ "license": "derived from the exporting project's own traces; no third-party weights",
+ "name": "features-lr",
+ "schema": "construct.model-bundle.v1",
+ "seed": 1,
+ "traceVersion": "decision-trace.v1",
+ "trainer": {
+  "name": "train-kit/train_features.py",
+  "version": "1"
+ },
+ "version": "1-55d26b82"
+}

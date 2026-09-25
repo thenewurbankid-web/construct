@@ -1,0 +1,260 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "construct.dataset-bundle.v1",
+  "title": "Construct dataset bundle",
+  "description": "dataset.jsonl holds one line per decision: { split, trace }, keys sorted. manifest.json lists every other file with its sha256.",
+  "line": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "split",
+      "trace"
+    ],
+    "properties": {
+      "split": {
+        "enum": [
+          "train",
+          "validation",
+          "test"
+        ]
+      },
+      "trace": {
+        "$ref": "decision-trace.v1"
+      }
+    }
+  },
+  "trace": {
+    "$id": "decision-trace.v1",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "version",
+      "id",
+      "at",
+      "chooser",
+      "summary",
+      "options",
+      "chosen",
+      "by"
+    ],
+    "properties": {
+      "version": {
+        "const": "decision-trace.v1"
+      },
+      "id": {
+        "type": "string",
+        "pattern": "^dt-[0-9a-f]{24}$",
+        "description": "a hash of chooser, summary, chosen, by and the provider name"
+      },
+      "at": {
+        "type": "string",
+        "description": "ISO time, supplied by the recorder"
+      },
+      "chooser": {
+        "type": "object",
+        "required": [
+          "id",
+          "question"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "question": {
+            "type": "string"
+          }
+        }
+      },
+      "summary": {
+        "type": "object",
+        "description": "the fixed-size, path-free question as it was OFFERED (at most 16384 bytes); chosen is null",
+        "required": [
+          "id",
+          "question",
+          "options"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "question": {
+            "type": "string"
+          },
+          "options": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 5,
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "enabled"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "why": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "chosen": {
+            "type": "null"
+          }
+        }
+      },
+      "options": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "the option ids of the summary, in order"
+      },
+      "chosen": {
+        "type": "string",
+        "description": "one of options, or \"exit\""
+      },
+      "by": {
+        "enum": [
+          "person",
+          "llm",
+          "decision-model"
+        ]
+      },
+      "provider": {
+        "type": "object",
+        "required": [
+          "name",
+          "version"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        }
+      },
+      "suggestion": {
+        "type": "object",
+        "required": [
+          "option",
+          "reason"
+        ],
+        "properties": {
+          "option": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      },
+      "outcome": {
+        "type": "object",
+        "properties": {
+          "planValidated": {
+            "type": "boolean"
+          },
+          "testsPassed": {
+            "type": "boolean"
+          },
+          "reverted": {
+            "type": "boolean"
+          },
+          "accepted": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  },
+  "manifest": {
+    "type": "object",
+    "required": [
+      "schema",
+      "createdAt",
+      "constructVersion",
+      "traceVersion",
+      "split",
+      "counts",
+      "chooserIds",
+      "providers",
+      "projects",
+      "datasetHash",
+      "files"
+    ],
+    "properties": {
+      "schema": {
+        "const": "construct.dataset-bundle.v1"
+      },
+      "createdAt": {
+        "type": "string"
+      },
+      "constructVersion": {
+        "type": "string"
+      },
+      "traceVersion": {
+        "const": "decision-trace.v1"
+      },
+      "split": {
+        "type": "object",
+        "description": "the rule that put each record on a side"
+      },
+      "counts": {
+        "type": "object",
+        "description": "records, per split, dropped (failed re-validation), per chooser"
+      },
+      "chooserIds": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "providers": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "version": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "projects": {
+        "type": "array",
+        "description": "hashed project keys with their record counts; no name, no path"
+      },
+      "datasetHash": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$",
+        "description": "sha256 of dataset.jsonl"
+      },
+      "files": {
+        "type": "object",
+        "description": "name -> { sha256, bytes } for dataset.jsonl, schema.json and README.md"
+      }
+    }
+  },
+  "modelManifest": {
+    "description": "What a model bundle coming back must carry (construct model import): manifest.json with schema construct.model-bundle.v1, the datasetHash of a bundle THIS project exported, and the sha256 of every file."
+  }
+}

@@ -25,3 +25,5 @@ packages/studio/*.tgz
 
 # #648 -- the benchmark report (packages/tools/dev/benchmark.mjs); the committed numbers are benchmark-snapshot.json.
 packages/tools/dev/benchmark-report.json
+__pycache__/
+*.pyc
