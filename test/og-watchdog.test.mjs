@@ -203,3 +203,20 @@ test('og-watchdog: check keeps a claude rc server in its own tmux session, once,
     } finally { spawnSync('tmux', ['kill-session', '-t', rcName], { stdio: 'ignore' }); }
   } finally { r.cleanup(); }
 });
+
+test('og-watchdog: a claude rc already serving the repo (started by hand) is left alone, not started a second time', { skip }, () => {
+  const r = rig('rcforeign', { OG_RC: '1' });
+  fs.writeFileSync(path.join(r.root, 'bin', 'claude'), '#!/bin/bash\nexec -a claude tail rc -F /dev/null\n', { mode: 0o755 });
+  const rcName = `${r.tmuxName}-rc`;
+  try {
+    const p = spawn('bash', ['-c', 'exec -a claude tail rc -F /dev/null'], { cwd: r.repo, detached: true, stdio: 'ignore' });
+    p.unref();
+    try {
+      spawnSync('sleep', ['0.3']);
+      r.run('check');
+      assert.doesNotMatch(r.log(), /started claude rc/);
+      assert.notEqual(spawnSync('tmux', ['has-session', '-t', `=${rcName}`], { stdio: 'ignore' }).status, 0, 'no second rc session');
+      assert.match(r.run('status').stdout, /rc:\s+served by another claude rc/);
+    } finally { try { process.kill(p.pid, 'SIGKILL'); } catch { /* gone */ } }
+  } finally { spawnSync('tmux', ['kill-session', '-t', `=${rcName}`], { stdio: 'ignore' }); r.cleanup(); }
+});

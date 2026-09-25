@@ -216,10 +216,23 @@ start_og() {
 # One `claude rc` in its own detached tmux session, so claude.ai/code and the phone app can start sessions here. Spawned sessions
 # get their own worktree (OG_RC_SPAWN=same-dir to share the tree) and --permission-mode auto, never bypassPermissions.
 # The tmux session exists exactly as long as the process runs, so a missing session means start it.
+# A `claude rc` / `claude remote-control` server for this repo, however it was started (only one may serve a folder).
+rc_pids() {
+  local d p args cwd
+  for d in /proc/[0-9]*; do
+    p="${d#/proc/}"
+    mapfile -d '' args <"$d/cmdline" 2>/dev/null || continue
+    [ "$(basename "${args[0]:-}")" = claude ] || continue
+    case "${args[1]:-}" in rc|remote-control) ;; *) continue ;; esac
+    cwd="$(readlink "$d/cwd" 2>/dev/null)" || continue
+    case "$cwd" in "$REPO" | "$REPO"/*) echo "$p" ;; esac
+  done
+}
 ensure_rc() {
   [ "${OG_RC:-1}" = 0 ] && return 0
   [ -e "$STATE/PAUSE" ] && return 0
   tmux has-session -t "=$RC_TMUX" 2>/dev/null && return 0
+  [ -n "$(rc_pids | tr -d '\n ')" ] && return 0     # already served (by hand, or by another session): a second one refuses to start
   command -v tmux >/dev/null && [ -x "$CLAUDE_BIN" ] || return 0
   tmux new-session -d -s "$RC_TMUX" -c "$REPO" \
     "exec env -u GH_TOKEN -u GITHUB_TOKEN '$CLAUDE_BIN' rc --name '$NAME_PREFIX-rc-$(hostname -s)' --spawn '$RC_SPAWN' --permission-mode auto" 9>&- \
@@ -337,7 +350,7 @@ cmd_status() {
   echo "sessions:  ${pids:-none}  (named $NAME_PREFIX*: $(named_pids | tr '\n' ' ')${pids:+)}"
   echo "activity:  $([ "$act" -gt 0 ] && echo "last transcript write $(((now - act) / 60)) min ago (idle at ${IDLE_OG_MIN} min for OG, ${IDLE_MIN} min otherwise)" || echo "no transcripts found")"
   echo "tmux:      $(tmux has-session -t "=$TMUX_NAME" 2>/dev/null && echo "session '$TMUX_NAME' exists" || echo "no session '$TMUX_NAME'")"
-  echo "rc:        $(tmux has-session -t "=$RC_TMUX" 2>/dev/null && echo "session '$RC_TMUX' running (claude rc, spawn $RC_SPAWN)" || echo "not running")"
+  echo "rc:        $(tmux has-session -t "=$RC_TMUX" 2>/dev/null && echo "session '$RC_TMUX' running (claude rc, spawn $RC_SPAWN)" || { r="$(rc_pids | tr '\n' ' ')"; [ -n "${r// /}" ] && echo "served by another claude rc (pids $r)" || echo "not running"; })"
   echo "paused:    $([ -e "$STATE/PAUSE" ] && echo yes || echo no)"
   echo "recycle:   $(cat "$STATE/recycle" 2>/dev/null || echo idle), $(recycles_in_24h)/${MAX_RECYCLES} in the last 24 h"
   echo "throttle:  $(cat "$STATE/throttle" 2>/dev/null || echo 'never started')  (epoch streak)"
