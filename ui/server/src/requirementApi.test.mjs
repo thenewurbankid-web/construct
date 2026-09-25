@@ -314,7 +314,7 @@ test('a shaped screen is offered its data source; the rules default is local, or
   assert.deepEqual(plain.offers.map((q) => q.id), ['q-shape'], 'no shape chosen, no shaped unit, no data source to ask about');
 
   const asked = (await post({ text: sentence, answers: [shape] })).body;
-  assert.deepEqual(asked.offers.map((q) => [q.id, q.source, q.default, q.chosen, q.options.map((o) => o.id)]), [['q-shape', 'placement', 'list', 'list', ['list', 'scaffold']], ['q-source', 'plan', 'local', null, ['local', 'endpoint']], ['q-verify', 'plan', 'types', null, ['types', 'types-build', 'none']]]);
+  assert.deepEqual(asked.offers.map((q) => [q.id, q.source, q.default, q.chosen, q.options.map((o) => o.id)]), [['q-shape', 'placement', 'list', 'list', ['list', 'scaffold']], ['q-source', 'plan', 'local', null, ['local', 'endpoint']], ['q-states', 'plan', 'default', null, ['default', 'custom', 'skip-empty', 'skip-all']], ['q-verify', 'plan', 'types', null, ['types', 'types-build', 'none']]]);
   assert.equal(asked.suggestions['q-source'].option, 'local', 'the decision provider suggests on it like on every other offer');
   assert.deepEqual(asked.open, [], 'the offer never blocks the plan');
   assert.ok(unitSteps(asked).every((s) => s.args.source === 'local'));
@@ -371,4 +371,28 @@ test('the real route table: 401 without a session, and mounted after the session
   assert.ok(gate > 0 && src.indexOf("app.use('/api/requirement'") > gate);
   const projectGate = src.slice(src.indexOf('requireProject(),') - 400, src.indexOf('requireProject(),'));
   assert.ok(projectGate.includes("'/api/requirement'"), 'listed in the project-open gate');
+});
+
+test('#622: a list plan is asked q-states: default views unless answered; the answer changes every unit and the proof, a skip is a warning, and it is recorded', async () => {
+  const sentence = 'A user wants to see a list of products';
+  const shape = { id: 'q-shape', option: 'list' };
+  const statesIn = (body) => [...new Set(body.plan.steps.flatMap((s) => (s.args?.states ? [s.args.states] : [])))];
+  const asked = (await post({ text: sentence, answers: [shape] })).body;
+  const offer = asked.offers.find((q) => q.id === 'q-states');
+  assert.deepEqual([offer.source, offer.default, offer.chosen, offer.options.map((o) => [o.id, o.enabled])], ['plan', 'default', null, [['default', true], ['custom', true], ['skip-empty', true], ['skip-all', true]]]);
+  assert.deepEqual(asked.offers.map((q) => q.id).slice(0, 3), ['q-shape', 'q-source', 'q-states'], 'asked beside the data source');
+  assert.equal(asked.suggestions['q-states'].option, 'default', 'the default is the first option, so the rules provider suggests it');
+  assert.deepEqual([statesIn(asked), asked.warnings], [[], []], 'unanswered: the plan is what it always was, with no warning');
+  const skipped = (await post({ text: sentence, answers: [shape, { id: 'q-states', option: 'skip-empty' }] })).body;
+  assert.deepEqual(statesIn(skipped), ['skip-empty']);
+  assert.equal(skipped.offers.find((q) => q.id === 'q-states').chosen, 'skip-empty');
+  assert.deepEqual(skipped.placement.decisions.at(-1), { question: 'q-states', option: 'skip-empty', by: 'person' });
+  assert.match(skipped.warnings.join(' '), /Products screen has no view for its empty state/, 'a skip is a warning beside the plan, never a block');
+  assert.equal(validatePlan(skipped.plan).valid, true);
+  assert.deepEqual(statesIn((await post({ text: sentence, answers: [shape, { id: 'q-states', option: 'custom' }] })).body), ['custom']);
+  assert.equal((await post({ text: sentence, answers: [shape, { id: 'q-states', option: 'Hidden' }] })).status, 400, 'an option id has a fixed shape');
+  const refused = await post({ text: sentence, answers: [shape, { id: 'q-states', option: 'hidden' }] });
+  assert.equal(refused.body.placement.ok, false, 'a well-formed option the question does not have is refused with the choices, never replaced');
+  assert.match(refused.body.placement.errors.at(-1).message, /Options: default, custom, skip-empty, skip-all/);
+  assert.equal((await post({ text: 'A user wants a step by step signup', answers: [{ id: 'q-shape', option: 'wizard' }] })).body.offers.some((q) => q.id === 'q-states'), false, 'a wizard has steps, not fetch states');
 });

@@ -348,3 +348,23 @@ test('traces_stats: an empty project, then counts of what was recorded, never a 
   const other = await call('traces_stats', { chooser: 'no-such-chooser' });
   assert.equal(other.body.total, 0);
 });
+
+test('placement_place: how a screen shows its states (#622) is a closed offer, q-states, answered by id and attributed to the client; a skip warns, the notice is left out of the plan', () => withOwnSession(async (call) => {
+  const shape = { id: 'q-shape', option: 'list' };
+  const asked = (await call('placement_place', { text: SENTENCE, answers: [shape] })).body;
+  const offer = asked.offers.find((o) => o.id === 'q-states');
+  assert.deepEqual([offer.default, offer.chosen, offer.options.map((o) => o.id)], ['default', null, ['default', 'custom', 'skip-empty', 'skip-all']]);
+  const filesOf = (body, title) => body.plan.steps.find((s) => s.title === title).files.map((f) => f.path.split('/').pop());
+  assert.ok(filesOf(asked, 'Create component Products').includes('ProductsNotice.component.tsx'), 'unanswered: the default views');
+  assert.equal(asked.warnings.some((w) => /no view/.test(w)), false);
+  const custom = (await call('placement_place', { text: SENTENCE, answers: [shape, { id: 'q-states', option: 'custom' }] })).body;
+  assert.deepEqual(custom.decisions.at(-1), { question: 'q-states', option: 'custom', by: 'llm', provider: 'claude-code' });
+  assert.deepEqual(filesOf(custom, 'Create component Products').filter((f) => /Loading|Empty|Failed/.test(f)).sort(), ['ProductsEmpty.component.tsx', 'ProductsFailed.component.tsx', 'ProductsLoading.component.tsx']);
+  const skipped = (await call('placement_place', { text: SENTENCE, answers: [shape, { id: 'q-states', option: 'skip-all' }] })).body;
+  assert.equal(skipped.offers.find((o) => o.id === 'q-states').chosen, 'skip-all');
+  assert.equal(filesOf(skipped, 'Create component Products').some((f) => /Notice/.test(f)), false, 'nothing uses the notice');
+  assert.match(skipped.warnings.join(' '), /no view for any state/);
+  const refused = await call('placement_place', { text: SENTENCE, answers: [shape, { id: 'q-states', option: 'hidden' }] });
+  assert.equal(refused.isError, true);
+  assert.equal(refused.body.error.code, 'PLAN_REFUSED');
+}));

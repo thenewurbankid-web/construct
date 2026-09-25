@@ -200,3 +200,15 @@ test('#659: the q-steps answer is a decision trace of its own (the offer as show
   assert.deepEqual([steps.suggestion.option, steps.outcome.accepted, steps.outcome.planValidated], ['three', false, true]);
   assert.equal(JSON.stringify(traces()).includes(root), false, 'no project path in a trace');
 });
+
+test('#622: the q-states answer is a decision trace of its own (the offer as shown, the rules suggestion, accepted or not, the plan validated); unanswered records nothing', async () => {
+  fresh();
+  const LIST_SENTENCE = 'A user wants to see a list of products';
+  await post({ text: LIST_SENTENCE, answers: [{ id: 'q-shape', option: 'list' }] });
+  assert.equal(traces()?.decisions?.some((d) => d.chooser.id === 'requirement.plan.states') ?? false, false, 'the question was asked but nobody answered it');
+  await post({ text: LIST_SENTENCE, answers: [{ id: 'q-shape', option: 'list' }, { id: 'q-states', option: 'skip-all' }] });
+  const states = traces().decisions.find((d) => d.chooser.id === 'requirement.plan.states');
+  assert.deepEqual([states.chosen, states.by, states.options, states.summary.id, states.summary.chosen], ['skip-all', 'person', ['default', 'custom', 'skip-empty', 'skip-all'], 'q-states', null]);
+  assert.deepEqual([states.suggestion.option, states.outcome.accepted, states.outcome.planValidated], ['default', false, true]);
+  assert.equal(JSON.stringify(traces()).includes(root), false, 'no project path in a trace');
+});
