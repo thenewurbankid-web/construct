@@ -1341,7 +1341,8 @@ export async function researchWorkflow(args) {
  * cannot be read or is not JSON). With `--generate` (#593, R2): on ANY violation, prints exactly the
  * same report and writes nothing (the generation step never even starts); on an accepted spec, calls
  * `specToCode.mjs`'s `generateFromSpec` to write the workflow (with its typed state union and named
- * guard stubs) and one function stub per `functions[]` entry, never overwriting a file that already
+ * guard stubs, event payloads typed, declared `types` in the feature's types.ts), one function stub per
+ * `functions[]` entry and the machine's locked every-path unit test, never overwriting a file that already
  * exists.
  *
  * @param {string[]} args `<file>` plus optional `--generate`, `--feature <name>` (used only when the spec has no `feature` field), `--format json|text` (default text) and `--dir <path>` (where a relative `<file>` is resolved from, and the project root `--generate` writes into; default cwd).
@@ -1383,8 +1384,11 @@ export async function researchSpec(args) {
   }
   console.log(renderMachineSpecReport(result, { format }));
   for (const f of gen.written) console.log(`Wrote ${f}`);
+  for (const f of gen.updated) console.log(`Updated ${f}`);
   for (const f of gen.skipped) console.log(`Skipped ${f} (already exists, not overwritten)`);
+  for (const f of gen.tests.unchanged) console.log(`Unchanged ${f}`);
   console.log(`Generated feature "${gen.feature}": ${gen.written.length} file(s) written, ${gen.skipped.length} skipped.`);
+  if (gen.tests.missingDependencies.length) console.log(`Note: the generated test needs ${gen.tests.missingDependencies.join(', ')} in this project: npm install -D ${gen.tests.missingDependencies.join(' ')}`);
   return false;
 }
 

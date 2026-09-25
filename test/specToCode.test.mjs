@@ -5,20 +5,16 @@
 // never-overwrite/idempotency, and the usage errors (--generate on a failing spec writes nothing;
 // no feature name is exit 2).
 //
-// A real `tsc` check of the generated project is deliberately NOT run here (unlike
-// test/typed-contracts-tsc.test.mjs's fixed example files): the worked example's own function types
-// reference a `Session` type the spec never declares or imports (see docs/machine-spec.md's "Known
-// gaps"), so a real project-wide tsc pass would fail on that pre-existing gap, not on anything this
-// generator gets wrong -- and running one for real would also need `npm install` in a fresh temp
-// project, which this repo's machine limits (docs/DELEGATION.md) rule out per test. Instead this
-// asserts the exact stub text (import specifier, precondition/postcondition/req comments, the
-// re-printed input/output types, the throw) and separately proves the generated project passes the
-// real, no-LLM `construct validate`.
+// #576 (acceptance 3): the generated project is also compiled with the repo's real `tsc` (strict, the
+// typed-contracts flags; `node_modules` of the repo linked into the temp project, no install) and its
+// every-path unit test is run for real (transpiled with the compiler API, since this repo has no tsx),
+// on top of asserting the exact stub text and passing the real, no-LLM `construct validate`.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import ts from 'typescript';
 import { fileURLToPath } from 'node:url';
 import { buildWorkflowDescriptor, functionStubSource, generateFromSpec } from '../packages/core/research/specToCode.mjs';
 import { validateArchitecture } from '../packages/core/architecture-enforcer.mjs';
@@ -114,7 +110,7 @@ test('functionStubSource: a "void" output type prints as plain void, not an obje
 // generateFromSpec: filesystem-backed, end to end via validateArchitecture
 // ---------------------------------------------------------------------------
 
-test('generateFromSpec: the worked example writes a full feature scaffold, the workflow, its state union, and three function stubs', () => {
+test('generateFromSpec: the worked example writes a full feature scaffold, the workflow, its state union, three function stubs and the every-path unit test', () => {
   const dir = tmpProject();
   const result = generateFromSpec(dir, example(), {});
   assert.equal(result.feature, 'auth');
@@ -125,6 +121,7 @@ test('generateFromSpec: the worked example writes a full feature scaffold, the w
     'features/auth/services/openDashboard.ts',
     'features/auth/services/recordFailedAttempt.ts',
     'features/auth/services/verifyCredentials.ts',
+    'features/auth/tests/generated/signinwithretry--every-path.test.ts',
     'features/auth/types.ts',
     'features/auth/workflows/SignInWithRetryWorkflow.tsx',
     'features/auth/workflows/SignInWithRetryWorkflowState.ts',
@@ -132,6 +129,61 @@ test('generateFromSpec: the worked example writes a full feature scaffold, the w
   for (const f of result.written) assert.equal(fs.existsSync(path.join(dir, f)), true, f);
   assert.equal(result.workflow.file, 'features/auth/workflows/SignInWithRetryWorkflow.tsx');
   assert.deepEqual(result.workflow.events, ['SUBMIT', 'VALID', 'INVALID', 'RETRY']);
+  // The declared type lands in the feature's types.ts, and the test regions are declared for the locked test.
+  assert.deepEqual(result.types, { file: 'features/auth/types.ts', added: ['Session'], existing: [] });
+  assert.match(fs.readFileSync(path.join(dir, 'features/auth/types.ts'), 'utf8'), /export type Session = \{\n\s+userId: string;\n\s+token: string;\n\};/);
+  assert.match(fs.readFileSync(path.join(dir, 'architecture.yml'), 'utf8'), /frozen:\n {2}- features\/\*\/tests\/generated\/\*\*/);
+  assert.equal(result.updated.length, 2);
+  assert.deepEqual(result.tests.written, ['features/auth/tests/generated/signinwithretry--every-path.test.ts']);
+});
+
+test('generateFromSpec: an event payload is typed in the generated union, and declared types are imported, not repeated', () => {
+  const dir = tmpProject();
+  generateFromSpec(dir, example(), {});
+  const workflow = fs.readFileSync(path.join(dir, 'features/auth/workflows/SignInWithRetryWorkflow.tsx'), 'utf8');
+  assert.match(workflow, /import type \{ Session \} from '\.\.\/types';/);
+  assert.match(workflow, /type: "SUBMIT";\s+email: string;\s+password: string;/);
+  assert.match(workflow, /type: "VALID";\s+session: Session;/);
+  assert.match(workflow, /\{\s+type: "RETRY";\s+\}/);
+  const stub = fs.readFileSync(path.join(dir, 'features/auth/services/openDashboard.ts'), 'utf8');
+  assert.match(stub, /import type \{ Session \} from '\.\.\/types';/);
+});
+
+/** The compiler flags of test/typed-contracts-tsc.test.mjs, over the generated project's own files. */
+function tsc(dir) {
+  fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(dir, 'node_modules'));
+  const files = [];
+  const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const f = path.join(d, e.name); if (e.isDirectory()) walk(f); else if (/\.tsx?$/.test(e.name)) files.push(f); } };
+  walk(path.join(dir, 'features'));
+  return spawnSync(path.join(REPO_ROOT, 'node_modules', '.bin', 'tsc'), [
+    '--noEmit', '--strict', '--noImplicitReturns', '--target', 'ES2022', '--module', 'ES2022', '--moduleResolution', 'bundler',
+    '--jsx', 'react-jsx', '--allowImportingTsExtensions', '--typeRoots', path.join(REPO_ROOT, 'node_modules', '@types'), '--types', 'react,node', ...files,
+  ], { cwd: dir, encoding: 'utf8' });
+}
+
+test('generateFromSpec: the generated project (workflow, state union, stubs, unit test) compiles with tsc --strict and its unit test passes', () => {
+  const dir = tmpProject();
+  generateFromSpec(dir, example(), {});
+  const compiled = tsc(dir);
+  assert.equal(compiled.status, 0, `tsc said:\n${compiled.stdout}${compiled.stderr}`);
+
+  // Run the generated every-path test for real: transpile the workflow and the test to .mjs (no tsx in this repo) and node --test it.
+  const out = makeTempDir('construct-spec-unitrun-');
+  fs.mkdirSync(path.join(out, 'workflows'), { recursive: true });
+  fs.mkdirSync(path.join(out, 'tests', 'generated'), { recursive: true });
+  fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(out, 'node_modules'));
+  const opts = { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } };
+  const wfDir = path.join(dir, 'features', 'auth', 'workflows');
+  for (const f of fs.readdirSync(wfDir)) fs.writeFileSync(path.join(out, 'workflows', f.replace(/\.tsx?$/, '.mjs')), ts.transpileModule(fs.readFileSync(path.join(wfDir, f), 'utf8'), { ...opts, fileName: f }).outputText);
+  const name = 'signinwithretry--every-path.test.ts';
+  const src = fs.readFileSync(path.join(dir, 'features', 'auth', 'tests', 'generated', name), 'utf8');
+  const testFile = path.join(out, 'tests', 'generated', name.replace(/\.ts$/, '.mjs'));
+  fs.writeFileSync(testFile, ts.transpileModule(src, { ...opts, fileName: name }).outputText.replace(/from "\.\.\/\.\.\/workflows\/([^"]+)"/, 'from "../../workflows/$1.mjs"'));
+  const env = { ...process.env };
+  delete env.NODE_TEST_CONTEXT; // otherwise node's runner sees a nested `--test` and skips the file
+  const ran = spawnSync(process.execPath, ['--test', testFile], { encoding: 'utf8', env });
+  assert.equal(ran.status, 0, ran.stdout + ran.stderr);
+  assert.match(ran.stdout, /# pass [1-9]/);
 });
 
 test('generateFromSpec: the generated project passes the real construct validate cleanly', () => {
@@ -151,8 +203,11 @@ test('generateFromSpec: a second call with the same spec writes nothing new (nev
   // re-reported on a later call -- once the feature directory exists at all, it's out of scope for
   // this command's own per-run skipped/written accounting. Everything THIS command itself owns
   // (the workflow, its state union, the function stubs) is reported skipped, unchanged.
-  const ownFiles = first.written.filter((f) => !['features/auth/types.ts', 'features/auth/index.ts'].includes(f));
-  assert.deepEqual(second.skipped.sort(), ownFiles.sort());
+  const ownFiles = first.written.filter((f) => !['features/auth/types.ts', 'features/auth/index.ts', 'features/auth/tests/generated/signinwithretry--every-path.test.ts'].includes(f));
+  // The declared type is reported as already there; the unit test is byte-identical, so unchanged, not rewritten.
+  assert.deepEqual(second.skipped.sort(), [...ownFiles, 'features/auth/types.ts#Session'].sort());
+  assert.deepEqual(second.updated, []);
+  assert.deepEqual(second.tests.unchanged, ['features/auth/tests/generated/signinwithretry--every-path.test.ts']);
   for (const [f, content] of Object.entries(bytesBefore)) assert.equal(fs.readFileSync(path.join(dir, f), 'utf8'), content, f);
 });
 
@@ -164,6 +219,20 @@ test('generateFromSpec: a hand-written file already at a target path is left unt
   assert.ok(result.skipped.includes('features/auth/services/verifyCredentials.ts'));
   assert.ok(!result.written.includes('features/auth/services/verifyCredentials.ts'));
   assert.equal(fs.readFileSync(path.join(dir, 'features', 'auth', 'services', 'verifyCredentials.ts'), 'utf8'), '// hand-written, never touch me\n');
+});
+
+test('generateFromSpec: a type already declared in types.ts is left as written and reported; a half-declared test region refuses before any write', () => {
+  const dir = tmpProject();
+  fs.mkdirSync(path.join(dir, 'features', 'auth'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'features', 'auth', 'types.ts'), 'export interface Session { hand: "written" }\n');
+  const result = generateFromSpec(dir, example(), {});
+  assert.deepEqual(result.types, { file: 'features/auth/types.ts', added: [], existing: ['Session'] });
+  assert.equal(fs.readFileSync(path.join(dir, 'features', 'auth', 'types.ts'), 'utf8'), 'export interface Session { hand: "written" }\n');
+
+  const half = tmpProject();
+  fs.appendFileSync(path.join(half, 'architecture.yml'), 'frozen:\n  - something/else/**\n');
+  assert.throws(() => generateFromSpec(half, example(), {}), /already has frozen/);
+  assert.equal(fs.existsSync(path.join(half, 'features')), false);
 });
 
 test('generateFromSpec: --feature is the fallback when the spec has no "feature" field', () => {
@@ -197,7 +266,10 @@ test('construct research spec --generate: CLI writes the feature end to end and 
   assert.equal(res.status, EXIT_CODES.OK, res.stderr);
   assert.match(res.stdout, /Wrote features\/auth\/workflows\/SignInWithRetryWorkflow\.tsx/);
   assert.match(res.stdout, /Wrote features\/auth\/services\/verifyCredentials\.ts/);
-  assert.match(res.stdout, /Generated feature "auth": 7 file\(s\) written, 0 skipped\./);
+  assert.match(res.stdout, /Wrote features\/auth\/tests\/generated\/signinwithretry--every-path\.test\.ts/);
+  assert.match(res.stdout, /Updated architecture\.yml \(declared frozen and nonLayer/);
+  assert.match(res.stdout, /Updated features\/auth\/types\.ts \(added Session\)/);
+  assert.match(res.stdout, /Generated feature "auth": 8 file\(s\) written, 0 skipped\./);
 
   const validateRes = run(['validate'], dir);
   assert.equal(validateRes.status, EXIT_CODES.OK, validateRes.stdout);

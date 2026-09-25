@@ -4,14 +4,14 @@
 model — breaks an English requirement into states, events, transitions and functions) and everything
 deterministic after it (#576): `construct research spec` refuses a spec that cannot become a real
 machine or that silently dropped a sentence; only an accepted spec goes on to generate the state union,
-the XState machine and the typed function stubs (R2, `--generate`, below). A unit test per machine is
-a separate step, `construct generate tests --unit` (#583), once the workflow exists.
+the XState machine, the typed function stubs and the machine's every-path unit test (R2, `--generate`,
+below). The generated project passes `construct validate` and `tsc --strict`, and its unit test runs.
 
 - Schema: `packages/core/research/machine-spec.v1.schema.json` (draft-07).
 - Validator: `packages/core/research/machine-spec.mjs` (`validateMachineSpec`, `renderMachineSpecReport`).
 - Generator, R2 (#593): `packages/core/research/specToCode.mjs` (`buildWorkflowDescriptor`, `functionStubSource`, `generateFromSpec`).
 - Worked example (passes): `packages/core/research/examples/machine-spec.v1.example.json`.
-- Failing examples, one per refusal: `fixtures/machine-spec/{unreachable-state,untyped-function,uncovered-sentence}.json`.
+- Failing examples, one per refusal: `fixtures/machine-spec/{unreachable-state,untyped-function,uncovered-sentence,unknown-type}.json`.
 
 To draft one with a model, hand it the schema plus the worked example — not instructions. The example
 is the documentation.
@@ -54,6 +54,9 @@ is the documentation.
       "postcondition": "attempts is one higher than the input; exhausted is true exactly when the new count is 3 or more.",
       "req": ["s5"]
     }
+  ],
+  "types": [
+    { "name": "Session", "definition": "{ userId: string; token: string }" }
   ]
 }
 ```
@@ -66,6 +69,7 @@ is the documentation.
 | `events[]` | `id`, optional `payload` (a TypeScript type), `description`. |
 | `transitions[]` | `from`, `to`, `event`, optional `guard` (a named boolean condition), `id`, `description`. |
 | `functions[]` | `name` (a TypeScript identifier), `input` and `output` (TypeScript types; `void` for none), `precondition`, `postcondition`. |
+| `types[]` | Optional named types (`name`, `definition`, `description`) that functions and event payloads may refer to, e.g. `Session`. A type string may name only these, the built-in utility and platform types (`BUILT_IN_TYPES` in `machine-spec.mjs`), or write its shape inline. |
 | `req` | On every state, event, transition and function: the sentence id(s) it came from. |
 | `ext` | Free-form, ignored by validators. |
 
@@ -96,7 +100,7 @@ $ construct research spec fixtures/machine-spec/unreachable-state.json
 1 problem(s) in fixtures/machine-spec/unreachable-state.json — fix them and run again; nothing is generated from a spec that fails.
 ```
 
-## `--generate`, R2 (#593): spec to code
+## `--generate`, R2 (#593, #576): spec to code
 
 On an accepted spec, `--generate` calls `packages/core/research/specToCode.mjs`'s `generateFromSpec`
 to write real code, deterministically, no LLM:
@@ -107,23 +111,36 @@ to write real code, deterministically, no LLM:
   (`SPEC-006` already guarantees the grouping is never ambiguous), guarded entries ordered before the
   unguarded fallback so XState tries them first. Also writes `<Name>WorkflowState.ts` (the typed state
   union and exhaustive matcher).
-- **A named stub per guard**, new in `workflowGenerator.mjs`'s `compileWorkflow` (#593): every `guard`
-  a transition names gets a `setup({ guards: {...} })` entry that returns `false` with a `// TODO:`
-  comment naming the req sentence(s) the guarded transition exists to satisfy — a transition never
+- **Typed events**: an event's `payload` becomes the event's own members in the generated union
+  (`{ type: "SUBMIT"; email: string; password: string }`, XState's flat-event convention; a payload
+  that is not an object literal is intersected, `{ type } & Payload`), and the declared types it names
+  are imported from `../types`.
+- **A named stub per guard**, in `workflowGenerator.mjs`'s `compileWorkflow`: every `guard` a
+  transition names gets a `setup({ guards: {...} })` entry that returns `false` with a `// TODO:`
+  comment naming the req sentence(s) the guarded transition exists to satisfy, so a transition never
   points at a dangling guard name, even before the real predicate is written.
+- **The declared `types`**, appended to `features/<feature>/types.ts` (the feature's shared types,
+  re-exported by its `index.ts`) as `export type Name = ...;`. A name already declared there is left
+  as written and reported.
 - **One function stub per `functions[]` entry**, through `defineService`
-  (`packages/core/typed-contracts/factories.ts`) — the v1 schema has no per-function layer field, so
+  (`packages/core/typed-contracts/factories.ts`): the v1 schema has no per-function layer field, so
   every function lands in the **service** layer; a future schema version could add one. Its
-  `input`/`output` type strings are parsed and re-printed via `workflowGenerator.mjs`'s
-  `parseTypeString` (the same step the workflow's context fields already use); its precondition,
-  postcondition and req sentence text land as comments directly above the stub, which throws rather
-  than returning a fabricated value.
+  `input`/`output` type strings are parsed and re-printed via `parseTypeString`, the declared types
+  they name are imported from `../types`, its precondition, postcondition and req sentence text land as
+  comments directly above the stub, and the body throws rather than returning a fabricated value.
+- **The machine's every-path unit test**, by calling `construct generate tests --unit` (#583) for the
+  feature: a locked `features/<feature>/tests/generated/<machine>--every-path.test.ts` that walks the
+  machine with `@xstate/graph`. The first run declares the `frozen:` and `nonLayer:` test regions in
+  `architecture.yml` (as `create proof` does; a half-declared project is refused before anything is
+  written). A feature that already has other machines gets their tests refreshed too, since that command
+  works per feature. The test needs `@xstate/graph`, `xstate` and `tsx` in the project (`construct init`
+  already lists them; otherwise the command prints the `npm install -D` line).
 
-Never overwrites an existing file — same policy as `construct init`'s project scaffold
+Never overwrites an existing file, same policy as `construct init`'s project scaffold
 (`packages/core/scaffold.mjs`) (#497): a target that already exists is reported `Skipped ... (already
 exists, not overwritten)`, so running the same spec against the same project twice writes nothing new
-the second time. `--feature` is used only when the spec itself has no `feature` field; it is a usage
-error (exit 2) for neither to name one.
+the second time (the unit test is byte-identical, so it is `Unchanged`). `--feature` is used only when
+the spec itself has no `feature` field; it is a usage error (exit 2) for neither to name one.
 
 ```
 $ construct research spec packages/core/research/examples/machine-spec.v1.example.json --generate
@@ -135,13 +152,17 @@ Wrote features/auth/workflows/SignInWithRetryWorkflowState.ts
 Wrote features/auth/services/verifyCredentials.ts
 Wrote features/auth/services/recordFailedAttempt.ts
 Wrote features/auth/services/openDashboard.ts
-Generated feature "auth": 7 file(s) written, 0 skipped.
+Wrote features/auth/tests/generated/signinwithretry--every-path.test.ts
+Updated architecture.yml (declared frozen and nonLayer for the generated tests)
+Updated features/auth/types.ts (added Session)
+Generated feature "auth": 8 file(s) written, 0 skipped.
 ```
 
 `features/auth/services/verifyCredentials.ts` (one of the three function stubs):
 
 ```ts
 import { defineService } from '<relative path to @construct/typed-contracts>';
+import type { Session } from '../types';
 
 // Generated by `construct research spec --generate` (#593) from a machine-spec.v1 function entry.
 // Precondition: email and password are both non-empty strings.
@@ -161,19 +182,16 @@ export const verifyCredentials = defineService("verifyCredentials", (props: {
 });
 ```
 
-The generated project passes `construct validate` cleanly (`test/specToCode.test.mjs` runs the real
-validator over it, not a claim).
+The generated project passes `construct validate`, compiles with `tsc --strict` and its every-path unit
+test passes: `test/specToCode.test.mjs` runs all three for real, not as a claim.
 
 ### Known gaps
 
-- `events[].payload` (a TS type string) is not yet threaded into the generated event union —
-  `<Name>Event` stays `{ type: 'EVENT' }` only, same as plain `construct generate workflow --from`
-  today. Typing it is separate follow-up work inside `workflowGenerator.mjs`'s `buildEventUnionType`.
-- A function's `input`/`output` type string can reference a type the stub file never declares or
-  imports (e.g. the worked example's `Session`) — `machine-spec.mjs`'s `SPEC-008` only checks that a
-  type string is present and non-empty, not that every name it references resolves. The stub still
-  compiles as *shape* (parsed and re-printed via `parseTypeString`); wiring it to a real, importable
-  type is a follow-up (R3/R4?) once functions can also carry their own imports.
+- Every function lands in the service layer (no per-function layer field in v1).
+- `--generate` fills nothing in: guards return `false`, stubs throw. Implementing them is the job of a
+  person, or of a model that gets one stub at a time and must pass `validate` and `tsc`.
+- English to spec (drafting the JSON with a model, R3, and the check-and-retry loop) is not built: a spec
+  is written by hand or from a form today.
 
 ## The checks
 
@@ -193,6 +211,8 @@ Structure first (`SPEC-001`), then meaning only once the structure is sound.
 | `SPEC-010` | A sentence neither covered by any item's `req` nor listed under `outOfScope`. |
 | `SPEC-011` | A sentence listed under `outOfScope` that an item still claims. |
 | `SPEC-012` | A transition leaving a `final` state. |
+| `SPEC-013` | A type string (function `input`/`output`, event `payload`, a `types` definition) that is not a valid TypeScript type. |
+| `SPEC-014` | A type string naming a type that is neither built in nor declared under `types` (it would fail `tsc` in the generated code). `expected` names the entry to add. |
 
 The schema and the validator are kept in lockstep by `test/machineSpec.test.mjs` (ajv, dev-only):
 what the schema can express, both refuse; the graph walk and the coverage checks are the validator's own.

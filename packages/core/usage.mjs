@@ -56,9 +56,11 @@ Four capabilities, one CLI:
   construct research spec <file> [--generate [--feature <name>]] [--format json|text] [--dir <path>]
     (checks a machine-spec.v1 file -- an English requirement broken down into states, events, transitions and typed
     functions -- and refuses it with a SPEC-* code, the path and the reason: unreachable state, unknown state/event,
-    untyped function, sentence neither covered nor out of scope; see docs/machine-spec.md; exit 1 on any failure)
-    (--generate: on an accepted spec, writes the workflow (with its typed state union and named guard stubs) and
-    one defineService(...) stub per function, never overwriting an existing file; --feature is used only when the
+    untyped function or a type nothing declares, sentence neither covered nor out of scope; see docs/machine-spec.md;
+    exit 1 on any failure)
+    (--generate: on an accepted spec, writes the workflow (typed state union, typed event payloads, named guard
+    stubs), the declared "types" into the feature's types.ts, one defineService(...) stub per function and the
+    machine's locked every-path unit test, never overwriting an existing file; --feature is used only when the
     spec has no "feature" field, and it is a usage error (exit 2) to have neither)
   construct review <base> <head> [--plan <file>] [--features a,b] [--no-merge-base] [--format json|markdown] [--dir <path>]
   construct review --usage   (read-only PR health between two git refs: scope, unexplained changes, rule regressions, public surface, flow diff; findings split mechanical vs conversation)

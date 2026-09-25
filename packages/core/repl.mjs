@@ -96,15 +96,18 @@ export const HELP_TOPICS = {
       ids) broken down into states, events, guarded transitions and typed
       functions, every item linked back to its sentence by "req". Refuses
       the spec with a SPEC-* code, the path and the reason: unreachable
-      state, unknown state/event, untyped function, a sentence neither
-      covered nor marked out of scope. Deterministic, no LLM; exit 1 on any
-      failure. Schema and worked example: docs/machine-spec.md.
-      --generate: on an accepted spec, writes the workflow (with its typed
-      state union and named guard stubs, each a TODO returning false) and
-      one defineService(...) stub per function (throws, precondition/
-      postcondition and req text as comments) -- never overwrites an
-      existing file. --feature is used only when the spec has no "feature"
-      field; exit 2 when neither is given.
+      state, unknown state/event, untyped function or undeclared type, a
+      sentence neither covered nor marked out of scope. Deterministic, no
+      LLM; exit 1 on any failure. Schema and worked example:
+      docs/machine-spec.md.
+      --generate: on an accepted spec, writes the workflow (typed state
+      union, typed event payloads, named guard stubs, each a TODO returning
+      false), the declared "types" into the feature's types.ts, one
+      defineService(...) stub per function (throws, precondition/
+      postcondition and req text as comments) and the machine's locked
+      every-path unit test -- never overwrites an existing file. --feature
+      is used only when the spec has no "feature" field; exit 2 when
+      neither is given.
       Example: research spec specs/sign-in.machine-spec.json --generate --feature auth
 
   research doctor [--dir <path>]
