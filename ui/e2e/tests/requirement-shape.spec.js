@@ -460,7 +460,7 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
     await expect(group.getByRole('heading', { name: 'Plan questions', level: 2 })).toBeVisible();
     await expect(page.getByTestId('requirement-plan-questions-note')).toContainText("an unanswered one uses the rules' default, and Approve never waits for it");
     await expect(group.getByTestId('requirement-source')).toHaveCount(1);
-    await expect(group.getByTestId('requirement-plan')).toHaveCount(2); // #622: how the screen shows its states, then the verification
+    await expect(group.getByTestId('requirement-plan')).toHaveCount(3); // #622: how the screen shows its states, #629: who may open it, then the verification
     await expect(group.getByTestId('requirement-shape')).toHaveCount(0);
     await expect(group).toHaveAttribute('aria-labelledby', 'rq-plan-questions-h');
     await expect(card.getByRole('button')).toHaveText(['Type-check after the wiring', 'No verification step']); // building is not offered: this project has no build script
@@ -627,7 +627,7 @@ test.describe.serial('Requirement: the screen-shape offer (q-shape) is drawn and
     await readSentence(page, WIZARD);
     await expect(page.getByTestId('requirement-plan-questions')).toHaveCount(0); // no shape chosen, no wizard yet: nothing to ask
     const first = await choose(page, 'wizard');
-    expect(first.body.offers.map((o) => [o.id, o.chosen])).toEqual([['q-shape', 'wizard'], ['q-source', null], ['q-steps', null], ['q-dependency', null], ['q-verify', null]].filter(([id]) => first.body.offers.some((o) => o.id === id)));
+    expect(first.body.offers.map((o) => [o.id, o.chosen])).toEqual([['q-shape', 'wizard'], ['q-source', null], ['q-steps', null], ['q-dependency', null], ['q-access', null], ['q-verify', null]].filter(([id]) => first.body.offers.some((o) => o.id === id)));
     const card = planCard(page, 'q-steps');
     await expect(card).toBeVisible();
     await expect(card.getByRole('heading', { name: 'Wizard steps', level: 2 })).toBeVisible();
