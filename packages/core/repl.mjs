@@ -203,8 +203,14 @@ export const HELP_TOPICS = {
       The flat form of "research summarize". --since <ref> scopes the report
       to only the features touched since that git ref.`,
 
-  doctor: `doctor [--dir <path>]
-      The flat form of "research doctor".`,
+  doctor: `doctor [--format json] [--dir <path>]
+      Check this machine, read-only, no network, no model: Node and npm, the
+      project's architecture.yml, and what the machine can run. It reports
+      the tier (Lite, Cockpit use or Contributor) with the reason, what is
+      switched on and off and why, and the exact command that fixes each
+      missing optional item (ffmpeg, a Playwright browser, Ollama, python3,
+      voice models). Exits 0, or 1 for a Node older than 20 or a machine it
+      cannot read. The flat form of "research doctor".`,
 
   dir: `--dir <path>
       Every command accepts --dir to target a Construct project nested in a

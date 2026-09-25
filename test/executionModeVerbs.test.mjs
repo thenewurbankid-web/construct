@@ -63,21 +63,29 @@ test('summarizeHasJsonContract: only the default JSON view is served by the CLI'
 
 // ---- doctor (research doctor) -------------------------------------------------------------------------------
 
-test('doctor parity: engine and cli output are byte-identical, for a project and for a folder with no architecture.yml', async () => {
+// #648: the doctor document has a `now` part (free memory and disk at this second), which two runs cannot share; everything else is stable.
+const withoutNow = (json) => {
+  const { now, ...rest } = JSON.parse(json);
+  assert.deepEqual(Object.keys(now), ['freeMemoryMb', 'freeDiskMb', 'warnings']);
+  return rest;
+};
+
+test('doctor parity: engine and cli output are identical (apart from the free memory and disk right now), for a project and for a folder with no architecture.yml', async () => {
   for (const dir of [project('architecture-valid-react-spa'), makeTempDir('construct-verbs-empty-')]) {
     const engine = await runDoctor(dir, { mode: 'engine' });
     const cli = await runDoctor(dir, { mode: 'cli' });
-    assert.equal(cli.report, engine.report);
+    assert.deepEqual(withoutNow(cli.report), withoutNow(engine.report));
     assert.equal(cli.doc.architectureYml, fs.existsSync(path.join(dir, 'architecture.yml')));
-    assert.equal(direct(dir, 'doctor', '--format', 'json').stdout, `${engine.report}\n`);
+    assert.deepEqual(withoutNow(direct(dir, 'doctor', '--format', 'json').stdout), withoutNow(engine.report));
   }
 });
 
 test('doctor: the text form is rendered from the same document, so the text CLI and the JSON CLI cannot disagree', async () => {
   const dir = project('architecture-valid-react-spa');
+  const stable = (lines) => lines.filter((l) => !l.startsWith('  Right now:'));
   const text = direct(dir, 'doctor').stdout.replace(/\n$/, '').split('\n');
   const { doc } = await runDoctor(dir, { mode: 'cli' });
-  assert.deepEqual(renderDoctorText(doc), text);
+  assert.deepEqual(stable(renderDoctorText(doc)), stable(text));
 });
 
 // ---- the /api/research route logic ----------------------------------------------------------------------------
@@ -96,7 +104,8 @@ test('handleResearch: cli mode answers with the same output lines and attributio
     assert.equal(e.body.mode, 'engine');
     assert.equal(c.body.mode, 'cli');
     assert.ok(e.body.output.length > 0);
-    assert.deepEqual(c.body.output, e.body.output);
+    const stable = (o) => (Array.isArray(o) ? o.filter((l) => !String(l).startsWith('  Right now:')) : o); // #648: free memory and disk differ between two runs
+    assert.deepEqual(stable(c.body.output), stable(e.body.output));
     assert.deepEqual(c.body.attribution, e.body.attribution);
   }
 });

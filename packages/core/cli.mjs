@@ -47,6 +47,7 @@ import { readTraces } from './decision-trace-store.mjs';
 import { providerInput, getDecisionProvider } from './decision-provider.mjs';
 import { loadDecisionPlugin } from './decision-plugin.mjs';
 import { openDecision, suggestForQuestions } from './decision-project.mjs';
+import { detectMachine, buildMachineReport, renderMachineText, defaultProbes as defaultMachineProbes } from './machine.mjs';
 import { parseRequirement, openQuestion } from './requirement-card.mjs';
 import { placeCard } from './placement.mjs';
 import { traceStats, replayTraces, renderTraceList, renderTraceStats, renderReplay, DEFAULT_MIN_TRACES } from './decision-trace-replay.mjs';
@@ -839,17 +840,23 @@ export async function decide(args) {
 
 /**
  * `construct doctor [--format json] [--dir <path>]`: read-only environment check (node and npm versions, whether
- * the project has an `architecture.yml`, which enforcer modules are installed). `--format json` prints one stable
- * document, `{node, npm, architectureYml, enforcers:[{name, available}]}` (a version is `null` when the tool is
- * missing), instead of the text list; the Cockpit's `cli` execution mode reads that document (#541).
+ * the project has an `architecture.yml`, which enforcer modules are installed) and what the machine can run: memory,
+ * cores, free disk, ffmpeg, a Playwright browser, Ollama on this machine (a 2 second check, never fatal), python3 and
+ * model files, sorted into the documented tiers (Lite, Cockpit use, Contributor) with the reason, what is switched on and
+ * off and why, and the exact fix line for each missing optional item. No model, no network beyond that local check.
+ * `--format json` prints one stable document, `{node, npm, architectureYml, enforcers:[{name, available}], supported, tier,
+ * machine, enabled, disabled, optional, notes, now}` (a version is `null` when the tool is missing), instead of the text
+ * list; the Cockpit's `cli` execution mode reads that document (#541). Exit code 0, except 1 for a Node older than 20 or a
+ * machine that cannot be read (#648).
  *
  * @param {string[]} args Optional `--format json` and `--dir <path>`.
+ * @param {{ probes?: Record<string, Function> }} [deps] Probes for the machine check; tests hand in a fake machine.
  * @returns {Promise<void>} Resolves after printing the report.
  *
  * @example
  * await doctor(['--format', 'json']);
  */
-export async function doctor(args) {
+export async function doctor(args, deps = {}) {
   const root = getRoot(args);
   const versions = {};
   for (const c of ['node', 'npm']) {
@@ -859,20 +866,22 @@ export async function doctor(args) {
   }
   const hasConfig = fs.existsSync(path.join(root, 'architecture.yml'));
   const enforcers = ENFORCER_MODULES.map(({ name, file }) => ({ name, available: fs.existsSync(path.join(packageRoot, file)) }));
-  const report = { node: versions.node, npm: versions.npm, architectureYml: hasConfig, enforcers };
+  const machine = buildMachineReport(await detectMachine(deps.probes ?? defaultMachineProbes({ cwd: root })));
+  const report = { node: versions.node, npm: versions.npm, architectureYml: hasConfig, enforcers, ...machine };
   if (flagValue(args, '--format') === 'json') console.log(JSON.stringify(report, null, 2));
   else for (const line of renderDoctorText(report)) console.log(line);
+  if (!machine.supported) setExitCode(EXIT_CODES.VIOLATIONS);
 }
 
 /**
  * The text form of a `doctor` report, one string per printed line. `construct doctor` prints exactly these lines,
  * and the Cockpit's `cli` execution mode rebuilds them from the JSON document, so both modes show the same text.
  *
- * @param {{node:string|null, npm:string|null, architectureYml:boolean, enforcers:{name:string, available:boolean}[]}} report A `doctor --format json` document.
+ * @param {{node:string|null, npm:string|null, architectureYml:boolean, enforcers:{name:string, available:boolean}[]}} report A `doctor --format json` document (one without the machine part, from before #648, prints only the first five lines).
  * @returns {string[]} The lines `construct doctor` prints.
  */
 export function renderDoctorText(report) {
-  return [
+  const lines = [
     'Construct doctor',
     `node: ${report.node ?? 'missing'}`,
     `npm: ${report.npm ?? 'missing'}`,
@@ -880,6 +889,7 @@ export function renderDoctorText(report) {
     'Enforcer modules:',
     ...report.enforcers.map(({ name, available }) => `  ${name}: ${available ? 'available' : 'not yet available'}`),
   ];
+  return report.tier ? [...lines, ...renderMachineText(report)] : lines;
 }
 
 /**
