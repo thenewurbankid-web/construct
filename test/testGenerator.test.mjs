@@ -368,11 +368,13 @@ test('CLI: construct generate tests <feature> (and --dry-run, and a usage error)
 
 // ---- generator emission -----------------------------------------------------------------------
 
-test('page ingestion emits data-testid on the first element per on<Event> slot, never duplicating or overwriting', () => {
+test('page ingestion emits one data-testid per interactive element, from its own slot, never duplicating or overwriting', () => {
   const src = `export function X() {\n  return (\n    <main>\n      <button onClick={() => {}}>a</button>\n      <button onClick={() => {}}>b</button>\n      <button data-testid="mine" onSubmit={() => {}}>c</button>\n      <input onChange={() => {}} />\n    </main>\n  );\n}\n`;
   const { pageSource, testIds } = transformPristineSource(src, { feature: 'f', name: 'X' });
-  assert.deepEqual(testIds, ['click', 'change']);
-  assert.equal((pageSource.match(/data-testid="click"/g) || []).length, 1);
+  // #676: the two onClick buttons are two interactions (onA, onB), so each gets its own testid.
+  assert.deepEqual(testIds, ['a', 'b', 'change']);
+  assert.equal((pageSource.match(/data-testid="a"/g) || []).length, 1);
+  assert.equal((pageSource.match(/data-testid="b"/g) || []).length, 1);
   assert.match(pageSource, /data-testid="mine"/);
   assert.doesNotThrow(() => parseToAst(pageSource));
 });

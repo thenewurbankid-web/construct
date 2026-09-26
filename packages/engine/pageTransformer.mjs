@@ -51,26 +51,66 @@ function slotType(name, kind) {
   return 'string';
 }
 
-/** The exported React component function in `ast`: a `function` declaration
- * or an arrow/function-expression assigned to a capitalized `const`, either
- * named- or default-exported. Returns `{ funcNode }`, or null if none is
- * found -- callers surface that as a clear ingestion error rather than
- * guessing at an arbitrary node. */
-function findComponentFunction(ast) {
-  const isComponentFn = (n) => n && (n.type === 'FunctionExpression' || n.type === 'ArrowFunctionExpression' || n.type === 'FunctionDeclaration');
+const isComponentFn = (n) => n && (n.type === 'FunctionExpression' || n.type === 'ArrowFunctionExpression' || n.type === 'FunctionDeclaration');
+const COMPONENT_WRAPPERS = new Set(['memo', 'forwardRef']);
+const calleeName = (c) => (c?.type === 'Identifier' ? c.name : c?.type === 'MemberExpression' && !c.computed ? c.property?.name : null);
+
+/** #675: the function a top-level binding `name` holds -- `function name() {}` or `const name = <fn>`,
+ * exported or not -- or null. */
+function declaredFunction(ast, name, depth) {
   for (const node of ast.body) {
-    if (node.type === 'ExportDefaultDeclaration' && isComponentFn(node.declaration)) return node.declaration;
-    if (node.type === 'ExportNamedDeclaration' && node.declaration) {
-      const decl = node.declaration;
-      if (decl.type === 'FunctionDeclaration') return decl;
-      if (decl.type === 'VariableDeclaration') {
-        for (const d of decl.declarations) {
-          if (isComponentFn(d.init)) return d.init;
-        }
-      }
+    const decl = node.type === 'ExportNamedDeclaration' ? node.declaration : node;
+    if (decl?.type === 'FunctionDeclaration' && decl.id?.name === name) return decl;
+    if (decl?.type === 'VariableDeclaration') {
+      const d = decl.declarations.find((x) => x.id?.type === 'Identifier' && x.id.name === name);
+      if (d) return componentFunctionOf(ast, d.init, depth + 1);
     }
   }
   return null;
+}
+
+/** #675: the function an exported expression resolves to: the function itself, a name bound to one in
+ * the same file (`export default X;`), a `memo(...)`/`forwardRef(...)` wrapper (`React.` or bare), or a
+ * TS `as`/`satisfies` around any of these. Null when it resolves to anything else. */
+function componentFunctionOf(ast, n, depth = 0) {
+  if (!n || depth > 5) return null;
+  if (isComponentFn(n)) return n;
+  if (n.type === 'Identifier') return declaredFunction(ast, n.name, depth);
+  if (n.type === 'CallExpression' && COMPONENT_WRAPPERS.has(calleeName(n.callee))) return componentFunctionOf(ast, n.arguments[0], depth + 1);
+  if (n.type === 'TSAsExpression' || n.type === 'TSSatisfiesExpression') return componentFunctionOf(ast, n.expression, depth + 1);
+  return null;
+}
+
+/** The exported React component function in `ast`, in source order: `export default <fn>`,
+ * `export default X;`, `export { X as default }`, `export function X`, `export const X = <fn>`,
+ * `export { X }`, each also through `memo`/`forwardRef`. Returns `{ funcNode, exportsSeen }`: `funcNode`
+ * is null when none resolves, and `exportsSeen` describes what was found so the error can say why. */
+function findComponentFunction(ast, source) {
+  const exportsSeen = [];
+  const text = (n) => source.slice(n.range[0], n.range[1]).split('\n')[0].slice(0, 60);
+  for (const node of ast.body) {
+    if (node.type === 'ExportDefaultDeclaration') {
+      const fn = componentFunctionOf(ast, node.declaration);
+      if (fn) return { funcNode: fn, exportsSeen };
+      exportsSeen.push(`\`${text(node)}\``);
+    }
+    if (node.type !== 'ExportNamedDeclaration') continue;
+    const decl = node.declaration;
+    if (decl?.type === 'FunctionDeclaration') return { funcNode: decl, exportsSeen };
+    if (decl?.type === 'VariableDeclaration') {
+      for (const d of decl.declarations) {
+        const fn = componentFunctionOf(ast, d.init);
+        if (fn) return { funcNode: fn, exportsSeen };
+      }
+    }
+    for (const s of node.specifiers || []) {
+      if (node.source) continue; // a re-export from another file: nothing to ingest here
+      const fn = declaredFunction(ast, s.local.name, 0);
+      if (fn) return { funcNode: fn, exportsSeen };
+      exportsSeen.push(`\`export { ${s.local.name}${s.exported.name !== s.local.name ? ` as ${s.exported.name}` : ''} }\``);
+    }
+  }
+  return { funcNode: null, exportsSeen };
 }
 
 /** The JSX node this component function actually renders: for a
@@ -89,14 +129,18 @@ function findRenderedJsx(funcNode, source) {
   return { jsxNode: last.argument, wholeRange: last.range, concise: false };
 }
 
-/** Every catalogued interactive JSXAttribute under `jsxNode`, in source order. */
+/** Every catalogued interactive JSXAttribute under `jsxNode`, in source order, with the element that
+ * carries it (`element`) so a repeated attribute name can be told apart by where it sits (#676). */
 function collectInteractiveAttrs(jsxNode) {
   const hits = [];
   walkAst(jsxNode, {
     enter(node) {
-      if (node.type !== 'JSXAttribute' || node.name?.type !== 'JSXIdentifier') return;
-      const kind = classifyAttrName(node.name.name);
-      if (kind) hits.push({ name: node.name.name, kind, range: node.range });
+      if (node.type !== 'JSXElement') return;
+      for (const a of node.openingElement.attributes) {
+        if (a.type !== 'JSXAttribute' || a.name?.type !== 'JSXIdentifier') continue;
+        const kind = classifyAttrName(a.name.name);
+        if (kind) hits.push({ name: a.name.name, kind, range: a.range, element: node });
+      }
     },
   });
   return hits.sort((a, b) => a.range[0] - b.range[0]);
@@ -104,35 +148,143 @@ function collectInteractiveAttrs(jsxNode) {
 
 const hasAttr = (opening, attrName) => opening.attributes.some((a) => a.type === 'JSXAttribute' && a.name?.type === 'JSXIdentifier' && a.name.name === attrName);
 
-/** #348: where to add `data-testid="<event>"` -- on the FIRST element carrying each `on<Event>` callback
- * (a testid must be unique on a page), never overwriting an existing one. `idFor(slot, base)` may scope the id. */
-function testIdInserts(jsxNode, idFor) {
+// Icon component prefixes of the common icon sets, dropped when an icon names a button (`FeatherSearch` -> `Search`).
+const ICON_PREFIX_RE = /^(Feather|Icon|Lucide|Hero|Md|Fa|Io|Ri|Bi|Tb)(?=[A-Z])/;
+const NAMING_ATTRS = ['aria-label', 'title', 'label', 'name', 'id', 'placeholder'];
+// What a bare icon button does, for the icons whose glyph name is not the action.
+const ICON_ACTION = {
+  X: 'Close', XCircle: 'Close', Plus: 'Add', PlusCircle: 'Add', Minus: 'Remove', Trash: 'Delete', Trash2: 'Delete',
+  Edit: 'Edit', Edit2: 'Edit', Edit3: 'Edit', Pencil: 'Edit', MoreVertical: 'Menu', MoreHorizontal: 'Menu',
+  ChevronDown: 'Expand', ChevronUp: 'Collapse', ChevronLeft: 'Back', ChevronRight: 'Next', ArrowLeft: 'Back',
+  ArrowRight: 'Next', Check: 'Confirm', RefreshCw: 'Refresh', RotateCw: 'Refresh', Download: 'Download', Upload: 'Upload',
+};
+
+/** Up to four words of `text` as PascalCase (`Add category` -> `AddCategory`), or null when nothing usable. */
+function pascalWords(text) {
+  const words = String(text).match(/[A-Za-z][A-Za-z0-9]*/g);
+  if (!words) return null;
+  return words.slice(0, 4).map((w) => w[0].toUpperCase() + w.slice(1)).join('');
+}
+
+/** #676: what an interactive element is, read from the element itself, deterministically: a naming
+ * attribute (`aria-label`, `title`, `label`, `name`, `id`, `placeholder`), else its own text, else the
+ * icon it shows (`icon={<FeatherSearch />}` or a lone icon child). Null when none of these exists. */
+function elementContext(element) {
+  const open = element.openingElement;
+  for (const n of NAMING_ATTRS) {
+    const a = open.attributes.find((x) => x.type === 'JSXAttribute' && x.name?.name === n);
+    const v = a?.value?.type === 'Literal' && typeof a.value.value === 'string' ? pascalWords(a.value.value) : null;
+    if (v) return v;
+  }
+  const ownText = pascalWords(element.children.filter((c) => c.type === 'JSXText').map((c) => c.value).join(' '));
+  if (ownText) return ownText;
+  const iconAttr = open.attributes.find((x) => x.type === 'JSXAttribute' && x.name?.name === 'icon');
+  const iconEl = iconAttr?.value?.type === 'JSXExpressionContainer' && iconAttr.value.expression.type === 'JSXElement'
+    ? iconAttr.value.expression
+    : element.children.filter((c) => c.type === 'JSXElement').length === 1 ? element.children.find((c) => c.type === 'JSXElement') : null;
+  const iconName = iconEl?.openingElement.name.type === 'JSXIdentifier' ? iconEl.openingElement.name.name : null;
+  if (!iconName) return null;
+  const glyph = iconName.replace(ICON_PREFIX_RE, '').replace(/Icon$/, '');
+  return ICON_ACTION[glyph] ?? glyph;
+}
+
+const tagOf = (element, source) => source.slice(element.openingElement.name.range[0], element.openingElement.name.range[1]);
+
+/** The slot name for attribute `attr` on an element named `ctx`: `onClick` -> `on<Ctx>`, another event ->
+ * `on<Ctx><Event>` (`onChange` -> `onEmailChange`), a value attribute -> `<ctx><Attr>` (`emailValue`). */
+function contextSlotName(attr, kind, ctx) {
+  if (kind === 'callback') return attr === 'onClick' ? `on${ctx}` : `on${ctx}${attr.slice(2)}`;
+  return `${ctx[0].toLowerCase()}${ctx.slice(1)}${attr[0].toUpperCase()}${attr.slice(1)}`;
+}
+
+/**
+ * #676: give every interactive attribute occurrence its slot. An attribute name that occurs once keeps
+ * its own name (`onClick`), as before. A name that occurs on several elements is split, because each
+ * element is a different interaction: each occurrence is named from its element (`elementContext`).
+ * Occurrences with the same derived name on the same kind of element are one interaction repeated (rows
+ * of a table): a niladic callback becomes ONE slot taking the occurrence index (`onMoreVertical(index)`),
+ * anything else gets a numeric suffix. Occurrences with no name get `<attr>1`, `<attr>2`, ... Every
+ * resulting slot name is unique. Mutates each attr with `slot` (and `index` when repeated).
+ * @returns {Array<{name: string, kind: string, event?: string, repeated?: boolean}>} slots in source order.
+ */
+function assignSlots(attrs, source) {
+  const byName = new Map();
+  for (const a of attrs) byName.set(a.name, [...(byName.get(a.name) || []), a]);
+  for (const [attr, occ] of byName) {
+    if (occ.length === 1) { occ[0].slot = attr; continue; }
+    const groups = new Map();
+    let unnamed = 0;
+    for (const a of occ) {
+      const ctx = elementContext(a.element);
+      if (!ctx) { a.slot = `${attr}${++unnamed}`; a.event = attr; continue; }
+      const key = `${contextSlotName(attr, a.kind, ctx)}\u0000${tagOf(a.element, source)}`;
+      groups.set(key, [...(groups.get(key) || []), a]);
+    }
+    const perName = new Map();
+    for (const [key, group] of groups) {
+      const base = key.split('\u0000')[0];
+      const n = (perName.get(base) || 0) + 1;
+      perName.set(base, n);
+      const name = n === 1 ? base : `${base}${n}`;
+      const repeatable = group.length > 1 && group[0].kind === 'callback' && !EVENT_TYPE_BY_NAME[attr];
+      group.forEach((a, i) => {
+        a.event = attr;
+        if (repeatable) { a.slot = name; a.index = i; a.repeated = true; } else a.slot = i === 0 ? name : `${name}${i + 1}`;
+      });
+    }
+  }
+  // Unique across attribute names too (a derived `onSubmit` must not collide with a real one); an
+  // attribute that kept its own name is placed first, so it is never the one renamed.
+  const used = new Set();
+  const renamed = new Map();
+  for (const a of [...attrs.filter((x) => x.slot === x.name), ...attrs.filter((x) => x.slot !== x.name)]) {
+    const key = `${a.name}\u0000${a.slot}`;
+    if (renamed.has(key)) { a.slot = renamed.get(key); continue; }
+    let slot = a.slot;
+    for (let k = 2; used.has(slot); k++) slot = `${a.slot}${k}`;
+    used.add(slot);
+    renamed.set(key, slot);
+    a.slot = slot;
+  }
+  const slots = new Map();
+  for (const a of attrs) {
+    if (slots.has(a.slot)) continue;
+    const s = { name: a.slot, kind: a.kind };
+    if (a.event && a.event !== a.slot) s.event = a.event;
+    if (a.repeated) s.repeated = true;
+    slots.set(a.slot, s);
+  }
+  return [...slots.values()];
+}
+
+/** #348: where to add `data-testid="<event>"` -- one per element carrying an `on<Event>` callback (its first
+ * one), from that occurrence's slot (a repeated slot adds `-<index>`), unique on the page, never
+ * overwriting an existing one. `idFor(slot, base)` may scope the id. */
+function testIdInserts(attrs, idFor) {
   const inserts = [];
   const taken = new Set();
-  walkAst(jsxNode, {
-    enter(node) {
-      if (node.type !== 'JSXOpeningElement' || hasAttr(node, 'data-testid')) return;
-      for (const a of node.attributes) {
-        if (a.type !== 'JSXAttribute' || a.name?.type !== 'JSXIdentifier' || classifyAttrName(a.name.name) !== 'callback') continue;
-        const base = slotTestId(a.name.name);
-        const id = base && idFor(a.name.name, base);
-        if (!id || taken.has(id)) continue;
-        taken.add(id);
-        inserts.push({ at: node.name.range[1], text: ` data-testid="${id}"`, testId: id });
-        break; // one testid per element
-      }
-    },
-  });
+  const done = new Set();
+  for (const a of attrs) {
+    const open = a.element.openingElement;
+    if (a.kind !== 'callback' || done.has(open) || hasAttr(open, 'data-testid')) continue;
+    const base = slotTestId(a.slot);
+    const scoped = base && idFor(a.slot, base);
+    const id = scoped && (a.repeated ? `${scoped}-${a.index}` : scoped);
+    if (!id || taken.has(id)) continue;
+    taken.add(id);
+    done.add(open);
+    inserts.push({ at: open.name.range[1], text: ` data-testid="${id}"`, testId: id });
+  }
   return inserts;
 }
 
 /** Rewire `text` (the source slice for `[sliceStart, sliceEnd)`) so every
- * catalogued attribute's value becomes the JSX-attribute shorthand
- * `name={name}` referencing the new prop of the same name -- applied from
- * the last attribute backwards so earlier offsets stay valid. */
+ * catalogued attribute's value becomes a reference to its slot prop --
+ * `name={slot}`, or `name={() => slot(index)}` for a repeated slot -- applied
+ * from the last attribute backwards so earlier offsets stay valid. */
 function rewireAttrs(text, sliceStart, attrs, inserts = []) {
   const edits = [
-    ...attrs.map((a) => ({ start: a.range[0], end: a.range[1], text: `${a.name}={${a.name}}` })),
+    ...attrs.map((a) => ({ start: a.range[0], end: a.range[1], text: a.repeated ? `${a.name}={() => ${a.slot}(${a.index})}` : `${a.name}={${a.slot}}` })),
     ...inserts.map((i) => ({ start: i.at, end: i.at, text: i.text })),
   ];
   let out = text;
@@ -175,10 +327,13 @@ function retainedImportLines(ast, source, keptBodyText) {
  */
 export function transformPristineSource(source, { feature, name, flow = null }) {
   const ast = parseToAst(source);
-  const funcNode = findComponentFunction(ast);
+  const { funcNode, exportsSeen } = findComponentFunction(ast, source);
   if (!funcNode) {
+    const seenNote = exportsSeen.length
+      ? ` Found ${exportsSeen.join(', ')}, which does not resolve to a component function declared in this file.`
+      : ' The file has no export.';
     throw new ConstructError(
-      'No exported React component function found in the ingested source (expected `export function X() {...}`, `export default function X() {...}`, or `export const X = () => {...}`).',
+      `No exported React component function found in the ingested source (expected \`export function X() {...}\`, \`export default function X() {...}\`, \`export const X = () => {...}\`, or \`function X() {...}\` with \`export default X;\`).${seenNote}`,
       { exitCode: EXIT_CODES.USAGE_ERROR },
     );
   }
@@ -188,16 +343,14 @@ export function transformPristineSource(source, { feature, name, flow = null }) 
   }
 
   const attrs = collectInteractiveAttrs(rendered.jsxNode);
-  const seen = new Map(); // name -> kind, dedupe across repeated elements
-  for (const a of attrs) if (!seen.has(a.name)) seen.set(a.name, a.kind);
-  const slots = [...seen.entries()].map(([slotName, kind]) => ({ name: slotName, kind }));
+  const slots = assignSlots(attrs, source);
 
   // #348: test attributes. `flow` (only when the feature has a workflow) = { machineKey, eventIds: Map(kebab -> testid) }.
-  const inserts = testIdInserts(rendered.jsxNode, (slot, base) => flow?.eventIds.get(base) ?? base);
+  const inserts = testIdInserts(attrs, (slot, base) => flow?.eventIds.get(base) ?? base);
   const root = rendered.jsxNode;
   if (flow && root?.type === 'JSXElement' && !hasAttr(root.openingElement, 'data-flow-state')) {
     inserts.push({ at: root.openingElement.name.range[1], text: ` data-flow="${flow.machineKey}" data-flow-state={flowState}` });
-    if (!seen.has('flowState')) { seen.set('flowState', 'flowState'); slots.push({ name: 'flowState', kind: 'value', optional: true }); }
+    if (!slots.some((s) => s.name === 'flowState')) slots.push({ name: 'flowState', kind: 'value', optional: true });
   }
   const sliceStart = rendered.wholeRange[0];
   const sliceEnd = rendered.wholeRange[1];
@@ -223,7 +376,7 @@ export function transformPristineSource(source, { feature, name, flow = null }) 
     `// presentation file -- every prop below is an interactive slot the pristine`,
     `// ${name}Page component found and externalized. Wire these from a controller.`,
     `export interface ${propsTypeName} {`,
-    ...slots.map((s) => (s.optional ? `  ${s.name}?: string;` : `  ${s.name}: ${slotType(s.name, s.kind)};`)),
+    ...slots.map((s) => (s.optional ? `  ${s.name}?: string;` : `  ${s.name}: ${s.repeated ? '(index: number) => void' : slotType(s.event ?? s.name, s.kind)};`)),
     `}`,
     '',
   ].join('\n');

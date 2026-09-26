@@ -155,3 +155,26 @@ test('declaredPropNames: a plain, unannotated destructured parameter has names b
   assert.deepEqual([...r.names], ['title', 'total']);
   assert.deepEqual([...r.types], []);
 });
+
+// #675 sweep: a component behind memo/forwardRef (how Subframe writes its components) still has its props read.
+test('#675 declaredPropNames reads props through forwardRef / memo / as, named and default', () => {
+  const forwardRefSrc = `import React from 'react';
+interface ButtonProps { variant?: string; onClick?: () => void }
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function ButtonRoot({ variant, onClick }: ButtonProps, ref) {
+  return <button ref={ref} onClick={onClick}>{variant}</button>;
+});
+export { Button };
+`;
+  assert.deepEqual([...declaredPropNames(forwardRefSrc, 'Button', false).names].sort(), ['onClick', 'variant']);
+  const memoDefault = `import { memo } from 'react';
+type P = { title: string };
+function Card({ title }: P) { return <h2>{title}</h2>; }
+export default memo(Card);
+`;
+  assert.deepEqual([...declaredPropNames(memoDefault, 'Card', true).names], ['title']);
+  const asDefault = `type P = { label: string };
+const Tag = ({ label }: P) => <span>{label}</span>;
+export default Tag as unknown as (p: P) => JSX.Element;
+`;
+  assert.deepEqual([...declaredPropNames(asDefault, 'Tag', true).names], ['label']);
+});

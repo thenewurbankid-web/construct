@@ -85,13 +85,43 @@ export function findImportOfName(ast, localName) {
   return found;
 }
 
+const COMPONENT_WRAPPERS = new Set(['memo', 'forwardRef']);
+
+/** #675 sweep: the function inside a component wrapper -- `memo(fn)`, `forwardRef(fn)` (bare or `React.`),
+ * nested, or under a TS `as`/`satisfies` -- or the node itself when it is a function; null otherwise. */
+function unwrapComponent(n, depth = 0) {
+  if (!n || depth > 5) return null;
+  if (n.type === 'ArrowFunctionExpression' || n.type === 'FunctionExpression' || n.type === 'FunctionDeclaration') return n;
+  if (n.type === 'TSAsExpression' || n.type === 'TSSatisfiesExpression') return unwrapComponent(n.expression, depth + 1);
+  if (n.type === 'CallExpression') {
+    const c = n.callee;
+    const name = c.type === 'Identifier' ? c.name : c.type === 'MemberExpression' && !c.computed ? c.property?.name : null;
+    if (COMPONENT_WRAPPERS.has(name)) return unwrapComponent(n.arguments[0], depth + 1);
+  }
+  return null;
+}
+
+/** #675 sweep: the local name an export refers to through wrappers (`X`, `memo(X)`, `X as T`), or null. */
+function wrappedName(n, depth = 0) {
+  if (!n || depth > 5) return null;
+  if (n.type === 'Identifier') return n.name;
+  if (n.type === 'TSAsExpression' || n.type === 'TSSatisfiesExpression') return wrappedName(n.expression, depth + 1);
+  if (n.type === 'CallExpression') {
+    const c = n.callee;
+    const name = c.type === 'Identifier' ? c.name : c.type === 'MemberExpression' && !c.computed ? c.property?.name : null;
+    if (COMPONENT_WRAPPERS.has(name)) return wrappedName(n.arguments[0], depth + 1);
+  }
+  return null;
+}
+
 function findLocalFunction(body, name) {
   for (const node of body) {
     if (node.type === 'FunctionDeclaration' && node.id?.name === name) return node;
     if (node.type === 'VariableDeclaration') {
       for (const d of node.declarations) {
-        if (d.id.type === 'Identifier' && d.id.name === name && (d.init?.type === 'ArrowFunctionExpression' || d.init?.type === 'FunctionExpression')) {
-          return d.init;
+        if (d.id.type === 'Identifier' && d.id.name === name) {
+          const fn = unwrapComponent(d.init);
+          if (fn) return fn;
         }
       }
     }
@@ -107,8 +137,10 @@ function findComponentFunction(ast, tagName, isDefault) {
     for (const node of body) {
       if (node.type !== 'ExportDefaultDeclaration') continue;
       const decl = node.declaration;
-      if (decl.type === 'FunctionDeclaration' || decl.type === 'ArrowFunctionExpression' || decl.type === 'FunctionExpression') return decl;
-      if (decl.type === 'Identifier') return findLocalFunction(body, decl.name);
+      const fn = unwrapComponent(decl);
+      if (fn) return fn;
+      const inner = wrappedName(decl);
+      if (inner) return findLocalFunction(body, inner);
     }
     return null;
   }

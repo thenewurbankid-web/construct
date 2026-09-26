@@ -202,3 +202,97 @@ test('construct create page <name> --feature <f> --from <path> ingests end to en
   const validateRes = spawnSync('node', [bin, 'validate'], { encoding: 'utf8', cwd: dir });
   assert.equal(validateRes.status, EXIT_CODES.OK, validateRes.stdout);
 });
+
+// ---- #675: every way a design tool exports the component -------------------
+
+const BODY = `{ return <button onClick={() => {}}>Go</button>; }`;
+for (const [label, src] of [
+  ['function X then `export default X;` (Subframe)', `function Screen() ${BODY}\nexport default Screen;\n`],
+  ['const arrow then `export default X;`', `const Screen = () => <button onClick={() => {}}>Go</button>;\nexport default Screen;\n`],
+  ['`export { X as default }`', `function Screen() ${BODY}\nexport { Screen as default };\n`],
+  ['`export { X }`', `function Screen() ${BODY}\nexport { Screen };\n`],
+  ['`export default memo(X)`', `import { memo } from 'react';\nfunction Screen() ${BODY}\nexport default memo(Screen);\n`],
+  ['`export default React.memo(function ...)`', `import React from 'react';\nexport default React.memo(function Screen() ${BODY});\n`],
+  ['`export const X = forwardRef(...)`', `import { forwardRef } from 'react';\nexport const Screen = forwardRef(function Screen(props, ref) ${BODY});\n`],
+  ['typed `export const X: FC = function ...`', `import type { FC } from 'react';\nexport const Screen: FC = function () ${BODY};\n`],
+  ['`export default X as ...`', `function Screen() ${BODY}\nexport default (Screen as unknown as () => null);\n`],
+]) {
+  test(`#675 transformPristineSource ingests ${label}`, () => {
+    const { pageSource, slots } = transformPristineSource(src, { feature: 'f', name: 'Screen' });
+    assert.deepEqual(slots, [{ name: 'onClick', kind: 'callback' }]);
+    assert.match(pageSource, /<button data-testid="click" onClick=\{onClick\}>Go<\/button>/);
+  });
+}
+
+test('#675 the refusal names the export it found and why it was not accepted', () => {
+  assert.throws(
+    () => transformPristineSource(`export default 42;\n`, { feature: 'f', name: 'Screen' }),
+    (err) => err.exitCode === EXIT_CODES.USAGE_ERROR && /Found `export default 42;`/.test(err.message),
+  );
+  assert.throws(
+    () => transformPristineSource(`export default Missing;\n`, { feature: 'f', name: 'Screen' }),
+    (err) => /Found `export default Missing;`, which does not resolve/.test(err.message),
+  );
+  assert.throws(() => transformPristineSource(`const x = 1;\n`, { feature: 'f', name: 'Screen' }), /The file has no export\./);
+});
+
+// ---- #676: one slot per interaction, not per attribute name -----------------
+
+const MY_CATEGORIES = fs.readFileSync(path.join(REPO_ROOT, 'fixtures', 'subframe-export', 'MyCategoriesExport.tsx'), 'utf8');
+
+test('#676 repeated onClick is split into named slots: text, then icon (with its action word)', () => {
+  const { slots } = transformPristineSource(MY_CATEGORIES, { feature: 'categories', name: 'MyCategories' });
+  assert.deepEqual(slots.map((s) => s.name), ['onHome', 'onSearch', 'onClose', 'onAddCategory', 'onMenu']);
+  assert.ok(slots.every((s) => s.event === 'onClick'));
+});
+
+test('#676 identical rows become ONE slot taking the row index, each call site passing its own', () => {
+  const { slots, pageSource, propsSource } = transformPristineSource(MY_CATEGORIES, { feature: 'categories', name: 'MyCategories' });
+  assert.deepEqual(slots.find((s) => s.name === 'onMenu'), { name: 'onMenu', kind: 'callback', event: 'onClick', repeated: true });
+  assert.match(propsSource, /onMenu: \(index: number\) => void;/);
+  assert.match(propsSource, /onAddCategory: \(\) => void;/);
+  for (const i of [0, 1, 2]) assert.match(pageSource, new RegExp(`onClick=\\{\\(\\) => onMenu\\(${i}\\)\\}`));
+  assert.match(pageSource, /onClick=\{onAddCategory\}/);
+  assert.doesNotMatch(pageSource, /onClick=\{onClick\}/);
+});
+
+test('#676 every interactive element gets its own data-testid', () => {
+  const { testIds } = transformPristineSource(MY_CATEGORIES, { feature: 'categories', name: 'MyCategories' });
+  assert.deepEqual(testIds, ['home', 'search', 'close', 'add-category', 'menu-0', 'menu-1', 'menu-2']);
+});
+
+test('#676 naming attributes win over text; value attributes are split too; unnamed ones are numbered', () => {
+  const src = `export function F() {
+    return (<form>
+      <input name="email" value="" onChange={() => {}} />
+      <input aria-label="Full name" value="" onChange={() => {}} />
+      <button onClick={() => {}}><span /><span /></button>
+      <button onClick={() => {}}><span /><span /></button>
+    </form>);
+  }`;
+  const { slots, propsSource } = transformPristineSource(src, { feature: 'f', name: 'F' });
+  assert.deepEqual(slots.map((s) => s.name), ['emailValue', 'onEmailChange', 'fullNameValue', 'onFullNameChange', 'onClick1', 'onClick2']);
+  assert.match(propsSource, /onEmailChange: \(value: string\) => void;/);
+  assert.match(propsSource, /emailValue: string;/);
+});
+
+test('#676 a derived name never takes the name of an attribute that kept its own', () => {
+  const src = `export function F() {
+    return (<form onSubmit={() => {}}>
+      <button onClick={() => {}}>Submit</button>
+      <button onClick={() => {}}>Cancel</button>
+    </form>);
+  }`;
+  const { slots } = transformPristineSource(src, { feature: 'f', name: 'F' });
+  assert.deepEqual(slots.map((s) => s.name), ['onSubmit', 'onSubmit2', 'onCancel']);
+});
+
+test('#675/#676 construct create page --from ingests a Subframe-shaped export end to end and validates', () => {
+  const dir = tmpProject();
+  const components = path.join(dir, 'features', 'checkout', 'components');
+  for (const n of ['Button', 'IconButton']) fs.writeFileSync(path.join(components, `${n}.tsx`), `export function ${n}(props: Record<string, unknown>) {\n  return <button>{String(props.children ?? '')}</button>;\n}\n`);
+  fs.writeFileSync(path.join(components, 'Icons.tsx'), ['Home', 'MoreVertical', 'Plus', 'Search', 'X'].map((n) => `export function Feather${n}() {\n  return <svg />;\n}\n`).join(''));
+  const res = spawnSync('node', [bin, 'create', 'page', 'MyCategories', '--feature', 'checkout', '--from', path.join(REPO_ROOT, 'fixtures', 'subframe-export', 'MyCategoriesExport.tsx')], { encoding: 'utf8', cwd: dir });
+  assert.equal(res.status, EXIT_CODES.OK, res.stderr);
+  assert.match(res.stdout, /5 slot\(s\): onHome, onSearch, onClose, onAddCategory, onMenu/);
+});
