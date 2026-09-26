@@ -12,6 +12,7 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
+    "@craftjs/core": "^0.2.12",
     "@dagrejs/dagre": "^3.1.1",
     "@monaco-editor/react": "^4.7.0",
     "@statelyai/inspect": "^0.7.2",
