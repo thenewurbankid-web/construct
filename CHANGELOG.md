@@ -7,6 +7,14 @@ request or issue numbers.
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-09-26
+
+A patch release: two fixes from the v0.10.0 line, backported onto 0.9.0. Package versions are `0.9.1`.
+
+### Fixed
+- A workflow unit is typed as what it is at runtime ([#658]): `defineWorkflow(name, fn)` returns a function, but `WorkflowUnit` was typed as a config object, so calling one was `TS2349`. The type is now the branded function (`WorkflowUnit<Fn>`, defaulting to the widest workflow function, so every `Forbid<>` slot and bare `WorkflowUnit` use is unchanged), and `defineWorkflow` keeps the exact machine `fn` returns; `fn` may return a real XState machine as well as a `{ id, initial, states }` config (new `WorkflowMachine` type). The runtime was not changed: the function shape already matched every caller, the existing test and the other units. The generated wizard's hook now runs `SignupWorkflow({})` instead of reaching past the unit for `signupMachine`, and the unit is `defineWorkflow('SignupWorkflow', () => signupMachine)` in place of a config rebuilt from the machine; `signupMachine` stays exported because `generate tests --unit` reads an exported machine. New `examples/workflow.ts`, compiled by `test/typed-contracts-tsc.test.mjs` (it fails with `TS2349` on the old types).
+- `GET /api/validate` in `cli` execution mode goes through the per-login command queue and the concurrency cap like every other `cli`-mode verb ([#612]): a validate waits for an earlier command of the same login instead of overlapping a write to the project, counts against `CONSTRUCT_MAX_CONCURRENT_COMMANDS`, and an abandoned one answers 504 at the command deadline. `engine` mode is unchanged. Test: `ui/server/src/validateQueue.test.mjs`.
+
 ## [0.9.0] - 2026-09-24
 
 The MVP release: a five-screen Cockpit with durable Notes, a calmer interface, blocks you can see and switch off, a workspace of your own on a hosted Cockpit, and results you can trust on a real project. Package versions are `0.9.0`; the Cockpit (`ui/`) is not versioned separately yet.
@@ -309,3 +317,5 @@ The first tracked baseline. It collects everything shipped since the project beg
 [#609]: https://github.com/thenewurbankid-web/construct/issues/609
 [#611]: https://github.com/thenewurbankid-web/construct/issues/611
 [#614]: https://github.com/thenewurbankid-web/construct/issues/614
+[#612]: https://github.com/thenewurbankid-web/construct/issues/612
+[#658]: https://github.com/thenewurbankid-web/construct/issues/658

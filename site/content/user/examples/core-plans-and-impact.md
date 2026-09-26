@@ -76,4 +76,4 @@ Schemas: `schemas/plan.v1.json` and `schemas/impact-report.v1.json`. Design note
 
 A script or an agent gets a checked plan and a measured answer, not a guess, with the same functions the CLI and the Cockpit use.
 
-Checked against commit `f033daa` on 2026-09-24.
+Checked against commit `b6f4032` on 2026-09-26.

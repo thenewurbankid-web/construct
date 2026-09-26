@@ -96,4 +96,4 @@ Nothing is written. Refs are validated, git runs from temporary detached checkou
 
 You know what a change reaches, and what a branch means, before you approve it, and the answer is the same every time.
 
-Checked against commit `a33b5fa` on 2026-09-24.
+Checked against commit `b6f4032` on 2026-09-26.

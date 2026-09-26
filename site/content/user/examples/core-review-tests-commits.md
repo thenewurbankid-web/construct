@@ -79,4 +79,4 @@ The full inventory is in [Building blocks](@developers/building-blocks/).
 
 Review, tests and commit messages come out identical every run, at no model cost.
 
-Checked against commit `f033daa` on 2026-09-24.
+Checked against commit `b6f4032` on 2026-09-26.

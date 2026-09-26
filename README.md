@@ -1,6 +1,6 @@
 # Construct
 
-![version](https://img.shields.io/badge/version-0.9.0-blue) ![license](https://img.shields.io/badge/license-MIT-green) ![node](https://img.shields.io/badge/node-%3E%3D20-brightgreen)
+![version](https://img.shields.io/badge/version-0.9.1-blue) ![license](https://img.shields.io/badge/license-MIT-green) ![node](https://img.shields.io/badge/node-%3E%3D20-brightgreen)
 
 **AI guesses. Construct computes.**
 
@@ -13,7 +13,7 @@ rules you write down.
 - **Your rules, enforced.** One file, `architecture.yml`, says where things live. `construct validate` tells you, with the reason and the fix, when code breaks a rule.
 - **A cockpit, not an autopilot.** A web Cockpit lets you browse, preview, plan, review and correct, with a person always in the loop.
 
-Status: version 0.9.0 (the MVP release). How versions are numbered is in
+Status: version 0.9.1 (a patch on the 0.9 MVP release). How versions are numbered is in
 [docs/VERSIONING.md](docs/VERSIONING.md). What changed is in [CHANGELOG.md](CHANGELOG.md).
 
 ## Quickstart (about 60 seconds)

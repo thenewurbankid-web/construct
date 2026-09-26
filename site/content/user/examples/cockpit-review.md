@@ -47,4 +47,4 @@ Pick a plan from **Compare with a plan** (the plans of processes you ran in this
 
 You review what a change means and decide on a short list, instead of rebuilding the picture from changed lines.
 
-Checked against commit `6d5ef23` on 2026-09-24. Screenshots come from the project's own Playwright runs of these screens.
+Checked against commit `b6f4032` on 2026-09-26. Screenshots come from the project's own Playwright runs of these screens.

@@ -53,4 +53,4 @@ You review a small, exact change instead of untangling a surprise, and nothing r
 | Your own files untouched until you approve | the bot's own copy and branch |
 | A decision per file, on the exact difference | "You get" above |
 
-Checked against commit `6d5ef23` on 2026-09-24. Screenshots come from the project's own Playwright runs of these screens.
+Checked against commit `b6f4032` on 2026-09-26. Screenshots come from the project's own Playwright runs of these screens.
