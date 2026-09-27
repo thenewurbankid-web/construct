@@ -2,7 +2,9 @@
 //
 // `parseJsxTree(source)` assigns ids `n0`, `n1`, ... in source (document) order; an id is only valid for
 // the exact source text it was computed from. Every record carries the element's `[start, end)` offsets
-// in `source`, its 1-based `line` and `column`, its props (see `jsxAttributes`) and its children.
+// in `source`, its 1-based `line`/`column` start and `endLine`/`endColumn` end position, a `length` (the
+// element's source text length in characters, `end - start`), its props (see `jsxAttributes`) and its
+// children. (`endLine`/`endColumn`/`length` added for #701 -- additive, existing fields unchanged.)
 import { walkAst } from './walk.mjs';
 import { parseJsx } from './jsxParse.mjs';
 
@@ -52,10 +54,13 @@ export function jsxAttributes(openingElement, source) {
 
 /**
  * Parse `source` into `{ roots, byId, ast }`. Each record is
- * `{id, tag, isFragment, isCustomComponent, props, start, end, line, children, openingElementNode}`
- * (`openingElementNode` is the raw estree opening element, `null` for a fragment -- internal, for
- * offset-exact attribute edits). Nesting is derived from source ranges, so elements found anywhere in a
- * parent's subtree (inside `{cond && <X/>}` or `.map(...)` callbacks) nest correctly. Throws on a syntax error.
+ * `{id, tag, isFragment, isCustomComponent, props, start, end, line, column, endLine, endColumn, length,
+ * children, openingElementNode}` (`openingElementNode` is the raw estree opening element, `null` for a
+ * fragment -- internal, for offset-exact attribute edits). `line`/`column` are the element's 1-based start
+ * position, `endLine`/`endColumn` its 1-based end position (same convention as `packages/engine/diagnostics.mjs`),
+ * and `length` is `end - start`, the element's source text length in characters (#701). Nesting is derived
+ * from source ranges, so elements found anywhere in a parent's subtree (inside `{cond && <X/>}` or
+ * `.map(...)` callbacks) nest correctly. Throws on a syntax error.
  *
  * @param {string} source JSX or TSX module text.
  * @returns {{roots:object[], byId:Map<string, object>, ast:object}} The element tree.
@@ -94,6 +99,9 @@ export function parseJsxTree(source) {
       end: node.range[1],
       line: node.loc?.start.line ?? null,
       column: node.loc ? node.loc.start.column + 1 : null,
+      endLine: node.loc?.end.line ?? null,
+      endColumn: node.loc ? node.loc.end.column + 1 : null,
+      length: node.range[1] - node.range[0],
       children: [],
       openingElementNode: openingElement,
     };
