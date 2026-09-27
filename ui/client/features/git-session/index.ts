@@ -24,5 +24,8 @@ export * from './controllers/AutoCommitSettingsController';
 /** Loads the session and applies changes — used by both controllers; exported for reuse/testing. */
 export * from './hooks/useGitSession';
 
+/** A short commit-on-save summary for the shell's status bar (#374). */
+export * from './hooks/useCommitStatusSummary';
+
 /** The session's own state machine (loading / busy / error). */
 export * from './workflows/GitSession';
