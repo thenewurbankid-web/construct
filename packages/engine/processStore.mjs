@@ -122,6 +122,12 @@ function unreadable(file, reason) {
   return { file, id: path.basename(file, '.json'), reason };
 }
 
+// #416 -- a sidecar's filename is `<id>.<name>.json`: TWO dots before `.json`. A record's own filename
+// (`fileFor`) is `<sanitized id>.json`, ONE dot, and `sanitize()` strips any dot out of the id itself, so a
+// real record can never match this. Matched names are skipped by `all()`/`list()`, which read process records
+// only -- a sidecar is a derived value, never validated as one.
+const ASIDE_PATTERN = /\.[^./]+\.json$/;
+
 /**
  * Open the store for one project. Returns a small object rather than free
  * functions so a caller passes the project root and the state directory once.
@@ -134,11 +140,18 @@ function unreadable(file, reason) {
  * @param {object} [options]
  * @param {string} [options.stateDir] Base state directory.
  * @param {() => string} [options.now] Clock (ISO string).
- * @returns {{save:Function, load:Function, all:Function, list:Function, remove:Function, adoptInterrupted:Function}} The store bound to that project.
+ * @returns {{save:Function, load:Function, all:Function, list:Function, remove:Function, adoptInterrupted:Function, saveAside:Function, loadAside:Function}} The store bound to that project.
  */
 export function openProcessStore(projectRoot, { stateDir = resolveStateDir(), now = () => new Date().toISOString() } = {}) {
   const dir = processDir(projectRoot, { stateDir });
-  const fileFor = (id) => path.join(dir, `${String(id).replace(/[^A-Za-z0-9._-]/g, '_')}.json`);
+  const sanitize = (s) => String(s).replace(/[^A-Za-z0-9._-]/g, '_');
+  const fileFor = (id) => path.join(dir, `${sanitize(id)}.json`);
+  // #416 -- a "sidecar" beside a process record: `<id>.<name>.json`, written and read the same atomic way as the
+  // record itself, for a value that is derived (a Review analysis's report, a Tests-tab run's outcome) rather
+  // than part of the record's own validated shape. Its filename always has TWO dots before `.json` (a sanitized
+  // id never contains one, see `sanitize` above), which is exactly what `ASIDE_PATTERN` below uses to keep
+  // sidecars out of `all()`/`list()` -- they are not process records and must never be read back as one.
+  const asideFile = (id, name) => path.join(dir, `${sanitize(id)}.${sanitize(name)}.json`);
 
   const readFile = (file) => {
     let parsed;
@@ -193,7 +206,7 @@ export function openProcessStore(projectRoot, { stateDir = resolveStateDir(), no
       const processes = [];
       const problems = [];
       for (const name of fs.readdirSync(dir).sort()) {
-        if (!name.endsWith('.json')) continue;
+        if (!name.endsWith('.json') || ASIDE_PATTERN.test(name)) continue;
         const { process: record, problem } = readFile(path.join(dir, name));
         if (problem) problems.push(problem);
         else processes.push(record);
@@ -209,12 +222,51 @@ export function openProcessStore(projectRoot, { stateDir = resolveStateDir(), no
       return { processes: processes.map(processSummary), problems };
     },
 
-    /** Remove a process record. Returns true if there was one. */
+    /** Remove a process record and every sidecar `saveAside` wrote beside it (#416): an orphaned result must
+     * never outlive the record it belongs to. Returns true if the record itself existed. */
     remove(id) {
       const file = fileFor(id);
-      if (!fs.existsSync(file)) return false;
-      fs.rmSync(file);
-      return true;
+      const had = fs.existsSync(file);
+      if (had) fs.rmSync(file);
+      const prefix = `${sanitize(id)}.`;
+      let names = [];
+      try { names = fs.readdirSync(dir); } catch { /* directory may not exist */ }
+      for (const name of names) {
+        if (name.startsWith(prefix) && ASIDE_PATTERN.test(name)) {
+          try { fs.rmSync(path.join(dir, name)); } catch { /* best effort */ }
+        }
+      }
+      return had;
+    },
+
+    /**
+     * Persist a small derived value beside a process record (#416): `<id>.<name>.json`, written through the same
+     * atomic write the record itself uses. For a value that is expensive to recompute (a Review analysis's report,
+     * a Tests-tab run's outcome) but is not part of the record's own validated shape, so it is never read back
+     * through `load()`/`all()` — only through `loadAside()`. Removed automatically when `remove(id)` runs.
+     *
+     * @param {string} id The process the value belongs to.
+     * @param {string} name A short identifier for what this is (e.g. `'result'`).
+     * @param {*} value Any JSON-serializable value.
+     * @returns {*} `value`, unchanged.
+     */
+    saveAside(id, name, value) {
+      atomicWriteJson(asideFile(id, name), value);
+      return value;
+    },
+
+    /**
+     * The sidecar `saveAside(id, name, ...)` wrote, or `null` when there is none or it cannot be parsed. Never
+     * throws: a missing or corrupt derived cache is a cache miss, not corruption of the record it sits beside.
+     *
+     * @param {string} id
+     * @param {string} name
+     * @returns {*} The value, or `null`.
+     */
+    loadAside(id, name) {
+      const file = asideFile(id, name);
+      if (!fs.existsSync(file)) return null;
+      try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; }
     },
 
     /**

@@ -17,6 +17,7 @@ import os from 'node:os';
 import { createReviewJobs } from './reviewJobs.mjs';
 import { createReviewExecutor, createAnalyses, composeExecutors, createResults, isAnalysisPlan } from './reviewAnalyses.mjs';
 import { createProcessesService } from './processesService.mjs';
+import { openProcessStore } from '../../../packages/engine/processStore.mjs';
 import { forkRunner } from './reviewRunner.mjs';
 import { createPlanSource } from './reviewPlans.mjs';
 import { listLocalBranches, resolveListed, defaultBase } from './reviewRefs.mjs';
@@ -75,14 +76,18 @@ const RECORDS = [
 ];
 
 async function withStack({ authOn = true, repo = makeRepo(), runner, records = RECORDS, runOptions } = {}, fn) {
+  const stateDir = makeTempDir('og351-state-');
+  // #416: the same sidecar write index.mjs wires the real executor to, so `createAnalyses` (below) can prove a
+  // report survives a "restart" (a fresh, empty createResults() Map reading through the same disk-backed store).
+  const persist = (projectRoot, id, value) => { openProcessStore(projectRoot, { stateDir }).saveAside(id, 'result', value); };
   // The real wiring of index.mjs, with a private state directory: every analysis is a Process in a real
   // store, driven by the real engine, executed by the read-only review executor (never the bot runner).
   const results = createResults();
-  const reviewExecutor = createReviewExecutor({ ...(runner ? { run: runner } : {}), ...(runOptions ? { runOptions } : {}), results });
+  const reviewExecutor = createReviewExecutor({ ...(runner ? { run: runner } : {}), ...(runOptions ? { runOptions } : {}), results, persist });
   const botRefused = async () => ({ ok: false, llm: null, error: 'a bot step must not run in this test' });
   const service = createProcessesService({
     getProjectDir: () => repo,
-    stateDir: makeTempDir('og351-state-'),
+    stateDir,
     executeStep: composeExecutors({ bot: botRefused, review: reviewExecutor.executeStep }),
   });
   const jobs = createReviewJobs({ analyses: createAnalyses({ service, results }) });
@@ -271,6 +276,28 @@ test('analysis runs in a child process (not on the request thread) and returns t
     assert.equal(row.analysis.indicators.length, 5);
     assert.ok(row.analysis.files >= 2);
     assert.deepEqual(snapshot(repo), before, 'analysing changes nothing in the user repository');
+  });
+});
+
+// #416 -- a finished analysis's report must survive the server being restarted: the in-memory Map
+// (`createResults()`) is gone, but the process record's own disk-backed store is not, and the report was
+// written beside it.
+test('a done analysis survives a "restart": a fresh in-memory results Map still finds it through the store', async () => {
+  const runner = async () => ({ ok: true, report: { kind: 'pr-health', change: { counts: { files: 2 } }, findings: [] }, units: [] });
+  await withStack({ runner }, async ({ json, service, jobs }) => {
+    await json('POST', '/api/review/analyze', { body: { base: 'main', heads: ['change'] } });
+    await until(() => jobs.pending() === 0, 'the analysis to finish');
+    const [record] = analysisProcesses(service);
+
+    // The "restart": a brand-new, EMPTY results Map, reading through the SAME (disk-backed) store -- exactly
+    // what a fresh ui/server process would see, since only the Map is process-local.
+    const freshResults = createResults();
+    assert.equal(freshResults.get(record.id), undefined, 'the fresh map genuinely has nothing cached');
+    const freshAnalyses = createAnalyses({ service, results: freshResults });
+    const state = freshAnalyses.stateOf(record.id);
+    assert.equal(state.state, 'done');
+    assert.equal(state.result.report.kind, 'pr-health');
+    assert.deepEqual(state.result.report.change.counts, { files: 2 });
   });
 });
 

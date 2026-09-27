@@ -149,6 +149,50 @@ test('remove() deletes a record and says whether there was one', () => {
   assert.deepEqual(store.list().processes, []);
 });
 
+// #416 -- saveAside/loadAside: a derived value (a Review analysis's report, a Tests-tab run's outcome) survives
+// a restart beside the record it belongs to, without ever being mistaken for one.
+test('saveAside/loadAside round-trip a derived value beside the record, atomically', () => {
+  const { projectRoot, stateDir, store, now } = setup();
+  store.save(createProcess(PLAN, { id: 'p1', projectRoot, now }));
+  assert.equal(store.loadAside('p1', 'result'), null, 'nothing saved yet');
+  assert.deepEqual(store.saveAside('p1', 'result', { ok: true, report: { findings: 3 } }), { ok: true, report: { findings: 3 } });
+  assert.deepEqual(store.loadAside('p1', 'result'), { ok: true, report: { findings: 3 } });
+  // A brand-new store (the #292 "restart" scenario) sees it too -- it is a real file, not process-local state.
+  const reopened = openProcessStore(projectRoot, { stateDir, now });
+  assert.deepEqual(reopened.loadAside('p1', 'result'), { ok: true, report: { findings: 3 } });
+});
+
+test('a sidecar never surfaces as a process record in all()/list(), even though its own filename ends in .json', () => {
+  const { projectRoot, store, now } = setup();
+  store.save(createProcess(PLAN, { id: 'p1', projectRoot, now }));
+  store.saveAside('p1', 'result', { ok: true });
+  const { processes, problems } = store.all();
+  assert.deepEqual(processes.map((p) => p.id), ['p1']);
+  assert.deepEqual(problems, [], 'the sidecar is not read as a (corrupt) process record');
+  assert.equal(fs.existsSync(path.join(store.dir, 'p1.result.json')), true, 'the sidecar file really is there');
+});
+
+test('a corrupt sidecar is a cache miss, not an error: loadAside() never throws', () => {
+  const { projectRoot, store, now } = setup();
+  store.save(createProcess(PLAN, { id: 'p1', projectRoot, now }));
+  fs.writeFileSync(path.join(store.dir, 'p1.result.json'), '{not json');
+  assert.equal(store.loadAside('p1', 'result'), null);
+});
+
+test('remove() also removes every sidecar the record had, so an orphaned result never outlives it', () => {
+  const { projectRoot, store, now } = setup();
+  store.save(createProcess(PLAN, { id: 'p1', projectRoot, now }));
+  store.save(createProcess(PLAN, { id: 'p2', projectRoot, now }));
+  store.saveAside('p1', 'result', { ok: true, a: 1 });
+  store.saveAside('p2', 'result', { ok: true, b: 2 });
+  assert.equal(store.remove('p1'), true);
+  assert.equal(fs.existsSync(path.join(store.dir, 'p1.result.json')), false, 'p1\'s sidecar is gone with its record');
+  assert.equal(store.loadAside('p1', 'result'), null);
+  // p2's own record and sidecar are untouched.
+  assert.equal(store.load('p2') !== null, true);
+  assert.deepEqual(store.loadAside('p2', 'result'), { ok: true, b: 2 });
+});
+
 test('a process left running by a killed server is adopted into paused, with the in-flight step back to pending', () => {
   const { projectRoot, store, now } = setup();
   let p = createProcess(PLAN, { id: 'p1', projectRoot, now });

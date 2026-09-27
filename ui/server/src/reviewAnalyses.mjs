@@ -79,12 +79,15 @@ export function projectModeOf(projectRoot) {
 }
 
 /**
- * @param {{run?: Function, runCli?: Function, modeOf?: (projectRoot:string)=>string, results?: ReturnType<typeof createResults>, runOptions?: object}} [opts]
+ * @param {{run?: Function, runCli?: Function, modeOf?: (projectRoot:string)=>string, results?: ReturnType<typeof createResults>, runOptions?: object, persist?: (projectRoot:string, id:string, value:object)=>void}} [opts]
  *   `run(job, {signal, onProgress})` is the test seam; the default forks the read-only worker. In a project whose
  *   `project.execution.mode` is `cli` the same job goes to `runCli` instead (default: the real `construct review`
- *   subprocess, reviewCli.mjs); `modeOf` reads the mode (default: architecture.yml).
+ *   subprocess, reviewCli.mjs); `modeOf` reads the mode (default: architecture.yml). `persist`, when given, is
+ *   called with the finished report right after `results.set()` (#416): the default (index.mjs) writes it through
+ *   `processStore.saveAside(id, 'result', ...)`, so a restart's in-memory Map miss is not the only place `stateOf`
+ *   can find it (see `createAnalyses` below). Best-effort: a failure here never fails the step itself.
  */
-export function createReviewExecutor({ run = forkRunner, runCli = cliReviewRunner, modeOf = projectModeOf, results = createResults(), runOptions = {} } = {}) {
+export function createReviewExecutor({ run = forkRunner, runCli = cliReviewRunner, modeOf = projectModeOf, results = createResults(), runOptions = {}, persist = null } = {}) {
   async function executeStep({ process: proc, step, signal, log }) {
     const none = { ok: false, llm: null, artifacts: [] };
     if (step.flow !== ANALYSIS_FLOW) return { ...none, error: `Step "${step.id}" is not an analysis.` };
@@ -110,6 +113,7 @@ export function createReviewExecutor({ run = forkRunner, runCli = cliReviewRunne
     }
     if (signal.aborted || outcome?.error?.code === 'CANCELLED') throw new StepAborted(step.id);
     results.set(proc.id, outcome);
+    if (persist) { try { persist(proc.projectRoot, proc.id, outcome); } catch { /* best effort: a derived cache is nice-to-have, not required for correctness */ } }
     if (!outcome?.ok) return { ...none, error: outcome?.error?.message ?? 'The analysis produced no result.' };
     log('ok', `Done: ${outcome.report.change.counts.files} file(s) changed, ${outcome.report.findings.length} finding(s).`);
     return { ok: true, llm: null, artifacts: [] };
@@ -153,19 +157,22 @@ export function createAnalyses({ service, results }) {
       const started = service.startPlan(analysisPlan(spec));
       return started.ok ? { ok: true, processId: started.processId } : { ok: false, error: started.error };
     },
-    /** The analysis's row state, read from the process record (the single source of truth). */
+    /** The analysis's row state, read from the process record (the single source of truth). A `done`/`failed`
+     * record whose in-memory result was lost (a server restart, #416) falls back to the sidecar `saveAside('result', ...)`
+     * wrote when the step finished, so a report that cost real minutes is not silently forgotten. */
     stateOf(processId) {
       const record = load(processId);
       if (!record) return { state: 'none' };
       const top = topLevelState(record.state);
       const stepStatus = record.steps[0]?.status;
       const base = { processId };
+      const resultOf = () => results.get(processId) ?? service.store()?.loadAside(processId, 'result') ?? undefined;
       if (top === 'done') {
-        const r = results.get(processId);
+        const r = resultOf();
         return r?.ok ? { ...base, state: 'done', result: r } : { ...base, state: 'none' };
       }
       if (top === 'failed') {
-        const r = results.get(processId);
+        const r = resultOf();
         return { ...base, state: 'error', error: r?.error ?? { code: 'WORKER_FAILED', message: record.steps[0]?.error ?? 'The analysis failed.' } };
       }
       if (top === 'cancelled') return { ...base, state: 'cancelled' };

@@ -36,7 +36,7 @@ import { createTestsRouter } from './testsApi.mjs';
 import { createCloneJobs, DEFAULT_MAX_BYTES, DEFAULT_TIMEOUT_MS } from './cloneJobs.mjs';
 import { createHealth } from './health.mjs';
 import { createDevActivity, createDevStatusRouter } from './devActivity.mjs';
-import { resolveStateDir } from '../../../packages/engine/processStore.mjs';
+import { resolveStateDir, openProcessStore } from '../../../packages/engine/processStore.mjs';
 import { createCloneRouter, createRemoteRouter } from './cloneApi.mjs';
 import { resolveHarnessSeams } from './testSeams.mjs';
 import { createRepoConnections, resolveRepoConnectionConfig, sessionKeyOf } from './repoConnection.mjs';
@@ -1049,11 +1049,16 @@ app.use('/api/dev-server', createDevServerRouter(devServer, { clientOrigin: CLIE
 
 // #292: the Processes drawer. Registered below the gate like every other
 // `/api` route; the WebSocket (createUiServer) takes the same `auth`.
+// #416: a finished analysis/run's result is written beside its process record (processStore.saveAside), so a
+// server restart's in-memory Map miss is not the only place `stateOf` (reviewAnalyses.mjs / testRuns.mjs) can
+// find it. Best-effort (both call sites already swallow a persist failure): the report the user waited minutes
+// for is worth caching, but never worth failing the step over.
+const persistProcessResult = (projectRoot, id, value) => { openProcessStore(projectRoot, { stateDir: resolveStateDir() }).saveAside(id, 'result', value); };
 // #351: `review.analyze` steps (a Review-mode analysis) run in the read-only review executor, never in the
 // bot runner: no worktree, no bot branch, no artifacts, so they can never reach the approval gate.
-export const reviewExecutor = createReviewExecutor();
+export const reviewExecutor = createReviewExecutor({ persist: persistProcessResult });
 // #305: `test.run` steps (a Tests-tab run) run the same way: a forked worker, no bot branch, no artifacts.
-export const testRunExecutor = createTestRunExecutor();
+export const testRunExecutor = createTestRunExecutor({ persist: persistProcessResult });
 // #611: startPlan itself refuses a plan that uses a block turned off for the project, whoever starts it.
 export const processesService = createProcessesService({ getProjectDir, reviewExecutor, testRunExecutor, getBlockSettings: (root) => openBlockSettingsStore(root).disabledFlows() });
 app.use('/api/processes', createProcessesRouter(processesService));
@@ -1139,7 +1144,7 @@ app.use('/api/blocks', createBlocksRouter({
 // feature name, a generated file NAME and a clone name only; all three are validated and every path is derived
 // on the server (testsApi.mjs / src/engine/testClone.mjs). The clone and generate POSTs are mutating.
 // #305: a run is a Process too; the routes below start, read and cancel it by feature name.
-export const testRunJobs = createTestRunJobs({ runs: createTestRuns({ service: processesService, results: testRunExecutor.results }) });
+export const testRunJobs = createTestRunJobs({ runs: createTestRuns({ service: processesService, results: testRunExecutor.results }), store: () => processesService.store() });
 app.use('/api/tests', createTestsRouter({
   clientOrigin: CLIENT_ORIGIN,
   runs: testRunJobs,
