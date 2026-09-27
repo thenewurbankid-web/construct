@@ -99,6 +99,10 @@ li[aria-current='true'] > .rv-file { background: var(--accent-soft); box-shadow:
 .rv-card-means { margin: 0; }
 .rv-findings { margin: 0; padding-left: var(--sp-4); font-size: var(--fs-sm); }
 
+/* #374: the Git screen's no-remote Connect/Clone empty state (ia-git-connect.html) */
+.rv-connect-actions { display: flex; gap: var(--sp-2); margin-top: var(--sp-3); flex-wrap: wrap; }
+.rv-connect-panel { margin-top: var(--sp-3); border-top: 1px solid var(--border-subtle); padding-top: var(--sp-3); }
+
 @media (max-width: 900px) {
   .rv-row { grid-template-columns: minmax(0, 1fr); }
   .rv-badges { justify-content: flex-start; max-width: none; }

@@ -9,9 +9,10 @@ import { useFailureActions } from '../hooks/useFailureActions';
 import { useReviewList } from '../hooks/useReviewList';
 import { listData } from '../workflows/ListMachine';
 import { useReviewRoute } from '../hooks/useReviewRoute';
+import { GitPrsTabController } from './GitPrsTabController';
 import { ReviewListPage } from '../pages/ReviewListPage';
-import { listShellTabs } from '../pages/ReviewShellTabs';
-import type { BranchRow, BranchRowView } from '../types';
+import { gitChangesTab, gitCommitTab, gitCommitsTab, listShellTabs } from '../pages/ReviewShellTabs';
+import type { BranchListProps, BranchRow, BranchRowView } from '../types';
 
 function rowView(b: BranchRow): BranchRowView {
   const a = b.analysis;
@@ -44,8 +45,32 @@ export function ReviewListController() {
       : null,
     GLOSSARY,
   );
+  // #374 (Git screen shell): "Changes" registers first so the left tab strip reads Changes | Branches
+  // | PRs | Commits, left to right, matching ia-git.html -- registration order is render order (see
+  // ReviewShellTabs.tsx's header comment for why none of this is `preferred`).
+  useRegisterShellTab('browser', gitChangesTab());
   useRegisterShellTab('browser', tabs.browser);
   useRegisterShellTab('tools', tabs.tools);
+
+  const listProps: BranchListProps | null =
+    data && base
+      ? {
+          base,
+          rows: rankBranches(data.branches, list.order).map(rowView),
+          order: list.order,
+          explanation: orderExplanation(list.order),
+          onOrder: list.setOrder,
+          onOpen: (name) => route.openChange(base, name),
+          onReload: list.reload,
+        }
+      : null;
+
+  // #374 (Git screen shell): additive tabs. None of these is `preferred`, so `review-sources` stays
+  // the default browser tab and `review-legend` stays the default tools tab exactly as before --
+  // see ReviewShellTabs.tsx's header comment.
+  useRegisterShellTab('browser', { id: 'git-prs', title: 'PRs', badge: listProps ? listProps.rows.length : null, render: () => <GitPrsTabController list={listProps} /> });
+  useRegisterShellTab('browser', gitCommitsTab());
+  useRegisterShellTab('tools', gitCommitTab());
 
   return (
     <ReviewListPage
@@ -53,19 +78,7 @@ export function ReviewListController() {
       failure={state.status === 'error' ? describeFailure(state.errorCode, state.error) : null}
       noBranches={!!data && !data.base}
       onFailureAction={onFailureAction}
-      list={
-        data && base
-          ? {
-              base,
-              rows: rankBranches(data.branches, list.order).map(rowView),
-              order: list.order,
-              explanation: orderExplanation(list.order),
-              onOrder: list.setOrder,
-              onOpen: (name) => route.openChange(base, name),
-              onReload: list.reload,
-            }
-          : null
-      }
+      list={listProps}
     />
   );
 }
