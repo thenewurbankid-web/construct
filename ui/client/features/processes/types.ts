@@ -77,6 +77,16 @@ export type ProcessDetail = {
 
 export type DiffResult = { status: 'loading' } | { status: 'ready'; diff: string | null; reason?: string };
 
+// #416 -- ui/server GET /api/processes/gc: the dry-run `construct process gc` report taken when the project was
+// opened (server start, or the first request after it). Null until the first fetch resolves, or when the sweep
+// itself could not run; the drawer treats both the same way (nothing to show).
+export type GcReport = {
+  counts: { worktrees: number; branches: number; staleApprovals: number };
+  worktrees: { found: string[] };
+  branches: { found: { branch: string; processId: string; reason: string }[] };
+  staleApprovals: { id: string; ageDays: number; pending: string[] }[];
+};
+
 // ---- Display shapes: what the domain builds and the components render as they are. ----
 
 export type ListRow = { id: string; title: string; state: TopState; stateLabel: string; progress: string; percent: number; selected: boolean; note: string | null };
@@ -118,7 +128,15 @@ export type ProcessesViewProps = {
   onShowDiff: (id: string, path: string) => void;
   /** #330: recent repository clones (another feature's controller), shown above the process list. */
   clones?: ReactNode;
+  /** #416 -- how many dead worktrees/orphaned branches/stale-approval records `construct process gc --dry-run`
+   * found at server start; null before the first fetch resolves or when there is nothing to report. */
+  gcCount: number;
+  onShowGc: () => void;
+  gcDetails: GcDetailLine[] | null;
 };
+
+/** #416 -- one line of the gc detail popover: a worktree, a branch or a stale-approval record, in plain words. */
+export type GcDetailLine = { key: string; text: string };
 
 export type ProcessesState = {
   loaded: boolean;
@@ -141,6 +159,10 @@ export type ProcessesState = {
   /** `${id}\n${path}` of the decision in flight, if any. */
   deciding: string | null;
   live: boolean;
+  /** #416 -- the dry-run gc report, fetched once when the project is (re)opened. */
+  gc: GcReport | null;
+  /** #416 -- whether the gc detail popover (the "N item(s) — Details" link) is open. */
+  gcDetailsOpen: boolean;
 };
 
 export type ProcessesAction =
@@ -154,4 +176,6 @@ export type ProcessesAction =
   | { type: 'CONTROL_START'; id: string }
   | { type: 'CONTROL_DONE'; notice: string | null }
   | { type: 'DIFF'; key: string; result: DiffResult }
-  | { type: 'LIVE'; live: boolean };
+  | { type: 'LIVE'; live: boolean }
+  | { type: 'GC'; gc: GcReport | null }
+  | { type: 'TOGGLE_GC_DETAILS' };

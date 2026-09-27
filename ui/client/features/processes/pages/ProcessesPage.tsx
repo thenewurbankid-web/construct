@@ -1,3 +1,4 @@
+import { GcNotice } from '../components/GcNotice';
 import { ProcessArtifacts } from '../components/ProcessArtifacts';
 import { ProcessList } from '../components/ProcessList';
 import { ProcessLog } from '../components/ProcessLog';
@@ -5,16 +6,17 @@ import { ProcessSteps } from '../components/ProcessSteps';
 import type { ProcessesViewProps } from '../types';
 
 // Presentation-only: every value and handler comes from the controller.
-export function ProcessesPage({ clones, ...props }: ProcessesViewProps) {
+export function ProcessesPage({ clones, gcCount, onShowGc, gcDetails, ...props }: ProcessesViewProps) {
   return (
     <>
       {clones}
+      <GcNotice count={gcCount} details={gcDetails} onToggle={onShowGc} />
       <ProcessesBody {...props} />
     </>
   );
 }
 
-function ProcessesBody({ rows, detail, diffs, review, reviewLoading, reviewError, onReview, onDecide, busy, notice, error, live, onSelect, onControl, onShowDiff }: ProcessesViewProps) {
+function ProcessesBody({ rows, detail, diffs, review, reviewLoading, reviewError, onReview, onDecide, busy, notice, error, live, onSelect, onControl, onShowDiff }: Omit<ProcessesViewProps, 'clones' | 'gcCount' | 'onShowGc' | 'gcDetails'>) {
   if (error && rows.length === 0) {
     return (
       <div className="dg-empty" role="alert" data-testid="processes-error">

@@ -15,6 +15,8 @@ export const initialProcesses: ProcessesState = {
   validations: {},
   deciding: null,
   live: false,
+  gc: null,
+  gcDetailsOpen: false,
 };
 
 /** A summary-only entry: enough for the list until the detail arrives. */
@@ -81,6 +83,10 @@ export function processesReducer(state: ProcessesState, action: ProcessesAction)
       };
     case 'LIVE':
       return { ...state, live: action.live };
+    case 'GC':
+      return { ...state, gc: action.gc };
+    case 'TOGGLE_GC_DETAILS':
+      return { ...state, gcDetailsOpen: !state.gcDetailsOpen };
     default:
       return state;
   }

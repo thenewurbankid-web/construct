@@ -46,5 +46,7 @@ export function useProcesses(projectDir: string | null) {
 
   const { loadReview, decide } = useReview(dispatch);
 
-  return { state, select, control, loadDiff, loadReview, decide, running: runningCount(summariesOf(state)) };
+  const toggleGcDetails = useCallback(() => dispatch({ type: 'TOGGLE_GC_DETAILS' }), []);
+
+  return { state, select, control, loadDiff, loadReview, decide, toggleGcDetails, running: runningCount(summariesOf(state)) };
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, type Dispatch } from 'react';
-import { fetchProcesses } from '../services/ProcessesApi';
+import { fetchGc, fetchProcesses } from '../services/ProcessesApi';
 import { connectProcessesSocket } from '../services/ProcessesSocket';
 import type { ProcessesAction } from '../types';
 
@@ -35,6 +35,9 @@ export function useProcessesLive(projectDir: string | null, dispatch: Dispatch<P
       });
     };
     reload();
+    // #416 -- the dry-run gc report is a one-time read per project open (the server itself only takes it once,
+    // at open()); it does not need the socket's live updates the process list gets.
+    fetchGc().then((gc) => dispatch({ type: 'GC', gc }));
     open();
     return () => {
       stopped.current = true;

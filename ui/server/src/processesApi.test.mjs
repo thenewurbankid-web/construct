@@ -273,3 +273,34 @@ test('the diff of a recorded artifact is read from the bot branch, read-only', a
     assert.equal(view.artifacts[0].approved, null, 'artifacts are shown awaiting approval; nothing here applies them');
   });
 });
+
+// #416 -- GET /api/processes/gc: the dry-run `construct process gc` report taken when the project was opened.
+// Registered as a fixed path so it is never swallowed by the `/:id` route below it (an id literally "gc" would
+// otherwise match first) -- proven here by asking for it on a real project, not a stubbed store.
+test('GET /api/processes/gc serves the dry-run gc report, registered ahead of the :id route', async () => {
+  const projectDir = makeTempDir('construct-procapi-gcproject-');
+  const stateDir = makeTempDir('construct-procapi-gcstate-');
+  const vcs = (...args) => spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t.invalid', ...args], { cwd: projectDir, encoding: 'utf8' });
+  vcs('init', '-q', '-b', 'main');
+  vcs('commit', '-q', '--allow-empty', '-m', 'base');
+  const service = createProcessesService({ getProjectDir: () => projectDir, stateDir, executeStep: gates().executeStep });
+  const auth = createAuth(resolveAuthConfig(ENV, { host: '127.0.0.1', clientOrigin: ORIGIN }));
+  const app = express();
+  app.use(express.json());
+  auth.mountRoutes(app);
+  app.use('/api', auth.requireSession);
+  app.use('/api/processes', createProcessesRouter(service));
+  const server = http.createServer(app);
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const port = server.address().port;
+  try {
+    const res = await fetch(`http://127.0.0.1:${port}/api/processes/gc`, { headers: { origin: ORIGIN, cookie: cookie() } });
+    const body = await res.json();
+    assert.equal(res.status, 200);
+    assert.equal(body.ok, true);
+    assert.deepEqual(body.gc.counts, { worktrees: 0, branches: 0, staleApprovals: 0 }, 'a fresh project has nothing to clean up');
+  } finally {
+    server.close();
+    server.closeAllConnections?.();
+  }
+});
