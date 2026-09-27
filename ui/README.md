@@ -187,7 +187,11 @@ choice and the server **refuses to start** with it on a non-loopback host. The o
 the OS temp dir (their fixtures are `mkdtemp` directories) and preload one initialised project;
 `playwright.workspace.config.js` runs a narrow workspace with nothing preloaded and attacks the boundary
 (`tests/workspace.spec.js`), and also runs `tests/project-gate.spec.js` and `tests/new-project.spec.js` (#445);
-`playwright.directory-picker.config.js` runs the picker spec against the same harness.
+`playwright.directory-picker.config.js` runs the picker spec against the same harness. If a spec removes its own
+open project mid-run, `settings.getProjectDir()` silently substitutes this preloaded default rather than leaving
+every later spec at "Open a project" — silently to the client, but not to the server: it logs one `Project
+fallback:` line when it fires, and `/api/settings`'s `fellBackFrom` (#420, see "Endpoints" below) names the
+vanished path for exactly as long as the substitution stands, so a spec can assert it did NOT happen by accident.
 
 Known limits: files *inside* a project are guarded by each route's own project-relative checks (a symlink inside a
 project that points out of the workspace is followed by the CLI commands that generate into it); a project whose git
@@ -284,31 +288,39 @@ cd ui/e2e
 E2E_CLIENT_PORT=3051 E2E_SERVER_PORT=4051 npx playwright test -c playwright.auth.config.js
 ```
 
+### Lanes: smoke (required before merge) vs. the full suite (#420)
+
+`playwright.smoke.config.js` runs `smoke.spec.js` plus one spec per primary screen (Features, Pages,
+Components, Git, Tests — target under 5 minutes): `npm run test:smoke-lane`, CI'd on every PR
+(`.github/workflows/e2e-smoke.yml`). The full ~95-spec, 12-config suite below is sharded one job per
+config on merge/nightly instead (`.github/workflows/e2e-full.yml`), with each job's duration printed
+to the run summary. Full writeup: `docs/E2E-LANES.md`.
+
 ### Running the whole e2e suite
 
 The default config runs almost everything; three specs need a server or a login of their own and run under their
-own configs. Run all four for the full picture. Wrap heavy runs in `tools/dev/heavy.sh` (this box is 15 GB with no
-swap), keep `--workers=1`, and use distinct ports so parallel runs never share a server.
+own configs. Run all four for the full picture. Wrap heavy runs in `../../packages/tools/dev/heavy.sh` (this box is 15 GB
+with no swap), keep `--workers=1`, and use distinct ports so parallel runs never share a server.
 
 `heavy.sh` (#414) takes one machine-wide lock with a bounded wait (`CONSTRUCT_HEAVY_LOCK_WAIT_SEC`, default 3600; on
 giving up it prints who holds it and exits 75), waits for free RAM with the lock released between checks and a bound of
 its own (`CONSTRUCT_HEAVY_RAM_WAIT_SEC`, default 1800), and afterwards prunes `/tmp/construct-*` directories **whose
 owner pid is gone** (the pid is in every directory name Construct creates, or in a `.owner` file) — never by age
-alone, so a run longer than 30 minutes no longer loses its state to another session's sweep. `tools/dev/heavy.sh
---prune-only` runs just the sweep; `node --test tools/dev/test/` runs its tests.
+alone, so a run longer than 30 minutes no longer loses its state to another session's sweep. `packages/tools/dev/heavy.sh
+--prune-only` runs just the sweep; `node --test packages/tools/dev/test/` runs its tests.
 
 ```bash
 cd ui/e2e
 export WATCHPACK_POLLING=true CHOKIDAR_USEPOLLING=1   # fs.inotify.max_user_instances can be as low as 128
-../../tools/dev/heavy.sh npx playwright test --workers=1                                # the default config
-../../tools/dev/heavy.sh npx playwright test -c playwright.auth.config.js               # login gate, and the account chip half of popover-dismiss
-../../tools/dev/heavy.sh npx playwright test -c playwright.processes.config.js          # Processes drawer (fake step executor)
-../../tools/dev/heavy.sh npx playwright test -c playwright.processes-approval.config.js # approve/reject (seeds a finished process)
-../../tools/dev/heavy.sh npx playwright test -c playwright.workspace.config.js          # workspace boundary + "Open a project" (#365)
-../../tools/dev/heavy.sh npx playwright test -c playwright.directory-picker.config.js   # folder picker inside a narrow workspace
-../../tools/dev/heavy.sh npx playwright test -c playwright.clone.config.js              # clone a repository, connect a remote (#330)
-../../tools/dev/heavy.sh npx playwright test -c playwright.github-repo.config.js        # connect GitHub, clone a private repo with the login (#638; a mock GitHub, ports 49210-49212)
-../../tools/dev/heavy.sh npx playwright test -c playwright.tests-restart.config.js      # a done Tests-tab run survives ui/server being restarted (#416)
+../../packages/tools/dev/heavy.sh npx playwright test --workers=1                                # the default config
+../../packages/tools/dev/heavy.sh npx playwright test -c playwright.auth.config.js               # login gate, and the account chip half of popover-dismiss
+../../packages/tools/dev/heavy.sh npx playwright test -c playwright.processes.config.js          # Processes drawer (fake step executor)
+../../packages/tools/dev/heavy.sh npx playwright test -c playwright.processes-approval.config.js # approve/reject (seeds a finished process)
+../../packages/tools/dev/heavy.sh npx playwright test -c playwright.workspace.config.js          # workspace boundary + "Open a project" (#365)
+../../packages/tools/dev/heavy.sh npx playwright test -c playwright.directory-picker.config.js   # folder picker inside a narrow workspace
+../../packages/tools/dev/heavy.sh npx playwright test -c playwright.clone.config.js              # clone a repository, connect a remote (#330)
+../../packages/tools/dev/heavy.sh npx playwright test -c playwright.github-repo.config.js        # connect GitHub, clone a private repo with the login (#638; a mock GitHub, ports 49210-49212)
+../../packages/tools/dev/heavy.sh npx playwright test -c playwright.tests-restart.config.js      # a done Tests-tab run survives ui/server being restarted (#416)
 ```
 
 `a11y.spec.js` and `tests-tab.spec.js` import `@axe-core/playwright`, a declared devDependency: run `npm install` in
@@ -495,7 +507,7 @@ Run `construct validate` from inside `ui/client` to check it yourself:
 
 ```bash
 cd ui/client
-node ../../bin/construct.mjs validate
+node ../../packages/cli/construct.mjs validate
 # ✓ Construct validation passed
 ```
 
@@ -649,13 +661,16 @@ REST (`ui/server/src/index.mjs`), all `POST` except settings' `GET`:
   all sourced live from `src/usage.mjs` and `src/repl.mjs` (read-only, no side effects)
 - `GET|POST /api/settings` — `{ projectDir?, closeProject?, llmProvider? }` in (POST only; GET takes
   nothing); both return `{ projectDir (null until one is opened, #365), noProject, workspaceRoot, lastProject,
-  llmProvider, availableProviders, resolvedProjectRoot, valid, needsInit }`. `projectDir` must be inside the workspace
+  llmProvider, availableProviders, resolvedProjectRoot, valid, needsInit, fellBackFrom }`. `projectDir` must be inside the workspace
   (see "Workspace" above). `resolvedProjectRoot` is
   `findProjectRoot(projectDir)` (src/config.mjs) — the exact upward search
   `getRoot` in src/cli.mjs uses to resolve every command's root, so `valid`
   here means exactly what it means when a command actually runs (a
   subdirectory of an existing project counts; an arbitrary directory with no
-  `architecture.yml` above it doesn't). `needsInit` is `!valid`.
+  `architecture.yml` above it doesn't). `needsInit` is `!valid`. `fellBackFrom` (#420) is `null` except
+  right after the harness fallback below actually substitutes a project: then it names the path that
+  vanished, stays visible on later reads of the substituted project, and is cleared by the next
+  explicit open or close — so a spec can assert the fallback did NOT fire by accident.
 - `POST /api/init` — no body; runs `init` (from `src/cli.mjs`, same as
   `construct init`) against the *currently selected* project directory.
   Responds `{ ok, output, attribution, error?, ...settings-shape above }` —
@@ -696,7 +711,7 @@ client; `{ type: 'log'|'question'|'done', text?, kind? }` from the server.
 - `ui/client`: `npm run build` (Next.js production build) compiles,
   type-checks, and statically generates all 6 routes with no errors;
   `npm run dev` starts cleanly and serves the app on port 3000.
-  `node ../../bin/construct.mjs validate` reports zero errors and zero
+  `node ../../packages/cli/construct.mjs validate` reports zero errors and zero
   warnings.
 - `ui/e2e`'s full Playwright suite (13 tests) passes against the migrated
   stack — re-run after every structural change during the migration, not

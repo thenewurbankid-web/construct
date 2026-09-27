@@ -1,0 +1,89 @@
+name: E2E full (sharded)
+
+# #420: the full Playwright suite, sharded one job per config so no single job pays for the whole
+# thing serially. Runs on merge (push to work/2026-09-23) and nightly, never on every PR — the
+# per-PR gate is the smoke lane (.github/workflows/e2e-smoke.yml).
+#
+# The config list is read from disk (`ui/e2e/playwright.*.config.js`) rather than hand-maintained
+# here, so a new config picks up its own shard automatically instead of silently running with none.
+#
+# Each shard is its own GitHub-hosted runner (its own VM), so the "one checkout per concurrent run"
+# rule and heavy.sh's machine-wide lock (CLAUDE.md's machine section, ui/README.md) don't apply here
+# — those are for several local/agent runs sharing the one dev box.
+
+on:
+  push:
+    branches: [work/2026-09-23]
+  schedule:
+    - cron: '0 7 * * *' # nightly
+  workflow_dispatch: {}
+
+concurrency:
+  group: e2e-full-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.list.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: list
+        working-directory: ui/e2e
+        run: |
+          configs=$(ls playwright.*.config.js | sed 's/\.js$//' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "matrix=$configs" >> "$GITHUB_OUTPUT"
+
+  e2e:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        config: ${{ fromJson(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            ui/server/package-lock.json
+            ui/client/package-lock.json
+            ui/e2e/package-lock.json
+      - name: Install root dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Install Cockpit server dependencies
+        run: npm ci --prefix ui/server --no-audit --no-fund
+      - name: Install Cockpit client dependencies
+        run: npm ci --prefix ui/client --no-audit --no-fund
+      - name: Install e2e dependencies
+        run: npm ci --prefix ui/e2e --no-audit --no-fund
+      - name: Install Playwright's Chromium
+        run: npx --prefix ui/e2e playwright install --with-deps chromium
+      - name: Run ${{ matrix.config }}
+        working-directory: ui/e2e
+        env:
+          WATCHPACK_POLLING: 'true'
+          CHOKIDAR_USEPOLLING: '1'
+        run: |
+          set +e
+          START=$(date +%s)
+          npx playwright test --workers=1 -c "${{ matrix.config }}.js"
+          STATUS=$?
+          END=$(date +%s)
+          {
+            echo "### ${{ matrix.config }}"
+            echo "Duration: $((END - START))s — $([ $STATUS -eq 0 ] && echo pass || echo FAIL)"
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit $STATUS
+      - name: Upload trace on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-full-${{ matrix.config }}-traces
+          path: ui/e2e/test-results
+          retention-days: 7

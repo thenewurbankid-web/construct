@@ -163,6 +163,33 @@ test('#365 harness: when the open project vanishes, the preloaded one comes back
   assert.equal(getProjectDir(), null, 'a preload that itself vanished is not served');
 });
 
+test('#420: fellBackFrom is null through ordinary use, and only appears (naming the vanished path) once the #365 fallback actually substitutes a project', () => {
+  // Ordinary path: an explicit open never sets it.
+  const normal = makeTempDir('settings-ws-fellback-normal-');
+  updateSettings({ projectDir: normal });
+  assert.equal(getSettings().fellBackFrom, null, 'must not fire by accident on a plain, valid project');
+
+  // Trigger a real fallback: open project vanishes, a preloaded one takes over.
+  const preloaded = makeTempDir('settings-ws-fellback-preload-');
+  preloadProject(preloaded);
+  const gone = makeTempDir('settings-ws-fellback-gone-');
+  updateSettings({ projectDir: gone });
+  assert.equal(getSettings().fellBackFrom, null, 'not yet fired: the open project still exists');
+  fs.rmSync(gone, { recursive: true, force: true });
+  const afterFallback = getSettings();
+  assert.equal(afterFallback.projectDir, preloaded);
+  assert.equal(afterFallback.fellBackFrom, gone, 'names exactly the path substituted away from');
+
+  // It stays visible across later reads of the same (now-fallen-back-to) project...
+  assert.equal(getSettings().fellBackFrom, gone);
+  // ...but an explicit project change or close clears it.
+  const another = makeTempDir('settings-ws-fellback-another-');
+  updateSettings({ projectDir: another });
+  assert.equal(getSettings().fellBackFrom, null, 'an explicit open supersedes the earlier silent substitution');
+  updateSettings({ closeProject: true });
+  assert.equal(getSettings().fellBackFrom, null);
+});
+
 test('updateSettings back-compat: a bare legacy { llmProvider } body sets importFill only, never planAnalysis/createFill', () => {
   updateSettings({ llmProviders: { createFill: 'claude', planAnalysis: 'claude' } });
   const before = getSettings().llmProviders;

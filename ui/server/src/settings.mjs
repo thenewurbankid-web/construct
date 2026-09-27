@@ -56,7 +56,7 @@ const shared = {
 
 const defaultLlmProviders = () => ({ importFill: defaultProvider, createFill: defaultProvider, planAnalysis: defaultProvider });
 
-/** login key -> { projectDir, lastProject, llmProviders }. */
+/** login key -> { projectDir, lastProject, llmProviders, fellBackFrom }. */
 const userStates = new Map();
 
 /** The state of the current request's login, created on first use. #365: NO project at start; the Cockpit never
@@ -70,6 +70,10 @@ function userState() {
       // The project that was open last, offered as "Reopen <name>" and NEVER loaded automatically.
       lastProject: undefined, // undefined = not read from disk yet
       llmProviders: undefined, // undefined = not read from disk yet (see userLlmProviders)
+      // #420: set to the path getProjectDir() last silently substituted AWAY from (a spec removed its own open
+      // project and the harness fallback below took over), so /api/settings can expose it and a spec can assert
+      // the fallback did NOT fire by accident. Cleared by any explicit project change (updateSettings).
+      fellBackFrom: null,
     };
     userStates.set(key, entry);
   }
@@ -193,20 +197,31 @@ export function getProjectDir() {
   if (user.projectDir === null) return null;
   const real = containOrNull(workspaceRoot(), user.projectDir, { mustBeDir: true });
   if (real === null) {
+    const stale = user.projectDir;
     const preloaded = shared.preloadedProject;
     // Harness fallback (see `preloadedProject`): still re-contained, so a removed or replaced preload is refused too.
     const fallback = preloaded === null ? null : containOrNull(workspaceRoot(), preloaded, { mustBeDir: true });
     user.projectDir = fallback;
+    // #420: only a real substitution (fallback !== null) counts as "fell back" — a plain close (no preloaded
+    // project to fall back to) is not a silent surprise, so it neither logs nor sets fellBackFrom.
+    if (fallback !== null) {
+      user.fellBackFrom = stale;
+      console.warn(`Project fallback: "${stale}" is no longer available; substituted the preloaded default project "${fallback}".`);
+    }
     return fallback;
   }
   return real;
 }
 
 export function getSettings() {
-  const projectDir = getProjectDir();
+  const projectDir = getProjectDir(); // may set fellBackFrom as a side effect (read AFTER this call)
   const llmProviders = userLlmProviders();
+  const { fellBackFrom } = userState();
   return {
     projectDir,
+    // #420: present (the path substituted away from) only when the #365 preload fallback actually just fired for
+    // this login's current project; null otherwise, including the ordinary "no project"/"still valid" cases.
+    fellBackFrom,
     workspaceRoot: workspaceRoot(),
     // Workspace-relative name of the open project ("" when the project is the workspace itself).
     projectRelative: projectDir === null ? null : relativeToWorkspace(workspaceRoot(), projectDir),
@@ -267,10 +282,12 @@ export function updateSettings({ projectDir, closeProject, llmProviders, llmProv
   }
   if (nextProject !== undefined) {
     userState().projectDir = nextProject;
+    userState().fellBackFrom = null; // #420: an explicit open supersedes any earlier silent substitution
     rememberProject(nextProject);
   } else if (closeProject === true) {
     if (userState().projectDir !== null) rememberProject(userState().projectDir);
     userState().projectDir = null;
+    userState().fellBackFrom = null; // #420: closing clears the flag too — nothing is still silently substituted
   }
   return getSettings();
 }

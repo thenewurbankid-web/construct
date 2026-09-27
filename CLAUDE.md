@@ -13,6 +13,10 @@ projects. Ignore them here.
 - Heavy commands (`npm test`, Playwright, `next dev`, `npm ci`) run through
   `packages/tools/dev/heavy.sh` (15 GB, no swap). Single test files run
   directly. Playwright: `--workers=1`, one dev server, no lingering processes.
+- One checkout per concurrent Playwright run — two suites in the same checkout race on
+  `ui/client/.next` (full detail: `ui/README.md` "Ports and concurrent runs (#140)",
+  `docs/E2E-LANES.md`); `/tmp` on this box is already `tmpfs` (RAM-backed), so no `TMPDIR`
+  override is needed here, but point it at a `tmpfs` mount on a disk-backed `/tmp` elsewhere.
 - Done means: `packages/tools/dev/heavy.sh npm test` 0 fail on the combined
   tree, eslint clean, plus the task's own manual bar. Smoke-test single files
   while iterating; full suite once at the end.
