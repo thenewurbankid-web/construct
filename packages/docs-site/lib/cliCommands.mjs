@@ -91,6 +91,7 @@ const PSEUDO_TOPICS = new Set(['dir', 'import-001']);
 const EXTRA_COMMANDS = [
   { name: 'review', fn: 'review' },
   { name: 'test', fn: 'testCommand' },
+  { name: 'process', fn: 'processCommand' },
   { name: 'template', fn: 'template' },
   { name: 'pipeline', fn: 'pipeline' },
   { name: 'traces', fn: 'traces' },

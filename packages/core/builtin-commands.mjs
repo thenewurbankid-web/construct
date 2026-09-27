@@ -10,7 +10,7 @@
 // inline `else if`.
 import {
   init, feature, generate, sync, validate, summarize, doctor, create, refactor, research, review,
-  testCommand, template, importCommand, runImportRouteWizard, pipeline, traces, decide, model,
+  testCommand, template, importCommand, runImportRouteWizard, pipeline, traces, decide, model, processCommand,
 } from './cli.mjs';
 
 /** `construct import ...`: the same `--route` vs. plain-import branch `construct.mjs`'s old if-chain had inline. */
@@ -50,6 +50,7 @@ export function registerBuiltinCommands(registry) {
   registry.register({ name: 'research', summary: 'Read-only: summarize, explain workflows, compute impact, check tooling', handler: research, source: SOURCE });
   registry.register({ name: 'review', summary: 'Read-only PR health between two git refs', handler: review, source: SOURCE });
   registry.register({ name: 'test', summary: 'Run generated tests/proofs, or type-check/build the project', handler: testCommand, source: SOURCE });
+  registry.register({ name: 'process', summary: 'Manage bot processes: list, show, gc orphan worktrees/branches/pending approvals', handler: processCommand, source: SOURCE });
   registry.register({ name: 'template', summary: 'List, show or instantiate a named, reusable, parameterised plan', handler: template, source: SOURCE });
   registry.register({ name: 'import', summary: 'Scaffold layers for an existing, non-Construct file or route', handler: importHandler, source: SOURCE });
   registry.register({ name: 'pipeline', summary: 'Run a Context Envelope through the generator pipeline (stdin/stdout)', handler: pipeline, source: SOURCE });

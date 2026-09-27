@@ -200,6 +200,9 @@ Commands:
   construct validate [--format json] [--dir <path>]
   construct summarize [--feature <name>] [--format json|md|compact|prose] [--since <ref>] [--dir <path>]
   construct doctor [--format json] [--dir <path>]
+  construct process gc [--dry-run] [--older-than <days>] [--format json|text] [--dir <path>]
+    (sweeps dead-owner bot worktrees and orphaned construct/bot/* branches; flags, never deletes, a process record
+    older than the threshold that still has an approval pending; --dry-run lists without changing anything)
   construct pipeline run [--dir <path>]   (reads a Context Envelope as JSON on stdin, writes one to stdout)
   construct traces list [--chooser <id>] [--limit <n>] [--json] [--dir <path>]
   construct traces stats [--chooser <id>] [--json] [--dir <path>]
