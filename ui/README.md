@@ -308,6 +308,7 @@ export WATCHPACK_POLLING=true CHOKIDAR_USEPOLLING=1   # fs.inotify.max_user_inst
 ../../tools/dev/heavy.sh npx playwright test -c playwright.directory-picker.config.js   # folder picker inside a narrow workspace
 ../../tools/dev/heavy.sh npx playwright test -c playwright.clone.config.js              # clone a repository, connect a remote (#330)
 ../../tools/dev/heavy.sh npx playwright test -c playwright.github-repo.config.js        # connect GitHub, clone a private repo with the login (#638; a mock GitHub, ports 49210-49212)
+../../tools/dev/heavy.sh npx playwright test -c playwright.tests-restart.config.js      # a done Tests-tab run survives ui/server being restarted (#416)
 ```
 
 `a11y.spec.js` and `tests-tab.spec.js` import `@axe-core/playwright`, a declared devDependency: run `npm install` in
