@@ -3,6 +3,7 @@
 import { useMemo, type ReactNode } from 'react';
 import { DirectoryBrowserController } from '@/features/directory-browser';
 import { ApprovalsController, ProcessAnnouncer, ProcessesController, pendingApprovalCount, summariesOf, useProcessAnnouncer, useProcesses } from '@/features/processes';
+import { useCommitStatusSummary } from '@/features/git-session';
 import { useOpenPalette } from '@/features/command-palette';
 import { DiagnosticsController, LogsController, statusText, statusTextChars, tabBadge, useDiagnostics } from '@/features/diagnostics';
 import { PANE_LIMITS } from '../domain/LayoutDefaults';
@@ -58,6 +59,7 @@ export function ShellFrame({ children, route, project, model, theme, userMenu }:
   const working = useWorking(processes.running);
   useFaviconMotion(working);
   const gitBranches = useGitBranchCount(project.known);
+  const commitStatus = useCommitStatusSummary();
   const registered = { browser: useShellTabs('browser'), tools: useShellTabs('tools'), drawer: useShellTabs('drawer') };
 
   const { navigate, openPage } = useShellNavigation(route.pathname);
@@ -109,6 +111,9 @@ export function ShellFrame({ children, route, project, model, theme, userMenu }:
   const { setPane } = narrow;
   const stageApi = useMemo(() => ({ showStage: () => setPane('mid') }), [setPane]);
   const toolsApi = useMemo(() => ({ showTool: (id: string) => { toggle('right', true); select('tools', id); setPane('right'); } }), [toggle, select, setPane]);
+  // #374: "the status-bar commit indicator links to Git > Commits" -- goes to the Git screen and
+  // opens its Commit tab, from any screen.
+  const openCommit = () => { navigate('/review'); toggle('right', true); select('tools', 'git-commit'); };
   useShellCommands({
     navigate,
     togglePane: toggle,
@@ -158,6 +163,8 @@ export function ShellFrame({ children, route, project, model, theme, userMenu }:
       validateStatus={statusText(diagnostics.state)}
       validateStatusChars={STATUS_CHARS}
       onOpenDiagnostics={() => showDrawerTab('diagnostics')}
+      commitStatus={commitStatus.kind}
+      onOpenCommit={openCommit}
       shortcuts={SHORTCUTS}
       tabs={tabs}
       activeTabs={active}

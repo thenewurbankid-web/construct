@@ -203,6 +203,10 @@ export type StatusBarProps = {
    * cannot resize its own hit area (#252). */
   validateStatusChars?: number;
   onOpenDiagnostics: () => void;
+  /** #374: a short commit-on-save state word (`idle`, `pending`, `committed`, ...), or null while a
+   * project has nothing to say yet. Clicking it opens the Git screen's Commit tab. */
+  commitStatus?: string | null;
+  onOpenCommit?: () => void;
 };
 
 
@@ -240,6 +244,9 @@ export type ShellPageProps = NarrowProps & {
   /** See StatusBarProps. */
   validateStatusChars?: number;
   onOpenDiagnostics: () => void;
+  /** See StatusBarProps (#374). */
+  commitStatus?: string | null;
+  onOpenCommit?: () => void;
   shortcuts: ShortcutInfo[];
   tabs: Record<ShellRegion, ShellTab[]>;
   activeTabs: Record<ShellRegion, string | null>;
