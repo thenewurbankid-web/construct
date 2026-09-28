@@ -11,6 +11,7 @@ import path from 'node:path';
 import express from 'express';
 import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
 import { generateFeatureTests } from '../../../packages/engine/testGenerator.mjs';
+import { openProcessStore } from '../../../packages/engine/processStore.mjs';
 import { SESSION_COOKIE, createAuth, resolveAuthConfig, signValue } from './auth.mjs';
 import { createTestsRouter } from './testsApi.mjs';
 import { createProcessesService } from './processesService.mjs';
@@ -72,15 +73,19 @@ async function until(fn, what) {
 /** The real wiring of index.mjs with a private state directory: a run is a Process in a real store, driven by the real
  * engine, executed by the test-run executor (never the bot runner). */
 async function withStack({ authOn = true, dir = project(), run, runOptions = {} } = {}, fn) {
+  const stateDir = makeTempDir('og305-state-');
+  // #416: the same sidecar write index.mjs wires the real executors to, so `createTestRuns` (below) can prove a
+  // result survives a "restart" (a fresh, empty createRunResults() Map reading through the same disk-backed store).
+  const persist = (projectRoot, id, value) => { openProcessStore(projectRoot, { stateDir }).saveAside(id, 'result', value); };
   const testResults = createRunResults();
-  const testRunExecutor = createTestRunExecutor({ ...(run ? { run } : {}), runOptions, results: testResults });
+  const testRunExecutor = createTestRunExecutor({ ...(run ? { run } : {}), runOptions, results: testResults, persist });
   const botRefused = async () => ({ ok: false, llm: null, error: 'a bot step must not run in this test' });
   const service = createProcessesService({
     getProjectDir: () => dir,
-    stateDir: makeTempDir('og305-state-'),
+    stateDir,
     executeStep: composeExecutors({ bot: botRefused, review: botRefused, testRun: testRunExecutor.executeStep }),
   });
-  const jobs = createTestRunJobs({ runs: createTestRuns({ service, results: testResults }) });
+  const jobs = createTestRunJobs({ runs: createTestRuns({ service, results: testResults }), store: () => service.store() });
   const auth = createAuth(resolveAuthConfig(authOn ? ENV : {}, { host: '127.0.0.1', clientOrigin: ORIGIN }));
   const app = express();
   app.use(express.json());
@@ -260,6 +265,53 @@ test('a run is a process: read-only, zero artifacts, one live run per feature, a
     assert.ok(detail.log.some((l) => l.provenance === 'warn' && /Broken/.test(l.message)), 'the log distinguishes a failure');
     assert.equal((await json('POST', '/api/tests/jobs/run', { body: {} })).status, 202, 'once it is finished a new run may start');
     await until(() => jobs.pending() === 0 && runRecords(service).length === 2, 'the second run');
+  });
+});
+
+// #416 -- a finished run's result must survive the server being restarted: the in-memory Map (`createRunResults()`)
+// is gone, but the process record's own disk-backed store is not, and the result was written beside it.
+test('a done run survives a "restart": a fresh in-memory results Map still finds it through the store', async () => {
+  const run = async (job) => ({
+    ok: true, feature: 'jobs', baseUrl: job.baseUrl, durationMs: 1200, counts: { total: 1, passed: 1, failed: 0, notRun: 0 },
+    tests: [{ file: 'a.spec.ts', area: 'generated', title: 'Happy path', status: 'passed', durationMs: 900 }],
+  });
+  await withStack({ run }, async ({ json, service, jobs }) => {
+    await json('POST', '/api/tests/jobs/run', { body: {} });
+    await until(() => jobs.pending() === 0, 'the run to finish');
+    const [record] = runRecords(service);
+
+    // The "restart": a brand-new, EMPTY results Map, reading through the SAME (disk-backed) store -- exactly
+    // what a fresh ui/server process would see, since only the Map is process-local.
+    const freshResults = createRunResults();
+    assert.equal(freshResults.get(record.id), undefined, 'the fresh map genuinely has nothing cached');
+    const freshRuns = createTestRuns({ service, results: freshResults });
+    const state = freshRuns.stateOf(record.id);
+    assert.equal(state.state, 'done');
+    assert.deepEqual(state.result.counts, { total: 1, passed: 1, failed: 0, notRun: 0 });
+    assert.equal(state.result.tests[0].title, 'Happy path');
+  });
+});
+
+// #416 -- `createTestRunJobs`'s OWN `byFeature` index (which run belongs to which feature) is process-local too,
+// separate from `createRunResults()`. Without backfilling it from the store, the Tests tab would show "Not run"
+// for every past run after a restart even though `stateOf()` can find its persisted result perfectly well.
+test('the Tests tab\'s per-feature run history survives a "restart": a brand-new jobs index still finds it through the store', async () => {
+  const run = async (job) => ({
+    ok: true, feature: 'jobs', baseUrl: job.baseUrl, durationMs: 1200, counts: { total: 1, passed: 1, failed: 0, notRun: 0 },
+    tests: [{ file: 'a.spec.ts', area: 'generated', title: 'Happy path', status: 'passed', durationMs: 900 }],
+  });
+  await withStack({ run }, async ({ json, service, jobs }) => {
+    await json('POST', '/api/tests/jobs/run', { body: {} });
+    await until(() => jobs.pending() === 0, 'the run to finish');
+    const root = service.currentRoot();
+
+    // The "restart": brand-new results AND jobs indexes, reading through the SAME (disk-backed) store.
+    const freshJobs = createTestRunJobs({ runs: createTestRuns({ service, results: createRunResults() }), store: () => service.store() });
+    const last = freshJobs.last(root, 'jobs');
+    assert.equal(last.lastRun !== null, true, 'the feature\'s run history is rebuilt from the store, not lost');
+    assert.deepEqual(last.lastRun.counts, { total: 1, passed: 1, failed: 0, notRun: 0 });
+    assert.equal(last.tests[0].title, 'Happy path');
+    assert.equal(freshJobs.problem(root, 'jobs'), null, 'a done run is not a problem');
   });
 });
 

@@ -64,6 +64,7 @@ import { placeCard } from './placement.mjs';
 import { traceStats, replayTraces, renderTraceList, renderTraceStats, renderReplay, DEFAULT_MIN_TRACES } from './decision-trace-replay.mjs';
 import { exportDataset, renderExport } from './decision-dataset.mjs';
 import { importModel, listModels, removeModel, setModelEnabled, loadRegisteredModelProvider, unseenByModel, renderImport, renderModelList } from './decision-model-registry.mjs';
+import { gcProcesses } from '../../packages/engine/processGc.mjs';
 
 // Resolve the project root freshly per command: walks up from cwd (or from
 // --dir, when given) to find an existing architecture.yml (monorepo
@@ -1608,6 +1609,48 @@ export async function testCommand(args) {
   if (!result.ok) setExitCode(EXIT_CODES.USAGE_ERROR);
   else if (result.counts.failed > 0) setExitCode(EXIT_CODES.VIOLATIONS);
   return format === 'json';
+}
+
+const PROCESS_USAGE = 'Usage: construct process gc [--dry-run] [--older-than <days>] [--format json|text] [--dir <path>]';
+
+/**
+ * `construct process gc [--dry-run] [--older-than <days>]` (#416): sweep the process-runtime debris a restart
+ * or an abandoned review leaves behind -- dead-owner bot worktrees, orphaned `construct/bot/*` branches -- and
+ * flag (never delete) process records older than the threshold that still have an approval pending. Deterministic,
+ * JSON in/out (`packages/engine/processGc.mjs`); no model is ever involved.
+ *
+ * @param {string[]} args `gc`, then `[--dry-run] [--older-than <days>] [--format json|text] [--dir <path>]`.
+ * @returns {void} Resolves once the report is printed (and, unless `--dry-run`, the cleanup has run).
+ * @throws {ConstructError} Usage error (exit code 2) for anything but `gc`, or a bad `--older-than`.
+ *
+ * @example
+ * processCommand(['gc', '--dry-run']);
+ */
+export function processCommand(args) {
+  if (args[0] !== 'gc') throw new ConstructError(PROCESS_USAGE, { exitCode: EXIT_CODES.USAGE_ERROR });
+  const rest = args.slice(1);
+  const root = getRoot(rest);
+  const dryRun = rest.includes('--dry-run');
+  const oi = rest.indexOf('--older-than');
+  const rawDays = oi >= 0 ? rest[oi + 1] : undefined;
+  const olderThanDays = rawDays === undefined ? undefined : Number(rawDays);
+  if (olderThanDays !== undefined && (!Number.isFinite(olderThanDays) || olderThanDays < 0)) {
+    throw new ConstructError(`--older-than needs a non-negative number of days, got ${JSON.stringify(rawDays)}. ${PROCESS_USAGE}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+  }
+  const result = gcProcesses(root, { dryRun, ...(olderThanDays !== undefined ? { olderThanDays } : {}) });
+  if (!result.ok) throw new ConstructError(result.error.message, { exitCode: EXIT_CODES.VIOLATIONS });
+  if (flagValue(rest, '--format') === 'json') {
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+  const verb = dryRun ? 'Found' : 'Removed';
+  console.log(`${verb} ${result.counts.worktrees} dead-owner worktree(s), ${result.counts.branches} orphaned bot branch(es)${dryRun ? ' (dry run, nothing changed)' : ''}.`);
+  for (const w of result.worktrees.found) console.log(`  worktree ${w}`);
+  for (const b of result.branches.found) console.log(`  branch ${b.branch} (${b.reason})`);
+  if (result.staleApprovals.length) {
+    console.log(`${result.staleApprovals.length} process record(s) have a pending approval older than the threshold (never deleted):`);
+    for (const s of result.staleApprovals) console.log(`  ${s.id} (${s.ageDays}d old, ${s.pending.length} artifact(s) pending): ${s.pending.join(', ')}`);
+  }
 }
 
 /** `construct template list|show|instantiate` (#333). Read-only, JSON in/out, no LLM.

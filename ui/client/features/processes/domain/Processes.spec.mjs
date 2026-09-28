@@ -96,3 +96,16 @@ test('reducer: list, live update upsert, selection and control notice', () => {
   s = processesReducer(s, { type: 'LISTED', summaries: [summary({ id: 'p0' })] });
   assert.equal(s.selectedId, 'p0', 'a selection that vanished falls back to the first');
 });
+
+// #416
+test('reducer: GC stores the fetched report, TOGGLE_GC_DETAILS flips the popover', () => {
+  assert.equal(initialProcesses.gc, null);
+  assert.equal(initialProcesses.gcDetailsOpen, false);
+  const report = { counts: { worktrees: 1, branches: 0, staleApprovals: 0 }, worktrees: { found: ['x'] }, branches: { found: [] }, staleApprovals: [] };
+  let s = processesReducer(initialProcesses, { type: 'GC', gc: report });
+  assert.deepEqual(s.gc, report);
+  s = processesReducer(s, { type: 'TOGGLE_GC_DETAILS' });
+  assert.equal(s.gcDetailsOpen, true);
+  s = processesReducer(s, { type: 'TOGGLE_GC_DETAILS' });
+  assert.equal(s.gcDetailsOpen, false);
+});

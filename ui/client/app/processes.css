@@ -96,3 +96,8 @@
 .pr-prov--ok { color: var(--success); background: var(--success-soft); border-color: var(--success); }
 .pr-prov--llm { color: var(--llm); background: var(--llm-soft); border-color: var(--llm); }
 .pr-prov--warn { color: var(--warn); background: var(--warn-soft); border-color: var(--warn); }
+
+/* #416 -- the gc notice above the process list: "N item(s) ... Details". */
+.pr-gc-link { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
+.pr-gc-details { margin: var(--sp-1) 0 0; padding-left: var(--sp-3); }
+.pr-gc-details code { font-family: var(--mono); }

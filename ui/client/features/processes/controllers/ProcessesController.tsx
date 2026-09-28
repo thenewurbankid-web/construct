@@ -2,6 +2,7 @@
 
 import { CloneJobsController } from '@/features/clone';
 import { buildDetailView } from '../domain/DetailView';
+import { gcCleanupCount, gcDetailLines } from '../domain/GcCounts';
 import { buildListRows } from '../domain/ListRows';
 import { buildReviewView } from '../domain/ReviewView';
 import type { useProcesses } from '../hooks/useProcesses';
@@ -13,7 +14,7 @@ type ProcessesApi = ReturnType<typeof useProcesses>;
 /** The Processes tab body. The state lives in the shell (so the top-bar count is real while the
  * drawer is closed); this only turns it into what the page shows. */
 export function ProcessesController({ api }: { api: ProcessesApi }) {
-  const { state, select, control, loadDiff, loadReview, decide } = api;
+  const { state, select, control, loadDiff, loadReview, decide, toggleGcDetails } = api;
   const selected = state.selectedId ? state.details[state.selectedId] : null;
   const rs = state.selectedId ? state.reviews[state.selectedId] : undefined;
   const review = state.selectedId
@@ -37,6 +38,9 @@ export function ProcessesController({ api }: { api: ProcessesApi }) {
       onControl={control}
       onShowDiff={loadDiff}
       clones={<CloneJobsController />}
+      gcCount={gcCleanupCount(state.gc)}
+      onShowGc={toggleGcDetails}
+      gcDetails={state.gcDetailsOpen ? gcDetailLines(state.gc) : null}
     />
   );
 }

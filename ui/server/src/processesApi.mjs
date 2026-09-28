@@ -17,6 +17,13 @@ export function createProcessesRouter(service) {
     res.json({ ok: true, ...service.list() });
   });
 
+  // #416 -- the dry-run gc report taken when the project was opened (a fixed word, "gc", so it must be
+  // registered BEFORE the `/:id` route below or Express would read it as a process id).
+  router.get('/gc', (req, res) => {
+    const gc = service.gc();
+    res.json(gc ? { ok: true, gc } : { ok: true, gc: null });
+  });
+
   router.get('/:id', (req, res) => send(res, service.detail(req.params.id)));
 
   router.get('/:id/diff', (req, res) => {

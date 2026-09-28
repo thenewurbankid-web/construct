@@ -105,8 +105,9 @@ export function createBotRunner({ stateDir = resolveStateDir(), maxConcurrent, b
   const bots = new Map();
   const dirNameFor = (processId) => `${process.pid}-${String(processId).replace(/[^A-Za-z0-9._-]/g, '_')}`;
 
-  /** Remove worktree directories whose owning pid is dead. Returns what it reclaimed. */
-  function reclaimDead() {
+  /** Remove worktree directories whose owning pid is dead. Returns what it reclaimed (or, with `dryRun`, what it
+   * WOULD reclaim, touching nothing — #416's `construct process gc` lists this without a bot ever starting). */
+  function reclaimDead({ dryRun = false } = {}) {
     const reclaimed = [];
     let entries;
     try { entries = fs.readdirSync(root, { withFileTypes: true }); } catch { return reclaimed; }
@@ -114,6 +115,7 @@ export function createBotRunner({ stateDir = resolveStateDir(), maxConcurrent, b
       if (!entry.isDirectory()) continue;
       const pid = Number.parseInt(entry.name.split('-')[0], 10);
       if (!ownerIsDead(pid)) continue; // live, EPERM, unparseable, or us: not ours to remove
+      if (dryRun) { reclaimed.push(entry.name); continue; }
       const dir = path.join(root, entry.name);
       const sidecar = `${dir}.json`;
       let meta = null;

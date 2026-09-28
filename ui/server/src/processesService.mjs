@@ -21,6 +21,7 @@ import { createBotRunner, botBranch } from '../../../packages/engine/botRunner.m
 import { createApprovalGate, GATE_CODES } from '../../../packages/engine/approvalGate.mjs';
 import { composeExecutors, ANALYSIS_FLOW } from './reviewAnalyses.mjs';
 import { TEST_RUN_FLOW } from './testRuns.mjs';
+import { gcProcesses } from '../../../packages/engine/processGc.mjs';
 
 // #417: a Review analysis or a Tests-tab run must never queue behind a running bot plan. Both are
 // exactly one step, and that step's flow says which world it belongs to (`isAnalysisPlan`/
@@ -193,7 +194,12 @@ export function createProcessesService({
       // The approval gate (#337) is the only writer of a bot's output into the tree; the service
       // only hands it what the router derived (see decide() below).
       const gate = createApprovalGate({ store, runner });
-      entry = { store, engine, root, gate };
+      // #416: server start runs `construct process gc` in DRY-RUN mode -- it only reports what could be
+      // cleaned (dead-owner worktrees, orphaned bot branches, stale pending approvals); nothing is deleted on
+      // the Cockpit's behalf. Best-effort and once per project per server start, same as adoptInterrupted above.
+      let gcReport = null;
+      try { gcReport = gcProcesses(root, { stateDir, dryRun: true }); } catch { gcReport = null; }
+      entry = { store, engine, root, gate, gcReport };
       projects.set(root, entry);
     }
     return entry;
@@ -219,6 +225,10 @@ export function createProcessesService({
     /** The engine for the current project, for a harness that has to start work. */
     engine: () => open()?.engine ?? null,
     store: () => open()?.store ?? null,
+    /** #416 -- the dry-run `construct process gc` report taken when this project was opened (server start, or
+     * the first request after it): counts and the items found, never re-run per call. Null when no project is
+     * open, or the sweep itself failed (never blocks the Cockpit over a maintenance report). */
+    gc: () => open()?.gcReport ?? null,
     /** Does `record` belong to the project the Cockpit is looking at? */
     isCurrent(record) { return open()?.root === record.projectRoot; },
 

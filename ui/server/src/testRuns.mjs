@@ -71,10 +71,13 @@ export function createRunResults() {
 export const forkTestRun = (job, options = {}) => forkRunner(job, { timeoutMs: JOB_TIMEOUT_MS, worker: TEST_RUN_WORKER, reclaim: (pid) => reclaimRunsOf(pid), what: 'test run', ...options });
 
 /**
- * @param {{run?: Function, results?: ReturnType<typeof createRunResults>, runOptions?: object}} [opts]
- *   `run(job, {signal, onProgress})` is the test seam; the default forks the worker.
+ * @param {{run?: Function, results?: ReturnType<typeof createRunResults>, runOptions?: object, persist?: (projectRoot:string, id:string, value:object)=>void}} [opts]
+ *   `run(job, {signal, onProgress})` is the test seam; the default forks the worker. `persist`, when given, is
+ *   called with the finished outcome right after `results.set()` (#416): the default (index.mjs) writes it through
+ *   `processStore.saveAside(id, 'result', ...)` so a restart's in-memory Map miss is not the only place `stateOf`
+ *   can find it (see `createTestRuns` below). Best-effort: a failure here never fails the run itself.
  */
-export function createTestRunExecutor({ run = forkTestRun, results = createRunResults(), runOptions = {} } = {}) {
+export function createTestRunExecutor({ run = forkTestRun, results = createRunResults(), runOptions = {}, persist = null } = {}) {
   async function executeStep({ process: proc, step, signal, log }) {
     if (step.flow !== TEST_RUN_FLOW) return noRun(`Step "${step.id}" is not a test run.`);
     const { feature, name, area, 'base-url': baseUrl } = step.args ?? {};
@@ -95,7 +98,9 @@ export function createTestRunExecutor({ run = forkTestRun, results = createRunRe
       outcome = { ok: false, error: { code: 'WORKER_FAILED', message: String(e?.message || e) } };
     }
     if (signal.aborted || outcome?.error?.code === 'CANCELLED') throw new StepAborted(step.id);
-    results.set(proc.id, { ...outcome, target: name ? { name, area } : null });
+    const stored = { ...outcome, target: name ? { name, area } : null };
+    results.set(proc.id, stored);
+    if (persist) { try { persist(proc.projectRoot, proc.id, stored); } catch { /* best effort: a derived cache is nice-to-have, not required for correctness */ } }
     if (!outcome?.ok) return noRun(outcome?.error?.message ?? 'The run produced no result.');
     const c = outcome.counts;
     for (const t of outcome.tests) {
@@ -129,18 +134,21 @@ export function createTestRuns({ service, results }) {
       const started = service.startPlan(testRunPlan(spec));
       return started.ok ? { ok: true, processId: started.processId } : { ok: false, error: started.error };
     },
-    /** A run's state, read from the process record (the single source of truth). */
+    /** A run's state, read from the process record (the single source of truth). A `done`/`failed` record whose
+     * in-memory result was lost (a server restart, #416) falls back to the sidecar `saveAside('result', ...)`
+     * wrote when the run finished, so a run that cost real minutes is not silently forgotten. */
     stateOf(processId) {
       const record = load(processId);
       if (!record) return { state: 'none' };
       const top = topLevelState(record.state);
       const base = { processId };
+      const resultOf = () => results.get(processId) ?? service.store()?.loadAside(processId, 'result') ?? undefined;
       if (top === 'done') {
-        const r = results.get(processId);
+        const r = resultOf();
         return r?.ok ? { ...base, state: 'done', result: r } : { ...base, state: 'none' };
       }
       if (top === 'failed') {
-        const r = results.get(processId);
+        const r = resultOf();
         return { ...base, state: 'error', error: r?.error ?? { code: 'RUN_FAILED', message: record.steps[0]?.error ?? 'The run failed.' } };
       }
       if (top === 'cancelled') return { ...base, state: 'cancelled' };
@@ -151,12 +159,40 @@ export function createTestRuns({ service, results }) {
   };
 }
 
-/** Which runs belong to which feature: the one that is live, the newest problem and the latest outcome of every file. */
-export function createTestRunJobs({ runs }) {
+/**
+ * Which runs belong to which feature: the one that is live, the newest problem and the latest outcome of every
+ * file.
+ *
+ * @param {{runs: ReturnType<typeof createTestRuns>, store?: () => {all: Function}|null}} deps `store` (#416),
+ *   when given, backfills a feature's run history from disk the first time it is asked about: `byFeature` itself
+ *   is process-local, so a restarted server starts with an empty index even though every run's OWN record (and,
+ *   since testRuns.mjs's `persist` option landed, its result) is still on the process store. Without this, a
+ *   restart would make the Tests tab show every past run as "Not run" even though `stateOf()` can find its
+ *   result perfectly well — the bug this closure exists to prevent is one layer up from the one `stateOf` fixes.
+ */
+export function createTestRunJobs({ runs, store = null }) {
   const byFeature = new Map(); // `${root}\0${feature}` -> [{processId, target}] oldest first
+  const backfilled = new Set(); // keys already checked against the store, so a feature with genuinely no runs is not rescanned every call
   const LIVE = new Set(['queued', 'running', 'paused']);
   const keyOf = (root, feature) => `${root}\0${feature}`;
-  const entries = (root, feature) => byFeature.get(keyOf(root, feature)) ?? [];
+
+  /** Load this feature's existing runs from the process store, once, the first time anything asks about it
+   * (#416). Only ever adds entries `enqueue()` has not already recorded this server session. */
+  function ensureLoaded(root, feature) {
+    const key = keyOf(root, feature);
+    if (backfilled.has(key)) return;
+    backfilled.add(key);
+    const processes = store?.()?.all()?.processes;
+    if (!processes) return;
+    const mine = processes
+      .filter((p) => isTestRunPlan(p.plan) && p.projectRoot === root && p.plan.steps[0]?.args?.feature === feature)
+      .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1)) // oldest first, the same order enqueue() builds
+      .slice(-KEEP_PER_FEATURE)
+      .map((p) => { const a = p.plan.steps[0].args; return { processId: p.id, target: a.name ? { name: a.name, area: a.area } : null }; });
+    if (mine.length) byFeature.set(key, mine);
+  }
+
+  const entries = (root, feature) => { ensureLoaded(root, feature); return byFeature.get(keyOf(root, feature)) ?? []; };
   const withState = (root, feature) => entries(root, feature).map((e) => ({ ...e, ...runs.stateOf(e.processId) }));
 
   return {
