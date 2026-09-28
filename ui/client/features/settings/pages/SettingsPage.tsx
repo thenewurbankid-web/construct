@@ -6,15 +6,16 @@ import type { useSettings } from '../hooks/useSettings';
 
 type SettingsPageProps = ReturnType<typeof useSettings> & {
   picker?: ReactNode;
-  /** Commit-on-save controls (#283), supplied by the controller as a slot. */
-  gitSession?: ReactNode;
   /** #330: connect the open project to a remote (another feature's controller). */
   remote?: ReactNode;
   /** #638: the GitHub connection for private repositories (another feature's controller; renders nothing when the server has none). */
   github?: ReactNode;
 };
 
-export function SettingsPage({ settings, loadError, reload, projectDirInput, setProjectDirInput, llmProviders, setLlmProvider, status, save, pickerOpen, togglePicker, picker, gitSession, remote, github }: SettingsPageProps): ReactNode {
+// #374: commit-on-save's controls (#283) used to be a `gitSession` slot here; they now live on the
+// Git screen's Commit tab instead (`ia-five-screens.md`'s own decision), so this page no longer
+// renders them.
+export function SettingsPage({ settings, loadError, reload, projectDirInput, setProjectDirInput, llmProviders, setLlmProvider, status, save, pickerOpen, togglePicker, picker, remote, github }: SettingsPageProps): ReactNode {
   if (!settings) {
     return (
       <div className="page page--screen">
@@ -49,7 +50,6 @@ export function SettingsPage({ settings, loadError, reload, projectDirInput, set
         picker={picker}
       />
 
-      {gitSession}
       {remote}
       {github}
 

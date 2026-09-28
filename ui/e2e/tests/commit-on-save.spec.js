@@ -113,7 +113,11 @@ test.describe.serial('Commit on save (#283)', () => {
   }
 
   test('1. commit-on-save-settings.png — the user owns the mode, the window and the prefixes', async ({ page }) => {
-    await page.goto('/settings');
+    // #374: these settings moved from /settings to the Git screen's Commit tab (ia-five-screens.md's
+    // own decision, "git settings: auto-commit-on-save... Commit tab"; commit-on-save.spec.js is one
+    // of the specs #374 names as touched for exactly this reason).
+    await page.goto('/review');
+    await page.getByRole('complementary', { name: 'Tools' }).getByRole('tab', { name: 'Commit' }).click();
     const section = page.locator('.git-settings');
     await expect(section.getByRole('heading', { name: 'Commit on save' })).toBeVisible({ timeout: 10_000 });
 

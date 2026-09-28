@@ -1,8 +1,8 @@
 import type { CSSProperties } from 'react';
 import type { StatusBarProps } from '../types';
 
-/** The 24px bottom status bar: drawer toggle, validate result and the one "? Shortcuts" button. */
-export function StatusBar({ layout, onTogglePane, shortcuts, validateStatus, validateStatusChars = 0, onOpenDiagnostics }: StatusBarProps) {
+/** The 24px bottom status bar: drawer toggle, validate result, commit status and the one "? Shortcuts" button. */
+export function StatusBar({ layout, onTogglePane, shortcuts, validateStatus, validateStatusChars = 0, onOpenDiagnostics, commitStatus, onOpenCommit }: StatusBarProps) {
   return (
     <footer className="sh-status" role="contentinfo">
       <button
@@ -30,6 +30,13 @@ export function StatusBar({ layout, onTogglePane, shortcuts, validateStatus, val
       >
         {validateStatus}
       </button>
+      {/* #374: "the status-bar commit indicator links to Git > Commits". A short state word (see
+          git-session's SaveState); the full indicator and settings are the Commit tab this opens. */}
+      {commitStatus && onOpenCommit && (
+        <button type="button" className="sh-status-btn" data-testid="status-commit" onClick={onOpenCommit} title="Open Git > Commit">
+          Commit: {commitStatus}
+        </button>
+      )}
       <span className="sh-spacer" />
       {/* #391: one hint instead of four. The list itself lives in the Tools panel's Project tab, and the tooltip
           carries it too; the button opens that panel. */}
