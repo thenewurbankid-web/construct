@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Envelopes - Concept</title>
+<link rel="stylesheet" href="mock.css"><link rel="stylesheet" href="ia.css">
+<script>document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'dark';</script>
+</head><body>
+<div class="concept">Concept - not implemented <span>Envelopes</span></div>
+
+<div class="shell" style="--rw:340px;grid-template-rows:44px 1fr 130px 24px;position:relative">
+  
+<header class="topbar" role="banner">
+  <div class="brand"><i></i>Cockpit</div>
+  <button class="chip-btn" aria-haspopup="listbox">storefront <span class="sub">main</span> &#9662;</button>
+  <nav class="snav" aria-label="Screens"><a class="on" aria-current="page">Features</a><a class="" >Pages</a><a class="" >Components</a><a class="" >Git</a><a class="" >Tests</a></nav>
+  <button class="chip-btn palette-trigger"><span>Search or run a command...</span><kbd>Ctrl K</kbd></button>
+  <span class="pill run"><span class="spin"></span>1 running</span>
+  <button class="acct" aria-haspopup="true" aria-expanded="false"><span class="avatar">SP</span>shashank-p &#9662;</button>
+</header>
+  <div class="ia-main">
+    <aside class="pane" aria-label="Left panel: Browse">
+<div class="pane-h"><span class="title">Envelopes</span><span class="spacer"></span><button class="icon-btn" aria-label="New flow">+</button></div>
+<div class="tabs" role="tablist"><button role="tab" class="" aria-selected="false">Notes</button><button role="tab" class="" aria-selected="false">Features</button><button role="tab" class="" aria-selected="false">Rules</button><button role="tab" class="on" aria-selected="true">Envelopes</button></div>
+<div class="search">&#8981; Filter flows <span class="spacer"></span><kbd>/</kbd></div>
+<div class="scroll">
+  <div class="sect">Saved flows &middot; 2</div>
+  <div class="tree">
+    <div class="row sel"><span>Add CRUD feature</span><span class="meta">5 steps</span></div>
+    <div class="row"><span>Add a service + hook only</span><span class="meta">2 steps</span></div>
+  </div>
+</div></aside><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <section class="pane mid" aria-label="Center stage">
+<div class="hh" style="padding:16px 20px 0">Add CRUD feature <small>5 steps &middot; last used 2 days ago</small></div>
+<div style="padding:10px 20px 0;display:flex;gap:8px">
+  <button class="btn">&#8593;&#8595; Reorder (Alt+&uarr;/&darr;)</button>
+  <button class="btn">+ Add step</button>
+  <span class="spacer"></span>
+  <button class="btn primary">Run this flow</button>
+</div>
+<div style="padding:10px 20px 20px">
+  <div style="border:1px solid var(--border-subtle);border-radius:var(--r-lg);overflow:hidden">
+    
+<div class="step">
+  <span class="no">1</span>
+  <div><div><span class="layer domain">domain</span> <b>Total</b></div></div>
+  <span><span class="tag det">Deterministic</span></span>
+</div>
+    
+<div class="step">
+  <span class="no">2</span>
+  <div><div><span class="layer service">service</span> <b>Total</b></div><small>reads: Total (domain)</small></div>
+  <span><span class="tag det">Deterministic</span></span>
+</div>
+    
+<div class="step">
+  <span class="no">3</span>
+  <div><div><span class="layer workflow">workflow</span> <b>cartMachine</b></div><small>reads: Total (service)</small></div>
+  <span><span class="tag det">Deterministic</span></span>
+</div>
+    
+<div class="step">
+  <span class="no">4</span>
+  <div><div><span class="layer hook">hook</span> <b>useCart</b></div><small>reads: cartMachine (workflow)</small></div>
+  <span><span class="tag det">Deterministic</span></span>
+</div>
+    
+<div class="step">
+  <span class="no">5</span>
+  <div><div><span class="layer page">page</span> <b>CartPage</b></div><small>body filled on create --llm; stub is mechanical</small></div>
+  <span><span class="tag llm">Local model</span></span>
+</div>
+  </div>
+  <p style="color:var(--text-muted);font-size:12px;margin-top:10px">Feature name is asked once, at "Run this flow" — every step below runs against it. Steps shown here are a saved shape, not yet bound to a project.</p>
+</div></section><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+    <aside class="pane" aria-label="Right panel: Inspect">
+<div class="pane-h"><span class="title">Inspect</span></div>
+<div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Preview</button><button role="tab" class="" aria-selected="false">Save</button></div>
+<div class="scroll" style="padding:14px">
+  <p style="color:var(--text-muted);margin:0 0 8px">Envelope handed to step 3 (workflow cartMachine) — computed, not stored.</p>
+  <div class="fm"><div class="fmh">envelope (preview)</div><pre>{
+  "version": 1,
+  "feature": "&lt;feature&gt;",
+  "status": "pending",
+  "layers": {
+    "domain": ["features/&lt;feature&gt;/domain/Total.ts"],
+    "service": ["features/&lt;feature&gt;/services/TotalService.ts"]
+  },
+  "steps": [
+    { "layer": "workflow", "name": "cartMachine" },
+    { "layer": "hook", "name": "useCart" },
+    { "layer": "page", "name": "CartPage" }
+  ]
+}</pre></div>
+  <p style="color:var(--text-muted);font-size:12px;margin-top:8px">"&lt;feature&gt;" is filled in when the flow runs.</p>
+</div></aside>
+  </div>
+  
+<div class="drawer" aria-label="Bottom panel: Run" style="height:130px">
+  <div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Processes <span class="badge acc">1</span></button><button role="tab" class="" aria-selected="false">Approvals <span class="badge ">1</span></button><button role="tab" class="" aria-selected="false">Diagnostics <span class="badge danger">17</span></button><button role="tab" class="" aria-selected="false">Logs</button></div>
+  <div class="body"><table><tr><th>Process</th><th>Step</th><th>Progress</th><th></th></tr>
+<tr><td><b>flow &middot; Add a service + hook only</b></td><td>1 of 2 &middot; service Refund</td><td><div class="bar-track"><div class="bar-fill" style="width:40%"></div></div></td><td><button class="btn sm danger">Cancel</button></td></tr></table></div>
+</div>
+  <footer class="statusbar"><span class="ok">&#9679; validate: 0 new violations</span><span>Rules saved on this machine</span><span class="spacer"></span><span>qwen2.5-coder:7b</span><span><kbd>F6</kbd> next panel</span><span><kbd>Ctrl J</kbd> bottom panel</span></footer>
+</div>
+</body></html>
