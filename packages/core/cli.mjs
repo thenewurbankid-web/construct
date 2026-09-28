@@ -545,7 +545,7 @@ export async function generate(args) {
   if (args[0] === 'handler') return generateHandlerFiles(args);
   const layer = args[0], name = args[1], fi = args.indexOf('--feature');
   if (!layer || !name || fi < 0 || !args[fi + 1]) {
-    throw new ConstructError('Usage: construct generate <layer> <name> --feature <feature> [--openapi <spec>] [--llm <provider>]', { exitCode: EXIT_CODES.USAGE_ERROR });
+    throw new ConstructError('Usage: construct generate <layer> <name> --feature <feature> [--openapi <spec>] [--llm <provider>] [--model <name>]', { exitCode: EXIT_CODES.USAGE_ERROR });
   }
   const root = getRoot(args);
   const feature = args[fi + 1];
@@ -651,12 +651,15 @@ export async function generate(args) {
   const llmI = args.indexOf('--llm');
   const llm = llmI >= 0 ? args[llmI + 1] : undefined;
   const context = readContextFileArg(root, args);
+  // #471: --model names which installed model the provider (currently only "ollama" reads it) should
+  // use, instead of always falling back to DEFAULT_OLLAMA_MODEL; meaningless without --llm.
+  const model = flagValue(args, '--model');
   const scaffoldStart = startTimer();
   const file = generateLayer(root, layer, name, feature);
   const scaffoldSeconds = elapsedSeconds(scaffoldStart);
   if (llm) {
     const llmStart = startTimer();
-    const outcome = await fillGeneratedFile(root, file, layer, { feature, name, llm, context });
+    const outcome = await fillGeneratedFile(root, file, layer, { feature, name, llm, context, llmOptions: model ? { model } : undefined });
     reportFill(root, outcome, ` (scaffold ${formatDuration(scaffoldSeconds)}, llm ${formatDuration(elapsedSeconds(llmStart))})`);
   } else {
     console.log(`Created ${path.relative(root, file)} (${formatDuration(scaffoldSeconds)})`);
@@ -738,6 +741,8 @@ async function generateVerticalSlice(args) {
   const llmI = args.indexOf('--llm');
   const llm = llmI >= 0 ? args[llmI + 1] : undefined;
   const context = readContextFileArg(root, args);
+  // #471: as generate()'s single-layer form above -- meaningless without --llm.
+  const model = flagValue(args, '--model');
   // Per-layer scaffold timing comes from generateVertical's own onLayer hook
   // (so it reflects each layer's real write, not a guess) -- the LLM fill
   // (if any) happens in this loop afterward, same as before, timed
@@ -751,7 +756,7 @@ async function generateVerticalSlice(args) {
     const scaffoldDt = scaffoldSeconds.get(file) ?? 0;
     if (llm) {
       const llmStart = startTimer();
-      const outcome = await fillGeneratedFile(root, file, layerFromGeneratedFile(file), { feature, name, llm, context });
+      const outcome = await fillGeneratedFile(root, file, layerFromGeneratedFile(file), { feature, name, llm, context, llmOptions: model ? { model } : undefined });
       reportFill(root, outcome, ` (scaffold ${formatDuration(scaffoldDt)}, llm ${formatDuration(elapsedSeconds(llmStart))})`);
     } else {
       console.log(`Created ${path.relative(root, file)} (${formatDuration(scaffoldDt)})`);
@@ -1440,7 +1445,7 @@ function refuseNonDeterministicFlags(verb, args, flags) {
 
 /** The result document of `create feature <name>` | `create layer <name> --feature f --layers l1,l2` | `create <layer> <name> --feature f`. */
 async function createDocument(args) {
-  refuseNonDeterministicFlags('create', args, ['--llm', '--from', '--bind', '--envelope', '--openapi']);
+  refuseNonDeterministicFlags('create', args, ['--llm', '--model', '--from', '--bind', '--envelope', '--openapi']);
   const attribution = { ...SCAFFOLD_ATTRIBUTION };
   if (args[0] === 'feature') {
     const name = args[1];
@@ -2231,29 +2236,31 @@ export async function importCommand(args) {
   if (flagValue(args, '--format') === 'json') return printJsonResult(() => importDocument(args));
   const llmI = args.indexOf('--llm');
   const llm = llmI >= 0 ? args[llmI + 1] : undefined;
+  // #471: as generate()'s --model above -- meaningless without --llm.
+  const model = flagValue(args, '--model');
   const planI = args.indexOf('--plan');
-  if (planI >= 0) return importFromPlan(args, llm);
+  if (planI >= 0) return importFromPlan(args, llm, model);
 
   const name = args[0], fi = args.indexOf('--feature'), li = args.indexOf('--layers'), fromI = args.indexOf('--from');
   if (!name || fi < 0 || !args[fi + 1] || li < 0 || !args[li + 1] || fromI < 0 || !args[fromI + 1]) {
     throw new ConstructError(
-      'Usage: construct import <name> --feature <feature> --layers <l1,l2,...> --from <path> [--llm <provider>]\n   or: construct import --plan <path> [--llm <provider>]\n   or: construct import --route <path>  (run directly, not inside repl)',
+      'Usage: construct import <name> --feature <feature> --layers <l1,l2,...> --from <path> [--llm <provider>] [--model <name>]\n   or: construct import --plan <path> [--llm <provider>] [--model <name>]\n   or: construct import --route <path>  (run directly, not inside repl)',
       { exitCode: EXIT_CODES.USAGE_ERROR },
     );
   }
   const root = getRoot(args);
   const layers = args[li + 1].split(',').map((l) => l.trim()).filter(Boolean);
-  const { source, files, fills, timings } = await importVertical(root, name, args[fi + 1], layers, args[fromI + 1], { llm });
+  const { source, files, fills, timings } = await importVertical(root, name, args[fi + 1], layers, args[fromI + 1], { llm, llmOptions: model ? { model } : undefined });
   reportImport(root, [{ name, source, files, fills, timings }], llm);
 }
 
-async function importFromPlan(args, llm) {
+async function importFromPlan(args, llm, model) {
   const planI = args.indexOf('--plan');
   if (!args[planI + 1]) {
-    throw new ConstructError('Usage: construct import --plan <path> [--llm <provider>]', { exitCode: EXIT_CODES.USAGE_ERROR });
+    throw new ConstructError('Usage: construct import --plan <path> [--llm <provider>] [--model <name>]', { exitCode: EXIT_CODES.USAGE_ERROR });
   }
   const root = getRoot(args);
-  const { feature, results } = await importPlan(root, args[planI + 1], { llm });
+  const { feature, results } = await importPlan(root, args[planI + 1], { llm, llmOptions: model ? { model } : undefined });
   reportImport(root, results, llm, feature);
 }
 
@@ -2321,7 +2328,7 @@ function noLlmImportAttribution(totalFiles, units, analysisNote = '') {
 
 /** The result document of `import ... --format json` (no `--llm`): what was scaffolded, per logical unit, and where from. */
 async function importDocument(args) {
-  refuseNonDeterministicFlags('import', args, ['--llm', '--route']);
+  refuseNonDeterministicFlags('import', args, ['--llm', '--model', '--route']);
   const planI = args.indexOf('--plan');
   let root, results, feature, mode;
   if (planI >= 0) {

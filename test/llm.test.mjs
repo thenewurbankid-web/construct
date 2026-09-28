@@ -154,6 +154,42 @@ test('PROVIDERS.ollama honors an explicit { model, baseUrl } option', async () =
   assert.equal(JSON.parse(calls[0].init.body).model, 'qwen2.5-coder:1.5b');
 });
 
+test('#471: PROVIDERS.ollama falls back to OLLAMA_HOST (not just the hardcoded default) when no baseUrl option is given, matching the Local Model screen (ui/server/src/ollama.mjs)', async () => {
+  const calls = [];
+  const originalHost = process.env.OLLAMA_HOST;
+  process.env.OLLAMA_HOST = 'http://localhost:22222';
+  try {
+    await withFakeFetch(async (url, init) => {
+      calls.push({ url, init });
+      return { ok: true, status: 200, text: async () => JSON.stringify({ response: 'ok' }) };
+    }, async () => {
+      await PROVIDERS.ollama('hi');
+    });
+  } finally {
+    if (originalHost === undefined) delete process.env.OLLAMA_HOST;
+    else process.env.OLLAMA_HOST = originalHost;
+  }
+  assert.equal(calls[0].url, 'http://localhost:22222/api/generate');
+});
+
+test('#471: an explicit { baseUrl } option still wins over OLLAMA_HOST', async () => {
+  const calls = [];
+  const originalHost = process.env.OLLAMA_HOST;
+  process.env.OLLAMA_HOST = 'http://localhost:22222';
+  try {
+    await withFakeFetch(async (url, init) => {
+      calls.push({ url, init });
+      return { ok: true, status: 200, text: async () => JSON.stringify({ response: 'ok' }) };
+    }, async () => {
+      await PROVIDERS.ollama('hi', { baseUrl: 'http://localhost:33333' });
+    });
+  } finally {
+    if (originalHost === undefined) delete process.env.OLLAMA_HOST;
+    else process.env.OLLAMA_HOST = originalHost;
+  }
+  assert.equal(calls[0].url, 'http://localhost:33333/api/generate');
+});
+
 test('callLlm("ollama", prompt, options) threads options through to the provider', async () => {
   const calls = [];
   await withFakeFetch(async (url, init) => {

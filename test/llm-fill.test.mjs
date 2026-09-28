@@ -145,6 +145,42 @@ test('generate --llm reports a rejected fill per file, keeps the stub and sets a
   assert.equal(fs.readFileSync(path.join(dir, 'features/checkout/domain/Foo.ts'), 'utf8'), 'export function Foo() {\n  return true;\n}\n');
 });
 
+test('#471: generate --llm --model threads llmOptions.model through to the provider call', async () => {
+  const dir = tmp();
+  createFeature(dir, 'checkout');
+  const originalOllama = PROVIDERS.ollama;
+  const calls = [];
+  PROVIDERS.ollama = (prompt, options) => {
+    calls.push(options);
+    return CODE;
+  };
+  try {
+    await captureConsole(() => generate(['domain', 'Foo', '--feature', 'checkout', '--llm', 'ollama', '--model', 'qwen2.5-coder:1.5b', '--dir', dir]));
+  } finally {
+    PROVIDERS.ollama = originalOllama;
+  }
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].model, 'qwen2.5-coder:1.5b');
+});
+
+test('#471: generate --llm without --model passes no model override (provider falls back to its own default)', async () => {
+  const dir = tmp();
+  createFeature(dir, 'checkout');
+  const originalOllama = PROVIDERS.ollama;
+  const calls = [];
+  PROVIDERS.ollama = (prompt, options) => {
+    calls.push(options);
+    return CODE;
+  };
+  try {
+    await captureConsole(() => generate(['domain', 'Foo', '--feature', 'checkout', '--llm', 'ollama', '--dir', dir]));
+  } finally {
+    PROVIDERS.ollama = originalOllama;
+  }
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0], undefined);
+});
+
 // ---- import.mjs -------------------------------------------------------------
 
 function importSetup() {

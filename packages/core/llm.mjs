@@ -282,7 +282,10 @@ export const PROVIDERS = {
   // loop alive, but the timer must not depend on that.
   async ollama(prompt, options = {}) {
     const model = options.model || DEFAULT_OLLAMA_MODEL;
-    const baseUrl = options.baseUrl || DEFAULT_OLLAMA_BASE_URL;
+    // #471: OLLAMA_HOST (not just options.baseUrl) so this agrees with the Local Model screen
+    // (ui/server/src/ollama.mjs reads the same env var for list/pull/status) instead of the two
+    // silently drifting whenever OLLAMA_HOST points somewhere other than the hardcoded default.
+    const baseUrl = options.baseUrl || process.env.OLLAMA_HOST || DEFAULT_OLLAMA_BASE_URL;
     const timeout = timeoutOf(options);
     // num_ctx: sized from the real prompt (see ollamaContextFor's own comment for why this
     // matters) unless the caller overrides it. If even MAX_OLLAMA_CONTEXT can't fit the whole
