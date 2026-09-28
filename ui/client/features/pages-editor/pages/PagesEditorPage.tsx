@@ -3,9 +3,11 @@ import { EditorBreadcrumb } from '../components/EditorBreadcrumb';
 import { EditorTabStrip, type EditorTab } from '../components/EditorTabStrip';
 import { LivePreviewPanel } from '../components/LivePreviewPanel';
 import { NavigatorPanel } from '../components/NavigatorPanel';
+import { OverlaysMenu } from '../components/OverlaysMenu';
 import { PreviewPanel } from '../components/PreviewPanel';
 import { PropFlowDiagram } from '../components/PropFlowDiagram';
 import { StageSourceView } from '../components/StageSourceView';
+import { usePropFlow } from '../hooks/usePropFlow';
 import type { usePagesEditor } from '../hooks/usePagesEditor';
 
 type PagesEditorPageProps = ReturnType<typeof usePagesEditor> & {
@@ -31,6 +33,9 @@ export function PagesEditorPage(props: PagesEditorPageProps): ReactNode {
   // so a closed Source tab from the previous page never lingers.
   const [stageTab, setStageTab] = useState<'preview' | 'source'>('preview');
   useEffect(() => setStageTab('preview'), [file]);
+  // #375 — Overlays > Flow: lifted here (not inside PropFlowDiagram) so the menu in the
+  // tab-strip row and the diagram below the preview share the one piece of state.
+  const flow = usePropFlow(tree?.roots ?? []);
 
   const stageTabs: EditorTab[] = tree
     ? [
@@ -69,9 +74,12 @@ export function PagesEditorPage(props: PagesEditorPageProps): ReactNode {
           <div className="pe-tabstrip-row">
             <EditorTabStrip tabs={stageTabs} activeId={stageTab} onSelect={(id) => setStageTab(id as 'preview' | 'source')} />
             {stageTab === 'preview' && (
-              <button type="button" className="pe-view-source" onClick={() => setStageTab('source')}>
-                Open source
-              </button>
+              <>
+                <OverlaysMenu flow={flow} />
+                <button type="button" className="pe-view-source" onClick={() => setStageTab('source')}>
+                  Open source
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -89,7 +97,7 @@ export function PagesEditorPage(props: PagesEditorPageProps): ReactNode {
               <>
                 <PreviewPanel roots={tree.roots} selectedId={selectedNodeId} onSelect={selectNode} titleFor={previewTitle} />
                 <NavigatorPanel feature={feature} file={file} contentHash={tree.contentHash} />
-                <PropFlowDiagram roots={tree.roots} />
+                <PropFlowDiagram flow={flow} />
               </>
             )}
           </div>

@@ -81,7 +81,9 @@ test.describe.serial('Prop-flow diagram cross-level rename tracing (#77 follow-u
     await openButton.click();
     await expect(page.locator('.tree-panel')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Show diagram' }).click();
+    // #375 — the diagram's toggle moved into the stage's one Overlays menu ("Overlays > Flow").
+    await page.locator('.overlays-menu > summary').click();
+    await page.getByLabel('Flow').check();
     const svg = page.locator('.propflow-svg');
     await expect(svg).toBeVisible();
 

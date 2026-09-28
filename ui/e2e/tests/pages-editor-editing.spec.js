@@ -208,7 +208,9 @@ test.describe.serial('Pages Editor save-back / props / auto-map / prop-flow / en
 
   test('4. pages-editor-propflow.png — the prop-flow diagram shows parent/child prop pills joined by real lines, in a hierarchy (#75, revising #55)', async ({ page }) => {
     await openHomePage(page);
-    await page.getByRole('button', { name: 'Show diagram' }).click();
+    // #375 — the diagram's toggle moved into the stage's one Overlays menu ("Overlays > Flow").
+    await page.locator('.overlays-menu > summary').click();
+    await page.getByLabel('Flow').check();
 
     const svg = page.locator('.propflow-svg');
     await expect(svg).toBeVisible();

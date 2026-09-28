@@ -2085,6 +2085,37 @@ button:disabled {
 .pe-tab-close:hover { color: var(--text); }
 .pe-view-source { background: transparent; color: var(--accent); border: 1px solid var(--border-subtle); border-radius: 6px; padding: var(--sp-1) var(--sp-2); font: inherit; cursor: pointer; }
 .pe-view-source:hover { background: var(--hover); }
+/* #375 — one Overlays menu (design 8.1's revision of the first-draft's 6 scattered toggles): a
+ * compact disclosure next to Open source, not its own always-open panel. Positioned like a
+ * dropdown so opening it never reflows the tab strip row. */
+.overlays-menu { position: relative; }
+.overlays-menu > summary {
+  list-style: none;
+  cursor: pointer;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: var(--sp-1) var(--sp-2);
+  font: inherit;
+}
+.overlays-menu > summary::-webkit-details-marker { display: none; }
+.overlays-menu > summary:hover { background: var(--hover); }
+.overlays-menu-items {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 160px;
+  padding: var(--sp-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  box-shadow: var(--glass-shadow);
+}
 .pe-stage-source { margin-bottom: var(--sp-3); }
 .pe-changed {
   margin: 0 0 var(--sp-3);

@@ -67,7 +67,9 @@ test.describe.serial('Prop-flow diagram real text-metrics sizing + value display
     await openButton.click();
     await expect(page.locator('.tree-panel')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Show diagram' }).click();
+    // #375 — the diagram's toggle moved into the stage's one Overlays menu ("Overlays > Flow").
+    await page.locator('.overlays-menu > summary').click();
+    await page.getByLabel('Flow').check();
     await expect(page.locator('.propflow-svg')).toBeVisible();
 
     const shortPill = page.locator('.propflow-pill-outgoing', { hasText: /^n$/ });
