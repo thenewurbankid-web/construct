@@ -329,7 +329,15 @@ export function validateReadability(root, opts = {}) {
     let files = walk(dir).filter((p) => EXT.has(path.extname(p)) && !isNonLayerPath(root, p, config.nonLayer)); // #348
     if (scopedFiles) files = files.filter((p) => scopedFiles.has(p));
     for (const file of files) {
-      const summary = parseFile(root, file, layerContext);
+      // A syntax error is architecture-enforcer's PARSE-ERROR to report (it runs first in
+      // DEFAULT_ENFORCERS); readability checks need a parsed file and have nothing to add once
+      // one fails, so an unparseable file is skipped here rather than reported a second time.
+      let summary;
+      try {
+        summary = parseFile(root, file, layerContext);
+      } catch {
+        continue;
+      }
       const source = fs.readFileSync(file, 'utf8');
       checkNaming(config, out, summary, source);
       checkLength(config, out, summary, source, maxLoc);

@@ -106,7 +106,9 @@ export async function componentSource(root, rel) {
   try {
     diagnostics = collectDiagnostics(root, rel, source);
   } catch {
-    /* a file that does not parse has no diagnostics we can compute; it still opens as plain text */
+    /* an unexpected failure computing diagnostics still lets the file open as plain text; a
+     * syntax error itself is not this path -- architecture-enforcer's PARSE-ERROR and the
+     * TypeScript compiler's own errors both come back as ordinary diagnostics entries. */
   }
   diagnostics = [...diagnostics, ...(await propLinkDiagnostics(root, rel, source))];
   return { status: 200, body: { ok: true, path: rel, name: p.entry.name, feature: p.entry.feature, ...(p.entry.frozen ? { frozen: true } : {}), source, contentHash: hashOf(source), editable: !p.entry.frozen && Buffer.byteLength(source, 'utf8') <= MAX_EDIT_BYTES, diagnostics } };

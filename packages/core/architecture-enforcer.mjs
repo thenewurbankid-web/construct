@@ -1134,7 +1134,25 @@ export function validateArchitecture(root, opts = {}) {
     }
     const source = fs.readFileSync(abs, 'utf8');
     const layerOpts = layerViolationOptsFor(config, layer);
-    for (const desc of detectLayerViolations(layer, source, layerOpts)) {
+    let violations;
+    try {
+      violations = detectLayerViolations(layer, source, layerOpts);
+    } catch (e) {
+      // A syntax error is a fact about this one file, not a reason to abort validating the
+      // rest of the project -- every other AST-reading module here (client-boundary.mjs,
+      // frozen-detector.mjs, readability-enforcer.mjs) already treats an unparseable file
+      // this way instead of letting parseToAst's exception propagate.
+      pushViolation(config, out, {
+        rule: 'PARSE-ERROR',
+        file: r,
+        line: 1,
+        message: `Could not parse this file: ${String(e.message ?? e).split('\n')[0]}`,
+        why: 'A file with a syntax error cannot be checked against any layer rule, and could not build if it reached the compiler.',
+        expected: ['syntactically valid TypeScript/JSX'],
+      });
+      continue;
+    }
+    for (const desc of violations) {
       pushViolation(config, out, { ...desc, file: r });
     }
     if (frozenGlobs.length && FROZEN_RULE_BY_LAYER[layer]) {

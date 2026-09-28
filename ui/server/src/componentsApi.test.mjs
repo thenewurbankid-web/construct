@@ -150,10 +150,12 @@ test('describe of a file that does not parse answers ok:false with a code, never
     assert.equal(status, 200);
     assert.equal(body.ok, false);
     assert.equal(body.code, 'PARSE_ERROR');
-    // The file still opens as plain text (no diagnostics can be computed for it).
+    // The file still opens as plain text, and its diagnostics now say why it can't be checked
+    // (architecture-enforcer's PARSE-ERROR, plus the TypeScript compiler's own parse errors)
+    // instead of going silent.
     const src = await json('GET', `/api/components/source?path=${q('features/shop/components/Bad.tsx')}`);
     assert.equal(src.status, 200);
-    assert.deepEqual(src.body.diagnostics, []);
+    assert.ok(src.body.diagnostics.some((d) => d.code === 'PARSE-ERROR' && d.source === 'architecture'));
   });
 });
 

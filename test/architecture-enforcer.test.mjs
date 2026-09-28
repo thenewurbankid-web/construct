@@ -394,6 +394,33 @@ test('validateArchitecture suggests a layer folder for an unclassifiable feature
   assert.ok(v.expected.some((e) => e.includes('pages') || e.includes('components')));
 });
 
+// A syntax error in one file used to abort validateArchitecture entirely (an uncaught TSError
+// from parseToAst deep inside detectLayerViolations), turning `construct validate`/`/api/validate`
+// into a 500 for the whole project instead of reporting the one broken file. Every other AST-reading
+// module in this codebase (client-boundary.mjs, frozen-detector.mjs, readability-enforcer.mjs)
+// already treats an unparseable file as "nothing to say about it here", not a crash.
+test('validateArchitecture reports a syntax error as a PARSE-ERROR violation instead of throwing', () => {
+  const dir = tmpProject();
+  fs.mkdirSync(path.join(dir, 'features', 'x', 'components'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'features', 'x', 'components', 'Broken.tsx'), 'export function Broken( {\n  return <b />;\n\nconst = ;\n');
+  const res = validateArchitecture(dir);
+  const hit = res.violations.find((v) => v.rule === 'PARSE-ERROR');
+  assert.ok(hit, 'expected a PARSE-ERROR violation');
+  assert.equal(hit.file, 'features/x/components/Broken.tsx');
+});
+
+test('validateArchitecture keeps checking other files after one fails to parse', () => {
+  const dir = tmpProject();
+  fs.mkdirSync(path.join(dir, 'features', 'x', 'components'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'features', 'x', 'pages'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), 'rules:\n  PAGE-004: error\n');
+  fs.writeFileSync(path.join(dir, 'features', 'x', 'components', 'Broken.tsx'), 'export function Broken( {\n  return <b />;\n\nconst = ;\n');
+  fs.writeFileSync(path.join(dir, 'features', 'x', 'pages', 'X.tsx'), 'export function X(){fetch("/");return <div/>}');
+  const res = validateArchitecture(dir);
+  assert.ok(res.violations.some((v) => v.rule === 'PAGE-004'), 'the well-formed file is still checked');
+  assert.ok(res.violations.some((v) => v.rule === 'PARSE-ERROR'));
+});
+
 test('validateArchitecture throws a ConstructError for a malformed exception in architecture.yml', () => {
   const dir = tmpProject();
   fs.writeFileSync(path.join(dir, 'architecture.yml'), 'exceptions:\n  - path: features/x/**\n');

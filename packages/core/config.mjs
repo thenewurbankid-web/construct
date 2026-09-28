@@ -520,6 +520,11 @@ export const DEFAULT_RULES = {
   // (2026-09-22): a real, worth-seeing gap, never a hard validation failure. A project may still
   // raise or silence it like any other rule.
   'PROP-LINK': { severity: 'info', name: 'A required prop is never passed at some call site, or a call site passes an undeclared prop' },
+  // A file with a syntax error cannot be checked against any layer rule and could not build
+  // either, so it is reported like any other violation instead of aborting validation for the
+  // whole project (a single broken file used to throw an uncaught parse error out of
+  // validateArchitecture, turning `construct validate`/`/api/validate` into a hard failure).
+  'PARSE-ERROR': { severity: 'error', name: 'A file must be syntactically valid TypeScript/JSX to be checked' },
 };
 
 /**

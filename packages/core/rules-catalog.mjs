@@ -306,6 +306,12 @@ export const RULE_METADATA = {
     why: 'A required prop with no value at a call site silently does nothing there; an attribute a component never reads is either dead or meant for a different element -- react-docgen and the JSX call graph agree neither is a rendering choice.',
     expected: [], fix: null,
   },
+  'PARSE-ERROR': {
+    module: MODULES.ARCHITECTURE, layers: NO_LAYERS, scope: SCOPE.BUFFER,
+    why: 'A file with a syntax error cannot be checked against any layer rule, and could not build if it reached the compiler.',
+    expected: ['syntactically valid TypeScript/JSX'],
+    fix: 'Fix the syntax error.',
+  },
   'SOC-001': {
     module: MODULES.SOC, layers: NO_LAYERS, scope: SCOPE.PROJECT,
     why: 'Every responsibility needs an architectural owner (a known layer folder or an explicit shared/).',

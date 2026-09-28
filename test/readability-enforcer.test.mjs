@@ -325,3 +325,14 @@ test('every produced violation is a valid diagnostics-contract violation with mo
   assert.ok(violations.length > 0);
   for (const v of violations) assert.equal(v.module, 'readability');
 });
+
+// architecture-enforcer.mjs's validateArchitecture already reports a syntax error as PARSE-ERROR
+// (it runs first in DEFAULT_ENFORCERS); readability used to let the same parseFile() throw
+// uncaught here too, aborting aggregateValidation for the whole project on a single broken file.
+test('a file with a syntax error is skipped, not thrown, so other files in the feature are still checked', () => {
+  const root = tmpRoot();
+  writeFile(root, 'features/demo/components/Broken.tsx', 'export function Broken( {\n  return <b />;\n\nconst = ;\n');
+  writeFile(root, 'features/demo/components/lowercase.tsx', `export function lowercase() {\n  return <div />;\n}\n`);
+  const { violations } = validateReadability(root);
+  assert.ok(violations.some((v) => v.rule === 'READ-001' && v.file === 'features/demo/components/lowercase.tsx'));
+});
