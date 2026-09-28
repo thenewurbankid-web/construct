@@ -82,6 +82,7 @@ import { createComponentsRouter } from './componentsApi.mjs';
 import { createNotesRouter } from './notesApi.mjs';
 import { openNotesStore } from './notesStore.mjs';
 import { createBlocksRouter } from './blocksApi.mjs';
+import { createStoryFetchRouter } from './storyFetchApi.mjs';
 import { openBlockSettingsStore } from './blockSettingsStore.mjs';
 import { handleLogs } from './logBuffer.mjs';
 import { unitsIndex, unitSummary, featuresIndex, featureSummary } from './unitsApi.mjs';
@@ -1122,6 +1123,18 @@ app.use('/api/components', createComponentsRouter({
 // #596: durable Notes (drafts kept per project in the per-user state directory, never in the project). Below the
 // session gate and the project-open gate above; the client names a note by id only (notesApi.mjs).
 app.use('/api/notes', createNotesRouter({
+  clientOrigin: CLIENT_ORIGIN,
+  getRoot: () => {
+    const dir = getProjectDir();
+    const root = dir ? containedProjectRoot(dir) || dir : null;
+    return root ? { ok: true, root } : { ok: false, status: 409, body: NO_PROJECT_BODY };
+  },
+}));
+
+// #384: `StoryApi.fetch` -- one guarded server fetch per (host, url) consent, selectors validated before any
+// network call. Below the session gate and the project-open gate (consent is per project); nothing here executes
+// script or sends credentials (storyFetchApi.mjs / storyFetchService.mjs / the shared safeFetch.mjs, #436).
+app.use('/api/story', createStoryFetchRouter({
   clientOrigin: CLIENT_ORIGIN,
   getRoot: () => {
     const dir = getProjectDir();
