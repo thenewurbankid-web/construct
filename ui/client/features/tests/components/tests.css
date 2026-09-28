@@ -35,6 +35,7 @@
 .ts-col-n { width: 2.5rem; }
 .ts-col-branch { width: 22%; }
 .ts-col-test { width: 28%; }
+.ts-col-story { width: 12%; }
 .ts-col-last { width: 5.5rem; }
 .ts-cell-title { font-weight: 600; }
 .ts-cell-clip { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
@@ -42,6 +43,7 @@
 .ts-testcell { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
 .ts-row-btn { font: inherit; background: transparent; border: 0; padding: 0; color: inherit; text-align: left; cursor: pointer; width: 100%; min-width: 0; }
 .ts-foot { margin: var(--sp-2) 0 0; color: var(--text-muted); font-size: var(--fs-sm); }
+.ts-story-compare { margin: var(--sp-3) 0 0; }
 
 /* banners */
 .ts-banner { margin: 0 0 var(--sp-3); padding: var(--sp-3); border: 1px solid var(--border-subtle); border-radius: 6px; background: var(--surface-2); }
@@ -97,6 +99,7 @@
 
 @media (max-width: 720px) {
   .ts-col-branch, .ts-table th.ts-col-branch { display: none; }
+  .ts-col-story, .ts-table th.ts-col-story { display: none; }
 }
 
 /* Step document and edit panel (#302). Design: docs/design/mocks/qa-tests-editor.html. Tokens only. */

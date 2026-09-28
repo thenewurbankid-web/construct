@@ -9,10 +9,15 @@
 //   readStoryTags(text)                 pure: the `@story S1, S2` ids a test file references
 //   storyTemplate(featureName)          pure: the file "Add a story" writes as a normal diff
 //   ensureStoryNonLayer(root)           fs: declares `nonLayer: features/*/story.md` once (#348 precedent)
+//   buildStoryCiteWillSend(...)         pure: the AI-compare disclosure (files/bytes/calls) before it is sent (#388)
+//   buildStoryCitePrompt(...)           pure: the citation-only prompt (acceptance + code unit names, nothing else)
+//   parseStoryCitations(raw)            pure: a model's response -> candidate citations (never throws)
+//   verifyStoryCitations(cites, known)  pure: mechanical verification -- only real ids/units survive (#388)
 //
 // Fetching (StoryApi.fetch, SSRF, consent, the userscript bridge) is slice 16/18 (#384, #386); the Story tab and
-// indicators are slice 17 (#385); AI compare and pattern extraction are slice 19/20 (#387, #388). Nothing here calls a
-// model, the network or a clock -- `fetchedAt` and the freshness fields arrive from the caller.
+// indicators are slice 17 (#385). AI compare's own model call is made by the caller (ui/server, via
+// packages/core/llm.mjs); nothing here calls a model, the network or a clock -- `fetchedAt` and the freshness fields
+// arrive from the caller.
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -304,6 +309,110 @@ export function readStoryTags(text) {
 export function storyTemplate(featureName) {
   const block = renderToolBlock({ fetchedAt: '', sourceHash: computeSourceHash({ title: featureName, acceptance: [] }), title: featureName, description: '', status: '', acceptance: [] });
   return `---\nsources: []\n---\n${block}\n## Acceptance notes\n`;
+}
+
+/**
+ * What the AI-compare disclosure (design 9.5/9.6, "the control shows exactly what is sent ... and the number of
+ * model calls") reports before the call is made -- computed from the acceptance items and code units alone, so the
+ * inline Generate control's `willSend` never has to guess. One call, one file (the constructed prompt).
+ *
+ * @param {{id: string, text: string}[]} acceptance The story's acceptance items.
+ * @param {string[]} codeUnits The candidate code units (scenario/route/test names) the AI may cite.
+ * @returns {{ files: number, bytes: number, calls: number }}
+ *
+ * @example
+ * buildStoryCiteWillSend([{ id: 'S1', text: 'a' }], ['Happy path']).calls; // => 1
+ */
+export function buildStoryCiteWillSend(acceptance, codeUnits) {
+  const prompt = buildStoryCitePrompt(acceptance, codeUnits);
+  return { files: 1, bytes: Buffer.byteLength(prompt, 'utf8'), calls: 1 };
+}
+
+/**
+ * The prompt sent for AI compare (design 9.5): the model may only see the acceptance lines and the code unit
+ * names -- never file contents, never the whole story -- and is asked to cite which code unit(s) satisfy which
+ * acceptance id, so every claim it makes is checkable mechanically afterwards.
+ *
+ * @param {{id: string, text: string}[]} acceptance The story's acceptance items.
+ * @param {string[]} codeUnits The candidate code units (scenario/route/test names) the AI may cite.
+ * @returns {string} The prompt text.
+ */
+export function buildStoryCitePrompt(acceptance, codeUnits) {
+  const lines = [
+    'Match each acceptance line to the code unit(s) that implement it, if any. Cite ONLY the ids and code unit',
+    'names given below -- do not invent an id or a code unit name that is not listed. Reply with ONLY a JSON array,',
+    'no prose, each item shaped exactly as {"acceptanceId": "<id>", "codeUnit": "<name>", "note": "<short reason>"}.',
+    '',
+    'Acceptance:',
+    ...(acceptance ?? []).map((a) => `- ${a.id} ${a.text}`),
+    '',
+    'Code units:',
+    ...(codeUnits ?? []).map((u) => `- ${u}`),
+  ];
+  return lines.join('\n');
+}
+
+/**
+ * Parse a model's citation response into a plain array, tolerant of a fenced code block or surrounding prose. Never
+ * throws: anything that is not a parseable JSON array of plain objects yields `[]`, since a malformed response is
+ * exactly what mechanical verification exists to catch (nothing here is trusted yet).
+ *
+ * @param {string} raw The model's raw response text.
+ * @returns {{ acceptanceId: any, codeUnit: any, note: any }[]} Unverified candidate citations (may contain wrong types).
+ *
+ * @example
+ * parseStoryCitations('[{"acceptanceId":"S1","codeUnit":"Happy path"}]'); // => [{ acceptanceId: 'S1', codeUnit: 'Happy path' }]
+ */
+export function parseStoryCitations(raw) {
+  const text = stripCodeFence(String(raw ?? ''));
+  const start = text.indexOf('[');
+  const end = text.lastIndexOf(']');
+  if (start === -1 || end === -1 || end < start) return [];
+  try {
+    const parsed = JSON.parse(text.slice(start, end + 1));
+    return Array.isArray(parsed) ? parsed.filter((c) => c && typeof c === 'object' && !Array.isArray(c)) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** A best-effort strip of one leading/trailing ```-fenced block, mirroring `stripCodeFence` in `llm.mjs` (kept local
+ * so this module has no dependency on the LLM caller -- it only ever parses text handed to it). */
+function stripCodeFence(text) {
+  const trimmed = text.trim();
+  const m = trimmed.match(/^```[a-zA-Z0-9]*\n([\s\S]*?)\n```$/);
+  return m ? m[1] : trimmed;
+}
+
+/**
+ * Mechanical verification of AI-proposed citations (design 9.5: "it may only cite acceptance lines and code units,
+ * and every citation is verified mechanically before it is shown"). A citation survives only if its `acceptanceId`
+ * and `codeUnit` are both EXACTLY one of the real ids/units given -- no fuzzy matching, no partial credit. Nothing
+ * here calls a model: this is the check that runs on whatever the model said, after the fact.
+ *
+ * @param {{acceptanceId: any, codeUnit: any, note?: any}[]} citations Candidate citations (e.g. from `parseStoryCitations`).
+ * @param {{acceptanceIds: Iterable<string>, codeUnitIds: Iterable<string>}} known The real ids and code units a citation may reference.
+ * @returns {{ verified: {acceptanceId: string, codeUnit: string, note: string}[], dropped: {citation: any, reason: string}[] }}
+ *
+ * @example
+ * verifyStoryCitations([{ acceptanceId: 'S1', codeUnit: 'Happy path' }, { acceptanceId: 'S9', codeUnit: 'Happy path' }],
+ *   { acceptanceIds: ['S1'], codeUnitIds: ['Happy path'] });
+ * // => { verified: [{ acceptanceId: 'S1', codeUnit: 'Happy path', note: '' }], dropped: [{ citation: {...}, reason: 'unknown acceptance id' }] }
+ */
+export function verifyStoryCitations(citations, { acceptanceIds, codeUnitIds } = {}) {
+  const knownAcceptance = new Set(acceptanceIds ?? []);
+  const knownUnits = new Set(codeUnitIds ?? []);
+  const verified = [];
+  const dropped = [];
+  for (const citation of citations ?? []) {
+    const acceptanceId = citation?.acceptanceId;
+    const codeUnit = citation?.codeUnit;
+    if (typeof acceptanceId !== 'string' || typeof codeUnit !== 'string') { dropped.push({ citation, reason: 'not a citation (missing acceptanceId or codeUnit)' }); continue; }
+    if (!knownAcceptance.has(acceptanceId)) { dropped.push({ citation, reason: `unknown acceptance id "${acceptanceId}"` }); continue; }
+    if (!knownUnits.has(codeUnit)) { dropped.push({ citation, reason: `unknown code unit "${codeUnit}"` }); continue; }
+    verified.push({ acceptanceId, codeUnit, note: typeof citation.note === 'string' ? citation.note : '' });
+  }
+  return { verified, dropped };
 }
 
 /**

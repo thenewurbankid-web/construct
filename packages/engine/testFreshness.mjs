@@ -19,6 +19,7 @@ import path from 'node:path';
 import { CLONE_MARKER, listFeatureTests, locate, parseLineage, readRegular } from './testClone.mjs';
 import { planFeatureTests } from './testGenerator.mjs';
 import { describeSteps, parseSpecRaw } from './testSteps.mjs';
+import { featureStoryCoverage } from './storyCoverage.mjs';
 
 const NAME_RE = /^[a-z0-9][a-z0-9-]*\.spec\.ts$/;
 const isFlow = (s) => s.kind === 'event' || s.kind === 'state';
@@ -123,6 +124,7 @@ export function listFeatureTestsFresh(root, feature) {
     y.freshness = { state: f.state, stale: f.stale, summary: f.summary, changes: f.changes.length };
   }
   for (const row of r.coverage) row.staleClones = r.yours.filter((y) => row.cloned.includes(y.name) && y.freshness?.stale).map((y) => y.name);
+  r.story = featureStoryCoverage(root, feature, at, r.generated, r.yours, r.coverage);
   return r;
 }
 

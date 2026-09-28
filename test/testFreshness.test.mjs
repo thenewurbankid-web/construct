@@ -78,6 +78,57 @@ test('a changed route makes the clone stale with the diff; an unaffected scenari
   assert.match(c.next, /Nothing was changed for you/);
 });
 
+// ---- story coverage (#388): @story tags vs a feature's story.md, on the same listing --------------------------
+
+const STORY_MD = `---
+sources: []
+---
+<!-- construct:tool-begin fetchedAt= sourceHash=x blockHash=y -->
+# Jobs
+- S1 A job can be started
+- S2 A finished job can be approved
+<!-- construct:tool-end -->
+`;
+
+test('with no story.md, story coverage is not declared and every row gets an empty storyIds', () => {
+  const dir = project();
+  const r = listFeatureTestsFresh(dir, 'jobs');
+  assert.equal(r.story.declared, false);
+  assert.deepEqual(r.story.acceptance, []);
+  assert.equal(r.story.compare, null);
+  assert.ok(r.coverage.every((c) => Array.isArray(c.storyIds) && c.storyIds.length === 0));
+});
+
+test('with a story.md, coverage rows carry the @story ids their generated test references, and compare is three lists', () => {
+  const dir = project();
+  fs.writeFileSync(path.join(dir, 'features', 'jobs', 'story.md'), STORY_MD);
+  const gen = path.join(dir, 'features', 'jobs', 'tests', 'generated', happy(dir));
+  fs.writeFileSync(gen, fs.readFileSync(gen, 'utf8').replace(/\n$/, '\n// @story S1\n'));
+
+  const r = listFeatureTestsFresh(dir, 'jobs');
+  assert.equal(r.story.declared, true);
+  assert.deepEqual(r.story.acceptance, [{ id: 'S1', text: 'A job can be started' }, { id: 'S2', text: 'A finished job can be approved' }]);
+  assert.deepEqual(r.story.compare, { missing: ['S2'], undocumented: [], matched: ['S1'] });
+
+  const happyRow = r.coverage.find((c) => c.file === happy(dir));
+  assert.deepEqual(happyRow.storyIds, ['S1']);
+  const otherRow = r.coverage.find((c) => c.file === other(dir));
+  assert.deepEqual(otherRow.storyIds, []);
+});
+
+test('a clone\'s @story tag counts toward its scenario row and the compare, even though the row\'s own file is the generated one', () => {
+  const dir = project();
+  fs.writeFileSync(path.join(dir, 'features', 'jobs', 'story.md'), STORY_MD);
+  cloneGeneratedTest(dir, { feature: 'jobs', source: other(dir), name: 'mine' });
+  const clone = path.join(dir, 'features', 'jobs', 'tests', 'mine.spec.ts');
+  fs.writeFileSync(clone, fs.readFileSync(clone, 'utf8').replace(/\n$/, '\n// @story S2\n'));
+
+  const r = listFeatureTestsFresh(dir, 'jobs');
+  assert.deepEqual(r.story.compare, { missing: ['S1'], undocumented: [], matched: ['S2'] });
+  const row = r.coverage.find((c) => c.file === other(dir));
+  assert.deepEqual(row.storyIds, ['S2']);
+});
+
 test('a removed scenario is reported and nothing is deleted or rewritten', () => {
   const dir = project();
   cloneGeneratedTest(dir, { feature: 'jobs', source: other(dir), name: 'unaffected-copy' });

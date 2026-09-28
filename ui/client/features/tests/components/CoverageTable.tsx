@@ -1,7 +1,10 @@
-import type { CoverageRow, ResultMark } from '../types';
+import type { CoverageRow, ResultMark, StoryCoverage } from '../types';
 
 type CoverageTableProps = {
   rows: CoverageRow[];
+  /** Only when the feature has a story.md (#388, design 9.1: story-dependent UI only when one exists) does the
+   * Story column render at all. */
+  story: StoryCoverage;
   selectedFile: string | null;
   generating: boolean;
   /** The latest run's result for a generated test file (#305): a symbol and a word, or "Not run". */
@@ -11,8 +14,10 @@ type CoverageTableProps = {
 };
 
 /** Every scenario the flow can take, the branch that tells it apart, and whether a test covers it. A covered
- * scenario opens its (locked) test; an uncovered one offers Generate. Last result comes from the latest run (#305). */
-export function CoverageTable({ rows, selectedFile, generating, resultOf, onOpen, onGenerate }: CoverageTableProps) {
+ * scenario opens its (locked) test; an uncovered one offers Generate. Last result comes from the latest run (#305).
+ * The Story column (#388) shows which `@story S<n>` ids the row's test(s) reference, and whether that id is
+ * actually in the story's acceptance list -- muted "Not in story" when the tag itself is a stray reference. */
+export function CoverageTable({ rows, story, selectedFile, generating, resultOf, onOpen, onGenerate }: CoverageTableProps) {
   return (
     <div className="ts-tablewrap">
       <table className="ts-table" data-testid="coverage-table">
@@ -23,6 +28,7 @@ export function CoverageTable({ rows, selectedFile, generating, resultOf, onOpen
             <th scope="col">Scenario</th>
             <th className="ts-col-branch" scope="col">Which branch</th>
             <th className="ts-col-test" scope="col">Test</th>
+            {story.declared && <th className="ts-col-story" scope="col">Story</th>}
             <th className="ts-col-last" scope="col">Last result</th>
           </tr>
         </thead>
@@ -53,12 +59,29 @@ export function CoverageTable({ rows, selectedFile, generating, resultOf, onOpen
                   {!r.generated && <button type="button" className="ts-btn" data-testid="coverage-generate" disabled={generating} onClick={onGenerate} title="Generates every missing test for this feature">{generating ? 'Generating...' : 'Generate'}</button>}
                 </span>
               </td>
+              {story.declared && <td className="ts-col-story"><StoryCell ids={r.storyIds} matched={story.compare.matched} /></td>}
               <td className="ts-col-last"><LastResult mark={r.file && resultOf ? resultOf(r.file) : null} /></td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
+  );
+}
+
+/** The `@story` ids a row's test(s) reference: a chip per id, matched (green) vs a stray tag not in the story's
+ * acceptance list (muted); "—" when the row references none. */
+function StoryCell({ ids, matched }: { ids: string[]; matched: string[] }) {
+  if (ids.length === 0) return <span className="ts-cell-sub" data-testid="story-none">—</span>;
+  const isMatched = new Set(matched);
+  return (
+    <span className="ts-testcell" data-testid="story-ids">
+      {ids.map((id) => (
+        <span key={id} className={`ts-chip ${isMatched.has(id) ? 'ts-chip--locked' : 'ts-chip--stale'}`} data-testid="story-chip" title={isMatched.has(id) ? `${id} is in the story's acceptance list` : `${id} is not in the story's acceptance list`}>
+          {id}
+        </span>
+      ))}
+    </span>
   );
 }
 

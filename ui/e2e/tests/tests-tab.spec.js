@@ -71,6 +71,10 @@ test.describe.serial('Tests tab: coverage, the lock and clone-to-edit (#300, #30
     await expect(page.getByRole('list', { name: 'Generated tests, locked' })).toBeVisible();
     await expect(rows.first()).toContainText('Happy path');
     await expect(rows.first()).toContainText('Locked');
+    // #388: this feature has no story.md -- every story-dependent piece of UI (design 9.1's activation rule)
+    // stays entirely absent, not merely empty.
+    await expect(page.getByTestId('story-compare-ai')).toHaveCount(0);
+    await expect(page.getByTestId('story-chip')).toHaveCount(0);
     await page.screenshot({ path: path.join(SHOTS, '300-tests-tab-coverage--dark.png') });
     expect((await runAxe(page)).filter(isBlocking), format(await runAxe(page))).toEqual([]);
   });
@@ -220,5 +224,84 @@ test.describe.serial('Generate refuses, plainly, when the lock is not declared (
     await expect(refused).toContainText('nonLayer:');
     expect(fs.existsSync(path.join(dir, 'features', 'refunds', 'tests'))).toBe(false);
     await page.screenshot({ path: path.join(SHOTS, '300-generate-refused--dark.png') });
+  });
+});
+
+// #388: acceptance-criteria coverage from `@story Sn` tags on the Tests tab, and AI compare with verified
+// citations behind the inline Generate control (#382). Real end to end: a real story.md, a real @story tag
+// written into a real generated test file, the real coverage/compare engine (packages/core/story.mjs).
+const STORY_MD = `---
+sources: []
+---
+<!-- construct:tool-begin fetchedAt= sourceHash=x blockHash=y -->
+# Refunds
+- S1 Refund button shows only on delivered orders
+- S2 Refund is capped at the order total
+<!-- construct:tool-end -->
+`;
+
+test.describe.serial('Story coverage and AI compare on the Tests tab (#388)', () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+  let dir;
+  let originalDir;
+
+  test.beforeAll(async ({ request }) => {
+    originalDir = (await (await request.get(`${API}/api/settings`)).json()).projectDir;
+    dir = makeProject({ lock: true });
+    generate(dir);
+    fs.writeFileSync(path.join(dir, 'features', 'refunds', 'story.md'), STORY_MD);
+    const genDir = path.join(dir, 'features', 'refunds', 'tests', 'generated');
+    const happy = fs.readdirSync(genDir).sort().find((n) => /happy-path/.test(n));
+    const happyPath = path.join(genDir, happy);
+    fs.writeFileSync(happyPath, `${fs.readFileSync(happyPath, 'utf8').replace(/\n$/, '')}\n// @story S1\n`);
+    await request.post(`${API}/api/settings`, { data: { projectDir: dir } });
+  });
+
+  test.afterAll(async ({ request }) => {
+    await request.post(`${API}/api/settings`, { data: { projectDir: originalDir } });
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  test('300-tests-tab-story-coverage.png — the Story column shows matched/unmatched ids, and the summary includes story coverage', async ({ page }) => {
+    await gotoCockpit(page, '/tests');
+    await expect(page.getByRole('columnheader', { name: 'Story' })).toBeVisible();
+    const rows = page.getByTestId('coverage-row');
+    await expect(rows.first()).toContainText('Happy path'); // flow order: happy path first, and it carries @story S1
+    await expect(rows.first().getByTestId('story-chip')).toHaveText('S1');
+    await expect(rows.nth(1).getByTestId('story-none')).toBeVisible();
+    await expect(page.getByTestId('coverage-summary')).toContainText('story: 1/2 matched');
+    await page.screenshot({ path: path.join(SHOTS, '300-tests-tab-story-coverage--dark.png') });
+    expect((await runAxe(page)).filter(isBlocking), format(await runAxe(page))).toEqual([]);
+  });
+
+  test('the AI compare control defaults to Mechanical (0 model calls)', async ({ page }) => {
+    await gotoCockpit(page, '/tests');
+    const control = page.getByTestId('story-compare-ai').getByTestId('generate-control');
+    await expect(control).toHaveAttribute('data-action-id', 'story-compare-ai');
+    await expect(control).toHaveAttribute('data-view-state', 'idle');
+    await expect(control.getByTestId('generate-mode-mechanical')).toHaveAttribute('aria-pressed', 'true');
+
+    await control.getByTestId('generate-run').click();
+    await expect(control.getByTestId('generate-result')).toContainText('Already shown in the Story column above (0 model calls).');
+  });
+
+  // Runs only when this machine has a local model reachable (the harness's own dev box does): a real end-to-end
+  // AI-compare call, hitting the real local model, real mechanical citation verification, no mocking.
+  test('choosing AI discloses what will be sent, then a real model call returns a verified/dropped citation summary', async ({ page, request }) => {
+    const status = await (await request.get(`${API}/api/ollama/status`)).json();
+    test.skip(!status.running, 'No local model reachable from this machine -- nothing to call.');
+
+    await gotoCockpit(page, '/tests');
+    const control = page.getByTestId('story-compare-ai').getByTestId('generate-control');
+    await control.getByTestId('generate-mode-ai').click();
+    await expect(control).toHaveAttribute('data-view-state', 'ai-disclosure');
+    await expect(control.getByTestId('generate-will-send')).toContainText('1 model call');
+
+    await control.getByTestId('generate-run').click();
+    await expect(control.getByTestId('generate-running')).toBeVisible();
+    await expect(control.getByTestId('generate-result')).toBeVisible({ timeout: 60_000 });
+    await expect(control.getByTestId('generate-result')).toContainText(/citation/);
+    await page.screenshot({ path: path.join(SHOTS, '300-tests-tab-ai-compare--dark.png') });
+    expect((await runAxe(page)).filter(isBlocking), format(await runAxe(page))).toEqual([]);
   });
 });

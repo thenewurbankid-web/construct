@@ -14,6 +14,10 @@ import {
   storyTemplate,
   computeSourceHash,
   ensureStoryNonLayer,
+  buildStoryCiteWillSend,
+  buildStoryCitePrompt,
+  parseStoryCitations,
+  verifyStoryCitations,
 } from '../packages/core/story.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
@@ -250,4 +254,63 @@ test('ensureStoryNonLayer refuses when nonLayer: exists but does not cover story
 test('ensureStoryNonLayer throws a usage error when there is no architecture.yml', () => {
   const dir = makeTempDir('construct-story-');
   assert.throws(() => ensureStoryNonLayer(dir), /architecture\.yml/);
+});
+
+// ---- AI compare: prompt, disclosure and mechanical citation verification (#388) ---------------------------------
+
+const ACCEPTANCE = [{ id: 'S1', text: 'Refund button shows only on delivered orders' }, { id: 'S2', text: 'Refund is capped at the order total' }];
+const CODE_UNITS = ['Happy path', 'Refund over 50 goes to manual review'];
+
+test('buildStoryCitePrompt lists only the given acceptance ids and code unit names, nothing else', () => {
+  const prompt = buildStoryCitePrompt(ACCEPTANCE, CODE_UNITS);
+  assert.match(prompt, /S1 Refund button shows only on delivered orders/);
+  assert.match(prompt, /S2 Refund is capped at the order total/);
+  assert.match(prompt, /Happy path/);
+  assert.match(prompt, /Refund over 50 goes to manual review/);
+  assert.match(prompt, /do not invent/i);
+});
+
+test('buildStoryCiteWillSend reports exactly one file and one call, sized from the real prompt', () => {
+  const willSend = buildStoryCiteWillSend(ACCEPTANCE, CODE_UNITS);
+  assert.equal(willSend.files, 1);
+  assert.equal(willSend.calls, 1);
+  assert.equal(willSend.bytes, Buffer.byteLength(buildStoryCitePrompt(ACCEPTANCE, CODE_UNITS), 'utf8'));
+});
+
+test('parseStoryCitations reads a fenced JSON array and a bare one the same way', () => {
+  const bare = '[{"acceptanceId":"S1","codeUnit":"Happy path"}]';
+  const fenced = '```json\n[{"acceptanceId":"S1","codeUnit":"Happy path"}]\n```';
+  assert.deepEqual(parseStoryCitations(bare), [{ acceptanceId: 'S1', codeUnit: 'Happy path' }]);
+  assert.deepEqual(parseStoryCitations(fenced), [{ acceptanceId: 'S1', codeUnit: 'Happy path' }]);
+});
+
+test('parseStoryCitations never throws on garbage; returns []', () => {
+  assert.deepEqual(parseStoryCitations(''), []);
+  assert.deepEqual(parseStoryCitations('not json at all'), []);
+  assert.deepEqual(parseStoryCitations('{"not":"an array"}'), []);
+  assert.deepEqual(parseStoryCitations(null), []);
+});
+
+test('verifyStoryCitations keeps only citations whose id AND code unit both exist, exactly', () => {
+  const citations = [
+    { acceptanceId: 'S1', codeUnit: 'Happy path', note: 'shows the button' },
+    { acceptanceId: 'S9', codeUnit: 'Happy path' }, // invented id
+    { acceptanceId: 'S2', codeUnit: 'Nonexistent scenario' }, // invented code unit
+    { acceptanceId: 'S1' }, // missing codeUnit entirely
+  ];
+  const { verified, dropped } = verifyStoryCitations(citations, { acceptanceIds: ACCEPTANCE.map((a) => a.id), codeUnitIds: CODE_UNITS });
+  assert.deepEqual(verified, [{ acceptanceId: 'S1', codeUnit: 'Happy path', note: 'shows the button' }]);
+  assert.equal(dropped.length, 3);
+  assert.match(dropped[0].reason, /unknown acceptance id "S9"/);
+  assert.match(dropped[1].reason, /unknown code unit "Nonexistent scenario"/);
+  assert.match(dropped[2].reason, /not a citation/);
+});
+
+test('verifyStoryCitations is exact, not fuzzy: a near-miss id or unit is dropped, not matched', () => {
+  const { verified, dropped } = verifyStoryCitations(
+    [{ acceptanceId: 's1', codeUnit: 'happy path' }], // wrong case
+    { acceptanceIds: ['S1'], codeUnitIds: ['Happy path'] },
+  );
+  assert.deepEqual(verified, []);
+  assert.equal(dropped.length, 1);
 });

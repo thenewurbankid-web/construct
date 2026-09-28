@@ -13,6 +13,8 @@
 //   GET  /:feature/runs                     the feature's live run, the latest result per test and the newest problem (#305, read-only)
 //   POST /:feature/run {name?, area?, baseUrl?}     run the feature's tests (or one) against the app, as a Process (#305)
 //   POST /:feature/run/cancel               cancel the feature's live run with the machine's own CANCEL (#305)
+//   POST /:feature/story-compare-ai         AI compare: cites acceptance ids to code units, verified mechanically
+//                                            before returning (#388); 400 when the feature has no story.md
 //
 // Security, in one place (the client supplies ONLY a feature name, a file NAME and a clone name):
 //   - the feature is compared against the REAL feature list of the current project (listUnits); it never
@@ -40,6 +42,8 @@ import { applyStepEdit, previewStepEdit, readStepDocument } from '../../../packa
 import { environmentState } from './testsEnv.mjs';
 import { DEFAULT_BASE_URL, parseBaseUrl, resolveSpecs } from '../../../packages/engine/testRunner.mjs';
 import { ConstructError } from '../../../packages/core/diagnostics.mjs';
+import { buildStoryCitePrompt, parseStoryCitations, verifyStoryCitations } from '../../../packages/core/story.mjs';
+import { callLlm, DEFAULT_OLLAMA_MODEL } from '../../../packages/core/llm.mjs';
 
 const NAME = /^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/;
 const STATUS = { 'no-feature': 404, 'not-generated': 404, 'not-found': 404, 'not-a-clone': 422, 'bad-name': 400, exists: 409, locked: 403, stale: 409, 'not-reviewed': 409, 'no-change': 409, invalid: 422, 'not-editable': 422, unrenderable: 422 };
@@ -72,13 +76,15 @@ export function createTestsRouter({ getRoot, clientOrigin, runs = null }) {
     return next();
   });
 
-  const handle = (fn) => (req, res) => {
+  // `fn` may return its result directly or as a Promise (#388's AI-compare route awaits a model call); `await` on a
+  // plain value is a no-op, so every existing synchronous handler behaves exactly as before.
+  const handle = (fn) => async (req, res) => {
     const r = getRoot();
     if (!r.ok) return res.status(400).json({ ok: false, error: r.error });
     const bad = checkFeature(r.root, req.params.feature);
     if (bad) return res.status(bad.status).json(bad.body);
     try {
-      const out = fn(r.root, req);
+      const out = await fn(r.root, req);
       return res.status(out.status).json(out.body);
     } catch (e) {
       return res.status(500).json({ ok: false, error: e.message });
@@ -142,6 +148,23 @@ export function createTestsRouter({ getRoot, clientOrigin, runs = null }) {
     const outcome = runs.cancel(root, req.params.feature);
     if (!outcome) return { status: 404, body: { ok: false, code: 'NOT_RUNNING', error: 'No test run of this feature is in progress.' } };
     return outcome.status === 200 ? { status: 200, body: { ok: true, cancelled: true } } : { status: outcome.status, body: outcome.body };
+  }));
+
+  // ---- #388: AI compare, citations verified mechanically before they are ever returned -----------------------
+  router.post('/:feature/story-compare-ai', handle((root, req) => {
+    const listing = listFeatureTestsFresh(root, req.params.feature);
+    if (!listing.ok) return fromCore(listing);
+    if (!listing.story.declared) return { status: 400, body: { ok: false, error: 'This feature has no story.md, so there is nothing to compare against.' } };
+    const { acceptance } = listing.story;
+    const codeUnits = listing.coverage.map((r) => r.title);
+    const prompt = buildStoryCitePrompt(acceptance, codeUnits);
+    return callLlm('ollama', prompt, { model: DEFAULT_OLLAMA_MODEL })
+      .then((raw) => {
+        const { verified, dropped } = verifyStoryCitations(parseStoryCitations(raw), { acceptanceIds: acceptance.map((a) => a.id), codeUnitIds: codeUnits });
+        const summary = dropped.length > 0 ? `${verified.length} citation${verified.length === 1 ? '' : 's'} verified, ${dropped.length} unverifiable citation${dropped.length === 1 ? '' : 's'} dropped` : `${verified.length} citation${verified.length === 1 ? '' : 's'} verified`;
+        return { status: 200, body: { ok: true, verified, dropped, summary } };
+      })
+      .catch((e) => ({ status: 200, body: { ok: false, error: e.message || 'The local model is offline.' } }));
   }));
 
   router.post('/:feature/generate', handle((root, req) => {

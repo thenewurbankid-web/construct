@@ -39,8 +39,24 @@ export type CoverageRow = {
   cloned: string[];
   /** Clones of this scenario whose flow has changed under them (#306). */
   staleClones?: string[];
+  /** The `@story S1` ids this scenario's test(s) reference (#388): [] when there is no story.md, or none tagged. */
+  storyIds: string[];
   lastResult: 'none';
 };
+
+/** A story's acceptance-criteria coverage on the Tests screen (#388): only present (`declared: true`) when the
+ * feature has a `story.md` -- design 9.1's activation rule, "story-dependent UI exists only when a story.md exists". */
+export type StoryCoverage =
+  | { declared: false; acceptance: []; compare: null }
+  | { declared: true; acceptance: { id: string; text: string }[]; compare: { missing: string[]; undocumented: string[]; matched: string[] } };
+
+/** One AI-verified (or dropped) citation of an acceptance line to a code unit (#388, design 9.5: "it may only cite
+ * acceptance lines and code units, and every citation is verified mechanically before it is shown"). */
+export type StoryCitation = { acceptanceId: string; codeUnit: string; note: string };
+export type DroppedCitation = { citation: unknown; reason: string };
+export type StoryCompareAiResult =
+  | { ok: true; verified: StoryCitation[]; dropped: DroppedCitation[]; summary: string }
+  | { ok: false; error: string };
 
 
 export type TestsListing = {
@@ -50,6 +66,7 @@ export type TestsListing = {
   generated: GeneratedTest[];
   yours: YourTest[];
   coverage: CoverageRow[];
+  story: StoryCoverage;
   scenarios: number;
   skipped: { file: string; machine: string; reason: string }[];
   truncated: boolean;

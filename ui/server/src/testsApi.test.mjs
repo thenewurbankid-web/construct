@@ -13,6 +13,7 @@ import { generateFeatureTests } from '../../../packages/engine/testGenerator.mjs
 import { SESSION_COOKIE, createAuth, resolveAuthConfig, signValue } from './auth.mjs';
 import { createTestsRouter } from './testsApi.mjs';
 import { app as realApp, auth as realAuth } from './index.mjs';
+import { PROVIDERS } from '../../../packages/core/llm.mjs';
 
 const ORIGIN = 'http://localhost:3000';
 const SECRET = 's'.repeat(48);
@@ -277,4 +278,79 @@ test('compare: hostile names, a symlink, a non-clone and an unknown feature are 
     assert.equal((await json('GET', '/api/tests/nosuch/compare?name=x.spec.ts')).status, 404);
     assert.deepEqual(fs.readdirSync(tests(dir)).sort(), before);
   });
+});
+
+// --- #388: AI compare, verified citations -----------------------------------------------------------------------
+
+const STORY_MD = `---
+sources: []
+---
+<!-- construct:tool-begin fetchedAt= sourceHash=x blockHash=y -->
+# Jobs
+- S1 A job can be started
+- S2 A finished job can be approved
+<!-- construct:tool-end -->
+`;
+
+test('story-compare-ai: 400 when the feature has no story.md; the model is never called', async () => {
+  const original = PROVIDERS.ollama;
+  let called = false;
+  PROVIDERS.ollama = async () => { called = true; return '[]'; };
+  try {
+    await withStack({}, async ({ json }) => {
+      const r = await json('POST', '/api/tests/jobs/story-compare-ai', { body: {} });
+      assert.equal(r.status, 400);
+      assert.equal(r.body.ok, false);
+      assert.match(r.body.error, /no story\.md/);
+    });
+    assert.equal(called, false);
+  } finally {
+    PROVIDERS.ollama = original;
+  }
+});
+
+test('story-compare-ai: a real citation is verified, an invented id and an invented code unit are dropped and reported', async () => {
+  const original = PROVIDERS.ollama;
+  let sentPrompt = null;
+  PROVIDERS.ollama = async (prompt) => {
+    sentPrompt = prompt;
+    return JSON.stringify([
+      { acceptanceId: 'S1', codeUnit: 'Happy path' },
+      { acceptanceId: 'S9', codeUnit: 'Happy path' },
+      { acceptanceId: 'S2', codeUnit: 'Nonexistent scenario' },
+    ]);
+  };
+  try {
+    await withStack({}, async ({ dir, json }) => {
+      fs.writeFileSync(path.join(dir, 'features', 'jobs', 'story.md'), STORY_MD);
+      const r = await json('POST', '/api/tests/jobs/story-compare-ai', { body: {} });
+      assert.equal(r.status, 200);
+      assert.equal(r.body.ok, true);
+      assert.deepEqual(r.body.verified, [{ acceptanceId: 'S1', codeUnit: 'Happy path', note: '' }]);
+      assert.equal(r.body.dropped.length, 2);
+      assert.match(r.body.summary, /1 citation verified, 2 unverifiable citations dropped/);
+      // the prompt names only the real acceptance ids and code units -- never file contents
+      assert.match(sentPrompt, /S1 A job can be started/);
+      assert.match(sentPrompt, /Happy path/);
+      assert.doesNotMatch(sentPrompt, /architecture\.yml/);
+    });
+  } finally {
+    PROVIDERS.ollama = original;
+  }
+});
+
+test('story-compare-ai: a model/offline failure is reported, not thrown as a 500', async () => {
+  const original = PROVIDERS.ollama;
+  PROVIDERS.ollama = async () => { throw new Error('connect ECONNREFUSED'); };
+  try {
+    await withStack({}, async ({ dir, json }) => {
+      fs.writeFileSync(path.join(dir, 'features', 'jobs', 'story.md'), STORY_MD);
+      const r = await json('POST', '/api/tests/jobs/story-compare-ai', { body: {} });
+      assert.equal(r.status, 200);
+      assert.equal(r.body.ok, false);
+      assert.match(r.body.error, /ECONNREFUSED/);
+    });
+  } finally {
+    PROVIDERS.ollama = original;
+  }
 });
