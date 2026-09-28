@@ -44,6 +44,21 @@ A worktree's `node_modules` symlink points at the main checkout, so `@line/const
 The links are git-ignored. Never `npm install` in a worktree unless the brief
 says so (one package, through `heavy.sh`, lockfile committed).
 
+**A new root dependency lands broken for every worktree** until someone runs
+the shared install once: adding a package to the root `package.json` on
+`work/2026-09-23` does not put it in the MAIN checkout's `node_modules` (every
+worktree's `node_modules` symlink points there), so any command that
+transitively imports it fails with `ERR_MODULE_NOT_FOUND`/`MODULE_NOT_FOUND`
+in every worktree until that install runs (#782). If a fresh-looking import
+error names a package that IS in `package.json`, check
+`node -e "require.resolve('<pkg>')"` from the MAIN checkout before assuming a
+code regression, then fix it there directly with `npm install --no-save
+--no-audit --no-fund <pkg>@<range>` (from the exact `package.json` range) run
+against the MAIN checkout — `--no-save` avoids touching its `package.json`/
+`package-lock.json`, which can be stale or dirty relative to
+`work/2026-09-23`. A worktree can only symlink; it cannot install into the
+shared `node_modules` itself.
+
 ## Machine limits (15 GB, no swap; an OOM kill ends every session)
 
 - Single test files run directly: `node --test <file>`.
