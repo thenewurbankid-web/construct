@@ -125,6 +125,22 @@ test.describe.serial('#109 Settings LLM providers are consumed, opt-in per run',
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'settings-llm-settings-page.png'), fullPage: true });
   });
 
+  test('#471: the per-capability model field appears only for ollama, and a saved choice round-trips', async ({ page, request }) => {
+    await setProviders(request, { importFill: 'ollama', createFill: 'claude' });
+    await page.goto('/settings');
+    // ollama is picked for importFill -> its model field shows; createFill is claude -> no model field.
+    await expect(page.locator('#llm-model-importFill')).toBeVisible();
+    await expect(page.locator('#llm-model-createFill')).toHaveCount(0);
+    await page.locator('#llm-model-importFill').fill('llama3:8b');
+    await page.locator('#llm-model-importFill').blur();
+    await page.getByRole('button', { name: 'Save settings' }).click();
+    await expect(page.getByText('Settings saved.')).toBeVisible();
+    const settings = await (await request.get(`${API}/api/settings`)).json();
+    expect(settings.llmModels.importFill).toBe('llama3:8b');
+    expect(settings.llmModels.createFill).toBe(null);
+    await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'settings-llm-model-field.png'), fullPage: true });
+  });
+
   test('Wizard: analysis on planAnalysis (claude), per-file fill on Settings importFill (ollama)', async ({ page, request }) => {
     const s = await request.post(`${API}/api/settings`, { data: { projectDir, llmProviders: { planAnalysis: 'claude', importFill: 'ollama' } } });
     expect(s.ok()).toBeTruthy();
