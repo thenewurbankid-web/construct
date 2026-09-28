@@ -225,6 +225,7 @@ rc_pids() {
   local d p args cwd
   for d in /proc/[0-9]*; do
     p="${d#/proc/}"
+    [ -r "$d/cmdline" ] || continue
     mapfile -d '' args <"$d/cmdline" 2>/dev/null || continue
     [ "$(basename "${args[0]:-}")" = claude ] || continue
     case "${args[1]:-}" in rc|remote-control) ;; *) continue ;; esac
