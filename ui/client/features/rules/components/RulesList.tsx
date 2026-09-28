@@ -1,4 +1,6 @@
-import type { RuleRow, RulesViewModel } from '../types';
+import type { RuleEditApi, RuleRow, RuleSeverity, RulesViewModel } from '../types';
+
+const SEVERITIES: RuleSeverity[] = ['error', 'warning', 'off'];
 
 function countClass(row: RuleRow): string {
   if (row.count === 0) return 'ru-count ru-count--zero';
@@ -9,9 +11,62 @@ function severityLabel(severity: RuleRow['severity']): string {
   return severity === 'error' ? 'Error' : severity === 'warning' ? 'Warning' : 'Off';
 }
 
-/** Every rule for this project, one row per id: severity, live violation count, and the plain-words "why". Presentation
- * only, read-only for this slice (#781) -- editing severity/exceptions/presets is a later slice (#395). */
-export function RulesList({ view, onRun }: { view: RulesViewModel; onRun: () => void }) {
+/** The row's inline severity picker, or (while a save is in flight for THIS row) its reviewable diff with
+ * Save/Cancel -- #395 slice B. Presentation only; every action goes through `edit`. */
+function SeverityEditor({ row, edit }: { row: RuleRow; edit: RuleEditApi }) {
+  const editing = edit.state?.ruleId === row.id ? edit.state : null;
+  if (!editing) {
+    return (
+      <select
+        className="ru-sev-picker"
+        data-testid="rule-severity-picker"
+        value={row.severity}
+        onChange={(e) => edit.start(row.id, e.target.value as RuleSeverity)}
+      >
+        {SEVERITIES.map((s) => (
+          <option key={s} value={s}>
+            {severityLabel(s)}
+          </option>
+        ))}
+      </select>
+    );
+  }
+  return (
+    <div className="ru-edit" data-testid="rule-edit">
+      {editing.status === 'previewing' && <p className="hint">Previewing...</p>}
+      {(editing.status === 'ready' || editing.status === 'saving') && (
+        <>
+          <pre className="ru-diff" data-testid="rule-edit-diff">
+            <span className="ru-diff-before">- {editing.before || '(empty architecture.yml)'}</span>
+            <span className="ru-diff-after">+ {editing.after}</span>
+          </pre>
+          <div className="ru-edit-actions">
+            <button type="button" className="dg-btn dg-btn--primary" data-testid="rule-edit-save" onClick={edit.confirm} disabled={editing.status === 'saving'}>
+              {editing.status === 'saving' ? 'Saving...' : 'Save'}
+            </button>
+            <button type="button" className="dg-btn" data-testid="rule-edit-cancel" onClick={edit.cancel} disabled={editing.status === 'saving'}>
+              Cancel
+            </button>
+          </div>
+        </>
+      )}
+      {editing.status === 'error' && (
+        <>
+          <p className="ru-edit-error" role="alert" data-testid="rule-edit-error">
+            {editing.error}
+          </p>
+          <button type="button" className="dg-btn" data-testid="rule-edit-cancel" onClick={edit.cancel}>
+            Cancel
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Every rule for this project, one row per id: severity (editable, #395 slice B), live violation count, and the
+ * plain-words "why". */
+export function RulesList({ view, onRun, edit }: { view: RulesViewModel; onRun: () => void; edit: RuleEditApi }) {
   const toolbar = (
     <div className="ru-bar">
       <span className="ru-summary" aria-live="polite" data-testid="rules-summary">
@@ -71,6 +126,7 @@ export function RulesList({ view, onRun }: { view: RulesViewModel; onRun: () => 
             <p className="ru-why" data-testid="rule-why">
               {row.why}
             </p>
+            <SeverityEditor row={row} edit={edit} />
           </li>
         ))}
       </ul>

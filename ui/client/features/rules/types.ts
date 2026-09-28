@@ -36,3 +36,31 @@ export type RulesViewModel = {
   error: string | null;
   rows: RuleRow[];
 };
+
+// #395 slice B -- one rule's severity edit, as a reviewable diff before it is saved.
+export type RuleEditStatus = 'previewing' | 'ready' | 'saving' | 'error';
+
+export type RuleEditState = {
+  ruleId: string;
+  severity: RuleSeverity;
+  status: RuleEditStatus;
+  before: string;
+  after: string;
+  contentHash: string;
+  error: string | null;
+} | null;
+
+export type RuleEditAction =
+  | { type: 'START'; ruleId: string; severity: RuleSeverity }
+  | { type: 'PREVIEW_OK'; ruleId: string; before: string; after: string; contentHash: string }
+  | { type: 'PREVIEW_FAIL'; ruleId: string; error: string }
+  | { type: 'SAVE' }
+  | { type: 'SAVE_FAIL'; error: string }
+  | { type: 'CANCEL' };
+
+export type RuleEditApi = {
+  state: RuleEditState;
+  start: (ruleId: string, severity: RuleSeverity) => void;
+  confirm: () => void;
+  cancel: () => void;
+};

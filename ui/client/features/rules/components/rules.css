@@ -1,5 +1,5 @@
-/* Rules tab (#395/#781): the Features screen's Browser pane, read-only slice. Prefix ru-. Tokens only; the run button
-   reuses the shared `.dg-btn`. */
+/* Rules tab (#395/#781, slice B #395): the Features screen's Browser pane. Prefix ru-. Tokens only; buttons reuse
+   the shared `.dg-btn`. */
 .ru-browser { padding: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
 .ru-bar { display: flex; align-items: center; gap: var(--sp-2); }
 .ru-summary { margin: 0; color: var(--text-muted); font-size: var(--fs-sm); flex: 1 1 auto; }
@@ -20,3 +20,10 @@
 .ru-count--error { color: var(--danger); background: var(--danger-soft); border-color: var(--danger); }
 .ru-count--warning { color: var(--warn); background: var(--warn-soft); border-color: var(--warn); }
 .ru-why { margin: 0; color: var(--text-muted); }
+.ru-sev-picker { align-self: flex-start; font-size: var(--fs-sm); padding: 2px var(--sp-1); border-radius: var(--r-sm); border: 1px solid var(--border-subtle); background: var(--surface-1); color: inherit; }
+.ru-edit { display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-2); border: 1px solid var(--border-subtle); border-radius: var(--r-sm); background: var(--surface-1); }
+.ru-diff { margin: 0; font-family: var(--mono); font-size: var(--fs-sm); white-space: pre-wrap; word-break: break-word; display: flex; flex-direction: column; gap: 2px; }
+.ru-diff-before { color: var(--danger); }
+.ru-diff-after { color: var(--success, var(--text)); }
+.ru-edit-actions { display: flex; gap: var(--sp-1); }
+.ru-edit-error { margin: 0; color: var(--danger); }

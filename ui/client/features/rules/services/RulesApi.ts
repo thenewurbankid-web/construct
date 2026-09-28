@@ -1,8 +1,8 @@
 // Reuses `/api/validate` (ui/server/src/validateApi.mjs) exactly as the Diagnostics tab does — the Rules composer
 // does not reinvent validation (docs/design/rules-envelopes.md section 0), it only reads `body.summary`, the same
 // per-rule grouping #758 added for this purpose.
-import { getJson } from '@/lib/http';
-import type { RuleRow, RuleSummaryEntry } from '../types';
+import { getJson, postJson } from '@/lib/http';
+import type { RuleRow, RuleSeverity, RuleSummaryEntry } from '../types';
 
 export type RulesResult = { ok: true; rows: RuleRow[] } | { ok: false; error: string };
 
@@ -21,6 +21,38 @@ export async function fetchRules(): Promise<RulesResult> {
       .sort()
       .map((id) => toRow(id, summary[id]));
     return { ok: true, rows };
+  } catch {
+    return { ok: false, error: 'Could not reach the Construct server.' };
+  }
+}
+
+export type RuleSeverityDiff = { ok: true; before: string; after: string; contentHash: string } | { ok: false; error: string };
+export type RuleSeveritySaved = { ok: true } | { ok: false; error: string };
+
+type SeverityResponse = { ok: boolean; error?: string; before?: string; after?: string; contentHash?: string };
+
+/** #395 slice B -- the diff a severity change would make to architecture.yml, computed but not written
+ * (POST /api/rules/severity with `commit: false`). */
+export async function previewRuleSeverity(ruleId: string, severity: RuleSeverity): Promise<RuleSeverityDiff> {
+  try {
+    const body = await postJson<SeverityResponse>('/api/rules/severity', { ruleId, severity, commit: false });
+    if (!body.ok || body.before === undefined || body.after === undefined || body.contentHash === undefined) {
+      return { ok: false, error: body.error ?? 'Could not preview that change.' };
+    }
+    return { ok: true, before: body.before, after: body.after, contentHash: body.contentHash };
+  } catch {
+    return { ok: false, error: 'Could not reach the Construct server.' };
+  }
+}
+
+/** Commits a severity change previewed via `previewRuleSeverity`; `contentHash` is the one that preview returned, so
+ * a change to architecture.yml on disk in between (another tab, the CLI, an agent) is refused (409) instead of
+ * silently overwritten. */
+export async function saveRuleSeverity(ruleId: string, severity: RuleSeverity, contentHash: string): Promise<RuleSeveritySaved> {
+  try {
+    const body = await postJson<SeverityResponse>('/api/rules/severity', { ruleId, severity, contentHash, commit: true });
+    if (!body.ok) return { ok: false, error: body.error ?? 'Could not save that change.' };
+    return { ok: true };
   } catch {
     return { ok: false, error: 'Could not reach the Construct server.' };
   }

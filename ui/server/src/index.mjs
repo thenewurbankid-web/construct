@@ -90,7 +90,7 @@ import { createStoryAiRouter } from './storyAiApi.mjs';
 import { openBlockSettingsStore } from './blockSettingsStore.mjs';
 import { handleLogs } from './logBuffer.mjs';
 import { unitsIndex, unitSummary, featuresIndex, featureSummary } from './unitsApi.mjs';
-import { rulesIndex } from './rulesApi.mjs';
+import { createRulesRouter } from './rulesApi.mjs';
 import { buildPalette } from '../../../packages/engine/palette.mjs';
 import { readPageSource } from './pageSource.mjs';
 import { viewPage, openReference, openSourceLocation, viewProjectFile } from './projectNav.mjs';
@@ -1037,10 +1037,17 @@ app.get('/api/units/summary', (req, res) => sendUnits(res, (root) => unitSummary
 app.get('/api/features', (req, res) => sendUnits(res, (root) => featuresIndex(root)));
 app.get('/api/features/:name/summary', (req, res) => sendUnits(res, (root) => featureSummary(root, req.params.name, req.query)));
 
-// #549: every rule `construct validate` can report (id/module/layers/scope/severity/why/expected/
-// fix), severity resolved against the open project's architecture.yml. Data source for #395's
-// Cockpit Rules screen.
-app.get('/api/rules', (req, res) => sendUnits(res, (root) => rulesIndex(root)));
+// #549/#395 slice B: every rule `construct validate` can report (id/module/layers/scope/severity/
+// why/expected/fix), severity resolved against the open project's architecture.yml, plus the one
+// write path the Rules screen has -- POST /severity (createRulesRouter, rulesApi.mjs).
+app.use('/api/rules', createRulesRouter({
+  clientOrigin: CLIENT_ORIGIN,
+  afterSave,
+  getRoot: () => {
+    const root = containedProjectRoot(getProjectDir());
+    return root ? { ok: true, root } : { ok: false, error: 'No Construct project found for the current project directory. Pick a project first.' };
+  },
+}));
 
 // #328: the Browser pane's Flow view. Read-only; the feature name is validated against the current
 // project's real feature list (flowApi.mjs) and never becomes a path.

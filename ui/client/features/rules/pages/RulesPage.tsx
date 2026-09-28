@@ -1,7 +1,7 @@
 import { RulesList } from '../components/RulesList';
-import type { RulesViewModel } from '../types';
+import type { RuleEditApi, RulesViewModel } from '../types';
 
 // Presentation-only: all state comes from the controller.
-export function RulesPage({ view, onRun }: { view: RulesViewModel; onRun: () => void }) {
-  return <RulesList view={view} onRun={onRun} />;
+export function RulesPage({ view, onRun, edit }: { view: RulesViewModel; onRun: () => void; edit: RuleEditApi }) {
+  return <RulesList view={view} onRun={onRun} edit={edit} />;
 }
