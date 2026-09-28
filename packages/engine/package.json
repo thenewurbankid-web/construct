@@ -27,6 +27,8 @@
     "./jsx-source-annotator": "./jsxSourceAnnotator.mjs",
     "./preview-bridge": "./previewBridge.mjs",
     "./preview-vite-plugin": "./previewVitePlugin.mjs",
+    "./preview-fiber": "./previewFiber.mjs",
+    "./preview-proxy": "./previewProxy.mjs",
     "./process-machine": "./processMachine.mjs",
     "./process-model": "./processModel.mjs",
     "./process-store": "./processStore.mjs",
