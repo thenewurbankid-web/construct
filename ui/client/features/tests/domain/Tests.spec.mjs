@@ -16,6 +16,9 @@ const data = {
     { n: 1, id: 'refund--happy-path', title: 'Happy path', text: ['Given a', 'When b', 'Then c'], generated: true, file: 'refund--happy-path.spec.ts', cloned: ['mine.spec.ts'] },
     { n: 2, id: 'refund--ends-x', title: 'Path 2', text: [], generated: false, file: null, cloned: [] },
   ],
+  // #388's TestsListing.story is required (declared: false when the feature has no story.md) — this
+  // fixture predates #388 and crashed summaryOf() until this was added.
+  story: { declared: false, acceptance: [], compare: null },
 };
 
 test('slugify makes names the server accepts (^[a-z0-9][a-z0-9-]*$), or nothing', () => {
