@@ -15,9 +15,13 @@ type AutoMapPanelProps = {
 // #54 — auto-map unmapped child props onto the parent component.
 export function AutoMapPanel({ feature, file, nodeId, contentHash, onSaved }: AutoMapPanelProps) {
   const { candidates, checked, find, toggle, apply, busy, status, childPropsResolved } = useAutoMap(feature, file, nodeId, contentHash, onSaved);
+  // #375 — collapsed by default; the summary is the one line shown while collapsed.
+  const summaryText = candidates === null ? 'not checked' : candidates.length === 0 ? 'nothing unmapped' : `${candidates.length} unmapped`;
   return (
-    <div className="automap-panel">
-      <h4>Auto-map unmapped props</h4>
+    <details className="automap-panel pal-group">
+      <summary>
+        Auto-map <span className="pal-count">{summaryText}</span>
+      </summary>
       <p className="hint">
         Compares this component&apos;s JSX attributes against the enclosing page&apos;s own props
         (destructured function params) and <code>useState</code> names — any of those not currently
@@ -55,6 +59,6 @@ export function AutoMapPanel({ feature, file, nodeId, contentHash, onSaved }: Au
         </>
       )}
       {status && <SaveStatus status={status} />}
-    </div>
+    </details>
   );
 }

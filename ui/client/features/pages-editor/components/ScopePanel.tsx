@@ -15,6 +15,9 @@ export function ScopePanel({ feature, file, node, contentHash, onSaved }: ScopeP
   const { view, error } = useScopeLinks(feature, file, node.id, contentHash);
   const { armed, arm, cancel, commit, busy, status } = useScopeBind(feature, file, node, contentHash, onSaved);
   const armedTarget = armed && view ? view.targets.find((t) => t.prop === armed) ?? null : null;
+  // #375 — NOT collapsed: this panel is already the sole content of its own dedicated "Scope" tab
+  // (#247 split it out of the Inspector), so the tab itself is the disclosure. Only sections that
+  // still live *inside* the Inspector tab (Props, Auto-map) get the collapsible one-line treatment.
   return (
     <div className="scope-panel">
       <h4>Scope links</h4>

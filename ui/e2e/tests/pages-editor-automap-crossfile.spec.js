@@ -73,6 +73,8 @@ test.describe.serial('Auto-map cross-file candidate filtering (#77 follow-up to 
 
     await page.locator('.tree-panel').getByText('<Badge>', { exact: true }).click();
     await expect(page.locator('.automap-panel')).toBeVisible();
+    // #375 — Auto-map is a collapsed <details> in the Inspector by default; open it first.
+    await page.locator('.automap-panel summary').click();
     await page.getByRole('button', { name: 'Find unmapped props' }).click();
 
     // Cross-file resolution succeeded (Badge.tsx was found via the import

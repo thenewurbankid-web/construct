@@ -85,6 +85,9 @@ test.describe.serial('Pages Editor inside the shell (#247)', () => {
     await expect(tools.locator('.snippet-editor')).toBeVisible();
     await expect(tools.locator('.props-inspector')).toContainText('type');
 
+    // #375 — collapsible inspector: Props is the one section that opens by default.
+    await expect(tools.locator('.props-inspector')).toHaveJSProperty('open', true);
+
     // #375 — quiet tree: a chip (the prop count) shows only on the selected row; every other row
     // shows its tag alone.
     await expect(browser.locator('.tree-node.selected .tree-node-props')).toContainText('2 props');

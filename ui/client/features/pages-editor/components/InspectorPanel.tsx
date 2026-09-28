@@ -37,8 +37,12 @@ export function InspectorPanel({ feature, file, node, contentHash, onSaved, with
   return (
     <GlassPanel className="inspector-panel">
       <SnippetEditor feature={feature} file={file} nodeId={node.id} contentHash={contentHash} onSaved={onSaved} />
-      <div className="props-inspector">
-        <h4>Props</h4>
+      {/* #375 — the inspector opens one section (Props); Scope and Auto-map are their own
+          <details> below and stay collapsed, showing a one-line summary instead of a legend. */}
+      <details className="props-inspector pal-group" open>
+        <summary>
+          Props <span className="pal-count">{props.length}</span>
+        </summary>
         {node.isFragment ? (
           <p className="hint">Fragments have no props.</p>
         ) : props.length === 0 ? (
@@ -51,7 +55,7 @@ export function InspectorPanel({ feature, file, node, contentHash, onSaved, with
         {showSuggestedNextSteps && (
           <SuggestedNextSteps feature={feature} file={file} nodeId={node.id} contentHash={contentHash} onSaved={onSaved} />
         )}
-      </div>
+      </details>
       {withScope && !node.isFragment && <ScopePanel feature={feature} file={file} node={node} contentHash={contentHash} onSaved={onSaved} />}
       {node.isCustomComponent && (
         <AutoMapPanel feature={feature} file={file} nodeId={node.id} contentHash={contentHash} onSaved={onSaved} />

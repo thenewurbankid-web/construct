@@ -175,6 +175,8 @@ test.describe.serial('Pages Editor save-back / props / auto-map / prop-flow / en
     await openHomePage(page);
     await selectTreeNode(page, '<Counter>');
 
+    // #375 — Auto-map is a collapsed <details> in the Inspector by default; open it first.
+    await page.locator('.automap-panel summary').click();
     await page.getByRole('button', { name: 'Find unmapped props' }).click();
     const candidates = page.locator('.automap-candidates li');
     await expect(candidates).toContainText(['title']);
