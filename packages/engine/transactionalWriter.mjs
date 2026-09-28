@@ -15,6 +15,10 @@
 // write could pass this gate while violating SOC, readability or public-api-drift -- rules
 // `construct validate` itself enforces. Defaults to the same aggregateValidation(DEFAULT_ENFORCERS)
 // set pipeline.mjs already used, so a green engine run and a green `construct validate` agree.
+//
+// #548 -- the default validate now runs on the AFFECTED SET (the staged files plus their blast
+// radius, via scopeGate.mjs), not the whole project, and commit() always returns `blastRadius` so a
+// caller (the approval UI, a CLI) can show it BEFORE the transaction is committed as much as after.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -22,6 +26,7 @@ import { write } from '../core/fs.mjs';
 import { assertNotFrozen } from '../core/frozen.mjs';
 import { aggregateValidation } from '../core/registry.mjs';
 import { DEFAULT_ENFORCERS } from './defaultEnforcers.mjs';
+import { affectedSet } from './scopeGate.mjs';
 
 // Mirrors packages/core/fs.mjs's walk(): these never belong in a shadow copy used for
 // validation (and copying node_modules in particular would be slow/pointless).
@@ -91,33 +96,40 @@ export function createTransaction(root) {
      *  - abort: leave `root` completely untouched.
      * Either way the shadow copy itself is always cleaned up.
      *
-     * @param {{validate?: (shadowRoot: string) => {violations: object[], ok: boolean}}} [opts]
-     *   `validate` defaults to the same `aggregateValidation(DEFAULT_ENFORCERS)` set
-     *   `construct validate` runs (#546); overridable for tests and for a caller that wants a
-     *   narrower or different check.
-     * @returns {{committed: boolean, violations: object[]}}
+     * @param {{validate?: (shadowRoot: string, ctx: {files: string[], blastRadius: object}) => {violations: object[], ok: boolean}}} [opts]
+     *   `validate` defaults to `aggregateValidation(DEFAULT_ENFORCERS, {files})` scoped to the AFFECTED
+     *   SET (#548: the staged files' blast radius, via `scopeGate.affectedSet`) instead of the whole
+     *   project; overridable for tests and for a caller that wants a narrower or different check. Its
+     *   second argument is always given, so an override that ignores it still gets the whole-project
+     *   behaviour it had before #548.
+     * @returns {{committed: boolean, violations: object[], blastRadius: {files: string[], features: string[], impact: object|null}}}
      */
-    commit({ validate = (shadowRoot) => aggregateValidation(shadowRoot, DEFAULT_ENFORCERS) } = {}) {
-      if (buffer.size === 0) return { committed: true, violations: [] };
+    commit({ validate } = {}) {
+      if (buffer.size === 0) return { committed: true, violations: [], blastRadius: { files: [], features: [], impact: null } };
 
       // The pid in the name is what lets packages/tools/dev/heavy.sh tell a live shadow copy from a dead one (#414).
       const shadowDir = fs.mkdtempSync(path.join(os.tmpdir(), `construct-txn-${process.pid}-`));
       try {
         copyProjectTree(root, shadowDir);
+        const staged = [...buffer.keys()];
         for (const [relPath, content] of buffer) {
           const dest = path.join(shadowDir, relPath);
           fs.mkdirSync(path.dirname(dest), { recursive: true });
           fs.writeFileSync(dest, content);
         }
 
-        const { violations, ok } = validate(shadowDir);
-        if (!ok) return { committed: false, violations };
+        // Blast radius runs against the shadow copy, so the import graph it walks already reflects
+        // what is about to land, not the tree as it was before this transaction.
+        const blastRadius = affectedSet(shadowDir, staged);
+        const runValidate = validate || ((root2, { files }) => aggregateValidation(root2, DEFAULT_ENFORCERS, { files }));
+        const { violations, ok } = runValidate(shadowDir, { files: blastRadius.files, blastRadius });
+        if (!ok) return { committed: false, violations, blastRadius };
 
         for (const [relPath, content] of buffer) {
           write(path.join(root, relPath), content);
         }
         buffer.clear();
-        return { committed: true, violations };
+        return { committed: true, violations, blastRadius };
       } finally {
         fs.rmSync(shadowDir, { recursive: true, force: true });
       }

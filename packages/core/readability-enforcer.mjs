@@ -296,8 +296,15 @@ function checkFeatureJsdoc(config, out, root, featureRoot, featureName) {
   }
 }
 
-/** Run all readability checks over `<featureRoot>/*` and return `{violations}`. */
-export function validateReadability(root) {
+/**
+ * Run all readability checks over `<featureRoot>/*` and return `{violations}`.
+ *
+ * @param {string} root Project root.
+ * @param {{files?: string[]}} [opts] - restrict checking to the features these files (relative to
+ *   root, or absolute) belong to, instead of every feature (#548). Feature JSDoc is a project-scope
+ *   check (it depends on dependents), so it still runs whole per affected feature, not per file.
+ */
+export function validateReadability(root, opts = {}) {
   const config = loadConfig(root);
   const featureRoot = config.features.root;
   // READ-002-max-loc is a threshold override, not a normalized rule id in
@@ -309,10 +316,18 @@ export function validateReadability(root) {
   const out = [];
   const layerContext = layerContextFor(root);
   if (!fs.existsSync(featuresDir)) return { violations: out };
-  const featureNames = fs.readdirSync(featuresDir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
+  let featureNames = fs.readdirSync(featuresDir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
+  const scopedFiles = opts.files && opts.files.length
+    ? new Set(opts.files.map((f) => (path.isAbsolute(f) ? f : path.join(root, f))))
+    : null;
+  if (scopedFiles) {
+    const scopedFeatures = new Set([...scopedFiles].map((f) => path.relative(featuresDir, f).split(path.sep)[0]));
+    featureNames = featureNames.filter((n) => scopedFeatures.has(n));
+  }
   for (const featureName of featureNames) {
     const dir = path.join(featuresDir, featureName);
-    const files = walk(dir).filter((p) => EXT.has(path.extname(p)) && !isNonLayerPath(root, p, config.nonLayer)); // #348
+    let files = walk(dir).filter((p) => EXT.has(path.extname(p)) && !isNonLayerPath(root, p, config.nonLayer)); // #348
+    if (scopedFiles) files = files.filter((p) => scopedFiles.has(p));
     for (const file of files) {
       const summary = parseFile(root, file, layerContext);
       const source = fs.readFileSync(file, 'utf8');

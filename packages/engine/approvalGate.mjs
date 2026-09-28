@@ -38,6 +38,7 @@ import { planTouches } from '../core/plan.mjs';
 import { matchFrozen, readFrozenGlobs } from '../core/frozen.mjs';
 import { aggregateValidation } from '../core/registry.mjs';
 import { DEFAULT_ENFORCERS } from './defaultEnforcers.mjs';
+import { affectedSet } from './scopeGate.mjs';
 import { appendLog, setApproval } from './processModel.mjs';
 import { topLevelState } from './processMachine.mjs';
 import { botBranch } from './botRunner.mjs';
@@ -117,14 +118,15 @@ function validBy(by) {
  * @param {object} options.store A processStore for the project.
  * @param {object} [options.runner] The bot runner (for `release()`); optional in tests.
  * @param {() => string} [options.now] Clock returning an ISO timestamp.
- * @param {(root:string) => {violations:object[]}} [options.validate] Validator run before applying;
- *   defaults to the same `aggregateValidation(DEFAULT_ENFORCERS)` set `construct validate` runs
- *   (#546), not architecture alone, so a bot's output can't pass this gate while violating SOC,
- *   readability or public-api-drift.
+ * @param {(root:string, files?:string[]) => {violations:object[]}} [options.validate] Validator run
+ *   before and after applying; defaults to `aggregateValidation(DEFAULT_ENFORCERS, {files})` (#546),
+ *   scoped to the AFFECTED SET of whatever is being applied (#548) rather than the whole project, so
+ *   a bot's output can't pass this gate while violating SOC, readability or public-api-drift on the
+ *   files its change actually reaches.
  * @returns {{review:Function, decide:Function, cleanup:Function}} `review` inspects the bot branch, `decide` approves or rejects, `cleanup` removes the branch.
  * @throws {TypeError} When no `store` is given.
  */
-export function createApprovalGate({ store, runner = null, now = () => new Date().toISOString(), validate = (root) => aggregateValidation(root, DEFAULT_ENFORCERS) } = {}) {
+export function createApprovalGate({ store, runner = null, now = () => new Date().toISOString(), validate = (root, files) => aggregateValidation(root, DEFAULT_ENFORCERS, { files }) } = {}) {
   if (!store) throw new TypeError('createApprovalGate() needs a process store.');
 
   /** Everything that is the same for every artifact of one process. */
@@ -319,6 +321,11 @@ export function createApprovalGate({ store, runner = null, now = () => new Date(
     });
     const recorded = new Set(record.artifacts.map((a) => repoRel(ctx, a.path)));
     const unrecorded = (branchChangedFiles(ctx) || []).filter((f) => !recorded.has(f));
+    // #548 -- the blast radius of whatever is still applicable (undecided and not refused), so the
+    // approval UI can show it BEFORE a single decide() lands: the same affectedSet() the engine's
+    // step commit and pipeline.runPipeline use, read against the tree as it stands today.
+    const applicablePaths = artifacts.filter((a) => a.applicable).map((a) => a.path);
+    const blastRadius = applicablePaths.length ? affectedSet(ctx.rootReal, applicablePaths) : { files: [], features: [], impact: null };
     return {
       ok: true,
       processId: record.id,
@@ -327,6 +334,7 @@ export function createApprovalGate({ store, runner = null, now = () => new Date(
       base: ctx.base ?? null,
       artifacts,
       unrecordedBranchChanges: unrecorded,
+      blastRadius,
       resolved: record.artifacts.every((a) => a.approved !== null),
     };
   }
@@ -336,8 +344,8 @@ export function createApprovalGate({ store, runner = null, now = () => new Date(
   function violationKeys(result) {
     return (result?.violations || []).map((v) => JSON.stringify([v.rule, v.file, v.message]));
   }
-  function runValidate(root) {
-    try { return { result: validate(root) }; } catch (e) { return { error: e.message }; }
+  function runValidate(root, files) {
+    try { return { result: validate(root, files) }; } catch (e) { return { error: e.message }; }
   }
 
   function decide(processId, request) {
@@ -381,8 +389,13 @@ export function createApprovalGate({ store, runner = null, now = () => new Date(
       return { d, artifact, inspected, refusals };
     });
 
-    const willApply = plan.some((p) => p.inspected && !p.refusals.length);
-    const baseline = willApply ? runValidate(ctx.rootReal) : null;
+    const applyingPaths = plan.filter((p) => p.inspected && !p.refusals.length).map((p) => p.d.path);
+    const willApply = applyingPaths.length > 0;
+    // #548, rule 3: rules run on the AFFECTED SET of what is about to land, not the whole project.
+    // Computed once, up front, from the tree as it stands before anything here is applied, and reused
+    // for both the baseline and the after-apply run so "new violations" compares like with like.
+    const affectedFiles = willApply ? affectedSet(ctx.rootReal, applyingPaths).files : [];
+    const baseline = willApply ? runValidate(ctx.rootReal, affectedFiles) : null;
 
     const results = [];
     let applied = 0;
@@ -417,7 +430,7 @@ export function createApprovalGate({ store, runner = null, now = () => new Date(
 
     let validation = null;
     if (applied > 0) {
-      const after = runValidate(ctx.rootReal);
+      const after = runValidate(ctx.rootReal, affectedFiles);
       if (after.error || baseline?.error) {
         validation = { ran: false, error: after.error || baseline.error, newViolations: [] };
       } else {

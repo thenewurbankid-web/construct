@@ -9,7 +9,7 @@
 
 /**
  * @typedef {{violations: Array<Record<string, any>>}} EnforcerResult
- * @typedef {{name: string, validate: (root: string) => EnforcerResult}} Enforcer
+ * @typedef {{name: string, validate: (root: string, opts?: {files?: string[]}) => EnforcerResult}} Enforcer
  */
 
 /**
@@ -17,13 +17,16 @@
  *
  * @param {string} root - project root to validate.
  * @param {Enforcer[]} [enforcers]
+ * @param {{files?: string[]}} [opts] - forwarded to each enforcer as its second argument (#548); an
+ *   enforcer that does not accept `opts.files` yet just ignores the extra argument and checks the
+ *   whole project, exactly as before.
  * @returns {{violations: Array<Record<string, any>>, ok: boolean}}
  */
-export function aggregateValidation(root, enforcers) {
+export function aggregateValidation(root, enforcers, opts) {
   const list = enforcers ?? [];
   const violations = [];
   for (const enforcer of list) {
-    const result = enforcer && typeof enforcer.validate === 'function' ? enforcer.validate(root) : undefined;
+    const result = enforcer && typeof enforcer.validate === 'function' ? enforcer.validate(root, opts) : undefined;
     if (result && Array.isArray(result.violations)) violations.push(...result.violations);
   }
   const ok = !violations.some((v) => v.severity === 'error');

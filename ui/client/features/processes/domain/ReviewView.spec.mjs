@@ -9,7 +9,9 @@ const art = (over = {}) => ({
   path: 'a.ts', change: 'modify', stepId: 's1', diff: 'diff --git a/a.ts b/a.ts\n@@ -1 +1 @@\n-old\n+new\n', diffSha256: 'h'.repeat(64),
   refusals: [], applicable: true, verdict: null, llm: null, ...over,
 });
-const ready = (artifacts) => ({ status: 'ready', review: { processId: 'p1', state: 'done', artifacts, unrecordedBranchChanges: [], resolved: false } });
+const ready = (artifacts, blastRadius = { files: [], features: [] }) => (
+  { status: 'ready', review: { processId: 'p1', state: 'done', artifacts, unrecordedBranchChanges: [], blastRadius, resolved: false } }
+);
 
 test('diff lines are classified for colouring and the text is untouched', () => {
   const lines = diffLines('diff --git a/a b/a\nindex 1..2\n--- a/a\n+++ b/a\n@@ -1 +1 @@\n-old\n+new\n same\n');
@@ -44,6 +46,14 @@ test('an artifact can be applicable in the payload yet still refused if a refusa
 test('while a decision is in flight every row is busy', () => {
   const v = buildReviewView('p1', ready([art(), art({ path: 'b.ts' })]), {}, null, 'p1\na.ts');
   assert.deepEqual(v.rows.map((r) => r.busy), [true, true]);
+});
+
+test('#548: the blast radius is surfaced when there is one, and hidden when there is nothing beyond the artifacts themselves', () => {
+  const withRadius = buildReviewView('p1', ready([art()], { files: ['a.ts', 'b.ts', 'c.ts'], features: ['checkout', 'billing'] }), {}, null, null);
+  assert.deepEqual(withRadius.blastRadius, { fileCount: 3, features: ['checkout', 'billing'] });
+
+  const noRadius = buildReviewView('p1', ready([art()]), {}, null, null);
+  assert.equal(noRadius.blastRadius, null);
 });
 
 test('no review is shown until the gate has answered', () => {

@@ -563,15 +563,23 @@ function checkDuplication(config, out, root, featuresRoot, files) {
  * Check a project against the separation-of-concerns rules (slices, layers, imports, purity) and return every violation.
  *
  * @param {string} root Project root.
- * @returns {any} The violations (see `makeViolation`); empty when the project is clean.
+ * @param {{files?: string[]}} [opts] - restrict the reported violations to these files (relative to
+ *   root, or absolute) instead of the whole project (#548). Every check still runs against every
+ *   feature: ownership and duplication depend on the whole feature set, and ownership/skeleton/JSDoc
+ *   rules depend on dependents, so only the AFFECTED FEATURES (the ones `opts.files` touches) are
+ *   checked, whole, and only their violations are reported -- not a per-file slice of them.
+ * @returns {{violations: any[]}} The violations (see `makeViolation`); empty when the project is clean.
  *
  * @example
- * validateSeparationOfConcerns(process.cwd()).filter((v) => v.severity === 'error');
+ * validateSeparationOfConcerns(process.cwd()).violations.filter((v) => v.severity === 'error');
  */
-export function validateSeparationOfConcerns(root) {
+export function validateSeparationOfConcerns(root, opts = {}) {
   const config = loadConfig(root);
   const featuresRoot = featuresRootOf(config);
   const out = [];
+  const scopedFiles = opts.files && opts.files.length
+    ? new Set(opts.files.map((f) => rel(root, path.isAbsolute(f) ? f : path.join(root, f))))
+    : null;
 
   if (!fs.existsSync(path.join(root, featuresRoot))) {
     pushViolation(config, out, {
@@ -586,13 +594,18 @@ export function validateSeparationOfConcerns(root) {
     return { violations: out };
   }
 
-  const featureNames = listFeatureDirs(root, featuresRoot);
+  let featureNames = listFeatureDirs(root, featuresRoot);
+  if (scopedFiles) {
+    const scopedFeatures = new Set([...scopedFiles].map((f) => f.slice(featuresRoot.length + 1).split('/')[0]));
+    featureNames = featureNames.filter((n) => scopedFeatures.has(n));
+  }
   for (const name of featureNames) checkSkeleton(config, out, root, featuresRoot, name);
 
   const featureFiles = walk(root)
     .filter((p) => ext.has(path.extname(p)))
     .filter((p) => rel(root, p).startsWith(featuresRoot + '/'))
-    .filter((p) => !isNonLayerPath(root, p, config.nonLayer)); // #348: declared non-layer paths (tests) sit outside the graph
+    .filter((p) => !isNonLayerPath(root, p, config.nonLayer)) // #348: declared non-layer paths (tests) sit outside the graph
+    .filter((p) => !scopedFiles || featureNames.includes(rel(root, p).slice(featuresRoot.length + 1).split('/')[0]));
 
   for (const p of featureFiles) {
     const r = rel(root, p);

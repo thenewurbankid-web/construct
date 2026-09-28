@@ -87,7 +87,7 @@ test('commit() with an empty transaction is a no-op success and never touches di
   const txn = createTransaction(dir);
   const before = fs.readdirSync(path.join(dir, 'features', 'checkout', 'domain'));
   const result = txn.commit({ validate: validateArchitecture });
-  assert.deepEqual(result, { committed: true, violations: [] });
+  assert.deepEqual(result, { committed: true, violations: [], blastRadius: { files: [], features: [], impact: null } });
   assert.deepEqual(fs.readdirSync(path.join(dir, 'features', 'checkout', 'domain')), before);
 });
 

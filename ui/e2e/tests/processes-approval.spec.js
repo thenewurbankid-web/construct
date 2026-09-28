@@ -42,6 +42,9 @@ test.describe.serial('Approve or reject artifacts (#341)', () => {
 
   test('the review shows each file\'s exact diff; a refused file shows the gate\'s reason and has no enabled Approve', async ({ page }) => {
     await page.getByTestId('process-review-open').click();
+    // #548 -- the blast radius of what is still applicable is shown BEFORE any decision is made:
+    // the refused sneaky-N.txt is not counted (it can never land), so this is the two declared files.
+    await expect(page.getByTestId('review-blast-radius')).toContainText('Approving reaches 2 files');
     const approve = row(page, `approve-${seed.n}.txt`);
     await expect(approve.getByTestId('review-diff')).toContainText('+gamma');
     await expect(approve.getByTestId('review-approve')).toBeEnabled();
@@ -77,6 +80,9 @@ test.describe.serial('Approve or reject artifacts (#341)', () => {
   test('rejecting one file writes nothing to the tree and records the verdict', async ({ page }) => {
     await page.getByTestId('process-review-open').click();
     const file = `reject-${seed.n}.txt`;
+    // #548 -- approve-N was already decided by the previous test, so reject-N is the only file still
+    // applicable: the blast-radius panel counts exactly it, not the already-decided or refused files.
+    await expect(page.getByTestId('review-blast-radius')).toContainText('Approving reaches 1 file');
     await row(page, file).getByTestId('review-reject').click();
     await expect(row(page, file).getByTestId('review-verdict')).toContainText('Rejected by local');
     expect(onDisk(seed.root, file)).toBe('one\ntwo\n');
@@ -84,6 +90,8 @@ test.describe.serial('Approve or reject artifacts (#341)', () => {
     // The refused file is still refused after the others were decided.
     await expect(row(page, `sneaky-${seed.n}.txt`).getByTestId('review-approve')).toBeDisabled();
     expect(fs.existsSync(path.join(seed.root, `sneaky-${seed.n}.txt`))).toBe(false);
+    // Nothing left applicable: the panel is gone, not shown as zero.
+    await expect(page.getByTestId('review-blast-radius')).toHaveCount(0);
     await shot(page, 'decided');
   });
 });

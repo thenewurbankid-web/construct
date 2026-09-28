@@ -14,6 +14,12 @@ export function ArtifactReview({ view, onDecide }: Props) {
   return (
     <div className="pr-review" data-testid="process-review">
       <p className="hint pr-review-hint">Nothing reaches your project until you approve it here, one file at a time. What lands is exactly the diff shown.</p>
+      {view.blastRadius && (
+        <p className="dg-note" data-testid="review-blast-radius">
+          Approving reaches {view.blastRadius.fileCount} file{view.blastRadius.fileCount === 1 ? '' : 's'} once its blast radius is counted, across{' '}
+          {view.blastRadius.features.length} feature{view.blastRadius.features.length === 1 ? '' : 's'} ({view.blastRadius.features.join(', ')}).
+        </p>
+      )}
       <ul className="pr-art-list">
         {view.rows.map((row) => (
           <li key={row.path} className="pr-rev" data-testid="review-artifact" data-path={row.path}>

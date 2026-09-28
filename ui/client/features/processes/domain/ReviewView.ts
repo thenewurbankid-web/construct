@@ -47,6 +47,7 @@ export function buildReviewView(
     processId,
     rows: review.artifacts.map((a) => reviewRow(a, notes[`${processId}\n${a.path}`] ?? null, deciding !== null)),
     unrecorded: review.unrecordedBranchChanges,
+    blastRadius: review.blastRadius.files.length > 0 ? { fileCount: review.blastRadius.files.length, features: review.blastRadius.features } : null,
     validationText: v.text,
     validationViolations: v.violations,
     validationOk: v.ok,

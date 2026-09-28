@@ -8,14 +8,12 @@
 // result fails construct validate's own enforcer set) none of them do --
 // there is no partially-applied pipeline run.
 import { renderLayer } from '../core/generators.mjs';
-import { aggregateValidation } from '../core/registry.mjs';
 import { createTransaction } from './transactionalWriter.mjs';
 import { createEnvelope } from './envelope.mjs';
 import { rel } from '../core/fs.mjs';
 import { loadConfig } from '../core/config.mjs';
 import { makeViolation } from '../core/diagnostics.mjs';
 import { assertFeature } from '../core/block-kit.mjs';
-import { DEFAULT_ENFORCERS } from './defaultEnforcers.mjs';
 
 /** Merge freshly-committed step outputs into the envelope's `layers` map:
  * { layer: [file, file, ...] }, deduped, sorted for deterministic output. */
@@ -91,9 +89,13 @@ export function runPipeline(root, inputEnvelope) {
     (renderedByLayer[step.layer] ||= []).push(relPath);
   }
 
-  const { committed, violations } = txn.commit({
-    validate: (shadowRoot) => aggregateValidation(shadowRoot, DEFAULT_ENFORCERS),
-  });
+  // #548 -- no custom `validate` override: the transaction's own default now runs the enforcer
+  // catalog on the AFFECTED SET (the rendered files' blast radius), scoped rather than whole-project.
+  // A generator step's declared scope is exactly the file `renderLayer` returns -- `txn.writeFile`
+  // never stages anything else -- so there is no separate out-of-scope case to refuse here, only the
+  // rule check. `blastRadius` is not part of the envelope schema (envelope.v1.json is closed with
+  // `additionalProperties: false`), so it is dropped rather than threaded through the return value.
+  const { committed, violations } = txn.commit();
 
   if (committed) {
     return {

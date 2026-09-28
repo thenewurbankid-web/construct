@@ -17,11 +17,17 @@ export type ReviewArtifact = {
   llm: { provider?: string; calls?: number } | null;
 };
 
+/** #548 -- the blast radius of whatever is still applicable in this review: the files it directly
+ * touches plus every file `impactFromChangedFiles` says depends on them, and the features reached.
+ * Shown BEFORE a decision is made, not just after (the per-diff approval gate itself is unchanged). */
+export type BlastRadius = { files: string[]; features: string[] };
+
 export type Review = {
   processId: string;
   state: string;
   artifacts: ReviewArtifact[];
   unrecordedBranchChanges: string[];
+  blastRadius: BlastRadius;
   resolved: boolean;
 };
 
@@ -59,6 +65,8 @@ export type ReviewView = {
   rows: ReviewRow[];
   /** Files on the bot's branch that no artifact records: shown, never applied. */
   unrecorded: string[];
+  /** #548 -- null when there is nothing still applicable to show a blast radius for. */
+  blastRadius: { fileCount: number; features: string[] } | null;
   validationText: string | null;
   validationViolations: string[];
   validationOk: boolean;

@@ -38,6 +38,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { planToCommand } from '../core/plan.mjs';
 import { createTransaction } from './transactionalWriter.mjs';
+import { checkScope } from './scopeGate.mjs';
 import { topLevelState, isTerminal } from './processMachine.mjs';
 import {
   applyEvent,
@@ -65,6 +66,7 @@ export class StepAborted extends Error {
 }
 
 const defaultNow = () => new Date().toISOString();
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 // #417 — a box-wide cap on the WRITE lane, shared by every engine in this process no matter how many
 // projects are open. Read-only work (`review.analyze`, `test.run`) never touches this: it was queuing
@@ -267,6 +269,27 @@ export function createProcessEngine({ store, executeStep, maxConcurrent = 1, lan
       // has touched the tree before this line.
       const staged = transaction.pendingFiles();
       if (result?.ok !== false && staged.length) {
+        // #548, rule 1 of the per-transition invariant: the step's actual writes must be a subset of
+        // what its `touches` declared. Checked BEFORE the transaction ever reaches validation or
+        // commit, since an out-of-scope write is refused outright, not "validated and maybe applied".
+        const scope = checkScope(step.touches, staged);
+        if (!scope.ok) {
+          transaction.reset();
+          next = failStep(next, step.id, {
+            llm: result?.llm ?? null,
+            error: `the step wrote outside its declared scope (touches): ${scope.outside.join(', ')}`,
+            now,
+          });
+          next = appendLog(next, {
+            provenance: 'warn',
+            message: `Step ${step.id} wrote ${plural(scope.outside.length, 'file')} its plan never declared; nothing was written and the project is untouched.`,
+            stepId: step.id,
+            detail: scope.outside,
+            now,
+          });
+          return { record: persist(next), failed: true };
+        }
+
         const before = new Map(staged.map((rel) => [rel, readIfExists(path.join(record.projectRoot, rel))]));
         const after = new Map(staged.map((rel) => [rel, transaction.readFile(rel)]));
         const commit = transaction.commit(validate ? { validate } : undefined);
@@ -280,10 +303,19 @@ export function createProcessEngine({ store, executeStep, maxConcurrent = 1, lan
             provenance: 'warn',
             message: `Step ${step.id} produced a tree that does not validate; ${staged.length} staged file(s) were discarded and the project is untouched.`,
             stepId: step.id,
-            detail: commit.violations.slice(0, 20),
+            detail: { violations: commit.violations.slice(0, 20), blastRadius: commit.blastRadius },
             now,
           });
           return { record: persist(next), failed: true };
+        }
+        if (commit.blastRadius?.files?.length > staged.length) {
+          next = appendLog(next, {
+            provenance: 'ok',
+            message: `Step ${step.id}'s change reaches ${plural(commit.blastRadius.files.length, 'file')} once its blast radius is counted (${plural(staged.length, 'file')} written directly).`,
+            stepId: step.id,
+            detail: commit.blastRadius,
+            now,
+          });
         }
         for (const rel of staged) {
           collected.push({ path: rel, change: before.get(rel) === undefined ? 'create' : 'modify', before: before.get(rel), after: after.get(rel) });

@@ -398,6 +398,44 @@ test('a step whose output does not validate writes nothing and fails, using the 
   assert.deepEqual(failed.artifacts, [], 'nothing was written, so there is no artifact to review');
 });
 
+test('#548: a step that writes outside its declared touches is refused, nothing lands, and validate never runs', async () => {
+  const plan = {
+    version: 1,
+    ticket: { source: 'text', title: 'Add a domain unit' },
+    steps: [{
+      id: 'domain',
+      title: 'Scaffold the Total domain unit',
+      flow: 'create.unit',
+      args: { layer: 'domain', name: 'Total', feature: 'checkout' },
+      executor: 'deterministic',
+      touches: touching('features/checkout/domain/Total.ts'),
+    }],
+  };
+  let validateCalls = 0;
+  const { engine, projectRoot } = harness({
+    plan,
+    validate: () => { validateCalls += 1; return { violations: [], ok: true }; },
+    executeStep: async ({ transaction }) => {
+      // Writes a file its `touches` never declared — an out-of-scope write, rule 1 of #548.
+      transaction.writeFile('features/checkout/domain/Total.ts', 'export const total = true;\n');
+      transaction.writeFile('features/checkout/domain/Sneaky.ts', 'export const sneaky = true;\n');
+      return { ok: true, llm: null };
+    },
+  });
+
+  engine.start('p1');
+  const failed = await engine.settled('p1');
+
+  assert.equal(failed.state, 'failed');
+  assert.match(failed.steps[0].error, /outside its declared scope/);
+  assert.match(failed.steps[0].error, /Sneaky\.ts/);
+  assert.equal(fs.existsSync(path.join(projectRoot, 'features/checkout/domain/Total.ts')), false, 'nothing was written, not even the in-scope file');
+  assert.equal(fs.existsSync(path.join(projectRoot, 'features/checkout/domain/Sneaky.ts')), false);
+  assert.deepEqual(failed.artifacts, [], 'nothing was written, so there is no artifact to review');
+  assert.equal(validateCalls, 0, 'an out-of-scope write is refused before validation ever runs — there is nothing meaningful to validate it against');
+  assert.ok(failed.log.some((l) => l.provenance === 'warn' && /wrote 1 file its plan never declared/.test(l.message)));
+});
+
 test('a "you" step pauses the process and waits, rather than being executed', async () => {
   const plan = {
     version: 1,
