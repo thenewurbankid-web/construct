@@ -45,10 +45,12 @@ test.describe('Right-panel / drawer tab host (#245)', () => {
     await page.keyboard.press('Control+j');
     const drawer = page.getByRole('region', { name: 'Drawer' });
     const tabs = drawer.getByRole('tab');
-    await expect(tabs).toHaveText([/^Diagnostics/, 'Logs', 'Processes']) // #249: Diagnostics carries a count badge once validate has run;
+    // #371: Approvals joins the bottom panel's tabs, identical on every screen.
+    await expect(tabs).toHaveText([/^Diagnostics/, 'Logs', 'Processes', 'Approvals']) // #249: Diagnostics carries a count badge once validate has run;
     const diagnostics = drawer.getByRole('tab', { name: 'Diagnostics' });
     const logs = drawer.getByRole('tab', { name: 'Logs' });
     const processes = drawer.getByRole('tab', { name: 'Processes' });
+    const approvals = drawer.getByRole('tab', { name: 'Approvals' });
 
     // Only the selected tab is in the tab order.
     await expect(diagnostics).toHaveAttribute('tabindex', '0');
@@ -59,13 +61,16 @@ test.describe('Right-panel / drawer tab host (#245)', () => {
     await expect(logs).toBeFocused();
     await expect(logs).toHaveAttribute('aria-selected', 'true');
     await expect(drawer.getByRole('tabpanel', { name: 'Logs' })).toContainText('Clear view') // #249: real Logs tab (lines may exist from the validate run);
-    await page.keyboard.press('End');
+    await page.keyboard.press('ArrowRight');
     await expect(processes).toBeFocused();
     await expect(drawer.getByRole('tabpanel')).toContainText('No processes running');
+    await page.keyboard.press('End');
+    await expect(approvals).toBeFocused();
+    await expect(drawer.getByRole('tabpanel')).toContainText('Nothing waiting on you');
     await page.keyboard.press('ArrowRight');
     await expect(diagnostics).toBeFocused(); // wraps
     await page.keyboard.press('ArrowLeft');
-    await expect(processes).toBeFocused(); // wraps back
+    await expect(approvals).toBeFocused(); // wraps back
     await page.keyboard.press('Home');
     await expect(diagnostics).toBeFocused();
     await expect(drawer.getByRole('tabpanel')).toContainText('Run validate') // #249: real Diagnostics tab;

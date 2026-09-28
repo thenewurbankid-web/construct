@@ -2,7 +2,7 @@
 
 import { useMemo, type ReactNode } from 'react';
 import { DirectoryBrowserController } from '@/features/directory-browser';
-import { ProcessesController, useProcesses } from '@/features/processes';
+import { ApprovalsController, ProcessAnnouncer, ProcessesController, pendingApprovalCount, summariesOf, useProcessAnnouncer, useProcesses } from '@/features/processes';
 import { useOpenPalette } from '@/features/command-palette';
 import { DiagnosticsController, LogsController, statusText, statusTextChars, tabBadge, useDiagnostics } from '@/features/diagnostics';
 import { PANE_LIMITS } from '../domain/LayoutDefaults';
@@ -53,6 +53,8 @@ export function ShellFrame({ children, route, project, model, theme, userMenu }:
   const openPalette = useOpenPalette();
   const diagnostics = useDiagnostics(project.known);
   const processes = useProcesses(project.known ? project.dir : null);
+  const processSummaries = summariesOf(processes.state);
+  const announcement = useProcessAnnouncer(processSummaries);
   const working = useWorking(processes.running);
   useFaviconMotion(working);
   const gitBranches = useGitBranchCount(project.known);
@@ -85,9 +87,15 @@ export function ShellFrame({ children, route, project, model, theme, userMenu }:
           title: 'Processes',
           render: () => <ProcessesController api={processes} />,
         },
+        {
+          id: 'approvals',
+          title: 'Approvals',
+          badge: pendingApprovalCount(processSummaries) || null,
+          render: () => <ApprovalsController api={processes} />,
+        },
       ],
     }),
-    [route.pathname, route.screen, project.dir, model, diagnostics, openPage, processes],
+    [route.pathname, route.screen, project.dir, model, diagnostics, openPage, processes, processSummaries],
   );
   const tabs = {
     // A screen's own tabs come first (they are what you came to use); the shell's defaults follow.
@@ -124,6 +132,8 @@ export function ShellFrame({ children, route, project, model, theme, userMenu }:
   );
 
   return (
+    <>
+    <ProcessAnnouncer message={announcement} />
     <ShellPage
       layout={layout}
       limits={PANE_LIMITS}
@@ -161,6 +171,7 @@ export function ShellFrame({ children, route, project, model, theme, userMenu }:
         </ShellStageContext.Provider>
       </ShellDrawerContext.Provider>
     </ShellPage>
+    </>
   );
 }
 
