@@ -18,10 +18,12 @@ import { listUnits } from '../../../packages/engine/unitSummary.mjs';
 import { describeComponent } from '../../../packages/engine/describeComponent.mjs';
 import { checkPropLinks, propLinkViolations } from '../../../packages/engine/propLinks.mjs';
 import { collectDiagnostics, fromViolation } from '../../../packages/engine/diagnostics.mjs';
+import path from 'node:path';
 import { analyzeImpact } from '../../../packages/engine/impact.mjs';
 import { loadConfig } from '../../../packages/core/config.mjs';
 import { resolveProjectFile } from './projectNav.mjs';
 import { checkEnforcement, featuresRootOf, hashOf, PagesEditorError } from './pagesEditor.mjs';
+import { readWorkflowMachines } from './workflowsViewer.mjs';
 
 export const MAX_COMPONENT_BYTES = 512 * 1024; // readable
 // Editable: the app-wide JSON body limit is 100 kb (express.json in index.mjs), so a file that can be SENT back is capped below it.
@@ -126,6 +128,22 @@ export function componentUsedBy(root, rel) {
   return { status: 200, body: { ok: true, path: rel, pages } };
 }
 
+/** #380 "State switcher": the workflow machine that drives this component, found by a fixed convention (no
+ * inference, no guessing) — a same-named file in the SAME feature's workflows/ layer: `<Name>.tsx`, `<Name>.ts`,
+ * or `<Name>Workflow.ts(x)`. Returns `machines: []` (never an error) when the component has none; this is the
+ * common case, not a failure. */
+export function componentWorkflow(root, rel) {
+  const p = pick(root, rel);
+  if (p.fail) return p.fail;
+  if (!p.entry.feature) return { status: 200, body: { ok: true, path: rel, machines: [] } };
+  const dir = path.resolve(root, featuresRootOf(root), p.entry.feature, 'workflows');
+  const candidates = [`${p.entry.name}.tsx`, `${p.entry.name}.ts`, `${p.entry.name}Workflow.tsx`, `${p.entry.name}Workflow.ts`];
+  const file = candidates.find((f) => fs.existsSync(path.join(dir, f)));
+  if (!file) return { status: 200, body: { ok: true, path: rel, machines: [] } };
+  const wf = readWorkflowMachines(root, p.entry.feature, file);
+  return { status: 200, body: { ok: true, path: rel, feature: p.entry.feature, file, machines: wf.machines ?? [] } };
+}
+
 /** Preview (`commit` false: nothing written, returns before/after) or save (`commit` true). The file's text is the
  * only thing the client sends; where it goes is decided here. `afterSave(root, rel)` is commit-on-save (#283). */
 export function componentSave(root, body, { afterSave = () => null } = {}) {
@@ -171,6 +189,7 @@ export function createComponentsRouter({ getRoot, clientOrigin, afterSave, descr
   router.get('/describe', handle((root, req) => componentDescribe(root, one(req.query.path), describeOptions)));
   router.get('/source', handle((root, req) => componentSource(root, one(req.query.path))));
   router.get('/used-by', handle((root, req) => componentUsedBy(root, one(req.query.path))));
+  router.get('/workflow', handle((root, req) => componentWorkflow(root, one(req.query.path))));
   router.post('/save', handle((root, req) => componentSave(root, req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {}, { afterSave })));
   return router;
 }

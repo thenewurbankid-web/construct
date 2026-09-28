@@ -37,6 +37,10 @@ function project() {
   w('features/shop/pages/ShopPage.tsx', "import { View } from '../components/View';\nexport function ShopPage() {\n  return <View total={1} />;\n}\n");
   w('features/shop/domain/rules.ts', 'export const rule = 1;\n');
   w('features/cart/pages/CartPage.tsx', 'export function CartPage() {\n  return <div />;\n}\n');
+  w(
+    'features/shop/workflows/View.tsx',
+    "import { createMachine } from 'xstate';\nexport const ViewMachine = createMachine({\n  id: 'view',\n  initial: 'off',\n  states: { off: { on: { TOGGLE: 'on' } }, on: { on: { TOGGLE: 'off' } } },\n});\n",
+  );
   return dir;
 }
 
@@ -75,6 +79,7 @@ test('every /api/components route is refused with 401 when there is no session',
       ['GET', `/api/components/describe?path=${q(VIEW_PATH)}`],
       ['GET', `/api/components/source?path=${q(VIEW_PATH)}`],
       ['GET', `/api/components/used-by?path=${q(VIEW_PATH)}`],
+      ['GET', `/api/components/workflow?path=${q(VIEW_PATH)}`],
       ['POST', '/api/components/save', { path: VIEW_PATH, content: 'x', commit: true }],
     ]) {
       assert.equal((await call(method, p, { body, headers: { cookie: '' } })).status, 401, `${method} ${p}`);
@@ -187,6 +192,37 @@ test('source returns the plain text, its hash, whether it is editable and diagno
     assert.match(body.contentHash, /^[0-9a-f]{64}$/);
     assert.equal(body.editable, true);
     assert.ok(Array.isArray(body.diagnostics));
+  });
+});
+
+test('#380 used-by: lists the pages that import this component, transitively, sorted nearest first', async () => {
+  await withStack({}, async ({ json }) => {
+    const used = await json('GET', `/api/components/used-by?path=${q(VIEW_PATH)}`);
+    assert.equal(used.status, 200);
+    assert.deepEqual(
+      used.body.pages.map((p) => p.path),
+      ['features/shop/pages/ShopPage.tsx'],
+    );
+    assert.equal(used.body.pages[0].feature, 'shop');
+
+    const unused = await json('GET', `/api/components/used-by?path=${q('features/shop/components/Plain.tsx')}`);
+    assert.equal(unused.status, 200);
+    assert.deepEqual(unused.body.pages, []);
+  });
+});
+
+test('#380 workflow: a component finds its same-named workflow file by convention; one with none answers an empty list, not an error', async () => {
+  await withStack({}, async ({ json }) => {
+    const withMachine = await json('GET', `/api/components/workflow?path=${q(VIEW_PATH)}`);
+    assert.equal(withMachine.status, 200);
+    assert.equal(withMachine.body.machines.length, 1);
+    assert.equal(withMachine.body.machines[0].id, 'view');
+    assert.equal(withMachine.body.feature, 'shop');
+    assert.equal(withMachine.body.file, 'View.tsx');
+
+    const none = await json('GET', `/api/components/workflow?path=${q('features/shop/components/Plain.tsx')}`);
+    assert.equal(none.status, 200);
+    assert.deepEqual(none.body.machines, []);
   });
 });
 
