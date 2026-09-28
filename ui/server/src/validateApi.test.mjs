@@ -31,6 +31,16 @@ test('maps the core result, only exposing the documented fields, and logs it', (
   assert.match(log.read()[0].text, /2 violation\(s\), 1 error/);
 });
 
+test('groups violations by rule id in body.summary (#758), alongside the flat list unaffected', () => {
+  const r = handleValidate({
+    ...base, projectDir: '/proj', findRoot: () => '/proj',
+    validate: () => ({ ok: false, violations: [v('error'), v('warning', 1)] }),
+  });
+  assert.equal(r.body.summary['PAGE-006'].count, 2);
+  assert.equal(r.body.summary['PAGE-006'].why, 'w');
+  assert.equal(r.body.total, 2); // the flat list is untouched by adding summary
+});
+
 test('caps the list and flags truncation; a throwing validator becomes a 500 with a generic message', () => {
   const many = Array.from({ length: MAX_VIOLATIONS + 5 }, (_, i) => v('warning', i));
   const r = handleValidate({ ...base, projectDir: '/p', findRoot: () => '/p', validate: () => ({ ok: true, violations: many }), log: createLogBuffer() });
