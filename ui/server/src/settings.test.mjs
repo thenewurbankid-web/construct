@@ -7,7 +7,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { getSettings, updateSettings, getProjectDir, preloadProject } from './settings.mjs';
+import { getSettings, updateSettings, getProjectDir, preloadProject, settingsFilePath } from './settings.mjs';
 import { WorkspaceError, workspaceRoot } from './workspace.mjs';
 import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
 import { PROVIDERS } from '../../../packages/core/llm.mjs';
@@ -69,6 +69,40 @@ test('updateSettings accepts ollama for importFill and createFill (only planAnal
   assert.equal(getSettings().llmProviders.createFill, 'ollama');
   // Restore for any later test relying on defaults.
   updateSettings({ llmProviders: { importFill: 'claude', createFill: 'claude' } });
+});
+
+test('#471: getSettings returns a per-capability llmModels map defaulting every capability to null (the provider\'s own default)', () => {
+  const settings = getSettings();
+  assert.ok(settings.llmModels);
+  assert.equal(settings.llmModels.importFill, null);
+  assert.equal(settings.llmModels.createFill, null);
+  assert.equal(settings.llmModels.planAnalysis, null);
+});
+
+test('#471: updateSettings sets one capability\'s model at a time without disturbing the others or the providers', () => {
+  const beforeProviders = getSettings().llmProviders;
+  updateSettings({ llmModels: { importFill: 'qwen2.5-coder:7b' } });
+  const after = getSettings();
+  assert.equal(after.llmModels.importFill, 'qwen2.5-coder:7b');
+  assert.equal(after.llmModels.createFill, null);
+  assert.deepEqual(after.llmProviders, beforeProviders);
+  updateSettings({ llmModels: { importFill: null } }); // restore
+  assert.equal(getSettings().llmModels.importFill, null);
+});
+
+test('#471: updateSettings throws on an invalid model name for any capability, and does not apply it', () => {
+  assert.throws(() => updateSettings({ llmModels: { createFill: '-bad start' } }), /not a valid model name/);
+  assert.equal(getSettings().llmModels.createFill, null);
+  assert.throws(() => updateSettings({ llmModels: { createFill: 'a'.repeat(200) } }), /not a valid model name/);
+});
+
+test('#471: a model choice is persisted to settings.json alongside the provider choice, not clobbering it', () => {
+  updateSettings({ llmProviders: { createFill: 'claude' } });
+  updateSettings({ llmModels: { createFill: 'qwen2.5-coder:7b' } });
+  const raw = JSON.parse(fs.readFileSync(settingsFilePath(''), 'utf8'));
+  assert.equal(raw.llmProviders.createFill, 'claude');
+  assert.equal(raw.llmModels.createFill, 'qwen2.5-coder:7b');
+  updateSettings({ llmModels: { createFill: null } }); // restore
 });
 
 test('#365: the server starts with NO project open (never process.cwd()), and no project is offered to reopen yet', () => {

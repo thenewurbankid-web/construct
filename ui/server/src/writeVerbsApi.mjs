@@ -32,18 +32,20 @@ async function serve({ argv, projectDir, findRoot, inProcess, viaCli, cliOnly = 
 /**
  * Handle one `/api/create` request.
  *
- * @param {{body?:object, projectDir:string|null, findRoot?:Function, inProcess:(argv:string[])=>Promise<object>, llmProvider?:()=>string, cli?:object}} ctx
+ * @param {{body?:object, projectDir:string|null, findRoot?:Function, inProcess:(argv:string[])=>Promise<object>, llmProvider?:()=>string, llmModel?:()=>string|null|undefined, cli?:object}} ctx
  *   `inProcess(argv)` runs the in-process path (runCapturing) and returns its result; `llmProvider()` names the
- *   provider Settings picked for create's fill; `cli` passes `env`, `bin`, `timeoutMs`, `spawnImpl` to the executor.
+ *   provider Settings picked for create's fill; `llmModel()` names the installed model Settings picked for it, or
+ *   a falsy value for the provider's own default (#471); `cli` passes `env`, `bin`, `timeoutMs`, `spawnImpl` to the executor.
  * @returns {Promise<{status:number, body:object}>} The HTTP status and JSON body.
  */
-export async function handleCreate({ body, projectDir, findRoot, inProcess, llmProvider = () => 'claude', cli = {} }) {
+export async function handleCreate({ body, projectDir, findRoot, inProcess, llmProvider = () => 'claude', llmModel = () => undefined, cli = {} }) {
   const b = body || {};
   const a = createArgv(b);
   if (a.error) return { status: 400, body: { ok: false, error: a.error } };
   // LLM use is opt-in PER RUN (#109); "a feature" has no fillable body, so it never applies.
   const wantsLlm = b.useLlm === true && b.kind !== 'feature';
-  const argv = wantsLlm ? [...a.argv, '--llm', llmProvider()] : a.argv;
+  const model = wantsLlm ? llmModel() : undefined;
+  const argv = wantsLlm ? [...a.argv, '--llm', llmProvider(), ...(model ? ['--model', model] : [])] : a.argv;
   return serve({
     argv, projectDir, findRoot, inProcess, cliOnly: !wantsLlm, note: LLM_IN_PROCESS_NOTE,
     viaCli: (root) => cliCommandResult(() => runCreate(root, b, { mode: 'cli', ...cli }), { lines: (r) => renderCreateText(r.doc), attribution: (r) => r.doc.attribution ?? null }),
@@ -69,12 +71,13 @@ export async function handleRefactor({ body, projectDir, findRoot, inProcess, cl
 /**
  * Handle one `/api/import` request.
  *
- * @param {{body?:object, projectDir:string|null, findRoot?:Function, inProcess:(argv:string[])=>Promise<object>, resolveRead:(value:string)=>string, mapError:(e:Error)=>{status:number, body:object}, llmProvider?:()=>string|undefined, cli?:object}} ctx
+ * @param {{body?:object, projectDir:string|null, findRoot?:Function, inProcess:(argv:string[])=>Promise<object>, resolveRead:(value:string)=>string, mapError:(e:Error)=>{status:number, body:object}, llmProvider?:()=>string|undefined, llmModel?:()=>string|null|undefined, cli?:object}} ctx
  *   As `handleCreate`, plus `resolveRead` (workspace containment for `from` and `planPath`; may throw) and `mapError`
- *   (turns what it throws into a status and body); `llmProvider()` is the provider Settings picked for import's fill.
+ *   (turns what it throws into a status and body); `llmProvider()` is the provider Settings picked for import's fill;
+ *   `llmModel()` is the model Settings picked for it, or a falsy value for the provider's own default (#471).
  * @returns {Promise<{status:number, body:object}>} The HTTP status and JSON body.
  */
-export async function handleImport({ body, projectDir, findRoot, inProcess, resolveRead, mapError, llmProvider = () => undefined, cli = {} }) {
+export async function handleImport({ body, projectDir, findRoot, inProcess, resolveRead, mapError, llmProvider = () => undefined, llmModel = () => undefined, cli = {} }) {
   const b = body || {};
   const missing = importArgv(b);
   if (missing.error) return { status: 400, body: { ok: false, error: missing.error } };
@@ -88,7 +91,9 @@ export async function handleImport({ body, projectDir, findRoot, inProcess, reso
   }
   // An explicit `llm` provider name (direct API use) still wins; the UI sends `useLlm: true` instead.
   const llm = b.llm || (b.useLlm === true ? llmProvider() : undefined);
-  const argv = llm ? [...importArgv(params).argv, '--llm', llm] : importArgv(params).argv;
+  // Same for the model: an explicit `model` in the request wins over Settings' pick; only meaningful with `llm`.
+  const model = llm ? (b.model || (b.useLlm === true ? llmModel() : undefined)) : undefined;
+  const argv = llm ? [...importArgv(params).argv, '--llm', llm, ...(model ? ['--model', model] : [])] : importArgv(params).argv;
   return serve({
     argv, projectDir, findRoot, inProcess, cliOnly: !llm, note: LLM_IN_PROCESS_NOTE,
     viaCli: (root) => cliCommandResult(() => runImport(root, params, { mode: 'cli', ...cli }), { lines: (r) => renderImportText(r.doc), attribution: (r) => r.doc.attribution ?? null }),

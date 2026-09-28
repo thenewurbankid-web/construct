@@ -376,6 +376,7 @@ app.post('/api/create', async (req, res) => {
     findRoot: containedProjectRoot,
     inProcess: (args) => runCapturing(() => create(withDir(args))),
     llmProvider: () => getSettings().llmProviders.createFill,
+    llmModel: () => getSettings().llmModels.createFill,
   });
   res.status(status).json(body);
 });
@@ -417,6 +418,7 @@ app.post('/api/import', async (req, res) => {
     // An explicit `llm` provider name (direct API use) still wins; the UI sends `useLlm: true` instead and the
     // provider comes from Settings.importFill.
     llmProvider: () => getSettings().llmProviders.importFill,
+    llmModel: () => getSettings().llmModels.importFill,
   });
   res.status(status).json(body);
 });

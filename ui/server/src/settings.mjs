@@ -24,6 +24,9 @@ import path from 'node:path';
 import { PROVIDERS } from '../../../packages/core/llm.mjs';
 import { resolveStateDir, atomicWriteJson } from '../../../packages/engine/processStore.mjs';
 import { containInWorkspace, containOrNull, currentLogin, normalizeLogin, relativeToWorkspace, WorkspaceError, workspaceRoot } from './workspace.mjs';
+// #471: the per-block model already validates a plain Ollama model name this same way (#407) --
+// reused here rather than a second copy, so the two screens can never silently accept different things.
+import { MAX_MODEL_CHARS, MODEL_RE } from './blockSettingsStore.mjs';
 
 // The one hard guardrail from #96: planAnalysis is the whole-feature deep-
 // analysis call and must never be delegated to a local model, no matter
@@ -56,7 +59,12 @@ const shared = {
 
 const defaultLlmProviders = () => ({ importFill: defaultProvider, createFill: defaultProvider, planAnalysis: defaultProvider });
 
-/** login key -> { projectDir, lastProject, llmProviders, fellBackFrom }. */
+// #471: no default model per capability -- null means "the provider's own built-in default"
+// (DEFAULT_OLLAMA_MODEL for ollama; the other providers ignore this entirely), exactly the
+// behaviour before this setting existed, until a person picks an installed model explicitly.
+const defaultLlmModels = () => ({ importFill: null, createFill: null, planAnalysis: null });
+
+/** login key -> { projectDir, lastProject, llmProviders, llmModels, fellBackFrom }. */
 const userStates = new Map();
 
 /** The state of the current request's login, created on first use. #365: NO project at start; the Cockpit never
@@ -70,6 +78,7 @@ function userState() {
       // The project that was open last, offered as "Reopen <name>" and NEVER loaded automatically.
       lastProject: undefined, // undefined = not read from disk yet
       llmProviders: undefined, // undefined = not read from disk yet (see userLlmProviders)
+      llmModels: undefined, // undefined = not read from disk yet (see userLlmModels)
       // #420: set to the path getProjectDir() last silently substituted AWAY from (a spec removed its own open
       // project and the harness fallback below took over), so /api/settings can expose it and a spec can assert
       // the fallback did NOT fire by accident. Cleared by any explicit project change (updateSettings).
@@ -179,14 +188,49 @@ function userLlmProviders() {
   return user.llmProviders;
 }
 
+/** Keep only capability/value pairs that are a plain model name (or `null`, "use the provider's
+ * default") — same shape and regex the per-block `model` field already validates (#407), so a
+ * settings.json hand-edited or written by an older build can never resurrect something invalid. */
+function validatedLlmModels(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const capability of CAPABILITIES) {
+    const value = raw[capability];
+    if (value === null) {
+      out[capability] = null;
+    } else if (typeof value === 'string' && value && value.length <= MAX_MODEL_CHARS && MODEL_RE.test(value)) {
+      out[capability] = value;
+    }
+  }
+  return out;
+}
+
+/** #471: the per-capability model choice, alongside `userLlmProviders` — same `settings.json` file,
+ * same per-login caching, `null` meaning "the provider's own default" (only `ollama` reads this at
+ * all; DEFAULT_OLLAMA_MODEL otherwise). */
+function userLlmModels() {
+  const user = userState();
+  if (user.llmModels === undefined) {
+    let stored = null;
+    try {
+      stored = JSON.parse(fs.readFileSync(settingsFile(), 'utf8')).llmModels;
+    } catch {
+      /* none saved, or unreadable/corrupt — start from defaults */
+    }
+    user.llmModels = { ...defaultLlmModels(), ...validatedLlmModels(stored) };
+  }
+  return user.llmModels;
+}
+
 /** Same atomic write (temp file + fsync + rename) processStore.mjs uses for process records, so a
  * process killed mid-save leaves either the old settings.json or the new one, never a half-written
- * file the server then refuses to parse on its next start. */
-function persistLlmProviders(llmProviders) {
+ * file the server then refuses to parse on its next start. Writes providers and models TOGETHER
+ * (#471) — a single-field write would otherwise silently drop whichever field it didn't pass. */
+function persistSettings() {
   try {
-    atomicWriteJson(settingsFile(), { llmProviders });
+    atomicWriteJson(settingsFile(), { llmProviders: userLlmProviders(), llmModels: userLlmModels() });
   } catch {
-    /* persisting is a convenience; never fail a provider switch over it (matches rememberProject) */
+    /* persisting is a convenience; never fail a provider/model switch over it (matches rememberProject) */
   }
 }
 
@@ -216,6 +260,7 @@ export function getProjectDir() {
 export function getSettings() {
   const projectDir = getProjectDir(); // may set fellBackFrom as a side effect (read AFTER this call)
   const llmProviders = userLlmProviders();
+  const llmModels = userLlmModels();
   const { fellBackFrom } = userState();
   return {
     projectDir,
@@ -228,6 +273,10 @@ export function getSettings() {
     lastProject: readLastProject(),
     browseRoots: getBrowseRoots(),
     llmProviders: { ...llmProviders },
+    // #471: the installed model name each capability should use, or null for the provider's own
+    // built-in default (DEFAULT_OLLAMA_MODEL). Meaningful only for a capability whose provider is
+    // "ollama" — the Settings screen shows this picker only then, but it round-trips for any provider.
+    llmModels: { ...llmModels },
     // Kept for exact backward compatibility with any existing reader of
     // the old single-provider shape (e.g. project-gate's status display) —
     // mirrors importFill, the closest analog to "the" provider a user
@@ -255,11 +304,29 @@ function applyCapabilityProvider(capability, value) {
   }
   const llmProviders = userLlmProviders();
   llmProviders[capability] = value;
-  persistLlmProviders(llmProviders);
+  persistSettings();
 }
 
-/** @throws {WorkspaceError} for a projectDir outside the workspace / missing / not a directory; Error for a bad provider. */
-export function updateSettings({ projectDir, closeProject, llmProviders, llmProvider, browseRoots } = {}) {
+/** Validate and apply one capability's model choice. `null`/`''`/`undefined` means "back to the
+ * provider's own default" (never an error — unlike a bad provider name, "no model chosen yet" is
+ * the ordinary starting state, matching how #407's per-block `model` field treats a cleared value). */
+function applyCapabilityModel(capability, value) {
+  const llmModels = userLlmModels();
+  if (value === undefined) return;
+  if (value === null || value === '') {
+    llmModels[capability] = null;
+    persistSettings();
+    return;
+  }
+  if (typeof value !== 'string' || value.length > MAX_MODEL_CHARS || !MODEL_RE.test(value)) {
+    throw new Error(`"${String(value).slice(0, 60)}" is not a valid model name for ${capability} (letters, digits and . _ : / @ -, at most ${MAX_MODEL_CHARS} characters, not starting with a dash).`);
+  }
+  llmModels[capability] = value;
+  persistSettings();
+}
+
+/** @throws {WorkspaceError} for a projectDir outside the workspace / missing / not a directory; Error for a bad provider or model. */
+export function updateSettings({ projectDir, closeProject, llmProviders, llmProvider, llmModels, browseRoots } = {}) {
   if (browseRoots !== undefined && browseRoots !== null) {
     throw new WorkspaceError(400, 'BROWSE_ROOTS_FIXED', 'The folder picker is fixed to the workspace and cannot be reconfigured.');
   }
@@ -271,6 +338,11 @@ export function updateSettings({ projectDir, closeProject, llmProviders, llmProv
   if (llmProviders !== undefined && llmProviders !== null) {
     for (const capability of CAPABILITIES) {
       applyCapabilityProvider(capability, llmProviders[capability]);
+    }
+  }
+  if (llmModels !== undefined && llmModels !== null) {
+    for (const capability of CAPABILITIES) {
+      applyCapabilityModel(capability, llmModels[capability]);
     }
   }
   // Backward-compatible single-field input: treated as setting importFill
