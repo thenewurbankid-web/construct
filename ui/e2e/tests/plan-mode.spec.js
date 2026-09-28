@@ -178,7 +178,7 @@ test.describe.serial('Plan mode (#289, #332)', () => {
     await page.getByTestId('plan-run').click();
 
     await expect(page.getByTestId('plan-started')).toBeVisible();
-    const drawer = page.getByRole('region', { name: 'Drawer' });
+    const drawer = page.getByRole('region', { name: 'Bottom panel: Run' });
     await expect(drawer.getByRole('tab', { name: /Processes/ })).toHaveAttribute('aria-selected', 'true');
     await expect(drawer.getByTestId('process-row').filter({ hasText: 'Add a wishlist feature' })).toHaveCount(1);
     await page.screenshot({ path: path.join(SHOTS, '289-plan-run.png') });

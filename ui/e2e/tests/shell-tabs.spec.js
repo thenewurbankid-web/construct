@@ -43,7 +43,7 @@ test.describe('Right-panel / drawer tab host (#245)', () => {
   test('Drawer: arrow keys / Home / End move between tabs (roving tabindex) and change the panel', async ({ page }) => {
     await gotoCockpit(page, '/help');
     await page.keyboard.press('Control+j');
-    const drawer = page.getByRole('region', { name: 'Drawer' });
+    const drawer = page.getByRole('region', { name: 'Bottom panel: Run' });
     const tabs = drawer.getByRole('tab');
     // #371: Approvals joins the bottom panel's tabs, identical on every screen.
     await expect(tabs).toHaveText([/^Diagnostics/, 'Logs', 'Processes', 'Approvals']) // #249: Diagnostics carries a count badge once validate has run;
@@ -90,7 +90,7 @@ test.describe('Right-panel / drawer tab host (#245)', () => {
   test('a clicked tab becomes selected; focus ring is visible on keyboard focus', async ({ page }) => {
     await gotoCockpit(page, '/help');
     await page.keyboard.press('Control+j');
-    const drawer = page.getByRole('region', { name: 'Drawer' });
+    const drawer = page.getByRole('region', { name: 'Bottom panel: Run' });
     await drawer.getByRole('tab', { name: 'Logs' }).click();
     await expect(drawer.getByRole('tab', { name: 'Logs' })).toHaveAttribute('aria-selected', 'true');
     await expect(drawer.getByRole('tab', { name: 'Diagnostics' })).toHaveAttribute('aria-selected', 'false');

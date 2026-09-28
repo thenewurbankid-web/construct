@@ -88,7 +88,7 @@ for (const theme of THEMES) {
           await expect(page.locator('h1, h2').first()).toBeVisible();
           if (vp === 'wide') {
             await page.keyboard.press('Control+j');
-            await expect(page.getByRole('region', { name: 'Drawer' })).toBeVisible();
+            await expect(page.getByRole('region', { name: 'Bottom panel: Run' })).toBeVisible();
           }
           const scanned = await scanAllTabs(page, `${route} ${theme} ${vp}`);
           expect(scanned).toBeGreaterThan(0);
@@ -110,7 +110,7 @@ for (const theme of THEMES) {
         test.skip(vp === 'narrow', 'the drawer is not shown at narrow widths by design (ShellLayout)');
         await gotoCockpit(page, '/help');
         await page.keyboard.press('Control+j');
-        await expect(page.getByRole('region', { name: 'Drawer' })).toBeVisible();
+        await expect(page.getByRole('region', { name: 'Bottom panel: Run' })).toBeVisible();
         await check(page, `drawer ${theme} ${vp}`);
       });
       test('command palette open', async ({ page }) => {
@@ -182,7 +182,7 @@ export default function LoginPage({ title }: { title: string }) {
         await check(page, `dashboard+project ${theme} ${vp}`);
         if (vp === 'wide') {
           await page.keyboard.press('Control+j');
-          const drawer = page.getByRole('region', { name: 'Drawer' });
+          const drawer = page.getByRole('region', { name: 'Bottom panel: Run' });
           await expect(drawer.getByTestId('diagnostic-row').first()).toBeVisible({ timeout: 30_000 });
           await check(page, `diagnostics rows ${theme}`);
         }
@@ -275,7 +275,7 @@ test.describe('keyboard-only flow', () => {
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await page.keyboard.press('Control+j');
-    await expect(page.getByRole('region', { name: 'Drawer' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Bottom panel: Run' })).toBeVisible();
     await page.keyboard.press('Control+j');
 
     const focusedPane = () => page.evaluate(() => {

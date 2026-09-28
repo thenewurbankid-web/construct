@@ -38,7 +38,7 @@ test.describe('Cockpit drawer and command palette (#249)', () => {
   test('Diagnostics lists real validate results in plain language with a count badge; a page row opens the Pages editor', async ({ page }) => {
     await gotoCockpit(page, '/help');
     await page.keyboard.press('Control+j');
-    const drawer = page.getByRole('region', { name: 'Drawer' });
+    const drawer = page.getByRole('region', { name: 'Bottom panel: Run' });
     const tab = drawer.getByRole('tab', { name: /Diagnostics/ });
     await expect(tab.getByLabel(/Diagnostics$/)).toBeVisible({ timeout: 20_000 }); // badge appears once the run finishes
     const rows = drawer.getByTestId('diagnostic-row');
@@ -66,7 +66,7 @@ test.describe('Cockpit drawer and command palette (#249)', () => {
   test('Logs shows recent output (the validate run) and Processes stays the designed empty state', async ({ page }) => {
     await gotoCockpit(page, '/help');
     await page.keyboard.press('Control+j');
-    const drawer = page.getByRole('region', { name: 'Drawer' });
+    const drawer = page.getByRole('region', { name: 'Bottom panel: Run' });
     await drawer.getByRole('tab', { name: 'Logs' }).click();
     await expect(drawer.getByTestId('logs-list')).toContainText('validate:', { timeout: 20_000 });
     await drawer.getByRole('button', { name: 'Clear view' }).click();
@@ -132,10 +132,10 @@ test.describe('Cockpit drawer and command palette (#249)', () => {
     await run('toggle dark');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 
-    await run('show or hide the drawer');
-    const drawer = page.getByRole('region', { name: 'Drawer' });
+    await run('show or hide the bottom panel');
+    const drawer = page.getByRole('region', { name: 'Bottom panel: Run' });
     await expect(drawer).toBeVisible();
-    await run('show or hide the drawer');
+    await run('show or hide the bottom panel');
     await expect(drawer).toHaveCount(0);
 
     await run('run validate');

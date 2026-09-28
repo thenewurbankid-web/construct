@@ -63,7 +63,7 @@ const TICKET_TITLE = 'Wishlist';
 const TICKET_BODY = 'Let shoppers save a product from the catalog for later, and see the saved products on their own page.';
 
 const rail = (page) => page.getByRole('navigation', { name: 'Screens', exact: true });
-const drawer = (page) => page.getByRole('region', { name: 'Drawer' });
+const drawer = (page) => page.getByRole('region', { name: 'Bottom panel: Run' });
 const stepAt = (page, i) => page.getByTestId('plan-step').nth(i);
 
 test('episode 1: one example, end to end', async ({ page }) => {

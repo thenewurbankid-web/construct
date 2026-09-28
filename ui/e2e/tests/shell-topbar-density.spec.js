@@ -162,7 +162,7 @@ for (const [name, width, height] of [
 
       // And it still does its job.
       await page.getByTestId('pill-processes').click();
-      await expect(page.getByRole('region', { name: 'Drawer' })).toBeVisible();
+      await expect(page.getByRole('region', { name: 'Bottom panel: Run' })).toBeVisible();
       await expect(page.getByRole('tab', { name: 'Processes' })).toHaveAttribute('aria-selected', 'true');
     });
   });

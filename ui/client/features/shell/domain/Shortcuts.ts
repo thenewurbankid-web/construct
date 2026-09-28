@@ -5,7 +5,7 @@ import type { ShortcutAction, ShortcutInfo } from '../types.ts';
 export const SHORTCUTS: ShortcutInfo[] = [
   { keys: 'Ctrl B', action: 'toggle-left', label: 'Show or hide the Browser pane' },
   { keys: 'Ctrl Alt B', action: 'toggle-right', label: 'Show or hide the Tools panel' },
-  { keys: 'Ctrl J', action: 'toggle-drawer', label: 'Show or hide the drawer' },
+  { keys: 'Ctrl J', action: 'toggle-drawer', label: 'Show or hide the bottom panel' },
   { keys: 'F6', action: 'cycle-pane', label: 'Move focus to the next pane' },
   { keys: 'Shift F6', action: 'cycle-pane-back', label: 'Move focus to the previous pane' },
   { keys: 'Alt 1-5', action: 'go-to-screen', label: 'Go to one of the five screens' },

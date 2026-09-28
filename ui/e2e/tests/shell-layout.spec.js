@@ -20,7 +20,7 @@ test.describe('Cockpit shell layout (#245)', () => {
     await expect(page.getByRole('main')).toBeVisible();
     await expect(page.getByRole('complementary', { name: 'Browser' })).toBeVisible();
     await expect(page.getByRole('complementary', { name: 'Tools' })).toHaveCount(0);
-    await expect(page.getByRole('region', { name: 'Drawer' })).toHaveCount(0);
+    await expect(page.getByRole('region', { name: 'Bottom panel: Run' })).toHaveCount(0);
     await expect(page.getByRole('contentinfo')).toBeVisible();
     expect(await width(page.locator('#sh-pane-left'))).toBe(200);
     // The page's own heading is still rendered in the stage.
@@ -91,9 +91,9 @@ test.describe('Cockpit shell layout (#245)', () => {
 
   test('drawer: closed on first run; Ctrl+J and the status bar toggle it; horizontal separator resizes with Up/Down', async ({ page }) => {
     await page.goto('/help');
-    await expect(page.getByRole('region', { name: 'Drawer' })).toHaveCount(0);
+    await expect(page.getByRole('region', { name: 'Bottom panel: Run' })).toHaveCount(0);
     await page.keyboard.press('Control+j');
-    const drawer = page.getByRole('region', { name: 'Drawer' });
+    const drawer = page.getByRole('region', { name: 'Bottom panel: Run' });
     await expect(drawer).toBeVisible();
     const sep = page.getByRole('separator', { name: 'Resize drawer' });
     await expect(sep).toHaveAttribute('aria-orientation', 'horizontal');
@@ -129,7 +129,7 @@ test.describe('Cockpit shell layout (#245)', () => {
     await page.keyboard.press('Control+Alt+b');
     await page.keyboard.press('Control+j');
     await expect(page.getByRole('complementary', { name: 'Tools' })).toBeVisible();
-    await expect(page.getByRole('region', { name: 'Drawer' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Bottom panel: Run' })).toBeVisible();
 
     const paneAt = () => page.evaluate(() => document.activeElement?.getAttribute('data-pane'));
     const order = ['top', 'left', 'mid', 'right', 'drawer'];
@@ -148,7 +148,7 @@ test.describe('Cockpit shell layout (#245)', () => {
 
     // Close the drawer: it drops out of the cycle instead of focusing a hidden landmark.
     await page.getByTestId('toggle-drawer').click();
-    await expect(page.getByRole('region', { name: 'Drawer' })).toHaveCount(0);
+    await expect(page.getByRole('region', { name: 'Bottom panel: Run' })).toHaveCount(0);
     await page.evaluate(() => (document.activeElement)?.blur());
     for (const expected of ['top', 'left', 'mid', 'right']) {
       await page.keyboard.press('F6');
@@ -203,7 +203,7 @@ test.describe('Cockpit shell layout (#245)', () => {
     await page.goto('/help');
     await page.getByTestId('toggle-right').click();
     await page.keyboard.press('Control+j');
-    await expect(page.getByRole('region', { name: 'Drawer' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Bottom panel: Run' })).toBeVisible();
     await page.screenshot({ path: path.join(SHOTS, 'shell-full-light.png') });
   });
 });

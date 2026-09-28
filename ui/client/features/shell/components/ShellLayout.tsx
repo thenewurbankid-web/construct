@@ -31,7 +31,7 @@ export function ShellLayout({ layout, limits, onResize, onTogglePane, narrow = f
           <aside id="sh-pane-right" data-pane="right" tabIndex={-1} aria-label="Tools" className="sh-pane sh-right" hidden={focus || narrowPane !== 'right'}>
             {right}
           </aside>
-          <section id="sh-pane-drawer" data-pane="drawer" tabIndex={-1} aria-label="Drawer" className="sh-pane sh-drawer" hidden={focus || narrowPane !== 'drawer'}>
+          <section id="sh-pane-drawer" data-pane="drawer" tabIndex={-1} aria-label="Bottom panel: Run" className="sh-pane sh-drawer" hidden={focus || narrowPane !== 'drawer'}>
             {drawer}
           </section>
         </div>
@@ -95,7 +95,7 @@ export function ShellLayout({ layout, limits, onResize, onTogglePane, narrow = f
         )}
       </div>
       {layout.drawer.open && (
-        <section id="sh-pane-drawer" data-pane="drawer" tabIndex={-1} aria-label="Drawer" className="sh-drawer" style={{ height: layout.drawer.size }} hidden={focus}>
+        <section id="sh-pane-drawer" data-pane="drawer" tabIndex={-1} aria-label="Bottom panel: Run" className="sh-drawer" style={{ height: layout.drawer.size }} hidden={focus}>
           <PaneResizer
             orientation="horizontal"
             label="Resize drawer"

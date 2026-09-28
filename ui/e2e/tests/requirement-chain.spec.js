@@ -167,7 +167,7 @@ test.describe.serial('Requirement: a sentence read back as card, placement and t
     await expect(page.getByTestId('requirement-approve-plan')).toBeDisabled();
 
     // The process is in the drawer, the real record has the plan's eleven steps (the feature, the eight units, then the two environment variables the card's secret and redirect checks call for, #632).
-    const drawer = page.getByRole('region', { name: 'Drawer' });
+    const drawer = page.getByRole('region', { name: 'Bottom panel: Run' });
     await expect(drawer.getByRole('tab', { name: /Processes/ })).toHaveAttribute('aria-selected', 'true');
     await expect(drawer.getByTestId('process-row').filter({ hasText: 'Requirement: A logged-in user needs to see' })).toHaveCount(1);
     const detail = await (await request.get(`${API}/api/processes/${processId}`)).json();

@@ -15,7 +15,7 @@ const SHOTS = path.resolve(__dirname, '../screenshots');
 fs.mkdirSync(SHOTS, { recursive: true });
 const API = process.env.E2E_API_BASE || 'http://localhost:4000';
 
-const drawer = (page) => page.getByRole('region', { name: 'Drawer' });
+const drawer = (page) => page.getByRole('region', { name: 'Bottom panel: Run' });
 const shot = (page, name) => drawer(page).screenshot({ path: path.join(SHOTS, `341-${name}.png`) });
 const row = (page, file) => page.locator(`[data-testid="review-artifact"][data-path="${file}"]`);
 const onDisk = (root, file) => fs.readFileSync(path.join(root, file), 'utf8');

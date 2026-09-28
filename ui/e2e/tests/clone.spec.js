@@ -170,7 +170,7 @@ test.describe.serial('#330 clone a repository', () => {
   test('the finished clone is listed in the Processes drawer', async ({ page }) => {
     await page.goto('/');
     await page.getByTestId('pill-processes').click();
-    const drawer = page.getByRole('region', { name: 'Drawer' });
+    const drawer = page.getByRole('region', { name: 'Bottom panel: Run' });
     await expect(drawer).toBeVisible();
     const jobs = drawer.getByTestId('clone-jobs');
     await expect(jobs).toContainText('Clone bulky-app');

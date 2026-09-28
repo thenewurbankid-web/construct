@@ -166,7 +166,7 @@ test.describe.serial('Review mode: findings, scope and states (#315, #316, #318)
     await gotoCockpit(page, CHANGE);
     await waitForChange(page);
     await page.keyboard.press('Control+j');
-    const drawer = page.getByRole('region', { name: 'Drawer' });
+    const drawer = page.getByRole('region', { name: 'Bottom panel: Run' });
     await drawer.getByRole('tab', { name: /Findings/ }).click();
     await expect(drawer.getByTestId('review-drawer-summary')).toHaveText('2 of 3 findings can be fixed mechanically.');
     await expect(drawer.getByTestId('review-findings-drawer')).toContainText('2 can be fixed mechanically');

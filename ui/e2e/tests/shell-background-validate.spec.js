@@ -124,7 +124,7 @@ test.describe('A background validate must not disturb what you are doing (#252)'
     await checking(page);
     await waitForCockpitReady(page);
     await page.keyboard.press('Control+j');
-    const drawer = page.getByRole('region', { name: 'Drawer' });
+    const drawer = page.getByRole('region', { name: 'Bottom panel: Run' });
     await expect(drawer).toBeVisible();
     const logs = drawer.getByRole('tab', { name: 'Logs' });
     await expect(logs).toBeVisible();
@@ -163,7 +163,7 @@ test.describe('A background validate must not disturb what you are doing (#252)'
     await checking(page);
     await waitForCockpitReady(page);
     await page.keyboard.press('Control+j');
-    const drawer = page.getByRole('region', { name: 'Drawer' });
+    const drawer = page.getByRole('region', { name: 'Bottom panel: Run' });
     await expect(drawer).toBeVisible();
     release();
     await expect(page.getByTestId('status-validate')).toContainText('3 problems', { timeout: 20_000 });

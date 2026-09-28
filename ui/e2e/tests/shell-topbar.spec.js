@@ -106,7 +106,7 @@ test.describe('Cockpit top bar (#245)', () => {
     await page.goto('/help');
     await expect(page.getByTestId('pill-processes')).toHaveText('Processes: 0');
     await page.getByTestId('pill-processes').click();
-    await expect(page.getByRole('region', { name: 'Drawer' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Bottom panel: Run' })).toBeVisible();
     await expect(page.getByRole('tab', { name: 'Processes' })).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByText('No processes running')).toBeVisible();
   });

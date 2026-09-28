@@ -30,7 +30,7 @@ test.describe.serial('Cockpit demo: command palette, themes, small screens', () 
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/pages');
     await page.keyboard.press('Control+j');
-    const drawer = page.getByRole('region', { name: 'Drawer' });
+    const drawer = page.getByRole('region', { name: 'Bottom panel: Run' });
     await expect(drawer.getByTestId('diagnostic-row').first()).toBeVisible({ timeout: 30_000 });
     await setTheme(page, 'light');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');

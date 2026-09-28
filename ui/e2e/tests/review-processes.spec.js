@@ -18,7 +18,7 @@ fs.mkdirSync(SHOTS, { recursive: true });
 const API = process.env.E2E_API_BASE || 'http://localhost:4000';
 const MARKER = process.env.OG351_MARKER;
 
-const drawer = (page) => page.getByRole('region', { name: 'Drawer' });
+const drawer = (page) => page.getByRole('region', { name: 'Bottom panel: Run' });
 const readMarker = () => (fs.existsSync(MARKER) ? JSON.parse(fs.readFileSync(MARKER, 'utf8')) : null);
 const alive = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
 const treesOf = (pid) => fs.readdirSync(os.tmpdir()).filter((n) => n.startsWith(`construct-prhealth-${pid}-`));

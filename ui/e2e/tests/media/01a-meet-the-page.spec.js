@@ -53,7 +53,7 @@ export const CAPTIONS = {
 };
 
 const rail = (page) => page.getByRole('navigation', { name: 'Screens', exact: true });
-const drawer = (page) => page.getByRole('region', { name: 'Drawer' });
+const drawer = (page) => page.getByRole('region', { name: 'Bottom panel: Run' });
 const browser = (page) => page.getByRole('complementary', { name: 'Browser' });
 
 test('episode 1, part 1: meet the page', async ({ page }) => {
