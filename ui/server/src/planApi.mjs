@@ -9,6 +9,8 @@ export function createPlanRouter(service) {
   const bodyOf = (req) => (req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {});
 
   router.get('/context', (req, res) => send(res, service.context()));
+  // #381 — Inspector "Change" tab: a dry-run preview of a mechanical refactor (move/rename), never writes.
+  router.post('/refactor-preview', (req, res) => send(res, service.refactorPreview(bodyOf(req))));
   router.post('/propose', (req, res) => send(res, service.propose(bodyOf(req))));
   router.post('/impact', (req, res) => send(res, service.impact(bodyOf(req))));
   router.post('/validate', (req, res) => send(res, service.validate(bodyOf(req))));

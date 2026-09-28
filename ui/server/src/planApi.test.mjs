@@ -305,3 +305,42 @@ test('#470 a file the person declared is kept, not replaced; a manual step and a
     assert.deepEqual(incomplete.body.steps[0].files, [], 'no feature yet: nothing is guessed');
   });
 });
+
+// #381 — Inspector "Change" tab: a dry-run preview of refactor move/rename, so the tab can show provenance
+// and a per-file checklist before anything is started. Never writes: only `startPlan` (asserted via `started`)
+// would count as a write here, and it is never called by this route.
+test('#381 refactor-preview dry-runs move/rename and writes nothing', async () => {
+  await withStack({}, async ({ json, started, root }) => {
+    const rename = await json('POST', '/api/plan/refactor-preview', { body: { verb: 'rename', feature: 'billing', name: 'BillingView', newName: 'BillingSummary', layer: 'component' } });
+    assert.equal(rename.status, 200);
+    assert.equal(rename.body.ok, true);
+    assert.equal(rename.body.dryRun, true);
+    assert.deepEqual(rename.body.argv, ['refactor', 'rename', 'BillingView', 'BillingSummary', '--feature', 'billing', '--layer', 'component']);
+    assert.equal(rename.body.to, 'features/billing/components/BillingSummary.tsx');
+    assert.ok(Array.isArray(rename.body.files) && rename.body.files.length > 0, 'every importer to rewrite is in the preview');
+    assert.ok(!fs.existsSync(path.join(root, rename.body.to)), 'a dry run never writes the destination file');
+
+    const move = await json('POST', '/api/plan/refactor-preview', { body: { verb: 'move', feature: 'billing', name: 'Billing', from: 'controller', to: 'component' } });
+    assert.equal(move.status, 200);
+    assert.equal(move.body.dryRun, true);
+    assert.equal(move.body.to, 'features/billing/components/Billing.tsx');
+    assert.ok(!fs.existsSync(path.join(root, move.body.to)));
+
+    assert.deepEqual(started, [], 'a preview never starts a process');
+  });
+});
+
+test('#381 refactor-preview refuses a verb it does not know, a bad identifier, or a layer collision', async () => {
+  await withStack({}, async ({ json }) => {
+    const badVerb = await json('POST', '/api/plan/refactor-preview', { body: { verb: 'extract', feature: 'billing', name: 'BillingView' } });
+    assert.equal(badVerb.status, 400);
+    assert.equal(badVerb.body.ok, false);
+
+    const badIdent = await json('POST', '/api/plan/refactor-preview', { body: { verb: 'move', feature: 'billing', name: '../../etc/passwd', from: 'component', to: 'domain' } });
+    assert.equal(badIdent.status, 400);
+
+    const sameLayer = await json('POST', '/api/plan/refactor-preview', { body: { verb: 'move', feature: 'billing', name: 'BillingView', from: 'component', to: 'component' } });
+    assert.equal(sameLayer.status, 400);
+    assert.match(sameLayer.body.error, /--from and --to must be different/);
+  });
+});
