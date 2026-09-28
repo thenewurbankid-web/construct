@@ -154,7 +154,7 @@ test.describe.serial('Git screen shell (#374)', () => {
     // Diagnostics and Approvals both carry count badges (see above); match by prefix.
     await expect(d.getByRole('tab')).toHaveText([/^Diagnostics/, /^Logs$/, /^Processes$/, /^Approvals/]);
     await d.getByRole('tab', { name: /Approvals/ }).click();
-    await expect(page.getByTestId('approvals-empty')).toContainText('Nothing waiting for approval');
+    await expect(page.getByTestId('approvals-empty')).toContainText('Nothing waiting on you');
     await page.screenshot({ path: path.join(SHOTS, '374-approvals-empty--dark.png') });
   });
 
