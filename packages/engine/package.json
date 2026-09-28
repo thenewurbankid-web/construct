@@ -48,6 +48,7 @@
     "js-yaml": "^4.3.2",
     "linkedom": "0.18.13",
     "react-docgen": "^8.0.4",
+    "xpath": "0.0.34",
     "xstate": "^5.33.2"
   },
   "publishConfig": {

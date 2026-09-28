@@ -1,13 +1,25 @@
 // #439 -- extract/verify: parse HTML fetched through safeFetch (#436, safeFetch.mjs) and pull out picked fields by
-// CSS selector, using `linkedom` (ISC) instead of a hand-rolled parser or a browser-grade DOM (jsdom/happy-dom).
+// CSS or XPath selector, using `linkedom` (ISC) instead of a hand-rolled parser or a browser-grade DOM (jsdom/happy-dom).
 // linkedom has no JavaScript engine and does no networking of its own, so a <script> never runs and an <img>/<iframe>/
 // stylesheet src is never fetched here -- parsing is pure string-in, DOM-in-memory, JSON-out. The DOM itself never
 // leaves this file: `extract`/`verify` return only plain JSON (`values`, `misses`), already HTML-escaped, so whatever
 // calls this can hand the result straight to the Cockpit without a second escaping step.
 //
-// XPath is intentionally left out (the report for #439 leaves it opt-in for #387 only if that story needs it); a field
-// names a CSS selector only.
+// #387 -- XPath support: `xpath` (MIT) evaluates XPath 1.0 node-set paths over a linkedom tree. Two quirks needed a
+// spike (against `docs/design/ia-five-screens.md` 9.2's own example selector) before this was trusted:
+//   1. linkedom assigns every HTML element the xhtml namespace, which would silently fail every unprefixed step
+//      (`//h1` matches nothing per the XPath spec's namespace rule) unless evaluated with `{ isHtml: true }`.
+//   2. A leading `<!DOCTYPE html>` -- present on almost every real page -- makes `xpath`'s tree walk return an
+//      EMPTY result from `document` (and even from `document.documentElement`), no error, just zero matches
+//      (their walk loses its place at the doctype node). CSS's `querySelectorAll` is unaffected. XPath fields
+//      therefore parse a second, doctype-stripped tree (`xpathDocument`, below); it has the same content as the
+//      main tree so extracted values are identical either way, only the DOM instance differs.
+//
+// The multiple-match rule (design 9.6b): a field marked `list` takes every match, in document order; any other
+// field errors (`ambiguous`, not `values`) when more than one node matched, so a single-value field can never
+// silently pick "the first one" the way a plain `querySelector` would.
 import { parseHTML } from 'linkedom';
+import xpath from 'xpath';
 
 export const DEFAULT_MAX_HTML_BYTES = 2_000_000;
 export const DEFAULT_TIMEOUT_MS = 5_000;
@@ -33,8 +45,9 @@ function isValidField(f) {
   if (!isPlainObject(f)) return false;
   if (typeof f.name !== 'string' || f.name.length === 0) return false;
   if (typeof f.selector !== 'string' || f.selector.length === 0 || f.selector.length > MAX_SELECTOR_LENGTH) return false;
-  if (f.kind !== undefined && f.kind !== 'css') return false; // xpath: opt-in only, not implemented here (#439)
+  if (f.kind !== undefined && f.kind !== 'css' && f.kind !== 'xpath') return false;
   if (f.attr !== undefined && (typeof f.attr !== 'string' || f.attr.length === 0)) return false;
+  if (f.list !== undefined && typeof f.list !== 'boolean') return false;
   return true;
 }
 
@@ -55,24 +68,39 @@ export function validateFields(fields) {
   return { valid: errors.length === 0, errors };
 }
 
-function readValue(el, attr) {
-  if (!el) return undefined;
-  const raw = attr ? el.getAttribute(attr) : el.textContent;
+const ATTRIBUTE_NODE = 2;
+
+/** Read one node's text (or, for an element, its `attr`); an XPath attribute-node step (`@href`) carries its
+ * value directly and ignores `attr` (there is nothing further to read off an attribute). */
+function readValue(node, attr) {
+  if (!node) return undefined;
+  const raw = node.nodeType === ATTRIBUTE_NODE ? node.value : (attr ? node.getAttribute?.(attr) : node.textContent);
   if (raw === null || raw === undefined) return undefined;
-  const trimmed = attr ? raw : raw.trim();
+  const trimmed = String(raw).trim();
   return trimmed === '' ? undefined : trimmed;
 }
 
+/** Every node a field's selector matches, in document order. `docs` carries both parsed trees (`document` for CSS,
+ * a lazily-built `xpathDocument` for XPath -- see the doctype note above). Throws on a bad CSS selector (caught by
+ * the caller); an invalid XPath is already refused earlier (storySelectors.mjs, #384) so it is not re-validated here. */
+function selectNodes(docs, field) {
+  if (field.kind === 'xpath') return xpath.parse(field.selector).select({ node: docs.xpathDocument(), isHtml: true });
+  return Array.from(docs.document.querySelectorAll(field.selector));
+}
+
 /**
- * Parse `html` and read one value per field, by CSS selector. Byte and time budgets are checked BEFORE the parser or
- * any selector runs, so a caller never spends work on input that will be refused anyway; each selector is bounded by
- * its own length cap and the shared time budget, so one pathological selector cannot hang the whole call.
+ * Parse `html` and read one value per field, by CSS or XPath selector. Byte and time budgets are checked BEFORE the
+ * parser or any selector runs, so a caller never spends work on input that will be refused anyway; each selector is
+ * bounded by its own length cap and the shared time budget, so one pathological selector cannot hang the whole call.
+ * The multiple-match rule (design 9.6b): a `list` field's value is every match, in document order; any other field
+ * with more than one match is `ambiguous`, not a value (never silently "the first one").
  *
  * @param {string} html
- * @param {{ fields: {name:string, selector:string, kind?:'css', attr?:string}[], maxBytes?:number, timeoutMs?:number }} opts
- * @returns {{ ok:boolean, values:Record<string,string>, misses:string[] } | { ok:false, code:string, message:string }}
- *   On a hard failure (bad input, over budget, unparseable) there is no `values`/`misses`; on a normal run `ok` is
- *   true only when every field matched -- a story extraction with misses is not an error, just incomplete.
+ * @param {{ fields: {name:string, selector:string, kind?:'css'|'xpath', attr?:string, list?:boolean}[], maxBytes?:number, timeoutMs?:number }} opts
+ * @returns {{ ok:boolean, values:Record<string,string|string[]>, misses:string[], ambiguous:string[] } | { ok:false, code:string, message:string }}
+ *   On a hard failure (bad input, over budget, unparseable) there is no `values`/`misses`/`ambiguous`; on a normal
+ *   run `ok` is true only when every field matched exactly (no miss, no ambiguity) -- a story extraction with
+ *   misses or ambiguous fields is not an error, just incomplete.
  */
 export function extract(html, opts = {}) {
   const { fields, maxBytes = DEFAULT_MAX_HTML_BYTES, timeoutMs = DEFAULT_TIMEOUT_MS } = opts;
@@ -90,21 +118,38 @@ export function extract(html, opts = {}) {
   }
   if (Date.now() > deadline) return fail('TIMEOUT', 'Parsing took too long.');
 
+  let xpathDoc;
+  const docs = {
+    document,
+    xpathDocument: () => {
+      if (!xpathDoc) xpathDoc = parseHTML(html.replace(/^\s*<!DOCTYPE[^>]*>/i, '')).document;
+      return xpathDoc;
+    },
+  };
+
   const values = {};
   const misses = [];
+  const ambiguous = [];
   for (const f of fields) {
     if (Date.now() > deadline) return fail('TIMEOUT', 'Extraction took too long.');
-    let el;
+    let nodes;
     try {
-      el = document.querySelector(f.selector);
+      nodes = selectNodes(docs, f);
     } catch (e) {
       return fail('BAD_SELECTOR', `Selector "${f.selector}" is not valid: ${String(e?.message || e).slice(0, 120)}`);
     }
-    const raw = readValue(el, f.attr);
+    if (f.list) {
+      const list = nodes.map((n) => readValue(n, f.attr)).filter((v) => v !== undefined).map(escapeHtml);
+      if (list.length === 0) misses.push(f.name);
+      else values[f.name] = list;
+      continue;
+    }
+    if (nodes.length > 1) { ambiguous.push(f.name); continue; }
+    const raw = readValue(nodes[0], f.attr);
     if (raw === undefined) misses.push(f.name);
     else values[f.name] = escapeHtml(raw);
   }
-  return { ok: misses.length === 0, values, misses };
+  return { ok: misses.length === 0 && ambiguous.length === 0, values, misses, ambiguous };
 }
 
 /**
@@ -112,19 +157,27 @@ export function extract(html, opts = {}) {
  * caller can tell whether a story page changed since it was last fetched without diffing raw HTML.
  *
  * @param {string} html
- * @param {{ fields: {name:string, selector:string, kind?:'css', attr?:string}[], values: Record<string,string> }} previous
+ * @param {{ fields: {name:string, selector:string, kind?:'css'|'xpath', attr?:string, list?:boolean}[], values: Record<string,string|string[]> }} previous
  *   The `fields` and `values` from an earlier `extract()` call.
  * @param {{ maxBytes?:number, timeoutMs?:number }} [opts]
- * @returns {{ ok:boolean, values:Record<string,string>, misses:string[], changed:string[] } | { ok:false, code:string, message:string }}
+ * @returns {{ ok:boolean, values:Record<string,string|string[]>, misses:string[], changed:string[] } | { ok:false, code:string, message:string }}
  *   `changed` lists the field names whose value differs from `previous.values` (a field that newly matches or newly
  *   misses counts as changed). A hard failure from `extract()` (bad input, over budget) passes straight through.
  */
+function valuesDiffer(a, b) {
+  if (Array.isArray(a) || Array.isArray(b)) {
+    const [x, y] = [a, b].map((v) => (Array.isArray(v) ? v : v === undefined ? [] : [v]));
+    return x.length !== y.length || x.some((v, i) => v !== y[i]);
+  }
+  return a !== b;
+}
+
 export function verify(html, previous, opts = {}) {
   if (!isPlainObject(previous) || !Array.isArray(previous.fields) || !isPlainObject(previous.values)) {
     return fail('BAD_PREVIOUS', 'previous must be { fields, values } from an earlier extract().');
   }
   const result = extract(html, { ...opts, fields: previous.fields });
   if (!('values' in result)) return result;
-  const changed = Object.keys(previous.values).filter((name) => result.values[name] !== previous.values[name]);
+  const changed = Object.keys(previous.values).filter((name) => valuesDiffer(result.values[name], previous.values[name]));
   return { ok: result.ok && changed.length === 0, values: result.values, misses: result.misses, changed };
 }

@@ -83,14 +83,67 @@ test('default budgets are exported and sane', () => {
   assert.ok(MAX_SELECTOR_LENGTH > 0);
 });
 
-test('field validation: empty/oversized/duplicate/xpath fields are all rejected up front', () => {
+test('field validation: empty/oversized/duplicate fields are all rejected up front; css and xpath are both valid kinds (#387)', () => {
   assert.equal(validateFields([]).valid, false);
   assert.equal(validateFields(null).valid, false);
   assert.equal(validateFields(Array.from({ length: MAX_FIELDS + 1 }, (_, i) => ({ name: `f${i}`, selector: '.x' }))).valid, false);
   assert.equal(validateFields([{ name: 'a', selector: '.x' }, { name: 'a', selector: '.y' }]).valid, false);
   assert.equal(validateFields([{ name: 'a', selector: 'x'.repeat(MAX_SELECTOR_LENGTH + 1) }]).valid, false);
-  assert.equal(validateFields([{ name: 'a', selector: '//div', kind: 'xpath' }]).valid, false); // xpath: not implemented (#439)
+  assert.equal(validateFields([{ name: 'a', selector: '//div', kind: 'xpath' }]).valid, true);
   assert.equal(validateFields([{ name: 'a', selector: '.x', kind: 'css' }]).valid, true);
+  assert.equal(validateFields([{ name: 'a', selector: '.x', kind: 'html' }]).valid, false);
+  assert.equal(validateFields([{ name: 'a', selector: '.x', list: 'yes' }]).valid, false);
+  assert.equal(validateFields([{ name: 'a', selector: '.x', list: true }]).valid, true);
+});
+
+test('xpath field (#387): a node-set path matches through the same linkedom tree as css, values are trimmed and escaped', () => {
+  const r = extract(fixture('static.html'), {
+    fields: [
+      { name: 'headline', selector: "//*[@class='headline']", kind: 'xpath' },
+      { name: 'sourceUrl', selector: "//*[@class='source']/@href", kind: 'xpath' },
+    ],
+  });
+  assert.equal(r.ok, true);
+  assert.equal(r.values.headline, 'Cockpit ships a new Processes drawer');
+  assert.equal(r.values.sourceUrl, 'https://example.com/original');
+});
+
+test('xpath field: an unmatched path is a miss, not an error', () => {
+  const r = extract(fixture('static.html'), { fields: [{ name: 'x', selector: '//nope', kind: 'xpath' }] });
+  assert.equal(r.ok, false);
+  assert.deepEqual(r.misses, ['x']);
+});
+
+test('list field (design 9.6b): every match comes back in document order, none of them is a "miss"', () => {
+  const html = '<ul class="acceptance"><li>S1 first</li><li>S2 second</li></ul>';
+  const r = extract(html, { fields: [{ name: 'acceptance', selector: '.acceptance > li', list: true }] });
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.values.acceptance, ['S1 first', 'S2 second']);
+});
+
+test('list field with zero matches is a miss, same as a single-value field', () => {
+  const r = extract('<div></div>', { fields: [{ name: 'acceptance', selector: '.acceptance > li', list: true }] });
+  assert.deepEqual(r.misses, ['acceptance']);
+  assert.equal(r.values.acceptance, undefined);
+});
+
+test('non-list field with more than one match is ambiguous, never silently "the first one" (design 9.6b)', () => {
+  const html = '<p class="status">Open</p><p class="status">Closed</p>';
+  const r = extract(html, { fields: [{ name: 'status', selector: '.status' }] });
+  assert.equal(r.ok, false);
+  assert.deepEqual(r.ambiguous, ['status']);
+  assert.equal(r.values.status, undefined);
+});
+
+test('verify(): a list field is compared by content, not by array identity', () => {
+  const html = '<ul class="acceptance"><li>S1 first</li><li>S2 second</li></ul>';
+  const fields = [{ name: 'acceptance', selector: '.acceptance > li', list: true }];
+  const before = extract(html, { fields });
+  const same = verify(html, { fields, values: before.values });
+  assert.deepEqual(same.changed, []);
+  const changedHtml = '<ul class="acceptance"><li>S1 first</li><li>S3 third</li></ul>';
+  const diff = verify(changedHtml, { fields, values: before.values });
+  assert.deepEqual(diff.changed, ['acceptance']);
 });
 
 test('extract() rejects bad html/fields inputs with a code, never throws', () => {

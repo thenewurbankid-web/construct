@@ -45,7 +45,8 @@
     "linkedom": "0.18.13",
     "minimatch": "^10.0.1",
     "react-docgen": "^8.0.4",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "xpath": "0.0.34"
   },
   "devDependencies": {
     "@types/node": "^26.5.1",
