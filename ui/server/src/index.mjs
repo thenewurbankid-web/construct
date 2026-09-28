@@ -80,6 +80,7 @@ import { handleResearch } from './researchApi.mjs';
 import { handleCreate, handleRefactor, handleImport } from './writeVerbsApi.mjs';
 import { validateArchitecture } from '../../../packages/core/architecture-enforcer.mjs';
 import { createComponentsRouter } from './componentsApi.mjs';
+import { createStoryBridgeRouter } from './storyBridgeApi.mjs';
 import { createNotesRouter } from './notesApi.mjs';
 import { openNotesStore } from './notesStore.mjs';
 import { createBlocksRouter } from './blocksApi.mjs';
@@ -1127,6 +1128,17 @@ app.use('/api/review', createReviewRouter({
 // Registered below the gate like every other `/api` route; the client names a component by a path that must be in the
 // real list for this project (componentsApi.mjs).
 app.use('/api/components', createComponentsRouter({
+  clientOrigin: CLIENT_ORIGIN,
+  afterSave,
+  getRoot: () => {
+    const root = containedProjectRoot(getProjectDir());
+    return root ? { ok: true, root } : { ok: false, error: 'No Construct project found for the current project directory. Pick a project first.' };
+  },
+}));
+
+// #386: the Picker's "propose selectors as a diff to story.md" (design section 9.7). Below the session gate
+// like every other `/api` route; the client names a feature and a story.md must already exist for it.
+app.use('/api/story-bridge', createStoryBridgeRouter({
   clientOrigin: CLIENT_ORIGIN,
   afterSave,
   getRoot: () => {

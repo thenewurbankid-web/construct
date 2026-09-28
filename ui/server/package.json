@@ -18,6 +18,7 @@
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.19.2",
+    "js-yaml": "^4.1.0",
     "typescript": "^5.8.3",
     "ws": "^8.18.0"
   },
