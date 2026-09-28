@@ -136,6 +136,22 @@ test('Pick mode is turned on by the parent and makes plain clicks select; Esc le
   assert.equal(posted.filter((p) => p.m.type === 'construct:preview:select').length, 1, 'Esc left Pick mode');
 });
 
+test('Esc announces the pick-state change (cross-origin means the Cockpit can\'t see the keydown itself); a `mode` the Cockpit asked for is never echoed', () => {
+  const { win, posted, fire, message } = fakeWindow();
+  installPreviewFiberBridge(win, { nonce: 'n', parentOrigin: PARENT });
+
+  message({ origin: PARENT, source: win.parent, data: { type: 'construct:preview:mode', nonce: 'n', pick: true } });
+  assert.equal(posted.filter((p) => p.m.type === 'construct:preview:picked').length, 0, 'the Cockpit already knows the answer to its own request');
+
+  fire('keydown', { key: 'Escape' });
+  const picked = posted.filter((p) => p.m.type === 'construct:preview:picked');
+  assert.equal(picked.length, 1);
+  assert.equal(picked[0].m.pick, false);
+
+  fire('keydown', { key: 'Escape' });
+  assert.equal(posted.filter((p) => p.m.type === 'construct:preview:picked').length, 1, 'Esc while already off announces nothing new');
+});
+
 test('inbound messages are ignored unless the origin, the source and the nonce all match', () => {
   const { win, fire, message, posted } = fakeWindow();
   installPreviewFiberBridge(win, { nonce: 'n', parentOrigin: PARENT });

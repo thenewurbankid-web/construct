@@ -47,26 +47,29 @@ test('createFiberPreviewSource dispatches select only for the right nonce, origi
   });
 });
 
-test('createFiberPreviewSource routes hello/hover/error to their own handlers', async () => {
+test('createFiberPreviewSource routes hello/hover/error/picked to their own handlers', async () => {
   await withGlobalWindow(async (win) => {
     const { createFiberPreviewSource } = await import('./PreviewFiberSource.ts');
     const frame = {};
     const source = createFiberPreviewSource('http://127.0.0.1:5555/', 'n', () => frame);
-    const hellos = []; const hovers = []; const errors = []; const selects = [];
+    const hellos = []; const hovers = []; const errors = []; const selects = []; const picks = [];
     source.onHello((c) => hellos.push(c));
     source.onHover((h) => hovers.push(h));
     source.onError((e) => errors.push(e));
     source.onSelect((s) => selects.push(s));
+    source.onPickChanged((p) => picks.push(p));
 
     const base = { nonce: 'n', protocol: 'construct-preview/1' };
     post(win, frame, { ...base, type: 'construct:preview:hello', capabilities: { pick: true, hover: true, highlight: true } }, 'http://127.0.0.1:5555');
     post(win, frame, { ...base, type: 'construct:preview:hover', componentName: 'Card', tag: 'div' }, 'http://127.0.0.1:5555');
     post(win, frame, { ...base, type: 'construct:preview:error', reason: 'no-fiber' }, 'http://127.0.0.1:5555');
+    post(win, frame, { ...base, type: 'construct:preview:picked', pick: false }, 'http://127.0.0.1:5555');
 
     assert.deepEqual(hellos, [{ pick: true, hover: true, highlight: true }]);
     assert.deepEqual(hovers, [{ componentName: 'Card', tag: 'div' }]);
     assert.deepEqual(errors, [{ reason: 'no-fiber' }]);
-    assert.deepEqual(selects, [], 'a hello/hover/error message never reaches the select handler');
+    assert.deepEqual(picks, [false]);
+    assert.deepEqual(selects, [], 'a hello/hover/error/picked message never reaches the select handler');
   });
 });
 

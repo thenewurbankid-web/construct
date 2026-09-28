@@ -37,6 +37,11 @@ export const PREVIEW_FIBER_MESSAGES = Object.freeze({
   select: 'construct:preview:select', // page -> Cockpit, on click / Alt+click
   hover: 'construct:preview:hover',   // page -> Cockpit, throttled
   error: 'construct:preview:error',   // page -> Cockpit
+  // page -> Cockpit, only when Pick turns off for a reason the Cockpit didn't request (Esc inside the
+  // frame): cross-origin means the Cockpit's own keydown listener never sees that Esc, so without this its
+  // toggle would read "on" forever after. Never sent for a `mode` the Cockpit itself asked for -- it already
+  // knows that answer.
+  picked: 'construct:preview:picked',
   mode: 'construct:preview:mode',     // Cockpit -> page (pick on/off)
   highlight: 'construct:preview:highlight', // Cockpit -> page (by selection id)
   detach: 'construct:preview:detach', // Cockpit -> page
@@ -307,7 +312,12 @@ export function installPreviewFiberBridge(win, options) {
   }
 
   function onKeyDown(e) {
-    if (e.key === 'Escape' && pick) { pick = false; outline(null); post('construct:preview:hover', { componentName: null, tag: null }); }
+    if (e.key === 'Escape' && pick) {
+      pick = false;
+      outline(null);
+      post('construct:preview:hover', { componentName: null, tag: null });
+      post('construct:preview:picked', { pick: false });
+    }
   }
 
   function onMessage(e) {

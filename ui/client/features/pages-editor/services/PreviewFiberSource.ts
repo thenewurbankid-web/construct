@@ -10,6 +10,9 @@ const MESSAGES = {
   select: 'construct:preview:select',
   hover: 'construct:preview:hover',
   error: 'construct:preview:error',
+  // Only sent when the bridge turns Pick off for a reason the Cockpit didn't request (Esc inside the
+  // frame): cross-origin means the Cockpit's own keydown listener never sees that Esc.
+  picked: 'construct:preview:picked',
   mode: 'construct:preview:mode',
   highlight: 'construct:preview:highlight',
   detach: 'construct:preview:detach',
@@ -39,6 +42,9 @@ export interface FiberPreviewSource {
   onSelect(handler: (selection: FiberSelection) => void): () => void;
   onHover(handler: (hover: FiberHover) => void): () => void;
   onError(handler: (error: FiberBridgeError) => void): () => void;
+  /** The bridge turned Pick off on its own (Esc inside the frame) — never fired for a `mode` the Cockpit
+   * itself sent, since it already knows that answer. */
+  onPickChanged(handler: (pick: boolean) => void): () => void;
   /** Turns pick mode on/off in the page. */
   setPick(pick: boolean): void;
   /** Outlines a previously-received selection, by its id, without re-resolving anything. */
@@ -78,6 +84,7 @@ export function createFiberPreviewSource(previewUrl: string, nonce: string, getF
     onSelect: (handler) => subscribe((d) => (d.type === MESSAGES.select ? (d.selection as FiberSelection) : null), handler),
     onHover: (handler) => subscribe((d) => (d.type === MESSAGES.hover ? { componentName: d.componentName as string | null, tag: d.tag as string | null } : null), handler),
     onError: (handler) => subscribe((d) => (d.type === MESSAGES.error ? { reason: String(d.reason) } : null), handler),
+    onPickChanged: (handler) => subscribe((d) => (d.type === MESSAGES.picked ? Boolean(d.pick) : null), handler),
     setPick: (pick) => post({ type: MESSAGES.mode, pick }),
     highlight: (id) => post({ type: MESSAGES.highlight, id }),
     detach: () => post({ type: MESSAGES.detach }),

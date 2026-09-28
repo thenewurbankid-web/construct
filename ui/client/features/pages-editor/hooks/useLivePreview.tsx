@@ -96,6 +96,14 @@ export function useLivePreview({ roots, feature, file, onSelectNode }: Args) {
     return fiberSource.onError(({ reason }) => setMessage(`Live preview could not read that element (${reason}).`));
   }, [fiberSource]);
 
+  // The bridge announces this only when Pick turns off for a reason the Cockpit didn't request (Esc inside
+  // the frame, cross-origin, so our own keydown listener never sees it) — sync the toggle so it doesn't
+  // keep reading "Picking…" after the app has already stopped.
+  useEffect(() => {
+    if (!fiberSource) return undefined;
+    return fiberSource.onPickChanged((pick) => setPickMode(pick));
+  }, [fiberSource]);
+
   useEffect(() => {
     if (!source) return undefined;
     return source.onSelect((src) => {
