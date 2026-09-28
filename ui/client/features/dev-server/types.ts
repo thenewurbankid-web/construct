@@ -32,6 +32,12 @@ export type DevServerStatus = {
   root: string | null;
   port: number | null;
   url: string | null;
+  /** The injecting loopback proxy's address (#443 live preview v2): the iframe loads this, never `url`
+   * directly, so the fiber bridge script can be injected into the served HTML. Null until the proxy is up. */
+  previewUrl: string | null;
+  /** Per-session secret the fiber bridge and the Cockpit both check on every `construct:preview:*` message,
+   * so a page framed by something else can't spoof a selection. Null exactly when `previewUrl` is null. */
+  previewNonce: string | null;
   pid: number | null;
   startedAt: string | null;
   failure: DevServerFailure | null;
