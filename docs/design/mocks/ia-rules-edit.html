@@ -23,12 +23,12 @@
 <div style="padding:8px 12px;border-bottom:1px solid var(--border-subtle);font-size:12px;color:var(--text-muted)">Preset: <b style="color:var(--text)">strict-nextjs</b> &middot; <a>Change preset</a></div>
 <div style="padding:6px 12px;border-bottom:1px solid var(--border-subtle)"><label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted)"><input type="checkbox" checked style="width:14px;height:14px"> Errors and warnings only</label></div>
 <div class="scroll">
-  <div class="sect">Route</div><div class="tree"><div class="row "><span class="layer route">route</span><span>ROUTE-001</span><span class="meta">Routes delegate to controllers</span><span class="nbs"><span class="st stale" style="background:var(--danger-soft);color:var(--danger)">error</span><span class="st ready" style="background:var(--success-soft);color:var(--success)">0</span></span></div></div>
-  <div class="sect">Page</div><div class="tree"><div class="row sel"><span class="layer page">page</span><span>PAGE-004</span><span class="meta">Pages cannot call fetch</span><span class="nbs"><span class="st stale" style="background:var(--danger-soft);color:var(--danger)">error</span><span class="st stale" style="background:var(--danger-soft);color:var(--danger)">14</span></span></div></div>
-  <div class="sect">Component</div><div class="tree"><div class="row "><span class="layer component">component</span><span>COMPONENT-002</span><span class="meta">Components cannot import controllers</span><span class="nbs"><span class="st stale" style="background:var(--danger-soft);color:var(--danger)">error</span><span class="st ready" style="background:var(--success-soft);color:var(--success)">0</span></span></div></div>
-  <div class="sect">Service</div><div class="tree"><div class="row "><span class="layer service">service</span><span>SERVICE-002</span><span class="meta">Services own network calls</span><span class="nbs"><span class="st draft" style="">warning</span><span class="st stale" style="background:var(--danger-soft);color:var(--danger)">2</span></span></div></div>
-  <div class="sect">Domain</div><div class="tree"><div class="row "><span class="layer domain">domain</span><span>DOMAIN-001</span><span class="meta">Domain is pure</span><span class="nbs"><span class="st stale" style="background:var(--danger-soft);color:var(--danger)">error</span><span class="st ready" style="background:var(--success-soft);color:var(--success)">0</span></span></div></div>
-  <div class="sect">Readability</div><div class="tree"><div class="row "><span class="layer readability">readability</span><span>EXCEPTION-EXPIRED</span><span class="meta">Exception past its expiry</span><span class="nbs"><span class="st draft" style="">warning</span><span class="st stale" style="background:var(--danger-soft);color:var(--danger)">1</span></span></div></div>
+  <div class="sect">Route</div><div class="tree"><div class="row " title="Routes delegate to controllers"><span class="layer route">route</span><b style="flex:none">ROUTE-001</b><span class="nbs"><span class="st stale" style="background:var(--danger-soft);color:var(--danger)">error</span><span class="st ready" style="background:var(--success-soft);color:var(--success)">0</span></span></div></div>
+  <div class="sect">Page</div><div class="tree"><div class="row sel" title="Pages cannot call fetch"><span class="layer page">page</span><b style="flex:none">PAGE-004</b><span class="nbs"><span class="st stale" style="background:var(--danger-soft);color:var(--danger)">error</span><span class="st stale" style="background:var(--danger-soft);color:var(--danger)">14</span></span></div></div>
+  <div class="sect">Component</div><div class="tree"><div class="row " title="Components cannot import controllers"><span class="layer component">component</span><b style="flex:none">COMPONENT-002</b><span class="nbs"><span class="st stale" style="background:var(--danger-soft);color:var(--danger)">error</span><span class="st ready" style="background:var(--success-soft);color:var(--success)">0</span></span></div></div>
+  <div class="sect">Service</div><div class="tree"><div class="row " title="Services own network calls"><span class="layer service">service</span><b style="flex:none">SERVICE-002</b><span class="nbs"><span class="st draft" style="">warning</span><span class="st stale" style="background:var(--danger-soft);color:var(--danger)">2</span></span></div></div>
+  <div class="sect">Domain</div><div class="tree"><div class="row " title="Domain is pure"><span class="layer domain">domain</span><b style="flex:none">DOMAIN-001</b><span class="nbs"><span class="st stale" style="background:var(--danger-soft);color:var(--danger)">error</span><span class="st ready" style="background:var(--success-soft);color:var(--success)">0</span></span></div></div>
+  <div class="sect">Readability</div><div class="tree"><div class="row " title="Exception past its expiry"><span class="layer readability">readability</span><b style="flex:none">EXCEPTION-EXPIRED</b><span class="nbs"><span class="st draft" style="">warning</span><span class="st stale" style="background:var(--danger-soft);color:var(--danger)">1</span></span></div></div>
 </div></aside><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
     <section class="pane mid" aria-label="Center stage">
 <div class="hh" style="padding:16px 20px 0">PAGE-004 <small>Pages cannot call fetch</small></div>
@@ -76,9 +76,9 @@
 +     expires: 2026-12-01
 +     reason: old checkout, ticket #512</pre></div>
   </details>
-  <div style="display:flex;gap:8px;margin-top:12px">
-    <button class="btn primary">Save (14 new errors, dry-run checked)</button>
-    <button class="btn">Discard</button>
+  <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;align-items:stretch">
+    <button class="btn primary" style="width:100%">Save &middot; 14 new errors (dry-run checked)</button>
+    <button class="btn" style="width:100%">Discard</button>
   </div>
 </div></aside>
   </div>
