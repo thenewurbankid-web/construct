@@ -463,12 +463,12 @@ export function extractExpressionHint(root,file,layer){
  * @param {string} root Project root (used for the prompt-relative path).
  * @param {string} file An already-generated file; must exist.
  * @param {string} layer The file's layer, whose constraint goes into the prompt.
- * @param {{feature?:string, name?:string, llm?:string, llmOptions?:object}} [options] `llm` names the provider; `llmOptions` (model, baseUrl) is passed to it.
+ * @param {{feature?:string, name?:string, llm?:string, llmOptions?:object, context?:string}} [options] `llm` names the provider; `llmOptions` (model, baseUrl) is passed to it; `context` (#514) is free text grounding the fill in real project shape (a sibling types.ts, a fixture, what related units should each render).
  * @returns {Promise<object>} `{file, status: 'filled'|'rejected'|'failed', reason?, attempts, fixCommand?}`; anything but `filled` leaves the stub untouched.
  */
-export async function fillGeneratedFile(root,file,layer,{feature,name,llm,llmOptions}={}){
+export async function fillGeneratedFile(root,file,layer,{feature,name,llm,llmOptions,context}={}){
  const stubContent=fs.readFileSync(file,'utf8');
- const prompt=buildScaffoldFillPrompt({layer,relFile:rel(root,file),stubContent,name,feature});
+ const prompt=buildScaffoldFillPrompt({layer,relFile:rel(root,file),stubContent,name,feature,context});
  // Never write a response that isn't valid code (#144): on rejection or a
  // failed provider call the scaffolded stub stays exactly as generated.
  const outcome=await requestFileText(llm,prompt,llmOptions);

@@ -645,18 +645,37 @@ export async function generate(args) {
   // (see this function's own doc comment above for the --llm contract).
   const llmI = args.indexOf('--llm');
   const llm = llmI >= 0 ? args[llmI + 1] : undefined;
+  const context = readContextFileArg(root, args);
   const scaffoldStart = startTimer();
   const file = generateLayer(root, layer, name, feature);
   const scaffoldSeconds = elapsedSeconds(scaffoldStart);
   if (llm) {
     const llmStart = startTimer();
-    const outcome = await fillGeneratedFile(root, file, layer, { feature, name, llm });
+    const outcome = await fillGeneratedFile(root, file, layer, { feature, name, llm, context });
     reportFill(root, outcome, ` (scaffold ${formatDuration(scaffoldSeconds)}, llm ${formatDuration(elapsedSeconds(llmStart))})`);
   } else {
     console.log(`Created ${path.relative(root, file)} (${formatDuration(scaffoldSeconds)})`);
   }
   // #678 sweep: the plain workflow stub (and, with --llm, whatever a model wrote) can bare-import too (xstate for a workflow).
   reportGeneratedDependencies(root, [file]);
+}
+
+// `--context-file <path>` (#514): free text read from disk (relative to root
+// or absolute) and handed to fillGeneratedFile as grounding for the model —
+// a sibling types.ts's shape, a fixture's concrete data, what a couple of
+// related units in the same feature should each render. Optional; omitting
+// it reproduces the exact bare-stub prompt this always sent (#494's finding
+// on the research-canvas dogfood run: a bare stub prompt measurably
+// under-performs on anything whose "real implementation" depends on
+// project-specific shape the stub alone doesn't show).
+function readContextFileArg(root, args) {
+  const i = args.indexOf('--context-file');
+  if (i < 0) return undefined;
+  const file = args[i + 1];
+  if (!file) throw new ConstructError('--context-file needs a path.', { exitCode: EXIT_CODES.USAGE_ERROR });
+  const resolved = path.isAbsolute(file) ? file : path.join(root, file);
+  if (!fs.existsSync(resolved)) throw new ConstructError(`--context-file not found: ${resolved}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+  return fs.readFileSync(resolved, 'utf8');
 }
 
 // One line per generated file for a --llm fill (#144/#141): "Created +
@@ -713,6 +732,7 @@ async function generateVerticalSlice(args) {
   }
   const llmI = args.indexOf('--llm');
   const llm = llmI >= 0 ? args[llmI + 1] : undefined;
+  const context = readContextFileArg(root, args);
   // Per-layer scaffold timing comes from generateVertical's own onLayer hook
   // (so it reflects each layer's real write, not a guess) -- the LLM fill
   // (if any) happens in this loop afterward, same as before, timed
@@ -726,7 +746,7 @@ async function generateVerticalSlice(args) {
     const scaffoldDt = scaffoldSeconds.get(file) ?? 0;
     if (llm) {
       const llmStart = startTimer();
-      const outcome = await fillGeneratedFile(root, file, layerFromGeneratedFile(file), { feature, name, llm });
+      const outcome = await fillGeneratedFile(root, file, layerFromGeneratedFile(file), { feature, name, llm, context });
       reportFill(root, outcome, ` (scaffold ${formatDuration(scaffoldDt)}, llm ${formatDuration(elapsedSeconds(llmStart))})`);
     } else {
       console.log(`Created ${path.relative(root, file)} (${formatDuration(scaffoldDt)})`);
