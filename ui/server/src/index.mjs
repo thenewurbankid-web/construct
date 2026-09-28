@@ -75,6 +75,7 @@ import {
   addChildInSnippet,
 } from './pagesEditor.mjs';
 import { handleValidateForProject } from './validateApi.mjs';
+import { handleLintBuffer } from './lintBufferApi.mjs';
 import { handleResearch } from './researchApi.mjs';
 import { handleCreate, handleRefactor, handleImport } from './writeVerbsApi.mjs';
 import { validateArchitecture } from '../../../packages/core/architecture-enforcer.mjs';
@@ -1037,6 +1038,14 @@ app.get('/api/flow/:feature', (req, res) => {
 // read-only and refuse a foreign browser origin.
 app.get('/api/validate', async (req, res) => {
   const { status, body } = await handleValidateForProject({ origin: req.get('origin'), clientOrigin: CLIENT_ORIGIN, projectDir: getProjectDir(), findRoot: containedProjectRoot });
+  res.status(status).json(body);
+});
+
+// #550: the editor's live-typing diagnostics -- buffer-scope rules only, against an
+// unsaved buffer's content, debounced client-side (see lint-buffer.mjs's header).
+app.post('/api/lint-buffer', (req, res) => {
+  const { file, source } = req.body || {};
+  const { status, body } = handleLintBuffer({ origin: req.get('origin'), clientOrigin: CLIENT_ORIGIN, projectDir: getProjectDir(), findRoot: containedProjectRoot, file, source });
   res.status(status).json(body);
 });
 

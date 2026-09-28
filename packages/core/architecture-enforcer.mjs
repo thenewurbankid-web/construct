@@ -33,7 +33,7 @@ import { checkClientBoundary } from './client-boundary.mjs';
 
 export { extractImports };
 
-const FILE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx']);
+export const FILE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx']);
 const KNOWN_LAYERS = new Set(['route', 'controller', 'workflow', 'hook', 'service', 'domain', 'page', 'component']);
 
 // #508 -- COMPONENT-006's default JSX complexity budget (overridable via
@@ -955,6 +955,10 @@ export function detectLayerViolations(layer, source, opts = {}) {
 // ---- Exceptions ------------------------------------------------------
 
 export { matchGlob };
+// Shared with lint-buffer.mjs (lintBuffer): the same per-file rule logic
+// validateArchitecture uses, exposed so a single unsaved buffer's diagnostics
+// come from the identical code path `construct validate` runs, not a reimplementation.
+export { pushViolation, checkUnclassified, checkDanglingImports };
 export { validateExceptionsShape, exceptionApplies, expiredExceptionViolations } from './exceptions.mjs';
 
 // ---- Core enforcement --------------------------------------------------
@@ -1071,6 +1075,35 @@ function checkGenericEdges(config, graph, root, absFile, r, layer, out) {
  *   used by the composer's post-generation self-check.
  * @returns {{violations: object[], ok: boolean}}
  */
+// Builds the per-layer `detectLayerViolations` opts from config once per run: the
+// budget overrides (#508/#503/#505) and the opt-in flags (#506/#578/#581/#594/
+// #667/#668/#669). Shared by `validateArchitecture` (whole-project/scoped-files
+// pass) and `lintBuffer` (single unsaved buffer, lint-buffer.mjs) so the two never
+// drift on what a layer's rule set is — see lint-buffer.mjs's parity test.
+export function layerViolationOptsFor(config, layer) {
+  const componentComplexityOpts = {
+    maxJsxDepth: config.rules['COMPONENT-006-max-depth']?.value,
+    maxJsxBranches: config.rules['COMPONENT-006-max-branches']?.value,
+    exprMaxJsxDepth: config.rules['EXPR-002-max-depth']?.value,
+    exprMaxJsxBranches: config.rules['EXPR-002-max-branches']?.value,
+  };
+  const pageComplexityOpts = {
+    maxJsxDepth: config.rules['PAGE-009-max-depth']?.value,
+    maxJsxBranches: config.rules['PAGE-009-max-branches']?.value,
+  };
+  const complexityOpts = layer === 'page' ? pageComplexityOpts : componentComplexityOpts;
+  return {
+    ...complexityOpts,
+    domainPurityAllowlist: config.rules['DOMAIN-002']?.severity !== 'off',
+    workflowTransitionTable: config.rules['WORKFLOW-004']?.severity !== 'off',
+    stateUnion: config.rules['STATE-001']?.severity !== 'off',
+    serviceAbortSignal: config.rules['SERVICE-003']?.severity !== 'off',
+    controllerNoState: config.rules['CONTROLLER-003']?.severity !== 'off',
+    hookEffectCleanup: config.rules['HOOK-003']?.severity !== 'off',
+    routeForwardParams: config.rules['ROUTE-003']?.severity !== 'off',
+  };
+}
+
 export function validateArchitecture(root, opts = {}) {
   const config = loadConfig(root);
   const graph = loadLayerGraph(root); // throws ConstructError on a malformed custom graph
@@ -1085,37 +1118,6 @@ export function validateArchitecture(root, opts = {}) {
   // frozen sources) is built lazily on the first page/component/controller.
   const frozenGlobs = config.frozen || [];
   const nonLayerGlobs = config.nonLayer || [];
-  // #508 -- COMPONENT-006's budget, read from the normalized config (numeric
-  // 'value' fields per the 'READ-002-max-loc' shape) once per run, not once
-  // per file; undefined when not overridden, so detectLayerViolations falls
-  // back to its own built-in defaults.
-  // #503 -- EXPR-002's own budget overrides, same mechanism, passed alongside
-  // COMPONENT-006's in the same opts object (detectLayerViolations only reads the
-  // exprMaxJsxDepth/exprMaxJsxBranches keys for the `expression` layer).
-  const componentComplexityOpts = {
-    maxJsxDepth: config.rules['COMPONENT-006-max-depth']?.value,
-    maxJsxBranches: config.rules['COMPONENT-006-max-branches']?.value,
-    exprMaxJsxDepth: config.rules['EXPR-002-max-depth']?.value,
-    exprMaxJsxBranches: config.rules['EXPR-002-max-branches']?.value,
-  };
-  // #505 -- PAGE-009's budget override, mirroring COMPONENT-006's above exactly.
-  const pageComplexityOpts = {
-    maxJsxDepth: config.rules['PAGE-009-max-depth']?.value,
-    maxJsxBranches: config.rules['PAGE-009-max-branches']?.value,
-  };
-  // #506 -- DOMAIN-002 only runs once a project opts in (severity isn't the DEFAULT_RULES
-  // 'off') -- see the flag-gating note on DOMAIN-002 in detectLayerViolations above.
-  const domainPurityAllowlist = config.rules['DOMAIN-002']?.severity !== 'off';
-  // #578 -- WORKFLOW-004 opts in the same way.
-  const workflowTransitionTable = config.rules['WORKFLOW-004']?.severity !== 'off';
-  // #581 -- STATE-001 opts in the same way.
-  const stateUnion = config.rules['STATE-001']?.severity !== 'off';
-  // #594 -- SERVICE-003 opts in the same way.
-  const serviceAbortSignal = config.rules['SERVICE-003']?.severity !== 'off';
-  // #667/#668/#669 -- CONTROLLER-003, HOOK-003 and ROUTE-003 opt in the same way.
-  const controllerNoState = config.rules['CONTROLLER-003']?.severity !== 'off';
-  const hookEffectCleanup = config.rules['HOOK-003']?.severity !== 'off';
-  const routeForwardParams = config.rules['ROUTE-003']?.severity !== 'off';
   let frozenIndex = null;
   for (const abs of files) {
     if (!FILE_EXTENSIONS.has(path.extname(abs)) || !fs.existsSync(abs)) continue;
@@ -1131,8 +1133,7 @@ export function validateArchitecture(root, opts = {}) {
       continue;
     }
     const source = fs.readFileSync(abs, 'utf8');
-    const complexityOpts = layer === 'page' ? pageComplexityOpts : componentComplexityOpts;
-    const layerOpts = { ...complexityOpts, domainPurityAllowlist, workflowTransitionTable, stateUnion, serviceAbortSignal, controllerNoState, hookEffectCleanup, routeForwardParams };
+    const layerOpts = layerViolationOptsFor(config, layer);
     for (const desc of detectLayerViolations(layer, source, layerOpts)) {
       pushViolation(config, out, { ...desc, file: r });
     }

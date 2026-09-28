@@ -8,3 +8,6 @@ export { aggregateValidation } from './registry.mjs';
 export { formatReport, exitCodeForViolations, ConstructError, EXIT_CODES } from './diagnostics.mjs';
 export { validateArchitecture } from './architecture-enforcer.mjs';
 export { DEFAULT_ENFORCERS } from '../engine/defaultEnforcers.mjs';
+// #550: single-unsaved-buffer diagnostics for an editor; see lint-buffer.mjs's header
+// for exactly which rules it runs vs. only a full validateArchitecture pass.
+export { lintBuffer } from './lint-buffer.mjs';
