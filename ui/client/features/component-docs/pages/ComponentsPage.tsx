@@ -10,18 +10,23 @@ type Props = {
   /** Where the project has no components at all. */
   listReady: boolean;
   doc: ReactNode;
+  isolated: ReactNode;
+  usedBy: ReactNode;
   source: ReactNode;
 };
 
-/** The stage of the Components screen: documentation for the chosen component, then its file as plain text. The list
- * is in the Browser pane (registered by the controller). */
-export function ComponentsPage({ hasSelection, staleName, onClearStale, listReady, doc, source }: Props) {
+/** The stage of the Components screen: documentation for the chosen component, its isolated view (State
+ * switcher + Flow inset, #380), what uses it, then its file as plain text. The list is in the Browser
+ * pane (registered by the controller). */
+export function ComponentsPage({ hasSelection, staleName, onClearStale, listReady, doc, isolated, usedBy, source }: Props) {
   return (
     <div className="cd-stage" data-testid="components-stage">
       <h1 className="cd-h1">Components</h1>
       {hasSelection ? (
         <>
           {doc}
+          {isolated}
+          {usedBy}
           {source}
         </>
       ) : staleName ? (

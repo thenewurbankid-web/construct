@@ -21,3 +21,21 @@
 .cd-none { margin: 0; padding: var(--sp-2) var(--sp-3); border: 1px dashed var(--border-strong); border-radius: 6px; }
 .cd-source-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-1) var(--sp-3); }
 .cd-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+
+/* Used by (#380) */
+.cd-used-by { width: 100%; border-collapse: collapse; }
+.cd-used-by th, .cd-used-by td { text-align: left; padding: var(--sp-1) var(--sp-2); border-bottom: 1px solid var(--border-subtle); vertical-align: top; overflow-wrap: anywhere; }
+.cd-used-by thead th { font-size: var(--fs-sm); color: var(--text-muted); font-weight: 600; border-bottom-color: var(--border-strong); }
+
+/* Isolated view: harness iframe, State switcher, Flow inset (#380) */
+.cd-isolated { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; padding: var(--sp-3); border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-2); }
+.cd-isolated-preview { border: 1px solid var(--border-subtle); border-radius: 6px; overflow: hidden; height: 260px; background: var(--surface-1); }
+.cd-isolated-frame { width: 100%; height: 100%; border: 0; }
+.cd-state-switcher { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
+.cd-state-btn { padding: var(--sp-1) var(--sp-2); border: 1px solid var(--border-subtle); border-radius: 999px; background: var(--surface-1); color: var(--text); font-size: var(--fs-sm); cursor: pointer; }
+.cd-state-btn.active { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.cd-flow-inset { height: 220px; border: 1px solid var(--border-subtle); border-radius: 6px; overflow: hidden; }
+.cd-flow-state { padding: var(--sp-1) var(--sp-2); border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface-1); font-size: var(--fs-sm); white-space: nowrap; }
+.cd-flow-state.current { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); font-weight: 600; }
+.cd-flow-state.missing { border-style: dashed; color: var(--text-muted); }
+.cd-flow-start { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }

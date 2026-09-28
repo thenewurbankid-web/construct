@@ -7,8 +7,11 @@ import { CommitIndicatorController } from '@/features/git-session';
 import { useRegisterShellTab, useShellStage, type ShellTab } from '@/features/shell';
 import '../components/component-docs.css';
 import { ComponentDocPanel } from '../components/ComponentDocPanel';
+import { ComponentIsolatedPanel } from '../components/ComponentIsolatedPanel';
 import { ComponentSourcePanel } from '../components/ComponentSourcePanel';
+import { UsedByPanel } from '../components/UsedByPanel';
 import { docReason, docView, findComponent, toListItems } from '../domain/ComponentList';
+import { useComponentUsedBy } from '../hooks/useComponentUsedBy';
 import { useComponentDoc } from '../hooks/useComponentDoc';
 import { useComponentEditor } from '../hooks/useComponentEditor';
 import { useComponentList } from '../hooks/useComponentList';
@@ -23,6 +26,7 @@ function ComponentsScreen() {
   const path = entry?.path ?? null;
   const doc = useComponentDoc(path, revision);
   const editor = useComponentEditor(path, useCallback(() => setRevision((r) => r + 1), []));
+  const { usedBy } = useComponentUsedBy(path);
   const items = useMemo(() => toListItems(list.components), [list.components]);
 
   const { select } = selection;
@@ -69,6 +73,15 @@ function ComponentsScreen() {
       onClearStale={() => selection.select(null)}
       listReady={list.status === 'ready' && selection.ready}
       doc={entry && <ComponentDocPanel entry={entry} view={docView(doc.description)} reason={docReason(doc.description)} />}
+      isolated={entry && <ComponentIsolatedPanel path={entry.path} />}
+      usedBy={
+        entry && (
+          <section className="cd-doc" data-testid="cd-used-by-panel">
+            <h2 className="cd-h3">Used by</h2>
+            <UsedByPanel usedBy={usedBy} />
+          </section>
+        )
+      }
       source={
         entry && (
           <>

@@ -1,5 +1,5 @@
 import type { SourceDiagnostic } from '@/features/pages-editor';
-import type { DiffHunk } from '@/features/workflows';
+import type { DiffHunk, WorkflowMachine } from '@/features/workflows';
 
 /** One component file of the open project, as GET /api/components lists it. `feature` is null outside features/. */
 export type ComponentEntry = { name: string; path: string; feature: string | null };
@@ -22,6 +22,17 @@ export type PreviewResponse = { ok: true; before: string; after: string; content
 export type SaveResponse =
   | { ok: true; path?: string; unchanged?: boolean; contentHash: string; violations?: { rule?: string; message?: string }[]; autoCommit?: { committed?: boolean } | null }
   | { ok: false; code?: string; error?: string; violations?: { rule?: string; message?: string }[] };
+
+/** GET /api/components/used-by (#380): the pages that import this component, transitively. */
+export type UsedByPage = { path: string; feature: string | null; distance: number };
+
+export type UsedByResponse = { ok: true; path: string; pages: UsedByPage[] } | { ok: false; code?: string; error?: string };
+
+/** GET /api/components/workflow (#380): the machine driving this component, found by the same-name-file
+ * convention in the feature's workflows/ layer. `machines: []` (never an error) when the component has none. */
+export type ComponentWorkflowResponse =
+  | { ok: true; path: string; feature?: string; file?: string; machines: WorkflowMachine[] }
+  | { ok: false; code?: string; error?: string };
 
 /** What the doc panel shows for a description. */
 export type DocView =
