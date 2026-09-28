@@ -74,6 +74,7 @@ test('every /api/components route is refused with 401 when there is no session',
       ['GET', '/api/components'],
       ['GET', `/api/components/describe?path=${q(VIEW_PATH)}`],
       ['GET', `/api/components/source?path=${q(VIEW_PATH)}`],
+      ['GET', `/api/components/used-by?path=${q(VIEW_PATH)}`],
       ['POST', '/api/components/save', { path: VIEW_PATH, content: 'x', commit: true }],
     ]) {
       assert.equal((await call(method, p, { body, headers: { cookie: '' } })).status, 401, `${method} ${p}`);

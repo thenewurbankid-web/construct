@@ -18,6 +18,7 @@ import { listUnits } from '../../../packages/engine/unitSummary.mjs';
 import { describeComponent } from '../../../packages/engine/describeComponent.mjs';
 import { checkPropLinks, propLinkViolations } from '../../../packages/engine/propLinks.mjs';
 import { collectDiagnostics, fromViolation } from '../../../packages/engine/diagnostics.mjs';
+import { analyzeImpact } from '../../../packages/engine/impact.mjs';
 import { loadConfig } from '../../../packages/core/config.mjs';
 import { resolveProjectFile } from './projectNav.mjs';
 import { checkEnforcement, featuresRootOf, hashOf, PagesEditorError } from './pagesEditor.mjs';
@@ -109,6 +110,22 @@ export async function componentSource(root, rel) {
   return { status: 200, body: { ok: true, path: rel, name: p.entry.name, feature: p.entry.feature, source, contentHash: hashOf(source), editable: Buffer.byteLength(source, 'utf8') <= MAX_EDIT_BYTES, diagnostics } };
 }
 
+/** #380 "Used by": which pages import this component, transitively, with the feature each lands in.
+ * Reuses the impact engine (#288) seeded with this one file; unbounded depth so a component wrapped by
+ * another component still surfaces the page at the top. Never fails the request — impact is a bonus. */
+export function componentUsedBy(root, rel) {
+  const p = pick(root, rel);
+  if (p.fail) return p.fail;
+  const report = analyzeImpact(root, { files: [rel], depth: Infinity });
+  const pages = report.ok
+    ? report.files
+        .filter((r) => r.direction === 'up' && r.layer === 'page')
+        .map((r) => ({ path: r.path, feature: r.feature, distance: r.distance }))
+        .sort((a, b) => a.distance - b.distance || a.path.localeCompare(b.path))
+    : [];
+  return { status: 200, body: { ok: true, path: rel, pages } };
+}
+
 /** Preview (`commit` false: nothing written, returns before/after) or save (`commit` true). The file's text is the
  * only thing the client sends; where it goes is decided here. `afterSave(root, rel)` is commit-on-save (#283). */
 export function componentSave(root, body, { afterSave = () => null } = {}) {
@@ -153,6 +170,7 @@ export function createComponentsRouter({ getRoot, clientOrigin, afterSave, descr
   router.get('/', handle((root) => componentsIndex(root)));
   router.get('/describe', handle((root, req) => componentDescribe(root, one(req.query.path), describeOptions)));
   router.get('/source', handle((root, req) => componentSource(root, one(req.query.path))));
+  router.get('/used-by', handle((root, req) => componentUsedBy(root, one(req.query.path))));
   router.post('/save', handle((root, req) => componentSave(root, req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {}, { afterSave })));
   return router;
 }
