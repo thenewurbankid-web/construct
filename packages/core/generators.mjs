@@ -23,9 +23,21 @@ const templates={
  // already hands the invoking function a signal for free.
  service:(n)=>`export async function ${n}({ signal }: { signal: AbortSignal }) {\n  const response = await fetch('/api/${n.toLowerCase()}', { method: 'GET', signal });\n  if (!response.ok) throw new Error('Request failed');\n  return response.json();\n}\n`,
  page:(n)=>`import type { ReactNode } from 'react';\n\nexport function ${n}Page(): ReactNode {\n  return <main>${n}</main>;\n}\n`,
- component:(n)=>`export function ${n}() {\n  return <div>${n}</div>;\n}\n`
+ component:(n)=>`export function ${n}() {\n  return <div>${n}</div>;\n}\n`,
+ // #514 -- an Expression's stub must already satisfy EXPR-004/005/006 (error severity, so a
+ // project with the typed-contracts phase-1 rules on can't even land the freshly-scaffolded
+ // stub otherwise, before any --llm fill runs): built through defineExpression(...) (EXPR-006),
+ // returns real JSX built only from `children` (EXPR-005, no hand-authored markup so EXPR-004
+ // stays clean too). The factory import specifier is resolved per-project (typedContractsSpecifierFor)
+ // since where a project's own copy of the factories lives isn't fixed the way the other
+ // templates' plain-React imports are.
+ expression:(n,{typedContractsSpecifier='@line/construct-core/typed-contracts'}={})=>
+  `import type { ReactNode } from 'react';\n`+
+  `import { defineExpression } from '${typedContractsSpecifier}';\n\n`+
+  `interface ${n}Props {\n  children?: ReactNode;\n}\n\n`+
+  `export const ${n} = defineExpression('${n}', (props: ${n}Props) => {\n  return <>{props.children}</>;\n});\n`,
 };
-export const folderFor=(layer)=>layer==='hook'?'hooks':layer==='controller'?'controllers':layer==='workflow'?'workflows':layer==='domain'?'domain':layer==='service'?'services':layer==='page'?'pages':'components';
+export const folderFor=(layer)=>layer==='hook'?'hooks':layer==='controller'?'controllers':layer==='workflow'?'workflows':layer==='domain'?'domain':layer==='service'?'services':layer==='page'?'pages':layer==='expression'?'expressions':'components';
 
 // Reverse of folderFor — which layer a generated file's own parent folder
 // name implies. Single source of truth shared by import.mjs's per-file
@@ -33,7 +45,7 @@ export const folderFor=(layer)=>layer==='hook'?'hooks':layer==='controller'?'con
 // scratch, #101) so both ever call an LLM with exactly the same
 // layer-constraint text for a given file, never two copies that could
 // drift apart.
-export const FOLDER_TO_LAYER={controllers:'controller',workflows:'workflow',hooks:'hook',domain:'domain',services:'service',pages:'page',components:'component'};
+export const FOLDER_TO_LAYER={controllers:'controller',workflows:'workflow',hooks:'hook',domain:'domain',services:'service',pages:'page',expressions:'expression',components:'component'};
 /**
  * The layer a generated file belongs to, read from its folder name.
  *
@@ -63,6 +75,11 @@ export const LAYER_CONSTRAINTS={
  component:`Presentation-only, from props. Never write the substring "controllers/", "workflows/", "services/", or "domain/" anywhere in the file, even in a comment. ${NO_INLINE_JSX_LOGIC}`,
  page:`Presentation composition from props only. Never write "workflows/", "services/", or "domain/" anywhere in the file (even in a comment), never call fetch(), never use useMachine/useActor/createMachine. ${NO_INLINE_JSX_LOGIC}`,
  controller:'Composes hooks/domain/pages for a route and nothing else: it calls hooks and renders its own Page, passing them props. It must contain NO control flow at all (no if/else, loops, switch, or try/catch) and never call fetch() — CONTROLLER-001 rejects both. Any conditional, loop, error handling or async handler belongs in a hook (or workflow/domain function) that the controller calls. No import restrictions.',
+ // #514 -- EXPR-003 (name it decides, not "If"/"Switch"/"Show"/... — the bare control-flow kind
+ // itself is rejected), EXPR-004 (no hand-authored native JSX beyond a Fragment wrapping children
+ // and/or another component/expression), EXPR-005 (must accept children and return JSX), EXPR-006
+ // (must stay built through defineExpression(...) — keep that call in the rewritten file).
+ expression:'A named decision about which already-built piece (children, or another component/expression) to render — not what to render. Give it a specific, descriptive name for WHAT it decides (never the bare control-flow kind itself: not "If", "Switch", "Show", "Hide", "When", "ForEach", "Cond", "Loop", "Map"). Built through defineExpression(...) — keep that call. Never author real markup (a native lowercase JSX tag like <div>) — only a Fragment wrapping `children` and/or an existing component/expression unit. May only import a component unit or a type, never domain/service/workflow/controller.',
 };
 
 // Shared by generateLayer and refactor.mjs's move/rename: the filename base a
@@ -213,13 +230,32 @@ export function layerTargetFile(root,layer,name,feature,config=loadConfig(root))
  return path.join(dir,`${layerFileBaseName(layer,cap)}${ext}`);
 }
 
+// #514 -- where a project keeps its own copy of the typed-contracts factories varies (the
+// published `@line/construct-core/typed-contracts` package when installed; a project that
+// vendored the sources locally instead, e.g. `src/typed-contracts/factories.ts`, per
+// docs/DELEGATION.md's "vendor packages/core/typed-contracts/" install path). Only the
+// expression template needs this today (every other template's imports are plain
+// React/xstate, never project-relative) — checked for on disk rather than assumed, so a
+// project with neither the package nor a vendored copy still gets a stub that at least
+// names the bare-package specifier a `construct create dependency` run can resolve, instead
+// of a relative path to a directory that doesn't exist.
+function typedContractsSpecifierFor(root,fileDir){
+ const vendored=path.join(root,'src','typed-contracts','factories');
+ if(LAYER_FILE_EXTENSIONS.some(ext=>fs.existsSync(vendored+ext))){
+  const relPath=path.relative(fileDir,vendored).split(path.sep).join('/');
+  return relPath.startsWith('.')?relPath:`./${relPath}`;
+ }
+ return '@line/construct-core/typed-contracts';
+}
+
 export function renderLayer(root,layer,name,feature){
  if(!templates[layer])throw new Error(`Unknown layer: ${layer}`);
  const config=loadConfig(root);
  const cap=pascalCase(name,layer[0].toUpperCase()+layer.slice(1));
  const file=layerTargetFile(root,layer,name,feature,config);
  const custom=findCustomTemplate(root,layer,config);
- const content=custom?renderCustomTemplate(custom,name,cap):templates[layer](cap,{framework:config.project?.framework});
+ const templateOptions={framework:config.project?.framework,...(layer==='expression'?{typedContractsSpecifier:typedContractsSpecifierFor(root,path.dirname(file))}:{})};
+ const content=custom?renderCustomTemplate(custom,name,cap):templates[layer](cap,templateOptions);
  return {file,content};
 }
 
@@ -256,7 +292,7 @@ export function generateLayer(root,layer,name,feature){
 // self-contained. `construct generate layer <name> --layers ...` scaffolds
 // one logical unit across several layers in a single command, always in this
 // order regardless of the order the caller listed --layers in.
-export const LAYER_ORDER=['domain','service','workflow','hook','component','page','controller'];
+export const LAYER_ORDER=['domain','service','workflow','hook','component','expression','page','controller'];
 
 // #275 — which other layer(s) a layer's own stub template composes, and so
 // cannot be generated without. Exactly one exists today: the controller stub
@@ -365,12 +401,19 @@ export function generateVertical(root,name,feature,layers,{onLayer}={}){
 // decides which layers/files exist — cli.mjs's generate()/create() call
 // generateLayer/generateVertical first, exactly as before, and only then
 // optionally call this once per resulting file.
-function buildScaffoldFillPrompt({layer,relFile,stubContent,name,feature}){
+// `context` (#514) is caller-supplied free text -- e.g. a sibling types.ts's shape, a fixture's
+// concrete data, or what a couple of related units in the same feature should each render --
+// handed straight to the model alongside the stub. Optional and additive: omitting it reproduces
+// the exact prompt this function always sent. Exists because a bare stub-only prompt measurably
+// under-performs on anything whose "real, reasonable implementation" depends on project-specific
+// shape the stub alone doesn't show (#494's finding on the research-canvas dogfood run).
+function buildScaffoldFillPrompt({layer,relFile,stubContent,name,feature,context}){
  return [
   'You are implementing one freshly-scaffolded file of a Construct-architecture project, from scratch (there is no prior/legacy source to port — write a real, working implementation).',
   `Target file: ${relFile} (layer: "${layer}", feature: "${feature}").`,
   `Layer constraint: ${LAYER_CONSTRAINTS[layer]||'none.'}`,
   `Keep the exact exported identifier name(s) already present in the current stub below unchanged — replace only the body with a real, reasonable implementation appropriate for something named "${name}" at this layer. Do not invent unrelated behavior or additional exports.`,
+  ...(context?['','=== REFERENCE CONTEXT (other real code/data in this project to ground the implementation in — do not copy verbatim, use it to write something that actually fits) ===',context]:[]),
   '',
   '=== CURRENT STUB (this is the file you are rewriting) ===',
   stubContent,
