@@ -30,10 +30,27 @@ test('unsaved edit that only renames: same-behaviour, renamed', () => {
   assert.deepEqual(checkChangeForFile(root, 'total.ts'), { file: 'total.ts', verdict: 'same-behaviour', operations: ['renamed'] });
 });
 
-test('unsaved edit that changes logic: changed', () => {
+test('unsaved edit that changes logic: changed, with a propertyCheck section (#749)', () => {
   const root = repoWithFile('total.ts', 'export const total = (a, b) => a + b;\n');
   fs.writeFileSync(path.join(root, 'total.ts'), 'export const total = (a, b) => a - b;\n');
-  assert.deepEqual(checkChangeForFile(root, 'total.ts'), { file: 'total.ts', verdict: 'changed', operations: ['changed'] });
+  assert.deepEqual(checkChangeForFile(root, 'total.ts'), {
+    file: 'total.ts',
+    verdict: 'changed',
+    operations: ['changed'],
+    // Untyped parameters: pureExportEquivalence can't choose an arbitrary, so it's skipped rather than guessed at.
+    propertyCheck: { checked: [], skipped: [{ name: 'total', reason: 'unsupported parameter types' }] },
+  });
+});
+
+test('unsaved edit that changes logic on typed pure parameters: propertyCheck reports the counter-example (#749)', () => {
+  const root = repoWithFile('total.ts', 'export const total = (a: number, b: number) => a + b;\n');
+  fs.writeFileSync(path.join(root, 'total.ts'), 'export const total = (a: number, b: number) => a - b;\n');
+  const result = checkChangeForFile(root, 'total.ts');
+  assert.equal(result.verdict, 'changed');
+  assert.equal(result.propertyCheck.checked.length, 1);
+  assert.equal(result.propertyCheck.checked[0].name, 'total');
+  assert.equal(result.propertyCheck.checked[0].verdict, 'diverged');
+  assert.ok(Array.isArray(result.propertyCheck.checked[0].input));
 });
 
 test('no unsaved edit: same-behaviour, no operations', () => {

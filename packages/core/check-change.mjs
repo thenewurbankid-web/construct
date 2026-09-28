@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { semanticDiff } from '../ast/semanticDiff.mjs';
+import { pureExportEquivalence } from '../ast/pureExportEquivalence.mjs';
 import { defineBlock, emptyScope } from './block-contract.mjs';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 
@@ -34,7 +35,7 @@ function readAtRef(root, relPath, ref = 'HEAD') {
  * @param {string} root Project root.
  * @param {string} filePath Root-relative or absolute path to the file to check.
  * @param {{ ref?: string }} [options] `ref` defaults to `HEAD`.
- * @returns {{ file: string, verdict: 'same-behaviour'|'changed'|'cant-tell', operations: string[], reason?: string }}
+ * @returns {{ file: string, verdict: 'same-behaviour'|'changed'|'cant-tell', operations: string[], reason?: string, propertyCheck?: { checked: object[], skipped: object[] } }}
  * @throws {ConstructError} USAGE_ERROR when the working-tree file doesn't exist.
  *
  * @example
@@ -53,7 +54,13 @@ export function checkChangeForFile(root, filePath, options = {}) {
     return { file: relPath, verdict: 'cant-tell', operations: [], reason: `not present at ${options.ref || 'HEAD'} (new file)` };
   }
   const { verdict, operations, reason } = semanticDiff(beforeSource, afterSource);
-  return reason ? { file: relPath, verdict, operations, reason } : { file: relPath, verdict, operations };
+  const document = { file: relPath, verdict, operations };
+  if (reason) document.reason = reason;
+  // Property check (#749) only adds signal once something actually changed structurally -- same-behaviour
+  // (a rename/reorder/reformat) has no logic difference to catch a counter-example for, so it's omitted
+  // rather than reported as an always-empty section.
+  if (verdict === 'changed') document.propertyCheck = pureExportEquivalence(beforeSource, afterSource);
+  return document;
 }
 
 /**

@@ -30,3 +30,5 @@ export { collectBackendFacts, importEdgesOf, ROUTE_METHODS } from './backendFact
 export { collectEffects, collectEnvReads, collectHttpRoutes } from './backendEffects.mjs';
 // `construct check-change` (#747): behaviour-preserving verdict for an unsaved/staged edit.
 export { semanticDiff, SEMANTIC_DIFF_VERDICTS, SEMANTIC_DIFF_OPERATIONS } from './semanticDiff.mjs';
+// `construct check-change`'s propertyCheck section (#749): fast-check equivalence for pure exports touched by the edit.
+export { pureExportEquivalence } from './pureExportEquivalence.mjs';
