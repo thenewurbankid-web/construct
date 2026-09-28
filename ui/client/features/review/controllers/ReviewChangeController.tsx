@@ -18,7 +18,7 @@ import { useReviewPlans } from '../hooks/useReviewPlans';
 import { useReviewRoute } from '../hooks/useReviewRoute';
 import { useTreeNavigation } from '../hooks/useTreeNavigation';
 import { ReviewChangePage } from '../pages/ReviewChangePage';
-import { changeShellTabs } from '../pages/ReviewShellTabs';
+import { changeBrowserTabs, changeDrawerTabs, changeToolsTabs } from '../pages/ReviewShellTabs';
 
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
@@ -43,8 +43,10 @@ export function ReviewChangeController({ base, head }: { base: string; head: str
   const findings = report ? buildFindingsView(report.findings, report.indicators, state.selectedFindingId) : null;
   const detail = report ? buildFindingDetail(report.findings, state.selectedFindingId) : null;
   const degraded = degradedNotice(report?.degraded ?? null);
+  const scope = blast ? { view: blast, picker: { plans, selected: route.plan, selectedTitle: state.data?.plan?.title ?? null, onPick: (id: string | null) => route.setPlan(base, head, id) } } : null;
+  const onCloseFinding = () => selectFinding(null);
 
-  const tabs = changeShellTabs({
+  const browserTabs = changeBrowserTabs({
     tree: report
       ? {
           grouping: state.grouping,
@@ -57,14 +59,29 @@ export function ReviewChangeController({ base, head }: { base: string; head: str
           nav,
         }
       : null,
+    onBack: () => route.openList(base),
+  });
+  const toolsTabs = changeToolsTabs({
     cards,
     findings: findings ? { view: findings, onSelect: selectFinding } : null,
-    summary: findings ? { summary: findings.summary, mechanical: findings.mechanical.length, conversation: findings.conversation.length, degraded } : null,
+    detail,
+    onCloseFinding,
+    scope,
   });
-  useRegisterShellTab('browser', tabs.browser);
-  useRegisterShellTab('tools', tabs.tools);
-  useRegisterShellTab('tools', tabs.findings);
-  useRegisterShellTab('drawer', tabs.drawer);
+  const drawerTabs = changeDrawerTabs({
+    summary: findings ? { summary: findings.summary, mechanical: findings.mechanical.length, conversation: findings.conversation.length, degraded } : null,
+    count: findings ? findings.total : null,
+  });
+  useRegisterShellTab('browser', browserTabs.changes);
+  useRegisterShellTab('browser', browserTabs.branches);
+  useRegisterShellTab('browser', browserTabs.prs);
+  useRegisterShellTab('browser', browserTabs.commits);
+  useRegisterShellTab('tools', toolsTabs.health);
+  useRegisterShellTab('tools', toolsTabs.findings);
+  useRegisterShellTab('tools', toolsTabs.detail);
+  useRegisterShellTab('tools', toolsTabs.planMatch);
+  useRegisterShellTab('tools', toolsTabs.commit);
+  useRegisterShellTab('drawer', drawerTabs.drawer);
 
   const onFailureAction = useFailureActions({ retry: reload, list: () => route.openList(base), noPlan: () => route.setPlan(base, head, null) });
 
@@ -77,13 +94,13 @@ export function ReviewChangeController({ base, head }: { base: string; head: str
       headline={report ? changeHeadline(report.summary, unmeasured) : null}
       failure={state.status === 'failed' ? describeFailure(state.errorCode, state.error) : null}
       degraded={degraded}
-      scope={blast ? { view: blast, picker: { plans, selected: route.plan, selectedTitle: state.data?.plan?.title ?? null, onPick: (id) => route.setPlan(base, head, id) } } : null}
+      scope={scope}
       finding={detail}
       units={units ? { rows: units.rows, more: units.more, selectedPath: state.selectedPath, onSelect: select } : null}
       onBack={() => route.openList(base)}
       onCancel={cancel}
       onFailureAction={onFailureAction}
-      onCloseFinding={() => selectFinding(null)}
+      onCloseFinding={onCloseFinding}
     />
   );
 }
