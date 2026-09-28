@@ -40,3 +40,22 @@ export function mergeStorySource(text, { url, parse }) {
   const after = `---\n${yaml.dump(nextFrontMatter, { lineWidth: -1 }).trimEnd()}\n---\n${body}`;
   return { before, after, changed: before !== after };
 }
+
+/** #387 -- the same merge as `mergeStorySource`, but for one AI-extracted "values" result (design 9.6,
+ * "extraction on every use") instead of a proposed `parse`. Stored alongside `parse` on the matching `sources`
+ * entry as `values`, so a reviewer can see both the selector pattern (if any) and the last verified extraction
+ * for the same url. Never touches `body` or any other front-matter key; refuses to merge onto a url with no
+ * existing `sources` entry (there is nothing to attach the values to). */
+export function mergeStoryValues(text, { url, values }) {
+  if (typeof url !== 'string' || !url) throw new StoryFrontMatterError('url is required.');
+  if (!values || typeof values !== 'object' || Array.isArray(values)) throw new StoryFrontMatterError('values must be a mapping of field name to value.');
+  const before = text;
+  const { frontMatter, body } = readStoryFile(text);
+  const sources = Array.isArray(frontMatter.sources) ? frontMatter.sources.slice() : [];
+  const idx = sources.findIndex((s) => s && s.url === url);
+  if (idx === -1) throw new StoryFrontMatterError(`No source entry for "${url}" yet -- propose a pattern or add it first.`);
+  const nextSources = sources.map((s, i) => (i === idx ? { ...s, values } : s));
+  const nextFrontMatter = { ...frontMatter, sources: nextSources };
+  const after = `---\n${yaml.dump(nextFrontMatter, { lineWidth: -1 }).trimEnd()}\n---\n${body}`;
+  return { before, after, changed: before !== after };
+}

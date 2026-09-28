@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readStoryFile, mergeStorySource, StoryFrontMatterError } from './storyFrontMatter.mjs';
+import { readStoryFile, mergeStorySource, mergeStoryValues, StoryFrontMatterError } from './storyFrontMatter.mjs';
 
 const STORY = `---
 sources:
@@ -63,4 +63,22 @@ test('mergeStorySource rejects a missing url or parse', () => {
 
 test('readStoryFile refuses front matter that is not a mapping', () => {
   assert.throws(() => readStoryFile('---\n- just\n- a list\n---\nbody\n'), StoryFrontMatterError);
+});
+
+test('mergeStoryValues attaches verified extraction values to the matching source entry, keeping its parse', () => {
+  const { after, changed } = mergeStoryValues(STORY, { url: 'https://acme.atlassian.net/browse/STORE-142', values: { title: 'Refund a delivered order' } });
+  assert.equal(changed, true);
+  const { frontMatter, body } = readStoryFile(after);
+  assert.deepEqual(frontMatter.sources[0].values, { title: 'Refund a delivered order' });
+  assert.deepEqual(frontMatter.sources[0].parse.description, 'div.description');
+  assert.ok(body.includes('Written by hand, never touched by this module.'));
+});
+
+test('mergeStoryValues refuses a url with no existing source entry', () => {
+  assert.throws(() => mergeStoryValues(STORY, { url: 'https://example.com/not-added-yet', values: { title: 'x' } }), StoryFrontMatterError);
+});
+
+test('mergeStoryValues rejects a missing url or values', () => {
+  assert.throws(() => mergeStoryValues(STORY, { url: '', values: { a: 'b' } }), StoryFrontMatterError);
+  assert.throws(() => mergeStoryValues(STORY, { url: 'https://x', values: null }), StoryFrontMatterError);
 });

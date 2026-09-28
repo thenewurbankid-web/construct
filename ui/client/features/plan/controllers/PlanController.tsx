@@ -5,6 +5,7 @@ import { blocksShellTab, type BlockRunRequest } from '@/features/blocks';
 import { ProjectGateController } from '@/features/project-gate';
 import { rulesShellTab } from '@/features/rules';
 import { useRegisterShellTab, useShellDrawer, useShellTools } from '@/features/shell';
+import { storyShellTab } from '@/features/story';
 import '../components/plan.css';
 import { buildImpactView } from '../domain/ImpactView';
 import { buildPlanPane } from '../domain/PlanPaneView';
@@ -41,6 +42,11 @@ function PlanScreen({ stageActions, featureDetail }: { stageActions?: ReactNode;
   // slice, reusing the same `/api/validate` call Diagnostics already makes.
   const rulesTab = useMemo(() => rulesShellTab(), []);
   useRegisterShellTab('browser', rulesTab);
+  // #387: the Story tab sits in the Browser pane beside Notes, Features, Blocks and Rules -- AI proposes the
+  // parse pattern once (a diff you approve), later refreshes are mechanical; extraction on every use is
+  // mechanically verified before it is ever shown as a diff.
+  const storyTab = useMemo(() => storyShellTab(), []);
+  useRegisterShellTab('browser', storyTab);
   const view = state.impact ? buildImpactView(state.impact, state.impactSeeds) : null;
   return <PlanPage contextError={state.contextError} impact={{ status: state.impactStatus, error: state.impactError, view }} stageActions={stageActions} featureDetail={featureDetail} />;
 }

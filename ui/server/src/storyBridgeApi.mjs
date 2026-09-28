@@ -15,7 +15,7 @@ import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
 import { featuresRootOf } from './pagesEditor.mjs';
-import { mergeStorySource, StoryFrontMatterError } from './storyFrontMatter.mjs';
+import { mergeStorySource, mergeStoryValues, StoryFrontMatterError } from './storyFrontMatter.mjs';
 
 export const MAX_PAYLOAD_BYTES = 8 * 1024; // selectors are short strings; nothing here should ever be large
 const SELECTOR_MAX_LEN = 200;
@@ -97,6 +97,40 @@ function computeDiff(root, body) {
   return { real, feature, ...merged };
 }
 
+/** #387 -- same shape as `validateBody`, for a `{feature, url, values}` proposal (an AI-extracted result, not
+ * selectors): `values` must be a non-empty mapping of field name to a string or array of strings. */
+function validateValuesBody(body) {
+  const { feature, url, values } = body;
+  if (typeof feature !== 'string' || !feature || feature.includes('/') || feature.includes('..')) {
+    throw new StoryBridgeError(400, 'feature must be a single directory name.');
+  }
+  if (typeof url !== 'string' || !/^https:\/\//i.test(url)) throw new StoryBridgeError(400, 'url must be an https URL.');
+  if (!values || typeof values !== 'object' || Array.isArray(values) || Object.keys(values).length === 0) {
+    throw new StoryBridgeError(400, 'values must be a mapping of field name to value.');
+  }
+  for (const [name, value] of Object.entries(values)) {
+    const isString = typeof value === 'string' && value !== '';
+    const isStringArray = Array.isArray(value) && value.length > 0 && value.every((v) => typeof v === 'string' && v !== '');
+    if (!isString && !isStringArray) throw new StoryBridgeError(422, `${name}: value must be a non-empty string or array of strings.`);
+  }
+  return { feature, url, values };
+}
+
+function computeValuesDiff(root, body) {
+  const { feature, url, values } = validateValuesBody(body);
+  const real = storyPathFor(root, feature);
+  if (!real) throw new StoryBridgeError(404, `No story yet for "${feature}". Add a story first.`);
+  const before = fs.readFileSync(real, 'utf8');
+  let merged;
+  try {
+    merged = mergeStoryValues(before, { url, values });
+  } catch (e) {
+    if (e instanceof StoryFrontMatterError) throw new StoryBridgeError(422, e.message);
+    throw e;
+  }
+  return { real, feature, ...merged };
+}
+
 /** @param {{getRoot: () => {ok:true, root:string} | {ok:false, error:string}, clientOrigin?: string, afterSave?: (root:string, rel:string, isNew?: boolean) => unknown}} deps */
 export function createStoryBridgeRouter({ getRoot, clientOrigin, afterSave }) {
   const router = express.Router();
@@ -131,6 +165,23 @@ export function createStoryBridgeRouter({ getRoot, clientOrigin, afterSave }) {
 
   router.post('/save', handle((root, body) => {
     const { real, feature, after, changed } = computeDiff(root, body);
+    if (!changed) return { status: 200, body: { ok: true, changed: false } };
+    fs.writeFileSync(real, after);
+    const rel = `${featuresRootOf(root)}/${feature}/story.md`;
+    return { status: 200, body: { ok: true, changed: true, autoCommit: afterSave ? afterSave(root, rel, false) : undefined } };
+  }));
+
+  // #387 -- same preview/save shape as above, for a verified AI-extracted `values` result instead of `parse`
+  // selectors (design 9.6, "extraction on every use"). `values` here has already passed
+  // storyVerifyExtraction.mjs's quoted-text check by the time it reaches here; this router only diffs and
+  // writes it, the same way it never re-runs the selector engine for /preview and /save above.
+  router.post('/values-preview', handle((root, body) => {
+    const { before, after, changed } = computeValuesDiff(root, body);
+    return { status: 200, body: { ok: true, before, after, changed } };
+  }));
+
+  router.post('/values-save', handle((root, body) => {
+    const { real, feature, after, changed } = computeValuesDiff(root, body);
     if (!changed) return { status: 200, body: { ok: true, changed: false } };
     fs.writeFileSync(real, after);
     const rel = `${featuresRootOf(root)}/${feature}/story.md`;

@@ -85,6 +85,7 @@ import { createNotesRouter } from './notesApi.mjs';
 import { openNotesStore } from './notesStore.mjs';
 import { createBlocksRouter } from './blocksApi.mjs';
 import { createStoryFetchRouter } from './storyFetchApi.mjs';
+import { createStoryAiRouter } from './storyAiApi.mjs';
 import { openBlockSettingsStore } from './blockSettingsStore.mjs';
 import { handleLogs } from './logBuffer.mjs';
 import { unitsIndex, unitSummary, featuresIndex, featureSummary } from './unitsApi.mjs';
@@ -1169,6 +1170,12 @@ app.use('/api/story', createStoryFetchRouter({
     return root ? { ok: true, root } : { ok: false, status: 409, body: NO_PROJECT_BODY };
   },
 }));
+
+// #387: the AI-assisted story flows -- skeleton preview (no model call), "propose the pattern once" and
+// "extraction on every use" (both one model call, design 9.6). Takes already-fetched `html` only (the fetch and
+// its consent gate are /api/story/fetch above, or the userscript bridge); never touches the filesystem itself,
+// so it needs no project root -- the caller turns a result into a diff via the existing /api/story-bridge routes.
+app.use('/api/story-ai', createStoryAiRouter({ clientOrigin: CLIENT_ORIGIN }));
 
 // #407: the Blocks catalogue and its per-project settings (which blocks are on, default engine and local model). Below the
 // session gate and the project-open gate; the same project root the plan check reads the settings for (planService).
