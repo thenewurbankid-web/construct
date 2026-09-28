@@ -10,12 +10,17 @@ export type LlmCapability = 'importFill' | 'createFill' | 'planAnalysis';
 
 export type LlmProviders = Record<LlmCapability, string>;
 
+/** #471: the installed model each capability should use, or `null` for the provider's own
+ * built-in default (only meaningful while that capability's provider is 'ollama'). */
+export type LlmModels = Record<LlmCapability, string | null>;
+
 /** Same shape ui/server's GET/POST /api/settings returns (see
  * ui/server/src/settings.mjs) — nothing here is persisted to disk;
  * restarting the backend resets it to its defaults. */
 export type Settings = {
   projectDir: string | null;
   llmProviders: LlmProviders;
+  llmModels: LlmModels;
   availableProviders: string[];
   availableProvidersByCapability: Record<LlmCapability, string[]>;
   resolvedProjectRoot: string | null;

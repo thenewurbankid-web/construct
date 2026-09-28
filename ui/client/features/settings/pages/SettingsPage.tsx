@@ -14,7 +14,7 @@ type SettingsPageProps = ReturnType<typeof useSettings> & {
   github?: ReactNode;
 };
 
-export function SettingsPage({ settings, loadError, reload, projectDirInput, setProjectDirInput, llmProviders, setLlmProvider, status, save, pickerOpen, togglePicker, picker, gitSession, remote, github }: SettingsPageProps): ReactNode {
+export function SettingsPage({ settings, loadError, reload, projectDirInput, setProjectDirInput, llmProviders, setLlmProvider, llmModels, setLlmModel, status, save, pickerOpen, togglePicker, picker, gitSession, remote, github }: SettingsPageProps): ReactNode {
   if (!settings) {
     return (
       <div className="page page--screen">
@@ -40,6 +40,8 @@ export function SettingsPage({ settings, loadError, reload, projectDirInput, set
         setProjectDirInput={setProjectDirInput}
         llmProviders={llmProviders}
         setLlmProvider={setLlmProvider}
+        llmModels={llmModels}
+        setLlmModel={setLlmModel}
         availableProviders={settings.availableProviders}
         availableProvidersByCapability={settings.availableProvidersByCapability}
         status={status}

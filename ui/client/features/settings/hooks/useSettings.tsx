@@ -27,15 +27,16 @@ export function useSettings() {
   const togglePicker = useCallback(() => dispatch({ type: 'TOGGLE_PICKER' }), []);
   const chooseDirectory = useCallback((value: string) => dispatch({ type: 'CHOOSE_DIR', value }), []);
   const setLlmProvider = useCallback((capability: LlmCapability, value: string) => dispatch({ type: 'SET_LLM_PROVIDER', capability, value }), []);
+  const setLlmModel = useCallback((capability: LlmCapability, value: string) => dispatch({ type: 'SET_LLM_MODEL', capability, value }), []);
 
   const save = useCallback(async () => {
-    const result = await saveSettings({ projectDir: state.projectDirInput, llmProviders: state.llmProviders });
+    const result = await saveSettings({ projectDir: state.projectDirInput, llmProviders: state.llmProviders, llmModels: state.llmModels });
     if (result.error) {
       dispatch({ type: 'SAVE_ERROR', message: result.error });
     } else {
       dispatch({ type: 'SAVE_OK', settings: result });
     }
-  }, [state.projectDirInput, state.llmProviders]);
+  }, [state.projectDirInput, state.llmProviders, state.llmModels]);
 
   return {
     settings: state.settings,
@@ -45,6 +46,8 @@ export function useSettings() {
     setProjectDirInput,
     llmProviders: state.llmProviders,
     setLlmProvider,
+    llmModels: state.llmModels,
+    setLlmModel,
     status: state.status,
     pickerOpen: state.pickerOpen,
     togglePicker,

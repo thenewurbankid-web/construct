@@ -1,8 +1,8 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Button, Field, Input, Select } from '@/components/ui';
-import type { LlmCapability, LlmProviders, SaveStatus } from '../types';
+import type { LlmCapability, LlmModels, LlmProviders, SaveStatus } from '../types';
 
 type CapabilityRow = { capability: LlmCapability; label: string; hint: string };
 
@@ -31,11 +31,34 @@ const CAPABILITY_ROWS: CapabilityRow[] = [
   },
 ];
 
+// #471: same free-text pattern as the per-block model field (BlockCard.tsx) — an installed
+// model's own name, not a chosen-from-a-list value, so there is exactly one place (the backend's
+// MODEL_RE, shared from blockSettingsStore.mjs) that decides what a valid model name looks like.
+// Local draft state so a keystroke doesn't fire a save; committed onBlur, matching BlockCard.
+function ModelField({ capability, value, onChange }: { capability: LlmCapability; value: string | null; onChange: (value: string) => void }) {
+  const [draft, setDraft] = useState(value ?? '');
+  return (
+    <Input
+      id={`llm-model-${capability}`}
+      type="text"
+      value={draft}
+      placeholder="— the provider's own default —"
+      spellCheck={false}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => {
+        if (draft !== (value ?? '')) onChange(draft);
+      }}
+    />
+  );
+}
+
 type SettingsFormProps = {
   projectDirInput: string;
   setProjectDirInput: (v: string) => void;
   llmProviders: LlmProviders;
   setLlmProvider: (capability: LlmCapability, value: string) => void;
+  llmModels: LlmModels;
+  setLlmModel: (capability: LlmCapability, value: string) => void;
   availableProviders: string[];
   availableProvidersByCapability: Record<LlmCapability, string[]>;
   status: SaveStatus | null;
@@ -50,6 +73,8 @@ export function SettingsForm({
   projectDirInput,
   llmProviders,
   setLlmProvider,
+  llmModels,
+  setLlmModel,
   availableProvidersByCapability,
   status,
   onSave,
@@ -93,6 +118,14 @@ export function SettingsForm({
               <option key={p} value={p}>{p}</option>
             ))}
           </Select>
+          {llmProviders[capability] === 'ollama' && (
+            <Field
+              label={`${label}: which installed model`}
+              hint="An installed Ollama model's own name (see the Local Model screen), or leave it blank to use that provider's built-in default."
+            >
+              <ModelField capability={capability} value={llmModels[capability]} onChange={(value) => setLlmModel(capability, value)} />
+            </Field>
+          )}
         </Field>
       ))}
 
