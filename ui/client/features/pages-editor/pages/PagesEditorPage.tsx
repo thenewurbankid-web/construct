@@ -1,8 +1,11 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { EditorBreadcrumb } from '../components/EditorBreadcrumb';
+import { EditorTabStrip, type EditorTab } from '../components/EditorTabStrip';
 import { LivePreviewPanel } from '../components/LivePreviewPanel';
 import { NavigatorPanel } from '../components/NavigatorPanel';
 import { PreviewPanel } from '../components/PreviewPanel';
 import { PropFlowDiagram } from '../components/PropFlowDiagram';
+import { StageSourceView } from '../components/StageSourceView';
 import type { usePagesEditor } from '../hooks/usePagesEditor';
 
 type PagesEditorPageProps = ReturnType<typeof usePagesEditor> & {
@@ -17,11 +20,24 @@ type PagesEditorPageProps = ReturnType<typeof usePagesEditor> & {
 // its Tools tabs (see usePagesEditorTabs); this renders what you look at: the
 // live app preview, the structural mirror and the prop-flow diagram.
 export function PagesEditorPage(props: PagesEditorPageProps): ReactNode {
-  const { tree, error, selectedNodeId, selectNode, previewTitle, externalChange, livePreview, gitSession, devServer } = props;
+  const { tree, error, selectedNodeId, selectedNode, selectNode, previewTitle, externalChange, livePreview, gitSession, devServer, feature, file } = props;
   // #456: full screen is the app and nothing else. Everything but the preview is
   // hidden rather than unmounted, so the tree, the diagram and the selection are
   // exactly as they were on the way back out.
   const full = livePreview.fullScreen;
+
+  // The stage's own tab strip (#375): Preview is pinned; opening a file's source adds a
+  // second tab. Local to this component -- a different file opening resets it to Preview
+  // so a closed Source tab from the previous page never lingers.
+  const [stageTab, setStageTab] = useState<'preview' | 'source'>('preview');
+  useEffect(() => setStageTab('preview'), [file]);
+
+  const stageTabs: EditorTab[] = tree
+    ? [
+        { id: 'preview', title: 'Preview', pinned: true },
+        ...(stageTab === 'source' ? [{ id: 'source', title: file, onClose: () => setStageTab('preview') }] : []),
+      ]
+    : [];
 
   return (
     <div className={full ? 'page pages-editor-page pe-stage pe-stage--full' : 'page pages-editor-page pe-stage'}>
@@ -48,12 +64,34 @@ export function PagesEditorPage(props: PagesEditorPageProps): ReactNode {
       </div>
 
       {tree && (
+        <div hidden={full}>
+          <EditorBreadcrumb feature={feature} file={file} nodeLabel={selectedNode?.tag} />
+          <div className="pe-tabstrip-row">
+            <EditorTabStrip tabs={stageTabs} activeId={stageTab} onSelect={(id) => setStageTab(id as 'preview' | 'source')} />
+            {stageTab === 'preview' && (
+              <button type="button" className="pe-view-source" onClick={() => setStageTab('source')}>
+                Open source
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {tree && (
         <>
-          <LivePreviewPanel {...livePreview.view} />
+          <div hidden={stageTab !== 'preview'}>
+            <LivePreviewPanel {...livePreview.view} />
+          </div>
           <div hidden={full}>
-            <PreviewPanel roots={tree.roots} selectedId={selectedNodeId} onSelect={selectNode} titleFor={previewTitle} />
-            <NavigatorPanel feature={props.feature} file={props.file} contentHash={tree.contentHash} />
-            <PropFlowDiagram roots={tree.roots} />
+            {stageTab === 'source' ? (
+              <StageSourceView feature={feature} file={file} contentHash={tree.contentHash} />
+            ) : (
+              <>
+                <PreviewPanel roots={tree.roots} selectedId={selectedNodeId} onSelect={selectNode} titleFor={previewTitle} />
+                <NavigatorPanel feature={feature} file={file} contentHash={tree.contentHash} />
+                <PropFlowDiagram roots={tree.roots} />
+              </>
+            )}
           </div>
         </>
       )}

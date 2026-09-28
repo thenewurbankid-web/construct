@@ -2056,6 +2056,36 @@ button:disabled {
 .pe-stage .live-preview-panel,
 .pe-stage .preview-panel { margin-top: 0; margin-bottom: var(--sp-3); }
 .pe-stage .preview-panel { max-height: 60vh; }
+
+/* Stage tab strip + breadcrumb (#375): Preview is pinned first, opening a file's
+ * source joins it as a closeable tab -- an IDE-style tab strip above the stage,
+ * separate from the shell's own Tools tablist. */
+.pe-breadcrumb { font-size: var(--fs-sm); color: var(--text-muted); margin-bottom: var(--sp-1); }
+.pe-breadcrumb-sep { color: var(--text-muted); }
+.pe-breadcrumb-current { color: var(--text); font-weight: 600; }
+.pe-tabstrip-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); border-bottom: 1px solid var(--border-subtle); margin-bottom: var(--sp-2); }
+.pe-tabstrip { display: flex; gap: 2px; }
+.pe-tab { display: inline-flex; align-items: center; gap: 4px; }
+.pe-tab-select {
+  appearance: none;
+  min-height: 32px;
+  padding: 0 var(--sp-2);
+  white-space: nowrap;
+  font-size: var(--fs-md);
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+.pe-tab-select:hover { color: var(--text); }
+.pe-tab--active .pe-tab-select { color: var(--text); font-weight: 600; border-bottom-color: var(--accent); }
+.pe-tab--pinned .pe-tab-select::before { content: '\25CF '; font-size: 0.6em; vertical-align: middle; opacity: 0.6; }
+.pe-tab-close { appearance: none; background: transparent; border: 0; color: var(--text-muted); cursor: pointer; padding: 0 var(--sp-1); line-height: 1; }
+.pe-tab-close:hover { color: var(--text); }
+.pe-view-source { background: transparent; color: var(--accent); border: 1px solid var(--border-subtle); border-radius: 6px; padding: var(--sp-1) var(--sp-2); font: inherit; cursor: pointer; }
+.pe-view-source:hover { background: var(--hover); }
+.pe-stage-source { margin-bottom: var(--sp-3); }
 .pe-changed {
   margin: 0 0 var(--sp-3);
   padding: 6px 10px;
