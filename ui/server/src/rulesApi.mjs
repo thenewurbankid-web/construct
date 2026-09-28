@@ -14,11 +14,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
 import { listRules } from '../../../packages/core/rules-catalog.mjs';
-import { DEFAULT_RULES } from '../../../packages/core/config.mjs';
+import { DEFAULT_RULES, loadConfig } from '../../../packages/core/config.mjs';
 import { validateArchitectureConfig } from '../../../packages/core/validate-architecture-config.mjs';
 
 /** @returns {{status:number, body:object}} */
-export const rulesIndex = (root) => ({ status: 200, body: { ok: true, rules: listRules(root) } });
+export const rulesIndex = (root) => ({ status: 200, body: { ok: true, rules: listRules(root), exceptions: readExceptions(root) } });
 
 const VALID_SEVERITIES = new Set(['error', 'warning', 'off']);
 const err = (status, code, error, extra) => ({ status, body: { ok: false, code, error, ...extra } });
@@ -28,6 +28,20 @@ const hashOf = (text) => crypto.createHash('sha256').update(text).digest('hex');
 function readRaw(root) {
   const file = archPath(root);
   return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+}
+
+/** Every exception in the project's architecture.yml, in display form: its own list index (the
+ * only stable handle a client has to remove one -- exceptions carry no id of their own), whether
+ * it has expired, and `expires` normalized to a plain ISO-date string (js-yaml parses an unquoted
+ * date scalar into a real `Date`, which JSON.stringify would otherwise turn into a full timestamp). */
+function readExceptions(root) {
+  const { exceptions } = loadConfig(root);
+  const now = Date.now();
+  return exceptions.map((e, index) => {
+    const rules = e.rule ? [e.rule] : e.rules || [];
+    const expires = e.expires instanceof Date ? e.expires.toISOString().slice(0, 10) : e.expires ?? null;
+    return { index, path: e.path, rules, expires, reason: e.reason ?? null, expired: !!expires && new Date(expires).getTime() < now };
+  });
 }
 
 /** The parsed mapping a raw architecture.yml text represents, or `{}` for an empty/missing file.
@@ -62,6 +76,49 @@ export function ruleSeveritySave(root, body) {
   return { status: 200, body: { ok: true, ruleId, severity, contentHash: hashOf(after), rules: listRules(root) } };
 }
 
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Preview or save adding/removing one exception (#395 slice C). `action: 'add'` needs a `path`
+ * glob and a `rule` id (an existing, known rule -- `rules:` arrays are not exposed by this UI
+ * yet, one rule per exception); `expires`/`reason` are optional. `action: 'remove'` needs the
+ * `index` readExceptions() reported for that entry -- indexes are only ever valid for the
+ * architecture.yml text they were read from, which is exactly what `contentHash` guards against
+ * drifting out from under a remove. Same preview/commit/contentHash/validateArchitectureConfig
+ * shape as ruleSeveritySave. */
+export function ruleExceptionSave(root, body) {
+  const { action, contentHash, commit } = body ?? {};
+  const before = readRaw(root);
+  const proposed = parseRaw(before);
+  const exceptions = [...(proposed.exceptions || [])];
+
+  if (action === 'add') {
+    const { path: glob, rule, expires, reason } = body;
+    if (typeof glob !== 'string' || !glob) return err(400, 'BAD_PATH', 'path is required.');
+    if (typeof rule !== 'string' || !DEFAULT_RULES[rule]) return err(400, 'BAD_RULE', 'Unknown rule id.');
+    if (expires !== undefined && expires !== null && expires !== '' && !DATE_RE.test(expires)) {
+      return err(400, 'BAD_EXPIRES', 'expires must be an ISO date (YYYY-MM-DD) or omitted.');
+    }
+    exceptions.push({ path: glob, rule, ...(expires ? { expires } : {}), ...(reason ? { reason } : {}) });
+  } else if (action === 'remove') {
+    const { index } = body;
+    if (typeof index !== 'number' || !exceptions[index]) return err(400, 'BAD_INDEX', 'That exception no longer exists at that index.');
+    exceptions.splice(index, 1);
+  } else {
+    return err(400, 'BAD_ACTION', "action must be 'add' or 'remove'.");
+  }
+  proposed.exceptions = exceptions;
+
+  if (commit !== true) {
+    return { status: 200, body: { ok: true, before, after: yaml.dump(proposed), contentHash: hashOf(before), changed: true } };
+  }
+  if (contentHash !== hashOf(before)) return err(409, 'CHANGED_ON_DISK', 'architecture.yml changed on disk since it was loaded; re-read it and redo the edit.');
+  const { valid, errors } = validateArchitectureConfig(proposed);
+  if (!valid) return err(422, 'INVALID', 'That change would produce an invalid architecture.yml.', { errors });
+  const after = yaml.dump(proposed);
+  fs.writeFileSync(archPath(root), after);
+  return { status: 200, body: { ok: true, contentHash: hashOf(after), exceptions: readExceptions(root) } };
+}
+
 /** @param {{getRoot: () => {ok:true, root:string} | {ok:false, error:string}, clientOrigin?: string, afterSave?: (root:string, rel:string) => unknown}} deps */
 export function createRulesRouter({ getRoot, clientOrigin, afterSave = () => null }) {
   const router = express.Router();
@@ -86,6 +143,11 @@ export function createRulesRouter({ getRoot, clientOrigin, afterSave = () => nul
   router.get('/', handle((root) => rulesIndex(root)));
   router.post('/severity', handle((root, req) => {
     const out = ruleSeveritySave(root, req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {});
+    if (out.status === 200 && out.body.ok && req.body?.commit === true) afterSave(root, 'architecture.yml');
+    return out;
+  }));
+  router.post('/exceptions', handle((root, req) => {
+    const out = ruleExceptionSave(root, req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {});
     if (out.status === 200 && out.body.ok && req.body?.commit === true) afterSave(root, 'architecture.yml');
     return out;
   }));

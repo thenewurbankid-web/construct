@@ -27,3 +27,16 @@
 .ru-diff-after { color: var(--success, var(--text)); }
 .ru-edit-actions { display: flex; gap: var(--sp-1); }
 .ru-edit-error { margin: 0; color: var(--danger); }
+.ru-page { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+.ru-exceptions { padding: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2); border-top: 1px solid var(--border-subtle); }
+.ru-exceptions-title { margin: 0; font-size: var(--fs-sm); font-weight: 600; }
+.ru-exceptions-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.ru-exception-row { padding: var(--sp-2); border: 1px solid var(--border-subtle); border-radius: var(--r-md); background: var(--surface-2); }
+.ru-exception-head { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.ru-exception-path { margin: 0; font-family: var(--mono); font-size: var(--fs-sm); flex: 1 1 auto; min-width: 0; }
+.ru-exception-rules { margin: 0; color: var(--text-muted); font-size: var(--fs-sm); }
+.ru-exception-expires { font-size: var(--fs-sm); color: var(--text-muted); white-space: nowrap; }
+.ru-exception-expires--expired { color: var(--danger); font-weight: 600; }
+.ru-exception-reason { margin: var(--sp-1) 0 0; color: var(--text-muted); }
+.ru-exception-form { display: flex; gap: var(--sp-1); flex-wrap: wrap; align-items: center; }
+.ru-exception-form input, .ru-exception-form select { font-size: var(--fs-sm); padding: 2px var(--sp-1); border-radius: var(--r-sm); border: 1px solid var(--border-subtle); background: var(--surface-1); color: inherit; }

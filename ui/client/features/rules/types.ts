@@ -64,3 +64,50 @@ export type RuleEditApi = {
   confirm: () => void;
   cancel: () => void;
 };
+
+// #395 slice C -- scoped, time-boxed exceptions (architecture.yml `exceptions:`).
+export type ExceptionRow = {
+  /** Its position in architecture.yml's `exceptions:` list -- the only handle a client has to
+   * remove one (exceptions carry no id of their own); only valid for the text it was read from. */
+  index: number;
+  path: string;
+  rules: string[];
+  expires: string | null;
+  reason: string | null;
+  expired: boolean;
+};
+
+export type ExceptionsStatus = 'idle' | 'running' | 'ready' | 'error';
+export type ExceptionsState = { status: ExceptionsStatus; rows: ExceptionRow[]; error: string | null };
+export type ExceptionsAction = { type: 'RUN' } | { type: 'RESULT'; rows: ExceptionRow[] } | { type: 'FAIL'; error: string };
+
+export type NewException = { path: string; rule: string; expires: string; reason: string };
+
+/** One exception add-or-remove, as a reviewable diff before it is saved -- same shape as RuleEditState. */
+export type ExceptionEditStatus = 'previewing' | 'ready' | 'saving' | 'error';
+
+export type ExceptionEditState = {
+  kind: 'add' | 'remove';
+  status: ExceptionEditStatus;
+  before: string;
+  after: string;
+  contentHash: string;
+  error: string | null;
+} | null;
+
+export type ExceptionEditAction =
+  | { type: 'START'; kind: 'add' | 'remove' }
+  | { type: 'PREVIEW_OK'; before: string; after: string; contentHash: string }
+  | { type: 'PREVIEW_FAIL'; error: string }
+  | { type: 'SAVE' }
+  | { type: 'SAVE_FAIL'; error: string }
+  | { type: 'CANCEL' };
+
+export type ExceptionsApi = {
+  state: ExceptionsState;
+  edit: ExceptionEditState;
+  addDraft: (draft: NewException) => void;
+  removeAt: (index: number) => void;
+  confirm: () => void;
+  cancel: () => void;
+};
