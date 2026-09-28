@@ -31,7 +31,7 @@ function buildFile(ctx, p, detail, kind) {
   const featureMatch = p.match(new RegExp(`^${ctx.featuresRoot()}/([^/]+)/`));
   const wf = f.layer === 'workflow' ? machinesOf(ctx, [p], { withStates: d >= 2 }) : null;
   const sections = {
-    file: { path: p, layer: f.layer, loc: f.loc, purpose: f.purpose, ...(f.error ? { error: f.error } : {}) },
+    file: { path: p, layer: f.layer, loc: f.loc, purpose: f.purpose, ...(f.frozen ? { frozen: true } : {}), ...(f.error ? { error: f.error } : {}) },
     exports: d === 0 ? f.exports.map((e) => e.name) : f.exports,
     ...(f.props?.length ? { props: f.props } : {}),
     ...(f.endpoints?.length ? { endpoints: f.endpoints } : {}),
@@ -68,7 +68,7 @@ function fileKind(kind) {
   return {
     kind,
     description: kind === 'file' ? 'Any source file (purpose, exports/signatures, props, endpoints, imports, users, rules, tests).' : `${LAYER_DESC[kind]}, addressed by path, file name, export name, or feature/name.`,
-    list: (ctx) => layerFiles(ctx).map((p) => ({ id: p, name: path.basename(p), path: p })),
+    list: (ctx) => layerFiles(ctx).map((p) => ({ id: p, name: path.basename(p), path: p, ...(ctx.isFrozen(p) ? { frozen: true } : {}) })),
     resolve: (ctx, ref, { explicit } = {}) => {
       const r = norm(ref);
       if (isFile(ctx, r) && SOURCE_EXT.has(path.extname(r))) {

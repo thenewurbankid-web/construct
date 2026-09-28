@@ -31,7 +31,7 @@ export function buildFeatureView(summary: FeatureSummaryResponse): FeatureView |
   const order = [...LAYER_ORDER.filter((l) => present.includes(l)), ...present.filter((l) => !LAYER_ORDER.includes(l))];
   const layers = order.map((layer) => ({
     layer,
-    files: (files[layer] ?? []).map<FeatureFile>((f) => ({ path: f.path, purpose: f.purpose, loc: f.loc, href: fileHref(summary.name, layer, f.path) })),
+    files: (files[layer] ?? []).map<FeatureFile>((f) => ({ path: f.path, purpose: f.purpose, loc: f.loc, href: fileHref(summary.name, layer, f.path), frozen: f.frozen })),
   }));
   return {
     name: summary.name,

@@ -159,7 +159,7 @@ export function listUnits(root, { kind, registry = defaultUnitRegistry() } = {})
   try {
     if (typeof root !== 'string' || !fs.existsSync(root)) return fail('ROOT_NOT_FOUND', `Project root not found: ${root}`);
     const ctx = createContext(path.resolve(root));
-    const one = (k) => k.list(ctx).map((u) => ({ kind: k.kind, id: u.id, name: u.name ?? u.id, ...(u.path ? { path: u.path } : {}), ref: refOf(k.kind, u.id) }));
+    const one = (k) => k.list(ctx).map((u) => ({ kind: k.kind, id: u.id, name: u.name ?? u.id, ...(u.path ? { path: u.path } : {}), ...(u.frozen ? { frozen: true } : {}), ref: refOf(k.kind, u.id) }));
     if (kind) {
       const k = registry.get(kind);
       if (!k) return fail('UNKNOWN_KIND', `Unknown unit kind "${kind}".`, { validKinds: registry.names() });

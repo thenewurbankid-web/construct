@@ -5,8 +5,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { loadConfig } from '../../core/config.mjs';
 import { walk, rel } from '../../core/fs.mjs';
-import { loadLayerGraph, classifyProjectFile } from '../../core/architecture-graph.mjs';
-import { readFrozenGlobs } from '../../core/frozen.mjs';
+import { loadLayerGraph, classifyFile } from '../../core/architecture-graph.mjs';
+import { readFrozenGlobs, matchFrozen } from '../../core/frozen.mjs';
 import { parseToAst, walkAst } from '../../../packages/ast/index.mjs';
 import { readPathAliases, resolveImportSpecifier } from '../../core/route-resolver.mjs';
 import { DEFAULT_ENFORCERS } from '../defaultEnforcers.mjs';
@@ -31,7 +31,16 @@ export function createContext(root) {
     featuresRoot: () => ctx.config().features?.root || 'features',
     allFiles: lazy('files', () => walk(root).map((p) => rel(root, p)).filter((p) => !p.startsWith('.claude/')).sort()),
     sourceFiles: () => ctx.allFiles().filter((p) => SOURCE_EXTENSIONS_OK(p)),
-    layerOf: (relPath) => classifyProjectFile(root, relPath, { graph: ctx.graph(), frozenGlobs: ctx.frozen() }),
+    // Documentation reads the file's real layer even when it is frozen (#478): a frozen page is
+    // still a page, just read-only. `isFrozen` is how callers that need to enforce/skip (the
+    // rule engine, via `matchFrozen` directly) or annotate ("🔒 frozen") tell the two apart.
+    layerOf: (relPath) => classifyFile(relPath, ctx.graph()),
+    isFrozen: (relPath) => {
+      const frozenGlobs = ctx.frozen();
+      if (!frozenGlobs.length) return false;
+      const abs = path.isAbsolute(relPath) ? relPath : path.join(root, relPath);
+      return Boolean(matchFrozen(root, abs, frozenGlobs));
+    },
     facts: (relPath) => (memo['f:' + relPath] ||= fileFacts(ctx, relPath)),
     violations: lazy('viol', () => {
       try { return aggregateValidation(root, DEFAULT_ENFORCERS).violations; } catch (e) { return [{ rule: 'VALIDATION-ERROR', severity: 'error', file: '', message: String(e.message || e) }]; }
@@ -106,12 +115,13 @@ function docgenProps(source, filename) {
 export function fileFacts(ctx, relPath) {
   const abs = path.join(ctx.root, relPath);
   const layer = ctx.layerOf(relPath);
+  const frozen = ctx.isFrozen(relPath);
   let source;
   try {
     if (!fs.realpathSync(abs).startsWith(fs.realpathSync(ctx.root) + path.sep)) throw new Error('outside root');
     source = fs.readFileSync(abs, 'utf8');
-  } catch { return { path: relPath, layer, error: 'unreadable', exports: [], imports: [], resolvedImports: [], external: [], props: [], endpoints: [], loc: 0, purpose: '' }; }
-  const base = { path: relPath, layer, loc: source.split('\n').length };
+  } catch { return { path: relPath, layer, frozen, error: 'unreadable', exports: [], imports: [], resolvedImports: [], external: [], props: [], endpoints: [], loc: 0, purpose: '' }; }
+  const base = { path: relPath, layer, frozen, loc: source.split('\n').length };
   let ast;
   try { ast = parseToAst(source); } catch (e) { return { ...base, error: `parse error: ${String(e.message).split('\n')[0]}`, exports: [], imports: [], resolvedImports: [], external: [], props: [], endpoints: [], purpose: '' }; }
 
@@ -184,6 +194,7 @@ export function fileFacts(ctx, relPath) {
 /** Compact file entry used in every kind's `files` section. */
 export const fileEntry = (f, { withExports = false } = {}) => ({
   path: f.path, layer: f.layer, loc: f.loc, purpose: f.purpose,
+  ...(f.frozen ? { frozen: true } : {}),
   ...(withExports ? { exports: f.exports.map((e) => e.signature || e.name) } : {}),
   ...(f.error ? { error: f.error } : {}),
 });

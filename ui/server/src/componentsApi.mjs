@@ -40,7 +40,7 @@ export function listComponents(root) {
   const base = `${featuresRootOf(root)}/`;
   return r.units
     .filter((u) => typeof u.path === 'string')
-    .map((u) => ({ name: noExt(u.path.split('/').pop() ?? u.path), path: u.path, feature: u.path.startsWith(base) ? u.path.slice(base.length).split('/')[0] || null : null }))
+    .map((u) => ({ name: noExt(u.path.split('/').pop() ?? u.path), path: u.path, feature: u.path.startsWith(base) ? u.path.slice(base.length).split('/')[0] || null : null, ...(u.frozen ? { frozen: true } : {}) }))
     .sort((a, b) => a.name.localeCompare(b.name) || a.path.localeCompare(b.path));
 }
 
@@ -80,7 +80,7 @@ export async function componentDescribe(root, rel, options = {}) {
   if (p.fail) return p.fail;
   const result = await describeComponent(root, rel, options);
   const propLinks = await propLinkFindings(root, rel, result);
-  return { status: 200, body: { ...result, name: p.entry.name, feature: p.entry.feature, propLinks } };
+  return { status: 200, body: { ...result, name: p.entry.name, feature: p.entry.feature, ...(p.entry.frozen ? { frozen: true } : {}), propLinks } };
 }
 
 /** #473 (PROP-LINK) diagnostics for one component file, in the same normalized shape
@@ -109,7 +109,7 @@ export async function componentSource(root, rel) {
     /* a file that does not parse has no diagnostics we can compute; it still opens as plain text */
   }
   diagnostics = [...diagnostics, ...(await propLinkDiagnostics(root, rel, source))];
-  return { status: 200, body: { ok: true, path: rel, name: p.entry.name, feature: p.entry.feature, source, contentHash: hashOf(source), editable: Buffer.byteLength(source, 'utf8') <= MAX_EDIT_BYTES, diagnostics } };
+  return { status: 200, body: { ok: true, path: rel, name: p.entry.name, feature: p.entry.feature, ...(p.entry.frozen ? { frozen: true } : {}), source, contentHash: hashOf(source), editable: !p.entry.frozen && Buffer.byteLength(source, 'utf8') <= MAX_EDIT_BYTES, diagnostics } };
 }
 
 /** #380 "Used by": which pages import this component, transitively, with the feature each lands in.
@@ -154,6 +154,10 @@ export function componentSave(root, body, { afterSave = () => null } = {}) {
   if (Buffer.byteLength(content, 'utf8') > MAX_EDIT_BYTES) return err(413, 'TOO_LARGE', 'That file would be too large to save here.');
   const before = fs.readFileSync(p.real, 'utf8');
   if (commit !== true) return { status: 200, body: { ok: true, before, after: content, contentHash: hashOf(before), changed: before !== content } };
+  // #478: frozen files are now listed (read-only to Construct), which also makes them pickable
+  // here for the first time -- `checkEnforcement` never blocks this, since PAGE-007/COMPONENT-004
+  // only flag OTHER files that duplicate a frozen one, not edits to the frozen file itself.
+  if (p.entry.frozen) return err(422, 'FROZEN', 'This file is frozen (externally authored) and is read-only to Construct.');
   if (contentHash !== hashOf(before)) return err(409, 'CHANGED_ON_DISK', 'The file changed on disk since it was loaded; re-read it and redo the edit.');
   if (before === content) return { status: 200, body: { ok: true, unchanged: true, path: rel, contentHash: hashOf(before), violations: [] } };
   const enforcement = checkEnforcement(root, rel, content);

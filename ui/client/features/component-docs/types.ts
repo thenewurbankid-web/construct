@@ -1,8 +1,9 @@
 import type { SourceDiagnostic } from '@/features/pages-editor';
 import type { DiffHunk, WorkflowMachine } from '@/features/workflows';
 
-/** One component file of the open project, as GET /api/components lists it. `feature` is null outside features/. */
-export type ComponentEntry = { name: string; path: string; feature: string | null };
+/** One component file of the open project, as GET /api/components lists it. `feature` is null outside features/.
+ * `frozen` (#478): externally-authored, read-only to Construct -- still listed and documented, never editable. */
+export type ComponentEntry = { name: string; path: string; feature: string | null; frozen?: boolean };
 
 export type PropDoc = { name: string; type: string; required: boolean; default: string | null; description: string };
 
@@ -14,7 +15,7 @@ export type DescribeResponse =
   | { ok: false; code?: string; error?: string; path?: string };
 
 export type SourceResponse =
-  | { ok: true; path: string; name: string; feature: string | null; source: string; contentHash: string; editable: boolean; diagnostics: SourceDiagnostic[] }
+  | { ok: true; path: string; name: string; feature: string | null; frozen?: boolean; source: string; contentHash: string; editable: boolean; diagnostics: SourceDiagnostic[] }
   | { ok: false; code?: string; error?: string };
 
 export type PreviewResponse = { ok: true; before: string; after: string; contentHash: string; changed: boolean } | { ok: false; code?: string; error?: string };
@@ -47,7 +48,7 @@ export type EditPhase = 'clean' | 'dirty' | 'checking' | 'preview' | 'saving';
 
 export type EditState = {
   /** The file as loaded: what "clean" means and what the hash guards. */
-  loaded: { path: string; source: string; contentHash: string; editable: boolean } | null;
+  loaded: { path: string; source: string; contentHash: string; editable: boolean; frozen?: boolean } | null;
   draft: string;
   phase: EditPhase;
   hunks: DiffHunk[];
@@ -59,7 +60,7 @@ export type EditState = {
 };
 
 export type EditAction =
-  | { type: 'LOAD'; loaded: { path: string; source: string; contentHash: string; editable: boolean } }
+  | { type: 'LOAD'; loaded: { path: string; source: string; contentHash: string; editable: boolean; frozen?: boolean } }
   | { type: 'EDIT'; draft: string }
   | { type: 'CHECKING' }
   | { type: 'PREVIEW'; hunks: DiffHunk[] }

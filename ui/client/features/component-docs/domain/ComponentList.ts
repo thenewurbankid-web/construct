@@ -3,7 +3,11 @@ import type { ComponentEntry, DescribeResponse, DocView } from '../types.ts';
 
 /** A list row: the file's name, and where it lives ("billing · features/billing/components/BillingView.tsx"). */
 export function toListItems(entries: ComponentEntry[]): { id: string; label: string; detail: string }[] {
-  return entries.map((c) => ({ id: c.path, label: c.name, detail: c.feature ? `${c.feature} · ${c.path}` : c.path }));
+  return entries.map((c) => ({
+    id: c.path,
+    label: c.frozen ? `🔒 ${c.name}` : c.name,
+    detail: c.feature ? `${c.feature} · ${c.path}` : c.path,
+  }));
 }
 
 /** The entry for a path only when it is in the list (a stale or hand-edited ?component= selects nothing). */

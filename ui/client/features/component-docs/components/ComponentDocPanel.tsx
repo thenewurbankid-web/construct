@@ -15,6 +15,9 @@ export function ComponentDocPanel({ entry, view, reason }: Props) {
   return (
     <section className="cd-doc" data-testid="cd-doc" aria-labelledby="cd-title">
       <h2 className="cd-h2" id="cd-title" data-testid="cd-name">{entry.name}</h2>
+      {entry.frozen && (
+        <p className="cd-hint" data-testid="cd-frozen">🔒 Frozen file · read-only to Construct (externally authored, wrapped not edited).</p>
+      )}
       <dl className="cd-meta">
         <div>
           <dt>Feature</dt>

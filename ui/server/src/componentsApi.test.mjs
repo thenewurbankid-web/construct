@@ -268,6 +268,43 @@ test('save: an edit that breaks an architecture rule is blocked (422) and the fi
   });
 });
 
+const FROZEN_PATH = 'features/shop/components/Locked.tsx';
+function frozenProject() {
+  const dir = project();
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), `${YML}frozen:\n  - ${FROZEN_PATH}\n`);
+  fs.writeFileSync(path.join(dir, FROZEN_PATH), 'export function Locked() {\n  return <b />;\n}\n');
+  return dir;
+}
+
+// #478: a frozen file is read-only to Construct, not invisible to it -- it must still show up
+// in the list, describe with its props, and read as source, all flagged `frozen: true`; only the
+// write path refuses it.
+test('#478: a frozen component is still listed, describable and readable, but never writable', async () => {
+  const dir = frozenProject();
+  await withStack({ dir }, async ({ json }) => {
+    const list = await json('GET', '/api/components');
+    assert.equal(list.status, 200);
+    const locked = list.body.components.find((c) => c.path === FROZEN_PATH);
+    assert.ok(locked, 'frozen component missing from the list');
+    assert.equal(locked.frozen, true);
+
+    const described = await json('GET', `/api/components/describe?path=${q(FROZEN_PATH)}`);
+    assert.equal(described.status, 200);
+    assert.equal(described.body.ok, true);
+    assert.equal(described.body.frozen, true);
+
+    const src = await json('GET', `/api/components/source?path=${q(FROZEN_PATH)}`);
+    assert.equal(src.status, 200);
+    assert.equal(src.body.frozen, true);
+    assert.equal(src.body.editable, false);
+
+    const save = await json('POST', '/api/components/save', { body: { path: FROZEN_PATH, content: 'export function Locked() { return <i />; }\n', commit: true, contentHash: src.body.contentHash } });
+    assert.equal(save.status, 422);
+    assert.equal(save.body.code, 'FROZEN');
+    assert.equal(fs.readFileSync(path.join(dir, FROZEN_PATH), 'utf8'), 'export function Locked() {\n  return <b />;\n}\n');
+  });
+});
+
 test('save: bad content, oversize content, a foreign Origin and a non-JSON body are refused', async () => {
   await withStack({}, async ({ dir, json, call }) => {
     const src = (await json('GET', `/api/components/source?path=${q(VIEW_PATH)}`)).body;

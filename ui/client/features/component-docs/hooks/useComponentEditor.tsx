@@ -26,7 +26,7 @@ export function useComponentEditor(path: string | null, onSaved: () => void) {
       .then((r) => {
         if (!live) return;
         if (r.ok) {
-          dispatch({ type: 'LOAD', loaded: { path: r.path, source: r.source, contentHash: r.contentHash, editable: r.editable } });
+          dispatch({ type: 'LOAD', loaded: { path: r.path, source: r.source, contentHash: r.contentHash, editable: r.editable, frozen: r.frozen } });
           setDiagnostics(r.diagnostics);
         } else setLoadError(r.error ?? 'The file could not be read.');
       })

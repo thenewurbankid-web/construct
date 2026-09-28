@@ -6,7 +6,7 @@ export type FeatureRow = { name: string; path: string; ref: string; summary?: st
 
 export type FeatureIndexResponse = { ok: true; features: FeatureRow[] } | { ok: false; error?: { message?: string } };
 
-export type SummaryFile = { path: string; layer: string | null; loc: number; purpose: string };
+export type SummaryFile = { path: string; layer: string | null; loc: number; purpose: string; frozen?: boolean };
 
 export type SummaryWorkflow = { file: string; machine: string; summary: string; states: number; findings: { severity: string; message: string }[]; error?: string };
 
@@ -29,8 +29,9 @@ export type FeatureSummaryResponse =
     }
   | { ok: false; error?: { message?: string } };
 
-/** A file in a layer, with where clicking it leads (another screen) when that screen can open it. */
-export type FeatureFile = { path: string; purpose: string; loc: number; href: string | null };
+/** A file in a layer, with where clicking it leads (another screen) when that screen can open it.
+ * `frozen` (#478): externally-authored, read-only to Construct -- still listed. */
+export type FeatureFile = { path: string; purpose: string; loc: number; href: string | null; frozen?: boolean };
 
 export type FeatureLayerView = { layer: string; files: FeatureFile[] };
 

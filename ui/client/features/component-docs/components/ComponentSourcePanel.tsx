@@ -32,7 +32,11 @@ export function ComponentSourcePanel({ path, state, diagnostics, loading, loadEr
       <div className="cd-source-head">
         <h3 className="cd-h3">Source</h3>
         <span className={summary.errors ? 'status-error' : 'cd-hint'} data-testid="cd-source-summary">{describeSummary(summary)}</span>
-        {!loaded.editable && <span className="cd-hint" data-testid="cd-readonly">Read-only: this file is too large to edit here.</span>}
+        {!loaded.editable && (
+          <span className="cd-hint" data-testid="cd-readonly">
+            {loaded.frozen ? '🔒 Frozen file · read-only to Construct.' : 'Read-only: this file is too large to edit here.'}
+          </span>
+        )}
       </div>
       <SourceEditor value={draft} markers={markers} readOnly={!loaded.editable} onChange={onEdit} label={`Source of ${path}`} />
       {state.error && <p className="status-error" role="alert" data-testid="cd-error">{state.error}</p>}
