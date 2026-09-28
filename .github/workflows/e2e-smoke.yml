@@ -1,0 +1,65 @@
+name: E2E smoke
+
+# #420: the required-before-merge lane. smoke.spec.js plus one spec per primary screen
+# (ui/e2e/playwright.smoke.config.js) — target under 5 minutes, so a PR gets a real
+# browser-driven signal without paying for the full ~90-spec, 12-config suite
+# (that one is .github/workflows/e2e-full.yml, on merge/nightly only).
+#
+# This is a separate GitHub runner, not "the one box" ui/README.md and CLAUDE.md's
+# machine section warn about (heavy.sh's lock and the one-checkout-per-run rule are
+# for concurrent LOCAL/agent runs on that shared box; a hosted Actions runner is its
+# own disposable VM, so neither applies here).
+
+on:
+  pull_request:
+    branches: [work/2026-09-23]
+
+concurrency:
+  group: e2e-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            ui/server/package-lock.json
+            ui/client/package-lock.json
+            ui/e2e/package-lock.json
+      - name: Install root dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Install Cockpit server dependencies
+        run: npm ci --prefix ui/server --no-audit --no-fund
+      - name: Install Cockpit client dependencies
+        run: npm ci --prefix ui/client --no-audit --no-fund
+      - name: Install e2e dependencies
+        run: npm ci --prefix ui/e2e --no-audit --no-fund
+      - name: Install Playwright's Chromium
+        run: npx --prefix ui/e2e playwright install --with-deps chromium
+      - name: Run the smoke lane
+        working-directory: ui/e2e
+        env:
+          WATCHPACK_POLLING: 'true'
+          CHOKIDAR_USEPOLLING: '1'
+        run: |
+          set +e
+          START=$(date +%s)
+          npm run test:smoke-lane
+          STATUS=$?
+          END=$(date +%s)
+          echo "Smoke lane: $((END - START))s" >> "$GITHUB_STEP_SUMMARY"
+          exit $STATUS
+      - name: Upload trace on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-smoke-traces
+          path: ui/e2e/test-results
+          retention-days: 7

@@ -8,6 +8,7 @@
     "test": "playwright test",
     "test:headed": "playwright test --headed",
     "test:smoke": "playwright test smoke.spec.js",
+    "test:smoke-lane": "playwright test -c playwright.smoke.config.js",
     "install-browsers": "playwright install chromium"
   },
   "devDependencies": {

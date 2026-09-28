@@ -8,6 +8,10 @@ import { runAxe, isBlocking, format } from './support/axe.js';
 // the selection lives in the URL (?feature=), and there is one pane at a time at 390px.
 const API = process.env.E2E_API_BASE || 'http://localhost:4000';
 const browser = (page) => page.getByRole('complementary', { name: 'Browser' });
+// #683: the Browser pane's own Features/Notes/Blocks tablist no longer nests inside the
+// `complementary "Browser"` landmark -- it renders as a sibling tablist in the merged rail
+// column (ShellPage.tsx's `browserSubTabs`, RailSubTabs.tsx), so it needs its own locator.
+const browserTabs = (page) => page.getByRole('tablist', { name: 'Browser' });
 const list = (page) => browser(page).getByRole('listbox', { name: 'Features' });
 const options = (page) => list(page).getByRole('option');
 
@@ -27,7 +31,7 @@ test.describe.serial('Features screen: browse in the left pane, open in the stag
   test('the Browser lists every feature; nothing is open until one is chosen; the rail marks Features', async ({ page }) => {
     await gotoCockpit(page, '/');
     await expect(page.getByRole('navigation', { name: 'Screens', exact: true }).getByRole('link', { name: 'Features' })).toHaveAttribute('aria-current', 'page');
-    await expect(browser(page).getByRole('tab', { name: 'Features' })).toHaveAttribute('aria-selected', 'true');
+    await expect(browserTabs(page).getByRole('tab', { name: 'Features' })).toHaveAttribute('aria-selected', 'true');
     await expect(options(page)).toHaveText([/^billing/, /^checkout/, /^reporting/, /^shared/]);
     await expect(page.getByTestId('features-list-count')).toHaveText('4');
     await expect(page.getByTestId('fc-details')).toHaveCount(0);
