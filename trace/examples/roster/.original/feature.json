@@ -1,0 +1,6 @@
+{
+  "feature": "roster",
+  "route": "/roster",
+  "page": "page.jsx",
+  "about": "Cascade: two columns and two totals are each tied between the same two fields. Answer one, and the other is inferred."
+}

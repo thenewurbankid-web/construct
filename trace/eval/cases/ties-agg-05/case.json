@@ -1,0 +1,10 @@
+{
+  "category": "ties-agg",
+  "expect": "0b87d036be7220e2",
+  "generator": {
+    "name": "ties-agg",
+    "params": {},
+    "seed": 5069
+  },
+  "id": "ties-agg-05"
+}

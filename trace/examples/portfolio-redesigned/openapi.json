@@ -1,0 +1,373 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "portfolio-redesigned",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/category-health/portfolio": {
+      "get": {
+        "summary": "GET /api/category-health/portfolio",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "user_id": {
+                          "type": "string"
+                        },
+                        "org_id": {
+                          "type": "string"
+                        },
+                        "snapshot_date": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
+                    },
+                    "narrative": {
+                      "type": "object",
+                      "properties": {
+                        "cross_l2_summary": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "portfolio_at_a_glance": {
+                      "type": "object",
+                      "properties": {
+                        "spend_you_manage": {
+                          "type": "integer"
+                        },
+                        "largest_category": {
+                          "type": "object",
+                          "properties": {
+                            "display_name": {
+                              "type": "string"
+                            },
+                            "share_of_portfolio": {
+                              "type": "number"
+                            }
+                          }
+                        },
+                        "savings_potential": {
+                          "type": "object",
+                          "properties": {
+                            "value": {
+                              "type": "integer"
+                            },
+                            "pct_of_spend": {
+                              "type": "number"
+                            },
+                            "qualified_accepted_pct": {
+                              "type": "number"
+                            }
+                          }
+                        },
+                        "resilience_initiatives": {
+                          "type": "object",
+                          "properties": {
+                            "total": {
+                              "type": "integer"
+                            },
+                            "by_impact": {
+                              "type": "object",
+                              "properties": {
+                                "high": {
+                                  "type": "integer"
+                                },
+                                "medium": {
+                                  "type": "integer"
+                                },
+                                "low": {
+                                  "type": "integer"
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "waiting_on_decision": {
+                          "type": "object",
+                          "properties": {
+                            "savings_count": {
+                              "type": "integer"
+                            },
+                            "resilience_count": {
+                              "type": "integer"
+                            },
+                            "note": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "categories": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "beroe_l2_id": {
+                            "type": "string"
+                          },
+                          "display_name": {
+                            "type": "string"
+                          },
+                          "spend": {
+                            "type": "object",
+                            "properties": {
+                              "value": {
+                                "type": "integer"
+                              },
+                              "pct_of_total": {
+                                "type": "number"
+                              }
+                            }
+                          },
+                          "maturity_score": {
+                            "type": "integer"
+                          },
+                          "savings_potential": {
+                            "type": "integer"
+                          },
+                          "risk_score": {
+                            "type": "integer"
+                          },
+                          "spend_trend": {
+                            "type": "object",
+                            "properties": {
+                              "prev_value": {
+                                "type": "integer"
+                              },
+                              "curr_value": {
+                                "type": "integer"
+                              },
+                              "delta_pct": {
+                                "type": "number"
+                              }
+                            }
+                          },
+                          "deep_link": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "meta": {
+                    "user_id": "u-1042",
+                    "org_id": "org-7",
+                    "snapshot_date": "2026-07-31T10:00:00Z"
+                  },
+                  "narrative": {
+                    "cross_l2_summary": "Grains is carrying your portfolio. Logistics and Packaging are not."
+                  },
+                  "portfolio_at_a_glance": {
+                    "spend_you_manage": 280200000,
+                    "largest_category": {
+                      "display_name": "Grains & Cereals",
+                      "share_of_portfolio": 0.327
+                    },
+                    "savings_potential": {
+                      "value": 24500000,
+                      "pct_of_spend": 0.087,
+                      "qualified_accepted_pct": 0.38
+                    },
+                    "resilience_initiatives": {
+                      "total": 21,
+                      "by_impact": {
+                        "high": 7,
+                        "medium": 13,
+                        "low": 1
+                      }
+                    },
+                    "waiting_on_decision": {
+                      "savings_count": 26,
+                      "resilience_count": 6,
+                      "note": "counts only, no monetary value"
+                    }
+                  },
+                  "categories": [
+                    {
+                      "beroe_l2_id": "3c1e7d20-5f0a-4b6c-8d11-0a9e2f7b4c01",
+                      "display_name": "Grains & Cereals",
+                      "spend": {
+                        "value": 91600000,
+                        "pct_of_total": 0.327
+                      },
+                      "maturity_score": 58,
+                      "savings_potential": 3200000,
+                      "risk_score": 72,
+                      "spend_trend": {
+                        "prev_value": 88500000,
+                        "curr_value": 91600000,
+                        "delta_pct": 0.035
+                      },
+                      "deep_link": "/category-health/categories/3c1e7d20-5f0a-4b6c-8d11-0a9e2f7b4c01/summary"
+                    },
+                    {
+                      "beroe_l2_id": "7a52b8e4-1d3f-4c90-a6b2-5e8d0c1f9a02",
+                      "display_name": "Packaging",
+                      "spend": {
+                        "value": 62800000,
+                        "pct_of_total": 0.224
+                      },
+                      "maturity_score": 36,
+                      "savings_potential": 7100000,
+                      "risk_score": 69,
+                      "spend_trend": {
+                        "prev_value": 64900000,
+                        "curr_value": 62800000,
+                        "delta_pct": -0.032
+                      },
+                      "deep_link": "/category-health/categories/7a52b8e4-1d3f-4c90-a6b2-5e8d0c1f9a02/summary"
+                    },
+                    {
+                      "beroe_l2_id": "9d04c6f1-2b7e-4a35-b8c0-3f6a1e5d7b03",
+                      "display_name": "IT Services",
+                      "spend": {
+                        "value": 45200000,
+                        "pct_of_total": 0.161
+                      },
+                      "maturity_score": 42,
+                      "savings_potential": 4200000,
+                      "risk_score": 67,
+                      "spend_trend": {
+                        "prev_value": 44000000,
+                        "curr_value": 45200000,
+                        "delta_pct": 0.027
+                      },
+                      "deep_link": "/category-health/categories/9d04c6f1-2b7e-4a35-b8c0-3f6a1e5d7b03/summary"
+                    },
+                    {
+                      "beroe_l2_id": "b8e19a03-6c4d-4f27-9e50-1d2c7a8f3b04",
+                      "display_name": "Logistics",
+                      "spend": {
+                        "value": 38400000,
+                        "pct_of_total": 0.137
+                      },
+                      "maturity_score": 40,
+                      "savings_potential": 5600000,
+                      "risk_score": 72,
+                      "spend_trend": {
+                        "prev_value": 33300000,
+                        "curr_value": 38400000,
+                        "delta_pct": 0.153
+                      },
+                      "deep_link": "/category-health/categories/b8e19a03-6c4d-4f27-9e50-1d2c7a8f3b04/summary"
+                    },
+                    {
+                      "beroe_l2_id": "e2f7d5b6-8a01-4c39-b74e-6a0d9c3e1f05",
+                      "display_name": "Professional Services",
+                      "spend": {
+                        "value": 27300000,
+                        "pct_of_total": 0.097
+                      },
+                      "maturity_score": 46,
+                      "savings_potential": 2900000,
+                      "risk_score": 59,
+                      "spend_trend": {
+                        "prev_value": 27300000,
+                        "curr_value": 27300000,
+                        "delta_pct": 0
+                      },
+                      "deep_link": "/category-health/categories/e2f7d5b6-8a01-4c39-b74e-6a0d9c3e1f05/summary"
+                    },
+                    {
+                      "beroe_l2_id": "0f6b3a97-4e2c-4d81-a5f3-7c9e1b8d2a06",
+                      "display_name": "MRO",
+                      "spend": {
+                        "value": 14900000,
+                        "pct_of_total": 0.053
+                      },
+                      "maturity_score": 44,
+                      "savings_potential": 1400000,
+                      "risk_score": 84,
+                      "spend_trend": {
+                        "prev_value": 9800000,
+                        "curr_value": 14900000,
+                        "delta_pct": 0.52
+                      },
+                      "deep_link": "/category-health/categories/0f6b3a97-4e2c-4d81-a5f3-7c9e1b8d2a06/summary"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/category-health/categories": {
+      "get": {
+        "summary": "GET /api/category-health/categories",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "categories": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "beroe_l2_id": {
+                            "type": "string"
+                          },
+                          "display_name": {
+                            "type": "string"
+                          },
+                          "beroe_l1_name": {
+                            "type": "string"
+                          },
+                          "contributing_client_cat_count": {
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "unmapped_present": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "example": {
+                  "categories": [
+                    {
+                      "beroe_l2_id": "3c1e7d20-5f0a-4b6c-8d11-0a9e2f7b4c01",
+                      "display_name": "Grains & Cereals",
+                      "beroe_l1_name": "Direct",
+                      "contributing_client_cat_count": 3
+                    },
+                    {
+                      "beroe_l2_id": "7a52b8e4-1d3f-4c90-a6b2-5e8d0c1f9a02",
+                      "display_name": "Packaging",
+                      "beroe_l1_name": "Direct",
+                      "contributing_client_cat_count": 5
+                    }
+                  ],
+                  "total": 2,
+                  "unmapped_present": false
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "feature": "contacts",
+  "route": "/contacts",
+  "page": "page.jsx",
+  "about": "Build it yourself: a joined name, a value the controller provides, a value from an endpoint that doesn't exist yet, and your own button handler."
+}

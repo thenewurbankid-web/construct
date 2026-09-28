@@ -1,0 +1,42 @@
+{
+  "feature": "metrics",
+  "route": "/metrics",
+  "page": "page.jsx",
+  "about": "Values only, no list: every built-in aggregate and format (count, sum, average, min, max, percent) plus one value that can't be computed.",
+  "apis": [
+    {
+      "method": "GET",
+      "path": "/api/metrics",
+      "response": [
+        {
+          "id": 1,
+          "region": "North",
+          "revenue": 120000000,
+          "cost": 70000000,
+          "conversion": 0.18
+        },
+        {
+          "id": 2,
+          "region": "South",
+          "revenue": 95000000,
+          "cost": 52000000,
+          "conversion": 0.24
+        },
+        {
+          "id": 3,
+          "region": "East",
+          "revenue": 61000000,
+          "cost": 33000000,
+          "conversion": 0.12
+        },
+        {
+          "id": 4,
+          "region": "West",
+          "revenue": 88000000,
+          "cost": 49000000,
+          "conversion": 0.2
+        }
+      ]
+    }
+  ]
+}

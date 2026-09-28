@@ -1,0 +1,20 @@
+{
+  "list.status": {
+    "task": "choose",
+    "model": "ollama:qwen2.5-coder:1.5b",
+    "evidence": "The column headed \"Status\" shows status.",
+    "answer": "something else — build a placeholder…"
+  },
+  "list.status#from": {
+    "task": "choose",
+    "model": "ollama:qwen2.5-coder:1.5b",
+    "evidence": "The column headed \"Status\" shows status.",
+    "answer": "provided by the controller — placeholder function in the controller"
+  },
+  "action.row.delete": {
+    "task": "choose",
+    "model": "ollama:qwen2.5-coder:1.5b",
+    "evidence": "The button labelled \"Delete\" is the delete action.",
+    "answer": "something else — name my own handler (placeholder)…"
+  }
+}

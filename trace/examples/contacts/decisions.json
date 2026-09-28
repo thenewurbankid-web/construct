@@ -1,0 +1,26 @@
+{
+  "list.fullName": {
+    "task": "choose",
+    "model": "ollama:qwen2.5-coder:1.5b",
+    "evidence": "The Name column shows the contact's first name and last name together, separated by a space.",
+    "answer": "something else — build a placeholder…"
+  },
+  "list.fullName#from": {
+    "task": "choose",
+    "model": "ollama:qwen2.5-coder:1.5b",
+    "evidence": "Initials are the first letter of the first name followed by the first letter of the last name, in capitals.",
+    "answer": "provided by the controller — placeholder function in the controller"
+  },
+  "value.directoryUpdated": {
+    "task": "choose",
+    "model": "ollama:qwen2.5-coder:1.5b",
+    "evidence": "The header shows when the directory was last updated; the backend will add an endpoint for this later.",
+    "answer": "something else — build a placeholder…"
+  },
+  "value.directoryUpdated#from": {
+    "task": "choose",
+    "model": "ollama:qwen2.5-coder:1.5b",
+    "evidence": "The header shows when the directory was last updated; the backend will add an endpoint for this later.",
+    "answer": "provided by the controller — placeholder function in the controller"
+  }
+}

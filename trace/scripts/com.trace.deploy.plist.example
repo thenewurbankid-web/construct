@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  EXAMPLE ONLY. Nothing installs this for you. It keeps `npm run deploy:watch` running from login, which in turn keeps
+  the latest Trace build running on port 4200. To install (see docs/DEPLOY-LOCAL.md):
+    1. Copy this file to ~/Library/LaunchAgents/com.trace.deploy.plist
+    2. Replace every REPLACE_ME: the absolute path to node (`command -v node`) and the absolute path to line-matcher.
+    3. launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.trace.deploy.plist
+  To remove: launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.trace.deploy.plist
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.trace.deploy</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>REPLACE_ME/absolute/path/to/node</string>
+    <string>REPLACE_ME/absolute/path/to/line-matcher/scripts/deploy-local.mjs</string>
+    <string>watch</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>REPLACE_ME/absolute/path/to/line-matcher</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <!-- launchd starts with a minimal PATH; deploy runs `npm test`, so npm must be found -->
+    <key>PATH</key>
+    <string>REPLACE_ME/directory/of/node:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>REPLACE_ME/absolute/path/to/line-matcher/deploy/watch.log</string>
+  <key>StandardErrorPath</key>
+  <string>REPLACE_ME/absolute/path/to/line-matcher/deploy/watch.log</string>
+</dict>
+</plist>

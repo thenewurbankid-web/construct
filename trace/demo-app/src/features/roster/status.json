@@ -1,0 +1,20 @@
+{
+  "feature": "roster",
+  "open": 2,
+  "items": [
+    {
+      "id": "list.owner",
+      "part": "row.owner",
+      "state": "skipped",
+      "why": "\"lead\" and \"deputy\" both reproduce \"Lena\", \"Arjun\", \"Mia\", so the mock data can't tell them apart.",
+      "hint": "Make them differ in at least one row. For example, in the row with id 1, change \"deputy\" to something other than \"Lena\". Whichever field still shows \"Lena\" is then the match."
+    },
+    {
+      "id": "list.backup",
+      "part": "row.backup",
+      "state": "skipped",
+      "why": "\"lead\" and \"deputy\" both reproduce \"Lena\", \"Arjun\", \"Mia\", so the mock data can't tell them apart.",
+      "hint": "Make them differ in at least one row. For example, in the row with id 1, change \"deputy\" to something other than \"Lena\". Whichever field still shows \"Lena\" is then the match."
+    }
+  ]
+}

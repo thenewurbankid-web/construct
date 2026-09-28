@@ -1,0 +1,13 @@
+{
+  "list.status": {
+    "custom": true,
+    "from": "controller",
+    "inputs": [],
+    "fn": "getStatus"
+  },
+  "action.row.delete": {
+    "custom": true,
+    "from": "handler",
+    "fn": "handleDelete"
+  }
+}

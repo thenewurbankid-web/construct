@@ -1,0 +1,49 @@
+{
+  "category": "example",
+  "id": "example-metrics",
+  "source": "examples/metrics",
+  "sourceHash": "a9ac6b65b009d4c5",
+  "truth": {
+    "value.asOf": {
+      "also": [
+        "gap:custom",
+        "gap:static"
+      ],
+      "kind": "gap",
+      "label": "independent",
+      "resolutionUnknown": true,
+      "want": "gap:todo",
+      "why": "README: add a field, or a controller placeholder or a new endpoint"
+    },
+    "value.avgConversion": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "a:average(conversion)|percent"
+    },
+    "value.bestRevenue": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "a:max(revenue)|moneyCompact"
+    },
+    "value.lowestCost": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "a:min(cost)|moneyCompact"
+    },
+    "value.regionCount": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "a:count()|asText"
+    },
+    "value.totalRevenue": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "a:sum(revenue)|moneyCompact"
+    }
+  }
+}

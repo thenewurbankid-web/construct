@@ -1,0 +1,132 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "orders",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/orders": {
+      "get": {
+        "summary": "GET /api/orders",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "integer"
+                      },
+                      "number": {
+                        "type": "string"
+                      },
+                      "customer": {
+                        "type": "string"
+                      },
+                      "total": {
+                        "type": "integer"
+                      },
+                      "placedOn": {
+                        "type": "string",
+                        "format": "date"
+                      }
+                    }
+                  }
+                },
+                "example": [
+                  {
+                    "id": 1,
+                    "number": "ORD-201",
+                    "customer": "Northwind",
+                    "total": 1200,
+                    "placedOn": "2026-09-01"
+                  },
+                  {
+                    "id": 2,
+                    "number": "ORD-202",
+                    "customer": "Kestrel",
+                    "total": 560,
+                    "placedOn": "2026-09-03"
+                  },
+                  {
+                    "id": 3,
+                    "number": "ORD-203",
+                    "customer": "Bluepeak",
+                    "total": 8900,
+                    "placedOn": "2026-09-07"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/orders",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "customer": {
+                    "type": "string"
+                  },
+                  "total": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "example": {
+                "customer": "Oriel",
+                "total": 300
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "number": {
+                      "type": "string"
+                    },
+                    "customer": {
+                      "type": "string"
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "placedOn": {
+                      "type": "string",
+                      "format": "date"
+                    }
+                  }
+                },
+                "example": {
+                  "id": 4,
+                  "number": "ORD-204",
+                  "customer": "Oriel",
+                  "total": 300,
+                  "placedOn": "2026-09-20"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

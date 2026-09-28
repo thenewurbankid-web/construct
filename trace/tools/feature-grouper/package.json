@@ -1,0 +1,11 @@
+{
+  "name": "feature-grouper",
+  "private": true,
+  "type": "module",
+  "main": "feature-grouper.test.mjs",
+  "description": "Rough test tool: groups a TSX page's JSX elements into candidate feature components. `main` points at the test file only so that `node --test tools/feature-grouper/` (a directory) works on Node 24.",
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "playwright": "^1.63.0"
+  }
+}

@@ -1,0 +1,221 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "categories",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/categories": {
+      "get": {
+        "summary": "GET /api/categories",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "integer"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "spend": {
+                        "type": "integer"
+                      },
+                      "owner": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "example": [
+                  {
+                    "id": 1,
+                    "name": "Logistics",
+                    "spend": 78400000,
+                    "owner": "Prerna"
+                  },
+                  {
+                    "id": 2,
+                    "name": "Packaging",
+                    "spend": 62800000,
+                    "owner": "Arjun"
+                  },
+                  {
+                    "id": 3,
+                    "name": "IT Services",
+                    "spend": 45200000,
+                    "owner": "Mia"
+                  },
+                  {
+                    "id": 4,
+                    "name": "Grains & Cereals",
+                    "spend": 91600000,
+                    "owner": "Lena"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/categories",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "spend": {
+                    "type": "integer"
+                  },
+                  "owner": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "name": "Chemicals",
+                "spend": 12500000,
+                "owner": "Ravi"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "spend": {
+                      "type": "integer"
+                    },
+                    "owner": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "example": {
+                  "id": 5,
+                  "name": "Chemicals",
+                  "spend": 12500000,
+                  "owner": "Ravi"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/categories/{id}": {
+      "put": {
+        "summary": "PUT /api/categories/{id}",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "spend": {
+                    "type": "integer"
+                  },
+                  "owner": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "name": "Logistics",
+                "spend": 80000000,
+                "owner": "Prerna"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "spend": {
+                      "type": "integer"
+                    },
+                    "owner": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "example": {
+                  "id": 1,
+                  "name": "Logistics",
+                  "spend": 80000000,
+                  "owner": "Prerna"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "DELETE /api/categories/{id}",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No content"
+          }
+        }
+      }
+    }
+  }
+}

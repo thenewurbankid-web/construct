@@ -1,0 +1,12 @@
+{
+  "category": "coincidence-spurious",
+  "expect": "35cbd4ec647d48a8",
+  "generator": {
+    "name": "coincidence-spurious",
+    "params": {
+      "parts": 1
+    },
+    "seed": 3001
+  },
+  "id": "coincidence-spurious-01"
+}

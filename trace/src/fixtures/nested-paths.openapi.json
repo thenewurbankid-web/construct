@@ -1,0 +1,175 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Nested paths",
+    "version": "1"
+  },
+  "paths": {
+    "/api/customers": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "id": 1,
+                    "name": "Ada"
+                  },
+                  {
+                    "id": 2,
+                    "name": "Bo"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/customers/{id}": {
+      "put": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "name": "Ada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": 1,
+                  "name": "Ada"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "responses": {
+          "204": {
+            "description": "gone"
+          }
+        }
+      }
+    },
+    "/api/customers/{id}/orders": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "id": 10,
+                    "total": 5
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "total": 5
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": 11,
+                  "total": 5
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/customers/{id}/orders/{orderId}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": 10,
+                  "total": 5
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "total": 6
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": 10,
+                  "total": 6
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "responses": {
+          "204": {
+            "description": "gone"
+          }
+        }
+      }
+    },
+    "/api/regions/{region}/stores/{store}/stock": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "sku": "a",
+                    "qty": 1
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

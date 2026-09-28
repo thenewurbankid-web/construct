@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Import wizard · Trace</title>
+<script>/* same theme rule as the studio: lm-theme = light | dark, anything else follows the system */
+(function(){try{var t=localStorage.getItem("lm-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}})()
+</script>
+<link rel="stylesheet" href="/theme.css">
+<style>
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,-apple-system,sans-serif}
+.wrap{max-width:720px;margin:0 auto;padding:20px 16px 48px}
+header.top{display:flex;align-items:center;gap:16px;margin-bottom:8px}
+header.top h1{font-size:18px;margin:0 auto 0 0}
+a{color:var(--acc)}
+select{font:inherit;background:var(--bg);color:var(--fg);border:1px solid var(--bd2);border-radius:6px;padding:4px 8px}
+section{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;margin-top:12px}
+.tb{font:inherit;border:1px solid var(--bd2);background:var(--bg);color:var(--fg);border-radius:8px;padding:4px 10px;cursor:pointer}
+.tb.go{border-color:var(--acc);color:var(--acc)}
+code{font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--stat);border-radius:4px;padding:0 4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>Import wizard</h1>
+    <label>Example <select id="example"></select></label>
+    <a href="/studio">Back to the studio</a>
+  </header>
+  <p style="color:var(--mut);font-size:12.5px">Swagger upload reuses the studio's own Contract step; the Subframe step is not connected yet (OAuth 2.1 is required and cannot complete headlessly here) and falls back to a labelled fixture.</p>
+  <section id="app"></section>
+</div>
+<script type="module">
+import { installImportWizard } from "/ui/import-wizard.mjs";
+const sel = document.getElementById("example");
+const app = document.getElementById("app");
+let current = null;
+async function boot() {
+  const list = await (await fetch("/api/examples")).json();
+  sel.innerHTML = list.map((e) => `<option value="${e.name}">${e.name}</option>`).join("");
+  sel.addEventListener("change", () => mount(sel.value));
+  if (list.length) mount(list[0].name);
+}
+function mount(name) {
+  current = name;
+  app.innerHTML = "";
+  installImportWizard(app, { example: name });
+}
+boot();
+</script>
+</body>
+</html>

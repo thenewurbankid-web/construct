@@ -1,0 +1,6 @@
+{
+  "feature": "products-no-contract",
+  "route": "/products-no-contract",
+  "page": "page.jsx",
+  "about": "No API contract yet: the same page as products, with no openapi file. A run is allowed and says so; upload a Swagger/OpenAPI file and it closes."
+}

@@ -1,0 +1,80 @@
+{
+  "category": "example",
+  "id": "example-categories",
+  "source": "examples/categories",
+  "sourceHash": "9b2f8bdaaf93d925",
+  "truth": {
+    "action.page.cancel": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "x:clear"
+    },
+    "action.page.save": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "x:save"
+    },
+    "action.row.delete": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "x:remove"
+    },
+    "action.row.edit": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "x:select"
+    },
+    "list.name": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "f:name|asText"
+    },
+    "list.owner": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "f:owner|asText"
+    },
+    "list.sort": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "s:spend:desc"
+    },
+    "list.spend": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "f:spend|moneyCompact"
+    },
+    "value.categoryCount": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "a:count()|asText"
+    },
+    "value.largestSpend": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "a:max(spend)|moneyCompact"
+    },
+    "value.refreshedAt": {
+      "kind": "gap",
+      "label": "independent",
+      "want": "gap:todo",
+      "why": "recorded human answer: the API has no refresh time"
+    },
+    "value.totalSpend": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "a:sum(spend)|moneyCompact"
+    }
+  }
+}

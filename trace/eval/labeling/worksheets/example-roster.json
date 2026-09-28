@@ -1,0 +1,308 @@
+{
+  "case": "example-roster",
+  "contract": {
+    "docs": null,
+    "endpoints": [
+      "GET /api/roster",
+      "POST /api/roster",
+      "PUT /api/roster/:id",
+      "DELETE /api/roster/:id"
+    ],
+    "item_count": 3,
+    "item_fields": [
+      {
+        "path": "id",
+        "samples": [
+          1,
+          2,
+          3
+        ],
+        "type": "number"
+      },
+      {
+        "path": "project",
+        "samples": [
+          "Apollo",
+          "Borealis",
+          "Cirrus"
+        ],
+        "type": "string"
+      },
+      {
+        "path": "lead",
+        "samples": [
+          "Lena",
+          "Arjun",
+          "Mia"
+        ],
+        "type": "string"
+      },
+      {
+        "path": "deputy",
+        "samples": [
+          "Lena",
+          "Arjun",
+          "Mia"
+        ],
+        "type": "string"
+      },
+      {
+        "path": "budget",
+        "samples": [
+          120000,
+          80000,
+          45000
+        ],
+        "type": "number"
+      },
+      {
+        "path": "forecast",
+        "samples": [
+          120000,
+          80000,
+          45000
+        ],
+        "type": "number"
+      }
+    ],
+    "list_endpoint": "GET /api/roster",
+    "requirements_text": "# Roster — requirements\n\n- Owner is the project lead.\n- Backup is the project's deputy.\n- The planned total is the sum of all budgets.\n- The forecast total is the sum of all forecasts.\n",
+    "response_fields_outside_the_list": []
+  },
+  "instructions": {
+    "answer_with_exactly_one_of": {
+      "a:<agg>(<field>)|<format>": "a page value is an aggregate of the whole list: count(), sum(f), average(f), max(f), min(f), e.g. a:sum(budget)|moneyCompact",
+      "e:<path>|<format>": "a page value is a single field of the response outside the list, e.g. e:meta.snapshot_date|dateShort",
+      "f:<field>|<format>": "a list column shows an item field, e.g. f:lead|asText  (nested fields use dots: spend.value)",
+      "gap:todo | gap:custom | gap:static | gap:?": "NOTHING in the contract provides it. todo = leave a TODO, custom = someone writes a placeholder, static = it is fixed text, ? = no view on how it is closed",
+      "s:<field>:asc|desc  or  s:none": "how the rows are ordered (s:none = the API's own order)",
+      "u:<field>|<recipe>": "it comes from a field but needs a transformation none of the formats below does; describe the recipe in words",
+      "x:<kind>": "what an action does: create, update, save, remove, select, clear, reload, ignore"
+    },
+    "formats": {
+      "asText": "the value as is, 12 -> 12, Lena -> Lena",
+      "dateShort": "2026-07-31... -> 31 Jul 2026",
+      "moneyCompact": "1234567 -> $1.2M, 45000 -> $45.0K, 900 -> $900",
+      "moneyFull": "1200 -> $1,200",
+      "percent": "0.327 -> 32.7%",
+      "percentWhole": "0.327 -> 33%"
+    },
+    "rules": [
+      "Decide from the design text and the contract only. Do not run Trace and do not open answers.json, decisions.json or ai-cache.json.",
+      "If two contract fields (or two aggregates) reproduce the design equally well, choose the one the design MEANS (use the header, the surrounding words, the docs and the story) and say why in note.",
+      "If you cannot tell, set unsure to true: the part is then left out of every number instead of guessed."
+    ]
+  },
+  "labeller": null,
+  "parts": [
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "Apollo",
+          "Borealis",
+          "Cirrus"
+        ],
+        "header": "Project",
+        "name": "project",
+        "other_parts_in_the_same_cell": []
+      },
+      "id": "list.project",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "Lena",
+          "Arjun",
+          "Mia"
+        ],
+        "header": "Owner",
+        "name": "owner",
+        "other_parts_in_the_same_cell": []
+      },
+      "id": "list.owner",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "Lena",
+          "Arjun",
+          "Mia"
+        ],
+        "header": "Backup",
+        "name": "backup",
+        "other_parts_in_the_same_cell": []
+      },
+      "id": "list.backup",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "api_order_first_rows": [
+        {
+          "budget": 120000,
+          "deputy": "Lena",
+          "forecast": 120000,
+          "id": 1,
+          "lead": "Lena",
+          "project": "Apollo"
+        },
+        {
+          "budget": 80000,
+          "deputy": "Arjun",
+          "forecast": 80000,
+          "id": 2,
+          "lead": "Arjun",
+          "project": "Borealis"
+        },
+        {
+          "budget": 45000,
+          "deputy": "Mia",
+          "forecast": 45000,
+          "id": 3,
+          "lead": "Mia",
+          "project": "Cirrus"
+        }
+      ],
+      "design": {
+        "designed_rows": [
+          {
+            "backup": "Lena",
+            "owner": "Lena",
+            "project": "Apollo"
+          },
+          {
+            "backup": "Arjun",
+            "owner": "Arjun",
+            "project": "Borealis"
+          },
+          {
+            "backup": "Mia",
+            "owner": "Mia",
+            "project": "Cirrus"
+          }
+        ]
+      },
+      "id": "list.sort",
+      "what": "the order of the designed rows"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "3",
+        "name": "projectCount",
+        "surrounding_text": "3 $245.0K $245.0K"
+      },
+      "id": "value.projectCount",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "$245.0K",
+        "name": "plannedTotal",
+        "surrounding_text": "3 $245.0K $245.0K"
+      },
+      "id": "value.plannedTotal",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "$245.0K",
+        "name": "forecastTotal",
+        "surrounding_text": "3 $245.0K $245.0K"
+      },
+      "id": "value.forecastTotal",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "scope": "row",
+        "verb_marker": "edit"
+      },
+      "id": "action.row.edit",
+      "note_for_labeller": "say what it should do given the endpoints in `contract`",
+      "what": "a button or form"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "scope": "row",
+        "verb_marker": "delete"
+      },
+      "id": "action.row.delete",
+      "note_for_labeller": "say what it should do given the endpoints in `contract`",
+      "what": "a button or form"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "scope": "page",
+        "verb_marker": "save"
+      },
+      "id": "action.page.save",
+      "note_for_labeller": "say what it should do given the endpoints in `contract`",
+      "what": "a button or form"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "scope": "page",
+        "verb_marker": "cancel"
+      },
+      "id": "action.page.cancel",
+      "note_for_labeller": "say what it should do given the endpoints in `contract`",
+      "what": "a button or form"
+    }
+  ]
+}

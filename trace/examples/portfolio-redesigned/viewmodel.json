@@ -1,0 +1,225 @@
+{
+  "values": [
+    {
+      "key": "value.refreshedAt",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "refreshedAt",
+      "example": "31 Jul 2026"
+    },
+    {
+      "key": "value.headline",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "headline",
+      "example": "Grains is carrying your portfolio. Logistics and Packaging are not."
+    },
+    {
+      "key": "value.improving",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "improving",
+      "example": "Grains, up on contract coverage and a renegotiated origination mix, and Chemicals, where the solvent index fell two quarters running."
+    },
+    {
+      "key": "value.declining",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "declining",
+      "example": "Logistics, where the maturity gap widened to −0.7 and three high flags are open, and Packaging, where supplier concentration moved the wrong way. IT & Software is flat."
+    },
+    {
+      "key": "value.baselineSpend",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "baselineSpend",
+      "example": "$280M"
+    },
+    {
+      "key": "value.highCategories",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "highCategories",
+      "example": "4"
+    },
+    {
+      "key": "value.savingsRange",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "savingsRange",
+      "example": "$42 - 68M"
+    },
+    {
+      "key": "value.qualifiedCount",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "qualifiedCount",
+      "example": "25"
+    },
+    {
+      "key": "value.coveredCount",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "coveredCount",
+      "example": "21"
+    },
+    {
+      "key": "value.resilienceTotal",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "resilienceTotal",
+      "example": "21"
+    },
+    {
+      "key": "value.savingsCount",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "savingsCount",
+      "example": "26"
+    },
+    {
+      "key": "value.oldestDays",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "oldestDays",
+      "example": "34"
+    },
+    {
+      "key": "value.qualifiedInitiatives",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "qualifiedInitiatives",
+      "example": "16"
+    }
+  ],
+  "lists": [
+    {
+      "key": "list.categories",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "categories",
+      "fields": [
+        "rank",
+        "name",
+        "level",
+        "shareLabel",
+        "oppLabel",
+        "acceptedLabel",
+        "spend",
+        "maturity",
+        "peer",
+        "savingsRangeRow",
+        "risk",
+        "spendChange"
+      ],
+      "rows": [
+        {
+          "rank": "01",
+          "name": "Logistics",
+          "level": "L2",
+          "shareLabel": "37% of total spend",
+          "oppLabel": "5 qualified opportunities",
+          "acceptedLabel": "5 accepted",
+          "spend": "$78.4M",
+          "maturity": "2.0",
+          "peer": "peer 2.7",
+          "savingsRangeRow": "$4.7M - $5.6M",
+          "risk": "72",
+          "spendChange": "+$5.1M"
+        },
+        {
+          "rank": "02",
+          "name": "Packaging",
+          "level": "L2",
+          "shareLabel": "22.4% of total spend",
+          "oppLabel": "3 qualified opportunities",
+          "acceptedLabel": "2 accepted",
+          "spend": "$62.8M",
+          "maturity": "1.8",
+          "peer": "peer 2.4",
+          "savingsRangeRow": "$5.3M - $7.1M",
+          "risk": "69",
+          "spendChange": "-$3.2M"
+        },
+        {
+          "rank": "03",
+          "name": "IT Services",
+          "level": "L2",
+          "shareLabel": "21.4% of total spend",
+          "oppLabel": "3 qualified opportunities",
+          "acceptedLabel": "2 accepted",
+          "spend": "$45.2M",
+          "maturity": "2.1",
+          "peer": "peer 2.6",
+          "savingsRangeRow": "$3.5M - $4.2M",
+          "risk": "67",
+          "spendChange": "+$1.2M"
+        },
+        {
+          "rank": "04",
+          "name": "Professional Services",
+          "level": "L2",
+          "shareLabel": "22.4% of total spend",
+          "oppLabel": "3 qualified opportunities",
+          "acceptedLabel": "2 accepted",
+          "spend": "$27.3M",
+          "maturity": "2.3",
+          "peer": "peer 2.5",
+          "savingsRangeRow": "$1.8M - $2.9M",
+          "risk": "59",
+          "spendChange": "$0.0"
+        },
+        {
+          "rank": "05",
+          "name": "MRO",
+          "level": "L2",
+          "shareLabel": "22.4% of total spend",
+          "oppLabel": "3 qualified opportunities",
+          "acceptedLabel": "2 accepted",
+          "spend": "$14.9M",
+          "maturity": "2.2",
+          "peer": "peer 2.3",
+          "savingsRangeRow": "$0.8M - $1.4M",
+          "risk": "84",
+          "spendChange": "+$5.1M"
+        },
+        {
+          "rank": "06",
+          "name": "Grains & Cereals",
+          "level": "L2",
+          "shareLabel": "22.4% of total spend",
+          "oppLabel": "3 qualified opportunities",
+          "acceptedLabel": "2 accepted",
+          "spend": "$11.6M",
+          "maturity": "2.9",
+          "peer": "peer 2.6",
+          "savingsRangeRow": "$3.2M",
+          "risk": "72",
+          "spendChange": "-$5.1M"
+        }
+      ],
+      "actions": [
+        "open"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "key": "action.suggest",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "suggest",
+      "element": "button"
+    },
+    {
+      "key": "action.suggest",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "suggest",
+      "element": "button"
+    }
+  ],
+  "forms": [],
+  "visuals": [],
+  "suppressed": []
+}

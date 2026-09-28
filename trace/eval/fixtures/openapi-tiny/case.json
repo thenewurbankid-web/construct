@@ -1,0 +1,12 @@
+{
+  "id": "fixture-openapi",
+  "category": "fixture",
+  "truth": {
+    "list.name": { "kind": "match", "want": "f:name|asText", "label": "independent" },
+    "list.price": { "kind": "match", "want": "f:price|moneyFull", "label": "independent" },
+    "list.sort": { "kind": "match", "want": "s:none", "label": "independent" },
+    "value.thingCount": { "kind": "match", "want": "a:count()|asText", "label": "independent" },
+    "value.stockTotal": { "kind": "match", "want": "a:sum(stock)|asText", "label": "independent" },
+    "action.row.edit": { "kind": "match", "want": "x:select", "label": "independent" }
+  }
+}

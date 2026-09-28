@@ -1,0 +1,8 @@
+node_modules/
+tools/jev/.venv/
+tools/jev/open-jev/
+subframe-app/node_modules/
+bench-log.jsonl
+**/ai-cache.json
+/deploy/
+eval/out/

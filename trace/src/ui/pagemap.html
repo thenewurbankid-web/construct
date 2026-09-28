@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Page map - Trace</title>
+<link rel="icon" type="image/svg+xml" href="/demo/assets/trace-favicon.svg">
+<script>/* same theme rule as the studio: lm-theme = light | dark, anything else follows the system */
+(function(){try{var t=localStorage.getItem("lm-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}})()
+</script>
+<link rel="stylesheet" href="/theme.css">
+<link rel="stylesheet" href="/pagemap/pagemap.css">
+</head>
+<body>
+<header class="pm-top">
+  <a class="pm-brand" href="/" title="Back to Trace">Trace</a>
+  <h1>Page map</h1>
+  <label class="pm-pick"><span class="sr">Page</span><select id="picker" data-act="pick"></select></label>
+  <span class="pm-sp"></span>
+  <span id="build" class="pm-build"></span>
+  <button class="pm-btn" data-act="undo" id="bUndo" type="button" disabled>Undo</button>
+  <button class="pm-btn" data-act="redo" id="bRedo" type="button" disabled>Redo</button>
+  <button class="pm-btn" data-act="theme" id="bTheme" type="button">Theme</button>
+</header>
+
+<section class="pm-summary" aria-label="Coverage and proposed edits">
+  <div class="pm-cov">
+    <div class="pm-bar" id="covBar" role="img" aria-label="Coverage"></div>
+    <p id="covText" class="pm-covtext">Loading...</p>
+  </div>
+  <div class="pm-props" id="props"></div>
+</section>
+
+ <details class="pm-help"><summary>How ids and decisions work</summary><p>Every node's id is <b>positional</b>: it is made from the file name, the line and column and the tag path. So a whitespace-only edit, or any edit that moves lines, changes ids and <b>orphans</b> the decisions made on them; the count is in the summary line and they are listed under States &amp; flows, where you can drop one or re-attach it (select the node now at that place and decide again). Two identical texts in different places are two parts. Decisions never change the design; the marked copy and the page replacement are separate, explicit steps, and a replaced page is kept as a backup that is never overwritten.</p></details>
+<p id="warn" class="pm-warn" role="status" hidden></p>
+<p id="msg" class="pm-msg" role="status" aria-live="polite"></p>
+
+<main class="pm-grid" id="grid">
+  <section class="pm-left" aria-label="Structure and proposals">
+    <div class="pm-tabs" role="tablist" aria-label="Left view">
+      <button role="tab" id="tabStructure" data-act="ltab" data-tab="structure" aria-selected="true" type="button">Structure</button>
+      <button role="tab" id="tabReview" data-act="ltab" data-tab="review"  title="Review all proposals" aria-selected="false" type="button">Review <span id="reviewCount" class="pm-count"></span></button>
+      <button role="tab" id="tabFlow" data-act="ltab" data-tab="flow" title="States, conditionals, interactions and tracked violations" aria-selected="false" type="button">States &amp; flows <span id="flowCount" class="pm-count"></span></button>
+    </div>
+    <div class="pm-filters" id="filters">
+      <label>Class <select id="fClass" data-act="filter"><option value="all">all</option></select></label>
+      <label>Strength <select id="fStrength" data-act="filter"><option value="all">all</option><option value="strong">strong</option><option value="weak">weak</option></select></label>
+      <label class="pm-chk"><input type="checkbox" id="fReview" data-act="filter"> Needs review</label>
+      <label class="pm-chk"><input type="checkbox" id="fUnsure" data-act="filter"> Unsure only</label>
+      <label class="pm-chk"><input type="checkbox" id="fIcons" data-act="filter"> Icons</label>
+      <label class="pm-search"><span class="sr">Search</span><input type="search" id="fQuery" data-act="filter" placeholder="Search text, tag or id" autocomplete="off"></label>
+    </div>
+    <div id="tree" class="pm-tree" role="tree" aria-label="Page structure" tabindex="-1"></div>
+    <div id="review" class="pm-review" hidden></div>
+    <div id="flow" class="pm-review" hidden></div>
+  </section>
+
+  <section class="pm-mid" aria-label="Page">
+    <div class="pm-tabs" role="tablist" aria-label="Middle view">
+      <button role="tab" id="tabWire" data-act="mtab" data-tab="wire" aria-selected="true" type="button">Wireframe</button>
+      <button role="tab" id="tabSource" data-act="mtab" data-tab="source" aria-selected="false" type="button">Source</button>
+      <button role="tab" id="tabOrig" data-act="mtab" data-tab="orig" aria-selected="false" type="button">Original preview</button>
+    </div>
+    <p class="pm-hint" id="midHint"></p>
+    <iframe id="wire" class="pm-wire" sandbox="allow-same-origin" title="Wireframe of the page; click a box to select its node"></iframe>
+    <div id="source" class="pm-source" hidden tabindex="0" aria-label="Page source"></div>
+    <iframe id="orig" class="pm-wire" sandbox title="Original preview of the page" hidden></iframe>
+  </section>
+
+  <aside class="pm-panel" id="panel" aria-label="Node">
+    <p class="pm-empty">Select a node in the structure or the wireframe.</p>
+  </aside>
+</main>
+
+<dialog id="applyDlg" class="pm-dlg" aria-labelledby="applyTitle">
+  <form method="dialog" class="pm-dlgbox">
+    <h2 id="applyTitle">Marked copy</h2>
+    <div id="applyBody"></div>
+    <div class="pm-dlgbtns"><button class="pm-btn" value="close">Close</button></div>
+  </form>
+</dialog>
+
+<script type="module" src="/pagemap/pagemap.mjs"></script>
+</body>
+</html>

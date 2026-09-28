@@ -1,0 +1,34 @@
+{
+  "feature": "orders",
+  "open": 4,
+  "items": [
+    {
+      "id": "list.status",
+      "part": "row.status",
+      "state": "placeholder",
+      "why": "getStatus() is a placeholder in the controller layer.",
+      "hint": "Write the real logic in getStatus(), or close it by data: If the API has it, add a field to the GET response with these values per row (id 1 → \"Shipped\", id 2 → \"Pending\", id 3 → \"Shipped\"); it closes as soon as you re-run. Otherwise answer with a placeholder, or leave the TODO."
+    },
+    {
+      "id": "action.row.delete",
+      "part": "delete (row action)",
+      "state": "placeholder",
+      "why": "handleDelete() is a placeholder in the controller layer.",
+      "hint": "Write the real logic in handleDelete(), or close it by data: Add a DELETE endpoint to \"apis\" in feature.json; it is wired as soon as you re-run."
+    },
+    {
+      "id": "action.page.save",
+      "part": "save (page action)",
+      "state": "skipped",
+      "why": "\"save\" looks like \"save\", but the API for it (update) wasn't given.",
+      "hint": "Add a PUT endpoint to \"apis\" in feature.json; it is wired as soon as you re-run."
+    },
+    {
+      "id": "form.notes",
+      "part": "input notes",
+      "state": "gap",
+      "why": "The form has an input \"notes\" but no example request body has it.",
+      "hint": "Add \"notes\" to the request example of the POST/PUT in feature.json, or remove the input from the design."
+    }
+  ]
+}

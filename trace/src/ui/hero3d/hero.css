@@ -1,0 +1,20 @@
+/* The 3D pill hero on the Drop in screen (hero3d/hero.mjs). It sits in the Contract column, right under the Contract card, in the
+   flow of that column (so it follows the card whatever its height, and never sits behind it), and hides below the width where the
+   screen stacks into one column. The drop grid has three columns (screens, design thumbnail, Contract). */
+.hero3d {
+  --hero-w: 360px; --hero-h: 212px;
+  position: relative; z-index: 0; pointer-events: none;
+  width: min(100%, var(--hero-w)); height: var(--hero-h);
+  margin: -32px auto -20px; /* directly under the Contract card, whatever its height: the pill is drawn inside the box with clear space above it, so the box may overlap the card's bottom edge */
+  opacity: 0; transition: opacity .5s var(--ease);
+}
+.hero3d[data-hero="svg"], .hero3d[data-hero="3d"] { opacity: 1; }
+.hero3d[data-hero="off"] { display: none; }
+.hero3d-svg, .hero3d-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.hero3d-svg { padding: 0 calc(var(--hero-w) * .1); transition: opacity .5s var(--ease); }
+.hero3d-canvas { opacity: 0; transition: opacity .5s var(--ease); }
+.hero3d[data-hero="3d"] .hero3d-canvas { opacity: 1; }
+.hero3d[data-hero="3d"] .hero3d-svg { opacity: 0; }
+@media (max-width: 1240px) { .hero3d { --hero-w: 300px; --hero-h: 178px; } }
+html[data-present="1"] .hero3d { --hero-w: 340px; --hero-h: 200px; } /* Presenter mode: bigger type makes the columns taller, so the hero stays this size and clear of the Contract card */
+@media (max-width: 1000px) { .hero3d { display: none; } }

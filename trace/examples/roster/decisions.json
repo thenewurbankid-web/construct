@@ -1,0 +1,14 @@
+{
+  "value.plannedTotal": {
+    "task": "choose",
+    "model": "ollama:qwen2.5-coder:1.5b",
+    "evidence": "The planned total is the sum of all budgets.",
+    "answer": "sum(budget) of the list, shown as moneyCompact"
+  },
+  "value.forecastTotal": {
+    "task": "choose",
+    "model": "ollama:qwen2.5-coder:1.5b",
+    "evidence": "The planned total is the sum of all budgets.",
+    "answer": "sum(forecast) of the list, shown as moneyCompact"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "category": "ties-agg",
+  "expect": "29624a22fcc57f19",
+  "generator": {
+    "name": "ties-agg",
+    "params": {
+      "mode": "single"
+    },
+    "seed": 5001
+  },
+  "id": "ties-agg-01"
+}

@@ -1,0 +1,10 @@
+{
+  "category": "noisy",
+  "expect": "6f0480217faddabb",
+  "generator": {
+    "name": "noisy",
+    "params": {},
+    "seed": 9086
+  },
+  "id": "noisy-06"
+}

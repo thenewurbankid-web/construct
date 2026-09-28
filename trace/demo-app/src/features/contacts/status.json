@@ -1,0 +1,34 @@
+{
+  "feature": "contacts",
+  "open": 4,
+  "items": [
+    {
+      "id": "list.fullName",
+      "part": "row.fullName",
+      "state": "placeholder",
+      "why": "getFullName() is a placeholder in the controller layer.",
+      "hint": "Write the real logic in getFullName(), or close it by data: If the API has it, add a field to the GET response with these values per row (id 1 → \"Lena Kumar\", id 2 → \"Arjun Rao\", id 3 → \"Mia Shah\"); it closes as soon as you re-run. Otherwise answer with a placeholder, or leave the TODO."
+    },
+    {
+      "id": "list.initials",
+      "part": "row.initials",
+      "state": "skipped",
+      "why": "No API field, with any built-in format, produces \"LK\", \"AR\", \"MS\".",
+      "hint": "If the API has it, add a field to the GET response with these values per row (id 1 → \"LK\", id 2 → \"AR\", id 3 → \"MS\"); it closes as soon as you re-run. Otherwise answer with a placeholder, or leave the TODO."
+    },
+    {
+      "id": "value.directoryUpdated",
+      "part": "directoryUpdated",
+      "state": "placeholder",
+      "why": "getDirectoryUpdated() is a placeholder in the controller layer.",
+      "hint": "Write the real logic in getDirectoryUpdated(), or close it by data: If the data exists, add it as a field on each item so an aggregate can produce it. Otherwise answer with a placeholder (controller or a new endpoint), or leave the TODO."
+    },
+    {
+      "id": "action.row.call",
+      "part": "call (row action)",
+      "state": "skipped",
+      "why": "\"call\" isn't a verb the tool knows (create, add, update, save, delete, remove, edit, select, cancel, reset, refresh).",
+      "hint": "Rename it in the design (data-action) to a known verb, or answer with your own placeholder handler."
+    }
+  ]
+}

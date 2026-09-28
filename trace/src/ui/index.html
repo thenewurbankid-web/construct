@@ -1,0 +1,1630 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Trace · Studio</title>
+<link rel="icon" type="image/svg+xml" href="/demo/assets/trace-favicon.svg">
+<script>/* theme before first paint: lm-theme = light | dark; anything else (or blocked storage) follows the system */
+(function(){try{var t=localStorage.getItem("lm-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}})()
+</script>
+<link rel="stylesheet" href="/theme.css">
+<style>
+*{box-sizing:border-box}
+html,body{height:100%}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--fg);font:12.5px/1.4 system-ui,-apple-system,sans-serif;overflow:hidden}
+[hidden]{display:none!important}
+button{font:inherit;cursor:pointer}
+code{font:11.5px ui-monospace,SFMono-Regular,Menlo,monospace}
+/* the stage: the page itself, full width and full height */
+#stage{position:fixed;inset:0;overflow:auto;padding:52px 28px 28px;background:var(--bg)}
+.pv{font-size:15px;color:var(--fg);min-height:100%}
+.pv .page{max-width:none;width:100%}
+.pv h1{font-size:26px;margin:0 0 6px}.pv .meta{color:var(--mut);margin:0 0 18px;font-size:15px}
+.pv .card{display:block;border:1px solid var(--bd);border-radius:10px;background:var(--card);padding:12px;margin-bottom:16px}
+.pv .form{display:flex;gap:10px;flex-wrap:wrap}
+.pv input{font:inherit;padding:7px 10px;border:1px solid var(--bd2);border-radius:7px;background:var(--bg);color:var(--fg);min-width:0;pointer-events:none}
+.pv button{font:inherit;padding:6px 14px;border:1px solid var(--bd2);border-radius:7px;background:var(--card);color:var(--fg)}
+.pv button.primary{background:var(--acc);border-color:var(--acc);color:var(--on-acc)}.pv button.danger{color:var(--red)}
+.pv table{width:100%;border-collapse:collapse}.pv th{text-align:left;color:var(--mut);font-weight:600;font-size:13px}
+.pv th,.pv td{padding:10px 12px;border-bottom:1px solid var(--bd)}.pv .num{text-align:right}
+.pv td.actions{white-space:nowrap}.pv td.actions button{margin-right:8px}.pv td{vertical-align:middle}
+.pv [data-id]{cursor:pointer;transition:outline-color .3s,background .3s}
+.pv .lm-missing{outline:2px dashed var(--red);outline-offset:2px;background:var(--redbg)!important;color:var(--red)}
+.pv .lm-ask{outline:2px solid var(--amb);outline-offset:2px;background:var(--ambbg)!important}
+.pv .lm-placeholder{outline:2px dashed var(--ph);outline-offset:2px;background:var(--phbg)!important}
+.pv .lm-static{outline:1px dotted var(--mut);outline-offset:2px}
+.pv table.lm-missing,.pv table.lm-ask,.pv tbody.lm-missing,.pv tbody.lm-ask{background:transparent!important}
+.pv .lm-focus{box-shadow:0 0 0 3px var(--acc)}
+.pv .lm-asking{outline:3px solid var(--acc)!important;outline-offset:3px;animation:qpulse 1.1s ease-in-out infinite;position:relative;z-index:2}
+@keyframes qpulse{50%{outline-color:transparent}}
+.pv .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-bottom:16px}
+.pv .metric p{margin:4px 0}.pv .label{color:var(--mut);font-size:12.5px}.pv .big{font-size:26px;font-weight:700}.pv .note{color:var(--mut);font-size:12.5px}
+.pv .kicker{color:var(--mut);font-size:12px;letter-spacing:.05em;margin:0 0 4px}.pv .crumbs{color:var(--mut);font-size:12.5px;margin-bottom:6px}
+.pv .badge{display:inline-block;border:1px solid var(--bd);border-radius:99px;padding:0 8px;font-size:11.5px;margin-right:4px;color:var(--mut)}
+.pv .badge.err{color:var(--red);border-color:var(--red)}.pv .badge.ok{color:var(--grn);border-color:var(--grn)}
+.pv h2{font-size:17px;margin:14px 0 6px}.pv svg{vertical-align:middle;color:var(--acc)}
+.pvgaps{margin-top:6px;font-size:13px;color:var(--red)}.pvgaps div{border:1.5px dashed var(--red);background:var(--redbg);border-radius:8px;padding:6px 10px;margin-top:6px}
+/* run */
+.sp{border:1px solid var(--bd);border-radius:9px;padding:8px 10px;margin-bottom:8px;background:var(--bg)}
+.steps{list-style:none;margin:0;padding:0}
+.step{display:grid;grid-template-columns:18px 1fr;gap:7px;padding:5px 0;border-bottom:1px solid var(--bd)}.step:last-child{border:0}
+.dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--bd);margin-top:2px}
+.step.running .dot{border-color:var(--acc);border-top-color:transparent;animation:spin .8s linear infinite}
+.step.done .dot{background:var(--grn);border-color:var(--grn)}
+.step .name{font-weight:600}.step.todo .name{color:var(--mut)}.step .why{color:var(--mut);font-size:11.5px}
+.step ul{margin:4px 0 0;padding-left:16px;color:var(--mut);font-size:11.5px}
+.step .stat b.r{color:var(--red)}.step .stat b.a{color:var(--amb)}.step .stat b.p{color:var(--ph)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.q{border:2px solid var(--amb);background:var(--ambbg);border-radius:10px;padding:10px;margin-bottom:8px}
+.q .n{font-size:10.5px;letter-spacing:.06em;color:var(--amb);font-weight:700;margin-bottom:3px}
+.q .t{font-weight:600;margin-bottom:8px}
+.q button{display:block;width:100%;text-align:left;background:var(--card);color:var(--fg);border:1.5px solid var(--bd2);border-radius:8px;padding:6px 9px;margin-top:5px}
+.q button:hover:not(:disabled){border-color:var(--acc)}.q button:disabled{opacity:.5}
+.q button kbd{font:inherit;color:var(--mut);margin-right:7px}
+.q.sub{border-color:var(--ph);background:var(--phbg)}.q.sub .n{color:var(--ph)}
+.q .txt{width:100%;font:inherit;padding:6px 9px;border-radius:8px;border:1.5px solid var(--bd2);background:var(--card);color:var(--fg)}
+.q label.opt{display:flex;gap:7px;align-items:center;background:var(--card);border:1.5px solid var(--bd2);border-radius:8px;padding:6px 9px;margin-top:5px;cursor:pointer}
+.q .joint-fields{margin-top:6px;padding-top:6px;border-top:1px dashed var(--bd2)}
+.q label.opt small{margin-left:auto;color:var(--acc);font-size:9.5px;text-transform:uppercase;letter-spacing:.03em}
+.q .skip{background:transparent;border-style:dashed;color:var(--mut);text-align:center;margin-top:10px}
+.q .go{background:var(--acc);color:var(--on-acc);border:0;text-align:center;font-weight:600;margin-top:8px}
+.qctx{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:7px 9px;margin:0 0 8px;font-size:11.5px}
+.qctx .qh{color:var(--mut);margin-bottom:4px}.qctx .qc{display:grid;grid-template-columns:78px 1fr;gap:6px;padding:2px 0}
+.qctx .qc>b{color:var(--mut);font-weight:600}.qctx code{font:11px ui-monospace,monospace;background:var(--stat);border-radius:4px;padding:0 4px;word-break:break-word}
+.qb{display:inline-block;margin:0 4px 2px 0}.qb i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--c);margin-right:4px}
+.hint{margin:8px 0 0;font-size:11.5px;color:var(--mut);border-top:1px dashed var(--bd);padding-top:6px}.hint b{color:var(--fg)}
+.log{margin:6px 0 0;padding:0;list-style:none;font-size:11.5px;color:var(--mut)}.log li{padding:3px 0;border-top:1px solid var(--bd)}.log b{color:var(--fg)}
+.fin{border:2px solid var(--grn);border-radius:10px;padding:8px 10px;margin-bottom:8px;font-size:12px}.fin a{color:var(--acc)}.fin code{word-break:break-all}
+.fail{border:2px solid var(--red);background:var(--redbg);color:var(--red);border-radius:10px;padding:8px 10px;margin-bottom:8px}
+.banner{border:1.5px solid var(--acc);border-radius:10px;padding:6px 10px;margin-bottom:8px;font-size:12px}
+.about{color:var(--mut);font-size:11.5px;margin:0 0 8px}
+.items{margin:6px 0 0;padding:0;list-style:none;font-size:11.5px}.items li{padding:6px 0;border-top:1px solid var(--bd)}
+.chip{display:inline-block;font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;padding:0 6px;border-radius:99px;border:1px solid var(--bd);margin-right:5px;font-weight:700}
+.chip.missing,.chip.gap{color:var(--red);border-color:var(--red)}.chip.tie,.chip.skipped{color:var(--amb);border-color:var(--amb)}.chip.placeholder{color:var(--ph);border-color:var(--ph)}
+.items .hh{color:var(--mut);margin-top:2px}
+/* tree */
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--mut);align-items:center}
+.legend u{display:inline-block;width:18px;border-top:3px solid var(--grn);vertical-align:3px;margin-right:4px;text-decoration:none}
+.legend u.gs{border-top:2px dotted var(--mut)}.legend u.ga{border-top:3px dotted var(--amb)}.legend u.gp{border-top:3px dashed var(--ph)}.legend u.gm{border-top:3px dashed var(--red)}
+.tree svg{display:block;width:100%;min-width:980px;height:auto}
+.empty{color:var(--mut);padding:24px 12px;text-align:center}
+/* api contract */
+.ct-head{margin-bottom:6px}.ct-head code{color:var(--mut)}
+.ct-warn{border:1.5px dashed var(--red);background:var(--redbg);color:var(--red);border-radius:8px;padding:5px 9px;margin-bottom:6px;font-size:11.5px}
+details.api{border:1px solid var(--bd);border-radius:8px;margin-bottom:6px;background:var(--bg)}
+details.api summary{cursor:pointer;padding:5px 8px;display:flex;gap:7px;align-items:center}
+details.api .body{padding:0 8px 8px}
+.mth{font:700 10.5px ui-monospace,monospace;padding:1px 6px;border-radius:5px;border:1.5px solid currentColor}
+.mth.GET{color:var(--grn)}.mth.POST{color:var(--acc)}.mth.PUT,.mth.PATCH{color:var(--amb)}.mth.DELETE{color:var(--red)}
+.lbl{font-size:10.5px;letter-spacing:.06em;color:var(--mut);margin:6px 0 3px;text-transform:uppercase}
+.fields{display:flex;flex-wrap:wrap;gap:4px}
+.fld{font:11.5px ui-monospace,monospace;padding:0 6px;border-radius:5px;border:1.5px solid var(--bd);color:var(--mut)}.fld.used{border-color:var(--grn);color:var(--grn)}
+pre.json{margin:0;padding:6px;border-radius:6px;background:var(--card);border:1px solid var(--bd);font:11.5px ui-monospace,monospace;overflow:auto;max-height:160px}
+.ct-legend{font-size:11px;color:var(--mut);margin-bottom:5px}
+.ct-endpoint{border:1px solid var(--bd);border-radius:8px;padding:7px 9px;margin-bottom:8px;background:var(--card)}
+.ct-endpoint>b{font-size:11px;letter-spacing:.06em;color:var(--mut);text-transform:uppercase;display:block;margin-bottom:5px}
+/* T12.1: sample-data provenance (real is unmarked; assumed/synthetic are labelled) */
+.fld.assumed{border-color:var(--amb);color:var(--amb)}
+.fld small,.ct-tag{font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;border-radius:4px;padding:0 4px;margin-left:2px}
+.ct-tag.assumed,.fld.assumed small{color:var(--amb);border:1px solid var(--amb)}
+.ct-tag.synthetic{color:var(--acc);border:1px solid var(--acc)}
+.ct-fieldgaps{margin-top:8px}
+.ct-fieldgaps ul{list-style:none;margin:4px 0 0;padding:0;font-size:11.5px}
+.ct-fieldgaps li{display:flex;gap:8px;align-items:center;padding:3px 0;flex-wrap:wrap}
+.ct-fieldgaps .syn-err{color:var(--red);font-size:11px}
+.ct-fieldgaps .mut{color:var(--mut);font-size:11px}
+.tb.sm{padding:1px 7px;font-size:11px}
+
+/* the page is the screen; a dock on the right holds the sections */
+#stage{right:var(--dockw,460px)}
+body.nodock #stage{right:0}
+#bar{position:fixed;top:8px;right:calc(var(--dockw,460px) + 10px);z-index:1000;justify-content:flex-end;display:flex;align-items:center;gap:6px;padding:5px 8px;border:1px solid var(--bd);border-radius:12px;background:color-mix(in srgb,var(--card) 90%,transparent);backdrop-filter:blur(10px);box-shadow:var(--shadow);max-width:calc(100vw - var(--dockw,460px) - 24px);flex-wrap:nowrap}
+/* one row at every width: the example picker and the status text give way first (ellipsis), never a second line */
+#bar>*{flex-shrink:0}#bar>select,#bar>#stat{flex-shrink:1;min-width:0}#stat{overflow:hidden;text-overflow:ellipsis}#build{flex-wrap:nowrap}#buildDot{display:inline-flex;flex:none}
+body.nodock #bar{right:10px;max-width:calc(100vw - 20px)}
+#bar .brand{font-size:13px;margin-right:2px;white-space:nowrap}
+#bar select{font:inherit;border:1px solid var(--bd2);border-radius:7px;background:var(--bg);color:var(--fg);padding:3px 6px;max-width:150px}
+#bar .sep{width:1px;height:20px;background:var(--bd);margin:0 2px}
+.tb{background:transparent;border:1px solid var(--bd2);color:var(--fg);border-radius:7px;padding:3px 9px;white-space:nowrap}
+.tb:hover:not(:disabled){border-color:var(--acc)}.tb:disabled{opacity:.45;cursor:default}
+.tb.go{background:var(--acc);border-color:var(--acc);color:var(--on-acc);font-weight:600}
+#stat{font-size:11px;color:var(--mut);white-space:nowrap}
+.menu{position:relative}.menu summary{list-style:none;cursor:pointer}.menu summary::-webkit-details-marker{display:none}
+.menubox{position:absolute;right:0;top:34px;z-index:5;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:8px 12px;width:340px;box-shadow:var(--shadow)}
+.menubox label{display:flex;gap:8px;align-items:flex-start;padding:3px 0}.menubox button{margin-top:6px;width:100%}
+.menubox h4{margin:8px 0 4px;font-size:11px;letter-spacing:.06em;color:var(--mut);text-transform:uppercase}
+.airow{display:grid;grid-template-columns:74px 128px 1fr;gap:5px;align-items:center;padding:2px 0}
+.airow select,.airow input{font:inherit;border:1px solid var(--bd2);border-radius:6px;background:var(--bg);color:var(--fg);padding:2px 5px;min-width:0}
+#dock{position:fixed;top:0;right:0;bottom:0;width:var(--dockw,460px);z-index:900;display:flex;flex-direction:column;border-left:1px solid var(--bd);background:var(--card)}
+body.nodock #dock{display:none}
+#dock .grip{position:absolute;left:-4px;top:0;bottom:0;width:8px;cursor:col-resize;z-index:3}
+#dock .grip:hover{background:color-mix(in srgb,var(--acc) 40%,transparent)}
+.dockscroll{flex:1;overflow-y:auto;min-height:0}
+.sec{border-bottom:1px solid var(--bd)}
+.sec>.ph{display:flex;align-items:center;gap:6px;padding:7px 10px;cursor:pointer;user-select:none;position:sticky;top:0;background:var(--card);z-index:2;border-bottom:1px solid transparent}
+.sec>.ph:hover{background:var(--stat)}
+.sec>.ph b{font-size:12.5px}.sec>.ph .caret{width:12px;color:var(--mut);font-size:11px}
+.sec>.ph button{background:transparent;border:1px solid var(--bd2);color:var(--fg);border-radius:6px;padding:1px 7px;font-size:12px}
+.sec>.ph button:hover{border-color:var(--acc)}
+.sec .pb{padding:8px 10px 12px}
+.sec.collapsed .pb{display:none}.sec:not(.collapsed)>.ph{border-bottom-color:var(--bd)}
+#side{max-height:42vh;overflow:auto}
+.grow{flex:1}
+.bd{display:inline-block;min-width:16px;padding:0 5px;border-radius:99px;font-size:10.5px;font-weight:700;background:var(--stat);color:var(--mut);text-align:center}
+.bd.warn{background:var(--redbg);color:var(--red)}.bd.ask{background:var(--ambbg);color:var(--amb)}.bd.ph{background:var(--phbg);color:var(--ph)}
+.bd.pulse{animation:pulse2 1s ease-in-out infinite}
+@keyframes pulse2{50%{opacity:.35}}
+/* mini tree: colour and shape only, click to open it big */
+.mini{cursor:zoom-in}
+.mini svg{display:block;width:100%;height:auto;min-width:0}
+.mini svg text{display:none}
+.mini svg .n rect{stroke-width:2}
+/* big tree window: zoom with the wheel, drag to pan, double-click to fit */
+#bigwin{position:fixed;left:5vw;top:6vh;width:90vw;height:86vh;z-index:1500;display:flex;flex-direction:column;resize:both;overflow:hidden;min-width:420px;min-height:260px;border:1px solid var(--bd);border-radius:12px;background:var(--card);box-shadow:var(--shadow-lg)}
+#bigwin .ph{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--bd);cursor:grab;user-select:none;flex:0 0 auto}
+#bigwin .ph button{background:transparent;border:1px solid var(--bd2);color:var(--fg);border-radius:6px;padding:1px 8px}
+#bigwin .ph button:hover{border-color:var(--acc)}
+#bigview{position:relative;flex:1;min-height:0;overflow:hidden;cursor:grab;background:var(--bg);touch-action:none}
+#bigview.panning{cursor:grabbing}
+#bigcanvas{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+#bigcanvas svg{display:block;min-width:0;max-width:none}
+/* console: every AI exchange; docked at the bottom or detached into a floating window */
+body.con-docked #stage{bottom:var(--conh,210px)}
+#console{position:fixed;z-index:950;display:flex;flex-direction:column;background:var(--card);border:1px solid var(--bd)}
+#console.docked{left:0;right:var(--dockw,460px);bottom:0;height:var(--conh,210px);border-width:1px 1px 0 0}
+body.nodock #console.docked{right:0}
+#console.floating{z-index:1400;resize:both;overflow:hidden;min-width:380px;min-height:140px;border-radius:12px;box-shadow:var(--shadow-lg)}
+#console .cgrip{position:absolute;left:0;right:0;top:-4px;height:8px;cursor:row-resize;z-index:3}
+#console.floating .cgrip{display:none}
+#console .ph{display:flex;align-items:center;gap:8px;padding:5px 10px;border-bottom:1px solid var(--bd);flex:0 0 auto;user-select:none}
+#console.floating .ph{cursor:grab}
+#console .ph button{background:transparent;border:1px solid var(--bd2);color:var(--fg);border-radius:6px;padding:1px 8px;font-size:12px}
+#console .ph button:hover{border-color:var(--acc)}
+#console .cnt{color:var(--mut);font-size:11px}
+#conbody{flex:1;overflow:auto;padding:6px 8px;font:11.5px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;min-height:0}
+.ce{border:1px solid var(--bd);border-radius:8px;margin-bottom:8px;background:var(--bg)}
+.ce.ok{border-left:3px solid var(--grn)}.ce.bad{border-left:3px solid var(--amb)}
+.ce .ch{display:flex;gap:10px;flex-wrap:wrap;padding:4px 8px;border-bottom:1px solid var(--bd);align-items:baseline}
+.ce .ch .tk{color:var(--acc);font-weight:700}.ce .ch .md{color:var(--ph)}.ce .ch .mu{color:var(--mut)}
+.cl{display:grid;grid-template-columns:78px 1fr;gap:8px;padding:2px 8px}
+.cl .tag{color:var(--mut);text-transform:uppercase;font-size:10px;letter-spacing:.05em;padding-top:1px}
+.cl .tx{white-space:pre-wrap;word-break:break-word}
+.cl.think .tx{color:var(--mut);font-style:italic}.cl.verdict .tx{font-weight:600}
+.ce.ok .verdict .tx,.ce.ok .verdict .tag{color:var(--grn)}.ce.bad .verdict .tx,.ce.bad .verdict .tag{color:var(--amb)}
+.cl.note{color:var(--mut);margin-bottom:4px}
+.cl.sys a{cursor:pointer;color:var(--acc)}
+/* run summary popup: overview, code changes (git-style diff + directory tree grouped by feature), and what is still open */
+#chg{position:fixed;left:6vw;top:6vh;width:88vw;height:86vh;z-index:1600;display:flex;flex-direction:column;background:var(--card);border:1px solid var(--bd);border-radius:12px;box-shadow:var(--shadow-lg);resize:both;overflow:hidden;min-width:520px;min-height:300px}
+#chg .ph{display:flex;align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid var(--bd);flex:0 0 auto}
+#chg .ph button{background:transparent;border:1px solid var(--bd2);color:var(--fg);border-radius:6px;padding:1px 9px}
+#chg .ph button:hover{border-color:var(--acc)}
+.ctabs{display:flex;gap:2px}.ctab{border:0!important;border-bottom:2px solid transparent!important;border-radius:0!important;padding:4px 10px!important}
+.ctab.on{border-bottom-color:var(--acc)!important;color:var(--acc)}
+.cstat{color:var(--mut);font-size:12px}.cstat b.a{color:var(--grn)}.cstat b.r{color:var(--red)}
+.cbody{flex:1;min-height:0;display:grid;grid-template-columns:320px 1fr}
+#ctree{overflow:auto;border-right:1px solid var(--bd);padding:8px;font-size:12px}
+#cdiff{overflow:auto;min-width:0}
+.cf{display:flex;align-items:center;gap:6px;padding:3px 6px;border-radius:6px;cursor:pointer;white-space:nowrap}
+.cf:hover{background:var(--stat)}.cf.sel{background:color-mix(in srgb,var(--acc) 18%,transparent)}
+.cf .nm{flex:1;overflow:hidden;text-overflow:ellipsis}.cf .pm{color:var(--mut);font-size:11px}.cf .pm b.a{color:var(--grn)}.cf .pm b.r{color:var(--red)}
+.st{font:700 10px ui-monospace,monospace;width:16px;height:16px;line-height:16px;text-align:center;border-radius:4px;flex:0 0 auto}
+.st.added{background:color-mix(in srgb,var(--grn) 16%,transparent);color:var(--grn)}.st.modified{background:color-mix(in srgb,var(--amb) 16%,transparent);color:var(--amb)}.st.unchanged{color:var(--mut)}
+.cfeat{font-weight:700;padding:6px 4px 2px;cursor:pointer;display:flex;gap:6px;align-items:center}.cfeat .cs{color:var(--mut);font-weight:400;font-size:11px}
+.cfolder{color:var(--mut);padding:4px 4px 1px 14px;font-size:11px;letter-spacing:.04em;text-transform:uppercase}.cfile{padding-left:22px}
+.dfh{position:sticky;top:0;background:var(--card);border-bottom:1px solid var(--bd);padding:7px 12px;display:flex;gap:10px;align-items:center;z-index:1}
+.dfh code{font:12px ui-monospace,monospace}
+.df{font:11.5px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace}
+.dh{background:color-mix(in srgb,var(--acc) 12%,transparent);color:var(--acc);padding:2px 12px}
+.dl{display:grid;grid-template-columns:46px 46px 18px 1fr;white-space:pre-wrap;word-break:break-word}
+.dl>span:nth-child(-n+2){color:var(--mut);text-align:right;padding-right:8px;user-select:none;opacity:.7}
+.dl>span:nth-child(3){text-align:center;color:var(--mut)}
+.dl.add{background:color-mix(in srgb,var(--grn) 16%,transparent)}.dl.add>span:nth-child(3){color:var(--grn)}
+.dl.del{background:color-mix(in srgb,var(--red) 16%,transparent)}.dl.del>span:nth-child(3){color:var(--red)}
+.dmsg{color:var(--mut);padding:24px;text-align:center}
+.copen{overflow:auto;padding:12px 16px;grid-column:1 / -1}
+.osec{margin-bottom:14px}.osec h4{margin:0 0 6px;font-size:12.5px;display:flex;gap:8px;align-items:center}
+.osec h4 .n{background:var(--stat);border-radius:99px;padding:0 8px;font-size:11px;color:var(--mut)}
+.oi{border:1px solid var(--bd);border-radius:8px;padding:6px 10px;margin-bottom:6px;font-size:12px;cursor:pointer}.oi:hover{border-color:var(--acc)}
+.oi .hh{color:var(--mut);margin-top:2px}.oi code{font:11px ui-monospace,monospace;background:var(--stat);border-radius:4px;padding:0 4px}
+.sx{margin:8px 0 0;padding:6px 8px;border-left:3px solid var(--grn);background:var(--card);border-radius:0 6px 6px 0;font-size:12.5px;line-height:1.4}
+.sx.warn{border-left-color:var(--amb)}.sx.bad{border-left-color:var(--red)}
+.sx .by{display:block;color:var(--mut);font-size:10.5px;margin-top:2px}
+.ni{padding:9px 12px}.ni .nh{display:flex;gap:8px;align-items:baseline}.ni .nh b{font-size:13px}.ni .nw{margin:3px 0 2px}.ni .na{color:var(--fg)}.ni .na i{color:var(--mut);font-style:normal}.ni .nb{color:var(--mut);font-size:10.5px;margin-top:3px}
+.ni.sev-Blocker{border-left:4px solid var(--red)}.ni.sev-Risk{border-left:4px solid var(--amb)}.ni.sev-Decision{border-left:4px solid var(--acc)}.ni.sev-To\ write{border-left:4px solid var(--ph)}
+.sevchip{font-size:10px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;padding:0 7px;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
+.sev-Blocker .sevchip{color:var(--red)}.sev-Risk .sevchip{color:var(--amb)}.sev-Decision .sevchip{color:var(--acc)}.sev-To\ write .sevchip{color:var(--ph)}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-bottom:16px}
+.sc{border:1px solid var(--bd);border-radius:10px;padding:10px 12px;background:var(--bg)}.sc .k{color:var(--mut);font-size:11px;letter-spacing:.05em;text-transform:uppercase}
+.sc .v{font-size:22px;font-weight:700;margin:2px 0}.sc .s{color:var(--mut);font-size:12px}
+.pbar{display:flex;height:8px;border-radius:99px;overflow:hidden;background:var(--stat);margin-top:6px}.pbar i{display:block}
+/* ---- the run summary as an app: title bar, navigation rail, views ---- */
+#chg{user-select:none;background:var(--bg)}
+#chg .df,#chg .mp,#chg input,#chg .ib p,#chg #cdiff code{user-select:text}
+#chg .ph{background:var(--card)}#chg .logo{color:var(--acc);font-size:16px}
+.cmeta{display:flex;gap:6px}.mc{font-size:11px;padding:1px 9px;border-radius:99px;border:1px solid var(--bd);color:var(--mut)}.mc.ok{color:var(--grn);border-color:var(--grn)}.mc.warn{color:var(--amb);border-color:var(--amb)}
+.app{flex:1;min-height:0;display:grid;grid-template-columns:184px 1fr}
+.rail{background:var(--card);border-right:1px solid var(--bd);padding:10px 8px;display:flex;flex-direction:column;gap:3px}
+.rbtn{display:flex;align-items:center;gap:9px;width:100%;text-align:left;border:0;background:transparent;color:var(--fg);padding:8px 10px;border-radius:9px;font-size:13px}
+.rbtn:hover{background:var(--stat)}.rbtn.on{background:color-mix(in srgb,var(--acc) 16%,transparent);color:var(--acc);font-weight:600}
+.rbtn .ri{width:18px;text-align:center;font-size:15px}.rbtn .rl{flex:1}.rbtn .rn{font-size:10.5px;background:var(--stat);color:var(--mut);border-radius:99px;padding:0 7px}.rbtn.on .rn{background:var(--acc);color:var(--on-acc)}
+.rfoot{margin-top:auto;color:var(--mut);font-size:11px;padding:8px 10px}
+.view{display:flex;flex-direction:column;min-width:0;min-height:0}
+.vbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 16px;border-bottom:1px solid var(--bd);background:var(--card);min-height:46px}
+.vt{font-weight:700;font-size:14px}.vs{color:var(--mut);font-size:12px}.vopt{margin-left:auto}
+.fcs{display:flex;gap:4px;flex-wrap:wrap}.fc{border:1px solid var(--bd2);background:transparent;color:var(--fg);border-radius:99px;padding:2px 10px;font-size:12px}
+.fc em{font-style:normal;color:var(--mut);margin-left:5px}.fc.on{background:var(--acc);border-color:var(--acc);color:var(--on-acc)}.fc.on em{color:var(--on-acc)}
+.fq{margin-left:auto;background:var(--bg);color:var(--fg);border:1px solid var(--bd2);border-radius:8px;padding:4px 10px;min-width:160px;font:inherit}
+.vbody{flex:1;min-height:0;overflow:auto}.vbody.split{display:grid;grid-template-columns:320px 1fr;overflow:hidden}
+.vbody .copen{padding:16px;overflow:auto;grid-column:auto;height:100%}
+.ov{display:flex;flex-direction:column;gap:18px;max-width:1100px}
+.hero{display:flex;gap:26px;align-items:center;background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:18px 22px}
+.ringbox{position:relative;width:132px;height:132px;flex:0 0 auto}.ring{width:132px;height:132px}
+.rp{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}.rp b{font-size:28px;line-height:1}.rp span{font-size:11px;color:var(--mut)}
+.hleg{flex:1;min-width:0}.hl1{font-size:18px;font-weight:700;margin-bottom:8px}
+.lg{display:inline-flex;align-items:center;gap:6px;margin:0 16px 4px 0;font-size:12.5px;color:var(--mut)}.lg i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.kpi{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px 16px}
+.kh{display:flex;align-items:center;gap:8px;color:var(--mut);font-size:11.5px;letter-spacing:.05em;text-transform:uppercase}.ki{width:22px;height:22px;border-radius:7px;background:var(--stat);display:inline-flex;align-items:center;justify-content:center;color:var(--acc);font-size:13px}
+.kv{font-size:28px;font-weight:800;margin:6px 0 2px}.kv small{font-size:13px;font-weight:500;color:var(--mut)}.ks{color:var(--mut);font-size:12px}.ga{color:var(--grn)}.gr{color:var(--red)}
+.kpi .sx,.hleg .sx{margin-top:10px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.sec{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:12px 14px}
+.sh{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}.sh b{font-size:14px}.sh .sc2{color:var(--mut);font-size:12px}.sh a{margin-left:auto;color:var(--acc);font-size:12.5px;text-decoration:none}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}.fchip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--bd);border-radius:99px;padding:3px 10px;font-size:12px;background:var(--bg)}.fchip em{font-style:normal;color:var(--mut)}
+.ir{border:1px solid var(--bd);border-left-width:4px;border-radius:10px;margin-bottom:6px;background:var(--bg);cursor:pointer}.ir:hover{border-color:var(--acc)}
+.ir.sev-Blocker{border-left-color:var(--red)}.ir.sev-Risk{border-left-color:var(--amb)}.ir.sev-Decision{border-left-color:var(--acc)}.ir.sev-Towrite{border-left-color:var(--ph)}
+.ih{display:flex;align-items:center;gap:8px;padding:8px 10px}.sd{width:8px;height:8px;border-radius:50%;background:var(--mut);flex:0 0 auto}
+.sev-Blocker .sd{background:var(--red)}.sev-Risk .sd{background:var(--amb)}.sev-Decision .sd{background:var(--acc)}.sev-Towrite .sd{background:var(--ph)}
+.it{flex:1;min-width:0;font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ih code{font:11px ui-monospace,monospace;color:var(--mut);background:var(--stat);border-radius:5px;padding:0 6px;white-space:nowrap}
+.tm{font-size:11px;border-radius:99px;padding:0 8px;border:1px solid var(--tc);color:var(--tc);white-space:nowrap}.car{color:var(--mut);width:12px}
+.ib{padding:0 12px 10px 28px;font-size:12.5px;cursor:default}.ib p{margin:2px 0}.ib .nx b{color:var(--mut);font-weight:600;margin-right:6px;font-size:11px;letter-spacing:.05em;text-transform:uppercase}
+.ia{display:flex;align-items:center;gap:10px;margin-top:6px}.ia button{background:transparent;border:1px solid var(--bd2);color:var(--fg);border-radius:7px;padding:2px 10px;font-size:12px}.ia button:hover{border-color:var(--acc)}.ia .by{color:var(--mut);font-size:11px}
+.team-backend{--tc:var(--acc)}.team-product{--tc:var(--ph)}.team-design{--tc:var(--ly-Workflow)}.team-frontend{--tc:var(--ly-Component)}
+.board{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:14px;align-items:start}
+.tcol{background:var(--card);border:1px solid var(--bd);border-top:4px solid var(--tc);border-radius:14px;display:flex;flex-direction:column;min-height:120px}
+.th{display:flex;align-items:center;gap:10px;padding:12px 14px 6px}.th b{font-size:14px}.ts{color:var(--mut);font-size:11.5px}.ti{width:30px;height:30px;border-radius:9px;background:color-mix(in srgb,var(--tc) 18%,transparent);color:var(--tc);display:inline-flex;align-items:center;justify-content:center;font-size:15px}
+.tn{margin-left:auto;font-size:18px;font-weight:800;color:var(--tc)}
+.tbody{padding:4px 10px 8px}.tbody .ih .tm{display:none}
+.tmail{border-top:1px solid var(--bd);padding:10px 12px;background:var(--bg);border-radius:0 0 14px 14px}
+.tmail .to{width:100%;background:var(--card);color:var(--fg);border:1px solid var(--bd2);border-radius:8px;padding:5px 9px;font:inherit;margin-bottom:8px}
+.tb2{display:flex;gap:6px}.tb2 button{border:1px solid var(--bd2);background:transparent;color:var(--fg);border-radius:8px;padding:5px 12px;font-size:12.5px}.tb2 button:hover{border-color:var(--tc)}.tb2 .go{background:var(--tc);border-color:var(--tc);color:var(--on-acc);font-weight:600}
+.mp{margin:8px 0 0;white-space:pre-wrap;word-break:break-word;font:11px/1.5 ui-monospace,monospace;background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:8px 10px;max-height:240px;overflow:auto}
+.olist{max-width:1000px}.empty.small{padding:14px;font-size:12px}
+/* ---- the email composer: takes the summary window's place (Back returns to it); the editable email on the left, the AI chat on the right ---- */
+#mailmodal{display:contents}
+#mailwin{position:fixed;left:6vw;top:6vh;width:88vw;height:86vh;min-width:520px;min-height:300px;z-index:1700;display:flex;flex-direction:column;background:var(--card);border:1px solid var(--bd);border-top:4px solid var(--tc,var(--acc));border-radius:12px;box-shadow:var(--shadow-lg);overflow:hidden}
+#mailwin .mh{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--bd)}
+#mailwin .mh .mi{width:32px;height:32px;border-radius:10px;background:color-mix(in srgb,var(--tc) 18%,transparent);color:var(--tc);display:inline-flex;align-items:center;justify-content:center;font-size:16px}
+#mailwin .mh b{font-size:15px}.mh .sub{color:var(--mut);font-size:12px}.mh .grow{flex:1}
+#mailwin .mh .mx{flex:none;margin-left:auto;width:32px;height:32px;padding:0;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;color:var(--mut)}
+#mailwin .mh .mx svg{width:16px;height:16px;display:block;pointer-events:none}
+#mailwin .mh .mx:hover:not(:disabled){color:var(--tc);background:color-mix(in srgb,var(--tc) 14%,transparent)}
+#mailwin .mh .mx:focus-visible{outline:2px solid var(--tc);outline-offset:2px;color:var(--tc)}
+#mailwin button{font:inherit;border:1px solid var(--bd2);background:transparent;color:var(--fg);border-radius:8px;padding:5px 12px;font-size:12.5px}
+#mailwin button:hover:not(:disabled){border-color:var(--tc)}#mailwin button:disabled{opacity:.4;cursor:default}
+#mailwin button.pri{background:var(--tc);border-color:var(--tc);color:var(--on-acc)}
+.mbody{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 430px}
+.medit{display:flex;flex-direction:column;min-width:0;min-height:0;padding:14px 18px;gap:8px;border-right:1px solid var(--bd)}
+.mrow{display:flex;align-items:center;gap:10px}.mrow label{width:58px;color:var(--mut);font-size:12px;flex:0 0 auto}
+.mrow input,#mBody{flex:1;min-width:0;background:var(--bg);color:var(--fg);border:1px solid var(--bd2);border-radius:9px;padding:8px 11px;font:inherit;font-size:13.5px}
+.mrow input:focus,#mBody:focus,#mInput:focus{outline:2px solid color-mix(in srgb,var(--tc) 55%,transparent);outline-offset:0}
+#mBody{flex:1;resize:none;line-height:1.6;font-size:14px;padding:14px 16px;white-space:pre-wrap}
+#mBody.flash{animation:mflash 1.1s ease-out}@keyframes mflash{from{background:color-mix(in srgb,var(--tc) 22%,var(--bg))}}
+.mtools{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.mtools .vl{color:var(--mut);font-size:12px;margin:0 6px}.mtools .grow{flex:1}
+.mchat{display:flex;flex-direction:column;min-height:0;min-width:0;background:color-mix(in srgb,var(--bg) 60%,var(--card))}
+.mchead{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--bd)}.mchead b{font-size:13px}
+.mchip{font-size:11px;color:var(--mut);border:1px solid var(--bd);border-radius:99px;padding:0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
+.mlist{flex:1;min-height:0;overflow:auto;padding:12px 14px;display:flex;flex-direction:column;gap:12px}
+.mempty{color:var(--mut);font-size:12.5px;text-align:center;margin:auto 10px;line-height:1.6}
+.cm .bub{display:inline-block;max-width:92%;background:var(--tc);color:var(--on-acc);padding:7px 12px;border-radius:14px 14px 4px 14px;font-size:13px;white-space:pre-wrap}.cm.u{text-align:right}
+.cm.a{display:flex;flex-direction:column;gap:6px}.cm .who{font-size:11px;color:var(--mut);display:flex;align-items:center;gap:6px}
+.dots i{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--tc);margin-right:2px;animation:mdot 1s infinite ease-in-out}.dots i:nth-child(2){animation-delay:.15s}.dots i:nth-child(3){animation-delay:.3s}@keyframes mdot{0%,80%,100%{opacity:.2}40%{opacity:1}}
+.mth{border:1px dashed var(--bd);border-radius:10px;background:var(--bg)}.mth .mthh{display:flex;gap:8px;align-items:center;padding:5px 10px;font-size:12px;color:var(--mut);cursor:pointer}.mth pre{margin:0;padding:0 10px 8px;white-space:pre-wrap;word-break:break-word;font:11.5px/1.5 ui-monospace,monospace;color:var(--mut);max-height:150px;overflow:auto}
+.mnote{font-size:13px;white-space:pre-wrap}.merr{color:var(--red);font-size:12.5px;border:1px solid var(--red);border-radius:10px;padding:7px 10px}
+.mcard{border:1px solid var(--bd);border-radius:12px;background:var(--bg);overflow:hidden}.mcard.ok{border-color:color-mix(in srgb,var(--grn) 55%,var(--bd))}.mcard.warn{border-color:var(--amb)}
+.mcard .ch{display:flex;gap:8px;align-items:center;padding:6px 10px;font-size:11.5px;color:var(--mut);border-bottom:1px solid var(--bd)}
+.mcard pre{margin:0;padding:8px 10px;white-space:pre-wrap;word-break:break-word;font:12px/1.55 ui-monospace,monospace;max-height:210px;overflow:auto}.mcard .sj{font:600 12px system-ui;padding:8px 10px 0}
+.cur::after{content:"▍";color:var(--tc);animation:mdot 1s infinite}
+.mchk{padding:6px 10px;font-size:12px;border-top:1px solid var(--bd)}.mchk.ok{color:var(--grn)}.mchk.warn{color:var(--amb)}.mchk small{display:block;color:var(--mut);margin-top:2px}
+.mcact{display:flex;gap:6px;padding:8px 10px;border-top:1px solid var(--bd);flex-wrap:wrap;align-items:center}.mcact .mapplied{color:var(--grn);font-size:12px;white-space:nowrap}
+.mdf{max-height:180px;overflow:auto;border-top:1px solid var(--bd);font:11.5px/1.5 ui-monospace,monospace}.mdf div{padding:0 10px;white-space:pre-wrap;word-break:break-word}.mdf .add{background:color-mix(in srgb,var(--grn) 16%,transparent)}.mdf .del{background:color-mix(in srgb,var(--red) 16%,transparent);text-decoration:line-through;opacity:.8}
+.mmeta{font-size:11px;color:var(--mut)}
+.mfoot{border-top:1px solid var(--bd);padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.mquick{display:flex;gap:5px;flex-wrap:wrap}.mquick button{border-radius:99px!important;padding:2px 10px!important;font-size:12px!important}
+.mq{display:flex;flex-direction:column;gap:4px}.mq .qh{font-size:11px;color:var(--mut);display:flex;gap:8px;align-items:center}
+.mq .qi{display:flex;align-items:center;gap:8px;border:1px solid var(--bd);border-radius:9px;padding:3px 6px 3px 10px;font-size:12px;background:var(--card)}.mq .qi span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mq .qi b{color:var(--mut);font-weight:500}.mq .qi button{border:0!important;padding:0 6px!important;color:var(--mut)}
+.mbox{display:flex;gap:8px;align-items:flex-end}#mInput{flex:1;resize:none;min-height:40px;max-height:120px;background:var(--bg);color:var(--fg);border:1px solid var(--bd2);border-radius:10px;padding:9px 11px;font:inherit;font-size:13px}
+.mbox button{height:40px}.mopts{display:flex;align-items:center;gap:10px;font-size:11.5px;color:var(--mut)}.mopts label{display:flex;gap:5px;align-items:center}
+@media(max-width:900px){.mbody{grid-template-columns:1fr;grid-template-rows:1fr 1fr}.medit{border-right:0;border-bottom:1px solid var(--bd)}}
+#toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,20px);background:var(--fg);color:var(--bg);padding:8px 16px;border-radius:99px;font-size:12.5px;opacity:0;pointer-events:none;transition:all .25s;z-index:3000}#toast.show{opacity:1;transform:translate(-50%,0)}
+#zoomlbl{font-size:11.5px;color:var(--mut);min-width:42px;text-align:right}
+/* the badge has two forms: long from 1700px, short from 1500px; below that the bar has no room for it (checked: one row at 1280, 1440 and 1920, light and dark, also after a run) */
+@media(max-width:1699px){#build .lm-full{display:none}#build .lm-short{display:inline}.lm-back{display:none}} /* the brand is a link to the front door too; the text link only where there is room */
+@media(max-width:1499px){#build{display:none}}
+#build:has(button:not([hidden])) a{display:none} /* the reload button takes the badge's place so the bar does not wrap */
+#bTheme{display:inline-flex;align-items:center;justify-content:center;width:30px;height:26px;padding:0}
+#bTheme svg{width:16px;height:16px;display:none;pointer-events:none}
+#bTheme[data-mode="auto"] .i-auto,#bTheme[data-mode="light"] .i-light,#bTheme[data-mode="dark"] .i-dark{display:block}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+</style>
+</head>
+<body>
+<div id="stage"><div class="pv" id="pv"><div class="empty">Loading…</div></div><div class="pvgaps" id="pvgaps"></div></div>
+
+<header id="bar">
+  <a href="/" title="Back to Trace, the simple front door" aria-label="Trace, back to the front door" style="display:inline-flex;color:inherit;text-decoration:none"><b class="brand" style="display:inline-flex;align-items:center;gap:8px"><svg class="mark" width="34" height="17" viewBox="13 24 34 17" aria-hidden="true" focusable="false"><defs><linearGradient id="trace-g" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="44" y2="44"><stop offset="0" style="stop-color:var(--mark-a,#8fb0ff)"/><stop offset="1" style="stop-color:var(--mark-b,#4b63f5)"/></linearGradient></defs><rect x="16" y="27" width="28" height="11" rx="5.5" fill="none" stroke="url(#trace-g)" stroke-width="2.8"/></svg>Trace</b></a>
+  <a class="tb lm-back" href="/" style="text-decoration:none" title="The simple front door">← Back to Trace</a>
+  <select id="exsel" title="Example"></select>
+  <button class="tb go" id="bStart">Start</button>
+  <button class="tb" id="bAuto" title="No questions: use saved answers, leave the rest open">Auto</button>
+  <span id="stat"></span>
+  <span class="sep"></span>
+  <details class="menu" id="optmenu"><summary class="tb">Options ▾</summary>
+    <div class="menubox">
+      <label><input type="checkbox" id="saved"> Use saved answers</label>
+      <label><input type="checkbox" id="all"> Ask about every part (override matches, build placeholders)</label>
+      <label><input type="checkbox" id="watch" checked> Watch: re-run when feature.json, the openapi file, the page or answers.json changes</label>
+      <h4>AI answerer</h4>
+      <label><input type="checkbox" id="ai"> Let AI answer, only when it can cite a requirement</label>
+      <label><input type="checkbox" id="explain" checked> Explain open items and each summary section in plain words (its own model call per block, only that block's facts)</label>
+      <div id="aitasks"></div>
+      <button class="tb" id="autoall">Auto-run every example</button>
+      <button class="tb" data-reset="this" title="Delete this example's saved answers, AI decisions and AI cache; restore its original inputs">Reset this example…</button>
+      <button class="tb" data-reset="all">Reset all examples…</button>
+      <button class="tb" data-resetlayout>Reset layout</button>
+    </div>
+  </details>
+  <button class="tb" data-console title="Show or hide the AI console">Console<span class="bd" id="bd-console" hidden></span></button>
+  <button class="tb" data-changes title="Run summary: what changed in the generated code, and what is still open">Summary<span class="bd" id="bd-changes" hidden></span></button>
+  <span id="build"></span>
+  <span id="buildDot" class="lm-dotwrap"></span>
+  <button class="tb" id="bTheme" type="button" data-mode="auto" aria-label="Theme: Auto" title="Theme: Auto (follows the system). Click for Light.">
+    <svg class="i-auto" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M8 2.5v11a5.5 5.5 0 0 0 0-11z" fill="currentColor" stroke="none"/></svg>
+    <svg class="i-light" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M12.6 3.4l-1.1 1.1M4.5 11.5l-1.1 1.1"/></svg>
+    <svg class="i-dark" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M13.2 9.6A5.6 5.6 0 0 1 6.4 2.8a5.6 5.6 0 1 0 6.8 6.8z"/></svg>
+  </button>
+  <button class="tb" data-dock title="Show or hide the side panel">☰ Panel</button>
+</header>
+
+<aside id="dock">
+  <div class="grip" id="grip" title="Drag to resize"></div>
+  <div class="dockscroll">
+    <section class="sec" id="s-run" data-sec="run">
+      <header class="ph" data-toggle="run"><span class="caret"></span><b>Run</b><span class="bd" id="bd-run" hidden></span><span class="grow"></span></header>
+      <div class="pb" id="side"></div>
+    </section>
+    <section class="sec" id="s-tree" data-sec="tree">
+      <header class="ph" data-toggle="tree"><span class="caret"></span><b id="treeTitle">Match tree</b><span class="bd" id="bd-tree" hidden></span><span class="grow"></span><button data-bigtree title="Open the big tree">⛶ Full screen</button></header>
+      <div class="pb">
+        <div class="legend"><span><u></u>connected</span><span><u class="gs"></u>static</span><span><u class="ga"></u>needs answer</span><span><u class="gp"></u>placeholder</span><span><u class="gm"></u>missing</span></div>
+        <div class="mini" id="treeMini" title="Click to open the big tree"><div class="empty">Nothing yet — press Start.</div></div>
+      </div>
+    </section>
+    <section class="sec" id="s-layers" data-sec="layers">
+      <header class="ph" data-toggle="layers"><span class="caret"></span><b>Generated layers</b><span class="grow"></span></header>
+      <div class="pb" id="layers"><div class="empty">Appears once the run reaches Plan.</div></div>
+    </section>
+    <section class="sec" id="s-contract" data-sec="contract">
+      <header class="ph" data-toggle="contract"><span class="caret"></span><b id="ctTitle">API contract</b><span class="bd" id="bd-contract" hidden></span><span class="grow"></span></header>
+      <div class="pb" id="contract"><div class="empty">Loading…</div></div>
+    </section>
+  </div>
+</aside>
+
+<section id="console" class="docked" hidden>
+  <div class="cgrip" id="cgrip"></div>
+  <header class="ph" id="conhead"><b>Console</b><span class="cnt" id="concount"></span><span class="grow"></span>
+    <label class="cnt"><input type="checkbox" id="confollow" checked> follow</label>
+    <button data-conclear title="Clear">Clear</button><button data-condetach id="detachBtn" title="Float the console">⧉ Detach</button><button data-conclose title="Hide">×</button></header>
+  <div id="conbody"></div>
+</section>
+
+<section id="chg" hidden>
+  <header class="ph" id="chghead"><span class="logo">◧</span><b id="chgTitle">Run summary</b><span class="cmeta" id="cmeta"></span><span class="grow"></span><button data-chgclose title="Close (Esc)">×</button></header>
+  <div class="app">
+    <aside class="rail" id="crail"></aside>
+    <div class="view"><div class="vbar" id="vbar"></div>
+      <div class="vbody" id="vbody"><nav id="ctree" hidden></nav><div id="cdiff" hidden></div><div class="copen" id="copen"></div></div></div>
+  </div>
+</section>
+
+<div id="mailmodal" hidden>
+  <section id="mailwin" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <header class="mh"><button data-mback title="Back to the run summary (Esc). Your draft and chat are kept.">← Back to summary</button><span class="mi">✉</span><div><b id="mTitle">Email</b><div class="sub" id="mSub"></div></div><button class="mx" data-mback aria-label="Close email" title="Close (Esc)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button></header>
+    <div class="mbody">
+      <div class="medit">
+        <div class="mrow"><label for="mTo">To</label><input id="mTo" spellcheck="false" placeholder="name@company.com"></div>
+        <div class="mrow"><label for="mSubject">Subject</label><input id="mSubject" spellcheck="true"></div>
+        <textarea id="mBody" spellcheck="true" aria-label="Email body"></textarea>
+        <div class="mtools"><button data-mundo title="Undo (previous version)">↶ Undo</button><button data-mredo title="Redo">↷ Redo</button><span class="vl" id="mVer"></span><button data-mreset title="Go back to the generated email (kept as a version, so you can undo)">Reset to generated</button><span class="grow"></span><button data-mcopy>Copy</button><button class="pri" data-mopen title="Opens your mail app; the full text is also copied">✉ Open in mail app</button></div>
+      </div>
+      <div class="mchat">
+        <div class="mchead"><b>✦ Rewrite with AI</b><span class="mchip" id="mModel"></span><span style="flex:1"></span><button data-mclear title="Clear the chat">Clear</button></div>
+        <div class="mlist" id="mList"></div>
+        <div class="mfoot"><div class="mq" id="mQueue"></div><div class="mquick" id="mQuick"></div>
+          <div class="mbox"><textarea id="mInput" rows="1" placeholder="Ask for a change or a question…"></textarea><span id="mBtns" style="display:flex;gap:6px"></span></div>
+          <div class="mopts"><label title="A draft is applied for you only if it adds no new details and keeps most of the original. Undo always works."><input type="checkbox" id="mAuto"> Auto-apply safe drafts</label><span title="Enter sends · Shift+Enter new line">↵ send</span><span style="flex:1"></span><span id="mStat"></span></div></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<section id="bigwin" hidden>
+  <header class="ph" id="bighead">
+    <b id="bigTitle">Match tree</b><span class="grow"></span>
+    <div class="legend"><span><u></u>connected</span><span><u class="gs"></u>static</span><span><u class="ga"></u>needs answer</span><span><u class="gp"></u>placeholder</span><span><u class="gm"></u>missing</span><span><b>ƒ</b> transform</span></div>
+    <button data-bigzoom="out" title="Zoom out">−</button><span id="zoomlbl">100%</span><button data-bigzoom="in" title="Zoom in">+</button>
+    <button data-bigzoom="fit" title="Fit to window (or double-click)">Fit</button><button data-bigzoom="100" title="Actual size">100%</button>
+    <button data-bigclose title="Close (Esc)">×</button>
+  </header>
+  <div id="bigview"><div id="bigcanvas"></div></div>
+</section>
+
+<script type="module">
+import { layoutTree, markup, layersMarkup, TREE_CSS } from "/tree/svg.mjs";
+import { parseReply, QUICK } from "/ai/mail-chat.mjs";
+import { mountBuildBadge } from "/ui/build-badge.mjs";
+import { contractEmpty, contractLoaded, noticeHtml, noContractWarn, installContractPanel, uploadState } from "/ui/contract-panel.mjs";
+import { listCandidates, installEndpointSelect } from "/ui/endpoint-select.mjs";
+document.head.insertAdjacentHTML("beforeend", `<style>${TREE_CSS}</style>`);
+
+// ---------- theme: Auto (follow the system) -> Light -> Dark; the choice lives in localStorage "lm-theme" ----------
+const THEMES = { auto: ["Auto (follows the system)", "light"], light: ["Light", "dark"], dark: ["Dark", "auto"] };
+let themeMode = "auto";
+try { const t = localStorage.getItem("lm-theme"); if (t === "light" || t === "dark") themeMode = t; } catch {}
+function paintTheme() {
+  const el = document.getElementById("bTheme"), [name, next] = THEMES[themeMode];
+  if (themeMode === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", themeMode);
+  el.dataset.mode = themeMode;
+  el.setAttribute("aria-label", "Theme: " + name + ". Switch to " + THEMES[next][0]);
+  el.title = "Theme: " + name + ". Click for " + THEMES[next][0] + ".";
+}
+document.getElementById("bTheme").addEventListener("click", () => {
+  themeMode = THEMES[themeMode][1];
+  try { if (themeMode === "auto") localStorage.removeItem("lm-theme"); else localStorage.setItem("lm-theme", themeMode); } catch {}
+  paintTheme();
+});
+paintTheme();
+mountBuildBadge(document.getElementById("build"), { dot: document.getElementById("buildDot") }); // (the dot stays when the badge is hidden on narrow windows) version, hash, release, "deployed x ago"; links to /about
+
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const STEPS = [
+  ["extract", "Extract", "Find the dynamic parts, lists, actions and form fields in the design."],
+  ["match", "Match", "Explain each part from the mock API data with a fixed set of transforms."],
+  ["ask", "Ask", "Multiple-choice questions for anything missing or ambiguous."],
+  ["plan", "Plan", "Decide which layers are needed and why."],
+  ["emit", "Emit", "Write the code, mock API, tests and reports."],
+];
+
+// ---------- the dock: stacked, collapsible sections; drag its left edge to resize ----------
+const IDS = ["run", "tree", "layers", "contract"];
+let UI = { dock: true, width: 460, collapsed: { tree: false, layers: true, contract: true }, con: { open: true, mode: "docked", h: 210, box: null } };
+try { UI = { ...UI, ...JSON.parse(localStorage.getItem("lm-ui3") ?? "{}") }; } catch {}
+const saveUI = () => { try { localStorage.setItem("lm-ui3", JSON.stringify(UI)); } catch {} };
+function applyPanels() {
+  document.documentElement.style.setProperty("--dockw", UI.width + "px");
+  document.body.classList.toggle("nodock", !UI.dock);
+  for (const id of IDS) {
+    const el = $(`#s-${id}`);
+    el.classList.toggle("collapsed", !!UI.collapsed[id]);
+    el.querySelector(".caret").textContent = UI.collapsed[id] ? "▸" : "▾";
+  }
+  applyConsole();
+}
+
+// ---------- the AI console: docked at the bottom, or detached into a floating window ----------
+function applyConsole() {
+  const c = UI.con, el = $("#console");
+  el.hidden = !c.open;
+  el.classList.toggle("docked", c.mode === "docked");
+  el.classList.toggle("floating", c.mode === "floating");
+  document.documentElement.style.setProperty("--conh", c.h + "px");
+  document.body.classList.toggle("con-docked", c.open && c.mode === "docked");
+  $("#detachBtn").textContent = c.mode === "docked" ? "⧉ Detach" : "⤓ Attach";
+  document.querySelector("[data-console]")?.classList.toggle("on", c.open);
+  for (const k of ["left", "top", "width", "height", "right", "bottom"]) el.style[k] = "";
+  if (c.mode === "floating" && c.box) Object.assign(el.style, { left: c.box.left + "px", top: c.box.top + "px", width: c.box.width + "px", height: c.box.height + "px", right: "auto", bottom: "auto" });
+}
+$("#cgrip").addEventListener("pointerdown", (ev) => {
+  ev.preventDefault();
+  const move = (e) => { UI.con.h = Math.round(Math.max(90, Math.min(innerHeight - 160, innerHeight - e.clientY))); applyConsole(); };
+  addEventListener("pointermove", move);
+  addEventListener("pointerup", () => { removeEventListener("pointermove", move); saveUI(); }, { once: true });
+});
+$("#conhead").addEventListener("pointerdown", (ev) => {
+  if (UI.con.mode !== "floating" || ev.target.closest("button, label, input")) return;
+  const el = $("#console"), r = el.getBoundingClientRect(), dx = ev.clientX - r.left, dy = ev.clientY - r.top;
+  const move = (e) => { el.style.left = Math.max(0, Math.min(innerWidth - 80, e.clientX - dx)) + "px"; el.style.top = Math.max(0, Math.min(innerHeight - 40, e.clientY - dy)) + "px"; };
+  const up = () => { removeEventListener("pointermove", move); const b = el.getBoundingClientRect(); UI.con.box = { left: Math.round(b.left), top: Math.round(b.top), width: Math.round(b.width), height: Math.round(b.height) }; saveUI(); };
+  addEventListener("pointermove", move);
+  addEventListener("pointerup", up, { once: true });
+});
+new ResizeObserver(() => {
+  if (UI.con.mode !== "floating" || $("#console").hidden) return;
+  const b = $("#console").getBoundingClientRect();
+  if (b.width && UI.con.box && (Math.abs(b.width - UI.con.box.width) > 2 || Math.abs(b.height - UI.con.box.height) > 2)) { UI.con.box = { ...UI.con.box, width: Math.round(b.width), height: Math.round(b.height) }; saveUI(); }
+}).observe($("#console"));
+
+const CONSYS = new Set(); // entries whose system prompt is expanded
+function entryHtml(e) {
+  if (e.kind === "note") return `<div class="cl note"><span class="tag">note</span><span>${esc(e.label ?? "")} · ${esc(e.text)}</span></div>`;
+  const tok = `${e.tokens.in} → ${e.tokens.out} tokens`;
+  return `<div class="ce ${e.verdict?.ok ? "ok" : "bad"}">
+    <div class="ch"><b>#${e.n}</b><span class="tk">${esc(e.task)}</span><span class="md">${esc(e.model)}</span><span>${esc(e.label ?? "")}</span><span class="mu">${tok} · ${e.cached ? "cached" : e.ms + " ms"}</span></div>
+    <div class="cl"><span class="tag">asked</span><div class="tx">${esc(e.user)}</div></div>
+    <div class="cl sys"><span class="tag">system</span><div class="tx"><a data-consys="${e.n}">${CONSYS.has(e.n) ? "hide" : "show"}</a>${CONSYS.has(e.n) ? "\n" + esc(e.system) : ""}</div></div>
+    <div class="cl"><span class="tag">answered</span><div class="tx">${esc(e.answer || "(nothing)")}</div></div>
+    <div class="cl think"><span class="tag">thinking</span><div class="tx">${e.thinking ? esc(e.thinking) : "this model returned no reasoning; the fact number it cited is its only stated reason"}</div></div>
+    <div class="cl verdict"><span class="tag">${e.verdict?.ok ? "✓ checked" : "✗ checked"}</span><div class="tx">${esc(e.verdict?.text ?? "")}</div></div>
+  </div>`;
+}
+function paintConsole() {
+  const list = S[sel]?.console ?? [], body = $("#conbody");
+  const calls = list.filter((e) => e.kind === "call").length;
+  $("#concount").textContent = `${sel ?? ""} · ${calls} call${calls === 1 ? "" : "s"}`;
+  const b = $("#bd-console");
+  b.hidden = !calls; b.textContent = String(calls); b.className = "bd";
+  const atBottom = body.scrollTop + body.clientHeight >= body.scrollHeight - 30;
+  body.innerHTML = list.length ? list.map(entryHtml).join("") : `<div class="empty">${AI.on ? "No AI calls yet for this example. Press Start or Auto." : "AI is off. Turn it on in Options → “Let AI answer”, then run an example: every question we ask the model, its answer, any reasoning and our check show up here."}</div>`;
+  if ($("#confollow").checked && atBottom) body.scrollTop = body.scrollHeight;
+}
+function showPanel(id) {
+  UI.dock = true; UI.collapsed[id] = false; saveUI(); applyPanels();
+  $(`#s-${id}`).scrollIntoView({ block: "nearest" });
+}
+$("#grip").addEventListener("pointerdown", (ev) => {
+  ev.preventDefault();
+  const move = (e) => { UI.width = Math.round(Math.max(320, Math.min(innerWidth - 240, innerWidth - e.clientX))); applyPanels(); };
+  const up = () => { removeEventListener("pointermove", move); saveUI(); };
+  addEventListener("pointermove", move);
+  addEventListener("pointerup", up, { once: true });
+});
+
+const PV = {}, CT = {};
+// T12.1: synthetic (AI-proposed) samples for gap fields, kept only in memory per example — never sent anywhere
+// but this tab, never saved to the contract. Keyed by `${method} ${path}::${where}::${field}`.
+const SYN = {};
+const synKey = (a, where, field) => `${a.method} ${a.path}::${where}::${field}`;
+async function loadPreview(name) {
+  try { PV[name] = await (await fetch(`/api/preview?example=${encodeURIComponent(name)}`)).text(); } catch {}
+  if (name === sel) paintPreview();
+}
+async function loadContract(name) {
+  try { CT[name] = await (await fetch(`/api/contract?example=${encodeURIComponent(name)}`)).json(); } catch {}
+  if (name === sel) paintContract();
+}
+
+const RANK = { ok: 0, static: 1, placeholder: 2, ask: 3, missing: 4 };
+const cssId = (id) => id.replace(/(["\\])/g, "\\$1");
+
+// Colour the page by the tree's leaf states. Only classes change, so the page doesn't flicker.
+function paintPreview() {
+  const box = $("#pv"), st = S[sel];
+  const key = PV[sel] == null ? null : sel + ":" + PV[sel].length + ":" + PV[sel].slice(0, 40);
+  if (key && box.dataset.src !== key) { box.innerHTML = PV[sel]; box.dataset.src = key; }
+  box.querySelectorAll("[data-id]").forEach((el) => { el.classList.remove("lm-missing", "lm-ask", "lm-placeholder", "lm-static"); el.removeAttribute("title"); });
+  const gaps = [];
+  for (const g of st?.tree?.groups ?? []) {
+    for (const leaf of g.leaves) {
+      const cells = leaf.cells.filter(Boolean);
+      const worst = cells.reduce((a, c) => (RANK[c.state] > RANK[a.state] ? c : a), cells[0] ?? { state: "ok" });
+      if (/^(form\.missing\.|gap\.)/.test(leaf.id)) { gaps.push(`${cells[0].title === "gap" ? cells[0].sub : cells[0].title + " — " + cells[0].sub}`); continue; }
+      const why = cells.map((c) => c.title).join(" → ") + (worst.state !== "ok" && worst.sub ? ` (${worst.sub})` : "");
+      box.querySelectorAll(`[data-id="${cssId(leaf.id)}"]`).forEach((el) => { if (worst.state !== "ok") el.classList.add("lm-" + worst.state); el.title = why; });
+    }
+  }
+  $("#pvgaps").innerHTML = gaps.map((t) => `<div>Not on the page: ${esc(t)}</div>`).join("");
+  box.querySelectorAll(".lm-asking").forEach((e) => e.classList.remove("lm-asking"));
+  if (pinned) {
+    const els = box.querySelectorAll(`[data-id="${cssId(pinned)}"]`);
+    els.forEach((e) => e.classList.add("lm-asking"));
+    if (els[0] && lastAsked !== pinned) { lastAsked = pinned; els[0].scrollIntoView({ block: "center", behavior: "smooth" }); }
+  } else lastAsked = null;
+}
+
+// T12.1: fields with NO example at all (openapi.mjs's "field-no-example" gaps — a value is never invented for
+// the contract itself) get a "Generate sample (AI)" button. A generated value is SYNTHETIC: shown only here,
+// kept only in this tab's memory (SYN, above), never written to the contract file and never fed to the matcher.
+function ctGapsHtml(a, gaps, example) {
+  const mine = (gaps ?? []).filter((g) => g.kind === "field-no-example" && g.endpoint === `${a.method} ${a.path}`);
+  if (!mine.length) return "";
+  const store = SYN[example] ?? {};
+  const rows = mine.map((g) => {
+    const key = synKey(a, g.where, g.path);
+    const s = store[key];
+    const right = s?.busy ? `<span class="mut">generating…</span>`
+      : s?.error ? `<span class="syn-err">${esc(s.error)}</span> <button class="tb sm" data-syngen="${esc(key)}" data-synmethod="${esc(a.method)}" data-synpath="${esc(a.path)}" data-synwhere="${esc(g.where)}" data-synfield="${esc(g.path)}">Retry</button>`
+      : s && "value" in s ? `<code>${esc(JSON.stringify(s.value))}</code> <span class="ct-tag synthetic" title="AI-proposed; shown only here, never saved to the contract or matched against">synthetic</span>`
+      : `<button class="tb sm" data-syngen="${esc(key)}" data-synmethod="${esc(a.method)}" data-synpath="${esc(a.path)}" data-synwhere="${esc(g.where)}" data-synfield="${esc(g.path)}">Generate sample (AI)</button>`;
+    return `<li><code>${esc(g.where)}.${esc(g.path)}</code> ${right}</li>`;
+  }).join("");
+  return `<div class="ct-fieldgaps"><div class="lbl">Fields with no example</div><ul>${rows}</ul></div>`;
+}
+document.addEventListener("click", async (ev) => {
+  const btn = ev.target.closest("[data-syngen]");
+  if (!btn) return;
+  const { syngen: key, synmethod: method, synpath: p, synwhere: where, synfield: field } = btn.dataset;
+  (SYN[sel] ??= {})[key] = { busy: true };
+  paintContract();
+  let result;
+  try {
+    const res = await fetch(`/api/contract/sample`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ example: sel, method, path: p, where, field }) });
+    const data = await res.json();
+    result = res.ok ? { value: data.value } : { error: data.error ?? "could not generate a sample" };
+  } catch (e) {
+    result = { error: e.message };
+  }
+  SYN[sel][key] = result;
+  paintContract();
+});
+
+// The API contract (the feature's openapi file), cross-checked against the tree: fields the design uses are green,
+// and what the design needs but the contract lacks is called out in red.
+function paintContract() {
+  const c = CT[sel], st = S[sel], box = $("#contract");
+  $("#ctTitle").textContent = `API contract — ${sel}`;
+  contractWarn = 0;
+  contractWarn = 0;
+  if (!c) { box.innerHTML = `<div class="empty">Loading…</div>`; return; }
+  noContractWarn(c); // the warning next to Start / Auto
+  if (!c.hasContract) { // no contract yet: the upload box (contract-panel.mjs); its section opens once per example
+    contractWarn = 1; box.innerHTML = contractEmpty(c, uploadState(sel));
+    if (!NC.has(sel)) { NC.add(sel); showPanel("contract"); }
+    return;
+  }
+  const used = new Set(), needs = [], lacks = [];
+  for (const g of st?.tree?.groups ?? []) for (const leaf of g.leaves) {
+    const [part, , api] = leaf.cells;
+    if (api?.layer === "Service") api.title.split(" + ").forEach((x) => used.add(x.trim()));
+    if (api?.title === "endpoint missing") needs.push(`${api.sub.replace("needs ", "")} — for "${part.title}"`);
+    if (api?.title === "not in API" && part) lacks.push(part.title);
+  }
+  // Nested fields as dotted paths; arrays as key[]. A row field counts as used when its path (without the list prefix) is.
+  const flatKeys = (v, prefix = "", out = []) => {
+    for (const [k, x] of Object.entries(v ?? {})) {
+      const key = prefix ? `${prefix}.${k}` : k;
+      if (Array.isArray(x)) flatKeys(x[0], key + "[]", out);
+      else if (x && typeof x === "object") flatKeys(x, key, out);
+      else out.push(key);
+    }
+    return out;
+  };
+  const isUsed = (k) => used.has(k) || used.has(k.replace(/^[^[]+\[\]\./, ""));
+  // T12.1: sample-data labels for a field that HAS a value. REAL is the default (unmarked): the value came
+  // straight from the contract's own `example`/`examples`. `assumedPaths` (openapi.mjs's
+  // `responseAssumed`/`requestAssumed`, T12.1) marks the ones that are ASSUMED instead — a schema `default` or
+  // single-value `enum` stood in for a given sample (the no-guessing rule already used that value; this just
+  // says so). A field with NO value at all is a gap, not a chip; SYNTHETIC (AI-proposed) samples for those are
+  // shown in the gaps list below, never here and never saved to the contract (see ctGapsHtml).
+  const chips = (obj, assumedPaths = []) => {
+    const assumed = new Set(assumedPaths);
+    return `<div class="fields">${flatKeys(obj).slice(0, 80).map((k) =>
+      `<span class="fld ${isUsed(k) ? "used" : ""} ${assumed.has(k) ? "assumed" : ""}">${esc(k)}${assumed.has(k) ? ` <small title="From the contract's default/enum, not a given example">assumed</small>` : ""}</span>`).join("")}</div>`;
+  };
+  const shape = (v) => (Array.isArray(v) ? v[0] : v);
+  // A bare-array response's assumed paths are "[].field" (the array item, T12.1/openapi.mjs's convention);
+  // once shape() unwraps to the first item, the leading "[]" no longer applies to that item's own keys.
+  const itemAssumed = (v, assumedPaths) => (Array.isArray(v) ? (assumedPaths ?? []).filter((a) => a.startsWith("[]")).map((a) => a.replace(/^\[\]\.?/, "")) : assumedPaths ?? []);
+  contractWarn = needs.length + lacks.length;
+  contractWarn = needs.length + lacks.length;
+  const warn = [needs.length && `Needed by the design but not in the contract: ${needs.map(esc).join("; ")}`, lacks.length && `In the design but no field in the contract: ${lacks.map(esc).join(", ")}`].filter(Boolean);
+  // T12.2: which GET is "the list" — T13's endpoint-choice block (endpoint-select.mjs), with a Product-confirm
+  // gate on top; shown whenever at least one GET could plausibly be the list.
+  const epCandidates = listCandidates(c.apis ?? [], c.listKey ?? null);
+  box.innerHTML = contractLoaded(c, uploadState(sel)) + `<div class="ct-head"><b>${esc(c.feature)}</b> <code>${esc(c.route)}</code></div>` +
+    (epCandidates.length ? `<div class="ct-endpoint"><b>List endpoint</b><div id="epSelect"></div></div>` : "") +
+    warn.map((w) => `<div class="ct-warn">${w}</div>`).join("") +
+    `<div class="ct-legend">Green fields are used by the design; grey are not. <span class="ct-tag assumed">assumed</span> came from the contract's default/enum, not a given example.</div>` +
+    c.apis.map((a, i) => `<details class="api" ${i === 0 ? "open" : ""}><summary><span class="mth ${a.method}">${a.method}</span><code>${esc(a.path)}</code></summary><div class="body">` +
+      (a.request ? `<div class="lbl">Request</div>${chips(a.request, itemAssumed(a.request, a.requestAssumed))}<pre class="json">${esc(JSON.stringify(a.request, null, 2))}</pre>` : "") +
+      (a.response !== undefined ? `<div class="lbl">Response${Array.isArray(a.response) ? ` — array of ${a.response.length}, first item` : ""}</div>${typeof shape(a.response) === "object" && shape(a.response) ? chips(shape(a.response), itemAssumed(a.response, a.responseAssumed)) : ""}<pre class="json">${esc(JSON.stringify(shape(a.response), null, 2) ?? "")}</pre>` : `<div class="lbl">No response body</div>`) +
+      ctGapsHtml(a, c.gaps, sel) +
+      `</div></details>`).join("");
+  if (epCandidates.length) {
+    installEndpointSelect($("#epSelect"), c.apis ?? [], c.listKey ?? null, {
+      onConfirm: async (candidate) => {
+        await fetch(`/api/wizard/apply`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ example: sel, listKey: candidate.key }) });
+        await loadContract(sel);
+        paint(false);
+      },
+    });
+  }
+}
+
+
+
+let contractWarn = 0;
+const NC = new Set();
+const fresh = () => ({ actions: null, explained: null, summary: null, changes: null, rerun: false, console: [], items: null, layers: null, ai: null, note: null, watching: false, run: null, steps: {}, tree: null, focus: null, question: null, log: [], done: null, error: null, sig: {}, running: false });
+let examples = [], sel = null;
+let pinned = null; // the part a pending question is about: lit up on the page, the tree and the layers
+let lastAsked = null;
+const S = {};
+const es = {};
+
+// ---------- AI options: which model does which task (Qwen locally, Claude, or another) ----------
+const AI = { on: false, explain: true, tasks: {} };
+try { Object.assign(AI, JSON.parse(localStorage.getItem("lm-ai") ?? "{}")); } catch {}
+const POST = { "content-type": "application/json" }; // the server refuses a POST that is not JSON
+const modelsOnly = () => Object.fromEntries(Object.entries(AI.tasks).map(([t, c]) => [t, { model: c.model }])); // the server takes nothing else from us
+const saveAI = () => { try { localStorage.setItem("lm-ai", JSON.stringify(AI)); } catch {} };
+const PROVIDERS = [["ollama", "Qwen / Ollama"], ["jev", "Jev (open-jev)"], ["anthropic", "Claude"], ["openai", "OpenAI-compatible"]];
+async function loadAiConfig() {
+  try {
+    const { tasks, config } = await (await fetch("/api/ai-config")).json();
+    // provider and base URL belong to the server's config; only the model name is the user's to change
+    for (const t of tasks) { const srv = { ...config.default, ...(config.tasks[t] ?? {}) }; AI.tasks[t] = { ...srv, model: AI.tasks[t]?.model || srv.model }; }
+  } catch {}
+  $("#ai").checked = !!AI.on;
+  $("#explain").checked = AI.explain !== false;
+  $("#aitasks").innerHTML = Object.entries(AI.tasks).map(([t, c]) =>
+    `<div class="airow"><span title="${t}">${t}</span><select disabled title="The provider is set in ai.config.json on the server" data-aitask="${t}" data-f="provider">${PROVIDERS.map(([v, n]) => `<option value="${v}" ${c.provider === v ? "selected" : ""}>${n}</option>`).join("")}</select><input data-aitask="${t}" data-f="model" value="${esc(c.model)}" spellcheck="false"></div>`).join("");
+}
+
+const DEEP = new URLSearchParams(location.search);
+async function init() {
+  examples = await (await fetch("/api/examples")).json();
+  for (const e of examples) S[e.name] = fresh();
+  sel = examples[0]?.name;
+  // Deep link from Trace: /studio?example=orders&run=<id>&open=teams&mail=backend replays that run and opens its Team actions / email.
+  if (DEEP.get("run") && S[DEEP.get("example")]) { sel = DEEP.get("example"); attach(sel, DEEP.get("run")); }
+  applyPanels();
+  paint();
+  loadAiConfig();
+  examples.forEach((e) => { loadPreview(e.name); loadContract(e.name); });
+  // Watch mode: the server starts a new (auto) run when a file changes and tells us which one to follow.
+  new EventSource("/api/live").onmessage = (m) => {
+    const ev = JSON.parse(m.data);
+    if (ev.type === "run" && S[ev.example]) attach(ev.example, ev.run, { ...S[ev.example], note: `Re-ran automatically because ${ev.reason}.` });
+  };
+}
+
+async function start(name, { auto = false } = {}) {
+  sel = name;
+  const watch = $("#watch").checked;
+  S[name] = Object.assign(fresh(), { running: true, watching: watch });
+  showPanel("run"); // needed now: the steps, and any question
+  paint();
+  const ai = AI.on || AI.explain ? { enabled: AI.on, explain: AI.explain, tasks: modelsOnly() } : null;
+  const { run } = await (await fetch("/api/run", { method: "POST", headers: POST, body: JSON.stringify({ example: name, useSaved: $("#saved").checked, askAll: $("#all").checked, auto, watch, ai }) })).json();
+  attach(name, run);
+}
+
+// Follow one run's events. keep: a re-run started by the watcher — keep the old tree so only what changed animates.
+function attach(name, run, keep = null) {
+  loadPreview(name); loadContract(name); // the page or contract may have been edited (watch mode)
+  es[name]?.close();
+  const st = (S[name] = Object.assign(fresh(), { run, running: true, watching: true }));
+  st.rerun = !!keep; // a watcher re-run doesn't pop the summary
+  if (keep) Object.assign(st, { tree: keep.tree, layout: keep.layout, sig: keep.sig, items: keep.items, layers: keep.layers, note: keep.note });
+  if (name === sel) paint();
+  const src = (es[name] = new EventSource(`/api/events?run=${run}`));
+  src.onmessage = (m) => {
+    reduce(name, JSON.parse(m.data));
+    if (S[name].done || S[name].error) { src.close(); S[name].running = false; paint(); }
+  };
+}
+
+function reduce(name, { type, data }) {
+  const st = S[name];
+  if (type === "step") st.steps[data.id] = { status: data.status, detail: data.detail ?? st.steps[data.id]?.detail };
+  if (type === "tree") { st.tree = data.tree; st.focus = data.focus ?? null; st.layout = layoutTree(data.tree); st.newKeys = diff(st); }
+  if (type === "contract") st.contract = data; // the notice at the top of the run
+  if (type === "items") st.items = data.items;
+  if (type === "ai") st.ai = data;
+  if (type === "changes") st.changes = data;
+  if (type === "actions") st.actions = data;
+  if (type === "explained") st.explained = data.items;
+  if (type === "summary") st.summary = Object.fromEntries(data.blocks.map((b) => [b.key, b]));
+  if (type === "ai-log") { st.console.push(data); if (name === sel) paintConsole(); }
+  if (type === "layers") { st.layers = data.layers; st.layersFresh = true; }
+  if (type === "question") { st.question = data; if (name === sel) { showPanel("run"); if (!data.sub) showPanel("tree"); } }
+  if (type === "answered") { st.question = null; st.log.push(data); }
+  if (type === "done") { st.done = data; st.focus = null; if (name === sel) { showPanel("run"); if (st.changes && !st.rerun) { openChanges(DEEP.get("open") ?? "summary"); if (DEEP.get("mail")) openMail(DEEP.get("mail")); } } }
+  if (type === "error") { st.error = data; if (name === sel) showPanel("run"); }
+  if (name === sel) paint(type === "tree");
+}
+
+// Nodes and links that are new, or whose state/text changed since the last snapshot, animate in.
+function diff(st) {
+  const keys = new Set(), next = {};
+  for (const n of st.layout.nodes) { const s = `${n.state}|${n.title}|${n.sub}`; next[n.key] = s; if (st.sig[n.key] !== s) keys.add(n.key); }
+  for (const l of st.layout.links) { const s = `${l.state}|${l.d}`; next[l.key] = s; if (st.sig[l.key] !== s) keys.add(l.key); }
+  st.sig = next;
+  return keys;
+}
+
+function paint(treeChanged = true) {
+  $("#exsel").innerHTML = examples.map((e) => {
+    const st = S[e.name], mark = st.error ? "✗ " : st.done ? "✓ " : st.running ? "… " : "";
+    return `<option value="${esc(e.name)}" ${e.name === sel ? "selected" : ""} title="${esc(e.about)}">${mark}${esc(e.name)}</option>`;
+  }).join("");
+  const st = S[sel];
+  if (!st) return;
+  pinned = st.question ? st.question.id.split("#")[0] : null;
+  $("#bStart").disabled = $("#bAuto").disabled = st.running;
+  $("#bStart").textContent = st.done || st.error ? "Run again" : "Start";
+  $("#stat").textContent = st.error ? "failed" : st.question ? "waiting for you" : st.running ? "running…" : st.done ? `done${st.done.open ? ` · ${st.done.open} open` : ""}${st.watching ? " · watching" : ""}` : "";
+
+  const badge = (id, text, cls) => { const b = $(`#bd-${id}`); b.hidden = !text; b.textContent = text ?? ""; b.className = "bd " + (cls ?? ""); };
+  badge("run", st.question ? "?" : null, "ask pulse");
+  const ts = st.tree?.stats;
+  badge("tree", ts && ts.missing + ts.ask + ts.placeholder ? String(ts.missing + ts.ask + ts.placeholder) : null, ts?.missing ? "warn" : ts?.ask ? "ask" : "ph");
+  badge("contract", contractWarn ? "⚠" + contractWarn : null, "warn");
+
+  const title = `Match tree — ${sel}` + (ts ? ` · ${ts.total - ts.missing - ts.ask - ts.placeholder} of ${ts.total} connected${ts.placeholder ? ` · ${ts.placeholder} placeholders` : ""}` : "");
+  $("#treeTitle").textContent = title;
+  $("#bigTitle").textContent = title;
+  $("#side").innerHTML = side(st);
+  const t = $("#qtext");
+  if (t) { t.focus(); t.select(); }
+  if (treeChanged) paintTree(st);
+  paintLayers(st);
+  paintPreview();
+  paintContract();
+  paintConsole();
+  paintChanges();
+  hoverLeaves([]);
+}
+
+// leaf id -> its worst state, for colouring the connection stripes in the layers
+function leafStates(st) {
+  const out = {};
+  for (const g of st.tree?.groups ?? []) for (const leaf of g.leaves) {
+    const cells = leaf.cells.filter(Boolean);
+    out[leaf.id] = cells.reduce((a, c) => (RANK[c.state] > RANK[a] ? c.state : a), "ok");
+  }
+  return out;
+}
+function paintLayers(st) {
+  $("#layers").innerHTML = st.layers ? layersMarkup(st.layers, { animate: st.layersFresh, states: leafStates(st) }) : `<div class="empty">Appears once the run reaches Plan.</div>`;
+  st.layersFresh = false;
+}
+
+function side(st) {
+  let h = "";
+  const ex = examples.find((e) => e.name === sel);
+  if (ex?.about) h += `<p class="about">${esc(ex.about)}</p>`;
+  if (st.note) h += `<div class="banner">↻ ${esc(st.note)}</div>`;
+  h += noticeHtml(st.contract);
+  if (st.error) h += `<div class="fail"><b>Failed:</b> ${esc(st.error.message)}</div>`;
+  if (st.done) h += `<div class="fin"><b>Done.</b> Wrote ${st.done.files} files to <code>${esc(st.done.base)}</code>.<br><a href="/report/${esc(sel)}" target="_blank">Open the static tree report</a></div>`;
+  if (st.question) h += questionCard(st.question);
+  h += `<div class="sp"><ol class="steps">` + STEPS.map(([id, name, why]) => {
+    const s = st.steps[id], cls = s?.status ?? "todo";
+    return `<li class="step ${cls}"><span class="dot"></span><div><div class="name">${name}</div><div class="why">${why}</div>${detail(id, s?.detail, st)}</div></li>`;
+  }).join("") + `</ol></div>`;
+  if (st.ai) {
+    const a = st.ai.stats;
+    h += `<div class="sp"><b>AI</b> — ${a.answered} answered, ${a.drafted} drafted, ${a.skipped} skipped · ${a.calls} calls (${a.cached} cached) · ${((a.msTotal ?? 0) / 1000).toFixed(1)} s · ~${((a.tokensIn + a.tokensOut) / 1000).toFixed(1)}k tokens${a.errors.length ? `<div class="fail" style="margin:6px 0 0">${a.errors.map(esc).join("<br>")}</div>` : ""}</div>`;
+  }
+  if (st.items) {
+    h += `<div class="sp"><b>${st.items.length ? `Open items (${st.items.length}) — what would close them` : "Nothing open — every connection is resolved"}</b><ul class="items">` +
+      st.items.map((o) => `<li><span class="chip ${o.state}">${o.state}</span><b>${esc(o.part)}</b> — ${esc(o.why)}<div class="hh">→ ${esc(o.hint)}</div></li>`).join("") + `</ul></div>`;
+  }
+  if (st.log.length) {
+    h += `<div class="sp"><b>Your answers</b><ul class="log">` +
+      st.log.map((a) => `<li>${esc(a.text)}<br>→ <b>${esc(a.answer)}</b>${a.source === "ai" ? ` (AI · ${esc(a.model ?? "")} · “${esc(a.evidence ?? "")}”)` : a.source === "saved" ? " (saved)" : a.source === "skipped" ? " — asked again next run" : ""}</li>`).join("") + `</ul></div>`;
+  }
+  return h;
+}
+
+function ctxHtml(c) {
+  if (!c) return "";
+  const rows = [];
+  if (c.design?.length) rows.push(`<div class="qc"><b>Design shows</b><span>${c.design.map((d) => `<code>${esc(d)}</code>`).join(" ")}</span></div>`);
+  if (c.endpoint) rows.push(`<div class="qc"><b>API</b><span><code>${esc(c.endpoint)}</code></span></div>`);
+  if (c.candidates?.length) rows.push(`<div class="qc"><b>Candidates</b><span>${c.candidates.map((x) => `<div><code>${esc(x.label)}</code>${x.samples?.length ? ` → ${x.samples.map((s) => `<code>${esc(s)}</code>`).join(" ")}` : ""}</div>`).join("")}</span></div>`);
+  else if (c.available?.length) rows.push(`<div class="qc"><b>${c.id.startsWith("action.") ? "Endpoints" : "In the API"}</b><span>${c.available.map((a) => `<code>${esc(a.label)}${a.sample ? `: ${esc(a.sample)}` : ""}</code>`).join(" ")}</span></div>`);
+  if (c.blocks?.length) rows.push(`<div class="qc"><b>Lands in</b><span>${c.blocks.map((b) => `<span class="qb ly-${b.layer}"><i></i>${esc(b.layer)} <code>${esc(b.name)}</code></span>`).join(" ")}</span></div>`);
+  return rows.length ? `<div class="qctx"><div class="qh">About <b>${esc(c.label)}</b></div>${rows.join("")}</div>` : "";
+}
+
+function questionCard(q) {
+  let body;
+  if (q.type === "text") {
+    body = `<input class="txt" id="qtext" value="${esc(q.default ?? "")}" autocomplete="off" spellcheck="false"><button class="go" data-submit="text">Use this name</button>`;
+  } else if (q.type === "multi") {
+    body = q.options.map((o, i) => `<label class="opt"><input type="checkbox" data-multi="${i}"> ${esc(o)}</label>`).join("") + `<button class="go" data-submit="multi">Continue</button>`;
+  } else if (q.type === "joint") {
+    // T12.4: one joint question (where from? which fields? what's it called?), not three sequential ones.
+    // The fields checklist is pre-checked by name evidence (q.suggestedInputs, T12.5's name-evidence.mjs) — a
+    // starting point, not a decision: every checkbox stays editable before Continue.
+    body = (q.sources ?? []).map((o, i) => `<label class="opt"><input type="radio" name="jointFrom" value="${esc(o.value)}" ${i === 0 ? "checked" : ""}> ${esc(o.label)}</label>`).join("") +
+      (q.itemFields?.length ? `<div class="joint-fields">${q.itemFields.map((o) => `<label class="opt"><input type="checkbox" data-jointfield="${esc(o.value)}" ${q.suggestedInputs?.includes(o.value) ? "checked" : ""}> ${esc(o.label)}${q.suggestedInputs?.includes(o.value) ? ` <small title="Pre-checked: its name matches this part's name">suggested by name</small>` : ""}</label>`).join("")}</div>` : "") +
+      `<input class="txt" id="jointFn" value="${esc(q.defaultName?.fields ?? "")}" autocomplete="off" spellcheck="false" placeholder="placeholder function name"><button class="go" data-submit="joint">Continue</button>`;
+  } else {
+    body = q.options.map((o, i) => `<button data-answer="${i}"><kbd>${i + 1}</kbd>${esc(o)}</button>`).join("");
+  }
+  const head = q.sub ? "PLACEHOLDER · FOLLOW-UP" : `QUESTION ${q.n} OF ${q.total}`;
+  const note = q.note ? `<div class="hint"><b>Note:</b> ${esc(q.note)}</div>` : "";
+  const hint = q.hint && !q.sub ? `<div class="hint"><b>Or close it with data:</b> ${esc(q.hint)}</div>` : "";
+  const skip = `<button class="skip" data-skip><kbd>s</kbd>Skip for now — I'll answer later</button>`;
+  return `<div class="q ${q.sub ? "sub" : ""}"><div class="n">${head}</div><div class="t">${esc(q.text)}</div>${ctxHtml(q.context)}${body}${skip}${note}${hint}</div>`;
+}
+
+function detail(id, d, st) {
+  if (!d) return "";
+  const li = (a) => a.map((x) => `<li>${esc(x)}</li>`).join("");
+  if (id === "extract") {
+    return `<ul>${li([`${d.values.length} page values: ${d.values.join(", ") || "none"}`, d.list && `list ${d.list}`, `${d.actions.length} actions: ${d.actions.join(", ")}`, d.form.length && `form inputs: ${d.form.join(", ")}`].filter(Boolean))}</ul>`;
+  }
+  if (id === "match") return `<div class="stat why">${d.connected} of ${d.total} connected · <b class="a">${d.ask} ambiguous</b> · <b class="r">${d.missing} missing</b></div>`;
+  if (id === "ask" && d.blocked) return `<div class="why">not asked: nothing to match against until the contract has an example</div>`;
+  if (id === "ask" && d.auto) return `<div class="why">auto mode: ${d.count} question${d.count === 1 ? "" : "s"} not asked${d.count ? "; saved answers used where they exist, the rest left open" : ""}</div>`;
+  if (id === "ask" && st.steps.ask?.status === "done") return `<div class="why">${d.count ? `${d.count - d.skipped} answered${d.skipped ? `, ${d.skipped} skipped` : ""}` : "nothing to ask — every part matched"}</div>`;
+  if (id === "ask") return `<div class="why">${d.count ? `${d.count} question${d.count > 1 ? "s" : ""}` : "nothing to ask"}</div>`;
+  if (id === "plan") {
+    const ph = d.placeholders?.length ? `<div class="stat why"><b class="p">Placeholders to fill in:</b></div><ul>${li(d.placeholders.map((p) => `${p.fn}() — ${p.layer} · ${p.part}`))}</ul>` : "";
+    return `<ul>${li(d.layers.map((l) => `${l.name} — ${l.why}`))}</ul>${ph}`;
+  }
+  if (id === "emit" && d.files) return `<ul>${li(d.files)}</ul>`;
+  return "";
+}
+
+
+// ---------- the run summary: a small app in a window (rail: Overview · Team actions · Open items · Code changes) ----------
+const CH = { open: false, tab: "overview", sel: null, collapsed: new Set(), exp: new Set(), q: "", sev: "all", team: "all", only: true };
+const LAYER_ORDER = ["route", "controller", "workflow", "service", "domain", "page", "component", "mocks"];
+const statusLetter = { added: "A", modified: "M", unchanged: "=" };
+const SEV = { gap: "Blocker", missing: "Blocker", tie: "Risk", skipped: "Decision", placeholder: "To write" };
+const sevOf = (o) => SEV[o.state === "skipped" && o.origin ? o.origin : o.state] ?? "Open"; // a skipped item counts as what was wrong with it
+const TEAM_ICON = { backend: "⛁", product: "◈", design: "✎", frontend: "‹›" };
+let MAIL = {};
+try { MAIL = JSON.parse(localStorage.getItem("lm-mail") ?? "{}"); } catch {}
+const saveMail = () => { try { localStorage.setItem("lm-mail", JSON.stringify(MAIL)); } catch {} };
+
+function openChanges(tab) { CH.open = true; CH.tab = tab === "summary" ? "overview" : tab ?? CH.tab; $("#chg").hidden = false; paintChanges(); }
+function closeChanges() { CH.open = false; $("#chg").hidden = true; }
+const fileTotals = (f) => f.files.filter((x) => x.status !== "unchanged").reduce((a, x) => ({ n: a.n + 1, add: a.add + x.added, del: a.del + x.removed, a: a.a + (x.status === "added"), m: a.m + (x.status === "modified") }), { n: 0, add: 0, del: 0, a: 0, m: 0 });
+const teamOf = (st, id) => st?.actions?.teams.find((t) => t.items.some((i) => i.id === id))?.key;
+
+function paintChanges() {
+  const st = S[sel], ch = st?.changes;
+  if (ch) { const t = fileTotals(ch), b = $("#bd-changes"); b.hidden = !t.n; b.textContent = String(t.n); b.className = "bd"; }
+  if (!CH.open) return;
+  const ts = st?.tree?.stats, t = ch ? fileTotals(ch) : null, nOpen = st?.items?.length ?? 0;
+  const actionsN = st?.actions?.teams.reduce((n, x) => n + x.items.length, 0) ?? 0;
+  $("#chgTitle").textContent = sel ?? "Run summary";
+  $("#cmeta").innerHTML = ts ? `<span class="mc ok">${ts.total - ts.missing - ts.ask - ts.placeholder}/${ts.total} connected</span>${nOpen ? `<span class="mc warn">${nOpen} open</span>` : `<span class="mc ok">nothing open</span>`}${t ? `<span class="mc">${t.n} files</span>` : ""}` : "";
+  const rail = [["overview", "▦", "Overview", ""], ["teams", "⚑", "Team actions", actionsN], ["open", "☰", "Open items", nOpen], ["changes", "±", "Code changes", t?.n ?? ""]];
+  $("#crail").innerHTML = rail.map(([k, ic, label, n]) => `<button class="rbtn ${CH.tab === k ? "on" : ""}" data-ctab="${k}"><span class="ri">${ic}</span><span class="rl">${label}</span>${n !== "" && n !== 0 ? `<span class="rn">${n}</span>` : ""}</button>`).join("") + `<div class="rfoot">Esc closes</div>`;
+  const split = CH.tab === "changes";
+  $("#vbody").classList.toggle("split", split);
+  $("#ctree").hidden = $("#cdiff").hidden = !split;
+  $("#copen").hidden = split;
+  if (CH.tab === "overview") return paintOverview(st);
+  if (CH.tab === "teams") return paintTeams(st);
+  if (CH.tab === "open") return paintOpenList(st);
+  paintDiff(st);
+}
+
+// ---- Overview: a readiness ring, four tiles, the next few things, and the files touched
+function ring(parts, total) {
+  const R = 44, C = 2 * Math.PI * R;
+  let off = 0;
+  const arcs = parts.filter(([n]) => n > 0).map(([n, color]) => { const len = (n / total) * C, s = `<circle cx="60" cy="60" r="${R}" fill="none" stroke="var(${color})" stroke-width="12" stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-off}" transform="rotate(-90 60 60)"/>`; off += len; return s; }).join("");
+  return `<svg viewBox="0 0 120 120" class="ring"><circle cx="60" cy="60" r="${R}" fill="none" stroke="var(--stat)" stroke-width="12"/>${arcs}</svg>`;
+}
+const sxText = (st, key) => { const x = st?.summary?.[key]; return x ? `<div class="sx ${x.attention}" title="${esc(x.by === "model" ? "written by " + (x.model ?? "the model") : "fixed text")}">${esc(x.text)}</div>` : ""; };
+
+function paintOverview(st) {
+  $("#vbar").innerHTML = `<span class="vt">Overview</span>`;
+  const ts = st?.tree?.stats, ch = st?.changes, ft = ch ? fileTotals(ch) : null, a = st?.ai?.stats;
+  const conn = ts ? ts.total - ts.missing - ts.ask - ts.placeholder : 0;
+  const pct = ts?.total ? Math.round((100 * conn) / ts.total) : 0;
+  const src = (k) => (st?.log ?? []).filter((x) => x.source === k).length;
+  const skipped = src("skipped"), answered = (st?.log ?? []).length - skipped;
+  const tile = (icon, k, v, sub, key) => `<div class="kpi"><div class="kh"><span class="ki">${icon}</span>${k}</div><div class="kv">${v}</div><div class="ks">${sub}</div>${sxText(st, key)}</div>`;
+  const act = new Map((st?.actions?.teams ?? []).flatMap((t) => t.items).map((i) => [i.id, i]));
+  const next = (st?.explained?.length ? st.explained : (st?.items ?? []).map((o) => ({ id: o.id, part: o.part, state: o.state, label: sevOf(o), headline: act.get(o.id)?.title ?? o.part, why: act.get(o.id)?.why ?? o.why, action: act.get(o.id)?.next ?? o.hint, by: "template" }))).slice(0, 5);
+  const layers = ch ? Object.entries(ch.files.reduce((m, x) => { const g = x.path.includes("/") ? x.path.split("/")[0] : "reports"; (m[g] ??= []).push(x); return m; }, {})) : [];
+  $("#copen").innerHTML = `<div class="ov">${noticeHtml(st?.contract)}
+    <div class="hero"><div class="ringbox">${ts ? ring([[conn, "--grn"], [ts.placeholder, "--ph"], [ts.ask, "--amb"], [ts.missing, "--red"]], ts.total) : ""}<div class="rp"><b>${pct}%</b><span>connected</span></div></div>
+      <div class="hleg"><div class="hl1">${ts ? `${conn} of ${ts.total} parts are wired` : "Run an example"}</div>
+        <div class="lg"><i style="background:var(--grn)"></i>${conn} connected</div><div class="lg"><i style="background:var(--amb)"></i>${ts?.ask ?? 0} need an answer</div><div class="lg"><i style="background:var(--ph)"></i>${ts?.placeholder ?? 0} placeholders</div><div class="lg"><i style="background:var(--red)"></i>${ts?.missing ?? 0} missing</div>
+        ${sxText(st, "connections")}</div></div>
+    <div class="kpis">
+      ${tile("?", "Questions", `${answered}<small> answered</small>`, `${skipped} skipped · ${src("ai")} by AI`, "questions")}
+      ${tile("±", "Code", ft ? `${ft.n}<small> files</small>` : "–", ft ? `${ft.a} new · ${ft.m} changed · <b class="ga">+${ft.add}</b> <b class="gr">−${ft.del}</b>` : "", "code")}
+      ${tile("⚑", "Team actions", `${st?.actions?.teams.reduce((n, x) => n + x.items.length, 0) ?? 0}`, (st?.actions?.teams ?? []).filter((x) => x.items.length).map((x) => `${x.label.split(" ")[0]} ${x.items.length}`).join(" · ") || "none", "actions")}
+      ${a ? tile("✦", "AI", `${a.calls}<small> calls</small>`, `${((a.msTotal ?? 0) / 1000).toFixed(1)} s · ${a.cached} cached`, "ai") : ""}
+    </div>
+    <div class="sec"><div class="sh"><b>Next up</b><span class="sc2">${next.length} of ${st?.items?.length ?? 0}</span><a href="#" data-ctab="open">All open items →</a></div>${sxText(st, "next")}
+      ${next.length ? next.map((o) => rowHtml(o, st)).join("") : `<div class="empty">Nothing open. Every connection is resolved.</div>`}</div>
+    ${layers.length ? `<div class="sec"><div class="sh"><b>Files touched</b><a href="#" data-ctab="changes">Open the diff →</a></div>${sxText(st, "layers")}<div class="chips">${layers.map(([g, l]) => `<span class="fchip"><b>${esc(g)}</b>${l.map((x) => `<i class="st ${x.status}" title="${esc(x.path)}">${statusLetter[x.status]}</i>`).join("")}<em>${l.length}</em></span>`).join("")}</div></div>` : ""}
+  </div>`;
+}
+
+// a compact expandable row for one open item
+function rowHtml(o, st) {
+  const label = o.label ?? SEV[o.state] ?? "Open", open = CH.exp.has(o.id), team = teamOf(st, o.id);
+  return `<div class="ir sev-${esc(label).replace(" ", "")} ${open ? "open" : ""}" data-iexp="${esc(o.id)}">
+    <div class="ih"><span class="sd"></span><span class="it">${esc(o.headline ?? o.part)}</span><code>${esc(o.part)}</code>${team ? `<span class="tm team-${team}">${TEAM_ICON[team]} ${team}</span>` : ""}<span class="car">${open ? "▾" : "▸"}</span></div>
+    ${open ? `<div class="ib"><p>${esc(o.why)}</p><p class="nx"><b>Next</b> ${esc(o.action ?? o.hint)}</p><div class="ia"><button data-loc="${esc(o.id)}">Locate on page</button>${o.by === "model" ? `<span class="by">written by ${esc((o.model ?? "").replace("ollama:", ""))}</span>` : `<span class="by">fixed text</span>`}</div></div>` : ""}
+  </div>`;
+}
+
+// ---- Team actions: one column per team, each with its email
+function paintTeams(st) {
+  const teams = st?.actions?.teams ?? [];
+  $("#vbar").innerHTML = `<span class="vt">Team actions</span><span class="vs">Who needs to do what. Each team has an email with the details.</span>`;
+  if (!teams.length) { $("#copen").innerHTML = `<div class="empty">Run an example to see the action items by team.</div>`; return; }
+  $("#copen").innerHTML = `${sxText(st, "actions")}<div class="board">` + teams.map((t) => {
+    const mail = t.email;
+    return `<div class="tcol team-${t.key}"><div class="th"><span class="ti">${TEAM_ICON[t.key]}</span><div><b>${esc(t.label)}</b><div class="ts">${esc(t.scope)}</div></div><span class="tn">${t.items.length}</span></div>
+      <div class="tbody">${t.items.length ? t.items.map((i) => rowHtml({ id: i.id, part: i.part, state: i.state, label: sevOf(i), headline: i.title, why: i.why, action: i.next, by: "template" }, st)).join("") : `<div class="empty small">Nothing for this team.</div>`}</div>
+      ${mail ? `<div class="tmail"><input class="to" data-mailto="${t.key}" placeholder="${esc(t.key)}@company.com" value="${esc(MAIL[t.key] ?? "")}" spellcheck="false"><div class="tb2"><button class="go" data-mail="${t.key}" title="Preview, edit and rewrite with AI">✉ Write email</button><button data-copymail="${t.key}">Copy</button></div></div>` : ""}</div>`;
+  }).join("") + `</div>`;
+}
+
+// ---- Open items: filterable, searchable
+function paintOpenList(st) {
+  const items = st?.items ?? [];
+  const lab = sevOf;
+  const all = items.map((o) => ({ ...o, team: teamOf(st, o.id), label: lab(o) }));
+  const q = CH.q.toLowerCase();
+  const list = all.filter((o) => (CH.sev === "all" || o.label === CH.sev) && (CH.team === "all" || o.team === CH.team) && (!q || `${o.part} ${o.why} ${o.hint}`.toLowerCase().includes(q)));
+  const chip = (k, v, label, n) => `<button class="fc ${CH[k] === v ? "on" : ""}" data-filter="${k}:${v}">${label}${n != null ? `<em>${n}</em>` : ""}</button>`;
+  $("#vbar").innerHTML = `<span class="vt">Open items</span><span class="fcs">${chip("sev", "all", "All", all.length)}${["Blocker", "Risk", "Decision", "To write"].map((s) => chip("sev", s, s, all.filter((o) => o.label === s).length)).join("")}</span><span class="fcs">${["all", "backend", "product", "design", "frontend"].map((t) => chip("team", t, t === "all" ? "Any team" : `${TEAM_ICON[t]} ${t}`, null)).join("")}</span><input class="fq" id="fq" placeholder="Search" value="${esc(CH.q)}">`;
+  const ex = new Map((st?.explained ?? []).map((e) => [e.id, e]));
+  const act = new Map((st?.actions?.teams ?? []).flatMap((t) => t.items).map((i) => [i.id, i]));
+  $("#copen").innerHTML = list.length ? `<div class="olist">${list.map((o) => { const e = ex.get(o.id); return rowHtml({ id: o.id, part: o.part, state: o.state, label: o.label, headline: e?.headline ?? act.get(o.id)?.title ?? o.part, why: e?.why ?? act.get(o.id)?.why ?? o.why, action: e?.action ?? act.get(o.id)?.next ?? o.hint, by: e?.by ?? "template", model: e?.model }, st); }).join("")}</div>` : `<div class="empty">${items.length ? "Nothing matches these filters." : "Nothing open. Every connection is resolved."}</div>`;
+}
+
+function paintDiff(st) {
+  const only = CH.only;
+  $("#vbar").innerHTML = `<span class="vt">Code changes</span><span class="cstat" id="cstat"></span><label class="cstat vopt"><input type="checkbox" id="chgOnly" ${CH.only ? "checked" : ""}> changed files only</label>`;
+  // one group per feature that has a result; the selected example first
+  const feats = examples.map((e) => S[e.name]?.changes && { name: e.name, ...S[e.name].changes }).filter(Boolean).sort((a, b) => (b.name === sel) - (a.name === sel));
+  if (!feats.length) { $("#ctree").innerHTML = `<div class="dmsg">Nothing generated yet.</div>`; $("#cdiff").innerHTML = ""; $("#cstat").textContent = ""; return; }
+  const cur = feats.find((f) => f.name === sel) ?? feats[0];
+  const t = fileTotals(cur);
+  $("#cstat").innerHTML = `${esc(cur.feature)}: ${t.n} file${t.n === 1 ? "" : "s"} changed, <b class="a">+${t.add}</b> <b class="r">−${t.del}</b>`;
+  $("#ctree").innerHTML = feats.map((f) => {
+    const ft = fileTotals(f), collapsed = CH.collapsed.has(f.name);
+    const groups = {};
+    for (const x of f.files) { if (only && x.status === "unchanged") continue; const seg = x.path.includes("/") ? x.path.split("/")[0] : "(reports)"; (groups[seg] ??= []).push(x); }
+    const rank = (a) => (a === "(reports)" ? 100 : LAYER_ORDER.indexOf(a));
+    const names = Object.keys(groups).sort((a, b) => rank(a) - rank(b));
+    return `<div class="cfeat" data-cfeat="${esc(f.name)}"><span>${collapsed ? "▸" : "▾"}</span>${esc(f.feature)} <span class="cs">${ft.n} changed · <b style="color:var(--grn)">+${ft.add}</b> <b style="color:var(--red)">−${ft.del}</b></span></div>` +
+      (collapsed ? "" : names.map((g) => `<div class="cfolder">${esc(g === "(reports)" ? "reports" : g + "/")}</div>` + groups[g].map((x) => {
+        const on = CH.sel && CH.sel.feature === f.name && CH.sel.path === x.path;
+        return `<div class="cf cfile ${on ? "sel" : ""}" data-cfile="${esc(f.name)}|${esc(x.path)}" title="${esc(f.base + "/" + x.path)}"><span class="st ${x.status}">${statusLetter[x.status]}</span><span class="nm">${esc(x.path.split("/").pop())}</span><span class="pm">${x.status === "unchanged" ? "" : `<b class="a">+${x.added}</b> <b class="r">−${x.removed}</b>`}</span></div>`;
+      }).join("")).join(""));
+  }).join("");
+  const selFeat = feats.find((f) => f.name === CH.sel?.feature) ?? cur;
+  let file = selFeat.files.find((x) => x.path === CH.sel?.path);
+  if (!file) { file = selFeat.files.find((x) => x.status !== "unchanged" && x.hunks?.length) ?? selFeat.files[0]; CH.sel = { feature: selFeat.name, path: file?.path }; }
+  $("#cdiff").innerHTML = !file ? "" : `<div class="dfh"><span class="st ${file.status}">${statusLetter[file.status]}</span><code>${esc(selFeat.base + "/" + file.path)}</code><span class="cstat"><b class="a">+${file.added}</b> <b class="r">−${file.removed}</b></span></div>` +
+    (file.noDiff ? `<div class="dmsg">Generated report (${file.status}). Open it from the Run panel.</div>`
+      : file.status === "unchanged" ? `<div class="dmsg">No changes since the previous run.</div>`
+      : `<div class="df">${file.hunks.map((h) => `<div class="dh">${esc(h.header)}</div>` + h.lines.slice(0, 900).map((l) => `<div class="dl ${l.t === "+" ? "add" : l.t === "-" ? "del" : ""}"><span>${l.a ?? ""}</span><span>${l.b ?? ""}</span><span>${l.t === " " ? "" : l.t}</span><span>${esc(l.text) || " "}</span></div>`).join("") + (h.lines.length > 900 ? `<div class="dmsg">… ${h.lines.length - 900} more lines</div>` : "")).join("")}</div>`);
+}
+
+// Opens the mail client with the team's email (or copies it). mailto: bodies are cut at ~1800 characters, so the full text is copied too.
+// It sends the composer's current version, so edits and AI rewrites are what goes out.
+async function writeMail(team, how) {
+  const t = S[sel]?.actions?.teams.find((x) => x.key === team);
+  if (!t?.email) return;
+  const v = curV(mailState(team));
+  const to = (MAIL[team] ?? $(`[data-mailto="${team}"]`)?.value ?? "").trim();
+  const full = `Subject: ${v.subject}\n\n${v.body}`;
+  try { await navigator.clipboard.writeText(full); } catch {}
+  if (how === "copy") return toast(`Email for ${t.label} copied`);
+  const body = v.body.length > 1800 ? v.body.slice(0, 1800) + "\n\n[…full text copied to your clipboard]" : v.body;
+  window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(v.subject)}&body=${encodeURIComponent(body)}`;
+  toast(v.body.length > 1800 ? "Opened your mail app; the full text is on your clipboard" : "Opened your mail app");
+}
+function toast(msg) {
+  let el = $("#toast");
+  if (!el) { el = document.createElement("div"); el.id = "toast"; document.body.appendChild(el); }
+  el.textContent = msg; el.className = "show";
+  clearTimeout(toast.t); toast.t = setTimeout(() => (el.className = ""), 2600);
+}
+
+// ---------- the email composer: the editable email, and a chat that proposes rewrites ----------
+// The model only proposes. A proposal is fact-checked by the server (no detail that wasn't in the email or the
+// request), and is applied only when it passes and "auto-apply" is on, or when you click Apply. Every applied
+// draft is a version, so Undo always works.
+const MW = { open: false, m: null };
+const MAILS = {};
+let MSEQ = 0;
+const hash = (s) => { let h = 5381; for (const c of s) h = ((h << 5) + h + c.charCodeAt(0)) | 0; return (h >>> 0).toString(36); };
+const draftStore = () => { try { return JSON.parse(localStorage.getItem("lm-maildraft") ?? "{}"); } catch { return {}; } };
+function persistMail(m) {
+  try { const all = draftStore(); all[m.k] = { sig: m.sig, vi: m.vi, versions: m.versions }; localStorage.setItem("lm-maildraft", JSON.stringify(all)); } catch {}
+}
+const curV = (m) => m.versions[m.vi];
+
+// One composer state per example + team. It is rebuilt when the run produces a different generated email.
+function mailState(team) {
+  const t = S[sel].actions.teams.find((x) => x.key === team), k = `${sel}:${team}`;
+  const base = { subject: t.email.subject, body: t.email.body }, sig = hash(base.subject + "\n" + base.body);
+  let m = MAILS[k];
+  if (m && m.sig === sig) return m;
+  const saved = draftStore()[k]?.sig === sig ? draftStore()[k] : null;
+  m = MAILS[k] = { k, ex: sel, team, label: t.label, sig, base, versions: saved?.versions ?? [{ ...base, label: "Generated" }], vi: saved?.vi ?? 0, msgs: [], queue: [], earlier: [], busy: false, paused: false, hold: false, auto: true };
+  return m;
+}
+function commitV(m, v, label) {
+  m.versions = m.versions.slice(0, m.vi + 1);
+  m.versions.push({ subject: v.subject, body: v.body, label });
+  if (m.versions.length > 25) m.versions.shift();
+  m.vi = m.versions.length - 1;
+  persistMail(m);
+}
+
+function openMail(team) {
+  if (!S[sel]?.actions?.teams.find((x) => x.key === team)?.email) return;
+  const m = mailState(team), w = $("#mailwin"), r = $("#chg").getBoundingClientRect();
+  MW.m = m; MW.open = true;
+  Object.assign(w.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px" }); // takes the summary's place
+  w.className = `team-${team}`;
+  $("#chg").hidden = true;
+  $("#mailmodal").hidden = false;
+  paintEditor(); paintVersions(); paintChat(true); paintComposer();
+  $("#mInput").focus();
+}
+function backToSummary() {
+  MW.open = false;
+  $("#mailmodal").hidden = true;
+  if (CH.open) { $("#chg").hidden = false; paintChanges(); }
+}
+
+function paintEditor() {
+  const m = MW.m, v = curV(m);
+  $("#mTitle").textContent = `Email to ${m.label}`;
+  $("#mSub").textContent = `${m.ex} · ${S[m.ex]?.actions?.teams.find((x) => x.key === m.team)?.items.length ?? 0} action items`;
+  $("#mTo").value = MAIL[m.team] ?? "";
+  $("#mSubject").value = v.subject;
+  $("#mBody").value = v.body;
+}
+function paintVersions() {
+  const m = MW.m;
+  $("#mVer").textContent = `Version ${m.vi + 1} of ${m.versions.length} · ${curV(m).label}`;
+  $("#mailwin [data-mundo]").disabled = m.vi === 0;
+  $("#mailwin [data-mredo]").disabled = m.vi >= m.versions.length - 1;
+  $("#mailwin [data-mreset]").disabled = curV(m).subject === m.base.subject && curV(m).body === m.base.body;
+}
+const flashBody = () => { const b = $("#mBody"); b.classList.remove("flash"); void b.offsetWidth; b.classList.add("flash"); };
+
+// typing edits the current version in place (one "Edited by you" version per stretch of typing)
+function typed() {
+  const m = MW.m, v = curV(m), next = { subject: $("#mSubject").value, body: $("#mBody").value };
+  if (next.subject === v.subject && next.body === v.body) return;
+  if (v.label === "Edited by you" && m.vi === m.versions.length - 1) { Object.assign(v, next); persistMail(m); }
+  else commitV(m, next, "Edited by you");
+  paintVersions();
+}
+
+// ---- line diff (small: an email is a few dozen lines)
+function lineDiff(a, b) {
+  const A = a.split("\n"), B = b.split("\n"), L = Array.from({ length: A.length + 1 }, () => new Uint16Array(B.length + 1));
+  for (let i = A.length - 1; i >= 0; i--) for (let j = B.length - 1; j >= 0; j--) L[i][j] = A[i] === B[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+  const out = []; let i = 0, j = 0;
+  while (i < A.length || j < B.length) {
+    if (i < A.length && j < B.length && A[i] === B[j]) { out.push([" ", A[i]]); i++; j++; }
+    else if (j < B.length && (i === A.length || L[i][j + 1] >= L[i + 1][j])) out.push(["+", B[j++]]);
+    else out.push(["-", A[i++]]);
+  }
+  return out;
+}
+
+// ---- chat
+const fmtS = (ms) => (ms / 1000).toFixed(1) + "s";
+function aiHtml(m, a) {
+  const live = ["waiting", "thinking", "writing", "paused"].includes(a.state), r = parseReply(a.text, a.mode), elapsed = fmtS((a.end ?? Date.now()) - a.t0);
+  const model = esc((a.model ?? "").replace("ollama:", ""));
+  const label = { waiting: `Thinking… ${elapsed}`, thinking: `Thinking… ${elapsed}`, writing: `Writing… ${elapsed}`, paused: "Paused", done: "", stopped: `Stopped after ${elapsed}`, error: "" }[a.state];
+  const thinkOpen = a.thinkOpen ?? live;
+  const think = a.think ? `<div class="mth"><div class="mthh" data-mthink="${a.id}"><span>${thinkOpen ? "▾" : "▸"}</span>${a.state === "thinking" ? `Thinking… ${elapsed}` : "Thoughts"}<span style="flex:1"></span>${a.think.length} chars</div>${thinkOpen ? `<pre>${esc(a.think)}</pre>` : ""}</div>` : "";
+  const noteText = a.note ?? r.note, note = noteText ? `<div class="mnote">${esc(noteText)}</div>` : "";
+  let card = "";
+  const p = a.proposal;
+  const shown = p ?? (r.body ? { subject: r.subject ?? a.from.subject, body: r.body } : null);
+  if (shown && !a.discarded) {
+    const c = a.done?.check;
+    const cls = a.applied ? "ok" : c ? (c.ok && !c.lossy && !c.bloated ? "ok" : "warn") : "";
+    const dropped = (c?.dropped ?? []).filter((x) => /\d|[./_]|[a-z][A-Z]|^"/.test(x)).slice(0, 8);
+    card = `<div class="mcard ${cls}"><div class="ch">${a.state === "done" ? "Proposed version" : "Draft"}${a.state === "done" ? "" : ` <span class="dots"><i></i><i></i><i></i></span>`}</div>
+      <div class="sj">${esc(shown.subject)}</div><pre class="${live ? "cur" : ""}">${esc(shown.body)}</pre>
+      ${c ? `<div class="mchk ${c.ok && !c.lossy && !c.bloated ? "ok" : "warn"}">${c.ok && c.bloated ? `⚠ Much longer than the original. The model may have looped: read it before applying.` : c.ok && c.lossy ? `⚠ Leaves out ${c.dropped.length} of the original's ${c.total} details. Check that this is what you asked for.` : c.ok ? `✓ No new details: everything in it came from the email or your request.` : `⚠ Not in the original email or your request: <b>${esc(c.invented.slice(0, 8).join(", ") || "(the draft is nearly empty)")}</b>`}${dropped.length ? `<small>Left out: ${esc(dropped.join(", "))}${c.dropped.length > dropped.length ? "…" : ""}</small>` : ""}</div>` : ""}
+      ${a.showDiff && p ? `<div class="mdf">${lineDiff(a.from.body, p.body).map(([t, x]) => `<div class="${t === "+" ? "add" : t === "-" ? "del" : ""}">${t === " " ? "  " : t + " "}${esc(x) || " "}</div>`).join("")}</div>` : ""}
+      ${p && a.state === "done" ? `<div class="mcact">${a.applied ? `<span class="mapplied">✓ Applied as version ${a.versionAt + 1}</span>` : `<button class="pri" data-mapply="${a.id}">${c && (!c.ok || c.lossy || c.bloated) ? "Apply anyway" : "Apply"}</button><button data-mdiscard="${a.id}">Discard</button>`}<button data-mshowdiff="${a.id}">${a.showDiff ? "Hide changes" : "Show changes"}</button><button data-mregen="${a.id}" title="Ask again with a little randomness">↻ Regenerate</button>${a.stale && !a.applied ? `<small class="mmeta">You edited the email while this was written.</small>` : ""}</div>` : ""}</div>`;
+  }
+  const tok = a.done?.tokens, ms = a.done?.ms;
+  const meta = a.state === "done" || a.state === "stopped" ? `<div class="mmeta">${[model, ms != null ? fmtS(ms) : "", a.done?.firstTextMs != null ? `first token ${a.done.firstTextMs} ms` : "", tok ? `${tok.in}→${tok.out} tokens${ms ? `, ${(tok.out / (ms / 1000)).toFixed(0)}/s` : ""}` : "", a.temperature ? `temperature ${a.temperature}` : ""].filter(Boolean).join(" · ")}</div>` : "";
+  return `<div class="cm a"><div class="who">✦ ${model || "model"}${label ? ` · ${live && a.state !== "paused" ? `<span class="dots"><i></i><i></i><i></i></span> ` : ""}${label}` : ""}</div>${think}${note}${card}${a.error ? `<div class="merr">${esc(a.error)} <button data-mretry="${a.id}">Retry</button></div>` : ""}${meta}</div>`;
+}
+function paintChat(force) {
+  if (!MW.open) return;
+  const m = MW.m, list = $("#mList");
+  const stick = force || list.scrollHeight - list.scrollTop - list.clientHeight < 60;
+  list.innerHTML = m.msgs.length ? m.msgs.map((x) => x.role === "user" ? `<div class="cm u"><span class="bub">${esc(x.text)}</span></div>` : aiHtml(m, x)).join("")
+    : `<div class="mempty">Ask for a change, or ask a question.<br>Try a quick request below. A rewrite is only a proposal: you see it, its check and what changed, then decide.</div>`;
+  if (stick) list.scrollTop = list.scrollHeight;
+}
+function paintComposer() {
+  if (!MW.open) return;
+  const m = MW.m, model = AI.tasks.mail;
+  $("#mModel").textContent = model ? `${model.provider}:${model.model}` : "";
+  $("#mModel").title = "Change it in Options → AI models (task: mail)";
+  $("#mAuto").checked = m.auto;
+  $("#mQuick").innerHTML = QUICK.map(([l], i) => `<button data-mquick="${i}">${esc(l)}</button>`).join("");
+  $("#mBtns").innerHTML = m.busy
+    ? `<button data-mpause title="${m.paused ? "Show the rest of the reply" : "Freeze the reply on screen. The model keeps going in the background."}">${m.paused ? "▶ Resume" : "⏸ Pause"}</button><button data-mstop title="Stop the model now">■ Stop</button><button class="pri" data-msend title="Add to the queue, it runs after this one">Queue</button>`
+    : `<button class="pri" data-msend>Send ↑</button>`;
+  $("#mQueue").innerHTML = m.queue.length
+    ? `<div class="qh">${m.hold ? "Queue on hold" : "Up next"} · ${m.queue.length}<span style="flex:1"></span>${m.hold ? `<button data-mqrun>▶ Run queue</button>` : ""}<button data-mqclear>Clear</button></div>` + m.queue.map((t, i) => `<div class="qi"><b>${i + 1}</b><span>${esc(t)}</span><button data-mqrm="${i}" title="Remove">×</button></div>`).join("") : "";
+  $("#mStat").textContent = m.busy ? (m.paused ? "Paused" : "Working…") : "";
+}
+
+async function mailRun(m, instruction, { temperature = 0 } = {}) {
+  const v = curV(m);
+  const a = { id: ++MSEQ, role: "ai", instruction, think: "", text: "", state: "waiting", t0: Date.now(), from: { subject: v.subject, body: v.body }, temperature };
+  m.msgs.push({ id: ++MSEQ, role: "user", text: instruction }, a);
+  m.busy = true; m.paused = false; m.hold = false; m.ctl = new AbortController();
+  paintChat(true); paintComposer();
+  const tick = setInterval(() => { if (["waiting", "thinking", "writing"].includes(a.state)) paintChat(); }, 150);
+  try {
+    const res = await fetch("/api/mail-chat", { method: "POST", headers: { "content-type": "application/json" }, signal: m.ctl.signal, body: JSON.stringify({ example: m.ex, subject: v.subject, body: v.body, instruction, earlier: m.earlier, temperature, ai: { tasks: modelsOnly() } }) });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? `the server answered ${res.status}`);
+    const reader = res.body.getReader(), dec = new TextDecoder();
+    let buf = "";
+    for (;;) {
+      while (m.paused && !m.ctl.signal.aborted) { a.state = "paused"; paintChat(); await new Promise((r) => (m.resume = r)); if (a.state === "paused") a.state = a.text ? "writing" : "waiting"; }
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf("\n\n")) >= 0) {
+        const line = buf.slice(0, i); buf = buf.slice(i + 2);
+        if (line.startsWith("data:")) onMailEvent(m, a, JSON.parse(line.slice(5)));
+      }
+      paintChat();
+    }
+    if (!["done", "error"].includes(a.state)) { a.state = "error"; a.error = "The connection closed before the reply was finished."; }
+  } catch (err) {
+    if (m.ctl.signal.aborted) a.state = "stopped";
+    else { a.state = "error"; a.error = /Failed to fetch|NetworkError/.test(err.message) ? "The Trace server is not reachable." : err.message; }
+  }
+  clearInterval(tick);
+  a.end = Date.now();
+  m.busy = false; m.paused = false; m.ctl = null;
+  paintChat(); paintComposer();
+  if (m.queue.length && !m.hold) mailRun(m, m.queue.shift());
+}
+
+function onMailEvent(m, a, ev) {
+  if (ev.type === "start") { a.model = ev.model; a.mode = ev.mode; }
+  else if (ev.type === "thinking") { a.think += ev.delta; a.state = "thinking"; }
+  else if (ev.type === "text") { a.text += ev.delta; a.state = "writing"; }
+  else if (ev.type === "error") { a.state = "error"; a.error = ev.message; }
+  else if (ev.type === "done") {
+    a.state = "done"; a.done = ev; a.model = ev.model; a.note = ev.note;
+    if (ev.body) {
+      a.proposal = { subject: ev.subject ?? a.from.subject, body: ev.body };
+      const v = curV(m);
+      a.stale = v.subject !== a.from.subject || v.body !== a.from.body; // edited by hand while it was written
+      if (m.auto && ev.check?.ok && !ev.check.lossy && !ev.check.bloated && !a.stale) applyProposal(m, a);
+    }
+  }
+}
+function applyProposal(m, a) {
+  if (!a.proposal || a.applied) return;
+  commitV(m, a.proposal, a.instruction.length > 44 ? a.instruction.slice(0, 43) + "…" : a.instruction);
+  m.earlier.push(a.instruction);
+  a.applied = true; a.versionAt = m.vi;
+  paintEditor(); paintVersions(); flashBody();
+}
+function sendMail(text) {
+  const m = MW.m; text = String(text ?? "").trim();
+  if (!text) return;
+  if (m.busy) m.queue.push(text); else mailRun(m, text);
+  paintComposer();
+}
+function stopMail() {
+  const m = MW.m;
+  if (!m.busy) return;
+  m.hold = m.queue.length > 0; // what was queued waits for you instead of running straight away
+  m.ctl.abort(); m.resume?.();
+  paintComposer();
+}
+function undoTo(m, i) {
+  m.vi = Math.max(0, Math.min(m.versions.length - 1, i));
+  persistMail(m); paintEditor(); paintVersions(); flashBody();
+}
+
+$("#mailmodal").addEventListener("input", (ev) => {
+  if (ev.target.id === "mSubject" || ev.target.id === "mBody") typed();
+  if (ev.target.id === "mTo") { MAIL[MW.m.team] = ev.target.value.trim(); saveMail(); }
+  if (ev.target.id === "mInput") { ev.target.style.height = "auto"; ev.target.style.height = Math.min(120, ev.target.scrollHeight) + "px"; }
+});
+$("#mailmodal").addEventListener("change", (ev) => { if (ev.target.id === "mAuto") MW.m.auto = ev.target.checked; });
+$("#mailmodal").addEventListener("keydown", (ev) => {
+  if (ev.target.id === "mInput" && ev.key === "Enter" && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); const t = ev.target.value; ev.target.value = ""; ev.target.style.height = ""; sendMail(t); }
+});
+$("#mailmodal").addEventListener("click", (ev) => {
+  const m = MW.m, d = (k) => ev.target.closest(`[${k}]`), msgOf = (k) => m.msgs.find((x) => x.id === Number(d(k).dataset[k.slice(5)]));
+  if (d("data-mback")) return backToSummary();
+  if (d("data-msend")) { const i = $("#mInput"), t = i.value; i.value = ""; i.style.height = ""; return sendMail(t); }
+  if (d("data-mstop")) return stopMail();
+  if (d("data-mpause")) { m.paused = !m.paused; if (!m.paused) m.resume?.(); return paintComposer(); }
+  if (d("data-mquick")) return sendMail(QUICK[Number(d("data-mquick").dataset.mquick)][1]);
+  if (d("data-mqrm")) { m.queue.splice(Number(d("data-mqrm").dataset.mqrm), 1); return paintComposer(); }
+  if (d("data-mqclear")) { m.queue = []; m.hold = false; return paintComposer(); }
+  if (d("data-mqrun")) { m.hold = false; if (!m.busy && m.queue.length) mailRun(m, m.queue.shift()); return paintComposer(); }
+  if (d("data-mapply")) { applyProposal(m, msgOf("data-mapply")); return paintChat(); }
+  if (d("data-mdiscard")) { msgOf("data-mdiscard").discarded = true; return paintChat(); }
+  if (d("data-mshowdiff")) { const a = msgOf("data-mshowdiff"); a.showDiff = !a.showDiff; return paintChat(); }
+  if (d("data-mthink")) { const a = msgOf("data-mthink"); a.thinkOpen = !(a.thinkOpen ?? ["waiting", "thinking", "writing", "paused"].includes(a.state)); return paintChat(); }
+  if (d("data-mregen") || d("data-mretry")) {
+    if (m.busy) return toast("Wait for the current reply, or press Stop");
+    const a = msgOf(d("data-mregen") ? "data-mregen" : "data-mretry");
+    if (a.applied && m.vi === a.versionAt) { m.earlier.pop(); undoTo(m, m.vi - 1); } // take the draft back first, then ask again from the same text
+    return mailRun(m, a.instruction, { temperature: d("data-mregen") ? 0.7 : 0 });
+  }
+  if (d("data-mclear")) { if (m.busy) return toast("Stop the current reply first"); m.msgs = []; m.queue = []; m.earlier = []; return paintChat(true), paintComposer(); }
+  if (d("data-mundo")) return undoTo(m, m.vi - 1);
+  if (d("data-mredo")) return undoTo(m, m.vi + 1);
+  if (d("data-mreset")) { commitV(m, m.base, "Reset to generated"); paintEditor(); paintVersions(); return flashBody(); }
+  if (d("data-mcopy")) return writeMail(m.team, "copy");
+  if (d("data-mopen")) return writeMail(m.team, "open");
+});
+
+// ---------- the tree: a mini overview in the dock, the full one in a zoomable, draggable window ----------
+const BIG = { open: false, k: 1, x: 0, y: 0 };
+function paintTree(st) {
+  const mini = $("#treeMini");
+  if (!st.layout) { mini.innerHTML = `<div class="empty">Nothing yet — press Start.</div>`; if (BIG.open) $("#bigcanvas").innerHTML = ""; return; }
+  const keys = st.newKeys;
+  st.newKeys = null;
+  mini.innerHTML = markup(st.layout, { fresh: keys, focus: st.focus });
+  if (BIG.open) {
+    $("#bigcanvas").innerHTML = markup(st.layout, { fresh: keys, focus: st.focus });
+    applyView();
+    if (st.focus) centerOn(st.focus);
+  }
+}
+function applyView() {
+  $("#bigcanvas").style.transform = `translate(${BIG.x}px,${BIG.y}px) scale(${BIG.k})`;
+  $("#zoomlbl").textContent = Math.round(BIG.k * 100) + "%";
+}
+function fitView() {
+  const st = S[sel], v = $("#bigview");
+  if (!st?.layout) return;
+  BIG.k = Math.max(0.1, Math.min(2, Math.min(v.clientWidth / st.layout.width, v.clientHeight / st.layout.height) * 0.96));
+  BIG.x = (v.clientWidth - st.layout.width * BIG.k) / 2;
+  BIG.y = Math.max(8, (v.clientHeight - st.layout.height * BIG.k) / 2);
+  applyView();
+}
+function zoomAt(cx, cy, factor) {
+  const k = Math.max(0.1, Math.min(4, BIG.k * factor));
+  BIG.x = cx - (cx - BIG.x) * (k / BIG.k);
+  BIG.y = cy - (cy - BIG.y) * (k / BIG.k);
+  BIG.k = k;
+  applyView();
+}
+function centerOn(leaf) {
+  const st = S[sel], v = $("#bigview");
+  const n = st?.layout?.nodes.find((x) => x.leaf === leaf && x.col === 2) ?? st?.layout?.nodes.find((x) => x.key.startsWith(leaf + ":"));
+  if (!n) return;
+  BIG.x = v.clientWidth / 2 - (n.x + n.w / 2) * BIG.k;
+  BIG.y = v.clientHeight / 2 - (n.y + 19) * BIG.k;
+  applyView();
+}
+function openBig() {
+  const st = S[sel];
+  BIG.open = true;
+  $("#bigwin").hidden = false;
+  $("#bigwin").style.zIndex = 1500;
+  if (st?.layout) { $("#bigcanvas").innerHTML = markup(st.layout, { focus: st.focus }); fitView(); if (st.focus) centerOn(st.focus); }
+}
+function closeBig() { BIG.open = false; $("#bigwin").hidden = true; }
+
+const bv = $("#bigview");
+bv.addEventListener("wheel", (ev) => {
+  ev.preventDefault();
+  const r = bv.getBoundingClientRect();
+  zoomAt(ev.clientX - r.left, ev.clientY - r.top, ev.deltaY < 0 ? 1.12 : 1 / 1.12);
+}, { passive: false });
+bv.addEventListener("pointerdown", (ev) => {
+  if (ev.button !== 0) return;
+  const sx = ev.clientX, sy = ev.clientY, ox = BIG.x, oy = BIG.y;
+  let moved = false;
+  const move = (e) => {
+    if (!moved && Math.hypot(e.clientX - sx, e.clientY - sy) < 4) return;
+    moved = true; bv.classList.add("panning");
+    BIG.x = ox + e.clientX - sx; BIG.y = oy + e.clientY - sy; applyView();
+  };
+  const up = () => { removeEventListener("pointermove", move); bv.classList.remove("panning"); };
+  addEventListener("pointermove", move);
+  addEventListener("pointerup", up, { once: true });
+});
+bv.addEventListener("dblclick", fitView);
+// the window itself: drag by its header
+$("#bighead").addEventListener("pointerdown", (ev) => {
+  if (ev.target.closest("button")) return;
+  const w = $("#bigwin"), r = w.getBoundingClientRect(), dx = ev.clientX - r.left, dy = ev.clientY - r.top;
+  Object.assign(w.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px" });
+  const move = (e) => { w.style.left = Math.max(0, Math.min(innerWidth - 80, e.clientX - dx)) + "px"; w.style.top = Math.max(0, Math.min(innerHeight - 40, e.clientY - dy)) + "px"; };
+  addEventListener("pointermove", move);
+  addEventListener("pointerup", () => removeEventListener("pointermove", move), { once: true });
+});
+new ResizeObserver(() => { if (BIG.open) applyView(); }).observe($("#bigwin"));
+
+
+function hoverLeaves(ids) {
+  const set = new Set(ids.length ? ids : pinned ? [pinned] : []), lay = $("#layers .layers");
+  document.querySelectorAll("#treeMini svg, #bigcanvas svg").forEach((svg) => {
+    svg.classList.toggle("dim", set.size > 0);
+    svg.querySelectorAll(".hl").forEach((e) => e.classList.remove("hl"));
+    svg.querySelectorAll("[data-leaf]").forEach((e) => { if (set.has(e.dataset.leaf)) e.classList.add("hl"); });
+  });
+  if (lay) {
+    lay.classList.toggle("dim", set.size > 0);
+    lay.querySelectorAll(".blk").forEach((b) => b.classList.toggle("hl", set.size > 0 && (b.dataset.serves ?? "").split("|").some((x) => set.has(x))));
+  }
+  document.querySelectorAll("#pv .lm-focus").forEach((e) => e.classList.remove("lm-focus"));
+  document.querySelectorAll("#pv [data-id]").forEach((e) => { if (set.has(e.dataset.id)) e.classList.add("lm-focus"); });
+}
+function hoverPath(leaf) { hoverLeaves(leaf ? [leaf] : []); }
+$("#layers").addEventListener("mouseover", (ev) => { const b = ev.target.closest(".blk[data-serves]"); hoverLeaves(b ? b.dataset.serves.split("|") : []); });
+$("#layers").addEventListener("mouseleave", () => hoverLeaves([]));
+for (const sel_ of ["#treeMini", "#bigcanvas"]) {
+  $(sel_).addEventListener("mouseover", (ev) => hoverPath(ev.target.closest("[data-leaf]")?.dataset.leaf ?? null));
+  $(sel_).addEventListener("mouseleave", () => hoverPath(null));
+}
+
+document.addEventListener("change", (ev) => {
+  if (ev.target.id === "exsel") { sel = ev.target.value; paint(); }
+  if (ev.target.id === "chgOnly") { CH.only = ev.target.checked; return paintChanges(); }
+  if (ev.target.dataset?.mailto) { MAIL[ev.target.dataset.mailto] = ev.target.value.trim(); saveMail(); return; }
+  if (ev.target.id === "explain") { AI.explain = ev.target.checked; saveAI(); }
+  if (ev.target.id === "ai") { AI.on = ev.target.checked; saveAI(); paintConsole(); }
+  const t = ev.target.closest("[data-aitask]");
+  if (t) { AI.tasks[t.dataset.aitask] = { ...AI.tasks[t.dataset.aitask], [t.dataset.f]: t.value.trim() }; saveAI(); }
+});
+
+document.addEventListener("click", async (ev) => {
+  const zoom = ev.target.closest("[data-bigzoom]");
+  if (zoom) {
+    const v = $("#bigview"), c = zoom.dataset.bigzoom;
+    if (c === "fit") fitView();
+    else if (c === "100") zoomAt(v.clientWidth / 2, v.clientHeight / 2, 1 / BIG.k);
+    else zoomAt(v.clientWidth / 2, v.clientHeight / 2, c === "in" ? 1.25 : 0.8);
+    return;
+  }
+  if (ev.target.closest("[data-bigclose]")) return closeBig();
+  if (ev.target.closest("[data-changes]")) return CH.open ? closeChanges() : openChanges("summary");
+  if (ev.target.closest("[data-chgclose]")) return closeChanges();
+  const ctab = ev.target.closest("[data-ctab]");
+  if (ctab) { ev.preventDefault(); CH.tab = ctab.dataset.ctab; return paintChanges(); }
+  const cfeat = ev.target.closest("[data-cfeat]");
+  if (cfeat) { const n = cfeat.dataset.cfeat; CH.collapsed.has(n) ? CH.collapsed.delete(n) : CH.collapsed.add(n); return paintChanges(); }
+  const cfile = ev.target.closest("[data-cfile]");
+  if (cfile) { const [feature, ...rest] = cfile.dataset.cfile.split("|"); CH.sel = { feature, path: rest.join("|") }; return paintChanges(); }
+  const loc = ev.target.closest("[data-loc]");
+  if (loc) {
+    const st = S[sel];
+    if (st?.layout) { st.focus = loc.dataset.loc; showPanel("tree"); paintTree(st); document.querySelector(`#pv [data-id="${cssId(loc.dataset.loc)}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" }); }
+    return closeChanges();
+  }
+  const iexp = ev.target.closest("[data-iexp]");
+  if (iexp && !ev.target.closest("button, a, input")) { const k = iexp.dataset.iexp; CH.exp.has(k) ? CH.exp.delete(k) : CH.exp.add(k); return paintChanges(); }
+  const flt = ev.target.closest("[data-filter]");
+  if (flt) { const [k, v] = flt.dataset.filter.split(":"); CH[k] = v; return paintChanges(); }
+  const mailBtn = ev.target.closest("[data-mail]");
+  if (mailBtn) return openMail(mailBtn.dataset.mail);
+  const copyBtn = ev.target.closest("[data-copymail]");
+  if (copyBtn) return writeMail(copyBtn.dataset.copymail, "copy");
+  const oi = ev.target.closest("[data-oi]");
+  if (oi) {
+    const st = S[sel];
+    if (st?.layout) { st.focus = oi.dataset.oi; showPanel("tree"); paintTree(st); document.querySelector(`#pv [data-id="${cssId(oi.dataset.oi)}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" }); }
+    return closeChanges();
+  }
+  const reset = ev.target.closest("[data-reset]");
+  if (reset) {
+    const all = reset.dataset.reset === "all";
+    const what = all ? "ALL examples" : `"${sel}"`;
+    if (!confirm(`Reset ${what}?\n\nThis deletes saved answers, AI decisions and the AI cache, and restores feature.json, the openapi contract, the page and the stories from the original copy (and removes a contract uploaded later) (.original/) where one exists. Anything you edited in those files is lost. Generated code in demo-app is kept.`)) return;
+    $("#optmenu").open = false;
+    const res = await fetch("/api/reset", { method: "POST", headers: POST, body: JSON.stringify(all ? { all: true } : { example: sel }) });
+    const j = await res.json();
+    if (!res.ok) return alert(j.error);
+    for (const [name, r] of Object.entries(j.results)) {
+      es[name]?.close();
+      S[name] = fresh();
+      S[name].note = `Reset: removed ${r.removed.join(", ") || "nothing"}; restored ${r.restored.join(", ") || (r.hasOriginal ? "nothing (inputs were already original)" : "nothing (no original copy)")}.`;
+      loadPreview(name); loadContract(name);
+    }
+    return paint();
+  }
+  if (ev.target.closest("[data-console]")) { UI.con.open = !UI.con.open; saveUI(); return applyConsole(); }
+  if (ev.target.closest("[data-conclose]")) { UI.con.open = false; saveUI(); return applyConsole(); }
+  if (ev.target.closest("[data-conclear]")) { if (S[sel]) S[sel].console = []; return paintConsole(); }
+  if (ev.target.closest("[data-condetach]")) {
+    if (UI.con.mode === "docked") {
+      UI.con.mode = "floating";
+      UI.con.box ??= { left: Math.round(innerWidth * 0.12), top: Math.round(innerHeight * 0.3), width: Math.round(innerWidth * 0.55), height: Math.round(innerHeight * 0.5) };
+    } else UI.con.mode = "docked";
+    saveUI(); return applyConsole();
+  }
+  const sys = ev.target.closest("[data-consys]");
+  if (sys) { const n = Number(sys.dataset.consys); CONSYS.has(n) ? CONSYS.delete(n) : CONSYS.add(n); return paintConsole(); }
+  if (ev.target.closest("[data-bigtree]") || ev.target.closest("#treeMini .n, #treeMini .l")) return openBig();
+  if (ev.target.closest("#treeMini")) return openBig();
+  if (ev.target.closest("[data-dock]")) { UI.dock = !UI.dock; saveUI(); return applyPanels(); }
+  const head = ev.target.closest(".sec > .ph");
+  if (head && !ev.target.closest("button")) { const id = head.dataset.toggle; UI.collapsed[id] = !UI.collapsed[id]; saveUI(); return applyPanels(); }
+  if (ev.target.closest("[data-resetlayout]")) {
+    UI = { dock: true, width: 460, collapsed: { tree: false, layers: true, contract: true }, con: { open: true, mode: "docked", h: 210, box: null } }; saveUI();
+    const w = $("#bigwin"); w.removeAttribute("style"); w.hidden = !BIG.open;
+    return applyPanels();
+  }
+  const pvEl = ev.target.closest("#pv [data-id]");
+  if (pvEl) {
+    const st = S[sel];
+    document.querySelectorAll("#pv .lm-focus").forEach((e) => e.classList.remove("lm-focus"));
+    pvEl.classList.add("lm-focus");
+    if (st?.layout) { st.focus = pvEl.dataset.id; showPanel("tree"); paintTree(st); } // needed now: where this sits in the tree
+    return;
+  }
+  if (ev.target.closest("#bStart")) return start(sel);
+  if (ev.target.closest("#bAuto")) return start(sel, { auto: true });
+  if (ev.target.closest("#autoall")) return examples.forEach((e) => start(e.name, { auto: true }));
+  const ans = ev.target.closest("[data-answer]");
+  if (ans) return post(Number(ans.dataset.answer));
+  if (ev.target.closest("[data-skip]")) return post({ skip: true });
+  const submit = ev.target.closest("[data-submit]");
+  if (submit?.dataset.submit === "text") return post($("#qtext").value);
+  if (submit?.dataset.submit === "multi") {
+    const picked = [...document.querySelectorAll("[data-multi]:checked")].map((c) => Number(c.dataset.multi));
+    if (picked.length) post(picked);
+  }
+  if (submit?.dataset.submit === "joint") {
+    const from = document.querySelector('input[name="jointFrom"]:checked')?.value;
+    const inputs = [...document.querySelectorAll("[data-jointfield]:checked")].map((c) => c.dataset.jointfield);
+    const fn = $("#jointFn")?.value ?? "";
+    post({ from, inputs, fn });
+  }
+});
+async function post(answer) {
+  const st = S[sel];
+  for (const b of document.querySelectorAll(".q button")) b.disabled = true;
+  await fetch("/api/answer", { method: "POST", headers: POST, body: JSON.stringify({ run: st.run, answer }) });
+}
+$("#watch").addEventListener("change", (ev) => {
+  for (const e of examples) if (S[e.name].done || S[e.name].running) fetch("/api/watch", { method: "POST", headers: POST, body: JSON.stringify({ example: e.name, on: ev.target.checked }) });
+  for (const e of examples) S[e.name].watching = ev.target.checked && !!S[e.name].done;
+  paint(false);
+});
+document.addEventListener("input", (ev) => { if (ev.target.id === "fq") { CH.q = ev.target.value; const pos = ev.target.selectionStart; paintChanges(); const f = $("#fq"); f?.focus(); f?.setSelectionRange(pos, pos); } });
+document.addEventListener("submit", (ev) => ev.preventDefault());
+document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Escape" && MW.open) return backToSummary();
+  if (ev.key === "Escape" && CH.open) return closeChanges();
+  if (ev.key === "Escape" && BIG.open) return closeBig();
+  if (ev.target.id === "qtext" && ev.key === "Enter") return post(ev.target.value);
+  if (ev.target.matches("input, textarea, select") || ev.metaKey || ev.ctrlKey) return;
+  if (ev.key === "s") return document.querySelector("[data-skip]:not(:disabled)")?.click();
+  const b = document.querySelectorAll("[data-answer]")[Number(ev.key) - 1];
+  if (b && !b.disabled) b.click();
+});
+
+installContractPanel({
+  example: () => sel,
+  onChange: async (name) => { await loadContract(name); if (name === sel) paint(false); },
+  onRun: (name) => start(name),
+  onOpen: () => showPanel("contract"),
+});
+init();
+</script>
+<script type="module" src="/inspector/studio.mjs"></script>
+</body>
+</html>

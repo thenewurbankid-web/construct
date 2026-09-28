@@ -1,0 +1,10 @@
+{
+  "file": "catalog.tsx",
+  "note": "Hand-written: filter sidebar, hero banner, product card template (.map), pagination.",
+  "groups": [
+    { "name": "filters sidebar", "kind": "unique", "members": [8] },
+    { "name": "hero banner", "kind": "unique", "members": [23] },
+    { "name": "product cards", "kind": "repeating", "members": [31] },
+    { "name": "pagination", "kind": "unique", "members": [40] }
+  ]
+}

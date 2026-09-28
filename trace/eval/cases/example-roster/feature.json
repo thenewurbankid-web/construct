@@ -1,0 +1,76 @@
+{
+  "feature": "roster",
+  "route": "/roster",
+  "page": "page.jsx",
+  "about": "Cascade: two columns and two totals are each tied between the same two fields. Answer one, and the other is inferred.",
+  "apis": [
+    {
+      "method": "GET",
+      "path": "/api/roster",
+      "response": [
+        {
+          "id": 1,
+          "project": "Apollo",
+          "lead": "Lena",
+          "deputy": "Lena",
+          "budget": 120000,
+          "forecast": 120000
+        },
+        {
+          "id": 2,
+          "project": "Borealis",
+          "lead": "Arjun",
+          "deputy": "Arjun",
+          "budget": 80000,
+          "forecast": 80000
+        },
+        {
+          "id": 3,
+          "project": "Cirrus",
+          "lead": "Mia",
+          "deputy": "Mia",
+          "budget": 45000,
+          "forecast": 45000
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/roster",
+      "request": {
+        "project": "Delta",
+        "lead": "Ravi",
+        "deputy": "Prerna"
+      },
+      "response": {
+        "id": 4,
+        "project": "Delta",
+        "lead": "Ravi",
+        "deputy": "Prerna",
+        "budget": 0,
+        "forecast": 0
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/roster/:id",
+      "request": {
+        "project": "Delta",
+        "lead": "Ravi",
+        "deputy": "Prerna"
+      },
+      "response": {
+        "id": 1,
+        "project": "Delta",
+        "lead": "Ravi",
+        "deputy": "Prerna",
+        "budget": 120000,
+        "forecast": 120000
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/roster/:id"
+    }
+  ]
+}

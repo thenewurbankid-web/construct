@@ -1,0 +1,12 @@
+{
+  "category": "decoy-endpoint",
+  "expect": "c6006fabdc24273b",
+  "generator": {
+    "name": "decoy-endpoint",
+    "params": {
+      "decoyFirst": true
+    },
+    "seed": 11018
+  },
+  "id": "decoy-endpoint-02"
+}

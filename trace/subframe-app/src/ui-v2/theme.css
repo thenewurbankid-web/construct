@@ -1,0 +1,851 @@
+:root {
+  /* Default Colors */
+  --color-brand-primary: var(--color-brand-500);
+  --color-default-font: var(--color-neutral-900);
+  --color-subtext-color: var(--color-neutral-500);
+  --color-neutral-border: var(--color-neutral-200);
+  --color-white: rgb(255 255 255);
+  --color-white-alt: rgb(255 255 255);
+  --color-default-background: var(--color-neutral-0);
+  --color-bg-white-alt: rgb(255 255 255);
+
+  /* Brand */
+  --color-brand-25: rgb(237 230 253);
+  --color-brand-50: rgb(224 212 253);
+  --color-brand-100: rgb(194 170 252);
+  --color-brand-200: rgb(164 127 251);
+  --color-brand-300: rgb(134 85 250);
+  --color-brand-400: rgb(104 42 249);
+  --color-brand-500: rgb(74 0 248);
+  --color-brand-600: rgb(61 0 206);
+  --color-brand-700: rgb(49 0 165);
+  --color-brand-800: rgb(37 0 124);
+  --color-brand-900: rgb(24 0 82);
+  --color-brand-950: rgb(8 0 29);
+
+  /* Neutral */
+  --color-neutral-0: rgb(255 255 255);
+  --color-neutral-50: rgb(248 250 251);
+  --color-neutral-100: rgb(241 245 249);
+  --color-neutral-200: rgb(227 232 240);
+  --color-neutral-300: rgb(204 213 224);
+  --color-neutral-400: rgb(152 162 183);
+  --color-neutral-500: rgb(104 115 137);
+  --color-neutral-600: rgb(74 85 105);
+  --color-neutral-700: rgb(55 64 85);
+  --color-neutral-800: rgb(33 41 58);
+  --color-neutral-900: rgb(17 22 42);
+  --color-neutral-950: rgb(3 6 23);
+
+  /* Error */
+  --color-error-50: rgb(254 242 242);
+  --color-error-100: rgb(254 226 226);
+  --color-error-200: rgb(254 202 202);
+  --color-error-300: rgb(252 165 165);
+  --color-error-400: rgb(248 113 113);
+  --color-error-500: rgb(239 68 68);
+  --color-error-600: rgb(220 38 38);
+  --color-error-700: rgb(185 28 28);
+  --color-error-800: rgb(153 27 27);
+  --color-error-900: rgb(127 29 29);
+
+  /* Warning */
+  --color-warning-50: rgb(254 252 232);
+  --color-warning-100: rgb(254 249 195);
+  --color-warning-200: rgb(254 240 138);
+  --color-warning-300: rgb(253 224 71);
+  --color-warning-400: rgb(250 204 21);
+  --color-warning-500: rgb(234 179 8);
+  --color-warning-600: rgb(202 138 4);
+  --color-warning-700: rgb(161 98 7);
+  --color-warning-800: rgb(133 77 14);
+  --color-warning-900: rgb(113 63 18);
+
+  /* Success */
+  --color-success-50: rgb(240 253 244);
+  --color-success-100: rgb(220 252 231);
+  --color-success-200: rgb(187 247 208);
+  --color-success-300: rgb(134 239 172);
+  --color-success-400: rgb(74 222 128);
+  --color-success-500: rgb(34 197 94);
+  --color-success-600: rgb(22 163 74);
+  --color-success-700: rgb(21 128 61);
+  --color-success-800: rgb(22 101 52);
+  --color-success-900: rgb(20 83 45);
+
+  /* Blue */
+  --color-blue-50: rgb(239 246 255);
+  --color-blue-100: rgb(219 234 254);
+  --color-blue-200: rgb(191 219 254);
+  --color-blue-300: rgb(147 197 253);
+  --color-blue-400: rgb(96 165 250);
+  --color-blue-500: rgb(59 130 246);
+  --color-blue-600: rgb(37 99 235);
+  --color-blue-700: rgb(29 78 216);
+  --color-blue-800: rgb(30 64 175);
+  --color-blue-900: rgb(30 58 138);
+
+  /* Cyan */
+  --color-cyan-50: rgb(236 254 255);
+  --color-cyan-100: rgb(207 250 254);
+  --color-cyan-200: rgb(165 243 252);
+  --color-cyan-300: rgb(103 232 249);
+  --color-cyan-400: rgb(34 211 238);
+  --color-cyan-500: rgb(6 182 212);
+  --color-cyan-600: rgb(8 145 178);
+  --color-cyan-700: rgb(14 116 144);
+  --color-cyan-800: rgb(21 94 117);
+  --color-cyan-900: rgb(22 78 99);
+
+  /* Pink */
+  --color-pink-50: rgb(253 242 248);
+  --color-pink-100: rgb(252 231 243);
+  --color-pink-200: rgb(251 207 232);
+  --color-pink-300: rgb(249 168 212);
+  --color-pink-400: rgb(244 114 182);
+  --color-pink-500: rgb(236 72 153);
+  --color-pink-600: rgb(219 39 119);
+  --color-pink-700: rgb(190 24 93);
+  --color-pink-800: rgb(157 23 77);
+  --color-pink-900: rgb(131 24 67);
+
+  /* Alpha Slate */
+  --color-alpha-slate-80: rgb(17 22 42 / 0.8);
+
+  /* Alpha White */
+  --color-alpha-white-80: rgb(255 255 255 / 0.8);
+
+  /* Orange */
+  --color-orange-50: rgb(255 247 237);
+  --color-orange-100: rgb(255 237 213);
+  --color-orange-200: rgb(254 215 170);
+  --color-orange-300: rgb(253 186 116);
+  --color-orange-400: rgb(251 146 60);
+  --color-orange-500: rgb(249 115 22);
+  --color-orange-600: rgb(234 88 12);
+  --color-orange-700: rgb(194 65 12);
+  --color-orange-800: rgb(154 52 18);
+  --color-orange-900: rgb(124 45 18);
+
+  /* Purple */
+  --color-purple-50: rgb(250 245 255);
+  --color-purple-100: rgb(243 232 255);
+  --color-purple-200: rgb(233 213 255);
+  --color-purple-300: rgb(216 180 254);
+  --color-purple-400: rgb(192 132 252);
+  --color-purple-500: rgb(168 85 247);
+  --color-purple-600: rgb(147 51 234);
+  --color-purple-700: rgb(126 34 206);
+  --color-purple-800: rgb(107 33 168);
+  --color-purple-900: rgb(88 28 135);
+
+  /* Lemon */
+  --color-lemon-50: rgb(250 255 237);
+  --color-lemon-100: rgb(242 255 199);
+  --color-lemon-200: rgb(228 255 147);
+  --color-lemon-300: rgb(208 245 84);
+  --color-lemon-400: rgb(187 230 36);
+  --color-lemon-500: rgb(157 204 6);
+  --color-lemon-600: rgb(122 163 0);
+  --color-lemon-700: rgb(93 123 7);
+  --color-lemon-800: rgb(75 97 13);
+  --color-lemon-900: rgb(63 82 16);
+
+  /* Fuchsia */
+  --color-fuchsia-50: rgb(253 244 255);
+  --color-fuchsia-100: rgb(250 232 255);
+  --color-fuchsia-200: rgb(245 208 254);
+  --color-fuchsia-300: rgb(240 171 252);
+  --color-fuchsia-400: rgb(232 121 249);
+  --color-fuchsia-500: rgb(217 70 239);
+  --color-fuchsia-600: rgb(192 38 211);
+  --color-fuchsia-700: rgb(162 28 175);
+  --color-fuchsia-800: rgb(134 25 143);
+  --color-fuchsia-900: rgb(112 26 117);
+
+  /* Accent */
+  --color-accent-default-aqua: rgb(43 183 178);
+  --color-accent-default-bumble-bee: rgb(230 208 31);
+  --color-accent-default-fuchsia: rgb(156 57 167);
+  --color-accent-default-midnight: rgb(0 8 26);
+  --color-accent-soft-aqua: rgb(93 231 221);
+  --color-accent-soft-fuchsia: rgb(207 105 210);
+  --color-accent-soft-midnight: rgb(30 45 77);
+  --color-accent-soft-bumble-bee: rgb(255 241 128);
+  --color-accent-vivid-aqua: rgb(12 228 214);
+  --color-accent-vivid-bumble-bee: rgb(255 230 30);
+  --color-accent-vivid-fuchsia: rgb(194 68 199);
+  --color-accent-vivid-midnight: rgb(0 17 55);
+  --color-accent-default-indigo: rgb(60 3 206);
+  --color-accent-soft-indigo: rgb(111 51 249);
+  --color-accent-vivid-indigo: rgb(74 0 248);
+
+  /* Bg */
+  --color-bg-01: rgb(245 248 250);
+  --color-bg-white: rgb(255 255 255);
+
+  /* Alpha Brand */
+  --color-alpha-brand-0: rgb(74 0 248 / 0);
+  --color-alpha-brand-4: rgb(74 0 248 / 0.04);
+  --color-alpha-brand-8: rgb(74 0 248 / 0.08);
+  --color-alpha-brand-12: rgb(74 0 248 / 0.12);
+  --color-alpha-brand-16: rgb(74 0 248 / 0.16);
+  --color-alpha-brand-24: rgb(74 0 248 / 0.24);
+  --color-alpha-brand-32: rgb(74 0 248 / 0.32);
+  --color-alpha-brand-48: rgb(74 0 248 / 0.48);
+  --color-alpha-brand-64: rgb(74 0 248 / 0.64);
+  --color-alpha-brand-80: rgb(74 0 248 / 0.8);
+  --color-alpha-brand-96: rgb(74 0 248 / 0.96);
+  --color-alpha-brand-100: rgb(74 0 248);
+
+  /* Alpha Slate 2 */
+  --color-alpha-slate-0: rgb(17 22 42 / 0);
+  --color-alpha-slate-4: rgb(17 22 42 / 0.04);
+  --color-alpha-slate-8: rgb(17 22 42 / 0.08);
+  --color-alpha-slate-12: rgb(17 22 42 / 0.12);
+  --color-alpha-slate-16: rgb(17 22 42 / 0.16);
+  --color-alpha-slate-24: rgb(17 22 42 / 0.24);
+  --color-alpha-slate-32: rgb(17 22 42 / 0.32);
+  --color-alpha-slate-48: rgb(17 22 42 / 0.48);
+  --color-alpha-slate-64: rgb(17 22 42 / 0.64);
+  --color-alpha-slate-96: rgb(17 22 42 / 0.96);
+  --color-alpha-slate-100: rgb(17 22 42);
+
+  /* Alpha white 2 */
+  --color-alpha-white-0: rgb(255 255 255 / 0);
+  --color-alpha-white-4: rgb(255 255 255 / 0.04);
+  --color-alpha-white-8: rgb(255 255 255 / 0.08);
+  --color-alpha-white-12: rgb(255 255 255 / 0.12);
+  --color-alpha-white-16: rgb(255 255 255 / 0.16);
+  --color-alpha-white-24: rgb(255 255 255 / 0.24);
+  --color-alpha-white-32: rgb(255 255 255 / 0.32);
+  --color-alpha-white-48: rgb(255 255 255 / 0.48);
+  --color-alpha-white-64: rgb(255 255 255 / 0.64);
+  --color-alpha-white-96: rgb(255 255 255 / 0.96);
+  --color-alpha-white-100: rgb(255 255 255);
+
+  /* Alpha Shadow */
+  --color-alpha-shadow-4: rgb(17 22 42 / 0.04);
+  --color-alpha-shadow-8: rgb(17 22 42 / 0.08);
+  --color-alpha-shadow-12: rgb(17 22 42 / 0.12);
+  --color-alpha-shadow-16: rgb(17 22 42 / 0.16);
+  --color-alpha-shadow-24: rgb(17 22 42 / 0.24);
+  --color-alpha-shadow-32: rgb(17 22 42 / 0.32);
+  --color-alpha-shadow-48: rgb(17 22 42 / 0.48);
+  --color-alpha-shadow-64: rgb(17 22 42 / 0.64);
+  --color-alpha-shadow-80: rgb(17 22 42 / 0.8);
+  --color-alpha-shadow-96: rgb(17 22 42 / 0.96);
+  --color-alpha-shadow-100: rgb(17 22 42);
+
+  /* Alpha Error */
+  --color-alpha-error-0: rgb(239 68 68 / 0);
+  --color-alpha-error-4: rgb(239 68 68 / 0.04);
+  --color-alpha-error-8: rgb(239 68 68 / 0.08);
+  --color-alpha-error-12: rgb(239 68 68 / 0.12);
+  --color-alpha-error-16: rgb(239 68 68 / 0.16);
+  --color-alpha-error-24: rgb(239 68 68 / 0.24);
+  --color-alpha-error-32: rgb(239 68 68 / 0.32);
+  --color-alpha-error-48: rgb(239 68 68 / 0.48);
+  --color-alpha-error-64: rgb(239 68 68 / 0.64);
+  --color-alpha-error-80: rgb(239 68 68 / 0.8);
+  --color-alpha-error-96: rgb(239 68 68 / 0.96);
+  --color-alpha-error-100: rgb(239 68 68);
+
+  /* Alpha Success */
+  --color-alpha-success-0: rgb(22 163 74 / 0);
+  --color-alpha-success-4: rgb(22 163 74 / 0.04);
+  --color-alpha-success-8: rgb(22 163 74 / 0.08);
+  --color-alpha-success-12: rgb(22 163 74 / 0.12);
+  --color-alpha-success-16: rgb(22 163 74 / 0.16);
+  --color-alpha-success-24: rgb(22 163 74 / 0.24);
+  --color-alpha-success-32: rgb(22 163 74 / 0.32);
+  --color-alpha-success-48: rgb(22 163 74 / 0.48);
+  --color-alpha-success-64: rgb(22 163 74 / 0.64);
+  --color-alpha-success-80: rgb(22 163 74 / 0.8);
+  --color-alpha-success-96: rgb(22 163 74 / 0.96);
+  --color-alpha-success-100: rgb(22 163 74);
+
+  /* Alpha Warning */
+  --color-alpha-warning-0: rgb(234 179 8 / 0);
+  --color-alpha-warning-4: rgb(234 179 8 / 0.04);
+  --color-alpha-warning-8: rgb(234 179 8 / 0.08);
+  --color-alpha-warning-12: rgb(234 179 8 / 0.12);
+  --color-alpha-warning-16: rgb(234 179 8 / 0.16);
+  --color-alpha-warning-24: rgb(234 179 8 / 0.24);
+  --color-alpha-warning-32: rgb(234 179 8 / 0.32);
+  --color-alpha-warning-48: rgb(234 179 8 / 0.48);
+  --color-alpha-warning-64: rgb(234 179 8 / 0.64);
+  --color-alpha-warning-80: rgb(234 179 8 / 0.8);
+  --color-alpha-warning-96: rgb(234 179 8 / 0.96);
+  --color-alpha-warning-100: rgb(234 179 8);
+
+  /* Alpha Aqua */
+  --color-alpha-aqua-0: rgb(12 228 214 / 0);
+  --color-alpha-aqua-8: rgb(12 228 214 / 0.08);
+  --color-alpha-aqua-4: rgb(12 228 214 / 0.04);
+  --color-alpha-aqua-12: rgb(12 228 214 / 0.12);
+  --color-alpha-aqua-16: rgb(12 228 214 / 0.16);
+  --color-alpha-aqua-24: rgb(12 228 214 / 0.24);
+  --color-alpha-aqua-32: rgb(12 228 214 / 0.32);
+  --color-alpha-aqua-48: rgb(12 228 214 / 0.48);
+  --color-alpha-aqua-64: rgb(12 228 214 / 0.64);
+  --color-alpha-aqua-80: rgb(12 228 214 / 0.8);
+  --color-alpha-aqua-96: rgb(12 228 214 / 0.96);
+  --color-alpha-aqua-100: rgb(12 228 214);
+
+  /* Alpha Fuchsia */
+  --color-alpha-fuchsia-0: rgb(194 68 199 / 0);
+  --color-alpha-fuchsia-4: rgb(194 68 199 / 0.04);
+  --color-alpha-fuchsia-8: rgb(194 68 199 / 0.08);
+  --color-alpha-fuchsia-12: rgb(194 68 199 / 0.12);
+  --color-alpha-fuchsia-16: rgb(194 68 199 / 0.16);
+  --color-alpha-fuchsia-24: rgb(194 68 199 / 0.24);
+  --color-alpha-fuchsia-32: rgb(194 68 199 / 0.32);
+  --color-alpha-fuchsia-48: rgb(194 68 199 / 0.48);
+  --color-alpha-fuchsia-64: rgb(194 68 199 / 0.64);
+  --color-alpha-fuchsia-80: rgb(194 68 199 / 0.8);
+  --color-alpha-fuchsia-96: rgb(194 68 199 / 0.96);
+  --color-alpha-fuchsia-100: rgb(194 68 199);
+
+  /* Data */
+  --color-data-viz-categorical-01: rgb(8 145 178);
+  --color-data-viz-categorical-02: rgb(145 0 248);
+  --color-data-viz-categorical-03: rgb(37 99 235);
+  --color-data-viz-categorical-04: rgb(93 123 7);
+  --color-data-viz-categorical-05: rgb(194 68 199);
+  --color-data-viz-diverging-01: rgb(194 65 12);
+  --color-data-viz-diverging-02: rgb(234 88 12);
+  --color-data-viz-diverging-03: rgb(253 186 116);
+  --color-data-viz-diverging-04: rgb(254 215 170);
+  --color-data-viz-diverging-05: rgb(148 163 184);
+  --color-data-viz-diverging-06: rgb(191 219 254);
+  --color-data-viz-diverging-07: rgb(147 197 253);
+  --color-data-viz-diverging-08: rgb(59 130 246);
+  --color-data-viz-diverging-09: rgb(29 78 216);
+  --color-data-viz-sequential-01: rgb(219 234 254);
+  --color-data-viz-sequential-02: rgb(147 197 253);
+  --color-data-viz-sequential-03: rgb(59 130 246);
+  --color-data-viz-sequential-04: rgb(29 78 216);
+  --color-data-viz-sequential-05: rgb(30 58 138);
+
+  /* Fonts */
+  --text-caption: 12px;
+  --text-caption--font-weight: 400;
+  --text-caption--letter-spacing: 0.03em;
+  --text-caption--line-height: 16px;
+  --text-body-2: 14px;
+  --text-body-2--font-weight: 400;
+  --text-body-2--letter-spacing: 0.03em;
+  --text-body-2--line-height: 20px;
+  --text-body-2-bold: 14px;
+  --text-body-2-bold--font-weight: 500;
+  --text-body-2-bold--letter-spacing: 0em;
+  --text-body-2-bold--line-height: 20px;
+  --text-body-1: 16px;
+  --text-body-1--font-weight: 400;
+  --text-body-1--letter-spacing: 0.03em;
+  --text-body-1--line-height: 24px;
+  --text-button: 14px;
+  --text-button--font-weight: 600;
+  --text-button--letter-spacing: 0.03em;
+  --text-button--line-height: 14px;
+  --text-overline: 12px;
+  --text-overline--font-weight: 400;
+  --text-overline--letter-spacing: 0.28em;
+  --text-overline--line-height: 16px;
+  --text-overline-xs: 10px;
+  --text-overline-xs--font-weight: 400;
+  --text-overline-xs--letter-spacing: 0.2em;
+  --text-overline-xs--line-height: 12px;
+  --text-button-xs: 12px;
+  --text-button-xs--font-weight: 600;
+  --text-button-xs--letter-spacing: 0.03em;
+  --text-button-xs--line-height: 12px;
+  --text-caption-xs: 10px;
+  --text-caption-xs--font-weight: 400;
+  --text-caption-xs--letter-spacing: 0.03em;
+  --text-caption-xs--line-height: 12px;
+  --text-h1: 48px;
+  --text-h1--font-weight: 500;
+  --text-h1--letter-spacing: -0.012000000000000002em;
+  --text-h1--line-height: 52px;
+  --text-h2: 40px;
+  --text-h2--font-weight: 500;
+  --text-h2--letter-spacing: -0.005em;
+  --text-h2--line-height: 48px;
+  --text-h3: 32px;
+  --text-h3--font-weight: 600;
+  --text-h3--letter-spacing: 0em;
+  --text-h3--line-height: 40px;
+  --text-h4: 28px;
+  --text-h4--font-weight: 600;
+  --text-h4--letter-spacing: 0.0025em;
+  --text-h4--line-height: 32px;
+  --text-h5: 24px;
+  --text-h5--font-weight: 600;
+  --text-h5--letter-spacing: 0.0015000000000000002em;
+  --text-h5--line-height: 32px;
+  --text-h6: 18px;
+  --text-h6--font-weight: 600;
+  --text-h6--letter-spacing: 0.0015em;
+  --text-h6--line-height: 24px;
+  --text-subtitle-1: 16px;
+  --text-subtitle-1--font-weight: 600;
+  --text-subtitle-1--letter-spacing: 0.01em;
+  --text-subtitle-1--line-height: 24px;
+  --text-subtitle-2: 14px;
+  --text-subtitle-2--font-weight: 600;
+  --text-subtitle-2--letter-spacing: 0.03em;
+  --text-subtitle-2--line-height: 20px;
+  --text-body-2-semibold: 14px;
+  --text-body-2-semibold--font-weight: 600;
+  --text-body-2-semibold--letter-spacing: 0.03em;
+  --text-body-2-semibold--line-height: 20px;
+  --text-h1-max: 48px;
+  --text-h1-max--font-weight: 500;
+  --text-h1-max--letter-spacing: -0.012000000000000002em;
+  --text-h1-max--line-height: 52px;
+  --text-h2-max: 40px;
+  --text-h2-max--font-weight: 500;
+  --text-h2-max--letter-spacing: -0.005em;
+  --text-h2-max--line-height: 48px;
+  --text-h3-max: 32px;
+  --text-h3-max--font-weight: 500;
+  --text-h3-max--letter-spacing: 0em;
+  --text-h3-max--line-height: 40px;
+  --text-h4-max: 28px;
+  --text-h4-max--font-weight: 500;
+  --text-h4-max--letter-spacing: 0.0025em;
+  --text-h4-max--line-height: 32px;
+  --text-h5-max: 24px;
+  --text-h5-max--font-weight: 400;
+  --text-h5-max--letter-spacing: 0.0015000000000000002em;
+  --text-h5-max--line-height: 32px;
+  --text-h6-max: 18px;
+  --text-h6-max--font-weight: 400;
+  --text-h6-max--letter-spacing: 0.0015em;
+  --text-h6-max--line-height: 24px;
+  --text-subtitle-1-max: 16px;
+  --text-subtitle-1-max--font-weight: 500;
+  --text-subtitle-1-max--letter-spacing: 0.01em;
+  --text-subtitle-1-max--line-height: 24px;
+  --text-subtitle-2-max: 14px;
+  --text-subtitle-2-max--font-weight: 500;
+  --text-subtitle-2-max--letter-spacing: 0.03em;
+  --text-subtitle-2-max--line-height: 20px;
+  --text-body-1-max: 16px;
+  --text-body-1-max--font-weight: 400;
+  --text-body-1-max--letter-spacing: 0.03em;
+  --text-body-1-max--line-height: 24px;
+  --text-body-2-max: 14px;
+  --text-body-2-max--font-weight: 400;
+  --text-body-2-max--letter-spacing: 0.03em;
+  --text-body-2-max--line-height: 20px;
+  --text-body-2-semibold-max: 14px;
+  --text-body-2-semibold-max--font-weight: 500;
+  --text-body-2-semibold-max--letter-spacing: 0.03em;
+  --text-body-2-semibold-max--line-height: 20px;
+  --text-button-max: 14px;
+  --text-button-max--font-weight: 500;
+  --text-button-max--letter-spacing: 0.03em;
+  --text-button-max--line-height: 14px;
+  --text-button-xs-max: 12px;
+  --text-button-xs-max--font-weight: 500;
+  --text-button-xs-max--letter-spacing: 0.03em;
+  --text-button-xs-max--line-height: 12px;
+  --text-caption-max: 12px;
+  --text-caption-max--font-weight: 400;
+  --text-caption-max--letter-spacing: 0.03em;
+  --text-caption-max--line-height: 16px;
+  --text-caption-xs-max: 10px;
+  --text-caption-xs-max--font-weight: 400;
+  --text-caption-xs-max--letter-spacing: 0.03em;
+  --text-caption-xs-max--line-height: 12px;
+  --text-overline-max: 12px;
+  --text-overline-max--font-weight: 400;
+  --text-overline-max--letter-spacing: 0.28em;
+  --text-overline-max--line-height: 16px;
+  --text-overline-xs-max: 10px;
+  --text-overline-xs-max--font-weight: 400;
+  --text-overline-xs-max--letter-spacing: 0.2em;
+  --text-overline-xs-max--line-height: 12px;
+  --text-caption-mono: 12px;
+  --text-caption-mono--font-weight: 400;
+  --text-caption-mono--letter-spacing: 0em;
+  --text-caption-mono--line-height: 16px;
+  --text-overline-mono: 12px;
+  --text-overline-mono--font-weight: 400;
+  --text-overline-mono--letter-spacing: 0em;
+  --text-overline-mono--line-height: 16px;
+  --text-caption-xs-mono: 10px;
+  --text-caption-xs-mono--font-weight: 400;
+  --text-caption-xs-mono--letter-spacing: 0.03em;
+  --text-caption-xs-mono--line-height: 12px;
+  --text-overline-xs-mono: 10px;
+  --text-overline-xs-mono--font-weight: 400;
+  --text-overline-xs-mono--letter-spacing: 0em;
+  --text-overline-xs-mono--line-height: 12px;
+  --text-body-2-mono: 14px;
+  --text-body-2-mono--font-weight: 400;
+  --text-body-2-mono--letter-spacing: 0.03em;
+  --text-body-2-mono--line-height: 20px;
+
+  /* Font families */
+  --font-caption: "Inter Tight";
+  --font-body-2: "Inter Tight";
+  --font-body-2-bold: "Inter Tight";
+  --font-body-1: "Inter Tight";
+  --font-button: "Inter Tight";
+  --font-overline: "Inter Tight";
+  --font-overline-xs: "Inter Tight";
+  --font-button-xs: "Inter Tight";
+  --font-caption-xs: "Inter Tight";
+  --font-h1: "Inter Tight";
+  --font-h2: "Inter Tight";
+  --font-h3: "Inter Tight";
+  --font-h4: "Inter Tight";
+  --font-h5: "Inter Tight";
+  --font-h6: "Inter Tight";
+  --font-subtitle-1: "Inter Tight";
+  --font-subtitle-2: "Inter Tight";
+  --font-body-2-semibold: "Inter Tight";
+  --font-h1-max: "Clash Grotesk Variable";
+  --font-h2-max: "Clash Grotesk Variable";
+  --font-h3-max: "Clash Grotesk Variable";
+  --font-h4-max: "Clash Grotesk Variable";
+  --font-h5-max: "Clash Grotesk Variable";
+  --font-h6-max: "Clash Grotesk Variable";
+  --font-subtitle-1-max: "Clash Grotesk Variable";
+  --font-subtitle-2-max: "Clash Grotesk Variable";
+  --font-body-1-max: "Clash Grotesk Variable";
+  --font-body-2-max: "Clash Grotesk Variable";
+  --font-body-2-semibold-max: "Clash Grotesk Variable";
+  --font-button-max: "Clash Grotesk Variable";
+  --font-button-xs-max: "Clash Grotesk Variable";
+  --font-caption-max: "Clash Grotesk Variable";
+  --font-caption-xs-max: "Clash Grotesk Variable";
+  --font-overline-max: "Clash Grotesk Variable";
+  --font-overline-xs-max: "Clash Grotesk Variable";
+  --font-caption-mono: "Geist Mono";
+  --font-overline-mono: "Geist Mono";
+  --font-caption-xs-mono: "Geist Mono";
+  --font-overline-xs-mono: "Geist Mono";
+  --font-body-2-mono: "Geist Mono";
+
+  /* Border radiuses */
+  --radius-rounded-xs: 8px;
+  --radius-rounded-md: 16px;
+  --radius-rounded-lg: 24px;
+  --radius-full: 9999px;
+  --radius-rounded-sm: 12px;
+
+  /* Box shadows */
+  --shadow-sm: 0px 1px 3px 0px rgb(17 22 42 / 0.08),
+    0px 2px 8px -1px rgb(17 22 42 / 0.08);
+  --shadow-md: 0px 2px 4px -1px rgb(17 22 42 / 0.12),
+    0px 4px 16px -2px rgb(17 22 42 / 0.12);
+  --shadow-lg: 0px 4px 8px -2px rgb(17 22 42 / 0.12),
+    0px 12px 32px -4px rgb(17 22 42 / 0.12);
+  --shadow-xs: 0px 1px 2px 0px rgb(17 22 42 / 0.08);
+  --shadow-xl: 0px 8px 16px -4px rgb(17 22 42 / 0.12),
+    0px 24px 64px -8px rgb(17 22 42 / 0.12);
+  --shadow-soft: 0px 2px 16px -3px rgb(17 22 42 / 0.08),
+    0px 1px 16px -6px rgb(17 22 42 / 0.08);
+  --shadow-md: 0px 4px 16px -2px rgb(17 22 42 / 0.08),
+    0px 2px 4px -1px rgb(17 22 42 / 0.08);
+  --shadow-elevation---01: 0px 8px 24px 0px rgb(215 216 243 / 0.45),
+    0px 18px 80px 0px rgb(205 195 225 / 0.12);
+}
+
+.dark {
+  /* Default Colors */
+  --color-white: rgb(3 6 23);
+  --color-bg-white-alt: rgb(14 18 32);
+
+  /* brand */
+  --color-brand-25: rgb(8 0 29);
+  --color-brand-50: rgb(24 0 82);
+  --color-brand-100: rgb(37 0 124);
+  --color-brand-200: rgb(49 0 165);
+  --color-brand-300: rgb(61 0 206);
+  --color-brand-400: rgb(74 0 248);
+  --color-brand-500: rgb(104 42 249);
+  --color-brand-600: rgb(134 85 250);
+  --color-brand-700: rgb(164 127 251);
+  --color-brand-800: rgb(194 170 252);
+  --color-brand-900: rgb(224 212 253);
+  --color-brand-950: rgb(237 230 253);
+
+  /* neutral */
+  --color-neutral-0: rgb(9 11 22);
+  --color-neutral-50: rgb(17 22 42);
+  --color-neutral-100: rgb(33 41 58);
+  --color-neutral-200: rgb(55 64 85);
+  --color-neutral-300: rgb(74 85 105);
+  --color-neutral-400: rgb(104 115 137);
+  --color-neutral-500: rgb(152 162 183);
+  --color-neutral-600: rgb(204 213 224);
+  --color-neutral-700: rgb(227 232 240);
+  --color-neutral-800: rgb(241 245 249);
+  --color-neutral-900: rgb(248 250 251);
+  --color-neutral-950: rgb(255 255 255);
+
+  /* error */
+  --color-error-50: rgb(127 29 29);
+  --color-error-100: rgb(153 27 27);
+  --color-error-200: rgb(185 28 28);
+  --color-error-300: rgb(220 38 38);
+  --color-error-400: rgb(239 68 68);
+  --color-error-500: rgb(248 113 113);
+  --color-error-600: rgb(252 165 165);
+  --color-error-700: rgb(254 202 202);
+  --color-error-800: rgb(254 226 226);
+  --color-error-900: rgb(254 242 242);
+
+  /* warning */
+  --color-warning-50: rgb(113 63 18);
+  --color-warning-100: rgb(133 77 14);
+  --color-warning-200: rgb(161 98 7);
+  --color-warning-300: rgb(202 138 4);
+  --color-warning-400: rgb(234 179 8);
+  --color-warning-500: rgb(250 204 21);
+  --color-warning-600: rgb(253 224 71);
+  --color-warning-700: rgb(254 240 138);
+  --color-warning-800: rgb(254 249 195);
+  --color-warning-900: rgb(254 252 232);
+
+  /* success */
+  --color-success-50: rgb(20 83 45);
+  --color-success-100: rgb(22 101 52);
+  --color-success-200: rgb(21 128 61);
+  --color-success-300: rgb(22 163 74);
+  --color-success-400: rgb(34 197 94);
+  --color-success-500: rgb(74 222 128);
+  --color-success-600: rgb(134 239 172);
+  --color-success-700: rgb(187 247 208);
+  --color-success-800: rgb(220 252 231);
+  --color-success-900: rgb(240 253 244);
+
+  /* blue */
+  --color-blue-50: rgb(30 58 138);
+  --color-blue-100: rgb(30 64 175);
+  --color-blue-200: rgb(29 78 216);
+  --color-blue-300: rgb(37 99 235);
+  --color-blue-400: rgb(59 130 246);
+  --color-blue-500: rgb(96 165 250);
+  --color-blue-600: rgb(147 197 253);
+  --color-blue-700: rgb(191 219 254);
+  --color-blue-800: rgb(219 234 254);
+  --color-blue-900: rgb(239 246 255);
+
+  /* cyan */
+  --color-cyan-50: rgb(22 78 99);
+  --color-cyan-100: rgb(21 94 117);
+  --color-cyan-200: rgb(14 116 144);
+  --color-cyan-300: rgb(8 145 178);
+  --color-cyan-400: rgb(6 182 212);
+  --color-cyan-500: rgb(34 211 238);
+  --color-cyan-600: rgb(103 232 249);
+  --color-cyan-700: rgb(165 243 252);
+  --color-cyan-800: rgb(207 250 254);
+  --color-cyan-900: rgb(236 254 255);
+
+  /* pink */
+  --color-pink-50: rgb(131 24 67);
+  --color-pink-100: rgb(157 23 77);
+  --color-pink-200: rgb(190 24 93);
+  --color-pink-300: rgb(219 39 119);
+  --color-pink-400: rgb(236 72 153);
+  --color-pink-500: rgb(244 114 182);
+  --color-pink-600: rgb(249 168 212);
+  --color-pink-700: rgb(251 207 232);
+  --color-pink-800: rgb(252 231 243);
+  --color-pink-900: rgb(253 242 248);
+
+  /* alpha-slate */
+  --color-alpha-slate-80: rgb(255 255 255 / 0.8);
+
+  /* alpha-white */
+  --color-alpha-white-80: rgb(17 22 42 / 0.8);
+
+  /* orange */
+  --color-orange-50: rgb(124 45 18);
+  --color-orange-100: rgb(154 52 18);
+  --color-orange-200: rgb(194 65 12);
+  --color-orange-300: rgb(234 88 12);
+  --color-orange-400: rgb(249 115 22);
+  --color-orange-500: rgb(251 146 60);
+  --color-orange-600: rgb(253 186 116);
+  --color-orange-700: rgb(254 215 170);
+  --color-orange-800: rgb(255 237 213);
+  --color-orange-900: rgb(255 247 237);
+
+  /* purple */
+  --color-purple-50: rgb(88 28 135);
+  --color-purple-100: rgb(107 33 168);
+  --color-purple-200: rgb(126 34 206);
+  --color-purple-300: rgb(147 51 234);
+  --color-purple-400: rgb(168 85 247);
+  --color-purple-500: rgb(192 132 252);
+  --color-purple-600: rgb(216 180 254);
+  --color-purple-700: rgb(233 213 255);
+  --color-purple-800: rgb(243 232 255);
+  --color-purple-900: rgb(250 245 255);
+
+  /* lemon */
+  --color-lemon-50: rgb(63 82 16);
+  --color-lemon-100: rgb(75 97 13);
+  --color-lemon-200: rgb(93 123 7);
+  --color-lemon-300: rgb(122 163 0);
+  --color-lemon-400: rgb(157 204 6);
+  --color-lemon-500: rgb(187 230 36);
+  --color-lemon-600: rgb(208 245 84);
+  --color-lemon-700: rgb(228 255 147);
+  --color-lemon-800: rgb(242 255 199);
+  --color-lemon-900: rgb(250 255 237);
+
+  /* fuchsia */
+  --color-fuchsia-50: rgb(112 26 117);
+  --color-fuchsia-100: rgb(134 25 143);
+  --color-fuchsia-200: rgb(162 28 175);
+  --color-fuchsia-300: rgb(192 38 211);
+  --color-fuchsia-400: rgb(217 70 239);
+  --color-fuchsia-500: rgb(232 121 249);
+  --color-fuchsia-600: rgb(240 171 252);
+  --color-fuchsia-700: rgb(245 208 254);
+  --color-fuchsia-800: rgb(250 232 255);
+  --color-fuchsia-900: rgb(253 244 255);
+
+  /* accent */
+  --color-accent-default-aqua: rgb(12 228 214);
+  --color-accent-default-bumble-bee: rgb(255 230 30);
+  --color-accent-default-fuchsia: rgb(194 68 199);
+  --color-accent-default-midnight: rgb(0 17 55);
+  --color-accent-soft-aqua: rgb(12 228 214);
+  --color-accent-soft-fuchsia: rgb(194 68 199);
+  --color-accent-soft-midnight: rgb(0 17 55);
+  --color-accent-soft-bumble-bee: rgb(255 230 30);
+  --color-accent-vivid-aqua: rgb(43 183 178);
+  --color-accent-vivid-bumble-bee: rgb(230 208 31);
+  --color-accent-vivid-fuchsia: rgb(156 57 167);
+  --color-accent-vivid-midnight: rgb(0 8 26);
+  --color-accent-default-indigo: rgb(74 0 248);
+  --color-accent-soft-indigo: rgb(74 0 248);
+  --color-accent-vivid-indigo: rgb(61 0 206);
+
+  /* bg */
+  --color-bg-01: rgb(18 21 37);
+  --color-bg-white: rgb(3 6 23);
+
+  /* alpha-brand */
+  --color-alpha-brand-4: rgb(104 42 249 / 0.04);
+  --color-alpha-brand-8: rgb(104 42 249 / 0.08);
+  --color-alpha-brand-12: rgb(104 42 249 / 0.12);
+  --color-alpha-brand-16: rgb(104 42 249 / 0.16);
+  --color-alpha-brand-24: rgb(104 42 249 / 0.24);
+  --color-alpha-brand-32: rgb(104 42 249 / 0.32);
+  --color-alpha-brand-48: rgb(104 42 249 / 0.48);
+  --color-alpha-brand-64: rgb(104 42 249 / 0.64);
+  --color-alpha-brand-80: rgb(104 42 249 / 0.8);
+  --color-alpha-brand-96: rgb(104 42 249 / 0.96);
+  --color-alpha-brand-100: rgb(104 42 249);
+
+  /* alpha-slate-2 */
+  --color-alpha-slate-4: rgb(255 255 255 / 0.04);
+  --color-alpha-slate-8: rgb(255 255 255 / 0.08);
+  --color-alpha-slate-12: rgb(255 255 255 / 0.12);
+  --color-alpha-slate-16: rgb(255 255 255 / 0.16);
+  --color-alpha-slate-24: rgb(255 255 255 / 0.24);
+  --color-alpha-slate-32: rgb(255 255 255 / 0.32);
+  --color-alpha-slate-48: rgb(255 255 255 / 0.48);
+  --color-alpha-slate-64: rgb(255 255 255 / 0.64);
+  --color-alpha-slate-96: rgb(255 255 255 / 0.96);
+  --color-alpha-slate-100: rgb(255 255 255);
+
+  /* alpha-white-2 */
+  --color-alpha-white-4: rgb(17 22 42 / 0.04);
+  --color-alpha-white-8: rgb(17 22 42 / 0.08);
+  --color-alpha-white-12: rgb(17 22 42 / 0.12);
+  --color-alpha-white-16: rgb(17 22 42 / 0.16);
+  --color-alpha-white-24: rgb(17 22 42 / 0.24);
+  --color-alpha-white-32: rgb(17 22 42 / 0.32);
+  --color-alpha-white-48: rgb(17 22 42 / 0.48);
+  --color-alpha-white-64: rgb(17 22 42 / 0.64);
+  --color-alpha-white-96: rgb(17 22 42 / 0.96);
+  --color-alpha-white-100: rgb(17 22 42);
+
+  /* alpha-shadow */
+  --color-alpha-shadow-4: rgb(17 22 42 / 0.08);
+  --color-alpha-shadow-8: rgb(17 22 42 / 0.16);
+  --color-alpha-shadow-12: rgb(17 22 42 / 0.24);
+  --color-alpha-shadow-16: rgb(17 22 42 / 0.32);
+  --color-alpha-shadow-24: rgb(17 22 42 / 0.48);
+  --color-alpha-shadow-32: rgb(17 22 42 / 0.48);
+  --color-alpha-shadow-48: rgb(17 22 42 / 0.64);
+  --color-alpha-shadow-64: rgb(17 22 42 / 0.8);
+  --color-alpha-shadow-80: rgb(17 22 42 / 0.9);
+  --color-alpha-shadow-96: rgb(17 22 42);
+
+  /* alpha-error */
+  --color-alpha-error-4: rgb(248 113 113 / 0.04);
+  --color-alpha-error-8: rgb(248 113 113 / 0.08);
+  --color-alpha-error-12: rgb(248 113 113 / 0.12);
+  --color-alpha-error-16: rgb(248 113 113 / 0.16);
+  --color-alpha-error-24: rgb(248 113 113 / 0.24);
+  --color-alpha-error-32: rgb(248 113 113 / 0.32);
+  --color-alpha-error-48: rgb(248 113 113 / 0.48);
+  --color-alpha-error-64: rgb(248 113 113 / 0.64);
+  --color-alpha-error-80: rgb(248 113 113 / 0.8);
+  --color-alpha-error-96: rgb(248 113 113 / 0.96);
+  --color-alpha-error-100: rgb(248 113 113);
+
+  /* alpha-success */
+  --color-alpha-success-4: rgb(134 239 172 / 0.04);
+  --color-alpha-success-8: rgb(134 239 172 / 0.08);
+  --color-alpha-success-12: rgb(134 239 172 / 0.12);
+  --color-alpha-success-16: rgb(134 239 172 / 0.16);
+  --color-alpha-success-24: rgb(134 239 172 / 0.24);
+  --color-alpha-success-32: rgb(134 239 172 / 0.32);
+  --color-alpha-success-48: rgb(134 239 172 / 0.48);
+  --color-alpha-success-64: rgb(134 239 172 / 0.64);
+  --color-alpha-success-80: rgb(134 239 172 / 0.8);
+  --color-alpha-success-96: rgb(134 239 172 / 0.96);
+  --color-alpha-success-100: rgb(134 239 172);
+
+  /* alpha-warning */
+  --color-alpha-warning-4: rgb(250 204 21 / 0.04);
+  --color-alpha-warning-8: rgb(250 204 21 / 0.08);
+  --color-alpha-warning-12: rgb(250 204 21 / 0.12);
+  --color-alpha-warning-16: rgb(250 204 21 / 0.16);
+  --color-alpha-warning-24: rgb(250 204 21 / 0.24);
+  --color-alpha-warning-32: rgb(250 204 21 / 0.32);
+  --color-alpha-warning-48: rgb(250 204 21 / 0.48);
+  --color-alpha-warning-64: rgb(250 204 21 / 0.64);
+  --color-alpha-warning-80: rgb(250 204 21 / 0.8);
+  --color-alpha-warning-96: rgb(250 204 21 / 0.96);
+  --color-alpha-warning-100: rgb(250 204 21);
+
+  /* data */
+  --color-data-viz-categorical-01: rgb(12 228 214);
+  --color-data-viz-categorical-02: rgb(192 132 252);
+  --color-data-viz-categorical-03: rgb(96 165 250);
+  --color-data-viz-categorical-04: rgb(163 230 53);
+  --color-data-viz-categorical-05: rgb(232 121 249);
+  --color-data-viz-diverging-01: rgb(253 186 116);
+  --color-data-viz-diverging-02: rgb(251 146 60);
+  --color-data-viz-diverging-03: rgb(249 115 22);
+  --color-data-viz-diverging-04: rgb(234 88 12);
+  --color-data-viz-diverging-05: rgb(74 85 105);
+  --color-data-viz-diverging-06: rgb(37 99 235);
+  --color-data-viz-diverging-07: rgb(59 130 246);
+  --color-data-viz-diverging-08: rgb(96 165 250);
+  --color-data-viz-diverging-09: rgb(147 197 253);
+  --color-data-viz-sequential-01: rgb(30 58 138);
+  --color-data-viz-sequential-02: rgb(29 78 216);
+  --color-data-viz-sequential-04: rgb(147 197 253);
+  --color-data-viz-sequential-05: rgb(219 234 254);
+
+  /* Box shadows */
+  --shadow-soft: 0px 8px 16px -4px rgb(17 22 42 / 0.08),
+    0px 24px 64px -8px rgb(17 22 42 / 0.12);
+}

@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>About Trace</title>
+<link rel="icon" type="image/svg+xml" href="/demo/assets/trace-favicon.svg">
+<script>/* same theme rule as the studio: lm-theme = light | dark, anything else follows the system */
+(function(){try{var t=localStorage.getItem("lm-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}})()
+</script>
+<link rel="stylesheet" href="/theme.css">
+<style>
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,-apple-system,sans-serif}
+code{font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--stat);border-radius:4px;padding:0 4px}
+.brk{word-break:break-all}
+.wrap{max-width:880px;margin:0 auto;padding:20px 16px 48px}
+header.top{display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;margin-bottom:8px}
+header.top h1{font-size:20px;margin:0 auto 0 0}
+header.top a.back{color:var(--acc)}
+a{color:var(--acc)}
+section{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:4px 18px 16px;margin-top:16px}
+h2{font-size:15px;margin:14px 0 10px}
+.sub{color:var(--mut);font-size:12.5px}
+.empty{color:var(--mut)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+dl.kv{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:0}
+dl.kv dt{color:var(--mut)}dl.kv dd{margin:0;min-width:0}
+.search input{width:100%;font:inherit;background:var(--bg);color:var(--fg);border:1px solid var(--bd2);border-radius:8px;padding:6px 10px;margin-bottom:10px}
+details{border-top:1px solid var(--bd);padding:8px 0}
+details:first-of-type{border-top:0}
+details.minor{margin:6px 0 0 14px;padding:6px 0 6px 12px;border-top:0;border-left:2px solid var(--bd)}
+details.minor>summary{font-size:13px}
+p.own{margin:12px 0 0;text-transform:uppercase;letter-spacing:.05em;font-size:11px}
+summary{cursor:pointer;display:flex;align-items:baseline;gap:8px}
+summary .n{margin-left:auto;background:var(--stat);color:var(--mut);border-radius:99px;padding:0 8px;font-size:11.5px}
+.grp{display:grid;grid-template-columns:64px 1fr;gap:8px;margin:8px 0 0 4px}
+.grp ul,details.files ul{margin:0;padding-left:18px}
+.grp li{margin-bottom:3px}
+.chip{display:inline-block;align-self:start;justify-self:start;text-align:center;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;padding:0 8px;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
+.k-feat{color:var(--grn)}.k-fix{color:var(--amb)}.k-change{color:var(--acc)}.k-note{color:var(--mut)}
+.sum{display:flex;flex-wrap:wrap;gap:4px 16px;margin:0 0 6px}
+.cnt.added b{color:var(--grn)}.cnt.removed b{color:var(--red)}.cnt.modified b{color:var(--acc)}
+details.files ul{max-height:280px;overflow:auto;margin-top:6px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:520px}
+th{text-align:left;color:var(--mut);font-weight:600;font-size:12.5px}
+th,td{padding:7px 10px;border-bottom:1px solid var(--bd);white-space:nowrap}
+tr.cur td{background:color-mix(in srgb,var(--acc) 8%,transparent)}
+footer{margin-top:20px;color:var(--mut);font-size:12.5px;display:flex;flex-wrap:wrap;gap:6px 16px}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+@media(max-width:520px){dl.kv{grid-template-columns:1fr;gap:0}dl.kv dt{margin-top:8px;font-size:12.5px}.grp{grid-template-columns:1fr}section{padding:2px 12px 14px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>About Trace</h1>
+    <span id="build"></span>
+    <a class="back" href="/studio">Back to the studio</a>
+  </header>
+  <main id="app"><p class="empty">Loading…</p></main>
+  <footer>
+    <span>Docs:</span>
+    <a href="/doc/README.md">README.md</a>
+    <a href="/doc/DEPLOY-LOCAL.md">docs/DEPLOY-LOCAL.md</a>
+    <a href="/doc/SECURITY.md">docs/SECURITY.md</a>
+    <a href="/doc/CHANGELOG.md">CHANGELOG.md</a>
+  </footer>
+</div>
+<script type="module">
+import { mountBuildBadge } from "/ui/build-badge.mjs";
+import { mountAbout } from "/ui/about.mjs";
+mountBuildBadge(document.getElementById("build"), { href: "/about" });
+mountAbout(document.getElementById("app"));
+</script>
+</body>
+</html>

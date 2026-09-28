@@ -1,0 +1,73 @@
+{
+  "feature": "contacts",
+  "route": "/contacts",
+  "page": "page.jsx",
+  "about": "Build it yourself: a joined name, a value the controller provides, a value from an endpoint that doesn't exist yet, and your own button handler.",
+  "apis": [
+    {
+      "method": "GET",
+      "path": "/api/contacts",
+      "response": [
+        {
+          "id": 1,
+          "first": "Lena",
+          "last": "Kumar",
+          "email": "lena@example.com",
+          "city": "Pune"
+        },
+        {
+          "id": 2,
+          "first": "Arjun",
+          "last": "Rao",
+          "email": "arjun@example.com",
+          "city": "Delhi"
+        },
+        {
+          "id": 3,
+          "first": "Mia",
+          "last": "Shah",
+          "email": "mia@example.com",
+          "city": "Mumbai"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/contacts",
+      "request": {
+        "first": "Ravi",
+        "last": "Nair",
+        "email": "ravi@example.com",
+        "city": "Chennai"
+      },
+      "response": {
+        "id": 4,
+        "first": "Ravi",
+        "last": "Nair",
+        "email": "ravi@example.com",
+        "city": "Chennai"
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/contacts/:id",
+      "request": {
+        "first": "Ravi",
+        "last": "Nair",
+        "email": "ravi@example.com",
+        "city": "Pune"
+      },
+      "response": {
+        "id": 1,
+        "first": "Lena",
+        "last": "Kumar",
+        "email": "lena@example.com",
+        "city": "Pune"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/contacts/:id"
+    }
+  ]
+}

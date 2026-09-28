@@ -1,0 +1,176 @@
+{
+  "case": "example-metrics",
+  "contract": {
+    "docs": null,
+    "endpoints": [
+      "GET /api/metrics"
+    ],
+    "item_count": 4,
+    "item_fields": [
+      {
+        "path": "id",
+        "samples": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "type": "number"
+      },
+      {
+        "path": "region",
+        "samples": [
+          "North",
+          "South",
+          "East",
+          "West"
+        ],
+        "type": "string"
+      },
+      {
+        "path": "revenue",
+        "samples": [
+          120000000,
+          95000000,
+          61000000,
+          88000000
+        ],
+        "type": "number"
+      },
+      {
+        "path": "cost",
+        "samples": [
+          70000000,
+          52000000,
+          33000000,
+          49000000
+        ],
+        "type": "number"
+      },
+      {
+        "path": "conversion",
+        "samples": [
+          0.18,
+          0.24,
+          0.12,
+          0.2
+        ],
+        "type": "number"
+      }
+    ],
+    "list_endpoint": "GET /api/metrics",
+    "requirements_text": null,
+    "response_fields_outside_the_list": []
+  },
+  "instructions": {
+    "answer_with_exactly_one_of": {
+      "a:<agg>(<field>)|<format>": "a page value is an aggregate of the whole list: count(), sum(f), average(f), max(f), min(f), e.g. a:sum(budget)|moneyCompact",
+      "e:<path>|<format>": "a page value is a single field of the response outside the list, e.g. e:meta.snapshot_date|dateShort",
+      "f:<field>|<format>": "a list column shows an item field, e.g. f:lead|asText  (nested fields use dots: spend.value)",
+      "gap:todo | gap:custom | gap:static | gap:?": "NOTHING in the contract provides it. todo = leave a TODO, custom = someone writes a placeholder, static = it is fixed text, ? = no view on how it is closed",
+      "s:<field>:asc|desc  or  s:none": "how the rows are ordered (s:none = the API's own order)",
+      "u:<field>|<recipe>": "it comes from a field but needs a transformation none of the formats below does; describe the recipe in words",
+      "x:<kind>": "what an action does: create, update, save, remove, select, clear, reload, ignore"
+    },
+    "formats": {
+      "asText": "the value as is, 12 -> 12, Lena -> Lena",
+      "dateShort": "2026-07-31... -> 31 Jul 2026",
+      "moneyCompact": "1234567 -> $1.2M, 45000 -> $45.0K, 900 -> $900",
+      "moneyFull": "1200 -> $1,200",
+      "percent": "0.327 -> 32.7%",
+      "percentWhole": "0.327 -> 33%"
+    },
+    "rules": [
+      "Decide from the design text and the contract only. Do not run Trace and do not open answers.json, decisions.json or ai-cache.json.",
+      "If two contract fields (or two aggregates) reproduce the design equally well, choose the one the design MEANS (use the header, the surrounding words, the docs and the story) and say why in note.",
+      "If you cannot tell, set unsure to true: the part is then left out of every number instead of guessed."
+    ]
+  },
+  "labeller": null,
+  "parts": [
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "4",
+        "name": "regionCount",
+        "surrounding_text": "4 $364.0M $120.0M $33.0M 18.5% 26 Sep 2026"
+      },
+      "id": "value.regionCount",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "$364.0M",
+        "name": "totalRevenue",
+        "surrounding_text": "4 $364.0M $120.0M $33.0M 18.5% 26 Sep 2026"
+      },
+      "id": "value.totalRevenue",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "$120.0M",
+        "name": "bestRevenue",
+        "surrounding_text": "4 $364.0M $120.0M $33.0M 18.5% 26 Sep 2026"
+      },
+      "id": "value.bestRevenue",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "$33.0M",
+        "name": "lowestCost",
+        "surrounding_text": "4 $364.0M $120.0M $33.0M 18.5% 26 Sep 2026"
+      },
+      "id": "value.lowestCost",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "18.5%",
+        "name": "avgConversion",
+        "surrounding_text": "4 $364.0M $120.0M $33.0M 18.5% 26 Sep 2026"
+      },
+      "id": "value.avgConversion",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "26 Sep 2026",
+        "name": "asOf",
+        "surrounding_text": "4 $364.0M $120.0M $33.0M 18.5% 26 Sep 2026"
+      },
+      "id": "value.asOf",
+      "what": "a value outside the list"
+    }
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "feature": "invoices",
+  "route": "/invoices",
+  "page": "page.jsx",
+  "about": "Six kinds of question at once: an ambiguous field, an unmatched column, a sort tie, an aggregate tie, a missing value and an unknown verb.",
+  "apis": [
+    {
+      "method": "GET",
+      "path": "/api/invoices",
+      "response": [
+        {
+          "id": 1,
+          "number": "INV-1041",
+          "vendor": "Northwind Freight",
+          "amount": 18400000,
+          "outstanding": 18400000,
+          "dueDate": "2026-08-21",
+          "requester": "Prerna",
+          "assignee": "Prerna"
+        },
+        {
+          "id": 2,
+          "number": "INV-1042",
+          "vendor": "Kestrel Packaging",
+          "amount": 48200000,
+          "outstanding": 48200000,
+          "dueDate": "2026-08-02",
+          "requester": "Lena",
+          "assignee": "Lena"
+        },
+        {
+          "id": 3,
+          "number": "INV-1043",
+          "vendor": "Bluepeak IT",
+          "amount": 9700000,
+          "outstanding": 4000000,
+          "dueDate": "2026-09-05",
+          "requester": "Arjun",
+          "assignee": "Arjun"
+        },
+        {
+          "id": 4,
+          "number": "INV-1044",
+          "vendor": "Oriel Chemicals",
+          "amount": 31600000,
+          "outstanding": 31600000,
+          "dueDate": "2026-08-09",
+          "requester": "Mia",
+          "assignee": "Mia"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/invoices",
+      "request": {
+        "vendor": "Harbor Logistics",
+        "amount": 12500000,
+        "requester": "Ravi"
+      },
+      "response": {
+        "id": 5,
+        "number": "INV-1045",
+        "vendor": "Harbor Logistics",
+        "amount": 12500000,
+        "outstanding": 12500000,
+        "dueDate": "2026-09-30",
+        "requester": "Ravi",
+        "assignee": "Ravi"
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/invoices/:id",
+      "request": {
+        "vendor": "Northwind Freight",
+        "amount": 19000000,
+        "requester": "Prerna"
+      },
+      "response": {
+        "id": 1,
+        "number": "INV-1041",
+        "vendor": "Northwind Freight",
+        "amount": 19000000,
+        "outstanding": 19000000,
+        "dueDate": "2026-08-21",
+        "requester": "Prerna",
+        "assignee": "Prerna"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/invoices/:id"
+    }
+  ]
+}

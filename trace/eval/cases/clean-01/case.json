@@ -1,0 +1,10 @@
+{
+  "category": "clean",
+  "expect": "1489c94d64a0651e",
+  "generator": {
+    "name": "clean",
+    "params": {},
+    "seed": 1001
+  },
+  "id": "clean-01"
+}

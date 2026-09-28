@@ -1,0 +1,677 @@
+{
+  "case": "example-deals",
+  "contract": {
+    "docs": null,
+    "endpoints": [
+      "GET /api/deals",
+      "POST /api/deals",
+      "PUT /api/deals/:id"
+    ],
+    "item_count": 6,
+    "item_fields": [
+      {
+        "path": "id",
+        "samples": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "type": "number"
+      },
+      {
+        "path": "name",
+        "samples": [
+          "Atlas Renewal",
+          "Borealis Expansion",
+          "Cirrus Pilot",
+          "Delta Upgrade"
+        ],
+        "type": "string"
+      },
+      {
+        "path": "account",
+        "samples": [
+          "Northwind",
+          "Kestrel",
+          "Bluepeak",
+          "Oriel"
+        ],
+        "type": "string"
+      },
+      {
+        "path": "contactFirst",
+        "samples": [
+          "Lena",
+          "Arjun",
+          "Mia",
+          "Ravi"
+        ],
+        "type": "string"
+      },
+      {
+        "path": "contactLast",
+        "samples": [
+          "Kumar",
+          "Rao",
+          "Shah",
+          "Nair"
+        ],
+        "type": "string"
+      },
+      {
+        "path": "owner",
+        "samples": [
+          "Prerna",
+          "Mia",
+          "Ravi",
+          "Lena"
+        ],
+        "type": "string"
+      },
+      {
+        "path": "csm",
+        "samples": [
+          "Prerna",
+          "Mia",
+          "Ravi",
+          "Lena"
+        ],
+        "type": "string"
+      },
+      {
+        "path": "value",
+        "samples": [
+          84000000,
+          152500000,
+          27500000,
+          61250000
+        ],
+        "type": "number"
+      },
+      {
+        "path": "margin",
+        "samples": [
+          0.325,
+          0.281,
+          0.412,
+          0.198
+        ],
+        "type": "number"
+      },
+      {
+        "path": "closeOn",
+        "samples": [
+          "2026-10-14",
+          "2026-10-02",
+          "2026-11-20",
+          "2026-10-29"
+        ],
+        "type": "string"
+      }
+    ],
+    "list_endpoint": "GET /api/deals",
+    "requirements_text": "# Deals — requirements\n\n- The Owner column shows the salesperson who owns the deal.\n- The CSM column shows the customer success manager, who takes over after the deal is won.\n- The Contact column shows the customer contact's first and last name together, separated by a space.\n- Deals are listed with the largest value first.\n- The Stage column comes from a deal stage that the backend does not provide yet.\n- The Forecast button opens a forecasting view that we have not built, so it uses a handler of our own.\n- The weighted pipeline is the sum, over all deals, of the deal value times its margin.\n- The header shows when the data was last synced; the controller supplies this.\n",
+    "response_fields_outside_the_list": []
+  },
+  "instructions": {
+    "answer_with_exactly_one_of": {
+      "a:<agg>(<field>)|<format>": "a page value is an aggregate of the whole list: count(), sum(f), average(f), max(f), min(f), e.g. a:sum(budget)|moneyCompact",
+      "e:<path>|<format>": "a page value is a single field of the response outside the list, e.g. e:meta.snapshot_date|dateShort",
+      "f:<field>|<format>": "a list column shows an item field, e.g. f:lead|asText  (nested fields use dots: spend.value)",
+      "gap:todo | gap:custom | gap:static | gap:?": "NOTHING in the contract provides it. todo = leave a TODO, custom = someone writes a placeholder, static = it is fixed text, ? = no view on how it is closed",
+      "s:<field>:asc|desc  or  s:none": "how the rows are ordered (s:none = the API's own order)",
+      "u:<field>|<recipe>": "it comes from a field but needs a transformation none of the formats below does; describe the recipe in words",
+      "x:<kind>": "what an action does: create, update, save, remove, select, clear, reload, ignore"
+    },
+    "formats": {
+      "asText": "the value as is, 12 -> 12, Lena -> Lena",
+      "dateShort": "2026-07-31... -> 31 Jul 2026",
+      "moneyCompact": "1234567 -> $1.2M, 45000 -> $45.0K, 900 -> $900",
+      "moneyFull": "1200 -> $1,200",
+      "percent": "0.327 -> 32.7%",
+      "percentWhole": "0.327 -> 33%"
+    },
+    "rules": [
+      "Decide from the design text and the contract only. Do not run Trace and do not open answers.json, decisions.json or ai-cache.json.",
+      "If two contract fields (or two aggregates) reproduce the design equally well, choose the one the design MEANS (use the header, the surrounding words, the docs and the story) and say why in note.",
+      "If you cannot tell, set unsure to true: the part is then left out of every number instead of guessed."
+    ]
+  },
+  "labeller": null,
+  "parts": [
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "Borealis Expansion",
+          "Ember Platform",
+          "Atlas Renewal",
+          "Delta Upgrade",
+          "Cirrus Pilot",
+          "Fjord Support"
+        ],
+        "header": "Deal",
+        "name": "name",
+        "other_parts_in_the_same_cell": []
+      },
+      "id": "list.name",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "Kestrel",
+          "Harbor",
+          "Northwind",
+          "Oriel",
+          "Bluepeak",
+          "Vantage"
+        ],
+        "header": "Account",
+        "name": "account",
+        "other_parts_in_the_same_cell": []
+      },
+      "id": "list.account",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "Arjun Rao",
+          "Prerna Iyer",
+          "Lena Kumar",
+          "Ravi Nair",
+          "Mia Shah",
+          "Kabir Sen"
+        ],
+        "header": "Contact",
+        "name": "contact",
+        "other_parts_in_the_same_cell": []
+      },
+      "id": "list.contact",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "Mia",
+          "Arjun",
+          "Prerna",
+          "Lena",
+          "Ravi",
+          "Mia"
+        ],
+        "header": "Owner",
+        "name": "owner",
+        "other_parts_in_the_same_cell": []
+      },
+      "id": "list.owner",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "Mia",
+          "Arjun",
+          "Prerna",
+          "Lena",
+          "Ravi",
+          "Mia"
+        ],
+        "header": "CSM",
+        "name": "csm",
+        "other_parts_in_the_same_cell": []
+      },
+      "id": "list.csm",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "$152.5M",
+          "$118.0M",
+          "$84.0M",
+          "$61.3M",
+          "$27.5M",
+          "$9.8M"
+        ],
+        "header": "Value",
+        "name": "value",
+        "other_parts_in_the_same_cell": []
+      },
+      "id": "list.value",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "28.1%",
+          "36.0%",
+          "32.5%",
+          "19.8%",
+          "41.2%",
+          "15.0%"
+        ],
+        "header": "Margin",
+        "name": "margin",
+        "other_parts_in_the_same_cell": []
+      },
+      "id": "list.margin",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "2 Oct 2026",
+          "5 Dec 2026",
+          "14 Oct 2026",
+          "29 Oct 2026",
+          "20 Nov 2026",
+          "3 Nov 2026"
+        ],
+        "header": "Close",
+        "name": "closeOn",
+        "other_parts_in_the_same_cell": []
+      },
+      "id": "list.closeOn",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "Proposal",
+          "Proposal",
+          "Negotiation",
+          "Negotiation",
+          "Qualified",
+          "Won"
+        ],
+        "header": "Stage",
+        "name": "stage",
+        "other_parts_in_the_same_cell": []
+      },
+      "id": "list.stage",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "api_order_first_rows": [
+        {
+          "account": "Northwind",
+          "closeOn": "2026-10-14",
+          "contactFirst": "Lena",
+          "contactLast": "Kumar",
+          "csm": "Prerna",
+          "id": 1,
+          "margin": 0.325,
+          "name": "Atlas Renewal",
+          "owner": "Prerna",
+          "value": 84000000
+        },
+        {
+          "account": "Kestrel",
+          "closeOn": "2026-10-02",
+          "contactFirst": "Arjun",
+          "contactLast": "Rao",
+          "csm": "Mia",
+          "id": 2,
+          "margin": 0.281,
+          "name": "Borealis Expansion",
+          "owner": "Mia",
+          "value": 152500000
+        },
+        {
+          "account": "Bluepeak",
+          "closeOn": "2026-11-20",
+          "contactFirst": "Mia",
+          "contactLast": "Shah",
+          "csm": "Ravi",
+          "id": 3,
+          "margin": 0.412,
+          "name": "Cirrus Pilot",
+          "owner": "Ravi",
+          "value": 27500000
+        },
+        {
+          "account": "Oriel",
+          "closeOn": "2026-10-29",
+          "contactFirst": "Ravi",
+          "contactLast": "Nair",
+          "csm": "Lena",
+          "id": 4,
+          "margin": 0.198,
+          "name": "Delta Upgrade",
+          "owner": "Lena",
+          "value": 61250000
+        },
+        {
+          "account": "Harbor",
+          "closeOn": "2026-12-05",
+          "contactFirst": "Prerna",
+          "contactLast": "Iyer",
+          "csm": "Arjun",
+          "id": 5,
+          "margin": 0.36,
+          "name": "Ember Platform",
+          "owner": "Arjun",
+          "value": 118000000
+        },
+        {
+          "account": "Vantage",
+          "closeOn": "2026-11-03",
+          "contactFirst": "Kabir",
+          "contactLast": "Sen",
+          "csm": "Mia",
+          "id": 6,
+          "margin": 0.15,
+          "name": "Fjord Support",
+          "owner": "Mia",
+          "value": 9800000
+        }
+      ],
+      "design": {
+        "designed_rows": [
+          {
+            "account": "Kestrel",
+            "closeOn": "2 Oct 2026",
+            "contact": "Arjun Rao",
+            "csm": "Mia",
+            "margin": "28.1%",
+            "name": "Borealis Expansion",
+            "owner": "Mia",
+            "stage": "Proposal",
+            "value": "$152.5M"
+          },
+          {
+            "account": "Harbor",
+            "closeOn": "5 Dec 2026",
+            "contact": "Prerna Iyer",
+            "csm": "Arjun",
+            "margin": "36.0%",
+            "name": "Ember Platform",
+            "owner": "Arjun",
+            "stage": "Proposal",
+            "value": "$118.0M"
+          },
+          {
+            "account": "Northwind",
+            "closeOn": "14 Oct 2026",
+            "contact": "Lena Kumar",
+            "csm": "Prerna",
+            "margin": "32.5%",
+            "name": "Atlas Renewal",
+            "owner": "Prerna",
+            "stage": "Negotiation",
+            "value": "$84.0M"
+          },
+          {
+            "account": "Oriel",
+            "closeOn": "29 Oct 2026",
+            "contact": "Ravi Nair",
+            "csm": "Lena",
+            "margin": "19.8%",
+            "name": "Delta Upgrade",
+            "owner": "Lena",
+            "stage": "Negotiation",
+            "value": "$61.3M"
+          },
+          {
+            "account": "Bluepeak",
+            "closeOn": "20 Nov 2026",
+            "contact": "Mia Shah",
+            "csm": "Ravi",
+            "margin": "41.2%",
+            "name": "Cirrus Pilot",
+            "owner": "Ravi",
+            "stage": "Qualified",
+            "value": "$27.5M"
+          },
+          {
+            "account": "Vantage",
+            "closeOn": "3 Nov 2026",
+            "contact": "Kabir Sen",
+            "csm": "Mia",
+            "margin": "15.0%",
+            "name": "Fjord Support",
+            "owner": "Mia",
+            "stage": "Won",
+            "value": "$9.8M"
+          }
+        ]
+      },
+      "id": "list.sort",
+      "what": "the order of the designed rows"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "6",
+        "name": "dealCount",
+        "surrounding_text": "6 $453.1M $75.5M $152.5M $9.8M 28.8% $137.6M 26 Sep 2026"
+      },
+      "id": "value.dealCount",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "$453.1M",
+        "name": "pipeline",
+        "surrounding_text": "6 $453.1M $75.5M $152.5M $9.8M 28.8% $137.6M 26 Sep 2026"
+      },
+      "id": "value.pipeline",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "$75.5M",
+        "name": "avgDeal",
+        "surrounding_text": "6 $453.1M $75.5M $152.5M $9.8M 28.8% $137.6M 26 Sep 2026"
+      },
+      "id": "value.avgDeal",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "$152.5M",
+        "name": "largest",
+        "surrounding_text": "6 $453.1M $75.5M $152.5M $9.8M 28.8% $137.6M 26 Sep 2026"
+      },
+      "id": "value.largest",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "$9.8M",
+        "name": "smallest",
+        "surrounding_text": "6 $453.1M $75.5M $152.5M $9.8M 28.8% $137.6M 26 Sep 2026"
+      },
+      "id": "value.smallest",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "28.8%",
+        "name": "avgMargin",
+        "surrounding_text": "6 $453.1M $75.5M $152.5M $9.8M 28.8% $137.6M 26 Sep 2026"
+      },
+      "id": "value.avgMargin",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "$137.6M",
+        "name": "weighted",
+        "surrounding_text": "6 $453.1M $75.5M $152.5M $9.8M 28.8% $137.6M 26 Sep 2026"
+      },
+      "id": "value.weighted",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "26 Sep 2026",
+        "name": "syncedAt",
+        "surrounding_text": "6 $453.1M $75.5M $152.5M $9.8M 28.8% $137.6M 26 Sep 2026"
+      },
+      "id": "value.syncedAt",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "scope": "row",
+        "verb_marker": "edit"
+      },
+      "id": "action.row.edit",
+      "note_for_labeller": "say what it should do given the endpoints in `contract`",
+      "what": "a button or form"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "scope": "row",
+        "verb_marker": "forecast"
+      },
+      "id": "action.row.forecast",
+      "note_for_labeller": "say what it should do given the endpoints in `contract`",
+      "what": "a button or form"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "scope": "row",
+        "verb_marker": "delete"
+      },
+      "id": "action.row.delete",
+      "note_for_labeller": "say what it should do given the endpoints in `contract`",
+      "what": "a button or form"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "scope": "page",
+        "verb_marker": "save"
+      },
+      "id": "action.page.save",
+      "note_for_labeller": "say what it should do given the endpoints in `contract`",
+      "what": "a button or form"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "scope": "page",
+        "verb_marker": "cancel"
+      },
+      "id": "action.page.cancel",
+      "note_for_labeller": "say what it should do given the endpoints in `contract`",
+      "what": "a button or form"
+    }
+  ]
+}

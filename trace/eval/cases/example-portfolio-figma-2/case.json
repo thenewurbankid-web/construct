@@ -1,0 +1,303 @@
+{
+  "category": "example",
+  "id": "example-portfolio-figma-2",
+  "source": "examples/portfolio-figma-2",
+  "sourceHash": "8423fe442c457259",
+  "truth": {
+    "action.page.suggest": {
+      "kind": "gap",
+      "label": "independent",
+      "want": "gap:custom",
+      "why": "story.md: suggestions are AI prompts that use a handler of our own"
+    },
+    "action.page.suggest#2": {
+      "kind": "gap",
+      "label": "independent",
+      "want": "gap:custom",
+      "why": "story.md: suggestions are AI prompts that use a handler of our own"
+    },
+    "action.row.open": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "x:select"
+    },
+    "list.flagFirst": {
+      "also": [
+        "gap:custom",
+        "gap:static"
+      ],
+      "kind": "gap",
+      "label": "independent",
+      "resolutionUnknown": true,
+      "want": "gap:todo",
+      "why": "free text, not in the contract"
+    },
+    "list.flagSecond": {
+      "also": [
+        "gap:custom",
+        "gap:static"
+      ],
+      "kind": "gap",
+      "label": "independent",
+      "resolutionUnknown": true,
+      "want": "gap:todo",
+      "why": "free text, not in the contract"
+    },
+    "list.level": {
+      "label": "independent",
+      "uncertain": "design and contract disagree (scale, badge tokens or example values); the right resolution is a design decision"
+    },
+    "list.maturity": {
+      "label": "independent",
+      "uncertain": "design and contract disagree (scale, badge tokens or example values); the right resolution is a design decision"
+    },
+    "list.maturityGap": {
+      "label": "independent",
+      "uncertain": "design and contract disagree (scale, badge tokens or example values); the right resolution is a design decision"
+    },
+    "list.name": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "f:display_name|asText"
+    },
+    "list.peer": {
+      "label": "independent",
+      "uncertain": "design and contract disagree (scale, badge tokens or example values); the right resolution is a design decision"
+    },
+    "list.rank": {
+      "also": [
+        "gap:custom",
+        "gap:static"
+      ],
+      "kind": "gap",
+      "label": "independent",
+      "resolutionUnknown": true,
+      "want": "gap:todo",
+      "why": "position in the table; no API field"
+    },
+    "list.savings": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "f:savings_potential|moneyCompact"
+    },
+    "list.savingsPct": {
+      "also": [
+        "gap:custom",
+        "gap:static"
+      ],
+      "kind": "gap",
+      "label": "independent",
+      "resolutionUnknown": true,
+      "want": "gap:todo",
+      "why": "savings_potential over spend, computed"
+    },
+    "list.share": {
+      "basis": "contract docs: \"spend.pct_of_total: The category's share of the user's total spend, 0 to 1.\" (design: the share beside spend)",
+      "kind": "match",
+      "label": "independent",
+      "want": "f:spend.pct_of_total|percent"
+    },
+    "list.sort": {
+      "label": "independent",
+      "uncertain": "the design's row order differs from the story's 'sorted by spend descending'; what to answer is a design decision"
+    },
+    "list.spend": {
+      "coincidence": true,
+      "kind": "needs-answer",
+      "label": "independent",
+      "want": "f:spend.value|moneyCompact",
+      "why": "spend.value and spend_trend.curr_value hold the same numbers; the column is the category spend"
+    },
+    "value.acceptedCount": {
+      "also": [
+        "gap:custom",
+        "gap:static"
+      ],
+      "kind": "gap",
+      "label": "independent",
+      "resolutionUnknown": true,
+      "want": "gap:todo",
+      "why": "'23 of 60' is not in the contract"
+    },
+    "value.acceptedPct": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "e:portfolio_at_a_glance.savings_potential.qualified_accepted_pct|percentWhole"
+    },
+    "value.categoryCount": {
+      "coincidence": true,
+      "kind": "needs-answer",
+      "label": "independent",
+      "want": "a:count()|asText",
+      "why": "the number of categories; waiting_on_decision.resilience_count is also 6 by chance"
+    },
+    "value.declining": {
+      "also": [
+        "gap:custom",
+        "gap:static"
+      ],
+      "kind": "gap",
+      "label": "independent",
+      "resolutionUnknown": true,
+      "want": "gap:todo",
+      "why": "narrative text; only cross_l2_summary is in the contract"
+    },
+    "value.headline": {
+      "basis": "story.md: \"The narrative comes from the cross-category summary of the portfolio response.\" (cross_l2_summary)",
+      "kind": "match",
+      "label": "independent",
+      "want": "e:narrative.cross_l2_summary|asText"
+    },
+    "value.highCategories": {
+      "also": [
+        "gap:custom",
+        "gap:static"
+      ],
+      "kind": "gap",
+      "label": "independent",
+      "resolutionUnknown": true,
+      "want": "gap:todo",
+      "why": "a count of categories with a high flag; not in the contract"
+    },
+    "value.impactHigh": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "e:portfolio_at_a_glance.resilience_initiatives.by_impact.high|asText"
+    },
+    "value.impactLow": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "e:portfolio_at_a_glance.resilience_initiatives.by_impact.low|asText"
+    },
+    "value.impactMedium": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "e:portfolio_at_a_glance.resilience_initiatives.by_impact.medium|asText"
+    },
+    "value.improving": {
+      "also": [
+        "gap:custom",
+        "gap:static"
+      ],
+      "kind": "gap",
+      "label": "independent",
+      "resolutionUnknown": true,
+      "want": "gap:todo",
+      "why": "narrative text; only cross_l2_summary is in the contract"
+    },
+    "value.largestName": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "e:portfolio_at_a_glance.largest_category.display_name|asText"
+    },
+    "value.largestShare": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "e:portfolio_at_a_glance.largest_category.share_of_portfolio|percentWhole"
+    },
+    "value.oldestDays": {
+      "also": [
+        "gap:custom",
+        "gap:static"
+      ],
+      "kind": "gap",
+      "label": "independent",
+      "resolutionUnknown": true,
+      "want": "gap:todo",
+      "why": "age of the oldest waiting initiative; not in the contract"
+    },
+    "value.refreshedAt": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "e:meta.snapshot_date|dateShort"
+    },
+    "value.resilienceTotal": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "e:portfolio_at_a_glance.resilience_initiatives.total|asText"
+    },
+    "value.riskCategories": {
+      "also": [
+        "gap:custom",
+        "gap:static"
+      ],
+      "kind": "gap",
+      "label": "independent",
+      "resolutionUnknown": true,
+      "want": "gap:todo",
+      "why": "not in the contract"
+    },
+    "value.riskCount": {
+      "label": "independent",
+      "uncertain": "6 could be resilience_count or the number of categories; the label ('resilience initiatives') does not settle which"
+    },
+    "value.riskTarget": {
+      "also": [
+        "gap:custom",
+        "gap:static"
+      ],
+      "kind": "gap",
+      "label": "independent",
+      "resolutionUnknown": true,
+      "want": "gap:todo",
+      "why": "target; not in the contract"
+    },
+    "value.savingsCard": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "e:portfolio_at_a_glance.savings_potential.value|moneyCompact"
+    },
+    "value.savingsCount": {
+      "basis": "contract docs: \"waiting_on_decision.savings_count: Savings initiatives waiting on a decision.\" (design label: Number of savings initiatives)",
+      "kind": "match",
+      "label": "independent",
+      "want": "e:portfolio_at_a_glance.waiting_on_decision.savings_count|asText"
+    },
+    "value.savingsTarget": {
+      "also": [
+        "gap:custom",
+        "gap:static"
+      ],
+      "kind": "gap",
+      "label": "independent",
+      "resolutionUnknown": true,
+      "want": "gap:todo",
+      "why": "target; not in the contract"
+    },
+    "value.spendCard": {
+      "kind": "match",
+      "label": "independent",
+      "want": "u:portfolio_at_a_glance.spend_you_manage|roundedMillions",
+      "why": "$280M is spend_you_manage (280200000) rounded to whole millions; not a library formatter"
+    },
+    "value.spendYouManage": {
+      "basis": "contract docs: \"spend_you_manage: Total spend across the categories the user manages.\" (design label: Spend you manage)",
+      "kind": "match",
+      "label": "independent",
+      "want": "e:portfolio_at_a_glance.spend_you_manage|moneyCompact"
+    },
+    "value.spendYoy": {
+      "also": [
+        "gap:custom",
+        "gap:static"
+      ],
+      "kind": "gap",
+      "label": "independent",
+      "resolutionUnknown": true,
+      "want": "gap:todo",
+      "why": "no year-on-year figure in the contract"
+    }
+  }
+}

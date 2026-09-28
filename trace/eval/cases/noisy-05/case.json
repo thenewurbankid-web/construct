@@ -1,0 +1,14 @@
+{
+  "category": "noisy",
+  "expect": "3e7d0cf377d7b21d",
+  "generator": {
+    "name": "noisy",
+    "params": {
+      "noise": [
+        "spaced"
+      ]
+    },
+    "seed": 9069
+  },
+  "id": "noisy-05"
+}

@@ -1,0 +1,12 @@
+{
+  "category": "clean",
+  "expect": "f7b0f61c31ef5de8",
+  "generator": {
+    "name": "clean",
+    "params": {
+      "cols": 2
+    },
+    "seed": 1069
+  },
+  "id": "clean-05"
+}

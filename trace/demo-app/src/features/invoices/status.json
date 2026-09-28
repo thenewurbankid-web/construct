@@ -1,0 +1,46 @@
+{
+  "feature": "invoices",
+  "open": 5,
+  "items": [
+    {
+      "id": "list.requestedBy",
+      "part": "row.requestedBy",
+      "state": "placeholder",
+      "why": "getRequestedBy() is a placeholder in the controller layer.",
+      "hint": "Write the real logic in getRequestedBy(), or close it by data: Make them differ in at least one row. For example, in the row with id 2, change \"assignee\" to something other than \"Lena\". Whichever field still shows \"Lena\" is then the match.",
+      "origin": "tie"
+    },
+    {
+      "id": "list.status",
+      "part": "row.status",
+      "state": "placeholder",
+      "why": "getStatus() is a placeholder in the controller layer.",
+      "hint": "Write the real logic in getStatus(), or close it by data: If the API has it, add a field to the GET response with these values per row (id 2 → \"Overdue\", id 4 → \"Overdue\", id 1 → \"Open\", id 3 → \"Partial\"); it closes as soon as you re-run. Otherwise answer with a placeholder, or leave the TODO.",
+      "origin": "missing"
+    },
+    {
+      "id": "value.largestInvoice",
+      "part": "largestInvoice",
+      "state": "placeholder",
+      "why": "getLargestInvoice() is a placeholder in the controller layer.",
+      "hint": "Write the real logic in getLargestInvoice(), or close it by data: They peak on the same row (max(amount) is at id 2, max(outstanding) is at id 2). Change \"amount\" or \"outstanding\" on that row, or add a row where they peak differently.",
+      "origin": "tie"
+    },
+    {
+      "id": "value.syncedAt",
+      "part": "syncedAt",
+      "state": "placeholder",
+      "why": "getSyncedAt() is a placeholder in the controller layer.",
+      "hint": "Write the real logic in getSyncedAt(), or close it by data: If the data exists, add it as a field on each item so an aggregate can produce it. Otherwise answer with a placeholder (controller or a new endpoint), or leave the TODO.",
+      "origin": "missing"
+    },
+    {
+      "id": "action.row.archive",
+      "part": "archive (row action)",
+      "state": "placeholder",
+      "why": "handleArchive() is a placeholder in the controller layer.",
+      "hint": "Write the real logic in handleArchive(), or close it by data: Rename it in the design (data-action) to a known verb, or answer with your own placeholder handler.",
+      "origin": "missing"
+    }
+  ]
+}

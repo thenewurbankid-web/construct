@@ -1,0 +1,76 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "metrics",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/metrics": {
+      "get": {
+        "summary": "GET /api/metrics",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "integer"
+                      },
+                      "region": {
+                        "type": "string"
+                      },
+                      "revenue": {
+                        "type": "integer"
+                      },
+                      "cost": {
+                        "type": "integer"
+                      },
+                      "conversion": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                },
+                "example": [
+                  {
+                    "id": 1,
+                    "region": "North",
+                    "revenue": 120000000,
+                    "cost": 70000000,
+                    "conversion": 0.18
+                  },
+                  {
+                    "id": 2,
+                    "region": "South",
+                    "revenue": 95000000,
+                    "cost": 52000000,
+                    "conversion": 0.24
+                  },
+                  {
+                    "id": 3,
+                    "region": "East",
+                    "revenue": 61000000,
+                    "cost": 33000000,
+                    "conversion": 0.12
+                  },
+                  {
+                    "id": 4,
+                    "region": "West",
+                    "revenue": 88000000,
+                    "cost": 49000000,
+                    "conversion": 0.2
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

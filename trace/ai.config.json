@@ -1,0 +1,33 @@
+{
+  "_notes": "Which model does which AI task. provider: ollama (local Qwen etc.), openai (LM Studio / llama.cpp / vLLM), anthropic (Claude, needs ANTHROPIC_API_KEY). Tasks: choose, pick-fields, draft-body, explain (plain-language open items in the run summary), mail (the email composer chat), part-chat (the Part inspector's chat). An example folder can override this with its own ai.json. Turn the AI on per run with --ai or the Options menu.",
+  "default": {
+    "provider": "ollama",
+    "model": "qwen2.5-coder:1.5b"
+  },
+  "tasks": {
+    "choose": {
+      "provider": "ollama",
+      "model": "qwen2.5-coder:1.5b"
+    },
+    "pick-fields": {
+      "provider": "ollama",
+      "model": "qwen2.5-coder:1.5b"
+    },
+    "draft-body": {
+      "provider": "ollama",
+      "model": "qwen2.5-coder:1.5b"
+    },
+    "explain": {
+      "provider": "ollama",
+      "model": "qwen2.5-coder:1.5b"
+    },
+    "mail": {
+      "provider": "ollama",
+      "model": "qwen2.5-coder:1.5b"
+    },
+    "part-chat": {
+      "provider": "ollama",
+      "model": "qwen2.5-coder:1.5b"
+    }
+  }
+}

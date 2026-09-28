@@ -1,0 +1,236 @@
+{
+  "category": "example",
+  "id": "example-portfolio-redesigned",
+  "source": "examples/portfolio-redesigned",
+  "sourceHash": "2bc40cb2e5ea9578",
+  "truth": {
+    "action.page.suggest": {
+      "kind": "gap",
+      "label": "independent",
+      "want": "gap:custom",
+      "why": "story.md: a handler of our own"
+    },
+    "action.page.suggest#2": {
+      "kind": "gap",
+      "label": "independent",
+      "want": "gap:custom",
+      "why": "story.md: a handler of our own"
+    },
+    "action.row.open": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "x:select"
+    },
+    "list.acceptedLabel": {
+      "also": [
+        "gap:custom",
+        "gap:static"
+      ],
+      "kind": "gap",
+      "label": "independent",
+      "resolutionUnknown": true,
+      "want": "gap:todo",
+      "why": "a sentence built from counts not in the contract"
+    },
+    "list.level": {
+      "label": "independent",
+      "uncertain": "design and contract disagree (scale, badge tokens or example values); the right resolution is a design decision"
+    },
+    "list.maturity": {
+      "label": "independent",
+      "uncertain": "design and contract disagree (scale, badge tokens or example values); the right resolution is a design decision"
+    },
+    "list.name": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "f:display_name|asText"
+    },
+    "list.oppLabel": {
+      "also": [
+        "gap:custom",
+        "gap:static"
+      ],
+      "kind": "gap",
+      "label": "independent",
+      "resolutionUnknown": true,
+      "want": "gap:todo",
+      "why": "a sentence built from counts not in the contract"
+    },
+    "list.peer": {
+      "label": "independent",
+      "uncertain": "design and contract disagree (scale, badge tokens or example values); the right resolution is a design decision"
+    },
+    "list.rank": {
+      "also": [
+        "gap:custom",
+        "gap:static"
+      ],
+      "kind": "gap",
+      "label": "independent",
+      "resolutionUnknown": true,
+      "want": "gap:todo",
+      "why": "position in the table"
+    },
+    "list.risk": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "f:risk_score|asText"
+    },
+    "list.savingsRangeRow": {
+      "also": [
+        "gap:custom",
+        "gap:static"
+      ],
+      "kind": "gap",
+      "label": "independent",
+      "resolutionUnknown": true,
+      "want": "gap:todo",
+      "why": "a low-high range; not in the contract"
+    },
+    "list.shareLabel": {
+      "label": "independent",
+      "uncertain": "the design shows 37% for Logistics, the contract says 13.7%: design and contract disagree (scale, badge tokens or example values); the right resolution is a design decision"
+    },
+    "list.sort": {
+      "label": "independent",
+      "uncertain": "row order is a design decision here"
+    },
+    "list.spend": {
+      "label": "independent",
+      "uncertain": "the design example ($78.4M) differs from the contract's spend for that row ($38.4M): design and contract disagree (scale, badge tokens or example values); the right resolution is a design decision"
+    },
+    "list.spendChange": {
+      "also": [
+        "gap:custom",
+        "gap:static"
+      ],
+      "kind": "gap",
+      "label": "independent",
+      "resolutionUnknown": true,
+      "want": "gap:todo",
+      "why": "curr_value minus prev_value, computed"
+    },
+    "value.baselineSpend": {
+      "kind": "match",
+      "label": "independent",
+      "want": "u:portfolio_at_a_glance.spend_you_manage|roundedMillions",
+      "why": "$280M is spend_you_manage rounded to whole millions"
+    },
+    "value.coveredCount": {
+      "also": [
+        "gap:custom",
+        "gap:static"
+      ],
+      "coincidence": true,
+      "kind": "gap",
+      "label": "independent",
+      "resolutionUnknown": true,
+      "want": "gap:todo",
+      "why": "'Categories covered' is not the resilience initiative total; 21 is the same number by chance"
+    },
+    "value.declining": {
+      "also": [
+        "gap:custom",
+        "gap:static"
+      ],
+      "kind": "gap",
+      "label": "independent",
+      "resolutionUnknown": true,
+      "want": "gap:todo",
+      "why": "narrative text"
+    },
+    "value.headline": {
+      "basis": "story.md: \"The narrative comes from the cross-category summary of the portfolio response.\"",
+      "kind": "match",
+      "label": "independent",
+      "want": "e:narrative.cross_l2_summary|asText"
+    },
+    "value.highCategories": {
+      "also": [
+        "gap:custom",
+        "gap:static"
+      ],
+      "kind": "gap",
+      "label": "independent",
+      "resolutionUnknown": true,
+      "want": "gap:todo",
+      "why": "not in the contract"
+    },
+    "value.improving": {
+      "also": [
+        "gap:custom",
+        "gap:static"
+      ],
+      "kind": "gap",
+      "label": "independent",
+      "resolutionUnknown": true,
+      "want": "gap:todo",
+      "why": "narrative text"
+    },
+    "value.oldestDays": {
+      "also": [
+        "gap:custom",
+        "gap:static"
+      ],
+      "kind": "gap",
+      "label": "independent",
+      "resolutionUnknown": true,
+      "want": "gap:todo",
+      "why": "not in the contract"
+    },
+    "value.qualifiedCount": {
+      "also": [
+        "gap:custom",
+        "gap:static"
+      ],
+      "kind": "gap",
+      "label": "independent",
+      "resolutionUnknown": true,
+      "want": "gap:todo",
+      "why": "not in the contract"
+    },
+    "value.qualifiedInitiatives": {
+      "also": [
+        "gap:custom",
+        "gap:static"
+      ],
+      "kind": "gap",
+      "label": "independent",
+      "resolutionUnknown": true,
+      "want": "gap:todo",
+      "why": "not in the contract"
+    },
+    "value.refreshedAt": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "e:meta.snapshot_date|dateShort"
+    },
+    "value.resilienceTotal": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "e:portfolio_at_a_glance.resilience_initiatives.total|asText"
+    },
+    "value.savingsCount": {
+      "basis": "contract docs: \"waiting_on_decision.savings_count: Savings initiatives waiting on a decision.\" (design label: Savings initiatives)",
+      "kind": "match",
+      "label": "independent",
+      "want": "e:portfolio_at_a_glance.waiting_on_decision.savings_count|asText"
+    },
+    "value.savingsRange": {
+      "also": [
+        "gap:custom",
+        "gap:static"
+      ],
+      "kind": "gap",
+      "label": "independent",
+      "resolutionUnknown": true,
+      "want": "gap:todo",
+      "why": "a low-high range; not in the contract"
+    }
+  }
+}

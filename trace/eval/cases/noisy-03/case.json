@@ -1,0 +1,15 @@
+{
+  "category": "noisy",
+  "expect": "ace9c5154788744a",
+  "generator": {
+    "name": "noisy",
+    "params": {
+      "noise": [
+        "hash",
+        "ws"
+      ]
+    },
+    "seed": 9035
+  },
+  "id": "noisy-03"
+}

@@ -1,0 +1,72 @@
+{
+  "feature": "categories",
+  "route": "/categories",
+  "page": "page.jsx",
+  "about": "The original example: full CRUD on mocks, one value (refreshedAt) the API can't give.",
+  "apis": [
+    {
+      "method": "GET",
+      "path": "/api/categories",
+      "response": [
+        {
+          "id": 1,
+          "name": "Logistics",
+          "spend": 78400000,
+          "owner": "Prerna"
+        },
+        {
+          "id": 2,
+          "name": "Packaging",
+          "spend": 62800000,
+          "owner": "Arjun"
+        },
+        {
+          "id": 3,
+          "name": "IT Services",
+          "spend": 45200000,
+          "owner": "Mia"
+        },
+        {
+          "id": 4,
+          "name": "Grains & Cereals",
+          "spend": 91600000,
+          "owner": "Lena"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/categories",
+      "request": {
+        "name": "Chemicals",
+        "spend": 12500000,
+        "owner": "Ravi"
+      },
+      "response": {
+        "id": 5,
+        "name": "Chemicals",
+        "spend": 12500000,
+        "owner": "Ravi"
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/categories/:id",
+      "request": {
+        "name": "Logistics",
+        "spend": 80000000,
+        "owner": "Prerna"
+      },
+      "response": {
+        "id": 1,
+        "name": "Logistics",
+        "spend": 80000000,
+        "owner": "Prerna"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/categories/:id"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "line-matcher-e2e",
+  "private": true,
+  "type": "module",
+  "description": "T16.8: Playwright specs for the root Trace app's UI, scoped to this directory (config, browsers and results all live under e2e/, not the repo root) — same pattern as tools/feature-grouper's own Playwright setup. Run: npx playwright test --config e2e/playwright.config.mjs (from e2e/, after `npm install` and `npx playwright install chromium` here once).",
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "playwright": "^1.63.0"
+  }
+}

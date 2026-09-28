@@ -1,0 +1,13 @@
+{
+  "feature": "metrics",
+  "open": 1,
+  "items": [
+    {
+      "id": "value.asOf",
+      "part": "asOf",
+      "state": "skipped",
+      "why": "Nothing computed from the list (count, sum, average, min, max) gives \"26 Sep 2026\".",
+      "hint": "If the data exists, add it as a field on each item so an aggregate can produce it. Otherwise answer with a placeholder (controller or a new endpoint), or leave the TODO."
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "feature": "things",
+  "route": "/things",
+  "page": "page.jsx",
+  "about": "eval fixture: the contract is an OpenAPI file, feature.json has no apis"
+}

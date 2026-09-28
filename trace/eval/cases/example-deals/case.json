@@ -1,0 +1,148 @@
+{
+  "category": "example",
+  "id": "example-deals",
+  "source": "examples/deals",
+  "sourceHash": "2b23c1c878e02066",
+  "truth": {
+    "action.page.cancel": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "x:clear"
+    },
+    "action.page.save": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "x:save"
+    },
+    "action.row.delete": {
+      "label": "independent",
+      "uncertain": "README: it needs a DELETE endpoint the API lacks; the fix is an API change, not an answer"
+    },
+    "action.row.edit": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "x:select"
+    },
+    "action.row.forecast": {
+      "kind": "gap",
+      "label": "independent",
+      "want": "gap:custom",
+      "why": "README: unknown verb, a handler of our own"
+    },
+    "list.account": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "f:account|asText"
+    },
+    "list.closeOn": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "f:closeOn|dateShort"
+    },
+    "list.contact": {
+      "kind": "gap",
+      "label": "independent",
+      "want": "gap:custom",
+      "why": "gold.json: contactFirst + contactLast"
+    },
+    "list.csm": {
+      "coincidence": true,
+      "couple": "owner-csm",
+      "kind": "needs-answer",
+      "label": "independent",
+      "want": "f:csm|asText",
+      "why": "gold.json"
+    },
+    "list.margin": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "f:margin|percent"
+    },
+    "list.name": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "f:name|asText"
+    },
+    "list.owner": {
+      "coincidence": true,
+      "couple": "owner-csm",
+      "kind": "needs-answer",
+      "label": "independent",
+      "want": "f:owner|asText",
+      "why": "gold.json: owner and csm are identical in every row"
+    },
+    "list.sort": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "s:value:desc"
+    },
+    "list.stage": {
+      "kind": "gap",
+      "label": "independent",
+      "want": "gap:todo",
+      "why": "gold.json: not in the API"
+    },
+    "list.value": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "f:value|moneyCompact"
+    },
+    "value.avgDeal": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "a:average(value)|moneyCompact"
+    },
+    "value.avgMargin": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "a:average(margin)|percent"
+    },
+    "value.dealCount": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "a:count()|asText"
+    },
+    "value.largest": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "a:max(value)|moneyCompact"
+    },
+    "value.pipeline": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "a:sum(value)|moneyCompact"
+    },
+    "value.smallest": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "a:min(value)|moneyCompact"
+    },
+    "value.syncedAt": {
+      "kind": "gap",
+      "label": "independent",
+      "want": "gap:custom",
+      "why": "gold.json: controller supplies it"
+    },
+    "value.weighted": {
+      "kind": "gap",
+      "label": "independent",
+      "want": "gap:custom",
+      "why": "gold.json: sum of value x margin is not an aggregate"
+    }
+  }
+}

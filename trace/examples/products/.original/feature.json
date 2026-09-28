@@ -1,0 +1,6 @@
+{
+  "feature": "products",
+  "route": "/products",
+  "page": "page.jsx",
+  "about": "Baseline: every design value is explained by the API. Nothing to ask, nothing open."
+}

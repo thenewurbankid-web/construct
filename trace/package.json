@@ -1,0 +1,52 @@
+{
+  "name": "line-matcher",
+  "version": "1.0.0",
+  "description": "",
+  "directories": {
+    "example": "examples"
+  },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "test": "node --test \"demo-app/src/features/**/*.test.js\" \"src/**/*.test.mjs\" \"eval/**/*.test.mjs\"",
+    "generate": "node src/cli.mjs examples/categories --out demo-app/src",
+    "auto": "node src/cli.mjs examples --all --auto --out demo-app/src",
+    "watch": "node src/cli.mjs examples --all --watch --out demo-app/src",
+    "reset": "node src/reset-cli.mjs examples",
+    "jev": "tools/jev/.venv/bin/python tools/jev/serve.py --port 8765",
+    "bench": "node src/ai/bench.mjs",
+    "eval": "node eval/run.mjs",
+    "eval:gate": "node eval/gate.mjs",
+    "eval:baseline": "node eval/run.mjs --write-baseline",
+    "eval:promote": "node eval/promote.mjs",
+    "eval:triage": "node eval/triage.mjs",
+    "eval:labels": "node eval/export-labels.mjs",
+    "eval:worksheet": "node eval/labeling/worksheet.mjs",
+    "deploy:local": "node scripts/deploy-local.mjs local",
+    "deploy:status": "node scripts/deploy-local.mjs status",
+    "deploy:stop": "node scripts/deploy-local.mjs stop",
+    "deploy:watch": "node scripts/deploy-local.mjs watch",
+    "deploy:rollback": "node scripts/deploy-local.mjs rollback",
+    "demo": "node src/demo-check.mjs && node src/server.mjs",
+    "demo:check": "node src/demo-check.mjs",
+    "build:hero": "esbuild src/ui/hero3d/scene.mjs --bundle --minify --format=esm --target=es2020 --legal-comments=eof --outfile=src/ui/hero3d/hero.bundle.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@babel/generator": "^8.0.6",
+    "@babel/parser": "^7.29.9",
+    "@babel/traverse": "^8.0.6",
+    "@babel/types": "^8.0.6",
+    "prettier": "^3.9.9",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "three": "^0.186.1"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
+}
