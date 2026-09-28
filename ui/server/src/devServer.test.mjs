@@ -26,11 +26,17 @@ const { parseLocalPort, looksLikePortBusy, busyPortFrom, readDevCommand, findFre
 const { PREVIEW_FIBER_PROTOCOL } = await import('../../../packages/engine/previewFiber.mjs');
 
 // The fixture app: serves marker.txt (read on every request, so a checkout is visible without a restart) and
-// prints what a real dev server prints. It reports which Cockpit secrets it can see.
+// prints what a real dev server prints. It reports which Cockpit secrets it can see. `/app.js` + `/app.js.map`
+// (#443 slice 4b-iii) are a real bundled-looking asset for resolve-selection's source-map fetch to exercise
+// end to end; every other path keeps the plain marker.txt behaviour every other test relies on.
 const FIXTURE_SERVER = `import http from 'node:http';
 import fs from 'node:fs';
 const port = Number(process.env.PORT);
-const srv = http.createServer((q, r) => r.end(fs.readFileSync('marker.txt', 'utf8')));
+const srv = http.createServer((q, r) => {
+  if (q.url === '/app.js') { r.setHeader('content-type', 'text/javascript'); r.end('console.log(1);\\n//# sourceMappingURL=app.js.map'); return; }
+  if (q.url === '/app.js.map') { r.setHeader('content-type', 'application/json'); r.end(JSON.stringify({ version: 3, sources: ['../src/App.tsx'], names: [], mappings: 'AAAA' })); return; }
+  r.end(fs.readFileSync('marker.txt', 'utf8'));
+});
 srv.on('error', (e) => { console.error(e.message); process.exit(1); });
 srv.listen(port, '127.0.0.1', () => {
   console.log('secret:' + (process.env.CONSTRUCT_SESSION_SECRET ?? 'none') + ' host:' + process.env.HOST);
@@ -228,6 +234,21 @@ test('#443 slice 4b: resolve-selection turns a fiber select payload into a proje
   assert.equal((await empty.json()).ok, false, 'no selection: a reason, never a crash');
 
   assert.equal((await call('POST', '/api/dev-server/resolve-selection', { selection }, { origin: 'http://evil.example' })).status, 403);
+});
+
+test('#443 slice 4b-iii: resolve-selection fetches the frame\'s source map straight from the running dev server', async () => {
+  const running = await status();
+  assert.equal(running.state, 'running');
+  const stack = `Error\n    at Foo (${running.url}app.js:1:1)`;
+  const r = await call('POST', '/api/dev-server/resolve-selection', {
+    selection: { protocol: PREVIEW_FIBER_PROTOCOL, componentName: 'Mapped', stack, ancestors: [], domPath: [] },
+  });
+  assert.equal(r.status, 200);
+  const body = await r.json();
+  assert.equal(body.ok, true);
+  assert.equal(body.tier, 'stack');
+  assert.equal(body.confidence, 'mapped', 'the map fetched from the dev server itself, not a file-only guess');
+  assert.equal(body.file, 'src/App.tsx');
 });
 
 test('a second start is refused while one runs', async () => {
