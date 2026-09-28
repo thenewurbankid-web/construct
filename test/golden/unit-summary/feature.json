@@ -123,14 +123,50 @@
           "file": "features/login/components/Login.tsx",
           "props": [
             {
-              "type": "LoginProps",
-              "members": [
-                "username",
-                "setUsername",
-                "password",
-                "setPassword",
-                "onSubmit",
-                "error"
+              "component": "Login",
+              "props": [
+                {
+                  "name": "username",
+                  "type": "string",
+                  "required": true,
+                  "default": null,
+                  "description": ""
+                },
+                {
+                  "name": "setUsername",
+                  "type": "(value: string) => void",
+                  "required": true,
+                  "default": null,
+                  "description": ""
+                },
+                {
+                  "name": "password",
+                  "type": "string",
+                  "required": true,
+                  "default": null,
+                  "description": ""
+                },
+                {
+                  "name": "setPassword",
+                  "type": "(value: string) => void",
+                  "required": true,
+                  "default": null,
+                  "description": ""
+                },
+                {
+                  "name": "onSubmit",
+                  "type": "() => void",
+                  "required": true,
+                  "default": null,
+                  "description": ""
+                },
+                {
+                  "name": "error",
+                  "type": "string | null",
+                  "required": true,
+                  "default": null,
+                  "description": ""
+                }
               ]
             }
           ]
@@ -354,7 +390,7 @@
   ],
   "budget": {
     "maxTokens": 2000,
-    "estimatedTokens": 1287,
+    "estimatedTokens": 1407,
     "truncated": false
   }
 }

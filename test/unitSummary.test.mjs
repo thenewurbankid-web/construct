@@ -190,6 +190,44 @@ test('CLI: construct summarize <ref>, --list, --usage, structured errors + exit 
   assert.ok(!('schemaVersion' in JSON.parse(legacy.stdout)));
 });
 
+test('component props: the real contract (type, required, default, description) via react-docgen, not just member names (#448)', () => {
+  const dir = makeTempDir('construct-unitsummary-props-');
+  fs.cpSync(path.join(REPO, 'fixtures', 'impact-shared'), dir, { recursive: true });
+  const file = path.join(dir, 'features', 'billing', 'components', 'BillingView.tsx');
+  fs.writeFileSync(file, [
+    'type BillingViewProps = {',
+    '  /** Total amount due. */',
+    '  total: number;',
+    '  onStart: () => void;',
+    '  label?: string;',
+    '};',
+    '',
+    "export function BillingView({ total, onStart, label = 'Pay' }: BillingViewProps) {",
+    '  return <button onClick={onStart}>{label} {total}</button>;',
+    '}',
+    '',
+  ].join('\n'));
+  const s = summarizeUnit(dir, 'component:features/billing/components/BillingView.tsx');
+  assert.equal(s.ok, true, JSON.stringify(s.error));
+  const [entry] = s.sections.props;
+  assert.equal(entry.component, 'BillingView');
+  const total = entry.props.find((p) => p.name === 'total');
+  assert.deepEqual(total, { name: 'total', type: 'number', required: true, default: null, description: 'Total amount due.' });
+  const label = entry.props.find((p) => p.name === 'label');
+  assert.deepEqual(label, { name: 'label', type: 'string', required: false, default: "'Pay'", description: '' });
+});
+
+test('component props falls back to the AST members-only pass when the file is too large for react-docgen (#448)', () => {
+  const dir = makeTempDir('construct-unitsummary-props-fallback-');
+  fs.cpSync(path.join(REPO, 'fixtures', 'impact-shared'), dir, { recursive: true });
+  const file = path.join(dir, 'features', 'billing', 'components', 'BillingView.tsx');
+  const padding = `/*${'x'.repeat(260 * 1024)}*/\n`;
+  fs.writeFileSync(file, `${padding}type BillingViewProps = { total: number; onStart: () => void };\n\nexport function BillingView({ total, onStart }: BillingViewProps) {\n  return <button onClick={onStart}>{total}</button>;\n}\n`);
+  const s = summarizeUnit(dir, 'component:features/billing/components/BillingView.tsx');
+  assert.equal(s.ok, true, JSON.stringify(s.error));
+  assert.deepEqual(s.sections.props, [{ type: 'BillingViewProps', members: ['total', 'onStart'] }]);
+});
+
 test('a feature containing a file that does not parse still summarizes (the broken file is listed with its error, not a crash) (#431)', () => {
   const dir = makeTempDir('construct-unitsummary-broken-');
   fs.cpSync(path.join(REPO, 'fixtures', 'impact-shared'), dir, { recursive: true });

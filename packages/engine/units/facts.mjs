@@ -12,6 +12,8 @@ import { readPathAliases, resolveImportSpecifier } from '../../core/route-resolv
 import { DEFAULT_ENFORCERS } from '../defaultEnforcers.mjs';
 import { aggregateValidation } from '../../core/registry.mjs';
 import { exceptionApplies } from '../../core/exceptions.mjs';
+import { describeSource } from '../describeDocgen.mjs';
+import { DESCRIBE_DEFAULTS } from '../describeComponent.mjs';
 
 export const SOURCE_EXT = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs']);
 export const isTestFile = (p) => /\.(test|spec)\.[a-z]+$/.test(p) || /(^|\/)(__tests__|e2e)\//.test(p);
@@ -86,6 +88,20 @@ function describeDecl(source, name, decl) {
 
 const memberNames = (source, members) => (members || []).map((m) => (m.key?.name ?? m.key?.value) && `${m.key.name ?? m.key.value}${m.optional ? '?' : ''}`).filter(Boolean);
 
+/** The real prop contract (name, type, required, default, description) for a component file, via the same
+ * react-docgen engine as `describeComponent` (#434) — same bound (maxBytes) and failure codes, but run
+ * in-process since `fileFacts` already holds `source` in memory synchronously; no worker round trip needed
+ * for this trusted, already-on-disk read. Returns null (falls back to the AST members-only pass below) when
+ * the file is too large, unparseable, or react-docgen finds no component with props (#448). */
+function docgenProps(source, filename) {
+  if (Buffer.byteLength(source, 'utf8') > DESCRIBE_DEFAULTS.maxBytes) return null;
+  let result;
+  try { result = describeSource(source, filename); } catch { return null; }
+  if (!result.ok) return null;
+  const withProps = result.components.filter((c) => c.props.length);
+  return withProps.length ? withProps.map((c) => ({ component: c.name, ...(c.description ? { description: c.description } : {}), props: c.props })) : null;
+}
+
 /** One parsed file -> a compact fact record. Never throws (a parse error becomes `error`). */
 export function fileFacts(ctx, relPath) {
   const abs = path.join(ctx.root, relPath);
@@ -157,8 +173,9 @@ export function fileFacts(ctx, relPath) {
     purpose = `${LAYER_LABEL[layer] || 'Source file'}${names ? ` exporting ${names}${exports.length > 3 ? ', ...' : ''}` : ''}.`;
   }
   const isReactish = /\.(tsx|jsx)$/.test(relPath);
+  const richProps = isReactish && layer === 'component' ? docgenProps(source, path.basename(relPath)) : null;
   return {
-    ...base, purpose, purposeSource, exports, props: isReactish ? props : [],
+    ...base, purpose, purposeSource, exports, props: isReactish ? (richProps ?? props) : [],
     endpoints: layer === 'service' || /services?\//.test(relPath) ? [...endpoints].sort() : [],
     imports: [...new Set(imports)], resolvedImports: [...new Set(resolvedImports)].sort(), external,
   };
