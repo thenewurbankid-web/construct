@@ -11,7 +11,7 @@
 import {
   init, feature, generate, sync, validate, summarize, doctor, create, refactor, research, review,
   testCommand, template, importCommand, runImportRouteWizard, pipeline, traces, decide, model, processCommand,
-  checkChange, addRuleCommand, exportCommand, rulesCommand,
+  checkChange, mutationCheck, addRuleCommand, exportCommand, rulesCommand,
 } from './cli.mjs';
 
 /** `construct import ...`: the same `--route` vs. plain-import branch `construct.mjs`'s old if-chain had inline. */
@@ -54,6 +54,7 @@ export function registerBuiltinCommands(registry) {
   registry.register({ name: 'test', summary: 'Run generated tests/proofs, or type-check/build the project', handler: testCommand, source: SOURCE });
   registry.register({ name: 'process', summary: 'Manage bot processes: list, show, gc orphan worktrees/branches/pending approvals', handler: processCommand, source: SOURCE });
   registry.register({ name: 'check-change', summary: 'Deterministic behaviour-preserving verdict for an unsaved/staged edit (JSON)', handler: checkChange, source: SOURCE });
+  registry.register({ name: 'mutation-check', summary: 'On-demand Stryker mutation score scoped to given files, never wired into the live check-change path (JSON)', handler: mutationCheck, source: SOURCE });
   registry.register({ name: 'rules', summary: 'List every rule construct validate can report (id, module, layers, scope, severity, why)', handler: rulesCommand, source: SOURCE });
   registry.register({ name: 'template', summary: 'List, show or instantiate a named, reusable, parameterised plan', handler: template, source: SOURCE });
   registry.register({ name: 'import', summary: 'Scaffold layers for an existing, non-Construct file or route', handler: importHandler, source: SOURCE });

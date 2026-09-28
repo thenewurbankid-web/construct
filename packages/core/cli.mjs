@@ -71,6 +71,7 @@ import { exportDataset, renderExport } from './decision-dataset.mjs';
 import { importModel, listModels, removeModel, setModelEnabled, loadRegisteredModelProvider, unseenByModel, renderImport, renderModelList } from './decision-model-registry.mjs';
 import { gcProcesses } from '../../packages/engine/processGc.mjs';
 import { checkChangeCommand } from './check-change.mjs';
+import { mutationCheckCommand } from './mutation-check.mjs';
 
 // Resolve the project root freshly per command: walks up from cwd (or from
 // --dir, when given) to find an existing architecture.yml (monorepo
@@ -1865,6 +1866,13 @@ export function processCommand(args) {
  * JSON out always -- see check-change.mjs. */
 export async function checkChange(args) {
   return checkChangeCommand(args, { getRoot });
+}
+
+/** `construct mutation-check <file...> [--test-command <cmd>]` (#750, epic #461): an on-demand,
+ * Stryker-backed test-strength signal scoped to the given files -- never triggered by check-change's
+ * live path, only by an explicit call. JSON out always -- see mutation-check.mjs. */
+export async function mutationCheck(args) {
+  return mutationCheckCommand(args, { getRoot });
 }
 
 /** The small starter set (#450) shipped repo-relative, two levels above this file
