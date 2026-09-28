@@ -144,7 +144,7 @@ test('refactor move/rename refuse a frozen source, a frozen destination, and a f
 
   setFrozen(proj, ['features/cpo/services/**']);
   assert.throws(() => moveLayerFile(proj, 'cpo', 'Foo', 'domain', 'service'), /move into.*frozen glob/s);
-  assert.equal(fs.existsSync(path.join(proj, 'features/cpo/domain/Foo.tsx')), true);
+  assert.equal(fs.existsSync(path.join(proj, 'features/cpo/domain/Foo.ts')), true);
 
   setFrozen(proj, ['features/cpo/domain/**']);
   assert.throws(() => renameLayerFile(proj, 'cpo', 'Foo', 'Foo2', 'domain'), /frozen glob/);
@@ -154,7 +154,7 @@ test('refactor move/rename refuse a frozen source, a frozen destination, and a f
   const before = fs.readFileSync(hook, 'utf8');
   assert.throws(() => moveLayerFile(proj, 'cpo', 'Foo', 'domain', 'service'), /rewrite an import inside.*frozen glob/s);
   assert.equal(fs.readFileSync(hook, 'utf8'), before);
-  assert.equal(fs.existsSync(path.join(proj, 'features/cpo/domain/Foo.tsx')), true);
+  assert.equal(fs.existsSync(path.join(proj, 'features/cpo/domain/Foo.ts')), true);
 });
 
 test('transaction/pipeline refuse to stage a frozen path before any commit', () => {

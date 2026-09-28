@@ -142,7 +142,7 @@ test('generate --llm reports a rejected fill per file, keeps the stub and sets a
   assert.match(result.out, /stub kept — the model's output was rejected: it does not parse/);
   assert.doesNotMatch(result.out, /LLM-filled/);
   assert.equal(result.exitCode, 3);
-  assert.equal(fs.readFileSync(path.join(dir, 'features/checkout/domain/Foo.tsx'), 'utf8'), 'export function Foo() {\n  return true;\n}\n');
+  assert.equal(fs.readFileSync(path.join(dir, 'features/checkout/domain/Foo.ts'), 'utf8'), 'export function Foo() {\n  return true;\n}\n');
 });
 
 // ---- import.mjs -------------------------------------------------------------
@@ -152,7 +152,7 @@ function importSetup() {
   createFeature(dir, 'checkout');
   const src = path.join(dir, 'Old.tsx');
   fs.writeFileSync(src, 'export function useOld() { return 42; }\n');
-  return { dir, src, domainFile: path.join(dir, 'features/checkout/domain/Foo.tsx') };
+  return { dir, src, domainFile: path.join(dir, 'features/checkout/domain/Foo.ts') };
 }
 
 test('importVertical: prose+fence response is extracted, valid code written, no breadcrumb', async () => {
@@ -217,7 +217,7 @@ test('#141/#144 import CLI report: names each unfilled file, its reason and atte
     captureConsole(() => importCommand(['Foo', '--feature', 'checkout', '--layers', 'domain,hook', '--from', src, '--llm', 'claude', '--dir', dir])),
   );
   assert.match(result.out, /2 of 2 file\(s\) were NOT filled by "claude"/);
-  assert.match(result.out, /domain\/Foo\.tsx: the LLM call failed after 1 attempt\(s\) — rate limited/);
+  assert.match(result.out, /domain\/Foo\.ts: the LLM call failed after 1 attempt\(s\) — rate limited/);
   assert.match(result.out, /hooks\/useFoo\.tsx: the model's output was rejected after 2 attempt\(s\)/);
   assert.equal(result.exitCode, 3);
 });

@@ -244,7 +244,7 @@ export const result = compileChain([feature, unit], { 'app.feature': 'cart', 'ap
               "change": "create"
             },
             {
-              "path": "features/cart/domain/CartRules.tsx",
+              "path": "features/cart/domain/CartRules.ts",
               "change": "create",
               "layer": "domain"
             }

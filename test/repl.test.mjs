@@ -55,9 +55,9 @@ test('repl dispatches create/refactor/research the same as the flat CLI, and cd 
   );
   assert.match(res.stdout, /Initialized Construct/);
   assert.match(res.stdout, /Created feature checkout/);
-  assert.match(res.stdout, /Renamed features\/checkout\/domain\/Foo\.tsx -> features\/checkout\/domain\/Bar\.tsx/);
+  assert.match(res.stdout, /Renamed features\/checkout\/domain\/Foo\.ts -> features\/checkout\/domain\/Bar\.ts/);
   assert.match(res.stdout, /Feature "checkout"/);
-  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Bar.tsx')), true);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Bar.ts')), true);
 });
 
 test('repl cd + pwd changes the working directory for subsequent commands', () => {
@@ -89,7 +89,7 @@ test('repl runs import and shows a "Next" hint pointing at the source file', () 
   );
   assert.match(res.stdout, /\[tool: .*\] \[llm: 0 calls/);
   assert.match(res.stdout, /Next:\n\s*Open .*OldFile\.tsx and fill in each TODO\(import\) marker/);
-  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.tsx')), true);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.ts')), true);
 });
 
 test('repl output stays in order across several piped commands (no interleaving)', () => {
@@ -102,7 +102,7 @@ test('repl output stays in order across several piped commands (no interleaving)
     dir,
   );
   const created = res.stdout.indexOf('Created feature checkout');
-  const domainFile = res.stdout.indexOf('Created features/checkout/domain/Foo.tsx');
+  const domainFile = res.stdout.indexOf('Created features/checkout/domain/Foo.ts');
   const validateNext = res.stdout.lastIndexOf('Next:');
   assert.ok(created >= 0 && domainFile >= 0 && validateNext >= 0, 'expected all three markers present');
   assert.ok(created < domainFile, 'feature creation must be reported before the domain file');

@@ -314,7 +314,7 @@ everything it wires):
             "change": "create"
           },
           {
-            "path": "features/billing/domain/SubscriptionPlan.tsx",
+            "path": "features/billing/domain/SubscriptionPlan.ts",
             "change": "create",
             "layer": "domain"
           }
@@ -587,7 +587,7 @@ everything it wires):
   "b1": [
     "features/billing/types.ts",
     "features/billing/index.ts",
-    "features/billing/domain/SubscriptionPlan.tsx",
+    "features/billing/domain/SubscriptionPlan.ts",
     "features/billing/services/SubscriptionPlan.tsx",
     "features/billing/controllers/SubscriptionPlanController.tsx"
   ],

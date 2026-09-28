@@ -32,8 +32,8 @@ test('runPipeline commits every requested step\'s file in one transaction and re
 
   assert.equal(output.status, 'committed');
   assert.deepEqual(output.diagnostics, []);
-  assert.deepEqual(output.layers.domain, ['features/checkout/domain/Total.tsx']);
-  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Total.tsx')), true);
+  assert.deepEqual(output.layers.domain, ['features/checkout/domain/Total.ts']);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Total.ts')), true);
 });
 
 test('runPipeline aborts (status "aborted") and writes nothing when a step would fail validate', () => {
@@ -83,8 +83,8 @@ test('construct pipeline run: reads an envelope on stdin, writes a committed env
   assert.equal(res.status, EXIT_CODES.OK, res.stderr);
   const output = JSON.parse(res.stdout);
   assert.equal(output.status, 'committed');
-  assert.deepEqual(output.layers.domain, ['features/checkout/domain/Score.tsx']);
-  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Score.tsx')), true);
+  assert.deepEqual(output.layers.domain, ['features/checkout/domain/Score.ts']);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Score.ts')), true);
 });
 
 test('construct pipeline run: exits non-zero and prints an aborted envelope when validate fails, disk untouched', () => {

@@ -157,7 +157,7 @@ test('handleCreate: cli mode lists what was created; a request that asks for the
   const made = await handleCreate({ body: { kind: 'single', name: 'Total', feature: 'widget', layer: 'domain' }, projectDir: dir, findRoot: () => dir, inProcess: noRun });
   assert.equal(made.status, 200);
   assert.equal(made.body.mode, 'cli');
-  assert.deepEqual(made.body.output, ['Created features/widget/domain/Total.tsx']);
+  assert.deepEqual(made.body.output, ['Created features/widget/domain/Total.ts']);
   assert.match(made.body.attribution.llm, /^0 calls/);
   let asked;
   const llm = await handleCreate({ body: { kind: 'layer', name: 'x', feature: 'widget', layers: ['domain'], useLlm: true }, projectDir: dir, findRoot: () => dir, inProcess: async (args) => { asked = args; return { ok: true, output: [], attribution: null, durationSeconds: 0, httpStatus: 200 }; }, llmProvider: () => 'ollama' });
@@ -185,7 +185,7 @@ test('handleImport: the subprocess gets the CONTAINED path resolveRead returned,
   const ok = await handleImport({ body: { mode: 'unit', name: 'Legacy', feature: 'widget', layers: ['domain'], from: 'some/client/path.ts' }, projectDir: dir, findRoot: () => dir, inProcess: noRun, resolveRead, mapError });
   assert.equal(ok.status, 200);
   assert.deepEqual(seen, ['some/client/path.ts']);
-  assert.ok(fs.existsSync(path.join(dir, 'features/widget/domain/Legacy.tsx')), 'the CLI mode really scaffolded the file');
+  assert.ok(fs.existsSync(path.join(dir, 'features/widget/domain/Legacy.ts')), 'the CLI mode really scaffolded the file');
   assert.match(ok.body.output.join('\n'), new RegExp(LEGACY.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   const denied = await handleImport({ body: { mode: 'unit', name: 'A', feature: 'widget', layers: ['domain'], from: '../../etc/passwd' }, projectDir: dir, findRoot: () => dir, inProcess: noRun, resolveRead, mapError });
   assert.equal(denied.status, 403);

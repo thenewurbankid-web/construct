@@ -89,7 +89,7 @@ test('importVertical refuses to overwrite a target file that already has real (n
 
   await assert.rejects(
     () => importVertical(dir, 'Foo', 'checkout', ['domain'], sourceFile),
-    (e) => e instanceof ConstructError && /already exist with real content/.test(e.message) && e.message.includes('domain/Foo.tsx'),
+    (e) => e instanceof ConstructError && /already exist with real content/.test(e.message) && e.message.includes('domain/Foo.ts'),
   );
   assert.equal(fs.readFileSync(files[0], 'utf8'), before, 'the hand-ported file must be left untouched');
 });
@@ -141,9 +141,9 @@ test('importPlan executes every unit in order and reports each result', async ()
   assert.equal(results.length, 2);
   assert.equal(results[0].files.length, 2);
   assert.equal(results[1].files.length, 1);
-  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'CpoAccess.tsx')), true);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'CpoAccess.ts')), true);
   assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'hooks', 'useCpoAccess.tsx')), true);
-  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'CpoGreeting.tsx')), true);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'CpoGreeting.ts')), true);
 
   const res = validateArchitecture(dir);
   assert.equal(res.violations.some((v) => v.rule === 'IMPORT-001'), false);
@@ -202,14 +202,14 @@ test('importVertical with { llm: "claude" } calls the provider once per generate
   assert.equal(result.files.length, 2);
   assert.equal(calls.length, 2, 'one call per generated file, not one for the whole batch');
 
-  const domainContent = fs.readFileSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.tsx'), 'utf8');
+  const domainContent = fs.readFileSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.ts'), 'utf8');
   assert.equal(domainContent.trim(), 'export function Ported() { return true; }');
   assert.doesNotMatch(domainContent, /```/, 'code fence must be stripped');
   assert.doesNotMatch(domainContent, /TODO\(import\)/, 'no breadcrumb when llm-filled');
 
   // The prompt sent for the domain file should carry that file's own layer
   // constraint, not the hook's.
-  const domainPrompt = calls.find((c) => c.includes('domain/Foo.tsx'));
+  const domainPrompt = calls.find((c) => c.includes('domain/Foo.ts'));
   assert.match(domainPrompt, /Never write the words fetch, window, document/);
 });
 
@@ -669,7 +669,7 @@ test('#599: importVertical reports scaffolding then filling (per file, in order)
   }
   assert.deepEqual(steps.map((s) => s.phase), ['scaffolding', 'filling', 'filling']);
   assert.deepEqual(steps.filter((s) => s.phase === 'filling').map((s) => s.detail.index), [1, 2]);
-  assert.ok(steps[1].detail.file.endsWith('.tsx') && steps[1].detail.total === 2);
+  assert.ok(steps[1].detail.file.endsWith('.ts') && steps[1].detail.total === 2);
 });
 
 test('#599: cancelling mid-import stops further model calls and leaves every unfilled file a valid TODO stub', async () => {

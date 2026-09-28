@@ -70,7 +70,7 @@ test('generate <layer> <name> --feature f with no --llm leaves the plain templat
   const dir = tmpProject();
   createFeature(dir, 'checkout');
   await generate(['domain', 'Foo', '--feature', 'checkout', '--dir', dir]);
-  const content = fs.readFileSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.tsx'), 'utf8');
+  const content = fs.readFileSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.ts'), 'utf8');
   assert.equal(content, `export function Foo() {\n  return true;\n}\n`);
 });
 
@@ -81,7 +81,7 @@ test('generate <layer> <name> --feature f --llm claude calls the provider once a
     generate(['domain', 'Foo', '--feature', 'checkout', '--dir', dir, '--llm', 'claude']),
   );
   assert.equal(calls.length, 1);
-  const content = fs.readFileSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.tsx'), 'utf8');
+  const content = fs.readFileSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.ts'), 'utf8');
   assert.equal(content.trim(), 'export function Foo() { return 99; }');
 });
 
@@ -97,7 +97,7 @@ test('generate layer <name> --feature f --layers a,b with no --llm scaffolds eve
     PROVIDERS.claude = original;
   }
   assert.equal(called, false);
-  assert.equal(fs.readFileSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.tsx'), 'utf8'), `export function Foo() {\n  return true;\n}\n`);
+  assert.equal(fs.readFileSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.ts'), 'utf8'), `export function Foo() {\n  return true;\n}\n`);
   assert.match(fs.readFileSync(path.join(dir, 'features', 'checkout', 'hooks', 'useFoo.tsx'), 'utf8'), /export function useFoo/);
 });
 
@@ -109,12 +109,12 @@ test('generate layer <name> --feature f --layers a,b --llm claude fills every ge
     () => generate(['layer', 'Foo', '--feature', 'checkout', '--layers', 'domain,hook', '--dir', dir, '--llm', 'claude']),
   );
   assert.equal(calls.length, 2, 'one call per generated file');
-  const domainPrompt = calls.find((c) => c.includes('domain/Foo.tsx'));
+  const domainPrompt = calls.find((c) => c.includes('domain/Foo.ts'));
   const hookPrompt = calls.find((c) => c.includes('hooks/useFoo.tsx'));
   assert.match(domainPrompt, /Never write the words fetch, window, document/);
   assert.match(hookPrompt, /the exported function name must start with "use"/);
 
-  assert.equal(fs.readFileSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.tsx'), 'utf8').trim(), 'export function Foo() { return 1; }');
+  assert.equal(fs.readFileSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.ts'), 'utf8').trim(), 'export function Foo() { return 1; }');
   assert.equal(fs.readFileSync(path.join(dir, 'features', 'checkout', 'hooks', 'useFoo.tsx'), 'utf8').trim(), 'export function useFoo() { return 2; }');
 });
 
@@ -136,7 +136,7 @@ test('create <layer> <name> --feature f --llm claude fills the file and reports 
   const attributionLine = logs.find((l) => l.startsWith('[tool:'));
   assert.ok(attributionLine, 'must print a [tool:...] [llm:...] attribution line');
   assert.match(attributionLine, /\[llm: call\(s\) via "claude" to write the real implementation/);
-  assert.equal(fs.readFileSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.tsx'), 'utf8').trim(), 'export function Foo() { return 7; }');
+  assert.equal(fs.readFileSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.ts'), 'utf8').trim(), 'export function Foo() { return 7; }');
 });
 
 test('create feature <name> ignores any --llm (nothing fillable) and reports 0 calls', async () => {
@@ -162,5 +162,5 @@ test('create <layer> <name> --feature f with no --llm scaffolds the plain stub, 
   const dir = tmpProject();
   createFeature(dir, 'checkout');
   await create(['domain', 'Foo', '--feature', 'checkout', '--dir', dir]);
-  assert.equal(fs.readFileSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.tsx'), 'utf8'), `export function Foo() {\n  return true;\n}\n`);
+  assert.equal(fs.readFileSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.ts'), 'utf8'), `export function Foo() {\n  return true;\n}\n`);
 });

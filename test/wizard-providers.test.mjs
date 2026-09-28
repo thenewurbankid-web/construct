@@ -53,7 +53,7 @@ test('#109 wizard uses the planAnalysis provider for analysis and the importFill
   }
   assert.equal(claudeCalls.length, 1, 'analysis went to claude');
   assert.equal(ollamaCalls.length, 1, 'the per-file fill went to the importFill provider');
-  assert.match(fs.readFileSync(path.join(dir, 'features/checkout/domain/Foo.tsx'), 'utf8'), /return 5/);
+  assert.match(fs.readFileSync(path.join(dir, 'features/checkout/domain/Foo.ts'), 'utf8'), /return 5/);
 });
 
 test('#109 wizard still hard-rejects ollama for plan analysis: no call, nothing written', async () => {

@@ -112,8 +112,8 @@ test('runImportRouteWizardEventDriven: two concurrent sessions never cross-talk 
     ),
   );
 
-  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout-a', 'domain', 'FooA.tsx')), true);
-  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout-b', 'domain', 'FooB.tsx')), true);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout-a', 'domain', 'FooA.ts')), true);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout-b', 'domain', 'FooB.ts')), true);
 });
 
 test('runImportRouteWizardEventDriven: a single session still captures its own output and emits done', async () => {
@@ -134,7 +134,7 @@ test('runImportRouteWizardEventDriven: a single session still captures its own o
     ),
   );
 
-  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.tsx')), true);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.ts')), true);
 });
 
 test('the route question is tagged expects:"route" (so the Cockpit can offer a picker); the feature-name question is not', async () => {
@@ -158,7 +158,7 @@ test('review is refused before anything is written, then works once files exist 
   const routeDir = buildRouteFixture(['./Old'], { 'Old.ts': 'export function old() { return true; }\n' });
   const original = PROVIDERS.claude;
   const plan = { feature: 'checkout', units: [{ name: 'Foo', layers: ['domain'], from: 'Old.ts' }] };
-  const review = { findings: [{ file: 'features/checkout/domain/Foo.tsx', kind: 'decision', severity: 'warning', summary: 'still a stub' }] };
+  const review = { findings: [{ file: 'features/checkout/domain/Foo.ts', kind: 'decision', severity: 'warning', summary: 'still a stub' }] };
   let calls = 0;
   PROVIDERS.claude = () => (++calls === 1 ? JSON.stringify(plan) : JSON.stringify(review));
   const cwd = process.cwd();
@@ -176,7 +176,7 @@ test('review is refused before anything is written, then works once files exist 
     await session.done;
     assert.ok(events.some((e) => e.type === 'reviewable'), 'the session announces that a review is now possible');
 
-    const target = path.join(dir, 'features', 'checkout', 'domain', 'Foo.tsx');
+    const target = path.join(dir, 'features', 'checkout', 'domain', 'Foo.ts');
     const before = fs.readFileSync(target, 'utf8');
     await session.review();
     const done = events.find((e) => e.type === 'review' && e.phase === 'done');

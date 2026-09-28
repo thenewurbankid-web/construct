@@ -126,7 +126,7 @@ test('#677: an already-existing feature is not re-declared (nothing new to creat
   createFeature(root, 'wishlist');
   const want = expectedFiles(root, 'create.unit', { layer: 'domain', name: 'itemRules', feature: 'wishlist' });
   assert.equal(want.length, 1);
-  assert.equal(want[0].path, 'features/wishlist/domain/ItemRules.tsx');
+  assert.equal(want[0].path, 'features/wishlist/domain/ItemRules.ts');
 });
 
 test('the features folder comes from architecture.yml', () => {
@@ -137,7 +137,7 @@ test('the features folder comes from architecture.yml', () => {
   createFeature(root, 'billing');
   const before = tree(root);
   const want = expectedFiles(root, 'create.unit', { layer: 'domain', name: 'x', feature: 'billing' });
-  assert.equal(want[0].path, 'src/features/billing/domain/X.tsx');
+  assert.equal(want[0].path, 'src/features/billing/domain/X.ts');
   generateLayer(root, 'domain', 'x', 'billing');
   assert.ok(added(root, before).includes(want[0].path));
 });

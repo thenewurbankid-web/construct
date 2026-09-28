@@ -278,18 +278,18 @@ test('#470 a writing step declares the files it will create: the preview shows t
   await withStack({}, async ({ json, started }) => {
     const v = await json('POST', '/api/plan/validate', { body: { plan: plan([unitStep()]) } });
     assert.equal(v.body.valid, true);
-    assert.deepEqual(v.body.steps[0].files, ['features/billing/domain/WishRules.tsx']);
-    assert.deepEqual(v.body.touches.files.map((f) => [f.path, f.changes]), [['features/billing/domain/WishRules.tsx', ['create']]]);
+    assert.deepEqual(v.body.steps[0].files, ['features/billing/domain/WishRules.ts']);
+    assert.deepEqual(v.body.touches.files.map((f) => [f.path, f.changes]), [['features/billing/domain/WishRules.ts', ['create']]]);
 
     const r = await json('POST', '/api/plan/run', { body: { plan: plan([unitStep()]) } });
     assert.equal(r.status, 200);
-    assert.deepEqual(started[0].steps[0].touches.files, [{ path: 'features/billing/domain/WishRules.tsx', change: 'create', layer: 'domain' }]);
+    assert.deepEqual(started[0].steps[0].touches.files, [{ path: 'features/billing/domain/WishRules.ts', change: 'create', layer: 'domain' }]);
   });
 });
 
 test('#470 a file the person declared is kept, not replaced; a manual step and an underivable step add nothing; a step with no touches gets them', async () => {
   await withStack({}, async ({ json, started }) => {
-    const mine = { path: 'features/billing/domain/WishRules.tsx', change: 'create', why: 'mine' };
+    const mine = { path: 'features/billing/domain/WishRules.ts', change: 'create', why: 'mine' };
     const kept = plan([unitStep({ touches: { features: ['billing'], files: [mine] } })]);
     await json('POST', '/api/plan/run', { body: { plan: kept } });
     assert.deepEqual(started[0].steps[0].touches.files, [mine]);
@@ -299,7 +299,7 @@ test('#470 a file the person declared is kept, not replaced; a manual step and a
 
     const none = plan([{ id: 's1', title: 'Rules', flow: 'create.unit', args: { layer: 'domain', name: 'wishRules', feature: 'billing' }, executor: 'deterministic' }]);
     const bare = await json('POST', '/api/plan/validate', { body: { plan: none } });
-    assert.deepEqual(bare.body.steps[0].files, ['features/billing/domain/WishRules.tsx']);
+    assert.deepEqual(bare.body.steps[0].files, ['features/billing/domain/WishRules.ts']);
 
     const incomplete = await json('POST', '/api/plan/validate', { body: { plan: plan([unitStep({ args: { layer: 'domain', name: 'wishRules' } })]) } });
     assert.deepEqual(incomplete.body.steps[0].files, [], 'no feature yet: nothing is guessed');

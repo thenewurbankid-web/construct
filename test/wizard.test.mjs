@@ -104,7 +104,7 @@ test('importRouteWizard builds the approved plan with breadcrumbs (no llm fill r
     ),
   );
 
-  const domainFile = path.join(dir, 'features', 'checkout', 'domain', 'Foo.tsx');
+  const domainFile = path.join(dir, 'features', 'checkout', 'domain', 'Foo.ts');
   assert.equal(fs.existsSync(domainFile), true);
   assert.match(fs.readFileSync(domainFile, 'utf8'), /TODO\(import\)/);
   assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'hooks', 'useFoo.tsx')), true);
@@ -126,7 +126,7 @@ test('importRouteWizard with llm-fill approved calls the provider once for analy
     ),
   );
 
-  const domainFile = path.join(dir, 'features', 'checkout', 'domain', 'Foo.tsx');
+  const domainFile = path.join(dir, 'features', 'checkout', 'domain', 'Foo.ts');
   assert.doesNotMatch(fs.readFileSync(domainFile, 'utf8'), /TODO\(import\)/);
 });
 
@@ -239,7 +239,7 @@ test('importRouteWizard branches to react-spa wording and resolves via the route
     !prompts.some((p) => p.includes('app/ directory')),
     `must never ask the nextjs "app/ directory" question for a react-spa project, got: ${JSON.stringify(prompts)}`,
   );
-  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.tsx')), true);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.ts')), true);
 });
 
 test('importRouteWizard resolves a react-spa route directly from an existing controller file path, still no app/ directory question', async () => {
@@ -309,7 +309,7 @@ test('importRouteWizard with the mechanical planner builds from a plan it comput
   assert.match(out, /Planning mechanically/);
   assert.match(out, /domain: plain functions/);
   assert.match(out, /component: renders JSX/);
-  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Old.tsx')), true);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Old.ts')), true);
   assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'components', 'Card.tsx')), true);
   assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'pages', 'CheckoutPage.tsx')), true);
   assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'controllers', 'CheckoutController.tsx')), true);
