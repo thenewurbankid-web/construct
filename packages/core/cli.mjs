@@ -66,6 +66,7 @@ import { traceStats, replayTraces, renderTraceList, renderTraceStats, renderRepl
 import { exportDataset, renderExport } from './decision-dataset.mjs';
 import { importModel, listModels, removeModel, setModelEnabled, loadRegisteredModelProvider, unseenByModel, renderImport, renderModelList } from './decision-model-registry.mjs';
 import { gcProcesses } from '../../packages/engine/processGc.mjs';
+import { checkChangeCommand } from './check-change.mjs';
 
 // Resolve the project root freshly per command: walks up from cwd (or from
 // --dir, when given) to find an existing architecture.yml (monorepo
@@ -1715,6 +1716,13 @@ export function processCommand(args) {
     console.log(`${result.staleApprovals.length} process record(s) have a pending approval older than the threshold (never deleted):`);
     for (const s of result.staleApprovals) console.log(`  ${s.id} (${s.ageDays}d old, ${s.pending.length} artifact(s) pending): ${s.pending.join(', ')}`);
   }
+}
+
+/** `construct check-change --file <path> [--ref <ref>]` (#747, epic #461): a deterministic "did this staged
+ * edit change behaviour" indicator, meant to be run during a session before saving, not only at PR/CI time.
+ * JSON out always -- see check-change.mjs. */
+export async function checkChange(args) {
+  return checkChangeCommand(args, { getRoot });
 }
 
 /** `construct template list|show|instantiate` (#333). Read-only, JSON in/out, no LLM.

@@ -28,3 +28,5 @@ export { readModuleDirective, collectModuleEdges, collectSecretEnvReads } from '
 // `construct summarize --backend` (#634): per-file Node/Express facts, effects and environment reads.
 export { collectBackendFacts, importEdgesOf, ROUTE_METHODS } from './backendFacts.mjs';
 export { collectEffects, collectEnvReads, collectHttpRoutes } from './backendEffects.mjs';
+// `construct check-change` (#747): behaviour-preserving verdict for an unsaved/staged edit.
+export { semanticDiff, SEMANTIC_DIFF_VERDICTS, SEMANTIC_DIFF_OPERATIONS } from './semanticDiff.mjs';
