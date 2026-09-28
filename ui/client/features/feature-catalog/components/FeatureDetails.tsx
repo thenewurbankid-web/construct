@@ -21,6 +21,9 @@ export function FeatureDetails({ name, view, loading, error, onRetry }: Props) {
   if (loading || !view) return <section className="fc-details" data-testid="fc-details"><LoadingState size="inline" label={`Reading ${name}`} /></section>;
   return (
     <section className="fc-details" data-testid="fc-details" aria-labelledby="fc-title">
+      {view.root !== 'features' && (
+        <p className="fc-hint" data-testid="fc-root">Tree root: <span className="fc-mono">{view.root}/</span></p>
+      )}
       <h2 className="fc-h2" id="fc-title" data-testid="fc-name">{view.name}</h2>
       <p className="fc-summary" data-testid="fc-summary">{view.summary}</p>
       {view.findings.length > 0 && (

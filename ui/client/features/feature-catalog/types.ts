@@ -14,6 +14,7 @@ export type FeatureSummaryResponse =
   | {
       ok: true;
       name: string;
+      /** `<root>/<name>`, root is `features` unless `architecture.yml`'s `features.root` overrides it (#393). */
       path: string;
       summary: string;
       health: { status: string; findings: { severity: string; code: string; message: string }[] };
@@ -38,6 +39,7 @@ export type FeatureLayerView = { layer: string; files: FeatureFile[] };
 /** Everything the details panel shows for one feature. */
 export type FeatureView = {
   name: string;
+  root: string;
   summary: string;
   health: string;
   findings: string[];

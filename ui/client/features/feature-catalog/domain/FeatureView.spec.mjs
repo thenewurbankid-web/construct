@@ -59,6 +59,12 @@ test('details: layers in flow order, unknown layers last, links, routes, workflo
   assert.deepEqual(v.findings, ['A warning.'], 'info notes are not findings');
   assert.deepEqual(v.usedBy, ['app/billing']);
   assert.deepEqual(v.usesFeatures, ['shared']);
+  assert.equal(v.root, 'features', 'the default root, derived from path');
+});
+
+test('root: derived from path, so a project with features.root: construct shows it', () => {
+  const custom = { ...summary, path: 'construct/billing' };
+  assert.equal(buildFeatureView(custom).root, 'construct');
 });
 
 test('details: missing sections are empty, and an error answer is no view', () => {

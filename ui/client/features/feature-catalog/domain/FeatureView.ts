@@ -33,8 +33,11 @@ export function buildFeatureView(summary: FeatureSummaryResponse): FeatureView |
     layer,
     files: (files[layer] ?? []).map<FeatureFile>((f) => ({ path: f.path, purpose: f.purpose, loc: f.loc, href: fileHref(summary.name, layer, f.path), frozen: f.frozen })),
   }));
+  // `path` is `<root>/<name>`; strip the trailing `/<name>` to get the configured root (`features` unless overridden).
+  const root = summary.path.slice(0, summary.path.length - summary.name.length - 1) || 'features';
   return {
     name: summary.name,
+    root,
     summary: summary.summary,
     health: summary.health.status,
     findings: summary.health.findings.filter((f) => f.severity !== 'info').map((f) => f.message),
