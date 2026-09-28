@@ -6,9 +6,15 @@ Reference for the *experience* only: the owner's POC repo `thenewurbankid-web/co
 (`builder-app/src/fiberSource.ts`, `tree/`, `inspector/`, `locator/useLocator.ts`). No code or
 assets from it are copied here; the approach is re-derived and adapted below.
 
-> Status: **design + core block (slices 1-2) landed; slices 3-5 not built.** The tables below
+> Status: **design + core block (slices 1-3) landed; slices 4-5 not built.** The tables below
 > mark what is code today and what is still a decision on paper. The approach is verified
 > end-to-end on two real dev builds (§9), not only on paper.
+>
+> Slice 3 (`packages/engine/previewProxy.mjs`, `createPreviewProxy`): the injecting loopback
+> proxy — forwards every request, injects the fiber bridge as the first child of `<head>` on HTML
+> responses, forwards WebSocket upgrades (Vite/Next HMR) byte-for-byte, strips
+> `content-security-policy`/`x-frame-options` only on what it proxies. Not yet wired to the dev
+> server process (#378) or the Pages editor (slice 4); no e2e spec yet (slice 5).
 
 ---
 
