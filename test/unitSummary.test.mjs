@@ -190,6 +190,27 @@ test('CLI: construct summarize <ref>, --list, --usage, structured errors + exit 
   assert.ok(!('schemaVersion' in JSON.parse(legacy.stdout)));
 });
 
+test('project sections.legacy: source files outside a non-default features.root, not counted as violations (#791)', () => {
+  const dir = makeTempDir('construct-unitsummary-legacy-');
+  fs.cpSync(EXAMPLE, dir, { recursive: true });
+  fs.rmSync(path.join(dir, 'node_modules'), { recursive: true, force: true });
+  fs.renameSync(path.join(dir, 'features'), path.join(dir, 'construct'));
+  const arch = fs.readFileSync(path.join(dir, 'architecture.yml'), 'utf8').replace('root: features', 'root: construct');
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), arch);
+
+  const r = summarizeUnit(dir, '.', { detail: 'standard' });
+  assert.equal(r.ok, true, JSON.stringify(r));
+  assertSchema(r);
+  assert.equal(r.sections.featuresRoot, 'construct');
+  assert.equal(r.sections.legacy.count, 7);
+  assert.deepEqual(r.sections.legacy.files, ['app/layout.tsx', 'app/login/page.tsx', 'app/page.tsx', 'app/signup/page.tsx', 'eslint.config.mjs', 'next.config.ts', 'postcss.config.mjs']);
+  assert.ok(!r.sections.legacy.files.some((f) => f.startsWith('construct/')));
+
+  const brief = summarizeUnit(dir, '.', { detail: 'brief' });
+  assert.equal(brief.sections.legacy.count, 7);
+  assert.equal(brief.sections.legacy.files, undefined, 'brief carries the count only, no file list');
+});
+
 test('component props: the real contract (type, required, default, description) via react-docgen, not just member names (#448)', () => {
   const dir = makeTempDir('construct-unitsummary-props-');
   fs.cpSync(path.join(REPO, 'fixtures', 'impact-shared'), dir, { recursive: true });

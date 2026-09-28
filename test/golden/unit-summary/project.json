@@ -11,6 +11,18 @@
   "sections": {
     "framework": "nextjs",
     "featuresRoot": "features",
+    "legacy": {
+      "count": 7,
+      "files": [
+        "app/layout.tsx",
+        "app/login/page.tsx",
+        "app/page.tsx",
+        "app/signup/page.tsx",
+        "eslint.config.mjs",
+        "next.config.ts",
+        "postcss.config.mjs"
+      ]
+    },
     "features": [
       {
         "feature": "core",
@@ -117,7 +129,7 @@
   ],
   "budget": {
     "maxTokens": 2000,
-    "estimatedTokens": 356,
+    "estimatedTokens": 397,
     "truncated": false
   }
 }

@@ -18,6 +18,9 @@ export function featureNames(ctx) {
 
 const featureFiles = (ctx, name) => ctx.sourceFiles().filter((p) => p.startsWith(`${ctx.featuresRoot()}/${name}/`) && !isTest(p));
 
+/** Source files not under featuresRoot() -- pre-existing app code Construct doesn't manage (#791). */
+const legacyFiles = (ctx) => ctx.sourceFiles().filter((p) => !p.startsWith(`${ctx.featuresRoot()}/`) && !isTest(p)).sort();
+
 /** Raw, detail-independent facts for one feature (also the base for its layers). */
 function featureData(ctx, name, files = featureFiles(ctx, name)) {
   const facts = files.map((p) => ctx.facts(p));
@@ -191,11 +194,13 @@ export const projectKind = {
     }).filter(Boolean);
     const all = ctx.violations();
     const cfg = ctx.config();
+    const legacy = legacyFiles(ctx);
     return {
       name: path.basename(ctx.root), path: '.',
       summary: `Project ${path.basename(ctx.root)} (${cfg.project?.framework || 'nextjs'}): ${feats.length} feature(s); ${all.filter((v) => v.severity === 'error').length} error(s), ${all.filter((v) => v.severity === 'warning').length} warning(s).`,
       sections: {
         framework: cfg.project?.framework, featuresRoot: ctx.featuresRoot(),
+        legacy: { count: legacy.length, ...(d >= 1 ? { files: legacy } : {}) },
         features: feats,
         layerGraph: Object.fromEntries(Object.entries(ctx.graph()).map(([l, def]) => [l, def.canImport || []])),
         ...(d >= 1 ? { rules: Object.fromEntries([...all.reduce((m, v) => m.set(v.rule, (m.get(v.rule) || 0) + 1), new Map())].sort()), exceptions: (cfg.exceptions || []).length, frozen: cfg.frozen || [] } : {}),
