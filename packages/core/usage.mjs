@@ -198,6 +198,10 @@ Commands:
     node's test runner, no browser; run with npx tsx --test <file>)
   construct sync [--dir <path>]
   construct validate [--format json] [--dir <path>]
+  construct add-rule <id> [--module architecture|separation-of-concerns|readability] [--layers a,b] [--scope buffer|project] [--severity error|warning|info|off] [--why "..."] [--dir <path>]
+    (scaffolds a project-local rule, local-rules/<id>/rule.yml, plus a violates.ts / passes.ts fixture pair whose
+    marker already agrees with the generated detector; never edits architecture.yml -- add the printed rule.yml
+    path to its localRules: list yourself; see docs/ARCHITECTURE.md "Project-local rules")
   construct summarize [--feature <name>] [--format json|md|compact|prose] [--since <ref>] [--dir <path>]
   construct doctor [--format json] [--dir <path>]
   construct process gc [--dry-run] [--older-than <days>] [--format json|text] [--dir <path>]

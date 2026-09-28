@@ -40,6 +40,7 @@ import { runFeatureTests, renderRunText } from '../../packages/engine/testRunner
 import { runProofs, renderProofRunText } from '../../packages/engine/proofRunner.mjs';
 import { generateProof } from './proof.mjs';
 import { generateRouteEntry, addDependency } from './wiring.mjs';
+import { scaffoldRule } from './local-rules.mjs';
 import { addEnv } from './env.mjs';
 import { generateGuard } from './guard.mjs';
 import { generateStore, STORE_ACTIONS } from './store.mjs';
@@ -475,6 +476,43 @@ function handlerDocument(args, attribution) {
   const request = handlerRequestOf(args);
   const result = generateHandler(root, request);
   return { verb: 'create', kind: 'handler', feature: request.feature, name: request.name, method: result.method, path: result.path, route: result.route, service: result.service, files: result.files, attribution };
+}
+
+const ADD_RULE_USAGE = `Usage: construct add-rule <id> [--module architecture|separation-of-concerns|readability] [--layers a,b] [--scope buffer|project] [--severity error|warning|info|off] [--why "..."] [--dir <path>]
+
+Scaffolds a project-local rule (#553): local-rules/<id>/rule.yml plus a violates.ts / passes.ts
+fixture pair whose FORBIDDEN_<ID> marker already agrees with the generated rule's detector, so
+\`construct validate --dir <project>\` has something real to check on day one. Add the resulting
+rule.yml path to architecture.yml's localRules: list yourself -- add-rule never edits that file.`;
+
+/** The request of `construct add-rule <id> ...` (#553). */
+function addRuleRequestOf(args) {
+  const id = args[0];
+  if (!id || id.startsWith('--')) throw new ConstructError(ADD_RULE_USAGE, { exitCode: EXIT_CODES.USAGE_ERROR });
+  const layersFlag = flagValue(args, '--layers');
+  return {
+    id,
+    module: flagValue(args, '--module'),
+    layers: layersFlag ? layersFlag.split(',').map((s) => s.trim()).filter(Boolean) : undefined,
+    scope: flagValue(args, '--scope'),
+    severity: flagValue(args, '--severity'),
+    why: flagValue(args, '--why'),
+  };
+}
+
+/** `construct add-rule no-console --layers domain,service` (#553): scaffold the rule file and its fixture pair. */
+export function addRuleCommand(args) {
+  if (args.includes('--help') || args.includes('-h')) {
+    console.log(ADD_RULE_USAGE);
+    return;
+  }
+  const root = getRoot(args);
+  const { id, ...opts } = addRuleRequestOf(args);
+  const result = scaffoldRule(root, id, opts);
+  console.log(`Created ${result.ruleFile}`);
+  console.log(`Created ${result.violatesFile}`);
+  console.log(`Created ${result.passesFile}`);
+  console.log(`Add "${result.ruleFile}" to architecture.yml's localRules: list, then edit the rule's "detect" and the two fixtures to describe the real pattern.`);
 }
 
 /**

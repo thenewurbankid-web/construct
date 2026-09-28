@@ -5,6 +5,25 @@ import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { normalizeFrozen } from './frozen.mjs';
 import { normalizeNonLayer } from './nonLayer.mjs';
 
+/**
+ * Validate architecture.yml's `localRules:` field (#553): a list of project-relative paths to
+ * project-local rule files (packages/core/local-rules.mjs's catalog shape). Shape-only — it does
+ * not read or parse the referenced files, the same division of labor `normalizeFrozen`/
+ * `normalizeNonLayer` use for their own glob lists; `loadLocalRules` (local-rules.mjs) is the
+ * thing that actually opens each path.
+ *
+ * @param {unknown} raw The `localRules` value from architecture.yml.
+ * @returns {string[]} The validated list of paths (empty when absent).
+ * @throws {Error} A usage error when `localRules` is present but not an array of non-empty strings.
+ */
+export function normalizeLocalRules(raw) {
+  if (raw === undefined || raw === null) return [];
+  if (!Array.isArray(raw) || raw.some((p) => typeof p !== 'string' || !p.trim())) {
+    throw usageError('localRules in architecture.yml must be an array of file path strings.');
+  }
+  return raw;
+}
+
 export const DEFAULT_LAYERS = {
   route: { pattern: 'app/**/page.tsx', canImport: ['controller'] },
   controller: { pattern: 'features/*/controllers/**', canImport: ['workflow', 'hook', 'service', 'page', 'component', 'domain', 'types'] },
@@ -662,6 +681,7 @@ export function loadConfig(root) {
       exceptions: [],
       frozen: [],
       nonLayer: [],
+      localRules: [],
     };
   }
 
@@ -698,5 +718,6 @@ export function loadConfig(root) {
     exceptions: c.exceptions || [],
     frozen: normalizeFrozen(c.frozen),
     nonLayer: normalizeNonLayer(c.nonLayer),
+    localRules: normalizeLocalRules(c.localRules),
   };
 }

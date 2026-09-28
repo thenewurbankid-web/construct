@@ -11,7 +11,7 @@
 import {
   init, feature, generate, sync, validate, summarize, doctor, create, refactor, research, review,
   testCommand, template, importCommand, runImportRouteWizard, pipeline, traces, decide, model, processCommand,
-  checkChange,
+  checkChange, addRuleCommand,
 } from './cli.mjs';
 
 /** `construct import ...`: the same `--route` vs. plain-import branch `construct.mjs`'s old if-chain had inline. */
@@ -60,4 +60,5 @@ export function registerBuiltinCommands(registry) {
   registry.register({ name: 'decide', summary: 'Ask the decision model for a suggestion (read-only)', handler: decide, source: SOURCE });
   registry.register({ name: 'model', summary: 'List, import, enable or disable a decision model trained elsewhere', handler: model, source: SOURCE });
   registry.register({ name: 'repl', summary: 'Interactive shell over the same functions a one-shot invocation dispatches to', handler: replHandler, source: 'packages/core/repl.mjs' });
+  registry.register({ name: 'add-rule', summary: 'Scaffold a project-local rule (local-rules/<id>/rule.yml) plus a violates/passes fixture pair', handler: addRuleCommand, source: SOURCE });
 }

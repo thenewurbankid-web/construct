@@ -4,7 +4,10 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 // exitCodeForViolations below only ever fails a run on 'error', so adding it here never changes
 // what makes `construct validate` exit non-zero.
 const VALID_SEVERITIES = new Set(['error', 'warning', 'info', 'off']);
-const VALID_MODULES = new Set(['architecture', 'separation-of-concerns', 'readability']);
+// Exported so a project-local rule (packages/core/local-rules.mjs, #553) can validate its own
+// `module` field against the exact same set `assertValidViolation` enforces, instead of drifting
+// out of sync with a second hard-coded copy.
+export const VALID_MODULES = new Set(['architecture', 'separation-of-concerns', 'readability']);
 const REQUIRED_FIELDS = ['rule', 'module', 'severity', 'file', 'line', 'message', 'why', 'expected'];
 
 export const EXIT_CODES = { OK: 0, VIOLATIONS: 1, USAGE_ERROR: 2, INTERNAL_ERROR: 3 };
