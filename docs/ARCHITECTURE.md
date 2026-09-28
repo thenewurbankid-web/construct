@@ -40,7 +40,7 @@ A design tool (Subframe, Figma-to-code, a shared design system) may own some mar
 
 ## Enforcement
 
-Construct combines project policy with static validation and dependency boundaries. The goal is not to create a second compiler; it is to make architectural intent executable and useful to AI agents.
+Construct combines project policy with static validation and dependency boundaries. The goal is not to create a second compiler; it is to make architectural intent executable and useful to AI agents. For the full rule table — every rule id, its default severity and what it checks, layer by layer, plus the Expression-layer design (typed templates, tracked state, composable units) — see `docs/ARCHITECTURE-RULES.md`.
 
 ## Shared building blocks
 
