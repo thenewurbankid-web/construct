@@ -46,6 +46,7 @@
     "estree-walker": "^3.0.3",
     "ipaddr.js": "2.5.0",
     "js-yaml": "^4.3.2",
+    "linkedom": "0.18.13",
     "react-docgen": "^8.0.4",
     "xstate": "^5.33.2"
   },
