@@ -4,3 +4,4 @@
 // public surface is enumerable from packages/core/package.json's exports map
 // without reaching into a sibling workspace package directly.
 export { analyzeImpact, proposeSeedsFromText, impactFromChangedFiles, impactFromTicketText, impactApiManifest, renderImpactMarkdown } from '../engine/impact.mjs';
+export { simulateRuleChangeImpact } from '../engine/rule-change-impact.mjs';
