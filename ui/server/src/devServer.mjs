@@ -36,6 +36,7 @@ import { containedProjectRoot, rootEscapesWorkspace } from './projectGuard.mjs';
 import { serverLog } from './logBuffer.mjs';
 import { currentLogin, isInside, normalizeLogin, workspaceRoot } from './workspace.mjs';
 import { createPreviewProxy } from '../../../packages/engine/previewProxy.mjs';
+import { resolveFiberSelection } from '../../../packages/engine/previewFiber.mjs';
 
 /** The port tried first: Vite's default, so a typical app lands where its developer expects. */
 export const DEFAULT_PORT_BASE = 5173;
@@ -535,5 +536,13 @@ export function createDevServerService({
     },
     /** The project root a stop-on-close should target: the one the Cockpit is looking at now, or null. */
     currentRoot() { const dir = getProjectDir(); return dir ? (containedProjectRoot(dir) || dir) : null; },
+    /** #443 slice 4b: turn a `construct:preview:select` payload from the fiber bridge into a project-relative
+     * source location. Reads only, no source maps yet (tier 3 degrades to `file-only`/`unmapped` until a later
+     * slice fetches them from the dev server) — see `resolveFiberSelection` for the tier ladder. */
+    resolveSelection(payload) {
+      const t = target();
+      if (t.refusal) return { status: 409, body: { ok: false, code: t.refusal.code, error: t.refusal.message } };
+      return { status: 200, body: resolveFiberSelection(payload, { projectRoot: t.root }) };
+    },
   };
 }

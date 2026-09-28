@@ -23,6 +23,7 @@ process.env.CONSTRUCT_SESSION_SECRET = 'must-not-reach-project-code';
 const { app, devServer } = await import('./index.mjs');
 const { workspaceRoot } = await import('./workspace.mjs');
 const { parseLocalPort, looksLikePortBusy, busyPortFrom, readDevCommand, findFreePort, RESERVED_PORTS, nonLoopbackAddresses } = await import('./devServer.mjs');
+const { PREVIEW_FIBER_PROTOCOL } = await import('../../../packages/engine/previewFiber.mjs');
 
 // The fixture app: serves marker.txt (read on every request, so a checkout is visible without a restart) and
 // prints what a real dev server prints. It reports which Cockpit secrets it can see.
@@ -141,6 +142,9 @@ test('with no project open there is nothing to start: a refusal, never the serve
   const r = await call('POST', '/api/dev-server/start', {});
   assert.equal(r.status, 409);
   assert.equal((await r.json()).code, 'NO_PROJECT');
+  const resolved = await call('POST', '/api/dev-server/resolve-selection', { selection: { protocol: PREVIEW_FIBER_PROTOCOL } });
+  assert.equal(resolved.status, 409);
+  assert.equal((await resolved.json()).code, 'NO_PROJECT');
 });
 
 test('opening a project starts nothing: it shows the exact command and stays not-running', async () => {
@@ -192,6 +196,38 @@ test('#443 slice 4: a running dev server gets an injecting preview proxy, and th
   // the HTML-injection path itself (script placement, nonce embedding) is unit-tested in previewProxy.test.mjs.
   const body = await (await fetch(running.previewUrl)).text();
   assert.match(body, /main-marker/, 'the proxy forwards the dev server\'s own response');
+});
+
+test('#443 slice 4b: resolve-selection turns a fiber select payload into a project-relative source location', async () => {
+  assert.equal((await status()).state, 'running');
+  const selection = {
+    protocol: PREVIEW_FIBER_PROTOCOL,
+    componentName: 'Marker',
+    debugSource: { fileName: path.join(projectDir, 'server.mjs'), lineNumber: 4, columnNumber: 2 },
+    ancestors: [],
+    domPath: [],
+  };
+  const r = await call('POST', '/api/dev-server/resolve-selection', { selection });
+  assert.equal(r.status, 200);
+  const body = await r.json();
+  assert.equal(body.ok, true);
+  assert.equal(body.tier, 'debug-source');
+  assert.equal(body.file, 'server.mjs');
+  assert.equal(body.line, 4);
+  assert.equal(body.column, 2);
+  assert.equal(body.componentName, 'Marker');
+
+  const outside = await call('POST', '/api/dev-server/resolve-selection', {
+    selection: { protocol: PREVIEW_FIBER_PROTOCOL, debugSource: { fileName: '/etc/passwd', lineNumber: 1, columnNumber: 1 } },
+  });
+  assert.equal(outside.status, 200);
+  assert.equal((await outside.json()).file, null, 'a path outside the project resolves to nothing, never leaks it');
+
+  const empty = await call('POST', '/api/dev-server/resolve-selection', {});
+  assert.equal(empty.status, 200);
+  assert.equal((await empty.json()).ok, false, 'no selection: a reason, never a crash');
+
+  assert.equal((await call('POST', '/api/dev-server/resolve-selection', { selection }, { origin: 'http://evil.example' })).status, 403);
 });
 
 test('a second start is refused while one runs', async () => {

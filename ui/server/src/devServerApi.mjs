@@ -30,6 +30,9 @@ export function createDevServerRouter(service, { clientOrigin } = {}) {
   router.post('/start', act((b) => service.start({ port: b.port })));
   router.post('/restart', act((b) => service.restart({ port: b.port })));
   router.post('/stop', act(() => service.stop()));
+  // #443 slice 4b: the Pages editor posts here with the raw fiber `select` payload it received over
+  // postMessage from the preview iframe; this resolves it to a source location server-side.
+  router.post('/resolve-selection', act((b) => service.resolveSelection(b)));
   router.use((req, res) => res.status(404).json({ ok: false, error: 'Not found.' }));
   return router;
 }
