@@ -201,3 +201,26 @@ test('project/tree (#600): lists one directory of the open project, routes flagg
     assert.equal(r.status, 403, p);
   }
 });
+
+test('#541: GET /api/settings reports the open project\'s execution mode (the Cockpit indicator\'s data)', async () => {
+  const proj = path.join(workspaceRoot(), 'execmodeproj');
+  fs.mkdirSync(proj, { recursive: true });
+  fs.writeFileSync(path.join(proj, 'architecture.yml'), 'project: {}\n');
+  await json('POST', '/api/settings', { projectDir: 'execmodeproj' });
+  const engineDefault = await (await json('GET', '/api/settings')).json();
+  assert.equal(engineDefault.executionMode, 'engine', 'absent project.execution.mode defaults to engine');
+
+  fs.writeFileSync(path.join(proj, 'architecture.yml'), 'project:\n  execution:\n    mode: cli\n');
+  const cli = await (await json('GET', '/api/settings')).json();
+  assert.equal(cli.executionMode, 'cli');
+
+  fs.writeFileSync(path.join(proj, 'architecture.yml'), 'project:\n  execution:\n    mode: bogus\n');
+  const bad = await (await json('GET', '/api/settings')).json();
+  assert.equal(bad.executionMode, null, 'an invalid value fails soft here -- validate is where it is reported as an error');
+  await json('POST', '/api/settings', { closeProject: true });
+});
+
+test('#541: no project open reports a null execution mode', async () => {
+  const s = await (await json('GET', '/api/settings')).json();
+  assert.equal(s.executionMode, null);
+});

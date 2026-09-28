@@ -11,6 +11,7 @@ import { PRIMARY_SCREENS } from '../domain/PrimaryScreens';
 import { SHORTCUTS } from '../domain/Shortcuts';
 import { useActiveTabs } from '../hooks/useActiveTabs';
 import { useNarrowLayout } from '../hooks/useNarrowLayout';
+import { useExecutionMode } from '../hooks/useExecutionMode';
 import { useGitBranchCount } from '../hooks/useGitBranchCount';
 import type { useProjectSwitcher } from '../hooks/useProjectSwitcher';
 import { useRailCollapsed } from '../hooks/useRailCollapsed';
@@ -60,6 +61,7 @@ export function ShellFrame({ children, route, project, model, theme, userMenu }:
   const working = useWorking(processes.running);
   useFaviconMotion(working);
   const gitBranches = useGitBranchCount(project.known);
+  const executionMode = useExecutionMode(project.known);
   const gitSession = useGitSession();
   const commitStatus = gitSession.status ? describeSaveState(gitSession.status).text : null;
   const registered = { browser: useShellTabs('browser'), tools: useShellTabs('tools'), drawer: useShellTabs('drawer') };
@@ -74,7 +76,15 @@ export function ShellFrame({ children, route, project, model, theme, userMenu }:
         {
           id: 'project',
           title: 'Project',
-          render: () => <ProjectInfoPanel dir={project.dir} screenLabel={route.screen?.label ?? null} modelStatus={model} shortcuts={SHORTCUTS} />,
+          render: () => (
+            <ProjectInfoPanel
+              dir={project.dir}
+              screenLabel={route.screen?.label ?? null}
+              modelStatus={model}
+              shortcuts={SHORTCUTS}
+              executionMode={executionMode}
+            />
+          ),
         },
       ],
       drawer: [
@@ -98,7 +108,7 @@ export function ShellFrame({ children, route, project, model, theme, userMenu }:
         },
       ],
     }),
-    [route.pathname, route.screen, project.dir, model, diagnostics, openPage, processes, processSummaries],
+    [route.pathname, route.screen, project.dir, model, diagnostics, openPage, processes, processSummaries, executionMode],
   );
   const tabs = {
     // A screen's own tabs come first (they are what you came to use); the shell's defaults follow.

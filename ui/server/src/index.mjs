@@ -14,6 +14,7 @@ import { Readable } from 'node:stream';
 import { AuthConfigError, createAuth, isLoopbackHost, resolveAuthConfig } from './auth.mjs';
 import { create, refactor, research, importCommand, init } from '../../../packages/core/cli.mjs';
 import { containedProjectRoot, requireProject, NO_PROJECT_BODY } from './projectGuard.mjs';
+import { resolveExecutionMode } from './coreExecutor.mjs';
 import { WorkspaceError, baseWorkspaceRoot, containInWorkspace, contain, userWorkspaceMiddleware, workspaceRoot } from './workspace.mjs';
 import { USAGE } from '../../../packages/core/usage.mjs';
 import { HELP_TOPICS, TOPIC_ORDER, getTopLevelHelpText } from '../../../packages/core/repl.mjs';
@@ -265,13 +266,24 @@ app.get('/api/help', (req, res) => {
 function projectStatusFor(projectDir) {
   // #365: no project open is its own state (the client shows "Open a project"), and a project root found by
   // climbing OUT of the workspace does not count.
-  if (projectDir === null) return { resolvedProjectRoot: null, valid: false, needsInit: false, noProject: true };
+  if (projectDir === null) return { resolvedProjectRoot: null, valid: false, needsInit: false, noProject: true, executionMode: null };
   const resolvedProjectRoot = containedProjectRoot(projectDir);
+  // #541: the Cockpit indicator for engine|cli. A bad `project.execution.mode` value is validate's job to
+  // surface, not settings' — read it best-effort and say null rather than failing the whole endpoint.
+  let executionMode = null;
+  if (resolvedProjectRoot !== null) {
+    try {
+      executionMode = resolveExecutionMode(resolvedProjectRoot);
+    } catch {
+      executionMode = null;
+    }
+  }
   return {
     resolvedProjectRoot,
     valid: resolvedProjectRoot !== null,
     needsInit: resolvedProjectRoot === null,
     noProject: false,
+    executionMode,
   };
 }
 

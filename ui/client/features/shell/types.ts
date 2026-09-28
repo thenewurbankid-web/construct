@@ -222,6 +222,9 @@ export type ProjectInfoPanelProps = {
   screenLabel: string | null;
   modelStatus: ModelStatus;
   shortcuts: ShortcutInfo[];
+  /** #541: `project.execution.mode` for the open project (`'engine'` or `'cli'`), null while
+   * unknown. Absent from the row entirely when null, same as `screenLabel`. */
+  executionMode: string | null;
 };
 
 export type ShellPageProps = NarrowProps & {

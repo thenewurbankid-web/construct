@@ -10,6 +10,18 @@ export async function fetchProjectDir(): Promise<string | null> {
   }
 }
 
+/** #541: which mode the open project runs core activities in, `'engine'` (default, in-process) or
+ * `'cli'` (the real construct binary as a subprocess). Null when no project is open or the value
+ * can't be read. */
+export async function fetchExecutionMode(): Promise<string | null> {
+  try {
+    const settings = await getJson<{ executionMode?: string | null }>('/api/settings');
+    return settings.executionMode ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** Points the whole UI at another local project (POST /api/settings; only
  * projectDir is sent, other settings are left alone). Returns an error message or null. */
 export async function closeProjectDir(): Promise<string | null> {
