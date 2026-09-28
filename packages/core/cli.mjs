@@ -52,9 +52,10 @@ import { explainSource, renderExplained } from '../../packages/engine/workflowEx
 import { listWorkflowSourceFiles, readWorkflowSource } from '../../packages/engine/workflowSource.mjs';
 import { validateMachineSpec, renderMachineSpecReport } from './research/machine-spec.mjs';
 import { generateFromSpec } from './research/specToCode.mjs';
+import { splitRequirement, draftMachineSpec, traceChoiceFromDraft } from './research/specFromRequirement.mjs';
 import { readBackMachineSpec, renderReadBack } from './research/readBack.mjs';
 import { coverageOfMachineSpec, renderCoverage, uncoveredSentences, COVERAGE_TOLERATED_RULES } from './research/coverage.mjs';
-import { readTraces } from './decision-trace-store.mjs';
+import { readTraces, recordDecisions } from './decision-trace-store.mjs';
 import { providerInput, getDecisionProvider, registerDecisionProvider } from './decision-provider.mjs';
 import { loadDecisionPlugin } from './decision-plugin.mjs';
 import { openDecision, suggestForQuestions } from './decision-project.mjs';
@@ -1451,6 +1452,69 @@ export async function researchSpec(args) {
   return false;
 }
 
+/**
+ * `construct research spec draft <requirement-file> --llm <provider> [--feature <name>] [--out <file>] [--format json|text] [--dir <path>]`
+ * (#576, R3). The one fuzzy step: `<requirement-file>` is plain English, one sentence per line; a
+ * model drafts a `machine-spec.v1` from the schema plus the worked example (never prose instructions,
+ * `research/specFromRequirement.mjs`), gets ONE corrected retry with the previous attempt and its
+ * concrete violations fed back when it fails `validateMachineSpec` (a real feedback loop, not the
+ * blind retry #496 found regressing quality), and only an accepted draft is printed or written. A
+ * draft that still fails after the retry prints the same violation report `research spec` would, exit
+ * 1; a provider failure (missing CLI, dead daemon) exits 3 and is never retried. Every accepted or
+ * rejected draft (never a provider failure -- that is not a decision) is recorded as a decision-trace
+ * (`docs/BLOCK-CONTRACT.md`, "AI-ready by design"): a closed accept/reject chooser, replay-scorable
+ * without the draft's content leaving the machine.
+ *
+ * @param {string[]} args `<requirement-file>` plus `--llm <provider>` (required), `--feature <name>`, `--out <file>` (write the accepted draft here instead of only printing it), `--format json|text` (default text) and `--dir <path>`.
+ * @returns {Promise<boolean>} Resolves to true when it printed only JSON.
+ * @throws {ConstructError} Usage error for missing/extra positionals, a missing `--llm`, or an unreadable requirement file.
+ */
+export async function researchSpecDraft(args) {
+  const usage = 'Usage: construct research spec draft <requirement-file> --llm <provider> [--feature <name>] [--out <file>] [--format json|text] [--dir <path>]';
+  const valueFlags = new Set(['--format', '--dir', '--feature', '--llm', '--out']);
+  const positional = args.filter((a, i) => !a.startsWith('--') && !valueFlags.has(args[i - 1]));
+  const format = flagValue(args, '--format') ?? 'text';
+  const llm = flagValue(args, '--llm');
+  if (positional.length !== 1 || !llm || !['json', 'text'].includes(format)) throw new ConstructError(usage, { exitCode: EXIT_CODES.USAGE_ERROR });
+  const dir = flagValue(args, '--dir');
+  const file = path.resolve(dir ? path.resolve(dir) : process.cwd(), positional[0]);
+  let requirementText;
+  try {
+    requirementText = fs.readFileSync(file, 'utf8');
+  } catch (e) {
+    throw new ConstructError(`Could not read the requirement "${positional[0]}": ${String(e.message || e)}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+  }
+  const requirement = splitRequirement(requirementText);
+  const feature = flagValue(args, '--feature');
+  const draft = await draftMachineSpec(llm, requirement, { feature });
+  if (draft.status !== 'failed') {
+    recordDecisions(getRoot(args), [{ ...traceChoiceFromDraft(requirement, { feature }, draft), provider: { name: llm, version: '1' } }]);
+  }
+  if (draft.status === 'accepted') {
+    const out = flagValue(args, '--out');
+    if (out) fs.writeFileSync(path.resolve(dir ? path.resolve(dir) : process.cwd(), out), `${JSON.stringify(draft.spec, null, 2)}\n`);
+    if (format === 'json') {
+      console.log(JSON.stringify({ status: 'accepted', attempts: draft.attempts, spec: draft.spec }, null, 2));
+      return true;
+    }
+    console.log(JSON.stringify(draft.spec, null, 2));
+    console.log(`Accepted after ${draft.attempts} attempt(s).${out ? ` Wrote ${out}.` : ''}`);
+    return false;
+  }
+  if (draft.status === 'failed') {
+    throw new ConstructError(`"${llm}" failed drafting a spec: ${draft.reason}`, { exitCode: EXIT_CODES.INTERNAL_ERROR });
+  }
+  if (format === 'json') {
+    console.log(JSON.stringify({ status: 'rejected', attempts: draft.attempts, violations: draft.violations }, null, 2));
+    setExitCode(EXIT_CODES.VIOLATIONS);
+    return true;
+  }
+  console.log(draft.report);
+  console.log(`Rejected after ${draft.attempts} attempt(s) -- nothing written.`);
+  setExitCode(EXIT_CODES.VIOLATIONS);
+  return false;
+}
+
 /** `construct research impact <ref>... [--files a,b] [--since <git-ref>] [--ticket <text>]
  * [--ticket-file <path>] [--depth N] [--max-files N] [--format json|markdown] [--dir <path>]`
  * | `construct research impact --usage` (#288).
@@ -1710,6 +1774,7 @@ export async function research(args) {
   else if (args[0] === 'doctor') await doctor(args.slice(1));
   else if (args[0] === 'workflow') jsonOnly = await researchWorkflow(args.slice(1));
   else if (args[0] === 'impact') jsonOnly = await researchImpact(args.slice(1));
+  else if (args[0] === 'spec' && args[1] === 'draft') jsonOnly = await researchSpecDraft(args.slice(2));
   else if (args[0] === 'spec') jsonOnly = await researchSpec(args.slice(1));
   else throw new ConstructError('Usage: construct research summarize|doctor|workflow|impact|spec ...', { exitCode: EXIT_CODES.USAGE_ERROR });
   if (!jsonOnly) printAttribution(READ_ONLY_ATTRIBUTION.tool, READ_ONLY_ATTRIBUTION.llm);

@@ -12,6 +12,7 @@ below). The generated project passes `construct validate` and `tsc --strict`, an
 - Generator, R2 (#593): `packages/core/research/specToCode.mjs` (`buildWorkflowDescriptor`, `functionStubSource`, `generateFromSpec`).
 - Worked example (passes): `packages/core/research/examples/machine-spec.v1.example.json`.
 - Failing examples, one per refusal: `fixtures/machine-spec/{unreachable-state,untyped-function,uncovered-sentence,unknown-type}.json`.
+- Drafting from English with a model, R3 (#746): `packages/core/research/specFromRequirement.mjs` (`splitRequirement`, `buildDraftPrompt`, `draftMachineSpec`), CLI `research spec draft`, below.
 
 To draft one with a model, hand it the schema plus the worked example — not instructions. The example
 is the documentation.
@@ -190,8 +191,32 @@ test passes: `test/specToCode.test.mjs` runs all three for real, not as a claim.
 - Every function lands in the service layer (no per-function layer field in v1).
 - `--generate` fills nothing in: guards return `false`, stubs throw. Implementing them is the job of a
   person, or of a model that gets one stub at a time and must pass `validate` and `tsc`.
-- English to spec (drafting the JSON with a model, R3, and the check-and-retry loop) is not built: a spec
-  is written by hand or from a form today.
+- English to spec (drafting the JSON with a model, R3) is `research spec draft`, below.
+
+## `research spec draft`, R3 (#746, #576): a model drafts the spec, the checks decide
+
+```
+construct research spec draft <requirement-file> --llm <provider> [--feature <name>] [--out <file>] [--format json|text] [--dir <path>]
+```
+
+`<requirement-file>` is plain English, one sentence per line (as a Note or a story reads, #373/#383);
+`splitRequirement` turns it into `requirement[]` deterministically (`s1`, `s2`, ... in reading order,
+blank lines dropped) -- the only fuzzy step is what the model does with those sentences. The prompt
+(`buildDraftPrompt`) is the schema plus the worked example above, never prose instructions. The model's
+reply is parsed and run through the same `validateMachineSpec` `research spec` uses; a draft that fails
+gets ONE corrected retry with its own previous reply and the concrete `SPEC-*` violations fed back, so
+the model corrects specific problems instead of a blind identical retry (#496 is the cautionary tale: a
+blind retry regressed correct output to wrong). Only a draft that passes is printed (`--out` also writes
+it) -- a draft that still fails after the retry prints the same violation report `research spec` would
+and exits 1; a provider failure (missing CLI, dead daemon) exits 3 and is never retried.
+
+Every accepted or rejected draft (never a provider failure -- that is not a decision) is recorded as a
+decision-trace (`docs/BLOCK-CONTRACT.md`, "AI-ready by design"): a closed two-option chooser
+(`research.spec.draft`, `accepted`/`rejected`), attributed `by: 'llm'` with the provider name, so a
+drafting run is replay-scorable without the spec's content ever leaving the trace as free text.
+
+Mechanical fallback stays available with no model configured: `construct research spec <file>` on a
+hand-written or form-filled spec, unchanged by any of this.
 
 ## `--read-back`, R4 (#672, #576): the spec in plain English
 
