@@ -8,6 +8,12 @@ project:
 features:
   root: features
 
+frozen:
+  - features/*/tests/generated/**
+
+nonLayer:
+  - features/*/tests/**
+
 rules:
   ROUTE-001: error
   ROUTE-002: error
