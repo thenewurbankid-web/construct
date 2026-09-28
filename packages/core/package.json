@@ -41,6 +41,7 @@
     "./diagnostics": "./diagnostics.mjs",
     "./dir-browser": "./dir-browser.mjs",
     "./file-change-tracker": "./file-change-tracker.mjs",
+    "./story": "./story.mjs",
     "./typed-contracts": {
       "types": "./typed-contracts/index.ts",
       "default": "./typed-contracts/index.ts"
