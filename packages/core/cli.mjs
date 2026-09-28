@@ -45,6 +45,7 @@ import { scaffoldRule } from './local-rules.mjs';
 import { addEnv } from './env.mjs';
 import { generateGuard } from './guard.mjs';
 import { generateStore, STORE_ACTIONS } from './store.mjs';
+import { renderDependencyCruiserConfig, renderCiExport, EXPORT_CI_TARGETS } from './exportCi.mjs';
 import { generateHandler } from './handler.mjs';
 import { wrapProvider, providerOffer } from './provider-wrap.mjs';
 import { buildDiffView } from './text-diff.mjs';
@@ -745,13 +746,44 @@ export async function sync(args) {
   const root = getRoot(args);
   const c = loadConfig(root);
   const includeDomain = args.includes('--include-domain') || undefined; // undefined defers to architecture.yml's features.publicDomain
-  write(path.join(root, '.dependency-cruiser.cjs'), `module.exports={forbidden:[{name:'page-to-workflow',from:{path:'features/.*/pages'},to:{path:'features/.*/workflows'},severity:'error'},{name:'page-to-service',from:{path:'features/.*/pages'},to:{path:'features/.*/services'},severity:'error'},{name:'component-to-app-logic',from:{path:'features/.*/components'},to:{path:'features/.*/(controllers|workflows|services|domain)'},severity:'error'}]};\n`);
+  // #437 -- derived from this project's own architecture.yml layers/rules (exportCi.mjs), not
+  // a fixed string: a project with custom layers or a rule turned 'off' gets a different file.
+  // `sync` keeps writing this by default (open question 7, recorded in exportCi.mjs's own doc
+  // comment and the #437 issue report): it is the same "zero-setup" file `construct init/sync`
+  // has always produced, and `export ci` (below) is the explicit, retargetable form for a team
+  // that wants eslint-boundaries instead or wants the file somewhere other than the project root.
+  write(path.join(root, '.dependency-cruiser.cjs'), renderDependencyCruiserConfig(c));
   let apiSynced = 0;
   for (const name of featureNames(root, c)) {
     const { changed } = syncPublicApi(root, name, { includeDomain });
     if (changed) apiSynced++;
   }
   console.log(`Synced ${Object.keys(c.rules).length} Construct rules, ${apiSynced} feature public API(s) updated.`);
+}
+
+/** `construct export ci --target <dependency-cruiser|eslint-boundaries> [--out <path>] [--dir <path>]`
+ * (#437): writes (or, without `--out`, prints to stdout) the same CI-tool config `sync` writes for
+ * dependency-cruiser, or the eslint-boundaries equivalent (#513's generator). Read-only otherwise --
+ * unlike `sync`, this never touches feature public APIs. */
+const EXPORT_CI_USAGE = `Usage: construct export ci --target <${EXPORT_CI_TARGETS.join('|')}> [--out <path>]`;
+
+export async function exportCommand(args) {
+  if (args[0] !== 'ci') throw new ConstructError(EXPORT_CI_USAGE, { exitCode: EXIT_CODES.USAGE_ERROR });
+  const rest = args.slice(1);
+  const root = getRoot(rest);
+  const target = flagValue(rest, '--target');
+  if (!target || !EXPORT_CI_TARGETS.includes(target)) {
+    throw new ConstructError(EXPORT_CI_USAGE, { exitCode: EXIT_CODES.USAGE_ERROR });
+  }
+  const c = loadConfig(root);
+  const rendered = renderCiExport(root, c, target);
+  const out = flagValue(rest, '--out');
+  if (out) {
+    write(path.isAbsolute(out) ? out : path.join(root, out), rendered);
+    console.log(`Wrote ${target} config to ${out}`);
+  } else {
+    console.log(rendered);
+  }
 }
 
 export async function validate(args) {

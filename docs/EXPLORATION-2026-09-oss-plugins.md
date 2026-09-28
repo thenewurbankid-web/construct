@@ -652,8 +652,12 @@ that check is an acceptance criterion in each issue.
    trusted, or require approval plus `--ignore-scripts` plus (later) a container runner? This decides section 12.
 6. **Recorder direction (#319):** own bridge in the Cockpit preview (needs the preview on the same machine), or
    Playwright codegen import for local developers, or both behind the `RecordedEvent` contract?
-7. **Should `construct sync` keep writing a dependency-cruiser file at all** into target projects, or move it
-   behind an explicit `export ci` command so projects that do not use it are not given the file?
+7. ~~**Should `construct sync` keep writing a dependency-cruiser file at all** into target projects, or move it
+   behind an explicit `export ci` command so projects that do not use it are not given the file?~~ **Resolved
+   (#437): `sync` keeps writing it by default** (same zero-setup file it has always produced, now derived from
+   the project's own `architecture.yml` instead of a fixed string); `construct export ci --target
+   dependency-cruiser|eslint-boundaries [--out <path>]` is the additional, explicit, retargetable path — see
+   README.md "CI export (#437)".
 
 ## Registry check (2026-09-21, live from npm)
 
