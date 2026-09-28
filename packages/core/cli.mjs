@@ -11,6 +11,7 @@ import { ensureGeneratedDependencies } from './generated-dependencies.mjs';
 import { write, ensureDir } from './fs.mjs';
 import { scaffoldProject } from './scaffold.mjs';
 import { loadConfig, findProjectRoot, DEFAULT_RULES, NEW_PROJECT_RULE_SEVERITIES, normalizeFramework } from './config.mjs';
+import { listRules } from './rules-catalog.mjs';
 import { formatReport, exitCodeForViolations, ConstructError, EXIT_CODES, setExitCode } from './diagnostics.mjs';
 import { aggregateValidation } from './registry.mjs';
 import { validateArchitecture } from './architecture-enforcer.mjs';
@@ -1872,6 +1873,35 @@ export async function checkChange(args) {
  * real results with no extra setup. `--templates <dir>` or CONSTRUCT_TEMPLATES_DIR
  * still override it with a project's own curated set. */
 const DEFAULT_TEMPLATES_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'templates', 'starter');
+
+const RULES_USAGE = 'Usage: construct rules list [--json] [--dir <path>]';
+
+/**
+ * `construct rules list [--json] [--dir <path>]` (#549): every rule `construct validate` can
+ * report -- id, owning module, layer(s), scope (`buffer` needs only the one file, `project` needs
+ * the whole graph), default and effective severity (`--dir`'s `architecture.yml` override, if any),
+ * why the rule exists, what a passing file looks like, and a fix hint. Read-only, deterministic,
+ * `packages/core/rules-catalog.mjs`'s `listRules` (also `GET /api/rules`, ui/server/src/rulesApi.mjs).
+ *
+ * @param {string[]} args `list`, then `[--json] [--dir <path>]`.
+ * @returns {void} Resolves once the table (or JSON) is printed.
+ * @throws {ConstructError} Usage error (exit code 2) for anything but `list`.
+ *
+ * @example
+ * rulesCommand(['list', '--json']);
+ */
+export function rulesCommand(args) {
+  if (args[0] !== 'list') throw new ConstructError(RULES_USAGE, { exitCode: EXIT_CODES.USAGE_ERROR });
+  const rest = args.slice(1);
+  const rules = listRules(getRoot(rest));
+  if (rest.includes('--json')) {
+    console.log(JSON.stringify({ ok: true, rules }, null, 2));
+    return;
+  }
+  for (const r of rules) {
+    console.log(`${r.id}\t${r.module}\t${r.layers.join(',') || '-'}\t${r.scope}\t${r.severity}\t${r.why}`);
+  }
+}
 
 /** `construct template list|show|instantiate` (#333, #450). Read-only, JSON in/out, no LLM.
  *

@@ -87,6 +87,7 @@ import { createStoryFetchRouter } from './storyFetchApi.mjs';
 import { openBlockSettingsStore } from './blockSettingsStore.mjs';
 import { handleLogs } from './logBuffer.mjs';
 import { unitsIndex, unitSummary, featuresIndex, featureSummary } from './unitsApi.mjs';
+import { rulesIndex } from './rulesApi.mjs';
 import { buildPalette } from '../../../packages/engine/palette.mjs';
 import { readPageSource } from './pageSource.mjs';
 import { viewPage, openReference, openSourceLocation, viewProjectFile } from './projectNav.mjs';
@@ -328,7 +329,7 @@ app.use('/api/init', requireProject({ allowEscapingRoot: true }));
 app.use(
   [
     '/api/create', '/api/refactor', '/api/research', '/api/import',
-    '/api/pages', '/api/workflows', '/api/units', '/api/features', '/api/flow', '/api/nav', '/api/validate',
+    '/api/pages', '/api/workflows', '/api/units', '/api/features', '/api/flow', '/api/nav', '/api/validate', '/api/rules',
     '/api/git/session', '/api/git/dirty-answer', '/api/git/commit', '/api/git/plan',
     '/api/processes', '/api/plan', '/api/requirement', '/api/review', '/api/tests', '/api/project', '/api/notes', '/api/blocks',
   ],
@@ -1021,6 +1022,11 @@ app.get('/api/units', (req, res) => sendUnits(res, (root) => unitsIndex(root, re
 app.get('/api/units/summary', (req, res) => sendUnits(res, (root) => unitSummary(root, req.query)));
 app.get('/api/features', (req, res) => sendUnits(res, (root) => featuresIndex(root)));
 app.get('/api/features/:name/summary', (req, res) => sendUnits(res, (root) => featureSummary(root, req.params.name, req.query)));
+
+// #549: every rule `construct validate` can report (id/module/layers/scope/severity/why/expected/
+// fix), severity resolved against the open project's architecture.yml. Data source for #395's
+// Cockpit Rules screen.
+app.get('/api/rules', (req, res) => sendUnits(res, (root) => rulesIndex(root)));
 
 // #328: the Browser pane's Flow view. Read-only; the feature name is validated against the current
 // project's real feature list (flowApi.mjs) and never becomes a path.

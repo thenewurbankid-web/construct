@@ -39,6 +39,41 @@ test('doctor exits 0 and reports environment + enforcer module availability', ()
   assert.match(res.stdout, /Enforcer modules:/);
 });
 
+test('rules list --json prints every rule with id/module/layers/scope/severity/why (#549)', () => {
+  const res = run(['rules', 'list', '--json'], emptyProjectDir());
+  assert.equal(res.status, EXIT_CODES.OK);
+  const { ok, rules } = JSON.parse(res.stdout);
+  assert.equal(ok, true);
+  assert.ok(rules.length > 0);
+  const page001 = rules.find((r) => r.id === 'PAGE-001');
+  assert.equal(page001.module, 'architecture');
+  assert.deepEqual(page001.layers, ['page']);
+  assert.equal(page001.scope, 'buffer');
+  assert.equal(page001.severity, 'warning');
+  assert.ok(page001.why.length > 0);
+});
+
+test('rules list --json --dir reflects that project\'s architecture.yml severity override', () => {
+  const dir = emptyProjectDir();
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), 'version: 1\nrules:\n  PAGE-001: off\n');
+  const res = run(['rules', 'list', '--json', '--dir', dir], dir);
+  assert.equal(res.status, EXIT_CODES.OK);
+  const { rules } = JSON.parse(res.stdout);
+  assert.equal(rules.find((r) => r.id === 'PAGE-001').severity, 'off');
+});
+
+test('rules list without --json prints a tab-separated table', () => {
+  const res = run(['rules', 'list'], emptyProjectDir());
+  assert.equal(res.status, EXIT_CODES.OK);
+  assert.match(res.stdout, /PAGE-001\tarchitecture\tpage\tbuffer\twarning\t/);
+});
+
+test('rules without a known sub-verb exits with USAGE_ERROR', () => {
+  const res = run(['rules']);
+  assert.equal(res.status, EXIT_CODES.USAGE_ERROR);
+  assert.match(res.stderr, /Usage: construct rules list/);
+});
+
 test('validate against a project with no architecture.yml/features runs cleanly without crashing', () => {
   const dir = emptyProjectDir();
   const res = run(['validate'], dir);

@@ -13,8 +13,8 @@ an installed package can add its own command with no edit to Construct at all.
   command or alias; `list()` returns every command, sorted.
 - **`packages/core/builtin-commands.mjs`** -- `registerBuiltinCommands(registry)`. Registers every command
   Construct ships (`init`, `feature`, `generate`/`g`, `sync`, `validate`, `summarize`, `doctor`, `create`,
-  `refactor`, `research`, `review`, `test`, `template`, `import`, `pipeline`, `traces`, `decide`, `model`,
-  `repl`) with the exact function (or exact inline branch, for `import`'s `--route` case and `repl`'s lazy
+  `refactor`, `research`, `review`, `test`, `process`, `rules`, `template`, `import`, `pipeline`, `traces`,
+  `decide`, `model`, `repl`) with the exact function (or exact inline branch, for `import`'s `--route` case and `repl`'s lazy
   import + explicit exit) the old if-chain called. This is a refactor of dispatch only -- no built-in
   command's flags, output or exit code changed.
 - **`packages/core/plugin-commands.mjs`** -- `discoverPluginCommands(registry, roots)`. Finds every package
