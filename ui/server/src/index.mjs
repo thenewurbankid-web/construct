@@ -83,6 +83,7 @@ import { createNotesRouter } from './notesApi.mjs';
 import { openNotesStore } from './notesStore.mjs';
 import { createBlocksRouter } from './blocksApi.mjs';
 import { createStoryFetchRouter } from './storyFetchApi.mjs';
+import { createStoriesRouter } from './storiesApi.mjs';
 import { openBlockSettingsStore } from './blockSettingsStore.mjs';
 import { handleLogs } from './logBuffer.mjs';
 import { unitsIndex, unitSummary, featuresIndex, featureSummary } from './unitsApi.mjs';
@@ -1136,6 +1137,19 @@ app.use('/api/notes', createNotesRouter({
 // script or sends credentials (storyFetchApi.mjs / storyFetchService.mjs / the shared safeFetch.mjs, #436).
 app.use('/api/story', createStoryFetchRouter({
   clientOrigin: CLIENT_ORIGIN,
+  getRoot: () => {
+    const dir = getProjectDir();
+    const root = dir ? containedProjectRoot(dir) || dir : null;
+    return root ? { ok: true, root } : { ok: false, status: 409, body: NO_PROJECT_BODY };
+  },
+}));
+
+// #385: the Story tab (front matter view, snapshot, Add a story, apply a fetched snapshot, mark reviewed, Keep
+// out of git). Below the session gate and the project-open gate; fetching the ticket itself is `/api/story`
+// above (#384) -- this only reads/writes `features/<feature>/story.md` and its small UI-state file.
+app.use('/api/stories', createStoriesRouter({
+  clientOrigin: CLIENT_ORIGIN,
+  afterSave,
   getRoot: () => {
     const dir = getProjectDir();
     const root = dir ? containedProjectRoot(dir) || dir : null;
