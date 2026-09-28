@@ -85,24 +85,27 @@ export function formatReport(violations, { format = 'text' } = {}) {
  * violation count next to its plain-words "why" without re-deriving it (#395/#758).
  *
  * @param {object[]} violations Violation objects from `makeViolation`.
- * @param {Record<string, {severity?: string, numeric?: boolean}>} [rules] A config's normalized
- *   rule table (e.g. `loadConfig(root).rules`) — every non-numeric-threshold entry is listed even
- *   with zero current violations. Numeric threshold overrides (`numeric: true`, e.g.
+ * @param {Record<string, {severity?: string, name?: string, numeric?: boolean}>} [rules] A config's
+ *   normalized rule table (e.g. `loadConfig(root).rules`) — every non-numeric-threshold entry is
+ *   listed even with zero current violations, and its plain one-line `name` (e.g. `DEFAULT_RULES`'
+ *   `'Pages cannot call fetch'`) carries through so a Rules composer has *something* to show a rule
+ *   with no live violation (`why` only ever comes from an actual violation's own `why`, which is
+ *   `null` until the rule fires at least once). Numeric threshold overrides (`numeric: true`, e.g.
  *   `'READ-002-max-loc'`) aren't real severity-bearing rules and are skipped.
- * @returns {Record<string, {severity: string|null, why: string|null, count: number}>}
+ * @returns {Record<string, {severity: string|null, why: string|null, name: string|null, count: number}>}
  *
  * @example
- * summarizeViolations([], { 'PAGE-004': { severity: 'error' } })['PAGE-004'];
- * // => { severity: 'error', why: null, count: 0 }
+ * summarizeViolations([], { 'PAGE-004': { severity: 'error', name: 'Pages cannot call fetch' } })['PAGE-004'];
+ * // => { severity: 'error', why: null, name: 'Pages cannot call fetch', count: 0 }
  */
 export function summarizeViolations(violations, rules = {}) {
   const summary = {};
   for (const [ruleId, def] of Object.entries(rules)) {
     if (def?.numeric) continue;
-    summary[ruleId] = { severity: def?.severity ?? null, why: null, count: 0 };
+    summary[ruleId] = { severity: def?.severity ?? null, why: null, name: def?.name ?? null, count: 0 };
   }
   for (const v of violations) {
-    const entry = summary[v.rule] || (summary[v.rule] = { severity: v.severity, why: null, count: 0 });
+    const entry = summary[v.rule] || (summary[v.rule] = { severity: v.severity, why: null, name: null, count: 0 });
     entry.count += 1;
     if (!entry.why) entry.why = v.why;
     if (entry.severity == null) entry.severity = v.severity;

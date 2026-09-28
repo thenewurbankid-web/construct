@@ -107,8 +107,8 @@ test('summarizeViolations: multiple rules, mixed severities, counted correctly',
   const other = { ...VALID, rule: 'SOC-001', severity: 'warning', why: 'keep concerns separate' };
   const summary = summarizeViolations([VALID, VALID, other]);
   assert.deepEqual(summary, {
-    'PAGE-004': { severity: 'error', why: VALID.why, count: 2 },
-    'SOC-001': { severity: 'warning', why: 'keep concerns separate', count: 1 },
+    'PAGE-004': { severity: 'error', why: VALID.why, name: null, count: 2 },
+    'SOC-001': { severity: 'warning', why: 'keep concerns separate', name: null, count: 1 },
   });
 });
 
@@ -116,22 +116,30 @@ test('summarizeViolations: rules with zero current violations are still listed, 
   const rules = { 'PAGE-004': { severity: 'error' }, 'COMPONENT-002': { severity: 'warning' } };
   const summary = summarizeViolations([VALID], rules);
   assert.deepEqual(summary, {
-    'PAGE-004': { severity: 'error', why: VALID.why, count: 1 },
-    'COMPONENT-002': { severity: 'warning', why: null, count: 0 },
+    'PAGE-004': { severity: 'error', why: VALID.why, name: null, count: 1 },
+    'COMPONENT-002': { severity: 'warning', why: null, name: null, count: 0 },
+  });
+});
+
+test('summarizeViolations: a zero-violation rule carries its plain-words name through, for a Rules composer', () => {
+  const rules = { 'COMPONENT-002': { severity: 'warning', name: 'Components cannot import controllers' } };
+  const summary = summarizeViolations([], rules);
+  assert.deepEqual(summary, {
+    'COMPONENT-002': { severity: 'warning', why: null, name: 'Components cannot import controllers', count: 0 },
   });
 });
 
 test('summarizeViolations: numeric threshold overrides in the rule table are not real rules and are skipped', () => {
   const rules = { 'PAGE-004': { severity: 'error' }, 'READ-002-max-loc': { numeric: true, value: 200 } };
   const summary = summarizeViolations([], rules);
-  assert.deepEqual(summary, { 'PAGE-004': { severity: 'error', why: null, count: 0 } });
+  assert.deepEqual(summary, { 'PAGE-004': { severity: 'error', why: null, name: null, count: 0 } });
 });
 
 test('summarizeViolations: a violation for a rule not in the table is still counted', () => {
   const expired = { ...VALID, rule: 'EXCEPTION-EXPIRED', severity: 'warning' };
   const summary = summarizeViolations([expired], { 'PAGE-004': { severity: 'error' } });
   assert.deepEqual(summary, {
-    'PAGE-004': { severity: 'error', why: null, count: 0 },
-    'EXCEPTION-EXPIRED': { severity: 'warning', why: VALID.why, count: 1 },
+    'PAGE-004': { severity: 'error', why: null, name: null, count: 0 },
+    'EXCEPTION-EXPIRED': { severity: 'warning', why: VALID.why, name: null, count: 1 },
   });
 });

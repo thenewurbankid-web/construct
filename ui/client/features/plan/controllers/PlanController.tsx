@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { blocksShellTab, type BlockRunRequest } from '@/features/blocks';
 import { ProjectGateController } from '@/features/project-gate';
+import { rulesShellTab } from '@/features/rules';
 import { useRegisterShellTab, useShellDrawer, useShellTools } from '@/features/shell';
 import '../components/plan.css';
 import { buildImpactView } from '../domain/ImpactView';
@@ -36,6 +37,10 @@ function PlanScreen({ stageActions, featureDetail }: { stageActions?: ReactNode;
   }, []);
   const blocksTab = useMemo(() => blocksShellTab(runBlock), [runBlock]);
   useRegisterShellTab('browser', blocksTab);
+  // #395/#781: the Rules tab sits in the Browser pane beside Notes, Features and Blocks -- a read-only list for this
+  // slice, reusing the same `/api/validate` call Diagnostics already makes.
+  const rulesTab = useMemo(() => rulesShellTab(), []);
+  useRegisterShellTab('browser', rulesTab);
   const view = state.impact ? buildImpactView(state.impact, state.impactSeeds) : null;
   return <PlanPage contextError={state.contextError} impact={{ status: state.impactStatus, error: state.impactError, view }} stageActions={stageActions} featureDetail={featureDetail} />;
 }

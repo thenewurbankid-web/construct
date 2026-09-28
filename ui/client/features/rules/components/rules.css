@@ -1,0 +1,22 @@
+/* Rules tab (#395/#781): the Features screen's Browser pane, read-only slice. Prefix ru-. Tokens only; the run button
+   reuses the shared `.dg-btn`. */
+.ru-browser { padding: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+.ru-bar { display: flex; align-items: center; gap: var(--sp-2); }
+.ru-summary { margin: 0; color: var(--text-muted); font-size: var(--fs-sm); flex: 1 1 auto; }
+.ru-empty { padding: var(--sp-4); }
+.ru-empty-title { margin: 0 0 4px; font-weight: 600; }
+.ru-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.ru-row { padding: var(--sp-2) var(--sp-3); border: 1px solid var(--border-subtle); border-radius: var(--r-md); background: var(--surface-2); display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.ru-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.ru-id { margin: 0; font-family: var(--mono); font-size: var(--fs-sm); color: var(--text-muted); }
+.ru-name { margin: 0; font-weight: 600; flex: 1 1 auto; }
+.ru-chips { display: flex; align-items: center; gap: var(--sp-1); flex: 0 0 auto; }
+.ru-sev { display: inline-block; font-size: var(--fs-sm); font-weight: 600; padding: 0 var(--sp-2); border-radius: 999px; border: 1px solid var(--border-subtle); white-space: nowrap; }
+.ru-sev--error { color: var(--danger); background: var(--danger-soft); border-color: var(--danger); }
+.ru-sev--warning { color: var(--warn); background: var(--warn-soft); border-color: var(--warn); }
+.ru-sev--off { color: var(--text-muted); }
+.ru-count { display: inline-block; font-size: var(--fs-sm); font-weight: 600; padding: 0 var(--sp-2); border-radius: 999px; border: 1px solid var(--border-subtle); white-space: nowrap; }
+.ru-count--zero { color: var(--text-muted); }
+.ru-count--error { color: var(--danger); background: var(--danger-soft); border-color: var(--danger); }
+.ru-count--warning { color: var(--warn); background: var(--warn-soft); border-color: var(--warn); }
+.ru-why { margin: 0; color: var(--text-muted); }
