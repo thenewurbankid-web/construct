@@ -149,48 +149,53 @@ export function ShellFrame({ children, route, project, model, theme, userMenu }:
   );
 
   return (
-    <>
-    <ProcessAnnouncer message={announcement} />
-    <ShellPage
-      layout={layout}
-      limits={PANE_LIMITS}
-      onResize={resize}
-      onTogglePane={toggle}
-      narrow={narrow.narrow}
-      narrowPane={narrow.pane}
-      onNarrowPane={narrow.setPane}
-      focus={focus.focused}
-      screens={PRIMARY_SCREENS}
-      activeScreenId={route.screen?.id ?? null}
-      screenBadges={{ git: gitBranches }}
-      railCollapsed={railCollapsed}
-      onToggleRail={toggleRail}
-      projectSwitcher={projectSwitcher}
-      userMenu={userMenu}
-      modelStatus={model}
-      runningProcesses={processes.running}
-      working={working}
-      onOpenProcesses={() => showDrawerTab('processes')}
-      onOpenPalette={openPalette}
-      validateStatus={statusText(diagnostics.state)}
-      validateStatusChars={STATUS_CHARS}
-      onOpenDiagnostics={() => showDrawerTab('diagnostics')}
-      commitStatus={commitStatus}
-      onOpenGitCommits={openGitCommits}
-      shortcuts={SHORTCUTS}
-      tabs={tabs}
-      activeTabs={active}
-      onSelectTab={select}
-    >
-      <ShellDrawerContext.Provider value={drawerApi}>
-        <ShellStageContext.Provider value={stageApi}>
-          <ShellToolsContext.Provider value={toolsApi}>
-            <ShellFocusContext.Provider value={focus}>{children}</ShellFocusContext.Provider>
-          </ShellToolsContext.Provider>
-        </ShellStageContext.Provider>
-      </ShellDrawerContext.Provider>
-    </ShellPage>
-    </>
+    // #381 found this nested the other way (the providers wrapped only `children`, the routed page's
+    // own stage content), so `useShellDrawer`/`useShellStage`/`useShellTools` returned the no-op default
+    // for anything rendered as a Tools/Drawer tab -- `ShellPage`'s `tabs` prop renders those panels in a
+    // sibling subtree (`right`/`drawer`), not inside `children` (`mid`). Wrapping the whole `ShellPage`
+    // puts every panel it renders, tabs included, inside all four contexts.
+    <ShellDrawerContext.Provider value={drawerApi}>
+      <ShellStageContext.Provider value={stageApi}>
+        <ShellToolsContext.Provider value={toolsApi}>
+          <ShellFocusContext.Provider value={focus}>
+            <ProcessAnnouncer message={announcement} />
+            <ShellPage
+              layout={layout}
+              limits={PANE_LIMITS}
+              onResize={resize}
+              onTogglePane={toggle}
+              narrow={narrow.narrow}
+              narrowPane={narrow.pane}
+              onNarrowPane={narrow.setPane}
+              focus={focus.focused}
+              screens={PRIMARY_SCREENS}
+              activeScreenId={route.screen?.id ?? null}
+              screenBadges={{ git: gitBranches }}
+              railCollapsed={railCollapsed}
+              onToggleRail={toggleRail}
+              projectSwitcher={projectSwitcher}
+              userMenu={userMenu}
+              modelStatus={model}
+              runningProcesses={processes.running}
+              working={working}
+              onOpenProcesses={() => showDrawerTab('processes')}
+              onOpenPalette={openPalette}
+              validateStatus={statusText(diagnostics.state)}
+              validateStatusChars={STATUS_CHARS}
+              onOpenDiagnostics={() => showDrawerTab('diagnostics')}
+              commitStatus={commitStatus}
+              onOpenGitCommits={openGitCommits}
+              shortcuts={SHORTCUTS}
+              tabs={tabs}
+              activeTabs={active}
+              onSelectTab={select}
+            >
+              {children}
+            </ShellPage>
+          </ShellFocusContext.Provider>
+        </ShellToolsContext.Provider>
+      </ShellStageContext.Provider>
+    </ShellDrawerContext.Provider>
   );
 }
 
