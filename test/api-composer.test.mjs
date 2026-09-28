@@ -120,6 +120,44 @@ test('checkPublicApiDrift: a fully-synced feature reports no drift', () => {
   assert.deepEqual(result.violations, []);
 });
 
+test('syncPublicApi with includeDomain: true also exports domain/ modules', () => {
+  const d = tmpProject();
+  scaffoldFeature(d, 'alpha');
+  writeFile(d, 'features/alpha/domain/rules.ts', `export function rule() { return true; }\n`);
+
+  const result = syncPublicApi(d, 'alpha', { includeDomain: true });
+  assert.equal(result.changed, true);
+  const indexSrc = fs.readFileSync(path.join(d, 'features/alpha/index.ts'), 'utf8');
+  assert.match(indexSrc, /export \* from '\.\/domain\/rules';/);
+  assert.match(indexSrc, /Domain logic: rules\./);
+});
+
+test('syncPublicApi honors architecture.yml features.publicDomain as the default when includeDomain is not passed', () => {
+  const d = tmpProject();
+  scaffoldFeature(d, 'alpha');
+  writeFile(d, 'features/alpha/domain/rules.ts', `export function rule() { return true; }\n`);
+  writeFile(d, 'architecture.yml', `version: 1\nfeatures:\n  publicDomain: true\n`);
+
+  const result = syncPublicApi(d, 'alpha');
+  assert.equal(result.changed, true);
+  const indexSrc = fs.readFileSync(path.join(d, 'features/alpha/index.ts'), 'utf8');
+  assert.match(indexSrc, /export \* from '\.\/domain\/rules';/);
+});
+
+test('checkPublicApiDrift only flags a missing domain export when features.publicDomain is set', () => {
+  const d = tmpProject();
+  scaffoldFeature(d, 'alpha');
+  writeFile(d, 'features/alpha/index.ts', `// nothing exported yet\n`);
+  writeFile(d, 'features/alpha/domain/rules.ts', `export function rule() { return true; }\n`);
+
+  assert.deepEqual(checkPublicApiDrift(d).violations, []);
+
+  writeFile(d, 'architecture.yml', `version: 1\nfeatures:\n  publicDomain: true\n`);
+  const result = checkPublicApiDrift(d);
+  assert.equal(result.violations.length, 1);
+  assert.match(result.violations[0].suggestedFix, /export \* from '\.\/domain\/rules';/);
+});
+
 test('syncPublicApi followed by checkPublicApiDrift leaves no drift', () => {
   const d = tmpProject();
   scaffoldFeature(d, 'alpha');

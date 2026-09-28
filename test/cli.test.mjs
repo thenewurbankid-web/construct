@@ -95,7 +95,7 @@ test('generate layer with a controller but no page is refused before anything is
   assert.equal(res.status, EXIT_CODES.USAGE_ERROR);
   assert.match(res.stderr, /a "controller" needs a "page" layer/);
   assert.match(res.stderr, /--layers domain,hook,page,controller/);
-  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Checkout.tsx')), false);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Checkout.ts')), false);
 });
 
 test('generate controller after its page succeeds', () => {
@@ -113,7 +113,7 @@ test('generate layer scaffolds every requested layer in one command, out of orde
   const res = run(['generate', 'layer', 'Checkout', '--feature', 'checkout', '--layers', 'controller,page,hook,domain'], dir);
   assert.equal(res.status, EXIT_CODES.OK);
   for (const f of [
-    'domain/Checkout.tsx',
+    'domain/Checkout.ts',
     'hooks/useCheckout.tsx',
     'pages/CheckoutPage.tsx',
     'controllers/CheckoutController.tsx',
@@ -139,7 +139,7 @@ test('create feature and create layer are equivalent to their flat commands', ()
   assert.equal(run(['create', 'feature', 'checkout'], dir).status, EXIT_CODES.OK);
   const res = run(['create', 'layer', 'Foo', '--feature', 'checkout', '--layers', 'domain,hook'], dir);
   assert.equal(res.status, EXIT_CODES.OK);
-  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.tsx')), true);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.ts')), true);
   assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'hooks', 'useFoo.tsx')), true);
   assert.match(res.stdout, /\[tool: .*\] \[llm: 0 calls/);
 });
@@ -149,7 +149,7 @@ test('create <layer> <name> falls through to plain generate', () => {
   run(['create', 'feature', 'checkout'], dir);
   const res = run(['create', 'domain', 'Foo', '--feature', 'checkout'], dir);
   assert.equal(res.status, EXIT_CODES.OK);
-  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.tsx')), true);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.ts')), true);
 });
 
 test('research summarize and research doctor delegate to the flat commands', () => {
@@ -177,8 +177,8 @@ test('refactor move relocates a file across layers and reports the result', () =
   run(['create', 'domain', 'Foo', '--feature', 'checkout'], dir);
   const res = run(['refactor', 'move', 'Foo', '--feature', 'checkout', '--from', 'domain', '--to', 'service'], dir);
   assert.equal(res.status, EXIT_CODES.OK);
-  assert.match(res.stdout, /Moved features\/checkout\/domain\/Foo\.tsx -> features\/checkout\/services\/Foo\.tsx/);
-  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'services', 'Foo.tsx')), true);
+  assert.match(res.stdout, /Moved features\/checkout\/domain\/Foo\.ts -> features\/checkout\/services\/Foo\.ts/);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'services', 'Foo.ts')), true);
   assert.match(res.stdout, /\[tool: .*\] \[llm: 0 calls/);
 });
 
@@ -284,6 +284,20 @@ test('sync regenerates .dependency-cruiser.cjs', () => {
   assert.ok(fs.existsSync(path.join(dir, '.dependency-cruiser.cjs')));
 });
 
+test('sync --include-domain exposes domain-layer exports in the feature public API (#498)', () => {
+  const dir = emptyProjectDir();
+  run(['create', 'feature', 'checkout'], dir);
+  run(['create', 'domain', 'Foo', '--feature', 'checkout'], dir);
+
+  const withoutFlag = run(['sync'], dir);
+  assert.equal(withoutFlag.status, EXIT_CODES.OK);
+  assert.doesNotMatch(fs.readFileSync(path.join(dir, 'features', 'checkout', 'index.ts'), 'utf8'), /domain\/Foo/);
+
+  const withFlag = run(['sync', '--include-domain'], dir);
+  assert.equal(withFlag.status, EXIT_CODES.OK);
+  assert.match(fs.readFileSync(path.join(dir, 'features', 'checkout', 'index.ts'), 'utf8'), /export \* from '\.\/domain\/Foo';/);
+});
+
 test('monorepo discovery: validate from a nested subdirectory uses the parent architecture.yml', () => {
   const dir = emptyProjectDir();
   fs.writeFileSync(path.join(dir, 'architecture.yml'), 'rules:\n  PAGE-004: warning\n');
@@ -356,7 +370,7 @@ test('feature create and generate --dir scope all writes to the subdirectory, le
   const generateRes = run(['generate', 'domain', 'Bar', '--feature', 'foo', '--dir', 'construct-sub'], parent);
   assert.equal(generateRes.status, EXIT_CODES.OK);
 
-  assert.ok(fs.existsSync(path.join(parent, 'construct-sub', 'features', 'foo', 'domain', 'Bar.tsx')));
+  assert.ok(fs.existsSync(path.join(parent, 'construct-sub', 'features', 'foo', 'domain', 'Bar.ts')));
   assert.equal(fs.readFileSync(path.join(parent, 'sibling.txt'), 'utf8'), 'do not touch\n');
   assert.deepEqual(fs.readdirSync(parent).sort(), before);
 });
@@ -386,9 +400,9 @@ test('import scaffolds layers and breadcrumbs them to the source file, with zero
   const res = run(['import', 'Foo', '--feature', 'checkout', '--layers', 'domain,hook', '--from', sourceFile], dir);
   assert.equal(res.status, EXIT_CODES.OK);
   assert.match(res.stdout, /\[tool: .*\] \[llm: 0 calls/);
-  assert.match(res.stdout, /features\/checkout\/domain\/Foo\.tsx/);
+  assert.match(res.stdout, /features\/checkout\/domain\/Foo\.ts/);
   assert.match(res.stdout, /features\/checkout\/hooks\/useFoo\.tsx/);
-  assert.match(fs.readFileSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.tsx'), 'utf8'), /TODO\(import\)/);
+  assert.match(fs.readFileSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.ts'), 'utf8'), /TODO\(import\)/);
 });
 
 test('import without --from exits with USAGE_ERROR', () => {
@@ -453,7 +467,7 @@ test('import --plan batch-scaffolds every unit in one command', () => {
   assert.equal(res.status, EXIT_CODES.OK);
   assert.match(res.stdout, /Foo: scaffolded 2 file\(s\)/);
   assert.match(res.stdout, /\[tool: .*\] \[llm: 0 calls/);
-  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.tsx')), true);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.ts')), true);
   assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'hooks', 'useFoo.tsx')), true);
 });
 

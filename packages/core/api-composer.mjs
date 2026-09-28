@@ -16,6 +16,15 @@ function featuresRootOf(config) {
   return config.features?.root || 'features';
 }
 
+// domain/ is pure functions with no side effects (LAYER_CONSTRAINTS.domain), so unlike
+// services/workflows/pages/components it's the natural flat, directly-testable surface an
+// AI agent or a test would want to call. Off by default (existing projects that route domain
+// through a hook/controller keep their current index.ts unchanged); opt in per-project with
+// `features.publicDomain: true` in architecture.yml, or per-run with `construct sync --include-domain`.
+function includeDomainOf(config) {
+  return config.features?.publicDomain === true;
+}
+
 function listFeatureDirs(root, featuresRoot) {
   const base = path.join(root, featuresRoot);
   if (!fs.existsSync(base)) return [];
@@ -30,9 +39,10 @@ function listFeatureDirs(root, featuresRoot) {
 // (domain/, services/, workflows/, pages/, components/, shared/) are never
 // auto-added — if a human already exported something from there, it is left
 // untouched (see isCovered), but the composer will not add new lines for them.
-function candidateModules(featureDir) {
+function candidateModules(featureDir, { includeDomain = false } = {}) {
   const out = [];
-  for (const folder of PUBLIC_CANDIDATE_FOLDERS) {
+  const folders = includeDomain ? [...PUBLIC_CANDIDATE_FOLDERS, 'domain'] : PUBLIC_CANDIDATE_FOLDERS;
+  for (const folder of folders) {
     const dir = path.join(featureDir, folder);
     if (!fs.existsSync(dir)) continue;
     for (const p of walk(dir)) {
@@ -97,23 +107,30 @@ function fileExistsForSpecifier(featureDir, specifier) {
 }
 
 /**
- * syncPublicApi(root, featureName) -> {changed, path}
+ * syncPublicApi(root, featureName, opts) -> {changed, path}
  * Additively updates features/<name>/index.ts: appends export lines for
  * anything that looks intentionally public and isn't already covered by an
  * existing export (exact or via a wildcard ancestor). Never removes or
  * reorders lines a human already wrote. Running this twice on an unchanged
  * tree is a no-op (changed: false, file left untouched).
  *
+ * `domain/` is excluded by default (see includeDomainOf) since existing projects that route
+ * domain functions through a hook/controller should keep their current index.ts unchanged;
+ * pass `{ includeDomain: true }` or set `features.publicDomain: true` in architecture.yml to
+ * also expose pure domain functions directly.
+ *
  * @param {string} root Project root.
  * @param {string} featureName Feature whose `index.ts` is updated.
+ * @param {{includeDomain?: boolean}} [opts] Set `includeDomain` to also export `domain/` modules.
  * @returns {{changed:boolean, path:string}} Whether the index was written, and its project-relative path.
  *
  * @example
  * syncPublicApi(root, 'plan'); // => { changed: true, path: 'features/plan/index.ts' }
  */
-export function syncPublicApi(root, featureName) {
+export function syncPublicApi(root, featureName, opts = {}) {
   const config = loadConfig(root);
   const featuresRoot = featuresRootOf(config);
+  const includeDomain = opts.includeDomain ?? includeDomainOf(config);
   const featureDir = path.join(root, featuresRoot, featureName);
   const indexPath = path.join(featureDir, 'index.ts');
   const relIndexPath = rel(root, indexPath);
@@ -123,7 +140,7 @@ export function syncPublicApi(root, featureName) {
   const hadIndex = fs.existsSync(indexPath);
   const source = hadIndex ? fs.readFileSync(indexPath, 'utf8') : `// Public API for feature: ${featureName}\n`;
   const existingExports = parseIndexExports(source);
-  const linesToAdd = candidateModules(featureDir)
+  const linesToAdd = candidateModules(featureDir, { includeDomain })
     .filter((c) => !isCovered(existingExports, c.specifier))
     .map(exportLineFor);
 
@@ -150,6 +167,7 @@ export function syncPublicApi(root, featureName) {
 export function checkPublicApiDrift(root) {
   const config = loadConfig(root);
   const featuresRoot = featuresRootOf(config);
+  const includeDomain = includeDomainOf(config);
   const out = [];
   const severity = (() => {
     const entry = config.rules?.['SLICE-003'];
@@ -183,7 +201,7 @@ export function checkPublicApiDrift(root) {
       });
     }
 
-    for (const c of candidateModules(featureDir)) {
+    for (const c of candidateModules(featureDir, { includeDomain })) {
       if (isCovered(existingExports, c.specifier)) continue;
       push({
         rule: 'SLICE-003',

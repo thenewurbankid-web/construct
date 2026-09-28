@@ -21,11 +21,11 @@ test('moveLayerFile relocates the file and updates another file that imports it'
   fs.writeFileSync(hookFile, `import { Foo } from '../domain/Foo';\nexport function useBar() { return Foo(); }\n`);
 
   const result = moveLayerFile(dir, 'checkout', 'Foo', 'domain', 'service');
-  assert.equal(result.from, 'features/checkout/domain/Foo.tsx');
-  assert.equal(result.to, 'features/checkout/services/Foo.tsx');
+  assert.equal(result.from, 'features/checkout/domain/Foo.ts');
+  assert.equal(result.to, 'features/checkout/services/Foo.ts');
   assert.equal(result.importersUpdated, 1);
-  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.tsx')), false);
-  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'services', 'Foo.tsx')), true);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Foo.ts')), false);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'services', 'Foo.ts')), true);
   assert.match(fs.readFileSync(hookFile, 'utf8'), /from '\.\.\/services\/Foo'/);
 
   const res = validateArchitecture(dir);
@@ -36,7 +36,7 @@ test('moveLayerFile re-resolves the moved file\'s own same-layer relative import
   const dir = tmpProject();
   createFeature(dir, 'checkout');
   generateLayer(dir, 'domain', 'Helper', 'checkout');
-  const fooFile = path.join(dir, 'features', 'checkout', 'domain', 'Foo.tsx');
+  const fooFile = path.join(dir, 'features', 'checkout', 'domain', 'Foo.ts');
   fs.writeFileSync(fooFile, `import { Helper } from './Helper';\nexport function Foo() { return Helper(); }\n`);
 
   const result = moveLayerFile(dir, 'checkout', 'Foo', 'domain', 'service');
@@ -78,7 +78,9 @@ test('moveLayerFile throws if the target already exists', () => {
   const dir = tmpProject();
   createFeature(dir, 'checkout');
   generateLayer(dir, 'domain', 'Foo', 'checkout');
-  generateLayer(dir, 'service', 'Foo', 'checkout');
+  // moveLayerFile keeps the source's own extension (.ts, from the domain layer) at the
+  // destination, so the pre-existing collision must be written with that same extension.
+  fs.writeFileSync(path.join(dir, 'features', 'checkout', 'services', 'Foo.ts'), 'export function Foo() { return true; }\n');
   assert.throws(() => moveLayerFile(dir, 'checkout', 'Foo', 'domain', 'service'), ConstructError);
 });
 
@@ -98,7 +100,7 @@ test('renameLayerFile renames within the same layer and updates importers', () =
   fs.writeFileSync(hookFile, `import { Foo } from '../domain/Foo';\nexport function useBar() { return Foo(); }\n`);
 
   const result = renameLayerFile(dir, 'checkout', 'Foo', 'Baz', 'domain');
-  assert.equal(result.to, 'features/checkout/domain/Baz.tsx');
+  assert.equal(result.to, 'features/checkout/domain/Baz.ts');
   assert.equal(result.importersUpdated, 1);
   assert.match(fs.readFileSync(hookFile, 'utf8'), /from '\.\.\/domain\/Baz'/);
 });
@@ -156,8 +158,8 @@ test('TypeScript engine: relative, @/ alias, dynamic import(), re-exports, barre
   const result = moveLayerFile(dir, 'checkout', 'Foo', 'domain', 'service');
   assert.equal(result.engine, 'typescript');
   assert.match(result.tsVersion, /^\d+\.\d+\.\d+/);
-  assert.equal(fs.existsSync(path.join(dir, 'features/checkout/services/Foo.tsx')), true);
-  assert.equal(fs.existsSync(path.join(dir, 'features/checkout/domain/Foo.tsx')), false);
+  assert.equal(fs.existsSync(path.join(dir, 'features/checkout/services/Foo.ts')), true);
+  assert.equal(fs.existsSync(path.join(dir, 'features/checkout/domain/Foo.ts')), false);
 
   assert.match(read('features/checkout/hooks/useRel.tsx'), /from '\.\.\/services\/Foo'/);
   assert.match(read('features/checkout/hooks/useAlias.tsx'), /from '@\/features\/checkout\/services\/Foo'/); // alias preserved
@@ -178,7 +180,7 @@ test('TypeScript engine: relative, @/ alias, dynamic import(), re-exports, barre
 test('TypeScript engine: the moved file\'s own imports are re-pointed from its new home', () => {
   const { dir, put, read } = tsProject();
   generateLayer(dir, 'domain', 'Helper', 'checkout');
-  put('features/checkout/domain/Foo.tsx', `import { Helper } from './Helper';\nexport function Foo() { return Helper(); }\n`);
+  put('features/checkout/domain/Foo.ts', `import { Helper } from './Helper';\nexport function Foo() { return Helper(); }\n`);
   const result = moveLayerFile(dir, 'checkout', 'Foo', 'domain', 'service');
   assert.equal(result.engine, 'typescript');
   assert.match(read(result.to), /from '\.\.\/domain\/Helper'/);
@@ -193,8 +195,8 @@ test('dry run lists every touched file and writes nothing', () => {
   assert.equal(r.dryRun, true);
   assert.deepEqual(r.files.sort(), ['features/checkout/hooks/useLazy.tsx', 'features/checkout/hooks/useRel.tsx']);
   assert.equal(fs.readFileSync(hook, 'utf8'), before);
-  assert.equal(fs.existsSync(path.join(dir, 'features/checkout/domain/Foo.tsx')), true);
-  assert.equal(fs.existsSync(path.join(dir, 'features/checkout/services/Foo.tsx')), false);
+  assert.equal(fs.existsSync(path.join(dir, 'features/checkout/domain/Foo.ts')), true);
+  assert.equal(fs.existsSync(path.join(dir, 'features/checkout/services/Foo.ts')), false);
 });
 
 test('a tsconfig that extends a file outside the project is refused: regex fallback with a clear note, nothing outside is read', () => {
@@ -230,7 +232,7 @@ test('a frozen importer refuses the whole TypeScript move before anything is wri
   const importer = put('features/checkout/hooks/useRel.tsx', `import { Foo } from '../domain/Foo';\n`);
   fs.appendFileSync(path.join(dir, 'architecture.yml'), '\nfrozen:\n  - features/checkout/hooks/useRel.tsx\n');
   assert.throws(() => moveLayerFile(dir, 'checkout', 'Foo', 'domain', 'service'), ConstructError);
-  assert.equal(fs.existsSync(path.join(dir, 'features/checkout/domain/Foo.tsx')), true);
+  assert.equal(fs.existsSync(path.join(dir, 'features/checkout/domain/Foo.ts')), true);
   assert.match(fs.readFileSync(importer, 'utf8'), /\.\.\/domain\/Foo/);
 });
 
@@ -238,8 +240,8 @@ test('the language service is cached per project: a second plan is fast and sees
   const { planFileMove, clearMoveCache } = await import('../packages/engine/tsFileMove.mjs');
   clearMoveCache();
   const { dir, put } = tsProject();
-  const old = path.join(dir, 'features/checkout/domain/Foo.tsx');
-  const dest = path.join(dir, 'features/checkout/services/Foo.tsx');
+  const old = path.join(dir, 'features/checkout/domain/Foo.ts');
+  const dest = path.join(dir, 'features/checkout/services/Foo.ts');
   put('features/checkout/hooks/useRel.tsx', `import { Foo } from '../domain/Foo';\n`);
   const t0 = Date.now();
   const first = planFileMove(dir, old, dest);

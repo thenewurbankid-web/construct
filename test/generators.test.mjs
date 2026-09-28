@@ -147,6 +147,7 @@ test('generateLayer writes every layer into the right folder with expected namin
     if (layer === 'hook') assert.match(file, /useCheckout\.tsx$/);
     else if (layer === 'page') assert.match(file, /CheckoutPage\.tsx$/);
     else if (layer === 'controller') assert.match(file, /CheckoutController\.tsx$/);
+    else if (layer === 'domain') assert.match(file, /Checkout\.ts$/);
     else assert.match(file, /Checkout\.tsx$/);
   }
 });
@@ -165,7 +166,7 @@ test('generateVertical scaffolds every requested layer regardless of the order g
   const files = generateVertical(dir, 'Checkout', 'checkout', ['controller', 'page', 'hook', 'domain']);
   assert.equal(files.length, 4);
   for (const f of files) assert.ok(fs.existsSync(f));
-  assert.match(files[0], /domain[/\\]Checkout\.tsx$/);
+  assert.match(files[0], /domain[/\\]Checkout\.ts$/);
   assert.match(files[1], /hooks[/\\]useCheckout\.tsx$/);
   assert.match(files[2], /pages[/\\]CheckoutPage\.tsx$/);
   assert.match(files[3], /controllers[/\\]CheckoutController\.tsx$/);
@@ -175,7 +176,7 @@ test('generateVertical throws on an unknown layer name before writing anything',
   const dir = tmpProject();
   createFeature(dir, 'checkout');
   assert.throws(() => generateVertical(dir, 'Checkout', 'checkout', ['domain', 'nope']), /Unknown layer/);
-  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Checkout.tsx')), false);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Checkout.ts')), false);
 });
 
 // #275 superseded this test's original assertion: requesting a controller
@@ -258,7 +259,7 @@ test('post-generation self-check throws a ConstructError when a custom template 
 // ---- #218: layer templates use pascalCase like createFeature/the engine generators
 
 const EXPECTED_218 = {
-  domain: ['domain/RefundRequest.tsx', /export function RefundRequest\(/],
+  domain: ['domain/RefundRequest.ts', /export function RefundRequest\(/],
   service: ['services/RefundRequest.tsx', /export async function RefundRequest\(/],
   workflow: ['workflows/RefundRequest.tsx', /export const RefundRequestWorkflow = /],
   hook: ['hooks/useRefundRequest.tsx', /export function useRefundRequest\(/],

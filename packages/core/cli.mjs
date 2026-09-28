@@ -743,10 +743,11 @@ function featureNames(root, config) {
 export async function sync(args) {
   const root = getRoot(args);
   const c = loadConfig(root);
+  const includeDomain = args.includes('--include-domain') || undefined; // undefined defers to architecture.yml's features.publicDomain
   write(path.join(root, '.dependency-cruiser.cjs'), `module.exports={forbidden:[{name:'page-to-workflow',from:{path:'features/.*/pages'},to:{path:'features/.*/workflows'},severity:'error'},{name:'page-to-service',from:{path:'features/.*/pages'},to:{path:'features/.*/services'},severity:'error'},{name:'component-to-app-logic',from:{path:'features/.*/components'},to:{path:'features/.*/(controllers|workflows|services|domain)'},severity:'error'}]};\n`);
   let apiSynced = 0;
   for (const name of featureNames(root, c)) {
-    const { changed } = syncPublicApi(root, name);
+    const { changed } = syncPublicApi(root, name, { includeDomain });
     if (changed) apiSynced++;
   }
   console.log(`Synced ${Object.keys(c.rules).length} Construct rules, ${apiSynced} feature public API(s) updated.`);

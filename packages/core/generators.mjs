@@ -207,7 +207,10 @@ export function layerTargetFile(root,layer,name,feature,config=loadConfig(root))
  // RefundRequest everywhere and an illegal name fails clearly with nothing on disk.
  const cap=pascalCase(name,layer[0].toUpperCase()+layer.slice(1));
  const dir=path.join(root,config.features?.root||'features',feature,folderFor(layer));
- return path.join(dir,`${layerFileBaseName(layer,cap)}.tsx`);
+ // domain is pure functions only (LAYER_CONSTRAINTS.domain: "No React import"), so it
+ // never needs JSX -- every other layer keeps .tsx so a later JSX addition never forces a rename.
+ const ext=layer==='domain'?'.ts':'.tsx';
+ return path.join(dir,`${layerFileBaseName(layer,cap)}${ext}`);
 }
 
 export function renderLayer(root,layer,name,feature){
@@ -270,7 +273,7 @@ export const LAYER_PREREQUISITES={controller:['page']};
 // resolveRelativeImport, so this agrees with what IMPORT-001 would decide.
 const LAYER_FILE_EXTENSIONS=['.tsx','.ts','.jsx','.js'];
 function layerFileExists(root,layer,name,feature){
- const base=layerTargetFile(root,layer,name,feature).replace(/\.tsx$/,'');
+ const base=layerTargetFile(root,layer,name,feature).replace(/\.(tsx|ts|jsx|js)$/,'');
  return LAYER_FILE_EXTENSIONS.some(ext=>{const p=base+ext; return fs.existsSync(p)&&fs.statSync(p).isFile();});
 }
 
