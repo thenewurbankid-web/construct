@@ -146,8 +146,11 @@ export function matchSlotsToHandlers(slotNames, hookMemberNames) {
 /** Resolve the {pagePropsFile, hookFile} to read for feature `feature`'s
  * `<name>` controller: from an (already schema-validated) Context Envelope's
  * `layers.page`/`layers.hook` entries if one is given, else this repo's own
- * naming convention. */
-function resolveSourceFiles(root, name, feature, envelope) {
+ * naming convention. Exported for `plan-touches.mjs`: the exact same
+ * resolution `generateController` uses to find its prerequisite files, reused
+ * rather than duplicated so a plan preview can't disagree with the real run
+ * about which files a bind depends on. */
+export function resolveSourceFiles(root, name, feature, envelope) {
   const cap = pascalCase(name, 'Controller');
   if (envelope) {
     const { valid, errors } = validateEnvelope(envelope);

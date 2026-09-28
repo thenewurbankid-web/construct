@@ -15,6 +15,10 @@ import { wrapProviderTouches } from './provider-wrap.mjs';
 import { guardTouches } from './guard.mjs';
 import { storeTouches } from './store.mjs';
 import { handlerTouches } from './handler.mjs';
+import { moveLayerFile, renameLayerFile } from './refactor.mjs';
+import { existingRealFiles } from './import.mjs';
+import { compileWorkflow, compileStateUnion, STATE_UNION_MARKER } from '../engine/workflowGenerator.mjs';
+import { resolveSourceFiles } from '../engine/controllerBinder.mjs';
 
 const isName = (v) => typeof v === 'string' && v.trim().length > 0;
 const asList = (v) => (Array.isArray(v) ? v : typeof v === 'string' ? v.split(',') : []).map((x) => String(x).trim()).filter(Boolean);
@@ -40,8 +44,14 @@ function withMissingFeatureTouches(root, config, feature, files) {
   return [...featureFiles, ...files];
 }
 
-/** Flows whose written files are derived here. Every other writing flow answers `null` until its output is pinned by a test. */
-export const DERIVED_FLOWS = Object.freeze(['create.feature', 'create.unit', 'create.layer', 'create.proof', 'create.route', 'add.dependency', 'add.env', 'wrap.provider', 'guard.route', 'create.store', 'create.handler']);
+/** Flows whose written files are derived here. Every other writing flow answers `null` until its output is pinned by a test.
+ * `create.service.openapi` is deliberately NOT here (#610): whether `zod.gen.ts` survives depends on @hey-api/openapi-ts
+ * actually parsing the given spec (an external tool call, not a cheap deterministic read) -- there is no way to know
+ * without running it, and running it on every plan preview is not "cheap on a small machine". Guessing would risk
+ * declaring a file that never appears (harmless) but ALSO risks declaring the wrong file for the ones that DO always
+ * write (`clientPath`, the feature's own index.ts) as 'create' when they're actually 'modify' on a re-run, which the
+ * approval gate would then wrongly trust. Left `null` until a cheaper way to know exists. */
+export const DERIVED_FLOWS = Object.freeze(['create.feature', 'create.unit', 'create.layer', 'create.proof', 'create.route', 'add.dependency', 'add.env', 'wrap.provider', 'guard.route', 'create.store', 'create.handler', 'create.page.from', 'create.workflow.from', 'create.controller.bind', 'refactor.move', 'refactor.rename', 'import.unit']);
 
 /**
  * The project-relative files a writing plan step will create, derived from its own arguments without touching the disk.
@@ -101,6 +111,99 @@ export function expectedFiles(root, flowId, args = {}) {
     if (flowId === 'create.store') return storeTouches(root, { name: args.name, feature: args.feature, shape: args.shape, entity: args.entity, fields: args.fields });
     // #625: the route handler, its domain unit and service, the types and barrel it updates and its proof (a react-spa project has no handler: nothing is derived).
     if (flowId === 'create.handler') return handlerTouches(root, { name: args.name, feature: args.feature, method: args.method, path: args.path, service: args.service, entity: args.entity, fields: args.fields });
+    // #610: ingests an externally-authored JSX file (pageTransformer.mjs's ingestPage) as a pristine page + Props
+    // interface. The ingested file's own content decides the page's SLOTS, never which paths get written -- only its
+    // existence (checked the same way ingestPage itself checks it) and the name/feature matter for that.
+    if (flowId === 'create.page.from') {
+      if (!isName(args.name) || !isName(args.feature) || !isName(args.from)) return null;
+      const sourcePath = path.isAbsolute(args.from) ? args.from : path.resolve(args.from);
+      if (!fs.existsSync(sourcePath) || !fs.statSync(sourcePath).isFile()) return null;
+      const cap = pascalCase(args.name, 'Page');
+      const base = path.join(config.features?.root || 'features', args.feature, 'pages');
+      const files = ['Page.tsx', 'PageProps.ts'].map((suffix) => ({ path: rel(root, path.join(root, base, `${cap}${suffix}`)), change: 'create' }));
+      return withMissingFeatureTouches(root, config, args.feature, files);
+    }
+    // #610: compiles a JSON state-graph descriptor (workflowGenerator.mjs's generateWorkflow) into an XState v5 machine
+    // file, plus a typed state union when --state-union asks for it. Reuses the real `compileWorkflow`/`compileStateUnion`
+    // validation (read-only, no filesystem access) so an invalid descriptor -- which the real generator refuses before
+    // writing anything -- derives nothing here either, instead of guessing.
+    if (flowId === 'create.workflow.from') {
+      if (!isName(args.name) || !isName(args.feature) || !isName(args.from)) return null;
+      const descriptorPath = path.isAbsolute(args.from) ? args.from : path.resolve(args.from);
+      if (!fs.existsSync(descriptorPath)) return null;
+      const descriptor = JSON.parse(fs.readFileSync(descriptorPath, 'utf8'));
+      const cap = pascalCase(args.name, 'Workflow');
+      compileWorkflow(descriptor, { name: cap }); // throws (caught below) on an invalid descriptor, exactly as the real generator does before writing
+      const base = path.join(config.features?.root || 'features', args.feature, 'workflows');
+      const files = [{ path: rel(root, path.join(root, base, `${cap}Workflow.tsx`)), change: 'create' }];
+      if (args.stateUnion) {
+        compileStateUnion(descriptor, { name: cap });
+        const stateAbs = path.join(root, base, `${cap}WorkflowState.ts`);
+        const stateExists = fs.existsSync(stateAbs);
+        // assertStateUnionWritable's own rule: a pre-existing file the generator didn't write itself refuses the whole run.
+        if (stateExists && !fs.readFileSync(stateAbs, 'utf8').startsWith(STATE_UNION_MARKER)) return null;
+        files.push({ path: rel(root, stateAbs), change: stateExists ? 'modify' : 'create' });
+      }
+      return withMissingFeatureTouches(root, config, args.feature, files);
+    }
+    // #610: auto-wires an already-generated hook into an already-generated pristine page (controllerBinder.mjs's
+    // generateController) -- one file, always `<Name>Controller.tsx`. Its prerequisites (the page/hook files it reads)
+    // are resolved the same way the real generator resolves them (an optional Context Envelope, else this repo's naming
+    // convention); missing prerequisites refuse the whole run, same as the real generator.
+    if (flowId === 'create.controller.bind') {
+      if (!isName(args.name) || !isName(args.feature)) return null;
+      let envelope;
+      if (args.envelope !== undefined) {
+        if (!isName(args.envelope)) return null;
+        const envelopePath = path.isAbsolute(args.envelope) ? args.envelope : path.resolve(args.envelope);
+        if (!fs.existsSync(envelopePath)) return null;
+        envelope = JSON.parse(fs.readFileSync(envelopePath, 'utf8'));
+      }
+      const cap = pascalCase(args.name, 'Controller');
+      const { pagePropsFile, hookFile } = resolveSourceFiles(root, args.name, args.feature, envelope);
+      const pageFile = path.join(path.dirname(pagePropsFile), `${cap}Page.tsx`);
+      if (!fs.existsSync(pagePropsFile) || !fs.existsSync(hookFile) || !fs.existsSync(pageFile)) return null;
+      const base = path.join(config.features?.root || 'features', args.feature, 'controllers');
+      return withMissingFeatureTouches(root, config, args.feature, [{ path: rel(root, path.join(root, base, `${cap}Controller.tsx`)), change: 'create' }]);
+    }
+    // #610: moves/renames a unit and rewrites every importer, never touching content -- both `refactor.mjs` functions
+    // accept `{ dryRun: true }`, which computes exactly this (and refuses, writing nothing, exactly like a real run
+    // would) without writing anything, so this reuses that instead of re-deriving import rewriting a second way.
+    // The old and new paths are each declared 'move' (the approval gate accepts any non-'modify' change there -- a
+    // real run reports a delete at the old path and a create at the new one); every rewritten importer is 'modify'.
+    if (flowId === 'refactor.move' || flowId === 'refactor.rename') {
+      if (!isName(args.name) || !isName(args.feature)) return null;
+      let result;
+      if (flowId === 'refactor.move') {
+        if (!isName(args.from) || !isName(args.to)) return null;
+        result = moveLayerFile(root, args.feature, args.name, args.from, args.to, { dryRun: true });
+      } else {
+        if (!isName(args.newName) || !isName(args.layer)) return null;
+        result = renameLayerFile(root, args.feature, args.name, args.newName, args.layer, { dryRun: true });
+      }
+      return [
+        { path: result.from, change: 'move' },
+        { path: result.to, change: 'move' },
+        ...result.files.filter((f) => f !== result.from && f !== result.to).map((f) => ({ path: f, change: 'modify' })),
+      ];
+    }
+    // #610: scaffolds the same per-layer files `create.layer` does (import.mjs's importVertical calls the identical
+    // `generateVertical`) with ported/TODO content instead of a stub template -- content the model may fill never
+    // changes which paths get written. Refuses (derives nothing), exactly as the real run does, when the source file
+    // is missing or any target file already holds real (not just an earlier unfilled import stub) content.
+    if (flowId === 'import.unit') {
+      const layers = asList(args.layers);
+      if (!isName(args.name) || !isName(args.feature) || !isName(args.from) || !layers.length || !layers.every((l) => LAYER_ORDER.includes(l))) return null;
+      const fromAbs = path.isAbsolute(args.from) ? args.from : path.resolve(args.from);
+      if (!fs.existsSync(fromAbs) || !fs.statSync(fromAbs).isFile()) return null;
+      if (existingRealFiles(root, args.name, args.feature, layers).length) return null;
+      return withMissingFeatureTouches(
+        root,
+        config,
+        args.feature,
+        LAYER_ORDER.filter((l) => layers.includes(l)).map((l) => ({ path: rel(root, layerTargetFile(root, l, args.name, args.feature, config)), change: 'create', layer: l })),
+      );
+    }
     return null;
   } catch {
     return null;

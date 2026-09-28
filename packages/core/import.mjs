@@ -50,8 +50,11 @@ function breadcrumb(fromAbsPath, intoAbsPath) {
  * including a file a human had already hand-ported or an earlier `--llm`
  * fill had already written — real work destroyed with no warning, purely
  * because generateVertical's write() has no existence check. Read-only:
- * never writes, so it's safe to call before anything is scaffolded. */
-function existingRealFiles(root, name, feature, layers) {
+ * never writes, so it's safe to call before anything is scaffolded.
+ * Exported for `plan-touches.mjs`: the same collision check `importVertical`
+ * runs before writing anything, reused rather than duplicated so a plan
+ * preview and the real run can never disagree about whether this refuses. */
+export function existingRealFiles(root, name, feature, layers) {
   const hits = [];
   for (const layer of layers) {
     const file = layerTargetFile(root, layer, name, feature);
