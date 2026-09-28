@@ -247,6 +247,46 @@ test.describe.serial('Components screen: browse in the left pane, document and e
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 
+  test('#380 isolated view: no dev server running is a clear empty state, not a stuck spinner', async ({ page }) => {
+    await gotoCockpit(page, `/components?component=${encodeURIComponent(SUMMARY_PATH)}`);
+    await expect(page.getByTestId('cd-isolated')).toBeVisible();
+    await expect(page.getByTestId('cd-isolated')).toContainText('Isolated preview needs the dev server');
+    await expect(page.getByTestId('cd-isolated-preview')).toHaveCount(0);
+  });
+
+  test('#380 State switcher lists the machine states; Flow inset highlights the one chosen', async ({ page }) => {
+    await gotoCockpit(page, `/components?component=${encodeURIComponent(SUMMARY_PATH)}`);
+    const switcher = page.getByTestId('cd-state-switcher');
+    await expect(switcher).toBeVisible();
+    const buttons = switcher.getByRole('tab');
+    await expect(buttons).toHaveText(['idle', 'pending', 'rejected', 'success']);
+    await expect(page.getByTestId('cd-state-btn-idle')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByTestId('cd-flow-inset')).toBeVisible();
+    await expect(page.getByTestId('cd-flow-state-idle')).toHaveClass(/current/);
+    await page.getByTestId('cd-state-btn-pending').click();
+    await expect(page.getByTestId('cd-state-btn-pending')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByTestId('cd-state-btn-idle')).toHaveAttribute('aria-selected', 'false');
+    await expect(page.getByTestId('cd-flow-state-pending')).toHaveClass(/current/);
+    await expect(page.getByTestId('cd-flow-state-idle')).not.toHaveClass(/current/);
+  });
+
+  test('#380 a component with no matching workflow file says so instead of showing a switcher', async ({ page }) => {
+    await gotoCockpit(page, `/components?component=${encodeURIComponent(PLAIN_PATH)}`);
+    await expect(page.getByTestId('cd-workflow-none')).toContainText('No machine drives this component');
+    await expect(page.getByTestId('cd-state-switcher')).toHaveCount(0);
+  });
+
+  test('#380 Used by lists the pages that reach this component, with its feature; none reaching it says so', async ({ page }) => {
+    await gotoCockpit(page, `/components?component=${encodeURIComponent('features/billing/components/BillingView.tsx')}`);
+    const usedBy = page.getByTestId('cd-used-by-panel');
+    await expect(usedBy.getByTestId('cd-used-by-row')).toHaveCount(1);
+    await expect(usedBy.getByTestId('cd-used-by-row')).toContainText('features/billing/pages/BillingPage.tsx');
+    await expect(usedBy.getByTestId('cd-used-by-row').getByRole('link', { name: 'billing' })).toHaveAttribute('href', '/?feature=billing');
+
+    await gotoCockpit(page, `/components?component=${encodeURIComponent(SUMMARY_PATH)}`);
+    await expect(page.getByTestId('cd-used-by-none')).toContainText('No page in this project reaches this component yet');
+  });
+
   for (const theme of ['dark', 'light']) {
     for (const [vp, size] of [['wide', { width: 1280, height: 800 }], ['narrow', { width: 390, height: 844 }]]) {
       test(`accessibility: ${theme} ${vp}, the list and a documented component with its editor`, async ({ page }) => {

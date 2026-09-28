@@ -57,6 +57,9 @@ export function makeBrowseProject(prefix = 'og431-') {
   write(PLAIN_PATH, 'export function Plain() {\n  return <i />;\n}\n');
   write(BROKEN_PATH, 'export function Broken( {\n  return <b />;\n\nconst = ;\n');
   write('features/billing/workflows/SignupFlow.ts', FLOW);
+  // Same-name-file convention (#380): a machine driving BillingSummary, so the Components screen's
+  // State switcher / Flow inset have something real to show for at least one component.
+  write('features/billing/workflows/BillingSummary.ts', FLOW.replace('SignupFlow', 'BillingSummaryFlow'));
   write('features/billing/tests/billing.spec.ts', "import { test } from '@playwright/test';\ntest('billing shows a total', async () => {});\n");
   const git = (...args) => execFileSync('git', ['-c', 'user.name=e2e', '-c', 'user.email=e2e@example.invalid', '-c', 'commit.gpgsign=false', ...args], { cwd: repo, encoding: 'utf8' });
   git('init', '-q', '-b', 'main');
