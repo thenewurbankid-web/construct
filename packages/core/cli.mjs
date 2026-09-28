@@ -15,6 +15,7 @@ import { formatReport, exitCodeForViolations, ConstructError, EXIT_CODES, setExi
 import { aggregateValidation } from './registry.mjs';
 import { validateArchitecture } from './architecture-enforcer.mjs';
 import { syncPublicApi } from './api-composer.mjs';
+import { saveFlow, loadFlow, listFlows, deleteFlow } from './flows.mjs';
 import { summarizeUnit, listUnits, unitApiManifest, renderUnitMarkdown } from '../../packages/engine/unitSummary.mjs';
 import { analyzeImpact, proposeSeedsFromText, impactApiManifest, renderImpactMarkdown } from '../../packages/engine/impact.mjs';
 import { loadTemplateDir, TemplateError } from '../../packages/engine/planTemplate.mjs';
@@ -840,11 +841,60 @@ function readStdin(stream) {
  * mirroring the same `JSON.stringify(..., null, 2)` shaping `validate
  * --format json` and `summarize --format json` already use, not a second
  * JSON convention. */
-export async function pipeline(args) {
-  if (args[0] !== 'run') {
-    throw new ConstructError('Usage: construct pipeline run < envelope.json', { exitCode: EXIT_CODES.USAGE_ERROR });
+const PIPELINE_USAGE = 'Usage: construct pipeline run < envelope.json | save <name> < steps.json | load <name> | list | delete <name>';
+
+/** `construct pipeline save <name> [--dir <path>]` (#759) -- reads an ordered array of plan
+ * steps (`packages/core/plan.mjs`'s `PLAN_FLOWS` shape) off stdin, validates it and persists it
+ * under `.construct/flows/<name>.json` so the Envelopes composer can list, load and re-run it
+ * later without the caller re-picking every step. */
+async function pipelineSave(args, root) {
+  const name = args[0];
+  if (!name) throw new ConstructError(PIPELINE_USAGE, { exitCode: EXIT_CODES.USAGE_ERROR });
+  const raw = await readStdin(process.stdin);
+  let steps;
+  try {
+    steps = JSON.parse(raw);
+  } catch (e) {
+    throw new ConstructError(`Malformed steps JSON on stdin: ${e.message}`, { exitCode: EXIT_CODES.USAGE_ERROR });
   }
+  const result = saveFlow(root, name, steps);
+  if (!result.ok) throw new ConstructError(`Could not save flow "${name}":\n  ${result.errors.join('\n  ')}`, { exitCode: EXIT_CODES.VIOLATIONS });
+  console.log(JSON.stringify(result, null, 2));
+}
+
+/** `construct pipeline load <name> [--dir <path>]` -- prints a saved flow's steps as JSON. */
+function pipelineLoad(args, root) {
+  const name = args[0];
+  if (!name) throw new ConstructError(PIPELINE_USAGE, { exitCode: EXIT_CODES.USAGE_ERROR });
+  const result = loadFlow(root, name);
+  if (!result.ok) throw new ConstructError(`Could not load flow "${name}":\n  ${result.errors.join('\n  ')}`, { exitCode: EXIT_CODES.VIOLATIONS });
+  console.log(JSON.stringify(result, null, 2));
+}
+
+/** `construct pipeline list [--dir <path>]` -- the names of every saved flow, alphabetical. */
+function pipelineList(root) {
+  console.log(JSON.stringify(listFlows(root), null, 2));
+}
+
+/** `construct pipeline delete <name> [--dir <path>]`. */
+function pipelineDelete(args, root) {
+  const name = args[0];
+  if (!name) throw new ConstructError(PIPELINE_USAGE, { exitCode: EXIT_CODES.USAGE_ERROR });
+  const result = deleteFlow(root, name);
+  if (!result.ok) throw new ConstructError(`Could not delete flow "${name}":\n  ${result.errors.join('\n  ')}`, { exitCode: EXIT_CODES.VIOLATIONS });
+  console.log(JSON.stringify(result, null, 2));
+}
+
+export async function pipeline(args) {
+  const sub = args[0];
   const root = getRoot(args);
+  if (sub === 'save') return pipelineSave(args.slice(1), root);
+  if (sub === 'load') return pipelineLoad(args.slice(1), root);
+  if (sub === 'list') return pipelineList(root);
+  if (sub === 'delete') return pipelineDelete(args.slice(1), root);
+  if (sub !== 'run') {
+    throw new ConstructError(PIPELINE_USAGE, { exitCode: EXIT_CODES.USAGE_ERROR });
+  }
   const raw = await readStdin(process.stdin);
   let input;
   try {
