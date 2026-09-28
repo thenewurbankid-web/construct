@@ -27,6 +27,7 @@
 //   - its own process group, killed as a group; stopped on Close project, Sign out, and when the Cockpit
 //     server itself exits (same pattern as clone jobs, #422).
 import { spawn as nodeSpawn } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
@@ -34,9 +35,12 @@ import path from 'node:path';
 import { containedProjectRoot, rootEscapesWorkspace } from './projectGuard.mjs';
 import { serverLog } from './logBuffer.mjs';
 import { currentLogin, isInside, normalizeLogin, workspaceRoot } from './workspace.mjs';
+import { createPreviewProxy } from '../../../packages/engine/previewProxy.mjs';
 
 /** The port tried first: Vite's default, so a typical app lands where its developer expects. */
 export const DEFAULT_PORT_BASE = 5173;
+/** The port tried first for the injecting preview proxy (#443 slice 4) — a range of its own, away from dev ports. */
+export const DEFAULT_PROXY_PORT_BASE = 5273;
 /** Ports the Cockpit will not hand out (its own defaults and the web's), whether or not they look free. */
 export const RESERVED_PORTS = Object.freeze([80, 443, 3000, 4000]);
 const PORT_SEARCH = 200;
@@ -189,6 +193,11 @@ function childEnv({ port }) {
  * @param {number} [options.killGraceMs] SIGTERM -> SIGKILL grace on stop
  * @param {typeof nodeSpawn} [options.spawn] test seam
  * @param {{record: Function}} [options.log] where output lines go (the Logs tab); `record(source, level, text, now, login)`
+ * @param {string} [options.clientOrigin] the Cockpit's own origin. #443 slice 4: once set, every dev server that
+ *   reaches "running" gets an injecting preview proxy (packages/engine/previewProxy.mjs) started in front of it,
+ *   and `previewUrl`/`previewNonce` in the status point the preview iframe at the proxy, never at the dev server
+ *   directly (design note §3). Omitted (tests that do not wire a client origin): no proxy, `previewUrl` stays null.
+ * @param {number} [options.proxyPortBase] first port tried for the proxy (default 5273, or CONSTRUCT_PREVIEW_PROXY_PORT_BASE)
  */
 export function createDevServerService({
   getProjectDir,
@@ -198,6 +207,8 @@ export function createDevServerService({
   killGraceMs = DEFAULT_KILL_GRACE_MS,
   spawn = nodeSpawn,
   log = serverLog,
+  clientOrigin = null,
+  proxyPortBase = Number(process.env.CONSTRUCT_PREVIEW_PROXY_PORT_BASE) || DEFAULT_PROXY_PORT_BASE,
 } = {}) {
   // #569: one slot per (signed-in login, project root). The login is the session's (workspace.mjs currentLogin(),
   // '' when auth is off), so two users never see, stop or replace each other's dev server; single-user is one key.
@@ -208,7 +219,7 @@ export function createDevServerService({
   /** Ports handed to a slot that has not necessarily bound yet, across ALL users: two concurrent starts never get the same one. */
   const claimed = new Set();
 
-  const blank = (root, login) => ({ root, login, state: 'not-running', child: null, exited: null, stopping: false, reported: null, port: null, url: null, pid: null, startedAt: null, failure: null, networkWarning: null, tail: [], timers: [], command: null, claimedPort: null });
+  const blank = (root, login) => ({ root, login, state: 'not-running', child: null, exited: null, stopping: false, reported: null, port: null, url: null, pid: null, startedAt: null, failure: null, networkWarning: null, tail: [], timers: [], command: null, claimedPort: null, proxy: null, proxyPort: null, claimedProxyPort: null, previewUrl: null, previewNonce: null });
   const keyOf = (root, login = currentLogin()) => `${login}\u0000${root}`;
   const slotFor = (root) => { const k = keyOf(root); let s = slots.get(k); if (!s) { s = blank(root, currentLogin()); slots.set(k, s); } return s; };
   const bump = (login) => { versions.set(login, (versions.get(login) ?? 0) + 1); };
@@ -216,6 +227,58 @@ export function createDevServerService({
   const withPortLock = (fn) => { const r = portLock.then(fn); portLock = r.catch(() => {}); return r; };
   const claim = (slot, port) => { release(slot); if (port) { slot.claimedPort = port; claimed.add(port); } };
   const release = (slot) => { if (slot.claimedPort) { claimed.delete(slot.claimedPort); slot.claimedPort = null; } };
+
+  /** Stop and discard the injecting preview proxy in front of `slot`'s dev server, if one is running. Never throws. */
+  function stopProxy(slot) {
+    if (slot.claimedProxyPort) { claimed.delete(slot.claimedProxyPort); slot.claimedProxyPort = null; }
+    const proxy = slot.proxy;
+    slot.proxy = null;
+    slot.proxyPort = null;
+    slot.previewUrl = null;
+    slot.previewNonce = null;
+    if (proxy) { try { proxy.close(); } catch { /* already closed */ } }
+  }
+
+  // #443 slice 4: once the dev server itself is running, start the injecting proxy in front of it so the
+  // preview iframe never points at the dev server directly (design note §3). Best-effort: a proxy that fails
+  // to bind is logged and the preview simply has no `previewUrl` yet, same as when `clientOrigin` is not wired.
+  async function startProxy(slot) {
+    if (!clientOrigin || slot.state !== 'running') return;
+    const targetPort = slot.port;
+    const proxyPort = await withPortLock(async () => {
+      const p = await findFreePort(proxyPortBase, { taken: claimed });
+      if (p !== null) { slot.claimedProxyPort = p; claimed.add(p); }
+      return p;
+    });
+    // The dev server may have been stopped/restarted while the port search awaited; a stale proxy must never
+    // be attached to a slot that has moved on.
+    if (proxyPort === null || slot.state !== 'running' || slot.port !== targetPort) {
+      if (proxyPort !== null && slot.claimedProxyPort === proxyPort) { claimed.delete(proxyPort); slot.claimedProxyPort = null; }
+      return;
+    }
+    const nonce = randomBytes(16).toString('hex');
+    const proxy = createPreviewProxy({ targetPort, nonce, parentOrigin: clientOrigin, onLog: (text) => say(slot, 'info', `preview proxy: ${text}`) });
+    try {
+      await new Promise((resolve, reject) => {
+        proxy.once('error', reject);
+        proxy.listen(proxyPort, '127.0.0.1', resolve);
+      });
+    } catch (e) {
+      say(slot, 'warn', `Live preview proxy could not start: ${e.message}`);
+      if (slot.claimedProxyPort === proxyPort) { claimed.delete(proxyPort); slot.claimedProxyPort = null; }
+      return;
+    }
+    if (slot.state !== 'running' || slot.port !== targetPort) {
+      try { proxy.close(); } catch { /* already gone */ }
+      if (slot.claimedProxyPort === proxyPort) { claimed.delete(proxyPort); slot.claimedProxyPort = null; }
+      return;
+    }
+    slot.proxy = proxy;
+    slot.proxyPort = proxyPort;
+    slot.previewUrl = `http://127.0.0.1:${proxyPort}/`;
+    slot.previewNonce = nonce;
+    bump(slot.login);
+  }
 
   /** Which project this call is about, and why nothing can start there. Reads only. */
   function target() {
@@ -244,6 +307,9 @@ export function createDevServerService({
       startedAt: slot?.startedAt ?? null,
       failure: slot?.failure ?? null,
       networkWarning: slot?.networkWarning ?? null,
+      // #443 slice 4: where the preview iframe points — the injecting proxy, never the dev server URL above.
+      previewUrl: slot?.previewUrl ?? null,
+      previewNonce: slot?.previewNonce ?? null,
       branch: branch.branch ?? null,
       // `session` = Cockpit created it (the dev server sees exactly what Cockpit saves, by construction);
       // `other` = pre-existing or hand-made (Cockpit can work on it, but does not control what else touches it).
@@ -298,6 +364,7 @@ export function createDevServerService({
         clearTimers(slot);
         bump(slot.login);
         say(slot, 'info', `Dev server is running at ${slot.url}`);
+        startProxy(slot);
         const networkAddress = await networkReachableAddress(port);
         // Only a slot still running this same server counts: it may have been stopped or restarted while this awaited.
         if (networkAddress && slot.state === 'running' && slot.port === port) {
@@ -317,6 +384,7 @@ export function createDevServerService({
 
   function onExit(slot, code, signal) {
     clearTimers(slot);
+    stopProxy(slot);
     liveChildren.delete(slot.child);
     slot.exited = { code, signal };
     release(slot);
@@ -398,6 +466,7 @@ export function createDevServerService({
     port = wantedFree;
 
     // (the port is already claimed above; blank() resets claimedPort, so it is set again right after)
+    stopProxy(slot); // defensive: a stale proxy from a previous run must never survive into this one
     Object.assign(slot, blank(root, slot.login), { state: 'starting', port, startedAt: new Date().toISOString(), command });
     bump(slot.login);
     slot.claimedPort = port;

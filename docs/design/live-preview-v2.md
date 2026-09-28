@@ -6,15 +6,22 @@ Reference for the *experience* only: the owner's POC repo `thenewurbankid-web/co
 (`builder-app/src/fiberSource.ts`, `tree/`, `inspector/`, `locator/useLocator.ts`). No code or
 assets from it are copied here; the approach is re-derived and adapted below.
 
-> Status: **design + core block (slices 1-3) landed; slices 4-5 not built.** The tables below
-> mark what is code today and what is still a decision on paper. The approach is verified
-> end-to-end on two real dev builds (§9), not only on paper.
+> Status: **design + core block (slices 1-4a) landed; Pages editor UI + e2e (slice 4b-5) not
+> built.** The tables below mark what is code today and what is still a decision on paper. The
+> approach is verified end-to-end on two real dev builds (§9), not only on paper.
 >
 > Slice 3 (`packages/engine/previewProxy.mjs`, `createPreviewProxy`): the injecting loopback
 > proxy — forwards every request, injects the fiber bridge as the first child of `<head>` on HTML
 > responses, forwards WebSocket upgrades (Vite/Next HMR) byte-for-byte, strips
-> `content-security-policy`/`x-frame-options` only on what it proxies. Not yet wired to the dev
-> server process (#378) or the Pages editor (slice 4); no e2e spec yet (slice 5).
+> `content-security-policy`/`x-frame-options` only on what it proxies.
+>
+> Slice 4a (`ui/server/src/devServer.mjs`): the proxy is now wired to the dev server lifecycle
+> (#378) — once a dev server reaches `running`, a proxy starts in front of it on its own loopback
+> port and `previewUrl`/`previewNonce` appear in `/api/dev-server` status; it stops with the dev
+> server (Stop, Restart, Close project, Sign out) and never survives past it. `previewUrl` is
+> what a preview iframe should point at, never `url`. Not yet done: the Pages editor does not
+> render that iframe or consume `previewUrl` yet, so there is no Pick mode, hover outline,
+> selection sync or tree/inspector wiring (slice 4b); no e2e spec (slice 5).
 
 ---
 

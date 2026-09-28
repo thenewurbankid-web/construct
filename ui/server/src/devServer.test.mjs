@@ -181,6 +181,19 @@ test('start runs the project\'s own script and reaches running; the app answers 
   assert.match(text, /secret:none/, 'the Cockpit\'s own secrets never reach project code');
 });
 
+test('#443 slice 4: a running dev server gets an injecting preview proxy, and the iframe points at it, not the dev server', async () => {
+  const running = await status();
+  assert.equal(running.state, 'running');
+  assert.match(running.previewUrl, /^http:\/\/127\.0\.0\.1:\d+\/$/);
+  assert.notEqual(running.previewUrl, running.url, 'the preview points at the proxy, never straight at the dev server');
+  assert.match(running.previewNonce, /^[0-9a-f]{32}$/);
+
+  // The fixture serves plain text (no content-type), so this exercises the proxy's non-HTML forwarding path;
+  // the HTML-injection path itself (script placement, nonce embedding) is unit-tested in previewProxy.test.mjs.
+  const body = await (await fetch(running.previewUrl)).text();
+  assert.match(body, /main-marker/, 'the proxy forwards the dev server\'s own response');
+});
+
 test('a second start is refused while one runs', async () => {
   const r = await call('POST', '/api/dev-server/start', {});
   assert.equal(r.status, 409);
@@ -221,8 +234,10 @@ test('stop ends the process, frees the port and returns to not-running', async (
   const running = await status();
   const stopped = await (await call('POST', '/api/dev-server/stop', {})).json();
   assert.equal(stopped.state, 'not-running');
+  assert.equal(stopped.previewUrl, null, '#443: the preview proxy stops with the dev server');
   await until(() => !alive(running.pid), 8000, 'process to exit');
   assert.equal(await listening(running.port), false, 'nothing is left listening');
+  await until(async () => !(await listening(new URL(running.previewUrl).port)), 8000, 'preview proxy port to free');
   const logs = await (await call('GET', '/api/logs')).json();
   assert.ok(logs.entries.some((e) => e.source === 'dev-server' && /stopped/i.test(e.text)));
 });

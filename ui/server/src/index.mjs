@@ -137,6 +137,8 @@ export const devServer = createDevServerService({
     const s = getSessionStatus(root);
     return { branch: s.branch, isSession: isSessionBranch(s.branch, { prefix: s.config.branchPrefix, sessionBranch: s.session?.branch ?? null }) };
   },
+  // #443 slice 4: the injecting preview proxy's bridge posts back to this origin.
+  clientOrigin: CLIENT_ORIGIN,
 });
 
 // #638: the per-session GitHub connection for private clones (repoConnection.mjs). Declared before `auth` because
