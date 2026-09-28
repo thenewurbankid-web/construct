@@ -248,4 +248,17 @@ test.describe.serial('Commit on save (#283)', () => {
     expect(git('rev-list', '--count', 'HEAD')).toBe(before);
     expect(git('status', '--porcelain')).toContain('features/billing/pages/HomePage.tsx');
   });
+
+  test('7. the status-bar commit indicator links to Git > Commits (#374)', async ({ page }) => {
+    await page.goto('/pages');
+    const statusCommit = page.getByTestId('status-commit');
+    await expect(statusCommit).toBeVisible({ timeout: 10_000 });
+    // Same one-line state the Commit tab's own indicator shows, so the two never disagree.
+    await expect(statusCommit).toContainText('Auto-commit is off');
+
+    await statusCommit.click();
+    await expect(page).toHaveURL(/\/review$/);
+    await expect(page.getByRole('tab', { name: 'Commits' })).toHaveAttribute('aria-selected', 'true', { timeout: 10_000 });
+    await expect(page.locator('.hint', { hasText: 'Commit history is not built yet' })).toBeVisible();
+  });
 });

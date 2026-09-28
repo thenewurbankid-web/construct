@@ -75,7 +75,7 @@ export function ShellPage(props: ShellPageProps): ReactNode {
       mid={<main className="main">{props.children}</main>}
       right={host('tools', 'Tools')}
       drawer={host('drawer', 'Drawer')}
-      status={<StatusBar layout={props.layout} onTogglePane={props.onTogglePane} shortcuts={props.shortcuts} validateStatus={props.validateStatus} validateStatusChars={props.validateStatusChars} onOpenDiagnostics={props.onOpenDiagnostics} />}
+      status={<StatusBar layout={props.layout} onTogglePane={props.onTogglePane} shortcuts={props.shortcuts} validateStatus={props.validateStatus} validateStatusChars={props.validateStatusChars} onOpenDiagnostics={props.onOpenDiagnostics} commitStatus={props.commitStatus} onOpenGitCommits={props.onOpenGitCommits} />}
     />
   );
 }

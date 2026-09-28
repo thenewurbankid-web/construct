@@ -210,6 +210,10 @@ export type StatusBarProps = {
    * cannot resize its own hit area (#252). */
   validateStatusChars?: number;
   onOpenDiagnostics: () => void;
+  /** The commit-on-save session's one-line state (#374); null while no project is open yet. */
+  commitStatus: string | null;
+  /** Opens Git > Commits — the same tab the Commit tab's indicator points at. */
+  onOpenGitCommits: () => void;
 };
 
 
@@ -247,6 +251,10 @@ export type ShellPageProps = NarrowProps & {
   /** See StatusBarProps. */
   validateStatusChars?: number;
   onOpenDiagnostics: () => void;
+  /** See StatusBarProps. */
+  commitStatus: string | null;
+  /** See StatusBarProps. */
+  onOpenGitCommits: () => void;
   shortcuts: ShortcutInfo[];
   tabs: Record<ShellRegion, ShellTab[]>;
   activeTabs: Record<ShellRegion, string | null>;

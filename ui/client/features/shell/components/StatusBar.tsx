@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react';
 import type { StatusBarProps } from '../types';
 
 /** The 24px bottom status bar: drawer toggle, validate result and the one "? Shortcuts" button. */
-export function StatusBar({ layout, onTogglePane, shortcuts, validateStatus, validateStatusChars = 0, onOpenDiagnostics }: StatusBarProps) {
+export function StatusBar({ layout, onTogglePane, shortcuts, validateStatus, validateStatusChars = 0, onOpenDiagnostics, commitStatus, onOpenGitCommits }: StatusBarProps) {
   return (
     <footer className="sh-status" role="contentinfo">
       <button
@@ -30,6 +30,17 @@ export function StatusBar({ layout, onTogglePane, shortcuts, validateStatus, val
       >
         {validateStatus}
       </button>
+      {commitStatus && (
+        <button
+          type="button"
+          className="sh-status-btn"
+          data-testid="status-commit"
+          title="Open Git > Commits"
+          onClick={onOpenGitCommits}
+        >
+          {commitStatus}
+        </button>
+      )}
       <span className="sh-spacer" />
       {/* #391: one hint instead of four. The list itself lives in the Tools panel's Project tab, and the tooltip
           carries it too; the button opens that panel. */}

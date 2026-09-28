@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo, type ReactNode } from 'react';
+import { useCallback, useMemo, type ReactNode } from 'react';
 import { DirectoryBrowserController } from '@/features/directory-browser';
 import { ApprovalsController, ProcessAnnouncer, ProcessesController, pendingApprovalCount, summariesOf, useProcessAnnouncer, useProcesses } from '@/features/processes';
+import { describeSaveState, useGitSession } from '@/features/git-session';
 import { useOpenPalette } from '@/features/command-palette';
 import { DiagnosticsController, LogsController, statusText, statusTextChars, tabBadge, useDiagnostics } from '@/features/diagnostics';
 import { PANE_LIMITS } from '../domain/LayoutDefaults';
@@ -59,6 +60,8 @@ export function ShellFrame({ children, route, project, model, theme, userMenu }:
   const working = useWorking(processes.running);
   useFaviconMotion(working);
   const gitBranches = useGitBranchCount(project.known);
+  const gitSession = useGitSession();
+  const commitStatus = gitSession.status ? describeSaveState(gitSession.status).text : null;
   const registered = { browser: useShellTabs('browser'), tools: useShellTabs('tools'), drawer: useShellTabs('drawer') };
 
   useRevealPanes(project.known, project.dir, { left: registered.browser.length > 0, right: registered.tools.length > 0 }, toggle);
@@ -104,6 +107,10 @@ export function ShellFrame({ children, route, project, model, theme, userMenu }:
     drawer: [...defaults.drawer, ...registered.drawer],
   };
 
+  const openGitCommits = useCallback(() => {
+    select('browser', 'git-commits');
+    navigate('/review');
+  }, [select, navigate]);
   const { showDrawerTab } = useDrawerActions(toggle, select);
   const drawerApi = useMemo(() => ({ openProcesses: () => showDrawerTab('processes'), openLogs: () => showDrawerTab('logs') }), [showDrawerTab]);
   const { setPane } = narrow;
@@ -158,6 +165,8 @@ export function ShellFrame({ children, route, project, model, theme, userMenu }:
       validateStatus={statusText(diagnostics.state)}
       validateStatusChars={STATUS_CHARS}
       onOpenDiagnostics={() => showDrawerTab('diagnostics')}
+      commitStatus={commitStatus}
+      onOpenGitCommits={openGitCommits}
       shortcuts={SHORTCUTS}
       tabs={tabs}
       activeTabs={active}
