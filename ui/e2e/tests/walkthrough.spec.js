@@ -33,7 +33,11 @@ test.describe.serial('Construct UI walkthrough (issue #37)', () => {
   const pageErrors = [];
 
   test.beforeAll(() => {
-    tmpProjectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-ui-e2e-'));
+    // realpathSync: macOS's os.tmpdir() is under /var, a symlink to /private/var — the server
+    // resolves the real path back to the client, so an unresolved value here never matches (#37
+    // predates this test's `code`-element assertion; every other spec that compares a tmp path
+    // already calls realpathSync, e.g. shell-drawer-palette.spec.js's `base`).
+    tmpProjectDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'construct-ui-e2e-')));
   });
 
   test.afterAll(() => {
@@ -283,7 +287,9 @@ test.describe.serial('Construct UI walkthrough (issue #37)', () => {
     await page.locator('.preview-node').first().click();
     await expect(page.locator('.tree-node.selected')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Show diagram' }).click();
+    // #375 — the diagram's toggle moved into the stage's one Overlays menu ("Overlays > Flow").
+    await page.locator('.overlays-menu > summary').click();
+    await page.getByLabel('Flow').check();
     await expect(page.locator('.propflow-svg')).toBeVisible();
 
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'pages-editor.png'), fullPage: true });
