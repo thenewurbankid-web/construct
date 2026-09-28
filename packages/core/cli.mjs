@@ -1763,24 +1763,30 @@ export async function checkChange(args) {
   return checkChangeCommand(args, { getRoot });
 }
 
-/** `construct template list|show|instantiate` (#333). Read-only, JSON in/out, no LLM.
+/** The small starter set (#450) shipped repo-relative, two levels above this file
+ * (packages/core/cli.mjs -> <repo root>/templates/starter): a standard vertical feature
+ * slice and a CRUD (list/detail/form) layer set, so `construct template list` returns
+ * real results with no extra setup. `--templates <dir>` or CONSTRUCT_TEMPLATES_DIR
+ * still override it with a project's own curated set. */
+const DEFAULT_TEMPLATES_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'templates', 'starter');
+
+/** `construct template list|show|instantiate` (#333, #450). Read-only, JSON in/out, no LLM.
  *
- *   construct template list --templates <dir>
- *   construct template show <name> --templates <dir>
- *   construct template instantiate <name> --templates <dir> [--param key=value]... [--params-json '{"k":"v"}']
+ *   construct template list [--templates <dir>]
+ *   construct template show <name> [--templates <dir>]
+ *   construct template instantiate <name> [--templates <dir>] [--param key=value]... [--params-json '{"k":"v"}']
  *
  * A template is a named, reusable, parameterised plan; `instantiate` prints an ordinary plan.v1 (feed it
- * to the runner or `construct review --plan`). The mechanism is open; the CURATED templates are not in
- * this repo: point `--templates <dir>` (or CONSTRUCT_TEMPLATES_DIR) at wherever they live. There is no
- * default directory, and nothing here runs a plan. */
+ * to the runner or `construct review --plan`). The mechanism is open; a small starter set of generic
+ * feature-shape templates ships with it (DEFAULT_TEMPLATES_DIR). `--templates <dir>` (or
+ * CONSTRUCT_TEMPLATES_DIR) points at a project's own curated set instead; nothing here runs a plan. */
 export async function template(args) {
-  const usage = 'Usage: construct template list|show <name>|instantiate <name> [--param key=value]... [--params-json <json>] --templates <dir> (or CONSTRUCT_TEMPLATES_DIR)';
+  const usage = 'Usage: construct template list|show <name>|instantiate <name> [--param key=value]... [--params-json <json>] [--templates <dir>] (or CONSTRUCT_TEMPLATES_DIR)';
   const valueFlags = new Set(['--templates', '--param', '--params-json']);
   const positional = args.filter((a, i) => !a.startsWith('--') && !valueFlags.has(args[i - 1]));
   const [verb, name] = positional;
   if (!['list', 'show', 'instantiate'].includes(verb) || (verb !== 'list' && !name)) throw new ConstructError(usage, { exitCode: EXIT_CODES.USAGE_ERROR });
-  const dir = flagValue(args, '--templates') ?? process.env.CONSTRUCT_TEMPLATES_DIR;
-  if (!dir) throw new ConstructError(`No template directory configured. The curated flows are not bundled with the open core: pass --templates <dir> or set CONSTRUCT_TEMPLATES_DIR. ${usage}`, { exitCode: EXIT_CODES.USAGE_ERROR });
+  const dir = flagValue(args, '--templates') || process.env.CONSTRUCT_TEMPLATES_DIR || DEFAULT_TEMPLATES_DIR;
   const params = {};
   try {
     const json = flagValue(args, '--params-json');

@@ -1,0 +1,94 @@
+{
+  "templateVersion": 1,
+  "name": "starter.crud",
+  "description": "Scaffold a CRUD-shaped feature: a list, a detail and a form screen for one entity, each a full vertical slice (domain through controller).",
+  "parameters": {
+    "feature": { "type": "identifier", "description": "Feature slice name, kebab or snake case.", "example": "catalog" },
+    "entity": { "type": "identifier", "description": "The entity shown and edited, PascalCase and singular.", "example": "Product" },
+    "fields": {
+      "type": "enum",
+      "values": ["id:string,name:string", "id:string,name:string,price:number", "id:string,name:string,done:boolean"],
+      "default": "id:string,name:string,price:number",
+      "description": "A preset entity shape as name:type pairs.",
+      "example": "id:string,name:string,price:number"
+    },
+    "source": {
+      "type": "enum",
+      "values": ["local", "endpoint", "openapi"],
+      "default": "local",
+      "description": "Where the list and detail screens read data from.",
+      "example": "local"
+    },
+    "states": {
+      "type": "enum",
+      "values": ["default", "custom", "skip-empty", "skip-all"],
+      "default": "default",
+      "description": "How the list and detail screens render loading, empty/not-found and error states.",
+      "example": "default"
+    }
+  },
+  "ticket": { "source": "text", "title": "Add {{entity}} CRUD to {{feature}}" },
+  "summary": "Create {{feature}} and scaffold {{entity}} list, detail and form screens.",
+  "steps": [
+    {
+      "id": "create-feature",
+      "title": "Create the {{feature}} feature",
+      "flow": "create.feature",
+      "args": { "name": "{{feature}}" },
+      "executor": "deterministic",
+      "touches": { "features": ["{{feature}}"] }
+    },
+    {
+      "id": "create-list",
+      "title": "Scaffold {{entity}}List",
+      "flow": "create.layer",
+      "args": {
+        "name": "{{entity}}List",
+        "feature": "{{feature}}",
+        "layers": ["domain", "service", "workflow", "hook", "component", "page", "controller"],
+        "shape": "list",
+        "entity": "{{entity}}",
+        "fields": "{{fields}}",
+        "source": "{{source}}",
+        "states": "{{states}}"
+      },
+      "executor": "deterministic",
+      "dependsOn": ["create-feature"],
+      "touches": { "features": ["{{feature}}"] }
+    },
+    {
+      "id": "create-detail",
+      "title": "Scaffold {{entity}}Detail",
+      "flow": "create.layer",
+      "args": {
+        "name": "{{entity}}Detail",
+        "feature": "{{feature}}",
+        "layers": ["domain", "service", "workflow", "hook", "component", "page", "controller"],
+        "shape": "detail",
+        "entity": "{{entity}}",
+        "fields": "{{fields}}",
+        "source": "{{source}}",
+        "states": "{{states}}"
+      },
+      "executor": "deterministic",
+      "dependsOn": ["create-feature"],
+      "touches": { "features": ["{{feature}}"] }
+    },
+    {
+      "id": "create-form",
+      "title": "Scaffold Add{{entity}} form",
+      "flow": "create.layer",
+      "args": {
+        "name": "Add{{entity}}",
+        "feature": "{{feature}}",
+        "layers": ["domain", "service", "workflow", "hook", "component", "page", "controller"],
+        "shape": "form",
+        "entity": "{{entity}}",
+        "fields": "{{fields}}"
+      },
+      "executor": "deterministic",
+      "dependsOn": ["create-feature"],
+      "touches": { "features": ["{{feature}}"] }
+    }
+  ]
+}

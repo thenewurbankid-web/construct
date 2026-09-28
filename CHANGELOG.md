@@ -8,6 +8,7 @@ request or issue numbers.
 ## [Unreleased]
 
 ### Added
+- A small starter `construct template` set ships with the CLI and is used by default (#450): `starter.vertical-slice` (a feature plus one unit across all seven layers) and `starter.crud` (a list/detail/form screen set for one entity), loaded from `templates/starter` unless `--templates <dir>` or `CONSTRUCT_TEMPLATES_DIR` names a project's own curated set. `construct template list` now returns real results on a fresh checkout with no extra setup.
 - `parseJsxTree` node records carry `content`: the element's immediate text and `{expression}` children, in source order, `{kind: 'text'|'expression', value, start, end}[]` (#697, part of #685). A consumer that needs every piece of visible text on a page (Trace's dynamic-text marking) no longer needs a second parser. Additive: existing fields (`start`/`end`/`line`/`column`/`children`/...) are unchanged. Whitespace-only text is skipped (documented choice: it is almost always indentation, not visible content); an empty `{/* comment */}` container is skipped too. `value` always equals `source.slice(start, end)` for both kinds (the expression kind's span excludes the surrounding `{`/`}`, matching `jsxAttributes`' `'expression'`-kind convention).
 - Two e2e lanes instead of one 95-spec, 12-config serial run for every PR (#420, part of the SPOF epic #410): a
   `smoke` lane (`ui/e2e/playwright.smoke.config.js` — `smoke.spec.js` plus one spec per primary screen: Features,

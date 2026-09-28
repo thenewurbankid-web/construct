@@ -2,10 +2,14 @@
 //
 // OPEN-CORE BOUNDARY. This file is the MECHANISM (open): the template shape,
 // load-time validation, typed parameter validation, and `instantiate` -> an
-// ordinary plan.v1 object. The CURATED SET of named flows is proprietary and
-// must never live under src/ or be imported from here. Templates are loaded
-// from a directory or registry the CALLER supplies (`loadTemplateDir`,
-// `createTemplateRegistry`); this module has no default location.
+// ordinary plan.v1 object. A project's own business-specific curated flows are
+// proprietary and must never live under src/ or be imported from here.
+// Templates are loaded from a directory or registry the CALLER supplies
+// (`loadTemplateDir`, `createTemplateRegistry`); this module has no default
+// location. #450: the CLI's own small, generic starter set (templates/starter
+// at the repo root, outside every open package) is loaded the same way, as
+// just another caller-supplied directory -- it is the CLI's default, not this
+// module's.
 //
 // No second plan shape: a template instantiates INTO the plan of #286 and the
 // result is checked with validatePlan(); planToCommand() is unchanged.

@@ -114,7 +114,7 @@ test('load-time refusals: unknown flow, undefined parameter, malformed, bad exam
   assert.equal(codeOf(() => loadTemplateDir(path.join(here, 'no-such-dir'))), E.TEMPLATE_NOT_FOUND);
 });
 
-test('the CLI lists, shows and instantiates; refuses bad params; has no default directory', () => {
+test('the CLI lists, shows and instantiates; refuses bad params; --templates/CONSTRUCT_TEMPLATES_DIR override the bundled default', () => {
   const run = (...a) => spawnSync(process.execPath, [path.join(root, 'packages', 'cli', 'construct.mjs'), 'template', ...a], { encoding: 'utf8', env: { ...process.env, CONSTRUCT_TEMPLATES_DIR: '' } });
   const list = run('list', '--templates', FIXTURES);
   assert.equal(list.status, 0);
@@ -128,8 +128,32 @@ test('the CLI lists, shows and instantiates; refuses bad params; has no default 
   assert.equal(bad.status, 2);
   assert.equal(JSON.parse(bad.stdout).error.code, 'PARAM_INVALID');
   assert.equal(run('instantiate', 'demo.add-feature', '--params-json', '{oops', '--templates', FIXTURES).status, 2);
-  assert.equal(run('list').status, 2); // no bundled curated set
   assert.equal(run('bogus').status, 2);
+});
+
+// #450: a small starter set ships repo-relative (templates/starter) so `construct template list`
+// returns real results on a fresh checkout with no extra setup, and CONSTRUCT_TEMPLATES_DIR/--templates
+// still point at a project's own curated set instead.
+test('a small starter template set is bundled and used by default', () => {
+  const run = (...a) => spawnSync(process.execPath, [path.join(root, 'packages', 'cli', 'construct.mjs'), 'template', ...a], { encoding: 'utf8', env: { ...process.env, CONSTRUCT_TEMPLATES_DIR: '' } });
+  const list = run('list');
+  assert.equal(list.status, 0);
+  const names = JSON.parse(list.stdout).templates.map((t) => t.name).sort();
+  assert.deepEqual(names, ['starter.crud', 'starter.vertical-slice']);
+  const slice = run('instantiate', 'starter.vertical-slice', '--param', 'feature=billing', '--param', 'name=Invoice');
+  assert.equal(slice.status, 0);
+  const slicePlan = JSON.parse(slice.stdout);
+  assert.equal(validatePlan(slicePlan).valid, true);
+  assert.deepEqual(slicePlan.steps.map((s) => s.flow), ['create.feature', 'create.layer']);
+  const crud = run('instantiate', 'starter.crud', '--param', 'feature=catalog', '--param', 'entity=Product');
+  assert.equal(crud.status, 0);
+  const crudPlan = JSON.parse(crud.stdout);
+  assert.equal(validatePlan(crudPlan).valid, true);
+  assert.deepEqual(crudPlan.steps.map((s) => s.args.name), ['catalog', 'ProductList', 'ProductDetail', 'AddProduct']);
+  // an explicit --templates or CONSTRUCT_TEMPLATES_DIR still overrides the bundled default
+  assert.equal(JSON.parse(run('list', '--templates', FIXTURES).stdout).templates[0].name, 'demo.add-feature');
+  const envRun = spawnSync(process.execPath, [path.join(root, 'packages', 'cli', 'construct.mjs'), 'template', 'list'], { encoding: 'utf8', env: { ...process.env, CONSTRUCT_TEMPLATES_DIR: FIXTURES } });
+  assert.equal(JSON.parse(envRun.stdout).templates[0].name, 'demo.add-feature');
 });
 
 // The open-core boundary: core must never import a curated location, and no

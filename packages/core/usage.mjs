@@ -85,8 +85,8 @@ Four capabilities, one CLI:
   construct test build [--format json|text] [--dir <path>]
     (runs the project's build script through a bounded process (a timeout, an output cap) and prints a classified result: a pass, a compile
     error with file and line, a missing build script, a timeout, or another failure with the end of its output; read-only, no LLM; exit 0/1/2 as above)
-  construct template list|show <name>|instantiate <name> [--param key=value]... [--params-json <json>] --templates <dir>
-  construct template ...   (named, reusable, parameterised plans: instantiate prints a concrete plan.v1; curated templates load from --templates <dir> or CONSTRUCT_TEMPLATES_DIR, none are bundled)
+  construct template list|show <name>|instantiate <name> [--param key=value]... [--params-json <json>] [--templates <dir>]
+  construct template ...   (named, reusable, parameterised plans: instantiate prints a concrete plan.v1; a small starter set ships and is used by default, or point --templates <dir> or CONSTRUCT_TEMPLATES_DIR at a project's own curated set)
   construct import <name> --feature <feature> --layers <l1,l2,...> --from <path> [--llm <provider> | --format json] [--dir <path>]
   construct import --plan <path> [--llm <provider> | --format json] [--dir <path>]
   construct import --route <path>  (standalone interactive wizard, run directly — not inside repl)
