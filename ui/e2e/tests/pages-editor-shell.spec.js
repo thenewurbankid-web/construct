@@ -85,6 +85,11 @@ test.describe.serial('Pages Editor inside the shell (#247)', () => {
     await expect(tools.locator('.snippet-editor')).toBeVisible();
     await expect(tools.locator('.props-inspector')).toContainText('type');
 
+    // #375 — quiet tree: a chip (the prop count) shows only on the selected row; every other row
+    // shows its tag alone.
+    await expect(browser.locator('.tree-node.selected .tree-node-props')).toContainText('2 props');
+    await expect(browser.locator('.tree-node:not(.selected) .tree-node-props')).toHaveCount(0);
+
     // Switching tabs keeps the selection and changes the panel.
     await tools.getByRole('tab', { name: 'Scope' }).click();
     await expect(tools.locator('.scope-panel')).toBeVisible();

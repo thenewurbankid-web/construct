@@ -13,7 +13,10 @@ function TreeNodeItem({ node, selectedId, onSelect, depth }: TreeNodeProps) {
         onClick={() => onSelect(node.id)}
       >
         <span className="tree-node-tag">{node.isFragment ? '<>' : `<${node.tag}>`}</span>
-        {node.props.length > 0 && (
+        {/* #375 — quiet tree: chips (the prop count today; impact/findings/tests/git dots once
+            slice 11 wires that data) show only on the selected row. An unselected row never shows
+            more than one dot — none yet, since no overlay data source exists until slice 11. */}
+        {isSelected && node.props.length > 0 && (
           <span className="tree-node-props"> {node.props.length} prop{node.props.length === 1 ? '' : 's'}</span>
         )}
       </div>
