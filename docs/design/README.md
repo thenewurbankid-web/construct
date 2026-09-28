@@ -23,6 +23,7 @@ Non-goals: MCP surfaces (future), marketing pages, product code.
 | [scope-binding.md](scope-binding.md) | Prop-to-scope binding: making the real, shipped `ScopeLinkGraph`/`ScopePanel` (#223) interactive so a person can pick a specific Provider value, parent prop or other unit's output for a control's `PropRef<T>` prop; click-to-link primary, drag-and-drop additive, full keyboard path, multi-field linking deferred (#523, follows #518) |
 | [browser-panel-merge.md](browser-panel-merge.md) | Pages editor Browser pane: merging `PagesBrowser` + `TreePanel`/`ListBrowser` into one grouped panel, each independently collapsible via the same native `<details>/<summary>` idiom as `block-palette.md`'s palette groups; grounded in a real screenshot of the live Cockpit, not guessed from JSX (#536) |
 | [git-panel.md](git-panel.md) | Git panel inside the Git screen's Changes/Branches/Commit tabs: stage/unstage (file-level, grouped by feature/layer via the real `ChangeTree`), diff (reuses the Pages editor's `DiffView`), commit (reuses `AutoCommitSettings`/`CommitIndicator`), push/pull with two named gates (sign-in vs. the #638 push-credential gap), branch switch/create; extends `/review`, not a new screen (#331, part of #277) |
+| [rules-envelopes.md](rules-envelopes.md) | Rules and Envelopes composers (#395): edit `architecture.yml` (severity, exceptions with expiry, nonLayer/frozen globs, features.root, the framework/"route adapter" picker) and compose/save `construct pipeline` flows (step picker, ordering, per-step envelope preview), both as two new Features-screen tabs, every change a reviewable diff with a live `construct validate` impact preview before it is written |
 | [mocks/](mocks/) | Concept mocks as static HTML+CSS (`*.html`) and rendered PNGs (`png/`) |
 
 Concept mocks (1440x900, each in `png/<name>--dark.png` and `--light.png`):
@@ -54,6 +55,13 @@ Concept mocks (1440x900, each in `png/<name>--dark.png` and `--light.png`):
 
 - **Five-screen IA** (`build-ia.mjs`, styles in `ia.css`): `ia-features`, `ia-account-menu`,
   `ia-slot-matrix`, `ia-notes-states`, `ia-no-project`, `ia-git`, `ia-git-connect`, `ia-narrow`, and the POC-parity set `ia-pages`, `ia-pages-next`, `ia-pages-change`, `ia-components`, `ia-generate-states`, `ia-preview-states`, `ia-side-preview`, and the Story set `ia-story`, `ia-story-states`, `ia-story-modes`, `ia-story-indicators`, `ia-story-consent`, `ia-clip-bridge`, `ia-clipper`, and `ia-feature-structure` (a feature as a hierarchy). Spec: `ia-five-screens.md`. Also in `build-ia.mjs`: the block palette set (#518) — `ia-palette` (read-only, MVP slice 1), `ia-palette-suggest` and `ia-palette-confirm` (the interactive "Wrap with…" flow, pairs with #517), `ia-palette-states` (empty/loading/error/no-selection/no-block-yet/narrow). Spec: `block-palette.md`. Also the prop-to-scope binding set (#523) — `ia-scope` (read-only Scope tab), `ia-scope-link` (linking mode, type-fit candidates), `ia-scope-bound` (committed, mechanical rewrite + approval, existing auto-map shown alongside), `ia-scope-states` (empty/loading/error/no-fit/keyboard-focus/drag/deferred-multi-field/narrow). Spec: `scope-binding.md`. Also the Git panel set (#331) — `ia-git-changes` (Changes tab: stage/unstage groups, diff open, Commit tab push-ready), `ia-git-commit-blocked` (Commit tab, push blocked on no GitHub credential, #638), `ia-git-branches` (Branches tab: session branch, switch, create), `ia-git-clean` (Changes tab, clean tree), `ia-git-states` (sign-in gate vs. push-credential gate side by side), `ia-git-narrow` (390px). Spec: `git-panel.md`.
+
+Rules and Envelopes composers (#395), built by `node docs/design/mocks/build-rules.mjs` (own script,
+styles reused from `ia.css`): `ia-rules` (read-only list/detail: severity, live violation count, "why",
+exceptions), `ia-rules-edit` (severity + exception change as a pending diff with a `construct validate`
+impact preview), `ia-envelopes` (saved-flow step list, add/reorder, per-step envelope preview),
+`ia-rules-states` (empty/loading/error, illustrative cards), `ia-rules-narrow` (390px, Browse/Stage/
+Inspect). Spec: `rules-envelopes.md`.
 
 `plan-mode` was `research-mode` until the owner renamed the middle mode in #243:
 the modes are **Explore / Plan / Build** and the brand in the top bar is

@@ -3,10 +3,11 @@
 Status: concept (nothing here is implemented). Part of epic #395 "Compose and modify architecture
 rules and envelopes from the Cockpit." Mocks: `mocks/ia-rules.html` (read-only list/detail), `mocks/
 ia-rules-edit.html` (a rule edited as a pending diff), `mocks/ia-envelopes.html` (envelope/flow
-composer), `mocks/ia-rules-states.html` (empty/loading/error/narrow), built by `node docs/design/
-mocks/build-rules.mjs`, styles reused from `ia.css` (no new stylesheet needed). PNGs in `mocks/png/
-ia-rules*--{dark,light}.png`, `mocks/png/ia-envelopes--{dark,light}.png`. This extends the five-screen
-shell (`ia-five-screens.md`, #367) rather than adding a sixth screen.
+composer), `mocks/ia-rules-states.html` (empty/loading/error, illustrative cards), `mocks/
+ia-rules-narrow.html` (390px, Browse/Stage/Inspect), built by `node docs/design/mocks/build-rules.mjs`,
+styles reused from `ia.css` (no new stylesheet needed). PNGs in `mocks/png/ia-rules*--{dark,light}.png`,
+`mocks/png/ia-envelopes--{dark,light}.png`. This extends the five-screen shell (`ia-five-screens.md`,
+#367) rather than adding a sixth screen.
 
 ## 0. Read before drawing: what a "rule" and an "envelope" already are
 

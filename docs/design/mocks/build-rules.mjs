@@ -9,7 +9,7 @@
 import { writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { tabs } from './parts.mjs';
+import { tabs, stateCard } from './parts.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -74,7 +74,7 @@ const RULES = [
     why: 'An exceptions[] entry with an expires date in the past no longer suppresses its rule, and is itself flagged so a stale exemption is never silently permanent.' },
 ];
 
-const ruleRow = (r, sel) => `<div class="row ${sel === r.id ? 'sel' : ''}">${L(r.layer)}<span>${r.id}</span><span class="meta">${r.name}</span><span class="nbs">${sev(r.severity)}${violBadge(r.violations)}</span></div>`;
+const ruleRow = (r, sel) => `<div class="row ${sel === r.id ? 'sel' : ''}" title="${r.name}">${L(r.layer)}<b style="flex:none">${r.id}</b><span class="nbs">${sev(r.severity)}${violBadge(r.violations)}</span></div>`;
 
 const rulesLeft = (sel) => `
 <div class="pane-h"><span class="title">Rules</span><span class="spacer"></span><button class="icon-btn" aria-label="Collapse">&laquo;</button></div>
@@ -162,9 +162,9 @@ ${tabs([['Diff', ['2', 'acc']], ['All exceptions'], ['Advanced'], ['Project']], 
 +     expires: 2026-12-01
 +     reason: old checkout, ticket #512</pre></div>
   </details>
-  <div style="display:flex;gap:8px;margin-top:12px">
-    <button class="btn primary">Save (14 new errors, dry-run checked)</button>
-    <button class="btn">Discard</button>
+  <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;align-items:stretch">
+    <button class="btn primary" style="width:100%">Save &middot; 14 new errors (dry-run checked)</button>
+    <button class="btn" style="width:100%">Discard</button>
   </div>
 </div>`;
 
@@ -242,28 +242,28 @@ writeFileSync(join(here, 'ia-envelopes.html'), page('Envelopes', frame({
 <tr><td><b>flow &middot; Add a service + hook only</b></td><td>1 of 2 &middot; service Refund</td><td><div class="bar-track"><div class="bar-fill" style="width:40%"></div></div></td><td><button class="btn sm danger">Cancel</button></td></tr></table>`), rw: 340,
 })));
 
-// --- ia-rules-states.html: empty / loading / error / narrow ---
-const stateFrame = (title, body) => `<div><h3 style="margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted)">${title}</h3><div style="border:1px solid var(--border-subtle);border-radius:var(--r-lg);overflow:hidden;background:var(--surface-0)">${body}</div></div>`;
-
-const emptyMid = `<div style="padding:40px 24px;text-align:center"><h4>No architecture.yml yet</h4><p style="color:var(--text-muted);max-width:420px;margin:8px auto">This project has no rules file. Create one from the strict-nextjs preset to get started — this is itself a reviewable diff, nothing is written silently.</p><button class="btn primary">Create with defaults</button></div>`;
-const loadingMid = `<div style="padding:40px 24px;text-align:center"><p style="color:var(--text-muted)">Checking impact against 214 files... this can take a few seconds.</p></div>`;
-const errorMid = `<div style="padding:40px 24px;text-align:center"><h4 style="color:var(--danger)">Could not run validate</h4><p style="color:var(--text-muted);max-width:420px;margin:8px auto">The validate process exited with an error: "architecture.yml: unknown rule id 'PAGE-099'." Fix the file or retry.</p><button class="btn">Retry</button></div>`;
-
+// --- ia-rules-states.html: empty / loading / error, as illustrative cards (same pattern as ia-git-states.html) ---
 writeFileSync(join(here, 'ia-rules-states.html'), page('Rules - states', `
+<div class="hh">Rules and Envelopes: empty, loading and error<small>Shown as the center-stage card on the Rules tab; the left/right panels stay populated (principles.md #9, "designed screens, not blank space").</small></div>
 <div class="sheet3">
-  ${stateFrame('Empty (no architecture.yml)', frame({ left: rulesLeft(''), mid: emptyMid, right: rulesRight(), bot: bottom('Diagnostics', `<p style="padding:12px;color:var(--text-muted)">No project to validate yet.</p>`), rw: 300, botH: 90 }))}
-  ${stateFrame('Loading (impact check running)', frame({ left: rulesLeft('PAGE-004'), mid: loadingMid, right: rulesRight(), bot: bottom('Diagnostics', diagBody), rw: 300, botH: 90 }))}
-  ${stateFrame('Error (validate failed)', frame({ left: rulesLeft('PAGE-004'), mid: errorMid, right: rulesRight(), bot: bottom('Diagnostics', `<p style="padding:12px;color:var(--danger)">validate: unknown rule id 'PAGE-099'</p>`), rw: 300, botH: 90 }))}
-</div>
-<div class="sheet3" style="grid-template-columns:1fr">
-<div style="max-width:420px"><h3 style="margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted)">Narrow (390px) — Stage tab open on a rule</h3>
-<div class="narrow" style="position:relative;height:780px;width:390px;border:1px solid var(--border-strong);border-radius:20px;overflow:hidden;background:var(--surface-0)">
-  ${topbar({ screen: 'Features', procs: '' })}
-  <div style="height:calc(780px - 44px - 40px)">${ruleDetail(RULES[1])}</div>
-  <div class="tabbar" style="height:40px;display:flex;border-top:1px solid var(--border-subtle)"><div style="flex:1">Browse</div><div style="flex:1;font-weight:700">Stage</div><div style="flex:1">Inspect</div><div style="flex:1">Run</div></div>
-</div>
-</div>
+  <div><h3>No architecture.yml yet</h3>${stateCard('&#128196;', 'No rules file yet', 'This project has no architecture.yml. Create one from the strict-nextjs preset to get started — this is itself a reviewable diff, nothing is written silently.', '<button class="btn primary">Create with defaults</button>')}</div>
+  <div><h3>Impact check running</h3>${stateCard('&#8635;', 'Checking impact...', 'Re-running construct validate against the pending config, against 214 files. This can take a few seconds; Save stays disabled until it finishes.', '')}</div>
+  <div><h3>Validate failed to run</h3>${stateCard('&#9888;', 'Could not run validate', `The validate process exited with an error: "architecture.yml: unknown rule id 'PAGE-099'." Fix the file or retry.`, '<button class="btn">Retry</button>')}</div>
 </div>
 `));
 
-console.log('built ia-rules.html, ia-rules-edit.html, ia-envelopes.html, ia-rules-states.html');
+// --- ia-rules-narrow.html: 390px, Stage tab open on a rule (same split as ia-git-narrow.html) ---
+const phone = (title, body) => `<div><h3 style="margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted)">${title}</h3>
+<div class="narrow" style="position:relative;height:780px;width:390px;border:1px solid var(--border-strong);border-radius:20px;overflow:hidden;background:var(--surface-0)">
+  ${topbar({ screen: 'Features', procs: '' })}
+  <div style="height:calc(780px - 44px - 40px);overflow:auto">${body}</div>
+  <div class="tabbar" style="height:40px;display:flex;border-top:1px solid var(--border-subtle)"><div style="flex:1">Browse</div><div style="flex:1;font-weight:700">Stage</div><div style="flex:1">Inspect</div><div style="flex:1">Run</div></div>
+</div></div>`;
+
+writeFileSync(join(here, 'ia-rules-narrow.html'), page('Rules - narrow', `<div class="sheet3" style="grid-template-columns:repeat(3,390px);justify-content:space-between">
+${phone('Narrow &middot; Stage tab (rule detail)', ruleDetail(RULES[1]))}
+${phone('Narrow &middot; Browse tab (rule list)', `${tabs([['Notes'], ['Features'], ['Rules'], ['Envelopes']], 'Rules')}<div class="tree" style="padding-top:8px">${ruleRow(RULES[0])}${ruleRow(RULES[1], 'PAGE-004')}${ruleRow(RULES[2])}${ruleRow(RULES[3])}</div>`)}
+${phone('Narrow &middot; Inspect tab (pending diff)', pendingDiff)}
+</div>`));
+
+console.log('built ia-rules.html, ia-rules-edit.html, ia-envelopes.html, ia-rules-states.html, ia-rules-narrow.html');
