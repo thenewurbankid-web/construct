@@ -111,3 +111,39 @@ export type ExceptionsApi = {
   confirm: () => void;
   cancel: () => void;
 };
+
+// #395 slice D -- nonLayer/frozen glob lists (architecture.yml `nonLayer:`/`frozen:`), the "Advanced" disclosure
+// #764's spec describes. Same list + add/remove-as-diff shape as exceptions, generalized over which field.
+export type GlobField = 'nonLayer' | 'frozen';
+
+export type GlobListStatus = 'idle' | 'running' | 'ready' | 'error';
+export type GlobListState = { status: GlobListStatus; rows: string[]; error: string | null };
+export type GlobListAction = { type: 'RUN' } | { type: 'RESULT'; rows: string[] } | { type: 'FAIL'; error: string };
+
+export type GlobEditStatus = 'previewing' | 'ready' | 'saving' | 'error';
+export type GlobEditState = {
+  kind: 'add' | 'remove';
+  status: GlobEditStatus;
+  before: string;
+  after: string;
+  contentHash: string;
+  error: string | null;
+} | null;
+
+export type GlobEditAction =
+  | { type: 'START'; kind: 'add' | 'remove' }
+  | { type: 'PREVIEW_OK'; before: string; after: string; contentHash: string }
+  | { type: 'PREVIEW_FAIL'; error: string }
+  | { type: 'SAVE' }
+  | { type: 'SAVE_FAIL'; error: string }
+  | { type: 'CANCEL' };
+
+export type GlobListApi = {
+  field: GlobField;
+  state: GlobListState;
+  edit: GlobEditState;
+  addGlob: (glob: string) => void;
+  removeAt: (index: number) => void;
+  confirm: () => void;
+  cancel: () => void;
+};

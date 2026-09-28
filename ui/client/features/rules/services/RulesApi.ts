@@ -2,7 +2,7 @@
 // does not reinvent validation (docs/design/rules-envelopes.md section 0), it only reads `body.summary`, the same
 // per-rule grouping #758 added for this purpose.
 import { getJson, postJson } from '@/lib/http';
-import type { ExceptionRow, NewException, RuleRow, RuleSeverity, RuleSummaryEntry } from '../types';
+import type { ExceptionRow, GlobField, NewException, RuleRow, RuleSeverity, RuleSummaryEntry } from '../types';
 
 export type RulesResult = { ok: true; rows: RuleRow[] } | { ok: false; error: string };
 
@@ -100,6 +100,51 @@ export async function previewException(action: 'add' | 'remove', input: NewExcep
 export async function saveException(action: 'add' | 'remove', input: NewException | number, contentHash: string): Promise<RuleSeveritySaved> {
   try {
     const body = await postJson<ExceptionResponse>('/api/rules/exceptions', exceptionBody(action, input, { contentHash, commit: true }));
+    if (!body.ok) return { ok: false, error: body.error ?? 'Could not save that change.' };
+    return { ok: true };
+  } catch {
+    return { ok: false, error: 'Could not reach the Construct server.' };
+  }
+}
+
+// #395 slice D -- nonLayer/frozen glob lists.
+
+export type GlobListResult = { ok: true; rows: string[] } | { ok: false; error: string };
+
+/** `field`'s glob list from the current project's architecture.yml (GET /api/rules). */
+export async function fetchGlobs(field: GlobField): Promise<GlobListResult> {
+  try {
+    const body = await getJson<{ ok?: boolean; error?: string; nonLayer?: string[]; frozen?: string[] }>('/api/rules');
+    if (!body.ok) return { ok: false, error: body.error ?? 'Could not read that list.' };
+    return { ok: true, rows: body[field] ?? [] };
+  } catch {
+    return { ok: false, error: 'Could not reach the Construct server.' };
+  }
+}
+
+type GlobResponse = SeverityResponse & { nonLayer?: string[]; frozen?: string[] };
+
+function globBody(field: GlobField, action: 'add' | 'remove', input: string | number, extra: { contentHash?: string; commit: boolean }) {
+  return action === 'add' ? { field, action, glob: input as string, ...extra } : { field, action, index: input as number, ...extra };
+}
+
+/** The diff adding or removing one glob would make, computed but not written (`commit: false`). */
+export async function previewGlob(field: GlobField, action: 'add' | 'remove', input: string | number): Promise<RuleSeverityDiff> {
+  try {
+    const body = await postJson<GlobResponse>('/api/rules/globs', globBody(field, action, input, { commit: false }));
+    if (!body.ok || body.before === undefined || body.after === undefined || body.contentHash === undefined) {
+      return { ok: false, error: body.error ?? 'Could not preview that change.' };
+    }
+    return { ok: true, before: body.before, after: body.after, contentHash: body.contentHash };
+  } catch {
+    return { ok: false, error: 'Could not reach the Construct server.' };
+  }
+}
+
+/** Commits an add/remove previewed via `previewGlob`; same staleness guard as `saveRuleSeverity`. */
+export async function saveGlob(field: GlobField, action: 'add' | 'remove', input: string | number, contentHash: string): Promise<RuleSeveritySaved> {
+  try {
+    const body = await postJson<GlobResponse>('/api/rules/globs', globBody(field, action, input, { contentHash, commit: true }));
     if (!body.ok) return { ok: false, error: body.error ?? 'Could not save that change.' };
     return { ok: true };
   } catch {

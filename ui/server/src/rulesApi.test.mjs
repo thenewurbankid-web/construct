@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
-import { rulesIndex, ruleSeveritySave, ruleExceptionSave } from './rulesApi.mjs';
+import { rulesIndex, ruleSeveritySave, ruleExceptionSave, globListSave } from './rulesApi.mjs';
 
 const hashOf = (text) => crypto.createHash('sha256').update(text).digest('hex');
 
@@ -125,4 +125,51 @@ test('ruleExceptionSave remove commits the removal, and a following remove of th
   assert.equal(saved.body.exceptions.length, 0);
   const after = fs.readFileSync(path.join(dir, 'architecture.yml'), 'utf8');
   assert.equal(ruleExceptionSave(dir, { action: 'remove', index: 0, contentHash: hashOf(after), commit: true }).status, 400);
+});
+
+// #395 slice D -- nonLayer/frozen glob lists (the "Advanced" disclosure), same add/remove-as-diff shape.
+
+test('GET /api/rules lists nonLayer and frozen globs', () => {
+  const dir = makeTempDir('rules-api-globs-');
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), "version: 1\nnonLayer:\n  - 'features/*/tests/**'\nfrozen:\n  - '../../src/design/**'\n");
+  const { body } = rulesIndex(dir);
+  assert.deepEqual(body.nonLayer, ['features/*/tests/**']);
+  assert.deepEqual(body.frozen, ['../../src/design/**']);
+});
+
+test('globListSave refuses an unknown field or a blank glob before touching anything', () => {
+  const dir = makeTempDir('rules-api-globs-');
+  assert.equal(globListSave(dir, { field: 'bogus', action: 'add', glob: 'x/**', commit: true }).status, 400);
+  assert.equal(globListSave(dir, { field: 'nonLayer', action: 'add', glob: '  ', commit: true }).status, 400);
+  assert.equal(fs.existsSync(path.join(dir, 'architecture.yml')), false);
+});
+
+test('globListSave add previews then commits a nonLayer glob, readable back through GET /api/rules', () => {
+  const dir = makeTempDir('rules-api-globs-');
+  const preview = globListSave(dir, { field: 'nonLayer', action: 'add', glob: 'features/*/tests/**', commit: false });
+  assert.equal(preview.status, 200);
+  assert.match(preview.body.after, /features\/\*\/tests\/\*\*/);
+
+  const saved = globListSave(dir, { field: 'nonLayer', action: 'add', glob: 'features/*/tests/**', contentHash: hashOf(''), commit: true });
+  assert.equal(saved.status, 200);
+  assert.deepEqual(saved.body.nonLayer, ['features/*/tests/**']);
+  assert.deepEqual(rulesIndex(dir).body.nonLayer, ['features/*/tests/**']);
+});
+
+test('globListSave remove refuses a stale index and commit is refused (409) on a stale contentHash, for frozen', () => {
+  const dir = makeTempDir('rules-api-globs-');
+  const before = "version: 1\nfrozen:\n  - '../../src/design/**'\n";
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), before);
+  assert.equal(globListSave(dir, { field: 'frozen', action: 'remove', index: 5, contentHash: hashOf(before), commit: true }).status, 400);
+  assert.equal(globListSave(dir, { field: 'frozen', action: 'remove', index: 0, contentHash: hashOf(''), commit: true }).status, 409);
+  assert.deepEqual(rulesIndex(dir).body.frozen, ['../../src/design/**']);
+});
+
+test('globListSave remove commits the removal', () => {
+  const dir = makeTempDir('rules-api-globs-');
+  const before = "version: 1\nfrozen:\n  - '../../src/design/**'\n";
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), before);
+  const saved = globListSave(dir, { field: 'frozen', action: 'remove', index: 0, contentHash: hashOf(before), commit: true });
+  assert.equal(saved.status, 200);
+  assert.deepEqual(saved.body.frozen, []);
 });
