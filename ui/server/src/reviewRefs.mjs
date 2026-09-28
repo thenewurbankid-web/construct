@@ -28,7 +28,9 @@ export function listLocalBranches(cwd) {
   }).filter((b) => b.name && HEX_ID.test(b.sha));
   const head = git(info.top, ['symbolic-ref', '--quiet', '--short', 'HEAD']);
   const current = head.status === 0 ? head.stdout.trim() : null;
-  return { ok: true, top: info.top, branches: branches.map((b) => ({ ...b, current: b.name === current })), current };
+  const remotes = git(info.top, ['remote']);
+  const hasRemote = remotes.status === 0 && remotes.stdout.trim().length > 0;
+  return { ok: true, top: info.top, branches: branches.map((b) => ({ ...b, current: b.name === current })), current, hasRemote };
 }
 
 /** The listed branch whose name is EXACTLY `name`, or null. The one place a client string becomes a ref. */

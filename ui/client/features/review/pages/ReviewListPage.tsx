@@ -26,3 +26,19 @@ export function ReviewListPage({ loaded, failure, noBranches, list, onFailureAct
   if (!loaded || !list) return <p className="hint rv-loading" role="status" data-testid="review-loading">Reading this project&apos;s branches...</p>;
   return <BranchList {...list} />;
 }
+
+/** The "no remote" empty state (`ia-git-connect`, #374): shown where a remote is required -- today just the
+ * PRs tab -- never over the local branch list, which works with or without one. Connecting/cloning is #330;
+ * only this empty state's position is built here. */
+export function GitConnectEmptyState() {
+  return (
+    <div className="dg-empty" data-testid="review-no-remote">
+      <p className="dg-empty-title">This project has no remote yet</p>
+      <p className="hint">Connect a GitHub repository to see pull requests, branches and reviews here. Cloning always goes into your single workspace root.</p>
+      <div className="dg-empty-actions">
+        <button type="button" className="dg-btn dg-btn--primary" data-testid="review-connect-remote" disabled title="Not built yet. See #330.">Connect remote&hellip;</button>
+        <button type="button" className="dg-btn" data-testid="review-clone-repository" disabled title="Not built yet. See #330.">Clone a repository&hellip;</button>
+      </div>
+    </div>
+  );
+}

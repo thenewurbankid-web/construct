@@ -63,6 +63,7 @@ export function ReviewListController() {
         ? { sourceLabel: data.source.label, base, baseSha: data.baseSha ?? null, refs: data.refs, count: data.branches.length, onBase: (n) => { list.setBase(n); route.openList(n); } }
         : null,
     list: listProps,
+    hasRemote: data ? data.hasRemote : null,
   });
   const toolsTabs = listToolsTabs(GLOSSARY);
   useRegisterShellTab('browser', browserTabs.changes);

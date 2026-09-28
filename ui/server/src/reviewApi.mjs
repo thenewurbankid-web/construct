@@ -89,7 +89,7 @@ export function createReviewRouter({ getRoot, jobs, plans = { list: () => [], re
     if (!l.ok) return res.status(l.status).json(l.body);
     const { listing } = l;
     const requested = typeof req.query.base === 'string' && req.query.base !== '' ? req.query.base : defaultBase(listing.branches, listing.current);
-    if (requested === null) return res.json({ ok: true, source: { id: localBranches.id, label: localBranches.label }, base: null, current: listing.current, refs: [], branches: [] });
+    if (requested === null) return res.json({ ok: true, source: { id: localBranches.id, label: localBranches.label }, base: null, current: listing.current, refs: [], branches: [], hasRemote: listing.hasRemote });
     const b = pick(listing, requested, 'base');
     if (!b.ok) return res.status(b.status).json(b.body);
     const base = b.branch;
@@ -98,7 +98,7 @@ export function createReviewRouter({ getRoot, jobs, plans = { list: () => [], re
       ahead: commitsAhead(listing.top, base.sha, head.sha),
       analysis: rowState(jobs.get(jobFor(listing, base, head))),
     }));
-    return res.json({ ok: true, source: { id: localBranches.id, label: localBranches.label }, base: base.name, baseSha: base.sha, current: listing.current, refs: listing.branches.map((x) => x.name), branches });
+    return res.json({ ok: true, source: { id: localBranches.id, label: localBranches.label }, base: base.name, baseSha: base.sha, current: listing.current, refs: listing.branches.map((x) => x.name), branches, hasRemote: listing.hasRemote });
   });
 
   router.get('/plans', (req, res) => {

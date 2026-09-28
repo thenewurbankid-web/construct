@@ -51,6 +51,9 @@ export type BranchList = {
   current: string | null;
   refs: string[];
   branches: BranchRow[];
+  /** Whether the project's repository has a configured remote (`git remote`). False shows the "Connect remote" /
+   * "Clone a repository" empty state (`ia-git-connect`, #374); the clone/connect action itself is #330. */
+  hasRemote: boolean;
 };
 
 // ---- one change ----------------------------------------------------------------

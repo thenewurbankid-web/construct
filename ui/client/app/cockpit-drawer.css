@@ -62,9 +62,12 @@
 .dg-btn:hover:not(:disabled) { background: var(--surface-3); }
 .dg-btn:disabled { opacity: 0.5; cursor: default; }
 .dg-btn:focus-visible, .dg-row:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.dg-btn--primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); font-weight: 600; }
+.dg-btn--primary:hover:not(:disabled) { background: var(--accent); filter: brightness(1.08); }
 .dg-note { margin: 0; padding: var(--sp-1) var(--sp-3); color: var(--text); background: var(--warn-soft); border-bottom: 1px solid var(--warn); }
 .dg-empty { padding: var(--sp-4); }
 .dg-empty-title { margin: 0 0 4px; font-weight: 600; }
+.dg-empty-actions { display: flex; gap: var(--sp-2); margin-top: var(--sp-3); }
 
 .dg-list { list-style: none; margin: 0; padding: 0; }
 .dg-item { border-bottom: 1px solid var(--border-subtle); }

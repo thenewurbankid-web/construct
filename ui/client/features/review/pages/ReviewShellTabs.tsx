@@ -9,6 +9,7 @@ import { FindingsSummary } from '../components/FindingsSummary';
 import { IndicatorCards } from '../components/IndicatorCards';
 import type { ReviewListPageProps } from './ReviewListPage';
 import { ReviewSources } from '../components/ReviewSources';
+import { GitConnectEmptyState } from './ReviewListPage';
 import type {
   BlastRadiusProps,
   ChangeTreeProps,
@@ -52,14 +53,16 @@ export function gitCommitsTab(): ShellTab {
   };
 }
 
-export type ListBrowserTabsInput = { sources: ReviewSourcesProps | null; list: ReviewListPageProps };
+export type ListBrowserTabsInput = { sources: ReviewSourcesProps | null; list: ReviewListPageProps; hasRemote: boolean | null };
 
 /** Left tabs while browsing the list: Changes has nothing to show yet (no PR open), Branches is the
  * source/base picker (today's default, matching the ranked list the center pane already shows), PRs
  * is real pull-request data -- not built yet, same reserved treatment as Commits (#330 builds the
- * remote/PR connection; this shell only reserves its place). The ranked branch list itself stays the
- * center pane's job (`ReviewListController`'s own return value) so it isn't rendered twice. */
-export function listBrowserTabs({ sources, list }: ListBrowserTabsInput): { changes: ShellTab; branches: ShellTab; prs: ShellTab; commits: ShellTab } {
+ * remote/PR connection; this shell only reserves its place). With no remote configured, PRs shows the
+ * "Connect remote" / "Clone a repository" empty state (`ia-git-connect`, #374) instead of the #330 note --
+ * the local branch list itself never needs a remote, so it stays the center pane's job
+ * (`ReviewListController`'s own return value) so it isn't rendered twice. */
+export function listBrowserTabs({ sources, list, hasRemote }: ListBrowserTabsInput): { changes: ShellTab; branches: ShellTab; prs: ShellTab; commits: ShellTab } {
   return {
     changes: { id: 'git-changes-list', title: 'Changes', render: () => <p className="hint rv-pad">Open a PR or branch to see its changed files.</p> },
     branches: {
@@ -69,7 +72,11 @@ export function listBrowserTabs({ sources, list }: ListBrowserTabsInput): { chan
       badge: list.list ? list.list.rows.length : null,
       render: () => (sources ? <ReviewSources {...sources} /> : <p className="hint rv-pad">Reading branches...</p>),
     },
-    prs: { id: 'review-list-tab', title: 'PRs', render: () => <p className="hint rv-pad">Pull-request data is not connected yet. See #330.</p> },
+    prs: {
+      id: 'review-list-tab',
+      title: 'PRs',
+      render: () => (hasRemote === false ? <GitConnectEmptyState /> : <p className="hint rv-pad">Pull-request data is not connected yet. See #330.</p>),
+    },
     commits: gitCommitsTab(),
   };
 }
