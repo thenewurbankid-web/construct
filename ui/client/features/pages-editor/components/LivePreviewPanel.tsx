@@ -14,7 +14,7 @@ import { LivePreviewToolbar } from './LivePreviewToolbar';
 // the same one in both states (same place in the tree; only the classes around
 // it change), which is why the app never reloads and the selection survives.
 export function LivePreviewPanel(props: LivePreviewView) {
-  const { url, message, frameRef, fullScreen } = props;
+  const { url, message, frameRef, fullScreen, impactPreview } = props;
   const showFrame = Boolean(url) && props.reach !== 'down';
 
   return (
@@ -34,6 +34,20 @@ export function LivePreviewPanel(props: LivePreviewView) {
         <div className="live-preview-stage">
           <div className="live-preview-box" ref={props.boxRef} style={props.frameStyle}>
             <iframe ref={frameRef} className="live-preview-frame" title="Live app preview" src={url ?? undefined} />
+            {impactPreview && !fullScreen && (
+              <div className="live-preview-impact" data-testid="change-impact-preview" role="status">
+                <b>Preview of the change</b>
+                <span>{impactPreview.label}</span>
+                <ul className="live-preview-impact-files">
+                  {impactPreview.files.map((f) => (
+                    <li key={f.path} className={f.checked ? 'live-preview-impact-file' : 'live-preview-impact-file live-preview-impact-file--deselected'}>
+                      {f.path}
+                    </li>
+                  ))}
+                </ul>
+                <span className="hint">Dashed — will change. Nothing is written until you approve.</span>
+              </div>
+            )}
           </div>
         </div>
       ) : (

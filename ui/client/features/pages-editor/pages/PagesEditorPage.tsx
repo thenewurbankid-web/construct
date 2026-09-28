@@ -8,6 +8,7 @@ import { PreviewPanel } from '../components/PreviewPanel';
 import { PropFlowDiagram } from '../components/PropFlowDiagram';
 import { StageSourceView } from '../components/StageSourceView';
 import { usePropFlow } from '../hooks/usePropFlow';
+import type { ChangeImpactPreview } from '../domain/ChangeImpact';
 import type { usePagesEditor } from '../hooks/usePagesEditor';
 
 type PagesEditorPageProps = ReturnType<typeof usePagesEditor> & {
@@ -15,6 +16,8 @@ type PagesEditorPageProps = ReturnType<typeof usePagesEditor> & {
   gitSession?: ReactNode;
   /** The target app's dev server card and branch indicator (#378), supplied by the controller (another feature). */
   devServer?: ReactNode;
+  /** #381 — the Inspector Change tab's pending refactor, drawn as a dashed-box preview over the live app. */
+  changeImpact?: ChangeImpactPreview | null;
 };
 
 // The stage (middle pane) of the Pages Editor. The page/feature tree lives in
@@ -22,7 +25,7 @@ type PagesEditorPageProps = ReturnType<typeof usePagesEditor> & {
 // its Tools tabs (see usePagesEditorTabs); this renders what you look at: the
 // live app preview, the structural mirror and the prop-flow diagram.
 export function PagesEditorPage(props: PagesEditorPageProps): ReactNode {
-  const { tree, error, selectedNodeId, selectedNode, selectNode, previewTitle, externalChange, livePreview, gitSession, devServer, feature, file } = props;
+  const { tree, error, selectedNodeId, selectedNode, selectNode, previewTitle, externalChange, livePreview, gitSession, devServer, feature, file, changeImpact } = props;
   // #456: full screen is the app and nothing else. Everything but the preview is
   // hidden rather than unmounted, so the tree, the diagram and the selection are
   // exactly as they were on the way back out.
@@ -88,7 +91,7 @@ export function PagesEditorPage(props: PagesEditorPageProps): ReactNode {
       {tree && (
         <>
           <div hidden={stageTab !== 'preview'}>
-            <LivePreviewPanel {...livePreview.view} />
+            <LivePreviewPanel {...livePreview.view} impactPreview={changeImpact} />
           </div>
           <div hidden={full}>
             {stageTab === 'source' ? (

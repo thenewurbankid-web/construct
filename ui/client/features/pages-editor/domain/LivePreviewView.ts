@@ -2,6 +2,7 @@
 // Types only — the frame box and the size readout arrive already computed
 // (see PreviewFrameStyle.ts), so the panel itself stays presentation.
 import type { Ref } from 'react';
+import type { ChangeImpactPreview } from './ChangeImpact';
 
 /** What we know about the preview address: nothing yet, being probed, answering, or refusing. */
 export type PreviewReach = 'unknown' | 'checking' | 'up' | 'down';
@@ -47,4 +48,7 @@ export type LivePreviewView = {
    * selects an element while Pick is on, or with Alt held regardless. Escape leaves Pick. */
   picking: boolean;
   onTogglePick: () => void;
+  /** #381 — the Inspector Change tab's pending refactor, drawn as a dashed-bordered card over the stage
+   * ("Preview of the change... nothing is written until you approve"). Null when Change has no live preview. */
+  impactPreview?: ChangeImpactPreview | null;
 };
