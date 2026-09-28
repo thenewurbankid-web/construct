@@ -81,6 +81,36 @@ export function formatReport(violations, { format = 'text' } = {}) {
 }
 
 /**
+ * Group a flat violation list by rule id, so a Rules composer can show each rule's live
+ * violation count next to its plain-words "why" without re-deriving it (#395/#758).
+ *
+ * @param {object[]} violations Violation objects from `makeViolation`.
+ * @param {Record<string, {severity?: string, numeric?: boolean}>} [rules] A config's normalized
+ *   rule table (e.g. `loadConfig(root).rules`) — every non-numeric-threshold entry is listed even
+ *   with zero current violations. Numeric threshold overrides (`numeric: true`, e.g.
+ *   `'READ-002-max-loc'`) aren't real severity-bearing rules and are skipped.
+ * @returns {Record<string, {severity: string|null, why: string|null, count: number}>}
+ *
+ * @example
+ * summarizeViolations([], { 'PAGE-004': { severity: 'error' } })['PAGE-004'];
+ * // => { severity: 'error', why: null, count: 0 }
+ */
+export function summarizeViolations(violations, rules = {}) {
+  const summary = {};
+  for (const [ruleId, def] of Object.entries(rules)) {
+    if (def?.numeric) continue;
+    summary[ruleId] = { severity: def?.severity ?? null, why: null, count: 0 };
+  }
+  for (const v of violations) {
+    const entry = summary[v.rule] || (summary[v.rule] = { severity: v.severity, why: null, count: 0 });
+    entry.count += 1;
+    if (!entry.why) entry.why = v.why;
+    if (entry.severity == null) entry.severity = v.severity;
+  }
+  return summary;
+}
+
+/**
  * The process exit code for a set of violations: only `error` severity fails the run.
  *
  * @param {object[]} violations Violation objects.

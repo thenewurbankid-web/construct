@@ -5,15 +5,28 @@
 // (no path parameter, so a caller cannot point it at another directory).
 import { aggregateValidation } from '../../../packages/core/registry.mjs';
 import { DEFAULT_ENFORCERS } from '../../../packages/engine/defaultEnforcers.mjs';
-import { findProjectRoot } from '../../../packages/core/config.mjs';
+import { findProjectRoot, loadConfig } from '../../../packages/core/config.mjs';
+import { summarizeViolations } from '../../../packages/core/diagnostics.mjs';
 import { serverLog } from './logBuffer.mjs';
 import { ExecutionError, resolveExecutionMode, runValidate } from './coreExecutor.mjs';
 import { runCapturing } from './commandRunner.mjs';
 
 export const MAX_VIOLATIONS = 500;
 
-/** The 200 body: the same fields whichever execution mode produced the violations. */
-function reportBody({ violations, ok, durationMs }) {
+/** The rule table for `summarizeViolations`, or `{}` if architecture.yml can't be loaded --
+ * never lets a config problem hide the flat violations list the rest of the body still carries. */
+function rulesFor(root) {
+  try {
+    return loadConfig(root).rules || {};
+  } catch {
+    return {};
+  }
+}
+
+/** The 200 body: the same fields whichever execution mode produced the violations.
+ * `summary` (#758) groups the same violations by rule id alongside (not instead of) the flat list,
+ * so a Rules composer can show a live per-rule count without re-deriving it. */
+function reportBody({ violations, ok, durationMs, rules = {} }) {
   return {
     ok: true,
     passed: ok,
@@ -30,6 +43,7 @@ function reportBody({ violations, ok, durationMs }) {
       why: v.why,
       suggestedFix: v.suggestedFix,
     })),
+    summary: summarizeViolations(violations, rules),
   };
 }
 
@@ -50,7 +64,7 @@ export function handleValidate({ origin, clientOrigin, projectDir, validate = ag
     const durationMs = now() - started;
     const errors = violations.filter((v) => v.severity === 'error').length;
     log.record('validate', errors ? 'warn' : 'info', `validate: ${violations.length} violation(s), ${errors} error(s) in ${durationMs} ms`);
-    return { status: 200, body: reportBody({ violations, ok, durationMs }) };
+    return { status: 200, body: reportBody({ violations, ok, durationMs, rules: rulesFor(root) }) };
   } catch (e) {
     log.record('validate', 'error', `validate failed: ${e.message}`);
     return { status: 500, body: { ok: false, error: 'Validation could not run.' } };
@@ -102,7 +116,7 @@ export async function handleValidateForProject(ctx) {
     const durationMs = now() - started;
     const errors = violations.filter((v) => v.severity === 'error').length;
     log.record('validate', errors ? 'warn' : 'info', `validate (via CLI): ${violations.length} violation(s), ${errors} error(s) in ${durationMs} ms`);
-    return { status: 200, body: { ...reportBody({ violations, ok, durationMs }), mode } };
+    return { status: 200, body: { ...reportBody({ violations, ok, durationMs, rules: rulesFor(root) }), mode } };
   } catch (e) {
     const message = e instanceof ExecutionError ? e.message : 'Validation could not run.';
     log.record('validate', 'error', `validate (via CLI) failed: ${message}`);
