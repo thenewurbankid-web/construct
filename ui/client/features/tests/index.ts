@@ -15,6 +15,10 @@ export * from './hooks/useStepReview';
 /** The Tests screen's state and I/O: listing, selection, clone dialog, generate. */
 export * from './hooks/useTests';
 
+/** The two mutating test calls (clone, generate) — used by the Tests screen and by the
+ * Pages editor's "Generate tests for this route" suggested next step (#382). */
+export * from './services/TestsWrites';
+
 /** The feature's listing, selection and scenario coverage for one feature. */
 export * from './hooks/useTestsListing';
 
