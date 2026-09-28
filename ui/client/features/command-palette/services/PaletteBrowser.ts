@@ -1,9 +1,11 @@
-import { isPaletteShortcut } from '../domain/PaletteKeys';
+import { isPaletteShortcut, isQuickOpenShortcut } from '../domain/PaletteKeys';
 
-/** Calls `onToggle` on Ctrl/Cmd+K anywhere (capture phase, so editors cannot swallow it). Returns an unsubscribe. */
+/** Calls `onToggle` on Ctrl/Cmd+K (commands) or Ctrl/Cmd+P (#375 quick-open — same
+ * dialog, "Go to page" entries do the finding) anywhere (capture phase, so editors
+ * cannot swallow it and the browser's print dialog never opens). Returns an unsubscribe. */
 export function subscribePaletteShortcut(onToggle: () => void): () => void {
   const onKey = (e: KeyboardEvent) => {
-    if (!isPaletteShortcut(e)) return;
+    if (!isPaletteShortcut(e) && !isQuickOpenShortcut(e)) return;
     e.preventDefault();
     e.stopPropagation();
     onToggle();

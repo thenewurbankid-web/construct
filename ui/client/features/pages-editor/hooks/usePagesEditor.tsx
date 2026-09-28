@@ -12,6 +12,7 @@ import { useAllPages } from './useAllPages';
 import { useLivePreview } from './useLivePreview';
 import { useOpenPageRequests } from './useOpenPageRequests';
 import { usePageChange } from './usePageChange';
+import { usePagesEditorCommands } from './usePagesEditorCommands';
 import { initialPagesEditorState, pagesEditorReducer } from '../workflows/PagesEditor';
 
 function previewTitle(node: PagesEditorNode): string {
@@ -67,6 +68,7 @@ export function usePagesEditor() {
     [showStage],
   );
   const showAllPages = useCallback(() => setFeature(''), [setFeature]);
+  usePagesEditorCommands(allPages.pages, openPageOf);
   const selectNode = useCallback((nodeId: string) => dispatch({ type: 'SELECT_NODE', nodeId }), []);
   const onTreeSaved = useCallback((tree: PageTree) => dispatch({ type: 'TREE_UPDATED', tree }), []);
   const livePreview = useLivePreview({ roots: state.tree?.roots ?? [], feature: state.feature, file: state.file, onSelectNode: selectNode });

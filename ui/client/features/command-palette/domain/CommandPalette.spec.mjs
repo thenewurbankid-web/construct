@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { addCommands, removeCommands } from './CommandRegistry.ts';
 import { filterCommands, scoreCommand } from './CommandSearch.ts';
 import { flatten, groupCommands } from './CommandGroups.ts';
-import { isPaletteShortcut, moveActive } from './PaletteKeys.ts';
+import { isPaletteShortcut, isQuickOpenShortcut, moveActive } from './PaletteKeys.ts';
 import { initialPalette, paletteReducer } from '../workflows/PaletteState.ts';
 
 const c = (id, title, group = 'G', keywords) => ({ id, title, group, keywords, run() {} });
@@ -79,6 +79,16 @@ test('isPaletteShortcut: Ctrl/Cmd+K only', () => {
   assert.equal(isPaletteShortcut(k({ ctrlKey: true, shiftKey: true })), false);
   assert.equal(isPaletteShortcut(k({ ctrlKey: true, altKey: true })), false);
   assert.equal(isPaletteShortcut(k({ ctrlKey: true, key: 'j' })), false);
+});
+
+test('isQuickOpenShortcut: Ctrl/Cmd+P only (#375)', () => {
+  const k = (o) => ({ key: 'p', ctrlKey: false, metaKey: false, altKey: false, shiftKey: false, ...o });
+  assert.equal(isQuickOpenShortcut(k({ ctrlKey: true })), true);
+  assert.equal(isQuickOpenShortcut(k({ metaKey: true, key: 'P' })), true);
+  assert.equal(isQuickOpenShortcut(k({})), false);
+  assert.equal(isQuickOpenShortcut(k({ ctrlKey: true, shiftKey: true })), false);
+  assert.equal(isQuickOpenShortcut(k({ ctrlKey: true, altKey: true })), false);
+  assert.equal(isQuickOpenShortcut(k({ ctrlKey: true, key: 'k' })), false);
 });
 
 test('paletteReducer: a new query resets the highlight; MOVE wraps; RESET clears', () => {

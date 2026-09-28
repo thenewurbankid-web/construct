@@ -15,3 +15,9 @@ export function moveActive(current: number, count: number, key: string): number 
 export function isPaletteShortcut(e: ShortcutLike): boolean {
   return e.key.toLowerCase() === 'k' && (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey;
 }
+
+/** Ctrl+P (Cmd+P on macOS), the #375 quick-open shortcut: opens the same palette, browsers'
+ * print dialog is pre-empted by the capture-phase preventDefault in subscribePaletteShortcut. */
+export function isQuickOpenShortcut(e: ShortcutLike): boolean {
+  return e.key.toLowerCase() === 'p' && (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey;
+}
