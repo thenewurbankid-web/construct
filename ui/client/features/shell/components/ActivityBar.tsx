@@ -53,12 +53,16 @@ export function ActivityBar({ screens, activeScreenId, screenBadges, collapsed, 
         {screens.map((screen, i) => {
           const active = screen.id === activeScreenId;
           const count = screenBadges?.[screen.id] ?? 0;
+          // #376: at 390px (the horizontal, narrow rail) a short label keeps every link on one row;
+          // the full name stays the accessible name and the tooltip either way.
+          const visibleLabel = horizontal ? (screen.shortLabel ?? screen.label) : screen.label;
           return (
             <Link
               key={screen.id}
               href={screen.href}
               className={active ? 'sh-rail-link sh-rail-link--active' : 'sh-rail-link'}
               aria-current={active ? 'page' : undefined}
+              aria-label={horizontal && visibleLabel !== screen.label ? screen.label : undefined}
               tabIndex={i === tabStop ? 0 : -1}
               title={screen.label}
               data-rail-link=""
@@ -66,7 +70,7 @@ export function ActivityBar({ screens, activeScreenId, screenBadges, collapsed, 
               onKeyDown={onKeyDown}
             >
               <Icon id={screen.id} />
-              <span className="sh-rail-label">{screen.label}</span>
+              <span className="sh-rail-label">{visibleLabel}</span>
               {count > 0 && (
                 <span className="sh-topnav-badge sh-rail-badge" data-testid={`screen-${screen.id}-badge`}>
                   {count > 99 ? '99+' : count}

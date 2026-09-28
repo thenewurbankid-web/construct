@@ -49,7 +49,8 @@ export function ShellFrame({ children, route, project, model, theme, userMenu }:
   const { layout, resize, toggle } = useShellLayout(project.dir, project.known);
   const narrow = useNarrowLayout(route.pathname);
   const { active, select } = useActiveTabs();
-  useShellShortcuts(toggle);
+  const { navigate, openPage } = useShellNavigation(route.pathname);
+  useShellShortcuts(toggle, navigate, PRIMARY_SCREENS);
   const openPalette = useOpenPalette();
   const diagnostics = useDiagnostics(project.known);
   const processes = useProcesses(project.known ? project.dir : null);
@@ -60,7 +61,6 @@ export function ShellFrame({ children, route, project, model, theme, userMenu }:
   const gitBranches = useGitBranchCount(project.known);
   const registered = { browser: useShellTabs('browser'), tools: useShellTabs('tools'), drawer: useShellTabs('drawer') };
 
-  const { navigate, openPage } = useShellNavigation(route.pathname);
   useRevealPanes(project.known, project.dir, { left: registered.browser.length > 0, right: registered.tools.length > 0 }, toggle);
 
   // Default tabs the shell itself provides; features add more via useRegisterShellTab.

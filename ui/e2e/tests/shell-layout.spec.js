@@ -114,10 +114,66 @@ test.describe('Cockpit shell layout (#245)', () => {
     await expect(page.getByRole('complementary', { name: 'Browser' })).toHaveCount(0);
     await page.keyboard.press('Control+b');
     await expect(page.getByRole('complementary', { name: 'Browser' })).toBeVisible();
+    // Focus starts outside any landmark (the body): the first F6 stop is the top bar
+    // (design section 6's order: top bar, left, stage, right, bottom).
+    await page.keyboard.press('F6');
+    expect(await page.evaluate(() => document.activeElement?.getAttribute('data-pane'))).toBe('top');
     await page.keyboard.press('F6');
     expect(await page.evaluate(() => document.activeElement?.getAttribute('data-pane'))).toBe('left');
     await page.keyboard.press('F6');
     expect(await page.evaluate(() => document.activeElement?.getAttribute('data-pane'))).toBe('mid');
+  });
+
+  test('F6 / Shift+F6 cycle focus through the whole shell in visual order: top bar, left, stage, right, bottom (bottom only while open)', async ({ page }) => {
+    await gotoCockpit(page, '/help');
+    await page.keyboard.press('Control+Alt+b');
+    await page.keyboard.press('Control+j');
+    await expect(page.getByRole('complementary', { name: 'Tools' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Drawer' })).toBeVisible();
+
+    const paneAt = () => page.evaluate(() => document.activeElement?.getAttribute('data-pane'));
+    const order = ['top', 'left', 'mid', 'right', 'drawer'];
+    for (const expected of order) {
+      await page.keyboard.press('F6');
+      expect(await paneAt()).toBe(expected);
+    }
+    // Wraps back to the start.
+    await page.keyboard.press('F6');
+    expect(await paneAt()).toBe('top');
+
+    for (const expected of [...order].reverse()) {
+      await page.keyboard.press('Shift+F6');
+      expect(await paneAt()).toBe(expected);
+    }
+
+    // Close the drawer: it drops out of the cycle instead of focusing a hidden landmark.
+    await page.getByTestId('toggle-drawer').click();
+    await expect(page.getByRole('region', { name: 'Drawer' })).toHaveCount(0);
+    await page.evaluate(() => (document.activeElement)?.blur());
+    for (const expected of ['top', 'left', 'mid', 'right']) {
+      await page.keyboard.press('F6');
+      expect(await paneAt()).toBe(expected);
+    }
+    await page.keyboard.press('F6');
+    expect(await paneAt()).toBe('top');
+  });
+
+  test('Alt 1-5 switches the primary screen from anywhere in the shell', async ({ page }) => {
+    await gotoCockpit(page, '/help');
+    const rail = page.getByRole('navigation', { name: 'Screens' });
+    await page.keyboard.press('Alt+2');
+    await expect(page).toHaveURL(/\/pages$/);
+    await expect(rail.getByTestId('screen-pages')).toHaveAttribute('aria-current', 'page');
+    await page.keyboard.press('Alt+4');
+    await expect(page).toHaveURL(/\/review$/);
+    await expect(rail.getByTestId('screen-git')).toHaveAttribute('aria-current', 'page');
+    await page.keyboard.press('Alt+1');
+    await expect(page).toHaveURL(/\/$/);
+    await expect(rail.getByTestId('screen-features')).toHaveAttribute('aria-current', 'page');
+    // Alt+6 and plain "1" (no modifier) are not shortcuts.
+    await page.keyboard.press('Alt+6');
+    await page.keyboard.press('1');
+    await expect(page).toHaveURL(/\/$/);
   });
 
   test('layout is remembered per project across reloads; garbage in storage falls back to defaults', async ({ page, request }) => {

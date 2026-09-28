@@ -27,7 +27,7 @@ export function TopBar({
   onOpenPalette,
 }: TopBarProps) {
   return (
-    <header className="sh-top" role="banner">
+    <header className="sh-top" role="banner" data-pane="top" tabIndex={-1}>
       <span className="sh-brand">
         <AnimatedLogo mark="cockpit" size={22} busy={working} still />
         <span>Cockpit</span>

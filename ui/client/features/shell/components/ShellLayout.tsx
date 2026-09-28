@@ -12,11 +12,12 @@ import type { ShellLayoutProps } from '../types';
  * bar are not rendered and the side panes are hidden, so the stage owns the
  * viewport. The panes stay mounted behind `hidden` — a screen must not lose what
  * is in its Tools tabs just because the app was looked at full screen. */
-export function ShellLayout({ layout, limits, onResize, onTogglePane, narrow = false, narrowPane = 'mid', onNarrowPane, focus = false, top, rail, left, mid, right, drawer, status }: ShellLayoutProps) {
+export function ShellLayout({ layout, limits, onResize, onTogglePane, narrow = false, narrowPane = 'mid', onNarrowPane, runBadge, focus = false, top, rail, left, mid, right, drawer, status }: ShellLayoutProps) {
   if (narrow) {
-    // Narrow (< 900px): one pane at a time. Inactive panes stay mounted but hidden
-    // so a screen keeps its state (a wizard chat, a half-filled form) while you
-    // look at the Browser or Tools; the drawer is not shown at this size.
+    // Narrow (< 900px): one pane at a time, Browser / Stage / Tools / Run (#376). Inactive panes
+    // stay mounted but hidden so a screen keeps its state (a wizard chat, a half-filled form) while
+    // you look at another pane -- the bottom panel (Run) included, unlike the wide layout it has no
+    // separate open/closed state here, just its turn as the one pane showing.
     return (
       <div className={focus ? 'sh-root sh-root--narrow sh-root--focus' : 'sh-root sh-root--narrow'} data-narrow="true" data-focus={focus ? 'true' : undefined}>
         {!focus && top}
@@ -30,9 +31,12 @@ export function ShellLayout({ layout, limits, onResize, onTogglePane, narrow = f
           <aside id="sh-pane-right" data-pane="right" tabIndex={-1} aria-label="Tools" className="sh-pane sh-right" hidden={focus || narrowPane !== 'right'}>
             {right}
           </aside>
+          <section id="sh-pane-drawer" data-pane="drawer" tabIndex={-1} aria-label="Drawer" className="sh-pane sh-drawer" hidden={focus || narrowPane !== 'drawer'}>
+            {drawer}
+          </section>
         </div>
         {!focus && rail}
-        {!focus && <NarrowTabBar pane={narrowPane} onSelect={(p) => onNarrowPane?.(p)} />}
+        {!focus && <NarrowTabBar pane={narrowPane} onSelect={(p) => onNarrowPane?.(p)} runBadge={runBadge} />}
         {!focus && status}
       </div>
     );

@@ -81,7 +81,10 @@ export type RailSubTabsProps = {
 // ---- Navigation ----------------------------------------------------------
 
 /** One of the five top-bar screens (Features, Pages, Components, Git, Tests); `activeOn` lists the existing routes it owns. */
-export type PrimaryScreen = { id: string; label: string; href: string; activeOn: string[] };
+/** `shortLabel` is what the rail shows when it has no room for the full name (the horizontal
+ * rail at 390px); `label` stays the accessible name (aria-label) either way. Absent means the
+ * label is already short enough. */
+export type PrimaryScreen = { id: string; label: string; shortLabel?: string; href: string; activeOn: string[] };
 
 export type ShellScreen = { href: string; label: string; activeOn: string[] };
 
@@ -94,18 +97,20 @@ export type ProfileMenuItemsProps = {
   onPreference: (preference: ThemePreference) => void;
 };
 
-export type ShortcutAction = 'toggle-left' | 'toggle-right' | 'toggle-drawer' | 'cycle-pane';
+export type ShortcutAction = 'toggle-left' | 'toggle-right' | 'toggle-drawer' | 'cycle-pane' | 'cycle-pane-back' | 'go-to-screen';
 
 export type ShortcutInfo = { keys: string; action: ShortcutAction; label: string };
 
 // ---- Component props -----------------------------------------------------
 
-/** The single pane showing in the narrow layout: Browser (left), stage (mid) or Tools (right). */
-export type NarrowPane = 'left' | 'mid' | 'right';
+/** The single pane showing in the narrow layout: Browser (left), stage (mid), Tools (right) or the bottom Run panel (drawer). */
+export type NarrowPane = 'left' | 'mid' | 'right' | 'drawer';
 
 export type NarrowTabBarProps = {
   pane: NarrowPane;
   onSelect: (pane: NarrowPane) => void;
+  /** Little count on the Run tab (running processes), like the top bar's own pill. Absent or 0 shows none. */
+  runBadge?: number;
 };
 
 /** Narrow-layout controls shared by the layout and the page that feeds it. */
@@ -114,6 +119,8 @@ export type NarrowProps = {
   narrow?: boolean;
   narrowPane?: NarrowPane;
   onNarrowPane?: (pane: NarrowPane) => void;
+  /** See NarrowTabBarProps.runBadge. */
+  runBadge?: number;
 };
 
 export type ShellLayoutProps = NarrowProps & {

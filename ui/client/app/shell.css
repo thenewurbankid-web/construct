@@ -451,6 +451,7 @@ kbd {
 }
 .sh-narrowtab:hover { color: var(--text); background: var(--surface-3); }
 .sh-narrowtab[aria-selected='true'] { color: var(--text); font-weight: 600; border-top-color: var(--accent); }
+.sh-narrowtab-badge { margin-left: 4px; vertical-align: middle; }
 .sh-root--narrow [hidden] { display: none !important; }
 .sh-root--narrow .sh-pane { position: static; width: 100%; height: auto; min-height: calc(100vh - var(--sh-top) - var(--sh-status) - 44px - 48px); border: 0; }
 .sh-root--narrow .main { padding: var(--sp-4); }

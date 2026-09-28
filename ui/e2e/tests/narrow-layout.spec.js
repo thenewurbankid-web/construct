@@ -23,7 +23,7 @@ for (const [name, width, height] of [['phone-390', 390, 844], ['tablet-768', 768
       await page.goto('/help');
       const bar = page.getByRole('tablist', { name: 'Panes' });
       await expect(bar).toBeVisible();
-      await expect(bar.getByRole('tab')).toHaveText(['Browser', 'Stage', 'Tools']);
+      await expect(bar.getByRole('tab')).toHaveText(['Browser', 'Stage', 'Tools', 'Run']);
       await expect(bar.getByRole('tab', { name: 'Stage' })).toHaveAttribute('aria-selected', 'true');
 
       // Stage: the screen is visible, the side panes are not.
