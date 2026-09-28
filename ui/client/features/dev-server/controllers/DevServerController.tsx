@@ -2,13 +2,14 @@
 
 import { useShellDrawer } from '@/features/shell';
 import { useDevServer } from '../hooks/useDevServer';
-import { useDevServerUrl } from '../hooks/useDevServerUrl';
+import { useDevServerUrl, type DevServerUrlInfo } from '../hooks/useDevServerUrl';
 import { DevServerPage } from '../pages/DevServerPage';
 
 type DevServerControllerProps = {
-  /** Told the server's address when it starts answering, and `null` when it is no longer running, so the
-   * screen that owns the preview can point its frame at it (or let go of it). Composed in, like a slot. */
-  onUrl?: (url: string | null) => void;
+  /** Told the server's address when it starts answering (plus the injecting proxy's address/nonce, #443),
+   * and all null when it is no longer running, so the screen that owns the preview can point its frame at it
+   * (or let go of it). Composed in, like a slot. */
+  onUrl?: (info: DevServerUrlInfo) => void;
 };
 
 // Wires the dev-server hook to its card. Composed as a slot by the Pages editor, which knows nothing about how

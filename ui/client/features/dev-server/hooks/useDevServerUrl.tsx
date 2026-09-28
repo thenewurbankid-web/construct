@@ -3,17 +3,24 @@
 import { useEffect, useRef } from 'react';
 import type { DevServerStatus } from '../types';
 
+/** The server's plain address, plus the injecting proxy's address and per-session nonce (#443 live preview
+ * v2) when one is up. `previewUrl`/`previewNonce` are null exactly when the proxy isn't (yet) wired for this
+ * project's origin — the preview then falls back to framing `url` directly, same as before v2. */
+export type DevServerUrlInfo = { url: string | null; previewUrl: string | null; previewNonce: string | null };
+
 /**
  * Tells the screen that owns the preview where the server can be reached: its address the moment it starts
  * answering, and `null` when it is no longer running. Called only on a change, never on every render.
  */
-export function useDevServerUrl(status: DevServerStatus | null, onUrl?: (url: string | null) => void) {
+export function useDevServerUrl(status: DevServerStatus | null, onUrl?: (info: DevServerUrlInfo) => void) {
   const url = status?.state === 'running' ? status.url : null;
+  const previewUrl = status?.state === 'running' ? status.previewUrl : null;
+  const previewNonce = status?.state === 'running' ? status.previewNonce : null;
   const announced = useRef<string | null>(null);
   useEffect(() => {
     if (url === announced.current) return;
     const wasRunning = announced.current !== null;
     announced.current = url;
-    if (url || wasRunning) onUrl?.(url);
-  }, [url, onUrl]);
+    if (url || wasRunning) onUrl?.({ url, previewUrl, previewNonce });
+  }, [url, previewUrl, previewNonce, onUrl]);
 }

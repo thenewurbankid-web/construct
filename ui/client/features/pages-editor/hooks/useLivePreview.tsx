@@ -6,6 +6,8 @@ import { resolvePreviewSelection } from '../domain/PreviewSelection';
 import { isLocalPreviewUrl, normalizePreviewUrl } from '../domain/PreviewUrl';
 import { openSourceTargetFromCxSrc } from '../domain/OpenSource';
 import { createIframePreviewSource } from '../services/PreviewSource';
+import { createFiberPreviewSource } from '../services/PreviewFiberSource';
+import { resolveFiberSourceSelection } from '../services/PreviewFiberApi';
 import { probePreview } from '../services/PreviewReachability';
 import { requestOpenSource } from '../services/OpenSourceRequest';
 import type { LivePreviewView, PreviewReach } from '../domain/LivePreviewView';
@@ -33,6 +35,9 @@ type Args = {
 export function useLivePreview({ roots, feature, file, onSelectNode }: Args) {
   const [draft, setDraft] = useState('');
   const [url, setUrl] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewNonce, setPreviewNonce] = useState<string | null>(null);
+  const [pickMode, setPickMode] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [reach, setReach] = useState<PreviewReach>('unknown');
   const frameRef = useRef<HTMLIFrameElement | null>(null);
@@ -43,6 +48,53 @@ export function useLivePreview({ roots, feature, file, onSelectNode }: Args) {
 
   const source = useMemo(() => (url ? createIframePreviewSource(url, () => frameRef.current?.contentWindow) : null), [url]);
   const signals = usePreviewSignals(source, reach === 'up');
+
+  // #443 live preview v2: reads React's own dev-time internals through the injecting proxy, so
+  // click-to-source needs nothing installed in the target app. Only live once the frame is actually
+  // showing the proxy's address (never the dev server's own address) with its per-session nonce.
+  const fiberSource = useMemo(
+    () => (previewUrl && previewNonce && url === previewUrl ? createFiberPreviewSource(previewUrl, previewNonce, () => frameRef.current?.contentWindow) : null),
+    [previewUrl, previewNonce, url],
+  );
+
+  useEffect(() => {
+    if (!fiberSource) { setPickMode(false); return undefined; }
+    return () => fiberSource.detach();
+  }, [fiberSource]);
+
+  useEffect(() => {
+    fiberSource?.setPick(pickMode);
+  }, [fiberSource, pickMode]);
+
+  useEffect(() => {
+    if (!fiberSource) return undefined;
+    return fiberSource.onSelect((selection) => {
+      resolveFiberSourceSelection(selection).then(({ status, resolution }) => {
+        const cur = latest.current;
+        if (status === 409) { setMessage('The dev server stopped before this selection resolved.'); return; }
+        if (!resolution?.ok || resolution.file == null || resolution.line == null || resolution.column == null) {
+          setMessage(resolution?.componentName ? `Could not resolve ${resolution.componentName} to a source location.` : 'Could not resolve that element to a source location.');
+          return;
+        }
+        const r = resolvePreviewSelection(`${resolution.file}:${resolution.line}:${resolution.column}`, cur.roots, cur.feature, cur.file);
+        if (r.kind === 'selected') {
+          cur.onSelectNode(r.nodeId);
+          setMessage(`Selected ${resolution.componentName ?? resolution.file}`);
+        } else if (r.kind === 'other-file') {
+          setMessage(`That element lives in ${r.file}, not the open page.`);
+        } else if (r.kind === 'stale') {
+          setMessage('No element at that position in the open page — reload the preview if you just edited it.');
+        } else {
+          setMessage('Unrecognised source annotation from the preview.');
+        }
+      });
+    });
+  }, [fiberSource]);
+
+  useEffect(() => {
+    if (!fiberSource) return undefined;
+    return fiberSource.onError(({ reason }) => setMessage(`Live preview could not read that element (${reason}).`));
+  }, [fiberSource]);
 
   useEffect(() => {
     if (!source) return undefined;
@@ -79,21 +131,28 @@ export function useLivePreview({ roots, feature, file, onSelectNode }: Args) {
     }
     setMessage(null);
     setUrl(normalized);
+    setPreviewUrl(null);
+    setPreviewNonce(null);
     probe(normalized);
   }, [draft, probe]);
 
-  /** Point the frame at an address the Cockpit itself was given (the dev server it started, #378). */
-  const connectTo = useCallback((target: string) => {
+  /** Point the frame at an address the Cockpit itself was given (the dev server it started, #378), or, when
+   * one is up, at the injecting proxy's address with its nonce (#443) so click-to-source reads fiber data. */
+  const connectTo = useCallback((target: string, previewTarget?: string | null, nonce?: string | null) => {
     const normalized = normalizePreviewUrl(target);
     if (!normalized) return;
     setDraft(normalized);
     setMessage(null);
     setUrl(normalized);
+    setPreviewUrl(previewTarget ?? null);
+    setPreviewNonce(nonce ?? null);
     probe(normalized);
   }, [probe]);
 
   const disconnect = useCallback(() => {
     setUrl(null);
+    setPreviewUrl(null);
+    setPreviewNonce(null);
     setMessage(null);
     setReach('unknown');
     full.exit();
@@ -114,6 +173,8 @@ export function useLivePreview({ roots, feature, file, onSelectNode }: Args) {
     const target = openSourceTargetFromCxSrc(src);
     if (target) requestOpenSource(target);
   }, []);
+
+  const onTogglePick = useCallback(() => setPickMode((p) => !p), []);
 
   const view = useMemo<LivePreviewView>(
     () => ({
@@ -142,8 +203,11 @@ export function useLivePreview({ roots, feature, file, onSelectNode }: Args) {
       onFullScreen: full.open,
       onExitFullScreen: full.exit,
       fullScreenRef: full.triggerRef,
+      pickAvailable: Boolean(fiberSource),
+      pickMode,
+      onTogglePick,
     }),
-    [draft, url, message, connect, disconnect, reach, retry, sizing, full, signals.plugin, signals.appError, signals.appErrorSrc, signals.dismissAppError, showInSource],
+    [draft, url, message, connect, disconnect, reach, retry, sizing, full, signals.plugin, signals.appError, signals.appErrorSrc, signals.dismissAppError, showInSource, fiberSource, pickMode, onTogglePick],
   );
 
   return { draft, setDraft, url, message, frameRef, connect, connectTo, release, disconnect, fullScreen: full.fullScreen, view };

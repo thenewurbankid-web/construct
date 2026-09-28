@@ -43,4 +43,10 @@ export type LivePreviewView = {
   onFullScreen: () => void;
   onExitFullScreen: () => void;
   fullScreenRef: Ref<HTMLButtonElement>;
+  /** #443 live preview v2: whether the frame is showing the injecting proxy (fiber-based click-to-source
+   * is possible), the toggle's own state, and the handler. Pick mode off still lets clicks reach the app;
+   * on, a click selects instead (mirrors the design note's picker toggle, §8). */
+  pickAvailable: boolean;
+  pickMode: boolean;
+  onTogglePick: () => void;
 };

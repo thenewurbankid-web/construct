@@ -18,6 +18,16 @@ export function LivePreviewToolbar(props: LivePreviewView) {
         />
         <button type="button" onClick={props.onConnect}>Load preview</button>
         {props.url && <button type="button" onClick={props.onDisconnect}>Close</button>}
+        {props.pickAvailable && (
+          <button
+            type="button"
+            aria-pressed={props.pickMode}
+            onClick={props.onTogglePick}
+            title="Pick mode: click an element in the preview to select its source (Alt+click always selects, even when off)"
+          >
+            {props.pickMode ? 'Picking…' : 'Pick element'}
+          </button>
+        )}
       </div>
       <div className="live-preview-sizes">
         <label htmlFor="live-preview-size">Size</label>
