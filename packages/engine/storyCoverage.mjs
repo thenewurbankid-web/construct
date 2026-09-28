@@ -22,7 +22,7 @@ const NONE = { declared: false, acceptance: [], compare: null };
  * @param {{ genDir: string, testsDir: string }} at `locate(root, feature)`'s result.
  * @param {{ name: string }[]} generated Listed generated test files.
  * @param {{ name: string }[]} yours Listed "yours" test files.
- * @param {{ id: string, file: string|null }[]} coverage The scenario coverage rows (mutated: `storyIds` added).
+ * @param {{ id: string, file: string|null, cloned: string[], storyIds?: string[] }[]} coverage The scenario coverage rows (mutated: `storyIds` added).
  * @returns {{ declared: boolean, acceptance: {id:string,text:string}[], compare: {missing:string[],undocumented:string[],matched:string[]}|null }}
  */
 export function featureStoryCoverage(root, feature, at, generated, yours, coverage) {

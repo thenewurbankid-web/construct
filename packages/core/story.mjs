@@ -83,7 +83,10 @@ function parseAttrs(raw) {
   return out;
 }
 
-/** Render the block's inner content (title, description, status, acceptance) -- the exact bytes `blockHash` covers. */
+/**
+ * Render the block's inner content (title, description, status, acceptance) -- the exact bytes `blockHash` covers.
+ * @param {{ title?: string, description?: string, status?: string, acceptance?: {id: string, text: string}[] }} fields
+ */
 function renderBlockContent({ title, description, status, acceptance }) {
   const lines = [`# ${title ?? ''}`];
   if (description) lines.push('', description);
@@ -391,7 +394,7 @@ function stripCodeFence(text) {
  * here calls a model: this is the check that runs on whatever the model said, after the fact.
  *
  * @param {{acceptanceId: any, codeUnit: any, note?: any}[]} citations Candidate citations (e.g. from `parseStoryCitations`).
- * @param {{acceptanceIds: Iterable<string>, codeUnitIds: Iterable<string>}} known The real ids and code units a citation may reference.
+ * @param {{acceptanceIds?: Iterable<string>, codeUnitIds?: Iterable<string>}} [known] The real ids and code units a citation may reference.
  * @returns {{ verified: {acceptanceId: string, codeUnit: string, note: string}[], dropped: {citation: any, reason: string}[] }}
  *
  * @example

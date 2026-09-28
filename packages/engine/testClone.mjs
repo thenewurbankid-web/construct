@@ -68,6 +68,9 @@ export function readRegular(abs) {
   }
 }
 
+/**
+ * @returns {{ ok: false, code: string, error: string } | { ok: true, genRel: string, genDir: string, testsRel: string, testsDir: string }}
+ */
 export function locate(root, feature) {
   let p;
   try { p = projectPaths(root, feature); } catch (e) { return refuse('no-feature', e.message); }
@@ -87,8 +90,8 @@ function listDir(dir, pattern) {
 
 /**
  * A feature's tests and the scenario coverage table. Read-only.
- * -> { ok, feature, lock:{declared,message}, generated[], yours[], coverage[], scenarios, skipped, truncated }
  * coverage row: { n, id (file-name slug), title, branch, route, generated, file, locked, cloned:[names], lastResult:'none' }
+ * @returns {{ ok: false, code: string, error: string } | { ok: true, feature: string, lock: { declared: boolean, message: string|null }, generated: object[], yours: object[], coverage: object[], scenarios: number, skipped: object[], truncated: boolean, coverageError: string|null }}
  */
 export function listFeatureTests(root, feature, { plan: given } = {}) {
   const at = locate(root, feature);
