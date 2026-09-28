@@ -11,4 +11,10 @@
 .fc-findings { margin: 0; padding: var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-5, 1.5rem); border: 1px solid var(--warn); border-left-width: 3px; border-radius: 6px; background: var(--warn-soft); }
 .fc-details a { color: var(--accent); }
 .fc-link { font-weight: 600; }
+.fc-link-btn { background: none; border: none; padding: 0; font: inherit; color: var(--accent); cursor: pointer; }
 .fc-file-link { display: inline-block; min-height: 24px; line-height: 24px; }
+.fc-callout { margin: 0; padding: var(--sp-2) var(--sp-3); border-radius: 6px; background: var(--neutral-soft); }
+.fc-callout p { margin: 0; }
+.fc-callout p + p { margin-top: var(--sp-1); }
+.fc-layer-missing { opacity: 0.85; }
+.fc-layer-missing .fc-h4 { border: 1px dashed var(--border-strong); border-radius: 4px; padding: var(--sp-1) var(--sp-2); display: inline-flex; gap: var(--sp-1); align-items: baseline; }

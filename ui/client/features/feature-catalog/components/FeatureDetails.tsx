@@ -5,6 +5,16 @@ import './feature-catalog.css';
 
 type Props = { name: string; view: FeatureView | null; loading: boolean; error: string | null; onRetry: () => void };
 
+// The stage's Import/Create actions live in the dashboard feature's stage actions, composed into the same stage by
+// the route (see FeaturesScreenController's openCreate): the two only meet on the page, so opening one from here is
+// a DOM click rather than a prop, same as the empty feature list's "Create a feature" action.
+function openImport() {
+  document.querySelector<HTMLButtonElement>('[data-testid="stage-action-import"]')?.click();
+}
+function openCreate() {
+  document.querySelector<HTMLButtonElement>('[data-testid="stage-action-create"]')?.click();
+}
+
 /** The details of one feature in the stage: what it is, the routes under it, its layers and files, its workflows and its tests. */
 export function FeatureDetails({ name, view, loading, error, onRetry }: Props) {
   if (error) return <section className="fc-details" data-testid="fc-details"><ErrorState size="inline" title={`Could not read “${name}”`} hint={error} onRetry={onRetry} /></section>;
@@ -19,9 +29,15 @@ export function FeatureDetails({ name, view, loading, error, onRetry }: Props) {
         </ul>
       )}
 
-      <h3 className="fc-h3">Routes</h3>
+      <h3 className="fc-h3">Routes{view.routes.length > 0 ? ` (${view.routes.length})` : ''}</h3>
       {view.routes.length === 0 ? (
-        <p className="fc-hint" data-testid="fc-no-routes">No route renders this feature.</p>
+        <div className="fc-callout fc-callout-info" data-testid="fc-no-routes">
+          <p><strong>Not mapped to a route yet.</strong></p>
+          <p className="fc-hint">
+            That is fine for a shared kit, or a feature you imported first.{' '}
+            <button type="button" className="fc-link fc-link-btn" data-testid="fc-map-route" onClick={openImport}>Map to a route</button>
+          </p>
+        </div>
       ) : (
         <ul className="fc-list" data-testid="fc-routes">
           {view.routes.map((r) => (
@@ -30,7 +46,7 @@ export function FeatureDetails({ name, view, loading, error, onRetry }: Props) {
         </ul>
       )}
 
-      <h3 className="fc-h3">Layers and files</h3>
+      <h3 className="fc-h3">Layers ({view.layers.length} of {view.layers.length + view.missingLayers.length})</h3>
       <div data-testid="fc-layers">
         {view.layers.map((l) => (
           <div key={l.layer} className="fc-layer" data-testid="fc-layer" data-layer={l.layer}>
@@ -46,7 +62,12 @@ export function FeatureDetails({ name, view, loading, error, onRetry }: Props) {
             </ul>
           </div>
         ))}
-        {view.missingLayers.length > 0 && <p className="fc-hint" data-testid="fc-missing">Not present yet: {view.missingLayers.join(', ')}.</p>}
+        {view.missingLayers.map((layer) => (
+          <div key={layer} className="fc-layer fc-layer-missing" data-testid="fc-layer-missing" data-layer={layer}>
+            <h4 className="fc-h4">{layer} <span className="fc-hint">missing</span></h4>
+            <button type="button" className="fc-link fc-link-btn" data-testid="fc-add-layer" onClick={openCreate}>Add</button>
+          </div>
+        ))}
       </div>
 
       <h3 className="fc-h3">Workflows</h3>
