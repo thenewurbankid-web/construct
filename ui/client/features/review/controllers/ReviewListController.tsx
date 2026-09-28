@@ -9,8 +9,8 @@ import { useFailureActions } from '../hooks/useFailureActions';
 import { useReviewList } from '../hooks/useReviewList';
 import { listData } from '../workflows/ListMachine';
 import { useReviewRoute } from '../hooks/useReviewRoute';
-import { ReviewListPage } from '../pages/ReviewListPage';
-import { listShellTabs } from '../pages/ReviewShellTabs';
+import { ReviewListPage, type ReviewListPageProps } from '../pages/ReviewListPage';
+import { listBrowserTabs, listToolsTabs } from '../pages/ReviewShellTabs';
 import type { BranchRow, BranchRowView } from '../types';
 
 function rowView(b: BranchRow): BranchRowView {
@@ -38,34 +38,39 @@ export function ReviewListController() {
   const base = list.base;
   const onFailureAction = useFailureActions({ retry: list.reload, list: list.reload });
 
-  const tabs = listShellTabs(
-    data && base
-      ? { sourceLabel: data.source.label, base, baseSha: data.baseSha ?? null, refs: data.refs, count: data.branches.length, onBase: (n) => { list.setBase(n); route.openList(n); } }
-      : null,
-    GLOSSARY,
-  );
-  useRegisterShellTab('browser', tabs.browser);
-  useRegisterShellTab('tools', tabs.tools);
+  const listProps: ReviewListPageProps = {
+    loaded: state.status === 'ready' || state.status === 'error',
+    failure: state.status === 'error' ? describeFailure(state.errorCode, state.error) : null,
+    noBranches: !!data && !data.base,
+    onFailureAction,
+    list:
+      data && base
+        ? {
+            base,
+            rows: rankBranches(data.branches, list.order).map(rowView),
+            order: list.order,
+            explanation: orderExplanation(list.order),
+            onOrder: list.setOrder,
+            onOpen: (name) => route.openChange(base, name),
+            onReload: list.reload,
+          }
+        : null,
+  };
 
-  return (
-    <ReviewListPage
-      loaded={state.status === 'ready' || state.status === 'error'}
-      failure={state.status === 'error' ? describeFailure(state.errorCode, state.error) : null}
-      noBranches={!!data && !data.base}
-      onFailureAction={onFailureAction}
-      list={
-        data && base
-          ? {
-              base,
-              rows: rankBranches(data.branches, list.order).map(rowView),
-              order: list.order,
-              explanation: orderExplanation(list.order),
-              onOrder: list.setOrder,
-              onOpen: (name) => route.openChange(base, name),
-              onReload: list.reload,
-            }
-          : null
-      }
-    />
-  );
+  const browserTabs = listBrowserTabs({
+    sources:
+      data && base
+        ? { sourceLabel: data.source.label, base, baseSha: data.baseSha ?? null, refs: data.refs, count: data.branches.length, onBase: (n) => { list.setBase(n); route.openList(n); } }
+        : null,
+    list: listProps,
+  });
+  const toolsTabs = listToolsTabs(GLOSSARY);
+  useRegisterShellTab('browser', browserTabs.changes);
+  useRegisterShellTab('browser', browserTabs.branches);
+  useRegisterShellTab('browser', browserTabs.prs);
+  useRegisterShellTab('browser', browserTabs.commits);
+  useRegisterShellTab('tools', toolsTabs.legend);
+  useRegisterShellTab('tools', toolsTabs.commit);
+
+  return <ReviewListPage {...listProps} />;
 }
