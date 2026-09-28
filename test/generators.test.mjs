@@ -427,7 +427,7 @@ test('#275 selfCheck reports an all-IMPORT-001 failure as a layer-order problem,
     assert.equal(err.exitCode, EXIT_CODES.USAGE_ERROR);
     assert.doesNotMatch(err.message, /template bug/);
     assert.match(err.message, /references a file that doesn't exist yet/);
-    assert.match(err.message, /domain -> service -> workflow -> hook -> component -> page -> controller/);
+    assert.match(err.message, /domain -> service -> workflow -> hook -> component -> expression -> page -> controller/);
     return true;
   });
 });
