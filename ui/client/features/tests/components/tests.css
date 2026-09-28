@@ -80,9 +80,11 @@
 .ts-step-edit:hover { background: var(--hover); color: var(--text); }
 .ts-readonly { margin: 0; padding-top: var(--sp-2); border-top: 1px solid var(--border-subtle); color: var(--text-muted); font-size: var(--fs-sm); }
 
-/* clone dialog */
-.ts-backdrop { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: var(--sp-4); background: rgba(0, 0, 0, 0.55); }
-.ts-dialog { width: min(34rem, 100%); max-height: calc(100vh - 2 * var(--sp-4)); overflow: auto; background: var(--surface-1); color: var(--text); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: var(--shadow); }
+/* clone dialog: Overlay (.ts-backdrop) and Content (.ts-dialog) are siblings inside Radix's portal (#441),
+   not parent/child, so each positions itself rather than the backdrop centering a nested child. */
+.ts-backdrop { position: fixed; inset: 0; z-index: 60; background: rgba(0, 0, 0, 0.55); }
+.ts-dialog { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 61; width: min(34rem, calc(100vw - 2 * var(--sp-4))); max-height: calc(100vh - 2 * var(--sp-4)); overflow: auto; background: var(--surface-1); color: var(--text); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: var(--shadow); }
+.ts-dialog:focus { outline: none; }
 .ts-dialog-head { padding: var(--sp-4); border-bottom: 1px solid var(--border-subtle); }
 .ts-dialog-head h2 { margin: 0 0 var(--sp-2); font-size: var(--fs-lg); }
 .ts-dialog-head p { margin: 0; color: var(--text-muted); }

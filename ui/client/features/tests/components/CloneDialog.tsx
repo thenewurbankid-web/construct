@@ -1,4 +1,5 @@
-import { useEffect, useRef, type KeyboardEvent } from 'react';
+import { useRef } from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui';
 import type { CloneDialogView } from '../types';
 
 type CloneDialogProps = {
@@ -9,50 +10,33 @@ type CloneDialogProps = {
   onShowCode: () => void;
 };
 
-const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), [href], select, textarea, [tabindex]:not([tabindex="-1"])';
-
 /** The lock's refusal, made useful: says why a generated test cannot be edited and offers the clone right here.
- * A real modal dialog: focus moves in, Tab is trapped, Esc closes, and focus returns to what opened it. */
+ * A real modal dialog, behind `components/ui`'s Dialog wrapper (#441): Radix Primitives owns the focus trap,
+ * Esc-to-close and return-focus-to-trigger that this used to hand-roll. */
 export function CloneDialog({ dialog, onName, onCreate, onCancel, onShowCode }: CloneDialogProps) {
-  const root = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const { slug } = dialog;
 
-  useEffect(() => {
-    const trigger = document.activeElement as HTMLElement | null;
-    input.current?.focus();
-    input.current?.select();
-    return () => {
-      if (trigger && trigger.isConnected) trigger.focus();
-    };
-  }, []);
-
-  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      onCancel();
-      return;
-    }
-    if (e.key !== 'Tab' || !root.current) return;
-    const items = Array.from(root.current.querySelectorAll<HTMLElement>(FOCUSABLE));
-    if (!items.length) return;
-    const first = items[0];
-    const last = items[items.length - 1];
-    if (e.shiftKey && document.activeElement === first) {
-      e.preventDefault();
-      last.focus();
-    } else if (!e.shiftKey && document.activeElement === last) {
-      e.preventDefault();
-      first.focus();
-    }
-  };
-
   return (
-    <div className="ts-backdrop" data-testid="clone-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onCancel()}>
-      <div ref={root} className="ts-dialog" role="dialog" aria-modal="true" aria-labelledby="ts-clone-title" aria-describedby="ts-clone-why" data-testid="clone-dialog" onKeyDown={onKeyDown}>
+    <Dialog open onOpenChange={(open) => !open && onCancel()}>
+      <DialogContent
+        className="ts-dialog"
+        backdropClassName="ts-backdrop"
+        backdropTestId="clone-backdrop"
+        data-testid="clone-dialog"
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          input.current?.focus();
+          input.current?.select();
+        }}
+      >
         <div className="ts-dialog-head">
-          <h2 id="ts-clone-title">This test is generated: clone it to edit</h2>
-          <p id="ts-clone-why" data-testid="clone-reason">{dialog.reason}</p>
+          <DialogTitle asChild>
+            <h2>This test is generated: clone it to edit</h2>
+          </DialogTitle>
+          <DialogDescription asChild>
+            <p data-testid="clone-reason">{dialog.reason}</p>
+          </DialogDescription>
         </div>
         <div className="ts-dialog-body">
           <label className="ts-label">
@@ -78,7 +62,7 @@ export function CloneDialog({ dialog, onName, onCreate, onCancel, onShowCode }: 
           <button type="button" className="ts-btn" data-testid="clone-cancel" onClick={onCancel}>Cancel</button>
           <button type="button" className="ts-btn ts-spacer" data-testid="clone-show-code" onClick={onShowCode}>Just show me the code</button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

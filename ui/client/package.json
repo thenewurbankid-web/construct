@@ -15,6 +15,7 @@
     "@craftjs/core": "^0.2.12",
     "@dagrejs/dagre": "^3.1.1",
     "@monaco-editor/react": "^4.7.0",
+    "@radix-ui/react-dialog": "^1.1.23",
     "@statelyai/inspect": "^0.7.2",
     "@xyflow/react": "^12.11.6",
     "diff": "^9.0.0",
