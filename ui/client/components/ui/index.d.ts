@@ -68,3 +68,28 @@ export declare function AnimatedLoader(props: {
   decorative?: boolean;
   className?: string;
 }): ReactNode;
+
+// #441: an accessible modal dialog wrapping Radix Primitives' Dialog. Radix owns focus trap, Esc-to-close,
+// return-focus-to-trigger and outside-click-to-close; only Dialog.jsx imports `@radix-ui/react-dialog`
+// directly, so swapping the underlying library later means editing that one file.
+export declare function Dialog(props: { open: boolean; onOpenChange: (open: boolean) => void; children?: ReactNode }): ReactNode;
+
+export declare const DialogTrigger: ElementType;
+
+export declare function DialogContent(
+  props: {
+    className?: string;
+    backdropClassName?: string;
+    backdropTestId?: string;
+    children?: ReactNode;
+    /** Radix event: called when focus would move into the content on open; `event.preventDefault()` to focus something else yourself. */
+    onOpenAutoFocus?: (event: Event) => void;
+    /** Radix event: called when focus would return to the trigger on close; `event.preventDefault()` to send focus somewhere else. */
+    onCloseAutoFocus?: (event: Event) => void;
+  } & ComponentPropsWithoutRef<'div'>,
+): ReactNode;
+
+type DialogPartProps = { asChild?: boolean; children?: ReactNode } & Omit<ComponentPropsWithoutRef<'div'>, 'children'>;
+export declare function DialogTitle(props: DialogPartProps): ReactNode;
+export declare function DialogDescription(props: DialogPartProps): ReactNode;
+export declare function DialogClose(props: DialogPartProps): ReactNode;
