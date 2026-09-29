@@ -49,4 +49,17 @@ test.describe.serial('Git screen: no-remote empty state (#374)', () => {
     await page.getByRole('tab', { name: 'Branches' }).click();
     await expect(page.getByTestId('review-row')).toHaveCount(2);
   });
+
+  test('renders in the light theme too (`ia-git-connect`, both themes)', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('construct.theme', 'light'));
+    await gotoCockpit(page, '/review');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+    await expect(page.getByTestId('review-row')).toHaveCount(2, { timeout: 30_000 });
+
+    await page.getByRole('tab', { name: 'PRs' }).click();
+    const empty = page.getByTestId('review-no-remote');
+    await expect(empty).toBeVisible();
+    await expect(empty.getByTestId('review-connect-remote')).toBeVisible();
+    await page.screenshot({ path: path.join(SHOTS, '374-git-connect-empty-state-light.png') });
+  });
 });
