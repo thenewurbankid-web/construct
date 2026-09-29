@@ -1,7 +1,8 @@
-// GET /api/envelopes (ui/server/src/envelopesApi.mjs), a thin adapter over packages/core/flows.mjs's
-// listFlows/loadFlow (#759). Read-only for this slice; save/run is #772.
-import { getJson } from '@/lib/http';
-import type { FlowCatalogueEntry, FlowStep, FlowSummary } from '../types';
+// ui/server/src/envelopesApi.mjs, a thin adapter over packages/core/flows.mjs's listFlows/loadFlow/saveFlow
+// (#759) plus a deterministic envelope preview (#772). "Run this flow" wires into the existing
+// Process/Approvals path instead of a call here (a later slice).
+import { getJson, postJson } from '@/lib/http';
+import type { ComposeStep, EnvelopePreview, FlowCatalogueEntry, FlowStep, FlowSummary } from '../types';
 
 export type EnvelopesResult = { ok: true; rows: FlowSummary[] } | { ok: false; error: string };
 
@@ -39,6 +40,34 @@ export async function fetchFlowCatalogue(): Promise<CatalogueResult> {
     const body = await getJson<{ ok?: boolean; error?: string; flows?: FlowCatalogueEntry[] }>('/api/plan/context');
     if (!body.ok) return { ok: false, error: body.error ?? 'Could not read the flow catalogue.' };
     return { ok: true, rows: (body.flows ?? []).filter((f) => f.offered) };
+  } catch {
+    return { ok: false, error: 'Could not reach the Construct server.' };
+  }
+}
+
+export type PreviewResult = { ok: true; previews: EnvelopePreview[] } | { ok: false; error: string };
+
+/** The envelope each step of the draft would receive, matching schemas/envelope.v1.json's input shape --
+ * computed deterministically (no generator runs), one entry per step index. */
+export async function previewEnvelopes(steps: ComposeStep[]): Promise<PreviewResult> {
+  try {
+    const body = await postJson<{ ok?: boolean; error?: string; previews?: EnvelopePreview[] }>('/api/envelopes/preview', { steps });
+    if (!body.ok || !body.previews) return { ok: false, error: body.error ?? 'Could not compute the envelope preview.' };
+    return { ok: true, previews: body.previews };
+  } catch {
+    return { ok: false, error: 'Could not reach the Construct server.' };
+  }
+}
+
+export type SaveFlowResult = { ok: true } | { ok: false; error: string };
+
+/** Previews (commit false) or commits (#759's saveFlow) the draft under `name`, same preview/commit shape as
+ * the Rules tab's writers. */
+export async function saveComposedFlow(name: string, steps: ComposeStep[], commit: boolean): Promise<SaveFlowResult> {
+  try {
+    const body = await postJson<{ ok?: boolean; error?: string; errors?: string[] }>(`/api/envelopes/${encodeURIComponent(name)}`, { steps, commit });
+    if (!body.ok) return { ok: false, error: body.error ?? (body.errors ?? []).join(' ') ?? 'Could not save that flow.' };
+    return { ok: true };
   } catch {
     return { ok: false, error: 'Could not reach the Construct server.' };
   }

@@ -1,7 +1,9 @@
 // Pure (DOMAIN-001): add, remove and reorder compose steps -- #395/#771's center stage. Deliberately does not
-// validate (that is the server's job once save/run exists, #772); these only keep the list well-formed.
+// validate flow-specific args (that is the server's job on save, #772); these only keep the list well-formed
+// and satisfy packages/core/plan.mjs's one structural requirement a bare `{}` args object cannot: a
+// writes-flow step must declare `touches` (declared empty here, since this slice has no arg-editing UI yet).
 // Structurally the same shape as features/plan/domain/StepList.ts's newStep/removeStep/moveStep, trimmed of
-// Plan's `dependsOn`/`touches` (impact-analysis concepts this standalone composer does not have yet).
+// Plan's `dependsOn` (an impact-analysis concept this standalone composer does not have yet).
 import type { ComposeStep, Executor, FlowCatalogueEntry } from '../types';
 
 function genId(steps: ComposeStep[], counter: number): { id: string; nextId: number } {
@@ -19,7 +21,9 @@ const titleFrom = (summary: string): string => summary.split(/ \(|\. /)[0].repla
 export function addComposeStep(flow: FlowCatalogueEntry, steps: ComposeStep[], counter: number): { steps: ComposeStep[]; nextId: number } {
   const { id, nextId } = genId(steps, counter);
   const executor: Executor = flow.executors[0] ?? 'deterministic';
-  return { steps: [...steps, { id, title: titleFrom(flow.summary), flow: flow.id, args: {}, executor }], nextId };
+  const touches = flow.writes ? { features: [], files: [] as [] } : undefined;
+  const step: ComposeStep = { id, title: titleFrom(flow.summary), flow: flow.id, args: {}, executor, ...(touches ? { touches } : {}) };
+  return { steps: [...steps, step], nextId };
 }
 
 export function removeComposeStep(steps: ComposeStep[], id: string): ComposeStep[] {

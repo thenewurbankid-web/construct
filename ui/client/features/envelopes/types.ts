@@ -38,8 +38,9 @@ export type FlowCatalogueEntry = {
 };
 
 /** One step in the compose draft: same shape a saved FlowStep has, always fully populated (no optional fields
- * once it is on the draft list). */
-export type ComposeStep = { id: string; title: string; flow: string; args: Record<string, unknown>; executor: Executor };
+ * once it is on the draft list). `touches` is set for a writes-flow (declared empty, since this slice has no
+ * arg-editing UI yet) -- packages/core/plan.mjs's validatePlan requires it for any flow that changes files. */
+export type ComposeStep = { id: string; title: string; flow: string; args: Record<string, unknown>; executor: Executor; touches?: { features: string[]; files: [] } };
 
 export type ComposeState = { steps: ComposeStep[]; nextId: number; loadedFrom: string | null };
 
@@ -57,4 +58,32 @@ export type ComposeApi = {
   moveStep: (id: string, dir: -1 | 1) => void;
   loadFlow: (name: string, steps: FlowStep[]) => void;
   newFlow: () => void;
+};
+
+// #395/#772 -- the envelope each step of the compose draft would receive, matching schemas/envelope.v1.json's
+// input shape. Computed deterministically server-side (no generator runs); recomputed whenever the draft's
+// steps change.
+export type EnvelopePreview = { version: 1; feature: string | null; status: string; layers: Record<string, string[]>; steps: { layer: string; name: string }[] };
+
+// #395/#772 -- "Save this flow": a name plus the draft's steps, previewed then committed through #759's
+// saveFlow, same preview/commit/Save/Cancel shape as the Rules tab's writers.
+export type SaveStatus = 'idle' | 'previewing' | 'ready' | 'saving' | 'error' | 'saved';
+export type SaveState = { status: SaveStatus; name: string; error: string | null };
+export type SaveAction =
+  | { type: 'NAME'; name: string }
+  | { type: 'START' }
+  | { type: 'PREVIEW_OK' }
+  | { type: 'PREVIEW_FAIL'; error: string }
+  | { type: 'SAVE' }
+  | { type: 'SAVE_OK' }
+  | { type: 'SAVE_FAIL'; error: string }
+  | { type: 'CANCEL' }
+  | { type: 'RESET' };
+
+export type SaveApi = {
+  state: SaveState;
+  setName: (name: string) => void;
+  preview: () => void;
+  confirm: () => void;
+  cancel: () => void;
 };

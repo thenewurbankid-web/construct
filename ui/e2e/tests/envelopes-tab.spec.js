@@ -124,4 +124,73 @@ test.describe.serial('Envelopes tab: read-only saved-flows list (#395/#771)', ()
     await expect(stage(page).getByTestId('compose-loaded-from')).toHaveText('New flow');
     await expect(draftSteps(page)).toHaveCount(0);
   });
+
+  test('compose: Preview on a step shows the envelope it would receive, matching envelope.v1.json\'s shape', async ({ page }) => {
+    await gotoCockpit(page, '/');
+    await browserTabs(page).getByRole('tab', { name: 'Envelopes' }).click();
+
+    const picker = stage(page).getByTestId('compose-picker');
+    await picker.getByTestId('compose-picker-select').selectOption('create.unit');
+    await picker.getByTestId('compose-picker-add').click();
+    await expect(draftSteps(page)).toHaveCount(1);
+
+    await draftSteps(page).first().getByTestId('compose-step-preview').click();
+    const json = stage(page).getByTestId('compose-preview-json');
+    await expect(json).toBeVisible();
+    const parsed = JSON.parse(await json.textContent());
+    assertEnvelopeShape(parsed);
+    // No arg-editing UI exists yet (a later slice), so a freshly added create.unit step carries no
+    // layer/name -- flowToEnvelopeSteps (packages/core/flows.mjs) still maps it, just to an empty object.
+    expect(parsed.steps).toEqual([{}]);
+
+    await draftSteps(page).first().getByTestId('compose-step-preview').click();
+    await expect(json).not.toBeVisible();
+  });
+
+  test('compose: Save this flow previews then commits, and the new flow appears in the left panel', async ({ page }) => {
+    await gotoCockpit(page, '/');
+    await browserTabs(page).getByRole('tab', { name: 'Envelopes' }).click();
+
+    // check.types has no required args and does not write, so it saves successfully with no arg-editing UI
+    // (a later slice); create.unit (used elsewhere in this file) would fail real validation with empty args.
+    const picker = stage(page).getByTestId('compose-picker');
+    await picker.getByTestId('compose-picker-select').selectOption('check.types');
+    await picker.getByTestId('compose-picker-add').click();
+    await expect(draftSteps(page)).toHaveCount(1);
+
+    const savePanel = stage(page).getByTestId('compose-save');
+    await savePanel.getByTestId('compose-save-name').fill('e2e-composed-flow');
+    await savePanel.getByTestId('compose-save-preview').click();
+    await expect(savePanel.getByTestId('compose-save-confirm')).toBeVisible();
+
+    await savePanel.getByTestId('compose-save-confirm').click();
+    await expect(savePanel.getByTestId('compose-save-done')).toBeVisible();
+    await expect(list(page).locator('[data-flow="e2e-composed-flow"]')).toBeVisible();
+  });
+
+  test('compose: Save this flow is refused with a clear error for a step missing required args', async ({ page }) => {
+    await gotoCockpit(page, '/');
+    await browserTabs(page).getByRole('tab', { name: 'Envelopes' }).click();
+
+    await page.route('**/api/envelopes/broken-flow', (route) =>
+      route.fulfill({ status: 422, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'That flow would be invalid.', errors: ['STEP_ARG_REQUIRED at steps[0].args.name: "name" is required.'] }) }),
+    );
+
+    const picker = stage(page).getByTestId('compose-picker');
+    await picker.getByTestId('compose-picker-select').selectOption('create.unit');
+    await picker.getByTestId('compose-picker-add').click();
+
+    const savePanel = stage(page).getByTestId('compose-save');
+    await savePanel.getByTestId('compose-save-name').fill('broken-flow');
+    await savePanel.getByTestId('compose-save-preview').click();
+    await expect(savePanel.getByTestId('compose-save-error')).toContainText('That flow would be invalid.');
+  });
 });
+
+// The exact shape schemas/envelope.v1.json requires (required: version, feature, status, layers).
+function assertEnvelopeShape(envelope) {
+  expect(envelope.version).toBe(1);
+  expect(envelope.status).toBe('pending');
+  expect(envelope.layers).toEqual({});
+  expect(Array.isArray(envelope.steps)).toBe(true);
+}

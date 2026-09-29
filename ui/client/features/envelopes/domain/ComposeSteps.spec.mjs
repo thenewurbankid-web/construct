@@ -25,6 +25,13 @@ test('addComposeStep picks a local-model flow\'s AI provenance as the default ex
   assert.equal(steps[0].executor, 'local-model');
 });
 
+test('addComposeStep declares empty touches for a writes flow (required by validatePlan) and none for a read-only one', () => {
+  const writing = addComposeStep(flow('create.unit', { writes: true }), [], 1).steps[0];
+  assert.deepEqual(writing.touches, { features: [], files: [] });
+  const reading = addComposeStep(flow('check.types', { writes: false }), [], 1).steps[0];
+  assert.equal(reading.touches, undefined);
+});
+
 test('removeComposeStep drops exactly the named step', () => {
   const steps = [
     { id: 'a', title: 'A', flow: 'x', args: {}, executor: 'deterministic' },

@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
-import { saveFlow } from '../../../packages/core/flows.mjs';
-import { envelopesIndex, envelopeShow } from './envelopesApi.mjs';
+import { saveFlow, loadFlow } from '../../../packages/core/flows.mjs';
+import { envelopesIndex, envelopeShow, envelopePreview, envelopeSave } from './envelopesApi.mjs';
 
 function tmpProject() {
   const dir = makeTempDir('envelopes-api-');
@@ -64,4 +64,48 @@ test('GET /api/envelopes/:name 404s for a name that was never saved', () => {
   const { status, body } = envelopeShow(dir, 'never-saved');
   assert.equal(status, 404);
   assert.equal(body.ok, false);
+});
+
+test('envelopePreview computes the remaining-steps envelope for each step, dropping the ones before it', () => {
+  const second = { id: 's2', title: 'Cart', flow: 'create.unit', args: { layer: 'service', name: 'Cart', feature: 'checkout' }, executor: 'deterministic', touches: { features: ['checkout'], files: [] } };
+  const { status, body } = envelopePreview([STEPS[0], second]);
+  assert.equal(status, 200);
+  assert.equal(body.ok, true);
+  assert.equal(body.previews.length, 2);
+  assert.deepEqual(body.previews[0].steps, [{ layer: 'domain', name: 'Total' }, { layer: 'service', name: 'Cart' }]);
+  assert.deepEqual(body.previews[1].steps, [{ layer: 'service', name: 'Cart' }]);
+  assert.equal(body.previews[0].feature, 'checkout');
+  assert.equal(body.previews[0].status, 'pending');
+  assert.deepEqual(body.previews[0].layers, {});
+});
+
+test('envelopePreview refuses a non-array body', () => {
+  assert.equal(envelopePreview(null).status, 400);
+  assert.equal(envelopePreview('nope').status, 400);
+});
+
+test('envelopeSave previews (commit false) without writing, then commits, readable back through loadFlow', () => {
+  const dir = tmpProject();
+  const preview = envelopeSave(dir, 'scaffold-checkout', { steps: STEPS, commit: false });
+  assert.equal(preview.status, 200);
+  assert.equal(preview.body.ok, true);
+  assert.equal(loadFlow(dir, 'scaffold-checkout').ok, false, 'preview must not write anything');
+
+  const saved = envelopeSave(dir, 'scaffold-checkout', { steps: STEPS, commit: true });
+  assert.equal(saved.status, 200);
+  assert.equal(saved.body.ok, true);
+  const loaded = loadFlow(dir, 'scaffold-checkout');
+  assert.equal(loaded.ok, true);
+  assert.deepEqual(loaded.steps, STEPS);
+});
+
+test('envelopeSave refuses a missing name, no steps, or a step missing required touches (a writes flow)', () => {
+  const dir = tmpProject();
+  assert.equal(envelopeSave(dir, '', { steps: STEPS, commit: true }).status, 400);
+  assert.equal(envelopeSave(dir, 'x', { steps: [], commit: true }).status, 400);
+  const noTouches = [{ id: 's1', title: 'Total', flow: 'create.unit', args: { layer: 'domain', name: 'Total', feature: 'checkout' }, executor: 'deterministic' }];
+  const rejected = envelopeSave(dir, 'x', { steps: noTouches, commit: false });
+  assert.equal(rejected.status, 422);
+  assert.equal(rejected.body.ok, false);
+  assert.equal(loadFlow(dir, 'x').ok, false);
 });

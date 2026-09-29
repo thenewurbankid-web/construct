@@ -17,3 +17,9 @@ export * from './hooks/useCompose';
 
 /** Reads the real plan-flow catalogue the compose step picker offers. */
 export * from './hooks/useFlowCatalogue';
+
+/** The envelope each step of the draft would receive, recomputed as it changes (#772). */
+export * from './hooks/useEnvelopePreviews';
+
+/** "Save this flow": name, preview, confirm to commit through #759's saveFlow (#772). */
+export * from './hooks/useSave';

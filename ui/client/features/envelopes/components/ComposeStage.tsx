@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { ComposeApi, FlowCatalogueEntry } from '../types';
+import type { ComposeApi, EnvelopePreview, FlowCatalogueEntry, SaveApi } from '../types';
 
 const provenanceLabel = (executor: string): string => (executor === 'deterministic' ? 'Mechanical' : 'AI');
 
@@ -34,9 +34,95 @@ function StepPicker({ catalogue, onAdd }: { catalogue: FlowCatalogueEntry[]; onA
   );
 }
 
-/** #395/#771's center stage: the compose draft's step list (add/reorder/remove), each step's Mechanical/AI
- * provenance shown as a chip. No args editing and no save/run yet -- both later slices. */
-export function ComposeStage({ compose, catalogue }: { compose: ComposeApi; catalogue: FlowCatalogueEntry[] }) {
+/** #395/#772's right panel: the envelope the selected step would receive, in schemas/envelope.v1.json's input
+ * shape -- computed deterministically server-side (no generator runs). */
+function PreviewPanel({ preview, error }: { preview: EnvelopePreview | null; error: string | null }) {
+  if (error) {
+    return (
+      <p className="ev-row-error" role="alert" data-testid="compose-preview-error">
+        {error}
+      </p>
+    );
+  }
+  if (!preview) return null;
+  return (
+    <div className="ev-preview" data-testid="compose-preview">
+      <p className="ev-preview-title">Envelope this step would receive</p>
+      <pre className="ev-diff" data-testid="compose-preview-json">{JSON.stringify(preview, null, 2)}</pre>
+    </div>
+  );
+}
+
+/** #395/#772's "Save this flow": name the draft, preview it, Save to commit through #759's saveFlow. */
+function SavePanel({ save, disabled }: { save: SaveApi; disabled: boolean }) {
+  const { state } = save;
+  return (
+    <div className="ev-save" data-testid="compose-save">
+      <form
+        className="ev-picker"
+        onSubmit={(e) => {
+          e.preventDefault();
+          save.preview();
+        }}
+      >
+        <input
+          type="text"
+          placeholder="Flow name, e.g. scaffold-checkout"
+          value={state.name}
+          onChange={(e) => save.setName(e.target.value)}
+          data-testid="compose-save-name"
+          disabled={disabled || state.status === 'previewing' || state.status === 'saving'}
+          required
+        />
+        <button type="submit" className="dg-btn" data-testid="compose-save-preview" disabled={disabled || !state.name.trim() || state.status === 'previewing' || state.status === 'saving'}>
+          {state.status === 'previewing' ? 'Checking...' : 'Save this flow'}
+        </button>
+      </form>
+      {state.status === 'ready' && (
+        <div className="ev-edit-actions">
+          <button type="button" className="dg-btn dg-btn--primary" data-testid="compose-save-confirm" onClick={save.confirm}>
+            Confirm save
+          </button>
+          <button type="button" className="dg-btn" data-testid="compose-save-cancel" onClick={save.cancel}>
+            Cancel
+          </button>
+        </div>
+      )}
+      {state.status === 'saving' && <p className="hint">Saving...</p>}
+      {state.status === 'saved' && (
+        <p className="hint" data-testid="compose-save-done">
+          Saved.
+        </p>
+      )}
+      {state.status === 'error' && (
+        <p className="ev-row-error" role="alert" data-testid="compose-save-error">
+          {state.error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** #395/#771/#772's center stage: the compose draft's step list (add/reorder/remove), each step's
+ * Mechanical/AI provenance shown as a chip, a per-step envelope preview, and "Save this flow". "Run this
+ * flow" wires into the existing Process/Approvals path -- a later slice, not here. */
+export function ComposeStage({
+  compose,
+  catalogue,
+  save,
+  previews,
+  previewError,
+  selected,
+  onSelect,
+}: {
+  compose: ComposeApi;
+  catalogue: FlowCatalogueEntry[];
+  save: SaveApi;
+  previews: EnvelopePreview[];
+  previewError: string | null;
+  selected: number | null;
+  onSelect: (index: number | null) => void;
+}) {
   const { steps, loadedFrom } = compose.state;
   return (
     <div className="ev-stage" data-testid="compose-stage">
@@ -44,7 +130,16 @@ export function ComposeStage({ compose, catalogue }: { compose: ComposeApi; cata
         <span className="ev-summary" data-testid="compose-loaded-from">
           {loadedFrom ? `Loaded from "${loadedFrom}"` : 'New flow'}
         </span>
-        <button type="button" className="dg-btn" data-testid="compose-new" onClick={compose.newFlow} disabled={steps.length === 0 && !loadedFrom}>
+        <button
+          type="button"
+          className="dg-btn"
+          data-testid="compose-new"
+          onClick={() => {
+            compose.newFlow();
+            onSelect(null);
+          }}
+          disabled={steps.length === 0 && !loadedFrom}
+        >
           New flow
         </button>
       </div>
@@ -62,6 +157,9 @@ export function ComposeStage({ compose, catalogue }: { compose: ComposeApi; cata
                 {provenanceLabel(step.executor)}
               </span>
               <div className="ev-step-actions">
+                <button type="button" className="dg-btn" data-testid="compose-step-preview" onClick={() => onSelect(selected === index ? null : index)} aria-pressed={selected === index}>
+                  {selected === index ? 'Hide preview' : 'Preview'}
+                </button>
                 <button type="button" className="dg-btn" data-testid="compose-step-up" onClick={() => compose.moveStep(step.id, -1)} disabled={index === 0}>
                   Up
                 </button>
@@ -76,7 +174,9 @@ export function ComposeStage({ compose, catalogue }: { compose: ComposeApi; cata
           ))}
         </ol>
       )}
+      {selected !== null && <PreviewPanel preview={previews[selected] ?? null} error={previewError} />}
       <StepPicker catalogue={catalogue} onAdd={compose.addStep} />
+      <SavePanel save={save} disabled={steps.length === 0} />
     </div>
   );
 }
