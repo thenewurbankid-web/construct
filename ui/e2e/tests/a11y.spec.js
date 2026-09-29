@@ -260,14 +260,17 @@ test.describe('keyboard-only flow', () => {
     // NEXTJS-PORTAL is the Next dev-mode overlay (the "N" indicator): it takes focus in `next dev` only and
     // does not exist in a production build, so it is not a Cockpit control and is not held to the focus-ring rule.
     expect(seen.filter((s) => !s.visible && s.name !== 'NEXTJS-PORTAL').map((s) => s.name)).toEqual([]);
-    // The first real Tab stop is the Browser pane's own first tab (its TabHost renders before any
-    // top-bar control is reachable, unchanged by #539). Before #539 that landed right under the
-    // 44px top bar because the rail sat beside the pane, not above it; now the pane starts below
-    // the rail's own height instead, so the check is tied to that real structural boundary (the
-    // shared column's rail section) rather than a fixed pixel guess.
+    // #376: Tab order now matches the documented F6 visual order (top bar, then panes) — the top
+    // bar's project picker, command palette and processes controls are reachable before the Browser
+    // pane's own TabHost, unlike before #368 added those top-bar controls to the tab sequence. Assert
+    // every Tab stop before the pane sits above the rail's bottom edge, and that at least one does
+    // (Tab actually visits the top bar) rather than pinning a fixed stop index or pixel guess.
     const railBottom = await page.locator('.sh-left-col .sh-rail').evaluate((el) => el.getBoundingClientRect().bottom);
-    expect(seen[0].top).toBeGreaterThanOrEqual(railBottom - 1);
-    expect(seen[0].top).toBeLessThan(railBottom + 40);
+    const firstPaneIndex = seen.findIndex((s) => s.top >= railBottom - 1);
+    expect(firstPaneIndex).toBeGreaterThan(0);
+    for (const stop of seen.slice(0, firstPaneIndex)) {
+      expect(stop.top).toBeLessThan(railBottom - 1);
+    }
 
     await page.locator('body').click({ position: { x: 5, y: 5 } });
     await page.keyboard.press('Control+k');
