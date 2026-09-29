@@ -4,7 +4,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { makeLineSource } from './line-source.mjs';
-import { createFeature, ensureFeatureExists, generateLayer, generateVertical, layerFromGeneratedFile, fillGeneratedFile } from './generators.mjs';
+import { createFeature, ensureFeatureExists, generateLayer, generateVertical, layerFromGeneratedFile, fillGeneratedFile, extractExpressionHint, EXTRACTABLE_JSX_RULES } from './generators.mjs';
 import { generateServiceFromSpec, resolveSchemaEmit } from './service-generator.mjs';
 import { generateShapeLayer, generateShapeVertical } from './shapes.mjs';
 import { ensureGeneratedDependencies } from './generated-dependencies.mjs';
@@ -608,7 +608,7 @@ export async function generate(args) {
   const scaffoldSeconds = elapsedSeconds(scaffoldStart);
   if (llm) {
     const llmStart = startTimer();
-    const outcome = await fillGeneratedFile(root, file, layer, { feature, name, llm });
+    const outcome = await fillAndAutoFix(root, file, layer, { feature, name, llm });
     reportFill(root, outcome, ` (scaffold ${formatDuration(scaffoldSeconds)}, llm ${formatDuration(elapsedSeconds(llmStart))})`);
   } else {
     console.log(`Created ${path.relative(root, file)} (${formatDuration(scaffoldSeconds)})`);
@@ -617,15 +617,53 @@ export async function generate(args) {
   reportGeneratedDependencies(root, [file]);
 }
 
+// #496 -- create/generate --llm's own feedback loop: the import wizard already retries a fill that
+// leaves a construct-validate violation behind, feeding the exact violation back as correction
+// context (autoFixViolations, import.mjs, commit 3a8a9bbe) -- but that was wired only into the
+// interactive import wizard, never into the plain scaffold-fill path this function serves (the
+// exact path #496's own dogfood evidence regressed on: SerializeCanvasDocument.tsx went correct ->
+// wrong -> worse purely from re-running the identical prompt with no feedback). Automatic (no
+// confirmation prompt, unlike the wizard) since this command is meant to be scriptable; bounded to
+// 2 attempts so a model that can't converge never silently runs up cost. Only ever touches the one
+// file just filled -- a pre-existing violation elsewhere in the project is never "fixed" as a
+// side effect of this call.
+async function fillAndAutoFix(root, file, layer, { feature, name, llm }) {
+  const outcome = await fillGeneratedFile(root, file, layer, { feature, name, llm });
+  if (outcome.status !== 'filled') return outcome;
+  const relFile = path.relative(root, file);
+  // PAGE-008/COMPONENT-005 (inline conditional/loop JSX) already have a deterministic mechanical
+  // fix (`construct refactor extract-expression`, #522, printExtractExpressionHint below) -- never
+  // sent to the model as a "fix this" retry, which would just be an LLM re-guessing at what a
+  // zero-LLM block already fixes for free.
+  const validateMinusExtractable = (r) => {
+    const { violations, ok } = aggregateValidation(r, DEFAULT_ENFORCERS);
+    return { violations: violations.filter((v) => !EXTRACTABLE_JSX_RULES.has(v.rule)), ok };
+  };
+  const { fixed, stillFailing } = await autoFixViolations(
+    root, [relFile], validateMinusExtractable, { llm, maxAttempts: 2 },
+  );
+  return {
+    ...outcome,
+    fixCommand: extractExpressionHint(root, file, layer), // recomputed: auto-fix may have rewritten the file
+    ...(fixed.length ? { autoFixedAttempts: fixed[0].attempts } : {}),
+    ...(stillFailing.length ? { autoFixStillFailing: stillFailing[0] } : {}),
+  };
+}
+
 // One line per generated file for a --llm fill (#144/#141): "Created +
 // LLM-filled" only when the model's output was actually written; otherwise
 // the scaffolded stub was left as-is and the line says why. A rejected/failed
 // fill sets a non-zero exit code so scripts and the UI notice, but never
 // aborts the rest of a batch.
-function reportFill(root, { file, status, reason, fixCommand }, timingNote = '') {
+function reportFill(root, { file, status, reason, fixCommand, autoFixedAttempts, autoFixStillFailing }, timingNote = '') {
   const rel = path.relative(root, file);
   if (status === 'filled') {
     console.log(`Created + LLM-filled ${rel}${timingNote}`);
+    if (autoFixedAttempts) console.log(`  Auto-fixed after the fill left a construct-validate violation behind (${autoFixedAttempts} attempt(s), each told what the last one left behind).`);
+    if (autoFixStillFailing) {
+      console.log(`  Still has ${autoFixStillFailing.violations.length} violation(s) after auto-fix (${autoFixStillFailing.reason}, ${autoFixStillFailing.attempts} attempt(s)) — review manually.`);
+      setExitCode(EXIT_CODES.INTERNAL_ERROR);
+    }
     if (fixCommand) printExtractExpressionHint(fixCommand);
     return;
   }
@@ -684,7 +722,7 @@ async function generateVerticalSlice(args) {
     const scaffoldDt = scaffoldSeconds.get(file) ?? 0;
     if (llm) {
       const llmStart = startTimer();
-      const outcome = await fillGeneratedFile(root, file, layerFromGeneratedFile(file), { feature, name, llm });
+      const outcome = await fillAndAutoFix(root, file, layerFromGeneratedFile(file), { feature, name, llm });
       reportFill(root, outcome, ` (scaffold ${formatDuration(scaffoldDt)}, llm ${formatDuration(elapsedSeconds(llmStart))})`);
     } else {
       console.log(`Created ${path.relative(root, file)} (${formatDuration(scaffoldDt)})`);

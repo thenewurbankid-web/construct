@@ -379,7 +379,7 @@ function buildScaffoldFillPrompt({layer,relFile,stubContent,name,feature}){
 // #522 -- rule ids `construct refactor extract-expression` (packages/core/extractExpression.mjs,
 // #517) exists to mechanically fix. Kept as a set (not a single rule) so both PAGE-008
 // (page layer) and COMPONENT-005 (component layer) are covered by one check.
-const EXTRACTABLE_JSX_RULES=new Set(['PAGE-008','COMPONENT-005']);
+export const EXTRACTABLE_JSX_RULES=new Set(['PAGE-008','COMPONENT-005']);
 
 /**
  * After an LLM fill writes a page or component layer file, checks whether the model's own output
