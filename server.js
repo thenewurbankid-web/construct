@@ -10,6 +10,7 @@ const trainingData = require('./training-data');
 const { toEnglish, extractAtoms, extractAtomUsage, reorderSteps, atomParamNames, applyAtomToStep, reorderChip } = require('./to-english');
 const registry = require('./registry');
 const { plug } = require('./plug');
+const { unplug } = require('./unplug');
 
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 // Two models, two jobs. 1.5b is fast but (measured) never performs extraction
@@ -408,6 +409,20 @@ app.post('/api/plug', (req, res) => {
   try {
     const plugged = plug(req.body.source || '');
     res.json({ plugged });
+  } catch (e) {
+    res.status(400).json({ error: String(e) });
+  }
+});
+
+// UNPLUG (LIN-122 block 2): fold an edited plug.tsx back into source.tsx.
+// Deterministic diff against a fresh plug(source) -- see unplug.js's header
+// for exactly what this block does and doesn't map back. `changed` is what
+// actually moved (for the demo's diff view); `flags` is what it couldn't
+// map back, each with a reason -- never silently dropped.
+app.post('/api/unplug', (req, res) => {
+  try {
+    const result = unplug(req.body.source || '', req.body.unplugged || '');
+    res.json(result);
   } catch (e) {
     res.status(400).json({ error: String(e) });
   }
