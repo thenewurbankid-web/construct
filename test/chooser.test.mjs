@@ -9,6 +9,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { PLAN_FLOWS, validatePlan } from '../packages/core/plan.mjs';
 import { GUARDRAILS } from '../packages/core/block-contract.mjs';
 import { CHOOSER_ERROR_CODES, CHOOSER_LIMITS, DECISION_SOURCES, EXIT_ANSWER, chooserSummary, compileChain, defineChooser, validateChooser } from '../packages/core/chooser.mjs';
+import { flowScopeKind } from '../packages/core/block-flows.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -77,9 +78,13 @@ test('definition: args are checked by validatePlan itself (missing, unknown, wro
 });
 
 test('definition: a writer whose files cannot be derived must declare touches, and they must be a valid scope', () => {
-  const mv = { id: 'b', label: 'Move it', flow: 'refactor.move', args: { name: 'Cart', feature: 'cart', from: 'domain', to: 'service' } };
+  // import.route is a guided, human-only wizard: plan-touches.mjs can never derive its files from arguments
+  // alone, unlike refactor.move, which was this test's example until it joined DERIVED_FLOWS in #610 and
+  // broke this assertion. Assert the premise instead of assuming a flow id stays 'declared' forever.
+  assert.equal(flowScopeKind('import.route'), 'declared');
+  const mv = { id: 'b', label: 'Import a route', flow: 'import.route', args: { route: '/checkout' } };
   assert.deepEqual(codes(validateChooser(spec({ options: [featureOpt('a', 'a'), mv] }))), ['CHOOSER_OPTION_TOUCHES_REQUIRED']);
-  const touches = { features: ['cart'], files: [{ path: 'features/cart/domain/Cart.domain.ts', change: 'move' }] };
+  const touches = { features: ['cart'], files: [{ path: 'features/cart/domain/Cart.domain.ts', change: 'modify' }] };
   assert.equal(validateChooser(spec({ options: [featureOpt('a', 'a'), { ...mv, touches }] })).valid, true);
   const abs = { features: [], files: [{ path: '/etc/passwd', change: 'modify' }] };
   assert.deepEqual(codes(validateChooser(spec({ options: [featureOpt('a', 'a'), { ...mv, touches: abs }] }))), ['CHOOSER_OPTION_TOUCHES_INVALID']);

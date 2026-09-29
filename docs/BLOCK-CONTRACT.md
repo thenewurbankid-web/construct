@@ -62,17 +62,17 @@ a `local-model` path, `view-code` (mechanical) and `edit-code` (free) on writing
 | `create.route` | derived | run, view-code, edit-code, do-by-hand | points the route entry at a generated screen's controller (#654): Next.js `create app/<route>/page.tsx` (and `delete` the init scaffold's dangling `app/page.tsx`), react-spa `modify src/App.tsx` |
 | `add.dependency` | derived | run, view-code, edit-code, do-by-hand | one line in `package.json` (`modify`); never runs a package manager (#654) |
 | `add.env` | derived | run, view-code, edit-code, do-by-hand | one variable in `.env.example` (`create`, or `modify` when the file exists), a comment and a placeholder, never a real value; scope `server` \| `public` decides the public prefix (#632) |
-| `create.page.from` | declared | run, view-code, edit-code, do-by-hand | one page file plus its Props; derivable next |
-| `create.workflow.from` | declared | run, view-code, edit-code, do-by-hand | machine file (+ state union with `--state-union`) |
-| `create.controller.bind` | declared | run, view-code, edit-code, do-by-hand | modifies an existing page; kind `modify` |
-| `create.service.openapi` | declared | run, view-code, edit-code, do-by-hand | service file plus the shared transport client |
-| `refactor.move` | declared | run, view-code, edit-code, do-by-hand | touches every importer, so the set depends on the import graph (`impact`) |
-| `refactor.rename` | declared | run, view-code, edit-code, do-by-hand | same |
+| `create.page.from` | derived | run, view-code, edit-code, do-by-hand | one page file plus its Props (#610) |
+| `create.workflow.from` | derived | run, view-code, edit-code, do-by-hand | machine file (+ state union with `--state-union`) (#610) |
+| `create.controller.bind` | derived | run, view-code, edit-code, do-by-hand | modifies an existing page; kind `modify` (#610) |
+| `create.service.openapi` | declared | run, view-code, edit-code, do-by-hand | service file plus the shared transport client; deliberately left undeclared, depends on an external `@hey-api/openapi-ts` call, not a cheap deterministic read (#610) |
+| `refactor.move` | derived | run, view-code, edit-code, do-by-hand | touches every importer, so the set depends on the import graph (`impact`) (#610) |
+| `refactor.rename` | derived | run, view-code, edit-code, do-by-hand | same (#610) |
 | `wrap.provider` | derived | run, view-code, edit-code, do-by-hand | wraps a component or page with one provider of the project (`defineProvider`, `features/*/hooks/*Provider*`): `modify` the controller that renders it; refused, with the reason, when no controller does (#631) |
 | `guard.route` | derived | run, view-code, edit-code, do-by-hand | chooses who may open a screen (`public` writes nothing, `signed-in`, `role`): a typed guard slice (domain decision, session hook, fallback notice, expression, guard controller), the route entry edited to render `<XGuardController><XController /></XGuardController>`, the feature's `types.ts` and barrel (`modify`) and the locked proof; refused, with the reason, when no route renders the controller (#629) |
 | `create.store` | derived | run, view-code, edit-code, do-by-hand | shared client state (`value`, `list` with a selection, `keyed`): the reducer (`domain/<Name>Store.domain.ts`) and the hook (`hooks/use<Name>State.state.ts`, `useTrackedState`) `create`, the feature's `types.ts` (the entity, a status union, typed actions) and barrel `modify`, and the locked proof (#630) |
 | `create.handler` | derived | run, view-code, edit-code, do-by-hand | a Next.js route handler: `app/api/<x>/route.ts`, its domain unit (`to<Name>Http`: ready 200, invalid 400, not-allowed 405, error 500) and, without `--service`, an in-memory service (`create`), the feature's `types.ts` and barrel (`modify`) and the locked proof; a react-spa project derives nothing and is refused with the reason (#625) |
-| `import.unit` | declared | run, fill-with-ai, view-code, edit-code, do-by-hand | |
+| `import.unit` | derived | run, fill-with-ai, view-code, edit-code, do-by-hand | pins what is written, not what a model generates (#610) |
 | `import.plan` | declared | run, fill-with-ai, view-code, edit-code, do-by-hand | union of its units' files |
 | `import.route` | declared | view-code, edit-code, do-by-hand | interactive wizard, user only: no `run` |
 | `summarize.unit` | empty | run | |

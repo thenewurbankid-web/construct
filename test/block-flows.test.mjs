@@ -41,10 +41,12 @@ test('scope kinds: read-only flows are empty, the three plan-touches flows deriv
     assert.equal(kind, !flow.writes ? 'empty' : DERIVED_FLOWS.includes(id) ? 'derived' : 'declared', id);
     assert.equal(flowBlocks()[id].meta.scope, kind);
   }
-  assert.deepEqual(Object.entries(PLAN_FLOWS).filter(([id]) => flowScopeKind(id) === 'declared').map(([id]) => id).sort(), [
-    'create.controller.bind', 'create.page.from', 'create.service.openapi', 'create.workflow.from', 'import.plan', 'import.route',
-    'import.unit', 'manual.task', 'pipeline.run', 'project.init', 'refactor.move', 'refactor.rename', 'sync',
-  ]);
+  // The 'declared' set is whatever plan-touches.mjs's DERIVED_FLOWS does not cover -- never a separate
+  // hardcoded list here, or the two would drift out of sync again exactly as in #610.
+  assert.deepEqual(
+    Object.entries(PLAN_FLOWS).filter(([id]) => flowScopeKind(id) === 'declared').map(([id]) => id).sort(),
+    Object.entries(PLAN_FLOWS).filter(([id, flow]) => flow.writes && !DERIVED_FLOWS.includes(id)).map(([id]) => id).sort(),
+  );
 });
 
 test('declaredScope: empty for a read-only flow, never null for one; null (not a guess) for a writer it cannot derive', () => {
@@ -103,12 +105,15 @@ test('actions follow executors: read-only flows offer Run only; model path only 
 });
 
 test('a declared-scope writer only opens "Edit code" once the plan step declares what it touches', () => {
-  const block = flowBlocks()['refactor.move'];
-  const args = { name: 'Cart', feature: 'cart', from: 'domain', to: 'service' };
+  // Picked by flowScopeKind, not hardcoded by id: a flow named here directly would silently start
+  // testing the wrong scope kind the day it joins DERIVED_FLOWS, exactly what broke in #610.
+  const [id] = Object.entries(PLAN_FLOWS).find(([fid, flow]) => flow.writes && flow.cli !== null && flowScopeKind(fid) === 'declared');
+  const block = flowBlocks()[id];
+  const args = {};
   const closed = block.actions({ args, root: '/x' }).find((a) => a.id === 'edit-code');
   assert.equal(closed.enabled, false);
   assert.match(closed.why, /declares what it touches/);
-  const open = block.actions({ args, root: '/x', touches: { files: [{ path: 'features/cart/domain/Cart.domain.ts', change: 'move' }] } }).find((a) => a.id === 'edit-code');
+  const open = block.actions({ args, root: '/x', touches: { files: [{ path: 'x', change: 'modify' }] } }).find((a) => a.id === 'edit-code');
   assert.equal(open.enabled, true);
 });
 
