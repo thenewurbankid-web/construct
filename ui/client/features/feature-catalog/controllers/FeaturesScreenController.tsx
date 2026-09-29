@@ -1,12 +1,13 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { EmptyState } from '@/features/states';
 import { ListBrowser, useUrlSelection } from '@/features/list-browser';
 import { useRegisterShellTab, useShellStage, type ShellTab } from '@/features/shell';
 import { FeatureDetails } from '../components/FeatureDetails';
 import { FeatureFlowView } from '../components/FeatureFlowView';
 import { FeatureStructure } from '../components/FeatureStructure';
+import { LayerViolationsPanel } from '../components/LayerViolationsPanel';
 import type { StructureView } from '../components/StructureViewSwitch';
 import { findFeature, legacyNote, toListItems } from '../domain/FeatureView';
 import { useFeatureList } from '../hooks/useFeatureList';
@@ -30,6 +31,8 @@ export function FeaturesScreenController() {
   const name = feature?.name ?? null;
   const details = useFeatureSummary(name);
   const [view, setView] = useState<StructureView>('tree');
+  const [violationsLayer, setViolationsLayer] = useState<string | null>(null);
+  useEffect(() => setViolationsLayer(null), [name]);
   const items = useMemo(() => toListItems(list.features), [list.features]);
   const note = list.status === 'ready' ? legacyNote(list.featuresRoot, list.legacy) : null;
   const { select } = selection;
@@ -68,12 +71,24 @@ export function FeaturesScreenController() {
   );
   useRegisterShellTab('browser', browser);
 
+  const violations = violationsLayer ? (details.view?.layers.find((l) => l.layer === violationsLayer)?.violations ?? []) : null;
+  const violationsTab = useMemo<ShellTab>(
+    () => ({
+      id: 'feature-violations',
+      title: 'Violations',
+      badge: violations?.length ?? null,
+      render: () => (violationsLayer && violations ? <LayerViolationsPanel layer={violationsLayer} violations={violations} /> : <p className="fc-hint fc-violations-summary">Click a layer&rsquo;s dot to see its rule violations here.</p>),
+    }),
+    [violationsLayer, violations],
+  );
+  useRegisterShellTab('tools', violationsTab);
+
   if (feature) {
     return (
       <FeatureStructure
         view={view}
         onChange={setView}
-        tree={<FeatureDetails name={feature.name} view={details.view} loading={details.loading} error={details.error} onRetry={details.reload} />}
+        tree={<FeatureDetails name={feature.name} view={details.view} loading={details.loading} error={details.error} onRetry={details.reload} onSelectViolations={setViolationsLayer} />}
         flow={<FeatureFlowView name={feature.name} missingLayers={details.view?.missingLayers ?? []} onAddLayer={openCreate} />}
       />
     );

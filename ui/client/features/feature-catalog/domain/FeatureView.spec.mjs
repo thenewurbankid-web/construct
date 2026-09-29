@@ -67,6 +67,34 @@ test('root: derived from path, so a project with features.root: construct shows 
   assert.equal(buildFeatureView(custom).root, 'construct');
 });
 
+test('layer violations: grouped by the layer that owns the file, one dot\'s worth per layer (#803)', () => {
+  const withViolations = {
+    ...summary,
+    sections: {
+      ...summary.sections,
+      rules: {
+        counts: { error: 0, warning: 2 },
+        violations: [
+          { rule: 'COMPONENT-005', severity: 'warning', file: 'features/billing/components/BillingView.tsx', message: 'Inline conditional.' },
+          { rule: 'PAGE-002', severity: 'warning', file: 'features/billing/pages/BillingPage.tsx', message: 'Missing loading state.' },
+          { rule: 'DOMAIN-002', severity: 'error', file: 'features/other/domain/x.ts', message: 'Outside this feature -- never attributed here.' },
+        ],
+      },
+    },
+  };
+  const v = buildFeatureView(withViolations);
+  const byLayer = Object.fromEntries(v.layers.map((l) => [l.layer, l.violations]));
+  assert.deepEqual(byLayer.component.map((x) => x.rule), ['COMPONENT-005']);
+  assert.deepEqual(byLayer.page.map((x) => x.rule), ['PAGE-002']);
+  assert.deepEqual(byLayer.domain, [], 'a layer with no violations gets an empty array, not undefined');
+  assert.deepEqual(byLayer.weird, []);
+});
+
+test('layer violations: absent sections.rules.violations is every layer with an empty list', () => {
+  const v = buildFeatureView(summary);
+  for (const l of v.layers) assert.deepEqual(l.violations, []);
+});
+
 test('legacyNote: only a non-default root with files to report gets the note (#791)', () => {
   assert.equal(legacyNote('features', { count: 7 }), null, 'default root: never shown');
   assert.equal(legacyNote('construct', { count: 0 }), null, 'nothing outside the root: never shown');

@@ -4,7 +4,7 @@ import type { FeatureView } from '../types';
 import { MissingLayers } from './MissingLayers';
 import './feature-catalog.css';
 
-type Props = { name: string; view: FeatureView | null; loading: boolean; error: string | null; onRetry: () => void };
+type Props = { name: string; view: FeatureView | null; loading: boolean; error: string | null; onRetry: () => void; onSelectViolations?: (layer: string) => void };
 
 // The stage's Import/Create actions live in the dashboard feature's stage actions, composed into the same stage by
 // the route (see FeaturesScreenController's openCreate): the two only meet on the page, so opening one from here is
@@ -17,7 +17,7 @@ function openCreate() {
 }
 
 /** The details of one feature in the stage: what it is, the routes under it, its layers and files, its workflows and its tests. */
-export function FeatureDetails({ name, view, loading, error, onRetry }: Props) {
+export function FeatureDetails({ name, view, loading, error, onRetry, onSelectViolations }: Props) {
   if (error) return <section className="fc-details" data-testid="fc-details"><ErrorState size="inline" title={`Could not read “${name}”`} hint={error} onRetry={onRetry} /></section>;
   if (loading || !view) return <section className="fc-details" data-testid="fc-details"><LoadingState size="inline" label={`Reading ${name}`} /></section>;
   return (
@@ -54,7 +54,18 @@ export function FeatureDetails({ name, view, loading, error, onRetry }: Props) {
       <div data-testid="fc-layers">
         {view.layers.map((l) => (
           <div key={l.layer} className="fc-layer" data-testid="fc-layer" data-layer={l.layer}>
-            <h4 className="fc-h4">{l.layer} <span className="fc-hint">{l.files.length} file{l.files.length === 1 ? '' : 's'}</span></h4>
+            <h4 className="fc-h4">
+              {l.layer} <span className="fc-hint">{l.files.length} file{l.files.length === 1 ? '' : 's'}</span>
+              {l.violations.length > 0 && (
+                <button
+                  type="button"
+                  className="fc-violation-dot"
+                  data-testid="fc-violation-dot"
+                  aria-label={`${l.violations.length} rule violation${l.violations.length === 1 ? '' : 's'} in ${l.layer}`}
+                  onClick={() => onSelectViolations?.(l.layer)}
+                />
+              )}
+            </h4>
             <ul className="fc-list">
               {l.files.map((f) => (
                 <li key={f.path} data-testid="fc-file">

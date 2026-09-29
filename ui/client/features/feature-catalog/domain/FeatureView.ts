@@ -1,6 +1,6 @@
 // Pure (DOMAIN-001): the Features screen's rows and the details of one feature, made from what
 // `construct summarize` already answers. No new analysis here: this only orders, labels and links what the engine said.
-import type { FeatureFile, FeatureRow, FeatureSummaryResponse, FeatureView, LegacyFiles } from '../types.ts';
+import type { FeatureFile, FeatureRow, FeatureSummaryResponse, FeatureView, LegacyFiles, SummaryViolation } from '../types.ts';
 
 const LAYER_ORDER = ['page', 'controller', 'component', 'hook', 'workflow', 'service', 'domain'];
 
@@ -29,15 +29,31 @@ export function fileHref(feature: string, layer: string, path: string): string |
   return null;
 }
 
+/** Which layer owns each violation, by matching `violation.file` against the layer's own file list
+ * (#803: a violation carries a file, not a layer, so the grouping has to go through `sections.files`). */
+function violationsByLayer(files: Record<string, { path: string }[]>, violations: SummaryViolation[]): Map<string, SummaryViolation[]> {
+  const layerOf = new Map<string, string>();
+  for (const [layer, fs] of Object.entries(files)) for (const f of fs) layerOf.set(f.path, layer);
+  const out = new Map<string, SummaryViolation[]>();
+  for (const v of violations) {
+    const layer = layerOf.get(v.file);
+    if (!layer) continue; // a violation outside this feature's own files (shouldn't happen; never guessed at)
+    (out.get(layer) ?? out.set(layer, []).get(layer))!.push(v);
+  }
+  return out;
+}
+
 export function buildFeatureView(summary: FeatureSummaryResponse): FeatureView | null {
   if (!summary.ok) return null;
   const s = summary.sections;
   const files = s.files ?? {};
   const present = s.layers?.present ?? [];
   const order = [...LAYER_ORDER.filter((l) => present.includes(l)), ...present.filter((l) => !LAYER_ORDER.includes(l))];
+  const byLayer = violationsByLayer(files, s.rules?.violations ?? []);
   const layers = order.map((layer) => ({
     layer,
     files: (files[layer] ?? []).map<FeatureFile>((f) => ({ path: f.path, purpose: f.purpose, loc: f.loc, href: fileHref(summary.name, layer, f.path), frozen: f.frozen })),
+    violations: byLayer.get(layer) ?? [],
   }));
   // `path` is `<root>/<name>`; strip the trailing `/<name>` to get the configured root (`features` unless overridden).
   const root = summary.path.slice(0, summary.path.length - summary.name.length - 1) || 'features';

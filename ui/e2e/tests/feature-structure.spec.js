@@ -137,3 +137,49 @@ test.describe.serial('Feature structure: a non-default features.root shows in th
     await expect(page.getByTestId('fc-legacy-note')).toHaveText('Legacy, outside construct/ (2 files, not managed)');
   });
 });
+
+// A feature with a real rule violation on exactly one file, so exactly one layer gets the dot.
+function makeViolationProject() {
+  const project = makeBrowseProject('og803-violation-');
+  // DOMAIN-001 (domain code using an external effect): a real, deterministic violation, isolated to
+  // the domain layer so the page/component/etc. layers stay clean -- the #803 one-dot-per-layer test.
+  fs.mkdirSync(path.join(project.repo, 'features', 'billing', 'domain'), { recursive: true });
+  fs.writeFileSync(path.join(project.repo, 'features', 'billing', 'domain', 'Bad.ts'), "export function Bad() {\n  return fetch('/x');\n}\n");
+  return project;
+}
+
+test.describe.serial('Feature structure: one quiet dot per layer for rule violations, details in the right panel (#803)', () => {
+  let project;
+  let restore;
+
+  test.beforeAll(async () => {
+    project = makeViolationProject();
+    restore = await openProject(API, project.repo);
+  });
+  test.afterAll(async () => {
+    await restore?.();
+    project?.remove();
+  });
+
+  test('a layer with a rule violation shows one quiet dot, not a violation-per-line list', async ({ page }) => {
+    await gotoCockpit(page, '/?feature=billing');
+    const domainHeading = details(page).locator('[data-testid="fc-layer"][data-layer="domain"]');
+    await expect(domainHeading.getByTestId('fc-violation-dot')).toHaveCount(1);
+    const pageHeading = details(page).locator('[data-testid="fc-layer"][data-layer="page"]');
+    await expect(pageHeading.getByTestId('fc-violation-dot')).toHaveCount(0);
+  });
+
+  test('clicking the dot opens the Violations right panel with that layer\'s rule, file and message', async ({ page }) => {
+    await gotoCockpit(page, '/?feature=billing');
+    const domainHeading = details(page).locator('[data-testid="fc-layer"][data-layer="domain"]');
+    await domainHeading.getByTestId('fc-violation-dot').click();
+    const tools = page.getByRole('complementary', { name: 'Tools' });
+    await tools.getByRole('tab', { name: /^Violations/ }).click();
+    const panel = page.getByTestId('fc-violations-panel');
+    await expect(panel).toBeVisible();
+    const violation = panel.getByTestId('fc-violation');
+    await expect(violation).toHaveCount(1);
+    await expect(violation).toContainText('DOMAIN-001');
+    await expect(violation).toContainText('features/billing/domain/Bad.ts');
+  });
+});

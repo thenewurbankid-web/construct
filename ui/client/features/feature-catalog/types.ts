@@ -15,6 +15,9 @@ export type SummaryFile = { path: string; layer: string | null; loc: number; pur
 
 export type SummaryWorkflow = { file: string; machine: string; summary: string; states: number; findings: { severity: string; message: string }[]; error?: string };
 
+/** One architecture-rule violation (`violationsFor`, `packages/engine/units/facts.mjs`); #803's per-layer dot groups these by which layer `file` belongs to. */
+export type SummaryViolation = { rule: string; severity: string; file: string; line?: number; message: string };
+
 export type FeatureSummaryResponse =
   | {
       ok: true;
@@ -29,7 +32,7 @@ export type FeatureSummaryResponse =
         contracts?: { routes?: { route: string; file: string }[] };
         workflows?: SummaryWorkflow[];
         dependencies?: { usedBy?: { name: string; files: number }[]; usesFeatures?: { name: string; files: number }[] };
-        rules?: { counts?: { error: number; warning: number } };
+        rules?: { counts?: { error: number; warning: number }; violations?: SummaryViolation[] };
         tests?: { count: number; files?: string[] };
       };
     }
@@ -39,7 +42,7 @@ export type FeatureSummaryResponse =
  * `frozen` (#478): externally-authored, read-only to Construct -- still listed. */
 export type FeatureFile = { path: string; purpose: string; loc: number; href: string | null; frozen?: boolean };
 
-export type FeatureLayerView = { layer: string; files: FeatureFile[] };
+export type FeatureLayerView = { layer: string; files: FeatureFile[]; violations: SummaryViolation[] };
 
 /** Everything the details panel shows for one feature. */
 export type FeatureView = {

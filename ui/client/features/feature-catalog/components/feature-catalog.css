@@ -19,3 +19,10 @@
 .fc-callout p + p { margin-top: var(--sp-1); }
 .fc-layer-missing { opacity: 0.85; }
 .fc-layer-missing .fc-h4 { border: 1px dashed var(--border-strong); border-radius: 4px; padding: var(--sp-1) var(--sp-2); display: inline-flex; gap: var(--sp-1); align-items: baseline; }
+/* One quiet dot per layer for rule violations (#803): the count and detail live in the right panel, not inline here. */
+.fc-violation-dot { width: 8px; height: 8px; padding: 0; margin-left: var(--sp-1); border: none; border-radius: 50%; background: var(--danger); cursor: pointer; vertical-align: middle; }
+.fc-violation-dot:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.fc-violations-summary { padding: 0 var(--sp-3); }
+.fc-violations-list { list-style: none; margin: 0; padding: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2); }
+.fc-violation { padding: var(--sp-2); border: 1px solid var(--border-subtle); border-radius: 6px; }
+.fc-violation-rule { font-weight: 600; }
