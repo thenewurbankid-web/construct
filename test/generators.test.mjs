@@ -179,6 +179,18 @@ test('generateVertical throws on an unknown layer name before writing anything',
   assert.equal(fs.existsSync(path.join(dir, 'features', 'checkout', 'domain', 'Checkout.ts')), false);
 });
 
+// #791/#804 -- a project whose features.root isn't the default writes under that root, not features/.
+// This is what the Import wizard's actual scaffolding (importVertical -> generateVertical) goes through,
+// so the wizard already honours a non-default root end-to-end with no wizard-side change needed.
+test('generateVertical writes under the configured features.root, not the "features" default', () => {
+  const dir = tmpProject();
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), 'project:\n  framework: nextjs\nfeatures:\n  root: construct\n');
+  createFeature(dir, 'billing');
+  const files = generateVertical(dir, 'Widget', 'billing', ['domain']);
+  assert.deepEqual(files.map((f) => path.relative(dir, f).split(path.sep).join('/')), ['construct/billing/domain/Widget.ts']);
+  assert.equal(fs.existsSync(path.join(dir, 'features', 'billing', 'domain', 'Widget.ts')), false);
+});
+
 // #275 superseded this test's original assertion: requesting a controller
 // without its page used to get as far as writing the controller and then fail
 // with a raw IMPORT-001 "template bug". It is now refused up front, by name,
