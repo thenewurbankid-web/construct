@@ -8,12 +8,18 @@
 // separate LLM session to fill in later, same as before this existed.
 import fs from 'node:fs';
 import path from 'node:path';
-import { generateVertical, LAYER_ORDER, LAYER_PREREQUISITES, LAYER_CONSTRAINTS, layerFromGeneratedFile, layerTargetFile, extractExpressionHint } from './generators.mjs';
+import { generateVertical, LAYER_ORDER, LAYER_PREREQUISITES, LAYER_CONSTRAINTS, layerFromGeneratedFile, extractExpressionHint } from './generators.mjs';
 import { walk } from './fs.mjs';
 import { callLlm, stripCodeFence, PROVIDERS } from './llm.mjs';
 import { requestFileText } from './llm-fill.mjs';
 import { ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { startTimer, elapsedSeconds } from './timing.mjs';
+// #787 -- existingRealFiles is a deterministic, network-free collision check split into its own
+// module so a caller that only needs it (plan-touches.mjs) doesn't transitively import llm.mjs.
+// Re-exported here too, for anything that still imports it from import.mjs.
+import { IMPORT_TODO_MARKER, existingRealFiles } from './import-real-files.mjs';
+
+export { existingRealFiles } from './import-real-files.mjs';
 
 // LAYER_CONSTRAINTS and layerFromGeneratedFile now live in generators.mjs
 // (#101) — shared, single-source-of-truth versions, since generators.mjs's
@@ -28,40 +34,12 @@ const CODE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx']);
 // source they cover (e.g. useCpoGate.ts + useCpoGate.test.ts).
 const TEST_FILE_RE = /\.(test|spec)\.[^./]+$/;
 
-// Marks a scaffolded-but-unfilled stub (see breadcrumb() below and
-// requestFileText's per-file writes) — the one signal `existingRealFiles`
-// (#519) trusts to tell "nobody has touched this yet, safe to redo" apart
-// from "a human or an earlier LLM fill already wrote something real here."
-const IMPORT_TODO_MARKER = 'TODO(import):';
-
 function breadcrumb(fromAbsPath, intoAbsPath) {
   const relPath = path.relative(path.dirname(intoAbsPath), fromAbsPath).split(path.sep).join('/');
   // Deliberately plain wording — DOMAIN-001 bans certain words (fetch,
   // window, document, ...) anywhere in a domain file, even in a comment, so
   // this stays generic rather than describing what the old file does.
   return `/** ${IMPORT_TODO_MARKER} port the relevant logic from ${relPath} into this file. */\n`;
-}
-
-/** Target files (for `layers`) that already exist with real content — i.e.
- * NOT just an earlier, still-unfilled import stub (one that still carries
- * the TODO(import) breadcrumb, which importVertical is always free to
- * rewrite). #519 found that re-running `construct import` for the same
- * name/feature/layer silently overwrote whatever was already there,
- * including a file a human had already hand-ported or an earlier `--llm`
- * fill had already written — real work destroyed with no warning, purely
- * because generateVertical's write() has no existence check. Read-only:
- * never writes, so it's safe to call before anything is scaffolded.
- * Exported for `plan-touches.mjs`: the same collision check `importVertical`
- * runs before writing anything, reused rather than duplicated so a plan
- * preview and the real run can never disagree about whether this refuses. */
-export function existingRealFiles(root, name, feature, layers) {
-  const hits = [];
-  for (const layer of layers) {
-    const file = layerTargetFile(root, layer, name, feature);
-    if (!fs.existsSync(file)) continue;
-    if (!fs.readFileSync(file, 'utf8').includes(IMPORT_TODO_MARKER)) hits.push(file);
-  }
-  return hits;
 }
 
 // Sibling files are shown to the model so a later layer composes an earlier one instead of

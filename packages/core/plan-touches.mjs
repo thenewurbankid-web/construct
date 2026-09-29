@@ -16,7 +16,9 @@ import { guardTouches } from './guard.mjs';
 import { storeTouches } from './store.mjs';
 import { handlerTouches } from './handler.mjs';
 import { moveLayerFile, renameLayerFile } from './refactor.mjs';
-import { existingRealFiles } from './import.mjs';
+// #787 -- imported from import-real-files.mjs, not import.mjs, so this stays network-free
+// (import.mjs also pulls in llm.mjs for its --llm fill feature, which decision-trace never needs).
+import { existingRealFiles } from './import-real-files.mjs';
 import { compileWorkflow, compileStateUnion, STATE_UNION_MARKER } from '../engine/workflowGenerator.mjs';
 import { resolveSourceFiles } from '../engine/controllerBinder.mjs';
 
