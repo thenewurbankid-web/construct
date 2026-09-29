@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { collectDiagnostics, typescriptDiagnostics } from '../packages/engine/diagnostics.mjs';
+import { collectDiagnostics, typescriptDiagnostics, lintBuffer } from '../packages/engine/diagnostics.mjs';
 import { createFeature } from '../packages/core/generators.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
@@ -77,4 +77,33 @@ test('a rule violation is mapped to a whole-line marker', () => {
   assert.equal(arch[0].column, 1);
   assert.equal(arch[0].endLine, arch[0].line);
   assert.match(arch[0].code, /^[A-Z]+-\d+/);
+});
+
+test('#551 lintBuffer finds an architecture violation in an unsaved buffer, and leaves the file on disk untouched', () => {
+  const dir = tmpProject();
+  const rel = 'features/billing/pages/BillingPage.tsx';
+  fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
+  const onDisk = 'export function BillingPage() {\n  return <p>ok</p>;\n}\n';
+  fs.writeFileSync(path.join(dir, rel), onDisk);
+  const unsavedEdit = "import { fetchThing } from '../services/BillingService';\nexport function BillingPage() {\n  return <p>{String(fetchThing)}</p>;\n}\n";
+
+  const diagnostics = lintBuffer(dir, rel, unsavedEdit);
+  const violation = diagnostics.find((d) => d.source === 'architecture');
+  assert.ok(violation, `expected a PAGE-* violation for the unsaved edit, got ${JSON.stringify(diagnostics)}`);
+  assert.equal(violation.mechanicalFixAvailable, true);
+  assert.equal(fs.readFileSync(path.join(dir, rel), 'utf8'), onDisk, 'lintBuffer must not leave the buffer written to disk');
+
+  // On-disk content (no banned import) reports no such violation.
+  assert.equal(lintBuffer(dir, rel, onDisk).some((d) => d.source === 'architecture'), false);
+});
+
+test('#551 a TypeScript diagnostic never claims a mechanical fix', () => {
+  const dir = tmpProject();
+  const rel = 'features/billing/pages/BillingPage.tsx';
+  fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
+  fs.writeFileSync(path.join(dir, rel), 'export function BillingPage() {\n  return <p>ok</p>;\n}\n');
+  const d = lintBuffer(dir, rel, 'export const n: number = 1;\nexport const s: string = n;\n');
+  const ts = d.find((x) => x.source === 'typescript');
+  assert.ok(ts);
+  assert.equal(ts.mechanicalFixAvailable, false);
 });

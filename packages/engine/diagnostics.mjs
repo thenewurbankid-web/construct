@@ -5,7 +5,7 @@
 // ui/server's source-view route; the UI turns the result into editor markers.
 //
 // Every diagnostic is normalized to one shape, 1-based positions:
-//   { source, code, severity, message, line, column, endLine, endColumn }
+//   { source, code, severity, message, line, column, endLine, endColumn, mechanicalFixAvailable }
 // source is 'typescript' | 'architecture' | 'separation-of-concerns'.
 // Rule violations only carry a line, so they span that whole line.
 import fs from 'node:fs';
@@ -13,6 +13,7 @@ import path from 'node:path';
 import { ts } from '../ast/lazy.mjs';
 import { validateArchitecture } from '../core/architecture-enforcer.mjs';
 import { validateSeparationOfConcerns } from '../core/soc-enforcer.mjs';
+import { mechanicalFixAvailable } from '../core/ruleFixes.mjs';
 
 // Built on first use: reading `ts.*` here at import time would load the compiler for every importer (#657).
 const defaultCompilerOptions = () => ({
@@ -47,7 +48,7 @@ function compilerOptionsFor(absFile) {
 
 function fromTsDiagnostic(d, sf) {
   const message = ts.flattenDiagnosticMessageText(d.messageText, '\n');
-  const base = { source: 'typescript', code: `TS${d.code}`, severity: severityByCategory()[d.category] || 'error', message };
+  const base = { source: 'typescript', code: `TS${d.code}`, severity: severityByCategory()[d.category] || 'error', message, mechanicalFixAvailable: false };
   if (d.start === undefined || !sf) return { ...base, line: 1, column: 1, endLine: 1, endColumn: 1 };
   const start = sf.getLineAndCharacterOfPosition(d.start);
   const end = sf.getLineAndCharacterOfPosition(d.start + (d.length || 0));
@@ -96,6 +97,7 @@ export function fromViolation(v, lines) {
     column: 1,
     endLine: line,
     endColumn: text.length + 1,
+    mechanicalFixAvailable: mechanicalFixAvailable(v.rule),
   };
 }
 
@@ -123,4 +125,35 @@ export function collectDiagnostics(root, relPath, source) {
   const text = source ?? fs.readFileSync(absFile, 'utf8');
   const all = [...typescriptDiagnostics(absFile, text), ...ruleDiagnostics(root, relPath, text)];
   return all.sort((a, b) => a.line - b.line || a.column - b.column);
+}
+
+/**
+ * #551 -- diagnostics for `source` as an unsaved buffer, including the
+ * architecture/separation-of-concerns rules `collectDiagnostics` cannot: those
+ * enforcers read the file straight off disk with no override seam (unlike
+ * `typescriptDiagnostics`'s compiler-host trick), so the only way to check them
+ * against edited-but-unsaved text is to write it, run them, and put the
+ * original back -- the same trick `ui/server/src/pagesEditor.mjs`'s
+ * `checkEnforcement` already uses at save time. Not concurrency-safe against a
+ * second write to the same file mid-call; callers serialize calls per file
+ * (the Cockpit debounces one in-flight buffer-lint request at a time).
+ *
+ * @param {string} root Project root.
+ * @param {string} relPath File to check, relative to `root`, real on disk.
+ * @param {string} source The unsaved buffer text to check instead of what's on disk.
+ * @returns {any} TypeScript diagnostics plus Construct rule violations, sorted by line then column.
+ */
+export function lintBuffer(root, relPath, source) {
+  const absFile = path.resolve(root, relPath);
+  const ts = typescriptDiagnostics(absFile, source);
+  const original = fs.readFileSync(absFile, 'utf8');
+  if (original === source) return [...ts, ...ruleDiagnostics(root, relPath, source)].sort((a, b) => a.line - b.line || a.column - b.column);
+  fs.writeFileSync(absFile, source);
+  let rules;
+  try {
+    rules = ruleDiagnostics(root, relPath, source);
+  } finally {
+    fs.writeFileSync(absFile, original);
+  }
+  return [...ts, ...rules].sort((a, b) => a.line - b.line || a.column - b.column);
 }
