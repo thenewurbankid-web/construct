@@ -113,7 +113,7 @@ test.describe.serial('Inspector Change tab: Move, Rename, Extract, Wrap in (#381
     await tools.getByTestId('change-approve').click();
 
     await expect(tools.getByTestId('change-started')).toBeVisible();
-    const drawer = page.getByRole('region', { name: 'Drawer' });
+    const drawer = page.getByRole('region', { name: 'Bottom panel: Run' });
     await expect(drawer.getByRole('tab', { name: /Processes/ })).toHaveAttribute('aria-selected', 'true');
     await expect(drawer.getByTestId('process-row').filter({ hasText: 'Rename Billing to BillingSummary' })).toHaveCount(1);
 
