@@ -1,0 +1,9 @@
+version: 1
+preset: strict-nextjs
+
+project:
+  framework: express
+  language: typescript
+
+features:
+  root: features

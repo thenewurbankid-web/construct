@@ -60,12 +60,20 @@ export const REACT_SPA_LAYERS = { ...DEFAULT_LAYERS, route: { pattern: 'src/App.
 // Recognized `project.framework` values in architecture.yml. `nextjs` stays
 // the default so every project that predates this option (or simply never
 // sets it) keeps behaving exactly as before.
-export const FRAMEWORKS = ['nextjs', 'react-spa'];
+export const FRAMEWORKS = ['nextjs', 'react-spa', 'express'];
 const DEFAULT_FRAMEWORK = 'nextjs';
 
+// A plain-Express backend (#792): no page/component UI layers of its own, so it shares
+// DEFAULT_LAYERS' feature-internal shape (controller/workflow/hook/service/domain) unchanged.
+// Its "route" layer isn't one fixed file or pattern the way nextjs/react-spa's is -- routes can
+// be registered from any file (app.get, a mounted router, a route registrar) -- so route
+// discovery is entirely the adapter's job (route-adapters.mjs's expressAdapter, built on the
+// same cross-file walk `construct summarize --backend` uses); DEFAULT_LAYERS' `route` pattern
+// (app/**/page.tsx) simply never matches in an Express project, which is harmless.
 const LAYERS_BY_FRAMEWORK = {
   nextjs: DEFAULT_LAYERS,
   'react-spa': REACT_SPA_LAYERS,
+  express: DEFAULT_LAYERS,
 };
 
 /**

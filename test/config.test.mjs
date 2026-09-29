@@ -126,8 +126,13 @@ test('normalizeFramework defaults undefined/null to nextjs and validates against
   assert.equal(normalizeFramework(undefined), 'nextjs');
   assert.equal(normalizeFramework(null), 'nextjs');
   assert.equal(normalizeFramework('react-spa'), 'react-spa');
-  assert.deepEqual(FRAMEWORKS, ['nextjs', 'react-spa']);
+  assert.equal(normalizeFramework('express'), 'express');
+  assert.deepEqual(FRAMEWORKS, ['nextjs', 'react-spa', 'express']);
   assert.throws(() => normalizeFramework('remix'), ConstructError);
+});
+
+test('layersForFramework: express shares DEFAULT_LAYERS (#792) -- no page/component UI layers of its own, route discovery is the adapter\'s job', () => {
+  assert.equal(layersForFramework('express'), DEFAULT_LAYERS);
 });
 
 // Ticket 7.5 — project.dataLayer.provider (mirrors the framework tests above).

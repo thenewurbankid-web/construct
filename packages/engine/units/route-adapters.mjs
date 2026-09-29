@@ -14,7 +14,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseToAst, walkAst } from '../../../packages/ast/index.mjs';
+import { collectBackendFacts } from '../../../packages/ast/backendFacts.mjs';
 import { resolveImportSpecifier } from '../../core/route-resolver.mjs';
+import { mapRoutes } from '../../core/backend-routes.mjs';
 
 const isTest = (p) => /\.(test|spec)\./.test(p);
 const CODE_EXT = '(?:ts|tsx|js|jsx|mjs)';
@@ -227,7 +229,63 @@ const nextjsAdapter = {
   },
 };
 
-export const ROUTE_ADAPTERS = { nextjs: nextjsAdapter, 'react-spa': reactSpaAdapter };
+// ---- express ------------------------------------------------------------------------------------
+
+const backendFactsCache = new WeakMap();
+
+/** Every non-test source file parsed once for `collectBackendFacts` (`app.get`/`router.get`/mount
+ * timelines), memoised per context -- a file that fails to parse (JSX, a syntax error) is left out,
+ * not guessed at. */
+function backendFiles(ctx) {
+  let cached = backendFactsCache.get(ctx);
+  if (cached) return cached;
+  const files = new Map();
+  for (const rel of ctx.sourceFiles()) {
+    if (isTest(rel)) continue;
+    try {
+      const source = fs.readFileSync(path.join(ctx.root, rel), 'utf8');
+      files.set(rel, { facts: collectBackendFacts(parseToAst(source), source) });
+    } catch { /* not parsable as a module (JSX, a broken file): no routes from it */ }
+  }
+  backendFactsCache.set(ctx, (cached = files));
+  return cached;
+}
+
+/** `mapRoutes`'s cross-file route map (`packages/core/backend-routes.mjs`, built for `construct
+ * summarize --backend`), reused as-is: it already resolves `app.get`/`router.get`, mounted routers
+ * and route registrars across files, and follows an imported handler back to the file it is
+ * defined in -- exactly what a feature-owning controller needs (#792). */
+function backendRouteMap(ctx) {
+  const files = backendFiles(ctx);
+  const resolveImport = (fromRel, spec) => {
+    const abs = path.join(ctx.root, fromRel);
+    const hit = resolveImportSpecifier(abs, spec, ctx.aliases());
+    return hit ? path.relative(ctx.root, hit).split(path.sep).join('/') : null;
+  };
+  return mapRoutes({ files, resolveImport });
+}
+
+const expressAdapter = {
+  framework: 'express',
+  routes(ctx) {
+    const merged = new Map();
+    for (const r of backendRouteMap(ctx).routes) {
+      const handlerFile = r.handler?.file;
+      const feature = handlerFile && featureOf(ctx, handlerFile);
+      if (!feature) continue; // an inline handler, or one outside features/: nothing to attribute a route to
+      const key = `${r.method} ${r.path}\0${r.file}`;
+      const entry = { file: handlerFile, order: 0, feature };
+      const prev = merged.get(key);
+      merged.set(key, prev ? { ...prev, entries: dedupeEntries([...prev.entries, entry]) } : { route: `${r.method} ${r.path}`, file: r.file, entries: [entry] });
+    }
+    return [...merged.values()].sort((a, b) => a.route.localeCompare(b.route) || a.file.localeCompare(b.file));
+  },
+  featureRoutes(ctx, name) {
+    return this.routes(ctx).filter((r) => r.entries.some((e) => e.feature === name)).map((r) => ({ route: r.route, file: r.file }));
+  },
+};
+
+export const ROUTE_ADAPTERS = { nextjs: nextjsAdapter, 'react-spa': reactSpaAdapter, express: expressAdapter };
 
 export const frameworkOf = (ctx) => ctx.config().project?.framework || 'nextjs';
 

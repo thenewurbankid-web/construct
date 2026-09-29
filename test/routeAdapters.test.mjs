@@ -52,7 +52,48 @@ test('unknown framework: no adapter, so no routes (never a guess)', () => {
   assert.equal(routeAdapterFor(ctx, none), null);
   assert.deepEqual(discoverRoutes(ctx, none), []);
   assert.deepEqual(featureRoutes(ctx, 'billing', none), []);
-  assert.deepEqual(Object.keys(ROUTE_ADAPTERS).sort(), ['nextjs', 'react-spa']);
+  assert.deepEqual(Object.keys(ROUTE_ADAPTERS).sort(), ['express', 'nextjs', 'react-spa']);
+});
+
+// #792 -- a plain-Express backend: no page.tsx / App.tsx route file, so routes come from the real
+// app.get/router.get/mount timeline (packages/core/backend-routes.mjs, the same cross-file walk
+// `construct summarize --backend` uses), an imported handler followed back to the feature
+// controller file that defines it.
+const EXPRESS = fx('flow-express');
+
+test('express: direct app.get calls resolve the imported handler back to its controller file', () => {
+  const ctx = createContext(EXPRESS);
+  assert.deepEqual(featureRoutes(ctx, 'billing'), [
+    { route: 'GET /billing', file: 'server/index.mjs' },
+    { route: 'GET /billing/total', file: 'server/index.mjs' },
+  ]);
+});
+
+test('express: a mounted router (app.use) resolves through the router file to the controller', () => {
+  const ctx = createContext(EXPRESS);
+  assert.deepEqual(featureRoutes(ctx, 'orders'), [
+    { route: 'GET /orders', file: 'server/ordersRouter.mjs' },
+    { route: 'GET /orders/open-count', file: 'server/ordersRouter.mjs' },
+  ]);
+});
+
+test('express: `construct summarize feature:<name>` reports contracts.routes unchanged (no UI-side special-casing)', () => {
+  const s = summarizeUnit(EXPRESS, 'feature:billing');
+  assert.equal(s.ok, true, JSON.stringify(s));
+  assert.deepEqual(s.sections.contracts.routes, [
+    { route: 'GET /billing', file: 'server/index.mjs' },
+    { route: 'GET /billing/total', file: 'server/index.mjs' },
+  ]);
+});
+
+test('express: the project-wide route list, sorted, one entry per method+path', () => {
+  const ctx = createContext(EXPRESS);
+  assert.deepEqual(discoverRoutes(ctx).map((r) => [r.route, r.file, r.entries.map((e) => e.feature)]), [
+    ['GET /billing', 'server/index.mjs', ['billing']],
+    ['GET /billing/total', 'server/index.mjs', ['billing']],
+    ['GET /orders', 'server/ordersRouter.mjs', ['orders']],
+    ['GET /orders/open-count', 'server/ordersRouter.mjs', ['orders']],
+  ]);
 });
 
 test('readRouteTable: nested <Route>, index routes, Component=, wrapper tags', () => {

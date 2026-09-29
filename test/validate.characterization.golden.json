@@ -507,6 +507,45 @@
     ]
   },
   {
+    "root": "fixtures/flow-express",
+    "violations": [
+      {
+        "rule": "SLICE-001",
+        "module": "separation-of-concerns",
+        "severity": "error",
+        "file": "features/billing/",
+        "line": 1,
+        "message": "Feature \"billing\" is missing expected folder(s): workflows, hooks, services, pages, components.",
+        "why": "A feature slice must expose a full, predictable set of layer folders so ownership stays unambiguous.",
+        "expected": [
+          "features/billing/workflows/",
+          "features/billing/hooks/",
+          "features/billing/services/",
+          "features/billing/pages/",
+          "features/billing/components/"
+        ],
+        "suggestedFix": "Run: construct feature create billing"
+      },
+      {
+        "rule": "SLICE-001",
+        "module": "separation-of-concerns",
+        "severity": "error",
+        "file": "features/orders/",
+        "line": 1,
+        "message": "Feature \"orders\" is missing expected folder(s): workflows, hooks, services, pages, components.",
+        "why": "A feature slice must expose a full, predictable set of layer folders so ownership stays unambiguous.",
+        "expected": [
+          "features/orders/workflows/",
+          "features/orders/hooks/",
+          "features/orders/services/",
+          "features/orders/pages/",
+          "features/orders/components/"
+        ],
+        "suggestedFix": "Run: construct feature create orders"
+      }
+    ]
+  },
+  {
     "root": "fixtures/flow-react-spa",
     "violations": [
       {
