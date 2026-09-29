@@ -80,6 +80,18 @@ function exprToEnglish(node) {
   }
 }
 
+// A declarator's `id` isn't always a plain Identifier -- destructuring
+// (const [a, b] = args, the shape transform.js's extraction step itself
+// produces for a multi-param original) gives an ArrayPattern/ObjectPattern
+// instead, whose .name is undefined. Recurses so nested patterns
+// ([a, [b, c]]) still render as something readable instead of "undefined".
+function patternName(id) {
+  if (id.type === 'Identifier') return id.name;
+  if (id.type === 'ArrayPattern') return `[${id.elements.map((el) => (el ? patternName(el) : '')).join(', ')}]`;
+  if (id.type === 'ObjectPattern') return `{${id.properties.map((p) => (p.key ? patternName(p.key) : '')).join(', ')}}`;
+  return '?';
+}
+
 function blockToEnglish(node, depth) {
   if (!node) return '';
   if (node.type === 'BlockStatement') {
@@ -96,7 +108,7 @@ function stmtToEnglish(node, depth = 0) {
       return exprToEnglish(node.expression);
     case 'VariableDeclaration':
       return node.declarations
-        .map((d) => `let ${d.id.name} be ${d.init ? exprToEnglish(d.init) : 'undefined'}`)
+        .map((d) => `let ${patternName(d.id)} be ${d.init ? exprToEnglish(d.init) : 'undefined'}`)
         .join(', ');
     case 'IfStatement': {
       const cond = `if ${exprToEnglish(node.test)}`;
@@ -112,6 +124,147 @@ function stmtToEnglish(node, depth = 0) {
       return blockToEnglish(node, depth);
     default:
       return '(a step that does not translate cleanly)';
+  }
+}
+
+// Token-producing mirror of exprToEnglish/stmtToEnglish below: same shape of
+// switch, but instead of concatenating a string, each branch emits chips --
+// {text, type, start, end} -- start/end are the SOURCE node this chip came
+// from (so the demo can map a chip back to code), omitted for connectives
+// that don't correspond to a single node ("and", ":", "otherwise", ...).
+// A multi-word atom/verb name (camelToWords splits it into several English
+// words) is still ONE chip, mapped to the one callee/property node it came
+// from -- the words belong together and must move together.
+function tokenizeSubject(node) {
+  if (node.type === 'Identifier') {
+    return [{ text: node.name === 'this' ? 'it' : node.name, type: 'subject', start: node.start, end: node.end }];
+  }
+  if (node.type === 'ThisExpression') {
+    return [{ text: 'it', type: 'subject', start: node.start, end: node.end }];
+  }
+  return tokenizeExpr(node);
+}
+
+function tokenizeArgs(nodes) {
+  const out = [];
+  nodes.map(tokenizeExpr).forEach((tokens, i) => {
+    if (i > 0) out.push({ text: 'and', type: 'connective' });
+    out.push(...tokens);
+  });
+  return out;
+}
+
+function tokenizeExpr(node) {
+  if (!node) return [];
+  switch (node.type) {
+    case 'Identifier':
+      return [{ text: node.name === 'this' ? 'it' : node.name, type: 'arg', start: node.start, end: node.end }];
+    case 'ThisExpression':
+      return [{ text: 'it', type: 'arg', start: node.start, end: node.end }];
+    case 'StringLiteral':
+      return [{ text: `'${node.value}'`, type: 'arg', start: node.start, end: node.end }];
+    case 'NumericLiteral':
+    case 'BooleanLiteral':
+      return [{ text: String(node.value), type: 'arg', start: node.start, end: node.end }];
+    case 'NullLiteral':
+      return [{ text: 'nothing', type: 'arg', start: node.start, end: node.end }];
+    case 'MemberExpression':
+      if (node.computed) {
+        return [...tokenizeSubject(node.object), { text: 'at', type: 'connective' }, ...tokenizeExpr(node.property)];
+      }
+      return [...tokenizeSubject(node.object), { text: camelToWords(node.property.name || ''), type: 'verb', start: node.property.start, end: node.property.end }];
+    case 'UnaryExpression':
+      if (node.operator === '!') return [{ text: 'not', type: 'connective' }, ...tokenizeExpr(node.argument)];
+      return [{ text: node.operator, type: 'connective' }, ...tokenizeExpr(node.argument)];
+    case 'CallExpression': {
+      const callee = node.callee;
+      const argTokens = tokenizeArgs(node.arguments);
+      if (callee.type === 'MemberExpression') {
+        const subject = tokenizeSubject(callee.object);
+        const verb = { text: camelToWords(callee.property.name || ''), type: 'verb', start: callee.property.start, end: callee.property.end };
+        return [...subject, verb, ...argTokens];
+      }
+      const fn = { text: camelToWords(callee.name || ''), type: 'verb', start: callee.start, end: callee.end };
+      return argTokens.length ? [fn, { text: 'of', type: 'connective' }, ...argTokens] : [fn];
+    }
+    case 'ArrowFunctionExpression':
+      if (node.body.type === 'BlockStatement') return tokenizeBlock(node.body);
+      return tokenizeExpr(node.body);
+    case 'NewExpression': {
+      const argTokens = tokenizeArgs(node.arguments);
+      const head = [{ text: 'a new', type: 'connective' }, { text: node.callee.name, type: 'verb', start: node.callee.start, end: node.callee.end }];
+      return argTokens.length ? [...head, { text: 'of', type: 'connective' }, ...argTokens] : head;
+    }
+    case 'BinaryExpression':
+      return [...tokenizeExpr(node.left), { text: node.operator, type: 'connective' }, ...tokenizeExpr(node.right)];
+    case 'AssignmentExpression':
+      return [{ text: 'set', type: 'connective' }, ...tokenizeExpr(node.left), { text: 'to', type: 'connective' }, ...tokenizeExpr(node.right)];
+    default:
+      return [{ text: '(...)', type: 'connective' }];
+  }
+}
+
+function tokenizeBlock(node, depth) {
+  if (!node) return [];
+  if (node.type === 'BlockStatement') {
+    const out = [];
+    node.body.forEach((s, i) => {
+      if (i > 0) out.push({ text: 'then', type: 'connective' });
+      out.push(...tokenizeStmt(s, depth));
+    });
+    return out;
+  }
+  return tokenizeStmt(node, depth);
+}
+
+function tokenizeStmt(node, depth = 0) {
+  switch (node.type) {
+    case 'ReturnStatement':
+      return node.argument
+        ? [{ text: 'return', type: 'connective' }, ...tokenizeExpr(node.argument)]
+        : [{ text: 'return', type: 'connective' }];
+    case 'ExpressionStatement':
+      return tokenizeExpr(node.expression);
+    case 'VariableDeclaration': {
+      const out = [];
+      node.declarations.forEach((d, i) => {
+        if (i > 0) out.push({ text: ',', type: 'connective' });
+        out.push({ text: 'let', type: 'connective' });
+        out.push({ text: patternName(d.id), type: 'subject', start: d.id.start, end: d.id.end });
+        out.push({ text: 'be', type: 'connective' });
+        out.push(...(d.init ? tokenizeExpr(d.init) : [{ text: 'undefined', type: 'arg' }]));
+      });
+      return out;
+    }
+    case 'IfStatement': {
+      const out = [
+        { text: 'if', type: 'connective' },
+        ...tokenizeExpr(node.test),
+        { text: ':', type: 'connective' },
+        ...tokenizeBlock(node.consequent, depth + 1),
+      ];
+      if (node.alternate) out.push({ text: 'otherwise', type: 'connective' }, ...tokenizeBlock(node.alternate, depth + 1));
+      return out;
+    }
+    case 'ForInStatement':
+    case 'ForOfStatement': {
+      const kw = node.type === 'ForInStatement' ? 'in' : 'of';
+      const varTokens = node.left.declarations
+        ? [{ text: node.left.declarations[0].id.name, type: 'subject', start: node.left.declarations[0].id.start, end: node.left.declarations[0].id.end }]
+        : tokenizeExpr(node.left);
+      return [
+        { text: 'for each', type: 'connective' },
+        ...varTokens,
+        { text: kw, type: 'connective' },
+        ...tokenizeExpr(node.right),
+        { text: ':', type: 'connective' },
+        ...tokenizeBlock(node.body, depth + 1),
+      ];
+    }
+    case 'BlockStatement':
+      return tokenizeBlock(node, depth);
+    default:
+      return [{ text: '(a step that does not translate cleanly)', type: 'connective' }];
   }
 }
 
@@ -159,6 +312,15 @@ function toEnglish(code, kind) {
     code: wrapped.slice(s.start, s.end),
     start: s.start - prefixLen,
     end: s.end - prefixLen,
+    // Same step, as chips instead of a flat string -- each chip's start/end
+    // (when present) are shifted by the same class-wrapper offset as the
+    // step's own start/end, so both stay in the same coordinate space as
+    // `code` above.
+    tokens: tokenizeStmt(s).map((tok) => ({
+      ...tok,
+      start: tok.start != null ? tok.start - prefixLen : null,
+      end: tok.end != null ? tok.end - prefixLen : null,
+    })),
   }));
   const english = `${title}: ${steps.map((s) => s.english).join('; then ')}.`;
   return { english, steps, title };
@@ -398,4 +560,5 @@ module.exports = {
   atomParamNames,
   buildStepFromAtom,
   applyAtomToStep,
+  tokenizeStmt,
 };

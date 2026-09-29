@@ -63,6 +63,18 @@
   }
   .code-preview.show { display: block; }
   .code-preview mark.code-broken { background: rgba(242, 97, 97, .18); color: #f26161; border-radius: 3px; }
+  .chip-strip { display: flex; flex-wrap: wrap; gap: 5px; margin: 4px 0 0 24px; }
+  .chip {
+    font-size: 11px; font-family: ui-monospace, Menlo, monospace; padding: 3px 8px; border-radius: 999px;
+    border: 1px solid #22252e; background: #14171d; cursor: grab; outline: none; user-select: none;
+  }
+  .chip:focus { border-color: #5eead4; box-shadow: 0 0 0 1px #5eead4; }
+  .chip.dragging { opacity: .35; }
+  .chip.drag-over { border-left: 2px solid #5eead4; }
+  .chip-verb { color: #fff; font-weight: 700; }
+  .chip-subject { color: #7aa2f7; }
+  .chip-arg { color: #6fe397; }
+  .chip-connective { color: #6c7480; font-style: italic; }
   .step-sentence[contenteditable] { outline: none; border-bottom: 1px dashed #3d424c; cursor: text; }
   .step-sentence[contenteditable]:focus { border-bottom-color: #5eead4; }
   .word-unknown { text-decoration: underline wavy #f2b86a; text-underline-offset: 3px; }
@@ -563,6 +575,21 @@ function atomFormHtml(idx, pending) {
     </li>`;
 }
 
+// Chip strip: the same step rendered as one draggable/keyboard-navigable
+// chip per token (chip types verb/subject/arg/connective from tokenizeStmt
+// in to-english.js -- a multi-word atom name is already one chip there, so
+// there's nothing extra to merge here). Sits below the free-text sentence
+// span (block 4, unchanged) rather than replacing it: reordering chips here
+// is LOCAL/cosmetic only for now (block 5) -- it does not regenerate code or
+// get sent to the server. Wiring a chip move to an actual code change
+// (argument order, chain order) is block 6.
+function chipStripHtml(idx, tokens) {
+  return `
+    <div class="chip-strip" data-idx="${idx}">
+      ${tokens.map((tok, tokIdx) => `<span class="chip chip-${tok.type}" tabindex="0" draggable="true" data-idx="${idx}" data-tok="${tokIdx}" title="${escapeHtml(tok.type)}">${escapeHtml(tok.text)}</span>`).join('')}
+    </div>`;
+}
+
 // One step row, plus (when this step's wording is mid-edit and unresolved)
 // a second <li> for the underline explanation / "add implementation" form.
 // A pending row is NOT contenteditable -- it's showing the draft wording
@@ -581,7 +608,7 @@ function stepRowHtml(i, idx, s) {
       <span class="step-handle">⠿</span>
       <span class="step-sentence"${editableAttr} data-idx="${idx}">${sentenceHtml}</span>
       <button class="step-delete" title="Remove this step" data-idx="${idx}">×</button>
-    </li>`;
+    </li>${pending ? '' : chipStripHtml(idx, s.tokens || [])}`;
 
   if (pending) {
     if (pending.showForm) {
@@ -751,8 +778,64 @@ function renderSteps(i, steps) {
     };
   });
 
+  wireChipStrips(i, list);
+
   const undoBtn = document.getElementById('undo-' + i);
   if (undoBtn) undoBtn.disabled = state.undoStack.length === 0;
+}
+
+// Reorders tokens[stepIdx] by swapping positions from and to, then
+// re-renders just that one chip strip (not the whole step list) so drag/
+// keyboard reordering doesn't fight the step-row-level drag handlers wired
+// in renderSteps. Local/cosmetic only -- see the comment on chipStripHtml.
+function moveChip(i, stepIdx, from, to, focusToken) {
+  const state = blockState[i];
+  const tokens = state.steps[stepIdx].tokens;
+  if (to < 0 || to >= tokens.length || from === to) return;
+  const [moved] = tokens.splice(from, 1);
+  tokens.splice(to, 0, moved);
+  const strip = document.querySelector(`.chip-strip[data-idx="${stepIdx}"]`);
+  if (!strip) return;
+  strip.outerHTML = chipStripHtml(stepIdx, tokens);
+  wireChipStrips(i, document.getElementById('steps-' + i));
+  if (focusToken != null) {
+    const chip = document.querySelector(`.chip-strip[data-idx="${stepIdx}"] .chip[data-tok="${to}"]`);
+    if (chip) chip.focus();
+  }
+}
+
+function wireChipStrips(i, list) {
+  if (!list) return;
+  let dragChip = null;
+  list.querySelectorAll('.chip').forEach((chip) => {
+    chip.addEventListener('dragstart', (e) => {
+      e.stopPropagation();
+      dragChip = { stepIdx: Number(chip.dataset.idx), tok: Number(chip.dataset.tok) };
+      chip.classList.add('dragging');
+    });
+    chip.addEventListener('dragend', () => chip.classList.remove('dragging'));
+    chip.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      chip.classList.add('drag-over');
+    });
+    chip.addEventListener('dragleave', () => chip.classList.remove('drag-over'));
+    chip.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      chip.classList.remove('drag-over');
+      const stepIdx = Number(chip.dataset.idx);
+      const targetTok = Number(chip.dataset.tok);
+      if (!dragChip || dragChip.stepIdx !== stepIdx || dragChip.tok === targetTok) return;
+      moveChip(i, stepIdx, dragChip.tok, targetTok, targetTok);
+    });
+    chip.addEventListener('keydown', (e) => {
+      const stepIdx = Number(chip.dataset.idx);
+      const tok = Number(chip.dataset.tok);
+      if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); moveChip(i, stepIdx, tok, tok - 1, tok - 1); }
+      else if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); moveChip(i, stepIdx, tok, tok + 1, tok + 1); }
+    });
+  });
 }
 
 async function applyOrder(i, order, focusIdx) {

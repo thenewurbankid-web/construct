@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { toEnglish, extractAtoms, extractAtomUsage, reorderSteps, atomParamNames, buildStepFromAtom, applyAtomToStep } = require('./to-english');
+const { toEnglish, extractAtoms, extractAtomUsage, reorderSteps, atomParamNames, buildStepFromAtom, applyAtomToStep, tokenizeStmt } = require('./to-english');
 
 test('toEnglish returns the flat english string for a function', () => {
   const code = `function checkAge(age) {\n  return age;\n}`;
@@ -159,4 +159,49 @@ test('extractAtomUsage counts repeated calls to the same atom', () => {
   const code = `function run(a, b, c) {\n  return a.equals(b) ? a.equals(c) : false;\n}`;
   const usage = extractAtomUsage(code, 'function');
   assert.deepEqual(usage, [{ name: 'equals', count: 2 }]);
+});
+
+test('tokenizeStmt (via toEnglish steps[].tokens) splits a method call into subject/verb/arg chips', () => {
+  const code = `function run(a, b) {\n  return a.equals(b);\n}`;
+  const { steps } = toEnglish(code, 'function');
+  const tokens = steps[0].tokens;
+  assert.deepEqual(tokens.map((tk) => tk.type), ['connective', 'subject', 'verb', 'arg']);
+  assert.deepEqual(tokens.map((tk) => tk.text), ['return', 'a', 'equals', 'b']);
+});
+
+test('a multi-word atom name is one verb chip, not split into separate chips', () => {
+  const code = `function run(value, min) {\n  return value.greaterThanOrEqual(min);\n}`;
+  const { steps } = toEnglish(code, 'function');
+  const verbChip = steps[0].tokens.find((tk) => tk.type === 'verb');
+  assert.equal(verbChip.text, 'greater than or equal');
+});
+
+test('chip start/end map back to the source node, in the same coordinate space as the step code slice', () => {
+  const code = `function run(a, b) {\n  return a.equals(b);\n}`;
+  const { steps } = toEnglish(code, 'function');
+  const argChip = steps[0].tokens.find((tk) => tk.type === 'arg');
+  assert.equal(code.slice(argChip.start, argChip.end), 'b');
+});
+
+test('let-declaration chips: subject is the declared name, connectives are let/be', () => {
+  const code = `function run(a) {\n  let total = a;\n  return total;\n}`;
+  const { steps } = toEnglish(code, 'function');
+  const tokens = steps[0].tokens;
+  assert.deepEqual(tokens.map((tk) => tk.text), ['let', 'total', 'be', 'a']);
+  assert.deepEqual(tokens.map((tk) => tk.type), ['connective', 'subject', 'connective', 'arg']);
+});
+
+test('chained conditions produce one verb chip and one arg chip per link, joined by connectives', () => {
+  const code = `function run(value, min, max) {\n  return ifIt(value).greaterThanOrEqual(min).and(value).lessThanOrEqual(max);\n}`;
+  const { steps } = toEnglish(code, 'function');
+  const verbs = steps[0].tokens.filter((tk) => tk.type === 'verb').map((tk) => tk.text);
+  assert.deepEqual(verbs, ['if it', 'greater than or equal', 'and', 'less than or equal']);
+});
+
+test('a destructuring declarator (const [a, b] = args) renders its pattern, not "undefined"', () => {
+  const code = `function run(args) {\n  const [a, b] = args;\n  return a;\n}`;
+  const { steps } = toEnglish(code, 'function');
+  assert.equal(steps[0].english, 'let [a, b] be args');
+  const subjectChip = steps[0].tokens.find((tk) => tk.type === 'subject');
+  assert.equal(subjectChip.text, '[a, b]');
 });
