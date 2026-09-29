@@ -236,6 +236,12 @@ test.describe.serial('Pages Editor click to navigate (#321)', () => {
     await page.keyboard.press('ArrowDown');
     await expect(page.getByRole('menuitem').nth(1)).toHaveAttribute('data-highlighted', '');
 
+    // Typeahead: typing a letter jumps the highlight to the next item starting with it.
+    const target = page.getByRole('menuitem').nth(2);
+    const targetLetter = (await target.textContent()).trim()[0];
+    await page.keyboard.press(targetLetter);
+    await expect(target).toHaveAttribute('data-highlighted', '');
+
     // Escape closes and returns focus to the trigger — no manual focus management in the app code.
     await page.keyboard.press('Escape');
     await expect(menu).toBeHidden();
