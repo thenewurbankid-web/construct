@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
-import { rulesIndex, ruleSeveritySave, ruleExceptionSave, globListSave } from './rulesApi.mjs';
+import { rulesIndex, ruleSeveritySave, ruleExceptionSave, globListSave, projectSettingsSave } from './rulesApi.mjs';
 
 const hashOf = (text) => crypto.createHash('sha256').update(text).digest('hex');
 
@@ -172,4 +172,43 @@ test('globListSave remove commits the removal', () => {
   const saved = globListSave(dir, { field: 'frozen', action: 'remove', index: 0, contentHash: hashOf(before), commit: true });
   assert.equal(saved.status, 200);
   assert.deepEqual(saved.body.frozen, []);
+});
+
+// #395 slice 5 -- features.root + framework (route adapter) picker, same add/edit-as-diff shape.
+
+test('GET /api/rules reports project.framework and project.featuresRoot, defaulted with no architecture.yml', () => {
+  const dir = makeTempDir('rules-api-project-');
+  const { body } = rulesIndex(dir);
+  assert.deepEqual(body.project, { framework: 'nextjs', featuresRoot: 'features' });
+});
+
+test('projectSettingsSave refuses no fields, a blank featuresRoot, or an unknown framework before touching anything', () => {
+  const dir = makeTempDir('rules-api-project-');
+  assert.equal(projectSettingsSave(dir, { commit: true }).status, 400);
+  assert.equal(projectSettingsSave(dir, { featuresRoot: '  ', commit: true }).status, 400);
+  assert.equal(projectSettingsSave(dir, { framework: 'sveltekit', commit: true }).status, 400);
+  assert.equal(fs.existsSync(path.join(dir, 'architecture.yml')), false);
+});
+
+test('projectSettingsSave previews then commits featuresRoot, readable back through GET /api/rules', () => {
+  const dir = makeTempDir('rules-api-project-');
+  const preview = projectSettingsSave(dir, { featuresRoot: 'src/features', commit: false });
+  assert.equal(preview.status, 200);
+  assert.match(preview.body.after, /root: src\/features/);
+
+  const saved = projectSettingsSave(dir, { featuresRoot: 'src/features', contentHash: hashOf(''), commit: true });
+  assert.equal(saved.status, 200);
+  assert.equal(saved.body.project.featuresRoot, 'src/features');
+  assert.equal(rulesIndex(dir).body.project.featuresRoot, 'src/features');
+});
+
+test('projectSettingsSave commits framework without touching an existing featuresRoot, and is refused (409) on a stale contentHash', () => {
+  const dir = makeTempDir('rules-api-project-');
+  const before = "version: 1\nfeatures:\n  root: custom-features\n";
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), before);
+  assert.equal(projectSettingsSave(dir, { framework: 'react-spa', contentHash: hashOf(''), commit: true }).status, 409);
+
+  const saved = projectSettingsSave(dir, { framework: 'react-spa', contentHash: hashOf(before), commit: true });
+  assert.equal(saved.status, 200);
+  assert.deepEqual(saved.body.project, { framework: 'react-spa', featuresRoot: 'custom-features' });
 });

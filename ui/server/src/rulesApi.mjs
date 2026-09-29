@@ -14,13 +14,23 @@ import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
 import { listRules } from '../../../packages/core/rules-catalog.mjs';
-import { DEFAULT_RULES, loadConfig } from '../../../packages/core/config.mjs';
+import { DEFAULT_RULES, FRAMEWORKS, loadConfig } from '../../../packages/core/config.mjs';
 import { validateArchitectureConfig } from '../../../packages/core/validate-architecture-config.mjs';
 
 /** @returns {{status:number, body:object}} */
 export const rulesIndex = (root) => {
   const config = loadConfig(root);
-  return { status: 200, body: { ok: true, rules: listRules(root), exceptions: readExceptions(root), nonLayer: config.nonLayer, frozen: config.frozen } };
+  return {
+    status: 200,
+    body: {
+      ok: true,
+      rules: listRules(root),
+      exceptions: readExceptions(root),
+      nonLayer: config.nonLayer,
+      frozen: config.frozen,
+      project: { framework: config.project.framework, featuresRoot: config.features.root },
+    },
+  };
 };
 
 const VALID_SEVERITIES = new Set(['error', 'warning', 'off']);
@@ -159,6 +169,36 @@ export function globListSave(root, body) {
   return { status: 200, body: { ok: true, contentHash: hashOf(after), [field]: loadConfig(root)[field] } };
 }
 
+/** Preview or save `features.root` and/or `project.framework` (the route adapter) -- #395 slice 5.
+ * Both are project-wide settings rather than per-rule, so this takes whichever of the two the
+ * client sends and leaves the other untouched. Same preview/commit/contentHash/
+ * validateArchitectureConfig shape as the other three writers. */
+export function projectSettingsSave(root, body) {
+  const { featuresRoot, framework, contentHash, commit } = body ?? {};
+  if (featuresRoot === undefined && framework === undefined) return err(400, 'BAD_REQUEST', 'featuresRoot and/or framework is required.');
+  if (featuresRoot !== undefined && (typeof featuresRoot !== 'string' || !featuresRoot.trim())) {
+    return err(400, 'BAD_FEATURES_ROOT', 'featuresRoot must be a non-empty string.');
+  }
+  if (framework !== undefined && !FRAMEWORKS.includes(framework)) {
+    return err(400, 'BAD_FRAMEWORK', `framework must be one of: ${FRAMEWORKS.join(', ')}.`);
+  }
+  const before = readRaw(root);
+  const proposed = parseRaw(before);
+  if (featuresRoot !== undefined) proposed.features = { ...(proposed.features || {}), root: featuresRoot };
+  if (framework !== undefined) proposed.project = { ...(proposed.project || {}), framework };
+
+  if (commit !== true) {
+    return { status: 200, body: { ok: true, before, after: yaml.dump(proposed), contentHash: hashOf(before), changed: true } };
+  }
+  if (contentHash !== hashOf(before)) return err(409, 'CHANGED_ON_DISK', 'architecture.yml changed on disk since it was loaded; re-read it and redo the edit.');
+  const { valid, errors } = validateArchitectureConfig(proposed);
+  if (!valid) return err(422, 'INVALID', 'That change would produce an invalid architecture.yml.', { errors });
+  const after = yaml.dump(proposed);
+  fs.writeFileSync(archPath(root), after);
+  const config = loadConfig(root);
+  return { status: 200, body: { ok: true, contentHash: hashOf(after), project: { framework: config.project.framework, featuresRoot: config.features.root } } };
+}
+
 /** @param {{getRoot: () => {ok:true, root:string} | {ok:false, error:string}, clientOrigin?: string, afterSave?: (root:string, rel:string) => unknown}} deps */
 export function createRulesRouter({ getRoot, clientOrigin, afterSave = () => null }) {
   const router = express.Router();
@@ -193,6 +233,11 @@ export function createRulesRouter({ getRoot, clientOrigin, afterSave = () => nul
   }));
   router.post('/globs', handle((root, req) => {
     const out = globListSave(root, req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {});
+    if (out.status === 200 && out.body.ok && req.body?.commit === true) afterSave(root, 'architecture.yml');
+    return out;
+  }));
+  router.post('/project', handle((root, req) => {
+    const out = projectSettingsSave(root, req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {});
     if (out.status === 200 && out.body.ok && req.body?.commit === true) afterSave(root, 'architecture.yml');
     return out;
   }));
