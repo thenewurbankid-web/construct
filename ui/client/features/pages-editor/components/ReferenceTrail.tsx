@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@/components/ui';
 import type { TrailItem, TrailStep } from '../types';
 
 type ReferenceTrailProps = {
@@ -29,27 +30,20 @@ export function ReferenceTrail({ steps, index, items, onSelect, onBack, onForwar
         {items.map((item, n) =>
           item.kind === 'fold' ? (
             <li key={`fold-${n}`} className="ref-trail-fold">
-              <button type="button" className="ref-crumb" aria-haspopup="menu" aria-expanded={foldOpen === n} aria-label={`${item.hidden.length} earlier steps`} onClick={() => setFoldOpen(foldOpen === n ? null : n)}>
-                ...
-              </button>
-              {foldOpen === n && (
-                <ul className="ref-trail-menu" role="menu">
+              <Menu open={foldOpen === n} onOpenChange={(next) => setFoldOpen(next ? n : null)}>
+                <MenuTrigger asChild>
+                  <button type="button" className="ref-crumb" aria-label={`${item.hidden.length} earlier steps`}>
+                    ...
+                  </button>
+                </MenuTrigger>
+                <MenuContent className="ref-trail-menu">
                   {item.hidden.map((i) => (
-                    <li key={i} role="none">
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setFoldOpen(null);
-                          onSelect(i);
-                        }}
-                      >
-                        {steps[i].name}
-                      </button>
-                    </li>
+                    <MenuItem key={i} onSelect={() => onSelect(i)}>
+                      {steps[i].name}
+                    </MenuItem>
                   ))}
-                </ul>
-              )}
+                </MenuContent>
+              </Menu>
             </li>
           ) : (
             <li key={`step-${item.index}`} className="ref-trail-item">

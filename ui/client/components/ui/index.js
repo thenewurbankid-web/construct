@@ -11,3 +11,4 @@ export { Logo } from './Logo.jsx';
 export { AnimatedLogo } from './AnimatedLogo.jsx';
 export { AnimatedLoader } from './AnimatedLoader.jsx';
 export { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogDescription, DialogClose } from './Dialog.jsx';
+export { Menu, MenuTrigger, MenuContent, MenuItem } from './Menu.jsx';

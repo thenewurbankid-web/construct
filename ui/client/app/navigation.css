@@ -38,14 +38,15 @@
 }
 .ref-crumb.current { color: var(--text); font-weight: 700; text-decoration: none; background: var(--surface-3); cursor: default; }
 .ref-crumb.ahead { color: var(--text-faint); text-decoration: none; border: 1px dashed var(--border-strong); }
-.ref-crumb:focus-visible, .ref-trail-nav:focus-visible, .ref-trail-menu button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.ref-crumb:focus-visible, .ref-trail-nav:focus-visible, .ref-trail-menu [role="menuitem"]:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 .ref-hop { color: var(--text-faint); font: 10px var(--mono); white-space: nowrap; }
+/* Position/placement is Radix's own Popper math (#441, Menu.jsx) — only visual tokens live here. */
 .ref-trail-menu {
-  position: absolute; top: 100%; left: 0; z-index: var(--z-popover); margin: 2px 0 0; padding: 4px; list-style: none;
+  z-index: var(--z-popover); min-width: 8rem; margin: 2px 0 0; padding: 4px;
   background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--r-md); box-shadow: var(--shadow);
 }
-.ref-trail-menu button { display: block; width: 100%; text-align: left; padding: 4px 8px; border: 0; background: transparent; color: var(--text); font: 12px var(--mono); cursor: pointer; }
-.ref-trail-menu button:hover { background: var(--hover); }
+.ref-trail-menu [role="menuitem"] { display: block; width: 100%; text-align: left; padding: 4px 8px; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text); font: 12px var(--mono); cursor: pointer; outline: none; }
+.ref-trail-menu [role="menuitem"]:hover, .ref-trail-menu [role="menuitem"][data-highlighted] { background: var(--hover); }
 .navigator-unlinked { margin-top: var(--sp-2); font-size: 0.85rem; }
 .navigator-unlinked h4 { margin: 0 0 4px; }
 .navigator-unlinked ul { margin: 0; padding-left: 1.2rem; }
