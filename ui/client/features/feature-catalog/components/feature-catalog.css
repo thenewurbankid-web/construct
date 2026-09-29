@@ -1,4 +1,5 @@
 /* Features screen details (#431). Prefix fc-. Tokens only (docs/design/tokens.md). */
+.fc-structure { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
 .fc-details { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; margin: 0 0 var(--sp-3); padding: var(--sp-3); border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-2); }
 .fc-h2 { margin: 0; font-size: var(--fs-md, 1.1rem); overflow-wrap: anywhere; }
 .fc-h3 { margin: var(--sp-2) 0 0; font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }

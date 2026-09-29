@@ -1,10 +1,13 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { EmptyState } from '@/features/states';
 import { ListBrowser, useUrlSelection } from '@/features/list-browser';
 import { useRegisterShellTab, useShellStage, type ShellTab } from '@/features/shell';
 import { FeatureDetails } from '../components/FeatureDetails';
+import { FeatureFlowView } from '../components/FeatureFlowView';
+import { FeatureStructure } from '../components/FeatureStructure';
+import type { StructureView } from '../components/StructureViewSwitch';
 import { findFeature, legacyNote, toListItems } from '../domain/FeatureView';
 import { useFeatureList } from '../hooks/useFeatureList';
 import { useFeatureSummary } from '../hooks/useFeatureSummary';
@@ -26,6 +29,7 @@ export function FeaturesScreenController() {
   const feature = list.status === 'ready' ? findFeature(list.features, selection.value) : null;
   const name = feature?.name ?? null;
   const details = useFeatureSummary(name);
+  const [view, setView] = useState<StructureView>('tree');
   const items = useMemo(() => toListItems(list.features), [list.features]);
   const note = list.status === 'ready' ? legacyNote(list.featuresRoot, list.legacy) : null;
   const { select } = selection;
@@ -64,7 +68,16 @@ export function FeaturesScreenController() {
   );
   useRegisterShellTab('browser', browser);
 
-  if (feature) return <FeatureDetails name={feature.name} view={details.view} loading={details.loading} error={details.error} onRetry={details.reload} />;
+  if (feature) {
+    return (
+      <FeatureStructure
+        view={view}
+        onChange={setView}
+        tree={<FeatureDetails name={feature.name} view={details.view} loading={details.loading} error={details.error} onRetry={details.reload} />}
+        flow={<FeatureFlowView name={feature.name} missingLayers={details.view?.missingLayers ?? []} onAddLayer={openCreate} />}
+      />
+    );
+  }
   if (list.status === 'ready' && selection.value !== null) {
     return (
       <EmptyState

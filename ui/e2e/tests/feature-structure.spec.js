@@ -7,10 +7,10 @@ import { gotoCockpit } from './support/cockpit.js';
 import { makeBrowseProject, openProject } from './support/browseProject.js';
 
 // #393 -- the Features screen shows a feature as a hierarchy: routes nested under it, then its layers.
-// This slice covers the two pieces of the mock that stand on today's data (no new analysis, no Tree/Flow
-// toggle yet -- those are follow-ups filed on #393): the "Not mapped to a route yet" note with its Map to
-// a route action, and a missing layer shown with its own Add action, both wired to the existing stage
-// actions (Import / Create) the two only meet on the page, same as the empty feature list's Create action.
+// Covers the "Not mapped to a route yet" note with its Map to a route action, and a missing layer shown
+// with its own Add action, both wired to the existing stage actions (Import / Create) the two only meet
+// on the page, same as the empty feature list's Create action. Also covers #790's Tree / Flow toggle
+// (Flow reuses the Pages editor's flow view, #328) and #791's Legacy files note.
 const API = process.env.E2E_API_BASE || 'http://localhost:4000';
 const details = (page) => page.getByTestId('fc-details');
 
@@ -51,6 +51,31 @@ test.describe.serial('Feature structure: routes and layers as a hierarchy (#393)
     await expect(missing.first()).toBeVisible();
     expect(await missing.count()).toBeGreaterThan(0);
     await expect(missing.first()).toContainText('missing');
+    await missing.first().getByTestId('fc-add-layer').click();
+    await expect(page.getByTestId('stage-action-panel')).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Create' })).toBeVisible();
+  });
+
+  test('the Tree / Flow switch draws the route -> controller flow instead of the Routes/Layers tree (#790)', async ({ page }) => {
+    await gotoCockpit(page, '/?feature=billing');
+    await expect(page.getByTestId('fc-structure')).toBeVisible();
+    await expect(page.getByTestId('fc-details')).toBeVisible();
+    await expect(page.getByTestId('fc-flow-details')).toHaveCount(0);
+    await page.getByTestId('fc-view-flow').click();
+    await expect(page.getByTestId('fc-flow-details')).toBeVisible();
+    await expect(page.getByTestId('fc-details')).toHaveCount(0);
+    await expect(page.getByTestId('flow-tree')).toBeVisible();
+    await page.getByTestId('fc-view-tree').click();
+    await expect(page.getByTestId('fc-details')).toBeVisible();
+    await expect(page.getByTestId('fc-flow-details')).toHaveCount(0);
+  });
+
+  test('Flow draws a missing layer dashed with the same Add action as Tree (#790)', async ({ page }) => {
+    await gotoCockpit(page, '/?feature=shared');
+    await page.getByTestId('fc-view-flow').click();
+    await expect(page.getByTestId('fc-flow-details')).toBeVisible();
+    const missing = page.getByTestId('fc-flow-details').getByTestId('fc-layer-missing');
+    await expect(missing.first()).toBeVisible();
     await missing.first().getByTestId('fc-add-layer').click();
     await expect(page.getByTestId('stage-action-panel')).toBeVisible();
     await expect(page.getByRole('region', { name: 'Create' })).toBeVisible();

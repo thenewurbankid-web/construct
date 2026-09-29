@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { ErrorState, LoadingState } from '@/features/states';
 import type { FeatureView } from '../types';
+import { MissingLayers } from './MissingLayers';
 import './feature-catalog.css';
 
 type Props = { name: string; view: FeatureView | null; loading: boolean; error: string | null; onRetry: () => void };
@@ -65,12 +66,7 @@ export function FeatureDetails({ name, view, loading, error, onRetry }: Props) {
             </ul>
           </div>
         ))}
-        {view.missingLayers.map((layer) => (
-          <div key={layer} className="fc-layer fc-layer-missing" data-testid="fc-layer-missing" data-layer={layer}>
-            <h4 className="fc-h4">{layer} <span className="fc-hint">missing</span></h4>
-            <button type="button" className="fc-link fc-link-btn" data-testid="fc-add-layer" onClick={openCreate}>Add</button>
-          </div>
-        ))}
+        <MissingLayers layers={view.missingLayers} onAdd={openCreate} />
       </div>
 
       <h3 className="fc-h3">Workflows</h3>
