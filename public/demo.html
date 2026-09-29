@@ -81,6 +81,19 @@
     font-size: 11px; font-family: ui-monospace, Menlo, monospace; padding: 3px 8px; border-radius: 999px;
     border: 1px solid #5eead4; background: #0b0d11; color: #e4e6eb; outline: none; width: 140px;
   }
+  .chip-add-wrap { position: relative; display: inline-block; }
+  .suggest-dropdown {
+    display: none; position: absolute; top: 100%; left: 0; margin-top: 4px; z-index: 20;
+    background: #12151a; border: 1px solid #2c2f36; border-radius: 6px; min-width: 220px;
+    max-height: 220px; overflow-y: auto; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  }
+  .suggest-item {
+    padding: 4px 10px; font-size: 12px; font-family: ui-monospace, Menlo, monospace; cursor: pointer;
+    display: flex; justify-content: space-between; gap: 10px; white-space: nowrap;
+  }
+  .suggest-item.active, .suggest-item:hover { background: #1c2028; }
+  .suggest-item.add-implementation { color: #f2b86a; font-style: italic; }
+  .suggest-reason { color: #6c7480; font-size: 10px; }
   .step-sentence[contenteditable] { outline: none; border-bottom: 1px dashed #3d424c; cursor: text; }
   .step-sentence[contenteditable]:focus { border-bottom-color: #5eead4; }
   .word-unknown { text-decoration: underline wavy #f2b86a; text-underline-offset: 3px; }
@@ -606,9 +619,12 @@ function tagOrigIdx(steps) {
 // becomes a new chain link, an in-scope identifier becomes a new argument,
 // anything else falls into the same underline + Add implementation flow
 // block 4 already built (see submitInsertWord below).
+// The dropdown (block 8) lives inside the same wrapper as the input so it
+// can be positioned relative to it and re-rendered from state, same as
+// everything else on this page -- no imperative DOM node creation.
 function chipStripHtml(idx, tokens, addingWord) {
   const adder = addingWord
-    ? `<input class="chip-add-input" data-idx="${idx}" spellcheck="false" placeholder="a word or phrase" />`
+    ? `<span class="chip-add-wrap"><input class="chip-add-input" data-idx="${idx}" spellcheck="false" placeholder="a word or phrase" /><div class="suggest-dropdown" data-idx="${idx}"></div></span>`
     : `<span class="chip-add" tabindex="0" data-idx="${idx}" title="Type a word: a known atom becomes a call, an in-scope name becomes an argument">+ word</span>`;
   return `
     <div class="chip-strip" data-idx="${idx}">
@@ -939,12 +955,68 @@ function wireChipStrips(i, list) {
 
   list.querySelectorAll('.chip-add-input').forEach((input) => {
     const idx = Number(input.dataset.idx);
+    const dropdown = input.parentElement.querySelector('.suggest-dropdown');
     let cancelled = false;
+    let accepted = false;
+    let suggestions = [];
+    let selected = -1;
+
+    function renderDropdown() {
+      if (!suggestions.length) { dropdown.style.display = 'none'; dropdown.innerHTML = ''; return; }
+      dropdown.innerHTML = suggestions
+        .map((s, n) => `<div class="suggest-item${s.kind === 'add-implementation' ? ' add-implementation' : ''}${n === selected ? ' active' : ''}" data-n="${n}"><span>${escapeHtml(s.label)}</span>${s.reason ? `<span class="suggest-reason">${escapeHtml(s.reason)}</span>` : ''}</div>`)
+        .join('');
+      dropdown.style.display = 'block';
+    }
+
+    // Block 8: fires on every keystroke -- autosuggest.js is local/offline
+    // (no network call, no LLM) so a request per keystroke stays well
+    // within the ~20ms budget from the spec.
+    async function fetchSuggestions() {
+      const q = input.value;
+      if (!q.trim()) { suggestions = []; selected = -1; renderDropdown(); return; }
+      const params = new URLSearchParams({ code: state.code, kind: state.kind, stepIndex: String(idx), q });
+      const res = await fetch('/api/autosuggest?' + params.toString()).then((r) => r.json());
+      if (input.value !== q) return; // a newer keystroke already superseded this request
+      suggestions = res.suggestions || [];
+      selected = -1;
+      renderDropdown();
+    }
+
+    function accept(s) {
+      accepted = true;
+      cancelled = true; // suppress the plain blur-submit below; accept() drives submission itself
+      if (s.kind !== 'add-implementation') input.value = s.text;
+      suggestions = [];
+      renderDropdown();
+      submitInsertWord(i, idx, input.value);
+    }
+
+    input.addEventListener('input', fetchSuggestions);
+
     input.addEventListener('keydown', (e) => {
+      if (suggestions.length && dropdown.style.display === 'block') {
+        if (e.key === 'ArrowDown') { e.preventDefault(); selected = Math.min(selected + 1, suggestions.length - 1); renderDropdown(); return; }
+        if (e.key === 'ArrowUp') { e.preventDefault(); selected = Math.max(selected - 1, -1); renderDropdown(); return; }
+        if ((e.key === 'Enter' || e.key === 'Tab') && selected >= 0) { e.preventDefault(); accept(suggestions[selected]); return; }
+        if (e.key === 'Escape') { e.preventDefault(); suggestions = []; renderDropdown(); return; }
+      }
       if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
       else if (e.key === 'Escape') { e.preventDefault(); cancelled = true; state.addingWord = null; renderSteps(i, state.steps); }
     });
+
+    // mousedown (not click) fires before the input's blur, so a dropdown
+    // click doesn't get preempted by the blur handler closing everything first.
+    dropdown.addEventListener('mousedown', (e) => {
+      const item = e.target.closest('.suggest-item');
+      if (!item) return;
+      e.preventDefault();
+      accept(suggestions[Number(item.dataset.n)]);
+    });
+
     input.addEventListener('blur', () => {
+      if (accepted) return;
+      suggestions = [];
       if (cancelled) return;
       submitInsertWord(i, idx, input.value);
     });

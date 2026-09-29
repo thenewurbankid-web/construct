@@ -11,6 +11,7 @@ const { toEnglish, extractAtoms, extractAtomUsage, reorderSteps, atomParamNames,
 const registry = require('./registry');
 const { plug } = require('./plug');
 const { unplug } = require('./unplug');
+const { suggest } = require('./autosuggest');
 
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 // Two models, two jobs. 1.5b is fast but (measured) never performs extraction
@@ -298,6 +299,27 @@ app.post('/api/insert-word', (req, res) => {
       return res.json({ resolved: true, via: 'identifier', refactored, english, steps, title, atomUsage: withImplementations(refactored, kind) });
     }
     return res.json({ resolved: false, unrecognizedWords: registry.unrecognizedWords(word, 'function') });
+  } catch (e) {
+    res.status(400).json({ error: String(e) });
+  }
+});
+
+// LIN-119 block 8: local, tiered autosuggest while typing into the "+ word"
+// input above -- ranks registered atoms (by their stored English), in-scope
+// identifiers at this step, and connectives against the partial text typed
+// so far. GET (not POST) since it's a read: nothing here mutates code or the
+// registry, unlike /api/insert-word above. Deterministic and offline
+// (autosuggest.js has no network call), so this is safe to call on every
+// keystroke.
+app.get('/api/autosuggest', (req, res) => {
+  const kind = req.query.kind || 'function';
+  const stepIndex = Number(req.query.stepIndex);
+  const code = req.query.code || '';
+  const q = req.query.q || '';
+  try {
+    const identifiers = code ? inScopeIdentifiers(code, kind, stepIndex) : [];
+    const atoms = registry.load().filter((e) => e.kind === 'function');
+    res.json({ suggestions: suggest(q, { atoms, identifiers }) });
   } catch (e) {
     res.status(400).json({ error: String(e) });
   }
