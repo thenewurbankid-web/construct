@@ -647,6 +647,112 @@ function reorderChip(code, kind, stepIndex, order) {
   return { code: chunks.length ? chunks[0].code : output, broken: null };
 }
 
+// Block 7 (adding words): every identifier a NEW word could sensibly refer
+// to at a given step -- the function/method's own params, plus every name
+// declared by an EARLIER step (so a step can't reference something defined
+// after it, same ordering rule block 3's use/def check already enforces).
+// Shares patternName's destructuring handling so `const [a, b] = args`
+// contributes `a` and `b`, not `undefined`.
+function collectPatternNames(id) {
+  if (id.type === 'Identifier') return [id.name];
+  if (id.type === 'ArrayPattern') return id.elements.flatMap((el) => (el ? collectPatternNames(el) : []));
+  if (id.type === 'ObjectPattern') return id.properties.flatMap((p) => (p.value ? collectPatternNames(p.value) : []));
+  return [];
+}
+
+function inScopeIdentifiers(code, kind, stepIndex) {
+  const wrapped = kind === 'method' ? `class __W__ {\n${code}\n}` : code;
+  const ast = parser.parse(wrapped, { sourceType: 'module' });
+  const bodyPath = findBody(ast);
+  if (!bodyPath) return [];
+
+  let params = [];
+  traverse(ast, {
+    ClassMethod(path) { params = path.node.params.map((p) => p.name).filter(Boolean); path.stop(); },
+    FunctionDeclaration(path) {
+      if (!path.parentPath.isProgram()) return;
+      params = path.node.params.map((p) => p.name).filter(Boolean);
+      path.stop();
+    },
+  });
+
+  const stmts = bodyPath.node.body;
+  const names = new Set(params);
+  for (let idx = 0; idx < stepIndex && idx < stmts.length; idx++) {
+    const s = stmts[idx];
+    if (s.type === 'VariableDeclaration') {
+      s.declarations.forEach((d) => collectPatternNames(d.id).forEach((n) => names.add(n)));
+    }
+  }
+  return [...names];
+}
+
+// The one expression a step's chips actually describe -- what buildStepFromAtom
+// (block 4) and reorderChip (block 6) each already special-case per statement
+// shape. Centralized here since insertAtomCall/insertArgument below both need
+// to read AND replace/mutate it.
+function stmtExprRef(stmt) {
+  if (stmt.type === 'ReturnStatement' && stmt.argument) {
+    return { get: () => stmt.argument, set: (v) => { stmt.argument = v; } };
+  }
+  if (stmt.type === 'ExpressionStatement') {
+    return { get: () => stmt.expression, set: (v) => { stmt.expression = v; } };
+  }
+  if (stmt.type === 'VariableDeclaration' && stmt.declarations.length === 1 && stmt.declarations[0].init) {
+    return { get: () => stmt.declarations[0].init, set: (v) => { stmt.declarations[0].init = v; } };
+  }
+  return null;
+}
+
+// "A known atom -> inserted as a call/chain link at that position": appends
+// `.atomName(...)` onto the step's own expression, the atom's OWN param
+// names (after the first, which becomes the implicit subject/receiver --
+// same "same word, same thing" scoping convention buildStepFromAtom already
+// relies on) passed straight through as argument identifiers.
+function insertAtomCall(code, kind, stepIndex, atomName, paramNames) {
+  const wrapped = kind === 'method' ? `class __W__ {\n${code}\n}` : code;
+  const ast = parser.parse(wrapped, { sourceType: 'module' });
+  const bodyPath = findBody(ast);
+  if (!bodyPath) throw new Error('could not find a function/method to edit');
+  const stmts = bodyPath.node.body;
+  if (stepIndex < 0 || stepIndex >= stmts.length) throw new Error('step index out of range');
+
+  const ref = stmtExprRef(stmts[stepIndex]);
+  if (!ref) throw new Error('cannot chain a new atom onto this kind of step');
+
+  const argNames = paramNames.slice(1);
+  ref.set(t.callExpression(
+    t.memberExpression(ref.get(), t.identifier(atomName)),
+    argNames.map((n) => t.identifier(n)),
+  ));
+
+  const output = generate(ast, { retainLines: false }).code;
+  if (kind !== 'method') return output;
+  const chunks = chunkCode(output);
+  return chunks.length ? chunks[0].code : output;
+}
+
+// "A known in-scope identifier -> inserted as an argument": appended to the
+// end of the step's own outermost call's argument list.
+function insertArgument(code, kind, stepIndex, identifierName) {
+  const wrapped = kind === 'method' ? `class __W__ {\n${code}\n}` : code;
+  const ast = parser.parse(wrapped, { sourceType: 'module' });
+  const bodyPath = findBody(ast);
+  if (!bodyPath) throw new Error('could not find a function/method to edit');
+  const stmts = bodyPath.node.body;
+  if (stepIndex < 0 || stepIndex >= stmts.length) throw new Error('step index out of range');
+
+  const ref = stmtExprRef(stmts[stepIndex]);
+  const expr = ref && ref.get();
+  if (!expr || expr.type !== 'CallExpression') throw new Error('this step has no call to add an argument to');
+  expr.arguments.push(t.identifier(identifierName));
+
+  const output = generate(ast, { retainLines: false }).code;
+  if (kind !== 'method') return output;
+  const chunks = chunkCode(output);
+  return chunks.length ? chunks[0].code : output;
+}
+
 module.exports = {
   toEnglish,
   camelToWords,
@@ -658,4 +764,7 @@ module.exports = {
   applyAtomToStep,
   tokenizeStmt,
   reorderChip,
+  inScopeIdentifiers,
+  insertAtomCall,
+  insertArgument,
 };

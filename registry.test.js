@@ -56,3 +56,17 @@ test('normalize wraps method code in a class but leaves function/other code raw'
   assert.doesNotThrow(() => registry.normalize('run(a) { return a; }', 'method'));
   assert.doesNotThrow(() => registry.normalize('let x = a;', 'function'));
 });
+
+test('findByName matches an atom by its camelCase name spoken as words, or the name itself', () => {
+  withRegistry(
+    [{ name: 'greaterThanOrEqual', kind: 'function', code: 'function greaterThanOrEqual(a,b){}', fingerprint: 'x', embedding: [] }],
+    () => {
+      const hit = registry.findByName('Greater Than Or Equal', 'function');
+      assert.equal(hit.name, 'greaterThanOrEqual');
+      const hitByRawName = registry.findByName('greaterThanOrEqual', 'function');
+      assert.equal(hitByRawName.name, 'greaterThanOrEqual');
+      assert.equal(registry.findByName('something else', 'function'), null);
+      assert.equal(registry.findByName('greater than or equal', 'method'), null); // wrong kind
+    }
+  );
+});

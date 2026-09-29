@@ -89,6 +89,25 @@ function findByEnglish(english, kind) {
   return load().find((e) => e.kind === kind && e.english && norm(e.english) === target) || null;
 }
 
+// Lookup by the atom's own NAME, spoken as English -- block 7 ("adding
+// words"): typing a short word/phrase like "clamp" or "greater than or
+// equal" should find the atom `clamp`/`greaterThanOrEqual` itself, which is
+// a different question from findByEnglish above (that matches the whole
+// SENTENCE an atom was registered to replace, e.g. "clamp value between min
+// and max" -- a short atom-name phrase would almost never equal that).
+// Matches either the camelCase name split into words, or the name as typed
+// verbatim (so "clamp" also matches without relying on word-splitting).
+function toWords(name) {
+  return name.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
+}
+
+function findByName(word, kind) {
+  if (!word) return null;
+  const norm = (s) => s.trim().toLowerCase().replace(/\s+/g, ' ');
+  const target = norm(word);
+  return load().find((e) => e.kind === kind && (norm(toWords(e.name)) === target || e.name.toLowerCase() === target)) || null;
+}
+
 // Falls back to embedding similarity on the WORDING (not the code) when no
 // exact match exists -- "roughly the same instruction, said differently".
 // Embeds every candidate's stored english at search time rather than
@@ -172,6 +191,7 @@ module.exports = {
   load,
   findExisting,
   findByEnglish,
+  findByName,
   findSimilarByEnglish,
   unrecognizedWords,
   register,

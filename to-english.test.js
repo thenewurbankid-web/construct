@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { toEnglish, extractAtoms, extractAtomUsage, reorderSteps, atomParamNames, buildStepFromAtom, applyAtomToStep, tokenizeStmt, reorderChip } = require('./to-english');
+const { toEnglish, extractAtoms, extractAtomUsage, reorderSteps, atomParamNames, buildStepFromAtom, applyAtomToStep, tokenizeStmt, reorderChip, inScopeIdentifiers, insertAtomCall, insertArgument } = require('./to-english');
 
 test('toEnglish returns the flat english string for a function', () => {
   const code = `function checkAge(age) {\n  return age;\n}`;
@@ -243,4 +243,40 @@ test('reorderChip rejects an order that displaces more than two positions', () =
   const { code: unchanged, broken } = reorderChip(code, 'function', 0, order);
   assert.equal(unchanged, code);
   assert.match(broken.reason, /single word swap/);
+});
+
+test('inScopeIdentifiers includes params and names declared by earlier steps, not later ones', () => {
+  const code = `function run(a, b) {\n  let x = a;\n  let y = b;\n  return x;\n}`;
+  assert.deepEqual(inScopeIdentifiers(code, 'function', 0), ['a', 'b']);
+  assert.deepEqual(inScopeIdentifiers(code, 'function', 1), ['a', 'b', 'x']);
+  assert.deepEqual(inScopeIdentifiers(code, 'function', 2), ['a', 'b', 'x', 'y']);
+});
+
+test('inScopeIdentifiers unpacks a destructured declarator instead of dropping it', () => {
+  const code = `function run(args) {\n  const [a, b] = args;\n  return a;\n}`;
+  assert.deepEqual(inScopeIdentifiers(code, 'function', 1), ['args', 'a', 'b']);
+});
+
+test('insertAtomCall appends a new chain link using the atom\'s own param names (minus the subject)', () => {
+  const code = `function run(a) {\n  let x = a;\n  return x;\n}`;
+  const rebuilt = insertAtomCall(code, 'function', 1, 'double', ['x']);
+  const { steps } = toEnglish(rebuilt, 'function');
+  assert.equal(steps[1].english, 'return x double');
+});
+
+test('insertAtomCall rejects a step shape it cannot chain onto', () => {
+  const code = `function run(a) {\n  if (a) {\n    return a;\n  }\n}`;
+  assert.throws(() => insertAtomCall(code, 'function', 0, 'double', ['x']));
+});
+
+test('insertArgument appends an identifier to the step\'s own call', () => {
+  const code = `function run(a, b) {\n  return combine(a);\n}`;
+  const rebuilt = insertArgument(code, 'function', 0, 'b');
+  const { steps } = toEnglish(rebuilt, 'function');
+  assert.equal(steps[0].english, 'return combine of a and b');
+});
+
+test('insertArgument rejects a step with no call to add to', () => {
+  const code = `function run(a, b) {\n  let x = a;\n  return x;\n}`;
+  assert.throws(() => insertArgument(code, 'function', 0, 'b'));
 });

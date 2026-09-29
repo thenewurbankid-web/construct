@@ -75,6 +75,12 @@
   .chip-subject { color: #7aa2f7; }
   .chip-arg { color: #6fe397; }
   .chip-connective { color: #6c7480; font-style: italic; }
+  .chip-add { font-size: 11px; font-family: ui-monospace, Menlo, monospace; padding: 3px 8px; border-radius: 999px; border: 1px dashed #33363d; color: #55595f; cursor: pointer; }
+  .chip-add:hover, .chip-add:focus { color: #5eead4; border-color: #5eead4; outline: none; }
+  .chip-add-input {
+    font-size: 11px; font-family: ui-monospace, Menlo, monospace; padding: 3px 8px; border-radius: 999px;
+    border: 1px solid #5eead4; background: #0b0d11; color: #e4e6eb; outline: none; width: 140px;
+  }
   .step-sentence[contenteditable] { outline: none; border-bottom: 1px dashed #3d424c; cursor: text; }
   .step-sentence[contenteditable]:focus { border-bottom-color: #5eead4; }
   .word-unknown { text-decoration: underline wavy #f2b86a; text-underline-offset: 3px; }
@@ -595,10 +601,19 @@ function tagOrigIdx(steps) {
 // (block 6) decides whether that move also regenerates the code (only a
 // swap of two argument chips from the same call does) or the step turns red
 // with a reason, same red-on-break UX as whole-step reorder (block 3).
-function chipStripHtml(idx, tokens) {
+// "+ word" (block 7): typing a new word/phrase here is matched against the
+// library server-side (POST /api/insert-word) -- a known atom's own name
+// becomes a new chain link, an in-scope identifier becomes a new argument,
+// anything else falls into the same underline + Add implementation flow
+// block 4 already built (see submitInsertWord below).
+function chipStripHtml(idx, tokens, addingWord) {
+  const adder = addingWord
+    ? `<input class="chip-add-input" data-idx="${idx}" spellcheck="false" placeholder="a word or phrase" />`
+    : `<span class="chip-add" tabindex="0" data-idx="${idx}" title="Type a word: a known atom becomes a call, an in-scope name becomes an argument">+ word</span>`;
   return `
     <div class="chip-strip" data-idx="${idx}">
       ${tokens.map((tok, tokIdx) => `<span class="chip chip-${tok.type}" tabindex="0" draggable="true" data-idx="${idx}" data-tok="${tokIdx}" title="${escapeHtml(tok.type)}">${escapeHtml(tok.text)}</span>`).join('')}
+      ${adder}
     </div>`;
 }
 
@@ -620,7 +635,7 @@ function stepRowHtml(i, idx, s) {
       <span class="step-handle">⠿</span>
       <span class="step-sentence"${editableAttr} data-idx="${idx}">${sentenceHtml}</span>
       <button class="step-delete" title="Remove this step" data-idx="${idx}">×</button>
-    </li>${pending ? '' : chipStripHtml(idx, s.tokens || [])}`;
+    </li>${pending ? '' : chipStripHtml(idx, s.tokens || [], state.addingWord === idx)}`;
 
   if (pending) {
     if (pending.showForm) {
@@ -680,6 +695,45 @@ async function submitWording(i, idx, newText) {
   renderSteps(i, state.steps);
 }
 
+// Block 7's counterpart to submitWording above: a typed word/phrase either
+// resolves (atom -> new chain link, in-scope identifier -> new argument) or
+// falls into the same "pending" underline + Add implementation display,
+// tagged `mode: 'insert'` so saveAtom below knows to retry via this
+// function rather than submitWording once the atom is registered.
+async function submitInsertWord(i, idx, word) {
+  const state = blockState[i];
+  const text = word.trim();
+  state.addingWord = null;
+  if (!text) { renderSteps(i, state.steps); return; }
+
+  const res = await fetch('/api/insert-word', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code: state.code, kind: state.kind, stepIndex: idx, word: text }),
+  }).then((r) => r.json());
+
+  if (res.error) {
+    state.pending = { idx, english: text, unrecognizedWords: [], error: res.error, mode: 'insert' };
+    renderSteps(i, state.steps);
+    return;
+  }
+
+  if (res.resolved) {
+    state.undoStack.push({ code: state.code, steps: state.steps, atomUsage: state.atomUsage });
+    state.code = res.refactored;
+    state.steps = tagOrigIdx(res.steps);
+    state.atomUsage = res.atomUsage || [];
+    const codeEl = document.getElementById('code-' + i);
+    if (codeEl) codeEl.value = res.refactored;
+    renderSteps(i, state.steps);
+    rebuildGlobalAtoms();
+    renderAtomsSummary();
+    return;
+  }
+
+  state.pending = { idx, english: text, unrecognizedWords: res.unrecognizedWords, showForm: false, mode: 'insert' };
+  renderSteps(i, state.steps);
+}
+
 async function saveAtom(i, idx) {
   const state = blockState[i];
   const form = document.querySelector(`.atom-form[data-idx="${idx}"]`);
@@ -701,7 +755,8 @@ async function saveAtom(i, idx) {
 
   // Registered under the same wording that was just typed -- resolving it
   // again now hits the exact match and applies it.
-  await submitWording(i, idx, state.pending.english);
+  if (state.pending.mode === 'insert') await submitInsertWord(i, idx, state.pending.english);
+  else await submitWording(i, idx, state.pending.english);
 }
 
 function renderSteps(i, steps) {
@@ -867,6 +922,31 @@ function wireChipStrips(i, list) {
       const tok = Number(chip.dataset.tok);
       if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); moveChip(i, stepIdx, tok, tok - 1, tok - 1); }
       else if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); moveChip(i, stepIdx, tok, tok + 1, tok + 1); }
+    });
+  });
+
+  const state = blockState[i];
+  list.querySelectorAll('.chip-add').forEach((span) => {
+    const open = () => {
+      state.addingWord = Number(span.dataset.idx);
+      renderSteps(i, state.steps);
+      const input = list.querySelector(`.chip-add-input[data-idx="${state.addingWord}"]`);
+      if (input) input.focus();
+    };
+    span.addEventListener('click', open);
+    span.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+  });
+
+  list.querySelectorAll('.chip-add-input').forEach((input) => {
+    const idx = Number(input.dataset.idx);
+    let cancelled = false;
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+      else if (e.key === 'Escape') { e.preventDefault(); cancelled = true; state.addingWord = null; renderSteps(i, state.steps); }
+    });
+    input.addEventListener('blur', () => {
+      if (cancelled) return;
+      submitInsertWord(i, idx, input.value);
     });
   });
 }

@@ -7,7 +7,7 @@ const { chunkCode } = require('./chunker');
 const { transform } = require('./transform');
 const { scanModules, findSimilarShapes } = require('./module-scanner');
 const trainingData = require('./training-data');
-const { toEnglish, extractAtoms, extractAtomUsage, reorderSteps, atomParamNames, applyAtomToStep, reorderChip } = require('./to-english');
+const { toEnglish, extractAtoms, extractAtomUsage, reorderSteps, atomParamNames, applyAtomToStep, reorderChip, inScopeIdentifiers, insertAtomCall, insertArgument } = require('./to-english');
 const registry = require('./registry');
 const { plug } = require('./plug');
 const { unplug } = require('./unplug');
@@ -265,6 +265,39 @@ app.post('/api/reorder-chip', (req, res) => {
     const { english, steps, title } = toEnglish(refactored, kind);
     if (broken && steps[stepIndex]) steps[stepIndex].broken = broken;
     res.json({ refactored, english, steps, title, broken, atomUsage: withImplementations(refactored, kind) });
+  } catch (e) {
+    res.status(400).json({ error: String(e) });
+  }
+});
+
+// LIN-119 block 7 (adding words): a new word/phrase typed into a step is
+// matched against the library, deterministically, in this order -- a known
+// atom's own name (registry.findByName, e.g. "clamp" or "greater than or
+// equal") becomes a new chain link; failing that, a name already in scope
+// at this step (inScopeIdentifiers) becomes a new argument; failing both,
+// it's unresolved -- the demo underlines it and offers the same "Add
+// implementation" flow /api/register-atom already provides for block 4.
+// (Connectives joining conditions, from the original spec, aren't handled
+// yet -- see the CHANGELOG for why.)
+app.post('/api/insert-word', (req, res) => {
+  const kind = req.body.kind || 'function';
+  const stepIndex = req.body.stepIndex;
+  const word = (req.body.word || '').trim();
+  const code = req.body.code || '';
+  try {
+    const atomMatch = registry.findByName(word, 'function');
+    if (atomMatch) {
+      const paramNames = atomParamNames(atomMatch.code);
+      const refactored = insertAtomCall(code, kind, stepIndex, atomMatch.name, paramNames);
+      const { english, steps, title } = toEnglish(refactored, kind);
+      return res.json({ resolved: true, via: 'atom', refactored, english, steps, title, atomUsage: withImplementations(refactored, kind) });
+    }
+    if (inScopeIdentifiers(code, kind, stepIndex).includes(word)) {
+      const refactored = insertArgument(code, kind, stepIndex, word);
+      const { english, steps, title } = toEnglish(refactored, kind);
+      return res.json({ resolved: true, via: 'identifier', refactored, english, steps, title, atomUsage: withImplementations(refactored, kind) });
+    }
+    return res.json({ resolved: false, unrecognizedWords: registry.unrecognizedWords(word, 'function') });
   } catch (e) {
     res.status(400).json({ error: String(e) });
   }
