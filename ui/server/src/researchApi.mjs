@@ -42,7 +42,7 @@ export function executionFor(projectDir, findRoot = containedProjectRoot) {
  * @returns {Promise<{status:number, body:object}>} The HTTP status and JSON body.
  */
 export async function handleResearch({ body, projectDir, findRoot, inProcess, cli = {} }) {
-  const { action, feature, format, since } = body || {};
+  const { action, feature, format, since, file, readBack, generate } = body || {};
   let args;
   if (action === 'summarize') {
     args = ['summarize'];
@@ -51,8 +51,21 @@ export async function handleResearch({ body, projectDir, findRoot, inProcess, cl
     if (since) args.push('--since', since);
   } else if (action === 'doctor') {
     args = ['doctor'];
+  } else if (action === 'spec') {
+    // #748 (R6) -- the Cockpit's "spec breakdown" screen: validate a machine-spec.v1 file, read it back in
+    // plain English (`readBack: true`, an accepted spec only, #672) or generate its code (`generate: true`,
+    // #593), always in-process (spec generation and read-back have no `cli` subprocess contract distinct from
+    // `--format json`, and this route never shells out for them -- same reasoning as summarize's md/compact views).
+    if (!file) return { status: 400, body: { ok: false, error: 'file is required' } };
+    if (readBack && generate) return { status: 400, body: { ok: false, error: 'readBack and generate are exclusive' } };
+    args = ['spec', file, '--format', format || 'json'];
+    if (readBack) args.push('--read-back');
+    if (generate) {
+      args.push('--generate');
+      if (feature) args.push('--feature', feature);
+    }
   } else {
-    return { status: 400, body: { ok: false, error: 'action must be "summarize" or "doctor"' } };
+    return { status: 400, body: { ok: false, error: 'action must be "summarize", "doctor" or "spec"' } };
   }
   const exec = executionFor(projectDir, findRoot);
   if (exec.error) return { status: 400, body: { ok: false, error: exec.error } };
@@ -60,6 +73,7 @@ export async function handleResearch({ body, projectDir, findRoot, inProcess, cl
     const result = await inProcess(args);
     return { status: result.httpStatus, body: { ...result, mode: 'engine', ...(note ? { note } : {}) } };
   };
+  if (action === 'spec') return inProc();
   if (exec.mode !== 'cli') return inProc();
   if (action === 'summarize') {
     if (!summarizeHasJsonContract({ format, since })) return inProc(NO_JSON_CONTRACT_NOTE);
