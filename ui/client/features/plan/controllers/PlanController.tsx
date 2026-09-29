@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { blocksShellTab, type BlockRunRequest } from '@/features/blocks';
+import { envelopesShellTab } from '@/features/envelopes';
 import { ProjectGateController } from '@/features/project-gate';
 import { rulesShellTab } from '@/features/rules';
 import { useRegisterShellTab, useShellDrawer, useShellTools } from '@/features/shell';
@@ -42,9 +43,13 @@ function PlanScreen({ stageActions, featureDetail }: { stageActions?: ReactNode;
   // slice, reusing the same `/api/validate` call Diagnostics already makes.
   const rulesTab = useMemo(() => rulesShellTab(), []);
   useRegisterShellTab('browser', rulesTab);
-  // #387: the Story tab sits in the Browser pane beside Notes, Features, Blocks and Rules -- AI proposes the
-  // parse pattern once (a diff you approve), later refreshes are mechanical; extraction on every use is
-  // mechanically verified before it is ever shown as a diff.
+  // #395/#771: the Envelopes tab sits in the Browser pane beside Notes, Features, Blocks and Rules -- a
+  // read-only list of saved flows for this slice, reusing #759's core save/load primitive.
+  const envelopesTab = useMemo(() => envelopesShellTab(), []);
+  useRegisterShellTab('browser', envelopesTab);
+  // #387: the Story tab sits in the Browser pane beside Notes, Features, Blocks, Rules and Envelopes -- AI
+  // proposes the parse pattern once (a diff you approve), later refreshes are mechanical; extraction on
+  // every use is mechanically verified before it is ever shown as a diff.
   const storyTab = useMemo(() => storyShellTab(), []);
   useRegisterShellTab('browser', storyTab);
   const view = state.impact ? buildImpactView(state.impact, state.impactSeeds) : null;

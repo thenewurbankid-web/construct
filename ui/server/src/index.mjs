@@ -91,6 +91,7 @@ import { openBlockSettingsStore } from './blockSettingsStore.mjs';
 import { handleLogs } from './logBuffer.mjs';
 import { unitsIndex, unitSummary, featuresIndex, featureSummary } from './unitsApi.mjs';
 import { createRulesRouter } from './rulesApi.mjs';
+import { createEnvelopesRouter } from './envelopesApi.mjs';
 import { buildPalette } from '../../../packages/engine/palette.mjs';
 import { readPageSource, lintPageBuffer, quickFixPageBuffer } from './pageSource.mjs';
 import { viewPage, openReference, openSourceLocation, viewProjectFile } from './projectNav.mjs';
@@ -1071,6 +1072,15 @@ app.get('/api/features/:name/summary', (req, res) => sendUnits(res, (root) => fe
 app.use('/api/rules', createRulesRouter({
   clientOrigin: CLIENT_ORIGIN,
   afterSave,
+  getRoot: () => {
+    const root = containedProjectRoot(getProjectDir());
+    return root ? { ok: true, root } : { ok: false, error: 'No Construct project found for the current project directory. Pick a project first.' };
+  },
+}));
+
+// #395/#771: the Envelopes tab's read-only list of named, reusable flows saved via `construct pipeline
+// save` (#759, packages/core/flows.mjs). Read-only for this slice; compose/save/run is #772.
+app.use('/api/envelopes', createEnvelopesRouter({
   getRoot: () => {
     const root = containedProjectRoot(getProjectDir());
     return root ? { ok: true, root } : { ok: false, error: 'No Construct project found for the current project directory. Pick a project first.' };

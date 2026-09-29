@@ -1,0 +1,12 @@
+/* Envelopes tab (#395/#771): the Features screen's Browser pane. Prefix ev-. Tokens only; buttons reuse
+   the shared `.dg-btn`. */
+.ev-browser { padding: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+.ev-bar { display: flex; align-items: center; gap: var(--sp-2); }
+.ev-summary { margin: 0; color: var(--text-muted); font-size: var(--fs-sm); flex: 1 1 auto; }
+.ev-empty { padding: var(--sp-4); }
+.ev-empty-title { margin: 0 0 4px; font-weight: 600; }
+.ev-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.ev-row { padding: var(--sp-2) var(--sp-3); border: 1px solid var(--border-subtle); border-radius: var(--r-md); background: var(--surface-2); display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); min-width: 0; }
+.ev-name { margin: 0; font-weight: 600; font-family: var(--mono); flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ev-count { display: inline-block; font-size: var(--fs-sm); font-weight: 600; padding: 0 var(--sp-2); border-radius: 999px; border: 1px solid var(--border-subtle); color: var(--text-muted); white-space: nowrap; }
+.ev-row-error { margin: 0; color: var(--danger); font-size: var(--fs-sm); }
