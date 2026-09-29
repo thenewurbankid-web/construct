@@ -7,7 +7,7 @@ const { chunkCode } = require('./chunker');
 const { transform } = require('./transform');
 const { scanModules, findSimilarShapes } = require('./module-scanner');
 const trainingData = require('./training-data');
-const { toEnglish, extractAtoms } = require('./to-english');
+const { toEnglish, extractAtoms, reorderSteps } = require('./to-english');
 
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 // Two models, two jobs. 1.5b is fast but (measured) never performs extraction
@@ -203,8 +203,24 @@ app.post('/api/to-english', (req, res) => {
   const kind = req.body.kind || 'function';
   try {
     const refactored = unwrap(transform(wrap(req.body.code || '', kind)), kind);
-    const { english, steps } = toEnglish(refactored, kind);
-    res.json({ refactored, english, steps, atoms: extractAtoms(refactored, kind) });
+    const { english, steps, title } = toEnglish(refactored, kind);
+    res.json({ refactored, english, steps, title, atoms: extractAtoms(refactored, kind) });
+  } catch (e) {
+    res.status(400).json({ error: String(e) });
+  }
+});
+
+// Reorder (or drop) top-level steps of an already-refactored block. The
+// client sends indices into the CURRENT steps array; the response's code
+// and English are both derived fresh from the rebuilt AST, so they can
+// never disagree with each other. No model involved.
+app.post('/api/reorder-steps', (req, res) => {
+  const kind = req.body.kind || 'function';
+  const order = Array.isArray(req.body.order) ? req.body.order : [];
+  try {
+    const refactored = reorderSteps(req.body.code || '', kind, order);
+    const { english, steps, title } = toEnglish(refactored, kind);
+    res.json({ refactored, english, steps, title });
   } catch (e) {
     res.status(400).json({ error: String(e) });
   }

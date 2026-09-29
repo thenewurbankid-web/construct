@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { toEnglish, extractAtoms } = require('./to-english');
+const { toEnglish, extractAtoms, reorderSteps } = require('./to-english');
 
 test('toEnglish returns the flat english string for a function', () => {
   const code = `function checkAge(age) {\n  return age;\n}`;
@@ -48,4 +48,31 @@ test('extractAtoms still works unchanged alongside the new steps shape', () => {
   const code = `function run(a, b) {\n  return a.equals(b);\n}`;
   const atoms = extractAtoms(code, 'function');
   assert.deepEqual(atoms, ['equals']);
+});
+
+test('reorderSteps swaps two top-level statements and the re-derived english reflects the new order', () => {
+  const code = `function run(a, b) {\n  let x = a;\n  let y = b;\n  return x;\n}`;
+  const rebuilt = reorderSteps(code, 'function', [1, 0, 2]);
+  const { steps } = toEnglish(rebuilt, 'function');
+  assert.equal(steps[0].english, 'let y be b');
+  assert.equal(steps[1].english, 'let x be a');
+  assert.equal(steps[2].english, 'return x');
+});
+
+test('reorderSteps drops a statement when its index is omitted', () => {
+  const code = `function run(a, b) {\n  let x = a;\n  let y = b;\n  return x;\n}`;
+  const rebuilt = reorderSteps(code, 'function', [0, 2]);
+  const { steps } = toEnglish(rebuilt, 'function');
+  assert.equal(steps.length, 2);
+  assert.equal(steps[0].english, 'let x be a');
+  assert.equal(steps[1].english, 'return x');
+});
+
+test('reorderSteps works on a class method and stays unwrapped (no class wrapper in the output)', () => {
+  const code = `checkAge(age) {\n  let ok = age;\n  let bad = age;\n  return ok;\n}`;
+  const rebuilt = reorderSteps(code, 'method', [1, 0, 2]);
+  assert.ok(!rebuilt.includes('class'));
+  const { steps } = toEnglish(rebuilt, 'method');
+  assert.equal(steps[0].english, 'let bad be age');
+  assert.equal(steps[1].english, 'let ok be age');
 });

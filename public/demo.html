@@ -34,6 +34,29 @@
   .block-sentence .result { color: #7aa2f7; font-weight: 600; }
   .block-code-toggle { font-size: 11px; color: #6c7480; cursor: pointer; margin-top: 6px; display: inline-block; font-family: ui-monospace, Menlo, monospace; }
   .block-code-toggle:hover { color: #9aa0ac; }
+  .step-list { list-style: none; margin: 0; padding: 0; }
+  .step-row {
+    display: flex; align-items: flex-start; gap: 8px; padding: 5px 6px 5px 2px; margin: 0 -6px;
+    border-radius: 6px; border: 1px solid transparent; cursor: grab; outline: none;
+  }
+  .step-row:hover { background: #0e1015; }
+  .step-row:focus { border-color: #5eead4; }
+  .step-row.dragging { opacity: .35; }
+  .step-row.drag-over { border-top: 2px solid #5eead4; }
+  .step-row.broken { background: rgba(240, 96, 96, .08); }
+  .step-row.broken .step-sentence { color: #f26161; text-decoration: underline wavy #f26161; text-underline-offset: 3px; }
+  .step-handle { color: #3d424c; font-size: 13px; line-height: 1.6; user-select: none; padding-top: 1px; }
+  .step-sentence { flex: 1; font-size: 22px; line-height: 1.6; font-weight: 400; letter-spacing: -0.01em; color: #e4e6eb; }
+  .step-sentence .verb { color: #fff; font-weight: 700; }
+  .step-sentence .connector { color: #6c7480; font-style: italic; }
+  .step-sentence .literal { color: #6fe397; font-weight: 500; }
+  .step-delete { background: none; border: none; color: #4a4f58; font-size: 15px; padding: 0 4px; line-height: 1.8; opacity: 0; }
+  .step-row:hover .step-delete, .step-row:focus .step-delete { opacity: 1; }
+  .step-delete:hover { color: #f26161; }
+  .step-actions { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
+  .step-undo { font-size: 11px; color: #6c7480; cursor: pointer; background: none; border: none; padding: 0; }
+  .step-undo:hover { color: #5eead4; }
+  .step-undo:disabled { color: #33363d; cursor: default; }
   .atom-tags { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
   .atom-tag { font-size: 10.5px; font-family: ui-monospace, Menlo, monospace; background: #14171d; border: 1px solid #22252e; color: #5eead4; padding: 3px 8px; border-radius: 999px; }
   .block pre { display: none; margin: 8px 0 0; padding: 10px 12px; background: #0b0d11; border: 1px solid #1c1f26; border-radius: 6px; font-size: 11.5px; color: #7de8a4; white-space: pre-wrap; }
@@ -303,12 +326,8 @@ function markupSegment(segment) {
   return html;
 }
 
-function highlightEnglish(text) {
-  const colonIdx = text.indexOf(':');
-  if (colonIdx === -1) return markupSegment(text);
-  const verb = text.slice(0, colonIdx);
-  const rest = text.slice(colonIdx);
-  return `<span class="verb">${escapeHtml(verb)}</span>${markupSegment(rest)}`;
+function titleHtml(title) {
+  return `<span class="verb">${escapeHtml(title || '')}</span>:`;
 }
 
 async function describeBlock(code, kind) {
@@ -316,13 +335,120 @@ async function describeBlock(code, kind) {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ code, kind }),
   }).then(r => r.json());
-  if (res.error) return { html: `(couldn't refactor: ${escapeHtml(res.error)})`, refactored: null, atoms: [] };
-  return { html: highlightEnglish(res.english), refactored: res.refactored, atoms: res.atoms || [] };
+  if (res.error) return { html: `(couldn't refactor: ${escapeHtml(res.error)})`, refactored: null, atoms: [], steps: [], title: null };
+  return { html: titleHtml(res.title), refactored: res.refactored, atoms: res.atoms || [], steps: res.steps || [], title: res.title };
+}
+
+async function reorderBlockSteps(code, kind, order) {
+  return fetch('/api/reorder-steps', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, kind, order }),
+  }).then(r => r.json());
 }
 
 function renderAtomTags(atoms) {
   if (!atoms.length) return '';
   return `<div class="atom-tags">${atoms.map(a => `<span class="atom-tag">${escapeHtml(a)}()</span>`).join('')}</div>`;
+}
+
+// Per-block state for the step-row editor (reorder/delete/undo). Keyed by
+// block index. `code`/`kind` is the CURRENT refactored source -- every
+// mutation rebuilds from it server-side and replaces it, so the English is
+// always re-derived from the code that's actually there, never hand-edited
+// in place.
+const blockState = {};
+
+function renderSteps(i, steps) {
+  const state = blockState[i];
+  const list = document.getElementById('steps-' + i);
+  if (!list) return;
+  list.innerHTML = steps.map((s, idx) => `
+    <li class="step-row" draggable="true" tabindex="0" data-idx="${idx}">
+      <span class="step-handle">⠿</span>
+      <span class="step-sentence">${markupSegment(s.english)}</span>
+      <button class="step-delete" title="Remove this step" data-idx="${idx}">×</button>
+    </li>
+  `).join('');
+
+  const rows = [...list.querySelectorAll('.step-row')];
+  let dragIdx = null;
+
+  rows.forEach((row) => {
+    row.addEventListener('dragstart', () => {
+      dragIdx = Number(row.dataset.idx);
+      row.classList.add('dragging');
+    });
+    row.addEventListener('dragend', () => row.classList.remove('dragging'));
+    row.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      row.classList.add('drag-over');
+    });
+    row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+    row.addEventListener('drop', (e) => {
+      e.preventDefault();
+      row.classList.remove('drag-over');
+      const targetIdx = Number(row.dataset.idx);
+      if (dragIdx === null || dragIdx === targetIdx) return;
+      // Move dragIdx to just after targetIdx (or before, if it was already
+      // past targetIdx) -- indices are into the CURRENT steps array.
+      const order = state.steps.map((_, n) => n).filter((n) => n !== dragIdx);
+      const insertAt = order.indexOf(targetIdx) + (dragIdx < targetIdx ? 1 : 0);
+      order.splice(insertAt, 0, dragIdx);
+      applyOrder(i, order);
+    });
+    row.addEventListener('keydown', (e) => {
+      const idx = Number(row.dataset.idx);
+      if (e.altKey && e.key === 'ArrowUp' && idx > 0) {
+        e.preventDefault();
+        const order = state.steps.map((_, n) => n);
+        [order[idx - 1], order[idx]] = [order[idx], order[idx - 1]];
+        applyOrder(i, order, idx - 1);
+      } else if (e.altKey && e.key === 'ArrowDown' && idx < state.steps.length - 1) {
+        e.preventDefault();
+        const order = state.steps.map((_, n) => n);
+        [order[idx], order[idx + 1]] = [order[idx + 1], order[idx]];
+        applyOrder(i, order, idx + 1);
+      }
+    });
+  });
+
+  list.querySelectorAll('.step-delete').forEach((btn) => {
+    btn.onclick = () => {
+      const idx = Number(btn.dataset.idx);
+      const order = state.steps.map((_, n) => n).filter((n) => n !== idx);
+      applyOrder(i, order);
+    };
+  });
+
+  const undoBtn = document.getElementById('undo-' + i);
+  if (undoBtn) undoBtn.disabled = state.undoStack.length === 0;
+}
+
+async function applyOrder(i, order, focusIdx) {
+  const state = blockState[i];
+  state.undoStack.push({ code: state.code, steps: state.steps });
+  const res = await reorderBlockSteps(state.code, state.kind, order);
+  if (res.error) { state.undoStack.pop(); return; }
+  state.code = res.refactored;
+  state.steps = res.steps;
+  const codeEl = document.getElementById('code-' + i);
+  if (codeEl) codeEl.value = res.refactored;
+  renderSteps(i, res.steps);
+  if (focusIdx != null) {
+    const row = document.querySelectorAll(`#steps-${i} .step-row`)[focusIdx];
+    if (row) row.focus();
+  }
+}
+
+function undoBlock(i) {
+  const state = blockState[i];
+  const prev = state.undoStack.pop();
+  if (!prev) return;
+  state.code = prev.code;
+  state.steps = prev.steps;
+  const codeEl = document.getElementById('code-' + i);
+  if (codeEl) codeEl.value = prev.code;
+  renderSteps(i, prev.steps);
 }
 
 document.getElementById('analyzeBtn').onclick = async () => {
@@ -344,17 +470,21 @@ document.getElementById('analyzeBtn').onclick = async () => {
 
   output.innerHTML = '';
   chunkRes.chunks.forEach((c, i) => {
+    blockState[i] = { code: c.code, kind: c.kind, steps: [], undoStack: [] };
     const block = document.createElement('div');
     block.className = 'block';
     block.innerHTML = `
       <div class="block-tag">${c.kind} · ${c.name}</div>
       <div class="block-sentence" id="sentence-${i}"><span class="loading">refactoring to atoms…</span></div>
+      <ol class="step-list" id="steps-${i}"></ol>
+      <div class="step-actions"><button class="step-undo" id="undo-${i}" disabled>↺ undo</button></div>
       <div id="atoms-${i}"></div>
       <span class="block-code-toggle" data-i="${i}">▸ show atoms (editable)</span>
       <textarea class="block-edit" id="code-${i}" data-kind="${c.kind}" spellcheck="false">${escapeHtml(c.code)}</textarea>
       <div class="block-edit-hint">Edit the atom code above — the sentence re-renders as you type.</div>
     `;
     output.appendChild(block);
+    document.getElementById('undo-' + i).onclick = () => undoBlock(i);
   });
 
   output.querySelectorAll('.block-code-toggle').forEach(el => {
@@ -371,7 +501,7 @@ document.getElementById('analyzeBtn').onclick = async () => {
       const sentenceEl = document.getElementById('sentence-' + i);
       if (sentenceEl) sentenceEl.innerHTML = '<span class="loading">updating…</span>';
       debounceTimers[i] = setTimeout(async () => {
-        const { html, refactored, atoms } = await describeBlock(el.value, el.dataset.kind);
+        const { html, refactored, atoms, steps, title } = await describeBlock(el.value, el.dataset.kind);
         const current = document.getElementById('sentence-' + i);
         if (current) current.innerHTML = html;
         const atomsEl = document.getElementById('atoms-' + i);
@@ -380,6 +510,12 @@ document.getElementById('analyzeBtn').onclick = async () => {
         // edit didn't introduce new raw operators/ternaries; when it does,
         // this keeps the textarea in sync with what was actually rendered.
         if (refactored && document.activeElement !== el) el.value = refactored;
+        if (refactored && blockState[i]) {
+          blockState[i].code = refactored;
+          blockState[i].steps = steps;
+          blockState[i].undoStack = [];
+          renderSteps(i, steps);
+        }
       }, 500);
     });
   });
@@ -387,7 +523,7 @@ document.getElementById('analyzeBtn').onclick = async () => {
   status.textContent = 'refactoring blocks to atoms…';
 
   for (let i = 0; i < chunkRes.chunks.length; i++) {
-    const { html, refactored, atoms } = await describeBlock(chunkRes.chunks[i].code, chunkRes.chunks[i].kind);
+    const { html, refactored, atoms, steps } = await describeBlock(chunkRes.chunks[i].code, chunkRes.chunks[i].kind);
     const sentenceEl = document.getElementById('sentence-' + i);
     if (sentenceEl) sentenceEl.innerHTML = html;
     const atomsEl = document.getElementById('atoms-' + i);
@@ -395,6 +531,11 @@ document.getElementById('analyzeBtn').onclick = async () => {
     if (refactored) {
       const codeEl = document.getElementById('code-' + i);
       if (codeEl) codeEl.value = refactored;
+      if (blockState[i]) {
+        blockState[i].code = refactored;
+        blockState[i].steps = steps;
+        renderSteps(i, steps);
+      }
     }
   }
 

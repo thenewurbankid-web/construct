@@ -1,5 +1,7 @@
 const parser = require('@babel/parser');
 const traverse = require('@babel/traverse').default;
+const generate = require('@babel/generator').default;
+const { chunkCode } = require('./chunker');
 
 // Deterministic, no model involved: takes code that's ALREADY been through
 // the atomic refactor (transform.js + the LLM extraction step), and renders
@@ -181,4 +183,41 @@ function extractAtoms(code, kind) {
   return [...names].sort();
 }
 
-module.exports = { toEnglish, camelToWords, extractAtoms };
+// Rebuilds the function/method with its top-level statements in a new
+// order (and optionally fewer of them, for delete). `order` is a list of
+// indices into the CURRENT top-level statements (the same indexing as the
+// `steps` array toEnglish just returned for this code) -- e.g. [1, 0, 2]
+// swaps the first two steps, [0, 2] drops the middle one. Babel does the
+// actual regeneration (formatting/reindentation) rather than text-splicing
+// the code slices, so the result is always valid, well-formed code; the
+// caller re-derives English from THIS output rather than editing the old
+// English, which is what keeps code and English from ever drifting apart.
+function reorderSteps(code, kind, order) {
+  const wrapped = kind === 'method' ? `class __W__ {\n${code}\n}` : code;
+  const ast = parser.parse(wrapped, { sourceType: 'module' });
+  let bodyPath = null;
+
+  traverse(ast, {
+    ClassMethod(path) {
+      bodyPath = path.get('body');
+      path.stop();
+    },
+    FunctionDeclaration(path) {
+      if (!path.parentPath.isProgram()) return;
+      bodyPath = path.get('body');
+      path.stop();
+    },
+  });
+
+  if (!bodyPath) throw new Error('could not find a function/method to reorder');
+
+  const stmts = bodyPath.node.body.slice();
+  bodyPath.node.body = order.map((i) => stmts[i]).filter(Boolean);
+
+  const output = generate(ast, { retainLines: false }).code;
+  if (kind !== 'method') return output;
+  const chunks = chunkCode(output);
+  return chunks.length ? chunks[0].code : output;
+}
+
+module.exports = { toEnglish, camelToWords, extractAtoms, reorderSteps };
