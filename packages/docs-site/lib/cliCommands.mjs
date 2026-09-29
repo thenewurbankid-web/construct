@@ -97,6 +97,11 @@ const EXTRA_COMMANDS = [
   { name: 'traces', fn: 'traces' },
   { name: 'decide', fn: 'decide' },
   { name: 'model', fn: 'model' },
+  { name: 'add-rule', fn: 'addRuleCommand' },
+  { name: 'export', fn: 'exportCommand' },
+  { name: 'check-change', fn: 'checkChange' },
+  { name: 'mutation-check', fn: 'mutationCheck' },
+  { name: 'rules', fn: 'rulesCommand' },
 ];
 
 /**
