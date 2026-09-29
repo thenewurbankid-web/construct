@@ -92,7 +92,7 @@ import { handleLogs } from './logBuffer.mjs';
 import { unitsIndex, unitSummary, featuresIndex, featureSummary } from './unitsApi.mjs';
 import { createRulesRouter } from './rulesApi.mjs';
 import { buildPalette } from '../../../packages/engine/palette.mjs';
-import { readPageSource } from './pageSource.mjs';
+import { readPageSource, lintPageBuffer, quickFixPageBuffer } from './pageSource.mjs';
 import { viewPage, openReference, openSourceLocation, viewProjectFile } from './projectNav.mjs';
 import { featureFlow, flowFilePaths } from './flowApi.mjs';
 import { describePageChange, adoptOwnWrite, pageChangeTracker } from './pageChanges.mjs';
@@ -532,6 +532,32 @@ app.get('/api/pages/source', (req, res) => {
   try {
     const { feature, file } = req.query;
     res.json(readPageSource(currentRoot(), feature, file));
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+// #551 -- live diagnostics for an unsaved buffer in the code drill-down (the
+// Monaco source view's "type an edit, see the marker without saving" ask).
+app.post('/api/pages/lint', (req, res) => {
+  try {
+    const { feature, file, source } = req.body || {};
+    if (typeof source !== 'string') return res.status(400).json({ ok: false, error: 'source is required.' });
+    res.json({ ok: true, ...lintPageBuffer(currentRoot(), feature, file, source) });
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+// #551 -- one quick fix for one diagnostic: "mechanical" (the rule's own
+// deterministic transform) or "ai" (a model call scoped to the violation).
+// Returns the fixed buffer for the client to diff and review; never writes.
+app.post('/api/pages/quickfix', async (req, res) => {
+  try {
+    const { feature, file, source, rule, mode } = req.body || {};
+    if (typeof source !== 'string' || !rule || !mode) return res.status(400).json({ ok: false, error: 'source, rule and mode are required.' });
+    const result = await quickFixPageBuffer(currentRoot(), feature, file, source, rule, mode, getSettings().llmProviders.importFill);
+    res.json({ ok: true, ...result });
   } catch (e) {
     handlePagesEditorError(res, e);
   }

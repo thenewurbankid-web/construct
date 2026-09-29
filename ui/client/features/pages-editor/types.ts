@@ -31,7 +31,10 @@ export type PageTree = { roots: PagesEditorNode[]; contentHash: string };
 export type DiagnosticSource = 'typescript' | 'architecture' | 'separation-of-concerns';
 export type DiagnosticSeverity = 'error' | 'warning' | 'info';
 
-/** One diagnostic as returned by GET /api/pages/source (1-based positions). */
+/** One diagnostic as returned by GET/POST /api/pages/source|lint (1-based positions).
+ * `mechanicalFixAvailable` (#551) is true when the rule has a deterministic quick
+ * fix (`POST /api/pages/quickfix` with `mode: 'mechanical'`); the "AI" quick fix is
+ * always offered regardless. */
 export type SourceDiagnostic = {
   source: DiagnosticSource;
   code: string;
@@ -41,6 +44,7 @@ export type SourceDiagnostic = {
   column: number;
   endLine: number;
   endColumn: number;
+  mechanicalFixAvailable: boolean;
 };
 
 /** Editor-neutral marker (1-based, end exclusive), message pre-labelled. */

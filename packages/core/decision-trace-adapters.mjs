@@ -7,6 +7,7 @@
 //   choicesFromWiring(planned)                          the answered `q-route`, `q-dependency` and `q-source` of a `planFromBlocks` result (#654, #621)
 //   choiceFromProofOptions(feature, summary, chosen, by) what a person did about the proof of a screen (#653): the closed options of
 //                                                       `proofSummary` (proof.mjs) as offered, and the one chosen (run or skip)
+//   choiceFromQuickFix(rule, mechanicalAvailable, chosen, by) Mechanical | AI for one code drill-down quick fix (#551)
 //
 // Pure: no filesystem, no clock, no network. The summary of each choice is the fixed-size object that was offered, with
 // `chosen` null and every path hidden; a choice that cannot be rebuilt (its question is gone) is left out, never guessed.
@@ -174,4 +175,32 @@ export function choiceFromProofOptions(feature, summary, chosen, by = 'person') 
   const question = `What next for the proof of the ${String(feature).slice(0, 80)} screen?`;
   const shown = hidePathsDeep({ id: 'requirement.proof.next', question, options: (summary?.options ?? []).map((o) => ({ id: o.id, label: o.label, enabled: true, why: o.why ?? '' })), chosen: null });
   return { chooser: { id: 'requirement.proof.next', question }, summary: shown, chosen, by };
+}
+
+/**
+ * The Mechanical | AI split of a quick fix (#551, pages editor code drill-down): the two closed options as offered for one
+ * rule violation ("Mechanical" disabled where `packages/core/ruleFixes.mjs` has no deterministic transform for the rule)
+ * and the mode the person picked. One chooser id for every rule, so statistics group like with like across rules.
+ *
+ * @param {string} rule The diagnostic rule id the fix was requested for (e.g. `PAGE-003`).
+ * @param {boolean} mechanicalAvailable Whether the "Mechanical" option was enabled.
+ * @param {'mechanical'|'ai'} chosen The mode the person picked.
+ * @param {'person'|'llm'|'decision-model'} [by] Who chose (default `person`).
+ * @returns {{ chooser: { id: string, question: string }, summary: object, chosen: string, by: string }} A choice for `recordChoices`.
+ *
+ * @example
+ * choiceFromQuickFix('PAGE-003', true, 'mechanical').chooser.id; // => 'pages-editor.quick-fix'
+ */
+export function choiceFromQuickFix(rule, mechanicalAvailable, chosen, by = 'person') {
+  const question = `How should the ${rule} violation be fixed?`;
+  const shown = hidePathsDeep({
+    id: 'pages-editor.quick-fix',
+    question,
+    options: [
+      { id: 'mechanical', label: 'Fix: Mechanical', enabled: !!mechanicalAvailable, why: mechanicalAvailable ? '' : `No mechanical fix is known for ${rule}.` },
+      { id: 'ai', label: 'Fix: AI', enabled: true, why: '' },
+    ],
+    chosen: null,
+  });
+  return { chooser: { id: 'pages-editor.quick-fix', question }, summary: shown, chosen, by };
 }
