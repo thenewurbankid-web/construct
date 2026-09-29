@@ -51,21 +51,23 @@ function usageError(message) {
  * @returns {{id:string, module:string, layers:string[], scope:string, defaultSeverity:string, why:string, expected:string[], detect:{kind:string,[k:string]:unknown}}}
  */
 export function validateRuleShape(rule, sourcePath) {
+  /** @returns {never} @param {string} msg */
   const fail = (msg) => { throw usageError(`Invalid local rule (${sourcePath}): ${msg}`); };
   if (!rule || typeof rule !== 'object' || Array.isArray(rule)) fail('must be a YAML mapping.');
-  const { id, module, layers, scope, defaultSeverity, why, expected, detect } = rule;
+  const { id, module, layers, scope, defaultSeverity, why, expected, detect } = /** @type {Record<string, unknown>} */ (rule);
   if (typeof id !== 'string' || !id.trim()) fail('"id" must be a non-empty string.');
-  if (!VALID_MODULES.has(module)) fail(`"module" must be one of ${[...VALID_MODULES].join(', ')}.`);
+  if (typeof module !== 'string' || !VALID_MODULES.has(module)) fail(`"module" must be one of ${[...VALID_MODULES].join(', ')}.`);
   if (!Array.isArray(layers) || !layers.length || layers.some((l) => typeof l !== 'string')) fail('"layers" must be a non-empty array of layer names.');
-  if (!VALID_SCOPES.has(scope)) fail(`"scope" must be one of ${[...VALID_SCOPES].join(', ')}.`);
-  if (!VALID_SEVERITIES.has(defaultSeverity)) fail(`"defaultSeverity" must be one of ${[...VALID_SEVERITIES].join(', ')}.`);
+  if (typeof scope !== 'string' || !VALID_SCOPES.has(scope)) fail(`"scope" must be one of ${[...VALID_SCOPES].join(', ')}.`);
+  if (typeof defaultSeverity !== 'string' || !VALID_SEVERITIES.has(defaultSeverity)) fail(`"defaultSeverity" must be one of ${[...VALID_SEVERITIES].join(', ')}.`);
   if (typeof why !== 'string' || !why.trim()) fail('"why" must be a non-empty string.');
   if (!Array.isArray(expected) || expected.some((e) => typeof e !== 'string')) fail('"expected" must be an array of strings.');
-  if (!detect || typeof detect !== 'object' || typeof detect.kind !== 'string') fail('"detect.kind" is required.');
-  const shapeOk = DETECTOR_SHAPES[detect.kind];
+  if (!detect || typeof detect !== 'object' || typeof (/** @type {Record<string, unknown>} */ (detect).kind) !== 'string') fail('"detect.kind" is required.');
+  const typedDetect = /** @type {{kind:string,[k:string]:unknown}} */ (detect);
+  const shapeOk = DETECTOR_SHAPES[typedDetect.kind];
   if (!shapeOk) fail(`"detect.kind" must be one of ${Object.keys(DETECTOR_SHAPES).join(', ')} (declarative detectors only -- see the security note in local-rules.mjs).`);
-  if (!shapeOk(detect)) fail(`"detect" is missing the fields "${detect.kind}" needs.`);
-  return { id, module, layers, scope, defaultSeverity, why, expected, detect };
+  if (!shapeOk(typedDetect)) fail(`"detect" is missing the fields "${typedDetect.kind}" needs.`);
+  return { id, module, layers, scope, defaultSeverity, why, expected: /** @type {string[]} */ (expected), detect: typedDetect };
 }
 
 /**
@@ -106,19 +108,31 @@ function escapeRegExp(s) {
  */
 export function runDetector(rule, source) {
   const { detect } = rule;
+  // `detect`'s per-kind fields are `unknown` here (the index signature covers every declarative
+  // detector kind); `validateRuleShape`/`DETECTOR_SHAPES` already guarantee their real shape per
+  // kind before a rule ever reaches this function, so casting to the shape that kind promises is
+  // just documenting that guarantee, not asserting something new.
   if (detect.kind === 'forbiddenImport') {
-    const re = new RegExp(`(['"])${escapeRegExp(detect.module)}\\1`);
+    const module = /** @type {string} */ (detect.module);
+    const message = /** @type {string|undefined} */ (detect.message);
+    const re = new RegExp(`(['"])${escapeRegExp(module)}\\1`);
     const m = re.exec(source);
-    return m ? [{ line: lineOf(source, m.index), message: detect.message || `Forbidden import "${detect.module}".` }] : [];
+    return m ? [{ line: lineOf(source, m.index), message: message || `Forbidden import "${module}".` }] : [];
   }
   if (detect.kind === 'forbiddenPattern') {
-    const re = new RegExp(detect.regex, detect.flags || '');
+    const regex = /** @type {string} */ (detect.regex);
+    const flags = /** @type {string|undefined} */ (detect.flags);
+    const message = /** @type {string|undefined} */ (detect.message);
+    const re = new RegExp(regex, flags || '');
     const m = re.exec(source);
-    return m ? [{ line: lineOf(source, m.index), message: detect.message || `Matches forbidden pattern /${detect.regex}/.` }] : [];
+    return m ? [{ line: lineOf(source, m.index), message: message || `Matches forbidden pattern /${regex}/.` }] : [];
   }
   if (detect.kind === 'requiredPattern') {
-    const re = new RegExp(detect.regex, detect.flags || '');
-    return re.test(source) ? [] : [{ line: 1, message: detect.message || `Missing required pattern /${detect.regex}/.` }];
+    const regex = /** @type {string} */ (detect.regex);
+    const flags = /** @type {string|undefined} */ (detect.flags);
+    const message = /** @type {string|undefined} */ (detect.message);
+    const re = new RegExp(regex, flags || '');
+    return re.test(source) ? [] : [{ line: 1, message: message || `Missing required pattern /${regex}/.` }];
   }
   return [];
 }

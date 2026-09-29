@@ -149,7 +149,13 @@ export function matchSlotsToHandlers(slotNames, hookMemberNames) {
  * naming convention. Exported for `plan-touches.mjs`: the exact same
  * resolution `generateController` uses to find its prerequisite files, reused
  * rather than duplicated so a plan preview can't disagree with the real run
- * about which files a bind depends on. */
+ * about which files a bind depends on.
+ * @param {string} root - project root.
+ * @param {string} name - the controller's unit name (e.g. `Products`).
+ * @param {string} feature - the feature slice name.
+ * @param {object} [envelope] - an already schema-validated Context Envelope, if one exists.
+ * @returns {{pagePropsFile: string, hookFile: string, propsTypeName: string, hookName: string}}
+ */
 export function resolveSourceFiles(root, name, feature, envelope) {
   const cap = pascalCase(name, 'Controller');
   if (envelope) {

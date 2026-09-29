@@ -14,8 +14,12 @@
 import yaml from 'js-yaml';
 import { validateParseSpec, SelectorError } from './storySelectors.mjs';
 
+/** A model-proposed `{url, parse}` pattern was refused: an invalid selector, or a malformed proposal shape. */
 export class PatternProposalError extends Error {
-  /** @param {string} code @param {string} message */
+  /**
+   * @param {string} code - a short machine-readable reason.
+   * @param {string} message - a human-readable description of the failure.
+   */
   constructor(code, message) {
     super(message);
     this.name = 'PatternProposalError';
@@ -47,7 +51,8 @@ function readFrontMatter(text) {
  * than merge a proposal with even one invalid selector.
  *
  * @param {string} existingText The story.md file's current full text (`''` for a brand-new file).
- * @param {{ url: string, parse: Record<string, unknown> }} proposal What the model proposed.
+ * @param {{ url?: string, parse?: Record<string, unknown> }} [proposal] What the model proposed; missing/invalid
+ *   fields throw rather than default silently (`url` is required at runtime).
  * @returns {{ before: string, after: string, changed: boolean, selectors: Record<string, {kind:'css'|'xpath', value:string}> }}
  * @throws {PatternProposalError} An invalid `url`, an invalid `parse` shape, or any selector that fails
  *   `storySelectors.validateParseSpec` (design 9.6b): length cap, safe syntax, no banned construct.

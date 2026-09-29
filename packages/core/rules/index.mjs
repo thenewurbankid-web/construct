@@ -11,7 +11,11 @@ import { rule as WORKFLOW_001 } from './workflow-001.mjs';
 /** @type {import('./types.mjs').Rule[]} */
 export const RULES = [ROUTE_001, ROUTE_002, SERVICE_002, WORKFLOW_001];
 
-/** @param {string} id @returns {import('./types.mjs').Rule | undefined} */
+/**
+ * Look up one rule from the catalog by its id.
+ * @param {string} id - the rule id (e.g. `'ROUTE-001'`).
+ * @returns {import('./types.mjs').Rule | undefined} the matching rule, or undefined if none is registered.
+ */
 export function findRule(id) {
   return RULES.find((r) => r.id === id);
 }

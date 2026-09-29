@@ -671,7 +671,7 @@ export function readRawRules(root) {
  * Load and normalize a project's `architecture.yml`. A missing file yields the built-in defaults (strict Next.js preset); a present one is merged over them: rules are normalized to severities, the layer graph is chosen from `project.framework` and merged with any `layers:` override (`normalizeLayers`; #699 — it used to be silently discarded here), and `frozen` / `nonLayer` globs are normalized.
  *
  * @param {string} root Project root that contains (or should contain) `architecture.yml`.
- * @returns {{version:number, preset:string, project:object, features:{root:string}, layers:object, rules:object, exceptions:object[], frozen:string[], nonLayer:string[]}} The effective configuration.
+ * @returns {{version:number, preset:string, project:object, features:{root:string}, layers:object, rules:object, exceptions:object[], frozen:string[], nonLayer:string[], localRules:string[]}} The effective configuration.
  * @throws {Error} A usage error when the file is not valid YAML or is not a mapping at the top level.
  * @since 0.8
  *

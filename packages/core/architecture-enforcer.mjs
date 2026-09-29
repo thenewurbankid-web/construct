@@ -963,7 +963,13 @@ export { validateExceptionsShape, exceptionApplies, expiredExceptionViolations }
 
 // ---- Core enforcement --------------------------------------------------
 
-/** @param {{rule: string, file: string, line: number, message: string, why: string, expected?: string[], suggestedFix?: string}} desc */
+/**
+ * Turn a raw violation description into a `makeViolation` record and append it to `out`,
+ * unless the rule is configured `off` or an exception in `config` covers this file.
+ * @param {object} config - loaded project config (rule severities and exceptions).
+ * @param {object[]} out - the violations array being accumulated; mutated in place.
+ * @param {{rule: string, file: string, line: number, message: string, why: string, expected?: string[], suggestedFix?: string}} desc
+ */
 function pushViolation(config, out, desc) {
   const { rule, file, line, message, why, expected = [], suggestedFix } = desc;
   const severity = config.rules[rule]?.severity || 'error';
@@ -986,6 +992,15 @@ function knownFolders(graph) {
   return new Set(Object.values(graph).map(layerFolder).filter(Boolean));
 }
 
+/**
+ * Flag SOC-001 when a file sits inside a `features/<feature>/` folder whose name
+ * isn't one of the graph's recognized architecture layers; a no-op for anything
+ * outside a `features/` feature folder or already using a known layer folder.
+ * @param {object} config - loaded project config (rule severities and exceptions).
+ * @param {object} graph - the layer graph (`loadLayerGraph`'s result).
+ * @param {string} r - the file path, relative to the project root.
+ * @param {object[]} out - the violations array being accumulated; mutated in place.
+ */
 function checkUnclassified(config, graph, r, out) {
   const m = r.match(/^features\/[^/]+\/([^/]+)\//);
   if (!m) return;
@@ -1026,6 +1041,14 @@ function resolveImportLayer(root, fromAbsFile, importPath, graph) {
 // been created). Checked regardless of whether the target sits inside or
 // outside the project root — a controller that wraps an externally-authored
 // file may legitimately reach far outside root via a long relative path.
+/**
+ * Flag IMPORT-001 on every relative import in `source` that does not resolve to a file on disk.
+ * @param {object} config - loaded project config (rule severities and exceptions).
+ * @param {string} absFile - absolute path of the file being checked, used to resolve relative imports.
+ * @param {string} source - the file's source text.
+ * @param {string} r - the file path, relative to the project root (used in the reported violation).
+ * @param {object[]} out - the violations array being accumulated; mutated in place.
+ */
 function checkDanglingImports(config, absFile, source, r, out) {
   for (const importPath of extractImports(source)) {
     if (!importPath.startsWith('.')) continue;
@@ -1064,22 +1087,19 @@ function checkGenericEdges(config, graph, root, absFile, r, layer, out) {
   }
 }
 
-/**
- * Validate architecture boundaries for a project (or a scoped subset of its
- * files). Entry point for other modules to compose into an aggregate
- * `construct validate` command.
- *
- * @param {string} root - project root.
- * @param {{files?: string[]}} [opts] - restrict checking to these files
- *   (relative to root, or absolute) instead of walking the whole project;
- *   used by the composer's post-generation self-check.
- * @returns {{violations: object[], ok: boolean}}
- */
 // Builds the per-layer `detectLayerViolations` opts from config once per run: the
 // budget overrides (#508/#503/#505) and the opt-in flags (#506/#578/#581/#594/
 // #667/#668/#669). Shared by `validateArchitecture` (whole-project/scoped-files
 // pass) and `lintBuffer` (single unsaved buffer, lint-buffer.mjs) so the two never
 // drift on what a layer's rule set is — see lint-buffer.mjs's parity test.
+/**
+ * Build the `detectLayerViolations` opts object for one layer from the project config:
+ * the JSX complexity budgets (page vs. component/expression) and which opt-in structural
+ * checks (domain purity, workflow transition table, state union, etc.) are enabled.
+ * @param {object} config - loaded project config (`loadConfig`'s `rules` map).
+ * @param {string} layer - the layer name (e.g. `'page'`, `'component'`, `'domain'`).
+ * @returns {object} the opts object to pass into `detectLayerViolations`.
+ */
 export function layerViolationOptsFor(config, layer) {
   const componentComplexityOpts = {
     maxJsxDepth: config.rules['COMPONENT-006-max-depth']?.value,
@@ -1104,6 +1124,17 @@ export function layerViolationOptsFor(config, layer) {
   };
 }
 
+/**
+ * Validate architecture boundaries for a project (or a scoped subset of its
+ * files). Entry point for other modules to compose into an aggregate
+ * `construct validate` command.
+ *
+ * @param {string} root - project root.
+ * @param {{files?: string[]}} [opts] - restrict checking to these files
+ *   (relative to root, or absolute) instead of walking the whole project;
+ *   used by the composer's post-generation self-check.
+ * @returns {{violations: object[], ok: boolean}}
+ */
 export function validateArchitecture(root, opts = {}) {
   const config = loadConfig(root);
   const graph = loadLayerGraph(root); // throws ConstructError on a malformed custom graph

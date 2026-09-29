@@ -17,7 +17,10 @@ import { impactFromChangedFiles } from './impact.mjs';
 import { aggregateValidation } from '../core/registry.mjs';
 
 /** The declared file paths of a scope/touches object (`{features?, files?}`), whichever of the two
- * shapes used across the codebase: a plain string, or `{path, change}` (plan.mjs's `touches.files`). */
+ * shapes used across the codebase: a plain string, or `{path, change}` (plan.mjs's `touches.files`).
+ * @param {{features?: string[], files?: any[]}|null} scope - a block's `declaredScope` or a plan step's `touches`.
+ * @returns {string[]} the declared file paths, project-relative.
+ */
 export function declaredFilePaths(scope) {
   if (!scope || !Array.isArray(scope.files)) return [];
   return scope.files.map((f) => (typeof f === 'string' ? f : f?.path)).filter((p) => typeof p === 'string' && p.length);
@@ -66,7 +69,7 @@ export function affectedSet(root, changedFiles, impactOpts = {}) {
  *
  * @param {string} root Project root.
  * @param {string[]} changedFiles Project-relative paths actually written.
- * @param {Array<{name: string, validate: Function}>} enforcers e.g. `DEFAULT_ENFORCERS`.
+ * @param {import('../core/registry.mjs').Enforcer[]} enforcers e.g. `DEFAULT_ENFORCERS`.
  * @param {object} [impactOpts] Forwarded to `affectedSet`.
  * @returns {{violations: object[], ok: boolean, affected: {files: string[], features: string[], impact: object|null}}}
  */
@@ -82,10 +85,11 @@ export function validateAffectedSet(root, changedFiles, enforcers, impactOpts = 
  * rule validation, since there is nothing meaningful to validate a refused transition against.
  *
  * @param {string} root Project root.
- * @param {object} options
- * @param {{features?: string[], files?: any[]}|null} options.scope The transition's declared scope.
- * @param {string[]} options.changedFiles Project-relative paths actually written.
- * @param {Array<{name: string, validate: Function}>} options.enforcers The rule catalog to run.
+ * @param {object} [options] `scope`/`changedFiles`/`enforcers` are required for a meaningful result; a missing
+ *   one is treated as empty rather than throwing (destructuring default lets this be called with no options).
+ * @param {{features?: string[], files?: any[]}|null} [options.scope] The transition's declared scope.
+ * @param {string[]} [options.changedFiles] Project-relative paths actually written.
+ * @param {import('../core/registry.mjs').Enforcer[]} [options.enforcers] The rule catalog to run.
  * @param {object} [options.impactOpts] Forwarded to `affectedSet`.
  * @returns {{ok: boolean, code: 'OUT_OF_SCOPE'|'RULE_VIOLATION'|'OK', scope: object, blastRadius: object|null, validation: object|null}}
  */

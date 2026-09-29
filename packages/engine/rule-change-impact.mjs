@@ -55,6 +55,7 @@ export function simulateRuleChangeImpact(root, currentConfig, proposedConfig, op
   const currentKeys = new Set(currentViolations.map(violationKey));
   const proposedKeys = new Set(proposedViolations.map(violationKey));
 
+  /** @type {Record<string, {newlyViolating: string[], newlyClean: string[]}>} */
   const diff = {};
   const bucket = (rule) => (diff[rule] ||= { newlyViolating: [], newlyClean: [] });
 

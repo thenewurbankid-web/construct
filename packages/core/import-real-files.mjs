@@ -24,7 +24,13 @@ export const IMPORT_TODO_MARKER = 'TODO(import):';
  * never writes, so it's safe to call before anything is scaffolded.
  * Exported for `plan-touches.mjs`: the same collision check `importVertical`
  * runs before writing anything, reused rather than duplicated so a plan
- * preview and the real run can never disagree about whether this refuses. */
+ * preview and the real run can never disagree about whether this refuses.
+ * @param {string} root - project root.
+ * @param {string} name - the unit name being imported (e.g. a component/page name).
+ * @param {string} feature - the feature slice name.
+ * @param {string[]} layers - the layers to check.
+ * @returns {string[]} absolute paths of target files that already exist with real (non-stub) content.
+ */
 export function existingRealFiles(root, name, feature, layers) {
   const hits = [];
   for (const layer of layers) {

@@ -9,7 +9,11 @@
 // a value that is close but not an exact (whitespace-normalised) substring is still rejected.
 const collapse = (s) => String(s).replace(/\s+/g, ' ').trim();
 
-/** Is `value` present, verbatim (whitespace-normalised), in `pageText`? */
+/** Is `value` present, verbatim (whitespace-normalised), in `pageText`?
+ * @param {string} pageText - the fetched, sanitised page text to search.
+ * @param {string} value - the candidate quoted text.
+ * @returns {boolean} true when `value` (whitespace-collapsed) is a substring of `pageText` (whitespace-collapsed).
+ */
 export function isQuotedIn(pageText, value) {
   if (typeof value !== 'string' || value === '') return false;
   return collapse(pageText).includes(collapse(value));
@@ -32,6 +36,7 @@ export function isQuotedIn(pageText, value) {
  * // => 'shows only on delivered orders'
  */
 export function verifyExtraction(pageText, values) {
+  /** @type {Record<string, string|string[]>} */
   const verified = {};
   const rejected = [];
   const text = typeof pageText === 'string' ? pageText : '';

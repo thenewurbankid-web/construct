@@ -31,6 +31,10 @@ export function validateArchitectureConfig(proposed) {
   if (typeof proposed !== 'object' || Array.isArray(proposed)) {
     return { valid: false, errors: ['architecture.yml must be a YAML mapping (object) at the top level.'] };
   }
+  // Narrowed to a non-array object above; cast to an indexable shape so the (already-validated) field
+  // reads below type-check -- each field is still handed to its own real validator (normalizeRules et
+  // al.), which is what actually enforces its shape.
+  const config = /** @type {Record<string, any>} */ (proposed);
 
   const run = (fn) => {
     try {
@@ -41,17 +45,17 @@ export function validateArchitectureConfig(proposed) {
   };
 
   let framework = 'nextjs';
-  run(() => { framework = normalizeFramework(proposed.project?.framework); });
-  run(() => normalizeRules(proposed.rules, DEFAULT_RULES));
-  run(() => normalizeLayers(proposed.layers, framework));
+  run(() => { framework = normalizeFramework(config.project?.framework); });
+  run(() => normalizeRules(config.rules, DEFAULT_RULES));
+  run(() => normalizeLayers(config.layers, framework));
   run(() => validateExceptionsShape(proposed));
-  run(() => normalizeFrozen(proposed.frozen));
-  run(() => normalizeNonLayer(proposed.nonLayer));
+  run(() => normalizeFrozen(config.frozen));
+  run(() => normalizeNonLayer(config.nonLayer));
 
-  if (proposed.features !== undefined) {
-    if (typeof proposed.features !== 'object' || Array.isArray(proposed.features) || proposed.features === null) {
+  if (config.features !== undefined) {
+    if (typeof config.features !== 'object' || Array.isArray(config.features) || config.features === null) {
       errors.push("Invalid 'features' in architecture.yml — expected a mapping, e.g. { root: 'features' }.");
-    } else if (proposed.features.root !== undefined && (typeof proposed.features.root !== 'string' || !proposed.features.root.trim())) {
+    } else if (config.features.root !== undefined && (typeof config.features.root !== 'string' || !config.features.root.trim())) {
       errors.push("Invalid 'features.root' in architecture.yml — expected a non-empty string.");
     }
   }

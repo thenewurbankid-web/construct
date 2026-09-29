@@ -93,7 +93,10 @@ export function dependencyCruiserBoundaryRules(config) {
 /** Rule codes from `architecture.yml`'s `rules:` map that no path-regex export can express
  * (AST/semantic checks: state hooks, fetch calls, purity, naming, JSX complexity, workflow
  * reachability, numeric overrides...). Everything in `config.rules` that is enabled (severity
- * not 'off') and not one of BOUNDARY_RULE_SPECS' own codes lands here. */
+ * not 'off') and not one of BOUNDARY_RULE_SPECS' own codes lands here.
+ * @param {ReturnType<import('./config.mjs').loadConfig>} config
+ * @returns {string[]} the not-expressible rule codes, sorted.
+ */
 export function notExpressibleRules(config) {
   const boundaryCodes = new Set(BOUNDARY_RULE_SPECS.flatMap((s) => s.codes));
   return Object.entries(config.rules || {})
@@ -147,7 +150,12 @@ export const EXPORT_CI_TARGETS = ['dependency-cruiser', 'eslint-boundaries'];
 /** `construct export ci --target <target>` entry point: `target` is `'dependency-cruiser'` or
  * `'eslint-boundaries'`. Throws (caller's job to turn into a usage error) on an unknown target.
  * `root` is only used by the eslint-boundaries target (exportArchitectureRules.mjs's generator
- * re-reads architecture.yml itself via `loadLayerGraph(root)`, #513). */
+ * re-reads architecture.yml itself via `loadLayerGraph(root)`, #513).
+ * @param {string} root - project root.
+ * @param {ReturnType<import('./config.mjs').loadConfig>} config
+ * @param {string} target - one of `EXPORT_CI_TARGETS`.
+ * @returns {string} the rendered CI config file content.
+ */
 export function renderCiExport(root, config, target) {
   if (target === 'dependency-cruiser') return renderDependencyCruiserConfig(config);
   if (target === 'eslint-boundaries') return generateEslintFlatConfigModule(root);

@@ -63,7 +63,7 @@ function arbitrariesForParams(params) {
  *
  * @param {object} ast A parsed Program.
  * @param {string} source The exact source `ast` was parsed from (for slicing each function's own text).
- * @returns {{name: string, params: object[], source: string, isPure: boolean}[]}
+ * @returns {{name: string, params: object[], source: string, evalSource: string, isPure: boolean}[]}
  */
 function findTopLevelPureCandidates(ast, source) {
   const candidates = [];
@@ -161,7 +161,13 @@ function runEquivalence(name, beforeEvalSource, afterEvalSource, arbitraries) {
     return { before: call(beforeFn), after: call(afterFn) };
   };
 
-  const property = fc.property(...arbitraries, (...args) => {
+  // fast-check's `property` signature needs a fixed-length tuple type to line up each arbitrary's
+  // generated value with the predicate's positional args; `arbitraries` is a runtime-length array (one
+  // per the function-under-test's real arity, discovered per call site), which TS cannot express as a
+  // tuple here -- cast just the argument to a tuple shape rather than fork a per-arity overload for a
+  // test-only helper (casting `fc.property` itself instead breaks `fc.check`'s overload resolution below).
+  const typedArbitraries = /** @type {[any, ...any[]]} */ (arbitraries);
+  const property = fc.property(...typedArbitraries, (...args) => {
     const { before, after } = callBoth(...args);
     if (before.threw || after.threw) return before.threw === after.threw && before.value === after.value;
     return isDeepStrictEqual(before.value, after.value);

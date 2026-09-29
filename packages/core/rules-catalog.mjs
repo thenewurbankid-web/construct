@@ -27,9 +27,8 @@ import { DEFAULT_RULES, loadConfig } from './config.mjs';
  * tagged 'architecture' there since every violation `pushViolation` in that file produces carries
  * that module unconditionally. This catalog lists SOC-001 under its canonical
  * 'separation-of-concerns' module; a real violation from the fallback path may still say
- * 'architecture'. Fixing that inconsistency is detection-logic work, out of scope here.
- * @type {'architecture'|'separation-of-concerns'|'readability'} */
-const MODULES = { ARCHITECTURE: 'architecture', SOC: 'separation-of-concerns', READABILITY: 'readability' };
+ * 'architecture'. Fixing that inconsistency is detection-logic work, out of scope here. */
+const MODULES = Object.freeze({ ARCHITECTURE: 'architecture', SOC: 'separation-of-concerns', READABILITY: 'readability' });
 
 /** `scope: 'buffer'` rules need only the one file's own source text to decide (the same input a
  * live editor buffer already has, per #550's future lintBuffer). `scope: 'project'` rules need the
@@ -46,7 +45,7 @@ const MODULES = { ARCHITECTURE: 'architecture', SOC: 'separation-of-concerns', R
  * graph"), TYPE-001 (a whole-program tsc run), SLICE-003 (compares index.ts's exports against
  * every real file/call site in the feature), PROP-LINK (cross-file call-site analysis) and
  * EXCEPTION-EXPIRED (checked once over the whole config, not any one file) are 'project'. */
-const SCOPE = { BUFFER: 'buffer', PROJECT: 'project' };
+const SCOPE = Object.freeze({ BUFFER: 'buffer', PROJECT: 'project' });
 
 const NO_LAYERS = [];
 

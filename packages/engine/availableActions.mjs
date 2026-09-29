@@ -61,6 +61,7 @@ export function availableActions(block, state, catalog = {}, projectCtx = {}) {
   const layer = block?.layer;
   const layers = projectCtx.layers || DEFAULT_LAYERS;
   const canImport = layers[layer]?.canImport || [];
+  /** @type {AvailableAction[]} */
   const out = [];
 
   for (const target of canImport) {
@@ -94,6 +95,7 @@ export function availableActions(block, state, catalog = {}, projectCtx = {}) {
  * @returns {ActionCandidate[]}
  */
 export function pageActionCatalog(palette, wrapSuggestions = { hit: null, suggestions: [] }) {
+  /** @type {ActionCandidate[]} */
   const out = [];
   for (const kind of ['providers', 'expressions', 'components']) {
     for (const entry of palette?.[kind] || []) {

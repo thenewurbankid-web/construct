@@ -8,8 +8,12 @@ export const MAX_SELECTOR_LENGTH = 200;
 export const SINGLE_VALUE_FIELDS = Object.freeze(['title', 'description', 'status']);
 export const LIST_FIELDS = Object.freeze(['acceptance']);
 
+/** A `parse` selector was refused: unsafe syntax, a banned construct, too long, or a malformed descriptor shape. */
 export class SelectorError extends Error {
-  /** @param {string} code @param {string} message */
+  /**
+   * @param {string} code - a short machine-readable reason (e.g. `'BAD_SYNTAX'`, `'BANNED_CONSTRUCT'`).
+   * @param {string} message - a human-readable description of the failure.
+   */
   constructor(code, message) {
     super(message);
     this.name = 'SelectorError';
@@ -26,6 +30,7 @@ const CSS_SAFE = /^[A-Za-z0-9\s#.,:()[\]='"*>+~^$|_-]+$/;
 const XPATH_SAFE = /^[A-Za-z0-9\s./:@*()[\]='"_-]+$/;
 // Banned regardless of dialect: anything that could execute script, or (XPath) load or reach outside the
 // document being evaluated.
+/** @type {[RegExp, string][]} */
 const BANNED = [
   [/javascript\s*:/i, 'must not contain "javascript:"'],
   [/expression\s*\(/i, 'must not contain a CSS expression()'],
@@ -46,16 +51,22 @@ function checkCommon(value, kind) {
   }
 }
 
-/** @param {string} value a CSS selector, evaluated only through `querySelectorAll`. */
+/** Validate a CSS selector, evaluated only through `querySelectorAll`; throws `SelectorError` on anything unsafe.
+ * @param {string} value a CSS selector, evaluated only through `querySelectorAll`.
+ * @returns {{kind: 'css', value: string}} the validated selector descriptor.
+ */
 export function validateCssSelector(value) {
   checkCommon(value, 'CSS');
   if (!CSS_SAFE.test(value)) throw new SelectorError('BAD_SYNTAX', 'That CSS selector uses characters that are not allowed.');
   return { kind: 'css', value };
 }
 
-/** @param {string} value an XPath 1.0 node-set path, evaluated only through `document.evaluate` (browser) or an
+/** Validate an XPath 1.0 node-set path; throws `SelectorError` on anything unsafe.
+ * @param {string} value an XPath 1.0 node-set path, evaluated only through `document.evaluate` (browser) or an
  *   XPath 1.0 engine over a parsed HTML tree (server). No positional-index guidance is enforced here (that is a
- *   picker concern, #386); this only rejects unsafe forms. */
+ *   picker concern, #386); this only rejects unsafe forms.
+ * @returns {{kind: 'xpath', value: string}} the validated selector descriptor.
+ */
 export function validateXPathSelector(value) {
   checkCommon(value, 'XPath');
   if (!XPATH_SAFE.test(value)) throw new SelectorError('BAD_SYNTAX', 'That XPath selector uses characters that are not allowed.');
@@ -65,13 +76,14 @@ export function validateXPathSelector(value) {
 /**
  * One `parse` entry: a plain string (CSS) or `{css}` / `{xpath}`.
  * @param {unknown} descriptor
+ * @returns {{kind: 'css'|'xpath', value: string}} the validated selector descriptor.
  */
 export function validateSelectorDescriptor(descriptor) {
   if (typeof descriptor === 'string') return validateCssSelector(descriptor);
   if (descriptor && typeof descriptor === 'object' && !Array.isArray(descriptor)) {
     const keys = Object.keys(descriptor);
-    if (keys.length === 1 && keys[0] === 'css') return validateCssSelector(descriptor.css);
-    if (keys.length === 1 && keys[0] === 'xpath') return validateXPathSelector(descriptor.xpath);
+    if (keys.length === 1 && keys[0] === 'css') return validateCssSelector(/** @type {{css: string}} */ (descriptor).css);
+    if (keys.length === 1 && keys[0] === 'xpath') return validateXPathSelector(/** @type {{xpath: string}} */ (descriptor).xpath);
   }
   throw new SelectorError('BAD_SHAPE', 'A selector must be a CSS string, {css: "..."} or {xpath: "..."}.');
 }
@@ -84,6 +96,7 @@ export function validateSelectorDescriptor(descriptor) {
 export function validateParseSpec(parse) {
   if (parse === undefined || parse === null) return {};
   if (typeof parse !== 'object' || Array.isArray(parse)) throw new SelectorError('BAD_SHAPE', 'parse must be an object of field -> selector.');
+  /** @type {Record<string, {kind:'css'|'xpath', value:string}>} */
   const out = {};
   for (const [field, descriptor] of Object.entries(parse)) {
     try {

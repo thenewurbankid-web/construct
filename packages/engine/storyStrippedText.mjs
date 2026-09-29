@@ -46,8 +46,10 @@ export function buildStrippedText(html, opts = {}) {
     for (const child of node.childNodes) walk(child);
   }
   // See storySkeleton.mjs's comment: walk from the Document node so a fragment with several top-level siblings
-  // (no wrapping <html>) is not silently reduced to just its first element.
-  for (const child of document.childNodes) walk(child);
+  // (no wrapping <html>) is not silently reduced to just its first element. Array.from, not a direct for..of:
+  // this tsconfig has no "DOM"/"DOM.Iterable" lib, so linkedom's NodeListOf type has no Symbol.iterator here
+  // even though the runtime value is iterable.
+  for (const child of Array.from(document.childNodes)) walk(child);
 
   const collapsed = parts.join(' ').replace(/\s+/g, ' ').trim();
   const bytesOf = (s) => Buffer.byteLength(s, 'utf8');

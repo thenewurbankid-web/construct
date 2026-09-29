@@ -99,6 +99,7 @@ export function formatReport(violations, { format = 'text' } = {}) {
  * // => { severity: 'error', why: null, name: 'Pages cannot call fetch', count: 0 }
  */
 export function summarizeViolations(violations, rules = {}) {
+  /** @type {Record<string, {severity: string|null, why: string|null, name: string|null, count: number}>} */
   const summary = {};
   for (const [ruleId, def] of Object.entries(rules)) {
     if (def?.numeric) continue;

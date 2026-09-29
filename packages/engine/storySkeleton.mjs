@@ -91,7 +91,9 @@ export function buildSkeleton(html, opts = {}) {
   // Walk from the Document node, not `documentElement`: a fragment with no wrapping <html> (or several top-level
   // siblings) only keeps its FIRST top-level element as `documentElement` in linkedom -- everything after it would
   // be silently dropped. `document.childNodes` sees every top-level node either way.
-  for (const child of document.childNodes) walk(child, 0);
+  // Array.from, not a direct for..of: this tsconfig has no "DOM"/"DOM.Iterable" lib, so linkedom's
+  // NodeListOf type has no Symbol.iterator here even though the runtime value is iterable.
+  for (const child of Array.from(document.childNodes)) walk(child, 0);
   const text = truncated ? `${lines.join('\n')}\n… (truncated at ${maxBytes} bytes)` : lines.join('\n');
   return { ok: true, text, truncated, bytes: Buffer.byteLength(text, 'utf8') };
 }

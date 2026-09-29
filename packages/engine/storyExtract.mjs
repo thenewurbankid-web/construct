@@ -26,6 +26,7 @@ export const DEFAULT_TIMEOUT_MS = 5_000;
 export const MAX_FIELDS = 50;
 export const MAX_SELECTOR_LENGTH = 300;
 
+/** @param {string} code @param {string} message @returns {{ok:false, code:string, message:string}} */
 const fail = (code, message) => ({ ok: false, code, message });
 const isPlainObject = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 
@@ -34,7 +35,10 @@ const isPlainObject = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const HTML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 
 /** Escape a plain string for safe interpolation into HTML; every extracted value passes through this before it is
- * returned, so a story page cannot smuggle markup into the Cockpit through a field's text. */
+ * returned, so a story page cannot smuggle markup into the Cockpit through a field's text.
+ * @param {*} value - the raw value to escape (coerced to a string).
+ * @returns {string} the value with `& < > " '` replaced by their HTML entities.
+ */
 export function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]);
 }
@@ -52,6 +56,7 @@ function isValidField(f) {
 }
 
 /** Validate `fields` on its own, for callers that want to fail fast before fetching or parsing anything.
+ * @param {object[]} fields - the field descriptors ({name, selector, kind?, attr?, list?}) to validate.
  * @returns {{ valid: boolean, errors: string[] }} */
 export function validateFields(fields) {
   const errors = [];
@@ -84,7 +89,10 @@ function readValue(node, attr) {
  * a lazily-built `xpathDocument` for XPath -- see the doctype note above). Throws on a bad CSS selector (caught by
  * the caller); an invalid XPath is already refused earlier (storySelectors.mjs, #384) so it is not re-validated here. */
 function selectNodes(docs, field) {
-  if (field.kind === 'xpath') return xpath.parse(field.selector).select({ node: docs.xpathDocument(), isHtml: true });
+  // The `xpath` package's shipped .d.ts omits `parse` (it only declares `select`/`select1`/...), even though the
+  // runtime module exports it; cast around the incomplete third-party types rather than reimplementing `select`'s
+  // one-shot form.
+  if (field.kind === 'xpath') return /** @type {any} */ (xpath).parse(field.selector).select({ node: docs.xpathDocument(), isHtml: true });
   return Array.from(docs.document.querySelectorAll(field.selector));
 }
 
@@ -96,7 +104,8 @@ function selectNodes(docs, field) {
  * with more than one match is `ambiguous`, not a value (never silently "the first one").
  *
  * @param {string} html
- * @param {{ fields: {name:string, selector:string, kind?:'css'|'xpath', attr?:string, list?:boolean}[], maxBytes?:number, timeoutMs?:number }} opts
+ * @param {{ fields?: {name:string, selector:string, kind?:'css'|'xpath', attr?:string, list?:boolean}[], maxBytes?:number, timeoutMs?:number }} [opts]
+ *   `fields` is required at runtime; a missing/invalid one fails validation (`BAD_FIELDS`) rather than throwing.
  * @returns {{ ok:boolean, values:Record<string,string|string[]>, misses:string[], ambiguous:string[] } | { ok:false, code:string, message:string }}
  *   On a hard failure (bad input, over budget, unparseable) there is no `values`/`misses`/`ambiguous`; on a normal
  *   run `ok` is true only when every field matched exactly (no miss, no ambiguity) -- a story extraction with
@@ -127,6 +136,7 @@ export function extract(html, opts = {}) {
     },
   };
 
+  /** @type {Record<string, string|string[]>} */
   const values = {};
   const misses = [];
   const ambiguous = [];
@@ -152,6 +162,14 @@ export function extract(html, opts = {}) {
   return { ok: misses.length === 0 && ambiguous.length === 0, values, misses, ambiguous };
 }
 
+function valuesDiffer(a, b) {
+  if (Array.isArray(a) || Array.isArray(b)) {
+    const [x, y] = [a, b].map((v) => (Array.isArray(v) ? v : v === undefined ? [] : [v]));
+    return x.length !== y.length || x.some((v, i) => v !== y[i]);
+  }
+  return a !== b;
+}
+
 /**
  * Re-extract `html` with the field definitions from a previous `extract()` and compare against its values, so a
  * caller can tell whether a story page changed since it was last fetched without diffing raw HTML.
@@ -164,14 +182,6 @@ export function extract(html, opts = {}) {
  *   `changed` lists the field names whose value differs from `previous.values` (a field that newly matches or newly
  *   misses counts as changed). A hard failure from `extract()` (bad input, over budget) passes straight through.
  */
-function valuesDiffer(a, b) {
-  if (Array.isArray(a) || Array.isArray(b)) {
-    const [x, y] = [a, b].map((v) => (Array.isArray(v) ? v : v === undefined ? [] : [v]));
-    return x.length !== y.length || x.some((v, i) => v !== y[i]);
-  }
-  return a !== b;
-}
-
 export function verify(html, previous, opts = {}) {
   if (!isPlainObject(previous) || !Array.isArray(previous.fields) || !isPlainObject(previous.values)) {
     return fail('BAD_PREVIOUS', 'previous must be { fields, values } from an earlier extract().');

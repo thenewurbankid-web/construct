@@ -504,7 +504,10 @@ function addRuleRequestOf(args) {
   };
 }
 
-/** `construct add-rule no-console --layers domain,service` (#553): scaffold the rule file and its fixture pair. */
+/**
+ * `construct add-rule no-console --layers domain,service` (#553): scaffold the rule file and its fixture pair.
+ * @param {string[]} args - the words after `add-rule` (the rule id plus `--module`/`--layers`/`--scope`/`--severity`/`--why` flags).
+ */
 export function addRuleCommand(args) {
   if (args.includes('--help') || args.includes('-h')) {
     console.log(ADD_RULE_USAGE);
@@ -783,12 +786,15 @@ export async function sync(args) {
   console.log(`Synced ${Object.keys(c.rules).length} Construct rules, ${apiSynced} feature public API(s) updated.`);
 }
 
-/** `construct export ci --target <dependency-cruiser|eslint-boundaries> [--out <path>] [--dir <path>]`
- * (#437): writes (or, without `--out`, prints to stdout) the same CI-tool config `sync` writes for
- * dependency-cruiser, or the eslint-boundaries equivalent (#513's generator). Read-only otherwise --
- * unlike `sync`, this never touches feature public APIs. */
 const EXPORT_CI_USAGE = `Usage: construct export ci --target <${EXPORT_CI_TARGETS.join('|')}> [--out <path>]`;
 
+/**
+ * `construct export ci --target <dependency-cruiser|eslint-boundaries> [--out <path>] [--dir <path>]`
+ * (#437): writes (or, without `--out`, prints to stdout) the same CI-tool config `sync` writes for
+ * dependency-cruiser, or the eslint-boundaries equivalent (#513's generator). Read-only otherwise --
+ * unlike `sync`, this never touches feature public APIs.
+ * @param {string[]} args - the words after `export` (must start with `ci`, then `--target`/`--out`/`--dir`/root flags).
+ */
 export async function exportCommand(args) {
   if (args[0] !== 'ci') throw new ConstructError(EXPORT_CI_USAGE, { exitCode: EXIT_CODES.USAGE_ERROR });
   const rest = args.slice(1);
@@ -1863,14 +1869,20 @@ export function processCommand(args) {
 
 /** `construct check-change --file <path> [--ref <ref>]` (#747, epic #461): a deterministic "did this staged
  * edit change behaviour" indicator, meant to be run during a session before saving, not only at PR/CI time.
- * JSON out always -- see check-change.mjs. */
+ * JSON out always -- see check-change.mjs.
+ * @param {string[]} args - the words after `check-change` (`--file`/`--ref`/`--dir` flags).
+ * @returns {Promise<void>} Resolves after printing the change-check document as JSON.
+ */
 export async function checkChange(args) {
   return checkChangeCommand(args, { getRoot });
 }
 
 /** `construct mutation-check <file...> [--test-command <cmd>]` (#750, epic #461): an on-demand,
  * Stryker-backed test-strength signal scoped to the given files -- never triggered by check-change's
- * live path, only by an explicit call. JSON out always -- see mutation-check.mjs. */
+ * live path, only by an explicit call. JSON out always -- see mutation-check.mjs.
+ * @param {string[]} args - the target file(s) followed by `--test-command`/`--dir` flags.
+ * @returns {Promise<void>} Resolves after printing the mutation-check result as JSON.
+ */
 export async function mutationCheck(args) {
   return mutationCheckCommand(args, { getRoot });
 }

@@ -33,7 +33,11 @@ function withinRoot(root, abs) {
 }
 
 /** Pure: the harness HTML for one file/export (exported for tests). `fsPath` must already be
- * validated as inside the project root. */
+ * validated as inside the project root.
+ * @param {string} fsPath - absolute path of the component file to preview.
+ * @param {string} exportName - the export to render (`'default'` or a named export).
+ * @returns {string} the standalone HTML document that mounts and renders that export.
+ */
 export function harnessHtml(fsPath, exportName) {
   const importPath = `/@fs/${fsPath.split(path.sep).join('/')}`;
   const pick = exportName && exportName !== 'default' ? `mod[${JSON.stringify(exportName)}] ?? mod.default` : 'mod.default';
