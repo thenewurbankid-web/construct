@@ -52,7 +52,7 @@ test('extractAtoms still works unchanged alongside the new steps shape', () => {
 
 test('reorderSteps swaps two top-level statements and the re-derived english reflects the new order', () => {
   const code = `function run(a, b) {\n  let x = a;\n  let y = b;\n  return x;\n}`;
-  const rebuilt = reorderSteps(code, 'function', [1, 0, 2]);
+  const { code: rebuilt } = reorderSteps(code, 'function', [1, 0, 2]);
   const { steps } = toEnglish(rebuilt, 'function');
   assert.equal(steps[0].english, 'let y be b');
   assert.equal(steps[1].english, 'let x be a');
@@ -61,7 +61,7 @@ test('reorderSteps swaps two top-level statements and the re-derived english ref
 
 test('reorderSteps drops a statement when its index is omitted', () => {
   const code = `function run(a, b) {\n  let x = a;\n  let y = b;\n  return x;\n}`;
-  const rebuilt = reorderSteps(code, 'function', [0, 2]);
+  const { code: rebuilt } = reorderSteps(code, 'function', [0, 2]);
   const { steps } = toEnglish(rebuilt, 'function');
   assert.equal(steps.length, 2);
   assert.equal(steps[0].english, 'let x be a');
@@ -70,9 +70,38 @@ test('reorderSteps drops a statement when its index is omitted', () => {
 
 test('reorderSteps works on a class method and stays unwrapped (no class wrapper in the output)', () => {
   const code = `checkAge(age) {\n  let ok = age;\n  let bad = age;\n  return ok;\n}`;
-  const rebuilt = reorderSteps(code, 'method', [1, 0, 2]);
+  const { code: rebuilt } = reorderSteps(code, 'method', [1, 0, 2]);
   assert.ok(!rebuilt.includes('class'));
   const { steps } = toEnglish(rebuilt, 'method');
   assert.equal(steps[0].english, 'let bad be age');
   assert.equal(steps[1].english, 'let ok be age');
+});
+
+test('reorderSteps flags a step moved above the step that defines a binding it uses', () => {
+  // "return x" uses x, defined by "let x = a" -- moving the return to the
+  // front puts it before its own definition.
+  const code = `function run(a) {\n  let x = a;\n  return x;\n}`;
+  const { breaks } = reorderSteps(code, 'function', [1, 0]);
+  assert.equal(breaks[0].reason, "uses 'x', now set later in step 2");
+  assert.equal(breaks[1], null);
+});
+
+test('reorderSteps does not flag a step whose binding is still defined earlier', () => {
+  const code = `function run(a, b) {\n  let x = a;\n  let y = b;\n  return x;\n}`;
+  const { breaks } = reorderSteps(code, 'function', [1, 0, 2]);
+  assert.deepEqual(breaks, [null, null, null]);
+});
+
+test('reorderSteps flags a step whose binding was deleted', () => {
+  const code = `function run(a) {\n  let x = a;\n  return x;\n}`;
+  const { breaks } = reorderSteps(code, 'function', [1]);
+  assert.match(breaks[0].reason, /no longer defined/);
+});
+
+test('fixing the order (moving the definer back above its use) clears the break', () => {
+  const code = `function run(a) {\n  let x = a;\n  return x;\n}`;
+  const broken = reorderSteps(code, 'function', [1, 0]).breaks;
+  assert.ok(broken[0]);
+  const fixed = reorderSteps(code, 'function', [0, 1]).breaks;
+  assert.deepEqual(fixed, [null, null]);
 });

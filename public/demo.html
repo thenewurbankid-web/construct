@@ -57,6 +57,12 @@
   .step-undo { font-size: 11px; color: #6c7480; cursor: pointer; background: none; border: none; padding: 0; }
   .step-undo:hover { color: #5eead4; }
   .step-undo:disabled { color: #33363d; cursor: default; }
+  .code-preview {
+    display: none; margin: 8px 0 0; padding: 10px 12px; background: #0b0d11; border: 1px solid #1c1f26;
+    border-radius: 6px; font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: #7de8a4; white-space: pre-wrap;
+  }
+  .code-preview.show { display: block; }
+  .code-preview mark.code-broken { background: rgba(242, 97, 97, .18); color: #f26161; border-radius: 3px; }
   .atom-tags { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
   .atom-tag { font-size: 10.5px; font-family: ui-monospace, Menlo, monospace; background: #14171d; border: 1px solid #22252e; color: #5eead4; padding: 3px 8px; border-radius: 999px; }
   .block pre { display: none; margin: 8px 0 0; padding: 10px 12px; background: #0b0d11; border: 1px solid #1c1f26; border-radius: 6px; font-size: 11.5px; color: #7de8a4; white-space: pre-wrap; }
@@ -326,6 +332,30 @@ function markupSegment(segment) {
   return html;
 }
 
+// Marks each broken step's own code slice red in a readonly preview, using
+// the same start/end offsets toEnglish attached to the step -- so the
+// highlight is exactly the statement flagged, not a guess from text search.
+// Shown only when at least one step is broken; otherwise stays hidden so
+// the editable textarea below (revealed by "show atoms") is the only view.
+function highlightBrokenCode(i, code, steps) {
+  const preview = document.getElementById('codepreview-' + i);
+  if (!preview) return;
+  const anyBroken = steps.some((s) => s.broken);
+  preview.classList.toggle('show', anyBroken);
+  if (!anyBroken) { preview.innerHTML = ''; return; }
+
+  let html = '';
+  let cursor = 0;
+  [...steps].sort((a, b) => a.start - b.start).forEach((s) => {
+    html += escapeHtml(code.slice(cursor, s.start));
+    const slice = escapeHtml(code.slice(s.start, s.end));
+    html += s.broken ? `<mark class="code-broken" title="${escapeHtml(s.broken.reason)}">${slice}</mark>` : slice;
+    cursor = s.end;
+  });
+  html += escapeHtml(code.slice(cursor));
+  preview.innerHTML = html;
+}
+
 function titleHtml(title) {
   return `<span class="verb">${escapeHtml(title || '')}</span>:`;
 }
@@ -363,12 +393,14 @@ function renderSteps(i, steps) {
   const list = document.getElementById('steps-' + i);
   if (!list) return;
   list.innerHTML = steps.map((s, idx) => `
-    <li class="step-row" draggable="true" tabindex="0" data-idx="${idx}">
+    <li class="step-row${s.broken ? ' broken' : ''}" draggable="true" tabindex="0" data-idx="${idx}"${s.broken ? ` title="${escapeHtml(s.broken.reason)}"` : ''}>
       <span class="step-handle">⠿</span>
       <span class="step-sentence">${markupSegment(s.english)}</span>
       <button class="step-delete" title="Remove this step" data-idx="${idx}">×</button>
     </li>
   `).join('');
+
+  highlightBrokenCode(i, state.code, steps);
 
   const rows = [...list.querySelectorAll('.step-row')];
   let dragIdx = null;
@@ -477,6 +509,7 @@ document.getElementById('analyzeBtn').onclick = async () => {
       <div class="block-tag">${c.kind} · ${c.name}</div>
       <div class="block-sentence" id="sentence-${i}"><span class="loading">refactoring to atoms…</span></div>
       <ol class="step-list" id="steps-${i}"></ol>
+      <pre class="code-preview" id="codepreview-${i}"></pre>
       <div class="step-actions"><button class="step-undo" id="undo-${i}" disabled>↺ undo</button></div>
       <div id="atoms-${i}"></div>
       <span class="block-code-toggle" data-i="${i}">▸ show atoms (editable)</span>

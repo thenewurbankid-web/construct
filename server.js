@@ -218,8 +218,9 @@ app.post('/api/reorder-steps', (req, res) => {
   const kind = req.body.kind || 'function';
   const order = Array.isArray(req.body.order) ? req.body.order : [];
   try {
-    const refactored = reorderSteps(req.body.code || '', kind, order);
+    const { code: refactored, breaks } = reorderSteps(req.body.code || '', kind, order);
     const { english, steps, title } = toEnglish(refactored, kind);
+    steps.forEach((s, i) => { s.broken = breaks[i] || null; });
     res.json({ refactored, english, steps, title });
   } catch (e) {
     res.status(400).json({ error: String(e) });

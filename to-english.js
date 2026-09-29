@@ -1,6 +1,7 @@
 const parser = require('@babel/parser');
 const traverse = require('@babel/traverse').default;
 const generate = require('@babel/generator').default;
+const t = require('@babel/types');
 const { chunkCode } = require('./chunker');
 
 // Deterministic, no model involved: takes code that's ALREADY been through
@@ -183,6 +184,62 @@ function extractAtoms(code, kind) {
   return [...names].sort();
 }
 
+// Names actually referenced as values within a statement -- not property
+// keys, not the LHS of the declaration that introduces them. Babel's
+// "ReferencedIdentifier" virtual type already draws that line, which is
+// exactly the "use" half of use/def analysis. The statement is cloned into
+// its own tiny Program first so this traversal doesn't touch the real AST
+// (and so parent-pointer state stays correct for a node lifted out of its
+// original position).
+function usesOf(stmtNode) {
+  const uses = new Set();
+  const wrapper = t.file(t.program([t.cloneNode(stmtNode, true)]));
+  traverse(wrapper, {
+    ReferencedIdentifier(path) {
+      uses.add(path.node.name);
+    },
+  });
+  return uses;
+}
+
+// Use/def check for a reorder: a step is "broken" when it references a
+// binding whose declaring statement now sits AFTER it (or was deleted).
+// `let`/`const` can't be redeclared in the same scope, so each name maps
+// to exactly one declaring statement -- no ambiguity to resolve.
+// `orderedOriginalIndices` and `originalStmts` are both indexed the same
+// way `reorderSteps`'s caller addresses steps: positions in the CODE
+// BEFORE this reorder. Returns one entry per new position, aligned with
+// the `steps` array `toEnglish` will produce for the rebuilt code.
+function computeBreaks(orderedOriginalIndices, originalStmts) {
+  const declaredAt = {};
+  originalStmts.forEach((s, idx) => {
+    Object.keys(t.getBindingIdentifiers(s)).forEach((name) => {
+      declaredAt[name] = idx;
+    });
+  });
+
+  const newPositionOf = {};
+  orderedOriginalIndices.forEach((origIdx, newIdx) => {
+    newPositionOf[origIdx] = newIdx;
+  });
+
+  return orderedOriginalIndices.map((origIdx, newIdx) => {
+    const used = usesOf(originalStmts[origIdx]);
+    for (const name of used) {
+      const declIdx = declaredAt[name];
+      if (declIdx === undefined || declIdx === origIdx) continue;
+      const declPos = newPositionOf[declIdx];
+      if (declPos === undefined) {
+        return { reason: `uses '${name}', which is no longer defined -- its step was removed` };
+      }
+      if (declPos > newIdx) {
+        return { reason: `uses '${name}', now set later in step ${declPos + 1}` };
+      }
+    }
+    return null;
+  });
+}
+
 // Rebuilds the function/method with its top-level statements in a new
 // order (and optionally fewer of them, for delete). `order` is a list of
 // indices into the CURRENT top-level statements (the same indexing as the
@@ -192,6 +249,10 @@ function extractAtoms(code, kind) {
 // the code slices, so the result is always valid, well-formed code; the
 // caller re-derives English from THIS output rather than editing the old
 // English, which is what keeps code and English from ever drifting apart.
+//
+// Returns { code, breaks }: `breaks[k]` is null, or `{ reason }` when the
+// step now at position k uses a binding defined by a step positioned after
+// it (or removed) -- the move still happens; this only flags it.
 function reorderSteps(code, kind, order) {
   const wrapped = kind === 'method' ? `class __W__ {\n${code}\n}` : code;
   const ast = parser.parse(wrapped, { sourceType: 'module' });
@@ -212,12 +273,12 @@ function reorderSteps(code, kind, order) {
   if (!bodyPath) throw new Error('could not find a function/method to reorder');
 
   const stmts = bodyPath.node.body.slice();
+  const breaks = computeBreaks(order, stmts);
   bodyPath.node.body = order.map((i) => stmts[i]).filter(Boolean);
 
   const output = generate(ast, { retainLines: false }).code;
-  if (kind !== 'method') return output;
-  const chunks = chunkCode(output);
-  return chunks.length ? chunks[0].code : output;
+  const code_ = kind === 'method' ? (chunkCode(output)[0] || {}).code || output : output;
+  return { code: code_, breaks };
 }
 
 module.exports = { toEnglish, camelToWords, extractAtoms, reorderSteps };
