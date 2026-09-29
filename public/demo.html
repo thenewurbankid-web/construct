@@ -65,6 +65,29 @@
   .code-preview mark.code-broken { background: rgba(242, 97, 97, .18); color: #f26161; border-radius: 3px; }
   .atom-tags { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
   .atom-tag { font-size: 10.5px; font-family: ui-monospace, Menlo, monospace; background: #14171d; border: 1px solid #22252e; color: #5eead4; padding: 3px 8px; border-radius: 999px; }
+
+  #atomsSummary:not(:empty) { margin-bottom: 24px; padding-bottom: 18px; border-bottom: 1px solid #1c1f26; }
+  .atoms-summary-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .atom-sort-toggle { display: flex; gap: 4px; }
+  .atom-sort-btn { background: #14171d; color: #6c7480; border: 1px solid #22252e; font-size: 10.5px; padding: 4px 9px; border-radius: 6px; }
+  .atom-sort-btn.active { color: #5eead4; border-color: #5eead4; }
+  .atom-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  .atom-row-head { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 6px 4px; border-radius: 6px; }
+  .atom-row-head:hover { background: #0e1015; }
+  .atom-toggle { color: #6c7480; font-size: 11px; width: 10px; display: inline-block; transition: transform .15s; }
+  .atom-row.open .atom-toggle { transform: rotate(90deg); }
+  .atom-name { font-size: 13.5px; color: #e4e6eb; }
+  .atom-fn { font-size: 11px; color: #5eead4; font-family: ui-monospace, Menlo, monospace; }
+  .atom-count { font-size: 10.5px; color: #6c7480; margin-left: auto; }
+  .atom-used-in { font-size: 10.5px; color: #6c7480; padding: 0 4px 0 26px; }
+  .atom-used-in a.atom-jump { color: #7aa2f7; text-decoration: none; cursor: pointer; }
+  .atom-used-in a.atom-jump:hover { text-decoration: underline; }
+  .atom-impl { display: none; padding: 6px 4px 4px 26px; }
+  .atom-row.open .atom-impl { display: block; }
+  .atom-impl-code { margin: 0; padding: 10px 12px; background: #0b0d11; border: 1px solid #1c1f26; border-radius: 6px; font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: #e4e6eb; white-space: pre-wrap; }
+  .atom-impl-missing { font-size: 11.5px; color: #f2b86a; font-style: italic; }
+  .block.flash { animation: flashBlock .9s ease; }
+  @keyframes flashBlock { 0% { background: rgba(94, 234, 212, .14); } 100% { background: transparent; } }
   .block pre { display: none; margin: 8px 0 0; padding: 10px 12px; background: #0b0d11; border: 1px solid #1c1f26; border-radius: 6px; font-size: 11.5px; color: #7de8a4; white-space: pre-wrap; }
   .block.open pre { display: block; }
   .block-edit {
@@ -145,7 +168,7 @@
       <span class="panel-title">Output — in English</span>
       <span id="analyzeStatus"></span>
     </div>
-    <div id="output"><div style="color:#6c7480; font-size:13px;">Click "Analyze" below to translate the code into English, block by block.</div></div>
+    <div id="output"><div id="atomsSummary"></div><div style="color:#6c7480; font-size:13px;">Click "Analyze" below to translate the code into English, block by block.</div></div>
     <div id="codeWrap">
       <div class="panel-head" style="border-top:1px solid #1c1f26; border-bottom:none;">
         <span class="panel-title">Code</span>
@@ -365,8 +388,8 @@ async function describeBlock(code, kind) {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ code, kind }),
   }).then(r => r.json());
-  if (res.error) return { html: `(couldn't refactor: ${escapeHtml(res.error)})`, refactored: null, atoms: [], steps: [], title: null };
-  return { html: titleHtml(res.title), refactored: res.refactored, atoms: res.atoms || [], steps: res.steps || [], title: res.title };
+  if (res.error) return { html: `(couldn't refactor: ${escapeHtml(res.error)})`, refactored: null, atoms: [], atomUsage: [], steps: [], title: null };
+  return { html: titleHtml(res.title), refactored: res.refactored, atoms: res.atoms || [], atomUsage: res.atomUsage || [], steps: res.steps || [], title: res.title };
 }
 
 async function reorderBlockSteps(code, kind, order) {
@@ -379,6 +402,110 @@ async function reorderBlockSteps(code, kind, order) {
 function renderAtomTags(atoms) {
   if (!atoms.length) return '';
   return `<div class="atom-tags">${atoms.map(a => `<span class="atom-tag">${escapeHtml(a)}()</span>`).join('')}</div>`;
+}
+
+// One deduplicated, cross-example list of every atom actually called,
+// instead of the per-block tags above -- built from each block's
+// `atomUsage` (name/count in first-use order, implementation lookup already
+// attached server-side). Rebuilt from scratch from `blockState` on every
+// change (initial analyze, live edit, reorder/delete, undo) rather than
+// patched incrementally, since any of those can add or remove atom calls
+// and there are at most a handful of blocks -- a full rebuild is cheap and
+// can never drift from what's actually in the blocks.
+let globalAtoms = [];
+let atomSortMode = 'first-use';
+
+function rebuildGlobalAtoms() {
+  globalAtoms = [];
+  Object.keys(blockState).map(Number).sort((a, b) => a - b).forEach((i) => {
+    const state = blockState[i];
+    if (!state || !state.atomUsage) return;
+    state.atomUsage.forEach((u) => {
+      let entry = globalAtoms.find((a) => a.name === u.name);
+      if (!entry) {
+        entry = { name: u.name, count: 0, chunks: [], implementation: null };
+        globalAtoms.push(entry);
+      }
+      entry.count += u.count;
+      if (!entry.implementation && u.implementation) entry.implementation = u.implementation;
+      if (!entry.chunks.some((c) => c.blockIndex === i)) {
+        entry.chunks.push({ blockIndex: i, name: state.name });
+      }
+    });
+  });
+}
+
+// Same split as to-english.js's own camelToWords (server-side) -- kept in
+// sync by hand since it's one line; only used here to render an atom's
+// readable name (e.g. "is within range") next to its function name.
+function camelToWords(name) {
+  return name.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
+}
+
+const JS_KEYWORD_PATTERN = /(['"][^'"]*['"]|\b\d+(?:\.\d+)?\b|\b(?:function|return|const|let|var|if|else|class|new|this|typeof|true|false|null|undefined|for|while|of|in|extends|static|get|set)\b)/g;
+
+// Same lightweight "color the obvious tokens" approach as markupSegment
+// uses for English sentences, applied to real code instead -- one regex
+// pass over the already-escaped string, so there's no risk of a later
+// pass matching text inside a span this pass just inserted.
+function highlightCode(code) {
+  return escapeHtml(code).replace(JS_KEYWORD_PATTERN, (m) => (
+    /^['"]/.test(m) || /^\d/.test(m) ? `<span class="literal">${m}</span>` : `<span class="connector">${m}</span>`
+  ));
+}
+
+function atomRowHtml(a, idx) {
+  const usedIn = a.chunks.map((c) => `<a href="#" class="atom-jump" data-block="${c.blockIndex}">${escapeHtml(c.name)}</a>`).join(', ');
+  const impl = a.implementation
+    ? `<pre class="atom-impl-code">${highlightCode(a.implementation.code)}</pre>`
+    : `<div class="atom-impl-missing">no implementation yet</div>`;
+  return `
+    <li class="atom-row" data-idx="${idx}">
+      <div class="atom-row-head" data-idx="${idx}">
+        <span class="atom-toggle">▸</span>
+        <span class="atom-name">${escapeHtml(camelToWords(a.name))}</span>
+        <code class="atom-fn">${escapeHtml(a.name)}()</code>
+        <span class="atom-count">×${a.count}</span>
+      </div>
+      <div class="atom-used-in">used in: ${usedIn}</div>
+      <div class="atom-impl">${impl}</div>
+    </li>`;
+}
+
+function renderAtomsSummary() {
+  const container = document.getElementById('atomsSummary');
+  if (!container) return;
+  if (!globalAtoms.length) { container.innerHTML = ''; return; }
+
+  const list = atomSortMode === 'az' ? [...globalAtoms].sort((a, b) => a.name.localeCompare(b.name)) : globalAtoms;
+
+  container.innerHTML = `
+    <div class="atoms-summary-head">
+      <span class="panel-title" style="color:#9aa0ac;">Atoms used in this example (${globalAtoms.length})</span>
+      <span class="atom-sort-toggle">
+        <button class="atom-sort-btn${atomSortMode === 'first-use' ? ' active' : ''}" data-mode="first-use">first use</button>
+        <button class="atom-sort-btn${atomSortMode === 'az' ? ' active' : ''}" data-mode="az">A–Z</button>
+      </span>
+    </div>
+    <ul class="atom-list">${list.map((a, idx) => atomRowHtml(a, idx)).join('')}</ul>
+  `;
+
+  container.querySelectorAll('.atom-row-head').forEach((el) => {
+    el.onclick = () => el.closest('.atom-row').classList.toggle('open');
+  });
+  container.querySelectorAll('.atom-sort-btn').forEach((btn) => {
+    btn.onclick = () => { atomSortMode = btn.dataset.mode; renderAtomsSummary(); };
+  });
+  container.querySelectorAll('.atom-jump').forEach((a) => {
+    a.onclick = (e) => {
+      e.preventDefault();
+      const target = document.getElementById('block-' + a.dataset.block);
+      if (!target) return;
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      target.classList.add('flash');
+      setTimeout(() => target.classList.remove('flash'), 900);
+    };
+  });
 }
 
 // Per-block state for the step-row editor (reorder/delete/undo). Keyed by
@@ -458,14 +585,17 @@ function renderSteps(i, steps) {
 
 async function applyOrder(i, order, focusIdx) {
   const state = blockState[i];
-  state.undoStack.push({ code: state.code, steps: state.steps });
+  state.undoStack.push({ code: state.code, steps: state.steps, atomUsage: state.atomUsage });
   const res = await reorderBlockSteps(state.code, state.kind, order);
   if (res.error) { state.undoStack.pop(); return; }
   state.code = res.refactored;
   state.steps = res.steps;
+  state.atomUsage = res.atomUsage || [];
   const codeEl = document.getElementById('code-' + i);
   if (codeEl) codeEl.value = res.refactored;
   renderSteps(i, res.steps);
+  rebuildGlobalAtoms();
+  renderAtomsSummary();
   if (focusIdx != null) {
     const row = document.querySelectorAll(`#steps-${i} .step-row`)[focusIdx];
     if (row) row.focus();
@@ -478,9 +608,12 @@ function undoBlock(i) {
   if (!prev) return;
   state.code = prev.code;
   state.steps = prev.steps;
+  state.atomUsage = prev.atomUsage || [];
   const codeEl = document.getElementById('code-' + i);
   if (codeEl) codeEl.value = prev.code;
   renderSteps(i, prev.steps);
+  rebuildGlobalAtoms();
+  renderAtomsSummary();
 }
 
 document.getElementById('analyzeBtn').onclick = async () => {
@@ -500,11 +633,13 @@ document.getElementById('analyzeBtn').onclick = async () => {
     return;
   }
 
-  output.innerHTML = '';
+  output.innerHTML = '<div id="atomsSummary"></div>';
+  globalAtoms = [];
   chunkRes.chunks.forEach((c, i) => {
-    blockState[i] = { code: c.code, kind: c.kind, steps: [], undoStack: [] };
+    blockState[i] = { code: c.code, kind: c.kind, name: c.name, steps: [], undoStack: [], atomUsage: [] };
     const block = document.createElement('div');
     block.className = 'block';
+    block.id = 'block-' + i;
     block.innerHTML = `
       <div class="block-tag">${c.kind} · ${c.name}</div>
       <div class="block-sentence" id="sentence-${i}"><span class="loading">refactoring to atoms…</span></div>
@@ -534,7 +669,7 @@ document.getElementById('analyzeBtn').onclick = async () => {
       const sentenceEl = document.getElementById('sentence-' + i);
       if (sentenceEl) sentenceEl.innerHTML = '<span class="loading">updating…</span>';
       debounceTimers[i] = setTimeout(async () => {
-        const { html, refactored, atoms, steps, title } = await describeBlock(el.value, el.dataset.kind);
+        const { html, refactored, atoms, atomUsage, steps, title } = await describeBlock(el.value, el.dataset.kind);
         const current = document.getElementById('sentence-' + i);
         if (current) current.innerHTML = html;
         const atomsEl = document.getElementById('atoms-' + i);
@@ -546,8 +681,11 @@ document.getElementById('analyzeBtn').onclick = async () => {
         if (refactored && blockState[i]) {
           blockState[i].code = refactored;
           blockState[i].steps = steps;
+          blockState[i].atomUsage = atomUsage;
           blockState[i].undoStack = [];
           renderSteps(i, steps);
+          rebuildGlobalAtoms();
+          renderAtomsSummary();
         }
       }, 500);
     });
@@ -556,7 +694,7 @@ document.getElementById('analyzeBtn').onclick = async () => {
   status.textContent = 'refactoring blocks to atoms…';
 
   for (let i = 0; i < chunkRes.chunks.length; i++) {
-    const { html, refactored, atoms, steps } = await describeBlock(chunkRes.chunks[i].code, chunkRes.chunks[i].kind);
+    const { html, refactored, atoms, atomUsage, steps } = await describeBlock(chunkRes.chunks[i].code, chunkRes.chunks[i].kind);
     const sentenceEl = document.getElementById('sentence-' + i);
     if (sentenceEl) sentenceEl.innerHTML = html;
     const atomsEl = document.getElementById('atoms-' + i);
@@ -567,7 +705,10 @@ document.getElementById('analyzeBtn').onclick = async () => {
       if (blockState[i]) {
         blockState[i].code = refactored;
         blockState[i].steps = steps;
+        blockState[i].atomUsage = atomUsage;
         renderSteps(i, steps);
+        rebuildGlobalAtoms();
+        renderAtomsSummary();
       }
     }
   }

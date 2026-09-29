@@ -184,6 +184,43 @@ function extractAtoms(code, kind) {
   return [...names].sort();
 }
 
+// Same call-site walk as extractAtoms, but keeps first-use order (instead of
+// sorting) and counts repeats -- what the demo's single cross-example atom
+// list needs: the order the reader hits each atom for the first time, and
+// how many times it's actually called. Ordered by the position of the
+// CALLEE NAME ITSELF (the method/function identifier), not the enclosing
+// CallExpression's start: a whole chain like
+// ifIt(v).greaterThanOrEqual(min).and(v) shares one start position (the
+// leftmost `ifIt`) across every nested call in it, so sorting by that would
+// leave every atom in the chain tied. The name's own token position is
+// unique per call and increases left-to-right, matching reading order.
+function extractAtomUsage(code, kind) {
+  const wrapped = kind === 'method' ? `class __W__ {\n${code}\n}` : code;
+  const ast = parser.parse(wrapped, { sourceType: 'module' });
+  const counts = {};
+  const firstStart = {};
+  traverse(ast, {
+    CallExpression(path) {
+      const callee = path.node.callee;
+      let name = null;
+      let nameStart = path.node.start;
+      if (callee.type === 'MemberExpression' && callee.property.name) {
+        name = callee.property.name;
+        nameStart = callee.property.start;
+      } else if (callee.type === 'Identifier') {
+        name = callee.name;
+        nameStart = callee.start;
+      }
+      if (!name) return;
+      counts[name] = (counts[name] || 0) + 1;
+      if (!(name in firstStart) || nameStart < firstStart[name]) firstStart[name] = nameStart;
+    },
+  });
+  return Object.keys(counts)
+    .sort((a, b) => firstStart[a] - firstStart[b])
+    .map((name) => ({ name, count: counts[name] }));
+}
+
 // Names actually referenced as values within a statement -- not property
 // keys, not the LHS of the declaration that introduces them. Babel's
 // "ReferencedIdentifier" virtual type already draws that line, which is
@@ -281,4 +318,4 @@ function reorderSteps(code, kind, order) {
   return { code: code_, breaks };
 }
 
-module.exports = { toEnglish, camelToWords, extractAtoms, reorderSteps };
+module.exports = { toEnglish, camelToWords, extractAtoms, extractAtomUsage, reorderSteps };

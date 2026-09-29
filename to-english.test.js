@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { toEnglish, extractAtoms, reorderSteps } = require('./to-english');
+const { toEnglish, extractAtoms, extractAtomUsage, reorderSteps } = require('./to-english');
 
 test('toEnglish returns the flat english string for a function', () => {
   const code = `function checkAge(age) {\n  return age;\n}`;
@@ -104,4 +104,16 @@ test('fixing the order (moving the definer back above its use) clears the break'
   assert.ok(broken[0]);
   const fixed = reorderSteps(code, 'function', [0, 1]).breaks;
   assert.deepEqual(fixed, [null, null]);
+});
+
+test('extractAtomUsage orders atoms by first use, not alphabetically', () => {
+  const code = `function run(value, min, max) {\n  return ifIt(value).greaterThanOrEqual(min).and(value).lessThanOrEqual(max);\n}`;
+  const usage = extractAtomUsage(code, 'function');
+  assert.deepEqual(usage.map((u) => u.name), ['ifIt', 'greaterThanOrEqual', 'and', 'lessThanOrEqual']);
+});
+
+test('extractAtomUsage counts repeated calls to the same atom', () => {
+  const code = `function run(a, b, c) {\n  return a.equals(b) ? a.equals(c) : false;\n}`;
+  const usage = extractAtomUsage(code, 'function');
+  assert.deepEqual(usage, [{ name: 'equals', count: 2 }]);
 });

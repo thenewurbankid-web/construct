@@ -7,7 +7,8 @@ const { chunkCode } = require('./chunker');
 const { transform } = require('./transform');
 const { scanModules, findSimilarShapes } = require('./module-scanner');
 const trainingData = require('./training-data');
-const { toEnglish, extractAtoms, reorderSteps } = require('./to-english');
+const { toEnglish, extractAtoms, extractAtomUsage, reorderSteps } = require('./to-english');
+const registry = require('./registry');
 
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 // Two models, two jobs. 1.5b is fast but (measured) never performs extraction
@@ -196,6 +197,20 @@ app.post('/api/ast-pass', (req, res) => {
   }
 });
 
+// Atom usage (name, first-use order, call count) for one block, with each
+// atom's implementation attached from the registry when one's registered
+// under that name -- `null` (rendered as "no implementation yet" by the
+// demo) when nothing's been registered for it. Synchronous: registry.load()
+// just reads the JSON file, no Ollama call, so this is safe on every
+// /api/to-english and /api/reorder-steps response.
+function withImplementations(refactored, kind) {
+  const entries = registry.load();
+  return extractAtomUsage(refactored, kind).map((u) => {
+    const entry = entries.find((e) => e.name === u.name);
+    return { ...u, implementation: entry ? { code: entry.code, kind: entry.kind } : null };
+  });
+}
+
 // Refactor to atoms FIRST (deterministic), then render THAT as English
 // (also deterministic) -- readability is a property of the refactored
 // shape, not a paraphrase of the original code, so no model is involved.
@@ -204,7 +219,14 @@ app.post('/api/to-english', (req, res) => {
   try {
     const refactored = unwrap(transform(wrap(req.body.code || '', kind)), kind);
     const { english, steps, title } = toEnglish(refactored, kind);
-    res.json({ refactored, english, steps, title, atoms: extractAtoms(refactored, kind) });
+    res.json({
+      refactored,
+      english,
+      steps,
+      title,
+      atoms: extractAtoms(refactored, kind),
+      atomUsage: withImplementations(refactored, kind),
+    });
   } catch (e) {
     res.status(400).json({ error: String(e) });
   }
@@ -221,7 +243,7 @@ app.post('/api/reorder-steps', (req, res) => {
     const { code: refactored, breaks } = reorderSteps(req.body.code || '', kind, order);
     const { english, steps, title } = toEnglish(refactored, kind);
     steps.forEach((s, i) => { s.broken = breaks[i] || null; });
-    res.json({ refactored, english, steps, title });
+    res.json({ refactored, english, steps, title, atomUsage: withImplementations(refactored, kind) });
   } catch (e) {
     res.status(400).json({ error: String(e) });
   }
