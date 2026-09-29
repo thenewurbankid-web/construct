@@ -203,7 +203,8 @@ app.post('/api/to-english', (req, res) => {
   const kind = req.body.kind || 'function';
   try {
     const refactored = unwrap(transform(wrap(req.body.code || '', kind)), kind);
-    res.json({ refactored, english: toEnglish(refactored, kind), atoms: extractAtoms(refactored, kind) });
+    const { english, steps } = toEnglish(refactored, kind);
+    res.json({ refactored, english, steps, atoms: extractAtoms(refactored, kind) });
   } catch (e) {
     res.status(400).json({ error: String(e) });
   }

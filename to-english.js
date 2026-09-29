@@ -114,7 +114,16 @@ function stmtToEnglish(node, depth = 0) {
 
 // kind: 'method' | 'function' -- same convention as the rest of the tool,
 // so the caller can pass a chunk straight from /api/chunk.
+//
+// Returns { english, steps, title }. `english` is the original flat string
+// ("title: step1; then step2; ...") kept for compatibility with existing
+// callers. `steps` is the same information un-flattened -- one entry per
+// top-level statement of the body, each with its own English, its own code
+// slice, and its node range -- so a caller (the demo's step-row editor) can
+// address, reorder, or rebuild around a single statement instead of the
+// whole block.
 function toEnglish(code, kind) {
+  const prefixLen = kind === 'method' ? `class __W__ {\n`.length : 0;
   const wrapped = kind === 'method' ? `class __W__ {\n${code}\n}` : code;
   const ast = parser.parse(wrapped, { sourceType: 'module' });
   let name = null;
@@ -137,11 +146,19 @@ function toEnglish(code, kind) {
     },
   });
 
-  if (!body) return '(could not find a function/method to describe)';
+  if (!body) {
+    return { english: '(could not find a function/method to describe)', steps: [], title: null };
+  }
 
   const title = `${camelToWords(name)}${params.length ? ' using ' + params.join(' and ') : ''}`;
-  const steps = body.body.map((s) => stmtToEnglish(s)).join('; then ');
-  return `${title}: ${steps}.`;
+  const steps = body.body.map((s) => ({
+    english: stmtToEnglish(s),
+    code: wrapped.slice(s.start, s.end),
+    start: s.start - prefixLen,
+    end: s.end - prefixLen,
+  }));
+  const english = `${title}: ${steps.map((s) => s.english).join('; then ')}.`;
+  return { english, steps, title };
 }
 
 // Every method/function actually CALLED in the refactored code -- the real

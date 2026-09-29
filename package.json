@@ -9,7 +9,7 @@
   "scripts": {
     "codemod:check": "node transform.js \"src/**/*.{js,ts}\" --check",
     "codemod:write": "node transform.js \"src/**/*.{js,ts}\" --write",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test *.test.js"
   },
   "keywords": [],
   "author": "",
