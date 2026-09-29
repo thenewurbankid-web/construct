@@ -18,7 +18,10 @@ const BANNED_IMPORT_RULES = {
   'COMPONENT-003': /(?:workflows?|services?|domain)\//,
 };
 
-/** Is a mechanical fix known for this rule id? */
+/** Is a mechanical fix known for this rule id?
+ * @param {string} rule - a rule id (e.g. `'PAGE-002'`).
+ * @returns {boolean} `true` when `applyMechanicalFix` has a callable transform for this rule.
+ */
 export function mechanicalFixAvailable(rule) {
   return Object.prototype.hasOwnProperty.call(BANNED_IMPORT_RULES, rule);
 }
@@ -26,7 +29,11 @@ export function mechanicalFixAvailable(rule) {
 /** Removes the first top-level import statement whose specifier matches the
  * rule's banned-layer pattern, plus the line it sat on. Returns `null` if
  * the rule has no known fix, or the rule's pattern matches nothing in
- * `source` (already fixed, or the violation moved). */
+ * `source` (already fixed, or the violation moved).
+ * @param {string} rule - a rule id (e.g. `'PAGE-002'`).
+ * @param {string} source - the file's current, in-memory source text.
+ * @returns {string|null} the fixed source text, or `null` if there was nothing this function could fix.
+ */
 export function applyMechanicalFix(rule, source) {
   const pattern = BANNED_IMPORT_RULES[rule];
   if (!pattern) return null;
