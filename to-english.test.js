@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { toEnglish, extractAtoms, extractAtomUsage, reorderSteps, atomParamNames, buildStepFromAtom, applyAtomToStep, tokenizeStmt } = require('./to-english');
+const { toEnglish, extractAtoms, extractAtomUsage, reorderSteps, atomParamNames, buildStepFromAtom, applyAtomToStep, tokenizeStmt, reorderChip } = require('./to-english');
 
 test('toEnglish returns the flat english string for a function', () => {
   const code = `function checkAge(age) {\n  return age;\n}`;
@@ -204,4 +204,43 @@ test('a destructuring declarator (const [a, b] = args) renders its pattern, not 
   assert.equal(steps[0].english, 'let [a, b] be args');
   const subjectChip = steps[0].tokens.find((tk) => tk.type === 'subject');
   assert.equal(subjectChip.text, '[a, b]');
+});
+
+test('reorderChip swaps two argument chips of the same call and regenerates the code', () => {
+  const code = `function run(a, b, c) {\n  return combine(a, b, c);\n}`;
+  // tokens: 0 return, 1 combine(verb), 2 of, 3 a(arg), 4 and, 5 b(arg), 6 and, 7 c(arg)
+  const order = [0, 1, 2, 5, 4, 3, 6, 7];
+  const { code: rebuilt, broken } = reorderChip(code, 'function', 0, order);
+  assert.equal(broken, null);
+  const { steps } = toEnglish(rebuilt, 'function');
+  assert.equal(steps[0].english, 'return combine of b and a and c');
+});
+
+test('reorderChip rejects swapping an argument with a connective', () => {
+  const code = `function run(a, b) {\n  return combine(a, b);\n}`;
+  // tokens: 0 return, 1 combine, 2 of, 3 a(arg), 4 and, 5 b(arg)
+  const order = [0, 1, 2, 4, 3, 5];
+  const { code: unchanged, broken } = reorderChip(code, 'function', 0, order);
+  assert.equal(unchanged, code);
+  assert.match(broken.reason, /only two argument words can swap/);
+});
+
+test('reorderChip rejects swapping arguments that belong to different calls', () => {
+  const code = `function run(a, b) {\n  return combine(a).and(b);\n}`;
+  const { steps } = toEnglish(code, 'function');
+  const argPositions = steps[0].tokens.map((tk, idx) => (tk.type === 'arg' ? idx : -1)).filter((idx) => idx >= 0);
+  const [posA, posB] = argPositions;
+  const order = steps[0].tokens.map((_, idx) => idx);
+  [order[posA], order[posB]] = [order[posB], order[posA]];
+  const { code: unchanged, broken } = reorderChip(code, 'function', 0, order);
+  assert.equal(unchanged, code);
+  assert.match(broken.reason, /not arguments of the same call/);
+});
+
+test('reorderChip rejects an order that displaces more than two positions', () => {
+  const code = `function run(a, b, c) {\n  return combine(a, b, c);\n}`;
+  const order = [0, 1, 2, 5, 6, 3, 4, 7];
+  const { code: unchanged, broken } = reorderChip(code, 'function', 0, order);
+  assert.equal(unchanged, code);
+  assert.match(broken.reason, /single word swap/);
 });

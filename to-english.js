@@ -452,9 +452,12 @@ function computeBreaks(orderedOriginalIndices, originalStmts) {
 // Returns { code, breaks }: `breaks[k]` is null, or `{ reason }` when the
 // step now at position k uses a binding defined by a step positioned after
 // it (or removed) -- the move still happens; this only flags it.
-function reorderSteps(code, kind, order) {
+// `plugins` defaults to plain JS (existing demo caller, unchanged) --
+// unplug.js passes ['typescript', 'jsx'] to reorder statements inside a
+// .tsx source function.
+function reorderSteps(code, kind, order, { plugins = [] } = {}) {
   const wrapped = kind === 'method' ? `class __W__ {\n${code}\n}` : code;
-  const ast = parser.parse(wrapped, { sourceType: 'module' });
+  const ast = parser.parse(wrapped, { sourceType: 'module', plugins });
   let bodyPath = null;
 
   traverse(ast, {
@@ -551,6 +554,99 @@ function applyAtomToStep(code, kind, stepIndex, atomName, paramNames) {
   return chunks.length ? chunks[0].code : output;
 }
 
+function findBody(ast) {
+  let bodyPath = null;
+  traverse(ast, {
+    ClassMethod(path) {
+      bodyPath = path.get('body');
+      path.stop();
+    },
+    FunctionDeclaration(path) {
+      if (!path.parentPath.isProgram()) return;
+      bodyPath = path.get('body');
+      path.stop();
+    },
+  });
+  return bodyPath;
+}
+
+// Reordering a step's WORD chips (see tokenizeStmt above), block 6: this
+// only has a real code meaning in exactly one case -- two `arg` chips
+// swapping position within the SAME call's argument list, a true argument
+// reorder. Every other requested move (a connective, a verb, two args from
+// different calls, more than one displaced position at once) has no
+// deterministic code transformation, so the code is returned unchanged with
+// a `broken` reason -- the demo still moves the chip visually (the caller's
+// job, not this function's) and shows that reason, same red-on-break UX as
+// reorderSteps above.
+//
+// `order`: the full new chip order, as a permutation of ORIGINAL token
+// indices (same convention as reorderSteps' statement-level `order`) --
+// e.g. [0, 2, 1, 3] swaps the chips originally at positions 1 and 2.
+function reorderChip(code, kind, stepIndex, order) {
+  const wrapped = kind === 'method' ? `class __W__ {\n${code}\n}` : code;
+  const ast = parser.parse(wrapped, { sourceType: 'module' });
+  const bodyPath = findBody(ast);
+  if (!bodyPath) throw new Error('could not find a function/method to edit');
+  const stmts = bodyPath.node.body;
+  if (stepIndex < 0 || stepIndex >= stmts.length) throw new Error('step index out of range');
+  const stmt = stmts[stepIndex];
+
+  const oldTokens = tokenizeStmt(stmt);
+  if (!Array.isArray(order) || order.length !== oldTokens.length) {
+    throw new Error('order must be a permutation of every chip in the step');
+  }
+
+  // The demo's chip UI only ever displaces two chips at a time (a single
+  // drag, or one Alt+Left/Right) -- find those two positions (not
+  // necessarily adjacent: a connective often sits between two argument
+  // chips), or bail out as "no single swap" if more than two moved.
+  const displaced = [];
+  for (let pos = 0; pos < order.length; pos++) {
+    if (order[pos] !== pos) displaced.push(pos);
+  }
+  if (displaced.length !== 2 || order[displaced[0]] !== displaced[1] || order[displaced[1]] !== displaced[0]) {
+    return { code, broken: { reason: 'that move does not correspond to a single word swap' } };
+  }
+  const swap = displaced;
+
+  const [posA, posB] = swap;
+  const chipA = oldTokens[posA];
+  const chipB = oldTokens[posB];
+  if (chipA.type !== 'arg' || chipB.type !== 'arg' || chipA.start == null || chipB.start == null) {
+    return {
+      code,
+      broken: { reason: `"${chipB.text}" can't trade places with "${chipA.text}" -- only two argument words can swap, and only within the same call` },
+    };
+  }
+
+  let callA = null, nodeA = null, nodeB = null;
+  traverse(ast, {
+    CallExpression(path) {
+      path.node.arguments.forEach((arg) => {
+        if (arg.start === chipA.start && arg.end === chipA.end) { nodeA = arg; callA = path.node; }
+        if (arg.start === chipB.start && arg.end === chipB.end) { nodeB = arg; if (!callA) callA = path.node; }
+      });
+    },
+  });
+
+  if (!nodeA || !nodeB || !callA || !callA.arguments.includes(nodeA) || !callA.arguments.includes(nodeB) || nodeA === nodeB) {
+    return {
+      code,
+      broken: { reason: `"${chipA.text}" and "${chipB.text}" are not arguments of the same call, so swapping them has no code meaning` },
+    };
+  }
+
+  const argIdxA = callA.arguments.indexOf(nodeA);
+  const argIdxB = callA.arguments.indexOf(nodeB);
+  [callA.arguments[argIdxA], callA.arguments[argIdxB]] = [callA.arguments[argIdxB], callA.arguments[argIdxA]];
+
+  const output = generate(ast, { retainLines: false }).code;
+  if (kind !== 'method') return { code: output, broken: null };
+  const chunks = chunkCode(output);
+  return { code: chunks.length ? chunks[0].code : output, broken: null };
+}
+
 module.exports = {
   toEnglish,
   camelToWords,
@@ -561,4 +657,5 @@ module.exports = {
   buildStepFromAtom,
   applyAtomToStep,
   tokenizeStmt,
+  reorderChip,
 };

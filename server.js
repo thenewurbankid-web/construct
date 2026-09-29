@@ -7,7 +7,7 @@ const { chunkCode } = require('./chunker');
 const { transform } = require('./transform');
 const { scanModules, findSimilarShapes } = require('./module-scanner');
 const trainingData = require('./training-data');
-const { toEnglish, extractAtoms, extractAtomUsage, reorderSteps, atomParamNames, applyAtomToStep } = require('./to-english');
+const { toEnglish, extractAtoms, extractAtomUsage, reorderSteps, atomParamNames, applyAtomToStep, reorderChip } = require('./to-english');
 const registry = require('./registry');
 const { plug } = require('./plug');
 
@@ -245,6 +245,25 @@ app.post('/api/reorder-steps', (req, res) => {
     const { english, steps, title } = toEnglish(refactored, kind);
     steps.forEach((s, i) => { s.broken = breaks[i] || null; });
     res.json({ refactored, english, steps, title, atomUsage: withImplementations(refactored, kind) });
+  } catch (e) {
+    res.status(400).json({ error: String(e) });
+  }
+});
+
+// LIN-119 block 6: a step's WORD chips were reordered (see tokenizeStmt).
+// reorderChip only has a real code meaning for one case (two argument chips
+// of the same call swapping position) -- everything else comes back
+// `broken` with a reason, code unchanged; the demo still moves the chip
+// visually and shows the step red, same red-on-break UX as reorder-steps.
+app.post('/api/reorder-chip', (req, res) => {
+  const kind = req.body.kind || 'function';
+  const stepIndex = req.body.stepIndex;
+  const order = Array.isArray(req.body.order) ? req.body.order : [];
+  try {
+    const { code: refactored, broken } = reorderChip(req.body.code || '', kind, stepIndex, order);
+    const { english, steps, title } = toEnglish(refactored, kind);
+    if (broken && steps[stepIndex]) steps[stepIndex].broken = broken;
+    res.json({ refactored, english, steps, title, broken, atomUsage: withImplementations(refactored, kind) });
   } catch (e) {
     res.status(400).json({ error: String(e) });
   }

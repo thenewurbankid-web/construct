@@ -576,14 +576,25 @@ function atomFormHtml(idx, pending) {
     </li>`;
 }
 
+// Every token keeps a stable `origIdx` -- its position in the token array
+// AS LAST RETURNED BY THE SERVER -- so a chip's identity survives any
+// number of local-only (broken) moves without the client and server ever
+// disagreeing about what "the original order" means. Call this on every
+// steps array that comes fresh from a server response.
+function tagOrigIdx(steps) {
+  (steps || []).forEach((s) => { (s.tokens || []).forEach((tok, idx) => { tok.origIdx = idx; }); });
+  return steps;
+}
+
 // Chip strip: the same step rendered as one draggable/keyboard-navigable
 // chip per token (chip types verb/subject/arg/connective from tokenizeStmt
 // in to-english.js -- a multi-word atom name is already one chip there, so
 // there's nothing extra to merge here). Sits below the free-text sentence
-// span (block 4, unchanged) rather than replacing it: reordering chips here
-// is LOCAL/cosmetic only for now (block 5) -- it does not regenerate code or
-// get sent to the server. Wiring a chip move to an actual code change
-// (argument order, chain order) is block 6.
+// span (block 4, unchanged) rather than replacing it. Moving a chip always
+// updates the display right away (moveChip below); POST /api/reorder-chip
+// (block 6) decides whether that move also regenerates the code (only a
+// swap of two argument chips from the same call does) or the step turns red
+// with a reason, same red-on-break UX as whole-step reorder (block 3).
 function chipStripHtml(idx, tokens) {
   return `
     <div class="chip-strip" data-idx="${idx}">
@@ -654,7 +665,7 @@ async function submitWording(i, idx, newText) {
   if (res.resolved) {
     state.undoStack.push({ code: state.code, steps: state.steps, atomUsage: state.atomUsage });
     state.code = res.refactored;
-    state.steps = res.steps;
+    state.steps = tagOrigIdx(res.steps);
     state.atomUsage = res.atomUsage || [];
     state.pending = null;
     const codeEl = document.getElementById('code-' + i);
@@ -785,23 +796,44 @@ function renderSteps(i, steps) {
   if (undoBtn) undoBtn.disabled = state.undoStack.length === 0;
 }
 
-// Reorders tokens[stepIdx] by swapping positions from and to, then
-// re-renders just that one chip strip (not the whole step list) so drag/
-// keyboard reordering doesn't fight the step-row-level drag handlers wired
-// in renderSteps. Local/cosmetic only -- see the comment on chipStripHtml.
-function moveChip(i, stepIdx, from, to, focusToken) {
+// Swaps tokens[from] and tokens[to] -- the move always happens visually,
+// right away, regardless of what the server says (per spec). `order` is
+// then sent to /api/reorder-chip as a permutation of each chip's stable
+// origIdx: if it resolves to a real argument swap the code/English/atoms
+// summary all update from the server's rebuilt source (same "re-derive,
+// never hand-patch" rule as every other mutation here); otherwise the
+// step's `broken` reason is set and the row turns red, same as block 3.
+async function moveChip(i, stepIdx, from, to, focusToken) {
   const state = blockState[i];
   const tokens = state.steps[stepIdx].tokens;
   if (to < 0 || to >= tokens.length || from === to) return;
-  const [moved] = tokens.splice(from, 1);
-  tokens.splice(to, 0, moved);
-  const strip = document.querySelector(`.chip-strip[data-idx="${stepIdx}"]`);
-  if (!strip) return;
-  strip.outerHTML = chipStripHtml(stepIdx, tokens);
-  wireChipStrips(i, document.getElementById('steps-' + i));
+  [tokens[from], tokens[to]] = [tokens[to], tokens[from]];
+  renderSteps(i, state.steps);
   if (focusToken != null) {
-    const chip = document.querySelector(`.chip-strip[data-idx="${stepIdx}"] .chip[data-tok="${to}"]`);
+    const chip = document.querySelector(`.chip-strip[data-idx="${stepIdx}"] .chip[data-tok="${focusToken}"]`);
     if (chip) chip.focus();
+  }
+
+  const order = tokens.map((tok) => tok.origIdx);
+  const res = await fetch('/api/reorder-chip', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code: state.code, kind: state.kind, stepIndex: stepIdx, order }),
+  }).then((r) => r.json());
+  if (res.error) return;
+
+  if (!res.broken) {
+    state.undoStack.push({ code: state.code, steps: state.steps, atomUsage: state.atomUsage });
+    state.code = res.refactored;
+    state.steps = tagOrigIdx(res.steps);
+    state.atomUsage = res.atomUsage || [];
+    const codeEl = document.getElementById('code-' + i);
+    if (codeEl) codeEl.value = res.refactored;
+    renderSteps(i, state.steps);
+    rebuildGlobalAtoms();
+    renderAtomsSummary();
+  } else {
+    state.steps[stepIdx].broken = res.broken;
+    renderSteps(i, state.steps);
   }
 }
 
@@ -845,11 +877,11 @@ async function applyOrder(i, order, focusIdx) {
   const res = await reorderBlockSteps(state.code, state.kind, order);
   if (res.error) { state.undoStack.pop(); return; }
   state.code = res.refactored;
-  state.steps = res.steps;
+  state.steps = tagOrigIdx(res.steps);
   state.atomUsage = res.atomUsage || [];
   const codeEl = document.getElementById('code-' + i);
   if (codeEl) codeEl.value = res.refactored;
-  renderSteps(i, res.steps);
+  renderSteps(i, state.steps);
   rebuildGlobalAtoms();
   renderAtomsSummary();
   if (focusIdx != null) {
@@ -936,10 +968,10 @@ document.getElementById('analyzeBtn').onclick = async () => {
         if (refactored && document.activeElement !== el) el.value = refactored;
         if (refactored && blockState[i]) {
           blockState[i].code = refactored;
-          blockState[i].steps = steps;
+          blockState[i].steps = tagOrigIdx(steps);
           blockState[i].atomUsage = atomUsage;
           blockState[i].undoStack = [];
-          renderSteps(i, steps);
+          renderSteps(i, blockState[i].steps);
           rebuildGlobalAtoms();
           renderAtomsSummary();
         }
@@ -960,9 +992,9 @@ document.getElementById('analyzeBtn').onclick = async () => {
       if (codeEl) codeEl.value = refactored;
       if (blockState[i]) {
         blockState[i].code = refactored;
-        blockState[i].steps = steps;
+        blockState[i].steps = tagOrigIdx(steps);
         blockState[i].atomUsage = atomUsage;
-        renderSteps(i, steps);
+        renderSteps(i, blockState[i].steps);
         rebuildGlobalAtoms();
         renderAtomsSummary();
       }
