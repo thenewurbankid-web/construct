@@ -328,8 +328,13 @@ function flattenAndOrChain(node, functionName) {
   return [...leftLeaves, right];
 }
 
-function transform(code) {
-  const ast = parser.parse(code, { sourceType: 'module' });
+// `plugins` defaults to plain JS/module syntax (existing CLI/demo callers,
+// unchanged) -- plug.js passes ['typescript', 'jsx'] to parse a .tsx source
+// file; every rule below only ever touches expression nodes it recognizes,
+// so turning those parser plugins on doesn't change output for code that
+// doesn't use TS/JSX syntax.
+function transform(code, { plugins = [] } = {}) {
+  const ast = parser.parse(code, { sourceType: 'module', plugins });
 
   // Pass zero, before any other rule: recognize the accumulator-loop idiom
   // (validateAll's original shape) and replace it wholesale with

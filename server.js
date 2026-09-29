@@ -9,6 +9,7 @@ const { scanModules, findSimilarShapes } = require('./module-scanner');
 const trainingData = require('./training-data');
 const { toEnglish, extractAtoms, extractAtomUsage, reorderSteps, atomParamNames, applyAtomToStep } = require('./to-english');
 const registry = require('./registry');
+const { plug } = require('./plug');
 
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 // Two models, two jobs. 1.5b is fast but (measured) never performs extraction
@@ -377,6 +378,19 @@ app.post('/api/refactor', async (req, res) => {
     });
   } catch (e) {
     res.status(502).json({ error: String(e), astOutput });
+  }
+});
+
+// PLUG (LIN-122 block 1): whole-file TSX text -> atomic-English module text.
+// Deterministic AST pass only (transform.js), no LLM -- same "AST-ready
+// first" rule as /api/ast-pass, just with the typescript+jsx parser plugins
+// on so a real .tsx file parses.
+app.post('/api/plug', (req, res) => {
+  try {
+    const plugged = plug(req.body.source || '');
+    res.json({ plugged });
+  } catch (e) {
+    res.status(400).json({ error: String(e) });
   }
 });
 
