@@ -1,0 +1,117 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Atomic Codemod — Code as English (archived)</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    margin: 0;
+    background: #0f1115;
+    color: #e4e6eb;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    padding: 48px 24px 96px;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  header { margin-bottom: 56px; }
+  h1 { font-size: 22px; font-weight: 600; margin: 0 0 10px; }
+  header p { color: #9aa0ac; font-size: 14px; line-height: 1.6; margin: 0; max-width: 60ch; }
+
+  .example { margin-bottom: 52px; }
+  .example-label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+    color: #6c7480; margin-bottom: 14px; font-family: ui-monospace, Menlo, monospace;
+  }
+  .sentence {
+    font-size: 26px; line-height: 1.65; font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+  .sentence .verb { color: #e4e6eb; font-weight: 600; }
+  .sentence .connector { color: #6c7480; font-style: italic; }
+  .sentence .literal { color: #6fe397; font-weight: 500; }
+  .sentence .result { color: #7aa2f7; font-weight: 600; }
+
+  .code-toggle {
+    margin-top: 18px; display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; color: #6c7480; cursor: pointer; user-select: none;
+    font-family: ui-monospace, Menlo, monospace;
+  }
+  .code-toggle:hover { color: #9aa0ac; }
+  .code-toggle::before { content: '▸'; display: inline-block; transition: transform .15s; }
+  details[open] .code-toggle::before { transform: rotate(90deg); }
+  summary { list-style: none; }
+  summary::-webkit-details-marker { display: none; }
+
+  pre {
+    margin: 12px 0 0; padding: 14px 16px; background: #0b0d11;
+    border: 1px solid #1c1f26; border-radius: 8px;
+    font-family: ui-monospace, Menlo, monospace; font-size: 12.5px;
+    color: #b7f7c8; overflow-x: auto; white-space: pre;
+  }
+
+  footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid #1c1f26; }
+  footer a { color: #7aa2f7; text-decoration: none; font-size: 13px; }
+  footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Code as English (archived version)</h1>
+  <p>This is a reconstruction of the earlier standalone showcase page, kept for reference. The live, consolidated version (with editable code, English block-by-block output, and the browser-LLM chat) is now at <a href="/demo.html" style="color:#7aa2f7;">/demo.html</a>.</p>
+</header>
+
+<div class="example">
+  <div class="example-label">page.ts</div>
+  <div class="sentence">
+    <span class="verb">Page</span> <span class="connector">will</span> check text <span class="literal">"hello"</span>, <span class="connector">and if</span> text <span class="connector">is</span> equal to <span class="literal">"hello"</span> → <span class="result">'static'</span>
+  </div>
+  <details>
+    <summary><span class="code-toggle">show the code</span></summary>
+    <pre>page.will().checkText(new PageText('hello')).and().if().text().is().equalTo(new PageText('hello'))
+// -> 'static'</pre>
+  </details>
+</div>
+
+<div class="example">
+  <div class="example-label">form.ts</div>
+  <div class="sentence">
+    <span class="verb">Form</span> <span class="connector">will</span> check field <span class="literal">42</span>, <span class="connector">and if</span> value <span class="connector">is</span> greater than <span class="literal">10</span> → <span class="result">'valid'</span>
+  </div>
+  <details>
+    <summary><span class="code-toggle">show the code</span></summary>
+    <pre>form.will().checkField(new FieldValue(42)).and().if().value().is().greaterThan(new FieldValue(10))
+// -> 'valid'</pre>
+  </details>
+</div>
+
+<div class="example">
+  <div class="example-label">Untitled-1 (speed)</div>
+  <div class="sentence">
+    <span class="verb">Calculate speed</span>, <span class="connector">using</span> distance <span class="literal">100</span> <span class="connector">and</span> time <span class="literal">20</span> → <span class="result">5</span>
+  </div>
+  <details>
+    <summary><span class="code-toggle">show the code</span></summary>
+    <pre>calculateSpeed().using().distance(100).and().time(20)
+// -> 5</pre>
+  </details>
+</div>
+
+<div class="example">
+  <div class="example-label">Untitled-1 (assertion)</div>
+  <div class="sentence">
+    <span class="verb">Check</span> <span class="literal">1</span>, <span class="connector">is</span> greater than <span class="literal">2</span>, <span class="connector">then</span> it is <span class="literal">false</span> → <span class="result">true</span>
+  </div>
+  <details>
+    <summary><span class="code-toggle">show the code</span></summary>
+    <pre>check(1).is().greaterThan(2).then().itIs(false)
+// -> true (1 is not greater than 2, so the expectation holds)</pre>
+  </details>
+</div>
+
+<footer>
+  <a href="/demo.html">→ go to the current live demo</a>
+</footer>
+</div>
+</body>
+</html>

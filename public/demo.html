@@ -1,0 +1,405 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Atomic — Live Demo</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; height: 100vh; overflow: hidden;
+    background: #05060a; color: #e4e6eb;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  #app { display: grid; grid-template-columns: 1fr 400px; height: 100vh; }
+
+  /* ---- left: output (top) + code (bottom) ---- */
+  #left { display: flex; flex-direction: column; min-width: 0; border-right: 1px solid #1c1f26; }
+  .panel-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 18px; border-bottom: 1px solid #1c1f26; flex-shrink: 0;
+  }
+  .panel-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #5eead4; }
+  .brand { font-size: 14px; font-weight: 800; padding: 12px 18px; border-bottom: 1px solid #1c1f26; }
+  .brand span { color: #5eead4; }
+
+  #output { flex: 1; overflow-y: auto; padding: 20px 24px; min-height: 0; }
+  .block { margin-bottom: 26px; }
+  .block-tag { font-size: 10px; color: #6c7480; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; font-family: ui-monospace, Menlo, monospace; }
+  .block-sentence { font-size: 22px; line-height: 1.6; font-weight: 400; letter-spacing: -0.01em; color: #e4e6eb; }
+  .block-sentence .loading { color: #6c7480; font-style: italic; font-size: 15px; }
+  .block-sentence .verb { color: #fff; font-weight: 700; }
+  .block-sentence .connector { color: #6c7480; font-style: italic; }
+  .block-sentence .literal { color: #6fe397; font-weight: 500; }
+  .block-sentence .result { color: #7aa2f7; font-weight: 600; }
+  .block-code-toggle { font-size: 11px; color: #6c7480; cursor: pointer; margin-top: 6px; display: inline-block; font-family: ui-monospace, Menlo, monospace; }
+  .block-code-toggle:hover { color: #9aa0ac; }
+  .atom-tags { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .atom-tag { font-size: 10.5px; font-family: ui-monospace, Menlo, monospace; background: #14171d; border: 1px solid #22252e; color: #5eead4; padding: 3px 8px; border-radius: 999px; }
+  .block pre { display: none; margin: 8px 0 0; padding: 10px 12px; background: #0b0d11; border: 1px solid #1c1f26; border-radius: 6px; font-size: 11.5px; color: #7de8a4; white-space: pre-wrap; }
+  .block.open pre { display: block; }
+  .block-edit {
+    display: none; width: 100%; margin: 8px 0 0; padding: 10px 12px;
+    background: #0b0d11; border: 1px solid #1c1f26; border-radius: 6px;
+    font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: #7de8a4;
+    resize: vertical; outline: none; min-height: 90px;
+  }
+  .block-edit:focus { border-color: #5eead4; }
+  .block.open .block-edit { display: block; }
+  .block-edit-hint { display: none; font-size: 10px; color: #55595f; margin-top: 4px; }
+  .block.open .block-edit-hint { display: block; }
+
+  #codeWrap { height: 42%; display: flex; flex-direction: column; border-top: 1px solid #1c1f26; flex-shrink: 0; }
+  #codeInput {
+    flex: 1; width: 100%; background: #0b0d11; color: #e4e6eb; border: none; resize: none; outline: none;
+    font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; padding: 16px; line-height: 1.6;
+  }
+  #codeActions { display: flex; gap: 8px; align-items: center; padding: 10px 16px; border-top: 1px solid #1c1f26; }
+  button { font-family: inherit; cursor: pointer; border-radius: 7px; border: 1px solid transparent; }
+  .btn-primary { background: #5eead4; color: #05060a; font-weight: 700; font-size: 12.5px; padding: 8px 16px; }
+  .btn-ghost { background: #14171d; color: #e4e6eb; border-color: #22252e; font-size: 12px; padding: 7px 13px; }
+  .btn-ghost:hover { border-color: #5eead4; }
+  #analyzeStatus { font-size: 11px; color: #6c7480; margin-left: auto; }
+
+  /* ---- right: chat ---- */
+  #chat { display: flex; flex-direction: column; min-width: 0; }
+  #chatHead { padding: 12px 18px; border-bottom: 1px solid #1c1f26; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .model-dot { width: 8px; height: 8px; border-radius: 999px; background: #6c7480; transition: background .3s; flex-shrink: 0; }
+  .model-dot.ready { background: #5eead4; box-shadow: 0 0 8px #5eead4; }
+  #modelLine { font-size: 11.5px; color: #9aa0ac; flex: 1; }
+
+  #messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+  .msg { max-width: 92%; }
+  .msg.user { align-self: flex-end; }
+  .msg.assistant { align-self: flex-start; }
+  .msg-bubble { padding: 10px 13px; border-radius: 12px; font-size: 13px; line-height: 1.55; }
+  .msg.user .msg-bubble { background: #2b6cf6; color: white; border-bottom-right-radius: 3px; }
+  .msg.assistant .msg-bubble { background: #14171d; border: 1px solid #22252e; border-bottom-left-radius: 3px; }
+  .msg-bubble pre { margin: 8px 0 0; padding: 10px 11px; background: #0b0d11; border-radius: 7px; font-size: 11px; color: #7de8a4; white-space: pre-wrap; overflow-x: auto; }
+  .msg-time { font-size: 9.5px; color: #55595f; margin-top: 4px; }
+  .msg.user .msg-time { text-align: right; }
+  .msg-actions { margin-top: 8px; display: flex; gap: 6px; }
+
+  .typing { display: inline-flex; gap: 3px; padding: 2px 0; }
+  .typing span { width: 5px; height: 5px; border-radius: 999px; background: #6c7480; animation: bounce 1.2s infinite; }
+  .typing span:nth-child(2) { animation-delay: .15s; }
+  .typing span:nth-child(3) { animation-delay: .3s; }
+  @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); opacity: .5; } 30% { transform: translateY(-4px); opacity: 1; } }
+
+  #chatInputWrap { border-top: 1px solid #1c1f26; padding: 12px; flex-shrink: 0; }
+  #chatForm { display: flex; gap: 8px; }
+  #chatInput {
+    flex: 1; background: #14171d; border: 1px solid #22252e; color: #e4e6eb;
+    border-radius: 20px; padding: 10px 16px; font-size: 13px; outline: none; resize: none;
+    font-family: inherit; max-height: 100px;
+  }
+  #chatInput:focus { border-color: #5eead4; }
+  #sendBtn {
+    width: 38px; height: 38px; border-radius: 999px; background: #5eead4; color: #05060a;
+    display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;
+  }
+  #sendBtn:disabled { opacity: .4; cursor: default; }
+  .hint { font-size: 10.5px; color: #55595f; text-align: center; margin-top: 8px; }
+
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-thumb { background: #22252e; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="left">
+    <div class="brand" style="display:flex; align-items:center; gap:14px;">
+      Atomic<span>Demo</span>
+      <a href="/docs.html" style="font-size:11px; font-weight:400; color:#6c7480; text-decoration:none;">docs →</a>
+    </div>
+    <div class="panel-head">
+      <span class="panel-title">Output — in English</span>
+      <span id="analyzeStatus"></span>
+    </div>
+    <div id="output"><div style="color:#6c7480; font-size:13px;">Click "Analyze" below to translate the code into English, block by block.</div></div>
+    <div id="codeWrap">
+      <div class="panel-head" style="border-top:1px solid #1c1f26; border-bottom:none;">
+        <span class="panel-title">Code</span>
+      </div>
+      <textarea id="codeInput" spellcheck="false"></textarea>
+      <div id="codeActions">
+        <button class="btn-primary" id="analyzeBtn">▸ Analyze</button>
+        <button class="btn-ghost" id="resetBtn">Reset to default</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="chat">
+    <div id="chatHead">
+      <div class="model-dot" id="modelDot"></div>
+      <div id="modelLine">model not loaded</div>
+      <button class="btn-ghost" id="loadBtn" style="padding:5px 10px; font-size:11px;">Load model</button>
+    </div>
+    <div id="messages"></div>
+    <div id="chatInputWrap">
+      <form id="chatForm">
+        <textarea id="chatInput" rows="1" placeholder="Ask for a messy example… (load the model first)" disabled></textarea>
+        <button id="sendBtn" type="submit" disabled>➤</button>
+      </form>
+      <div class="hint">Runs entirely in this tab via WebGPU. Nothing here touches our server.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DEFAULT_CODE = `class FormValidator {
+  constructor(rules) {
+    this.rules = rules;
+    this.errors = [];
+  }
+
+  validateField(name, value) {
+    const rule = this.rules[name];
+    return rule == null ? 'unrated' : value === rule.expected ? 'valid' : 'invalid';
+  }
+
+  validateAll(values) {
+    let allValid = true;
+    for (const name in values) {
+      const status = this.validateField(name, values[name]);
+      if (status !== 'valid') {
+        allValid = false;
+        this.errors.push(name + ' is ' + status);
+      }
+    }
+    return allValid;
+  }
+
+  describeLength(value) {
+    return value.length === 0 ? 'empty' : value.length < 5 ? 'short' : value.length < 20 ? 'medium' : 'long';
+  }
+
+  isWithinRange(value, min, max) {
+    return value >= min && value <= max ? true : false;
+  }
+
+  summarize() {
+    return this.errors.length === 0 ? 'no errors' : this.errors.length === 1 ? '1 error' : this.errors.length + ' errors';
+  }
+}`;
+
+function escapeHtml(s) {
+  return s.replace(/[&<>]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]));
+}
+
+document.getElementById('codeInput').value = DEFAULT_CODE;
+document.getElementById('resetBtn').onclick = () => { document.getElementById('codeInput').value = DEFAULT_CODE; };
+
+let engine = null;
+
+function timeNow() {
+  return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function addMessage(role, html) {
+  const wrap = document.createElement('div');
+  wrap.className = 'msg ' + role;
+  wrap.innerHTML = `<div class="msg-bubble">${html}</div><div class="msg-time">${timeNow()}</div>`;
+  document.getElementById('messages').appendChild(wrap);
+  document.getElementById('messages').scrollTop = 1e9;
+  return wrap;
+}
+
+function addTyping() {
+  const wrap = document.createElement('div');
+  wrap.className = 'msg assistant';
+  wrap.innerHTML = `<div class="msg-bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
+  document.getElementById('messages').appendChild(wrap);
+  document.getElementById('messages').scrollTop = 1e9;
+  return wrap;
+}
+
+async function llmSay(userText, systemPrompt) {
+  const reply = await engine.chat.completions.create({
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userText },
+    ],
+  });
+  return reply.choices[0].message.content.trim();
+}
+
+document.getElementById('loadBtn').onclick = async () => {
+  const btn = document.getElementById('loadBtn');
+  const line = document.getElementById('modelLine');
+  btn.disabled = true;
+  line.textContent = 'loading web-llm…';
+  try {
+    const webllm = await import("https://esm.run/@mlc-ai/web-llm");
+    const chatCapable = webllm.prebuiltAppConfig.model_list.filter(m => !/embed/i.test(m.model_id));
+    const smallest = [...chatCapable].sort((a, b) => (a.vram_required_MB || Infinity) - (b.vram_required_MB || Infinity))[0];
+    if (!smallest) throw new Error('no chat-capable model in the prebuilt catalog');
+    line.textContent = 'loading ' + smallest.model_id + '…';
+    engine = await webllm.CreateMLCEngine(smallest.model_id, {
+      initProgressCallback: (r) => { line.textContent = r.text; },
+    });
+    line.textContent = 'ready: ' + smallest.model_id;
+    document.getElementById('modelDot').classList.add('ready');
+    document.getElementById('chatInput').disabled = false;
+    document.getElementById('sendBtn').disabled = false;
+    addMessage('assistant', 'Model loaded. Ask me for a messy example function, or anything else.');
+  } catch (e) {
+    line.textContent = 'failed: ' + e.message + ' (needs a WebGPU-capable browser, e.g. recent Chrome/Edge)';
+    btn.disabled = false;
+  }
+};
+
+const CHAT_SYSTEM = 'You generate short, deliberately messy JavaScript functions for a refactoring demo, OR answer plain questions. When asked for messy/example code, use ternaries, ===, !==, >, <, >=, <=, &&, || liberally and mix concerns. Reply with ONLY the code (no markdown fences) when code is requested; otherwise reply normally in plain text.';
+
+document.getElementById('chatForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text || !engine) return;
+  input.value = '';
+  document.getElementById('sendBtn').disabled = true;
+
+  addMessage('user', escapeHtml(text));
+  const typing = addTyping();
+
+  try {
+    const reply = await llmSay(text, CHAT_SYSTEM);
+    typing.remove();
+    const looksLikeCode = /[{};]/.test(reply) && reply.split('\n').length > 1;
+    if (looksLikeCode) {
+      const bubble = addMessage('assistant', `<pre>${escapeHtml(reply)}</pre><div class="msg-actions"><button class="btn-ghost" style="font-size:11px;padding:5px 10px;">Use this code</button></div>`);
+      bubble.querySelector('button').onclick = () => {
+        document.getElementById('codeInput').value = reply;
+        document.getElementById('analyzeBtn').click();
+      };
+    } else {
+      addMessage('assistant', escapeHtml(reply));
+    }
+  } catch (err) {
+    typing.remove();
+    addMessage('assistant', 'generation failed: ' + escapeHtml(err.message));
+  }
+
+  document.getElementById('sendBtn').disabled = false;
+};
+
+document.getElementById('chatInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    document.getElementById('chatForm').requestSubmit();
+  }
+});
+
+// Deterministic, no model: refactor the block to atoms server-side, then
+// render THAT (not the original code) as English. Readability comes from
+// the atom shape itself, not an LLM's paraphrase of arbitrary code.
+const CONNECTOR_WORDS = ['if', 'otherwise', 'then', 'and', 'or', 'of', 'is', 'not', 'for each', 'in', 'while', 'let', 'be', 'set', 'to'];
+
+function markupSegment(segment) {
+  let html = escapeHtml(segment);
+  html = html.replace(/'[^']*'|\b\d+(\.\d+)?\b|\btrue\b|\bfalse\b/g, m => `<span class="literal">${m}</span>`);
+  const connectorPattern = new RegExp('\\b(' + CONNECTOR_WORDS.join('|').replace(' ', '\\s') + ')\\b', 'gi');
+  html = html.replace(connectorPattern, m => `<span class="connector">${m}</span>`);
+  return html;
+}
+
+function highlightEnglish(text) {
+  const colonIdx = text.indexOf(':');
+  if (colonIdx === -1) return markupSegment(text);
+  const verb = text.slice(0, colonIdx);
+  const rest = text.slice(colonIdx);
+  return `<span class="verb">${escapeHtml(verb)}</span>${markupSegment(rest)}`;
+}
+
+async function describeBlock(code, kind) {
+  const res = await fetch('/api/to-english', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, kind }),
+  }).then(r => r.json());
+  if (res.error) return { html: `(couldn't refactor: ${escapeHtml(res.error)})`, refactored: null, atoms: [] };
+  return { html: highlightEnglish(res.english), refactored: res.refactored, atoms: res.atoms || [] };
+}
+
+function renderAtomTags(atoms) {
+  if (!atoms.length) return '';
+  return `<div class="atom-tags">${atoms.map(a => `<span class="atom-tag">${escapeHtml(a)}()</span>`).join('')}</div>`;
+}
+
+document.getElementById('analyzeBtn').onclick = async () => {
+  const code = document.getElementById('codeInput').value;
+  const status = document.getElementById('analyzeStatus');
+  const output = document.getElementById('output');
+  status.textContent = 'chunking…';
+
+  const chunkRes = await fetch('/api/chunk', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  }).then(r => r.json());
+
+  if (chunkRes.error || !chunkRes.chunks.length) {
+    output.innerHTML = `<div style="color:#f2b86a; font-size:13px;">${chunkRes.error ? escapeHtml(chunkRes.error) : 'No chunks found -- is this valid JS with at least one function/method?'}</div>`;
+    status.textContent = '';
+    return;
+  }
+
+  output.innerHTML = '';
+  chunkRes.chunks.forEach((c, i) => {
+    const block = document.createElement('div');
+    block.className = 'block';
+    block.innerHTML = `
+      <div class="block-tag">${c.kind} · ${c.name}</div>
+      <div class="block-sentence" id="sentence-${i}"><span class="loading">refactoring to atoms…</span></div>
+      <div id="atoms-${i}"></div>
+      <span class="block-code-toggle" data-i="${i}">▸ show atoms (editable)</span>
+      <textarea class="block-edit" id="code-${i}" data-kind="${c.kind}" spellcheck="false">${escapeHtml(c.code)}</textarea>
+      <div class="block-edit-hint">Edit the atom code above — the sentence re-renders as you type.</div>
+    `;
+    output.appendChild(block);
+  });
+
+  output.querySelectorAll('.block-code-toggle').forEach(el => {
+    el.onclick = () => el.closest('.block').classList.toggle('open');
+  });
+
+  // Editing the refactored code re-renders its own sentence live -- debounced
+  // so it doesn't fire a request on every keystroke. Deterministic either way:
+  // this hits the same /api/to-english endpoint, no model involved.
+  const debounceTimers = {};
+  output.querySelectorAll('.block-edit').forEach((el, i) => {
+    el.addEventListener('input', () => {
+      clearTimeout(debounceTimers[i]);
+      const sentenceEl = document.getElementById('sentence-' + i);
+      if (sentenceEl) sentenceEl.innerHTML = '<span class="loading">updating…</span>';
+      debounceTimers[i] = setTimeout(async () => {
+        const { html, refactored, atoms } = await describeBlock(el.value, el.dataset.kind);
+        const current = document.getElementById('sentence-' + i);
+        if (current) current.innerHTML = html;
+        const atomsEl = document.getElementById('atoms-' + i);
+        if (atomsEl) atomsEl.innerHTML = renderAtomTags(atoms);
+        // re-refactoring an already-refactored edit is idempotent when the
+        // edit didn't introduce new raw operators/ternaries; when it does,
+        // this keeps the textarea in sync with what was actually rendered.
+        if (refactored && document.activeElement !== el) el.value = refactored;
+      }, 500);
+    });
+  });
+
+  status.textContent = 'refactoring blocks to atoms…';
+
+  for (let i = 0; i < chunkRes.chunks.length; i++) {
+    const { html, refactored, atoms } = await describeBlock(chunkRes.chunks[i].code, chunkRes.chunks[i].kind);
+    const sentenceEl = document.getElementById('sentence-' + i);
+    if (sentenceEl) sentenceEl.innerHTML = html;
+    const atomsEl = document.getElementById('atoms-' + i);
+    if (atomsEl) atomsEl.innerHTML = renderAtomTags(atoms);
+    if (refactored) {
+      const codeEl = document.getElementById('code-' + i);
+      if (codeEl) codeEl.value = refactored;
+    }
+  }
+
+  status.textContent = 'done — no model used for this, pure AST';
+};
+</script>
+</body>
+</html>

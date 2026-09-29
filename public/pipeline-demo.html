@@ -1,0 +1,481 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>CodeFlow — Pipeline Demo</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: #05060a; color: #e4e6eb;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    overflow: hidden; height: 100vh;
+  }
+  #webgl { position: fixed; inset: 0; z-index: 0; }
+  #overlay { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+  #canvas2d { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+  header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 5;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 28px; pointer-events: none;
+  }
+  .brand { font-size: 15px; font-weight: 700; letter-spacing: -0.02em; }
+  .brand span { color: #5eead4; }
+  .steps { display: flex; gap: 6px; pointer-events: auto; }
+  .step-pill {
+    font-size: 11px; padding: 6px 12px; border-radius: 999px; background: #12141a;
+    border: 1px solid #22252e; color: #6c7480; transition: all .3s;
+  }
+  .step-pill.active { background: rgba(94,234,212,.12); border-color: #5eead4; color: #5eead4; }
+  .step-pill.done { color: #9aa0ac; border-color: #2a2e38; }
+
+  #hud {
+    position: fixed; left: 28px; bottom: 28px; z-index: 5; max-width: 520px;
+    pointer-events: none;
+  }
+  .phase-title {
+    font-size: 34px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 6px;
+    background: linear-gradient(90deg, #fff, #5eead4);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .phase-sub { font-size: 14px; color: #9aa0ac; line-height: 1.6; margin: 0 0 14px; max-width: 46ch; }
+  .stat-row { display: flex; gap: 18px; }
+  .stat { }
+  .stat-num { font-size: 22px; font-weight: 700; color: #5eead4; font-variant-numeric: tabular-nums; }
+  .stat-label { font-size: 10px; color: #6c7480; text-transform: uppercase; letter-spacing: .06em; }
+
+  #codePanel {
+    position: fixed; right: 28px; bottom: 28px; top: 100px; width: 440px; z-index: 5;
+    background: rgba(10,11,15,.82); backdrop-filter: blur(10px);
+    border: 1px solid #22252e; border-radius: 12px; padding: 16px;
+    overflow-y: auto; pointer-events: auto;
+    font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; line-height: 1.55;
+  }
+  #codePanel .label { font-size: 10px; color: #5eead4; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  #codePanel pre { margin: 0 0 14px; white-space: pre-wrap; color: #cbd5c9; }
+  #codePanel pre.before { color: #f2b86a; opacity: .85; }
+  #codePanel pre.after { color: #7de8a4; }
+
+  #controls {
+    position: fixed; right: 28px; top: 20px; z-index: 5; display: flex; gap: 8px; pointer-events: auto;
+  }
+  button.ctrl {
+    background: #12141a; border: 1px solid #22252e; color: #e4e6eb;
+    padding: 7px 14px; border-radius: 7px; font-size: 12px; cursor: pointer;
+  }
+  button.ctrl:hover { border-color: #5eead4; }
+  button.ctrl.primary { background: #5eead4; color: #05060a; font-weight: 700; border: none; }
+
+  #loading {
+    position: fixed; inset: 0; z-index: 20; background: #05060a;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; color: #6c7480; transition: opacity .4s;
+  }
+</style>
+</head>
+<body>
+<div id="loading">loading live pipeline data…</div>
+<canvas id="webgl"></canvas>
+<canvas id="canvas2d"></canvas>
+
+<header>
+  <div class="brand">CodeFlow<span>AI</span></div>
+  <div class="steps" id="stepsRow"></div>
+</header>
+
+<div id="controls">
+  <button class="ctrl" id="prevBtn">◂ Prev</button>
+  <button class="ctrl primary" id="playBtn">▶ Replay</button>
+  <button class="ctrl" id="nextBtn">Next ▸</button>
+</div>
+
+<div id="hud">
+  <div class="phase-title" id="phaseTitle">—</div>
+  <p class="phase-sub" id="phaseSub"></p>
+  <div class="stat-row" id="statRow"></div>
+</div>
+
+<div id="codePanel"><div class="label">detail</div><div id="codeBody">…</div></div>
+
+<script>
+// ---------------------------------------------------------------------------
+// All data below is fetched live from this tool's own endpoints, verified
+// working earlier in the session -- the animation is decoration around real
+// output, not scripted fake numbers.
+// ---------------------------------------------------------------------------
+
+const FORM_VALIDATOR = `class FormValidator {
+  constructor(rules) {
+    this.rules = rules;
+    this.errors = [];
+  }
+
+  validateField(name, value) {
+    const rule = this.rules[name];
+    return rule == null ? 'unrated' : value === rule.expected ? 'valid' : 'invalid';
+  }
+
+  validateAll(values) {
+    let allValid = true;
+    for (const name in values) {
+      const status = this.validateField(name, values[name]);
+      if (status !== 'valid') {
+        allValid = false;
+        this.errors.push(name + ' is ' + status);
+      }
+    }
+    return allValid;
+  }
+
+  describeLength(value) {
+    return value.length === 0 ? 'empty' : value.length < 5 ? 'short' : value.length < 20 ? 'medium' : 'long';
+  }
+
+  isWithinRange(value, min, max) {
+    return value >= min && value <= max ? true : false;
+  }
+
+  summarize() {
+    return this.errors.length === 0 ? 'no errors' : this.errors.length === 1 ? '1 error' : this.errors.length + ' errors';
+  }
+}`;
+
+const VALIDATE_ALL_METHOD = `validateAll(values) {
+    let allValid = true;
+    for (const name in values) {
+      const status = this.validateField(name, values[name]);
+      if (status !== 'valid') {
+        allValid = false;
+        this.errors.push(name + ' is ' + status);
+      }
+    }
+    return allValid;
+  }`;
+
+function escapeHtml(s) {
+  return s.replace(/[&<>]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]));
+}
+
+const state = { chunks: [], astOutput: '', refactor: null, atoms: [], similar: [] };
+
+async function loadLiveData() {
+  const chunkRes = await fetch('/api/chunk', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code: FORM_VALIDATOR }),
+  }).then(r => r.json());
+  state.chunks = chunkRes.chunks || [];
+
+  const astRes = await fetch('/api/ast-pass', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code: VALIDATE_ALL_METHOD, kind: 'method' }),
+  }).then(r => r.json());
+  state.astOutput = astRes.output || '';
+
+  state.refactor = await fetch('/api/refactor', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code: VALIDATE_ALL_METHOD, kind: 'method' }),
+  }).then(r => r.json());
+
+  state.atoms = await fetch('/api/scan-atoms').then(r => r.json()).then(d => d.atoms || []);
+  state.similar = await fetch('/api/similar-shapes').then(r => r.json()).then(d => d.groups || []).catch(() => []);
+}
+
+// ---------------------------------------------------------------------------
+// WebGL layer: atoms as a glowing, slowly-orbiting node graph. Node size =
+// usage count (from the real scan). Built during phase 3 but rendered
+// continuously underneath every phase for ambience.
+// ---------------------------------------------------------------------------
+
+const webglCanvas = document.getElementById('webgl');
+const renderer = new THREE.WebGLRenderer({ canvas: webglCanvas, antialias: true, alpha: true });
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 100);
+camera.position.set(0, 0, 13);
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+
+const nodeGroup = new THREE.Group();
+scene.add(nodeGroup);
+const lineGroup = new THREE.Group();
+scene.add(lineGroup);
+
+function buildAtomGraph() {
+  nodeGroup.clear();
+  lineGroup.clear();
+
+  const byUsage = new Map();
+  for (const a of state.atoms) {
+    if (!byUsage.has(a.usageCount)) byUsage.set(a.usageCount, []);
+    byUsage.get(a.usageCount).push(a);
+  }
+  const shared = state.atoms.filter(a => a.usageCount > 1);
+  const uniqueNames = [...new Map(shared.map(a => [a.name, a])).values()];
+
+  const positions = [];
+  uniqueNames.forEach((atom, i) => {
+    const angle = (i / uniqueNames.length) * Math.PI * 2;
+    const radius = 4.2;
+    const x = Math.cos(angle) * radius;
+    const y = Math.sin(angle) * radius;
+    const size = 0.18 + atom.usageCount * 0.08;
+    const geo = new THREE.SphereGeometry(size, 24, 24);
+    const mat = new THREE.MeshBasicMaterial({ color: 0x5eead4 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, y, 0);
+    nodeGroup.add(mesh);
+    positions.push({ x, y, z: 0 });
+
+    const glowGeo = new THREE.SphereGeometry(size * 1.8, 16, 16);
+    const glowMat = new THREE.MeshBasicMaterial({ color: 0x5eead4, transparent: true, opacity: 0.12 });
+    const glow = new THREE.Mesh(glowGeo, glowMat);
+    glow.position.copy(mesh.position);
+    nodeGroup.add(glow);
+  });
+
+  // center hub = the shared base class
+  const hubGeo = new THREE.SphereGeometry(0.35, 24, 24);
+  const hubMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const hub = new THREE.Mesh(hubGeo, hubMat);
+  nodeGroup.add(hub);
+
+  positions.forEach(p => {
+    const points = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(p.x, p.y, p.z)];
+    const geo = new THREE.BufferGeometry().setFromPoints(points);
+    const mat = new THREE.LineBasicMaterial({ color: 0x2a2e38 });
+    lineGroup.add(new THREE.Line(geo, mat));
+  });
+}
+
+function animateWebgl() {
+  requestAnimationFrame(animateWebgl);
+  nodeGroup.rotation.z += 0.0015;
+  lineGroup.rotation.z += 0.0015;
+  nodeGroup.rotation.x = Math.sin(Date.now() * 0.0002) * 0.2;
+  lineGroup.rotation.x = nodeGroup.rotation.x;
+  renderer.render(scene, camera);
+}
+
+// ---------------------------------------------------------------------------
+// Canvas 2D layer: per-phase animation (chunk cards flying apart, diff glow,
+// typewriter rename reveal).
+// ---------------------------------------------------------------------------
+
+const c2d = document.getElementById('canvas2d');
+const ctx = c2d.getContext('2d');
+function resize2d() {
+  c2d.width = innerWidth * devicePixelRatio;
+  c2d.height = innerHeight * devicePixelRatio;
+  c2d.style.width = innerWidth + 'px';
+  c2d.style.height = innerHeight + 'px';
+  ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+}
+resize2d();
+addEventListener('resize', () => { resize2d(); renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
+
+let particles = [];
+function initChunkParticles() {
+  particles = state.chunks.map((c, i) => ({
+    name: c.name, kind: c.kind,
+    x: innerWidth / 2, y: innerHeight / 2 - 40,
+    tx: 140 + (i % 3) * 260, ty: 160 + Math.floor(i / 3) * 130,
+    vx: 0, vy: 0, settled: false,
+  }));
+}
+
+function drawChunkParticles(t) {
+  ctx.clearRect(0, 0, innerWidth, innerHeight);
+  particles.forEach(p => {
+    p.x += (p.tx - p.x) * 0.06;
+    p.y += (p.ty - p.y) * 0.06;
+    const w = 150, h = 60;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.fillStyle = 'rgba(18,20,26,.9)';
+    ctx.strokeStyle = '#5eead4';
+    ctx.lineWidth = 1;
+    roundRect(ctx, -w / 2, -h / 2, w, h, 8);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#e4e6eb';
+    ctx.font = '600 12px ui-monospace, Menlo, monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(p.name + '()', 0, -6);
+    ctx.fillStyle = '#5eead4';
+    ctx.font = '10px sans-serif';
+    ctx.fillText(p.kind, 0, 12);
+    ctx.restore();
+  });
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+let rafId = null;
+function loopPhase3() {
+  drawChunkParticles();
+  rafId = requestAnimationFrame(loopPhase3);
+}
+function stop2d() {
+  if (rafId) cancelAnimationFrame(rafId);
+  rafId = null;
+  ctx.clearRect(0, 0, innerWidth, innerHeight);
+}
+
+// ---------------------------------------------------------------------------
+// Phases
+// ---------------------------------------------------------------------------
+
+const PHASES = [
+  {
+    key: 'chunk',
+    title: 'Chunking',
+    sub: 'FormValidator is parsed and split by AST boundaries — one chunk per method, not by line count.',
+    enter() {
+      stop2d();
+      initChunkParticles();
+      loopPhase3();
+      document.getElementById('codeBody').innerHTML = `<div class="label">input</div><pre>${escapeHtml(FORM_VALIDATOR)}</pre>`;
+      return [
+        { num: state.chunks.length, label: 'chunks found' },
+        { num: state.chunks.filter(c => c.kind === 'method').length, label: 'methods' },
+      ];
+    },
+  },
+  {
+    key: 'refactor',
+    title: 'Refactor',
+    sub: 'validateAll() mixes three concerns — the AST pass converts operators, the model extracts the rest.',
+    enter() {
+      stop2d();
+      const before = VALIDATE_ALL_METHOD;
+      const after = state.refactor?.output || state.astOutput;
+      document.getElementById('codeBody').innerHTML = `
+        <div class="label">before</div><pre class="before">${escapeHtml(before)}</pre>
+        <div class="label">after</div><pre class="after">${escapeHtml(after)}</pre>
+      `;
+      // Babel's generated output never has a leading newline before the
+      // FIRST method signature (the string starts right at it), so this
+      // pattern already only matches methods AFTER the first one -- i.e.
+      // exactly the extracted ones. No extra "- 1" needed (verified against
+      // live output; an earlier version double-subtracted and undercounted).
+      const newMethods = (after.match(/\n\s*\w+\([^)]*\)\s*{/g) || []).length;
+      return [
+        { num: state.refactor?.skipped ? 0 : 1, label: 'model calls' },
+        { num: Math.max(newMethods, 0), label: 'methods extracted' },
+      ];
+    },
+  },
+  {
+    key: 'reuse',
+    title: 'Reuse',
+    sub: 'Shared atoms (and/if/is/will/then/but/also) live once, on Chain/Organism — every leaf just inherits them.',
+    enter() {
+      stop2d();
+      buildAtomGraph();
+      const shared = state.atoms.filter(a => a.usageCount > 1);
+      const uniqueShared = [...new Set(shared.map(a => a.name))];
+      document.getElementById('codeBody').innerHTML = `
+        <div class="label">shared atoms</div>
+        <pre>${uniqueShared.map(n => n + '() — used ' + shared.find(a => a.name === n).usageCount + '×').join('\n')}</pre>
+      `;
+      return [
+        { num: uniqueShared.length, label: 'shared atoms' },
+        { num: Math.max(...state.atoms.map(a => a.usageCount), 0), label: 'max reuse' },
+      ];
+    },
+  },
+  {
+    key: 'rename',
+    title: 'Rename (LLM)',
+    sub: 'Two methods with the same AST shape, found deterministically — the model only names the merge.',
+    enter() {
+      stop2d();
+      const group = state.similar[0];
+      if (!group) {
+        document.getElementById('codeBody').innerHTML = `<div class="label">detail</div><pre>no duplicate shapes found this run</pre>`;
+        return [{ num: state.similar.length, label: 'shape groups' }];
+      }
+      document.getElementById('codeBody').innerHTML = `
+        <div class="label">duplicate shape found</div>
+        ${group.members.map(m => `<pre>// ${m.definedIn}\n${escapeHtml(m.code)}</pre>`).join('')}
+        <div class="label">llm-suggested name</div>
+        <pre class="after" id="typewriter"></pre>
+      `;
+      typewriter(document.getElementById('typewriter'), group.suggestedName + '()');
+      return [
+        { num: state.similar.length, label: 'shape groups' },
+        { num: group.members.length, label: 'this group' },
+      ];
+    },
+  },
+];
+
+function typewriter(el, text) {
+  let i = 0;
+  const id = setInterval(() => {
+    el.textContent = text.slice(0, i);
+    i++;
+    if (i > text.length) clearInterval(id);
+  }, 60);
+}
+
+let current = 0;
+function renderStepsRow() {
+  document.getElementById('stepsRow').innerHTML = PHASES.map((p, i) => `
+    <div class="step-pill ${i === current ? 'active' : i < current ? 'done' : ''}">${i + 1}. ${p.title}</div>
+  `).join('');
+}
+
+function goTo(i) {
+  current = ((i % PHASES.length) + PHASES.length) % PHASES.length;
+  const phase = PHASES[current];
+  document.getElementById('phaseTitle').textContent = phase.title;
+  document.getElementById('phaseSub').textContent = phase.sub;
+  const stats = phase.enter() || [];
+  document.getElementById('statRow').innerHTML = stats.map(s => `
+    <div class="stat"><div class="stat-num">${s.num}</div><div class="stat-label">${s.label}</div></div>
+  `).join('');
+  renderStepsRow();
+}
+
+document.getElementById('prevBtn').onclick = () => { stopAutoplay(); goTo(current - 1); };
+document.getElementById('nextBtn').onclick = () => { stopAutoplay(); goTo(current + 1); };
+document.getElementById('playBtn').onclick = () => startAutoplay();
+
+let autoplayId = null;
+function startAutoplay() {
+  stopAutoplay();
+  goTo(0);
+  autoplayId = setInterval(() => {
+    if (current >= PHASES.length - 1) { stopAutoplay(); return; }
+    goTo(current + 1);
+  }, 5200);
+}
+function stopAutoplay() {
+  if (autoplayId) clearInterval(autoplayId);
+  autoplayId = null;
+}
+
+(async function init() {
+  try {
+    await loadLiveData();
+  } catch (e) {
+    document.getElementById('loading').textContent = 'failed to load live data: ' + e.message;
+    return;
+  }
+  document.getElementById('loading').style.opacity = '0';
+  setTimeout(() => document.getElementById('loading').remove(), 400);
+  animateWebgl();
+  startAutoplay();
+})();
+</script>
+</body>
+</html>
