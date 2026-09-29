@@ -147,3 +147,40 @@ export type GlobListApi = {
   confirm: () => void;
   cancel: () => void;
 };
+
+// #395 slice 5 -- project.framework (route adapter) and features.root, read together and edited one field at a
+// time. Same reducer shape as RuleEdit/GlobList, generalized to a `field` discriminator instead of a rule id.
+export type ProjectSettings = { framework: string; featuresRoot: string };
+
+export type ProjectSettingsStatus = 'idle' | 'running' | 'ready' | 'error';
+export type ProjectSettingsState = { status: ProjectSettingsStatus; value: ProjectSettings | null; error: string | null };
+export type ProjectSettingsAction = { type: 'RUN' } | { type: 'RESULT'; value: ProjectSettings } | { type: 'FAIL'; error: string };
+
+export type ProjectSettingField = 'framework' | 'featuresRoot';
+
+export type ProjectEditStatus = 'previewing' | 'ready' | 'saving' | 'error';
+export type ProjectEditState = {
+  field: ProjectSettingField;
+  value: string;
+  status: ProjectEditStatus;
+  before: string;
+  after: string;
+  contentHash: string;
+  error: string | null;
+} | null;
+
+export type ProjectEditAction =
+  | { type: 'START'; field: ProjectSettingField; value: string }
+  | { type: 'PREVIEW_OK'; before: string; after: string; contentHash: string }
+  | { type: 'PREVIEW_FAIL'; error: string }
+  | { type: 'SAVE' }
+  | { type: 'SAVE_FAIL'; error: string }
+  | { type: 'CANCEL' };
+
+export type ProjectSettingsApi = {
+  state: ProjectSettingsState;
+  edit: ProjectEditState;
+  start: (field: ProjectSettingField, value: string) => void;
+  confirm: () => void;
+  cancel: () => void;
+};

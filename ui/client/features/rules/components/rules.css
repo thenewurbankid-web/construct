@@ -50,3 +50,6 @@
 .ru-glob-text { flex: 1 1 auto; min-width: 0; font-size: var(--fs-sm); }
 .ru-glob-form { display: flex; gap: var(--sp-1); }
 .ru-glob-form input { flex: 1 1 auto; font-size: var(--fs-sm); padding: 2px var(--sp-1); border-radius: var(--r-sm); border: 1px solid var(--border-subtle); background: var(--surface-1); color: inherit; }
+.ru-project-settings { display: flex; flex-direction: column; gap: var(--sp-2); }
+.ru-project-field { display: flex; align-items: center; gap: var(--sp-2); }
+.ru-project-field label { font-size: var(--fs-sm); color: var(--text-muted); min-width: 160px; }

@@ -11,3 +11,6 @@ export * from './pages/RulesShellTab';
 
 /** Reads every rule for the current project (auto-run + on demand). */
 export * from './hooks/useRules';
+
+/** Reads and edits project.framework/features.root (#395 slice 5). */
+export * from './hooks/useProjectSettings';
