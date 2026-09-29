@@ -120,7 +120,7 @@ test('Wizard: a closed backend connection is an error state, not a bare line of 
 
 test('Help: contents are also a tab in the Browser pane and jump to the section', async ({ page }) => {
   await page.goto('/help');
-  const browser = page.getByRole('complementary', { name: 'Browser' });
+  const browser = page.getByRole('complementary', { name: 'Left panel: Browse' });
   await browser.getByRole('tab', { name: 'Contents' }).click();
   await expect(browser.getByRole('navigation', { name: 'Help contents' })).toBeVisible();
   await browser.getByRole('link', { name: 'Tutorials' }).click();

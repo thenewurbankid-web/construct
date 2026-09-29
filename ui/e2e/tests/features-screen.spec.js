@@ -7,7 +7,7 @@ import { runAxe, isBlocking, format } from './support/axe.js';
 // the stage (summary, routes, layers and files, workflows, tests). The list is a keyboard-operable listbox with a filter,
 // the selection lives in the URL (?feature=), and there is one pane at a time at 390px.
 const API = process.env.E2E_API_BASE || 'http://localhost:4000';
-const browser = (page) => page.getByRole('complementary', { name: 'Browser' });
+const browser = (page) => page.getByRole('complementary', { name: 'Left panel: Browse' });
 // #683: the Browser pane's own Features/Notes/Blocks tablist no longer nests inside the
 // `complementary "Browser"` landmark -- it renders as a sibling tablist in the merged rail
 // column (ShellPage.tsx's `browserSubTabs`, RailSubTabs.tsx), so it needs its own locator.
@@ -153,7 +153,7 @@ test.describe.serial('Features screen: browse in the left pane, open in the stag
     await page.setViewportSize({ width: 390, height: 844 });
     await gotoCockpit(page, '/');
     const bar = page.getByRole('tablist', { name: 'Panes' });
-    await bar.getByRole('tab', { name: 'Browser' }).click();
+    await bar.getByRole('tab', { name: 'Browse' }).click();
     await expect(list(page)).toBeVisible();
     await expect(page.getByRole('main')).toHaveCount(0);
     await options(page).filter({ hasText: 'billing' }).click();
@@ -171,7 +171,7 @@ test.describe.serial('Features screen: browse in the left pane, open in the stag
         await expect(page.getByTestId('fc-name')).toHaveText('billing');
         const stage = await runAxe(page);
         expect(stage.filter(isBlocking), format(stage.filter(isBlocking))).toEqual([]);
-        if (vp === 'narrow') await page.getByRole('tablist', { name: 'Panes' }).getByRole('tab', { name: 'Browser' }).click();
+        if (vp === 'narrow') await page.getByRole('tablist', { name: 'Panes' }).getByRole('tab', { name: 'Browse' }).click();
         await expect(list(page)).toBeVisible();
         const browse = await runAxe(page);
         expect(browse.filter(isBlocking), format(browse.filter(isBlocking))).toEqual([]);

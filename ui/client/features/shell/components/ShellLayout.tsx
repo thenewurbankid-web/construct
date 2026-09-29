@@ -22,13 +22,13 @@ export function ShellLayout({ layout, limits, onResize, onTogglePane, narrow = f
       <div className={focus ? 'sh-root sh-root--narrow sh-root--focus' : 'sh-root sh-root--narrow'} data-narrow="true" data-focus={focus ? 'true' : undefined}>
         {!focus && top}
         <div className="sh-body">
-          <aside id="sh-pane-left" data-pane="left" tabIndex={-1} aria-label="Browser" className="sh-pane sh-left" hidden={focus || narrowPane !== 'left'}>
+          <aside id="sh-pane-left" data-pane="left" tabIndex={-1} aria-label="Left panel: Browse" className="sh-pane sh-left" hidden={focus || narrowPane !== 'left'}>
             {left}
           </aside>
           <div id="sh-mid" data-pane="mid" tabIndex={-1} className="sh-mid" hidden={!focus && narrowPane !== 'mid'}>
             {mid}
           </div>
-          <aside id="sh-pane-right" data-pane="right" tabIndex={-1} aria-label="Tools" className="sh-pane sh-right" hidden={focus || narrowPane !== 'right'}>
+          <aside id="sh-pane-right" data-pane="right" tabIndex={-1} aria-label="Right panel: Inspect" className="sh-pane sh-right" hidden={focus || narrowPane !== 'right'}>
             {right}
           </aside>
           <section id="sh-pane-drawer" data-pane="drawer" tabIndex={-1} aria-label="Bottom panel: Run" className="sh-pane sh-drawer" hidden={focus || narrowPane !== 'drawer'}>
@@ -55,7 +55,7 @@ export function ShellLayout({ layout, limits, onResize, onTogglePane, narrow = f
         <div className={layout.left.open ? 'sh-left-col sh-left-col--split' : 'sh-left-col'} style={layout.left.open ? { width: layout.left.size } : undefined} hidden={focus}>
           {!focus && rail}
           {layout.left.open && (
-            <aside id="sh-pane-left" data-pane="left" tabIndex={-1} aria-label="Browser" className="sh-pane sh-left" hidden={focus}>
+            <aside id="sh-pane-left" data-pane="left" tabIndex={-1} aria-label="Left panel: Browse" className="sh-pane sh-left" hidden={focus}>
               {left}
             </aside>
           )}
@@ -88,7 +88,7 @@ export function ShellLayout({ layout, limits, onResize, onTogglePane, narrow = f
               onResize={(size) => onResize('right', size)}
               onToggle={() => onTogglePane('right')}
             />}
-            <aside id="sh-pane-right" data-pane="right" tabIndex={-1} aria-label="Tools" className="sh-pane sh-right" style={{ width: layout.right.size }} hidden={focus}>
+            <aside id="sh-pane-right" data-pane="right" tabIndex={-1} aria-label="Right panel: Inspect" className="sh-pane sh-right" style={{ width: layout.right.size }} hidden={focus}>
               {right}
             </aside>
           </>

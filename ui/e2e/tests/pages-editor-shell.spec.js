@@ -57,8 +57,8 @@ test.describe.serial('Pages Editor inside the shell (#247)', () => {
 
   test('tree in the Browser, previews in the stage, Tools tabs switch, preview click selects', async ({ page }) => {
     await openLogin(page);
-    const browser = page.getByRole('complementary', { name: 'Browser' });
-    const tools = page.getByRole('complementary', { name: 'Tools' });
+    const browser = page.getByRole('complementary', { name: 'Left panel: Browse' });
+    const tools = page.getByRole('complementary', { name: 'Right panel: Inspect' });
     const main = page.getByRole('main');
 
     // Arrangement: Pages tab (first) holds the picker and the JSX tree; the stage holds the previews.
@@ -111,7 +111,7 @@ test.describe.serial('Pages Editor inside the shell (#247)', () => {
       await openLogin(page);
       expect(await page.evaluate(() => document.documentElement.getAttribute('data-theme'))).toBe(theme);
       await page.getByRole('main').locator('.preview-node-label', { hasText: 'button' }).click();
-      await expect(page.getByRole('complementary', { name: 'Tools' }).locator('.snippet-editor')).toBeVisible();
+      await expect(page.getByRole('complementary', { name: 'Right panel: Inspect' }).locator('.snippet-editor')).toBeVisible();
       await page.screenshot({ path: path.join(SHOTS, `pages-editor-shell-${theme}.png`) });
     });
   }
@@ -119,7 +119,7 @@ test.describe.serial('Pages Editor inside the shell (#247)', () => {
   test('an outside change flags the Diff tab and the stage; Diff shows it', async ({ page }) => {
     await openLogin(page);
     fs.writeFileSync(pagePath, FIXTURE_PAGE.replace('Sign in', 'Log in'));
-    const tools = page.getByRole('complementary', { name: 'Tools' });
+    const tools = page.getByRole('complementary', { name: 'Right panel: Inspect' });
     const diffTab = tools.getByRole('tab', { name: /^Diff/ });
     await expect(diffTab.locator('.sh-badge')).toBeVisible({ timeout: 10_000 });
     await expect(page.getByRole('main').getByRole('status').filter({ hasText: 'Changed on disk' })).toBeVisible();

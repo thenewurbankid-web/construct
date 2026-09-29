@@ -15,7 +15,7 @@ test.describe('Right-panel / drawer tab host (#245)', () => {
   test('Tools panel: default Project tab is a real tab with a labelled panel showing project info and shortcuts', async ({ page }) => {
     await page.goto('/help');
     await page.getByTestId('toggle-right').click();
-    const tools = page.getByRole('complementary', { name: 'Tools' });
+    const tools = page.getByRole('complementary', { name: 'Right panel: Inspect' });
     const tablist = tools.getByRole('tablist', { name: 'Tools' });
     await expect(tablist.getByRole('tab')).toHaveText(['Project']);
     await expect(tablist.getByRole('tab', { name: 'Project' })).toHaveAttribute('aria-selected', 'true');
@@ -31,7 +31,7 @@ test.describe('Right-panel / drawer tab host (#245)', () => {
     const bar = page.getByRole('contentinfo');
     await expect(bar.getByTestId('status-shortcuts')).toHaveText('? Shortcuts');
     await expect(bar.locator('.sh-hint')).toHaveCount(0); // the four separate hints are gone
-    const tools = page.getByRole('complementary', { name: 'Tools' });
+    const tools = page.getByRole('complementary', { name: 'Right panel: Inspect' });
     await expect(tools).toBeHidden();
     await bar.getByTestId('status-shortcuts').click();
     await expect(tools).toBeVisible();
@@ -81,7 +81,7 @@ test.describe('Right-panel / drawer tab host (#245)', () => {
     // /settings registers no Browser tab, and the shell no longer supplies a "Screens" tab: the top bar and the
     // profile menu are the navigation.
     await page.goto('/settings');
-    const browser = page.getByRole('complementary', { name: 'Browser' });
+    const browser = page.getByRole('complementary', { name: 'Left panel: Browse' });
     await expect(browser.getByRole('tablist')).toHaveCount(0);
     await expect(browser).toContainText('Nothing to browse on this screen');
     await expect(browser.getByRole('link')).toHaveCount(0);

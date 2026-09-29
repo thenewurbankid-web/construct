@@ -67,7 +67,7 @@ test.describe.serial('Live preview: Start dev server as a managed process (#378)
 
   const openBillingPage = async (page) => {
     await gotoCockpit(page, '/pages');
-    const files = page.getByRole('complementary', { name: 'Browser' }).locator('.pages-browser');
+    const files = page.getByRole('complementary', { name: 'Left panel: Browse' }).locator('.pages-browser');
     await files.locator('select').selectOption('billing');
     await files.getByRole('button', { name: 'BillingPage.tsx' }).click();
     await expect(page.locator('.live-preview-panel')).toBeVisible();

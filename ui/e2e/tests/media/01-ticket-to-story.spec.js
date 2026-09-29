@@ -111,7 +111,7 @@ test('episode 1: one example, end to end', async ({ page }) => {
     // 4. The ticket.
     await rail(page).getByRole('link', { name: 'Features' }).click();
     await expect(page.locator('h1')).toHaveText('Features');
-    await page.getByRole('complementary', { name: 'Browser' }).getByRole('tab', { name: 'Notes' }).click();
+    await page.getByRole('complementary', { name: 'Left panel: Browse' }).getByRole('tab', { name: 'Notes' }).click();
     await caption(page, CAPTIONS.ticket);
     await page.getByTestId('plan-ticket-title').pressSequentially(TICKET_TITLE, { delay: 90 });
     await page.getByTestId('plan-ticket-body').pressSequentially(TICKET_BODY, { delay: 60 });

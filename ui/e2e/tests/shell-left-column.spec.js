@@ -25,7 +25,7 @@ const API = process.env.E2E_API_BASE || 'http://localhost:4000';
 // unchanged.
 const nav = (page) => page.getByRole('navigation', { name: 'Screens', exact: true });
 const subtabs = (page) => page.getByTestId('rail-subtabs');
-const browser = (page) => page.getByRole('complementary', { name: 'Browser' });
+const browser = (page) => page.getByRole('complementary', { name: 'Left panel: Browse' });
 
 test.describe.serial('Shell: rail, sub-tabs and Browser pane stack in one column (#539, #683)', () => {
   let project;
@@ -54,7 +54,7 @@ test.describe.serial('Shell: rail, sub-tabs and Browser pane stack in one column
     await expect(col).toHaveCount(1);
     await expect(col.getByRole('navigation', { name: 'Screens', exact: true })).toHaveCount(1);
     await expect(col.getByTestId('rail-subtabs')).toHaveCount(1);
-    await expect(col.getByRole('complementary', { name: 'Browser' })).toHaveCount(1);
+    await expect(col.getByRole('complementary', { name: 'Left panel: Browse' })).toHaveCount(1);
 
     const [railBox, tabsBox, paneBox, midBox] = [await rail.boundingBox(), await tabs.boundingBox(), await pane.boundingBox(), await page.locator('#sh-mid').boundingBox()];
     // Rail directly above the sub-tabs, sub-tabs directly above the Browser pane: same left edge,

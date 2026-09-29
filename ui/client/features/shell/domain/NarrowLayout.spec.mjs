@@ -13,8 +13,8 @@ test('narrow layout: below 900px only; 900 and up keeps three panes', () => {
   assert.equal(NARROW_MEDIA_QUERY, '(max-width: 899px)');
 });
 
-test('narrow panes: Browser, Stage, Tools, Run in order; stage is the default', () => {
-  assert.deepEqual(NARROW_PANES.map((p) => p.label), ['Browser', 'Stage', 'Tools', 'Run']);
+test('narrow panes: Browse, Stage, Inspect, Run in order; stage is the default', () => {
+  assert.deepEqual(NARROW_PANES.map((p) => p.label), ['Browse', 'Stage', 'Inspect', 'Run']);
   assert.equal(DEFAULT_NARROW_PANE, 'mid');
 });
 

@@ -18,8 +18,8 @@ test.describe('Cockpit shell layout (#245)', () => {
     await page.goto('/help');
     await expect(page.getByRole('banner')).toBeVisible();
     await expect(page.getByRole('main')).toBeVisible();
-    await expect(page.getByRole('complementary', { name: 'Browser' })).toBeVisible();
-    await expect(page.getByRole('complementary', { name: 'Tools' })).toHaveCount(0);
+    await expect(page.getByRole('complementary', { name: 'Left panel: Browse' })).toBeVisible();
+    await expect(page.getByRole('complementary', { name: 'Right panel: Inspect' })).toHaveCount(0);
     await expect(page.getByRole('region', { name: 'Bottom panel: Run' })).toHaveCount(0);
     await expect(page.getByRole('contentinfo')).toBeVisible();
     expect(await width(page.locator('#sh-pane-left'))).toBe(200);
@@ -45,7 +45,7 @@ test.describe('Cockpit shell layout (#245)', () => {
     await page.keyboard.press('End');
     await expect(sep).toHaveAttribute('aria-valuenow', '480');
     await page.keyboard.press('Enter');
-    await expect(page.getByRole('complementary', { name: 'Browser' })).toHaveCount(0);
+    await expect(page.getByRole('complementary', { name: 'Left panel: Browse' })).toHaveCount(0);
     await expect(page.getByTestId('toggle-left')).toHaveAttribute('aria-expanded', 'false');
   });
 
@@ -71,7 +71,7 @@ test.describe('Cockpit shell layout (#245)', () => {
   test('Tools panel: toggle opens it on the right, it resizes against the pointer direction, Ctrl+Alt+B closes it', async ({ page }) => {
     await page.goto('/help');
     await page.getByTestId('toggle-right').click();
-    const tools = page.getByRole('complementary', { name: 'Tools' });
+    const tools = page.getByRole('complementary', { name: 'Right panel: Inspect' });
     await expect(tools).toBeVisible();
     expect(await width(page.locator('#sh-pane-right'))).toBe(360);
     // Right pane sits to the right of the stage (browser LEFT, tools RIGHT).
@@ -111,9 +111,9 @@ test.describe('Cockpit shell layout (#245)', () => {
   test('Ctrl+B collapses and restores the Browser pane; F6 moves focus between panes', async ({ page }) => {
     await gotoCockpit(page, '/help');
     await page.keyboard.press('Control+b');
-    await expect(page.getByRole('complementary', { name: 'Browser' })).toHaveCount(0);
+    await expect(page.getByRole('complementary', { name: 'Left panel: Browse' })).toHaveCount(0);
     await page.keyboard.press('Control+b');
-    await expect(page.getByRole('complementary', { name: 'Browser' })).toBeVisible();
+    await expect(page.getByRole('complementary', { name: 'Left panel: Browse' })).toBeVisible();
     // Focus starts outside any landmark (the body): the first F6 stop is the top bar
     // (design section 6's order: top bar, left, stage, right, bottom).
     await page.keyboard.press('F6');
@@ -128,7 +128,7 @@ test.describe('Cockpit shell layout (#245)', () => {
     await gotoCockpit(page, '/help');
     await page.keyboard.press('Control+Alt+b');
     await page.keyboard.press('Control+j');
-    await expect(page.getByRole('complementary', { name: 'Tools' })).toBeVisible();
+    await expect(page.getByRole('complementary', { name: 'Right panel: Inspect' })).toBeVisible();
     await expect(page.getByRole('region', { name: 'Bottom panel: Run' })).toBeVisible();
 
     const paneAt = () => page.evaluate(() => document.activeElement?.getAttribute('data-pane'));
@@ -190,12 +190,12 @@ test.describe('Cockpit shell layout (#245)', () => {
 
     await page.reload();
     await expect(page.getByRole('separator', { name: 'Resize Browser pane' })).toHaveAttribute('aria-valuenow', '264');
-    await expect(page.getByRole('complementary', { name: 'Tools' })).toBeVisible();
+    await expect(page.getByRole('complementary', { name: 'Right panel: Inspect' })).toBeVisible();
 
     await page.evaluate((k) => localStorage.setItem(k, '{"left":{"size":"huge","open":7},"x":1}'), `construct.shell.layout:${projectDir}`);
     await page.reload();
     await expect(page.getByRole('separator', { name: 'Resize Browser pane' })).toHaveAttribute('aria-valuenow', '200');
-    await expect(page.getByRole('complementary', { name: 'Tools' })).toHaveCount(0);
+    await expect(page.getByRole('complementary', { name: 'Right panel: Inspect' })).toHaveCount(0);
   });
 
   test('light theme: same frame, readable, screenshot', async ({ page }) => {

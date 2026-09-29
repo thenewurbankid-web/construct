@@ -34,7 +34,7 @@ test.describe.serial('#541 Cockpit indicator: execution mode shown in the Projec
 
     await page.goto('/help');
     await page.getByTestId('toggle-right').click();
-    const tools = page.getByRole('complementary', { name: 'Tools' });
+    const tools = page.getByRole('complementary', { name: 'Right panel: Inspect' });
     const panel = tools.getByRole('tabpanel', { name: 'Project' });
     await expect(panel).toBeVisible();
     await expect(panel.getByTestId('info-execution-mode')).toHaveText('Engine (in-process)');

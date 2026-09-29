@@ -133,8 +133,8 @@ test.describe.serial('Pages Editor: full-screen preview and device sizes (#456)'
     await expect(page.locator('.sh-top')).toHaveCount(0);
     await expect(page.locator('.sh-rail')).toHaveCount(0);
     await expect(page.locator('.sh-status')).toHaveCount(0);
-    await expect(page.getByRole('complementary', { name: 'Browser' })).not.toBeVisible();
-    await expect(page.getByRole('complementary', { name: 'Tools' })).not.toBeVisible();
+    await expect(page.getByRole('complementary', { name: 'Left panel: Browse' })).not.toBeVisible();
+    await expect(page.getByRole('complementary', { name: 'Right panel: Inspect' })).not.toBeVisible();
     await expect(page.locator('.pages-editor-page h1')).not.toBeVisible();
 
     // The way back is a real, labelled, focusable button — and the scans stay green.
@@ -148,7 +148,7 @@ test.describe.serial('Pages Editor: full-screen preview and device sizes (#456)'
     // Everything is back, the selection survived, the app was never reloaded,
     // and focus is on the control that was pressed.
     await expect(page.locator('.sh-top')).toBeVisible();
-    await expect(page.getByRole('complementary', { name: 'Browser' })).toBeVisible();
+    await expect(page.getByRole('complementary', { name: 'Left panel: Browse' })).toBeVisible();
     await expect(page.locator('.tree-panel .tree-node.selected')).toContainText('p');
     await expect(frame.locator('#app-state')).toHaveValue('typed before full screen');
     await expect(page.getByRole('button', { name: 'Full screen', exact: true })).toBeFocused();

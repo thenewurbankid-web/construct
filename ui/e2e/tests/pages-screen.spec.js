@@ -7,7 +7,7 @@ import { runAxe, isBlocking, format } from './support/axe.js';
 // in the stage (the Pages editor's own preview) and the Browser then shows that page's node tree, whose nodes are
 // selectable. Keyboard, filter, states, ?feature=&file= in the URL, and one pane at a time at 390px.
 const API = process.env.E2E_API_BASE || 'http://localhost:4000';
-const browser = (page) => page.getByRole('complementary', { name: 'Browser' });
+const browser = (page) => page.getByRole('complementary', { name: 'Left panel: Browse' });
 const list = (page) => browser(page).getByRole('listbox', { name: 'Pages' });
 const options = (page) => list(page).getByRole('option');
 const treeNodes = (page) => browser(page).locator('.tree-node');
@@ -47,7 +47,7 @@ test.describe.serial('Pages screen: browse in the left pane, open in the stage (
     await treeNodes(page).first().click();
     await expect(treeNodes(page).first()).toHaveClass(/selected/);
     // The Inspector (Tools) follows the selection.
-    await expect(page.getByRole('complementary', { name: 'Tools' }).getByRole('tab', { name: 'Inspector' })).toBeVisible();
+    await expect(page.getByRole('complementary', { name: 'Right panel: Inspect' }).getByRole('tab', { name: 'Inspector' })).toBeVisible();
   });
 
   test('a reload restores the page and its tree; All pages goes back to the list and clears the URL', async ({ page }) => {
@@ -133,11 +133,11 @@ test.describe.serial('Pages screen: browse in the left pane, open in the stage (
     await page.setViewportSize({ width: 390, height: 844 });
     await gotoCockpit(page, '/pages');
     const bar = page.getByRole('tablist', { name: 'Panes' });
-    await bar.getByRole('tab', { name: 'Browser' }).click();
+    await bar.getByRole('tab', { name: 'Browse' }).click();
     await options(page).filter({ hasText: 'BillingPage' }).click();
     await expect(bar.getByRole('tab', { name: 'Stage' })).toHaveAttribute('aria-selected', 'true');
     await expect(page.locator('.pe-stage')).toContainText('BillingView');
-    await bar.getByRole('tab', { name: 'Browser' }).click();
+    await bar.getByRole('tab', { name: 'Browse' }).click();
     await expect(treeNodes(page).first()).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
@@ -148,12 +148,12 @@ test.describe.serial('Pages screen: browse in the left pane, open in the stage (
         await page.addInitScript((t) => localStorage.setItem('construct.theme', t), theme);
         await page.setViewportSize(size);
         await gotoCockpit(page, '/pages');
-        if (vp === 'narrow') await page.getByRole('tablist', { name: 'Panes' }).getByRole('tab', { name: 'Browser' }).click();
+        if (vp === 'narrow') await page.getByRole('tablist', { name: 'Panes' }).getByRole('tab', { name: 'Browse' }).click();
         await expect(list(page)).toBeVisible();
         const first = await runAxe(page);
         expect(first.filter(isBlocking), format(first.filter(isBlocking))).toEqual([]);
         await options(page).filter({ hasText: 'BillingPage' }).click();
-        if (vp === 'narrow') await page.getByRole('tablist', { name: 'Panes' }).getByRole('tab', { name: 'Browser' }).click();
+        if (vp === 'narrow') await page.getByRole('tablist', { name: 'Panes' }).getByRole('tab', { name: 'Browse' }).click();
         await expect(treeNodes(page).first()).toBeVisible();
         const tree = await runAxe(page);
         expect(tree.filter(isBlocking), format(tree.filter(isBlocking))).toEqual([]);

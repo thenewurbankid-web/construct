@@ -173,7 +173,7 @@ test.describe.serial('Feature structure: one quiet dot per layer for rule violat
     await gotoCockpit(page, '/?feature=billing');
     const domainHeading = details(page).locator('[data-testid="fc-layer"][data-layer="domain"]');
     await domainHeading.getByTestId('fc-violation-dot').click();
-    const tools = page.getByRole('complementary', { name: 'Tools' });
+    const tools = page.getByRole('complementary', { name: 'Right panel: Inspect' });
     await tools.getByRole('tab', { name: /^Violations/ }).click();
     const panel = page.getByTestId('fc-violations-panel');
     await expect(panel).toBeVisible();

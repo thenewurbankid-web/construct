@@ -48,7 +48,7 @@ test.describe('Help page — Tutorials section (#154)', () => {
     await expect(page.locator('.help-contents')).toHaveCount(0);
     const tutorials = page.locator('#tutorials');
     await expect(tutorials).not.toHaveAttribute('open', '');
-    const browser = page.getByRole('complementary', { name: 'Browser' });
+    const browser = page.getByRole('complementary', { name: 'Left panel: Browse' });
     await browser.getByRole('tab', { name: 'Contents' }).click();
     await browser.getByRole('link', { name: 'Tutorials' }).click();
     await expect(tutorials).toHaveAttribute('open', '');

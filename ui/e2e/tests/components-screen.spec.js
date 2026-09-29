@@ -9,7 +9,7 @@ import { runAxe, isBlocking, format } from './support/axe.js';
 // in the stage as documentation (name, feature, path, props read by react-docgen) with its file editable as plain
 // text, saved through the reviewed path (diff, then a hash-checked, architecture-gated write). ?component= in the URL.
 const API = process.env.E2E_API_BASE || 'http://localhost:4000';
-const browser = (page) => page.getByRole('complementary', { name: 'Browser' });
+const browser = (page) => page.getByRole('complementary', { name: 'Left panel: Browse' });
 const list = (page) => browser(page).getByRole('listbox', { name: 'Components' });
 const options = (page) => list(page).getByRole('option');
 const NAMES = ['BillingSummary', 'BillingView', 'Broken', 'CheckoutView', 'CurrencyLabel', 'Plain', 'ReportingView'];
@@ -239,7 +239,7 @@ test.describe.serial('Components screen: browse in the left pane, document and e
     await page.setViewportSize({ width: 390, height: 844 });
     await gotoCockpit(page, '/components');
     const bar = page.getByRole('tablist', { name: 'Panes' });
-    await bar.getByRole('tab', { name: 'Browser' }).click();
+    await bar.getByRole('tab', { name: 'Browse' }).click();
     await options(page).filter({ hasText: 'BillingView' }).click();
     await expect(bar.getByRole('tab', { name: 'Stage' })).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByTestId('cd-name')).toHaveText('BillingView');
@@ -297,7 +297,7 @@ test.describe.serial('Components screen: browse in the left pane, document and e
         await expect(page.locator('[data-source-editor]').first()).toBeVisible({ timeout: 30_000 });
         const stage = await runAxe(page, { exclude: ['.monaco-editor'] });
         expect(stage.filter(isBlocking), format(stage.filter(isBlocking))).toEqual([]);
-        if (vp === 'narrow') await page.getByRole('tablist', { name: 'Panes' }).getByRole('tab', { name: 'Browser' }).click();
+        if (vp === 'narrow') await page.getByRole('tablist', { name: 'Panes' }).getByRole('tab', { name: 'Browse' }).click();
         await expect(list(page)).toBeVisible();
         const browse = await runAxe(page);
         expect(browse.filter(isBlocking), format(browse.filter(isBlocking))).toEqual([]);

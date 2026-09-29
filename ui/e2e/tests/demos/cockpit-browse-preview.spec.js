@@ -41,8 +41,8 @@ test.describe.serial('Cockpit demo: browse, preview, diff and prop flow', () => 
   test('1. find a page in the Browser and open it; the hero shows all three panes (dark, then light)', async ({ page }) => {
     await openProfile(page);
     // Tools opens by default on an editor screen; open it if not.
-    if (!(await page.getByRole('complementary', { name: 'Tools' }).isVisible())) await page.getByTestId('toggle-right').click();
-    await expect(page.getByRole('complementary', { name: 'Tools' })).toBeVisible();
+    if (!(await page.getByRole('complementary', { name: 'Right panel: Inspect' }).isVisible())) await page.getByTestId('toggle-right').click();
+    await expect(page.getByRole('complementary', { name: 'Right panel: Inspect' })).toBeVisible();
     await loadPreview(page);
     await page.screenshot({ path: shot('cockpit-1-hero-dark.png') });
     await setTheme(page, 'light');

@@ -42,9 +42,9 @@ test.describe.serial('Cockpit demo: command palette, themes, small screens', () 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/pages');
     const bar = page.getByRole('tablist', { name: 'Panes' });
-    await expect(bar.getByRole('tab')).toHaveText(['Browser', 'Stage', 'Tools']);
-    await bar.getByRole('tab', { name: 'Browser' }).click();
-    const browser = page.getByRole('complementary', { name: 'Browser' });
+    await expect(bar.getByRole('tab')).toHaveText(['Browse', 'Stage', 'Inspect', 'Run']);
+    await bar.getByRole('tab', { name: 'Browse' }).click();
+    const browser = page.getByRole('complementary', { name: 'Left panel: Browse' });
     await expect(browser).toBeVisible();
     await page.locator('.pages-browser select').selectOption('people');
     await expect(page.getByRole('button', { name: 'ProfilePage.tsx' })).toBeVisible();

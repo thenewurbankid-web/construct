@@ -10,7 +10,7 @@ const API = process.env.E2E_API_BASE || 'http://localhost:4000';
 // already ships. `.pages-browser`/`.tree-panel` keep their exact pre-existing class names and
 // testids (`pages-all`, `pages-list`/`pages-list-count`) — every other pages-editor spec locates
 // the two panels by them, now on <details> elements instead of their own GlassPanel card.
-const browser = (page) => page.getByRole('complementary', { name: 'Browser' });
+const browser = (page) => page.getByRole('complementary', { name: 'Left panel: Browse' });
 const filesDetails = (page) => browser(page).locator('.pages-browser');
 const filesSummary = (page) => filesDetails(page).locator('> summary');
 const treeDetails = (page) => browser(page).locator('.tree-panel');

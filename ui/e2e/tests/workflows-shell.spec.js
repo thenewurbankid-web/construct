@@ -44,7 +44,7 @@ test.describe('Workflows in the shell (#248)', () => {
 
   async function open(page, file) {
     await page.goto('/workflows');
-    const browser = page.getByRole('complementary', { name: 'Browser' });
+    const browser = page.getByRole('complementary', { name: 'Left panel: Browse' });
     await browser.getByRole('combobox').selectOption('refunds');
     await browser.getByRole('button', { name: file, exact: true }).click();
     await expect(page.getByTestId('wf-machine').first()).toBeVisible();
@@ -62,8 +62,8 @@ test.describe('Workflows in the shell (#248)', () => {
     await expect(page.getByRole('tab', { name: 'Edit' })).toBeDisabled();
 
     await open(page, 'RefundWorkflow.tsx');
-    const browser = page.getByRole('complementary', { name: 'Browser' });
-    const tools = page.getByRole('complementary', { name: 'Tools' });
+    const browser = page.getByRole('complementary', { name: 'Left panel: Browse' });
+    const tools = page.getByRole('complementary', { name: 'Right panel: Inspect' });
     await expect(tools).toBeVisible();
     const b = await box(browser);
     const stage = await box(page.getByTestId('wf-stage'));
@@ -88,7 +88,7 @@ test.describe('Workflows in the shell (#248)', () => {
 
   test('picking a machine in the Browser list changes what the Tools tabs show', async ({ page }) => {
     await open(page, 'Pair.ts');
-    const tools = page.getByRole('complementary', { name: 'Tools' });
+    const tools = page.getByRole('complementary', { name: 'Right panel: Inspect' });
     await expect(page.getByTestId('wf-machine')).toHaveCount(2);
     await expect(page.getByTestId('wf-machine-list').getByRole('button')).toHaveCount(2);
     await expect(tools.getByTestId('wf-narrative-summary')).toContainText('alpha');

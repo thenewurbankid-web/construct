@@ -232,7 +232,7 @@ test.describe.serial('Tests tab states (#306)', () => {
     await page.screenshot({ path: path.join(SHOTS, '306-narrow-stage--dark.png') });
 
     await page.getByTestId('stale-open').click();
-    await bar.getByRole('tab', { name: 'Tools' }).click();
+    await bar.getByRole('tab', { name: 'Inspect' }).click();
     const banner = page.getByTestId('stale-banner');
     await expect(banner).toBeVisible();
     await expect(banner.getByTestId('stale-change').first()).toBeVisible();

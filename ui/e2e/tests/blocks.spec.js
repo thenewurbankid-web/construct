@@ -12,7 +12,7 @@ import { openBlockSettingsStore } from '../../server/src/blockSettingsStore.mjs'
 // no process.
 const API = process.env.E2E_API_BASE || 'http://localhost:4000';
 const STATE_DIR = process.env.E2E_STATE_DIR;
-const browser = (page) => page.getByRole('complementary', { name: 'Browser' });
+const browser = (page) => page.getByRole('complementary', { name: 'Left panel: Browse' });
 const cards = (page) => browser(page).getByTestId('block-card');
 const card = (page, id) => browser(page).locator(`[data-testid="block-card"][data-block-id="${id}"]`);
 const openBlocks = async (page) => {
@@ -181,7 +181,7 @@ test.describe.serial('Blocks: catalogue, per-project settings, refusal (#407)', 
   test('Run this block opens the Plan tab with that block\'s example as a step, validated by the server, and starts nothing', async ({ page, request }) => {
     const processes = async () => (await (await request.get(`${API}/api/processes`)).json()).processes.length;
     const before = await processes();
-    const tools = page.getByRole('complementary', { name: 'Tools' });
+    const tools = page.getByRole('complementary', { name: 'Right panel: Inspect' });
     await openBlocks(page);
     // Look at another Tools tab first: Run must bring the Plan tab back.
     await tools.getByRole('tab', { name: 'Project' }).click();
@@ -247,10 +247,10 @@ test.describe.serial('Blocks: catalogue, per-project settings, refusal (#407)', 
     await page.setViewportSize({ width: 390, height: 844 });
     await gotoCockpit(page, '/');
     const panes = page.getByRole('tablist', { name: 'Panes' });
-    await panes.getByRole('tab', { name: 'Browser' }).click();
+    await panes.getByRole('tab', { name: 'Browse' }).click();
     await browser(page).getByRole('tab', { name: 'Blocks' }).click();
     await card(page, 'summarize.list').getByTestId('block-run').click();
-    await expect(panes.getByRole('tab', { name: 'Tools' })).toHaveAttribute('aria-selected', 'true');
+    await expect(panes.getByRole('tab', { name: 'Inspect' })).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByTestId('plan-step')).toHaveCount(1);
     await expect(page.getByTestId('plan-step').first()).toHaveAttribute('data-flow', 'summarize.list');
   });
@@ -259,7 +259,7 @@ test.describe.serial('Blocks: catalogue, per-project settings, refusal (#407)', 
     for (const size of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
       await page.setViewportSize(size);
       await gotoCockpit(page, '/');
-      if (size.width < 900) await page.getByRole('tablist', { name: 'Panes' }).getByRole('tab', { name: 'Browser' }).click();
+      if (size.width < 900) await page.getByRole('tablist', { name: 'Panes' }).getByRole('tab', { name: 'Browse' }).click();
       await browser(page).getByRole('tab', { name: 'Blocks' }).click();
       await expect(cards(page).first()).toBeVisible();
       await card(page, 'create.unit').getByText('Details').click();

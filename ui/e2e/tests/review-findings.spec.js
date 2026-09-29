@@ -47,7 +47,7 @@ test.describe.serial('Review mode: findings, scope and states (#315, #316, #318)
     const rec = createProcess(planOf(title, features, files), { id, projectRoot: repo, title });
     store.save({ ...rec, state: 'done', steps: rec.steps.map((s) => ({ ...s, status: 'done' })) });
   };
-  const tools = (page) => page.getByRole('complementary', { name: 'Tools' });
+  const tools = (page) => page.getByRole('complementary', { name: 'Right panel: Inspect' });
   const openFindingsTab = async (page) => {
     await tools(page).getByRole('tab', { name: /Findings/ }).click();
     await expect(page.getByTestId('review-findings')).toBeVisible();
@@ -273,7 +273,7 @@ test.describe.serial('Review mode: findings, scope and states (#315, #316, #318)
     await expect(waiting.getByRole('listitem')).toHaveCount(4);
     // The rest of the Cockpit is not blocked: the Back button and the Browser pane are live meanwhile.
     await expect(page.getByTestId('review-back')).toBeEnabled();
-    await expect(page.getByRole('complementary', { name: 'Browser' })).toBeVisible();
+    await expect(page.getByRole('complementary', { name: 'Left panel: Browse' })).toBeVisible();
     await page.screenshot({ path: path.join(SHOTS, '318-review-analysing.png') });
     await waitForChange(page);
     await expect(page.getByTestId('review-waiting')).toHaveCount(0);
@@ -309,7 +309,7 @@ test.describe.serial('Review mode: findings, scope and states (#315, #316, #318)
     await page.screenshot({ path: path.join(SHOTS, '318-review-narrow-stage.png') });
 
     const bar = page.getByRole('tablist', { name: 'Panes' });
-    await expect(bar.getByRole('tab')).toHaveText(['Browser', 'Stage', 'Tools']);
+    await expect(bar.getByRole('tab')).toHaveText(['Browse', 'Stage', 'Inspect', 'Run']);
     for (const tab of await bar.getByRole('tab').all()) {
       const box = await tab.boundingBox();
       expect(box.height, 'tab bar targets are at least 24px').toBeGreaterThanOrEqual(24);
@@ -317,7 +317,7 @@ test.describe.serial('Review mode: findings, scope and states (#315, #316, #318)
     // Reach the findings by keyboard: focus the Stage tab and arrow to Tools.
     await bar.getByRole('tab', { name: 'Stage' }).focus();
     await page.keyboard.press('ArrowRight');
-    await expect(bar.getByRole('tab', { name: 'Tools' })).toHaveAttribute('aria-selected', 'true');
+    await expect(bar.getByRole('tab', { name: 'Inspect' })).toHaveAttribute('aria-selected', 'true');
     await openFindingsTab(page);
     // The same three findings as without a plan, plus what the plan adds: a feature outside it (a conversation).
     await expect(page.getByTestId('review-finding')).toHaveCount(5);
@@ -325,7 +325,7 @@ test.describe.serial('Review mode: findings, scope and states (#315, #316, #318)
     await noHorizontalScroll();
     await page.screenshot({ path: path.join(SHOTS, '318-review-narrow-findings.png') });
     // Browser: the changed units.
-    await bar.getByRole('tab', { name: 'Browser' }).click();
+    await bar.getByRole('tab', { name: 'Browse' }).click();
     await expect(page.getByTestId('review-tree')).toBeVisible();
     await noHorizontalScroll();
   });

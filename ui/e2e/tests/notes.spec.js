@@ -12,7 +12,7 @@ import { openNotesStore } from '../../server/src/notesStore.mjs';
 // directory, a reload reads it back, and the "other tab" is a second real page saving the same note.
 const API = process.env.E2E_API_BASE || 'http://localhost:4000';
 const STATE_DIR = process.env.E2E_STATE_DIR;
-const browser = (page) => page.getByRole('complementary', { name: 'Browser' });
+const browser = (page) => page.getByRole('complementary', { name: 'Left panel: Browse' });
 const indicator = (page) => page.getByTestId('note-save-indicator');
 const rows = (page) => browser(page).getByTestId('notes-row');
 const saved = (page) => expect(indicator(page)).toContainText(/Saved on this machine/);
