@@ -118,6 +118,8 @@ test.describe.serial('Pages Editor: full-screen preview and device sizes (#456)'
     const viewport = page.viewportSize();
 
     // Something to lose: a selection in the Cockpit, and state inside the app itself.
+    // #375 — click-to-select only fires while Pick is on (or with Alt held).
+    await page.getByRole('button', { name: 'Pick' }).click();
     await frame.locator('p').click();
     await expect(page.locator('.tree-panel .tree-node.selected')).toContainText('p');
     await frame.locator('#app-state').fill('typed before full screen');

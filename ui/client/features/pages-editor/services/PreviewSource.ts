@@ -14,6 +14,9 @@ export interface PreviewSource {
   onSelect(handler: (src: string) => void): () => void;
   /** Subscribe to the plugin's `ready` and the app's `error` messages. Returns an unsubscribe. */
   onSignal(handler: (signal: PreviewSignal) => void): () => void;
+  /** #375 -- tell the bridge whether Pick is on: off by default, an un-modified click reaches the
+   * app untouched (Alt+Click always selects regardless, handled entirely on the bridge's side). */
+  setPicking(on: boolean): void;
 }
 
 /** iframe transport: accepts `construct:*` messages only from the given
@@ -47,5 +50,6 @@ export function createIframePreviewSource(url: string, getFrameWindow: () => Win
       }
       return null;
     }, handler),
+    setPicking: (on) => getFrameWindow()?.postMessage({ type: 'construct:pick', on }, origin),
   };
 }

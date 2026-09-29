@@ -35,6 +35,9 @@ export function useLivePreview({ roots, feature, file, onSelectNode }: Args) {
   const [url, setUrl] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [reach, setReach] = useState<PreviewReach>('unknown');
+  // #375 -- Pick: off by default (a normal, clickable app); an un-modified click in the frame
+  // only selects while this is on (Alt+Click always works, handled entirely by the bridge).
+  const [picking, setPicking] = useState(false);
   const frameRef = useRef<HTMLIFrameElement | null>(null);
   const latest = useRef({ roots, feature, file, onSelectNode });
   latest.current = { roots, feature, file, onSelectNode };
@@ -43,6 +46,23 @@ export function useLivePreview({ roots, feature, file, onSelectNode }: Args) {
 
   const source = useMemo(() => (url ? createIframePreviewSource(url, () => frameRef.current?.contentWindow) : null), [url]);
   const signals = usePreviewSignals(source, reach === 'up');
+
+  // Re-sends on every `ready` too (a hot reload re-installs the bridge with picking reset to its
+  // own default) so Pick stays in sync with the app instead of silently going stale.
+  useEffect(() => {
+    source?.setPicking(picking);
+  }, [source, picking, signals.plugin]);
+
+  const togglePick = useCallback(() => setPicking((p) => !p), []);
+
+  useEffect(() => {
+    if (!url) return undefined;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPicking(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [url]);
 
   useEffect(() => {
     if (!source) return undefined;
@@ -79,6 +99,7 @@ export function useLivePreview({ roots, feature, file, onSelectNode }: Args) {
     }
     setMessage(null);
     setUrl(normalized);
+    setPicking(false);
     probe(normalized);
   }, [draft, probe]);
 
@@ -89,6 +110,7 @@ export function useLivePreview({ roots, feature, file, onSelectNode }: Args) {
     setDraft(normalized);
     setMessage(null);
     setUrl(normalized);
+    setPicking(false);
     probe(normalized);
   }, [probe]);
 
@@ -96,6 +118,7 @@ export function useLivePreview({ roots, feature, file, onSelectNode }: Args) {
     setUrl(null);
     setMessage(null);
     setReach('unknown');
+    setPicking(false);
     full.exit();
   }, [full]);
 
@@ -142,8 +165,10 @@ export function useLivePreview({ roots, feature, file, onSelectNode }: Args) {
       onFullScreen: full.open,
       onExitFullScreen: full.exit,
       fullScreenRef: full.triggerRef,
+      picking,
+      onTogglePick: togglePick,
     }),
-    [draft, url, message, connect, disconnect, reach, retry, sizing, full, signals.plugin, signals.appError, signals.appErrorSrc, signals.dismissAppError, showInSource],
+    [draft, url, message, connect, disconnect, reach, retry, sizing, full, signals.plugin, signals.appError, signals.appErrorSrc, signals.dismissAppError, showInSource, picking, togglePick],
   );
 
   return { draft, setDraft, url, message, frameRef, connect, connectTo, release, disconnect, fullScreen: full.fullScreen, view };

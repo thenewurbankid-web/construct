@@ -25,14 +25,50 @@ function fakeErrorWindow(annotated = []) {
   return base;
 }
 
-test('click on an annotated element posts its src to the parent and suppresses the click', () => {
+test('#375: not picking, no Alt -- a click on an annotated element reaches the app untouched', () => {
   const { win, listeners, posted } = fakeWindow();
-  assert.equal(installPreviewBridge(win), true);
+  installPreviewBridge(win);
   posted.length = 0; // the one-time construct:ready is covered below
+  let prevented = 0;
+  listeners.click({ target: el('a.tsx:3:5'), preventDefault: () => prevented++, stopPropagation() {} });
+  assert.deepEqual(posted, []);
+  assert.equal(prevented, 0);
+});
+
+test('#375: Alt+Click always selects, picking or not', () => {
+  const { win, listeners, posted } = fakeWindow();
+  installPreviewBridge(win);
+  posted.length = 0;
+  let prevented = 0;
+  listeners.click({ target: el('a.tsx:3:5'), altKey: true, preventDefault: () => prevented++, stopPropagation() {} });
+  assert.deepEqual(posted, [[{ type: 'construct:select', src: 'a.tsx:3:5' }, '*']]);
+  assert.equal(prevented, 1);
+});
+
+test('#375: construct:pick { on: true } from the Cockpit makes an un-modified click select; { on: false } reverts', () => {
+  const { win, listeners, winListeners, posted } = fakeWindow();
+  installPreviewBridge(win);
+  posted.length = 0;
+  winListeners.message({ data: { type: 'construct:pick', on: true } });
   let prevented = 0;
   listeners.click({ target: el('a.tsx:3:5'), preventDefault: () => prevented++, stopPropagation() {} });
   assert.deepEqual(posted, [[{ type: 'construct:select', src: 'a.tsx:3:5' }, '*']]);
   assert.equal(prevented, 1);
+
+  winListeners.message({ data: { type: 'construct:pick', on: false } });
+  posted.length = 0;
+  listeners.click({ target: el('a.tsx:3:5'), preventDefault: () => { throw new Error('no'); }, stopPropagation() {} });
+  assert.deepEqual(posted, []);
+});
+
+test('#375: a message of another type, or with no data, never touches the picking flag', () => {
+  const { win, listeners, winListeners, posted } = fakeWindow();
+  installPreviewBridge(win);
+  posted.length = 0;
+  winListeners.message({ data: { type: 'something:else', on: true } });
+  winListeners.message({ data: null });
+  listeners.click({ target: el('a.tsx:3:5'), preventDefault() { throw new Error('no'); }, stopPropagation() {} });
+  assert.deepEqual(posted, []);
 });
 
 test('installing announces itself once (construct:ready), so the Cockpit can tell "plugin missing" from "plugin on" (#378)', () => {

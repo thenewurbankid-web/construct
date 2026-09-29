@@ -55,9 +55,13 @@ test.describe.serial('Cockpit demo: browse, preview, diff and prop flow', () => 
   test('2. click an element in the live preview and jump to its code', async ({ page }) => {
     await openProfile(page);
     const frame = await loadPreview(page);
+    // #375 — click-to-select only fires while Pick is on (or with Alt held).
+    await page.getByRole('button', { name: 'Pick' }).click();
     await frame.locator('p').click();
     await expect(page.locator('.tree-panel .tree-node.selected')).toContainText('p');
-    await expect(page.getByRole('status')).toContainText('ProfilePage.tsx:11:7');
+    // The Pages screen carries other role=status regions now too (dev-server, commit indicator),
+    // so the preview's own message is read by class, same as pages-editor-live-preview.spec.js.
+    await expect(page.locator('.live-preview-message')).toContainText('ProfilePage.tsx:11:7');
     // The status line pushes the preview down under the pointer; hover the clicked element so its outline is the one shown.
     await frame.locator('p').hover();
     await page.waitForTimeout(400);

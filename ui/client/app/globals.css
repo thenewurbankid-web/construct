@@ -1977,6 +1977,12 @@ button:disabled {
 .live-preview-head h4 { margin: 0; }
 .live-preview-bar { display: flex; gap: 8px; }
 .live-preview-bar input { flex: 1; }
+/* #375 -- Pick: off by default (background: transparent, same family as the other secondary
+ * preview buttons); pressed/on gets the accent fill so its state reads at a glance. */
+.live-preview-pick { background: transparent; color: var(--accent); border: 1px solid var(--border-subtle); border-radius: 6px; padding: var(--sp-1) var(--sp-2); font: inherit; cursor: pointer; }
+.live-preview-pick:hover { background: var(--hover); }
+.live-preview-pick--on { background: var(--accent); color: var(--accent-contrast, #fff); border-color: var(--accent); }
+.live-preview-pick--on:hover { background: var(--accent); }
 .live-preview-sizes { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); }
 .live-preview-sizes label { color: var(--muted); font-size: 0.8rem; }
 /* Reserves its width from the start so a measurement landing cannot shove the

@@ -43,4 +43,8 @@ export type LivePreviewView = {
   onFullScreen: () => void;
   onExitFullScreen: () => void;
   fullScreenRef: Ref<HTMLButtonElement>;
+  /** #375 -- Pick: off by default (the app is a normal, clickable app); an un-modified click only
+   * selects an element while Pick is on, or with Alt held regardless. Escape leaves Pick. */
+  picking: boolean;
+  onTogglePick: () => void;
 };

@@ -1,16 +1,20 @@
 // Preview bridge: the tiny in-page half of click-to-source. Runs inside the
-// previewed app (dev only). On click it finds the nearest element carrying a
+// previewed app (dev only). On click, while picking (#375: the Cockpit's Pick
+// toggle, or the click carries Alt) it finds the nearest element carrying a
 // `data-cx-src` attribute (added by ./jsxSourceAnnotator.mjs) and posts
-// `{ type: 'construct:select', src }` to the embedding Cockpit window. Two more
-// messages exist so the Cockpit can tell the states of the preview apart (#378):
-// `{ type: 'construct:ready' }` once, when the bridge installs (its absence, with
-// the dev server answering, means the target app does not load the preview
-// plugin), and `{ type: 'construct:error', message, src }` when the app throws an
-// uncaught error or leaves a promise rejection unhandled. `src` (#558) is the
-// stack's top project frame as a `data-cx-src`-shaped "file:line:col" string, or
-// null when every frame belongs to a dependency/runtime, never the project itself
-// (a library frame gets no "Show in source" button). Nothing else is sent and
-// nothing else is read from the page.
+// `{ type: 'construct:select', src }` to the embedding Cockpit window; otherwise
+// the click is left alone so the app stays a normal, clickable app. Four more
+// messages exist so the Cockpit can tell the states of the preview apart (#378)
+// and drive Pick (#375): `{ type: 'construct:ready' }` once, when the bridge
+// installs (its absence, with the dev server answering, means the target app
+// does not load the preview plugin); `{ type: 'construct:error', message, src }`
+// when the app throws an uncaught error or leaves a promise rejection unhandled
+// (`src`, #558, is the stack's top project frame as a `data-cx-src`-shaped
+// "file:line:col" string, or null when every frame belongs to a
+// dependency/runtime, never the project itself -- a library frame gets no "Show
+// in source" button); and `{ type: 'construct:pick', on }`, sent FROM the
+// Cockpit TO the bridge, toggling whether an un-modified click selects. Nothing
+// else is sent and nothing else is read from the page.
 //
 // `installPreviewBridge` is a plain function with no closure over module scope
 // so `previewBridgeScript()` can serialise it into an inline <script>, while
@@ -85,6 +89,15 @@ export function installPreviewBridge(win) {
     });
   }
   const find = (el) => (el && el.closest ? el.closest('[' + ATTR + ']') : null);
+  // #375 -- Pick: off by default, so the app is a normal, clickable app until the Cockpit asks
+  // to start picking (`{ type: 'construct:pick', on }`) or the user holds Alt. Off, every click
+  // reaches the app untouched -- no preventDefault/stopPropagation, no `construct:select` --
+  // otherwise the app would be unusable the moment a preview loads.
+  let picking = false;
+  win.addEventListener('message', (e) => {
+    const d = e && e.data;
+    if (d && d.type === 'construct:pick') picking = Boolean(d.on);
+  });
   let hovered = null;
   win.document.addEventListener('mouseover', (e) => {
     const t = find(e.target);
@@ -104,6 +117,7 @@ export function installPreviewBridge(win) {
   win.document.addEventListener('click', (e) => {
     const t = find(e.target);
     if (!t) return;
+    if (!picking && !e.altKey) return; // not picking, no Alt override: let the app handle its own click
     e.preventDefault();
     e.stopPropagation();
     win.parent.postMessage({ type: 'construct:select', src: t.getAttribute(ATTR) }, '*');

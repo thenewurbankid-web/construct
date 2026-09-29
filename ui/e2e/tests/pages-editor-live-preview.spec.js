@@ -75,6 +75,10 @@ test.describe('Pages Editor: live preview + click-to-source', () => {
     const frame = page.frameLocator('iframe[title="Live app preview"]');
     await expect(frame.locator('h1')).toBeVisible();
 
+    // #375 — click-to-select only fires while Pick is on (or with Alt held); the dedicated
+    // pages-editor-pick.spec.js covers Pick/Alt+Click themselves, this spec just turns it on
+    // once so the rest of it (multi-click, cross-file, the screenshot) is unaffected.
+    await page.getByRole('button', { name: 'Pick' }).click();
     await frame.locator('p').click();
     // The <p> node is now selected in the tree...
     await expect(page.locator('.tree-panel .tree-node.selected')).toContainText('p');

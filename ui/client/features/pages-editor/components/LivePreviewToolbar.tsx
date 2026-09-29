@@ -1,12 +1,12 @@
 import type { LivePreviewView } from '../types';
 
-/** The live preview's controls: the address, the device size picker with the
- * frame's real measured size, and the way into full screen. Hidden (not
+/** The live preview's controls: the address, Pick, the device size picker with
+ * the frame's real measured size, and the way into full screen. Hidden (not
  * unmounted) while full screen, so the trigger is there to take focus back. */
 export function LivePreviewToolbar(props: LivePreviewView) {
   return (
     <div className="live-preview-head" hidden={props.fullScreen}>
-      <h4>Live app preview (click an element to select its source)</h4>
+      <h4>Live app preview ({props.picking ? 'Pick is on — click an element to select its source' : 'Alt+Click an element to select its source'})</h4>
       <div className="live-preview-bar">
         <input
           type="url"
@@ -18,6 +18,17 @@ export function LivePreviewToolbar(props: LivePreviewView) {
         />
         <button type="button" onClick={props.onConnect}>Load preview</button>
         {props.url && <button type="button" onClick={props.onDisconnect}>Close</button>}
+        {props.url && (
+          <button
+            type="button"
+            className={props.picking ? 'live-preview-pick live-preview-pick--on' : 'live-preview-pick'}
+            aria-pressed={props.picking}
+            onClick={props.onTogglePick}
+            title="Pick: click an element in the app to select its source (Alt+Click always works, on or off). Escape leaves Pick."
+          >
+            Pick
+          </button>
+        )}
       </div>
       <div className="live-preview-sizes">
         <label htmlFor="live-preview-size">Size</label>
