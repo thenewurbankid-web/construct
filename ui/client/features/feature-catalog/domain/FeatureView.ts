@@ -1,11 +1,17 @@
 // Pure (DOMAIN-001): the Features screen's rows and the details of one feature, made from what
 // `construct summarize` already answers. No new analysis here: this only orders, labels and links what the engine said.
-import type { FeatureFile, FeatureRow, FeatureSummaryResponse, FeatureView } from '../types.ts';
+import type { FeatureFile, FeatureRow, FeatureSummaryResponse, FeatureView, LegacyFiles } from '../types.ts';
 
 const LAYER_ORDER = ['page', 'controller', 'component', 'hook', 'workflow', 'service', 'domain'];
 
 export function toListItems(features: FeatureRow[]): { id: string; label: string; detail: string }[] {
   return features.map((f) => ({ id: f.name, label: f.name, detail: f.summary ? f.summary.replace(/^Feature "[^"]*": /, '') : `Could not be summarized: ${f.error?.message ?? 'unknown reason'}` }));
+}
+
+/** "Legacy, outside <root>/ (N files, not managed)" -- only for a non-default root with files to report (#791, #393's mock). */
+export function legacyNote(featuresRoot: string | undefined, legacy: LegacyFiles | undefined): string | null {
+  if (!featuresRoot || featuresRoot === 'features' || !legacy || legacy.count === 0) return null;
+  return `Legacy, outside ${featuresRoot}/ (${legacy.count} file${legacy.count === 1 ? '' : 's'}, not managed)`;
 }
 
 /** The row for a name only when it is in the list (a stale or hand-edited ?feature= selects nothing). */

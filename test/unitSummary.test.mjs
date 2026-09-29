@@ -111,6 +111,8 @@ test('feature summary reports layers, contracts, data flow, machines in plain En
 test('listFeatures / listUnits / summarizeFeatureForAgents', () => {
   const lf = listFeatures(EXAMPLE);
   assert.deepEqual(lf.features.map((f) => f.name), ['core', 'login', 'signup']);
+  assert.equal(lf.featuresRoot, 'features');
+  assert.equal(lf.legacy.count, 7);
   assertSchema(lf);
   const lu = listUnits(EXAMPLE);
   assertSchema(lu);

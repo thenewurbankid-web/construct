@@ -185,7 +185,7 @@ export function listUnits(root, { kind, registry = defaultUnitRegistry() } = {})
  *
  * @param {string} root Project root.
  * @param {object} [opts] Passed on to `listUnits` and `summarizeUnit`.
- * @returns {object} `{ok:true, features:[{name, path, ref, summary, health, completeness}]}` (an entry carries `error` when its summary failed), or `{ok:false, error}`.
+ * @returns {object} `{ok:true, features:[{name, path, ref, summary, health, completeness}], featuresRoot, legacy}` (an entry carries `error` when its summary failed; `legacy` is the project's `sections.legacy`, #791), or `{ok:false, error}`.
  */
 export function listFeatures(root, opts = {}) {
   const l = listUnits(root, { kind: 'feature', ...opts });
@@ -196,7 +196,11 @@ export function listFeatures(root, opts = {}) {
       ? { name: u.id, path: u.path, ref: u.ref, summary: s.summary, health: s.health.status, completeness: s.health.completeness }
       : { name: u.id, path: u.path, ref: u.ref, error: s.error };
   });
-  return { schemaVersion: SCHEMA_VERSION, ok: true, count: features.length, features };
+  const project = summarizeUnit(root, '.', { kind: 'project', detail: 'standard', ...opts });
+  return {
+    schemaVersion: SCHEMA_VERSION, ok: true, count: features.length, features,
+    ...(project.ok ? { featuresRoot: project.sections.featuresRoot, legacy: project.sections.legacy } : {}),
+  };
 }
 
 /** Feature-first entry point: a feature name, or (route/path) anything else `summarizeUnit` understands. */

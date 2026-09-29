@@ -87,7 +87,9 @@
         "schemaVersion": { "const": 1 },
         "ok": { "const": true },
         "count": { "type": "integer" },
-        "features": { "type": "array", "items": { "type": "object", "required": ["name", "ref"], "properties": { "name": { "type": "string" }, "path": { "type": "string" }, "ref": { "type": "string" }, "summary": { "type": "string" }, "health": { "type": "string" }, "completeness": { "type": "number" } } } }
+        "features": { "type": "array", "items": { "type": "object", "required": ["name", "ref"], "properties": { "name": { "type": "string" }, "path": { "type": "string" }, "ref": { "type": "string" }, "summary": { "type": "string" }, "health": { "type": "string" }, "completeness": { "type": "number" } } } },
+        "featuresRoot": { "type": "string", "description": "The configured features root (#791), 'features' unless architecture.yml overrides it." },
+        "legacy": { "type": "object", "description": "Source files outside featuresRoot (#791): not counted as violations.", "properties": { "count": { "type": "integer" }, "files": { "type": "array", "items": { "type": "string" } } } }
       }
     },
     "flowNode": {

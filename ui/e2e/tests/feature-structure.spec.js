@@ -78,6 +78,9 @@ layers:
   write('construct/billing/index.ts', "export { BillingPage } from './pages/BillingPage';\n");
   write('construct/billing/domain/rules.ts', 'export function total(a: number, b: number) { return a + b; }\n');
   write('construct/billing/pages/BillingPage.tsx', "export function BillingPage() {\n  return <div />;\n}\n");
+  // Pre-existing app code outside construct/, not managed by Construct -- the "Legacy" note (#791).
+  write('app/legacy-page.tsx', "export default function LegacyPage() {\n  return <div />;\n}\n");
+  write('app/legacy-layout.tsx', "export default function LegacyLayout() {\n  return <div />;\n}\n");
   const git = (...args) => execFileSync('git', ['-c', 'user.name=e2e', '-c', 'user.email=e2e@example.invalid', '-c', 'commit.gpgsign=false', ...args], { cwd: repo, encoding: 'utf8' });
   git('init', '-q', '-b', 'main');
   git('add', '-A');
@@ -102,5 +105,10 @@ test.describe.serial('Feature structure: a non-default features.root shows in th
     await gotoCockpit(page, '/?feature=billing');
     await expect(details(page).getByTestId('fc-name')).toHaveText('billing');
     await expect(details(page).getByTestId('fc-root')).toContainText('construct/');
+  });
+
+  test('files outside the root are counted as "Legacy, not managed" in the tree header, with no violations attributed (#791)', async ({ page }) => {
+    await gotoCockpit(page, '/?feature=billing');
+    await expect(page.getByTestId('fc-legacy-note')).toHaveText('Legacy, outside construct/ (2 files, not managed)');
   });
 });

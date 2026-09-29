@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { toListItems, findFeature, fileHref, buildFeatureView } from './FeatureView.ts';
+import { toListItems, findFeature, fileHref, buildFeatureView, legacyNote } from './FeatureView.ts';
 
 const rows = [
   { name: 'billing', path: 'features/billing', ref: 'feature:billing', summary: 'Feature "billing": 9 files, 66 LOC, 7/7 layers; 1 workflow machine(s).', health: 'ok' },
@@ -65,6 +65,15 @@ test('details: layers in flow order, unknown layers last, links, routes, workflo
 test('root: derived from path, so a project with features.root: construct shows it', () => {
   const custom = { ...summary, path: 'construct/billing' };
   assert.equal(buildFeatureView(custom).root, 'construct');
+});
+
+test('legacyNote: only a non-default root with files to report gets the note (#791)', () => {
+  assert.equal(legacyNote('features', { count: 7 }), null, 'default root: never shown');
+  assert.equal(legacyNote('construct', { count: 0 }), null, 'nothing outside the root: never shown');
+  assert.equal(legacyNote(undefined, { count: 7 }), null, 'no root known yet');
+  assert.equal(legacyNote('construct', undefined), null, 'no legacy data yet');
+  assert.equal(legacyNote('construct', { count: 38 }), 'Legacy, outside construct/ (38 files, not managed)');
+  assert.equal(legacyNote('construct', { count: 1 }), 'Legacy, outside construct/ (1 file, not managed)');
 });
 
 test('details: missing sections are empty, and an error answer is no view', () => {

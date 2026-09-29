@@ -5,9 +5,10 @@ import { EmptyState } from '@/features/states';
 import { ListBrowser, useUrlSelection } from '@/features/list-browser';
 import { useRegisterShellTab, useShellStage, type ShellTab } from '@/features/shell';
 import { FeatureDetails } from '../components/FeatureDetails';
-import { findFeature, toListItems } from '../domain/FeatureView';
+import { findFeature, legacyNote, toListItems } from '../domain/FeatureView';
 import { useFeatureList } from '../hooks/useFeatureList';
 import { useFeatureSummary } from '../hooks/useFeatureSummary';
+import '../components/feature-catalog.css';
 
 // The stage's "Create" action lives in the dashboard feature's stage actions, composed into the same stage by the route;
 // the empty list's one next action opens it (no import of that feature: the two only meet on the page).
@@ -26,6 +27,7 @@ export function FeaturesScreenController() {
   const name = feature?.name ?? null;
   const details = useFeatureSummary(name);
   const items = useMemo(() => toListItems(list.features), [list.features]);
+  const note = list.status === 'ready' ? legacyNote(list.featuresRoot, list.legacy) : null;
   const { select } = selection;
   const onSelect = useCallback(
     (id: string) => {
@@ -54,10 +56,11 @@ export function FeaturesScreenController() {
           emptyTitle="This project has no features yet"
           emptyHint="Create the first one with Create above; it appears here."
           emptyAction={{ label: 'Create a feature', onClick: openCreate }}
+          header={note ? <p className="fc-hint" data-testid="fc-legacy-note">{note}</p> : undefined}
         />
       ),
     }),
-    [items, name, onSelect, selection.ready, list.status, list.error, list.reload],
+    [items, name, onSelect, selection.ready, list.status, list.error, list.reload, note],
   );
   useRegisterShellTab('browser', browser);
 

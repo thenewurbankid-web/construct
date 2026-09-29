@@ -4,7 +4,12 @@
 /** A row of the index; when the engine could not summarize the feature it carries `error` instead of `summary`. */
 export type FeatureRow = { name: string; path: string; ref: string; summary?: string; health?: string; completeness?: number; error?: { code?: string; message?: string } };
 
-export type FeatureIndexResponse = { ok: true; features: FeatureRow[] } | { ok: false; error?: { message?: string } };
+/** Files outside `featuresRoot`: pre-existing app code the tree doesn't manage, no violations attributed (#791). */
+export type LegacyFiles = { count: number; files?: string[] };
+
+export type FeatureIndexResponse =
+  | { ok: true; features: FeatureRow[]; featuresRoot?: string; legacy?: LegacyFiles }
+  | { ok: false; error?: { message?: string } };
 
 export type SummaryFile = { path: string; layer: string | null; loc: number; purpose: string; frozen?: boolean };
 
@@ -53,4 +58,4 @@ export type FeatureView = {
   usesFeatures: string[];
 };
 
-export type FeatureListState = { status: 'loading' | 'error' | 'ready'; features: FeatureRow[]; error: string };
+export type FeatureListState = { status: 'loading' | 'error' | 'ready'; features: FeatureRow[]; error: string; featuresRoot?: string; legacy?: LegacyFiles };

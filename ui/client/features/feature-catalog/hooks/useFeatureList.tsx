@@ -12,7 +12,7 @@ export function useFeatureList() {
   const load = useCallback(() => {
     setState(LOADING);
     getFeatureIndex()
-      .then((r) => setState(r.ok ? { status: 'ready', features: r.features, error: '' } : { status: 'error', features: [], error: r.error?.message ?? 'The server could not list the features.' }))
+      .then((r) => setState(r.ok ? { status: 'ready', features: r.features, error: '', featuresRoot: r.featuresRoot, legacy: r.legacy } : { status: 'error', features: [], error: r.error?.message ?? 'The server could not list the features.' }))
       .catch(() => setState({ status: 'error', features: [], error: 'The server did not answer.' }));
   }, []);
   useEffect(load, [load]);
