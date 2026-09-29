@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gotoCockpit } from './support/cockpit.js';
+import { runAxe, isBlocking, format } from './support/axe.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCREENSHOTS_DIR = path.resolve(__dirname, '../screenshots');
@@ -205,6 +206,48 @@ test.describe.serial('Pages Editor click to navigate (#321)', () => {
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'pages-editor-navigate-fold.png') });
     await page.getByRole('menuitem', { name: 'PriceCard' }).click();
     await expect(page.getByTestId('trail-current')).toHaveText('PriceCard');
+  });
+
+  // #441: the folded-steps "..." button is a real `role="menu"` (ReferenceTrail.tsx), now Radix
+  // DropdownMenu behind components/ui/Menu.jsx. Builds the trail with plain clicks (the app opens a
+  // reference on a plain click too, per useLinkedCode's onLinkClick / #346) rather than Ctrl-click,
+  // which some sandboxed macOS Chromium runs treat as a secondary click.
+  test('keyboard: the folded-steps menu supports arrow keys, Escape returns focus to the trigger, and is axe-clean', async ({ page }) => {
+    await openHome(page);
+    await link(page, 'PriceCard').last().click();
+    await link(page, 'Badge').last().click();
+    for (const name of ['Chip1', 'Chip2', 'Chip3', 'Chip4']) {
+      await link(page, name).last().click();
+      await expect(page.getByTestId('trail-current')).toHaveText(name);
+    }
+    await expect(page.locator('.ref-trail-fold')).toHaveCount(1);
+
+    const foldButton = page.locator('.ref-trail-fold button');
+    await foldButton.focus();
+    await page.keyboard.press('Enter');
+    const menu = page.getByRole('menu');
+    await expect(menu).toBeVisible();
+    expect((await runAxe(page, { include: '[role="menu"]' })).filter(isBlocking), format(await runAxe(page, { include: '[role="menu"]' }))).toEqual([]);
+
+    // Arrow keys move the roving highlight through the menu items (no mouse). Radix tracks the
+    // highlighted item with `data-highlighted` (virtual focus inside the menu's own DOM focus, not a
+    // per-item DOM focus move) and auto-highlights the first item as soon as the menu opens.
+    await expect(page.getByRole('menuitem').first()).toHaveAttribute('data-highlighted', '');
+    await page.keyboard.press('ArrowDown');
+    await expect(page.getByRole('menuitem').nth(1)).toHaveAttribute('data-highlighted', '');
+
+    // Escape closes and returns focus to the trigger — no manual focus management in the app code.
+    await page.keyboard.press('Escape');
+    await expect(menu).toBeHidden();
+    await expect(foldButton).toBeFocused();
+
+    // Enter on the auto-highlighted item selects it and closes the menu.
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('menu')).toBeVisible();
+    const firstItemName = await page.getByRole('menuitem').first().textContent();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('menu')).toBeHidden();
+    await expect(page.getByTestId('trail-current')).toHaveText(firstItemName.trim());
   });
 
   test('keyboard: Enter on a focused link opens it', async ({ page }) => {

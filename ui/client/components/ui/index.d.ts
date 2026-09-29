@@ -93,3 +93,22 @@ type DialogPartProps = { asChild?: boolean; children?: ReactNode } & Omit<Compon
 export declare function DialogTitle(props: DialogPartProps): ReactNode;
 export declare function DialogDescription(props: DialogPartProps): ReactNode;
 export declare function DialogClose(props: DialogPartProps): ReactNode;
+
+// #441: an accessible dropdown menu wrapping Radix Primitives' DropdownMenu — arrow-key roving focus,
+// Home/End, typeahead, Esc-to-close and return-focus-to-trigger. Only for widgets that promise a real
+// `role="menu"` command list (e.g. ReferenceTrail's folded-steps button); a disclosure popover like
+// UserMenu keeps the shared `useDismissable` contract instead. Only Menu.jsx imports
+// `@radix-ui/react-dropdown-menu` directly, so swapping the underlying library later means editing that
+// one file.
+export declare function Menu(props: { open: boolean; onOpenChange: (open: boolean) => void; children?: ReactNode }): ReactNode;
+
+export declare const MenuTrigger: ElementType;
+
+export declare function MenuContent(
+  props: { className?: string; align?: 'start' | 'center' | 'end'; sideOffset?: number; children?: ReactNode } & Omit<
+    ComponentPropsWithoutRef<'div'>,
+    'children'
+  >,
+): ReactNode;
+
+export declare function MenuItem(props: { className?: string; onSelect?: (event: Event) => void; children?: ReactNode }): ReactNode;
