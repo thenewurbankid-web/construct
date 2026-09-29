@@ -207,7 +207,10 @@ test('generated and reused docs are current, and carry no tracker plumbing or de
   assert.match(cli, /construct review/);
   for (const f of walk(out).filter((x) => x.endsWith('.html'))) {
     const html = fs.readFileSync(f, 'utf8');
-    const text = html.replace(/<script[\s\S]*?<\/script>/g, '').replace(/&#\d+;/g, "'").replace(/<[^>]+>/g, ' ');
+    // Strip double-escaped entities (`&amp;#8203;`, from a literal `&#NNNN;` entity in source re-escaped
+    // by the docs pipeline's `esc()`) before the single-escaped form, or a leftover `#NNNN` trips the
+    // ticket-leak check below as a false positive (#785).
+    const text = html.replace(/<script[\s\S]*?<\/script>/g, '').replace(/&amp;#\d+;/g, "'").replace(/&#\d+;/g, "'").replace(/<[^>]+>/g, ' ');
     assert.doesNotMatch(text, /#\d{2,4}\b/, `ticket number leaked in ${path.relative(out, f)}`);
     assert.doesNotMatch(text, /CLAUDE\.md|subagent|orchestrat/i, `internal wording in ${path.relative(out, f)}`);
     for (const m of html.matchAll(/<(?:a|img|link)\b[^>]*?(?:href|src)="(?!https?:|mailto:|data:|\/)([^"#]+)/g)) {
@@ -301,11 +304,31 @@ test('API reference: no leaked internal ticket number on any generated page of a
   let checked = 0;
   for (const f of walk(apiRoot).filter((x) => x.endsWith('.html'))) {
     const html = fs.readFileSync(f, 'utf8');
-    const text = html.replace(/<script[\s\S]*?<\/script>/g, '').replace(/&#\d+;/g, "'").replace(/<[^>]+>/g, ' ');
+    const text = html.replace(/<script[\s\S]*?<\/script>/g, '').replace(/&amp;#\d+;/g, "'").replace(/&#\d+;/g, "'").replace(/<[^>]+>/g, ' ');
     assert.doesNotMatch(text, /#\d{2,4}\b/, `ticket number leaked in ${path.relative(out, f)}`);
     checked++;
   }
   assert.ok(checked > API_PACKAGES.length, 'more than one page per package was actually checked');
+  fs.rmSync(out, { recursive: true });
+});
+
+test('API reference (#785): ensureStoryNonLayer JSDoc\'s zero-width-space glob renders verbatim, with no entity-shaped ticket look-alike', async () => {
+  // packages/core/story.mjs's JSDoc for ensureStoryNonLayer embeds a real U+200B (zero-width space)
+  // character inside `features/*<ZWSP>/story.md` so the literal `*/` from the glob never closes the
+  // JSDoc block comment early. It must stay a raw unicode character, not a named/numeric HTML entity:
+  // an entity there (`&#8203;`) gets HTML-escaped a second time by the docs pipeline's `esc()`
+  // (`&` -> `&amp;`), leaving `&amp;#8203;` -- a `#8203`-shaped remainder the ticket-leak check above
+  // can't tell from a real leaked ticket number.
+  const out = makeTempDir('site-api-story-zwsp-test-');
+  await build({ out, repo: 'o/r', buildTime: BUILD_TIME, version: '0.9', api: ['core'] });
+  const f = path.join(out, 'developers/api/core/packages/core/story/index.html');
+  assert.ok(fs.existsSync(f), 'story module page was generated');
+  const html = fs.readFileSync(f, 'utf8');
+  assert.match(html, /ensureStoryNonLayer/);
+  assert.match(html, /features\/\*​\/story\.md/, 'the glob keeps its zero-width-space character verbatim');
+  assert.doesNotMatch(html, /&amp;#\d+;/, 'no double-escaped HTML entity on the page (the #785 regression)');
+  const text = html.replace(/<script[\s\S]*?<\/script>/g, '').replace(/&amp;#\d+;/g, "'").replace(/&#\d+;/g, "'").replace(/<[^>]+>/g, ' ');
+  assert.doesNotMatch(text, /#\d{2,4}\b/, 'ticket number leaked in the story module page');
   fs.rmSync(out, { recursive: true });
 });
 
@@ -331,7 +354,7 @@ test('API reference: Cockpit server REST reference and CLI command reference are
   for (const rel of ['developers/api/index.html', 'developers/api/cockpit-server/rest/index.html', 'developers/api/cockpit-server/rest/processes/index.html', 'developers/api/cli/index.html']) {
     const f = path.join(out, rel);
     const html = fs.readFileSync(f, 'utf8');
-    const text = html.replace(/<script[\s\S]*?<\/script>/g, '').replace(/&#\d+;/g, "'").replace(/<[^>]+>/g, ' ');
+    const text = html.replace(/<script[\s\S]*?<\/script>/g, '').replace(/&amp;#\d+;/g, "'").replace(/&#\d+;/g, "'").replace(/<[^>]+>/g, ' ');
     assert.doesNotMatch(text, /#\d{2,4}\b/, `ticket number leaked in ${rel}`);
     for (const m of html.matchAll(/<(?:a|img|link)\b[^>]*?(?:href|src)="(?!https?:|mailto:|data:|\/)([^"#]+)/g)) {
       let target = path.resolve(path.dirname(f), m[1]);

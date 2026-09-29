@@ -419,7 +419,7 @@ export function verifyStoryCitations(citations, { acceptanceIds, codeUnitIds } =
 }
 
 /**
- * Declare `nonLayer: [features/*&#8203;/story.md]` in `architecture.yml` once, so a `story.md` at a feature root is not an
+ * Declare `nonLayer: [features/*​/story.md]` in `architecture.yml` once, so a `story.md` at a feature root is not an
  * unrecognized file (SOC-001, #348 precedent). Returns `false` when it is already covered. Refuses (nothing written)
  * when `nonLayer:` already exists but does not cover the glob -- the same half-declared refusal `ensureTestRegions` uses.
  *
