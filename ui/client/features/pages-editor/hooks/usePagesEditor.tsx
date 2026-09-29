@@ -49,7 +49,9 @@ export function usePagesEditor() {
 
   useEffect(() => {
     if (!state.feature) return;
-    getPages(state.feature).then((r) => dispatch({ type: 'FILES_LOADED', files: r.files || [] }));
+    getPages(state.feature)
+      .then((r) => dispatch({ type: 'FILES_LOADED', files: r.files || [] }))
+      .catch(() => dispatch({ type: 'FILES_ERROR', error: 'Could not load files for this feature.' }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.feature]);
 

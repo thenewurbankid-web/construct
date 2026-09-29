@@ -16,6 +16,7 @@ export type PagesEditorAction =
   | { type: 'FEATURES_LOADED'; features: string[] }
   | { type: 'SET_FEATURE'; feature: string }
   | { type: 'FILES_LOADED'; files: string[] }
+  | { type: 'FILES_ERROR'; error: string }
   | { type: 'OPEN_FILE'; file: string }
   | { type: 'TREE_LOADED'; tree: PageTree }
   | { type: 'TREE_ERROR'; error: string }
@@ -38,6 +39,11 @@ export function pagesEditorReducer(state: PagesEditorState, action: PagesEditorA
     case 'FEATURES_LOADED':
       return { ...state, features: action.features };
     case 'SET_FEATURE':
+      // #809: re-picking the already-active feature is a no-op. Resetting file/tree/filesLoading
+      // here anyway would set filesLoading back to true with nothing to clear it — the files effect
+      // is keyed on `state.feature`, which would not have changed, so it never re-fires and the
+      // browser panel is stuck on "Loading..." forever.
+      if (action.feature === state.feature) return state;
       return {
         ...state,
         feature: action.feature,
@@ -49,6 +55,8 @@ export function pagesEditorReducer(state: PagesEditorState, action: PagesEditorA
       };
     case 'FILES_LOADED':
       return { ...state, files: action.files, filesLoading: false };
+    case 'FILES_ERROR':
+      return { ...state, files: [], filesLoading: false, error: action.error };
     case 'OPEN_FILE':
       return { ...state, file: action.file, selectedNodeId: null, error: null, tree: null };
     case 'TREE_LOADED':
