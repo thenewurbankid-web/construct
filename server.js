@@ -7,7 +7,7 @@ const { chunkCode } = require('./chunker');
 const { transform } = require('./transform');
 const { scanModules, findSimilarShapes } = require('./module-scanner');
 const trainingData = require('./training-data');
-const { toEnglish, extractAtoms, extractAtomUsage, reorderSteps } = require('./to-english');
+const { toEnglish, extractAtoms, extractAtomUsage, reorderSteps, atomParamNames, applyAtomToStep } = require('./to-english');
 const registry = require('./registry');
 
 const CONFIG_PATH = path.join(__dirname, 'config.json');
@@ -245,6 +245,71 @@ app.post('/api/reorder-steps', (req, res) => {
     steps.forEach((s, i) => { s.broken = breaks[i] || null; });
     res.json({ refactored, english, steps, title, atomUsage: withImplementations(refactored, kind) });
   } catch (e) {
+    res.status(400).json({ error: String(e) });
+  }
+});
+
+// A step's English was edited. Known wording (exact match on a registered
+// atom's stored english, then embedding similarity) resolves to a call to
+// that atom and the code updates; unknown wording comes back with the list
+// of words that don't match anything registered, for the demo to underline
+// and offer "add implementation" for.
+app.post('/api/resolve-wording', async (req, res) => {
+  const kind = req.body.kind || 'function';
+  const stepIndex = req.body.stepIndex;
+  const english = req.body.english || '';
+  const cfg = readConfig();
+  try {
+    let match = registry.findByEnglish(english, 'function');
+    let via = match ? 'exact' : null;
+    if (!match) {
+      try {
+        const sim = await registry.findSimilarByEnglish(english, 'function', cfg.ollamaUrl);
+        if (sim) {
+          match = sim.match;
+          via = 'embedding';
+        }
+      } catch (e) {
+        // Embedding lookup is best-effort (needs Ollama reachable) -- fall
+        // through to "unresolved" rather than failing the whole request.
+      }
+    }
+    if (!match) {
+      return res.json({ resolved: false, unrecognizedWords: registry.unrecognizedWords(english, 'function') });
+    }
+    const paramNames = atomParamNames(match.code);
+    const refactored = applyAtomToStep(req.body.code || '', kind, stepIndex, match.name, paramNames);
+    const { english: newEnglish, steps, title } = toEnglish(refactored, kind);
+    res.json({ resolved: true, via, atom: match.name, refactored, english: newEnglish, steps, title, atomUsage: withImplementations(refactored, kind) });
+  } catch (e) {
+    res.status(400).json({ error: String(e) });
+  }
+});
+
+const VALID_NAME = /^[a-zA-Z_$][\w$]*$/;
+
+// "Add implementation": saves a small standalone function as a new atom,
+// keyed by the English wording that didn't resolve to anything. Once
+// saved, the same wording resolves on the next /api/resolve-wording call.
+app.post('/api/register-atom', async (req, res) => {
+  const name = req.body.name || '';
+  const params = Array.isArray(req.body.params) ? req.body.params : [];
+  const body = req.body.body || '';
+  const english = req.body.english || '';
+  const cfg = readConfig();
+
+  if (!VALID_NAME.test(name)) return res.status(400).json({ error: 'name must be a valid JS identifier' });
+  if (!params.every((p) => VALID_NAME.test(p))) return res.status(400).json({ error: 'each param must be a valid JS identifier' });
+  if (!english.trim()) return res.status(400).json({ error: 'english wording is required' });
+
+  const code = `function ${name}(${params.join(', ')}) {\n${body}\n}`;
+  if (!isValidJs(code)) return res.status(400).json({ error: 'body does not parse as valid JS' });
+
+  try {
+    const entry = await registry.register(name, 'function', code, cfg.ollamaUrl, english);
+    res.json({ entry });
+  } catch (e) {
+    if (e instanceof registry.AtomRedefinitionError) return res.status(409).json({ error: e.message });
     res.status(400).json({ error: String(e) });
   }
 });

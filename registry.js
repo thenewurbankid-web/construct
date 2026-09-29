@@ -21,8 +21,10 @@ function save(entries) {
 
 // Structural fingerprint: parse + regenerate with fixed formatting so that
 // whitespace/quote-style differences never cause a false "not a duplicate".
+// Only 'method' needs the class wrapper to parse (a class-body member isn't
+// valid on its own); a standalone function or statement already is.
 function normalize(code, kind) {
-  const wrapped = kind === 'organism' ? code : `class __W__ {\n${code}\n}`;
+  const wrapped = kind === 'method' ? `class __W__ {\n${code}\n}` : code;
   const ast = parser.parse(wrapped, { sourceType: 'module', plugins: ['typescript'] });
   return generate(ast, { retainLines: false, compact: true }).code;
 }
@@ -78,6 +80,61 @@ async function findExisting(code, kind, ollamaUrl) {
   return null;
 }
 
+// Exact lookup by the English wording an atom was registered under --
+// free and deterministic, tried before any embedding call.
+function findByEnglish(english, kind) {
+  if (!english) return null;
+  const norm = (s) => s.trim().toLowerCase().replace(/\s+/g, ' ');
+  const target = norm(english);
+  return load().find((e) => e.kind === kind && e.english && norm(e.english) === target) || null;
+}
+
+// Falls back to embedding similarity on the WORDING (not the code) when no
+// exact match exists -- "roughly the same instruction, said differently".
+// Embeds every candidate's stored english at search time rather than
+// caching a vector on the entry, so a small registry stays simple and
+// register() never has to keep an embedding in sync with edited wording.
+async function findSimilarByEnglish(english, kind, ollamaUrl) {
+  const entries = load().filter((e) => e.kind === kind && e.english);
+  if (!entries.length) return null;
+  const vector = await embed(english, ollamaUrl);
+  let best = null;
+  let bestScore = 0;
+  for (const e of entries) {
+    const score = cosineSimilarity(vector, await embed(e.english, ollamaUrl));
+    if (score > bestScore) {
+      bestScore = score;
+      best = e;
+    }
+  }
+  if (best && bestScore >= SIMILARITY_THRESHOLD) return { match: best, score: bestScore };
+  return null;
+}
+
+// Words that are always "known" -- the fixed connector vocabulary
+// stmtToEnglish/exprToEnglish already use to build sentences, not anything
+// a user would register an atom for.
+const CONNECTOR_WORDS = new Set([
+  'if', 'otherwise', 'then', 'and', 'or', 'of', 'is', 'not', 'for', 'each',
+  'in', 'while', 'let', 'be', 'set', 'to', 'return', 'a', 'an', 'the', 'it',
+  'new', 'nothing', 'true', 'false',
+]);
+
+// Which words in a piece of edited English aren't recognized: not a
+// connector word, and not seen in ANY registered atom's stored wording for
+// this kind. Used to underline the words a user needs to define, and to
+// pre-fill the "add implementation" editor's suggested name.
+function unrecognizedWords(english, kind) {
+  const known = new Set();
+  load()
+    .filter((e) => e.kind === kind && e.english)
+    .forEach((e) => {
+      (e.english.toLowerCase().match(/[a-z0-9']+/gi) || []).forEach((w) => known.add(w));
+    });
+  const tokens = english.toLowerCase().match(/[a-z0-9']+/gi) || [];
+  return [...new Set(tokens.filter((w) => !CONNECTOR_WORDS.has(w) && !known.has(w) && !/^\d+$/.test(w)))];
+}
+
 // Governance rule: once an atom/tissue/organism is registered under a name,
 // it can only be REUSED, never redefined -- new needs get a new name
 // alongside it, never a rewrite of an existing one. That protects every
@@ -94,7 +151,7 @@ class AtomRedefinitionError extends Error {
   }
 }
 
-async function register(name, kind, code, ollamaUrl) {
+async function register(name, kind, code, ollamaUrl, english) {
   const entries = load();
   const fingerprint = normalize(code, kind);
 
@@ -105,7 +162,7 @@ async function register(name, kind, code, ollamaUrl) {
   }
 
   const vector = await embed(code, ollamaUrl);
-  const entry = { id: `${kind}:${name}:${entries.length}`, name, kind, code, fingerprint, embedding: vector };
+  const entry = { id: `${kind}:${name}:${entries.length}`, name, kind, code, fingerprint, embedding: vector, english: english || null };
   entries.push(entry);
   save(entries);
   return entry;
@@ -114,6 +171,9 @@ async function register(name, kind, code, ollamaUrl) {
 module.exports = {
   load,
   findExisting,
+  findByEnglish,
+  findSimilarByEnglish,
+  unrecognizedWords,
   register,
   cosineSimilarity,
   normalize,

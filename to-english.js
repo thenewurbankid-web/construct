@@ -318,4 +318,84 @@ function reorderSteps(code, kind, order) {
   return { code: code_, breaks };
 }
 
-module.exports = { toEnglish, camelToWords, extractAtoms, extractAtomUsage, reorderSteps };
+// Parameter names of a registered atom, read straight off its own stored
+// function source -- so a step calling it never has to carry its own copy
+// of the signature that could drift out of sync.
+function atomParamNames(atomCode) {
+  const ast = parser.parse(atomCode, { sourceType: 'module' });
+  let params = [];
+  traverse(ast, {
+    FunctionDeclaration(path) {
+      params = path.node.params.map((p) => p.name || '?');
+      path.stop();
+    },
+  });
+  return params;
+}
+
+// Builds the replacement statement for a step now resolved to a known atom
+// -- a call to that atom, in the SHAPE of the step it's replacing (still a
+// return, still assigned to the same variable, or just a bare call), with
+// the atom's own parameter names passed through as-is. That only reads
+// right when the surrounding scope already has bindings with those names,
+// which is the same "same word, same thing" convention every atom in this
+// codebase already relies on (a.equals(b), not a.equals(someOtherName)).
+function buildStepFromAtom(originalStmt, atomName, paramNames) {
+  const call = `${atomName}(${paramNames.join(', ')})`;
+  if (originalStmt.type === 'ReturnStatement') return `return ${call};`;
+  if (originalStmt.type === 'VariableDeclaration' && originalStmt.declarations.length === 1 && originalStmt.declarations[0].id.type === 'Identifier') {
+    return `${originalStmt.kind} ${originalStmt.declarations[0].id.name} = ${call};`;
+  }
+  return `${call};`;
+}
+
+// Swaps the statement at stepIndex for a call to a resolved atom, keeping
+// the original statement's shape (see buildStepFromAtom). This is the
+// "wording is recognized -> code updates" half of editable steps.
+function applyAtomToStep(code, kind, stepIndex, atomName, paramNames) {
+  const wrapped = kind === 'method' ? `class __W__ {\n${code}\n}` : code;
+  const ast = parser.parse(wrapped, { sourceType: 'module' });
+  let bodyPath = null;
+
+  traverse(ast, {
+    ClassMethod(path) {
+      bodyPath = path.get('body');
+      path.stop();
+    },
+    FunctionDeclaration(path) {
+      if (!path.parentPath.isProgram()) return;
+      bodyPath = path.get('body');
+      path.stop();
+    },
+  });
+
+  if (!bodyPath) throw new Error('could not find a function/method to edit');
+  const stmts = bodyPath.node.body;
+  if (stepIndex < 0 || stepIndex >= stmts.length) throw new Error('step index out of range');
+
+  const replacementCode = buildStepFromAtom(stmts[stepIndex], atomName, paramNames);
+  // allowReturnOutsideFunction: buildStepFromAtom can produce a bare
+  // "return ...;" (the step being replaced was itself a return), which
+  // Babel otherwise rejects as a standalone snippet even though it's about
+  // to be spliced back into a real function body below.
+  const replacementAst = parser.parse(replacementCode, { sourceType: 'module', allowReturnOutsideFunction: true });
+  const newStmt = replacementAst.program.body[0];
+  if (!newStmt) throw new Error('could not build a statement from the atom call');
+  stmts[stepIndex] = newStmt;
+
+  const output = generate(ast, { retainLines: false }).code;
+  if (kind !== 'method') return output;
+  const chunks = chunkCode(output);
+  return chunks.length ? chunks[0].code : output;
+}
+
+module.exports = {
+  toEnglish,
+  camelToWords,
+  extractAtoms,
+  extractAtomUsage,
+  reorderSteps,
+  atomParamNames,
+  buildStepFromAtom,
+  applyAtomToStep,
+};

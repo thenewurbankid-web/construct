@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { toEnglish, extractAtoms, extractAtomUsage, reorderSteps } = require('./to-english');
+const { toEnglish, extractAtoms, extractAtomUsage, reorderSteps, atomParamNames, buildStepFromAtom, applyAtomToStep } = require('./to-english');
 
 test('toEnglish returns the flat english string for a function', () => {
   const code = `function checkAge(age) {\n  return age;\n}`;
@@ -104,6 +104,49 @@ test('fixing the order (moving the definer back above its use) clears the break'
   assert.ok(broken[0]);
   const fixed = reorderSteps(code, 'function', [0, 1]).breaks;
   assert.deepEqual(fixed, [null, null]);
+});
+
+test('atomParamNames reads parameter names straight off the atom\'s own source', () => {
+  const code = `function clamp(value, min, max) {\n  return value;\n}`;
+  assert.deepEqual(atomParamNames(code), ['value', 'min', 'max']);
+});
+
+test('buildStepFromAtom keeps a return statement\'s shape', () => {
+  const original = { type: 'ReturnStatement' };
+  assert.equal(buildStepFromAtom(original, 'clamp', ['value', 'min', 'max']), 'return clamp(value, min, max);');
+});
+
+test('buildStepFromAtom keeps a single-declarator variable declaration\'s shape (kind and name)', () => {
+  const original = {
+    type: 'VariableDeclaration',
+    kind: 'let',
+    declarations: [{ id: { type: 'Identifier', name: 'x' } }],
+  };
+  assert.equal(buildStepFromAtom(original, 'clamp', ['a', 'b']), 'let x = clamp(a, b);');
+});
+
+test('buildStepFromAtom falls back to a bare call for anything else', () => {
+  const original = { type: 'ExpressionStatement' };
+  assert.equal(buildStepFromAtom(original, 'log', ['msg']), 'log(msg);');
+});
+
+test('applyAtomToStep replaces a step with a call and the resulting english reflects it', () => {
+  const code = `function run(a) {\n  let x = a;\n  return x;\n}`;
+  const rebuilt = applyAtomToStep(code, 'function', 0, 'clone', ['a']);
+  const { steps } = toEnglish(rebuilt, 'function');
+  assert.equal(steps[0].english, 'let x be clone of a');
+});
+
+test('applyAtomToStep rejects an out-of-range step index', () => {
+  const code = `function run(a) {\n  return a;\n}`;
+  assert.throws(() => applyAtomToStep(code, 'function', 5, 'clone', ['a']));
+});
+
+test('applyAtomToStep replaces a bare return statement (return outside function during rebuild)', () => {
+  const code = `function run(a) {\n  return a;\n}`;
+  const rebuilt = applyAtomToStep(code, 'function', 0, 'triple', ['a']);
+  const { steps } = toEnglish(rebuilt, 'function');
+  assert.equal(steps[0].english, 'return triple of a');
 });
 
 test('extractAtomUsage orders atoms by first use, not alphabetically', () => {

@@ -63,6 +63,21 @@
   }
   .code-preview.show { display: block; }
   .code-preview mark.code-broken { background: rgba(242, 97, 97, .18); color: #f26161; border-radius: 3px; }
+  .step-sentence[contenteditable] { outline: none; border-bottom: 1px dashed #3d424c; cursor: text; }
+  .step-sentence[contenteditable]:focus { border-bottom-color: #5eead4; }
+  .word-unknown { text-decoration: underline wavy #f2b86a; text-underline-offset: 3px; }
+  .step-extra { list-style: none; padding: 2px 0 8px 24px; }
+  .add-impl-link { font-size: 11.5px; color: #5eead4; cursor: pointer; }
+  .add-impl-link:hover { text-decoration: underline; }
+  .atom-form { padding: 8px 10px; background: #0e1015; border: 1px solid #22252e; border-radius: 6px; display: flex; flex-direction: column; gap: 6px; max-width: 420px; }
+  .atom-form label { font-size: 10px; color: #6c7480; text-transform: uppercase; letter-spacing: .05em; }
+  .atom-form input, .atom-form textarea {
+    background: #0b0d11; border: 1px solid #1c1f26; color: #e4e6eb; border-radius: 5px;
+    padding: 5px 8px; font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; outline: none;
+  }
+  .atom-form textarea { min-height: 54px; resize: vertical; }
+  .atom-form-actions { display: flex; gap: 6px; margin-top: 2px; }
+  .atom-form-error { color: #f26161; font-size: 11px; }
   .atom-tags { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
   .atom-tag { font-size: 10.5px; font-family: ui-monospace, Menlo, monospace; background: #14171d; border: 1px solid #22252e; color: #5eead4; padding: 3px 8px; border-radius: 999px; }
 
@@ -406,12 +421,13 @@ function renderAtomTags(atoms) {
 
 // One deduplicated, cross-example list of every atom actually called,
 // instead of the per-block tags above -- built from each block's
-// `atomUsage` (name/count in first-use order, implementation lookup already
-// attached server-side). Rebuilt from scratch from `blockState` on every
-// change (initial analyze, live edit, reorder/delete, undo) rather than
-// patched incrementally, since any of those can add or remove atom calls
-// and there are at most a handful of blocks -- a full rebuild is cheap and
-// can never drift from what's actually in the blocks.
+// `atomUsage` (name/count in first-use order, `atomParamNames`'s
+// implementation lookup already attached server-side). Rebuilt from
+// scratch from `blockState` on every change (initial analyze, live edit,
+// reorder/delete, undo) rather than patched incrementally, since any of
+// those can add or remove atom calls and there are at most a handful of
+// blocks -- a full rebuild is cheap and can never drift from what's
+// actually in the blocks.
 let globalAtoms = [];
 let atomSortMode = 'first-use';
 
@@ -515,19 +531,175 @@ function renderAtomsSummary() {
 // in place.
 const blockState = {};
 
+// Wraps any word in `text` that's in `words` (the unrecognized list the
+// server returned) with a wavy-underline span -- the visual half of
+// "unrecognised words are underlined with Add implementation".
+function underlineUnknown(text, words) {
+  const known = new Set((words || []).map((w) => w.toLowerCase()));
+  return escapeHtml(text).replace(/[a-z0-9']+/gi, (w) => (known.has(w.toLowerCase()) ? `<span class="word-unknown">${w}</span>` : w));
+}
+
+function suggestName(words) {
+  if (!words || !words.length) return 'step';
+  return words[0] + words.slice(1).map((w) => w[0].toUpperCase() + w.slice(1)).join('');
+}
+
+function atomFormHtml(idx, pending) {
+  return `
+    <li class="step-extra">
+      <div class="atom-form" data-idx="${idx}">
+        <label>Name</label>
+        <input class="atom-name" value="${escapeHtml(suggestName(pending.unrecognizedWords))}" spellcheck="false" />
+        <label>Params (comma-separated)</label>
+        <input class="atom-params" placeholder="e.g. value, min, max" spellcheck="false" />
+        <label>Body</label>
+        <textarea class="atom-body" spellcheck="false" placeholder="return value;"></textarea>
+        ${pending.error ? `<div class="atom-form-error">${escapeHtml(pending.error)}</div>` : ''}
+        <div class="atom-form-actions">
+          <button class="btn-primary atom-save" data-idx="${idx}" style="font-size:11px;padding:5px 10px;">Save</button>
+          <button class="btn-ghost atom-cancel" data-idx="${idx}" style="font-size:11px;padding:5px 10px;">Cancel</button>
+        </div>
+      </div>
+    </li>`;
+}
+
+// One step row, plus (when this step's wording is mid-edit and unresolved)
+// a second <li> for the underline explanation / "add implementation" form.
+// A pending row is NOT contenteditable -- it's showing the draft wording
+// with its unrecognized words marked, not inviting another edit on top of
+// an edit that hasn't resolved yet.
+function stepRowHtml(i, idx, s) {
+  const state = blockState[i];
+  const pending = state.pending && state.pending.idx === idx ? state.pending : null;
+  const rowClass = 'step-row' + (s.broken ? ' broken' : '') + (pending ? ' editing' : '');
+  const titleAttr = s.broken ? ` title="${escapeHtml(s.broken.reason)}"` : '';
+  const sentenceHtml = pending ? underlineUnknown(pending.english, pending.unrecognizedWords) : markupSegment(s.english);
+  const editableAttr = pending ? '' : ' contenteditable="true" spellcheck="false"';
+
+  let html = `
+    <li class="${rowClass}" draggable="${pending ? 'false' : 'true'}" tabindex="0" data-idx="${idx}"${titleAttr}>
+      <span class="step-handle">⠿</span>
+      <span class="step-sentence"${editableAttr} data-idx="${idx}">${sentenceHtml}</span>
+      <button class="step-delete" title="Remove this step" data-idx="${idx}">×</button>
+    </li>`;
+
+  if (pending) {
+    if (pending.showForm) {
+      html += atomFormHtml(idx, pending);
+    } else {
+      html += `
+    <li class="step-extra">
+      <span class="add-impl-link" data-idx="${idx}">+ Add implementation for the underlined word${pending.unrecognizedWords.length === 1 ? '' : 's'}</span>
+      ${pending.error ? `<div class="atom-form-error">${escapeHtml(pending.error)}</div>` : ''}
+    </li>`;
+    }
+  }
+  return html;
+}
+
+// Resolving a step's edited wording: exact match on a registered atom's
+// english, then embedding similarity (server-side, registry.js) -- if
+// either hits, the step's code is swapped for a call to that atom and the
+// edit is done. If neither hits, the row switches into "pending" display
+// (underlined unknown words + add-implementation) instead of reverting.
+async function submitWording(i, idx, newText) {
+  const state = blockState[i];
+  const original = state.steps[idx];
+  const text = newText.trim();
+  if (!text || text === original.english.trim()) {
+    state.pending = null;
+    renderSteps(i, state.steps);
+    return;
+  }
+
+  const res = await fetch('/api/resolve-wording', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code: state.code, kind: state.kind, stepIndex: idx, english: text }),
+  }).then((r) => r.json());
+
+  if (res.error) {
+    state.pending = { idx, english: text, unrecognizedWords: [], error: res.error };
+    renderSteps(i, state.steps);
+    return;
+  }
+
+  if (res.resolved) {
+    state.undoStack.push({ code: state.code, steps: state.steps, atomUsage: state.atomUsage });
+    state.code = res.refactored;
+    state.steps = res.steps;
+    state.atomUsage = res.atomUsage || [];
+    state.pending = null;
+    const codeEl = document.getElementById('code-' + i);
+    if (codeEl) codeEl.value = res.refactored;
+    renderSteps(i, res.steps);
+    rebuildGlobalAtoms();
+    renderAtomsSummary();
+    return;
+  }
+
+  state.pending = { idx, english: text, unrecognizedWords: res.unrecognizedWords, showForm: false };
+  renderSteps(i, state.steps);
+}
+
+async function saveAtom(i, idx) {
+  const state = blockState[i];
+  const form = document.querySelector(`.atom-form[data-idx="${idx}"]`);
+  const name = form.querySelector('.atom-name').value.trim();
+  const params = form.querySelector('.atom-params').value.split(',').map((p) => p.trim()).filter(Boolean);
+  const body = form.querySelector('.atom-body').value;
+
+  const res = await fetch('/api/register-atom', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, params, body, english: state.pending.english }),
+  }).then((r) => r.json());
+
+  if (res.error) {
+    state.pending.error = res.error;
+    state.pending.showForm = true;
+    renderSteps(i, state.steps);
+    return;
+  }
+
+  // Registered under the same wording that was just typed -- resolving it
+  // again now hits the exact match and applies it.
+  await submitWording(i, idx, state.pending.english);
+}
+
 function renderSteps(i, steps) {
   const state = blockState[i];
   const list = document.getElementById('steps-' + i);
   if (!list) return;
-  list.innerHTML = steps.map((s, idx) => `
-    <li class="step-row${s.broken ? ' broken' : ''}" draggable="true" tabindex="0" data-idx="${idx}"${s.broken ? ` title="${escapeHtml(s.broken.reason)}"` : ''}>
-      <span class="step-handle">⠿</span>
-      <span class="step-sentence">${markupSegment(s.english)}</span>
-      <button class="step-delete" title="Remove this step" data-idx="${idx}">×</button>
-    </li>
-  `).join('');
+  list.innerHTML = steps.map((s, idx) => stepRowHtml(i, idx, s)).join('');
 
   highlightBrokenCode(i, state.code, steps);
+
+  list.querySelectorAll('.step-sentence[contenteditable]').forEach((el) => {
+    const idx = Number(el.dataset.idx);
+    el.addEventListener('mousedown', () => { el.closest('.step-row').draggable = false; });
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+      if (e.key === 'Escape') { e.preventDefault(); el.textContent = state.steps[idx].english; el.blur(); }
+    });
+    el.addEventListener('blur', () => {
+      el.closest('.step-row').draggable = true;
+      submitWording(i, idx, el.textContent);
+    });
+  });
+
+  list.querySelectorAll('.add-impl-link').forEach((el) => {
+    el.onclick = () => {
+      state.pending.showForm = true;
+      renderSteps(i, state.steps);
+    };
+  });
+
+  list.querySelectorAll('.atom-save').forEach((btn) => {
+    btn.onclick = () => saveAtom(i, Number(btn.dataset.idx));
+  });
+
+  list.querySelectorAll('.atom-cancel').forEach((btn) => {
+    btn.onclick = () => { state.pending = null; renderSteps(i, state.steps); };
+  });
 
   const rows = [...list.querySelectorAll('.step-row')];
   let dragIdx = null;
