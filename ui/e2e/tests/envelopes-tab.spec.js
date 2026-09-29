@@ -185,6 +185,46 @@ test.describe.serial('Envelopes tab: read-only saved-flows list (#395/#771)', ()
     await savePanel.getByTestId('compose-save-preview').click();
     await expect(savePanel.getByTestId('compose-save-error')).toContainText('That flow would be invalid.');
   });
+
+  test('compose: Run this flow starts a process in the Processes drawer through the same Process/Approvals path Plan mode uses', async ({ page }) => {
+    await gotoCockpit(page, '/');
+    await browserTabs(page).getByRole('tab', { name: 'Envelopes' }).click();
+
+    // summarize.list has no required args, does not write, and is the same flow the Plan mode e2e suite
+    // uses for its own "Run plan" test -- proven to actually complete in the fixture project sandbox
+    // (unlike check.types, which shells out to a real tsc that this throwaway fixture is not set up for).
+    const picker = stage(page).getByTestId('compose-picker');
+    await picker.getByTestId('compose-picker-select').selectOption('summarize.list');
+    await picker.getByTestId('compose-picker-add').click();
+    await expect(draftSteps(page)).toHaveCount(1);
+
+    const runBar = stage(page).getByTestId('compose-run');
+    await runBar.getByTestId('compose-run-button').click();
+    await expect(runBar.getByTestId('compose-run-started')).toBeVisible();
+
+    // The shell's drawer opens on the Processes tab -- the exact drawer Plan mode's "Run plan" opens (no new
+    // or bypass execution UI), with the started process listed.
+    const drawer = page.getByRole('region', { name: 'Bottom panel: Run' });
+    await expect(drawer.getByRole('tab', { name: /Processes/ })).toHaveAttribute('aria-selected', 'true');
+    await expect(drawer.getByTestId('process-row')).toHaveCount(1);
+  });
+
+  test('compose: Run this flow is refused with a clear error for an invalid draft, and starts nothing', async ({ page }) => {
+    await gotoCockpit(page, '/');
+    await browserTabs(page).getByRole('tab', { name: 'Envelopes' }).click();
+
+    await page.route('**/api/envelopes/run', (route) =>
+      route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'This flow is not valid, so it was not run.' }) }),
+    );
+
+    const picker = stage(page).getByTestId('compose-picker');
+    await picker.getByTestId('compose-picker-select').selectOption('create.unit');
+    await picker.getByTestId('compose-picker-add').click();
+
+    const runBar = stage(page).getByTestId('compose-run');
+    await runBar.getByTestId('compose-run-button').click();
+    await expect(runBar.getByTestId('compose-run-error')).toContainText('This flow is not valid, so it was not run.');
+  });
 });
 
 // The exact shape schemas/envelope.v1.json requires (required: version, feature, status, layers).

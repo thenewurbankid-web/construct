@@ -23,3 +23,6 @@ export * from './hooks/useEnvelopePreviews';
 
 /** "Save this flow": name, preview, confirm to commit through #759's saveFlow (#772). */
 export * from './hooks/useSave';
+
+/** "Run this flow": the same Process/Approvals path Plan mode's "Run plan" uses (#772). */
+export * from './hooks/useRun';

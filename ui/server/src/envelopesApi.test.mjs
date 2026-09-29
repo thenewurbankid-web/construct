@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
 import { saveFlow, loadFlow } from '../../../packages/core/flows.mjs';
-import { envelopesIndex, envelopeShow, envelopePreview, envelopeSave } from './envelopesApi.mjs';
+import { envelopesIndex, envelopeShow, envelopePreview, envelopeSave, envelopeRun } from './envelopesApi.mjs';
 
 function tmpProject() {
   const dir = makeTempDir('envelopes-api-');
@@ -108,4 +108,60 @@ test('envelopeSave refuses a missing name, no steps, or a step missing required 
   assert.equal(rejected.status, 422);
   assert.equal(rejected.body.ok, false);
   assert.equal(loadFlow(dir, 'x').ok, false);
+});
+
+const NO_ARG_STEP = [{ id: 's1', title: 'Check types', flow: 'check.types', args: {}, executor: 'deterministic' }];
+
+test('envelopeRun validates then starts through the injected startPlan -- the exact same pipeline planService.run() uses', () => {
+  const dir = tmpProject();
+  let calledWith = null;
+  const startPlan = (plan) => {
+    calledWith = plan;
+    return { ok: true, processId: 'proc-1' };
+  };
+
+  const { status, body } = envelopeRun(dir, { steps: NO_ARG_STEP, name: 'scaffold-checkout' }, { startPlan, getBlockSettings: undefined });
+  assert.equal(status, 200);
+  assert.equal(body.ok, true);
+  assert.equal(body.processId, 'proc-1');
+  assert.deepEqual(body.models, []);
+  assert.equal(calledWith.ticket.title, 'scaffold-checkout');
+  assert.deepEqual(calledWith.steps, NO_ARG_STEP);
+});
+
+test('envelopeRun refuses an empty steps list before calling startPlan', () => {
+  const dir = tmpProject();
+  let called = false;
+  const startPlan = () => {
+    called = true;
+    return { ok: true, processId: 'x' };
+  };
+  const { status, body } = envelopeRun(dir, { steps: [] }, { startPlan });
+  assert.equal(status, 400);
+  assert.equal(body.ok, false);
+  assert.equal(called, false);
+});
+
+test('envelopeRun refuses an invalid flow (missing required args) without calling startPlan', () => {
+  const dir = tmpProject();
+  let called = false;
+  const startPlan = () => {
+    called = true;
+    return { ok: true, processId: 'x' };
+  };
+  const invalid = [{ id: 's1', title: 'Total', flow: 'create.unit', args: {}, executor: 'deterministic', touches: { features: [], files: [] } }];
+  const { status, body } = envelopeRun(dir, { steps: invalid }, { startPlan });
+  assert.equal(status, 400);
+  assert.equal(body.ok, false);
+  assert.ok(body.errors.length > 0);
+  assert.equal(called, false);
+});
+
+test('envelopeRun passes through a startPlan failure', () => {
+  const dir = tmpProject();
+  const startPlan = () => ({ ok: false, status: 409, error: 'A process is already running.' });
+  const { status, body } = envelopeRun(dir, { steps: NO_ARG_STEP }, { startPlan });
+  assert.equal(status, 409);
+  assert.equal(body.ok, false);
+  assert.equal(body.error, 'A process is already running.');
 });

@@ -1078,15 +1078,6 @@ app.use('/api/rules', createRulesRouter({
   },
 }));
 
-// #395/#771: the Envelopes tab's read-only list of named, reusable flows saved via `construct pipeline
-// save` (#759, packages/core/flows.mjs). Read-only for this slice; compose/save/run is #772.
-app.use('/api/envelopes', createEnvelopesRouter({
-  getRoot: () => {
-    const root = containedProjectRoot(getProjectDir());
-    return root ? { ok: true, root } : { ok: false, error: 'No Construct project found for the current project directory. Pick a project first.' };
-  },
-}));
-
 // #328: the Browser pane's Flow view. Read-only; the feature name is validated against the current
 // project's real feature list (flowApi.mjs) and never becomes a path.
 app.get('/api/flow/:feature', (req, res) => {
@@ -1154,6 +1145,20 @@ export const planService = createPlanService({
   },
 });
 app.use('/api/plan', createPlanRouter(planService));
+
+// #395/#771/#772: the Envelopes tab -- named, reusable flows saved via `construct pipeline save` (#759,
+// packages/core/flows.mjs); a read-only list, a deterministic envelope preview, a preview/commit save, and
+// "Run this flow" through the exact same validate-then-start pipeline planService.run() uses (checkPlan,
+// withExpectedFiles, processesService.startPlan) -- no new or bypass execution mechanism, per #772's
+// acceptance. Mounted after planService so `startPlan`/`getBlockSettings` can be wired the same way.
+app.use('/api/envelopes', createEnvelopesRouter({
+  getRoot: () => {
+    const root = containedProjectRoot(getProjectDir());
+    return root ? { ok: true, root } : { ok: false, error: 'No Construct project found for the current project directory. Pick a project first.' };
+  },
+  startPlan: (plan) => processesService.startPlan(plan),
+  getBlockSettings: (root) => openBlockSettingsStore(root).disabledFlows(),
+}));
 
 // #642: the requirement chain (a sentence read back as card, placement, plan and timeline). Below the session gate and the
 // project-open gate; read-only and model-free. Approving its plan goes through the Plan route above, unchanged.

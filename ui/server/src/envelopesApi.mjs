@@ -1,11 +1,13 @@
 // #395/#771/#772 -- thin REST adapter over packages/core/flows.mjs (#759's save/load primitive): every named,
 // reusable flow saved under the open project's `.construct/flows/` (#771's list), a deterministic envelope
-// preview and a preview/commit save (this file, #772's "preview" and "save this flow" bullets). "Run this
-// flow" wires into the existing Process/Approvals path instead (a later slice) -- nothing here executes
-// anything.
+// preview, a preview/commit save, and "Run this flow" (#772) through the exact validate-then-start pipeline
+// planService.run() uses -- a saved/composed flow's steps are already plan steps (flows.mjs is built on
+// plan.mjs's createPlan/validatePlan), so this wraps them in a synthetic plan and calls the same
+// checkPlan/startPlan, never a second execution mechanism.
 import express from 'express';
 import { listFlows, loadFlow, saveFlow, validateFlowSteps, flowToEnvelopeSteps } from '../../../packages/core/flows.mjs';
-import { formatPlanErrors } from '../../../packages/core/plan.mjs';
+import { formatPlanErrors, PLAN_VERSION } from '../../../packages/core/plan.mjs';
+import { checkPlan } from './planService.mjs';
 
 /** @returns {{status:number, body:object}} */
 export function envelopesIndex(root) {
@@ -62,8 +64,36 @@ export function envelopeSave(root, name, body) {
   return { status: 200, body: { ok: true, name } };
 }
 
-/** @param {{getRoot: () => {ok:true, root:string} | {ok:false, error:string}}} deps */
-export function createEnvelopesRouter({ getRoot }) {
+function blockSettingsFor(getBlockSettings, root) {
+  if (!getBlockSettings) return {};
+  try {
+    const s = getBlockSettings(root);
+    return { disabledFlows: Array.isArray(s?.flows) ? s.flows : [] };
+  } catch {
+    return {};
+  }
+}
+
+/** #772 -- "Run this flow": the exact same re-validate-then-start pipeline planService.run() uses
+ * (checkPlan, then `startPlan`, the process-engine dependency `createProcessesService` and the Processes
+ * drawer share). The flow's steps become a synthetic plan's steps; nothing here creates a second way to run
+ * a step.
+ * @returns {{status:number, body:object}} */
+export function envelopeRun(root, body, { startPlan, getBlockSettings }) {
+  const { steps, name } = body ?? {};
+  if (!Array.isArray(steps) || steps.length === 0) return { status: 400, body: { ok: false, error: 'At least one step is required.' } };
+
+  const plan = { version: PLAN_VERSION, ticket: { source: 'text', title: typeof name === 'string' && name.trim() ? name.trim() : 'Envelope flow' }, steps };
+  const checked = checkPlan(plan, root, blockSettingsFor(getBlockSettings, root));
+  if (!checked.valid) return { status: 400, body: { ok: false, error: 'This flow is not valid, so it was not run.', errors: checked.errors } };
+
+  const started = startPlan(plan);
+  if (!started?.ok) return { status: started?.status || 500, body: { ok: false, error: started?.error || 'The flow could not be started.' } };
+  return { status: 200, body: { ok: true, processId: started.processId, models: steps.filter((s) => s.executor === 'local-model').map((s) => s.id) } };
+}
+
+/** @param {{getRoot: () => {ok:true, root:string} | {ok:false, error:string}, startPlan?: (plan:object) => {ok:boolean, processId?:string, status?:number, error?:string}, getBlockSettings?: (root:string) => unknown}} deps */
+export function createEnvelopesRouter({ getRoot, startPlan, getBlockSettings }) {
   const router = express.Router();
   const handle = (fn) => (req, res) => {
     const r = getRoot();
@@ -77,6 +107,10 @@ export function createEnvelopesRouter({ getRoot }) {
   };
   router.get('/', handle((root) => envelopesIndex(root)));
   router.post('/preview', handle((_root, req) => envelopePreview(req.body?.steps)));
+  router.post('/run', handle((root, req) => {
+    if (!startPlan) return { status: 501, body: { ok: false, error: 'Running a flow is not wired up on this server.' } };
+    return envelopeRun(root, req.body, { startPlan, getBlockSettings });
+  }));
   router.get('/:name', handle((root, req) => envelopeShow(root, req.params.name)));
   router.post('/:name', handle((root, req) => envelopeSave(root, req.params.name, req.body)));
   return router;

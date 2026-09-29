@@ -87,3 +87,12 @@ export type SaveApi = {
   confirm: () => void;
   cancel: () => void;
 };
+
+// #395/#772 -- "Run this flow": the same Process/Approvals path Plan mode's "Run plan" uses (no new/bypass
+// execution mechanism) -- one bot at a time, in its own branch, nothing reaches the project until approved
+// in the Processes drawer.
+export type RunStatus = 'idle' | 'loading' | 'started' | 'error';
+export type RunState = { status: RunStatus; processId: string | null; models: string[]; error: string | null };
+export type RunAction = { type: 'LOADING' } | { type: 'STARTED'; processId: string; models: string[] } | { type: 'FAILED'; error: string } | { type: 'RESET' };
+
+export type RunApi = { state: RunState; run: () => void };

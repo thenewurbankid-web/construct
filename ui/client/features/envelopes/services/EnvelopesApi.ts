@@ -1,6 +1,6 @@
 // ui/server/src/envelopesApi.mjs, a thin adapter over packages/core/flows.mjs's listFlows/loadFlow/saveFlow
-// (#759) plus a deterministic envelope preview (#772). "Run this flow" wires into the existing
-// Process/Approvals path instead of a call here (a later slice).
+// (#759), a deterministic envelope preview, and "Run this flow" (#772) through the same Process/Approvals
+// path Plan mode's "Run plan" uses -- no new/bypass execution mechanism.
 import { getJson, postJson } from '@/lib/http';
 import type { ComposeStep, EnvelopePreview, FlowCatalogueEntry, FlowStep, FlowSummary } from '../types';
 
@@ -68,6 +68,22 @@ export async function saveComposedFlow(name: string, steps: ComposeStep[], commi
     const body = await postJson<{ ok?: boolean; error?: string; errors?: string[] }>(`/api/envelopes/${encodeURIComponent(name)}`, { steps, commit });
     if (!body.ok) return { ok: false, error: body.error ?? (body.errors ?? []).join(' ') ?? 'Could not save that flow.' };
     return { ok: true };
+  } catch {
+    return { ok: false, error: 'Could not reach the Construct server.' };
+  }
+}
+
+export type RunFlowResult = { ok: true; processId: string; models: string[] } | { ok: false; error: string };
+
+/** "Run this flow" (#772): POST /api/envelopes/run wraps the draft's steps in a synthetic plan and runs the
+ * exact same validate-then-start pipeline Plan mode's "Run plan" uses (planService.run(), the process engine
+ * the Processes drawer reads) -- never a second execution mechanism. `name` is only the process's label;
+ * running does not require having saved first. */
+export async function runComposedFlow(name: string | null, steps: ComposeStep[]): Promise<RunFlowResult> {
+  try {
+    const body = await postJson<{ ok?: boolean; error?: string; errors?: unknown[]; processId?: string; models?: string[] }>('/api/envelopes/run', { steps, ...(name ? { name } : {}) });
+    if (!body.ok || !body.processId) return { ok: false, error: body.error ?? 'The flow could not be started.' };
+    return { ok: true, processId: body.processId, models: body.models ?? [] };
   } catch {
     return { ok: false, error: 'Could not reach the Construct server.' };
   }

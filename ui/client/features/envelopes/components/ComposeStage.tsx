@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { ComposeApi, EnvelopePreview, FlowCatalogueEntry, SaveApi } from '../types';
+import type { ComposeApi, EnvelopePreview, FlowCatalogueEntry, RunApi, SaveApi } from '../types';
 
 const provenanceLabel = (executor: string): string => (executor === 'deterministic' ? 'Mechanical' : 'AI');
 
@@ -103,13 +103,42 @@ function SavePanel({ save, disabled }: { save: SaveApi; disabled: boolean }) {
   );
 }
 
+/** #395/#772's "Run this flow": the same Process/Approvals path Plan mode's "Run plan" uses -- once started,
+ * points at the Processes drawer, where the work is watched and approved. */
+function RunBar({ run, disabled, onOpenProcesses }: { run: RunApi; disabled: boolean; onOpenProcesses: () => void }) {
+  const { state } = run;
+  return (
+    <div className="ev-run" data-testid="compose-run">
+      {state.status === 'started' && (
+        <p className="ev-run-ok" role="status" data-testid="compose-run-started">
+          Started. Watch it and approve its changes in the Processes drawer.{' '}
+          <button type="button" className="dg-btn" onClick={onOpenProcesses} data-testid="compose-open-processes">
+            Open Processes
+          </button>
+        </p>
+      )}
+      {state.status === 'error' && (
+        <p className="ev-row-error" role="alert" data-testid="compose-run-error">
+          {state.error}
+        </p>
+      )}
+      <button type="button" className="dg-btn dg-btn--primary" data-testid="compose-run-button" onClick={run.run} disabled={disabled || state.status === 'loading'}>
+        {state.status === 'loading' ? 'Starting...' : 'Run this flow'}
+      </button>
+      <p className="hint">One bot at a time, in its own branch. Nothing reaches your project until you approve it.</p>
+    </div>
+  );
+}
+
 /** #395/#771/#772's center stage: the compose draft's step list (add/reorder/remove), each step's
- * Mechanical/AI provenance shown as a chip, a per-step envelope preview, and "Save this flow". "Run this
- * flow" wires into the existing Process/Approvals path -- a later slice, not here. */
+ * Mechanical/AI provenance shown as a chip, a per-step envelope preview, "Save this flow", and "Run this
+ * flow" through the existing Process/Approvals path. */
 export function ComposeStage({
   compose,
   catalogue,
   save,
+  run,
+  onOpenProcesses,
   previews,
   previewError,
   selected,
@@ -118,6 +147,8 @@ export function ComposeStage({
   compose: ComposeApi;
   catalogue: FlowCatalogueEntry[];
   save: SaveApi;
+  run: RunApi;
+  onOpenProcesses: () => void;
   previews: EnvelopePreview[];
   previewError: string | null;
   selected: number | null;
@@ -177,6 +208,7 @@ export function ComposeStage({
       {selected !== null && <PreviewPanel preview={previews[selected] ?? null} error={previewError} />}
       <StepPicker catalogue={catalogue} onAdd={compose.addStep} />
       <SavePanel save={save} disabled={steps.length === 0} />
+      <RunBar run={run} disabled={steps.length === 0} onOpenProcesses={onOpenProcesses} />
     </div>
   );
 }

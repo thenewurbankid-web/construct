@@ -45,7 +45,7 @@ function PlanScreen({ stageActions, featureDetail }: { stageActions?: ReactNode;
   useRegisterShellTab('browser', rulesTab);
   // #395/#771: the Envelopes tab sits in the Browser pane beside Notes, Features, Blocks and Rules -- a
   // read-only list of saved flows for this slice, reusing #759's core save/load primitive.
-  const envelopesTab = useMemo(() => envelopesShellTab(), []);
+  const envelopesTab = useMemo(() => envelopesShellTab(drawer.openProcesses), [drawer.openProcesses]);
   useRegisterShellTab('browser', envelopesTab);
   // #387: the Story tab sits in the Browser pane beside Notes, Features, Blocks, Rules and Envelopes -- AI
   // proposes the parse pattern once (a diff you approve), later refreshes are mechanical; extraction on
