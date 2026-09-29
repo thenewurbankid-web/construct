@@ -4,14 +4,17 @@ import { test, expect } from '@playwright/test';
 import { gotoCockpit } from './support/cockpit.js';
 import { makeBrowseProject, openProject } from './support/browseProject.js';
 
-// #395/#771: a read-only Envelopes tab in the Features screen's Browser pane, one row per saved flow (name +
-// step count), reading GET /api/envelopes (ui/server/src/envelopesApi.mjs) -- a thin adapter over #759's
-// packages/core/flows.mjs save/load primitive. Compose (add/reorder/remove steps, a step picker, save/run) is
-// #772, a later slice; this one only lists what `construct pipeline save` already produced.
+// #395/#771: the Envelopes tab in the Features screen's Browser pane -- a left panel of saved flows (name +
+// step count) reading GET /api/envelopes (ui/server/src/envelopesApi.mjs, a thin adapter over #759's
+// packages/core/flows.mjs), plus a compose center stage: add/reorder/remove steps from the real plan-flow
+// catalogue (reusing the Plan screen's `/api/plan/context`), each step's Mechanical/AI provenance shown as a
+// chip, and "Load" seeding the draft from a saved flow. Save/run is #772, a later slice.
 const API = process.env.E2E_API_BASE || 'http://localhost:4000';
 const browserTabs = (page) => page.getByRole('tablist', { name: 'Browser' });
 const list = (page) => page.getByTestId('envelopes-list');
 const rows = (page) => list(page).getByTestId('envelope-row');
+const stage = (page) => page.getByTestId('compose-stage');
+const draftSteps = (page) => stage(page).getByTestId('compose-step');
 
 // Same saved-flow record shape packages/core/flows.mjs's saveFlow() writes -- written directly to the fixture
 // repo rather than through the CLI, since the e2e harness only needs a flow already on disk to read back.
@@ -78,5 +81,47 @@ test.describe.serial('Envelopes tab: read-only saved-flows list (#395/#771)', ()
     await gotoCockpit(page, '/');
     await browserTabs(page).getByRole('tab', { name: 'Envelopes' }).click();
     await expect(page.getByTestId('envelopes-error')).toContainText('Boom.');
+  });
+
+  test('compose: adding a step from the catalogue picker shows it with its Mechanical/AI provenance, reorder and remove work', async ({ page }) => {
+    await gotoCockpit(page, '/');
+    await browserTabs(page).getByRole('tab', { name: 'Envelopes' }).click();
+    await expect(stage(page).getByTestId('compose-empty')).toBeVisible();
+
+    const picker = stage(page).getByTestId('compose-picker');
+    await picker.getByTestId('compose-picker-select').selectOption('create.unit');
+    await picker.getByTestId('compose-picker-add').click();
+    await expect(draftSteps(page)).toHaveCount(1);
+    await expect(draftSteps(page).first().getByTestId('compose-step-provenance')).toHaveText('Mechanical');
+
+    // A second step, then reorder it above the first.
+    await picker.getByTestId('compose-picker-select').selectOption('create.unit');
+    await picker.getByTestId('compose-picker-add').click();
+    await expect(draftSteps(page)).toHaveCount(2);
+    const secondId = await draftSteps(page).nth(1).getAttribute('data-step');
+    await draftSteps(page).nth(1).getByTestId('compose-step-up').click();
+    await expect(draftSteps(page).first()).toHaveAttribute('data-step', secondId);
+
+    // Remove both.
+    await draftSteps(page).first().getByTestId('compose-step-remove').click();
+    await draftSteps(page).first().getByTestId('compose-step-remove').click();
+    await expect(draftSteps(page)).toHaveCount(0);
+    await expect(stage(page).getByTestId('compose-empty')).toBeVisible();
+  });
+
+  test('compose: Load on a saved flow seeds the draft with its steps', async ({ page }) => {
+    seedFlow(project.repo, 'scaffold-checkout', [STEP, OTHER_STEP]);
+
+    await gotoCockpit(page, '/');
+    await browserTabs(page).getByRole('tab', { name: 'Envelopes' }).click();
+    await list(page).locator('[data-flow="scaffold-checkout"]').getByTestId('envelope-row-load').click();
+
+    await expect(stage(page).getByTestId('compose-loaded-from')).toHaveText('Loaded from "scaffold-checkout"');
+    await expect(draftSteps(page)).toHaveCount(2);
+    await expect(draftSteps(page).first()).toHaveAttribute('data-step', 's1');
+
+    await stage(page).getByTestId('compose-new').click();
+    await expect(stage(page).getByTestId('compose-loaded-from')).toHaveText('New flow');
+    await expect(draftSteps(page)).toHaveCount(0);
   });
 });

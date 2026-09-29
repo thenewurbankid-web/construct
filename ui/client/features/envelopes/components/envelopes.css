@@ -10,3 +10,16 @@
 .ev-name { margin: 0; font-weight: 600; font-family: var(--mono); flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ev-count { display: inline-block; font-size: var(--fs-sm); font-weight: 600; padding: 0 var(--sp-2); border-radius: 999px; border: 1px solid var(--border-subtle); color: var(--text-muted); white-space: nowrap; }
 .ev-row-error { margin: 0; color: var(--danger); font-size: var(--fs-sm); }
+.ev-page { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+.ev-stage { padding: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2); border-top: 1px solid var(--border-subtle); min-width: 0; }
+.ev-stage-bar { display: flex; align-items: center; gap: var(--sp-2); }
+.ev-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
+.ev-step { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-1) var(--sp-2); border: 1px solid var(--border-subtle); border-radius: var(--r-md); background: var(--surface-2); flex-wrap: wrap; }
+.ev-step-title { font-weight: 600; }
+.ev-step-flow { color: var(--text-muted); font-size: var(--fs-sm); }
+.ev-provenance { display: inline-block; font-size: var(--fs-sm); font-weight: 600; padding: 0 var(--sp-2); border-radius: 999px; border: 1px solid var(--border-subtle); white-space: nowrap; }
+.ev-provenance--mechanical { color: var(--text-muted); }
+.ev-provenance--ai { color: var(--warn); background: var(--warn-soft); border-color: var(--warn); }
+.ev-step-actions { display: flex; gap: var(--sp-1); margin-left: auto; }
+.ev-picker { display: flex; gap: var(--sp-1); align-items: center; }
+.ev-picker select { flex: 1 1 auto; font-size: var(--fs-sm); padding: 2px var(--sp-1); border-radius: var(--r-sm); border: 1px solid var(--border-subtle); background: var(--surface-1); color: inherit; }

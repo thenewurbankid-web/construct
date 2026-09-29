@@ -1,9 +1,9 @@
 import type { EnvelopesViewModel } from '../types';
 
-/** Every saved flow for this project, one row per name with its step count -- #395/#771's read-only left
- * panel. Compose (add/reorder/remove steps, a step picker) is #772; this slice only lists what already
- * exists via `construct pipeline save`. */
-export function EnvelopesList({ view, onRun }: { view: EnvelopesViewModel; onRun: () => void }) {
+/** Every saved flow for this project, one row per name with its step count -- #395/#771's left panel. `onLoad`
+ * (when given) sends a flow's steps to the compose center stage as its starting draft; save/run stays out of
+ * scope (#772). */
+export function EnvelopesList({ view, onRun, onLoad }: { view: EnvelopesViewModel; onRun: () => void; onLoad?: (name: string) => void }) {
   const toolbar = (
     <div className="ev-bar">
       <span className="ev-summary" aria-live="polite" data-testid="envelopes-summary">
@@ -54,9 +54,16 @@ export function EnvelopesList({ view, onRun }: { view: EnvelopesViewModel; onRun
                 {row.error}
               </p>
             ) : (
-              <span className="ev-count" data-testid="envelope-step-count">
-                {row.stepCount} step{row.stepCount === 1 ? '' : 's'}
-              </span>
+              <>
+                <span className="ev-count" data-testid="envelope-step-count">
+                  {row.stepCount} step{row.stepCount === 1 ? '' : 's'}
+                </span>
+                {onLoad && (
+                  <button type="button" className="dg-btn" data-testid="envelope-row-load" onClick={() => onLoad(row.name)}>
+                    Load
+                  </button>
+                )}
+              </>
             )}
           </li>
         ))}
