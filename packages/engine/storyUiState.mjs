@@ -13,7 +13,10 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { resolveStateDir, projectKey, atomicWriteJson } from './processStore.mjs';
 
-/** Absolute path of the one JSON file holding a project's Story-tab UI state. */
+/** Absolute path of the one JSON file holding a project's Story-tab UI state.
+ * @param {string} projectRoot Absolute path of the project.
+ * @param {{stateDir?: string}} [opts] Override the state directory (defaults to `resolveStateDir()`).
+ * @returns {string} The state file's absolute path. */
 export function storyUiStateFile(projectRoot, { stateDir = resolveStateDir() } = {}) {
   return path.join(stateDir, 'story-ui', `${projectKey(projectRoot)}.json`);
 }
@@ -28,7 +31,12 @@ function readState(file) {
   }
 }
 
-/** @param {string} projectRoot @param {{stateDir?: string}} [opts] */
+/** Open the Story-tab UI state store for one project: a small set of functions over the
+ * project's one JSON file (reviewed-drift hashes, kept-out-of-git text), backed by
+ * `atomicWriteJson` so concurrent callers never corrupt it.
+ * @param {string} projectRoot Absolute path of the project.
+ * @param {{stateDir?: string}} [opts] Override the state directory (defaults to `resolveStateDir()`).
+ * @returns {{getReviewedHash:(feature:string)=>string|null, setReviewedHash:(feature:string,hash:string)=>void, getKept:(feature:string)=>string|null, setKept:(feature:string,text:string|null)=>void, keptFeatures:()=>string[]}} */
 export function openStoryUiState(projectRoot, { stateDir = resolveStateDir() } = {}) {
   const file = storyUiStateFile(projectRoot, { stateDir });
 
