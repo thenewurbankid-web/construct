@@ -2,7 +2,7 @@
 // Paperclip setup as code: reads company.json and makes the local Paperclip match it.
 //   node packages/tools/paperclip/apply.mjs            dry run (default): prints what it would create or change, writes nothing
 //   node packages/tools/paperclip/apply.mjs --apply    write it
-//   node packages/tools/paperclip/apply.mjs --status    list agents with paused state, budget and last run
+//   node packages/tools/paperclip/apply.mjs --status    list agents with paused state, spend and last run
 // Options: --api <url> (default http://127.0.0.1:3100; a non-loopback host is refused unless --allow-remote),
 //          --config <company.json>, --repo-root <dir>, --pause-all (re-pause every configured agent and switch its timer off).
 // Idempotent: the company, agents and goals are found by name and drift is patched, never duplicated, never deleted.
@@ -12,17 +12,18 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  DEFAULT_API, asList, assertApiBase, configVars, createClient, diffSubset, loadConfig, makeOut, norm,
-  orderAgents, resolveAgent, validateConfig,
+  DEFAULT_API, asList, assertApiBase, assertRepoRoot, configVars, createClient, diffSubset, expandVars, loadConfig,
+  makeOut, norm, orderAgents, resolveAgent, resolveRepoRoot, stripComments, validateConfig,
 } from './lib.mjs';
 
 export function parseArgs(argv) {
-  const o = { api: DEFAULT_API, apply: false, status: false, allowRemote: false, pauseAll: false, config: undefined, repoRoot: undefined };
+  const o = { api: DEFAULT_API, apply: false, status: false, allowRemote: false, pauseAll: false, config: undefined, repoRoot: undefined, repoRootPolicy: undefined };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--apply') o.apply = true;
     else if (a === '--status') o.status = true;
     else if (a === '--allow-remote') o.allowRemote = true;
+    else if (a === '--repo-root-policy') o.repoRootPolicy = argv[++i];
     else if (a === '--pause-all') o.pauseAll = true;
     else if (a === '--api') o.api = argv[++i];
     else if (a === '--config') o.config = argv[++i];
@@ -34,7 +35,7 @@ export function parseArgs(argv) {
   return o;
 }
 
-const USAGE = 'usage: apply.mjs [--apply | --status] [--api URL] [--allow-remote] [--config FILE] [--repo-root DIR] [--pause-all]';
+const USAGE = 'usage: apply.mjs [--apply | --status] [--api URL] [--allow-remote] [--config FILE] [--repo-root DIR] [--repo-root-policy NAME] [--pause-all]';
 const fileContent = (r) => (r && typeof r === 'object' ? (r.content ?? r.file?.content ?? r.data?.content ?? null) : null);
 const cents = (n) => `$${(n / 100).toFixed(2)}`;
 
@@ -48,10 +49,22 @@ export async function run(argv, { out = makeOut() } = {}) {
   const api = createClient(base);
   const cfg = opts.config ? loadConfig(path.resolve(opts.config)) : loadConfig();
   validateConfig(cfg);
-  const vars = configVars(cfg, { repoRoot: opts.repoRoot });
+  const vars = configVars(cfg, { repoRoot: opts.repoRoot, repoRootPolicy: opts.repoRootPolicy });
   const write = opts.apply;
   let changes = 0;
   const warnings = [];
+  // A repoRoot from another machine must never be written: it becomes every agent's cwd. Refuse on --apply; a dry run
+  // still prints its plan, but says the plan is not applicable here so the output is not mistaken for a green light.
+  const rootPick = { override: opts.repoRoot, policy: opts.repoRootPolicy };
+  if (write) assertRepoRoot(cfg, rootPick);
+  else {
+    try {
+      assertRepoRoot(cfg, rootPick);
+    } catch (e) {
+      warnings.push(`--apply would refuse: ${e.message.split('\n')[0]}`);
+    }
+  }
+  out(`repoRoot ${vars.repoRoot} (policy ${resolveRepoRoot(cfg, rootPick).policy})`);
 
   out(`Paperclip ${base} | company "${cfg.company.name}" | ${opts.status ? 'STATUS' : write ? 'APPLY (writes)' : 'DRY RUN (no writes; add --apply to write)'}`);
 
@@ -61,10 +74,11 @@ export async function run(argv, { out = makeOut() } = {}) {
   if (opts.status) return status(api, company, cfg, out);
 
   // ---- company
-  const companyBody = { name: cfg.company.name, description: cfg.company.description, budgetMonthlyCents: cfg.budgets.company };
+  // Budgets are Paperclip's to manage (its UI): this script never sets, changes or reads a budget or budget policy.
+  const companyBody = { name: cfg.company.name, description: cfg.company.description };
   if (!company) {
     changes++;
-    out(`CREATE company "${companyBody.name}" (budget ${cents(companyBody.budgetMonthlyCents)}/month)`);
+    out(`CREATE company "${companyBody.name}"`);
     if (write) {
       company = await api.post('/api/companies', companyBody);
       out(`  id ${company.id}`);
@@ -76,33 +90,10 @@ export async function run(argv, { out = makeOut() } = {}) {
       out(`PATCH company: ${drift.join(', ')}`);
       if (write) await api.patch(`/api/companies/${company.id}`, Object.fromEntries(drift.map((k) => [k, companyBody[k]])));
     }
-    if (company.budgetMonthlyCents !== companyBody.budgetMonthlyCents) {
-      changes++;
-      out(`PATCH company budget: ${company.budgetMonthlyCents ?? 0} -> ${companyBody.budgetMonthlyCents} cents`);
-      if (write) await api.patch(`/api/companies/${company.id}/budgets`, { budgetMonthlyCents: companyBody.budgetMonthlyCents });
-    }
     out(`OK company ${company.id}`);
   }
   const cid = company.id;
   const isNew = !!company.$new;
-
-  // ---- budget policies (soft caps: warn at warnPercent, hard stop pauses)
-  const policies = isNew ? [] : asList((await api.get(`/api/companies/${cid}/budgets/overview`))?.policies ?? []);
-  const policyFor = (scopeType, scopeId) => policies.find((p) => p.scopeType === scopeType && p.scopeId === scopeId && p.isActive !== false);
-  async function ensurePolicy(label, scopeType, scopeId, amount) {
-    const want = { amount, warnPercent: cfg.budgets.warnPercent, hardStopEnabled: cfg.budgets.hardStop !== false };
-    const have = scopeId ? policyFor(scopeType, scopeId) : null;
-    const drift = !have ? ['policy missing'] : diffSubset(want, have);
-    if (!drift.length) return;
-    changes++;
-    out(`  ${have ? 'PATCH' : 'CREATE'} budget policy ${label}: ${cents(amount)}/month, warn ${want.warnPercent}%, hard stop ${want.hardStopEnabled}${have ? ` (drift: ${drift.join(', ')})` : ''}`);
-    if (write && scopeId) {
-      await api.post(`/api/companies/${cid}/budgets/policies`, {
-        scopeType, scopeId, metric: 'billed_cents', windowKind: 'calendar_month_utc', ...want, notifyEnabled: true, isActive: true,
-      });
-    }
-  }
-  if (!isNew) await ensurePolicy('company', 'company', cid, cfg.budgets.company);
 
   // ---- agents
   const existing = isNew ? [] : asList(await api.get(`/api/companies/${cid}/agents`));
@@ -118,7 +109,7 @@ export async function run(argv, { out = makeOut() } = {}) {
 
     if (!listed) {
       changes++;
-      out(`CREATE agent ${label}: role ${want.body.role}, ${want.body.adapterType}, model ${want.body.adapterConfig.model}, budget ${cents(want.body.budgetMonthlyCents)}/month, heartbeat off, reports to ${want.reportsToKey ?? '-'}`);
+      out(`CREATE agent ${label}: role ${want.body.role}, ${want.body.adapterType}, model ${want.body.adapterConfig.model}, heartbeat off, reports to ${want.reportsToKey ?? '-'}`);
       if (write) {
         const created = await api.post(`/api/companies/${cid}/agents`, {
           ...want.body, reportsTo, instructionsBundle: want.bundle,
@@ -162,11 +153,6 @@ export async function run(argv, { out = makeOut() } = {}) {
         out(`PATCH agent ${label}: ${drift.join(', ')}`);
         if (write) await api.patch(`/api/agents/${id}`, patch);
       } else out(`OK agent ${label} ${id}`);
-      if (have.budgetMonthlyCents !== want.body.budgetMonthlyCents) {
-        changes++;
-        out(`  PATCH budget ${label}: ${have.budgetMonthlyCents ?? 0} -> ${want.body.budgetMonthlyCents} cents`);
-        if (write) await api.patch(`/api/agents/${id}/budgets`, { budgetMonthlyCents: want.body.budgetMonthlyCents });
-      }
       if (live) {
         if (opts.pauseAll) {
           changes++;
@@ -194,12 +180,6 @@ export async function run(argv, { out = makeOut() } = {}) {
       }
     } else out(`  UPLOAD instructions ${agent.key}: ${Object.keys(want.bundle.files).join(', ')}`);
 
-    // budget policy
-    if (!String(id).startsWith('<')) {
-      const fresh = write && !listed ? asList((await api.get(`/api/companies/${cid}/budgets/overview`))?.policies ?? []) : null;
-      if (fresh) policies.splice(0, policies.length, ...fresh);
-      await ensurePolicy(agent.key, 'agent', id, want.body.budgetMonthlyCents);
-    } else out(`  CREATE budget policy ${agent.key}: ${cents(want.body.budgetMonthlyCents)}/month, warn ${cfg.budgets.warnPercent}%, hard stop`);
     summary.push({ key: agent.key, name: agent.name, id });
   }
 
@@ -233,6 +213,37 @@ export async function run(argv, { out = makeOut() } = {}) {
     }
   }
 
+  // ---- projects: the checkout each project's runs start from (company.json $comment_projects)
+  const projects = isNew || !cfg.projects?.length ? [] : asList(await api.get(`/api/companies/${cid}/projects`));
+  for (const raw of cfg.projects ?? []) {
+    const pj = stripComments(expandVars(raw, vars));
+    const ws = { ...pj.workspace, isPrimary: true };
+    const have = projects.find((x) => x.name === pj.name);
+    if (!have) {
+      changes++;
+      out(`CREATE project "${pj.name}" (workspace ${ws.cwd})`);
+      const goalId = goalIds[pj.goal];
+      if (write) {
+        await api.post(`/api/companies/${cid}/projects`, {
+          name: pj.name, description: pj.description ?? null, ...(goalId ? { goalIds: [goalId] } : {}), workspace: ws,
+        });
+      }
+    } else {
+      const workspaces = asList(await api.get(`/api/projects/${have.id}/workspaces`));
+      const primary = workspaces.find((w) => w.isPrimary) ?? (workspaces.length === 1 ? workspaces[0] : null);
+      if (primary && primary.cwd !== ws.cwd) {
+        // moved in place, so tasks already pointing at this workspace follow it
+        changes++;
+        out(`PATCH project workspace "${pj.name}": ${primary.cwd} -> ${ws.cwd}`);
+        if (write) await api.patch(`/api/projects/${have.id}/workspaces/${primary.id}`, { cwd: ws.cwd });
+      } else if (!workspaces.some((w) => w.cwd === ws.cwd)) {
+        changes++;
+        out(`CREATE project workspace "${pj.name}": ${ws.cwd}`);
+        if (write) await api.post(`/api/projects/${have.id}/workspaces`, ws);
+      } else out(`OK project "${pj.name}" ${have.id}`);
+    }
+  }
+
   // ---- verify: every configured agent is paused
   let notPaused = 0;
   if (write) {
@@ -262,7 +273,7 @@ async function status(api, company, cfg, out) {
   }
   const agents = asList(await api.get(`/api/companies/${company.id}/agents`));
   out(`company ${company.id} "${company.name}", ${agents.length} agent${agents.length === 1 ? '' : 's'}`);
-  out(['key/name'.padEnd(26), 'role'.padEnd(9), 'status'.padEnd(8), 'timer'.padEnd(6), 'budget/mo'.padEnd(10), 'spent'.padEnd(8), 'last run'].join(' '));
+  out(['key/name'.padEnd(26), 'role'.padEnd(9), 'status'.padEnd(8), 'timer'.padEnd(6), 'spent/mo'.padEnd(9), 'last run'].join(' '));
   let notPaused = 0;
   for (const a of orderAgents(cfg)) {
     const got = agents.find((x) => x.name === a.name);
@@ -277,7 +288,7 @@ async function status(api, company, cfg, out) {
     out([
       `${a.name}${a.hold ? ' [HELD]' : ''}`.padEnd(26), String(full.role ?? '').padEnd(9), String(st).padEnd(8),
       (hb?.enabled ? `${Math.round((hb.intervalSec ?? 0) / 60)}m` : 'off').padEnd(6),
-      cents(full.budgetMonthlyCents ?? 0).padEnd(10), cents(full.spentMonthlyCents ?? 0).padEnd(8),
+      cents(full.spentMonthlyCents ?? 0).padEnd(9),
       full.lastHeartbeatAt ?? 'never',
     ].join(' '));
   }

@@ -8,11 +8,14 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
 import { startMock } from './mock-paperclip.mjs';
-import { HERE, REDACTED, deepMerge, diffSubset, isLoopbackHost, loadConfig, orderAgents, readBundle, redact, resolveAgent, validateConfig, configVars } from './lib.mjs';
+import { HERE, REDACTED, REPO_ROOT_POLICIES, deepMerge, diffSubset, findRepoRoot, isLoopbackHost, loadConfig, orderAgents, readBundle, redact, resolveAgent, resolveRepoRoot, validateConfig, configVars } from './lib.mjs';
 import { laneFor, mirrorBody, mirrorTitle } from './github-sync.mjs';
 
 const execFileP = promisify(execFile);
 const APPLY = path.join(HERE, 'apply.mjs');
+const BACKLOG = path.join(HERE, 'backlog.mjs');
+const TRACE_LEADS = ['trace-matching', 'trace-contracts', 'trace-studio', 'trace-pagemap'];
+const sharedCheckout = (key) => key === 'og' || key === 'flow' || /^(trace|design|adhoc|atomic)-/.test(key);
 const SYNC = path.join(HERE, 'github-sync.mjs');
 const FAKE_TOKEN = 'ghp_0123456789abcdefghijklmnopqrstuvwxyz';
 const FAKE_KEY = 'sk-ant-api03-zzzzzzzzzzzzzzzzzzzzzzzz';
@@ -39,13 +42,14 @@ describe('company.json as code', () => {
 
   test('the org: OG, PM and a dev and a QA agent per lane, everyone reports to OG', () => {
     const keys = cfg.agents.map((a) => a.key);
-    for (const lane of ['construct', 'guardrails', 'cockpit', 'website', 'adhoc', 'design']) {
+    for (const lane of ['construct', 'guardrails', 'cockpit', 'website', 'adhoc', 'design', 'atomic']) {
       assert.ok(keys.includes(`${lane}-dev`) && keys.includes(`${lane}-qa`), lane);
     }
-    assert.equal(AGENT_COUNT, 14);
+    for (const k of ['trace-dm', ...TRACE_LEADS]) assert.ok(keys.includes(k), k);
+    assert.equal(AGENT_COUNT, 22);
     assert.equal(cfg.agents.find((a) => a.key === 'og').role, 'ceo');
     assert.equal(cfg.agents.find((a) => a.key === 'pm').role, 'pm');
-    for (const a of cfg.agents.filter((x) => x.key !== 'og')) assert.equal(a.reportsTo, 'og', a.key);
+    for (const a of cfg.agents.filter((x) => x.key !== 'og')) assert.equal(a.reportsTo, TRACE_LEADS.includes(a.key) ? 'trace-dm' : 'og', a.key);
     assert.deepEqual(orderAgents(cfg)[0].key, 'og');
   });
 
@@ -60,30 +64,33 @@ describe('company.json as code', () => {
       assert.equal(ac.networkScope, 'allowlist');
       assert.deepEqual(ac.networkAllowlist, ALLOWLIST);
       assert.equal(ac.dangerouslySkipPermissions, true);
-      assert.equal(ac.workspaceStrategy.type, 'git_worktree');
-      assert.ok(ac.maxTurnsPerRun > 0 && ac.maxTurnsPerRun <= 60);
-      assert.ok(ac.timeoutSec > 0 && ac.timeoutSec <= 2400);
+      assert.equal(ac.workspaceStrategy.type, sharedCheckout(a.key) ? 'project_primary' : 'git_worktree', a.key);
+      if (a.key.startsWith('trace-')) assert.equal(ac.cwd, vars.repoRoot, a.key);
+      assert.equal(ac.command, 'claude', 'no gate in front of claude');
+      assert.ok(ac.maxTurnsPerRun > 0 && ac.maxTurnsPerRun <= 200);
+      assert.ok(ac.timeoutSec > 0 && ac.timeoutSec <= 3600);
       assert.equal(r.body.runtimeConfig.heartbeat.enabled, false, a.key);
-      assert.ok(r.body.budgetMonthlyCents > 0);
       assert.ok(!JSON.stringify(ac).includes('$comment'));
       assert.ok(!JSON.stringify(ac).includes('${'), 'no unexpanded placeholder');
     }
     const adhoc = resolveAgent(cfg, cfg.agents.find((a) => a.key === 'adhoc-dev'), vars).body.adapterConfig.workspaceStrategy;
-    assert.equal(adhoc.baseRef, 'origin/studio');
-    assert.equal(adhoc.type, 'git_worktree');
+    assert.equal(adhoc.type, 'project_primary', 'Studio is discontinued (owner 2026-09-29): Ad hoc works in trace/');
     const cons = resolveAgent(cfg, cfg.agents.find((a) => a.key === 'construct-dev'), vars).body.adapterConfig.workspaceStrategy;
     assert.equal(cons.baseRef, 'origin/work/2026-09-23');
     assert.match(cons.branchTemplate, /^pc-construct-dev-/);
-    assert.equal(cfg.agents.find((a) => a.key === 'og').heartbeat.intervalSec, 7200);
-    assert.deepEqual(cfg.agents.find((a) => a.key === 'og').heartbeatAtGo, { enabled: true, intervalSec: 7200 });
+    assert.equal(cfg.agents.find((a) => a.key === 'og').heartbeat.intervalSec, 1800);
+    assert.deepEqual(cfg.agents.find((a) => a.key === 'og').heartbeatAtGo, { enabled: true, intervalSec: 1800 });
+    for (const a of cfg.agents.filter((x) => x.key.startsWith('trace-'))) assert.equal(a.heartbeatAtGo.intervalSec, 1800, 'Trace never stops: ' + a.key);
+    assert.deepEqual(cfg.agents.filter((a) => a.heartbeatAtGo).map((a) => a.key).sort(), ['og', ...cfg.agents.filter((a) => a.key.startsWith('trace-')).map((a) => a.key)].sort(), 'only OG and Trace get timers (Flow runs from its standing task check-in)');
+    assert.ok(readBundle(cfg.agents.find((a) => a.key === 'trace-dm'), 'origin/work/2026-09-23').files['HEARTBEAT.md']);
   });
 
   test('a config that would start something is refused', () => {
     const bad = structuredClone(cfg);
     bad.agents[0].heartbeat.enabled = true;
     bad.agents[1].adapterConfig = { model: 'claude-fable-1' };
-    bad.budgets.agents['construct-dev'] = 0;
-    assert.throws(() => validateConfig(bad), /heartbeat.enabled must be false[\s\S]*not allowed[\s\S]*positive integer/);
+    bad.agents[2].adapterConfig = { ...(bad.agents[2].adapterConfig ?? {}), filesystemScope: 'root' };
+    assert.throws(() => validateConfig(bad), /heartbeat.enabled must be false[\s\S]*not allowed[\s\S]*filesystemScope must be "workspace"/);
   });
 
   test('every AGENTS.md restates the repo rules and the AI-READY line', () => {
@@ -95,15 +102,13 @@ describe('company.json as code', () => {
       assert.ok(!/\{\{[A-Z_]+\}\}/.test(t), `${a.key}: placeholder left`);
       for (const needle of [
         'git pull --rebase origin work/2026-09-23', 'never force-resolve a conflict'.replace('never', 'Never'), 'Never touch `main`', 'ports 3000 and 4000',
-        '~/.construct-hosted.env', 'Never write a token or secret to disk', 'one per command', 'packages/tools/dev/heavy.sh',
+        '~/.construct-hosted.env', 'Never write a token or secret to disk', 'one per command', 'no memory gate',
         'Verify with your own commands', 'Report findings only', 'Never use Fable',
       ]) assert.ok(t.includes(needle), `${a.key} misses: ${needle}`);
       if (a.key !== 'pm') assert.match(t, /AI-READY/, a.key);
     }
     assert.ok(readBundle(cfg.agents.find((a) => a.key === 'og'), 'origin/work/2026-09-23').files['HEARTBEAT.md']);
-    const adhoc = readBundle(cfg.agents.find((a) => a.key === 'adhoc-dev'), 'origin/studio').files['AGENTS.md'];
-    assert.match(adhoc, /git pull --rebase origin studio/);
-    assert.match(adhoc, /git push origin HEAD:studio/);
+    assert.match(readBundle(cfg.agents.find((a) => a.key === 'adhoc-dev'), 'origin/work/2026-09-23').files['AGENTS.md'], /trace\//);
   });
 
   test('helpers: loopback, redaction, subset diff, merge', () => {
@@ -114,6 +119,82 @@ describe('company.json as code', () => {
     assert.deepEqual(diffSubset({ a: { b: 1 }, c: [1] }, { a: { b: 1, z: 2 }, c: [1] }), []);
     assert.deepEqual(diffSubset({ a: { b: 2 } }, { a: { b: 1 } }), ['a.b']);
     assert.deepEqual(deepMerge({ a: { b: 1, c: 2 } }, { a: { b: 3 } }), { a: { b: 3, c: 2 } });
+  });
+});
+
+// repoRoot becomes every agent's cwd, so a value from another machine is the one config mistake that can take the whole
+// company down at once: on 2026-09-30 company.json still carried /home/developer/Desktop/repos/construct from a Linux
+// host while the checkout was on macOS, and an --apply would have repointed all 22 agents at a directory that does not
+// exist. Which path to trust is a judgement, so it lives in swappable policies; these tests pin both the judgement and
+// the refusal.
+describe('repoRoot policy', () => {
+  const LINUX = '/home/developer/Desktop/repos/construct';
+
+  test('the configured repoRoot is a real git checkout on this machine', () => {
+    const r = resolveRepoRoot(cfg);
+    assert.equal(r.problem, null, `${r.root} must exist and hold a .git`);
+    assert.equal(r.root, findRepoRoot(HERE), 'the configured path should be the repo this config lives in');
+  });
+
+  test('strict-local refuses a path from another host, and says how to proceed', () => {
+    const r = resolveRepoRoot(cfg, { override: LINUX, policy: 'strict-local' });
+    assert.equal(r.root, LINUX);
+    assert.match(r.problem, /does not exist on this machine/);
+  });
+
+  test('strict-local refuses a directory that exists but is not a checkout', () => {
+    assert.match(resolveRepoRoot(cfg, { override: os.tmpdir(), policy: 'strict-local' }).problem, /not a git checkout/);
+  });
+
+  test('derive-from-config ignores a foreign configured path and finds the repo the config lives in', () => {
+    const r = resolveRepoRoot(cfg, { override: undefined, policy: 'derive-from-config' });
+    assert.equal(r.problem, null);
+    assert.equal(r.root, findRepoRoot(HERE));
+  });
+
+  test('trust-config accepts an unverifiable path: the escape hatch for a Paperclip on another host', () => {
+    const r = resolveRepoRoot(cfg, { override: LINUX, policy: 'trust-config' });
+    assert.equal(r.root, LINUX);
+    assert.equal(r.problem, null);
+  });
+
+  test('every policy resolves an override first, and an unknown policy name is rejected', () => {
+    for (const name of Object.keys(REPO_ROOT_POLICIES)) {
+      if (name === 'derive-from-config') continue; // deliberately ignores the configured value
+      assert.equal(resolveRepoRoot(cfg, { override: LINUX, policy: name }).root, LINUX, name);
+    }
+    assert.throws(() => resolveRepoRoot(cfg, { policy: 'no-such-policy' }), /unknown repoRoot policy/);
+  });
+
+  // The CLI half, against the mock: never the live Paperclip, so this stays fast and cannot touch the real board.
+  describe('through apply.mjs', () => {
+    let mock;
+    before(async () => { mock = await startMock(); });
+    after(async () => { await mock.close(); });
+
+    test('--apply refuses a foreign repoRoot before it writes anything', async () => {
+      const r = await node(APPLY, ['--api', mock.url, '--apply', '--repo-root', LINUX]);
+      assert.notEqual(r.code, 0, 'apply must fail rather than repoint every agent');
+      assert.match(r.stderr, /repoRoot does not exist on this machine/);
+      assert.equal(mock.writes().length, 0, 'it must refuse before the first write');
+      assert.equal(mock.db.companies.length, 0);
+    });
+
+    test('a dry run warns instead of dying, and reports the policy in force', async () => {
+      const r = await node(APPLY, ['--api', mock.url, '--repo-root', LINUX]);
+      // Exit 3 is apply.mjs's existing convention for "ran fine, but something needs a human" (see the warnings tally
+      // at the end of run()). A dry run that could never be applied belongs in that bucket, not in a hard failure.
+      assert.equal(r.code, 3, r.stderr);
+      assert.match(r.stdout, /WARNING --apply would refuse/);
+      assert.match(r.stdout, /policy strict-local/);
+      assert.equal(mock.writes().length, 0);
+    });
+
+    test('--repo-root-policy selects a different policy at the command line', async () => {
+      const r = await node(APPLY, ['--api', mock.url, '--repo-root-policy', 'derive-from-config']);
+      assert.equal(r.code, 0, r.stderr);
+      assert.match(r.stdout, new RegExp(`repoRoot ${findRepoRoot(HERE)} \\(policy derive-from-config\\)`));
+    });
   });
 });
 
@@ -130,6 +211,7 @@ describe('apply.mjs against a mock Paperclip', () => {
     assert.match(r.stdout, /CREATE company "Line"/);
     assert.equal((r.stdout.match(/^CREATE agent /gm) ?? []).length, AGENT_COUNT);
     assert.equal((r.stdout.match(/^CREATE goal /gm) ?? []).length, 3);
+    assert.match(r.stdout, /^CREATE project "Construct" \(workspace /m);
     assert.match(r.stdout, /Would apply \d+ changes/);
     assert.equal(mock.db.companies.length, 0);
   });
@@ -142,7 +224,6 @@ describe('apply.mjs against a mock Paperclip', () => {
     assert.equal(mock.db.companies.length, 1);
     const company = mock.db.companies[0];
     assert.equal(company.name, 'Line');
-    assert.equal(company.budgetMonthlyCents, cfg.budgets.company);
     assert.equal(mock.db.agents.length, AGENT_COUNT);
     assert.equal(mock.db.goals.length, 3);
 
@@ -161,26 +242,29 @@ describe('apply.mjs against a mock Paperclip', () => {
       assert.deepEqual(b.permissions, { canCreateAgents: false, canCreateSkills: false });
       assert.equal(b.instructionsBundle.entryFile, 'AGENTS.md');
       assert.ok(b.instructionsBundle.files['AGENTS.md'].includes('git pull --rebase'));
+      const traceDm = mock.db.agents.find((a) => a.name === 'Trace Delivery Manager');
       const key = cfg.agents.find((a) => a.name === b.name).key;
-      assert.equal(b.budgetMonthlyCents, cfg.budgets.agents[key]);
-      if (b.name !== 'OG') assert.equal(b.reportsTo, og.id, b.name);
+      if (TRACE_LEADS.includes(key)) assert.equal(b.reportsTo, traceDm.id, b.name);
+      else if (b.name !== 'OG') assert.equal(b.reportsTo, og.id, b.name);
       else assert.equal(b.reportsTo, null);
     }
     const ogPost = posts.find((q) => q.body.name === 'OG').body;
-    assert.deepEqual(ogPost.runtimeConfig.heartbeat, { enabled: false, intervalSec: 7200 });
+    assert.deepEqual(ogPost.runtimeConfig.heartbeat, { enabled: false, intervalSec: 1800 });
     assert.ok(ogPost.instructionsBundle.files['HEARTBEAT.md']);
     assert.equal(mock.log.filter((q) => /\/pause$/.test(q.path)).length, AGENT_COUNT);
     assert.equal(mock.log.filter((q) => /\/(resume|wakeup|heartbeat\/invoke)$/.test(q.path)).length, 0, 'never resumes or wakes an agent');
     for (const a of mock.db.agents) assert.equal(a.status, 'paused', a.name);
-    for (const a of mock.db.agents) {
-      const pol = mock.db.policies.find((p) => p.scopeType === 'agent' && p.scopeId === a.id);
-      assert.equal(pol.warnPercent, 80);
-      assert.equal(pol.hardStopEnabled, true);
-    }
     const design = mock.db.agents.find((a) => a.name === 'Design Dev');
     assert.equal(design.status, 'paused');
     const goal = mock.db.goals.find((g) => g.parentId);
     assert.ok(goal.parentId && goal.ownerAgentId === og.id);
+    // each project gives its runs a real checkout (without one a git_worktree run fails setup): the repo for Construct, trace/ for Trace's four, ~/Desktop/atomic-codemod for Atomic
+    assert.deepEqual(mock.db.projects.map((x) => x.name), ['Construct', 'Matching Engine', 'Contracts & Import', 'Studio & Demo', 'Page Map & Releases', 'Atomic Codemod']);
+    const lineGoal = mock.db.goals.find((g) => g.title === cfg.goals[0].title).id;
+    for (const x of mock.db.projects) assert.deepEqual(x.goalIds, [lineGoal], x.name);
+    const ws = (name) => mock.db.workspaces.filter((w) => w.projectId === mock.db.projects.find((x) => x.name === name).id).map(({ id, projectId, ...w }) => w);
+    assert.deepEqual(ws('Construct'), [{ name: 'construct', sourceType: 'local_path', cwd: cfg.paths.repoRoot, isPrimary: true }]);
+    assert.deepEqual(ws('Studio & Demo'), [{ name: 'trace', sourceType: 'local_path', cwd: cfg.paths.repoRoot, isPrimary: true }]);
     for (const id of mock.db.agents.map((a) => a.id)) assert.ok(r.stdout.includes(id), 'prints the created ids');
   });
 
@@ -198,7 +282,6 @@ describe('apply.mjs against a mock Paperclip', () => {
     const dev = mock.db.agents.find((a) => a.name === 'Construct Dev');
     dev.title = 'edited by hand';
     dev.adapterConfig.model = 'claude-opus-5';
-    dev.budgetMonthlyCents = 99999;
     mock.db.files[dev.id]['AGENTS.md'] = 'tampered';
     mock.db.goals[0].description = 'changed';
     const pm = mock.db.agents.find((a) => a.name === 'PM');
@@ -208,7 +291,6 @@ describe('apply.mjs against a mock Paperclip', () => {
     assert.equal(mock.writes().length, 0, 'dry run still writes nothing');
     assert.match(r.stdout, /PATCH agent Construct Dev \(construct-dev\): title, adapterConfig\.model/);
     assert.match(r.stdout, /PATCH instructions construct-dev\/AGENTS\.md/);
-    assert.match(r.stdout, /PATCH budget/);
     assert.match(r.stdout, /PATCH goal/);
     assert.match(r.stdout, /WARNING PM \(pm\): LIVE/);
     assert.equal(r.code, 3);
@@ -218,7 +300,6 @@ describe('apply.mjs against a mock Paperclip', () => {
     assert.equal(mock.db.agents.length, AGENT_COUNT, 'no duplicate agent');
     assert.equal(dev.title, cfg.agents.find((a) => a.key === 'construct-dev').title);
     assert.equal(dev.adapterConfig.model, 'claude-sonnet-5');
-    assert.equal(dev.budgetMonthlyCents, cfg.budgets.agents['construct-dev']);
     assert.notEqual(mock.db.files[dev.id]['AGENTS.md'], 'tampered');
     assert.equal(mock.db.goals[0].description, cfg.goals[0].description);
     assert.equal(pm.status, 'idle', 'the owner resume is respected');
@@ -233,16 +314,16 @@ describe('apply.mjs against a mock Paperclip', () => {
     assert.match(r.stdout, /Nothing to do/);
   });
 
-  test('--status lists every agent with paused state and budget, and writes nothing', async () => {
+  test('--status lists every agent with paused state and spend, and writes nothing', async () => {
     mock.log.length = 0;
     const r = await node(APPLY, ['--api', mock.url, '--status']);
     assert.equal(r.code, 0, r.stderr);
     assert.equal(mock.writes().length, 0);
     for (const a of cfg.agents) assert.ok(r.stdout.includes(a.name), a.name);
     assert.match(r.stdout, /All agents are paused\./);
-    assert.match(r.stdout, /\$40\.00/); // OG's budget
+    assert.match(r.stdout, /\$0\.00/);
     assert.match(r.stdout, /never/);
-    assert.match(r.stdout, /Design Dev \[HELD\]/);
+    assert.doesNotMatch(r.stdout, /Design Dev \[HELD\]/, "Design lane is off hold (owner 2026-09-29)");
   });
 
   test('a non-loopback API host is refused before any request, --allow-remote is the explicit override', async () => {
@@ -289,6 +370,31 @@ describe('apply.mjs against a mock Paperclip', () => {
     scan(path.join(HERE, 'agents'));
     scan(HERE.length ? path.join(HERE, 'agents', '_shared') : HERE);
     assert.equal(redact(fs.readFileSync(path.join(HERE, 'company.json'), 'utf8'), {}), fs.readFileSync(path.join(HERE, 'company.json'), 'utf8'));
+  });
+  test('backlog.mjs files Trace\'s tasks under their project and lead, as todo; a second run is a no-op', async () => {
+    const backlog = JSON.parse(fs.readFileSync(path.join(HERE, 'backlog', 'trace.json'), 'utf8'));
+    mock.log.length = 0;
+    let r = await node(BACKLOG, ['--api', mock.url]);
+    assert.equal(r.code, 0, r.stderr + r.stdout);
+    assert.equal(mock.writes().length, 0, 'dry run writes nothing');
+    assert.match(r.stdout, new RegExp(`Would create ${backlog.tasks.length} tasks`));
+    r = await node(BACKLOG, ['--api', mock.url, '--apply']);
+    assert.equal(r.code, 0, r.stderr + r.stdout);
+    const filed = mock.db.issues.filter((i) => /^\[CON-\d+\] /.test(i.title));
+    assert.equal(filed.length, backlog.tasks.length);
+    const agentName = (id) => mock.db.agents.find((a) => a.id === id).name;
+    const projectName = (id) => mock.db.projects.find((x) => x.id === id).name;
+    const c14 = filed.find((i) => i.title.startsWith('[CON-14] '));
+    assert.equal(c14.status, 'todo');
+    assert.equal(c14.priority, 'critical');
+    assert.equal(agentName(c14.assigneeAgentId), 'Contracts & Import Lead');
+    assert.equal(projectName(c14.projectId), 'Contracts & Import');
+    for (const i of filed) assert.equal(agentName(i.assigneeAgentId).replace(' Lead', ''), projectName(i.projectId), i.title);
+    assert.equal(mock.db.agents.every((a) => a.status === 'paused'), true, 'filing tasks never resumes an agent');
+    mock.log.length = 0;
+    r = await node(BACKLOG, ['--api', mock.url, '--apply']);
+    assert.equal(mock.writes().length, 0);
+    assert.match(r.stdout, /Created 0 tasks\. Nothing to do\./);
   });
 });
 
@@ -396,6 +502,7 @@ else { console.error('fake gh: refusing ' + args.join(' ')); process.exit(9); }
     assert.equal(i101.status, 'backlog');
     assert.equal(i101.assigneeAgentId, agent('Construct Dev'));
     assert.equal(i101.priority, 'critical');
+    assert.equal(i101.projectId, mock.db.projects[0].id);
     assert.equal(mock.db.labels.find((l) => l.id === i101.labelIds[0]).name, 'Front-end Blocks');
     assert.equal(by(102).assigneeAgentId, agent('Guardrails Dev'));
     assert.equal(by(103).assigneeAgentId, agent('Cockpit Dev'));
@@ -444,63 +551,6 @@ else { console.error('fake gh: refusing ' + args.join(' ')); process.exit(9); }
       await empty.close();
     }
   });
-});
-
-// ---- claude-gate.sh: the machine-wide slot gate ------------------------------------------------------------------------------
-const GATE = path.join(path.dirname(fileURLToPath(import.meta.url)), 'claude-gate.sh');
-
-function gateEnv(extra = {}) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gate-'));
-  const meminfo = path.join(dir, 'meminfo');
-  fs.writeFileSync(meminfo, 'MemAvailable: 8000000 kB\n');
-  const log = path.join(dir, 'log');
-  const fake = path.join(dir, 'claude');
-  fs.writeFileSync(fake, `#!/usr/bin/env bash\necho "start $$ $(date +%s%N)" >> "${log}"\nsleep ${extra.hold ?? 1}\necho "end $$ $(date +%s%N)" >> "${log}"\n`, { mode: 0o755 });
-  return { dir, log, env: { ...process.env, PAPERCLIP_SLOT_DIR: path.join(dir, 'slots'), PAPERCLIP_REAL_CLAUDE: fake, PAPERCLIP_MEMINFO: meminfo, PAPERCLIP_MAX_CLAUDE: '2', PAPERCLIP_GATE_WAIT_SEC: '30', ...extra.env } };
-}
-const runGate = (env, args = []) => new Promise((resolve) => {
-  const c = spawn('bash', [GATE, ...args], { env, stdio: ['ignore', 'pipe', 'pipe'] });
-  let err = '';
-  c.stderr.on('data', (b) => { err += b; });
-  c.on('close', (code) => resolve({ code, err }));
-});
-
-test('claude-gate: four concurrent runs with two slots never run more than two at once, and all finish', async () => {
-  const g = gateEnv();
-  const results = await Promise.all([1, 2, 3, 4].map(() => runGate(g.env, ['--print', 'x'])));
-  assert.deepEqual(results.map((r) => r.code), [0, 0, 0, 0]);
-  const events = fs.readFileSync(g.log, 'utf8').trim().split('\n').map((l) => l.split(' ')).map(([kind, pid, ns]) => ({ kind, pid, ns: BigInt(ns) }));
-  assert.equal(events.filter((e) => e.kind === 'start').length, 4);
-  let live = 0, peak = 0;
-  for (const e of events.sort((a, b) => (a.ns < b.ns ? -1 : a.ns > b.ns ? 1 : 0))) { live += e.kind === 'start' ? 1 : -1; peak = Math.max(peak, live); }
-  assert.ok(peak <= 2, `at most 2 at once, saw ${peak}`);
-});
-
-test('claude-gate: a killed holder frees its slot', async () => {
-  const g = gateEnv({ hold: 30, env: { PAPERCLIP_MAX_CLAUDE: '1' } });
-  const holder = spawn('bash', [GATE], { env: g.env, stdio: 'ignore', detached: true });
-  await new Promise((r) => setTimeout(r, 700));
-  process.kill(-holder.pid, 'SIGKILL');
-  await new Promise((r) => setTimeout(r, 300));
-  const fast = gateEnv({ hold: 0, env: { PAPERCLIP_MAX_CLAUDE: '1', PAPERCLIP_SLOT_DIR: g.env.PAPERCLIP_SLOT_DIR, PAPERCLIP_GATE_WAIT_SEC: '10' } });
-  const r = await runGate(fast.env);
-  assert.equal(r.code, 0, r.err);
-});
-
-test('claude-gate: too little free memory waits and then exits 75 with a message, without starting claude', async () => {
-  const g = gateEnv({ env: { PAPERCLIP_MIN_AVAILABLE_KB: '99999999', PAPERCLIP_GATE_WAIT_SEC: '2' } });
-  const r = await runGate(g.env);
-  assert.equal(r.code, 75);
-  assert.match(r.err, /too little free memory/);
-  assert.equal(fs.existsSync(g.log), false, 'claude never started');
-});
-
-test('claude-gate: the real command gets the same arguments', async () => {
-  const g = gateEnv();
-  fs.writeFileSync(path.join(g.dir, 'claude'), `#!/usr/bin/env bash\nprintf '%s|' "$@" > "${g.log}"\n`, { mode: 0o755 });
-  const r = await runGate(g.env, ['--print', 'hello world']);
-  assert.equal(r.code, 0);
-  assert.equal(fs.readFileSync(g.log, 'utf8'), '--print|hello world|');
 });
 
 test('diffSubset treats a hidden plain env value as equal (Paperclip reads env back as { type: plain, value: redacted })', () => {

@@ -72,6 +72,9 @@ export async function run(argv, { out = makeOut() } = {}) {
     const name = cfg.agents.find((a) => a.key === key)?.name;
     return agents.find((a) => a.name === name)?.id ?? null;
   };
+  const home = cfg.projects?.find((p) => p.key === 'construct');
+  const project = home ? asList(await api.get(`/api/companies/${company.id}/projects`)).find((p) => p.name === home.name) : null;
+  if (home && !project) throw new Error(`Paperclip project "${home.name}" does not exist; run apply.mjs --apply first`);
   const labels = asList(await api.get(`/api/companies/${company.id}/labels`));
   const issues = [];
   for (let offset = 0; ; offset += 200) {
@@ -141,6 +144,7 @@ export async function run(argv, { out = makeOut() } = {}) {
       description: mirrorBody(gi.url, gi.body, gh.bodyChars ?? 1500),
       status: gh.createStatus ?? 'backlog',
       labelIds: [lid],
+      ...(project ? { projectId: project.id } : {}),
       ...(assignee ? { assigneeAgentId: assignee } : {}),
       ...(priority ? { priority } : {}),
     };

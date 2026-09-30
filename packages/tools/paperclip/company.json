@@ -1,33 +1,13 @@
 {
-  "$comment": "Paperclip setup as code (company Line). Read by apply.mjs and github-sync.mjs. Keys starting with $comment are documentation and are never sent. Placeholders in strings: ${repoRoot} ${home} ${key}. SAFETY: every agent is created paused with the timer heartbeat off; apply.mjs never resumes an agent and never enables a heartbeat. To go live the owner resumes ONE agent by hand (README).",
+  "$comment": "Paperclip setup as code (company Line). Read by apply.mjs and github-sync.mjs. Keys starting with $comment are documentation and are never sent. Placeholders in strings: ${repoRoot} ${home} ${key}. SAFETY: every agent is created paused with the timer heartbeat off; apply.mjs never resumes an agent and never enables a heartbeat. To go live the owner resumes ONE agent by hand (README). BUDGETS are Paperclip's to manage (owner decision 2026-09-28): nothing here sets, changes or enforces a budget or budget policy; use the Paperclip UI.",
   "paths": {
-    "repoRoot": "/home/developer/Desktop/repos/construct"
+    "$comment": "repoRoot becomes every agent's cwd. It read /home/developer/Desktop/repos/construct (a Linux host) while this checkout is on macOS, so apply.mjs --apply would have repointed all 22 agents at a directory that does not exist and every lane would have failed at startup with 'fatal: not a git repository'. Two approaches are implemented in lib.mjs REPO_ROOT_POLICIES and either can be selected here - swap repoRootPolicy to change which is in force, no code change needed. 'strict-local' (in force) keeps the explicit path below and refuses to apply unless it is a real git checkout on this machine: the value stays visible and reviewable, but each host needs its own edit. 'derive-from-config' ignores the path below and uses the repo this config file lives in: one config then works unchanged on every host, at the cost of the value no longer being stated anywhere. 'trust-config' accepts the path unchecked, for applying to a Paperclip on another host where nothing here can confirm it. Owner picks the default after release; --repo-root-policy overrides per run.",
+    "repoRootPolicy": "strict-local",
+    "repoRoot": "/Users/shashank/Repositories/construct"
   },
   "company": {
     "name": "Line",
     "description": "Line is front-end development as a chain of deterministic blocks with closed options, AI-ready and System 1 first: rules and fixed blocks decide, a model only fills what remains once the structure is fixed. MVP: a sentence to a validated, proven screen by clicking. Many automatic builds a day, one per user-facing capability. GitHub (thenewurbankid-web/construct issues, board project 1) stays the ticket source of truth; Paperclip issues mirror it."
-  },
-  "budgets": {
-    "$comment": "THE budget table: cents per month, soft caps (the platform's spend is unknown for a subscription login). Policy on each agent: warn at 80 percent, hard stop (pause) at 100 percent. Change a number here and re-run apply.mjs --apply. 0 would mean no policy, so it is refused.",
-    "warnPercent": 80,
-    "hardStop": true,
-    "company": 30000,
-    "agents": {
-      "og": 4000,
-      "construct-dev": 3500,
-      "construct-qa": 2000,
-      "guardrails-dev": 3000,
-      "guardrails-qa": 1500,
-      "cockpit-dev": 3000,
-      "cockpit-qa": 2000,
-      "website-dev": 1500,
-      "website-qa": 800,
-      "adhoc-dev": 2000,
-      "adhoc-qa": 1000,
-      "design-dev": 500,
-      "design-qa": 500,
-      "pm": 1000
-    }
   },
   "goals": [
     {
@@ -55,6 +35,76 @@
       "status": "active",
       "parent": "line",
       "owner": "og"
+    }
+  ],
+  "$comment_projects": "Each project's workspace is the checkout its runs start from, and Paperclip requires a .git entry directly in it (heartbeat.js hasGitMetadata). Construct: the repo root, which git_worktree agents branch from. Trace's four: also the repo root, because trace/ is untracked in git (.gitignore /trace/) and has no .git of its own; Trace agents run there directly (sharedCheckout) and work in trace/ (their AGENTS.md). github-sync.mjs files mirror issues under the construct project; backlog.mjs files Trace's tasks under theirs.",
+  "projects": [
+    {
+      "key": "construct",
+      "$comment": "The checkout every git_worktree run branches from. Paperclip takes a run's base checkout from the issue's project workspace, never from adapterConfig.cwd: without a project a run falls back to the agent's empty home directory and fails setup with 'fatal: not a git repository'. github-sync.mjs files every mirror issue under this project. A run with no issue (Run now, OG's timer) still has no project and fails the same way.",
+      "name": "Construct",
+      "description": "The construct repository. Agents branch their git worktrees from this checkout.",
+      "goal": "line",
+      "workspace": {
+        "name": "construct",
+        "sourceType": "local_path",
+        "cwd": "${repoRoot}"
+      }
+    },
+    {
+      "key": "trace-matching",
+      "name": "Matching Engine",
+      "description": "Trace: confidence scoring, extraction, labels, smartness/stub-scope heuristics, the eval gate, feature-grouper, the Qwen verification layer.",
+      "goal": "line",
+      "workspace": {
+        "name": "trace",
+        "sourceType": "local_path",
+        "cwd": "${repoRoot}"
+      }
+    },
+    {
+      "key": "trace-contracts",
+      "name": "Contracts & Import",
+      "description": "Trace: Swagger/OpenAPI contract import, contract-drift detection, the import wizard, Subframe embedding.",
+      "goal": "line",
+      "workspace": {
+        "name": "trace",
+        "sourceType": "local_path",
+        "cwd": "${repoRoot}"
+      }
+    },
+    {
+      "key": "trace-studio",
+      "name": "Studio & Demo",
+      "description": "Trace: the Seam demo shell, presenter mode, the Trace studio UI, layers view, the part inspector.",
+      "goal": "line",
+      "workspace": {
+        "name": "trace",
+        "sourceType": "local_path",
+        "cwd": "${repoRoot}"
+      }
+    },
+    {
+      "key": "trace-pagemap",
+      "name": "Page Map & Releases",
+      "description": "Trace: the page-map feature, the release train (R0/R1/R2 and minor releases), Trinity monitoring/training.",
+      "goal": "line",
+      "workspace": {
+        "name": "trace",
+        "sourceType": "local_path",
+        "cwd": "${repoRoot}"
+      }
+    },
+    {
+      "key": "atomic",
+      "name": "Atomic Codemod",
+      "goal": "line",
+      "description": "~/Desktop/atomic-codemod: refactor code into atomic English-named functions, show it as plain English, edit the English to drive the code.",
+      "workspace": {
+        "name": "atomic-codemod",
+        "sourceType": "local_path",
+        "cwd": "${home}/Desktop/atomic-codemod"
+      }
     }
   ],
   "lanes": {
@@ -86,22 +136,31 @@
     "design": {
       "dev": "design-dev",
       "qa": "design-qa",
-      "held": true,
-      "$comment": "ON HOLD by the owner: created, kept paused, receives issues only in backlog"
+      "held": false,
+      "$comment": "Hold LIFTED. The owner took the lane off hold on 2026-09-29 (already stated in agents/design-dev/AGENTS.md and agents/design-qa/AGENTS.md: 'the Design lane is off hold and designs Trace's product UI') but this file was never updated to match, so config and instructions contradicted each other for a day - OG read this stale flag and reported Design issues as held. Reconfirmed by the owner 2026-09-30. Design Dev and Design QA are live and take issues through the normal lane flow."
+    },
+    "trace": {
+      "dev": "trace-dm",
+      "$comment": "Trace (trace/, formerly line-matcher): a Delivery Manager and one lead per project; job descriptions from paperclip/team/ at the repo root"
     },
     "og": {
       "dev": "og",
       "$comment": "Infra and process, and anything unmapped"
+    },
+    "atomic": {
+      "dev": "atomic-dev",
+      "qa": "atomic-qa",
+      "$comment": "Atomic Codemod (~/Desktop/atomic-codemod), owner 2026-09-29: refactors code into atomic English-named functions and shows it as plain English."
     }
   },
   "adapterDefaults": {
-    "$comment": "Every claude_local agent starts from this and its own adapterConfig is merged over it. engine cli is REQUIRED: Paperclip rejects filesystemScope and networkScope on the default ACP engine. dangerouslySkipPermissions is set explicitly: it is the platform default for non-interactive runs, so a run never stops to ask; the real guardrails are the bubblewrap confinement (filesystemScope workspace, networkScope allowlist), the git_worktree workspace, the budgets, paused-by-default and the rules in each AGENTS.md. TODO for the pilot (bwrap exists on this host, not yet exercised by a run): confirm the sandbox sees git, node, gh and the shared node_modules through filesystemExtraPaths; confirm /tmp/construct-heavy.lock (heavy.sh) works inside the sandbox; confirm whether the agent needs 127.0.0.1:3100 in networkAllowlist to comment on its Paperclip issue (left out on purpose: the brief lists five hosts only).",
+    "$comment": "Every claude_local agent starts from this and its own adapterConfig is merged over it. engine cli is REQUIRED: Paperclip rejects filesystemScope and networkScope on the default ACP engine. dangerouslySkipPermissions is set explicitly: it is the platform default for non-interactive runs, so a run never stops to ask; the real guardrails are the bubblewrap confinement (filesystemScope workspace, networkScope allowlist), the git_worktree workspace, paused-by-default and the rules in each AGENTS.md. Budgets are Paperclip's to manage (owner decision 2026-09-28), not this config. TODO for the pilot (bwrap exists on this host, not yet exercised by a run): confirm the sandbox sees git, node, gh and the shared node_modules through filesystemExtraPaths; confirm whether the agent needs 127.0.0.1:3100 in networkAllowlist to comment on its Paperclip issue (left out on purpose: the brief lists five hosts only).",
     "engine": "cli",
     "cwd": "${repoRoot}",
     "model": "claude-sonnet-5",
     "effort": "medium",
-    "maxTurnsPerRun": 40,
-    "timeoutSec": 1800,
+    "maxTurnsPerRun": 200,
+    "timeoutSec": 3600,
     "graceSec": 30,
     "dangerouslySkipPermissions": true,
     "workspaceStrategy": {
@@ -135,10 +194,6 @@
       {
         "path": "${home}/.config/gh",
         "access": "ro"
-      },
-      {
-        "path": "/tmp/paperclip-slots",
-        "access": "rw"
       }
     ],
     "networkScope": "allowlist",
@@ -149,10 +204,11 @@
       "registry.npmjs.org",
       "objects.githubusercontent.com"
     ],
-    "command": "${repoRoot}/packages/tools/paperclip/claude-gate.sh",
+    "command": "claude",
     "env": {
-      "PAPERCLIP_MAX_CLAUDE": "3"
-    }
+      "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS": "1"
+    },
+    "$comment_env": "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 (owner-directed fix 2026-09-29): a background task still running when a run ends is killed and Paperclip marks the whole run failed (unmanaged background task stopped)."
   },
   "agents": [
     {
@@ -165,16 +221,21 @@
       "capabilities": "Integrates the lanes onto work/2026-09-23, keeps the GitHub board honest, verifies every report with its own commands, talks to the owner. Does not build features itself.",
       "heartbeat": {
         "enabled": false,
-        "intervalSec": 7200,
-        "$comment": "OG is the only agent with a timer. It is OFF until the owner says go; then PATCH runtimeConfig.heartbeat to heartbeatAtGo (README). All other agents are event-driven (assignment) and never get a timer."
+        "intervalSec": 1800,
+        "$comment": "OFF in this file; the owner switches timers on live by PATCHing runtimeConfig.heartbeat to heartbeatAtGo (README). Timers: OG every 30 minutes (owner capacity rule 2026-09-29: reviews must not wait hours), and the Trace team (trace-*) so Trace work never stops (owner decision 2026-09-28). Every other agent is event-driven (assignment) and never gets a timer."
       },
       "heartbeatAtGo": {
         "enabled": true,
-        "intervalSec": 7200
+        "intervalSec": 1800
       },
+      "sharedCheckout": true,
+      "$comment_sharedCheckout": "OG runs in the main checkout (adapterConfig.cwd), not a git worktree: its timer and Run now have no issue, so no project, and a git_worktree run with no project fails setup ('not a git repository'). Owner decision 2026-09-28. Every other agent keeps a worktree.",
       "adapterConfig": {
-        "maxTurnsPerRun": 40,
-        "timeoutSec": 1200
+        "maxTurnsPerRun": 200,
+        "timeoutSec": 3600,
+        "workspaceStrategy": {
+          "type": "project_primary"
+        }
       }
     },
     {
@@ -189,8 +250,8 @@
         "enabled": false
       },
       "adapterConfig": {
-        "maxTurnsPerRun": 30,
-        "timeoutSec": 900
+        "maxTurnsPerRun": 200,
+        "timeoutSec": 3600
       }
     },
     {
@@ -206,8 +267,8 @@
         "enabled": false
       },
       "adapterConfig": {
-        "maxTurnsPerRun": 60,
-        "timeoutSec": 2400
+        "maxTurnsPerRun": 200,
+        "timeoutSec": 3600
       }
     },
     {
@@ -223,8 +284,8 @@
         "enabled": false
       },
       "adapterConfig": {
-        "maxTurnsPerRun": 40,
-        "timeoutSec": 1500
+        "maxTurnsPerRun": 200,
+        "timeoutSec": 3600
       }
     },
     {
@@ -240,8 +301,8 @@
         "enabled": false
       },
       "adapterConfig": {
-        "maxTurnsPerRun": 60,
-        "timeoutSec": 2400
+        "maxTurnsPerRun": 200,
+        "timeoutSec": 3600
       }
     },
     {
@@ -257,8 +318,8 @@
         "enabled": false
       },
       "adapterConfig": {
-        "maxTurnsPerRun": 40,
-        "timeoutSec": 1500
+        "maxTurnsPerRun": 200,
+        "timeoutSec": 3600
       }
     },
     {
@@ -274,8 +335,8 @@
         "enabled": false
       },
       "adapterConfig": {
-        "maxTurnsPerRun": 60,
-        "timeoutSec": 2400
+        "maxTurnsPerRun": 200,
+        "timeoutSec": 3600
       }
     },
     {
@@ -291,8 +352,8 @@
         "enabled": false
       },
       "adapterConfig": {
-        "maxTurnsPerRun": 40,
-        "timeoutSec": 1800
+        "maxTurnsPerRun": 200,
+        "timeoutSec": 3600
       }
     },
     {
@@ -308,8 +369,8 @@
         "enabled": false
       },
       "adapterConfig": {
-        "maxTurnsPerRun": 50,
-        "timeoutSec": 1800
+        "maxTurnsPerRun": 200,
+        "timeoutSec": 3600
       }
     },
     {
@@ -325,8 +386,8 @@
         "enabled": false
       },
       "adapterConfig": {
-        "maxTurnsPerRun": 30,
-        "timeoutSec": 1200
+        "maxTurnsPerRun": 200,
+        "timeoutSec": 3600
       }
     },
     {
@@ -342,12 +403,15 @@
         "enabled": false
       },
       "adapterConfig": {
-        "maxTurnsPerRun": 50,
-        "timeoutSec": 1800,
+        "maxTurnsPerRun": 200,
+        "timeoutSec": 3600,
         "workspaceStrategy": {
-          "baseRef": "origin/studio"
-        }
-      }
+          "type": "project_primary"
+        },
+        "cwd": "${repoRoot}"
+      },
+      "sharedCheckout": true,
+      "$comment_trace": "Owner decision 2026-09-29: works on Trace product UI in trace/ (shared checkout, like the Trace team). Design: product UI designs from the Trace demo UI. Ad hoc: implements approved designs on small owner targets."
     },
     {
       "key": "adhoc-qa",
@@ -362,47 +426,265 @@
         "enabled": false
       },
       "adapterConfig": {
-        "maxTurnsPerRun": 30,
-        "timeoutSec": 1200,
+        "maxTurnsPerRun": 200,
+        "timeoutSec": 3600,
         "workspaceStrategy": {
-          "baseRef": "origin/studio"
-        }
-      }
+          "type": "project_primary"
+        },
+        "cwd": "${repoRoot}"
+      },
+      "sharedCheckout": true,
+      "$comment_trace": "Owner decision 2026-09-29: works on Trace product UI in trace/ (shared checkout, like the Trace team). Design: product UI designs from the Trace demo UI. Ad hoc: implements approved designs on small owner targets."
     },
     {
       "key": "design-dev",
       "name": "Design Dev",
       "role": "designer",
-      "title": "Design lane (ON HOLD)",
+      "title": "Design lane",
       "icon": "wand",
       "reportsTo": "og",
       "lane": "design",
-      "hold": true,
-      "capabilities": "ON HOLD by the owner. Concept mocks and specs under docs/design/; never edits ui/client. Stays paused until the owner lifts the hold.",
+      "capabilities": "Concept mocks and specs under docs/design/; never edits ui/client. Designs Trace's product UI. Off hold since 2026-09-29, reconfirmed 2026-09-30.",
       "heartbeat": {
         "enabled": false
       },
       "adapterConfig": {
-        "maxTurnsPerRun": 30,
-        "timeoutSec": 1200
-      }
+        "maxTurnsPerRun": 200,
+        "timeoutSec": 3600,
+        "cwd": "${repoRoot}",
+        "workspaceStrategy": {
+          "type": "project_primary"
+        }
+      },
+      "sharedCheckout": true,
+      "$comment_trace": "Owner decision 2026-09-29: works on Trace product UI in trace/ (shared checkout, like the Trace team). Design: product UI designs from the Trace demo UI. Ad hoc: implements approved designs on small owner targets."
     },
     {
       "key": "design-qa",
       "name": "Design QA",
       "role": "qa",
-      "title": "Design lane QA (ON HOLD)",
+      "title": "Design lane QA",
       "icon": "eye",
       "reportsTo": "og",
       "lane": "design",
-      "hold": true,
-      "capabilities": "ON HOLD by the owner. Accessibility and consistency review of docs/design/. Stays paused until the owner lifts the hold.",
+      "capabilities": "Accessibility and consistency review of docs/design/. Off hold since 2026-09-29, reconfirmed 2026-09-30.",
       "heartbeat": {
         "enabled": false
       },
       "adapterConfig": {
-        "maxTurnsPerRun": 20,
-        "timeoutSec": 900
+        "maxTurnsPerRun": 200,
+        "timeoutSec": 3600,
+        "cwd": "${repoRoot}",
+        "workspaceStrategy": {
+          "type": "project_primary"
+        }
+      },
+      "sharedCheckout": true,
+      "$comment_trace": "Owner decision 2026-09-29: works on Trace product UI in trace/ (shared checkout, like the Trace team). Design: product UI designs from the Trace demo UI. Ad hoc: implements approved designs on small owner targets."
+    },
+    {
+      "key": "trace-dm",
+      "name": "Trace Delivery Manager",
+      "role": "pm",
+      "title": "Trace delivery manager",
+      "icon": "target",
+      "reportsTo": "og",
+      "lane": "trace",
+      "sharedCheckout": true,
+      "capabilities": "Single point of contact for Trace. Turns requests into tasks for the four project leads, owns status across the four projects, guards the done gate. Writes no code.",
+      "heartbeat": {
+        "enabled": false
+      },
+      "heartbeatAtGo": {
+        "enabled": true,
+        "intervalSec": 1800
+      },
+      "$comment_heartbeatAtGo": "Trace never stops: every 30 min the DM runs agents/trace-dm/HEARTBEAT.md (release stuck tasks, re-wake idle leads, refill the queue from trace/).",
+      "adapterConfig": {
+        "cwd": "${repoRoot}",
+        "maxTurnsPerRun": 200,
+        "timeoutSec": 3600,
+        "workspaceStrategy": {
+          "type": "project_primary"
+        }
+      }
+    },
+    {
+      "key": "trace-matching",
+      "name": "Matching Engine Lead",
+      "role": "engineer",
+      "title": "Trace Matching Engine lead",
+      "icon": "cpu",
+      "reportsTo": "trace-dm",
+      "lane": "trace",
+      "sharedCheckout": true,
+      "capabilities": "Runs Trace's Matching Engine project: confidence scoring, extraction, labels, heuristics, the eval gate, feature-grouper, the Qwen verification layer.",
+      "heartbeat": {
+        "enabled": false
+      },
+      "heartbeatAtGo": {
+        "enabled": true,
+        "intervalSec": 1800,
+        "skipTimerWhenNoActionableWork": true
+      },
+      "$comment_heartbeatAtGo": "Trace never stops: every 30 min, only when this lead has an assigned open task, it wakes and continues its oldest one (a succeeded run that leaves a task in todo is not re-woken by Paperclip itself).",
+      "adapterConfig": {
+        "cwd": "${repoRoot}",
+        "maxTurnsPerRun": 200,
+        "timeoutSec": 3600,
+        "workspaceStrategy": {
+          "type": "project_primary"
+        }
+      }
+    },
+    {
+      "key": "trace-contracts",
+      "name": "Contracts & Import Lead",
+      "role": "engineer",
+      "title": "Trace Contracts & Import lead",
+      "icon": "file-code",
+      "reportsTo": "trace-dm",
+      "lane": "trace",
+      "sharedCheckout": true,
+      "capabilities": "Runs Trace's Contracts & Import project: OpenAPI contract import, contract-drift detection, the import wizard, Subframe embedding.",
+      "heartbeat": {
+        "enabled": false
+      },
+      "heartbeatAtGo": {
+        "enabled": true,
+        "intervalSec": 1800,
+        "skipTimerWhenNoActionableWork": true
+      },
+      "$comment_heartbeatAtGo": "Trace never stops: every 30 min, only when this lead has an assigned open task, it wakes and continues its oldest one (a succeeded run that leaves a task in todo is not re-woken by Paperclip itself).",
+      "adapterConfig": {
+        "cwd": "${repoRoot}",
+        "maxTurnsPerRun": 200,
+        "timeoutSec": 3600,
+        "workspaceStrategy": {
+          "type": "project_primary"
+        }
+      }
+    },
+    {
+      "key": "trace-studio",
+      "name": "Studio & Demo Lead",
+      "role": "engineer",
+      "title": "Trace Studio & Demo lead",
+      "icon": "puzzle",
+      "reportsTo": "trace-dm",
+      "lane": "trace",
+      "sharedCheckout": true,
+      "capabilities": "Runs Trace's Studio & Demo project: the Seam demo shell, presenter mode, the studio UI, layers view, the part inspector.",
+      "heartbeat": {
+        "enabled": false
+      },
+      "heartbeatAtGo": {
+        "enabled": true,
+        "intervalSec": 1800,
+        "skipTimerWhenNoActionableWork": true
+      },
+      "$comment_heartbeatAtGo": "Trace never stops: every 30 min, only when this lead has an assigned open task, it wakes and continues its oldest one (a succeeded run that leaves a task in todo is not re-woken by Paperclip itself).",
+      "adapterConfig": {
+        "cwd": "${repoRoot}",
+        "maxTurnsPerRun": 200,
+        "timeoutSec": 3600,
+        "workspaceStrategy": {
+          "type": "project_primary"
+        }
+      }
+    },
+    {
+      "key": "trace-pagemap",
+      "name": "Page Map & Releases Lead",
+      "role": "engineer",
+      "title": "Trace Page Map & Releases lead",
+      "icon": "rocket",
+      "reportsTo": "trace-dm",
+      "lane": "trace",
+      "sharedCheckout": true,
+      "capabilities": "Runs Trace's Page Map & Releases project: the page-map feature, the release train and minor releases, Trinity monitoring/training.",
+      "heartbeat": {
+        "enabled": false
+      },
+      "heartbeatAtGo": {
+        "enabled": true,
+        "intervalSec": 1800,
+        "skipTimerWhenNoActionableWork": true
+      },
+      "$comment_heartbeatAtGo": "Trace never stops: every 30 min, only when this lead has an assigned open task, it wakes and continues its oldest one (a succeeded run that leaves a task in todo is not re-woken by Paperclip itself).",
+      "adapterConfig": {
+        "cwd": "${repoRoot}",
+        "maxTurnsPerRun": 200,
+        "timeoutSec": 3600,
+        "workspaceStrategy": {
+          "type": "project_primary"
+        }
+      }
+    },
+    {
+      "key": "atomic-dev",
+      "name": "Atomic Dev",
+      "role": "engineer",
+      "title": "Atomic Dev",
+      "icon": "code",
+      "reportsTo": "og",
+      "capabilities": "Builds Atomic Codemod features in ~/Desktop/atomic-codemod in small increments, following its docs (public/docs.html) and code conventions.",
+      "heartbeat": {
+        "enabled": false
+      },
+      "sharedCheckout": true,
+      "$comment_atomic": "Owner 2026-09-29: works in ~/Desktop/atomic-codemod (its own git repo, shared checkout). No budget set here (budgets are Paperclip's).",
+      "adapterConfig": {
+        "maxTurnsPerRun": 200,
+        "timeoutSec": 3600,
+        "cwd": "${home}/Desktop/atomic-codemod",
+        "workspaceStrategy": {
+          "type": "project_primary"
+        }
+      }
+    },
+    {
+      "key": "atomic-qa",
+      "name": "Atomic QA",
+      "role": "qa",
+      "title": "Atomic QA",
+      "icon": "shield",
+      "reportsTo": "og",
+      "capabilities": "Verifies every Atomic Codemod change on the running demo (localhost:5175) and with its tests.",
+      "heartbeat": {
+        "enabled": false
+      },
+      "sharedCheckout": true,
+      "$comment_atomic": "Owner 2026-09-29: works in ~/Desktop/atomic-codemod (its own git repo, shared checkout). No budget set here (budgets are Paperclip's).",
+      "adapterConfig": {
+        "maxTurnsPerRun": 200,
+        "timeoutSec": 3600,
+        "cwd": "${home}/Desktop/atomic-codemod",
+        "workspaceStrategy": {
+          "type": "project_primary"
+        }
+      }
+    },
+    {
+      "key": "flow",
+      "name": "Flow Controller",
+      "role": "pm",
+      "title": "Board flow and blockers",
+      "icon": "target",
+      "reportsTo": "og",
+      "capabilities": "Watches the whole Line board every 15 minutes: wakes stalled work, clears blockers, keeps blocked tasks at 3 or fewer, collects owner decisions. Writes no code.",
+      "heartbeat": {
+        "enabled": false
+      },
+      "$comment_flow": "Owner decision 2026-09-29: one agent keeps an eye on the board; max 3 blocked; emergency on the pulse dashboard. Driven by a scheduled check-in on its standing task [FLOW] (timer runs have no task context and cannot write: Paperclip cross_issue_influence rule), so no timer.",
+      "sharedCheckout": true,
+      "adapterConfig": {
+        "maxTurnsPerRun": 200,
+        "timeoutSec": 3600,
+        "cwd": "${repoRoot}",
+        "workspaceStrategy": {
+          "type": "project_primary"
+        }
       }
     }
   ],
@@ -468,6 +750,28 @@
       }
     },
     "fallback": "og"
+  },
+  "routines": {
+    "$comment": "Native Paperclip recurring work (GET/POST /api/companies/:id/routines + POST /api/routines/:id/triggers). A routine materializes an auditable execution task on its own schedule, so it survives a run that dies before writing anything - unlike a standing task that re-arms its own check-in, which severs permanently if one run is killed (2026-09-29 outage: the Flow Controller's LIN-121 chain broke on a DNS fault and nothing could wake it again). Created PAUSED, like every agent: the owner activates. Routines are the right primitive for the Flow Controller specifically because a plain heartbeat timer gives a run no $PAPERCLIP_TASK_ID, and its HEARTBEAT.md ends a task-less run immediately.",
+    "defaults": {
+      "timezone": "Europe/Berlin",
+      "status": "paused",
+      "concurrencyPolicy": "skip_if_active",
+      "catchUpPolicy": "skip_missed",
+      "activityGatePolicy": "always",
+      "$comment_policies": "skip_if_active: never stack a second sweep on a slow one. skip_missed: after downtime do NOT replay every missed slot (the 2026-09-29 outage would have enqueued ~10 catch-up runs at once). activityGatePolicy always for the board sweep: its job is to notice the ABSENCE of activity, so gating it on activity would silence it exactly when it is needed - use require_external_activity only for routines that react to work."
+    },
+    "items": [
+      {
+        "key": "board-sweep",
+        "title": "[FLOW] Board sweep",
+        "agent": "flow",
+        "priority": "high",
+        "cron": "*/15 * * * *",
+        "$comment": "Replaces the self-re-arming check-in on LIN-121. Same 15-minute cadence as agents/flow/HEARTBEAT.md, but the schedule lives in Paperclip instead of in the last run's final write.",
+        "description": "Run your HEARTBEAT.md board sweep for the Line company.\n\nClear blockers toward the limit of 3 (oldest first), wake stalled work, wake idle agents with open work, and collect owner decisions. Max 20 cross-task writes per run; spend them on blocked tasks first.\n\nIMPORTANT, confirmed on this board 2026-09-29: a comment alone does NOT wake the assignee of a blocked task. Paperclip does not dispatch blocked tasks, so a comment-only nudge is a no-op (measured: 6 comments, 0 wakes). To actually restart a task you must set a status AND arm executionPolicy.monitor.nextCheckAt, and the task's commentRequired means the status write needs a comment alongside it or it silently reverts.\n\nEntering blocked requires unresolved blockers, a pending interaction/approval, or an unblockDescriptor naming what would unblock it - use that rather than parking work as blocked with no stated remedy.\n\nNever end a run by setting a task to todo: Paperclip does not wake a todo task again after a successful run.\n\nThis routine carries its own schedule, so you do NOT need to re-arm a check-in on a standing task to be woken again."
+      }
+    ]
   },
   "labelColors": {
     "Front-end Blocks": "#0e8a16",

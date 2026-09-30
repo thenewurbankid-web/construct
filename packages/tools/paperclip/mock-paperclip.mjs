@@ -14,7 +14,7 @@ const merge = (a, b) => {
 };
 
 export async function startMock({ leakSecretOn = null } = {}) {
-  const db = { companies: [], agents: [], goals: [], labels: [], issues: [], policies: [], files: {} };
+  const db = { companies: [], agents: [], goals: [], labels: [], issues: [], policies: [], files: {}, projects: [], workspaces: [] };
   const log = [];
   const policyFor = (scopeType, scopeId) => db.policies.find((p) => p.scopeType === scopeType && p.scopeId === scopeId);
   const upsertPolicy = (companyId, scopeType, scopeId, amount, extra = {}) => {
@@ -117,6 +117,26 @@ export async function startMock({ leakSecretOn = null } = {}) {
       const g = db.goals.find((x) => x.id === m[1]);
       Object.assign(g, body);
       return send(200, g);
+    }
+    if ((m = /^\/api\/companies\/([^/]+)\/projects$/.exec(p))) {
+      if (req.method === 'GET') return send(200, db.projects.filter((x) => x.companyId === m[1]));
+      const { workspace, ...rest } = body;
+      const pj = { id: randomUUID(), companyId: m[1], status: 'backlog', ...rest };
+      db.projects.push(pj);
+      if (workspace) db.workspaces.push({ id: randomUUID(), projectId: pj.id, ...workspace });
+      return send(201, pj);
+    }
+    if ((m = /^\/api\/projects\/([^/]+)\/workspaces$/.exec(p))) {
+      if (req.method === 'GET') return send(200, db.workspaces.filter((w) => w.projectId === m[1]));
+      const w = { id: randomUUID(), projectId: m[1], ...body };
+      db.workspaces.push(w);
+      return send(201, w);
+    }
+    if ((m = /^\/api\/projects\/([^/]+)\/workspaces\/([^/]+)$/.exec(p)) && req.method === 'PATCH') {
+      const w = db.workspaces.find((x) => x.id === m[2] && x.projectId === m[1]);
+      if (!w) return send(404, { error: 'not found' });
+      Object.assign(w, body);
+      return send(200, w);
     }
     if ((m = /^\/api\/companies\/([^/]+)\/labels$/.exec(p))) {
       if (req.method === 'GET') return send(200, db.labels);

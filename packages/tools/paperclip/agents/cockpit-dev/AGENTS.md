@@ -18,10 +18,10 @@ When a monitor wakes you (`PAPERCLIP_WAKE_REASON=issue_monitor_due`) and you fin
 3. Never start an issue that has no acceptance bullets: ask OG in a Paperclip comment instead of guessing. Front-end Blocks: only the Chain UI sub-module is yours.
 
 ## Definition of done
-- A test that fails before your change and passes after it; targeted tests pass; `packages/tools/dev/heavy.sh npm test` 0 fail once, at the end, on the combined tree; `npx eslint` clean on what you touched.
+- A test that fails before your change and passes after it; targeted tests pass; `npm test` 0 fail once, at the end, on the combined tree; `npx eslint` clean on what you touched.
 - AI-READY (any block, chooser or chain step): a fixed-size summary, closed options with stable ids, attribution recorded as a decision-trace, a rules-only fallback, replay-scorable, cheap on a small machine (`docs/BLOCK-CONTRACT.md`, "AI-ready by design"). A block without this is not done.
 - Typed contracts: when you write a unit for a layer with a factory (`defineDomain`, `definePage`, `defineComponent`, `defineService`, ...), use it.
-- Every UI feature has a Playwright spec under `ui/e2e/` that actually ran before you finish (`packages/tools/dev/heavy.sh npx playwright test --workers=1 <spec>`, one dev server, own port range, killed afterwards). Screenshots exist only for the docs site, never in issues, comments or chat.
+- Every UI feature has a Playwright spec under `ui/e2e/` that actually ran before you finish (`npx playwright test <spec>`, one dev server, own port range, killed afterwards). Screenshots exist only for the docs site, never in issues, comments or chat.
 - Committed and pushed (never one giant commit), `git ls-remote origin` shows your SHA. Do not close the GitHub issue: OG closes it after verifying.
 
 ## How you report

@@ -10,6 +10,7 @@ with a timer.
 | `company.json` | The company, goals, the org (14 agents), adapter config, the ONE budget table (`budgets`), heartbeats, the GitHub-to-lane mapping. Comments live in `$comment` keys. |
 | `agents/<key>/AGENTS.md` | Each agent's instructions bundle (lane, paths, how to pick the next issue, definition of done incl. AI-READY, how to report). `agents/og/HEARTBEAT.md` is OG's cycle. `agents/_shared/RULES.md` is included into every AGENTS.md at apply time so each uploaded bundle restates the repo rules. |
 | `apply.mjs` | Makes Paperclip match `company.json`. Dry run by default. |
+| `backlog.mjs`, `backlog/trace.json` | Files a backlog into Line as tasks (`[ID] title`, under its project, assigned to its lead, status todo). Dry run by default; never duplicates. `backlog/trace.json` is Trace's open backlog (CON-2..CON-14) copied from the Trace instance on port 3101. |
 | `github-sync.mjs` | Mirrors open GitHub issues of milestone v0.10.0 into Paperclip issues. Dry run by default, reads GitHub only. |
 | `lib.mjs`, `mock-paperclip.mjs`, `paperclip.test.mjs` | Shared helpers, a mock API on ports 49600-49649, tests (`node --test packages/tools/paperclip`). |
 
@@ -33,8 +34,35 @@ Node built-ins only (`fetch`); runs on Node 22 (the repo default) and 24 (what P
 - Both scripts refuse a non-loopback `--api` unless `--allow-remote`, print no secret (anything token-shaped or
   taken from a secret-named environment variable is masked), and never delete anything.
 - **Pilot TODO (not yet exercised by a real run):** confirm the sandbox sees git, node, `gh` and the shared `node_modules`
-  through `filesystemExtraPaths`; that `/tmp/construct-heavy.lock` (heavy.sh) works inside it; and whether an agent needs
+  through `filesystemExtraPaths`; and whether an agent needs
   `127.0.0.1:3100` in `networkAllowlist` to comment on its Paperclip issue (left out on purpose: the brief lists five hosts).
+
+## repoRoot policy (decision 2026-09-30, open for review)
+
+`paths.repoRoot` becomes **every agent's cwd**, which makes it the one config value that can take the whole company down
+at once. It read `/home/developer/Desktop/repos/construct` (a Linux host) while this checkout is on macOS, so
+`apply.mjs --apply` would have repointed all 22 agents at a directory that does not exist; each lane would then have
+failed at startup with `fatal: not a git repository`.
+
+Which path to trust is a judgement, not a fact - one `company.json` may be shared by machines whose checkouts live in
+different places, and applying to a Paperclip on another host means the right path cannot be validated from here at all.
+So the judgement is a **swappable policy** in `lib.mjs` (`REPO_ROOT_POLICIES`), not a rule welded into `apply.mjs`.
+Select it with `paths.repoRootPolicy`, or `--repo-root-policy <name>` for one run:
+
+| policy | resolves | accepts |
+| --- | --- | --- |
+| `strict-local` **(in force)** | the configured path | only a real git checkout on this machine |
+| `derive-from-config` | the repo this `company.json` lives in, ignoring the configured path | only a real git checkout |
+| `trust-config` | the configured path | anything (escape hatch for `--allow-remote` to another host) |
+
+Precedence is always `--repo-root` > policy. `--apply` **refuses** a root the policy rejects; a dry run prints
+`WARNING --apply would refuse: ...` and exits 3, so a plan that could never be applied is never mistaken for a green light.
+
+The two candidates are both implemented and both tested, because the trade-off is real and unresolved:
+`strict-local` keeps the path visible and reviewable in the config but needs a per-host edit; `derive-from-config` works
+unchanged on every host but states the value nowhere. `strict-local` is in force as the conservative default - it fails
+loudly rather than silently resolving to something. **Owner picks the default after release**; switching is a one-word
+change to `paths.repoRootPolicy`.
 
 ## Run it
 
@@ -64,17 +92,17 @@ Watch the first run in the UI (http://127.0.0.1:3100), check the worktree, the s
 2-hour timer once you are happy: `curl -s -X PATCH http://127.0.0.1:3100/api/agents/<ogId> -H 'content-type: application/json' -d '{"runtimeConfig":{"heartbeat":{"enabled":true,"intervalSec":7200}}}'`
 (this is `heartbeatAtGo` in `company.json`; `apply.mjs` leaves an enabled timer alone).
 
+Trace never stops (owner decision 2026-09-28): the five Trace agents have `heartbeatAtGo` every 30 minutes, switched on live the same way. The Delivery Manager runs `agents/trace-dm/HEARTBEAT.md` (release stuck recovery, re-wake idle Leads, review, keep two open tasks per Lead by filing `[TR-n]` tasks from `trace/`); the Leads use `skipTimerWhenNoActionableWork`, so they only wake while they have an open task. Pausing an agent stops it; nothing un-pauses it.
+
 ## Everyone active, safely (owner rule, 2026-09-25)
 
 The owner wants every agent in every team active, and free agents taking future work or helping another team, always
-(`agents/_shared/RULES.md`, "Never idle"). This host has 15 GB RAM and no swap and each Claude run is about 500 MB, so
-"active" means every agent is resumed and available, while `claude-gate.sh` (the adapter `command`) lets at most
-`PAPERCLIP_MAX_CLAUDE` (default 3) Claude runs start machine-wide and none below 3 GB of free memory; the rest wait for a slot.
-Raise the number only after watching `free -m` during a busy hour.
+(`agents/_shared/RULES.md`, "Never idle"). There is no memory gate (owner decision 2026-09-28): agents launch `claude`
+directly and any number may run at once.
 
-Activation order (each step checked before the next, and the go is the owner's): `apply.mjs --apply` (pushes the gate and the rules to the
+Activation order (each step checked before the next, and the go is the owner's): `apply.mjs --apply` (pushes the config and the rules to the
 paused agents), `github-sync.mjs --apply` (mirrors the open issues into `backlog`), move one issue per lane to `todo`,
-resume ONE agent as the canary and watch its first run (worktree, sandbox, `gh`, `heavy.sh`, its push), then resume the rest in
+resume ONE agent as the canary and watch its first run (worktree, sandbox, `gh`, its push), then resume the rest in
 stages of two, OG last with its heartbeat. Pause everything with the command below at any time.
 
 ## Pause everything
@@ -106,9 +134,20 @@ After a restart run `apply.mjs --status`: every agent should still be paused.
 | Before (session crons) | Now |
 | --- | --- |
 | A timer wakes a session that looks for work | Work is event-driven: an issue assigned to a lane agent (from `github-sync.mjs`, in `todo`) is the only trigger |
-| One orchestrator session polls everything | OG, the only agent with a timer (every 2 hours, once you say go), runs `agents/og/HEARTBEAT.md`: state, mirror, verify reports, integrate, board, budgets |
+| One orchestrator session polls everything | OG, the only agent with a timer (every 30 minutes, owner capacity rule 2026-09-29, once you say go), runs `agents/og/HEARTBEAT.md`: state, mirror, verify reports, integrate, board, budgets |
 | Token spend visible only after the fact | Per-agent monthly budgets with warn 80 percent and hard stop |
 | Trusting the agent to stay in its lane | Worktree per run, bubblewrap filesystem and network confinement, AGENTS.md rules |
 
 GitHub issues (thenewurbankid-web/construct, board project 1) stay the ticket source of truth; the bridge only reads them.
 The lane mapping (board Module and Sub-module to lane) is `laneMapping` in `company.json`.
+
+## Trace team (owner decision 2026-09-28)
+
+Line also runs Trace (`trace/`, formerly line-matcher): the Trace Delivery Manager (reports to OG) and one lead per Trace
+project (Matching Engine, Contracts & Import, Studio & Demo, Page Map & Releases), job descriptions from `paperclip/team/`
+at the repo root. `trace/` is untracked in git, so Trace agents run in it directly (`sharedCheckout`) instead of a worktree,
+and Trace's four projects point their workspace at it. Load the backlog after `apply.mjs --apply`:
+
+```bash
+node packages/tools/paperclip/backlog.mjs --apply
+```

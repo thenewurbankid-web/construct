@@ -86,7 +86,7 @@ export function createClient(base) {
 /** A list endpoint may answer a bare array or { items | data | issues | agents }. */
 export function asList(x) {
   if (Array.isArray(x)) return x;
-  if (x && typeof x === 'object') for (const k of ['items', 'data', 'results', 'issues', 'agents', 'goals', 'labels']) if (Array.isArray(x[k])) return x[k];
+  if (x && typeof x === 'object') for (const k of ['items', 'data', 'results', 'issues', 'agents', 'goals', 'labels', 'projects', 'workspaces']) if (Array.isArray(x[k])) return x[k];
   return [];
 }
 
@@ -146,8 +146,78 @@ export function loadConfig(file = path.join(HERE, 'company.json')) {
   return cfg;
 }
 
+/** Nearest ancestor of `from` holding a .git, i.e. the repo a config file lives in. Null if there is none. */
+export function findRepoRoot(from) {
+  let dir = path.resolve(from);
+  for (;;) {
+    if (fs.existsSync(path.join(dir, '.git'))) return dir;
+    const up = path.dirname(dir);
+    if (up === dir) return null;
+    dir = up;
+  }
+}
+
+// ---------------------------------------------------------------- repoRoot policy (swappable)
+// repoRoot becomes every agent's cwd, so how it is resolved and what counts as an acceptable value is a judgement, not
+// a fact: one company.json may be shared by machines whose checkouts live in different places, and applying to a
+// Paperclip on another host means the right path cannot be validated from here at all. So the judgement is expressed as
+// named policies rather than welded into apply.mjs, and a different one can be swapped in without touching the caller.
+// Choose with paths.repoRootPolicy in company.json, or --repo-root-policy on the command line.
+// A policy is { summary, resolve({ override, configured, derived, cfg }) -> string, check(root) -> null | reason }
+// where check returns null to accept, or a short phrase completing "repoRoot <phrase>: <path>".
+const isCheckout = (root) => (!root || !fs.existsSync(root)
+  ? 'does not exist on this machine'
+  : !fs.existsSync(path.join(root, '.git')) ? 'is not a git checkout' : null);
+
+export const REPO_ROOT_POLICIES = {
+  // Default. Take the configured path, but never write one that is not a real checkout here.
+  'strict-local': {
+    summary: 'use the configured path; refuse it unless it is a git checkout on this machine',
+    resolve: ({ override, configured, derived }) => override || configured || derived || process.cwd(),
+    check: isCheckout,
+  },
+  // Portable. Ignore the configured path and use the repo this config file lives in, so one company.json works
+  // unchanged on hosts that keep their checkouts in different places.
+  'derive-from-config': {
+    summary: 'ignore the configured path; use the repo the config file lives in',
+    resolve: ({ override, derived }) => override || derived || process.cwd(),
+    check: isCheckout,
+  },
+  // Escape hatch. Accept whatever is configured, unchecked - for applying to a Paperclip on another host, where the
+  // path is correct over there and nothing here can confirm it.
+  'trust-config': {
+    summary: 'accept the configured path unchecked (for a remote host)',
+    resolve: ({ override, configured, derived }) => override || configured || derived || process.cwd(),
+    check: () => null,
+  },
+};
+export const DEFAULT_REPO_ROOT_POLICY = 'strict-local';
+
+/** Resolve repoRoot under a policy. Returns { root, policy, problem } - problem is null when the policy accepts it. */
+export function resolveRepoRoot(cfg, { override, policy } = {}) {
+  const name = policy || cfg.paths?.repoRootPolicy || DEFAULT_REPO_ROOT_POLICY;
+  const impl = REPO_ROOT_POLICIES[name];
+  if (!impl) throw new Error(`unknown repoRoot policy "${name}" - known: ${Object.keys(REPO_ROOT_POLICIES).join(', ')}`);
+  // Derived from the config's own location, never process.cwd(): cwd is wherever the script happened to be invoked
+  // from, so it would set every agent's cwd from the caller's shell.
+  const derived = cfg.$file ? findRepoRoot(path.dirname(cfg.$file)) : null;
+  const root = impl.resolve({ override, configured: cfg.paths?.repoRoot, derived, cfg });
+  return { root, policy: name, problem: impl.check(root) };
+}
+
 export function configVars(cfg, overrides = {}) {
-  return { repoRoot: overrides.repoRoot || cfg.paths?.repoRoot || process.cwd(), home: os.homedir() };
+  return { repoRoot: resolveRepoRoot(cfg, { override: overrides.repoRoot, policy: overrides.repoRootPolicy }).root, home: os.homedir() };
+}
+
+/** apply.mjs sets every agent's cwd from repoRoot, so a value belonging to another machine - a Linux path in a config
+ *  being applied on a Mac, say - would repoint the whole company at a directory that does not exist, and every lane
+ *  would then fail at startup with "fatal: not a git repository". Refuse it, unless the chosen policy accepts it. */
+export function assertRepoRoot(cfg, { override, policy } = {}) {
+  const r = resolveRepoRoot(cfg, { override, policy });
+  if (r.problem) {
+    throw new Error(`repoRoot ${r.problem}: ${r.root}\n  Every agent's cwd is set from it, so applying would leave every lane unable to start.\n  Fix paths.repoRoot in company.json, pass --repo-root <dir>, or choose another policy with --repo-root-policy (${Object.keys(REPO_ROOT_POLICIES).join(' | ')}); current policy "${r.policy}".`);
+  }
+  return r.root;
 }
 
 /** Safety validation: refuse a config that would start something on its own. */
@@ -161,19 +231,16 @@ export function validateConfig(cfg) {
   for (const a of cfg.agents ?? []) {
     if (a.reportsTo && !keys.has(a.reportsTo)) problems.push(`${a.key}: reportsTo ${a.reportsTo} is not an agent key`);
     if (a.heartbeat?.enabled !== false) problems.push(`${a.key}: heartbeat.enabled must be false in company.json (the owner enables OG's timer by hand, README)`);
-    const cents = cfg.budgets?.agents?.[a.key];
-    if (!Number.isInteger(cents) || cents <= 0) problems.push(`${a.key}: budgets.agents.${a.key} must be a positive integer of cents (0 means no policy)`);
     const ac = deepMerge(cfg.adapterDefaults ?? {}, a.adapterConfig ?? {});
     if (/fable/i.test(String(ac.model))) problems.push(`${a.key}: model ${ac.model} is not allowed (model routing rule: default model, no Fable)`);
     if (!ac.model) problems.push(`${a.key}: model must be set explicitly`);
+    if (ac.workspaceStrategy?.type !== 'git_worktree' && a.sharedCheckout !== true) problems.push(`${a.key}: workspaceStrategy.type must be git_worktree (or set sharedCheckout: true on purpose)`);
     if (ac.filesystemScope !== 'workspace') problems.push(`${a.key}: filesystemScope must be "workspace"`);
     if (ac.networkScope !== 'allowlist') problems.push(`${a.key}: networkScope must be "allowlist"`);
-    if (ac.workspaceStrategy?.type !== 'git_worktree') problems.push(`${a.key}: workspaceStrategy.type must be git_worktree`);
     if (typeof ac.dangerouslySkipPermissions !== 'boolean') problems.push(`${a.key}: dangerouslySkipPermissions must be set explicitly`);
     if (!Number.isInteger(ac.maxTurnsPerRun) || !Number.isInteger(ac.timeoutSec)) problems.push(`${a.key}: maxTurnsPerRun and timeoutSec must be bounded integers`);
     if (!fs.existsSync(path.join(HERE, 'agents', a.key, 'AGENTS.md'))) problems.push(`${a.key}: agents/${a.key}/AGENTS.md is missing`);
   }
-  if (!Number.isInteger(cfg.budgets?.company) || cfg.budgets.company <= 0) problems.push('budgets.company must be a positive integer of cents');
   if (problems.length) throw new Error('company.json is not safe to apply:\n  - ' + problems.join('\n  - '));
 }
 
@@ -210,7 +277,6 @@ export function resolveAgent(cfg, agent, vars) {
       adapterType: 'claude_local',
       adapterConfig: base,
       runtimeConfig: { heartbeat: stripComments({ enabled: hb.enabled === true ? true : false, ...(hb.intervalSec ? { intervalSec: hb.intervalSec } : {}) }) },
-      budgetMonthlyCents: cfg.budgets.agents[agent.key],
       permissions: { canCreateAgents: false, canCreateSkills: false },
     },
     bundle: readBundle(agent, base.workspaceStrategy?.baseRef ?? 'origin/work/2026-09-23'),

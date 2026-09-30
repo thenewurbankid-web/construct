@@ -1,0 +1,110 @@
+{
+  "$comment": "Trace's open backlog, copied 2026-09-28 from the Trace Paperclip instance (port 3101, company Construct, CON-2..CON-14; their status there was 'blocked' only because that instance had no AI connection). backlog.mjs files each one into Line as '[ID] title' under its project, assigned to its lead, status todo. Edit here and re-run; existing tasks are matched by the [ID] prefix and never duplicated.",
+  "status": "todo",
+  "tasks": [
+    {
+      "id": "CON-2",
+      "title": "T12 - Smartness: remaining atoms",
+      "description": "Sample-data labels (real/synthetic/assumed) + interactive AI sample generation; endpoint selection with Product confirm; joint question selection (needs-you, see tracker a2); lexical name-evidence tie-break. Confidence/coincidence score (T12.3) already shipped off behind --confidence, replaced by T23. Blocks R5 and R7.",
+      "priority": "high",
+      "project": "trace-matching",
+      "assignee": "trace-matching"
+    },
+    {
+      "id": "CON-3",
+      "title": "T21 - Per-layer Qwen AI assist: audit then build",
+      "description": "Decided (a26): audit for a real gap first, then build only what's real. Prior owning session was lost in a machine restart; files src/ai/bench.mjs, src/ai/config.mjs. Any Qwen use needs a measured-accuracy verifier per trace/CLAUDE.md before it can pick unverified.",
+      "priority": "medium",
+      "project": "trace-matching",
+      "assignee": "trace-matching"
+    },
+    {
+      "id": "CON-4",
+      "title": "T23 - Structural-coincidence rules: rebase + review",
+      "description": "Built and measured (ALL-tier wrong-accept 2.56% to 0.34%, recall 96.26 to 96.04). Needs T23.6 rebase onto R1, then T23.7 delta review pass by the single reviewer. Blocks release R6.",
+      "priority": "high",
+      "project": "trace-matching",
+      "assignee": "trace-matching"
+    },
+    {
+      "id": "CON-5",
+      "title": "R6.1 - Tune confidence-score thresholds from eval",
+      "description": "Minor release: tune thresholds from eval runs instead of hand-set values. Depends on R6 (T22/T23) shipping first.",
+      "priority": "low",
+      "project": "trace-matching",
+      "assignee": "trace-matching"
+    },
+    {
+      "id": "CON-6",
+      "title": "T8.11 - Quality page in the UI (eval report)",
+      "description": "Show the eval harness baseline (precision/recall/wrong-accept rate/determinism/runtime) in the app UI, no new server framework. Targeted for release R3.",
+      "priority": "medium",
+      "project": "trace-matching",
+      "assignee": "trace-matching"
+    },
+    {
+      "id": "CON-7",
+      "title": "T27 - Wire the contract-drift adapter into the main match pipeline",
+      "description": "Contract-drift detection, adapter layer, and BE/FE notification are built, reviewer-shipped and merged, live-verified via real CLI run. Deliberately left unwired from the main match pipeline pending a decision from Shashank on how/when it triggers.",
+      "priority": "medium",
+      "project": "trace-contracts",
+      "assignee": "trace-contracts"
+    },
+    {
+      "id": "CON-8",
+      "title": "R1.2 - Per-Ask Suggest button in the demo shell",
+      "description": "Each Ask in the demo shell should have its own Suggest button; the demo builder skipped it originally. Renamed from R1.1 in the tracker.",
+      "priority": "low",
+      "project": "trace-studio",
+      "assignee": "trace-studio"
+    },
+    {
+      "id": "CON-9",
+      "title": "T14 - Part inspector phase 2",
+      "description": "Custom logic stub bodies verified; edit sample values; 'Edited by you' badges everywhere; new issue kinds surfaced from T12. Extends the inspector after T11 merge (already done).",
+      "priority": "medium",
+      "project": "trace-studio",
+      "assignee": "trace-studio"
+    },
+    {
+      "id": "CON-10",
+      "title": "T15 - Workbench IDE layout (standalone Trace shell)",
+      "description": "IDE-style shell frame, resizable panes, explorer with decoration badges, editor tabs (design/contract/code/map), bottom panel (Problems/Ledger/Console/Handoffs), status bar + command palette. Decided (a6, a8): build as a standalone Trace shell now; the Cockpit-integrated version (T16.7) is a separate, explicitly parked item needing scoping first.",
+      "priority": "medium",
+      "project": "trace-studio",
+      "assignee": "trace-studio"
+    },
+    {
+      "id": "CON-11",
+      "title": "T17.3 - Relaunch the JSDoc builder",
+      "description": "Decided (a7): yes, relaunch. Prior attempt produced nothing and stopped without a report; investigate why before just re-running the same task.",
+      "priority": "low",
+      "project": "trace-studio",
+      "assignee": "trace-studio"
+    },
+    {
+      "id": "CON-12",
+      "title": "T16 - Construct integration: remaining atoms",
+      "description": "Envelope in/out adapter (T16.3); enforcers as a gate on output and AI drafts (T16.4); Playwright specs per UI feature (T16.8). T16.7 (Cockpit Trace feature prototype, rail item + panes + drawer) is explicitly parked (a29) pending a design-direction discussion with Shashank; do not start it as a solo judgment call.",
+      "priority": "medium",
+      "project": "trace-pagemap",
+      "assignee": "trace-pagemap"
+    },
+    {
+      "id": "CON-13",
+      "title": "T17.4 - Decision needed: rename 'envelope' to 'list wrapper'",
+      "description": "Declined by the builder as shipped; conflicts with vocab.mjs's already-shipped envelope-to-response scrub. About 25 occurrences remain across UI and docs. Needs Shashank to arbitrate which term wins before any rename happens.",
+      "priority": "low",
+      "project": "trace-pagemap",
+      "assignee": "trace-pagemap"
+    },
+    {
+      "id": "CON-14",
+      "title": "R1.1 - Multi-path-param import + hardening (in progress)",
+      "description": "T4.10: import endpoints with more than one path parameter. Plus hardening: atomic rollback carry (temp+rename), upload race, changelog junk-heading hardening, first-redeploy path. Approved (h-r02). A builder was running in worktree line-matcher-r11 as of the last tracker update; confirm current status before restarting.",
+      "priority": "critical",
+      "project": "trace-contracts",
+      "assignee": "trace-contracts"
+    }
+  ]
+}
