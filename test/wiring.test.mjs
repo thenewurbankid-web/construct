@@ -12,7 +12,9 @@ import { placeCard, planFromBlocks } from '../packages/core/placement.mjs';
 import { PLAN_FLOWS, planToCommand, validatePlan } from '../packages/core/plan.mjs';
 import { expectedFiles } from '../packages/core/plan-touches.mjs';
 import { flowScopeKind } from '../packages/core/block-flows.mjs';
-import { addDependency, dependencyOffer, dependencyTouches, generateRouteEntry, routeEntryTouches, routeOffer, routePathOf, syncTouches, wireRouteSource } from '../packages/core/wiring.mjs';
+import { addDependency, dependencyOffer, dependencyTouches, generateRouteEntry, routeEntryTouches, routeOffer, routePathOf, syncTouches, wireRouteSource, wireVmRouteSource } from '../packages/core/wiring.mjs';
+import { generatePageViewModel } from '../packages/core/generators.mjs';
+import { validateArchitecture } from '../packages/core/architecture-enforcer.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -29,6 +31,19 @@ function project(framework, { controller = 'ProductsController.controller.tsx' }
   put(dir, `features/products/controllers/${controller}`, CONTROLLER);
   return dir;
 }
+
+/** LIN-173 -- an init project with a real vm-chain `shop` feature (page/controller/adapter/viewmodel, LIN-146/149/163/171), generated for real (not hand-written): what `generateRouteEntry` detects a screen as a vm-chain unit from. */
+function vmProject(framework, fields = 'id:string,name:string') {
+  const dir = makeTempDir(`construct-wiring-vm-${framework}-`);
+  assert.equal(run(['init', '--framework', framework], dir).status, 0);
+  generatePageViewModel(dir, 'Products', 'shop', fields);
+  return dir;
+}
+
+/** react, react-dom, esbuild and typescript are bundled with this checkout's own node_modules (or ui/client's); a lane with only the root install skips instead of crashing. */
+const firstExisting = (...candidates) => candidates.find((p) => fs.existsSync(p));
+const HAVE_RUNTIME = ['react', 'react-dom'].every((n) => firstExisting(path.join(REPO, 'node_modules', n), path.join(REPO, 'ui', 'client', 'node_modules', n))) && fs.existsSync(path.join(REPO, 'node_modules', 'esbuild'));
+const NEEDS_RUNTIME = { skip: HAVE_RUNTIME ? false : 'react, react-dom and esbuild are not installed here (a lane with only the root install); the full checkout runs this' };
 
 const shapedBlocks = (framework) => placeCard(parseRequirement('A user wants to see a list of products').card, { framework, answers: { 'q-shape': 'list' } });
 const planIn = (dir, options = {}, framework = 'react-spa') => {
@@ -71,7 +86,7 @@ test('react-spa: create route edits src/App.tsx, declares exactly that file, and
   assert.deepEqual(routeEntryTouches(dir, { name: 'Products', feature: 'products' }), [{ path: 'src/App.tsx', change: 'modify', layer: 'route' }]);
   assert.equal(read(dir, 'src/App.tsx').includes("CoreController"), true, 'the init scaffold imports a CoreController that does not exist');
   const first = generateRouteEntry(dir, { name: 'Products', feature: 'products' });
-  assert.deepEqual(first, { framework: 'react-spa', route: '/products', file: 'src/App.tsx', changed: true, removed: ['CoreController'] });
+  assert.deepEqual(first, { framework: 'react-spa', route: '/products', file: 'src/App.tsx', changed: true, removed: ['CoreController'], renders: 'ProductsController' });
   const app = read(dir, 'src/App.tsx');
   assert.match(app, /import \{ ProductsController \} from '\.\.\/features\/products\/controllers\/ProductsController\.controller';/);
   assert.match(app, /<Route path="\/products" element=\{<ProductsController \/>\} \/>/);
@@ -93,7 +108,7 @@ test('Next.js: create route writes app/<route>/page.tsx (a controller and nothin
   const dir = project('nextjs');
   assert.deepEqual(routeEntryTouches(dir, { name: 'Products', feature: 'products' }).map((f) => `${f.change} ${f.path}`), ['create app/products/page.tsx', 'delete app/page.tsx']);
   const result = generateRouteEntry(dir, { name: 'Products', feature: 'products' });
-  assert.deepEqual(result, { framework: 'nextjs', route: '/products', file: 'app/products/page.tsx', changed: true, removed: ['app/page.tsx'] });
+  assert.deepEqual(result, { framework: 'nextjs', route: '/products', file: 'app/products/page.tsx', changed: true, removed: ['app/page.tsx'], renders: 'ProductsController' });
   assert.equal(read(dir, 'app/products/page.tsx'), "import { ProductsController } from '../../features/products/controllers/ProductsController.controller';\n\nexport default function Page() {\n  return <ProductsController />;\n}\n");
   assert.equal(fs.existsSync(path.join(dir, 'app', 'page.tsx')), false);
   assert.equal(generateRouteEntry(dir, { name: 'Products', feature: 'products' }).changed, false, 'again: nothing to do');
@@ -107,6 +122,66 @@ test('Next.js: an edited root page is never removed, and a route another page ow
   put(dir, 'app/products/page.tsx', "export default function Page() {\n  return <h1>Mine</h1>;\n}\n");
   assert.throws(() => generateRouteEntry(dir, { name: 'Products', feature: 'products' }), /route \/products already belongs to another page/);
   assert.match(read(dir, 'app/products/page.tsx'), /Mine/);
+});
+
+test('LIN-173: a vm-chain screen (has a ViewModel) gets an async Next.js route that awaits it and renders the typed Page, not a controller-as-component', () => {
+  const dir = vmProject('nextjs');
+  const result = generateRouteEntry(dir, { name: 'Products', feature: 'shop' });
+  assert.deepEqual(result, { framework: 'nextjs', route: '/products', file: 'app/products/page.tsx', changed: true, removed: ['app/page.tsx'], renders: 'ProductsViewModel' });
+  assert.equal(
+    read(dir, 'app/products/page.tsx'),
+    "import { ProductsViewModel } from '../../features/shop/viewmodels/ProductsViewModel';\nimport { ProductsPage } from '../../features/shop/pages/ProductsPage';\nimport type { ProductsViewModelData } from '../../features/shop/controllers/ProductsController';\n\nexport default async function Page() {\n  const data: ProductsViewModelData = await ProductsViewModel();\n  return <ProductsPage {...data} />;\n}\n",
+  );
+  assert.equal(generateRouteEntry(dir, { name: 'Products', feature: 'shop' }).changed, false, 'idempotent: nothing to do the second time');
+  // ROUTE-001/002 hold (the route imports "controllers/", even though it renders the Page, not the Controller, directly)
+  // and the layer graph edges (route -> viewmodel, route -> page) stay acyclic: architecture-level validation is clean.
+  assert.deepEqual(validateArchitecture(dir).violations.filter((v) => v.severity === 'error'), []);
+});
+
+test('LIN-173: a vm-chain screen on react-spa gets a small Route wrapper (useState/useEffect) that awaits the ViewModel and renders the Page once it resolves', () => {
+  const dir = vmProject('react-spa');
+  const result = generateRouteEntry(dir, { name: 'Products', feature: 'shop' });
+  assert.deepEqual(result, { framework: 'react-spa', route: '/products', file: 'src/App.tsx', changed: true, removed: ['CoreController'], renders: 'ProductsViewModel' });
+  const app = read(dir, 'src/App.tsx');
+  assert.equal(
+    app,
+    "import { Routes, Route } from 'react-router-dom';\nimport { useEffect, useState } from 'react';\nimport { ProductsViewModel } from '../features/shop/viewmodels/ProductsViewModel';\nimport { ProductsPage } from '../features/shop/pages/ProductsPage';\nimport type { ProductsViewModelData } from '../features/shop/controllers/ProductsController';\n\nfunction ProductsRoute() {\n  const [data, setData] = useState<ProductsViewModelData | null>(null);\n  useEffect(() => { ProductsViewModel().then(setData); }, []);\n  return data ? (\n    <ProductsPage {...data} />\n  ) : null;\n}\n\nexport function App() {\n  return (\n    <Routes>\n      <Route path=\"/products\" element={<ProductsRoute />} />\n    </Routes>\n  );\n}\n",
+  );
+  assert.equal(generateRouteEntry(dir, { name: 'Products', feature: 'shop' }).changed, false, 'idempotent');
+  assert.equal(read(dir, 'src/App.tsx'), app);
+  assert.deepEqual(validateArchitecture(dir).violations.filter((v) => v.severity === 'error'), []);
+});
+
+test('wireVmRouteSource: a route already rendering the wrapper is untouched; another element on that path is refused in words', () => {
+  const opts = { name: 'Products', viewmodelImportPath: '../features/shop/viewmodels/ProductsViewModel', pageImportPath: '../features/shop/pages/ProductsPage', controllerTypeImportPath: '../features/shop/controllers/ProductsController', route: '/products' };
+  const first = wireVmRouteSource(SCAFFOLD, opts);
+  assert.equal(first.changed, true);
+  assert.equal(first.removed.length, 0, 'no dangling CoreController import: exists() defaults to true');
+  const again = wireVmRouteSource(first.source, opts);
+  assert.deepEqual(again, { source: first.source, changed: false, removed: [] });
+  assert.throws(() => wireVmRouteSource('<Routes>\n  <Route path="/products" element={<Something />} />\n</Routes>\n', opts), /route \/products already belongs to another element/);
+  assert.throws(() => wireVmRouteSource('export function App() { return null; }\n', opts), /has no <Routes> table/);
+});
+
+test('LIN-173: the generated Next.js route file actually runs — awaits the ViewModel and renders the Page with its (sample) data', NEEDS_RUNTIME, async () => {
+  const { build } = await import('esbuild');
+  const dir = vmProject('nextjs', 'id:string,name:string');
+  generateRouteEntry(dir, { name: 'Products', feature: 'shop' });
+  const modules = path.join(dir, 'node_modules');
+  fs.mkdirSync(modules, { recursive: true });
+  const reactDir = fs.realpathSync(firstExisting(path.join(REPO, 'node_modules', 'react'), path.join(REPO, 'ui', 'client', 'node_modules', 'react')));
+  const reactDomDir = fs.realpathSync(firstExisting(path.join(REPO, 'node_modules', 'react-dom'), path.join(REPO, 'ui', 'client', 'node_modules', 'react-dom')));
+  fs.mkdirSync(path.join(dir, 'smoke'));
+  fs.writeFileSync(path.join(dir, 'smoke', 'entry.tsx'), [
+    "import { renderToString } from 'react-dom/server';",
+    "import Page from '../app/products/page';",
+    'export const render = async () => renderToString(await Page());',
+  ].join('\n'));
+  const outfile = path.join(dir, 'smoke', 'entry.cjs');
+  await build({ entryPoints: [path.join(dir, 'smoke', 'entry.tsx')], outfile, bundle: true, platform: 'node', format: 'cjs', jsx: 'automatic', alias: { react: reactDir, 'react-dom': reactDomDir }, absWorkingDir: dir, logLevel: 'silent' });
+  const { createRequire } = await import('node:module');
+  const screen = createRequire(import.meta.url)(outfile);
+  assert.equal(await screen.render(), '<main><div>id: </div><div>name: </div></main>', 'the route awaited ProductsViewModel() and spread its resolved (sample) data into ProductsPage as props');
 });
 
 test('q-route: asked only when the path is reserved or taken; the default is the first free alternative, skip leaves the screen unwired', () => {

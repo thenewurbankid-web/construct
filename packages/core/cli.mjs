@@ -330,7 +330,7 @@ function generateRouteFiles(args) {
   const result = generateRouteEntry(root, request);
   const dt = formatDuration(elapsedSeconds(t));
   for (const id of result.removed) console.log(result.framework === 'react-spa' ? `Removed the dangling import of ${id} from ${result.file}` : `Removed ${id} (the init scaffold's page, which rendered a controller that was never generated)`);
-  console.log(result.changed ? `${result.framework === 'react-spa' ? 'Updated' : 'Created'} ${result.file} (${dt}): ${result.route} renders ${request.name}Controller` : `Unchanged ${result.file}: ${result.route} already renders ${request.name}Controller`);
+  console.log(result.changed ? `${result.framework === 'react-spa' ? 'Updated' : 'Created'} ${result.file} (${dt}): ${result.route} renders ${result.renders}` : `Unchanged ${result.file}: ${result.route} already renders ${result.renders}`);
 }
 
 /** The result document of `create route` for `--format json`. */

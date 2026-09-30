@@ -51,7 +51,9 @@
     ],
     "layerGraph": {
       "route": [
-        "controller"
+        "controller",
+        "viewmodel",
+        "page"
       ],
       "controller": [
         "workflow",
@@ -139,7 +141,7 @@
   ],
   "budget": {
     "maxTokens": 2000,
-    "estimatedTokens": 418,
+    "estimatedTokens": 423,
     "truncated": false
   }
 }

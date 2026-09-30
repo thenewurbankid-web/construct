@@ -25,7 +25,11 @@ export function normalizeLocalRules(raw) {
 }
 
 export const DEFAULT_LAYERS = {
-  route: { pattern: 'app/**/page.tsx', canImport: ['controller'] },
+  // LIN-173 -- additive: a vm-chain screen has no page-composing controller to render, so the
+  // route entry instead awaits the screen's ViewModel and renders its typed Page directly.
+  // 'viewmodel'/'page' are new edges, cycle-safe (neither imports 'route' back): the graph stays
+  // route -> {controller, viewmodel, page}, with viewmodel -> controller -> adapter unchanged.
+  route: { pattern: 'app/**/page.tsx', canImport: ['controller', 'viewmodel', 'page'] },
   // LIN-163 -- controller additionally may import an adapter directly (the LIN-146 chain, revised
   // 2026-09-30: page -> viewmodel -> controller -> adapter -> api), alongside its original,
   // unrelated role composing hooks/domain/pages for a route.
@@ -67,7 +71,7 @@ export const DEFAULT_LAYERS = {
 // URL paths straight to controller elements) that this pattern must match
 // instead. Every field other than `route` is intentionally identical to
 // DEFAULT_LAYERS above.
-export const REACT_SPA_LAYERS = { ...DEFAULT_LAYERS, route: { pattern: 'src/App.tsx', canImport: ['controller'] } };
+export const REACT_SPA_LAYERS = { ...DEFAULT_LAYERS, route: { pattern: 'src/App.tsx', canImport: ['controller', 'viewmodel', 'page'] } };
 
 // Recognized `project.framework` values in architecture.yml. `nextjs` stays
 // the default so every project that predates this option (or simply never
@@ -543,6 +547,12 @@ export const DEFAULT_RULES = {
   // it on hard is a migration (count violations, report to OG, same reasoning as TYPE-001 above).
   'NAME-001': { severity: 'off', name: 'A unit\'s file path and exported symbol must match layerTargetFile/layerFileBaseName\'s derivation for its own name' },
   'IMPORT-001': { severity: 'error', name: 'Relative imports must resolve to a file that exists' },
+  // LIN-174 -- a generated file's slot region is a build artifact regenerated FROM the map
+  // (unit-map.mjs's setMemberSlot/projectUnitSlots); either check firing means the file and the
+  // map have diverged, which never happens through the generator itself, so both default to
+  // 'error' like IMPORT-001 rather than warning-first like the JSX-complexity rules above.
+  'SLOT-001': { severity: 'error', name: "A generated file's slot region must match its member's stored slot body in the map" },
+  'SLOT-002': { severity: 'error', name: 'A slot body may only import types, never a value' },
   'EXCEPTION-EXPIRED': { severity: 'warning', name: 'Time-boxed exceptions must be renewed or removed once they expire' },
   // #473 -- cross-references a component's declared props (react-docgen) against every real JSX
   // call site of it in the project (src/engine/propLinks.mjs). Ships at 'info' by owner decision

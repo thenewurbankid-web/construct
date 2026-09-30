@@ -74,7 +74,7 @@ export function routeEntryFile(root, route) {
   return { framework, file: framework === 'react-spa' ? entry : `${entry}${route}/page.tsx` };
 }
 
-/** Whether `route` is already served by the project's route entry, and whether by the controller of this screen. */
+/** Whether `route` is already served by the project's route entry, and whether by the controller or (vm-chain) the `${Name}Route`/page of this screen. */
 function routeState(root, request, route) {
   const { framework, entry } = routeTarget(root);
   if (framework === 'react-spa') {
@@ -82,12 +82,13 @@ function routeState(root, request, route) {
     if (!fs.existsSync(file)) return { taken: false, ours: false };
     const source = fs.readFileSync(file, 'utf8');
     const has = new RegExp(`<Route\\b[^>]*\\bpath=(["'])${escapeRe(route)}\\1`).test(source);
-    return { taken: has, ours: has && source.includes(`<${request.name}Controller`) };
+    return { taken: has, ours: has && (source.includes(`<${request.name}Controller`) || source.includes(`<${request.name}Route`)) };
   }
   const dir = path.join(root, entry, ...route.split('/').filter(Boolean));
   const page = ['page.tsx', 'page.jsx', 'page.ts', 'page.js'].map((f) => path.join(dir, f)).find((f) => fs.existsSync(f));
   if (!page) return { taken: false, ours: false };
-  return { taken: true, ours: fs.readFileSync(page, 'utf8').includes(`${request.name}Controller`) };
+  const content = fs.readFileSync(page, 'utf8');
+  return { taken: true, ours: content.includes(`${request.name}Controller`) || content.includes(`${request.name}ViewModel`) };
 }
 
 const SCAFFOLD_PAGE_RE = /^import \{ ([A-Za-z0-9_]+Controller) \} from '(\.[^']*)';\n+export default function Page\(\) \{\n  return <\1 \/>;\n\}\n?$/;
@@ -211,8 +212,8 @@ export function wireRouteSource(source, { ident, importPath, route, exists = () 
   }
   const close = lines.findIndex((line) => line.includes('</Routes>'));
   if (close < 0) throw usage('The route entry has no <Routes> table to add the route to. Add `<Route path="' + route + '" element={<' + ident + ' />} />` by hand, or skip the route step.');
-  const lastRoute = lines.slice(0, close).map((l, i) => [l, i]).reverse().find(([l]) => /^\s*<Route\b/.test(l));
-  const indent = lastRoute ? /^\s*/.exec(lastRoute[0])[0] : `${/^\s*/.exec(lines[close])[0]}  `;
+  const lastRoute = [...lines.slice(0, close)].reverse().find((l) => /^\s*<Route\b/.test(l));
+  const indent = lastRoute ? /^\s*/.exec(lastRoute)[0] : `${/^\s*/.exec(lines[close])[0]}  `;
   lines.splice(close, 0, `${indent}<Route path="${route}" element={<${ident} />} />`);
   if (!lines.some((l) => new RegExp(`^import\\s*\\{[^}]*\\b${escapeRe(ident)}\\b[^}]*\\}`).test(l))) {
     let at = 0;
@@ -221,6 +222,82 @@ export function wireRouteSource(source, { ident, importPath, route, exists = () 
       else if (/^(export|function|const|let|class|type|interface)\b/.test(lines[i])) break;
     }
     lines.splice(at, 0, `import { ${ident} } from '${importPath}';`);
+  }
+  const next = lines.join('\n');
+  return { source: next, changed: next !== source, removed };
+}
+
+/** Add `names` to an existing `import { ... } from '<moduleSpec>'` line, or insert a fresh one after the last import (idempotent: a name already imported from that module is left alone). */
+function ensureNamedImports(lines, names, moduleSpec) {
+  const idx = lines.findIndex((line) => new RegExp(`^import\\s*\\{[^}]*\\}\\s*from\\s*(["'])${escapeRe(moduleSpec)}\\1;?\\s*$`).test(line));
+  if (idx >= 0) {
+    const current = /^import\s*\{([^}]*)\}/.exec(lines[idx])[1].split(',').map((s) => s.trim()).filter(Boolean);
+    const merged = [...new Set([...current, ...names])];
+    lines[idx] = `import { ${merged.join(', ')} } from '${moduleSpec}';`;
+    return;
+  }
+  let at = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (/^(import\b|.*\bfrom\s+['"][^'"]+['"];?\s*$)/.test(lines[i])) at = i + 1;
+    else if (/^(export|function|const|let|class|type|interface)\b/.test(lines[i])) break;
+  }
+  lines.splice(at, 0, `import { ${names.join(', ')} } from '${moduleSpec}';`);
+}
+
+/**
+ * LIN-173 -- the pure edit of a react-router table (`src/App.tsx`) for a vm-chain screen (one with a ViewModel, not a
+ * page-composing controller): add the imports for the viewmodel, the page and the controller's re-exported `${Name}ViewModelData`
+ * type, a small `${Name}Route` component that awaits the viewmodel and renders the page once it resolves, and a `<Route>` for it
+ * before `</Routes>`. Line-based and minimal, mirroring `wireRouteSource`. Idempotent: a route that already renders this wrapper
+ * changes nothing.
+ *
+ * @param {string} source The current text of the route entry.
+ * @param {{ name: string, viewmodelImportPath: string, pageImportPath: string, controllerTypeImportPath: string, route: string, exists?: (specifier: string) => boolean }} options The screen's PascalCase name, the three import paths from the entry, the route, and a check for whether a relative import resolves (default: everything does).
+ * @returns {{ source: string, changed: boolean, removed: string[] }} The new text, whether it differs, and the dangling controller imports it dropped.
+ * @throws {Error} A usage error when the route belongs to something else, or the text has no `</Routes>` to add the route to.
+ */
+export function wireVmRouteSource(source, { name, viewmodelImportPath, pageImportPath, controllerTypeImportPath, route, exists = () => true }) {
+  const routeIdent = `${name}Route`;
+  const owned = new RegExp(`<Route\\b[^>]*\\bpath=(["'])${escapeRe(route)}\\1`).test(source);
+  if (owned) {
+    if (source.includes(`<${routeIdent}`)) return { source, changed: false, removed: [] };
+    throw usage(`The route ${route} already belongs to another element in the route entry. Pick another route, or skip the route step.`);
+  }
+  let lines = source.split('\n');
+  const removed = [];
+  for (const line of lines) {
+    const m = IMPORT_RE.exec(line);
+    if (m && /Controller$/.test(m[1]) && !exists(m[3])) removed.push(m[1]);
+  }
+  if (removed.length) {
+    lines = lines.filter((line) => {
+      const m = IMPORT_RE.exec(line);
+      if (m && removed.includes(m[1]) && !exists(m[3])) return false;
+      return !removed.some((id) => new RegExp(`^\\s*<Route\\b[^>]*element=\\{<${escapeRe(id)}\\s*/>\\}[^>]*/>\\s*$`).test(line));
+    });
+  }
+  const close = lines.findIndex((line) => line.includes('</Routes>'));
+  if (close < 0) throw usage('The route entry has no <Routes> table to add the route to. Add `<Route path="' + route + '" element={<' + routeIdent + ' />} />` by hand, or skip the route step.');
+  const lastRoute = [...lines.slice(0, close)].reverse().find((l) => /^\s*<Route\b/.test(l));
+  const indent = lastRoute ? /^\s*/.exec(lastRoute)[0] : `${/^\s*/.exec(lines[close])[0]}  `;
+  lines.splice(close, 0, `${indent}<Route path="${route}" element={<${routeIdent} />} />`);
+  if (!lines.some((l) => new RegExp(`function\\s+${escapeRe(routeIdent)}\\b`).test(l))) {
+    const exportIdx = lines.findIndex((l) => /^export\s+(default\s+)?function\b/.test(l));
+    const at = exportIdx < 0 ? lines.length : exportIdx;
+    const needsBlankBefore = at > 0 && lines[at - 1].trim() !== '';
+    const wrapper = [...(needsBlankBefore ? [''] : []), `function ${routeIdent}() {`, `  const [data, setData] = useState<${name}ViewModelData | null>(null);`, `  useEffect(() => { ${name}ViewModel().then(setData); }, []);`, '  return data ? (', `    <${name}Page {...data} />`, '  ) : null;', '}', ''];
+    lines.splice(at, 0, ...wrapper);
+  }
+  ensureNamedImports(lines, ['useEffect', 'useState'], 'react');
+  ensureNamedImports(lines, [`${name}ViewModel`], viewmodelImportPath);
+  ensureNamedImports(lines, [`${name}Page`], pageImportPath);
+  if (!lines.some((l) => new RegExp(`^import\\s+type\\s*\\{[^}]*\\b${escapeRe(`${name}ViewModelData`)}\\b`).test(l))) {
+    let at = 0;
+    for (let i = 0; i < lines.length; i++) {
+      if (/^(import\b|.*\bfrom\s+['"][^'"]+['"];?\s*$)/.test(lines[i])) at = i + 1;
+      else if (/^(export|function|const|let|class|type|interface)\b/.test(lines[i])) break;
+    }
+    lines.splice(at, 0, `import type { ${name}ViewModelData } from '${controllerTypeImportPath}';`);
   }
   const next = lines.join('\n');
   return { source: next, changed: next !== source, removed };
@@ -237,19 +314,43 @@ function controllerImport(root, request, fromDir, config) {
   return spec.startsWith('.') ? spec : `./${spec}`;
 }
 
+/** LIN-173 -- the viewmodel file of a screen (`XViewModel.viewmodel.tsx`, else `XViewModel.tsx`) as an import path from `fromDir`, or null when neither exists. Its presence is what marks a screen as a vm-chain unit (LIN-146/149/163/171) rather than the original page-composing controller. */
+function viewmodelImport(root, request, fromDir, config) {
+  const dir = path.join(root, config.features?.root || 'features', request.feature, 'viewmodels');
+  const base = layerFileBaseName('viewmodel', request.name);
+  const found = [`${base}.viewmodel.tsx`, `${base}.tsx`].map((f) => path.join(dir, f)).find((f) => fs.existsSync(f));
+  if (!found) return null;
+  const spec = path.relative(fromDir, found.replace(/\.tsx$/, '')).split(path.sep).join('/');
+  return spec.startsWith('.') ? spec : `./${spec}`;
+}
+
+/** LIN-173 -- the page file of a screen (`XPage.page.tsx`, else `XPage.tsx`) as an import path from `fromDir`, or null when neither exists. */
+function pageImport(root, request, fromDir, config) {
+  const dir = path.join(root, config.features?.root || 'features', request.feature, 'pages');
+  const base = layerFileBaseName('page', request.name);
+  const found = [`${base}.page.tsx`, `${base}.tsx`].map((f) => path.join(dir, f)).find((f) => fs.existsSync(f));
+  if (!found) return null;
+  const spec = path.relative(fromDir, found.replace(/\.tsx$/, '')).split(path.sep).join('/');
+  return spec.startsWith('.') ? spec : `./${spec}`;
+}
+
 /**
- * Point the project's route entry at the controller of a generated screen. Next.js: create `<app>/<route>/page.tsx` that renders the
- * controller and nothing else (ROUTE-001 and ROUTE-002 hold). react-spa: add the import and a `<Route>` to the router file, and drop
- * the dangling `CoreController` import the init scaffold leaves (Next.js: it removes the scaffold's root `app/page.tsx` when it still is exactly that dangling page). Writes nothing and says why when there is nothing to do; refuses a
- * route that something else already owns. Deterministic, no model, idempotent.
+ * Point the project's route entry at the screen it generated. The original, page-composing pattern: Next.js creates
+ * `<app>/<route>/page.tsx` that renders the controller and nothing else (ROUTE-001 and ROUTE-002 hold); react-spa adds the import
+ * and a `<Route>` to the router file, dropping the dangling `CoreController` import the init scaffold leaves (Next.js: it removes
+ * the scaffold's root `app/page.tsx` when it still is exactly that dangling page). LIN-173: when the screen is a vm-chain unit
+ * instead (it has a ViewModel, not a page-composing controller — LIN-146/149/163/171), the route awaits the ViewModel and renders
+ * the typed Page: Next.js writes an async Server Component; react-spa adds a small `${Name}Route` wrapper (useState/useEffect)
+ * rendered by its own `<Route>`. Writes nothing and says why when there is nothing to do; refuses a route that something else
+ * already owns. Deterministic, no model, idempotent.
  *
  * @param {string} root Project root.
- * @param {{ name: string, feature: string, route?: string }} request The controller unit name, its feature and the route (default: the kebab-case of the name).
- * @returns {{ framework: string, route: string, file: string, changed: boolean, removed: string[] }} The route entry file (project-relative), whether it was written, and what it dropped (react-spa: dangling controller names; Next.js: the removed scaffold page).
- * @throws {Error} A usage error for a bad name, feature or route, a controller that does not exist yet, a route already owned, or a router file that has no `<Routes>`.
+ * @param {{ name: string, feature: string, route?: string }} request The screen's unit name, its feature and the route (default: the kebab-case of the name).
+ * @returns {{ framework: string, route: string, file: string, changed: boolean, removed: string[], renders: string }} The route entry file (project-relative), whether it was written, what it dropped (react-spa: dangling controller names; Next.js: the removed scaffold page), and the identifier it renders/calls (`${Name}Controller` or, vm-chain, `${Name}ViewModel`).
+ * @throws {Error} A usage error for a bad name, feature or route, an incomplete controller/vm-chain, a route already owned, or a router file that has no `<Routes>`.
  *
  * @example
- * generateRouteEntry(root, { name: 'Products', feature: 'products' }); // => { framework: 'nextjs', route: '/products', file: 'app/products/page.tsx', changed: true, removed: [] }
+ * generateRouteEntry(root, { name: 'Products', feature: 'products' }); // => { framework: 'nextjs', route: '/products', file: 'app/products/page.tsx', changed: true, removed: [], renders: 'ProductsController' }
  */
 export function generateRouteEntry(root, request) {
   checkRequest(request);
@@ -259,25 +360,47 @@ export function generateRouteEntry(root, request) {
   if (framework === 'react-spa') {
     const file = path.join(root, entry);
     if (!fs.existsSync(file)) throw usage(`The route entry ${entry} does not exist. Run "construct init" first, or wire the route by hand.`);
-    const importPath = controllerImport(root, request, path.dirname(file), config);
+    const fromDir = path.dirname(file);
+    const exists = (spec) => ['', '.ts', '.tsx', '.js', '.jsx', '.mjs', '/index.ts', '/index.tsx'].some((ext) => fs.existsSync(path.resolve(fromDir, spec + ext)));
+    // LIN-173: a vm-chain screen (one with a ViewModel) has no page-composing controller to render; the route instead awaits
+    // the ViewModel and renders the typed Page.
+    const vmPath = viewmodelImport(root, request, fromDir, config);
+    if (vmPath) {
+      const pagePath = pageImport(root, request, fromDir, config);
+      const controllerTypePath = controllerImport(root, request, fromDir, config);
+      if (!pagePath || !controllerTypePath) throw usage(`The vm-chain of "${request.name}" in feature "${request.feature}" is incomplete (page, viewmodel and controller must all exist): create it first (construct create page ${request.name} --feature ${request.feature} --vm-fields ...).`);
+      const out = wireVmRouteSource(fs.readFileSync(file, 'utf8'), { name: request.name, viewmodelImportPath: vmPath, pageImportPath: pagePath, controllerTypeImportPath: controllerTypePath, route, exists });
+      if (out.changed) write(file, out.source);
+      return { framework, route, file: entry, changed: out.changed, removed: out.removed, renders: `${request.name}ViewModel` };
+    }
+    const importPath = controllerImport(root, request, fromDir, config);
     if (!importPath) throw usage(`The controller ${ident} does not exist yet in feature "${request.feature}": create it first (construct create controller ${request.name} --feature ${request.feature}).`);
-    const exists = (spec) => ['', '.ts', '.tsx', '.js', '.jsx', '.mjs', '/index.ts', '/index.tsx'].some((ext) => fs.existsSync(path.resolve(path.dirname(file), spec + ext)));
     const out = wireRouteSource(fs.readFileSync(file, 'utf8'), { ident, importPath, route, exists });
     if (out.changed) write(file, out.source);
-    return { framework, route, file: entry, changed: out.changed, removed: out.removed };
+    return { framework, route, file: entry, changed: out.changed, removed: out.removed, renders: ident };
   }
   const relFile = `${entry}${route}/page.tsx`;
   const file = path.join(root, relFile);
-  const importPath = controllerImport(root, request, path.dirname(file), config);
-  if (!importPath) throw usage(`The controller ${ident} does not exist yet in feature "${request.feature}": create it first (construct create controller ${request.name} --feature ${request.feature}).`);
+  const fromDir = path.dirname(file);
   const state = routeState(root, request, route);
   if (state.taken && !state.ours) throw usage(`The route ${route} already belongs to another page (${rel(root, path.dirname(file))}). Pick another route, or skip the route step.`);
-  if (state.ours) return { framework, route, file: relFile, changed: false, removed: [] };
-  write(file, `import { ${ident} } from '${importPath}';\n\nexport default function Page() {\n  return <${ident} />;\n}\n`);
+  const vmPath = viewmodelImport(root, request, fromDir, config);
+  const renders = vmPath ? `${request.name}ViewModel` : ident;
+  if (state.ours) return { framework, route, file: relFile, changed: false, removed: [], renders };
+  if (vmPath) {
+    const pagePath = pageImport(root, request, fromDir, config);
+    const controllerTypePath = controllerImport(root, request, fromDir, config);
+    if (!pagePath || !controllerTypePath) throw usage(`The vm-chain of "${request.name}" in feature "${request.feature}" is incomplete (page, viewmodel and controller must all exist): create it first (construct create page ${request.name} --feature ${request.feature} --vm-fields ...).`);
+    write(file, `import { ${request.name}ViewModel } from '${vmPath}';\nimport { ${request.name}Page } from '${pagePath}';\nimport type { ${request.name}ViewModelData } from '${controllerTypePath}';\n\nexport default async function Page() {\n  const data: ${request.name}ViewModelData = await ${request.name}ViewModel();\n  return <${request.name}Page {...data} />;\n}\n`);
+  } else {
+    const importPath = controllerImport(root, request, fromDir, config);
+    if (!importPath) throw usage(`The controller ${ident} does not exist yet in feature "${request.feature}": create it first (construct create controller ${request.name} --feature ${request.feature}).`);
+    write(file, `import { ${ident} } from '${importPath}';\n\nexport default function Page() {\n  return <${ident} />;\n}\n`);
+  }
   // The init scaffold's root page renders a CoreController nobody generated: validate flags it (IMPORT-001) and the build cannot resolve it.
   const dangling = danglingRootPage(root, entry);
   if (dangling) fs.rmSync(path.join(root, dangling));
-  return { framework, route, file: relFile, changed: true, removed: dangling ? [dangling] : [] };
+  return { framework, route, file: relFile, changed: true, removed: dangling ? [dangling] : [], renders };
 }
 
 /**
