@@ -112,6 +112,13 @@ const templates={
  // response that lands after its request is superseded should not, and XState's fromPromise
  // already hands the invoking function a signal for free.
  service:(n)=>`export async function ${n}({ signal }: { signal: AbortSignal }) {\n  const response = await fetch('/api/${n.toLowerCase()}', { method: 'GET', signal });\n  if (!response.ok) throw new Error('Request failed');\n  return response.json();\n}\n`,
+ // LIN-153 -- binding the page's props to its view model's inferred type (`import type {...} from
+ // '../viewmodels/...'`) hits a real cycle in the static layer graph: controller's existing,
+ // unrelated role already imports page (route -> controller -> page), so page -> viewmodel ->
+ // controller -> page closes a loop the moment page may import viewmodel. Left as the plain,
+ // self-contained stub until that's resolved (see the LIN-153 follow-up issue on the page/view
+ // model binding) -- generatePageViewModel below still auto-creates this file as part of the one
+ // action, just not yet typed to the chain.
  page:(n)=>`import type { ReactNode } from 'react';\n\nexport function ${n}Page(): ReactNode {\n  return <main>${n}</main>;\n}\n`,
  component:(n)=>`export function ${n}() {\n  return <div>${n}</div>;\n}\n`,
  // #514 -- an Expression's stub must already satisfy EXPR-004/005/006 (error severity, so a
@@ -530,6 +537,13 @@ export function generatePageViewModel(root,name,feature,fieldsText){
  const fields=parseViewModelFields(fieldsText);
  const written=[];
  if(!layerFileExists(root,'adapter',name,feature))written.push(generateLayer(root,'adapter',name,feature,{fields}));
+ // LIN-153 -- "one action produces the full chain": a page that doesn't exist yet is generated
+ // here too (still the plain, self-contained stub -- binding it to the view model's type hits a
+ // real cycle in the static layer graph, see the `page` template's own comment; left for a
+ // follow-up). Generated before the controller below because LAYER_PREREQUISITES.controller:
+ // ['page'] is unconditional (it also guards the controller's OTHER, unrelated page-composing
+ // role), regardless of whether this call's controller uses that role or the vm-chain one.
+ if(!layerFileExists(root,'page',name,feature))written.push(generateLayer(root,'page',name,feature));
  // LIN-163 -- the viewmodel reaches the adapter through the controller (page -> viewmodel ->
  // controller -> adapter -> api), so the controller is generated here too, between the adapter
  // and the viewmodel, with `fields` so it gets the adapter-orchestrating template rather than its

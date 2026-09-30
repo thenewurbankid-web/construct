@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createFeature, generateLayer, fillGeneratedFile, LAYER_CONSTRAINTS } from '../packages/core/generators.mjs';
+import { validateArchitecture } from '../packages/core/architecture-enforcer.mjs';
 import { create, generate } from '../packages/core/cli.mjs';
 import { PROVIDERS } from '../packages/core/llm.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
@@ -94,6 +95,33 @@ test('LIN-149 generate page <name> --feature f --vm-fields <spec> auto-creates a
   const adapter = fs.readFileSync(path.join(dir, 'features', 'shop', 'adapters', 'ProductsAdapter.tsx'), 'utf8');
   assert.match(adapter, /export interface ProductsViewModelData \{/);
   assert.doesNotMatch(adapter, /unknown/);
+});
+
+test('LIN-153 generate page <name> --feature f --vm-fields <spec> is the one action that produces the whole chain, from an empty feature, validating clean', async () => {
+  const dir = tmpProject();
+  createFeature(dir, 'shop');
+  // One command, nothing pre-created (no separate "create page" first) -- this is the acceptance
+  // bar LIN-153 sets: "from an empty feature, one action yields a working, validating, fully
+  // typed page chain."
+  await generate(['page', 'Products', '--feature', 'shop', '--vm-fields', 'id:string,name:string,price:number', '--dir', dir]);
+  for (const [sub, file] of [['pages', 'ProductsPage.tsx'], ['viewmodels', 'ProductsViewModel.tsx'], ['controllers', 'ProductsController.tsx'], ['adapters', 'ProductsAdapter.tsx']]) {
+    assert.ok(fs.existsSync(path.join(dir, 'features', 'shop', sub, file)), `${sub}/${file} was not written`);
+  }
+  assert.deepEqual(validateArchitecture(dir).violations.filter((v) => v.severity === 'error'), []);
+});
+
+test('LIN-153 regenerating the chain (re-running --vm-fields on an existing page) never clobbers the page\'s own content', async () => {
+  const dir = tmpProject();
+  createFeature(dir, 'shop');
+  await generate(['page', 'Products', '--feature', 'shop', '--vm-fields', 'id:string', '--dir', dir]);
+  const pageFile = path.join(dir, 'features', 'shop', 'pages', 'ProductsPage.tsx');
+  fs.writeFileSync(pageFile, `${fs.readFileSync(pageFile, 'utf8')}\n// hand-written business logic\n`);
+  // Re-running the exact same command (e.g. to pick up a --vm-fields change elsewhere, or just
+  // repeated by habit) must never reset a page that already exists back to the bare stub -- the
+  // "regenerating must never clobber business logic" acceptance bar, for the one piece of the
+  // chain a person can actually edit today (the other three are still template-only stubs).
+  await generate(['page', 'Products', '--feature', 'shop', '--vm-fields', 'id:string', '--dir', dir]);
+  assert.match(fs.readFileSync(pageFile, 'utf8'), /hand-written business logic/);
 });
 
 test('generate layer <name> --feature f --layers a,b with no --llm scaffolds every layer\'s plain stub, zero LLM calls', async () => {

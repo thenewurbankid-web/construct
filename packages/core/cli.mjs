@@ -646,21 +646,22 @@ export async function generate(args) {
     else if (schema === 'auto') console.log('  Response schemas not written (zod is not in package.json); add zod, or pass --schema, to also write services/<name>/zod.gen.ts.');
     return;
   }
-  // LIN-149: `construct create/generate page <name> --feature <f> --vm-fields <spec>` auto-creates
-  // the page's view model (and that view model's adapter prerequisite) typed from `--vm-fields`,
-  // since there is no API yet to derive the shape from. A distinct flag from the shape system's
-  // own `--fields` (shapeRequestOf above, #619/#621) on purpose: shapeRequestOf refuses a stray
-  // `--fields` without `--shape`, and this is a plain (non-shaped) page. Opt-in via `--vm-fields`
-  // for the same reason generatePageViewModel is opt-in (see its own comment in generators.mjs):
-  // making every bare `create page` auto-create a view model is a migration this repo's existing
-  // page/controller pairs haven't been agreed on yet.
+  // LIN-149/LIN-153: `construct create/generate page <name> --feature <f> --vm-fields <spec>`
+  // is the one action that produces the whole chain (page -> viewmodel -> controller -> adapter),
+  // wired end to end and typed from `--vm-fields` since there is no API yet to derive the shape
+  // from. A distinct flag from the shape system's own `--fields` (shapeRequestOf above, #619/#621)
+  // on purpose: shapeRequestOf refuses a stray `--fields` without `--shape`, and this is a plain
+  // (non-shaped) page. Opt-in via `--vm-fields` for the same reason generatePageViewModel is
+  // opt-in (see its own comment in generators.mjs): making every bare `create page` auto-create a
+  // view model is a migration this repo's existing page/controller pairs haven't been agreed on
+  // yet. generatePageViewModel itself now generates the page (typed to the view model, LIN-153)
+  // when it doesn't already exist -- never called separately here, so an existing page is never
+  // silently overwritten back to the bare stub.
   const fieldsI = args.indexOf('--vm-fields');
   if (layer === 'page' && fieldsI >= 0) {
     const t = startTimer();
-    const pageFile = generateLayer(root, 'page', name, feature);
     const written = generatePageViewModel(root, name, feature, args[fieldsI + 1]);
     const dt = formatDuration(elapsedSeconds(t));
-    console.log(`Created ${path.relative(root, pageFile)} (${dt})`);
     for (const file of written) console.log(`Created ${path.relative(root, file)} (${dt})`);
     return;
   }
