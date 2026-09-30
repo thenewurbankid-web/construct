@@ -207,8 +207,10 @@ function edgeFrom(fromStep, resultFacts) {
  * ], { root });
  */
 export function compileHarness(doc, choosers, trace, ctx = {}) {
+  /** @type {{ code: string, path: string, message: string }[]} */
   const errors = [];
   const push = (code, path, message) => errors.push({ code: HARNESS_ERROR_CODES[code], path, message });
+  /** @returns {{ ok: false, plan: null, decisions: [], errors: { code: string, path: string, message: string }[] }} */
   const fail = () => ({ ok: false, plan: null, decisions: [], errors });
 
   const shape = validateHarness(doc);
