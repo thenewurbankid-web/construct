@@ -58,7 +58,7 @@ test.describe.serial('Inspector Change tab: Move, Rename, Extract, Wrap in (#381
   }
 
   async function openChangeTab(page) {
-    const tools = page.getByRole('complementary', { name: 'Tools' });
+    const tools = page.getByRole('complementary', { name: 'Right panel: Inspect' });
     await tools.getByRole('tab', { name: 'Change' }).click();
     return tools;
   }
