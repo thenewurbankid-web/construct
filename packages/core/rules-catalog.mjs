@@ -301,6 +301,18 @@ export const RULE_METADATA = {
     expected: ['a file that exists at the resolved path'],
     fix: 'Create the missing file (check the recommended layer order: domain -> service -> workflow -> hook -> component -> page -> controller), or fix the import path.',
   },
+  'SLOT-001': {
+    module: MODULES.ARCHITECTURE, layers: NO_LAYERS, scope: SCOPE.PROJECT,
+    why: "A generated file's slot region is a build artifact regenerated FROM the unit map (setMemberSlot/projectUnitSlots); either diverging from the map means the file was hand-edited outside the generator, or the map was updated without re-projecting.",
+    expected: ["the slot region's text matches the member's stored slot body exactly"],
+    fix: 'Re-run the generator to project the map into the file, or update the slot via setMemberSlot and re-project, rather than hand-editing the slot region.',
+  },
+  'SLOT-002': {
+    module: MODULES.ARCHITECTURE, layers: NO_LAYERS, scope: SCOPE.PROJECT,
+    why: 'A slot body is meant to be pure hand-authored logic with no framework wiring of its own; importing a real value (not just a type) from outside its own file lets a slot quietly depend on state or side effects the generator never accounted for.',
+    expected: ['import type { ... } from \'...\' // types only'],
+    fix: 'Remove the value import, or move the dependency the slot needs into a parameter the caller passes in.',
+  },
   'EXCEPTION-EXPIRED': {
     module: MODULES.ARCHITECTURE, layers: NO_LAYERS, scope: SCOPE.PROJECT,
     why: 'Time-boxed exceptions must be renewed or removed once they expire; an expired exception no longer suppresses violations.',
