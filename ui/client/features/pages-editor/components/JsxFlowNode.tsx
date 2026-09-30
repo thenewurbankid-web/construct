@@ -19,10 +19,21 @@ import type { InteractiveNodeData } from '../hooks/useSnippetFlow';
 // Ticket F.3 (#122) follow-up — stops above the toolbar row (`bottom`
 // instead of a full `height: 100%`) so its own buttons stay clickable
 // instead of the wildcard intercepting pointer events meant for them.
+//
+// LIN-162 follow-up — click-to-pick-up/click-to-drop rewiring (an alternative
+// to F.2's drag-and-hold). `isDropTarget`/`onDropTargetClick` are canvas-only
+// UI state (which wire, if any, is currently "carried"), owned by
+// SnippetFlowCanvas rather than the hook — JsxFlowNode stays a dumb renderer
+// either way, so this type only widens the *shape* it accepts.
+export type DropTargetData = { isDropTarget?: boolean; onDropTargetClick?: () => void };
+
 export const WILDCARD_RECEIVED_HANDLE = 'in:*';
 const TOOLBAR_RESERVED_HEIGHT = 28;
 
 export function JsxFlowNode({ data, isConnectable }: NodeProps<JsxNodeType>) {
+  const dropZoneProps = data.onDropTargetClick
+    ? { onClick: data.onDropTargetClick, className: `jsx-flow-handle-wildcard${data.isDropTarget ? ' jsx-flow-handle-dropzone-active' : ''}` }
+    : { className: 'jsx-flow-handle-wildcard' };
   return (
     <div className={`jsx-flow-node${data.isCustomComponent ? ' component' : ''}`} style={{ width: data.width }}>
       <Handle
@@ -30,7 +41,7 @@ export function JsxFlowNode({ data, isConnectable }: NodeProps<JsxNodeType>) {
         type="target"
         position={Position.Top}
         isConnectable={isConnectable}
-        className="jsx-flow-handle-wildcard"
+        {...dropZoneProps}
         style={{ left: 0, top: 0, right: 0, bottom: TOOLBAR_RESERVED_HEIGHT, width: 'auto', height: 'auto', transform: 'none', borderRadius: 6 }}
       />
       {data.received.map((p) => (
@@ -40,8 +51,9 @@ export function JsxFlowNode({ data, isConnectable }: NodeProps<JsxNodeType>) {
           type="target"
           position={Position.Top}
           isConnectable={isConnectable}
+          onClick={data.onDropTargetClick}
           style={{ left: p.offset, background: p.color, borderColor: p.color }}
-          className="jsx-flow-handle jsx-flow-handle-received"
+          className={`jsx-flow-handle jsx-flow-handle-received${data.isDropTarget ? ' jsx-flow-handle-dropzone-active' : ''}`}
           title={p.label}
         />
       ))}
@@ -81,4 +93,4 @@ export function JsxFlowNode({ data, isConnectable }: NodeProps<JsxNodeType>) {
   );
 }
 
-export type JsxNodeType = Node<InteractiveNodeData, 'jsxNode'>;
+export type JsxNodeType = Node<InteractiveNodeData & DropTargetData, 'jsxNode'>;

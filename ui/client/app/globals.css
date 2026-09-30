@@ -1509,6 +1509,29 @@ button:disabled {
   align-self: auto;
 }
 
+/* LIN-162 — click-to-pick-up/click-to-drop wire rewiring, alongside F.2's
+ * drag-and-hold. `.wire-carried` lifts the picked-up edge (thicker, glowing
+ * path); `.jsx-flow-handle-dropzone-active` highlights every other node's
+ * drop zone/handles while a wire is carried, and turns the cursor into an
+ * explicit "click to drop here" affordance. */
+.react-flow__edge.wire-carried .react-flow__edge-path {
+  stroke: var(--accent);
+  stroke-width: 3;
+  filter: drop-shadow(0 0 4px var(--accent));
+}
+
+.jsx-flow-handle-wildcard.jsx-flow-handle-dropzone-active {
+  opacity: 1 !important;
+  background: color-mix(in srgb, var(--accent) 18%, transparent) !important;
+  border: 1px dashed var(--accent) !important;
+  cursor: pointer;
+}
+
+.jsx-flow-handle-received.jsx-flow-handle-dropzone-active {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 40%, transparent);
+  cursor: pointer;
+}
+
 /* Ollama (Epic 6.1/#97, 6.3/#99) — status/install/model-management screen. */
 .ollama-status,
 .ollama-install,

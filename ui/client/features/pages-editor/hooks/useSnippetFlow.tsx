@@ -50,7 +50,11 @@ const PARSE_DEBOUNCE_MS = 250;
  * handed to `onSnippetChange` (wired to useSnippetEditor's `setSnippet` +
  * `requestSave`, so it lands in the existing diff-preview-before-save flow
  * rather than a second write path) — on rejection, `wireError` carries the
- * inline message and the snippet is left untouched.
+ * inline message and the snippet is left untouched. Returns whether the
+ * rewire landed, so LIN-162's click-to-pick-up/click-to-drop path can decide
+ * whether to keep the wire "carried" (an invalid drop keeps it carried
+ * rather than dropping it) — the drag path (onReconnect) ignores the
+ * return value, since dragging has nothing left to do either way.
  *
  * Ticket F.3 (#122, epic #119) follow-up: `nodes` also carry a per-node
  * toolbar (`removeNode`/`moveNode`/`addChild`, reusing the same
@@ -83,9 +87,10 @@ export function useSnippetFlow(snippet: string, onSnippetChange: (next: string) 
     const result = await rewireSnippetWire({ snippet, parentId, propName, fromChildId, toChildId });
     if (!result.ok || !result.snippet) {
       setWireError(result.error || 'That rewire is not supported.');
-      return;
+      return false;
     }
     onSnippetChange(result.snippet);
+    return true;
   }
 
   async function removeNode(nodeId: string) {

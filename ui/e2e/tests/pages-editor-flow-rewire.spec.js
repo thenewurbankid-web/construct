@@ -159,3 +159,130 @@ export default function HomePage({ title, other }: { title: string; other: strin
     expect(fs.readFileSync(pagePath, 'utf8')).toEqual(conflictPage);
   });
 });
+
+// LIN-162 — click-to-pick-up/click-to-drop, an alternative gesture to F.2's
+// drag-and-hold, using the same rewireWire path underneath.
+test.describe('Pages Editor: visual composer click-to-pick-up wire rewrite (LIN-162)', () => {
+  let tmpProjectDir;
+  let pagePath;
+
+  test.beforeAll(async ({ request }) => {
+    tmpProjectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-ui-e2e-flow-click-rewire-'));
+    await request.post(`${API_BASE}/api/settings`, { data: { projectDir: tmpProjectDir } });
+    await request.post(`${API_BASE}/api/init`);
+    await request.post(`${API_BASE}/api/create`, { data: { kind: 'single', name: 'Home', feature: 'catalog', layer: 'page' } });
+    pagePath = path.join(tmpProjectDir, 'features/catalog/pages/HomePage.tsx');
+    fs.writeFileSync(pagePath, FIXTURE_PAGE);
+    fs.mkdirSync(path.join(tmpProjectDir, 'features/catalog/components'), { recursive: true });
+    fs.writeFileSync(path.join(tmpProjectDir, 'features/catalog/components/Card.tsx'), FIXTURE_CARD);
+    fs.writeFileSync(path.join(tmpProjectDir, 'features/catalog/components/Aside.tsx'), FIXTURE_ASIDE);
+  });
+
+  test.afterAll(async ({ request }) => {
+    await request.post(`${API_BASE}/api/settings`, { data: { projectDir: path.resolve(__dirname, '../../..') } });
+    fs.rmSync(tmpProjectDir, { recursive: true, force: true });
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/pages');
+    await page.locator('.pages-browser select').selectOption('catalog');
+    await page.getByRole('button', { name: 'HomePage.tsx' }).click();
+    await expect(page.locator('.tree-panel')).toBeVisible();
+    await page.locator('.tree-panel').getByText('<main>', { exact: true }).click();
+    await page.getByRole('button', { name: 'Visual', exact: true }).click();
+    await expect(page.locator('.jsx-flow-node')).toHaveCount(3, { timeout: 10_000 });
+    await page.locator('.snippet-flow-canvas').scrollIntoViewIfNeeded();
+  });
+
+  test('pages-editor-flow-click-rewire.png — clicking a wire then a sibling commits through rewireWire, exactly as dragging does', async ({ page }) => {
+    const edgeInteraction = page.locator('[data-id="e:n0:n1:title"] .react-flow__edge-interaction');
+    const target = page.locator('[data-nodeid="n2"].jsx-flow-handle-wildcard');
+
+    await edgeInteraction.click({ force: true });
+    await expect(page.locator('.react-flow__edge.wire-carried')).toHaveCount(1);
+    await expect(target).toHaveClass(/jsx-flow-handle-dropzone-active/);
+
+    await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'pages-editor-flow-click-rewire.png') });
+
+    const [rewireResponse] = await Promise.all([page.waitForResponse((res) => res.url().includes('/api/pages/snippet-rewire')), target.click({ force: true })]);
+    const rewireBody = await rewireResponse.json();
+    expect(rewireBody.ok).toBe(true);
+    expect(rewireBody.snippet).toContain('<Aside title={title}');
+    expect(rewireBody.snippet).not.toContain('Card title');
+
+    // Lands in the existing diff-preview flow, same as the drag path.
+    const diffPreview = page.locator('.snippet-diff-preview');
+    await expect(diffPreview).toBeVisible();
+    await expect(diffPreview.locator('.diff-added')).toContainText('Aside title={title}');
+    expect(fs.readFileSync(pagePath, 'utf8')).not.toContain('<Aside title={title}');
+
+    // The wire is no longer carried once the drop committed.
+    await expect(page.locator('.react-flow__edge.wire-carried')).toHaveCount(0);
+  });
+
+  test('pressing Escape after picking up a wire cancels cleanly and writes nothing', async ({ page }) => {
+    const edgeInteraction = page.locator('[data-id="e:n0:n1:title"] .react-flow__edge-interaction');
+
+    await edgeInteraction.click({ force: true });
+    await expect(page.locator('.react-flow__edge.wire-carried')).toHaveCount(1);
+
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.react-flow__edge.wire-carried')).toHaveCount(0);
+    await expect(page.locator('.snippet-diff-preview')).toBeHidden();
+    expect(fs.readFileSync(pagePath, 'utf8')).toEqual(FIXTURE_PAGE);
+  });
+
+  test('clicking a wire, then clicking the same wire again, cancels without writing', async ({ page }) => {
+    const edgeInteraction = page.locator('[data-id="e:n0:n1:title"] .react-flow__edge-interaction');
+
+    await edgeInteraction.click({ force: true });
+    await expect(page.locator('.react-flow__edge.wire-carried')).toHaveCount(1);
+
+    await edgeInteraction.click({ force: true });
+    await expect(page.locator('.react-flow__edge.wire-carried')).toHaveCount(0);
+    await expect(page.locator('.snippet-diff-preview')).toBeHidden();
+    expect(fs.readFileSync(pagePath, 'utf8')).toEqual(FIXTURE_PAGE);
+  });
+
+  test('an invalid click-drop (target already has the prop) shows the existing inline error and keeps the wire carried', async ({ page }) => {
+    const conflictPage = `import React from 'react';
+import { Card } from '../components/Card';
+import { Aside } from '../components/Aside2';
+
+export default function HomePage({ title, other }: { title: string; other: string }) {
+  return (
+    <main>
+      <Card title={title} />
+      <Aside title={other} />
+    </main>
+  );
+}
+`;
+    fs.writeFileSync(pagePath, conflictPage);
+    fs.writeFileSync(path.join(tmpProjectDir, 'features/catalog/components/Aside2.tsx'), `export function Aside({ title }: { title: string }) {\n  return <aside>{title}</aside>;\n}\n`);
+
+    await page.goto('/pages');
+    await page.locator('.pages-browser select').selectOption('catalog');
+    await page.getByRole('button', { name: 'HomePage.tsx' }).click();
+    await expect(page.locator('.tree-panel')).toBeVisible();
+    await page.locator('.tree-panel').getByText('<main>', { exact: true }).click();
+    await page.getByRole('button', { name: 'Visual', exact: true }).click();
+    await expect(page.locator('.jsx-flow-node')).toHaveCount(3, { timeout: 10_000 });
+    await page.locator('.snippet-flow-canvas').scrollIntoViewIfNeeded();
+
+    const edgeInteraction = page.locator('[data-id="e:n0:n1:title"] .react-flow__edge-interaction');
+    const target = page.locator('[data-nodeid="n2"].jsx-flow-handle-wildcard');
+
+    await edgeInteraction.click({ force: true });
+    await expect(page.locator('.react-flow__edge.wire-carried')).toHaveCount(1);
+
+    const [rewireResponse] = await Promise.all([page.waitForResponse((res) => res.url().includes('/api/pages/snippet-rewire')), target.click({ force: true })]);
+    expect((await rewireResponse.json()).ok).toBe(false);
+
+    await expect(page.locator('.snippet-flow-wire-error')).toContainText('already has its own "title" prop');
+    await expect(page.locator('.snippet-diff-preview')).toBeHidden();
+    // The wire stays carried on an invalid drop, rather than dropping silently.
+    await expect(page.locator('.react-flow__edge.wire-carried')).toHaveCount(1);
+    expect(fs.readFileSync(pagePath, 'utf8')).toEqual(conflictPage);
+  });
+});
