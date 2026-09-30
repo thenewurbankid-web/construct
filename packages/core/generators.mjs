@@ -107,6 +107,29 @@ export const layerFileBaseName=(layer,cap)=>{
  return layer==='hook'?`use${cap}`:`${cap}${suffix}`;
 };
 
+// LIN-148 -- the inverse of layerFileBaseName: given a layer and a file's own basename
+// (no extension), the capitalized unit name layerFileBaseName would have produced it from, or
+// null when the basename doesn't match this layer's naming convention at all (e.g. a
+// `use`-less hook file, or a viewmodel file missing its `ViewModel` suffix). Deliberately
+// per-file only -- it never looks at, or derives from, any OTHER layer's name. NAME-001
+// (architecture-enforcer.mjs) is built on exactly this round trip (basename -> cap ->
+// layerFileBaseName(layer,cap) === basename) rather than on a cross-layer chain, because LIN-155
+// found the cross-layer assumption wrong beyond page/viewmodel/controller: a controller composes
+// N services/adapters (and a service is shared by N controllers), so there is no single
+// upstream name an adapter's or service's own filename could be checked against.
+export const capFromLayerFileBaseName=(layer,basename)=>{
+ if(layer==='hook'){
+  if(!basename.startsWith('use'))return null;
+  const cap=basename.slice(3);
+  return cap&&layerFileBaseName(layer,cap)===basename?cap:null;
+ }
+ const suffix=layer==='page'?'Page':layer==='controller'?'Controller':layer==='viewmodel'?'ViewModel':layer==='adapter'?'Adapter':'';
+ if(!suffix)return basename&&layerFileBaseName(layer,basename)===basename?basename:null;
+ if(!basename.endsWith(suffix)||basename===suffix)return null;
+ const cap=basename.slice(0,-suffix.length);
+ return layerFileBaseName(layer,cap)===basename?cap:null;
+};
+
 // Epic 1.3 — per-layer template override hook. A project may supply a custom
 // template for a layer either via architecture.yml's `templates: { <layer>: <path> }`
 // or by placing a file named `<layer>.*` under a `templates/` dir at the project

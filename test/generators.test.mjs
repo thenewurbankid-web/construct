@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { createFeature, ensureFeatureExists, generateLayer, generateVertical, missingLayerPrerequisites, selfCheck } from '../packages/core/generators.mjs';
+import { createFeature, ensureFeatureExists, generateLayer, generateVertical, missingLayerPrerequisites, selfCheck, layerFileBaseName, capFromLayerFileBaseName } from '../packages/core/generators.mjs';
 import { validateArchitecture } from '../packages/core/architecture-enforcer.mjs';
 import { validateSeparationOfConcerns } from '../packages/core/soc-enforcer.mjs';
 import { ConstructError, EXIT_CODES } from '../packages/core/diagnostics.mjs';
@@ -492,4 +492,25 @@ test('LIN-146 generateVertical builds adapter before viewmodel regardless of the
   const files = generateVertical(dir, 'Products', 'checkout', ['viewmodel', 'adapter']);
   assert.deepEqual(files.map((f) => path.basename(f)), ['ProductsAdapter.tsx', 'ProductsViewModel.tsx']);
   assert.deepEqual(validateArchitecture(dir).violations.filter((v) => v.severity === 'error'), []);
+});
+
+// ---- LIN-148: capFromLayerFileBaseName is layerFileBaseName's total, round-tripping inverse --
+
+test('LIN-148 capFromLayerFileBaseName round-trips layerFileBaseName for every layer', () => {
+  const cases = ['Products', 'CheckoutFlow', 'A'];
+  for (const layer of ['page', 'controller', 'viewmodel', 'adapter', 'hook', 'domain', 'service', 'workflow', 'component', 'expression']) {
+    for (const cap of cases) {
+      const basename = layerFileBaseName(layer, cap);
+      assert.equal(capFromLayerFileBaseName(layer, basename), cap, `${layer}/${cap} -> ${basename} -> should recover ${cap}`);
+      // And the full round trip lands back on the same basename.
+      assert.equal(layerFileBaseName(layer, capFromLayerFileBaseName(layer, basename)), basename);
+    }
+  }
+});
+
+test('LIN-148 capFromLayerFileBaseName rejects a basename that does not match the layer convention', () => {
+  assert.equal(capFromLayerFileBaseName('viewmodel', 'Products'), null); // missing ViewModel suffix
+  assert.equal(capFromLayerFileBaseName('adapter', 'ProductsController'), null); // wrong suffix
+  assert.equal(capFromLayerFileBaseName('hook', 'ProductsHook'), null); // missing `use` prefix
+  assert.equal(capFromLayerFileBaseName('viewmodel', 'ViewModel'), null); // suffix with no name
 });

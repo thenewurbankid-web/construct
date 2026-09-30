@@ -289,6 +289,12 @@ export const RULE_METADATA = {
     expected: [],
     fix: 'fix the type error or the missing import',
   },
+  'NAME-001': {
+    module: MODULES.ARCHITECTURE, layers: NO_LAYERS, scope: SCOPE.PROJECT,
+    why: 'layerFileBaseName/layerTargetFile define a unit\'s file path and exported symbol as a pure function of its own (feature, name, layer); drifting from that makes the chain unparseable by a tool.',
+    expected: [],
+    fix: 'Rename the file (and its exported symbol) to what layerFileBaseName derives for this unit\'s own name.',
+  },
   'IMPORT-001': {
     module: MODULES.ARCHITECTURE, layers: NO_LAYERS, scope: SCOPE.PROJECT,
     why: 'A relative import that resolves to nothing points at a typo, or at a file from a later step in the build order that has not been generated yet — this is how Construct enforces generation order.',

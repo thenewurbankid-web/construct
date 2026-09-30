@@ -30,6 +30,7 @@ import { isNonLayerPath } from './nonLayer.mjs';
 import { buildFrozenIndex, detectFrozenViolations, FROZEN_RULE_BY_LAYER } from './frozen-detector.mjs';
 import { runTypeCheckDetailed } from './type-check.mjs';
 import { checkClientBoundary } from './client-boundary.mjs';
+import { capFromLayerFileBaseName, layerFileBaseName } from './generators.mjs';
 
 export { extractImports };
 
@@ -1087,6 +1088,46 @@ function checkGenericEdges(config, graph, root, absFile, r, layer, out) {
   }
 }
 
+// LIN-148 -- NAME-001: a classified file's own basename, and its primary exported binding,
+// must be exactly what layerFileBaseName would derive from *its own* name -- checked per file,
+// via capFromLayerFileBaseName's round trip (basename -> cap -> layerFileBaseName(layer,cap)).
+// Deliberately never looks at any other file: LIN-155 found the cross-layer version of this (a
+// controller's adapter must be named after the controller) wrong beyond page/viewmodel/
+// controller, since a controller composes N services/adapters and a service is shared by N
+// controllers -- there is no single upstream name to check a shared unit's filename against.
+function checkNaming(config, source, layer, r, out) {
+  const basename = path.basename(r).replace(/\.(tsx|ts|jsx|js)$/, '');
+  const cap = capFromLayerFileBaseName(layer, basename);
+  if (!cap) {
+    pushViolation(config, out, {
+      rule: 'NAME-001',
+      file: r,
+      line: 1,
+      message: `File "${basename}" does not match the "${layer}" layer's naming convention.`,
+      why: `layerFileBaseName derives a "${layer}" file's name from its own unit name (e.g. "${layerFileBaseName(layer, 'Name')}"); "${basename}" does not round-trip through that derivation.`,
+      expected: [`a name of the form ${layerFileBaseName(layer, 'Name').replace('Name', '<Cap>')}`],
+    });
+    return;
+  }
+  const expectedSymbol = layerFileBaseName(layer, cap);
+  let exports;
+  try {
+    exports = extractExports(source);
+  } catch {
+    return; // PARSE-ERROR already reported for this file by the caller.
+  }
+  if (!exports.some((e) => e.name === expectedSymbol)) {
+    pushViolation(config, out, {
+      rule: 'NAME-001',
+      file: r,
+      line: 1,
+      message: `File "${basename}" does not export a binding named "${expectedSymbol}".`,
+      why: `layerFileBaseName/layerTargetFile derive both the file name and its expected exported symbol from the same unit name -- a "${layer}" file named "${basename}" is expected to export "${expectedSymbol}".`,
+      expected: [expectedSymbol],
+    });
+  }
+}
+
 // Builds the per-layer `detectLayerViolations` opts from config once per run: the
 // budget overrides (#508/#503/#505) and the opt-in flags (#506/#578/#581/#594/
 // #667/#668/#669). Shared by `validateArchitecture` (whole-project/scoped-files
@@ -1196,6 +1237,9 @@ export function validateArchitecture(root, opts = {}) {
     checkDanglingImports(config, abs, source, r, out);
     if (!KNOWN_LAYERS.has(layer)) {
       checkGenericEdges(config, graph, root, abs, r, layer, out);
+    }
+    if (config.rules['NAME-001'] && config.rules['NAME-001'].severity !== 'off') {
+      checkNaming(config, source, layer, r, out);
     }
   }
 

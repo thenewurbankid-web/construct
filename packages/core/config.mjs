@@ -529,6 +529,15 @@ export const DEFAULT_RULES = {
   // no TypeScript, so it is strictly opt-in: `rules: { TYPE-001: error }` in architecture.yml, or
   // an options object `{ severity: error, tsconfig: tsconfig.app.json, timeoutMs: 120000 }`.
   'TYPE-001': { severity: 'off', name: 'Code must type-check (a real tsc --noEmit run with the project\'s own TypeScript)' },
+  // LIN-148 -- a unit's own file path and its primary exported binding must be exactly what
+  // layerTargetFile/layerFileBaseName (packages/core/generators.mjs) would derive for it: the
+  // deterministic-naming half of the new viewmodel/adapter layers, checked per file (never
+  // derived from another layer's name -- LIN-155 found that beyond page/viewmodel/controller,
+  // a controller composes N services/adapters and a service is shared by N controllers, so no
+  // single upstream name exists to check an adapter's or service's own filename against).
+  // Default 'off': every existing controller/page/hook/etc. file predates this check, so turning
+  // it on hard is a migration (count violations, report to OG, same reasoning as TYPE-001 above).
+  'NAME-001': { severity: 'off', name: 'A unit\'s file path and exported symbol must match layerTargetFile/layerFileBaseName\'s derivation for its own name' },
   'IMPORT-001': { severity: 'error', name: 'Relative imports must resolve to a file that exists' },
   'EXCEPTION-EXPIRED': { severity: 'warning', name: 'Time-boxed exceptions must be renewed or removed once they expire' },
   // #473 -- cross-references a component's declared props (react-docgen) against every real JSX

@@ -939,3 +939,75 @@ test('validateArchitecture: DOMAIN-002 is off by default and opt-in via architec
     'opting in must still catch the genuine document.querySelector(...) effect',
   );
 });
+
+// ---- LIN-148: NAME-001 (a unit's file path and exported symbol match layerFileBaseName) ------
+
+test('validateArchitecture: NAME-001 is off by default and opt-in via architecture.yml (rules: NAME-001: error)', () => {
+  const dir = tmpProject();
+  fs.mkdirSync(path.join(dir, 'features', 'checkout', 'viewmodels'), { recursive: true });
+  const file = path.join(dir, 'features', 'checkout', 'viewmodels', 'ProductsViewModel.tsx');
+  fs.writeFileSync(file, `export async function ProductsViewModel() {\n  return null;\n}\n`);
+
+  const off = validateArchitecture(dir);
+  assert.equal(off.violations.some((v) => v.rule === 'NAME-001'), false, 'NAME-001 must be silent by default');
+
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), 'rules:\n  NAME-001: error\n');
+  const on = validateArchitecture(dir);
+  assert.deepEqual(on.violations.filter((v) => v.rule === 'NAME-001'), [], 'a conforming file must stay clean once opted in');
+});
+
+test('validateArchitecture: NAME-001 catches a filename that does not round-trip through layerFileBaseName', () => {
+  const dir = tmpProject();
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), 'rules:\n  NAME-001: error\n');
+  fs.mkdirSync(path.join(dir, 'features', 'checkout', 'viewmodels'), { recursive: true });
+  // Missing the required "ViewModel" suffix.
+  const file = path.join(dir, 'features', 'checkout', 'viewmodels', 'Products.tsx');
+  fs.writeFileSync(file, `export async function Products() {\n  return null;\n}\n`);
+
+  const { violations } = validateArchitecture(dir);
+  const found = violations.find((v) => v.rule === 'NAME-001' && v.file === 'features/checkout/viewmodels/Products.tsx');
+  assert.ok(found, 'expected a NAME-001 violation for the missing ViewModel suffix');
+  assert.equal(found.severity, 'error');
+});
+
+test('validateArchitecture: NAME-001 catches a correctly-named file exporting the wrong symbol', () => {
+  const dir = tmpProject();
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), 'rules:\n  NAME-001: error\n');
+  fs.mkdirSync(path.join(dir, 'features', 'checkout', 'adapters'), { recursive: true });
+  const file = path.join(dir, 'features', 'checkout', 'adapters', 'ProductsAdapter.tsx');
+  // Filename round-trips fine, but the exported binding doesn't match "ProductsAdapter".
+  fs.writeFileSync(file, `export async function fetchProducts() {\n  return null;\n}\n`);
+
+  const { violations } = validateArchitecture(dir);
+  const found = violations.find((v) => v.rule === 'NAME-001' && v.file === 'features/checkout/adapters/ProductsAdapter.tsx');
+  assert.ok(found, 'expected a NAME-001 violation for the missing ProductsAdapter export');
+  assert.match(found.message, /does not export a binding named "ProductsAdapter"/);
+});
+
+// LIN-155 (cardinality correction): NAME-001 must never derive one layer's expected name from
+// another layer's -- a controller composes N services/adapters and a service is shared by N
+// controllers, so there is no single upstream name to check a shared unit's filename against.
+// This proves the rule only ever looks at a file's OWN name: two independently-named adapters,
+// neither matching any controller in the project, both still validate clean.
+test('validateArchitecture: NAME-001 never derives an adapter/service name from a composing controller (LIN-155 cardinality)', () => {
+  const dir = tmpProject();
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), 'rules:\n  NAME-001: error\n');
+  fs.mkdirSync(path.join(dir, 'features', 'checkout', 'controllers'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'features', 'checkout', 'adapters'), { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, 'features', 'checkout', 'controllers', 'CheckoutController.tsx'),
+    `export function CheckoutController() {\n  return null;\n}\n`,
+  );
+  // Two adapters composed by CheckoutController, each named after its own concern, not "Checkout".
+  fs.writeFileSync(
+    path.join(dir, 'features', 'checkout', 'adapters', 'PricingAdapter.tsx'),
+    `export async function PricingAdapter() {\n  return null;\n}\n`,
+  );
+  fs.writeFileSync(
+    path.join(dir, 'features', 'checkout', 'adapters', 'InventoryAdapter.tsx'),
+    `export async function InventoryAdapter() {\n  return null;\n}\n`,
+  );
+
+  const { violations } = validateArchitecture(dir);
+  assert.deepEqual(violations.filter((v) => v.rule === 'NAME-001'), []);
+});
