@@ -26,6 +26,7 @@ import { classifyProjectFile } from '../core/architecture-graph.mjs';
 import { parseJsx, parseJsxTree } from '../ast/index.mjs';
 import { rel } from '../core/fs.mjs';
 
+/** @type {(relPath:string, code:string, error:string) => {ok:false, path:string, code:string, error:string}} */
 const fail = (relPath, code, error) => ({ ok: false, path: relPath, code, error });
 
 /** Root-relative `relPath` -> real absolute path of a regular source file inside `root`, or a
@@ -64,6 +65,7 @@ function resolvePageProviderSources(pageSource, pageAbsPath, aliases) {
   } catch {
     return undefined;
   }
+  /** @type {Record<string,string>} */
   const entries = {};
   for (const { source: specifier } of providerHookImports(ast)) {
     if (entries[specifier] !== undefined) continue;
