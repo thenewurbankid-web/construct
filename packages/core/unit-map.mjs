@@ -77,6 +77,17 @@ function randomId(prefix) {
 // JSON. A generated root index (rootUnitMapIndex below) aggregates all
 // per-feature maps for a whole-repo read, but is never hand-edited or
 // treated as a source of truth.
+/**
+ * The absolute path of a feature's unit-map JSON file (one per feature -- never a single root file or
+ * one file per unit, per the module-level format/granularity note above). The file may not exist yet;
+ * loadUnitMap already handles that case, so most callers should reach for it instead of stat-ing this
+ * path themselves.
+ *
+ * @param {string} root Project root.
+ * @param {string} feature Feature name that owns the map.
+ * @param {object} [config] The project's already-loaded architecture.yml config (defaults to loading it).
+ * @returns {string} Absolute path to `<features root>/<feature>/unit-map.json`.
+ */
 export function unitMapPath(root, feature, config = loadConfig(root)) {
   return path.join(root, config.features?.root || 'features', feature, 'unit-map.json');
 }
@@ -85,6 +96,17 @@ function emptyMap() {
   return { units: {}, members: {}, edges: {} };
 }
 
+/**
+ * Read a feature's unit map from disk, or a fresh empty map (`{units:{}, members:{}, edges:{}}`) when
+ * its file doesn't exist yet -- callers never need to special-case a brand-new feature. Each top-level
+ * key is independently defaulted to `{}` on the way out, so a map file written before the LIN-155 edge
+ * set existed (no `edges` key at all) still loads cleanly instead of returning `edges: undefined`.
+ *
+ * @param {string} root Project root.
+ * @param {string} feature Feature name that owns the map.
+ * @param {object} [config] The project's already-loaded architecture.yml config (defaults to loading it).
+ * @returns {{units:object, members:object, edges:object}} The feature's unit map.
+ */
 export function loadUnitMap(root, feature, config = loadConfig(root)) {
   const file = unitMapPath(root, feature, config);
   if (!fs.existsSync(file)) return emptyMap();
@@ -92,6 +114,20 @@ export function loadUnitMap(root, feature, config = loadConfig(root)) {
   return { units: parsed.units || {}, members: parsed.members || {}, edges: parsed.edges || {} };
 }
 
+/**
+ * Write a feature's unit map back to disk as pretty-printed JSON (2-space indent, trailing newline),
+ * creating the feature's directory first if it doesn't exist. Always serializes `map` in its own
+ * current key order -- never re-sorts -- so an untouched key's lines never move and a concurrent edit
+ * to a different key in the same file merges cleanly via a plain line-based git merge (see the
+ * module-level merge-behaviour note above). Every mutating function in this module ends by calling
+ * this; there is no separate "commit" step.
+ *
+ * @param {string} root Project root.
+ * @param {string} feature Feature name that owns the map.
+ * @param {{units:object, members:object, edges:object}} map The map to persist.
+ * @param {object} [config] The project's already-loaded architecture.yml config (defaults to loading it).
+ * @returns {string} Absolute path of the file written.
+ */
 export function saveUnitMap(root, feature, map, config = loadConfig(root)) {
   const file = unitMapPath(root, feature, config);
   ensureDir(path.dirname(file));
@@ -126,6 +162,11 @@ function endpointExists(map, id) {
  * creation (wired into generators.mjs's generateLayer); the id assigned here
  * never changes and is never reused, even after the unit is tombstoned.
  *
+ * @param {string} root Project root.
+ * @param {string} feature Feature name that owns the unit.
+ * @param {string} layer Layer the unit belongs to.
+ * @param {string} name Unit name as passed to the generator (not yet cased/suffixed).
+ * @param {object} [config] The project's already-loaded architecture.yml config (defaults to loading it).
  * @returns {{id:string, record:object}} The assigned id and its stored record.
  */
 export function registerUnit(root, feature, layer, name, config = loadConfig(root)) {
@@ -154,6 +195,13 @@ export function registerUnit(root, feature, layer, name, config = loadConfig(roo
  * connector-keyword scheme, once built) -- this module only guarantees the
  * id is stable and `name` stays an overridable attribute, never derived at
  * read time from the member's dependency set.
+ *
+ * @param {string} root Project root.
+ * @param {string} feature Feature name that owns the unit.
+ * @param {string} unitId The owning unit's id; must already exist in the map (an unknown id throws).
+ * @param {string} defaultName Initial display name for the member.
+ * @param {object} [config] The project's already-loaded architecture.yml config (defaults to loading it).
+ * @returns {{id:string, record:object}} The assigned member id and its stored record.
  */
 export function registerMember(root, feature, unitId, defaultName, config = loadConfig(root)) {
   const map = loadUnitMap(root, feature, config);
@@ -174,6 +222,12 @@ export function registerMember(root, feature, unitId, defaultName, config = load
  * (from, to, kind) so re-declaring an existing wire is a no-op, not a
  * duplicate edge.
  *
+ * @param {string} root Project root.
+ * @param {string} feature Feature name that owns the map.
+ * @param {string} from The dependent id -- a unit id, or a member id for a composed function inside a unit.
+ * @param {string} to The depended-on unit's id (always a unit id, never a member id).
+ * @param {string} [kind] Edge kind; must be one of EDGE_KINDS (defaults to `'dependsOn'`).
+ * @param {object} [config] The project's already-loaded architecture.yml config (defaults to loading it).
  * @returns {{id:string, record:object}} The edge's id and stored record.
  */
 export function addDependency(root, feature, from, to, kind = 'dependsOn', config = loadConfig(root)) {
@@ -198,6 +252,10 @@ export function addDependency(root, feature, from, to, kind = 'dependsOn', confi
  * per LIN-155's shared-unit lifecycle requirement, that is reported back to
  * the caller rather than silently removed or silently kept.
  *
+ * @param {string} root Project root.
+ * @param {string} feature Feature name that owns the map.
+ * @param {string} edgeId The edge id to remove; must already exist (an unknown id throws).
+ * @param {object} [config] The project's already-loaded architecture.yml config (defaults to loading it).
  * @returns {{orphaned:(string|null)}} The now-orphaned unit id, or null.
  */
 export function removeDependency(root, feature, edgeId, config = loadConfig(root)) {
@@ -212,6 +270,12 @@ export function removeDependency(root, feature, edgeId, config = loadConfig(root
 
 /**
  * Forward lookup: every edge declared from a given unit or member id.
+ *
+ * @param {string} root Project root.
+ * @param {string} feature Feature name that owns the map.
+ * @param {string} from A unit id or member id to look up outgoing edges for.
+ * @param {object} [config] The project's already-loaded architecture.yml config (defaults to loading it).
+ * @returns {{id:string, from:string, to:string, kind:string}[]} Every edge declared from `from`, each merged with its own id.
  */
 export function dependenciesOf(root, feature, from, config = loadConfig(root)) {
   const map = loadUnitMap(root, feature, config);
@@ -222,6 +286,12 @@ export function dependenciesOf(root, feature, from, config = loadConfig(root)) {
  * Reverse lookup: every edge that depends on a given unit -- "who else uses
  * this service?" from the issue's addressability property, answered without
  * a grep.
+ *
+ * @param {string} root Project root.
+ * @param {string} feature Feature name that owns the map.
+ * @param {string} unitId The unit id to look up incoming edges for.
+ * @param {object} [config] The project's already-loaded architecture.yml config (defaults to loading it).
+ * @returns {{id:string, from:string, to:string, kind:string}[]} Every edge whose `to` is `unitId`, each merged with its own id.
  */
 export function dependentsOf(root, feature, unitId, config = loadConfig(root)) {
   const map = loadUnitMap(root, feature, config);
@@ -236,6 +306,10 @@ export function dependentsOf(root, feature, unitId, config = loadConfig(root)) {
  * issue's item 3/6 requirement -- adding a fourth service changes this
  * array's length, never an existing entry's key.
  *
+ * @param {string} root Project root.
+ * @param {string} feature Feature name that owns the map.
+ * @param {string} memberId The composed member id whose dependency shape to build; must already exist (an unknown id throws).
+ * @param {object} [config] The project's already-loaded architecture.yml config (defaults to loading it).
  * @returns {{key:string, unitId:string, layer:string, name:string, path:string}[]}
  */
 export function composedDependencyShape(root, feature, memberId, config = loadConfig(root)) {
@@ -259,6 +333,14 @@ export function composedDependencyShape(root, feature, memberId, config = loadCo
  * field -- LIN-153 owns that regeneration step, this module only owns
  * storing and reading the body so regeneration can never half-apply (if the
  * logic isn't in the generated file, regenerating it can't destroy it).
+ *
+ * @param {string} root Project root.
+ * @param {string} feature Feature name that owns the map.
+ * @param {string} memberId The member id whose slot to set; must already exist (an unknown id throws).
+ * @param {string} body The slot's source text -- the business logic itself.
+ * @param {string} [language] Language tag stored alongside the body (defaults to `'ts'`).
+ * @param {object} [config] The project's already-loaded architecture.yml config (defaults to loading it).
+ * @returns {{body:string, language:string, updatedAt:string}} The stored slot record, including a fresh `updatedAt` ISO timestamp.
  */
 export function setMemberSlot(root, feature, memberId, body, language = 'ts', config = loadConfig(root)) {
   const map = loadUnitMap(root, feature, config);
@@ -270,6 +352,12 @@ export function setMemberSlot(root, feature, memberId, body, language = 'ts', co
 
 /**
  * Read a member's slot body, or null if nothing has been written yet.
+ *
+ * @param {string} root Project root.
+ * @param {string} feature Feature name that owns the map.
+ * @param {string} memberId The member id whose slot to read; must already exist (an unknown id throws).
+ * @param {object} [config] The project's already-loaded architecture.yml config (defaults to loading it).
+ * @returns {{body:string, language:string, updatedAt:string}|null} The stored slot, or `null` if setMemberSlot was never called for this member.
  */
 export function getMemberSlot(root, feature, memberId, config = loadConfig(root)) {
   const map = loadUnitMap(root, feature, config);
@@ -290,6 +378,10 @@ export function getMemberSlot(root, feature, memberId, config = loadConfig(root)
  * unit left with zero remaining live edges is reported back as orphaned
  * rather than silently removed or silently kept.
  *
+ * @param {string} root Project root.
+ * @param {string} feature Feature name that owns the map.
+ * @param {string} id The unit id to tombstone; must already exist (an unknown id throws).
+ * @param {object} [config] The project's already-loaded architecture.yml config (defaults to loading it).
  * @returns {{orphaned:string[]}} Dependency unit ids left with no remaining dependent.
  */
 export function tombstoneUnit(root, feature, id, config = loadConfig(root)) {
@@ -314,6 +406,19 @@ export function tombstoneUnit(root, feature, id, config = loadConfig(root)) {
   return { orphaned };
 }
 
+/**
+ * Tombstone a single member without touching its owning unit or any other member of that unit -- the
+ * member-level counterpart to tombstoneUnit, for deleting one composed function while the unit it lives
+ * on stays live. Unlike tombstoneUnit, this does NOT cascade to the member's own dependency edges: an
+ * edge whose `from` is this member is left in place and becomes dangling, surfaced later by
+ * validateUnitMap's `danglingEdges` check. A caller that also needs those edges gone should remove them
+ * itself (removeDependency) before or after calling this.
+ *
+ * @param {string} root Project root.
+ * @param {string} feature Feature name that owns the map.
+ * @param {string} id The member id to tombstone; must already exist (an unknown id throws).
+ * @param {object} [config] The project's already-loaded architecture.yml config (defaults to loading it).
+ */
 export function tombstoneMember(root, feature, id, config = loadConfig(root)) {
   const map = loadUnitMap(root, feature, config);
   if (!map.members[id]) throw new Error(`tombstoneMember: unknown member id "${id}" in feature "${feature}"`);
@@ -325,6 +430,13 @@ export function tombstoneMember(root, feature, id, config = loadConfig(root)) {
  * Resolve a unit's display name: the map first (so a later rename is a map
  * edit, never a physical rename), falling back to the derived default from
  * LIN-146's naming table only when the unit has no map entry yet.
+ *
+ * @param {string} root Project root.
+ * @param {string} feature Feature name that owns the unit.
+ * @param {string} layer Layer the unit belongs to.
+ * @param {string} name Unit name as passed to the generator (not yet cased/suffixed).
+ * @param {object} [config] The project's already-loaded architecture.yml config (defaults to loading it).
+ * @returns {string} The live map entry's `name` for this feature/layer/unit, or the derived default filename base when there is no live entry yet.
  */
 export function resolveUnitName(root, feature, layer, name, config = loadConfig(root)) {
   const map = loadUnitMap(root, feature, config);
@@ -337,6 +449,20 @@ export function resolveUnitName(root, feature, layer, name, config = loadConfig(
 // test/unit-map.test.mjs -- proves layerFileBaseName/layerTargetFile/
 // layerFromGeneratedFile together form one total, invertible naming
 // function per LIN-154's "no second naming path" instruction.
+/**
+ * The inverse of layerTargetFile: given an absolute generated file path, recover the `{layer, unit}` it
+ * was generated for. `layer` comes from the containing folder name (layerFromGeneratedFile); `unit`
+ * strips the layer's PascalCase suffix (`Page`, `Controller`, `ViewModel`, `Adapter` -- domain, service,
+ * workflow, component and expression have none) and, for a hook, its `use` prefix, from the file's
+ * basename. `root` and `config` are accepted only for call-site symmetry with the rest of this module
+ * (every other exported function here takes `root`/`config` first); this function is pure over
+ * `absFile` alone and reads neither of them.
+ *
+ * @param {string} root Project root. Unused by this function.
+ * @param {string} absFile Absolute path of a generated layer file.
+ * @param {object} [config] The project's already-loaded architecture.yml config (defaults to loading it). Unused by this function.
+ * @returns {{layer:string, unit:string}} The layer and unit name the file was generated for.
+ */
 export function unitFromPath(root, absFile, config = loadConfig(root)) {
   const layer = layerFromGeneratedFile(absFile);
   const base = path.basename(absFile).replace(/\.(tsx|ts|jsx|js)$/, '');
@@ -358,6 +484,9 @@ export function unitFromPath(root, absFile, config = loadConfig(root)) {
  * own cascade (e.g. hand-edited map JSON), and is reported rather than
  * silently followed by the generator.
  *
+ * @param {string} root Project root.
+ * @param {string} feature Feature name to validate.
+ * @param {object} [config] The project's already-loaded architecture.yml config (defaults to loading it).
  * @returns {{missingOnDisk:object[], missingFromMap:object[], danglingEdges:object[]}}
  */
 export function validateUnitMap(root, feature, config = loadConfig(root)) {
@@ -393,6 +522,18 @@ export function validateUnitMap(root, feature, config = loadConfig(root)) {
 // Generated aggregation across every feature's map, for the visual tool to
 // read in one shot -- NEVER hand-edited and never a source of truth; the
 // per-feature files under features/<name>/unit-map.json are authoritative.
+/**
+ * Aggregate every feature's unit map into a single in-memory index (`{units, members, edges}`, each
+ * merged by id across all features) for a whole-repo read in one shot, e.g. the visual tool. Purely
+ * generated from the per-feature files each time it's called -- never itself hand-edited or treated as
+ * a source of truth (writeRootUnitMapIndex persists this to disk as a cache, not a second copy of the
+ * data). Returns an empty index when the features root doesn't exist yet, and silently skips any
+ * non-directory entry under it.
+ *
+ * @param {string} root Project root.
+ * @param {object} [config] The project's already-loaded architecture.yml config (defaults to loading it).
+ * @returns {{units:object, members:object, edges:object}} The combined index across every feature's map.
+ */
 export function rootUnitMapIndex(root, config = loadConfig(root)) {
   const featuresRoot = path.join(root, config.features?.root || 'features');
   const index = { units: {}, members: {}, edges: {} };
@@ -416,6 +557,12 @@ export function rootUnitMapIndex(root, config = loadConfig(root)) {
  * entry the moment it's created. Kept as a thin wrapper here (rather than
  * folded into generators.mjs) to avoid a circular import: this module reads
  * generators.mjs, generators.mjs does not need to know the map exists.
+ *
+ * @param {string} root Project root.
+ * @param {string} layer Layer name to generate (see generateLayer/LAYER_ORDER for the supported values).
+ * @param {string} name Unit name (turned into a valid identifier).
+ * @param {string} feature Feature that owns the file.
+ * @returns {{file:string, id:string}} Absolute path of the generated file and the id registered for it.
  */
 export function generateLayerWithUnit(root, layer, name, feature) {
   const file = generateLayer(root, layer, name, feature);
@@ -423,6 +570,16 @@ export function generateLayerWithUnit(root, layer, name, feature) {
   return { file, id };
 }
 
+/**
+ * Persist rootUnitMapIndex's aggregation to `.construct/unit-map-index.json` as pretty-printed JSON, so
+ * a consumer that wants the whole-repo index off disk (e.g. the cockpit UI) can read a file instead of
+ * recomputing it in-process. A generated cache only -- regenerate it whenever the underlying per-feature
+ * maps change; nothing treats this file as authoritative.
+ *
+ * @param {string} root Project root.
+ * @param {object} [config] The project's already-loaded architecture.yml config (defaults to loading it).
+ * @returns {string} Absolute path of the index file written.
+ */
 export function writeRootUnitMapIndex(root, config = loadConfig(root)) {
   const file = path.join(root, '.construct', 'unit-map-index.json');
   ensureDir(path.dirname(file));
