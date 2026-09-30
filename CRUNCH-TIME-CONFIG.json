@@ -1,0 +1,6 @@
+{
+  "_meta": {
+    "description": "Key-value store of arbitrary configs for the crunch_time branch. Each top-level key is a config name; its value is free-form JSON, shaped however that config needs. Added to as needed, not pre-planned.",
+    "createdAt": "2026-09-30T22:59:00Z"
+  }
+}
