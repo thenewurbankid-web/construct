@@ -6,6 +6,9 @@ export type * from './types';
 /** The Cockpit frame (top bar, Browser | stage | Tools, drawer, status bar). Mount once in the root layout. */
 export * from './controllers/ShellController';
 
+/** Ambient animated backdrop layer. Mount once in the root layout, before the shell. */
+export * from './components/AmbientBackdrop';
+
 /** Pre-paint theme bootstrap for the document head. */
 export * from './domain/ThemeInit';
 

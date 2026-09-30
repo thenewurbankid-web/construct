@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { AuthGateController, AuthSessionProvider } from '@/features/auth';
 import { ReviewOverlayController } from '@/features/design-review';
-import { ShellController, THEME_INIT_SCRIPT } from '@/features/shell';
+import { AmbientBackdrop, ShellController, THEME_INIT_SCRIPT } from '@/features/shell';
 import './tokens.css';
 import './screens.css';
 import './shell.css';
@@ -11,6 +11,7 @@ import './processes.css';
 import './globals.css';
 import './navigation.css';
 import './flow-browser.css';
+import './backdrop.css';
 // After globals.css: the login lockup rules here refine `.login-brand`, which globals.css defines.
 import './brand.css';
 
@@ -27,6 +28,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body className="app">
+        {/* Ambient animated backdrop, beneath every surface. Honours prefers-reduced-motion and
+            `<html data-fx="off">`; see the component for the layering and cost decisions. */}
+        <AmbientBackdrop />
         {/* #278: the session is resolved above the shell, so a logged-out
             browser gets a login screen instead of a Cockpit frame whose
             every request would 401. The real enforcement is server-side

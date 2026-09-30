@@ -1,0 +1,31 @@
+/* Ambient backdrop (features/shell/components/AmbientBackdrop.tsx).
+ *
+ * One fixed full-viewport layer under every surface. pointer-events: none is the load-bearing line:
+ * the canvas covers the whole viewport, so without it nothing in the Cockpit would be clickable.
+ *
+ * It sits at --z-backdrop (0), below --z-raised, so any positioned surface already wins. The body
+ * keeps painting its own static gradient underneath -- this only adds motion on top of it, and the
+ * canvas is transparent where the shader's alpha is 0.
+ *
+ * `<html data-fx="off">` removes it: the equivalent of the reference's `body.nofx` escape hatch, and
+ * the hook a Settings toggle would use. */
+.ambient-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-backdrop);
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  display: block;
+}
+
+:root[data-fx='off'] .ambient-backdrop {
+  display: none;
+}
+
+/* Belt and braces: if the canvas is ever reachable by a screen reader or print, it is decoration. */
+@media print {
+  .ambient-backdrop {
+    display: none;
+  }
+}

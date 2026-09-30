@@ -16,6 +16,8 @@
 /* Stacking scale (#298, docs/design/tokens.md section 4): theme-independent.
  * A surface picks a layer instead of a number; a modal always beats a popover. */
 :root {
+  /* 0, not -1: a negative layer would sit behind the body's own background and never be seen. */
+  --z-backdrop: 0;
   --z-raised: 5;
   --z-drawer: 20;
   --z-topbar: 30;
@@ -62,6 +64,8 @@
   --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
   --bg-glow-1: rgba(90, 110, 150, 0.16);
   --bg-glow-2: rgba(60, 70, 90, 0.14);
+  /* Ambient backdrop motion, multiplied onto the glow alphas above (dark: the glows carry the look, so full amplitude). 0 disables it. */
+  --bg-motion-amp: 1;
   --panel-glass: rgba(210, 215, 225, 0.06);
   --panel-glass-strong: rgba(210, 215, 225, 0.1);
   --panel-blur: 20px;
@@ -106,6 +110,8 @@
   --glass-shadow: 0 4px 16px rgba(20, 30, 50, 0.1);
   --bg-glow-1: rgba(31, 86, 214, 0.05);
   --bg-glow-2: rgba(31, 86, 214, 0.03);
+  /* Ambient backdrop motion, multiplied onto the glow alphas above (light: near-white surfaces show motion far more readily, so damp it). 0 disables it. */
+  --bg-motion-amp: 0.6;
   --panel-glass: rgba(255, 255, 255, 0.7);
   --panel-glass-strong: rgba(255, 255, 255, 0.9);
   --panel-blur: 12px;
