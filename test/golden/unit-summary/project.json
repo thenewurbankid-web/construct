@@ -91,6 +91,15 @@
       "expression": [
         "component",
         "types"
+      ],
+      "adapter": [
+        "domain",
+        "types"
+      ],
+      "viewmodel": [
+        "adapter",
+        "domain",
+        "types"
       ]
     },
     "rules": {
@@ -129,7 +138,7 @@
   ],
   "budget": {
     "maxTokens": 2000,
-    "estimatedTokens": 397,
+    "estimatedTokens": 415,
     "truncated": false
   }
 }
