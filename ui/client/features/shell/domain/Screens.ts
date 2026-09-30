@@ -6,6 +6,7 @@ import type { ShellScreen } from '../types.ts';
 export const SCREENS: ShellScreen[] = [
   { href: '/notes', label: 'Notes', activeOn: ['/notes'] },
   { href: '/requirement', label: 'Requirement', activeOn: ['/requirement'] },
+  { href: '/debug', label: 'Debug', activeOn: ['/debug'] },
   { href: '/spec-breakdown', label: 'Break down into functions', activeOn: ['/spec-breakdown'] },
   { href: '/wizard', label: 'Import Wizard', activeOn: ['/wizard'] },
   { href: '/pages', label: 'Pages Editor', activeOn: ['/pages'] },

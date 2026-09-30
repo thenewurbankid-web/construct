@@ -8,7 +8,7 @@
 import type { PrimaryScreen } from '../types.ts';
 
 export const PRIMARY_SCREENS: PrimaryScreen[] = [
-  { id: 'features', label: 'Features', href: '/', activeOn: ['/', '/plan', '/dashboard', '/wizard', '/notes', '/requirement', '/spec-breakdown'] },
+  { id: 'features', label: 'Features', href: '/', activeOn: ['/', '/plan', '/dashboard', '/wizard', '/notes', '/requirement', '/debug', '/spec-breakdown'] },
   { id: 'pages', label: 'Pages', href: '/pages', activeOn: ['/pages', '/builder'] },
   // #376: at 390px the five links do not fit at full length; Components is the only one that
   // needs a short form (design section 6). The full name stays the accessible name (aria-label).
