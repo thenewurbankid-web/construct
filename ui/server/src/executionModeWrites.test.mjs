@@ -9,15 +9,15 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { makeTempDir } from '../test-utils/tmpdir.mjs';
-import { runCreate, runRefactor, runImport } from '../ui/server/src/coreVerbs.mjs';
-import { handleCreate, handleRefactor, handleImport, LLM_IN_PROCESS_NOTE } from '../ui/server/src/writeVerbsApi.mjs';
-import { runCapturing } from '../ui/server/src/commandRunner.mjs';
-import { refactor } from '../packages/core/cli.mjs';
+import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
+import { runCreate, runRefactor, runImport } from './coreVerbs.mjs';
+import { handleCreate, handleRefactor, handleImport, LLM_IN_PROCESS_NOTE } from './writeVerbsApi.mjs';
+import { runCapturing } from './commandRunner.mjs';
+import { refactor } from '../../../packages/core/cli.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const FIXTURE = path.join(here, '..', 'fixtures', 'architecture-valid-react-spa');
-const CLI = path.join(here, '..', 'packages', 'cli', 'construct.mjs');
+const FIXTURE = path.join(here, '..', '..', '..', 'fixtures', 'architecture-valid-react-spa');
+const CLI = path.join(here, '..', '..', '..', 'packages', 'cli', 'construct.mjs');
 
 const copy = () => {
   const dir = makeTempDir('construct-writes-');

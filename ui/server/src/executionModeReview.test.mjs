@@ -10,14 +10,14 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { makeTempDir } from '../test-utils/tmpdir.mjs';
-import { runReview } from '../ui/server/src/coreVerbs.mjs';
-import { ExecutionError } from '../packages/engine/coreExecutor.mjs';
-import { cliReviewRunner } from '../ui/server/src/reviewCli.mjs';
-import { forkRunner } from '../ui/server/src/reviewRunner.mjs';
-import { createReviewExecutor, projectModeOf } from '../ui/server/src/reviewAnalyses.mjs';
+import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
+import { runReview } from './coreVerbs.mjs';
+import { ExecutionError } from '../../../packages/engine/coreExecutor.mjs';
+import { cliReviewRunner } from './reviewCli.mjs';
+import { forkRunner } from './reviewRunner.mjs';
+import { createReviewExecutor, projectModeOf } from './reviewAnalyses.mjs';
 
-const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const CLI = path.join(REPO, 'packages', 'cli', 'construct.mjs');
 const SHARED = path.join(REPO, 'fixtures', 'impact-shared');
 

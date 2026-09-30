@@ -5,7 +5,7 @@
 //
 //   { mode, exitCode, report, doc }
 //     report -- the verb's JSON document exactly as the CLI prints it (no trailing newline): the string the parity
-//               contract compares byte for byte (test/executionModeVerbs.test.mjs)
+//               contract compares byte for byte (executionModeVerbs.test.mjs)
 //     doc    -- JSON.parse(report)
 //
 // The same RULE as coreExecutor.mjs holds: core activities only. Nothing here may be wired to a UI-helper

@@ -8,15 +8,15 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { makeTempDir } from '../test-utils/tmpdir.mjs';
-import { runSummarize, runDoctor, summarizeHasJsonContract } from '../ui/server/src/coreVerbs.mjs';
-import { handleResearch, NO_JSON_CONTRACT_NOTE } from '../ui/server/src/researchApi.mjs';
-import { runCapturing } from '../ui/server/src/commandRunner.mjs';
-import { research, renderDoctorText } from '../packages/core/cli.mjs';
+import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
+import { runSummarize, runDoctor, summarizeHasJsonContract } from './coreVerbs.mjs';
+import { handleResearch, NO_JSON_CONTRACT_NOTE } from './researchApi.mjs';
+import { runCapturing } from './commandRunner.mjs';
+import { research, renderDoctorText } from '../../../packages/core/cli.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const FIXTURES = path.join(here, '..', 'fixtures');
-const CLI = path.join(here, '..', 'packages', 'cli', 'construct.mjs');
+const FIXTURES = path.join(here, '..', '..', '..', 'fixtures');
+const CLI = path.join(here, '..', '..', '..', 'packages', 'cli', 'construct.mjs');
 
 /** A throwaway COPY of a fixture (see executionModeParity.test.mjs: never validate a fixture in place). */
 const project = (rel, prefix = 'construct-verbs-') => {
