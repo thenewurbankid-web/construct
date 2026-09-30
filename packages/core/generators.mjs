@@ -16,9 +16,17 @@ import path from 'node:path'; import fs from 'node:fs'; import {ensureDir,write,
 // missing or unrecognized type is a usage error up front, not a silently untyped field.
 const VIEWMODEL_SCALAR_TYPES=new Set(['string','number','boolean']);
 
-/** @returns {{path:string[],type:'string'|'number'|'boolean',array:boolean}[]} The parsed fields, in the order given. @throws {ConstructError} Naming the first bad field. */
+/** @typedef {{path:string[],type:'string'|'number'|'boolean',array:boolean}} ViewModelField */
+
+/** Parses a `--fields` value (comma-separated `name:type` pairs, `[]` suffix for an array, a
+ * dotted name for a nested object) into a flat, validated list. Defaults to `id:string` when
+ * `text` is empty/undefined.
+ * @param {string|undefined} text The raw `--fields` flag value.
+ * @returns {ViewModelField[]} The parsed fields, in the order given.
+ * @throws {ConstructError} Naming the first bad field. */
 export function parseViewModelFields(text){
  const spec=text===undefined||text===null||String(text).trim()===''?'id:string':String(text);
+ /** @type {ViewModelField[]} */
  const fields=[];
  for(const part of spec.split(',').map((p)=>p.trim()).filter(Boolean)){
   const segments=part.split(':');
@@ -30,7 +38,7 @@ export function parseViewModelFields(text){
   const segs=namePath.split('.');
   if(!namePath||!segs.every((seg)=>/^[a-z][A-Za-z0-9]*$/.test(seg)))throw new ConstructError(`Field name "${namePath}" must be camelCase letters and digits, starting with a lowercase letter (a dot nests an object, e.g. address.city).`,{exitCode:EXIT_CODES.USAGE_ERROR});
   if(fields.some((f)=>f.path.join('.')===namePath))throw new ConstructError(`Field "${namePath}" is listed twice.`,{exitCode:EXIT_CODES.USAGE_ERROR});
-  fields.push({path:segs,type,array});
+  fields.push({path:segs,type:/** @type {'string'|'number'|'boolean'} */(type),array});
  }
  return fields;
 }
@@ -53,6 +61,11 @@ function viewModelInterfaceBody(node,indent){
 }
 
 /** The TypeScript interface for a page's inferred view-model shape (LIN-149): never `unknown`; a dotted field group becomes a nested object type. */
+/** The `${name}ViewModelData` TypeScript interface source for a set of parsed fields, nested per
+ * their dotted paths.
+ * @param {string} name The unit's PascalCase name (interface is `${name}ViewModelData`).
+ * @param {ViewModelField[]} fields Parsed fields, as returned by `parseViewModelFields`.
+ * @returns {string} The interface declaration source text. */
 export function viewModelInterfaceText(name,fields){
  return `export interface ${name}ViewModelData {\n${viewModelInterfaceBody(viewModelFieldTree(fields),'  ')}\n}`;
 }
@@ -70,6 +83,10 @@ function viewModelSampleText(node,indent){
 }
 
 /** A typed sample value matching `viewModelInterfaceText`'s shape exactly, so a page with no real API yet still returns something that type-checks instead of a cast. */
+/** A typed sample literal (object-literal source text) matching `fields`' shape exactly, for the
+ * adapter template's fully-typed stub return value.
+ * @param {ViewModelField[]} fields Parsed fields, as returned by `parseViewModelFields`.
+ * @returns {string} The sample value's source text. */
 export function viewModelSampleValue(fields){
  return viewModelSampleText(viewModelFieldTree(fields),'');
 }
@@ -108,6 +125,7 @@ const templates={
  // instead exports the inferred `${n}ViewModelData` interface and returns a typed sample
  // literal matching it exactly: still fully typed, never `unknown`, until a real endpoint
  // replaces the sample.
+ /** @type {(n:string, opts?:{fields?: ViewModelField[]}) => string} */
  adapter:(n,{fields}={})=>fields
   ?`${viewModelInterfaceText(n,fields)}\n\nexport async function ${n}Adapter({ signal }: { signal: AbortSignal }): Promise<${n}ViewModelData> {\n  if (signal.aborted) throw new Error('The request was cancelled.');\n  return ${viewModelSampleValue(fields)};\n}\n`
   :`export async function ${n}Adapter({ signal }: { signal: AbortSignal }) {\n  const response = await fetch('/api/${n.toLowerCase()}', { method: 'GET', signal });\n  if (!response.ok) throw new Error('Request failed');\n  return response.json();\n}\n`,
@@ -116,10 +134,16 @@ const templates={
  // same-named Page -- LAYER_PREREQUISITES.viewmodel enforces the adapter exists first.
  // LIN-149 -- with `fields`, also imports the adapter's inferred `${n}ViewModelData` type so the
  // view model's return type is explicit rather than inferred through the call alone.
+ /** @type {(n:string, opts?:{fields?: ViewModelField[]}) => string} */
  viewmodel:(n,{fields}={})=>fields
   ?`import { ${n}Adapter } from '../adapters/${n}Adapter';\nimport type { ${n}ViewModelData } from '../adapters/${n}Adapter';\n\nexport async function ${n}ViewModel(): Promise<${n}ViewModelData> {\n  return ${n}Adapter({ signal: new AbortController().signal });\n}\n`
   :`import { ${n}Adapter } from '../adapters/${n}Adapter';\n\nexport async function ${n}ViewModel() {\n  return ${n}Adapter({ signal: new AbortController().signal });\n}\n`,
 };
+/** The features-root-relative folder name a layer's generated files live under (e.g. `'domain'`
+ * for the `domain` layer, `'hooks'` for `hook`); falls back to `'components'` for any layer not
+ * listed (component and every custom/expression-family layer).
+ * @param {string} layer A layer name.
+ * @returns {string} The folder name. */
 export const folderFor=(layer)=>layer==='hook'?'hooks':layer==='controller'?'controllers':layer==='workflow'?'workflows':layer==='domain'?'domain':layer==='service'?'services':layer==='page'?'pages':layer==='expression'?'expressions':layer==='adapter'?'adapters':layer==='viewmodel'?'viewmodels':'components';
 
 // Reverse of folderFor — which layer a generated file's own parent folder
@@ -174,24 +198,30 @@ export const LAYER_CONSTRAINTS={
  adapter:'Owns one external effect (a fetch call to the real API) and translates its wire shape into what a viewmodel expects, and nothing else. Never import React or any react-related package, and never import a viewmodel, page, component, controller, workflow, or hook. May import domain or a type.',
 };
 
-// Shared by generateLayer and refactor.mjs's move/rename: the filename base a
-// layer's naming convention expects for a given capitalized name — a hook
-// gets a `use` prefix, page/controller get a suffix, everything else is bare.
+/** Shared by generateLayer and refactor.mjs's move/rename: the filename base a
+ * layer's naming convention expects for a given capitalized name — a hook
+ * gets a `use` prefix, page/controller get a suffix, everything else is bare.
+ * @param {string} layer A layer name.
+ * @param {string} cap The unit's PascalCase name.
+ * @returns {string} The expected filename base (no extension). */
 export const layerFileBaseName=(layer,cap)=>{
  const suffix=layer==='page'?'Page':layer==='controller'?'Controller':layer==='viewmodel'?'ViewModel':layer==='adapter'?'Adapter':'';
  return layer==='hook'?`use${cap}`:`${cap}${suffix}`;
 };
 
-// LIN-148 -- the inverse of layerFileBaseName: given a layer and a file's own basename
-// (no extension), the capitalized unit name layerFileBaseName would have produced it from, or
-// null when the basename doesn't match this layer's naming convention at all (e.g. a
-// `use`-less hook file, or a viewmodel file missing its `ViewModel` suffix). Deliberately
-// per-file only -- it never looks at, or derives from, any OTHER layer's name. NAME-001
-// (architecture-enforcer.mjs) is built on exactly this round trip (basename -> cap ->
-// layerFileBaseName(layer,cap) === basename) rather than on a cross-layer chain, because LIN-155
-// found the cross-layer assumption wrong beyond page/viewmodel/controller: a controller composes
-// N services/adapters (and a service is shared by N controllers), so there is no single
-// upstream name an adapter's or service's own filename could be checked against.
+/** LIN-148 -- the inverse of layerFileBaseName: given a layer and a file's own basename
+ * (no extension), the capitalized unit name layerFileBaseName would have produced it from, or
+ * null when the basename doesn't match this layer's naming convention at all (e.g. a
+ * `use`-less hook file, or a viewmodel file missing its `ViewModel` suffix). Deliberately
+ * per-file only -- it never looks at, or derives from, any OTHER layer's name. NAME-001
+ * (architecture-enforcer.mjs) is built on exactly this round trip (basename -> cap ->
+ * layerFileBaseName(layer,cap) === basename) rather than on a cross-layer chain, because LIN-155
+ * found the cross-layer assumption wrong beyond page/viewmodel/controller: a controller composes
+ * N services/adapters (and a service is shared by N controllers), so there is no single
+ * upstream name an adapter's or service's own filename could be checked against.
+ * @param {string} layer A layer name.
+ * @param {string} basename A file's own basename, no extension.
+ * @returns {string|null} The PascalCase unit name, or `null` if `basename` doesn't match this layer's convention. */
 export const capFromLayerFileBaseName=(layer,basename)=>{
  if(layer==='hook'){
   if(!basename.startsWith('use'))return null;
@@ -260,6 +290,12 @@ function renderCustomTemplate(templatePath,name,cap){
 // normal violation report. Exported so other generators (e.g. Ticket 7.2's
 // pageTransformer.mjs, ingesting an externally-authored JSX file) reuse the
 // same re-validate-after-write step instead of a second copy of it.
+/** Re-validates a set of just-written files against the architecture rules and throws on any
+ * error-severity violation (with a note distinguishing an IMPORT-001 caused by an incomplete/
+ * out-of-order set of generated layers from a genuine template bug). No-op when there are no
+ * error-severity violations.
+ * @param {string} root Project root.
+ * @param {string[]} absFiles Absolute paths of the files just written. */
 export function selfCheck(root,absFiles){
  const files=absFiles.map(f=>rel(root,f));
  const {violations}=validateArchitecture(root,{files});
@@ -300,6 +336,12 @@ const TS_IDENTIFIER_RE=/^[A-Za-z_$][A-Za-z0-9_$]*$/;
 // `label` names what is being converted in the error message (default
 // "Feature", the original caller); the engine generators (#216) pass
 // "Workflow"/"Page"/"Controller"/"Service" so the message stays accurate.
+/** Turns a name into a valid TypeScript/PascalCase identifier, throwing a clear, `label`-scoped
+ * error (never a raw regex failure) when it can't.
+ * @param {string} name The raw name to convert.
+ * @param {string} [label] What is being converted, for the error message (e.g. `'Workflow'`).
+ * @returns {string} The PascalCase identifier.
+ * @throws {ConstructError} When the converted name isn't a valid identifier. */
 export function pascalCase(name,label='Feature'){
  const result=name.replace(/(^|[-_]+)([a-zA-Z0-9])/g,(_,__,c)=>c.toUpperCase());
  if(!TS_IDENTIFIER_RE.test(result)) throw new ConstructError(
@@ -366,6 +408,13 @@ export function ensureFeatureExists(root,feature){
 // Pure: where a layer's file for `name` in `feature` would be written, without
 // rendering or writing anything. Shared by renderLayer and #275's
 // prerequisite check (which needs the path of a layer it is NOT generating).
+/** The absolute path a layer's generated file for `name`/`feature` would be (or is) written to.
+ * @param {string} root Project root.
+ * @param {string} layer A layer name.
+ * @param {string} name Unit name (turned into a valid identifier).
+ * @param {string} feature Feature that owns the file.
+ * @param {object} [config] The project's already-loaded architecture.yml config (defaults to loading it).
+ * @returns {string} The absolute target file path. */
 export function layerTargetFile(root,layer,name,feature,config=loadConfig(root)){
  // #218: same PascalCase + validation as createFeature/the engine generators,
  // before anything is rendered or written, so "refund-request" is
@@ -396,7 +445,7 @@ function typedContractsSpecifierFor(root,fileDir){
  return '@line/construct-core/typed-contracts';
 }
 
-export function renderLayer(root,layer,name,feature,{fields}={}){
+export function renderLayer(root,layer,name,feature,/** @type {{fields?: ViewModelField[]}} */{fields}={}){
  if(!templates[layer])throw new Error(`Unknown layer: ${layer}`);
  const config=loadConfig(root);
  const cap=pascalCase(name,layer[0].toUpperCase()+layer.slice(1));
@@ -416,7 +465,7 @@ export function renderLayer(root,layer,name,feature,{fields}={}){
  * @param {string} layer Layer name (`domain`, `service`, `workflow`, `hook`, `component`, `page`, `controller`).
  * @param {string} name Unit name (turned into a valid identifier).
  * @param {string} feature Feature that owns the file.
- * @param {{fields?: {path:string[],type:string,array:boolean}[]}} [options] LIN-149: `fields` (parsed by `parseViewModelFields`) for an `adapter`/`viewmodel` layer with no API yet; ignored by every other layer.
+ * @param {{fields?: ViewModelField[]}} [options] LIN-149: `fields` (parsed by `parseViewModelFields`) for an `adapter`/`viewmodel` layer with no API yet; ignored by every other layer.
  * @returns {string} Absolute path of the file written.
  *
  * @example
@@ -500,7 +549,12 @@ function layerFileExists(root,layer,name,feature){
 }
 
 /** Which prerequisite layers are missing for `layers` — `[{layer, requires}]`,
- * empty when the set is buildable. Pure/read-only: never writes. */
+ * empty when the set is buildable. Pure/read-only: never writes.
+ * @param {string} root Project root.
+ * @param {string} name Unit name.
+ * @param {string} feature Feature that owns the unit.
+ * @param {string[]} layers The layers requested together.
+ * @returns {{layer:string, requires:string}[]} Missing prerequisites, if any. */
 export function missingLayerPrerequisites(root,name,feature,layers){
  const requested=new Set(layers);
  const missing=[];
@@ -516,7 +570,12 @@ export function missingLayerPrerequisites(root,name,feature,layers){
 
 /** Reject an unbuildable layer combination BEFORE anything is written, with a
  * message that names the real problem and what to do about it — rather than
- * letting the half-written result trip selfCheck's IMPORT-001 afterwards. */
+ * letting the half-written result trip selfCheck's IMPORT-001 afterwards.
+ * @param {string} root Project root.
+ * @param {string} name Unit name.
+ * @param {string} feature Feature that owns the unit.
+ * @param {string[]} layers The layers requested together.
+ * @throws {ConstructError} Naming the missing prerequisite(s) and what to add. */
 export function assertLayerPrerequisites(root,name,feature,layers){
  const missing=missingLayerPrerequisites(root,name,feature,layers);
  if(!missing.length)return;

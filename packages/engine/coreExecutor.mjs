@@ -108,7 +108,10 @@ export const CLI_ENV = Object.freeze([
 ]);
 /** Never forwarded, whatever list names it. */
 const SECRET_SHAPED = /(_SECRET|_TOKEN|_PASSWORD|_KEY)$/i;
-/** The environment a `cli`-mode child gets: exported so a test can assert exactly what is (not) in it. */
+/** The environment a `cli`-mode child gets: exported so a test can assert exactly what is (not) in it.
+ * @param {NodeJS.ProcessEnv} env The parent process's environment to filter.
+ * @returns {NodeJS.ProcessEnv} A filtered copy — only allow-listed keys, with color output forced off,
+ *   and anything shaped like a secret name (`_SECRET`/`_TOKEN`/`_PASSWORD`/`_KEY` suffix) always dropped. */
 export function childEnv(env) {
   const out = { FORCE_COLOR: '0', NO_COLOR: '1' };
   for (const k of [...SAFE_ENV, ...CLI_ENV]) if (env[k] !== undefined && !SECRET_SHAPED.test(k)) out[k] = env[k];
@@ -177,7 +180,7 @@ function runCli({ bin, args, cwd, env, timeoutMs, spawnImpl = spawn, signal, onS
  *
  * @param {string} root Resolved project root (the directory holding architecture.yml).
  * @param {string[]} argv The verb and its flags, WITHOUT `--dir` (appended here, last).
- * @param {{env?:NodeJS.ProcessEnv, bin?:string, timeoutMs?:number, spawnImpl?:Function, signal?:AbortSignal, onStart?:(pid:number)=>void, graceMs?:number}} [opts]
+ * @param {{env?:NodeJS.ProcessEnv, bin?:string, timeoutMs?:number, spawnImpl?:typeof spawn, signal?:AbortSignal, onStart?:(pid:number)=>void, graceMs?:number}} [opts]
  *   `signal` cancels the run (the process group gets SIGTERM, then SIGKILL after `graceMs`); `onStart` receives the child's pid.
  * @returns {Promise<{code:number|null, signal:string|null, stdout:string, stderr:string}>}
  * @throws {ExecutionError} CLI_NOT_FOUND, CLI_START_FAILED, CLI_TIMEOUT, CLI_CANCELLED, or CLI_BAD_OUTPUT (output overflow).
@@ -218,6 +221,11 @@ export function parseJsonOutput({ code, signal = null, stdout, stderr }, { what,
  * Parse `construct validate --format json` output. Only the JSON document is read, never the text form.
  * Exit 0 with status "passed" or exit 1 with status "failed" are the two success shapes (exit 1 means
  * "violations found", not "the CLI broke"); every other combination is an error.
+ *
+ * @param {{code:number|null, signal:string|null, stdout:string, stderr:string}} result The raw process result, as `runCliVerb` returns it.
+ * @returns {{status:'passed'|'failed', violations:object[]}} The parsed validation report.
+ * @throws {ExecutionError} CLI_FAILED (unexpected exit), CLI_BAD_OUTPUT (unparseable or wrong-shaped JSON,
+ *   or an exit code that disagrees with the report's own status).
  */
 export function parseValidateOutput({ code, signal, stdout, stderr }) {
   const detail = () => clip((stderr.trim() || stdout.trim()) || '(no output)');
@@ -251,7 +259,7 @@ export function resolveExecutionMode(root) {
  * Run `construct validate` for a project root in the given mode.
  *
  * @param {string} root Resolved project root (the directory holding architecture.yml).
- * @param {{mode?:'engine'|'cli', env?:NodeJS.ProcessEnv, bin?:string, timeoutMs?:number, spawnImpl?:Function}} [opts]
+ * @param {{mode?:'engine'|'cli', env?:NodeJS.ProcessEnv, bin?:string, timeoutMs?:number, spawnImpl?:typeof spawn}} [opts]
  * @returns {Promise<{mode:string, status:'passed'|'failed', ok:boolean, violations:object[], report:string}>}
  *   `report` is the JSON document exactly as `construct validate --format json` prints it (without the final
  *   newline) -- built by the same formatReport in engine mode -- so both modes can be compared byte for byte.
