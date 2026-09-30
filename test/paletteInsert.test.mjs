@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { buildPalette } from '../packages/engine/palette.mjs';
-import { buildPaletteInsertion, buildComponentUsageJsx, buildProviderUsageStatement } from '../ui/server/src/pagesEditor.mjs';
+import { buildPaletteInsertion, buildComponentUsageJsx, buildProviderUsageStatement } from '../packages/engine/pagesEditor.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 // #532 (Slice 2 of #518's design, docs/design/block-palette.md) -- clicking a Component/Provider

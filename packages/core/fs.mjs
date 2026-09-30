@@ -39,3 +39,13 @@ export function walk(dir){let out=[]; if(!fs.existsSync(dir))return out; for(con
  * rel('/work/app', '/work/app/features/plan/index.ts'); // => 'features/plan/index.ts'
  */
 export function rel(root,p){return path.relative(root,p).replaceAll(path.sep,'/')}
+
+/**
+ * True when `target` is `root` or nested under it. Both must already be real, absolute paths
+ * (callers resolve symlinks first when the containment check is security-sensitive).
+ *
+ * @param {string} root
+ * @param {string} target
+ * @returns {boolean}
+ */
+export function isInside(root,target){if(target===root)return true; const r=path.relative(root,target); return r!==''&&r!=='..'&&!r.startsWith(`..${path.sep}`)&&!path.isAbsolute(r)}

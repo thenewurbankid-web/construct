@@ -23,6 +23,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { fileURLToPath } from 'node:url';
+import { isInside } from '../../../packages/core/fs.mjs';
 
 export const MAX_PATH_LENGTH = 4096;
 
@@ -36,12 +37,9 @@ export class WorkspaceError extends Error {
   }
 }
 
-/** True when `target` is `root` or nested under it. Both must already be real, absolute paths. */
-export function isInside(root, target) {
-  if (target === root) return true;
-  const rel = path.relative(root, target);
-  return rel !== '' && rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel);
-}
+// isInside is pure path-math (no server state); it lives in packages/core/fs.mjs so
+// packages/engine/pagesEditor.mjs (#813) can use it without depending on ui/server.
+export { isInside };
 
 /** The Construct checkout this file lives in (ui/server/src -> three levels up). */
 const CHECKOUT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');

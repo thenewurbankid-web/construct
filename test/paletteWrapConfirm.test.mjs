@@ -1,12 +1,12 @@
 // #533 (Slice 3 of #518's design) -- the server-facing glue: buildWrapSuggestion (dry-run
-// suggest/preview) and applyWrapConfirm (the real write), both in ui/server/src/pagesEditor.mjs.
+// suggest/preview) and applyWrapConfirm (the real write), both in packages/engine/pagesEditor.mjs.
 // Additive to #527/#532's own paletteInsert.test.mjs -- buildPaletteInsertion is untouched.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { buildPalette } from '../packages/engine/palette.mjs';
-import { applyWrapConfirm, buildWrapSuggestion, parsePageTree } from '../ui/server/src/pagesEditor.mjs';
+import { applyWrapConfirm, buildWrapSuggestion, parsePageTree } from '../packages/engine/pagesEditor.mjs';
 import { createFeature } from '../packages/core/generators.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
