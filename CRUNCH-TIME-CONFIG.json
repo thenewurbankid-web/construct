@@ -2,5 +2,18 @@
   "_meta": {
     "description": "Key-value store of arbitrary configs for the crunch_time branch. Each top-level key is a config name; its value is free-form JSON, shaped however that config needs. Added to as needed, not pre-planned.",
     "createdAt": "2026-09-30T22:59:00Z"
+  },
+  "parallelDispatch": {
+    "description": "Dispatch policy for background worktree agents on this branch.",
+    "maxParallelWorktrees": null,
+    "maxParallelWorktreesNote": "null = unlimited. Claude creates as many isolated worktrees as a task genuinely decomposes into, without asking first.",
+    "background": true,
+    "backgroundNote": "Agents run in background mode by default (the Agent tool's standing default) and keep going independent of whether this conversation is active. Continuation of the orchestrating session itself across a full close/restart is the owner's responsibility (e.g. og-watchdog, #666, already covers this repo generally) — not something configurable from inside a conversation.",
+    "alerting": {
+      "mechanism": ["PushNotification", "NoticeBoard#224"],
+      "rule": "Event-driven only, never polling. Claude sends a PushNotification and/or posts to Notice Board #224 the moment something needs owner attention (blocked decision, security finding, or a release actually finished) — never sits and checks.",
+      "dashboardNote": "The Crunch Time artifact reflects live status for when the owner chooses to look, but is a pull channel, not itself an alert.",
+      "consideredAndRejected": "Paperclip (~/.paperclip) — no confirmed alerting API, looks like Trace's own multi-agent build pipeline, not a notification system. Revisit only if the owner confirms it has a real hook."
+    }
   }
 }
