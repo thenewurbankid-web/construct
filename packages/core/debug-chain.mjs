@@ -114,4 +114,26 @@ export function shouldReiterate(verifyResult) {
   return !(verifyResult && verifyResult.passed === true);
 }
 
+/** The fact `compileHarness` (harness.mjs) is told about after `debug.verify` ran, when it did not pass: the one condition its `harness.v1` document loops back on. */
+export const DEBUG_VERIFY_FAILED = 'debug.verify.failed';
+
+/**
+ * The declarative `harness.v1` document for the debug chain (#812): the same four steps `buildDebugChain` defines,
+ * with `debug.verify`'s `shouldReiterate` loop-back expressed as a bounded `onResult` edge instead of caller-written
+ * control flow. `debug.fix`'s `ai` exit is never compiled into a step (chooser.mjs's `compileChain` refuses that),
+ * so it has no outgoing edge here; a caller reaching it hands off to the reviewable-diff flow directly.
+ *
+ * @type {import('./harness.mjs').HarnessDoc}
+ */
+export const DEBUG_HARNESS_DOC = Object.freeze({
+  version: 1,
+  id: 'debug',
+  steps: [
+    { chooser: 'debug.reproduce', next: 'debug.isolate' },
+    { chooser: 'debug.isolate', next: 'debug.fix' },
+    { chooser: 'debug.fix', next: 'debug.verify' },
+    { chooser: 'debug.verify', onResult: [{ when: DEBUG_VERIFY_FAILED, next: 'debug.isolate', maxRepeats: 3 }] },
+  ],
+});
+
 export { EXIT_ANSWER };

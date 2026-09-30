@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://construct.dev/schemas/harness.v1.json",
+  "title": "Construct Harness v1",
+  "description": "A declarative step graph over existing Choosers (packages/core/chooser.mjs, schemas via the chain compiled from it) that packages/core/harness.mjs compiles into an ordinary plan (schemas/plan.v1.json), so a bounded, user-composable n-step loop (#524) shares the same containment, approval and validator machinery as any other plan. Decided on #524 (https://github.com/thenewurbankid-web/construct/issues/524#issuecomment-5901365512): a step is named by the Chooser id it runs; `next` is the default forward edge; `onResult` is a list of conditional edges keyed on facts observed after the step's chosen flow ran (the same vocabulary a Chooser option's `requires` already uses); a back-edge (its target occurs at or before its source in `steps`) must declare `maxRepeats` so a repeat-until-pass loop is always bounded; `approval: true` inserts a human gate (an ordinary manual.task plan step) before leaving that step. No new plan step kind, executor or guardrail.",
+  "type": "object",
+  "required": ["version", "id", "steps"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 1,
+      "description": "Harness schema version. Bump this file to v2 (harness.v2.json) on any breaking shape change rather than mutating v1 in place."
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+      "description": "A plain identifier for this harness (e.g. \"debug\")."
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "description": "The graph's nodes, in the order they are first reached by the default (`next`) walk. A back-edge may still return to an earlier node.",
+      "items": { "$ref": "#/definitions/step" }
+    }
+  },
+  "definitions": {
+    "step": {
+      "type": "object",
+      "required": ["chooser"],
+      "additionalProperties": false,
+      "properties": {
+        "chooser": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The id of an existing Chooser (defineChooser) this step runs. Also this step's own node id within the harness: unique among `steps`."
+        },
+        "next": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The default forward edge: another step's `chooser` id. Omit to end the walk here unless `onResult` redirects it."
+        },
+        "onResult": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Conditional edges, checked in order against the facts observed after this step's chosen flow ran; the first match wins over `next`.",
+          "items": { "$ref": "#/definitions/edge" }
+        },
+        "approval": {
+          "type": "boolean",
+          "description": "When true, leaving this step inserts a human approval gate (a manual.task plan step) before the next one."
+        }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "required": ["when", "next"],
+      "additionalProperties": false,
+      "properties": {
+        "when": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "description": "A fact name; this edge is taken when it is among the facts observed after the source step ran."
+        },
+        "next": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Another step's `chooser` id to continue at."
+        },
+        "maxRepeats": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "description": "Required when `next` targets a step at or before this one in `steps` (a back-edge): the most times this edge may be taken, so a repeat-until-pass loop is always bounded."
+        }
+      }
+    }
+  }
+}
