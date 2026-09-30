@@ -8,6 +8,7 @@ import { summarizeFeature, extractExports } from './parser.mjs';
 import { loadConfig } from './config.mjs';
 import { describeImplementation } from './prose.mjs';
 import { docsPathFor } from './docsPackages.mjs';
+import { LAYER_ORDER } from './generators.mjs';
 
 function featureRootOf(root) {
   return loadConfig(root).features.root;
@@ -238,8 +239,6 @@ export function describeExport(summary, name) {
   const deps = joinEnglishList(summary.imports.map(describeImport));
   return template(name, deps);
 }
-
-const LAYER_ORDER = ['domain', 'service', 'workflow', 'hook', 'component', 'page', 'controller'];
 
 /**
  * Deterministic, template-based English paragraph(s): one sentence per
