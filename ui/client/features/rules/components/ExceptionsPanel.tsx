@@ -98,7 +98,7 @@ export function ExceptionsPanel({ exceptions, rules }: { exceptions: ExceptionsA
             data-testid="exception-path-input"
             required
           />
-          <select value={draft.rule} onChange={(e) => setDraft({ ...draft, rule: e.target.value })} data-testid="exception-rule-select" required>
+          <select value={draft.rule} onChange={(e) => setDraft({ ...draft, rule: e.target.value })} data-testid="exception-rule-select" aria-label="Rule" required>
             <option value="" disabled>
               Rule...
             </option>
@@ -108,7 +108,7 @@ export function ExceptionsPanel({ exceptions, rules }: { exceptions: ExceptionsA
               </option>
             ))}
           </select>
-          <input type="date" value={draft.expires} onChange={(e) => setDraft({ ...draft, expires: e.target.value })} data-testid="exception-expires-input" />
+          <input type="date" aria-label="Expires" value={draft.expires} onChange={(e) => setDraft({ ...draft, expires: e.target.value })} data-testid="exception-expires-input" />
           <input
             type="text"
             placeholder="reason (optional)"

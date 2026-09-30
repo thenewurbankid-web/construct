@@ -20,7 +20,7 @@ function StepPicker({ catalogue, onAdd }: { catalogue: FlowCatalogueEntry[]; onA
         if (flow) onAdd(flow);
       }}
     >
-      <select data-testid="compose-picker-select" value={selected} onChange={(e) => setSelected(e.target.value)}>
+      <select data-testid="compose-picker-select" aria-label="Flow to add" value={selected} onChange={(e) => setSelected(e.target.value)}>
         {catalogue.map((flow) => (
           <option key={flow.id} value={flow.id}>
             {flow.id} -- {flow.summary}
@@ -68,6 +68,7 @@ function SavePanel({ save, disabled }: { save: SaveApi; disabled: boolean }) {
         <input
           type="text"
           placeholder="Flow name, e.g. scaffold-checkout"
+          aria-label="Flow name"
           value={state.name}
           onChange={(e) => save.setName(e.target.value)}
           data-testid="compose-save-name"

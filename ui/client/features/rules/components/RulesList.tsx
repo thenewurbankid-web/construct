@@ -20,6 +20,7 @@ function SeverityEditor({ row, edit }: { row: RuleRow; edit: RuleEditApi }) {
       <select
         className="ru-sev-picker"
         data-testid="rule-severity-picker"
+        aria-label={`Severity for ${row.id}`}
         value={row.severity}
         onChange={(e) => edit.start(row.id, e.target.value as RuleSeverity)}
       >
