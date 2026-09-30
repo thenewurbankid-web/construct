@@ -240,7 +240,11 @@ const TYPED_CONTRACTS_INDEX_PLACEHOLDER = '__TYPED_CONTRACTS_SPECIFIER__';
  *   `construct validate --format json`'s own AST positions would report) when a file has more
  *   than one; `name` overrides the derived Expression name (required when a name can't be
  *   derived, e.g. the array/condition has no nameable subject).
- * @returns {{expression: {file: string, name: string}, component: {file: string, name: string}|null, page: {file: string}, dryRun?: true}}
+ * @returns {{expression: {file: string, name: string}, component: {file: string, name: string}|null,
+ *   components: {file: string, name: string}[], page: {file: string}, dryRun?: true,
+ *   preview?: Record<string, string>}} `components` lists every hoisted native-markup Component (in
+ *   the same order `component` picks its first from); `dryRun`/`preview` (new-path -> new source) are
+ *   only present when `opts.dryRun` was set -- nothing under `preview` is ever written to disk.
  * @throws {ConstructError} Usage error (exit code 2) for a missing file, a non-page/component
  *   layer, no flagged logic to extract, an unmatched `range`, or a name that can't be derived and
  *   wasn't overridden.

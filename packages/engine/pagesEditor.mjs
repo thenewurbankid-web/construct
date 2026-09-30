@@ -33,7 +33,17 @@ import { matchGlob } from '../core/glob.mjs';
 
 const JSX_EXTENSIONS = new Set(['.jsx', '.tsx', '.js', '.ts']);
 
+/** An HTTP-facing error from one of the Pages Editor's own operations (the #56 scope guard, the
+ * #590 content-hash guard, a missing node/file, an enforcement rejection, ...): carries the
+ * response `status` to send, an optional `violations` list (#56 architecture/SoC failures) and an
+ * optional machine-readable `code` (e.g. `HASH_REQUIRED`, `CHANGED_ON_DISK`) callers branch on. */
 export class PagesEditorError extends Error {
+  /**
+   * @param {string} message Human-readable error message.
+   * @param {{status?: number, violations?: object[], code?: string}} [options] `status` defaults to
+   *   400; `violations` is the #56 enforcement violation list when this rejects a save; `code` is a
+   *   short machine-readable reason (e.g. `HASH_REQUIRED`, `CHANGED_ON_DISK`) for client branching.
+   */
   constructor(message, { status = 400, violations, code } = {}) {
     super(message);
     this.status = status;
@@ -42,11 +52,21 @@ export class PagesEditorError extends Error {
   }
 }
 
+/**
+ * The configured features-root directory name for a project (e.g. `"features"`), from
+ * `construct.config`'s `features.root`, defaulting to `"features"` when unset.
+ * @param {string} root Project root.
+ * @returns {string} The features-root directory name, relative to `root`.
+ */
 export function featuresRootOf(root) {
   return loadConfig(root).features?.root || 'features';
 }
 
-/** Every feature directory under the configured features root. */
+/**
+ * Every feature directory under the configured features root.
+ * @param {string} root Project root.
+ * @returns {string[]} Feature directory names, sorted; `[]` when the features root doesn't exist.
+ */
 export function listFeatures(root) {
   const base = path.join(root, featuresRootOf(root));
   if (!fs.existsSync(base)) return [];
@@ -57,8 +77,14 @@ export function listFeatures(root) {
     .sort();
 }
 
-/** Every file under features/<feature>/pages/**, relative to that pages/
- * folder (e.g. "Home.jsx", "billing/Detail.tsx"). */
+/**
+ * Every file under features/<feature>/pages/**, relative to that pages/
+ * folder (e.g. "Home.jsx", "billing/Detail.tsx").
+ * @param {string} root Project root.
+ * @param {string} feature Feature directory name.
+ * @returns {string[]} Page file paths relative to that feature's pages/ folder, sorted; `[]` when
+ *   the feature has no pages/ folder.
+ */
 export function listPages(root, feature) {
   const featuresRoot = featuresRootOf(root);
   const pagesDir = path.join(root, featuresRoot, feature, 'pages');
@@ -69,8 +95,12 @@ export function listPages(root, feature) {
     .sort();
 }
 
-/** Every page of the project, `[{ feature, file }]`: what the Browser lists on the Pages screen (#431). Only names
- * the client may later send back to the per-feature routes, each of which re-checks it with resolvePageFile. */
+/**
+ * Every page of the project, `[{ feature, file }]`: what the Browser lists on the Pages screen (#431). Only names
+ * the client may later send back to the per-feature routes, each of which re-checks it with resolvePageFile.
+ * @param {string} root Project root.
+ * @returns {{feature:string, file:string}[]} Every page, across every feature.
+ */
 export function listAllPages(root) {
   return listFeatures(root).flatMap((feature) => listPages(root, feature).map((file) => ({ feature, file })));
 }
@@ -79,7 +109,12 @@ export function listAllPages(root) {
  * inside that feature's pages/ folder. Throws PagesEditorError (#56 scope
  * guard) on any attempt to escape it — a `..` segment, an absolute file
  * path, a symlink-free resolution that lands outside pages/, or a
- * feature/file that simply doesn't exist. */
+ * feature/file that simply doesn't exist.
+ * @param {string} root Project root.
+ * @param {string} feature Feature directory name.
+ * @param {string} file Page file path relative to that feature's pages/ folder, as sent by the client.
+ * @returns {{absPath:string, relPath:string}} The resolved absolute path and its path relative to `root`.
+ */
 export function resolvePageFile(root, feature, file) {
   if (!feature || typeof feature !== 'string' || /[/\\]/.test(feature)) {
     throw new PagesEditorError('Invalid feature name.');
@@ -134,6 +169,12 @@ function noSuchNode(nodeId) {
  * present-but-wrong hash's 409 `CHANGED_ON_DISK` (someone else's edit landed on disk first — routine,
  * "reload and try again"). Never optional: a save endpoint that skips this on a falsy hash is exactly
  * #590's bug (a client that omits the hash silently wins over whatever is on disk).
+ * @param {string} source Current on-disk file content to hash and compare against.
+ * @param {string} contentHash The hash the caller loaded the file against (from a prior read).
+ * @param {{mismatchMessage?: string}} [options] `mismatchMessage` overrides the 409 message used
+ *   when a present hash doesn't match the current content.
+ * @throws {PagesEditorError} 400 `HASH_REQUIRED` when `contentHash` is missing/empty; 409
+ *   `CHANGED_ON_DISK` when it doesn't match `source`'s current hash.
  */
 export function assertContentHash(
   source,
@@ -157,14 +198,21 @@ export function assertContentHash(
  * mutating endpoint re-parses fresh and includes `contentHash` (sha256 of
  * the file's current text) so a stale client can't silently patch the
  * wrong node after the file changed underneath it.
+ * @param {string} source Page file's full JSX/TSX source text.
+ * @returns {{roots:object[], byId:Map<string,object>, ast:object}} The navigable node tree.
  */
 export function parsePageTree(source) {
   return parseJsxTree(source);
 }
 
-/** Lightweight JSON-safe projection of parsePageTree's node records (drops
+/**
+ * Lightweight JSON-safe projection of parsePageTree's node records (drops
  * `start`/`end`/internal fields the frontend doesn't need, but keeps a
- * content hash so the client can detect the tree going stale). */
+ * content hash so the client can detect the tree going stale).
+ * @param {string} source Page file's full JSX/TSX source text.
+ * @returns {{roots:object[], contentHash:string}} The stripped-down tree the client renders, plus
+ *   `source`'s content hash.
+ */
 export function serializeTree(source) {
   const { roots } = parsePageTree(source);
   const strip = (n) => ({
@@ -183,6 +231,13 @@ export function serializeTree(source) {
   };
 }
 
+/**
+ * The sha256 content hash of a file's source text, used as the Pages Editor's optimistic-concurrency
+ * token (#590): the client resends the hash it last loaded, and every mutating endpoint rejects a
+ * save whose hash no longer matches the current on-disk content.
+ * @param {string} source File content to hash.
+ * @returns {string} The hex-encoded sha256 digest.
+ */
 export function hashOf(source) {
   return crypto.createHash('sha256').update(source).digest('hex');
 }
@@ -201,6 +256,10 @@ export function hashOf(source) {
  * unclosed tag, etc.) — reported as `{roots: [], error}` rather than thrown,
  * so the canvas can just keep showing its last-good graph instead of
  * crashing on every keystroke.
+ * @param {string} snippetSource The snippet's own current source text (not a whole page file).
+ * @returns {{roots:object[], contentHash?:string, error:string|null}} The parsed tree (same shape
+ *   as serializeTree) plus a null `error`, or `{roots: [], error}` when it doesn't currently parse
+ *   or is blank.
  */
 export function parseSnippetToTree(snippetSource) {
   if (typeof snippetSource !== 'string' || !snippetSource.trim()) return { roots: [], error: null };
@@ -211,8 +270,15 @@ export function parseSnippetToTree(snippetSource) {
   }
 }
 
-/** The exact source snippet for one node (#52's read side) plus its parent
- * chain's tag names for breadcrumb display. */
+/**
+ * The exact source snippet for one node (#52's read side) plus its parent
+ * chain's tag names for breadcrumb display.
+ * @param {string} source Page file's full source text.
+ * @param {string} nodeId Id of the node to read (from a prior parsePageTree/serializeTree call).
+ * @returns {{nodeId:string, snippet:string, contentHash:string}} The node's own source text and
+ *   `source`'s content hash.
+ * @throws {PagesEditorError} 409 when `nodeId` doesn't exist in `source`.
+ */
 export function getNodeSnippet(source, nodeId) {
   const { byId } = parsePageTree(source);
   const node = byId.get(nodeId);
@@ -239,10 +305,13 @@ function spliceNodeText(source, nodeId, newSnippet) {
   if (!node) throw noSuchNode(nodeId);
 
   const replacement = checkJsxReplacement(newSnippet);
-  if (!replacement.ok && replacement.kind === 'parse') {
+  // Explicit `=== false` (rather than `!replacement.ok`): with this repo's tsconfig
+  // (strictNullChecks off), tsc only narrows this discriminated union on an equality check against
+  // the discriminant, not on its truthiness (#788's checkJs narrowing gotcha; #815).
+  if (replacement.ok === false && replacement.kind === 'parse') {
     throw new PagesEditorError(`Replacement snippet is not valid JSX: ${replacement.error}`);
   }
-  if (!replacement.ok) throw new PagesEditorError('Replacement snippet must be a single JSX element or fragment.');
+  if (replacement.ok === false) throw new PagesEditorError('Replacement snippet must be a single JSX element or fragment.');
 
   const patched = spliceNode(source, node, newSnippet.trim());
 
@@ -259,15 +328,29 @@ function spliceNodeText(source, nodeId, newSnippet) {
  * `HASH_REQUIRED`, stale is 409 `CHANGED_ON_DISK`, so a client that omits or forgets to refresh its
  * hash can never silently clobber a concurrent edit), then delegate the actual splice to
  * `spliceNodeText`.
+ * @param {string} source Current disk content of the page file.
+ * @param {string} nodeId Id of the node to replace.
+ * @param {string} newSnippet Replacement JSX text for that node (one element or fragment).
+ * @param {string} expectedHash The content hash the caller loaded `source` against.
+ * @returns {string} The patched full page source.
+ * @throws {PagesEditorError} 400/409 from the hash guard, 409 if `nodeId` no longer exists, or 400
+ *   if `newSnippet` isn't valid JSX / leaves the file unparseable.
  */
 export function patchNode(source, nodeId, newSnippet, expectedHash) {
   assertContentHash(source, expectedHash, { mismatchMessage: 'The file changed on disk since this snippet was loaded — reload the tree and try again.' });
   return spliceNodeText(source, nodeId, newSnippet);
 }
 
-/** #53 read-only helper: same shape as a tree node's `props`, for a single
+/**
+ * #53 read-only helper: same shape as a tree node's `props`, for a single
  * node, plus the enclosing page component's own in-scope prop/state names
- * (used by #54's auto-mapper). */
+ * (used by #54's auto-mapper).
+ * @param {string} source Page file's full source text.
+ * @param {string} nodeId Id of the node to read.
+ * @returns {{nodeId:string, tag:string, props:object[], scopeNames:string[]}} The node's tag/props
+ *   plus the enclosing component's in-scope prop/state names.
+ * @throws {PagesEditorError} 409 when `nodeId` doesn't exist in `source`.
+ */
 export function getNodeProps(source, nodeId) {
   const { byId, ast } = parsePageTree(source);
   const node = byId.get(nodeId);
@@ -288,6 +371,16 @@ export function getNodeProps(source, nodeId) {
  * opening tag's attribute list, from the prop record's `index` field) instead of
  * going through the name lookup below. Only edits an
  * *existing* spread — this doesn't support inserting a brand new one.
+ * @param {string} source Page file's full source text.
+ * @param {string} nodeId Id of the node whose opening tag is edited.
+ * @param {string|null} propName The attribute's name, or `null` for a `kind === 'spread'` edit.
+ * @param {'spread'|'string'|'number'|'boolean'|'identifier'|'expression'} kind The prop's value
+ *   kind, as recorded on the node's `props` entries; `'spread'` takes the `index` branch below,
+ *   every other kind is passed straight through to setAttributeText.
+ * @param {string|number|boolean} value The new attribute value (rendered by setAttributeText/setSpreadText).
+ * @param {number} [index] Position of the spread among the tag's attributes (only for `kind === 'spread'`).
+ * @returns {string} The node's whole new opening-tag-through-node text, ready for patchNode to splice in.
+ * @throws {PagesEditorError} 409 when `nodeId`/the targeted spread no longer exists, or the node is a fragment.
  */
 export function buildAttributeSnippet(source, nodeId, propName, kind, value, index) {
   const { byId } = parsePageTree(source);
@@ -296,7 +389,9 @@ export function buildAttributeSnippet(source, nodeId, propName, kind, value, ind
   if (node.isFragment) throw new PagesEditorError('Fragments (<>...</>) have no props to edit.');
 
   if (kind === 'spread') {
-    const text = setSpreadText(source, node, index, value);
+    // A spread's value is always its argument's source text (jsxAttributes' 'spread' record shape) --
+    // never the number/boolean setAttributeText also accepts for a plain attribute.
+    const text = setSpreadText(source, node, index, /** @type {string} */ (value));
     if (text === null) {
       throw new PagesEditorError('That spread prop is no longer at this position — the file may have changed; reload the tree.', { status: 409 });
     }
@@ -313,6 +408,12 @@ export function buildAttributeSnippet(source, nodeId, propName, kind, value, ind
  * immediately-preceding whitespace run so the removal doesn't
  * leave a double space behind in the tag. Only for a named (non-spread)
  * attribute that currently exists.
+ * @param {string} source Page file's full source text.
+ * @param {string} nodeId Id of the node whose opening tag is edited.
+ * @param {string} propName Name of the attribute to remove.
+ * @returns {string} The node's whole new text with that attribute removed.
+ * @throws {PagesEditorError} 409 when `nodeId` doesn't exist or the node is a fragment; a plain
+ *   error when `propName` isn't currently on the node.
  */
 export function removeAttributeSnippet(source, nodeId, propName) {
   const { byId } = parsePageTree(source);
@@ -338,6 +439,11 @@ export function removeAttributeSnippet(source, nodeId, propName) {
  * `{ok: false, error}` so the canvas can show a clear inline message and
  * leave the snippet untouched, per #119's "reject rather than write broken
  * code" instruction.
+ * @param {string} snippetSource The snippet's own current source text.
+ * @param {{parentId:string, propName:string, fromChildId:string, toChildId:string}} wire The common
+ *   parent, the prop being moved, and the sibling ids it moves from/to.
+ * @returns {{ok:true, snippet:string}|{ok:false, error:string}} The rewired snippet text, or why the
+ *   rewire was rejected.
  */
 export function rewireWireInSnippet(snippetSource, { parentId, propName, fromChildId, toChildId }) {
   let byId;
@@ -383,6 +489,10 @@ export function rewireWireInSnippet(snippetSource, { parentId, propName, fromChi
  * (the same invariant patchNode's own save-time validation enforces), so
  * there is nothing left to save if the root itself were removed. Never
  * throws — `{ok:false, error}` on any rejection.
+ * @param {string} snippetSource The snippet's own current source text.
+ * @param {string} nodeId Id of the node (and subtree) to remove.
+ * @returns {{ok:true, snippet:string}|{ok:false, error:string}} The snippet with that node removed,
+ *   or why the removal was rejected.
  */
 export function removeNodeInSnippet(snippetSource, nodeId) {
   let roots, byId;
@@ -409,6 +519,11 @@ export function removeNodeInSnippet(snippetSource, nodeId) {
  * where it is; only the two elements' own text spans trade places).
  * Rejects a root (no siblings to move among) or a node already at the
  * first/last position for the requested direction. Never throws.
+ * @param {string} snippetSource The snippet's own current source text.
+ * @param {string} nodeId Id of the node to move.
+ * @param {'up'|'down'} direction Which way to move it among its siblings.
+ * @returns {{ok:true, snippet:string}|{ok:false, error:string}} The snippet with the node moved, or
+ *   why the move was rejected.
  */
 export function moveNodeInSnippet(snippetSource, nodeId, direction) {
   if (direction !== 'up' && direction !== 'down') return { ok: false, error: `Unknown move direction "${direction}".` };
@@ -443,6 +558,10 @@ export function moveNodeInSnippet(snippetSource, nodeId, direction) {
  * is a fragment (`<Tag>...</Tag>` / `<>...</>`) — a self-closing element
  * (`<Tag />`) is rejected rather than the tool guessing how to split `/>`
  * into an open/close pair on the caller's behalf. Never throws.
+ * @param {string} snippetSource The snippet's own current source text.
+ * @param {string} parentId Id of the node to append a new child into.
+ * @returns {{ok:true, snippet:string}|{ok:false, error:string}} The snippet with a new `<div />`
+ *   child appended, or why it couldn't be added.
  */
 export function addChildInSnippet(snippetSource, parentId) {
   let byId;
@@ -454,10 +573,12 @@ export function addChildInSnippet(snippetSource, parentId) {
   const parent = byId.get(parentId);
   if (!parent) return { ok: false, error: `No such node "${parentId}" — the snippet may have changed.` };
   const added = addChildText(snippetSource, parent);
-  if (!added.ok && added.reason === 'self-closing') {
+  // Explicit `=== false` (rather than `!added.ok`): see spliceNodeText's note on this tsconfig's
+  // narrowing (strictNullChecks off) not applying to truthiness checks on a discriminated union.
+  if (added.ok === false && added.reason === 'self-closing') {
     return { ok: false, error: 'This element is self-closing (`<Tag />`) — convert it to an open/close pair before adding a child.' };
   }
-  if (!added.ok) return { ok: false, error: 'Could not determine where to insert a new child.' };
+  if (added.ok === false) return { ok: false, error: 'Could not determine where to insert a new child.' };
   const patchedError = jsxParseError(added.source);
   if (patchedError) return { ok: false, error: `Adding a child here would leave invalid JSX: ${patchedError}` };
   return { ok: true, snippet: added.source };
@@ -509,6 +630,12 @@ function resolveImportSource(pageAbsPath, specifier, root) {
  * null as "unknown, don't filter" (today's permissive behavior). The AST
  * work (import lookup, finding the component function, reading its declared
  * props) is src/ast's; this function only does the file resolution, scoped to `root`.
+ * @param {string} root Project root.
+ * @param {string} pageAbsPath Absolute path of the page file `tagName` is rendered in.
+ * @param {object} pageAst The page's already-parsed AST (from parsePageTree).
+ * @param {string} tagName The JSX tag name to resolve (the rendered custom component).
+ * @returns {object|null} `{closed, names, types}` (see declaredPropNames), or `null` when the child
+ *   can't be resolved or its prop shape isn't recognized.
  */
 export function resolveDeclaredPropNames(root, pageAbsPath, pageAst, tagName) {
   const imported = findImportOfName(pageAst, tagName);
@@ -537,6 +664,13 @@ export function resolveDeclaredPropNames(root, pageAbsPath, pageAst, tagName) {
  * doesn't destructure a same-named prop. `root`/`pageAbsPath` are optional
  * so in-memory single-string callers (existing tests) keep working; omit
  * them to keep the old, fully permissive behavior.
+ * @param {string} source Page file's full source text.
+ * @param {string} nodeId Id of the selected custom-component node.
+ * @param {string} [root] Project root, so the child's declared props can be resolved across files.
+ * @param {string} [pageAbsPath] Absolute path of `source`'s own file (paired with `root`).
+ * @returns {{nodeId:string, candidates:string[], childPropsResolved:boolean}} Unmapped in-scope
+ *   names to offer, and whether they were filtered to the child's own declared props.
+ * @throws {PagesEditorError} 409 when `nodeId` doesn't exist in `source`.
  */
 export function findUnmappedProps(source, nodeId, root, pageAbsPath) {
   const { byId, ast } = parsePageTree(source);
@@ -567,6 +701,11 @@ export function findUnmappedProps(source, nodeId, root, pageAbsPath) {
  * `providerSources` lookup (`providerSources?.[source] ?? providerSources?.[hookName]`) finds it. An
  * import that doesn't resolve to a real in-project file (bare/package import, missing file) is simply
  * left out -- same "unresolved -> no scope added" contract `childSource` already has.
+ * @param {string} source Page file's full source text.
+ * @param {string} root Project root.
+ * @param {string} pageAbsPath Absolute path of the page file `source` came from.
+ * @returns {Record<string,string>|undefined} Provider hook import specifier -> that hook's own file
+ *   source, for every one that resolves; `undefined` when none do (or `source` doesn't parse).
  */
 function resolveProviderSources(source, root, pageAbsPath) {
   let ast;
@@ -575,6 +714,7 @@ function resolveProviderSources(source, root, pageAbsPath) {
   } catch {
     return undefined;
   }
+  /** @type {Record<string,string>} */
   const entries = {};
   for (const { source: specifier } of providerHookImports(ast)) {
     if (entries[specifier] !== undefined) continue;
@@ -595,6 +735,12 @@ function resolveProviderSources(source, root, pageAbsPath) {
  * anything outside `root` resolve to null, leaving `childProps` unknown) plus, independently of which
  * element is selected, every reachable Provider hook's own source (#529, `resolveProviderSources`
  * above) so the 'provider' scope kind (#528) is populated for real Cockpit pages.
+ * @param {string} source Page file's full source text.
+ * @param {string} nodeId Id of the selected node.
+ * @param {string} [root] Project root, so child/provider sources can be resolved across files.
+ * @param {string} [pageAbsPath] Absolute path of `source`'s own file (paired with `root`).
+ * @returns {object} The scope/binding link graph (see buildScopeLinks).
+ * @throws {PagesEditorError} 409 when `nodeId` doesn't exist in `source`.
  */
 export function getScopeLinks(source, nodeId, root, pageAbsPath) {
   let childSource;
@@ -616,6 +762,15 @@ export function getScopeLinks(source, nodeId, root, pageAbsPath) {
   return buildScopeLinks(source, nodeId, { childSource, providerSources });
 }
 
+/**
+ * #54's write side: apply a batch of accepted auto-map suggestions to one node, wiring each
+ * `propName` as the shorthand `{propName}` identifier attribute, one patchNode splice at a time (the
+ * content hash is re-taken after each patch so the next splice targets the just-patched text).
+ * @param {string} source Page file's full source text.
+ * @param {string} nodeId Id of the node to add the props to.
+ * @param {string[]} propNames The in-scope names to wire as same-named `{name}` attributes.
+ * @returns {string} The patched full page source with every prop applied.
+ */
 export function applyAutoMap(source, nodeId, propNames) {
   let patched = source;
   let hash = hashOf(patched);
@@ -661,27 +816,41 @@ function stubAttrText(prop) {
   return `${prop.name}={undefined}`;
 }
 
-/** A self-closing JSX usage for a Component entry, its required props stubbed from `described`
+/**
+ * A self-closing JSX usage for a Component entry, its required props stubbed from `described`
  * (describeComponent's real react-docgen result) -- optional props are left out entirely rather than
  * guessed. `described` may be null/failed (a component that couldn't be documented): the usage then
- * has no props at all, same as any component with none. */
+ * has no props at all, same as any component with none.
+ * @param {string} name The component's exported name.
+ * @param {object|null} described describeComponent's result for the file it's exported from, or null.
+ * @returns {string} A self-closing JSX usage, e.g. `<Foo bar="" />` or `<Foo />`.
+ */
 export function buildComponentUsageJsx(name, described) {
   const comp = described?.components?.find((c) => c.name === name) || described?.components?.[0];
   const attrs = (comp?.props || []).filter((p) => p.required).map(stubAttrText);
   return attrs.length ? `<${name} ${attrs.join(' ')} />` : `<${name} />`;
 }
 
-/** A Provider hook-call statement for a Provider entry. Assigns the WHOLE result to a local variable
+/**
+ * A Provider hook-call statement for a Provider entry. Assigns the WHOLE result to a local variable
  * rather than destructuring named fields: `useProvider()`'s return shape (`Value`) isn't statically
  * known here (no type-checker run for this), so guessing field names would risk inserting code that
  * doesn't compile -- calling the hook and letting the developer destructure by hand is the honest
- * "real, working reference" this slice promises, not a fabricated shape. */
+ * "real, working reference" this slice promises, not a fabricated shape.
+ * @param {string} name The Provider hook's exported name (e.g. `useCartProvider`).
+ * @returns {string} A statement calling it, e.g. `const cart = useCartProvider();`.
+ */
 export function buildProviderUsageStatement(name) {
   const base = name.replace(/^use/, '').replace(/Provider$/, '');
   const varName = base ? base[0].toLowerCase() + base.slice(1) : 'value';
   return `const ${varName} = ${name}();`;
 }
 
+/**
+ * @param {string} patched Candidate new full source, after an import/JSX/statement insertion.
+ * @returns {{ok:true, source:string}|{ok:false, error:string}} `patched` itself when it still
+ *   parses, or why it doesn't.
+ */
 function finalizeInsertion(patched) {
   const patchedError = jsxParseError(patched);
   if (patchedError) return { ok: false, error: `Inserting this would leave invalid code: ${patchedError}` };
@@ -699,6 +868,14 @@ function finalizeInsertion(patched) {
  * `providers`/`components` entries (the caller re-derives it from a fresh `buildPalette` call rather
  * than trusting whatever the client sent, the same "never resolve a client-named path directly"
  * discipline `componentsApi.mjs`'s `pick()` uses) plus a `kind`.
+ * @param {string} root Project root.
+ * @param {string} pageAbsPath Absolute path of the page file to insert into.
+ * @param {string} source The page file's full current source text.
+ * @param {{kind:'component'|'provider', name:string, path?:string, via?:string, feature?:string}} entry
+ *   The Palette entry to insert (one of buildPalette's own `components`/`providers` entries).
+ * @param {Function} [describe] describeComponent, injectable for tests.
+ * @returns {Promise<{ok:true, source:string}|{ok:false, error:string}>} The page source with the
+ *   usage inserted, or why it was rejected.
  */
 export async function buildPaletteInsertion(root, pageAbsPath, source, entry, describe = describeComponent) {
   if (!entry || (entry.kind !== 'component' && entry.kind !== 'provider')) {
@@ -727,7 +904,9 @@ export async function buildPaletteInsertion(root, pageAbsPath, source, entry, de
 
   if (entry.kind === 'component') {
     const added = addChildText(withImport, targetRoot, usageText);
-    if (!added.ok) {
+    // Explicit `=== false` (rather than `!added.ok`): see spliceNodeText's note on this tsconfig's
+    // narrowing (strictNullChecks off) not applying to truthiness checks on a discriminated union.
+    if (added.ok === false) {
       return {
         ok: false,
         error:
@@ -765,6 +944,14 @@ const NAME_REQUIRED_RE = /pass --name/;
  * click (design section 3 step 4) asks for one, keeping "Suggest" and "Confirm" two distinct,
  * separately-observable steps exactly as the design's own step numbering has them.
  *
+ * @param {string} root Project root.
+ * @param {string} absPath Absolute path of the page/component file the selection is in.
+ * @param {string} source That file's full current source text.
+ * @param {string} nodeId Id of the selected node.
+ * @param {{expressions: object[]}} palette A fresh `buildPalette(...)` result for this feature
+ *   (only its `expressions` entries are used here).
+ * @param {string} [name] Caller-supplied Expression name override.
+ * @param {{includeFiles?: boolean}} [options] `includeFiles` also computes the real dry-run diff preview.
  * @returns {{ok:true, hit:object|null, suggestions:object[], name:string|null, nameRequired:boolean,
  *   nameError:string|null, files:{file:string,name:string|null,before:string,after:string}[]|null}}
  */
@@ -800,6 +987,15 @@ export function buildWrapSuggestion(root, absPath, source, nodeId, palette, name
  * `nodeId` (never trusting a client-sent range) and calls the real, non-dry-run
  * `extractExpression()`. Touches multiple files (the page, a new Expression, and optionally one or
  * more new Components) -- the caller (the server route) commits/records all of them as one save.
+ * @param {string} root Project root.
+ * @param {string} absPath Absolute path of the page/component file being wrapped.
+ * @param {string} source That file's full current source text.
+ * @param {string} nodeId Id of the selected node the flagged hit is re-derived from.
+ * @param {string} [name] Caller-supplied Expression name override.
+ * @returns {{page:{file:string}, expression:{file:string,name:string}, component:{file:string,name:string}|null, components:{file:string,name:string}[]}}
+ *   The written files, as extractExpression's own non-dry-run result reports them.
+ * @throws {PagesEditorError} When nothing is flagged (PAGE-008) at the selection.
+ * @throws {ConstructError} Any usage error extractExpression itself throws.
  */
 export function applyWrapConfirm(root, absPath, source, nodeId, name) {
   const { byId } = parsePageTree(source);
@@ -817,6 +1013,12 @@ export function applyWrapConfirm(root, absPath, source, nodeId, name) {
  * that one file, and surface any *error*-severity violation before it
  * lands (the caller writes `patched` to disk only if this returns
  * `ok: true`, and reverts otherwise — see server route below).
+ * @param {string} root Project root.
+ * @param {string} relPath The file's path relative to `root` (as classified by the layer graph).
+ * @param {string} patchedSource The prospective new content to check, written to disk temporarily
+ *   (and restored in a `finally`, whether this returns or throws).
+ * @returns {{ok:boolean, violations:object[], errors:object[]}} Every architecture/SoC violation
+ *   attributed to this file, `errors` filtered to error-severity ones, and whether any exist.
  */
 export function checkEnforcement(root, relPath, patchedSource) {
   const absPath = path.join(root, relPath);
