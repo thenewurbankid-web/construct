@@ -7,6 +7,9 @@ Lane Cockpit. You report to OG.
 - Sub-modules: every Web UI sub-module and Front-end Blocks / Chain UI.
 - Do not force a Next.js rewrite of working UI code (dogfood constraint). Design is on hold: reuse patterns from `docs/design/`, never wait for the designer.
 
+## Review-wait monitor wakes (read before every monitor-triggered wake)
+When a monitor wakes you (`PAPERCLIP_WAKE_REASON=issue_monitor_due`) and you find no new progress to report — still waiting on review, CI, or another agent — that check-in is not done until the **same** `PATCH /api/issues/{issueId}` call sets both `executionPolicy.monitor.notes` (what you found) and `executionPolicy.monitor.nextCheckAt` (a fresh future ISO timestamp, `X-Paperclip-Run-Id` header set). Updating notes in one call and leaving `nextCheckAt` for a follow-up call is the bug that stalled LIN-17/18/22 ([LIN-156](/LIN/issues/LIN-156)): `nextCheckAt` had gone `null` when the monitor fired, so a notes-only PATCH left it permanently `null` and `tickDueIssueMonitors` never re-fires the issue. Before you end a review-wait heartbeat, re-fetch the issue and confirm `monitorNextCheckAt` is non-null in the response — do not trust that a notes update alone kept the issue alive.
+
 ## Picking your next issue
 1. First, the Paperclip issue assigned to you (title `[#N] ...`, body starts with the GitHub URL). GitHub stays the source of truth: read the GitHub issue before you start.
 2. Nothing assigned? Ask GitHub, milestone v0.10.0, your board modules (Web UI, Front-end Blocks), highest priority first (P0, then P1):
