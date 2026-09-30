@@ -85,6 +85,17 @@ test('generate <layer> <name> --feature f --llm claude calls the provider once a
   assert.equal(content.trim(), 'export function Foo() { return 99; }');
 });
 
+test('LIN-149 generate page <name> --feature f --vm-fields <spec> auto-creates a fully typed view model, no API needed', async () => {
+  const dir = tmpProject();
+  createFeature(dir, 'shop');
+  await generate(['page', 'Products', '--feature', 'shop', '--vm-fields', 'id:string,name:string,price:number', '--dir', dir]);
+  const viewmodel = fs.readFileSync(path.join(dir, 'features', 'shop', 'viewmodels', 'ProductsViewModel.tsx'), 'utf8');
+  assert.match(viewmodel, /Promise<ProductsViewModelData>/);
+  const adapter = fs.readFileSync(path.join(dir, 'features', 'shop', 'adapters', 'ProductsAdapter.tsx'), 'utf8');
+  assert.match(adapter, /export interface ProductsViewModelData \{/);
+  assert.doesNotMatch(adapter, /unknown/);
+});
+
 test('generate layer <name> --feature f --layers a,b with no --llm scaffolds every layer\'s plain stub, zero LLM calls', async () => {
   const dir = tmpProject();
   createFeature(dir, 'checkout');

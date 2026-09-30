@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { createFeature, ensureFeatureExists, generateLayer, generateVertical, missingLayerPrerequisites, selfCheck, layerFileBaseName, capFromLayerFileBaseName } from '../packages/core/generators.mjs';
+import { createFeature, ensureFeatureExists, generateLayer, generatePageViewModel, generateVertical, layerFileBaseName, layerTargetFile, missingLayerPrerequisites, capFromLayerFileBaseName, parseViewModelFields, selfCheck, unitFromLayerFile, viewModelInterfaceText, viewModelSampleValue } from '../packages/core/generators.mjs';
 import { validateArchitecture } from '../packages/core/architecture-enforcer.mjs';
 import { validateSeparationOfConcerns } from '../packages/core/soc-enforcer.mjs';
 import { ConstructError, EXIT_CODES } from '../packages/core/diagnostics.mjs';
@@ -513,4 +513,92 @@ test('LIN-148 capFromLayerFileBaseName rejects a basename that does not match th
   assert.equal(capFromLayerFileBaseName('adapter', 'ProductsController'), null); // wrong suffix
   assert.equal(capFromLayerFileBaseName('hook', 'ProductsHook'), null); // missing `use` prefix
   assert.equal(capFromLayerFileBaseName('viewmodel', 'ViewModel'), null); // suffix with no name
+});
+
+// ---- LIN-149: page auto-creates its view model, inferring types when there is no API ----
+
+test('LIN-149 parseViewModelFields defaults to a typed id, never unknown', () => {
+  assert.deepEqual(parseViewModelFields(undefined), [{ path: ['id'], type: 'string', array: false }]);
+  assert.deepEqual(parseViewModelFields(''), [{ path: ['id'], type: 'string', array: false }]);
+});
+
+test('LIN-149 parseViewModelFields reads string/number/boolean, arrays and dotted nesting', () => {
+  const fields = parseViewModelFields('id:string,age:number,active:boolean,tags:string[],address.city:string,address.zip:string');
+  assert.deepEqual(fields, [
+    { path: ['id'], type: 'string', array: false },
+    { path: ['age'], type: 'number', array: false },
+    { path: ['active'], type: 'boolean', array: false },
+    { path: ['tags'], type: 'string', array: true },
+    { path: ['address', 'city'], type: 'string', array: false },
+    { path: ['address', 'zip'], type: 'string', array: false },
+  ]);
+});
+
+test('LIN-149 parseViewModelFields rejects an unrecognized type, a duplicate field and a bad name, nothing guessed', () => {
+  assert.throws(() => parseViewModelFields('count:integer'), (err) => {
+    assert.ok(err instanceof ConstructError);
+    assert.match(err.message, /types are string, number, boolean/);
+    return true;
+  });
+  assert.throws(() => parseViewModelFields('id:string,id:number'), /listed twice/);
+  assert.throws(() => parseViewModelFields('Id:string'), /camelCase/);
+});
+
+test('LIN-149 viewModelInterfaceText never emits unknown and nests dotted fields as an object type', () => {
+  const fields = parseViewModelFields('id:string,tags:string[],address.city:string,address.zip:string');
+  const text = viewModelInterfaceText('Products', fields);
+  assert.doesNotMatch(text, /unknown/);
+  assert.match(text, /export interface ProductsViewModelData \{/);
+  assert.match(text, /id: string;/);
+  assert.match(text, /tags: string\[\];/);
+  assert.match(text, /address: \{\n\s*city: string;\n\s*zip: string;\n\s*\};/);
+});
+
+test('LIN-149 viewModelSampleValue produces a literal matching the interface shape exactly (a real value, not a cast)', () => {
+  const fields = parseViewModelFields('id:string,count:number,active:boolean,tags:string[]');
+  const sample = viewModelSampleValue(fields);
+  assert.doesNotMatch(sample, /unknown|as any/);
+  const value = new Function(`return ${sample};`)();
+  assert.deepEqual(value, { id: '', count: 0, active: false, tags: [] });
+});
+
+test('LIN-149 generatePageViewModel auto-creates a fully typed view model (and its adapter) for a page with no API', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'shop');
+  generateLayer(dir, 'page', 'Products', 'shop');
+  const written = generatePageViewModel(dir, 'Products', 'shop', 'id:string,name:string,price:number,tags:string[]');
+  assert.deepEqual(written.map((f) => path.basename(f)), ['ProductsAdapter.tsx', 'ProductsViewModel.tsx']);
+  const adapterContent = fs.readFileSync(written[0], 'utf8');
+  assert.doesNotMatch(adapterContent, /: unknown/);
+  assert.match(adapterContent, /export interface ProductsViewModelData \{/);
+  assert.match(adapterContent, /Promise<ProductsViewModelData>/);
+  const viewmodelContent = fs.readFileSync(written[1], 'utf8');
+  assert.match(viewmodelContent, /import type \{ ProductsViewModelData \} from '\.\.\/adapters\/ProductsAdapter';/);
+  assert.match(viewmodelContent, /Promise<ProductsViewModelData>/);
+  assert.deepEqual(validateArchitecture(dir).violations.filter((v) => v.severity === 'error'), []);
+});
+
+test('LIN-149 generatePageViewModel is a no-op once the view model already exists', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'shop');
+  generateLayer(dir, 'page', 'Products', 'shop');
+  generatePageViewModel(dir, 'Products', 'shop', 'id:string');
+  assert.deepEqual(generatePageViewModel(dir, 'Products', 'shop', 'id:string,name:string'), []);
+});
+
+test('LIN-149 unitFromLayerFile is the total inverse of layerTargetFile for every layer, path -> {layer, unit} -> path', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'shop');
+  for (const layer of ['domain', 'service', 'workflow', 'hook', 'component', 'expression', 'adapter', 'viewmodel', 'page', 'controller']) {
+    const file = layerTargetFile(dir, layer, 'Widget', 'shop');
+    const unit = unitFromLayerFile(dir, file);
+    assert.deepEqual(unit, { feature: 'shop', layer, name: 'Widget' }, `round-trip failed for layer "${layer}"`);
+    assert.equal(layerTargetFile(dir, unit.layer, unit.name, unit.feature), file, `layer "${layer}" did not round-trip back to the same path`);
+  }
+});
+
+test('LIN-149 unitFromLayerFile answers null for a path it does not recognize', () => {
+  const dir = tmpProject();
+  assert.equal(unitFromLayerFile(dir, path.join(dir, 'features', 'shop', 'pages', 'NotAPage.txt')), null);
+  assert.equal(unitFromLayerFile(dir, path.join(dir, 'not-features', 'shop', 'pages', 'Widget.tsx')), null);
 });

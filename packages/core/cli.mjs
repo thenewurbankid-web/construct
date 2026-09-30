@@ -4,7 +4,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { makeLineSource } from './line-source.mjs';
-import { createFeature, ensureFeatureExists, generateLayer, generateVertical, layerFromGeneratedFile, fillGeneratedFile } from './generators.mjs';
+import { createFeature, ensureFeatureExists, generateLayer, generatePageViewModel, generateVertical, layerFromGeneratedFile, fillGeneratedFile } from './generators.mjs';
 import { generateServiceFromSpec, resolveSchemaEmit } from './service-generator.mjs';
 import { generateShapeLayer, generateShapeVertical } from './shapes.mjs';
 import { ensureGeneratedDependencies } from './generated-dependencies.mjs';
@@ -644,6 +644,24 @@ export async function generate(args) {
       reportGeneratedDependencies(root, [zodFile]);
     } else if (resolveSchemaEmit(root, schema)) console.log('  No response schemas written: the spec declares no response schema.');
     else if (schema === 'auto') console.log('  Response schemas not written (zod is not in package.json); add zod, or pass --schema, to also write services/<name>/zod.gen.ts.');
+    return;
+  }
+  // LIN-149: `construct create/generate page <name> --feature <f> --vm-fields <spec>` auto-creates
+  // the page's view model (and that view model's adapter prerequisite) typed from `--vm-fields`,
+  // since there is no API yet to derive the shape from. A distinct flag from the shape system's
+  // own `--fields` (shapeRequestOf above, #619/#621) on purpose: shapeRequestOf refuses a stray
+  // `--fields` without `--shape`, and this is a plain (non-shaped) page. Opt-in via `--vm-fields`
+  // for the same reason generatePageViewModel is opt-in (see its own comment in generators.mjs):
+  // making every bare `create page` auto-create a view model is a migration this repo's existing
+  // page/controller pairs haven't been agreed on yet.
+  const fieldsI = args.indexOf('--vm-fields');
+  if (layer === 'page' && fieldsI >= 0) {
+    const t = startTimer();
+    const pageFile = generateLayer(root, 'page', name, feature);
+    const written = generatePageViewModel(root, name, feature, args[fieldsI + 1]);
+    const dt = formatDuration(elapsedSeconds(t));
+    console.log(`Created ${path.relative(root, pageFile)} (${dt})`);
+    for (const file of written) console.log(`Created ${path.relative(root, file)} (${dt})`);
     return;
   }
   // Plain fallback: scaffold the usual template stub, optionally LLM-filled

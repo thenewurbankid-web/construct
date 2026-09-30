@@ -9,6 +9,71 @@ import path from 'node:path'; import fs from 'node:fs'; import {ensureDir,write,
 // element={<XController/>}/>` entry in the centralized src/App.tsx. The
 // react-spa template documents that real wiring explicitly instead of
 // leaving it an unstated nextjs assumption.
+// LIN-149 -- when a page has no API yet, its view model's shape is inferred from `--fields`
+// instead of an OpenAPI operation: `name:type` pairs, comma-separated. A type is `string`,
+// `number` or `boolean`, or one of those suffixed `[]` for an array; a dotted name nests an
+// object (`address.city:string` nests `city` under `address`). Never left as `unknown` -- a
+// missing or unrecognized type is a usage error up front, not a silently untyped field.
+const VIEWMODEL_SCALAR_TYPES=new Set(['string','number','boolean']);
+
+/** @returns {{path:string[],type:'string'|'number'|'boolean',array:boolean}[]} The parsed fields, in the order given. @throws {ConstructError} Naming the first bad field. */
+export function parseViewModelFields(text){
+ const spec=text===undefined||text===null||String(text).trim()===''?'id:string':String(text);
+ const fields=[];
+ for(const part of spec.split(',').map((p)=>p.trim()).filter(Boolean)){
+  const segments=part.split(':');
+  if(segments.length!==2)throw new ConstructError(`Field "${part}" must be name:type, for example price:number.`,{exitCode:EXIT_CODES.USAGE_ERROR});
+  const [namePath,rawType]=segments.map((s)=>s.trim());
+  const array=rawType.endsWith('[]');
+  const type=array?rawType.slice(0,-2):rawType;
+  if(!VIEWMODEL_SCALAR_TYPES.has(type))throw new ConstructError(`Field "${namePath}" has type "${rawType}"; types are string, number, boolean, or one of those with [] for an array.`,{exitCode:EXIT_CODES.USAGE_ERROR});
+  const segs=namePath.split('.');
+  if(!namePath||!segs.every((seg)=>/^[a-z][A-Za-z0-9]*$/.test(seg)))throw new ConstructError(`Field name "${namePath}" must be camelCase letters and digits, starting with a lowercase letter (a dot nests an object, e.g. address.city).`,{exitCode:EXIT_CODES.USAGE_ERROR});
+  if(fields.some((f)=>f.path.join('.')===namePath))throw new ConstructError(`Field "${namePath}" is listed twice.`,{exitCode:EXIT_CODES.USAGE_ERROR});
+  fields.push({path:segs,type,array});
+ }
+ return fields;
+}
+
+/** Groups flat dotted fields into a nested tree: `[{path:['address','city'],type:'string'}]` becomes `{address:{city:{type:'string'}}}`. */
+function viewModelFieldTree(fields){
+ const root={};
+ for(const f of fields){
+  let node=root;
+  for(let i=0;i<f.path.length-1;i++)node=node[f.path[i]]=node[f.path[i]]||{};
+  node[f.path[f.path.length-1]]={type:f.type,array:f.array};
+ }
+ return root;
+}
+
+function viewModelInterfaceBody(node,indent){
+ return Object.entries(node).map(([key,val])=>
+  val.type?`${indent}${key}: ${val.type}${val.array?'[]':''};`:`${indent}${key}: {\n${viewModelInterfaceBody(val,indent+'  ')}\n${indent}};`,
+ ).join('\n');
+}
+
+/** The TypeScript interface for a page's inferred view-model shape (LIN-149): never `unknown`; a dotted field group becomes a nested object type. */
+export function viewModelInterfaceText(name,fields){
+ return `export interface ${name}ViewModelData {\n${viewModelInterfaceBody(viewModelFieldTree(fields),'  ')}\n}`;
+}
+
+function viewModelSampleLeaf(type,array){
+ const one=type==='string'?"''":type==='number'?'0':'false';
+ return array?'[]':one;
+}
+
+function viewModelSampleText(node,indent){
+ const body=Object.entries(node).map(([key,val])=>
+  val.type?`${indent}  ${key}: ${viewModelSampleLeaf(val.type,val.array)},`:`${indent}  ${key}: ${viewModelSampleText(val,indent+'  ')},`,
+ ).join('\n');
+ return `{\n${body}\n${indent}}`;
+}
+
+/** A typed sample value matching `viewModelInterfaceText`'s shape exactly, so a page with no real API yet still returns something that type-checks instead of a cast. */
+export function viewModelSampleValue(fields){
+ return viewModelSampleText(viewModelFieldTree(fields),'');
+}
+
 const controllerTemplates={
  nextjs:(n)=>`import { ${n}Page } from '../pages/${n}Page';\n\nexport function ${n}Controller() {\n  return <${n}Page />;\n}\n`,
  'react-spa':(n)=>`import { ${n}Page } from '../pages/${n}Page';\n\n// Registered directly as this route's element by react-router in\n// src/App.tsx (e.g. <Route path="/${n.toLowerCase()}" element={<${n}Controller />} />)\n// -- no per-route page.tsx wrapper file like the Next.js target uses.\nexport function ${n}Controller() {\n  return <${n}Page />;\n}\n`,
@@ -39,11 +104,21 @@ const templates={
  // LIN-146 -- owns the external effect and the wire/domain shape translation (the same role
  // `service` plays today, just sitting under the new viewmodel instead of a hook/controller):
  // never imports a viewmodel back (that would be circular), only ever calls out to the real API.
- adapter:(n)=>`export async function ${n}Adapter({ signal }: { signal: AbortSignal }) {\n  const response = await fetch('/api/${n.toLowerCase()}', { method: 'GET', signal });\n  if (!response.ok) throw new Error('Request failed');\n  return response.json();\n}\n`,
+ // LIN-149 -- when `fields` is given (no OpenAPI operation for this unit yet), the adapter
+ // instead exports the inferred `${n}ViewModelData` interface and returns a typed sample
+ // literal matching it exactly: still fully typed, never `unknown`, until a real endpoint
+ // replaces the sample.
+ adapter:(n,{fields}={})=>fields
+  ?`${viewModelInterfaceText(n,fields)}\n\nexport async function ${n}Adapter({ signal }: { signal: AbortSignal }): Promise<${n}ViewModelData> {\n  if (signal.aborted) throw new Error('The request was cancelled.');\n  return ${viewModelSampleValue(fields)};\n}\n`
+  :`export async function ${n}Adapter({ signal }: { signal: AbortSignal }) {\n  const response = await fetch('/api/${n.toLowerCase()}', { method: 'GET', signal });\n  if (!response.ok) throw new Error('Request failed');\n  return response.json();\n}\n`,
  // LIN-146 -- shapes API data for its page. Imports its same-named Adapter (never the API/fetch
  // directly, LAYER_CONSTRAINTS.viewmodel below) the same way a controller's stub imports its
  // same-named Page -- LAYER_PREREQUISITES.viewmodel enforces the adapter exists first.
- viewmodel:(n)=>`import { ${n}Adapter } from '../adapters/${n}Adapter';\n\nexport async function ${n}ViewModel() {\n  return ${n}Adapter({ signal: new AbortController().signal });\n}\n`,
+ // LIN-149 -- with `fields`, also imports the adapter's inferred `${n}ViewModelData` type so the
+ // view model's return type is explicit rather than inferred through the call alone.
+ viewmodel:(n,{fields}={})=>fields
+  ?`import { ${n}Adapter } from '../adapters/${n}Adapter';\nimport type { ${n}ViewModelData } from '../adapters/${n}Adapter';\n\nexport async function ${n}ViewModel(): Promise<${n}ViewModelData> {\n  return ${n}Adapter({ signal: new AbortController().signal });\n}\n`
+  :`import { ${n}Adapter } from '../adapters/${n}Adapter';\n\nexport async function ${n}ViewModel() {\n  return ${n}Adapter({ signal: new AbortController().signal });\n}\n`,
 };
 export const folderFor=(layer)=>layer==='hook'?'hooks':layer==='controller'?'controllers':layer==='workflow'?'workflows':layer==='domain'?'domain':layer==='service'?'services':layer==='page'?'pages':layer==='expression'?'expressions':layer==='adapter'?'adapters':layer==='viewmodel'?'viewmodels':'components';
 
@@ -129,6 +204,39 @@ export const capFromLayerFileBaseName=(layer,basename)=>{
  const cap=basename.slice(0,-suffix.length);
  return layerFileBaseName(layer,cap)===basename?cap:null;
 };
+
+// LIN-149 -- deterministic naming (owner decision 2026-09-30) means the reverse of
+// layerTargetFile must hold too: given only a path, statically recover which unit and layer it
+// is, with no lookup and no reading of the file's contents. Built on LIN-148's
+// capFromLayerFileBaseName (the per-file name reversal) plus the path's own feature/layer
+// folder -- it does not duplicate that per-file logic, and inherits the same "never guess a
+// cross-layer relationship" caution LIN-155 raised (this only ever reads the ONE file's own
+// path, never another layer's). Total and read-only: an unrecognized path (wrong folder, wrong
+// suffix, hook missing its `use` prefix) answers `null` rather than guessing.
+/**
+ * The `{feature, layer, name}` a generated layer file's own path implies — the inverse of `layerTargetFile`.
+ *
+ * @param {string} root Project root.
+ * @param {string} file A path previously returned by `layerTargetFile`/`generateLayer`.
+ * @returns {{feature:string, layer:string, name:string}|null} The unit the path names, or `null` when the path isn't a recognized layer file.
+ *
+ * @example
+ * unitFromLayerFile(root, layerTargetFile(root, 'viewmodel', 'Products', 'shop'));
+ * // => { feature: 'shop', layer: 'viewmodel', name: 'Products' }
+ */
+export function unitFromLayerFile(root,file){
+ const config=loadConfig(root);
+ const featuresRootName=config.features?.root||'features';
+ const relPath=path.relative(root,file);
+ const parts=relPath.split(path.sep);
+ const idx=parts.indexOf(featuresRootName);
+ if(idx<0||parts.length<idx+4)return null;
+ const [feature,folder,fileName]=[parts[idx+1],parts[idx+2],parts[idx+3]];
+ const layer=FOLDER_TO_LAYER[folder];
+ if(!layer)return null;
+ const cap=capFromLayerFileBaseName(layer,fileName.replace(/\.(tsx|ts|jsx|js)$/,''));
+ return cap?{feature,layer,name:cap}:null;
+}
 
 // Epic 1.3 — per-layer template override hook. A project may supply a custom
 // template for a layer either via architecture.yml's `templates: { <layer>: <path> }`
@@ -288,13 +396,15 @@ function typedContractsSpecifierFor(root,fileDir){
  return '@line/construct-core/typed-contracts';
 }
 
-export function renderLayer(root,layer,name,feature){
+export function renderLayer(root,layer,name,feature,{fields}={}){
  if(!templates[layer])throw new Error(`Unknown layer: ${layer}`);
  const config=loadConfig(root);
  const cap=pascalCase(name,layer[0].toUpperCase()+layer.slice(1));
  const file=layerTargetFile(root,layer,name,feature,config);
  const custom=findCustomTemplate(root,layer,config);
- const templateOptions={framework:config.project?.framework,...(layer==='expression'?{typedContractsSpecifier:typedContractsSpecifierFor(root,path.dirname(file))}:{})};
+ // LIN-149: `fields` only ever reaches the adapter/viewmodel templates (the two layers that
+ // know how to use it); every other layer's template signature is untouched.
+ const templateOptions={framework:config.project?.framework,...(layer==='expression'?{typedContractsSpecifier:typedContractsSpecifierFor(root,path.dirname(file))}:{}),...(fields&&(layer==='adapter'||layer==='viewmodel')?{fields}:{})};
  const content=custom?renderCustomTemplate(custom,name,cap):templates[layer](cap,templateOptions);
  return {file,content};
 }
@@ -306,24 +416,56 @@ export function renderLayer(root,layer,name,feature){
  * @param {string} layer Layer name (`domain`, `service`, `workflow`, `hook`, `component`, `page`, `controller`).
  * @param {string} name Unit name (turned into a valid identifier).
  * @param {string} feature Feature that owns the file.
+ * @param {{fields?: {path:string[],type:string,array:boolean}[]}} [options] LIN-149: `fields` (parsed by `parseViewModelFields`) for an `adapter`/`viewmodel` layer with no API yet; ignored by every other layer.
  * @returns {string} Absolute path of the file written.
  *
  * @example
  * generateLayer(root, 'service', 'invoice', 'billing');
  */
-export function generateLayer(root,layer,name,feature){
+export function generateLayer(root,layer,name,feature,options={}){
  // renderLayer first: it validates the layer name and the identifier (#218)
  // with this layer's own label. Then the #275 prerequisite check — both
  // read-only, so an unbuildable request still leaves nothing on disk, not
  // even a scaffolded feature. Only once the request is known buildable does
  // #677's missing-feature check run (a feature that doesn't exist yet is
  // scaffolded now, so this layer never lands alone in an incomplete one).
- const {file,content}=renderLayer(root,layer,name,feature);
+ const {file,content}=renderLayer(root,layer,name,feature,options);
  assertLayerPrerequisites(root,name,feature,[layer]);
  ensureFeatureExists(root,feature);
  write(file,content); // write() ensures the parent dir exists
  selfCheck(root,[file]);
  return file;
+}
+
+// LIN-149 -- "creating a page auto-creates its view model." Opt-in via `fields` (rather than
+// unconditional on every `generateLayer(root,'page',...)` call) on purpose: making it
+// unconditional would retroactively change what every existing page/controller pair in the
+// repo -- and every test that generates a bare page -- gets back, which is exactly the
+// migration LIN-149's own MIGRATION NOTE says needs to be agreed with OG first. This function
+// is the seam that unconditional auto-creation will call into once that path is agreed; until
+// then, a caller that wants the auto-created chain (cli.mjs's `create page ... --vm-fields`)
+// calls it explicitly.
+/**
+ * Auto-create a page's view model (and that view model's adapter prerequisite) when neither
+ * already exists on disk, typed from `fields` (never left as `unknown`) since there is no API
+ * yet to derive the shape from.
+ *
+ * @param {string} root Project root.
+ * @param {string} name Page's unit name.
+ * @param {string} feature Feature that owns the files.
+ * @param {string} [fieldsText] A `parseViewModelFields` spec; defaults to `id:string` (still typed) when omitted.
+ * @returns {string[]} Absolute paths written, in dependency order; empty when the view model already existed.
+ *
+ * @example
+ * generatePageViewModel(root, 'Products', 'shop', 'id:string,name:string,tags:string[]');
+ */
+export function generatePageViewModel(root,name,feature,fieldsText){
+ if(layerFileExists(root,'viewmodel',name,feature))return [];
+ const fields=parseViewModelFields(fieldsText);
+ const written=[];
+ if(!layerFileExists(root,'adapter',name,feature))written.push(generateLayer(root,'adapter',name,feature,{fields}));
+ written.push(generateLayer(root,'viewmodel',name,feature,{fields}));
+ return written;
 }
 
 // Canonical dependency order for a vertical slice: controller's stub template
