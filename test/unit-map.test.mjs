@@ -17,6 +17,11 @@ import {
   validateUnitMap,
   rootUnitMapIndex,
   generateLayerWithUnit,
+  addDependency,
+  removeDependency,
+  dependenciesOf,
+  dependentsOf,
+  composedDependencyShape,
 } from '../packages/core/unit-map.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
@@ -207,4 +212,165 @@ test('unit and member records carry no dependency/edge field (nodes only, per LI
     assert.equal(forbidden in unitRecord, false, `unit record must not carry "${forbidden}"`);
     assert.equal(forbidden in memberRecord, false, `member record must not carry "${forbidden}"`);
   }
+});
+
+// LIN-155: a controller member composing N services -- the many-to-many
+// edge set this whole task exists to add.
+test('addDependency records a many-to-many edge: one controller member depends on N services', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'billing');
+  generateLayer(dir, 'page', 'Refund', 'billing');
+  generateLayer(dir, 'controller', 'Refund', 'billing');
+  generateLayer(dir, 'service', 'Payment', 'billing');
+  generateLayer(dir, 'service', 'Ledger', 'billing');
+  generateLayer(dir, 'service', 'Notification', 'billing');
+  const { id: controllerId } = registerUnit(dir, 'billing', 'controller', 'Refund');
+  const { id: paymentId } = registerUnit(dir, 'billing', 'service', 'Payment');
+  const { id: ledgerId } = registerUnit(dir, 'billing', 'service', 'Ledger');
+  const { id: notificationId } = registerUnit(dir, 'billing', 'service', 'Notification');
+  const { id: memberId } = registerMember(dir, 'billing', controllerId, 'submitRefund');
+  addDependency(dir, 'billing', memberId, paymentId);
+  addDependency(dir, 'billing', memberId, ledgerId);
+  addDependency(dir, 'billing', memberId, notificationId);
+  const deps = dependenciesOf(dir, 'billing', memberId);
+  assert.equal(deps.length, 3);
+  assert.deepEqual(deps.map((d) => d.to).sort(), [ledgerId, notificationId, paymentId].sort());
+  for (const d of deps) assert.equal(d.kind, 'dependsOn');
+});
+
+test('addDependency is idempotent on (from, to, kind) and rejects unknown endpoints or kinds', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'billing');
+  generateLayer(dir, 'page', 'Refund', 'billing');
+  generateLayer(dir, 'controller', 'Refund', 'billing');
+  generateLayer(dir, 'service', 'Payment', 'billing');
+  const { id: controllerId } = registerUnit(dir, 'billing', 'controller', 'Refund');
+  const { id: paymentId } = registerUnit(dir, 'billing', 'service', 'Payment');
+  const { id: memberId } = registerMember(dir, 'billing', controllerId, 'submitRefund');
+  const first = addDependency(dir, 'billing', memberId, paymentId);
+  const second = addDependency(dir, 'billing', memberId, paymentId);
+  assert.equal(first.id, second.id);
+  assert.equal(dependenciesOf(dir, 'billing', memberId).length, 1);
+  assert.throws(() => addDependency(dir, 'billing', 'm_deadbeef', paymentId), /unknown "from" id/);
+  assert.throws(() => addDependency(dir, 'billing', memberId, 'u_deadbeef'), /unknown "to" unit id/);
+  assert.throws(() => addDependency(dir, 'billing', memberId, paymentId, 'callsInto'), /unknown edge kind/);
+});
+
+test('dependentsOf answers "who else uses this service" by reverse edge lookup, both directions many-to-many', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'billing');
+  generateLayer(dir, 'page', 'Refund', 'billing');
+  generateLayer(dir, 'page', 'Invoice', 'billing');
+  generateLayer(dir, 'controller', 'Refund', 'billing');
+  generateLayer(dir, 'controller', 'Invoice', 'billing');
+  generateLayer(dir, 'service', 'Payment', 'billing');
+  const { id: refundControllerId } = registerUnit(dir, 'billing', 'controller', 'Refund');
+  const { id: invoiceControllerId } = registerUnit(dir, 'billing', 'controller', 'Invoice');
+  const { id: paymentId } = registerUnit(dir, 'billing', 'service', 'Payment');
+  const { id: refundMemberId } = registerMember(dir, 'billing', refundControllerId, 'submitRefund');
+  const { id: invoiceMemberId } = registerMember(dir, 'billing', invoiceControllerId, 'loadInvoice');
+  addDependency(dir, 'billing', refundMemberId, paymentId);
+  addDependency(dir, 'billing', invoiceMemberId, paymentId);
+  const dependents = dependentsOf(dir, 'billing', paymentId);
+  assert.equal(dependents.length, 2);
+  assert.deepEqual(dependents.map((d) => d.from).sort(), [invoiceMemberId, refundMemberId].sort());
+});
+
+test('composedDependencyShape keys are derived from each dependency\'s own unit name and stay unchanged when a sibling dependency is added', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'billing');
+  generateLayer(dir, 'page', 'Refund', 'billing');
+  generateLayer(dir, 'controller', 'Refund', 'billing');
+  generateLayer(dir, 'service', 'Payment', 'billing');
+  generateLayer(dir, 'service', 'Ledger', 'billing');
+  const { id: controllerId } = registerUnit(dir, 'billing', 'controller', 'Refund');
+  const { id: paymentId } = registerUnit(dir, 'billing', 'service', 'Payment');
+  const { id: ledgerId } = registerUnit(dir, 'billing', 'service', 'Ledger');
+  const { id: memberId } = registerMember(dir, 'billing', controllerId, 'submitRefund');
+  addDependency(dir, 'billing', memberId, paymentId);
+  const before = composedDependencyShape(dir, 'billing', memberId);
+  assert.deepEqual(before.map((d) => d.key), ['payment']);
+  addDependency(dir, 'billing', memberId, ledgerId);
+  const after = composedDependencyShape(dir, 'billing', memberId);
+  assert.deepEqual(after.find((d) => d.unitId === paymentId).key, 'payment'); // unchanged by the new sibling
+  assert.deepEqual(after.map((d) => d.key).sort(), ['ledger', 'payment']);
+});
+
+test('removeDependency deletes the edge and reports the now-orphaned unit only when no dependent remains', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'billing');
+  generateLayer(dir, 'page', 'Refund', 'billing');
+  generateLayer(dir, 'page', 'Invoice', 'billing');
+  generateLayer(dir, 'controller', 'Refund', 'billing');
+  generateLayer(dir, 'controller', 'Invoice', 'billing');
+  generateLayer(dir, 'service', 'Payment', 'billing');
+  const { id: refundControllerId } = registerUnit(dir, 'billing', 'controller', 'Refund');
+  const { id: invoiceControllerId } = registerUnit(dir, 'billing', 'controller', 'Invoice');
+  const { id: paymentId } = registerUnit(dir, 'billing', 'service', 'Payment');
+  const { id: refundMemberId } = registerMember(dir, 'billing', refundControllerId, 'submitRefund');
+  const { id: invoiceMemberId } = registerMember(dir, 'billing', invoiceControllerId, 'loadInvoice');
+  const { id: edge1 } = addDependency(dir, 'billing', refundMemberId, paymentId);
+  const { id: edge2 } = addDependency(dir, 'billing', invoiceMemberId, paymentId);
+  const first = removeDependency(dir, 'billing', edge1);
+  assert.equal(first.orphaned, null); // invoiceController still depends on it
+  const second = removeDependency(dir, 'billing', edge2);
+  assert.equal(second.orphaned, paymentId); // last dependent removed
+  assert.throws(() => removeDependency(dir, 'billing', 'e_deadbeef'), /unknown edge id/);
+});
+
+test('tombstoneUnit cascades to its own members and their edges, and reports a dependency left with no remaining dependent', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'billing');
+  generateLayer(dir, 'page', 'Refund', 'billing');
+  generateLayer(dir, 'controller', 'Refund', 'billing');
+  generateLayer(dir, 'service', 'Payment', 'billing');
+  const { id: controllerId } = registerUnit(dir, 'billing', 'controller', 'Refund');
+  const { id: paymentId } = registerUnit(dir, 'billing', 'service', 'Payment');
+  const { id: memberId } = registerMember(dir, 'billing', controllerId, 'submitRefund');
+  addDependency(dir, 'billing', memberId, paymentId);
+  const { orphaned } = tombstoneUnit(dir, 'billing', controllerId);
+  assert.deepEqual(orphaned, [paymentId]);
+  const map = loadUnitMap(dir, 'billing');
+  assert.equal(map.units[controllerId].tombstoned, true);
+  assert.equal(map.members[memberId].tombstoned, true);
+  assert.equal(map.units[paymentId].tombstoned, false); // the shared service itself is never deleted
+  assert.deepEqual(dependenciesOf(dir, 'billing', memberId), []);
+});
+
+test('tombstoneUnit does not orphan a service another controller still depends on', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'billing');
+  generateLayer(dir, 'page', 'Refund', 'billing');
+  generateLayer(dir, 'page', 'Invoice', 'billing');
+  generateLayer(dir, 'controller', 'Refund', 'billing');
+  generateLayer(dir, 'controller', 'Invoice', 'billing');
+  generateLayer(dir, 'service', 'Payment', 'billing');
+  const { id: refundControllerId } = registerUnit(dir, 'billing', 'controller', 'Refund');
+  const { id: invoiceControllerId } = registerUnit(dir, 'billing', 'controller', 'Invoice');
+  const { id: paymentId } = registerUnit(dir, 'billing', 'service', 'Payment');
+  const { id: refundMemberId } = registerMember(dir, 'billing', refundControllerId, 'submitRefund');
+  const { id: invoiceMemberId } = registerMember(dir, 'billing', invoiceControllerId, 'loadInvoice');
+  addDependency(dir, 'billing', refundMemberId, paymentId);
+  addDependency(dir, 'billing', invoiceMemberId, paymentId);
+  const { orphaned } = tombstoneUnit(dir, 'billing', refundControllerId);
+  assert.deepEqual(orphaned, []);
+  assert.equal(dependentsOf(dir, 'billing', paymentId).length, 1);
+});
+
+test('validateUnitMap reports a dangling edge whose endpoint was tombstoned outside tombstoneUnit\'s own cascade', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'billing');
+  generateLayer(dir, 'page', 'Refund', 'billing');
+  generateLayer(dir, 'controller', 'Refund', 'billing');
+  generateLayer(dir, 'service', 'Payment', 'billing');
+  const { id: controllerId } = registerUnit(dir, 'billing', 'controller', 'Refund');
+  const { id: paymentId } = registerUnit(dir, 'billing', 'service', 'Payment');
+  const { id: memberId } = registerMember(dir, 'billing', controllerId, 'submitRefund');
+  addDependency(dir, 'billing', memberId, paymentId);
+  const map = loadUnitMap(dir, 'billing');
+  map.units[paymentId].tombstoned = true; // hand-edited, bypassing tombstoneUnit's cascade
+  fs.writeFileSync(unitMapPath(dir, 'billing'), `${JSON.stringify(map, null, 2)}\n`);
+  const { danglingEdges } = validateUnitMap(dir, 'billing');
+  assert.equal(danglingEdges.length, 1);
+  assert.equal(danglingEdges[0].to, paymentId);
 });
