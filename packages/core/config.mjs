@@ -26,7 +26,10 @@ export function normalizeLocalRules(raw) {
 
 export const DEFAULT_LAYERS = {
   route: { pattern: 'app/**/page.tsx', canImport: ['controller'] },
-  controller: { pattern: 'features/*/controllers/**', canImport: ['workflow', 'hook', 'service', 'page', 'component', 'domain', 'types'] },
+  // LIN-163 -- controller additionally may import an adapter directly (the LIN-146 chain, revised
+  // 2026-09-30: page -> viewmodel -> controller -> adapter -> api), alongside its original,
+  // unrelated role composing hooks/domain/pages for a route.
+  controller: { pattern: 'features/*/controllers/**', canImport: ['workflow', 'hook', 'service', 'page', 'component', 'domain', 'adapter', 'types'] },
   workflow: { pattern: 'features/*/workflows/**', canImport: ['service', 'domain', 'types'] },
   hook: { pattern: 'features/*/hooks/**', canImport: ['workflow', 'service', 'domain', 'types'] },
   service: { pattern: 'features/*/services/**', canImport: ['domain', 'types'] },
@@ -41,14 +44,15 @@ export const DEFAULT_LAYERS = {
   // existing project has a `features/*/expressions/**` file today, so this new pattern/layer
   // changes classification for zero pre-existing files.
   expression: { pattern: 'features/*/expressions/**', canImport: ['component', 'types'] },
-  // LIN-146 -- the two new layers the owner inserted between controller and the
-  // real backend API (page -> controller -> viewmodel -> adapter -> api). An
-  // adapter owns the external effect and shape translation (mirrors service's
-  // own canImport); a viewmodel may only reach the API through an adapter, never
-  // directly, so its canImport deliberately omits any fetch-capable layer other
-  // than 'adapter'.
+  // LIN-146 -- the two new layers the owner inserted between the page and the
+  // real backend API. LIN-163 (2026-09-30) corrected the chain's order to
+  // page -> viewmodel -> controller -> adapter -> api: an adapter owns the
+  // external effect and shape translation (mirrors service's own canImport);
+  // a viewmodel reaches the adapter only through the controller, never
+  // directly, so its canImport deliberately omits 'adapter' in favor of
+  // 'controller'.
   adapter: { pattern: 'features/*/adapters/**', canImport: ['domain', 'types'] },
-  viewmodel: { pattern: 'features/*/viewmodels/**', canImport: ['adapter', 'domain', 'types'] },
+  viewmodel: { pattern: 'features/*/viewmodels/**', canImport: ['controller', 'domain', 'types'] },
 };
 
 // Every layer graph below shares the same feature-internal shape

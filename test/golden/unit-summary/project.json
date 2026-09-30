@@ -60,6 +60,7 @@
         "page",
         "component",
         "domain",
+        "adapter",
         "types"
       ],
       "workflow": [
@@ -97,7 +98,7 @@
         "types"
       ],
       "viewmodel": [
-        "adapter",
+        "controller",
         "domain",
         "types"
       ]
@@ -138,7 +139,7 @@
   ],
   "budget": {
     "maxTokens": 2000,
-    "estimatedTokens": 415,
+    "estimatedTokens": 418,
     "truncated": false
   }
 }

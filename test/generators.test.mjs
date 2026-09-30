@@ -439,7 +439,7 @@ test('#275 selfCheck reports an all-IMPORT-001 failure as a layer-order problem,
     assert.equal(err.exitCode, EXIT_CODES.USAGE_ERROR);
     assert.doesNotMatch(err.message, /template bug/);
     assert.match(err.message, /references a file that doesn't exist yet/);
-    assert.match(err.message, /domain -> service -> workflow -> hook -> component -> expression -> adapter -> viewmodel -> page -> controller/);
+    assert.match(err.message, /domain -> service -> workflow -> hook -> component -> expression -> adapter -> page -> controller -> viewmodel/);
     return true;
   });
 });
@@ -458,7 +458,12 @@ test('#275 selfCheck still calls a genuine rule violation a template bug (INTERN
   });
 });
 
-// ---- LIN-146: viewmodel/adapter layers (page -> controller -> viewmodel -> adapter -> api) ----
+// ---- LIN-146/LIN-163: viewmodel/adapter layers (page -> viewmodel -> controller -> adapter -> api) ----
+//
+// LIN-163 (2026-09-30) corrected this chain's order: the wave originally shipped
+// "page -> controller -> viewmodel -> adapter -> api" (a viewmodel importing its adapter
+// directly, with no controller in the data path at all) on a since-superseded owner decision.
+// A viewmodel now reaches its adapter only through its controller.
 
 test('LIN-146 construct create adapter scaffolds into features/<f>/adapters/', () => {
   const dir = tmpProject();
@@ -469,28 +474,42 @@ test('LIN-146 construct create adapter scaffolds into features/<f>/adapters/', (
   assert.deepEqual(validateArchitecture(dir).violations.filter((v) => v.severity === 'error'), []);
 });
 
-test('LIN-146 construct create viewmodel scaffolds into features/<f>/viewmodels/ and requires its adapter', () => {
+test('LIN-163 construct create viewmodel scaffolds into features/<f>/viewmodels/ and requires its controller (never its adapter directly)', () => {
   const dir = tmpProject();
   createFeature(dir, 'checkout');
   assert.throws(() => generateLayer(dir, 'viewmodel', 'Products', 'checkout'), (err) => {
     assert.ok(err instanceof ConstructError);
-    assert.match(err.message, /needs a "adapter" layer/);
+    assert.match(err.message, /needs a "controller" layer/);
     return true;
   });
-  generateLayer(dir, 'adapter', 'Products', 'checkout');
+  generateLayer(dir, 'page', 'Products', 'checkout');
+  generateLayer(dir, 'controller', 'Products', 'checkout');
   const file = generateLayer(dir, 'viewmodel', 'Products', 'checkout');
   assert.equal(path.basename(path.dirname(file)), 'viewmodels');
   assert.equal(path.basename(file), 'ProductsViewModel.tsx');
   const content = fs.readFileSync(file, 'utf8');
-  assert.match(content, /import \{ ProductsAdapter \} from '\.\.\/adapters\/ProductsAdapter';/);
+  assert.match(content, /import \{ ProductsController \} from '\.\.\/controllers\/ProductsController';/);
+  assert.doesNotMatch(content, /adapters\/ProductsAdapter/);
   assert.deepEqual(validateArchitecture(dir).violations.filter((v) => v.severity === 'error'), []);
 });
 
-test('LIN-146 generateVertical builds adapter before viewmodel regardless of the order requested', () => {
+test('LIN-163 a fields-aware controller orchestrates its adapter, never a viewmodel', () => {
   const dir = tmpProject();
   createFeature(dir, 'checkout');
-  const files = generateVertical(dir, 'Products', 'checkout', ['viewmodel', 'adapter']);
-  assert.deepEqual(files.map((f) => path.basename(f)), ['ProductsAdapter.tsx', 'ProductsViewModel.tsx']);
+  generateLayer(dir, 'page', 'Products', 'checkout');
+  generateLayer(dir, 'adapter', 'Products', 'checkout', { fields: parseViewModelFields('id:string') });
+  const file = generateLayer(dir, 'controller', 'Products', 'checkout', { fields: parseViewModelFields('id:string') });
+  const content = fs.readFileSync(file, 'utf8');
+  assert.match(content, /import \{ ProductsAdapter \} from '\.\.\/adapters\/ProductsAdapter';/);
+  assert.match(content, /Promise<ProductsViewModelData>/);
+  assert.deepEqual(validateArchitecture(dir).violations.filter((v) => v.severity === 'error'), []);
+});
+
+test('LIN-163 generateVertical builds adapter/page/controller before viewmodel regardless of the order requested', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  const files = generateVertical(dir, 'Products', 'checkout', ['viewmodel', 'controller', 'adapter', 'page']);
+  assert.deepEqual(files.map((f) => path.basename(f)), ['ProductsAdapter.tsx', 'ProductsPage.tsx', 'ProductsController.tsx', 'ProductsViewModel.tsx']);
   assert.deepEqual(validateArchitecture(dir).violations.filter((v) => v.severity === 'error'), []);
 });
 
@@ -562,18 +581,22 @@ test('LIN-149 viewModelSampleValue produces a literal matching the interface sha
   assert.deepEqual(value, { id: '', count: 0, active: false, tags: [] });
 });
 
-test('LIN-149 generatePageViewModel auto-creates a fully typed view model (and its adapter) for a page with no API', () => {
+test('LIN-163 generatePageViewModel auto-creates a fully typed view model (and its controller and adapter) for a page with no API', () => {
   const dir = tmpProject();
   createFeature(dir, 'shop');
   generateLayer(dir, 'page', 'Products', 'shop');
   const written = generatePageViewModel(dir, 'Products', 'shop', 'id:string,name:string,price:number,tags:string[]');
-  assert.deepEqual(written.map((f) => path.basename(f)), ['ProductsAdapter.tsx', 'ProductsViewModel.tsx']);
+  assert.deepEqual(written.map((f) => path.basename(f)), ['ProductsAdapter.tsx', 'ProductsController.tsx', 'ProductsViewModel.tsx']);
   const adapterContent = fs.readFileSync(written[0], 'utf8');
   assert.doesNotMatch(adapterContent, /: unknown/);
   assert.match(adapterContent, /export interface ProductsViewModelData \{/);
   assert.match(adapterContent, /Promise<ProductsViewModelData>/);
-  const viewmodelContent = fs.readFileSync(written[1], 'utf8');
-  assert.match(viewmodelContent, /import type \{ ProductsViewModelData \} from '\.\.\/adapters\/ProductsAdapter';/);
+  const controllerContent = fs.readFileSync(written[1], 'utf8');
+  assert.match(controllerContent, /import \{ ProductsAdapter \} from '\.\.\/adapters\/ProductsAdapter';/);
+  assert.match(controllerContent, /Promise<ProductsViewModelData>/);
+  const viewmodelContent = fs.readFileSync(written[2], 'utf8');
+  assert.match(viewmodelContent, /import type \{ ProductsViewModelData \} from '\.\.\/controllers\/ProductsController';/);
+  assert.doesNotMatch(viewmodelContent, /adapters\/ProductsAdapter/);
   assert.match(viewmodelContent, /Promise<ProductsViewModelData>/);
   assert.deepEqual(validateArchitecture(dir).violations.filter((v) => v.severity === 'error'), []);
 });

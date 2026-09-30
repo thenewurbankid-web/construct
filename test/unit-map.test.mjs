@@ -142,10 +142,12 @@ test('unitFromPath round-trips every layer: path -> {layer, unit} -> path', () =
     ['hook', 'Cart'],
     ['component', 'PriceTag'],
     ['expression', 'ShowDiscount'],
+    // LIN-163: page -> viewmodel -> controller -> adapter -> api, so a viewmodel needs its
+    // controller (and a controller needs its page) already generated first.
     ['adapter', 'Invoice'],
-    ['viewmodel', 'Invoice'],
     ['page', 'Invoice'],
     ['controller', 'Invoice'],
+    ['viewmodel', 'Invoice'],
   ];
   for (const [layer, name] of cases) {
     generateLayer(dir, layer, name, 'billing');

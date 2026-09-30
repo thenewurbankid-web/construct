@@ -96,7 +96,15 @@ const controllerTemplates={
  'react-spa':(n)=>`import { ${n}Page } from '../pages/${n}Page';\n\n// Registered directly as this route's element by react-router in\n// src/App.tsx (e.g. <Route path="/${n.toLowerCase()}" element={<${n}Controller />} />)\n// -- no per-route page.tsx wrapper file like the Next.js target uses.\nexport function ${n}Controller() {\n  return <${n}Page />;\n}\n`,
 };
 const templates={
- controller:(n,{framework='nextjs'}={})=>(controllerTemplates[framework]||controllerTemplates.nextjs)(n),
+ // LIN-163 -- with `fields` (the LIN-149 vm-chain: page -> viewmodel -> controller -> adapter ->
+ // api), a controller instead orchestrates the adapter for its view model, the same role it
+ // played for the viewmodel before this fix corrected the order; it re-exports the adapter's
+ // inferred `${n}ViewModelData` so the viewmodel above it never imports the adapter directly.
+ // Without `fields` it keeps its original, unrelated role: composing hooks/domain/pages for a route.
+ /** @type {(n:string, opts?:{framework?: string, fields?: ViewModelField[]}) => string} */
+ controller:(n,{framework='nextjs',fields}={})=>fields
+  ?`import { ${n}Adapter } from '../adapters/${n}Adapter';\nimport type { ${n}ViewModelData } from '../adapters/${n}Adapter';\n\nexport type { ${n}ViewModelData };\n\nexport async function ${n}Controller(): Promise<${n}ViewModelData> {\n  return ${n}Adapter({ signal: new AbortController().signal });\n}\n`
+  :(controllerTemplates[framework]||controllerTemplates.nextjs)(n),
  workflow:(n)=>`import { setup } from 'xstate';\n\nexport const ${n}Workflow = setup({}).createMachine({\n  id: '${n.toLowerCase()}',\n  initial: 'idle',\n  states: { idle: {} }\n});\n`,
  hook:(n)=>`import { useCallback } from 'react';\n\nexport function use${n}() {\n  return { action: useCallback(() => {}, []) };\n}\n`,
  domain:(n)=>`export function ${n}() {\n  return true;\n}\n`,
@@ -129,15 +137,18 @@ const templates={
  adapter:(n,{fields}={})=>fields
   ?`${viewModelInterfaceText(n,fields)}\n\nexport async function ${n}Adapter({ signal }: { signal: AbortSignal }): Promise<${n}ViewModelData> {\n  if (signal.aborted) throw new Error('The request was cancelled.');\n  return ${viewModelSampleValue(fields)};\n}\n`
   :`export async function ${n}Adapter({ signal }: { signal: AbortSignal }) {\n  const response = await fetch('/api/${n.toLowerCase()}', { method: 'GET', signal });\n  if (!response.ok) throw new Error('Request failed');\n  return response.json();\n}\n`,
- // LIN-146 -- shapes API data for its page. Imports its same-named Adapter (never the API/fetch
- // directly, LAYER_CONSTRAINTS.viewmodel below) the same way a controller's stub imports its
- // same-named Page -- LAYER_PREREQUISITES.viewmodel enforces the adapter exists first.
- // LIN-149 -- with `fields`, also imports the adapter's inferred `${n}ViewModelData` type so the
- // view model's return type is explicit rather than inferred through the call alone.
+ // LIN-146 -- shapes API data for its page. Imports its same-named Controller (never the
+ // adapter/API/fetch directly, LAYER_CONSTRAINTS.viewmodel below) -- LIN-163 (2026-09-30)
+ // corrected the chain's order to page -> viewmodel -> controller -> adapter -> api, so the
+ // controller (not the adapter) is what the viewmodel reaches through -- LAYER_PREREQUISITES.viewmodel
+ // enforces the controller exists first.
+ // LIN-149 -- with `fields`, also imports the controller's re-exported, adapter-inferred
+ // `${n}ViewModelData` type so the view model's return type is explicit rather than inferred
+ // through the call alone.
  /** @type {(n:string, opts?:{fields?: ViewModelField[]}) => string} */
  viewmodel:(n,{fields}={})=>fields
-  ?`import { ${n}Adapter } from '../adapters/${n}Adapter';\nimport type { ${n}ViewModelData } from '../adapters/${n}Adapter';\n\nexport async function ${n}ViewModel(): Promise<${n}ViewModelData> {\n  return ${n}Adapter({ signal: new AbortController().signal });\n}\n`
-  :`import { ${n}Adapter } from '../adapters/${n}Adapter';\n\nexport async function ${n}ViewModel() {\n  return ${n}Adapter({ signal: new AbortController().signal });\n}\n`,
+  ?`import { ${n}Controller } from '../controllers/${n}Controller';\nimport type { ${n}ViewModelData } from '../controllers/${n}Controller';\n\nexport async function ${n}ViewModel(): Promise<${n}ViewModelData> {\n  return ${n}Controller();\n}\n`
+  :`import { ${n}Controller } from '../controllers/${n}Controller';\n\nexport async function ${n}ViewModel() {\n  return ${n}Controller();\n}\n`,
 };
 /** The features-root-relative folder name a layer's generated files live under (e.g. `'domain'`
  * for the `domain` layer, `'hooks'` for `hook`); falls back to `'components'` for any layer not
@@ -181,21 +192,26 @@ export const LAYER_CONSTRAINTS={
  hook:'A React hook — the exported function name must start with "use". May import anything.',
  component:`Presentation-only, from props. Never write the substring "controllers/", "workflows/", "services/", or "domain/" anywhere in the file, even in a comment. ${NO_INLINE_JSX_LOGIC}`,
  page:`Presentation composition from props only. Never write "workflows/", "services/", or "domain/" anywhere in the file (even in a comment), never call fetch(), never use useMachine/useActor/createMachine. ${NO_INLINE_JSX_LOGIC}`,
- controller:'Composes hooks/domain/pages for a route and nothing else: it calls hooks and renders its own Page, passing them props. It must contain NO control flow at all (no if/else, loops, switch, or try/catch) and never call fetch() — CONTROLLER-001 rejects both. Any conditional, loop, error handling or async handler belongs in a hook (or workflow/domain function) that the controller calls. No import restrictions.',
+ // LIN-163 (2026-09-30) -- a controller keeps its original role (composes hooks/domain/pages for
+ // a route) OR, in the LIN-146 vm-chain (page -> viewmodel -> controller -> adapter -> api),
+ // orchestrates its same-named Adapter for its viewmodel above it. May import an adapter, domain,
+ // or a type in that role; never the api directly.
+ controller:'Composes hooks/domain/pages for a route and nothing else: it calls hooks and renders its own Page, passing them props. It must contain NO control flow at all (no if/else, loops, switch, or try/catch) and never call fetch() — CONTROLLER-001 rejects both. Any conditional, loop, error handling or async handler belongs in a hook (or workflow/domain function) that the controller calls. In the view-model chain, a controller may instead import its own Adapter (never call fetch() or the api directly) and return what the adapter gives it — the only way a viewmodel reaches the api. No other import restrictions.',
  // #514 -- EXPR-003 (name it decides, not "If"/"Switch"/"Show"/... — the bare control-flow kind
  // itself is rejected), EXPR-004 (no hand-authored native JSX beyond a Fragment wrapping children
  // and/or another component/expression), EXPR-005 (must accept children and return JSX), EXPR-006
  // (must stay built through defineExpression(...) — keep that call in the rewritten file).
  expression:'A named decision about which already-built piece (children, or another component/expression) to render — not what to render. Give it a specific, descriptive name for WHAT it decides (never the bare control-flow kind itself: not "If", "Switch", "Show", "Hide", "When", "ForEach", "Cond", "Loop", "Map"). Built through defineExpression(...) — keep that call. Never author real markup (a native lowercase JSX tag like <div>) — only a Fragment wrapping `children` and/or an existing component/expression unit. May only import a component unit or a type, never domain/service/workflow/controller.',
- // LIN-146 -- owner decision 2026-09-30's new chain: page -> controller -> viewmodel -> adapter
- // -> api. Explicit import boundary: a viewmodel may import an adapter, never the API/fetch
- // directly -- that indirection is the whole point of the layer (it is what lets the adapter's
- // wire-shape translation change without the viewmodel, or anything above it, changing too).
- viewmodel:'Shapes API data into what a page needs to render, and nothing else. Never call fetch() directly and never import a service — the only way to reach the API is through this unit\'s own Adapter (import it, never the API/fetch itself). May import an adapter, domain, or a type; never import a controller, page, component, workflow, hook, or service.',
- // LIN-146 -- the adapter is the one layer allowed to touch the real API and translate its wire
- // shape into whatever a viewmodel expects — the same role `service` plays for hooks/controllers,
- // just addressed by a viewmodel instead.
- adapter:'Owns one external effect (a fetch call to the real API) and translates its wire shape into what a viewmodel expects, and nothing else. Never import React or any react-related package, and never import a viewmodel, page, component, controller, workflow, or hook. May import domain or a type.',
+ // LIN-163 (2026-09-30) -- corrected chain order: page -> viewmodel -> controller -> adapter ->
+ // api. This supersedes the earlier "page -> controller -> viewmodel -> adapter -> api" the wave
+ // shipped with (that wake payload predated the owner's revision). Explicit import boundary: a
+ // viewmodel may import its Controller, never an adapter or the API/fetch directly -- that
+ // indirection is the whole point of the layer split (it is what lets the adapter's wire-shape
+ // translation change without the viewmodel, or anything above it, changing too).
+ viewmodel:'Shapes data into what a page needs to render, and nothing else. Never call fetch() directly and never import a service or an adapter — the only way to reach the data is through this unit\'s own Controller (import it, never an Adapter or the API/fetch itself). May import its controller, domain, or a type; never import a page, component, workflow, hook, service, or an adapter directly.',
+ // LIN-163 -- the adapter is still the one layer allowed to touch the real API and translate its
+ // wire shape, but it is now reached through the controller, not directly by the viewmodel.
+ adapter:'Owns one external effect (a fetch call to the real API) and translates its wire shape into what its controller expects, and nothing else. Never import React or any react-related package, and never import a controller, viewmodel, page, component, workflow, or hook. May import domain or a type.',
 };
 
 /** Shared by generateLayer and refactor.mjs's move/rename: the filename base a
@@ -451,9 +467,10 @@ export function renderLayer(root,layer,name,feature,/** @type {{fields?: ViewMod
  const cap=pascalCase(name,layer[0].toUpperCase()+layer.slice(1));
  const file=layerTargetFile(root,layer,name,feature,config);
  const custom=findCustomTemplate(root,layer,config);
- // LIN-149: `fields` only ever reaches the adapter/viewmodel templates (the two layers that
- // know how to use it); every other layer's template signature is untouched.
- const templateOptions={framework:config.project?.framework,...(layer==='expression'?{typedContractsSpecifier:typedContractsSpecifierFor(root,path.dirname(file))}:{}),...(fields&&(layer==='adapter'||layer==='viewmodel')?{fields}:{})};
+ // LIN-149/LIN-163: `fields` only ever reaches the adapter/controller/viewmodel templates (the
+ // three layers that know how to use it, in the vm-chain); every other layer's template signature
+ // is untouched.
+ const templateOptions={framework:config.project?.framework,...(layer==='expression'?{typedContractsSpecifier:typedContractsSpecifierFor(root,path.dirname(file))}:{}),...(fields&&(layer==='adapter'||layer==='controller'||layer==='viewmodel')?{fields}:{})};
  const content=custom?renderCustomTemplate(custom,name,cap):templates[layer](cap,templateOptions);
  return {file,content};
 }
@@ -465,7 +482,7 @@ export function renderLayer(root,layer,name,feature,/** @type {{fields?: ViewMod
  * @param {string} layer Layer name (`domain`, `service`, `workflow`, `hook`, `component`, `page`, `controller`).
  * @param {string} name Unit name (turned into a valid identifier).
  * @param {string} feature Feature that owns the file.
- * @param {{fields?: ViewModelField[]}} [options] LIN-149: `fields` (parsed by `parseViewModelFields`) for an `adapter`/`viewmodel` layer with no API yet; ignored by every other layer.
+ * @param {{fields?: ViewModelField[]}} [options] LIN-149/LIN-163: `fields` (parsed by `parseViewModelFields`) for an `adapter`/`controller`/`viewmodel` layer with no API yet; ignored by every other layer.
  * @returns {string} Absolute path of the file written.
  *
  * @example
@@ -513,29 +530,38 @@ export function generatePageViewModel(root,name,feature,fieldsText){
  const fields=parseViewModelFields(fieldsText);
  const written=[];
  if(!layerFileExists(root,'adapter',name,feature))written.push(generateLayer(root,'adapter',name,feature,{fields}));
+ // LIN-163 -- the viewmodel reaches the adapter through the controller (page -> viewmodel ->
+ // controller -> adapter -> api), so the controller is generated here too, between the adapter
+ // and the viewmodel, with `fields` so it gets the adapter-orchestrating template rather than its
+ // page-composing default.
+ if(!layerFileExists(root,'controller',name,feature))written.push(generateLayer(root,'controller',name,feature,{fields}));
  written.push(generateLayer(root,'viewmodel',name,feature,{fields}));
  return written;
 }
 
 // Canonical dependency order for a vertical slice: controller's stub template
-// imports a same-named page, so page must exist first or IMPORT-001 (a
-// dangling relative import) fires — every other layer's stub is
+// imports a same-named page (its original, unrelated role), so page must exist first or
+// IMPORT-001 (a dangling relative import) fires — every other plain layer's stub is
 // self-contained. `construct generate layer <name> --layers ...` scaffolds
 // one logical unit across several layers in a single command, always in this
 // order regardless of the order the caller listed --layers in.
-// LIN-146 -- 'adapter' and 'viewmodel' slot in before 'page'/'controller': a viewmodel's
-// stub imports its same-named adapter (mirroring controller -> page below), so the
-// dependency (adapter) must build first, same rule that already places page before
-// controller.
-export const LAYER_ORDER=['domain','service','workflow','hook','component','expression','adapter','viewmodel','page','controller'];
+// LIN-163 (2026-09-30) -- corrected the vm-chain's order to page -> viewmodel -> controller ->
+// adapter -> api (superseding the "page -> controller -> viewmodel -> adapter -> api" this wave
+// shipped with, which cited a pre-revision owner decision). 'viewmodel' now slots in AFTER
+// 'controller': the viewmodel's stub imports its same-named controller, so the controller (and,
+// transitively, the adapter it in turn imports when built with `fields`) must build first. 'page'
+// stays ahead of 'controller' — that dependency is the original, unrelated controller-composes-
+// page relationship (untouched by this fix) and is incompatible with placing 'controller' before
+// 'page', so it is not reordered here.
+export const LAYER_ORDER=['domain','service','workflow','hook','component','expression','adapter','page','controller','viewmodel'];
 
 // #275 — which other layer(s) a layer's own stub template composes, and so
 // cannot be generated without. The controller stub imports `../pages/<Name>Page`,
-// and (LIN-146) the viewmodel stub imports `../adapters/<Name>Adapter` — either
+// and (LIN-163) the viewmodel stub imports `../controllers/<Name>Controller` — either
 // generated without its dependency is a dangling import (IMPORT-001) the moment
 // it's written. Declared as data rather than hardcoded in one `if` so a future
 // template that composes another layer only has to add a line here.
-export const LAYER_PREREQUISITES={controller:['page'],viewmodel:['adapter']};
+export const LAYER_PREREQUISITES={controller:['page'],viewmodel:['controller']};
 
 // A prerequisite is satisfied by the file already existing on disk, not just by
 // being in the same layer set — `construct create controller X --feature f`

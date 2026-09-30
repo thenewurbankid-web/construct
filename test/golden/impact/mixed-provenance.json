@@ -69,6 +69,7 @@
             "page",
             "component",
             "domain",
+            "adapter",
             "types"
           ]
         },
@@ -679,6 +680,7 @@
           "page",
           "component",
           "domain",
+          "adapter",
           "types"
         ]
       },
