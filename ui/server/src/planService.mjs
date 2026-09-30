@@ -20,6 +20,13 @@ import { PLAN_FLOWS, planFlow, validatePlan, planToCommand, planTouches } from '
 import { expectedFiles } from '../../../packages/core/plan-touches.mjs';
 import { analyzeImpact, proposeSeedsFromText } from '../../../packages/engine/impact.mjs';
 import { listUnits } from '../../../packages/engine/unitSummary.mjs';
+import { moveLayerFile, renameLayerFile } from '../../../packages/core/refactor.mjs';
+import { ConstructError } from '../../../packages/core/diagnostics.mjs';
+
+/** A layer/feature/unit name, as the Inspector's Change tab may send one: no path separators, so it can
+ * never be read as anything but an identifier by the mechanical refactor blocks below. */
+const IDENT_RE = /^[A-Za-z][A-Za-z0-9_-]{0,79}$/;
+const isIdent = (v) => typeof v === 'string' && IDENT_RE.test(v);
 
 /** The one model provider a Cockpit step may name (a local Ollama); anything else is refused (COCKPIT_LLM_PROVIDER). */
 export const LOCAL_PROVIDER = 'ollama';
@@ -274,6 +281,34 @@ export function createPlanService({ getRoot, startPlan, onStarted, getBlockSetti
           status: 200,
           body: { ok: true, project: path.basename(root), constraints: readConstraints(root), features: units.ok ? units.units.map((u) => ({ ref: u.ref, name: u.name })) : [], flows: flowCatalogue({ disabledFlows: blockSettingsFor(root).disabledFlows }) },
         };
+      });
+    },
+    /**
+     * #381 — Inspector "Change" tab: a dry-run preview of `construct refactor move|rename` (never writes),
+     * so the tab can show the steps with provenance and a per-file checklist before anything runs. Only
+     * `move` and `rename` are offered here; `extract`/`wrap` have no block yet, which the client already
+     * knows from `flowCatalogue()` (`refactor.move`/`refactor.rename` are the only two `PLAN_FLOWS` entries).
+     */
+    refactorPreview(body) {
+      return withRoot((root) => {
+        const verb = body?.verb;
+        if (verb !== 'move' && verb !== 'rename') return fail(400, 'verb must be "move" or "rename".');
+        const { feature, name } = body || {};
+        if (!isIdent(feature) || !isIdent(name)) return fail(400, 'feature and name must be plain identifiers (no path separators).');
+        try {
+          if (verb === 'move') {
+            const { from, to } = body;
+            if (!isIdent(from) || !isIdent(to)) return fail(400, '"from" and "to" must be plain layer names.');
+            const result = moveLayerFile(root, feature, name, from, to, { dryRun: true });
+            return { status: 200, body: { ok: true, verb, argv: ['refactor', 'move', name, '--feature', feature, '--from', from, '--to', to], ...result } };
+          }
+          const { newName, layer } = body;
+          if (!isIdent(newName) || !isIdent(layer)) return fail(400, '"newName" and "layer" must be plain identifiers/layer names.');
+          const result = renameLayerFile(root, feature, name, newName, layer, { dryRun: true });
+          return { status: 200, body: { ok: true, verb, argv: ['refactor', 'rename', name, newName, '--feature', feature, '--layer', layer], ...result } };
+        } catch (e) {
+          return fail(400, e instanceof ConstructError ? e.message : 'The change could not be previewed.');
+        }
       });
     },
     /** Proposals only. Nothing is analysed and no model is called: a heuristic text match with evidence. */

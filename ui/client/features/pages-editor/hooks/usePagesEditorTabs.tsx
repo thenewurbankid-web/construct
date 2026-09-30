@@ -2,20 +2,24 @@
 
 import { useMemo } from 'react';
 import { useRegisterShellTab, type ShellTab } from '@/features/shell';
+import { ChangeTab } from '../components/ChangeTab';
 import { DiffTab } from '../components/DiffTab';
 import { InspectorPanel } from '../components/InspectorPanel';
 import { PagesBrowserController } from '../controllers/PagesBrowserController';
 import { PalettePanel } from '../components/PalettePanel';
 import { ScopeTab } from '../components/ScopeTab';
 import { SourcePanel } from '../components/SourcePanel';
+import type { ChangeImpactPreview } from '../domain/ChangeImpact';
 import type { usePagesEditor } from './usePagesEditor';
 
 type Editor = ReturnType<typeof usePagesEditor>;
 
 /** Puts the Pages Editor's panels into the shell (slot registry): the page/feature
- * tree in the Browser pane and Inspector / Scope / Source / Palette / Diff as Tools tabs.
- * Each tab is memoised on the data it shows so the registry only updates when that changes. */
-export function usePagesEditorTabs(e: Editor): void {
+ * tree in the Browser pane and Inspector / Scope / Source / Change / Palette / Diff as Tools tabs.
+ * Each tab is memoised on the data it shows so the registry only updates when that changes.
+ * `onImpactPreview` (#381) lets the Change tab draw its dashed-box preview on the live app;
+ * it lives one level up (PagesEditorController) since the preview and the Change tab are siblings. */
+export function usePagesEditorTabs(e: Editor, onImpactPreview: (v: ChangeImpactPreview | null) => void): void {
   const { features, feature, files, filesLoading, file, tree, selectedNodeId, selectedNode, externalChange } = e;
   const { setFeature, openFile, selectNode, onTreeSaved, reloadFromDisk, dismissExternalChange, allPages, openPageOf, showAllPages } = e;
   const roots = tree?.roots ?? null;
@@ -80,6 +84,16 @@ export function usePagesEditorTabs(e: Editor): void {
     [tree, feature, file, hash],
   );
 
+  const changeTab = useMemo<ShellTab>(
+    () => ({
+      id: 'change',
+      title: 'Change',
+      disabled: !tree,
+      render: () => <ChangeTab feature={feature} file={file} onImpactPreview={onImpactPreview} />,
+    }),
+    [tree, feature, file, onImpactPreview],
+  );
+
   const paletteTab = useMemo<ShellTab>(
     () => ({
       id: 'palette',
@@ -107,6 +121,7 @@ export function usePagesEditorTabs(e: Editor): void {
   useRegisterShellTab('tools', inspectorTab);
   useRegisterShellTab('tools', scopeTab);
   useRegisterShellTab('tools', sourceTab);
+  useRegisterShellTab('tools', changeTab);
   useRegisterShellTab('tools', paletteTab);
   useRegisterShellTab('tools', diffTab);
 }
