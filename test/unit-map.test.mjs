@@ -17,6 +17,7 @@ import {
   validateUnitMap,
   rootUnitMapIndex,
   generateLayerWithUnit,
+  projectUnitSlots,
   addDependency,
   removeDependency,
   dependenciesOf,
@@ -114,6 +115,55 @@ test('setMemberSlot stores the business-logic body on the member record; regener
   // Persisted in the feature's map file, not anywhere on disk under the unit's path.
   const map = loadUnitMap(dir, 'billing');
   assert.equal(map.members[memberId].slot.body, 'return a + b;');
+});
+
+// LIN-174 -- a slot body written into the map survives a regenerate: projectUnitSlots (and,
+// transitively, generateLayerWithUnit) writes the stored body into the unit's file every time,
+// never conditionally.
+test('projectUnitSlots writes a member\'s stored slot body into its unit\'s generated file', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'billing');
+  generateLayer(dir, 'page', 'Refund', 'billing');
+  generateLayer(dir, 'controller', 'Refund', 'billing');
+  const { id: unitId } = registerUnit(dir, 'billing', 'controller', 'Refund');
+  const { id: memberId } = registerMember(dir, 'billing', unitId, 'submitRefund');
+  setMemberSlot(dir, 'billing', memberId, 'return a + b;');
+  const { file, projected } = projectUnitSlots(dir, 'billing', unitId);
+  assert.deepEqual(projected, [memberId]);
+  const written = fs.readFileSync(file, 'utf8');
+  assert.match(written, /return a \+ b;/);
+});
+
+test('a regenerate (generateLayerWithUnit) re-applies an already-stored slot body -- it can never come back empty', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'billing');
+  generateLayer(dir, 'page', 'Refund', 'billing');
+  const { file, id: unitId } = generateLayerWithUnit(dir, 'controller', 'Refund', 'billing');
+  const { id: memberId } = registerMember(dir, 'billing', unitId, 'submitRefund');
+  setMemberSlot(dir, 'billing', memberId, 'return chargeCard(a, b);');
+  projectUnitSlots(dir, 'billing', unitId);
+  assert.match(fs.readFileSync(file, 'utf8'), /chargeCard/);
+  // Simulate a real regenerate: generateLayer rewrites the file from its template (wiping the
+  // marker region), then generateLayerWithUnit's own projection step re-applies the slot.
+  generateLayerWithUnit(dir, 'controller', 'Refund', 'billing');
+  assert.match(fs.readFileSync(file, 'utf8'), /chargeCard/);
+});
+
+test('projectUnitSlots updates the region in place on a second call, never duplicating it', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'billing');
+  generateLayer(dir, 'page', 'Refund', 'billing');
+  generateLayer(dir, 'controller', 'Refund', 'billing');
+  const { id: unitId } = registerUnit(dir, 'billing', 'controller', 'Refund');
+  const { id: memberId } = registerMember(dir, 'billing', unitId, 'submitRefund');
+  setMemberSlot(dir, 'billing', memberId, 'return a + b;');
+  const { file } = projectUnitSlots(dir, 'billing', unitId);
+  setMemberSlot(dir, 'billing', memberId, 'return a - b;');
+  projectUnitSlots(dir, 'billing', unitId);
+  const written = fs.readFileSync(file, 'utf8');
+  assert.match(written, /return a - b;/);
+  assert.doesNotMatch(written, /return a \+ b;/);
+  assert.equal(written.split(`:${memberId}:begin`).length - 1, 1);
 });
 
 test('setMemberSlot and getMemberSlot reject an unknown member id', () => {

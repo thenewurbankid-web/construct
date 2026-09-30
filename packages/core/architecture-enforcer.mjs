@@ -31,6 +31,8 @@ import { buildFrozenIndex, detectFrozenViolations, FROZEN_RULE_BY_LAYER } from '
 import { runTypeCheckDetailed } from './type-check.mjs';
 import { checkClientBoundary } from './client-boundary.mjs';
 import { capFromLayerFileBaseName, layerFileBaseName } from './generators.mjs';
+import { loadUnitMap } from './unit-map.mjs';
+import { renderSlotRegion, slotMarkerLines, findValueImportsInSlot } from './slot-projection.mjs';
 
 export { extractImports };
 
@@ -1128,6 +1130,69 @@ function checkNaming(config, source, layer, r, out) {
   }
 }
 
+// LIN-174 -- a file's owning feature, derived from its project-relative path the same way
+// checkUnclassified (above) and extractExpression.mjs already do, but reading the configured
+// features root instead of hardcoding "features/" so a project that overrides `features.root`
+// still resolves correctly.
+function featureOfPath(config, r) {
+  const featuresRoot = config.features?.root || 'features';
+  const m = r.match(new RegExp(`^${featuresRoot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/([^/]+)/`));
+  return m ? m[1] : null;
+}
+
+// SLOT-001/SLOT-002 -- the two `construct validate` rules LIN-174 requires alongside the
+// map -> file projector (unit-map.mjs's projectUnitSlots): a generated file's slot region must
+// match what the map says it should be (SLOT-001, the "mechanical fix" drift error the issue asks
+// for), and a slot body may only import types, never a value (SLOT-002, LIN-153's "types only, no
+// exceptions" rule). Both need the owning feature's unit map, not just this one file's own source,
+// so this is checked from validateArchitecture's per-file loop rather than as a `scope: 'buffer'`
+// rule in packages/core/rules/*.mjs.
+/**
+ * Flag SLOT-001 (a generated file's slot region has drifted from the map) and SLOT-002 (a slot
+ * body imports a value instead of a type only) for every live, slotted member of the unit that
+ * lives at `r`. A no-op for any file outside a feature folder, or with no unit map entry.
+ * @param {object} config - loaded project config (rule severities and exceptions).
+ * @param {string} root - project root.
+ * @param {string} r - the file path, relative to the project root.
+ * @param {string} source - the file's source text.
+ * @param {object[]} out - the violations array being accumulated; mutated in place.
+ */
+function checkSlotViolations(config, root, r, source, out) {
+  const feature = featureOfPath(config, r);
+  if (!feature) return;
+  const map = loadUnitMap(root, feature, config);
+  const unitEntry = Object.entries(map.units).find(([, u]) => !u.tombstoned && u.path === r);
+  if (!unitEntry) return;
+  const [unitId] = unitEntry;
+  for (const [memberId, member] of Object.entries(map.members)) {
+    if (member.tombstoned || member.unitId !== unitId || !member.slot) continue;
+    const expected = renderSlotRegion(memberId, member.slot.body);
+    if (!source.includes(expected)) {
+      const { begin, end } = slotMarkerLines(memberId);
+      pushViolation(config, out, {
+        rule: 'SLOT-001',
+        file: r,
+        line: 1,
+        message: `Slot region for member "${member.name}" (${memberId}) in "${r}" has drifted from what the map says it should be.`,
+        why: 'Generated files are a build artifact regenerated FROM the map (LIN-153/LIN-174) -- a mismatch means the file was hand-edited after generation instead of the map itself being edited.',
+        expected: [`the region between "${begin}" and "${end}" to read exactly what the map's stored slot body renders`],
+        suggestedFix: `Regenerate this unit (its slot regions are fully derived from the map, so this is always safe). To keep the hand-edit, copy it into the map first via setMemberSlot for member "${memberId}", then regenerate.`,
+      });
+    }
+    for (const imp of findValueImportsInSlot(member.slot.body)) {
+      pushViolation(config, out, {
+        rule: 'SLOT-002',
+        file: r,
+        line: 1,
+        message: `Slot body for member "${member.name}" (${memberId}) imports "${imp.specifier}" from "${imp.source}" as a value, but a slot may only import types.`,
+        why: 'Every value a slot uses must arrive as a typed parameter passed in by the generated wiring, never a direct import -- so the slot\'s real dependencies are always visible as declared edges in the map, not hidden in an import statement.',
+        expected: [`a "dependsOn" edge declared from member "${memberId}" to the unit that provides "${imp.source}", with the value accepted as a typed parameter instead`],
+        suggestedFix: `Remove "import ${imp.specifier} from '${imp.source}'" from the slot body; declare the edge with addDependency and accept the value as a parameter instead.`,
+      });
+    }
+  }
+}
+
 // Builds the per-layer `detectLayerViolations` opts from config once per run: the
 // budget overrides (#508/#503/#505) and the opt-in flags (#506/#578/#581/#594/
 // #667/#668/#669). Shared by `validateArchitecture` (whole-project/scoped-files
@@ -1235,6 +1300,7 @@ export function validateArchitecture(root, opts = {}) {
       }
     }
     checkDanglingImports(config, abs, source, r, out);
+    checkSlotViolations(config, root, r, source, out);
     if (!KNOWN_LAYERS.has(layer)) {
       checkGenericEdges(config, graph, root, abs, r, layer, out);
     }

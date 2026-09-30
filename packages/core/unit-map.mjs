@@ -3,7 +3,11 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { ensureDir, write, rel } from './fs.mjs';
 import { loadConfig } from './config.mjs';
-import { layerFileBaseName, layerTargetFile, layerFromGeneratedFile, folderFor, pascalCase, generateLayer } from './generators.mjs';
+import {
+  layerFileBaseName, layerTargetFile, layerFromGeneratedFile, folderFor, pascalCase,
+  renderLayer, assertLayerPrerequisites, ensureFeatureExists, selfCheck,
+} from './generators.mjs';
+import { projectSlotIntoSource } from './slot-projection.mjs';
 
 // LIN-154 -- the unit map. A unit's stable id is its identity; name, path,
 // layer, feature and display label are ATTRIBUTES held here, never encoded
@@ -366,6 +370,38 @@ export function getMemberSlot(root, feature, memberId, config = loadConfig(root)
 }
 
 /**
+ * Project every live member's slot body onto its owning unit's generated file -- the generator
+ * step LIN-174 item 2 calls for: total regeneration of each member's marked region, never a
+ * partial/conditional skip, since the region's whole content comes from the map (slot-projection.mjs's
+ * projectSlotIntoSource). Called from generateLayerWithUnit below on every regenerate, so a unit's
+ * file is re-synced with its members' stored slot bodies the moment the file (re)exists, with no
+ * separate "did anything change" caution needed -- overwriting a region the map already fully owns
+ * is always safe.
+ *
+ * @param {string} root Project root.
+ * @param {string} feature Feature that owns the unit.
+ * @param {string} unitId The unit id whose file to project slots into; a tombstoned or unknown id is a no-op.
+ * @param {object} [config] The project's already-loaded architecture.yml config (defaults to loading it).
+ * @returns {{file: (string|null), projected: string[]}} The absolute file path touched (or null if the unit/file doesn't exist) and the member ids projected.
+ */
+export function projectUnitSlots(root, feature, unitId, config = loadConfig(root)) {
+  const map = loadUnitMap(root, feature, config);
+  const unit = map.units[unitId];
+  if (!unit || unit.tombstoned) return { file: null, projected: [] };
+  const file = path.join(root, unit.path);
+  if (!fs.existsSync(file)) return { file, projected: [] };
+  let source = fs.readFileSync(file, 'utf8');
+  const projected = [];
+  for (const [memberId, member] of Object.entries(map.members)) {
+    if (member.tombstoned || member.unitId !== unitId || !member.slot) continue;
+    source = projectSlotIntoSource(source, memberId, member.slot.body);
+    projected.push(memberId);
+  }
+  if (projected.length) write(file, source);
+  return { file, projected };
+}
+
+/**
  * Tombstone a unit (or member) instead of freeing its id -- a stale
  * reference after deletion is a clear "this id was deleted" validate error
  * rather than a silent rebind to whatever new unit happens to reuse the id.
@@ -565,8 +601,23 @@ export function rootUnitMapIndex(root, config = loadConfig(root)) {
  * @returns {{file:string, id:string}} Absolute path of the generated file and the id registered for it.
  */
 export function generateLayerWithUnit(root, layer, name, feature) {
-  const file = generateLayer(root, layer, name, feature);
-  const { id } = registerUnit(root, feature, layer, name);
+  // Mirrors generateLayer's own steps (render -> check prerequisites -> ensure feature -> write ->
+  // self-check) rather than calling it directly, because slot projection (LIN-174) must happen
+  // AFTER the fresh template is written but BEFORE the self-check runs: a regenerate's freshly
+  // rendered template has no idea any slot exists yet, so self-checking it first would report the
+  // member's own slot region as "missing" (SLOT-001) even though this function is about to fill it
+  // in. Total regeneration (LIN-174): any slot bodies already stored on this unit's members are
+  // re-applied immediately, unconditionally, before the file is ever considered "done" -- a unit
+  // re-created after edits to its members' slots never comes back without them, and never
+  // self-checks clean without them either.
+  const config = loadConfig(root);
+  const { file, content } = renderLayer(root, layer, name, feature);
+  assertLayerPrerequisites(root, name, feature, [layer]);
+  ensureFeatureExists(root, feature);
+  write(file, content);
+  const { id } = registerUnit(root, feature, layer, name, config);
+  projectUnitSlots(root, feature, id, config);
+  selfCheck(root, [file]);
   return { file, id };
 }
 
