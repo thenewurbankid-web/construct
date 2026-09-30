@@ -9,7 +9,10 @@ Branch and git
 - Fresh worktree setup: the `node_modules` symlink commands in `docs/DELEGATION.md`, as separate commands. Never `npm install` unless the issue says so.
 
 Machine and secrets
-- Heavy commands (`npm test`, Playwright, `next dev`, `npm ci`) run only through `packages/tools/dev/heavy.sh`. Single test files run directly (`node --test <file>`). Playwright: `--workers=1`, one dev server, no lingering process.
+- Heavy commands (`npm test`, Playwright, `next dev`, `npm ci`) run directly; there is no memory gate. Playwright: one dev server, no lingering process.
+- End every run with a disposition, never a bare `in_progress`: `done` (verified), `in_review` with a comment quoting the diff and test output, `blocked` with the blocker named, or, when work remains, still `in_progress` with a comment giving the next step AND a scheduled check-in: `PATCH $PAPERCLIP_API_URL/api/issues/$PAPERCLIP_TASK_ID` (headers `Authorization: Bearer $PAPERCLIP_API_KEY`, `X-Paperclip-Run-Id: $PAPERCLIP_RUN_ID`) with `{"executionPolicy":{"monitor":{"nextCheckAt":"<ISO time 2 minutes from now>","notes":"<next step>"}}}`, which wakes you to continue. A comment alone is not a continuation: Paperclip parks the task in recovery and the work stops. Never end a run by setting your task to `todo`: after a successful run Paperclip does not wake a `todo` task again, so it sits idle. Use the scheduled check-in instead.
+- No background tasks: never start a subagent, Bash command or Monitor with `run_in_background`, and never end your run while one is still going. Paperclip kills it when your run ends and marks the whole run failed (`unmanaged background task stopped`), even when the work succeeded. Run subagents and commands in the foreground and wait for them.
+- If `PATCH /api/issues/:id` or `POST /api/issues/:id/comments` returns `cross_issue_influence_run_context_required` in the first ~30s after your run's checkout, it is a known race (the run's server-side context binds a few seconds after checkout returns): wait ~10s and retry the same write once before treating it as a real block. If it still fails after that retry, it is a genuine platform bug — file/comment it as infra and fall back to a status PATCH with a scheduled check-in once the retry succeeds (see LIN-144).
 - Never touch the hosted Cockpit's processes or ports 3000 and 4000, and never read or write `~/.construct-hosted.env`. Use an unused port range for your own servers (47300-47999 are taken).
 - Never write a token or secret to disk, into a file, a commit, an issue or a comment. If you see one in chat or output, say it is compromised and stop.
 - GitHub writes (create, comment, close, PATCH) one per command, never chained. Reads with `gh` are free.
@@ -23,10 +26,8 @@ How you work
 
 Safety
 - You run inside a sandbox (workspace-only filesystem, allowlisted network). If a command fails because the sandbox blocks it, report which path or host and stop; do not look for a way around it.
-- If your budget warning fires, finish the current piece, commit, push and report.
 
 Never idle (owner rule, 2026-09-25: everyone in every team is active; if you are free, take future work or help another team, always)
 - When your lane's queue is empty, in this order: (1) take the next open issue from the shared pool: board Module Front-end Blocks (P0), then Core CLI at least P1, then any P1, then the v0.11.0 milestone; (2) else act as QA for another lane: re-run that lane's latest reported tests on a clean checkout, review its last commits against the AI-READY definition, and report findings on its issue; (3) else propose the next user stories from the plan and file them (one per command, board fields per `docs/PROJECT_BOARD.md`, label `story`, milestone v0.11.0).
 - Before you take another lane's issue, comment on its Paperclip issue so two agents never take the same one; your branch name includes your agent key. OG assigns idle agents at each heartbeat.
-- A run may wait for a machine slot before it starts (`claude-gate.sh`: at most a few Claude runs at once, and none below 3 GB free memory). That is expected; do not try to start work outside the gate.
 
