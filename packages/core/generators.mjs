@@ -36,8 +36,16 @@ const templates={
   `import { defineExpression } from '${typedContractsSpecifier}';\n\n`+
   `interface ${n}Props {\n  children?: ReactNode;\n}\n\n`+
   `export const ${n} = defineExpression('${n}', (props: ${n}Props) => {\n  return <>{props.children}</>;\n});\n`,
+ // LIN-146 -- owns the external effect and the wire/domain shape translation (the same role
+ // `service` plays today, just sitting under the new viewmodel instead of a hook/controller):
+ // never imports a viewmodel back (that would be circular), only ever calls out to the real API.
+ adapter:(n)=>`export async function ${n}Adapter({ signal }: { signal: AbortSignal }) {\n  const response = await fetch('/api/${n.toLowerCase()}', { method: 'GET', signal });\n  if (!response.ok) throw new Error('Request failed');\n  return response.json();\n}\n`,
+ // LIN-146 -- shapes API data for its page. Imports its same-named Adapter (never the API/fetch
+ // directly, LAYER_CONSTRAINTS.viewmodel below) the same way a controller's stub imports its
+ // same-named Page -- LAYER_PREREQUISITES.viewmodel enforces the adapter exists first.
+ viewmodel:(n)=>`import { ${n}Adapter } from '../adapters/${n}Adapter';\n\nexport async function ${n}ViewModel() {\n  return ${n}Adapter({ signal: new AbortController().signal });\n}\n`,
 };
-export const folderFor=(layer)=>layer==='hook'?'hooks':layer==='controller'?'controllers':layer==='workflow'?'workflows':layer==='domain'?'domain':layer==='service'?'services':layer==='page'?'pages':layer==='expression'?'expressions':'components';
+export const folderFor=(layer)=>layer==='hook'?'hooks':layer==='controller'?'controllers':layer==='workflow'?'workflows':layer==='domain'?'domain':layer==='service'?'services':layer==='page'?'pages':layer==='expression'?'expressions':layer==='adapter'?'adapters':layer==='viewmodel'?'viewmodels':'components';
 
 // Reverse of folderFor — which layer a generated file's own parent folder
 // name implies. Single source of truth shared by import.mjs's per-file
@@ -45,7 +53,7 @@ export const folderFor=(layer)=>layer==='hook'?'hooks':layer==='controller'?'con
 // scratch, #101) so both ever call an LLM with exactly the same
 // layer-constraint text for a given file, never two copies that could
 // drift apart.
-export const FOLDER_TO_LAYER={controllers:'controller',workflows:'workflow',hooks:'hook',domain:'domain',services:'service',pages:'page',expressions:'expression',components:'component'};
+export const FOLDER_TO_LAYER={controllers:'controller',workflows:'workflow',hooks:'hook',domain:'domain',services:'service',pages:'page',expressions:'expression',adapters:'adapter',viewmodels:'viewmodel',components:'component'};
 /**
  * The layer a generated file belongs to, read from its folder name.
  *
@@ -80,13 +88,22 @@ export const LAYER_CONSTRAINTS={
  // and/or another component/expression), EXPR-005 (must accept children and return JSX), EXPR-006
  // (must stay built through defineExpression(...) — keep that call in the rewritten file).
  expression:'A named decision about which already-built piece (children, or another component/expression) to render — not what to render. Give it a specific, descriptive name for WHAT it decides (never the bare control-flow kind itself: not "If", "Switch", "Show", "Hide", "When", "ForEach", "Cond", "Loop", "Map"). Built through defineExpression(...) — keep that call. Never author real markup (a native lowercase JSX tag like <div>) — only a Fragment wrapping `children` and/or an existing component/expression unit. May only import a component unit or a type, never domain/service/workflow/controller.',
+ // LIN-146 -- owner decision 2026-09-30's new chain: page -> controller -> viewmodel -> adapter
+ // -> api. Explicit import boundary: a viewmodel may import an adapter, never the API/fetch
+ // directly -- that indirection is the whole point of the layer (it is what lets the adapter's
+ // wire-shape translation change without the viewmodel, or anything above it, changing too).
+ viewmodel:'Shapes API data into what a page needs to render, and nothing else. Never call fetch() directly and never import a service — the only way to reach the API is through this unit\'s own Adapter (import it, never the API/fetch itself). May import an adapter, domain, or a type; never import a controller, page, component, workflow, hook, or service.',
+ // LIN-146 -- the adapter is the one layer allowed to touch the real API and translate its wire
+ // shape into whatever a viewmodel expects — the same role `service` plays for hooks/controllers,
+ // just addressed by a viewmodel instead.
+ adapter:'Owns one external effect (a fetch call to the real API) and translates its wire shape into what a viewmodel expects, and nothing else. Never import React or any react-related package, and never import a viewmodel, page, component, controller, workflow, or hook. May import domain or a type.',
 };
 
 // Shared by generateLayer and refactor.mjs's move/rename: the filename base a
 // layer's naming convention expects for a given capitalized name — a hook
 // gets a `use` prefix, page/controller get a suffix, everything else is bare.
 export const layerFileBaseName=(layer,cap)=>{
- const suffix=layer==='page'?'Page':layer==='controller'?'Controller':'';
+ const suffix=layer==='page'?'Page':layer==='controller'?'Controller':layer==='viewmodel'?'ViewModel':layer==='adapter'?'Adapter':'';
  return layer==='hook'?`use${cap}`:`${cap}${suffix}`;
 };
 
@@ -292,15 +309,19 @@ export function generateLayer(root,layer,name,feature){
 // self-contained. `construct generate layer <name> --layers ...` scaffolds
 // one logical unit across several layers in a single command, always in this
 // order regardless of the order the caller listed --layers in.
-export const LAYER_ORDER=['domain','service','workflow','hook','component','expression','page','controller'];
+// LIN-146 -- 'adapter' and 'viewmodel' slot in before 'page'/'controller': a viewmodel's
+// stub imports its same-named adapter (mirroring controller -> page below), so the
+// dependency (adapter) must build first, same rule that already places page before
+// controller.
+export const LAYER_ORDER=['domain','service','workflow','hook','component','expression','adapter','viewmodel','page','controller'];
 
 // #275 — which other layer(s) a layer's own stub template composes, and so
-// cannot be generated without. Exactly one exists today: the controller stub
-// imports `../pages/<Name>Page`, so a controller generated without its page
-// is a dangling import (IMPORT-001) the moment it is written. Declared as data
-// rather than hardcoded in one `if` so a future template that composes another
-// layer only has to add a line here.
-export const LAYER_PREREQUISITES={controller:['page']};
+// cannot be generated without. The controller stub imports `../pages/<Name>Page`,
+// and (LIN-146) the viewmodel stub imports `../adapters/<Name>Adapter` — either
+// generated without its dependency is a dangling import (IMPORT-001) the moment
+// it's written. Declared as data rather than hardcoded in one `if` so a future
+// template that composes another layer only has to add a line here.
+export const LAYER_PREREQUISITES={controller:['page'],viewmodel:['adapter']};
 
 // A prerequisite is satisfied by the file already existing on disk, not just by
 // being in the same layer set — `construct create controller X --feature f`

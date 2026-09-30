@@ -41,6 +41,14 @@ export const DEFAULT_LAYERS = {
   // existing project has a `features/*/expressions/**` file today, so this new pattern/layer
   // changes classification for zero pre-existing files.
   expression: { pattern: 'features/*/expressions/**', canImport: ['component', 'types'] },
+  // LIN-146 -- the two new layers the owner inserted between controller and the
+  // real backend API (page -> controller -> viewmodel -> adapter -> api). An
+  // adapter owns the external effect and shape translation (mirrors service's
+  // own canImport); a viewmodel may only reach the API through an adapter, never
+  // directly, so its canImport deliberately omits any fetch-capable layer other
+  // than 'adapter'.
+  adapter: { pattern: 'features/*/adapters/**', canImport: ['domain', 'types'] },
+  viewmodel: { pattern: 'features/*/viewmodels/**', canImport: ['adapter', 'domain', 'types'] },
 };
 
 // Every layer graph below shares the same feature-internal shape

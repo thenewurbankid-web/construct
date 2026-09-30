@@ -439,7 +439,7 @@ test('#275 selfCheck reports an all-IMPORT-001 failure as a layer-order problem,
     assert.equal(err.exitCode, EXIT_CODES.USAGE_ERROR);
     assert.doesNotMatch(err.message, /template bug/);
     assert.match(err.message, /references a file that doesn't exist yet/);
-    assert.match(err.message, /domain -> service -> workflow -> hook -> component -> expression -> page -> controller/);
+    assert.match(err.message, /domain -> service -> workflow -> hook -> component -> expression -> adapter -> viewmodel -> page -> controller/);
     return true;
   });
 });
@@ -456,4 +456,40 @@ test('#275 selfCheck still calls a genuine rule violation a template bug (INTERN
     assert.match(err.message, /template bug/);
     return true;
   });
+});
+
+// ---- LIN-146: viewmodel/adapter layers (page -> controller -> viewmodel -> adapter -> api) ----
+
+test('LIN-146 construct create adapter scaffolds into features/<f>/adapters/', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  const file = generateLayer(dir, 'adapter', 'Products', 'checkout');
+  assert.equal(path.basename(path.dirname(file)), 'adapters');
+  assert.equal(path.basename(file), 'ProductsAdapter.tsx');
+  assert.deepEqual(validateArchitecture(dir).violations.filter((v) => v.severity === 'error'), []);
+});
+
+test('LIN-146 construct create viewmodel scaffolds into features/<f>/viewmodels/ and requires its adapter', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  assert.throws(() => generateLayer(dir, 'viewmodel', 'Products', 'checkout'), (err) => {
+    assert.ok(err instanceof ConstructError);
+    assert.match(err.message, /needs a "adapter" layer/);
+    return true;
+  });
+  generateLayer(dir, 'adapter', 'Products', 'checkout');
+  const file = generateLayer(dir, 'viewmodel', 'Products', 'checkout');
+  assert.equal(path.basename(path.dirname(file)), 'viewmodels');
+  assert.equal(path.basename(file), 'ProductsViewModel.tsx');
+  const content = fs.readFileSync(file, 'utf8');
+  assert.match(content, /import \{ ProductsAdapter \} from '\.\.\/adapters\/ProductsAdapter';/);
+  assert.deepEqual(validateArchitecture(dir).violations.filter((v) => v.severity === 'error'), []);
+});
+
+test('LIN-146 generateVertical builds adapter before viewmodel regardless of the order requested', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'checkout');
+  const files = generateVertical(dir, 'Products', 'checkout', ['viewmodel', 'adapter']);
+  assert.deepEqual(files.map((f) => path.basename(f)), ['ProductsAdapter.tsx', 'ProductsViewModel.tsx']);
+  assert.deepEqual(validateArchitecture(dir).violations.filter((v) => v.severity === 'error'), []);
 });
