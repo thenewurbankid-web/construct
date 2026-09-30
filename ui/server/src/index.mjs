@@ -31,6 +31,7 @@ import { isSessionBranch } from '../../../packages/engine/commitMessage.mjs';
 import { createPlanService } from './planService.mjs';
 import { createPlanRouter } from './planApi.mjs';
 import { createRequirementRouter } from './requirementApi.mjs';
+import { createDebugRouter } from './debugApi.mjs';
 import { attachProcessesSocket } from './processesSocket.mjs';
 import { createReviewRouter } from './reviewApi.mjs';
 import { createTestsRouter } from './testsApi.mjs';
@@ -346,7 +347,7 @@ app.use(
     '/api/create', '/api/refactor', '/api/research', '/api/import',
     '/api/pages', '/api/workflows', '/api/units', '/api/features', '/api/flow', '/api/nav', '/api/validate', '/api/rules',
     '/api/git/session', '/api/git/dirty-answer', '/api/git/commit', '/api/git/plan',
-    '/api/processes', '/api/plan', '/api/requirement', '/api/review', '/api/tests', '/api/project', '/api/notes', '/api/blocks',
+    '/api/processes', '/api/plan', '/api/requirement', '/api/debug', '/api/review', '/api/tests', '/api/project', '/api/notes', '/api/blocks',
   ],
   requireProject(),
 );
@@ -1163,6 +1164,17 @@ app.use('/api/envelopes', createEnvelopesRouter({
 // #642: the requirement chain (a sentence read back as card, placement, plan and timeline). Below the session gate and the
 // project-open gate; read-only and model-free. Approving its plan goes through the Plan route above, unchanged.
 app.use('/api/requirement', createRequirementRouter({
+  clientOrigin: CLIENT_ORIGIN,
+  getRoot: () => {
+    const root = containedProjectRoot(getProjectDir());
+    return root ? { ok: true, root } : { ok: false, status: 409, body: NO_PROJECT_BODY };
+  },
+}));
+
+// LIN-137 (part of LIN-82/epic #616): the debug chain (reproduce -> isolate -> fix -> verify), the second worked
+// example of a chooser chain. Same gates as the requirement chain above; approving its compiled plan goes through
+// the Plan route above, unchanged.
+app.use('/api/debug', createDebugRouter({
   clientOrigin: CLIENT_ORIGIN,
   getRoot: () => {
     const root = containedProjectRoot(getProjectDir());
