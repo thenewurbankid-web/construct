@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { createFeature, ensureFeatureExists, generateLayer, generatePageViewModel, generateVertical, layerFileBaseName, layerTargetFile, missingLayerPrerequisites, capFromLayerFileBaseName, parseViewModelFields, selfCheck, unitFromLayerFile, viewModelInterfaceText, viewModelSampleValue } from '../packages/core/generators.mjs';
+import { createFeature, ensureFeatureExists, generateLayer, generatePageViewModel, generateVertical, layerFileBaseName, layerTargetFile, missingLayerPrerequisites, capFromLayerFileBaseName, parseViewModelFields, selfCheck, unitFromLayerFile, viewModelInterfaceText, viewModelSampleValue, viewModelFieldsJsx } from '../packages/core/generators.mjs';
+import { loadLayerGraph } from '../packages/core/architecture-graph.mjs';
 import { validateArchitecture } from '../packages/core/architecture-enforcer.mjs';
 import { validateSeparationOfConcerns } from '../packages/core/soc-enforcer.mjs';
 import { ConstructError, EXIT_CODES } from '../packages/core/diagnostics.mjs';
@@ -599,6 +600,33 @@ test('LIN-163 generatePageViewModel auto-creates a fully typed view model (and i
   assert.doesNotMatch(viewmodelContent, /adapters\/ProductsAdapter/);
   assert.match(viewmodelContent, /Promise<ProductsViewModelData>/);
   assert.deepEqual(validateArchitecture(dir).violations.filter((v) => v.severity === 'error'), []);
+});
+
+test('LIN-171 generatePageViewModel binds a fresh page to its view model\'s type through the feature\'s types.ts, never a direct viewmodel/controller import, and the layer graph stays acyclic', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'shop');
+  const written = generatePageViewModel(dir, 'Products', 'shop', 'id:string,name:string,tags:string[]');
+  const pageFile = written.find((f) => path.basename(f) === 'ProductsPage.tsx');
+  const pageContent = fs.readFileSync(pageFile, 'utf8');
+  assert.match(pageContent, /import type \{ ProductsViewModelData \} from '\.\.\/types';/);
+  assert.match(pageContent, /function ProductsPage\(props: ProductsViewModelData\): ReactNode/);
+  assert.match(pageContent, /<div>id: \{props\.id\}<\/div>/);
+  assert.match(pageContent, /<div>tags: \{props\.tags\.join\(', '\)\}<\/div>/);
+  assert.doesNotMatch(pageContent, /viewmodels\/|controllers\//);
+  const typesContent = fs.readFileSync(path.join(dir, 'features', 'shop', 'types.ts'), 'utf8');
+  assert.match(typesContent, /export interface ProductsViewModelData \{/);
+  assert.deepEqual(validateArchitecture(dir).violations.filter((v) => v.severity === 'error'), []);
+  // The whole point: 'types' is a pseudo-layer (config.mjs's PSEUDO_LAYERS), exempt from cycle
+  // detection, so this binding needed zero canImport changes and the base graph still validates.
+  assert.equal(loadLayerGraph(dir) && true, true);
+});
+
+test('LIN-171 viewModelFieldsJsx renders one <div> per field, joining an array rather than mapping it (never a loop, per PAGE-008)', () => {
+  const fields = parseViewModelFields('id:string,tags:string[]');
+  const jsx = viewModelFieldsJsx(fields);
+  assert.match(jsx, /<div>id: \{props\.id\}<\/div>/);
+  assert.match(jsx, /<div>tags: \{props\.tags\.join\(', '\)\}<\/div>/);
+  assert.doesNotMatch(jsx, /\.map\(/);
 });
 
 test('LIN-149 generatePageViewModel is a no-op once the view model already exists', () => {

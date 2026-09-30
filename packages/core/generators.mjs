@@ -1,4 +1,4 @@
-import path from 'node:path'; import fs from 'node:fs'; import {ensureDir,write,rel} from './fs.mjs'; import {loadConfig} from './config.mjs'; import {validateArchitecture} from './architecture-enforcer.mjs'; import {ConstructError,EXIT_CODES} from './diagnostics.mjs'; import {requestFileText} from './llm-fill.mjs';
+import path from 'node:path'; import fs from 'node:fs'; import {ensureDir,write,rel} from './fs.mjs'; import {loadConfig} from './config.mjs'; import {validateArchitecture} from './architecture-enforcer.mjs'; import {ConstructError,EXIT_CODES} from './diagnostics.mjs'; import {requestFileText} from './llm-fill.mjs'; import {withDeclarations,featureDirOf} from './block-kit.mjs';
 // The controller template's own composition (importing a same-named Page
 // from the feature's pages/ folder) is Construct's own feature-internal
 // convention, not Next.js's -- it works unchanged for either framework.
@@ -91,6 +91,21 @@ export function viewModelSampleValue(fields){
  return viewModelSampleText(viewModelFieldTree(fields),'');
 }
 
+// LIN-171 -- one `<div>` per field, keyed by its dotted path, never a conditional or a loop
+// (PAGE-008 bans both inline): an array field is joined into a string with .join(', ') rather
+// than mapped, since .map(...) inside JSX is exactly the loop PAGE-008 rejects.
+function viewModelFieldJsxLine(f){
+ const access=`props.${f.path.join('.')}`;
+ return `      <div>${f.path.join('.')}: {${f.array?`${access}.join(', ')`:access}}</div>`;
+}
+
+/** JSX source (one `<div>` per field) rendering a view model's inferred shape from `props`, for the page template's typed stub.
+ * @param {ViewModelField[]} fields Parsed fields, as returned by `parseViewModelFields`.
+ * @returns {string} The JSX lines' source text. */
+export function viewModelFieldsJsx(fields){
+ return fields.map(viewModelFieldJsxLine).join('\n');
+}
+
 const controllerTemplates={
  nextjs:(n)=>`import { ${n}Page } from '../pages/${n}Page';\n\nexport function ${n}Controller() {\n  return <${n}Page />;\n}\n`,
  'react-spa':(n)=>`import { ${n}Page } from '../pages/${n}Page';\n\n// Registered directly as this route's element by react-router in\n// src/App.tsx (e.g. <Route path="/${n.toLowerCase()}" element={<${n}Controller />} />)\n// -- no per-route page.tsx wrapper file like the Next.js target uses.\nexport function ${n}Controller() {\n  return <${n}Page />;\n}\n`,
@@ -112,14 +127,20 @@ const templates={
  // response that lands after its request is superseded should not, and XState's fromPromise
  // already hands the invoking function a signal for free.
  service:(n)=>`export async function ${n}({ signal }: { signal: AbortSignal }) {\n  const response = await fetch('/api/${n.toLowerCase()}', { method: 'GET', signal });\n  if (!response.ok) throw new Error('Request failed');\n  return response.json();\n}\n`,
- // LIN-153 -- binding the page's props to its view model's inferred type (`import type {...} from
- // '../viewmodels/...'`) hits a real cycle in the static layer graph: controller's existing,
- // unrelated role already imports page (route -> controller -> page), so page -> viewmodel ->
- // controller -> page closes a loop the moment page may import viewmodel. Left as the plain,
- // self-contained stub until that's resolved (see the LIN-153 follow-up issue on the page/view
- // model binding) -- generatePageViewModel below still auto-creates this file as part of the one
- // action, just not yet typed to the chain.
- page:(n)=>`import type { ReactNode } from 'react';\n\nexport function ${n}Page(): ReactNode {\n  return <main>${n}</main>;\n}\n`,
+ // LIN-171 -- binding the page's props to its view model's inferred type via `import type {...}
+ // from '../viewmodels/...'` (or '../controllers/...') hits a real cycle in the static layer
+ // graph: controller's existing, unrelated role already imports page (route -> controller ->
+ // page), so page -> viewmodel -> controller -> page closes a loop the moment page may import
+ // either. Instead, with `fields`, the page imports the inferred `${n}ViewModelData` type from
+ // the feature's own `types.ts` — the 'types' pseudo-layer (config.mjs's PSEUDO_LAYERS) is
+ // already in every layer's canImport list and is exempt from cycle detection, since it names no
+ // real layer file to classify. generatePageViewModel declares the interface there (via
+ // block-kit.mjs's withDeclarations, idempotent) before writing this file, so the page's props are
+ // genuinely typed to the same shape the rest of the chain returns, with zero new graph edges.
+ /** @type {(n:string, opts?:{fields?: ViewModelField[]}) => string} */
+ page:(n,{fields}={})=>fields
+  ?`import type { ReactNode } from 'react';\nimport type { ${n}ViewModelData } from '../types';\n\nexport function ${n}Page(props: ${n}ViewModelData): ReactNode {\n  return (\n    <main>\n${viewModelFieldsJsx(fields)}\n    </main>\n  );\n}\n`
+  :`import type { ReactNode } from 'react';\n\nexport function ${n}Page(): ReactNode {\n  return <main>${n}</main>;\n}\n`,
  component:(n)=>`export function ${n}() {\n  return <div>${n}</div>;\n}\n`,
  // #514 -- an Expression's stub must already satisfy EXPR-004/005/006 (error severity, so a
  // project with the typed-contracts phase-1 rules on can't even land the freshly-scaffolded
@@ -474,10 +495,10 @@ export function renderLayer(root,layer,name,feature,/** @type {{fields?: ViewMod
  const cap=pascalCase(name,layer[0].toUpperCase()+layer.slice(1));
  const file=layerTargetFile(root,layer,name,feature,config);
  const custom=findCustomTemplate(root,layer,config);
- // LIN-149/LIN-163: `fields` only ever reaches the adapter/controller/viewmodel templates (the
- // three layers that know how to use it, in the vm-chain); every other layer's template signature
- // is untouched.
- const templateOptions={framework:config.project?.framework,...(layer==='expression'?{typedContractsSpecifier:typedContractsSpecifierFor(root,path.dirname(file))}:{}),...(fields&&(layer==='adapter'||layer==='controller'||layer==='viewmodel')?{fields}:{})};
+ // LIN-149/LIN-163/LIN-171: `fields` only ever reaches the adapter/page/controller/viewmodel
+ // templates (the four layers that know how to use it, in the vm-chain); every other layer's
+ // template signature is untouched.
+ const templateOptions={framework:config.project?.framework,...(layer==='expression'?{typedContractsSpecifier:typedContractsSpecifierFor(root,path.dirname(file))}:{}),...(fields&&(layer==='adapter'||layer==='page'||layer==='controller'||layer==='viewmodel')?{fields}:{})};
  const content=custom?renderCustomTemplate(custom,name,cap):templates[layer](cap,templateOptions);
  return {file,content};
 }
@@ -521,7 +542,8 @@ export function generateLayer(root,layer,name,feature,options={}){
 /**
  * Auto-create a page's view model (and that view model's adapter prerequisite) when neither
  * already exists on disk, typed from `fields` (never left as `unknown`) since there is no API
- * yet to derive the shape from.
+ * yet to derive the shape from. A page generated here (LIN-171) has its props typed to that same
+ * shape too, via an interface declared once in the feature's `types.ts`.
  *
  * @param {string} root Project root.
  * @param {string} name Page's unit name.
@@ -537,13 +559,21 @@ export function generatePageViewModel(root,name,feature,fieldsText){
  const fields=parseViewModelFields(fieldsText);
  const written=[];
  if(!layerFileExists(root,'adapter',name,feature))written.push(generateLayer(root,'adapter',name,feature,{fields}));
- // LIN-153 -- "one action produces the full chain": a page that doesn't exist yet is generated
- // here too (still the plain, self-contained stub -- binding it to the view model's type hits a
- // real cycle in the static layer graph, see the `page` template's own comment; left for a
- // follow-up). Generated before the controller below because LAYER_PREREQUISITES.controller:
+ // LIN-153/LIN-171 -- "one action produces the full chain": a page that doesn't exist yet is
+ // generated here too, now typed to the view model's inferred shape (declared once in the
+ // feature's types.ts, see the `page` template's own comment for why that's the cycle-free way to
+ // bind it rather than a direct viewmodel/controller import). Declared before rendering the page
+ // so its import resolves. Generated before the controller below because LAYER_PREREQUISITES.controller:
  // ['page'] is unconditional (it also guards the controller's OTHER, unrelated page-composing
  // role), regardless of whether this call's controller uses that role or the vm-chain one.
- if(!layerFileExists(root,'page',name,feature))written.push(generateLayer(root,'page',name,feature));
+ if(!layerFileExists(root,'page',name,feature)){
+  ensureFeatureExists(root,feature);
+  const cap=pascalCase(name,'Page');
+  const decl=withDeclarations(root,feature,[{declares:`${cap}ViewModelData`,text:viewModelInterfaceText(cap,fields),marker:`${cap}ViewModelData`}]);
+  if(decl.conflicts.length)throw new ConstructError(`types.ts of "${feature}" already declares ${decl.conflicts.join(' and ')} for something else, so the page cannot bind to it. Rename that type, then run this again. Nothing was written.`,{exitCode:EXIT_CODES.USAGE_ERROR});
+  if(decl.changed)write(path.join(featureDirOf(root,feature),'types.ts'),decl.text);
+  written.push(generateLayer(root,'page',name,feature,{fields}));
+ }
  // LIN-163 -- the viewmodel reaches the adapter through the controller (page -> viewmodel ->
  // controller -> adapter -> api), so the controller is generated here too, between the adapter
  // and the viewmodel, with `fields` so it gets the adapter-orchestrating template rather than its
