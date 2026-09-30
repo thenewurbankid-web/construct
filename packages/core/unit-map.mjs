@@ -19,6 +19,33 @@ import { layerFileBaseName, layerTargetFile, layerFromGeneratedFile, folderFor, 
 // (dependsOn, many-to-many) are LIN-155's own deliverable, added as a
 // separate edge set alongside these nodes -- do not bolt an edge field onto
 // a unit/member record here.
+//
+// Format/granularity decision, reaffirmed 2026-09-30 after the owner moved
+// slot bodies INTO the map (closed by the "SLOT STORAGE -- DECIDED" note in
+// the issue, which was an open question when this task started).
+// Re-examined on reopen because slot bodies make merge behaviour a
+// first-order concern, not a detail:
+//   - Format: JSON, unchanged. Diffable, machine-writable, no second parser.
+//   - Granularity: per-feature (one unit-map.json per feature), unchanged --
+//     NOT one file per unit and NOT a single root file. Two things keep a
+//     shared per-feature file safe even with slot bodies inside it:
+//       1. `units` and `members` are objects keyed by opaque id, not arrays.
+//          Two developers editing two different members' slot bodies touch
+//          non-adjacent keys; a line-based git merge resolves that without a
+//          conflict as long as neither edit reorders keys (saveUnitMap
+//          always JSON.stringifies in the map's existing insertion order and
+//          never re-sorts, so an untouched key's lines never move).
+//       2. Per-unit files would trade that for a worse property: a LIN-153
+//          slot edit is often cross-cutting within one feature (a rename or
+//          a dependency change touches a controller member and the adapter
+//          member it calls), which would turn one logical edit into a
+//          multi-file diff instead of one.
+//     Per-feature still beats one root map for the same reason as before
+//     (isolates merge conflicts to the owning feature); rootUnitMapIndex
+//     covers the whole-repo read without becoming a second source of truth.
+//     If dogfood usage later shows same-feature slot edits colliding often,
+//     the escape hatch is splitting a hot unit into its own feature, not a
+//     schema change.
 
 // Opaque, short, stable under every operation including a move between
 // features (the id itself never encodes feature/layer/name, so moving a
@@ -111,6 +138,33 @@ export function registerMember(root, feature, unitId, defaultName, config = load
   map.members[id] = { unitId, name: defaultName, tombstoned: false };
   saveUnitMap(root, feature, map, config);
   return { id, record: map.members[id] };
+}
+
+/**
+ * Set a member's slot body -- the business logic itself, living IN the map
+ * per the owner's 2026-09-30 "SLOT STORAGE -- DECIDED" note. This is the
+ * only thing a human (or an AI acting on the human's behalf) ever writes on
+ * a member; everything else on the record (name, ids) is generated wiring.
+ * The generated file on disk is a build artifact regenerated FROM this
+ * field -- LIN-153 owns that regeneration step, this module only owns
+ * storing and reading the body so regeneration can never half-apply (if the
+ * logic isn't in the generated file, regenerating it can't destroy it).
+ */
+export function setMemberSlot(root, feature, memberId, body, language = 'ts', config = loadConfig(root)) {
+  const map = loadUnitMap(root, feature, config);
+  if (!map.members[memberId]) throw new Error(`setMemberSlot: unknown member id "${memberId}" in feature "${feature}"`);
+  map.members[memberId].slot = { body, language, updatedAt: new Date().toISOString() };
+  saveUnitMap(root, feature, map, config);
+  return map.members[memberId].slot;
+}
+
+/**
+ * Read a member's slot body, or null if nothing has been written yet.
+ */
+export function getMemberSlot(root, feature, memberId, config = loadConfig(root)) {
+  const map = loadUnitMap(root, feature, config);
+  if (!map.members[memberId]) throw new Error(`getMemberSlot: unknown member id "${memberId}" in feature "${feature}"`);
+  return map.members[memberId].slot || null;
 }
 
 /**

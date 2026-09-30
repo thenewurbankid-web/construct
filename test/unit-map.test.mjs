@@ -8,6 +8,8 @@ import {
   registerMember,
   tombstoneUnit,
   tombstoneMember,
+  setMemberSlot,
+  getMemberSlot,
   resolveUnitName,
   loadUnitMap,
   unitMapPath,
@@ -91,6 +93,29 @@ test('member ids are scoped to their owning unit and independently tombstonable'
   const map = loadUnitMap(dir, 'billing');
   assert.equal(map.members[m1.id].tombstoned, true);
   assert.equal(map.members[m2.id].tombstoned, false);
+});
+
+test('setMemberSlot stores the business-logic body on the member record; regenerating the file cannot clobber it because the logic never lives there', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'billing');
+  generateLayer(dir, 'page', 'Refund', 'billing');
+  generateLayer(dir, 'controller', 'Refund', 'billing');
+  const { id: unitId } = registerUnit(dir, 'billing', 'controller', 'Refund');
+  const { id: memberId } = registerMember(dir, 'billing', unitId, 'loadBalance');
+  assert.equal(getMemberSlot(dir, 'billing', memberId), null);
+  const slot = setMemberSlot(dir, 'billing', memberId, 'return a + b;', 'ts');
+  assert.equal(slot.body, 'return a + b;');
+  assert.equal(getMemberSlot(dir, 'billing', memberId).body, 'return a + b;');
+  // Persisted in the feature's map file, not anywhere on disk under the unit's path.
+  const map = loadUnitMap(dir, 'billing');
+  assert.equal(map.members[memberId].slot.body, 'return a + b;');
+});
+
+test('setMemberSlot and getMemberSlot reject an unknown member id', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'billing');
+  assert.throws(() => setMemberSlot(dir, 'billing', 'm_deadbeef', 'x'), /unknown member id/);
+  assert.throws(() => getMemberSlot(dir, 'billing', 'm_deadbeef'), /unknown member id/);
 });
 
 test('registerMember rejects an unknown unit id', () => {
