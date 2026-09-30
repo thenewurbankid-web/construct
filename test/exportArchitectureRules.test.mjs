@@ -114,7 +114,9 @@ test('exportBoundariesConfig: loads a real project\'s architecture.yml (react-sp
   const route = settings['boundaries/elements'].find((e) => e.type === 'route');
   assert.equal(route.pattern, 'src/App.tsx');
   const routePolicy = rules['boundaries/dependencies'][1].policies.find((p) => p.from.element.type === 'route');
-  assert.deepEqual(routePolicy.allow.to.element.types.anyOf, ['controller']);
+  // #173: the route entry now also imports a vm-chain page's ViewModel (to await it) and the
+  // Page component directly, not only through a controller.
+  assert.deepEqual(routePolicy.allow.to.element.types.anyOf, ['controller', 'page', 'viewmodel']);
 });
 
 test('generateEslintFlatConfigModule: renders a real, importable ESM flat-config module', async () => {

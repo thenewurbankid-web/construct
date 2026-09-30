@@ -185,7 +185,9 @@
           "files": 1,
           "minDistance": 1,
           "canImport": [
-            "controller"
+            "controller",
+            "viewmodel",
+            "page"
           ]
         }
       ],
@@ -709,7 +711,9 @@
       {
         "layer": "route",
         "canImport": [
-          "controller"
+          "controller",
+          "viewmodel",
+          "page"
         ]
       },
       {
