@@ -90,7 +90,10 @@ export function buildDebugChain(feature) {
   return { reproduce, isolate, fix, verify };
 }
 
-/** The chain in step order, for `compileChain` and UI iteration. */
+/** The chain in step order, for `compileChain` and UI iteration.
+ * @param {{ reproduce: import('./chooser.mjs').Chooser, isolate: import('./chooser.mjs').Chooser, fix: import('./chooser.mjs').Chooser, verify: import('./chooser.mjs').Chooser }} chain - as returned by `buildDebugChain`.
+ * @returns {import('./chooser.mjs').Chooser[]} the four choosers in step order (reproduce, isolate, fix, verify).
+ */
 export function debugChainSteps(chain) {
   return [chain.reproduce, chain.isolate, chain.fix, chain.verify];
 }
