@@ -13,7 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
-import { runValidate, resolveCliBin, parseValidateOutput, ExecutionError, CLI_BIN_ENV } from '../ui/server/src/coreExecutor.mjs';
+import { runValidate, resolveCliBin, parseValidateOutput, ExecutionError, CLI_BIN_ENV } from '../packages/engine/coreExecutor.mjs';
 import { loadConfig } from '../packages/core/config.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));

@@ -12,7 +12,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 import { runReview } from '../ui/server/src/coreVerbs.mjs';
-import { ExecutionError } from '../ui/server/src/coreExecutor.mjs';
+import { ExecutionError } from '../packages/engine/coreExecutor.mjs';
 import { cliReviewRunner } from '../ui/server/src/reviewCli.mjs';
 import { forkRunner } from '../ui/server/src/reviewRunner.mjs';
 import { createReviewExecutor, projectModeOf } from '../ui/server/src/reviewAnalyses.mjs';

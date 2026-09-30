@@ -8,7 +8,7 @@ import { PassThrough } from 'node:stream';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CLI_ENV, childEnv, runCliVerb, runValidate } from './coreExecutor.mjs';
+import { CLI_ENV, CLI_BIN_ENV, CLI_TIMEOUT_ENV, childEnv, runCliVerb, runValidate } from './coreExecutor.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -96,6 +96,10 @@ test('CLI_ENV is exactly the CONSTRUCT_* variables the CLI packages read, so a n
     }
   };
   for (const pkg of ['cli', 'core', 'engine']) walk(path.join(packages, pkg));
+  // CLI_BIN_ENV/CLI_TIMEOUT_ENV name the executor's OWN config (which binary to spawn, its timeout) --
+  // read directly by the server before spawning, never forwarded into the child's environment.
+  read.delete(CLI_BIN_ENV);
+  read.delete(CLI_TIMEOUT_ENV);
   assert.deepEqual([...read].sort(), [...CLI_ENV].sort(), 'read by a package but not forwarded (add it to CLI_ENV; it must not be a secret), or forwarded but read by nothing (remove it)');
   assert.ok(CLI_ENV.every((n) => !/_SECRET$|_TOKEN$|_PASSWORD$|_KEY$/i.test(n) && !n.startsWith('CONSTRUCT_E2E_')));
 });
