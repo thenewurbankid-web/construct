@@ -27,8 +27,11 @@ const REQUIRED_LAYER_NAMES = ['controller', 'workflow', 'hook', 'domain', 'servi
 // phase 1 rules out (no existing project has one today). This name is consulted ONLY by
 // checkOwnership's "is this a known folder" SOC-001 check, so a feature that does adopt an
 // expressions/ folder (e.g. via `construct refactor extract-expression`, #517) is recognized
-// without every other feature being forced to grow the folder too.
-const RECOGNIZED_EXTRA_LAYER_NAMES = ['expression'];
+// without every other feature being forced to grow the folder too. #821 -- 'adapter'/'viewmodel'
+// (LIN-146/163's additive vm-chain layers, config.mjs's DEFAULT_LAYERS/REACT_SPA_LAYERS) are the
+// same additive-layer shape: real, recognized layers that must not become a mandatory SLICE-001
+// folder on every pre-existing feature just because one feature opted into a vm-chain page.
+const RECOGNIZED_EXTRA_LAYER_NAMES = ['expression', 'adapter', 'viewmodel'];
 
 /** Folder token (e.g. "controllers") a layer's pattern lives under, mirroring
  * architecture-enforcer.mjs's own (unexported) layerFolder helper -- kept local to this file to
