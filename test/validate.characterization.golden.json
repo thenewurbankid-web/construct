@@ -280,19 +280,6 @@
           "./controllers/WidgetController"
         ],
         "suggestedFix": "Add: /** Route controller: WidgetController. */\nexport * from './controllers/WidgetController';"
-      },
-      {
-        "rule": "SLICE-003",
-        "module": "separation-of-concerns",
-        "severity": "warning",
-        "file": "features/widget/index.ts",
-        "line": 3,
-        "message": "\"./hooks/useWidget\" looks like a public module but is not exported from index.ts.",
-        "why": "The public API should stay in sync with what the feature actually exposes.",
-        "expected": [
-          "./hooks/useWidget"
-        ],
-        "suggestedFix": "Add: /** Hook: useWidget. */\nexport * from './hooks/useWidget';"
       }
     ]
   },
@@ -324,19 +311,6 @@
           "./controllers/WidgetController"
         ],
         "suggestedFix": "Add: /** Route controller: WidgetController. */\nexport * from './controllers/WidgetController';"
-      },
-      {
-        "rule": "SLICE-003",
-        "module": "separation-of-concerns",
-        "severity": "warning",
-        "file": "features/widget/index.ts",
-        "line": 3,
-        "message": "\"./hooks/useWidget\" looks like a public module but is not exported from index.ts.",
-        "why": "The public API should stay in sync with what the feature actually exposes.",
-        "expected": [
-          "./hooks/useWidget"
-        ],
-        "suggestedFix": "Add: /** Hook: useWidget. */\nexport * from './hooks/useWidget';"
       }
     ]
   },
@@ -399,19 +373,6 @@
         "rule": "SLICE-003",
         "module": "separation-of-concerns",
         "severity": "warning",
-        "file": "features/dashboard/index.ts",
-        "line": 3,
-        "message": "\"./hooks/useDashboard\" looks like a public module but is not exported from index.ts.",
-        "why": "The public API should stay in sync with what the feature actually exposes.",
-        "expected": [
-          "./hooks/useDashboard"
-        ],
-        "suggestedFix": "Add: /** Hook: useDashboard. */\nexport * from './hooks/useDashboard';"
-      },
-      {
-        "rule": "SLICE-003",
-        "module": "separation-of-concerns",
-        "severity": "warning",
         "file": "features/settings/index.ts",
         "line": 3,
         "message": "\"./controllers/SettingsController\" looks like a public module but is not exported from index.ts.",
@@ -425,19 +386,6 @@
         "rule": "SLICE-003",
         "module": "separation-of-concerns",
         "severity": "warning",
-        "file": "features/settings/index.ts",
-        "line": 3,
-        "message": "\"./hooks/useSettings\" looks like a public module but is not exported from index.ts.",
-        "why": "The public API should stay in sync with what the feature actually exposes.",
-        "expected": [
-          "./hooks/useSettings"
-        ],
-        "suggestedFix": "Add: /** Hook: useSettings. */\nexport * from './hooks/useSettings';"
-      },
-      {
-        "rule": "SLICE-003",
-        "module": "separation-of-concerns",
-        "severity": "warning",
         "file": "features/user/index.ts",
         "line": 3,
         "message": "\"./controllers/UserController\" looks like a public module but is not exported from index.ts.",
@@ -446,19 +394,6 @@
           "./controllers/UserController"
         ],
         "suggestedFix": "Add: /** Route controller: UserController. */\nexport * from './controllers/UserController';"
-      },
-      {
-        "rule": "SLICE-003",
-        "module": "separation-of-concerns",
-        "severity": "warning",
-        "file": "features/user/index.ts",
-        "line": 3,
-        "message": "\"./hooks/useUser\" looks like a public module but is not exported from index.ts.",
-        "why": "The public API should stay in sync with what the feature actually exposes.",
-        "expected": [
-          "./hooks/useUser"
-        ],
-        "suggestedFix": "Add: /** Hook: useUser. */\nexport * from './hooks/useUser';"
       }
     ]
   },
@@ -666,19 +601,6 @@
         "rule": "SLICE-003",
         "module": "separation-of-concerns",
         "severity": "warning",
-        "file": "features/billing/index.ts",
-        "line": 3,
-        "message": "\"./types\" looks like a public module but is not exported from index.ts.",
-        "why": "The public API should stay in sync with what the feature actually exposes.",
-        "expected": [
-          "./types"
-        ],
-        "suggestedFix": "Add: /** Types shared across this feature. */\nexport type * from './types';"
-      },
-      {
-        "rule": "SLICE-003",
-        "module": "separation-of-concerns",
-        "severity": "warning",
         "file": "features/orders/index.ts",
         "line": 3,
         "message": "\"./hooks/useOrders\" looks like a public module but is not exported from index.ts.",
@@ -687,19 +609,6 @@
           "./hooks/useOrders"
         ],
         "suggestedFix": "Add: /** Hook: useOrders. */\nexport * from './hooks/useOrders';"
-      },
-      {
-        "rule": "SLICE-003",
-        "module": "separation-of-concerns",
-        "severity": "warning",
-        "file": "features/orders/index.ts",
-        "line": 3,
-        "message": "\"./types\" looks like a public module but is not exported from index.ts.",
-        "why": "The public API should stay in sync with what the feature actually exposes.",
-        "expected": [
-          "./types"
-        ],
-        "suggestedFix": "Add: /** Types shared across this feature. */\nexport type * from './types';"
       },
       {
         "rule": "SLICE-004",
@@ -1117,38 +1026,12 @@
         "severity": "error",
         "file": "features/bad/controllers/OrderController.tsx",
         "line": 1,
-        "message": "Import \"../hooks/useOrder\" does not resolve to an existing file.",
-        "why": "A relative import that resolves to nothing points at a typo, or at a file from a later step in the build order that has not been generated yet — this is how Construct enforces generation order.",
-        "expected": [
-          "a file that exists at the resolved path"
-        ],
-        "suggestedFix": "Create the missing file (check the recommended layer order: domain -> service -> workflow -> hook -> component -> page -> controller), or fix the import path in \"features/bad/controllers/OrderController.tsx\"."
-      },
-      {
-        "rule": "IMPORT-001",
-        "module": "architecture",
-        "severity": "error",
-        "file": "features/bad/controllers/OrderController.tsx",
-        "line": 1,
         "message": "Import \"../pages/OrderPage\" does not resolve to an existing file.",
         "why": "A relative import that resolves to nothing points at a typo, or at a file from a later step in the build order that has not been generated yet — this is how Construct enforces generation order.",
         "expected": [
           "a file that exists at the resolved path"
         ],
         "suggestedFix": "Create the missing file (check the recommended layer order: domain -> service -> workflow -> hook -> component -> page -> controller), or fix the import path in \"features/bad/controllers/OrderController.tsx\"."
-      },
-      {
-        "rule": "IMPORT-001",
-        "module": "architecture",
-        "severity": "error",
-        "file": "features/good/controllers/OrderController.tsx",
-        "line": 1,
-        "message": "Import \"../hooks/useOrder\" does not resolve to an existing file.",
-        "why": "A relative import that resolves to nothing points at a typo, or at a file from a later step in the build order that has not been generated yet — this is how Construct enforces generation order.",
-        "expected": [
-          "a file that exists at the resolved path"
-        ],
-        "suggestedFix": "Create the missing file (check the recommended layer order: domain -> service -> workflow -> hook -> component -> page -> controller), or fix the import path in \"features/good/controllers/OrderController.tsx\"."
       },
       {
         "rule": "IMPORT-001",

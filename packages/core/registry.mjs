@@ -25,9 +25,22 @@
 export function aggregateValidation(root, enforcers, opts) {
   const list = enforcers ?? [];
   const violations = [];
+  // #844 -- two enforcers can independently reach the same (rule, file, line) conclusion (e.g.
+  // architecture-enforcer.mjs's checkUnclassified and soc-enforcer.mjs's checkOwnership both flag
+  // an unrecognized feature folder as SOC-001): keep only the first one seen per key. Deliberately
+  // NOT (rule, file) alone -- a rule that legitimately fires more than once in the same file at
+  // different lines (e.g. COMPONENT-005 on two separate inline-JSX spots) must stay as separate
+  // findings; only a true same-line duplicate collapses.
+  const seen = new Set();
   for (const enforcer of list) {
     const result = enforcer && typeof enforcer.validate === 'function' ? enforcer.validate(root, opts) : undefined;
-    if (result && Array.isArray(result.violations)) violations.push(...result.violations);
+    if (!result || !Array.isArray(result.violations)) continue;
+    for (const v of result.violations) {
+      const key = `${v.rule}\u0000${v.file}\u0000${v.line}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      violations.push(v);
+    }
   }
   const ok = !violations.some((v) => v.severity === 'error');
   return { violations, ok };
