@@ -35,3 +35,8 @@ export * from './hooks/useTreeNavigation';
 
 /** The project's branches with their badges (the shell counts them for the Git entry in the top bar). */
 export { fetchBranches as fetchReviewBranches } from './services/ReviewApi';
+
+/** Read-only /api/review/change (no analysis is ever started by this export, unlike useReviewChange/useReviewList)
+ * -- used by the Pages editor's Inspector "Findings" section (#831), which must never kick off a background
+ * analysis just because a page was opened. */
+export { fetchChange as fetchReviewChange } from './services/ReviewApi';

@@ -3,8 +3,10 @@ import { GlassPanel } from '@/components/ui';
 import type { PageTree, PagesEditorNode } from '../types';
 import type { PageImpact } from '../services/ImpactApi';
 import type { PageTestsCoverage } from '../hooks/useTestsCoverage';
+import type { FileFindings } from '../hooks/useFileFindings';
 import { AutoMapPanel } from './AutoMapPanel';
 import { ImpactPanel } from './ImpactPanel';
+import { PageFindingsPanel } from './PageFindingsPanel';
 import { PropRow } from './PropRow';
 import { ScopePanel } from './ScopePanel';
 import { SnippetEditor } from './SnippetEditor';
@@ -23,9 +25,11 @@ type InspectorPanelProps = {
   impact?: PageImpact | null;
   /** #830 -- fetched once by the caller (usePagesEditorTabs), per feature. */
   testsCoverage?: PageTestsCoverage | null;
+  /** #831 -- fetched once by the caller (usePagesEditorTabs), keyed by the open file's resolved path. */
+  findings?: FileFindings | null;
 };
 
-export function InspectorPanel({ feature, file, node, contentHash, onSaved, withScope = true, impact = null, testsCoverage = null }: InspectorPanelProps) {
+export function InspectorPanel({ feature, file, node, contentHash, onSaved, withScope = true, impact = null, testsCoverage = null, findings = null }: InspectorPanelProps) {
   // "Looks freshly created" (no props wired yet) is decided once, the moment a node is
   // selected, and kept for the rest of that selection — not re-checked on every render.
   // Otherwise a successful "Suggested next steps" run (e.g. auto-map wiring a prop) would
@@ -66,6 +70,7 @@ export function InspectorPanel({ feature, file, node, contentHash, onSaved, with
       </details>
       <ImpactPanel impact={impact} />
       <TestsPanel coverage={testsCoverage} />
+      <PageFindingsPanel findings={findings} />
       {withScope && !node.isFragment && <ScopePanel feature={feature} file={file} node={node} contentHash={contentHash} onSaved={onSaved} />}
       {node.isCustomComponent && (
         <AutoMapPanel feature={feature} file={file} nodeId={node.id} contentHash={contentHash} onSaved={onSaved} />

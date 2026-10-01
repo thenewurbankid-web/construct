@@ -12,6 +12,7 @@ import { SourcePanel } from '../components/SourcePanel';
 import type { ChangeImpactPreview } from '../domain/ChangeImpact';
 import { useImpact } from './useImpact';
 import { useTestsCoverage } from './useTestsCoverage';
+import { useFileFindings } from './useFileFindings';
 import { useGitStatus } from './useGitStatus';
 import type { usePagesEditor } from './usePagesEditor';
 
@@ -33,6 +34,9 @@ export function usePagesEditorTabs(e: Editor, onImpactPreview: (v: ChangeImpactP
   // #830 -- fetched once here (not inside InspectorPanel), per feature: scenario coverage is a
   // property of the feature's workflow, not of which page file within it is open.
   const testsCoverage = useTestsCoverage(feature);
+  // #831 -- keyed by the file's resolved project-relative path (from useImpact's /api/pages/impact), the same
+  // path Review findings are recorded against; null while Impact hasn't resolved it yet.
+  const findings = useFileFindings(impact?.ok ? impact.path : null);
   const gitStatus = useGitStatus(feature, file, hash);
 
   const browserTab = useMemo<ShellTab>(
@@ -68,12 +72,12 @@ export function usePagesEditorTabs(e: Editor, onImpactPreview: (v: ChangeImpactP
       title: 'Inspector',
       render: () =>
         tree ? (
-          <InspectorPanel feature={feature} file={file} node={selectedNode} contentHash={hash} onSaved={onTreeSaved} withScope={false} impact={impact} testsCoverage={testsCoverage} />
+          <InspectorPanel feature={feature} file={file} node={selectedNode} contentHash={hash} onSaved={onTreeSaved} withScope={false} impact={impact} testsCoverage={testsCoverage} findings={findings} />
         ) : (
           <p className="hint">Open a page in the Browser to inspect its elements.</p>
         ),
     }),
-    [tree, feature, file, selectedNode, hash, onTreeSaved, impact, testsCoverage],
+    [tree, feature, file, selectedNode, hash, onTreeSaved, impact, testsCoverage, findings],
   );
 
   const scopeTab = useMemo<ShellTab>(
