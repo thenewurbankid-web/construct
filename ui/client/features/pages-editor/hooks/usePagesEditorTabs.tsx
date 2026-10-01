@@ -13,6 +13,7 @@ import type { ChangeImpactPreview } from '../domain/ChangeImpact';
 import { useImpact } from './useImpact';
 import { useTestsCoverage } from './useTestsCoverage';
 import { useFileFindings } from './useFileFindings';
+import { usePageDiagnostics } from './usePageDiagnostics';
 import { useGitStatus } from './useGitStatus';
 import type { usePagesEditor } from './usePagesEditor';
 
@@ -37,6 +38,9 @@ export function usePagesEditorTabs(e: Editor, onImpactPreview: (v: ChangeImpactP
   // #831 -- keyed by the file's resolved project-relative path (from useImpact's /api/pages/impact), the same
   // path Review findings are recorded against; null while Impact hasn't resolved it yet.
   const findings = useFileFindings(impact?.ok ? impact.path : null);
+  // #833 -- the whole file's diagnostics, fetched once per save; NodeDiagnosticsPanel scopes them to whichever
+  // node is selected.
+  const diagnostics = usePageDiagnostics(feature, file, hash);
   const gitStatus = useGitStatus(feature, file, hash);
 
   const browserTab = useMemo<ShellTab>(
@@ -72,12 +76,12 @@ export function usePagesEditorTabs(e: Editor, onImpactPreview: (v: ChangeImpactP
       title: 'Inspector',
       render: () =>
         tree ? (
-          <InspectorPanel feature={feature} file={file} node={selectedNode} contentHash={hash} onSaved={onTreeSaved} withScope={false} impact={impact} testsCoverage={testsCoverage} findings={findings} />
+          <InspectorPanel feature={feature} file={file} node={selectedNode} contentHash={hash} onSaved={onTreeSaved} withScope={false} impact={impact} testsCoverage={testsCoverage} findings={findings} diagnostics={diagnostics} />
         ) : (
           <p className="hint">Open a page in the Browser to inspect its elements.</p>
         ),
     }),
-    [tree, feature, file, selectedNode, hash, onTreeSaved, impact, testsCoverage, findings],
+    [tree, feature, file, selectedNode, hash, onTreeSaved, impact, testsCoverage, findings, diagnostics],
   );
 
   const scopeTab = useMemo<ShellTab>(

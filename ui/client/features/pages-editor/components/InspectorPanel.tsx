@@ -4,8 +4,10 @@ import type { PageTree, PagesEditorNode } from '../types';
 import type { PageImpact } from '../services/ImpactApi';
 import type { PageTestsCoverage } from '../hooks/useTestsCoverage';
 import type { FileFindings } from '../hooks/useFileFindings';
+import type { PageDiagnostics } from '../hooks/usePageDiagnostics';
 import { AutoMapPanel } from './AutoMapPanel';
 import { ImpactPanel } from './ImpactPanel';
+import { NodeDiagnosticsPanel } from './NodeDiagnosticsPanel';
 import { PageFindingsPanel } from './PageFindingsPanel';
 import { PropRow } from './PropRow';
 import { ScopePanel } from './ScopePanel';
@@ -27,9 +29,11 @@ type InspectorPanelProps = {
   testsCoverage?: PageTestsCoverage | null;
   /** #831 -- fetched once by the caller (usePagesEditorTabs), keyed by the open file's resolved path. */
   findings?: FileFindings | null;
+  /** #833 -- fetched once by the caller (usePagesEditorTabs), scoped to the selected node here. */
+  diagnostics?: PageDiagnostics | null;
 };
 
-export function InspectorPanel({ feature, file, node, contentHash, onSaved, withScope = true, impact = null, testsCoverage = null, findings = null }: InspectorPanelProps) {
+export function InspectorPanel({ feature, file, node, contentHash, onSaved, withScope = true, impact = null, testsCoverage = null, findings = null, diagnostics = null }: InspectorPanelProps) {
   // "Looks freshly created" (no props wired yet) is decided once, the moment a node is
   // selected, and kept for the rest of that selection — not re-checked on every render.
   // Otherwise a successful "Suggested next steps" run (e.g. auto-map wiring a prop) would
@@ -71,6 +75,7 @@ export function InspectorPanel({ feature, file, node, contentHash, onSaved, with
       <ImpactPanel impact={impact} />
       <TestsPanel coverage={testsCoverage} />
       <PageFindingsPanel findings={findings} />
+      <NodeDiagnosticsPanel diagnostics={diagnostics} node={node} />
       {withScope && !node.isFragment && <ScopePanel feature={feature} file={file} node={node} contentHash={contentHash} onSaved={onSaved} />}
       {node.isCustomComponent && (
         <AutoMapPanel feature={feature} file={file} nodeId={node.id} contentHash={contentHash} onSaved={onSaved} />
