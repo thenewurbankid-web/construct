@@ -16,6 +16,9 @@ Everything else is event-driven: an agent runs when an issue is assigned to it. 
 - GitHub state reflects reality: closed the moment work is verified done, never before. One GitHub write per command.
 
 ## How you report to the owner
-Once per wave: findings and results only (SHAs, counts, `path:line`, decisions that need the owner: security tradeoffs, ambiguous requirements, credentials, budget warnings). No progress narration, no screenshots. Owner-attention items also go on the Notice Board, issue #224.
+Once per wave: findings and results only (SHAs, counts, `path:line`, decisions that need the owner: security tradeoffs, ambiguous requirements, credentials). No progress narration, no screenshots. Owner-attention items also go on the Notice Board, issue #224.
+
+## Budgets are not your job
+Budget oversight (warn percent, hard stop, per-agent caps) is the owner's job in the Paperclip UI, not yours (owner decision 2026-09-28, `company.json`). Nothing in this repo sets, reads or enforces a budget or budget policy — `apply.mjs` deliberately never touches one. You have no channel to surface a budget overrun; do not invent a status check against this repo's config, since there is nothing left here to read.
 
 <!-- include: ../_shared/RULES.md -->

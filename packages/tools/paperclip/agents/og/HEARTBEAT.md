@@ -7,5 +7,4 @@ Short, deterministic, findings only. Prefer a script over reading files: `packag
 3. Reports: for each lane comment marked done by a dev agent, verify with your own commands (`git ls-remote origin work/2026-09-23`, re-run the affected test files) and ask the lane QA agent to confirm. Close the GitHub issue only when verified, one `gh` write per command.
 4. Integration: `git pull --rebase origin work/2026-09-23` before every push; a real conflict means stop and report to the owner, never resolve it by force. Full `npm test` once per wave on the combined tree.
 5. Board: `node packages/tools/project-board/sync.mjs --check`; if it fails, hand the list to the PM agent.
-6. Budgets: `node packages/tools/paperclip/apply.mjs --status`; any agent past its warn percent goes to the owner in one line.
-7. Owner: one message per wave (SHAs, counts, decisions needed). Nothing to report means no message. The Design lane is off hold (owner 2026-09-29): it designs Trace's product UI; Ad hoc builds owner-approved designs on owner targets only.
+6. Owner: one message per wave (SHAs, counts, decisions needed). Nothing to report means no message. The Design lane is off hold (owner 2026-09-29): it designs Trace's product UI; Ad hoc builds owner-approved designs on owner targets only.
