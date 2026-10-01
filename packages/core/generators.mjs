@@ -1,4 +1,4 @@
-import path from 'node:path'; import fs from 'node:fs'; import {ensureDir,write,rel} from './fs.mjs'; import {loadConfig} from './config.mjs'; import {validateArchitecture} from './architecture-enforcer.mjs'; import {ConstructError,EXIT_CODES} from './diagnostics.mjs'; import {requestFileText} from './llm-fill.mjs'; import {withDeclarations,featureDirOf} from './block-kit.mjs';
+import path from 'node:path'; import fs from 'node:fs'; import {ensureDir,write,rel} from './fs.mjs'; import {loadConfig} from './config.mjs'; import {validateArchitecture} from './architecture-enforcer.mjs'; import {ConstructError,EXIT_CODES} from './diagnostics.mjs'; import {requestFileText} from './llm-fill.mjs'; import {withDeclarations,featureDirOf} from './block-kit.mjs'; import {importLine} from './shape-kit.mjs';
 // The controller template's own composition (importing a same-named Page
 // from the feature's pages/ folder) is Construct's own feature-internal
 // convention, not Next.js's -- it works unchanged for either framework.
@@ -184,6 +184,31 @@ const templates={
  * @param {string} layer A layer name.
  * @returns {string} The folder name. */
 export const folderFor=(layer)=>layer==='hook'?'hooks':layer==='controller'?'controllers':layer==='workflow'?'workflows':layer==='domain'?'domain':layer==='service'?'services':layer==='page'?'pages':layer==='expression'?'expressions':layer==='adapter'?'adapters':layer==='viewmodel'?'viewmodels':'components';
+
+// #777 -- the same minimal "TODO" stub each bare `templates[layer]` entry above writes, but through
+// the layer's own typed-contract factory (packages/core/typed-contracts/factories.ts) instead of a
+// plain function/component, so `--llm --typed`'s fill prompt shows the typed shape as the one example
+// to copy -- #500's own premise (a factory is an example, a denylist rule is an instruction) applied
+// to the fill prompt itself, not just to `construct validate`. `expression` is deliberately left out
+// here (not missing): its own bare `templates.expression` entry above is already built through
+// defineExpression unconditionally (EXPR-006 requires it), so there is no separate "typed" variant to
+// seed -- `--typed` is a no-op improvement for a layer that was never untyped. `hook` has no factory
+// of its own yet (`useTrackedState` is #504, not implemented here), and `route` has no reachable
+// per-unit create path at all (`construct create route` wires an already-generated controller into
+// the app's one shared router file -- generateRouteFiles below -- it never scaffolds-then-fills a new
+// stub body, so there is no "current stub" for an LLM to rewrite). `adapter`/`viewmodel` have no
+// typed-contracts factory of their own (#500's factories.ts doesn't define one). All of these fall
+// back to the bare stub, per #777's own acceptance criteria.
+const typedTemplates={
+ domain:(n)=>`${importLine('defineDomain')}\n\nexport const ${n} = defineDomain<Record<string, never>, boolean>('${n}', () => true);\n`,
+ service:(n)=>`${importLine('defineService')}\n\nexport const ${n} = defineService('${n}', async ({ signal }: { signal: AbortSignal }) => {\n  const response = await fetch('/api/${n.toLowerCase()}', { signal });\n  if (!response.ok) throw new Error('Request failed');\n  return response.json();\n});\n`,
+ workflow:(n)=>`import { setup } from 'xstate';\n${importLine('defineWorkflow')}\n\nexport const ${n}Workflow = defineWorkflow('${n}Workflow', () => setup({}).createMachine({\n  id: '${n.toLowerCase()}',\n  initial: 'idle',\n  states: { idle: {} },\n}));\n`,
+ component:(n)=>`${importLine('defineComponent')}\n\nexport const ${n} = defineComponent<Record<string, never>>('${n}', () => <div>${n}</div>);\n`,
+ page:(n)=>`${importLine('definePage')}\n\nexport const ${n}Page = definePage<Record<string, never>>('${n}Page', () => (\n  <main>${n}</main>\n));\n`,
+ controller:(n)=>`${importLine('defineController')}\n\nexport const ${n}Controller = defineController<Record<string, never>>('${n}Controller', () => null);\n`,
+};
+/** Layers `--typed` can seed from a typed-contract factory instead of the bare stub (see `typedTemplates` above for which layers are deliberately excluded, and why). */
+export const TYPED_STUB_LAYERS=new Set(Object.keys(typedTemplates));
 
 // Reverse of folderFor — which layer a generated file's own parent folder
 // name implies. Single source of truth shared by import.mjs's per-file
@@ -583,6 +608,31 @@ export function generatePageViewModel(root,name,feature,fieldsText){
  return written;
 }
 
+/**
+ * Same contract as `generateLayer`, but the file's starting content is the layer's typed-contract
+ * factory stub (`typedTemplates` above) instead of the bare template -- #777's `--typed` flag. Only
+ * callable for a layer in `TYPED_STUB_LAYERS`.
+ *
+ * @param {string} root Project root.
+ * @param {string} layer A layer in `TYPED_STUB_LAYERS`.
+ * @param {string} name Unit name (turned into a valid identifier).
+ * @param {string} feature Feature that owns the file.
+ * @returns {string} Absolute path of the file written.
+ *
+ * @example
+ * generateTypedLayer(root, 'domain', 'invoice', 'billing');
+ */
+export function generateTypedLayer(root,layer,name,feature){
+ if(!typedTemplates[layer])throw new Error(`No typed-contract factory stub for layer: ${layer}`);
+ const cap=pascalCase(name,layer[0].toUpperCase()+layer.slice(1));
+ const file=layerTargetFile(root,layer,name,feature);
+ assertLayerPrerequisites(root,name,feature,[layer]);
+ ensureFeatureExists(root,feature);
+ write(file,typedTemplates[layer](cap));
+ selfCheck(root,[file]);
+ return file;
+}
+
 // Canonical dependency order for a vertical slice: controller's stub template
 // imports a same-named page (its original, unrelated role), so page must exist first or
 // IMPORT-001 (a dangling relative import) fires — every other plain layer's stub is
@@ -680,14 +730,14 @@ export function assertLayerPrerequisites(root,name,feature,layers){
  * @param {string} name Unit name.
  * @param {string} feature Feature that owns the files.
  * @param {string[]} layers Layers to generate; duplicates are ignored.
- * @param {{onLayer?: (info:{layer:string, file:string, elapsedSeconds:number}) => void}} [options] Called after each layer, for per-layer timing output.
+ * @param {{onLayer?: (info:{layer:string, file:string, elapsedSeconds:number}) => void, typed?: boolean}} [options] `onLayer` fires after each layer, for per-layer timing output. `typed` (#777) seeds each layer in `TYPED_STUB_LAYERS` from its typed-contract factory instead of the bare template; a layer with no typed stub (e.g. `hook`) still gets the bare one.
  * @returns {string[]} Absolute paths written, in dependency order.
  * @throws {Error} For an unknown layer or an unbuildable combination (for example a controller without a page).
  *
  * @example
  * generateVertical(root, 'invoice', 'billing', ['domain', 'service', 'workflow']);
  */
-export function generateVertical(root,name,feature,layers,{onLayer}={}){
+export function generateVertical(root,name,feature,layers,{onLayer,typed}={}){
  const unique=[...new Set(layers)];
  const unknown=unique.filter(l=>!templates[l]);
  if(unknown.length)throw new Error(`Unknown layer: ${unknown[0]}`);
@@ -698,8 +748,9 @@ export function generateVertical(root,name,feature,layers,{onLayer}={}){
  const ordered=LAYER_ORDER.filter(l=>unique.includes(l));
  return ordered.map(layer=>{
   const start=process.hrtime.bigint();
-  const file=generateLayer(root,layer,name,feature);
-  if(onLayer)onLayer({layer,file,elapsedSeconds:Number(process.hrtime.bigint()-start)/1e9});
+  const isTyped=typed&&typedTemplates[layer];
+  const file=isTyped?generateTypedLayer(root,layer,name,feature):generateLayer(root,layer,name,feature);
+  if(onLayer)onLayer({layer,file,elapsedSeconds:Number(process.hrtime.bigint()-start)/1e9,typed:!!isTyped});
   return file;
  });
 }

@@ -4,7 +4,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { makeLineSource } from './line-source.mjs';
-import { createFeature, ensureFeatureExists, generateLayer, generatePageViewModel, generateVertical, layerFromGeneratedFile, fillGeneratedFile } from './generators.mjs';
+import { createFeature, ensureFeatureExists, generateLayer, generatePageViewModel, generateTypedLayer, generateVertical, layerFromGeneratedFile, fillGeneratedFile, TYPED_STUB_LAYERS } from './generators.mjs';
 import { generateServiceFromSpec, resolveSchemaEmit } from './service-generator.mjs';
 import { generateShapeLayer, generateShapeVertical } from './shapes.mjs';
 import { ensureGeneratedDependencies } from './generated-dependencies.mjs';
@@ -545,7 +545,7 @@ export async function generate(args) {
   if (args[0] === 'handler') return generateHandlerFiles(args);
   const layer = args[0], name = args[1], fi = args.indexOf('--feature');
   if (!layer || !name || fi < 0 || !args[fi + 1]) {
-    throw new ConstructError('Usage: construct generate <layer> <name> --feature <feature> [--openapi <spec>] [--llm <provider>] [--model <name>]', { exitCode: EXIT_CODES.USAGE_ERROR });
+    throw new ConstructError('Usage: construct generate <layer> <name> --feature <feature> [--openapi <spec>] [--llm <provider> [--model <name>] [--typed]]', { exitCode: EXIT_CODES.USAGE_ERROR });
   }
   const root = getRoot(args);
   const feature = args[fi + 1];
@@ -678,8 +678,18 @@ export async function generate(args) {
   // #471: --model names which installed model the provider (currently only "ollama" reads it) should
   // use, instead of always falling back to DEFAULT_OLLAMA_MODEL; meaningless without --llm.
   const model = flagValue(args, '--model');
+  // #777: `--typed` seeds the stub `--llm` fills from the layer's typed-contract factory
+  // (packages/core/typed-contracts/factories.ts) instead of the bare template, so "does a typed
+  // shape help the model fill it in" is a real, repeatable command instead of a hand-built harness.
+  const typed = args.includes('--typed');
+  if (typed && !llm) {
+    throw new ConstructError('--typed only seeds the stub for a --llm fill: add --llm <provider>, or drop --typed and use --shape for real typed code with no model.', { exitCode: EXIT_CODES.USAGE_ERROR });
+  }
   const scaffoldStart = startTimer();
-  const file = generateLayer(root, layer, name, feature);
+  const file = typed && TYPED_STUB_LAYERS.has(layer) ? generateTypedLayer(root, layer, name, feature) : generateLayer(root, layer, name, feature);
+  // `expression`'s own bare template is already built through defineExpression unconditionally
+  // (EXPR-006), so it's not in TYPED_STUB_LAYERS (nothing to switch) but isn't a fallback either.
+  if (typed && layer !== 'expression' && !TYPED_STUB_LAYERS.has(layer)) console.log(`Note: no typed-contract factory stub for layer "${layer}" yet — scaffolded the bare template instead.`);
   const scaffoldSeconds = elapsedSeconds(scaffoldStart);
   if (llm) {
     const llmStart = startTimer();
@@ -745,7 +755,7 @@ async function generateVerticalSlice(args) {
   const name = args[1], fi = args.indexOf('--feature'), li = args.indexOf('--layers');
   if (!name || fi < 0 || !args[fi + 1] || li < 0 || !args[li + 1]) {
     throw new ConstructError(
-      'Usage: construct generate layer <name> --feature <feature> --layers <layer1,layer2,...> [--llm <provider>]',
+      'Usage: construct generate layer <name> --feature <feature> --layers <layer1,layer2,...> [--llm <provider> [--typed]]',
       { exitCode: EXIT_CODES.USAGE_ERROR },
     );
   }
@@ -767,6 +777,12 @@ async function generateVerticalSlice(args) {
   const context = readContextFileArg(root, args);
   // #471: as generate()'s single-layer form above -- meaningless without --llm.
   const model = flagValue(args, '--model');
+  // #777: same `--typed` contract as the single-layer path above, applied per layer; a layer with no
+  // typed-contract stub (e.g. `hook`) silently keeps the bare one (noted via onLayer's `typed` flag).
+  const typed = args.includes('--typed');
+  if (typed && !llm) {
+    throw new ConstructError('--typed only seeds the stub for a --llm fill: add --llm <provider>, or drop --typed and use --shape for real typed code with no model.', { exitCode: EXIT_CODES.USAGE_ERROR });
+  }
   // Per-layer scaffold timing comes from generateVertical's own onLayer hook
   // (so it reflects each layer's real write, not a guess) -- the LLM fill
   // (if any) happens in this loop afterward, same as before, timed
@@ -774,7 +790,11 @@ async function generateVerticalSlice(args) {
   const totalStart = startTimer();
   const scaffoldSeconds = new Map();
   const files = generateVertical(root, name, feature, layers, {
-    onLayer: ({ file, elapsedSeconds: dt }) => scaffoldSeconds.set(file, dt),
+    onLayer: ({ file, elapsedSeconds: dt, layer: generatedLayer, typed: wasTyped }) => {
+      scaffoldSeconds.set(file, dt);
+      if (typed && generatedLayer !== 'expression' && !wasTyped) console.log(`Note: no typed-contract factory stub for layer "${generatedLayer}" yet — scaffolded the bare template instead.`);
+    },
+    typed,
   });
   for (const file of files) {
     const scaffoldDt = scaffoldSeconds.get(file) ?? 0;
@@ -1489,7 +1509,7 @@ async function createDocument(args) {
   const feature = fi >= 0 ? args[fi + 1] : undefined;
   if (args[0] === 'layer') {
     const name = args[1], li = args.indexOf('--layers');
-    if (!name || !feature || li < 0 || !args[li + 1]) throw usageFail('Usage: construct generate layer <name> --feature <feature> --layers <layer1,layer2,...> [--llm <provider>]');
+    if (!name || !feature || li < 0 || !args[li + 1]) throw usageFail('Usage: construct generate layer <name> --feature <feature> --layers <layer1,layer2,...> [--llm <provider> [--typed]]');
     const root = getRoot(args);
     const layers = args[li + 1].split(',').map((l) => l.trim()).filter(Boolean);
     const shaped = shapeRequestOf(args, name, feature);
@@ -1498,7 +1518,7 @@ async function createDocument(args) {
     return { verb: 'create', kind: 'layer', feature, name, layers, ...(shaped ? { shape: shaped.shape } : {}), files: files.map((f) => path.relative(root, f)), ...(deps && (deps.added.length || deps.notes.length) ? { dependencies: deps } : {}), attribution };
   }
   const layer = args[0], name = args[1];
-  if (!layer || !name || !feature) throw usageFail('Usage: construct generate <layer> <name> --feature <feature> [--openapi <spec>] [--llm <provider>]');
+  if (!layer || !name || !feature) throw usageFail('Usage: construct generate <layer> <name> --feature <feature> [--openapi <spec>] [--llm <provider> [--typed]]');
   const root = getRoot(args);
   const shaped = shapeRequestOf(args, name, feature);
   if (shaped) {
