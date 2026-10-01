@@ -663,6 +663,11 @@ export async function generate(args) {
     const written = generatePageViewModel(root, name, feature, args[fieldsI + 1]);
     const dt = formatDuration(elapsedSeconds(t));
     for (const file of written) console.log(`Created ${path.relative(root, file)} (${dt})`);
+    // #825: the chain writes a controller (among others) straight into the feature folder same as
+    // `import --route`'s wizard does (line ~2612 above) -- without this, the new controller is a
+    // real public module construct validate's own SLICE-003 then flags as missing from index.ts.
+    const apiSync = syncPublicApi(root, feature);
+    if (apiSync.changed) console.log(`Updated ${apiSync.path} (the feature's public API) with the new exports.`);
     return;
   }
   // Plain fallback: scaffold the usual template stub, optionally LLM-filled
