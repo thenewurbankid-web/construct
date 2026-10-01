@@ -1,4 +1,4 @@
-import type { LivePreviewView } from '../types';
+import type { LivePreviewView } from '../domain/LivePreviewView';
 
 /** What stands where the app would be when there is no app to show: no address
  * configured yet, or a dev server that is not answering. Never a blank white

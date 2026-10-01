@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { LivePreviewView } from '../types';
+import type { LivePreviewView } from '../domain/LivePreviewView';
 
 /** The exact line the target app adds to its Vite config so clicks can be traced back to source. */
 export const PLUGIN_LINE = 'plugins: [constructPreview(), react()]';

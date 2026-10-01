@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { LivePreviewPanel } from '@/features/live-preview';
 import { EditorBreadcrumb } from '../components/EditorBreadcrumb';
 import { EditorTabStrip, type EditorTab } from '../components/EditorTabStrip';
-import { LivePreviewPanel } from '../components/LivePreviewPanel';
 import { NavigatorPanel } from '../components/NavigatorPanel';
 import { OverlaysMenu } from '../components/OverlaysMenu';
 import { PreviewPanel } from '../components/PreviewPanel';

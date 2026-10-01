@@ -4,10 +4,10 @@ import { useState } from 'react';
 import { ProjectGateController } from '@/features/project-gate';
 import { CommitIndicatorController } from '@/features/git-session';
 import { DevServerController } from '@/features/dev-server';
+import { usePreviewServerUrl } from '@/features/live-preview';
 import type { ChangeImpactPreview } from '../domain/ChangeImpact';
 import { usePagesEditor } from '../hooks/usePagesEditor';
 import { usePagesEditorTabs } from '../hooks/usePagesEditorTabs';
-import { usePreviewServerUrl } from '../hooks/usePreviewServerUrl';
 import { PagesEditorPage } from '../pages/PagesEditorPage';
 
 // Mounted only once a project is chosen, so the shell's Browser/Tools tabs

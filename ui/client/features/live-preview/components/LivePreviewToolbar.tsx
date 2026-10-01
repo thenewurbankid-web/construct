@@ -1,4 +1,4 @@
-import type { LivePreviewView } from '../types';
+import type { LivePreviewView } from '../domain/LivePreviewView';
 
 /** The live preview's controls: the address, Pick, the device size picker with
  * the frame's real measured size, and the way into full screen. Hidden (not

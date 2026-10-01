@@ -1,5 +1,5 @@
 import { GlassPanel } from '@/components/ui';
-import type { LivePreviewView } from '../types';
+import type { LivePreviewView } from '../domain/LivePreviewView';
 import { LivePreviewEmpty } from './LivePreviewEmpty';
 import { LivePreviewNotes } from './LivePreviewNotes';
 import { LivePreviewToolbar } from './LivePreviewToolbar';

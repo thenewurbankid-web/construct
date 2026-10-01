@@ -78,17 +78,5 @@ export * from './components/SourceEditor';
 /** Diagnostics -> editor-neutral markers, and the one-line problem summary. */
 export * from './domain/SourceMarkers';
 
-/** The live preview's device size (Fit / 390 / 768 / 1280 / Fluid), remembered per project. */
-export * from './hooks/usePreviewSize';
-
-/** The live preview frame's real measured size, live. */
-export * from './hooks/usePreviewMeasure';
-
-/** Showing the previewed app full screen: the shell's focus mode, Ctrl+Alt+F in, Esc out. */
-export * from './hooks/useFullScreenPreview';
-
-/** What the framed app says about itself: the preview plugin is loaded, or it threw (#378). */
-export * from './hooks/usePreviewSignals';
-
-/** Frames the dev server the Cockpit started, and lets go of it when it stops (#378). */
-export * from './hooks/usePreviewServerUrl';
+/** #834/#837 -- the live preview's device size, full screen, plugin signals and dev-server framing all moved
+ * to the shared `@/features/live-preview` (pages-editor was their only consumer; re-export removed here). */

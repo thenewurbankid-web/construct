@@ -2,7 +2,11 @@
 // Types only — the frame box and the size readout arrive already computed
 // (see PreviewFrameStyle.ts), so the panel itself stays presentation.
 import type { Ref } from 'react';
-import type { ChangeImpactPreview } from './ChangeImpact';
+
+/** A caller's pending refactor preview (pages-editor's Change tab, #381): one line, no paths, plus every file
+ * the dry run says it will touch. Generic here on purpose -- this feature knows nothing about refactors, only
+ * how to draw a dashed-bordered card over the stage with them. */
+export type LivePreviewImpact = { label: string; files: { path: string; checked: boolean }[] };
 
 /** What we know about the preview address: nothing yet, being probed, answering, or refusing. */
 export type PreviewReach = 'unknown' | 'checking' | 'up' | 'down';
@@ -50,5 +54,5 @@ export type LivePreviewView = {
   onTogglePick: () => void;
   /** #381 — the Inspector Change tab's pending refactor, drawn as a dashed-bordered card over the stage
    * ("Preview of the change... nothing is written until you approve"). Null when Change has no live preview. */
-  impactPreview?: ChangeImpactPreview | null;
+  impactPreview?: LivePreviewImpact | null;
 };
