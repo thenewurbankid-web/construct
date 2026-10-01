@@ -263,6 +263,21 @@ button.sh-pill:hover { background: var(--surface-3); }
 }
 
 .sh-mid { flex: 1; min-width: 0; outline: none; }
+/* #843: unlike `.sh-left`/`.sh-right` (`.sh-pane`, below), the stage column had no height cap of its
+ * own -- its content (e.g. the Features screen's layer/file list) grew past the viewport, so the page
+ * itself had to scroll, and the sticky `.sh-status` bar then painted over whatever of that content fell
+ * in its 24px strip at the bottom of the screen on initial load (no scrolling needed to see it), hiding
+ * real links from both sight and axe's target-size check. Capping it and letting it scroll on its own,
+ * the same as the side panes, keeps content from ever rendering under the status bar. Narrow (one pane
+ * at a time, its own page-scroll, `.sh-root--narrow .sh-pane` above) and focus mode
+ * (`.sh-root--focus .sh-mid` below, flex-stretched to fill the viewport with no status bar at all) each
+ * already have their own correct sizing, so they are excluded here. */
+.sh-root:not(.sh-root--narrow):not(.sh-root--focus) .sh-mid {
+  position: sticky;
+  top: var(--sh-top);
+  height: calc(100vh - var(--sh-top) - var(--sh-status) - var(--sh-drawer-h, 0px));
+  overflow: auto;
+}
 .sh-pane {
   position: sticky;
   top: var(--sh-top);
