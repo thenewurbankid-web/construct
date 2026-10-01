@@ -90,6 +90,12 @@ export async function startMock({ leakSecretOn = null } = {}) {
       a.status = m[2] === 'pause' ? 'paused' : 'idle';
       return send(200, a);
     }
+    // On-demand dispatch. The real endpoint answers 202 with a queued run and never resumes a paused agent.
+    if ((m = /^\/api\/agents\/([^/]+)\/wakeup$/.exec(p)) && req.method === 'POST') {
+      const a = db.agents.find((x) => x.id === m[1]);
+      if (!a) return send(404, { error: 'no such agent' });
+      return send(202, { id: randomUUID(), agentId: a.id, status: 'queued', invocationSource: body.source ?? 'manual' });
+    }
     if ((m = /^\/api\/agents\/([^/]+)\/budgets$/.exec(p)) && req.method === 'PATCH') {
       const a = db.agents.find((x) => x.id === m[1]);
       a.budgetMonthlyCents = body.budgetMonthlyCents;
@@ -157,7 +163,14 @@ export async function startMock({ leakSecretOn = null } = {}) {
     if ((m = /^\/api\/issues\/([^/]+)$/.exec(p)) && req.method === 'PATCH') {
       const i = db.issues.find((x) => x.id === m[1]);
       Object.assign(i, body);
+      // The real API mirrors executionPolicy.monitor.nextCheckAt onto the flat field unstall.mjs reads.
+      if (body.executionPolicy?.monitor) i.monitorNextCheckAt = body.executionPolicy.monitor.nextCheckAt ?? null;
       return send(200, i);
+    }
+    // Detail read: the real list endpoint omits monitor/run fields, so callers re-read each issue here.
+    if ((m = /^\/api\/issues\/([^/]+)$/.exec(p)) && req.method === 'GET') {
+      const i = db.issues.find((x) => x.id === m[1]);
+      return i ? send(200, i) : send(404, { error: 'no such issue' });
     }
     return send(404, { error: `no mock route for ${req.method} ${p}` });
   }

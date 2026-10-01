@@ -1,6 +1,7 @@
 import { test, before, after, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile, spawn } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
@@ -14,6 +15,7 @@ import { laneFor, mirrorBody, mirrorTitle } from './github-sync.mjs';
 const execFileP = promisify(execFile);
 const APPLY = path.join(HERE, 'apply.mjs');
 const BACKLOG = path.join(HERE, 'backlog.mjs');
+const UNSTALL = path.join(HERE, 'unstall.mjs');
 const TRACE_LEADS = ['trace-matching', 'trace-contracts', 'trace-studio', 'trace-pagemap'];
 const sharedCheckout = (key) => key === 'og' || key === 'flow' || /^(trace|design|adhoc|atomic)-/.test(key);
 const SYNC = path.join(HERE, 'github-sync.mjs');
@@ -395,6 +397,61 @@ describe('apply.mjs against a mock Paperclip', () => {
     r = await node(BACKLOG, ['--api', mock.url, '--apply']);
     assert.equal(mock.writes().length, 0);
     assert.match(r.stdout, /Created 0 tasks\. Nothing to do\./);
+  });
+
+  test('unstall.mjs restarts only tasks nothing can wake, and reports phantom blocks and cycles without touching them', async () => {
+    const companyId = mock.db.companies[0].id;
+    const agent = mock.db.agents.find((a) => a.name === 'Cockpit Dev');
+    let n = 0;
+    const seed = (over) => {
+      const i = { id: randomUUID(), identifier: `SEED-${++n}`, companyId, title: 'seeded', status: 'in_progress', assigneeAgentId: agent.id, executionRunId: null, monitorNextCheckAt: null, blockedBy: [], activeRecoveryAction: null, ...over };
+      mock.db.issues.push(i);
+      return i;
+    };
+    // Nothing can ever wake this one: assigned, no run, no future check. The exact 2026-10-01 signature.
+    const stalled = seed({ title: 'STALLED task' });
+    // Healthy in three different ways -- a future check, a live run, and a status that is not active work.
+    const armed = seed({ title: 'has a future check', monitorNextCheckAt: '2099-01-01T00:00:00Z' });
+    const running = seed({ title: 'has a live run', executionRunId: randomUUID() });
+    const parked = seed({ title: 'todo is not a stall', status: 'todo' });
+    // Blocked with nothing to explain it, and a two-node dependency cycle.
+    const phantom = seed({ title: 'blocked by nothing', status: 'blocked' });
+    const a = seed({ title: 'cycle a', status: 'blocked' });
+    const b = seed({ title: 'cycle b', status: 'blocked' });
+    a.blockedBy = [{ id: b.id, identifier: b.identifier }];
+    b.blockedBy = [{ id: a.id, identifier: a.identifier }];
+
+    mock.log.length = 0;
+    let r = await node(UNSTALL, ['--api', mock.url]);
+    assert.equal(r.code, 0, r.stderr + r.stdout);
+    assert.equal(mock.writes().length, 0, 'report-only run writes nothing');
+    assert.match(r.stdout, /1 stalled/);
+    assert.match(r.stdout, /1 phantom-blocked/); // the cycle nodes name a dependency, so they are not phantom
+    assert.match(r.stdout, /1 dependency cycle/);
+    assert.match(r.stdout, /STALLED .*STALLED task/);
+    // A cycle is only actionable if it names the issues, not their uuids.
+    assert.match(r.stdout, new RegExp(`CYCLE .*${a.identifier}`));
+    for (const i of [armed, running, parked]) assert.ok(!r.stdout.includes(i.title), `${i.title} must not be reported`);
+
+    r = await node(UNSTALL, ['--api', mock.url, '--apply', '--in', '5']);
+    assert.equal(r.code, 0, r.stderr + r.stdout);
+    assert.match(r.stdout, /re-armed 1, dispatched 1 agent/);
+    // The stalled task got a real future timestamp, which is what tickDueIssueMonitors needs to fire again.
+    assert.ok(Date.parse(mock.db.issues.find((i) => i.id === stalled.id).monitorNextCheckAt) > Date.now(), 're-armed with a future check');
+    assert.equal(mock.log.some((e) => e.method === 'POST' && e.path === `/api/agents/${agent.id}/wakeup`), true, 'dispatches the assignee');
+    // Clearing a block is a judgement call, so the script reports those and changes nothing.
+    assert.equal(mock.db.issues.find((i) => i.id === phantom.id).status, 'blocked');
+    assert.equal(mock.db.issues.find((i) => i.id === a.id).status, 'blocked');
+    assert.equal(mock.db.issues.find((i) => i.id === armed.id).monitorNextCheckAt, '2099-01-01T00:00:00Z', 'a healthy task is left alone');
+
+    r = await node(UNSTALL, ['--api', mock.url]);
+    assert.match(r.stdout, /0 stalled/, 'a second report finds nothing left to restart');
+  });
+
+  test('unstall.mjs refuses a non-loopback API host unless --allow-remote is passed', async () => {
+    const r = await node(UNSTALL, ['--api', 'http://paperclip.example.com']);
+    assert.equal(r.code, 1);
+    assert.match(r.stdout + r.stderr, /Refusing non-loopback API host/);
   });
 });
 

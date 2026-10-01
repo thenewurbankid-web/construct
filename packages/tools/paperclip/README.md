@@ -12,6 +12,7 @@ with a timer.
 | `apply.mjs` | Makes Paperclip match `company.json`. Dry run by default. |
 | `backlog.mjs`, `backlog/trace.json` | Files a backlog into Line as tasks (`[ID] title`, under its project, assigned to its lead, status todo). Dry run by default; never duplicates. `backlog/trace.json` is Trace's open backlog (CON-2..CON-14) copied from the Trace instance on port 3101. |
 | `github-sync.mjs` | Mirrors open GitHub issues of milestone v0.10.0 into Paperclip issues. Dry run by default, reads GitHub only. |
+| `unstall.mjs` | Finds board work nothing can ever wake (assigned, no live run, no future check) and `blocked` issues with no dependency and no recovery action (LIN-123's phantom-block artefact). Report only by default; `--apply` re-arms each stalled task's monitor (capped at `--max`, default 8, to stay inside an agent's write budget) and sends one wakeup per affected agent. Never auto-clears a phantom block — that stays a judgement call for a human or OG to look at. Wired into `agents/flow/HEARTBEAT.md` step 3. |
 | `lib.mjs`, `mock-paperclip.mjs`, `paperclip.test.mjs` | Shared helpers, a mock API on ports 49600-49649, tests (`node --test packages/tools/paperclip`). |
 
 Node built-ins only (`fetch`); runs on Node 22 (the repo default) and 24 (what Paperclip itself needs, `/home/developer/.local/node-24/bin`).
