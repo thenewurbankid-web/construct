@@ -76,6 +76,7 @@ import {
   moveNodeInSnippet,
   addChildInSnippet,
 } from './pagesEditor.mjs';
+import { pageImpact } from './pagesImpact.mjs';
 import { handleValidateForProject } from './validateApi.mjs';
 import { handleLintBuffer } from './lintBufferApi.mjs';
 import { handleResearch } from './researchApi.mjs';
@@ -695,6 +696,17 @@ app.get('/api/pages/scope-links', (req, res) => {
     const root = currentRoot();
     const { absPath } = resolvePageFile(root, feature, file);
     res.json(getScopeLinks(fs.readFileSync(absPath, 'utf8'), nodeId, root, absPath));
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+// #379: Inspector "Impact" section -- which other features are reached if this page file changes
+// (packages/engine/impact.mjs, the same block componentUsedBy already seeds with one file).
+app.get('/api/pages/impact', (req, res) => {
+  try {
+    const { feature, file } = req.query;
+    res.json(pageImpact(currentRoot(), feature, file));
   } catch (e) {
     handlePagesEditorError(res, e);
   }

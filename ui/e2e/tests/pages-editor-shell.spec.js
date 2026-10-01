@@ -71,11 +71,12 @@ test.describe.serial('Pages Editor inside the shell (#247)', () => {
     await expect(main.locator('.live-preview-panel')).toBeVisible();
     await expect(main.locator('.preview-panel')).toBeVisible();
 
-    // Tools tabs, Inspector first; Scope / Source / Palette / Diff enabled once a page is open.
+    // Tools tabs, Inspector first; Scope / Source / Change / Palette / Diff enabled once a page is open.
     // (#535: #527 added the real Palette tab between Source and Diff but never updated this
     // assertion — pre-existing, unrelated to #533/#534's own changes; fixed independently on
-    // both branches, this comment is the merged version.)
-    await expect(tools.getByRole('tab')).toHaveText(['Inspector', 'Scope', 'Source', 'Palette', 'Diff', 'Project']);
+    // both branches, this comment is the merged version. #379 found the same drift for #381's
+    // Change tab while adding the Impact section, and fixes it the same way.)
+    await expect(tools.getByRole('tab')).toHaveText(['Inspector', 'Scope', 'Source', 'Change', 'Palette', 'Diff', 'Project']);
     await expect(tools.getByRole('tab', { name: 'Inspector' })).toHaveAttribute('aria-selected', 'true');
     await expect(tools.getByText('Select a tree node or preview element to inspect it.')).toBeVisible();
 

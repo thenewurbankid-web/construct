@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { GlassPanel } from '@/components/ui';
 import type { PageTree, PagesEditorNode } from '../types';
 import { AutoMapPanel } from './AutoMapPanel';
+import { ImpactPanel } from './ImpactPanel';
 import { PropRow } from './PropRow';
 import { ScopePanel } from './ScopePanel';
 import { SnippetEditor } from './SnippetEditor';
@@ -56,6 +57,7 @@ export function InspectorPanel({ feature, file, node, contentHash, onSaved, with
           <SuggestedNextSteps feature={feature} file={file} nodeId={node.id} contentHash={contentHash} onSaved={onSaved} />
         )}
       </details>
+      <ImpactPanel feature={feature} file={file} contentHash={contentHash} />
       {withScope && !node.isFragment && <ScopePanel feature={feature} file={file} node={node} contentHash={contentHash} onSaved={onSaved} />}
       {node.isCustomComponent && (
         <AutoMapPanel feature={feature} file={file} nodeId={node.id} contentHash={contentHash} onSaved={onSaved} />
