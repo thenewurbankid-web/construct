@@ -5,17 +5,19 @@ import { getLayers, previewMove, previewRename, runChange, type ChangePlan, type
 import { parseUnitPath } from '../domain/UnitPath';
 import type { ChangeImpactPreview } from '../domain/ChangeImpact';
 
-export type ChangeVerbId = 'move' | 'rename' | 'extract' | 'wrap';
+export type ChangeVerbId = 'move' | 'rename' | 'extract' | 'wrap' | 'delete';
 
 /** #381's closed verb list — stable ids, never free text (docs/BLOCK-CONTRACT.md, "closed options").
  * Move/Rename run `construct refactor move|rename` (LLM-free, `packages/core/plan.mjs`'s `refactor.move`/
- * `refactor.rename`); Extract and "Wrap in..." have no `PLAN_FLOWS` entry yet, so they are shown disabled
- * rather than silently falling back to a model call. */
+ * `refactor.rename`); Extract, "Wrap in..." and Delete have no `PLAN_FLOWS` entry yet, so they are shown
+ * disabled rather than silently falling back to a model call (#826: the §8.3 mock's fifth verb was
+ * shipped silently omitted instead of disabled-with-reason like its two AI-only siblings). */
 export const CHANGE_VERBS: { id: ChangeVerbId; label: string; available: boolean; why?: string }[] = [
   { id: 'move', label: 'Move', available: true },
   { id: 'rename', label: 'Rename', available: true },
   { id: 'extract', label: 'Extract', available: false, why: 'No block yet — AI only.' },
   { id: 'wrap', label: 'Wrap in…', available: false, why: 'No block yet — AI only.' },
+  { id: 'delete', label: 'Delete', available: false, why: 'No block yet — AI only.' },
 ];
 
 type Status = 'idle' | 'loading' | 'error';

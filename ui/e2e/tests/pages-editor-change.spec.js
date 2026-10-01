@@ -19,7 +19,7 @@ const FIXTURE = path.resolve(__dirname, '../../../fixtures/impact-shared');
 // to toggle). Nothing is mocked: the preview is the real dry run of `construct refactor move|rename`, and
 // Approve is the real Plan-mode `/api/plan/run`, proven the same way plan-mode.spec.js proves it — the
 // working tree is untouched until an approval, watched in the real Processes drawer.
-test.describe.serial('Inspector Change tab: Move, Rename, Extract, Wrap in (#381)', () => {
+test.describe.serial('Inspector Change tab: Move, Rename, Extract, Wrap in, Delete (#381, #826)', () => {
   let repo;
   let originalDir;
   let previewServer;
@@ -63,7 +63,7 @@ test.describe.serial('Inspector Change tab: Move, Rename, Extract, Wrap in (#381
     return tools;
   }
 
-  test('Extract and "Wrap in..." have no block yet and are offered disabled, AI-only', async ({ page }) => {
+  test('Extract, "Wrap in..." and Delete have no block yet and are offered disabled, AI-only', async ({ page }) => {
     await openBillingPage(page);
     const tools = await openChangeTab(page);
 
@@ -71,9 +71,14 @@ test.describe.serial('Inspector Change tab: Move, Rename, Extract, Wrap in (#381
     await expect(tools.getByTestId('change-verb-rename')).toBeEnabled();
     await expect(tools.getByTestId('change-verb-extract')).toBeDisabled();
     await expect(tools.getByTestId('change-verb-wrap')).toBeDisabled();
+    // #826: Delete is the mock's fifth verb (§8.3) -- must appear disabled-with-reason, never silently omitted.
+    await expect(tools.getByTestId('change-verb-delete')).toBeDisabled();
 
     await tools.getByTestId('change-verb-extract').click({ force: true });
     // A disabled button never actually presses (onClick guards on `available` too), so the tab stays on Move.
+    await expect(tools.getByTestId('change-verb-move')).toHaveAttribute('aria-pressed', 'true');
+
+    await tools.getByTestId('change-verb-delete').click({ force: true });
     await expect(tools.getByTestId('change-verb-move')).toHaveAttribute('aria-pressed', 'true');
   });
 

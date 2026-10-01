@@ -13,7 +13,7 @@ type ChangeTabProps = {
 // #381 — Inspector "Change" tab (docs/design/ia-five-screens.md §8.3): pick a verb, fill one argument,
 // see the steps with provenance and a per-file checklist, then one approval that lands in the drawer's
 // Approvals tab. Move/Rename call `construct refactor move|rename` through the same Plan-mode pipeline
-// (dry-run preview -> POST /api/plan/run); Extract and "Wrap in..." have no block yet and say so.
+// (dry-run preview -> POST /api/plan/run); Extract, "Wrap in..." and Delete have no block yet and say so.
 export function ChangeTab({ feature, file, onImpactPreview }: ChangeTabProps) {
   const drawer = useShellDrawer();
   const c = useChange(feature, file, onImpactPreview);
@@ -41,7 +41,7 @@ export function ChangeTab({ feature, file, onImpactPreview }: ChangeTabProps) {
         ))}
       </div>
 
-      {(c.verb === 'extract' || c.verb === 'wrap') && (
+      {(c.verb === 'extract' || c.verb === 'wrap' || c.verb === 'delete') && (
         <p className="hint" data-testid="change-no-block">
           {CHANGE_VERBS.find((v) => v.id === c.verb)?.why} This runs as a free-form AI edit, not a mechanical block — logged as a backlog signal, not offered here yet.
         </p>
