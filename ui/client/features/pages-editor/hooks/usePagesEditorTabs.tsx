@@ -10,6 +10,8 @@ import { PalettePanel } from '../components/PalettePanel';
 import { ScopeTab } from '../components/ScopeTab';
 import { SourcePanel } from '../components/SourcePanel';
 import type { ChangeImpactPreview } from '../domain/ChangeImpact';
+import { useImpact } from './useImpact';
+import { useGitStatus } from './useGitStatus';
 import type { usePagesEditor } from './usePagesEditor';
 
 type Editor = ReturnType<typeof usePagesEditor>;
@@ -24,6 +26,10 @@ export function usePagesEditorTabs(e: Editor, onImpactPreview: (v: ChangeImpactP
   const { setFeature, openFile, selectNode, onTreeSaved, reloadFromDisk, dismissExternalChange, allPages, openPageOf, showAllPages } = e;
   const roots = tree?.roots ?? null;
   const hash = tree?.contentHash ?? '';
+  // #829 -- fetched once here (not inside InspectorPanel/TreePanel) so the Inspector's "Impact"
+  // section and the tree's own chip/dot share the one request each, instead of two.
+  const impact = useImpact(feature, file, hash);
+  const gitStatus = useGitStatus(feature, file, hash);
 
   const browserTab = useMemo<ShellTab>(
     () => ({
@@ -41,13 +47,15 @@ export function usePagesEditorTabs(e: Editor, onImpactPreview: (v: ChangeImpactP
           roots={roots}
           selectedId={selectedNodeId}
           onSelect={selectNode}
+          impact={impact}
+          gitStatus={gitStatus}
           allPages={allPages}
           onOpenPage={openPageOf}
           onShowAllPages={showAllPages}
         />
       ),
     }),
-    [feature, setFeature, features, file, openFile, files, filesLoading, roots, selectedNodeId, selectNode, allPages, openPageOf, showAllPages],
+    [feature, setFeature, features, file, openFile, files, filesLoading, roots, selectedNodeId, selectNode, impact, gitStatus, allPages, openPageOf, showAllPages],
   );
 
   const inspectorTab = useMemo<ShellTab>(
@@ -56,12 +64,12 @@ export function usePagesEditorTabs(e: Editor, onImpactPreview: (v: ChangeImpactP
       title: 'Inspector',
       render: () =>
         tree ? (
-          <InspectorPanel feature={feature} file={file} node={selectedNode} contentHash={hash} onSaved={onTreeSaved} withScope={false} />
+          <InspectorPanel feature={feature} file={file} node={selectedNode} contentHash={hash} onSaved={onTreeSaved} withScope={false} impact={impact} />
         ) : (
           <p className="hint">Open a page in the Browser to inspect its elements.</p>
         ),
     }),
-    [tree, feature, file, selectedNode, hash, onTreeSaved],
+    [tree, feature, file, selectedNode, hash, onTreeSaved, impact],
   );
 
   const scopeTab = useMemo<ShellTab>(

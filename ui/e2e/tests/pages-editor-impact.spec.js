@@ -71,6 +71,10 @@ test.describe.serial('Inspector Impact section (#379)', () => {
       await expect(impact.getByTestId('impact-count')).toHaveText('1 feature');
       await impact.locator('summary').click();
       await expect(impact.getByTestId('impact-feature-list')).toContainText('checkout');
+
+      // #829 -- the same Impact data, as a chip on the selected tree row (one fetch, two consumers).
+      const browser = page.getByRole('complementary', { name: 'Left panel: Browse' });
+      await expect(browser.locator('.tree-node.selected').getByTestId('tree-node-impact')).toHaveText('1 feat');
     } finally {
       fs.writeFileSync(checkoutPage, before);
     }

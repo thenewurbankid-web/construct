@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { GlassPanel } from '@/components/ui';
 import type { PageTree, PagesEditorNode } from '../types';
+import type { PageImpact } from '../services/ImpactApi';
 import { AutoMapPanel } from './AutoMapPanel';
 import { ImpactPanel } from './ImpactPanel';
 import { PropRow } from './PropRow';
@@ -16,9 +17,11 @@ type InspectorPanelProps = {
   onSaved: (tree: PageTree) => void;
   /** Show the scope links inline (default). The shell shows them as their own Scope tab instead. */
   withScope?: boolean;
+  /** #829 -- fetched once by the caller (usePagesEditorTabs), shared with the tree-row chip. */
+  impact?: PageImpact | null;
 };
 
-export function InspectorPanel({ feature, file, node, contentHash, onSaved, withScope = true }: InspectorPanelProps) {
+export function InspectorPanel({ feature, file, node, contentHash, onSaved, withScope = true, impact = null }: InspectorPanelProps) {
   // "Looks freshly created" (no props wired yet) is decided once, the moment a node is
   // selected, and kept for the rest of that selection — not re-checked on every render.
   // Otherwise a successful "Suggested next steps" run (e.g. auto-map wiring a prop) would
@@ -57,7 +60,7 @@ export function InspectorPanel({ feature, file, node, contentHash, onSaved, with
           <SuggestedNextSteps feature={feature} file={file} nodeId={node.id} contentHash={contentHash} onSaved={onSaved} />
         )}
       </details>
-      <ImpactPanel feature={feature} file={file} contentHash={contentHash} />
+      <ImpactPanel impact={impact} />
       {withScope && !node.isFragment && <ScopePanel feature={feature} file={file} node={node} contentHash={contentHash} onSaved={onSaved} />}
       {node.isCustomComponent && (
         <AutoMapPanel feature={feature} file={file} nodeId={node.id} contentHash={contentHash} onSaved={onSaved} />

@@ -77,6 +77,7 @@ import {
   addChildInSnippet,
 } from './pagesEditor.mjs';
 import { pageImpact } from './pagesImpact.mjs';
+import { pageChangedVsMain } from './pagesGitStatus.mjs';
 import { handleValidateForProject } from './validateApi.mjs';
 import { handleLintBuffer } from './lintBufferApi.mjs';
 import { handleResearch } from './researchApi.mjs';
@@ -707,6 +708,17 @@ app.get('/api/pages/impact', (req, res) => {
   try {
     const { feature, file } = req.query;
     res.json(pageImpact(currentRoot(), feature, file));
+  } catch (e) {
+    handlePagesEditorError(res, e);
+  }
+});
+
+// #829: tree-row dot -- whether the open page file differs from `main` (packages/engine/gitTrees.mjs,
+// the same read-only block prHealth already uses).
+app.get('/api/pages/git-status', (req, res) => {
+  try {
+    const { feature, file } = req.query;
+    res.json(pageChangedVsMain(currentRoot(), feature, file));
   } catch (e) {
     handlePagesEditorError(res, e);
   }

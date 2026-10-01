@@ -2,6 +2,8 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { GlassPanel } from '@/components/ui';
 import { ListBrowser } from '@/features/list-browser';
 import type { PagesEditorNode } from '../types';
+import type { PageImpact } from '../services/ImpactApi';
+import type { PageGitStatus } from '../services/GitStatusApi';
 import { allPageItems, pageOfItem } from '../domain/AllPages';
 import { scrollSelectionIntoView } from '@/lib/scrollSelectionIntoView';
 import { PagesBrowser } from './PagesBrowser';
@@ -18,6 +20,9 @@ type PagesBrowserTabProps = {
   roots: PagesEditorNode[] | null;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  /** #379/#829 -- the open file's Impact/Git signals, shared with the Inspector so each is fetched once. */
+  impact: PageImpact | null;
+  gitStatus: PageGitStatus | null;
   /** 'files' (the default, unchanged) or 'flow' (#328). */
   view: 'files' | 'flow';
   /** The Files | Flow switch, supplied by the controller. */
@@ -40,7 +45,7 @@ type PagesBrowserTabProps = {
 // `.pal-group` already ships (docs/design/browser-panel-merge.md). `.pages-browser`/`.tree-panel`
 // keep their exact class names/testids (~30 ui/e2e specs locate the two panels by them) — only
 // their own chrome moves from two standalone glass cards to two rows in one shared card.
-export function PagesBrowserTab({ roots, selectedId, onSelect, view, switcher, flow, allPages, onOpenPage, onShowAllPages, ...browser }: PagesBrowserTabProps) {
+export function PagesBrowserTab({ roots, selectedId, onSelect, impact, gitStatus, view, switcher, flow, allPages, onOpenPage, onShowAllPages, ...browser }: PagesBrowserTabProps) {
   // The `.tree-panel` <details> is the real scroll container (it carries the max-height/overflow
   // CSS) whichever of the three states (§0 of the design doc) it currently renders, so the ref
   // lives here now rather than inside TreePanel.tsx.
@@ -68,7 +73,7 @@ export function PagesBrowserTab({ roots, selectedId, onSelect, view, switcher, f
             {roots ? (
               <>
                 <summary>JSX tree</summary>
-                <TreePanel roots={roots} selectedId={selectedId} onSelect={onSelect} />
+                <TreePanel roots={roots} selectedId={selectedId} onSelect={onSelect} impact={impact} gitStatus={gitStatus} />
               </>
             ) : browser.feature ? (
               <>

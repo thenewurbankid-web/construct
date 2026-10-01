@@ -1062,6 +1062,28 @@ button:disabled {
   color: color-mix(in srgb, var(--accent-fg) 80%, transparent);
 }
 
+/* #379 -- Impact chip, same quiet styling as the props-count chip above (selected row only). */
+.tree-node-impact {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.tree-node.selected .tree-node-impact {
+  color: color-mix(in srgb, var(--accent-fg) 80%, transparent);
+}
+
+/* #829 -- the single dot a quiet, unselected row may show (never a chip, never colour-only: the
+   title/aria-label carries the meaning). */
+.tree-node-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+  vertical-align: middle;
+}
+
 .preview-canvas {
   font-size: 0.8rem;
 }
