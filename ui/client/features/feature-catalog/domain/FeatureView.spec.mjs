@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { toListItems, findFeature, fileHref, buildFeatureView, legacyNote } from './FeatureView.ts';
+import { toListItems, findFeature, fileHref, buildFeatureView, legacyNote, apiFileFor } from './FeatureView.ts';
 
 const rows = [
   { name: 'billing', path: 'features/billing', ref: 'feature:billing', summary: 'Feature "billing": 9 files, 66 LOC, 7/7 layers; 1 workflow machine(s).', health: 'ok' },
@@ -45,12 +45,12 @@ const summary = {
   },
 };
 
-test('details: layers in flow order, unknown layers last, links, routes, workflows, tests, rules', () => {
+test('details: layers in LIN-150\'s canonical order (packages/core LAYER_ORDER), unknown layers last, links, routes, workflows, tests, rules', () => {
   const v = buildFeatureView(summary);
-  assert.deepEqual(v.layers.map((l) => l.layer), ['page', 'component', 'domain', 'weird']);
-  assert.equal(v.layers[0].files[0].href, '/pages?feature=billing&file=BillingPage.tsx');
+  assert.deepEqual(v.layers.map((l) => l.layer), ['domain', 'component', 'page', 'weird']);
+  assert.equal(v.layers[0].files[0].href, null);
   assert.match(v.layers[1].files[0].href, /^\/components\?component=/);
-  assert.equal(v.layers[2].files[0].href, null);
+  assert.equal(v.layers[2].files[0].href, '/pages?feature=billing&file=BillingPage.tsx');
   assert.deepEqual(v.missingLayers, ['hook']);
   assert.deepEqual(v.routes, [{ route: '/billing', file: 'app/billing/page.tsx' }]);
   assert.equal(v.workflows[0].machine, 'w');
@@ -102,6 +102,35 @@ test('legacyNote: only a non-default root with files to report gets the note (#7
   assert.equal(legacyNote('construct', undefined), null, 'no legacy data yet');
   assert.equal(legacyNote('construct', { count: 38 }), 'Legacy, outside construct/ (38 files, not managed)');
   assert.equal(legacyNote('construct', { count: 1 }), 'Legacy, outside construct/ (1 file, not managed)');
+});
+
+test('details: a layer with files shows even if layers.present doesn\'t list it yet (LIN-150: packages/engine\'s own CORE_LAYERS copy hasn\'t learned viewmodel/adapter)', () => {
+  const withViewModel = {
+    ...summary,
+    sections: {
+      ...summary.sections,
+      layers: { present: ['domain', 'page', 'component'], missing: ['hook'] }, // engine's list omits viewmodel/adapter
+      files: {
+        ...summary.sections.files,
+        viewmodel: [{ path: 'features/billing/viewmodels/ChargeViewModel.ts', layer: 'viewmodel', loc: 5, purpose: 'VM.' }],
+        adapter: [{ path: 'features/billing/adapters/ChargeAdapter.ts', layer: 'adapter', loc: 4, purpose: 'Adapter.' }],
+      },
+    },
+  };
+  const v = buildFeatureView(withViewModel);
+  assert.deepEqual(v.layers.map((l) => l.layer), ['domain', 'component', 'adapter', 'page', 'viewmodel', 'weird']);
+});
+
+test('apiFileFor: a ViewModel file\'s Adapter is found by deterministic naming alone (LIN-150), no file read', () => {
+  const layers = [
+    { layer: 'adapter', files: [{ path: 'features/billing/adapters/ChargeAdapter.ts', purpose: 'Adapter.', loc: 1, href: null }], violations: [] },
+    { layer: 'viewmodel', files: [], violations: [] },
+  ];
+  const vm = { path: 'features/billing/viewmodels/ChargeViewModel.ts', purpose: 'ViewModel.', loc: 1, href: null };
+  assert.equal(apiFileFor(vm, layers)?.path, 'features/billing/adapters/ChargeAdapter.ts');
+  assert.equal(apiFileFor({ ...vm, path: 'features/billing/viewmodels/OtherViewModel.ts' }, layers), null, 'no matching adapter: null, not a guess');
+  assert.equal(apiFileFor({ ...vm, path: 'features/billing/pages/ChargePage.tsx' }, layers), null, 'not a ViewModel file at all');
+  assert.equal(apiFileFor(vm, []), null, 'no adapter layer present');
 });
 
 test('details: missing sections are empty, and an error answer is no view', () => {

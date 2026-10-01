@@ -1,8 +1,7 @@
 // Pure (DOMAIN-001): the Features screen's rows and the details of one feature, made from what
 // `construct summarize` already answers. No new analysis here: this only orders, labels and links what the engine said.
-import type { FeatureFile, FeatureRow, FeatureSummaryResponse, FeatureView, LegacyFiles, SummaryViolation } from '../types.ts';
-
-const LAYER_ORDER = ['page', 'controller', 'component', 'hook', 'workflow', 'service', 'domain'];
+import { LAYER_ORDER } from '../../../lib/layerOrder.ts';
+import type { FeatureFile, FeatureLayerView, FeatureRow, FeatureSummaryResponse, FeatureView, LegacyFiles, SummaryViolation } from '../types.ts';
 
 export function toListItems(features: FeatureRow[]): { id: string; label: string; detail: string }[] {
   return features.map((f) => ({ id: f.name, label: f.name, detail: f.summary ? f.summary.replace(/^Feature "[^"]*": /, '') : `Could not be summarized: ${f.error?.message ?? 'unknown reason'}` }));
@@ -43,11 +42,26 @@ function violationsByLayer(files: Record<string, { path: string }[]>, violations
   return out;
 }
 
+/** The Adapter file a ViewModel file reaches through, by deterministic naming (LIN-150, LIN-163's vm-chain):
+ * strip the file's `ViewModel` suffix and look for the same base name with an `Adapter` suffix in the adapter
+ * layer. Mirrors packages/core/generators.mjs's layerFileBaseName convention -- no file is read to find it. */
+export function apiFileFor(viewModelFile: FeatureFile, layers: FeatureLayerView[]): FeatureFile | null {
+  const base = viewModelFile.path.split('/').pop() ?? '';
+  const m = base.match(/^(.*)ViewModel\.(tsx?|jsx?)$/);
+  if (!m) return null;
+  const adapterFiles = layers.find((l) => l.layer === 'adapter')?.files ?? [];
+  return adapterFiles.find((f) => (f.path.split('/').pop() ?? '').startsWith(`${m[1]}Adapter.`)) ?? null;
+}
+
 export function buildFeatureView(summary: FeatureSummaryResponse): FeatureView | null {
   if (!summary.ok) return null;
   const s = summary.sections;
   const files = s.files ?? {};
-  const present = s.layers?.present ?? [];
+  // A layer with files is present even if the engine's own `layers.present` doesn't say so yet (packages/engine's
+  // CORE_LAYERS -- a copy of this same list, with the same LIN-150 drift -- hasn't been taught the vm-chain's
+  // viewmodel/adapter/expression layers): `files`'s own keys are the ground truth of what has files, same as
+  // violationsByLayer above already treats them.
+  const present = [...new Set([...(s.layers?.present ?? []), ...Object.keys(files)])];
   const order = [...LAYER_ORDER.filter((l) => present.includes(l)), ...present.filter((l) => !LAYER_ORDER.includes(l))];
   const byLayer = violationsByLayer(files, s.rules?.violations ?? []);
   const layers = order.map((layer) => ({
