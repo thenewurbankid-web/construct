@@ -151,8 +151,15 @@ test.describe.serial('Pages Editor click to navigate (#321)', () => {
 
     await page.keyboard.press('Alt+ArrowLeft');
     await expect(page.getByTestId('trail-current')).toHaveText('HomePage');
+    // Re-following a reference already walked earlier in the trail (now ahead, after going back) still
+    // re-resolves it from the server (#321's trail is history, not a cache keyed by name) -- it is not a
+    // "already visited" short-circuit. That round trip re-parses the source and re-walks the barrel chain
+    // server-side (ui/server/src/projectNav.mjs's resolveAll/followExport), which on a loaded box can run
+    // past the default 5s expect() timeout (#841 reproduced as "stays HomePage" purely from that margin --
+    // confirmed by replaying this exact flow with the server response artificially delayed past 5s: the
+    // trail still converges to PriceCard once the response lands, so this is timing, not a stuck state).
     await link(page, 'PriceCard').last().click({ modifiers: ['Control'] });
-    await expect(page.getByTestId('trail-current')).toHaveText('PriceCard');
+    await expect(page.getByTestId('trail-current')).toHaveText('PriceCard', { timeout: 10_000 });
   });
 
   test('three hops build the trail; Alt+Left / Alt+Right and the crumbs walk it; a new hop from the middle drops the forward steps', async ({ page }) => {
