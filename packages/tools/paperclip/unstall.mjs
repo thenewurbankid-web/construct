@@ -4,6 +4,8 @@
 //   node packages/tools/paperclip/unstall.mjs --apply    re-arm and dispatch
 // Options: --api <url> (default loopback), --company <name> (default Line), --in <minutes> (default 2),
 //          --max <n> restarts per run (default 8, sized for an agent's 20-write budget),
+//          --skip <identifiers> comma-separated issue identifiers to leave stalled on purpose
+//          (e.g. a lane the owner has not confirmed is live -- see LIN-156 comment 2026-10-01),
 //          --allow-remote (refused by default -- Paperclip runs on this machine).
 //
 // WHY THIS EXISTS (LIN-156, owner decision 2026-10-01). A task's monitor fires, the monitor-to-dispatch
@@ -34,6 +36,7 @@ const APPLY = has('--apply');
 // PATCH plus at most one wakeup per agent, so the default stops well inside that budget and says what it
 // skipped; the owner session, which has no such cap, can raise it.
 const MAX = Math.max(1, Number(arg('--max', 8)) || 8);
+const SKIP = new Set((arg('--skip', '') || '').split(',').map((s) => s.trim()).filter(Boolean));
 
 /** Statuses whose work is supposed to be moving. `todo` is excluded on purpose: Paperclip never wakes a
  *  `todo` task again after a successful run, so a `todo` task is a board-hygiene question, not a stall. */
@@ -93,6 +96,7 @@ async function main() {
   for (const i of stalled) {
     const who = name[i.assigneeAgentId] ?? i.assigneeAgentId;
     if (!APPLY) { out(`  STALLED  ${i.identifier}  ${i.status}  ${who}  ${i.title.slice(0, 54)}`); continue; }
+    if (SKIP.has(i.identifier)) { out(`  SKIPPED  ${i.identifier}  ${who}  --skip`); continue; }
     if (armed >= MAX) { out(`  SKIPPED  ${i.identifier}  ${who}  write budget reached (--max ${MAX})`); continue; }
     const at = new Date(Date.now() + MINUTES * 60_000).toISOString().replace(/\.\d+Z$/, 'Z');
     const policy = deepMerge(i.executionPolicy ?? {}, { monitor: { nextCheckAt: at, notes: `Re-armed by unstall.mjs: monitor was consumed with no run (LIN-123). Report a real disposition, never a bare in_progress.` } });
