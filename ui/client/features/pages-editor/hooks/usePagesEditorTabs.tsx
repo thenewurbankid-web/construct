@@ -11,6 +11,7 @@ import { ScopeTab } from '../components/ScopeTab';
 import { SourcePanel } from '../components/SourcePanel';
 import type { ChangeImpactPreview } from '../domain/ChangeImpact';
 import { useImpact } from './useImpact';
+import { useTestsCoverage } from './useTestsCoverage';
 import { useGitStatus } from './useGitStatus';
 import type { usePagesEditor } from './usePagesEditor';
 
@@ -29,6 +30,9 @@ export function usePagesEditorTabs(e: Editor, onImpactPreview: (v: ChangeImpactP
   // #829 -- fetched once here (not inside InspectorPanel/TreePanel) so the Inspector's "Impact"
   // section and the tree's own chip/dot share the one request each, instead of two.
   const impact = useImpact(feature, file, hash);
+  // #830 -- fetched once here (not inside InspectorPanel), per feature: scenario coverage is a
+  // property of the feature's workflow, not of which page file within it is open.
+  const testsCoverage = useTestsCoverage(feature);
   const gitStatus = useGitStatus(feature, file, hash);
 
   const browserTab = useMemo<ShellTab>(
@@ -64,12 +68,12 @@ export function usePagesEditorTabs(e: Editor, onImpactPreview: (v: ChangeImpactP
       title: 'Inspector',
       render: () =>
         tree ? (
-          <InspectorPanel feature={feature} file={file} node={selectedNode} contentHash={hash} onSaved={onTreeSaved} withScope={false} impact={impact} />
+          <InspectorPanel feature={feature} file={file} node={selectedNode} contentHash={hash} onSaved={onTreeSaved} withScope={false} impact={impact} testsCoverage={testsCoverage} />
         ) : (
           <p className="hint">Open a page in the Browser to inspect its elements.</p>
         ),
     }),
-    [tree, feature, file, selectedNode, hash, onTreeSaved, impact],
+    [tree, feature, file, selectedNode, hash, onTreeSaved, impact, testsCoverage],
   );
 
   const scopeTab = useMemo<ShellTab>(

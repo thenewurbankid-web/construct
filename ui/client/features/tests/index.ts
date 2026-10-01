@@ -19,6 +19,14 @@ export * from './hooks/useTests';
  * Pages editor's "Generate tests for this route" suggested next step (#382). */
 export * from './services/TestsWrites';
 
+/** Read-only /api/tests/:feature — used by the Tests screen and by the Pages editor's
+ * Inspector "Tests" section (#830), scoped to the feature of the open page file. */
+export * from './services/TestsApi';
+
+/** The scenario-coverage words ("N scenarios · M with a generated test"), reused as-is by the
+ * Pages editor's Inspector "Tests" section (#830) instead of a second computation. */
+export * from './domain/Coverage';
+
 /** The feature's listing, selection and scenario coverage for one feature. */
 export * from './hooks/useTestsListing';
 
