@@ -1,3 +1,4 @@
+import { LivePreviewPanel, type LivePreviewView } from '@/features/live-preview';
 import { StepDocument } from '../components/StepDocument';
 import { StepEditorFoot } from '../components/StepEditorFoot';
 import { StepEditorHeader } from '../components/StepEditorHeader';
@@ -21,6 +22,10 @@ export type StepEditorPageProps = {
   onBack: () => void;
   onConfirm: () => void;
   onReload: () => void;
+  /** #839 -- "Preview beside": off by default (design 8's "preview is optional outside Pages/Components"). */
+  previewOn: boolean;
+  onTogglePreview: () => void;
+  previewView: LivePreviewView;
 };
 
 // Presentation-only: the stage while a test is open as a step document (design: qa-tests-editor.html). The rows are
@@ -33,15 +38,34 @@ export function StepEditorPage(p: StepEditorPageProps) {
       <div className="ts-toolbar">
         <button type="button" className="ts-btn" data-testid="editor-close" onClick={p.onClose}>Back to coverage</button>
         <span className="ts-det">DETERMINISTIC</span>
+        {state.status === 'editing' && (
+          <button type="button" className="ts-btn" aria-pressed={p.previewOn} data-testid="ts-preview-toggle" onClick={p.onTogglePreview}>
+            Preview beside
+          </button>
+        )}
       </div>
       <StepEditorStatus state={state} />
       {state.status === 'editing' && view && (
         <>
           <StepEditorHeader state={state} changes={view.changes} />
-          <div className="ts-editor-grid">
-            <StepDocument rows={view.rows} selected={at} onSelect={p.onSelect} onRestore={p.onRestore} onAdd={p.onAdd} canAddEvent={state.machine.events.length > 0} canAddState={state.machine.states.length > 0} />
-            <StepEditPanel row={view.rows.find((r) => r.key === at) ?? null} machine={state.machine} onPatch={(patch) => at !== null && p.onPatch(at, patch)} onMove={(dir) => at !== null && p.onMove(at, dir)} onRemove={() => at !== null && p.onRemove(at)} />
-          </div>
+          {(() => {
+            const grid = (
+              <div className="ts-editor-grid">
+                <StepDocument rows={view.rows} selected={at} onSelect={p.onSelect} onRestore={p.onRestore} onAdd={p.onAdd} canAddEvent={state.machine.events.length > 0} canAddState={state.machine.states.length > 0} />
+                <StepEditPanel row={view.rows.find((r) => r.key === at) ?? null} machine={state.machine} onPatch={(patch) => at !== null && p.onPatch(at, patch)} onMove={(dir) => at !== null && p.onMove(at, dir)} onRemove={() => at !== null && p.onRemove(at)} />
+              </div>
+            );
+            return p.previewOn ? (
+              <div className="ts-split">
+                <div className="ts-split-main">{grid}</div>
+                <div className="ts-split-preview" data-testid="ts-preview-beside">
+                  <LivePreviewPanel {...p.previewView} />
+                </div>
+              </div>
+            ) : (
+              grid
+            );
+          })()}
           <StepEditorFoot changes={view.changes} problems={view.problems} reviewing={state.review.status === 'loading'} announce={state.announce} onReview={p.onReview} onDiscard={p.onDiscard} />
           <StepReview review={state.review} path={state.path} onBack={p.onBack} onConfirm={p.onConfirm} onReload={p.onReload} />
         </>

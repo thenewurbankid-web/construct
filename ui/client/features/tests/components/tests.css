@@ -152,6 +152,11 @@
 .ts-diff-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (max-width: 900px) { .ts-editor-grid { grid-template-columns: minmax(0, 1fr); } .ts-srow-binding { display: none; } }
 
+/* #839 -- "Preview beside": the step editor and the shared live-preview panel, side by side. */
+.ts-split { display: flex; gap: var(--sp-4); align-items: flex-start; }
+.ts-split-main { flex: 1; min-width: 0; }
+.ts-split-preview { flex: 1; min-width: 0; max-width: 560px; }
+
 /* States and stale clones (#306). Design: docs/design/mocks/qa-tests-states.html. Tokens only. */
 .ts-state { margin: 0 0 var(--sp-3); padding: var(--sp-4); border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-1); max-width: 40rem; display: flex; flex-direction: column; gap: var(--sp-2); }
 .ts-state-h { margin: 0; font-size: var(--fs-lg); }
