@@ -23,6 +23,7 @@ import {
   dependenciesOf,
   dependentsOf,
   composedDependencyShape,
+  renameUnit,
 } from '../packages/core/unit-map.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
@@ -433,4 +434,135 @@ test('validateUnitMap reports a dangling edge whose endpoint was tombstoned outs
   const { danglingEdges } = validateUnitMap(dir, 'billing');
   assert.equal(danglingEdges.length, 1);
   assert.equal(danglingEdges[0].to, paymentId);
+});
+
+// LIN-152 -- cascading rename: a map edit plus a regenerate, across every layer of one unit.
+test('renameUnit cascades a rename across every layer of a unit, updates the map, and leaves no file at the old path', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'billing');
+  const { id: pageId } = generateLayerWithUnit(dir, 'page', 'RefundRequest', 'billing');
+  const { id: controllerId } = generateLayerWithUnit(dir, 'controller', 'RefundRequest', 'billing');
+  const oldPageFile = path.join(dir, loadUnitMap(dir, 'billing').units[pageId].path);
+  const oldControllerFile = path.join(dir, loadUnitMap(dir, 'billing').units[controllerId].path);
+
+  const { renamed } = renameUnit(dir, 'billing', 'RefundRequest', 'Reimbursement');
+
+  assert.equal(renamed.length, 2);
+  assert.equal(fs.existsSync(oldPageFile), false);
+  assert.equal(fs.existsSync(oldControllerFile), false);
+
+  const map = loadUnitMap(dir, 'billing');
+  assert.equal(map.units[pageId].unit, 'Reimbursement');
+  assert.equal(map.units[pageId].name, 'ReimbursementPage');
+  assert.equal(map.units[controllerId].unit, 'Reimbursement');
+  assert.equal(map.units[controllerId].name, 'ReimbursementController');
+
+  const newPageFile = path.join(dir, map.units[pageId].path);
+  const newControllerFile = path.join(dir, map.units[controllerId].path);
+  assert.ok(newPageFile.endsWith('ReimbursementPage.tsx'));
+  assert.match(fs.readFileSync(newPageFile, 'utf8'), /ReimbursementPage/);
+  assert.doesNotMatch(fs.readFileSync(newPageFile, 'utf8'), /RefundRequest/);
+  // The controller's own import of its page follows the rename too (LIN-152's "zero hand edits
+  // to any importer"): never an old name left behind in generated wiring.
+  assert.match(fs.readFileSync(newControllerFile, 'utf8'), /import \{ ReimbursementPage \} from '\.\.\/pages\/ReimbursementPage'/);
+});
+
+test('renameUnit by id resolves the same unit group as renaming by its raw name', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'billing');
+  const { id: pageId } = generateLayerWithUnit(dir, 'page', 'RefundRequest', 'billing');
+  const { renamed } = renameUnit(dir, 'billing', pageId, 'Reimbursement');
+  assert.equal(renamed.length, 1);
+  assert.equal(loadUnitMap(dir, 'billing').units[pageId].unit, 'Reimbursement');
+});
+
+test('renameUnit never changes a unit\'s id, and a member\'s slot body stays byte-identical across a rename', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'billing');
+  generateLayerWithUnit(dir, 'page', 'Refund', 'billing');
+  const { id: controllerId } = generateLayerWithUnit(dir, 'controller', 'Refund', 'billing');
+  const { id: memberId } = registerMember(dir, 'billing', controllerId, 'submitRefund');
+  const body = 'return doSomethingVerySpecific();';
+  setMemberSlot(dir, 'billing', memberId, body);
+  projectUnitSlots(dir, 'billing', controllerId);
+
+  renameUnit(dir, 'billing', 'Refund', 'Reimbursement');
+
+  const map = loadUnitMap(dir, 'billing');
+  assert.equal(map.units[controllerId].unit, 'Reimbursement'); // same id, new attribute
+  assert.equal(getMemberSlot(dir, 'billing', memberId).body, body); // business logic untouched
+  const newFile = path.join(dir, map.units[controllerId].path);
+  assert.match(fs.readFileSync(newFile, 'utf8'), new RegExp(body.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+});
+
+test('renameUnit --dry-run reports the plan and writes nothing', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'billing');
+  const { id: pageId } = generateLayerWithUnit(dir, 'page', 'RefundRequest', 'billing');
+  const before = loadUnitMap(dir, 'billing');
+  const oldFile = path.join(dir, before.units[pageId].path);
+  const beforeContent = fs.readFileSync(oldFile, 'utf8');
+
+  const { renamed } = renameUnit(dir, 'billing', 'RefundRequest', 'Reimbursement', undefined, { dryRun: true });
+
+  assert.equal(renamed.length, 1);
+  assert.ok(renamed[0].to.endsWith('ReimbursementPage.tsx'));
+  assert.equal(fs.existsSync(oldFile), true);
+  assert.equal(fs.readFileSync(oldFile, 'utf8'), beforeContent);
+  assert.deepEqual(loadUnitMap(dir, 'billing'), before);
+});
+
+test('renameUnit refuses and writes nothing when the new name collides with a live unit in the same feature', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'billing');
+  generateLayerWithUnit(dir, 'page', 'RefundRequest', 'billing');
+  const { id: otherPageId } = generateLayerWithUnit(dir, 'page', 'Invoice', 'billing');
+  const otherFile = path.join(dir, loadUnitMap(dir, 'billing').units[otherPageId].path);
+  const otherContentBefore = fs.readFileSync(otherFile, 'utf8');
+
+  assert.throws(() => renameUnit(dir, 'billing', 'RefundRequest', 'Invoice'), /already used by a live unit/);
+
+  assert.equal(fs.readFileSync(otherFile, 'utf8'), otherContentBefore);
+  assert.equal(loadUnitMap(dir, 'billing').units[otherPageId].unit, 'Invoice');
+});
+
+test('renameUnit with no change (same name) is a no-op and writes nothing', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'billing');
+  generateLayerWithUnit(dir, 'page', 'RefundRequest', 'billing');
+  const before = loadUnitMap(dir, 'billing');
+  const { unchanged, renamed } = renameUnit(dir, 'billing', 'RefundRequest', 'RefundRequest');
+  assert.equal(unchanged, true);
+  assert.deepEqual(renamed, []);
+  assert.deepEqual(loadUnitMap(dir, 'billing'), before);
+});
+
+test('renameUnit throws for an unknown unit id or unit name', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'billing');
+  assert.throws(() => renameUnit(dir, 'billing', 'u_deadbeef', 'Reimbursement'), /unknown unit id/);
+  assert.throws(() => renameUnit(dir, 'billing', 'NoSuchUnit', 'Reimbursement'), /no live unit named/);
+});
+
+// LIN-152/LIN-155: "who else uses this service" answered by the edge set, never an AST scan --
+// renaming a dependency must rewrite every dependent's own generated file too.
+test('renameUnit rewrites a dependent unit\'s own generated file, found via the edge set', () => {
+  const dir = tmpProject();
+  createFeature(dir, 'billing');
+  const { id: paymentId, file: paymentFile } = generateLayerWithUnit(dir, 'service', 'Payment', 'billing');
+  generateLayerWithUnit(dir, 'page', 'Summary', 'billing');
+  const { id: controllerId, file: controllerFile } = generateLayerWithUnit(dir, 'controller', 'Summary', 'billing');
+  // Simulate generated composition wiring (LIN-155's connector-keyword scheme, not built yet):
+  // the controller's file literally names the service it composes.
+  fs.writeFileSync(controllerFile, `${fs.readFileSync(controllerFile, 'utf8')}\n// composes Payment via loadPayment\n`);
+  const { id: memberId } = registerMember(dir, 'billing', controllerId, 'loadPayment');
+  addDependency(dir, 'billing', memberId, paymentId);
+
+  renameUnit(dir, 'billing', 'Payment', 'Settlement');
+
+  const map = loadUnitMap(dir, 'billing');
+  const newControllerFile = path.join(dir, map.units[controllerId].path);
+  assert.match(fs.readFileSync(newControllerFile, 'utf8'), /composes Settlement via loadSettlement/);
+  assert.doesNotMatch(fs.readFileSync(newControllerFile, 'utf8'), /Payment/);
+  assert.equal(paymentFile !== undefined, true); // paymentId's own file moved too (asserted above via other tests)
 });

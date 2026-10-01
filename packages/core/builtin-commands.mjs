@@ -11,7 +11,7 @@
 import {
   init, feature, generate, sync, validate, summarize, doctor, create, refactor, research, review,
   testCommand, template, importCommand, runImportRouteWizard, pipeline, traces, decide, model, processCommand,
-  checkChange, mutationCheck, addRuleCommand, exportCommand, rulesCommand,
+  checkChange, mutationCheck, addRuleCommand, exportCommand, rulesCommand, rename,
 } from './cli.mjs';
 
 /** `construct import ...`: the same `--route` vs. plain-import branch `construct.mjs`'s old if-chain had inline. */
@@ -49,6 +49,7 @@ export function registerBuiltinCommands(registry) {
   registry.register({ name: 'doctor', summary: 'Report environment and enforcer module availability', handler: doctor, source: SOURCE });
   registry.register({ name: 'create', summary: 'Scaffold a feature, a layer, or a whole vertical slice', handler: create, source: SOURCE });
   registry.register({ name: 'refactor', summary: 'Mechanical, LLM-free moves/renames within the architecture', handler: refactor, source: SOURCE });
+  registry.register({ name: 'rename', summary: 'construct rename <id|unit> <newName> --feature <feature> [--dry-run]: cascade a unit rename (LIN-154 map edit) across every layer of its chain', handler: rename, source: SOURCE });
   registry.register({ name: 'research', summary: 'Read-only: summarize, explain workflows, compute impact, check tooling', handler: research, source: SOURCE });
   registry.register({ name: 'review', summary: 'Read-only PR health between two git refs', handler: review, source: SOURCE });
   registry.register({ name: 'test', summary: 'Run generated tests/proofs, or type-check/build the project', handler: testCommand, source: SOURCE });

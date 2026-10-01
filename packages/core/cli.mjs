@@ -24,6 +24,7 @@ import { prHealth, renderPrHealthMarkdown, prHealthApiManifest } from '../../pac
 import { summarizeProject, summarizeCompact, summarizeProse, summarizeSince } from './summarize.mjs';
 import { summarizeBackend, renderBackendText, resolveBackendDir } from './backend-summary.mjs';
 import { moveLayerFile, renameLayerFile } from './refactor.mjs';
+import { renameUnit } from './unit-map.mjs';
 import { extractExpression } from './extractExpression.mjs';
 import { importVertical, importPlan, analyzeFiles, executeImportPlan, autoFixViolations } from './import.mjs';
 import { planMechanically } from './mechanical-plan.mjs';
@@ -2156,6 +2157,43 @@ async function refactorMove(args) {
 async function refactorRename(args) {
   const { root, result } = relocateRename(args);
   reportRelocation(root, 'Renamed', result);
+}
+
+/** The attribution of `construct rename`: a map edit plus a cascaded regenerate, no model call. */
+const RENAME_UNIT_ATTRIBUTION = Object.freeze({ tool: 'edited the unit map and regenerated every renamed/dependent file across the chain', llm: '0 calls — deterministic map edit, never an AST rename cascade' });
+
+/**
+ * `construct rename <id|unit> <newName> --feature <feature> [--dry-run]` (LIN-152): cascade a
+ * rename across every layer of one unit (page/viewmodel/controller/adapter/... — whichever
+ * layers it has) — a map edit (LIN-154's `unit`/`name`/`path` attributes) plus a regenerate,
+ * never a file-by-file hand edit. Business logic (a member's slot body) is byte-identical after
+ * a rename; only generated wiring moves. `--dry-run` lists every file that would be written,
+ * renamed or deleted, before touching any of them; a collision or an existing target file
+ * refuses and writes nothing.
+ *
+ * @param {string[]} args `<id|unit> <newName> --feature <feature> [--dry-run]`.
+ * @returns {Promise<void>} Resolves once the rename (or dry run) is reported.
+ * @throws {ConstructError} Usage error for missing args; a cascading collision/write error from `renameUnit` is reported as-is.
+ *
+ * @example
+ * await rename(['refund-request', 'reimbursement', '--feature', 'billing']);
+ */
+export async function rename(args) {
+  const idOrUnitName = args[0], newUnitName = args[1], feature = flagValue(args, '--feature');
+  if (!idOrUnitName || !newUnitName || !feature) {
+    throw new ConstructError('Usage: construct rename <id|unit> <newName> --feature <feature> [--dry-run]', { exitCode: EXIT_CODES.USAGE_ERROR });
+  }
+  const root = getRoot(args);
+  const dryRun = args.includes('--dry-run');
+  const result = renameUnit(root, feature, idOrUnitName, newUnitName, loadConfig(root), { dryRun });
+  if (result.unchanged) {
+    console.log(`"${idOrUnitName}" is already named "${newUnitName}" — nothing to do.`);
+    return;
+  }
+  const verb = dryRun ? 'Dry run: would change' : 'Renamed';
+  console.log(`${verb} ${result.renamed.length} file(s) across the chain:`);
+  for (const r of result.renamed) console.log(`  ${r.from} -> ${r.to} (${r.layer})`);
+  if (!dryRun) printAttribution(RENAME_UNIT_ATTRIBUTION.tool, RENAME_UNIT_ATTRIBUTION.llm);
 }
 
 /** The result document of `refactor move|rename ... --format json`: the relocation result, plus the architecture

@@ -635,3 +635,149 @@ export function writeRootUnitMapIndex(root, config = loadConfig(root)) {
   write(file, `${JSON.stringify(rootUnitMapIndex(root, config), null, 2)}\n`);
   return file;
 }
+
+// LIN-152 -- a rename is a map edit plus a regenerate (the module header note above), never an
+// AST rename cascade: every live sibling sharing a unit's own raw name (its page/viewmodel/
+// controller/adapter/... quartet, found by `unit.unit`, not by id) has its `unit`/`name`/`path`
+// edited and its generated file rewritten to the new identifier, in one call. An id never
+// changes, so every edge, member and slot body (all keyed by id) is untouched by a rename —
+// only the attributes atop them move. Deliberately does NOT reach for AST machinery to find
+// importers: per the issue's own narrowing, a hand-written slot may only ever reach another
+// unit through generated wiring (never by importing another unit's exported symbol directly),
+// so the generated-wiring graph the map already tracks (LAYER_PREREQUISITES' fixed chain, plus
+// LIN-155's typed edge set) is a closed, exact answer to "who imports this" — an AST-wide
+// importer search would only ever rediscover the same files this function already knows about
+// from the map, at far higher cost and no better certainty. (Recommendation to the owner: keep
+// it that way — disallow a slot from importing another unit's exported symbol by name at all,
+// so this closed-world assumption can never go stale.)
+function renameIdentifierOccurrences(source, oldCap, newCap) {
+  if (!source || oldCap === newCap) return source;
+  let out = source.split(oldCap).join(newCap);
+  const oldLower = oldCap.toLowerCase();
+  if (oldLower !== oldCap) out = out.split(oldLower).join(newCap.toLowerCase());
+  return out;
+}
+
+/**
+ * Cascade a rename across every layer of one unit, within a feature (LIN-152). Edits the map's
+ * `unit`/`name`/`path` attributes for every live sibling sharing the unit's current raw name,
+ * rewrites each sibling's generated file at its new path (its own exported identifier and every
+ * cross-reference to a renamed sibling, swapped by literal token — the generator's own naming
+ * scheme guarantees that token is exact), renames the feature's shared `<Cap>ViewModelData`
+ * declaration in `types.ts` if this unit's vm-chain ever declared one, and rewrites every OTHER
+ * live unit that depends on a renamed sibling (found via `dependentsOf`, never an AST scan) so
+ * its own file's import specifier and identifier match the new name too.
+ *
+ * Refuses and writes nothing when the new name collides with another live unit in the same
+ * feature, or when a target file already exists on disk — every check below runs before the
+ * first write.
+ *
+ * @param {string} root Project root.
+ * @param {string} feature Feature that owns the unit.
+ * @param {string} idOrUnitName A live unit id (`u_...`), or the unit's current raw name.
+ * @param {string} newUnitName The new raw unit name (turned into a valid identifier per layer, same as `construct create`).
+ * @param {object} [config] The project's already-loaded architecture.yml config (defaults to loading it).
+ * @param {{dryRun?: boolean}} [options] `dryRun: true` reports the plan and writes nothing.
+ * @returns {{renamed: {id:string, layer:string, from:string, to:string}[], unchanged?: boolean}}
+ * @throws {Error} When the unit is unknown, the new name collides with a live unit in the same feature, or a target file already exists.
+ *
+ * @example
+ * renameUnit(root, 'billing', 'refund-request', 'reimbursement');
+ * // every RefundRequest{Page,ViewModel,Controller,Adapter} file becomes Reimbursement{...},
+ * // the map is updated in place, and every dependent unit's file follows.
+ */
+export function renameUnit(root, feature, idOrUnitName, newUnitName, config = loadConfig(root), { dryRun = false } = {}) {
+  const map = loadUnitMap(root, feature, config);
+  let rawName = idOrUnitName;
+  if (idOrUnitName.startsWith(UNIT_ID_PREFIX)) {
+    const unit = map.units[idOrUnitName];
+    if (!unit || unit.tombstoned) throw new Error(`renameUnit: unknown unit id "${idOrUnitName}" in feature "${feature}"`);
+    rawName = unit.unit;
+  }
+
+  const siblings = Object.entries(map.units).filter(([, u]) => !u.tombstoned && u.unit === rawName);
+  if (!siblings.length) throw new Error(`renameUnit: no live unit named "${rawName}" in feature "${feature}"`);
+  if (rawName === newUnitName) return { renamed: [], unchanged: true };
+
+  if (Object.values(map.units).some((u) => !u.tombstoned && u.unit === newUnitName)) {
+    throw new Error(`renameUnit: "${newUnitName}" is already used by a live unit in feature "${feature}" -- refusing to collide`);
+  }
+
+  const oldCap = pascalCase(rawName, 'Unit');
+  const newCap = pascalCase(newUnitName, 'Unit');
+  const renamedIds = new Set(siblings.map(([id]) => id));
+  const plan = siblings.map(([id, u]) => {
+    const oldAbs = path.join(root, u.path);
+    const newAbs = layerTargetFile(root, u.layer, newUnitName, feature, config);
+    const newLayerCap = pascalCase(newUnitName, u.layer[0].toUpperCase() + u.layer.slice(1));
+    return { id, layer: u.layer, oldAbs, newAbs, newRelPath: rel(root, newAbs), newName: layerFileBaseName(u.layer, newLayerCap) };
+  });
+
+  for (const step of plan) {
+    if (step.oldAbs !== step.newAbs && fs.existsSync(step.newAbs)) {
+      throw new Error(`renameUnit: target file already exists at ${rel(root, step.newAbs)} for layer "${step.layer}" -- refusing to write anything`);
+    }
+  }
+
+  // Every other live unit whose own generated file imports a renamed sibling, via the typed edge
+  // set (never an AST scan — see the function-group doc comment above).
+  const dependentUnitIds = new Set();
+  for (const id of renamedIds) {
+    for (const edge of dependentsOf(root, feature, id, config)) {
+      const fromUnitId = map.units[edge.from] ? edge.from : map.members[edge.from] ? map.members[edge.from].unitId : null;
+      if (fromUnitId && !renamedIds.has(fromUnitId)) dependentUnitIds.add(fromUnitId);
+    }
+  }
+
+  const renamed = plan.map(({ id, layer, oldAbs, newAbs }) => ({ id, layer, from: rel(root, oldAbs), to: rel(root, newAbs) }));
+  if (dryRun) return { renamed };
+
+  for (const step of plan) {
+    const content = fs.existsSync(step.oldAbs) ? fs.readFileSync(step.oldAbs, 'utf8') : '';
+    write(step.newAbs, renameIdentifierOccurrences(content, oldCap, newCap));
+    if (step.oldAbs !== step.newAbs && fs.existsSync(step.oldAbs)) fs.rmSync(step.oldAbs);
+    map.units[step.id] = { ...map.units[step.id], unit: newUnitName, name: step.newName, path: step.newRelPath };
+  }
+
+  // The shared ViewModelData interface declared in the feature's types.ts (LIN-149), if this
+  // unit's vm-chain ever declared one.
+  const typesFile = path.join(root, config.features?.root || 'features', feature, 'types.ts');
+  if (fs.existsSync(typesFile)) {
+    const typesText = fs.readFileSync(typesFile, 'utf8');
+    const rewritten = renameIdentifierOccurrences(typesText, `${oldCap}ViewModelData`, `${newCap}ViewModelData`);
+    if (rewritten !== typesText) write(typesFile, rewritten);
+  }
+
+  // Every OTHER live unit that depends on a renamed sibling: its own generated file's import
+  // specifier and call-site identifier carry the old name as literal text, same as the renamed
+  // siblings' own cross-imports above.
+  for (const dependentId of dependentUnitIds) {
+    const dependent = map.units[dependentId];
+    if (!dependent || dependent.tombstoned) continue;
+    const abs = path.join(root, dependent.path);
+    if (!fs.existsSync(abs)) continue;
+    const content = fs.readFileSync(abs, 'utf8');
+    const rewritten = renameIdentifierOccurrences(content, oldCap, newCap);
+    if (rewritten !== content) write(abs, rewritten);
+  }
+
+  // Best-effort member display-name cascade: LIN-155's connector-keyword naming scheme isn't
+  // built yet, so this is a literal substring swap on whatever name a member already has (e.g. a
+  // future "submitRefundRequest" becomes "submitReimbursement"), never a derivation from scratch.
+  for (const [memberId, member] of Object.entries(map.members)) {
+    if (member.tombstoned || !renamedIds.has(member.unitId) || !member.name || !member.name.includes(oldCap)) continue;
+    map.members[memberId] = { ...member, name: renameIdentifierOccurrences(member.name, oldCap, newCap) };
+  }
+
+  saveUnitMap(root, feature, map, config);
+  for (const step of plan) projectUnitSlots(root, feature, step.id, config);
+  for (const dependentId of dependentUnitIds) projectUnitSlots(root, feature, dependentId, config);
+
+  const selfCheckFiles = [
+    ...plan.map((s) => s.newAbs),
+    ...[...dependentUnitIds].map((id) => map.units[id] && path.join(root, map.units[id].path)).filter(Boolean),
+  ];
+  selfCheck(root, selfCheckFiles);
+
+  return { renamed };
+}
