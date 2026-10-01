@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useRegisterShellTab } from '@/features/shell';
+import { usePreview } from '@/features/live-preview';
 import { buildBlastView } from '../domain/BlastView';
 import { describeFailure } from '../domain/FailureView';
 import { groupByFeature } from '../domain/FeatureGrouping';
@@ -26,6 +27,10 @@ const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
 export function ReviewChangeController({ base, head }: { base: string; head: string }) {
   const route = useReviewRoute();
   const plans = useReviewPlans();
+  // #838 -- "Preview beside": off by default, no selection-sharing on the Git screen (unlike Tests, #839).
+  const [previewOn, setPreviewOn] = useState(false);
+  const togglePreview = useCallback(() => setPreviewOn((v) => !v), []);
+  const preview = usePreview();
   const { state, select, selectFinding, setGrouping, reload, cancel } = useReviewChange(base, head, route.plan);
   const report = state.status === 'ready' ? (state.data?.report ?? null) : null;
 
@@ -101,6 +106,9 @@ export function ReviewChangeController({ base, head }: { base: string; head: str
       onCancel={cancel}
       onFailureAction={onFailureAction}
       onCloseFinding={onCloseFinding}
+      previewOn={previewOn}
+      onTogglePreview={togglePreview}
+      previewView={preview.view}
     />
   );
 }

@@ -1,3 +1,4 @@
+import { LivePreviewPanel, type LivePreviewView } from '@/features/live-preview';
 import { BlastRadius } from '../components/BlastRadius';
 import { FailureNotice } from '../components/FailureNotice';
 import { FindingDetail } from '../components/FindingDetail';
@@ -19,18 +20,16 @@ export type ReviewChangePageProps = {
   onCancel: () => void;
   onFailureAction: (a: FailureAction) => void;
   onCloseFinding: () => void;
+  /** #838 -- "Preview beside": off by default (design 8's "preview is optional outside Pages/Components"). */
+  previewOn: boolean;
+  onTogglePreview: () => void;
+  previewView: LivePreviewView;
 };
 
 // Presentation-only: every value and handler comes from the controller.
-export function ReviewChangePage({ status, head, base, subject, headline, failure, degraded, scope, finding, units, onBack, onCancel, onFailureAction, onCloseFinding }: ReviewChangePageProps) {
-  return (
-    <div className="rv-stage" data-testid="review-change">
-      <header className="rv-toolbar">
-        <button type="button" className="dg-btn" onClick={onBack} data-testid="review-back">Back to the list</button>
-        <h1 className="rv-h1" title={subject ?? head}>
-          <code className="rv-branch">{head}</code> <span className="rv-crumb">compared against <code>{base}</code></span>
-        </h1>
-      </header>
+export function ReviewChangePage({ status, head, base, subject, headline, failure, degraded, scope, finding, units, onBack, onCancel, onFailureAction, onCloseFinding, previewOn, onTogglePreview, previewView }: ReviewChangePageProps) {
+  const content = (
+    <div className="rv-split-main">
       {subject && <p className="rv-lede" data-testid="review-subject">{subject}</p>}
       {status === 'failed' && failure && <FailureNotice failure={failure} testId="review-change-error" onAction={onFailureAction} />}
       {(status === 'loading' || status === 'waiting') && (
@@ -60,6 +59,29 @@ export function ReviewChangePage({ status, head, base, subject, headline, failur
           {finding && <FindingDetail detail={finding} onClose={onCloseFinding} />}
           {units && <UnitSummaries {...units} />}
         </>
+      )}
+    </div>
+  );
+  return (
+    <div className="rv-stage" data-testid="review-change">
+      <header className="rv-toolbar">
+        <button type="button" className="dg-btn" onClick={onBack} data-testid="review-back">Back to the list</button>
+        <h1 className="rv-h1" title={subject ?? head}>
+          <code className="rv-branch">{head}</code> <span className="rv-crumb">compared against <code>{base}</code></span>
+        </h1>
+        <button type="button" className="dg-btn" aria-pressed={previewOn} data-testid="review-preview-toggle" onClick={onTogglePreview}>
+          Preview beside
+        </button>
+      </header>
+      {previewOn ? (
+        <div className="rv-split">
+          {content}
+          <div className="rv-split-preview" data-testid="review-preview-beside">
+            <LivePreviewPanel {...previewView} />
+          </div>
+        </div>
+      ) : (
+        content
       )}
     </div>
   );

@@ -5,6 +5,11 @@
 .rv-toolbar { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; margin-bottom: var(--sp-2); }
 .rv-h1 { margin: 0; font-size: var(--fs-lg); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rv-crumb { color: var(--text-muted); font-size: var(--fs-sm); font-weight: 400; }
+
+/* #838 -- "Preview beside": the stage splits into the usual content and the live app, side by side. */
+.rv-split { display: flex; gap: var(--sp-4); align-items: flex-start; }
+.rv-split-main { flex: 1; min-width: 0; }
+.rv-split-preview { flex: 1; min-width: 0; max-width: 560px; }
 .rv-lede { margin: 0 0 var(--sp-2); color: var(--text-muted); }
 .rv-hint { margin: 0; color: var(--text-muted); font-size: var(--fs-sm); }
 .rv-pad { padding: var(--sp-3); }
