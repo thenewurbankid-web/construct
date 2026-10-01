@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Runs unstall.mjs --apply every 10 minutes (LIN-156, owner decision 2026-10-01).
+
+  WHY A LAUNCH AGENT AND NOT A BOARD TASK. The detector exists because Paperclip's
+  monitor-to-dispatch step loses runs (LIN-123). Anything scheduled *inside* the board is
+  subject to that same defect: on 2026-10-01 the standing sweep task (LIN-185) and the issue
+  tracking the fix (LIN-156) were themselves among the stalled tasks the detector found. A
+  watchdog that needs the thing it watches to be healthy is not a watchdog. launchd owns the
+  timer instead, so nothing on the board has to be alive for the check to fire.
+
+  Paths are absolute and machine-specific, matching company.json's strict-local repoRoot
+  policy: edit both the node path and the repo path before installing elsewhere.
+
+  Install:   cp packages/tools/paperclip/unstall.plist ~/Library/LaunchAgents/dev.construct.unstall.plist
+             launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/dev.construct.unstall.plist
+  Status:    launchctl print gui/$(id -u)/dev.construct.unstall | head -20
+  Run now:   launchctl kickstart -p gui/$(id -u)/dev.construct.unstall
+  Remove:    launchctl bootout gui/$(id -u)/dev.construct.unstall && rm ~/Library/LaunchAgents/dev.construct.unstall.plist
+
+  The log is append-only and launchd does not rotate it; ~12 lines per run, so trim it
+  occasionally or point it at a rotated location if it is left running for months.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>dev.construct.unstall</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/node</string>
+    <string>/Users/shashank/Repositories/construct/packages/tools/paperclip/unstall.mjs</string>
+    <string>--apply</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/shashank/Repositories/construct</string>
+
+  <key>StartInterval</key>
+  <integer>600</integer>
+
+  <!-- Catch the board up once at login rather than waiting out the first interval. -->
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/shashank/Library/Logs/construct-unstall.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/shashank/Library/Logs/construct-unstall.log</string>
+
+  <!-- Ambient maintenance must never compete with the owner's own work for CPU. -->
+  <key>Nice</key>
+  <integer>5</integer>
+  <key>LowPriorityIO</key>
+  <true/>
+
+  <!-- It talks to loopback only, so it is pointless (and noisy) to run it with no network stack. -->
+  <key>ProcessType</key>
+  <string>Background</string>
+</dict>
+</plist>
