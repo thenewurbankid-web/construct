@@ -730,7 +730,7 @@ export function assertLayerPrerequisites(root,name,feature,layers){
  * @param {string} name Unit name.
  * @param {string} feature Feature that owns the files.
  * @param {string[]} layers Layers to generate; duplicates are ignored.
- * @param {{onLayer?: (info:{layer:string, file:string, elapsedSeconds:number}) => void, typed?: boolean}} [options] `onLayer` fires after each layer, for per-layer timing output. `typed` (#777) seeds each layer in `TYPED_STUB_LAYERS` from its typed-contract factory instead of the bare template; a layer with no typed stub (e.g. `hook`) still gets the bare one.
+ * @param {{onLayer?: (info:{layer:string, file:string, elapsedSeconds:number, typed:boolean}) => void, typed?: boolean}} [options] `onLayer` fires after each layer, for per-layer timing output (`info.typed`: whether this layer's stub came from its typed-contract factory). `typed` (#777) seeds each layer in `TYPED_STUB_LAYERS` from its typed-contract factory instead of the bare template; a layer with no typed stub (e.g. `hook`) still gets the bare one.
  * @returns {string[]} Absolute paths written, in dependency order.
  * @throws {Error} For an unknown layer or an unbuildable combination (for example a controller without a page).
  *
