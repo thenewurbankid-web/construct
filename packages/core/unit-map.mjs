@@ -490,16 +490,14 @@ export function resolveUnitName(root, feature, layer, name, config = loadConfig(
  * was generated for. `layer` comes from the containing folder name (layerFromGeneratedFile); `unit`
  * strips the layer's PascalCase suffix (`Page`, `Controller`, `ViewModel`, `Adapter` -- domain, service,
  * workflow, component and expression have none) and, for a hook, its `use` prefix, from the file's
- * basename. `root` and `config` are accepted only for call-site symmetry with the rest of this module
- * (every other exported function here takes `root`/`config` first); this function is pure over
- * `absFile` alone and reads neither of them.
+ * basename. This function is pure over `absFile` alone -- unlike its siblings in this module it takes
+ * no `root`/`config` (LIN-216/#818: those were unread, and `config`'s `loadConfig(root)` default still
+ * ran eagerly and could throw on an invalid architecture.yml for no reason).
  *
- * @param {string} root Project root. Unused by this function.
  * @param {string} absFile Absolute path of a generated layer file.
- * @param {object} [config] The project's already-loaded architecture.yml config (defaults to loading it). Unused by this function.
  * @returns {{layer:string, unit:string}} The layer and unit name the file was generated for.
  */
-export function unitFromPath(root, absFile, config = loadConfig(root)) {
+export function unitFromPath(absFile) {
   const layer = layerFromGeneratedFile(absFile);
   const base = path.basename(absFile).replace(/\.(tsx|ts|jsx|js)$/, '');
   const suffix = layer === 'page' ? 'Page' : layer === 'controller' ? 'Controller' : layer === 'viewmodel' ? 'ViewModel' : layer === 'adapter' ? 'Adapter' : '';

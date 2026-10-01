@@ -202,11 +202,19 @@ test('unitFromPath round-trips every layer: path -> {layer, unit} -> path', () =
   for (const [layer, name] of cases) {
     generateLayer(dir, layer, name, 'billing');
     const file = layerTargetFile(dir, layer, name, 'billing');
-    const { layer: gotLayer, unit } = unitFromPath(dir, file);
+    const { layer: gotLayer, unit } = unitFromPath(file);
     assert.equal(gotLayer, layer, `layer round-trip for ${layer}/${name}`);
     const back = layerTargetFile(dir, gotLayer, unit, 'billing');
     assert.equal(back, file, `path round-trip for ${layer}/${name}`);
   }
+});
+
+// LIN-216/#818: unitFromPath used to take (root, absFile, config = loadConfig(root)) but never read
+// root or config -- only the loadConfig(root) default-value side effect ran. Pure over absFile alone
+// now, so a path from a project with no (or an invalid) architecture.yml still resolves.
+test('unitFromPath resolves a path without needing a project root or config', () => {
+  const file = '/some/project/src/features/billing/domain/CalculateTotal.ts';
+  assert.deepEqual(unitFromPath(file), { layer: 'domain', unit: 'CalculateTotal' });
 });
 
 test('validateUnitMap reports a live unit whose file was deleted from disk', () => {
