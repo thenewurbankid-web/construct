@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
 import type { StateAction } from '@/features/states';
 
-/** One row of a Browser-pane list. `id` is what the URL and the caller use; `label` and `detail` are what is shown. */
-export type ListItem = { id: string; label: string; detail?: string };
+/** One row of a Browser-pane list. `id` is what the URL and the caller use; `label` and `detail` are what is shown.
+ * `badge` is an optional quiet trailing mark (e.g. the Story indicator, #385) -- most callers omit it. */
+export type ListItem = { id: string; label: string; detail?: string; badge?: ReactNode };
 
 export type ListStatus = 'loading' | 'error' | 'ready';
 

@@ -1,8 +1,9 @@
 import type { StoryIndicatorView } from '../types.ts';
 
 /** One quiet mark on the feature (tree row and Story tab header), identical whichever strategy served it: a dot
- * (never colour alone), the state's text, an optional "via" label, and its actions (design 9.8). */
-export function StoryIndicator({ view, onAction }: { view: StoryIndicatorView; onAction?: (id: string) => void }) {
+ * (never colour alone), the state's text, an optional "via" label, and its actions (design 9.8). `compact` (the
+ * quiet, unselected list row) omits the action buttons; the Story tab header keeps them. */
+export function StoryIndicator({ view, onAction, compact }: { view: StoryIndicatorView; onAction?: (id: string) => void; compact?: boolean }) {
   return (
     <span className={`story-indicator story-indicator--${view.tone}`} role="status" data-testid="story-indicator" data-tone={view.tone}>
       {view.text !== null && (
@@ -16,7 +17,7 @@ export function StoryIndicator({ view, onAction }: { view: StoryIndicatorView; o
           via: {view.via}
         </span>
       )}
-      {view.actions.map((action) => (
+      {!compact && view.actions.map((action) => (
         <button
           key={action.id}
           type="button"

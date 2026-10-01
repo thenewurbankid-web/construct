@@ -5,6 +5,7 @@ import { EmptyState } from '@/features/states';
 import { ListBrowser, useUrlSelection } from '@/features/list-browser';
 import { usePreview } from '@/features/live-preview';
 import { useRegisterShellTab, useShellStage, type ShellTab } from '@/features/shell';
+import { StoryIndicator, buildStoryIndicatorView, useFeatureStoryIndicators } from '@/features/story';
 import { FeatureDetails } from '../components/FeatureDetails';
 import { FeatureFlowView } from '../components/FeatureFlowView';
 import { FeatureStructure } from '../components/FeatureStructure';
@@ -38,7 +39,17 @@ export function FeaturesScreenController() {
   const preview = usePreview();
   const [violationsLayer, setViolationsLayer] = useState<string | null>(null);
   useEffect(() => setViolationsLayer(null), [name]);
-  const items = useMemo(() => toListItems(list.features), [list.features]);
+  const baseItems = useMemo(() => toListItems(list.features), [list.features]);
+  const storyIndicators = useFeatureStoryIndicators(useMemo(() => baseItems.map((i) => i.id), [baseItems]));
+  // #385: a quiet dot+text on the row for any feature with a story.md; a feature with none shows nothing
+  // (its state is `null`, filtered out by `useFeatureStoryIndicators`) per the "no story-dependent UI" rule.
+  const items = useMemo(
+    () => baseItems.map((item) => {
+      const state = storyIndicators[item.id];
+      return state ? { ...item, badge: <StoryIndicator view={buildStoryIndicatorView(state)} compact /> } : item;
+    }),
+    [baseItems, storyIndicators],
+  );
   const note = list.status === 'ready' ? legacyNote(list.featuresRoot, list.legacy) : null;
   const { select } = selection;
   const onSelect = useCallback(

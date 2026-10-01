@@ -61,6 +61,7 @@ export function ListBrowser({ label, filterLabel, items, selectedId, onSelect, s
             >
               <span className="lb-label">{item.label}</span>
               {item.detail && <span className="lb-detail">{item.detail}</span>}
+              {item.badge}
             </li>
           ))}
         </ul>
