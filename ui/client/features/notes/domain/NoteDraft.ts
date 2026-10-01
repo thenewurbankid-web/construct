@@ -30,6 +30,7 @@ export function rowOf(note: Note): NoteRow {
     processId: note.processId,
     createdAt: note.createdAt,
     updatedAt: note.updatedAt,
+    anchor: note.anchor,
   };
 }
 

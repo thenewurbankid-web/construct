@@ -167,6 +167,45 @@ test('create: an unknown status is rejected with a 400 INVALID_STATUS error', ()
   );
 });
 
+test('#832 create: anchor defaults to null, round-trips when given, and update can change or clear it', () => {
+  const store = openNotesStore(freshProject(), { stateDir: freshStateDir() });
+  const unanchored = store.create({ title: 'x' });
+  assert.equal(unanchored.anchor, null);
+
+  const anchor = { feature: 'billing', file: 'BillingPage.tsx', nodeId: 'n1' };
+  const anchored = store.create({ title: 'y', anchor });
+  assert.deepEqual(store.get(anchored.id).anchor, anchor);
+
+  const moved = store.update(anchored.id, { rev: anchored.rev, anchor: { ...anchor, nodeId: 'n2' } });
+  assert.equal(moved.anchor.nodeId, 'n2');
+  const cleared = store.update(anchored.id, { rev: moved.rev, anchor: null });
+  assert.equal(cleared.anchor, null);
+  // Not passing `anchor` at all on an update leaves it untouched (same as title/body/plan/status).
+  const anchor2 = store.create({ title: 'z', anchor });
+  const untouched = store.update(anchor2.id, { rev: anchor2.rev, title: 'z renamed' });
+  assert.deepEqual(untouched.anchor, anchor);
+});
+
+test('#832 create/update: a malformed anchor is rejected with a 400 INVALID_ANCHOR error, nothing written', () => {
+  const store = openNotesStore(freshProject(), { stateDir: freshStateDir() });
+  for (const bad of [{}, { feature: 'billing' }, { feature: 'billing', file: '', nodeId: 'n1' }, 'billing', 1, []]) {
+    assert.throws(
+      () => store.create({ title: 'x', anchor: bad }),
+      (err) => {
+        assert.equal(err.status, 400);
+        assert.equal(err.code, 'INVALID_ANCHOR');
+        return true;
+      },
+    );
+  }
+  const note = store.create({ title: 'ok' });
+  assert.throws(
+    () => store.update(note.id, { rev: note.rev, anchor: { feature: 'billing' } }),
+    (err) => err.code === 'INVALID_ANCHOR',
+  );
+  assert.equal(store.get(note.id).anchor, null); // unchanged
+});
+
 test('remove: true when a note existed, false otherwise; removed note is gone from get and list', () => {
   const store = openNotesStore(freshProject(), { stateDir: freshStateDir() });
   const note = store.create({ title: 'temp' });

@@ -45,7 +45,8 @@ export type EditorHandlers = {
 
 export type NoteEditorProps = { view: EditorView } & EditorHandlers;
 
-export type RowView = { id: string; title: string; preview: string; tag: TagView; active: boolean; when: string };
+/** #832 -- "feature / file" text for a row anchored to a Pages-editor node, `null` for an unanchored note. */
+export type RowView = { id: string; title: string; preview: string; tag: TagView; active: boolean; when: string; anchor: string | null };
 
 export type NotesBrowserProps = {
   rows: RowView[];

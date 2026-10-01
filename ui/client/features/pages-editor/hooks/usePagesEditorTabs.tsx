@@ -14,6 +14,7 @@ import { useImpact } from './useImpact';
 import { useTestsCoverage } from './useTestsCoverage';
 import { useFileFindings } from './useFileFindings';
 import { usePageDiagnostics } from './usePageDiagnostics';
+import { useNodeNotes } from './useNodeNotes';
 import { useGitStatus } from './useGitStatus';
 import type { usePagesEditor } from './usePagesEditor';
 
@@ -41,6 +42,9 @@ export function usePagesEditorTabs(e: Editor, onImpactPreview: (v: ChangeImpactP
   // #833 -- the whole file's diagnostics, fetched once per save; NodeDiagnosticsPanel scopes them to whichever
   // node is selected.
   const diagnostics = usePageDiagnostics(feature, file, hash);
+  // #832 -- re-keyed per selected node (not per feature/file, unlike the sections above): a note anchors to ONE
+  // node, so the relevant list changes with the selection, not just the open file.
+  const { notes: nodeNotes, addNote } = useNodeNotes(feature, file, selectedNodeId);
   const gitStatus = useGitStatus(feature, file, hash);
 
   const browserTab = useMemo<ShellTab>(
@@ -76,12 +80,12 @@ export function usePagesEditorTabs(e: Editor, onImpactPreview: (v: ChangeImpactP
       title: 'Inspector',
       render: () =>
         tree ? (
-          <InspectorPanel feature={feature} file={file} node={selectedNode} contentHash={hash} onSaved={onTreeSaved} withScope={false} impact={impact} testsCoverage={testsCoverage} findings={findings} diagnostics={diagnostics} />
+          <InspectorPanel feature={feature} file={file} node={selectedNode} contentHash={hash} onSaved={onTreeSaved} withScope={false} impact={impact} testsCoverage={testsCoverage} findings={findings} diagnostics={diagnostics} nodeNotes={nodeNotes} onCreateNote={addNote} />
         ) : (
           <p className="hint">Open a page in the Browser to inspect its elements.</p>
         ),
     }),
-    [tree, feature, file, selectedNode, hash, onTreeSaved, impact, testsCoverage, findings, diagnostics],
+    [tree, feature, file, selectedNode, hash, onTreeSaved, impact, testsCoverage, findings, diagnostics, nodeNotes, addNote],
   );
 
   const scopeTab = useMemo<ShellTab>(

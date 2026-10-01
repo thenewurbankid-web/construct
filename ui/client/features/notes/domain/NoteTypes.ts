@@ -3,6 +3,10 @@
 
 export type NoteStatus = 'draft' | 'plan-ready' | 'ran';
 
+/** #832 -- a note's optional anchor to one Pages-editor node: additive to #373's shape, `null` (the
+ * default) for every note created before this and every note nobody explicitly anchors. */
+export type NoteAnchor = { feature: string; file: string; nodeId: string };
+
 /** A whole note, as `GET/PUT /api/notes/:id` return it. */
 export type Note = {
   id: string;
@@ -15,6 +19,7 @@ export type Note = {
   updatedAt: string;
   processId: string | null;
   planStale?: boolean;
+  anchor: NoteAnchor | null;
 };
 
 /** One row of `GET /api/notes`: the list never carries the note text. */
@@ -29,6 +34,7 @@ export type NoteRow = {
   processId: string | null;
   createdAt: string;
   updatedAt: string;
+  anchor: NoteAnchor | null;
 };
 
 /** What the editor holds while you type. */

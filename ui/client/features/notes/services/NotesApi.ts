@@ -2,7 +2,7 @@
 // "ran" means) is the server's; this only asks and reports. A stale write (409) and a failed one are different
 // answers on purpose: the first is routine and offers a choice, the second keeps your text and offers Retry.
 import { sendJson } from '@/lib/http';
-import type { ApiResult, Draft, Note, NoteRow, NoteStatus, SaveResult } from '../domain/NoteTypes';
+import type { ApiResult, Draft, Note, NoteAnchor, NoteRow, NoteStatus, SaveResult } from '../domain/NoteTypes';
 
 type Failure = { ok?: false; code?: string; error?: string; current?: Note };
 const UNREACHABLE = 'The Cockpit server could not be reached.';
@@ -29,11 +29,14 @@ export async function fetchNote(id: string): Promise<ApiResult<Note>> {
   }
 }
 
-export async function createNote(draft: Partial<Draft> = {}): Promise<ApiResult<Note>> {
+/** `anchor` (#832) is for a caller that keeps a note of its own anchored to a specific place, e.g. the Pages
+ * editor's Inspector "Notes" section -- omitted entirely (not even `null`), the server's own default applies. */
+export async function createNote(draft: Partial<Draft> = {}, opts: { anchor?: NoteAnchor | null } = {}): Promise<ApiResult<Note>> {
   try {
-    const { status, body } = await sendJson<{ ok?: true; note?: Note } & Failure>('POST', '/api/notes', draft);
-    if (status === 201 && body.ok && body.note) return { ok: true, data: body.note };
-    return failed(body, 'The note could not be created.');
+    const body = opts.anchor !== undefined ? { ...draft, anchor: opts.anchor } : draft;
+    const { status, body: res } = await sendJson<{ ok?: true; note?: Note } & Failure>('POST', '/api/notes', body);
+    if (status === 201 && res.ok && res.note) return { ok: true, data: res.note };
+    return failed(res, 'The note could not be created.');
   } catch {
     return { ok: false, error: UNREACHABLE, code: 'UNREACHABLE' };
   }

@@ -48,6 +48,7 @@ export function buildRows(state: ScreenState): RowView[] {
       tag: statusTag(row.status, row.planStale),
       active: open,
       when: clock(row.updatedAt),
+      anchor: row.anchor ? `${row.anchor.feature} / ${row.anchor.file}` : null,
     };
   });
 }

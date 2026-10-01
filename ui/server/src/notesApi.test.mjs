@@ -162,6 +162,28 @@ test('field validation: wrong types and unknown or client-forbidden statuses are
   });
 });
 
+test('#832 anchor: round-trips through create/list/get, is rejected when malformed, and survives duplicate', async () => {
+  await withStack({}, async ({ json }) => {
+    const anchor = { feature: 'billing', file: 'BillingPage.tsx', nodeId: 'n1' };
+    const created = await create(json, { title: 'Anchored', body: 'x', anchor });
+    assert.deepEqual(created.anchor, anchor);
+    assert.deepEqual((await json('GET', `/api/notes/${created.id}`)).body.note.anchor, anchor);
+    assert.deepEqual((await json('GET', '/api/notes')).body.notes.find((r) => r.id === created.id).anchor, anchor);
+
+    assert.equal((await json('POST', '/api/notes', { body: { title: 'x', anchor: { feature: 'billing' } } })).body.code, 'INVALID_ANCHOR');
+    assert.equal((await put(json, created.id, created.rev, { anchor: 'nope' })).body.code, 'INVALID_ANCHOR');
+
+    const moved = (await put(json, created.id, created.rev, { anchor: { ...anchor, nodeId: 'n2' } })).body.note;
+    assert.equal(moved.anchor.nodeId, 'n2');
+    const unanchored = (await put(json, created.id, moved.rev, { anchor: null })).body.note;
+    assert.equal(unanchored.anchor, null);
+
+    const anchored2 = await create(json, { title: 'Dup me', body: 'x', anchor });
+    const dup = await json('POST', `/api/notes/${anchored2.id}/duplicate`, { body: {} });
+    assert.deepEqual(dup.body.note.anchor, anchor);
+  });
+});
+
 test('plan freshness through the API, and a note that ran is read-only history that can be duplicated', async () => {
   await withStack({}, async ({ json, project, stateDir }) => {
     const n = await create(json);

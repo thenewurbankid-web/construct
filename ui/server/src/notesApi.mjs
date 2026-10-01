@@ -38,6 +38,7 @@ export function summarize(note) {
     processId: note.processId ?? null,
     createdAt: note.createdAt,
     updatedAt: note.updatedAt,
+    anchor: note.anchor ?? null,
   };
 }
 
@@ -51,11 +52,23 @@ export function revFromHeader(value) {
 const isPlain = (v) => v && typeof v === 'object' && !Array.isArray(v);
 const bodyOf = (req) => (isPlain(req.body) ? req.body : {});
 
+/** `anchor` must be `undefined`/`null` or `{feature, file, nodeId}` of non-empty strings (#832): the store
+ * (`assertAnchor`) re-checks this too, but a route-level check gives the client a 400 instead of a 500 from a
+ * store exception, matching how `title`/`body`/`plan`/`status` are all already checked here first. */
+function badAnchor(anchor) {
+  if (anchor === undefined || anchor === null) return false;
+  return typeof anchor !== 'object' || Array.isArray(anchor)
+    || typeof anchor.feature !== 'string' || !anchor.feature
+    || typeof anchor.file !== 'string' || !anchor.file
+    || typeof anchor.nodeId !== 'string' || !anchor.nodeId;
+}
+
 /** Field validation shared by create and update. Returns an error result or null. */
-function checkFields({ title, body, plan, status }, { allowStatus }) {
+function checkFields({ title, body, plan, status, anchor }, { allowStatus }) {
   if (title !== undefined && typeof title !== 'string') return fail(400, 'BAD_FIELD', 'title must be text.');
   if (body !== undefined && typeof body !== 'string') return fail(400, 'BAD_FIELD', 'body must be text.');
   if (plan !== undefined && plan !== null && typeof plan !== 'object') return fail(400, 'BAD_FIELD', 'plan must be an object, a list or null.');
+  if (badAnchor(anchor)) return fail(400, 'INVALID_ANCHOR', 'anchor must be null or {feature, file, nodeId} (all non-empty strings).');
   if (status !== undefined) {
     if (!allowStatus) return fail(400, 'BAD_FIELD', 'status can only be set when a note is saved.');
     if (typeof status !== 'string' || !NOTE_STATUSES.has(status)) return fail(400, 'INVALID_STATUS', `Unknown note status. Expected one of: ${[...CLIENT_SETTABLE_STATUS].join(', ')}.`);
@@ -110,10 +123,10 @@ export function createNotesRouter({ getRoot, clientOrigin, stateDir, now }) {
   }));
 
   router.post('/', handle((store, req) => {
-    const { title, body, plan, status } = bodyOf(req);
-    const bad = checkFields({ title, body, plan, status }, { allowStatus: false });
+    const { title, body, plan, status, anchor } = bodyOf(req);
+    const bad = checkFields({ title, body, plan, status, anchor }, { allowStatus: false });
     if (bad) return bad;
-    const note = store.create({ title, body, plan });
+    const note = store.create({ title, body, plan, anchor });
     return { status: 201, body: { ok: true, note } };
   }));
 
@@ -130,14 +143,14 @@ export function createNotesRouter({ getRoot, clientOrigin, stateDir, now }) {
     const current = store.get(req.params.id);
     if (!current) return fail(404, 'NOT_FOUND', `No such note "${req.params.id}".`);
     if (current.status === 'ran') return fail(409, 'NOTE_RAN', 'This note already ran, so it is read-only history. Duplicate it to iterate.', { current });
-    const note = store.update(req.params.id, { rev, title: b.title, body: b.body, plan: b.plan, status: b.status });
+    const note = store.update(req.params.id, { rev, title: b.title, body: b.body, plan: b.plan, status: b.status, anchor: b.anchor });
     return { status: 200, body: { ok: true, note } };
   }));
 
   router.post('/:id/duplicate', handle((store, req) => {
     const source = store.get(req.params.id);
     if (!source) return fail(404, 'NOT_FOUND', `No such note "${req.params.id}".`);
-    const note = store.create({ title: source.title ? `${source.title} (copy)` : '', body: source.body });
+    const note = store.create({ title: source.title ? `${source.title} (copy)` : '', body: source.body, anchor: source.anchor ?? null });
     return { status: 201, body: { ok: true, note } };
   }));
 

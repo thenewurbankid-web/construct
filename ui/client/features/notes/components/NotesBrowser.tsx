@@ -20,6 +20,7 @@ export function NotesBrowser({ rows, status, error, onOpen, onCreate }: NotesBro
                 <StatusTag tag={r.tag} testId="notes-row-status" />
               </span>
               {r.preview && <span className="nt-row-preview">{r.preview}</span>}
+              {r.anchor && <span className="nt-row-anchor" data-testid="notes-row-anchor">{r.anchor}</span>}
               {r.when && <span className="nt-row-when">{r.when}</span>}
             </button>
           </li>

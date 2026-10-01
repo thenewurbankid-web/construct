@@ -90,6 +90,20 @@ function assertKnownStatus(status) {
   }
 }
 
+/** #832 -- a note's optional anchor to a Pages-editor node: additive, `null` (the #373 default) means
+ * unanchored. Validated here (not just at the route layer) so a corrupt/partial anchor can never reach disk
+ * regardless of caller. */
+function assertAnchor(anchor) {
+  if (anchor === undefined || anchor === null) return;
+  const bad = typeof anchor !== 'object' || Array.isArray(anchor)
+    || typeof anchor.feature !== 'string' || !anchor.feature
+    || typeof anchor.file !== 'string' || !anchor.file
+    || typeof anchor.nodeId !== 'string' || !anchor.nodeId;
+  if (bad) {
+    throw new NotesStoreError('anchor must be null or {feature, file, nodeId} (all non-empty strings).', { status: 400, code: 'INVALID_ANCHOR' });
+  }
+}
+
 /**
  * Open the store for one project, mirroring `openProcessStore`'s shape: a small bound object rather
  * than free functions, so a caller passes the project root and the state directory once. A second
@@ -125,12 +139,13 @@ export function openNotesStore(projectRoot, { stateDir = resolveStateDir(), now 
      * `null` (whatever shape the caller hands in for `plan` is stored as-is — no plan-generation
      * logic lives here). Throws `NotesStoreError` (413 `TOO_LARGE`, 400 `INVALID_STATUS`) rather
      * than silently truncating or coercing. */
-    create({ title = '', body = '', plan = null, status = 'draft', processId = null } = {}) {
+    create({ title = '', body = '', plan = null, status = 'draft', processId = null, anchor = null } = {}) {
       assertKnownStatus(status);
       assertBodyWithinCap(body);
+      assertAnchor(anchor);
       const id = crypto.randomUUID();
       const createdAt = now();
-      const record = { id, title: String(title), body: String(body), plan, status, rev: 1, createdAt, updatedAt: createdAt, processId, planStale: false };
+      const record = { id, title: String(title), body: String(body), plan, status, rev: 1, createdAt, updatedAt: createdAt, processId, planStale: false, anchor };
       atomicWriteJson(fileFor(dir, id), record);
       return record;
     },
@@ -174,7 +189,7 @@ export function openNotesStore(projectRoot, { stateDir = resolveStateDir(), now 
      *   (someone/something else saved first — routine, "reload and try again").
      * @throws {NotesStoreError} 413 `TOO_LARGE` / 400 `INVALID_STATUS` — same validation as `create`.
      */
-    update(id, { rev, title, body, plan, status, processId } = {}) {
+    update(id, { rev, title, body, plan, status, processId, anchor } = {}) {
       const file = fileFor(dir, id);
       if (!fs.existsSync(file)) {
         throw new NotesStoreError(`No such note "${id}".`, { status: 404, code: 'NOT_FOUND' });
@@ -188,6 +203,7 @@ export function openNotesStore(projectRoot, { stateDir = resolveStateDir(), now 
         throw new NotesStoreError('This note changed elsewhere since it was loaded — reload it and try again (or keep yours).', { status: 409, code: 'STALE_REV' });
       }
       assertKnownStatus(status);
+      assertAnchor(anchor);
       const nextBody = body !== undefined ? String(body) : current.body;
       assertBodyWithinCap(nextBody);
       const nextTitle = title !== undefined ? String(title) : current.title;
@@ -204,6 +220,7 @@ export function openNotesStore(projectRoot, { stateDir = resolveStateDir(), now 
         ...(plan !== undefined ? { plan } : {}),
         ...(status !== undefined ? { status } : {}),
         ...(processId !== undefined ? { processId } : {}),
+        ...(anchor !== undefined ? { anchor } : {}),
         rev: current.rev + 1,
         updatedAt: now(),
       };
