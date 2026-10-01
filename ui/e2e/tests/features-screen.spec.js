@@ -56,7 +56,13 @@ test.describe.serial('Features screen: browse in the left pane, open in the stag
     await expect(details.getByTestId('fc-tests')).toContainText('1 test file');
     await expect(details.getByTestId('fc-open-tests')).toHaveAttribute('href', '/tests');
     await expect(details.getByTestId('fc-open-workflows')).toHaveAttribute('href', '/workflows');
-    await expect(details.getByTestId('fc-rules')).toContainText('0 errors');
+    // #842: 3 real, correctly-scoped violations, not 0 -- Broken.tsx's own deliberate parse error
+    // (PARSE-ERROR), plus features/billing/tests/billing.spec.ts tripping SOC-001 twice (both
+    // architecture-enforcer.mjs's checkUnclassified and soc-enforcer.mjs's checkOwnership flag the
+    // undeclared tests/ folder). Declaring `nonLayer: ['features/*/tests/**']` (docs/GENERATED_TESTS.md)
+    // would clear the SOC-001 pair, but this fixture is shared with rules-tab-advanced.spec.js, which
+    // exercises adding/removing that exact glob starting from an empty list -- don't add it here.
+    await expect(details.getByTestId('fc-rules')).toContainText('3 errors');
 
     await page.reload();
     await expect(page.getByTestId('fc-details').getByTestId('fc-name')).toHaveText('billing');
