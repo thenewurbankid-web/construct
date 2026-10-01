@@ -15,6 +15,7 @@ export const initialScreen: ScreenState = {
   comparing: false,
   confirmingDelete: false,
   openError: null,
+  switching: false,
 };
 
 export function screenReducer(state: ScreenState, action: ScreenAction): ScreenState {
@@ -31,12 +32,18 @@ export function screenReducer(state: ScreenState, action: ScreenAction): ScreenS
     }
     case 'LIST_REMOVE':
       return { ...state, list: { ...state.list, rows: state.list.rows.filter((r) => r.id !== action.id) } };
+    case 'OPEN_STARTED':
+      // Locks the editor (NotesView's `locked`) so a keystroke cannot land on the note being replaced
+      // and then be wiped out when OPENED below resets `draft` wholesale.
+      return { ...state, switching: true };
+    case 'SWITCH_ABORTED':
+      return { ...state, switching: false };
     case 'OPENED':
-      return { ...state, note: action.note, draft: draftOf(action.note), save: { status: 'saved', at: action.note.updatedAt }, comparing: false, confirmingDelete: false, openError: null };
+      return { ...state, note: action.note, draft: draftOf(action.note), save: { status: 'saved', at: action.note.updatedAt }, comparing: false, confirmingDelete: false, openError: null, switching: false };
     case 'OPEN_FAILED':
-      return { ...state, note: null, draft: { title: '', body: '' }, save: { status: 'idle' }, comparing: false, confirmingDelete: false, openError: action.error };
+      return { ...state, note: null, draft: { title: '', body: '' }, save: { status: 'idle' }, comparing: false, confirmingDelete: false, openError: action.error, switching: false };
     case 'CLOSED':
-      return { ...state, note: null, draft: { title: '', body: '' }, save: { status: 'idle' }, comparing: false, confirmingDelete: false, openError: null };
+      return { ...state, note: null, draft: { title: '', body: '' }, save: { status: 'idle' }, comparing: false, confirmingDelete: false, openError: null, switching: false };
     case 'EDIT': {
       if (state.note === null) return state;
       const draft = { ...state.draft, ...action.edit };

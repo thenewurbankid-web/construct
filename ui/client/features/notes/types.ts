@@ -17,7 +17,11 @@ export type ConflictView = {
 export type EditorView = {
   title: string;
   body: string;
+  /** This note already ran: permanent history (drives the ranNote text and the Duplicate-to-iterate label). */
   readOnly: boolean;
+  /** #836 -- the inputs render readonly right now: `readOnly`, or a switch/create/duplicate/delete is still in
+   * flight and the note on screen is about to be replaced. */
+  locked: boolean;
   indicator: IndicatorView;
   /** Shown under the indicator after a failed save ("Your text stays in the page..."). */
   failureHint: string | null;

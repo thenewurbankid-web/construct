@@ -10,8 +10,15 @@ export function useNoteActions(stateRef: MutableRefObject<ScreenState>, send: (a
   const open = useCallback(
     async (id: string) => {
       if (stateRef.current.note?.id === id) return;
+      // #836 -- lock the editor before the round trip starts: the note on screen is about to be replaced, and
+      // without this a keystroke typed in that window lands on it and is then silently dropped when OPENED
+      // below resets `draft` for the note that lands.
+      send({ type: 'OPEN_STARTED' });
       // Never leave a note with text the server does not have: save first, and stay put if that fails.
-      if (!(await save())) return;
+      if (!(await save())) {
+        send({ type: 'SWITCH_ABORTED' });
+        return;
+      }
       const r = await fetchNote(id);
       send(r.ok ? { type: 'OPENED', note: r.data } : { type: 'OPEN_FAILED', error: r.error });
     },
@@ -20,7 +27,12 @@ export function useNoteActions(stateRef: MutableRefObject<ScreenState>, send: (a
 
   const add = useCallback(
     async (make: () => ReturnType<typeof createNote>) => {
-      if (!(await save())) return;
+      // #836 -- same lock as `open`: New note / Duplicate also replace what is on screen asynchronously.
+      send({ type: 'OPEN_STARTED' });
+      if (!(await save())) {
+        send({ type: 'SWITCH_ABORTED' });
+        return;
+      }
       const r = await make();
       if (!r.ok) return send({ type: 'OPEN_FAILED', error: r.error });
       send({ type: 'LIST_UPSERT', row: rowOf(r.data) });
@@ -39,6 +51,8 @@ export function useNoteActions(stateRef: MutableRefObject<ScreenState>, send: (a
   const remove = useCallback(async () => {
     const { note, list } = stateRef.current;
     if (!note) return;
+    // #836 -- same lock: the note on screen is about to be removed (and possibly replaced by the next one).
+    send({ type: 'OPEN_STARTED' });
     const r = await removeNote(note.id);
     if (!r.ok) return send({ type: 'OPEN_FAILED', error: r.error });
     send({ type: 'LIST_REMOVE', id: note.id });

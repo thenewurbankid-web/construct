@@ -17,14 +17,19 @@ function conflictView(state: ScreenState): ConflictView | null {
 }
 
 export function buildEditorView(state: ScreenState): EditorView | null {
-  const { note, draft, save } = state;
+  const { note, draft, save, switching } = state;
   if (note === null) return null;
   const readOnly = isReadOnly(note);
+  // #836 -- `readOnly` alone means "this note already ran" (permanent history, drives the Duplicate label and
+  // the ranNote text below). `locked` is what the inputs actually render as readonly: also true for the brief
+  // window a switch/create/duplicate/delete is in flight, so no keystroke can land on the note being replaced.
+  const locked = readOnly || switching;
   const conflict = conflictView(state);
   return {
     title: draft.title,
     body: draft.body,
     readOnly,
+    locked,
     indicator: indicatorOf(save, isDirty(note, draft), readOnly),
     failureHint: save.status === 'failed' ? failureHint(save.code) : null,
     tag: statusTag(note.status, note.planStale === true),

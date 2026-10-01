@@ -34,11 +34,11 @@ export function NoteEditor({ view, onTitle, onBody, onBlur, onRetry, onKeepMine,
       )}
       <label className="nt-field">
         <span className="nt-sr">Note title</span>
-        <input type="text" className="nt-title" value={view.title} readOnly={view.readOnly} onChange={(e) => onTitle(e.target.value)} onBlur={onBlur} placeholder="A short title" data-testid="note-title" />
+        <input type="text" className="nt-title" value={view.title} readOnly={view.locked} onChange={(e) => onTitle(e.target.value)} onBlur={onBlur} placeholder="A short title" data-testid="note-title" />
       </label>
       <label className="nt-field nt-field--grow">
         <span className="nt-sr">Note text</span>
-        <textarea className="nt-body" value={view.body} readOnly={view.readOnly} onChange={(e) => onBody(e.target.value)} onBlur={onBlur} placeholder="Describe the change you want, in your own words. It saves as you go." data-testid="note-body" />
+        <textarea className="nt-body" value={view.body} readOnly={view.locked} onChange={(e) => onBody(e.target.value)} onBlur={onBlur} placeholder="Describe the change you want, in your own words. It saves as you go." data-testid="note-body" />
       </label>
       <p className="hint">Saved on this machine, outside your project. Never committed, and no model reads it unless you run a plan step tagged Local model.</p>
     </div>

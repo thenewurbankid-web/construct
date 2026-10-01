@@ -115,6 +115,29 @@ test('the view: a ran note is read-only with its process; the list row follows w
   assert.equal(buildRows(run([{ type: 'LIST_LOADED', rows: [rowOf(note({ title: '  ' }))] }]))[0].title, 'Untitled note');
 });
 
+test('#836 -- a switch/create/duplicate/delete locks the editor until it lands, so a keystroke cannot land on the note being replaced', () => {
+  const s = opened();
+  const starting = screenReducer(s, { type: 'OPEN_STARTED' });
+  assert.equal(starting.switching, true);
+  // readOnly (ran-note history) and locked (nothing may be typed right now) are different things: a switch in
+  // flight must not claim the note already ran.
+  const v = buildEditorView(starting);
+  assert.equal(v.readOnly, false);
+  assert.equal(v.locked, true);
+  // Landing on the new note clears it, same as a ran note's buildEditorView already locks for a different reason.
+  const landed = note({ id: 'n2', title: 'Other' });
+  const opened2 = screenReducer(starting, { type: 'OPENED', note: landed });
+  assert.equal(opened2.switching, false);
+  assert.equal(buildEditorView(opened2).locked, false);
+  // The pre-switch save failing (stay put, e.g. disk full) must not leave the editor locked forever: SWITCH_ABORTED
+  // unlocks it without touching the note, the draft or the failure the save already reported.
+  const failed = screenReducer(run([{ type: 'EDIT', edit: { body: 'two' } }, { type: 'SAVE_STARTED' }, { type: 'SAVE_FAILED', message: 'x', code: 'DISK_FULL' }], starting), { type: 'SWITCH_ABORTED' });
+  assert.equal(failed.switching, false);
+  assert.equal(failed.save.status, 'failed');
+  assert.equal(failed.draft.body, 'two');
+  assert.equal(failed.note, s.note);
+});
+
 test('the note to open on load: the one in the address if it exists, else the most recent, else none', () => {
   const rows = [rowOf(note({ id: 'a' })), rowOf(note({ id: 'b' }))];
   assert.equal(pickInitial(rows, 'b'), 'b');

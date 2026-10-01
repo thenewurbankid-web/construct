@@ -61,6 +61,11 @@ export type ScreenState = {
   confirmingDelete: boolean;
   /** The open note could not be read (deleted elsewhere, unreadable file). */
   openError: string | null;
+  /** #836 -- true from the moment a switch/create/duplicate/delete is requested until the note it lands on is
+   * known (`OPENED`/`OPEN_FAILED`/`CLOSED`). The editor locks while this is true: otherwise a keystroke can land
+   * on the note being replaced (still on screen during the round trip) and then be silently discarded when the
+   * new note's `OPENED` resets `draft` -- a real, if narrow, data-loss race, not just a test-timing margin. */
+  switching: boolean;
 };
 
 export type ScreenAction =
@@ -69,6 +74,11 @@ export type ScreenAction =
   | { type: 'LIST_FAILED'; error: string }
   | { type: 'LIST_UPSERT'; row: NoteRow }
   | { type: 'LIST_REMOVE'; id: string }
+  | { type: 'OPEN_STARTED' }
+  /** #836 -- the save that `open`/`add` run first (flushing whatever was dirty) failed: stay on the same note
+   * (its `OPEN_FAILED`/stay-put handling already keeps the draft and shows the failure), just unlock the editor
+   * that `OPEN_STARTED` locked. */
+  | { type: 'SWITCH_ABORTED' }
   | { type: 'OPENED'; note: Note }
   | { type: 'OPEN_FAILED'; error: string }
   | { type: 'CLOSED' }
