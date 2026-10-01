@@ -48,8 +48,9 @@ test.describe.serial('Features screen: browse in the left pane, open in the stag
     // Routes under it, layers and files (with links to the screens that can open them), workflows, tests.
     await expect(details.getByTestId('fc-routes')).toContainText('/billing');
     await expect(details.getByTestId('fc-routes')).toContainText('app/billing/page.tsx');
+    // LIN-150: layer order now mirrors packages/core's LAYER_ORDER (domain outward to viewmodel), not a hand-picked client order.
     const layers = details.getByTestId('fc-layer');
-    await expect(layers.locator('h4')).toHaveText([/^page/, /^controller/, /^component/, /^hook/, /^workflow/, /^service/, /^domain/]);
+    await expect(layers.locator('h4')).toHaveText([/^domain/, /^service/, /^workflow/, /^hook/, /^component/, /^page/, /^controller/]);
     await expect(details.getByRole('link', { name: SUMMARY_PATH })).toHaveAttribute('href', new RegExp(`^/components\\?component=${encodeURIComponent(SUMMARY_PATH).replace(/\./g, '\\.')}$`));
     await expect(details.getByRole('link', { name: 'features/billing/pages/BillingPage.tsx' })).toHaveAttribute('href', '/pages?feature=billing&file=BillingPage.tsx');
     await expect(details.getByTestId('fc-workflows')).toContainText('signupFlow');
