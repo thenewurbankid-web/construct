@@ -2061,9 +2061,34 @@ button:disabled {
 .live-preview-empty p { margin: 0; }
 .live-preview-empty-actions { display: flex; gap: var(--sp-2); }
 
+/* #835 -- numbered pins over nodes in the preview (e.g. Review findings), positioned from the bridge's
+ * own rect-report protocol (`construct:rects-request`/`construct:rects`, packages/engine/previewBridge.mjs).
+ * Text-labelled (the number), never colour-only. */
+.live-preview-pins { position: absolute; inset: 0; pointer-events: none; }
+.live-preview-pin {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--surface-1);
+  background: var(--accent, #7c5cff);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--glass-shadow);
+}
+.live-preview-pin:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
 /* #381 — Inspector Change tab's impact preview, drawn over the live app: "everything that will
- * change" as a dashed card rather than per-element boxes (the preview plugin has no rect-report
- * protocol yet to place those on the real DOM nodes; see the Change tab's own note on this). */
+ * change" as a dashed card rather than per-element boxes (per-finding pins now exist, #835 -- this
+ * stays a card because a pending refactor isn't anchored to one existing node the way a finding is). */
 .live-preview-impact {
   position: absolute;
   left: 12px;
@@ -2558,6 +2583,10 @@ button:disabled {
   padding: var(--sp-2) 0 var(--sp-2) 20px;
   border-top: 1px solid var(--border-subtle);
 }
+
+/* #835 -- the finding a live-preview pin was just clicked for: scrolled into view and briefly marked, by
+ * a border (not colour alone -- the number it shares with the pin is the real text-labelled link). */
+.findings-item--open { outline: 2px solid var(--accent, #7c5cff); outline-offset: 2px; border-radius: 4px; }
 
 .pal-item:first-of-type {
   border-top: none;

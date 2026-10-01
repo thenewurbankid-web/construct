@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { LivePreviewPanel } from '@/features/live-preview';
+import { LivePreviewPanel, type LivePreviewPin } from '@/features/live-preview';
 import { EditorBreadcrumb } from '../components/EditorBreadcrumb';
 import { EditorTabStrip, type EditorTab } from '../components/EditorTabStrip';
 import { NavigatorPanel } from '../components/NavigatorPanel';
@@ -18,6 +18,9 @@ type PagesEditorPageProps = ReturnType<typeof usePagesEditor> & {
   devServer?: ReactNode;
   /** #381 — the Inspector Change tab's pending refactor, drawn as a dashed-box preview over the live app. */
   changeImpact?: ChangeImpactPreview | null;
+  /** #835 — numbered Findings pins over the live preview, from usePagesEditorTabs. */
+  pins?: LivePreviewPin[];
+  onPinClick?: (id: string) => void;
 };
 
 // The stage (middle pane) of the Pages Editor. The page/feature tree lives in
@@ -25,7 +28,7 @@ type PagesEditorPageProps = ReturnType<typeof usePagesEditor> & {
 // its Tools tabs (see usePagesEditorTabs); this renders what you look at: the
 // live app preview, the structural mirror and the prop-flow diagram.
 export function PagesEditorPage(props: PagesEditorPageProps): ReactNode {
-  const { tree, error, selectedNodeId, selectedNode, selectNode, previewTitle, externalChange, livePreview, gitSession, devServer, feature, file, changeImpact } = props;
+  const { tree, error, selectedNodeId, selectedNode, selectNode, previewTitle, externalChange, livePreview, gitSession, devServer, feature, file, changeImpact, pins, onPinClick } = props;
   // #456: full screen is the app and nothing else. Everything but the preview is
   // hidden rather than unmounted, so the tree, the diagram and the selection are
   // exactly as they were on the way back out.
@@ -91,7 +94,7 @@ export function PagesEditorPage(props: PagesEditorPageProps): ReactNode {
       {tree && (
         <>
           <div hidden={stageTab !== 'preview'}>
-            <LivePreviewPanel {...livePreview.view} impactPreview={changeImpact} />
+            <LivePreviewPanel {...livePreview.view} impactPreview={changeImpact} pins={pins} onPinClick={onPinClick} />
           </div>
           <div hidden={full}>
             {stageTab === 'source' ? (

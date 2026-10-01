@@ -89,6 +89,22 @@ export function installPreviewBridge(win) {
     });
   }
   const find = (el) => (el && el.closest ? el.closest('[' + ATTR + ']') : null);
+  // #835 -- the nearest annotated element for a (file, line) pair, by line distance within the same
+  // file (a `data-cx-src` column rarely matches a finding's own line:column exactly, since the
+  // annotator marks the element's OPENING `<`, not the exact reported position). Independent of
+  // `topProjectFrameSrc`'s own file/line matcher above (#558) so rects work even when that branch
+  // never installed (it only runs `if (win.addEventListener)`, a separate code path).
+  const elementAt = (file, line) => {
+    let best = null;
+    const nodes = win.document && win.document.querySelectorAll ? win.document.querySelectorAll('[' + ATTR + ']') : [];
+    for (const el of nodes) {
+      const m = /^(.*):(\d+):(\d+)$/.exec(el.getAttribute(ATTR) || '');
+      if (!m || m[1] !== file) continue;
+      const dist = Math.abs(Number(m[2]) - line);
+      if (!best || dist < best.dist) best = { dist, el };
+    }
+    return best ? best.el : null;
+  };
   // #375 -- Pick: off by default, so the app is a normal, clickable app until the Cockpit asks
   // to start picking (`{ type: 'construct:pick', on }`) or the user holds Alt. Off, every click
   // reaches the app untouched -- no preventDefault/stopPropagation, no `construct:select` --
@@ -96,7 +112,24 @@ export function installPreviewBridge(win) {
   let picking = false;
   win.addEventListener('message', (e) => {
     const d = e && e.data;
-    if (d && d.type === 'construct:pick') picking = Boolean(d.on);
+    if (!d) return;
+    if (d.type === 'construct:pick') { picking = Boolean(d.on); return; }
+    // #835 -- a batch rect request: `{ type: 'construct:rects-request', requestId, queries: [{key, file,
+    // line}] }`, answered once with every result, keyed back by the caller's own `key` (never the
+    // Cockpit's own internal node id -- this bridge knows nothing about the Cockpit's tree) and echoing
+    // `requestId` so an overlapping caller can match its own response. A query with nothing on screen
+    // gets `null`, not an error: the file may not be rendered right now.
+    if (d.type === 'construct:rects-request' && Array.isArray(d.queries)) {
+      const rects = {};
+      for (const q of d.queries) {
+        if (!q || typeof q.key !== 'string' || typeof q.file !== 'string' || typeof q.line !== 'number') continue;
+        const el = elementAt(q.file, q.line);
+        if (!el) { rects[q.key] = null; continue; }
+        const r = el.getBoundingClientRect();
+        rects[q.key] = { top: r.top, left: r.left, width: r.width, height: r.height };
+      }
+      win.parent.postMessage({ type: 'construct:rects', requestId: d.requestId, rects }, '*');
+    }
   });
   let hovered = null;
   win.document.addEventListener('mouseover', (e) => {

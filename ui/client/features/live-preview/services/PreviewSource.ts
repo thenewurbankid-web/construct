@@ -7,6 +7,14 @@
  * stack shows no "Show in source" button). Nothing else crosses. */
 export type PreviewSignal = { type: 'ready' } | { type: 'error'; message: string; src: string | null };
 
+/** #835 -- one element's bounding box, in the iframe's own viewport coordinates (the caller offsets by the
+ * frame's position on the page). */
+export type PreviewRect = { top: number; left: number; width: number; height: number };
+/** A request for the rect of the element nearest `file:line` (the bridge matches by line distance within
+ * the file, not an exact column -- see `previewBridge.mjs`'s `elementAt`). `key` is the caller's own id,
+ * echoed back; this bridge knows nothing about the Cockpit's tree or node ids. */
+export type PreviewRectQuery = { key: string; file: string; line: number };
+
 export interface PreviewSource {
   /** Page being previewed. */
   readonly url: string;
@@ -17,6 +25,10 @@ export interface PreviewSource {
   /** #375 -- tell the bridge whether Pick is on: off by default, an un-modified click reaches the
    * app untouched (Alt+Click always selects regardless, handled entirely on the bridge's side). */
   setPicking(on: boolean): void;
+  /** #835 -- ask the bridge for the rects of a batch of nodes; resolves with one entry per query `key`,
+   * `null` for a query with nothing currently rendered. Resolves to `{}` if the bridge never answers
+   * (not installed, or the frame navigated away) rather than hanging forever. */
+  requestRects(queries: PreviewRectQuery[]): Promise<Record<string, PreviewRect | null>>;
 }
 
 /** iframe transport: accepts `construct:*` messages only from the given
@@ -36,6 +48,21 @@ export function createIframePreviewSource(url: string, getFrameWindow: () => Win
     window.addEventListener('message', listener);
     return () => window.removeEventListener('message', listener);
   };
+  let nextRectsRequestId = 1;
+  const pendingRects = new Map<number, (rects: Record<string, PreviewRect | null>) => void>();
+  window.addEventListener('message', (e) => {
+    if (e.origin !== origin) return;
+    const frame = getFrameWindow();
+    if (!frame || e.source !== frame) return;
+    const d = e.data as { type?: unknown; requestId?: unknown; rects?: Record<string, PreviewRect | null> } | null;
+    if (d && d.type === 'construct:rects' && typeof d.requestId === 'number') {
+      const resolve = pendingRects.get(d.requestId);
+      if (resolve) {
+        pendingRects.delete(d.requestId);
+        resolve(d.rects ?? {});
+      }
+    }
+  });
   return {
     url,
     onSelect: (handler) => subscribe((d) => (d.type === 'construct:select' && typeof d.src === 'string' ? d.src : null), handler),
@@ -51,5 +78,13 @@ export function createIframePreviewSource(url: string, getFrameWindow: () => Win
       return null;
     }, handler),
     setPicking: (on) => getFrameWindow()?.postMessage({ type: 'construct:pick', on }, origin),
+    requestRects: (queries) => new Promise((resolve) => {
+      const requestId = nextRectsRequestId++;
+      pendingRects.set(requestId, resolve);
+      getFrameWindow()?.postMessage({ type: 'construct:rects-request', requestId, queries }, origin);
+      setTimeout(() => {
+        if (pendingRects.delete(requestId)) resolve({});
+      }, 1000);
+    }),
   };
 }

@@ -175,6 +175,45 @@ test('serialised script is self-contained and evaluates', () => {
   assert.ok(listeners.click);
 });
 
+/** A fake window whose DOM has annotated elements with a rect, for #835's rect-request. */
+function fakeRectWindow(elements) {
+  const base = fakeWindow();
+  base.win.document.querySelectorAll = () => elements.map(({ src, rect }) => ({
+    getAttribute: () => src,
+    getBoundingClientRect: () => rect,
+  }));
+  return base;
+}
+
+test('#835: construct:rects-request answers with the nearest-by-line element\'s rect per query key, echoing requestId', () => {
+  const { win, winListeners, posted } = fakeRectWindow([
+    { src: 'a.tsx:3:5', rect: { top: 1, left: 2, width: 3, height: 4 } },
+    { src: 'a.tsx:9:1', rect: { top: 10, left: 20, width: 30, height: 40 } },
+  ]);
+  installPreviewBridge(win);
+  posted.length = 0;
+  winListeners.message({
+    data: { type: 'construct:rects-request', requestId: 7, queries: [{ key: 'f1', file: 'a.tsx', line: 4 }, { key: 'f2', file: 'a.tsx', line: 9 }] },
+  });
+  assert.deepEqual(posted, [[{ type: 'construct:rects', requestId: 7, rects: { f1: { top: 1, left: 2, width: 3, height: 4 }, f2: { top: 10, left: 20, width: 30, height: 40 } } }, '*']]);
+});
+
+test('#835: a query for a file:line with nothing on screen resolves to null, not an error, and does not block the others', () => {
+  const { win, winListeners, posted } = fakeRectWindow([{ src: 'a.tsx:3:5', rect: { top: 1, left: 2, width: 3, height: 4 } }]);
+  installPreviewBridge(win);
+  posted.length = 0;
+  winListeners.message({ data: { type: 'construct:rects-request', requestId: 1, queries: [{ key: 'f1', file: 'nope.tsx', line: 1 }, { key: 'f2', file: 'a.tsx', line: 3 }] } });
+  assert.deepEqual(posted[0][0].rects, { f1: null, f2: { top: 1, left: 2, width: 3, height: 4 } });
+});
+
+test('#835: a malformed query (missing key/file/line) is skipped rather than crashing the whole batch', () => {
+  const { win, winListeners, posted } = fakeRectWindow([{ src: 'a.tsx:3:5', rect: { top: 1, left: 2, width: 3, height: 4 } }]);
+  installPreviewBridge(win);
+  posted.length = 0;
+  winListeners.message({ data: { type: 'construct:rects-request', requestId: 1, queries: [null, {}, { key: 'f1', file: 'a.tsx', line: 3 }] } });
+  assert.deepEqual(posted[0][0].rects, { f1: { top: 1, left: 2, width: 3, height: 4 } });
+});
+
 test('vite transform annotates tsx/jsx with root-relative paths, skips others and syntax errors', () => {
   const r = transformForPreview('export default () => <div/>;', '/root/src/A.tsx?x=1', '/root');
   assert.match(r.code, /data-cx-src="src\/A\.tsx:1:22"/);

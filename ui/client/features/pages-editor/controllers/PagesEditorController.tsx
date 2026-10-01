@@ -18,11 +18,11 @@ function PagesEditorScreen() {
   // not in usePagesEditor's own reducer: it is UI-only state private to the Change tab and the stage, and
   // never needs to survive a save/reload the way the tree/selection does.
   const [changeImpact, setChangeImpact] = useState<ChangeImpactPreview | null>(null);
-  usePagesEditorTabs(pagesEditor, setChangeImpact);
+  const { pins, onPinClick } = usePagesEditorTabs(pagesEditor, setChangeImpact);
   const onServerUrl = usePreviewServerUrl(pagesEditor.livePreview);
   // Commit-on-save (#283) and the dev server (#378) are composed in as slots: the Pages Editor knows
   // nothing about git or how a server is started, and the same controllers drop into any other edit surface.
-  return <PagesEditorPage {...pagesEditor} changeImpact={changeImpact} gitSession={<CommitIndicatorController />} devServer={<DevServerController onUrl={onServerUrl} />} />;
+  return <PagesEditorPage {...pagesEditor} changeImpact={changeImpact} pins={pins} onPinClick={onPinClick} gitSession={<CommitIndicatorController />} devServer={<DevServerController onUrl={onServerUrl} />} />;
 }
 
 export function PagesEditorController() {

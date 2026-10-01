@@ -6,6 +6,7 @@ import { isLocalPreviewUrl, normalizePreviewUrl } from '../domain/PreviewUrl';
 import { createIframePreviewSource } from '../services/PreviewSource';
 import { probePreview } from '../services/PreviewReachability';
 import type { LivePreviewView, PreviewReach } from '../domain/LivePreviewView';
+import type { PreviewRect, PreviewRectQuery } from '../services/PreviewSource';
 import { useFullScreenPreview } from './useFullScreenPreview';
 import { usePreviewSignals } from './usePreviewSignals';
 import { usePreviewSize } from './usePreviewSize';
@@ -155,5 +156,12 @@ export function usePreview({ onSourceSelected, onShowInSource }: PreviewArgs = {
     [draft, url, message, connect, disconnect, reach, retry, sizing, full, signals.plugin, signals.appError, signals.appErrorSrc, signals.dismissAppError, showInSource, picking, togglePick],
   );
 
-  return { draft, setDraft, url, message, frameRef, connect, connectTo, release, disconnect, fullScreen: full.fullScreen, view };
+  // #835 -- ask the bridge for the rects of a batch of nodes (by file:line); `{}` with no preview connected,
+  // never a rejected promise (a caller polling this must not need its own try/catch).
+  const requestRects = useCallback(
+    (queries: PreviewRectQuery[]): Promise<Record<string, PreviewRect | null>> => source?.requestRects(queries) ?? Promise.resolve({}),
+    [source],
+  );
+
+  return { draft, setDraft, url, message, frameRef, connect, connectTo, release, disconnect, fullScreen: full.fullScreen, view, requestRects };
 }

@@ -2,6 +2,12 @@
 // Types only — the frame box and the size readout arrive already computed
 // (see PreviewFrameStyle.ts), so the panel itself stays presentation.
 import type { Ref } from 'react';
+import type { PreviewRect } from '../services/PreviewSource';
+
+/** #835 -- one numbered marker over a node in the preview (a review finding, today; generic by design --
+ * this feature knows nothing about findings, only how to draw a numbered dot at a rect and report a click
+ * by the caller's own `id`). `rect: null` while nothing is on screen for it yet (not drawn, not an error). */
+export type LivePreviewPin = { id: string; number: number; rect: PreviewRect | null };
 
 /** A caller's pending refactor preview (pages-editor's Change tab, #381): one line, no paths, plus every file
  * the dry run says it will touch. Generic here on purpose -- this feature knows nothing about refactors, only
@@ -55,4 +61,7 @@ export type LivePreviewView = {
   /** #381 — the Inspector Change tab's pending refactor, drawn as a dashed-bordered card over the stage
    * ("Preview of the change... nothing is written until you approve"). Null when Change has no live preview. */
   impactPreview?: LivePreviewImpact | null;
+  /** #835 -- numbered pins over nodes in the preview (e.g. Review findings); empty/omitted draws none. */
+  pins?: LivePreviewPin[];
+  onPinClick?: (id: string) => void;
 };

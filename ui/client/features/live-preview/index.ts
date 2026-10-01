@@ -4,6 +4,9 @@
 /** What the panel is handed to draw, and the device-size/reach/plugin vocabulary. */
 export type * from './domain/LivePreviewView';
 
+/** #835 -- the rect/rect-query shapes `usePreview`'s `requestRects` takes and resolves. */
+export type { PreviewRect, PreviewRectQuery } from './services/PreviewSource';
+
 /** The preview of a dev server in an iframe: toolbar, empty/connecting states, the frame itself. */
 export * from './components/LivePreviewPanel';
 

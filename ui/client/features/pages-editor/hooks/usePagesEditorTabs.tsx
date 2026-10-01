@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo } from 'react';
-import { useRegisterShellTab, type ShellTab } from '@/features/shell';
+import { useCallback, useMemo, useState } from 'react';
+import { useRegisterShellTab, useShellTools, type ShellTab } from '@/features/shell';
+import type { LivePreviewPin } from '@/features/live-preview';
 import { ChangeTab } from '../components/ChangeTab';
 import { DiffTab } from '../components/DiffTab';
 import { InspectorPanel } from '../components/InspectorPanel';
@@ -13,6 +14,7 @@ import type { ChangeImpactPreview } from '../domain/ChangeImpact';
 import { useImpact } from './useImpact';
 import { useTestsCoverage } from './useTestsCoverage';
 import { useFileFindings } from './useFileFindings';
+import { useFindingPins } from './useFindingPins';
 import { usePageDiagnostics } from './usePageDiagnostics';
 import { useNodeNotes } from './useNodeNotes';
 import { useGitStatus } from './useGitStatus';
@@ -24,8 +26,10 @@ type Editor = ReturnType<typeof usePagesEditor>;
  * tree in the Browser pane and Inspector / Scope / Source / Change / Palette / Diff as Tools tabs.
  * Each tab is memoised on the data it shows so the registry only updates when that changes.
  * `onImpactPreview` (#381) lets the Change tab draw its dashed-box preview on the live app;
- * it lives one level up (PagesEditorController) since the preview and the Change tab are siblings. */
-export function usePagesEditorTabs(e: Editor, onImpactPreview: (v: ChangeImpactPreview | null) => void): void {
+ * it lives one level up (PagesEditorController) since the preview and the Change tab are siblings.
+ * Returns the #835 Findings pins + click handler so the caller can hand them to `LivePreviewPanel`
+ * (the shared panel's own `pins`/`onPinClick`, lives one level up next to the preview itself). */
+export function usePagesEditorTabs(e: Editor, onImpactPreview: (v: ChangeImpactPreview | null) => void): { pins: LivePreviewPin[]; onPinClick: (id: string) => void } {
   const { features, feature, files, filesLoading, file, tree, selectedNodeId, selectedNode, externalChange } = e;
   const { setFeature, openFile, selectNode, onTreeSaved, reloadFromDisk, dismissExternalChange, allPages, openPageOf, showAllPages } = e;
   const roots = tree?.roots ?? null;
@@ -46,6 +50,19 @@ export function usePagesEditorTabs(e: Editor, onImpactPreview: (v: ChangeImpactP
   // node, so the relevant list changes with the selection, not just the open file.
   const { notes: nodeNotes, addNote } = useNodeNotes(feature, file, selectedNodeId);
   const gitStatus = useGitStatus(feature, file, hash);
+  // #835 -- numbered pins for findings with a line, positioned via the shared preview's requestRects
+  // (packages/engine/previewBridge.mjs's rect-report protocol). Clicking one opens the matching finding
+  // in the Inspector's Findings section and switches the Tools pane to it.
+  const pins = useFindingPins(findings?.ok && findings.ready ? findings.findings : [], impact?.ok ? impact.path : null, e.livePreview.requestRects, true);
+  const tools = useShellTools();
+  const [openFindingId, setOpenFindingId] = useState<string | null>(null);
+  const onPinClick = useCallback(
+    (id: string) => {
+      setOpenFindingId(id);
+      tools.showTool('inspector');
+    },
+    [tools],
+  );
 
   const browserTab = useMemo<ShellTab>(
     () => ({
@@ -80,12 +97,12 @@ export function usePagesEditorTabs(e: Editor, onImpactPreview: (v: ChangeImpactP
       title: 'Inspector',
       render: () =>
         tree ? (
-          <InspectorPanel feature={feature} file={file} node={selectedNode} contentHash={hash} onSaved={onTreeSaved} withScope={false} impact={impact} testsCoverage={testsCoverage} findings={findings} diagnostics={diagnostics} nodeNotes={nodeNotes} onCreateNote={addNote} />
+          <InspectorPanel feature={feature} file={file} node={selectedNode} contentHash={hash} onSaved={onTreeSaved} withScope={false} impact={impact} testsCoverage={testsCoverage} findings={findings} openFindingId={openFindingId} diagnostics={diagnostics} nodeNotes={nodeNotes} onCreateNote={addNote} />
         ) : (
           <p className="hint">Open a page in the Browser to inspect its elements.</p>
         ),
     }),
-    [tree, feature, file, selectedNode, hash, onTreeSaved, impact, testsCoverage, findings, diagnostics, nodeNotes, addNote],
+    [tree, feature, file, selectedNode, hash, onTreeSaved, impact, testsCoverage, findings, openFindingId, diagnostics, nodeNotes, addNote],
   );
 
   const scopeTab = useMemo<ShellTab>(
@@ -148,4 +165,6 @@ export function usePagesEditorTabs(e: Editor, onImpactPreview: (v: ChangeImpactP
   useRegisterShellTab('tools', changeTab);
   useRegisterShellTab('tools', paletteTab);
   useRegisterShellTab('tools', diffTab);
+
+  return { pins, onPinClick };
 }

@@ -31,6 +31,8 @@ type InspectorPanelProps = {
   testsCoverage?: PageTestsCoverage | null;
   /** #831 -- fetched once by the caller (usePagesEditorTabs), keyed by the open file's resolved path. */
   findings?: FileFindings | null;
+  /** #835 -- the finding id a live-preview pin was just clicked for. */
+  openFindingId?: string | null;
   /** #833 -- fetched once by the caller (usePagesEditorTabs), scoped to the selected node here. */
   diagnostics?: PageDiagnostics | null;
   /** #832 -- notes anchored to the selected node, and a creator for a new one. */
@@ -38,7 +40,7 @@ type InspectorPanelProps = {
   onCreateNote?: (title: string) => void;
 };
 
-export function InspectorPanel({ feature, file, node, contentHash, onSaved, withScope = true, impact = null, testsCoverage = null, findings = null, diagnostics = null, nodeNotes = null, onCreateNote = () => {} }: InspectorPanelProps) {
+export function InspectorPanel({ feature, file, node, contentHash, onSaved, withScope = true, impact = null, testsCoverage = null, findings = null, openFindingId = null, diagnostics = null, nodeNotes = null, onCreateNote = () => {} }: InspectorPanelProps) {
   // "Looks freshly created" (no props wired yet) is decided once, the moment a node is
   // selected, and kept for the rest of that selection — not re-checked on every render.
   // Otherwise a successful "Suggested next steps" run (e.g. auto-map wiring a prop) would
@@ -79,7 +81,7 @@ export function InspectorPanel({ feature, file, node, contentHash, onSaved, with
       </details>
       <ImpactPanel impact={impact} />
       <TestsPanel coverage={testsCoverage} />
-      <PageFindingsPanel findings={findings} />
+      <PageFindingsPanel findings={findings} openId={openFindingId} />
       <NodeDiagnosticsPanel diagnostics={diagnostics} node={node} />
       <NodeNotesPanel notes={nodeNotes} onCreate={onCreateNote} />
       {withScope && !node.isFragment && <ScopePanel feature={feature} file={file} node={node} contentHash={contentHash} onSaved={onSaved} />}
