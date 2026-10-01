@@ -56,13 +56,15 @@ test.describe.serial('Features screen: browse in the left pane, open in the stag
     await expect(details.getByTestId('fc-tests')).toContainText('1 test file');
     await expect(details.getByTestId('fc-open-tests')).toHaveAttribute('href', '/tests');
     await expect(details.getByTestId('fc-open-workflows')).toHaveAttribute('href', '/workflows');
-    // #842: 3 real, correctly-scoped violations, not 0 -- Broken.tsx's own deliberate parse error
-    // (PARSE-ERROR), plus features/billing/tests/billing.spec.ts tripping SOC-001 twice (both
-    // architecture-enforcer.mjs's checkUnclassified and soc-enforcer.mjs's checkOwnership flag the
-    // undeclared tests/ folder). Declaring `nonLayer: ['features/*/tests/**']` (docs/GENERATED_TESTS.md)
-    // would clear the SOC-001 pair, but this fixture is shared with rules-tab-advanced.spec.js, which
-    // exercises adding/removing that exact glob starting from an empty list -- don't add it here.
-    await expect(details.getByTestId('fc-rules')).toContainText('3 errors');
+    // #842: 2 real, correctly-scoped violations, not 0 -- Broken.tsx's own deliberate parse error
+    // (PARSE-ERROR), plus features/billing/tests/billing.spec.ts tripping SOC-001 (architecture-enforcer.mjs's
+    // checkUnclassified and soc-enforcer.mjs's checkOwnership both flag the undeclared tests/ folder at the same
+    // (rule, file, line); #844 de-duplicates that pair in aggregateValidation, so it is one finding, not two --
+    // #845 updated this assertion from "3 errors" to match). Declaring `nonLayer: ['features/*/tests/**']`
+    // (docs/GENERATED_TESTS.md) would clear the SOC-001 finding entirely, but this fixture is shared with
+    // rules-tab-advanced.spec.js, which exercises adding/removing that exact glob starting from an empty list --
+    // don't add it here.
+    await expect(details.getByTestId('fc-rules')).toContainText('2 errors');
 
     await page.reload();
     await expect(page.getByTestId('fc-details').getByTestId('fc-name')).toHaveText('billing');
