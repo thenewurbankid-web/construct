@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { EmptyState } from '@/features/states';
 import { ListBrowser, useUrlSelection } from '@/features/list-browser';
+import { usePreview } from '@/features/live-preview';
 import { useRegisterShellTab, useShellStage, type ShellTab } from '@/features/shell';
 import { FeatureDetails } from '../components/FeatureDetails';
 import { FeatureFlowView } from '../components/FeatureFlowView';
@@ -31,6 +32,10 @@ export function FeaturesScreenController() {
   const name = feature?.name ?? null;
   const details = useFeatureSummary(name);
   const [view, setView] = useState<StructureView>('tree');
+  // #840 -- "Preview beside": off by default, no selection-sharing on the Features screen.
+  const [previewOn, setPreviewOn] = useState(false);
+  const togglePreview = useCallback(() => setPreviewOn((v) => !v), []);
+  const preview = usePreview();
   const [violationsLayer, setViolationsLayer] = useState<string | null>(null);
   useEffect(() => setViolationsLayer(null), [name]);
   const items = useMemo(() => toListItems(list.features), [list.features]);
@@ -90,6 +95,9 @@ export function FeaturesScreenController() {
         onChange={setView}
         tree={<FeatureDetails name={feature.name} view={details.view} loading={details.loading} error={details.error} onRetry={details.reload} onSelectViolations={setViolationsLayer} />}
         flow={<FeatureFlowView name={feature.name} missingLayers={details.view?.missingLayers ?? []} onAddLayer={openCreate} />}
+        previewOn={previewOn}
+        onTogglePreview={togglePreview}
+        previewView={preview.view}
       />
     );
   }
