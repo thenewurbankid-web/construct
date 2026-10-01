@@ -4,14 +4,16 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { EmptyState } from '@/features/states';
 import { ListBrowser, useUrlSelection } from '@/features/list-browser';
 import { useRegisterShellTab, useShellStage, type ShellTab } from '@/features/shell';
+import { ApiDetailCard } from '../components/ApiDetailCard';
 import { FeatureDetails } from '../components/FeatureDetails';
 import { FeatureFlowView } from '../components/FeatureFlowView';
 import { FeatureStructure } from '../components/FeatureStructure';
 import { LayerViolationsPanel } from '../components/LayerViolationsPanel';
 import type { StructureView } from '../components/StructureViewSwitch';
-import { findFeature, legacyNote, toListItems } from '../domain/FeatureView';
+import { apiFileFor, findFeature, legacyNote, toListItems } from '../domain/FeatureView';
 import { useFeatureList } from '../hooks/useFeatureList';
 import { useFeatureSummary } from '../hooks/useFeatureSummary';
+import type { FeatureFile } from '../types';
 import '../components/feature-catalog.css';
 
 // The stage's "Create" action lives in the dashboard feature's stage actions, composed into the same stage by the route;
@@ -32,7 +34,9 @@ export function FeaturesScreenController() {
   const details = useFeatureSummary(name);
   const [view, setView] = useState<StructureView>('tree');
   const [violationsLayer, setViolationsLayer] = useState<string | null>(null);
+  const [apiViewModel, setApiViewModel] = useState<FeatureFile | null>(null);
   useEffect(() => setViolationsLayer(null), [name]);
+  useEffect(() => setApiViewModel(null), [name]);
   const items = useMemo(() => toListItems(list.features), [list.features]);
   const note = list.status === 'ready' ? legacyNote(list.featuresRoot, list.legacy) : null;
   const { select } = selection;
@@ -83,12 +87,25 @@ export function FeaturesScreenController() {
   );
   useRegisterShellTab('tools', violationsTab);
 
+  // LIN-150: a view model's "API" action opens its adapter file here, in the detail-card slot that
+  // used to be the main panel's own API (adapter) layer card.
+  const apiFile = apiViewModel && details.view ? apiFileFor(apiViewModel, details.view.layers) : null;
+  const apiTab = useMemo<ShellTab>(
+    () => ({
+      id: 'feature-api',
+      title: 'API',
+      render: () => (apiViewModel ? <ApiDetailCard viewModel={apiViewModel} api={apiFile} /> : <p className="fc-hint fc-violations-summary">Click a view model&rsquo;s API action to see what it reaches here.</p>),
+    }),
+    [apiViewModel, apiFile],
+  );
+  useRegisterShellTab('tools', apiTab);
+
   if (feature) {
     return (
       <FeatureStructure
         view={view}
         onChange={setView}
-        tree={<FeatureDetails name={feature.name} view={details.view} loading={details.loading} error={details.error} onRetry={details.reload} onSelectViolations={setViolationsLayer} />}
+        tree={<FeatureDetails name={feature.name} view={details.view} loading={details.loading} error={details.error} onRetry={details.reload} onSelectViolations={setViolationsLayer} onSelectApi={setApiViewModel} />}
         flow={<FeatureFlowView name={feature.name} missingLayers={details.view?.missingLayers ?? []} onAddLayer={openCreate} />}
       />
     );
