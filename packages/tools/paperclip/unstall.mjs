@@ -45,6 +45,11 @@ const ACTIVE = ['in_progress', 'in_review'];
 /** A task nothing can ever wake: it has an assignee, no live run, and no future check. */
 const isStalled = (i) => Boolean(i.assigneeAgentId) && !i.executionRunId && !i.monitorNextCheckAt;
 
+/** A pending interaction whose continuationPolicy wakes the assignee on its own -- that is a live
+ *  continuation path, not a stall, even with no executionRunId/monitorNextCheckAt set (LIN-61/#559, #846). */
+const hasWakeInteraction = (interactions) =>
+  interactions.some((q) => q.status === 'pending' && ['wake_assignee', 'wake_assignee_on_accept'].includes(q.continuationPolicy));
+
 /** `blocked` with no dependency and no recovery action to explain it -- LIN-123's recovery artefact. */
 const isPhantomBlock = (i) => i.status === 'blocked' && !(i.blockedBy ?? []).length && !i.activeRecoveryAction;
 
@@ -82,7 +87,13 @@ async function main() {
     detailed.push(d?.issue ?? d);
   }
 
-  const stalled = detailed.filter((i) => ACTIVE.includes(i.status) && isStalled(i));
+  const stalledCandidates = detailed.filter((i) => ACTIVE.includes(i.status) && isStalled(i));
+  const stalled = [];
+  for (const i of stalledCandidates) {
+    const interactions = asList(await api.get(`/api/issues/${i.id}/interactions`));
+    if (hasWakeInteraction(interactions)) continue;
+    stalled.push(i);
+  }
   const phantom = detailed.filter(isPhantomBlock);
   const cycles = findCycles(detailed);
   const label = Object.fromEntries(detailed.map((i) => [i.id, i.identifier]));

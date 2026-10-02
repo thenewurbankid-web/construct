@@ -448,6 +448,20 @@ describe('apply.mjs against a mock Paperclip', () => {
     assert.match(r.stdout, /0 stalled/, 'a second report finds nothing left to restart');
   });
 
+  test('unstall.mjs does not report a stalled task that has a pending wake_assignee interaction (LIN-61/#559, #846)', async () => {
+    const companyId = mock.db.companies[0].id;
+    const agent = mock.db.agents.find((a) => a.name === 'Cockpit Dev');
+    const waiting = { id: randomUUID(), identifier: 'LIN-61', companyId, title: 'waiting on the owner', status: 'in_progress', assigneeAgentId: agent.id, executionRunId: null, monitorNextCheckAt: null, blockedBy: [], activeRecoveryAction: null };
+    mock.db.issues.push(waiting);
+    mock.db.interactions.push({ id: randomUUID(), issueId: waiting.id, kind: 'ask_user_questions', status: 'pending', continuationPolicy: 'wake_assignee' });
+
+    mock.log.length = 0;
+    const r = await node(UNSTALL, ['--api', mock.url]);
+    assert.equal(r.code, 0, r.stderr + r.stdout);
+    assert.match(r.stdout, /0 stalled/, 'a pending wake_assignee interaction is a live continuation path, not a stall');
+    assert.ok(!r.stdout.includes(waiting.identifier), `${waiting.identifier} must not be reported STALLED`);
+  });
+
   test('unstall.mjs refuses a non-loopback API host unless --allow-remote is passed', async () => {
     const r = await node(UNSTALL, ['--api', 'http://paperclip.example.com']);
     assert.equal(r.code, 1);

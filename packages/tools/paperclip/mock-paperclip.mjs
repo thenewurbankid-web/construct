@@ -14,7 +14,7 @@ const merge = (a, b) => {
 };
 
 export async function startMock({ leakSecretOn = null } = {}) {
-  const db = { companies: [], agents: [], goals: [], labels: [], issues: [], policies: [], files: {}, projects: [], workspaces: [] };
+  const db = { companies: [], agents: [], goals: [], labels: [], issues: [], policies: [], files: {}, projects: [], workspaces: [], interactions: [] };
   const log = [];
   const policyFor = (scopeType, scopeId) => db.policies.find((p) => p.scopeType === scopeType && p.scopeId === scopeId);
   const upsertPolicy = (companyId, scopeType, scopeId, amount, extra = {}) => {
@@ -171,6 +171,9 @@ export async function startMock({ leakSecretOn = null } = {}) {
     if ((m = /^\/api\/issues\/([^/]+)$/.exec(p)) && req.method === 'GET') {
       const i = db.issues.find((x) => x.id === m[1]);
       return i ? send(200, i) : send(404, { error: 'no such issue' });
+    }
+    if ((m = /^\/api\/issues\/([^/]+)\/interactions$/.exec(p)) && req.method === 'GET') {
+      return send(200, db.interactions.filter((q) => q.issueId === m[1]));
     }
     return send(404, { error: `no mock route for ${req.method} ${p}` });
   }
