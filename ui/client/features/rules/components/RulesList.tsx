@@ -1,4 +1,4 @@
-import type { RuleEditApi, RuleRow, RuleSeverity, RulesViewModel } from '../types';
+import type { PresetApi, RuleEditApi, RuleRow, RuleSeverity, RulesViewModel } from '../types';
 
 const SEVERITIES: RuleSeverity[] = ['error', 'warning', 'off'];
 
@@ -65,9 +65,67 @@ function SeverityEditor({ row, edit }: { row: RuleRow; edit: RuleEditApi }) {
   );
 }
 
+/** The active preset's name with a "Change preset" action, and (while a switch is in flight) its reviewable
+ * diff with Save/Cancel -- #395 slice 6. Only `strict-nextjs` exists today, so "Change preset" re-applies it,
+ * surfacing exactly which rules' severities would reset before anything is written. */
+function PresetLine({ preset }: { preset: PresetApi }) {
+  if (preset.state) {
+    const editing = preset.state;
+    return (
+      <div className="ru-preset ru-edit" data-testid="preset-edit">
+        {editing.status === 'previewing' && <p className="hint">Previewing...</p>}
+        {(editing.status === 'ready' || editing.status === 'saving') && (
+          <>
+            <p className="hint" data-testid="preset-edit-summary">
+              {editing.changes.length === 0
+                ? 'No rules would change.'
+                : `${editing.changes.length} rule${editing.changes.length === 1 ? '' : 's'} would change severity.`}
+            </p>
+            {editing.changes.length > 0 && (
+              <ul className="ru-preset-diff" data-testid="preset-edit-diff">
+                {editing.changes.map((c) => (
+                  <li key={c.ruleId}>
+                    {c.ruleId}: {c.before} → {c.after}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="ru-edit-actions">
+              <button type="button" className="dg-btn dg-btn--primary" data-testid="preset-edit-save" onClick={preset.confirm} disabled={editing.status === 'saving'}>
+                {editing.status === 'saving' ? 'Saving...' : 'Confirm'}
+              </button>
+              <button type="button" className="dg-btn" data-testid="preset-edit-cancel" onClick={preset.cancel} disabled={editing.status === 'saving'}>
+                Cancel
+              </button>
+            </div>
+          </>
+        )}
+        {editing.status === 'error' && (
+          <>
+            <p className="ru-edit-error" role="alert" data-testid="preset-edit-error">
+              {editing.error}
+            </p>
+            <button type="button" className="dg-btn" data-testid="preset-edit-cancel" onClick={preset.cancel}>
+              Cancel
+            </button>
+          </>
+        )}
+      </div>
+    );
+  }
+  return (
+    <div className="ru-preset" data-testid="preset-line">
+      <span data-testid="preset-active">Preset: {preset.active}</span>
+      <button type="button" className="dg-btn" data-testid="preset-change" onClick={() => preset.start(preset.active)}>
+        Change preset
+      </button>
+    </div>
+  );
+}
+
 /** Every rule for this project, one row per id: severity (editable, #395 slice B), live violation count, and the
  * plain-words "why". */
-export function RulesList({ view, onRun, edit }: { view: RulesViewModel; onRun: () => void; edit: RuleEditApi }) {
+export function RulesList({ view, onRun, edit, preset }: { view: RulesViewModel; onRun: () => void; edit: RuleEditApi; preset: PresetApi }) {
   const toolbar = (
     <div className="ru-bar">
       <span className="ru-summary" aria-live="polite" data-testid="rules-summary">
@@ -76,6 +134,7 @@ export function RulesList({ view, onRun, edit }: { view: RulesViewModel; onRun: 
       <button type="button" className="dg-btn" data-testid="rules-run" onClick={onRun} disabled={view.running}>
         {view.running ? 'Reading...' : 'Refresh'}
       </button>
+      <PresetLine preset={preset} />
     </div>
   );
 

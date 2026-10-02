@@ -150,7 +150,7 @@ export type GlobListApi = {
 
 // #395 slice 5 -- project.framework (route adapter) and features.root, read together and edited one field at a
 // time. Same reducer shape as RuleEdit/GlobList, generalized to a `field` discriminator instead of a rule id.
-export type ProjectSettings = { framework: string; featuresRoot: string };
+export type ProjectSettings = { framework: string; featuresRoot: string; preset: string };
 
 export type ProjectSettingsStatus = 'idle' | 'running' | 'ready' | 'error';
 export type ProjectSettingsState = { status: ProjectSettingsStatus; value: ProjectSettings | null; error: string | null };
@@ -181,6 +181,37 @@ export type ProjectSettingsApi = {
   state: ProjectSettingsState;
   edit: ProjectEditState;
   start: (field: ProjectSettingField, value: string) => void;
+  confirm: () => void;
+  cancel: () => void;
+};
+
+// #395 slice 6 -- switch to a named preset (today, just `strict-nextjs`), as a confirmed bulk-severity diff.
+// Same reducer shape as RuleEdit, but the diff carries a per-rule before/after list instead of one rule.
+export type PresetChange = { ruleId: string; before: RuleSeverity; after: RuleSeverity };
+
+export type PresetEditStatus = 'previewing' | 'ready' | 'saving' | 'error';
+export type PresetEditState = {
+  preset: string;
+  status: PresetEditStatus;
+  before: string;
+  after: string;
+  contentHash: string;
+  changes: PresetChange[];
+  error: string | null;
+} | null;
+
+export type PresetEditAction =
+  | { type: 'START'; preset: string }
+  | { type: 'PREVIEW_OK'; before: string; after: string; contentHash: string; changes: PresetChange[] }
+  | { type: 'PREVIEW_FAIL'; error: string }
+  | { type: 'SAVE' }
+  | { type: 'SAVE_FAIL'; error: string }
+  | { type: 'CANCEL' };
+
+export type PresetApi = {
+  active: string;
+  state: PresetEditState;
+  start: (preset: string) => void;
   confirm: () => void;
   cancel: () => void;
 };

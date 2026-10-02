@@ -28,7 +28,7 @@ export const rulesIndex = (root) => {
       exceptions: readExceptions(root),
       nonLayer: config.nonLayer,
       frozen: config.frozen,
-      project: { framework: config.project.framework, featuresRoot: config.features.root },
+      project: { framework: config.project.framework, featuresRoot: config.features.root, preset: config.preset },
     },
   };
 };
@@ -199,6 +199,44 @@ export function projectSettingsSave(root, body) {
   return { status: 200, body: { ok: true, contentHash: hashOf(after), project: { framework: config.project.framework, featuresRoot: config.features.root } } };
 }
 
+/** The one named preset today (#395 slice 6, `docs/design/rules-envelopes.md` open question 3):
+ * `strict-nextjs`, i.e. `DEFAULT_RULES`'s severities. Applying it means resetting every rule's
+ * `rules:` override to that preset's severity -- a bulk change, so the diff a client previews
+ * must show which rules would actually change, not just the raw YAML text. */
+const PRESETS = {
+  'strict-nextjs': Object.fromEntries(
+    Object.entries(DEFAULT_RULES).filter(([, r]) => !r.numeric).map(([id, r]) => [id, r.severity]),
+  ),
+};
+
+/** Preview or save switching to a named preset (#395 slice 6) -- a confirmed bulk severity change,
+ * never a silent apply. The diff reported is per-rule (ruleId, before, after) for only the rules a
+ * preset switch would actually change, on top of the usual before/after YAML text and contentHash.
+ * Same preview/commit/contentHash/validateArchitectureConfig shape as the other four writers. */
+export function presetApply(root, body) {
+  const { preset, contentHash, commit } = body ?? {};
+  if (typeof preset !== 'string' || !PRESETS[preset]) return err(400, 'BAD_PRESET', `preset must be one of: ${Object.keys(PRESETS).join(', ')}.`);
+  const before = readRaw(root);
+  const proposed = parseRaw(before);
+  const current = { ...(proposed.rules || {}) };
+  const target = PRESETS[preset];
+  const changes = Object.entries(target)
+    .filter(([ruleId, severity]) => (current[ruleId] ?? DEFAULT_RULES[ruleId].severity) !== severity)
+    .map(([ruleId, severity]) => ({ ruleId, before: current[ruleId] ?? DEFAULT_RULES[ruleId].severity, after: severity }));
+  proposed.rules = { ...current, ...target };
+  proposed.preset = preset;
+
+  if (commit !== true) {
+    return { status: 200, body: { ok: true, before, after: yaml.dump(proposed), contentHash: hashOf(before), changed: changes.length > 0, changes } };
+  }
+  if (contentHash !== hashOf(before)) return err(409, 'CHANGED_ON_DISK', 'architecture.yml changed on disk since it was loaded; re-read it and redo the edit.');
+  const { valid, errors } = validateArchitectureConfig(proposed);
+  if (!valid) return err(422, 'INVALID', 'That change would produce an invalid architecture.yml.', { errors });
+  const after = yaml.dump(proposed);
+  fs.writeFileSync(archPath(root), after);
+  return { status: 200, body: { ok: true, preset, changes, contentHash: hashOf(after), rules: listRules(root) } };
+}
+
 /** @param {{getRoot: () => {ok:true, root:string} | {ok:false, error:string}, clientOrigin?: string, afterSave?: (root:string, rel:string) => unknown}} deps */
 export function createRulesRouter({ getRoot, clientOrigin, afterSave = () => null }) {
   const router = express.Router();
@@ -238,6 +276,11 @@ export function createRulesRouter({ getRoot, clientOrigin, afterSave = () => nul
   }));
   router.post('/project', handle((root, req) => {
     const out = projectSettingsSave(root, req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {});
+    if (out.status === 200 && out.body.ok && req.body?.commit === true) afterSave(root, 'architecture.yml');
+    return out;
+  }));
+  router.post('/preset', handle((root, req) => {
+    const out = presetApply(root, req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {});
     if (out.status === 200 && out.body.ok && req.body?.commit === true) afterSave(root, 'architecture.yml');
     return out;
   }));

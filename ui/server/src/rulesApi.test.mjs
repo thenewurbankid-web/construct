@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { makeTempDir } from '../../../test-utils/tmpdir.mjs';
-import { rulesIndex, ruleSeveritySave, ruleExceptionSave, globListSave, projectSettingsSave } from './rulesApi.mjs';
+import { rulesIndex, ruleSeveritySave, ruleExceptionSave, globListSave, projectSettingsSave, presetApply } from './rulesApi.mjs';
 
 const hashOf = (text) => crypto.createHash('sha256').update(text).digest('hex');
 
@@ -179,7 +179,7 @@ test('globListSave remove commits the removal', () => {
 test('GET /api/rules reports project.framework and project.featuresRoot, defaulted with no architecture.yml', () => {
   const dir = makeTempDir('rules-api-project-');
   const { body } = rulesIndex(dir);
-  assert.deepEqual(body.project, { framework: 'nextjs', featuresRoot: 'features' });
+  assert.deepEqual(body.project, { framework: 'nextjs', featuresRoot: 'features', preset: 'strict-nextjs' });
 });
 
 test('projectSettingsSave refuses no fields, a blank featuresRoot, or an unknown framework before touching anything', () => {
@@ -211,4 +211,44 @@ test('projectSettingsSave commits framework without touching an existing feature
   const saved = projectSettingsSave(dir, { framework: 'react-spa', contentHash: hashOf(before), commit: true });
   assert.equal(saved.status, 200);
   assert.deepEqual(saved.body.project, { framework: 'react-spa', featuresRoot: 'custom-features' });
+});
+
+// #395 slice 6 -- preset switch as a confirmed bulk-severity diff, same preview/commit shape.
+
+test('presetApply refuses an unknown preset before touching anything', () => {
+  const dir = makeTempDir('rules-api-preset-');
+  assert.equal(presetApply(dir, { preset: 'bogus-preset', commit: true }).status, 400);
+  assert.equal(fs.existsSync(path.join(dir, 'architecture.yml')), false);
+});
+
+test('presetApply preview reports only the rules a preset switch would actually change, writes nothing', () => {
+  const dir = makeTempDir('rules-api-preset-');
+  const before = 'version: 1\nrules:\n  PAGE-001: off\n';
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), before);
+  const { status, body } = presetApply(dir, { preset: 'strict-nextjs', commit: false });
+  assert.equal(status, 200);
+  assert.equal(body.ok, true);
+  assert.equal(body.changed, true);
+  assert.ok(body.changes.some((c) => c.ruleId === 'PAGE-001' && c.before === 'off'));
+  assert.equal(fs.readFileSync(path.join(dir, 'architecture.yml'), 'utf8'), before);
+});
+
+test('presetApply preview on an already-default project reports no changes', () => {
+  const dir = makeTempDir('rules-api-preset-');
+  const { body } = presetApply(dir, { preset: 'strict-nextjs', commit: false });
+  assert.equal(body.changed, false);
+  assert.deepEqual(body.changes, []);
+});
+
+test('presetApply commit writes the reset severities and is refused (409) on a stale contentHash', () => {
+  const dir = makeTempDir('rules-api-preset-');
+  const before = 'version: 1\nrules:\n  PAGE-001: off\n';
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), before);
+  assert.equal(presetApply(dir, { preset: 'strict-nextjs', contentHash: hashOf(''), commit: true }).status, 409);
+
+  const saved = presetApply(dir, { preset: 'strict-nextjs', contentHash: hashOf(before), commit: true });
+  assert.equal(saved.status, 200);
+  assert.equal(saved.body.preset, 'strict-nextjs');
+  const page001 = rulesIndex(dir).body.rules.find((r) => r.id === 'PAGE-001');
+  assert.equal(page001.severity, page001.defaultSeverity);
 });

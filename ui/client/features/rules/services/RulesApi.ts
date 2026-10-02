@@ -2,7 +2,7 @@
 // does not reinvent validation (docs/design/rules-envelopes.md section 0), it only reads `body.summary`, the same
 // per-rule grouping #758 added for this purpose.
 import { getJson, postJson } from '@/lib/http';
-import type { ExceptionRow, GlobField, NewException, ProjectSettingField, ProjectSettings, RuleRow, RuleSeverity, RuleSummaryEntry } from '../types';
+import type { ExceptionRow, GlobField, NewException, PresetChange, ProjectSettingField, ProjectSettings, RuleRow, RuleSeverity, RuleSummaryEntry } from '../types';
 
 export type RulesResult = { ok: true; rows: RuleRow[] } | { ok: false; error: string };
 
@@ -190,6 +190,36 @@ export async function previewProjectSetting(field: ProjectSettingField, value: s
 export async function saveProjectSetting(field: ProjectSettingField, value: string, contentHash: string): Promise<RuleSeveritySaved> {
   try {
     const body = await postJson<ProjectSettingsResponse>('/api/rules/project', projectSettingBody(field, value, { contentHash, commit: true }));
+    if (!body.ok) return { ok: false, error: body.error ?? 'Could not save that change.' };
+    return { ok: true };
+  } catch {
+    return { ok: false, error: 'Could not reach the Construct server.' };
+  }
+}
+
+// #395 slice 6 -- switch to a named preset (today, just `strict-nextjs`), a confirmed bulk-severity diff.
+
+export type PresetDiff = { ok: true; before: string; after: string; contentHash: string; changes: PresetChange[] } | { ok: false; error: string };
+
+type PresetResponse = SeverityResponse & { changes?: PresetChange[] };
+
+/** The per-rule severity diff switching to `preset` would make, computed but not written (`commit: false`). */
+export async function previewPreset(preset: string): Promise<PresetDiff> {
+  try {
+    const body = await postJson<PresetResponse>('/api/rules/preset', { preset, commit: false });
+    if (!body.ok || body.before === undefined || body.after === undefined || body.contentHash === undefined) {
+      return { ok: false, error: body.error ?? 'Could not preview that change.' };
+    }
+    return { ok: true, before: body.before, after: body.after, contentHash: body.contentHash, changes: body.changes ?? [] };
+  } catch {
+    return { ok: false, error: 'Could not reach the Construct server.' };
+  }
+}
+
+/** Commits a preset switch previewed via `previewPreset`; same staleness guard as `saveRuleSeverity`. */
+export async function savePreset(preset: string, contentHash: string): Promise<RuleSeveritySaved> {
+  try {
+    const body = await postJson<PresetResponse>('/api/rules/preset', { preset, contentHash, commit: true });
     if (!body.ok) return { ok: false, error: body.error ?? 'Could not save that change.' };
     return { ok: true };
   } catch {

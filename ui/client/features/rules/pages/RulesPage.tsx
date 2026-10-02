@@ -1,7 +1,7 @@
 import { AdvancedPanel } from '../components/AdvancedPanel';
 import { ExceptionsPanel } from '../components/ExceptionsPanel';
 import { RulesList } from '../components/RulesList';
-import type { ExceptionsApi, GlobListApi, ProjectSettingsApi, RuleEditApi, RulesViewModel } from '../types';
+import type { ExceptionsApi, GlobListApi, PresetApi, ProjectSettingsApi, RuleEditApi, RulesViewModel } from '../types';
 
 // Presentation-only: all state comes from the controller.
 export function RulesPage({
@@ -12,6 +12,7 @@ export function RulesPage({
   nonLayer,
   frozen,
   project,
+  preset,
 }: {
   view: RulesViewModel;
   onRun: () => void;
@@ -20,10 +21,11 @@ export function RulesPage({
   nonLayer: GlobListApi;
   frozen: GlobListApi;
   project: ProjectSettingsApi;
+  preset: PresetApi;
 }) {
   return (
     <div className="ru-page">
-      <RulesList view={view} onRun={onRun} edit={edit} />
+      <RulesList view={view} onRun={onRun} edit={edit} preset={preset} />
       <ExceptionsPanel exceptions={exceptions} rules={view.rows} />
       <AdvancedPanel nonLayer={nonLayer} frozen={frozen} project={project} />
     </div>
