@@ -1,7 +1,37 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T18:00:35.861Z",
+  "generatedAt": "2026-10-04T18:13:17.726Z",
   "runs": [
+    {
+      "id": "run-2026-10-04T18-09-06-207Z",
+      "spec": "ui.shadcn.com",
+      "model": "qwen2.5-coder:7b + qwen3:4b",
+      "startedAt": "2026-10-04T18:09:07.344Z",
+      "finishedAt": "2026-10-04T18:13:17.349Z",
+      "status": "finished",
+      "counts": {
+        "stored": 0,
+        "extended": 1,
+        "reused": 0,
+        "review": 0,
+        "skipped": 3
+      }
+    },
+    {
+      "id": "run-2026-10-04T18-02-51-755Z",
+      "spec": "ui.shadcn.com",
+      "model": "qwen2.5-coder:7b + qwen3:4b",
+      "startedAt": "2026-10-04T18:02:52.027Z",
+      "finishedAt": "2026-10-04T18:07:59.871Z",
+      "status": "finished",
+      "counts": {
+        "stored": 1,
+        "extended": 0,
+        "reused": 0,
+        "review": 2,
+        "skipped": 1
+      }
+    },
     {
       "id": "run-2026-10-04T17-59-53-932Z",
       "spec": "hn.algolia.com",
@@ -387,6 +417,27 @@
           {
             "page": "https://hn.algolia.com/",
             "blockId": "1025b1268a9b2d10",
+            "via": "store"
+          }
+        ],
+        "aliases": []
+      },
+      {
+        "name": "button-with-dropdown",
+        "level": "organism",
+        "latestVersion": 1,
+        "versions": [
+          {
+            "number": 1,
+            "createdAt": "2026-10-04T18:06:38.602Z",
+            "how": "store"
+          }
+        ],
+        "updatedAt": "2026-10-04T18:06:38.602Z",
+        "whereUsed": [
+          {
+            "page": "https://ui.shadcn.com/docs/components/base/button",
+            "blockId": "8f28f8ee813e852c",
             "via": "store"
           }
         ],
@@ -820,16 +871,21 @@
       },
       {
         "name": "interactive-card",
-        "level": "molecule",
-        "latestVersion": 1,
+        "level": "organism",
+        "latestVersion": 2,
         "versions": [
           {
             "number": 1,
             "createdAt": "2026-10-02T08:33:58.642Z",
             "how": "store"
+          },
+          {
+            "number": 2,
+            "createdAt": "2026-10-04T18:11:39.900Z",
+            "how": "extend"
           }
         ],
-        "updatedAt": "2026-10-02T08:33:58.642Z",
+        "updatedAt": "2026-10-04T18:11:39.900Z",
         "whereUsed": [
           {
             "page": "https://stripe.com/de",
@@ -840,9 +896,33 @@
             "page": "https://stripe.com/de",
             "blockId": "9adac4482fab86d1",
             "via": "store"
+          },
+          {
+            "page": "https://ui.shadcn.com/docs/components/base/card",
+            "blockId": "7da8fe66e01bf6cc",
+            "via": "extend"
           }
         ],
-        "aliases": []
+        "aliases": [
+          {
+            "what": "field",
+            "alias": "Content Text",
+            "storedName": "Content",
+            "version": 1
+          },
+          {
+            "what": "field",
+            "alias": "Header Text",
+            "storedName": "Title",
+            "version": 1
+          },
+          {
+            "what": "part",
+            "alias": "Header",
+            "storedName": "Title",
+            "version": 1
+          }
+        ]
       },
       {
         "name": "responsive-design-feature",
@@ -997,10 +1077,82 @@
             "version": 2
           },
           {
+            "what": "field",
+            "alias": "Search Placeholder",
+            "storedName": "Search Placeholder Text",
+            "version": 5
+          },
+          {
+            "what": "field",
+            "alias": "Search Placeholder",
+            "storedName": "Search Placeholder Text",
+            "version": 5
+          },
+          {
+            "what": "field",
+            "alias": "Search Placeholder",
+            "storedName": "Search Placeholder Text",
+            "version": 5
+          },
+          {
+            "what": "part",
+            "alias": "Menu Button",
+            "storedName": "Menu Item",
+            "version": 5
+          },
+          {
+            "what": "part",
+            "alias": "Menu Button",
+            "storedName": "Menu Item",
+            "version": 5
+          },
+          {
+            "what": "part",
+            "alias": "Menu Button",
+            "storedName": "Menu Item",
+            "version": 5
+          },
+          {
             "what": "part",
             "alias": "Mobile Menu Button",
             "storedName": "Hamburger Menu",
             "version": 4
+          },
+          {
+            "what": "part",
+            "alias": "Navigation Links",
+            "storedName": "Sub-Item",
+            "version": 5
+          },
+          {
+            "what": "part",
+            "alias": "Navigation Links",
+            "storedName": "Sub-Item",
+            "version": 5
+          },
+          {
+            "what": "part",
+            "alias": "Navigation Links",
+            "storedName": "Sub-Item",
+            "version": 5
+          },
+          {
+            "what": "part",
+            "alias": "New Button",
+            "storedName": "Call-to-Action Button",
+            "version": 5
+          },
+          {
+            "what": "part",
+            "alias": "New Button",
+            "storedName": "Call-to-Action Button",
+            "version": 5
+          },
+          {
+            "what": "part",
+            "alias": "New Button",
+            "storedName": "Call-to-Action Button",
+            "version": 5
           }
         ]
       },
@@ -1114,7 +1266,7 @@
     ]
   },
   "reviewQueue": {
-    "open": 3,
+    "open": 5,
     "resolved": 12
   }
 }
