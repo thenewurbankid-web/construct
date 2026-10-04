@@ -7,7 +7,7 @@ import { parseSnapshot, renderVisionStatus, duration } from '../../packages/docs
 import { makeTempDir } from '../../test-utils/tmpdir.mjs';
 
 const BUILD_TIME = new Date('2026-10-04T00:00:00Z');
-const SAMPLE = JSON.parse(fs.readFileSync(new URL('./fixtures/vision-status.sample.json', import.meta.url), 'utf8'));
+const SAMPLE = JSON.parse(fs.readFileSync(new URL('./fixtures/vision-status.json', import.meta.url), 'utf8'));
 const walk = (d, files = []) => {
   for (const e of fs.readdirSync(d, { withFileTypes: true })) (e.isDirectory() ? walk(path.join(d, e.name), files) : files.push(path.join(d, e.name)));
   return files;
@@ -15,29 +15,50 @@ const walk = (d, files = []) => {
 const hostile = () => {
   const s = structuredClone(SAMPLE);
   s.runs[0].spec = '<script>alert(1)</script>';
+  s.runs[1].status = '"><b>x</b>';
   s.library.components[0].name = '<script>alert("x")</script>';
-  s.library.components[0].whereUsed = ['"><img src=x onerror=alert(1)>'];
+  s.library.components[0].whereUsed = [{ page: '"><img src=x onerror=alert(1)>', via: 'store' }];
   return s;
 };
 const read = (out, rel) => fs.readFileSync(path.join(out, rel), 'utf8');
 const buildVision = async (opts = {}) => {
   const out = makeTempDir('vision-test-');
-  await build({ out, repo: 'o/r', buildTime: BUILD_TIME, api: false, ...opts });
+  const visionSnapshot = opts.repoRoot ? undefined : SAMPLE; // never fall through to site/data/
+  await build({ out, repo: 'o/r', buildTime: BUILD_TIME, api: false, visionSnapshot, ...opts });
   return out;
 };
 
-test('the committed sample parses and renders runs newest first and every component', () => {
+test('the fixture parses and renders runs newest first and every component', () => {
   const html = renderVisionStatus(parseSnapshot(SAMPLE));
-  assert.ok(html.indexOf('sample-run-0003') < html.indexOf('sample-run-0002') && html.indexOf('sample-run-0002') < html.indexOf('sample-run-0001'));
-  for (const n of ['PrimaryButton', 'PricingCard', 'HeroSection']) assert.match(html, new RegExp(n));
+  assert.ok(html.indexOf('fake-run-0004') < html.indexOf('fake-run-0003') && html.indexOf('fake-run-0003') < html.indexOf('fake-run-0002') && html.indexOf('fake-run-0002') < html.indexOf('fake-run-0001'));
+  for (const n of ['fake-button', 'fake-card', 'fake-hero']) assert.match(html, new RegExp(n));
   assert.match(html, /<caption>/);
   assert.match(html, /<th scope="col">Duration<\/th>/);
-  assert.match(html, />running</);
+  assert.match(html, /<th scope="col" class="vs-n">Extended<\/th>/);
+  assert.match(html, /The five counts/);
+  assert.doesNotMatch(html, />running</);
+  assert.match(html, />no report</);
   assert.match(html, />42 min 30 s</);
-  assert.match(html, /<span class="vs-badge vs-badge-failed">failed<\/span>/);
-  assert.match(html, /Used in 2 places/);
-  assert.match(html, /Name matches: <code>Banner<\/code>/);
+  for (const s of ['finished', 'stopped', 'unfinished']) assert.match(html, new RegExp(`<span class="vs-badge vs-badge-${s}">${s}</span>`));
+  assert.match(html, /wrote its report/);
+  assert.match(html, /ended early \(quota or budget\)/);
+  assert.match(html, /no report: still going, or ended without one/);
+  assert.match(html, /<td class="vs-n">3<\/td><td class="vs-n">5<\/td>/);
+  assert.match(html, /Used on 2 pages/);
+  assert.match(html, /https:\/\/example\.test\/pricing <span class="vs-via">\(reuse, store\)<\/span>/);
+  assert.match(html, /page not public <span class="vs-via">\(store\)<\/span>/);
+  assert.match(html, /Also known as: <code>Fake CTA<\/code>/);
+  assert.match(html, /latest <strong>2<\/strong>/);
+  assert.match(html, /<strong>1<\/strong>, 2026-09-28, store/);
   assert.match(html, /<label for="vs-q">/);
+});
+
+test('null spec, model, latestVersion and updatedAt render an en dash, never "null" or an empty cell', () => {
+  const html = renderVisionStatus(parseSnapshot(SAMPLE));
+  assert.doesNotMatch(html, /null|undefined|<td><\/td>/);
+  assert.match(html, /<code>fake-run-0004<\/code><\/th><td>\u2013<\/td><td>\u2013<\/td>/);
+  assert.match(html, /latest <strong>\u2013<\/strong>, updated \u2013<\/p>/);
+  assert.match(html, /fake-model-a \+ fake-model-b/);
 });
 
 test('values are HTML-escaped', () => {
@@ -50,11 +71,11 @@ test('values are HTML-escaped', () => {
 
 test('as-of stamp: time element, plain UTC string, counts', () => {
   const html = renderVisionStatus(parseSnapshot(SAMPLE));
-  assert.match(html, /As of <time datetime="2026-10-04T09:30:00.000Z">2026-10-04 09:30 UTC<\/time>: 3 runs and 3 components\./);
+  assert.match(html, /As of <time datetime="2026-10-04T09:30:00.000Z">2026-10-04 09:30 UTC<\/time>: 4 runs and 3 components\./);
 });
 
 test('duration', () => {
-  assert.equal(duration('2026-10-04T00:00:00Z', null), 'running');
+  assert.equal(duration('2026-10-04T00:00:00Z', null), 'no report');
   assert.equal(duration('2026-10-04T00:00:00Z', '2026-10-04T00:00:20Z'), '20 s');
   assert.equal(duration('2026-10-04T00:00:00Z', '2026-10-04T02:05:00Z'), '2 h 5 min');
 });
@@ -64,7 +85,7 @@ test('missing, malformed or unknown-schema snapshots show "No snapshot yet" and 
     const out = await buildVision({ visionSnapshot: snap });
     const page = read(out, 'vision/index.html');
     assert.match(page, /No snapshot yet/);
-    assert.doesNotMatch(page, /sample-run/);
+    assert.doesNotMatch(page, /fake-run/);
   }
   // No site/data/vision-status.json at all: a repo mirror (symlinks) whose site/ has no data/ directory.
   const repoRoot = makeTempDir('vision-norepo-');
@@ -105,15 +126,4 @@ test('base-path variants: the section works under /construct/ and /construct/1.2
 test('no absolute /Users/ path anywhere in the built output', async () => {
   const out = await buildVision();
   for (const f of walk(out).filter((x) => /\.(html|txt|json|js|css)$/.test(x))) assert.doesNotMatch(fs.readFileSync(f, 'utf8'), /\/Users\//, f);
-});
-
-test('real export shapes: where-used and alias objects are listed, repeated aliases once', () => {
-  const s = structuredClone(SAMPLE);
-  s.library.components[0].whereUsed = [{ page: 'https://example.com/', blockId: 'abcdef0123456789', via: 'reuse' }, { page: null, blockId: '0011223344556677', via: 'store' }];
-  s.library.components[0].aliases = Array.from({ length: 3 }, () => ({ what: 'field', alias: 'Logo', storedName: 'Logos', version: 1 }));
-  const html = renderVisionStatus(parseSnapshot(s));
-  assert.match(html, /Used in 2 places/);
-  assert.match(html, /https:\/\/example\.com\/, piece abcdef01, reuse/);
-  assert.match(html, /a page that is not public, piece 00112233, store/);
-  assert.equal(html.split('<code>Logo \u2192 Logos</code>').length - 1, 1);
 });

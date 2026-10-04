@@ -108,12 +108,16 @@ h2:hover > .anchor, h3:hover > .anchor, h4:hover > .anchor, .anchor:focus { opac
 .vs-table-wrap { margin-bottom: 32px; overflow-x: auto; max-width: 100%; border: 1px solid var(--border); border-radius: 10px; }
 .vs-table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
 .vs-table caption { caption-side: top; text-align: left; padding: 10px 12px; color: var(--muted); font-size: 14px; }
+.vs-note { color: var(--muted); font-size: 14px; margin: 0 0 8px; }
 .vs-table th, .vs-table td { padding: 8px 12px; border-top: 1px solid var(--border); text-align: left; vertical-align: top; white-space: nowrap; }
 .vs-table thead th { background: var(--panel-2); font-weight: 600; }
 .vs-table th.vs-n, .vs-table td.vs-n { text-align: right; font-variant-numeric: tabular-nums; }
 .vs-badge { display: inline-block; padding: 1px 8px; border: 1px solid var(--border); border-radius: 999px; font-size: 12.5px; font-weight: 600; background: var(--panel-2); }
-.vs-badge-done, .vs-badge-completed { border-color: var(--ok); color: var(--ok); }
-.vs-badge-failed { border-color: #d9534f; color: #d9534f; }
+.vs-badge-finished { border-color: var(--ok); color: var(--ok); }
+.vs-badge-stopped { border-color: #c27c0e; color: #c27c0e; }
+.vs-badge-unfinished { border-style: dashed; color: var(--muted); }
+.vs-legend { list-style: none; margin: -20px 0 32px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: 14px; color: var(--muted); }
+.vs-via { color: var(--muted); }
 .vs-search { margin: 12px 0 16px; }
 .vs-search label { display: block; font-weight: 600; margin-bottom: 4px; }
 .vs-search input { width: 100%; max-width: 420px; padding: 8px 12px; font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--border); border-radius: 8px; }

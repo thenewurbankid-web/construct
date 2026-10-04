@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-04T09:30:00.000Z",
+  "runs": [
+    { "id": "fake-run-0004", "spec": null, "model": null, "startedAt": "2026-10-04T08:00:00.000Z", "finishedAt": null, "status": "unfinished", "counts": { "stored": 4, "extended": 0, "reused": 2, "review": 0, "skipped": 0 } },
+    { "id": "fake-run-0003", "spec": "fake-landing-page", "model": "fake-model-a + fake-model-b", "startedAt": "2026-10-03T16:00:00.000Z", "finishedAt": "2026-10-03T16:07:10.000Z", "status": "stopped", "counts": { "stored": 1, "extended": 0, "reused": 0, "review": 0, "skipped": 6 } },
+    { "id": "fake-run-0002", "spec": "fake-pricing-page", "model": "fake-model-a", "startedAt": "2026-10-03T14:10:00.000Z", "finishedAt": "2026-10-03T14:52:30.000Z", "status": "finished", "counts": { "stored": 11, "extended": 3, "reused": 5, "review": 2, "skipped": 1 } },
+    { "id": "fake-run-0001", "spec": "fake-article-page", "model": "fake-model-b", "startedAt": "2026-10-02T10:00:00.000Z", "finishedAt": "2026-10-02T10:20:00.000Z", "status": "finished", "counts": { "stored": 3, "extended": 0, "reused": 0, "review": 1, "skipped": 4 } }
+  ],
+  "library": {
+    "releasedVersion": "1.0.0",
+    "components": [
+      { "name": "fake-button", "level": "atom", "latestVersion": 2, "versions": [ { "number": 1, "createdAt": "2026-09-28T12:00:00.000Z", "how": "store" }, { "number": 2, "createdAt": "2026-10-03T14:30:00.000Z", "how": "extend" } ], "updatedAt": "2026-10-03T14:30:00.000Z", "whereUsed": [ { "page": "https://example.test/pricing", "blockId": "aaaa", "via": "reuse" }, { "page": "https://example.test/pricing", "blockId": "aaaa", "via": "store" }, { "page": null, "blockId": "bbbb", "via": "store" } ], "aliases": [ { "what": "action", "alias": "Fake CTA", "storedName": "fake-button", "version": 1 } ] },
+      { "name": "fake-card", "level": "molecule", "latestVersion": 1, "versions": [ { "number": 1, "createdAt": "2026-10-03T14:40:00.000Z", "how": "store" } ], "updatedAt": "2026-10-03T14:40:00.000Z", "whereUsed": [], "aliases": [] },
+      { "name": "fake-hero", "level": "organism", "latestVersion": null, "versions": [], "updatedAt": null, "whereUsed": [], "aliases": [] }
+    ]
+  }
+}
