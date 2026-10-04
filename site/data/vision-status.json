@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T18:35:29.243Z",
+  "generatedAt": "2026-10-04T18:42:24.885Z",
   "runs": [
+    {
+      "id": "run-2026-10-04T18-35-56-923Z",
+      "spec": "ui.shadcn.com",
+      "model": "qwen2.5-coder:7b + qwen3:4b",
+      "startedAt": "2026-10-04T18:35:57.177Z",
+      "finishedAt": "2026-10-04T18:42:24.802Z",
+      "status": "finished",
+      "counts": {
+        "stored": 2,
+        "extended": 0,
+        "reused": 0,
+        "review": 0,
+        "skipped": 4
+      }
+    },
     {
       "id": "run-2026-10-04T18-22-05-084Z",
       "spec": "ui.shadcn.com",
@@ -462,6 +477,27 @@
           {
             "page": "https://hn.algolia.com/",
             "blockId": "1025b1268a9b2d10",
+            "via": "store"
+          }
+        ],
+        "aliases": []
+      },
+      {
+        "name": "badge-group",
+        "level": "atom",
+        "latestVersion": 1,
+        "versions": [
+          {
+            "number": 1,
+            "createdAt": "2026-10-04T18:37:35.542Z",
+            "how": "store"
+          }
+        ],
+        "updatedAt": "2026-10-04T18:37:35.542Z",
+        "whereUsed": [
+          {
+            "page": "https://ui.shadcn.com/docs/components/base/badge",
+            "blockId": "d2e7b8aa74044cf4",
             "via": "store"
           }
         ],
@@ -1026,6 +1062,37 @@
           {
             "page": "https://hn.algolia.com/",
             "blockId": "fcaa82dd0818a94c",
+            "via": "store"
+          }
+        ],
+        "aliases": []
+      },
+      {
+        "name": "site-footer",
+        "level": "organism",
+        "latestVersion": 1,
+        "versions": [
+          {
+            "number": 1,
+            "createdAt": "2026-10-04T18:38:05.274Z",
+            "how": "store"
+          }
+        ],
+        "updatedAt": "2026-10-04T18:38:05.274Z",
+        "whereUsed": [
+          {
+            "page": "https://ui.shadcn.com/docs/components/base/alert",
+            "blockId": "68c8c7683f80f936",
+            "via": "store"
+          },
+          {
+            "page": "https://ui.shadcn.com/docs/components/base/badge",
+            "blockId": "68c8c7683f80f936",
+            "via": "store"
+          },
+          {
+            "page": "https://ui.shadcn.com/docs/components/base/button",
+            "blockId": "68c8c7683f80f936",
             "via": "store"
           }
         ],
