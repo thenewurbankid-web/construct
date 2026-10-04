@@ -8,7 +8,7 @@
 <div class="concept">Concept — not implemented <span>Findings — mechanical fixes and conversations, side by side but never blurred</span></div>
 
 <div class="shell" style="--lw:316px;--rw:460px;grid-template-rows:44px 1fr 96px 24px">
-  
+
 <header class="topbar">
   <div class="brand"><i></i>Cockpit</div>
   <button class="chip-btn" aria-haspopup="listbox">acme/storefront <span class="sub">main</span> ▾</button>
@@ -29,7 +29,7 @@
 <div class="scroll"><div class="tree">
 
   <div class="row"><span class="twisty">▾</span><b>auth</b>&nbsp;<span class="hb xs ok">in plan</span><span class="meta">6 files</span></div>
-  
+
   <div class="row l1"><span class="twisty">▾</span><span class="layer component">component</span><span class="meta">3</span></div>
   <div class="row l2 sel">PasswordField.tsx&nbsp;<span class="hb xs warn">shared</span><span class="meta mono">+38 −4</span></div><div class="row l2 ">passwordToggle.tsx&nbsp;<span class="hb xs bad">READ-001</span><span class="meta mono">+41</span></div><div class="row l2 ">LoginForm.tsx<span class="meta mono">+3 −1</span></div>
   <div class="row l1"><span class="twisty">▾</span><span class="layer workflow">workflow</span><span class="meta">1</span></div>
@@ -39,7 +39,7 @@
   <div class="row l1"><span class="twisty">▾</span><span class="layer ">test</span><span class="meta">1</span></div>
   <div class="row l2 ">login.spec.ts<span class="meta mono">+22</span></div>
   <div class="row"><span class="twisty">▾</span><b>checkout</b>&nbsp;<span class="hb xs bad">not in plan</span><span class="meta">3 files</span></div>
-  
+
   <div class="row l1"><span class="twisty">▾</span><span class="layer component">component</span><span class="meta">1</span></div>
   <div class="row l2 ">GuestForm.tsx&nbsp;<span class="hb xs bad">SLICE-002</span><span class="meta mono">+17 −2</span></div>
   <div class="row l1"><span class="twisty">▾</span><span class="layer ">hook</span><span class="meta">1</span></div>
@@ -47,7 +47,7 @@
   <div class="row l1"><span class="twisty">▾</span><span class="layer ">domain</span><span class="meta">1</span></div>
   <div class="row l2 ">guestRules.ts&nbsp;<span class="hb xs warn">unexplained</span><span class="meta mono">+6</span></div>
   <div class="row"><span class="twisty">▸</span><b>core</b>&nbsp;<span class="hb xs bad">not in plan</span><span class="meta">2 files</span></div>
-  
+
 </div></div></aside><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
     <section class="pane mid" aria-label="Pull request"><div class="canvas-tb"><span class="crumbs">#142 › findings › <b>SLICE-002</b></span><span class="spacer"></span>
    <div class="seg" role="radiogroup" aria-label="View"><button role="radio" aria-checked="false">Summary</button><button class="on" role="radio" aria-checked="true">Diff</button><button role="radio" aria-checked="false">Files</button></div>
@@ -80,25 +80,25 @@
 <div class="scroll">
  <div class="grp-head"><span class="hb ok"><i>✓</i>Can be fixed mechanically</span><b>2</b><span class="spacer"></span></div>
  <div class="grp-note"><span class="mono">construct refactor</span> makes these with no model involved.</div>
- 
+
 <div class="finding sel"><span class="mk"><span style="color:var(--success)">✓</span></span>
  <div><span class="rule">SLICE-002 · error</span><div class="msg">Cross-feature import reaches into “auth” internals.</div><div class="loc">features/checkout/components/GuestForm.tsx:4</div>
  <div class="fix"><b>Fix:</b> import from <span class="mono">features/auth/index.ts</span> instead.</div></div></div>
- 
+
 <div class="finding "><span class="mk"><span style="color:var(--success)">✓</span></span>
  <div><span class="rule">READ-001 · error</span><div class="msg">Component file is not PascalCase.</div><div class="loc">features/auth/components/passwordToggle.tsx</div>
  <div class="fix"><b>Fix:</b> rename to <span class="mono">PasswordToggle.tsx</span> (3 imports updated).</div></div></div>
  <div class="grp-head" style="border-top:1px solid var(--border-strong);margin-top:6px"><span class="hb info"><i>◆</i>Needs a decision</span><b>3</b></div>
  <div class="grp-note">No mechanical fix exists. These are a conversation with the author.</div>
- 
+
 <div class="finding "><span class="mk"><span style="color:var(--accent)">◆</span></span>
  <div><span class="rule">PUBLIC-API · warning</span><span class="loc inline">auth/index.ts:7</span><div class="msg">auth stops publishing <span class="mono">PasswordFieldProps</span>.</div>
  <div class="ask"><b>Ask:</b> deliberate, or an oversight? 2 features import this API.</div></div></div>
- 
+
 <div class="finding "><span class="mk"><span style="color:var(--accent)">◆</span></span>
  <div><span class="rule">Flow change · warning</span><span class="loc inline">auth/workflows/authMachine.ts:44</span><div class="msg">A rejected sign-in can no longer be retried.</div>
  <div class="ask"><b>Ask:</b> is dropping the retry path intended?</div></div></div>
- 
+
 <div class="finding "><span class="mk"><span style="color:var(--accent)">◆</span></span>
  <div><span class="rule">SHARED-COMPONENT · warning</span><span class="loc inline">auth/components/PasswordField.tsx</span><div class="msg"><span class="mono">PasswordField</span> is used by 3 features; the plan said auth only.</div>
  <div class="ask"><b>Ask:</b> checked in Register and Guest checkout too?</div></div></div>
@@ -109,7 +109,7 @@
   </div>
   <div class="drawer" aria-label="Drawer"><div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Findings <span class="badge danger">5</span></button><button role="tab" class="" aria-selected="false">Rule check</button><button role="tab" class="" aria-selected="false">Processes <span class="badge acc">1</span></button></div>
   <div class="body" style="padding:8px 12px"><div class="callout info" style="margin:0"><span>ℹ</span><div class="grow"><b>2 of 5 findings can be fixed mechanically</b><small><span class="mono">SLICE-002</span> and <span class="mono">READ-001</span> — an import rewrite and a rename. The other 3 change what the code means, so Construct will not guess: they stay a conversation with the author.</small></div></div></div></div>
-  
+
 <footer class="statusbar">
   <span class="ok">● Read-only — nothing is written to this pull request</span>
   <span>Auto review-and-fix: Off</span>

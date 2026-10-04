@@ -6,13 +6,13 @@
 <div class="concept">Concept — not implemented <span>QA · recording: the app on one side, readable steps on the other</span></div>
 
 <div class="shell " style="--lw:264px;--rw:360px;grid-template-rows:44px 1fr 146px 24px">
-  
+
 <header class="topbar">
   <div class="brand"><i></i>Construct</div>
   <button class="chip-btn" aria-haspopup="listbox">storefront <span class="sub">main</span> ▾</button>
   <div class="seg" role="radiogroup" aria-label="Mode"><button class="on" role="radio" aria-checked="true">Explore</button><button class="" role="radio" aria-checked="false">Research</button><button class="" role="radio" aria-checked="false">Build</button></div>
   <button class="chip-btn palette-trigger"><span>Search files, features, or run a command…</span><kbd>Ctrl K</kbd></button>
-  
+
   <span class="pill run"><span class="spin"></span>2 running</span>
   <span class="pill ok"><span class="dot"></span>Local model ready</span>
   <button class="icon-btn" aria-label="Theme">◐</button>
@@ -51,29 +51,29 @@
   <div class="app-nav"><b>Storefront</b><span>Orders</span><span>Refunds</span><span>Account</span></div>
   <div class="refund">
     <h2>Request a refund</h2><p>Order #4471 · placed 12 March</p>
-    
+
     <label>Amount</label><div class="in">120</div>
     <label>Reason</label><div class="in">Item arrived damaged</div>
     <div class="cta">Request refund</div>
     <div class="ghost">Save as draft</div>
   </div>
-  
+
   <div class="sel-box" style="left:60px;right:60px;top:316px;height:34px"></div>
   <div class="sel-tag" style="left:56px;top:296px">button · data-testid="request-refund"</div>
 </div></div>
      <div class="capcol">
        <div class="caph">Steps so far<span class="spacer"></span><span class="chip ok">3 bound by convention</span></div>
        <div class="capbody">
-         
+
   <div class="cap "><span class="kw given">GIVEN</span>
     <span class="txt">Open <em>/refunds/new</em><span class="note">page.goto</span></span></div>
-         
+
   <div class="cap "><span class="kw and">AND</span>
     <span class="txt">Type <em>120</em> into “Amount”<span class="note">[data-testid="amount"]</span></span></div>
-         
+
   <div class="cap "><span class="kw and">AND</span>
     <span class="txt">Type <em>Item arrived damaged</em> into “Reason”<span class="note">[data-testid="reason"]</span></span></div>
-         
+
   <div class="cap now"><span class="kw when">WHEN</span>
     <span class="txt">“request refund” happens<span class="note">REQUEST_REFUND · [data-testid="request-refund"]</span></span></div>
        </div>
@@ -99,7 +99,7 @@
       <div class="prop"><span class="k">other id</span><span class="field">0 · different id</span><span class="bind lit">fine</span></div>
       <div class="prop"><span class="k">no id</span><span class="field">0 · none</span><span class="bind lit">—</span></div>
     </div>
-    
+
   <div class="section"><h4>What gets captured</h4>
     <div style="color:var(--text-muted);line-height:1.7">Clicks · typing · moving between pages · the checks you pick<br>
     <span style="color:var(--text-faint)">Not captured: hovering, scrolling, how fast you clicked.</span></div></div>
@@ -109,7 +109,7 @@
   <tr><th>Process</th><th>Kind</th><th>Status</th><th>Detail</th><th></th></tr>
   <tr><td>recorder · chromium</td><td><span class="tag det">Deterministic</span></td><td><span class="pill run" style="height:20px"><span class="spin"></span>Recording</span></td><td>capturing into “Untitled recording”</td><td><button class="btn sm">Pause</button> <button class="btn sm danger">Stop</button></td></tr>
   <tr><td>preview · storefront</td><td><span class="tag det">Deterministic</span></td><td><span class="pill run" style="height:20px"><span class="spin"></span>Running</span></td><td>localhost:5173 · up 41 min</td><td><button class="btn sm">Stop</button></td></tr></table></div></div>
-  
+
 <footer class="statusbar">
   <span class="ok">● validate: 0 new violations</span><span>5 baseline</span><span>Saved · in sync with disk</span>
   <span class="spacer"></span><span>qwen2.5-coder:7b</span><span><kbd>Ctrl J</kbd> drawer</span><span><kbd>?</kbd> shortcuts</span>

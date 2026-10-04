@@ -6,13 +6,13 @@
 <div class="concept">Concept — not implemented <span>Browser pane — Flow view: a route fans out to its features</span></div>
 
 <div class="shell " style="--lw:460px;grid-template-rows:44px 1fr 96px 24px">
-  
+
 <header class="topbar">
   <div class="brand"><i></i>Cockpit</div>
   <button class="chip-btn" aria-haspopup="listbox">storefront <span class="sub">main</span> ▾</button>
   <div class="seg" role="radiogroup" aria-label="Mode"><button class="on" role="radio" aria-checked="true">Explore</button><button class="" role="radio" aria-checked="false">Plan</button><button class="" role="radio" aria-checked="false">Build</button></div>
   <button class="chip-btn palette-trigger"><span>Search files, features, or run a command…</span><kbd>Ctrl K</kbd></button>
-  
+
   <span class="pill run"><span class="spin"></span>2 running</span>
   <span class="pill ok"><span class="dot"></span>Local model ready</span>
   <button class="icon-btn" aria-label="Theme">◐</button>
@@ -29,7 +29,7 @@
     <div class="tree">
       <div class="row frow"><span class="twisty">▾</span><span class="layer route">route</span><span class="nm" style="font-weight:600">/refunds/new</span><span class="meta">2 features</span></div>
       <div class="fan">
-        
+
     <div class="row l1 frow "><span class="twisty">▾</span><span class="layer controller">controller</span><span class="nm">refundController</span><span class="feat">refunds</span></div>
     <div class="row l2 branch"><span class="twisty">▾</span>Behaviour path</div>
     <div class="row frow l3    " ><span class="twisty">▾</span><span class="layer hook">hook</span><span class="nm">useRefundForm</span></div>
@@ -42,19 +42,19 @@
     <div class="row frow l4    " ><span class="twisty">▾</span><span class="layer component">component</span><span class="nm">RefundForm</span></div>
     <div class="row frow l5    " ><span class="layer component">component</span><span class="nm">AmountField</span></div>
     <div class="row frow l4    " ><span class="layer component">component</span><span class="nm">ReasonPicker</span></div>
-        
+
     <div class="row l1 frow"><span class="twisty">▸</span><span class="layer controller">controller</span><span class="nm">orderSummaryController</span><span class="feat">orders</span></div>
       </div>
       <div class="row frow" style="margin-top:4px"><span class="twisty">▸</span><span class="layer route">route</span><span class="nm">/orders/[id]</span><span class="meta">1 feature</span></div>
       <div class="row frow"><span class="twisty">▸</span><span class="layer route">route</span><span class="nm">/</span><span class="meta">1 feature</span></div>
     </div>
-    
+
   <div class="sect" style="padding-top:12px">Not entered from any route · 1</div>
   <div class="tree">
     <div class="row frow"><span class="twisty">▸</span><span class="nm">ui-kit</span><span class="meta">6 files</span></div>
     <div class="note"><span class="i">i</span><span><b>No route reaches this feature.</b> That is fine for a shared library: it is used by other features, not entered from a URL.</span></div>
   </div>
-    
+
   </div></aside><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
     <section class="pane mid" aria-label="Preview"><div class="canvas-tb"><span class="crumbs">Route <b>/refunds/new</b></span><span class="spacer"></span><div class="seg"><button class="on">Desktop</button><button>Tablet</button><button>Phone</button></div></div><div class="stage">
 <div class="device" style="height:470px">
@@ -78,7 +78,7 @@
   </div></aside>
   </div>
   <div class="drawer" aria-label="Drawer"><div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Diagnostics <span class="badge danger">0</span></button><button role="tab" class="" aria-selected="false">Logs</button><button role="tab" class="" aria-selected="false">Processes <span class="badge acc">0</span></button></div><div class="body"><div class="logline" style="padding-top:8px"><time>14:20:02</time><span class="lv-ok">ok</span>flow: 3 routes, 4 features, 22 files traced from imports (types.ts and index.ts left out)</div></div></div>
-  
+
 <footer class="statusbar">
   <span class="ok">● validate: 0 new violations</span><span>5 baseline</span><span>Saved · in sync with disk</span>
   <span class="spacer"></span><span>qwen2.5-coder:7b</span><span><kbd>Ctrl J</kbd> drawer</span><span><kbd>?</kbd> shortcuts</span>

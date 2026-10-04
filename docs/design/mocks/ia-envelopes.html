@@ -6,7 +6,7 @@
 <div class="concept">Concept - not implemented <span>Envelopes</span></div>
 
 <div class="shell" style="--rw:340px;grid-template-rows:44px 1fr 130px 24px;position:relative">
-  
+
 <header class="topbar" role="banner">
   <div class="brand"><i></i>Cockpit</div>
   <button class="chip-btn" aria-haspopup="listbox">storefront <span class="sub">main</span> &#9662;</button>
@@ -37,31 +37,31 @@
 </div>
 <div style="padding:10px 20px 20px">
   <div style="border:1px solid var(--border-subtle);border-radius:var(--r-lg);overflow:hidden">
-    
+
 <div class="step">
   <span class="no">1</span>
   <div><div><span class="layer domain">domain</span> <b>Total</b></div></div>
   <span><span class="tag det">Deterministic</span></span>
 </div>
-    
+
 <div class="step">
   <span class="no">2</span>
   <div><div><span class="layer service">service</span> <b>Total</b></div><small>reads: Total (domain)</small></div>
   <span><span class="tag det">Deterministic</span></span>
 </div>
-    
+
 <div class="step">
   <span class="no">3</span>
   <div><div><span class="layer workflow">workflow</span> <b>cartMachine</b></div><small>reads: Total (service)</small></div>
   <span><span class="tag det">Deterministic</span></span>
 </div>
-    
+
 <div class="step">
   <span class="no">4</span>
   <div><div><span class="layer hook">hook</span> <b>useCart</b></div><small>reads: cartMachine (workflow)</small></div>
   <span><span class="tag det">Deterministic</span></span>
 </div>
-    
+
 <div class="step">
   <span class="no">5</span>
   <div><div><span class="layer page">page</span> <b>CartPage</b></div><small>body filled on create --llm; stub is mechanical</small></div>
@@ -92,7 +92,7 @@
   <p style="color:var(--text-muted);font-size:12px;margin-top:8px">"&lt;feature&gt;" is filled in when the flow runs.</p>
 </div></aside>
   </div>
-  
+
 <div class="drawer" aria-label="Bottom panel: Run" style="height:130px">
   <div class="tabs" role="tablist"><button role="tab" class="on" aria-selected="true">Processes <span class="badge acc">1</span></button><button role="tab" class="" aria-selected="false">Approvals <span class="badge ">1</span></button><button role="tab" class="" aria-selected="false">Diagnostics <span class="badge danger">17</span></button><button role="tab" class="" aria-selected="false">Logs</button></div>
   <div class="body"><table><tr><th>Process</th><th>Step</th><th>Progress</th><th></th></tr>

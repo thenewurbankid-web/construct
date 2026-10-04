@@ -6,13 +6,13 @@
 <div class="concept">Concept — not implemented <span>QA · running a test as a process, and reading a failure</span></div>
 
 <div class="shell " style="--lw:292px;--rw:400px;grid-template-rows:44px 1fr 144px 24px">
-  
+
 <header class="topbar">
   <div class="brand"><i></i>Construct</div>
   <button class="chip-btn" aria-haspopup="listbox">storefront <span class="sub">main</span> ▾</button>
   <div class="seg" role="radiogroup" aria-label="Mode"><button class="on" role="radio" aria-checked="true">Explore</button><button class="" role="radio" aria-checked="false">Research</button><button class="" role="radio" aria-checked="false">Build</button></div>
   <button class="chip-btn palette-trigger"><span>Search files, features, or run a command…</span><kbd>Ctrl K</kbd></button>
-  
+
   <span class="pill run"><span class="spin"></span>1 running</span>
   <span class="pill ok"><span class="dot"></span>Local model ready</span>
   <button class="icon-btn" aria-label="Theme">◐</button>
@@ -44,62 +44,62 @@
 <div class="canvas-tb"><span class="crumbs">refunds › tests › <b>Refund over £50 goes to manual review</b></span><span class="spacer"></span><div class="seg"><button class="on">Steps</button><button class="">Code</button></div><span class="chip fail">✗ Failed · 5.5 s</span><button class="btn sm">Rerun</button></div>
    <div class="stage" style="padding:14px 20px;align-items:stretch">
 <div class="doc">
-  
+
   <div class="doc-h">
     <div style="flex:1;min-width:0"><h2>Refund over £50 goes to manual review</h2><div class="sub">features/refunds/tests/refund-over-50.spec.ts · cloned from Happy path (generated) · flow unchanged since</div></div>
     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><span class="chip mine">✎ Yours · clone of #1</span><span class="chip fail">✗ Failed</span></div>
   </div>
   <div class="doc-body">
-    
+
   <div class="step ">
     <span class="grip"><span class="mark pass">✓</span></span>
     <span class="kw given">GIVEN</span>
     <span class="txt"><span class="step-main">Open <em>/refunds/new</em></span></span>
     <span style="display:flex;align-items:center;gap:8px"><span class="bind-sel">page.goto</span><span class="ms">412 ms</span></span>
   </div>
-    
+
   <div class="step ">
     <span class="grip"><span class="mark pass">✓</span></span>
     <span class="kw and">AND</span>
     <span class="txt"><span class="step-main">Type <em>120</em> into “Amount”</span><span class="note">Added by you — makes the refund too big to auto-approve</span></span>
     <span style="display:flex;align-items:center;gap:8px"><span class="bind-sel">[data-testid="amount"]</span><span class="ms">96 ms</span></span>
   </div>
-    
+
   <div class="step failed">
     <span class="grip"><span class="mark fail">✗</span></span>
     <span class="kw when">WHEN</span>
     <span class="txt"><span class="step-main">“request refund” happens</span><span class="note">Event REQUEST_REFUND from the flow</span></span>
     <span style="display:flex;align-items:center;gap:8px"><span class="bind-sel">[data-testid="request-refund"]</span><span class="ms">5.0 s</span></span>
   </div>
-    
+
   <div class="step ">
     <span class="grip"><span class="mark skip">○</span></span>
     <span class="kw then">THEN</span>
     <span class="txt"><span class="step-main">the flow moves to <em>auto check</em></span></span>
     <span style="display:flex;align-items:center;gap:8px"><span class="bind-sel">[data-flow-state="autoCheck"]</span><span class="ms">—</span></span>
   </div>
-    
+
   <div class="step ">
     <span class="grip"><span class="mark skip">○</span></span>
     <span class="kw and">AND</span>
     <span class="txt"><span class="step-main">when it is <em>not</em> low value</span><span class="note">Changed by you — was “when it is low value”</span></span>
     <span style="display:flex;align-items:center;gap:8px"><span class="bind-sel">branch</span><span class="ms">—</span></span>
   </div>
-    
+
   <div class="step ">
     <span class="grip"><span class="mark skip">○</span></span>
     <span class="kw then">THEN</span>
     <span class="txt"><span class="step-main">the flow moves to <em>manual review</em></span></span>
     <span style="display:flex;align-items:center;gap:8px"><span class="bind-sel">[data-flow-state="manualReview"]</span><span class="ms">—</span></span>
   </div>
-    
+
   <div class="step ">
     <span class="grip"><span class="mark skip">○</span></span>
     <span class="kw check">CHECK</span>
     <span class="txt"><span class="step-main">the page shows “A reviewer will check this refund”</span><span class="note">Added by you</span></span>
     <span style="display:flex;align-items:center;gap:8px"><span class="bind-sel">text is visible</span><span class="ms">—</span></span>
   </div>
-    
+
   </div>
   <div class="doc-f"><span class="chip fail">✗ Failed at step 3</span><span class="spacer"></span><span>2 passed · 1 failed · 4 not run · 5.5 s</span></div>
 </div></div>
@@ -140,7 +140,7 @@
      <div class="logline"><time>14:22:12</time><span>trace, video and screenshot saved</span></div>
     </div>
    </div></div>
-  
+
 <footer class="statusbar">
   <span class="ok">● validate: 0 new violations</span><span>5 baseline</span><span>Saved · in sync with disk</span>
   <span class="spacer"></span><span>qwen2.5-coder:7b</span><span><kbd>Ctrl J</kbd> drawer</span><span><kbd>?</kbd> shortcuts</span>

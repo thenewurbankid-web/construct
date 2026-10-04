@@ -8,7 +8,7 @@
 <div class="concept">Concept — not implemented <span>Reviewing a pull request — grouped by feature and layer, with health indicators</span></div>
 
 <div class="shell" style="--lw:316px;--rw:424px;grid-template-rows:44px 1fr 166px 24px">
-  
+
 <header class="topbar">
   <div class="brand"><i></i>Cockpit</div>
   <button class="chip-btn" aria-haspopup="listbox">acme/storefront <span class="sub">main</span> ▾</button>
@@ -29,7 +29,7 @@
 <div class="scroll"><div class="tree">
 
   <div class="row"><span class="twisty">▾</span><b>auth</b>&nbsp;<span class="hb xs ok">in plan</span><span class="meta">6 files</span></div>
-  
+
   <div class="row l1"><span class="twisty">▾</span><span class="layer component">component</span><span class="meta">3</span></div>
   <div class="row l2 sel">PasswordField.tsx&nbsp;<span class="hb xs warn">shared</span><span class="meta mono">+38 −4</span></div><div class="row l2 ">passwordToggle.tsx&nbsp;<span class="hb xs bad">READ-001</span><span class="meta mono">+41</span></div><div class="row l2 ">LoginForm.tsx<span class="meta mono">+3 −1</span></div>
   <div class="row l1"><span class="twisty">▾</span><span class="layer workflow">workflow</span><span class="meta">1</span></div>
@@ -39,7 +39,7 @@
   <div class="row l1"><span class="twisty">▾</span><span class="layer ">test</span><span class="meta">1</span></div>
   <div class="row l2 ">login.spec.ts<span class="meta mono">+22</span></div>
   <div class="row"><span class="twisty">▾</span><b>checkout</b>&nbsp;<span class="hb xs bad">not in plan</span><span class="meta">3 files</span></div>
-  
+
   <div class="row l1"><span class="twisty">▾</span><span class="layer component">component</span><span class="meta">1</span></div>
   <div class="row l2 ">GuestForm.tsx&nbsp;<span class="hb xs bad">SLICE-002</span><span class="meta mono">+17 −2</span></div>
   <div class="row l1"><span class="twisty">▾</span><span class="layer ">hook</span><span class="meta">1</span></div>
@@ -47,13 +47,13 @@
   <div class="row l1"><span class="twisty">▾</span><span class="layer ">domain</span><span class="meta">1</span></div>
   <div class="row l2 ">guestRules.ts&nbsp;<span class="hb xs warn">unexplained</span><span class="meta mono">+6</span></div>
   <div class="row"><span class="twisty">▸</span><b>core</b>&nbsp;<span class="hb xs bad">not in plan</span><span class="meta">2 files</span></div>
-  
+
 </div></div></aside><div class="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
     <section class="pane mid" aria-label="Pull request"><div class="canvas-tb"><span class="crumbs"><b>#142 Add show-password toggle to login</b></span><span class="spacer"></span>
    <div class="seg" role="radiogroup" aria-label="View"><button class="on" role="radio" aria-checked="true">Summary</button><button role="radio" aria-checked="false">Diff</button><button role="radio" aria-checked="false">Files</button></div>
    <button class="btn sm">Open on GitHub ↗</button></div>
   <div class="stage-scroll">
-   
+
 <div class="hero">
   <div style="text-align:center"><div class="big">1 → 3</div><div class="lbl">features</div></div>
   <div class="txt"><b>The plan declared 1 feature; this pull request touches 3.</b><br>
@@ -62,23 +62,23 @@
 </div>
    <div class="card" style="margin-top:12px">
     <div class="hd"><span>What this pull request actually does</span><span class="spacer"></span><span style="text-transform:none;letter-spacing:0;font-weight:400">read from the code, not from the description</span><span class="tag det">Deterministic</span></div>
-    
+
 <div class="unit"><span class="layer component">component</span>
  <div><div class="nm">PasswordField <span class="hb xs none">auth</span> <span class="hb xs warn">used by 3 features</span></div><div class="txt">Takes a new <b>showToggle</b> prop. When it is set, a button switches the password input between hidden and visible text.</div></div>
  <span class="mono" style="color:var(--text-faint)">+38 −4</span></div>
-    
+
 <div class="unit"><span class="layer component">component</span>
  <div><div class="nm">PasswordToggle <span class="hb xs none">auth</span> <span class="hb xs bad">READ-001</span></div><div class="txt">New. The eye button itself: presentation only, no state of its own.</div></div>
  <span class="mono" style="color:var(--text-faint)">+41</span></div>
-    
+
 <div class="unit"><span class="layer workflow">workflow</span>
  <div><div class="nm">authMachine <span class="hb xs none">auth</span> <span class="hb xs warn">flow changed</span></div><div class="txt">The sign-in flow. The <b>RETRY</b> event was removed from the <b>rejected</b> state.</div></div>
  <span class="mono" style="color:var(--text-faint)">+2 −9</span></div>
-    
+
 <div class="unit"><span class="layer ">feature api</span>
  <div><div class="nm">auth/index.ts <span class="hb xs none">auth</span> <span class="hb xs warn">public API</span></div><div class="txt">Stops publishing <b>PasswordFieldProps</b>; starts publishing <b>PasswordToggle</b>.</div></div>
  <span class="mono" style="color:var(--text-faint)">+1 −1</span></div>
-    
+
 <div class="unit"><span class="layer component">component</span>
  <div><div class="nm">GuestForm <span class="hb xs none">checkout</span> <span class="hb xs bad">SLICE-002</span></div><div class="txt">New. Imports <b>PasswordField</b> from inside auth instead of from the feature’s public index.</div></div>
  <span class="mono" style="color:var(--text-faint)">+17 −2</span></div>
@@ -102,7 +102,7 @@
  <tr><td><span class="tag" style="background:var(--danger-soft);color:var(--danger)">error</span> READ-001</td><td>Component files are PascalCase</td><td class="mono">features/auth/components/passwordToggle.tsx</td><td style="color:var(--text-faint)">0</td><td><span class="hb bad">1 new</span></td></tr>
  <tr><td><span class="tag" style="background:var(--warn-soft);color:var(--warn)">error</span> PAGE-006</td><td>Page imports a custom hook; go through a controller</td><td class="mono">features/auth/pages/LoginPage.tsx:3</td><td style="color:var(--text-faint)">1</td><td><span class="hb none">1 · already there</span></td></tr>
 </table></div></div>
-  
+
 <footer class="statusbar">
   <span class="ok">● Read-only — nothing is written to this pull request</span>
   <span>Auto review-and-fix: Off</span>

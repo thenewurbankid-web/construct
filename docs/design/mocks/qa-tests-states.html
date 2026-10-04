@@ -8,32 +8,32 @@
 <div class="sheet" style="grid-template-columns:1fr 1fr 1fr 400px">
  <div class="two">
   <h3>Empty — feature has no tests yet</h3>
-  
+
  <div class="state-card" style="height:auto;min-height:196px;align-items:flex-start;text-align:left;"><div class="ico">▤</div><h5 style="margin-top:6px">No tests for refunds yet</h5><p style="max-width:none">Construct already worked out <b>9 ways this flow can run</b>. Generate tests for them in one step, or start your own.</p><div style="display:flex;gap:8px;margin-top:6px"><button class="btn primary sm">Generate 9 tests</button><button class="btn sm">New test</button></div></div>
   <h3>Empty — no flow to start from</h3>
-  
+
  <div class="state-card" style="height:auto;min-height:196px;align-items:flex-start;text-align:left;"><div class="ico">◇</div><h5 style="margin-top:6px">This feature has no flow</h5><p style="max-width:none">Generated tests come from a flow (an XState machine). You can still write a test by hand, page by page.</p><div style="display:flex;gap:8px;margin-top:6px"><button class="btn sm">New blank test</button><button class="btn sm">Create a flow</button></div></div>
   <h3>Failure kind 1 — the test could not find the element</h3>
-  
+
  <div class="state-card" style="height:auto;min-height:196px;align-items:flex-start;text-align:left;border-color:var(--warn)"><span class="chip lock">Convention not met</span><p style="max-width:none">Step 3 sends <b>REQUEST_REFUND</b>, so the test looks for <span class="mono">[data-testid="request-refund"]</span>. Nothing on the page has it.<br><span style="color:var(--text-faint)">Not a product bug: the page was never exercised. Do not raise a ticket against refunds.</span></p><div style="display:flex;gap:8px"><button class="btn primary sm">Add the attribute</button><button class="btn sm">Show me the element</button></div></div>
  </div>
  <div class="two">
   <h3>Loading — queued and running</h3>
-  
+
  <div class="state-card" style="height:auto;min-height:196px;align-items:flex-start;text-align:left;"><span class="pill run"><span class="spin"></span>Queued · waiting for the preview server</span><div class="skel" style="margin-top:10px"></div><div class="skel" style="width:60%"></div><p style="max-width:none">Runs are processes: you can leave this screen, and pause or cancel them from the drawer.</p><div style="display:flex;gap:8px"><button class="btn sm">Open Processes</button><button class="btn sm danger">Cancel</button></div></div>
   <h3>Failure kind 2 — the app behaved differently</h3>
-  
+
  <div class="state-card" style="height:auto;min-height:196px;align-items:flex-start;text-align:left;border-color:var(--danger)"><span class="chip fail">✗ App behaved differently</span><p style="max-width:none">Step 6 expected the flow to reach <b>manual review</b>. It reached <b>approved</b> instead.<br><span style="color:var(--text-faint)">The element was found, the click worked — the product did something else. This one is worth a bug report.</span></p><div style="display:flex;gap:8px"><button class="btn primary sm">Open trace</button><button class="btn sm">Copy as bug report</button></div></div>
  </div>
  <div class="two">
   <h3>Error — cannot run yet</h3>
-  
+
  <div class="state-card" style="height:auto;min-height:196px;align-items:flex-start;text-align:left;border-color:var(--danger)"><div class="ico" style="color:var(--danger);background:var(--danger-soft)">!</div><h5 style="margin-top:6px">Browsers are not installed</h5><p style="max-width:none">Playwright needs Chromium once, on this machine.</p><div class="becomes">npx playwright install chromium</div><div style="display:flex;gap:8px;margin-top:6px"><button class="btn primary sm">Install now</button><button class="btn sm">Show logs</button></div></div>
   <h3>Never run</h3>
-  
+
  <div class="state-card" style="height:auto;min-height:196px;align-items:flex-start;text-align:left;"><div class="ico">○</div><h5 style="margin-top:6px">This test has not run yet</h5><p style="max-width:none">Saved, but never executed. Running it starts a process; you can watch it in the drawer.</p><div style="display:flex;gap:8px;margin-top:6px"><button class="btn primary sm">Run now</button><button class="btn sm">Run with the other 9</button></div></div>
   <h3>Warning — the flow changed under a clone</h3>
-  
+
  <div class="state-card" style="height:auto;min-height:196px;align-items:flex-start;text-align:left;border-color:var(--warn)"><span class="chip lock">Possibly out of date</span><p style="max-width:none">“Refund over £50 goes to manual review” was cloned from <b>Happy path</b>. That flow has changed since: <b>auto check</b> now has a third branch.</p><div style="display:flex;gap:8px"><button class="btn primary sm">Compare with the flow</button><button class="btn sm">It is still fine</button></div></div>
  </div>
  <div><h3>Narrow (phone, 390 px) — one pane at a time</h3><div class="narrow">

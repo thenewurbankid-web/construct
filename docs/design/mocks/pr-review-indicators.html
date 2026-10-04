@@ -11,7 +11,7 @@
  <div class="muted-note">Five indicators, each computed from the two commits and the project’s own <span class="mono">architecture.yml</span> — none reads the pull request description, none calls a model. Shown for <span class="mono">#142 Add show-password toggle to login</span>.</div>
  <div class="cols2" style="grid-template-columns:628px 1fr">
   <div style="display:grid;gap:14px">
-   
+
 <div class="ind bad" style="padding:0">
   <div class="hd" style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid var(--border-subtle)">
     <span class="badge acc">1</span><b style="font-size:13px">Blast radius — declared vs actual</b><span class="spacer"></span><span class="tag det">Deterministic</span></div>
@@ -22,7 +22,7 @@
      <tr><td class="mono">checkout</td><td><span class="hb none">no</span></td><td><span style="color:var(--danger)">3 files</span></td></tr>
      <tr><td class="mono">core</td><td><span class="hb none">no</span></td><td><span style="color:var(--danger)">2 files</span></td></tr></table>
     <div class="why" style="margin-top:8px;border-top:1px dashed var(--border-strong);padding-top:7px"><b style="color:var(--text-muted)">Where the number comes from:</b> the plan’s <span class="mono">touches</span> field against the impact report — both sides computed.</div></div></div>
-   
+
 <div class="ind warn" style="padding:0">
   <div class="hd" style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid var(--border-subtle)">
     <span class="badge acc">2</span><b style="font-size:13px">Changes the layer graph does not explain</b><span class="spacer"></span><span class="tag det">Deterministic</span></div>
@@ -40,7 +40,7 @@
     <div class="why">All five are assembled from blocks that already exist — the layer graph, the impact report, <span class="mono">construct validate</span>, the workflow narrator.</div></div>
   </div>
   <div style="display:grid;gap:14px">
-   
+
 <div class="ind bad" style="padding:0">
   <div class="hd" style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid var(--border-subtle)">
     <span class="badge acc">3</span><b style="font-size:13px">Rule regressions — clean on main, dirty here</b><span class="spacer"></span><span class="tag det">Deterministic</span></div>
@@ -51,7 +51,7 @@
      <tr><td class="mono">READ-001</td><td>0</td><td style="color:var(--danger)">1</td><td><span class="hb bad">new</span></td></tr>
      <tr><td class="mono">PAGE-006</td><td>1</td><td>1</td><td><span class="hb none">already there</span></td></tr></table>
 </div></div>
-   
+
 <div class="ind warn" style="padding:0">
   <div class="hd" style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid var(--border-subtle)">
     <span class="badge acc">4</span><b style="font-size:13px">Public surface — what leaves the feature</b><span class="spacer"></span><span class="tag det">Deterministic</span></div>
@@ -62,7 +62,7 @@
      <div class="ln add"><i>7</i><span>export { PasswordToggle } from './components/PasswordToggle';</span></div></div>
     <div class="why" style="margin-top:8px">2 features consume auth’s API (checkout, cart); anything importing <span class="mono">PasswordFieldProps</span> stops compiling.</div>
     <div class="why" style="margin-top:8px;border-top:1px dashed var(--border-strong);padding-top:7px"><b style="color:var(--text-muted)">Where the number comes from:</b> the <span class="mono">PUBLIC-API</span> warning: which implicated files are re-exported from the feature’s index.</div></div></div>
-   
+
 <div class="ind warn" style="padding:0">
   <div class="hd" style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid var(--border-subtle)">
     <span class="badge acc">5</span><b style="font-size:13px">What the flow now does — the one no diff can show</b><span class="spacer"></span><span class="tag det">Deterministic</span></div>
