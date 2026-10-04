@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T17:33:23.656Z",
+  "generatedAt": "2026-10-04T17:59:12.927Z",
   "runs": [
+    {
+      "id": "run-2026-10-04T17-54-10-916Z",
+      "spec": "stripe.com",
+      "model": "qwen2.5-coder:7b + qwen3:4b",
+      "startedAt": "2026-10-04T17:54:11.658Z",
+      "finishedAt": "2026-10-04T17:59:12.327Z",
+      "status": "finished",
+      "counts": {
+        "stored": 0,
+        "extended": 2,
+        "reused": 3,
+        "review": 0,
+        "skipped": 0
+      }
+    },
     {
       "id": "run-2026-10-04T17-28-18-397Z",
       "spec": "htmx.org",
@@ -417,7 +432,7 @@
       {
         "name": "hero-banner",
         "level": "organism",
-        "latestVersion": 4,
+        "latestVersion": 5,
         "versions": [
           {
             "number": 1,
@@ -438,9 +453,14 @@
             "number": 4,
             "createdAt": "2026-10-04T17:18:07.574Z",
             "how": "extend"
+          },
+          {
+            "number": 5,
+            "createdAt": "2026-10-04T17:57:14.465Z",
+            "how": "extend"
           }
         ],
-        "updatedAt": "2026-10-04T17:18:07.574Z",
+        "updatedAt": "2026-10-04T17:57:14.465Z",
         "whereUsed": [
           {
             "page": "https://alpinejs.dev/",
@@ -456,6 +476,11 @@
             "page": "https://stripe.com/de",
             "blockId": "40e40fbbdc85ce0c",
             "via": "store"
+          },
+          {
+            "page": "https://stripe.com/de",
+            "blockId": "d687265eb3f026d2",
+            "via": "extend"
           },
           {
             "page": "https://tailwindcss.com/",
@@ -526,6 +551,24 @@
           },
           {
             "what": "field",
+            "alias": "Call-to-Action Text",
+            "storedName": "Call-to-Action Button Text",
+            "version": 4
+          },
+          {
+            "what": "field",
+            "alias": "Call-to-Action URL",
+            "storedName": "Call to Action Link",
+            "version": 4
+          },
+          {
+            "what": "field",
+            "alias": "Heading Text",
+            "storedName": "Main Title Text",
+            "version": 4
+          },
+          {
+            "what": "field",
             "alias": "Headline",
             "storedName": "Main Title Text",
             "version": 1
@@ -655,6 +698,12 @@
             "alias": "Call to Action",
             "storedName": "Call-to-Action Buttons",
             "version": 3
+          },
+          {
+            "what": "part",
+            "alias": "Call-to-Action Button",
+            "storedName": "Call-to-Action Buttons",
+            "version": 4
           },
           {
             "what": "part",
@@ -770,6 +819,11 @@
           {
             "page": "https://stripe.com/de",
             "blockId": "9adac4482fab86d1",
+            "via": "reuse"
+          },
+          {
+            "page": "https://stripe.com/de",
+            "blockId": "9adac4482fab86d1",
             "via": "store"
           }
         ],
@@ -830,7 +884,7 @@
       {
         "name": "site-header",
         "level": "organism",
-        "latestVersion": 4,
+        "latestVersion": 5,
         "versions": [
           {
             "number": 1,
@@ -851,9 +905,14 @@
             "number": 4,
             "createdAt": "2026-10-04T17:29:15.022Z",
             "how": "extend"
+          },
+          {
+            "number": 5,
+            "createdAt": "2026-10-04T17:55:43.324Z",
+            "how": "extend"
           }
         ],
-        "updatedAt": "2026-10-04T17:29:15.022Z",
+        "updatedAt": "2026-10-04T17:55:43.324Z",
         "whereUsed": [
           {
             "page": "https://alpinejs.dev/",
@@ -876,6 +935,11 @@
             "via": "extend"
           },
           {
+            "page": "https://stripe.com/de",
+            "blockId": "8079bf98a75ba2e7",
+            "via": "extend"
+          },
+          {
             "page": "https://tailwindcss.com/",
             "blockId": "144b6a65a3948e5d",
             "via": "reuse"
@@ -883,10 +947,22 @@
         ],
         "aliases": [
           {
+            "what": "action",
+            "alias": "Click Mobile Menu Button",
+            "storedName": "Toggle Menu",
+            "version": 4
+          },
+          {
             "what": "field",
             "alias": "Logo URL",
             "storedName": "Logo Image URL",
             "version": 3
+          },
+          {
+            "what": "field",
+            "alias": "Logo URL",
+            "storedName": "Logo Image URL",
+            "version": 4
           },
           {
             "what": "field",
@@ -899,6 +975,12 @@
             "alias": "Search Placeholder",
             "storedName": "Search Placeholder Text",
             "version": 2
+          },
+          {
+            "what": "part",
+            "alias": "Mobile Menu Button",
+            "storedName": "Hamburger Menu",
+            "version": 4
           }
         ]
       },
@@ -1012,7 +1094,7 @@
     ]
   },
   "reviewQueue": {
-    "open": 5,
-    "resolved": 10
+    "open": 3,
+    "resolved": 12
   }
 }
