@@ -21,7 +21,7 @@ import { loadLayerGraph, canImport, classifyFile } from './architecture-graph.mj
 import { makeViolation, ConstructError, EXIT_CODES } from './diagnostics.mjs';
 import { walk, rel } from './fs.mjs';
 import { globToRegExp, matchGlob } from './glob.mjs';
-import { parseToAst, extractImports, extractExports, staticImportEntries, lineOf, collectCalls, collectBareIdentifierUsages, collectControlFlowNodes, collectInlineJsxLogic, computeJsxComplexity, walkAst, collectImpureDomainReferences, collectLocallyBoundNames, collectBagOfFlagsStates, collectControllerStateCalls, collectUncleanedSubscriptions, collectParamsReads } from '../../packages/ast/index.mjs';
+import { parseToAst, extractImports, extractExports, staticImportEntries, lineOf, collectCalls, collectBareIdentifierUsages, collectControlFlowNodes, collectInlineJsxLogic, computeJsxComplexity, walkAst, collectImpureDomainReferences, collectLocallyBoundNames, collectBagOfFlagsStates, collectControllerStateCalls, collectUncleanedSubscriptions, collectParamsReads, collectUntypedExportedBoundaries } from '../../packages/ast/index.mjs';
 import { extractMachines } from '../../packages/engine/workflowExtractor.mjs';
 import { findHealthIssues } from '../../packages/engine/workflowScenarios.mjs';
 import { exceptionApplies, validateExceptionsShape, expiredExceptionViolations } from './exceptions.mjs';
@@ -451,6 +451,25 @@ export function detectLayerViolations(layer, source, opts = {}) {
   const staticImports = staticImportEntries(ast);
   const firstImportMatch = (re) => staticImports.find((e) => re.test(e.value));
   const out = [];
+
+  // LIN-148 ask #2 -- TYPE-002, flag-gated like DOMAIN-002/WORKFLOW-004/STATE-001 (off unless
+  // the project opts in) and layer-agnostic -- "every unit at every layer" (owner, 2026-09-30),
+  // not just viewmodel/adapter, so it runs here before the per-layer checks below rather than
+  // inside one of their `if (layer === ...)` blocks. Migration-aware per CLAUDE.md's typed-
+  // contracts precedent (HOOK-001/PAGE-008/009/DOMAIN-002/READ-004): report the violation count
+  // to OG before turning it on hard anywhere it isn't already (owner instruction on LIN-148).
+  if (opts.exportedTypeAnnotations) {
+    for (const hit of collectUntypedExportedBoundaries(ast)) {
+      const label = hit.kind === 'param' ? `parameter "${hit.paramName}"` : 'return value';
+      out.push({
+        rule: 'TYPE-002', line: lineOf(source, hit.index),
+        message: `Exported ${hit.functionName === '(anonymous)' ? 'function' : `"${hit.functionName}"`}'s ${label} has no type annotation.`,
+        why: 'an untyped exported boundary is an implicit any -- the no-code tool traces a field by its declared type alone, and a gap here breaks that trace for everything downstream.',
+        suggestedFix: hit.kind === 'param' ? `annotate ${hit.paramName} with its real type` : `annotate ${hit.functionName === '(anonymous)' ? 'the function' : hit.functionName}'s return type`,
+        expected: ['an explicit type on every exported parameter and return value'],
+      });
+    }
+  }
 
   // #581 -- STATE-001 (part of #573), flag-gated like DOMAIN-002/WORKFLOW-004: in the two
   // layers that own application state (workflow, hook), a state shape that is a bag of
@@ -1227,6 +1246,7 @@ export function layerViolationOptsFor(config, layer) {
     controllerNoState: config.rules['CONTROLLER-003']?.severity !== 'off',
     hookEffectCleanup: config.rules['HOOK-003']?.severity !== 'off',
     routeForwardParams: config.rules['ROUTE-003']?.severity !== 'off',
+    exportedTypeAnnotations: config.rules['TYPE-002']?.severity !== 'off',
   };
 }
 

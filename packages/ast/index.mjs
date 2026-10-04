@@ -32,3 +32,5 @@ export { collectEffects, collectEnvReads, collectHttpRoutes } from './backendEff
 export { semanticDiff, SEMANTIC_DIFF_VERDICTS, SEMANTIC_DIFF_OPERATIONS } from './semanticDiff.mjs';
 // `construct check-change`'s propertyCheck section (#749): fast-check equivalence for pure exports touched by the edit.
 export { pureExportEquivalence } from './pureExportEquivalence.mjs';
+// LIN-148 ask #2 (TYPE-002): untyped boundaries (implicit any) on an exported function's params/return.
+export { collectUntypedExportedBoundaries } from './typedBoundary.mjs';

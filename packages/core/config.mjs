@@ -546,6 +546,16 @@ export const DEFAULT_RULES = {
   // Default 'off': every existing controller/page/hook/etc. file predates this check, so turning
   // it on hard is a migration (count violations, report to OG, same reasoning as TYPE-001 above).
   'NAME-001': { severity: 'off', name: 'A unit\'s file path and exported symbol must match layerTargetFile/layerFileBaseName\'s derivation for its own name' },
+  // LIN-148 ask #2 -- an exported function's parameter or return value with no type annotation
+  // (an implicit any), checked via typescript-estree's own typeAnnotation/returnType fields
+  // (packages/ast/typedBoundary.mjs), not a tsc run: cheaper than TYPE-001 and targeted at the
+  // specific shape this wave cares about (a boundary the no-code tool traces types across),
+  // rather than whatever noImplicitAny happens to catch program-wide. Layer-agnostic by owner
+  // decision ("every unit at every layer", 2026-09-30) -- not scoped to viewmodel/adapter only.
+  // Default 'off', same reasoning as TYPE-001/NAME-001/READ-004 above: this repo's own existing
+  // layers predate mandatory typing and would need a counted migration pass before turning this
+  // on hard anywhere (report the violation count to OG first, per the owner instruction on LIN-148).
+  'TYPE-002': { severity: 'off', name: 'An exported function\'s parameter and return value must each carry an explicit type annotation (no implicit any at a unit boundary)' },
   'IMPORT-001': { severity: 'error', name: 'Relative imports must resolve to a file that exists' },
   // LIN-174 -- a generated file's slot region is a build artifact regenerated FROM the map
   // (unit-map.mjs's setMemberSlot/projectUnitSlots); either check firing means the file and the

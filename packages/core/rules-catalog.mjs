@@ -295,6 +295,12 @@ export const RULE_METADATA = {
     expected: [],
     fix: 'Rename the file (and its exported symbol) to what layerFileBaseName derives for this unit\'s own name.',
   },
+  'TYPE-002': {
+    module: MODULES.ARCHITECTURE, layers: NO_LAYERS, scope: SCOPE.BUFFER,
+    why: 'an untyped exported boundary is an implicit any — the no-code tool traces a field by its declared type alone, and a gap here breaks that trace for everything downstream.',
+    expected: ['an explicit type on every exported parameter and return value'],
+    fix: 'Annotate the exported parameter or return value with its real type.',
+  },
   'IMPORT-001': {
     module: MODULES.ARCHITECTURE, layers: NO_LAYERS, scope: SCOPE.PROJECT,
     why: 'A relative import that resolves to nothing points at a typo, or at a file from a later step in the build order that has not been generated yet — this is how Construct enforces generation order.',
