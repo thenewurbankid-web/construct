@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T04:21:42.967Z",
+  "generatedAt": "2026-10-04T06:21:30.334Z",
   "runs": [
     {
       "id": "run-2026-10-04T03-11-52-355Z",
@@ -315,7 +315,7 @@
             "via": "store"
           }
         ],
-        "aliases": []
+        "itemAliases": []
       },
       {
         "name": "collapsible-section",
@@ -341,7 +341,7 @@
             "via": "store"
           }
         ],
-        "aliases": []
+        "itemAliases": []
       },
       {
         "name": "feature-grid",
@@ -367,7 +367,7 @@
             "via": "store"
           }
         ],
-        "aliases": []
+        "itemAliases": []
       },
       {
         "name": "hero-banner",
@@ -403,47 +403,11 @@
             "via": "extend"
           }
         ],
-        "aliases": [
+        "itemAliases": [
           {
             "what": "action",
             "alias": "Click Call to Action",
             "storedName": "Click Call-to-Action Button",
-            "version": 1
-          },
-          {
-            "what": "action",
-            "alias": "Click Call to Action",
-            "storedName": "Click Call-to-Action Button",
-            "version": 1
-          },
-          {
-            "what": "action",
-            "alias": "Click Call to Action",
-            "storedName": "Click Call-to-Action Button",
-            "version": 1
-          },
-          {
-            "what": "action",
-            "alias": "Click Call to Action",
-            "storedName": "Click Call-to-Action Button",
-            "version": 1
-          },
-          {
-            "what": "field",
-            "alias": "Call to Action Text",
-            "storedName": "Call-to-Action Button Text",
-            "version": 1
-          },
-          {
-            "what": "field",
-            "alias": "Call to Action Text",
-            "storedName": "Call-to-Action Button Text",
-            "version": 1
-          },
-          {
-            "what": "field",
-            "alias": "Call to Action Text",
-            "storedName": "Call-to-Action Button Text",
             "version": 1
           },
           {
@@ -460,62 +424,8 @@
           },
           {
             "what": "field",
-            "alias": "Headline",
-            "storedName": "Main Title Text",
-            "version": 1
-          },
-          {
-            "what": "field",
-            "alias": "Headline",
-            "storedName": "Main Title Text",
-            "version": 1
-          },
-          {
-            "what": "field",
-            "alias": "Headline",
-            "storedName": "Main Title Text",
-            "version": 1
-          },
-          {
-            "what": "field",
             "alias": "Image URL",
             "storedName": "Background Image URL",
-            "version": 1
-          },
-          {
-            "what": "field",
-            "alias": "Image URL",
-            "storedName": "Background Image URL",
-            "version": 1
-          },
-          {
-            "what": "field",
-            "alias": "Image URL",
-            "storedName": "Background Image URL",
-            "version": 1
-          },
-          {
-            "what": "field",
-            "alias": "Image URL",
-            "storedName": "Background Image URL",
-            "version": 1
-          },
-          {
-            "what": "field",
-            "alias": "Subheadline",
-            "storedName": "Description Text",
-            "version": 1
-          },
-          {
-            "what": "field",
-            "alias": "Subheadline",
-            "storedName": "Description Text",
-            "version": 1
-          },
-          {
-            "what": "field",
-            "alias": "Subheadline",
-            "storedName": "Description Text",
             "version": 1
           },
           {
@@ -532,42 +442,6 @@
           },
           {
             "what": "part",
-            "alias": "Call to Action",
-            "storedName": "Call-to-Action Buttons",
-            "version": 1
-          },
-          {
-            "what": "part",
-            "alias": "Call to Action",
-            "storedName": "Call-to-Action Buttons",
-            "version": 1
-          },
-          {
-            "what": "part",
-            "alias": "Call to Action",
-            "storedName": "Call-to-Action Buttons",
-            "version": 1
-          },
-          {
-            "what": "part",
-            "alias": "Headline",
-            "storedName": "Main Title",
-            "version": 1
-          },
-          {
-            "what": "part",
-            "alias": "Headline",
-            "storedName": "Main Title",
-            "version": 1
-          },
-          {
-            "what": "part",
-            "alias": "Headline",
-            "storedName": "Main Title",
-            "version": 1
-          },
-          {
-            "what": "part",
             "alias": "Headline",
             "storedName": "Main Title",
             "version": 1
@@ -576,42 +450,6 @@
             "what": "part",
             "alias": "Image",
             "storedName": "Background Image",
-            "version": 1
-          },
-          {
-            "what": "part",
-            "alias": "Image",
-            "storedName": "Background Image",
-            "version": 1
-          },
-          {
-            "what": "part",
-            "alias": "Image",
-            "storedName": "Background Image",
-            "version": 1
-          },
-          {
-            "what": "part",
-            "alias": "Image",
-            "storedName": "Background Image",
-            "version": 1
-          },
-          {
-            "what": "part",
-            "alias": "Subheadline",
-            "storedName": "Description",
-            "version": 1
-          },
-          {
-            "what": "part",
-            "alias": "Subheadline",
-            "storedName": "Description",
-            "version": 1
-          },
-          {
-            "what": "part",
-            "alias": "Subheadline",
-            "storedName": "Description",
             "version": 1
           },
           {
@@ -641,7 +479,7 @@
             "via": "store"
           }
         ],
-        "aliases": []
+        "itemAliases": []
       },
       {
         "name": "responsive-design-feature",
@@ -667,7 +505,7 @@
             "via": "store"
           }
         ],
-        "aliases": []
+        "itemAliases": []
       },
       {
         "name": "search-filters",
@@ -693,7 +531,7 @@
             "via": "store"
           }
         ],
-        "aliases": []
+        "itemAliases": []
       },
       {
         "name": "site-header",
@@ -724,7 +562,7 @@
             "via": "reuse"
           }
         ],
-        "aliases": []
+        "itemAliases": []
       },
       {
         "name": "sponsors-section",
@@ -770,59 +608,11 @@
             "via": "store"
           }
         ],
-        "aliases": [
+        "itemAliases": [
           {
             "what": "field",
             "alias": "Sponsor Logos",
             "storedName": "Sponsors Logos",
-            "version": 1
-          },
-          {
-            "what": "field",
-            "alias": "Sponsor Logos",
-            "storedName": "Sponsors Logos",
-            "version": 1
-          },
-          {
-            "what": "field",
-            "alias": "Sponsor Logos",
-            "storedName": "Sponsors Logos",
-            "version": 1
-          },
-          {
-            "what": "field",
-            "alias": "Sponsor Logos",
-            "storedName": "Sponsors Logos",
-            "version": 1
-          },
-          {
-            "what": "field",
-            "alias": "Sponsor Logos",
-            "storedName": "Sponsors Logos",
-            "version": 1
-          },
-          {
-            "what": "part",
-            "alias": "Sponsor Logos",
-            "storedName": "Sponsors List",
-            "version": 1
-          },
-          {
-            "what": "part",
-            "alias": "Sponsor Logos",
-            "storedName": "Sponsors List",
-            "version": 1
-          },
-          {
-            "what": "part",
-            "alias": "Sponsor Logos",
-            "storedName": "Sponsors List",
-            "version": 1
-          },
-          {
-            "what": "part",
-            "alias": "Sponsor Logos",
-            "storedName": "Sponsors List",
             "version": 1
           },
           {
