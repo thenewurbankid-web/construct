@@ -247,12 +247,12 @@ test('markdown helpers: sections, includes, ticket stripping', async () => {
   assert.equal(stripTicketRefs('Visit https://example.com/page#42 for details.'), 'Visit https://example.com/page#42 for details.');
 });
 
-test('friendliness: three-item nav, product side menu, where-am-I line, quickstart first, plain words', async () => {
+test('friendliness: four-item nav, product side menu, where-am-I line, quickstart first, plain words', async () => {
   const out = makeTempDir('site-test-');
   await build({ out, repo: 'o/r', buildTime: BUILD_TIME });
   const gs = fs.readFileSync(path.join(out, 'user-guide/getting-started/index.html'), 'utf8');
-  assert.match(gs, /<nav class="primary"[^>]*>(?:<a [^>]*>[^<]+<\/a>){3}<\/nav>/);
-  for (const label of ['Home', 'Guide', 'For developers']) assert.match(gs, new RegExp(`>${label}</a>`));
+  assert.match(gs, /<nav class="primary"[^>]*>(?:<a [^>]*>[^<]+<\/a>){4}<\/nav>/);
+  for (const label of ['Home', 'Guide', 'For developers', 'Vision']) assert.match(gs, new RegExp(`>${label}</a>`));
   assert.ok(gs.indexOf('Try it in 60 seconds') < gs.indexOf('What just happened'), 'quickstart comes before the explanation');
   // The side menu is grouped by product, in order, and never by surface.
   const sidebar = /<aside class="sidebar"[\s\S]*?<\/aside>/.exec(gs)[0];

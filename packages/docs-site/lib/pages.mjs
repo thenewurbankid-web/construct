@@ -8,8 +8,8 @@ const FAVICON =
 const fmtDate = (iso) => (iso ? new Date(iso).toISOString().slice(0, 10) : '');
 export const rootFor = (pagePath) => '../'.repeat(pagePath.split('/').filter(Boolean).length);
 
-const SECTION_LABEL = { user: 'User Guide', dev: 'Developer Docs' };
-const SECTION_HOME = { user: 'user-guide/', dev: 'developers/' };
+const SECTION_LABEL = { user: 'User Guide', dev: 'Developer Docs', vision: 'Vision' };
+const SECTION_HOME = { user: 'user-guide/', dev: 'developers/', vision: 'vision/' };
 const SITE_NAME = 'Line';
 
 /**
@@ -29,6 +29,7 @@ export function layout(page, { repoUrl, buildTime, versions, basePath, version }
     ['', 'Home', 'home'],
     ['user-guide/', 'Guide', 'user'],
     ['developers/', 'For developers', 'dev'],
+    ['vision/', 'Vision', 'vision'],
   ]
     .map(([href, label, key]) => `<a href="${root}${href}"${section === key ? ' aria-current="page"' : ''}>${label}</a>`)
     .join('');

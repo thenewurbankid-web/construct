@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-04T09:30:00.000Z",
+  "runs": [
+    { "id": "sample-run-0003", "spec": "sample-landing-page", "model": "sample-model-a", "startedAt": "2026-10-04T08:00:00.000Z", "finishedAt": null, "status": "running", "counts": { "stored": 4, "reused": 2, "review": 0, "skipped": 0 } },
+    { "id": "sample-run-0002", "spec": "sample-pricing-page", "model": "sample-model-a", "startedAt": "2026-10-03T14:10:00.000Z", "finishedAt": "2026-10-03T14:52:30.000Z", "status": "done", "counts": { "stored": 11, "reused": 5, "review": 2, "skipped": 1 } },
+    { "id": "sample-run-0001", "spec": "sample-article-page", "model": "sample-model-b", "startedAt": "2026-10-02T10:00:00.000Z", "finishedAt": "2026-10-02T10:20:00.000Z", "status": "failed", "counts": { "stored": 3, "reused": 0, "review": 1, "skipped": 4 } }
+  ],
+  "library": {
+    "releasedVersion": "1.0.0",
+    "components": [
+      { "name": "PrimaryButton", "level": "atom", "latestVersion": "1.2.0", "versions": [ { "number": "1.0.0", "createdAt": "2026-09-28T12:00:00.000Z", "how": "first stored" }, { "number": "1.1.0", "createdAt": "2026-10-01T09:00:00.000Z", "how": "improved" }, { "number": "1.2.0", "createdAt": "2026-10-03T14:30:00.000Z", "how": "improved" } ], "updatedAt": "2026-10-03T14:30:00.000Z", "whereUsed": ["PricingCard", "HeroSection"], "aliases": ["CtaButton"] },
+      { "name": "PricingCard", "level": "molecule", "latestVersion": "1.0.0", "versions": [ { "number": "1.0.0", "createdAt": "2026-10-03T14:40:00.000Z", "how": "first stored" } ], "updatedAt": "2026-10-03T14:40:00.000Z", "whereUsed": [], "aliases": [] },
+      { "name": "HeroSection", "level": "organism", "latestVersion": "1.0.0", "versions": [ { "number": "1.0.0", "createdAt": "2026-10-02T10:15:00.000Z", "how": "first stored" } ], "updatedAt": "2026-10-02T10:15:00.000Z", "whereUsed": ["LandingPage"], "aliases": ["Banner", "TopSection"] }
+    ]
+  }
+}

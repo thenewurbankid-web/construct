@@ -20,6 +20,7 @@ import { renderMarkdown } from '../packages/docs-site/lib/markdown.mjs';
 import { generateApiMarkdown, API_PACKAGES } from '../packages/docs-site/lib/apiDocs.mjs';
 import { collectServerRoutes, renderRouteGroupMarkdown } from '../packages/docs-site/lib/serverRoutes.mjs';
 import { collectCliCommands, renderCliCommandsMarkdown } from '../packages/docs-site/lib/cliCommands.mjs';
+import { parseSnapshot, renderVisionStatus, VISION_PATH } from '../packages/docs-site/lib/visionStatus.mjs';
 import { USER_GROUPS, DEV_GROUPS, USER_INDEX, DEV_INDEX, generatedMarkdown, listGroups, userPages } from '../packages/docs-site/lib/structure.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -54,7 +55,7 @@ export function devStatus({ repoRoot = REPO_ROOT, buildTime = new Date(), env = 
 const stripLeadingH1 = (md) => md.replace(/^\s*#\s+[^\n]*\n+/, '');
 
 // `api`: false (default for library callers), true (every package in API_PACKAGES) or an array of package ids.
-export async function build({ out, repo, buildTime = new Date(), basePath, version, versions, search = false, repoRoot = REPO_ROOT, api = false }) {
+export async function build({ out, repo, buildTime = new Date(), basePath, version, versions, search = false, repoRoot = REPO_ROOT, api = false, visionSnapshot }) {
   const repoUrl = `https://github.com/${repo}`;
   const [owner, name] = repo.split('/');
   basePath = normalizeBase(basePath ?? `/${name}/`);
@@ -259,6 +260,23 @@ export async function build({ out, repo, buildTime = new Date(), basePath, versi
     const md = `*CLI command reference, ${versionLabel}.*\n\n${renderCliCommandsMarkdown(cliData, blobUrl)}`;
     const { html, headings } = renderMarkdown(md, { repoRoot, repoUrl, source: 'packages/core/cli.mjs', resolvePage: () => null, root });
     pageOut(indexDef, 'dev', devNav, { headings, srcFile: 'packages/core/cli.mjs' }, { body: docBody({ title: indexDef.title, lede: indexDef.description, html }) });
+  }
+
+  // ---- Vision status (snapshot committed at site/data/vision-status.json; absent or unknown schema shows "No snapshot yet") ----
+  {
+    let raw = visionSnapshot;
+    if (raw === undefined) {
+      try {
+        raw = fs.readFileSync(path.join(repoRoot, 'site/data/vision-status.json'), 'utf8');
+      } catch {
+        raw = null;
+      }
+    }
+    const def = { path: VISION_PATH, title: 'Vision', description: 'A snapshot of Vision Architect: its recent runs and the component library it has built.', file: 'site/content/vision/index.md' };
+    const rendered = await renderDoc(def, 'vision', []);
+    const lede = def.description;
+    const body = `<h1>${esc(def.title)}</h1><p class="lede">${esc(lede)}</p><div class="prose">${rendered.html}</div>${renderVisionStatus(parseSnapshot(raw), { root: rendered.root })}`;
+    pageOut(def, 'vision', [], rendered, { body, nav: undefined });
   }
 
   // ---- home, search, 404, redirects ------------------------------------
