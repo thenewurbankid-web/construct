@@ -181,6 +181,30 @@ test('#471: generate --llm without --model passes no model override (provider fa
   assert.equal(calls[0], undefined);
 });
 
+// ---- #496: create/generate --llm auto-fixes a fill that leaves a real violation behind ----
+
+test('generate --llm auto-fixes a construct-validate violation left by the fill, feeding it back as correction context', async () => {
+  const dir = tmp();
+  createFeature(dir, 'checkout');
+  const violating = "export function Foo() { fetch('/x'); return true; }";
+  const clean = 'export function Foo() { return true; }';
+  const { result } = await withFake([violating, clean], () => captureConsole(() => generate(['domain', 'Foo', '--feature', 'checkout', '--llm', 'claude', '--dir', dir])));
+  assert.match(result.out, /Created \+ LLM-filled/);
+  assert.match(result.out, /Auto-fixed after the fill left a construct-validate violation behind \(1 attempt/);
+  assert.equal(result.exitCode, undefined);
+  assert.equal(fs.readFileSync(path.join(dir, 'features/checkout/domain/Foo.ts'), 'utf8').trim(), clean);
+});
+
+test('generate --llm reports remaining violations and a non-zero exit code when auto-fix cannot converge', async () => {
+  const dir = tmp();
+  createFeature(dir, 'checkout');
+  const violating = "export function Foo() { fetch('/x'); return true; }";
+  const { result } = await withFake([violating], () => captureConsole(() => generate(['domain', 'Foo', '--feature', 'checkout', '--llm', 'claude', '--dir', dir])));
+  assert.match(result.out, /Created \+ LLM-filled/);
+  assert.match(result.out, /Still has 1 violation\(s\) after auto-fix \(no progress, 2 attempt/);
+  assert.equal(result.exitCode, 3);
+});
+
 // ---- import.mjs -------------------------------------------------------------
 
 function importSetup() {
