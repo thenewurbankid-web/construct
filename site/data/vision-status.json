@@ -1,7 +1,52 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T06:21:30.334Z",
+  "generatedAt": "2026-10-04T17:33:23.656Z",
   "runs": [
+    {
+      "id": "run-2026-10-04T17-28-18-397Z",
+      "spec": "htmx.org",
+      "model": "qwen2.5-coder:7b + qwen3:4b",
+      "startedAt": "2026-10-04T17:28:18.581Z",
+      "finishedAt": "2026-10-04T17:33:23.596Z",
+      "status": "finished",
+      "counts": {
+        "stored": 0,
+        "extended": 1,
+        "reused": 0,
+        "review": 2,
+        "skipped": 0
+      }
+    },
+    {
+      "id": "run-2026-10-04T17-17-36-674Z",
+      "spec": "alpinejs.dev",
+      "model": "qwen2.5-coder:7b + qwen3:4b",
+      "startedAt": "2026-10-04T17:17:36.928Z",
+      "finishedAt": "2026-10-04T17:20:01.933Z",
+      "status": "finished",
+      "counts": {
+        "stored": 0,
+        "extended": 2,
+        "reused": 1,
+        "review": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "id": "run-2026-10-04T17-12-54-752Z",
+      "spec": "alpinejs.dev",
+      "model": "qwen2.5-coder:7b + qwen3:4b",
+      "startedAt": "2026-10-04T17:12:55.381Z",
+      "finishedAt": "2026-10-04T17:15:53.313Z",
+      "status": "finished",
+      "counts": {
+        "stored": 0,
+        "extended": 2,
+        "reused": 1,
+        "review": 0,
+        "skipped": 0
+      }
+    },
     {
       "id": "run-2026-10-04T03-11-52-355Z",
       "spec": "alpinejs.dev",
@@ -315,7 +360,7 @@
             "via": "store"
           }
         ],
-        "itemAliases": []
+        "aliases": []
       },
       {
         "name": "collapsible-section",
@@ -341,7 +386,7 @@
             "via": "store"
           }
         ],
-        "itemAliases": []
+        "aliases": []
       },
       {
         "name": "feature-grid",
@@ -367,12 +412,12 @@
             "via": "store"
           }
         ],
-        "itemAliases": []
+        "aliases": []
       },
       {
         "name": "hero-banner",
         "level": "organism",
-        "latestVersion": 2,
+        "latestVersion": 4,
         "versions": [
           {
             "number": 1,
@@ -383,10 +428,25 @@
             "number": 2,
             "createdAt": "2026-10-02T18:24:44.446Z",
             "how": "extend"
+          },
+          {
+            "number": 3,
+            "createdAt": "2026-10-04T17:14:01.570Z",
+            "how": "extend"
+          },
+          {
+            "number": 4,
+            "createdAt": "2026-10-04T17:18:07.574Z",
+            "how": "extend"
           }
         ],
-        "updatedAt": "2026-10-02T18:24:44.446Z",
+        "updatedAt": "2026-10-04T17:18:07.574Z",
         "whereUsed": [
+          {
+            "page": "https://alpinejs.dev/",
+            "blockId": "fe79bb0d3c5832d9",
+            "via": "extend"
+          },
           {
             "page": "https://stripe.com/de",
             "blockId": "40e40fbbdc85ce0c",
@@ -403,7 +463,25 @@
             "via": "extend"
           }
         ],
-        "itemAliases": [
+        "aliases": [
+          {
+            "what": "action",
+            "alias": "Click Call to Action",
+            "storedName": "Click Call-to-Action Button",
+            "version": 1
+          },
+          {
+            "what": "action",
+            "alias": "Click Call to Action",
+            "storedName": "Click Call-to-Action Button",
+            "version": 1
+          },
+          {
+            "what": "action",
+            "alias": "Click Call to Action",
+            "storedName": "Click Call-to-Action Button",
+            "version": 1
+          },
           {
             "what": "action",
             "alias": "Click Call to Action",
@@ -418,14 +496,122 @@
           },
           {
             "what": "field",
+            "alias": "Call to Action Text",
+            "storedName": "Call-to-Action Button Text",
+            "version": 1
+          },
+          {
+            "what": "field",
+            "alias": "Call to Action Text",
+            "storedName": "Call-to-Action Button Text",
+            "version": 1
+          },
+          {
+            "what": "field",
+            "alias": "Call to Action Text",
+            "storedName": "Call-to-Action Button Text",
+            "version": 1
+          },
+          {
+            "what": "field",
+            "alias": "Call to Action Text",
+            "storedName": "Call-to-Action Button Text",
+            "version": 2
+          },
+          {
+            "what": "field",
+            "alias": "Call to Action Text",
+            "storedName": "Call-to-Action Button Text",
+            "version": 3
+          },
+          {
+            "what": "field",
             "alias": "Headline",
             "storedName": "Main Title Text",
             "version": 1
           },
           {
             "what": "field",
+            "alias": "Headline",
+            "storedName": "Main Title Text",
+            "version": 1
+          },
+          {
+            "what": "field",
+            "alias": "Headline",
+            "storedName": "Main Title Text",
+            "version": 1
+          },
+          {
+            "what": "field",
+            "alias": "Headline",
+            "storedName": "Main Title Text",
+            "version": 1
+          },
+          {
+            "what": "field",
+            "alias": "Headline Text",
+            "storedName": "Main Title Text",
+            "version": 2
+          },
+          {
+            "what": "field",
+            "alias": "Headline Text",
+            "storedName": "Main Title Text",
+            "version": 3
+          },
+          {
+            "what": "field",
             "alias": "Image URL",
             "storedName": "Background Image URL",
+            "version": 1
+          },
+          {
+            "what": "field",
+            "alias": "Image URL",
+            "storedName": "Background Image URL",
+            "version": 1
+          },
+          {
+            "what": "field",
+            "alias": "Image URL",
+            "storedName": "Background Image URL",
+            "version": 1
+          },
+          {
+            "what": "field",
+            "alias": "Image URL",
+            "storedName": "Background Image URL",
+            "version": 1
+          },
+          {
+            "what": "field",
+            "alias": "Image URL",
+            "storedName": "Background Image URL",
+            "version": 2
+          },
+          {
+            "what": "field",
+            "alias": "Image URL",
+            "storedName": "Background Image URL",
+            "version": 3
+          },
+          {
+            "what": "field",
+            "alias": "Subheadline",
+            "storedName": "Description Text",
+            "version": 1
+          },
+          {
+            "what": "field",
+            "alias": "Subheadline",
+            "storedName": "Description Text",
+            "version": 1
+          },
+          {
+            "what": "field",
+            "alias": "Subheadline",
+            "storedName": "Description Text",
             "version": 1
           },
           {
@@ -442,14 +628,122 @@
           },
           {
             "what": "part",
+            "alias": "Call to Action",
+            "storedName": "Call-to-Action Buttons",
+            "version": 1
+          },
+          {
+            "what": "part",
+            "alias": "Call to Action",
+            "storedName": "Call-to-Action Buttons",
+            "version": 1
+          },
+          {
+            "what": "part",
+            "alias": "Call to Action",
+            "storedName": "Call-to-Action Buttons",
+            "version": 1
+          },
+          {
+            "what": "part",
+            "alias": "Call to Action",
+            "storedName": "Call-to-Action Buttons",
+            "version": 2
+          },
+          {
+            "what": "part",
+            "alias": "Call to Action",
+            "storedName": "Call-to-Action Buttons",
+            "version": 3
+          },
+          {
+            "what": "part",
             "alias": "Headline",
             "storedName": "Main Title",
             "version": 1
           },
           {
             "what": "part",
+            "alias": "Headline",
+            "storedName": "Main Title",
+            "version": 1
+          },
+          {
+            "what": "part",
+            "alias": "Headline",
+            "storedName": "Main Title",
+            "version": 1
+          },
+          {
+            "what": "part",
+            "alias": "Headline",
+            "storedName": "Main Title",
+            "version": 1
+          },
+          {
+            "what": "part",
+            "alias": "Headline",
+            "storedName": "Main Title",
+            "version": 2
+          },
+          {
+            "what": "part",
+            "alias": "Headline",
+            "storedName": "Main Title",
+            "version": 3
+          },
+          {
+            "what": "part",
             "alias": "Image",
             "storedName": "Background Image",
+            "version": 1
+          },
+          {
+            "what": "part",
+            "alias": "Image",
+            "storedName": "Background Image",
+            "version": 1
+          },
+          {
+            "what": "part",
+            "alias": "Image",
+            "storedName": "Background Image",
+            "version": 1
+          },
+          {
+            "what": "part",
+            "alias": "Image",
+            "storedName": "Background Image",
+            "version": 1
+          },
+          {
+            "what": "part",
+            "alias": "Image",
+            "storedName": "Background Image",
+            "version": 2
+          },
+          {
+            "what": "part",
+            "alias": "Image",
+            "storedName": "Background Image",
+            "version": 3
+          },
+          {
+            "what": "part",
+            "alias": "Subheadline",
+            "storedName": "Description",
+            "version": 1
+          },
+          {
+            "what": "part",
+            "alias": "Subheadline",
+            "storedName": "Description",
+            "version": 1
+          },
+          {
+            "what": "part",
+            "alias": "Subheadline",
+            "storedName": "Description",
             "version": 1
           },
           {
@@ -479,7 +773,7 @@
             "via": "store"
           }
         ],
-        "itemAliases": []
+        "aliases": []
       },
       {
         "name": "responsive-design-feature",
@@ -505,7 +799,7 @@
             "via": "store"
           }
         ],
-        "itemAliases": []
+        "aliases": []
       },
       {
         "name": "search-filters",
@@ -531,21 +825,41 @@
             "via": "store"
           }
         ],
-        "itemAliases": []
+        "aliases": []
       },
       {
         "name": "site-header",
-        "level": "molecule",
-        "latestVersion": 1,
+        "level": "organism",
+        "latestVersion": 4,
         "versions": [
           {
             "number": 1,
             "createdAt": "2026-10-02T05:11:42.478Z",
             "how": "store"
+          },
+          {
+            "number": 2,
+            "createdAt": "2026-10-04T17:13:36.410Z",
+            "how": "extend"
+          },
+          {
+            "number": 3,
+            "createdAt": "2026-10-04T17:17:57.230Z",
+            "how": "extend"
+          },
+          {
+            "number": 4,
+            "createdAt": "2026-10-04T17:29:15.022Z",
+            "how": "extend"
           }
         ],
-        "updatedAt": "2026-10-02T05:11:42.478Z",
+        "updatedAt": "2026-10-04T17:29:15.022Z",
         "whereUsed": [
+          {
+            "page": "https://alpinejs.dev/",
+            "blockId": "3b52aee0b7944af7",
+            "via": "extend"
+          },
           {
             "page": "https://hn.algolia.com/",
             "blockId": "e28a33c14bad6747",
@@ -557,12 +871,36 @@
             "via": "store"
           },
           {
+            "page": "https://htmx.org/",
+            "blockId": "cb00409ccc245bc8",
+            "via": "extend"
+          },
+          {
             "page": "https://tailwindcss.com/",
             "blockId": "144b6a65a3948e5d",
             "via": "reuse"
           }
         ],
-        "itemAliases": []
+        "aliases": [
+          {
+            "what": "field",
+            "alias": "Logo URL",
+            "storedName": "Logo Image URL",
+            "version": 3
+          },
+          {
+            "what": "field",
+            "alias": "Search Placeholder",
+            "storedName": "Search Placeholder Text",
+            "version": 1
+          },
+          {
+            "what": "field",
+            "alias": "Search Placeholder",
+            "storedName": "Search Placeholder Text",
+            "version": 2
+          }
+        ]
       },
       {
         "name": "sponsors-section",
@@ -608,7 +946,31 @@
             "via": "store"
           }
         ],
-        "itemAliases": [
+        "aliases": [
+          {
+            "what": "field",
+            "alias": "Sponsor Logos",
+            "storedName": "Sponsors Logos",
+            "version": 1
+          },
+          {
+            "what": "field",
+            "alias": "Sponsor Logos",
+            "storedName": "Sponsors Logos",
+            "version": 1
+          },
+          {
+            "what": "field",
+            "alias": "Sponsor Logos",
+            "storedName": "Sponsors Logos",
+            "version": 1
+          },
+          {
+            "what": "field",
+            "alias": "Sponsor Logos",
+            "storedName": "Sponsors Logos",
+            "version": 1
+          },
           {
             "what": "field",
             "alias": "Sponsor Logos",
@@ -620,9 +982,37 @@
             "alias": "Sponsor Logos",
             "storedName": "Sponsors List",
             "version": 1
+          },
+          {
+            "what": "part",
+            "alias": "Sponsor Logos",
+            "storedName": "Sponsors List",
+            "version": 1
+          },
+          {
+            "what": "part",
+            "alias": "Sponsor Logos",
+            "storedName": "Sponsors List",
+            "version": 1
+          },
+          {
+            "what": "part",
+            "alias": "Sponsor Logos",
+            "storedName": "Sponsors List",
+            "version": 1
+          },
+          {
+            "what": "part",
+            "alias": "Sponsor Logos",
+            "storedName": "Sponsors List",
+            "version": 1
           }
         ]
       }
     ]
+  },
+  "reviewQueue": {
+    "open": 5,
+    "resolved": 10
   }
 }
