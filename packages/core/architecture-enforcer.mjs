@@ -437,7 +437,7 @@ function findMissingAbortSignal(ast, source) {
  *
  * @param {string} layer One of the known layer names.
  * @param {string} source The file's source text.
- * @param {{maxJsxDepth?: number, maxJsxBranches?: number, domainPurityAllowlist?: boolean, workflowTransitionTable?: boolean, stateUnion?: boolean, serviceAbortSignal?: boolean, controllerNoState?: boolean, hookEffectCleanup?: boolean, routeForwardParams?: boolean}} [opts]
+ * @param {{maxJsxDepth?: number, maxJsxBranches?: number, domainPurityAllowlist?: boolean, workflowTransitionTable?: boolean, stateUnion?: boolean, serviceAbortSignal?: boolean, controllerNoState?: boolean, hookEffectCleanup?: boolean, routeForwardParams?: boolean, exportedTypeAnnotations?: boolean}} [opts]
  *   COMPONENT-006/PAGE-009's complexity budget overrides (#508/#505), DOMAIN-002's opt-in
  *   flag (#506), WORKFLOW-004's opt-in flag (#578), STATE-001's opt-in flag (#581) and
  *   SERVICE-003's opt-in flag (#594) and CONTROLLER-003/HOOK-003/ROUTE-003's opt-in flags
