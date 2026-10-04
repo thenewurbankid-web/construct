@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T17:59:12.927Z",
+  "generatedAt": "2026-10-04T18:00:35.861Z",
   "runs": [
+    {
+      "id": "run-2026-10-04T17-59-53-932Z",
+      "spec": "hn.algolia.com",
+      "model": "qwen2.5-coder:7b + qwen3:4b",
+      "startedAt": "2026-10-04T17:59:58.522Z",
+      "finishedAt": "2026-10-04T18:00:35.578Z",
+      "status": "finished",
+      "counts": {
+        "stored": 0,
+        "extended": 0,
+        "reused": 3,
+        "review": 0,
+        "skipped": 0
+      }
+    },
     {
       "id": "run-2026-10-04T17-54-10-916Z",
       "spec": "stripe.com",
@@ -868,6 +883,11 @@
         ],
         "updatedAt": "2026-10-02T08:28:20.681Z",
         "whereUsed": [
+          {
+            "page": "https://hn.algolia.com/",
+            "blockId": "ac4ac420e625bd2b",
+            "via": "reuse"
+          },
           {
             "page": "https://hn.algolia.com/",
             "blockId": "afde5d70dae49092",
