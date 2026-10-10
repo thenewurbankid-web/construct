@@ -22,7 +22,7 @@ A developer opens Cockpit, starts a new Line project or imports an existing app,
 - Library and feature: the library holds complete components, pages, workflows and fixtures; every feature item is based on one library item; a feature uses the library, never another feature; every feature page belongs to one feature; the feature's spec lives in its folder.
 - Users see plain English first; technical details sit in a collapsed disclosure.
 - Two modes: Auto (fills in what passes the checks) and Trace (highlights the controls for each step; with Auto, a simulated mouse and keyboard act it out).
-- Memory is local and per project, and users control it. Embeddings never run on code.
+- To make AI better, we recommend local, project-specific tools (local embeddings, per-project memory and small local models such as GateLM) over prompt and context engineering. Memory is local and per project, and users control it. Embeddings run on English requests and typed structure, never on code.
 - Production standards: evidence before claims, real users early, focus over feature sprawl, no code outside git, tests and type checks clean.
 
 ## Where the details are
