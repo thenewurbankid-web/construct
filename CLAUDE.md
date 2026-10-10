@@ -1,5 +1,9 @@
 # Working on Construct
 
+## Line: product, goal and mission (read first)
+Line is a generator framework with enforced architecture, like JHipster, not an AI tool. Cockpit (visual, no-code plus spot code editing) is the main product; Construct enforces the architecture; AI only enhances the static tools where measured. Every action is a plan step; agents drive only through the plan API; one shared module per concern. Full statement: `LINE.md` at the repo root (set by the owner 2026-10-11; it overrides older notes that disagree).
+
+
 This repo is the Construct tool itself, not a project that uses it.
 `AGENTS.md` and `architecture.yml` at the root are leftover output of
 `construct init .`; they describe what Construct enforces on *target*
