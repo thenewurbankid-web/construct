@@ -46,6 +46,15 @@ function printUsage() {
   }
 }
 
+// A piped stdout is asynchronous: exiting straight after a large write (validate --format json on a
+// project with hundreds of findings) cut the output at 64KB. Exit once both streams have flushed.
+function exitAfterFlush(code) {
+  let pending = 2;
+  const done = () => { if (--pending === 0) process.exit(code); };
+  process.stdout.write('', done);
+  process.stderr.write('', done);
+}
+
 try {
   if (wantsHelp) {
     printUsage();
@@ -56,8 +65,8 @@ try {
     printUsage();
     process.exit(EXIT_CODES.USAGE_ERROR);
   }
-  process.exit(process.exitCode ?? EXIT_CODES.OK);
+  exitAfterFlush(process.exitCode ?? EXIT_CODES.OK);
 } catch (e) {
   console.error(`\nConstruct error: ${e.message}`);
-  process.exit(e instanceof ConstructError ? e.exitCode : EXIT_CODES.INTERNAL_ERROR);
+  exitAfterFlush(e instanceof ConstructError ? e.exitCode : EXIT_CODES.INTERNAL_ERROR);
 }

@@ -14,6 +14,7 @@ import { loadConfig, findProjectRoot, DEFAULT_RULES, NEW_PROJECT_RULE_SEVERITIES
 import { listRules } from './rules-catalog.mjs';
 import { formatReport, exitCodeForViolations, ConstructError, EXIT_CODES, setExitCode } from './diagnostics.mjs';
 import { aggregateValidation } from './registry.mjs';
+import { selectProfile, enforcersForProfile } from './profiles/index.mjs';
 import { validateArchitecture } from './architecture-enforcer.mjs';
 import { syncPublicApi } from './api-composer.mjs';
 import { saveFlow, loadFlow, listFlows, deleteFlow } from './flows.mjs';
@@ -902,7 +903,13 @@ export async function exportCommand(args) {
 
 export async function validate(args) {
   const root = getRoot(args);
-  const { violations, ok } = aggregateValidation(root, DEFAULT_ENFORCERS);
+  // ca1: `--profile line` (or `preset: line` in architecture.yml) runs the Line profile's enforcers.
+  const pi = args.indexOf('--profile');
+  if (pi >= 0 && (!args[pi + 1] || args[pi + 1].startsWith('--'))) {
+    throw new ConstructError('--profile needs a profile name, for example "construct validate --profile line".', { exitCode: EXIT_CODES.USAGE_ERROR });
+  }
+  const profile = selectProfile(root, pi >= 0 ? args[pi + 1] : undefined);
+  const { violations, ok } = aggregateValidation(root, enforcersForProfile(profile));
   const fi = args.indexOf('--format');
   const format = fi >= 0 && args[fi + 1] === 'json' ? 'json' : 'text';
   console.log(formatReport(violations, { format }));
