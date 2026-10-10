@@ -16,6 +16,7 @@ Line is a generator framework with enforced architecture, like JHipster. It is n
 A developer opens Cockpit, starts a new Line project or imports an existing app, and builds features from library items, with every change checked and explained. Line is for new projects; the Import flow brings existing apps in (partially inside one folder, or fully into a new Line app).
 
 ## How Line works (non-negotiable)
+- Terminology: when the owner says "jev" for a decision, it means Line's AI block (@mx/reason): static and Qwen suggest options, jev decides, Qwen gives the reasons. Never jev alone.
 - Static first. AI acts as linters and helpers that improve the static tools, and only where measurement shows it helps (static → Qwen options → jev picks → one Qwen review, each step on only if it meets its target).
 - Every action, clicked or typed, is a step in a plan in a session. With no active plan, Line asks for the goal. Agents (and Line's own AI) drive only through the plan API, never by calling tools directly.
 - One shared module per concern across every app: @mx/reason (AI decisions), @mx/plan (plans and the tool registry), Construct's writer (all writes), Construct's summarize block on Smith (all English), Trace's matcher, Construct's rules.
