@@ -1,0 +1,23 @@
+{
+  "name": "smith",
+  "version": "0.1.0",
+  "description": "A small framework for the atomic pattern: shared connector atoms (Chain, Organism) and single-source comparison logic (Comparable), for new projects/modules to build on from day one.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "fluent-interface",
+    "comparable",
+    "atomic-pattern"
+  ],
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}
