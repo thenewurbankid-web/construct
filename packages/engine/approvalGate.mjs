@@ -37,7 +37,7 @@ import yaml from 'js-yaml';
 import { planTouches } from '../core/plan.mjs';
 import { matchFrozen, readFrozenGlobs } from '../core/frozen.mjs';
 import { aggregateValidation } from '../core/registry.mjs';
-import { DEFAULT_ENFORCERS } from './defaultEnforcers.mjs';
+import { enforcersForRoot } from '../core/profiles/index.mjs';
 import { affectedSet } from './scopeGate.mjs';
 import { appendLog, setApproval } from './processModel.mjs';
 import { topLevelState } from './processMachine.mjs';
@@ -119,14 +119,14 @@ function validBy(by) {
  * @param {object} [options.runner] The bot runner (for `release()`); optional in tests.
  * @param {() => string} [options.now] Clock returning an ISO timestamp.
  * @param {(root:string, files?:string[]) => {violations:object[]}} [options.validate] Validator run
- *   before and after applying; defaults to `aggregateValidation(DEFAULT_ENFORCERS, {files})` (#546),
+ *   before and after applying; defaults to `aggregateValidation(enforcersForRoot(root), {files})` (#546; the project's preset: profile),
  *   scoped to the AFFECTED SET of whatever is being applied (#548) rather than the whole project, so
  *   a bot's output can't pass this gate while violating SOC, readability or public-api-drift on the
  *   files its change actually reaches.
  * @returns {{review:Function, decide:Function, cleanup:Function}} `review` inspects the bot branch, `decide` approves or rejects, `cleanup` removes the branch.
  * @throws {TypeError} When no `store` is given.
  */
-export function createApprovalGate({ store, runner = null, now = () => new Date().toISOString(), validate = (root, files) => aggregateValidation(root, DEFAULT_ENFORCERS, { files }) } = {}) {
+export function createApprovalGate({ store, runner = null, now = () => new Date().toISOString(), validate = (root, files) => aggregateValidation(root, enforcersForRoot(root), { files }) } = {}) {
   if (!store) throw new TypeError('createApprovalGate() needs a process store.');
 
   /** Everything that is the same for every artifact of one process. */

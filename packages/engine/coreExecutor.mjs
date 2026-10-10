@@ -25,7 +25,7 @@ import { fileURLToPath } from 'node:url';
 import { aggregateValidation } from '../core/registry.mjs';
 import { formatReport } from '../core/diagnostics.mjs';
 import { loadConfig } from '../core/config.mjs';
-import { DEFAULT_ENFORCERS } from './defaultEnforcers.mjs';
+import { enforcersForRoot } from '../core/profiles/index.mjs';
 
 /** Env var naming the `construct` CLI to run in `cli` mode: a path to construct.mjs (source or the built
  * packages/cli/dist/construct.mjs). Absolute, or relative to the Cockpit server's working directory. */
@@ -267,7 +267,7 @@ export function resolveExecutionMode(root) {
  */
 export async function runValidate(root, { mode = 'engine', env = process.env, bin, timeoutMs, spawnImpl } = {}) {
   if (mode === 'engine') {
-    const { violations, ok } = aggregateValidation(root, DEFAULT_ENFORCERS);
+    const { violations, ok } = aggregateValidation(root, enforcersForRoot(root));
     return { mode, status: ok ? 'passed' : 'failed', ok, violations, report: formatReport(violations, { format: 'json' }) };
   }
   if (mode !== 'cli') throw new ExecutionError('CLI_START_FAILED', `Unknown execution mode '${mode}'.`);

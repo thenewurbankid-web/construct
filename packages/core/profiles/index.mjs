@@ -29,6 +29,18 @@ export function selectProfile(root, requested) {
 }
 
 /**
+ * The enforcer list a project's own validate runs use: its `preset:` profile, else strict-nextjs.
+ * Every gate (the transactional writer, the approval gate, the core executor, MCP and Cockpit's
+ * validate) calls this, so a `preset: line` project is checked by the Line rules everywhere, not
+ * only by `construct validate`.
+ * @param {string} root Project root.
+ * @returns {ReadonlyArray<{name: string, validate: Function}>} Its enforcers.
+ */
+export function enforcersForRoot(root) {
+  return enforcersForProfile(selectProfile(root));
+}
+
+/**
  * The enforcer list for a profile name.
  * @param {string} name A key of PROFILES.
  * @returns {ReadonlyArray<{name: string, validate: Function}>} Its enforcers (the strict-nextjs set for an unknown name).

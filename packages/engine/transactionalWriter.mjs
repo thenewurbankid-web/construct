@@ -25,7 +25,7 @@ import path from 'node:path';
 import { write } from '../core/fs.mjs';
 import { assertNotFrozen } from '../core/frozen.mjs';
 import { aggregateValidation } from '../core/registry.mjs';
-import { DEFAULT_ENFORCERS } from './defaultEnforcers.mjs';
+import { enforcersForRoot } from '../core/profiles/index.mjs';
 import { affectedSet } from './scopeGate.mjs';
 
 // Mirrors packages/core/fs.mjs's walk(): these never belong in a shadow copy used for
@@ -97,7 +97,7 @@ export function createTransaction(root) {
      * Either way the shadow copy itself is always cleaned up.
      *
      * @param {{validate?: (shadowRoot: string, ctx: {files: string[], blastRadius: object}) => {violations: object[], ok: boolean}}} [opts]
-     *   `validate` defaults to `aggregateValidation(DEFAULT_ENFORCERS, {files})` scoped to the AFFECTED
+     *   `validate` defaults to `aggregateValidation(enforcersForRoot(shadow), {files})` (the project's preset: profile) scoped to the AFFECTED
      *   SET (#548: the staged files' blast radius, via `scopeGate.affectedSet`) instead of the whole
      *   project; overridable for tests and for a caller that wants a narrower or different check. Its
      *   second argument is always given, so an override that ignores it still gets the whole-project
@@ -121,7 +121,7 @@ export function createTransaction(root) {
         // Blast radius runs against the shadow copy, so the import graph it walks already reflects
         // what is about to land, not the tree as it was before this transaction.
         const blastRadius = affectedSet(shadowDir, staged);
-        const runValidate = validate || ((root2, { files }) => aggregateValidation(root2, DEFAULT_ENFORCERS, { files }));
+        const runValidate = validate || ((root2, { files }) => aggregateValidation(root2, enforcersForRoot(root2), { files }));
         const { violations, ok } = runValidate(shadowDir, { files: blastRadius.files, blastRadius });
         if (!ok) return { committed: false, violations, blastRadius };
 

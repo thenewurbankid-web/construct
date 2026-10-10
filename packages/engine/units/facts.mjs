@@ -9,7 +9,7 @@ import { loadLayerGraph, classifyFile } from '../../core/architecture-graph.mjs'
 import { readFrozenGlobs, matchFrozen } from '../../core/frozen.mjs';
 import { parseToAst, walkAst } from '../../../packages/ast/index.mjs';
 import { readPathAliases, resolveImportSpecifier } from '../../core/route-resolver.mjs';
-import { DEFAULT_ENFORCERS } from '../defaultEnforcers.mjs';
+import { enforcersForRoot } from '../../core/profiles/index.mjs';
 import { aggregateValidation } from '../../core/registry.mjs';
 import { exceptionApplies } from '../../core/exceptions.mjs';
 import { describeSource } from '../describeDocgen.mjs';
@@ -43,7 +43,7 @@ export function createContext(root) {
     },
     facts: (relPath) => (memo['f:' + relPath] ||= fileFacts(ctx, relPath)),
     violations: lazy('viol', () => {
-      try { return aggregateValidation(root, DEFAULT_ENFORCERS).violations; } catch (e) { return [{ rule: 'VALIDATION-ERROR', severity: 'error', file: '', message: String(e.message || e) }]; }
+      try { return aggregateValidation(root, enforcersForRoot(root)).violations; } catch (e) { return [{ rule: 'VALIDATION-ERROR', severity: 'error', file: '', message: String(e.message || e) }]; }
     }),
   };
   return ctx;

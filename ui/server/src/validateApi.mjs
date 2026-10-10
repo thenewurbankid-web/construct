@@ -4,7 +4,7 @@
 // and scoped to the project root found from the settings project directory
 // (no path parameter, so a caller cannot point it at another directory).
 import { aggregateValidation } from '../../../packages/core/registry.mjs';
-import { DEFAULT_ENFORCERS } from '../../../packages/engine/defaultEnforcers.mjs';
+import { enforcersForRoot } from '../../../packages/core/profiles/index.mjs';
 import { findProjectRoot, loadConfig } from '../../../packages/core/config.mjs';
 import { summarizeViolations } from '../../../packages/core/diagnostics.mjs';
 import { serverLog } from './logBuffer.mjs';
@@ -60,7 +60,7 @@ export function handleValidate({ origin, clientOrigin, projectDir, validate = ag
   }
   const started = now();
   try {
-    const { violations, ok } = validate(root, DEFAULT_ENFORCERS);
+    const { violations, ok } = validate(root, enforcersForRoot(root));
     const durationMs = now() - started;
     const errors = violations.filter((v) => v.severity === 'error').length;
     log.record('validate', errors ? 'warn' : 'info', `validate: ${violations.length} violation(s), ${errors} error(s) in ${durationMs} ms`);

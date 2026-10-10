@@ -10,7 +10,9 @@ import { fileURLToPath } from 'node:url';
 import { validateLine, LINE_RULES, LINE_RULE_IDS, normalizeLineConfig } from '../packages/core/profiles/line/index.mjs';
 import { findFsWrites, resolveSpecifier, resolveLayout, isPageShaped, moduleEdges, findSharedCopies, packageNameOf } from '../packages/core/profiles/line/checks.mjs';
 import { SHARED_CONCERNS } from '../packages/core/profiles/line/contract.mjs';
-import { selectProfile, enforcersForProfile, PROFILES } from '../packages/core/profiles/index.mjs';
+import { selectProfile, enforcersForProfile, enforcersForRoot, PROFILES } from '../packages/core/profiles/index.mjs';
+import { createTransaction } from '../packages/engine/transactionalWriter.mjs';
+import { LINE_ENFORCERS } from '../packages/core/profiles/line/index.mjs';
 import { DEFAULT_ENFORCERS } from '../packages/engine/defaultEnforcers.mjs';
 import { ConstructError } from '../packages/core/diagnostics.mjs';
 import { parseToAst } from '../packages/ast/index.mjs';
@@ -284,4 +286,16 @@ test('cli: --profile with no name is a usage error, and large JSON output surviv
   const out = run('--profile', 'line', '--format', 'json', '--dir', dir);
   assert.ok(out.stdout.length > 65536, `stdout is ${out.stdout.length} bytes`);
   assert.ok(JSON.parse(out.stdout).violations.length >= 400);
+});
+
+test('the writer gate checks a preset: line project with the Line rules, not only construct validate', () => {
+  assert.equal(enforcersForRoot(path.join(FIXTURES, 'passing')), LINE_ENFORCERS);
+  assert.equal(enforcersForRoot(makeTempDir('construct-line-plain-')), DEFAULT_ENFORCERS);
+  const dir = copyFixture('passing');
+  const bad = createTransaction(dir);
+  bad.writeFile('features/billing/pages/Cross.tsx', "// @line-base pages/ListPage\nimport { OrderButton } from '../../orders/components/OrderButton';\nexport default function Cross() { return null; }\n");
+  const r = bad.commit();
+  assert.equal(r.committed, false);
+  assert.ok(r.violations.some((v) => v.rule === 'LINE-DIR'), JSON.stringify(r.violations.map((v) => v.rule)));
+  assert.equal(fs.existsSync(path.join(dir, 'features/billing/pages/Cross.tsx')), false);
 });

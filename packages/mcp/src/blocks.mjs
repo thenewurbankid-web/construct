@@ -376,10 +376,10 @@ async function summarizeBackendTool(ctx, feature) {
  */
 export async function validate(ctx, { limit = LIMITS.defaultFindings } = {}) {
   assertContained(ctx.root);
-  const { aggregateValidation, DEFAULT_ENFORCERS } = await import('@line/construct-core/validate');
+  const { aggregateValidation, enforcersForRoot } = await import('@line/construct-core/validate');
   let result;
   try {
-    result = aggregateValidation(ctx.root, DEFAULT_ENFORCERS);
+    result = aggregateValidation(ctx.root, enforcersForRoot(ctx.root));
   } catch {
     throw new ToolError('TOOL_FAILED', 'The project could not be validated.');
   }
