@@ -1,0 +1,12 @@
+{
+  "file": "profile.tsx",
+  "note": "Hand-written, no semantic tags: identity block, three stat tiles, tab bar, post template (.map), suggested-people cards. The \"suggested\" div (line 46) has its own heading (\"Who to follow\", line 47) beyond the two repeated .person cards, so -- per the feature-grouper pruning fix -- it is reported as its own unique group alongside the repeating group, not dropped.",
+  "groups": [
+    { "name": "identity", "kind": "unique", "members": [8] },
+    { "name": "stat tiles", "kind": "repeating", "members": [16, 20, 24] },
+    { "name": "tab bar", "kind": "unique", "members": [30] },
+    { "name": "post cards", "kind": "repeating", "members": [38] },
+    { "name": "suggested-people wrapper (heading \"Who to follow\")", "kind": "unique", "members": [46] },
+    { "name": "suggested people", "kind": "repeating", "members": [48, 53] }
+  ]
+}

@@ -1,0 +1,132 @@
+{
+  "feature": "deals",
+  "route": "/deals",
+  "page": "page.jsx",
+  "about": "Complex: eight transforms on one page (text, compact money, percent, date, count, sum, average, min, max, sort), plus a join, a tie, a missing column, a missing endpoint, form gaps and an unknown verb.",
+  "apis": [
+    {
+      "method": "GET",
+      "path": "/api/deals",
+      "response": [
+        {
+          "id": 1,
+          "name": "Atlas Renewal",
+          "account": "Northwind",
+          "contactFirst": "Lena",
+          "contactLast": "Kumar",
+          "owner": "Prerna",
+          "csm": "Prerna",
+          "value": 84000000,
+          "margin": 0.325,
+          "closeOn": "2026-10-14"
+        },
+        {
+          "id": 2,
+          "name": "Borealis Expansion",
+          "account": "Kestrel",
+          "contactFirst": "Arjun",
+          "contactLast": "Rao",
+          "owner": "Mia",
+          "csm": "Mia",
+          "value": 152500000,
+          "margin": 0.281,
+          "closeOn": "2026-10-02"
+        },
+        {
+          "id": 3,
+          "name": "Cirrus Pilot",
+          "account": "Bluepeak",
+          "contactFirst": "Mia",
+          "contactLast": "Shah",
+          "owner": "Ravi",
+          "csm": "Ravi",
+          "value": 27500000,
+          "margin": 0.412,
+          "closeOn": "2026-11-20"
+        },
+        {
+          "id": 4,
+          "name": "Delta Upgrade",
+          "account": "Oriel",
+          "contactFirst": "Ravi",
+          "contactLast": "Nair",
+          "owner": "Lena",
+          "csm": "Lena",
+          "value": 61250000,
+          "margin": 0.198,
+          "closeOn": "2026-10-29"
+        },
+        {
+          "id": 5,
+          "name": "Ember Platform",
+          "account": "Harbor",
+          "contactFirst": "Prerna",
+          "contactLast": "Iyer",
+          "owner": "Arjun",
+          "csm": "Arjun",
+          "value": 118000000,
+          "margin": 0.36,
+          "closeOn": "2026-12-05"
+        },
+        {
+          "id": 6,
+          "name": "Fjord Support",
+          "account": "Vantage",
+          "contactFirst": "Kabir",
+          "contactLast": "Sen",
+          "owner": "Mia",
+          "csm": "Mia",
+          "value": 9800000,
+          "margin": 0.15,
+          "closeOn": "2026-11-03"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/deals",
+      "request": {
+        "name": "Grove Analytics",
+        "account": "Summit",
+        "value": 42000000,
+        "margin": 0.27,
+        "owner": "Ravi"
+      },
+      "response": {
+        "id": 7,
+        "name": "Grove Analytics",
+        "account": "Summit",
+        "value": 42000000,
+        "margin": 0.27,
+        "owner": "Ravi",
+        "contactFirst": "Ira",
+        "contactLast": "Bose",
+        "csm": "Ravi",
+        "closeOn": "2026-12-18"
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/deals/:id",
+      "request": {
+        "name": "Atlas Renewal",
+        "account": "Summit",
+        "value": 42000000,
+        "margin": 0.27,
+        "owner": "Ravi"
+      },
+      "response": {
+        "id": 1,
+        "name": "Atlas Renewal",
+        "account": "Northwind",
+        "contactFirst": "Lena",
+        "contactLast": "Kumar",
+        "owner": "Prerna",
+        "csm": "Prerna",
+        "value": 90000000,
+        "margin": 0.325,
+        "closeOn": "2026-10-14"
+      }
+    }
+  ]
+}

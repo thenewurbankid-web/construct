@@ -1,0 +1,111 @@
+{
+  "values": [
+    {
+      "key": "value.categoryCount",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "categoryCount",
+      "example": "4"
+    },
+    {
+      "key": "value.totalSpend",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "totalSpend",
+      "example": "$278.0M"
+    },
+    {
+      "key": "value.largestSpend",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "largestSpend",
+      "example": "$91.6M"
+    },
+    {
+      "key": "value.refreshedAt",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "refreshedAt",
+      "example": "31 Jul 2026"
+    }
+  ],
+  "lists": [
+    {
+      "key": "list.categories",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "categories",
+      "fields": [
+        "name",
+        "spend",
+        "owner"
+      ],
+      "rows": [
+        {
+          "name": "Grains & Cereals",
+          "spend": "$91.6M",
+          "owner": "Lena"
+        },
+        {
+          "name": "Logistics",
+          "spend": "$78.4M",
+          "owner": "Prerna"
+        },
+        {
+          "name": "Packaging",
+          "spend": "$62.8M",
+          "owner": "Arjun"
+        },
+        {
+          "name": "IT Services",
+          "spend": "$45.2M",
+          "owner": "Mia"
+        }
+      ],
+      "actions": [
+        "edit",
+        "delete"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "key": "action.save",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "save",
+      "element": "form"
+    },
+    {
+      "key": "action.cancel",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "cancel",
+      "element": "button"
+    }
+  ],
+  "forms": [
+    {
+      "key": "form.save",
+      "origin": "auto",
+      "presentInPage": true,
+      "action": "save",
+      "fields": [
+        {
+          "name": "name",
+          "type": "text"
+        },
+        {
+          "name": "spend",
+          "type": "number"
+        },
+        {
+          "name": "owner",
+          "type": "text"
+        }
+      ]
+    }
+  ],
+  "visuals": [],
+  "suppressed": []
+}

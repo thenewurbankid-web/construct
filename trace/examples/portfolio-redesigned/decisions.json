@@ -1,0 +1,86 @@
+{
+  "list.shareLabel": {
+    "task": "choose",
+    "model": "ollama:qwen2.5-coder:1.5b",
+    "evidence": "Field \"spend.pct_of_total\": The category's share of the user's total spend, 0 to 1.",
+    "answer": "something else — build a placeholder…"
+  },
+  "list.spend": {
+    "task": "choose",
+    "model": "ollama:qwen2.5-coder:1.5b",
+    "evidence": "Rows are sorted by spend descending.",
+    "answer": "something else — build a placeholder…"
+  },
+  "list.spend#from": {
+    "task": "choose",
+    "model": "ollama:qwen2.5-coder:1.5b",
+    "evidence": "Rows are sorted by spend descending.",
+    "answer": "combine values from API fields — placeholder function in the domain layer"
+  },
+  "list.maturity": {
+    "task": "choose",
+    "model": "ollama:qwen2.5-coder:1.5b",
+    "evidence": "The category maturity score is on a 0 to 100 scale.",
+    "answer": "something else — build a placeholder…"
+  },
+  "list.maturity#from": {
+    "task": "choose",
+    "model": "ollama:qwen2.5-coder:1.5b",
+    "evidence": "GET /api/category-health/portfolio: Portfolio landing page for users managing two or more categories. Rows are sorted by spend descending.",
+    "answer": "combine values from API fields — placeholder function in the domain layer"
+  },
+  "list.savingsRangeRow": {
+    "task": "choose",
+    "model": "ollama:qwen2.5-coder:1.5b",
+    "evidence": "Field \"waiting_on_decision.savings_count\": Savings initiatives waiting on a decision. A count, never money.",
+    "answer": "something else — build a placeholder…"
+  },
+  "list.spendChange": {
+    "task": "choose",
+    "model": "ollama:qwen2.5-coder:1.5b",
+    "evidence": "GET /api/category-health/portfolio: Portfolio landing page for users managing two or more categories. Rows are sorted by spend descending.",
+    "answer": "something else — build a placeholder…"
+  },
+  "list.spendChange#from": {
+    "task": "choose",
+    "model": "ollama:qwen2.5-coder:1.5b",
+    "evidence": "Rows are sorted by spend descending.",
+    "answer": "provided by the controller — placeholder function in the controller"
+  },
+  "value.baselineSpend": {
+    "task": "choose",
+    "model": "ollama:qwen2.5-coder:1.5b",
+    "evidence": "Rows are sorted by spend descending.",
+    "answer": "something else — build a placeholder…"
+  },
+  "value.baselineSpend#from": {
+    "task": "choose",
+    "model": "ollama:qwen2.5-coder:1.5b",
+    "evidence": "GET /api/category-health/portfolio: Portfolio landing page for users managing two or more categories. Rows are sorted by spend descending.",
+    "answer": "provided by the controller — placeholder function in the controller"
+  },
+  "value.savingsRange": {
+    "task": "choose",
+    "model": "ollama:qwen2.5-coder:1.5b",
+    "evidence": "Field \"waiting_on_decision.savings_count\": Savings initiatives waiting on a decision. A count, never money.",
+    "answer": "something else — build a placeholder…"
+  },
+  "value.qualifiedCount": {
+    "task": "choose",
+    "model": "ollama:qwen2.5-coder:1.5b",
+    "evidence": "Field \"waiting_on_decision.savings_count\": Savings initiatives waiting on a decision. A count, never money.",
+    "answer": "something else — build a placeholder…"
+  },
+  "value.qualifiedInitiatives": {
+    "task": "choose",
+    "model": "ollama:qwen2.5-coder:1.5b",
+    "evidence": "Field \"waiting_on_decision.savings_count\": Savings initiatives waiting on a decision. A count, never money.",
+    "answer": "something else — build a placeholder…"
+  },
+  "action.page.suggest": {
+    "task": "choose",
+    "model": "ollama:qwen2.5-coder:1.5b",
+    "evidence": "Suggestions under Ask Anything are AI prompts that use a handler of our own, not an API.",
+    "answer": "something else — name my own handler (placeholder)…"
+  }
+}

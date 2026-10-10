@@ -1,0 +1,13 @@
+{
+  "category": "coincidence-shared",
+  "expect": "411af11d69b3e4c5",
+  "generator": {
+    "name": "coincidence-shared",
+    "params": {
+      "story": false,
+      "value": false
+    },
+    "seed": 2001
+  },
+  "id": "coincidence-shared-01"
+}

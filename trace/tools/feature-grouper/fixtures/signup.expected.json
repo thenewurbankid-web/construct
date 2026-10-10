@@ -1,0 +1,9 @@
+{
+  "file": "signup.tsx",
+  "note": "Hand-written: masthead, the signup form as ONE block, and the three footer columns as a repeating group (not the footer as one block).",
+  "groups": [
+    { "name": "masthead", "kind": "unique", "members": [7] },
+    { "name": "signup form", "kind": "unique", "members": [13] },
+    { "name": "footer link columns", "kind": "repeating", "members": [44, 51, 58] }
+  ]
+}

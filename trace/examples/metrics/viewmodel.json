@@ -1,0 +1,51 @@
+{
+  "values": [
+    {
+      "key": "value.regionCount",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "regionCount",
+      "example": "4"
+    },
+    {
+      "key": "value.totalRevenue",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "totalRevenue",
+      "example": "$364.0M"
+    },
+    {
+      "key": "value.bestRevenue",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "bestRevenue",
+      "example": "$120.0M"
+    },
+    {
+      "key": "value.lowestCost",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "lowestCost",
+      "example": "$33.0M"
+    },
+    {
+      "key": "value.avgConversion",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "avgConversion",
+      "example": "18.5%"
+    },
+    {
+      "key": "value.asOf",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "asOf",
+      "example": "26 Sep 2026"
+    }
+  ],
+  "lists": [],
+  "actions": [],
+  "forms": [],
+  "visuals": [],
+  "suppressed": []
+}

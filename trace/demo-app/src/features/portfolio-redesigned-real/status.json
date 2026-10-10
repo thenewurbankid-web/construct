@@ -1,0 +1,86 @@
+{
+  "feature": "portfolio-redesigned-real",
+  "open": 10,
+  "items": [
+    {
+      "id": "list.rank",
+      "part": "row.rank",
+      "state": "skipped",
+      "why": "No API field, with any built-in format, produces \"01\", \"02\", \"03\", \"04\", \"05\", \"06\".",
+      "hint": "If the API has it, add a field to the GET response with these values per row (beroe_l2_id 3c1e7d20-5f0a-4b6c-8d11-0a9e2f7b4c01 → \"01\", beroe_l2_id 7a52b8e4-1d3f-4c90-a6b2-5e8d0c1f9a02 → \"02\", beroe_l2_id 9d04c6f1-2b7e-4a35-b8c0-3f6a1e5d7b03 → \"03\", beroe_l2_id b8e19a03-6c4d-4f27-9e50-1d2c7a8f3b04 → \"04\"); it closes as soon as you re-run. Otherwise answer with a placeholder, or leave the TODO.",
+      "origin": "missing"
+    },
+    {
+      "id": "list.spend",
+      "part": "row.spend",
+      "state": "skipped",
+      "why": "No API field, with any built-in format, produces \"$78.4M\", \"$62.8M\", \"$45.2M\", \"$27.3M\", \"$14.9M\", \"$11.6M\".",
+      "hint": "If the API has it, add a field to the GET response with these values per row (beroe_l2_id 3c1e7d20-5f0a-4b6c-8d11-0a9e2f7b4c01 → \"$78.4M\", beroe_l2_id 7a52b8e4-1d3f-4c90-a6b2-5e8d0c1f9a02 → \"$62.8M\", beroe_l2_id 9d04c6f1-2b7e-4a35-b8c0-3f6a1e5d7b03 → \"$45.2M\", beroe_l2_id b8e19a03-6c4d-4f27-9e50-1d2c7a8f3b04 → \"$27.3M\"); it closes as soon as you re-run. Otherwise answer with a placeholder, or leave the TODO.",
+      "origin": "missing"
+    },
+    {
+      "id": "list.maturity",
+      "part": "row.maturity",
+      "state": "skipped",
+      "why": "No API field, with any built-in format, produces \"2.0\", \"1.8\", \"2.1\", \"2.3\", \"2.2\", \"2.9\".",
+      "hint": "If the API has it, add a field to the GET response with these values per row (beroe_l2_id 3c1e7d20-5f0a-4b6c-8d11-0a9e2f7b4c01 → \"2.0\", beroe_l2_id 7a52b8e4-1d3f-4c90-a6b2-5e8d0c1f9a02 → \"1.8\", beroe_l2_id 9d04c6f1-2b7e-4a35-b8c0-3f6a1e5d7b03 → \"2.1\", beroe_l2_id b8e19a03-6c4d-4f27-9e50-1d2c7a8f3b04 → \"2.3\"); it closes as soon as you re-run. Otherwise answer with a placeholder, or leave the TODO.",
+      "origin": "missing"
+    },
+    {
+      "id": "list.potentialSavings",
+      "part": "row.potentialSavings",
+      "state": "skipped",
+      "why": "No API field, with any built-in format, produces \"$4.7M - $5.6M\", \"$5.3M - $7.1M\", \"$3.5M - $4.2M\", \"$1.8M - $2.9M\", \"$0.8M - $1.4M\", \"$3.2M\".",
+      "hint": "If the API has it, add a field to the GET response with these values per row (beroe_l2_id 3c1e7d20-5f0a-4b6c-8d11-0a9e2f7b4c01 → \"$4.7M - $5.6M\", beroe_l2_id 7a52b8e4-1d3f-4c90-a6b2-5e8d0c1f9a02 → \"$5.3M - $7.1M\", beroe_l2_id 9d04c6f1-2b7e-4a35-b8c0-3f6a1e5d7b03 → \"$3.5M - $4.2M\", beroe_l2_id b8e19a03-6c4d-4f27-9e50-1d2c7a8f3b04 → \"$1.8M - $2.9M\"); it closes as soon as you re-run. Otherwise answer with a placeholder, or leave the TODO.",
+      "origin": "missing"
+    },
+    {
+      "id": "list.compositeRiskScore",
+      "part": "row.compositeRiskScore",
+      "state": "skipped",
+      "why": "No API field, with any built-in format, produces \"72\", \"69\", \"67\", \"59\", \"84\", \"72\".",
+      "hint": "If the API has it, add a field to the GET response with these values per row (beroe_l2_id 3c1e7d20-5f0a-4b6c-8d11-0a9e2f7b4c01 → \"72\", beroe_l2_id 7a52b8e4-1d3f-4c90-a6b2-5e8d0c1f9a02 → \"69\", beroe_l2_id 9d04c6f1-2b7e-4a35-b8c0-3f6a1e5d7b03 → \"67\", beroe_l2_id b8e19a03-6c4d-4f27-9e50-1d2c7a8f3b04 → \"59\"); it closes as soon as you re-run. Otherwise answer with a placeholder, or leave the TODO.",
+      "origin": "missing"
+    },
+    {
+      "id": "list.spendChange",
+      "part": "row.spendChange",
+      "state": "skipped",
+      "why": "No API field, with any built-in format, produces \"+$5.1M\", \"-$3.2M\", \"+$1.2M\", \"$0.0\", \"+$5.1M\", \"-$5.1M\".",
+      "hint": "If the API has it, add a field to the GET response with these values per row (beroe_l2_id 3c1e7d20-5f0a-4b6c-8d11-0a9e2f7b4c01 → \"+$5.1M\", beroe_l2_id 7a52b8e4-1d3f-4c90-a6b2-5e8d0c1f9a02 → \"-$3.2M\", beroe_l2_id 9d04c6f1-2b7e-4a35-b8c0-3f6a1e5d7b03 → \"+$1.2M\", beroe_l2_id b8e19a03-6c4d-4f27-9e50-1d2c7a8f3b04 → \"$0.0\"); it closes as soon as you re-run. Otherwise answer with a placeholder, or leave the TODO.",
+      "origin": "missing"
+    },
+    {
+      "id": "value.baselineSpend5",
+      "part": "baselineSpend5",
+      "state": "skipped",
+      "why": "Nothing computed from the list (count, sum, average, min, max) gives \"$280M\".",
+      "hint": "If the data exists, add it as a field on each item so an aggregate can produce it. Otherwise answer with a placeholder (controller or a new endpoint), or leave the TODO.",
+      "origin": "missing"
+    },
+    {
+      "id": "value.potentialSavings2",
+      "part": "potentialSavings2",
+      "state": "skipped",
+      "why": "Nothing computed from the list (count, sum, average, min, max) gives \"$42 - 68M\".",
+      "hint": "If the data exists, add it as a field on each item so an aggregate can produce it. Otherwise answer with a placeholder (controller or a new endpoint), or leave the TODO.",
+      "origin": "missing"
+    },
+    {
+      "id": "value.qualifiedInitiatives",
+      "part": "qualifiedInitiatives",
+      "state": "skipped",
+      "why": "Nothing computed from the list (count, sum, average, min, max) gives \"16\".",
+      "hint": "If the data exists, add it as a field on each item so an aggregate can produce it. Otherwise answer with a placeholder (controller or a new endpoint), or leave the TODO.",
+      "origin": "missing"
+    },
+    {
+      "id": "gap.0",
+      "part": "page",
+      "state": "gap",
+      "why": "Could not line up the designed rows of \"categoryOverview\" with the mock list — using API order.",
+      "hint": "Fix the input named in the message, then re-run.",
+      "origin": "gap"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "value.plannedTotal": {
+    "agg": "sum",
+    "field": "budget",
+    "formatter": "moneyCompact",
+    "cost": 3
+  },
+  "value.forecastTotal": {
+    "agg": "sum",
+    "field": "forecast",
+    "formatter": "moneyCompact",
+    "cost": 3
+  }
+}

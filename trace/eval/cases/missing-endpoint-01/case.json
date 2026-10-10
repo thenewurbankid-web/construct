@@ -1,0 +1,12 @@
+{
+  "category": "missing-endpoint",
+  "expect": "307d5c6bd452ad3f",
+  "generator": {
+    "name": "missing-endpoint",
+    "params": {
+      "mode": "no-delete"
+    },
+    "seed": 8001
+  },
+  "id": "missing-endpoint-01"
+}

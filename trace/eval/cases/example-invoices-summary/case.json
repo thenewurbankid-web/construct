@@ -1,0 +1,24 @@
+{
+  "category": "example",
+  "id": "example-invoices-summary",
+  "truth": {
+    "value.invoiceCount": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "a:count()|asText"
+    },
+    "value.totalBilled": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "a:sum(amount)|moneyCompact"
+    },
+    "value.outstandingTotal": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "sm:outstandingTotal|moneyCompact"
+    }
+  }
+}

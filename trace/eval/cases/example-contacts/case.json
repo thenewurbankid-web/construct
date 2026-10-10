@@ -1,0 +1,80 @@
+{
+  "category": "example",
+  "id": "example-contacts",
+  "source": "examples/contacts",
+  "sourceHash": "8f72fe083df8c057",
+  "truth": {
+    "action.page.cancel": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "x:clear"
+    },
+    "action.page.save": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "x:save"
+    },
+    "action.row.call": {
+      "kind": "gap",
+      "label": "independent",
+      "want": "gap:custom",
+      "why": "story.md: a handler of our own"
+    },
+    "action.row.delete": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "x:remove"
+    },
+    "action.row.edit": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "x:select"
+    },
+    "list.city": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "f:city|asText"
+    },
+    "list.email": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "f:email|asText"
+    },
+    "list.fullName": {
+      "kind": "gap",
+      "label": "independent",
+      "want": "gap:custom",
+      "why": "gold.json: first and last name combined"
+    },
+    "list.initials": {
+      "kind": "gap",
+      "label": "independent",
+      "want": "gap:custom",
+      "why": "gold.json / story.md: first letters of first and last name"
+    },
+    "list.sort": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "s:none"
+    },
+    "value.contactCount": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "a:count()|asText"
+    },
+    "value.directoryUpdated": {
+      "kind": "gap",
+      "label": "independent",
+      "want": "gap:custom",
+      "why": "gold.json: backend endpoint comes later"
+    }
+  }
+}

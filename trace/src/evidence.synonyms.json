@@ -1,0 +1,17 @@
+{
+  "note": "Groups of words that name the same thing in a design label. Small on purpose: every entry claims two words are interchangeable. Sorted (groups by first word, words inside a group alphabetically); a test enforces it. src/evidence.mjs reads it; nothing else does.",
+  "groups": [
+    ["#", "order", "position", "rank"],
+    ["amount", "cost", "spend", "sum", "total"],
+    ["assignee", "lead", "owner", "requester"],
+    ["at", "date", "on", "time"],
+    ["average", "avg", "mean"],
+    ["best", "highest", "largest", "max", "maximum", "peak", "top"],
+    ["bottom", "least", "lowest", "min", "minimum", "smallest", "worst"],
+    ["count", "n", "number", "qty", "quantity"],
+    ["id", "identifier"],
+    ["label", "name", "title"],
+    ["pct", "percent", "percentage"],
+    ["stage", "state", "status"]
+  ]
+}

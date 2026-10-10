@@ -1,0 +1,123 @@
+{
+  "feature": "products-no-contract",
+  "contract": "No API contract for this feature: upload a Swagger/OpenAPI file.",
+  "open": 13,
+  "items": [
+    {
+      "id": "contract",
+      "part": "API contract",
+      "state": "missing",
+      "why": "No API contract for this feature: upload a Swagger/OpenAPI file.",
+      "hint": "Upload the Swagger/OpenAPI file for this feature (it is saved as openapi.json or openapi.yaml in the feature folder), then run again.",
+      "origin": "missing"
+    },
+    {
+      "id": "list.name",
+      "part": "row.name",
+      "state": "missing",
+      "why": "There is no API contract for this feature, so this part can't be matched to the API yet.",
+      "hint": "Upload the Swagger/OpenAPI file for this feature and run again; this part is matched as soon as the contract has what it needs.",
+      "origin": "missing",
+      "viaContract": true
+    },
+    {
+      "id": "list.price",
+      "part": "row.price",
+      "state": "missing",
+      "why": "There is no API contract for this feature, so this part can't be matched to the API yet.",
+      "hint": "Upload the Swagger/OpenAPI file for this feature and run again; this part is matched as soon as the contract has what it needs.",
+      "origin": "missing",
+      "viaContract": true
+    },
+    {
+      "id": "list.stock",
+      "part": "row.stock",
+      "state": "missing",
+      "why": "There is no API contract for this feature, so this part can't be matched to the API yet.",
+      "hint": "Upload the Swagger/OpenAPI file for this feature and run again; this part is matched as soon as the contract has what it needs.",
+      "origin": "missing",
+      "viaContract": true
+    },
+    {
+      "id": "list.addedOn",
+      "part": "row.addedOn",
+      "state": "missing",
+      "why": "There is no API contract for this feature, so this part can't be matched to the API yet.",
+      "hint": "Upload the Swagger/OpenAPI file for this feature and run again; this part is matched as soon as the contract has what it needs.",
+      "origin": "missing",
+      "viaContract": true
+    },
+    {
+      "id": "value.productCount",
+      "part": "productCount",
+      "state": "missing",
+      "why": "There is no API contract for this feature, so this part can't be matched to the API yet.",
+      "hint": "Upload the Swagger/OpenAPI file for this feature and run again; this part is matched as soon as the contract has what it needs.",
+      "origin": "missing",
+      "viaContract": true
+    },
+    {
+      "id": "value.stockTotal",
+      "part": "stockTotal",
+      "state": "missing",
+      "why": "There is no API contract for this feature, so this part can't be matched to the API yet.",
+      "hint": "Upload the Swagger/OpenAPI file for this feature and run again; this part is matched as soon as the contract has what it needs.",
+      "origin": "missing",
+      "viaContract": true
+    },
+    {
+      "id": "value.avgPrice",
+      "part": "avgPrice",
+      "state": "missing",
+      "why": "There is no API contract for this feature, so this part can't be matched to the API yet.",
+      "hint": "Upload the Swagger/OpenAPI file for this feature and run again; this part is matched as soon as the contract has what it needs.",
+      "origin": "missing",
+      "viaContract": true
+    },
+    {
+      "id": "action.row.delete",
+      "part": "delete (row action)",
+      "state": "missing",
+      "why": "\"delete\" looks like \"remove\", but there is no API contract to say which endpoint it calls.",
+      "hint": "Upload the Swagger/OpenAPI file for this feature and run again; this part is matched as soon as the contract has what it needs.",
+      "origin": "missing",
+      "viaContract": true
+    },
+    {
+      "id": "action.page.save",
+      "part": "save (page action)",
+      "state": "missing",
+      "why": "\"save\" looks like \"save\", but there is no API contract to say which endpoint it calls.",
+      "hint": "Upload the Swagger/OpenAPI file for this feature and run again; this part is matched as soon as the contract has what it needs.",
+      "origin": "missing",
+      "viaContract": true
+    },
+    {
+      "id": "form.name",
+      "part": "input name",
+      "state": "gap",
+      "why": "The form has an input \"name\", but there is no API contract to say what the request expects.",
+      "hint": "Upload the Swagger/OpenAPI file for this feature and run again; this part is matched as soon as the contract has what it needs.",
+      "origin": "gap",
+      "viaContract": true
+    },
+    {
+      "id": "form.price",
+      "part": "input price",
+      "state": "gap",
+      "why": "The form has an input \"price\", but there is no API contract to say what the request expects.",
+      "hint": "Upload the Swagger/OpenAPI file for this feature and run again; this part is matched as soon as the contract has what it needs.",
+      "origin": "gap",
+      "viaContract": true
+    },
+    {
+      "id": "form.stock",
+      "part": "input stock",
+      "state": "gap",
+      "why": "The form has an input \"stock\", but there is no API contract to say what the request expects.",
+      "hint": "Upload the Swagger/OpenAPI file for this feature and run again; this part is matched as soon as the contract has what it needs.",
+      "origin": "gap",
+      "viaContract": true
+    }
+  ]
+}

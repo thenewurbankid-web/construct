@@ -1,0 +1,32 @@
+{
+  "_notes": "Question id -> the option label a careful person would pick (matched by prefix). Only top-level questions. Answers follow each example's story.md.",
+  "roster": {
+    "list.owner": "API field \"lead\"",
+    "list.backup": "API field \"deputy\"",
+    "value.plannedTotal": "sum(budget)",
+    "value.forecastTotal": "sum(forecast)"
+  },
+  "invoices": {
+    "list.requestedBy": "API field \"requester\"",
+    "list.status": "data the API doesn't provide yet",
+    "list.sort": "sort by amount descending",
+    "value.largestInvoice": "max(amount)",
+    "value.syncedAt": "something else",
+    "action.row.archive": "something else"
+  },
+  "contacts": {
+    "list.fullName": "something else",
+    "list.initials": "something else",
+    "value.directoryUpdated": "something else",
+    "action.row.call": "something else"
+  },
+  "deals": {
+    "list.contact": "something else",
+    "list.owner": "API field \"owner\"",
+    "list.csm": "API field \"csm\"",
+    "list.stage": "data the API doesn't provide yet",
+    "value.weighted": "something else",
+    "value.syncedAt": "something else",
+    "action.row.forecast": "something else"
+  }
+}

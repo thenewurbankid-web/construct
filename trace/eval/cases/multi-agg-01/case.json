@@ -1,0 +1,12 @@
+{
+  "category": "multi-agg",
+  "expect": "bb22ec28382b444c",
+  "generator": {
+    "name": "multi-agg",
+    "params": {
+      "tie": false
+    },
+    "seed": 12001
+  },
+  "id": "multi-agg-01"
+}

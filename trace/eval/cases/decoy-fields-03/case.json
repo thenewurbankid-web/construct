@@ -1,0 +1,10 @@
+{
+  "category": "decoy-fields",
+  "expect": "0c3b619432d9821b",
+  "generator": {
+    "name": "decoy-fields",
+    "params": {},
+    "seed": 10035
+  },
+  "id": "decoy-fields-03"
+}

@@ -1,0 +1,99 @@
+{
+  "values": [
+    {
+      "key": "value.projectCount",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "projectCount",
+      "example": "3"
+    },
+    {
+      "key": "value.plannedTotal",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "plannedTotal",
+      "example": "$245.0K"
+    },
+    {
+      "key": "value.forecastTotal",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "forecastTotal",
+      "example": "$245.0K"
+    }
+  ],
+  "lists": [
+    {
+      "key": "list.roster",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "roster",
+      "fields": [
+        "project",
+        "owner",
+        "backup"
+      ],
+      "rows": [
+        {
+          "project": "Apollo",
+          "owner": "Lena",
+          "backup": "Lena"
+        },
+        {
+          "project": "Borealis",
+          "owner": "Arjun",
+          "backup": "Arjun"
+        },
+        {
+          "project": "Cirrus",
+          "owner": "Mia",
+          "backup": "Mia"
+        }
+      ],
+      "actions": [
+        "edit",
+        "delete"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "key": "action.save",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "save",
+      "element": "form"
+    },
+    {
+      "key": "action.cancel",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "cancel",
+      "element": "button"
+    }
+  ],
+  "forms": [
+    {
+      "key": "form.save",
+      "origin": "auto",
+      "presentInPage": true,
+      "action": "save",
+      "fields": [
+        {
+          "name": "project",
+          "type": "text"
+        },
+        {
+          "name": "lead",
+          "type": "text"
+        },
+        {
+          "name": "deputy",
+          "type": "text"
+        }
+      ]
+    }
+  ],
+  "visuals": [],
+  "suppressed": []
+}

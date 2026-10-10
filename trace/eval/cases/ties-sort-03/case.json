@@ -1,0 +1,12 @@
+{
+  "category": "ties-sort",
+  "expect": "edb7c50952401b9b",
+  "generator": {
+    "name": "ties-sort",
+    "params": {
+      "story": false
+    },
+    "seed": 4035
+  },
+  "id": "ties-sort-03"
+}

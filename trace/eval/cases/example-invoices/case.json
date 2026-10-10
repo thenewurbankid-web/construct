@@ -1,0 +1,106 @@
+{
+  "category": "example",
+  "id": "example-invoices",
+  "source": "examples/invoices",
+  "sourceHash": "991a64772a064155",
+  "truth": {
+    "action.page.cancel": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "x:clear"
+    },
+    "action.page.save": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "x:save"
+    },
+    "action.row.archive": {
+      "kind": "gap",
+      "label": "independent",
+      "want": "gap:custom",
+      "why": "story.md: a handler of our own"
+    },
+    "action.row.delete": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "x:remove"
+    },
+    "action.row.edit": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "x:select"
+    },
+    "list.amount": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "f:amount|moneyCompact"
+    },
+    "list.dueDate": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "f:dueDate|dateShort"
+    },
+    "list.number": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "f:number|asText"
+    },
+    "list.requestedBy": {
+      "coincidence": true,
+      "kind": "needs-answer",
+      "label": "independent",
+      "want": "f:requester|asText",
+      "why": "story.md: the person who requested it; requester and assignee are identical in the sample"
+    },
+    "list.sort": {
+      "kind": "needs-answer",
+      "label": "independent",
+      "want": "s:amount:desc",
+      "why": "story.md: largest amount first; outstanding and dueDate orders also fit"
+    },
+    "list.status": {
+      "kind": "gap",
+      "label": "independent",
+      "want": "gap:todo",
+      "why": "gold.json: data the API doesn't provide yet"
+    },
+    "list.vendor": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "f:vendor|asText"
+    },
+    "value.invoiceCount": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "a:count()|asText"
+    },
+    "value.largestInvoice": {
+      "coincidence": true,
+      "kind": "needs-answer",
+      "label": "independent",
+      "want": "a:max(amount)|moneyCompact",
+      "why": "story.md: the largest invoice amount; max(outstanding) gives the same number"
+    },
+    "value.syncedAt": {
+      "kind": "gap",
+      "label": "independent",
+      "want": "gap:custom",
+      "why": "story.md: the controller supplies it"
+    },
+    "value.totalBilled": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "a:sum(amount)|moneyCompact"
+    }
+  }
+}

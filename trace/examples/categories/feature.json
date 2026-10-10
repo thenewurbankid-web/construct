@@ -1,0 +1,6 @@
+{
+  "feature": "categories",
+  "route": "/categories",
+  "page": "page.jsx",
+  "about": "The original example: full CRUD on mocks, one value (refreshedAt) the API can't give."
+}

@@ -1,0 +1,23 @@
+{
+  "_notes": [
+    "Tolerances for `npm run eval:gate`. A metric may move by this much (absolute) in the WORSE direction before the gate fails.",
+    "The corpus is fixed and Trace is deterministic, so any movement is real; tolerances exist only to allow a deliberate, reviewed trade-off (e.g. +0.3 points of wrong-accepts for +8 points of recall).",
+    "Change a tolerance in the same commit as the algorithm change that needs it, with the reason in the commit message.",
+    "headline = every certain part in the committed corpus. category = the same metric within one category (small n, so looser)."
+  ],
+  "tolerances": {
+    "headline": { "wrong_accept_rate": 0.002, "recall": 0.005, "oracle_accuracy": 0.0 },
+    "category": { "wrong_accept_rate": 0.02, "recall": 0.03, "oracle_accuracy": 0.02 },
+    "key_order_sensitive_cases": 0
+  },
+  "knownDrift": [
+    {
+      "check": "apisOrder",
+      "cases": ["example-portfolio-figma-1", "example-portfolio-figma-2", "example-portfolio-redesigned"],
+      "categories": ["decoy-endpoint"],
+      "why": "src/match.mjs findEndpoints() takes the FIRST list-like GET, so with two candidate endpoints the ORDER of `apis` is an input. Recorded as a known weakness (question form: which endpoint), not hidden. Any other order dependence still fails the gate."
+    }
+  ],
+  "bootstrap": { "iters": 1000, "confidence": 0.95, "seed": 20260927 },
+  "scale": { "bottleneck_ms": 10000 }
+}

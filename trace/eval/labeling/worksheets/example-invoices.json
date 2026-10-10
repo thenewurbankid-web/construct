@@ -1,0 +1,458 @@
+{
+  "case": "example-invoices",
+  "contract": {
+    "docs": null,
+    "endpoints": [
+      "GET /api/invoices",
+      "POST /api/invoices",
+      "PUT /api/invoices/:id",
+      "DELETE /api/invoices/:id"
+    ],
+    "item_count": 4,
+    "item_fields": [
+      {
+        "path": "id",
+        "samples": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "type": "number"
+      },
+      {
+        "path": "number",
+        "samples": [
+          "INV-1041",
+          "INV-1042",
+          "INV-1043",
+          "INV-1044"
+        ],
+        "type": "string"
+      },
+      {
+        "path": "vendor",
+        "samples": [
+          "Northwind Freight",
+          "Kestrel Packaging",
+          "Bluepeak IT",
+          "Oriel Chemicals"
+        ],
+        "type": "string"
+      },
+      {
+        "path": "amount",
+        "samples": [
+          18400000,
+          48200000,
+          9700000,
+          31600000
+        ],
+        "type": "number"
+      },
+      {
+        "path": "outstanding",
+        "samples": [
+          18400000,
+          48200000,
+          4000000,
+          31600000
+        ],
+        "type": "number"
+      },
+      {
+        "path": "dueDate",
+        "samples": [
+          "2026-08-21",
+          "2026-08-02",
+          "2026-09-05",
+          "2026-08-09"
+        ],
+        "type": "string"
+      },
+      {
+        "path": "requester",
+        "samples": [
+          "Prerna",
+          "Lena",
+          "Arjun",
+          "Mia"
+        ],
+        "type": "string"
+      },
+      {
+        "path": "assignee",
+        "samples": [
+          "Prerna",
+          "Lena",
+          "Arjun",
+          "Mia"
+        ],
+        "type": "string"
+      }
+    ],
+    "list_endpoint": "GET /api/invoices",
+    "requirements_text": "# Invoices — requirements\n\n- Each invoice records who requested it (the requester) and who approves it (the assignee).\n- The list shows the person who requested each invoice, in the \"Requested by\" column.\n- Invoices are listed with the largest amount first.\n- The header shows the largest invoice amount.\n- Archiving an invoice has no backend support yet, so the Archive button uses a handler of our own.\n- The Status column comes from a status the backend does not provide yet.\n- The header shows when the data was last synced; the controller supplies this.\n",
+    "response_fields_outside_the_list": []
+  },
+  "instructions": {
+    "answer_with_exactly_one_of": {
+      "a:<agg>(<field>)|<format>": "a page value is an aggregate of the whole list: count(), sum(f), average(f), max(f), min(f), e.g. a:sum(budget)|moneyCompact",
+      "e:<path>|<format>": "a page value is a single field of the response outside the list, e.g. e:meta.snapshot_date|dateShort",
+      "f:<field>|<format>": "a list column shows an item field, e.g. f:lead|asText  (nested fields use dots: spend.value)",
+      "gap:todo | gap:custom | gap:static | gap:?": "NOTHING in the contract provides it. todo = leave a TODO, custom = someone writes a placeholder, static = it is fixed text, ? = no view on how it is closed",
+      "s:<field>:asc|desc  or  s:none": "how the rows are ordered (s:none = the API's own order)",
+      "u:<field>|<recipe>": "it comes from a field but needs a transformation none of the formats below does; describe the recipe in words",
+      "x:<kind>": "what an action does: create, update, save, remove, select, clear, reload, ignore"
+    },
+    "formats": {
+      "asText": "the value as is, 12 -> 12, Lena -> Lena",
+      "dateShort": "2026-07-31... -> 31 Jul 2026",
+      "moneyCompact": "1234567 -> $1.2M, 45000 -> $45.0K, 900 -> $900",
+      "moneyFull": "1200 -> $1,200",
+      "percent": "0.327 -> 32.7%",
+      "percentWhole": "0.327 -> 33%"
+    },
+    "rules": [
+      "Decide from the design text and the contract only. Do not run Trace and do not open answers.json, decisions.json or ai-cache.json.",
+      "If two contract fields (or two aggregates) reproduce the design equally well, choose the one the design MEANS (use the header, the surrounding words, the docs and the story) and say why in note.",
+      "If you cannot tell, set unsure to true: the part is then left out of every number instead of guessed."
+    ]
+  },
+  "labeller": null,
+  "parts": [
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "INV-1042",
+          "INV-1044",
+          "INV-1041",
+          "INV-1043"
+        ],
+        "header": "Invoice",
+        "name": "number",
+        "other_parts_in_the_same_cell": []
+      },
+      "id": "list.number",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "Kestrel Packaging",
+          "Oriel Chemicals",
+          "Northwind Freight",
+          "Bluepeak IT"
+        ],
+        "header": "Vendor",
+        "name": "vendor",
+        "other_parts_in_the_same_cell": []
+      },
+      "id": "list.vendor",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "$48.2M",
+          "$31.6M",
+          "$18.4M",
+          "$9.7M"
+        ],
+        "header": "Amount",
+        "name": "amount",
+        "other_parts_in_the_same_cell": []
+      },
+      "id": "list.amount",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "2 Aug 2026",
+          "9 Aug 2026",
+          "21 Aug 2026",
+          "5 Sep 2026"
+        ],
+        "header": "Due",
+        "name": "dueDate",
+        "other_parts_in_the_same_cell": []
+      },
+      "id": "list.dueDate",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "Lena",
+          "Mia",
+          "Prerna",
+          "Arjun"
+        ],
+        "header": "Requested by",
+        "name": "requestedBy",
+        "other_parts_in_the_same_cell": []
+      },
+      "id": "list.requestedBy",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "Overdue",
+          "Overdue",
+          "Open",
+          "Partial"
+        ],
+        "header": "Status",
+        "name": "status",
+        "other_parts_in_the_same_cell": []
+      },
+      "id": "list.status",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "api_order_first_rows": [
+        {
+          "amount": 18400000,
+          "assignee": "Prerna",
+          "dueDate": "2026-08-21",
+          "id": 1,
+          "number": "INV-1041",
+          "outstanding": 18400000,
+          "requester": "Prerna",
+          "vendor": "Northwind Freight"
+        },
+        {
+          "amount": 48200000,
+          "assignee": "Lena",
+          "dueDate": "2026-08-02",
+          "id": 2,
+          "number": "INV-1042",
+          "outstanding": 48200000,
+          "requester": "Lena",
+          "vendor": "Kestrel Packaging"
+        },
+        {
+          "amount": 9700000,
+          "assignee": "Arjun",
+          "dueDate": "2026-09-05",
+          "id": 3,
+          "number": "INV-1043",
+          "outstanding": 4000000,
+          "requester": "Arjun",
+          "vendor": "Bluepeak IT"
+        },
+        {
+          "amount": 31600000,
+          "assignee": "Mia",
+          "dueDate": "2026-08-09",
+          "id": 4,
+          "number": "INV-1044",
+          "outstanding": 31600000,
+          "requester": "Mia",
+          "vendor": "Oriel Chemicals"
+        }
+      ],
+      "design": {
+        "designed_rows": [
+          {
+            "amount": "$48.2M",
+            "dueDate": "2 Aug 2026",
+            "number": "INV-1042",
+            "requestedBy": "Lena",
+            "status": "Overdue",
+            "vendor": "Kestrel Packaging"
+          },
+          {
+            "amount": "$31.6M",
+            "dueDate": "9 Aug 2026",
+            "number": "INV-1044",
+            "requestedBy": "Mia",
+            "status": "Overdue",
+            "vendor": "Oriel Chemicals"
+          },
+          {
+            "amount": "$18.4M",
+            "dueDate": "21 Aug 2026",
+            "number": "INV-1041",
+            "requestedBy": "Prerna",
+            "status": "Open",
+            "vendor": "Northwind Freight"
+          },
+          {
+            "amount": "$9.7M",
+            "dueDate": "5 Sep 2026",
+            "number": "INV-1043",
+            "requestedBy": "Arjun",
+            "status": "Partial",
+            "vendor": "Bluepeak IT"
+          }
+        ]
+      },
+      "id": "list.sort",
+      "what": "the order of the designed rows"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "4",
+        "name": "invoiceCount",
+        "surrounding_text": "4 invoices · $107.9M billed · largest $48.2M · synced 26 Sep 2026"
+      },
+      "id": "value.invoiceCount",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "$107.9M",
+        "name": "totalBilled",
+        "surrounding_text": "4 invoices · $107.9M billed · largest $48.2M · synced 26 Sep 2026"
+      },
+      "id": "value.totalBilled",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "$48.2M",
+        "name": "largestInvoice",
+        "surrounding_text": "4 invoices · $107.9M billed · largest $48.2M · synced 26 Sep 2026"
+      },
+      "id": "value.largestInvoice",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "26 Sep 2026",
+        "name": "syncedAt",
+        "surrounding_text": "4 invoices · $107.9M billed · largest $48.2M · synced 26 Sep 2026"
+      },
+      "id": "value.syncedAt",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "scope": "row",
+        "verb_marker": "edit"
+      },
+      "id": "action.row.edit",
+      "note_for_labeller": "say what it should do given the endpoints in `contract`",
+      "what": "a button or form"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "scope": "row",
+        "verb_marker": "archive"
+      },
+      "id": "action.row.archive",
+      "note_for_labeller": "say what it should do given the endpoints in `contract`",
+      "what": "a button or form"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "scope": "row",
+        "verb_marker": "delete"
+      },
+      "id": "action.row.delete",
+      "note_for_labeller": "say what it should do given the endpoints in `contract`",
+      "what": "a button or form"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "scope": "page",
+        "verb_marker": "save"
+      },
+      "id": "action.page.save",
+      "note_for_labeller": "say what it should do given the endpoints in `contract`",
+      "what": "a button or form"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "scope": "page",
+        "verb_marker": "cancel"
+      },
+      "id": "action.page.cancel",
+      "note_for_labeller": "say what it should do given the endpoints in `contract`",
+      "what": "a button or form"
+    }
+  ]
+}

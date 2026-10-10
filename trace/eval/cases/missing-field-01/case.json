@@ -1,0 +1,13 @@
+{
+  "category": "missing-field",
+  "expect": "38ae935a2632b7cf",
+  "generator": {
+    "name": "missing-field",
+    "params": {
+      "parts": 1,
+      "resolution": "todo"
+    },
+    "seed": 7001
+  },
+  "id": "missing-field-01"
+}

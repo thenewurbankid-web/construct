@@ -1,0 +1,12 @@
+{
+  "category": "coupled",
+  "expect": "e63286486b283728",
+  "generator": {
+    "name": "coupled",
+    "params": {
+      "k": 2
+    },
+    "seed": 6001
+  },
+  "id": "coupled-01"
+}

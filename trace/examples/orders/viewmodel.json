@@ -1,0 +1,100 @@
+{
+  "values": [
+    {
+      "key": "value.orderCount",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "orderCount",
+      "example": "3"
+    },
+    {
+      "key": "value.totalValue",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "totalValue",
+      "example": "$10,660"
+    }
+  ],
+  "lists": [
+    {
+      "key": "list.orders",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "orders",
+      "fields": [
+        "number",
+        "customer",
+        "total",
+        "placedOn",
+        "status"
+      ],
+      "rows": [
+        {
+          "number": "ORD-201",
+          "customer": "Northwind",
+          "total": "$1,200",
+          "placedOn": "1 Sep 2026",
+          "status": "Shipped"
+        },
+        {
+          "number": "ORD-202",
+          "customer": "Kestrel",
+          "total": "$560",
+          "placedOn": "3 Sep 2026",
+          "status": "Pending"
+        },
+        {
+          "number": "ORD-203",
+          "customer": "Bluepeak",
+          "total": "$8,900",
+          "placedOn": "7 Sep 2026",
+          "status": "Shipped"
+        }
+      ],
+      "actions": [
+        "edit",
+        "delete"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "key": "action.save",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "save",
+      "element": "form"
+    },
+    {
+      "key": "action.cancel",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "cancel",
+      "element": "button"
+    }
+  ],
+  "forms": [
+    {
+      "key": "form.save",
+      "origin": "auto",
+      "presentInPage": true,
+      "action": "save",
+      "fields": [
+        {
+          "name": "customer",
+          "type": "text"
+        },
+        {
+          "name": "total",
+          "type": "number"
+        },
+        {
+          "name": "notes",
+          "type": "text"
+        }
+      ]
+    }
+  ],
+  "visuals": [],
+  "suppressed": []
+}

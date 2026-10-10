@@ -1,0 +1,336 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "deals",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/deals": {
+      "get": {
+        "summary": "GET /api/deals",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "integer"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "account": {
+                        "type": "string"
+                      },
+                      "contactFirst": {
+                        "type": "string"
+                      },
+                      "contactLast": {
+                        "type": "string"
+                      },
+                      "owner": {
+                        "type": "string"
+                      },
+                      "csm": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "type": "integer"
+                      },
+                      "margin": {
+                        "type": "number"
+                      },
+                      "closeOn": {
+                        "type": "string",
+                        "format": "date"
+                      }
+                    }
+                  }
+                },
+                "example": [
+                  {
+                    "id": 1,
+                    "name": "Atlas Renewal",
+                    "account": "Northwind",
+                    "contactFirst": "Lena",
+                    "contactLast": "Kumar",
+                    "owner": "Prerna",
+                    "csm": "Prerna",
+                    "value": 84000000,
+                    "margin": 0.325,
+                    "closeOn": "2026-10-14"
+                  },
+                  {
+                    "id": 2,
+                    "name": "Borealis Expansion",
+                    "account": "Kestrel",
+                    "contactFirst": "Arjun",
+                    "contactLast": "Rao",
+                    "owner": "Mia",
+                    "csm": "Mia",
+                    "value": 152500000,
+                    "margin": 0.281,
+                    "closeOn": "2026-10-02"
+                  },
+                  {
+                    "id": 3,
+                    "name": "Cirrus Pilot",
+                    "account": "Bluepeak",
+                    "contactFirst": "Mia",
+                    "contactLast": "Shah",
+                    "owner": "Ravi",
+                    "csm": "Ravi",
+                    "value": 27500000,
+                    "margin": 0.412,
+                    "closeOn": "2026-11-20"
+                  },
+                  {
+                    "id": 4,
+                    "name": "Delta Upgrade",
+                    "account": "Oriel",
+                    "contactFirst": "Ravi",
+                    "contactLast": "Nair",
+                    "owner": "Lena",
+                    "csm": "Lena",
+                    "value": 61250000,
+                    "margin": 0.198,
+                    "closeOn": "2026-10-29"
+                  },
+                  {
+                    "id": 5,
+                    "name": "Ember Platform",
+                    "account": "Harbor",
+                    "contactFirst": "Prerna",
+                    "contactLast": "Iyer",
+                    "owner": "Arjun",
+                    "csm": "Arjun",
+                    "value": 118000000,
+                    "margin": 0.36,
+                    "closeOn": "2026-12-05"
+                  },
+                  {
+                    "id": 6,
+                    "name": "Fjord Support",
+                    "account": "Vantage",
+                    "contactFirst": "Kabir",
+                    "contactLast": "Sen",
+                    "owner": "Mia",
+                    "csm": "Mia",
+                    "value": 9800000,
+                    "margin": 0.15,
+                    "closeOn": "2026-11-03"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/deals",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "account": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "integer"
+                  },
+                  "margin": {
+                    "type": "number"
+                  },
+                  "owner": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "name": "Grove Analytics",
+                "account": "Summit",
+                "value": 42000000,
+                "margin": 0.27,
+                "owner": "Ravi"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "account": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "integer"
+                    },
+                    "margin": {
+                      "type": "number"
+                    },
+                    "owner": {
+                      "type": "string"
+                    },
+                    "contactFirst": {
+                      "type": "string"
+                    },
+                    "contactLast": {
+                      "type": "string"
+                    },
+                    "csm": {
+                      "type": "string"
+                    },
+                    "closeOn": {
+                      "type": "string",
+                      "format": "date"
+                    }
+                  }
+                },
+                "example": {
+                  "id": 7,
+                  "name": "Grove Analytics",
+                  "account": "Summit",
+                  "value": 42000000,
+                  "margin": 0.27,
+                  "owner": "Ravi",
+                  "contactFirst": "Ira",
+                  "contactLast": "Bose",
+                  "csm": "Ravi",
+                  "closeOn": "2026-12-18"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/deals/{id}": {
+      "put": {
+        "summary": "PUT /api/deals/{id}",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "account": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "integer"
+                  },
+                  "margin": {
+                    "type": "number"
+                  },
+                  "owner": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "name": "Atlas Renewal",
+                "account": "Summit",
+                "value": 42000000,
+                "margin": 0.27,
+                "owner": "Ravi"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "account": {
+                      "type": "string"
+                    },
+                    "contactFirst": {
+                      "type": "string"
+                    },
+                    "contactLast": {
+                      "type": "string"
+                    },
+                    "owner": {
+                      "type": "string"
+                    },
+                    "csm": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "integer"
+                    },
+                    "margin": {
+                      "type": "number"
+                    },
+                    "closeOn": {
+                      "type": "string",
+                      "format": "date"
+                    }
+                  }
+                },
+                "example": {
+                  "id": 1,
+                  "name": "Atlas Renewal",
+                  "account": "Northwind",
+                  "contactFirst": "Lena",
+                  "contactLast": "Kumar",
+                  "owner": "Prerna",
+                  "csm": "Prerna",
+                  "value": 90000000,
+                  "margin": 0.325,
+                  "closeOn": "2026-10-14"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

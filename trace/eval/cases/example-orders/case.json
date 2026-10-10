@@ -1,0 +1,81 @@
+{
+  "category": "example",
+  "id": "example-orders",
+  "source": "examples/orders",
+  "sourceHash": "6ee90a3aecd57ee1",
+  "truth": {
+    "action.page.cancel": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "x:clear"
+    },
+    "action.page.save": {
+      "label": "independent",
+      "uncertain": "README: needs a PUT endpoint the API lacks; the fix is an API change"
+    },
+    "action.row.delete": {
+      "label": "independent",
+      "uncertain": "README: needs a DELETE endpoint the API lacks; the fix is an API change"
+    },
+    "action.row.edit": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "x:select"
+    },
+    "list.customer": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "f:customer|asText"
+    },
+    "list.number": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "f:number|asText"
+    },
+    "list.placedOn": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "f:placedOn|dateShort"
+    },
+    "list.sort": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "s:none"
+    },
+    "list.status": {
+      "also": [
+        "gap:custom",
+        "gap:static"
+      ],
+      "kind": "gap",
+      "label": "independent",
+      "resolutionUnknown": true,
+      "want": "gap:todo",
+      "why": "README: no field behind it; how it gets closed depends on the API team"
+    },
+    "list.total": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "f:total|moneyFull"
+    },
+    "value.orderCount": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "a:count()|asText"
+    },
+    "value.totalValue": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "a:sum(total)|moneyFull"
+    }
+  }
+}

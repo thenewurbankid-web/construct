@@ -1,0 +1,243 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "roster",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/roster": {
+      "get": {
+        "summary": "GET /api/roster",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "integer"
+                      },
+                      "project": {
+                        "type": "string"
+                      },
+                      "lead": {
+                        "type": "string"
+                      },
+                      "deputy": {
+                        "type": "string"
+                      },
+                      "budget": {
+                        "type": "integer"
+                      },
+                      "forecast": {
+                        "type": "integer"
+                      }
+                    }
+                  }
+                },
+                "example": [
+                  {
+                    "id": 1,
+                    "project": "Apollo",
+                    "lead": "Lena",
+                    "deputy": "Lena",
+                    "budget": 120000,
+                    "forecast": 120000
+                  },
+                  {
+                    "id": 2,
+                    "project": "Borealis",
+                    "lead": "Arjun",
+                    "deputy": "Arjun",
+                    "budget": 80000,
+                    "forecast": 80000
+                  },
+                  {
+                    "id": 3,
+                    "project": "Cirrus",
+                    "lead": "Mia",
+                    "deputy": "Mia",
+                    "budget": 45000,
+                    "forecast": 45000
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/roster",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "project": {
+                    "type": "string"
+                  },
+                  "lead": {
+                    "type": "string"
+                  },
+                  "deputy": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "project": "Delta",
+                "lead": "Ravi",
+                "deputy": "Prerna"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "project": {
+                      "type": "string"
+                    },
+                    "lead": {
+                      "type": "string"
+                    },
+                    "deputy": {
+                      "type": "string"
+                    },
+                    "budget": {
+                      "type": "integer"
+                    },
+                    "forecast": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "example": {
+                  "id": 4,
+                  "project": "Delta",
+                  "lead": "Ravi",
+                  "deputy": "Prerna",
+                  "budget": 0,
+                  "forecast": 0
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/roster/{id}": {
+      "put": {
+        "summary": "PUT /api/roster/{id}",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "project": {
+                    "type": "string"
+                  },
+                  "lead": {
+                    "type": "string"
+                  },
+                  "deputy": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "project": "Delta",
+                "lead": "Ravi",
+                "deputy": "Prerna"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "project": {
+                      "type": "string"
+                    },
+                    "lead": {
+                      "type": "string"
+                    },
+                    "deputy": {
+                      "type": "string"
+                    },
+                    "budget": {
+                      "type": "integer"
+                    },
+                    "forecast": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "example": {
+                  "id": 1,
+                  "project": "Delta",
+                  "lead": "Ravi",
+                  "deputy": "Prerna",
+                  "budget": 120000,
+                  "forecast": 120000
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "DELETE /api/roster/{id}",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No content"
+          }
+        }
+      }
+    }
+  }
+}

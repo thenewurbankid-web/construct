@@ -1,0 +1,6 @@
+{
+  "feature": "products-history",
+  "route": "/products-history",
+  "page": "page.jsx",
+  "about": "LIN-211: same as the \"products\" example, plus one GET endpoint whose single path parameter is not the last segment (/api/products/{id}/history). It generates its own Service function instead of being listed-only."
+}

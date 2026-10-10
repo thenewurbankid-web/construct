@@ -1,0 +1,19 @@
+{
+  "list.spendChange": {
+    "custom": true,
+    "from": "controller",
+    "inputs": [],
+    "fn": "getSpendChange"
+  },
+  "value.baselineSpend": {
+    "custom": true,
+    "from": "controller",
+    "inputs": [],
+    "fn": "getBaselineSpend"
+  },
+  "action.page.suggest": {
+    "custom": true,
+    "from": "handler",
+    "fn": "handleSuggest"
+  }
+}

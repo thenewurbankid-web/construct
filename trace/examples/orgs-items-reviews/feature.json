@@ -1,0 +1,6 @@
+{
+  "feature": "orgs-items-reviews",
+  "route": "/orgs-items-reviews",
+  "page": "page.jsx",
+  "about": "LIN-250/TR-49: same as the \"orgs-items\" example, but the extra endpoint has THREE path parameters instead of two (/api/orgs/{orgId}/items/{itemId}/reviews/{reviewId}). Before LIN-250/TR-49 a three-or-more-param path was imported and listed but never wired (isWired capped at 2); now it generates its own Service function (all three ids in the signature) the same way the two-param case already did."
+}

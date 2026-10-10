@@ -1,0 +1,6 @@
+{
+  "feature": "invoices",
+  "route": "/invoices",
+  "page": "page.jsx",
+  "about": "Six kinds of question at once: an ambiguous field, an unmatched column, a sort tie, an aggregate tie, a missing value and an unknown verb."
+}

@@ -1,0 +1,6 @@
+{
+  "feature": "metrics",
+  "route": "/metrics",
+  "page": "page.jsx",
+  "about": "Values only, no list: every built-in aggregate and format (count, sum, average, min, max, percent) plus one value that can't be computed."
+}

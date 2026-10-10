@@ -1,0 +1,30 @@
+{
+  "values": [
+    {
+      "key": "value.invoiceCount",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "invoiceCount",
+      "example": "3"
+    },
+    {
+      "key": "value.totalBilled",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "totalBilled",
+      "example": "$276.0M"
+    },
+    {
+      "key": "value.outstandingTotal",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "outstandingTotal",
+      "example": "$487.3M"
+    }
+  ],
+  "lists": [],
+  "actions": [],
+  "forms": [],
+  "visuals": [],
+  "suppressed": []
+}

@@ -1,0 +1,38 @@
+{
+  "feature": "orders",
+  "open": 4,
+  "items": [
+    {
+      "id": "list.status",
+      "part": "row.status",
+      "state": "skipped",
+      "why": "No API field, with any built-in format, produces \"Shipped\", \"Pending\", \"Shipped\".",
+      "hint": "If the API has it, add a field to the GET response with these values per row (id 1 → \"Shipped\", id 2 → \"Pending\", id 3 → \"Shipped\"); it closes as soon as you re-run. Otherwise answer with a placeholder, or leave the TODO.",
+      "origin": "missing"
+    },
+    {
+      "id": "action.row.delete",
+      "part": "delete (row action)",
+      "state": "skipped",
+      "why": "\"delete\" looks like \"remove\", but the API for it (remove) wasn't given.",
+      "hint": "Add a DELETE endpoint to the API contract (the feature's OpenAPI file: edit it or upload a new one); it is wired as soon as you re-run.",
+      "origin": "missing"
+    },
+    {
+      "id": "action.page.save",
+      "part": "save (page action)",
+      "state": "skipped",
+      "why": "\"save\" looks like \"save\", but the API for it (update) wasn't given.",
+      "hint": "Add a PUT endpoint to the API contract (the feature's OpenAPI file: edit it or upload a new one); it is wired as soon as you re-run.",
+      "origin": "missing"
+    },
+    {
+      "id": "form.notes",
+      "part": "input notes",
+      "state": "gap",
+      "why": "The form has an input \"notes\" but no example request body has it.",
+      "hint": "Add \"notes\" to the request example of the POST/PUT in the API contract (the feature's OpenAPI file), or remove the input from the design.",
+      "origin": "gap"
+    }
+  ]
+}

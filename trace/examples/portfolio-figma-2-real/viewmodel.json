@@ -1,0 +1,180 @@
+{
+  "values": [
+    {
+      "key": "value.yourCategories",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "yourCategories",
+      "example": "6"
+    },
+    {
+      "key": "value.spendYouManage",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "spendYouManage",
+      "example": "$280.2M"
+    },
+    {
+      "key": "value.refreshed",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "refreshed",
+      "example": "31 Jul 2026"
+    },
+    {
+      "key": "value.yourPortfolioAtA",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "yourPortfolioAtA",
+      "example": "$280M"
+    },
+    {
+      "key": "value.savingsPotential",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "savingsPotential",
+      "example": "$24.5M"
+    },
+    {
+      "key": "value.resilienceBasedInitiatives",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "resilienceBasedInitiatives",
+      "example": "21"
+    },
+    {
+      "key": "value.numberOfSavingsInitiatives",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "numberOfSavingsInitiatives",
+      "example": "26"
+    },
+    {
+      "key": "value.riskInitiatives",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "riskInitiatives",
+      "example": "6"
+    }
+  ],
+  "lists": [
+    {
+      "key": "list.categoryOverview",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "categoryOverview",
+      "fields": [
+        "rank",
+        "spend",
+        "spend2",
+        "maturity",
+        "maturity2",
+        "savingsPotential",
+        "savingsPotential2"
+      ],
+      "rows": [
+        {
+          "rank": "01",
+          "spend": "$38.4M",
+          "spend2": "13.7%",
+          "maturity": "2.0",
+          "maturity2": "−0.7",
+          "savingsPotential": "$5.6M",
+          "savingsPotential2": "14.6%"
+        },
+        {
+          "rank": "02",
+          "spend": "$62.8M",
+          "spend2": "22.4%",
+          "maturity": "1.8",
+          "maturity2": "−0.6",
+          "savingsPotential": "$7.1M",
+          "savingsPotential2": "11.3%"
+        },
+        {
+          "rank": "03",
+          "spend": "$45.2M",
+          "spend2": "16.1%",
+          "maturity": "2.1",
+          "maturity2": "−0.5",
+          "savingsPotential": "$4.2M",
+          "savingsPotential2": "9.3%"
+        },
+        {
+          "rank": "04",
+          "spend": "$27.3M",
+          "spend2": "9.7%",
+          "maturity": "2.3",
+          "maturity2": "−0.2",
+          "savingsPotential": "$2.9M",
+          "savingsPotential2": "10.6%"
+        },
+        {
+          "rank": "05",
+          "spend": "$14.9M",
+          "spend2": "5.3%",
+          "maturity": "2.2",
+          "maturity2": "−0.1",
+          "savingsPotential": "$1.4M",
+          "savingsPotential2": "9.4%"
+        },
+        {
+          "rank": "06",
+          "spend": "$91.6M",
+          "spend2": "32.7%",
+          "maturity": "2.9",
+          "maturity2": "+0.3",
+          "savingsPotential": "$3.2M",
+          "savingsPotential2": "3.5%"
+        }
+      ],
+      "actions": [
+        "open"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "key": "action.promptSuggestion01",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "promptSuggestion01",
+      "element": "Button"
+    },
+    {
+      "key": "action.promptSuggestion02",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "promptSuggestion02",
+      "element": "Button"
+    }
+  ],
+  "forms": [],
+  "visuals": [
+    {
+      "tag": "svg",
+      "where": "the page"
+    },
+    {
+      "tag": "svg",
+      "where": "the page"
+    },
+    {
+      "tag": "svg",
+      "where": "the page"
+    },
+    {
+      "tag": "svg",
+      "where": "the page"
+    },
+    {
+      "tag": "svg",
+      "where": "the page"
+    },
+    {
+      "tag": "svg",
+      "where": "the page"
+    }
+  ],
+  "suppressed": []
+}

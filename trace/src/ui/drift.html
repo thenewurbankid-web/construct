@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Drift — Trace</title>
+<link rel="icon" type="image/svg+xml" href="/demo/assets/trace-favicon.svg">
+<script>/* same theme rule as the rest of Trace: lm-theme = light | dark, anything else follows the system */
+(function(){try{var t=localStorage.getItem("lm-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}})()
+</script>
+<link rel="stylesheet" href="/theme.css">
+<style>
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,-apple-system,sans-serif}
+code{font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--stat);border-radius:4px;padding:0 4px}
+.wrap{max-width:880px;margin:0 auto;padding:20px 16px 48px}
+header.top{display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;margin-bottom:8px}
+header.top h1{font-size:20px;margin:0 auto 0 0}
+header.top a{color:var(--acc)}
+a{color:var(--acc)}
+h2{font-size:15px;margin:16px 0 8px}
+ul{margin:0;padding-left:18px}
+li{margin-bottom:4px}
+.sub{color:var(--mut);font-size:12.5px}
+.empty{color:var(--mut)}
+.chip{display:inline-block;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;padding:0 8px;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
+.k-feat{color:var(--grn)}.k-fix{color:var(--amb)}.k-change{color:var(--acc)}.k-note{color:var(--mut)}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+@media(max-width:520px){.wrap{padding:16px 12px 40px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>Drift</h1>
+    <a href="/quality">Quality</a>
+    <a href="/about">About</a>
+    <a href="/changelog">Changelog</a>
+    <a class="back" href="/studio">Back to the studio</a>
+  </header>
+  <main id="app"><p class="empty">Loading…</p></main>
+</div>
+<script type="module">
+import { mountDrift } from "/ui/drift.mjs";
+mountDrift(document.getElementById("app"));
+</script>
+</body>
+</html>

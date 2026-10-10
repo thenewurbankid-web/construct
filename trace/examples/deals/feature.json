@@ -1,0 +1,6 @@
+{
+  "feature": "deals",
+  "route": "/deals",
+  "page": "page.jsx",
+  "about": "Complex: eight transforms on one page (text, compact money, percent, date, count, sum, average, min, max, sort), plus a join, a tie, a missing column, a missing endpoint, form gaps and an unknown verb."
+}

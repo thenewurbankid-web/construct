@@ -1,0 +1,101 @@
+{
+  "values": [
+    {
+      "key": "value.contactCount",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "contactCount",
+      "example": "3"
+    },
+    {
+      "key": "value.directoryUpdated",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "directoryUpdated",
+      "example": "26 Sep 2026"
+    }
+  ],
+  "lists": [
+    {
+      "key": "list.contacts",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "contacts",
+      "fields": [
+        "fullName",
+        "initials",
+        "email",
+        "city"
+      ],
+      "rows": [
+        {
+          "fullName": "Lena Kumar",
+          "initials": "LK",
+          "email": "lena@example.com",
+          "city": "Pune"
+        },
+        {
+          "fullName": "Arjun Rao",
+          "initials": "AR",
+          "email": "arjun@example.com",
+          "city": "Delhi"
+        },
+        {
+          "fullName": "Mia Shah",
+          "initials": "MS",
+          "email": "mia@example.com",
+          "city": "Mumbai"
+        }
+      ],
+      "actions": [
+        "edit",
+        "call",
+        "delete"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "key": "action.save",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "save",
+      "element": "form"
+    },
+    {
+      "key": "action.cancel",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "cancel",
+      "element": "button"
+    }
+  ],
+  "forms": [
+    {
+      "key": "form.save",
+      "origin": "auto",
+      "presentInPage": true,
+      "action": "save",
+      "fields": [
+        {
+          "name": "first",
+          "type": "text"
+        },
+        {
+          "name": "last",
+          "type": "text"
+        },
+        {
+          "name": "email",
+          "type": "text"
+        },
+        {
+          "name": "city",
+          "type": "text"
+        }
+      ]
+    }
+  ],
+  "visuals": [],
+  "suppressed": []
+}

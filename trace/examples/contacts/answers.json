@@ -1,0 +1,14 @@
+{
+  "list.fullName": {
+    "custom": true,
+    "from": "controller",
+    "inputs": [],
+    "fn": "getFullName"
+  },
+  "value.directoryUpdated": {
+    "custom": true,
+    "from": "controller",
+    "inputs": [],
+    "fn": "getDirectoryUpdated"
+  }
+}

@@ -1,0 +1,200 @@
+{
+  "values": [
+    {
+      "key": "value.dealCount",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "dealCount",
+      "example": "6"
+    },
+    {
+      "key": "value.pipeline",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "pipeline",
+      "example": "$453.1M"
+    },
+    {
+      "key": "value.avgDeal",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "avgDeal",
+      "example": "$75.5M"
+    },
+    {
+      "key": "value.largest",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "largest",
+      "example": "$152.5M"
+    },
+    {
+      "key": "value.smallest",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "smallest",
+      "example": "$9.8M"
+    },
+    {
+      "key": "value.avgMargin",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "avgMargin",
+      "example": "28.8%"
+    },
+    {
+      "key": "value.weighted",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "weighted",
+      "example": "$137.6M"
+    },
+    {
+      "key": "value.syncedAt",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "syncedAt",
+      "example": "26 Sep 2026"
+    }
+  ],
+  "lists": [
+    {
+      "key": "list.deals",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "deals",
+      "fields": [
+        "name",
+        "account",
+        "contact",
+        "owner",
+        "csm",
+        "value",
+        "margin",
+        "closeOn",
+        "stage"
+      ],
+      "rows": [
+        {
+          "name": "Borealis Expansion",
+          "account": "Kestrel",
+          "contact": "Arjun Rao",
+          "owner": "Mia",
+          "csm": "Mia",
+          "value": "$152.5M",
+          "margin": "28.1%",
+          "closeOn": "2 Oct 2026",
+          "stage": "Proposal"
+        },
+        {
+          "name": "Ember Platform",
+          "account": "Harbor",
+          "contact": "Prerna Iyer",
+          "owner": "Arjun",
+          "csm": "Arjun",
+          "value": "$118.0M",
+          "margin": "36.0%",
+          "closeOn": "5 Dec 2026",
+          "stage": "Proposal"
+        },
+        {
+          "name": "Atlas Renewal",
+          "account": "Northwind",
+          "contact": "Lena Kumar",
+          "owner": "Prerna",
+          "csm": "Prerna",
+          "value": "$84.0M",
+          "margin": "32.5%",
+          "closeOn": "14 Oct 2026",
+          "stage": "Negotiation"
+        },
+        {
+          "name": "Delta Upgrade",
+          "account": "Oriel",
+          "contact": "Ravi Nair",
+          "owner": "Lena",
+          "csm": "Lena",
+          "value": "$61.3M",
+          "margin": "19.8%",
+          "closeOn": "29 Oct 2026",
+          "stage": "Negotiation"
+        },
+        {
+          "name": "Cirrus Pilot",
+          "account": "Bluepeak",
+          "contact": "Mia Shah",
+          "owner": "Ravi",
+          "csm": "Ravi",
+          "value": "$27.5M",
+          "margin": "41.2%",
+          "closeOn": "20 Nov 2026",
+          "stage": "Qualified"
+        },
+        {
+          "name": "Fjord Support",
+          "account": "Vantage",
+          "contact": "Kabir Sen",
+          "owner": "Mia",
+          "csm": "Mia",
+          "value": "$9.8M",
+          "margin": "15.0%",
+          "closeOn": "3 Nov 2026",
+          "stage": "Won"
+        }
+      ],
+      "actions": [
+        "edit",
+        "forecast",
+        "delete"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "key": "action.save",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "save",
+      "element": "form"
+    },
+    {
+      "key": "action.cancel",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "cancel",
+      "element": "button"
+    }
+  ],
+  "forms": [
+    {
+      "key": "form.save",
+      "origin": "auto",
+      "presentInPage": true,
+      "action": "save",
+      "fields": [
+        {
+          "name": "name",
+          "type": "text"
+        },
+        {
+          "name": "account",
+          "type": "text"
+        },
+        {
+          "name": "value",
+          "type": "number"
+        },
+        {
+          "name": "margin",
+          "type": "number"
+        },
+        {
+          "name": "notes",
+          "type": "text"
+        }
+      ]
+    }
+  ],
+  "visuals": [],
+  "suppressed": []
+}

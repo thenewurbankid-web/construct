@@ -1,0 +1,19 @@
+{
+  "feature": "portfolio-figma-2",
+  "route": "/portfolio",
+  "page": "page.jsx",
+  "about": "Portfolio Health, Figma rebuild 2: a near-copy of rebuild 1 with small copy differences (unicode minus, no arrow, target 8).",
+  "docs": {
+    "fields": {
+      "spend_you_manage": "Total spend across the categories the user manages.",
+      "spend.pct_of_total": "The category's share of the user's total spend, 0 to 1.",
+      "maturity_score": "Category maturity on a 0 to 100 scale.",
+      "risk_score": "Composite risk score for the category.",
+      "spend_trend.delta_pct": "Change in spend between the last two spend uploads.",
+      "waiting_on_decision.savings_count": "Savings initiatives waiting on a decision. A count, never money."
+    },
+    "endpoints": {
+      "GET /api/category-health/portfolio": "Portfolio landing page for users managing two or more categories. Rows are sorted by spend descending."
+    }
+  }
+}

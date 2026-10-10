@@ -1,0 +1,10 @@
+{
+  "category": "scale",
+  "expect": "e0dfd23ce42bb9e7",
+  "generator": {
+    "name": "scale-2000",
+    "params": {},
+    "seed": 92000
+  },
+  "id": "scale-2000"
+}

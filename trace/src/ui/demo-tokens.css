@@ -1,0 +1,70 @@
+/* The demo shell's colour tokens, in one place. Semantics: bg, surface, text, muted, border, accent, and one colour each for
+   Fit, Waiting, Gap, Tie, Stub. Waiting is the "needs an answer" amber of /theme.css (amb), so an open Ask reads as calm, not as failure;
+   Gap (red) is only a part settled as having nothing behind it. Every one of them holds 3:1 on bg, surface and surface-2 in both themes. The light theme is a soft warm "paper" (never stark white); dark is a warm charcoal.
+   When the shared theme source lands in main, replace this one file and nothing else changes.
+   Themes: follows prefers-color-scheme, and the toggle sets <html data-theme="light|dark">. */
+:root {
+  color-scheme: light;
+  --bg: #f3efe6;
+  --surface: #faf7f0;
+  --surface-2: #efeadf;
+  --text: #29251e;
+  --muted: #6b655a;
+  --border: #ddd6c7;
+  --border-strong: #c9c0ad;
+  --accent: #3d4fd1;
+  --on-accent: #fbfaf6;
+  --fit: #2b8a57;
+  --wait: #8a5300;
+  --gap: #c4453a;
+  --tie: #b06f10;
+  --stub: #7550cf;
+  --mark-a: #5a72f2; /* the logo pill's blue, deeper than the website's so it holds 3:1 on paper */
+  --mark-b: #3448d6;
+  --shadow: 0 1px 2px rgba(41, 37, 30, .06), 0 8px 24px rgba(41, 37, 30, .07);
+  --shadow-lg: 0 2px 4px rgba(41, 37, 30, .08), 0 24px 56px rgba(41, 37, 30, .14);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #171613;
+    --surface: #1f1e1a;
+    --surface-2: #272520;
+    --text: #ece8de;
+    --muted: #a39d8f;
+    --border: #363329;
+    --border-strong: #4a463a;
+    --accent: #8d9bff;
+    --on-accent: #12131f;
+    --fit: #5cc38a;
+    --wait: #fbbf24;
+    --gap: #ff8b7c;
+    --tie: #efb45b;
+    --stub: #b8a0ff;
+    --mark-a: #8fb0ff; /* the website's own blue */
+    --mark-b: #4b63f5;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .3);
+    --shadow-lg: 0 2px 4px rgba(0, 0, 0, .35), 0 24px 56px rgba(0, 0, 0, .5);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #171613;
+  --surface: #1f1e1a;
+  --surface-2: #272520;
+  --text: #ece8de;
+  --muted: #a39d8f;
+  --border: #363329;
+  --border-strong: #4a463a;
+  --accent: #8d9bff;
+  --on-accent: #12131f;
+  --fit: #5cc38a;
+  --wait: #fbbf24;
+  --gap: #ff8b7c;
+  --tie: #efb45b;
+  --stub: #b8a0ff;
+  --mark-a: #8fb0ff;
+  --mark-b: #4b63f5;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .3);
+  --shadow-lg: 0 2px 4px rgba(0, 0, 0, .35), 0 24px 56px rgba(0, 0, 0, .5);
+}

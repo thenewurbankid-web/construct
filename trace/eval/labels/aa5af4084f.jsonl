@@ -1,0 +1,2 @@
+{"case":"aa5af4084f","chosen":2,"chosen_is_default":false,"decided_by":"ai","model":"ollama:qwen2.5-coder:1.5b","n_candidates":0,"options":[{"kind":"todo"},{"kind":"static"},{"kind":"custom-placeholder"}],"part":"list.fullName","part_kind":"row","task":"choose","tied":false}
+{"case":"aa5af4084f","chosen":2,"chosen_is_default":false,"decided_by":"ai","model":"ollama:qwen2.5-coder:1.5b","n_candidates":0,"options":[{"kind":"todo"},{"kind":"static"},{"kind":"custom-placeholder"}],"part":"value.directoryUpdated","part_kind":"value","task":"choose","tied":false}

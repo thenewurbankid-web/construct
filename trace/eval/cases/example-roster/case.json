@@ -1,0 +1,82 @@
+{
+  "category": "example",
+  "id": "example-roster",
+  "source": "examples/roster",
+  "sourceHash": "06eead4ef1ef6699",
+  "truth": {
+    "action.page.cancel": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "x:clear"
+    },
+    "action.page.save": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "x:save"
+    },
+    "action.row.delete": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "x:remove"
+    },
+    "action.row.edit": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "x:select"
+    },
+    "list.backup": {
+      "coincidence": true,
+      "couple": "owner-backup",
+      "kind": "needs-answer",
+      "label": "independent",
+      "want": "f:deputy|asText",
+      "why": "gold.json"
+    },
+    "list.owner": {
+      "coincidence": true,
+      "couple": "owner-backup",
+      "kind": "needs-answer",
+      "label": "independent",
+      "want": "f:lead|asText",
+      "why": "gold.json: lead and deputy are identical in every row"
+    },
+    "list.project": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "f:project|asText"
+    },
+    "list.sort": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "s:none"
+    },
+    "value.forecastTotal": {
+      "coincidence": true,
+      "couple": "totals",
+      "kind": "needs-answer",
+      "label": "independent",
+      "want": "a:sum(forecast)|moneyCompact",
+      "why": "gold.json"
+    },
+    "value.plannedTotal": {
+      "coincidence": true,
+      "couple": "totals",
+      "kind": "needs-answer",
+      "label": "independent",
+      "want": "a:sum(budget)|moneyCompact",
+      "why": "gold.json: budget and forecast are identical in the sample"
+    },
+    "value.projectCount": {
+      "basis": "Trace's own match; not independently established (fill the labelling worksheet to change this)",
+      "kind": "match",
+      "label": "self",
+      "want": "a:count()|asText"
+    }
+  }
+}

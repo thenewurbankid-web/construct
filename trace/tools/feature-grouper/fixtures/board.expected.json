@@ -1,0 +1,8 @@
+{
+  "file": "board.tsx",
+  "note": "Hand-written to cover the small-.map()-item case: a row of icon buttons (button+span, size 2) and a list of tag chips (span, size 1), each below the size-3 candidate floor on its own. Both are .map() templates, so they should be recovered as one-member repeating groups (the existing 'rendered once per item by .map()' convention already used for catalog's/profile's bigger .map() templates), not dropped as trivial and not left folded into their wrapping div as a false 'unique' block.",
+  "groups": [
+    { "name": "icon button template", "kind": "repeating", "members": [12] },
+    { "name": "chip template", "kind": "repeating", "members": [20] }
+  ]
+}

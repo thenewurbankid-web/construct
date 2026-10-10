@@ -1,0 +1,1064 @@
+{
+  "case": "example-portfolio-figma-2",
+  "contract": {
+    "docs": {
+      "endpoints": {
+        "GET /api/category-health/portfolio": "Portfolio landing page for users managing two or more categories. Rows are sorted by spend descending."
+      },
+      "fields": {
+        "maturity_score": "Category maturity on a 0 to 100 scale.",
+        "risk_score": "Composite risk score for the category.",
+        "spend.pct_of_total": "The category's share of the user's total spend, 0 to 1.",
+        "spend_trend.delta_pct": "Change in spend between the last two spend uploads.",
+        "spend_you_manage": "Total spend across the categories the user manages.",
+        "waiting_on_decision.savings_count": "Savings initiatives waiting on a decision. A count, never money."
+      }
+    },
+    "endpoints": [
+      "GET /api/category-health/portfolio",
+      "GET /api/category-health/categories"
+    ],
+    "item_count": 6,
+    "item_fields": [
+      {
+        "path": "beroe_l2_id",
+        "samples": [
+          "3c1e7d20-5f0a-4b6c-8d11-0a9e2f7b4c01",
+          "7a52b8e4-1d3f-4c90-a6b2-5e8d0c1f9a02",
+          "9d04c6f1-2b7e-4a35-b8c0-3f6a1e5d7b03",
+          "b8e19a03-6c4d-4f27-9e50-1d2c7a8f3b04"
+        ],
+        "type": "string"
+      },
+      {
+        "path": "display_name",
+        "samples": [
+          "Grains & Cereals",
+          "Packaging",
+          "IT Services",
+          "Logistics"
+        ],
+        "type": "string"
+      },
+      {
+        "path": "spend.value",
+        "samples": [
+          91600000,
+          62800000,
+          45200000,
+          38400000
+        ],
+        "type": "number"
+      },
+      {
+        "path": "spend.pct_of_total",
+        "samples": [
+          0.327,
+          0.224,
+          0.161,
+          0.137
+        ],
+        "type": "number"
+      },
+      {
+        "path": "maturity_score",
+        "samples": [
+          58,
+          36,
+          42,
+          40
+        ],
+        "type": "number"
+      },
+      {
+        "path": "savings_potential",
+        "samples": [
+          3200000,
+          7100000,
+          4200000,
+          5600000
+        ],
+        "type": "number"
+      },
+      {
+        "path": "risk_score",
+        "samples": [
+          72,
+          69,
+          67,
+          72
+        ],
+        "type": "number"
+      },
+      {
+        "path": "spend_trend.prev_value",
+        "samples": [
+          88500000,
+          64900000,
+          44000000,
+          33300000
+        ],
+        "type": "number"
+      },
+      {
+        "path": "spend_trend.curr_value",
+        "samples": [
+          91600000,
+          62800000,
+          45200000,
+          38400000
+        ],
+        "type": "number"
+      },
+      {
+        "path": "spend_trend.delta_pct",
+        "samples": [
+          0.035,
+          -0.032,
+          0.027,
+          0.153
+        ],
+        "type": "number"
+      },
+      {
+        "path": "deep_link",
+        "samples": [
+          "/category-health/categories/3c1e7d20-5f0a-4b6c-8d11-0a9e2f7b4c01/summary",
+          "/category-health/categories/7a52b8e4-1d3f-4c90-a6b2-5e8d0c1f9a02/summary",
+          "/category-health/categories/9d04c6f1-2b7e-4a35-b8c0-3f6a1e5d7b03/summary",
+          "/category-health/categories/b8e19a03-6c4d-4f27-9e50-1d2c7a8f3b04/summary"
+        ],
+        "type": "string"
+      }
+    ],
+    "list_endpoint": "GET /api/category-health/portfolio (rows are in \"categories\")",
+    "requirements_text": "# Portfolio Health — requirements (from the Category Health Report API reference)\n\n- The portfolio screen is for users who manage two or more categories.\n- Rows are sorted by spend descending.\n- The spend-trend chip compares the last two spend uploads, not the last two framework runs.\n- The waiting-on-decision card shows counts only, never money.\n- Never show the tokens L2 or L3 in any user-visible text; use the client-side display name.\n- The category maturity score is on a 0 to 100 scale.\n- The narrative comes from the cross-category summary of the portfolio response.\n- Suggestions under Ask Anything are AI prompts that use a handler of our own, not an API.\n",
+    "response_fields_outside_the_list": [
+      {
+        "path": "meta.user_id",
+        "value": "u-1042"
+      },
+      {
+        "path": "meta.org_id",
+        "value": "org-7"
+      },
+      {
+        "path": "meta.snapshot_date",
+        "value": "2026-07-31T10:00:00Z"
+      },
+      {
+        "path": "narrative.cross_l2_summary",
+        "value": "Grains is carrying your portfolio. Logistics and Packaging are not."
+      },
+      {
+        "path": "portfolio_at_a_glance.spend_you_manage",
+        "value": 280200000
+      },
+      {
+        "path": "portfolio_at_a_glance.largest_category.display_name",
+        "value": "Grains & Cereals"
+      },
+      {
+        "path": "portfolio_at_a_glance.largest_category.share_of_portfolio",
+        "value": 0.327
+      },
+      {
+        "path": "portfolio_at_a_glance.savings_potential.value",
+        "value": 24500000
+      },
+      {
+        "path": "portfolio_at_a_glance.savings_potential.pct_of_spend",
+        "value": 0.087
+      },
+      {
+        "path": "portfolio_at_a_glance.savings_potential.qualified_accepted_pct",
+        "value": 0.38
+      },
+      {
+        "path": "portfolio_at_a_glance.resilience_initiatives.total",
+        "value": 21
+      },
+      {
+        "path": "portfolio_at_a_glance.resilience_initiatives.by_impact.high",
+        "value": 7
+      },
+      {
+        "path": "portfolio_at_a_glance.resilience_initiatives.by_impact.medium",
+        "value": 13
+      },
+      {
+        "path": "portfolio_at_a_glance.resilience_initiatives.by_impact.low",
+        "value": 1
+      },
+      {
+        "path": "portfolio_at_a_glance.waiting_on_decision.savings_count",
+        "value": 26
+      },
+      {
+        "path": "portfolio_at_a_glance.waiting_on_decision.resilience_count",
+        "value": 6
+      },
+      {
+        "path": "portfolio_at_a_glance.waiting_on_decision.note",
+        "value": "counts only, no monetary value"
+      }
+    ]
+  },
+  "instructions": {
+    "answer_with_exactly_one_of": {
+      "a:<agg>(<field>)|<format>": "a page value is an aggregate of the whole list: count(), sum(f), average(f), max(f), min(f), e.g. a:sum(budget)|moneyCompact",
+      "e:<path>|<format>": "a page value is a single field of the response outside the list, e.g. e:meta.snapshot_date|dateShort",
+      "f:<field>|<format>": "a list column shows an item field, e.g. f:lead|asText  (nested fields use dots: spend.value)",
+      "gap:todo | gap:custom | gap:static | gap:?": "NOTHING in the contract provides it. todo = leave a TODO, custom = someone writes a placeholder, static = it is fixed text, ? = no view on how it is closed",
+      "s:<field>:asc|desc  or  s:none": "how the rows are ordered (s:none = the API's own order)",
+      "u:<field>|<recipe>": "it comes from a field but needs a transformation none of the formats below does; describe the recipe in words",
+      "x:<kind>": "what an action does: create, update, save, remove, select, clear, reload, ignore"
+    },
+    "formats": {
+      "asText": "the value as is, 12 -> 12, Lena -> Lena",
+      "dateShort": "2026-07-31... -> 31 Jul 2026",
+      "moneyCompact": "1234567 -> $1.2M, 45000 -> $45.0K, 900 -> $900",
+      "moneyFull": "1200 -> $1,200",
+      "percent": "0.327 -> 32.7%",
+      "percentWhole": "0.327 -> 33%"
+    },
+    "rules": [
+      "Decide from the design text and the contract only. Do not run Trace and do not open answers.json, decisions.json or ai-cache.json.",
+      "If two contract fields (or two aggregates) reproduce the design equally well, choose the one the design MEANS (use the header, the surrounding words, the docs and the story) and say why in note.",
+      "If you cannot tell, set unsure to true: the part is then left out of every number instead of guessed."
+    ]
+  },
+  "labeller": null,
+  "parts": [
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "01",
+          "02",
+          "03",
+          "04",
+          "05",
+          "06"
+        ],
+        "header": "#",
+        "name": "rank",
+        "other_parts_in_the_same_cell": []
+      },
+      "id": "list.rank",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "Logistics",
+          "Packaging",
+          "IT Services",
+          "Professional Services",
+          "MRO",
+          "Grains & Cereals"
+        ],
+        "header": "Category",
+        "name": "name",
+        "other_parts_in_the_same_cell": [
+          "level"
+        ]
+      },
+      "id": "list.name",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "L3",
+          "L2",
+          "L3",
+          "L2",
+          "L2",
+          "L2"
+        ],
+        "header": "Category",
+        "name": "level",
+        "other_parts_in_the_same_cell": [
+          "name"
+        ]
+      },
+      "id": "list.level",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "$38.4M",
+          "$62.8M",
+          "$45.2M",
+          "$27.3M",
+          "$14.9M",
+          "$91.6M"
+        ],
+        "header": "Spend",
+        "name": "spend",
+        "other_parts_in_the_same_cell": [
+          "share"
+        ]
+      },
+      "id": "list.spend",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "13.7%",
+          "22.4%",
+          "16.1%",
+          "9.7%",
+          "5.3%",
+          "32.7%"
+        ],
+        "header": "Spend",
+        "name": "share",
+        "other_parts_in_the_same_cell": [
+          "spend"
+        ]
+      },
+      "id": "list.share",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "2.0",
+          "1.8",
+          "2.1",
+          "2.3",
+          "2.2",
+          "2.9"
+        ],
+        "header": "Maturity",
+        "name": "maturity",
+        "other_parts_in_the_same_cell": [
+          "maturityGap",
+          "peer"
+        ]
+      },
+      "id": "list.maturity",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "−0.7",
+          "−0.6",
+          "−0.5",
+          "−0.2",
+          "−0.1",
+          "+0.3"
+        ],
+        "header": "Maturity",
+        "name": "maturityGap",
+        "other_parts_in_the_same_cell": [
+          "maturity",
+          "peer"
+        ]
+      },
+      "id": "list.maturityGap",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "peer 2.7",
+          "peer 2.4",
+          "peer 2.6",
+          "peer 2.5",
+          "peer 2.3",
+          "peer 2.6"
+        ],
+        "header": "Maturity",
+        "name": "peer",
+        "other_parts_in_the_same_cell": [
+          "maturity",
+          "maturityGap"
+        ]
+      },
+      "id": "list.peer",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "$5.6M",
+          "$7.1M",
+          "$4.2M",
+          "$2.9M",
+          "$1.4M",
+          "$3.2M"
+        ],
+        "header": "Savings potential",
+        "name": "savings",
+        "other_parts_in_the_same_cell": [
+          "savingsPct"
+        ]
+      },
+      "id": "list.savings",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "14.6%",
+          "11.3%",
+          "9.3%",
+          "10.6%",
+          "9.4%",
+          "3.5%"
+        ],
+        "header": "Savings potential",
+        "name": "savingsPct",
+        "other_parts_in_the_same_cell": [
+          "savings"
+        ]
+      },
+      "id": "list.savingsPct",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "3 high flags",
+          "largest unclaimed $7.1M",
+          "single supplier 9.5%",
+          "1 high flag",
+          "maturity in line with peers",
+          "ahead on maturity"
+        ],
+        "header": "Needs attention",
+        "name": "flagFirst",
+        "other_parts_in_the_same_cell": [
+          "flagSecond"
+        ]
+      },
+      "id": "list.flagFirst",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "widest maturity gap",
+          "2 high flags",
+          "$410K past due",
+          "rate card 14% over peers",
+          "tail spend 31% off-contract",
+          "largest category"
+        ],
+        "header": "Needs attention",
+        "name": "flagSecond",
+        "other_parts_in_the_same_cell": [
+          "flagFirst"
+        ]
+      },
+      "id": "list.flagSecond",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "api_order_first_rows": [
+        {
+          "beroe_l2_id": "3c1e7d20-5f0a-4b6c-8d11-0a9e2f7b4c01",
+          "deep_link": "/category-health/categories/3c1e7d20-5f0a-4b6c-8d11-0a9e2f7b4c01/summary",
+          "display_name": "Grains & Cereals",
+          "maturity_score": 58,
+          "risk_score": 72,
+          "savings_potential": 3200000,
+          "spend.pct_of_total": 0.327,
+          "spend.value": 91600000,
+          "spend_trend.curr_value": 91600000,
+          "spend_trend.delta_pct": 0.035,
+          "spend_trend.prev_value": 88500000
+        },
+        {
+          "beroe_l2_id": "7a52b8e4-1d3f-4c90-a6b2-5e8d0c1f9a02",
+          "deep_link": "/category-health/categories/7a52b8e4-1d3f-4c90-a6b2-5e8d0c1f9a02/summary",
+          "display_name": "Packaging",
+          "maturity_score": 36,
+          "risk_score": 69,
+          "savings_potential": 7100000,
+          "spend.pct_of_total": 0.224,
+          "spend.value": 62800000,
+          "spend_trend.curr_value": 62800000,
+          "spend_trend.delta_pct": -0.032,
+          "spend_trend.prev_value": 64900000
+        },
+        {
+          "beroe_l2_id": "9d04c6f1-2b7e-4a35-b8c0-3f6a1e5d7b03",
+          "deep_link": "/category-health/categories/9d04c6f1-2b7e-4a35-b8c0-3f6a1e5d7b03/summary",
+          "display_name": "IT Services",
+          "maturity_score": 42,
+          "risk_score": 67,
+          "savings_potential": 4200000,
+          "spend.pct_of_total": 0.161,
+          "spend.value": 45200000,
+          "spend_trend.curr_value": 45200000,
+          "spend_trend.delta_pct": 0.027,
+          "spend_trend.prev_value": 44000000
+        },
+        {
+          "beroe_l2_id": "b8e19a03-6c4d-4f27-9e50-1d2c7a8f3b04",
+          "deep_link": "/category-health/categories/b8e19a03-6c4d-4f27-9e50-1d2c7a8f3b04/summary",
+          "display_name": "Logistics",
+          "maturity_score": 40,
+          "risk_score": 72,
+          "savings_potential": 5600000,
+          "spend.pct_of_total": 0.137,
+          "spend.value": 38400000,
+          "spend_trend.curr_value": 38400000,
+          "spend_trend.delta_pct": 0.153,
+          "spend_trend.prev_value": 33300000
+        },
+        {
+          "beroe_l2_id": "e2f7d5b6-8a01-4c39-b74e-6a0d9c3e1f05",
+          "deep_link": "/category-health/categories/e2f7d5b6-8a01-4c39-b74e-6a0d9c3e1f05/summary",
+          "display_name": "Professional Services",
+          "maturity_score": 46,
+          "risk_score": 59,
+          "savings_potential": 2900000,
+          "spend.pct_of_total": 0.097,
+          "spend.value": 27300000,
+          "spend_trend.curr_value": 27300000,
+          "spend_trend.delta_pct": 0,
+          "spend_trend.prev_value": 27300000
+        },
+        {
+          "beroe_l2_id": "0f6b3a97-4e2c-4d81-a5f3-7c9e1b8d2a06",
+          "deep_link": "/category-health/categories/0f6b3a97-4e2c-4d81-a5f3-7c9e1b8d2a06/summary",
+          "display_name": "MRO",
+          "maturity_score": 44,
+          "risk_score": 84,
+          "savings_potential": 1400000,
+          "spend.pct_of_total": 0.053,
+          "spend.value": 14900000,
+          "spend_trend.curr_value": 14900000,
+          "spend_trend.delta_pct": 0.52,
+          "spend_trend.prev_value": 9800000
+        }
+      ],
+      "design": {
+        "designed_rows": [
+          {
+            "flagFirst": "3 high flags",
+            "flagSecond": "widest maturity gap",
+            "level": "L3",
+            "maturity": "2.0",
+            "maturityGap": "−0.7",
+            "name": "Logistics",
+            "peer": "peer 2.7",
+            "rank": "01",
+            "savings": "$5.6M",
+            "savingsPct": "14.6%",
+            "share": "13.7%",
+            "spend": "$38.4M"
+          },
+          {
+            "flagFirst": "largest unclaimed $7.1M",
+            "flagSecond": "2 high flags",
+            "level": "L2",
+            "maturity": "1.8",
+            "maturityGap": "−0.6",
+            "name": "Packaging",
+            "peer": "peer 2.4",
+            "rank": "02",
+            "savings": "$7.1M",
+            "savingsPct": "11.3%",
+            "share": "22.4%",
+            "spend": "$62.8M"
+          },
+          {
+            "flagFirst": "single supplier 9.5%",
+            "flagSecond": "$410K past due",
+            "level": "L3",
+            "maturity": "2.1",
+            "maturityGap": "−0.5",
+            "name": "IT Services",
+            "peer": "peer 2.6",
+            "rank": "03",
+            "savings": "$4.2M",
+            "savingsPct": "9.3%",
+            "share": "16.1%",
+            "spend": "$45.2M"
+          },
+          {
+            "flagFirst": "1 high flag",
+            "flagSecond": "rate card 14% over peers",
+            "level": "L2",
+            "maturity": "2.3",
+            "maturityGap": "−0.2",
+            "name": "Professional Services",
+            "peer": "peer 2.5",
+            "rank": "04",
+            "savings": "$2.9M",
+            "savingsPct": "10.6%",
+            "share": "9.7%",
+            "spend": "$27.3M"
+          },
+          {
+            "flagFirst": "maturity in line with peers",
+            "flagSecond": "tail spend 31% off-contract",
+            "level": "L2",
+            "maturity": "2.2",
+            "maturityGap": "−0.1",
+            "name": "MRO",
+            "peer": "peer 2.3",
+            "rank": "05",
+            "savings": "$1.4M",
+            "savingsPct": "9.4%",
+            "share": "5.3%",
+            "spend": "$14.9M"
+          },
+          {
+            "flagFirst": "ahead on maturity",
+            "flagSecond": "largest category",
+            "level": "L2",
+            "maturity": "2.9",
+            "maturityGap": "+0.3",
+            "name": "Grains & Cereals",
+            "peer": "peer 2.6",
+            "rank": "06",
+            "savings": "$3.2M",
+            "savingsPct": "3.5%",
+            "share": "32.7%",
+            "spend": "$91.6M"
+          }
+        ]
+      },
+      "id": "list.sort",
+      "what": "the order of the designed rows"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "6",
+        "name": "categoryCount",
+        "surrounding_text": "6 $280.2M 31 Jul 2026"
+      },
+      "id": "value.categoryCount",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "$280.2M",
+        "name": "spendYouManage",
+        "surrounding_text": "6 $280.2M 31 Jul 2026"
+      },
+      "id": "value.spendYouManage",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "31 Jul 2026",
+        "name": "refreshedAt",
+        "surrounding_text": "6 $280.2M 31 Jul 2026"
+      },
+      "id": "value.refreshedAt",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "Grains is carrying your portfolio. Logistics and Packaging are not.",
+        "name": "headline",
+        "surrounding_text": "Grains is carrying your portfolio. Logistics and Packaging are not."
+      },
+      "id": "value.headline",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "Grains, up on contract coverage and a renegotiated origination mix, and Chemicals, where the solvent index fell two quarters running.",
+        "name": "improving",
+        "surrounding_text": "Grains, up on contract coverage and a renegotiated origination mix, and Chemicals, where the solvent index fell two quarters running."
+      },
+      "id": "value.improving",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "Logistics, where the maturity gap widened to −0.7 and three high flags are open, and Packaging, where supplier concentration moved the wrong way. IT & Software is flat.",
+        "name": "declining",
+        "surrounding_text": "Logistics, where the maturity gap widened to −0.7 and three high flags are open, and Packaging, where supplier concentration moved the wrong way. IT & Software is flat."
+      },
+      "id": "value.declining",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "$280M",
+        "name": "spendCard",
+        "surrounding_text": "$280M"
+      },
+      "id": "value.spendCard",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "8.4% YoY",
+        "name": "spendYoy",
+        "surrounding_text": "8.4% YoY"
+      },
+      "id": "value.spendYoy",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "Grains & Cereals",
+        "name": "largestName",
+        "surrounding_text": "Grains & Cereals33%"
+      },
+      "id": "value.largestName",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "33%",
+        "name": "largestShare",
+        "surrounding_text": "Grains & Cereals33%"
+      },
+      "id": "value.largestShare",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "$24.5M",
+        "name": "savingsCard",
+        "surrounding_text": "$24.5M"
+      },
+      "id": "value.savingsCard",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "38%",
+        "name": "acceptedPct",
+        "surrounding_text": "38%"
+      },
+      "id": "value.acceptedPct",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "23 of 60",
+        "name": "acceptedCount",
+        "surrounding_text": "23 of 60"
+      },
+      "id": "value.acceptedCount",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "21",
+        "name": "resilienceTotal",
+        "surrounding_text": "21"
+      },
+      "id": "value.resilienceTotal",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "7",
+        "name": "impactHigh",
+        "surrounding_text": "7131"
+      },
+      "id": "value.impactHigh",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "13",
+        "name": "impactMedium",
+        "surrounding_text": "7131"
+      },
+      "id": "value.impactMedium",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "1",
+        "name": "impactLow",
+        "surrounding_text": "7131"
+      },
+      "id": "value.impactLow",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "4",
+        "name": "highCategories",
+        "surrounding_text": "4"
+      },
+      "id": "value.highCategories",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "26",
+        "name": "savingsCount",
+        "surrounding_text": "26"
+      },
+      "id": "value.savingsCount",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "$42.0M",
+        "name": "savingsTarget",
+        "surrounding_text": "$42.0M"
+      },
+      "id": "value.savingsTarget",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "34",
+        "name": "oldestDays",
+        "surrounding_text": "34"
+      },
+      "id": "value.oldestDays",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "6",
+        "name": "riskCount",
+        "surrounding_text": "6"
+      },
+      "id": "value.riskCount",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "2",
+        "name": "riskCategories",
+        "surrounding_text": "2"
+      },
+      "id": "value.riskCategories",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "8",
+        "name": "riskTarget",
+        "surrounding_text": "8"
+      },
+      "id": "value.riskTarget",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "scope": "row",
+        "verb_marker": "open"
+      },
+      "id": "action.row.open",
+      "note_for_labeller": "say what it should do given the endpoints in `contract`",
+      "what": "a button or form"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "scope": "page",
+        "verb_marker": "suggest"
+      },
+      "id": "action.page.suggest",
+      "note_for_labeller": "say what it should do given the endpoints in `contract`",
+      "what": "a button or form"
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "openapi": "3.0.3",
+  "info": { "title": "things", "version": "1.0.0" },
+  "paths": {
+    "/api/things": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": { "application/json": { "example": [
+              { "id": 1, "name": "Desk Lamp", "price": 4900, "stock": 12 },
+              { "id": 2, "name": "Notebook", "price": 350, "stock": 40 },
+              { "id": 3, "name": "Kettle", "price": 2100, "stock": 7 }
+            ] } }
+          }
+        }
+      },
+      "post": {
+        "requestBody": { "content": { "application/json": { "example": { "name": "Mug", "price": 900, "stock": 5 } } } },
+        "responses": { "201": { "description": "created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Thing" } } } } }
+      }
+    },
+    "/api/things/{id}": {
+      "put": {
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "requestBody": { "content": { "application/json": { "example": { "name": "Mug", "price": 950, "stock": 5 } } } },
+        "responses": { "200": { "description": "ok", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Thing" } } } } }
+      },
+      "delete": {
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "204": { "description": "no content" } }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Thing": { "type": "object", "properties": { "id": { "type": "integer", "example": 4 }, "name": { "type": "string", "example": "Mug" }, "price": { "type": "integer", "example": 900 }, "stock": { "type": "integer", "example": 5 } } }
+    }
+  }
+}

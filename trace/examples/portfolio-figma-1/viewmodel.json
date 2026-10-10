@@ -1,0 +1,327 @@
+{
+  "values": [
+    {
+      "key": "value.categoryCount",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "categoryCount",
+      "example": "6"
+    },
+    {
+      "key": "value.spendYouManage",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "spendYouManage",
+      "example": "$280.2M"
+    },
+    {
+      "key": "value.refreshedAt",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "refreshedAt",
+      "example": "31 Jul 2026"
+    },
+    {
+      "key": "value.headline",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "headline",
+      "example": "Grains is carrying your portfolio. Logistics and Packaging are not."
+    },
+    {
+      "key": "value.improving",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "improving",
+      "example": "Grains, up on contract coverage and a renegotiated origination mix, and Chemicals, where the solvent index fell two quarters running."
+    },
+    {
+      "key": "value.declining",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "declining",
+      "example": "Logistics, where the maturity gap widened to -0.7 and three high flags are open, and Packaging, where supplier concentration moved the wrong way. IT & Software is flat."
+    },
+    {
+      "key": "value.spendCard",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "spendCard",
+      "example": "$280M"
+    },
+    {
+      "key": "value.spendYoy",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "spendYoy",
+      "example": "▲ 8.4% YoY"
+    },
+    {
+      "key": "value.largestName",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "largestName",
+      "example": "Grains & Cereals"
+    },
+    {
+      "key": "value.largestShare",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "largestShare",
+      "example": "33%"
+    },
+    {
+      "key": "value.savingsCard",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "savingsCard",
+      "example": "$24.5M"
+    },
+    {
+      "key": "value.acceptedPct",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "acceptedPct",
+      "example": "38%"
+    },
+    {
+      "key": "value.acceptedCount",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "acceptedCount",
+      "example": "23 of 60"
+    },
+    {
+      "key": "value.resilienceTotal",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "resilienceTotal",
+      "example": "21"
+    },
+    {
+      "key": "value.impactHigh",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "impactHigh",
+      "example": "7"
+    },
+    {
+      "key": "value.impactMedium",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "impactMedium",
+      "example": "13"
+    },
+    {
+      "key": "value.impactLow",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "impactLow",
+      "example": "1"
+    },
+    {
+      "key": "value.highCategories",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "highCategories",
+      "example": "4"
+    },
+    {
+      "key": "value.savingsCount",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "savingsCount",
+      "example": "26"
+    },
+    {
+      "key": "value.savingsTarget",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "savingsTarget",
+      "example": "$42.0M"
+    },
+    {
+      "key": "value.oldestDays",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "oldestDays",
+      "example": "34"
+    },
+    {
+      "key": "value.riskCount",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "riskCount",
+      "example": "6"
+    },
+    {
+      "key": "value.riskCategories",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "riskCategories",
+      "example": "2"
+    },
+    {
+      "key": "value.riskTarget",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "riskTarget",
+      "example": "8.0"
+    }
+  ],
+  "lists": [
+    {
+      "key": "list.categories",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "categories",
+      "fields": [
+        "rank",
+        "name",
+        "level",
+        "spend",
+        "share",
+        "maturity",
+        "maturityGap",
+        "peer",
+        "savings",
+        "savingsPct",
+        "flagFirst",
+        "flagSecond"
+      ],
+      "rows": [
+        {
+          "rank": "01",
+          "name": "Logistics",
+          "level": "L3",
+          "spend": "$38.4M",
+          "share": "13.7%",
+          "maturity": "2.0",
+          "maturityGap": "-0.7",
+          "peer": "peer 2.7",
+          "savings": "$5.6M",
+          "savingsPct": "14.6%",
+          "flagFirst": "3 high flags",
+          "flagSecond": "widest maturity gap"
+        },
+        {
+          "rank": "02",
+          "name": "Packaging",
+          "level": "L2",
+          "spend": "$62.8M",
+          "share": "22.4%",
+          "maturity": "1.8",
+          "maturityGap": "-0.6",
+          "peer": "peer 2.4",
+          "savings": "$7.1M",
+          "savingsPct": "11.3%",
+          "flagFirst": "largest unclaimed $7.1M",
+          "flagSecond": "2 high flags"
+        },
+        {
+          "rank": "03",
+          "name": "IT Services",
+          "level": "L3",
+          "spend": "$45.2M",
+          "share": "16.1%",
+          "maturity": "2.1",
+          "maturityGap": "-0.5",
+          "peer": "peer 2.6",
+          "savings": "$4.2M",
+          "savingsPct": "9.3%",
+          "flagFirst": "single supplier 9.5%",
+          "flagSecond": "$410K past due"
+        },
+        {
+          "rank": "04",
+          "name": "Professional Services",
+          "level": "L2",
+          "spend": "$27.3M",
+          "share": "9.7%",
+          "maturity": "2.3",
+          "maturityGap": "-0.2",
+          "peer": "peer 2.5",
+          "savings": "$2.9M",
+          "savingsPct": "10.6%",
+          "flagFirst": "1 high flag",
+          "flagSecond": "rate card 14% over peers"
+        },
+        {
+          "rank": "05",
+          "name": "MRO",
+          "level": "L2",
+          "spend": "$14.9M",
+          "share": "5.3%",
+          "maturity": "2.2",
+          "maturityGap": "-0.1",
+          "peer": "peer 2.3",
+          "savings": "$1.4M",
+          "savingsPct": "9.4%",
+          "flagFirst": "maturity in line with peers",
+          "flagSecond": "tail spend 31% off-contract"
+        },
+        {
+          "rank": "06",
+          "name": "Grains & Cereals",
+          "level": "L2",
+          "spend": "$91.6M",
+          "share": "32.7%",
+          "maturity": "2.9",
+          "maturityGap": "+0.3",
+          "peer": "peer 2.6",
+          "savings": "$3.2M",
+          "savingsPct": "3.5%",
+          "flagFirst": "ahead on maturity",
+          "flagSecond": "largest category"
+        }
+      ],
+      "actions": [
+        "open"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "key": "action.suggest",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "suggest",
+      "element": "button"
+    },
+    {
+      "key": "action.suggest",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "suggest",
+      "element": "button"
+    }
+  ],
+  "forms": [],
+  "visuals": [
+    {
+      "tag": "svg",
+      "where": "the \"Trend\" column"
+    },
+    {
+      "tag": "svg",
+      "where": "the \"Trend\" column"
+    },
+    {
+      "tag": "svg",
+      "where": "the \"Trend\" column"
+    },
+    {
+      "tag": "svg",
+      "where": "the \"Trend\" column"
+    },
+    {
+      "tag": "svg",
+      "where": "the \"Trend\" column"
+    },
+    {
+      "tag": "svg",
+      "where": "the \"Trend\" column"
+    }
+  ],
+  "suppressed": []
+}

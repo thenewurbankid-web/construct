@@ -1,0 +1,318 @@
+{
+  "case": "example-contacts",
+  "contract": {
+    "docs": null,
+    "endpoints": [
+      "GET /api/contacts",
+      "POST /api/contacts",
+      "PUT /api/contacts/:id",
+      "DELETE /api/contacts/:id"
+    ],
+    "item_count": 3,
+    "item_fields": [
+      {
+        "path": "id",
+        "samples": [
+          1,
+          2,
+          3
+        ],
+        "type": "number"
+      },
+      {
+        "path": "first",
+        "samples": [
+          "Lena",
+          "Arjun",
+          "Mia"
+        ],
+        "type": "string"
+      },
+      {
+        "path": "last",
+        "samples": [
+          "Kumar",
+          "Rao",
+          "Shah"
+        ],
+        "type": "string"
+      },
+      {
+        "path": "email",
+        "samples": [
+          "lena@example.com",
+          "arjun@example.com",
+          "mia@example.com"
+        ],
+        "type": "string"
+      },
+      {
+        "path": "city",
+        "samples": [
+          "Pune",
+          "Delhi",
+          "Mumbai"
+        ],
+        "type": "string"
+      }
+    ],
+    "list_endpoint": "GET /api/contacts",
+    "requirements_text": "# Contacts — requirements\n\n- The Name column shows the contact's first name and last name together, separated by a space.\n- Initials are the first letter of the first name followed by the first letter of the last name, in capitals.\n- The header shows when the directory was last updated; the backend will add an endpoint for this later.\n- The Call button starts a phone call with a handler of our own; the backend has no call API.\n",
+    "response_fields_outside_the_list": []
+  },
+  "instructions": {
+    "answer_with_exactly_one_of": {
+      "a:<agg>(<field>)|<format>": "a page value is an aggregate of the whole list: count(), sum(f), average(f), max(f), min(f), e.g. a:sum(budget)|moneyCompact",
+      "e:<path>|<format>": "a page value is a single field of the response outside the list, e.g. e:meta.snapshot_date|dateShort",
+      "f:<field>|<format>": "a list column shows an item field, e.g. f:lead|asText  (nested fields use dots: spend.value)",
+      "gap:todo | gap:custom | gap:static | gap:?": "NOTHING in the contract provides it. todo = leave a TODO, custom = someone writes a placeholder, static = it is fixed text, ? = no view on how it is closed",
+      "s:<field>:asc|desc  or  s:none": "how the rows are ordered (s:none = the API's own order)",
+      "u:<field>|<recipe>": "it comes from a field but needs a transformation none of the formats below does; describe the recipe in words",
+      "x:<kind>": "what an action does: create, update, save, remove, select, clear, reload, ignore"
+    },
+    "formats": {
+      "asText": "the value as is, 12 -> 12, Lena -> Lena",
+      "dateShort": "2026-07-31... -> 31 Jul 2026",
+      "moneyCompact": "1234567 -> $1.2M, 45000 -> $45.0K, 900 -> $900",
+      "moneyFull": "1200 -> $1,200",
+      "percent": "0.327 -> 32.7%",
+      "percentWhole": "0.327 -> 33%"
+    },
+    "rules": [
+      "Decide from the design text and the contract only. Do not run Trace and do not open answers.json, decisions.json or ai-cache.json.",
+      "If two contract fields (or two aggregates) reproduce the design equally well, choose the one the design MEANS (use the header, the surrounding words, the docs and the story) and say why in note.",
+      "If you cannot tell, set unsure to true: the part is then left out of every number instead of guessed."
+    ]
+  },
+  "labeller": null,
+  "parts": [
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "Lena Kumar",
+          "Arjun Rao",
+          "Mia Shah"
+        ],
+        "header": "Name",
+        "name": "fullName",
+        "other_parts_in_the_same_cell": []
+      },
+      "id": "list.fullName",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "LK",
+          "AR",
+          "MS"
+        ],
+        "header": "Initials",
+        "name": "initials",
+        "other_parts_in_the_same_cell": []
+      },
+      "id": "list.initials",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "lena@example.com",
+          "arjun@example.com",
+          "mia@example.com"
+        ],
+        "header": "Email",
+        "name": "email",
+        "other_parts_in_the_same_cell": []
+      },
+      "id": "list.email",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "examples_in_designed_row_order": [
+          "Pune",
+          "Delhi",
+          "Mumbai"
+        ],
+        "header": "City",
+        "name": "city",
+        "other_parts_in_the_same_cell": []
+      },
+      "id": "list.city",
+      "what": "a column value repeated in every row"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "api_order_first_rows": [
+        {
+          "city": "Pune",
+          "email": "lena@example.com",
+          "first": "Lena",
+          "id": 1,
+          "last": "Kumar"
+        },
+        {
+          "city": "Delhi",
+          "email": "arjun@example.com",
+          "first": "Arjun",
+          "id": 2,
+          "last": "Rao"
+        },
+        {
+          "city": "Mumbai",
+          "email": "mia@example.com",
+          "first": "Mia",
+          "id": 3,
+          "last": "Shah"
+        }
+      ],
+      "design": {
+        "designed_rows": [
+          {
+            "city": "Pune",
+            "email": "lena@example.com",
+            "fullName": "Lena Kumar",
+            "initials": "LK"
+          },
+          {
+            "city": "Delhi",
+            "email": "arjun@example.com",
+            "fullName": "Arjun Rao",
+            "initials": "AR"
+          },
+          {
+            "city": "Mumbai",
+            "email": "mia@example.com",
+            "fullName": "Mia Shah",
+            "initials": "MS"
+          }
+        ]
+      },
+      "id": "list.sort",
+      "what": "the order of the designed rows"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "3",
+        "name": "contactCount",
+        "surrounding_text": "3 26 Sep 2026"
+      },
+      "id": "value.contactCount",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "example": "26 Sep 2026",
+        "name": "directoryUpdated",
+        "surrounding_text": "3 26 Sep 2026"
+      },
+      "id": "value.directoryUpdated",
+      "what": "a value outside the list"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "scope": "row",
+        "verb_marker": "edit"
+      },
+      "id": "action.row.edit",
+      "note_for_labeller": "say what it should do given the endpoints in `contract`",
+      "what": "a button or form"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "scope": "row",
+        "verb_marker": "call"
+      },
+      "id": "action.row.call",
+      "note_for_labeller": "say what it should do given the endpoints in `contract`",
+      "what": "a button or form"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "scope": "row",
+        "verb_marker": "delete"
+      },
+      "id": "action.row.delete",
+      "note_for_labeller": "say what it should do given the endpoints in `contract`",
+      "what": "a button or form"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "scope": "page",
+        "verb_marker": "save"
+      },
+      "id": "action.page.save",
+      "note_for_labeller": "say what it should do given the endpoints in `contract`",
+      "what": "a button or form"
+    },
+    {
+      "answer": {
+        "note": "",
+        "unsure": false,
+        "want": null
+      },
+      "design": {
+        "scope": "page",
+        "verb_marker": "cancel"
+      },
+      "id": "action.page.cancel",
+      "note_for_labeller": "say what it should do given the endpoints in `contract`",
+      "what": "a button or form"
+    }
+  ]
+}

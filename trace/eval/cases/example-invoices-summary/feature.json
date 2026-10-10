@@ -1,0 +1,24 @@
+{
+  "feature": "invoices",
+  "route": "/invoices",
+  "page": "page.jsx",
+  "about": "LIN-212: a KPI backed by its own dedicated summary endpoint, not computable as an aggregate of the list's rows.",
+  "apis": [
+    {
+      "method": "GET",
+      "path": "/api/invoices",
+      "response": [
+        { "id": 1, "vendor": "Northwind Freight", "amount": 120000000 },
+        { "id": 2, "vendor": "Bluepeak IT", "amount": 95000000 },
+        { "id": 3, "vendor": "Cedar Textiles", "amount": 61000000 }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/invoices/summary",
+      "response": {
+        "outstandingTotal": 487300000
+      }
+    }
+  ]
+}

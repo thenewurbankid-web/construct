@@ -1,0 +1,10 @@
+{
+  "file": "dashboard.tsx",
+  "note": "Hand-written from the design intent: top bar, KPI card list, invite form, activity table. Members are the 1-based line of each member's opening tag.",
+  "groups": [
+    { "name": "top bar (header + nav)", "kind": "unique", "members": [9] },
+    { "name": "KPI cards", "kind": "repeating", "members": [20, 25, 30] },
+    { "name": "invite form", "kind": "unique", "members": [37] },
+    { "name": "activity table", "kind": "unique", "members": [47] }
+  ]
+}

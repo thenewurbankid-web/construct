@@ -1,0 +1,126 @@
+{
+  "values": [
+    {
+      "key": "value.maxYourPortfolioSummary2",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "maxYourPortfolioSummary2",
+      "example": "31 Jul 2026"
+    },
+    {
+      "key": "value.baselineSpend5",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "baselineSpend5",
+      "example": "$280M"
+    },
+    {
+      "key": "value.potentialSavings2",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "potentialSavings2",
+      "example": "$42 - 68M"
+    },
+    {
+      "key": "value.categoriesCovered",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "categoriesCovered",
+      "example": "21"
+    },
+    {
+      "key": "value.resilienceInitiatives2",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "resilienceInitiatives2",
+      "example": "21"
+    },
+    {
+      "key": "value.savingsInitiatives2",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "savingsInitiatives2",
+      "example": "26"
+    },
+    {
+      "key": "value.qualifiedInitiatives",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "qualifiedInitiatives",
+      "example": "16"
+    }
+  ],
+  "lists": [
+    {
+      "key": "list.categoryOverview",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "categoryOverview",
+      "fields": [
+        "rank",
+        "spend",
+        "maturity",
+        "potentialSavings",
+        "compositeRiskScore",
+        "spendChange"
+      ],
+      "rows": [
+        {
+          "rank": "01",
+          "spend": "$78.4M",
+          "maturity": "2.0",
+          "potentialSavings": "$4.7M - $5.6M",
+          "compositeRiskScore": "72",
+          "spendChange": "+$5.1M"
+        },
+        {
+          "rank": "02",
+          "spend": "$62.8M",
+          "maturity": "1.8",
+          "potentialSavings": "$5.3M - $7.1M",
+          "compositeRiskScore": "69",
+          "spendChange": "-$3.2M"
+        },
+        {
+          "rank": "03",
+          "spend": "$45.2M",
+          "maturity": "2.1",
+          "potentialSavings": "$3.5M - $4.2M",
+          "compositeRiskScore": "67",
+          "spendChange": "+$1.2M"
+        },
+        {
+          "rank": "04",
+          "spend": "$27.3M",
+          "maturity": "2.3",
+          "potentialSavings": "$1.8M - $2.9M",
+          "compositeRiskScore": "59",
+          "spendChange": "$0.0"
+        },
+        {
+          "rank": "05",
+          "spend": "$14.9M",
+          "maturity": "2.2",
+          "potentialSavings": "$0.8M - $1.4M",
+          "compositeRiskScore": "84",
+          "spendChange": "+$5.1M"
+        },
+        {
+          "rank": "06",
+          "spend": "$11.6M",
+          "maturity": "2.9",
+          "potentialSavings": "$3.2M",
+          "compositeRiskScore": "72",
+          "spendChange": "-$5.1M"
+        }
+      ],
+      "actions": [
+        "open"
+      ]
+    }
+  ],
+  "actions": [],
+  "forms": [],
+  "visuals": [],
+  "suppressed": []
+}

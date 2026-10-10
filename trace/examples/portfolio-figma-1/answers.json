@@ -1,0 +1,13 @@
+{
+  "list.savingsPct": {
+    "custom": true,
+    "from": "controller",
+    "inputs": [],
+    "fn": "getSavingsPct"
+  },
+  "action.page.suggest": {
+    "custom": true,
+    "from": "handler",
+    "fn": "handleSuggest"
+  }
+}

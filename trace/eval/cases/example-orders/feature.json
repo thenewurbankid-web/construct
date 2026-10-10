@@ -1,0 +1,50 @@
+{
+  "feature": "orders",
+  "route": "/orders",
+  "page": "page.jsx",
+  "about": "Missing API: no status field, no PUT or DELETE, and a form input the API doesn't know. Fix feature.json and it recalculates.",
+  "apis": [
+    {
+      "method": "GET",
+      "path": "/api/orders",
+      "response": [
+        {
+          "id": 1,
+          "number": "ORD-201",
+          "customer": "Northwind",
+          "total": 1200,
+          "placedOn": "2026-09-01"
+        },
+        {
+          "id": 2,
+          "number": "ORD-202",
+          "customer": "Kestrel",
+          "total": 560,
+          "placedOn": "2026-09-03"
+        },
+        {
+          "id": 3,
+          "number": "ORD-203",
+          "customer": "Bluepeak",
+          "total": 8900,
+          "placedOn": "2026-09-07"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/orders",
+      "request": {
+        "customer": "Oriel",
+        "total": 300
+      },
+      "response": {
+        "id": 4,
+        "number": "ORD-204",
+        "customer": "Oriel",
+        "total": 300,
+        "placedOn": "2026-09-20"
+      }
+    }
+  ]
+}

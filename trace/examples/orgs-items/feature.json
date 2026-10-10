@@ -1,0 +1,6 @@
+{
+  "feature": "orgs-items",
+  "route": "/orgs-items",
+  "page": "page.jsx",
+  "about": "LIN-223: same as the \"products\" example, plus one GET endpoint with TWO path parameters, both non-trailing and trailing in the same path (/api/orgs/{orgId}/items/{id}). It generates its own Service function (both ids in the signature) instead of being listed-only."
+}

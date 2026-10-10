@@ -1,0 +1,71 @@
+{
+  "feature": "products",
+  "route": "/products",
+  "page": "page.jsx",
+  "about": "Baseline: every design value is explained by the API. Nothing to ask, nothing open.",
+  "apis": [
+    {
+      "method": "GET",
+      "path": "/api/products",
+      "response": [
+        {
+          "id": 1,
+          "name": "Desk Lamp",
+          "price": 4900,
+          "stock": 12,
+          "addedOn": "2026-07-04"
+        },
+        {
+          "id": 2,
+          "name": "Notebook",
+          "price": 450,
+          "stock": 240,
+          "addedOn": "2026-06-18"
+        },
+        {
+          "id": 3,
+          "name": "Backpack",
+          "price": 6800,
+          "stock": 35,
+          "addedOn": "2026-08-01"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/products",
+      "request": {
+        "name": "Water Bottle",
+        "price": 1200,
+        "stock": 80
+      },
+      "response": {
+        "id": 4,
+        "name": "Water Bottle",
+        "price": 1200,
+        "stock": 80,
+        "addedOn": "2026-09-20"
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/products/:id",
+      "request": {
+        "name": "Desk Lamp",
+        "price": 5200,
+        "stock": 12
+      },
+      "response": {
+        "id": 1,
+        "name": "Desk Lamp",
+        "price": 5200,
+        "stock": 12,
+        "addedOn": "2026-07-04"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/products/:id"
+    }
+  ]
+}

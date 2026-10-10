@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feature grouper</title>
+<style>
+  :root { --bg:#fafaf9; --panel:#fff; --ink:#1c1917; --muted:#78716c; --line:#e7e5e4; --accent:#2563eb; --accent-ink:#fff; --err:#b91c1c; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#131211; --panel:#1c1a19; --ink:#f5f5f4; --muted:#a8a29e; --line:#33302e; --accent:#60a5fa; --accent-ink:#0c0a09; --err:#f87171; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.45 system-ui, sans-serif; }
+  main { max-width:1200px; margin:0 auto; padding:16px; }
+  h1 { font-size:18px; margin:0 0 12px; }
+  .cols { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:800px) { .cols { grid-template-columns:1fr; } }
+  textarea { width:100%; min-height:320px; font:12px/1.4 ui-monospace, Menlo, monospace; background:var(--panel); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:8px; resize:vertical; }
+  .bar { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin:8px 0; }
+  label { color:var(--muted); display:flex; gap:6px; align-items:center; }
+  select, input[type=number] { background:var(--panel); color:var(--ink); border:1px solid var(--line); border-radius:4px; padding:3px 6px; }
+  button { background:var(--accent); color:var(--accent-ink); border:0; border-radius:6px; padding:7px 16px; font-weight:600; cursor:pointer; }
+  .err { color:var(--err); margin:8px 0; white-space:pre-wrap; }
+  .note { color:var(--muted); margin:8px 0; }
+  .summary { color:var(--muted); margin:0 0 8px; }
+  .group { background:var(--panel); border:1px solid var(--line); border-left:6px solid var(--c); border-radius:6px; padding:8px 10px; margin:0 0 8px; cursor:default; }
+  .group:hover, .group.on { outline:2px solid var(--c); }
+  .group b { font-weight:600; }
+  .kind { font-size:12px; color:var(--muted); }
+  .reason { color:var(--muted); margin-top:2px; }
+  pre.src { margin:16px 0 0; background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:8px 0; overflow:auto; max-height:520px; font:12px/1.4 ui-monospace, Menlo, monospace; }
+  .ln { display:block; padding:0 10px 0 0; white-space:pre; }
+  .ln i { display:inline-block; width:44px; text-align:right; color:var(--muted); font-style:normal; margin-right:10px; user-select:none; }
+  .ln.hl { background:color-mix(in srgb, var(--c) 22%, transparent); box-shadow:inset 4px 0 var(--c); }
+  h2.sub { font-size:14px; margin:20px 0 6px; }
+  #liveStage { position:relative; border:1px solid var(--line); border-radius:6px; overflow:hidden; background:#fff; min-height:40px; }
+  #liveFrame { width:100%; height:200px; border:0; display:block; background:#fff; }
+  #liveOverlay { position:absolute; inset:0; pointer-events:none; }
+  .gbox { position:absolute; border:2px solid var(--c); box-sizing:border-box; }
+  .gbox span { position:absolute; left:0; top:-16px; font:11px ui-monospace, Menlo, monospace; background:var(--c); color:#fff; padding:0 4px; border-radius:3px 3px 0 0; white-space:nowrap; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Feature grouper</h1>
+  <div class="cols">
+    <div>
+      <div class="bar">
+        <label>Demo page <select id="demo"><option value="">(paste your own)</option></select></label>
+      </div>
+      <textarea id="src" spellcheck="false" placeholder="Paste a .tsx page here" aria-label="TSX page source"></textarea>
+      <div class="bar">
+        <button id="go" type="button">Group</button>
+        <button id="extract" type="button">Extract</button>
+        <label>Embedder
+          <select id="emb"><option value="hashed">hashed structural (no download)</option><option value="ollama">ollama nomic-embed-text</option></select>
+        </label>
+        <label>Threshold <input id="th" type="range" min="0.5" max="0.99" step="0.01" value="0.85"> <output id="thv">0.85</output></label>
+      </div>
+    </div>
+    <div>
+      <div id="err" class="err" role="alert"></div>
+      <div id="note" class="note"></div>
+      <div id="sum" class="summary"></div>
+      <div id="groups"></div>
+    </div>
+  </div>
+  <pre id="view" class="src" hidden></pre>
+  <div id="liveWrap" hidden>
+    <h2 class="sub">Live render (Extract) &mdash; group boundaries drawn on the actual rendered elements</h2>
+    <div id="liveErr" class="err" role="alert"></div>
+    <div id="liveStage">
+      <iframe id="liveFrame" sandbox="allow-scripts" title="Live preview of the pasted page"></iframe>
+      <div id="liveOverlay"></div>
+    </div>
+  </div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const COLORS = ["#2563eb", "#dc2626", "#16a34a", "#d97706", "#9333ea", "#0891b2", "#db2777", "#65a30d"];
+let lastSource = "";
+let lastGroups = [];
+let currentDemoName = ""; // relative path of the demo page currently in the textarea, "" for pasted text
+
+$("th").addEventListener("input", () => { $("thv").textContent = $("th").value; });
+$("emb").addEventListener("change", () => { $("th").value = $("emb").value === "ollama" ? 0.95 : 0.85; $("thv").textContent = $("th").value; });
+
+fetch("/api/demo").then((r) => r.json()).then(({ pages }) => {
+  pages.forEach((p, i) => { const o = document.createElement("option"); o.value = i; o.textContent = p.replace(/^demo-app\/src\/features\//, ""); $("demo").append(o); });
+});
+$("demo").addEventListener("change", async () => {
+  if ($("demo").value === "") return;
+  const r = await (await fetch("/api/demo?i=" + $("demo").value)).json();
+  $("src").value = r.source; currentDemoName = r.name; group(r.name);
+});
+$("src").addEventListener("input", () => { currentDemoName = ""; }); // hand-edited: no longer a known demo file path
+
+function esc(s) { return s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
+
+function renderView(active) {
+  const lines = lastSource.split("\n");
+  const owner = new Array(lines.length + 2).fill(-1);
+  lastGroups.forEach((g, gi) => g.members.forEach((m) => { for (let l = m.line; l <= m.endLine; l++) owner[l] = gi; }));
+  $("view").hidden = false;
+  $("view").innerHTML = lines.map((t, i) => {
+    const gi = owner[i + 1];
+    const on = gi >= 0 && (active === undefined || active === gi);
+    return '<span class="ln' + (on ? " hl" : "") + '"' + (on ? ' style="--c:' + COLORS[gi % COLORS.length] + '"' : "") + '><i>' + (i + 1) + "</i>" + esc(t) + "</span>";
+  }).join("");
+}
+
+async function group(name) {
+  $("err").textContent = ""; $("note").textContent = "";
+  const source = $("src").value;
+  const res = await fetch("/api/group", { method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ source, file: name || "<pasted>", threshold: $("th").value, embedder: $("emb").value }) });
+  const out = await res.json();
+  if (!res.ok) { $("err").textContent = out.error; $("groups").innerHTML = ""; $("sum").textContent = ""; $("view").hidden = true; return; }
+  lastSource = source; lastGroups = out.groups;
+  if (out.notice) $("note").textContent = out.notice;
+  const t = out.totals;
+  $("sum").textContent = out.embedder + " / threshold " + out.threshold + " / parser " + out.engine + " -- " + t.elements + " elements, " + t.groups + " groups covering " + t.grouped + " (" + t.ungrouped + " ungrouped)";
+  $("groups").innerHTML = out.groups.map((g, i) =>
+    '<div class="group" data-i="' + i + '" style="--c:' + COLORS[i % COLORS.length] + '"><b>' + g.id + "</b> <span class=\"kind\">" + g.kind + " / " + esc(g.component || "module scope") + " / lines " + g.lines.from + "-" + g.lines.to +
+    " / " + g.memberCount + " member" + (g.memberCount === 1 ? "" : "s") + ", " + g.elements + ' elements</span><div class="reason">' + esc(g.reason) + "</div></div>").join("") || "<p>(no groups)</p>";
+  document.querySelectorAll(".group").forEach((el) => {
+    el.addEventListener("mouseenter", () => renderView(Number(el.dataset.i)));
+    el.addEventListener("mouseleave", () => renderView());
+  });
+  renderView();
+}
+$("go").addEventListener("click", () => group());
+
+// --- Extract: live render + boundary overlays -------------------------------------------------------
+// Fully separate from Group's state (lastSource/lastGroups/#err/#groups/#view) on purpose: the two buttons
+// are independent entry points into the same pasted text, per the brief ("both buttons stay visible side
+// by side, either one can be used"), so Extract never touches what Group last drew or vice versa.
+let extractGroups = [];
+
+function buildSrcdoc(bundleCode) {
+  // esbuild's output is inlined as a literal <script> body; escape "</script" so it can't close the tag early.
+  const safeCode = bundleCode.replace(/<\/script/gi, "<\\/script");
+  return `<!doctype html><html><head><meta charset="utf-8"><style>
+html,body{margin:0;padding:0;font:14px/1.4 system-ui,sans-serif;}
+#fg-error{font:12px/1.4 ui-monospace,Menlo,monospace;color:#b91c1c;background:#fff1f0;padding:10px;white-space:pre-wrap;}
+</style></head><body>
+<div id="root"></div>
+<script src="/vendor/react.js"><\/script>
+<script src="/vendor/react-dom.js"><\/script>
+<script>
+// The bundle's only two allowed imports resolve to the globals loaded above; anything else is a documented
+// limitation (unresolvable in a sandbox with no access to the pasted snippet's real filesystem location).
+window.require = function (name) {
+  if (name === "react") return window.React;
+  if (name === "react-dom" || name === "react-dom/client") return window.ReactDOM;
+  throw new Error('Live preview cannot resolve import "' + name + '" (only "react"/"react-dom" are available here).');
+};
+<\/script>
+<script>${safeCode}<\/script>
+<script>
+(function () {
+  // Deliberately-scoped design decision (documented, not silent): a pasted page's real data layer doesn't
+  // exist here, so every prop the component destructures gets a safe placeholder instead of real content --
+  // a Proxy that behaves like an empty array/string wherever it's read, mapped, iterated or rendered as a
+  // child, so a page written as "props in, JSX out" (this repo's own convention) renders its structure
+  // without crashing on "Cannot read properties of undefined". It is NOT an attempt to guess real data.
+  function safeProp() {
+    var empty = [];
+    return new Proxy({}, {
+      get: function (t, p) {
+        if (p === Symbol.toPrimitive) return function () { return ""; };
+        if (p === "toString" || p === "valueOf") return function () { return ""; };
+        if (p === Symbol.iterator) return empty[Symbol.iterator].bind(empty);
+        if (p === "length") return 0;
+        if (["map", "filter", "forEach", "reduce", "slice", "find", "some", "every", "flatMap", "join", "sort", "concat", "includes", "indexOf"].indexOf(p) !== -1) {
+          return function () { return Array.prototype[p].apply(empty, arguments); };
+        }
+        if (typeof p === "symbol") return undefined;
+        return safeProp();
+      },
+      has: function () { return true; },
+    });
+  }
+  function autoProps() {
+    return new Proxy({}, { get: function (t, p) { return typeof p === "symbol" ? undefined : safeProp(); } });
+  }
+  function report() {
+    var groups = {};
+    document.querySelectorAll("[data-group]").forEach(function (el) {
+      var g = el.getAttribute("data-group");
+      var r = el.getBoundingClientRect();
+      (groups[g] = groups[g] || []).push({ top: r.top, left: r.left, width: r.width, height: r.height });
+    });
+    parent.postMessage({ type: "fg:rects", groups: groups, docHeight: document.documentElement.scrollHeight }, "*");
+  }
+  window.addEventListener("resize", function () { requestAnimationFrame(report); });
+  // Deliberately NOT React.createElement(Comp, autoProps()): createElement copies its config argument's
+  // properties into a fresh plain props object with a plain for...in loop (see React's own source), which
+  // only sees a Proxy's *real* own keys -- none, here -- so every mocked prop would silently vanish before
+  // Comp ever destructures it. Calling Comp(autoProps()) directly (a plain function call, not an element)
+  // makes every destructure a genuine [[Get]] on the proxy, which our trap does answer. This still runs
+  // inside React's own render pass -- synchronously inside FgBoundary's render(), i.e. the fiber React is
+  // currently working on -- so hooks Comp calls still attach correctly (same call order every render, the one
+  // rule hooks need); it just isn't going through a *second*, nested createElement+reconciliation step.
+  // Class components can't be called this way (class constructor cannot be invoked without new), so they
+  // fall back to the plain path with real, empty ({}) props -- a narrower, documented case: no auto-mock for
+  // required props there, more likely to hit the error box below than a function component would.
+  function invokeEntry(Comp) {
+    if (Comp.prototype && Comp.prototype.isReactComponent) return React.createElement(Comp, {});
+    return Comp(autoProps());
+  }
+  var FgBoundary = class extends React.Component {
+    static getDerivedStateFromError(error) { return { error: error }; }
+    constructor(props) { super(props); this.state = { error: null }; }
+    render() {
+      if (this.state.error) return React.createElement("div", { id: "fg-error" }, "Live preview error: " + (this.state.error.message || String(this.state.error)));
+      return invokeEntry(this.props.Comp);
+    }
+  };
+  var root = document.getElementById("root");
+  try {
+    var Comp = window.__FG_ENTRY__;
+    if (typeof Comp !== "function") throw new Error("No component was exported to render (window.__FG_ENTRY__ is not a function).");
+    ReactDOM.createRoot(root).render(React.createElement(FgBoundary, { Comp: Comp }));
+    requestAnimationFrame(function () { requestAnimationFrame(report); });
+  } catch (e) {
+    root.innerHTML = "";
+    var box = document.createElement("div");
+    box.id = "fg-error";
+    box.textContent = "Live preview error: " + (e && e.message ? e.message : String(e));
+    root.appendChild(box);
+    report();
+  }
+})();
+<\/script>
+</body></html>`;
+}
+
+function drawOverlay(groups, docHeight) {
+  const h = Math.max(Math.round(docHeight || 0), 40);
+  $("liveFrame").style.height = h + "px";
+  $("liveStage").style.height = h + "px";
+  const seen = new Set();
+  $("liveOverlay").innerHTML = Object.keys(groups).map((gid) => {
+    const color = COLORS[Math.max(Number(gid.slice(1)) - 1, 0) % COLORS.length];
+    seen.add(gid);
+    return groups[gid].map((r, i) =>
+      '<div class="gbox" style="--c:' + color + ';left:' + r.left + 'px;top:' + r.top + 'px;width:' + Math.max(r.width, 2) + 'px;height:' + Math.max(r.height, 2) + 'px;">' +
+      (i === 0 ? "<span>" + esc(gid) + "</span>" : "") + "</div>"
+    ).join("");
+  }).join("");
+  const missing = extractGroups.filter((g) => !seen.has(g.id));
+  $("liveErr").textContent = missing.length
+    ? missing.length + " of " + extractGroups.length + " group(s) have no matching element in the live render (their root is likely a custom component that doesn't forward extra props onto its own rendered DOM node): " + missing.map((g) => g.id).join(", ")
+    : "";
+}
+
+window.addEventListener("message", (ev) => {
+  if (!ev.data || ev.data.type !== "fg:rects" || ev.source !== $("liveFrame").contentWindow) return;
+  drawOverlay(ev.data.groups, ev.data.docHeight);
+});
+
+async function extractLive() {
+  $("liveWrap").hidden = false;
+  $("liveErr").textContent = "";
+  $("liveOverlay").innerHTML = "";
+  $("liveFrame").removeAttribute("srcdoc");
+  const source = $("src").value;
+  if (!source.trim()) { $("liveErr").textContent = "paste a page first"; return; }
+  const res = await fetch("/api/render", { method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ source, file: currentDemoName || "<pasted>" }) });
+  const out = await res.json();
+  if (!res.ok) { $("liveErr").textContent = out.error; return; }
+  extractGroups = out.groups;
+  $("liveFrame").srcdoc = buildSrcdoc(out.code);
+}
+$("extract").addEventListener("click", () => extractLive());
+</script>
+</body>
+</html>

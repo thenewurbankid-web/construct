@@ -1,0 +1,2 @@
+{"at":"2026-10-04T08:30:29.078Z","from":null,"id":"s8cc11d4f","n":1,"op":"set","source":"inspector","to":{"cases":[{"branch":"📦 Shipped","match":"Shipped","verdict":"fit"},{"branch":"⏳ Pending","match":"Pending","verdict":"fit"}],"default":null,"discriminant":{"match":null,"raw":"status","verdict":"gap"},"exprKind":"switch"},"v":1}
+{"at":"2026-10-04T08:30:31.515Z","id":"s8cc11d4f","n":2,"of":1,"op":"undo","v":1}

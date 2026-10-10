@@ -1,0 +1,127 @@
+{
+  "values": [
+    {
+      "key": "value.invoiceCount",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "invoiceCount",
+      "example": "4"
+    },
+    {
+      "key": "value.totalBilled",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "totalBilled",
+      "example": "$107.9M"
+    },
+    {
+      "key": "value.largestInvoice",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "largestInvoice",
+      "example": "$48.2M"
+    },
+    {
+      "key": "value.syncedAt",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "syncedAt",
+      "example": "26 Sep 2026"
+    }
+  ],
+  "lists": [
+    {
+      "key": "list.invoices",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "invoices",
+      "fields": [
+        "number",
+        "vendor",
+        "amount",
+        "dueDate",
+        "requestedBy",
+        "status"
+      ],
+      "rows": [
+        {
+          "number": "INV-1042",
+          "vendor": "Kestrel Packaging",
+          "amount": "$48.2M",
+          "dueDate": "2 Aug 2026",
+          "requestedBy": "Lena",
+          "status": "Overdue"
+        },
+        {
+          "number": "INV-1044",
+          "vendor": "Oriel Chemicals",
+          "amount": "$31.6M",
+          "dueDate": "9 Aug 2026",
+          "requestedBy": "Mia",
+          "status": "Overdue"
+        },
+        {
+          "number": "INV-1041",
+          "vendor": "Northwind Freight",
+          "amount": "$18.4M",
+          "dueDate": "21 Aug 2026",
+          "requestedBy": "Prerna",
+          "status": "Open"
+        },
+        {
+          "number": "INV-1043",
+          "vendor": "Bluepeak IT",
+          "amount": "$9.7M",
+          "dueDate": "5 Sep 2026",
+          "requestedBy": "Arjun",
+          "status": "Partial"
+        }
+      ],
+      "actions": [
+        "edit",
+        "archive",
+        "delete"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "key": "action.save",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "save",
+      "element": "form"
+    },
+    {
+      "key": "action.cancel",
+      "origin": "auto",
+      "presentInPage": true,
+      "name": "cancel",
+      "element": "button"
+    }
+  ],
+  "forms": [
+    {
+      "key": "form.save",
+      "origin": "auto",
+      "presentInPage": true,
+      "action": "save",
+      "fields": [
+        {
+          "name": "vendor",
+          "type": "text"
+        },
+        {
+          "name": "amount",
+          "type": "number"
+        },
+        {
+          "name": "requester",
+          "type": "text"
+        }
+      ]
+    }
+  ],
+  "visuals": [],
+  "suppressed": []
+}
