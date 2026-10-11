@@ -17,7 +17,9 @@ import path from 'node:path';
 import { ts } from '@construct/ast/lazy';
 
 const DATA_HOOK = /^use(Lazy)?[A-Z]\w*(Query|Mutation)$/;
-const ROUTER_MODULES = new Set(['next/navigation', 'next/router']);
+const ROUTER_MODULES = new Set(['next/navigation', 'next/router', 'react-router-dom', 'react-router']);
+/** The react-spa routers; their mock is virtual, so an app's tests run whether or not jest can resolve them. */
+export const REACT_ROUTER_MODULES = Object.freeze(['react-router-dom', 'react-router']);
 const EFFECT_OBJECT = /toast|analytics|track|matomo|telemetry|logger|notif/i;
 const STYLE_ATTRS = new Set(['className', 'class', 'style', 'd', 'viewBox', 'fill', 'stroke', 'xmlns', 'strokeLinecap', 'strokeLinejoin', 'strokeWidth', 'width', 'height', 'transform', 'clipPath', 'id', 'key', 'variant', 'size']);
 const MAX_LIT = 120;
@@ -465,6 +467,9 @@ export function analyzeClosure(appRoot, closure) {
   const hookModules = {}; // module id -> { file|null, bare|null, hooks: {name: {kind, data: Shape}} }
   const spies = [];
   const routerNames = new Set();
+  const routerModules = new Set();
+  const paramKeys = new Set();
+  const jsonFiles = new Set();
   const closurePackages = new Set();
   const searchKeys = new Set();
   const storageKeys = new Set();
@@ -482,6 +487,8 @@ export function analyzeClosure(appRoot, closure) {
       const spec = /** @type {any} */ (st.moduleSpecifier).text;
       const resolved = resolveSpecifier(spec, file, options);
       if (resolved.bare) closurePackages.add(spec);
+      // sample data the code imports (a JSON fixture): its values seed the route params' pool
+      if (/\.json$/.test(spec) && !resolved.bare) jsonFiles.add(resolved.file ?? path.resolve(path.dirname(file), spec));
       const ic = st.importClause;
       if (ic.name) importedFrom.set(ic.name.text, { spec, exportName: 'default', resolved });
       if (ic.namedBindings && ts.isNamedImports(ic.namedBindings)) {
@@ -489,7 +496,7 @@ export function analyzeClosure(appRoot, closure) {
           if (el.isTypeOnly) continue;
           const exportName = (el.propertyName ?? el.name).text;
           importedFrom.set(el.name.text, { spec, exportName, resolved });
-          if (ROUTER_MODULES.has(spec)) routerNames.add(exportName);
+          if (ROUTER_MODULES.has(spec)) { routerNames.add(exportName); routerModules.add(spec); }
           // data hooks are the app's I/O boundary: always answered by the scenario, even when their module is in the closure
           if (DATA_HOOK.test(exportName)) {
             const key = resolved.bare ?? resolved.file;
@@ -525,6 +532,11 @@ export function analyzeClosure(appRoot, closure) {
         const k = keyOf(node);
         if (k?.startsWith('search:')) searchKeys.add(k.slice(7));
         if (k?.startsWith('storage:')) storageKeys.add(k.slice(8));
+        // `const { id } = useParams()`: the route params the code reads
+        if (ts.isIdentifier(callee) && importedFrom.get(callee.text)?.exportName === 'useParams' && ROUTER_MODULES.has(importedFrom.get(callee.text).spec)
+          && ts.isVariableDeclaration(node.parent) && ts.isObjectBindingPattern(node.parent.name)) {
+          for (const el of node.parent.name.elements) paramKeys.add((el.propertyName ?? el.name).getText(sf));
+        }
       }
       ts.forEachChild(node, visit);
     };
@@ -590,6 +602,21 @@ export function analyzeClosure(appRoot, closure) {
   const hookModuleList = Object.values(hookModules);
 
   const routes = closure.routes ?? [];
+  for (const r of routes) for (const m of String(r.route ?? '').matchAll(/:([A-Za-z_]\w*)/g)) paramKeys.add(m[1]);
+  // the params' pool: values under the same key in the JSON fixtures the closure imports
+  for (const f of [...jsonFiles, ...closure.files.filter((x) => /\.json$/.test(x)).map((x) => path.resolve(appRoot, x))]) {
+    let data = null;
+    try { data = JSON.parse(fs.readFileSync(f, 'utf8')); } catch { data = null; }
+    const walk = (v, depth = 0) => {
+      if (depth > 6 || v === null || typeof v !== 'object') return;
+      if (Array.isArray(v)) { v.slice(0, 200).forEach((x) => walk(x, depth + 1)); return; }
+      for (const [k, x] of Object.entries(v)) {
+        if (paramKeys.has(k) && (typeof x === 'string' || typeof x === 'number')) (pools.byKey[`param:${k}`] ??= []).includes(String(x)) || pools.byKey[`param:${k}`].push(String(x));
+        else walk(x, depth + 1);
+      }
+    };
+    walk(data);
+  }
   return {
     subjects,
     shapes: shapes.table,
@@ -597,6 +624,9 @@ export function analyzeClosure(appRoot, closure) {
     env: {
       hookModules: hookModuleList,
       router: [...routerNames],
+      routerModules: [...routerModules].sort(),
+      // route params (`/alerts/:id`) of the closure's routes: a scenario sets them for useParams
+      paramKeys: [...paramKeys].sort(),
       spies,
       searchKeys: [...searchKeys],
       storageKeys: [...storageKeys],

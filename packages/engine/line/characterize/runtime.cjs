@@ -25,6 +25,7 @@ const S = {
   epoch: 0,
   effects: [],
   search: {},
+  params: {},
   pathname: '/',
   router: null,
   restore: [],
@@ -212,6 +213,49 @@ function nextNavigationMock() {
     redirect: recorder('router.redirect'),
     permanentRedirect: recorder('router.permanentRedirect'),
     notFound: recorder('router.notFound'),
+  };
+}
+
+/**
+ * `react-router-dom` / `react-router` for tests (a virtual mock: the app need not have them installed for jest): the
+ * route params and the search come from the scenario, navigation is recorded, links render as plain anchors and the
+ * route tree renders nothing (a characterization test renders one page or component, never the router).
+ */
+function reactRouterMock() {
+  const React = require('react');
+  const navigate = () => memo('navigate', () => recorder('router.navigate'));
+  const search = () => memo('search', () => new URLSearchParams(S.search));
+  const href = (to) => (typeof to === 'string' ? to : to && typeof to === 'object' ? `${to.pathname || ''}${to.search || ''}${to.hash || ''}` : '#');
+  const Link = React.forwardRef(function Link({ to, children, replace: _r, state: _s, reloadDocument: _d, preventScrollReset: _p, relative: _rel, ...rest }, ref) {
+    return React.createElement('a', { ...rest, ref, href: href(to) }, children);
+  });
+  const NavLink = React.forwardRef(function NavLink({ to, children, className, style, end: _e, caseSensitive: _c, ...rest }, ref) {
+    const props = { ...rest, ref, href: href(to) };
+    if (typeof className === 'string') props.className = className;
+    if (style && typeof style === 'object') props.style = style;
+    return React.createElement('a', props, typeof children === 'function' ? children({ isActive: false, isPending: false }) : children);
+  });
+  const pass = ({ children }) => (children === undefined ? null : children);
+  return {
+    __esModule: true,
+    useParams: () => memo('params', () => ({ ...S.params })),
+    useNavigate: navigate,
+    useLocation: () => memo('location', () => { const q = new URLSearchParams(S.search).toString(); return { pathname: S.pathname, search: q ? `?${q}` : '', hash: '', state: null, key: 'default' }; }),
+    useSearchParams: () => [search(), memo('setSearch', () => recorder('router.setSearchParams'))],
+    useMatch: () => null,
+    useNavigationType: () => 'POP',
+    useOutletContext: () => undefined,
+    useRoutes: () => null,
+    Link, NavLink,
+    Navigate: function Navigate(props) { recordEffect('router.navigate', [href(props.to), { replace: Boolean(props.replace) }]); return null; },
+    Outlet: () => null,
+    Routes: () => null,
+    Route: () => null,
+    BrowserRouter: pass, MemoryRouter: pass, HashRouter: pass, Router: pass, RouterProvider: () => null,
+    generatePath: (p, params = {}) => String(p).replace(/:([A-Za-z_]\w*)\??/g, (_m, k) => (params[k] === undefined ? '' : String(params[k]))),
+    matchPath: () => null,
+    createBrowserRouter: () => ({}),
+    createMemoryRouter: () => ({}),
   };
 }
 
@@ -504,6 +548,7 @@ function setScenarioState(sc) {
   S.hooks = {};
   for (const [k, v] of Object.entries(sc.hooks || {})) S.hooks[k] = revive(v);
   S.search = sc.search || {};
+  S.params = sc.params || {};
   S.pathname = (S.env && S.env.pathname) || '/';
   for (const [k, v] of Object.entries(sc.storage || {})) { try { window.localStorage.setItem(k, v); } catch (e) { /* no storage */ } }
   S.effects = [];
@@ -663,6 +708,8 @@ function remappedMaps(rootDir) {
   try { ({ TraceMap, originalPositionFor } = require('@jridgewell/trace-mapping')); } catch (e) { TraceMap = null; }
   const out = {};
   const cov = coverage();
+  // istanbul keys files by their real path (macOS: /private/var/... for a /var/... temp folder): relative to the real root
+  const root = (() => { try { return require('fs').realpathSync(rootDir); } catch (e) { return rootDir; } })();
   for (const f of Object.keys(cov)) {
     const fc = cov[f];
     const tm = TraceMap && fc.inputSourceMap ? new TraceMap(fc.inputSourceMap) : null;
@@ -673,7 +720,7 @@ function remappedMaps(rootDir) {
       return o && o.line != null ? { line: o.line, column: o.column } : null;
     };
     const loc = (l) => (l ? { start: pos(l.start), end: pos(l.end) } : null);
-    out[require('path').relative(rootDir, f).split(require('path').sep).join('/')] = {
+    out[require('path').relative(f.startsWith(root) ? root : rootDir, f).split(require('path').sep).join('/')] = {
       key: f,
       statementMap: Object.fromEntries(Object.entries(fc.statementMap).map(([k, l]) => [k, loc(l)])),
       fnMap: Object.fromEntries(Object.entries(fc.fnMap).map(([k, d]) => [k, { name: d.name, loc: loc(d.loc), decl: loc(d.decl) }])),
@@ -826,8 +873,20 @@ function genScenario(sm, input) {
     else search[k] = sm.dyn.ids.length && sm.chance(0.6) ? sm.pick(sm.dyn.ids) : sm.str(k);
   }
   sc.search = search;
+  if ((input.paramKeys || []).length) sc.params = genParams(sm, input);
   sc.storage = genStorage(sm, input);
   return sc;
+}
+
+/** Route params (`/alerts/:id`): a value seen in the app's data or code when there is one, else a fresh word. */
+function genParams(sm, input) {
+  const params = {};
+  for (const k of input.paramKeys || []) {
+    if (sm.chance(0.15)) continue;
+    const pool = (input.pools.byKey[`param:${k}`] || []).map(String);
+    params[k] = sm.dyn.ids.length && sm.chance(0.6) ? sm.pick(sm.dyn.ids) : pool.length && sm.chance(0.7) ? sm.pick(pool) : sm.str(k);
+  }
+  return params;
 }
 
 function genStorage(sm, input) {
@@ -855,6 +914,7 @@ function mutateScenario(sm, input, base) {
   const hookNames = Object.keys(input.hooks || {});
   if (hookNames.length) choices.push('hook', 'hook');
   if ((input.searchKeys || []).length) choices.push('search');
+  if ((input.paramKeys || []).length) choices.push('params', 'params');
   if ((input.storageKeys || []).length) choices.push('storage');
   choices.push('steps', 'steps');
   const what = sm.pick(choices);
@@ -878,6 +938,13 @@ function mutateScenario(sm, input, base) {
     const k = sm.pick(what === 'search' ? input.searchKeys : input.storageKeys);
     if (k in fresh[what]) sc[what][k] = fresh[what][k];
     else delete sc[what][k];
+  }
+  if (what === 'params') {
+    const fresh = genParams(sm, input);
+    const k = sm.pick(input.paramKeys);
+    sc.params = sc.params || {};
+    if (k in fresh) sc.params[k] = fresh[k];
+    else delete sc.params[k];
   }
   if (what === 'steps') sc.steps = sc.steps.slice(0, Math.floor(sm.rng() * (sc.steps.length + 1)));
   else if (sm.chance(0.15)) sc.steps = sc.steps.slice(0, Math.floor(sm.rng() * (sc.steps.length + 1)));
@@ -1046,7 +1113,7 @@ async function record(input, getSubject, outFile) {
 }
 
 module.exports = {
-  encode, revive, hookModuleMock, nextNavigationMock,
+  encode, revive, hookModuleMock, nextNavigationMock, reactRouterMock,
   beforeEachScenario, afterEachScenario, runScenario, expectScenario,
   fuzz, record, sampler, genScenario, mutateScenario,
 };

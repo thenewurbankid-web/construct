@@ -67,7 +67,9 @@ function preamble(analysis, appRoot, dirAbs, runtimeRel) {
     const kinds = Object.fromEntries(Object.entries(m.hooks).map(([n, h]) => [n, h.kind]).sort(([a], [b]) => a.localeCompare(b)));
     L.push(`jest.mock(${lit(spec)}, () => require(${lit(runtimeRel)}).hookModuleMock(jest.requireActual(${lit(spec)}), ${json(kinds)}));`);
   }
-  if (env.router.length) L.push(`jest.mock('next/navigation', () => require(${lit(runtimeRel)}).nextNavigationMock());`);
+  const routerModules = env.routerModules ?? (env.router.length ? ['next/navigation'] : []);
+  if (routerModules.includes('next/navigation') || routerModules.includes('next/router')) L.push(`jest.mock('next/navigation', () => require(${lit(runtimeRel)}).nextNavigationMock());`);
+  for (const m of routerModules.filter((x) => x.startsWith('react-router'))) L.push(`jest.mock(${lit(m)}, () => require(${lit(runtimeRel)}).reactRouterMock(), { virtual: true });`);
   L.push('');
   L.push(`const rt = require(${lit(runtimeRel)});`);
   const spies = env.spies.map((s) => `    [() => require(${lit(s.bare ? s.module : moduleSpec(dirAbs, appRoot, s.module))}), ${lit(s.exportName)}, ${lit(s.method)}],`);

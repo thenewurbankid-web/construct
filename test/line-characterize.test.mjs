@@ -13,6 +13,7 @@ import { characterize, generateCharacterizationTests, unitCoverage, locateUnitSp
 import { lockedText, json, scenarioTitle, isGenerated } from '../packages/engine/line/characterize/emit.mjs';
 import { causeOf } from '../packages/engine/line/characterize/unitCoverage.mjs';
 import { GENERATED_MARKER } from '../packages/engine/testGenerator.mjs';
+import { jestHome } from '../test-utils/jestHome.mjs';
 
 const FIXTURE = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures/line-char-app');
 const FILES = ['src/app/shop/page.tsx', 'src/app/shop/Shop.tsx', 'src/lib/price.ts', 'src/lib/api.ts', 'src/lib/toast.ts'];
@@ -55,11 +56,15 @@ function fixtureMap(root) {
   return { root, files: FILES, units, counts: {} };
 }
 
-function jestHome() {
-  const candidates = [process.env.LINE_CHAR_JEST_HOME, path.join(os.homedir(), 'Repositories/max-ai-ui/node_modules')].filter(Boolean);
-  const needs = ['jest', 'ts-jest', 'jest-environment-jsdom', 'react', 'react-dom', '@testing-library/react', 'typescript'];
-  return candidates.find((c) => needs.every((n) => fs.existsSync(path.join(c, n, 'package.json')))) ?? null;
-}
+test('characterize: a react-router app (examples/import-sample) -- the router is mocked virtually, route params come from the code, the route and the JSON fixture', () => {
+  const sample = path.join(path.dirname(FIXTURE), '../../examples/import-sample');
+  const files = ['src/alerts/pages/AlertDetailPage.tsx', 'src/alerts/hooks/useAlerts.ts', 'src/alerts/components/SeverityBadge.tsx'];
+  const a = analyzeClosure(sample, { files, routes: [] });
+  assert.deepEqual(a.env.routerModules, ['react-router-dom']);
+  assert.deepEqual(a.env.paramKeys, ['id'], 'const { id } = useParams() names the param');
+  assert.deepEqual(a.pools.byKey['param:id'], ['a1', 'a2'], 'the ids of the fixture the hook imports');
+  assert.deepEqual(analyzeClosure(sample, { files, routes: [{ route: '/alerts/:alertId', entry: files[0] }] }).env.paramKeys, ['alertId', 'id'], 'and the route pattern');
+});
 
 test('characterize: analysis finds pure functions, the component, its data hooks, the toast spy and the route pathname', () => {
   const a = analyzeClosure(FIXTURE, CLOSURE);

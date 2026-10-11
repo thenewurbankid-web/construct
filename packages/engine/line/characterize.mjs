@@ -179,6 +179,7 @@ export async function characterize(appRoot, closure, map, opts = {}) {
     pools: analysis.pools,
     hooks: Object.assign({}, ...analysis.env.hookModules.map((m) => m.hooks)),
     searchKeys: analysis.env.searchKeys,
+    paramKeys: analysis.env.paramKeys,
     storageKeys: analysis.env.storageKeys,
     seed: opts.seed ?? 7,
     rootDir: appRoot,
