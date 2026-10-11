@@ -641,7 +641,7 @@ What it does: a step's expected output is now a small JSON expression over a fix
 Decisions to review:
 - The post rides on the `files` check (its expression is `and(files expression, post)`), so a step still has the same two checks and cp1's counts ("0 of 2 checks passed") stay as they were. When the post fails but the files are there, the check fails with the post's sentence. Making the post its own third check is a small change, but it would change the counts in cp1's tests and spec.
 - The pre is evaluated after the planner when a step is added, so a request the planner refuses keeps the planner's own sentence. When a step runs, the pre comes first (a retry skips it). In practice the pre adds a refusal mostly at run time, when the project changed after the step was added.
-- The structure hash follows the shape the drafter's canonical hash describes, but the drafter's own function is not here yet. Flow states and transitions are not read yet, and edges are typed by the kind and level of their target. When the canonical hash lands, swap `structureOf` for it.
+- The structure hash is now the drafter's graph hash (merged 11 Oct, see "System 1 reconcile"): roles, import edges and layers ui/workflow/data. Flow states and transitions are not read yet.
 
 Tests: `test/line-expr.test.mjs` (11) and `test/line-expr-plan.test.mjs` (9), all pass, plus the Playwright walk `ui/e2e/tests/uat/expressions.spec.js` (2, real server). Run:
 
@@ -681,7 +681,7 @@ Next steps (not built now):
 - Wire expressions into Qwen and jev: filter candidate steps by `pre`, verify by `post`, and send only the failed parts (their sentences) back to Qwen.
 - The template-based System 1 drafter: request -> plan steps plus expected-output expressions, checked and repaired against these records.
 - Train a small model on `line/records/plans.jsonl` (slotted, logic only).
-- Swap `structureOf` for the drafter's canonical structure hash, and add flow states and transitions.
+- Add flow states and transitions to the structure hash (the drafter's hash is now `structureOf`).
 
 UAT (about 3 minutes):
 1. `node packages/cli/construct.mjs line check --dir examples/line-sample '{"exists": {"path": ["files", "features/orders/components/StatusBadge.tsx"]}}'`. Expect one line, "features/orders/components/StatusBadge.tsx does not exist yet.". Then try `'{"foo": 1}'` and expect one sentence saying "foo" is not an operator.
@@ -700,7 +700,7 @@ How a request flows:
 
 Structure hashes (`structure.mjs`): project, feature and layer hashes over kinds, roles (atom/molecule/organism, page, flow, data, "on:<base role>"), base links and import edges, with names left out. Renaming changes nothing; adding a page changes the feature and project hash. Records (`line/drafter/transitions.jsonl`, written through the writer when a person adds a route) store the transition: normalized request, slot shapes, intent, hashes before, steps, expressions, delta, hashes after; never a project name. Retrieval finds the nearest approved transition by intent, feature/layer hash and wording.
 
-Expression contract: the drafter codes against a local MIRROR of the parallel expression agent's contract (`contract.mjs` EXPR_OPS, `expr.mjs evaluate`, `facts.mjs factsSnapshot`, records path); marked "replace on merge".
+Expressions: the drafter writes Line's one expression language (its named checks, `packages/engine/line/expr.mjs`) and evaluates it over `facts.mjs buildFacts`; its mirror is gone (see "System 1 reconcile").
 
 ### Eval (`node packages/engine/line/drafter/eval.mjs`)
 The harness takes any delexicalized corpus of {project dir, request, gold route set, preferred route, gold labels}; the requests and fills hold slots and structural selectors only, so a generated corpus of imaginary projects plugs in unchanged. Ground truth was written before the harness first ran: 43 cases on `examples/line-sample` (dev) and 12 on `examples/line-heldout-clinic`, a whole project the templates were not designed on; 17 cases are paraphrases held out from template design.
@@ -765,14 +765,78 @@ Constrained decoding: the grammar (`grammar/route.schema.json`, `grammar/route.g
 - Fine-tune a small local Qwen on (normalized request + slot shapes + structure hashes) -> one route (steps + expressions) under the grammar, once there are hundreds of real approved transitions per tool family; also a small classifier for the closed labels. Train on deltas and labels, never whole-project hashes.
 - Misses feed back as training cases: every wrong-shape, refused-after-pick or deferred request becomes an imaginary-project case (im1-im3 generator), labelled with catalog ids.
 - Local models only, never pulled by Line; jev ranks routes once its accuracy beats the static order on this eval; the model is only asked to fill a hole (a name, a value, code) or to label an unknown request.
-- Replace the expression mirror with the real expression contract on merge and point records at its path.
+- (Done 11 Oct: the expression mirror is gone; records stay in two files, see "System 1 reconcile".)
+## System 1 reconcile: one expression language, one drafter, one intent catalog (11 Oct, branch `line-s1-reconcile`; awaiting UAT)
+
+The three System 1 pieces (Expressions, the System 1 drafter, Train Line) were built in parallel against mirrors of each other. They are now one set of modules, one per concern:
+
+| concern | the one module | what went away |
+|---|---|---|
+| expression language | `packages/engine/line/expr.mjs` (+ `contract.mjs` `EXPR_OPS`, `EXPR_CHECKS`) | `drafter/expr.mjs` evaluate, the drafter's `EXPR_OPS` mirror, `train/exprMirror.mjs` |
+| facts | `packages/engine/line/facts.mjs` (`buildFacts`, `factsSummary`) | `drafter/facts.mjs`; `train/facts.mjs` is now a world view over it |
+| structure hashes | `packages/engine/line/structure.mjs` (the drafter's graph hash, `applyDelta`, `structureDelta`) | `drafter/structure.mjs`; the expressions branch's simpler hash |
+| intent catalog and route contract | `packages/engine/line/drafter/contract.mjs` (`buildIntentCatalog`, `intentPhrase`, `GoldRoute`, `assertGoldRoute`) | Train's `INTENTS` mirror, `train/drafterMirror.mjs` |
+| domain map | `packages/engine/line/drafter/domainMap.mjs` | the mirror in `train/slots.mjs` (Train's adapter: `train/draft.mjs`) |
+| slot words and the leak guard | `packages/engine/line/slots.mjs` (`splitWords`, `projectWordIn`) | three copies (records, drafter, Train) |
+
+What changed for each piece:
+- Expressions gained what the other two needed: nine named checks (`hasItem`, `hasLibrary`, `basedOn`, `fileExists`, `fileContains`, `propIs`, `noNewFindings`, `noFinding`, `refused`), each one operator with its own sentence and `describe()`, in the JSON Schema and the drafter's grammar; the facts gained lazy `contents` and `parts` views (never summarized or stored) and `plan.refusal`.
+- The structure hash is the drafter's (roles from the graph, import edges, layers ui/workflow/data); facts, plan records and the drafter's predictions use the same function.
+- The drafter: templates write named checks; verification evaluates them on `buildFacts`; a refused route carries Construct's code and rule. Its domain map takes synonyms kept outside the project, keeps each token's words, reads a PascalCase word that names nothing as a new name kept as typed, and "make <new name>" is an add. Its own eval is unchanged (table below).
+- Train Line drafts with the real drafter (`train/draft.mjs`): a request is normalized with the drafter's map of the world, drafted in a scratch copy of the world (Construct verifies every route there), and rewritten with Train's slots. A name slot can now start with a feature's name ("OrdersBadge" = orders + Badge), as the drafter names things.
+- Records stay in two files, on purpose: a plan record (`line/records/plans.jsonl`) is written after a step ran, with its checks' outcomes, approval and repair; a transition (`line/drafter/transitions.jsonl`) is written when a person picks a drafted route, with the request, slot shapes, intent, slot-form steps, DELTA_OPS and predicted hashes. Neither has the other's fields. They share the structure hashes, the word splitter, the leak guard (plan records now run it too) and Construct's writer.
+
+Intent ids (Train's first 12 onto the drafter's catalog; `TRAIN_INTENT_MAP`, and old stores are read through it). No intent had to be added to the catalog: a refusal or a question is a route outcome, so those cases keep the intent of what was asked.
+
+| Train (before) | drafter catalog | cases |
+|---|---|---|
+| add.component | add.component | 48 |
+| add.page | add.page | 44 |
+| add.flow | add.workflow | 42 |
+| add.sample-data | add.fixture | 42 |
+| share.item | promote.component | 41 |
+| move.item-to-library | promote.component | 41 |
+| update.page-text | update.prop | 41 |
+| update.variable | update.prop | 41 |
+| update.feature-flow | update.handler | 41 |
+| fix.problem | fix.problem | 82 |
+| refuse.not-possible | add.component | 45 |
+| ask.missing-detail | add.component | 44 |
+
+The seed: all 552 cases remapped and every gold route re-verified in a scratch copy through the Train store (`node packages/tools/line-train/reverify.mjs`, one logged action): 552 kept, 0 dropped. Train offers the 30 catalog intents its five tools can satisfy (`TRAIN_INTENTS`).
+
+Eval before -> after:
+- Drafter (`node packages/engine/line/drafter/eval.mjs`): unchanged, 86% recall, 96% precision, 86% preferred, 86% labels, 0 hash misses.
+- Train (held-out worlds w30-w39, 130 cases): mirror 95% recall / 95% precision / 93% preferred -> real drafter 38% / 39% / 40%. The mirror retrieved near-identical cases from the train split; the real drafter's retrieval reads approved transitions, which Train's cases are not yet, so it drafts from its rules and templates alone. The misses are real: everyday verbs the rules do not know ("clear", "titled", "lives in", "show N at a time"), the drafter making up a name where Train's gold asks for it, asking about an unknown feature where the gold refuses, and handler changes with a logged text the drafter cannot turn into code. The test floors (`test/line-train.test.mjs` FLOORS) are these real numbers; raise them, never lower them.
+
+Tests (all pass): `node --test test/line-*.test.mjs ui/server/src/line*.test.mjs packages/mcp/test/*.test.mjs`.
+1. Named checks are operators of the one language: each holds or fails with its own sentence, `not` flips it, bad arguments are refused in one sentence, and 1000 random named checks over random facts never throw (`test/line-expr.test.mjs`).
+2. File text and page parts are lazy views of the real facts, never summarized or enumerated.
+3. Adding a component changes its feature's ui layer hash and not the data or workflow layers; renaming changes nothing (`test/line-expr.test.mjs`, `test/line-drafter.test.mjs`).
+4. Train's checks are named checks of the one language (`test/line-train-contract.test.mjs`); Train's intents are catalog ids, each with a phrase and a tool family.
+5. The seed: every case in the contract shape, catalog intents only, refusal and question routes still there, no project word in any case.
+6. The drafter's map normalizes for Train: names become Train slots, "My orders" becomes {of: the feature, role: my}, a missing library item becomes `<missing:M1>`, a near miss is a closed "Did you mean" (`test/line-train.test.mjs`).
+7. A typed request is drafted by the real drafter, corrected with one closed choice, tried, and saved without project words.
+8. Eval scores the real drafter at or above its floors per family and intent.
+9. One word splitter and one leak guard for plan records, transitions and Train cases (`test/line-drafter-contract.test.mjs`).
+
+UAT (5 minutes):
+1. `node packages/engine/line/drafter/eval.mjs`: the first row reads 86% route recall, 96% precision, 0 hash misses.
+2. Open Cockpit, profile menu -> Train Line. Under "Teach a new request" type `Make StatusBadge in orders, based on Badge.` and press Draft: the kind of request reads "Add a component" and the first route "Make StatusBadge in orders, based on the library Badge.".
+3. Press Run eval: the sentence reads about 38% of the valid routes found and 40% picked the preferred one (the real drafter, not the mirror).
+4. `node packages/cli/construct.mjs line check --dir examples/line-sample '{"hasItem": "orders/components/OrderButton"}'` prints "Holds."; `'{"hasLibrary": "components/Tag"}'` prints one sentence saying the library has no component Tag.
+
+Next steps (not built):
+- Feed Train's agreed cases to the drafter's retrieval (as transitions) so training actually changes what the drafter drafts, then rerun the eval.
+- Teach the classifier the verbs the misses show ("clear", "titled", "lives in"), each with a case, and raise the floors.
+
 ## Train Line: the owner and Claude train Line's drafter (awaiting UAT)
 
 One screen, `/train` (profile menu → Train Line), where you and Claude teach Line's System 1 drafter to turn a request into routes (plan steps plus checks), using only the five tested tools: Make from the library (`line.baseOn`), Move into the library (`line.promote`), Set a page value (`line.setPageProp`), Edit a piece of code (`line.setFragment`), Fix a problem (`line.fix`). Nothing here touches your project: every case lives on an imaginary project (40 generated ones: shop, clinic, school, CRM and more, each passing `validate --profile line`) or the Line sample, and every check runs in a scratch copy through Construct's writer.
 
-What is stored (`line/train/cases.jsonl`, through the writer; `line/train/log.jsonl` says who changed what): no project or domain words, only slots ("Make <name:N1> in <feature:F1>, based on <library:L1>."), the intent, the routes and their checks. The screen fills the names back. The seed: 552 cases Claude generated and Construct verified (every gold route applied in a scratch copy and its checks passed; refusals refused with their typed fix), covering all 12 intents, 168 with several valid routes; 130 cases on 10 whole projects are held out for eval; 96 are in your random review sample.
+What is stored (`line/train/cases.jsonl`, through the writer; `line/train/log.jsonl` says who changed what): no project or domain words, only slots ("Make <name:N1> in <feature:F1>, based on <library:L1>."), the intent, the routes and their checks. The screen fills the names back. The seed: 552 cases Claude generated and Construct verified (every gold route applied in a scratch copy and its checks passed; refusals refused with their typed fix), covering Train's 12 first intent ids (now 8 ids of the drafter's catalog, see "System 1 reconcile"), 168 with several valid routes; 130 cases on 10 whole projects are held out for eval; 96 are in your random review sample.
 
-Mirrors to replace at merge (marked in code): the expression language (`exprMirror.mjs`), the drafter and its intent catalog (`drafterMirror.mjs`, `INTENTS`), the domain map (`buildDomainMap/normalize/denormalize` in `slots.mjs`). Last eval with the mirror drafter: 95% of valid routes found, 93% preferred picked.
+The mirrors are gone (11 Oct, "System 1 reconcile"): Train drafts with the real System 1 drafter, its domain map and its intent catalog, and checks with Line's one expression language. The mirror drafter scored 95% of valid routes found and 93% preferred picked; the real drafter scores 38% and 40% on the same held-out cases (why: below).
 
 Tests, in plain words:
 1. Every imaginary clean project passes the line profile; each problem variant plants exactly one problem with a fix that runs; the CLI agrees.
@@ -786,7 +850,7 @@ Tests, in plain words:
 9. MCP: `train_propose_case` (Claude's draft, verified and delexicalized), `train_list_cases`, `train_run_eval`; no review or approve tool.
 10. Browser (`ui/e2e/tests/line-train.spec.js`, real server): review, teach, Did you mean, Run eval; accessibility clean; no console error or failed request. The owner's walk below is `ui/e2e/uat/line-train.spec.js`.
 
-Gaps: the drafter is the static mirror (retrieval + templates), not the real one; Line's kinds have no API or service layer, so "UI only / API only" routes cannot exist yet (routes span pages, components, flows, sample data and the library); a new name typed by you is kept as a role word; missing-feature refusals are drafted poorly (70% on refusals); "Add a route" offers one step per route; the sample world cannot share billing's InvoiceCard (it has no base), so that case is not in the seed.
+Gaps: Train's cases do not reach the real drafter's retrieval yet (it reads approved transitions, not Train cases); Line's kinds have no API or service layer, so "UI only / API only" routes cannot exist yet (routes span pages, components, flows, sample data and the library); a new name typed by you is kept as a role word; missing-feature refusals are drafted poorly (70% on refusals); "Add a route" offers one step per route; the sample world cannot share billing's InvoiceCard (it has no base), so that case is not in the seed.
 
 ### UAT (5 minutes)
 1. Open Cockpit, profile menu → Train Line.
