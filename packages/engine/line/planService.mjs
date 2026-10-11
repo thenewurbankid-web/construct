@@ -202,7 +202,10 @@ export function createLinePlanService({ root, ops = REAL_PLAN_OPS, afterSave, co
     // step's checks (expectFor). Read once per added step; a planner refusal above keeps its own sentence.
     let layout;
     if (CHANGE_TOOLS[tool] && !args.retry) {
-      const facts = buildFacts(root, { ops });
+      // An import or extract step is checked against its import folder's facts (its paths are folder-relative).
+      let at = root;
+      try { at = rootOf(root, tool, args); } catch { at = root; }
+      const facts = buildFacts(at, { ops });
       layout = facts.project()?.layout;
       const why = checkPre(facts, tool, requestOf(args), layout);
       if (why) return refusal('PRE_FAILED', why);

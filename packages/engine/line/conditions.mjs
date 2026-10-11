@@ -8,6 +8,7 @@
 //   expectFor(tool, args, layout?)                              the default checks with the tool's post folded in
 //   checkPre(facts, tool, args, layout?) -> null | sentence     the one-sentence refusal when pre fails
 import { evaluate } from './expr.mjs';
+import { EXTRACT_TOOLS, extractTarget } from './importV2/extract.mjs';
 
 const P = (...segs) => ({ path: segs });
 const I = (...segs) => ({ item: segs });
@@ -66,8 +67,17 @@ const CONDITIONS = Object.freeze({
   }),
 });
 
+/**
+ * Import v2's extract steps (importV2/extract.mjs), facts read in the import folder: the new file is not there before
+ * the step and is there after it. (Whether the source file holds what to move is the planner's one-sentence refusal.)
+ */
+const EXTRACT_CONDITIONS = Object.fromEntries(EXTRACT_TOOLS.map((tool) => [tool, (args, layout) => {
+  const target = extractTarget(layout, tool, args);
+  return { pre: { not: { exists: P('files', target) } }, post: { exists: P('files', target) } };
+}]));
+
 /** The tools that declare pre and post. */
-export const CONDITION_TOOLS = Object.freeze(Object.keys(CONDITIONS));
+export const CONDITION_TOOLS = Object.freeze([...Object.keys(CONDITIONS), ...EXTRACT_TOOLS]);
 
 /**
  * The pre and post expressions of one request, or null for a tool that declares none.
@@ -75,7 +85,7 @@ export const CONDITION_TOOLS = Object.freeze(Object.keys(CONDITIONS));
  * @returns {{pre: import('./contract.mjs').LineExpr, post: import('./contract.mjs').LineExpr} | null}
  */
 export function conditionsOf(tool, args, layout) {
-  const build = CONDITIONS[tool];
+  const build = CONDITIONS[tool] ?? EXTRACT_CONDITIONS[tool];
   return build ? build(/** @type {any} */ (args ?? {}), layout) : null;
 }
 

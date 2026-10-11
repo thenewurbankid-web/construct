@@ -69,6 +69,7 @@
     "./route-resolver": "./route-resolver.mjs",
     "./architecture-graph": "./architecture-graph.mjs",
     "./extract-expression": "./extractExpression.mjs",
+    "./research/spec-to-code": "./research/specToCode.mjs",
     "./glob": "./glob.mjs",
     "./block-kit": "./block-kit.mjs",
     "./proof": "./proof.mjs",
