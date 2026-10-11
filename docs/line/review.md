@@ -139,3 +139,46 @@ Gaps: no previews on cards yet (Hour 3), no search or filters; components writte
 1. Start Cockpit with the sample as in Hour 1 and open `line-sample`.
 2. Click Components. Expect "Your component library": Atoms (Badge, not used yet; Button, used by 1), Molecules (Card, used by 1), Organisms (DataTable, not used yet).
 3. Under "Feature components": billing's InvoiceCard says "No library base yet" with its sentence (Details shows LINE-BASE); orders shows OrderButton "Based on Button" and OrderCard "Based on Card". Open any non-Line project: its Components screen is as before.
+
+## Before the Hours 3-7 UAT: start from a fresh sample
+`rm -rf ~/workspace/line-sample && cp -R ~/Repositories/construct/examples/line-sample ~/workspace/`, then start Cockpit (`cd ui/server && npm start`, `cd ui/client && npm run dev`) and open `line-sample`.
+
+## Hour 3: see a library component rendered with its props (awaiting UAT)
+
+Tests: `ui/server/src/lineRenderApi.test.mjs` (7), `ui/client/features/line-render/domain/LineRender.spec.mjs` (3), `ui/e2e/tests/line-component-preview.spec.js` (2, Playwright).
+1. Sample prop values: text for text props (its own name), 1 for numbers, false for yes/no, the first choice of a list; a library fixture's values win.
+2. Button renders as a real button; the project is byte-identical afterwards; the scratch folder is outside the project and removed.
+3. Changing a prop renders the new text; a component built from other library components (DataTable) draws them too.
+4. With the Morpheus link down: one sentence saying why there is no picture, the props still listed.
+5. Paths outside the library's components, missing files, odd props and links that lead outside are refused with one sentence before anything renders.
+6. The real Morpheus renderer draws Button (ran for real).
+7. In the browser: the button shows in a locked-down frame, typing a new label redraws it; a feature file is refused with a sentence.
+
+Gaps: the picture is not yet inside the library cards (being added now); rendering runs the component's code inside Cockpit's server process; accessibility checks cannot look inside the picture frame.
+
+UAT: open http://localhost:3000/components/preview?file=library/components/Button.tsx. Expect a button reading "Label" with a `label` row under it; type "Buy now" and the button changes within a moment.
+
+## Hour 4: Base on this (awaiting UAT)
+
+Tests: `ui/client/features/line-library/domain/LineChange.spec.mjs` (4) and `ui/e2e/tests/line-base-on.spec.js` (2, Playwright).
+1. The form goes open, edit, save, then either closes on success or stays open with the refusal sentence; nothing else starts while saving.
+2. Names are suggested from the feature and the item (orders + Badge = OrdersBadge).
+3. In the browser: basing StatusBadge in orders on Badge shows "Saved. Creates StatusBadge in feature orders, based on the library Badge.", writes the file with its base link first, the Badge card says "Used by 1 feature component", and the new row says "Based on Badge".
+4. A taken name (OrderButton) gives one sentence, writes nothing, keeps the count; Cancel closes.
+
+Gaps: no name check while typing (the server's sentence is the check); only components get this action.
+
+UAT: Components → Badge card → Base on this → Feature "orders", Name "StatusBadge" → Create. Expect the green sentence, "Used by 1 feature component" on Badge and StatusBadge "Based on Badge" under orders. Then try Button with orders / OrderButton: one refusal sentence, nothing changes.
+
+## Hour 7: Promote to library (awaiting UAT)
+
+Test: `ui/e2e/tests/line-promote.spec.js` (Playwright), plus the promote cases in T2.
+1. The sample starts with "2 problems".
+2. Promote shows a confirm sentence first; Cancel writes nothing.
+3. Promote shows "Saved. Moves OrderButton from feature orders into the library...", OrderButton becomes a Molecules card and leaves orders.
+4. On disk the library file exists, the feature file is gone, and InvoicesPage no longer imports from orders.
+5. Validate re-runs by itself: "1 problem", only the missing-base one (LINE-BASE) is left.
+
+Gaps: no undo except git; an item used through another feature's index file is not repointed.
+
+UAT (fresh sample): Components → under orders, OrderButton → Promote to library → read the sentence → Promote. Expect the green sentence, an OrderButton card under Molecules, and the status bar at "1 problem" with only the InvoiceCard sentence left.
