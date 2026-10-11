@@ -32,7 +32,7 @@ function quietStrip(source, url) {
   // stripTypeScriptTypes warns once that it is experimental; the link is opt-in, so keep that line out of CLI output.
   const emit = process.emitWarning;
   process.emitWarning = (w, ...rest) => { if (!/stripTypeScriptTypes|Type Stripping/i.test(String(w?.message ?? w))) emit.call(process, w, ...rest); };
-  try { return stripTypeScriptTypes(source, { mode: 'transform', sourceUrl: url }); } finally { process.emitWarning = emit; }
+  try { return stripTypeScriptTypes(source, /** @type {any} */ ({ mode: 'transform', sourceUrl: url })); } finally { process.emitWarning = emit; }
 }
 
 /** Install the hooks once per process (later calls do nothing). */

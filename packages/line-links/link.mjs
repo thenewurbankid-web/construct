@@ -18,11 +18,12 @@ if (args.includes('--pin')) {
     console.log(`The source is at ${status.head}; set "source.commit" to it in ${LINKS_FILE} (it pins ${status.pinned}), then run the link tests.`);
   }
 } else {
+  /** @type {any[]} */
   const rows = [];
   for (const p of status.packages) {
     if (args.includes('--load') && p.ok) {
       const r = await importLinked(p.name);
-      rows.push({ ...p, loaded: r.ok, message: r.ok ? `${p.message.replace(/\.$/, '')} and loads.` : r.reason });
+      rows.push({ ...p, loaded: r.ok, message: 'reason' in r ? r.reason : `${p.message.replace(/\.$/, '')} and loads.` });
     } else rows.push(p);
   }
   if (args.includes('--json')) console.log(JSON.stringify({ ...status, packages: rows }, null, 2));

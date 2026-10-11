@@ -39,6 +39,7 @@ export const ARGV_SCHEMA = Object.freeze({
   },
 });
 
+/** @type {Promise<unknown>} */
 let queue = Promise.resolve();
 
 /** Run `fn` with stdout, stderr, the exit code and process.exit captured, one run at a time. */

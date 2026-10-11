@@ -8,6 +8,7 @@
  * @returns {import('./contracts').ReasonModule & { calls: number }}
  */
 export function createMockReason(o = {}) {
+  /** @type {any} */
   const mock = {
     calls: 0,
     defineProfiles(list) { return Object.fromEntries(list.map((p) => [p.pairId, { ...p }])); },

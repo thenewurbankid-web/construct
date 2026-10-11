@@ -59,7 +59,7 @@ export function createReasonProvider(options = {}) {
   let note = null;
   const loadReason = options.loadReason ?? (async () => {
     const r = await importLinked('@mx/reason');
-    if (!r.ok) { note = r.reason; return null; }
+    if ('reason' in r) { note = r.reason; return null; }
     return r.module;
   });
   let reasonPromise = null;
