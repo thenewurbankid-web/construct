@@ -20,7 +20,7 @@ export type LineFinding = {
 };
 
 /** The Line tools a fix step calls; each is a planner whose change goes through Construct's writer. */
-export type LineFixTool = 'line.setBase' | 'line.promote' | 'line.baseOn' | 'line.moveFile' | 'line.createLayout';
+export type LineFixTool = 'line.setBase' | 'line.promote' | 'line.baseOn' | 'line.moveFile' | 'line.createLayout' | 'line.amend';
 
 /** One typed fix: what it will do, in plain English, and the plan step; `step` is null when it is advice only. */
 export type LineFix = {

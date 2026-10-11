@@ -35,7 +35,8 @@
  *   line.baseOn       BaseOnRequest              create a feature item based on a library item (ops.mjs planBaseOn)
  *   line.moveFile     {from, to, base?}          move a file, re-pointing every import; `base` also writes its line-base header
  *   line.createLayout {}                         create the library folder (library/README.md) so the project is laid out as Line
- * @typedef {'line.setBase'|'line.promote'|'line.baseOn'|'line.moveFile'|'line.createLayout'} LineFixTool
+ *   line.amend        {change, fix} | {change, fixes}  a refused change plus its fix (or a chain of fixes), applied as one change
+ * @typedef {'line.setBase'|'line.promote'|'line.baseOn'|'line.moveFile'|'line.createLayout'|'line.amend'} LineFixTool
  */
 
 /**
@@ -319,7 +320,7 @@ export const LINE_API = Object.freeze([
   { method: 'POST', path: '/api/line/plan/run', request: '{stepId?}', response: 'PlanView' },
 ]);
 
-export const LINE_FIX_TOOLS = Object.freeze(['line.setBase', 'line.promote', 'line.baseOn', 'line.moveFile', 'line.createLayout']);
+export const LINE_FIX_TOOLS = Object.freeze(['line.setBase', 'line.promote', 'line.baseOn', 'line.moveFile', 'line.createLayout', 'line.amend']);
 
 export const LINE_KINDS = Object.freeze(['components', 'pages', 'workflows', 'fixtures']);
 export const LEVELS = Object.freeze(['atom', 'molecule', 'organism']);

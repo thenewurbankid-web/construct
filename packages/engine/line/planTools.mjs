@@ -339,7 +339,7 @@ export async function constructCommandTools() {
   ]);
   const commands = createCommandRegistry();
   registerBuiltinCommands(commands);
-  return commandPlanRegistry(commands);
+  return commandPlanRegistry(/** @type {any} */ (commands));
 }
 
 /**

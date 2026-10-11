@@ -84,7 +84,8 @@ test.describe.serial('Line spot code editing (Line sample project, real server)'
     await plan.getByRole('button', { name: /^Approve step/ }).first().click();
     const step = plan.getByTestId('plan-step').first();
     await expect(step).toHaveAttribute('data-state', 'needs-fix');
-    await expect(step.getByTestId('plan-step-fixes')).toContainText('Move InvoicesPage.tsx from feature billing into the library');
+    // cl1: promoting InvoicesPage alone would be refused (it uses orders' OrderButton), so the fix offered is the chain.
+    await expect(step.getByTestId('plan-step-fixes')).toContainText('First move OrderButton into the library, because InvoicesPage uses it; then move InvoicesPage.tsx from feature billing into the library');
     await expect(step.getByRole('button', { name: 'Apply recommended fix' })).toBeVisible();
     await expect(step.getByTestId('plan-step-failing')).toContainText(/Validate found a new problem: feature "orders" imports "\.\.\/\.\.\/billing\/pages\/InvoicesPage" from feature "billing"/);
     await expect(step.getByRole('button', { name: 'Try again' })).toBeVisible();

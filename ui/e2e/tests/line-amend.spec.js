@@ -31,7 +31,7 @@ test.describe.serial('Line: a fix for a refused change applies in one approval (
     if (base) fs.rmSync(base, { recursive: true, force: true });
   });
 
-  test('moving OrderButton to components/ needs a fix; Apply recommended fix + one Approve lands it inside billing', async ({ page, request }) => {
+  test('moving OrderButton to components/ needs a fix; one click on Apply recommended fix lands it inside billing', async ({ page, request }) => {
     // The agent's step, through the plan API (the only way agents change a project).
     const added = await request.post(`${API}/api/line/plan/step`, { data: { tool: 'line.moveFile', args: { from: 'features/orders/components/OrderButton.tsx', to: 'components/OrderButton.tsx' } } });
     expect(added.ok()).toBe(true);
@@ -51,15 +51,13 @@ test.describe.serial('Line: a fix for a refused change applies in one approval (
     const found = await runAxe(page, { include: '[data-testid="line-plan"]' });
     expect(found.filter(isBlocking), format(found.filter(isBlocking))).toEqual([]);
 
+    // The click is the person's one approval: it adds the fix step, approves it and runs it.
     await first.getByRole('button', { name: 'Apply recommended fix' }).click();
     const fix = plan.locator('[data-testid="plan-step"]').first();
-    await expect(fix).toHaveAttribute('data-state', 'waiting');
-    await expect(fix.getByTestId('plan-step-sentence')).toHaveText('Waiting for your approval: Moves OrderButton.tsx to components/ and points its one user at the new place, and in the same step moves OrderButton.tsx to features/billing/components/ and points its one user at the new place.');
+    await expect(fix).toHaveAttribute('data-state', 'done');
+    await expect(fix.getByTestId('plan-step-sentence')).toHaveText('Saved. Moves OrderButton.tsx to components/ and points its one user at the new place, and in the same step moves OrderButton.tsx to features/billing/components/ and points its one user at the new place.');
     await fix.getByText('Details', { exact: true }).click();
     await expect(fix.getByTestId('plan-step-call')).toContainText('line.amend(');
-
-    await fix.getByRole('button', { name: 'Approve step 2' }).click();
-    await expect(fix).toHaveAttribute('data-state', 'done');
     await expect(plan.locator('[data-testid="plan-step"]').last().getByTestId('plan-step-sentence')).toHaveText('Saved together with its fix in step 2.');
     await expect(plan.locator('[data-testid="plan-step"][data-state="needs-fix"]')).toHaveCount(0);
 
@@ -92,7 +90,7 @@ test.describe.serial('Line: the recommended fix is one that lands (cl1, Line sam
     if (base) fs.rmSync(base, { recursive: true, force: true });
   });
 
-  test('importing InvoicesPage into OrdersPage needs a fix; the chained fix lands with one Approve', async ({ page, request }) => {
+  test('importing InvoicesPage into OrdersPage needs a fix; the chained fix lands with one click', async ({ page, request }) => {
     await gotoCockpit(page, '/pages?feature=orders&page=orders%2Fpages%2FOrdersPage');
     const toggle = listPagePart(page).getByRole('button', { name: 'Edit code' });
     await expect(toggle).toBeVisible({ timeout: 30_000 });
@@ -109,9 +107,8 @@ test.describe.serial('Line: the recommended fix is one that lands (cl1, Line sam
     await first.getByRole('button', { name: 'Apply recommended fix' }).click();
 
     const fix = plan.locator('[data-testid="plan-step"]').first();
-    await expect(fix).toHaveAttribute('data-state', 'waiting');
-    await fix.getByRole('button', { name: 'Approve step 2' }).click();
     await expect(fix).toHaveAttribute('data-state', 'done');
+    await expect(fix.getByTestId('plan-step-sentence')).toHaveText(/^Saved\. Changes the code for .*, and in the same step moves OrderButton\.tsx to library\/components\/.*, then moves InvoicesPage\.tsx to library\/pages\/.*\.$/);
     await expect(plan.locator('[data-testid="plan-step"]').last()).toHaveAttribute('data-state', 'done');
     await expect(plan.locator('[data-testid="plan-step"]').last().getByTestId('plan-step-sentence')).toHaveText('Saved together with its fix in step 2.');
 
