@@ -87,6 +87,8 @@ import { createComponentsRouter } from './componentsApi.mjs';
 import { createLineRouter } from './lineApi.mjs';
 import { createLineOpsRouter } from './lineOpsApi.mjs';
 import { createLinePlanRouter } from './linePlanApi.mjs';
+import { createLineDraftRouter } from './lineDraftApi.mjs';
+import { createLinePlanService } from '@line/construct-engine/line/plan-service';
 import { createLineRenderRouter } from './lineRenderApi.mjs';
 import { createStoryBridgeRouter } from './storyBridgeApi.mjs';
 import { createNotesRouter } from './notesApi.mjs';
@@ -1260,14 +1262,20 @@ app.use('/api/line', createLineOpsRouter({
 
 // cp1 (Line Cockpit): every Line action as a step of the open project's plan (line/plans/); a person approves each
 // write, then it runs through the same writer (linePlanApi.mjs, packages/engine/line/planService.mjs).
-app.use('/api/line', createLinePlanRouter({
-  clientOrigin: CLIENT_ORIGIN,
-  afterSave,
-  getRoot: () => {
-    const root = containedProjectRoot(getProjectDir());
-    return root ? { ok: true, root } : { ok: false, error: 'No project is open; pick a project first.' };
-  },
-}));
+// One plan service per project root, shared by the plan routes and the drafter routes (one session).
+const linePlanServices = new Map();
+const linePlanServiceFor = (root) => {
+  if (!linePlanServices.has(root)) linePlanServices.set(root, createLinePlanService({ root, afterSave }));
+  return linePlanServices.get(root);
+};
+const lineRoot = () => {
+  const root = containedProjectRoot(getProjectDir());
+  return root ? { ok: true, root } : { ok: false, error: 'No project is open; pick a project first.' };
+};
+app.use('/api/line', createLinePlanRouter({ clientOrigin: CLIENT_ORIGIN, afterSave, serviceFor: linePlanServiceFor, getRoot: lineRoot }));
+// System 1 drafter (flag LINE_DRAFTER=1, default off): a request becomes every checked route; a picked route's steps
+// join the same plan session (lineDraftApi.mjs, packages/engine/line/drafter).
+app.use('/api/line', createLineDraftRouter({ clientOrigin: CLIENT_ORIGIN, serviceFor: linePlanServiceFor, getRoot: lineRoot }));
 
 // T7 (Line Cockpit): one library component rendered alone with its props (Morpheus's isolated render; a pure read).
 app.use('/api/line', createLineRenderRouter({

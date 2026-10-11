@@ -73,7 +73,7 @@ test('contract: the shape checks reject what Cockpit must never show', () => {
   assert.throws(() => assertFinding({ sentence: 'no full stop', rule: 'X', severity: 'error', file: 'a', line: 1 }), /full sentence/);
   assert.throws(() => assertStagedChange({ summary: 'Escapes.', files: [{ path: '../x', content: '' }] }), /inside the project/);
   assert.throws(() => assertApplyResult({ ok: false, sentence: 'Refused.', files: ['a'], findings: [] }), /wrote nothing/);
-  assert.deepEqual(LINE_API.map((r) => `${r.method} ${r.path}`), ['GET /api/line/project', 'GET /api/line/page-tree', 'POST /api/line/base-on', 'POST /api/line/promote', 'POST /api/line/page-prop', 'GET /api/line/render', 'GET /api/line/feature', 'GET /api/line/workspace', 'POST /api/line/workspace', 'POST /api/line/fix', 'GET /api/line/fragments', 'POST /api/line/fragment', 'GET /api/line/plan', 'POST /api/line/plan/step', 'POST /api/line/plan/approve', 'POST /api/line/plan/run']);
+  assert.deepEqual(LINE_API.map((r) => `${r.method} ${r.path}`), ['GET /api/line/project', 'GET /api/line/page-tree', 'POST /api/line/base-on', 'POST /api/line/promote', 'POST /api/line/page-prop', 'GET /api/line/render', 'GET /api/line/feature', 'GET /api/line/workspace', 'POST /api/line/workspace', 'POST /api/line/fix', 'GET /api/line/fragments', 'POST /api/line/fragment', 'GET /api/line/plan', 'POST /api/line/plan/step', 'POST /api/line/plan/approve', 'POST /api/line/plan/run', 'GET /api/line/plan/draft', 'POST /api/line/plan/draft', 'POST /api/line/plan/draft/add', 'POST /api/line/plan/draft/answer']);
   assert.throws(() => assertLineWorkspace({ root: '/p', folder: '../x', readOnly: true }), /inside the project/);
 });
 
@@ -109,7 +109,7 @@ test('contract: the workspace folder defaults to the whole project; set to one f
   assert.deepEqual(ops.files(), before);
   assert.equal(ops.applyChange(ROOT, ops.planBaseOn(ROOT, { libraryId: 'components/Button', feature: 'orders', name: 'BuyButton' })).ok, true);
   assert.throws(() => ops.setWorkspace(ROOT, { folder: '../outside' }), (e) => e instanceof LineOpError && e.code === 'BAD_FOLDER');
-  assert.deepEqual(LINE_API.map((r) => `${r.method} ${r.path}`), ['GET /api/line/project', 'GET /api/line/page-tree', 'POST /api/line/base-on', 'POST /api/line/promote', 'POST /api/line/page-prop', 'GET /api/line/render', 'GET /api/line/feature', 'GET /api/line/workspace', 'POST /api/line/workspace', 'POST /api/line/fix', 'GET /api/line/fragments', 'POST /api/line/fragment', 'GET /api/line/plan', 'POST /api/line/plan/step', 'POST /api/line/plan/approve', 'POST /api/line/plan/run']);
+  assert.deepEqual(LINE_API.map((r) => `${r.method} ${r.path}`), ['GET /api/line/project', 'GET /api/line/page-tree', 'POST /api/line/base-on', 'POST /api/line/promote', 'POST /api/line/page-prop', 'GET /api/line/render', 'GET /api/line/feature', 'GET /api/line/workspace', 'POST /api/line/workspace', 'POST /api/line/fix', 'GET /api/line/fragments', 'POST /api/line/fragment', 'GET /api/line/plan', 'POST /api/line/plan/step', 'POST /api/line/plan/approve', 'POST /api/line/plan/run', 'GET /api/line/plan/draft', 'POST /api/line/plan/draft', 'POST /api/line/plan/draft/add', 'POST /api/line/plan/draft/answer']);
 });
 
 test('contract: every mock finding carries a typed fix, and applying the top one by key clears it', () => {
