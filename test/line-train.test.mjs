@@ -17,7 +17,7 @@ import { tryRoute } from '../packages/engine/line/train/verify.mjs';
 import { normalizeRequest } from '../packages/engine/line/train/draft.mjs';
 import { createTrainService, worldIdentifiers } from '../packages/engine/line/train/service.mjs';
 import { CASES, LOG } from '../packages/engine/line/train/store.mjs';
-import { trainRecords, feedsRetrieval } from '../packages/engine/line/train/records.mjs';
+import { trainRecords, feedsRetrieval, indexText, memoOf, INDEX } from '../packages/engine/line/train/records.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -212,6 +212,15 @@ test('retrieval: Train\'s train-split cases feed the drafter\'s retrieval; no he
   // No held-out request reaches the index as a held-out case: every record's case id is a train case's.
   const heldIds = new Set(cases.filter((c) => c.split === 'heldout').map((c) => c.id));
   assert.ok(records.every((r) => !heldIds.has(r.group) && !heldIds.has(String(r.routeId).split(':')[1])));
+  // The committed index (what Train Line reads first) is current, holds only train cases, and gives the same records.
+  const text = fs.readFileSync(path.join(SEED, INDEX), 'utf8');
+  assert.equal(text, indexText(cases), 'line/train/retrieval-index.json is stale: run node packages/tools/line-train/retrieval-index.mjs');
+  const memo = memoOf(text);
+  assert.ok([...memo.keys()].every((k) => !heldIds.has(k.split(':')[0])));
+  assert.deepEqual(trainRecords(cases, { memo }), records);
+  // A memo entry for a held-out case is never read: eligibility comes first.
+  const poisoned = new Map(memo); poisoned.set(`${held.id}:${held.status}`, [{ poisoned: true }]);
+  assert.ok(!trainRecords(cases, { memo: poisoned }).some((r) => r.poisoned));
 });
 
 test('eval: the REAL drafter drafts every held-out case and is scored on recall, precision and the preferred route per family and intent', () => {

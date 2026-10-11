@@ -126,6 +126,8 @@ export function createConverter(facts, slots = {}) {
       if (field === 'name') return `<name:${add('name', { of: I })}>`;
       if (field === 'feature') { const F = feature(b.feature); return F ? `<feature:${F}>` : null; }
       if (field === 'kind') return { literal: b.kind };
+      // The library item it is based on (a retrieved route builds on it: "<C1.base>").
+      if (field === 'base') { const lib = b.base ? library(b.base) : null; return lib ? `<library:${lib}>` : null; }
       return `<item:${I}>`;
     }
     if (L === 'L') { const lib = library(b.id); if (!lib) return null; return field === 'name' ? { literal: b.name } : field === 'kind' ? { literal: b.kind } : `<library:${lib}>`; }

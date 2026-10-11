@@ -71,42 +71,86 @@ function slotted(v, b, arg) {
   return out.every(Boolean) ? out.join('/') : undefined;
 }
 
+/** The committed retrieval index of the seed (training-root relative): per case key, its records. */
+export const INDEX = 'train/retrieval-index.json';
+/**
+ * A case's key in the index: its id and its review status (agreeing or disputing a case changes its records).
+ * @param {{id: string, status: string}} c
+ * @returns {string}
+ */
+export const caseKey = (c) => `${c.id}:${c.status}`;
+
+/**
+ * One eligible case's records (see `trainRecords`); [] when it cannot be written in slots alone.
+ * @param {any} c
+ * @returns {any[]}
+ */
+export function recordsOfCase(c) {
+  /** @type {any[]} */
+  const out = [];
+  const facts = worldFacts(c.world);
+  const gb = /** @type {any} */ (bindSlots(c.slots, facts, wordsOf(c.world)));
+  if (!gb.ok) return out;
+  const n = normalize(fill(c.request, gb.bound), worldMap(c.world));
+  if (n.questions.length) return out;
+  // The one leak guard: a world word the map could not slot (a feature called "parts" reads as grammar) keeps the case out.
+  const words = worldIdentifiers(c.world, facts);
+  if (projectWordIn(n.text, words)) return out;
+  const shapes = Object.fromEntries(Object.keys(n.bindings).map((s) => [s, { kind: SLOT_KINDS[s[0]] ?? 'other' }]));
+  for (const r of c.gold.routes) {
+    const base = { v: 1, request: n.text, intent: c.intent, from: null, routeId: `train:${c.id}:${r.id}`, template: 'base-on', to: null, approved: true, group: c.id, preferred: r.id === c.gold.preferred, outcome: r.outcome, source: /** @type {'train'} */ ('train'), agreed: c.status === 'agreed' };
+    if (r.outcome === 'question') { out.push({ ...base, slots: shapes, steps: [], expect: [], delta: [], about: r.question?.about ?? 'detail' }); continue; }
+    const steps = [];
+    let ok = true;
+    for (const s of r.steps) {
+      const args = {};
+      for (const [k, v] of Object.entries(fill(s.args, gb.bound, { asArg: true }))) { const x = slotted(v, n.bindings, k); if (x === undefined) { ok = false; break; } args[k] = x; }
+      if (!ok) break;
+      steps.push({ tool: s.tool, args });
+    }
+    if (!ok || projectWordIn(steps, words)) continue;
+    const used = new Set(JSON.stringify(steps).match(/[A-Z]\d+/g) ?? []);
+    // No delta: the structure-hash check is skipped for a retrieved route (`unpredicted`); Construct and the checks still run.
+    out.push({ ...base, template: templateOf(steps), slots: Object.fromEntries(Object.entries(shapes).filter(([s]) => used.has(s))), steps, expect: [{ noNewFindings: true }], delta: [], unpredicted: true });
+  }
+  return out;
+}
+
 /**
  * Train Line's eligible cases as drafter transition records (approved, delexicalized, slot form). Records of one case
  * share `group`; `preferred` marks the gold preferred route; a question outcome is a record with no steps.
  * @param {any[]} cases Stored Train cases (any split: only the eligible ones are used).
+ * @param {{memo?: Map<string, any[]>}} [o] `memo`: records already built, by `caseKey` (e.g. the committed index); new
+ *   ones are added to it. Eligibility is checked first, so a held-out case is never looked up.
  * @returns {(import('../drafter/contract.mjs').TransitionRecord & {group: string, preferred: boolean, outcome: string, about?: string, source: 'train', agreed: boolean})[]}
  */
-export function trainRecords(cases) {
+export function trainRecords(cases, o = {}) {
   /** @type {any[]} */
   const out = [];
   for (const c of cases.filter(feedsRetrieval)) {
-    const facts = worldFacts(c.world);
-    const gb = /** @type {any} */ (bindSlots(c.slots, facts, wordsOf(c.world)));
-    if (!gb.ok) continue;
-    const n = normalize(fill(c.request, gb.bound), worldMap(c.world));
-    if (n.questions.length) continue;
-    // The one leak guard: a world word the map could not slot (a feature called "parts" reads as grammar) keeps the case out.
-    const words = worldIdentifiers(c.world, facts);
-    if (projectWordIn(n.text, words)) continue;
-    const shapes = Object.fromEntries(Object.keys(n.bindings).map((s) => [s, { kind: SLOT_KINDS[s[0]] ?? 'other' }]));
-    for (const r of c.gold.routes) {
-      const base = { v: 1, request: n.text, intent: c.intent, from: null, routeId: `train:${c.id}:${r.id}`, template: 'base-on', to: null, approved: true, group: c.id, preferred: r.id === c.gold.preferred, outcome: r.outcome, source: /** @type {'train'} */ ('train'), agreed: c.status === 'agreed' };
-      if (r.outcome === 'question') { out.push({ ...base, slots: shapes, steps: [], expect: [], delta: [], about: r.question?.about ?? 'detail' }); continue; }
-      const steps = [];
-      let ok = true;
-      for (const s of r.steps) {
-        const args = {};
-        for (const [k, v] of Object.entries(fill(s.args, gb.bound, { asArg: true }))) { const x = slotted(v, n.bindings, k); if (x === undefined) { ok = false; break; } args[k] = x; }
-        if (!ok) break;
-        steps.push({ tool: s.tool, args });
-      }
-      if (!ok) continue;
-      const used = new Set(JSON.stringify(steps).match(/[A-Z]\d+/g) ?? []);
-      // No delta: the structure-hash check is skipped for a retrieved route (`unpredicted`); Construct and the checks still run.
-      if (projectWordIn(steps, words)) continue;
-      out.push({ ...base, template: templateOf(steps), slots: Object.fromEntries(Object.entries(shapes).filter(([s]) => used.has(s))), steps, expect: [{ noNewFindings: true }], delta: [], unpredicted: true });
-    }
+    const k = caseKey(c);
+    let recs = o.memo?.get(k);
+    if (!recs) { recs = recordsOfCase(c); o.memo?.set(k, recs); }
+    out.push(...recs);
   }
   return out;
+}
+
+/**
+ * The index file's text for a set of cases (what packages/tools/line-train/retrieval-index.mjs commits).
+ * @param {any[]} cases
+ * @returns {string}
+ */
+export function indexText(cases) {
+  const byCase = Object.fromEntries(cases.filter(feedsRetrieval).map((c) => [caseKey(c), recordsOfCase(c)]));
+  return `${JSON.stringify({ v: 1, note: 'Train Line train-split cases as the System 1 drafter\'s retrieval records (slot form, no project words). Generated by packages/tools/line-train/retrieval-index.mjs.', cases: byCase })}\n`;
+}
+
+/**
+ * A memo from an index file's text (a missing or unreadable index is an empty memo: the records are then built).
+ * @param {string|null} text
+ * @returns {Map<string, any[]>}
+ */
+export function memoOf(text) {
+  try { return new Map(Object.entries(JSON.parse(String(text)).cases ?? {})); } catch { return new Map(); }
 }

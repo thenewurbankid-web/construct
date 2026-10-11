@@ -30,6 +30,8 @@ export * as lineTrainCorpus from './line/train/corpus.mjs';
 export * as lineTrainGenerate from './line/train/generate.mjs';
 /** `@line/construct-engine/line/train/store` */
 export * as lineTrainStore from './line/train/store.mjs';
+/** `@line/construct-engine/line/train/records` */
+export * as lineTrainRecords from './line/train/records.mjs';
 /** `@line/construct-engine/line/train/verify` */
 export * as lineTrainVerify from './line/train/verify.mjs';
 /** `@line/construct-engine/transactional-writer` */

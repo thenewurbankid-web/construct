@@ -2,6 +2,7 @@
 // src/train.mjs) call. Owner and Claude act through the same functions; `by` says who. Claude can propose cases, list
 // them and run eval; only the owner agrees, disagrees or saves an agreed case.
 import crypto from 'node:crypto';
+import fs from 'node:fs';
 import path from 'node:path';
 import { TRAIN_INTENTS, INTENT_IDS, TRAIN_TOOLS, TOOL_FAMILY_LABEL, assertDelexicalized, assertTrainCase, slotNamesIn } from './contract.mjs';
 import { intentPhrase } from '../drafter/contract.mjs';
@@ -16,8 +17,8 @@ import { bindSlots, fill, refOf, refTable, splitWords } from './slots.mjs';
 import { worldMap, normalizeRequest, draftInWorld } from './draft.mjs';
 import { describe } from '../expr.mjs';
 import { tryRoute, wordsOf } from './verify.mjs';
-import { createTrainStore } from './store.mjs';
-import { trainRecords } from './records.mjs';
+import { createTrainStore, DEFAULT_TRAIN_ROOT } from './store.mjs';
+import { trainRecords, memoOf, INDEX } from './records.mjs';
 
 const nameOfId = (id) => String(id).split('/').pop();
 const baseName = (f) => path.posix.basename(String(f)).replace(/\.(tsx|ts|json)$/, '');
@@ -87,12 +88,20 @@ export function routeView(r, bound, facts, preferred) {
  */
 export function createTrainService(o = {}) {
   const store = createTrainStore(o);
-  /** The drafter's retrieval records from the train split (rebuilt when a case or its status changes). */
+  /**
+   * The drafter's retrieval records from the train split: per case, read from the committed index (the training
+   * root's, else the seed's) and built only for a case it does not hold (new, or its status changed).
+   */
+  const perCase = (() => {
+    const read = (dir) => { try { return fs.readFileSync(path.join(dir, INDEX), 'utf8'); } catch { return null; } };
+    const m = memoOf(read(store.root) ?? (o.seedFrom ? read(o.seedFrom) : null));
+    return m.size ? m : memoOf(read(DEFAULT_TRAIN_ROOT));
+  })();
   let memo = { key: '', records: /** @type {any[]} */ ([]) };
   const records = () => {
     const all = store.all();
     const key = crypto.createHash('sha256').update(all.map((c) => `${c.id}:${c.status}`).join('|')).digest('hex');
-    if (memo.key !== key) memo = { key, records: trainRecords(all) };
+    if (memo.key !== key) memo = { key, records: trainRecords(all, { memo: perCase }) };
     return memo.records;
   };
   const now = o.now ?? (() => new Date().toISOString());

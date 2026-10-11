@@ -22,6 +22,7 @@
     "./line/train/corpus": "./line/train/corpus.mjs",
     "./line/train/generate": "./line/train/generate.mjs",
     "./line/train/store": "./line/train/store.mjs",
+    "./line/train/records": "./line/train/records.mjs",
     "./line/train/verify": "./line/train/verify.mjs",
     "./transactional-writer": "./transactionalWriter.mjs",
     "./envelope": "./envelope.mjs",
