@@ -27,7 +27,10 @@ const keyOf = (e) => `${e.rule} ${e.at.replace(/:\d+$/, '')}`;
 
 /** The folder's Line problems before the import, as "RULE file" (the baseline verify compares against). */
 export function lineBaseline(projectRoot, folder) {
-  return [...new Set(runValidate(path.join(projectRoot, folder)).errors.map(keyOf))].sort();
+  // Before the import the folder has no architecture.yml of its own, so validate may name files from the project root
+  // (it found the project's config); after the import they are folder-relative. Keys are kept folder-relative.
+  const inFolder = (e) => ({ ...e, at: e.at.startsWith(`${folder}/`) ? e.at.slice(folder.length + 1) : e.at });
+  return [...new Set(runValidate(path.join(projectRoot, folder)).errors.map(inFolder).map(keyOf))].sort();
 }
 
 /** Validate (profile line) on the folder: it fails on a problem the folder did not have before the import. */

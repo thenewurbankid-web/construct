@@ -223,6 +223,9 @@ test('reason: with @mx/reason and jev up, jev picks the Table answer (and the pl
 function sampleCopy() {
   const dir = makeTempDir('construct-line-import-agent-');
   fs.cpSync(SAMPLE, dir, { recursive: true });
+  // Cockpit opens a project by its architecture.yml; with it, validate on the folder names files from the project root
+  // until the folder has its own (the verify baseline must still match them).
+  fs.writeFileSync(path.join(dir, 'architecture.yml'), 'version: 1\n');
   return dir;
 }
 
