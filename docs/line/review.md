@@ -81,3 +81,20 @@ Gap: these run on the mock; each real task repeats them on real files.
 8. (added in review) A Line project that keeps its code under `src/` works; before the fix every page there was refused.
 
 Gaps: does not check the prop is one the component declares; library pages are not editable here (feature pages only).
+
+## T2: base on a library item, promote, and save through the writer (done; you see it in Hours 4, 6 and 7)
+
+`test/line-ops.test.mjs` (10 tests) and one new test in `test/transactionalWriter.test.mjs`:
+1. "Base on" plans one new component that wraps the library one and passes its props through; planning writes nothing; saving lands it and `construct validate --profile line` stays clean.
+2. "Base on" works for a page, a workflow and a test fixture too.
+3. Every refusal (unknown item, unknown feature, bad name, name taken, sneaky `..` paths) is one sentence and leaves the project byte-identical.
+4. A save that adds a cross-feature import is refused with LINE-DIR, and none of its files land, not even the harmless ones.
+5. Promote fixes a real cross-feature import: the item moves to the library, the old file goes, both users are repointed, and validate is clean afterwards.
+6. Promote repoints `@/features/...` imports to `@/library/...`.
+7. Promote gives the same result through TypeScript's own rename when the project has a tsconfig.
+8. Promote refuses a name the library already has; a promote that would make the library depend on a feature is refused and nothing changes.
+9. Writing outside the project is impossible (`../`, absolute paths, links that lead outside, `.git`).
+10. (added in review) A save is refused only for problems it adds: a page that already has a problem can still get an unrelated edit, and a second new problem is refused with just that problem as the reason.
+11. The writer can now delete a file as part of a checked change (needed by promote), replayed only when the check passes.
+
+Gaps: an importer that reaches the item through another feature's index file is not repointed (validate keeps reporting it); without a tsconfig, import rewriting is text-based and could touch a matching string in a comment.
