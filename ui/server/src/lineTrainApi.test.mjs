@@ -42,7 +42,7 @@ test('train routes: review queue, draft, try, save, review and eval on a seeded 
 
   const d = await post('/draft', { request: 'Make StatusBadge in orders, based on Badge.', world: 'sample' });
   assert.equal(d.status, 200, d.body.sentence);
-  assert.equal(d.body.intentPhrase, 'Add a component to a feature');
+  assert.equal(d.body.intentPhrase, 'Add a component');
   assert.equal(d.body.filled.routes[0].steps[0].sentence, 'Make StatusBadge in orders, based on the library Badge.');
   const tried = await post('/try', { world: 'sample', slots: d.body.slots, route: d.body.routes[0] });
   assertTryResult(tried.body);

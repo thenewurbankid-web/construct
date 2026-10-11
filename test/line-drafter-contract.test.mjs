@@ -32,8 +32,9 @@ test('drafter contract: the mock draft passes the shape check; bad labels, route
   assert.throws(() => assertDraft({ ...d, routes: [d.routes[0], d.routes[0]] }, cat), /unique/);
   assert.throws(() => assertDraft({ ...d, recommended: 'nope' }, cat), /route id/);
   assert.throws(() => assertDraft({ ...d, routes: [{ ...d.routes[1], refusal: null }] }, cat), /says why/);
-  assert.throws(() => assertExpr({ fileExists: 'a', libraryHas: 'b' }), /exactly one op/);
-  assert.throws(() => assertExpr({ all: [{ teleport: 1 }] }), /one op/);
+  assert.throws(() => assertExpr({ fileExists: 'a', hasLibrary: 'b' }), /exactly one operator/);
+  assert.throws(() => assertExpr({ and: [{ teleport: 1 }] }), /"teleport" is not an operator/);
+  assert.throws(() => assertExpr({ basedOn: ['only one'] }), /"basedOn" takes two texts/);
 });
 
 test('drafter contract: a stored record may hold slots but never a project name', () => {
@@ -42,4 +43,16 @@ test('drafter contract: a stored record may hold slots but never a project name'
   assertNoIdentifiers(stored, ['orders', 'Badge', 'OrdersBadge']);
   assert.throws(() => assertNoIdentifiers(d, ['orders', 'Badge', 'OrdersBadge']), /project name "orders"/);
   assert.ok(bindings);
+});
+
+test('slots: plan records, drafter transitions and Train Line cases share one word splitter and one leak guard', async () => {
+  const { splitWords, projectWordIn } = await import('../packages/engine/line/slots.mjs');
+  const drafter = await import('../packages/engine/line/drafter/domainMap.mjs');
+  const train = await import('../packages/engine/line/train/slots.mjs');
+  assert.equal(drafter.splitWords, splitWords);
+  assert.equal(train.splitWords, splitWords);
+  assert.deepEqual(splitWords('OrderButton'), ['order', 'button']);
+  assert.equal(projectWordIn({ request: 'add a <library:L1> to <feature:F1>' }, ['orders', 'Badge']), null);
+  assert.equal(projectWordIn('{"text":"All Orders"}', ['orders']), 'orders');
+  assert.equal(projectWordIn('{"text":"reorders"}', ['orders']), null, 'whole words only');
 });

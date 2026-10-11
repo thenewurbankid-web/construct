@@ -49,7 +49,7 @@ test.describe.serial('Train Line', () => {
     await teach.getByRole('button', { name: 'Draft' }).click();
     const draft = page.getByTestId('train-draft');
     await expect(draft.getByTestId('train-draft-request')).toHaveText('Make StatusBadge in orders, based on Badge.');
-    await expect(draft.getByTestId('train-intent').locator('option:checked')).toHaveText('Add a component to a feature');
+    await expect(draft.getByTestId('train-intent').locator('option:checked')).toHaveText('Add a component');
     const route = draft.getByTestId('train-route').first();
     await expect(route).toContainText('Make StatusBadge in orders, based on the library Badge.');
     await expect(route).toContainText('Validate shows no new problems.');
@@ -96,7 +96,7 @@ test.describe.serial('Train Line', () => {
     await expect(family.getByRole('row', { name: /Make from the library/ })).toContainText('%');
     await expect(family.getByRole('row', { name: /All cases/ })).toContainText('1 of 2');
     await board.locator('summary', { hasText: 'By kind of request' }).click();
-    await expect(board.getByTestId('train-score-intent')).toContainText('Add a component to a feature');
+    await expect(board.getByTestId('train-score-intent')).toContainText('Add a component');
     const found = await runAxe(page, { include: '[data-testid="train-scoreboard"]' });
     expect(found.filter(isBlocking), format(found.filter(isBlocking))).toEqual([]);
   });

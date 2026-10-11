@@ -16,5 +16,5 @@ export function mockFacts({ ops = createMockLineOps(), plan = null, findingsNew 
   /** @type {Record<string, {bytes: number, hash: string}>} */
   const files = {};
   for (const [p, src] of Object.entries(ops.files()).sort(([a], [b]) => (a < b ? -1 : 1))) files[p] = { bytes: Buffer.byteLength(src), hash: crypto.createHash('sha256').update(src).digest('hex') };
-  return { files, library: pf.library, features: pf.features, findings: pf.findings, findingsNew, plan, structure: structureOf(project), truncated: { files: 0, findings: pf.truncatedFindings } };
+  return { files, library: pf.library, features: pf.features, findings: pf.findings, findingsNew, plan, structure: structureOf(project, (f) => ops.files()[f] ?? ''), truncated: { files: 0, findings: pf.truncatedFindings } };
 }

@@ -9,14 +9,22 @@
 // replaced by a typed slot ("<feature:F1>", "<item:I2 kind=components>", "<lib:L1 kind=components>", "<name:N1>",
 // "<word:W1>", "<code:C1>", "<hash:H1>", "<value:V1>"), and expressions are stored over the slots. The live plan keeps
 // the real names; only this file is delexicalized. A record that cannot be written never stops the plan.
+//
+// Why plan records stay apart from the drafter's transitions (<state>/drafter/transitions.jsonl, drafter/retrieval.mjs):
+// a plan record is written AFTER a step ran (its checks' outcomes, the approval, whether it repaired an earlier step, the
+// delta as item lines); a transition is written when a person PICKS a drafted route (the normalized request, its slot
+// shapes and intent, the route's slot-form steps, expressions and DELTA_OPS, the predicted hashes), before anything
+// runs. Neither has the other's fields, so one file would hold two record kinds. They share what is the same: the
+// structure hashes (structure.mjs), the word splitter and the leak guard (slots.mjs), and Construct's writer.
 import fs from 'node:fs';
 import path from 'node:path';
 import { assertPlanRecord } from './contract.mjs';
 import { writeLineState } from '../transactionalWriter.mjs';
 import { lineStateDir } from './workspace.mjs';
 import { buildFacts, factsHash } from './facts.mjs';
-import { structureOf, structureDelta } from './structure.mjs';
+import { structureOf, structureDelta, readerOf } from './structure.mjs';
 import { requestOf } from './planTools.mjs';
+import { splitWords, projectWordIn } from './slots.mjs';
 
 /** Words that are Line's own structure, never a domain term (and the words slots are made of). */
 const STRUCTURE_WORDS = new Set(['feature', 'features', 'item', 'items', 'library', 'lib', 'components', 'component', 'pages', 'page', 'workflows', 'workflow',
@@ -30,14 +38,14 @@ const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
  * @param {string} name
  * @returns {string[]}
  */
-export const wordsOf = (name) => String(name).replace(/([a-z0-9])([A-Z])/g, '$1 $2').split(/[^A-Za-z0-9]+/).map((w) => w.toLowerCase()).filter((w) => w.length >= 3 && !STRUCTURE_WORDS.has(w) && !/^\d+$/.test(w));
+export const wordsOf = (name) => splitWords(name).filter((w) => w.length >= 3 && !STRUCTURE_WORDS.has(w) && !/^\d+$/.test(w));
 
 /**
  * A slotter for one record: knows every project name from the facts (and the request's own values), and hands out
  * slots in order of first use.
  * @param {any} project readLineProject's view (before the step)
  * @param {any[]} [extraProjects] other views to learn names from (after the step)
- * @returns {{text: Function, args: Function, expr: Function, learnArgs: Function, slot: Function, slots: () => Record<string, string>}}
+ * @returns {{text: Function, args: Function, expr: Function, learnArgs: Function, names: () => string[], slot: Function, slots: () => Record<string, string>}}
  */
 export function createSlotter(project, extraProjects = []) {
   /** name -> {type, attrs} */
@@ -124,7 +132,9 @@ export function createSlotter(project, extraProjects = []) {
   }
   /** Learn the request's own new names before slotting anything else, so they never leak through free text. */
   function learnArgs(a) { for (const [k, v] of Object.entries(a ?? {})) if (typeof v === 'string' && !LOGIC_ARGS.has(k) && k !== 'code' && !/hash$/i.test(k) && k !== 'value' && !known.has(v) && /[A-Za-z]/.test(v) && !v.includes('/')) learn(v, 'name'); }
-  return { text, args, expr, learnArgs, slot: (type, name, attrs) => (type === 'feature' || type === 'item' || type === 'lib' ? (known.has(name) ? nameSlot(name) : slotFor(type, name, attrs)) : slotFor(type, name, attrs)), slots: () => ({ ...slots }) };
+  /** Every name the slotter knows (feature, item and library names and ids, and the request's new names). */
+  const namesKnown = () => [...known.keys()].filter((n) => known.get(n).type !== 'path');
+  return { text, args, expr, learnArgs, names: namesKnown, slot: (type, name, attrs) => (type === 'feature' || type === 'item' || type === 'lib' ? (known.has(name) ? nameSlot(name) : slotFor(type, name, attrs)) : slotFor(type, name, attrs)), slots: () => ({ ...slots }) };
 }
 
 /** The structure hashes with feature names slotted. */
@@ -149,7 +159,7 @@ export function createPlanRecorder(root, { ops, now = () => new Date(), write } 
     snapshot() {
       const facts = buildFacts(root, { ops });
       const project = facts.project();
-      return { facts, project, hash: factsHash(facts), structure: structureOf(project) };
+      return { facts, project, hash: factsHash(facts), structure: structureOf(project, readerOf(root)) };
     },
     /**
      * Append the record of one finished step.
@@ -175,7 +185,7 @@ export function createPlanRecorder(root, { ops, now = () => new Date(), write } 
           intent: slotter.text(intent ?? plan.request ?? plan.goal ?? '', { free: true }),
           facts: before.hash,
           before: slottedHashes(before.structure, slotter),
-          after: slottedHashes(structureOf(after), slotter),
+          after: slottedHashes(structureOf(after, readerOf(root)), slotter),
           delta: structureDelta(before.project, after, (type, name, attrs) => slotter.slot(type, name, attrs)),
           steps: upto.map((s) => ({ tool: s.tool, args: slotter.args(requestOf(s.args)) })),
           step: upto.findIndex((s) => s.id === step.id) + 1,
@@ -187,6 +197,9 @@ export function createPlanRecorder(root, { ops, now = () => new Date(), write } 
         };
         rec.slots = slotter.slots();
         assertPlanRecord(rec);
+        // The same guard every stored record runs (slots.mjs): a name that slipped through keeps the record out.
+        const leak = projectWordIn(rec, slotter.names().filter((n) => !n.includes('/')));
+        if (leak) throw new Error(`it would hold the project name "${leak}"`);
         put(`${JSON.stringify(rec)}\n`);
         self.problem = null;
         return rec;

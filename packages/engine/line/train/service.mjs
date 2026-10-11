@@ -3,14 +3,18 @@
 // them and run eval; only the owner agrees, disagrees or saves an agreed case.
 import crypto from 'node:crypto';
 import path from 'node:path';
-import { INTENTS, INTENT_IDS, TRAIN_TOOLS, TOOL_FAMILY_LABEL, assertDelexicalized, assertTrainCase } from './contract.mjs';
+import { TRAIN_INTENTS, INTENT_IDS, TRAIN_TOOLS, TOOL_FAMILY_LABEL, assertDelexicalized, assertTrainCase, slotNamesIn } from './contract.mjs';
+import { intentPhrase } from '../drafter/contract.mjs';
+import { boundRoute } from '../drafter/index.mjs';
+import { hasSlots } from '../drafter/domainMap.mjs';
+import { stepsMatch } from '../drafter/eval.mjs';
 import { LineOpError } from '../contract.mjs';
 import { WORLD_IDS, isHeldOut, worldKey, worldOf, worldWords, worldSpec } from './corpus.mjs';
 import { factsHash } from './facts.mjs';
 import { worldFacts, inSample } from './generate.mjs';
-import { bindSlots, fill, buildDomainMap, normalize, refOf, refTable, splitWords } from './slots.mjs';
-import { describe } from './exprMirror.mjs';
-import { draft as mirrorDraft, intentPhrase } from './drafterMirror.mjs';
+import { bindSlots, fill, refOf, refTable, splitWords } from './slots.mjs';
+import { worldMap, normalizeRequest, draftInWorld } from './draft.mjs';
+import { describe } from '../expr.mjs';
 import { tryRoute, wordsOf } from './verify.mjs';
 import { createTrainStore } from './store.mjs';
 
@@ -84,7 +88,9 @@ export function createTrainService(o = {}) {
   const store = createTrainStore(o);
   const now = o.now ?? (() => new Date().toISOString());
 
-  const mapOf = (world) => buildDomainMap(worldFacts(world), { words: wordsOf(world), synonyms: store.synonyms(worldKey(world)) });
+  const synonymsOf = (world) => store.synonyms(worldKey(world));
+  /** Normalize a text on a world with the drafter's domain map, adding its slots to `slots`. */
+  const norm = (world, text, slots) => normalizeRequest(world, text, { synonyms: synonymsOf(world), slots });
 
   /** A stored case with its names filled back. */
   function view(c) {
@@ -108,7 +114,6 @@ export function createTrainService(o = {}) {
     if (!TRAIN_TOOLS.includes(tool)) throw new LineOpError('Pick one of the five Line tools Train Line offers.', 'UNKNOWN_TOOL');
     const facts = worldFacts(world);
     const table = refTable(facts, wordsOf(world));
-    const map = mapOf(world);
     const count = (t) => Object.values(slots).filter((s) => s.type === t).length;
     const LET = { feature: 'F', library: 'L', item: 'I', name: 'N', text: 'T', number: 'V', fragment: 'G', code: 'C', finding: 'P', fix: 'X' };
     const add = (type, def) => {
@@ -120,14 +125,13 @@ export function createTrainService(o = {}) {
     };
     const ref = (type, value) => { const r = refOf(table, type, value); if (!r) throw new LineOpError(`"${value}" is not in this world; pick it from the list.`, 'UNKNOWN_ITEM'); return r; };
     const nameSlot = (value) => {
-      const n = normalize(String(value), map);
-      const m = n.request.match(/^<name:([A-Z]\d+)>$/);
-      if (m) {
-        const def = { ...n.slots[m[1]] };
-        if (def.of) def.of = add(n.slots[def.of].type, { ...n.slots[def.of] });
-        return add('name', def);
-      }
-      return add('name', { role: splitWords(value).join(' ') });
+      const m = norm(world, String(value), slots).request.match(/^<name:([A-Z]\d+)>$/);
+      return m ? m[1] : add('name', { role: splitWords(value).join(' ') });
+    };
+    /** A typed text as a text slot (a feature's name inside it becomes `of`). */
+    const textSlot = (value) => {
+      const m = norm(world, `"${value}"`, slots).request.match(/^"<text:([A-Z]\d+)>"$/);
+      return m ? m[1] : add('text', { literal: String(value) });
     };
     const a = /** @type {Record<string, any>} */ (raw ?? {});
     /** @type {Record<string, unknown>} */
@@ -153,12 +157,11 @@ export function createTrainService(o = {}) {
       if (tool === 'line.setPageProp') {
         Object.assign(args, { nodeId: String(a.nodeId ?? 'n0'), prop: String(a.prop ?? 'title'), kind: String(a.kind ?? 'string') });
         if (args.kind === 'number') { const V = add('number', { literal: Number(a.value) }); args.value = `<number:${V}>`; expect = [{ fileContains: [args.file, `${args.prop}={<number:${V}>}`] }]; }
-        else { const t = normalize(`"${a.value}"`, map); const m = t.request.match(/<text:([A-Z]\d+)>/); const def = { ...t.slots[m[1]] }; if (def.of) def.of = add('feature', { ...t.slots[def.of] }); const T = add('text', def); args.value = `<text:${T}>`; expect = [{ fileContains: [args.file, `${args.prop}="<text:${T}>"`] }]; }
+        else { const T = textSlot(a.value); args.value = `<text:${T}>`; expect = [{ fileContains: [args.file, `${args.prop}="<text:${T}>"`] }]; }
       } else {
         const list = facts.fragments?.[item.file] ?? [];
         const gi = Math.max(0, list.findIndex((g) => g.id === a.fragmentId));
-        const t = normalize(`"${a.said ?? a.code ?? ''}"`, map); const m = t.request.match(/<text:([A-Z]\d+)>/); const def = { ...t.slots[m[1]] }; if (def.of) def.of = add('feature', { ...t.slots[def.of] });
-        const T = add('text', def);
+        const T = textSlot(a.said ?? a.code ?? '');
         Object.assign(args, { fragmentId: `<fragment:${add('fragment', { of: I, ref: `fragment#${gi}` })}>`, code: `<code:${add('code', { of: T })}>`, contentHash: `<hash:${I}>` });
         expect = [{ fileContains: [args.file, `<text:${T}>`] }];
       }
@@ -199,7 +202,7 @@ export function createTrainService(o = {}) {
       id: input.id ?? `tc-${crypto.createHash('sha256').update(JSON.stringify([worldKey(world), input.request, input.slots, now()])).digest('hex').slice(0, 12)}`,
       intent: input.intent, request: input.request, slots: input.slots, world,
       split: world.kind === 'corpus' && isHeldOut(world.id) ? 'heldout' : 'train',
-      factsHash: factsHash(facts), gold: { routes: input.routes, preferred: input.preferred },
+      factsHash: factsHash(facts), gold: { routes: (input.routes ?? []).map(({ via: _v, confidence: _c, status: _s, ...r }) => r), preferred: input.preferred },
       labelledBy: by, status: by === 'owner' ? 'agreed' : 'draft', notes: input.note ? [{ by, text: String(input.note), at: now() }] : [],
       sample: false, verified: { routes: {} }, createdAt: now(),
     };
@@ -241,8 +244,8 @@ export function createTrainService(o = {}) {
         findings: facts.findings.map((f, i) => ({ ref: `finding#${i}`, key: f.key, sentence: f.sentence, fixes: f.fixes.filter((x) => x.step).map((x) => ({ id: x.id, sentence: x.sentence })) })),
         fragments: facts.fragments,
         tools: TRAIN_TOOLS.map((name) => ({ name, label: TOOL_FAMILY_LABEL[name] })),
-        intents: INTENTS.map((i) => ({ id: i.id, phrase: i.phrase })),
-        map: mapOf(world).entries.map((e) => ({ ref: e.ref, type: e.type, name: e.name, words: e.words, synonyms: e.synonyms })),
+        intents: TRAIN_INTENTS.map((i) => ({ id: i.id, phrase: i.phrase })),
+        map: mapEntries(world, worldMap(world, synonymsOf(world)), t),
         suggestions: suggestions(world),
       };
     },
@@ -250,7 +253,7 @@ export function createTrainService(o = {}) {
     draft({ request, world: key = 'sample' }) {
       if (typeof request !== 'string' || request.trim().length < 3) throw new LineOpError('Type what you want Line to do, in a sentence.', 'NO_REQUEST');
       const world = worldOf(key);
-      const d = mirrorDraft(request, { map: mapOf(world), cases: store.all(), facts: worldFacts(world), words: wordsOf(world) });
+      const d = draftInWorld(world, request, { synonyms: synonymsOf(world) }).train;
       const facts = worldFacts(world);
       const b = /** @type {any} */ (bindSlots(d.slots, facts, wordsOf(world)));
       const routes = b.ok ? d.routes.map((r) => ({ ...routeView(r, b.bound, facts, d.recommended), via: r.via, confidence: r.confidence })) : [];
@@ -279,7 +282,7 @@ export function createTrainService(o = {}) {
     save(input) {
       if (!INTENT_IDS.includes(input?.intent)) throw new LineOpError('Pick what kind of request this is.', 'NO_INTENT');
       const world = worldOf(input.world ?? 'sample');
-      return { case: storeCase({ ...input, world, slots: normalizeLiterals(input.slots ?? {}, mapOf(world)) }, 'owner') };
+      return { case: storeCase({ ...input, world, slots: normalizeLiterals(input.slots ?? {}, (text, slots) => norm(world, text, slots)) }, 'owner') };
     },
     /**
      * Claude proposes a case: a plain-English request over a world and its routes as tool calls with real values.
@@ -289,13 +292,13 @@ export function createTrainService(o = {}) {
       const world = worldOf(key);
       if (!INTENT_IDS.includes(intent)) throw new LineOpError(`Pick an intent of the catalog: ${INTENT_IDS.join(', ')}.`, 'NO_INTENT');
       if (!Array.isArray(routes) || !routes.length) throw new LineOpError('Give at least one route (its steps as Line tool calls).', 'NO_ROUTES');
-      const n = normalize(request, mapOf(world));
-      const slots = { ...n.slots };
+      const n = norm(world, request, {});
+      const slots = n.slots;
       const built = routes.map((r, i) => {
         const steps = r.steps ?? [];
         if (!steps.length) throw new LineOpError('Each route needs at least one step.', 'NO_STEPS');
         const parts = steps.map((s) => routeFromRaw(world, slots, s.tool, s.args));
-        const label = r.label ? mergeInto(normalize(String(r.label), mapOf(world)), slots) : parts.map((p) => p.label).join(', then ');
+        const label = r.label ? norm(world, String(r.label), slots).request : parts.map((p) => p.label).join(', then ');
         return { ...parts[0], id: `r${i + 1}`, label, steps: parts.flatMap((p) => p.steps), expect: parts.flatMap((p) => p.expect).filter((x, j, all) => all.findIndex((y) => JSON.stringify(y) === JSON.stringify(x)) === j), cost: steps.length, scope: { layers: [...new Set(parts.flatMap((p) => p.scope.layers))], features: [...new Set(parts.flatMap((p) => p.scope.features))], library: parts.some((p) => p.scope.library) }, risk: parts.some((p) => p.risk === 'medium') ? 'medium' : 'low' };
       });
       return { case: storeCase({ world, request: n.request, intent, slots, routes: built, preferred: built[Math.min(Math.max(0, Number(preferred) || 0), built.length - 1)].id, note }, 'claude') };
@@ -337,34 +340,26 @@ export function createTrainService(o = {}) {
 const textsOf = (bound) => Object.fromEntries(Object.entries(bound).map(([k, v]) => [k, String(v.text)]));
 
 /** A name or text the owner typed is stored as slots too (a library item's or feature's name inside it becomes `of`). */
-function normalizeLiterals(slots, map) {
+function normalizeLiterals(slots, norm) {
   const out = JSON.parse(JSON.stringify(slots));
   for (const [k, s] of Object.entries(slots)) {
     if (typeof s.literal !== 'string' || !['name', 'text'].includes(s.type)) continue;
-    const n = normalize(s.type === 'text' ? `"${s.literal}"` : s.literal, map);
-    const m = n.request.match(/<(?:name|text):([A-Z]\d+)>/);
-    if (!m || n.slots[m[1]].type !== s.type) continue;
-    const def = { ...n.slots[m[1]] };
-    if (def.of) def.of = `${mergeInto({ request: `<x:${def.of}>`, slots: { [def.of]: n.slots[def.of] } }, out).match(/<x:([A-Z]\d+)>/)[1]}`;
-    out[k] = def;
+    const tmp = JSON.parse(JSON.stringify(out));
+    const n = norm(s.type === 'text' ? `"${s.literal}"` : s.literal, tmp);
+    const m = n.request.match(s.type === 'text' ? /^"<text:([A-Z]\d+)>"$/ : /^<name:([A-Z]\d+)>$/);
+    if (!m || m[1] === k) continue;
+    for (const [x, def] of Object.entries(tmp)) if (!(x in out) && x !== m[1]) out[x] = def;
+    out[k] = tmp[m[1]];
   }
   return out;
 }
 
-/** A normalized text's slots merged into `slots` (same definition = same slot); the text renamed to match. */
-function mergeInto(n, slots) {
-  const LET = { feature: 'F', library: 'L', item: 'I', name: 'N', text: 'T', number: 'V', fragment: 'G', code: 'C', finding: 'P', fix: 'X', missing: 'M' };
-  const names = {};
-  const order = Object.keys(n.slots).sort((a, b) => Number(Boolean(n.slots[a].of)) - Number(Boolean(n.slots[b].of)));
-  for (const k of order) {
-    const def = { ...n.slots[k], ...(n.slots[k].of ? { of: names[n.slots[k].of] ?? n.slots[k].of } : {}) };
-    const hit = Object.entries(slots).find(([, x]) => JSON.stringify(x) === JSON.stringify(def));
-    if (hit) { names[k] = hit[0]; continue; }
-    let i = 1; while (slots[`${LET[def.type]}${i}`]) i++;
-    names[k] = `${LET[def.type]}${i}`;
-    slots[names[k]] = def;
-  }
-  return n.request.replace(/<([a-z]+):([A-Z]\d+)>/g, (m, form, k) => `<${form}:${names[k] ?? k}>`);
+/** The drafter's domain map of a world as the screen shows it: what each name is, its words and its synonyms. */
+function mapEntries(world, map, table) {
+  return map.entries.filter((e) => ['feature', 'item', 'library'].includes(e.type)).map((e) => {
+    const ref = refOf(table, e.type, e.type === 'feature' ? e.value.name : e.value.id);
+    return ref ? { ref, type: e.type, name: e.value.name, words: e.forms, synonyms: Object.entries(map.synonyms).filter(([, k]) => k === e.key).map(([w]) => w) } : null;
+  }).filter(Boolean);
 }
 
 /** A few requests to start from (the sample's own names, filled). */
@@ -383,33 +378,51 @@ function suggestions(world) {
 }
 
 // ------------------------------------------------------------------------------------------------- eval
-const sigOf = (r, bound) => (r.outcome === 'question' ? `ask:${r.question?.about}` : JSON.stringify(r.steps.map((s) => { const a = fill(s.args, bound, { asArg: true }); delete a.contentHash; return [s.tool, a]; })));
 const familyOf = (c) => c.gold.routes.find((r) => r.id === c.gold.preferred)?.steps[0]?.tool ?? 'none';
 const familyKey = (c) => (c.gold.routes.find((r) => r.id === c.gold.preferred)?.outcome === 'change' ? familyOf(c) : 'none');
 
 /**
- * Draft every held-out case (retrieval from the train split only) and score it against its gold.
- * @param {any[]} cases @param {string} at
+ * Draft one held-out case with the real System 1 drafter (in a scratch copy of its world) and score it against its gold.
+ * A gold step matches a drafted one when the tool and every argument agree (bound to the world's names); a name the
+ * request does not give (the drafter makes one up) and a content hash match any value. A refusal is found when the
+ * drafter shows that route refused and recommends nothing; a question when the drafter asks.
+ * @param {any} c A stored case. @param {{records?: any[]}} [o]
+ * @returns {any|null} null when the case no longer binds in its world.
+ */
+export function evaluateCase(c, o = {}) {
+  const facts = worldFacts(c.world);
+  const gb = /** @type {any} */ (bindSlots(c.slots, facts, wordsOf(c.world)));
+  if (!gb.ok) return null;
+  const { d } = draftInWorld(c.world, fill(c.request, gb.bound), { records: o.records });
+  const said = new Set(slotNamesIn(c.request));
+  const free = (v) => { const m = typeof v === 'string' ? /^<name:([A-Z][A-Za-z]*\d+)>$/.exec(v) : null; return Boolean(m) && !said.has(/** @type {any} */ (m)[1]); };
+  const goldSteps = (r) => r.steps.map((s) => ({ tool: s.tool, args: Object.fromEntries(Object.entries(s.args).map(([k, v]) => [k, k === 'contentHash' || free(v) ? '*' : fill(v, gb.bound, { asArg: true })])) }));
+  const drafted = d.routes.map((r) => ({ r, steps: /** @type {any} */ (boundRoute(d, r.id)).steps })).filter((x) => !hasSlots(x.steps));
+  const asked = d.defer.to === 'ask';
+  const hits = (g) => (g.outcome === 'question' ? asked : drafted.some((x) => stepsMatch(goldSteps(g), x.steps)));
+  const isGold = (x) => c.gold.routes.some((g) => g.outcome !== 'question' && stepsMatch(goldSteps(g), x.steps));
+  const shown = drafted.length + (asked ? 1 : 0);
+  const right = drafted.filter(isGold).length + (asked && c.gold.routes.some((g) => g.outcome === 'question') ? 1 : 0);
+  const gp = c.gold.routes.find((r) => r.id === c.gold.preferred);
+  const rec = drafted.find((x) => x.r.id === d.recommended) ?? null;
+  const preferred = gp.outcome === 'question' ? asked
+    : gp.outcome === 'refusal' ? d.recommended === null && drafted.some((x) => x.r.status === 'refused' && stepsMatch(goldSteps(gp), x.steps))
+      : Boolean(rec) && stepsMatch(goldSteps(gp), rec.steps);
+  return {
+    id: c.id, intent: c.intent, family: familyKey(c), drafted: d.labels.intent.id, intentOk: d.labels.intent.id === c.intent,
+    recall: c.gold.routes.filter(hits).length / c.gold.routes.length, precision: shown ? right / shown : 0, preferred: preferred ? 1 : 0,
+    noRepair: gp.outcome === 'change' ? (rec !== null && rec.r.status === 'ok' && isGold(rec) ? 1 : 0) : (preferred ? 1 : 0),
+    via: rec?.r.via ?? (asked ? 'ask' : 'none'),
+  };
+}
+
+/**
+ * Draft every held-out case with the real drafter and score it against its gold (nothing is written).
+ * @param {any[]} cases @param {string} at @param {{records?: any[]}} [o]
  * @returns {{at: string, cases: any[]}}
  */
-export function evaluateAll(cases, at) {
-  const train = cases.filter((c) => c.split === 'train');
-  const per = [];
-  for (const c of cases.filter((x) => x.split === 'heldout' && x.status !== 'disputed')) {
-    const facts = worldFacts(c.world);
-    const words = wordsOf(c.world);
-    const gb = bindSlots(c.slots, facts, words);
-    if (!gb.ok) continue;
-    const request = fill(c.request, gb.bound);
-    const d = mirrorDraft(request, { map: buildDomainMap(facts, { words }), cases: train, facts, words });
-    const db = bindSlots(d.slots, facts, words);
-    const gold = new Map(c.gold.routes.map((r) => [sigOf(r, gb.bound), r.id]));
-    const drafted = db.ok ? d.routes.map((r) => [sigOf(r, db.bound), r.id]) : [];
-    const hit = drafted.filter(([s]) => gold.has(s)).length;
-    const goldPreferred = sigOf(c.gold.routes.find((r) => r.id === c.gold.preferred), gb.bound);
-    const rec = drafted.find(([, id]) => id === d.recommended)?.[0] ?? null;
-    per.push({ id: c.id, intent: c.intent, family: familyKey(c), recall: hit / gold.size, precision: drafted.length ? hit / drafted.length : 0, preferred: rec === goldPreferred ? 1 : 0, noRepair: rec !== null && gold.has(rec) ? 1 : 0, via: d.via });
-  }
+export function evaluateAll(cases, at, o = {}) {
+  const per = cases.filter((x) => x.split === 'heldout' && x.status !== 'disputed').map((c) => evaluateCase(c, o)).filter(Boolean);
   return { at, cases: per };
 }
 
@@ -440,7 +453,7 @@ export function scoreboard(cases, last) {
   }
   /** @type {Record<string, any>} */
   const byIntent = {};
-  for (const i of INTENTS) {
+  for (const i of TRAIN_INTENTS) {
     const cs = cases.filter((c) => c.intent === i.id);
     if (cs.length) byIntent[i.id] = { ...row(cs, evals.filter((e) => e.intent === i.id)), label: i.phrase };
   }

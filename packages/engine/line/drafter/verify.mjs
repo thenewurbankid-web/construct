@@ -7,9 +7,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { runChange, REAL_PLAN_OPS } from '../planTools.mjs';
-import { bind, hasSlots, evaluate } from './expr.mjs';
-import { factsSnapshot } from './facts.mjs';
-import { structureOf, hashesOf, applyDelta } from './structure.mjs';
+import { readLineProject } from '../model.mjs';
+import { evaluate } from '../expr.mjs';
+import { buildFacts, addedFindings } from '../facts.mjs';
+import { structureGraph, readerOf, hashesOf, applyDelta } from '../structure.mjs';
+import { bind, hasSlots } from './domainMap.mjs';
 
 /**
  * A scratch copy of the project (no node_modules, no .git, no Line plans). The caller removes it.
@@ -30,7 +32,7 @@ function featureOf(route, bindings) {
 
 /**
  * Predicted structure hashes of a route (its bound delta applied in memory), or null when the delta is unknown.
- * @param {import('./structure.mjs').SGraph} graph
+ * @param {import('../structure.mjs').SGraph} graph
  * @param {import('./contract.mjs').Route} route
  * @param {Record<string, any>} bindings
  * @returns {{feature: string|null, project: string}|null}
@@ -53,8 +55,10 @@ export function predictHashes(graph, route, bindings) {
 export function verifyRoutes(root, routes, bindings, o = {}) {
   const ops = o.ops ?? REAL_PLAN_OPS;
   const max = o.max ?? 8;
-  const graph = structureOf(root);
-  const before = factsSnapshot(root);
+  const graph = structureGraph(readLineProject(root), readerOf(root));
+  const before = buildFacts(root);
+  /** The sentences of what does not hold (one expression list, bound), [] when every one holds. */
+  const failures = (facts, exprs) => exprs.flatMap((e) => evaluate(facts, e).failed.map((f) => f.sentence));
   let done = 0;
   return routes.map((r) => {
     const predicted = predictHashes(graph, r, bindings);
@@ -62,23 +66,25 @@ export function verifyRoutes(root, routes, bindings, o = {}) {
     if (r.status === 'needs-model' || hasSlots(steps)) return { ...r, predicted, status: 'needs-model' };
     if (done >= max) return { ...r, predicted };
     done++;
-    const pre = bind(r.pre, bindings).flatMap((e) => evaluate(before, e));
+    const pre = failures(before, bind(r.pre, bindings));
     if (pre.length) return { ...r, predicted, status: 'refused', refusal: { sentence: pre[0], fix: null } };
     const dir = scratchCopy(root);
     try {
       const files = new Set();
       for (const s of steps) {
         let res;
-        try { res = runChange(dir, s.tool, s.args, ops); } catch (e) { return { ...r, predicted, status: 'refused', refusal: { sentence: String(/** @type {any} */ (e)?.message ?? e), fix: null } }; }
+        try { res = runChange(dir, s.tool, s.args, ops); } catch (e) { return { ...r, predicted, status: 'refused', refusal: { sentence: String(/** @type {any} */ (e)?.message ?? e), fix: null, code: /** @type {any} */ (e)?.code ?? null, rule: null } }; }
         if (!res.apply.ok) {
           const f = res.options.find((x) => x.id === 'fix' && x.step) ?? res.options.find((x) => x.id === 'fix') ?? null;
-          return { ...r, predicted, status: 'refused', refusal: { sentence: res.apply.sentence, fix: f ? { id: f.fixId ?? 'fix', sentence: f.sentence, step: f.step ?? null } : null } };
+          const first = res.apply.findings.find((x) => x.severity === 'error') ?? res.apply.findings[0];
+          return { ...r, predicted, status: 'refused', refusal: { sentence: res.apply.sentence, fix: f ? { id: f.fixId ?? 'fix', sentence: f.sentence, step: f.step ?? null } : null, code: res.apply.code ?? null, rule: first?.rule ?? null } };
         }
         for (const x of res.apply.files) files.add(x);
       }
-      const after = factsSnapshot(dir, before);
-      const failed = bind(r.expect, bindings).flatMap((e) => evaluate(after, e));
-      const h = hashesOf(structureOf(dir), featureOf(r, bindings));
+      const project = readLineProject(dir);
+      const after = buildFacts(dir, { project });
+      const failed = failures(buildFacts(dir, { project, findingsNew: addedFindings(before.findings, after.findings) }), bind(r.expect, bindings));
+      const h = hashesOf(structureGraph(project, readerOf(dir)), featureOf(r, bindings));
       const actual = { feature: h.feature, project: h.project };
       const shapeOk = !predicted || (predicted.feature === actual.feature && predicted.project === actual.project);
       const status = failed.length ? 'failed' : shapeOk ? 'ok' : 'wrong-shape';

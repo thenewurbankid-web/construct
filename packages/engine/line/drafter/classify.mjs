@@ -65,7 +65,10 @@ export function classify(normalized, slots, catalog) {
 
   // Verb: the first verb word wins; "use <item of one feature> in <another feature>" is an add.
   let verb = null; let verbConf = 0;
-  for (const w of words) { const v = VERB_WORDS.find(([, re]) => re.test(w)); if (v) { verb = v[0]; verbConf = 0.5; break; } }
+  let verbWord = '';
+  for (const w of words) { const v = VERB_WORDS.find(([, re]) => re.test(w)); if (v) { verb = v[0]; verbConf = 0.5; verbWord = w; break; } }
+  // "make <a new name> ..." creates something: an add, not an update.
+  if (verb === 'update' && verbWord === 'make' && has('N')) verb = 'add';
   if (words.includes('rename')) verb = 'rename';
   if (!verb && (has('V') || has('K'))) { verb = 'update'; verbConf = 0.3; }
   if ((verb === 'move' || verb === 'add') && words.includes('library') && items.length && !features.length) verb = 'promote';

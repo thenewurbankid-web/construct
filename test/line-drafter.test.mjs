@@ -11,15 +11,18 @@ import { LINE_PLAN_TOOLS } from '../packages/engine/line/contract.mjs';
 import { applyChange, planBaseOn } from '../packages/engine/line/ops.mjs';
 import { buildIntentCatalog, assertDraft, assertNoIdentifiers, OBJECTS } from '../packages/engine/line/drafter/contract.mjs';
 import { draft, boundRoute, toRecord, appendRecord, readRecords, addSynonym } from '../packages/engine/line/drafter/index.mjs';
-import { factsSummary } from '../packages/engine/line/drafter/facts.mjs';
+import { factsSummary } from '../packages/engine/line/facts.mjs';
+import { readLineProject } from '../packages/engine/line/model.mjs';
 import { buildDomainMap, normalize, FUNCTION_WORDS, splitWords } from '../packages/engine/line/drafter/domainMap.mjs';
-import { structureOf, hashesOf } from '../packages/engine/line/drafter/structure.mjs';
+import { structureGraph, readerOf, hashesOf } from '../packages/engine/line/structure.mjs';
 import { verifyRoutes } from '../packages/engine/line/drafter/verify.mjs';
 import { LEXICON, assertLexicon, suggestFromLexicon } from '../packages/engine/line/drafter/lexicon.mjs';
 import { generateGrammar, GRAMMAR_FILES } from '../packages/engine/line/drafter/grammar.mjs';
 
 const SAMPLE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../examples/line-sample');
 const CATALOG = buildIntentCatalog(LINE_PLAN_TOOLS.map((t) => t.name));
+/** The structure graph of a project on disk. */
+const structureOf = (root) => structureGraph(readLineProject(root), readerOf(root));
 const copy = () => { const d = makeTempDir('line-drafter-'); fs.cpSync(SAMPLE, d, { recursive: true }); return d; };
 /** Every name the project's facts hold (features, items, library items, props), and their words. */
 const projectNames = (root) => {

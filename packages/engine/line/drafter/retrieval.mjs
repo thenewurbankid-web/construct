@@ -1,8 +1,10 @@
 // Training records and nearest-shape retrieval. A record is one TRANSITION, delexicalized: the normalized request,
 // slot shapes, intent, the structure hashes before, the route's slot-form steps, expressions and delta, the hashes
 // after, and whether a person approved it. Deltas (not whole-project hashes, which rarely repeat) are what a future
-// model learns from. Records live inside the project (<state>/drafter/transitions.jsonl, MIRROR of the expression
-// agent's "training records as JSONL under line/"; align on merge) and are written only through Construct's writer.
+// model learns from. Records live inside the project (<state>/drafter/transitions.jsonl) and are written only through
+// Construct's writer. They stay apart from the plan records (<state>/records/plans.jsonl, ../records.mjs): a plan record
+// is one finished, approved plan step with its checks' outcomes; a transition is one drafted route a person picked,
+// with the request and its slot shapes. Both use the same structure hashes (../structure.mjs).
 import fs from 'node:fs';
 import path from 'node:path';
 import { createTransaction } from '../../transactionalWriter.mjs';

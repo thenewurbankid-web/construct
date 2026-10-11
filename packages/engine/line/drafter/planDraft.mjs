@@ -5,7 +5,7 @@
 // answered "Did you mean ...?" one synonym) in the project's Line state, through Construct's writer.
 import { readLineProject } from '../model.mjs';
 import { draft as staticDraft, boundRoute } from './index.mjs';
-import { factsSummary } from './facts.mjs';
+import { factsSummary } from '../facts.mjs';
 import { addSynonym } from './domainMap.mjs';
 import { toRecord, appendRecord } from './retrieval.mjs';
 

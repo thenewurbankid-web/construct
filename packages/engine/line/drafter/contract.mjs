@@ -14,6 +14,8 @@
 //
 // The drafter only drafts. Line's writer and checks decide what lands, and a person approves every write step.
 // Stored records hold slots, kinds, roles, layers, tools, expressions, deltas and hashes: never a project's names.
+import { exprProblem } from '../contract.mjs';
+import { projectWordIn } from '../slots.mjs';
 
 /** Verbs of the intent catalog (owner list, plus fix for a finding's typed fix). */
 export const VERBS = Object.freeze(['add', 'update', 'remove', 'rename', 'move', 'promote', 'base-on', 'wire', 'split', 'merge', 'fix']);
@@ -44,7 +46,7 @@ export const OBJECTS = Object.freeze({
 export const LAYERS = Object.freeze(['ui', 'workflow', 'data', 'api', 'library']);
 /** Line kinds per layer (the library layer holds every kind; api has none yet). */
 export const LAYER_KINDS = Object.freeze({ ui: ['pages', 'components'], workflow: ['workflows'], data: ['fixtures'], api: [], library: ['components', 'pages', 'workflows', 'fixtures'] });
-export const KIND_LAYER = Object.freeze({ pages: 'ui', components: 'ui', workflows: 'workflow', fixtures: 'data' });
+export { KIND_LAYER } from '../structure.mjs';
 export const SCOPES = Object.freeze(['feature', 'library', 'cross-feature']);
 export const VIA = Object.freeze(['template', 'retrieval', 'model']);
 export const ROUTE_STATUS = Object.freeze(['ok', 'refused', 'wrong-shape', 'failed', 'needs-model', 'unverified']);
@@ -108,35 +110,83 @@ export function buildIntentCatalog(toolNames) {
   return out;
 }
 
-// ------------------------------------------------------------------------------------------------ expression mirror
-// MIRROR of the expression contract (built in parallel by another agent: `evaluate(facts, expr)` -> failed
-// sentences, a facts snapshot {files, library, features, findings, findingsNew, plan}). Replace on merge: keep the
-// op names below as aliases or map them. The ops are JSON objects with exactly one key.
-export const EXPR_OPS = Object.freeze({
-  all: 'every sub-expression holds ({"all": [e, ...]})',
-  any: 'at least one sub-expression holds',
-  not: 'the sub-expression does not hold',
-  fileExists: 'a root-relative file exists',
-  fileContains: '{path, text}: the file contains the text',
-  itemExists: '{feature, kind, name}: the feature has that item',
-  itemBasedOn: '{feature, kind, name, libraryId}: the item\'s base link resolves to that library item',
-  libraryHas: 'the library has that item id',
-  propIs: '{file, nodeId, prop, value}: one part of a page has that prop value',
-  findingGone: 'no finding with that key (rule|file|line) or that rule on that file',
-  noNewFindings: 'true: the change added no finding',
+/** How each verb of the catalog reads at the start of a phrase. */
+const VERB_PHRASE = Object.freeze({ add: 'Add', update: 'Change', remove: 'Remove', rename: 'Rename', move: 'Move', promote: 'Move into the library', 'base-on': 'Base on the library', wire: 'Wire up', split: 'Split', merge: 'Merge', fix: 'Fix' });
+/** How each structural object of the catalog reads. */
+const OBJECT_PHRASE = Object.freeze({
+  variable: 'a variable', prop: 'a value on a page', handler: 'what a page does on an action', page: 'a page', component: 'a component',
+  'feature-flow': 'a feature\'s flow', workflow: 'a flow', 'workflow-step': 'a step of a flow', service: 'a service', 'data-shape': 'a data shape',
+  route: 'a route', fixture: 'sample data', test: 'a test', feature: 'a feature', 'library-item': 'a library item', layout: 'the layout', problem: 'a reported problem',
 });
 
 /**
- * The facts snapshot the expressions are evaluated against (mirror). `parts` (page props) is this drafter's addition.
- * @typedef {object} FactsSnapshot
- * @property {Record<string, string>} files
- * @property {string[]} library
- * @property {{name: string, items: {id: string, kind: string, name: string, file: string, base: string|null}[]}[]} features
- * @property {{key: string, rule: string, file: string, line: number}[]} findings
- * @property {{key: string, rule: string, file: string, line: number}[]} findingsNew
- * @property {unknown} plan
- * @property {Record<string, {nodeId: string, tag: string, props: Record<string, unknown>}[]>} parts
+ * An intent id as a plain phrase: "add.component" -> "Add a component", "promote.component" -> "Move a component into
+ * the library". Unknown ids come back as they are.
+ * @param {string} id
+ * @returns {string}
  */
+export function intentPhrase(id) {
+  const [verb, object] = String(id).split('.');
+  if (!VERB_PHRASE[verb] || !OBJECT_PHRASE[object]) return String(id);
+  if (verb === 'promote') return `Move ${OBJECT_PHRASE[object]} into the library`;
+  if (verb === 'base-on') return `Base ${OBJECT_PHRASE[object]} on the library`;
+  return `${VERB_PHRASE[verb]} ${OBJECT_PHRASE[object]}`;
+}
+
+// ------------------------------------------------------------------------------------------------ gold routes
+/** What a stored (gold) route says Line should do. */
+export const GOLD_OUTCOMES = Object.freeze(['change', 'refusal', 'question']);
+
+/**
+ * A route as a training case stores it (Train Line's gold; the drafter's Route reduced to what a person judges):
+ * slotted, never a project name. `outcome` says what Line should do: make the change, refuse it, or ask first.
+ * @typedef {object} GoldRoute
+ * @property {string} id
+ * @property {string} label      Plain English, slotted: "Inside <feature:F1> only".
+ * @property {{layers: string[], features: string[], library: boolean}} scope  What it touches (layers as Line kinds, features as slot names).
+ * @property {{tool: string, args: Record<string, unknown>}[]} steps  Slotted args ("<feature:F1>", whole or inside a string).
+ * @property {object[]} expect   Expressions of Line's one language (../contract.mjs LineExpr, its named checks), slotted.
+ * @property {number} cost       Number of steps.
+ * @property {'low'|'medium'|'high'} risk  low: one feature; medium: the library (every feature that uses it).
+ * @property {'change'|'refusal'|'question'} outcome
+ * @property {{code?: string, rule?: string, fixes?: boolean}} [refusal]  A refusal route: what Construct must say.
+ * @property {{about: string, sentence: string, tool?: string, args?: Record<string, unknown>}} [question]  A question route: what Line must ask (slotted sentence).
+ */
+
+const GOLD_SLOT = /<([a-z]+):([A-Z][A-Za-z]*\d+)>/g;
+
+/**
+ * Throws unless r is a GoldRoute whose tools are in `tools` and whose every slot is declared in `slots`.
+ * @param {any} r @param {Record<string, any>} slots @param {readonly string[]} tools @param {string} [where]
+ * @returns {void}
+ */
+export function assertGoldRoute(r, slots, tools, where = 'route') {
+  const str = (v, at) => { if (typeof v !== 'string' || !v.length) fail(at, 'must be a non-empty string'); };
+  str(r?.id, `${where}.id`);
+  str(r.label, `${where}.label`);
+  if (!GOLD_OUTCOMES.includes(r.outcome)) fail(`${where}.outcome`, 'must be change, refusal or question');
+  if (!Array.isArray(r.steps)) fail(`${where}.steps`, 'must be an array');
+  if (r.outcome === 'change' && r.steps.length === 0) fail(`${where}.steps`, 'a change route has at least one step');
+  if (r.outcome === 'question' && r.steps.length !== 0) fail(`${where}.steps`, 'a question route has no steps');
+  if (r.outcome === 'question') { str(r.question?.about, `${where}.question.about`); sentence(r.question.sentence, `${where}.question.sentence`); }
+  if (r.outcome === 'refusal' && !r.refusal?.code && !r.refusal?.rule) fail(`${where}.refusal`, 'must name the code or the rule Construct refuses with');
+  r.steps.forEach((s, i) => {
+    if (!tools.includes(s.tool)) fail(`${where}.steps[${i}].tool`, `must be one of ${tools.join(', ')}`);
+    if (!s.args || typeof s.args !== 'object') fail(`${where}.steps[${i}].args`, 'must be an object');
+  });
+  if (!Array.isArray(r.expect)) fail(`${where}.expect`, 'must be an array');
+  if (r.outcome === 'change' && r.expect.length === 0) fail(`${where}.expect`, 'a change route has at least one check');
+  r.expect.forEach((e, i) => assertExpr(e, `${where}.expect[${i}]`));
+  if (r.cost !== r.steps.length) fail(`${where}.cost`, 'is the number of steps');
+  if (!['low', 'medium', 'high'].includes(r.risk)) fail(`${where}.risk`, 'must be low, medium or high');
+  if (!r.scope || !Array.isArray(r.scope.layers) || !Array.isArray(r.scope.features) || typeof r.scope.library !== 'boolean') fail(`${where}.scope`, 'must be {layers, features, library}');
+  for (const m of JSON.stringify(r).matchAll(GOLD_SLOT)) if (!slots[m[2]]) fail(where, `uses slot ${m[2]}, which the case does not declare`);
+}
+
+// ------------------------------------------------------------------------------------------------ expressions
+// A route's `expect` and `pre` are expressions of Line's one expression language (../contract.mjs LineExpr, evaluated
+// by ../expr.mjs over ../facts.mjs buildFacts), written with its named checks (EXPR_CHECKS: hasItem, hasLibrary,
+// basedOn, fileContains, propIs, noNewFindings, noFinding, ...) over slot refs; verify.mjs binds and evaluates them.
 
 // ------------------------------------------------------------------------------------------------ structure
 /** Closed delta ops of a route (what it does to the project's structure). */
@@ -149,8 +199,8 @@ export const EDGE_TYPES = Object.freeze(['base', 'import']);
  */
 
 /**
- * Delexicalized structure hashes (structure.mjs): names never enter; kinds, roles, layers, base links and import
- * edges do. Renaming changes nothing; adding a page changes the feature and project hashes.
+ * Delexicalized structure hashes (../structure.mjs hashesOf): names never enter; kinds, roles, layers, base links and
+ * import edges do. Renaming changes nothing; adding a page changes the feature and project hashes.
  * @typedef {{project: string, feature: string|null, layers: Record<string, string>}} StructureHashes
  */
 
@@ -180,7 +230,7 @@ export const EDGE_TYPES = Object.freeze(['base', 'import']);
  * @property {string} intent
  * @property {{layers: string[], features: string[], library: string[], scope: string}} scope
  * @property {{tool: string, args: Record<string, unknown>}[]} steps  Slot-form args.
- * @property {object[]} expect    Slot-form expressions (EXPR_OPS).
+ * @property {object[]} expect    Slot-form expressions (Line's expression language, ../contract.mjs LineExpr).
  * @property {object[]} pre       Slot-form preconditions.
  * @property {DeltaOp[]} delta
  * @property {{feature: string|null, project: string}|null} predicted  Predicted structure hashes after the route.
@@ -189,7 +239,7 @@ export const EDGE_TYPES = Object.freeze(['base', 'import']);
  * @property {'template'|'retrieval'|'model'} via
  * @property {number} confidence  0..1
  * @property {string} status      ROUTE_STATUS
- * @property {{sentence: string, fix: {id: string, sentence: string, step: {tool: string, args: Record<string, unknown>}|null}|null}|null} refusal
+ * @property {{sentence: string, fix: {id: string, sentence: string, step: {tool: string, args: Record<string, unknown>}|null}|null, code?: string|null, rule?: string|null}|null} refusal  `code`: Construct's refusal code; `rule`: the first error finding's rule.
  * @property {string[]} invented  Slots a rule made up (a new name); Qwen may propose better ones.
  * @property {string[]} failed    Expectation sentences that did not hold after verification.
  */
@@ -281,18 +331,14 @@ export function assertDraft(d, catalog) {
 }
 
 /**
- * Throws unless e is an expression built from EXPR_OPS.
+ * Throws unless e is an expression of Line's expression language (../contract.mjs exprProblem); the message says why.
  * @param {any} e
  * @param {string} [where]
  * @returns {void}
  */
 export function assertExpr(e, where = 'expr') {
-  if (!e || typeof e !== 'object' || Array.isArray(e)) fail(where, 'must be an object with one op');
-  const keys = Object.keys(e);
-  if (keys.length !== 1 || !EXPR_OPS[keys[0]]) fail(where, `must have exactly one op from ${Object.keys(EXPR_OPS).join(', ')}`);
-  const [op] = keys;
-  if (op === 'all' || op === 'any') { if (!Array.isArray(e[op])) fail(`${where}.${op}`, 'must be a list'); e[op].forEach((x, i) => assertExpr(x, `${where}.${op}[${i}]`)); }
-  if (op === 'not') assertExpr(e.not, `${where}.not`);
+  const why = exprProblem(e);
+  if (why) fail(where, `is not an expression: ${why}`);
 }
 
 /**
@@ -302,10 +348,6 @@ export function assertExpr(e, where = 'expr') {
  * @returns {void}
  */
 export function assertNoIdentifiers(record, identifiers) {
-  const text = JSON.stringify(record).toLowerCase();
-  for (const id of identifiers) {
-    if (!id || id.length < 3) continue;
-    const re = new RegExp(`(^|[^a-z0-9])${id.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z0-9]|$)`);
-    if (re.test(text)) fail('record', `holds the project name "${id}"; store slots instead`);
-  }
+  const id = projectWordIn(record, identifiers);
+  if (id) fail('record', `holds the project name "${id}"; store slots instead`);
 }

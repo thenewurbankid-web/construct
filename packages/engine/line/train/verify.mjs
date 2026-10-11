@@ -1,15 +1,18 @@
 // Train Line "Try it" and gold verification: a route's steps run in a SCRATCH copy of its world (never a real project),
 // each write through the same plan tool code Cockpit runs (planTools.mjs runChange -> applyChange, i.e. Construct's
-// transactional writer with the line profile as the gate), then the route's checks run over the facts after.
+// transactional writer with the line profile as the gate), then the route's checks (Line's one expression language,
+// ../expr.mjs) run over the facts after (../facts.mjs buildFacts, with what the change added and how it was refused).
 // A refusal route passes when Construct refuses as the route says (with a typed fix when it names a rule);
 // a question route passes when the tool really cannot run without the missing detail (its schema refuses).
 import fs from 'node:fs';
 import { LineOpError } from '../contract.mjs';
 import { runChange, previewStep, createLinePlanRegistry } from '../planTools.mjs';
+import { readLineProject } from '../model.mjs';
+import { buildFacts, addedFindings } from '../facts.mjs';
+import { evaluate, describe } from '../expr.mjs';
 import { materialize, worldSpec } from './corpus.mjs';
-import { factsOf, newFindings } from './facts.mjs';
+import { factsOf } from './facts.mjs';
 import { bindSlots, fill } from './slots.mjs';
-import { evaluate, describe } from './exprMirror.mjs';
 
 const lower = (s) => String(s).charAt(0).toLowerCase() + String(s).slice(1);
 
@@ -29,6 +32,7 @@ export function tryRoute({ world, slots, route }) {
   const dir = materialize(world);
   try {
     const before = factsOf(dir);
+    const beforeFindings = buildFacts(dir).findings;
     const words = wordsOf(world);
     const b = /** @type {any} */ (bindSlots(slots, before, words));
     if (!b.ok) return { ok: false, sentence: `This cannot be tried here: ${lower(b.sentence)}`, steps: [], checks: [] };
@@ -56,11 +60,15 @@ export function tryRoute({ world, slots, route }) {
       steps.push({ sentence: r.apply.sentence, ok: true });
       plan.push({ tool: s.tool, ok: true });
     }
-    const after = factsOf(dir);
-    after.findingsNew = newFindings(before, after);
-    after.plan = plan;
+    const project = readLineProject(dir);
+    const last = plan.at(-1);
+    const facts = buildFacts(dir, {
+      project,
+      findingsNew: addedFindings(beforeFindings, buildFacts(dir, { project }).findings),
+      plan: last ? { tool: last.tool, staged: true, applied: last.ok, files: [], refusal: last.ok ? null : { code: last.code ?? null, rule: last.rule ?? null, fixes: Boolean(last.fixes) } } : null,
+    });
     const exprs = fill(route.expect, b.bound, { asArg: true });
-    const checks = exprs.map((x) => { const failed = evaluate(after, x); return { sentence: failed.length ? failed[0] : describe(x), ok: failed.length === 0 }; });
+    const checks = exprs.map((x) => { const r = evaluate(facts, x); return { sentence: r.ok ? describe(x) : r.failed[0].sentence, ok: r.ok }; });
     const stepsOk = route.outcome === 'refusal' ? plan.some((p) => !p.ok) : steps.every((s) => s.ok) && steps.length === route.steps.length;
     const ok = stepsOk && checks.every((c) => c.ok);
     const passed = checks.filter((c) => c.ok).length;

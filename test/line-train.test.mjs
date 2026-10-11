@@ -8,12 +8,13 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { INTENT_IDS, assertTrainCase, assertDelexicalized, assertScoreboard, assertTryResult } from '../packages/engine/line/train/contract.mjs';
+import { INTENT_IDS, TRAIN_INTENT_MAP, assertTrainCase, assertDelexicalized, assertScoreboard, assertTryResult } from '../packages/engine/line/train/contract.mjs';
+import { INTENT_DEFS } from '../packages/engine/line/train/routes.mjs';
 import { WORLD_IDS, HELDOUT_FROM, isHeldOut, materialize, SAMPLE_DIR } from '../packages/engine/line/train/corpus.mjs';
 import { factsOf } from '../packages/engine/line/train/facts.mjs';
 import { worldFacts } from '../packages/engine/line/train/generate.mjs';
 import { tryRoute } from '../packages/engine/line/train/verify.mjs';
-import { normalize, buildDomainMap } from '../packages/engine/line/train/slots.mjs';
+import { normalizeRequest } from '../packages/engine/line/train/draft.mjs';
 import { createTrainService, worldIdentifiers } from '../packages/engine/line/train/service.mjs';
 import { CASES, LOG } from '../packages/engine/line/train/store.mjs';
 import { makeTempDir } from '../test-utils/tmpdir.mjs';
@@ -23,6 +24,8 @@ const REPO = path.resolve(HERE, '..');
 const SEED = path.join(REPO, 'line');
 const seed = fs.readFileSync(path.join(SEED, CASES), 'utf8').split('\n').filter(Boolean);
 const tmp = () => makeTempDir('line-train-test-');
+/** Train eval floors on the real drafter (see the eval test). */
+const FLOORS = Object.freeze({ recall: 0.38, precision: 0.38, preferred: 0.4 });
 const treeHash = (dir) => {
   const h = crypto.createHash('sha256');
   const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else h.update(`${path.relative(dir, p)}\0${fs.readFileSync(p)}`); } };
@@ -56,12 +59,16 @@ test('worlds: the construct CLI agrees (validate --profile line exits clean on t
   }
 });
 
-test('seed: a few hundred cases, every one in the contract shape, every intent covered, several routes where a request has them', () => {
+test('seed: a few hundred cases, every one in the contract shape, every intent of the drafter catalog the families map to, several routes where a request has them', () => {
   assert.ok(seed.length >= 300, `${seed.length} cases`);
   const cases = seed.map((l) => JSON.parse(l));
   cases.forEach(assertTrainCase);
-  for (const i of INTENT_IDS) assert.ok(cases.some((c) => c.intent === i), `intent ${i}`);
-  for (const i of ['add.component', 'add.page', 'share.item', 'fix.problem']) assert.ok(cases.some((c) => c.intent === i && c.gold.routes.length > 1), `multi-route ${i}`);
+  const intents = new Set(Object.values(INTENT_DEFS).map((d) => d.intent));
+  assert.equal(intents.size, 8);
+  for (const i of intents) assert.ok(INTENT_IDS.includes(i) && cases.some((c) => c.intent === i), `intent ${i}`);
+  assert.ok(cases.every((c) => !Object.keys(TRAIN_INTENT_MAP).includes(c.intent) || TRAIN_INTENT_MAP[c.intent] === c.intent), 'no mirrored intent id is stored');
+  for (const outcome of ['refusal', 'question']) assert.ok(cases.some((c) => c.gold.routes.some((r) => r.outcome === outcome)), `a ${outcome} route`);
+  for (const i of ['add.component', 'add.page', 'promote.component', 'fix.problem']) assert.ok(cases.some((c) => c.intent === i && c.gold.routes.length > 1), `multi-route ${i}`);
   assert.ok(cases.every((c) => c.labelledBy === 'claude' && c.status === 'draft'));
   assert.ok(cases.every((c) => Object.values(c.verified.routes).length === c.gold.routes.length && Object.values(c.verified.routes).every((v) => v.ok)), 'every gold route verified');
   assert.ok(cases.filter((c) => c.sample).length >= 30, 'a review sample');
@@ -92,27 +99,33 @@ test('try it: a gold route passes in a scratch copy, a wrong check fails, refusa
   const w = tryRoute({ world: make.world, slots: make.slots, route: wrong });
   assert.equal(w.ok, false);
   assert.match(w.checks[0].sentence, /^Expected that the library has a component Nothing, but it is not there\.$/);
-  const refuse = cases.find((c) => c.intent === 'refuse.not-possible');
+  const refuse = cases.find((c) => c.gold.routes[0].outcome === 'refusal');
   const r = tryRoute({ world: refuse.world, slots: refuse.slots, route: refuse.gold.routes[0] });
   assert.equal(r.ok, true, r.sentence);
   assert.match(r.sentence, /^Construct refused it as expected/);
-  const ask = cases.find((c) => c.intent === 'ask.missing-detail');
+  const ask = cases.find((c) => c.gold.routes[0].outcome === 'question');
   const q = tryRoute({ world: ask.world, slots: ask.slots, route: ask.gold.routes[0] });
   assert.equal(q.ok, true);
   assert.match(q.sentence, /^Line must ask first: /);
   assert.equal(treeHash(SAMPLE_DIR), before, 'examples/line-sample is byte-identical');
 });
 
-test('domain map: names become slots; a near miss offers "Did you mean"; the answer becomes a synonym of that world', () => {
+test('domain map: the drafter\'s map makes names slots; a near miss offers "Did you mean"; the answer becomes a synonym of that world', () => {
   const root = tmp();
   try {
     const svc = createTrainService({ root });
-    const map = buildDomainMap(worldFacts({ kind: 'sample' }));
-    const n = normalize('Change the title of OrdersPage to "My orders".', map);
+    const sample = { kind: 'sample' };
+    const n = normalizeRequest(sample, 'Change the title of OrdersPage to "My orders".');
     assert.equal(n.request, 'Change the title of <item:I1> to "<text:T1>".');
     assert.deepEqual(n.slots.T1, { type: 'text', of: 'F1', role: 'my' });
-    const typo = normalize('Add a Badge to ordrs.', map);
-    assert.deepEqual(typo.unknown, [{ word: 'ordrs', choices: [{ ref: 'feature#1', name: 'orders' }] }]);
+    assert.deepEqual(n.slots.F1, { type: 'feature', ref: 'feature#1' });
+    const made = normalizeRequest(sample, 'Make StatusTooltip in orders, based on Tooltip.');
+    assert.equal(made.request, 'Make <name:N1> in <feature:F1>, based on <missing:M1>.');
+    assert.deepEqual(made.slots.N1, { type: 'name', role: 'status', of: 'M1' });
+    const typo = normalizeRequest(sample, 'Add a Badge to ordrs.');
+    assert.equal(typo.unknown.length, 1);
+    assert.equal(typo.unknown[0].word, 'ordrs');
+    assert.deepEqual(typo.unknown[0].choices[0], { ref: 'feature#1', name: 'orders' });
     assert.match(svc.addSynonym({ world: 'sample', word: 'ordrs', ref: 'feature#1' }).sentence, /"ordrs" means orders/);
     const d = svc.draft({ request: 'Add a Badge to ordrs.', world: 'sample' });
     assert.equal(d.request, 'Add a <library:L1> to <feature:F1>.');
@@ -165,7 +178,7 @@ test('owner and Claude cases: a typed request is drafted, corrected with closed 
     const bad = { ...d.routes[0], id: 'bad', expect: [{ hasLibrary: 'components/<name:N1>' }] };
     assert.throws(() => svc.save({ world: 'sample', request: d.request, intent: d.intent, slots, routes: [bad], preferred: 'bad' }), (e) => e.code === 'ROUTE_FAILS' && /does not pass in a scratch copy/.test(e.sentence));
     // Claude proposes with real values; stored as slots, labelled claude, a draft
-    const c = svc.propose({ world: 'sample', request: 'billing should use OrderButton from orders too.', intent: 'share.item', routes: [{ label: 'Through the library', steps: [{ tool: 'line.promote', args: { featureItemId: 'orders/components/OrderButton' } }] }] }).case;
+    const c = svc.propose({ world: 'sample', request: 'billing should use OrderButton from orders too.', intent: 'promote.component', routes: [{ label: 'Through the library', steps: [{ tool: 'line.promote', args: { featureItemId: 'orders/components/OrderButton' } }] }] }).case;
     assert.equal(c.labelledBy, 'claude');
     assert.equal(c.status, 'draft');
     assert.equal(c.request, '<feature:F1> should use <item:I1> from <feature:F2> too.');
@@ -173,7 +186,7 @@ test('owner and Claude cases: a typed request is drafted, corrected with closed 
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
-test('eval: drafts every held-out case from the train split only and scores recall, precision and the preferred route per family and intent', () => {
+test('eval: the REAL drafter drafts every held-out case and is scored on recall, precision and the preferred route per family and intent', () => {
   const root = tmp();
   try {
     const svc = createTrainService({ root, seedFrom: SEED });
@@ -183,9 +196,13 @@ test('eval: drafts every held-out case from the train split only and scores reca
     assertScoreboard(sb);
     assert.ok(sb.lastRun);
     assert.ok(sb.total.heldout >= 50);
-    assert.ok(sb.total.recall > 0.5, `recall ${sb.total.recall}`);
+    // Floors measured 2026-10-11 when Train Line first scored the real drafter (docs/line/review.md "System 1
+    // reconcile"): the honest numbers, not the mirror's. Raise them as the drafter improves, never lower them.
+    assert.ok(sb.total.recall >= FLOORS.recall, `recall ${sb.total.recall}`);
+    assert.ok(sb.total.precision >= FLOORS.precision, `precision ${sb.total.precision}`);
+    assert.ok(sb.total.preferred >= FLOORS.preferred, `preferred ${sb.total.preferred}`);
     for (const fam of ['line.baseOn', 'line.promote', 'line.setPageProp', 'line.setFragment', 'line.fix', 'none']) assert.ok(sb.byFamily[fam]?.heldout > 0, fam);
-    for (const i of INTENT_IDS) assert.ok(sb.byIntent[i], i);
+    for (const i of new Set(svc.store.all().map((c) => c.intent))) assert.ok(sb.byIntent[i], i);
     assert.equal(svc.store.log().at(-1).action, 'eval');
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
