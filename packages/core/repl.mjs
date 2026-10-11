@@ -238,6 +238,21 @@ export const HELP_TOPICS = {
       voice models). Exits 0, or 1 for a Node older than 20 or a machine it
       cannot read. The flat form of "research doctor".`,
 
+  line: `line spec [--topic rules|commands|plan|model|modules] [--id <text>]
+      What Line is, generated from its code: rules, commands and plan tools
+      with their JSON Schemas, the plan protocol, the model and each module.
+  line misses [--dir <path>] [--threshold <n>] [--draft] [--json]
+      Refusals that recur with no working typed fix, from the project's
+      session traces; --draft writes each as a markdown issue (never filed).
+  line context [--dir <path>] [--json]
+      The files Line would hand an agent for the latest refusal, each with a
+      one-sentence summary.
+  line check [--dir <path>] '<expression JSON>' [--json]
+  line facts [--dir <path>]
+  line records [--dir <path>] [--json]
+      Evaluate an expression against the project's facts, print the facts, or
+      list the plan records kept for training (logic only, no names).`,
+
   dir: `--dir <path>
       Every command accepts --dir to target a Construct project nested in a
       subdirectory without cd-ing into it first. In the REPL you'll usually
@@ -254,7 +269,7 @@ export const HELP_TOPICS = {
       layers in dependency order, regardless of how you list --layers.`,
 };
 
-export const TOPIC_ORDER = ['create', 'refactor', 'research', 'import', 'init', 'feature', 'generate', 'sync', 'validate', 'summarize', 'doctor', 'dir', 'import-001'];
+export const TOPIC_ORDER = ['create', 'refactor', 'research', 'import', 'init', 'feature', 'generate', 'sync', 'validate', 'summarize', 'doctor', 'line', 'dir', 'import-001'];
 
 /**
  * The REPL's top-level "help" output, as a string. Pulled out from

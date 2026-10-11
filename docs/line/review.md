@@ -4,6 +4,60 @@ One section per step. For each: what the tests prove (plain English), known gaps
 check it yourself. A step is done only after your UAT passes; until then it is "awaiting UAT".
 Branch: `work/2026-09-23` in `~/Repositories/construct` (local only, not pushed).
 
+## Wave 4: ready for owner UAT
+
+Every step below is merged on `work/2026-09-23` (local, not pushed). On the combined tree: the Line node tests, the tsc
+ratchet (594), api-coverage, LINE-MODULE (0), `validate --dir examples/line-sample --profile line` (only the 2 planted
+findings), the client's types and unit tests, every `ui/e2e/tests/line-*.spec.js`, every UAT walk under `ui/e2e/uat`,
+and `heavy.sh npm test` (see the last line for its result). "Pre-UAT walk" is the scripted walk of the step's how-to,
+run on your behalf in a real browser; it fails on any console error, 4xx/5xx answer, error overlay or serious axe
+finding.
+
+Start (every step): `cd ui/server && npm start`, `cd ui/client && npm run dev`, open http://localhost:3000, and a fresh
+copy of the sample (`rm -rf ~/workspace/line-sample && cp -R examples/line-sample ~/workspace/`). Since cp1 every change
+waits in the Plan panel: one click on Approve saves it ("Apply recommended fix" is that click itself). To run every walk
+yourself: `cd ui/e2e && ../../packages/tools/dev/heavy.sh ./line-batch.sh` (one walk: `./line-batch.sh -c
+playwright.uat.config.js uat/cp1.spec.js`).
+
+| Step | How (short; the full how-to is in its section) | Pre-UAT walk |
+|---|---|---|
+| cp1: every change is a plan step | Components → Badge → Base on this → orders, StatusBadge → Create. The Plan panel says "Waiting for your approval: …" and nothing is written; Approve → "Saved: …" and the file exists. Base on Button as OrderButton → one refusal sentence, the plan unchanged. | `uat/cp1.spec.js`: passed |
+| ca2 screen: Apply a fix where the problem is | Components → InvoiceCard → Apply recommended fix (one click) → 1 problem left; Pages → billing → InvoicesPage → Apply → "Fine". | `uat/ca2.spec.js`: passed |
+| ci1: Import one folder | Open a copy of `examples/import-sample`, go to `/import`, folder `src/alerts`, Read folder, answer the one question, Show the plan, Apply. Items land in `src/alerts/library` and `features/alerts`; files outside the folder are unchanged; the hook stays put (listed as `line.appFolders`, so no stray-file problem). | `uat/ci1.spec.js`: passed |
+| New Line project (cu7) | Close the project → New project → Line project, name `shop`, first feature `catalog` → Create. It opens on Features with catalog "All fine"; Components → Button → Base on this → catalog, BuyButton → Create → Approve. | `uat/new-line-project.spec.js`: passed |
+| New project form fix | No project open → New project → type `my shop`: the letters stay and the hint asks for "-" or "_"; `my-shop` → Create and open. | `uat/new-project.uat.spec.js`: passed |
+| ca1 (CLI) | `node packages/cli/construct.mjs validate --dir examples/line-sample --profile line`: the 2 planted findings in plain English. | `uat/ca1-cli.uat.spec.js`: passed |
+| Hours 1, 2, 3, 3b, 4, 5-6, 7 | As in each Hour's section; every change is followed by Approve in the Plan panel (Save + Approve, two clicks). | `uat/hour*.uat.spec.js`: passed |
+| cx1: edit one piece of code | Pages → orders → OrdersPage → Edit code → change the handler → Save → Approve: "Saved. Changes the code for …"; `() => {` is refused in one sentence. | `uat/cx1-edit-code.uat.spec.js`: passed |
+| cf1: a feature with everything it owns | Features opens as a chat (cd1): billing "Needs attention", orders "All fine"; click orders → items, summary, "1 of 2 acceptance points"; All features → billing → Details on InvoicesPage's problem. | `uat/cf1-features.uat.spec.js`: passed |
+| cu6: one workspace folder | Project switcher → Change workspace folder → features/orders. Badge → Base on this offers only orders → Create → Approve; Promote billing's InvoiceCard → refused, nothing written. | `uat/cu6-workspace.uat.spec.js`: passed |
+| cl1: spec, traces, picked context, drafted issues (CLI) | See the cl1 section (5 minutes): `line spec --topic plan`; a refused change with no fix that lands (the library already has an OrderButton) → `line misses --draft` → one drafted issue; `line context`. | `ui/server/src/lineCl1Uat.test.mjs` (node walk): passed |
+| Experiment fixes: fixes that land, stray files | Move OrderButton to `components/` → "Needs a fix" → Apply recommended fix: both steps done, "Saved together with its fix in step 2."; OrdersPage → Edit code → import billing's InvoicesPage → Approve → Apply recommended fix: the chain lands. | `tests/line-amend.spec.js` (browser): passed |
+| cw1: feature workflows | Features → orders → Workflows tab → Use listDetail → Approve; choose OrdersPage for the list page → Approve; add a When → Do → Approve. | `uat/cw1.spec.js`: passed |
+| cs1: plain English first (cs2 has no UAT) | Base a component on Badge: the plan step reads as one sentence ("Saved: …"), the tool call and checks only under Details. | `uat/cs1.spec.js`: passed |
+| cu3: one tool registry | Base on → the step waits for approval and nothing is written; Approve saves it; `GET /api/line/tools` lists every tool, read or write. | `uat/cu3.spec.js`: passed |
+| cu2: one AI layer | Profile menu → Settings → AI steps: every step in plain English, the 1.5B model by default, each with its static fallback; Details on one. | `uat/cu2.spec.js`: passed |
+| cg1: Trace lights the controls | Components → Trace → type `Base a new StatusBadge on Badge in orders`: Badge's "Base on this" gets an outline; click it and Feature, Name and Create get one; a Pages request offers "Go to Pages: …". | `uat/cg1.spec.js`: passed |
+| ct1: Auto and Trace | Trace + Auto, "Show me and do it": captions, then you Approve; with "Let Auto approve in this session" one click does it. | `uat/ct1.spec.js`: passed |
+| ci2: the Import agent | Import → "Or let the Import agent plan it" → Start → review (skip one step) → Approve the plan → Done, with the record of who did what. | `uat/ci2.spec.js`: passed |
+| cd1: Cockpit in Trace's style (please judge the look) | Features opens as a full-screen chat; ask "What is missing?", open billing, fix it, add a component to orders, switch the theme. **Question for you: does the look (Trace's demo style, light and dark) feel right for Cockpit's first screen?** | `uat/cd1.spec.js`: passed |
+| Expressions (System 1 groundwork) | Base on → Approve: the step is checked by its expressions and kept as a training record with no project name (`line/records/plans.jsonl`); `construct line check|facts|records`. | `uat/expressions.spec.js`: passed |
+| System 1 drafter (`LINE_DRAFTER=1`) | Start the server with `LINE_DRAFTER=1`; Components → Describe a change → "add a badge to the orders feature" → the recommended route first → Add to plan → Approve. | `uat/s1-drafter.spec.js`: passed |
+| Train Line | Profile menu → Train Line: review 5 of Claude's cases (Agree / Disagree with a note), teach one request, Try it, Save, Run eval. | `uat/line-train.spec.js`: passed |
+
+How the merge decided where two steps disagreed (the later step's intent, unless you had decided):
+1. Direct write routes are gone (integrator): `/api/line/base-on`, `/promote`, `/page-prop`, `/fix`, `/fragment`, `/import/apply` answer 404; every change is `/api/line/plan/step`, and Approve/Run need the Cockpit page's Origin and approval token. cu3's tool catalog lists those tools as plan-only.
+2. A refused change and its fix: when the fix can only land with the change (experiment fixes) or as a chain (cl1), it is one `line.amend` step and the refused step reads "Saved together with its fix in step N"; when a separate fix lands, the integrator's re-check plans the refused step again as a retry ("Tried again as step M"). cl1's misses walk now uses a miss no fix can mend.
+3. Import: one implementation (planTools' `line.import.*`); ci2 keeps only `line.import.fix`, so a fix of an import step runs inside the folder. Files Import leaves in place (and folders of skipped steps) are listed as `line.appFolders`, so the experiment's stray-file check stays quiet.
+4. Your decisions: `toolRegistry.mjs` is the one tool catalog (LINE-SHARED owner; the plan registry takes kinds from it, cg1's controls give each tool its `controlId`, `MOCK_TOOLS` is gone); GateLM drafts are Line state; the AI decider defaults to `rules`.
+5. Plan steps read "Saved: …" (cs1); screen notices keep "Saved. …". The summarizer keeps the names a step's arguments give as written (`ordersListDetail`, not "orders list detail").
+6. Features is cd1's chat; it keeps cw1's Workflows tab and cg1's Trace bar, and offers Import for a project that is not a Line project. One Plan panel per screen (the Workflows tab adds to the chat's plan).
+7. cl1 owns `line/trace.mjs` (session traces); cg1's Trace matcher is `line/traceMatch.mjs`.
+8. The Plan panel asks for the plan only on a Line project, and `GET /api/line/plan` with no project open is an empty plan with one sentence (no 400 while a project opens).
+9. Walk rule kept strict, with one named exception: Playwright's Chromium logs "Blocked script execution in about:srcdoc" for any sandboxed static frame as it attaches (checked with a bare `<iframe sandbox="" srcdoc="<p>static</p>">`); the preview frame runs no scripts and holds none.
+
+Not finished at the time of writing: __PENDING__
+
 ## Pre-UAT walks: run these before every owner UAT
 
 Each UAT how-to below has a scripted walk under `ui/e2e/uat/` (one spec per step: New project, ca1, Hours 1, 2, 3/3b,
@@ -567,7 +621,7 @@ UAT (fresh sample):
 1. Open Components and click **Trace** and **Auto**. Type `Base a new StatusBadge on Badge in orders`.
 2. Click **Show me and do it**. The cursor opens Badge's form, chooses orders, types the name and clicks Create, with a caption for each move. It stops at "Waiting for you: click Approve…".
 3. Click **Approve** in the Plan panel: "You approved it…", and StatusBadge.tsx exists. To try Auto alone, turn Trace off, tick "Let Auto approve in this session", type `Base a new PaidBadge on Badge in orders` and click **Do it**.
-## ci2: the Import agent (a fixed process you review and approve; browser run pending at merge)
+## ci2: the Import agent (a fixed process you review and approve; awaiting UAT)
 
 Tests: `test/line-import-agent.test.mjs` (11), `ui/server/src/lineImportAgentApi.test.mjs` (3), `packages/mcp/test/importAgent.test.mjs` (1), `ui/client/features/line-import-agent/domain/AgentScreen.spec.mjs` (5), import-agent cases in `test/line-contract.test.mjs` and `test/line-plan.test.mjs`; browser: `ui/e2e/tests/line-import-agent.spec.js` (4), UAT walk `ui/e2e/uat/ci2.spec.js`.
 1. The process is a fixed xstate machine: Read the folder, Sort the items, Write the plan, Review, Make the changes, Check everything, Done; no other order is possible.
@@ -586,6 +640,8 @@ To try it in Cockpit (sample: a copy of `examples/import-sample` with `version: 
 1. Go to `/import`, click "Or let the Import agent plan it ...", type `src/alerts`, click Start the import. Expect "Review the plan: approve its 10 steps ...".
 2. Click Skip on step 5 (Table), then Approve the plan. Expect "Done: 9 steps landed." and Checks: Line rules Passed.
 3. Open "Every change": you see your skip and approval and the agent's steps; reload the page: the same import is shown.
+
+UAT (ci2, a copy of examples/import-sample; walk `ui/e2e/uat/ci2.spec.js`): open the copy, go to Import and follow "Or let the Import agent plan it"; folder `src/alerts` → Start. The agent stops at the review: read the plan, skip one step if you like, then Approve the plan. It runs each step as a plan step you approved, checks the folder, and ends at Done with every change recorded as who did what, in plain English.
 ## cd1: Cockpit in Trace's style, first screen: Features as a chat (awaiting UAT: please judge the look)
 
 What changed: Trace's demo style (warm paper light theme, warm charcoal dark, Inter type, 8px spacing, rounded cards,
