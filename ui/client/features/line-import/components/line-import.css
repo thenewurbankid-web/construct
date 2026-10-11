@@ -14,7 +14,7 @@
 .li-input { flex: 1 1 16rem; min-height: 32px; padding: 0 var(--sp-2); border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--surface-1); color: var(--text); font: inherit; }
 .li-input:focus-visible, .li-btn:focus-visible, .li-choice:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .li-btn { min-height: 32px; padding: 0 var(--sp-3); border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--surface-1); color: var(--text); font: inherit; cursor: pointer; width: max-content; }
-.li-btn--primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent, #fff); }
+.li-btn--primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); font-weight: 600; }
 .li-btn:disabled, .li-choice:disabled { opacity: 0.6; cursor: default; }
 .li-group { display: flex; flex-direction: column; gap: var(--sp-1); }
 .li-list, .li-steps { margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
