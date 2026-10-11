@@ -15,13 +15,14 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { spawnSync } from 'node:child_process';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 /** Where the link table lives. */
 export const LINKS_FILE = path.join(HERE, 'links.json');
 
 /**
- * @typedef {{ path: string, entry: string, what?: string }} LinkEntry
+ * @typedef {{ path: string, entry: string, what?: string, watch?: string[] }} LinkEntry
  * @typedef {{ source: { repo: string, branch?: string, env: string, default: string, commit: string }, links: Record<string, LinkEntry> }} LinkTable
  * @typedef {'ok' | 'missing-source' | 'not-a-repo' | 'wrong-commit' | 'missing-entry'} LinkState
  * @typedef {{ name: string, state: LinkState, ok: boolean, entryFile: string | null, message: string }} PackageLink
@@ -109,7 +110,9 @@ export function linkStatus(options = {}) {
     return finish(all('not-a-repo', (n) => `${n} is not linked because ${why}, so Construct uses its static path.`), null, false,
       `Line links are off because ${why}; Construct runs on its static path.`);
   }
-  const drift = head !== pinned;
+  // The source repo gets docs-only commits all day; a new HEAD whose linked folders are byte-identical to the pinned
+  // commit's is the same code, so it stays linked instead of switching every link off.
+  const drift = head !== pinned && !sameLinkedCode(sourceDir, pinned, head, table);
   if (drift && !allowDrift) {
     const why = `the source is at commit ${short(head)} but links.json pins ${short(pinned)} (run "node packages/line-links/link.mjs --pin" after checking the change, or set LINE_LINKS_ALLOW_DRIFT=1)`;
     return finish(all('wrong-commit', (n) => `${n} is not linked because ${why}.`), head, true,
@@ -125,6 +128,19 @@ export function linkStatus(options = {}) {
   return finish(packages, head, drift, linked === packages.length
     ? `All ${linked} Line links are ready from ${sourceDir} at commit ${short(head)}.`
     : `${linked} of ${packages.length} Line links are ready; the others use Construct's static path.`);
+}
+
+/**
+ * Whether the linked folders (each link's `path`, plus any `watch` folders it imports from) are identical at the
+ * pinned commit and at HEAD. One `git diff --quiet` in the source repo; false when git is missing or the pinned
+ * commit is unknown there, so an unexplained move is still reported.
+ * @param {string} sourceDir @param {string} pinned @param {string} head @param {LinkTable} table
+ * @returns {boolean}
+ */
+export function sameLinkedCode(sourceDir, pinned, head, table) {
+  const paths = [...new Set(Object.values(table.links).flatMap((l) => [l.path, ...(l.watch ?? [])]))];
+  const r = spawnSync('git', ['-C', sourceDir, 'diff', '--quiet', pinned, head, '--', ...paths], { stdio: 'ignore', timeout: 10000 });
+  return r.status === 0;
 }
 
 let hooksModule = null;

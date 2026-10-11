@@ -101,3 +101,28 @@ test('the link step with the source missing exits 1 with plain sentences; constr
   assert.equal(without.stdout, withSource.stdout);
   assert.doesNotMatch(without.stderr, /line-links|LINE_SOURCE_DIR/);
 });
+
+test('a docs-only commit in the source keeps the links on; a change to linked code switches them off', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'construct-line-links-pin-'));
+  try {
+    const git = (...args) => { const r = spawnSync('git', ['-C', dir, ...args], { encoding: 'utf8' }); assert.equal(r.status, 0, r.stderr); return r.stdout.trim(); };
+    git('init', '-q');
+    git('config', 'user.email', 't@example.com'); git('config', 'user.name', 't');
+    fs.mkdirSync(path.join(dir, 'packages/a'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'packages/a/index.ts'), 'export const a = 1;\n');
+    fs.writeFileSync(path.join(dir, 'LINE.md'), 'v1\n');
+    git('add', '.'); git('commit', '-qm', 'code');
+    const pinned = git('rev-parse', 'HEAD');
+    const table = { source: { repo: 'x', env: 'X_SRC', default: dir, commit: pinned }, links: { '@mx/a': { path: 'packages/a', entry: 'index.ts' } } };
+    fs.writeFileSync(path.join(dir, 'LINE.md'), 'v2\n');
+    git('commit', '-qam', 'docs');
+    const docsOnly = linkStatus({ table, env: {} });
+    assert.equal(docsOnly.ok, true, docsOnly.message);
+    assert.equal(docsOnly.drift, false);
+    fs.writeFileSync(path.join(dir, 'packages/a/index.ts'), 'export const a = 2;\n');
+    git('commit', '-qam', 'code change');
+    const moved = linkStatus({ table, env: {} });
+    assert.equal(moved.ok, false);
+    assert.equal(moved.packages[0].state, 'wrong-commit');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
