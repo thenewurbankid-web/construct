@@ -1,0 +1,16 @@
+{
+  "name": "@line/rule-factory",
+  "version": "0.1.0",
+  "description": "Line's static rule factory (scaffold): collects where static code missed, from plan feedback and validate findings, and reports the share of decisions static code made per step. No model calls.",
+  "type": "module",
+  "license": "MIT",
+  "private": true,
+  "bin": {
+    "line-static-share": "./static-share.mjs"
+  },
+  "exports": {
+    "./contract": "./contract.mjs",
+    "./mock": "./mock.mjs",
+    "./collect": "./collect.mjs"
+  }
+}
