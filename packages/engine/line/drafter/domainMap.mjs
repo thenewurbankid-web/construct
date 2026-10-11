@@ -243,6 +243,8 @@ export function normalize(request, map, o = {}) {
         const phrase = span.map((x) => x.t).join(' ');
         let keys = formIndex.get(phrase) ?? (map.synonyms[phrase] ? [map.synonyms[phrase]] : null);
         if (!keys) continue;
+        // First pass: a feature only when it is the longest match here ("visits page" is the page, not the feature).
+        if (pass === 'feature' && !keys.some((k) => byKey.get(k).type === 'feature')) break;
         if (pass === 'feature') keys = keys.filter((k) => byKey.get(k).type === 'feature');
         // Grammar (verbs, kind words, articles) never names a project thing on its own, unless a person said so (a synonym).
         if (n === 1 && GRAMMAR.has(phrase) && !map.synonyms[phrase]) keys = [];
@@ -262,7 +264,19 @@ export function normalize(request, map, o = {}) {
     if (x.slot || FUNCTION_WORDS.has(x.t)) continue;
     const prev = tokens[i - 1]?.t ?? ''; const next = tokens[i + 1]?.t ?? '';
     const kindNext = KIND_WORDS[next]; const kindPrev = KIND_WORDS[prev];
-    // "a refund page", "a new refund page": an article before the noun marks something new; "the X page" is existing.
+    // "a refund page", "a new waiting room page": an article before the words marks something new; "the X page" is existing.
+    if (creating && /^(a|an|new|another)$/.test(prev)) {
+      let j = i;
+      while (j + 1 < tokens.length && !tokens[j + 1].slot && !FUNCTION_WORDS.has(tokens[j + 1].t)) j++;
+      const kindAfter = KIND_WORDS[tokens[j + 1]?.t ?? ''];
+      if (kindAfter && j > i) {
+        const s = slotFor('N');
+        const words = tokens.slice(i, j + 1).map((t) => t.t);
+        bindings[s] = kindAfter === 'feature' ? words.join('-') : kindAfter === 'pages' || kindAfter === 'components' ? `${words.map(pascal).join('')}${tokens[j + 1].t !== 'component' ? pascal(tokens[j + 1].t) : ''}` : words.map((w, k) => (k ? pascal(w) : w)).join('');
+        tokens.splice(i, j - i + 1, { t: `<new:${s}>`, slot: s, kind: 'new' });
+        continue;
+      }
+    }
     const article = /^(a|an|new|another)$/.test(prev) || (/^(a|an|another)$/.test(tokens[i - 2]?.t ?? '') && prev === 'new');
     if (/^(called|named)$/.test(prev) || (creating && article && (kindNext || kindPrev))) {
       const s = slotFor('N');

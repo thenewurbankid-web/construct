@@ -198,6 +198,8 @@ function setFragment(ctx, intent, layer) {
   const K = slotsOf(ctx, 'K')[0];
   const A = slotsOf(ctx, 'A')[0];
   const want = A ? ctx.bindings[A].name : null;
+  // Without code in the request only a flow change offers code routes (a model writes the code); a prop change does not.
+  if (!K && !/[.](feature-flow|workflow|workflow-step|variable)$/.test(intent)) return [];
   const all = ctx.summary.features.flatMap((f) => f.items);
   const libIds = new Set(slotsOf(ctx, 'L').map((s) => ctx.bindings[s].id));
   const itemIds = new Set([...['P', 'C', 'W', 'X'].flatMap((L) => slotsOf(ctx, L)).map((s) => ctx.bindings[s].id), ...all.filter((i) => libIds.has(i.base)).map((i) => i.id)]);
@@ -325,12 +327,17 @@ function createLayout(ctx, intent) {
 export function enumerateRoutes(ctx, catalog, o = {}) {
   const minIntent = o.minIntent ?? 0.2; const minLayer = o.minLayer ?? 0.2;
   const byId = new Map(catalog.map((e) => [e.id, e]));
-  const intents = [ctx.labels.intent, ...ctx.labels.alternatives].filter((x) => byId.has(x.id) && x.confidence >= Math.min(minIntent, ctx.labels.intent.confidence));
+  // The top intent first; the alternatives only when the top one gives no route (precision over noise).
+  const top = [ctx.labels.intent].filter((x) => byId.has(x.id));
+  const alts = ctx.labels.alternatives.filter((x) => byId.has(x.id) && x.confidence >= Math.min(minIntent, ctx.labels.intent.confidence));
+  let intents = top;
   const layers = new Set(ctx.labels.layers.filter((l) => l.confidence >= minLayer).map((l) => l.layer));
   const all = ctx.words.includes('all') || ctx.words.includes('every') || ctx.words.includes('everything');
   /** @type {import('./contract.mjs').Route[]} */
   let routes = [];
   const dropped = [];
+  for (let round = 0; round < 2; round++) {
+  if (round === 1) { if (routes.length || !alts.length) break; intents = alts; }
   for (const it of intents) {
     const entry = byId.get(it.id);
     const sub = { ...ctx, labels: { ...ctx.labels, intent: it } };
@@ -347,7 +354,8 @@ export function enumerateRoutes(ctx, catalog, o = {}) {
       else if (t === 'new-feature') routes.push(...newFeature(sub, it.id));
       else if (t === 'create-layout') routes.push(...createLayout(sub, it.id));
     }
-    if (!entry.templates.length && it === intents[0]) dropped.push({ id: `intent:${it.id}`, sentence: `Line knows "${it.id.replace('.', ' ')}" as an operation but has no static route for it yet, so a local model or you decide.` });
+    if (!entry.templates.length && round === 0) dropped.push({ id: `intent:${it.id}`, sentence: `Line knows "${it.id.replace('.', ' ')}" as an operation but has no static route for it yet, so a local model or you decide.` });
+  }
   }
   if (layers.has('api')) dropped.push({ id: 'layer:api', sentence: 'Line has no API or service layer in this project yet, so no route changes one.' });
   // A route on a strongly labelled layer ranks above one on a weakly labelled layer.
@@ -356,7 +364,7 @@ export function enumerateRoutes(ctx, catalog, o = {}) {
   // Keep a route only when its layers were labelled (recall-tuned labels), except the library scope which a template chose.
   routes = routes.filter((r) => r.scope.layers.some((l) => layers.has(l) || l === 'library'));
   // Multi-layer intents also get the combined routes (one per pair of single-layer routes on different layers).
-  if (intents.some((x) => byId.get(x.id)?.object === 'feature-flow')) {
+  if (byId.get(ctx.labels.intent.id)?.object === 'feature-flow') {
     const singles = routes.filter((r) => r.scope.layers.length === 1);
     for (let i = 0; i < singles.length; i++) for (let j = i + 1; j < singles.length; j++) {
       const a = singles[i]; const b = singles[j];

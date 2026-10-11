@@ -88,9 +88,9 @@ export function draft(root, request, o = {}) {
       ? { to: /** @type {'ask'} */ ('ask'), sentence: n.questions[0].sentence }
       : !rec
         ? { to: /** @type {'qwen'} */ ('qwen'), sentence: 'No route passed Construct\'s checks; a local model may propose another, or you can pick a fix.' }
-        : rec.status === 'needs-model' || rec.invented.length || labels.intent.confidence < 0.5
-          ? { to: /** @type {'qwen'} */ ('qwen'), sentence: rec.status === 'needs-model' ? 'The best route needs a value or code that the request does not give; a local model may propose it, or you type it.' : rec.invented.length ? 'The best route uses a name Line made up; a local model may propose a better one.' : 'Line is not sure which kind of change this is; a local model may confirm it.' }
-          : { to: null, sentence: 'The static drafter is confident; no model is needed.' };
+        : rec.status !== 'ok' || labels.intent.confidence < 0.5
+          ? { to: /** @type {'qwen'} */ ('qwen'), sentence: rec.status === 'needs-model' ? 'The best route needs a value or code that the request does not give; a local model may propose it, or you type it.' : rec.status === 'ok' ? 'Line is not sure which kind of change this is; a local model may confirm it.' : 'No route has been checked yet; a local model may propose one.' }
+          : { to: null, sentence: rec.invented.length ? 'The static drafter is confident; a rule made up the new name, which you can change or let a local model suggest.' : 'The static drafter is confident; no model is needed.' };
   return {
     request: n.text, slots: ctx.slots, labels, from, routes, dropped, recommended: rec?.id ?? null, defer, bindings,
     questions: n.questions, shown: { request: String(request) },
